@@ -1,9 +1,21 @@
-from aiogram import Router
+import asyncio
+import os
+
+from aiogram import Bot, Dispatcher
 from aiogram.types import Message
 from aiogram.filters import Command
 
-router = Router()
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 
-@router.message(Command("start"))
+dp = Dispatcher()
+
+@dp.message(Command("start"))
 async def cmd_start(message: Message):
-    await message.answer("Привіт! Я мінімальний бот на aiogram 👋")
+    await message.answer("Привіт! Я працюю 🚀")
+
+async def main():
+    bot = Bot(token=BOT_TOKEN)
+    await dp.start_polling(bot)
+
+if __name__ == "__main__":
+    asyncio.run(main())
