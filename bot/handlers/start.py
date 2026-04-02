@@ -92,9 +92,9 @@ async def buyer_model(message: Message, state: FSMContext):
     model = message.text
 
     cursor.execute(
-        "SELECT telegram_id, username, brand, model FROM seller_cars WHERE LOWER(brand)=? AND LOWER(model)=?",
-        (brand.lower(), model.lower())
-    )
+    "SELECT telegram_id, username, brand, model FROM seller_cars WHERE LOWER(brand)=%s AND LOWER(model)=%s",
+    (brand.lower(), model.lower())
+)
 
     results = cursor.fetchall()
 
