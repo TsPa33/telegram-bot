@@ -4,6 +4,7 @@ from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 
 from bot.keyboards.role import role_keyboard
+from bot.keyboards.contact import contact_button
 from bot.states.seller import SellerStates
 from bot.states.buyer import BuyerStates
 from bot.database.db import cursor, conn
@@ -21,7 +22,8 @@ async def cmd_start(message: Message):
     )
 
 
-# вибір ролі
+# ================= ROLE =================
+
 @router.callback_query()
 async def handle_role(callback: CallbackQuery, state: FSMContext):
     user_id = callback.from_user.id
@@ -58,7 +60,6 @@ async def seller_model(message: Message, state: FSMContext):
     brand = data.get("brand")
     model = message.text
 
-    # DEBUG
     print("USERNAME:", username)
 
     cursor.execute(
@@ -67,7 +68,6 @@ async def seller_model(message: Message, state: FSMContext):
     )
     conn.commit()
 
-    # DEBUG
     cursor.execute("SELECT * FROM seller_cars")
     print("DB DATA:", cursor.fetchall())
 
@@ -92,20 +92,48 @@ async def buyer_model(message: Message, state: FSMContext):
     model = message.text
 
     cursor.execute(
-        "SELECT DISTINCT telegram_id, username FROM seller_cars WHERE LOWER(brand)=? AND LOWER(model)=?",
+        "SELECT telegram_id, username, brand, model FROM seller_cars WHERE LOWER(brand)=? AND LOWER(model)=?",
         (brand.lower(), model.lower())
     )
 
     results = cursor.fetchall()
 
-    if results:
-        text = "Знайдені продавці:\n\n"
-        for r in results:
-            text += f"ID: {r[0]}\n"
-            if r[1]:
-                text += f"Username: @{r[1]}\n"
-    else:
-        text = "Нічого не знайдено ❌"
+    if not results:
+        await message.answer("Нічого не знайдено ❌")
+        await state.clear()
+        return
 
-    await message.answer(text)
+    # 🔥 ГРУПУВАННЯ
+    sellers_dict = {}
+
+    for user_id, username, brand, model in results:
+        if user_id not in sellers_dict:
+            sellers_dict[user_id] = {
+                "username": username,
+                "cars": []
+            }
+
+        sellers_dict[user_id]["cars"].append(f"{brand} {model}")
+
+    # 🔥 КРАСИВИЙ ВИВІД
+    for user_id, data in sellers_dict.items():
+        username = data["username"]
+        cars = data["cars"]
+
+        text = "Продавець:\n"
+
+        if username:
+            text += f"@{username}\n\n"
+        else:
+            text += f"ID: {user_id}\n\n"
+
+        text += "Авто:\n"
+        for car in cars:
+            text += f"- {car}\n"
+
+        await message.answer(
+            text,
+            reply_markup=contact_button(username)
+        )
+
     await state.clear()
