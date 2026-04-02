@@ -6,6 +6,7 @@ def create_tables():
     CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         telegram_id INTEGER,
+        username TEXT,
         role TEXT
     )
     """)
@@ -14,6 +15,7 @@ def create_tables():
     CREATE TABLE IF NOT EXISTS seller_cars (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         telegram_id INTEGER,
+        username TEXT,
         brand TEXT,
         model TEXT
     )
