@@ -2,16 +2,15 @@ from aiogram import Router
 from aiogram.types import Message, CallbackQuery
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
+from aiogram import F
 
 from bot.keyboards.role import role_keyboard
 from bot.keyboards.contact import contact_button
 from bot.states.seller import SellerStates
 from bot.states.buyer import BuyerStates
-from bot.database.db import cursor, conn
+from bot.database.db import get_connection
 
 router = Router()
-
-users = {}
 
 
 # ================= START =================
@@ -26,17 +25,14 @@ async def cmd_start(message: Message):
 
 # ================= ROLE =================
 
-@router.callback_query()
+@router.callback_query(F.data.in_(["role_seller", "role_buyer"]))
 async def handle_role(callback: CallbackQuery, state: FSMContext):
-    user_id = callback.from_user.id
 
     if callback.data == "role_seller":
-        users[user_id] = "seller"
         await callback.message.answer("Введи марку авто:")
         await state.set_state(SellerStates.waiting_for_brand)
 
     elif callback.data == "role_buyer":
-        users[user_id] = "buyer"
         await callback.message.answer("Введи марку авто:")
         await state.set_state(BuyerStates.waiting_for_brand)
 
@@ -62,7 +58,12 @@ async def seller_model(message: Message, state: FSMContext):
     brand = data.get("brand")
     model = message.text
 
-    print("USERNAME:", username)
+    # нормалізація
+    brand = brand.lower().strip()
+    model = model.lower().strip()
+
+    conn = get_connection()
+    cursor = conn.cursor()
 
     cursor.execute(
         "INSERT INTO seller_cars (telegram_id, username, brand, model) VALUES (%s, %s, %s, %s)",
@@ -70,8 +71,8 @@ async def seller_model(message: Message, state: FSMContext):
     )
     conn.commit()
 
-    cursor.execute("SELECT * FROM seller_cars")
-    print("DB DATA:", cursor.fetchall())
+    cursor.close()
+    conn.close()
 
     await message.answer("Авто збережено в БД ✅")
     await state.clear()
@@ -90,15 +91,25 @@ async def buyer_brand(message: Message, state: FSMContext):
 async def buyer_model(message: Message, state: FSMContext):
     data = await state.get_data()
 
-    brand = data.get("brand")
-    model = message.text
+    brand = data.get("brand").lower().strip()
+    model = message.text.lower().strip()
+
+    conn = get_connection()
+    cursor = conn.cursor()
 
     cursor.execute(
-        "SELECT telegram_id, username, brand, model FROM seller_cars WHERE LOWER(brand)=%s AND LOWER(model)=%s",
-        (brand.lower(), model.lower())
+        """
+        SELECT telegram_id, username, brand, model 
+        FROM seller_cars 
+        WHERE LOWER(brand)=%s AND LOWER(model)=%s
+        """,
+        (brand, model)
     )
 
     results = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
 
     if not results:
         await message.answer("Нічого не знайдено ❌")
@@ -133,7 +144,7 @@ async def buyer_model(message: Message, state: FSMContext):
 
         await message.answer(
             text,
-            reply_markup=contact_button(username)
+            reply_markup=contact_button(username if username else None)
         )
 
     await state.clear()
