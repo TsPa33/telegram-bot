@@ -12,16 +12,19 @@ logging.basicConfig(level=logging.INFO)
 
 
 async def run_bot():
-    # 🔥 Ініціалізація БД (обов’язково першою)
-    create_tables()
+    # перевірка токена
+    if not BOT_TOKEN:
+        raise ValueError("BOT_TOKEN is not set")
+
+    # ініціалізація БД (в окремому потоці)
+    await asyncio.to_thread(create_tables)
 
     bot = Bot(token=BOT_TOKEN)
     dp = Dispatcher()
 
-    # підключаємо handlers
     dp.include_router(start.router)
 
-    print("BOT STARTED")
+    logging.info("BOT STARTED")
 
     await dp.start_polling(bot)
 
