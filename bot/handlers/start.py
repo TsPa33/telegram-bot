@@ -1,11 +1,12 @@
-from aiogram import Router
-from aiogram.types import Message, CallbackQuery
+from aiogram import Router, F
+from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
-from aiogram import F
 
 from bot.keyboards.role import role_keyboard
 from bot.keyboards.contact import contact_button
+from bot.keyboards.start import start_keyboard
+
 from bot.states.seller import SellerStates
 from bot.states.buyer import BuyerStates
 from bot.database.db import get_connection
@@ -15,13 +16,19 @@ router = Router()
 
 # ================= START =================
 
-from bot.keyboards.start import start_keyboard
-
 @router.message(Command("start"))
 async def cmd_start(message: Message):
     await message.answer(
         "Натисни кнопку щоб почати:",
         reply_markup=start_keyboard()
+    )
+
+
+@router.message(F.text == "Поїхали 🚀")
+async def start_button(message: Message):
+    await message.answer(
+        "Обери хто ти:",
+        reply_markup=role_keyboard()
     )
 
 
@@ -31,20 +38,41 @@ async def cmd_start(message: Message):
 async def handle_role(callback: CallbackQuery, state: FSMContext):
 
     if callback.data == "role_seller":
-        await callback.message.answer("Введи марку авто:")
+        await callback.message.answer(
+            "Введи марку авто:",
+            reply_markup=ReplyKeyboardRemove()
+        )
         await state.set_state(SellerStates.waiting_for_brand)
 
     elif callback.data == "role_buyer":
-        await callback.message.answer("Введи марку авто:")
+        await callback.message.answer(
+            "Введи марку авто:",
+            reply_markup=ReplyKeyboardRemove()
+        )
         await state.set_state(BuyerStates.waiting_for_brand)
 
     await callback.answer()
+
+
+# ================= VALIDATION =================
+
+def validate_text(text: str):
+    return text and text.strip()
+
+
+def normalize(text: str):
+    return text.lower().strip().capitalize()
 
 
 # ================= SELLER =================
 
 @router.message(SellerStates.waiting_for_brand)
 async def seller_brand(message: Message, state: FSMContext):
+
+    if not validate_text(message.text):
+        await message.answer("Некоректна марка ❗")
+        return
+
     await state.update_data(brand=message.text)
     await message.answer("Введи модель авто:")
     await state.set_state(SellerStates.waiting_for_model)
@@ -52,31 +80,41 @@ async def seller_brand(message: Message, state: FSMContext):
 
 @router.message(SellerStates.waiting_for_model)
 async def seller_model(message: Message, state: FSMContext):
+
+    if not validate_text(message.text):
+        await message.answer("Некоректна модель ❗")
+        return
+
     data = await state.get_data()
 
     user_id = message.from_user.id
     username = message.from_user.username
 
-    brand = data.get("brand")
-    model = message.text
-
-    # нормалізація
-    brand = brand.lower().strip()
-    model = model.lower().strip()
+    brand = normalize(data.get("brand"))
+    model = normalize(message.text)
 
     conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute(
-        "INSERT INTO seller_cars (telegram_id, username, brand, model) VALUES (%s, %s, %s, %s)",
+        """
+        INSERT INTO seller_cars (telegram_id, username, brand, model)
+        VALUES (%s, %s, %s, %s)
+        ON CONFLICT (telegram_id, brand, model) DO NOTHING
+        """,
         (user_id, username, brand, model)
     )
+
     conn.commit()
+
+    if cursor.rowcount == 0:
+        await message.answer("Таке авто вже додано ❗")
+    else:
+        await message.answer("Авто збережено в БД ✅")
 
     cursor.close()
     conn.close()
 
-    await message.answer("Авто збережено в БД ✅")
     await state.clear()
 
 
@@ -84,6 +122,11 @@ async def seller_model(message: Message, state: FSMContext):
 
 @router.message(BuyerStates.waiting_for_brand)
 async def buyer_brand(message: Message, state: FSMContext):
+
+    if not validate_text(message.text):
+        await message.answer("Некоректна марка ❗")
+        return
+
     await state.update_data(brand=message.text)
     await message.answer("Введи модель авто:")
     await state.set_state(BuyerStates.waiting_for_model)
@@ -91,10 +134,15 @@ async def buyer_brand(message: Message, state: FSMContext):
 
 @router.message(BuyerStates.waiting_for_model)
 async def buyer_model(message: Message, state: FSMContext):
+
+    if not validate_text(message.text):
+        await message.answer("Некоректна модель ❗")
+        return
+
     data = await state.get_data()
 
-    brand = data.get("brand").lower().strip()
-    model = message.text.lower().strip()
+    brand = normalize(data.get("brand"))
+    model = normalize(message.text)
 
     conn = get_connection()
     cursor = conn.cursor()
@@ -105,7 +153,7 @@ async def buyer_model(message: Message, state: FSMContext):
         FROM seller_cars 
         WHERE LOWER(brand)=%s AND LOWER(model)=%s
         """,
-        (brand, model)
+        (brand.lower(), model.lower())
     )
 
     results = cursor.fetchall()
@@ -144,9 +192,11 @@ async def buyer_model(message: Message, state: FSMContext):
         for car in cars:
             text += f"- {car}\n"
 
+        reply_markup = contact_button(username) if username else None
+
         await message.answer(
             text,
-            reply_markup=contact_button(username if username else None)
+            reply_markup=reply_markup
         )
 
     await state.clear()
