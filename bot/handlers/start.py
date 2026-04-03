@@ -134,10 +134,16 @@ async def buyer_brand(message: Message, state: FSMContext):
         await message.answer("Некоректна марка ❗")
         return
 
-    await state.update_data(brand=message.text)
-    await message.answer("Введи модель авто:")
-    await state.set_state(BuyerStates.waiting_for_model)
+    brand = message.text
 
+    await state.update_data(brand=brand)
+
+    await message.answer(
+        "Обери модель:",
+        reply_markup=model_keyboard(brand)
+    )
+
+    await state.set_state(BuyerStates.waiting_for_model)
 
 @router.message(BuyerStates.waiting_for_model)
 async def buyer_model(message: Message, state: FSMContext):
