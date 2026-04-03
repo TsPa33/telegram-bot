@@ -66,6 +66,8 @@ def normalize(text: str):
 
 # ================= SELLER =================
 
+@from bot.keyboards.models import model_keyboard
+
 @router.message(SellerStates.waiting_for_brand)
 async def seller_brand(message: Message, state: FSMContext):
 
@@ -73,10 +75,16 @@ async def seller_brand(message: Message, state: FSMContext):
         await message.answer("Некоректна марка ❗")
         return
 
-    await state.update_data(brand=message.text)
-    await message.answer("Введи модель авто:")
-    await state.set_state(SellerStates.waiting_for_model)
+    brand = message.text
 
+    await state.update_data(brand=brand)
+
+    await message.answer(
+        "Обери модель:",
+        reply_markup=model_keyboard(brand)
+    )
+
+    await state.set_state(SellerStates.waiting_for_model)
 
 @router.message(SellerStates.waiting_for_model)
 async def seller_model(message: Message, state: FSMContext):
