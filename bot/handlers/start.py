@@ -10,7 +10,7 @@ from bot.keyboards.start import start_keyboard
 from bot.states.seller import SellerStates
 from bot.states.buyer import BuyerStates
 from bot.database.db import get_connection
-
+from bot.keyboards.brands import brand_keyboard
 router = Router()
 
 
@@ -34,23 +34,23 @@ async def start_button(message: Message):
 
 # ================= ROLE =================
 
-@router.callback_query(F.data.in_(["role_seller", "role_buyer"]))
-async def handle_role(callback: CallbackQuery, state: FSMContext):
+@router.callback_query(F.data == "role_seller")
+async def handle_seller(callback: CallbackQuery, state: FSMContext):
+    await callback.message.answer(
+        "Обери марку авто:",
+        reply_markup=brand_keyboard()
+    )
+    await state.set_state(SellerStates.waiting_for_brand)
+    await callback.answer()
 
-    if callback.data == "role_seller":
-        await callback.message.answer(
-            "Введи марку авто:",
-            reply_markup=ReplyKeyboardRemove()
-        )
-        await state.set_state(SellerStates.waiting_for_brand)
 
-    elif callback.data == "role_buyer":
-        await callback.message.answer(
-            "Введи марку авто:",
-            reply_markup=ReplyKeyboardRemove()
-        )
-        await state.set_state(BuyerStates.waiting_for_brand)
-
+@router.callback_query(F.data == "role_buyer")
+async def handle_buyer(callback: CallbackQuery, state: FSMContext):
+    await callback.message.answer(
+        "Обери марку авто:",
+        reply_markup=brand_keyboard()
+    )
+    await state.set_state(BuyerStates.waiting_for_brand)
     await callback.answer()
 
 
