@@ -15,11 +15,13 @@ router = Router()
 
 # ================= START =================
 
+from bot.keyboards.start import start_keyboard
+
 @router.message(Command("start"))
 async def cmd_start(message: Message):
     await message.answer(
-        "Обери хто ти:",
-        reply_markup=role_keyboard()
+        "Натисни кнопку щоб почати:",
+        reply_markup=start_keyboard()
     )
 
 
