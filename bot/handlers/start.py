@@ -65,9 +65,7 @@ def normalize(text: str):
     return text.lower().strip().capitalize()
 
 
-# ================= SELLER =================
-
-@from bot.keyboards.models import model_keyboard
+# ================= SELLER ================ #
 
 @router.message(SellerStates.waiting_for_brand)
 async def seller_brand(message: Message, state: FSMContext):
