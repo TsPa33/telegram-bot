@@ -11,6 +11,7 @@ from bot.states.seller import SellerStates
 from bot.states.buyer import BuyerStates
 from bot.database.db import get_connection
 from bot.keyboards.brands import brand_keyboard
+from bot.keyboards.models import model_keyboard
 router = Router()
 
 
