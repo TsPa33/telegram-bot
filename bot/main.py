@@ -25,8 +25,8 @@ async def run_bot():
 
     # routers
     dp.include_router(start.router)
-    dp.include_router(seller.router)
     dp.include_router(buyer.router)
+    dp.include_router(seller.router)
 
     logging.info("BOT STARTED")
 
