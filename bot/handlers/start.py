@@ -55,14 +55,9 @@ async def handle_buyer(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
 
-# ================= VALIDATION =================
-
-def validate_text(text: str):
-    return text and text.strip()
+# ================= VALIDATION маршутизована в іншу папку =================
 
 
-def normalize(text: str):
-    return text.lower().strip().capitalize()
 
 
 # ================= SELLER ================ #
