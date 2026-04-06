@@ -11,7 +11,9 @@ from bot.utils.validation import validate_text, normalize
 router = Router()
 
 
-@router.message(BuyerStates.waiting_for_brand)
+from aiogram import F
+
+@router.message(BuyerStates.waiting_for_brand, F.text)
 async def buyer_brand(message: Message, state: FSMContext):
 
     if not validate_text(message.text):
