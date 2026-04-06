@@ -20,7 +20,10 @@ async def run_bot():
     await asyncio.to_thread(create_tables)
 
     bot = Bot(token=BOT_TOKEN)
-    dp = Dispatcher()
+    from aiogram import Bot, Dispatcher
+from aiogram.fsm.storage.memory import MemoryStorage
+
+dp = Dispatcher(storage=MemoryStorage())
 
     dp.include_router(start.router)
     dp.include_router(seller.router)
