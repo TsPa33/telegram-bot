@@ -32,8 +32,9 @@ async def buyer_brand(message: Message, state: FSMContext):
     await state.set_state(BuyerStates.waiting_for_model)
 
 
-@router.message(BuyerStates.waiting_for_model, F.text)
-async def buyer_model(message: Message, state: FSMContext):
+@router.message(BuyerStates.waiting_for_brand, F.text)
+async def buyer_brand(message: Message, state: FSMContext):
+    print("BUYER BRAND TRIGGERED")
 
     if not validate_text(message.text):
         await message.answer("Некоректна модель ❗")
