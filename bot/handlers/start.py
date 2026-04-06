@@ -66,6 +66,3 @@ async def handle_buyer(callback: CallbackQuery, state: FSMContext):
 
 # ================= BUYER =================
 
-
-
-    await state.clear()
