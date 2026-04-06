@@ -12,6 +12,7 @@ router = Router()
 
 @router.message(SellerStates.waiting_for_brand, F.text)
 async def seller_brand(message: Message, state: FSMContext):
+    print("BUYER BRAND:", message.text)
 
     if not validate_text(message.text):
         await message.answer("Некоректна марка ❗")
