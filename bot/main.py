@@ -15,23 +15,29 @@ async def run_bot():
     if not BOT_TOKEN:
         raise ValueError("BOT_TOKEN is not set")
 
-    # БД
     await asyncio.to_thread(create_tables)
 
-    # FSM storage
     dp = Dispatcher(storage=MemoryStorage())
-
     bot = Bot(token=BOT_TOKEN)
 
-    # routers
     dp.include_router(start.router)
     dp.include_router(buyer.router)
     dp.include_router(seller.router)
 
     logging.info("BOT STARTED")
 
-    await dp.start_polling(bot)
+    try:
+        await dp.start_polling(bot)
+    finally:
+        logging.info("Shutting down bot...")
+        await bot.session.close()
 
 
-def main():
-    asyncio.run(run_bot())
+async def main():
+    # Дає старому процесу закритись (критично для Railway)
+    await asyncio.sleep(2)
+    await run_bot()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
