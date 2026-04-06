@@ -10,7 +10,7 @@ from bot.utils.validation import validate_text, normalize
 router = Router()
 
 
-@router.message(SellerStates.waiting_for_brand)
+@router.message(SellerStates.waiting_for_brand, F.text)
 async def seller_brand(message: Message, state: FSMContext):
 
     if not validate_text(message.text):
