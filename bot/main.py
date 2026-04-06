@@ -4,7 +4,7 @@ import logging
 from aiogram import Bot, Dispatcher
 
 from bot.config import BOT_TOKEN
-from bot.handlers import start
+from bot.handlers import start, seller, buyer
 from bot.database.models import create_tables
 
 
@@ -23,6 +23,8 @@ async def run_bot():
     dp = Dispatcher()
 
     dp.include_router(start.router)
+    dp.include_router(seller.router)
+    dp.include_router(buyer.router)
 
     logging.info("BOT STARTED")
 
