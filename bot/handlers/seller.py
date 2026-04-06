@@ -30,7 +30,7 @@ async def seller_brand(message: Message, state: FSMContext):
     await state.set_state(SellerStates.waiting_for_model)
 
 
-@router.message(SellerStates.waiting_for_model)
+@router.message(SellerStates.waiting_for_model, F.text)
 async def seller_model(message: Message, state: FSMContext):
 
     if not validate_text(message.text):
