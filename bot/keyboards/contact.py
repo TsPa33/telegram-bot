@@ -1,13 +1,14 @@
-from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 
-def contact_button(username: str):
-    kb = InlineKeyboardBuilder()
-
-    if username:
-        kb.button(
-            text="Написати продавцю",
-            url=f"https://t.me/{username}"
-        )
-
-    return kb.as_markup()
+def contact_button(seller_id):
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="📞 Написати продавцю",
+                    callback_data=f"contact_{seller_id}"
+                )
+            ]
+        ]
+    )
