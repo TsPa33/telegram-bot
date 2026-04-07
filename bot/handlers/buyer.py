@@ -1,5 +1,5 @@
 from aiogram import Router, F
-from aiogram.types import Message
+from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
 
 from bot.states.buyer import BuyerStates
@@ -11,7 +11,8 @@ from bot.utils.validation import validate_text, normalize
 router = Router()
 
 
-# 🔹 Вибір бренду
+# ================= BRAND =================
+
 @router.message(BuyerStates.waiting_for_brand, F.text)
 async def buyer_brand(message: Message, state: FSMContext):
 
@@ -19,19 +20,18 @@ async def buyer_brand(message: Message, state: FSMContext):
         await message.answer("Некоректна марка ❗")
         return
 
-    brand = message.text
-
-    await state.update_data(brand=brand)
+    await state.update_data(brand=message.text)
 
     await message.answer(
         "Обери модель:",
-        reply_markup=model_keyboard(brand)
+        reply_markup=model_keyboard(message.text)
     )
 
     await state.set_state(BuyerStates.waiting_for_model)
 
 
-# 🔹 Вибір моделі + пошук
+# ================= MODEL + SEARCH =================
+
 @router.message(BuyerStates.waiting_for_model, F.text)
 async def buyer_model(message: Message, state: FSMContext):
 
@@ -47,10 +47,10 @@ async def buyer_model(message: Message, state: FSMContext):
     conn = get_connection()
     cursor = conn.cursor()
 
-    # 🔥 JOIN sellers + cars
     cursor.execute(
         """
         SELECT 
+            s.id,
             s.telegram_id,
             s.username,
             s.name,
@@ -68,27 +68,30 @@ async def buyer_model(message: Message, state: FSMContext):
     )
 
     results = cursor.fetchall()
-for row in results:
-    seller_id = row[0]  # ВАЖЛИВО: перевір що це id
-
-    cursor.execute(
-        "UPDATE sellers SET views = views + 1 WHERE id = %s",
-        (seller_id,)
-    )
-
-conn.commit()
-    cursor.close()
-    conn.close()
 
     if not results:
         await message.answer("Нічого не знайдено ❌")
         await state.clear()
+        cursor.close()
+        conn.close()
         return
 
+    # ================= +1 VIEW =================
+    for row in results:
+        seller_id = row[0]
+
+        cursor.execute(
+            "UPDATE sellers SET views = views + 1 WHERE id = %s",
+            (seller_id,)
+        )
+
+    conn.commit()
+
+    # ================= GROUP =================
     sellers_dict = {}
 
-    # 🔥 ПРАВИЛЬНИЙ РОЗБІР
     for (
+        seller_id,
         telegram_id,
         username,
         name,
@@ -100,8 +103,9 @@ conn.commit()
         model
     ) in results:
 
-        if telegram_id not in sellers_dict:
-            sellers_dict[telegram_id] = {
+        if seller_id not in sellers_dict:
+            sellers_dict[seller_id] = {
+                "telegram_id": telegram_id,
                 "username": username,
                 "name": name,
                 "company_name": company_name,
@@ -111,10 +115,10 @@ conn.commit()
                 "cars": []
             }
 
-        sellers_dict[telegram_id]["cars"].append(f"{brand} {model}")
+        sellers_dict[seller_id]["cars"].append(f"{brand} {model}")
 
-    # 🔥 ВИВІД (візитка)
-    for telegram_id, data in sellers_dict.items():
+    # ================= OUTPUT =================
+    for seller_id, data in sellers_dict.items():
 
         username = data["username"]
         name = data["name"]
@@ -150,16 +154,18 @@ conn.commit()
         if telegram_link:
             text += f"🔗 {telegram_link}\n"
 
-        reply_markup = contact_button(seller_id) if seller_id else None
-
         await message.answer(
             text,
-            reply_markup=reply_markup
+            reply_markup=contact_button(seller_id)
         )
 
-    await state.clear()
-from aiogram.types import CallbackQuery
+    cursor.close()
+    conn.close()
 
+    await state.clear()
+
+
+# ================= CONTACT CLICK =================
 
 @router.callback_query(F.data.startswith("contact_"))
 async def contact_click(callback: CallbackQuery):
@@ -169,7 +175,7 @@ async def contact_click(callback: CallbackQuery):
     conn = get_connection()
     cursor = conn.cursor()
 
-    # +1 клік
+    # +1 CLICK
     cursor.execute(
         "UPDATE sellers SET clicks = clicks + 1 WHERE id = %s",
         (seller_id,)
