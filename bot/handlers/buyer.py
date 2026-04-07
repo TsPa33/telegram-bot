@@ -1,4 +1,4 @@
-from aiogram import Router
+from aiogram import Router, F
 from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
 
@@ -11,8 +11,7 @@ from bot.utils.validation import validate_text, normalize
 router = Router()
 
 
-from aiogram import F
-
+# ✅ BRAND
 @router.message(BuyerStates.waiting_for_brand, F.text)
 async def buyer_brand(message: Message, state: FSMContext):
 
@@ -32,9 +31,11 @@ async def buyer_brand(message: Message, state: FSMContext):
     await state.set_state(BuyerStates.waiting_for_model)
 
 
-@router.message(BuyerStates.waiting_for_brand, F.text)
-async def buyer_brand(message: Message, state: FSMContext):
-    print("BUYER BRAND TRIGGERED")
+# ✅ MODEL (ВИПРАВЛЕНО STATE)
+@router.message(BuyerStates.waiting_for_model, F.text)
+async def buyer_model(message: Message, state: FSMContext):
+
+    print("BUYER MODEL TRIGGERED")
 
     if not validate_text(message.text):
         await message.answer("Некоректна модель ❗")
