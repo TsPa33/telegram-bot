@@ -48,12 +48,9 @@ async def handle_seller(callback: CallbackQuery, state: FSMContext):
 @router.callback_query(F.data == "role_buyer")
 async def handle_buyer(callback: CallbackQuery, state: FSMContext):
 
-    print("CLICK BUYER")
-
     await state.set_state(BuyerStates.waiting_for_brand)
 
     current_state = await state.get_state()
-    print("STATE SET:", current_state)
 
     await callback.message.answer(
         "Обери марку авто:",
