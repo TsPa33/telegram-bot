@@ -1,3 +1,14 @@
+from aiogram import Router, F
+from aiogram.types import Message
+from aiogram.fsm.context import FSMContext
+
+from bot.states.seller import SellerStates
+from bot.database.db import get_connection
+from bot.keyboards.models import model_keyboard
+from bot.utils.validation import validate_text, normalize
+
+
+router = Router()
 @router.message(SellerStates.waiting_for_model, F.text)
 async def seller_model(message: Message, state: FSMContext):
 
