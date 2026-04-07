@@ -11,7 +11,7 @@ from bot.utils.validation import validate_text, normalize
 router = Router()
 
 
-# ✅ BRAND
+# 🔹 Вибір бренду
 @router.message(BuyerStates.waiting_for_brand, F.text)
 async def buyer_brand(message: Message, state: FSMContext):
 
@@ -31,11 +31,9 @@ async def buyer_brand(message: Message, state: FSMContext):
     await state.set_state(BuyerStates.waiting_for_model)
 
 
-# ✅ MODEL (ВИПРАВЛЕНО STATE)
+# 🔹 Вибір моделі + пошук
 @router.message(BuyerStates.waiting_for_model, F.text)
 async def buyer_model(message: Message, state: FSMContext):
-
-    print("BUYER MODEL TRIGGERED")
 
     if not validate_text(message.text):
         await message.answer("Некоректна модель ❗")
@@ -49,21 +47,22 @@ async def buyer_model(message: Message, state: FSMContext):
     conn = get_connection()
     cursor = conn.cursor()
 
+    # 🔥 JOIN sellers + cars
     cursor.execute(
         """
         SELECT 
-    s.telegram_id,
-    s.username,
-    s.name,
-    s.company_name,
-    s.phone,
-    s.telegram_link,
-    s.city,
-    sc.brand,
-    sc.model
-FROM seller_cars sc
-JOIN sellers s ON sc.seller_id = s.id
-WHERE LOWER(sc.brand) = %s AND LOWER(sc.model) = %s
+            s.telegram_id,
+            s.username,
+            s.name,
+            s.company_name,
+            s.phone,
+            s.telegram_link,
+            s.city,
+            sc.brand,
+            sc.model
+        FROM seller_cars sc
+        JOIN sellers s ON sc.seller_id = s.id
+        WHERE LOWER(sc.brand) = %s AND LOWER(sc.model) = %s
         """,
         (brand.lower(), model.lower())
     )
@@ -80,29 +79,68 @@ WHERE LOWER(sc.brand) = %s AND LOWER(sc.model) = %s
 
     sellers_dict = {}
 
-    for user_id, username, brand, model in results:
-        if user_id not in sellers_dict:
-            sellers_dict[user_id] = {
+    # 🔥 ПРАВИЛЬНИЙ РОЗБІР
+    for (
+        telegram_id,
+        username,
+        name,
+        company_name,
+        phone,
+        telegram_link,
+        city,
+        brand,
+        model
+    ) in results:
+
+        if telegram_id not in sellers_dict:
+            sellers_dict[telegram_id] = {
                 "username": username,
+                "name": name,
+                "company_name": company_name,
+                "phone": phone,
+                "telegram_link": telegram_link,
+                "city": city,
                 "cars": []
             }
 
-        sellers_dict[user_id]["cars"].append(f"{brand} {model}")
+        sellers_dict[telegram_id]["cars"].append(f"{brand} {model}")
 
-    for user_id, data in sellers_dict.items():
+    # 🔥 ВИВІД (візитка)
+    for telegram_id, data in sellers_dict.items():
+
         username = data["username"]
+        name = data["name"]
+        company_name = data["company_name"]
+        phone = data["phone"]
+        telegram_link = data["telegram_link"]
+        city = data["city"]
         cars = data["cars"]
 
-        text = "Продавець:\n"
+        text = ""
 
-        if username:
-            text += f"@{username}\n\n"
-        else:
-            text += f"ID: {user_id}\n\n"
+        if company_name:
+            text += f"🏪 {company_name}\n"
 
-        text += "Авто:\n"
+        if name:
+            text += f"👤 {name}\n"
+
+        if city:
+            text += f"📍 {city}\n"
+
+        text += "\n🚗 Авто:\n"
         for car in cars:
             text += f"- {car}\n"
+
+        text += "\n"
+
+        if phone:
+            text += f"📞 {phone}\n"
+
+        if username:
+            text += f"💬 @{username}\n"
+
+        if telegram_link:
+            text += f"🔗 {telegram_link}\n"
 
         reply_markup = contact_button(username) if username else None
 
