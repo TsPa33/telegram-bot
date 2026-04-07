@@ -64,14 +64,11 @@ async def profile(message: Message):
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute(
-        """
-        SELECT name, company_name, phone, telegram_link, city views, clicks
-        FROM sellers
-        WHERE telegram_id = %s
-        """,
-        (user_id,)
-    )
+    cursor.execute("""
+SELECT name, company_name, phone, telegram_link, city, views, clicks
+FROM sellers
+WHERE telegram_id = %s
+""", (user_id,))
 
     seller = cursor.fetchone()
 
