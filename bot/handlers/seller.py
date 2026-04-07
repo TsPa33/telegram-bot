@@ -5,6 +5,7 @@ from aiogram.fsm.context import FSMContext
 from bot.states.seller import SellerStates
 from bot.database.db import get_connection
 from bot.keyboards.models import model_keyboard
+from bot.keyboards.brands import brand_keyboard
 from bot.utils.validation import validate_text, normalize
 
 router = Router()
@@ -14,7 +15,10 @@ router = Router()
 
 @router.message(F.text == "➕ Додати авто")
 async def add_car_start(message: Message, state: FSMContext):
-    await message.answer("Обери марку авто:")
+    await message.answer(
+    "Обери марку авто:",
+    reply_markup=brand_keyboard()
+)
     await state.set_state(SellerStates.waiting_for_brand)
 
 
