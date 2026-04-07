@@ -66,7 +66,7 @@ async def profile(message: Message):
 
     cursor.execute(
         """
-        SELECT name, company_name, phone, telegram_link, city
+        SELECT name, company_name, phone, telegram_link, city views, clicks
         FROM sellers
         WHERE telegram_id = %s
         """,
@@ -82,9 +82,10 @@ async def profile(message: Message):
         await message.answer("Профіль не знайдено ❗")
         return
 
-    name, company, phone, link, city = seller
-
+    name, company, phone, link, city, views, clicks = seller
     text = "👤 Профіль:\n\n"
+    text += f"\n👁 Перегляди: {views}\n"
+    text += f"🔗 Переходи: {clicks}\n"
 
     if company:
         text += f"🏪 {company}\n"
