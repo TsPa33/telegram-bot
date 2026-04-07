@@ -184,7 +184,7 @@ async def reg_city(message: Message, state: FSMContext):
 
 # ================= SELLER MENU =================
 
-@router.message(F.text == "📋 Мої авто")
+@router.message(F.text == "📋 Мої авто", state="*")
 async def my_cars(message: Message):
 
     user_id = message.from_user.id
