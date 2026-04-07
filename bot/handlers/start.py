@@ -6,6 +6,7 @@ from aiogram.fsm.context import FSMContext
 from bot.keyboards.role import role_keyboard
 from bot.keyboards.contact import contact_button
 from bot.keyboards.start import start_keyboard
+from bot.keyboards.seller_menu import seller_menu
 
 from bot.states.seller import SellerStates
 from bot.states.buyer import BuyerStates
@@ -38,10 +39,9 @@ async def start_button(message: Message):
 @router.callback_query(F.data == "role_seller")
 async def handle_seller(callback: CallbackQuery, state: FSMContext):
     await callback.message.answer(
-        "Обери марку авто:",
-        reply_markup=brand_keyboard()
+        "Меню продавця:",
+        reply_markup=seller_menu()
     )
-    await state.set_state(SellerStates.waiting_for_brand)
     await callback.answer()
 
 
