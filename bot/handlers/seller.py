@@ -58,10 +58,7 @@ async def seller_model(message: Message, state: FSMContext):
 
     conn.commit()
 
-    if cursor.rowcount == 0:
-        await message.answer("Таке авто вже додано ❗")
-    else:
-        await message.answer("Авто збережено в БД ✅")
+    await message.answer("Авто збережено в БД ✅")
 
     cursor.close()
     conn.close()
