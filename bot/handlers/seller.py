@@ -19,13 +19,11 @@ async def seller_brand(message: Message, state: FSMContext):
         await message.answer("Некоректна марка ❗")
         return
 
-    brand = message.text
-
-    await state.update_data(brand=brand)
+    await state.update_data(brand=message.text)
 
     await message.answer(
         "Обери модель:",
-        reply_markup=model_keyboard(brand)
+        reply_markup=model_keyboard(message.text)
     )
 
     await state.set_state(SellerStates.waiting_for_model)
@@ -49,13 +47,14 @@ async def seller_model(message: Message, state: FSMContext):
     conn = get_connection()
     cursor = conn.cursor()
 
-    # 🔹 отримати або створити seller
+    # 🔹 знайти seller
     cursor.execute(
         "SELECT id FROM sellers WHERE telegram_id = %s",
         (user_id,)
     )
     seller = cursor.fetchone()
 
+    # 🔹 якщо нема — створити
     if not seller:
         cursor.execute(
             """
@@ -69,7 +68,7 @@ async def seller_model(message: Message, state: FSMContext):
     else:
         seller_id = seller[0]
 
-    # 🔹 вставка авто
+    # 🔹 додати авто
     cursor.execute(
         """
         INSERT INTO seller_cars (seller_id, brand, model)
@@ -136,16 +135,9 @@ async def reg_city(message: Message, state: FSMContext):
     user_id = message.from_user.id
     username = message.from_user.username
 
-    name = data.get("name")
-    company = data.get("company")
-    phone = data.get("phone")
-    link = data.get("link")
-    city = message.text
-
     conn = get_connection()
     cursor = conn.cursor()
 
-    # 🔥 UPSERT (оновлення або створення)
     cursor.execute(
         """
         INSERT INTO sellers (
@@ -160,7 +152,15 @@ async def reg_city(message: Message, state: FSMContext):
             telegram_link = EXCLUDED.telegram_link,
             city = EXCLUDED.city
         """,
-        (user_id, username, name, company, phone, link, city)
+        (
+            user_id,
+            username,
+            data.get("name"),
+            data.get("company"),
+            data.get("phone"),
+            data.get("link"),
+            message.text
+        )
     )
 
     conn.commit()
