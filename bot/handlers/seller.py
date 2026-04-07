@@ -1,35 +1,3 @@
-from aiogram import Router, F
-from aiogram.types import Message
-from aiogram.fsm.context import FSMContext
-
-from bot.states.seller import SellerStates
-from bot.database.db import get_connection
-from bot.keyboards.models import model_keyboard
-from bot.utils.validation import validate_text, normalize
-
-router = Router()
-
-
-@router.message(SellerStates.waiting_for_brand, F.text)
-async def seller_brand(message: Message, state: FSMContext):
-    print("BUYER BRAND:", message.text)
-
-    if not validate_text(message.text):
-        await message.answer("Некоректна марка ❗")
-        return
-
-    brand = message.text
-
-    await state.update_data(brand=brand)
-
-    await message.answer(
-        "Обери модель:",
-        reply_markup=model_keyboard(brand)
-    )
-
-    await state.set_state(SellerStates.waiting_for_model)
-
-
 @router.message(SellerStates.waiting_for_model, F.text)
 async def seller_model(message: Message, state: FSMContext):
 
@@ -48,13 +16,34 @@ async def seller_model(message: Message, state: FSMContext):
     conn = get_connection()
     cursor = conn.cursor()
 
+    # 🔹 отримати або створити seller
     cursor.execute(
-    """
-    INSERT INTO seller_cars (seller_id, username, brand, model)
-    VALUES (%s, %s, %s, %s)
-    """,
-    (user_id, username, brand, model)
-)
+        "SELECT id FROM sellers WHERE telegram_id = %s",
+        (user_id,)
+    )
+    seller = cursor.fetchone()
+
+    if not seller:
+        cursor.execute(
+            """
+            INSERT INTO sellers (telegram_id, username)
+            VALUES (%s, %s)
+            RETURNING id
+            """,
+            (user_id, username)
+        )
+        seller_id = cursor.fetchone()[0]
+    else:
+        seller_id = seller[0]
+
+    # 🔹 вставка авто (ВИПРАВЛЕНО)
+    cursor.execute(
+        """
+        INSERT INTO seller_cars (seller_id, brand, model)
+        VALUES (%s, %s, %s)
+        """,
+        (seller_id, brand, model)
+    )
 
     conn.commit()
 
