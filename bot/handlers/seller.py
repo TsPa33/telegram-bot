@@ -50,7 +50,7 @@ async def seller_model(message: Message, state: FSMContext):
 
     cursor.execute(
     """
-    INSERT INTO seller_cars (telegram_id, username, brand, model)
+    INSERT INTO seller_cars (seller_id, username, brand, model)
     VALUES (%s, %s, %s, %s)
     """,
     (user_id, username, brand, model)
