@@ -13,7 +13,7 @@ router = Router()
 
 # ================= SELLER ADD CAR =================
 
-@router.message(F.text == "➕ Додати авто")
+@router.message(F.text == "➕ Додати авто", state="*")
 async def add_car_start(message: Message, state: FSMContext):
     await message.answer(
     "Обери марку авто:",
@@ -218,7 +218,7 @@ async def my_cars(message: Message):
     await message.answer(text)
 
 
-@router.message(F.text == "👤 Профіль")
+@router.message(F.text == "👤 Профіль", state="*")
 async def profile(message: Message):
 
     user_id = message.from_user.id
