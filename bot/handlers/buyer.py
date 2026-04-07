@@ -68,7 +68,15 @@ async def buyer_model(message: Message, state: FSMContext):
     )
 
     results = cursor.fetchall()
+for row in results:
+    seller_id = row[0]  # ВАЖЛИВО: перевір що це id
 
+    cursor.execute(
+        "UPDATE sellers SET views = views + 1 WHERE id = %s",
+        (seller_id,)
+    )
+
+conn.commit()
     cursor.close()
     conn.close()
 
@@ -142,7 +150,7 @@ async def buyer_model(message: Message, state: FSMContext):
         if telegram_link:
             text += f"🔗 {telegram_link}\n"
 
-        reply_markup = contact_button(username) if username else None
+        reply_markup = contact_button(seller_id) if seller_id else None
 
         await message.answer(
             text,
@@ -150,3 +158,37 @@ async def buyer_model(message: Message, state: FSMContext):
         )
 
     await state.clear()
+from aiogram.types import CallbackQuery
+
+
+@router.callback_query(F.data.startswith("contact_"))
+async def contact_click(callback: CallbackQuery):
+
+    seller_id = int(callback.data.split("_")[1])
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    # +1 клік
+    cursor.execute(
+        "UPDATE sellers SET clicks = clicks + 1 WHERE id = %s",
+        (seller_id,)
+    )
+
+    # отримати username
+    cursor.execute(
+        "SELECT username FROM sellers WHERE id = %s",
+        (seller_id,)
+    )
+    user = cursor.fetchone()
+
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    if user and user[0]:
+        await callback.message.answer(f"https://t.me/{user[0]}")
+    else:
+        await callback.message.answer("Контакт недоступний")
+
+    await callback.answer()
