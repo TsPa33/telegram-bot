@@ -49,13 +49,12 @@ async def seller_model(message: Message, state: FSMContext):
     cursor = conn.cursor()
 
     cursor.execute(
-        """
-        INSERT INTO seller_cars (telegram_id, username, brand, model)
-        VALUES (%s, %s, %s, %s)
-        ON CONFLICT (telegram_id, brand, model) DO NOTHING
-        """,
-        (user_id, username, brand, model)
-    )
+    """
+    INSERT INTO seller_cars (telegram_id, username, brand, model)
+    VALUES (%s, %s, %s, %s)
+    """,
+    (user_id, username, brand, model)
+)
 
     conn.commit()
 
