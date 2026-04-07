@@ -51,9 +51,19 @@ async def buyer_model(message: Message, state: FSMContext):
 
     cursor.execute(
         """
-        SELECT telegram_id, username, brand, model 
-        FROM seller_cars 
-        WHERE LOWER(brand)=%s AND LOWER(model)=%s
+        SELECT 
+    s.telegram_id,
+    s.username,
+    s.name,
+    s.company_name,
+    s.phone,
+    s.telegram_link,
+    s.city,
+    sc.brand,
+    sc.model
+FROM seller_cars sc
+JOIN sellers s ON sc.seller_id = s.id
+WHERE LOWER(sc.brand) = %s AND LOWER(sc.model) = %s
         """,
         (brand.lower(), model.lower())
     )
