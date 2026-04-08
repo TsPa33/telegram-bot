@@ -50,13 +50,12 @@ async def my_cars(message: Message):
         return
 
     for brand, model, photo_id in cars:
+        text = f"🚗 {brand} {model}"
 
-        text = f"{brand} {model}"
-
-    if photo_id:
-        await message.answer_photo(photo_id, caption=text)
-    else:
-        await message.answer(text)
+        if photo_id:
+            await message.answer_photo(photo_id, caption=text)
+        else:
+            await message.answer(text)
 
 
 @router.message(F.text == "👤 Профіль")
@@ -141,49 +140,56 @@ async def seller_model(message: Message, state: FSMContext):
     conn = get_connection()
     cursor = conn.cursor()
 
-    # знайти seller
-    cursor.execute(
-        "SELECT id FROM sellers WHERE telegram_id = %s",
-        (user_id,)
-    )
-    seller = cursor.fetchone()
+    try:
+        # знайти seller
+        cursor.execute(
+            "SELECT id FROM sellers WHERE telegram_id = %s",
+            (user_id,)
+        )
+        seller = cursor.fetchone()
 
-    if not seller:
+        if not seller:
+            cursor.execute(
+                """
+                INSERT INTO sellers (telegram_id, username)
+                VALUES (%s, %s)
+                RETURNING id
+                """,
+                (user_id, username)
+            )
+            seller_id = cursor.fetchone()[0]
+        else:
+            seller_id = seller[0]
+
+        # 🔥 INSERT з UNIQUE
         cursor.execute(
             """
-            INSERT INTO sellers (telegram_id, username)
-            VALUES (%s, %s)
+            INSERT INTO seller_cars (seller_id, brand, model)
+            VALUES (%s, %s, %s)
             RETURNING id
             """,
-            (user_id, username)
+            (seller_id, brand, model)
         )
-        seller_id = cursor.fetchone()[0]
-    else:
-        seller_id = seller[0]
 
-    # 🔥 ВАЖЛИВО: RETURNING id
-    cursor.execute(
-        """
-        INSERT INTO seller_cars (seller_id, brand, model)
-        VALUES (%s, %s, %s)
-        RETURNING id
-        """,
-        (seller_id, brand, model)
-    )
+        car_id = cursor.fetchone()[0]
 
-    car_id = cursor.fetchone()[0]
+        await state.update_data(car_id=car_id)
 
-    await state.update_data(car_id=car_id)
+        conn.commit()
 
-    conn.commit()
+        await message.answer("Авто збережено в БД ✅")
+        await message.answer("Надішли фото авто 📸 або напиши 'Пропустити'")
 
-    await message.answer("Авто збережено в БД ✅")
-    await message.answer("Надішли фото авто 📸 або напиши 'Пропустити'")
+        await state.set_state(SellerStates.waiting_for_photo)
 
-    cursor.close()
-    conn.close()
+    except Exception:
+        conn.rollback()
+        await message.answer("Таке авто вже додано ❗")
+        await state.clear()
 
-    await state.set_state(SellerStates.waiting_for_photo)
+    finally:
+        cursor.close()
+        conn.close()
 
 
 # ================= PHOTO =================
@@ -214,18 +220,15 @@ async def save_photo(message: Message, state: FSMContext):
     conn.close()
 
     await message.answer("Фото збережено ✅")
-
     await state.clear()
 
 
 @router.message(SellerStates.waiting_for_photo, F.text == "Пропустити")
 async def skip_photo(message: Message, state: FSMContext):
-
     await message.answer("Ок, без фото 👍")
     await state.clear()
 
 
-# 🔥 fallback
 @router.message(SellerStates.waiting_for_photo)
 async def wrong_input(message: Message):
     await message.answer("Надішли фото або напиши 'Пропустити' ❗")
@@ -308,5 +311,4 @@ async def reg_city(message: Message, state: FSMContext):
     conn.close()
 
     await message.answer("Профіль збережено ✅")
-
     await state.clear()
