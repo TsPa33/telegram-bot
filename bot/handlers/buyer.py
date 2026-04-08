@@ -50,21 +50,21 @@ async def buyer_model(message: Message, state: FSMContext):
     cursor.execute(
         """
         SELECT 
-            s.id,
-            s.telegram_id,
-            s.username,
-            s.name,
-            s.company_name,
-            s.phone,
-            s.telegram_link,
-            s.city,
-            sc.brand,
-            sc.model,
-            sc.photo_id
-        FROM seller_cars sc
-        JOIN sellers s ON sc.seller_id = s.id
-        WHERE LOWER(sc.brand) = %s AND LOWER(sc.model) = %s
-        ORDER BY s.views DESC
+    s.id,
+    s.telegram_id,
+    s.username,
+    s.name,
+    s.company_name,
+    s.phone,
+    s.telegram_link,
+    s.city,
+    sc.brand,
+    sc.model,
+    sc.photo_id
+FROM seller_cars sc
+JOIN sellers s ON sc.seller_id = s.id
+WHERE LOWER(sc.brand) = %s AND LOWER(sc.model) = %s
+ORDER BY sc.photo_id DESC NULLS LAST
         """,
         (brand.lower(), model.lower())
     )
