@@ -51,7 +51,7 @@ async def my_cars(message: Message):
 
     for brand, model, photo_id in cars:
 
-    text = f"{brand} {model}"
+        text = f"{brand} {model}"
 
     if photo_id:
         await message.answer_photo(photo_id, caption=text)
