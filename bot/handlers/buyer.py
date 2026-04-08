@@ -59,10 +59,12 @@ async def buyer_model(message: Message, state: FSMContext):
             s.telegram_link,
             s.city,
             sc.brand,
-            sc.model
+            sc.model,
+            sc.photo_id
         FROM seller_cars sc
         JOIN sellers s ON sc.seller_id = s.id
         WHERE LOWER(sc.brand) = %s AND LOWER(sc.model) = %s
+        ORDER BY s.views DESC
         """,
         (brand.lower(), model.lower())
     )
@@ -100,7 +102,8 @@ async def buyer_model(message: Message, state: FSMContext):
         telegram_link,
         city,
         brand,
-        model
+        model,
+        photo_id
     ) in results:
 
         if seller_id not in sellers_dict:
@@ -112,7 +115,8 @@ async def buyer_model(message: Message, state: FSMContext):
                 "phone": phone,
                 "telegram_link": telegram_link,
                 "city": city,
-                "cars": []
+                "cars": [],
+                "photo_id": photo_id  # 🔥 важливо
             }
 
         sellers_dict[seller_id]["cars"].append(f"{brand} {model}")
@@ -127,6 +131,7 @@ async def buyer_model(message: Message, state: FSMContext):
         telegram_link = data["telegram_link"]
         city = data["city"]
         cars = data["cars"]
+        photo_id = data.get("photo_id")
 
         text = ""
 
@@ -154,10 +159,18 @@ async def buyer_model(message: Message, state: FSMContext):
         if telegram_link:
             text += f"🔗 {telegram_link}\n"
 
-        await message.answer(
-            text,
-            reply_markup=contact_button(seller_id)
-        )
+        # 🔥 ГОЛОВНЕ — фото
+        if photo_id:
+            await message.answer_photo(
+                photo_id,
+                caption=text,
+                reply_markup=contact_button(seller_id)
+            )
+        else:
+            await message.answer(
+                text,
+                reply_markup=contact_button(seller_id)
+            )
 
     cursor.close()
     conn.close()
