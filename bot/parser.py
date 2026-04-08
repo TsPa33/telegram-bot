@@ -1,5 +1,6 @@
 from urllib.parse import quote
-
+import requests
+from bs4 import BeautifulSoup
 
 # ================= INPUT =================
 
@@ -28,9 +29,6 @@ def build_url(brand, model, detail):
 if __name__ == "__main__":
     print(parse_input("тяга рулевая mercedes w203"))
     print(build_url("mercedes", "w203", "тяга рулевая"))
-
-import requests
-from bs4 import BeautifulSoup
 
 
 def parse_list(url):
