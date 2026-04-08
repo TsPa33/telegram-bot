@@ -158,14 +158,19 @@ async def seller_model(message: Message, state: FSMContext):
     else:
         seller_id = seller[0]
 
-    # додати авто
+    # 🔥 ВАЖЛИВО: RETURNING id
     cursor.execute(
         """
         INSERT INTO seller_cars (seller_id, brand, model)
         VALUES (%s, %s, %s)
+        RETURNING id
         """,
         (seller_id, brand, model)
     )
+
+    car_id = cursor.fetchone()[0]
+
+    await state.update_data(car_id=car_id)
 
     conn.commit()
 
@@ -187,34 +192,18 @@ async def save_photo(message: Message, state: FSMContext):
     file_id = photo.file_id
 
     data = await state.get_data()
-
-    user_id = message.from_user.id
-    brand = normalize(data.get("brand"))
-    model = normalize(data.get("model"))
+    car_id = data.get("car_id")
 
     conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute(
-        "SELECT id FROM sellers WHERE telegram_id = %s",
-        (user_id,)
-    )
-    seller = cursor.fetchone()
-
-    if not seller:
-        await message.answer("Помилка ❗")
-        return
-
-    seller_id = seller[0]
-
-    cursor.execute(
         """
         UPDATE seller_cars
         SET photo_id = %s
-        WHERE seller_id = %s AND brand = %s AND model = %s
-        ORDER BY id DESC LIMIT 1
+        WHERE id = %s
         """,
-        (file_id, seller_id, brand, model)
+        (file_id, car_id)
     )
 
     conn.commit()
@@ -231,6 +220,12 @@ async def skip_photo(message: Message, state: FSMContext):
 
     await message.answer("Ок, без фото 👍")
     await state.clear()
+
+
+# 🔥 fallback
+@router.message(SellerStates.waiting_for_photo)
+async def wrong_input(message: Message):
+    await message.answer("Надішли фото або напиши 'Пропустити' ❗")
 
 
 # ================= REGISTRATION =================
