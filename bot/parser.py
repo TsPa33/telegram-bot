@@ -1,7 +1,7 @@
 def parse_input(text: str):
     words = text.lower().split()
 
-    # якщо мало слів — не ламаємося
+    # якщо мало слів — не ламаємось
     if len(words) < 3:
         return None, None, text
 
@@ -10,5 +10,8 @@ def parse_input(text: str):
     detail = " ".join(words[:-2])
 
     return brand, model, detail
-    if __name__ == "__main__":
+
+
+# 🔽 ТЕСТ (ПОЗА функцією)
+if __name__ == "__main__":
     print(parse_input("тяга рулевая mercedes w203"))
