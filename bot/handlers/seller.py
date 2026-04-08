@@ -32,7 +32,7 @@ async def my_cars(message: Message):
 
     cursor.execute(
         """
-        SELECT sc.brand, sc.model
+        SELECT sc.brand, sc.model, sc.photo_id
         FROM seller_cars sc
         JOIN sellers s ON sc.seller_id = s.id
         WHERE s.telegram_id = %s
@@ -49,11 +49,14 @@ async def my_cars(message: Message):
         await message.answer("У вас ще немає авто ❗")
         return
 
-    text = "Ваші авто:\n\n"
-    for brand, model in cars:
-        text += f"- {brand} {model}\n"
+    for brand, model, photo_id in cars:
 
-    await message.answer(text)
+    text = f"{brand} {model}"
+
+    if photo_id:
+        await message.answer_photo(photo_id, caption=text)
+    else:
+        await message.answer(text)
 
 
 @router.message(F.text == "👤 Профіль")
