@@ -10,3 +10,5 @@ def parse_input(text: str):
     detail = " ".join(words[:-2])
 
     return brand, model, detail
+    if __name__ == "__main__":
+    print(parse_input("тяга рулевая mercedes w203"))
