@@ -2,6 +2,7 @@ from urllib.parse import quote
 import requests
 from bs4 import BeautifulSoup
 
+
 # ================= INPUT =================
 
 def parse_input(text: str):
@@ -24,12 +25,7 @@ def build_url(brand, model, detail):
     return f"https://podkapot.com.ua/search?query={quote(query)}"
 
 
-# ================= TEST =================
-
-if __name__ == "__main__":
-    print(parse_input("тяга рулевая mercedes w203"))
-    print(build_url("mercedes", "w203", "тяга рулевая"))
-
+# ================= PARSE LIST =================
 
 def parse_list(url):
     try:
@@ -42,22 +38,21 @@ def parse_list(url):
 
         items = []
 
-        # 🔥 головні блоки оголошень
-        cards = soup.select(".product-item")
+        cards = soup.select(".goods-item")
 
         for card in cards[:5]:
+            title_el = card.select_one(".goods-title a")
+            price_el = card.select_one(".goods-price")
 
-            title_tag = card.select_one(".product-title")
-            price_tag = card.select_one(".price")
-            link_tag = card.select_one("a")
+            if not title_el:
+                continue
 
-            title = title_tag.text.strip() if title_tag else "Без назви"
-            price = price_tag.text.strip() if price_tag else "Ціна не вказана"
+            title = title_el.text.strip()
 
-            link = link_tag.get("href") if link_tag else None
+            href = title_el.get("href")
+            link = f"https://podkapot.com.ua{href}" if href else None
 
-            if link and not link.startswith("http"):
-                link = "https://podkapot.com.ua" + link
+            price = price_el.text.strip() if price_el else "Нема ціни"
 
             items.append({
                 "title": title,
@@ -71,6 +66,19 @@ def parse_list(url):
         print("parse_list error:", e)
         return []
 
-    except Exception as e:
-        print("parse_list error:", e)
-        return []
+
+# ================= TEST =================
+
+if __name__ == "__main__":
+    print("TEST parse_input:")
+    print(parse_input("тяга рулевая mercedes w203"))
+
+    print("\nTEST build_url:")
+    url = build_url("mercedes", "w203", "тяга рулевая")
+    print(url)
+
+    print("\nTEST parse_list:")
+    results = parse_list(url)
+
+    for item in results:
+        print(item)
