@@ -31,32 +31,36 @@ def parse_list(url):
     try:
         headers = {
             "User-Agent": "Mozilla/5.0",
-            "Accept-Language": "uk-UA,uk;q=0.9"
         }
 
         response = requests.get(url, headers=headers, timeout=10)
-        html = response.text
-
-        # 🔥 DEBUG
-        print(html[:2000])  # подивимось що реально приходить
-
-        soup = BeautifulSoup(html, "html.parser")
+        soup = BeautifulSoup(response.text, "html.parser")
 
         items = []
 
-        # 🔥 НОВІ селектори (часто працюють)
-        cards = soup.select("a[href*='/goods/']")
+        # 🔥 головний контейнер товару
+        cards = soup.select(".product-item, .goods-item, .item")
 
         for card in cards[:5]:
-            title = card.text.strip()
 
-            link = card.get("href")
-            if link and not link.startswith("http"):
-                link = "https://podkapot.com.ua" + link
+            # назва
+            title_el = card.select_one("a")
+            if not title_el:
+                continue
+
+            title = title_el.text.strip()
+
+            # лінк
+            href = title_el.get("href")
+            link = f"https://podkapot.com.ua{href}" if href and not href.startswith("http") else href
+
+            # ціна (пробуємо різні варіанти)
+            price_el = card.select_one(".price, .goods-price")
+            price = price_el.text.strip() if price_el else "—"
 
             items.append({
                 "title": title,
-                "price": "—",
+                "price": price,
                 "link": link
             })
 
