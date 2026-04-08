@@ -106,6 +106,10 @@ async def profile(message: Message):
 @router.message(SellerStates.waiting_for_brand, F.text)
 async def seller_brand(message: Message, state: FSMContext):
 
+    # ❌ ІГНОРУЄМО КНОПКИ МЕНЮ
+    if message.text in ["➕ Додати авто", "📋 Мої авто", "👤 Профіль"]:
+        return
+
     if not validate_text(message.text):
         await message.answer("Некоректна марка ❗")
         return
@@ -118,7 +122,6 @@ async def seller_brand(message: Message, state: FSMContext):
     )
 
     await state.set_state(SellerStates.waiting_for_model)
-
 
 @router.message(SellerStates.waiting_for_model, F.text)
 async def seller_model(message: Message, state: FSMContext):
