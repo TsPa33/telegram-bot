@@ -136,7 +136,7 @@ ORDER BY sc.photo_id DESC NULLS LAST
         text = ""
 
         if company_name:
-            text += f"🏪 {company_name}\n"
+            text += f" {company_name}\n"
 
         if name:
             text += f"👤 {name}\n"
@@ -144,7 +144,7 @@ ORDER BY sc.photo_id DESC NULLS LAST
         if city:
             text += f"📍 {city}\n"
 
-        text += "\n🚗 Авто:\n"
+        text += "\n Авто:\n"
         for car in cars:
             text += f"- {car}\n"
 
