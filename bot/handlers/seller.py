@@ -11,7 +11,7 @@ from bot.utils.validation import validate_text, normalize
 router = Router()
 
 
-# ================= SELLER MENU (ПЕРШИМ!) =================
+# ================= SELLER MENU =================
 
 @router.message(F.text == "➕ Додати авто")
 async def add_car_start(message: Message, state: FSMContext):
@@ -65,10 +65,10 @@ async def profile(message: Message):
     cursor = conn.cursor()
 
     cursor.execute("""
-SELECT name, company_name, phone, telegram_link, city, views, clicks
-FROM sellers
-WHERE telegram_id = %s
-""", (user_id,))
+    SELECT name, company_name, phone, telegram_link, city, views, clicks
+    FROM sellers
+    WHERE telegram_id = %s
+    """, (user_id,))
 
     seller = cursor.fetchone()
 
@@ -80,9 +80,10 @@ WHERE telegram_id = %s
         return
 
     name, company, phone, link, city, views, clicks = seller
+
     text = "👤 Профіль:\n\n"
-    text += f"\n👁 Перегляди: {views}\n"
-    text += f"🔗 Переходи: {clicks}\n"
+    text += f"👁 Перегляди: {views}\n"
+    text += f"🔗 Переходи: {clicks}\n\n"
 
     if company:
         text += f"🏪 {company}\n"
@@ -98,7 +99,7 @@ WHERE telegram_id = %s
     await message.answer(text)
 
 
-# ================= SELLER FSM =================
+# ================= FSM =================
 
 @router.message(SellerStates.waiting_for_brand, F.text)
 async def seller_brand(message: Message, state: FSMContext):
@@ -124,17 +125,20 @@ async def seller_model(message: Message, state: FSMContext):
         await message.answer("Некоректна модель ❗")
         return
 
+    await state.update_data(model=message.text)
+
     data = await state.get_data()
 
     user_id = message.from_user.id
     username = message.from_user.username
 
     brand = normalize(data.get("brand"))
-    model = normalize(message.text)
+    model = normalize(data.get("model"))
 
     conn = get_connection()
     cursor = conn.cursor()
 
+    # знайти seller
     cursor.execute(
         "SELECT id FROM sellers WHERE telegram_id = %s",
         (user_id,)
@@ -154,6 +158,7 @@ async def seller_model(message: Message, state: FSMContext):
     else:
         seller_id = seller[0]
 
+    # додати авто
     cursor.execute(
         """
         INSERT INTO seller_cars (seller_id, brand, model)
@@ -165,14 +170,70 @@ async def seller_model(message: Message, state: FSMContext):
     conn.commit()
 
     await message.answer("Авто збережено в БД ✅")
+    await message.answer("Надішли фото авто 📸 або напиши 'Пропустити'")
 
     cursor.close()
     conn.close()
 
+    await state.set_state(SellerStates.waiting_for_photo)
+
+
+# ================= PHOTO =================
+
+@router.message(SellerStates.waiting_for_photo, F.photo)
+async def save_photo(message: Message, state: FSMContext):
+
+    photo = message.photo[-1]
+    file_id = photo.file_id
+
+    data = await state.get_data()
+
+    user_id = message.from_user.id
+    brand = normalize(data.get("brand"))
+    model = normalize(data.get("model"))
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "SELECT id FROM sellers WHERE telegram_id = %s",
+        (user_id,)
+    )
+    seller = cursor.fetchone()
+
+    if not seller:
+        await message.answer("Помилка ❗")
+        return
+
+    seller_id = seller[0]
+
+    cursor.execute(
+        """
+        UPDATE seller_cars
+        SET photo_id = %s
+        WHERE seller_id = %s AND brand = %s AND model = %s
+        ORDER BY id DESC LIMIT 1
+        """,
+        (file_id, seller_id, brand, model)
+    )
+
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    await message.answer("Фото збережено ✅")
+
     await state.clear()
 
 
-# ================= SELLER REGISTRATION =================
+@router.message(SellerStates.waiting_for_photo, F.text == "Пропустити")
+async def skip_photo(message: Message, state: FSMContext):
+
+    await message.answer("Ок, без фото 👍")
+    await state.clear()
+
+
+# ================= REGISTRATION =================
 
 @router.message(F.text == "Реєстрація продавця")
 async def start_registration(message: Message, state: FSMContext):
@@ -183,7 +244,6 @@ async def start_registration(message: Message, state: FSMContext):
 @router.message(SellerStates.reg_name, F.text)
 async def reg_name(message: Message, state: FSMContext):
     await state.update_data(name=message.text)
-
     await message.answer("Назва розборки:")
     await state.set_state(SellerStates.reg_company)
 
@@ -191,7 +251,6 @@ async def reg_name(message: Message, state: FSMContext):
 @router.message(SellerStates.reg_company, F.text)
 async def reg_company(message: Message, state: FSMContext):
     await state.update_data(company=message.text)
-
     await message.answer("Телефон:")
     await state.set_state(SellerStates.reg_phone)
 
@@ -199,7 +258,6 @@ async def reg_company(message: Message, state: FSMContext):
 @router.message(SellerStates.reg_phone, F.text)
 async def reg_phone(message: Message, state: FSMContext):
     await state.update_data(phone=message.text)
-
     await message.answer("Telegram або сайт:")
     await state.set_state(SellerStates.reg_link)
 
@@ -207,7 +265,6 @@ async def reg_phone(message: Message, state: FSMContext):
 @router.message(SellerStates.reg_link, F.text)
 async def reg_link(message: Message, state: FSMContext):
     await state.update_data(link=message.text)
-
     await message.answer("Місто:")
     await state.set_state(SellerStates.reg_city)
 
