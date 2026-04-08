@@ -30,33 +30,33 @@ def build_url(brand, model, detail):
 def parse_list(url):
     try:
         headers = {
-            "User-Agent": "Mozilla/5.0"
+            "User-Agent": "Mozilla/5.0",
+            "Accept-Language": "uk-UA,uk;q=0.9"
         }
 
         response = requests.get(url, headers=headers, timeout=10)
-        soup = BeautifulSoup(response.text, "html.parser")
+        html = response.text
+
+        # 🔥 DEBUG
+        print(html[:2000])  # подивимось що реально приходить
+
+        soup = BeautifulSoup(html, "html.parser")
 
         items = []
 
-        cards = soup.select(".goods-item")
+        # 🔥 НОВІ селектори (часто працюють)
+        cards = soup.select("a[href*='/goods/']")
 
         for card in cards[:5]:
-            title_el = card.select_one(".goods-title a")
-            price_el = card.select_one(".goods-price")
+            title = card.text.strip()
 
-            if not title_el:
-                continue
-
-            title = title_el.text.strip()
-
-            href = title_el.get("href")
-            link = f"https://podkapot.com.ua{href}" if href else None
-
-            price = price_el.text.strip() if price_el else "Нема ціни"
+            link = card.get("href")
+            if link and not link.startswith("http"):
+                link = "https://podkapot.com.ua" + link
 
             items.append({
                 "title": title,
-                "price": price,
+                "price": "—",
                 "link": link
             })
 
