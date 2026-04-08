@@ -33,24 +33,31 @@ if __name__ == "__main__":
 
 def parse_list(url):
     try:
-        response = requests.get(url, timeout=10)
+        headers = {
+            "User-Agent": "Mozilla/5.0"
+        }
+
+        response = requests.get(url, headers=headers, timeout=10)
         soup = BeautifulSoup(response.text, "html.parser")
 
         items = []
 
-        cards = soup.select(".product-item")[:5]
+        # 🔥 головні блоки оголошень
+        cards = soup.select(".product-item")
 
-        for card in cards:
-            title_el = card.select_one(".product-title")
-            price_el = card.select_one(".product-price")
-            link_el = card.select_one("a")
+        for card in cards[:5]:
 
-            if not title_el or not link_el:
-                continue
+            title_tag = card.select_one(".product-title")
+            price_tag = card.select_one(".price")
+            link_tag = card.select_one("a")
 
-            title = title_el.text.strip()
-            price = price_el.text.strip() if price_el else "—"
-            link = "https://podkapot.com.ua" + link_el.get("href")
+            title = title_tag.text.strip() if title_tag else "Без назви"
+            price = price_tag.text.strip() if price_tag else "Ціна не вказана"
+
+            link = link_tag.get("href") if link_tag else None
+
+            if link and not link.startswith("http"):
+                link = "https://podkapot.com.ua" + link
 
             items.append({
                 "title": title,
@@ -59,6 +66,10 @@ def parse_list(url):
             })
 
         return items
+
+    except Exception as e:
+        print("parse_list error:", e)
+        return []
 
     except Exception as e:
         print("parse_list error:", e)
