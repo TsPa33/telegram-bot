@@ -44,7 +44,19 @@ async def get_website(message: types.Message, state: FSMContext):
 @router.message(AddUser.phone)
 async def get_phone(message: types.Message, state: FSMContext):
     await state.update_data(phone=message.text)
-    await message.answer("Введіть моделі (кожна з нового рядка):")
+    await message.answer(
+    "Введіть моделі у форматі:\n\n"
+    "Model: Audi\n"
+    "A4\n"
+    "A6\n\n"
+    "Model: BMW\n"
+    "E60\n"
+    "F30\n\n"
+    "(кожна модель з нового рядка)"
+)
+    if "model:" not in message.text.lower():
+    await message.answer("❌ Використай формат з 'Model:'")
+    return
     await state.set_state(AddUser.models)
 
 
