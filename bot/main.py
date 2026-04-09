@@ -17,6 +17,8 @@ async def run_bot():
         raise ValueError("BOT_TOKEN is not set")
 
     await asyncio.to_thread(create_tables)
+    
+    init_db() 
 
     dp = Dispatcher(storage=MemoryStorage())
     bot = Bot(token=BOT_TOKEN)
