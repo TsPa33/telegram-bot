@@ -31,3 +31,25 @@ def init_db():
     """)
 
     conn.commit()
+
+
+def add_user(data: dict):
+    cursor.execute(
+        "INSERT INTO users (name, website, phone) VALUES (?, ?, ?)",
+        (data["name"], data["website"], data["phone"])
+    )
+    user_id = cursor.lastrowid
+
+    for brand in data["brands"]:
+        cursor.execute(
+            "INSERT INTO brands (user_id, brand) VALUES (?, ?)",
+            (user_id, brand)
+        )
+
+    for model in data["models"]:
+        cursor.execute(
+            "INSERT INTO models (user_id, model) VALUES (?, ?)",
+            (user_id, model)
+        )
+
+    conn.commit()
