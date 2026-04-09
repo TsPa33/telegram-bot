@@ -10,29 +10,7 @@ from bot.utils.validation import validate_text, normalize
 
 router = Router()
 
-# ================= Test parser =================
-from bot.parser import parse_input, build_url, parse_list
 
-@router.message(F.text == "test_parser")
-async def test_parser(message: Message):
-
-    url = build_url("mercedes", "w203", "тяга рулевая")
-
-    results = parse_list(url)
-
-    await message.answer(f"URL:\n{url}")
-
-    if not results:
-        await message.answer("❌ Нічого не знайдено")
-        return
-
-    for item in results:
-        text = f"""
-🔧 {item['title']}
-💰 {item['price']}
-🔗 {item['link']}
-"""
-        await message.answer(text)
 # ================= BRAND =================
 
 @router.message(BuyerStates.waiting_for_brand, F.text)
