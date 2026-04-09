@@ -55,17 +55,30 @@ def add_user(data: dict):
 
     user_id = cursor.fetchone()[0]
 
-    for brand in data["brands"]:
-        cursor.execute(
-            "INSERT INTO brands (user_id, brand) VALUES (%s, %s)",
-            (user_id, brand)
-        )
+def add_user(data: dict):
+    conn = get_connection()
+    cursor = conn.cursor()
 
-    for model in data["models"]:
-        cursor.execute(
-            "INSERT INTO models (user_id, model) VALUES (%s, %s)",
-            (user_id, model)
-        )
+    cursor.execute(
+        "INSERT INTO users (name, website, phone) VALUES (%s, %s, %s) RETURNING id",
+        (data["name"], data["website"], data["phone"])
+    )
+
+    user_id = cursor.fetchone()[0]
+
+    # 🔥 нова логіка
+    for brand, models in data["models"].items():
+        for model in models:
+            full_model = f"{brand} {model}"
+
+            cursor.execute(
+                "INSERT INTO models (user_id, model) VALUES (%s, %s)",
+                (user_id, full_model)
+            )
+
+    conn.commit()
+    cursor.close()
+    conn.close()
 
     conn.commit()
     cursor.close()
