@@ -70,12 +70,10 @@ def add_user(data: dict):
     # 🔥 нова логіка
     for brand, models in data["models"].items():
         for model in models:
-            full_model = f"{brand} {model}"
-
             cursor.execute(
-                "INSERT INTO models (user_id, model) VALUES (%s, %s)",
-                (user_id, full_model)
-            )
+    "INSERT INTO models (user_id, brand, model) VALUES (%s, %s, %s)",
+    (user_id, brand, model)
+)
 
     cursor.close()
     conn.close()
