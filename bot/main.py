@@ -7,6 +7,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from bot.config import BOT_TOKEN
 from bot.handlers import start, seller, buyer
 from bot.database.models import create_tables
+from bot.database.db import init_db
 
 logging.basicConfig(level=logging.INFO)
 
