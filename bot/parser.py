@@ -1,88 +1,153 @@
-from urllib.parse import quote
-import requests
-from bs4 import BeautifulSoup
+# ================= MODELS PARSER =================
+
+def clean_line(line: str) -> str:
+    return line.strip().lower()
 
 
-# ================= INPUT =================
+def extract_brand_and_model(line: str):
+    words = line.split()
 
-def parse_input(text: str):
-    words = text.lower().split()
+    if not words:
+        return None, None
 
-    if len(words) < 3:
-        return None, None, text
+    brand = words[0]
 
-    brand = words[-2]
-    model = words[-1]
-    detail = " ".join(words[:-2])
+    # якщо тільки бренд
+    if len(words) == 1:
+        return brand, None
 
-    return brand, model, detail
+    # модель = все інше
+    model = " ".join(words[1:])
+
+    # прибираємо роки і зайвий текст
+    for sep in [" 20", " 19", " -"]:
+        if sep in model:
+            model = model.split(sep)[0]
+
+    return brand, model.strip()
 
 
-# ================= URL =================
+def parse_models(text: str):
+    brands = set()
+    models = set()
 
-def build_url(brand, model, detail):
-    query = f"{detail} {brand} {model}"
-    return f"https://podkapot.com.ua/search?query={quote(query)}"
+    lines = text.split("\n")
+
+    for line in lines:
+        line = clean_line(line)
+
+        if not line:
+            continue
+
+        # службові рядки
+        if "марка авто" in line or "модель авто" in line:
+            continue
+
+        # ігноруємо опис
+        if "всі моделі" in line:
+            continue
+
+        brand, model = extract_brand_and_model(line)
+
+        if brand:
+            brands.add(brand)
+
+        if model:
+            models.add(model)
+
+    return {
+        "brands": list(brands),
+        "models": list(models)
+    }
 
 
-# ================= PARSE LIST =================
+# ================= DATABASE BUILDER =================
 
-def parse_list(url):
-    try:
-        headers = {
-            "User-Agent": "Mozilla/5.0",
-        }
+def build_seller(row):
+    parsed = parse_models(row[6] if len(row) > 6 else "")
 
-        response = requests.get(url, headers=headers, timeout=10)
-        soup = BeautifulSoup(response.text, "html.parser")
+    return {
+        "name": row[0],
+        "site": row[1],
+        "phone": row[2],
+        "brands": parsed["brands"],
+        "models": parsed["models"]
+    }
 
-        items = []
 
-        # 🔥 головний контейнер товару
-        cards = soup.select(".product-item, .goods-item, .item")
+def build_database(data):
+    sellers = []
 
-        for card in cards[:5]:
+    for row in data:
+        if len(row) < 3:
+            continue
 
-            # назва
-            title_el = card.select_one("a")
-            if not title_el:
-                continue
+        seller = build_seller(row)
+        sellers.append(seller)
 
-            title = title_el.text.strip()
+    return sellers
 
-            # лінк
-            href = title_el.get("href")
-            link = f"https://podkapot.com.ua{href}" if href and not href.startswith("http") else href
 
-            # ціна (пробуємо різні варіанти)
-            price_el = card.select_one(".price, .goods-price")
-            price = price_el.text.strip() if price_el else "—"
+# ================= SEARCH =================
 
-            items.append({
-                "title": title,
-                "price": price,
-                "link": link
-            })
+def normalize(text: str) -> str:
+    return text.lower().replace("-", "").strip()
 
-        return items
 
-    except Exception as e:
-        print("parse_list error:", e)
-        return []
+def find_sellers_by_model(sellers, brand: str, model: str):
+    brand = normalize(brand)
+    model = normalize(model)
+
+    results = []
+
+    for seller in sellers:
+        seller_brands = [normalize(b) for b in seller["brands"]]
+        seller_models = [normalize(m) for m in seller["models"]]
+
+        if brand in seller_brands and model in seller_models:
+            results.append(seller)
+
+    return results[:5]
 
 
 # ================= TEST =================
 
 if __name__ == "__main__":
-    print("TEST parse_input:")
-    print(parse_input("тяга рулевая mercedes w203"))
 
-    print("\nTEST build_url:")
-    url = build_url("mercedes", "w203", "тяга рулевая")
-    print(url)
+    # тестові дані
+    RAW_DATA = [
+        [
+            "Tesla Склад",
+            "https://tesla-sklad.com.ua/",
+            "38(098)333-18-43",
+            "",
+            "",
+            "",
+            """Всі моделі Tesla
+Model 3 2016-2023
+Model S Plaid
+Model X 2016-2018"""
+        ],
+        [
+            "Autodonor",
+            "https://leafparts.in.ua/",
+            "38(095)672-67-67",
+            "",
+            "",
+            "",
+            """Ford F-150
+Tesla Model 3"""
+        ]
+    ]
 
-    print("\nTEST parse_list:")
-    results = parse_list(url)
+    db = build_database(RAW_DATA)
 
-    for item in results:
-        print(item)
+    print("\nDATABASE:")
+    for s in db:
+        print(s)
+
+    print("\nSEARCH TEST:")
+    result = find_sellers_by_model(db, "tesla", "model 3")
+
+    for r in result:
+        print(r)
