@@ -44,38 +44,52 @@ async def get_website(message: types.Message, state: FSMContext):
 @router.message(AddUser.phone)
 async def get_phone(message: types.Message, state: FSMContext):
     await state.update_data(phone=message.text)
+
     await message.answer(
-    "Введіть моделі у форматі:\n\n"
-    "Model: Audi\n"
-    "A4\n"
-    "A6\n\n"
-    "Model: BMW\n"
-    "E60\n"
-    "F30\n\n"
-    "(кожна модель з нового рядка)"
-)
-    if "model:" not in message.text.lower():
-    await message.answer("❌ Використай формат з 'Model:'")
-    return
+        "Введіть моделі у форматі:\n\n"
+        "Model: Audi\n"
+        "A4\n"
+        "A6\n\n"
+        "Model: BMW\n"
+        "E60\n"
+        "F30\n\n"
+        "(кожна модель з нового рядка)"
+    )
+
     await state.set_state(AddUser.models)
 
 
-# 4️⃣ МОДЕЛІ → БРЕНДИ
+# 4️⃣ МОДЕЛІ → ЗБЕРЕЖЕННЯ
 @router.message(AddUser.models)
 async def get_models(message: types.Message, state: FSMContext):
-    models = [m.strip() for m in message.text.split("\n") if m.strip()]
-    await state.update_data(models=models)
+    text = message.text
 
-    await message.answer("Введіть бренди (кожен з нового рядка):")
-    await state.set_state(AddUser.brands)
+    # 🔒 Валідація
+    if "model:" not in text.lower():
+        await message.answer("❌ Використай формат з 'Model:'")
+        return
 
+    lines = text.split("\n")
 
-# 5️⃣ БРЕНДИ → ЗБЕРЕЖЕННЯ
-@router.message(AddUser.brands)
-async def get_brands(message: types.Message, state: FSMContext):
-    brands = [b.strip() for b in message.text.split("\n") if b.strip()]
+    current_brand = None
+    data_dict = {}
 
-    data = await state.update_data(brands=brands)
+    for line in lines:
+        line = line.strip()
+
+        if not line:
+            continue
+
+        if line.lower().startswith("model:"):
+            current_brand = line.split(":", 1)[1].strip()
+            data_dict[current_brand] = []
+        else:
+            if current_brand:
+                data_dict[current_brand].append(line)
+
+    # зберігаємо
+    await state.update_data(models=data_dict)
+    data = await state.get_data()
 
     add_user(data)
 
