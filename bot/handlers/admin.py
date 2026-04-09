@@ -24,6 +24,7 @@ async def add_user_start(message: types.Message, state: FSMContext):
     await state.set_state(AddUser.name)
 
 
+# 1️⃣ ІМ'Я → САЙТ
 @router.message(AddUser.name)
 async def get_name(message: types.Message, state: FSMContext):
     await state.update_data(name=message.text)
@@ -31,6 +32,7 @@ async def get_name(message: types.Message, state: FSMContext):
     await state.set_state(AddUser.website)
 
 
+# 2️⃣ САЙТ → ТЕЛЕФОН
 @router.message(AddUser.website)
 async def get_website(message: types.Message, state: FSMContext):
     await state.update_data(website=message.text)
@@ -38,27 +40,31 @@ async def get_website(message: types.Message, state: FSMContext):
     await state.set_state(AddUser.phone)
 
 
+# 3️⃣ ТЕЛЕФОН → МОДЕЛІ
 @router.message(AddUser.phone)
 async def get_phone(message: types.Message, state: FSMContext):
     await state.update_data(phone=message.text)
-    await message.answer("Введіть бренди (кожен з нового рядка):")
-    await state.set_state(AddUser.brands)
-
-
-@router.message(AddUser.brands)
-async def get_brands(message: types.Message, state: FSMContext):
-    brands = [b.strip() for b in message.text.split("\n") if b.strip()]
-    await state.update_data(brands=brands)
-
     await message.answer("Введіть моделі (кожна з нового рядка):")
     await state.set_state(AddUser.models)
 
 
+# 4️⃣ МОДЕЛІ → БРЕНДИ
 @router.message(AddUser.models)
 async def get_models(message: types.Message, state: FSMContext):
     models = [m.strip() for m in message.text.split("\n") if m.strip()]
+    await state.update_data(models=models)
 
-    data = await state.update_data(models=models)
+    await message.answer("Введіть бренди (кожен з нового рядка):")
+    await state.set_state(AddUser.brands)
+
+
+# 5️⃣ БРЕНДИ → ЗБЕРЕЖЕННЯ
+@router.message(AddUser.brands)
+async def get_brands(message: types.Message, state: FSMContext):
+    brands = [b.strip() for b in message.text.split("\n") if b.strip()]
+
+    data = await state.update_data(brands=brands)
+
     add_user(data)
 
     await message.answer("✅ Користувача додано")
