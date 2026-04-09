@@ -77,10 +77,5 @@ def add_user(data: dict):
                 (user_id, full_model)
             )
 
-    conn.commit()
-    cursor.close()
-    conn.close()
-
-    conn.commit()
     cursor.close()
     conn.close()
