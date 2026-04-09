@@ -11,6 +11,7 @@ from bot.database.db import init_db
 from bot.handlers import start, seller, buyer
 from bot.handlers import admin
 
+dp.include_router(admin.router)
 logging.basicConfig(level=logging.INFO)
 
 
