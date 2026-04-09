@@ -8,6 +8,7 @@ def get_connection():
     return psycopg2.connect(DATABASE_URL)
 
 
+# 🔧 Ініціалізація таблиць
 def init_db():
     conn = get_connection()
     cursor = conn.cursor()
@@ -36,6 +37,35 @@ def init_db():
         model TEXT
     )
     """)
+
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+
+# ➕ Додавання користувача
+def add_user(data: dict):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "INSERT INTO users (name, website, phone) VALUES (%s, %s, %s) RETURNING id",
+        (data["name"], data["website"], data["phone"])
+    )
+
+    user_id = cursor.fetchone()[0]
+
+    for brand in data["brands"]:
+        cursor.execute(
+            "INSERT INTO brands (user_id, brand) VALUES (%s, %s)",
+            (user_id, brand)
+        )
+
+    for model in data["models"]:
+        cursor.execute(
+            "INSERT INTO models (user_id, model) VALUES (%s, %s)",
+            (user_id, model)
+        )
 
     conn.commit()
     cursor.close()
