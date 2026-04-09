@@ -25,17 +25,10 @@ def init_db():
     """)
 
     cursor.execute("""
-    CREATE TABLE IF NOT EXISTS brands (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER,
-        brand TEXT
-    )
-    """)
-
-    cursor.execute("""
     CREATE TABLE IF NOT EXISTS models (
         id SERIAL PRIMARY KEY,
         user_id INTEGER,
+        brand TEXT,
         model TEXT
     )
     """)
@@ -56,24 +49,69 @@ def add_user(data: dict):
 
     user_id = cursor.fetchone()[0]
 
-def add_user(data: dict):
+    # 🔥 нова логіка: brand + model
+    for brand, models in data["models"].items():
+        for model in models:
+            cursor.execute(
+                "INSERT INTO models (user_id, brand, model) VALUES (%s, %s, %s)",
+                (user_id, brand, model)
+            )
+
+    cursor.close()
+    conn.close()
+
+
+# 📊 Отримати всі бренди
+def get_brands():
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT DISTINCT brand FROM models ORDER BY brand")
+
+    brands = [row[0] for row in cursor.fetchall()]
+
+    cursor.close()
+    conn.close()
+
+    return brands
+
+
+# 📊 Отримати моделі по бренду
+def get_models_by_brand(brand: str):
     conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute(
-        "INSERT INTO users (name, website, phone) VALUES (%s, %s, %s) RETURNING id",
-        (data["name"], data["website"], data["phone"])
+        "SELECT model FROM models WHERE brand = %s ORDER BY model",
+        (brand,)
     )
 
-    user_id = cursor.fetchone()[0]
-
-    # 🔥 нова логіка
-    for brand, models in data["models"].items():
-        for model in models:
-            cursor.execute(
-    "INSERT INTO models (user_id, brand, model) VALUES (%s, %s, %s)",
-    (user_id, brand, model)
-)
+    models = [row[0] for row in cursor.fetchall()]
 
     cursor.close()
     conn.close()
+
+    return models
+
+
+# 🔍 Пошук продавців
+def find_by_model(brand: str, model: str):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT u.name, u.website, u.phone
+        FROM models m
+        JOIN users u ON m.user_id = u.id
+        WHERE m.brand = %s AND m.model = %s
+        """,
+        (brand, model)
+    )
+
+    results = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+
+    return results
