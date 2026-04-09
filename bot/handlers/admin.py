@@ -12,3 +12,7 @@ async def start_handler(message: types.Message):
         await message.answer("Admin panel", reply_markup=admin_kb)
     else:
         await message.answer("Доступ обмежений")
+        @router.message(lambda m: m.text == "➕ Додати користувача")
+async def add_user_start(message: types.Message, state: FSMContext):
+    await message.answer("Введіть ім'я користувача:")
+    await state.set_state(AddUser.name)
