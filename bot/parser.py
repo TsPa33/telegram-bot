@@ -10,6 +10,7 @@ def extract_brand_and_model(line: str):
     if not words:
         return None, None
 
+    # бренд
     brand = words[0]
 
     # якщо тільки бренд
@@ -19,10 +20,23 @@ def extract_brand_and_model(line: str):
     # модель = все інше
     model = " ".join(words[1:])
 
-    # прибираємо роки і зайвий текст
-    for sep in [" 20", " 19", " -"]:
-        if sep in model:
-            model = model.split(sep)[0]
+    # 🔥 чистка
+    garbage = [
+        "(", ")", "restyling", "lci", "sportback"
+    ]
+
+    # прибираємо дужки і текст після них
+    if "(" in model:
+        model = model.split("(")[0]
+
+    # прибираємо роки
+    for year in ["202", "201", "200", "199"]:
+        if year in model:
+            model = model.split(year)[0]
+
+    # прибираємо сміття
+    for g in garbage:
+        model = model.replace(g, "")
 
     return brand, model.strip()
 
