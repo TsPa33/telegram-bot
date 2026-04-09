@@ -5,10 +5,8 @@ from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
 
 from bot.config import BOT_TOKEN
-from bot.handlers import start, seller, buyer
-from bot.database.models import create_tables
+from bot.handlers import seller, buyer, admin
 from bot.database.db import init_db
-from bot.handlers import admin
 
 logging.basicConfig(level=logging.INFO)
 
@@ -17,16 +15,15 @@ async def run_bot():
     if not BOT_TOKEN:
         raise ValueError("BOT_TOKEN is not set")
 
-    # await asyncio.to_thread(create_tables)
-    
-    init_db() 
+    init_db()
 
     dp = Dispatcher(storage=MemoryStorage())
-bot = Bot(token=BOT_TOKEN)
+    bot = Bot(token=BOT_TOKEN)
 
-dp.include_router(admin.router)
-dp.include_router(buyer.router)
-dp.include_router(seller.router)
+    # routers
+    dp.include_router(admin.router)
+    dp.include_router(buyer.router)
+    dp.include_router(seller.router)
 
     logging.info("BOT STARTED")
 
@@ -38,7 +35,6 @@ dp.include_router(seller.router)
 
 
 async def main():
-    # Дає старому процесу закритись (критично для Railway)
     await asyncio.sleep(2)
     await run_bot()
 
