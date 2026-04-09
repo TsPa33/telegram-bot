@@ -40,7 +40,6 @@ def init_db():
     )
     """)
 
-    conn.commit()
     cursor.close()
     conn.close()
 
