@@ -2,6 +2,8 @@ from aiogram import Router, types
 from aiogram.filters import Command
 from bot.config import ADMINS
 from bot.keyboards.admin_kb import admin_kb
+from bot.states.admin_states import AddUser
+from aiogram.fsm.context import FSMContext
 
 router = Router()
 
