@@ -148,7 +148,8 @@ def find_by_model(brand: str, model: str):
         SELECT u.name, u.website, u.phone
         FROM models m
         JOIN users u ON m.user_id = u.id
-        WHERE m.brand = %s AND m.model = %s
+        WHERE LOWER(m.brand) = LOWER(%s)
+        AND LOWER(m.model) = LOWER(%s)
     """, (brand, model))
 
     results = cursor.fetchall()
@@ -158,20 +159,13 @@ def find_by_model(brand: str, model: str):
 
     return results
 
-
 # ================= MODEL HELPERS =================
-
 def model_exists(brand: str, model: str):
     conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute(
-        """
-        SELECT 1 
-        FROM models 
-        WHERE UPPER(brand) = UPPER(%s) 
-        AND UPPER(model) = UPPER(%s)
-        """,
+        "SELECT 1 FROM models WHERE LOWER(brand)=LOWER(%s) AND LOWER(model)=LOWER(%s)",
         (brand, model)
     )
 
