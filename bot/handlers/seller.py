@@ -9,7 +9,8 @@ from bot.database.db import (
     add_model_request,
     get_or_create_seller,
     add_seller_car,
-    get_seller_cars
+    get_seller_cars,
+    add_brand_request
 )
 
 from bot.states.seller import SellerStates
@@ -24,10 +25,7 @@ router = Router()
 async def add_car_start(message: Message, state: FSMContext):
     brands = get_brands()
 
-    # створюємо список кнопок
     keyboard_buttons = [[KeyboardButton(text=b)] for b in brands]
-
-    # додаємо кнопку нового бренду
     keyboard_buttons.append([KeyboardButton(text="➕ Додати новий бренд")])
 
     keyboard = ReplyKeyboardMarkup(
@@ -45,13 +43,12 @@ async def add_car_start(message: Message, state: FSMContext):
 async def choose_brand(message: Message, state: FSMContext):
     text = message.text.strip()
 
-    # ================= НОВИЙ БРЕНД =================
+    # ➕ новий бренд
     if text == "➕ Додати новий бренд":
         await message.answer("Введи назву нового бренду:")
         await state.set_state(SellerStates.new_brand)
         return
 
-    # ================= ЗВИЧАЙНИЙ БРЕНД =================
     brand = normalize(text)
 
     if not validate_text(brand):
@@ -60,10 +57,11 @@ async def choose_brand(message: Message, state: FSMContext):
 
     models = get_models_by_brand(brand)
 
-    keyboard_buttons = [[KeyboardButton(text=m)] for m in models]
-
-    # кнопка нової моделі
-    keyboard_buttons.append([KeyboardButton(text="➕ Додати нову модель")])
+    if not models:
+        keyboard_buttons = [[KeyboardButton(text="➕ Додати нову модель")]]
+    else:
+        keyboard_buttons = [[KeyboardButton(text=m)] for m in models]
+        keyboard_buttons.append([KeyboardButton(text="➕ Додати нову модель")])
 
     keyboard = ReplyKeyboardMarkup(
         keyboard=keyboard_buttons,
@@ -97,13 +95,16 @@ async def choose_model(message: Message, state: FSMContext):
     data = await state.get_data()
     brand = data.get("brand")
 
-    # 🔥 створюємо/отримуємо seller
+    # 🔥 перевірка існування моделі
+    if not model_exists(brand, model):
+        await message.answer("❌ Такої моделі немає")
+        return
+
     user_id = message.from_user.id
     username = message.from_user.username
 
     seller_id = get_or_create_seller(user_id, username)
 
-    # 🔥 додаємо авто
     add_seller_car(seller_id, brand, model)
 
     await message.answer(f"✅ Авто додано: {brand} {model}")
@@ -125,18 +126,46 @@ async def add_new_model(message: Message, state: FSMContext):
     brand = data.get("brand")
     user_id = message.from_user.id
 
-    # 🔍 дубль
     if model_exists(brand, model):
         await message.answer("❗ Така модель вже існує")
         await state.clear()
         return
 
-    # 📩 заявка
     add_model_request(user_id, brand, model)
 
     await message.answer("⏳ Модель відправлена на модерацію")
 
     await state.clear()
+
+
+# ================= NEW BRAND =================
+
+@router.message(SellerStates.new_brand)
+async def add_new_brand(message: Message, state: FSMContext):
+    brand = normalize(message.text)
+
+    if not validate_text(brand):
+        await message.answer("❌ Некоректна назва бренду")
+        return
+
+    user_id = message.from_user.id
+
+    add_brand_request(user_id, brand)
+
+    await state.update_data(brand=brand)
+
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text="➕ Додати нову модель")]],
+        resize_keyboard=True
+    )
+
+    await message.answer(
+        "⏳ Бренд відправлено на модерацію\n"
+        "Ти можеш одразу додати модель:",
+        reply_markup=keyboard
+    )
+
+    await state.set_state(SellerStates.model)
 
 
 # ================= MY CARS =================
