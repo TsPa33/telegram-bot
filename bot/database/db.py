@@ -148,7 +148,7 @@ def add_model_request(user_id: int, brand: str, model: str):
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS model_requests (
             id SERIAL PRIMARY KEY,
-            user_id INTEGER,
+            user_id BIGINT,
             brand TEXT,
             model TEXT,
             status TEXT DEFAULT 'pending'
