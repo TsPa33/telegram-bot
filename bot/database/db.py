@@ -423,5 +423,18 @@ def get_seller_cars(telegram_id: int):
 
     cursor.close()
     conn.close()
+    
+    def update_brand_request(request_id: int, new_brand: str):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        UPDATE brand_requests
+        SET brand = %s
+        WHERE id = %s
+    """, (new_brand, request_id))
+
+    cursor.close()
+    conn.close()
 
     return cars
