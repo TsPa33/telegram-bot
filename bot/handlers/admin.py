@@ -1,7 +1,5 @@
-from aiogram import Router, types
-from aiogram.filters import Command
+from aiogram import Router, types, F
 from aiogram.fsm.context import FSMContext
-from aiogram import F
 
 from bot.config import ADMINS
 from bot.keyboards.admin_kb import admin_kb
@@ -11,14 +9,23 @@ from bot.database.db import add_user
 router = Router()
 
 
+# ================= ADMIN PANEL =================
+
 @router.message(F.text == "⚙️ Адмін панель")
 async def open_admin_panel(message: types.Message):
     if message.from_user.id not in ADMINS:
         return
 
     await message.answer("Admin panel", reply_markup=admin_kb)
+
+
+# ================= ADD USER =================
+
 @router.message(lambda m: m.text == "➕ Додати користувача")
 async def add_user_start(message: types.Message, state: FSMContext):
+    if message.from_user.id not in ADMINS:
+        return
+
     await message.answer("Введіть ім'я користувача:")
     await state.set_state(AddUser.name)
 
@@ -26,7 +33,7 @@ async def add_user_start(message: types.Message, state: FSMContext):
 # 1️⃣ ІМ'Я → САЙТ
 @router.message(AddUser.name)
 async def get_name(message: types.Message, state: FSMContext):
-    await state.update_data(name=message.text)
+    await state.update_data(name=message.text.strip())
     await message.answer("Введіть посилання на сайт:")
     await state.set_state(AddUser.website)
 
@@ -34,7 +41,7 @@ async def get_name(message: types.Message, state: FSMContext):
 # 2️⃣ САЙТ → ТЕЛЕФОН
 @router.message(AddUser.website)
 async def get_website(message: types.Message, state: FSMContext):
-    await state.update_data(website=message.text)
+    await state.update_data(website=message.text.strip())
     await message.answer("Введіть номер телефону:")
     await state.set_state(AddUser.phone)
 
@@ -42,7 +49,7 @@ async def get_website(message: types.Message, state: FSMContext):
 # 3️⃣ ТЕЛЕФОН → МОДЕЛІ
 @router.message(AddUser.phone)
 async def get_phone(message: types.Message, state: FSMContext):
-    await state.update_data(phone=message.text)
+    await state.update_data(phone=message.text.strip())
 
     await message.answer(
         "Введіть моделі у форматі:\n\n"
@@ -79,18 +86,35 @@ async def get_models(message: types.Message, state: FSMContext):
         if not line:
             continue
 
+        # 🔥 новий бренд
         if line.lower().startswith("model:"):
-            current_brand = line.split(":", 1)[1].strip()
-            data_dict[current_brand] = []
+            current_brand = line.split(":", 1)[1].strip().title()
+
+            # 🔥 FIX overwrite
+            if current_brand not in data_dict:
+                data_dict[current_brand] = []
+
         else:
             if current_brand:
-                data_dict[current_brand].append(line)
+                model = line.strip().upper()
 
-    # зберігаємо
+                # 🔥 захист від дубля в межах одного вводу
+                if model not in data_dict[current_brand]:
+                    data_dict[current_brand].append(model)
+
+    # 🔍 перевірка що щось ввели
+    if not data_dict:
+        await message.answer("❌ Не вдалося розпарсити моделі")
+        return
+
+    # 💾 зберігаємо
     await state.update_data(models=data_dict)
     data = await state.get_data()
 
-    add_user(data)
+    try:
+        add_user(data)
+        await message.answer("✅ Користувача додано")
+    except Exception as e:
+        await message.answer(f"❌ Помилка: {str(e)}")
 
-    await message.answer("✅ Користувача додано")
     await state.clear()
