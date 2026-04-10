@@ -37,7 +37,7 @@ def init_db():
     conn.close()
 
 
-# ➕ Додавання користувача
+# ➕ Додавання користувача (адмін)
 def add_user(data: dict):
     conn = get_connection()
     cursor = conn.cursor()
@@ -49,11 +49,14 @@ def add_user(data: dict):
 
     user_id = cursor.fetchone()[0]
 
-    # 🔥 нова логіка: brand + model
+    # 🔥 головна логіка: brand + model разом
     for brand, models in data["models"].items():
         for model in models:
             cursor.execute(
-                "INSERT INTO models (user_id, brand, model) VALUES (%s, %s, %s)",
+                """
+                INSERT INTO models (user_id, brand, model)
+                VALUES (%s, %s, %s)
+                """,
                 (user_id, brand, model)
             )
 
@@ -66,7 +69,11 @@ def get_brands():
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT DISTINCT brand FROM models ORDER BY brand")
+    cursor.execute("""
+        SELECT DISTINCT brand
+        FROM models
+        ORDER BY brand
+    """)
 
     brands = [row[0] for row in cursor.fetchall()]
 
@@ -81,10 +88,12 @@ def get_models_by_brand(brand: str):
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute(
-        "SELECT model FROM models WHERE brand = %s ORDER BY model",
-        (brand,)
-    )
+    cursor.execute("""
+        SELECT DISTINCT model
+        FROM models
+        WHERE brand = %s
+        ORDER BY model
+    """, (brand,))
 
     models = [row[0] for row in cursor.fetchall()]
 
@@ -99,15 +108,12 @@ def find_by_model(brand: str, model: str):
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute(
-        """
+    cursor.execute("""
         SELECT u.name, u.website, u.phone
         FROM models m
         JOIN users u ON m.user_id = u.id
         WHERE m.brand = %s AND m.model = %s
-        """,
-        (brand, model)
-    )
+    """, (brand, model))
 
     results = cursor.fetchall()
 
