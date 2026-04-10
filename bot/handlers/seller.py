@@ -43,7 +43,6 @@ async def add_car_start(message: Message, state: FSMContext):
 async def choose_brand(message: Message, state: FSMContext):
     text = message.text.strip()
 
-    # ➕ новий бренд
     if text == "➕ Додати новий бренд":
         await message.answer("Введи назву нового бренду:")
         await state.set_state(SellerStates.new_brand)
@@ -80,7 +79,6 @@ async def choose_brand(message: Message, state: FSMContext):
 async def choose_model(message: Message, state: FSMContext):
     text = message.text.strip()
 
-    # ➕ нова модель
     if text == "➕ Додати нову модель":
         await message.answer("Введи назву нової моделі:")
         await state.set_state(SellerStates.new_model)
@@ -95,21 +93,42 @@ async def choose_model(message: Message, state: FSMContext):
     data = await state.get_data()
     brand = data.get("brand")
 
-    # 🔥 перевірка існування моделі
     if not model_exists(brand, model):
         await message.answer("❌ Такої моделі немає")
         return
+
+    # 👉 НЕ додаємо в БД тут!
+    await state.update_data(model=model)
+
+    await message.answer("📸 Надішли фото авто")
+    await state.set_state(SellerStates.photo)
+
+
+# ================= PHOTO =================
+
+@router.message(SellerStates.photo, F.photo)
+async def add_car_photo(message: Message, state: FSMContext):
+    photo_id = message.photo[-1].file_id
+
+    data = await state.get_data()
+    brand = data.get("brand")
+    model = data.get("model")
 
     user_id = message.from_user.id
     username = message.from_user.username
 
     seller_id = get_or_create_seller(user_id, username)
 
-    add_seller_car(seller_id, brand, model)
+    add_seller_car(seller_id, brand, model, photo_id)
 
     await message.answer(f"✅ Авто додано: {brand} {model}")
-
     await state.clear()
+
+
+# ❗ якщо не фото
+@router.message(SellerStates.photo)
+async def wrong_photo(message: Message):
+    await message.answer("❌ Будь ласка, надішли саме фото")
 
 
 # ================= NEW MODEL =================
@@ -134,7 +153,6 @@ async def add_new_model(message: Message, state: FSMContext):
     add_model_request(user_id, brand, model)
 
     await message.answer("⏳ Модель відправлена на модерацію")
-
     await state.clear()
 
 
