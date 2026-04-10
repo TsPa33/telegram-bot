@@ -1,205 +1,105 @@
 from aiogram import Router, F
-from aiogram.types import Message
+from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
 from aiogram.fsm.context import FSMContext
 
+from bot.database.db import (
+    get_brands,
+    get_models_by_brand,
+    model_exists,
+    add_model_request
+)
+
 from bot.states.seller import SellerStates
-from bot.database.db import get_connection
-from bot.keyboards.models import model_keyboard
-from bot.keyboards.brands import brand_keyboard
-from bot.utils.validation import validate_text, normalize
 
 router = Router()
 
 
-# ================= SELLER MENU =================
+# ================= ADD CAR =================
 
 @router.message(F.text == "➕ Додати авто")
 async def add_car_start(message: Message, state: FSMContext):
-    await message.answer(
-        "Обери марку авто:",
-        reply_markup=brand_keyboard()
-    )
-    await state.set_state(SellerStates.waiting_for_brand)
+    brands = get_brands()
 
+    if not brands:
+        await message.answer("❌ Немає брендів")
+        return
 
-@router.message(F.text == "📋 Мої авто")
-async def my_cars(message: Message):
-
-    user_id = message.from_user.id
-
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute(
-        """
-        SELECT sc.brand, sc.model, sc.photo_id
-        FROM seller_cars sc
-        JOIN sellers s ON sc.seller_id = s.id
-        WHERE s.telegram_id = %s
-        """,
-        (user_id,)
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text=b)] for b in brands],
+        resize_keyboard=True
     )
 
-    cars = cursor.fetchall()
-
-    cursor.close()
-    conn.close()
-
-    if not cars:
-        await message.answer("У вас ще немає авто ❗")
-        return
-
-    for brand, model, photo_id in cars:
-        text = f"🚗 {brand} {model}"
-
-        if photo_id:
-            await message.answer_photo(photo_id, caption=text)
-        else:
-            await message.answer(text)
+    await message.answer("Обери марку авто:", reply_markup=keyboard)
+    await state.set_state(SellerStates.brand)
 
 
-@router.message(F.text == "👤 Профіль")
-async def profile(message: Message):
+# ================= BRAND =================
 
-    user_id = message.from_user.id
+@router.message(SellerStates.brand)
+async def choose_brand(message: Message, state: FSMContext):
+    brand = message.text
 
-    conn = get_connection()
-    cursor = conn.cursor()
+    models = get_models_by_brand(brand)
 
-    cursor.execute("""
-    SELECT name, company_name, phone, telegram_link, city, views, clicks
-    FROM sellers
-    WHERE telegram_id = %s
-    """, (user_id,))
+    keyboard_buttons = [[KeyboardButton(text=m)] for m in models]
 
-    seller = cursor.fetchone()
+    # 🔥 кнопка нової моделі
+    keyboard_buttons.append([KeyboardButton(text="➕ Додати нову модель")])
 
-    cursor.close()
-    conn.close()
-
-    if not seller:
-        await message.answer("Профіль не знайдено ❗")
-        return
-
-    name, company, phone, link, city, views, clicks = seller
-
-    text = "👤 Профіль:\n\n"
-    text += f"👁 Перегляди: {views}\n"
-    text += f"🔗 Переходи: {clicks}\n\n"
-
-    if company:
-        text += f"🏪 {company}\n"
-    if name:
-        text += f"👤 {name}\n"
-    if city:
-        text += f"📍 {city}\n"
-    if phone:
-        text += f"📞 {phone}\n"
-    if link:
-        text += f"🔗 {link}\n"
-
-    await message.answer(text)
-
-
-# ================= FSM =================
-
-@router.message(SellerStates.waiting_for_brand, F.text)
-async def seller_brand(message: Message, state: FSMContext):
-
-    if message.text in ["➕ Додати авто", "📋 Мої авто", "👤 Профіль"]:
-        return
-
-    if not validate_text(message.text):
-        await message.answer("Некоректна марка ❗")
-        return
-
-    await state.update_data(brand=message.text)
-
-    await message.answer(
-        "Обери модель:",
-        reply_markup=model_keyboard(message.text)
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=keyboard_buttons,
+        resize_keyboard=True
     )
 
-    await state.set_state(SellerStates.waiting_for_model)
+    await state.update_data(brand=brand)
+
+    await message.answer("Обери модель:", reply_markup=keyboard)
+    await state.set_state(SellerStates.model)
 
 
-@router.message(SellerStates.waiting_for_model, F.text)
-async def seller_model(message: Message, state: FSMContext):
+# ================= MODEL =================
 
-    if message.text in ["➕ Додати авто", "📋 Мої авто", "👤 Профіль"]:
+@router.message(SellerStates.model)
+async def choose_model(message: Message, state: FSMContext):
+    if message.text == "➕ Додати нову модель":
+        await message.answer("Введи назву нової моделі:")
+        await state.set_state(SellerStates.new_model)
         return
 
-    if not validate_text(message.text):
-        await message.answer("Некоректна модель ❗")
-        return
-
-    await state.update_data(model=message.text)
+    model = message.text
 
     data = await state.get_data()
+    brand = data["brand"]
 
-    user_id = message.from_user.id
-    username = message.from_user.username
-
-    brand = normalize(data.get("brand"))
-    model = normalize(data.get("model"))
-
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute(
-        "SELECT id FROM sellers WHERE telegram_id = %s",
-        (user_id,)
-    )
-    seller = cursor.fetchone()
-
-    if not seller:
-        cursor.execute(
-            """
-            INSERT INTO sellers (telegram_id, username)
-            VALUES (%s, %s)
-            RETURNING id
-            """,
-            (user_id, username)
-        )
-        seller_id = cursor.fetchone()[0]
-    else:
-        seller_id = seller[0]
-
-    # 🔥 ЗБЕРІГАЄМО АВТО
-    cursor.execute(
-        """
-        INSERT INTO seller_cars (seller_id, brand, model)
-        VALUES (%s, %s, %s)
-        ON CONFLICT DO NOTHING
-        RETURNING id
-        """,
-        (seller_id, brand, model)
-    )
-
-    result = cursor.fetchone()
-
-    if not result:
-        await message.answer("Таке авто вже існує ❗")
-        cursor.close()
-        conn.close()
-        await state.clear()
+    # 🔥 перевірка дубля
+    if model_exists(brand, model):
+        await message.answer("❌ Така модель вже існує")
         return
 
-    # 🔥 ДОДАЄМО В models (для buyer)
-    cursor.execute(
-        """
-        INSERT INTO models (user_id, brand, model)
-        VALUES (%s, %s, %s)
-        ON CONFLICT DO NOTHING
-        """,
-        (seller_id, brand, model)
-    )
+    # 🔥 поки що просто повідомлення
+    await message.answer(f"✅ Авто додано: {brand} {model}")
 
-    conn.commit()
+    await state.clear()
 
-    await message.answer("Авто збережено в БД ✅")
 
-    cursor.close()
-    conn.close()
+# ================= NEW MODEL =================
+
+@router.message(SellerStates.new_model)
+async def add_new_model(message: Message, state: FSMContext):
+    model = message.text
+
+    data = await state.get_data()
+    brand = data["brand"]
+    user_id = message.from_user.id
+
+    # 🔥 перевірка дубля
+    if model_exists(brand, model):
+        await message.answer("❌ Така модель вже існує")
+        return
+
+    # 🔥 записуємо заявку
+    add_model_request(user_id, brand, model)
+
+    await message.answer("⏳ Модель відправлена на модерацію")
 
     await state.clear()
