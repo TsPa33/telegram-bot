@@ -66,6 +66,7 @@ def add_user(data: dict):
                 """
                 INSERT INTO models (user_id, brand, model)
                 VALUES (%s, %s, %s)
+                ON CONFLICT (brand, model) DO NOTHING
                 """,
                 (user_id, brand, model)
             )
