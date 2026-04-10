@@ -26,7 +26,7 @@ async def cmd_start(message: Message):
 async def start_button(message: Message):
     await message.answer(
         "Обери хто ти:",
-        reply_markup=role_keyboard()
+        reply_markup=start_keyboard(message.from_user.id)
     )
 
 
