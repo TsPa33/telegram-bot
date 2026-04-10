@@ -49,7 +49,6 @@ def add_user(data: dict):
 
     user_id = cursor.fetchone()[0]
 
-    # 🔥 головна логіка: brand + model разом
     for brand, models in data["models"].items():
         for model in models:
             cursor.execute(
@@ -121,7 +120,9 @@ def find_by_model(brand: str, model: str):
     conn.close()
 
     return results
-    # ================= MODEL HELPERS =================
+
+
+# ================= MODEL HELPERS =================
 
 def model_exists(brand: str, model: str):
     conn = get_connection()
@@ -144,7 +145,6 @@ def add_model_request(user_id: int, brand: str, model: str):
     conn = get_connection()
     cursor = conn.cursor()
 
-    # 🔥 створюємо таблицю якщо ще нема
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS model_requests (
             id SERIAL PRIMARY KEY,
