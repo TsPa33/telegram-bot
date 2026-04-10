@@ -48,6 +48,14 @@ def init_db():
     )
     """)
 
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS         
+        id SERIAL PRIMARY KEY,
+        user_id BIGINT,
+        brand TEXT,
+        status TEXT DEFAULT 'pending'
+    )
+    """)
     # sellers (telegram users)
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS sellers (
