@@ -6,6 +6,7 @@ class SellerStates(StatesGroup):
     brand = State()
     model = State()
     new_model = State()
+    new_brand = State()
 
     # (залишаємо на майбутнє, не чіпаємо)
     waiting_for_photo = State()
