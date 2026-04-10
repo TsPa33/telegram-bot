@@ -31,10 +31,17 @@ async def cmd_start(message: Message, state: FSMContext):
 
 
 @router.message(F.text == "Поїхали 🚀")
-async def start_button(message: Message):
+async def start_button(message: Message, state: FSMContext):
+    await state.clear()
+
+    await message.answer(
+        "Оновлюю меню...",
+        reply_markup=ReplyKeyboardRemove()
+    )
+
     await message.answer(
         "Обери хто ти:",
-        reply_markup=start_keyboard(message.from_user.id)
+        reply_markup=role_keyboard()
     )
 
 
