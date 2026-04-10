@@ -24,17 +24,16 @@ router = Router()
 async def add_car_start(message: Message, state: FSMContext):
     brands = get_brands()
 
-    if not brands:
-        await message.answer("❌ Немає брендів")
-        return
+    # створюємо список кнопок
+    keyboard_buttons = [[KeyboardButton(text=b)] for b in brands]
 
-    kkeyboard_buttons = [[KeyboardButton(text=b)] for b in brands]
+    # додаємо кнопку нового бренду
     keyboard_buttons.append([KeyboardButton(text="➕ Додати новий бренд")])
 
     keyboard = ReplyKeyboardMarkup(
         keyboard=keyboard_buttons,
         resize_keyboard=True
-)
+    )
 
     await message.answer("Обери марку авто:", reply_markup=keyboard)
     await state.set_state(SellerStates.brand)
