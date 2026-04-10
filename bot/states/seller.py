@@ -3,9 +3,12 @@ from aiogram.fsm.state import StatesGroup, State
 
 class SellerStates(StatesGroup):
     # авто
-    waiting_for_brand = State()
-    waiting_for_model = State()
-    waiting_for_photo = State()  # ← ОСЬ ЦЕ ГОЛОВНЕ
+    brand = State()
+    model = State()
+    new_model = State()
+
+    # (залишаємо на майбутнє, не чіпаємо)
+    waiting_for_photo = State()
 
     # реєстрація
     reg_name = State()
