@@ -48,15 +48,17 @@ def init_db():
     )
     """)
 
+    # ✅ заявки на бренди (ВИПРАВЛЕНО)
     cursor.execute("""
-    CREATE TABLE IF NOT EXISTS         
+    CREATE TABLE IF NOT EXISTS brand_requests (
         id SERIAL PRIMARY KEY,
         user_id BIGINT,
         brand TEXT,
         status TEXT DEFAULT 'pending'
     )
     """)
-    # sellers (telegram users)
+
+    # sellers
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS sellers (
         id SERIAL PRIMARY KEY,
@@ -65,7 +67,7 @@ def init_db():
     )
     """)
 
-    # seller cars (реальні авто)
+    # seller cars
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS seller_cars (
         id SERIAL PRIMARY KEY,
@@ -167,7 +169,9 @@ def find_by_model(brand: str, model: str):
 
     return results
 
+
 # ================= MODEL HELPERS =================
+
 def model_exists(brand: str, model: str):
     conn = get_connection()
     cursor = conn.cursor()
@@ -191,7 +195,7 @@ def add_model_request(user_id: int, brand: str, model: str):
 
     cursor.execute(
         """
-        INSERT INTO model_requests (user_id, brand, model) 
+        INSERT INTO model_requests (user_id, brand, model)
         VALUES (%s, %s, %s)
         """,
         (user_id, brand, model)
@@ -201,7 +205,90 @@ def add_model_request(user_id: int, brand: str, model: str):
     conn.close()
 
 
-# ================= ADMIN REQUESTS =================
+# ================= BRAND REQUESTS =================
+
+def add_brand_request(user_id: int, brand: str):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "INSERT INTO brand_requests (user_id, brand) VALUES (%s, %s)",
+        (user_id, brand)
+    )
+
+    cursor.close()
+    conn.close()
+
+
+def get_pending_brand_requests():
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT id, user_id, brand
+        FROM brand_requests
+        WHERE status = 'pending'
+        ORDER BY id
+    """)
+
+    data = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+
+    return data
+
+
+def approve_brand(request_id: int):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT user_id, brand
+        FROM brand_requests
+        WHERE id = %s
+    """, (request_id,))
+
+    row = cursor.fetchone()
+
+    if not row:
+        return False
+
+    user_id, brand = row
+
+    cursor.execute("""
+        INSERT INTO models (user_id, brand, model)
+        VALUES (%s, %s, %s)
+        ON CONFLICT DO NOTHING
+    """, (user_id, brand, ""))
+
+    cursor.execute("""
+        UPDATE brand_requests
+        SET status = 'approved'
+        WHERE id = %s
+    """, (request_id,))
+
+    cursor.close()
+    conn.close()
+
+    return True
+
+
+def reject_brand(request_id: int):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        UPDATE brand_requests
+        SET status = 'rejected'
+        WHERE id = %s
+    """, (request_id,))
+
+    cursor.close()
+    conn.close()
+
+
+# ================= MODEL REQUESTS =================
 
 def get_pending_model_requests():
     conn = get_connection()
@@ -235,8 +322,6 @@ def approve_model(request_id: int):
     row = cursor.fetchone()
 
     if not row:
-        cursor.close()
-        conn.close()
         return False
 
     user_id, brand, model = row
