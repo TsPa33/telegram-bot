@@ -72,7 +72,6 @@ async def choose_model(message: types.Message, state: FSMContext):
         await message.answer("❌ Нічого не знайдено")
 
         brands = get_brands()
-
         keyboard = ReplyKeyboardMarkup(
             keyboard=[[KeyboardButton(text=b)] for b in brands],
             resize_keyboard=True
@@ -82,23 +81,26 @@ async def choose_model(message: types.Message, state: FSMContext):
         await state.set_state(Buyer.brand)
         return
 
-    text = "🔍 Результати:\n\n"
+    # ✅ нормалізація для UI
+    brand = brand.title()
+    model = model.upper()
+
+    # ✅ формуємо красивий текст
+    text = ""
 
     for name, website, phone in results:
-        text = ""
+        text += (
+            f"🚗 {brand} {model}\n\n"
+            f"🏢 {name}\n"
+            f"🌐 {website}\n"
+            f"📞 {phone}\n\n"
+            f"━━━━━━━━━━━━\n\n"
+        )
 
-for name, website, phone in results:
-    text += (
-        f"🚗 {brand} {model}\n\n"
-        f"🏢 {name}\n"
-        f"🌐 {website}\n"
-        f"📞 {phone}\n\n"
-        f"━━━━━━━━━━━━\n\n"
-    )
-
+    # ✅ відправка результату
     await message.answer(text)
 
-    # ✅ НОВИЙ ПРАВИЛЬНИЙ UX
+    # ✅ кнопка "ще пошук"
     keyboard = ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="🔁 Знайти ще авто")]
