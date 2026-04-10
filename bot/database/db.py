@@ -424,7 +424,7 @@ def get_seller_cars(telegram_id: int):
     cursor.close()
     conn.close()
     
-    def update_brand_request(request_id: int, new_brand: str):
+def update_brand_request(request_id: int, new_brand: str):
     conn = get_connection()
     cursor = conn.cursor()
 
@@ -437,7 +437,7 @@ def get_seller_cars(telegram_id: int):
     cursor.close()
     conn.close()
 
-    def update_model_request(request_id: int, new_model: str):
+def update_model_request(request_id: int, new_model: str):
     conn = get_connection()
     cursor = conn.cursor()
 
