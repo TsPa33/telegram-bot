@@ -9,7 +9,7 @@ from bot.keyboards.admin_inline import (
     model_request_kb
 )
 
-from bot.states.admin_states import AddUser
+from bot.states.admin_states import AddUser, EditBrand, EditModel
 
 from bot.database.db import (
     add_user,
@@ -18,7 +18,9 @@ from bot.database.db import (
     approve_brand,
     reject_brand,
     approve_model,
-    reject_model
+    reject_model,
+    update_brand_request,
+    update_model_request
 )
 
 router = Router()
@@ -105,6 +107,38 @@ async def reject_brand_cb(callback: CallbackQuery):
     await callback.answer()
 
 
+# ================= EDIT BRAND =================
+
+@router.callback_query(F.data.startswith("brand_edit_"))
+async def edit_brand_start(callback: CallbackQuery, state: FSMContext):
+    if callback.from_user.id not in ADMINS:
+        return
+
+    request_id = int(callback.data.split("_")[-1])
+
+    await state.update_data(request_id=request_id)
+
+    await callback.message.answer("✏️ Введіть правильну назву бренду:")
+    await state.set_state(EditBrand.waiting_for_new_brand)
+
+    await callback.answer()
+
+
+@router.message(EditBrand.waiting_for_new_brand)
+async def edit_brand_save(message: types.Message, state: FSMContext):
+    new_brand = message.text.strip().title()
+
+    data = await state.get_data()
+    request_id = data.get("request_id")
+
+    update_brand_request(request_id, new_brand)
+    approve_brand(request_id)
+
+    await message.answer(f"✅ Бренд виправлено та підтверджено: {new_brand}")
+
+    await state.clear()
+
+
 # ================= CALLBACK MODEL =================
 
 @router.callback_query(F.data.startswith("model_ok_"))
@@ -133,6 +167,38 @@ async def reject_model_cb(callback: CallbackQuery):
     await callback.answer()
 
 
+# ================= EDIT MODEL =================
+
+@router.callback_query(F.data.startswith("model_edit_"))
+async def edit_model_start(callback: CallbackQuery, state: FSMContext):
+    if callback.from_user.id not in ADMINS:
+        return
+
+    request_id = int(callback.data.split("_")[-1])
+
+    await state.update_data(request_id=request_id)
+
+    await callback.message.answer("✏️ Введіть правильну назву моделі:")
+    await state.set_state(EditModel.waiting_for_new_model)
+
+    await callback.answer()
+
+
+@router.message(EditModel.waiting_for_new_model)
+async def edit_model_save(message: types.Message, state: FSMContext):
+    new_model = message.text.strip().upper()
+
+    data = await state.get_data()
+    request_id = data.get("request_id")
+
+    update_model_request(request_id, new_model)
+    approve_model(request_id)
+
+    await message.answer(f"✅ Модель виправлено та підтверджено: {new_model}")
+
+    await state.clear()
+
+
 # ================= ADD USER =================
 
 @router.message(lambda m: m.text == "➕ Додати користувача")
@@ -144,7 +210,6 @@ async def add_user_start(message: types.Message, state: FSMContext):
     await state.set_state(AddUser.name)
 
 
-# 1️⃣ ІМ'Я → САЙТ
 @router.message(AddUser.name)
 async def get_name(message: types.Message, state: FSMContext):
     await state.update_data(name=message.text.strip())
@@ -152,7 +217,6 @@ async def get_name(message: types.Message, state: FSMContext):
     await state.set_state(AddUser.website)
 
 
-# 2️⃣ САЙТ → ТЕЛЕФОН
 @router.message(AddUser.website)
 async def get_website(message: types.Message, state: FSMContext):
     await state.update_data(website=message.text.strip())
@@ -160,7 +224,6 @@ async def get_website(message: types.Message, state: FSMContext):
     await state.set_state(AddUser.phone)
 
 
-# 3️⃣ ТЕЛЕФОН → МОДЕЛІ
 @router.message(AddUser.phone)
 async def get_phone(message: types.Message, state: FSMContext):
     await state.update_data(phone=message.text.strip())
@@ -179,7 +242,6 @@ async def get_phone(message: types.Message, state: FSMContext):
     await state.set_state(AddUser.models)
 
 
-# 4️⃣ МОДЕЛІ → ЗБЕРЕЖЕННЯ
 @router.message(AddUser.models)
 async def get_models(message: types.Message, state: FSMContext):
     text = message.text
