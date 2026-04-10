@@ -28,10 +28,13 @@ async def add_car_start(message: Message, state: FSMContext):
         await message.answer("❌ Немає брендів")
         return
 
+    kkeyboard_buttons = [[KeyboardButton(text=b)] for b in brands]
+    keyboard_buttons.append([KeyboardButton(text="➕ Додати новий бренд")])
+
     keyboard = ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text=b)] for b in brands],
+        keyboard=keyboard_buttons,
         resize_keyboard=True
-    )
+)
 
     await message.answer("Обери марку авто:", reply_markup=keyboard)
     await state.set_state(SellerStates.brand)
