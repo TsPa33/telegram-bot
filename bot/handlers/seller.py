@@ -10,6 +10,7 @@ from bot.database.db import (
 )
 
 from bot.states.seller import SellerStates
+from bot.utils.validation import validate_text, normalize
 
 router = Router()
 
@@ -37,13 +38,17 @@ async def add_car_start(message: Message, state: FSMContext):
 
 @router.message(SellerStates.brand)
 async def choose_brand(message: Message, state: FSMContext):
-    brand = message.text
+    brand = normalize(message.text)
+
+    if not validate_text(brand):
+        await message.answer("❌ Некоректна марка")
+        return
 
     models = get_models_by_brand(brand)
 
     keyboard_buttons = [[KeyboardButton(text=m)] for m in models]
 
-    # 🔥 кнопка нової моделі
+    # ➕ кнопка додавання нової моделі
     keyboard_buttons.append([KeyboardButton(text="➕ Додати нову модель")])
 
     keyboard = ReplyKeyboardMarkup(
@@ -61,23 +66,25 @@ async def choose_brand(message: Message, state: FSMContext):
 
 @router.message(SellerStates.model)
 async def choose_model(message: Message, state: FSMContext):
-    if message.text == "➕ Додати нову модель":
+    text = message.text.strip()
+
+    # ➕ перехід до нової моделі
+    if text == "➕ Додати нову модель":
         await message.answer("Введи назву нової моделі:")
         await state.set_state(SellerStates.new_model)
         return
 
-    model = message.text
+    model = normalize(text)
 
-    data = await state.get_data()
-    brand = data["brand"]
-
-    # 🔥 перевірка дубля
-    if model_exists(brand, model):
-        await message.answer("❌ Така модель вже існує")
+    if not validate_text(model):
+        await message.answer("❌ Некоректна модель")
         return
 
-    # 🔥 поки що просто повідомлення
-    await message.answer(f"✅ Авто додано: {brand} {model}")
+    data = await state.get_data()
+    brand = data.get("brand")
+
+    # ⚠️ тут просто лог (поки без seller_cars)
+    await message.answer(f"✅ Обрано: {brand} {model}")
 
     await state.clear()
 
@@ -86,18 +93,23 @@ async def choose_model(message: Message, state: FSMContext):
 
 @router.message(SellerStates.new_model)
 async def add_new_model(message: Message, state: FSMContext):
-    model = message.text
+    model = normalize(message.text)
 
-    data = await state.get_data()
-    brand = data["brand"]
-    user_id = message.from_user.id
-
-    # 🔥 перевірка дубля
-    if model_exists(brand, model):
-        await message.answer("❌ Така модель вже існує")
+    if not validate_text(model):
+        await message.answer("❌ Некоректна назва моделі")
         return
 
-    # 🔥 записуємо заявку
+    data = await state.get_data()
+    brand = data.get("brand")
+    user_id = message.from_user.id
+
+    # 🔍 перевірка дубля
+    if model_exists(brand, model):
+        await message.answer("❗ Така модель вже існує")
+        await state.clear()
+        return
+
+    # 📩 створюємо заявку
     add_model_request(user_id, brand, model)
 
     await message.answer("⏳ Модель відправлена на модерацію")
