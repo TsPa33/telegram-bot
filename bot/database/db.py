@@ -33,8 +33,8 @@ def init_db():
     )
     """)
     
-   cursor.execute("""
-   CREATE TABLE IF NOT EXISTS model_requests (
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS model_requests (
         id SERIAL PRIMARY KEY,
         user_id BIGINT,
         brand TEXT,
