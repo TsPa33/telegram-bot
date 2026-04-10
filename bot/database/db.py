@@ -30,6 +30,7 @@ def init_db():
         user_id BIGINT,
         brand TEXT,
         model TEXT
+        UNIQUE (brand, model)
     )
     """)
     
