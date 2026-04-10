@@ -1,4 +1,4 @@
-from aiogram import Router, types, F
+from aiogram import Router, types, F, Bot
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery
 
@@ -43,35 +43,20 @@ async def show_requests(message: types.Message):
     if message.from_user.id not in ADMINS:
         return
 
-    # -------- бренди --------
     brand_requests = get_pending_brand_requests()
+    model_requests = get_pending_model_requests()
 
     if brand_requests:
         for req_id, user_id, brand in brand_requests:
-            text = (
-                f"🆕 Новий бренд\n\n"
-                f"👤 User: {user_id}\n"
-                f"🏷 Бренд: {brand}"
-            )
-
             await message.answer(
-                text,
+                f"🆕 Новий бренд\n\n👤 User: {user_id}\n🏷 Бренд: {brand}",
                 reply_markup=brand_request_kb(req_id)
             )
 
-    # -------- моделі --------
-    model_requests = get_pending_model_requests()
-
     if model_requests:
         for req_id, user_id, brand, model in model_requests:
-            text = (
-                f"🆕 Нова модель\n\n"
-                f"👤 User: {user_id}\n"
-                f"🚗 {brand} {model}"
-            )
-
             await message.answer(
-                text,
+                f"🆕 Нова модель\n\n👤 User: {user_id}\n🚗 {brand} {model}",
                 reply_markup=model_request_kb(req_id)
             )
 
@@ -79,29 +64,62 @@ async def show_requests(message: types.Message):
         await message.answer("✅ Немає заявок")
 
 
-# ================= CALLBACK BRAND =================
+# ================= BRAND ACTIONS =================
 
 @router.callback_query(F.data.startswith("brand_ok_"))
-async def approve_brand_cb(callback: CallbackQuery):
+async def approve_brand_cb(callback: CallbackQuery, bot: Bot):
     if callback.from_user.id not in ADMINS:
         return
 
     request_id = int(callback.data.split("_")[-1])
 
+    # беремо дані ДО approve
+    brand_requests = get_pending_brand_requests()
+
+    user_id = None
+    brand = None
+
+    for r in brand_requests:
+        if r[0] == request_id:
+            _, user_id, brand = r
+            break
+
     approve_brand(request_id)
+
+    if user_id:
+        try:
+            await bot.send_message(user_id, f"✅ Ваш бренд підтверджено: {brand}")
+        except:
+            pass
 
     await callback.message.edit_text("✅ Бренд підтверджено")
     await callback.answer()
 
 
 @router.callback_query(F.data.startswith("brand_no_"))
-async def reject_brand_cb(callback: CallbackQuery):
+async def reject_brand_cb(callback: CallbackQuery, bot: Bot):
     if callback.from_user.id not in ADMINS:
         return
 
     request_id = int(callback.data.split("_")[-1])
 
+    brand_requests = get_pending_brand_requests()
+
+    user_id = None
+    brand = None
+
+    for r in brand_requests:
+        if r[0] == request_id:
+            _, user_id, brand = r
+            break
+
     reject_brand(request_id)
+
+    if user_id:
+        try:
+            await bot.send_message(user_id, f"❌ Ваш бренд відхилено: {brand}")
+        except:
+            pass
 
     await callback.message.edit_text("❌ Бренд відхилено")
     await callback.answer()
@@ -117,7 +135,6 @@ async def edit_brand_start(callback: CallbackQuery, state: FSMContext):
     request_id = int(callback.data.split("_")[-1])
 
     await state.update_data(request_id=request_id)
-
     await callback.message.answer("✏️ Введіть правильну назву бренду:")
     await state.set_state(EditBrand.waiting_for_new_brand)
 
@@ -139,29 +156,69 @@ async def edit_brand_save(message: types.Message, state: FSMContext):
     await state.clear()
 
 
-# ================= CALLBACK MODEL =================
+# ================= MODEL ACTIONS =================
 
 @router.callback_query(F.data.startswith("model_ok_"))
-async def approve_model_cb(callback: CallbackQuery):
+async def approve_model_cb(callback: CallbackQuery, bot: Bot):
     if callback.from_user.id not in ADMINS:
         return
 
     request_id = int(callback.data.split("_")[-1])
 
+    model_requests = get_pending_model_requests()
+
+    user_id = None
+    brand = None
+    model = None
+
+    for r in model_requests:
+        if r[0] == request_id:
+            _, user_id, brand, model = r
+            break
+
     approve_model(request_id)
+
+    if user_id:
+        try:
+            await bot.send_message(
+                user_id,
+                f"✅ Вашу модель підтверджено:\n{brand} {model}"
+            )
+        except:
+            pass
 
     await callback.message.edit_text("✅ Модель підтверджено")
     await callback.answer()
 
 
 @router.callback_query(F.data.startswith("model_no_"))
-async def reject_model_cb(callback: CallbackQuery):
+async def reject_model_cb(callback: CallbackQuery, bot: Bot):
     if callback.from_user.id not in ADMINS:
         return
 
     request_id = int(callback.data.split("_")[-1])
 
+    model_requests = get_pending_model_requests()
+
+    user_id = None
+    brand = None
+    model = None
+
+    for r in model_requests:
+        if r[0] == request_id:
+            _, user_id, brand, model = r
+            break
+
     reject_model(request_id)
+
+    if user_id:
+        try:
+            await bot.send_message(
+                user_id,
+                f"❌ Вашу модель відхилено:\n{brand} {model}"
+            )
+        except:
+            pass
 
     await callback.message.edit_text("❌ Модель відхилено")
     await callback.answer()
@@ -177,7 +234,6 @@ async def edit_model_start(callback: CallbackQuery, state: FSMContext):
     request_id = int(callback.data.split("_")[-1])
 
     await state.update_data(request_id=request_id)
-
     await callback.message.answer("✏️ Введіть правильну назву моделі:")
     await state.set_state(EditModel.waiting_for_new_model)
 
@@ -230,13 +286,8 @@ async def get_phone(message: types.Message, state: FSMContext):
 
     await message.answer(
         "Введіть моделі у форматі:\n\n"
-        "Model: Audi\n"
-        "A4\n"
-        "A6\n\n"
-        "Model: BMW\n"
-        "E60\n"
-        "F30\n\n"
-        "(кожна модель з нового рядка)"
+        "Model: Audi\nA4\nA6\n\n"
+        "Model: BMW\nE60\nF30"
     )
 
     await state.set_state(AddUser.models)
@@ -251,7 +302,6 @@ async def get_models(message: types.Message, state: FSMContext):
         return
 
     lines = text.split("\n")
-
     current_brand = None
     data_dict = {}
 
