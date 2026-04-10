@@ -85,12 +85,16 @@ async def choose_model(message: types.Message, state: FSMContext):
     text = "🔍 Результати:\n\n"
 
     for name, website, phone in results:
-        text += (
-            f"🏢 {name}\n"
-            f"🌐 {website}\n"
-            f"📞 {phone}\n"
-            f"{'-'*15}\n"
-        )
+        text = ""
+
+for name, website, phone in results:
+    text += (
+        f"🚗 {brand} {model}\n\n"
+        f"🏢 {name}\n"
+        f"🌐 {website}\n"
+        f"📞 {phone}\n\n"
+        f"━━━━━━━━━━━━\n\n"
+    )
 
     await message.answer(text)
 
