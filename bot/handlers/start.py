@@ -16,6 +16,8 @@ router = Router()
 
 @router.message(Command("start"))
 async def cmd_start(message: Message):
+    await state.clear()
+    
     await message.answer(
         "Натисни кнопку щоб почати:",
         reply_markup=start_keyboard()
