@@ -1,6 +1,7 @@
 from aiogram import Router, types
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
+from aiogram import F
 
 from bot.config import ADMINS
 from bot.keyboards.admin_kb import admin_kb
@@ -10,7 +11,12 @@ from bot.database.db import add_user
 router = Router()
 
 
+@router.message(F.text == "⚙️ Адмін панель")
+async def open_admin_panel(message: types.Message):
+    if message.from_user.id not in ADMINS:
+        return
 
+    await message.answer("Admin panel", reply_markup=admin_kb)
 @router.message(lambda m: m.text == "➕ Додати користувача")
 async def add_user_start(message: types.Message, state: FSMContext):
     await message.answer("Введіть ім'я користувача:")
