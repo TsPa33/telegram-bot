@@ -121,3 +121,44 @@ def find_by_model(brand: str, model: str):
     conn.close()
 
     return results
+    # ================= MODEL HELPERS =================
+
+def model_exists(brand: str, model: str):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "SELECT 1 FROM models WHERE brand=%s AND model=%s",
+        (brand, model)
+    )
+
+    exists = cursor.fetchone() is not None
+
+    cursor.close()
+    conn.close()
+
+    return exists
+
+
+def add_model_request(user_id: int, brand: str, model: str):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    # 🔥 створюємо таблицю якщо ще нема
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS model_requests (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER,
+            brand TEXT,
+            model TEXT,
+            status TEXT DEFAULT 'pending'
+        )
+    """)
+
+    cursor.execute(
+        "INSERT INTO model_requests (user_id, brand, model) VALUES (%s, %s, %s)",
+        (user_id, brand, model)
+    )
+
+    cursor.close()
+    conn.close()
