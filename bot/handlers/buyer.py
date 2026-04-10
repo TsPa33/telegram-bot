@@ -1,4 +1,4 @@
-from aiogram import Router, types, F
+from aiogram import Router, types
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
@@ -70,7 +70,17 @@ async def choose_model(message: types.Message, state: FSMContext):
 
     if not results:
         await message.answer("❌ Нічого не знайдено")
-        await state.clear()
+
+        # 🔁 ПОВЕРТАЄМО користувача назад до вибору бренду
+        brands = get_brands()
+
+        keyboard = ReplyKeyboardMarkup(
+            keyboard=[[KeyboardButton(text=b)] for b in brands],
+            resize_keyboard=True
+        )
+
+        await message.answer("Обери бренд ще раз:", reply_markup=keyboard)
+        await state.set_state(Buyer.brand)
         return
 
     text = "🔍 Результати:\n\n"
@@ -79,4 +89,14 @@ async def choose_model(message: types.Message, state: FSMContext):
         text += f"🏢 {name}\n🌐 {website}\n📞 {phone}\n\n"
 
     await message.answer(text)
-    await state.clear()
+
+    # 🔁 ПІСЛЯ УСПІХУ теж повертаємо в меню
+    brands = get_brands()
+
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text=b)] for b in brands],
+        resize_keyboard=True
+    )
+
+    await message.answer("🔁 Знайти ще авто:", reply_markup=keyboard)
+    await state.set_state(Buyer.brand)
