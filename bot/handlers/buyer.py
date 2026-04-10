@@ -1,4 +1,4 @@
-from aiogram import Router, types
+from aiogram import Router, types, F
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
@@ -71,7 +71,6 @@ async def choose_model(message: types.Message, state: FSMContext):
     if not results:
         await message.answer("❌ Нічого не знайдено")
 
-        # 🔁 ПОВЕРТАЄМО користувача назад до вибору бренду
         brands = get_brands()
 
         keyboard = ReplyKeyboardMarkup(
@@ -86,17 +85,41 @@ async def choose_model(message: types.Message, state: FSMContext):
     text = "🔍 Результати:\n\n"
 
     for name, website, phone in results:
-        text += f"🏢 {name}\n🌐 {website}\n📞 {phone}\n\n"
+        text += (
+            f"🏢 {name}\n"
+            f"🌐 {website}\n"
+            f"📞 {phone}\n"
+            f"{'-'*15}\n"
+        )
 
     await message.answer(text)
 
-    # 🔁 ПІСЛЯ УСПІХУ теж повертаємо в меню
+    # ✅ НОВИЙ ПРАВИЛЬНИЙ UX
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="🔁 Знайти ще авто")]
+        ],
+        resize_keyboard=True
+    )
+
+    await message.answer("Що далі?", reply_markup=keyboard)
+    await state.clear()
+
+
+# ================= RESTART =================
+
+@router.message(F.text == "🔁 Знайти ще авто")
+async def restart_search(message: types.Message, state: FSMContext):
     brands = get_brands()
+
+    if not brands:
+        await message.answer("❌ Брендів немає")
+        return
 
     keyboard = ReplyKeyboardMarkup(
         keyboard=[[KeyboardButton(text=b)] for b in brands],
         resize_keyboard=True
     )
 
-    await message.answer("🔁 Знайти ще авто:", reply_markup=keyboard)
+    await message.answer("Обери бренд:", reply_markup=keyboard)
     await state.set_state(Buyer.brand)
