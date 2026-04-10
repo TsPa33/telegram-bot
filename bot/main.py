@@ -5,7 +5,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
 
 from bot.config import BOT_TOKEN
-from bot.handlers import seller, buyer, admin
+from bot.handlers import start, seller, buyer, admin
 from bot.database.db import init_db
 
 logging.basicConfig(level=logging.INFO)
