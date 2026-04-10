@@ -44,7 +44,16 @@ async def add_car_start(message: Message, state: FSMContext):
 
 @router.message(SellerStates.brand)
 async def choose_brand(message: Message, state: FSMContext):
-    brand = normalize(message.text)
+    text = message.text.strip()
+
+    # ================= НОВИЙ БРЕНД =================
+    if text == "➕ Додати новий бренд":
+        await message.answer("Введи назву нового бренду:")
+        await state.set_state(SellerStates.new_brand)
+        return
+
+    # ================= ЗВИЧАЙНИЙ БРЕНД =================
+    brand = normalize(text)
 
     if not validate_text(brand):
         await message.answer("❌ Некоректна марка")
@@ -54,6 +63,7 @@ async def choose_brand(message: Message, state: FSMContext):
 
     keyboard_buttons = [[KeyboardButton(text=m)] for m in models]
 
+    # кнопка нової моделі
     keyboard_buttons.append([KeyboardButton(text="➕ Додати нову модель")])
 
     keyboard = ReplyKeyboardMarkup(
