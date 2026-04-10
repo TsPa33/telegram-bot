@@ -166,7 +166,12 @@ def model_exists(brand: str, model: str):
     cursor = conn.cursor()
 
     cursor.execute(
-        "SELECT 1 FROM models WHERE brand=%s AND model=%s",
+        """
+        SELECT 1 
+        FROM models 
+        WHERE UPPER(brand) = UPPER(%s) 
+        AND UPPER(model) = UPPER(%s)
+        """,
         (brand, model)
     )
 
@@ -183,7 +188,10 @@ def add_model_request(user_id: int, brand: str, model: str):
     cursor = conn.cursor()
 
     cursor.execute(
-        "INSERT INTO model_requests (user_id, brand, model) VALUES (%s, %s, %s)",
+        """
+        INSERT INTO model_requests (user_id, brand, model) 
+        VALUES (%s, %s, %s)
+        """,
         (user_id, brand, model)
     )
 
