@@ -32,6 +32,16 @@ def init_db():
         model TEXT
     )
     """)
+    
+   cursor.execute("""
+   CREATE TABLE IF NOT EXISTS model_requests (
+        id SERIAL PRIMARY KEY,
+        user_id BIGINT,
+        brand TEXT,
+        model TEXT,
+        status TEXT DEFAULT 'pending'
+    ) 
+    """)
 
     cursor.close()
     conn.close()
@@ -144,16 +154,6 @@ def model_exists(brand: str, model: str):
 def add_model_request(user_id: int, brand: str, model: str):
     conn = get_connection()
     cursor = conn.cursor()
-
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS model_requests (
-            id SERIAL PRIMARY KEY,
-            user_id BIGINT,
-            brand TEXT,
-            model TEXT,
-            status TEXT DEFAULT 'pending'
-        )
-    """)
 
     cursor.execute(
         "INSERT INTO model_requests (user_id, brand, model) VALUES (%s, %s, %s)",
