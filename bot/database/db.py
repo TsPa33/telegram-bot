@@ -128,7 +128,7 @@ def get_models_by_brand(brand: str):
     cursor.execute("""
         SELECT DISTINCT model
         FROM models
-        WHERE UPPER(brand) = UPPER(%s)
+        WHERE LOWER(brand) = LOWER(%s)
         ORDER BY model
     """, (brand,))
 
