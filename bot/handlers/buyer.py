@@ -2,6 +2,7 @@ from aiogram import Router, types
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import ReplyKeyboardRemove
 
 from bot.database.db import get_brands, get_models_by_brand, find_by_model
 from bot.states.buyer_states import Buyer
@@ -12,6 +13,10 @@ router = Router()
 # 🔹 старт пошуку
 @router.message(Command("find"))
 async def start_buyer(message: types.Message, state: FSMContext):
+    await message.answer(
+    "Оновлюю меню...",
+    reply_markup=ReplyKeyboardRemove()
+)
     brands = get_brands()
 
     if not brands:
