@@ -27,7 +27,7 @@ def init_db():
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS models (
         id SERIAL PRIMARY KEY,
-        user_id INTEGER,
+        user_id BIGINT,
         brand TEXT,
         model TEXT
     )
@@ -159,6 +159,79 @@ def add_model_request(user_id: int, brand: str, model: str):
         "INSERT INTO model_requests (user_id, brand, model) VALUES (%s, %s, %s)",
         (user_id, brand, model)
     )
+
+    cursor.close()
+    conn.close()
+# ================= ADMIN MODEL REQUESTS =================
+
+def get_pending_model_requests():
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT id, user_id, brand, model
+        FROM model_requests
+        WHERE status = 'pending'
+        ORDER BY id
+    """)
+
+    requests = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+
+    return requests
+
+
+def approve_model(request_id: int):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    # отримуємо дані заявки
+    cursor.execute("""
+        SELECT user_id, brand, model
+        FROM model_requests
+        WHERE id = %s
+    """, (request_id,))
+
+    row = cursor.fetchone()
+
+    if not row:
+        cursor.close()
+        conn.close()
+        return False
+
+    user_id, brand, model = row
+
+    # додаємо в models
+    cursor.execute("""
+        INSERT INTO models (user_id, brand, model)
+        VALUES (%s, %s, %s)
+        ON CONFLICT DO NOTHING
+    """, (user_id, brand, model))
+
+    # оновлюємо статус
+    cursor.execute("""
+        UPDATE model_requests
+        SET status = 'approved'
+        WHERE id = %s
+    """, (request_id,))
+
+    cursor.close()
+    conn.close()
+
+    return True
+
+
+def reject_model(request_id: int):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        UPDATE model_requests
+        SET status = 'rejected'
+        WHERE id = %s
+    """, (request_id,))
 
     cursor.close()
     conn.close()
