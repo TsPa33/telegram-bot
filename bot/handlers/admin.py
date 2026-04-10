@@ -10,13 +10,6 @@ from bot.database.db import add_user
 router = Router()
 
 
-@router.message(Command("start"))
-async def start_handler(message: types.Message):
-    if message.from_user.id in ADMINS:
-        await message.answer("Admin panel", reply_markup=admin_kb)
-    else:
-        await message.answer("Доступ обмежений")
-
 
 @router.message(lambda m: m.text == "➕ Додати користувача")
 async def add_user_start(message: types.Message, state: FSMContext):
