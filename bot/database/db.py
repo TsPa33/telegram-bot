@@ -29,7 +29,7 @@ def init_db():
         id SERIAL PRIMARY KEY,
         user_id BIGINT,
         brand TEXT,
-        model TEXT
+        model TEXT,
         UNIQUE (brand, model)
     )
     """)
