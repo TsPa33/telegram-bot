@@ -6,7 +6,10 @@ from bot.database.db import (
     get_brands,
     get_models_by_brand,
     model_exists,
-    add_model_request
+    add_model_request,
+    get_or_create_seller,
+    add_seller_car,
+    get_seller_cars
 )
 
 from bot.states.seller import SellerStates
@@ -48,7 +51,6 @@ async def choose_brand(message: Message, state: FSMContext):
 
     keyboard_buttons = [[KeyboardButton(text=m)] for m in models]
 
-    # ➕ кнопка додавання нової моделі
     keyboard_buttons.append([KeyboardButton(text="➕ Додати нову модель")])
 
     keyboard = ReplyKeyboardMarkup(
@@ -68,7 +70,7 @@ async def choose_brand(message: Message, state: FSMContext):
 async def choose_model(message: Message, state: FSMContext):
     text = message.text.strip()
 
-    # ➕ перехід до нової моделі
+    # ➕ нова модель
     if text == "➕ Додати нову модель":
         await message.answer("Введи назву нової моделі:")
         await state.set_state(SellerStates.new_model)
@@ -83,8 +85,16 @@ async def choose_model(message: Message, state: FSMContext):
     data = await state.get_data()
     brand = data.get("brand")
 
-    # ⚠️ тут просто лог (поки без seller_cars)
-    await message.answer(f"✅ Обрано: {brand} {model}")
+    # 🔥 створюємо/отримуємо seller
+    user_id = message.from_user.id
+    username = message.from_user.username
+
+    seller_id = get_or_create_seller(user_id, username)
+
+    # 🔥 додаємо авто
+    add_seller_car(seller_id, brand, model)
+
+    await message.answer(f"✅ Авто додано: {brand} {model}")
 
     await state.clear()
 
@@ -103,15 +113,33 @@ async def add_new_model(message: Message, state: FSMContext):
     brand = data.get("brand")
     user_id = message.from_user.id
 
-    # 🔍 перевірка дубля
+    # 🔍 дубль
     if model_exists(brand, model):
         await message.answer("❗ Така модель вже існує")
         await state.clear()
         return
 
-    # 📩 створюємо заявку
+    # 📩 заявка
     add_model_request(user_id, brand, model)
 
     await message.answer("⏳ Модель відправлена на модерацію")
 
     await state.clear()
+
+
+# ================= MY CARS =================
+
+@router.message(F.text == "📋 Мої авто")
+async def my_cars(message: Message):
+    cars = get_seller_cars(message.from_user.id)
+
+    if not cars:
+        await message.answer("❌ У вас немає авто")
+        return
+
+    text = "🚗 Ваші авто:\n\n"
+
+    for brand, model in cars:
+        text += f"{brand} {model}\n"
+
+    await message.answer(text)
