@@ -389,16 +389,16 @@ def get_or_create_seller(telegram_id: int, username: str):
     return seller_id
 
 
-def add_seller_car(seller_id: int, brand: str, model: str):
+def add_seller_car(seller_id: int, brand: str, model: str, photo_id: str):
     conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute(
         """
-        INSERT INTO seller_cars (seller_id, brand, model)
-        VALUES (%s, %s, %s)
+        INSERT INTO seller_cars (seller_id, brand, model, photo_id)
+        VALUES (%s, %s, %s, %s)
         """,
-        (seller_id, brand, model)
+        (seller_id, brand, model, photo_id)
     )
 
     cursor.close()
