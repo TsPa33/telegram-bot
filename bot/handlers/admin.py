@@ -33,7 +33,7 @@ async def open_admin_panel(message: types.Message):
     if message.from_user.id not in ADMINS:
         return
 
-    await message.answer("Admin panel", reply_markup=admin_kb)
+    await message.answer("⚙️ Адмін панель", reply_markup=admin_kb)
 
 
 # ================= REQUESTS =================
