@@ -76,6 +76,24 @@ async def choose_brand(message: Message, state: FSMContext):
     await message.answer("🚘 Обери модель:", reply_markup=keyboard)
     await state.set_state(SellerStates.model)
 
+# ================= NEW BRAND =================
+
+@router.message(SellerStates.new_brand)
+async def add_new_brand(message: Message, state: FSMContext):
+    brand = normalize_brand(message.text.strip())
+
+    if not validate_text(brand):
+        await message.answer("❌ Некоректна марка")
+        return
+
+    await add_brand_request(
+        message.from_user.id,
+        brand
+    )
+
+    await message.answer("📩 Заявка на бренд відправлена на модерацію")
+    await state.clear()
+
 
 # ================= MODEL =================
 
