@@ -192,4 +192,31 @@ def get_seller_cars(telegram_id: int):
 
     cursor.close()
     conn.close()
+
+    # ================= REQUESTS =================
+
+def add_model_request(user_id: int, brand: str, model: str):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        INSERT INTO model_requests (user_id, brand, model)
+        VALUES (%s, %s, %s)
+    """, (user_id, brand, model))
+
+    cursor.close()
+    conn.close()
+
+
+def add_brand_request(user_id: int, brand: str):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        INSERT INTO brand_requests (user_id, brand)
+        VALUES (%s, %s)
+    """, (user_id, brand))
+
+    cursor.close()
+    conn.close()
     return data
