@@ -1,7 +1,13 @@
 from aiogram import Router, types, F
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import (
+    ReplyKeyboardMarkup,
+    KeyboardButton,
+    InlineKeyboardMarkup,
+    InlineKeyboardButton,
+    InputMediaPhoto
+)
 
 from bot.database.repositories.model_repo import get_brands, get_models_by_brand
 from bot.database.repositories.car_repo import find_cars, count_cars
@@ -23,13 +29,18 @@ DEFAULT_PHOTO = "AgACAgIAAxkBAAIJ6WnZ7zNsTF4dV6Fxbqsye8iRF224AAJfEWsbFN_RSsup93h
 async def start_buyer(message: types.Message, state: FSMContext):
     brands = await get_cached_brands(get_brands)
 
+    if not brands:
+        await message.answer("❌ Брендів немає")
+        return
+
     keyboard = ReplyKeyboardMarkup(
         keyboard=[[KeyboardButton(text=b)] for b in brands] + [[BACK]],
         resize_keyboard=True
     )
 
-    await message.answer("🚗 Обери бренд:", reply_markup=keyboard)
+    await state.clear()
     await state.set_state(Buyer.brand)
+    await message.answer("🚗 Обери бренд:", reply_markup=keyboard)
 
 
 # ================= BRAND =================
@@ -46,14 +57,18 @@ async def choose_brand(message: types.Message, state: FSMContext):
     brand = normalize_brand(text)
     models = await get_cached_models(brand, get_models_by_brand)
 
+    if not models:
+        await message.answer("❌ Моделей немає")
+        return
+
     keyboard = ReplyKeyboardMarkup(
         keyboard=[[KeyboardButton(text=m)] for m in models] + [[BACK]],
         resize_keyboard=True
     )
 
     await state.update_data(brand=brand)
-    await message.answer("🚘 Обери модель:", reply_markup=keyboard)
     await state.set_state(Buyer.model)
+    await message.answer("🚘 Обери модель:", reply_markup=keyboard)
 
 
 # ================= MODEL =================
@@ -70,14 +85,19 @@ async def choose_model(message: types.Message, state: FSMContext):
             resize_keyboard=True
         )
 
-        await message.answer("🚗 Обери бренд:", reply_markup=keyboard)
         await state.set_state(Buyer.brand)
+        await message.answer("🚗 Обери бренд:", reply_markup=keyboard)
         return
 
     model = normalize_model(text)
 
     data = await state.get_data()
     brand = data.get("brand")
+
+    if not brand:
+        await state.clear()
+        await message.answer("⚠️ Сесія втрачена. Почни заново: /find")
+        return
 
     total = await count_cars(brand, model)
 
@@ -87,18 +107,23 @@ async def choose_model(message: types.Message, state: FSMContext):
 
     await state.update_data(model=model, page=0, total=total)
 
-    await send_card(message, state)
+    await send_card(message, state, new_message=True)
 
 
 # ================= CARD =================
 
-async def send_card(message: types.Message, state: FSMContext):
+async def send_card(message: types.Message, state: FSMContext, new_message=False):
     data = await state.get_data()
 
-    brand = data["brand"]
-    model = data["model"]
-    page = data["page"]
-    total = data["total"]
+    brand = data.get("brand")
+    model = data.get("model")
+    page = data.get("page")
+    total = data.get("total")
+
+    if not all([brand, model, total is not None]):
+        await state.clear()
+        await message.answer("⚠️ Сесія втрачена. Почни заново: /find")
+        return
 
     results = await find_cars(brand, model, page, limit=1)
 
@@ -125,12 +150,31 @@ async def send_card(message: types.Message, state: FSMContext):
 
     kb = build_card_kb(username, page, total)
 
-    await message.answer_photo(
-        photo_id or DEFAULT_PHOTO,
-        caption=text,
-        reply_markup=kb,
-        parse_mode="HTML"
-    )
+    if new_message:
+        await message.answer_photo(
+            photo_id or DEFAULT_PHOTO,
+            caption=text,
+            reply_markup=kb,
+            parse_mode="HTML"
+        )
+    else:
+        try:
+            await message.edit_media(
+                InputMediaPhoto(
+                    media=photo_id or DEFAULT_PHOTO,
+                    caption=text,
+                    parse_mode="HTML"
+                ),
+                reply_markup=kb
+            )
+        except:
+            # fallback якщо Telegram не дає edit
+            await message.answer_photo(
+                photo_id or DEFAULT_PHOTO,
+                caption=text,
+                reply_markup=kb,
+                parse_mode="HTML"
+            )
 
 
 # ================= KEYBOARD =================
@@ -165,8 +209,12 @@ def build_card_kb(username: str | None, page: int, total: int):
 async def next_page(callback: types.CallbackQuery, state: FSMContext):
     data = await state.get_data()
 
-    page = data["page"] + 1
-    total = data["total"]
+    if not data:
+        await callback.answer("Сесія втрачена")
+        return
+
+    page = data.get("page", 0) + 1
+    total = data.get("total", 0)
 
     if page >= total:
         await callback.answer("Кінець")
@@ -182,7 +230,11 @@ async def next_page(callback: types.CallbackQuery, state: FSMContext):
 async def prev_page(callback: types.CallbackQuery, state: FSMContext):
     data = await state.get_data()
 
-    page = data["page"] - 1
+    if not data:
+        await callback.answer("Сесія втрачена")
+        return
+
+    page = data.get("page", 0) - 1
 
     if page < 0:
         await callback.answer("Початок")
