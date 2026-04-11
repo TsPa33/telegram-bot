@@ -15,7 +15,7 @@ from bot.database.db import (
 )
 
 from bot.states.seller import SellerStates
-from bot.utils.validation import validate_text, normalize
+from bot.utils.validation import validate_text, normalize_brand, normalize_model
 
 router = Router()
 
@@ -49,7 +49,7 @@ async def choose_brand(message: Message, state: FSMContext):
         await state.set_state(SellerStates.new_brand)
         return
 
-    brand = normalize(text)
+    brand = normalize_brand(text)
 
     if not validate_text(brand):
         await message.answer("❌ Некоректна марка")
@@ -85,7 +85,7 @@ async def choose_model(message: Message, state: FSMContext):
         await state.set_state(SellerStates.new_model)
         return
 
-    model = normalize(text)
+    model = normalize_model(text)
 
     if not validate_text(model):
         await message.answer("❌ Некоректна модель")
@@ -98,7 +98,6 @@ async def choose_model(message: Message, state: FSMContext):
         await message.answer("❌ Такої моделі немає")
         return
 
-    # 👉 НЕ додаємо в БД тут!
     await state.update_data(model=model)
 
     await message.answer("📸 Надішли фото авто")
@@ -120,6 +119,7 @@ async def add_car_photo(message: Message, state: FSMContext):
 
     seller_id = get_or_create_seller(user_id, username)
 
+    # 🔴 ключова логіка рефактору
     model_id = get_model_id(brand, model)
 
     if not model_id:
@@ -142,7 +142,7 @@ async def wrong_photo(message: Message):
 
 @router.message(SellerStates.new_model)
 async def add_new_model(message: Message, state: FSMContext):
-    model = normalize(message.text)
+    model = normalize_model(message.text)
 
     if not validate_text(model):
         await message.answer("❌ Некоректна назва моделі")
@@ -167,7 +167,7 @@ async def add_new_model(message: Message, state: FSMContext):
 
 @router.message(SellerStates.new_brand)
 async def add_new_brand(message: Message, state: FSMContext):
-    brand = normalize(message.text)
+    brand = normalize_brand(message.text)
 
     if not validate_text(brand):
         await message.answer("❌ Некоректна назва бренду")
