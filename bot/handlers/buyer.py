@@ -102,10 +102,15 @@ async def choose_model(message: types.Message, state: FSMContext):
     total = await count_cars(brand, model)
 
     if total == 0:
-        await message.answer("❌ Нічого не знайдено")
+        await message.answer(
+            "😕 Поки що немає оголошень для цієї моделі.\n"
+            "Спробуй іншу модель або зайди пізніше."
+        )
         return
 
     await state.update_data(model=model, page=0, total=total)
+
+    await message.answer(f"🔎 Знайдено оголошень: {total}")
 
     await send_card(message, state, new_message=True)
 
@@ -137,15 +142,15 @@ async def send_card(message: types.Message, state: FSMContext, new_message=False
     brand_db = car["brand"]
     model_db = car["model"]
     photo_id = car["photo_id"]
-    description = car.get("description") or " Продавець не надав опису"
+    description = car.get("description") or "📦 Без опису"
 
     username_display = f"@{username}" if username else "не вказано"
 
     text = (
         f"🚗 <b>{brand_db} {model_db}</b>\n\n"
         f"{description}\n\n"
-        f"👤 Продавець: {username_display}\n"
-        f"📄 {page + 1} / {total}"
+        f"👤 <b>Продавець:</b> {username_display}\n"
+        f"📄 <b>{page + 1} / {total}</b>"
     )
 
     kb = build_card_kb(username, page, total)
@@ -168,7 +173,6 @@ async def send_card(message: types.Message, state: FSMContext, new_message=False
                 reply_markup=kb
             )
         except:
-            # fallback якщо Telegram не дає edit
             await message.answer_photo(
                 photo_id or DEFAULT_PHOTO,
                 caption=text,
@@ -183,11 +187,13 @@ def build_card_kb(username: str | None, page: int, total: int):
     buttons = []
 
     nav = []
-    if page > 0:
-        nav.append(InlineKeyboardButton(text="⬅️", callback_data="prev"))
 
-    if page < total - 1:
-        nav.append(InlineKeyboardButton(text="➡️", callback_data="next"))
+    if total > 1:
+        if page > 0:
+            nav.append(InlineKeyboardButton(text="⬅️", callback_data="prev"))
+
+        if page < total - 1:
+            nav.append(InlineKeyboardButton(text="➡️", callback_data="next"))
 
     if nav:
         buttons.append(nav)
