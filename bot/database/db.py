@@ -142,7 +142,11 @@ def find_by_model(brand: str, model: str):
     cursor = conn.cursor()
 
     cursor.execute("""
-        SELECT s.username, '', '', sc.photo_id
+        SELECT 
+            s.username,
+            sc.brand,
+            sc.model,
+            sc.photo_id
         FROM seller_cars sc
         JOIN sellers s ON sc.seller_id = s.id
         WHERE LOWER(sc.brand) = LOWER(%s)
@@ -153,6 +157,8 @@ def find_by_model(brand: str, model: str):
 
     cursor.close()
     conn.close()
+
+    return results
 
     return results
 
