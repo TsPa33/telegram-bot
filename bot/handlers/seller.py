@@ -105,6 +105,28 @@ async def choose_model(message: Message, state: FSMContext):
     await message.answer("📸 Надішли фото авто")
     await state.set_state(SellerStates.photo)
 
+# ================= NEW MODEL =================
+
+@router.message(SellerStates.new_model)
+async def add_new_model(message: Message, state: FSMContext):
+    model = normalize_model(message.text.strip())
+
+    if not validate_text(model):
+        await message.answer("❌ Некоректна модель")
+        return
+
+    data = await state.get_data()
+    brand = data.get("brand")
+
+    await add_model_request(
+        message.from_user.id,
+        brand,
+        model
+    )
+
+    await message.answer("📩 Заявка на модель відправлена на модерацію")
+    await state.clear()
+
 
 # ================= PHOTO =================
 
