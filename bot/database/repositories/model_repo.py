@@ -1,4 +1,4 @@
-from database.base import fetch, fetchrow
+from bot.database.base import fetch, fetchrow
 
 
 async def get_brands():
