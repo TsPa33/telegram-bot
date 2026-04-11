@@ -36,6 +36,25 @@ def init_db():
     """)
 
     cursor.execute("""
+    CREATE TABLE IF NOT EXISTS model_requests (
+        id SERIAL PRIMARY KEY,
+        user_id BIGINT,
+        brand TEXT,
+        model TEXT,
+        status TEXT DEFAULT 'pending'
+    )
+    """)
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS brand_requests (
+        id SERIAL PRIMARY KEY,
+        user_id BIGINT,
+        brand TEXT,
+        status TEXT DEFAULT 'pending'
+    )
+    """)
+
+    cursor.execute("""
     CREATE TABLE IF NOT EXISTS sellers (
         id SERIAL PRIMARY KEY,
         telegram_id BIGINT UNIQUE,
@@ -131,7 +150,6 @@ def get_model_id(brand: str, model: str):
 
     cursor.close()
     conn.close()
-
     return row[0] if row else None
 
 
@@ -192,8 +210,10 @@ def get_seller_cars(telegram_id: int):
 
     cursor.close()
     conn.close()
+    return data
 
-    # ================= REQUESTS =================
+
+# ================= REQUESTS =================
 
 def add_model_request(user_id: int, brand: str, model: str):
     conn = get_connection()
@@ -219,8 +239,9 @@ def add_brand_request(user_id: int, brand: str):
 
     cursor.close()
     conn.close()
-    
-    # ================= ADMIN =================
+
+
+# ================= ADMIN =================
 
 def add_user(data: dict):
     conn = get_connection()
@@ -244,7 +265,8 @@ def add_user(data: dict):
     cursor.close()
     conn.close()
 
-    # ================= BRAND REQUESTS =================
+
+# ================= BRAND REQUESTS =================
 
 def get_pending_brand_requests():
     conn = get_connection()
@@ -261,7 +283,6 @@ def get_pending_brand_requests():
 
     cursor.close()
     conn.close()
-
     return data
 
 
@@ -310,7 +331,6 @@ def get_pending_model_requests():
 
     cursor.close()
     conn.close()
-
     return data
 
 
@@ -345,7 +365,6 @@ def approve_model(request_id: int):
 
     cursor.close()
     conn.close()
-
     return True
 
 
@@ -361,4 +380,33 @@ def reject_model(request_id: int):
 
     cursor.close()
     conn.close()
-    return data
+
+
+# ================= EDIT =================
+
+def update_brand_request(request_id: int, new_brand: str):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        UPDATE brand_requests
+        SET brand = %s
+        WHERE id = %s
+    """, (new_brand, request_id))
+
+    cursor.close()
+    conn.close()
+
+
+def update_model_request(request_id: int, new_model: str):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        UPDATE model_requests
+        SET model = %s
+        WHERE id = %s
+    """, (new_model, request_id))
+
+    cursor.close()
+    conn.close()
