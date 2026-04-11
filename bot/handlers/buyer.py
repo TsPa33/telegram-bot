@@ -11,7 +11,11 @@ DEFAULT_PHOTO = "https://via.placeholder.com/500x300?text=NO+PHOTO"
 
 router = Router()
 
-
+@router.message(F.photo)
+async def debug_file_id(message: types.Message):
+    file_id = message.photo[-1].file_id
+    print("FILE_ID:", file_id)
+    await message.answer(f"FILE_ID:\n{file_id}")
 # ================= START FIND =================
 
 @router.message(Command("find"))
