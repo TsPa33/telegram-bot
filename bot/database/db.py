@@ -36,25 +36,6 @@ def init_db():
     """)
 
     cursor.execute("""
-    CREATE TABLE IF NOT EXISTS model_requests (
-        id SERIAL PRIMARY KEY,
-        user_id BIGINT,
-        brand TEXT,
-        model TEXT,
-        status TEXT DEFAULT 'pending'
-    )
-    """)
-
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS brand_requests (
-        id SERIAL PRIMARY KEY,
-        user_id BIGINT,
-        brand TEXT,
-        status TEXT DEFAULT 'pending'
-    )
-    """)
-
-    cursor.execute("""
     CREATE TABLE IF NOT EXISTS sellers (
         id SERIAL PRIMARY KEY,
         telegram_id BIGINT UNIQUE,
@@ -66,37 +47,12 @@ def init_db():
     CREATE TABLE IF NOT EXISTS seller_cars (
         id SERIAL PRIMARY KEY,
         seller_id INTEGER,
-        brand TEXT,
-        model TEXT,
+        model_id INTEGER,
         photo_id TEXT,
+        status TEXT DEFAULT 'active',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     """)
-
-    cursor.close()
-    conn.close()
-
-
-# ================= ADMIN =================
-
-def add_user(data: dict):
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute(
-        "INSERT INTO users (name, website, phone) VALUES (%s, %s, %s) RETURNING id",
-        (data["name"], data["website"], data["phone"])
-    )
-
-    user_id = cursor.fetchone()[0]
-
-    for brand, models in data["models"].items():
-        for model in models:
-            cursor.execute("""
-                INSERT INTO models (user_id, brand, model)
-                VALUES (%s, %s, %s)
-                ON CONFLICT (brand, model) DO NOTHING
-            """, (user_id, brand, model))
 
     cursor.close()
     conn.close()
@@ -109,12 +65,11 @@ def get_brands():
     cursor = conn.cursor()
 
     cursor.execute("SELECT DISTINCT brand FROM models ORDER BY brand")
-    brands = [row[0] for row in cursor.fetchall()]
+    data = [row[0] for row in cursor.fetchall()]
 
     cursor.close()
     conn.close()
-
-    return brands
+    return data
 
 
 def get_models_by_brand(brand: str):
@@ -122,45 +77,18 @@ def get_models_by_brand(brand: str):
     cursor = conn.cursor()
 
     cursor.execute("""
-        SELECT DISTINCT model
-        FROM models
+        SELECT model FROM models
         WHERE LOWER(brand) = LOWER(%s)
         ORDER BY model
     """, (brand,))
 
-    models = [row[0] for row in cursor.fetchall()]
+    data = [row[0] for row in cursor.fetchall()]
 
     cursor.close()
     conn.close()
+    return data
 
-    return models
 
-
-# 🔥 ВАЖЛИВО: без кривого JOIN
-def find_by_model(brand: str, model: str):
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT 
-            s.username,
-            sc.brand,
-            sc.model,
-            sc.photo_id
-        FROM seller_cars sc
-        JOIN sellers s ON sc.seller_id = s.id
-        WHERE LOWER(sc.brand) = LOWER(%s)
-        AND LOWER(sc.model) = LOWER(%s)
-    """, (brand, model))
-
-    results = cursor.fetchall()
-
-    cursor.close()
-    conn.close()
-
-    return results
-
-    return results
 def find_cars(brand: str, model: str):
     conn = get_connection()
     cursor = conn.cursor()
@@ -180,38 +108,21 @@ def find_cars(brand: str, model: str):
         LIMIT 10
     """, (brand, model))
 
-    results = cursor.fetchall()
+    data = cursor.fetchall()
 
     cursor.close()
     conn.close()
+    return data
 
-    return results
 
-# ================= MODEL HELPERS =================
-
-def model_exists(brand: str, model: str):
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute(
-        "SELECT 1 FROM models WHERE LOWER(brand)=LOWER(%s) AND LOWER(model)=LOWER(%s)",
-        (brand, model)
-    )
-
-    exists = cursor.fetchone() is not None
-
-    cursor.close()
-    conn.close()
-
-    return exists
+# ================= HELPERS =================
 
 def get_model_id(brand: str, model: str):
     conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
-        SELECT id
-        FROM models
+        SELECT id FROM models
         WHERE LOWER(brand)=LOWER(%s)
         AND LOWER(model)=LOWER(%s)
     """, (brand, model))
@@ -222,152 +133,10 @@ def get_model_id(brand: str, model: str):
     conn.close()
 
     return row[0] if row else None
-    
-def add_model_request(user_id: int, brand: str, model: str):
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        INSERT INTO model_requests (user_id, brand, model)
-        VALUES (%s, %s, %s)
-    """, (user_id, brand, model))
-
-    cursor.close()
-    conn.close()
 
 
-# ================= BRAND REQUESTS =================
-
-def add_brand_request(user_id: int, brand: str):
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute(
-        "INSERT INTO brand_requests (user_id, brand) VALUES (%s, %s)",
-        (user_id, brand)
-    )
-
-    cursor.close()
-    conn.close()
-
-
-def get_pending_brand_requests():
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT id, user_id, brand
-        FROM brand_requests
-        WHERE status = 'pending'
-        ORDER BY id
-    """)
-
-    data = cursor.fetchall()
-
-    cursor.close()
-    conn.close()
-
-    return data
-
-
-def approve_brand(request_id: int):
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        UPDATE brand_requests
-        SET status = 'approved'
-        WHERE id = %s
-    """, (request_id,))
-
-    cursor.close()
-    conn.close()
-
-    return True
-
-
-def reject_brand(request_id: int):
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        UPDATE brand_requests
-        SET status = 'rejected'
-        WHERE id = %s
-    """, (request_id,))
-
-    cursor.close()
-    conn.close()
-
-
-# ================= MODEL REQUESTS =================
-
-def get_pending_model_requests():
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT id, user_id, brand, model
-        FROM model_requests
-        WHERE status = 'pending'
-        ORDER BY id
-    """)
-
-    requests = cursor.fetchall()
-
-    cursor.close()
-    conn.close()
-
-    return requests
-
-
-def approve_model(request_id: int):
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT user_id, brand, model
-        FROM model_requests
-        WHERE id = %s
-    """, (request_id,))
-
-    row = cursor.fetchone()
-
-    if not row:
-        return False
-
-    user_id, brand, model = row
-
-    cursor.execute("""
-        INSERT INTO models (user_id, brand, model)
-        VALUES (%s, %s, %s)
-        ON CONFLICT (brand, model) DO NOTHING
-    """, (user_id, brand, model))
-
-    cursor.execute("""
-        UPDATE model_requests
-        SET status = 'approved'
-        WHERE id = %s
-    """, (request_id,))
-
-    cursor.close()
-    conn.close()
-
-    return True
-
-
-def reject_model(request_id: int):
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        UPDATE model_requests
-        SET status = 'rejected'
-        WHERE id = %s
-    """, (request_id,))
-
-    cursor.close()
-    conn.close()
+def model_exists(brand: str, model: str):
+    return get_model_id(brand, model) is not None
 
 
 # ================= SELLERS =================
@@ -376,10 +145,7 @@ def get_or_create_seller(telegram_id: int, username: str):
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute(
-        "SELECT id FROM sellers WHERE telegram_id = %s",
-        (telegram_id,)
-    )
+    cursor.execute("SELECT id FROM sellers WHERE telegram_id=%s", (telegram_id,))
     row = cursor.fetchone()
 
     if row:
@@ -394,18 +160,17 @@ def get_or_create_seller(telegram_id: int, username: str):
 
     cursor.close()
     conn.close()
-
     return seller_id
 
 
-def add_seller_car(seller_id: int, brand: str, model: str, photo_id: str):
+def add_seller_car(seller_id: int, model_id: int, photo_id: str):
     conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
-        INSERT INTO seller_cars (seller_id, brand, model, photo_id)
-        VALUES (%s, %s, %s, %s)
-    """, (seller_id, brand, model, photo_id))
+        INSERT INTO seller_cars (seller_id, model_id, photo_id)
+        VALUES (%s, %s, %s)
+    """, (seller_id, model_id, photo_id))
 
     cursor.close()
     conn.close()
@@ -416,45 +181,15 @@ def get_seller_cars(telegram_id: int):
     cursor = conn.cursor()
 
     cursor.execute("""
-        SELECT sc.brand, sc.model
+        SELECT m.brand, m.model
         FROM seller_cars sc
         JOIN sellers s ON sc.seller_id = s.id
+        JOIN models m ON sc.model_id = m.id
         WHERE s.telegram_id = %s
     """, (telegram_id,))
 
-    cars = cursor.fetchall()
+    data = cursor.fetchall()
 
     cursor.close()
     conn.close()
-
-    return cars
-
-
-# ================= EDIT =================
-
-def update_brand_request(request_id: int, new_brand: str):
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        UPDATE brand_requests
-        SET brand = %s
-        WHERE id = %s
-    """, (new_brand, request_id))
-
-    cursor.close()
-    conn.close()
-
-
-def update_model_request(request_id: int, new_model: str):
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        UPDATE model_requests
-        SET model = %s
-        WHERE id = %s
-    """, (new_model, request_id))
-
-    cursor.close()
-    conn.close()
+    return data
