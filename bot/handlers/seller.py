@@ -19,11 +19,6 @@ from bot.database.repositories.seller_repo import (
     update_description
 )
 
-from bot.database.repositories.request_repo import (
-    add_model_request,
-    add_brand_request
-)
-
 from bot.keyboards.seller_inline import cars_list_kb, car_actions_kb
 
 from bot.states.seller import SellerStates
@@ -62,11 +57,6 @@ async def choose_brand(message: Message, state: FSMContext):
         await message.answer("🔙 Головне меню")
         return
 
-    if text == "➕ Додати новий бренд":
-        await message.answer("Введи назву бренду:")
-        await state.set_state(SellerStates.new_brand)
-        return
-
     brand = normalize_brand(text)
 
     if not validate_text(brand):
@@ -95,11 +85,6 @@ async def choose_model(message: Message, state: FSMContext):
 
     if text == "⬅️ Назад":
         await add_car_start(message, state)
-        return
-
-    if text == "➕ Додати нову модель":
-        await message.answer("Введи модель:")
-        await state.set_state(SellerStates.new_model)
         return
 
     model = normalize_model(text)
@@ -140,7 +125,16 @@ async def add_description(message: Message, state: FSMContext):
     description = message.text.strip()
 
     data = await state.get_data()
+    car_id = data.get("car_id")
 
+    # 🔥 EDIT
+    if car_id:
+        await update_description(car_id, description)
+        await message.answer("✅ Опис оновлено")
+        await state.clear()
+        return
+
+    # 🔥 CREATE
     brand = data.get("brand")
     model = data.get("model")
     photo_id = data.get("photo_id")
@@ -159,11 +153,11 @@ async def add_description(message: Message, state: FSMContext):
         description
     )
 
-    await message.answer("✅ Авто додано з описом")
+    await message.answer("✅ Авто додано")
     await state.clear()
 
 
-# ================= MY CARS =================
+# ================= MY CARS (INLINE) =================
 
 @router.message(F.text == "📋 Мої авто")
 async def my_cars(message: Message):
@@ -173,35 +167,55 @@ async def my_cars(message: Message):
         await message.answer("❌ У вас немає авто")
         return
 
-    for brand, model, desc in cars:
-        await message.answer(
-            f"🚗 {brand} {model}\n📝 {desc or 'Без опису'}"
-        )
+    await message.answer(
+        "🚗 Обери авто:",
+        reply_markup=cars_list_kb(cars)
+    )
+
+
+# ================= SELECT CAR =================
+
+@router.callback_query(F.data.startswith("car_"))
+async def select_car(callback: types.CallbackQuery):
+    car_id = int(callback.data.split("_")[1])
+
+    await callback.message.answer(
+        "⚙️ Що зробити?",
+        reply_markup=car_actions_kb(car_id)
+    )
+
+    await callback.answer()
+
+
+# ================= DELETE =================
+
+@router.callback_query(F.data.startswith("delete_"))
+async def delete_car_handler(callback: types.CallbackQuery):
+    car_id = int(callback.data.split("_")[1])
+
+    await delete_car(car_id)
+
+    await callback.message.answer("❌ Авто видалено")
+    await callback.answer()
+
+
+# ================= EDIT =================
+
+@router.callback_query(F.data.startswith("edit_"))
+async def edit_car_handler(callback: types.CallbackQuery, state: FSMContext):
+    car_id = int(callback.data.split("_")[1])
+
+    await state.update_data(car_id=car_id)
+
+    await callback.message.answer("📝 Введи новий опис:")
+    await state.set_state(SellerStates.description)
+
+    await callback.answer()
 
 
 # ================= BACK =================
 
 @router.message(F.text == "⬅️ Назад")
 async def go_back(message: Message, state: FSMContext):
-    current = await state.get_state()
-
-    if current == SellerStates.model:
-        await add_car_start(message, state)
-
-    elif current == SellerStates.photo:
-        data = await state.get_data()
-        brand = data.get("brand")
-
-        models = await get_cached_models(brand, get_models_by_brand)
-
-        keyboard = ReplyKeyboardMarkup(
-            keyboard=[[KeyboardButton(text=m)] for m in models] + [[BACK]],
-            resize_keyboard=True
-        )
-
-        await message.answer("Обери модель:", reply_markup=keyboard)
-        await state.set_state(SellerStates.model)
-
-    else:
-        await state.clear()
-        await message.answer("🔙 Головне меню")
+    await state.clear()
+    await message.answer("🔙 Головне меню")
