@@ -260,7 +260,26 @@ async def edit_car_handler(callback: types.CallbackQuery, state: FSMContext):
 
     await callback.answer()
 
+# ================= PROFILE =================
 
+@router.message(F.text == "👤 Профіль")
+async def seller_profile(message: Message):
+    seller = await get_or_create_seller(
+        message.from_user.id,
+        message.from_user.username
+    )
+
+    cars = await get_seller_cars(message.from_user.id)
+
+    text = (
+        f"👤 <b>Твій профіль</b>\n\n"
+        f"ID: {seller['id']}\n"
+        f"Username: @{seller['username'] if seller['username'] else 'немає'}\n"
+        f"🚗 Авто: {len(cars)}"
+    )
+
+    await message.answer(text, parse_mode="HTML")
+    
 # ================= BACK =================
 
 @router.message(F.text == "⬅️ Назад")
