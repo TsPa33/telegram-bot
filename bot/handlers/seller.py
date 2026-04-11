@@ -110,9 +110,36 @@ async def get_photo(message: Message, state: FSMContext):
     await message.answer("📝 Введи опис:")
 
 
+@router.message(SellerStates.photo, F.text == "⬅️ Назад")
+async def back_to_model(message: Message, state: FSMContext):
+    data = await state.get_data()
+    brand = data.get("brand")
+
+    models = await get_cached_models(brand, get_models_by_brand)
+
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text=m)] for m in models] + [[BACK]],
+        resize_keyboard=True
+    )
+
+    await state.set_state(SellerStates.model)
+
+    await message.answer("🚗 Обери модель:", reply_markup=keyboard)
+
+
+@router.message(SellerStates.photo, F.photo)
+async def get_photo(message: Message, state: FSMContext):
+    photo_id = message.photo[-1].file_id
+
+    await state.update_data(photo_id=photo_id)
+    await state.set_state(SellerStates.description)
+
+    await message.answer("📝 Введи опис:")
+
+
 @router.message(SellerStates.photo)
 async def photo_error(message: Message):
-    await message.answer("❌ Надішли саме фото")
+    await message.answer("❌ Надішли саме фото або натисни '⬅️ Назад'")
 
 
 # ================= DESCRIPTION =================
