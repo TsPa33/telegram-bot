@@ -161,7 +161,31 @@ def find_by_model(brand: str, model: str):
     return results
 
     return results
+def find_cars(brand: str, model: str):
+    conn = get_connection()
+    cursor = conn.cursor()
 
+    cursor.execute("""
+        SELECT 
+            s.username,
+            m.brand,
+            m.model,
+            sc.photo_id
+        FROM seller_cars sc
+        JOIN sellers s ON sc.seller_id = s.id
+        JOIN models m ON sc.model_id = m.id
+        WHERE LOWER(m.brand) = LOWER(%s)
+        AND LOWER(m.model) = LOWER(%s)
+        AND sc.status = 'active'
+        LIMIT 10
+    """, (brand, model))
+
+    results = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+
+    return results
 
 # ================= MODEL HELPERS =================
 
