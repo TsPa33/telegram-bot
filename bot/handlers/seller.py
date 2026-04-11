@@ -62,7 +62,7 @@ async def choose_brand(message: Message, state: FSMContext):
         await message.answer("❌ Некоректна марка")
         return
 
-    models = await get_models_by_brand(brand)
+    models = await get_cached_models(brand, get_models_by_brand)
 
     if not models:
         keyboard_buttons = [[KeyboardButton(text="➕ Додати нову модель")]]
