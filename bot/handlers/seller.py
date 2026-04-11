@@ -10,7 +10,8 @@ from bot.database.db import (
     get_or_create_seller,
     add_seller_car,
     get_seller_cars,
-    add_brand_request
+    add_brand_request,
+    get_model_id
 )
 
 from bot.states.seller import SellerStates
@@ -119,7 +120,13 @@ async def add_car_photo(message: Message, state: FSMContext):
 
     seller_id = get_or_create_seller(user_id, username)
 
-    add_seller_car(seller_id, brand, model, photo_id)
+    model_id = get_model_id(brand, model)
+
+    if not model_id:
+        await message.answer("❌ Помилка: модель не знайдена")
+        return
+
+    add_seller_car(seller_id, model_id, photo_id)
 
     await message.answer(f"✅ Авто додано: {brand} {model}")
     await state.clear()
