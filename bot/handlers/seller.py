@@ -1,4 +1,4 @@
-from aiogram import Router, F
+from aiogram import Router, F, types
 from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
 from aiogram.fsm.context import FSMContext
 
@@ -14,13 +14,17 @@ from bot.database.repositories.model_repo import (
 from bot.database.repositories.seller_repo import (
     get_or_create_seller,
     add_seller_car,
-    get_seller_cars
+    get_seller_cars,
+    delete_car,
+    update_description
 )
 
 from bot.database.repositories.request_repo import (
     add_model_request,
     add_brand_request
 )
+
+from bot.keyboards.seller_inline import cars_list_kb, car_actions_kb
 
 from bot.states.seller import SellerStates
 from bot.utils.validation import validate_text, normalize_brand, normalize_model
