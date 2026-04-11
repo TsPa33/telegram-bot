@@ -59,6 +59,6 @@ async def handle_buyer(callback: CallbackQuery, state: FSMContext):
 async def handle_seller(callback: CallbackQuery, state: FSMContext):
     await callback.message.answer(
         "Меню продавця:",
-        reply_markup=seller_menu()
+        reply_markup=seller_menu_kb()
     )
     await callback.answer()
