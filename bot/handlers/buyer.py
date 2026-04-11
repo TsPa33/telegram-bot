@@ -137,7 +137,7 @@ async def send_card(message: types.Message, state: FSMContext, new_message=False
     brand_db = car["brand"]
     model_db = car["model"]
     photo_id = car["photo_id"]
-    description = car.get("description", "")
+    description = car.get("description") or " Продавець не надав опису"
 
     username_display = f"@{username}" if username else "не вказано"
 
