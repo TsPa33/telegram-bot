@@ -1,6 +1,7 @@
 from aiogram import Router, F
 from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
 from aiogram.fsm.context import FSMContext
+
 from bot.utils.cache import get_cached_brands, get_cached_models
 
 from bot.database.repositories.model_repo import (
@@ -26,6 +27,8 @@ from bot.utils.validation import validate_text, normalize_brand, normalize_model
 
 router = Router()
 
+BACK = KeyboardButton(text="⬅️ Назад")
+
 
 # ================= ADD CAR =================
 
@@ -33,11 +36,10 @@ router = Router()
 async def add_car_start(message: Message, state: FSMContext):
     brands = await get_cached_brands(get_brands)
 
-    keyboard_buttons = [[KeyboardButton(text=b)] for b in brands]
-    keyboard_buttons.append([KeyboardButton(text="➕ Додати новий бренд")])
-
     keyboard = ReplyKeyboardMarkup(
-        keyboard=keyboard_buttons,
+        keyboard=[[KeyboardButton(text=b)] for b in brands] +
+                 [[KeyboardButton(text="➕ Додати новий бренд")]] +
+                 [[BACK]],
         resize_keyboard=True
     )
 
@@ -50,6 +52,11 @@ async def add_car_start(message: Message, state: FSMContext):
 @router.message(SellerStates.brand)
 async def choose_brand(message: Message, state: FSMContext):
     text = message.text.strip()
+
+    if text == "⬅️ Назад":
+        await state.clear()
+        await message.answer("🔙 Головне меню")
+        return
 
     if text == "➕ Додати новий бренд":
         await message.answer("Введи назву нового бренду:")
@@ -64,19 +71,14 @@ async def choose_brand(message: Message, state: FSMContext):
 
     models = await get_cached_models(brand, get_models_by_brand)
 
-    if not models:
-        keyboard_buttons = [[KeyboardButton(text="➕ Додати нову модель")]]
-    else:
-        keyboard_buttons = [[KeyboardButton(text=m)] for m in models]
-        keyboard_buttons.append([KeyboardButton(text="➕ Додати нову модель")])
-
     keyboard = ReplyKeyboardMarkup(
-        keyboard=keyboard_buttons,
+        keyboard=[[KeyboardButton(text=m)] for m in models] +
+                 [[KeyboardButton(text="➕ Додати нову модель")]] +
+                 [[BACK]],
         resize_keyboard=True
     )
 
     await state.update_data(brand=brand)
-
     await message.answer("Обери модель:", reply_markup=keyboard)
     await state.set_state(SellerStates.model)
 
@@ -86,6 +88,10 @@ async def choose_brand(message: Message, state: FSMContext):
 @router.message(SellerStates.model)
 async def choose_model(message: Message, state: FSMContext):
     text = message.text.strip()
+
+    if text == "⬅️ Назад":
+        await add_car_start(message, state)
+        return
 
     if text == "➕ Додати нову модель":
         await message.answer("Введи назву нової моделі:")
@@ -121,15 +127,15 @@ async def add_car_photo(message: Message, state: FSMContext):
     brand = data.get("brand")
     model = data.get("model")
 
-    user_id = message.from_user.id
-    username = message.from_user.username
-
-    seller = await get_or_create_seller(user_id, username)
+    seller = await get_or_create_seller(
+        message.from_user.id,
+        message.from_user.username
+    )
 
     model_id = await get_model_id(brand, model)
 
     if not model_id:
-        await message.answer("❌ Помилка: модель не знайдена")
+        await message.answer("❌ Помилка")
         return
 
     await add_seller_car(seller["id"], model_id, photo_id)
@@ -138,80 +144,36 @@ async def add_car_photo(message: Message, state: FSMContext):
     await state.clear()
 
 
-# ❗ якщо не фото
 @router.message(SellerStates.photo)
 async def wrong_photo(message: Message):
-    await message.answer("❌ Будь ласка, надішли саме фото")
+    if message.text == "⬅️ Назад":
+        data = await message.bot.get("state_data", {})
+    await message.answer("❌ Надішли фото")
 
 
-# ================= NEW MODEL =================
+# ================= BACK HANDLER =================
 
-@router.message(SellerStates.new_model)
-async def add_new_model(message: Message, state: FSMContext):
-    model = normalize_model(message.text)
+@router.message(F.text == "⬅️ Назад")
+async def go_back_seller(message: Message, state: FSMContext):
+    current = await state.get_state()
 
-    if not validate_text(model):
-        await message.answer("❌ Некоректна назва моделі")
-        return
+    if current == SellerStates.model:
+        await add_car_start(message, state)
 
-    data = await state.get_data()
-    brand = data.get("brand")
-    user_id = message.from_user.id
+    elif current == SellerStates.photo:
+        data = await state.get_data()
+        brand = data.get("brand")
 
-    if await model_exists(brand, model):
-        await message.answer("❗ Така модель вже існує")
+        models = await get_cached_models(brand, get_models_by_brand)
+
+        keyboard = ReplyKeyboardMarkup(
+            keyboard=[[KeyboardButton(text=m)] for m in models] + [[BACK]],
+            resize_keyboard=True
+        )
+
+        await message.answer("Обери модель:", reply_markup=keyboard)
+        await state.set_state(SellerStates.model)
+
+    else:
         await state.clear()
-        return
-
-    await add_model_request(user_id, brand, model)
-
-    await message.answer("⏳ Модель відправлена на модерацію")
-    await state.clear()
-
-
-# ================= NEW BRAND =================
-
-@router.message(SellerStates.new_brand)
-async def add_new_brand(message: Message, state: FSMContext):
-    brand = normalize_brand(message.text)
-
-    if not validate_text(brand):
-        await message.answer("❌ Некоректна назва бренду")
-        return
-
-    user_id = message.from_user.id
-
-    await add_brand_request(user_id, brand)
-
-    await state.update_data(brand=brand)
-
-    keyboard = ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text="➕ Додати нову модель")]],
-        resize_keyboard=True
-    )
-
-    await message.answer(
-        "⏳ Бренд відправлено на модерацію\n"
-        "Ти можеш одразу додати модель:",
-        reply_markup=keyboard
-    )
-
-    await state.set_state(SellerStates.model)
-
-
-# ================= MY CARS =================
-
-@router.message(F.text == "📋 Мої авто")
-async def my_cars(message: Message):
-    cars = await get_seller_cars(message.from_user.id)
-
-    if not cars:
-        await message.answer("❌ У вас немає авто")
-        return
-
-    text = "🚗 Ваші авто:\n\n"
-
-    for brand, model in cars:
-        text += f"{brand} {model}\n"
-
-    await message.answer(text)
+        await message.answer("🔙 Головне меню")
