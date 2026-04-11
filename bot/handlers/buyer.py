@@ -3,7 +3,7 @@ from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 
-from bot.database.db import get_brands, get_models_by_brand, find_by_model
+from bot.database.db import get_brands, get_models_by_brand, find_cars
 from bot.states.buyer_states import Buyer
 from bot.utils.validation import normalize
 
@@ -66,7 +66,7 @@ async def choose_model(message: types.Message, state: FSMContext):
     data = await state.get_data()
     brand = data.get("brand")
 
-    results = find_by_model(brand, model)
+    results = find_cars(brand, model)
 
     if not results:
         await message.answer("❌ Немає оголошень по цьому авто")
@@ -87,10 +87,12 @@ async def choose_model(message: types.Message, state: FSMContext):
 
     # 🔥 ВАЖЛИВИЙ БЛОК
     for username, brand_db, model_db, photo_id in results:
-        text = (
-            f"🚗 {brand_db} {model_db}\n\n"
-            f"👤 Продавець: @{username}"
-        )
+    username_display = f"@{username}" if username else "без username"
+
+    text = (
+        f"🚗 {brand_db} {model_db}\n\n"
+        f"👤 Продавець: {username_display}"
+    )
 
         if photo_id:
             await message.answer_photo(photo_id, caption=text)
