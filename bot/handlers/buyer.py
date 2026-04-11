@@ -89,13 +89,17 @@ async def choose_model(message: types.Message, state: FSMContext):
     text = ""
 
     for name, website, phone, photo_id in results:
-        text += (
-            f"🚗 {brand} {model}\n\n"
-            f"🏢 {name}\n"
-            f"🌐 {website}\n"
-            f"📞 {phone}\n\n"
-            f"━━━━━━━━━━━━\n\n"
-        )
+    text = (
+        f"🚗 {brand} {model}\n\n"
+        f"🏢 {name}\n"
+        f"🌐 {website}\n"
+        f"📞 {phone}"
+    )
+
+    if photo_id:
+        await message.answer_photo(photo_id, caption=text)
+    else:
+        await message.answer(text)
 
     # ✅ відправка результату
     await message.answer(text)
