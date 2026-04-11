@@ -43,7 +43,7 @@ async def add_car_start(message: Message, state: FSMContext):
         resize_keyboard=True
     )
 
-    await message.answer("Обери марку авто:", reply_markup=keyboard)
+    await message.answer("🚗 Обери марку авто:", reply_markup=keyboard)
     await state.set_state(SellerStates.brand)
 
 
@@ -59,7 +59,7 @@ async def choose_brand(message: Message, state: FSMContext):
         return
 
     if text == "➕ Додати новий бренд":
-        await message.answer("Введи назву нового бренду:")
+        await message.answer("Введи назву бренду:")
         await state.set_state(SellerStates.new_brand)
         return
 
@@ -79,7 +79,7 @@ async def choose_brand(message: Message, state: FSMContext):
     )
 
     await state.update_data(brand=brand)
-    await message.answer("Обери модель:", reply_markup=keyboard)
+    await message.answer("🚘 Обери модель:", reply_markup=keyboard)
     await state.set_state(SellerStates.model)
 
 
@@ -94,7 +94,7 @@ async def choose_model(message: Message, state: FSMContext):
         return
 
     if text == "➕ Додати нову модель":
-        await message.answer("Введи назву нової моделі:")
+        await message.answer("Введи модель:")
         await state.set_state(SellerStates.new_model)
         return
 
@@ -120,12 +120,26 @@ async def choose_model(message: Message, state: FSMContext):
 # ================= PHOTO =================
 
 @router.message(SellerStates.photo, F.photo)
-async def add_car_photo(message: Message, state: FSMContext):
+async def add_photo(message: Message, state: FSMContext):
     photo_id = message.photo[-1].file_id
 
+    await state.update_data(photo_id=photo_id)
+
+    await message.answer("📝 Додай опис авто:")
+    await state.set_state(SellerStates.description)
+
+
+# ================= DESCRIPTION =================
+
+@router.message(SellerStates.description)
+async def add_description(message: Message, state: FSMContext):
+    description = message.text.strip()
+
     data = await state.get_data()
+
     brand = data.get("brand")
     model = data.get("model")
+    photo_id = data.get("photo_id")
 
     seller = await get_or_create_seller(
         message.from_user.id,
@@ -134,27 +148,37 @@ async def add_car_photo(message: Message, state: FSMContext):
 
     model_id = await get_model_id(brand, model)
 
-    if not model_id:
-        await message.answer("❌ Помилка")
-        return
+    await add_seller_car(
+        seller["id"],
+        model_id,
+        photo_id,
+        description
+    )
 
-    await add_seller_car(seller["id"], model_id, photo_id)
-
-    await message.answer(f"✅ Авто додано: {brand} {model}")
+    await message.answer("✅ Авто додано з описом")
     await state.clear()
 
 
-@router.message(SellerStates.photo)
-async def wrong_photo(message: Message):
-    if message.text == "⬅️ Назад":
-        data = await message.bot.get("state_data", {})
-    await message.answer("❌ Надішли фото")
+# ================= MY CARS =================
+
+@router.message(F.text == "📋 Мої авто")
+async def my_cars(message: Message):
+    cars = await get_seller_cars(message.from_user.id)
+
+    if not cars:
+        await message.answer("❌ У вас немає авто")
+        return
+
+    for brand, model, desc in cars:
+        await message.answer(
+            f"🚗 {brand} {model}\n📝 {desc or 'Без опису'}"
+        )
 
 
-# ================= BACK HANDLER =================
+# ================= BACK =================
 
 @router.message(F.text == "⬅️ Назад")
-async def go_back_seller(message: Message, state: FSMContext):
+async def go_back(message: Message, state: FSMContext):
     current = await state.get_state()
 
     if current == SellerStates.model:
