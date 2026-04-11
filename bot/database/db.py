@@ -243,4 +243,122 @@ def add_user(data: dict):
 
     cursor.close()
     conn.close()
+
+    # ================= BRAND REQUESTS =================
+
+def get_pending_brand_requests():
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT id, user_id, brand
+        FROM brand_requests
+        WHERE status = 'pending'
+        ORDER BY id
+    """)
+
+    data = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+
+    return data
+
+
+def approve_brand(request_id: int):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        UPDATE brand_requests
+        SET status = 'approved'
+        WHERE id = %s
+    """, (request_id,))
+
+    cursor.close()
+    conn.close()
+
+
+def reject_brand(request_id: int):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        UPDATE brand_requests
+        SET status = 'rejected'
+        WHERE id = %s
+    """, (request_id,))
+
+    cursor.close()
+    conn.close()
+
+
+# ================= MODEL REQUESTS =================
+
+def get_pending_model_requests():
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT id, user_id, brand, model
+        FROM model_requests
+        WHERE status = 'pending'
+        ORDER BY id
+    """)
+
+    data = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+
+    return data
+
+
+def approve_model(request_id: int):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT user_id, brand, model
+        FROM model_requests
+        WHERE id = %s
+    """, (request_id,))
+
+    row = cursor.fetchone()
+
+    if not row:
+        return False
+
+    user_id, brand, model = row
+
+    cursor.execute("""
+        INSERT INTO models (user_id, brand, model)
+        VALUES (%s, %s, %s)
+        ON CONFLICT (brand, model) DO NOTHING
+    """, (user_id, brand, model))
+
+    cursor.execute("""
+        UPDATE model_requests
+        SET status = 'approved'
+        WHERE id = %s
+    """, (request_id,))
+
+    cursor.close()
+    conn.close()
+
+    return True
+
+
+def reject_model(request_id: int):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        UPDATE model_requests
+        SET status = 'rejected'
+        WHERE id = %s
+    """, (request_id,))
+
+    cursor.close()
+    conn.close()
     return data
