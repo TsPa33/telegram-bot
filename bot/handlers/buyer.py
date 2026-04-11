@@ -8,6 +8,7 @@ from bot.database.repositories.car_repo import find_cars
 
 from bot.states.buyer_states import Buyer
 from bot.utils.validation import normalize_brand, normalize_model
+from bot.utils.cache import get_cached_brands, get_cached_models
 
 router = Router()
 
@@ -18,7 +19,7 @@ DEFAULT_PHOTO = "AgACAgIAAxkBAAIJ6WnZ7zNsTF4dV6Fxbqsye8iRF224AAJfEWsbFN_RSsup93h
 
 @router.message(Command("find"))
 async def start_buyer(message: types.Message, state: FSMContext):
-    brands = await get_brands()
+    models = await get_cached_models(brand, get_models_by_brand)
 
     if not brands:
         await message.answer("❌ Брендів немає")
