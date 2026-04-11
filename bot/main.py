@@ -6,7 +6,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 
 from bot.config import BOT_TOKEN
 from bot.handlers import start, seller, buyer, admin
-from bot.database.db import init_db
+from bot.database.pool import init_pool
 
 logging.basicConfig(level=logging.INFO)
 
@@ -14,8 +14,6 @@ logging.basicConfig(level=logging.INFO)
 async def run_bot():
     if not BOT_TOKEN:
         raise ValueError("BOT_TOKEN is not set")
-
-    from bot.database.pool import init_pool
 
     await init_pool()
 
