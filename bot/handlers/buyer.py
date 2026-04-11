@@ -1,26 +1,24 @@
 from aiogram import Router, types, F
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 
-from bot.database.db import get_brands, get_models_by_brand, find_cars
+from bot.database.repositories.model_repo import get_brands, get_models_by_brand
+from bot.database.repositories.car_repo import find_cars
+
 from bot.states.buyer_states import Buyer
 from bot.utils.validation import normalize_brand, normalize_model
 
-DEFAULT_PHOTO = "AgACAgIAAxkBAAIJ6WnZ7zNsTF4dV6Fxbqsye8iRF224AAJfEWsbFN_RSsup93hjz4uMAQADAgADeAADOwQ"
-
 router = Router()
 
-# ================= START FIND =================
+DEFAULT_PHOTO = "AgACAgIAAxkBAAIJ6WnZ7zNsTF4dV6Fxbqsye8iRF224AAJfEWsbFN_RSsup93hjz4uMAQADAgADeAADOwQ"
+
+
+# ================= START =================
 
 @router.message(Command("find"))
 async def start_buyer(message: types.Message, state: FSMContext):
-    await message.answer(
-        "Оновлюю меню...",
-        reply_markup=ReplyKeyboardRemove()
-    )
-
-    brands = get_brands()
+    brands = await get_brands()
 
     if not brands:
         await message.answer("❌ Брендів немає")
@@ -41,7 +39,7 @@ async def start_buyer(message: types.Message, state: FSMContext):
 async def choose_brand(message: types.Message, state: FSMContext):
     brand = normalize_brand(message.text)
 
-    models = get_models_by_brand(brand)
+    models = await get_models_by_brand(brand)
 
     if not models:
         await message.answer("❌ Моделей немає")
@@ -67,62 +65,59 @@ async def choose_model(message: types.Message, state: FSMContext):
     data = await state.get_data()
     brand = data.get("brand")
 
-    results = find_cars(brand, model)
+    await state.update_data(model=model, page=0)
+
+    await send_results(message, state)
+
+
+# ================= RESULTS =================
+
+async def send_results(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+
+    brand = data.get("brand")
+    model = data.get("model")
+    page = data.get("page", 0)
+
+    results = await find_cars(brand, model, page)
 
     if not results:
-        await message.answer("❌ Немає оголошень по цьому авто")
-
-        brands = get_brands()
-        keyboard = ReplyKeyboardMarkup(
-            keyboard=[[KeyboardButton(text=b)] for b in brands],
-            resize_keyboard=True
-        )
-
-        await message.answer("Обери бренд ще раз:", reply_markup=keyboard)
-        await state.set_state(Buyer.brand)
+        await message.answer("❌ Більше немає результатів")
         return
 
-    # 🔥 ВАЖЛИВИЙ БЛОК
-    for username, brand_db, model_db, photo_id in results:
+    for row in results:
+        username = row["username"]
+        brand_db = row["brand"]
+        model_db = row["model"]
+        photo_id = row["photo_id"]
+
         username_display = f"@{username}" if username else "без username"
 
         text = (
             f"🚗 {brand_db} {model_db}\n\n"
             f"👤 Продавець: {username_display}"
-    )
+        )
 
-    # 🔥 ГОЛОВНЕ — fallback на заглушку
         if photo_id:
             await message.answer_photo(photo_id, caption=text)
         else:
             await message.answer_photo(DEFAULT_PHOTO, caption=text)
 
-    # кнопка повторного пошуку
-    keyboard = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="🔁 Знайти ще авто")]
-        ],
-        resize_keyboard=True
-    )
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="➡️ Ще", callback_data="next_page")]
+    ])
 
-    await message.answer("Що далі?", reply_markup=keyboard)
-    await state.clear()
+    await message.answer("Показати ще?", reply_markup=keyboard)
 
 
-# ================= RESTART =================
+# ================= PAGINATION =================
 
-@router.message(F.text == "🔁 Знайти ще авто")
-async def restart_search(message: types.Message, state: FSMContext):
-    brands = get_brands()
+@router.callback_query(F.data == "next_page")
+async def next_page(callback: types.CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    page = data.get("page", 0) + 1
 
-    if not brands:
-        await message.answer("❌ Брендів немає")
-        return
+    await state.update_data(page=page)
 
-    keyboard = ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text=b)] for b in brands],
-        resize_keyboard=True
-    )
-
-    await message.answer("Обери бренд:", reply_markup=keyboard)
-    await state.set_state(Buyer.brand)
+    await callback.answer()
+    await send_results(callback.message, state)
