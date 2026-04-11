@@ -19,7 +19,7 @@ DEFAULT_PHOTO = "AgACAgIAAxkBAAIJ6WnZ7zNsTF4dV6Fxbqsye8iRF224AAJfEWsbFN_RSsup93h
 
 @router.message(Command("find"))
 async def start_buyer(message: types.Message, state: FSMContext):
-    models = await get_cached_models(brand, get_models_by_brand)
+    brands = await get_cached_brands(get_brands)
 
     if not brands:
         await message.answer("❌ Брендів немає")
