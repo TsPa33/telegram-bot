@@ -31,7 +31,7 @@ router = Router()
 
 @router.message(F.text == "➕ Додати авто")
 async def add_car_start(message: Message, state: FSMContext):
-    brands = await get_brands()
+    brands = await get_cached_brands(get_brands)
 
     keyboard_buttons = [[KeyboardButton(text=b)] for b in brands]
     keyboard_buttons.append([KeyboardButton(text="➕ Додати новий бренд")])
