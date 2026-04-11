@@ -1,7 +1,7 @@
 from bot.database.base import fetch, fetchrow
 
 
-DEFAULT_LIMIT = 1  # для swipe UX
+DEFAULT_LIMIT = 1
 
 
 # ================= FIND CARS =================
@@ -45,3 +45,19 @@ async def count_cars(brand: str, model: str) -> int:
     """, brand, model)
 
     return row["total"] if row else 0
+
+
+# ================= SELLER CARS =================
+
+async def get_seller_cars(telegram_id: int):
+    return await fetch("""
+        SELECT 
+            sc.id,
+            m.brand,
+            m.model
+        FROM seller_cars sc
+        JOIN sellers s ON sc.seller_id = s.id
+        JOIN models m ON sc.model_id = m.id
+        WHERE s.telegram_id = $1
+        ORDER BY sc.id DESC
+    """, telegram_id)
