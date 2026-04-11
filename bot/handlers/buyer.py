@@ -88,7 +88,7 @@ async def choose_model(message: types.Message, state: FSMContext):
     # ✅ формуємо красивий текст
     text = ""
 
-    for name, website, phone in results:
+    for name, website, phone, photo_id in results:
         text += (
             f"🚗 {brand} {model}\n\n"
             f"🏢 {name}\n"
