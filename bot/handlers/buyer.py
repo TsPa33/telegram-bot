@@ -90,12 +90,13 @@ async def choose_model(message: types.Message, state: FSMContext):
         text = (
             f"🚗 {brand_db} {model_db}\n\n"
             f"👤 Продавець: {username_display}"
-        )
+    )
 
+    # 🔥 ГОЛОВНЕ — fallback на заглушку
         if photo_id:
             await message.answer_photo(photo_id, caption=text)
         else:
-            await message.answer(text)
+            await message.answer_photo(DEFAULT_PHOTO, caption=text)
 
     # кнопка повторного пошуку
     keyboard = ReplyKeyboardMarkup(
