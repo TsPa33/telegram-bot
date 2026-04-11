@@ -1,6 +1,28 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 
+# ================= BUYER =================
+
+def car_card_kb(username: str | None):
+    buttons = []
+
+    if username:
+        buttons.append([
+            InlineKeyboardButton(
+                text="📩 Написати",
+                url=f"https://t.me/{username}"
+            )
+        ])
+
+    buttons.append([
+        InlineKeyboardButton(text="➡️ Далі", callback_data="next_page")
+    ])
+
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+# ================= SELLER =================
+
 def cars_list_kb(cars):
     return InlineKeyboardMarkup(
         inline_keyboard=[
