@@ -87,17 +87,13 @@ async def choose_model(message: types.Message, state: FSMContext):
 
     # 🔥 ВАЖЛИВИЙ БЛОК
     for username, brand_db, model_db, photo_id in results:
-    username_display = f"@{username}" if username else "без username"
+        username_display = f"@{username}" if username else "без username"
 
-    text = (
-        f"🚗 {brand_db} {model_db}\n\n"
-        f"👤 Продавець: {username_display}"
-    )
+        text = (
+            f"🚗 {brand_db} {model_db}\n\n"
+            f"👤 Продавець: {username_display}"
+        )
 
-    if photo_id:
-        await message.answer_photo(photo_id, caption=text)
-    else:
-        await message.answer(text)
         if photo_id:
             await message.answer_photo(photo_id, caption=text)
         else:
