@@ -12,6 +12,8 @@ from bot.utils.cache import get_cached_brands, get_cached_models
 
 router = Router()
 
+BACK = KeyboardButton(text="⬅️ Назад")
+
 DEFAULT_PHOTO = "AgACAgIAAxkBAAIJ6WnZ7zNsTF4dV6Fxbqsye8iRF224AAJfEWsbFN_RSsup93hjz4uMAQADAgADeAADOwQ"
 
 
@@ -21,12 +23,8 @@ DEFAULT_PHOTO = "AgACAgIAAxkBAAIJ6WnZ7zNsTF4dV6Fxbqsye8iRF224AAJfEWsbFN_RSsup93h
 async def start_buyer(message: types.Message, state: FSMContext):
     brands = await get_cached_brands(get_brands)
 
-    if not brands:
-        await message.answer("❌ Брендів немає")
-        return
-
     keyboard = ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text=b)] for b in brands],
+        keyboard=[[KeyboardButton(text=b)] for b in brands] + [[BACK]],
         resize_keyboard=True
     )
 
@@ -38,21 +36,23 @@ async def start_buyer(message: types.Message, state: FSMContext):
 
 @router.message(Buyer.brand)
 async def choose_brand(message: types.Message, state: FSMContext):
-    brand = normalize_brand(message.text)
+    text = message.text.strip()
 
-    models = await get_models_by_brand(brand)
-
-    if not models:
-        await message.answer("❌ Моделей немає")
+    if text == "⬅️ Назад":
+        await state.clear()
+        await message.answer("🔙 Головне меню")
         return
 
+    brand = normalize_brand(text)
+
+    models = await get_cached_models(brand, get_models_by_brand)
+
     keyboard = ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text=m)] for m in models],
+        keyboard=[[KeyboardButton(text=m)] for m in models] + [[BACK]],
         resize_keyboard=True
     )
 
     await state.update_data(brand=brand)
-
     await message.answer("Обери модель:", reply_markup=keyboard)
     await state.set_state(Buyer.model)
 
@@ -61,7 +61,21 @@ async def choose_brand(message: types.Message, state: FSMContext):
 
 @router.message(Buyer.model)
 async def choose_model(message: types.Message, state: FSMContext):
-    model = normalize_model(message.text)
+    text = message.text.strip()
+
+    if text == "⬅️ Назад":
+        brands = await get_cached_brands(get_brands)
+
+        keyboard = ReplyKeyboardMarkup(
+            keyboard=[[KeyboardButton(text=b)] for b in brands] + [[BACK]],
+            resize_keyboard=True
+        )
+
+        await message.answer("Обери бренд:", reply_markup=keyboard)
+        await state.set_state(Buyer.brand)
+        return
+
+    model = normalize_model(text)
 
     data = await state.get_data()
     brand = data.get("brand")
@@ -87,26 +101,16 @@ async def send_results(message: types.Message, state: FSMContext):
         return
 
     for row in results:
-        username = row["username"]
-        brand_db = row["brand"]
-        model_db = row["model"]
-        photo_id = row["photo_id"]
+        text = f"🚗 {row['brand']} {row['model']}\n👤 @{row['username'] or 'unknown'}"
 
-        username_display = f"@{username}" if username else "без username"
-
-        text = (
-            f"🚗 {brand_db} {model_db}\n\n"
-            f"👤 Продавець: {username_display}"
-        )
-
-        if photo_id:
-            await message.answer_photo(photo_id, caption=text)
+        if row["photo_id"]:
+            await message.answer_photo(row["photo_id"], caption=text)
         else:
             await message.answer_photo(DEFAULT_PHOTO, caption=text)
 
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="➡️ Ще", callback_data="next_page")]
-    ])
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[[InlineKeyboardButton(text="➡️ Ще", callback_data="next_page")]]
+    )
 
     await message.answer("Показати ще?", reply_markup=keyboard)
 
