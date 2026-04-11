@@ -60,7 +60,7 @@ async def choose_brand(message: Message, state: FSMContext):
 
     if text == "⬅️ Назад":
         await state.clear()
-        await message.answer("🔙 Головне меню")
+        await message.answer("🏠 Головне меню", reply_markup=seller_menu_kb())
         return
 
     if text == "➕ Додати новий бренд":
@@ -86,22 +86,6 @@ async def choose_brand(message: Message, state: FSMContext):
     await state.update_data(brand=brand)
     await message.answer("🚘 Обери модель:", reply_markup=keyboard)
     await state.set_state(SellerStates.model)
-
-
-# ================= NEW BRAND =================
-
-@router.message(SellerStates.new_brand)
-async def add_new_brand(message: Message, state: FSMContext):
-    brand = normalize_brand(message.text.strip())
-
-    if not validate_text(brand):
-        await message.answer("❌ Некоректна марка")
-        return
-
-    await add_brand_request(message.from_user.id, brand)
-
-    await message.answer("📩 Заявка на бренд відправлена")
-    await state.clear()
 
 
 # ================= MODEL =================
@@ -138,25 +122,6 @@ async def choose_model(message: Message, state: FSMContext):
     await state.set_state(SellerStates.photo)
 
 
-# ================= NEW MODEL =================
-
-@router.message(SellerStates.new_model)
-async def add_new_model(message: Message, state: FSMContext):
-    model = normalize_model(message.text.strip())
-
-    if not validate_text(model):
-        await message.answer("❌ Некоректна модель")
-        return
-
-    data = await state.get_data()
-    brand = data.get("brand")
-
-    await add_model_request(message.from_user.id, brand, model)
-
-    await message.answer("📩 Заявка на модель відправлена")
-    await state.clear()
-
-
 # ================= PHOTO =================
 
 @router.message(SellerStates.photo, F.photo)
@@ -182,6 +147,7 @@ async def add_description(message: Message, state: FSMContext):
         await update_description(car_id, description)
         await message.answer("✅ Опис оновлено")
         await state.clear()
+        await message.answer("🏠 Меню", reply_markup=seller_menu_kb())
         return
 
     brand = data.get("brand")
@@ -202,8 +168,13 @@ async def add_description(message: Message, state: FSMContext):
         description
     )
 
-    await message.answer("✅ Авто додано")
+    await message.answer_photo(
+        photo_id,
+        caption=f"🚗 {brand} {model}\n\n📝 {description}"
+    )
+
     await state.clear()
+    await message.answer("🏠 Меню", reply_markup=seller_menu_kb())
 
 
 # ================= MY CARS =================
@@ -221,45 +192,6 @@ async def my_cars(message: Message):
         reply_markup=cars_list_kb(cars)
     )
 
-
-# ================= SELECT =================
-
-@router.callback_query(F.data.startswith("car_"))
-async def select_car(callback: types.CallbackQuery):
-    car_id = int(callback.data.split("_")[1])
-
-    await callback.message.answer(
-        "⚙️ Що зробити?",
-        reply_markup=car_actions_kb(car_id)
-    )
-
-    await callback.answer()
-
-
-# ================= DELETE =================
-
-@router.callback_query(F.data.startswith("delete_"))
-async def delete_car_handler(callback: types.CallbackQuery):
-    car_id = int(callback.data.split("_")[1])
-
-    await delete_car(car_id)
-
-    await callback.message.answer("❌ Авто видалено")
-    await callback.answer()
-
-
-# ================= EDIT =================
-
-@router.callback_query(F.data.startswith("edit_"))
-async def edit_car_handler(callback: types.CallbackQuery, state: FSMContext):
-    car_id = int(callback.data.split("_")[1])
-
-    await state.update_data(car_id=car_id)
-
-    await callback.message.answer("📝 Введи новий опис:")
-    await state.set_state(SellerStates.description)
-
-    await callback.answer()
 
 # ================= PROFILE =================
 
@@ -280,38 +212,3 @@ async def seller_profile(message: Message):
     )
 
     await message.answer(text, parse_mode="HTML")
-    
-# ================= BACK =================
-
-@router.message(F.text == "⬅️ Назад")
-async def go_back(message: Message, state: FSMContext):
-    current_state = await state.get_state()
-
-    if current_state == SellerStates.model:
-        await add_car_start(message, state)
-        return
-
-    if current_state == SellerStates.photo:
-        data = await state.get_data()
-        brand = data.get("brand")
-
-        models = await get_cached_models(brand, get_models_by_brand)
-
-        keyboard = ReplyKeyboardMarkup(
-            keyboard=[[KeyboardButton(text=m)] for m in models] +
-                     [[KeyboardButton(text="➕ Додати нову модель")]] +
-                     [[BACK]],
-            resize_keyboard=True
-        )
-
-        await message.answer("🚘 Обери модель:", reply_markup=keyboard)
-        await state.set_state(SellerStates.model)
-        return
-
-    if current_state == SellerStates.description:
-        await message.answer("📸 Надішли фото авто")
-        await state.set_state(SellerStates.photo)
-        return
-
-    await state.clear()
-    await message.answer("🔙 Головне меню")
