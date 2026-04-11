@@ -1,6 +1,15 @@
+import re
+
+
 def validate_text(text: str):
-    return text and text.strip()
+    if not text:
+        return False
+    return bool(re.match(r"^[A-Za-z0-9\s\-]{2,50}$", text.strip()))
 
 
-def normalize(text: str) -> str:
+def normalize_brand(text: str) -> str:
+    return text.strip().title()
+
+
+def normalize_model(text: str) -> str:
     return text.strip().upper()
