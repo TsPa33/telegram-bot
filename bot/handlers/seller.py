@@ -2,6 +2,7 @@ from aiogram import Router, F, types
 from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
 from aiogram.fsm.context import FSMContext
 
+from bot.keyboards.seller_menu import seller_menu_kb
 from bot.utils.cache import get_cached_brands, get_cached_models
 
 from bot.database.repositories.model_repo import (
