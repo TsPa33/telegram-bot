@@ -205,7 +205,24 @@ def model_exists(brand: str, model: str):
 
     return exists
 
+def get_model_id(brand: str, model: str):
+    conn = get_connection()
+    cursor = conn.cursor()
 
+    cursor.execute("""
+        SELECT id
+        FROM models
+        WHERE LOWER(brand)=LOWER(%s)
+        AND LOWER(model)=LOWER(%s)
+    """, (brand, model))
+
+    row = cursor.fetchone()
+
+    cursor.close()
+    conn.close()
+
+    return row[0] if row else None
+    
 def add_model_request(user_id: int, brand: str, model: str):
     conn = get_connection()
     cursor = conn.cursor()
