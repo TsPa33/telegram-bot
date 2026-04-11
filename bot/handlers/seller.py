@@ -1,5 +1,5 @@
 from aiogram import Router, F, types
-from aiogram.types import Message
+from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
 from aiogram.fsm.context import FSMContext
 
 from bot.keyboards.seller_menu import seller_menu_kb
@@ -12,10 +12,36 @@ from bot.database.repositories.seller_repo import (
 )
 
 from bot.database.repositories.car_repo import get_seller_cars
+from bot.database.repositories.model_repo import get_brands
+
+from bot.utils.cache import get_cached_brands
 
 from bot.states.seller import SellerStates
 
 router = Router()
+
+
+# ================= ADD CAR =================
+
+@router.message(F.text == "➕ Додати авто")
+async def add_car_start(message: Message, state: FSMContext):
+    brands = await get_cached_brands(get_brands)
+
+    if not brands:
+        await message.answer("❌ Брендів немає")
+        return
+
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text=b)] for b in brands],
+        resize_keyboard=True
+    )
+
+    await state.set_state(SellerStates.brand)
+
+    await message.answer(
+        "🚗 Обери бренд:",
+        reply_markup=keyboard
+    )
 
 
 # ================= PROFILE =================
@@ -29,7 +55,6 @@ async def seller_profile(message: Message):
 
     cars = await get_seller_cars(message.from_user.id)
 
-    # 🔧 FIX: безпечний доступ
     username = seller.get("username")
     username_text = f"@{username}" if username else "немає"
 
@@ -53,7 +78,6 @@ async def my_cars(message: Message):
         await message.answer("❌ У вас немає авто")
         return
 
-    # не ламаємо меню
     await message.answer("🚗 Обери авто:")
 
     await message.answer(
@@ -75,7 +99,6 @@ async def open_car(callback: types.CallbackQuery):
         reply_markup=car_actions_kb(car_id)
     )
 
-    # повертаємо меню
     await callback.message.answer(
         "🏠 Меню",
         reply_markup=seller_menu_kb()
