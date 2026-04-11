@@ -1,5 +1,20 @@
-brands_cache = None
-models_cache = {}
+import asyncio
+import time
+from typing import Any, Dict, Tuple, Optional
+
+
+# ================= CONFIG =================
+
+CACHE_TTL = 300  # 5 хвилин
+
+
+# ================= STORAGE =================
+
+brands_cache: Optional[Tuple[float, Any]] = None
+models_cache: Dict[str, Tuple[float, Any]] = {}
+
+brands_lock = asyncio.Lock()
+models_lock = asyncio.Lock()
 
 
 # ================= BRANDS =================
@@ -7,10 +22,17 @@ models_cache = {}
 async def get_cached_brands(fetch_func):
     global brands_cache
 
-    if brands_cache is None:
-        brands_cache = await fetch_func()
+    async with brands_lock:
+        if brands_cache:
+            ts, data = brands_cache
 
-    return brands_cache
+            if time.time() - ts < CACHE_TTL:
+                return data
+
+        data = await fetch_func()
+        brands_cache = (time.time(), data)
+
+        return data
 
 
 def clear_brands_cache():
@@ -25,13 +47,20 @@ async def get_cached_models(brand: str, fetch_func):
 
     key = brand.lower()
 
-    if key not in models_cache:
-        models_cache[key] = await fetch_func(brand)
+    async with models_lock:
+        if key in models_cache:
+            ts, data = models_cache[key]
 
-    return models_cache[key]
+            if time.time() - ts < CACHE_TTL:
+                return data
+
+        data = await fetch_func(brand)
+        models_cache[key] = (time.time(), data)
+
+        return data
 
 
-def clear_models_cache(brand: str | None = None):
+def clear_models_cache(brand: Optional[str] = None):
     global models_cache
 
     if brand:
