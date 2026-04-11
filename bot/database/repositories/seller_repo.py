@@ -19,12 +19,22 @@ async def add_seller_car(seller_id: int, model_id: int, photo_id: str, descripti
 
 
 async def get_seller_cars(telegram_id: int):
-    rows = await fetch("""
-        SELECT m.brand, m.model, sc.description
+    return await fetch("""
+        SELECT sc.id, m.brand, m.model, sc.description
         FROM seller_cars sc
         JOIN sellers s ON sc.seller_id = s.id
         JOIN models m ON sc.model_id = m.id
         WHERE s.telegram_id = $1
     """, telegram_id)
 
-    return [(r["brand"], r["model"], r["description"]) for r in rows]
+
+async def delete_car(car_id: int):
+    await execute("DELETE FROM seller_cars WHERE id = $1", car_id)
+
+
+async def update_description(car_id: int, description: str):
+    await execute("""
+        UPDATE seller_cars
+        SET description = $1
+        WHERE id = $2
+    """, description, car_id)
