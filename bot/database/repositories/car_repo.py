@@ -1,7 +1,12 @@
-from bot.database.base import execute, fetch
+from bot.database.base import fetch
 
 
-async def find_cars(brand: str, model: str):
+LIMIT = 5
+
+
+async def find_cars(brand: str, model: str, page: int = 0):
+    offset = page * LIMIT
+
     return await fetch("""
         SELECT 
             s.username,
@@ -14,5 +19,5 @@ async def find_cars(brand: str, model: str):
         WHERE LOWER(m.brand) = LOWER($1)
         AND LOWER(m.model) = LOWER($2)
         AND sc.status = 'active'
-        LIMIT 10
-    """, brand, model)
+        LIMIT $3 OFFSET $4
+    """, brand, model, LIMIT, offset)
