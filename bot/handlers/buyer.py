@@ -7,6 +7,8 @@ from bot.database.db import get_brands, get_models_by_brand, find_cars
 from bot.states.buyer_states import Buyer
 from bot.utils.validation import normalize_brand, normalize_model
 
+DEFAULT_PHOTO = "https://via.placeholder.com/500x300?text=NO+PHOTO"
+
 router = Router()
 
 
