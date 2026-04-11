@@ -1,4 +1,4 @@
-from .pool import pool
+from . import pool as pool_module
 
 
 async def fetch(query: str, *args):
