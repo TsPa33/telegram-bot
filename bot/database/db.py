@@ -219,4 +219,28 @@ def add_brand_request(user_id: int, brand: str):
 
     cursor.close()
     conn.close()
+    
+    # ================= ADMIN =================
+
+def add_user(data: dict):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "INSERT INTO users (name, website, phone) VALUES (%s, %s, %s) RETURNING id",
+        (data["name"], data["website"], data["phone"])
+    )
+
+    user_id = cursor.fetchone()[0]
+
+    for brand, models in data["models"].items():
+        for model in models:
+            cursor.execute("""
+                INSERT INTO models (user_id, brand, model)
+                VALUES (%s, %s, %s)
+                ON CONFLICT (brand, model) DO NOTHING
+            """, (user_id, brand, model))
+
+    cursor.close()
+    conn.close()
     return data
