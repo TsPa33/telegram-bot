@@ -15,7 +15,9 @@ async def run_bot():
     if not BOT_TOKEN:
         raise ValueError("BOT_TOKEN is not set")
 
-    init_db()
+    from bot.database.pool import init_pool
+
+    await init_pool()
 
     dp = Dispatcher(storage=MemoryStorage())
     bot = Bot(token=BOT_TOKEN)
