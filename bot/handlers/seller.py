@@ -55,7 +55,7 @@ async def select_brand(message: Message, state: FSMContext):
 
     brand = message.text
 
-    models = await get_cached_models(get_models_by_brand, brand)
+    models = await get_cached_models(brand)
 
     if not models:
         await message.answer("❌ Моделей не знайдено")
