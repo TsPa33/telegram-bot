@@ -11,8 +11,7 @@ from bot.keyboards.admin_inline import (
 
 from bot.states.admin_states import AddUser, EditBrand, EditModel
 
-from bot.database.db import (
-    add_user,
+from bot.database.repositories.admin_repo import (
     get_pending_brand_requests,
     get_pending_model_requests,
     approve_brand,
@@ -22,6 +21,8 @@ from bot.database.db import (
     update_brand_request,
     update_model_request
 )
+
+from bot.database.base import execute
 
 router = Router()
 
@@ -43,21 +44,21 @@ async def show_requests(message: types.Message):
     if message.from_user.id not in ADMINS:
         return
 
-    brand_requests = get_pending_brand_requests()
-    model_requests = get_pending_model_requests()
+    brand_requests = await get_pending_brand_requests()
+    model_requests = await get_pending_model_requests()
 
     if brand_requests:
-        for req_id, user_id, brand in brand_requests:
+        for r in brand_requests:
             await message.answer(
-                f"🆕 Новий бренд\n\n👤 User: {user_id}\n🏷 Бренд: {brand}",
-                reply_markup=brand_request_kb(req_id)
+                f"🆕 Новий бренд\n\n👤 User: {r['user_id']}\n🏷 Бренд: {r['brand']}",
+                reply_markup=brand_request_kb(r["id"])
             )
 
     if model_requests:
-        for req_id, user_id, brand, model in model_requests:
+        for r in model_requests:
             await message.answer(
-                f"🆕 Нова модель\n\n👤 User: {user_id}\n🚗 {brand} {model}",
-                reply_markup=model_request_kb(req_id)
+                f"🆕 Нова модель\n\n👤 User: {r['user_id']}\n🚗 {r['brand']} {r['model']}",
+                reply_markup=model_request_kb(r["id"])
             )
 
     if not brand_requests and not model_requests:
@@ -73,22 +74,17 @@ async def approve_brand_cb(callback: CallbackQuery, bot: Bot):
 
     request_id = int(callback.data.split("_")[-1])
 
-    # беремо дані ДО approve
-    brand_requests = get_pending_brand_requests()
+    requests = await get_pending_brand_requests()
+    req = next((r for r in requests if r["id"] == request_id), None)
 
-    user_id = None
-    brand = None
+    await approve_brand(request_id)
 
-    for r in brand_requests:
-        if r[0] == request_id:
-            _, user_id, brand = r
-            break
-
-    approve_brand(request_id)
-
-    if user_id:
+    if req:
         try:
-            await bot.send_message(user_id, f"✅ Ваш бренд підтверджено: {brand}")
+            await bot.send_message(
+                req["user_id"],
+                f"✅ Ваш бренд підтверджено: {req['brand']}"
+            )
         except:
             pass
 
@@ -103,21 +99,17 @@ async def reject_brand_cb(callback: CallbackQuery, bot: Bot):
 
     request_id = int(callback.data.split("_")[-1])
 
-    brand_requests = get_pending_brand_requests()
+    requests = await get_pending_brand_requests()
+    req = next((r for r in requests if r["id"] == request_id), None)
 
-    user_id = None
-    brand = None
+    await reject_brand(request_id)
 
-    for r in brand_requests:
-        if r[0] == request_id:
-            _, user_id, brand = r
-            break
-
-    reject_brand(request_id)
-
-    if user_id:
+    if req:
         try:
-            await bot.send_message(user_id, f"❌ Ваш бренд відхилено: {brand}")
+            await bot.send_message(
+                req["user_id"],
+                f"❌ Ваш бренд відхилено: {req['brand']}"
+            )
         except:
             pass
 
@@ -148,11 +140,10 @@ async def edit_brand_save(message: types.Message, state: FSMContext):
     data = await state.get_data()
     request_id = data.get("request_id")
 
-    update_brand_request(request_id, new_brand)
-    approve_brand(request_id)
+    await update_brand_request(request_id, new_brand)
+    await approve_brand(request_id)
 
     await message.answer(f"✅ Бренд виправлено та підтверджено: {new_brand}")
-
     await state.clear()
 
 
@@ -165,24 +156,16 @@ async def approve_model_cb(callback: CallbackQuery, bot: Bot):
 
     request_id = int(callback.data.split("_")[-1])
 
-    model_requests = get_pending_model_requests()
+    requests = await get_pending_model_requests()
+    req = next((r for r in requests if r["id"] == request_id), None)
 
-    user_id = None
-    brand = None
-    model = None
+    result = await approve_model(request_id)
 
-    for r in model_requests:
-        if r[0] == request_id:
-            _, user_id, brand, model = r
-            break
-
-    approve_model(request_id)
-
-    if user_id:
+    if req:
         try:
             await bot.send_message(
-                user_id,
-                f"✅ Вашу модель підтверджено:\n{brand} {model}"
+                req["user_id"],
+                f"✅ Вашу модель підтверджено:\n{req['brand']} {req['model']}"
             )
         except:
             pass
@@ -198,24 +181,16 @@ async def reject_model_cb(callback: CallbackQuery, bot: Bot):
 
     request_id = int(callback.data.split("_")[-1])
 
-    model_requests = get_pending_model_requests()
+    requests = await get_pending_model_requests()
+    req = next((r for r in requests if r["id"] == request_id), None)
 
-    user_id = None
-    brand = None
-    model = None
+    await reject_model(request_id)
 
-    for r in model_requests:
-        if r[0] == request_id:
-            _, user_id, brand, model = r
-            break
-
-    reject_model(request_id)
-
-    if user_id:
+    if req:
         try:
             await bot.send_message(
-                user_id,
-                f"❌ Вашу модель відхилено:\n{brand} {model}"
+                req["user_id"],
+                f"❌ Вашу модель відхилено:\n{req['brand']} {req['model']}"
             )
         except:
             pass
@@ -247,11 +222,10 @@ async def edit_model_save(message: types.Message, state: FSMContext):
     data = await state.get_data()
     request_id = data.get("request_id")
 
-    update_model_request(request_id, new_model)
-    approve_model(request_id)
+    await update_model_request(request_id, new_model)
+    await approve_model(request_id)
 
     await message.answer(f"✅ Модель виправлено та підтверджено: {new_model}")
-
     await state.clear()
 
 
@@ -313,14 +287,11 @@ async def get_models(message: types.Message, state: FSMContext):
 
         if line.lower().startswith("model:"):
             current_brand = line.split(":", 1)[1].strip().title()
-
-            if current_brand not in data_dict:
-                data_dict[current_brand] = []
+            data_dict[current_brand] = []
 
         else:
             if current_brand:
                 model = line.strip().upper()
-
                 if model not in data_dict[current_brand]:
                     data_dict[current_brand].append(model)
 
@@ -332,8 +303,14 @@ async def get_models(message: types.Message, state: FSMContext):
     data = await state.get_data()
 
     try:
-        add_user(data)
+        # 🔥 async заміна add_user
+        await execute("""
+            INSERT INTO users (name, website, phone)
+            VALUES ($1, $2, $3)
+        """, data["name"], data["website"], data["phone"])
+
         await message.answer("✅ Користувача додано")
+
     except Exception as e:
         await message.answer(f"❌ Помилка: {str(e)}")
 
