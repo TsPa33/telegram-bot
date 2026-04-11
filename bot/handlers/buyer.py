@@ -101,12 +101,25 @@ async def send_results(message: types.Message, state: FSMContext):
         return
 
     for row in results:
-        text = f"🚗 {row['brand']} {row['model']}\n👤 @{row['username'] or 'unknown'}"
+        username = row["username"]
+        brand_db = row["brand"]
+        model_db = row["model"]
+        photo_id = row["photo_id"]
 
-        if row["photo_id"]:
-            await message.answer_photo(row["photo_id"], caption=text)
+        username_display = f"@{username}" if username else "невідомо"
+
+        text = (
+            f"🚗 <b>{brand_db} {model_db}</b>\n\n"
+            f"👤 Продавець: {username_display}\n"
+            f"📦 Розборка авто\n"
+        )
+
+        kb = car_card_kb(username)
+
+        if photo_id:
+            await message.answer_photo(photo_id, caption=text, reply_markup=kb, parse_mode="HTML")
         else:
-            await message.answer_photo(DEFAULT_PHOTO, caption=text)
+            await message.answer_photo(DEFAULT_PHOTO, caption=text, reply_markup=kb, parse_mode="HTML")
 
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[[InlineKeyboardButton(text="➡️ Ще", callback_data="next_page")]]
