@@ -1,4 +1,4 @@
-from database.base import fetch
+from bot.database.base import execute, fetch
 
 
 async def find_cars(brand: str, model: str):
