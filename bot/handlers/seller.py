@@ -29,10 +29,14 @@ async def seller_profile(message: Message):
 
     cars = await get_seller_cars(message.from_user.id)
 
+    # 🔧 FIX: безпечний доступ
+    username = seller.get("username")
+    username_text = f"@{username}" if username else "немає"
+
     text = (
         f"👤 <b>Твій профіль</b>\n\n"
-        f"ID: {seller['id']}\n"
-        f"Username: @{seller['username'] if seller['username'] else 'немає'}\n"
+        f"ID: {seller.get('id')}\n"
+        f"Username: {username_text}\n"
         f"🚗 Авто: {len(cars)}"
     )
 
@@ -49,7 +53,7 @@ async def my_cars(message: Message):
         await message.answer("❌ У вас немає авто")
         return
 
-    # ВАЖЛИВО: не вбиваємо меню
+    # не ламаємо меню
     await message.answer("🚗 Обери авто:")
 
     await message.answer(
@@ -90,7 +94,6 @@ async def delete_car_handler(callback: types.CallbackQuery):
 
     await callback.message.answer("❌ Авто видалено")
 
-    # повертаємо меню
     await callback.message.answer(
         "🏠 Меню",
         reply_markup=seller_menu_kb()
@@ -128,7 +131,6 @@ async def save_description(message: Message, state: FSMContext):
 
     await state.clear()
 
-    # повертаємо меню
     await message.answer(
         "🏠 Меню",
         reply_markup=seller_menu_kb()
