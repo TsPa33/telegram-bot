@@ -23,6 +23,7 @@ from bot.database.repositories.admin_repo import (
 )
 
 from bot.database.base import execute
+from bot.utils.cache import clear_brands_cache, clear_models_cache
 
 router = Router()
 
@@ -78,6 +79,7 @@ async def approve_brand_cb(callback: CallbackQuery, bot: Bot):
     req = next((r for r in requests if r["id"] == request_id), None)
 
     await approve_brand(request_id)
+    clear_brands_cache()
 
     if req:
         try:
@@ -160,6 +162,7 @@ async def approve_model_cb(callback: CallbackQuery, bot: Bot):
     req = next((r for r in requests if r["id"] == request_id), None)
 
     result = await approve_model(request_id)
+    clear_models_cache()
 
     if req:
         try:
