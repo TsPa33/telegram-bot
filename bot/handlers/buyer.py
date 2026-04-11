@@ -1,16 +1,14 @@
 from aiogram import Router, types, F
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 
 from bot.database.repositories.model_repo import get_brands, get_models_by_brand
-from bot.database.repositories.car_repo import find_cars
+from bot.database.repositories.car_repo import find_cars, count_cars
 
 from bot.states.buyer_states import Buyer
 from bot.utils.validation import normalize_brand, normalize_model
 from bot.utils.cache import get_cached_brands, get_cached_models
-
-from bot.keyboards.inline import car_card_kb  # ВАЖЛИВО
 
 router = Router()
 
@@ -24,10 +22,6 @@ DEFAULT_PHOTO = "AgACAgIAAxkBAAIJ6WnZ7zNsTF4dV6Fxbqsye8iRF224AAJfEWsbFN_RSsup93h
 @router.message(Command("find"))
 async def start_buyer(message: types.Message, state: FSMContext):
     brands = await get_cached_brands(get_brands)
-
-    if not brands:
-        await message.answer("❌ Брендів немає")
-        return
 
     keyboard = ReplyKeyboardMarkup(
         keyboard=[[KeyboardButton(text=b)] for b in brands] + [[BACK]],
@@ -50,12 +44,7 @@ async def choose_brand(message: types.Message, state: FSMContext):
         return
 
     brand = normalize_brand(text)
-
     models = await get_cached_models(brand, get_models_by_brand)
-
-    if not models:
-        await message.answer("❌ Моделей немає")
-        return
 
     keyboard = ReplyKeyboardMarkup(
         keyboard=[[KeyboardButton(text=m)] for m in models] + [[BACK]],
@@ -90,66 +79,116 @@ async def choose_model(message: types.Message, state: FSMContext):
     data = await state.get_data()
     brand = data.get("brand")
 
-    await state.update_data(model=model, page=0)
+    total = await count_cars(brand, model)
 
-    await send_results(message, state)
+    if total == 0:
+        await message.answer("❌ Нічого не знайдено")
+        return
+
+    await state.update_data(model=model, page=0, total=total)
+
+    await send_card(message, state)
 
 
-# ================= RESULTS =================
+# ================= CARD =================
 
-async def send_results(message: types.Message, state: FSMContext):
+async def send_card(message: types.Message, state: FSMContext):
     data = await state.get_data()
 
-    brand = data.get("brand")
-    model = data.get("model")
-    page = data.get("page", 0)
+    brand = data["brand"]
+    model = data["model"]
+    page = data["page"]
+    total = data["total"]
 
-    results = await find_cars(brand, model, page)
+    results = await find_cars(brand, model, page, limit=1)
 
     if not results:
         await message.answer("❌ Більше немає результатів")
         return
 
-    for row in results:
-        username = row["username"]
-        brand_db = row["brand"]
-        model_db = row["model"]
-        photo_id = row["photo_id"]
+    car = results[0]
 
-        username_display = f"@{username}" if username else "без username"
+    username = car["username"]
+    brand_db = car["brand"]
+    model_db = car["model"]
+    photo_id = car["photo_id"]
+    description = car.get("description", "")
 
-        text = (
-            f"🚗 <b>{brand_db} {model_db}</b>\n\n"
-            f"👤 Продавець: {username_display}\n"
-            f"📦 Розборка авто"
-        )
+    username_display = f"@{username}" if username else "не вказано"
 
-        kb = car_card_kb(username)
+    text = (
+        f"🚗 <b>{brand_db} {model_db}</b>\n\n"
+        f"{description}\n\n"
+        f"👤 Продавець: {username_display}\n"
+        f"📄 {page + 1} / {total}"
+    )
 
-        if photo_id:
-            await message.answer_photo(
-                photo_id,
-                caption=text,
-                reply_markup=kb,
-                parse_mode="HTML"
+    kb = build_card_kb(username, page, total)
+
+    await message.answer_photo(
+        photo_id or DEFAULT_PHOTO,
+        caption=text,
+        reply_markup=kb,
+        parse_mode="HTML"
+    )
+
+
+# ================= KEYBOARD =================
+
+def build_card_kb(username: str | None, page: int, total: int):
+    buttons = []
+
+    nav = []
+    if page > 0:
+        nav.append(InlineKeyboardButton(text="⬅️", callback_data="prev"))
+
+    if page < total - 1:
+        nav.append(InlineKeyboardButton(text="➡️", callback_data="next"))
+
+    if nav:
+        buttons.append(nav)
+
+    if username:
+        buttons.append([
+            InlineKeyboardButton(
+                text="📩 Написати",
+                url=f"https://t.me/{username}"
             )
-        else:
-            await message.answer_photo(
-                DEFAULT_PHOTO,
-                caption=text,
-                reply_markup=kb,
-                parse_mode="HTML"
-            )
+        ])
+
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
 # ================= PAGINATION =================
 
-@router.callback_query(F.data == "next_page")
+@router.callback_query(F.data == "next")
 async def next_page(callback: types.CallbackQuery, state: FSMContext):
     data = await state.get_data()
-    page = data.get("page", 0) + 1
+
+    page = data["page"] + 1
+    total = data["total"]
+
+    if page >= total:
+        await callback.answer("Кінець")
+        return
 
     await state.update_data(page=page)
 
     await callback.answer()
-    await send_results(callback.message, state)
+    await send_card(callback.message, state)
+
+
+@router.callback_query(F.data == "prev")
+async def prev_page(callback: types.CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+
+    page = data["page"] - 1
+
+    if page < 0:
+        await callback.answer("Початок")
+        return
+
+    await state.update_data(page=page)
+
+    await callback.answer()
+    await send_card(callback.message, state)
