@@ -11,11 +11,6 @@ DEFAULT_PHOTO = "AgACAgIAAxkBAAIJ6WnZ7zNsTF4dV6Fxbqsye8iRF224AAJfEWsbFN_RSsup93h
 
 router = Router()
 
-@router.message(F.photo)
-async def debug_file_id(message: types.Message):
-    file_id = message.photo[-1].file_id
-    print("FILE_ID:", file_id)
-    await message.answer(f"FILE_ID:\n{file_id}")
 # ================= START FIND =================
 
 @router.message(Command("find"))
