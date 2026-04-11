@@ -1,36 +1,26 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 
-# ================= LIST OF CARS =================
-
 def cars_list_kb(cars):
-    """
-    Список авто продавця
-    """
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text=f"{car['brand']} {car['model']}",
-                    callback_data=f"car_{car['id']}"
-                )
-            ]
-            for car in cars
-        ]
-    )
+    keyboard = []
 
+    for car in cars:
+        keyboard.append([
+            InlineKeyboardButton(
+                text=f"{car['brand']} {car['model']}",
+                callback_data=f"car_{car['id']}"
+            )
+        ])
 
-# ================= ACTIONS =================
+    return InlineKeyboardMarkup(inline_keyboard=keyboard)
+
 
 def car_actions_kb(car_id: int):
-    """
-    Дії над авто
-    """
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="✏️ Редагувати",
+                    text="✏️ Редагувати опис",
                     callback_data=f"edit_{car_id}"
                 )
             ],
