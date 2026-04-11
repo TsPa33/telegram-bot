@@ -69,7 +69,7 @@ async def choose_model(message: types.Message, state: FSMContext):
     results = find_by_model(brand, model)
 
     if not results:
-        await message.answer("❌ Нічого не знайдено")
+        await message.answer("❌ Немає оголошень по цьому авто")
 
         brands = get_brands()
         keyboard = ReplyKeyboardMarkup(
@@ -81,30 +81,23 @@ async def choose_model(message: types.Message, state: FSMContext):
         await state.set_state(Buyer.brand)
         return
 
-    # ✅ нормалізація для UI
+    # нормалізація для UI
     brand = brand.title()
     model = model.upper()
 
-    # ✅ формуємо красивий текст
-    text = ""
+    # 🔥 ВАЖЛИВИЙ БЛОК
+    for username, brand_db, model_db, photo_id in results:
+        text = (
+            f"🚗 {brand_db} {model_db}\n\n"
+            f"👤 Продавець: @{username}"
+        )
 
-    for name, website, phone, photo_id in results:
-    text = (
-        f"🚗 {brand} {model}\n\n"
-        f"🏢 {name}\n"
-        f"🌐 {website}\n"
-        f"📞 {phone}"
-    )
+        if photo_id:
+            await message.answer_photo(photo_id, caption=text)
+        else:
+            await message.answer(text)
 
-    if photo_id:
-        await message.answer_photo(photo_id, caption=text)
-    else:
-        await message.answer(text)
-
-    # ✅ відправка результату
-    await message.answer(text)
-
-    # ✅ кнопка "ще пошук"
+    # кнопка повторного пошуку
     keyboard = ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="🔁 Знайти ще авто")]
