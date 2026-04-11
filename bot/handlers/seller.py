@@ -2,16 +2,22 @@ from aiogram import Router, F
 from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
 from aiogram.fsm.context import FSMContext
 
-from bot.database.db import (
+from bot.database.repositories.model_repo import (
     get_brands,
     get_models_by_brand,
     model_exists,
-    add_model_request,
+    get_model_id
+)
+
+from bot.database.repositories.seller_repo import (
     get_or_create_seller,
     add_seller_car,
-    get_seller_cars,
-    add_brand_request,
-    get_model_id
+    get_seller_cars
+)
+
+from bot.database.repositories.request_repo import (
+    add_model_request,
+    add_brand_request
 )
 
 from bot.states.seller import SellerStates
@@ -24,7 +30,7 @@ router = Router()
 
 @router.message(F.text == "➕ Додати авто")
 async def add_car_start(message: Message, state: FSMContext):
-    brands = get_brands()
+    brands = await get_brands()
 
     keyboard_buttons = [[KeyboardButton(text=b)] for b in brands]
     keyboard_buttons.append([KeyboardButton(text="➕ Додати новий бренд")])
@@ -55,7 +61,7 @@ async def choose_brand(message: Message, state: FSMContext):
         await message.answer("❌ Некоректна марка")
         return
 
-    models = get_models_by_brand(brand)
+    models = await get_models_by_brand(brand)
 
     if not models:
         keyboard_buttons = [[KeyboardButton(text="➕ Додати нову модель")]]
@@ -94,7 +100,7 @@ async def choose_model(message: Message, state: FSMContext):
     data = await state.get_data()
     brand = data.get("brand")
 
-    if not model_exists(brand, model):
+    if not await model_exists(brand, model):
         await message.answer("❌ Такої моделі немає")
         return
 
@@ -117,16 +123,15 @@ async def add_car_photo(message: Message, state: FSMContext):
     user_id = message.from_user.id
     username = message.from_user.username
 
-    seller_id = get_or_create_seller(user_id, username)
+    seller = await get_or_create_seller(user_id, username)
 
-    # 🔴 ключова логіка рефактору
-    model_id = get_model_id(brand, model)
+    model_id = await get_model_id(brand, model)
 
     if not model_id:
         await message.answer("❌ Помилка: модель не знайдена")
         return
 
-    add_seller_car(seller_id, model_id, photo_id)
+    await add_seller_car(seller["id"], model_id, photo_id)
 
     await message.answer(f"✅ Авто додано: {brand} {model}")
     await state.clear()
@@ -152,12 +157,12 @@ async def add_new_model(message: Message, state: FSMContext):
     brand = data.get("brand")
     user_id = message.from_user.id
 
-    if model_exists(brand, model):
+    if await model_exists(brand, model):
         await message.answer("❗ Така модель вже існує")
         await state.clear()
         return
 
-    add_model_request(user_id, brand, model)
+    await add_model_request(user_id, brand, model)
 
     await message.answer("⏳ Модель відправлена на модерацію")
     await state.clear()
@@ -175,7 +180,7 @@ async def add_new_brand(message: Message, state: FSMContext):
 
     user_id = message.from_user.id
 
-    add_brand_request(user_id, brand)
+    await add_brand_request(user_id, brand)
 
     await state.update_data(brand=brand)
 
@@ -197,7 +202,7 @@ async def add_new_brand(message: Message, state: FSMContext):
 
 @router.message(F.text == "📋 Мої авто")
 async def my_cars(message: Message):
-    cars = get_seller_cars(message.from_user.id)
+    cars = await get_seller_cars(message.from_user.id)
 
     if not cars:
         await message.answer("❌ У вас немає авто")
