@@ -94,6 +94,10 @@ async def choose_model(message: types.Message, state: FSMContext):
         f"👤 Продавець: {username_display}"
     )
 
+    if photo_id:
+        await message.answer_photo(photo_id, caption=text)
+    else:
+        await message.answer(text)
         if photo_id:
             await message.answer_photo(photo_id, caption=text)
         else:
