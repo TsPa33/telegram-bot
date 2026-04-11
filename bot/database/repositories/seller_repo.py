@@ -1,4 +1,4 @@
-from database.base import fetchrow, execute, fetch
+from bot.database.base import fetchrow, execute, fetch
 
 
 async def get_or_create_seller(telegram_id: int, username: str):
