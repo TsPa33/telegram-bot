@@ -1,7 +1,7 @@
 from aiogram import Router, types, F
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
 from bot.database.repositories.model_repo import get_brands, get_models_by_brand
 from bot.database.repositories.car_repo import find_cars
@@ -9,6 +9,8 @@ from bot.database.repositories.car_repo import find_cars
 from bot.states.buyer_states import Buyer
 from bot.utils.validation import normalize_brand, normalize_model
 from bot.utils.cache import get_cached_brands, get_cached_models
+
+from bot.keyboards.inline import car_card_kb  # ВАЖЛИВО
 
 router = Router()
 
@@ -23,12 +25,16 @@ DEFAULT_PHOTO = "AgACAgIAAxkBAAIJ6WnZ7zNsTF4dV6Fxbqsye8iRF224AAJfEWsbFN_RSsup93h
 async def start_buyer(message: types.Message, state: FSMContext):
     brands = await get_cached_brands(get_brands)
 
+    if not brands:
+        await message.answer("❌ Брендів немає")
+        return
+
     keyboard = ReplyKeyboardMarkup(
         keyboard=[[KeyboardButton(text=b)] for b in brands] + [[BACK]],
         resize_keyboard=True
     )
 
-    await message.answer("Обери бренд:", reply_markup=keyboard)
+    await message.answer("🚗 Обери бренд:", reply_markup=keyboard)
     await state.set_state(Buyer.brand)
 
 
@@ -47,13 +53,17 @@ async def choose_brand(message: types.Message, state: FSMContext):
 
     models = await get_cached_models(brand, get_models_by_brand)
 
+    if not models:
+        await message.answer("❌ Моделей немає")
+        return
+
     keyboard = ReplyKeyboardMarkup(
         keyboard=[[KeyboardButton(text=m)] for m in models] + [[BACK]],
         resize_keyboard=True
     )
 
     await state.update_data(brand=brand)
-    await message.answer("Обери модель:", reply_markup=keyboard)
+    await message.answer("🚘 Обери модель:", reply_markup=keyboard)
     await state.set_state(Buyer.model)
 
 
@@ -71,7 +81,7 @@ async def choose_model(message: types.Message, state: FSMContext):
             resize_keyboard=True
         )
 
-        await message.answer("Обери бренд:", reply_markup=keyboard)
+        await message.answer("🚗 Обери бренд:", reply_markup=keyboard)
         await state.set_state(Buyer.brand)
         return
 
@@ -106,26 +116,30 @@ async def send_results(message: types.Message, state: FSMContext):
         model_db = row["model"]
         photo_id = row["photo_id"]
 
-        username_display = f"@{username}" if username else "невідомо"
+        username_display = f"@{username}" if username else "без username"
 
         text = (
             f"🚗 <b>{brand_db} {model_db}</b>\n\n"
             f"👤 Продавець: {username_display}\n"
-            f"📦 Розборка авто\n"
+            f"📦 Розборка авто"
         )
 
         kb = car_card_kb(username)
 
         if photo_id:
-            await message.answer_photo(photo_id, caption=text, reply_markup=kb, parse_mode="HTML")
+            await message.answer_photo(
+                photo_id,
+                caption=text,
+                reply_markup=kb,
+                parse_mode="HTML"
+            )
         else:
-            await message.answer_photo(DEFAULT_PHOTO, caption=text, reply_markup=kb, parse_mode="HTML")
-
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[[InlineKeyboardButton(text="➡️ Ще", callback_data="next_page")]]
-    )
-
-    await message.answer("Показати ще?", reply_markup=keyboard)
+            await message.answer_photo(
+                DEFAULT_PHOTO,
+                caption=text,
+                reply_markup=kb,
+                parse_mode="HTML"
+            )
 
 
 # ================= PAGINATION =================
