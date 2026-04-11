@@ -5,7 +5,7 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemo
 
 from bot.database.db import get_brands, get_models_by_brand, find_cars
 from bot.states.buyer_states import Buyer
-from bot.utils.validation import normalize
+from bot.utils.validation import normalize_brand, normalize_model
 
 router = Router()
 
@@ -38,7 +38,7 @@ async def start_buyer(message: types.Message, state: FSMContext):
 
 @router.message(Buyer.brand)
 async def choose_brand(message: types.Message, state: FSMContext):
-    brand = normalize(message.text)
+    brand = normalize_brand(message.text)
 
     models = get_models_by_brand(brand)
 
@@ -61,7 +61,7 @@ async def choose_brand(message: types.Message, state: FSMContext):
 
 @router.message(Buyer.model)
 async def choose_model(message: types.Message, state: FSMContext):
-    model = normalize(message.text)
+    model = normalize_model(message.text)
 
     data = await state.get_data()
     brand = data.get("brand")
@@ -80,10 +80,6 @@ async def choose_model(message: types.Message, state: FSMContext):
         await message.answer("Обери бренд ще раз:", reply_markup=keyboard)
         await state.set_state(Buyer.brand)
         return
-
-    # нормалізація для UI
-    brand = brand.title()
-    model = model.upper()
 
     # 🔥 ВАЖЛИВИЙ БЛОК
     for username, brand_db, model_db, photo_id in results:
