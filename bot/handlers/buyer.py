@@ -28,6 +28,8 @@ DEFAULT_PHOTO = "AgACAgIAAxkBAAIJ6WnZ7zNsTF4dV6Fxbqsye8iRF224AAJfEWsbFN_RSsup93h
 
 @router.message(Command("find"))
 async def start_buyer(message: types.Message, state: FSMContext):
+    await state.clear()
+
     brands = await get_cached_brands(get_brands)
 
     if not brands:
@@ -39,9 +41,39 @@ async def start_buyer(message: types.Message, state: FSMContext):
         resize_keyboard=True
     )
 
-    await state.clear()
     await state.set_state(Buyer.brand)
     await message.answer("🚗 Обери бренд:", reply_markup=keyboard)
+
+
+# ================= GLOBAL BACK =================
+
+@router.message(F.text == "⬅️ Назад")
+async def global_back(message: types.Message, state: FSMContext):
+    current_state = await state.get_state()
+
+    if not current_state:
+        await message.answer("🔙 Головне меню")
+        return
+
+    if current_state == Buyer.model:
+        brands = await get_cached_brands(get_brands)
+
+        keyboard = ReplyKeyboardMarkup(
+            keyboard=[[KeyboardButton(text=b)] for b in brands] + [[BACK]],
+            resize_keyboard=True
+        )
+
+        await state.set_state(Buyer.brand)
+        await message.answer("🚗 Обери бренд:", reply_markup=keyboard)
+        return
+
+    if current_state == Buyer.brand:
+        await state.clear()
+        await message.answer("🔙 Головне меню")
+        return
+
+    await state.clear()
+    await message.answer("🔙 Головне меню")
 
 
 # ================= BRAND =================
@@ -49,11 +81,6 @@ async def start_buyer(message: types.Message, state: FSMContext):
 @router.message(Buyer.brand)
 async def choose_brand(message: types.Message, state: FSMContext):
     text = message.text.strip()
-
-    if text == "⬅️ Назад":
-        await state.clear()
-        await message.answer("🔙 Головне меню")
-        return
 
     brand = normalize_brand(text)
     models = await get_cached_models(brand, get_models_by_brand)
@@ -77,18 +104,6 @@ async def choose_brand(message: types.Message, state: FSMContext):
 @router.message(Buyer.model)
 async def choose_model(message: types.Message, state: FSMContext):
     text = message.text.strip()
-
-    if text == "⬅️ Назад":
-        brands = await get_cached_brands(get_brands)
-
-        keyboard = ReplyKeyboardMarkup(
-            keyboard=[[KeyboardButton(text=b)] for b in brands] + [[BACK]],
-            resize_keyboard=True
-        )
-
-        await state.set_state(Buyer.brand)
-        await message.answer("🚗 Обери бренд:", reply_markup=keyboard)
-        return
 
     model = normalize_model(text)
 
@@ -114,6 +129,9 @@ async def choose_model(message: types.Message, state: FSMContext):
     await message.answer(f"🔎 Знайдено оголошень: {total}")
 
     await send_card(message, state, new_message=True)
+
+    # 🔥 FIX: очищаємо FSM після показу
+    await state.set_state(None)
 
 
 # ================= CARD =================
@@ -194,7 +212,7 @@ async def paginate(callback: types.CallbackQuery, state: FSMContext):
 
     try:
         page = int(callback.data.split(":")[1])
-    except (IndexError, ValueError):
+    except:
         await callback.answer("Помилка")
         return
 
@@ -208,3 +226,10 @@ async def paginate(callback: types.CallbackQuery, state: FSMContext):
 
     await callback.answer()
     await send_card(callback.message, state)
+
+
+# ================= FALLBACK =================
+
+@router.message()
+async def fallback(message: types.Message):
+    await message.answer("⚠️ Обери дію через меню або введи /find")
