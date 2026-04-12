@@ -21,10 +21,10 @@ async def run_bot():
     bot = Bot(token=BOT_TOKEN)
 
     # routers
+    dp.include_router(start.router)
     dp.include_router(seller.router)
     dp.include_router(buyer.router)
     dp.include_router(admin.router)
-    dp.include_router(start.router)
 
     logging.info("BOT STARTED")
 
