@@ -157,14 +157,7 @@ async def send_card(message: types.Message, state: FSMContext, new_message=False
 
     car = results[0]
 
-    text = format_car_card(
-        brand=car["brand"],
-        model=car["model"],
-        description=car.get("description"),
-        username=car.get("username"),
-        page=page,
-        total=total
-    )
+    text = format_car_card(car, page, total)
 
     keyboard = build_card_keyboard(
         username=car.get("username"),
