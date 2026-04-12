@@ -38,6 +38,8 @@ BACK = KeyboardButton(text="⬅️ Назад")
 
 @router.message(F.text == "➕ Додати авто")
 async def add_car_start(message: Message, state: FSMContext):
+    await state.clear()  # ✅ FIX
+
     brands = await get_cached_brands(get_brands)
 
     keyboard = ReplyKeyboardMarkup(
@@ -144,7 +146,6 @@ async def save_car(message: Message, state: FSMContext):
         car_id = data["car_id"]
 
         await update_description(car_id, message.text)
-
         car = await get_car_by_id(car_id)
 
         text = format_car_card(
@@ -225,13 +226,14 @@ async def save_car(message: Message, state: FSMContext):
     )
 
     await state.clear()
-    await message.answer("🏠 Меню", reply_markup=seller_menu_kb())
 
 
 # ================= PROFILE =================
 
 @router.message(F.text == "👤 Профіль")
-async def seller_profile(message: Message):
+async def seller_profile(message: Message, state: FSMContext):
+    await state.clear()  # ✅ FIX
+
     seller = await get_or_create_seller(
         message.from_user.id,
         message.from_user.username
@@ -255,7 +257,9 @@ async def seller_profile(message: Message):
 # ================= MY CARS =================
 
 @router.message(F.text == "📋 Мої авто")
-async def my_cars(message: Message):
+async def my_cars(message: Message, state: FSMContext):
+    await state.clear()  # ✅ FIX
+
     cars = await get_seller_cars(message.from_user.id)
 
     if not cars:
