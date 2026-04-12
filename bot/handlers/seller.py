@@ -38,7 +38,7 @@ BACK = KeyboardButton(text="⬅️ Назад")
 
 @router.message(F.text == "➕ Додати авто")
 async def add_car_start(message: Message, state: FSMContext):
-    await state.clear()  # ✅ FIX
+    await state.clear()
 
     brands = await get_cached_brands(get_brands)
 
@@ -148,14 +148,7 @@ async def save_car(message: Message, state: FSMContext):
         await update_description(car_id, message.text)
         car = await get_car_by_id(car_id)
 
-        text = format_car_card(
-            brand=car["brand"],
-            model=car["model"],
-            description=car.get("description"),
-            username=car.get("username"),
-            page=0,
-            total=1
-        )
+        text = format_car_card(car, 0, 1)
 
         base_kb = build_card_keyboard(
             username=car.get("username"),
@@ -203,14 +196,14 @@ async def save_car(message: Message, state: FSMContext):
 
     await message.answer("✅ Авто додано")
 
-    text = format_car_card(
-        brand=brand,
-        model=model,
-        description=description,
-        username=message.from_user.username,
-        page=0,
-        total=1
-    )
+    car_data = {
+        "brand": brand,
+        "model": model,
+        "description": description,
+        "username": message.from_user.username
+    }
+
+    text = format_car_card(car_data, 0, 1)
 
     keyboard = build_card_keyboard(
         username=message.from_user.username,
@@ -232,7 +225,7 @@ async def save_car(message: Message, state: FSMContext):
 
 @router.message(F.text == "👤 Профіль")
 async def seller_profile(message: Message, state: FSMContext):
-    await state.clear()  # ✅ FIX
+    await state.clear()
 
     seller = await get_or_create_seller(
         message.from_user.id,
@@ -258,7 +251,7 @@ async def seller_profile(message: Message, state: FSMContext):
 
 @router.message(F.text == "📋 Мої авто")
 async def my_cars(message: Message, state: FSMContext):
-    await state.clear()  # ✅ FIX
+    await state.clear()
 
     cars = await get_seller_cars(message.from_user.id)
 
@@ -282,14 +275,7 @@ async def open_car(callback: types.CallbackQuery):
         await callback.answer("Авто не знайдено")
         return
 
-    text = format_car_card(
-        brand=car["brand"],
-        model=car["model"],
-        description=car.get("description"),
-        username=car.get("username"),
-        page=0,
-        total=1
-    )
+    text = format_car_card(car, 0, 1)
 
     base_kb = build_card_keyboard(
         username=car.get("username"),
