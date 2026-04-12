@@ -2,7 +2,7 @@ from aiogram.fsm.state import StatesGroup, State
 
 
 class SellerStates(StatesGroup):
-    # авто
+    # ================= АВТО =================
     brand = State()
     model = State()
     new_model = State()
@@ -10,15 +10,18 @@ class SellerStates(StatesGroup):
     photo = State()
     description = State()
 
-    # (залишаємо на майбутнє, не чіпаємо)
+    # ================= LEGACY =================
     waiting_for_photo = State()
 
-    # реєстрація
+    # ================= РЕЄСТРАЦІЯ =================
     reg_name = State()
     reg_company = State()
     reg_phone = State()
     reg_link = State()
     reg_city = State()
 
-    # видалення
+    # ================= ВИДАЛЕННЯ =================
     delete_car = State()
+
+    # ================= 🔥 PROFILE (НОВЕ) =================
+    edit_profile = State()
