@@ -233,9 +233,9 @@ async def my_cars(message: Message):
 
 # ================= OPEN CAR =================
 
-@router.callback_query(F.data.startswith("car_"))
+@router.callback_query(F.data.startswith("car:"))
 async def open_car(callback: types.CallbackQuery):
-    car_id = int(callback.data.split("_")[1])
+    car_id = int(callback.data.split(":")[1])
 
     await callback.answer()
 
@@ -250,7 +250,7 @@ async def open_car(callback: types.CallbackQuery):
 
 # ================= DELETE =================
 
-@router.callback_query(F.data.startswith("delete_"))
+@router.callback_query(F.data.startswith("delete:"))
 async def delete_car_handler(callback: types.CallbackQuery):
     car_id = int(callback.data.split("_")[1])
 
@@ -263,7 +263,7 @@ async def delete_car_handler(callback: types.CallbackQuery):
 
 # ================= EDIT =================
 
-@router.callback_query(F.data.startswith("edit_"))
+@router.callback_query(F.data.startswith("edit:"))
 async def edit_car_handler(callback: types.CallbackQuery, state: FSMContext):
     car_id = int(callback.data.split("_")[1])
 
