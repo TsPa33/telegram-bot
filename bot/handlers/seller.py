@@ -20,6 +20,9 @@ from bot.database.repositories.model_repo import (
 )
 
 from bot.utils.cache import get_cached_brands, get_cached_models
+from bot.utils.formatters import format_car_card
+from bot.keyboards.card_inline import build_card_keyboard
+
 from bot.states.seller import SellerStates
 
 router = Router()
@@ -126,13 +129,13 @@ async def photo_error(message: Message):
     await message.answer("❌ Надішли саме фото або натисни '⬅️ Назад'")
 
 
-# ================= DESCRIPTION (ADD CAR) =================
+# ================= DESCRIPTION (ADD / EDIT) =================
 
 @router.message(SellerStates.description)
 async def save_car(message: Message, state: FSMContext):
     data = await state.get_data()
 
-    # якщо це EDIT — пропускаємо
+    # === EDIT ===
     if data.get("car_id"):
         await update_description(data["car_id"], message.text)
 
@@ -141,7 +144,7 @@ async def save_car(message: Message, state: FSMContext):
         await message.answer("🏠 Меню", reply_markup=seller_menu_kb())
         return
 
-    # якщо це CREATE
+    # === CREATE ===
     brand = data.get("brand")
     model = data.get("model")
     photo_id = data.get("photo_id")
@@ -163,9 +166,27 @@ async def save_car(message: Message, state: FSMContext):
 
     await message.answer("✅ Авто додано")
 
+    # === NEW: UNIFIED CARD VIEW ===
+    text = format_car_card(
+        brand=brand,
+        model=model,
+        description=description,
+        username=message.from_user.username,
+        page=0,
+        total=1
+    )
+
+    keyboard = build_card_keyboard(
+        username=message.from_user.username,
+        page=0,
+        total=1
+    )
+
     await message.answer_photo(
         photo=photo_id,
-        caption=f"🚗 {brand} {model}\n\n{description}"
+        caption=text,
+        reply_markup=keyboard,
+        parse_mode="HTML"
     )
 
     await state.clear()
@@ -218,6 +239,7 @@ async def open_car(callback: types.CallbackQuery):
 
     await callback.answer()
 
+    # поки залишаємо як є (переробимо в наступному кроці)
     await callback.message.answer(
         f"🚗 Авто ID: {car_id}",
         reply_markup=car_actions_kb(car_id)
