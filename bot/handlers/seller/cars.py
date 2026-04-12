@@ -86,6 +86,7 @@ async def edit_car(callback: CallbackQuery, state: FSMContext):
         await callback.answer("Помилка")
         return
 
+    # зберігаємо id авто у FSM
     await state.update_data(car_id=car_id)
     await state.set_state(SellerStates.description)
 
@@ -103,7 +104,8 @@ async def delete_car_handler(callback: CallbackQuery):
         await callback.answer("Помилка")
         return
 
-    await delete_car(car_id)
+    # 🔴 SECURITY FIX — передаємо telegram_id
+    await delete_car(car_id, callback.from_user.id)
 
     await callback.message.answer("🗑 Авто видалено")
     await callback.answer()
