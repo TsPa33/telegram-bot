@@ -279,6 +279,21 @@ async def save_profile(message: Message, state: FSMContext):
         message.from_user.username
     )
 
+    # ================= MY CARS =================
+
+@router.message(F.text == "📋 Мої авто")
+async def my_cars(message: Message):
+    cars = await get_seller_cars(message.from_user.id)
+
+    if not cars:
+        await message.answer("😕 У тебе ще немає доданих авто")
+        return
+
+    await message.answer(
+        "📋 <b>Твої авто:</b>",
+        reply_markup=cars_list_kb(cars),
+        parse_mode="HTML"
+    )
     await update_seller_field(seller["id"], field, value)
 
     await state.clear()
