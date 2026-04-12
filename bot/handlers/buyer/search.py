@@ -3,7 +3,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
 from bot.database.repositories.model_repo import get_models_by_brand
-from bot.database.repositories.car_repo import count_cars
+from bot.database.repositories.car_repo import count_cars, find_cars
 
 from bot.utils.cache import get_cached_models
 from bot.utils.validation import normalize_brand, normalize_model
@@ -22,9 +22,12 @@ BACK = KeyboardButton(text="⬅️ Назад")
 
 @router.message(Buyer.brand)
 async def choose_brand(message: types.Message, state: FSMContext):
-    text = message.text.strip()
+    if await state.get_state() != Buyer.brand:
+        return
 
+    text = message.text.strip()
     brand = normalize_brand(text)
+
     models = await get_cached_models(brand, get_models_by_brand)
 
     if not models:
@@ -46,8 +49,10 @@ async def choose_brand(message: types.Message, state: FSMContext):
 
 @router.message(Buyer.model)
 async def choose_model(message: types.Message, state: FSMContext):
-    text = message.text.strip()
+    if await state.get_state() != Buyer.model:
+        return
 
+    text = message.text.strip()
     model = normalize_model(text)
 
     data = await state.get_data()
@@ -67,15 +72,23 @@ async def choose_model(message: types.Message, state: FSMContext):
         )
         return
 
+    # 🔴 PERFORMANCE: одразу кешуємо результати
+    results = await find_cars(brand, model, 0, limit=10)
+
+    if not results:
+        await message.answer("❌ Більше немає результатів")
+        return
+
     await state.update_data(
         model=model,
         page=0,
-        total=total
+        total=len(results),
+        results=results
     )
 
-    await message.answer(f"🔎 Знайдено оголошень: {total}")
+    await message.answer(f"🔎 Знайдено оголошень: {len(results)}")
 
     await send_card(message, state, new_message=True)
 
-    # залишаємо як було (логіку не змінюємо)
-    await state.set_state(None)
+    # 🔴 FSM FIX
+    await state.clear()
