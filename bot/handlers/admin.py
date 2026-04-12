@@ -26,7 +26,7 @@ from bot.database.base import execute
 from bot.utils.cache import clear_brands_cache, clear_models_cache
 
 # 🔴 НОВЕ
-from services.import_service import (
+from bot.services.import_service import (
     parse_seller_file,
     save_parsed_data
 )
