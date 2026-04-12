@@ -34,7 +34,19 @@ def seller_card_actions_kb(car_id: int):
             ]
         ]
     )
+# ================= PROFILE EDIT =================
 
+def profile_edit_kb():
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="✏️ Назва", callback_data="edit:shop_name")],
+            [InlineKeyboardButton(text="👤 Ім’я", callback_data="edit:name")],
+            [InlineKeyboardButton(text="📞 Телефон", callback_data="edit:phone")],
+            [InlineKeyboardButton(text="🌐 Сайт", callback_data="edit:website")],
+            [InlineKeyboardButton(text="📍 Місто", callback_data="edit:city")],
+            [InlineKeyboardButton(text="📝 Опис", callback_data="edit:description")],
+        ]
+    )
 
 # ================= OPTIONAL (LEGACY SUPPORT) =================
 # Якщо десь ще використовується старий формат
