@@ -1,5 +1,6 @@
 from aiogram import Router, types, F
 from aiogram.filters import Command
+from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import (
     ReplyKeyboardMarkup,
@@ -220,9 +221,8 @@ async def paginate(callback: types.CallbackQuery, state: FSMContext):
     await callback.answer()
     await send_card(callback.message, state)
 
-
 # ================= FALLBACK =================
 
-@router.message()
+@router.message(StateFilter(None))
 async def fallback(message: types.Message):
     await message.answer("⚠️ Обери дію через меню або введи /find")
