@@ -1,7 +1,7 @@
 from bot.database.base import fetch, fetchrow
 
 
-DEFAULT_LIMIT = 1
+DEFAULT_LIMIT = 5
 
 
 # ================= BASE QUERY =================
@@ -13,9 +13,11 @@ BASE_SELECT = """
         m.model,
         sc.photo_id,
         sc.description,
+        sc.is_catalog,
 
         -- seller
         s.username,
+        s.telegram_id,
         s.name,
         s.shop_name,
         s.phone,
@@ -44,7 +46,7 @@ async def find_cars(
         WHERE b.name = $1
           AND m.model = $2
           AND sc.status = 'active'
-        ORDER BY sc.id DESC
+        ORDER BY sc.is_catalog ASC, sc.id DESC
         LIMIT $3 OFFSET $4
     """, brand, model, limit, offset)
 
@@ -72,6 +74,7 @@ async def get_seller_cars(telegram_id: int):
         {BASE_SELECT}
         WHERE s.telegram_id = $1
         ORDER BY sc.id DESC
+        LIMIT 20
     """, telegram_id)
 
 
