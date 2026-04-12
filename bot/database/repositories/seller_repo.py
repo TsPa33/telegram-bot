@@ -38,3 +38,25 @@ async def update_description(car_id: int, description: str):
         SET description = $1
         WHERE id = $2
     """, description, car_id)
+    
+    # ================= PROFILE UPDATE =================
+
+ALLOWED_FIELDS = {
+    "shop_name",
+    "name",
+    "phone",
+    "website",
+    "city",
+    "description"
+}
+
+
+async def update_seller_field(seller_id: int, field: str, value: str | None):
+    if field not in ALLOWED_FIELDS:
+        return
+
+    await execute(f"""
+        UPDATE sellers
+        SET {field} = $1
+        WHERE id = $2
+    """, value, seller_id)
