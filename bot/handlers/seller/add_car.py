@@ -27,6 +27,14 @@ router = Router()
 BACK = KeyboardButton(text="⬅️ Назад")
 
 
+# ================= CANCEL =================
+
+@router.message(F.text == "/cancel")
+async def cancel_handler(message: Message, state: FSMContext):
+    await state.clear()
+    await message.answer("❌ Дію скасовано")
+
+
 # ================= ADD CAR =================
 
 @router.message(F.text == "➕ Додати авто")
@@ -48,9 +56,18 @@ async def add_car_start(message: Message, state: FSMContext):
 
 @router.message(SellerStates.brand)
 async def select_brand(message: Message, state: FSMContext):
+    if await state.get_state() != SellerStates.brand:
+        return
+
     if message.text == "⬅️ Назад":
         await state.clear()
         await message.answer("🏠 Меню", reply_markup=seller_menu_kb())
+        return
+
+    brands = await get_cached_brands(get_brands)
+
+    if message.text not in brands:
+        await message.answer("❌ Обери бренд з кнопок")
         return
 
     brand = message.text
@@ -76,6 +93,9 @@ async def select_brand(message: Message, state: FSMContext):
 
 @router.message(SellerStates.model)
 async def select_model(message: Message, state: FSMContext):
+    if await state.get_state() != SellerStates.model:
+        return
+
     if message.text == "⬅️ Назад":
         brands = await get_cached_brands(get_brands)
 
@@ -88,6 +108,15 @@ async def select_model(message: Message, state: FSMContext):
         await message.answer("🚗 Обери бренд:", reply_markup=keyboard)
         return
 
+    data = await state.get_data()
+    brand = data.get("brand")
+
+    models = await get_cached_models(brand, get_models_by_brand)
+
+    if message.text not in models:
+        await message.answer("❌ Обери модель з кнопок")
+        return
+
     await state.update_data(model=message.text)
     await state.set_state(SellerStates.photo)
 
@@ -98,6 +127,9 @@ async def select_model(message: Message, state: FSMContext):
 
 @router.message(SellerStates.photo, F.text == "⬅️ Назад")
 async def back_to_model(message: Message, state: FSMContext):
+    if await state.get_state() != SellerStates.photo:
+        return
+
     data = await state.get_data()
     brand = data.get("brand")
 
@@ -116,6 +148,9 @@ async def back_to_model(message: Message, state: FSMContext):
 
 @router.message(SellerStates.photo, F.photo)
 async def get_photo(message: Message, state: FSMContext):
+    if await state.get_state() != SellerStates.photo:
+        return
+
     photo_id = message.photo[-1].file_id
 
     await state.update_data(photo_id=photo_id)
@@ -125,7 +160,10 @@ async def get_photo(message: Message, state: FSMContext):
 
 
 @router.message(SellerStates.photo)
-async def photo_error(message: Message):
+async def photo_error(message: Message, state: FSMContext):
+    if await state.get_state() != SellerStates.photo:
+        return
+
     await message.answer("❌ Надішли фото або натисни '⬅️ Назад'")
 
 
@@ -133,13 +171,22 @@ async def photo_error(message: Message):
 
 @router.message(SellerStates.description)
 async def save_car(message: Message, state: FSMContext):
+    if await state.get_state() != SellerStates.description:
+        return
+
     data = await state.get_data()
+
+    description = (message.text or "").strip()
+
+    if not description:
+        await message.answer("❌ Введи опис")
+        return
 
     # ================= EDIT MODE =================
     if data.get("car_id"):
         car_id = data["car_id"]
 
-        await update_description(car_id, message.text)
+        await update_description(car_id, description)
 
         await message.answer("✅ Опис оновлено")
 
@@ -150,9 +197,13 @@ async def save_car(message: Message, state: FSMContext):
     brand = data.get("brand")
     model = data.get("model")
     photo_id = data.get("photo_id")
-    description = message.text or "Без опису"
 
     model_id = await get_model_id(brand, model)
+
+    if not model_id:
+        await message.answer("❌ Модель не знайдена")
+        await state.clear()
+        return
 
     seller = await get_or_create_seller(
         message.from_user.id,
