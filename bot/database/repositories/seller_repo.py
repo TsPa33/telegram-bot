@@ -7,7 +7,7 @@ async def get_or_create_seller(telegram_id: int, username: str):
         VALUES ($1, $2)
         ON CONFLICT (telegram_id)
         DO UPDATE SET username = EXCLUDED.username
-        RETURNING id
+        RETURNING *
     """, telegram_id, username)
 
 
