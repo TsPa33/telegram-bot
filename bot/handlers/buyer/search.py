@@ -72,7 +72,7 @@ async def choose_model(message: types.Message, state: FSMContext):
         )
         return
 
-    # 🔴 PERFORMANCE: одразу кешуємо результати
+    # 🔴 кешуємо результати
     results = await find_cars(brand, model, 0, limit=10)
 
     if not results:
@@ -90,5 +90,5 @@ async def choose_model(message: types.Message, state: FSMContext):
 
     await send_card(message, state, new_message=True)
 
-    # 🔴 FSM FIX
-    await state.clear()
+    # ❌ НЕ ОЧИЩАЄМО STATE
+    # await state.clear()
