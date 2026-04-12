@@ -15,15 +15,12 @@ def format_car_card(car: dict, page: int, total: int) -> str:
         f"📍 {city}"
     )
 
-    return (
+    text = (
         f"🚗 <b>{car['brand']} {car['model']}</b>\n"
         f"━━━━━━━━━━━━━━━\n\n"
         f"📝 <b>Опис:</b>\n{description}\n\n"
         f"{seller_block}\n\n"
         f"📄 <b>{page + 1} / {total}</b>"
     )
-        f"📝 <b>Опис:</b>\n"
-        f"{description}\n\n"
-        f"{seller_block}\n\n"
-        f"📄 <b>Оголошення:</b> {page + 1} / {total}"
-    )
+
+    return text
