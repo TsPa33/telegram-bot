@@ -1,6 +1,6 @@
 from aiogram import Router, types, F, Bot
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import CallbackQuery, ReplyKeyboardMarkup, KeyboardButton, Message
 
 from bot.config import ADMINS
 from bot.keyboards.admin_kb import admin_kb
@@ -24,6 +24,12 @@ from bot.database.repositories.admin_repo import (
 
 from bot.database.base import execute
 from bot.utils.cache import clear_brands_cache, clear_models_cache
+
+# 🔴 НОВЕ
+from services.import_service import (
+    parse_seller_file,
+    save_parsed_data
+)
 
 router = Router()
 
@@ -77,10 +83,6 @@ async def show_requests(message: types.Message):
 
     if not brand_requests and not model_requests:
         await message.answer("✅ Немає заявок")
-
-
-# ================= BRAND ACTIONS =================
-# (без змін — твоя логіка правильна)
 
 
 # ================= EDIT BRAND =================
@@ -230,3 +232,43 @@ async def get_models(message: types.Message, state: FSMContext):
 
     await state.clear()
     await message.answer("🏠 Меню", reply_markup=admin_kb)
+
+
+# ================= 🔴 FILE IMPORT =================
+
+@router.message(F.document)
+async def upload_sellers_file(message: Message):
+    if message.from_user.id not in ADMINS:
+        return
+
+    document = message.document
+
+    if not document:
+        await message.answer("❌ Файл не знайдено")
+        return
+
+    if not document.file_name.endswith(".txt"):
+        await message.answer("❌ Підтримується тільки .txt файл")
+        return
+
+    try:
+        file = await message.bot.get_file(document.file_id)
+        file_bytes = await message.bot.download_file(file.file_path)
+
+        text = file_bytes.read().decode("utf-8")
+
+        rows = await parse_seller_file(text)
+
+        if not rows:
+            await message.answer("❌ Невірний формат файлу")
+            return
+
+        await save_parsed_data(rows)
+
+        await message.answer(
+            f"✅ Імпорт завершено\n📦 Оброблено: {len(rows)} рядків"
+        )
+
+    except Exception as e:
+        await message.answer("❌ Помилка при імпорті")
+        print(f"IMPORT ERROR: {e}")
