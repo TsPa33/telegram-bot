@@ -1,1 +1,15 @@
+from aiogram import Router
 
+from .add_car import router as add_car_router
+from .cars import router as cars_router
+from .profile import router as profile_router
+
+
+router = Router()
+
+# Порядок важливий:
+# спочатку FSM (add_car), потім інші
+
+router.include_router(add_car_router)
+router.include_router(cars_router)
+router.include_router(profile_router)
