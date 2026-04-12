@@ -231,15 +231,23 @@ async def open_car(callback: types.CallbackQuery):
 
     text = format_car_card(car, 0, 1)
 
-    await callback.message.answer_photo(
-        photo=car.get("photo_id"),
-        caption=text,
-        reply_markup=seller_card_actions_kb(car_id),
-        parse_mode="HTML"
-    )
+    photo_id = car.get("photo_id")
+
+    if photo_id:
+        await callback.message.answer_photo(
+            photo=photo_id,
+            caption=text,
+            reply_markup=seller_card_actions_kb(car_id),
+            parse_mode="HTML"
+        )
+    else:
+        await callback.message.answer(
+            text,
+            reply_markup=seller_card_actions_kb(car_id),
+            parse_mode="HTML"
+        )
 
     await callback.answer()
-
 
 # ================= PROFILE =================
 
