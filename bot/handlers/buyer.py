@@ -15,6 +15,8 @@ from bot.database.repositories.car_repo import find_cars, count_cars
 from bot.states.buyer_states import Buyer
 from bot.utils.validation import normalize_brand, normalize_model
 from bot.utils.cache import get_cached_brands, get_cached_models
+from bot.utils.formatters import format_car_card
+from bot.keyboards.card_inline import build_card_keyboard
 
 router = Router()
 
