@@ -4,8 +4,6 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import (
     ReplyKeyboardMarkup,
     KeyboardButton,
-    InlineKeyboardMarkup,
-    InlineKeyboardButton,
     InputMediaPhoto
 )
 
@@ -15,6 +13,7 @@ from bot.database.repositories.car_repo import find_cars, count_cars
 from bot.states.buyer_states import Buyer
 from bot.utils.validation import normalize_brand, normalize_model
 from bot.utils.cache import get_cached_brands, get_cached_models
+
 from bot.utils.formatters import format_car_card
 from bot.keyboards.card_inline import build_card_keyboard
 
@@ -140,112 +139,69 @@ async def send_card(message: types.Message, state: FSMContext, new_message=False
 
     car = results[0]
 
-    username = car["username"]
-    brand_db = car["brand"]
-    model_db = car["model"]
-    photo_id = car["photo_id"]
-    description = car.get("description") or "📦 Без опису"
-
-    username_display = f"@{username}" if username else "не вказано"
-
-    text = (
-        f"🚗 <b>{brand_db} {model_db}</b>\n\n"
-        f"{description}\n\n"
-        f"👤 <b>Продавець:</b> {username_display}\n"
-        f"📄 <b>{page + 1} / {total}</b>"
+    text = format_car_card(
+        brand=car["brand"],
+        model=car["model"],
+        description=car.get("description"),
+        username=car.get("username"),
+        page=page,
+        total=total
     )
 
-    kb = build_card_kb(username, page, total)
+    keyboard = build_card_keyboard(
+        username=car.get("username"),
+        page=page,
+        total=total
+    )
+
+    photo = car.get("photo_id") or DEFAULT_PHOTO
 
     if new_message:
         await message.answer_photo(
-            photo_id or DEFAULT_PHOTO,
+            photo=photo,
             caption=text,
-            reply_markup=kb,
+            reply_markup=keyboard,
             parse_mode="HTML"
         )
     else:
         try:
             await message.edit_media(
                 InputMediaPhoto(
-                    media=photo_id or DEFAULT_PHOTO,
+                    media=photo,
                     caption=text,
                     parse_mode="HTML"
                 ),
-                reply_markup=kb
+                reply_markup=keyboard
             )
         except:
             await message.answer_photo(
-                photo_id or DEFAULT_PHOTO,
+                photo=photo,
                 caption=text,
-                reply_markup=kb,
+                reply_markup=keyboard,
                 parse_mode="HTML"
             )
 
 
-# ================= KEYBOARD =================
-
-def build_card_kb(username: str | None, page: int, total: int):
-    buttons = []
-
-    nav = []
-
-    if total > 1:
-        if page > 0:
-            nav.append(InlineKeyboardButton(text="⬅️", callback_data="prev"))
-
-        if page < total - 1:
-            nav.append(InlineKeyboardButton(text="➡️", callback_data="next"))
-
-    if nav:
-        buttons.append(nav)
-
-    if username:
-        buttons.append([
-            InlineKeyboardButton(
-                text="📩 Написати",
-                url=f"https://t.me/{username}"
-            )
-        ])
-
-    return InlineKeyboardMarkup(inline_keyboard=buttons)
-
-
 # ================= PAGINATION =================
 
-@router.callback_query(F.data == "next")
-async def next_page(callback: types.CallbackQuery, state: FSMContext):
+@router.callback_query(F.data.startswith("page:"))
+async def paginate(callback: types.CallbackQuery, state: FSMContext):
     data = await state.get_data()
 
     if not data:
         await callback.answer("Сесія втрачена")
         return
 
-    page = data.get("page", 0) + 1
+    try:
+        page = int(callback.data.split(":")[1])
+    except (IndexError, ValueError):
+        await callback.answer("Помилка")
+        return
+
     total = data.get("total", 0)
 
-    if page >= total:
-        await callback.answer("Кінець")
-        return
-
-    await state.update_data(page=page)
-
-    await callback.answer()
-    await send_card(callback.message, state)
-
-
-@router.callback_query(F.data == "prev")
-async def prev_page(callback: types.CallbackQuery, state: FSMContext):
-    data = await state.get_data()
-
-    if not data:
-        await callback.answer("Сесія втрачена")
-        return
-
-    page = data.get("page", 0) - 1
-
-    if page < 0:
-        await callback.answer("Початок")
+    if page < 0 or page >= total:
+        await callback.answer("Немає сторінки")
         return
 
     await state.update_data(page=page)
