@@ -13,7 +13,15 @@ BASE_SELECT = """
         m.model,
         sc.photo_id,
         sc.description,
-        s.username
+
+        -- seller
+        s.username,
+        s.name,
+        s.shop_name,
+        s.phone,
+        s.website,
+        s.city
+
     FROM seller_cars sc
     JOIN sellers s ON sc.seller_id = s.id
     JOIN models m ON sc.model_id = m.id
