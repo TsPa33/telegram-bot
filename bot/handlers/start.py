@@ -8,7 +8,7 @@ from bot.keyboards.role import role_keyboard
 from bot.keyboards.start import start_keyboard
 from bot.keyboards.seller_menu import seller_menu_kb
 
-from bot.handlers.buyer import start_buyer
+from bot.handlers.buyer.start import start_buyer
 
 router = Router()
 
