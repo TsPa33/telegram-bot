@@ -1,9 +1,9 @@
 from aiogram import Router, F, types
-from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup
 from aiogram.fsm.context import FSMContext
 
 from bot.keyboards.seller_menu import seller_menu_kb
-from bot.keyboards.seller_inline import cars_list_kb, car_actions_kb
+from bot.keyboards.seller_inline import cars_list_kb, seller_card_actions_kb
 
 from bot.database.repositories.seller_repo import (
     get_or_create_seller,
@@ -12,7 +12,11 @@ from bot.database.repositories.seller_repo import (
     add_seller_car
 )
 
-from bot.database.repositories.car_repo import get_seller_cars
+from bot.database.repositories.car_repo import (
+    get_seller_cars,
+    get_car_by_id
+)
+
 from bot.database.repositories.model_repo import (
     get_brands,
     get_models_by_brand,
@@ -129,7 +133,7 @@ async def photo_error(message: Message):
     await message.answer("❌ Надішли саме фото або натисни '⬅️ Назад'")
 
 
-# ================= DESCRIPTION (ADD / EDIT) =================
+# ================= DESCRIPTION =================
 
 @router.message(SellerStates.description)
 async def save_car(message: Message, state: FSMContext):
@@ -137,11 +141,43 @@ async def save_car(message: Message, state: FSMContext):
 
     # === EDIT ===
     if data.get("car_id"):
-        await update_description(data["car_id"], message.text)
+        car_id = data["car_id"]
+
+        await update_description(car_id, message.text)
+
+        car = await get_car_by_id(car_id)
+
+        text = format_car_card(
+            brand=car["brand"],
+            model=car["model"],
+            description=car.get("description"),
+            username=car.get("username"),
+            page=0,
+            total=1
+        )
+
+        base_kb = build_card_keyboard(
+            username=car.get("username"),
+            page=0,
+            total=1
+        )
+
+        action_kb = seller_card_actions_kb(car_id)
+
+        keyboard = InlineKeyboardMarkup(
+            inline_keyboard=base_kb.inline_keyboard + action_kb.inline_keyboard
+        )
 
         await message.answer("✅ Опис оновлено")
+
+        await message.answer_photo(
+            photo=car.get("photo_id"),
+            caption=text,
+            reply_markup=keyboard,
+            parse_mode="HTML"
+        )
+
         await state.clear()
-        await message.answer("🏠 Меню", reply_markup=seller_menu_kb())
         return
 
     # === CREATE ===
@@ -166,7 +202,6 @@ async def save_car(message: Message, state: FSMContext):
 
     await message.answer("✅ Авто додано")
 
-    # === NEW: UNIFIED CARD VIEW ===
     text = format_car_card(
         brand=brand,
         model=model,
@@ -237,22 +272,48 @@ async def my_cars(message: Message):
 async def open_car(callback: types.CallbackQuery):
     car_id = int(callback.data.split(":")[1])
 
-    await callback.answer()
+    car = await get_car_by_id(car_id)
 
-    # поки залишаємо як є (переробимо в наступному кроці)
-    await callback.message.answer(
-        f"🚗 Авто ID: {car_id}",
-        reply_markup=car_actions_kb(car_id)
+    if not car:
+        await callback.answer("Авто не знайдено")
+        return
+
+    text = format_car_card(
+        brand=car["brand"],
+        model=car["model"],
+        description=car.get("description"),
+        username=car.get("username"),
+        page=0,
+        total=1
     )
 
-    await callback.message.answer("🏠 Меню", reply_markup=seller_menu_kb())
+    base_kb = build_card_keyboard(
+        username=car.get("username"),
+        page=0,
+        total=1
+    )
+
+    action_kb = seller_card_actions_kb(car_id)
+
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=base_kb.inline_keyboard + action_kb.inline_keyboard
+    )
+
+    await callback.answer()
+
+    await callback.message.answer_photo(
+        photo=car.get("photo_id"),
+        caption=text,
+        reply_markup=keyboard,
+        parse_mode="HTML"
+    )
 
 
 # ================= DELETE =================
 
 @router.callback_query(F.data.startswith("delete:"))
 async def delete_car_handler(callback: types.CallbackQuery):
-    car_id = int(callback.data.split("_")[1])
+    car_id = int(callback.data.split(":")[1])
 
     await delete_car(car_id)
 
@@ -265,7 +326,7 @@ async def delete_car_handler(callback: types.CallbackQuery):
 
 @router.callback_query(F.data.startswith("edit:"))
 async def edit_car_handler(callback: types.CallbackQuery, state: FSMContext):
-    car_id = int(callback.data.split("_")[1])
+    car_id = int(callback.data.split(":")[1])
 
     await state.update_data(car_id=car_id)
 
