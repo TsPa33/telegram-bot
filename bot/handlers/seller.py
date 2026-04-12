@@ -27,7 +27,7 @@ from bot.utils.cache import get_cached_brands, get_cached_models
 from bot.utils.formatters import format_car_card
 from bot.keyboards.card_inline import build_card_keyboard
 
-from bot.states.seller import SellerStates
+from bot.states.seller_states import SellerStates
 
 router = Router()
 
