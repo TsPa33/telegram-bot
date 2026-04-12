@@ -132,7 +132,7 @@ async def choose_model(message: types.Message, state: FSMContext):
     await send_card(message, state, new_message=True)
 
     # 🔥 FIX: очищаємо FSM після показу
-    await state.set_state(None)
+    await state.clear()
 
 
 # ================= CARD =================
