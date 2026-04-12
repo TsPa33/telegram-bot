@@ -98,9 +98,7 @@ async def select_model(message: Message, state: FSMContext):
         await message.answer("🚗 Обери бренд:", reply_markup=keyboard)
         return
 
-    model = message.text
-
-    await state.update_data(model=model)
+    await state.update_data(model=message.text)
     await state.set_state(SellerStates.photo)
 
     await message.answer("📸 Надішли фото авто:")
@@ -136,7 +134,7 @@ async def get_photo(message: Message, state: FSMContext):
 
 @router.message(SellerStates.photo)
 async def photo_error(message: Message):
-    await message.answer("❌ Надішли саме фото або натисни '⬅️ Назад'")
+    await message.answer("❌ Надішли фото або натисни '⬅️ Назад'")
 
 
 # ================= DESCRIPTION =================
@@ -145,25 +143,18 @@ async def photo_error(message: Message):
 async def save_car(message: Message, state: FSMContext):
     data = await state.get_data()
 
-    # EDIT
+    # EDIT MODE
     if data.get("car_id"):
         car_id = data["car_id"]
 
         await update_description(car_id, message.text)
-        car = await get_car_by_id(car_id)
 
-        text = format_car_card(car, 0, 1)
-
-        await message.answer_photo(
-            photo=car.get("photo_id"),
-            caption=text,
-            parse_mode="HTML"
-        )
+        await message.answer("✅ Опис оновлено")
 
         await state.clear()
         return
 
-    # CREATE
+    # CREATE MODE
     brand = data.get("brand")
     model = data.get("model")
     photo_id = data.get("photo_id")
@@ -191,11 +182,10 @@ async def save_car(message: Message, state: FSMContext):
         "description": description
     }, 0, 1)
 
-    await message.answer_photo(
-        photo=photo_id,
-        caption=text,
-        parse_mode="HTML"
-    )
+    if photo_id:
+        await message.answer_photo(photo=photo_id, caption=text, parse_mode="HTML")
+    else:
+        await message.answer(text, parse_mode="HTML")
 
     await state.clear()
 
@@ -248,6 +238,32 @@ async def open_car(callback: types.CallbackQuery):
         )
 
     await callback.answer()
+
+
+# ================= EDIT CAR =================
+
+@router.callback_query(F.data.startswith("edit:"))
+async def edit_car(callback: types.CallbackQuery, state: FSMContext):
+    car_id = int(callback.data.split(":")[1])
+
+    await state.update_data(car_id=car_id)
+    await state.set_state(SellerStates.description)
+
+    await callback.message.answer("✏️ Введи новий опис:")
+    await callback.answer()
+
+
+# ================= DELETE CAR =================
+
+@router.callback_query(F.data.startswith("delete:"))
+async def delete_car_handler(callback: types.CallbackQuery):
+    car_id = int(callback.data.split(":")[1])
+
+    await delete_car(car_id)
+
+    await callback.message.answer("🗑 Авто видалено")
+    await callback.answer()
+
 
 # ================= PROFILE =================
 
@@ -303,16 +319,16 @@ async def edit_profile(callback: types.CallbackQuery, state: FSMContext):
     await state.update_data(edit_field=field)
     await state.set_state(SellerStates.edit_profile)
 
-    await callback.answer()
-
     label = FIELD_LABELS.get(field, field)
 
     await callback.message.answer(
         f"✏️ Введи {label}\n\nабо '-' щоб очистити"
     )
 
+    await callback.answer()
 
-@router.message(SellerStates.edit_profile, F.text)
+
+@router.message(SellerStates.edit_profile)
 async def save_profile(message: Message, state: FSMContext):
     if message.text in MENU_BUTTONS:
         await message.answer("❌ Заверши редагування або введи '-'")
@@ -332,27 +348,4 @@ async def save_profile(message: Message, state: FSMContext):
 
     await state.clear()
 
-    await message.answer("✅ Оновлено")
-
-    await seller_profile(message, state)
-
-# ================= EDIT CAR =================
-
-@router.callback_query(F.data.startswith("edit:"))
-async def edit_car(callback: types.CallbackQuery, state: FSMContext):
-    car_id = int(callback.data.split(":")[1])
-
-    car = await get_car_by_id(car_id)
-
-    if not car:
-        await callback.answer("Не знайдено")
-        return
-
-    # зберігаємо car_id для редагування
-    await state.update_data(car_id=car_id)
-
-    await state.set_state(SellerStates.description)
-
-    await callback.message.answer("✏️ Введи новий опис:")
-
-    await callback.answer()
+    await message.answer("✅ Профіль оновлено")
