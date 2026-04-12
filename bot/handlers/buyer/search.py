@@ -91,4 +91,31 @@ async def choose_model(message: types.Message, state: FSMContext):
     await send_card(message, state, new_message=True)
 
     # ❌ НЕ ОЧИЩАЄМО STATE
-    # await state.clear()
+
+
+# ================= FALLBACK BRAND =================
+
+@router.message()
+async def fallback_brand_handler(message: types.Message, state: FSMContext):
+    text = (message.text or "").strip()
+
+    if not text:
+        return
+
+    # пробуємо як бренд
+    brand = normalize_brand(text)
+
+    models = await get_cached_models(brand, get_models_by_brand)
+
+    if not models:
+        return  # не бренд → нічого не робимо
+
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text=m)] for m in models] + [[BACK]],
+        resize_keyboard=True
+    )
+
+    await state.update_data(brand=brand)
+    await state.set_state(Buyer.model)
+
+    await message.answer("🚘 Обери модель:", reply_markup=keyboard)
