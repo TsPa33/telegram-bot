@@ -186,7 +186,12 @@ async def save_car(message: Message, state: FSMContext):
     if data.get("car_id"):
         car_id = data["car_id"]
 
-        await update_description(car_id, description)
+        # 🔴 SECURITY FIX
+        await update_description(
+            car_id,
+            description,
+            message.from_user.id
+        )
 
         await message.answer("✅ Опис оновлено")
 
