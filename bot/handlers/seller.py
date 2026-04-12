@@ -1,5 +1,5 @@
 from aiogram import Router, F, types
-from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup
+from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
 from aiogram.fsm.context import FSMContext
 
 from bot.keyboards.seller_menu import seller_menu_kb
@@ -30,7 +30,6 @@ from bot.database.repositories.model_repo import (
 
 from bot.utils.cache import get_cached_brands, get_cached_models
 from bot.utils.formatters import format_car_card
-from bot.keyboards.card_inline import build_card_keyboard
 
 from bot.states.seller_states import SellerStates
 
@@ -186,13 +185,11 @@ async def save_car(message: Message, state: FSMContext):
 
     await message.answer("✅ Авто додано")
 
-    car_data = {
+    text = format_car_card({
         "brand": brand,
         "model": model,
         "description": description
-    }
-
-    text = format_car_card(car_data, 0, 1)
+    }, 0, 1)
 
     await message.answer_photo(
         photo=photo_id,
@@ -203,7 +200,7 @@ async def save_car(message: Message, state: FSMContext):
     await state.clear()
 
 
-# ================= PROFILE (NEW UI) =================
+# ================= PROFILE =================
 
 @router.message(F.text == "👤 Профіль")
 async def seller_profile(message: Message, state: FSMContext):
@@ -233,7 +230,24 @@ async def seller_profile(message: Message, state: FSMContext):
 
 # ================= EDIT PROFILE =================
 
-@router.callback_query(F.data.startswith("edit:"))
+FIELD_LABELS = {
+    "shop_name": "назву розборки",
+    "name": "ім’я",
+    "phone": "телефон",
+    "website": "сайт",
+    "city": "місто",
+    "description": "опис"
+}
+
+MENU_BUTTONS = {
+    "📋 Мої авто",
+    "➕ Додати авто",
+    "👤 Профіль",
+    "⬅️ Назад"
+}
+
+
+@router.callback_query(F.data.startswith("profile:"))
 async def edit_profile(callback: types.CallbackQuery, state: FSMContext):
     field = callback.data.split(":")[1]
 
@@ -242,13 +256,19 @@ async def edit_profile(callback: types.CallbackQuery, state: FSMContext):
 
     await callback.answer()
 
+    label = FIELD_LABELS.get(field, field)
+
     await callback.message.answer(
-        f"✏️ Введи значення ({field})\n\nабо '-' щоб очистити"
+        f"✏️ Введи {label}\n\nабо '-' щоб очистити"
     )
 
 
-@router.message(SellerStates.edit_profile)
+@router.message(SellerStates.edit_profile, F.text)
 async def save_profile(message: Message, state: FSMContext):
+    if message.text in MENU_BUTTONS:
+        await message.answer("❌ Заверши редагування або введи '-'")
+        return
+
     data = await state.get_data()
     field = data.get("edit_field")
 
