@@ -3,19 +3,19 @@ import html
 def format_car_card(car: dict, page: int, total: int):
     brand = car.get("brand", "")
     model = car.get("model", "")
+
     description = (car.get("description") or "").strip()
     description = html.escape(description)
 
-    is_catalog = car.get("is_catalog")
-
-    # контакт
-    if is_catalog:
-        contact = f"📞 {car.get('phone') or 'не вказано'}"
+    # 🔴 CONTACT FIX (повна логіка)
+    if car.get("phone"):
+        contact = f"📞 {car['phone']}"
+    elif car.get("username"):
+        contact = f"@{car['username']}"
+    elif car.get("telegram_id"):
+        contact = f"<a href='tg://user?id={car['telegram_id']}'>Написати</a>"
     else:
-        if car.get("username"):
-            contact = f"@{car['username']}"
-        else:
-            contact = f"tg://user?id={car.get('telegram_id')}"
+        contact = "⚠️ Контакт відсутній"
 
     # 🔴 опис тільки якщо є
     description_block = ""
@@ -25,6 +25,6 @@ def format_car_card(car: dict, page: int, total: int):
     return (
         f"<b>{brand} {model}</b>\n\n"
         f"{description_block}"
-        f"👤 {contact}\n"
+        f"{contact}\n\n"
         f"📄 {page + 1} / {total}"
     )
