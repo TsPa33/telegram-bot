@@ -129,7 +129,15 @@ async def get_photo(message: Message, state: FSMContext):
     await state.update_data(photo_id=photo_id)
     await state.set_state(SellerStates.description)
 
-    await message.answer("📝 Введи опис:")
+    await message.answer(
+        "📝 Введи опис:\n\n"
+        "Приклад:\n"
+        "Стан: б/у, без дефектів\n"
+        "Рік: 2018\n"
+        "Пробіг: 120 тис.\n"
+        "Двигун: 2.0 дизель\n"
+        "Комплектація: повна"
+    )
 
 
 @router.message(SellerStates.photo)
