@@ -1,26 +1,30 @@
-def format_car_card(car: dict, page: int, total: int) -> str:
-    description = car.get("description") or "📦 Опис відсутній"
+import html
 
-    shop_name = car.get("shop_name") or "Без назви"
-    name = car.get("name") or "Не вказано"
-    phone = car.get("phone") or "не вказано"
-    website = car.get("website") or "-"
-    city = car.get("city") or "-"
+def format_car_card(car: dict, page: int, total: int):
+    brand = car.get("brand", "")
+    model = car.get("model", "")
+    description = (car.get("description") or "").strip()
+    description = html.escape(description)
 
-    seller_block = (
-        f"🏪 <b>{shop_name}</b>\n"
-        f"👤 {name}\n"
-        f"📞 {phone}\n"
-        f"🌐 {website}\n"
-        f"📍 {city}"
+    is_catalog = car.get("is_catalog")
+
+    # контакт
+    if is_catalog:
+        contact = f"📞 {car.get('phone') or 'не вказано'}"
+    else:
+        if car.get("username"):
+            contact = f"@{car['username']}"
+        else:
+            contact = f"tg://user?id={car.get('telegram_id')}"
+
+    # 🔴 опис тільки якщо є
+    description_block = ""
+    if description:
+        description_block = f"📝 Опис:\n{description}\n\n"
+
+    return (
+        f"<b>{brand} {model}</b>\n\n"
+        f"{description_block}"
+        f"👤 {contact}\n"
+        f"📄 {page + 1} / {total}"
     )
-
-    text = (
-        f"🚗 <b>{car['brand']} {car['model']}</b>\n"
-        f"━━━━━━━━━━━━━━━\n\n"
-        f"📝 <b>Опис:</b>\n{description}\n\n"
-        f"{seller_block}\n\n"
-        f"📄 <b>{page + 1} / {total}</b>"
-    )
-
-    return text
