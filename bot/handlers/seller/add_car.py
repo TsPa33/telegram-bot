@@ -25,6 +25,7 @@ from bot.states.seller_states import SellerStates
 router = Router()
 
 BACK = KeyboardButton(text="⬅️ Назад")
+SKIP = KeyboardButton(text="Пропустити")
 
 
 # ================= CANCEL =================
@@ -156,7 +157,20 @@ async def get_photo(message: Message, state: FSMContext):
     await state.update_data(photo_id=photo_id)
     await state.set_state(SellerStates.description)
 
-    await message.answer("📝 Введи опис:")
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[[SKIP], [BACK]],
+        resize_keyboard=True
+    )
+
+    await message.answer(
+        "📝 Введи опис:\n\n"
+        "📌 Приклад:\n"
+        "Audi A4 B9 2018\n"
+        "2.0 дизель\n"
+        "Є всі деталі\n\n"
+        "Або натисни 'Пропустити'",
+        reply_markup=keyboard
+    )
 
 
 @router.message(SellerStates.photo)
@@ -176,17 +190,26 @@ async def save_car(message: Message, state: FSMContext):
 
     data = await state.get_data()
 
-    description = (message.text or "").strip()
-
-    if not description:
-        await message.answer("❌ Введи опис")
+    # 🔴 BACK FIX
+    if message.text == "⬅️ Назад":
+        await state.set_state(SellerStates.model)
+        await message.answer("🚗 Обери модель:")
         return
+
+    # 🔴 SKIP
+    if message.text in ["Пропустити", "-"]:
+        description = None
+    else:
+        description = (message.text or "").strip()
+
+        if not description:
+            await message.answer("❌ Введи опис або натисни 'Пропустити'")
+            return
 
     # ================= EDIT MODE =================
     if data.get("car_id"):
         car_id = data["car_id"]
 
-        # 🔴 SECURITY FIX
         await update_description(
             car_id,
             description,
