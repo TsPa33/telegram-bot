@@ -43,7 +43,7 @@ async def send_card(message: types.Message, state: FSMContext, new_message=False
 
     car = results[page]
 
-    # 🔴 VIEW COUNTER
+    # VIEW
     await execute("""
         UPDATE seller_cars
         SET views = COALESCE(views,0)+1
@@ -102,7 +102,6 @@ async def paginate(callback: types.CallbackQuery, state: FSMContext):
     await send_card(callback.message, state)
 
 
-# 📞 PHONE
 @router.callback_query(F.data.startswith("phone:"))
 async def phone_click(callback: types.CallbackQuery):
     car_id = int(callback.data.split(":")[1])
@@ -119,7 +118,6 @@ async def phone_click(callback: types.CallbackQuery):
     await callback.message.answer(f"📞 {car.get('phone')}")
 
 
-# 🌐 SITE
 @router.callback_query(F.data.startswith("site:"))
 async def site_click(callback: types.CallbackQuery):
     car_id = int(callback.data.split(":")[1])
