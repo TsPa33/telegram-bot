@@ -4,7 +4,6 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 def build_card_keyboard(car: dict, page: int, total: int):
     rows = []
 
-    # pagination
     if total > 1:
         nav = []
 
@@ -18,7 +17,6 @@ def build_card_keyboard(car: dict, page: int, total: int):
 
         rows.append(nav)
 
-    # 🔴 CONTACT BUTTONS
     if car.get("phone"):
         rows.append([
             InlineKeyboardButton(text="📞 Подзвонити", callback_data=f"phone:{car['id']}")
