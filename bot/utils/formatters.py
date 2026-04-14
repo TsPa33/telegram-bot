@@ -7,17 +7,19 @@ def format_car_card(car: dict, page: int, total: int):
     description = (car.get("description") or "").strip()
     description = html.escape(description)
 
-    # 🔴 CONTACT FIX (повна логіка)
-    if car.get("phone"):
-        contact = f"📞 {car['phone']}"
-    elif car.get("username"):
-        contact = f"@{car['username']}"
-    elif car.get("telegram_id"):
-        contact = f"<a href='tg://user?id={car['telegram_id']}'>Написати</a>"
-    else:
-        contact = "⚠️ Контакт відсутній"
+    is_catalog = car.get("is_catalog")
 
-    # 🔴 опис тільки якщо є
+    # контакт
+    if is_catalog:
+        contact = f"📞 {car.get('phone') or 'не вказано'}"
+    else:
+        if car.get("username"):
+            contact = f"@{car['username']}"
+        elif car.get("telegram_id"):
+            contact = f"<a href='tg://user?id={car['telegram_id']}'>Написати</a>"
+        else:
+            contact = "⚠️ Контакт відсутній"
+
     description_block = ""
     if description:
         description_block = f"📝 Опис:\n{description}\n\n"
@@ -25,6 +27,6 @@ def format_car_card(car: dict, page: int, total: int):
     return (
         f"<b>{brand} {model}</b>\n\n"
         f"{description_block}"
-        f"{contact}\n\n"
+        f"👤 {contact}\n"
         f"📄 {page + 1} / {total}"
     )
