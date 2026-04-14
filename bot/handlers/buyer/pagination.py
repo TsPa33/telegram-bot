@@ -14,8 +14,6 @@ router = Router()
 DEFAULT_PHOTO = "AgACAgIAAxkBAAIJ6WnZ7zNsTF4dV6Fxbqsye8iRF224AAJfEWsbFN_RSsup93hjz4uMAQADAgADeAADOwQ"
 
 
-# ================= CARD =================
-
 async def send_card(message: types.Message, state: FSMContext, new_message=False):
     data = await state.get_data()
 
@@ -36,10 +34,7 @@ async def send_card(message: types.Message, state: FSMContext, new_message=False
             await message.answer("❌ Немає результатів")
             return
 
-        await state.update_data(
-            results=results,
-            total=len(results)
-        )
+        await state.update_data(results=results)
 
     total = len(results)
 
@@ -51,12 +46,11 @@ async def send_card(message: types.Message, state: FSMContext, new_message=False
     # 🔴 VIEW COUNTER
     await execute("""
         UPDATE seller_cars
-        SET views = COALESCE(views, 0) + 1
-        WHERE id = $1
+        SET views = COALESCE(views,0)+1
+        WHERE id=$1
     """, car["id"])
 
     text = format_car_card(car, page, total)
-
     keyboard = build_card_keyboard(car, page, total)
 
     photo = car.get("photo_id") or DEFAULT_PHOTO
@@ -87,12 +81,9 @@ async def send_card(message: types.Message, state: FSMContext, new_message=False
             )
 
 
-# ================= PAGINATION =================
-
 @router.callback_query(F.data.startswith("page:"))
 async def paginate(callback: types.CallbackQuery, state: FSMContext):
     data = await state.get_data()
-
     results = data.get("results")
 
     if not results:
@@ -111,8 +102,7 @@ async def paginate(callback: types.CallbackQuery, state: FSMContext):
     await send_card(callback.message, state)
 
 
-# ================= PHONE =================
-
+# 📞 PHONE
 @router.callback_query(F.data.startswith("phone:"))
 async def phone_click(callback: types.CallbackQuery):
     car_id = int(callback.data.split(":")[1])
@@ -121,16 +111,15 @@ async def phone_click(callback: types.CallbackQuery):
 
     await execute("""
         UPDATE seller_cars
-        SET phone_clicks = COALESCE(phone_clicks,0) + 1
-        WHERE id = $1
+        SET phone_clicks = COALESCE(phone_clicks,0)+1
+        WHERE id=$1
     """, car_id)
 
     await callback.answer()
     await callback.message.answer(f"📞 {car.get('phone')}")
 
 
-# ================= SITE =================
-
+# 🌐 SITE
 @router.callback_query(F.data.startswith("site:"))
 async def site_click(callback: types.CallbackQuery):
     car_id = int(callback.data.split(":")[1])
@@ -139,8 +128,8 @@ async def site_click(callback: types.CallbackQuery):
 
     await execute("""
         UPDATE seller_cars
-        SET site_clicks = COALESCE(site_clicks,0) + 1
-        WHERE id = $1
+        SET site_clicks = COALESCE(site_clicks,0)+1
+        WHERE id=$1
     """, car_id)
 
     await callback.answer()
