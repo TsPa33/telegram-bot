@@ -1,9 +1,10 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 
-def build_card_keyboard(username: str | None, page: int, total: int):
+def build_card_keyboard(car: dict, page: int, total: int):
     rows = []
 
+    # pagination
     if total > 1:
         nav = []
 
@@ -26,14 +27,33 @@ def build_card_keyboard(username: str | None, page: int, total: int):
 
         rows.append(nav)
 
-    if username:
+    # 🔴 CONTACT BUTTONS
+
+    if car.get("phone"):
         rows.append([
             InlineKeyboardButton(
-                text="📩 Написати продавцю",
-                url=f"https://t.me/{username}"
+                text="📞 Подзвонити",
+                callback_data=f"phone:{car['id']}"
             )
         ])
-    else:
+
+    if car.get("website"):
+        rows.append([
+            InlineKeyboardButton(
+                text="🌐 Сайт",
+                callback_data=f"site:{car['id']}"
+            )
+        ])
+
+    if car.get("telegram_id"):
+        rows.append([
+            InlineKeyboardButton(
+                text="✉️ Написати",
+                url=f"tg://user?id={car['telegram_id']}"
+            )
+        ])
+
+    if not any([car.get("phone"), car.get("website"), car.get("telegram_id")]):
         rows.append([
             InlineKeyboardButton(
                 text="⚠️ Контакт відсутній",
