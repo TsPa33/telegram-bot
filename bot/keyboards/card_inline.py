@@ -1,15 +1,22 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+import re
+
+
+def is_valid_url(url: str) -> bool:
+    if not url:
+        return False
+
+    if re.search(r"[а-яА-Я ]", url):
+        return False
+
+    return "." in url
 
 
 def build_card_keyboard(car: dict, page: int, total: int):
     rows = []
-
     car_id = car.get("id")
 
-    if not car_id:
-        return InlineKeyboardMarkup(inline_keyboard=[])
-
-    # ================= CONTACT BLOCK =================
+    # ================= CONTACT =================
 
     contact_row = []
 
@@ -22,11 +29,10 @@ def build_card_keyboard(car: dict, page: int, total: int):
         )
 
     if car.get("username"):
-        username = car.get("username", "").replace("@", "")
         contact_row.append(
             InlineKeyboardButton(
                 text="💬 Написати",
-                url=f"https://t.me/{username}"
+                url=f"https://t.me/{car['username']}"
             )
         )
     elif car.get("telegram_id"):
@@ -40,41 +46,28 @@ def build_card_keyboard(car: dict, page: int, total: int):
     if contact_row:
         rows.append(contact_row)
 
-    # ================= SITE (FIXED) =================
-def is_valid_url(url: str) -> bool:
-    if not url:
-        return False
+    # ================= SITE =================
 
-    # ❌ кирилиця або пробіли
-    if re.search(r"[а-яА-Я ]", url):
-        return False
+    if car.get("website"):
+        raw_url = car.get("website").strip()
 
-    # базова перевірка
-    return "." in url
+        if not raw_url.startswith("http"):
+            raw_url = "https://" + raw_url
 
-
-# ================= SITE =================
-
-if car.get("website"):
-    raw_url = car.get("website").strip()
-
-    if not raw_url.startswith("http"):
-        raw_url = "https://" + raw_url
-
-    if is_valid_url(raw_url):
-        rows.append([
-            InlineKeyboardButton(
-                text="🌐 Відкрити сайт",
-                url=raw_url
-            )
-        ])
-    else:
-        rows.append([
-            InlineKeyboardButton(
-                text="⚠️ Некоректний сайт",
-                callback_data="noop"
-            )
-        ])
+        if is_valid_url(raw_url):
+            rows.append([
+                InlineKeyboardButton(
+                    text="🌐 Відкрити сайт",
+                    url=raw_url
+                )
+            ])
+        else:
+            rows.append([
+                InlineKeyboardButton(
+                    text="⚠️ Некоректний сайт",
+                    callback_data="noop"
+                )
+            ])
 
     # ================= FALLBACK =================
 
