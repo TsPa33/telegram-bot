@@ -4,12 +4,12 @@ import html
 def format_car_card(car: dict, page: int, total: int):
     # ================= BASIC =================
 
-    brand = html.escape(car.get("brand") or "")
-    model = html.escape(car.get("model") or "")
+    brand = html.escape(str(car.get("brand") or ""))
+    model = html.escape(str(car.get("model") or ""))
 
     title = f"🚗 <b>{brand} {model}</b>"
 
-    # ================= DESCRIPTION (FIXED) =================
+    # ================= DESCRIPTION =================
 
     raw_description = car.get("description")
 
@@ -20,7 +20,6 @@ def format_car_card(car: dict, page: int, total: int):
 
     description = html.escape(description)
 
-    # 🔴 FIX: fallback
     if not description:
         description = "📦 Опис відсутній"
 
@@ -31,9 +30,9 @@ def format_car_card(car: dict, page: int, total: int):
 
     # ================= SELLER =================
 
-    shop_name = html.escape(car.get("shop_name") or "")
-    name = html.escape(car.get("name") or "")
-    city = html.escape(car.get("city") or "")
+    shop_name = html.escape(str(car.get("shop_name") or ""))
+    name = html.escape(str(car.get("name") or ""))
+    city = html.escape(str(car.get("city") or ""))
 
     seller_block = ""
 
@@ -58,6 +57,18 @@ def format_car_card(car: dict, page: int, total: int):
     else:
         verified_block = "⚠️ Продавець не перевірений\n\n"
 
+    # ================= STATS (🔥 FIX) =================
+
+    views = car.get("views") or 0
+    phone_clicks = car.get("phone_clicks") or 0
+    site_clicks = car.get("site_clicks") or 0
+
+    stats_block = (
+        f"👁 Перегляди: {views}\n"
+        f"📞 Дзвінки: {phone_clicks}\n"
+        f"🌐 Переходи: {site_clicks}\n\n"
+    )
+
     # ================= PAGINATION =================
 
     page_block = f"📄 {page + 1} / {total}"
@@ -70,5 +81,6 @@ def format_car_card(car: dict, page: int, total: int):
         f"{verified_block}"
         f"{description_block}"
         f"{seller_block}"
+        f"{stats_block}"
         f"{page_block}"
     )
