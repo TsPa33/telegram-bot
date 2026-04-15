@@ -7,7 +7,7 @@ async def get_model_or_none(brand_id: int, model_name: str):
     return await fetchrow("""
         SELECT *
         FROM models
-        WHERE brand_id = $1 AND LOWER(name) = LOWER($2)
+        WHERE brand_id = $1 AND LOWER(model) = LOWER($2)
     """, brand_id, model_name)
 
 
