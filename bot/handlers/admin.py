@@ -1,6 +1,6 @@
 from aiogram import Router, types, F
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, ReplyKeyboardMarkup, KeyboardButton, Message
+from aiogram.types import CallbackQuery, KeyboardButton, Message
 
 from bot.config import ADMINS
 from bot.keyboards.admin_kb import admin_kb
@@ -10,7 +10,7 @@ from bot.keyboards.admin_inline import (
     verification_request_kb
 )
 
-from bot.states.admin_states import AddUser, EditBrand, EditModel
+from bot.states.admin_states import EditBrand, EditModel
 
 from bot.database.repositories.admin_repo import (
     get_pending_brand_requests,
@@ -21,14 +21,11 @@ from bot.database.repositories.admin_repo import (
     reject_model,
     update_brand_request,
     update_model_request,
-
-    # 🔐 NEW
     get_verification_requests,
     approve_seller,
     reject_seller
 )
 
-from bot.database.base import execute
 from bot.utils.cache import clear_brands_cache, clear_models_cache
 
 from bot.services.import_service import (
@@ -94,7 +91,7 @@ async def show_requests(message: types.Message):
         await message.answer("✅ Немає заявок")
 
 
-# ================= 🔐 VERIFICATION LIST =================
+# ================= VERIFICATION =================
 
 @router.message(F.text.in_(["🔐 Верифікації", "🔐 Верифікація продавців"]))
 async def show_verifications(message: Message):
@@ -115,18 +112,27 @@ async def show_verifications(message: Message):
         )
 
 
-# ================= CALLBACK HANDLER (УНІФІКОВАНИЙ) =================
+# ================= CALLBACK HANDLER (FIXED) =================
 
-@router.callback_query()
+@router.callback_query(F.data.contains(":"))
 async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
     if not is_admin(callback.from_user.id):
         return
 
-    if ":" not in callback.data:
+    parts = callback.data.split(":")
+
+    # 🔴 FIX: захист від падіння
+    if len(parts) != 3:
+        await callback.answer()
         return
 
-    entity, action, obj_id = callback.data.split(":")
-    obj_id = int(obj_id)
+    entity, action, obj_id = parts
+
+    try:
+        obj_id = int(obj_id)
+    except:
+        await callback.answer()
+        return
 
     # ===== BRAND =====
     if entity == "brand":
@@ -160,7 +166,7 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
             await state.update_data(request_id=obj_id)
             await callback.message.answer("✏️ Введи нову модель:")
 
-    # ===== 🔐 VERIFY =====
+    # ===== VERIFY =====
     elif entity == "verify":
         if action == "ok":
             await approve_seller(obj_id)
