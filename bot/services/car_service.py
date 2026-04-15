@@ -1,31 +1,30 @@
-from bot.database.repositories.car_repo import find_cars, count_cars
-from bot.database.repositories.model_repo import get_model_id
+from bot.database.base import fetchrow, fetchval
 
-
-# ================= MODEL =================
-
-async def get_model_or_none(brand: str, model: str):
-    return await get_model_id(brand, model)
-
-
-# ================= CARS =================
 
 async def get_cars_page(model_id: int, page: int):
-    total = await count_cars(model_id)
+    # 🔢 загальна кількість
+    total = await fetchval("""
+        SELECT COUNT(*)
+        FROM seller_cars
+        WHERE model = $1
+    """, model_id)
 
-    if total == 0:
+    if not total:
         return None, 0
 
-    # 🔴 LIMIT = 1 → OFFSET = page
-    cars = await find_cars(model_id, page, limit=1)
+    # 🧠 гарантія коректного page
+    if page < 0:
+        page = 0
+    if page >= total:
+        page = total - 1
 
-    if not cars:
-        return None, total
-
-    car = cars[0]
-
-    # 🔴 FIX: нормалізація description
-    if car.get("description") is None:
-        car["description"] = ""
+    # 🔥 КРИТИЧНО: OFFSET
+    car = await fetchrow("""
+        SELECT *
+        FROM seller_cars
+        WHERE model = $1
+        ORDER BY id DESC
+        LIMIT 1 OFFSET $2
+    """, model_id, page)
 
     return car, total
