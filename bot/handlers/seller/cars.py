@@ -1,4 +1,4 @@
-from aiogram import Router, F, types
+from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
 
@@ -33,8 +33,20 @@ async def my_cars(message: Message):
         await message.answer("😕 У тебе ще немає авто")
         return
 
+    # 🔴 ДОДАЄМО СТАТИСТИКУ В СПИСОК
+    text = "📋 <b>Твої авто:</b>\n\n"
+
+    for car in cars:
+        text += (
+            f"🚗 <b>{car['brand']} {car['model']}</b>\n"
+            f"📝 {car.get('description') or '-'}\n"
+            f"👁 Перегляди: {car.get('views', 0)}\n"
+            f"📞 Дзвінки: {car.get('phone_clicks', 0)}\n"
+            f"🌐 Переходи: {car.get('site_clicks', 0)}\n\n"
+        )
+
     await message.answer(
-        "📋 <b>Твої авто:</b>",
+        text,
         reply_markup=cars_list_kb(cars),
         parse_mode="HTML"
     )
@@ -46,7 +58,7 @@ async def my_cars(message: Message):
 async def open_car(callback: CallbackQuery):
     try:
         car_id = int(callback.data.split(":")[1])
-    except (IndexError, ValueError):
+    except:
         await callback.answer("Помилка")
         return
 
@@ -57,6 +69,18 @@ async def open_car(callback: CallbackQuery):
         return
 
     text = format_car_card(car, 0, 1)
+
+    # 🔴 ДОДАЄМО СТАТИСТИКУ В КАРТКУ
+    stats = (
+        f"\n\n"
+        f"📊 <b>Статистика:</b>\n"
+        f"👁 Перегляди: {car.get('views', 0)}\n"
+        f"📞 Дзвінки: {car.get('phone_clicks', 0)}\n"
+        f"🌐 Переходи: {car.get('site_clicks', 0)}"
+    )
+
+    text += stats
+
     photo_id = car.get("photo_id")
 
     if photo_id:
@@ -82,15 +106,18 @@ async def open_car(callback: CallbackQuery):
 async def edit_car(callback: CallbackQuery, state: FSMContext):
     try:
         car_id = int(callback.data.split(":")[1])
-    except (IndexError, ValueError):
+    except:
         await callback.answer("Помилка")
         return
 
-    # зберігаємо id авто у FSM
     await state.update_data(car_id=car_id)
     await state.set_state(SellerStates.description)
 
-    await callback.message.answer("✏️ Введи новий опис:")
+    await callback.message.answer(
+        "✏️ Введи новий опис\n\n"
+        "⚠️ Поки доступно тільки редагування опису"
+    )
+
     await callback.answer()
 
 
@@ -100,11 +127,10 @@ async def edit_car(callback: CallbackQuery, state: FSMContext):
 async def delete_car_handler(callback: CallbackQuery):
     try:
         car_id = int(callback.data.split(":")[1])
-    except (IndexError, ValueError):
+    except:
         await callback.answer("Помилка")
         return
 
-    # 🔴 SECURITY FIX — передаємо telegram_id
     await delete_car(car_id, callback.from_user.id)
 
     await callback.message.answer("🗑 Авто видалено")
