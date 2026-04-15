@@ -23,5 +23,8 @@ class SellerStates(StatesGroup):
     # ================= ВИДАЛЕННЯ =================
     delete_car = State()
 
-    # ================= 🔥 PROFILE (НОВЕ) =================
+    # ================= PROFILE =================
     edit_profile = State()
+
+    # ================= 🔐 ВЕРИФІКАЦІЯ =================
+    verification_passport = State()
