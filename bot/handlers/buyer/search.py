@@ -2,7 +2,7 @@ from aiogram import Router, types, F
 from aiogram.fsm.context import FSMContext
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
-from bot.database.repositories.model_repo import get_models_by_brand
+from bot.database.repositories.model_repo import get_models_by_brand, get_model_id
 from bot.database.repositories.car_repo import count_cars
 
 from bot.utils.cache import get_cached_models
@@ -57,7 +57,14 @@ async def choose_model(message: types.Message, state: FSMContext):
         await message.answer("⚠️ Сесія втрачена. Почни заново: /find")
         return
 
-    total = await count_cars(brand, model)
+    # 🔴 ПЕРЕХІД НА model_id
+    model_id = await get_model_id(brand, model)
+
+    if not model_id:
+        await message.answer("❌ Модель не знайдена")
+        return
+
+    total = await count_cars(model_id)
 
     if total == 0:
         await message.answer(
@@ -67,7 +74,7 @@ async def choose_model(message: types.Message, state: FSMContext):
         return
 
     await state.update_data(
-        model=model,
+        model_id=model_id,
         page=0
     )
 
