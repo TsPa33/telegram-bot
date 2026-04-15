@@ -3,7 +3,11 @@ from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
 
 from bot.database.base import execute, fetchrow
-from bot.database.repositories.seller_repo import get_or_create_seller
+from bot.database.repositories.seller_repo import (
+    get_or_create_seller,
+    get_seller_stats,
+    get_seller_rating
+)
 
 from bot.states.seller_states import SellerStates
 
@@ -42,6 +46,36 @@ async def show_profile(message: Message):
         f"🌐 {seller.get('website') or '-'}\n"
         f"📍 {seller.get('city') or '-'}\n\n"
         f"{verified}"
+    )
+
+    await message.answer(text, parse_mode="HTML")
+
+
+# ================= 📊 DASHBOARD =================
+
+@router.message(F.text == "📊 Статистика")
+async def seller_stats(message: Message):
+    stats = await get_seller_stats(message.from_user.id)
+    rating = await get_seller_rating(message.from_user.id)
+
+    if not stats or stats["total_cars"] == 0:
+        await message.answer("📭 У тебе ще немає авто")
+        return
+
+    # 🔥 простий рейтинг
+    score = int(
+        (rating["phone"] * 3) +
+        (rating["site"] * 2) +
+        (rating["views"] * 0.1)
+    )
+
+    text = (
+        "📊 <b>Моя статистика</b>\n\n"
+        f"🚗 Оголошень: {stats['total_cars']}\n"
+        f"👀 Перегляди: {stats['total_views']}\n"
+        f"📞 Кліки на телефон: {stats['phone_clicks']}\n"
+        f"🌐 Переходи на сайт: {stats['site_clicks']}\n\n"
+        f"⭐ Рейтинг: <b>{score}</b>"
     )
 
     await message.answer(text, parse_mode="HTML")
@@ -87,7 +121,7 @@ async def invalid_passport(message: Message):
     await message.answer("❌ Надішли фото паспорту")
 
 
-# ================= SIMPLE PROFILE EDIT =================
+# ================= EDIT PROFILE =================
 
 @router.message(F.text == "✏️ Редагувати профіль")
 async def edit_profile(message: Message, state: FSMContext):
