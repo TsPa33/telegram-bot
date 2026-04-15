@@ -4,6 +4,9 @@ import traceback
 
 from aiogram import Bot, Dispatcher, types
 from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.fsm.storage.redis import RedisStorage
+
+import redis.asyncio as redis
 
 from bot.config import BOT_TOKEN
 from bot.handlers import start, seller, buyer, admin
@@ -23,7 +26,9 @@ logger = logging.getLogger(__name__)
 # ================= ERROR HANDLER =================
 
 async def global_error_handler(event: types.Update, exception: Exception):
-    error_text = "".join(traceback.format_exception(type(exception), exception, exception.__traceback__))
+    error_text = "".join(
+        traceback.format_exception(type(exception), exception, exception.__traceback__)
+    )
 
     logger.error("🚨 GLOBAL ERROR:\n%s", error_text)
 
@@ -35,7 +40,32 @@ async def global_error_handler(event: types.Update, exception: Exception):
     except Exception:
         logger.error("❌ Failed to notify user about error")
 
-    return True  # IMPORTANT: prevents crash
+    return True
+
+
+# ================= REDIS INIT =================
+
+async def get_storage():
+    try:
+        redis_client = redis.Redis(
+            host="localhost",
+            port=6379,
+            db=0,
+            decode_responses=True
+        )
+
+        # 🔴 перевірка підключення
+        await redis_client.ping()
+
+        logger.info("✅ Redis connected")
+
+        return RedisStorage(redis_client)
+
+    except Exception as e:
+        logger.warning("⚠️ Redis unavailable, fallback to MemoryStorage")
+        logger.warning(e)
+
+        return MemoryStorage()
 
 
 # ================= RUN BOT =================
@@ -46,10 +76,12 @@ async def run_bot():
 
     await init_pool()
 
-    dp = Dispatcher(storage=MemoryStorage())
+    storage = await get_storage()
+
+    dp = Dispatcher(storage=storage)
     bot = Bot(token=BOT_TOKEN)
 
-    # 🔴 REGISTER GLOBAL ERROR HANDLER
+    # ERROR HANDLER
     dp.errors.register(global_error_handler)
 
     # routers
