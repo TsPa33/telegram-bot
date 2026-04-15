@@ -1,4 +1,4 @@
-from aiogram import Router, types, F, Bot
+from aiogram import Router, types, F
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, ReplyKeyboardMarkup, KeyboardButton, Message
 
@@ -6,7 +6,8 @@ from bot.config import ADMINS
 from bot.keyboards.admin_kb import admin_kb
 from bot.keyboards.admin_inline import (
     brand_request_kb,
-    model_request_kb
+    model_request_kb,
+    verification_request_kb
 )
 
 from bot.states.admin_states import AddUser, EditBrand, EditModel
@@ -19,13 +20,17 @@ from bot.database.repositories.admin_repo import (
     approve_model,
     reject_model,
     update_brand_request,
-    update_model_request
+    update_model_request,
+
+    # 🔐 NEW
+    get_verification_requests,
+    approve_seller,
+    reject_seller
 )
 
 from bot.database.base import execute
 from bot.utils.cache import clear_brands_cache, clear_models_cache
 
-# 🔴 НОВЕ
 from bot.services.import_service import (
     parse_seller_file,
     save_parsed_data
@@ -37,6 +42,10 @@ CANCEL = KeyboardButton(text="❌ Скасувати")
 
 
 # ================= HELPERS =================
+
+def is_admin(user_id: int):
+    return user_id in ADMINS
+
 
 def is_command(message: types.Message):
     return message.text and message.text.startswith("/")
@@ -51,7 +60,7 @@ async def cancel(message: types.Message, state: FSMContext):
 
 @router.message(F.text == "⚙️ Адмін панель")
 async def open_admin_panel(message: types.Message):
-    if message.from_user.id not in ADMINS:
+    if not is_admin(message.from_user.id):
         return
 
     await message.answer("⚙️ Адмін панель", reply_markup=admin_kb)
@@ -61,7 +70,7 @@ async def open_admin_panel(message: types.Message):
 
 @router.message(F.text == "📋 Заявки")
 async def show_requests(message: types.Message):
-    if message.from_user.id not in ADMINS:
+    if not is_admin(message.from_user.id):
         return
 
     brand_requests = await get_pending_brand_requests()
@@ -70,19 +79,98 @@ async def show_requests(message: types.Message):
     if brand_requests:
         for r in brand_requests:
             await message.answer(
-                f"🆕 Новий бренд\n\n👤 User: {r['user_id']}\n🏷 Бренд: {r['brand']}",
+                f"🆕 Бренд\n👤 {r['user_id']}\n🏷 {r['brand']}",
                 reply_markup=brand_request_kb(r["id"])
             )
 
     if model_requests:
         for r in model_requests:
             await message.answer(
-                f"🆕 Нова модель\n\n👤 User: {r['user_id']}\n🚗 {r['brand']} {r['model']}",
+                f"🆕 Модель\n👤 {r['user_id']}\n🚗 {r['brand']} {r['model']}",
                 reply_markup=model_request_kb(r["id"])
             )
 
     if not brand_requests and not model_requests:
         await message.answer("✅ Немає заявок")
+
+
+# ================= 🔐 VERIFICATION LIST =================
+
+@router.message(F.text == "🔐 Верифікації")
+async def show_verifications(message: Message):
+    if not is_admin(message.from_user.id):
+        return
+
+    requests = await get_verification_requests()
+
+    if not requests:
+        await message.answer("✅ Немає заявок")
+        return
+
+    for seller in requests:
+        await message.answer_photo(
+            photo=seller["passport_photo_id"],
+            caption=f"🆔 Seller ID: {seller['id']}",
+            reply_markup=verification_request_kb(seller["id"])
+        )
+
+
+# ================= CALLBACK HANDLER (УНІФІКОВАНИЙ) =================
+
+@router.callback_query()
+async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
+    if not is_admin(callback.from_user.id):
+        return
+
+    if ":" not in callback.data:
+        return
+
+    entity, action, obj_id = callback.data.split(":")
+    obj_id = int(obj_id)
+
+    # ===== BRAND =====
+    if entity == "brand":
+        if action == "ok":
+            await approve_brand(obj_id)
+            await clear_brands_cache()
+            await callback.message.edit_text("✅ Бренд підтверджено")
+
+        elif action == "no":
+            await reject_brand(obj_id)
+            await callback.message.edit_text("❌ Бренд відхилено")
+
+        elif action == "edit":
+            await state.set_state(EditBrand.waiting_for_new_brand)
+            await state.update_data(request_id=obj_id)
+            await callback.message.answer("✏️ Введи новий бренд:")
+
+    # ===== MODEL =====
+    elif entity == "model":
+        if action == "ok":
+            await approve_model(obj_id)
+            await clear_models_cache()
+            await callback.message.edit_text("✅ Модель підтверджено")
+
+        elif action == "no":
+            await reject_model(obj_id)
+            await callback.message.edit_text("❌ Модель відхилено")
+
+        elif action == "edit":
+            await state.set_state(EditModel.waiting_for_new_model)
+            await state.update_data(request_id=obj_id)
+            await callback.message.answer("✏️ Введи нову модель:")
+
+    # ===== 🔐 VERIFY =====
+    elif entity == "verify":
+        if action == "ok":
+            await approve_seller(obj_id)
+            await callback.message.edit_caption("✅ Верифіковано")
+
+        elif action == "no":
+            await reject_seller(obj_id)
+            await callback.message.edit_caption("❌ Відхилено")
+
+    await callback.answer()
 
 
 # ================= EDIT BRAND =================
@@ -101,7 +189,7 @@ async def edit_brand_save(message: types.Message, state: FSMContext):
     await update_brand_request(request_id, new_brand)
     await approve_brand(request_id)
 
-    await message.answer(f"✅ Бренд виправлено та підтверджено: {new_brand}")
+    await message.answer(f"✅ Бренд: {new_brand}")
     await state.clear()
 
 
@@ -121,134 +209,21 @@ async def edit_model_save(message: types.Message, state: FSMContext):
     await update_model_request(request_id, new_model)
     await approve_model(request_id)
 
-    await message.answer(f"✅ Модель виправлено та підтверджено: {new_model}")
+    await message.answer(f"✅ Модель: {new_model}")
     await state.clear()
 
 
-# ================= ADD USER =================
-
-@router.message(F.text == "➕ Додати користувача")
-async def add_user_start(message: types.Message, state: FSMContext):
-    if message.from_user.id not in ADMINS:
-        return
-
-    keyboard = ReplyKeyboardMarkup(
-        keyboard=[[CANCEL]],
-        resize_keyboard=True
-    )
-
-    await message.answer("Введіть ім'я користувача:", reply_markup=keyboard)
-    await state.set_state(AddUser.name)
-
-
-@router.message(AddUser.name)
-async def get_name(message: types.Message, state: FSMContext):
-    if is_command(message) or message.text == "❌ Скасувати":
-        await cancel(message, state)
-        return
-
-    await state.update_data(name=message.text.strip())
-    await message.answer("Введіть посилання на сайт:")
-    await state.set_state(AddUser.website)
-
-
-@router.message(AddUser.website)
-async def get_website(message: types.Message, state: FSMContext):
-    if is_command(message) or message.text == "❌ Скасувати":
-        await cancel(message, state)
-        return
-
-    await state.update_data(website=message.text.strip())
-    await message.answer("Введіть номер телефону:")
-    await state.set_state(AddUser.phone)
-
-
-@router.message(AddUser.phone)
-async def get_phone(message: types.Message, state: FSMContext):
-    if is_command(message) or message.text == "❌ Скасувати":
-        await cancel(message, state)
-        return
-
-    await state.update_data(phone=message.text.strip())
-
-    await message.answer(
-        "Введіть моделі у форматі:\n\n"
-        "Model: Audi\nA4\nA6\n\n"
-        "Model: BMW\nE60\nF30"
-    )
-
-    await state.set_state(AddUser.models)
-
-
-@router.message(AddUser.models)
-async def get_models(message: types.Message, state: FSMContext):
-    if is_command(message) or message.text == "❌ Скасувати":
-        await cancel(message, state)
-        return
-
-    text = message.text
-
-    if "model:" not in text.lower():
-        await message.answer("❌ Використай формат з 'Model:'")
-        return
-
-    lines = text.split("\n")
-    current_brand = None
-    data_dict = {}
-
-    for line in lines:
-        line = line.strip()
-
-        if not line:
-            continue
-
-        if line.lower().startswith("model:"):
-            current_brand = line.split(":", 1)[1].strip().title()
-            data_dict[current_brand] = []
-
-        else:
-            if current_brand:
-                model = line.strip().upper()
-                if model not in data_dict[current_brand]:
-                    data_dict[current_brand].append(model)
-
-    if not data_dict:
-        await message.answer("❌ Не вдалося розпарсити моделі")
-        return
-
-    await state.update_data(models=data_dict)
-    data = await state.get_data()
-
-    try:
-        await execute("""
-            INSERT INTO users (name, website, phone)
-            VALUES ($1, $2, $3)
-        """, data["name"], data["website"], data["phone"])
-
-        await message.answer("✅ Користувача додано")
-
-    except Exception as e:
-        await message.answer(f"❌ Помилка: {str(e)}")
-
-    await state.clear()
-    await message.answer("🏠 Меню", reply_markup=admin_kb)
-
-
-# ================= 🔴 FILE IMPORT =================
+# ================= FILE IMPORT =================
 
 @router.message(F.document)
 async def upload_sellers_file(message: Message):
-    if message.from_user.id not in ADMINS:
+    if not is_admin(message.from_user.id):
         return
 
     document = message.document
 
-    if not document:
-        await message.answer("❌ Файл не знайдено")
-        return
-
-    if not document.file_name.endswith(".txt"):
-        await message.answer("❌ Підтримується тільки .txt файл")
+    if not document or not document.file_name.endswith(".txt"):
+        await message.answer("❌ Тільки .txt")
         return
 
     try:
@@ -260,15 +235,13 @@ async def upload_sellers_file(message: Message):
         rows = await parse_seller_file(text)
 
         if not rows:
-            await message.answer("❌ Невірний формат файлу")
+            await message.answer("❌ Невірний формат")
             return
 
         await save_parsed_data(rows)
 
-        await message.answer(
-            f"✅ Імпорт завершено\n📦 Оброблено: {len(rows)} рядків"
-        )
+        await message.answer(f"✅ Імпорт: {len(rows)} записів")
 
     except Exception as e:
-        await message.answer("❌ Помилка при імпорті")
-        print(f"IMPORT ERROR: {e}")
+        await message.answer("❌ Помилка імпорту")
+        print(e)
