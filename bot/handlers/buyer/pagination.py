@@ -72,14 +72,28 @@ async def send_card(message, state: FSMContext, new_message=False):
         )
     else:
         try:
-            await message.edit_media(
-                InputMediaPhoto(
-                    media=photo,
+            # 🔥 FIX: якщо фото те саме → використовуємо edit_caption
+            if message.photo:
+                current_photo_id = message.photo[-1].file_id
+            else:
+                current_photo_id = None
+
+            if current_photo_id == photo:
+                await message.edit_caption(
                     caption=text,
+                    reply_markup=keyboard,
                     parse_mode="HTML"
-                ),
-                reply_markup=keyboard
-            )
+                )
+            else:
+                await message.edit_media(
+                    InputMediaPhoto(
+                        media=photo,
+                        caption=text,
+                        parse_mode="HTML"
+                    ),
+                    reply_markup=keyboard
+                )
+
         except:
             await message.answer_photo(
                 photo=photo,
@@ -174,7 +188,8 @@ async def site_click(callback: CallbackQuery, state: FSMContext = None):
     await callback.answer()
     await callback.message.answer(f"🌐 {car.get('website') or 'не вказано'}")
 
-# ================= NOOP (FIX) =================
+
+# ================= NOOP =================
 
 @router.callback_query(F.data == "noop")
 async def noop_handler(callback: CallbackQuery):
