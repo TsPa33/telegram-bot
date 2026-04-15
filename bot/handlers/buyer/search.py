@@ -43,15 +43,22 @@ async def start_buyer(message: types.Message, state: FSMContext):
 
 # ================= BRAND =================
 
-@router.message(Buyer.brand)
+@router.message(Buyer.brand, F.text != "⬅️ Назад")
 async def choose_brand(message: types.Message, state: FSMContext):
     text = (message.text or "").strip()
 
+    brands = await get_cached_brands(get_brands)
+
     brand = normalize_brand(text)
+
+    if brand not in brands:
+        await message.answer("❌ Обери бренд з кнопок")
+        return
+
     models = await get_cached_models(brand, get_models_by_brand)
 
     if not models:
-        await message.answer("❌ Обери бренд з кнопок")
+        await message.answer("❌ Моделей немає")
         return
 
     keyboard = ReplyKeyboardMarkup(
@@ -67,7 +74,7 @@ async def choose_brand(message: types.Message, state: FSMContext):
 
 # ================= MODEL =================
 
-@router.message(Buyer.model)
+@router.message(Buyer.model, F.text != "⬅️ Назад")
 async def choose_model(message: types.Message, state: FSMContext):
     text = (message.text or "").strip()
     model = normalize_model(text)
@@ -80,7 +87,12 @@ async def choose_model(message: types.Message, state: FSMContext):
         await message.answer("⚠️ Сесія втрачена. Почни заново: /find")
         return
 
-    # 🔴 через service layer
+    models = await get_cached_models(brand, get_models_by_brand)
+
+    if model not in models:
+        await message.answer("❌ Обери модель з кнопок")
+        return
+
     model_id = await get_model_or_none(brand, model)
 
     if not model_id:
@@ -112,12 +124,11 @@ async def choose_model(message: types.Message, state: FSMContext):
 async def global_back(message: types.Message, state: FSMContext):
     current_state = await state.get_state()
 
-    # немає стану → меню
     if not current_state:
         await message.answer("🔙 Головне меню")
         return
 
-    # з моделі → назад до бренду
+    # 🔙 MODEL → BRAND
     if current_state == Buyer.model:
         brands = await get_cached_brands(get_brands)
 
@@ -130,7 +141,7 @@ async def global_back(message: types.Message, state: FSMContext):
         await message.answer("🚗 Обери бренд:", reply_markup=keyboard)
         return
 
-    # з бренду → вихід
+    # 🔙 BRAND → EXIT
     if current_state == Buyer.brand:
         await state.clear()
         await message.answer("🔙 Головне меню")
