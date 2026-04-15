@@ -173,3 +173,9 @@ async def site_click(callback: CallbackQuery, state: FSMContext = None):
 
     await callback.answer()
     await callback.message.answer(f"🌐 {car.get('website') or 'не вказано'}")
+
+# ================= NOOP (FIX) =================
+
+@router.callback_query(F.data == "noop")
+async def noop_handler(callback: CallbackQuery):
+    await callback.answer()
