@@ -1,9 +1,9 @@
-from aiogram import Router, types
+from aiogram import Router, types, F
 from aiogram.fsm.context import FSMContext
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
 from bot.database.repositories.model_repo import get_models_by_brand
-from bot.database.repositories.car_repo import count_cars, find_cars
+from bot.database.repositories.car_repo import count_cars
 
 from bot.utils.cache import get_cached_models
 from bot.utils.validation import normalize_brand, normalize_model
@@ -22,16 +22,13 @@ BACK = KeyboardButton(text="⬅️ Назад")
 
 @router.message(Buyer.brand)
 async def choose_brand(message: types.Message, state: FSMContext):
-    if await state.get_state() != Buyer.brand:
-        return
+    text = (message.text or "").strip()
 
-    text = message.text.strip()
     brand = normalize_brand(text)
-
     models = await get_cached_models(brand, get_models_by_brand)
 
     if not models:
-        await message.answer("❌ Моделей немає")
+        await message.answer("❌ Обери бренд з кнопок")
         return
 
     keyboard = ReplyKeyboardMarkup(
@@ -49,10 +46,7 @@ async def choose_brand(message: types.Message, state: FSMContext):
 
 @router.message(Buyer.model)
 async def choose_model(message: types.Message, state: FSMContext):
-    if await state.get_state() != Buyer.model:
-        return
-
-    text = message.text.strip()
+    text = (message.text or "").strip()
     model = normalize_model(text)
 
     data = await state.get_data()
@@ -67,55 +61,31 @@ async def choose_model(message: types.Message, state: FSMContext):
 
     if total == 0:
         await message.answer(
-            "😕 Поки що немає оголошень для цієї моделі.\n"
-            "Спробуй іншу модель або зайди пізніше."
+            "😕 Немає оголошень для цієї моделі.\n"
+            "Спробуй іншу."
         )
-        return
-
-    # 🔴 кешуємо результати
-    results = await find_cars(brand, model, 0, limit=10)
-
-    if not results:
-        await message.answer("❌ Більше немає результатів")
         return
 
     await state.update_data(
         model=model,
-        page=0,
-        total=len(results),
-        results=results
+        page=0
     )
 
-    await message.answer(f"🔎 Знайдено оголошень: {len(results)}")
+    await message.answer(f"🔎 Знайдено оголошень: {total}")
 
     await send_card(message, state, new_message=True)
 
-    # ❌ НЕ ОЧИЩАЄМО STATE
 
+# ================= BACK =================
 
-# ================= FALLBACK BRAND =================
+@router.message(F.text == "⬅️ Назад")
+async def back_handler(message: types.Message, state: FSMContext):
+    current_state = await state.get_state()
 
-@router.message()
-async def fallback_brand_handler(message: types.Message, state: FSMContext):
-    text = (message.text or "").strip()
-
-    if not text:
+    if current_state == Buyer.model:
+        await state.set_state(Buyer.brand)
+        await message.answer("🚗 Обери бренд:")
         return
 
-    # пробуємо як бренд
-    brand = normalize_brand(text)
-
-    models = await get_cached_models(brand, get_models_by_brand)
-
-    if not models:
-        return  # не бренд → нічого не робимо
-
-    keyboard = ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text=m)] for m in models] + [[BACK]],
-        resize_keyboard=True
-    )
-
-    await state.update_data(brand=brand)
-    await state.set_state(Buyer.model)
-
-    await message.answer("🚘 Обери модель:", reply_markup=keyboard)
+    await state.clear()
+    await message.answer("🏠 Головне меню")
