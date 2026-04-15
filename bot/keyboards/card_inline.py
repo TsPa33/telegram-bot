@@ -6,6 +6,9 @@ def build_card_keyboard(car: dict, page: int, total: int):
 
     car_id = car.get("id")
 
+    if not car_id:
+        return InlineKeyboardMarkup(inline_keyboard=[])
+
     # ================= CONTACT BLOCK =================
 
     contact_row = []
@@ -19,10 +22,11 @@ def build_card_keyboard(car: dict, page: int, total: int):
         )
 
     if car.get("username"):
+        username = car.get("username", "").replace("@", "")
         contact_row.append(
             InlineKeyboardButton(
                 text="💬 Написати",
-                url=f"https://t.me/{car['username']}"
+                url=f"https://t.me/{username}"
             )
         )
     elif car.get("telegram_id"):
@@ -36,13 +40,18 @@ def build_card_keyboard(car: dict, page: int, total: int):
     if contact_row:
         rows.append(contact_row)
 
-    # ================= SITE =================
+    # ================= SITE (FIXED) =================
 
     if car.get("website"):
+        url = car.get("website")
+
+        if url and not url.startswith("http"):
+            url = "https://" + url
+
         rows.append([
             InlineKeyboardButton(
                 text="🌐 Відкрити сайт",
-                callback_data=f"site:{car_id}"
+                url=url
             )
         ])
 
