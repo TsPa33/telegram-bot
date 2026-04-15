@@ -14,19 +14,20 @@ router = Router()
 DEFAULT_PHOTO = "AgACAgIAAxkBAAIJ6WnZ7zNsTF4dV6Fxbqsye8iRF224AAJfEWsbFN_RSsup93hjz4uMAQADAgADeAADOwQ"
 
 
+# ================= CARD =================
+
 async def send_card(message: types.Message, state: FSMContext, new_message=False):
     data = await state.get_data()
 
-    brand = data.get("brand")
-    model = data.get("model")
+    model_id = data.get("model_id")
     page = data.get("page", 0)
 
-    if not brand or not model:
+    if not model_id:
         await state.clear()
         await message.answer("⚠️ Сесія втрачена. Почни заново: /find")
         return
 
-    total = await count_cars(brand, model)
+    total = await count_cars(model_id)
 
     if total == 0:
         await message.answer("❌ Немає результатів")
@@ -35,7 +36,7 @@ async def send_card(message: types.Message, state: FSMContext, new_message=False
     if page < 0 or page >= total:
         return
 
-    results = await find_cars(brand, model, page, limit=1)
+    results = await find_cars(model_id, page, limit=1)
 
     if not results:
         await message.answer("❌ Немає результатів")
@@ -74,6 +75,8 @@ async def send_card(message: types.Message, state: FSMContext, new_message=False
             )
 
 
+# ================= PAGINATION =================
+
 @router.callback_query(F.data.startswith("page:"))
 async def paginate(callback: types.CallbackQuery, state: FSMContext):
     try:
@@ -88,13 +91,21 @@ async def paginate(callback: types.CallbackQuery, state: FSMContext):
     await send_card(callback.message, state)
 
 
-# 📞 PHONE
+# ================= PHONE =================
 
 @router.callback_query(F.data.startswith("phone:"))
 async def phone_click(callback: types.CallbackQuery):
-    car_id = int(callback.data.split(":")[1])
+    try:
+        car_id = int(callback.data.split(":")[1])
+    except:
+        await callback.answer("Помилка")
+        return
 
     car = await get_car_by_id(car_id)
+
+    if not car:
+        await callback.answer("Не знайдено")
+        return
 
     await execute("""
         UPDATE seller_cars
@@ -103,16 +114,24 @@ async def phone_click(callback: types.CallbackQuery):
     """, car_id)
 
     await callback.answer()
-    await callback.message.answer(f"📞 {car.get('phone')}")
+    await callback.message.answer(f"📞 {car.get('phone') or 'не вказано'}")
 
 
-# 🌐 SITE
+# ================= SITE =================
 
 @router.callback_query(F.data.startswith("site:"))
 async def site_click(callback: types.CallbackQuery):
-    car_id = int(callback.data.split(":")[1])
+    try:
+        car_id = int(callback.data.split(":")[1])
+    except:
+        await callback.answer("Помилка")
+        return
 
     car = await get_car_by_id(car_id)
+
+    if not car:
+        await callback.answer("Не знайдено")
+        return
 
     await execute("""
         UPDATE seller_cars
@@ -121,4 +140,4 @@ async def site_click(callback: types.CallbackQuery):
     """, car_id)
 
     await callback.answer()
-    await callback.message.answer(f"🌐 {car.get('website')}")
+    await callback.message.answer(f"🌐 {car.get('website') or 'не вказано'}")
