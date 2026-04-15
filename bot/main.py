@@ -1,12 +1,13 @@
 import asyncio
 import logging
 import traceback
+import os
 
 from aiogram import Bot, Dispatcher, types
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.fsm.storage.redis import RedisStorage
 
-import redis.asyncio as redis
+from redis.asyncio import from_url
 
 from bot.config import BOT_TOKEN
 from bot.handlers import start, seller, buyer, admin
@@ -34,35 +35,36 @@ async def global_error_handler(event: types.Update, exception: Exception):
 
     try:
         if event.message:
-            await event.message.answer("⚠️ Сталась помилка. Ми вже працюємо над цим.")
+            await event.message.answer("⚠️ Сталась помилка")
         elif event.callback_query:
             await event.callback_query.answer("⚠️ Помилка", show_alert=True)
     except Exception:
-        logger.error("❌ Failed to notify user about error")
+        pass
 
     return True
 
 
-# ================= REDIS INIT =================
+# ================= REDIS =================
 
 async def get_storage():
+    redis_url = os.getenv("REDIS_URL")
+
+    if not redis_url:
+        logger.warning("⚠️ REDIS_URL not found → fallback MemoryStorage")
+        return MemoryStorage()
+
     try:
-        redis_client = redis.Redis(
-            host="localhost",
-            port=6379,
-            db=0,
-            decode_responses=True
-        )
+        redis = from_url(redis_url)
 
-        # 🔴 перевірка підключення
-        await redis_client.ping()
+        # тест підключення
+        await redis.ping()
 
-        logger.info("✅ Redis connected")
+        logger.info("✅ Redis connected (Railway)")
 
-        return RedisStorage(redis_client)
+        return RedisStorage(redis)
 
     except Exception as e:
-        logger.warning("⚠️ Redis unavailable, fallback to MemoryStorage")
+        logger.warning("⚠️ Redis connection failed → fallback MemoryStorage")
         logger.warning(e)
 
         return MemoryStorage()
@@ -81,10 +83,8 @@ async def run_bot():
     dp = Dispatcher(storage=storage)
     bot = Bot(token=BOT_TOKEN)
 
-    # ERROR HANDLER
     dp.errors.register(global_error_handler)
 
-    # routers
     dp.include_router(start.router)
     dp.include_router(seller.router)
     dp.include_router(admin.router)
@@ -95,7 +95,6 @@ async def run_bot():
     try:
         await dp.start_polling(bot)
     finally:
-        logger.info("🛑 Shutting down bot...")
         await bot.session.close()
 
 
