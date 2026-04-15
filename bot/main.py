@@ -3,7 +3,8 @@ import logging
 import traceback
 import os
 
-from aiogram import Bot, Dispatcher, types
+from aiogram import Bot, Dispatcher
+from aiogram.types import ErrorEvent
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.fsm.storage.redis import RedisStorage
 
@@ -24,9 +25,12 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-# ================= ERROR HANDLER =================
+# ================= ERROR HANDLER (FIXED) =================
 
-async def global_error_handler(event: types.Update, exception: Exception):
+async def global_error_handler(event: ErrorEvent):
+    exception = event.exception
+    update = event.update
+
     error_text = "".join(
         traceback.format_exception(type(exception), exception, exception.__traceback__)
     )
@@ -34,12 +38,12 @@ async def global_error_handler(event: types.Update, exception: Exception):
     logger.error("🚨 GLOBAL ERROR:\n%s", error_text)
 
     try:
-        if event.message:
-            await event.message.answer("⚠️ Сталась помилка")
-        elif event.callback_query:
-            await event.callback_query.answer("⚠️ Помилка", show_alert=True)
+        if update.message:
+            await update.message.answer("⚠️ Сталась помилка")
+        elif update.callback_query:
+            await update.callback_query.answer("⚠️ Помилка", show_alert=True)
     except Exception:
-        pass
+        logger.error("❌ Failed to notify user")
 
     return True
 
@@ -56,7 +60,6 @@ async def get_storage():
     try:
         redis = from_url(redis_url)
 
-        # тест підключення
         await redis.ping()
 
         logger.info("✅ Redis connected (Railway)")
@@ -83,6 +86,7 @@ async def run_bot():
     dp = Dispatcher(storage=storage)
     bot = Bot(token=BOT_TOKEN)
 
+    # 🔴 FIXED ERROR HANDLER
     dp.errors.register(global_error_handler)
 
     dp.include_router(start.router)
@@ -95,6 +99,7 @@ async def run_bot():
     try:
         await dp.start_polling(bot)
     finally:
+        logger.info("🛑 Shutting down bot...")
         await bot.session.close()
 
 
