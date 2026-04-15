@@ -29,12 +29,20 @@ async def send_card(message: types.Message, state: FSMContext, new_message=False
         await message.answer("⚠️ Сесія втрачена. Почни заново: /find")
         return
 
-    # 🔴 ВСЯ ЛОГІКА ТЕПЕР В SERVICE
     car, total = await get_cars_page(model_id, page)
 
     if not car:
         await message.answer("❌ Немає результатів")
         return
+
+    car_id = car.get("id")
+
+    # 🔴 TRACK VIEW
+    await execute("""
+        UPDATE seller_cars
+        SET views = COALESCE(views,0)+1
+        WHERE id=$1
+    """, car_id)
 
     text = format_car_card(car, page, total)
     keyboard = build_card_keyboard(car, page, total)
@@ -99,6 +107,7 @@ async def phone_click(callback: types.CallbackQuery):
         await callback.answer("Не знайдено")
         return
 
+    # 🔴 TRACK CLICK
     await execute("""
         UPDATE seller_cars
         SET phone_clicks = COALESCE(phone_clicks,0)+1
@@ -125,6 +134,7 @@ async def site_click(callback: types.CallbackQuery):
         await callback.answer("Не знайдено")
         return
 
+    # 🔴 TRACK CLICK
     await execute("""
         UPDATE seller_cars
         SET site_clicks = COALESCE(site_clicks,0)+1
