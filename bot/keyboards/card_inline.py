@@ -6,10 +6,33 @@ def is_valid_url(url: str) -> bool:
     if not url:
         return False
 
+    # ❌ кирилиця / пробіли
     if re.search(r"[а-яА-Я ]", url):
         return False
 
-    return "." in url
+    # ❌ базова перевірка
+    if "." not in url:
+        return False
+
+    return True
+
+
+def normalize_url(url: str) -> str | None:
+    if not url:
+        return None
+
+    url = url.strip()
+
+    if not url:
+        return None
+
+    if not url.startswith("http"):
+        url = "https://" + url
+
+    if not is_valid_url(url):
+        return None
+
+    return url
 
 
 def build_card_keyboard(car: dict, page: int, total: int):
@@ -48,26 +71,22 @@ def build_card_keyboard(car: dict, page: int, total: int):
 
     # ================= SITE =================
 
-    if car.get("website"):
-        raw_url = car.get("website").strip()
+    normalized_url = normalize_url(car.get("website"))
 
-        if not raw_url.startswith("http"):
-            raw_url = "https://" + raw_url
-
-        if is_valid_url(raw_url):
-            rows.append([
-                InlineKeyboardButton(
-                    text="🌐 Відкрити сайт",
-                    url=raw_url
-                )
-            ])
-        else:
-            rows.append([
-                InlineKeyboardButton(
-                    text="⚠️ Некоректний сайт",
-                    callback_data="noop"
-                )
-            ])
+    if normalized_url:
+        rows.append([
+            InlineKeyboardButton(
+                text="🌐 Відкрити сайт",
+                url=normalized_url
+            )
+        ])
+    else:
+        rows.append([
+            InlineKeyboardButton(
+                text="⚠️ Некоректний сайт",
+                callback_data="noop"
+            )
+        ])
 
     # ================= FALLBACK =================
 
@@ -89,6 +108,7 @@ def build_card_keyboard(car: dict, page: int, total: int):
     if total > 1:
         nav_row = []
 
+        # ⬅️ назад
         if page > 0:
             nav_row.append(
                 InlineKeyboardButton(
@@ -97,6 +117,7 @@ def build_card_keyboard(car: dict, page: int, total: int):
                 )
             )
 
+        # 📄 індикатор
         nav_row.append(
             InlineKeyboardButton(
                 text=f"{page + 1}/{total}",
@@ -104,11 +125,14 @@ def build_card_keyboard(car: dict, page: int, total: int):
             )
         )
 
+        # ➡️ вперед (🔥 гарантія int)
         if page < total - 1:
+            next_page = int(page) + 1
+
             nav_row.append(
                 InlineKeyboardButton(
                     text="➡️",
-                    callback_data=f"page:{page + 1}"
+                    callback_data=f"page:{next_page}"
                 )
             )
 
