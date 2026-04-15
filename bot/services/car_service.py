@@ -1,8 +1,19 @@
 from bot.database.base import fetchrow
 
 
+# ================= MODEL =================
+
+async def get_model_or_none(brand_id: int, model_name: str):
+    return await fetchrow("""
+        SELECT *
+        FROM models
+        WHERE brand_id = $1 AND LOWER(name) = LOWER($2)
+    """, brand_id, model_name)
+
+
+# ================= PAGINATION =================
+
 async def get_cars_page(model_id: int, page: int):
-    # 🔢 отримуємо total
     total_row = await fetchrow("""
         SELECT COUNT(*) AS total
         FROM seller_cars
@@ -14,13 +25,11 @@ async def get_cars_page(model_id: int, page: int):
     if total == 0:
         return None, 0
 
-    # 🧠 нормалізація page
     if page < 0:
         page = 0
     if page >= total:
         page = total - 1
 
-    # 🔥 OFFSET — ОСНОВА pagination
     car = await fetchrow("""
         SELECT *
         FROM seller_cars
