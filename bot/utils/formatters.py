@@ -9,17 +9,25 @@ def format_car_card(car: dict, page: int, total: int):
 
     title = f"🚗 <b>{brand} {model}</b>"
 
-    # ================= DESCRIPTION =================
+    # ================= DESCRIPTION (FIXED) =================
 
-    description = (car.get("description") or "").strip()
+    raw_description = car.get("description")
+
+    if raw_description is None:
+        description = ""
+    else:
+        description = str(raw_description).strip()
+
     description = html.escape(description)
 
-    description_block = ""
-    if description:
-        description_block = (
-            "📝 <b>Опис:</b>\n"
-            f"{description}\n\n"
-        )
+    # 🔴 FIX: fallback
+    if not description:
+        description = "📦 Опис відсутній"
+
+    description_block = (
+        "📝 <b>Опис:</b>\n"
+        f"{description}\n\n"
+    )
 
     # ================= SELLER =================
 
@@ -44,7 +52,6 @@ def format_car_card(car: dict, page: int, total: int):
     # ================= VERIFIED =================
 
     verified = car.get("is_verified")
-    verified_block = ""
 
     if verified:
         verified_block = "✅ Перевірений продавець\n\n"
