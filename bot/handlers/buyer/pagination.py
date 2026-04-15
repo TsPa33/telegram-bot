@@ -2,8 +2,10 @@ from aiogram import Router, types, F
 from aiogram.types import InputMediaPhoto
 from aiogram.fsm.context import FSMContext
 
-from bot.database.repositories.car_repo import find_cars, count_cars, get_car_by_id
+from bot.database.repositories.car_repo import get_car_by_id
 from bot.database.base import execute
+
+from bot.services.car_service import get_cars_page
 
 from bot.utils.formatters import format_car_card
 from bot.keyboards.card_inline import build_card_keyboard
@@ -27,22 +29,12 @@ async def send_card(message: types.Message, state: FSMContext, new_message=False
         await message.answer("⚠️ Сесія втрачена. Почни заново: /find")
         return
 
-    total = await count_cars(model_id)
+    # 🔴 ВСЯ ЛОГІКА ТЕПЕР В SERVICE
+    car, total = await get_cars_page(model_id, page)
 
-    if total == 0:
+    if not car:
         await message.answer("❌ Немає результатів")
         return
-
-    if page < 0 or page >= total:
-        return
-
-    results = await find_cars(model_id, page, limit=1)
-
-    if not results:
-        await message.answer("❌ Немає результатів")
-        return
-
-    car = results[0]
 
     text = format_car_card(car, page, total)
     keyboard = build_card_keyboard(car, page, total)
