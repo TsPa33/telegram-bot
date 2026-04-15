@@ -45,14 +45,17 @@ async def delete_car(car_id: int, telegram_id: int):
 
 # 🔴 FIX: OWNER CHECK
 async def update_description(car_id: int, description: str, telegram_id: int):
-    await execute("""
+    row = await fetchrow("""
         UPDATE seller_cars sc
         SET description = $1
         FROM sellers s
         WHERE sc.id = $2
           AND sc.seller_id = s.id
           AND s.telegram_id = $3
+        RETURNING sc.id
     """, description, car_id, telegram_id)
+
+    return row is not None
 
 
 # ================= PROFILE =================
