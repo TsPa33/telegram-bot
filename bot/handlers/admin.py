@@ -68,7 +68,7 @@ async def open_admin_panel(message: types.Message):
 
 # ================= REQUESTS =================
 
-@router.message(F.text == "📋 Заявки")
+@router.message(F.text.startswith("📋 Заявки"))
 async def show_requests(message: types.Message):
     if not is_admin(message.from_user.id):
         return
@@ -96,7 +96,7 @@ async def show_requests(message: types.Message):
 
 # ================= 🔐 VERIFICATION LIST =================
 
-@router.message(F.text == "🔐 Верифікації")
+@router.message(F.text.in_(["🔐 Верифікації", "🔐 Верифікація продавців"]))
 async def show_verifications(message: Message):
     if not is_admin(message.from_user.id):
         return
