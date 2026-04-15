@@ -1,12 +1,11 @@
-from aiogram import Router, types, F
-from aiogram.types import InputMediaPhoto
+from aiogram import Router, F
+from aiogram.types import CallbackQuery, InputMediaPhoto
 from aiogram.fsm.context import FSMContext
 
 from bot.database.repositories.car_repo import get_car_by_id
 from bot.database.base import execute
 
 from bot.services.car_service import get_cars_page
-
 from bot.utils.formatters import format_car_card
 from bot.keyboards.card_inline import build_card_keyboard
 
@@ -16,9 +15,20 @@ router = Router()
 DEFAULT_PHOTO = "AgACAgIAAxkBAAIJ6WnZ7zNsTF4dV6Fxbqsye8iRF224AAJfEWsbFN_RSsup93hjz4uMAQADAgADeAADOwQ"
 
 
+# ================= SAFE GET STATE =================
+
+async def safe_get_state_data(state: FSMContext | None):
+    try:
+        if state:
+            return await state.get_data()
+    except:
+        pass
+    return {}
+
+
 # ================= CARD =================
 
-async def send_card(message: types.Message, state: FSMContext, new_message=False):
+async def send_card(message, state: FSMContext, new_message=False):
     data = await state.get_data()
 
     model_id = data.get("model_id")
@@ -37,7 +47,6 @@ async def send_card(message: types.Message, state: FSMContext, new_message=False
 
     car_id = car.get("id")
 
-    # 🔴 FIX: view тільки один раз на сторінку
     last_viewed = data.get("last_viewed_id")
 
     if last_viewed != car_id:
@@ -83,7 +92,7 @@ async def send_card(message: types.Message, state: FSMContext, new_message=False
 # ================= PAGINATION =================
 
 @router.callback_query(F.data.startswith("page:"))
-async def paginate(callback: types.CallbackQuery, state: FSMContext):
+async def paginate(callback: CallbackQuery, state: FSMContext):
     try:
         page = int(callback.data.split(":")[1])
     except:
@@ -99,14 +108,14 @@ async def paginate(callback: types.CallbackQuery, state: FSMContext):
 # ================= PHONE =================
 
 @router.callback_query(F.data.startswith("phone:"))
-async def phone_click(callback: types.CallbackQuery, state: FSMContext):
+async def phone_click(callback: CallbackQuery, state: FSMContext = None):
     try:
         car_id = int(callback.data.split(":")[1])
     except:
         await callback.answer("Помилка")
         return
 
-    data = await state.get_data()
+    data = await safe_get_state_data(state)
     clicked = data.get("clicked_phone", [])
 
     if car_id not in clicked:
@@ -117,7 +126,9 @@ async def phone_click(callback: types.CallbackQuery, state: FSMContext):
         """, car_id)
 
         clicked.append(car_id)
-        await state.update_data(clicked_phone=clicked)
+
+        if state:
+            await state.update_data(clicked_phone=clicked)
 
     car = await get_car_by_id(car_id)
 
@@ -132,14 +143,14 @@ async def phone_click(callback: types.CallbackQuery, state: FSMContext):
 # ================= SITE =================
 
 @router.callback_query(F.data.startswith("site:"))
-async def site_click(callback: types.CallbackQuery, state: FSMContext):
+async def site_click(callback: CallbackQuery, state: FSMContext = None):
     try:
         car_id = int(callback.data.split(":")[1])
     except:
         await callback.answer("Помилка")
         return
 
-    data = await state.get_data()
+    data = await safe_get_state_data(state)
     clicked = data.get("clicked_site", [])
 
     if car_id not in clicked:
@@ -150,7 +161,9 @@ async def site_click(callback: types.CallbackQuery, state: FSMContext):
         """, car_id)
 
         clicked.append(car_id)
-        await state.update_data(clicked_site=clicked)
+
+        if state:
+            await state.update_data(clicked_site=clicked)
 
     car = await get_car_by_id(car_id)
 
