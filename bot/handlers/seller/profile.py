@@ -1,13 +1,9 @@
-from aiogram import Router, F, types
-from aiogram.types import Message, CallbackQuery
+from aiogram import Router, F
+from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
 
-from bot.keyboards.seller_inline import profile_edit_kb
-
-from bot.database.repositories.seller_repo import (
-    get_or_create_seller,
-    update_seller_field
-)
+from bot.database.base import execute, fetchrow
+from bot.database.repositories.seller_repo import get_or_create_seller
 
 from bot.states.seller_states import SellerStates
 
@@ -18,85 +14,144 @@ router = Router()
 # ================= PROFILE =================
 
 @router.message(F.text == "👤 Профіль")
-async def seller_profile(message: Message, state: FSMContext):
-    await state.clear()
+async def show_profile(message: Message):
+    seller = await fetchrow("""
+        SELECT 
+            name,
+            shop_name,
+            phone,
+            website,
+            city,
+            is_verified,
+            verification_status
+        FROM sellers
+        WHERE telegram_id = $1
+    """, message.from_user.id)
 
-    seller = await get_or_create_seller(
-        message.from_user.id,
-        message.from_user.username
-    )
+    if not seller:
+        await message.answer("❌ Профіль не знайдено")
+        return
+
+    verified = "✅ Верифікований" if seller["is_verified"] else "⚠️ Не верифікований"
 
     text = (
-        f"🏪 <b>{seller.get('shop_name') or 'Без назви'}</b>\n\n"
-        f"👤 {seller.get('name') or 'Не вказано'}\n"
+        f"👤 <b>Профіль продавця</b>\n\n"
+        f"🏪 {seller.get('shop_name') or '-'}\n"
+        f"👤 {seller.get('name') or '-'}\n"
         f"📞 {seller.get('phone') or '-'}\n"
         f"🌐 {seller.get('website') or '-'}\n"
         f"📍 {seller.get('city') or '-'}\n\n"
-        f"📝 <b>Опис:</b>\n"
-        f"{seller.get('description') or 'немає'}"
+        f"{verified}"
     )
+
+    await message.answer(text, parse_mode="HTML")
+
+
+# ================= START VERIFICATION =================
+
+@router.message(F.text == "🔐 Верифікація")
+async def start_verification(message: Message, state: FSMContext):
+    await state.set_state(SellerStates.verification_passport)
 
     await message.answer(
-        text,
-        reply_markup=profile_edit_kb(),
-        parse_mode="HTML"
+        "📸 Надішли фото паспорту\n\n"
+        "⚠️ Дані використовуються тільки для перевірки"
     )
 
 
-# ================= EDIT PROFILE =================
+# ================= HANDLE PASSPORT =================
 
-FIELD_LABELS = {
-    "shop_name": "назву розборки",
-    "name": "ім’я",
-    "phone": "телефон",
-    "website": "сайт",
-    "city": "місто",
-    "description": "опис"
-}
+@router.message(SellerStates.verification_passport, F.photo)
+async def handle_passport(message: Message, state: FSMContext):
+    photo_id = message.photo[-1].file_id
 
-MENU_BUTTONS = {
-    "📋 Мої авто",
-    "➕ Додати авто",
-    "👤 Профіль",
-    "⬅️ Назад"
-}
+    await execute("""
+        UPDATE sellers
+        SET passport_photo_id = $1,
+            verification_status = 'review'
+        WHERE telegram_id = $2
+    """, photo_id, message.from_user.id)
 
+    await state.clear()
 
-@router.callback_query(F.data.startswith("profile:"))
-async def edit_profile(callback: CallbackQuery, state: FSMContext):
-    field = callback.data.split(":")[1]
-
-    await state.update_data(edit_field=field)
-    await state.set_state(SellerStates.edit_profile)
-
-    label = FIELD_LABELS.get(field, field)
-
-    await callback.message.answer(
-        f"✏️ Введи {label}\n\nабо '-' щоб очистити"
+    await message.answer(
+        "✅ Документ відправлено на перевірку\n"
+        "⏳ Очікуй підтвердження"
     )
 
-    await callback.answer()
+
+# ================= INVALID INPUT =================
+
+@router.message(SellerStates.verification_passport)
+async def invalid_passport(message: Message):
+    await message.answer("❌ Надішли фото паспорту")
 
 
-# ================= SAVE PROFILE =================
+# ================= SIMPLE PROFILE EDIT =================
 
-@router.message(SellerStates.edit_profile)
-async def save_profile(message: Message, state: FSMContext):
-    if message.text in MENU_BUTTONS:
-        await message.answer("❌ Заверши редагування або введи '-'")
+@router.message(F.text == "✏️ Редагувати профіль")
+async def edit_profile(message: Message, state: FSMContext):
+    await state.set_state(SellerStates.reg_name)
+    await message.answer("👤 Введи імʼя контактної особи:")
+
+
+@router.message(SellerStates.reg_name)
+async def set_name(message: Message, state: FSMContext):
+    await state.update_data(name=message.text)
+    await state.set_state(SellerStates.reg_company)
+    await message.answer("🏪 Введи назву магазину:")
+
+
+@router.message(SellerStates.reg_company)
+async def set_company(message: Message, state: FSMContext):
+    await state.update_data(shop_name=message.text)
+    await state.set_state(SellerStates.reg_phone)
+    await message.answer("📞 Введи номер телефону (+380...):")
+
+
+@router.message(SellerStates.reg_phone)
+async def set_phone(message: Message, state: FSMContext):
+    phone = message.text.strip()
+
+    if not phone.startswith("+"):
+        await message.answer("❌ Номер має починатись з +")
         return
 
+    await state.update_data(phone=phone)
+    await state.set_state(SellerStates.reg_link)
+    await message.answer("🌐 Введи сайт (або -):")
+
+
+@router.message(SellerStates.reg_link)
+async def set_link(message: Message, state: FSMContext):
+    website = None if message.text == "-" else message.text
+
+    await state.update_data(website=website)
+    await state.set_state(SellerStates.reg_city)
+    await message.answer("📍 Введи місто:")
+
+
+@router.message(SellerStates.reg_city)
+async def set_city(message: Message, state: FSMContext):
     data = await state.get_data()
-    field = data.get("edit_field")
 
-    value = None if message.text == "-" else message.text
-
-    seller = await get_or_create_seller(
-        message.from_user.id,
-        message.from_user.username
+    await execute("""
+        UPDATE sellers
+        SET 
+            name = $1,
+            shop_name = $2,
+            phone = $3,
+            website = $4,
+            city = $5
+        WHERE telegram_id = $6
+    """,
+        data.get("name"),
+        data.get("shop_name"),
+        data.get("phone"),
+        data.get("website"),
+        message.text,
+        message.from_user.id
     )
-
-    await update_seller_field(seller["id"], field, value)
 
     await state.clear()
 
