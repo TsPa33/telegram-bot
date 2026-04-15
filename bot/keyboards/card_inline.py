@@ -41,17 +41,38 @@ def build_card_keyboard(car: dict, page: int, total: int):
         rows.append(contact_row)
 
     # ================= SITE (FIXED) =================
+def is_valid_url(url: str) -> bool:
+    if not url:
+        return False
 
-    if car.get("website"):
-        url = car.get("website")
+    # ❌ кирилиця або пробіли
+    if re.search(r"[а-яА-Я ]", url):
+        return False
 
-        if url and not url.startswith("http"):
-            url = "https://" + url
+    # базова перевірка
+    return "." in url
 
+
+# ================= SITE =================
+
+if car.get("website"):
+    raw_url = car.get("website").strip()
+
+    if not raw_url.startswith("http"):
+        raw_url = "https://" + raw_url
+
+    if is_valid_url(raw_url):
         rows.append([
             InlineKeyboardButton(
                 text="🌐 Відкрити сайт",
-                url=url
+                url=raw_url
+            )
+        ])
+    else:
+        rows.append([
+            InlineKeyboardButton(
+                text="⚠️ Некоректний сайт",
+                callback_data="noop"
             )
         ])
 
