@@ -33,8 +33,7 @@ async def get_model_id(brand: str, model: str):
         SELECT m.id
         FROM models m
         JOIN brands b ON m.brand_id = b.id
-        WHERE LOWER(b.name) = LOWER($1)
-          AND LOWER(m.model) = LOWER($2)
+        WHERE b.name = $1 AND m.model = $2
     """, brand, model)
 
     return row["id"] if row else None
