@@ -37,12 +37,17 @@ async def send_card(message: types.Message, state: FSMContext, new_message=False
 
     car_id = car.get("id")
 
-    # 🔴 TRACK VIEW
-    await execute("""
-        UPDATE seller_cars
-        SET views = COALESCE(views,0)+1
-        WHERE id=$1
-    """, car_id)
+    # 🔴 FIX: view тільки один раз на сторінку
+    last_viewed = data.get("last_viewed_id")
+
+    if last_viewed != car_id:
+        await execute("""
+            UPDATE seller_cars
+            SET views = COALESCE(views,0)+1
+            WHERE id=$1
+        """, car_id)
+
+        await state.update_data(last_viewed_id=car_id)
 
     text = format_car_card(car, page, total)
     keyboard = build_card_keyboard(car, page, total)
@@ -94,25 +99,31 @@ async def paginate(callback: types.CallbackQuery, state: FSMContext):
 # ================= PHONE =================
 
 @router.callback_query(F.data.startswith("phone:"))
-async def phone_click(callback: types.CallbackQuery):
+async def phone_click(callback: types.CallbackQuery, state: FSMContext):
     try:
         car_id = int(callback.data.split(":")[1])
     except:
         await callback.answer("Помилка")
         return
 
+    data = await state.get_data()
+    clicked = data.get("clicked_phone", [])
+
+    if car_id not in clicked:
+        await execute("""
+            UPDATE seller_cars
+            SET phone_clicks = COALESCE(phone_clicks,0)+1
+            WHERE id=$1
+        """, car_id)
+
+        clicked.append(car_id)
+        await state.update_data(clicked_phone=clicked)
+
     car = await get_car_by_id(car_id)
 
     if not car:
         await callback.answer("Не знайдено")
         return
-
-    # 🔴 TRACK CLICK
-    await execute("""
-        UPDATE seller_cars
-        SET phone_clicks = COALESCE(phone_clicks,0)+1
-        WHERE id=$1
-    """, car_id)
 
     await callback.answer()
     await callback.message.answer(f"📞 {car.get('phone') or 'не вказано'}")
@@ -121,25 +132,31 @@ async def phone_click(callback: types.CallbackQuery):
 # ================= SITE =================
 
 @router.callback_query(F.data.startswith("site:"))
-async def site_click(callback: types.CallbackQuery):
+async def site_click(callback: types.CallbackQuery, state: FSMContext):
     try:
         car_id = int(callback.data.split(":")[1])
     except:
         await callback.answer("Помилка")
         return
 
+    data = await state.get_data()
+    clicked = data.get("clicked_site", [])
+
+    if car_id not in clicked:
+        await execute("""
+            UPDATE seller_cars
+            SET site_clicks = COALESCE(site_clicks,0)+1
+            WHERE id=$1
+        """, car_id)
+
+        clicked.append(car_id)
+        await state.update_data(clicked_site=clicked)
+
     car = await get_car_by_id(car_id)
 
     if not car:
         await callback.answer("Не знайдено")
         return
-
-    # 🔴 TRACK CLICK
-    await execute("""
-        UPDATE seller_cars
-        SET site_clicks = COALESCE(site_clicks,0)+1
-        WHERE id=$1
-    """, car_id)
 
     await callback.answer()
     await callback.message.answer(f"🌐 {car.get('website') or 'не вказано'}")
