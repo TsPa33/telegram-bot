@@ -3,14 +3,17 @@ from bot.database.base import fetchrow
 
 # ================= MODEL =================
 
-async def get_model_or_none(brand_id: int, model_name: str):
-    return await fetchrow("""
-        SELECT *
-        FROM models
-        WHERE brand_id = $1
-          AND LOWER(model) = LOWER($2)
+async def get_model_or_none(brand: str, model_name: str):
+    row = await fetchrow("""
+        SELECT m.id
+        FROM models m
+        JOIN brands b ON m.brand_id = b.id
+        WHERE LOWER(b.name) = LOWER($1)
+          AND LOWER(m.name) = LOWER($2)
         LIMIT 1
-    """, brand_id, model_name)
+    """, brand, model_name)
+
+    return row["id"] if row else None
 
 
 # ================= PAGINATION =================
@@ -21,7 +24,7 @@ async def get_cars_page(model_id: int, page: int):
         SELECT COUNT(*) AS total
         FROM seller_cars
         WHERE model_id = $1
-          AND status = 'active'
+          AND status = 1
     """, model_id)
 
     total = total_row["total"] if total_row else 0
@@ -35,12 +38,12 @@ async def get_cars_page(model_id: int, page: int):
     if page >= total:
         page = total - 1
 
-    # 🔥 OFFSET
+    # 🔥 OFFSET (тимчасово залишаємо, далі приберемо)
     car = await fetchrow("""
         SELECT *
         FROM seller_cars
         WHERE model_id = $1
-          AND status = 'active'
+          AND status = 1
         ORDER BY id DESC
         LIMIT 1 OFFSET $2
     """, model_id, page)
