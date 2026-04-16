@@ -13,6 +13,15 @@ from .verification import check_verified
 
 router = Router()
 
+# 🔥 КНОПКИ МЕНЮ (ВАЖЛИВО)
+MENU_BUTTONS = {
+    "➕ Додати авто",
+    "📋 Мої авто",
+    "👤 Профіль",
+    "📊 Статистика",
+    "🔐 Верифікація"
+}
+
 
 # ================= PROFILE =================
 
@@ -31,7 +40,7 @@ async def show_profile(message: Message, state: FSMContext):
         WHERE telegram_id = $1
     """, message.from_user.id)
 
-    # 🔥 onboarding якщо профіль пустий
+    # onboarding
     if not seller or not seller.get("name"):
         await state.set_state(SellerStates.reg_name)
         await message.answer(
@@ -96,8 +105,16 @@ async def edit_profile(message: Message, state: FSMContext):
     await message.answer("👤 Введи імʼя (або '-'):")
 
 
+# ================= FSM HANDLERS =================
+
 @router.message(SellerStates.reg_name)
 async def set_name(message: Message, state: FSMContext):
+
+    if message.text in MENU_BUTTONS:
+        await state.clear()
+        await message.answer("❌ Дію скасовано")
+        return
+
     name = None if message.text == "-" else message.text
 
     await state.update_data(name=name)
@@ -108,6 +125,12 @@ async def set_name(message: Message, state: FSMContext):
 
 @router.message(SellerStates.reg_company)
 async def set_company(message: Message, state: FSMContext):
+
+    if message.text in MENU_BUTTONS:
+        await state.clear()
+        await message.answer("❌ Дію скасовано")
+        return
+
     shop_name = None if message.text == "-" else message.text
 
     await state.update_data(shop_name=shop_name)
@@ -118,6 +141,12 @@ async def set_company(message: Message, state: FSMContext):
 
 @router.message(SellerStates.reg_phone)
 async def set_phone(message: Message, state: FSMContext):
+
+    if message.text in MENU_BUTTONS:
+        await state.clear()
+        await message.answer("❌ Дію скасовано")
+        return
+
     phone = None if message.text == "-" else message.text
 
     await state.update_data(phone=phone)
@@ -128,6 +157,12 @@ async def set_phone(message: Message, state: FSMContext):
 
 @router.message(SellerStates.reg_link)
 async def set_link(message: Message, state: FSMContext):
+
+    if message.text in MENU_BUTTONS:
+        await state.clear()
+        await message.answer("❌ Дію скасовано")
+        return
+
     website = None if message.text == "-" else message.text
 
     await state.update_data(website=website)
@@ -138,8 +173,13 @@ async def set_link(message: Message, state: FSMContext):
 
 @router.message(SellerStates.reg_city)
 async def set_city(message: Message, state: FSMContext):
-    data = await state.get_data()
 
+    if message.text in MENU_BUTTONS:
+        await state.clear()
+        await message.answer("❌ Дію скасовано")
+        return
+
+    data = await state.get_data()
     city = None if message.text == "-" else message.text
 
     await execute("""
