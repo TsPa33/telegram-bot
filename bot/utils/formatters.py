@@ -1,24 +1,14 @@
 import html
 
 
-def format_car_card(car: dict, page: int, total: int):
-    # ================= BASIC =================
-
+def format_car_card(car: dict, page: int | None = None, total: int | None = None):
     brand = html.escape(str(car.get("brand") or ""))
     model = html.escape(str(car.get("model") or ""))
 
     title = f"🚗 <b>{brand} {model}</b>"
 
-    # ================= DESCRIPTION =================
-
     raw_description = car.get("description")
-
-    if raw_description is None:
-        description = ""
-    else:
-        description = str(raw_description).strip()
-
-    description = html.escape(description)
+    description = html.escape(str(raw_description).strip()) if raw_description else ""
 
     if not description:
         description = "📦 Опис відсутній"
@@ -27,8 +17,6 @@ def format_car_card(car: dict, page: int, total: int):
         "📝 <b>Опис:</b>\n"
         f"{description}\n\n"
     )
-
-    # ================= SELLER =================
 
     shop_name = html.escape(str(car.get("shop_name") or ""))
     name = html.escape(str(car.get("name") or ""))
@@ -48,16 +36,8 @@ def format_car_card(car: dict, page: int, total: int):
     if seller_block:
         seller_block += "\n"
 
-    # ================= VERIFIED =================
-
     verified = car.get("is_verified")
-
-    if verified:
-        verified_block = "✅ Перевірений продавець\n\n"
-    else:
-        verified_block = "⚠️ Продавець не перевірений\n\n"
-
-    # ================= STATS (🔥 FIX) =================
+    verified_block = "✅ Перевірений продавець\n\n" if verified else "⚠️ Продавець не перевірений\n\n"
 
     views = car.get("views") or 0
     phone_clicks = car.get("phone_clicks") or 0
@@ -69,11 +49,11 @@ def format_car_card(car: dict, page: int, total: int):
         f"🌐 Переходи: {site_clicks}\n\n"
     )
 
-    # ================= PAGINATION =================
-
-    page_block = f"📄 {page + 1} / {total}"
-
-    # ================= FINAL =================
+    # 🔥 FIX
+    if page is not None and total is not None:
+        page_block = f"📄 {page + 1} / {total}"
+    else:
+        page_block = ""
 
     return (
         f"{title}\n"
