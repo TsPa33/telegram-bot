@@ -4,13 +4,14 @@ from aiogram.fsm.context import FSMContext
 
 from bot.database.base import execute, fetchrow
 from bot.database.repositories.seller_repo import (
-    get_or_create_seller,
     get_seller_stats,
     get_seller_rating
 )
 
 from bot.states.seller_states import SellerStates
 
+# 🔥 NEW
+from .verification import check_verified
 
 router = Router()
 
@@ -18,7 +19,11 @@ router = Router()
 # ================= PROFILE =================
 
 @router.message(F.text == "👤 Профіль")
-async def show_profile(message: Message):
+async def show_profile(message: Message, state: FSMContext):
+
+    if not await check_verified(message, state):
+        return
+
     seller = await fetchrow("""
         SELECT 
             name,
@@ -26,8 +31,7 @@ async def show_profile(message: Message):
             phone,
             website,
             city,
-            is_verified,
-            verification_status
+            is_verified
         FROM sellers
         WHERE telegram_id = $1
     """, message.from_user.id)
@@ -54,7 +58,11 @@ async def show_profile(message: Message):
 # ================= 📊 DASHBOARD =================
 
 @router.message(F.text == "📊 Статистика")
-async def seller_stats(message: Message):
+async def seller_stats(message: Message, state: FSMContext):
+
+    if not await check_verified(message, state):
+        return
+
     stats = await get_seller_stats(message.from_user.id)
     rating = await get_seller_rating(message.from_user.id)
 
@@ -62,7 +70,6 @@ async def seller_stats(message: Message):
         await message.answer("📭 У тебе ще немає авто")
         return
 
-    # 🔥 простий рейтинг
     score = int(
         (rating["phone"] * 3) +
         (rating["site"] * 2) +
@@ -81,50 +88,14 @@ async def seller_stats(message: Message):
     await message.answer(text, parse_mode="HTML")
 
 
-# ================= START VERIFICATION =================
-
-@router.message(F.text == "🔐 Верифікація")
-async def start_verification(message: Message, state: FSMContext):
-    await state.set_state(SellerStates.verification_passport)
-
-    await message.answer(
-        "📸 Надішли фото паспорту\n\n"
-        "⚠️ Дані використовуються тільки для перевірки"
-    )
-
-
-# ================= HANDLE PASSPORT =================
-
-@router.message(SellerStates.verification_passport, F.photo)
-async def handle_passport(message: Message, state: FSMContext):
-    photo_id = message.photo[-1].file_id
-
-    await execute("""
-        UPDATE sellers
-        SET passport_photo_id = $1,
-            verification_status = 'review'
-        WHERE telegram_id = $2
-    """, photo_id, message.from_user.id)
-
-    await state.clear()
-
-    await message.answer(
-        "✅ Документ відправлено на перевірку\n"
-        "⏳ Очікуй підтвердження"
-    )
-
-
-# ================= INVALID INPUT =================
-
-@router.message(SellerStates.verification_passport)
-async def invalid_passport(message: Message):
-    await message.answer("❌ Надішли фото паспорту")
-
-
-# ================= EDIT PROFILE =================
+# ================= EDIT PROFILE (ONBOARDING) =================
 
 @router.message(F.text == "✏️ Редагувати профіль")
 async def edit_profile(message: Message, state: FSMContext):
+
+    if not await check_verified(message, state):
+        return
+
     await state.set_state(SellerStates.reg_name)
     await message.answer("👤 Введи імʼя контактної особи:")
 
