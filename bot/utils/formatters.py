@@ -51,17 +51,33 @@ def format_car_card(car: dict, page: int | None = None, total: int | None = None
 
     verified_block = ""  # 🔥 щоб не падало (поки немає поля в БД)
 
-    # ================= STATS =================
+   # ================= STATS =================
 
     views = car.get("views") or 0
     phone_clicks = car.get("phone_clicks") or 0
     site_clicks = car.get("site_clicks") or 0
 
     stats_block = (
+        f"📊 Статистика:\n"
         f"👁 Перегляди: {views}\n"
         f"📞 Дзвінки: {phone_clicks}\n"
-        f"🌐 Переходи: {site_clicks}\n\n"
+        f"🌐 Переходи: {site_clicks}"
     )
+
+# ================= CARD =================
+
+text = (
+    f"🚗 <b>{car['brand']} {car['model']}</b>\n"
+    f"{'─' * 20}\n\n"
+
+    f"📝 Опис:\n{car.get('description') or '-'}\n\n"
+
+    f"🏪 {car.get('shop_name') or '-'}\n"
+    f"👤 {'🔐 Верифікований' if car.get('is_verified') else '❌ Не верифікований'}\n"
+    f"📍 {car.get('city') or '-'}\n\n"
+
+    f"{stats_block}"
+)
 
     # ================= PAGINATION =================
 
