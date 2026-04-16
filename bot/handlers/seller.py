@@ -53,7 +53,7 @@ async def check_verified(message: Message):
 
     await message.answer(
         "🔐 <b>Акаунт не верифікований</b>\n\n"
-        "Натисни кнопку «🔐 Верифікація» та надішли паспорт",
+        "Натисни «🔐 Верифікація» щоб отримати доступ",
         parse_mode="HTML"
     )
     return False
@@ -88,8 +88,7 @@ async def receive_verification_photo(message: Message, state: FSMContext):
     )
 
     await message.answer(
-        "✅ Заявка відправлена на перевірку\n\n"
-        "⏳ Очікуй рішення адміністратора"
+        "✅ Заявка відправлена\n⏳ Очікуй підтвердження"
     )
 
     await state.clear()
@@ -126,16 +125,12 @@ async def add_car_start(message: Message, state: FSMContext):
 @router.message(SellerStates.brand)
 async def select_brand(message: Message, state: FSMContext):
 
-    if not await check_verified(message):
-        return
-
     if message.text == "⬅️ Назад":
         await state.clear()
         await message.answer("🏠 Меню", reply_markup=seller_menu_kb())
         return
 
-    brand = message.text
-    models = await get_cached_models(brand, get_models_by_brand)
+    models = await get_cached_models(message.text, get_models_by_brand)
 
     if not models:
         await message.answer("❌ Моделей не знайдено")
@@ -146,7 +141,7 @@ async def select_brand(message: Message, state: FSMContext):
         resize_keyboard=True
     )
 
-    await state.update_data(brand=brand)
+    await state.update_data(brand=message.text)
     await state.set_state(SellerStates.model)
 
     await message.answer("🚗 Обери модель:", reply_markup=keyboard)
@@ -156,9 +151,6 @@ async def select_brand(message: Message, state: FSMContext):
 
 @router.message(SellerStates.model)
 async def select_model(message: Message, state: FSMContext):
-
-    if not await check_verified(message):
-        return
 
     if message.text == "⬅️ Назад":
         brands = await get_cached_brands(get_brands)
@@ -180,32 +172,8 @@ async def select_model(message: Message, state: FSMContext):
 
 # ================= PHOTO =================
 
-@router.message(SellerStates.photo, F.text == "⬅️ Назад")
-async def back_to_model(message: Message, state: FSMContext):
-
-    if not await check_verified(message):
-        return
-
-    data = await state.get_data()
-    brand = data.get("brand")
-
-    models = await get_cached_models(brand, get_models_by_brand)
-
-    keyboard = ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text=m)] for m in models] + [[BACK]],
-        resize_keyboard=True
-    )
-
-    await state.set_state(SellerStates.model)
-    await message.answer("🚗 Обери модель:", reply_markup=keyboard)
-
-
 @router.message(SellerStates.photo, F.photo)
 async def get_photo(message: Message, state: FSMContext):
-
-    if not await check_verified(message):
-        return
-
     photo_id = message.photo[-1].file_id
 
     await state.update_data(photo_id=photo_id)
@@ -223,10 +191,6 @@ async def photo_error(message: Message):
 
 @router.message(SellerStates.description)
 async def save_car(message: Message, state: FSMContext):
-
-    if not await check_verified(message):
-        return
-
     data = await state.get_data()
 
     if data.get("car_id"):
@@ -280,6 +244,9 @@ async def my_cars(message: Message):
 @router.message(F.text == "👤 Профіль")
 async def seller_profile(message: Message, state: FSMContext):
 
+    if not await check_verified(message):
+        return
+
     await state.clear()
 
     seller = await get_or_create_seller(
@@ -312,7 +279,7 @@ async def edit_profile(callback: types.CallbackQuery, state: FSMContext):
     await state.update_data(edit_field=field)
     await state.set_state(SellerStates.edit_profile)
 
-    await callback.message.answer("✏️ Введи нове значення або '-' щоб очистити")
+    await callback.message.answer("✏️ Введи нове значення або '-'")
     await callback.answer()
 
 
