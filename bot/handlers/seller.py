@@ -42,7 +42,7 @@ BACK = KeyboardButton(text="⬅️ Назад")
 
 # ================= 🔐 CHECK VERIFIED =================
 
-async def check_verified(message: Message):
+async def check_verified(message: Message, state: FSMContext):
     seller = await get_or_create_seller(
         message.from_user.id,
         message.from_user.username
@@ -51,10 +51,19 @@ async def check_verified(message: Message):
     if seller.get("is_verified"):
         return True
 
-    await message.answer(
-        "🔐 <b>Акаунт не верифікований</b>\n\n"
-        "Натисни «🔐 Верифікація» щоб отримати доступ",
-        parse_mode="HTML"
+    data = await state.get_data()
+
+    # 🔥 показуємо тільки 1 раз
+    if not data.get("verification_warned"):
+        await message.answer(
+            "🔐 <b>Акаунт не верифікований</b>\n\n"
+            "Щоб користуватись ботом — пройди верифікацію",
+            parse_mode="HTML"
+        )
+
+        await state.update_data(verification_warned=True)
+
+    return Falsee="HTML"
     )
     return False
 
