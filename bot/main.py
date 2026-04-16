@@ -13,6 +13,7 @@ from redis.asyncio import from_url
 from bot.config import BOT_TOKEN
 from bot.handlers import start, seller, buyer, admin
 from bot.database.pool import init_pool
+from bot.database.models import create_tables  # 🔥 ДОДАНО
 
 
 # ================= LOGGING =================
@@ -25,7 +26,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-# ================= ERROR HANDLER (FIXED) =================
+# ================= ERROR HANDLER =================
 
 async def global_error_handler(event: ErrorEvent):
     exception = event.exception
@@ -59,10 +60,9 @@ async def get_storage():
 
     try:
         redis = from_url(redis_url)
-
         await redis.ping()
 
-        logger.info("✅ Redis connected (Railway)")
+        logger.info("✅ Redis connected")
 
         return RedisStorage(redis)
 
@@ -79,14 +79,17 @@ async def run_bot():
     if not BOT_TOKEN:
         raise ValueError("BOT_TOKEN is not set")
 
+    # 🔴 1. ІНІЦІАЛІЗАЦІЯ БД
     await init_pool()
+
+    # 🔴 2. СТВОРЕННЯ ТАБЛИЦЬ (ДУЖЕ ВАЖЛИВО)
+    await create_tables()
 
     storage = await get_storage()
 
     dp = Dispatcher(storage=storage)
     bot = Bot(token=BOT_TOKEN)
 
-    # 🔴 FIXED ERROR HANDLER
     dp.errors.register(global_error_handler)
 
     dp.include_router(start.router)
