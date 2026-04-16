@@ -105,17 +105,17 @@ async def show_verifications(message: Message):
         return
 
     for seller in requests:
-        photo = seller.get("passport_photo_id") or seller.get("photo_id")
+        photo = seller.get("passport_photo_id")
 
         if not photo:
             await message.answer(
-                f"⚠️ Немає фото\n🆔 Seller ID: {seller['id']}"
+                f"⚠️ Немає фото\n🆔 Request ID: {seller['id']}"
             )
             continue
 
         await message.answer_photo(
             photo=photo,
-            caption=f"🆔 Seller ID: {seller['id']}",
+            caption=f"🆔 Request ID: {seller['id']}",
             reply_markup=verification_request_kb(seller["id"])
         )
 
@@ -196,7 +196,7 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
             telegram_id = await reject_seller(obj_id)
 
             if telegram_id:
-                    try:
+                try:
                     await callback.bot.send_message(
                         chat_id=telegram_id,
                         text="❌ Верифікацію відхилено\n\nСпробуй ще раз"
@@ -208,6 +208,8 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
                 await callback.message.edit_caption("❌ Відхилено")
             except:
                 await callback.message.answer("❌ Відхилено")
+
+    await callback.answer()
 
 
 # ================= EDIT BRAND =================
