@@ -17,10 +17,11 @@ from bot.database.repositories.model_repo import (
 )
 
 from bot.utils.cache import get_cached_brands, get_cached_models
-from bot.utils.formatters import format_car_card
 
 from bot.states.seller_states import SellerStates
 
+# 🔥 NEW
+from .verification import check_verified
 
 router = Router()
 
@@ -32,6 +33,10 @@ SKIP = KeyboardButton(text="Пропустити")
 
 @router.message(F.text == "➕ Додати авто")
 async def add_car_start(message: Message, state: FSMContext):
+
+    if not await check_verified(message, state):
+        return
+
     await state.clear()
 
     brands = await get_cached_brands(get_brands)
@@ -49,6 +54,10 @@ async def add_car_start(message: Message, state: FSMContext):
 
 @router.message(SellerStates.brand)
 async def select_brand(message: Message, state: FSMContext):
+
+    if not await check_verified(message, state):
+        return
+
     if message.text == "⬅️ Назад":
         await state.clear()
         await message.answer("🏠 Меню", reply_markup=seller_menu_kb())
@@ -61,6 +70,10 @@ async def select_brand(message: Message, state: FSMContext):
         return
 
     models = await get_cached_models(message.text, get_models_by_brand)
+
+    if not models:
+        await message.answer("❌ Моделей не знайдено")
+        return
 
     keyboard = ReplyKeyboardMarkup(
         keyboard=[[KeyboardButton(text=m)] for m in models] + [[BACK]],
@@ -77,6 +90,10 @@ async def select_brand(message: Message, state: FSMContext):
 
 @router.message(SellerStates.model)
 async def select_model(message: Message, state: FSMContext):
+
+    if not await check_verified(message, state):
+        return
+
     if message.text == "⬅️ Назад":
         brands = await get_cached_brands(get_brands)
 
@@ -101,13 +118,25 @@ async def select_model(message: Message, state: FSMContext):
     await state.update_data(model=message.text)
     await state.set_state(SellerStates.photo)
 
-    await message.answer("📸 Надішли фото авто або натисни 'Пропустити'")
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[[SKIP], [BACK]],
+        resize_keyboard=True
+    )
+
+    await message.answer(
+        "📸 Надішли фото авто або натисни 'Пропустити'",
+        reply_markup=keyboard
+    )
 
 
 # ================= PHOTO =================
 
 @router.message(SellerStates.photo, F.photo)
 async def get_photo(message: Message, state: FSMContext):
+
+    if not await check_verified(message, state):
+        return
+
     photo_id = message.photo[-1].file_id
 
     await state.update_data(photo_id=photo_id)
@@ -123,10 +152,25 @@ async def get_photo(message: Message, state: FSMContext):
 
 @router.message(SellerStates.photo)
 async def skip_photo(message: Message, state: FSMContext):
+
+    if not await check_verified(message, state):
+        return
+
     if message.text == "Пропустити":
         await state.update_data(photo_id=None)
         await state.set_state(SellerStates.description)
-        await message.answer("📝 Введи опис:")
+
+        keyboard = ReplyKeyboardMarkup(
+            keyboard=[[SKIP], [BACK]],
+            resize_keyboard=True
+        )
+
+        await message.answer("📝 Введи опис:", reply_markup=keyboard)
+        return
+
+    if message.text == "⬅️ Назад":
+        await state.set_state(SellerStates.model)
+        await message.answer("🚗 Обери модель:")
         return
 
     await message.answer("❌ Надішли фото або натисни 'Пропустити'")
@@ -136,6 +180,10 @@ async def skip_photo(message: Message, state: FSMContext):
 
 @router.message(SellerStates.description)
 async def save_car(message: Message, state: FSMContext):
+
+    if not await check_verified(message, state):
+        return
+
     data = await state.get_data()
 
     if message.text == "⬅️ Назад":
