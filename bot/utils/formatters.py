@@ -1,16 +1,25 @@
 import html
 
 
+def safe(val):
+    return html.escape(str(val)) if val else ""
+
+
 def format_car_card(car: dict, page: int | None = None, total: int | None = None):
-    brand = html.escape(str(car.get("brand") or ""))
-    model = html.escape(str(car.get("model") or ""))
+    # ================= BASIC =================
+
+    brand = safe(car.get("brand"))
+    model = safe(car.get("model"))
 
     title = f"🚗 <b>{brand} {model}</b>"
 
-    raw_description = car.get("description")
-    description = html.escape(str(raw_description).strip()) if raw_description else ""
+    # ================= DESCRIPTION =================
 
-    if not description:
+    raw_description = car.get("description")
+
+    if raw_description:
+        description = safe(str(raw_description).strip())
+    else:
         description = "📦 Опис відсутній"
 
     description_block = (
@@ -18,9 +27,11 @@ def format_car_card(car: dict, page: int | None = None, total: int | None = None
         f"{description}\n\n"
     )
 
-    shop_name = html.escape(str(car.get("shop_name") or ""))
-    name = html.escape(str(car.get("name") or ""))
-    city = html.escape(str(car.get("city") or ""))
+    # ================= SELLER =================
+
+    shop_name = safe(car.get("shop_name"))
+    name = safe(car.get("name"))
+    city = safe(car.get("city"))
 
     seller_block = ""
 
@@ -36,8 +47,11 @@ def format_car_card(car: dict, page: int | None = None, total: int | None = None
     if seller_block:
         seller_block += "\n"
 
-    verified = car.get("is_verified")
-    verified_block = "✅ Перевірений продавець\n\n" if verified else "⚠️ Продавець не перевірений\n\n"
+    # ================= VERIFIED (тимчасово вимкнено) =================
+
+    verified_block = ""  # 🔥 щоб не падало (поки немає поля в БД)
+
+    # ================= STATS =================
 
     views = car.get("views") or 0
     phone_clicks = car.get("phone_clicks") or 0
@@ -49,11 +63,14 @@ def format_car_card(car: dict, page: int | None = None, total: int | None = None
         f"🌐 Переходи: {site_clicks}\n\n"
     )
 
-    # 🔥 FIX
+    # ================= PAGINATION =================
+
     if page is not None and total is not None:
         page_block = f"📄 {page + 1} / {total}"
     else:
         page_block = ""
+
+    # ================= FINAL =================
 
     return (
         f"{title}\n"
