@@ -85,4 +85,55 @@ async def update_model_request(request_id: int, new_model: str):
         UPDATE model_requests
         SET model = $1
         WHERE id = $2
-    """,
+    """, new_model, request_id)
+
+
+# ================= 🔐 VERIFICATION =================
+
+async def create_verification_request(seller_id: int, photo_id: str):
+    await execute("""
+        INSERT INTO verification_requests (seller_id, passport_photo_id)
+        VALUES ($1, $2)
+        ON CONFLICT (seller_id) DO NOTHING
+    """, seller_id, photo_id)
+
+
+async def get_verification_requests():
+    return await fetch("""
+        SELECT 
+            vr.id,
+            vr.passport_photo_id,
+            vr.seller_id,
+            s.name,
+            s.city
+        FROM verification_requests vr
+        JOIN sellers s ON vr.seller_id = s.id
+        WHERE vr.status = 'pending'
+        ORDER BY vr.id DESC
+    """)
+
+
+async def approve_seller(request_id: int):
+    await execute("""
+        UPDATE sellers
+        SET is_verified = TRUE
+        WHERE id = (
+            SELECT seller_id 
+            FROM verification_requests 
+            WHERE id = $1
+        )
+    """, request_id)
+
+    await execute("""
+        UPDATE verification_requests
+        SET status = 'approved'
+        WHERE id = $1
+    """, request_id)
+
+
+async def reject_seller(request_id: int):
+    await execute("""
+        UPDATE verification_requests
+        SET status = 'rejected'
+        WHERE id = $1
+    """, request_id)
