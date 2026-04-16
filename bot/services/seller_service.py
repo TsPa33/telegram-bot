@@ -12,10 +12,10 @@ async def create_car(
     photo_id: str,
     description: str | None
 ):
-    seller = await get_or_create_seller(telegram_id, username)
+    seller_id = await get_or_create_seller(telegram_id, username)
 
     await add_seller_car(
-        seller_id=seller["id"],
+        seller_id=seller_id,
         model_id=model_id,
         photo_id=photo_id,
         description=description
