@@ -2,10 +2,14 @@ from aiogram import Router, F
 from aiogram.types import CallbackQuery, InputMediaPhoto
 from aiogram.fsm.context import FSMContext
 
-from bot.database.repositories.car_repo import get_car_by_id
+from bot.database.repositories.car_repo import (
+    get_first_car,
+    get_next_car,
+    get_prev_car,
+    get_car_by_id
+)
 from bot.database.base import execute
 
-from bot.services.car_service import get_cars_page
 from bot.utils.formatters import format_car_card
 from bot.keyboards.card_inline import build_card_keyboard
 
@@ -15,51 +19,42 @@ router = Router()
 DEFAULT_PHOTO = "AgACAgIAAxkBAAIJ6WnZ7zNsTF4dV6Fxbqsye8iRF224AAJfEWsbFN_RSsup93hjz4uMAQADAgADeAADOwQ"
 
 
-# ================= SAFE GET STATE =================
-
-async def safe_get_state_data(state: FSMContext | None):
-    try:
-        if state:
-            return await state.get_data()
-    except:
-        pass
-    return {}
-
-
 # ================= CARD =================
 
 async def send_card(message, state: FSMContext, new_message=False):
     data = await state.get_data()
 
     model_id = data.get("model_id")
-    page = data.get("page", 0)
+    last_id = data.get("last_id")
 
     if not model_id:
         await state.clear()
         await message.answer("⚠️ Сесія втрачена. Почни заново: /find")
         return
 
-    car, total = await get_cars_page(model_id, page)
+    # 🔥 перше авто
+    if not last_id:
+        car = await get_first_car(model_id)
+    else:
+        car = await get_next_car(model_id, last_id)
 
     if not car:
         await message.answer("❌ Немає результатів")
         return
 
-    car_id = car.get("id")
+    car_id = car["id"]
 
-    last_viewed = data.get("last_viewed_id")
+    await state.update_data(last_id=car_id)
 
-    if last_viewed != car_id:
-        await execute("""
-            UPDATE seller_cars
-            SET views = COALESCE(views,0)+1
-            WHERE id=$1
-        """, car_id)
+    # views++
+    await execute("""
+        UPDATE seller_cars
+        SET views = views + 1
+        WHERE id = $1
+    """, car_id)
 
-        await state.update_data(last_viewed_id=car_id)
-
-    text = format_car_card(car, page, total)
-    keyboard = build_card_keyboard(car, page, total)
+    text = format_car_card(car)
+    keyboard = build_card_keyboard(car)
 
     photo = car.get("photo_id") or DEFAULT_PHOTO
 
@@ -72,13 +67,7 @@ async def send_card(message, state: FSMContext, new_message=False):
         )
     else:
         try:
-            # 🔥 FIX: якщо фото те саме → використовуємо edit_caption
-            if message.photo:
-                current_photo_id = message.photo[-1].file_id
-            else:
-                current_photo_id = None
-
-            if current_photo_id == photo:
+            if message.photo and message.photo[-1].file_id == photo:
                 await message.edit_caption(
                     caption=text,
                     reply_markup=keyboard,
@@ -93,8 +82,7 @@ async def send_card(message, state: FSMContext, new_message=False):
                     ),
                     reply_markup=keyboard
                 )
-
-        except:
+        except Exception:
             await message.answer_photo(
                 photo=photo,
                 caption=text,
@@ -103,46 +91,58 @@ async def send_card(message, state: FSMContext, new_message=False):
             )
 
 
-# ================= PAGINATION =================
+# ================= NEXT =================
 
-@router.callback_query(F.data.startswith("page:"))
-async def paginate(callback: CallbackQuery, state: FSMContext):
+@router.callback_query(F.data == "next")
+async def next_car(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+    await send_card(callback.message, state)
+
+
+# ================= PREV =================
+
+@router.callback_query(F.data.startswith("prev:"))
+async def prev_car(callback: CallbackQuery, state: FSMContext):
     try:
-        page = int(callback.data.split(":")[1])
+        current_id = int(callback.data.split(":")[1])
     except:
         await callback.answer("Помилка")
         return
 
-    await state.update_data(page=page)
+    data = await state.get_data()
+    model_id = data.get("model_id")
+
+    car = await get_prev_car(model_id, current_id)
+
+    if not car:
+        await callback.answer("Це перше авто")
+        return
+
+    await state.update_data(last_id=car["id"])
+
+    text = format_car_card(car)
+    keyboard = build_card_keyboard(car)
+
+    await callback.message.edit_caption(
+        caption=text,
+        reply_markup=keyboard,
+        parse_mode="HTML"
+    )
 
     await callback.answer()
-    await send_card(callback.message, state)
 
 
 # ================= PHONE =================
 
 @router.callback_query(F.data.startswith("phone:"))
-async def phone_click(callback: CallbackQuery, state: FSMContext = None):
-    try:
-        car_id = int(callback.data.split(":")[1])
-    except:
-        await callback.answer("Помилка")
-        return
+async def phone_click(callback: CallbackQuery):
+    car_id = int(callback.data.split(":")[1])
 
-    data = await safe_get_state_data(state)
-    clicked = data.get("clicked_phone", [])
-
-    if car_id not in clicked:
-        await execute("""
-            UPDATE seller_cars
-            SET phone_clicks = COALESCE(phone_clicks,0)+1
-            WHERE id=$1
-        """, car_id)
-
-        clicked.append(car_id)
-
-        if state:
-            await state.update_data(clicked_phone=clicked)
+    await execute("""
+        UPDATE seller_cars
+        SET phone_clicks = phone_clicks + 1
+        WHERE id = $1
+    """, car_id)
 
     car = await get_car_by_id(car_id)
 
@@ -150,43 +150,8 @@ async def phone_click(callback: CallbackQuery, state: FSMContext = None):
         await callback.answer("Не знайдено")
         return
 
-    await callback.answer()
     await callback.message.answer(f"📞 {car.get('phone') or 'не вказано'}")
-
-
-# ================= SITE =================
-
-@router.callback_query(F.data.startswith("site:"))
-async def site_click(callback: CallbackQuery, state: FSMContext = None):
-    try:
-        car_id = int(callback.data.split(":")[1])
-    except:
-        await callback.answer("Помилка")
-        return
-
-    data = await safe_get_state_data(state)
-    clicked = data.get("clicked_site", [])
-
-    if car_id not in clicked:
-        await execute("""
-            UPDATE seller_cars
-            SET site_clicks = COALESCE(site_clicks,0)+1
-            WHERE id=$1
-        """, car_id)
-
-        clicked.append(car_id)
-
-        if state:
-            await state.update_data(clicked_site=clicked)
-
-    car = await get_car_by_id(car_id)
-
-    if not car:
-        await callback.answer("Не знайдено")
-        return
-
     await callback.answer()
-    await callback.message.answer(f"🌐 {car.get('website') or 'не вказано'}")
 
 
 # ================= NOOP =================
