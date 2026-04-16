@@ -57,6 +57,8 @@ async def receive_verification_photo(message: Message, state: FSMContext):
         message.from_user.username
     )
 
+    print("SELLER:", seller)
+    print("SELLER_ID:", seller.get("id"))
     await create_verification_request(
         seller_id=seller["id"],
         photo_id=message.photo[-1].file_id
