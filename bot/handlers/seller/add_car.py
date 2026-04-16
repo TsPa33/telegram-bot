@@ -20,7 +20,6 @@ from bot.utils.cache import get_cached_brands, get_cached_models
 
 from bot.states.seller_states import SellerStates
 
-# 🔥 NEW
 from .verification import check_verified
 
 router = Router()
@@ -169,8 +168,18 @@ async def skip_photo(message: Message, state: FSMContext):
         return
 
     if message.text == "⬅️ Назад":
+        data = await state.get_data()
+        brand = data.get("brand")
+
+        models = await get_cached_models(brand, get_models_by_brand)
+
+        keyboard = ReplyKeyboardMarkup(
+            keyboard=[[KeyboardButton(text=m)] for m in models] + [[BACK]],
+            resize_keyboard=True
+        )
+
         await state.set_state(SellerStates.model)
-        await message.answer("🚗 Обери модель:")
+        await message.answer("🚗 Обери модель:", reply_markup=keyboard)
         return
 
     await message.answer("❌ Надішли фото або натисни 'Пропустити'")
@@ -186,20 +195,23 @@ async def save_car(message: Message, state: FSMContext):
 
     data = await state.get_data()
 
+    # 🔙 НАЗАД
     if message.text == "⬅️ Назад":
-    data = await state.get_data()
-    brand = data.get("brand")
+        brand = data.get("brand")
 
-    models = await get_cached_models(brand, get_models_by_brand)
+        models = await get_cached_models(brand, get_models_by_brand)
 
-    keyboard = ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text=m)] for m in models] + [[BACK]],
-        resize_keyboard=True
-    )
+        keyboard = ReplyKeyboardMarkup(
+            keyboard=[[KeyboardButton(text=m)] for m in models] + [[BACK]],
+            resize_keyboard=True
+        )
 
-    await state.set_state(SellerStates.model)
-    await message.answer("🚗 Обери модель:", reply_markup=keyboard)
-    return
+        await state.set_state(SellerStates.model)
+        await message.answer("🚗 Обери модель:", reply_markup=keyboard)
+        return
+
+    description = None if message.text in ["Пропустити", "-"] else message.text
+
     # ================= EDIT =================
     if data.get("car_id"):
         await update_description(
@@ -208,8 +220,12 @@ async def save_car(message: Message, state: FSMContext):
             message.from_user.id
         )
 
-        await message.answer("✅ Опис оновлено")
         await state.clear()
+
+        await message.answer(
+            "✅ Опис оновлено",
+            reply_markup=seller_menu_kb()
+        )
         return
 
     # ================= CREATE =================
@@ -227,6 +243,9 @@ async def save_car(message: Message, state: FSMContext):
         description=description
     )
 
-    await message.answer("✅ Авто додано")
-
     await state.clear()
+
+    await message.answer(
+        "✅ Авто додано",
+        reply_markup=seller_menu_kb()
+    )
