@@ -91,7 +91,6 @@ async def update_model_request(request_id: int, new_model: str):
 # ================= VERIFICATION =================
 
 async def create_verification_request(seller_id: int, photo_id: str):
-    # один активний запит на продавця
     await execute("""
         INSERT INTO verification_requests (seller_id, passport_photo_id)
         VALUES ($1, $2)
@@ -104,14 +103,17 @@ async def create_verification_request(seller_id: int, photo_id: str):
 
 async def get_verification_requests():
     return await fetch("""
-        SELECT vr.id, vr.seller_id, vr.passport_photo_id
+        SELECT 
+            vr.id,
+            vr.seller_id,
+            vr.passport_photo_id
         FROM verification_requests vr
-        JOIN sellers s ON vr.seller_id = s.id
         WHERE vr.status = 'pending'
         ORDER BY vr.id
     """)
 
 
+# 🔥 КЛЮЧОВА ФУНКЦІЯ
 async def approve_seller(request_id: int):
     row = await fetchrow("""
         SELECT seller_id
@@ -120,26 +122,43 @@ async def approve_seller(request_id: int):
     """, request_id)
 
     if not row:
-        return
+        return None
 
     seller_id = row["seller_id"]
 
+    # 1. активуємо продавця
     await execute("""
         UPDATE sellers
         SET is_verified = TRUE
         WHERE id = $1
     """, seller_id)
 
+    # 2. закриваємо заявку
     await execute("""
         UPDATE verification_requests
         SET status = 'approved'
         WHERE id = $1
     """, request_id)
 
+    return seller_id  # 🔥 ВАЖЛИВО для повідомлення
+
 
 async def reject_seller(request_id: int):
+    row = await fetchrow("""
+        SELECT seller_id
+        FROM verification_requests
+        WHERE id = $1
+    """, request_id)
+
+    if not row:
+        return None
+
+    seller_id = row["seller_id"]
+
     await execute("""
         UPDATE verification_requests
         SET status = 'rejected'
         WHERE id = $1
     """, request_id)
+
+    return seller_id  # 🔥 теж повертаємо
