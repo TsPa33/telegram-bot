@@ -27,7 +27,7 @@ async def add_seller_car(seller_id: int, model_id: int, photo_id: str, descripti
             phone_clicks,
             site_clicks
         )
-        VALUES ($1, $2, $3, $4, 'active', 0, 0, 0)
+        VALUES ($1, $2, $3, $4, 1, 0, 0, 0)
     """, seller_id, model_id, photo_id, description)
 
 
@@ -35,7 +35,7 @@ async def get_seller_cars(telegram_id: int):
     return await fetch("""
         SELECT 
             sc.id,
-            m.model,
+            m.name AS model,
             b.name AS brand,
             sc.description,
             sc.views,
@@ -50,7 +50,8 @@ async def get_seller_cars(telegram_id: int):
     """, telegram_id)
 
 
-# 🔴 OWNER CHECK
+# ================= DELETE =================
+
 async def delete_car(car_id: int, telegram_id: int):
     await execute("""
         DELETE FROM seller_cars sc
@@ -61,7 +62,8 @@ async def delete_car(car_id: int, telegram_id: int):
     """, car_id, telegram_id)
 
 
-# 🔴 OWNER CHECK
+# ================= UPDATE =================
+
 async def update_description(car_id: int, description: str, telegram_id: int):
     row = await fetchrow("""
         UPDATE seller_cars sc
@@ -76,7 +78,7 @@ async def update_description(car_id: int, description: str, telegram_id: int):
     return row is not None
 
 
-# ================= 📊 SELLER STATS =================
+# ================= STATS =================
 
 async def get_seller_stats(telegram_id: int):
     return await fetchrow("""
@@ -90,8 +92,6 @@ async def get_seller_stats(telegram_id: int):
         WHERE s.telegram_id = $1
     """, telegram_id)
 
-
-# ================= ⭐ SELLER RATING =================
 
 async def get_seller_rating(telegram_id: int):
     return await fetchrow("""
