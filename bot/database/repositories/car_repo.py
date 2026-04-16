@@ -9,6 +9,10 @@ BASE_SELECT = """
         sc.photo_id,
         sc.description,
 
+        sc.views,
+        sc.phone_clicks,
+        sc.site_clicks,
+
         m.name AS model,
         b.name AS brand,
 
@@ -81,3 +85,14 @@ async def get_car_by_id(car_id: int):
         {BASE_SELECT}
         WHERE sc.id = $1
     """, car_id)
+
+
+# ================= SELLER CARS =================
+
+async def get_seller_cars(telegram_id: int):
+    return await fetch(f"""
+        {BASE_SELECT}
+        WHERE s.telegram_id = $1
+        ORDER BY sc.id DESC
+        LIMIT 20
+    """, telegram_id)
