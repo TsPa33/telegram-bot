@@ -28,6 +28,9 @@ from bot.database.repositories.model_repo import (
     get_model_id
 )
 
+# 🔥 NEW
+from bot.database.repositories.admin_repo import create_verification_request
+
 from bot.utils.cache import get_cached_brands, get_cached_models
 from bot.utils.formatters import format_car_card
 
@@ -36,6 +39,47 @@ from bot.states.seller_states import SellerStates
 router = Router()
 
 BACK = KeyboardButton(text="⬅️ Назад")
+
+
+# ================= 🔐 VERIFICATION =================
+
+@router.message(F.text == "🔐 Верифікація")
+async def start_verification(message: Message, state: FSMContext):
+    await state.set_state(SellerStates.verification_photo)
+
+    await message.answer(
+        "🔐 <b>Верифікація продавця</b>\n\n"
+        "📸 Надішли фото паспорта або ID\n\n"
+        "⚠️ Дані використовуються лише для перевірки",
+        parse_mode="HTML"
+    )
+
+
+@router.message(SellerStates.verification_photo, F.photo)
+async def receive_verification_photo(message: Message, state: FSMContext):
+    seller = await get_or_create_seller(
+        message.from_user.id,
+        message.from_user.username
+    )
+
+    photo_id = message.photo[-1].file_id
+
+    await create_verification_request(
+        seller_id=seller["id"],
+        photo_id=photo_id
+    )
+
+    await message.answer(
+        "✅ Заявка відправлена на перевірку\n\n"
+        "⏳ Очікуй рішення адміністратора"
+    )
+
+    await state.clear()
+
+
+@router.message(SellerStates.verification_photo)
+async def verification_error(message: Message):
+    await message.answer("❌ Надішли фото документа")
 
 
 # ================= ADD CAR =================
@@ -129,19 +173,7 @@ async def get_photo(message: Message, state: FSMContext):
     await state.update_data(photo_id=photo_id)
     await state.set_state(SellerStates.description)
 
-    await message.answer(
-        "📝 Введи опис авто:\n\n"
-        "📌 Рекомендуємо вказати:\n"
-        "• Рік випуску\n"
-        "• Двигун / об’єм\n"
-        "• Особливості / комплектація\n\n"
-        "📄 Приклад:\n"
-        "Стан: б/у, без дефектів\n"
-        "Рік: 2018\n"
-        "Пробіг: 120 тис. км\n"
-        "Двигун: 2.0 дизель\n"
-        "Комплектація: повна\n\n"
-    )
+    await message.answer("📝 Введи опис авто:")
 
 
 @router.message(SellerStates.photo)
@@ -155,7 +187,6 @@ async def photo_error(message: Message):
 async def save_car(message: Message, state: FSMContext):
     data = await state.get_data()
 
-    # EDIT MODE
     if data.get("car_id"):
         car_id = data["car_id"]
 
@@ -166,7 +197,6 @@ async def save_car(message: Message, state: FSMContext):
         await state.clear()
         return
 
-    # CREATE MODE
     brand = data.get("brand")
     model = data.get("model")
     photo_id = data.get("photo_id")
@@ -294,8 +324,7 @@ async def seller_profile(message: Message, state: FSMContext):
         f"📞 {seller.get('phone') or '-'}\n"
         f"🌐 {seller.get('website') or '-'}\n"
         f"📍 {seller.get('city') or '-'}\n\n"
-        f"📝 <b>Опис:</b>\n"
-        f"{seller.get('description') or 'немає'}"
+        f"{'✅ Верифікований продавець' if seller.get('is_verified') else '⚠️ Не верифікований'}"
     )
 
     await message.answer(
@@ -358,6 +387,5 @@ async def save_profile(message: Message, state: FSMContext):
 
     await update_seller_field(seller["id"], field, value)
 
-    await state.clear()
-
     await message.answer("✅ Профіль оновлено")
+    await state.clear()
