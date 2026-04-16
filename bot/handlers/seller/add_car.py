@@ -187,12 +187,19 @@ async def save_car(message: Message, state: FSMContext):
     data = await state.get_data()
 
     if message.text == "⬅️ Назад":
-        await state.set_state(SellerStates.model)
-        await message.answer("🚗 Обери модель:")
-        return
+    data = await state.get_data()
+    brand = data.get("brand")
 
-    description = None if message.text in ["Пропустити", "-"] else message.text
+    models = await get_cached_models(brand, get_models_by_brand)
 
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text=m)] for m in models] + [[BACK]],
+        resize_keyboard=True
+    )
+
+    await state.set_state(SellerStates.model)
+    await message.answer("🚗 Обери модель:", reply_markup=keyboard)
+    return
     # ================= EDIT =================
     if data.get("car_id"):
         await update_description(
