@@ -58,10 +58,10 @@ phone_clicks = car.get("phone_clicks") or 0
 site_clicks = car.get("site_clicks") or 0
 
 stats_block = (
-        f"📊 Статистика:\n"
-        f"👁 Перегляди: {views}\n"
-        f"📞 Дзвінки: {phone_clicks}\n"
-        f"🌐 Переходи: {site_clicks}"
+    f"📊 Статистика:\n"
+    f"👁 Перегляди: {views}\n"
+    f"📞 Дзвінки: {phone_clicks}\n"
+    f"🌐 Переходи: {site_clicks}"
 )
 
 # ================= CARD =================
