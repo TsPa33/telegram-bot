@@ -105,37 +105,32 @@ def build_card_keyboard(car: dict, page: int, total: int):
 
     # ================= PAGINATION =================
 
-    if total > 1:
-        nav_row = []
+if page is not None and total is not None and total > 1:
+    nav_row = []
 
-        # ⬅️ назад
-        if page > 0:
-            nav_row.append(
-                InlineKeyboardButton(
-                    text="⬅️",
-                    callback_data=f"page:{page - 1}"
-                )
-            )
-
-        # 📄 індикатор
+    if page > 0:
         nav_row.append(
             InlineKeyboardButton(
-                text=f"{page + 1}/{total}",
-                callback_data="noop"
+                text="⬅️",
+                callback_data=f"page:{page - 1}"
             )
         )
 
-        # ➡️ вперед (🔥 гарантія int)
-        if page < total - 1:
-            next_page = int(page) + 1
+    nav_row.append(
+        InlineKeyboardButton(
+            text=f"{page + 1}/{total}",
+            callback_data="noop"
+        )
+    )
 
-            nav_row.append(
-                InlineKeyboardButton(
-                    text="➡️",
-                    callback_data=f"page:{next_page}"
-                )
+    if page < total - 1:
+        nav_row.append(
+            InlineKeyboardButton(
+                text="➡️",
+                callback_data=f"page:{page + 1}"
             )
+        )
 
-        rows.append(nav_row)
+    rows.append(nav_row)
 
     return InlineKeyboardMarkup(inline_keyboard=rows)
