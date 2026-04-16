@@ -182,7 +182,7 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
                 try:
                     await callback.bot.send_message(
                         chat_id=telegram_id,
-                        text="✅ Твій акаунт верифіковано!\n\nТепер ти можеш користуватись ботом 🚀"
+                        text="✅ Твій акаунт верифіковано!\n\nТепер ти можеш додавати авто 🚀"
                     )
                 except:
                     pass
@@ -196,10 +196,10 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
             telegram_id = await reject_seller(obj_id)
 
             if telegram_id:
-                try:
+                    try:
                     await callback.bot.send_message(
                         chat_id=telegram_id,
-                        text="❌ Верифікацію відхилено"
+                        text="❌ Верифікацію відхилено\n\nСпробуй ще раз"
                     )
                 except:
                     pass
@@ -208,8 +208,6 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
                 await callback.message.edit_caption("❌ Відхилено")
             except:
                 await callback.message.answer("❌ Відхилено")
-
-    await callback.answer()
 
 
 # ================= EDIT BRAND =================
