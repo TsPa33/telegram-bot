@@ -176,22 +176,41 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
     # ===== VERIFY =====
     elif entity == "verify":
         if action == "ok":
-            await approve_seller(obj_id)
+            seller_id = await approve_seller(obj_id)
 
+        # повідомлення продавцю
+        if seller_id:
             try:
-                await callback.message.edit_caption("✅ Верифіковано")
+                await callback.bot.send_message(
+                    chat_id=seller_id,
+                    text="✅ Твій акаунт верифіковано!\n\nТепер ти можеш користуватись ботом 🚀"
+                )
             except:
-                await callback.message.answer("✅ Верифіковано")
+                pass
 
-        elif action == "no":
-            await reject_seller(obj_id)
+        try:
+            await callback.message.edit_caption("✅ Верифіковано")
+        except:
+            await callback.message.answer("✅ Верифіковано")
 
+    elif action == "no":
+        seller_id = await reject_seller(obj_id)
+
+        if seller_id:
             try:
-                await callback.message.edit_caption("❌ Відхилено")
+                await callback.bot.send_message(
+                    chat_id=seller_id,
+                    text="❌ Верифікацію відхилено"
+                )
             except:
-                await callback.message.answer("❌ Відхилено")
+                pass
 
-    await callback.answer()
+        try:
+            await callback.message.edit_caption("❌ Відхилено")
+        except:
+            await callback.message.answer("❌ Відхилено")
+
+await callback.answer()
 
 
 # ================= EDIT BRAND =================
