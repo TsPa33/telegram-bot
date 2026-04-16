@@ -103,57 +103,55 @@ async def create_verification_request(seller_id: int, photo_id: str):
 
 async def get_verification_requests():
     return await fetch("""
-        SELECT 
-            vr.id,
-            vr.seller_id,
-            vr.passport_photo_id
+        SELECT vr.id, vr.seller_id, vr.passport_photo_id
         FROM verification_requests vr
         WHERE vr.status = 'pending'
         ORDER BY vr.id
     """)
 
 
-# 🔥 КЛЮЧОВА ФУНКЦІЯ
+# 🔥 ГОЛОВНЕ — ТЕПЕР ПОВЕРТАЄ telegram_id
+
 async def approve_seller(request_id: int):
     row = await fetchrow("""
-        SELECT seller_id
-        FROM verification_requests
-        WHERE id = $1
+        SELECT s.telegram_id
+        FROM verification_requests vr
+        JOIN sellers s ON vr.seller_id = s.id
+        WHERE vr.id = $1
     """, request_id)
 
     if not row:
         return None
 
-    seller_id = row["seller_id"]
+    telegram_id = row["telegram_id"]
 
-    # 1. активуємо продавця
     await execute("""
         UPDATE sellers
         SET is_verified = TRUE
-        WHERE id = $1
-    """, seller_id)
+        WHERE telegram_id = $1
+    """, telegram_id)
 
-    # 2. закриваємо заявку
     await execute("""
         UPDATE verification_requests
         SET status = 'approved'
         WHERE id = $1
     """, request_id)
 
-    return seller_id  # 🔥 ВАЖЛИВО для повідомлення
+    return telegram_id
 
 
 async def reject_seller(request_id: int):
     row = await fetchrow("""
-        SELECT seller_id
-        FROM verification_requests
-        WHERE id = $1
+        SELECT s.telegram_id
+        FROM verification_requests vr
+        JOIN sellers s ON vr.seller_id = s.id
+        WHERE vr.id = $1
     """, request_id)
 
     if not row:
         return None
 
-    seller_id = row["seller_id"]
+    telegram_id = row["telegram_id"]
 
     await execute("""
         UPDATE verification_requests
@@ -161,4 +159,4 @@ async def reject_seller(request_id: int):
         WHERE id = $1
     """, request_id)
 
-    return seller_id  # 🔥 теж повертаємо
+    return telegram_id
