@@ -17,7 +17,12 @@ BASE_SELECT = """
 
         s.username,
         s.telegram_id,
-        s.phone
+        s.phone,
+        s.name,
+        s.city,
+        s.shop_name,
+        s.website,
+        s.is_verified
 
     FROM seller_cars sc
     JOIN sellers s ON sc.seller_id = s.id
