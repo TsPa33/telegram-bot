@@ -39,9 +39,7 @@ async def my_cars(message: Message):
         text += (
             f"🚗 <b>{car.get('brand', '-')} {car.get('model', '-')}</b>\n"
             f"📝 {car.get('description') or '-'}\n"
-            f"👁 Перегляди: {car.get('views', 0)}\n"
-            f"📞 Дзвінки: {car.get('phone_clicks', 0)}\n"
-            f"🌐 Переходи: {car.get('site_clicks', 0)}\n\n"
+            f"👁 {car.get('views', 0)} | 📞 {car.get('phone_clicks', 0)} | 🌐 {car.get('site_clicks', 0)}\n\n"
         )
 
     await message.answer(
