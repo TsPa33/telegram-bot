@@ -9,8 +9,6 @@ from bot.database.repositories.seller_repo import (
 )
 
 from bot.states.seller_states import SellerStates
-
-# 🔥 NEW
 from .verification import check_verified
 
 router = Router()
@@ -20,9 +18,6 @@ router = Router()
 
 @router.message(F.text == "👤 Профіль")
 async def show_profile(message: Message, state: FSMContext):
-
-    if not await check_verified(message, state):
-        return
 
     seller = await fetchrow("""
         SELECT 
@@ -36,8 +31,13 @@ async def show_profile(message: Message, state: FSMContext):
         WHERE telegram_id = $1
     """, message.from_user.id)
 
-    if not seller:
-        await message.answer("❌ Профіль не знайдено")
+    # 🔥 onboarding якщо профіль пустий
+    if not seller or not seller.get("name"):
+        await state.set_state(SellerStates.reg_name)
+        await message.answer(
+            "👋 Давай заповнимо профіль\n\n"
+            "Введи імʼя або '-' щоб пропустити"
+        )
         return
 
     verified = "✅ Верифікований" if seller["is_verified"] else "⚠️ Не верифікований"
@@ -88,43 +88,42 @@ async def seller_stats(message: Message, state: FSMContext):
     await message.answer(text, parse_mode="HTML")
 
 
-# ================= EDIT PROFILE (ONBOARDING) =================
+# ================= EDIT PROFILE =================
 
 @router.message(F.text == "✏️ Редагувати профіль")
 async def edit_profile(message: Message, state: FSMContext):
-
-    if not await check_verified(message, state):
-        return
-
     await state.set_state(SellerStates.reg_name)
-    await message.answer("👤 Введи імʼя контактної особи:")
+    await message.answer("👤 Введи імʼя (або '-'):")
 
 
 @router.message(SellerStates.reg_name)
 async def set_name(message: Message, state: FSMContext):
-    await state.update_data(name=message.text)
+    name = None if message.text == "-" else message.text
+
+    await state.update_data(name=name)
     await state.set_state(SellerStates.reg_company)
-    await message.answer("🏪 Введи назву магазину:")
+
+    await message.answer("🏪 Назва розборки (або '-'):")
 
 
 @router.message(SellerStates.reg_company)
 async def set_company(message: Message, state: FSMContext):
-    await state.update_data(shop_name=message.text)
+    shop_name = None if message.text == "-" else message.text
+
+    await state.update_data(shop_name=shop_name)
     await state.set_state(SellerStates.reg_phone)
-    await message.answer("📞 Введи номер телефону (+380...):")
+
+    await message.answer("📞 Телефон (або '-'):")
 
 
 @router.message(SellerStates.reg_phone)
 async def set_phone(message: Message, state: FSMContext):
-    phone = message.text.strip()
-
-    if not phone.startswith("+"):
-        await message.answer("❌ Номер має починатись з +")
-        return
+    phone = None if message.text == "-" else message.text
 
     await state.update_data(phone=phone)
     await state.set_state(SellerStates.reg_link)
-    await message.answer("🌐 Введи сайт (або -):")
+
+    await message.answer("🌐 Сайт (або '-'):")
 
 
 @router.message(SellerStates.reg_link)
@@ -133,12 +132,15 @@ async def set_link(message: Message, state: FSMContext):
 
     await state.update_data(website=website)
     await state.set_state(SellerStates.reg_city)
-    await message.answer("📍 Введи місто:")
+
+    await message.answer("📍 Місто (або '-'):")
 
 
 @router.message(SellerStates.reg_city)
 async def set_city(message: Message, state: FSMContext):
     data = await state.get_data()
+
+    city = None if message.text == "-" else message.text
 
     await execute("""
         UPDATE sellers
@@ -154,10 +156,13 @@ async def set_city(message: Message, state: FSMContext):
         data.get("shop_name"),
         data.get("phone"),
         data.get("website"),
-        message.text,
+        city,
         message.from_user.id
     )
 
     await state.clear()
 
-    await message.answer("✅ Профіль оновлено")
+    await message.answer(
+        "✅ Профіль оновлено\n\n"
+        "🔐 Рекомендуємо пройти верифікацію"
+    )
