@@ -135,3 +135,13 @@ async def delete_car_handler(callback: CallbackQuery):
 
     await callback.message.answer("🗑 Авто видалено")
     await callback.answer()
+    
+    # ================= SELLER CARS =================
+
+async def get_seller_cars(telegram_id: int):
+    return await fetch(f"""
+        {BASE_SELECT}
+        WHERE s.telegram_id = $1
+        ORDER BY sc.id DESC
+        LIMIT 20
+    """, telegram_id)
