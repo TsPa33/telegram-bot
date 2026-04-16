@@ -9,6 +9,8 @@ from bot.states.seller_states import SellerStates
 router = Router()
 
 
+# ================= CHECK VERIFIED =================
+
 async def check_verified(message: Message, state: FSMContext):
     seller = await get_or_create_seller(
         message.from_user.id,
@@ -20,6 +22,7 @@ async def check_verified(message: Message, state: FSMContext):
 
     data = await state.get_data()
 
+    # показуємо попередження тільки 1 раз
     if not data.get("verification_warned"):
         await message.answer(
             "🔐 <b>Акаунт не верифікований</b>\n\n"
@@ -31,18 +34,23 @@ async def check_verified(message: Message, state: FSMContext):
     return False
 
 
+# ================= START VERIFICATION =================
+
 @router.message(F.text == "🔐 Верифікація")
 async def start_verification(message: Message, state: FSMContext):
-    await state.set_state(SellerStates.verification_photo)
+    await state.set_state(SellerStates.verification_passport)
 
     await message.answer(
         "🔐 <b>Верифікація продавця</b>\n\n"
-        "📸 Надішли фото паспорта або ID",
+        "📸 Надішли фото паспорта або ID\n\n"
+        "⚠️ Дані використовуються лише для перевірки",
         parse_mode="HTML"
     )
 
 
-@router.message(SellerStates.verification_photo, F.photo)
+# ================= RECEIVE PASSPORT =================
+
+@router.message(SellerStates.verification_passport, F.photo)
 async def receive_verification_photo(message: Message, state: FSMContext):
     seller = await get_or_create_seller(
         message.from_user.id,
@@ -54,10 +62,16 @@ async def receive_verification_photo(message: Message, state: FSMContext):
         photo_id=message.photo[-1].file_id
     )
 
-    await message.answer("✅ Заявка відправлена\n⏳ Очікуй підтвердження")
+    await message.answer(
+        "✅ Заявка відправлена\n"
+        "⏳ Очікуй підтвердження адміністратора"
+    )
+
     await state.clear()
 
 
-@router.message(SellerStates.verification_photo)
+# ================= ERROR =================
+
+@router.message(SellerStates.verification_passport)
 async def verification_error(message: Message):
     await message.answer("❌ Надішли фото документа")
