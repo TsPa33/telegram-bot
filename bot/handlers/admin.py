@@ -105,14 +105,22 @@ async def show_verifications(message: Message):
         return
 
     for seller in requests:
+        photo = seller.get("passport_photo_id") or seller.get("photo_id")
+
+        if not photo:
+            await message.answer(
+                f"⚠️ Немає фото\n🆔 Seller ID: {seller['id']}"
+            )
+            continue
+
         await message.answer_photo(
-            photo=seller["passport_photo_id"],
+            photo=photo,
             caption=f"🆔 Seller ID: {seller['id']}",
             reply_markup=verification_request_kb(seller["id"])
         )
 
 
-# ================= CALLBACK HANDLER (FIXED) =================
+# ================= CALLBACK HANDLER =================
 
 @router.callback_query(F.data.contains(":"))
 async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
@@ -121,7 +129,6 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
 
     parts = callback.data.split(":")
 
-    # 🔴 FIX: захист від падіння
     if len(parts) != 3:
         await callback.answer()
         return
@@ -170,11 +177,19 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
     elif entity == "verify":
         if action == "ok":
             await approve_seller(obj_id)
-            await callback.message.edit_caption("✅ Верифіковано")
+
+            try:
+                await callback.message.edit_caption("✅ Верифіковано")
+            except:
+                await callback.message.answer("✅ Верифіковано")
 
         elif action == "no":
             await reject_seller(obj_id)
-            await callback.message.edit_caption("❌ Відхилено")
+
+            try:
+                await callback.message.edit_caption("❌ Відхилено")
+            except:
+                await callback.message.answer("❌ Відхилено")
 
     await callback.answer()
 
