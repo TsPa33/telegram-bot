@@ -85,33 +85,4 @@ async def update_model_request(request_id: int, new_model: str):
         UPDATE model_requests
         SET model = $1
         WHERE id = $2
-    """, new_model, request_id)
-
-
-# ================= 🔐 VERIFICATION =================
-
-async def get_verification_requests():
-    return await fetch("""
-        SELECT id, telegram_id, passport_photo_id
-        FROM sellers
-        WHERE verification_status = 'review'
-        ORDER BY id
-    """)
-
-
-async def approve_seller(seller_id: int):
-    await execute("""
-        UPDATE sellers
-        SET is_verified = TRUE,
-            verification_status = 'approved'
-        WHERE id = $1
-    """, seller_id)
-
-
-async def reject_seller(seller_id: int):
-    await execute("""
-        UPDATE sellers
-        SET is_verified = FALSE,
-            verification_status = 'rejected'
-        WHERE id = $1
-    """, seller_id)
+    """,
