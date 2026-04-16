@@ -53,7 +53,6 @@ async def check_verified(message: Message, state: FSMContext):
 
     data = await state.get_data()
 
-    # 🔥 показуємо тільки 1 раз
     if not data.get("verification_warned"):
         await message.answer(
             "🔐 <b>Акаунт не верифікований</b>\n\n"
@@ -63,8 +62,6 @@ async def check_verified(message: Message, state: FSMContext):
 
         await state.update_data(verification_warned=True)
 
-    return Falsee="HTML"
-    )
     return False
 
 
@@ -96,9 +93,7 @@ async def receive_verification_photo(message: Message, state: FSMContext):
         photo_id=photo_id
     )
 
-    await message.answer(
-        "✅ Заявка відправлена\n⏳ Очікуй підтвердження"
-    )
+    await message.answer("✅ Заявка відправлена\n⏳ Очікуй підтвердження")
 
     await state.clear()
 
@@ -113,7 +108,7 @@ async def verification_error(message: Message):
 @router.message(F.text == "➕ Додати авто")
 async def add_car_start(message: Message, state: FSMContext):
 
-    if not await check_verified(message):
+    if not await check_verified(message, state):
         return
 
     await state.clear()
@@ -230,9 +225,9 @@ async def save_car(message: Message, state: FSMContext):
 # ================= MY CARS =================
 
 @router.message(F.text == "📋 Мої авто")
-async def my_cars(message: Message):
+async def my_cars(message: Message, state: FSMContext):
 
-    if not await check_verified(message):
+    if not await check_verified(message, state):
         return
 
     cars = await get_seller_cars(message.from_user.id)
@@ -253,7 +248,7 @@ async def my_cars(message: Message):
 @router.message(F.text == "👤 Профіль")
 async def seller_profile(message: Message, state: FSMContext):
 
-    if not await check_verified(message):
+    if not await check_verified(message, state):
         return
 
     await state.clear()
