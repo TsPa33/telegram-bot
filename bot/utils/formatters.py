@@ -53,16 +53,16 @@ def format_car_card(car: dict, page: int | None = None, total: int | None = None
 
    # ================= STATS =================
 
-    views = car.get("views") or 0
-    phone_clicks = car.get("phone_clicks") or 0
-    site_clicks = car.get("site_clicks") or 0
+views = car.get("views") or 0
+phone_clicks = car.get("phone_clicks") or 0
+site_clicks = car.get("site_clicks") or 0
 
-    stats_block = (
+stats_block = (
         f"📊 Статистика:\n"
         f"👁 Перегляди: {views}\n"
         f"📞 Дзвінки: {phone_clicks}\n"
         f"🌐 Переходи: {site_clicks}"
-    )
+)
 
 # ================= CARD =================
 
