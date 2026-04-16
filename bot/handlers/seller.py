@@ -28,7 +28,6 @@ from bot.database.repositories.model_repo import (
     get_model_id
 )
 
-# 🔥 NEW
 from bot.database.repositories.admin_repo import create_verification_request
 
 from bot.utils.cache import get_cached_brands, get_cached_models
@@ -39,6 +38,25 @@ from bot.states.seller_states import SellerStates
 router = Router()
 
 BACK = KeyboardButton(text="⬅️ Назад")
+
+
+# ================= 🔐 CHECK VERIFIED =================
+
+async def check_verified(message: Message):
+    seller = await get_or_create_seller(
+        message.from_user.id,
+        message.from_user.username
+    )
+
+    if seller.get("is_verified"):
+        return True
+
+    await message.answer(
+        "🔐 <b>Акаунт не верифікований</b>\n\n"
+        "Натисни кнопку «🔐 Верифікація» та надішли паспорт",
+        parse_mode="HTML"
+    )
+    return False
 
 
 # ================= 🔐 VERIFICATION =================
@@ -86,6 +104,10 @@ async def verification_error(message: Message):
 
 @router.message(F.text == "➕ Додати авто")
 async def add_car_start(message: Message, state: FSMContext):
+
+    if not await check_verified(message):
+        return
+
     await state.clear()
 
     brands = await get_cached_brands(get_brands)
@@ -103,6 +125,10 @@ async def add_car_start(message: Message, state: FSMContext):
 
 @router.message(SellerStates.brand)
 async def select_brand(message: Message, state: FSMContext):
+
+    if not await check_verified(message):
+        return
+
     if message.text == "⬅️ Назад":
         await state.clear()
         await message.answer("🏠 Меню", reply_markup=seller_menu_kb())
@@ -130,6 +156,10 @@ async def select_brand(message: Message, state: FSMContext):
 
 @router.message(SellerStates.model)
 async def select_model(message: Message, state: FSMContext):
+
+    if not await check_verified(message):
+        return
+
     if message.text == "⬅️ Назад":
         brands = await get_cached_brands(get_brands)
 
@@ -152,6 +182,10 @@ async def select_model(message: Message, state: FSMContext):
 
 @router.message(SellerStates.photo, F.text == "⬅️ Назад")
 async def back_to_model(message: Message, state: FSMContext):
+
+    if not await check_verified(message):
+        return
+
     data = await state.get_data()
     brand = data.get("brand")
 
@@ -168,6 +202,10 @@ async def back_to_model(message: Message, state: FSMContext):
 
 @router.message(SellerStates.photo, F.photo)
 async def get_photo(message: Message, state: FSMContext):
+
+    if not await check_verified(message):
+        return
+
     photo_id = message.photo[-1].file_id
 
     await state.update_data(photo_id=photo_id)
@@ -185,24 +223,19 @@ async def photo_error(message: Message):
 
 @router.message(SellerStates.description)
 async def save_car(message: Message, state: FSMContext):
+
+    if not await check_verified(message):
+        return
+
     data = await state.get_data()
 
     if data.get("car_id"):
-        car_id = data["car_id"]
-
-        await update_description(car_id, message.text)
-
+        await update_description(data["car_id"], message.text)
         await message.answer("✅ Опис оновлено")
-
         await state.clear()
         return
 
-    brand = data.get("brand")
-    model = data.get("model")
-    photo_id = data.get("photo_id")
-    description = message.text or "Без опису"
-
-    model_id = await get_model_id(brand, model)
+    model_id = await get_model_id(data["brand"], data["model"])
 
     seller = await get_or_create_seller(
         message.from_user.id,
@@ -212,22 +245,11 @@ async def save_car(message: Message, state: FSMContext):
     await add_seller_car(
         seller_id=seller["id"],
         model_id=model_id,
-        photo_id=photo_id,
-        description=description
+        photo_id=data.get("photo_id"),
+        description=message.text or "Без опису"
     )
 
     await message.answer("✅ Авто додано")
-
-    text = format_car_card({
-        "brand": brand,
-        "model": model,
-        "description": description
-    }, 0, 1)
-
-    if photo_id:
-        await message.answer_photo(photo=photo_id, caption=text, parse_mode="HTML")
-    else:
-        await message.answer(text, parse_mode="HTML")
 
     await state.clear()
 
@@ -236,6 +258,10 @@ async def save_car(message: Message, state: FSMContext):
 
 @router.message(F.text == "📋 Мої авто")
 async def my_cars(message: Message):
+
+    if not await check_verified(message):
+        return
+
     cars = await get_seller_cars(message.from_user.id)
 
     if not cars:
@@ -249,68 +275,11 @@ async def my_cars(message: Message):
     )
 
 
-# ================= OPEN CAR =================
-
-@router.callback_query(F.data.startswith("car:"))
-async def open_car(callback: types.CallbackQuery):
-    car_id = int(callback.data.split(":")[1])
-
-    car = await get_car_by_id(car_id)
-
-    if not car:
-        await callback.answer("Не знайдено")
-        return
-
-    text = format_car_card(car, 0, 1)
-
-    photo_id = car.get("photo_id")
-
-    if photo_id:
-        await callback.message.answer_photo(
-            photo=photo_id,
-            caption=text,
-            reply_markup=seller_card_actions_kb(car_id),
-            parse_mode="HTML"
-        )
-    else:
-        await callback.message.answer(
-            text,
-            reply_markup=seller_card_actions_kb(car_id),
-            parse_mode="HTML"
-        )
-
-    await callback.answer()
-
-
-# ================= EDIT CAR =================
-
-@router.callback_query(F.data.startswith("edit:"))
-async def edit_car(callback: types.CallbackQuery, state: FSMContext):
-    car_id = int(callback.data.split(":")[1])
-
-    await state.update_data(car_id=car_id)
-    await state.set_state(SellerStates.description)
-
-    await callback.message.answer("✏️ Введи новий опис:")
-    await callback.answer()
-
-
-# ================= DELETE CAR =================
-
-@router.callback_query(F.data.startswith("delete:"))
-async def delete_car_handler(callback: types.CallbackQuery):
-    car_id = int(callback.data.split(":")[1])
-
-    await delete_car(car_id)
-
-    await callback.message.answer("🗑 Авто видалено")
-    await callback.answer()
-
-
 # ================= PROFILE =================
 
 @router.message(F.text == "👤 Профіль")
 async def seller_profile(message: Message, state: FSMContext):
+
     await state.clear()
 
     seller = await get_or_create_seller(
@@ -336,23 +305,6 @@ async def seller_profile(message: Message, state: FSMContext):
 
 # ================= EDIT PROFILE =================
 
-FIELD_LABELS = {
-    "shop_name": "назву розборки",
-    "name": "ім’я",
-    "phone": "телефон",
-    "website": "сайт",
-    "city": "місто",
-    "description": "опис"
-}
-
-MENU_BUTTONS = {
-    "📋 Мої авто",
-    "➕ Додати авто",
-    "👤 Профіль",
-    "⬅️ Назад"
-}
-
-
 @router.callback_query(F.data.startswith("profile:"))
 async def edit_profile(callback: types.CallbackQuery, state: FSMContext):
     field = callback.data.split(":")[1]
@@ -360,30 +312,21 @@ async def edit_profile(callback: types.CallbackQuery, state: FSMContext):
     await state.update_data(edit_field=field)
     await state.set_state(SellerStates.edit_profile)
 
-    label = FIELD_LABELS.get(field, field)
-
-    await callback.message.answer(
-        f"✏️ Введи {label}\n\nабо '-' щоб очистити"
-    )
-
+    await callback.message.answer("✏️ Введи нове значення або '-' щоб очистити")
     await callback.answer()
 
 
 @router.message(SellerStates.edit_profile)
 async def save_profile(message: Message, state: FSMContext):
-    if message.text in MENU_BUTTONS:
-        await message.answer("❌ Заверши редагування або введи '-'")
-        return
-
     data = await state.get_data()
     field = data.get("edit_field")
-
-    value = None if message.text == "-" else message.text
 
     seller = await get_or_create_seller(
         message.from_user.id,
         message.from_user.username
     )
+
+    value = None if message.text == "-" else message.text
 
     await update_seller_field(seller["id"], field, value)
 
