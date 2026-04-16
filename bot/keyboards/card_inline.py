@@ -6,11 +6,9 @@ def is_valid_url(url: str) -> bool:
     if not url:
         return False
 
-    # ❌ кирилиця / пробіли
     if re.search(r"[а-яА-Я ]", url):
         return False
 
-    # ❌ базова перевірка
     if "." not in url:
         return False
 
@@ -35,7 +33,7 @@ def normalize_url(url: str) -> str | None:
     return url
 
 
-def build_card_keyboard(car: dict, page: int, total: int):
+def build_card_keyboard(car: dict, page: int | None = None, total: int | None = None):
     rows = []
     car_id = car.get("id")
 
@@ -105,32 +103,32 @@ def build_card_keyboard(car: dict, page: int, total: int):
 
     # ================= PAGINATION =================
 
-if page is not None and total is not None and total > 1:
-    nav_row = []
+    if page is not None and total is not None and total > 1:
+        nav_row = []
 
-    if page > 0:
+        if page > 0:
+            nav_row.append(
+                InlineKeyboardButton(
+                    text="⬅️",
+                    callback_data=f"page:{page - 1}"
+                )
+            )
+
         nav_row.append(
             InlineKeyboardButton(
-                text="⬅️",
-                callback_data=f"page:{page - 1}"
+                text=f"{page + 1}/{total}",
+                callback_data="noop"
             )
         )
 
-    nav_row.append(
-        InlineKeyboardButton(
-            text=f"{page + 1}/{total}",
-            callback_data="noop"
-        )
-    )
-
-    if page < total - 1:
-        nav_row.append(
-            InlineKeyboardButton(
-                text="➡️",
-                callback_data=f"page:{page + 1}"
+        if page < total - 1:
+            nav_row.append(
+                InlineKeyboardButton(
+                    text="➡️",
+                    callback_data=f"page:{page + 1}"
+                )
             )
-        )
 
-    rows.append(nav_row)
+        rows.append(nav_row)
 
     return InlineKeyboardMarkup(inline_keyboard=rows)
