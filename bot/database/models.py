@@ -1,12 +1,9 @@
-from bot.database.db import get_connection
+from bot.database.base import execute
 
 
-def create_tables():
-    conn = get_connection()
-    cursor = conn.cursor()
-
+async def create_tables():
     # 🔹 brands
-    cursor.execute("""
+    await execute("""
     CREATE TABLE IF NOT EXISTS brands (
         id SERIAL PRIMARY KEY,
         name TEXT UNIQUE NOT NULL
@@ -14,7 +11,7 @@ def create_tables():
     """)
 
     # 🔹 models
-    cursor.execute("""
+    await execute("""
     CREATE TABLE IF NOT EXISTS models (
         id SERIAL PRIMARY KEY,
         name TEXT NOT NULL,
@@ -23,7 +20,7 @@ def create_tables():
     """)
 
     # 🔹 sellers
-    cursor.execute("""
+    await execute("""
     CREATE TABLE IF NOT EXISTS sellers (
         id SERIAL PRIMARY KEY,
         telegram_id BIGINT UNIQUE NOT NULL,
@@ -34,7 +31,7 @@ def create_tables():
     """)
 
     # 🔹 seller_cars
-    cursor.execute("""
+    await execute("""
     CREATE TABLE IF NOT EXISTS seller_cars (
         id SERIAL PRIMARY KEY,
 
@@ -54,12 +51,8 @@ def create_tables():
     );
     """)
 
-    # 🔥 ІНДЕКСИ (ДУЖЕ ВАЖЛИВО)
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_model_id ON seller_cars(model_id);")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_status ON seller_cars(status);")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_seller_id ON seller_cars(seller_id);")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_brand_id ON models(brand_id);")
-
-    conn.commit()
-    cursor.close()
-    conn.close()
+    # 🔥 ІНДЕКСИ
+    await execute("CREATE INDEX IF NOT EXISTS idx_model_id ON seller_cars(model_id);")
+    await execute("CREATE INDEX IF NOT EXISTS idx_status ON seller_cars(status);")
+    await execute("CREATE INDEX IF NOT EXISTS idx_seller_id ON seller_cars(seller_id);")
+    await execute("CREATE INDEX IF NOT EXISTS idx_brand_id ON models(brand_id);")
