@@ -33,12 +33,11 @@ async def my_cars(message: Message):
         await message.answer("😕 У тебе ще немає авто")
         return
 
-    # 🔴 ДОДАЄМО СТАТИСТИКУ В СПИСОК
     text = "📋 <b>Твої авто:</b>\n\n"
 
     for car in cars:
         text += (
-            f"🚗 <b>{car['brand']} {car['model']}</b>\n"
+            f"🚗 <b>{car.get('brand', '-')} {car.get('model', '-')}</b>\n"
             f"📝 {car.get('description') or '-'}\n"
             f"👁 Перегляди: {car.get('views', 0)}\n"
             f"📞 Дзвінки: {car.get('phone_clicks', 0)}\n"
@@ -58,7 +57,7 @@ async def my_cars(message: Message):
 async def open_car(callback: CallbackQuery):
     try:
         car_id = int(callback.data.split(":")[1])
-    except:
+    except Exception:
         await callback.answer("Помилка")
         return
 
@@ -68,9 +67,9 @@ async def open_car(callback: CallbackQuery):
         await callback.answer("Не знайдено")
         return
 
-    text = format_car_card(car, 0, 1)
+    # 🔥 ВАЖЛИВО: без параметрів
+    text = format_car_card(car)
 
-    # 🔴 ДОДАЄМО СТАТИСТИКУ В КАРТКУ
     stats = (
         f"\n\n"
         f"📊 <b>Статистика:</b>\n"
@@ -106,7 +105,7 @@ async def open_car(callback: CallbackQuery):
 async def edit_car(callback: CallbackQuery, state: FSMContext):
     try:
         car_id = int(callback.data.split(":")[1])
-    except:
+    except Exception:
         await callback.answer("Помилка")
         return
 
@@ -127,7 +126,7 @@ async def edit_car(callback: CallbackQuery, state: FSMContext):
 async def delete_car_handler(callback: CallbackQuery):
     try:
         car_id = int(callback.data.split(":")[1])
-    except:
+    except Exception:
         await callback.answer("Помилка")
         return
 
@@ -135,13 +134,3 @@ async def delete_car_handler(callback: CallbackQuery):
 
     await callback.message.answer("🗑 Авто видалено")
     await callback.answer()
-    
-    # ================= SELLER CARS =================
-
-async def get_seller_cars(telegram_id: int):
-    return await fetch(f"""
-        {BASE_SELECT}
-        WHERE s.telegram_id = $1
-        ORDER BY sc.id DESC
-        LIMIT 20
-    """, telegram_id)
