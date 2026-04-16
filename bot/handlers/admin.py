@@ -176,41 +176,40 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
     # ===== VERIFY =====
     elif entity == "verify":
         if action == "ok":
-            seller_id = await approve_seller(obj_id)
+            telegram_id = await approve_seller(obj_id)
 
-        # повідомлення продавцю
-        if seller_id:
+            if telegram_id:
+                try:
+                    await callback.bot.send_message(
+                        chat_id=telegram_id,
+                        text="✅ Твій акаунт верифіковано!\n\nТепер ти можеш користуватись ботом 🚀"
+                    )
+                except:
+                    pass
+
             try:
-                await callback.bot.send_message(
-                    chat_id=seller_id,
-                    text="✅ Твій акаунт верифіковано!\n\nТепер ти можеш користуватись ботом 🚀"
-                )
+                await callback.message.edit_caption("✅ Верифіковано")
             except:
-                pass
+                await callback.message.answer("✅ Верифіковано")
 
-        try:
-            await callback.message.edit_caption("✅ Верифіковано")
-        except:
-            await callback.message.answer("✅ Верифіковано")
+        elif action == "no":
+            telegram_id = await reject_seller(obj_id)
 
-    elif action == "no":
-        seller_id = await reject_seller(obj_id)
+            if telegram_id:
+                try:
+                    await callback.bot.send_message(
+                        chat_id=telegram_id,
+                        text="❌ Верифікацію відхилено"
+                    )
+                except:
+                    pass
 
-        if seller_id:
             try:
-                await callback.bot.send_message(
-                    chat_id=seller_id,
-                    text="❌ Верифікацію відхилено"
-                )
+                await callback.message.edit_caption("❌ Відхилено")
             except:
-                pass
+                await callback.message.answer("❌ Відхилено")
 
-        try:
-            await callback.message.edit_caption("❌ Відхилено")
-        except:
-            await callback.message.answer("❌ Відхилено")
-
-await callback.answer()
+    await callback.answer()
 
 
 # ================= EDIT BRAND =================
