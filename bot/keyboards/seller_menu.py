@@ -6,7 +6,9 @@ def seller_menu_kb():
         keyboard=[
             [KeyboardButton(text="➕ Додати авто")],
             [KeyboardButton(text="📋 Мої авто")],
-            [KeyboardButton(text="👤 Профіль")]
+            [KeyboardButton(text="👤 Профіль")],
+            [KeyboardButton(text="📊 Статистика")],
+            [KeyboardButton(text="🔐 Верифікація")]
         ],
         resize_keyboard=True
     )
