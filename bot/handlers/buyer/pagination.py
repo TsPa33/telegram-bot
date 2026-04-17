@@ -52,7 +52,7 @@ async def send_card(message, state: FSMContext, new_message=False):
     """, car_id)
 
     text = format_car_card(car, page, total)
-    keyboard = build_card_keyboard(page, total)
+    keyboard = build_card_keyboard(car, page, total)
 
     photo = car.get("photo_id") or DEFAULT_PHOTO
 
