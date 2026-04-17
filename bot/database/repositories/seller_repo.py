@@ -27,7 +27,7 @@ async def add_seller_car(seller_id: int, model_id: int, photo_id: str, descripti
             phone_clicks,
             site_clicks
         )
-        VALUES ($1, $2, $3, $4, 1, 0, 0, 0)
+        VALUES ($1, $2, $3, $4, 'active', 0, 0, 0)
     """, seller_id, model_id, photo_id, description)
 
 
