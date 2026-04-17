@@ -106,26 +106,29 @@ def build_card_keyboard(car: dict, page: int | None = None, total: int | None = 
     if page is not None and total is not None and total > 1:
         nav_row = []
 
-        if page > 0:
+        # ⬅️ prev
+        if page > 1:
             nav_row.append(
                 InlineKeyboardButton(
                     text="⬅️",
-                    callback_data=f"page:{page - 1}"
+                    callback_data="prev"
                 )
             )
 
+        # center
         nav_row.append(
             InlineKeyboardButton(
-                text=f"{page + 1}/{total}",
+                text=f"{page}/{total}",
                 callback_data="noop"
             )
         )
 
-        if page < total - 1:
+        # ➡️ next
+        if page < total:
             nav_row.append(
                 InlineKeyboardButton(
                     text="➡️",
-                    callback_data=f"page:{page + 1}"
+                    callback_data="next"
                 )
             )
 
