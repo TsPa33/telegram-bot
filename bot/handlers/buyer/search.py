@@ -48,7 +48,6 @@ async def choose_brand(message: types.Message, state: FSMContext):
     text = (message.text or "").strip()
 
     brands = await get_cached_brands(get_brands)
-
     brand = normalize_brand(text)
 
     if brand not in brands:
@@ -108,9 +107,10 @@ async def choose_model(message: types.Message, state: FSMContext):
         )
         return
 
+    # 🔥 КЛЮЧОВИЙ ФІКС
     await state.update_data(
         model_id=model_id,
-        page=0
+        current_car_id=None
     )
 
     await message.answer(f"🔎 Знайдено оголошень: {total}")
