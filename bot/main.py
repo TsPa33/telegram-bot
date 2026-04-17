@@ -76,7 +76,6 @@ async def get_storage():
 # ================= RUN BOT =================
 
 async def run_bot():
-    async def run_bot():
     if not BOT_TOKEN:
         raise ValueError("BOT_TOKEN is not set")
 
@@ -85,13 +84,8 @@ async def run_bot():
 
     # 🔴 1. ІНІЦІАЛІЗАЦІЯ БД
     await init_pool()
-    if not BOT_TOKEN:
-        raise ValueError("BOT_TOKEN is not set")
 
-    # 🔴 1. ІНІЦІАЛІЗАЦІЯ БД
-    await init_pool()
-
-    # 🔴 2. СТВОРЕННЯ ТАБЛИЦЬ (ДУЖЕ ВАЖЛИВО)
+    # 🔴 2. СТВОРЕННЯ ТАБЛИЦЬ
     await create_tables()
 
     storage = await get_storage()
