@@ -52,12 +52,6 @@ def format_car_card(car: dict, page: int | None = None, total: int | None = None
 
     stats_block = f"\n📊 👁 {views}   📞 {phone}   🌐 {site}"
 
-    # ================= PAGINATION =================
-
-    page_block = ""
-    if page is not None and total is not None:
-        page_block = f"\n\n⬅️ {page}/{total} ➡️"
-
     # ================= FINAL =================
 
     return (
@@ -66,5 +60,4 @@ def format_car_card(car: dict, page: int | None = None, total: int | None = None
         f"{description_block}"
         f"{seller_block}"
         f"{stats_block}"
-        f"{page_block}"
     )
