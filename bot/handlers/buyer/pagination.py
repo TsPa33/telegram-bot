@@ -1,5 +1,5 @@
 from aiogram import Router, F
-from aiogram.types import CallbackQuery
+from aiogram.types import CallbackQuery, InputMediaPhoto
 from aiogram.fsm.context import FSMContext
 
 from bot.database.repositories.car_repo import (
@@ -33,7 +33,7 @@ async def send_card(message, state: FSMContext, new_message=False):
         await message.answer("⚠️ Сесія втрачена. Почни заново: /find")
         return
 
-    # 🔒 захист від кривих значень
+    # 🔒 захист
     if page < 1:
         page = 1
     if page > total:
@@ -60,26 +60,44 @@ async def send_card(message, state: FSMContext, new_message=False):
     text = format_car_card(car, page, total)
     keyboard = build_card_keyboard(car, page, total)
 
-    photo = car.get("photo_id") or DEFAULT_PHOTO
+    new_photo = car.get("photo_id") or DEFAULT_PHOTO
 
     if new_message:
         await message.answer_photo(
-            photo=photo,
+            photo=new_photo,
             caption=text,
             reply_markup=keyboard,
             parse_mode="HTML"
         )
     else:
         try:
-            await message.edit_caption(
-                caption=text,
-                reply_markup=keyboard,
-                parse_mode="HTML"
-            )
+            current_photo = None
+
+            # 📌 отримуємо поточне фото повідомлення
+            if message.photo:
+                current_photo = message.photo[-1].file_id
+
+            # 🔥 якщо фото змінилось → edit_media
+            if current_photo != new_photo:
+                await message.edit_media(
+                    media=InputMediaPhoto(
+                        media=new_photo,
+                        caption=text,
+                        parse_mode="HTML"
+                    ),
+                    reply_markup=keyboard
+                )
+            else:
+                # тільки текст
+                await message.edit_caption(
+                    caption=text,
+                    reply_markup=keyboard,
+                    parse_mode="HTML"
+                )
+
         except Exception:
-            # fallback якщо Telegram не дає edit
             await message.answer_photo(
-                photo=photo,
+                photo=new_photo,
                 caption=text,
                 reply_markup=keyboard,
                 parse_mode="HTML"
