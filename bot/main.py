@@ -76,6 +76,15 @@ async def get_storage():
 # ================= RUN BOT =================
 
 async def run_bot():
+    async def run_bot():
+    if not BOT_TOKEN:
+        raise ValueError("BOT_TOKEN is not set")
+
+    import os
+    print("DB:", os.getenv("DATABASE_URL"))
+
+    # 🔴 1. ІНІЦІАЛІЗАЦІЯ БД
+    await init_pool()
     if not BOT_TOKEN:
         raise ValueError("BOT_TOKEN is not set")
 
