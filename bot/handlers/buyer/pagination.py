@@ -33,6 +33,12 @@ async def send_card(message, state: FSMContext, new_message=False):
         await message.answer("⚠️ Сесія втрачена. Почни заново: /find")
         return
 
+    # 🔒 захист від кривих значень
+    if page < 1:
+        page = 1
+    if page > total:
+        page = total
+
     offset = (page - 1)
 
     cars = await get_cars_page(model_id, LIMIT, offset)
@@ -71,6 +77,7 @@ async def send_card(message, state: FSMContext, new_message=False):
                 parse_mode="HTML"
             )
         except Exception:
+            # fallback якщо Telegram не дає edit
             await message.answer_photo(
                 photo=photo,
                 caption=text,
