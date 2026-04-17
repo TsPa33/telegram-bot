@@ -75,47 +75,56 @@ async def choose_brand(message: types.Message, state: FSMContext):
 
 @router.message(Buyer.model, F.text != "⬅️ Назад")
 async def choose_model(message: types.Message, state: FSMContext):
-    text = (message.text or "").strip()
-    model = normalize_model(text)
+    try:
+        text = (message.text or "").strip()
+        model = normalize_model(text)
 
-    data = await state.get_data()
-    brand = data.get("brand")
+        data = await state.get_data()
+        brand = data.get("brand")
 
-    if not brand:
-        await state.clear()
-        await message.answer("⚠️ Сесія втрачена. Почни заново: /find")
-        return
+        if not brand:
+            await state.clear()
+            await message.answer("⚠️ Сесія втрачена. Почни заново: /find")
+            return
 
-    models = await get_cached_models(brand, get_models_by_brand)
+        models = await get_cached_models(brand, get_models_by_brand)
 
-    if model not in models:
-        await message.answer("❌ Обери модель з кнопок")
-        return
+        if model not in models:
+            await message.answer("❌ Обери модель з кнопок")
+            return
 
-    model_id = await get_model_or_none(brand, model)
+        model_id = await get_model_or_none(brand, model)
 
-    if not model_id:
-        await message.answer("❌ Модель не знайдена")
-        return
+        if not model_id:
+            await message.answer("❌ Модель не знайдена")
+            return
 
-    total = await count_cars(model_id)
+        total = await count_cars(model_id)
 
-    if total == 0:
-        await message.answer(
-            "😕 Немає оголошень для цієї моделі.\n"
-            "Спробуй іншу."
+        # 🔍 DEBUG (можеш прибрати після стабілізації)
+        print("MODEL_ID:", model_id)
+        print("TOTAL:", total)
+
+        if total == 0:
+            await message.answer(
+                "😕 Немає оголошень для цієї моделі.\n"
+                "Спробуй іншу."
+            )
+            return
+
+        # 🔥 ВАЖЛИВО ДЛЯ PAGINATION
+        await state.update_data(
+            model_id=model_id,
+            current_car_id=None
         )
-        return
 
-    # 🔥 КЛЮЧОВИЙ ФІКС
-    await state.update_data(
-        model_id=model_id,
-        current_car_id=None
-    )
+        await message.answer(f"🔎 Знайдено оголошень: {total}")
 
-    await message.answer(f"🔎 Знайдено оголошень: {total}")
+        await send_card(message, state, new_message=True)
 
-    await send_card(message, state, new_message=True)
+    except Exception as e:
+        print("ERROR IN choose_model:", e)
+        await message.answer("⚠️ Сталась помилка. Спробуй ще раз.")
 
 
 # ================= GLOBAL BACK =================
