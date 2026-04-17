@@ -100,3 +100,15 @@ async def get_seller_cars(telegram_id: int):
         ORDER BY sc.id DESC
         LIMIT 20
     """, telegram_id)
+
+
+# ================= NEW: OFFSET PAGINATION =================
+
+async def get_cars_page(model_id: int, limit: int, offset: int):
+    return await fetch(f"""
+        {BASE_SELECT}
+        WHERE sc.model_id = $1
+          AND sc.status = 'active'
+        ORDER BY sc.id DESC
+        LIMIT $2 OFFSET $3
+    """, model_id, limit, offset)
