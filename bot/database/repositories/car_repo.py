@@ -38,7 +38,7 @@ async def count_cars(model_id: int) -> int:
         SELECT COUNT(*) as total
         FROM seller_cars
         WHERE model_id = $1
-          AND status = 1
+          AND status = 'active'
     """, model_id)
 
     return row["total"] if row else 0
@@ -50,7 +50,7 @@ async def get_first_car(model_id: int):
     return await fetchrow(f"""
         {BASE_SELECT}
         WHERE sc.model_id = $1
-          AND sc.status = 1
+          AND sc.status = 'active'
         ORDER BY sc.id DESC
         LIMIT 1
     """, model_id)
@@ -62,7 +62,7 @@ async def get_next_car(model_id: int, last_id: int):
     return await fetchrow(f"""
         {BASE_SELECT}
         WHERE sc.model_id = $1
-          AND sc.status = 1
+          AND sc.status = 'active'
           AND sc.id < $2
         ORDER BY sc.id DESC
         LIMIT 1
@@ -75,7 +75,7 @@ async def get_prev_car(model_id: int, current_id: int):
     return await fetchrow(f"""
         {BASE_SELECT}
         WHERE sc.model_id = $1
-          AND sc.status = 1
+          AND sc.status = 'active'
           AND sc.id > $2
         ORDER BY sc.id ASC
         LIMIT 1
