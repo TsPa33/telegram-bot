@@ -6,8 +6,6 @@ def safe(val):
 
 
 def format_car_card(car: dict, page: int | None = None, total: int | None = None):
-    # ================= BASIC =================
-
     brand = safe(car.get("brand"))
     model = safe(car.get("model"))
 
@@ -15,55 +13,48 @@ def format_car_card(car: dict, page: int | None = None, total: int | None = None
 
     # ================= DESCRIPTION =================
 
-    raw_description = car.get("description")
-
-    if raw_description:
-        description = safe(str(raw_description).strip())
-    else:
-        description = "📦 Опис відсутній"
+    description = safe(car.get("description")) or "Без опису"
 
     description_block = (
-        "📝 <b>Опис:</b>\n"
-        f"{description}\n\n"
+        f"\n📝 <b>Опис:</b>\n{description}\n"
     )
 
     # ================= SELLER =================
 
-    shop_name = safe(car.get("shop_name"))
+    shop = safe(car.get("shop_name"))
     name = safe(car.get("name"))
     city = safe(car.get("city"))
 
-    seller_block = ""
+    seller_lines = []
 
-    if shop_name:
-        seller_block += f"🏪 {shop_name}\n"
+    if shop:
+        seller_lines.append(f"🏪 <b>{shop}</b>")
 
-    if name:
-        seller_block += f"👤 {name}\n"
+    if name and name != "🔐 Верифікація":
+        seller_lines.append(f"👤 {name}")
 
     if city:
-        seller_block += f"📍 {city}\n"
+        seller_lines.append(f"📍 {city}")
 
-    if seller_block:
-        seller_block += "\n"
+    seller_block = ""
+    if seller_lines:
+        seller_block = "\n\n" + "\n".join(seller_lines)
 
     # ================= VERIFIED =================
 
-    verified_block = ""
+    verified = ""
     if car.get("is_verified"):
-        verified_block = "🔐 Верифікований продавець\n\n"
+        verified = "🔐 <b>Перевірений продавець</b>\n"
 
     # ================= STATS =================
 
     views = car.get("views") or 0
-    phone_clicks = car.get("phone_clicks") or 0
-    site_clicks = car.get("site_clicks") or 0
+    phone = car.get("phone_clicks") or 0
+    site = car.get("site_clicks") or 0
 
     stats_block = (
-        "📊 <b>Статистика:</b>\n"
-        f"👁 Перегляди: {views}\n"
-        f"📞 Дзвінки: {phone_clicks}\n"
-        f"🌐 Переходи: {site_clicks}"
+        "\n\n📊 <b>Статистика</b>\n"
+        f"👁 {views}   📞 {phone}   🌐 {site}"
     )
 
     # ================= PAGINATION =================
@@ -76,8 +67,8 @@ def format_car_card(car: dict, page: int | None = None, total: int | None = None
 
     return (
         f"{title}\n"
-        f"━━━━━━━━━━━━━━━\n\n"
-        f"{verified_block}"
+        f"━━━━━━━━━━━━━━━\n"
+        f"{verified}"
         f"{description_block}"
         f"{seller_block}"
         f"{stats_block}"
