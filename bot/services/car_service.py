@@ -3,17 +3,28 @@ from bot.database.base import fetchrow
 
 # ================= MODEL =================
 
-async def get_model_or_none(brand: str, model_name: str):
-    row = await fetchrow("""
-        SELECT m.id
-        FROM models m
-        JOIN brands b ON m.brand_id = b.id
-        WHERE LOWER(b.name) = LOWER($1)
-          AND LOWER(m.name) = LOWER($2)
-        LIMIT 1
-    """, brand, model_name)
+from bot.database.repositories.model_repo import (
+    get_brand_by_name,
+    get_model_by_name_and_brand
+)
 
-    return row["id"] if row else None
+
+async def get_model_or_none(brand: str, model: str):
+    # 1. отримуємо brand_id
+    brand_obj = await get_brand_by_name(brand)
+
+    if not brand_obj:
+        return None
+
+    brand_id = brand_obj["id"]
+
+    # 2. отримуємо model
+    model_obj = await get_model_by_name_and_brand(model, brand_id)
+
+    if not model_obj:
+        return None
+
+    return model_obj["id"]
 
 
 # ================= PAGINATION =================
