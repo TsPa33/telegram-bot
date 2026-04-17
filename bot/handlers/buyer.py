@@ -109,20 +109,25 @@ async def choose_model(message: types.Message, state: FSMContext):
     text = message.text.strip()
     model = normalize_model(text)
 
-    data = await state.get_data()
-    brand = data.get("brand")
+data = await state.get_data()
+brand = data.get("brand")
 
-    if not brand:
-        await state.clear()
-        await message.answer("⚠️ Сесія втрачена. Почни заново: /find")
-        return
+# ===== ДІАГНОСТИКА =====
+print("========== DEBUG ==========")
+print("BRAND RAW:", brand)
+print("MODEL RAW:", text)
+print("MODEL NORMALIZED:", model)
 
-    # 🔥 КЛЮЧОВИЙ ФІКС
-    model_id = await get_model_or_none(brand, model)
+model_id = await get_model_or_none(brand, model)
 
-    if not model_id:
-        await message.answer("❌ Модель не знайдена")
-        return
+print("MODEL_ID:", model_id)
+print("===========================")
+# ===========================
+
+if not brand:
+    await state.clear()
+    await message.answer("⚠️ Сесія втрачена. Почни заново: /find")
+    return
 
     total = await count_cars(model_id)
 
