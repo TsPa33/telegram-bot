@@ -14,7 +14,9 @@ async def migrate():
     sqlite_cursor = sqlite_conn.cursor()
 
     # 🔹 Postgres
-    pg = await asyncpg.connect(os.getenv("DATABASE_URL"))
+    pg = await asyncpg.connect(
+    "postgresql://postgres:MykVFDrTAfWGcvqxJMnBNOgkqlETYNIA@maglev.proxy.rlwy.net:28161/railway"
+)
 
     print("🚀 Migration started")
 
