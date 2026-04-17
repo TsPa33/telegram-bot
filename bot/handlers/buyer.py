@@ -11,6 +11,8 @@ from aiogram.types import (
 from bot.database.repositories.model_repo import get_brands, get_models_by_brand
 from bot.database.repositories.car_repo import find_cars, count_cars
 
+from bot.services.car_service import get_model_or_none
+
 from bot.states.buyer_states import Buyer
 from bot.utils.validation import normalize_brand, normalize_model
 from bot.utils.cache import get_cached_brands, get_cached_models
@@ -105,7 +107,6 @@ async def choose_brand(message: types.Message, state: FSMContext):
 @router.message(Buyer.model)
 async def choose_model(message: types.Message, state: FSMContext):
     text = message.text.strip()
-
     model = normalize_model(text)
 
     data = await state.get_data()
@@ -116,7 +117,14 @@ async def choose_model(message: types.Message, state: FSMContext):
         await message.answer("⚠️ Сесія втрачена. Почни заново: /find")
         return
 
-    total = await count_cars(brand, model)
+    # 🔥 КЛЮЧОВИЙ ФІКС
+    model_id = await get_model_or_none(brand, model)
+
+    if not model_id:
+        await message.answer("❌ Модель не знайдена")
+        return
+
+    total = await count_cars(model_id)
 
     if total == 0:
         await message.answer(
@@ -125,13 +133,16 @@ async def choose_model(message: types.Message, state: FSMContext):
         )
         return
 
-    await state.update_data(model=model, page=0, total=total)
+    await state.update_data(
+        model_id=model_id,
+        page=0,
+        total=total
+    )
 
     await message.answer(f"🔎 Знайдено оголошень: {total}")
 
     await send_card(message, state, new_message=True)
 
-    # 🔥 FIX: очищаємо FSM після показу
     await state.set_state(None)
 
 
@@ -140,17 +151,17 @@ async def choose_model(message: types.Message, state: FSMContext):
 async def send_card(message: types.Message, state: FSMContext, new_message=False):
     data = await state.get_data()
 
-    brand = data.get("brand")
-    model = data.get("model")
+    model_id = data.get("model_id")
     page = data.get("page")
     total = data.get("total")
 
-    if not all([brand, model, total is not None]):
+    if not all([model_id, total is not None]):
         await state.clear()
         await message.answer("⚠️ Сесія втрачена. Почни заново: /find")
         return
 
-    results = await find_cars(brand, model, page, limit=1)
+    # 🔥 КЛЮЧОВИЙ ФІКС
+    results = await find_cars(model_id, page, limit=1)
 
     if not results:
         await message.answer("❌ Більше немає результатів")
@@ -220,6 +231,7 @@ async def paginate(callback: types.CallbackQuery, state: FSMContext):
 
     await callback.answer()
     await send_card(callback.message, state)
+
 
 # ================= FALLBACK =================
 
