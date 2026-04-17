@@ -1,35 +1,23 @@
 from bot.database.base import fetchrow
+from bot.database.repositories.model_repo import get_model_id
 
 
 # ================= MODEL =================
 
-from bot.database.repositories.model_repo import (
-    get_brand_by_name,
-    get_model_by_name_and_brand
-)
-
-
-async def get_model_or_none(brand: str, model: str):
-    # 1. отримуємо brand_id
-    brand_obj = await get_brand_by_name(brand)
-
-    if not brand_obj:
-        return None
-
-    brand_id = brand_obj["id"]
-
-    # 2. отримуємо model
-    model_obj = await get_model_by_name_and_brand(model, brand_id)
-
-    if not model_obj:
-        return None
-
-    return model_obj["id"]
+async def get_model_or_none(brand: str, model: str) -> int | None:
+    """
+    Повертає model_id через repo (JOIN brands + models)
+    """
+    return await get_model_id(brand, model)
 
 
 # ================= PAGINATION =================
 
 async def get_cars_page(model_id: int, page: int):
+    """
+    Повертає 1 авто + total
+    """
+
     # 🔢 total
     total_row = await fetchrow("""
         SELECT COUNT(*) AS total
@@ -43,13 +31,13 @@ async def get_cars_page(model_id: int, page: int):
     if total == 0:
         return None, 0
 
-    # 🧠 захист
+    # 🧠 захист від кривих значень
     if page < 0:
         page = 0
     if page >= total:
         page = total - 1
 
-    # 🔥 OFFSET (тимчасово залишаємо, далі приберемо)
+    # 🔥 отримати авто
     car = await fetchrow("""
         SELECT *
         FROM seller_cars
