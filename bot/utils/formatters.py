@@ -15,9 +15,7 @@ def format_car_card(car: dict, page: int | None = None, total: int | None = None
 
     description = safe(car.get("description")) or "Без опису"
 
-    description_block = (
-        f"\n📝 <b>Опис:</b>\n{description}\n"
-    )
+    description_block = f"\n{description}\n"
 
     # ================= SELLER =================
 
@@ -25,26 +23,26 @@ def format_car_card(car: dict, page: int | None = None, total: int | None = None
     name = safe(car.get("name"))
     city = safe(car.get("city"))
 
-    seller_lines = []
+    seller_parts = []
 
     if shop:
-        seller_lines.append(f"🏪 <b>{shop}</b>")
+        seller_parts.append(f"🏪 {shop}")
 
     if name and name != "🔐 Верифікація":
-        seller_lines.append(f"👤 {name}")
+        seller_parts.append(f"👤 {name}")
 
     if city:
-        seller_lines.append(f"📍 {city}")
+        seller_parts.append(f"📍 {city}")
 
     seller_block = ""
-    if seller_lines:
-        seller_block = "\n\n" + "\n".join(seller_lines)
+    if seller_parts:
+        seller_block = "\n" + " | ".join(seller_parts)
 
     # ================= VERIFIED =================
 
     verified = ""
     if car.get("is_verified"):
-        verified = "🔐 <b>Перевірений продавець</b>\n"
+        verified = "🔐 Перевірений продавець\n"
 
     # ================= STATS =================
 
@@ -52,22 +50,18 @@ def format_car_card(car: dict, page: int | None = None, total: int | None = None
     phone = car.get("phone_clicks") or 0
     site = car.get("site_clicks") or 0
 
-    stats_block = (
-        "\n\n📊 <b>Статистика</b>\n"
-        f"👁 {views}   📞 {phone}   🌐 {site}"
-    )
+    stats_block = f"\n📊 👁 {views}   📞 {phone}   🌐 {site}"
 
     # ================= PAGINATION =================
 
     page_block = ""
     if page is not None and total is not None:
-        page_block = f"\n\n📄 {page + 1} / {total}"
+        page_block = f"\n\n⬅️ {page}/{total} ➡️"
 
     # ================= FINAL =================
 
     return (
         f"{title}\n"
-        f"━━━━━━━━━━━━━━━\n"
         f"{verified}"
         f"{description_block}"
         f"{seller_block}"
