@@ -14,6 +14,8 @@ from bot.database.repositories.car_repo import count_cars
 
 from .pagination import send_card
 
+import math
+
 
 router = Router()
 
@@ -99,26 +101,29 @@ async def choose_model(message: types.Message, state: FSMContext):
             await message.answer("❌ Модель не знайдена")
             return
 
-        total = await count_cars(model_id)
+        total_items = await count_cars(model_id)
 
-        # 🔍 DEBUG (можеш прибрати після стабілізації)
         print("MODEL_ID:", model_id)
-        print("TOTAL:", total)
+        print("TOTAL:", total_items)
 
-        if total == 0:
+        if total_items == 0:
             await message.answer(
                 "😕 Немає оголошень для цієї моделі.\n"
                 "Спробуй іншу."
             )
             return
 
-        # 🔥 ВАЖЛИВО ДЛЯ PAGINATION
+        # 🔥 PAGE LOGIC
+        LIMIT = 1
+        total_pages = max(1, math.ceil(total_items / LIMIT))
+
         await state.update_data(
             model_id=model_id,
-            last_id=None
+            page=1,
+            total=total_pages
         )
 
-        await message.answer(f"🔎 Знайдено оголошень: {total}")
+        await message.answer(f"🔎 Знайдено оголошень: {total_items}")
 
         await send_card(message, state, new_message=True)
 
@@ -137,7 +142,6 @@ async def global_back(message: types.Message, state: FSMContext):
         await message.answer("🔙 Головне меню")
         return
 
-    # 🔙 MODEL → BRAND
     if current_state == Buyer.model:
         brands = await get_cached_brands(get_brands)
 
@@ -150,12 +154,10 @@ async def global_back(message: types.Message, state: FSMContext):
         await message.answer("🚗 Обери бренд:", reply_markup=keyboard)
         return
 
-    # 🔙 BRAND → EXIT
     if current_state == Buyer.brand:
         await state.clear()
         await message.answer("🔙 Головне меню")
         return
 
-    # fallback
     await state.clear()
     await message.answer("🔙 Головне меню")
