@@ -4,7 +4,7 @@ import asyncpg
 import os
 
 
-SQLITE_PATH = "bot/database.db"
+SQLITE_PATH = "database.db"
 
 
 async def migrate():
