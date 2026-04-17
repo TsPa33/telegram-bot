@@ -115,7 +115,7 @@ async def choose_model(message: types.Message, state: FSMContext):
         # 🔥 ВАЖЛИВО ДЛЯ PAGINATION
         await state.update_data(
             model_id=model_id,
-            current_car_id=None
+            last_id=None
         )
 
         await message.answer(f"🔎 Знайдено оголошень: {total}")
