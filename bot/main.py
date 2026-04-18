@@ -3,8 +3,8 @@ import logging
 import traceback
 import os
 
-from aiogram import Bot, Dispatcher
-from aiogram.types import ErrorEvent
+from aiogram import Bot, Dispatcher, Router
+from aiogram.types import CallbackQuery, ErrorEvent
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.fsm.storage.redis import RedisStorage
 from aiogram.utils.callback_answer import CallbackAnswerMiddleware
@@ -25,6 +25,13 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
+router = Router()
+
+
+@router.callback_query()
+async def debug_all_callbacks(callback: CallbackQuery):
+    print("🔥 CALLBACK CAUGHT:", callback.data)
+    await callback.answer("DEBUG", show_alert=False)
 
 
 # ================= ERROR HANDLER =================
@@ -97,6 +104,7 @@ async def run_bot():
 
     dp.errors.register(global_error_handler)
 
+    dp.include_router(router)
     dp.include_router(start.router)
     dp.include_router(seller.router)
     dp.include_router(admin.router)
