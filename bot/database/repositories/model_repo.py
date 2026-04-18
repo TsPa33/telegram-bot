@@ -15,6 +15,15 @@ async def get_brands() -> list[str]:
     return [r["name"] for r in rows]
 
 
+async def get_brands_with_ids() -> list[dict]:
+    rows = await fetch("""
+        SELECT id, name
+        FROM brands
+        ORDER BY name
+    """)
+    return [dict(r) for r in rows]
+
+
 # ================= MODELS =================
 
 async def get_models_by_brand(brand: str) -> list[str]:
@@ -33,6 +42,19 @@ async def get_models_by_brand(brand: str) -> list[str]:
     """, brand.strip())
 
     return [r["name"] for r in rows]
+
+
+async def get_models_by_brand_id(brand_id: int) -> list[dict]:
+    if not brand_id:
+        return []
+
+    rows = await fetch("""
+        SELECT id, name
+        FROM models
+        WHERE brand_id = $1
+        ORDER BY name
+    """, brand_id)
+    return [dict(r) for r in rows]
 
 
 # ================= MODEL ID =================

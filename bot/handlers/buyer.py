@@ -3,26 +3,21 @@ from aiogram.filters import Command
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import (
-    ReplyKeyboardMarkup,
-    KeyboardButton,
     InputMediaPhoto
 )
 
-from bot.database.repositories.model_repo import get_brands, get_models_by_brand
+from bot.database.base import fetch
+from bot.database.repositories.model_repo import get_brands_with_ids, get_models_by_brand_id
 from bot.database.repositories.car_repo import find_cars, count_cars
 
-from bot.services.car_service import get_model_or_none
-
 from bot.states.buyer_states import Buyer
-from bot.utils.validation import normalize_brand, normalize_model
-from bot.utils.cache import get_cached_brands, get_cached_models
 
 from bot.utils.formatters import format_car_card
 from bot.keyboards.card_inline import build_card_keyboard
+from bot.keyboards.brands import brand_kb
+from bot.keyboards.models import model_kb
 
 router = Router()
-
-BACK = KeyboardButton(text="⬅️ Назад")
 
 DEFAULT_PHOTO = "AgACAgIAAxkBAAIJ6WnZ7zNsTF4dV6Fxbqsye8iRF224AAJfEWsbFN_RSsup93hjz4uMAQADAgADeAADOwQ"
 
@@ -33,110 +28,59 @@ DEFAULT_PHOTO = "AgACAgIAAxkBAAIJ6WnZ7zNsTF4dV6Fxbqsye8iRF224AAJfEWsbFN_RSsup93h
 async def start_buyer(message: types.Message, state: FSMContext):
     await state.clear()
 
-    brands = await get_cached_brands(get_brands)
+    brands = await get_brands_with_ids()
 
     if not brands:
         await message.answer("❌ Брендів немає")
         return
 
-    keyboard = ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text=b)] for b in brands] + [[BACK]],
-        resize_keyboard=True
-    )
-
     await state.set_state(Buyer.brand)
-    await message.answer("🚗 Обери бренд:", reply_markup=keyboard)
-
-
-# ================= GLOBAL BACK =================
-
-@router.message(F.text == "⬅️ Назад")
-async def global_back(message: types.Message, state: FSMContext):
-    current_state = await state.get_state()
-
-    if not current_state:
-        await message.answer("🔙 Головне меню")
-        return
-
-    if current_state == Buyer.model:
-        brands = await get_cached_brands(get_brands)
-
-        keyboard = ReplyKeyboardMarkup(
-            keyboard=[[KeyboardButton(text=b)] for b in brands] + [[BACK]],
-            resize_keyboard=True
-        )
-
-        await state.set_state(Buyer.brand)
-        await message.answer("🚗 Обери бренд:", reply_markup=keyboard)
-        return
-
-    if current_state == Buyer.brand:
-        await state.clear()
-        await message.answer("🔙 Головне меню")
-        return
-
-    await state.clear()
-    await message.answer("🔙 Головне меню")
+    await message.answer("🚗 Обери бренд:", reply_markup=brand_kb(brands))
 
 
 # ================= BRAND =================
 
-@router.message(Buyer.brand)
-async def choose_brand(message: types.Message, state: FSMContext):
-    text = message.text.strip()
+@router.callback_query(Buyer.brand, F.data.regexp(r"^brand:\d+$"))
+async def select_brand(callback: types.CallbackQuery, state: FSMContext):
+    await callback.answer()
 
-    brand = normalize_brand(text)
-    models = await get_cached_models(brand, get_models_by_brand)
+    brand_id = int(callback.data.split(":")[1])
+    await state.update_data(brand_id=brand_id)
+
+    models = await get_models_by_brand_id(brand_id)
 
     if not models:
-        await message.answer("❌ Моделей немає")
+        await callback.message.answer("❌ Моделей немає")
         return
 
-    keyboard = ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text=m)] for m in models] + [[BACK]],
-        resize_keyboard=True
-    )
-
-    await state.update_data(brand=brand)
     await state.set_state(Buyer.model)
-    await message.answer("🚘 Обери модель:", reply_markup=keyboard)
+    await callback.message.answer("🚘 Обери модель:", reply_markup=model_kb(models))
 
 
 # ================= MODEL =================
 
-@router.message(Buyer.model)
-async def choose_model(message: types.Message, state: FSMContext):
-    text = message.text.strip()
-    model = normalize_model(text)
+@router.callback_query(Buyer.model, F.data.regexp(r"^model:\d+$"))
+async def select_model(callback: types.CallbackQuery, state: FSMContext):
+    await callback.answer()
 
-    data = await state.get_data()
-    brand = data.get("brand")
-
-    # ===== DEBUG =====
-    print("========== DEBUG ==========")
-    print("BRAND RAW:", brand)
-    print("MODEL RAW:", text)
-    print("MODEL NORMALIZED:", model)
-
-    model_id = await get_model_or_none(brand, model)
-
-    print("MODEL_ID:", model_id)
-    print("===========================")
-    # =================
-
-    if not brand:
-        await state.clear()
-        await message.answer("⚠️ Сесія втрачена. Почни заново: /find")
-        return
-
-    if not model_id:
-        await message.answer("❌ Модель не знайдена")
+    model_id = int(callback.data.split(":")[1])
+    model = await fetch(
+        """
+        SELECT id
+        FROM models
+        WHERE id = $1
+        LIMIT 1
+        """,
+        model_id
+    )
+    if not model:
+        await callback.message.answer("❌ Модель не знайдена")
         return
 
     total = await count_cars(model_id)
 
     if total == 0:
-        await message.answer(
+        await callback.message.answer(
             "😕 Поки що немає оголошень для цієї моделі.\n"
             "Спробуй іншу модель або зайди пізніше."
         )
@@ -148,9 +92,9 @@ async def choose_model(message: types.Message, state: FSMContext):
         total=total
     )
 
-    await message.answer(f"🔎 Знайдено оголошень: {total}")
+    await callback.message.answer(f"🔎 Знайдено оголошень: {total}")
 
-    await send_card(message, state, new_message=True)
+    await send_card(callback.message, state, new_message=True)
 
     await state.set_state(None)
 
