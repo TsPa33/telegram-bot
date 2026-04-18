@@ -102,7 +102,6 @@ async def run_bot():
     dp.include_router(admin.router)
     dp.include_router(profile.router)
     dp.include_router(buyer.router)
-    dp.include_router(profile.router)
 
     logger.info("🚀 BOT STARTED")
 
