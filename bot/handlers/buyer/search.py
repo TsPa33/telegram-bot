@@ -14,11 +14,17 @@ from .pagination import send_card
 router = Router()
 
 
-@router.callback_query(Buyer.brand, F.data.startswith("brand:"))
+@router.callback_query(Buyer.brand, F.data.startswith("buyer:brand:"))
 async def select_brand(callback: types.CallbackQuery, state: FSMContext):
+    print("BRAND CLICKED:", callback.data)
+    print("BRAND HANDLER HIT")
     await callback.answer()
 
-    brand_id = int(callback.data.split(":")[1])
+    try:
+        brand_id = int(callback.data.split(":")[-1])
+    except Exception:
+        await callback.answer("Invalid brand", show_alert=True)
+        return
     await state.update_data(brand_id=brand_id)
 
     models = await fetch(
