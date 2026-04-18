@@ -36,10 +36,7 @@ async def buyer_nav_kb(user_id: int) -> InlineKeyboardMarkup:
         ],
     ]
 
-    admin = is_admin(user_id)
-    print("CHECK ADMIN:", user_id, admin)
-
-    if admin:
+    if is_admin(user_id):
         inline_keyboard.append(
             [
                 InlineKeyboardButton(

@@ -18,6 +18,8 @@ from bot.keyboards.brands import brand_kb
 from bot.keyboards.models import model_kb_with_back
 from bot.keyboards.seller_menu import seller_main_kb
 from bot.keyboards.buyer_reply import buyer_reply_kb
+from bot.config import is_admin
+from bot.handlers.admin import open_admin_panel
 router = Router()
 
 DEFAULT_PHOTO = "AgACAgIAAxkBAAIJ6WnZ7zNsTF4dV6Fxbqsye8iRF224AAJfEWsbFN_RSsup93hjz4uMAQADAgADeAADOwQ"
@@ -203,11 +205,16 @@ async def restart_search(callback: CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data == "nav:admin")
 async def open_admin(callback: CallbackQuery):
-    print("CALLBACK:", callback.data)
-    print("ADMIN CLICKED")
+    if not is_admin(callback.from_user.id):
+        await callback.answer("Access denied", show_alert=True)
+        return
 
     await callback.answer()
-    await callback.message.answer("⚙️ Адмін панель")
+    await callback.message.answer(
+        "⚙️ Адмін панель",
+        reply_markup=ReplyKeyboardRemove()
+    )
+    await open_admin_panel(callback.message)
 
 
 @router.callback_query(F.data == "nav:back")
