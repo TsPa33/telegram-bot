@@ -1,5 +1,5 @@
 from aiogram import Router, F
-from aiogram.types import CallbackQuery, InputMediaPhoto
+from aiogram.types import CallbackQuery, InputMediaPhoto, ReplyKeyboardRemove
 from aiogram.fsm.context import FSMContext
 
 from bot.database.repositories.car_repo import (
@@ -189,6 +189,11 @@ async def restart_search(callback: CallbackQuery, state: FSMContext):
 
     brands = await fetch(
         "SELECT id, name FROM brands ORDER BY name"
+    )
+
+    await callback.message.answer(
+        "🔄 Перезапускаю пошук...",
+        reply_markup=ReplyKeyboardRemove(),
     )
 
     await callback.message.answer(

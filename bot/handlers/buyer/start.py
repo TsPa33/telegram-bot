@@ -2,6 +2,7 @@ from aiogram import Router, types
 from aiogram.filters import Command
 from aiogram import F
 from aiogram.fsm.context import FSMContext
+from aiogram.types import ReplyKeyboardRemove
 
 from bot.database.repositories.model_repo import get_brands_with_ids
 from bot.keyboards.brands import brand_kb
@@ -14,6 +15,10 @@ router = Router()
 
 async def show_buyer_home(message: types.Message, state: FSMContext):
     await state.clear()
+    await message.answer(
+        "🔄 Оновлюю меню покупця...",
+        reply_markup=ReplyKeyboardRemove(),
+    )
     await message.answer(
         "🏠 <b>Головне меню покупця</b>\n\n"
         "👤 Профіль\n"
@@ -77,4 +82,10 @@ async def start_buyer(message: types.Message, state: FSMContext):
 
     await state.set_state(Buyer.brand)
     print("STATE SET TO Buyer.brand")
+
+    await message.answer(
+        "🔎 Переходимо до пошуку...",
+        reply_markup=ReplyKeyboardRemove(),
+    )
+
     await message.answer("🚗 Обери бренд", reply_markup=brand_kb(brands))
