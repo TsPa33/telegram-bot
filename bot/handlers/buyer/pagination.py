@@ -17,6 +17,7 @@ from bot.keyboards.buyer_home import buyer_home_kb
 from bot.keyboards.brands import brand_kb
 from bot.keyboards.models import model_kb_with_back
 from bot.keyboards.seller_menu import seller_main_kb
+from bot.keyboards.buyer_reply import buyer_reply_kb
 
 
 router = Router()
@@ -193,7 +194,7 @@ async def restart_search(callback: CallbackQuery, state: FSMContext):
 
     await callback.message.answer(
         "🔄 Перезапускаю пошук...",
-        reply_markup=ReplyKeyboardRemove(),
+        reply_markup=buyer_reply_kb(),
     )
 
     await callback.message.answer(
@@ -253,6 +254,10 @@ async def go_seller(callback: CallbackQuery, state: FSMContext):
 
     await state.clear()
 
+    await callback.message.answer(
+        "🔄 Перемикаю у режим продавця...",
+        reply_markup=ReplyKeyboardRemove(),
+    )
     await callback.message.answer(
         "🏪 Режим продавця\nОберіть дію:",
         reply_markup=seller_main_kb()
