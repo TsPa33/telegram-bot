@@ -21,4 +21,5 @@ async def start_buyer(message: types.Message, state: FSMContext):
         return
 
     await state.set_state(Buyer.brand)
+    print("STATE SET TO Buyer.brand")
     await message.answer("🚗 Обери бренд", reply_markup=brand_kb(brands))
