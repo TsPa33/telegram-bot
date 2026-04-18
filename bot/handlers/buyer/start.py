@@ -2,11 +2,11 @@ from aiogram import Router, types
 from aiogram.filters import Command
 from aiogram import F
 from aiogram.fsm.context import FSMContext
-from aiogram.types import ReplyKeyboardRemove
 
 from bot.database.repositories.model_repo import get_brands_with_ids
 from bot.keyboards.brands import brand_kb
 from bot.keyboards.buyer_home import buyer_home_kb
+from bot.keyboards.buyer_reply import buyer_reply_kb
 from bot.states.buyer_states import Buyer
 
 
@@ -16,10 +16,6 @@ router = Router()
 async def show_buyer_home(message: types.Message, state: FSMContext):
     await state.clear()
     await message.answer(
-        "🔄 Оновлюю меню покупця...",
-        reply_markup=ReplyKeyboardRemove(),
-    )
-    await message.answer(
         "🏠 <b>Головне меню покупця</b>\n\n"
         "👤 Профіль\n"
         "🚗 Знайти авто\n"
@@ -28,10 +24,16 @@ async def show_buyer_home(message: types.Message, state: FSMContext):
         parse_mode="HTML",
         reply_markup=buyer_home_kb(),
     )
+    await message.answer("Швидкий доступ до меню:", reply_markup=buyer_reply_kb())
 
 
 @router.message(Command("start"))
 async def buyer_home_start(message: types.Message, state: FSMContext):
+    await show_buyer_home(message, state)
+
+
+@router.message(F.text == "🏠 Меню")
+async def open_home(message: types.Message, state: FSMContext):
     await show_buyer_home(message, state)
 
 
@@ -85,7 +87,7 @@ async def start_buyer(message: types.Message, state: FSMContext):
 
     await message.answer(
         "🔎 Переходимо до пошуку...",
-        reply_markup=ReplyKeyboardRemove(),
+        reply_markup=buyer_reply_kb(),
     )
 
     await message.answer("🚗 Обери бренд", reply_markup=brand_kb(brands))
