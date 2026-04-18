@@ -2,6 +2,11 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 import re
 
 
+NAV_BACK = "nav:back"
+NAV_RESTART = "nav:restart"
+NAV_SELLER = "nav:seller"
+
+
 def is_valid_url(url: str) -> bool:
     if not url:
         return False
@@ -133,5 +138,24 @@ def build_card_keyboard(car: dict, page: int | None = None, total: int | None = 
             )
 
         rows.append(nav_row)
+
+    # ================= NAVIGATION =================
+
+    rows.append([
+        InlineKeyboardButton(
+            text="⬅️ Назад",
+            callback_data=NAV_BACK,
+        ),
+        InlineKeyboardButton(
+            text="🔄 Новий пошук",
+            callback_data=NAV_RESTART,
+        ),
+    ])
+    rows.append([
+        InlineKeyboardButton(
+            text="🏪 Стати продавцем",
+            callback_data=NAV_SELLER,
+        )
+    ])
 
     return InlineKeyboardMarkup(inline_keyboard=rows)

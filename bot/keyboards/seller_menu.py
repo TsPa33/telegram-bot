@@ -12,3 +12,7 @@ def seller_menu_kb():
         ],
         resize_keyboard=True
     )
+
+
+def seller_main_kb():
+    return seller_menu_kb()
