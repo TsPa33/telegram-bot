@@ -25,7 +25,7 @@ def seller_card_actions_kb(car_id: int):
             [
                 InlineKeyboardButton(
                     text="✏️ Редагувати",
-                    callback_data=f"edit:{car_id}"
+                    callback_data=f"car_edit:{car_id}"
                 ),
                 InlineKeyboardButton(
                     text="❌ Видалити",
