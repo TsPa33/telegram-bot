@@ -11,7 +11,7 @@ from aiogram.fsm.storage.redis import RedisStorage
 from redis.asyncio import from_url
 
 from bot.config import BOT_TOKEN
-from bot.handlers import start, seller, buyer, admin
+from bot.handlers import start, seller, buyer, admin, profile
 from bot.database.pool import init_pool
 from bot.database.models import create_tables  # 🔥 ДОДАНО
 
@@ -98,6 +98,7 @@ async def run_bot():
     dp.include_router(start.router)
     dp.include_router(seller.router)
     dp.include_router(admin.router)
+    dp.include_router(profile.router)
     dp.include_router(buyer.router)
 
     logger.info("🚀 BOT STARTED")
