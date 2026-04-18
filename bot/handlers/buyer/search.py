@@ -14,7 +14,7 @@ from .pagination import send_card
 router = Router()
 
 
-@router.callback_query(Buyer.brand, F.data.startswith("buyer:brand:"))
+@router.callback_query(F.data.startswith("buyer:brand:"))
 async def select_brand(callback: types.CallbackQuery, state: FSMContext):
     print("BRAND CLICKED:", callback.data)
     print("BRAND HANDLER HIT")
@@ -42,7 +42,7 @@ async def select_brand(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.answer("🚘 Обери модель", reply_markup=model_kb(models))
 
 
-@router.callback_query(Buyer.model, F.data.startswith("model:"))
+@router.callback_query(F.data.startswith("model:"))
 async def select_model(callback: types.CallbackQuery, state: FSMContext):
     await callback.answer()
 
@@ -81,3 +81,4 @@ async def select_model(callback: types.CallbackQuery, state: FSMContext):
         new_message=True,
         user_id=callback.from_user.id,
     )
+    await state.set_state(None)
