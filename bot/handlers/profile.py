@@ -261,3 +261,8 @@ async def handle_profile_input_photo_handler(message: Message, state: FSMContext
 @router.message(SellerStates.edit_profile)
 async def handle_profile_input_text_handler(message: Message, state: FSMContext):
     await handle_profile_input(message, state)
+
+
+@router.message(SellerStates.edit_profile)
+async def handle_profile_input_text_handler(message: Message, state: FSMContext):
+    await handle_profile_input(message, state)
