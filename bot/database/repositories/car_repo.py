@@ -112,3 +112,21 @@ async def get_cars_page(model_id: int, limit: int, offset: int):
         ORDER BY sc.id DESC
         LIMIT $2 OFFSET $3
     """, model_id, limit, offset)
+
+
+async def add_unique_car_view(car_id: int, user_id: int) -> bool:
+    row = await fetchrow("""
+        WITH inserted AS (
+            INSERT INTO car_views (car_id, user_id)
+            VALUES ($1, $2)
+            ON CONFLICT (car_id, user_id) DO NOTHING
+            RETURNING 1
+        )
+        UPDATE seller_cars
+        SET views = views + 1
+        WHERE id = $1
+          AND EXISTS (SELECT 1 FROM inserted)
+        RETURNING id
+    """, car_id, user_id)
+
+    return bool(row)

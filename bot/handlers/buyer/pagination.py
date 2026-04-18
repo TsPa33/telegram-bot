@@ -4,7 +4,8 @@ from aiogram.fsm.context import FSMContext
 
 from bot.database.repositories.car_repo import (
     get_cars_page,
-    get_car_by_id
+    get_car_by_id,
+    add_unique_car_view
 )
 from bot.database.base import execute
 
@@ -21,7 +22,7 @@ LIMIT = 1
 
 # ================= CARD =================
 
-async def send_card(message, state: FSMContext, new_message=False):
+async def send_card(message, state: FSMContext, new_message=False, user_id: int | None = None):
     data = await state.get_data()
 
     model_id = data.get("model_id")
@@ -50,12 +51,8 @@ async def send_card(message, state: FSMContext, new_message=False):
     car = cars[0]
     car_id = car["id"]
 
-    # views++
-    await execute("""
-        UPDATE seller_cars
-        SET views = views + 1
-        WHERE id = $1
-    """, car_id)
+    viewer_id = user_id or message.chat.id
+    await add_unique_car_view(car_id, viewer_id)
 
     text = format_car_card(car, page, total)
     keyboard = build_card_keyboard(car, page, total)
@@ -120,7 +117,7 @@ async def next_car(callback: CallbackQuery, state: FSMContext):
     page += 1
     await state.update_data(page=page)
 
-    await send_card(callback.message, state)
+    await send_card(callback.message, state, user_id=callback.from_user.id)
 
     await callback.answer()
 
@@ -140,7 +137,7 @@ async def prev_car(callback: CallbackQuery, state: FSMContext):
     page -= 1
     await state.update_data(page=page)
 
-    await send_card(callback.message, state)
+    await send_card(callback.message, state, user_id=callback.from_user.id)
 
     await callback.answer()
 

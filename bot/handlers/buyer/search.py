@@ -125,7 +125,7 @@ async def choose_model(message: types.Message, state: FSMContext):
 
         await message.answer(f"🔎 Знайдено оголошень: {total_items}")
 
-        await send_card(message, state, new_message=True)
+        await send_card(message, state, new_message=True, user_id=message.from_user.id)
 
     except Exception as e:
         print("ERROR IN choose_model:", e)
