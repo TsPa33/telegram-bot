@@ -115,15 +115,12 @@ async def handle_edit_callback(callback_query: CallbackQuery, state: FSMContext)
 
     try:
         data = callback_query.data
+
         if not data or ":" not in data:
             await safe_answer("Помилка")
             return
 
         _, field = data.split(":", 1)
-        state_data = await state.get_data()
-        if state_data is None:
-            await safe_answer("Помилка")
-            return
 
         if field == "back":
             await state.clear()
@@ -141,10 +138,11 @@ async def handle_edit_callback(callback_query: CallbackQuery, state: FSMContext)
                 telegram_id=callback_query.from_user.id,
                 username=callback_query.from_user.username,
             )
+            await safe_answer("Скасовано")
             return
 
         if field not in PROFILE_FIELDS:
-            await safe_answer("Помилка")
+            await safe_answer("Невідоме поле", show_alert=True)
             return
 
         seller = await _get_seller(
@@ -168,11 +166,13 @@ async def handle_edit_callback(callback_query: CallbackQuery, state: FSMContext)
             prompt,
             reply_markup=profile_cancel_kb(),
         )
+
     except Exception as e:
         import traceback
         print("CALLBACK ERROR:", e)
         traceback.print_exc()
         await safe_answer("Помилка")
+
     finally:
         await safe_answer()
 
