@@ -12,8 +12,10 @@ from bot.database.base import fetch
 
 from bot.utils.formatters import format_car_card
 from bot.keyboards.card_inline import build_card_keyboard
+from bot.keyboards.buyer_nav import buyer_nav_kb
+from bot.keyboards.buyer_home import buyer_home_kb
 from bot.keyboards.brands import brand_kb
-from bot.keyboards.models import model_kb
+from bot.keyboards.models import model_kb_with_back
 from bot.keyboards.seller_menu import seller_main_kb
 
 
@@ -70,6 +72,7 @@ async def send_card(message, state: FSMContext, new_message=False, user_id: int 
             reply_markup=keyboard,
             parse_mode="HTML"
         )
+        await message.answer("Дії:", reply_markup=buyer_nav_kb())
     else:
         try:
             current_photo = None
@@ -103,6 +106,7 @@ async def send_card(message, state: FSMContext, new_message=False, user_id: int 
                 reply_markup=keyboard,
                 parse_mode="HTML"
             )
+            await message.answer("Дії:", reply_markup=buyer_nav_kb())
 
 
 # ================= NEXT =================
@@ -177,12 +181,11 @@ async def noop_handler(callback: CallbackQuery):
 
 @router.callback_query(F.data == "nav:restart")
 async def restart_search(callback: CallbackQuery, state: FSMContext):
-    print("NAV ACTION:", callback.data)
-    print("NAV: RESTART")
+    print("NAV:", callback.data)
 
     await callback.answer()
 
-    await state.set_state(None)
+    await state.clear()
 
     brands = await fetch(
         "SELECT id, name FROM brands ORDER BY name"
@@ -196,14 +199,13 @@ async def restart_search(callback: CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data == "nav:back")
 async def go_back(callback: CallbackQuery, state: FSMContext):
-    print("NAV ACTION:", callback.data)
-    print("NAV: BACK")
+    print("NAV:", callback.data)
 
     await callback.answer()
 
     data = await state.get_data()
 
-    if "brand_id" in data:
+    if "model_id" in data and "brand_id" in data:
         models = await fetch(
             "SELECT id, name FROM models WHERE brand_id = $1 ORDER BY name",
             data["brand_id"]
@@ -211,28 +213,39 @@ async def go_back(callback: CallbackQuery, state: FSMContext):
 
         await callback.message.answer(
             "🚘 Обери модель",
-            reply_markup=model_kb(models)
+            reply_markup=model_kb_with_back(models)
         )
         return
 
-    brands = await fetch(
-        "SELECT id, name FROM brands ORDER BY name"
-    )
+    if "brand_id" in data:
+        brands = await fetch(
+            "SELECT id, name FROM brands ORDER BY name"
+        )
+
+        await callback.message.answer(
+            "🚗 Обери бренд",
+            reply_markup=brand_kb(brands)
+        )
+        return
 
     await callback.message.answer(
-        "🚗 Обери бренд",
-        reply_markup=brand_kb(brands)
+        "🏠 <b>Головне меню покупця</b>\n\n"
+        "👤 Профіль\n"
+        "🚗 Знайти авто\n"
+        "👀 Мої перегляди\n"
+        "⭐ Обрані",
+        parse_mode="HTML",
+        reply_markup=buyer_home_kb(),
     )
 
 
 @router.callback_query(F.data == "nav:seller")
 async def go_seller(callback: CallbackQuery, state: FSMContext):
-    print("NAV ACTION:", callback.data)
-    print("NAV: SELLER")
+    print("NAV:", callback.data)
 
     await callback.answer()
 
-    await state.set_state(None)
+    await state.clear()
 
     await callback.message.answer(
         "🏪 Режим продавця\nОберіть дію:",

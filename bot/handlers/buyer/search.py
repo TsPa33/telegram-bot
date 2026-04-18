@@ -5,7 +5,7 @@ from aiogram.fsm.context import FSMContext
 
 from bot.database.base import fetch
 from bot.database.repositories.car_repo import count_cars
-from bot.keyboards.models import model_kb
+from bot.keyboards.models import model_kb_with_back
 from bot.states.buyer_states import Buyer
 
 from .pagination import send_card
@@ -39,7 +39,7 @@ async def select_brand(callback: types.CallbackQuery, state: FSMContext):
         return
 
     await state.set_state(Buyer.model)
-    await callback.message.answer("🚘 Обери модель", reply_markup=model_kb(models))
+    await callback.message.answer("🚘 Обери модель", reply_markup=model_kb_with_back(models))
 
 
 @router.callback_query(F.data.startswith("buyer:model:"))
