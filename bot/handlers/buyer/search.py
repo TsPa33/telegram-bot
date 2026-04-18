@@ -50,6 +50,7 @@ async def select_model(callback: types.CallbackQuery, state: FSMContext):
 
     try:
         model_id = int(callback.data.split(":")[-1])
+        print("MODEL ID:", model_id)
     except Exception:
         await callback.answer("Invalid model", show_alert=True)
         return
@@ -83,10 +84,12 @@ async def select_model(callback: types.CallbackQuery, state: FSMContext):
     )
 
     await callback.message.answer(f"🔎 Знайдено оголошень: {total_items}")
+
     await send_card(
         callback.message,
         state,
         new_message=True,
         user_id=callback.from_user.id,
     )
+
     await state.set_state(None)
