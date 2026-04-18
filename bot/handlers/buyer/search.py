@@ -42,11 +42,17 @@ async def select_brand(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.answer("🚘 Обери модель", reply_markup=model_kb(models))
 
 
-@router.callback_query(F.data.startswith("model:"))
+@router.callback_query(F.data.startswith("buyer:model:"))
 async def select_model(callback: types.CallbackQuery, state: FSMContext):
     await callback.answer()
 
-    model_id = int(callback.data.split(":")[1])
+    print("MODEL HANDLER HIT:", callback.data)
+    try:
+        model_id = int(callback.data.split(":")[-1])
+    except Exception:
+        await callback.answer("Invalid model", show_alert=True)
+        return
+    print("MODEL ID:", model_id)
 
     model = await fetch(
         "SELECT id FROM models WHERE id = $1 LIMIT 1",
