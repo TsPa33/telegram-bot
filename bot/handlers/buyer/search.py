@@ -18,6 +18,8 @@ router = Router()
 async def select_brand(callback: types.CallbackQuery, state: FSMContext):
     print("BRAND CLICKED:", callback.data)
     print("BRAND HANDLER HIT")
+    current_state = await state.get_state()
+    print("CURRENT STATE:", current_state)
     await callback.answer()
 
     try:
