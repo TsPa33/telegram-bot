@@ -54,7 +54,7 @@ async def my_cars(message: Message):
 @router.callback_query(F.data.startswith("car:"))
 async def open_car(callback: CallbackQuery):
     try:
-        car_id = int(callback.data.split(":")[1])
+        car_id = int(callback.data.split(":", 1)[1])
     except Exception:
         await callback.answer("Помилка")
         return
@@ -99,10 +99,10 @@ async def open_car(callback: CallbackQuery):
 
 # ================= EDIT CAR =================
 
-@router.callback_query(F.data.startswith("edit:"))
+@router.callback_query(F.data.startswith("car_edit:"))
 async def edit_car(callback: CallbackQuery, state: FSMContext):
     try:
-        car_id = int(callback.data.split(":")[1])
+        car_id = int(callback.data.split(":", 1)[1])
     except Exception:
         await callback.answer("Помилка")
         return
@@ -123,7 +123,7 @@ async def edit_car(callback: CallbackQuery, state: FSMContext):
 @router.callback_query(F.data.startswith("delete:"))
 async def delete_car_handler(callback: CallbackQuery):
     try:
-        car_id = int(callback.data.split(":")[1])
+        car_id = int(callback.data.split(":", 1)[1])
     except Exception:
         await callback.answer("Помилка")
         return

@@ -101,58 +101,80 @@ async def show_profile_handler(message: Message, state: FSMContext):
 
 
 async def handle_edit_callback(callback_query: CallbackQuery, state: FSMContext):
-    field = callback_query.data.split(":", maxsplit=1)[1]
+    answered = False
 
-    if field == "back":
-        await state.clear()
-        await _show_profile_view(
-            callback=callback_query,
+    async def safe_answer(text: str | None = None, show_alert: bool = False):
+        nonlocal answered
+        if answered:
+            return
+        try:
+            await callback_query.answer(text=text, show_alert=show_alert)
+            answered = True
+        except Exception:
+            pass
+
+    try:
+        data = callback_query.data
+
+        if not data or ":" not in data:
+            await safe_answer("Помилка")
+            return
+
+        _, field = data.split(":", 1)
+
+        if field == "back":
+            await state.clear()
+            await _show_profile_view(
+                callback=callback_query,
+                telegram_id=callback_query.from_user.id,
+                username=callback_query.from_user.username,
+            )
+            return
+
+        if field == "cancel":
+            await state.clear()
+            await _show_profile_view(
+                callback=callback_query,
+                telegram_id=callback_query.from_user.id,
+                username=callback_query.from_user.username,
+            )
+            await safe_answer("Скасовано")
+            return
+
+        if field not in PROFILE_FIELDS:
+            await safe_answer("Невідоме поле", show_alert=True)
+            return
+
+        seller = await _get_seller(
             telegram_id=callback_query.from_user.id,
             username=callback_query.from_user.username,
         )
-        await callback_query.answer()
-        return
 
-    if field == "cancel":
-        await state.clear()
+        await state.set_state(SellerStates.edit_profile)
+        await state.update_data(
+            editing_field=field,
+            seller_id=seller["id"],
+            profile_chat_id=callback_query.message.chat.id,
+            profile_message_id=callback_query.message.message_id,
+        )
+
+        prompt = f"Введіть нове значення для {PROFILE_FIELDS[field]}:"
+        if field == "photo":
+            prompt = "Надішліть нове фото профілю:"
+
         await callback_query.message.edit_text(
-            "❌ Редагування скасовано",
-            reply_markup=profile_edit_kb(),
+            prompt,
+            reply_markup=profile_cancel_kb(),
         )
-        await _show_profile_view(
-            callback=callback_query,
-            telegram_id=callback_query.from_user.id,
-            username=callback_query.from_user.username,
-        )
-        await callback_query.answer("Скасовано")
-        return
 
-    if field not in PROFILE_FIELDS:
-        await callback_query.answer("Невідоме поле", show_alert=True)
-        return
+    except Exception as e:
+        import traceback
+        print("CALLBACK ERROR:", e)
+        traceback.print_exc()
+        await safe_answer("Помилка")
 
-    seller = await _get_seller(
-        telegram_id=callback_query.from_user.id,
-        username=callback_query.from_user.username,
-    )
-
-    await state.set_state(SellerStates.edit_profile)
-    await state.update_data(
-        editing_field=field,
-        seller_id=seller["id"],
-        profile_chat_id=callback_query.message.chat.id,
-        profile_message_id=callback_query.message.message_id,
-    )
-
-    prompt = f"Введіть нове значення для {PROFILE_FIELDS[field]}:"
-    if field == "photo":
-        prompt = "Надішліть нове фото профілю:"
-
-    await callback_query.message.edit_text(
-        prompt,
-        reply_markup=profile_cancel_kb(),
-    )
-    await callback_query.answer()
+    finally:
+        await safe_answer()
 
 
 @router.callback_query(F.data.startswith("edit:"))

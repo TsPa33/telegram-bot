@@ -7,6 +7,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.types import ErrorEvent
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.fsm.storage.redis import RedisStorage
+from aiogram.utils.callback_answer import CallbackAnswerMiddleware
 
 from redis.asyncio import from_url
 
@@ -92,6 +93,7 @@ async def run_bot():
 
     dp = Dispatcher(storage=storage)
     bot = Bot(token=BOT_TOKEN)
+    dp.callback_query.middleware(CallbackAnswerMiddleware())
 
     dp.errors.register(global_error_handler)
 
