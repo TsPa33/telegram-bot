@@ -1,6 +1,8 @@
 from bot.database.repositories.seller_repo import get_or_create_seller
 from bot.database.repositories.model_repo import get_model_id
 from bot.database.base import execute
+import hashlib
+import re
 
 
 # ================= PARSER =================
@@ -8,7 +10,7 @@ from bot.database.base import execute
 async def parse_seller_file(text: str):
     rows = []
 
-    for line in text.split("\n"):
+    for line_no, line in enumerate(text.splitlines(), start=1):
         line = line.strip()
 
         if not line:
@@ -28,7 +30,8 @@ async def parse_seller_file(text: str):
             "phone": phone,
             "name": name,
             "brand": brand,
-            "model": model
+            "model": model,
+            "_line_no": line_no
         })
 
     return rows
@@ -36,19 +39,34 @@ async def parse_seller_file(text: str):
 
 # ================= SAVE =================
 
+def _normalize_phone(phone: str) -> str:
+    value = (phone or "").strip()
+    digits = re.sub(r"[^\d+]", "", value)
+    return digits or value
+
+
+def _stable_telegram_id_from_phone(phone: str) -> int:
+    normalized = _normalize_phone(phone)
+    digest = hashlib.blake2b(normalized.encode("utf-8"), digest_size=8).digest()
+    return int.from_bytes(digest, byteorder="big", signed=False)
+
 async def save_parsed_data(rows: list[dict]):
     inserted_rows = 0
+    unique_pairs: set[tuple[int, int]] = set()
 
     for row in rows:
         try:
+            print("ROW:", row)
+
             # ================= SELLER =================
             # унікальність через phone
-            telegram_id = hash(row["phone"])
+            telegram_id = _stable_telegram_id_from_phone(row["phone"])
 
             seller = await get_or_create_seller(
                 telegram_id=telegram_id,
                 username=None
             )
+            print("SELLER:", row["phone"], seller["id"])
 
             # оновлюємо профіль
             await execute("""
@@ -72,12 +90,14 @@ async def save_parsed_data(rows: list[dict]):
                 row["brand"],
                 row["model"]
             )
+            print("MODEL:", row["brand"], row["model"], model_id)
 
             if not model_id:
                 continue
 
             # ================= INSERT =================
             print("INSERT:", seller["id"], model_id)
+            unique_pairs.add((seller["id"], model_id))
 
             await execute("""
                 INSERT INTO seller_cars (
@@ -99,4 +119,5 @@ async def save_parsed_data(rows: list[dict]):
             continue
 
     print(f"Imported {inserted_rows} seller_cars rows")
+    print(f"Unique (seller_id, model_id) pairs: {len(unique_pairs)}")
     return inserted_rows

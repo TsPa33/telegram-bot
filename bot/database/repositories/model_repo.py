@@ -39,10 +39,14 @@ async def get_models_by_brand(brand: str) -> list[str]:
 
 async def get_model_id(brand: str, model: str) -> int | None:
     """
-    Повертає model_id по brand + model
+    Повертає model_id по brand + model.
+    Якщо бренду/моделі немає — створює їх.
     """
     if not brand or not model:
         return None
+
+    brand_name = brand.strip()
+    model_name = model.strip()
 
     row = await fetchrow("""
         SELECT m.id
@@ -51,9 +55,29 @@ async def get_model_id(brand: str, model: str) -> int | None:
         WHERE LOWER(b.name) = LOWER($1)
           AND LOWER(m.name) = LOWER($2)
         LIMIT 1
-    """, brand.strip(), model.strip())
+    """, brand_name, model_name)
 
-    return row["id"] if row else None
+    if row:
+        return row["id"]
+
+    brand_row = await fetchrow("""
+        INSERT INTO brands (name)
+        VALUES ($1)
+        ON CONFLICT (name)
+        DO UPDATE SET name = EXCLUDED.name
+        RETURNING id
+    """, brand_name)
+
+    if not brand_row:
+        return None
+
+    model_row = await fetchrow("""
+        INSERT INTO models (name, brand_id)
+        VALUES ($1, $2)
+        RETURNING id
+    """, model_name, brand_row["id"])
+
+    return model_row["id"] if model_row else None
 
 
 # ================= EXISTS =================
