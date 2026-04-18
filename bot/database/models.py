@@ -27,6 +27,15 @@ async def create_tables():
     );
     """)
 
+
+    await execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS shop_name TEXT;")
+    await execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS name TEXT;")
+    await execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS website TEXT;")
+    await execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS city TEXT;")
+    await execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT FALSE;")
+    await execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS description TEXT;")
+    await execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS photo_id TEXT;")
+
     await execute("""
     CREATE TABLE IF NOT EXISTS seller_cars (
         id SERIAL PRIMARY KEY,
