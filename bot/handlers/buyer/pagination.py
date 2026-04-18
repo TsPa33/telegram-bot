@@ -8,9 +8,13 @@ from bot.database.repositories.car_repo import (
     add_unique_car_view
 )
 from bot.database.base import execute
+from bot.database.base import fetch
 
 from bot.utils.formatters import format_car_card
 from bot.keyboards.card_inline import build_card_keyboard
+from bot.keyboards.brands import brand_kb
+from bot.keyboards.models import model_kb
+from bot.keyboards.seller_menu import seller_main_kb
 
 
 router = Router()
@@ -169,3 +173,68 @@ async def phone_click(callback: CallbackQuery):
 @router.callback_query(F.data == "noop")
 async def noop_handler(callback: CallbackQuery):
     await callback.answer()
+
+
+@router.callback_query(F.data == "nav:restart")
+async def restart_search(callback: CallbackQuery, state: FSMContext):
+    print("NAV ACTION:", callback.data)
+    print("NAV: RESTART")
+
+    await callback.answer()
+
+    await state.set_state(None)
+
+    brands = await fetch(
+        "SELECT id, name FROM brands ORDER BY name"
+    )
+
+    await callback.message.answer(
+        "🚗 Обери бренд",
+        reply_markup=brand_kb(brands)
+    )
+
+
+@router.callback_query(F.data == "nav:back")
+async def go_back(callback: CallbackQuery, state: FSMContext):
+    print("NAV ACTION:", callback.data)
+    print("NAV: BACK")
+
+    await callback.answer()
+
+    data = await state.get_data()
+
+    if "brand_id" in data:
+        models = await fetch(
+            "SELECT id, name FROM models WHERE brand_id = $1 ORDER BY name",
+            data["brand_id"]
+        )
+
+        await callback.message.answer(
+            "🚘 Обери модель",
+            reply_markup=model_kb(models)
+        )
+        return
+
+    brands = await fetch(
+        "SELECT id, name FROM brands ORDER BY name"
+    )
+
+    await callback.message.answer(
+        "🚗 Обери бренд",
+        reply_markup=brand_kb(brands)
+    )
+
+
+@router.callback_query(F.data == "nav:seller")
+async def go_seller(callback: CallbackQuery, state: FSMContext):
+    print("NAV ACTION:", callback.data)
+    print("NAV: SELLER")
+
+    await callback.answer()
+
+    await state.set_state(None)
+
+    await callback.message.answer(
+        "🏪 Режим продавця\nОберіть дію:",
+        reply_markup=seller_main_kb()
+    )
