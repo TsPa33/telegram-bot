@@ -42,6 +42,15 @@ async def create_tables():
     );
     """)
 
+    await execute("""
+    CREATE TABLE IF NOT EXISTS car_views (
+        car_id INTEGER NOT NULL REFERENCES seller_cars(id) ON DELETE CASCADE,
+        user_id BIGINT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT uq_car_views_car_user UNIQUE (car_id, user_id)
+    );
+    """)
+
     await execute("CREATE INDEX IF NOT EXISTS idx_model_id ON seller_cars(model_id);")
     await execute("CREATE INDEX IF NOT EXISTS idx_status ON seller_cars(status);")
     await execute("CREATE INDEX IF NOT EXISTS idx_seller_id ON seller_cars(seller_id);")
