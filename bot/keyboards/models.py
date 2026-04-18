@@ -1,18 +1,10 @@
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-def model_keyboard(brand: str):
-    models = {
-        "BMW": ["E60", "E90", "F10"],
-        "Audi": ["A4", "A6", "A100"],
-        "Toyota": ["Camry", "Corolla"]
-    }
 
-    buttons = [
-        [KeyboardButton(text=model)]
-        for model in models.get(brand, [])
-    ]
-
-    return ReplyKeyboardMarkup(
-        keyboard=buttons,
-        resize_keyboard=True
+def model_kb(models):
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text=model["name"], callback_data=f"model:{model['id']}")]
+            for model in models
+        ]
     )
