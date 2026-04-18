@@ -1,7 +1,30 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
+from bot.database.base import fetch
 
-def buyer_nav_kb() -> InlineKeyboardMarkup:
+
+async def is_seller(telegram_id: int) -> bool:
+    row = await fetch(
+        "SELECT id FROM sellers WHERE telegram_id = $1 LIMIT 1",
+        telegram_id
+    )
+    return bool(row)
+
+
+async def buyer_nav_kb(user_id: int) -> InlineKeyboardMarkup:
+    seller = await is_seller(user_id)
+
+    if seller:
+        seller_button = InlineKeyboardButton(
+            text="🏪 Мій гараж",
+            callback_data="nav:garage"
+        )
+    else:
+        seller_button = InlineKeyboardButton(
+            text="🏪 Стати продавцем",
+            callback_data="nav:seller"
+        )
+
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
@@ -9,7 +32,9 @@ def buyer_nav_kb() -> InlineKeyboardMarkup:
                 InlineKeyboardButton(text="🔄 Новий пошук", callback_data="nav:restart"),
             ],
             [
-                InlineKeyboardButton(text="🏪 Стати продавцем", callback_data="nav:seller"),
+                seller_button,
+            ],
+            [
                 InlineKeyboardButton(text="🏠 Головне меню", callback_data="nav:home"),
             ],
         ]

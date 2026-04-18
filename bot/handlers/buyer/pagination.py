@@ -72,7 +72,7 @@ async def send_card(message, state: FSMContext, new_message=False, user_id: int 
             reply_markup=keyboard,
             parse_mode="HTML"
         )
-        await message.answer("Дії:", reply_markup=buyer_nav_kb())
+        await message.answer("Дії:", reply_markup=await buyer_nav_kb(viewer_id))
     else:
         try:
             current_photo = None
@@ -106,7 +106,7 @@ async def send_card(message, state: FSMContext, new_message=False, user_id: int 
                 reply_markup=keyboard,
                 parse_mode="HTML"
             )
-            await message.answer("Дії:", reply_markup=buyer_nav_kb())
+            await message.answer("Дії:", reply_markup=await buyer_nav_kb(viewer_id))
 
 
 # ================= NEXT =================
@@ -245,6 +245,7 @@ async def go_back(callback: CallbackQuery, state: FSMContext):
 
 
 @router.callback_query(F.data == "nav:seller")
+@router.callback_query(F.data == "nav:garage")
 async def go_seller(callback: CallbackQuery, state: FSMContext):
     print("NAV:", callback.data)
 
