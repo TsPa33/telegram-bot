@@ -1,7 +1,7 @@
 import os
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-ADMIN_IDS = [123456789, 987654321]
+ADMIN_IDS = [6206952389]
 
 
 def is_admin(user_id: int) -> bool:
