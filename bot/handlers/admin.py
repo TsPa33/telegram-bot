@@ -122,9 +122,10 @@ async def show_verifications(message: Message):
 
 # ================= CALLBACK HANDLER =================
 
-@router.callback_query(F.data.contains(":"))
+@router.callback_query(F.data.regexp(r"^(brand|model|verify):"))
 async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
     if not is_admin(callback.from_user.id):
+        await callback.answer()
         return
 
     parts = callback.data.split(":")
