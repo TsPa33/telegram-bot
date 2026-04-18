@@ -2,7 +2,7 @@ from aiogram import Router, types, F
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, KeyboardButton, Message
 
-from bot.config import ADMINS
+from bot.config import is_admin
 from bot.keyboards.admin_kb import admin_kb
 from bot.keyboards.admin_inline import (
     brand_request_kb,
@@ -36,12 +36,6 @@ from bot.services.import_service import (
 router = Router()
 
 CANCEL = KeyboardButton(text="❌ Скасувати")
-
-
-# ================= HELPERS =================
-
-def is_admin(user_id: int):
-    return user_id in ADMINS
 
 
 def is_command(message: types.Message):
