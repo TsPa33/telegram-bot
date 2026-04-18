@@ -37,6 +37,8 @@ async def parse_seller_file(text: str):
 # ================= SAVE =================
 
 async def save_parsed_data(rows: list[dict]):
+    inserted_rows = 0
+
     for row in rows:
         try:
             # ================= SELLER =================
@@ -75,23 +77,26 @@ async def save_parsed_data(rows: list[dict]):
                 continue
 
             # ================= INSERT =================
+            print("INSERT:", seller["id"], model_id)
+
             await execute("""
                 INSERT INTO seller_cars (
                     seller_id,
                     model_id,
                     photo_id,
-                    description,
-                    status,
-                    is_catalog
+                    description
                 )
-                VALUES ($1, $2, NULL, '', 'active', TRUE)
-                ON CONFLICT DO NOTHING
+                VALUES ($1, $2, NULL, '')
             """,
             seller["id"],
             model_id
             )
+            inserted_rows += 1
 
         except Exception as e:
             # щоб імпорт не падав повністю
             print(f"IMPORT ERROR: {e}")
             continue
+
+    print(f"Imported {inserted_rows} seller_cars rows")
+    return inserted_rows
