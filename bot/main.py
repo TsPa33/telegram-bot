@@ -31,7 +31,6 @@ router = Router()
 @router.callback_query()
 async def debug_all_callbacks(callback: CallbackQuery):
     print("🔥 CALLBACK CAUGHT:", callback.data)
-    await callback.answer("DEBUG", show_alert=False)
 
 
 # ================= ERROR HANDLER =================
@@ -104,12 +103,12 @@ async def run_bot():
 
     dp.errors.register(global_error_handler)
 
-    dp.include_router(router)
     dp.include_router(start.router)
     dp.include_router(seller.router)
     dp.include_router(admin.router)
     dp.include_router(profile.router)
     dp.include_router(buyer.router)
+    dp.include_router(router)
 
     logger.info("🚀 BOT STARTED")
 
