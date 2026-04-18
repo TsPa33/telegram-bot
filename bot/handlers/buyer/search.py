@@ -44,15 +44,16 @@ async def select_brand(callback: types.CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data.startswith("buyer:model:"))
 async def select_model(callback: types.CallbackQuery, state: FSMContext):
+    print("MODEL HANDLER HIT:", callback.data)
+
     await callback.answer()
 
-    print("MODEL HANDLER HIT:", callback.data)
     try:
         model_id = int(callback.data.split(":")[-1])
+        print("MODEL ID:", model_id)
     except Exception:
         await callback.answer("Invalid model", show_alert=True)
         return
-    print("MODEL ID:", model_id)
 
     model = await fetch(
         "SELECT id FROM models WHERE id = $1 LIMIT 1",
@@ -71,6 +72,8 @@ async def select_model(callback: types.CallbackQuery, state: FSMContext):
         )
         return
 
+    print("CARS FOUND:", total_items)
+
     limit = 1
     total_pages = max(1, math.ceil(total_items / limit))
 
@@ -81,10 +84,12 @@ async def select_model(callback: types.CallbackQuery, state: FSMContext):
     )
 
     await callback.message.answer(f"🔎 Знайдено оголошень: {total_items}")
+
     await send_card(
         callback.message,
         state,
         new_message=True,
         user_id=callback.from_user.id,
     )
+
     await state.set_state(None)
