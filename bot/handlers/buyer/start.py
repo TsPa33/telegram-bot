@@ -12,7 +12,7 @@ router = Router()
 
 @router.message(Command("find"))
 async def start_buyer(message: types.Message, state: FSMContext):
-    await state.clear()
+    await state.set_state(None)
 
     brands = await get_brands_with_ids()
 

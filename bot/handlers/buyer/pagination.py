@@ -30,7 +30,7 @@ async def send_card(message, state: FSMContext, new_message=False, user_id: int 
     total = data.get("total", 1)
 
     if not model_id:
-        await state.clear()
+        await state.set_state(None)
         await message.answer("⚠️ Сесія втрачена. Почни заново: /find")
         return
 
