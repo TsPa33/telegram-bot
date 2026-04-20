@@ -1,4 +1,3 @@
-```python
 from aiogram import Router, types, F
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, KeyboardButton, Message
