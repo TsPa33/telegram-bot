@@ -4,11 +4,11 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 def brand_request_kb(request_id: int):
     return InlineKeyboardMarkup(inline_keyboard=[
         [
-            InlineKeyboardButton(text="✅ Approve", callback_data=f"brand:ok:{request_id}"),
-            InlineKeyboardButton(text="❌ Reject", callback_data=f"brand:no:{request_id}")
+            InlineKeyboardButton(text="✅ Approve", callback_data=f"admin:brand:approve:{request_id}"),
+            InlineKeyboardButton(text="❌ Reject", callback_data=f"admin:brand:reject:{request_id}")
         ],
         [
-            InlineKeyboardButton(text="✏️ Edit", callback_data=f"brand:edit:{request_id}")
+            InlineKeyboardButton(text="✏️ Edit", callback_data=f"admin:brand:edit:{request_id}")
         ]
     ])
 
@@ -16,11 +16,11 @@ def brand_request_kb(request_id: int):
 def model_request_kb(request_id: int):
     return InlineKeyboardMarkup(inline_keyboard=[
         [
-            InlineKeyboardButton(text="✅ Approve", callback_data=f"model:ok:{request_id}"),
-            InlineKeyboardButton(text="❌ Reject", callback_data=f"model:no:{request_id}")
+            InlineKeyboardButton(text="✅ Approve", callback_data=f"admin:model:approve:{request_id}"),
+            InlineKeyboardButton(text="❌ Reject", callback_data=f"admin:model:reject:{request_id}")
         ],
         [
-            InlineKeyboardButton(text="✏️ Edit", callback_data=f"model:edit:{request_id}")
+            InlineKeyboardButton(text="✏️ Edit", callback_data=f"admin:model:edit:{request_id}")
         ]
     ])
 

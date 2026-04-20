@@ -120,19 +120,32 @@ async def show_verifications(message: Message):
 
 # ================= CALLBACK HANDLER =================
 
-@router.callback_query(F.data.regexp(r"^(brand|model|verify):"))
+@router.callback_query(F.data.regexp(r"^(admin:(brand|model):(approve|reject|edit):\d+|(brand|model|verify):(ok|no|edit):\d+)"))
 async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
     if not await is_admin(callback.from_user.id):
         await callback.answer()
         return
 
     parts = callback.data.split(":")
-
-    if len(parts) != 3:
-        await callback.answer()
-        return
-
-    entity, action, obj_id = parts
+    if parts[0] == "admin":
+        if len(parts) != 4:
+            await callback.answer()
+            return
+        _, entity, action, obj_id = parts
+        action_map = {
+            "approve": "ok",
+            "reject": "no",
+            "edit": "edit",
+        }
+        action = action_map.get(action)
+        if not action:
+            await callback.answer()
+            return
+    else:
+        if len(parts) != 3:
+            await callback.answer()
+            return
+        entity, action, obj_id = parts
 
     try:
         obj_id = int(obj_id)
@@ -283,4 +296,3 @@ async def upload_sellers_file(message: Message):
     except Exception as e:
         await message.answer("❌ Помилка імпорту")
         print(e)
-
