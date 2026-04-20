@@ -54,7 +54,6 @@ async def show_admin_panel(callback: CallbackQuery):
         await callback.answer("Немає доступу", show_alert=True)
         return
 
-    # 🔥 КРИТИЧНО: створюємо нове повідомлення через callback
     await callback.message.answer(
         "⚙️ Адмін панель",
         reply_markup=admin_kb
@@ -120,19 +119,22 @@ async def show_verifications(message: Message):
 
 # ================= CALLBACK HANDLER =================
 
-@router.callback_query(F.data.regexp(r"^(brand|model|verify):"))
+@router.callback_query(F.data.regexp(r"^admin:(brand|model|verify):"))
 async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
+    print("ADMIN CALLBACK:", callback.data)
+    print("ADMIN USER:", callback.from_user.id)
+
     if not await is_admin(callback.from_user.id):
         await callback.answer()
         return
 
     parts = callback.data.split(":")
 
-    if len(parts) != 3:
+    if len(parts) != 4:
         await callback.answer()
         return
 
-    entity, action, obj_id = parts
+    _, entity, action, obj_id = parts
 
     try:
         obj_id = int(obj_id)
@@ -226,6 +228,7 @@ async def edit_brand_save(message: types.Message, state: FSMContext):
 
     await update_brand_request(request_id, new_brand)
     await approve_brand(request_id)
+    await clear_brands_cache()
 
     await message.answer(f"✅ Бренд: {new_brand}")
     await state.clear()
@@ -246,6 +249,7 @@ async def edit_model_save(message: types.Message, state: FSMContext):
 
     await update_model_request(request_id, new_model)
     await approve_model(request_id)
+    await clear_models_cache()
 
     await message.answer(f"✅ Модель: {new_model}")
     await state.clear()
@@ -283,4 +287,3 @@ async def upload_sellers_file(message: Message):
     except Exception as e:
         await message.answer("❌ Помилка імпорту")
         print(e)
-
