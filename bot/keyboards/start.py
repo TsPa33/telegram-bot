@@ -1,14 +1,14 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
-from bot.config import is_admin
+from bot.services.roles import is_admin
 
 
-def start_keyboard(user_id: int):
+async def start_keyboard(user_id: int):
     buttons = [
         [KeyboardButton(text="Поїхали 🚀")]
     ]
 
-    # 🔥 КНОПКА АДМІНА
-    if is_admin(user_id):
+    # ✅ FIX: async check
+    if await is_admin(user_id):
         buttons.append([KeyboardButton(text="⚙️ Адмін панель")])
 
     return ReplyKeyboardMarkup(
