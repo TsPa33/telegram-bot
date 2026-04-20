@@ -1,3 +1,4 @@
+```python
 from aiogram import Router, F
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
@@ -6,7 +7,6 @@ from aiogram.types import CallbackQuery, Message, ReplyKeyboardRemove
 from bot.handlers.buyer.start import start_buyer
 from bot.keyboards.main_menu import main_menu_kb
 from bot.keyboards.seller_menu import seller_menu_kb
-
 
 router = Router()
 
@@ -45,6 +45,7 @@ async def open_seller(callback: CallbackQuery, state: FSMContext):
     )
 
 
+# 🔥 FIXED ADMIN HANDLER
 @router.callback_query(F.data == "nav:admin")
 async def open_admin_panel(callback: CallbackQuery, state: FSMContext):
     print("ADMIN CLICK:", callback.data)
@@ -55,14 +56,18 @@ async def open_admin_panel(callback: CallbackQuery, state: FSMContext):
     from bot.services.roles import is_admin
 
     if not await is_admin(callback.from_user.id):
-        await callback.answer("Access denied", show_alert=True)
+        print("ACCESS DENIED")
+        await callback.answer("Немає доступу", show_alert=True)
         return
+
+    print("ACCESS GRANTED")
 
     await state.clear()
 
     from bot.handlers.admin import show_admin_panel
 
-    await show_admin_panel(callback.message)
+    # ✅ КРИТИЧНИЙ ФІКС
+    await show_admin_panel(callback)
 
 
 @router.message(F.text == "Поїхали 🚀")
@@ -80,6 +85,7 @@ async def start_button(message: Message, state: FSMContext):
 async def legacy_role_callbacks(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     await state.set_state(None)
+
     if callback.data == "role_buyer":
         await start_buyer(callback.message, state)
         return
@@ -88,3 +94,4 @@ async def legacy_role_callbacks(callback: CallbackQuery, state: FSMContext):
         "Меню продавця:",
         reply_markup=seller_menu_kb(),
     )
+```
