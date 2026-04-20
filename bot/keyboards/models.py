@@ -1,4 +1,3 @@
-```python
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 
@@ -53,4 +52,3 @@ def model_kb_with_back(models):
     ])
 
     return InlineKeyboardMarkup(inline_keyboard=rows)
-```

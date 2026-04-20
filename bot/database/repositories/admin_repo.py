@@ -1,4 +1,4 @@
-from bot.database.base import fetch
+from bot.database.base import fetch, execute
 from bot.database.repositories.request_repo import (
     get_pending_brand_requests,
     get_pending_model_requests,
@@ -9,11 +9,29 @@ from bot.database.repositories.request_repo import (
 )
 
 
+# ================= BRAND =================
+
+async def update_brand_request(request_id: int, new_brand: str):
+    await execute("""
+        UPDATE brand_requests
+        SET brand = $1
+        WHERE id = $2
+    """, new_brand, request_id)
+
+
+# ================= MODEL =================
+
+async def update_model_request(request_id: int, new_model: str):
+    await execute("""
+        UPDATE model_requests
+        SET model = $1
+        WHERE id = $2
+    """, new_model, request_id)
+
+
 # ================= VERIFICATION =================
 
 async def create_verification_request(seller_id: int, photo_id: str):
-    from bot.database.base import execute
-
     await execute("""
         INSERT INTO verification_requests (seller_id, passport_photo_id)
         VALUES ($1, $2)
@@ -34,7 +52,7 @@ async def get_verification_requests():
 
 
 async def approve_seller(request_id: int):
-    from bot.database.base import fetchrow, execute
+    from bot.database.base import fetchrow
 
     row = await fetchrow("""
         SELECT s.telegram_id
@@ -64,7 +82,7 @@ async def approve_seller(request_id: int):
 
 
 async def reject_seller(request_id: int):
-    from bot.database.base import fetchrow, execute
+    from bot.database.base import fetchrow
 
     row = await fetchrow("""
         SELECT s.telegram_id
@@ -85,3 +103,4 @@ async def reject_seller(request_id: int):
     """, request_id)
 
     return telegram_id
+

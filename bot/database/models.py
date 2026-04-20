@@ -16,6 +16,36 @@ async def create_tables():
         brand_id INTEGER NOT NULL REFERENCES brands(id) ON DELETE CASCADE
     );
     """)
+    await execute("""
+    CREATE UNIQUE INDEX IF NOT EXISTS uq_models_brand_name
+    ON models (brand_id, name);
+    """)
+
+    await execute("""
+    CREATE TABLE IF NOT EXISTS brand_requests (
+        id SERIAL PRIMARY KEY,
+        user_id BIGINT NOT NULL,
+        brand TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending'
+    );
+    """)
+    await execute("""
+    CREATE TABLE IF NOT EXISTS model_requests (
+        id SERIAL PRIMARY KEY,
+        user_id BIGINT NOT NULL,
+        brand TEXT NOT NULL,
+        model TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending'
+    );
+    """)
+    await execute("""
+    CREATE UNIQUE INDEX IF NOT EXISTS uq_brand_requests_user_brand
+    ON brand_requests (user_id, brand);
+    """)
+    await execute("""
+    CREATE UNIQUE INDEX IF NOT EXISTS uq_model_requests_user_brand_model
+    ON model_requests (user_id, brand, model);
+    """)
 
     await execute("""
     CREATE TABLE IF NOT EXISTS sellers (
