@@ -2,7 +2,7 @@ from aiogram import Router, types, F
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, KeyboardButton, Message
 
-from bot.services.roles import is_admin  # ✅ FIX: async version
+from bot.services.roles import is_admin
 from bot.keyboards.admin_kb import admin_kb
 from bot.keyboards.admin_inline import (
     brand_request_kb,
@@ -49,18 +49,16 @@ async def cancel(message: types.Message, state: FSMContext):
 
 # ================= ADMIN PANEL =================
 
-async def show_admin_panel(message: types.Message):
-    # ✅ FIX: async check
-    if not await is_admin(message.from_user.id):
+async def show_admin_panel(callback: CallbackQuery):
+    if not await is_admin(callback.from_user.id):
+        await callback.answer("Немає доступу", show_alert=True)
         return
 
-    await message.answer(
+    # 🔥 КРИТИЧНО: створюємо нове повідомлення через callback
+    await callback.message.answer(
         "⚙️ Адмін панель",
         reply_markup=admin_kb
     )
-
-
-# ❌ ВИДАЛЕНО message handler (було дублювання входу)
 
 
 # ================= REQUESTS =================
