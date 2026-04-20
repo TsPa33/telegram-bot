@@ -53,11 +53,18 @@ async def select_brand(callback: types.CallbackQuery, state: FSMContext):
     models = await get_models_by_brand_id(brand_id)
 
     if not models:
-        await callback.message.answer("❌ Моделей немає")
-        return
+        await state.set_state(Buyer.model)
+        await callback.message.answer(
+            "❌ Моделей немає\n\nМожеш додати свою 👇",
+            reply_markup=model_kb([])
+        )
+        return  # ✅ ТІЛЬКИ ТУТ
 
     await state.set_state(Buyer.model)
-    await callback.message.answer("🚘 Обери модель:", reply_markup=model_kb(models))
+    await callback.message.answer(
+        "🚘 Обери модель:",
+        reply_markup=model_kb(models)
+    )
 
 
 # ================= MODEL =================
