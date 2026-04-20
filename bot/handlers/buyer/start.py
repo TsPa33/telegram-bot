@@ -14,7 +14,7 @@ router = Router()
 
 
 async def show_buyer_home(message: types.Message, state: FSMContext):
-    await state.clear()
+    await state.set_state(None)
     await message.answer(
         "🏠 <b>Головне меню покупця</b>\n\n"
         "👤 Профіль\n"
@@ -74,7 +74,7 @@ async def buyer_profile_handler(callback: types.CallbackQuery):
 
 @router.message(Command("find"))
 async def start_buyer(message: types.Message, state: FSMContext):
-    await state.clear()
+    await state.set_state(None)
 
     brands = await get_brands_with_ids()
 
