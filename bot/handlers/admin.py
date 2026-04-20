@@ -285,4 +285,4 @@ async def upload_sellers_file(message: Message):
     except Exception as e:
         await message.answer("❌ Помилка імпорту")
         print(e)
-```
+
