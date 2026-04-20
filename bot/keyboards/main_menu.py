@@ -5,7 +5,7 @@ from bot.services.roles import is_admin, is_seller
 
 async def main_menu_kb(user_id: int) -> InlineKeyboardMarkup:
     seller = await is_seller(user_id)
-    admin = is_admin(user_id)
+    admin = await is_admin(user_id)
 
     buttons: list[list[InlineKeyboardButton]] = []
 
