@@ -55,14 +55,21 @@ async def select_brand(callback: types.CallbackQuery, state: FSMContext):
     models = await get_models_by_brand_id(brand_id)
 
     if not models:
-        await callback.message.answer("❌ Моделей немає")
+        await state.set_state(Buyer.model)
+        await callback.message.answer(
+            "❌ Моделей немає\n\nМожеш додати свою 👇",
+            reply_markup=model_kb([])
+        )
         return
 
     await state.set_state(Buyer.model)
-    await callback.message.answer("🚘 Обери модель:", reply_markup=model_kb(models))
+    await callback.message.answer(
+        "🚘 Обери модель:",
+        reply_markup=model_kb(models)
+    )
 
 
-# ================= ADD BRAND REQUEST =================
+# ================= ADD BRAND =================
 
 @router.callback_query(F.data == "buyer:add_brand")
 async def add_brand_request_start(callback: types.CallbackQuery, state: FSMContext):
@@ -74,30 +81,36 @@ async def add_brand_request_start(callback: types.CallbackQuery, state: FSMConte
 @router.message(AddBrand.waiting_for_brand)
 async def add_brand_request_save(message: types.Message, state: FSMContext):
     brand = _normalize_name(message.text)
+
     if not brand:
         await message.answer("❌ Введи коректний бренд (2-50 символів).")
         return
 
     created = await create_brand_request(message.from_user.id, brand)
+
     if not created:
         await message.answer("ℹ️ Така заявка вже існує або бренд вже погоджений.")
         await state.clear()
         return
 
     print("NEW BRAND REQUEST:", brand)
+
     await message.answer("✅ Заявку на бренд відправлено на модерацію.")
+
     await _notify_admins(
         message,
         f"New brand request: {brand}"
     )
+
     await state.clear()
 
 
-# ================= ADD MODEL REQUEST =================
+# ================= ADD MODEL =================
 
 @router.callback_query(F.data == "buyer:add_model")
 async def add_model_request_start(callback: types.CallbackQuery, state: FSMContext):
     await callback.answer()
+
     data = await state.get_data()
     brand_id = data.get("brand_id")
 
@@ -111,41 +124,49 @@ async def add_model_request_start(callback: types.CallbackQuery, state: FSMConte
         WHERE id = $1
         LIMIT 1
     """, brand_id)
+
     if not brand_row:
         await callback.message.answer("❌ Бренд не знайдено.")
         return
 
     await state.update_data(request_brand=brand_row[0]["name"])
     await state.set_state(AddModel.waiting_for_model)
+
     await callback.message.answer("✍️ Введи нову модель (2-50 символів):")
 
 
 @router.message(AddModel.waiting_for_model)
 async def add_model_request_save(message: types.Message, state: FSMContext):
     model = _normalize_name(message.text)
+
     if not model:
         await message.answer("❌ Введи коректну модель (2-50 символів).")
         return
 
     data = await state.get_data()
     brand = data.get("request_brand")
+
     if not brand:
         await message.answer("❌ Спочатку обери бренд.")
         await state.clear()
         return
 
     created = await create_model_request(message.from_user.id, brand, model)
+
     if not created:
         await message.answer("ℹ️ Така заявка вже існує або модель вже погоджена.")
         await state.clear()
         return
 
     print("NEW MODEL REQUEST:", model)
+
     await message.answer("✅ Заявку на модель відправлено на модерацію.")
+
     await _notify_admins(
         message,
         f"New model request: {brand} {model}"
     )
+
     await state.clear()
 
 
@@ -179,8 +200,7 @@ async def select_model(callback: types.CallbackQuery, state: FSMContext):
 
     if total == 0:
         await callback.message.answer(
-            "😕 Поки що немає оголошень для цієї моделі.\n"
-            "Спробуй іншу модель або зайди пізніше."
+            "😕 Поки що немає оголошень для цієї моделі."
         )
         return
 
@@ -290,13 +310,18 @@ async def fallback(message: types.Message):
     await message.answer("⚠️ Обери дію через меню або введи /find")
 
 
+# ================= HELPERS =================
+
 def _normalize_name(raw_value: str | None) -> str | None:
     if not raw_value:
         return None
+
     value = " ".join(raw_value.strip().split())
+
     if len(value) < 2 or len(value) > 50:
         return None
-    return value.capitalize()
+
+    return value.title()
 
 
 async def _notify_admins(message: types.Message, text: str):

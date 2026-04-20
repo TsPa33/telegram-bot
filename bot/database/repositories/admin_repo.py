@@ -1,11 +1,11 @@
-from bot.database.base import fetch, fetchrow, execute
+from bot.database.base import fetch, execute
 from bot.database.repositories.request_repo import (
     get_pending_brand_requests,
     get_pending_model_requests,
     approve_brand,
     reject_brand,
     approve_model,
-    reject_model
+    reject_model,
 )
 
 
@@ -51,9 +51,9 @@ async def get_verification_requests():
     """)
 
 
-# 🔥 ГОЛОВНЕ — ТЕПЕР ПОВЕРТАЄ telegram_id
-
 async def approve_seller(request_id: int):
+    from bot.database.base import fetchrow
+
     row = await fetchrow("""
         SELECT s.telegram_id
         FROM verification_requests vr
@@ -82,6 +82,8 @@ async def approve_seller(request_id: int):
 
 
 async def reject_seller(request_id: int):
+    from bot.database.base import fetchrow
+
     row = await fetchrow("""
         SELECT s.telegram_id
         FROM verification_requests vr
@@ -101,3 +103,4 @@ async def reject_seller(request_id: int):
     """, request_id)
 
     return telegram_id
+
