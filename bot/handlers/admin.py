@@ -1,8 +1,9 @@
+```python
 from aiogram import Router, types, F
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, KeyboardButton, Message
 
-from bot.config import is_admin
+from bot.services.roles import is_admin  # ✅ FIX: async version
 from bot.keyboards.admin_kb import admin_kb
 from bot.keyboards.admin_inline import (
     brand_request_kb,
@@ -50,22 +51,24 @@ async def cancel(message: types.Message, state: FSMContext):
 # ================= ADMIN PANEL =================
 
 async def show_admin_panel(message: types.Message):
-    if not is_admin(message.from_user.id):
+    # ✅ FIX: async check
+    if not await is_admin(message.from_user.id):
         return
 
-    await message.answer("⚙️ Адмін панель", reply_markup=admin_kb)
+    await message.answer(
+        "⚙️ Адмін панель",
+        reply_markup=admin_kb
+    )
 
 
-@router.message(F.text == "⚙️ Адмін панель")
-async def open_admin_panel(message: types.Message):
-    await show_admin_panel(message)
+# ❌ ВИДАЛЕНО message handler (було дублювання входу)
 
 
 # ================= REQUESTS =================
 
 @router.message(F.text.startswith("📋 Заявки"))
 async def show_requests(message: types.Message):
-    if not is_admin(message.from_user.id):
+    if not await is_admin(message.from_user.id):
         return
 
     brand_requests = await get_pending_brand_requests()
@@ -93,7 +96,7 @@ async def show_requests(message: types.Message):
 
 @router.message(F.text.in_(["🔐 Верифікації", "🔐 Верифікація продавців"]))
 async def show_verifications(message: Message):
-    if not is_admin(message.from_user.id):
+    if not await is_admin(message.from_user.id):
         return
 
     requests = await get_verification_requests()
@@ -122,7 +125,7 @@ async def show_verifications(message: Message):
 
 @router.callback_query(F.data.regexp(r"^(brand|model|verify):"))
 async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
-    if not is_admin(callback.from_user.id):
+    if not await is_admin(callback.from_user.id):
         await callback.answer()
         return
 
@@ -255,7 +258,7 @@ async def edit_model_save(message: types.Message, state: FSMContext):
 
 @router.message(F.document)
 async def upload_sellers_file(message: Message):
-    if not is_admin(message.from_user.id):
+    if not await is_admin(message.from_user.id):
         return
 
     document = message.document
@@ -283,3 +286,4 @@ async def upload_sellers_file(message: Message):
     except Exception as e:
         await message.answer("❌ Помилка імпорту")
         print(e)
+```
