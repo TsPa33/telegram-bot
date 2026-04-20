@@ -3,7 +3,7 @@ import logging
 import traceback
 import os
 
-from aiogram import Bot, Dispatcher, Router
+from aiogram import Bot, Dispatcher, Router, F
 from aiogram.types import CallbackQuery, ErrorEvent
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.fsm.storage.redis import RedisStorage
@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 router = Router()
 
 
-@router.callback_query()
+@router.callback_query(F.data.startswith("debug:"))
 async def debug_all_callbacks(callback: CallbackQuery):
     print("🔥 CALLBACK CAUGHT:", callback.data)
 
