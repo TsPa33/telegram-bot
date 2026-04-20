@@ -49,12 +49,16 @@ async def cancel(message: types.Message, state: FSMContext):
 
 # ================= ADMIN PANEL =================
 
-@router.message(F.text == "⚙️ Адмін панель")
-async def open_admin_panel(message: types.Message):
+async def show_admin_panel(message: types.Message):
     if not is_admin(message.from_user.id):
         return
 
     await message.answer("⚙️ Адмін панель", reply_markup=admin_kb)
+
+
+@router.message(F.text == "⚙️ Адмін панель")
+async def open_admin_panel(message: types.Message):
+    await show_admin_panel(message)
 
 
 # ================= REQUESTS =================
