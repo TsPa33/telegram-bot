@@ -27,11 +27,6 @@ async def show_buyer_home(message: types.Message, state: FSMContext):
     await message.answer("Швидкий доступ до меню:", reply_markup=buyer_reply_kb())
 
 
-@router.message(Command("start"))
-async def buyer_home_start(message: types.Message, state: FSMContext):
-    await show_buyer_home(message, state)
-
-
 @router.message(F.text == "🏠 Меню")
 async def open_home(message: types.Message, state: FSMContext):
     await show_buyer_home(message, state)
