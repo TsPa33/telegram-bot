@@ -1,4 +1,3 @@
-```python
 from aiogram import Router, F
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
@@ -94,4 +93,4 @@ async def legacy_role_callbacks(callback: CallbackQuery, state: FSMContext):
         "Меню продавця:",
         reply_markup=seller_menu_kb(),
     )
-```
+
