@@ -1,6 +1,6 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
-from bot.config import is_admin
+from bot.services.roles import is_admin
 from bot.database.base import fetch
 
 
@@ -36,7 +36,8 @@ async def buyer_nav_kb(user_id: int) -> InlineKeyboardMarkup:
         ],
     ]
 
-    if is_admin(user_id):
+    # ✅ FIX: async is_admin
+    if await is_admin(user_id):
         inline_keyboard.append(
             [
                 InlineKeyboardButton(
