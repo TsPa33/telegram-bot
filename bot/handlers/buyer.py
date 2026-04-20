@@ -26,7 +26,7 @@ DEFAULT_PHOTO = "AgACAgIAAxkBAAIJ6WnZ7zNsTF4dV6Fxbqsye8iRF224AAJfEWsbFN_RSsup93h
 
 @router.message(Command("find"))
 async def start_buyer(message: types.Message, state: FSMContext):
-    await state.clear()
+    await state.set_state(None)
 
     brands = await get_brands_with_ids()
 
@@ -40,11 +40,11 @@ async def start_buyer(message: types.Message, state: FSMContext):
 
 # ================= BRAND =================
 
-@router.callback_query(Buyer.brand, F.data.regexp(r"^brand:\d+$"))
+@router.callback_query(Buyer.brand, F.data.startswith("buyer:brand:"))
 async def select_brand(callback: types.CallbackQuery, state: FSMContext):
     await callback.answer()
 
-    brand_id = int(callback.data.split(":")[1])
+    brand_id = int(callback.data.split(":")[-1])
     await state.update_data(brand_id=brand_id)
 
     models = await get_models_by_brand_id(brand_id)
@@ -59,11 +59,11 @@ async def select_brand(callback: types.CallbackQuery, state: FSMContext):
 
 # ================= MODEL =================
 
-@router.callback_query(Buyer.model, F.data.regexp(r"^model:\d+$"))
+@router.callback_query(Buyer.model, F.data.startswith("buyer:model:"))
 async def select_model(callback: types.CallbackQuery, state: FSMContext):
     await callback.answer()
 
-    model_id = int(callback.data.split(":")[1])
+    model_id = int(callback.data.split(":")[-1])
     model = await fetch(
         """
         SELECT id
@@ -109,7 +109,7 @@ async def send_card(message: types.Message, state: FSMContext, new_message=False
     total = data.get("total")
 
     if not all([model_id, total is not None]):
-        await state.clear()
+        await state.set_state(None)
         await message.answer("⚠️ Сесія втрачена. Почни заново: /find")
         return
 
@@ -169,7 +169,7 @@ async def paginate(callback: types.CallbackQuery, state: FSMContext):
         return
 
     try:
-        page = int(callback.data.split(":")[1])
+        page = int(callback.data.split(":")[-1])
     except:
         await callback.answer("Помилка")
         return
