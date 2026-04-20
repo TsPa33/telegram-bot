@@ -10,5 +10,5 @@ async def is_seller(user_id: int) -> bool:
     return bool(row)
 
 
-def is_admin(user_id: int) -> bool:
+async def is_admin(user_id: int) -> bool:
     return user_id in ADMIN_IDS

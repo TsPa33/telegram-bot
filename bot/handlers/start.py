@@ -3,8 +3,6 @@ from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message, ReplyKeyboardRemove
 
-from bot.config import is_admin
-from bot.handlers.admin import show_admin_panel
 from bot.handlers.buyer.start import start_buyer
 from bot.keyboards.main_menu import main_menu_kb
 from bot.keyboards.seller_menu import seller_menu_kb
@@ -48,11 +46,22 @@ async def open_seller(callback: CallbackQuery, state: FSMContext):
 
 
 @router.callback_query(F.data == "nav:admin")
-async def open_admin(callback: CallbackQuery):
+async def open_admin_panel(callback: CallbackQuery, state: FSMContext):
+    print("ADMIN CLICK:", callback.data)
+    print("USER ID:", callback.from_user.id)
+
     await callback.answer()
-    if not is_admin(callback.from_user.id):
-        await callback.answer("Немає доступу", show_alert=True)
+
+    from bot.services.roles import is_admin
+
+    if not await is_admin(callback.from_user.id):
+        await callback.answer("Access denied", show_alert=True)
         return
+
+    await state.clear()
+
+    from bot.handlers.admin import show_admin_panel
+
     await show_admin_panel(callback.message)
 
 

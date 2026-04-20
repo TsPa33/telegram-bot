@@ -18,8 +18,6 @@ from bot.keyboards.brands import brand_kb
 from bot.keyboards.models import model_kb_with_back
 from bot.keyboards.seller_menu import seller_main_kb
 from bot.keyboards.buyer_reply import buyer_reply_kb
-from bot.config import is_admin
-from bot.handlers.admin import show_admin_panel
 router = Router()
 
 DEFAULT_PHOTO = "AgACAgIAAxkBAAIJ6WnZ7zNsTF4dV6Fxbqsye8iRF224AAJfEWsbFN_RSsup93hjz4uMAQADAgADeAADOwQ"
@@ -203,28 +201,6 @@ async def restart_search(callback: CallbackQuery, state: FSMContext):
     )
 
 
-@router.callback_query(F.data == "nav:admin")
-async def open_admin(callback: CallbackQuery, state: FSMContext):
-    print("ADMIN CLICK:", callback.from_user.id)
-
-    await callback.answer()
-
-    if not is_admin(callback.from_user.id):
-        print("NOT ADMIN")
-        await callback.answer("Access denied", show_alert=True)
-        return
-
-    print("ADMIN ACCESS OK")
-
-    await state.set_state(None)
-
-    try:
-        await show_admin_panel(callback.message)
-        print("ADMIN PANEL OPENED")
-    except Exception as e:
-        print("ADMIN ERROR:", e)
-
-
 @router.callback_query(F.data == "nav:back")
 async def go_back(callback: CallbackQuery, state: FSMContext):
     print("NAV:", callback.data)
@@ -284,9 +260,3 @@ async def go_seller(callback: CallbackQuery, state: FSMContext):
         "🏪 Режим продавця\nОберіть дію:",
         reply_markup=seller_main_kb()
     )
-
-
-@router.callback_query(F.data.startswith("nav"))
-async def nav_fallback_debug(callback: CallbackQuery):
-    print("CALLBACK:", callback.data)
-    await callback.answer()
