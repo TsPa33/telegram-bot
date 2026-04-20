@@ -2,9 +2,7 @@ from aiogram import Router, types, F
 from aiogram.filters import Command
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
-from aiogram.types import (
-    InputMediaPhoto
-)
+from aiogram.types import InputMediaPhoto
 
 from bot.database.base import fetch
 from bot.database.repositories.model_repo import get_brands_with_ids, get_models_by_brand_id
@@ -40,11 +38,16 @@ async def start_buyer(message: types.Message, state: FSMContext):
 
 # ================= BRAND =================
 
-@router.callback_query(Buyer.brand, F.data.startswith("buyer:brand:"))
+@router.callback_query(F.data.startswith("buyer:brand:"))
 async def select_brand(callback: types.CallbackQuery, state: FSMContext):
     await callback.answer()
 
-    brand_id = int(callback.data.split(":")[-1])
+    try:
+        brand_id = int(callback.data.split(":")[-1])
+    except Exception:
+        await callback.answer("Invalid brand", show_alert=True)
+        return
+
     await state.update_data(brand_id=brand_id)
 
     models = await get_models_by_brand_id(brand_id)
@@ -59,11 +62,16 @@ async def select_brand(callback: types.CallbackQuery, state: FSMContext):
 
 # ================= MODEL =================
 
-@router.callback_query(Buyer.model, F.data.startswith("buyer:model:"))
+@router.callback_query(F.data.startswith("buyer:model:"))
 async def select_model(callback: types.CallbackQuery, state: FSMContext):
     await callback.answer()
 
-    model_id = int(callback.data.split(":")[-1])
+    try:
+        model_id = int(callback.data.split(":")[-1])
+    except Exception:
+        await callback.answer("Invalid model", show_alert=True)
+        return
+
     model = await fetch(
         """
         SELECT id
@@ -73,6 +81,7 @@ async def select_model(callback: types.CallbackQuery, state: FSMContext):
         """,
         model_id
     )
+
     if not model:
         await callback.message.answer("❌ Модель не знайдена")
         return
@@ -113,7 +122,6 @@ async def send_card(message: types.Message, state: FSMContext, new_message=False
         await message.answer("⚠️ Сесія втрачена. Почни заново: /find")
         return
 
-    # 🔥 КЛЮЧОВИЙ ФІКС
     results = await find_cars(model_id, page, limit=1)
 
     if not results:
@@ -170,7 +178,7 @@ async def paginate(callback: types.CallbackQuery, state: FSMContext):
 
     try:
         page = int(callback.data.split(":")[-1])
-    except:
+    except Exception:
         await callback.answer("Помилка")
         return
 
