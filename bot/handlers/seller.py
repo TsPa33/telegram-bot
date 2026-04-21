@@ -129,9 +129,17 @@ async def add_car_start(message: Message, state: FSMContext):
 @router.message(SellerStates.brand)
 async def select_brand(message: Message, state: FSMContext):
 
+    seller = await get_or_create_seller(
+        message.from_user.id,
+        message.from_user.username
+    )
+
     if message.text == "⬅️ Назад":
         await state.clear()
-        await message.answer("🏠 Меню", reply_markup=seller_menu_kb())
+        await message.answer(
+            "🏠 Меню",
+            reply_markup=seller_menu_kb(is_verified=seller.get("is_verified", False))
+        )
         return
 
     models = await get_cached_models(message.text, get_models_by_brand)
@@ -197,18 +205,21 @@ async def photo_error(message: Message):
 async def save_car(message: Message, state: FSMContext):
     data = await state.get_data()
 
-    if data.get("car_id"):
-        await update_description(data["car_id"], message.text)
-        await message.answer("✅ Опис оновлено")
-        await state.clear()
-        return
-
-    model_id = await get_model_id(data["brand"], data["model"])
-
     seller = await get_or_create_seller(
         message.from_user.id,
         message.from_user.username
     )
+
+    if data.get("car_id"):
+        await update_description(data["car_id"], message.text)
+        await message.answer(
+            "✅ Опис оновлено",
+            reply_markup=seller_menu_kb(is_verified=seller.get("is_verified", False))
+        )
+        await state.clear()
+        return
+
+    model_id = await get_model_id(data["brand"], data["model"])
 
     await add_seller_car(
         seller_id=seller["id"],
@@ -217,7 +228,10 @@ async def save_car(message: Message, state: FSMContext):
         description=message.text or "Без опису"
     )
 
-    await message.answer("✅ Авто додано")
+    await message.answer(
+        "✅ Авто додано",
+        reply_markup=seller_menu_kb(is_verified=seller.get("is_verified", False))
+    )
 
     await state.clear()
 
@@ -301,5 +315,9 @@ async def save_profile(message: Message, state: FSMContext):
 
     await update_seller_field(seller["id"], field, value)
 
-    await message.answer("✅ Профіль оновлено")
+    await message.answer(
+        "✅ Профіль оновлено",
+        reply_markup=seller_menu_kb(is_verified=seller.get("is_verified", False))
+    )
+
     await state.clear()
