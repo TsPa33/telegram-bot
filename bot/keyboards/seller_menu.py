@@ -22,3 +22,7 @@ def seller_main_kb(is_verified: bool = False):
         keyboard=buttons,
         resize_keyboard=True
     )
+
+
+def seller_menu_kb(is_verified: bool = False):
+    return seller_main_kb(is_verified=is_verified)
