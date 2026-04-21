@@ -3,6 +3,7 @@ from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
 from aiogram.fsm.context import FSMContext
 
 from bot.keyboards.seller_menu import seller_menu_kb
+from bot.keyboards.admin_inline import brand_request_kb, model_request_kb
 
 from bot.database.repositories.seller_repo import (
     get_or_create_seller,
@@ -24,6 +25,7 @@ from bot.database.repositories.request_repo import (
 from bot.utils.cache import get_cached_brands, get_cached_models
 
 from bot.states.seller_states import SellerStates
+from bot.config import ADMIN_IDS
 
 from .verification import check_verified
 
@@ -99,23 +101,29 @@ async def select_brand(message: Message, state: FSMContext):
 async def add_brand(message: Message, state: FSMContext):
     brand = message.text.strip()
 
-    await create_brand_request(
+    request_id = await create_brand_request(
         user_id=message.from_user.id,
         brand=brand
     )
 
+    # 🔔 notify admin
+    for admin_id in ADMIN_IDS:
+        await message.bot.send_message(
+            admin_id,
+            f"🆕 Новий бренд\n\n"
+            f"👤 {message.from_user.id}\n"
+            f"🏷 {brand}",
+            reply_markup=brand_request_kb(request_id)
+        )
+
+    # зберігаємо бренд у state
+    await state.update_data(brand=brand)
+
     await message.answer("✅ Бренд відправлено на модерацію")
 
-    # повертаємось назад
-    brands = await get_cached_brands(get_brands)
-
-    keyboard = ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text=b)] for b in brands] + [[ADD_BRAND], [BACK]],
-        resize_keyboard=True
-    )
-
-    await state.set_state(SellerStates.brand)
-    await message.answer("🚗 Обери бренд:", reply_markup=keyboard)
+    # 🔥 ОДРАЗУ ПЕРЕХІД ДО МОДЕЛІ
+    await state.set_state(SellerStates.add_model)
+    await message.answer("➡️ Введи модель для цього бренду:")
 
 
 # ================= MODEL =================
@@ -175,13 +183,24 @@ async def add_model(message: Message, state: FSMContext):
 
     model = message.text.strip()
 
-    await create_model_request(
+    request_id = await create_model_request(
         user_id=message.from_user.id,
         brand=brand,
         model=model
     )
 
     await message.answer("✅ Модель відправлено на модерацію")
+
+    # 🔔 notify admin
+    for admin_id in ADMIN_IDS:
+        await message.bot.send_message(
+            admin_id,
+            f"🆕 Нова модель\n\n"
+            f"👤 {message.from_user.id}\n"
+            f"🏷 {brand}\n"
+            f"🚘 {model}",
+            reply_markup=model_request_kb(request_id)
+        )
 
     models = await get_cached_models(brand, get_models_by_brand)
 
