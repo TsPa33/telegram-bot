@@ -5,7 +5,12 @@ def safe(val):
     return html.escape(str(val)) if val else ""
 
 
-def format_car_card(car: dict, page: int | None = None, total: int | None = None):
+def format_car_card(
+    car: dict,
+    page: int | None = None,
+    total: int | None = None,
+    is_owner: bool = False
+):
     brand = safe(car.get("brand"))
     model = safe(car.get("model"))
 
@@ -14,7 +19,6 @@ def format_car_card(car: dict, page: int | None = None, total: int | None = None
     # ================= DESCRIPTION =================
 
     description = safe(car.get("description")) or "Без опису"
-
     description_block = f"\n{description}\n"
 
     # ================= SELLER =================
@@ -44,13 +48,20 @@ def format_car_card(car: dict, page: int | None = None, total: int | None = None
     if car.get("is_verified"):
         verified = "🔐 Перевірений продавець\n"
 
-    # ================= STATS =================
+    # ================= STATS (FIX) =================
 
-    views = car.get("views") or 0
-    phone = car.get("phone_clicks") or 0
-    site = car.get("site_clicks") or 0
+    stats_block = ""
+    if is_owner:
+        views = car.get("views") or 0
+        phone = car.get("phone_clicks") or 0
+        site = car.get("site_clicks") or 0
 
-    stats_block = f"\n📊 👁 {views}   📞 {phone}   🌐 {site}"
+        stats_block = (
+            "\n\n📊 <b>Статистика:</b>\n"
+            f"👁 {views}\n"
+            f"📞 {phone}\n"
+            f"🌐 {site}"
+        )
 
     # ================= FINAL =================
 
