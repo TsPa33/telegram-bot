@@ -8,7 +8,6 @@ from bot.keyboards.admin_inline import brand_request_kb, model_request_kb
 from bot.database.repositories.seller_repo import (
     get_or_create_seller,
     add_seller_car,
-    update_description
 )
 
 from bot.database.repositories.model_repo import (
@@ -89,13 +88,9 @@ async def select_brand(message: Message, state: FSMContext):
     )
 
     await state.update_data(brand=message.text)
-    await state.clear()
+    await state.set_state(SellerStates.model)
 
-    await message.answer(
-        "✅ Модель відправлено на модерацію\n"
-        "⏳ Після підтвердження ти зможеш використовувати її",
-        reply_markup=seller_menu_kb()
-    )
+    await message.answer("🚗 Обери модель:", reply_markup=keyboard)
 
 
 # ================= ADD BRAND =================
@@ -200,15 +195,14 @@ async def add_model(message: Message, state: FSMContext):
             reply_markup=model_request_kb(request_id)
         )
 
-    models = await get_cached_models(brand, get_models_by_brand)
+    # ✅ КРИТИЧНИЙ ФІКС
+    await state.clear()
 
-    keyboard = ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text=m)] for m in models] + [[ADD_MODEL], [BACK]],
-        resize_keyboard=True
+    await message.answer(
+        "⏳ Очікуй підтвердження моделі\n\n"
+        "Після цього ти зможеш додати авто",
+        reply_markup=seller_menu_kb()
     )
-
-    await state.set_state(SellerStates.model)
-    await message.answer("🚗 Обери модель:", reply_markup=keyboard)
 
 
 # ================= PHOTO =================
@@ -260,7 +254,7 @@ async def handle_description(message: Message, state: FSMContext):
 
     model_id = await get_model_id(data["brand"], data["model"])
 
-    car_id = await add_seller_car(
+    await add_seller_car(
         seller_id=seller["id"],
         model_id=model_id,
         photo_id=data.get("photo_id"),
