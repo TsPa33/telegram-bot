@@ -10,7 +10,6 @@ from bot.database.repositories.seller_repo import add_slot
 from bot.config import LIQPAY_PRIVATE_KEY
 
 router = APIRouter()
-
 logger = logging.getLogger(__name__)
 
 
@@ -25,10 +24,17 @@ def verify_signature(data: str, signature: str) -> bool:
 @router.post("/liqpay/callback")
 async def liqpay_callback(request: Request):
     try:
-        form = await request.form()
+        # 🔥 ПІДТРИМКА ДВОХ ТИПІВ (ВАЖЛИВО)
+        content_type = request.headers.get("content-type", "")
 
-        data = form.get("data")
-        signature = form.get("signature")
+        if "application/json" in content_type:
+            body = await request.json()
+            data = body.get("data")
+            signature = body.get("signature")
+        else:
+            form = await request.form()
+            data = form.get("data")
+            signature = form.get("signature")
 
         if not data or not signature:
             raise HTTPException(status_code=400, detail="Invalid request")
@@ -37,11 +43,11 @@ async def liqpay_callback(request: Request):
         if not verify_signature(data, signature):
             raise HTTPException(status_code=400, detail="Invalid signature")
 
-        # 📦 декодування payload
+        # 📦 decode
         decoded = json.loads(base64.b64decode(data).decode())
         logger.info(f"LiqPay callback: {decoded}")
 
-        # ❗ обробляємо тільки успішні платежі
+        # тільки success
         if decoded.get("status") != "success":
             return {"status": "ignored"}
 
@@ -49,28 +55,24 @@ async def liqpay_callback(request: Request):
         amount = decoded.get("amount")
         currency = decoded.get("currency")
 
-        # 🔍 отримуємо платіж з БД
         payment = await get_payment(order_id)
 
         if not payment:
             return {"status": "not_found"}
 
-        # 🔁 захист від дублювання
+        # idempotency
         if payment["status"] == "success":
             return {"status": "already_processed"}
 
-        # 💰 перевірка суми
+        # перевірки
         if amount != payment["amount"]:
             raise HTTPException(status_code=400, detail="Invalid amount")
 
-        # 💱 перевірка валюти
         if currency != "UAH":
             raise HTTPException(status_code=400, detail="Invalid currency")
 
-        # ✅ оновлюємо статус
+        # update
         await mark_payment_success(order_id)
-
-        # 🎁 бізнес-логіка (додаємо слот)
         await add_slot(payment["seller_id"], 1)
 
         return {"status": "ok"}
@@ -79,4 +81,4 @@ async def liqpay_callback(request: Request):
         raise
     except Exception as e:
         logger.error(f"LiqPay callback error: {str(e)}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        return {"error": str(e)}
