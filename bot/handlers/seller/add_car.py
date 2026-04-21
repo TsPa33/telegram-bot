@@ -64,9 +64,14 @@ async def select_brand(message: Message, state: FSMContext):
     if not await check_verified(message, state):
         return
 
+    seller = await get_or_create_seller(message.from_user.id, message.from_user.username)
+
     if message.text == "⬅️ Назад":
         await state.clear()
-        await message.answer("🏠 Меню", reply_markup=seller_menu_kb())
+        await message.answer(
+            "🏠 Меню",
+            reply_markup=seller_menu_kb(is_verified=seller.get("is_verified", False))
+        )
         return
 
     if message.text == "➕ Додати бренд":
@@ -195,48 +200,14 @@ async def add_model(message: Message, state: FSMContext):
             reply_markup=model_request_kb(request_id)
         )
 
-    # ✅ КРИТИЧНИЙ ФІКС
     await state.clear()
 
+    seller = await get_or_create_seller(message.from_user.id, message.from_user.username)
+
     await message.answer(
-        "⏳ Очікуй підтвердження моделі\n\n"
-        "Після цього ти зможеш додати авто",
-        reply_markup=seller_menu_kb()
+        "⏳ Очікуй підтвердження моделі\n\nПісля цього ти зможеш додати авто",
+        reply_markup=seller_menu_kb(is_verified=seller.get("is_verified", False))
     )
-
-
-# ================= PHOTO =================
-
-@router.message(SellerStates.photo, F.photo)
-async def handle_photo(message: Message, state: FSMContext):
-    await state.update_data(photo_id=message.photo[-1].file_id)
-    await state.set_state(SellerStates.description)
-
-    await message.answer("📝 Введи опис або натисни 'Пропустити'")
-
-
-@router.message(SellerStates.photo, F.text == "Пропустити")
-async def skip_photo(message: Message, state: FSMContext):
-    await state.update_data(photo_id=None)
-    await state.set_state(SellerStates.description)
-
-    await message.answer("📝 Введи опис або натисни 'Пропустити'")
-
-
-@router.message(SellerStates.photo, F.text == "⬅️ Назад")
-async def back_to_model(message: Message, state: FSMContext):
-    data = await state.get_data()
-    brand = data.get("brand")
-
-    models = await get_cached_models(brand, get_models_by_brand)
-
-    keyboard = ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text=m)] for m in models] + [[ADD_MODEL], [BACK]],
-        resize_keyboard=True
-    )
-
-    await state.set_state(SellerStates.model)
-    await message.answer("🚗 Обери модель:", reply_markup=keyboard)
 
 
 # ================= DESCRIPTION =================
@@ -245,12 +216,7 @@ async def back_to_model(message: Message, state: FSMContext):
 async def handle_description(message: Message, state: FSMContext):
     data = await state.get_data()
 
-    description = None if message.text == "Пропустити" else message.text
-
-    seller = await get_or_create_seller(
-        message.from_user.id,
-        message.from_user.username
-    )
+    seller = await get_or_create_seller(message.from_user.id, message.from_user.username)
 
     model_id = await get_model_id(data["brand"], data["model"])
 
@@ -258,9 +224,12 @@ async def handle_description(message: Message, state: FSMContext):
         seller_id=seller["id"],
         model_id=model_id,
         photo_id=data.get("photo_id"),
-        description=description
+        description=message.text
     )
 
-    await message.answer("✅ Авто додано", reply_markup=seller_menu_kb())
+    await message.answer(
+        "✅ Авто додано",
+        reply_markup=seller_menu_kb(is_verified=seller.get("is_verified", False))
+    )
 
     await state.clear()
