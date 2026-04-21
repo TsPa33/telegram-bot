@@ -28,7 +28,7 @@ async def buy_slot(message: Message):
         payment = await liqpay.create_payment(
             amount=99,
             description="Buy 1 car slot",
-            server_url=LIQPAY_CALLBACK_URL
+            server_url=LIQPAY_CALLBACK_URL,
             seller_id=seller["id"]
         )
 
