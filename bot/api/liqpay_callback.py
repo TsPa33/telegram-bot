@@ -46,19 +46,17 @@ def verify_signature(data: str, signature: str) -> bool:
 @router.post("/liqpay/callback")
 async def liqpay_callback(request: Request):
     try:
-        body = await request.json()
+        form = await request.form()
 
-        data = body.get("data")
-        signature = body.get("signature")
+        data = form.get("data")
+        signature = form.get("signature")
 
         if not data or not signature:
             raise HTTPException(status_code=400, detail="Invalid request")
 
-        # 🔐 перевірка підпису
         if not verify_signature(data, signature):
             raise HTTPException(status_code=400, detail="Invalid signature")
 
-        # 🔓 decode
         decoded_data = base64.b64decode(data).decode()
         payload = json.loads(decoded_data)
 
