@@ -13,6 +13,43 @@ async def get_or_create_seller(telegram_id: int, username: str):
     """, telegram_id, username)
 
 
+async def get_seller_by_telegram_id(telegram_id: int):
+    return await fetchrow("""
+        SELECT * FROM sellers WHERE telegram_id = $1
+    """, telegram_id)
+
+
+# ================= LIMITS =================
+
+async def increment_used(seller_id: int):
+    await execute("""
+        UPDATE sellers
+        SET cars_used = cars_used + 1
+        WHERE id = $1
+    """, seller_id)
+
+
+async def add_slot(seller_id: int, slots: int = 1):
+    await execute("""
+        UPDATE sellers
+        SET cars_limit = cars_limit + $2
+        WHERE id = $1
+    """, seller_id, slots)
+
+
+async def has_available_slot(telegram_id: int) -> bool:
+    seller = await fetchrow("""
+        SELECT cars_used, cars_limit
+        FROM sellers
+        WHERE telegram_id = $1
+    """, telegram_id)
+
+    if not seller:
+        return True
+
+    return seller["cars_used"] < seller["cars_limit"]
+
+
 # ================= CAR =================
 
 async def add_seller_car(seller_id: int, model_id: int, photo_id: str, description: str):
