@@ -26,8 +26,9 @@ class LiqPayService:
         self,
         amount: int,
         description: str,
-        server_url: str
-    ):
+        server_url: str,
+        seller_id: int
+        ):
         # 🔹 order_id
         order_id = str(uuid.uuid4())
 
@@ -36,11 +37,11 @@ class LiqPayService:
         cursor = conn.cursor()
 
         cursor.execute(
-            """
-            INSERT INTO payments (order_id, amount, status)
-            VALUES (%s, %s, 'pending')
-            """,
-            (order_id, amount)
+        """
+        INSERT INTO payments (order_id, amount, status, seller_id)
+        VALUES (%s, %s, 'pending', %s)
+        """,
+        (order_id, amount, seller_id)
         )
 
         conn.commit()
