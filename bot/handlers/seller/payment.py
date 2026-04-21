@@ -1,5 +1,3 @@
-import uuid
-
 from aiogram import Router, F
 from aiogram.types import Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
@@ -26,9 +24,8 @@ async def buy_slot(message: Message):
             message.from_user.username
         )
 
-        # 🔹 2. створюємо платіж через сервіс (він сам зробить INSERT)
+        # 🔹 2. створюємо платіж (БЕЗ conn!)
         payment = await liqpay.create_payment(
-            conn=message.bot["db"],  # ⚠️ важливо: підключення до БД
             amount=99,
             description="Buy 1 car slot",
             server_url=LIQPAY_CALLBACK_URL
@@ -46,7 +43,5 @@ async def buy_slot(message: Message):
         )
 
     except Exception as e:
-        # 🔴 щоб бачити помилки
         print("ERROR BUY SLOT:", e)
-
         await message.answer("⚠️ Сталась помилка")
