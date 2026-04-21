@@ -14,7 +14,11 @@ from redis.asyncio import from_url
 from bot.config import BOT_TOKEN
 from bot.handlers import start, seller, buyer, admin, profile
 from bot.database.pool import init_pool
-from bot.database.models import create_tables  # 🔥 ДОДАНО
+from bot.database.models import create_tables
+
+# ✅ NEW
+import uvicorn
+from bot.api.app import app
 
 
 # ================= LOGGING =================
@@ -80,27 +84,23 @@ async def get_storage():
         return MemoryStorage()
 
 
-# ================= RUN BOT =================
+# ================= BOT =================
 
 async def run_bot():
     if not BOT_TOKEN:
         raise ValueError("BOT_TOKEN is not set")
 
-    import os
     print("DB:", os.getenv("DATABASE_URL"))
 
-    # 🔴 1. ІНІЦІАЛІЗАЦІЯ БД
     await init_pool()
-
-    # 🔴 2. СТВОРЕННЯ ТАБЛИЦЬ
     await create_tables()
 
     storage = await get_storage()
 
     dp = Dispatcher(storage=storage)
     bot = Bot(token=BOT_TOKEN)
-    dp.callback_query.middleware(CallbackAnswerMiddleware())
 
+    dp.callback_query.middleware(CallbackAnswerMiddleware())
     dp.errors.register(global_error_handler)
 
     dp.include_router(start.router)
@@ -112,18 +112,31 @@ async def run_bot():
 
     logger.info("🚀 BOT STARTED")
 
-    try:
-        await dp.start_polling(bot)
-    finally:
-        logger.info("🛑 Shutting down bot...")
-        await bot.session.close()
+    await dp.start_polling(bot)
+
+
+# ================= API =================
+
+async def run_api():
+    config = uvicorn.Config(
+        app=app,
+        host="0.0.0.0",
+        port=8000,
+        log_level="info"
+    )
+    server = uvicorn.Server(config)
+    await server.serve()
 
 
 # ================= ENTRY =================
 
 async def main():
     await asyncio.sleep(2)
-    await run_bot()
+
+    await asyncio.gather(
+        run_bot(),
+        run_api()
+    )
 
 
 if __name__ == "__main__":
