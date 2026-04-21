@@ -16,6 +16,7 @@ async def create_tables():
         brand_id INTEGER NOT NULL REFERENCES brands(id) ON DELETE CASCADE
     );
     """)
+
     await execute("""
     CREATE UNIQUE INDEX IF NOT EXISTS uq_models_brand_name
     ON models (brand_id, name);
@@ -29,6 +30,7 @@ async def create_tables():
         status TEXT NOT NULL DEFAULT 'pending'
     );
     """)
+
     await execute("""
     CREATE TABLE IF NOT EXISTS model_requests (
         id SERIAL PRIMARY KEY,
@@ -38,10 +40,12 @@ async def create_tables():
         status TEXT NOT NULL DEFAULT 'pending'
     );
     """)
+
     await execute("""
     CREATE UNIQUE INDEX IF NOT EXISTS uq_brand_requests_user_brand
     ON brand_requests (user_id, brand);
     """)
+
     await execute("""
     CREATE UNIQUE INDEX IF NOT EXISTS uq_model_requests_user_brand_model
     ON model_requests (user_id, brand, model);
@@ -57,6 +61,9 @@ async def create_tables():
     );
     """)
 
+    # === NEW FIELDS ===
+    await execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS cars_limit INTEGER DEFAULT 1;")
+    await execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS cars_used INTEGER DEFAULT 0;")
 
     await execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS shop_name TEXT;")
     await execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS name TEXT;")
