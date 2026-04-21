@@ -54,11 +54,11 @@ async def liqpay_callback(request: Request):
         if not data or not signature:
             raise HTTPException(status_code=400, detail="Invalid request")
 
-        # ✅ перевірка підпису
+        # 🔐 перевірка підпису
         if not verify_signature(data, signature):
             raise HTTPException(status_code=400, detail="Invalid signature")
 
-        # ✅ декодуємо payload
+        # 🔓 decode
         decoded_data = base64.b64decode(data).decode()
         payload = json.loads(decoded_data)
 
@@ -71,7 +71,7 @@ async def liqpay_callback(request: Request):
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        # ================= CHECK CURRENT STATUS =================
+        # ================= CHECK =================
 
         cursor.execute(
             "SELECT status, seller_id FROM payments WHERE order_id = %s",
@@ -84,11 +84,11 @@ async def liqpay_callback(request: Request):
 
         current_status, seller_id = row
 
-        # ❗ захист від дублювання
+        # 🔒 анти-дубль
         if current_status == "success":
             return {"status": "already processed"}
 
-        # ================= UPDATE PAYMENT =================
+        # ================= UPDATE =================
 
         cursor.execute(
             """
@@ -99,7 +99,7 @@ async def liqpay_callback(request: Request):
             (status, order_id)
         )
 
-        # ================= SUCCESS LOGIC =================
+        # ================= SUCCESS =================
 
         if status == "success":
             # ➕ додаємо слот
@@ -112,7 +112,7 @@ async def liqpay_callback(request: Request):
                 (seller_id,)
             )
 
-            # 📩 отримуємо telegram_id
+            # 📩 повідомлення користувачу
             cursor.execute(
                 "SELECT telegram_id FROM sellers WHERE id = %s",
                 (seller_id,)
