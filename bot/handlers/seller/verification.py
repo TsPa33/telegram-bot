@@ -63,18 +63,22 @@ async def receive_verification_photo(message: Message, state: FSMContext):
         photo_id=message.photo[-1].file_id
     )
 
-    # 🔥 повідомлення адміну
-    await message.bot.send_photo(
-        chat_id=ADMIN_ID,
-        photo=message.photo[-1].file_id,
-        caption=(
-            "🔐 <b>Нова заявка на верифікацію</b>\n\n"
-            f"👤 ID: {message.from_user.id}\n"
-            f"📛 @{message.from_user.username or '—'}"
-        ),
-        parse_mode="HTML",
-        reply_markup=verification_request_kb(request_id)
-    )
+    # 🔥 повідомлення всім адмінам
+    for admin_id in ADMIN_IDS:
+        try:
+            await message.bot.send_photo(
+                chat_id=admin_id,
+                photo=message.photo[-1].file_id,
+                caption=(
+                    "🔐 <b>Нова заявка на верифікацію</b>\n\n"
+                    f"👤 ID: {message.from_user.id}\n"
+                    f"📛 @{message.from_user.username or '—'}"
+                ),
+                parse_mode="HTML",
+                reply_markup=verification_request_kb(request_id)
+            )
+        except Exception as e:
+            print(f"ADMIN SEND ERROR: {e}")
 
     await message.answer(
         "✅ Заявка відправлена\n"
