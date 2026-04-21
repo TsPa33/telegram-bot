@@ -29,6 +29,7 @@ async def buy_slot(message: Message):
             amount=99,
             description="Buy 1 car slot",
             server_url=LIQPAY_CALLBACK_URL
+            seller_id=seller["id"]
         )
 
         url = payment["url"]
