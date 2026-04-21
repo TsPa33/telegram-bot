@@ -4,7 +4,6 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 def model_kb(models):
     rows = []
 
-    # список моделей
     for model in models:
         rows.append([
             InlineKeyboardButton(
@@ -12,14 +11,6 @@ def model_kb(models):
                 callback_data=f"buyer:model:{model['id']}"
             )
         ])
-
-    # 🔥 КРИТИЧНО — ЗАВЖДИ ДОДАЄМО
-    rows.append([
-        InlineKeyboardButton(
-            text="➕ Додати модель",
-            callback_data="buyer:add_model"
-        )
-    ])
 
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
@@ -35,15 +26,6 @@ def model_kb_with_back(models):
             )
         ])
 
-    # ➕ модель
-    rows.append([
-        InlineKeyboardButton(
-            text="➕ Додати модель",
-            callback_data="buyer:add_model"
-        )
-    ])
-
-    # ⬅️ назад
     rows.append([
         InlineKeyboardButton(
             text="⬅️ Назад",
