@@ -15,7 +15,8 @@ def seller_main_kb(is_verified: bool = False):
         [KeyboardButton(text="➕ Додати авто")],
         [KeyboardButton(text="📋 Мої авто")],
         [KeyboardButton(text="👤 Профіль")],
-        [KeyboardButton(text="📊 Статистика")]
+        [KeyboardButton(text="📊 Статистика")],
+        [KeyboardButton(text="💳 Купити 1 слот — 99 грн")]
     ])
 
     return ReplyKeyboardMarkup(
