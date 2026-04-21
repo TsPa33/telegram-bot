@@ -2,14 +2,13 @@ import base64
 import json
 import hashlib
 import uuid
+import psycopg2
+import os
 
 
 class LiqPayService:
 
     def __init__(self, public_key: str, private_key: str):
-        if not public_key or not private_key:
-            raise ValueError("LiqPay keys are missing")
-
         self.public_key = public_key
         self.private_key = private_key
         self.api_url = "https://www.liqpay.ua/api/3/checkout"
@@ -20,23 +19,35 @@ class LiqPayService:
             hashlib.sha1(sign_string.encode()).digest()
         ).decode()
 
+    def _get_conn(self):
+        return psycopg2.connect(os.getenv("DATABASE_URL"))
+
     async def create_payment(
         self,
-        conn,
         amount: int,
         description: str,
         server_url: str
     ):
-        # 🔹 1. Генеруємо order_id
+        # 🔹 order_id
         order_id = str(uuid.uuid4())
 
-        # 🔹 2. Запис у БД
-        await conn.execute("""
-            INSERT INTO payments (order_id, amount, status)
-            VALUES ($1, $2, 'pending')
-        """, order_id, amount)
+        # 🔹 DB
+        conn = self._get_conn()
+        cursor = conn.cursor()
 
-        # 🔹 3. Payload для LiqPay
+        cursor.execute(
+            """
+            INSERT INTO payments (order_id, amount, status)
+            VALUES (%s, %s, 'pending')
+            """,
+            (order_id, amount)
+        )
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        # 🔹 LiqPay payload
         payload = {
             "public_key": self.public_key,
             "version": "3",
@@ -46,18 +57,14 @@ class LiqPayService:
             "description": description,
             "order_id": order_id,
             "server_url": server_url,
-            "sandbox": 1  # тест режим
+            "sandbox": 1
         }
 
-        # 🔹 4. Кодування
         json_data = json.dumps(payload)
         data = base64.b64encode(json_data.encode()).decode()
         signature = self._sign(data)
 
-        # 🔹 5. Формуємо URL
-        payment_url = f"{self.api_url}?data={data}&signature={signature}"
-
         return {
-            "url": payment_url,
+            "url": f"{self.api_url}?data={data}&signature={signature}",
             "order_id": order_id
         }
