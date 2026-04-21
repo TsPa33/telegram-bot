@@ -89,9 +89,13 @@ async def select_brand(message: Message, state: FSMContext):
     )
 
     await state.update_data(brand=message.text)
-    await state.set_state(SellerStates.model)
+    await state.clear()
 
-    await message.answer("🚗 Обери модель:", reply_markup=keyboard)
+    await message.answer(
+        "✅ Модель відправлено на модерацію\n"
+        "⏳ Після підтвердження ти зможеш використовувати її",
+        reply_markup=seller_menu_kb()
+    )
 
 
 # ================= ADD BRAND =================
