@@ -20,8 +20,8 @@ async def liqpay_callback(request: Request):
         if not data:
             raise HTTPException(status_code=400, detail="No data")
 
-        # ❗ TEMP: без перевірки підпису
-        # (потім повернемо назад)
+        if not verify_signature(data, signature):
+            raise HTTPException(status_code=400, detail="Invalid signature")
 
         # decode base64
         decoded = base64.b64decode(data).decode()
