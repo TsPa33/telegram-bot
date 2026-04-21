@@ -1,4 +1,4 @@
-from bot.database.base import fetch, execute
+from bot.database.base import fetch, execute, fetchrow
 from bot.database.repositories.request_repo import (
     get_pending_brand_requests,
     get_pending_model_requests,
@@ -32,14 +32,17 @@ async def update_model_request(request_id: int, new_model: str):
 # ================= VERIFICATION =================
 
 async def create_verification_request(seller_id: int, photo_id: str):
-    await execute("""
+    row = await fetchrow("""
         INSERT INTO verification_requests (seller_id, passport_photo_id)
         VALUES ($1, $2)
         ON CONFLICT (seller_id)
         DO UPDATE SET
             passport_photo_id = EXCLUDED.passport_photo_id,
             status = 'pending'
+        RETURNING id
     """, seller_id, photo_id)
+
+    return row["id"]
 
 
 async def get_verification_requests():
@@ -52,8 +55,6 @@ async def get_verification_requests():
 
 
 async def approve_seller(request_id: int):
-    from bot.database.base import fetchrow
-
     row = await fetchrow("""
         SELECT s.telegram_id
         FROM verification_requests vr
@@ -82,8 +83,6 @@ async def approve_seller(request_id: int):
 
 
 async def reject_seller(request_id: int):
-    from bot.database.base import fetchrow
-
     row = await fetchrow("""
         SELECT s.telegram_id
         FROM verification_requests vr
@@ -103,4 +102,3 @@ async def reject_seller(request_id: int):
     """, request_id)
 
     return telegram_id
-
