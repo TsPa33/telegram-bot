@@ -5,7 +5,7 @@ from aiogram.fsm.context import FSMContext
 from bot.database.repositories.seller_repo import get_or_create_seller
 from bot.database.repositories.admin_repo import create_verification_request
 from bot.keyboards.admin_inline import verification_request_kb
-from bot.config import ADMIN_ID
+from bot.config import ADMIN_IDS
 from bot.states.seller_states import SellerStates
 
 router = Router()
