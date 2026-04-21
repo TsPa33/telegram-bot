@@ -1,5 +1,5 @@
 from aiogram import Router, F
-from aiogram.types import Message
+from aiogram.types import CallbackQuery
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from bot.database.repositories.seller_repo import get_or_create_seller
@@ -15,16 +15,18 @@ router = Router()
 liqpay = LiqPayService(LIQPAY_PUBLIC_KEY, LIQPAY_PRIVATE_KEY)
 
 
-@router.message(F.text == "💳 Купити 1 слот — 99 грн")
-async def buy_slot(message: Message):
+@router.callback_query(F.data == "buy_slot")
+async def buy_slot(callback: CallbackQuery):
     try:
-        # 🔹 1. отримуємо продавця
+        await callback.answer()  # ✅ обовʼязково
+
+        # 🔹 продавець
         seller = await get_or_create_seller(
-            message.from_user.id,
-            message.from_user.username
+            callback.from_user.id,
+            callback.from_user.username
         )
 
-        # 🔹 2. створюємо платіж (БЕЗ conn!)
+        # 🔹 платіж
         payment = await liqpay.create_payment(
             amount=99,
             description="Buy 1 car slot",
@@ -33,15 +35,15 @@ async def buy_slot(message: Message):
 
         url = payment["url"]
 
-        # 🔹 3. кнопка оплати
+        # 🔹 кнопка
         kb = InlineKeyboardBuilder()
         kb.button(text="Оплатити", url=url)
 
-        await message.answer(
+        await callback.message.answer(
             "💳 Оплата:",
             reply_markup=kb.as_markup()
         )
 
     except Exception as e:
         print("ERROR BUY SLOT:", e)
-        await message.answer("⚠️ Сталась помилка")
+        await callback.message.answer("⚠️ Сталась помилка")
