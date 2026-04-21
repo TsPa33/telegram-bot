@@ -8,6 +8,8 @@ from bot.keyboards.admin_inline import brand_request_kb, model_request_kb
 from bot.database.repositories.seller_repo import (
     get_or_create_seller,
     add_seller_car,
+    has_available_slot,
+    increment_used
 )
 
 from bot.database.repositories.model_repo import (
@@ -42,6 +44,13 @@ ADD_MODEL = KeyboardButton(text="➕ Додати модель")
 @router.message(F.text == "➕ Додати авто")
 async def add_car_start(message: Message, state: FSMContext):
     if not await check_verified(message, state):
+        return
+
+    # 🔒 CHECK LIMIT BEFORE FSM
+    if not await has_available_slot(message.from_user.id):
+        await message.answer(
+            "❌ Ліміт авто вичерпано\n\n💳 Купіть додатковий слот"
+        )
         return
 
     await state.clear()
@@ -226,6 +235,9 @@ async def handle_description(message: Message, state: FSMContext):
         photo_id=data.get("photo_id"),
         description=message.text
     )
+
+    # 🔒 INCREMENT USED SLOTS
+    await increment_used(seller["id"])
 
     await message.answer(
         "✅ Авто додано",
