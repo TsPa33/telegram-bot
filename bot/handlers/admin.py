@@ -28,11 +28,6 @@ from bot.database.repositories.admin_repo import (
 
 from bot.utils.cache import clear_brands_cache, clear_models_cache
 
-from bot.services.import_service import (
-    parse_seller_file,
-    save_parsed_data
-)
-
 router = Router()
 
 CANCEL = KeyboardButton(text="❌ Скасувати")
@@ -117,7 +112,7 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
     if entity == "brand":
         if action == "ok":
             await approve_brand(obj_id)
-            await clear_brands_cache()
+            clear_brands_cache()  # ❗ FIX
             await callback.message.edit_text("✅ Бренд підтверджено")
 
         elif action == "no":
@@ -133,7 +128,7 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
     elif entity == "model":
         if action == "ok":
             await approve_model(obj_id)
-            await clear_models_cache()
+            clear_models_cache()  # ❗ FIX
             await callback.message.edit_text("✅ Модель підтверджено")
 
         elif action == "no":
@@ -187,7 +182,7 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
 # ================= EDIT BRAND =================
 
 @router.message(EditBrand.waiting_for_new_brand)
-async def edit_brand_save(message: types.Message, state: FSMContext):
+async def edit_brand_save(message: Message, state: FSMContext):
     new_brand = message.text.strip().title()
 
     data = await state.get_data()
@@ -195,7 +190,7 @@ async def edit_brand_save(message: types.Message, state: FSMContext):
 
     await update_brand_request(request_id, new_brand)
     await approve_brand(request_id)
-    await clear_brands_cache()
+    clear_brands_cache()  # ❗ FIX
 
     await message.answer(f"✅ Бренд: {new_brand}")
     await state.clear()
@@ -204,7 +199,7 @@ async def edit_brand_save(message: types.Message, state: FSMContext):
 # ================= EDIT MODEL =================
 
 @router.message(EditModel.waiting_for_new_model)
-async def edit_model_save(message: types.Message, state: FSMContext):
+async def edit_model_save(message: Message, state: FSMContext):
     new_model = message.text.strip().upper()
 
     data = await state.get_data()
@@ -212,7 +207,7 @@ async def edit_model_save(message: types.Message, state: FSMContext):
 
     await update_model_request(request_id, new_model)
     await approve_model(request_id)
-    await clear_models_cache()
+    clear_models_cache()  # ❗ FIX
 
     await message.answer(f"✅ Модель: {new_model}")
     await state.clear()
