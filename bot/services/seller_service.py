@@ -5,6 +5,8 @@ from bot.database.repositories.seller_repo import (
 )
 
 
+# ================= CREATE CAR =================
+
 async def create_car(
     telegram_id: int,
     username: str,
@@ -12,15 +14,18 @@ async def create_car(
     photo_id: str,
     description: str | None
 ):
-    seller_id = await get_or_create_seller(telegram_id, username)
+    # 🔥 ВАЖЛИВО: беремо об'єкт, а не id
+    seller = await get_or_create_seller(telegram_id, username)
 
     await add_seller_car(
-        seller_id=seller_id,
+        seller_id=seller["id"],   # ✅ правильний id
         model_id=model_id,
         photo_id=photo_id,
         description=description
     )
 
+
+# ================= EDIT DESCRIPTION =================
 
 async def edit_car_description(
     car_id: int,
