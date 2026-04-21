@@ -1,6 +1,8 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 
+# ================= BUYER =================
+
 def model_kb(models):
     rows = []
 
@@ -30,6 +32,29 @@ def model_kb_with_back(models):
         InlineKeyboardButton(
             text="⬅️ Назад",
             callback_data="nav:back"
+        )
+    ])
+
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+# ================= SELLER (на майбутнє) =================
+
+def model_kb_seller(models):
+    rows = []
+
+    for model in models:
+        rows.append([
+            InlineKeyboardButton(
+                text=model["name"],
+                callback_data=f"seller:model:{model['id']}"
+            )
+        ])
+
+    rows.append([
+        InlineKeyboardButton(
+            text="➕ Додати модель",
+            callback_data="seller:add_model"
         )
     ])
 
