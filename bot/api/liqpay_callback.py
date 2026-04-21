@@ -47,11 +47,11 @@ async def liqpay_callback(request: Request):
         if not data or not signature:
             raise HTTPException(status_code=400, detail="Invalid request")
 
-        # ✅ перевірка підпису
+        # 🔐 перевірка підпису
         if not verify_signature(data, signature):
             raise HTTPException(status_code=400, detail="Invalid signature")
 
-        # ✅ декодуємо payload
+        # 📦 decode payload
         decoded_data = base64.b64decode(data).decode()
         payload = json.loads(decoded_data)
 
@@ -62,11 +62,28 @@ async def liqpay_callback(request: Request):
         if not order_id:
             raise HTTPException(status_code=400, detail="No order_id")
 
-        # ================= DB UPDATE =================
-
         conn = get_db_connection()
         cursor = conn.cursor()
 
+        # ================= ЗАХИСТ ВІД ДУБЛЯ =================
+        cursor.execute(
+            "SELECT status, seller_id FROM payments WHERE order_id = %s",
+            (order_id,)
+        )
+        result = cursor.fetchone()
+
+        if not result:
+            raise Exception("Payment not found")
+
+        current_status, seller_id = result
+
+        # якщо вже success — нічого не робимо
+        if current_status == "success":
+            cursor.close()
+            conn.close()
+            return {"status": "already_processed"}
+
+        # ================= UPDATE PAYMENT =================
         cursor.execute(
             """
             UPDATE payments
@@ -75,6 +92,17 @@ async def liqpay_callback(request: Request):
             """,
             (status, order_id)
         )
+
+        # ================= БІЗНЕС ЛОГІКА =================
+        if status == "success":
+            cursor.execute(
+                """
+                UPDATE sellers
+                SET cars_limit = cars_limit + 1
+                WHERE id = %s
+                """,
+                (seller_id,)
+            )
 
         conn.commit()
         cursor.close()
