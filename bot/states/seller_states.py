@@ -9,6 +9,8 @@ class SellerStates(StatesGroup):
     new_brand = State()
     photo = State()
     description = State()
+    add_brand = State()
+    add_model = State()
 
     # ================= РЕЄСТРАЦІЯ =================
     reg_name = State()
