@@ -1,18 +1,24 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
 
-def seller_menu_kb():
+def seller_main_kb(is_verified: bool = False):
+    buttons = []
+
+    # 🔴 якщо НЕ верифікований — показуємо зверху
+    if not is_verified:
+        buttons.append([
+            KeyboardButton(text="🔐 Верифікація")
+        ])
+
+    # основні кнопки
+    buttons.extend([
+        [KeyboardButton(text="➕ Додати авто")],
+        [KeyboardButton(text="📋 Мої авто")],
+        [KeyboardButton(text="👤 Профіль")],
+        [KeyboardButton(text="📊 Статистика")]
+    ])
+
     return ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="➕ Додати авто")],
-            [KeyboardButton(text="📋 Мої авто")],
-            [KeyboardButton(text="👤 Профіль")],
-            [KeyboardButton(text="📊 Статистика")],
-            [KeyboardButton(text="🔐 Верифікація")]
-        ],
+        keyboard=buttons,
         resize_keyboard=True
     )
-
-
-def seller_main_kb():
-    return seller_menu_kb()
