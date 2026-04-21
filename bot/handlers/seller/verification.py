@@ -4,6 +4,8 @@ from aiogram.fsm.context import FSMContext
 
 from bot.database.repositories.seller_repo import get_or_create_seller
 from bot.database.repositories.admin_repo import create_verification_request
+from bot.keyboards.admin_inline import verification_request_kb
+from bot.config import ADMIN_ID
 from bot.states.seller_states import SellerStates
 
 router = Router()
@@ -22,7 +24,6 @@ async def check_verified(message: Message, state: FSMContext):
 
     data = await state.get_data()
 
-    # показуємо попередження тільки 1 раз
     if not data.get("verification_warned"):
         await message.answer(
             "🔐 <b>Акаунт не верифікований</b>\n\n"
@@ -34,7 +35,7 @@ async def check_verified(message: Message, state: FSMContext):
     return False
 
 
-# ================= START VERIFICATION =================
+# ================= START =================
 
 @router.message(F.text == "🔐 Верифікація")
 async def start_verification(message: Message, state: FSMContext):
@@ -48,7 +49,7 @@ async def start_verification(message: Message, state: FSMContext):
     )
 
 
-# ================= RECEIVE PASSPORT =================
+# ================= RECEIVE PHOTO =================
 
 @router.message(SellerStates.verification_passport, F.photo)
 async def receive_verification_photo(message: Message, state: FSMContext):
@@ -57,30 +58,29 @@ async def receive_verification_photo(message: Message, state: FSMContext):
         message.from_user.username
     )
 
-    print("SELLER:", seller)
-    print("SELLER_ID:", seller.get("id"))
-    await create_verification_request(
+    request_id = await create_verification_request(
         seller_id=seller["id"],
         photo_id=message.photo[-1].file_id
+    )
+
+    # 🔥 повідомлення адміну
+    await message.bot.send_photo(
+        chat_id=ADMIN_ID,
+        photo=message.photo[-1].file_id,
+        caption=(
+            "🔐 <b>Нова заявка на верифікацію</b>\n\n"
+            f"👤 ID: {message.from_user.id}\n"
+            f"📛 @{message.from_user.username or '—'}"
+        ),
+        parse_mode="HTML",
+        reply_markup=verification_request_kb(request_id)
     )
 
     await message.answer(
         "✅ Заявка відправлена\n"
         "⏳ Очікуй підтвердження адміністратора"
     )
-from bot.config import ADMIN_ID
 
-await message.bot.send_photo(
-    chat_id=ADMIN_ID,
-    photo=message.photo[-1].file_id,
-    caption=(
-        "🔐 <b>Нова заявка на верифікацію</b>\n\n"
-        f"👤 ID: {message.from_user.id}\n"
-        f"📛 @{message.from_user.username or '—'}"
-    ),
-    parse_mode="HTML",
-    reply_markup=verification_request_kb(request_id)  # 👈 ВАЖЛИВО
-)
     await state.clear()
 
 
