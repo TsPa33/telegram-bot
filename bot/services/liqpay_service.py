@@ -7,6 +7,9 @@ import uuid
 class LiqPayService:
 
     def __init__(self, public_key: str, private_key: str):
+        if not public_key or not private_key:
+            raise ValueError("LiqPay keys are missing")
+
         self.public_key = public_key
         self.private_key = private_key
         self.api_url = "https://www.liqpay.ua/api/3/checkout"
@@ -24,16 +27,16 @@ class LiqPayService:
         description: str,
         server_url: str
     ):
-        # 🔹 1. генеруємо order_id
+        # 🔹 1. Генеруємо order_id
         order_id = str(uuid.uuid4())
 
-        # 🔹 2. записуємо в БД (ОСНОВНЕ ЩО У ТЕБЕ НЕ БУЛО)
+        # 🔹 2. Запис у БД
         await conn.execute("""
-            INSERT INTO payments (order_id, status)
-            VALUES ($1, 'pending')
-        """, order_id)
+            INSERT INTO payments (order_id, amount, status)
+            VALUES ($1, $2, 'pending')
+        """, order_id, amount)
 
-        # 🔹 3. формуємо payload
+        # 🔹 3. Payload для LiqPay
         payload = {
             "public_key": self.public_key,
             "version": "3",
@@ -46,12 +49,15 @@ class LiqPayService:
             "sandbox": 1  # тест режим
         }
 
+        # 🔹 4. Кодування
         json_data = json.dumps(payload)
         data = base64.b64encode(json_data.encode()).decode()
         signature = self._sign(data)
 
-        # 🔹 4. повертаємо URL + order_id (ВАЖЛИВО)
+        # 🔹 5. Формуємо URL
+        payment_url = f"{self.api_url}?data={data}&signature={signature}"
+
         return {
-            "url": f"{self.api_url}?data={data}&signature={signature}",
+            "url": payment_url,
             "order_id": order_id
         }
