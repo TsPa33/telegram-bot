@@ -68,7 +68,19 @@ async def receive_verification_photo(message: Message, state: FSMContext):
         "✅ Заявка відправлена\n"
         "⏳ Очікуй підтвердження адміністратора"
     )
+from bot.config import ADMIN_ID
 
+await message.bot.send_photo(
+    chat_id=ADMIN_ID,
+    photo=message.photo[-1].file_id,
+    caption=(
+        "🔐 <b>Нова заявка на верифікацію</b>\n\n"
+        f"👤 ID: {message.from_user.id}\n"
+        f"📛 @{message.from_user.username or '—'}"
+    ),
+    parse_mode="HTML",
+    reply_markup=verification_request_kb(request_id)  # 👈 ВАЖЛИВО
+)
     await state.clear()
 
 
