@@ -18,6 +18,7 @@ from bot.keyboards.brands import brand_kb
 from bot.keyboards.models import model_kb_with_back
 from bot.keyboards.seller_menu import seller_main_kb
 from bot.keyboards.buyer_reply import buyer_reply_kb
+
 router = Router()
 
 DEFAULT_PHOTO = "AgACAgIAAxkBAAIJ6WnZ7zNsTF4dV6Fxbqsye8iRF224AAJfEWsbFN_RSsup93hjz4uMAQADAgADeAADOwQ"
@@ -57,9 +58,21 @@ async def send_card(message, state: FSMContext, new_message=False, user_id: int 
     car_id = car["id"]
 
     viewer_id = user_id or message.chat.id
+
+    # 📊 унікальний перегляд
     await add_unique_car_view(car_id, viewer_id)
 
-    text = format_car_card(car, page, total)
+    # 🔥 ВИЗНАЧАЄМО ВЛАСНИКА
+    is_owner = car.get("seller_id") == viewer_id
+
+    # 🔥 ФОРМУЄМО КАРТКУ З УРАХУВАННЯМ РОЛІ
+    text = format_car_card(
+        car,
+        page,
+        total,
+        is_owner=is_owner
+    )
+
     keyboard = build_card_keyboard(car, page, total)
 
     new_photo = car.get("photo_id") or DEFAULT_PHOTO
@@ -76,11 +89,9 @@ async def send_card(message, state: FSMContext, new_message=False, user_id: int 
         try:
             current_photo = None
 
-            # 📌 отримуємо поточне фото повідомлення
             if message.photo:
                 current_photo = message.photo[-1].file_id
 
-            # 🔥 якщо фото змінилось → edit_media
             if current_photo != new_photo:
                 await message.edit_media(
                     media=InputMediaPhoto(
@@ -91,7 +102,6 @@ async def send_card(message, state: FSMContext, new_message=False, user_id: int 
                     reply_markup=keyboard
                 )
             else:
-                # тільки текст
                 await message.edit_caption(
                     caption=text,
                     reply_markup=keyboard,
@@ -180,10 +190,7 @@ async def noop_handler(callback: CallbackQuery):
 
 @router.callback_query(F.data == "nav:restart")
 async def restart_search(callback: CallbackQuery, state: FSMContext):
-    print("NAV:", callback.data)
-
     await callback.answer()
-
     await state.clear()
 
     brands = await fetch(
@@ -203,8 +210,6 @@ async def restart_search(callback: CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data == "nav:back")
 async def go_back(callback: CallbackQuery, state: FSMContext):
-    print("NAV:", callback.data)
-
     await callback.answer()
 
     data = await state.get_data()
@@ -246,10 +251,7 @@ async def go_back(callback: CallbackQuery, state: FSMContext):
 @router.callback_query(F.data == "nav:seller")
 @router.callback_query(F.data == "nav:garage")
 async def go_seller(callback: CallbackQuery, state: FSMContext):
-    print("NAV:", callback.data)
-
     await callback.answer()
-
     await state.clear()
 
     await callback.message.answer(
