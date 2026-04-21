@@ -46,7 +46,7 @@ async def add_car_start(message: Message, state: FSMContext):
     if not await check_verified(message, state):
         return
 
-    # 🔒 CHECK LIMIT BEFORE FSM
+    # ❗ ЛІМІТ ПЕРЕД FSM
     if not await has_available_slot(message.from_user.id):
         await message.answer(
             "❌ Ліміт авто вичерпано\n\n💳 Купіть додатковий слот"
@@ -236,7 +236,7 @@ async def handle_description(message: Message, state: FSMContext):
         description=message.text
     )
 
-    # 🔒 INCREMENT USED SLOTS
+    # ❗ ІНКРЕМЕНТ ПІСЛЯ СТВОРЕННЯ
     await increment_used(seller["id"])
 
     await message.answer(
