@@ -24,7 +24,8 @@ class LiqPayService:
             "description": description,
             "order_id": order_id,
             "server_url": server_url,
-        }
+            "sandbox": 1  # ← ОСЬ ЦЕ ДОДАЙ
+            }
 
         json_data = json.dumps(payload)
         data = base64.b64encode(json_data.encode()).decode()
