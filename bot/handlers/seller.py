@@ -259,7 +259,7 @@ async def my_cars(message: Message, state: FSMContext):
 
 # ================= PROFILE (FIX) =================
 
-@router.message(F.text.in_(["👤 Профіль", "👤 Мій профіль"]))
+@router.message(F.text == "👤 Профіль (legacy)")
 async def seller_profile(message: Message, state: FSMContext):
 
     if not await check_verified(message, state):
