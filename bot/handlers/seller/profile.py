@@ -13,19 +13,23 @@ from .verification import check_verified
 
 router = Router()
 
-# 🔥 КНОПКИ МЕНЮ (ВАЖЛИВО)
+# 🔥 КНОПКИ МЕНЮ (оновлено)
 MENU_BUTTONS = {
     "➕ Додати авто",
     "📋 Мої авто",
+    "📋 Мій гараж",           # ✅ нове
     "👤 Профіль",
+    "👤 Мій профіль",         # ✅ нове
     "📊 Статистика",
-    "🔐 Верифікація"
+    "🔐 Верифікація",
+    "💳 Пакети послуг",       # ✅ нове
+    "↩️ На головне меню"      # ✅ нове
 }
 
 
 # ================= PROFILE =================
 
-@router.message(F.text == "👤 Профіль")
+@router.message(F.text.in_(["👤 Профіль", "👤 Мій профіль"]))
 async def show_profile(message: Message, state: FSMContext):
 
     seller = await fetchrow("""
