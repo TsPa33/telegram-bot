@@ -34,9 +34,6 @@ async def liqpay_callback(request: Request):
         data = form.get("data")
         signature = form.get("signature")
 
-        print("RAW DATA:", data)
-        print("SIGNATURE:", signature)
-
         if not data:
             raise HTTPException(status_code=400, detail="No data")
 
@@ -49,12 +46,18 @@ async def liqpay_callback(request: Request):
         print("PAYLOAD:", payload)
 
         order_id = payload.get("order_id")
-        status = payload.get("status")
-
-        print("STATUS:", status)
+        raw_status = payload.get("status")
 
         if not order_id:
             raise HTTPException(status_code=400, detail="No order_id")
+
+        # 🔥 НОРМАЛІЗАЦІЯ СТАТУСУ
+        if raw_status in ("success", "sandbox"):
+            status = "success"
+        else:
+            status = "failed"
+
+        print("NORMALIZED STATUS:", status)
 
         conn = await asyncpg.connect(DATABASE_URL)
 
@@ -70,7 +73,11 @@ async def liqpay_callback(request: Request):
 
         print("DB PAYMENT:", payment)
 
-        # 🔹 оновлюємо статус
+        if not payment:
+            await conn.close()
+            return {"ok": True}
+
+        # 🔹 оновлюємо статус (вже нормалізований)
         await conn.execute(
             """
             UPDATE payments
@@ -88,10 +95,9 @@ async def liqpay_callback(request: Request):
             299: 10,
         }
 
-        # 🔥 ВАЖЛИВО: підтримка sandbox
+        # 🔥 ДОДАЄМО ПІДПИСКУ (тільки один раз)
         if (
-            status in ("success", "sandbox")
-            and payment
+            status == "success"
             and payment["status"] != "success"
             and payment["amount"] in slots_map
         ):
