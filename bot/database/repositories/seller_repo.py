@@ -37,7 +37,7 @@ async def get_active_slots(seller_id: int) -> int:
         SELECT COALESCE(SUM(slots), 0)::int AS total
         FROM seller_subscriptions
         WHERE seller_id = $1
-          AND expires_at > NOW()
+          AND expires_at > NOW() - INTERVAL '1 minute'
     """, seller_id)
 
     return row["total"] if row else 0
@@ -59,7 +59,7 @@ async def get_garage_info(seller_id: int):
 
     return {
         "used": used,
-        "available": active,
+        "total": active,           # 🔥 перейменували (було available)
         "free": max(active - used, 0)
     }
 
@@ -73,7 +73,7 @@ async def has_available_slot(telegram_id: int) -> bool:
         return True
 
     info = await get_garage_info(seller["id"])
-    return info["used"] < info["available"]
+    return info["used"] < info["total"]
 
 
 # ================= SUBSCRIPTIONS =================
@@ -95,7 +95,7 @@ async def get_active_subscriptions(seller_id: int):
         SELECT slots, created_at, expires_at
         FROM seller_subscriptions
         WHERE seller_id = $1
-          AND expires_at > NOW()
+          AND expires_at > NOW() - INTERVAL '1 minute'
         ORDER BY created_at DESC
     """, seller_id)
 
@@ -127,7 +127,6 @@ async def add_seller_car(seller_id: int, model_id: int, photo_id: str, descripti
     """, seller_id, model_id, photo_id, description)
 
 
-# 🔥 ВАЖЛИВО: тепер тільки через seller_id (щоб не було багів)
 async def get_seller_cars_by_seller_id(seller_id: int):
     return await fetch("""
         SELECT 
@@ -146,7 +145,6 @@ async def get_seller_cars_by_seller_id(seller_id: int):
     """, seller_id)
 
 
-# ❌ залишаємо для сумісності (але більше не використовувати)
 async def get_seller_cars(telegram_id: int):
     return await fetch("""
         SELECT 
@@ -219,48 +217,3 @@ async def get_seller_rating(telegram_id: int):
         JOIN sellers s ON sc.seller_id = s.id
         WHERE s.telegram_id = $1
     """, telegram_id)
-
-
-# ================= PROFILE =================
-
-async def update_shop_name(seller_id: int, value: str | None):
-    await execute("UPDATE sellers SET shop_name = $1 WHERE id = $2", value, seller_id)
-
-
-async def update_name(seller_id: int, value: str | None):
-    await execute("UPDATE sellers SET name = $1 WHERE id = $2", value, seller_id)
-
-
-async def update_phone(seller_id: int, value: str | None):
-    await execute("UPDATE sellers SET phone = $1 WHERE id = $2", value, seller_id)
-
-
-async def update_website(seller_id: int, value: str | None):
-    await execute("UPDATE sellers SET website = $1 WHERE id = $2", value, seller_id)
-
-
-async def update_city(seller_id: int, value: str | None):
-    await execute("UPDATE sellers SET city = $1 WHERE id = $2", value, seller_id)
-
-
-async def update_description_profile(seller_id: int, value: str | None):
-    await execute("UPDATE sellers SET description = $1 WHERE id = $2", value, seller_id)
-
-
-FIELD_UPDATE_MAP = {
-    "shop_name": update_shop_name,
-    "name": update_name,
-    "phone": update_phone,
-    "website": update_website,
-    "city": update_city,
-    "description": update_description_profile,
-}
-
-
-async def update_seller_field(seller_id: int, field: str, value: str | None):
-    func = FIELD_UPDATE_MAP.get(field)
-
-    if not func:
-        return
-
-    await func(seller_id, value)
