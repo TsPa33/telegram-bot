@@ -3,10 +3,25 @@ import base64
 import json
 import asyncpg
 import os
+import hashlib
+
+from bot.config import LIQPAY_PRIVATE_KEY
 
 router = APIRouter()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
+
+
+def verify_signature(data: str, signature: str | None) -> bool:
+    if not signature or not LIQPAY_PRIVATE_KEY:
+        return False
+
+    sign_string = LIQPAY_PRIVATE_KEY + data + LIQPAY_PRIVATE_KEY
+    expected_signature = base64.b64encode(
+        hashlib.sha1(sign_string.encode()).digest()
+    ).decode()
+
+    return signature == expected_signature
 
 
 @router.post("/liqpay/callback")
@@ -23,7 +38,6 @@ async def liqpay_callback(request: Request):
         if not verify_signature(data, signature):
             raise HTTPException(status_code=400, detail="Invalid signature")
 
-        # decode base64
         decoded = base64.b64decode(data).decode()
         payload = json.loads(decoded)
 
@@ -35,6 +49,17 @@ async def liqpay_callback(request: Request):
 
         conn = await asyncpg.connect(DATABASE_URL)
 
+        # 🔹 отримуємо платіж
+        payment = await conn.fetchrow(
+            """
+            SELECT id, seller_id, amount, status
+            FROM payments
+            WHERE order_id = $1
+            """,
+            order_id
+        )
+
+        # 🔹 оновлюємо статус
         await conn.execute(
             """
             UPDATE payments
@@ -44,6 +69,32 @@ async def liqpay_callback(request: Request):
             status,
             order_id
         )
+
+        # 🔹 мапінг пакетів
+        slots_map = {
+            99: 1,
+            199: 5,
+            299: 10,
+        }
+
+        # 🔥 ДОДАЄМО ПІДПИСКУ (БЕЗ ДУБЛІВ)
+        if (
+            status == "success"
+            and payment
+            and payment["amount"] in slots_map
+        ):
+            await conn.execute(
+                """
+                INSERT INTO seller_subscriptions (seller_id, slots, expires_at, payment_id)
+                SELECT $1, $2, NOW() + INTERVAL '30 days', $3
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM seller_subscriptions WHERE payment_id = $3
+                )
+                """,
+                payment["seller_id"],
+                slots_map[payment["amount"]],
+                payment["id"]
+            )
 
         await conn.close()
 
