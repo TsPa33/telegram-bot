@@ -48,9 +48,7 @@ async def add_car_start(message: Message, state: FSMContext):
 
     # ❗ ЛІМІТ ПЕРЕД FSM
     if not await has_available_slot(message.from_user.id):
-        await message.answer(
-            "❌ Ліміт авто вичерпано\n\n💳 Купіть додатковий слот"
-        )
+        await message.answer("❌ Немає доступних місць")
         return
 
     await state.clear()

@@ -8,7 +8,10 @@ from bot.database.repositories.car_repo import (
 )
 
 from bot.database.repositories.seller_repo import (
-    delete_car
+    delete_car,
+    get_or_create_seller,
+    get_active_slots,
+    get_active_subscriptions,
 )
 
 from bot.keyboards.seller_inline import (
@@ -27,13 +30,48 @@ router = Router()
 
 @router.message(F.text.in_(["📋 Мої авто", "📋 Мій гараж"]))
 async def my_cars(message: Message):
+    seller = await get_or_create_seller(
+        message.from_user.id,
+        message.from_user.username
+    )
     cars = await get_seller_cars(message.from_user.id)
+    available_slots = await get_active_slots(seller["id"])
+    active_subscriptions = await get_active_subscriptions(seller["id"])
+    used_slots = len(cars)
 
     if not cars:
-        await message.answer("😕 У тебе ще немає авто")
+        text = (
+            "😕 У тебе ще немає авто\n\n"
+            f"🚗 Авто: {used_slots} / {available_slots}"
+        )
+
+        if active_subscriptions:
+            text += "\n\n📦 <b>Активні підписки:</b>\n"
+            for item in active_subscriptions:
+                text += (
+                    f"\nТариф {item['slots']} авто\n"
+                    f"додано: {item['created_at'].strftime('%d.%m.%Y')}\n"
+                    f"діє до: {item['expires_at'].strftime('%d.%m.%Y')}\n"
+                )
+
+        await message.answer(text, parse_mode="HTML")
         return
 
-    text = "📋 <b>Твої авто:</b>\n\n"
+    text = (
+        "📋 <b>Твої авто:</b>\n\n"
+        f"🚗 Авто: {used_slots} / {available_slots}\n"
+    )
+
+    if active_subscriptions:
+        text += "\n📦 <b>Активні підписки:</b>\n"
+        for item in active_subscriptions:
+            text += (
+                f"\nТариф {item['slots']} авто\n"
+                f"додано: {item['created_at'].strftime('%d.%m.%Y')}\n"
+                f"діє до: {item['expires_at'].strftime('%d.%m.%Y')}\n"
+            )
+
+    text += "\n"
 
     for car in cars:
         text += (

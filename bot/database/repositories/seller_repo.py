@@ -4,13 +4,26 @@ from bot.database.base import fetchrow, execute, fetch
 # ================= SELLER =================
 
 async def get_or_create_seller(telegram_id: int, username: str):
-    return await fetchrow("""
+    seller = await fetchrow("""
         INSERT INTO sellers (telegram_id, username)
         VALUES ($1, $2)
         ON CONFLICT (telegram_id)
         DO UPDATE SET username = COALESCE(EXCLUDED.username, sellers.username)
         RETURNING *
     """, telegram_id, username)
+
+    await execute(
+        """
+        INSERT INTO seller_subscriptions (seller_id, slots, expires_at)
+        SELECT $1, 1, NOW() + INTERVAL '30 days'
+        WHERE NOT EXISTS (
+            SELECT 1 FROM seller_subscriptions WHERE seller_id = $1
+        )
+        """,
+        seller["id"],
+    )
+
+    return seller
 
 
 async def get_seller_by_telegram_id(telegram_id: int):
@@ -39,7 +52,7 @@ async def add_slot(seller_id: int, slots: int = 1):
 
 async def has_available_slot(telegram_id: int) -> bool:
     seller = await fetchrow("""
-        SELECT cars_used, cars_limit
+        SELECT id
         FROM sellers
         WHERE telegram_id = $1
     """, telegram_id)
@@ -47,7 +60,66 @@ async def has_available_slot(telegram_id: int) -> bool:
     if not seller:
         return True
 
-    return seller["cars_used"] < seller["cars_limit"]
+    available_slots = await get_active_slots(seller["id"])
+
+    used_slots_row = await fetchrow(
+        """
+        SELECT COUNT(*)::int AS used_slots
+        FROM seller_cars
+        WHERE seller_id = $1
+        """,
+        seller["id"],
+    )
+    used_slots = used_slots_row["used_slots"] if used_slots_row else 0
+
+    return used_slots < available_slots
+
+
+async def get_active_slots(seller_id: int) -> int:
+    row = await fetchrow(
+        """
+        SELECT COALESCE(SUM(slots), 0)::int AS available_slots
+        FROM seller_subscriptions
+        WHERE seller_id = $1
+          AND expires_at > NOW()
+        """,
+        seller_id,
+    )
+    return row["available_slots"] if row else 0
+
+
+async def add_subscription(
+    seller_id: int,
+    slots: int,
+    expires_at,
+    payment_id: int | None = None,
+):
+    await execute(
+        """
+        INSERT INTO seller_subscriptions (seller_id, slots, expires_at, payment_id)
+        VALUES ($1, $2, $3, $4)
+        """,
+        seller_id,
+        slots,
+        expires_at,
+        payment_id,
+    )
+
+
+async def get_active_subscriptions(seller_id: int):
+    return await fetch(
+        """
+        SELECT
+            slots,
+            created_at,
+            expires_at
+        FROM seller_subscriptions
+        WHERE seller_id = $1
+          AND expires_at > NOW()
+        ORDER BY created_at DESC
+        """,
+        seller_id,
+    )
 
 
 # ================= CAR =================
