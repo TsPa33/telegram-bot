@@ -12,7 +12,7 @@ async def get_or_create_seller(telegram_id: int, username: str):
         RETURNING *
     """, telegram_id, username)
 
-    # 🔥 starter subscription (1 слот / 30 днів)
+    # 🔥 стартовий пакет (1 слот / 30 днів)
     await execute("""
         INSERT INTO seller_subscriptions (seller_id, slots, expires_at)
         SELECT $1, 1, NOW() + INTERVAL '30 days'
@@ -53,7 +53,6 @@ async def get_used_slots(seller_id: int) -> int:
     return row["total"] if row else 0
 
 
-# 🔥 НОВЕ: готова агрегована інфа (для UI)
 async def get_garage_info(seller_id: int):
     active = await get_active_slots(seller_id)
     used = await get_used_slots(seller_id)
@@ -85,29 +84,20 @@ async def add_subscription(
     expires_at,
     payment_id: int | None = None,
 ):
-    await execute(
-        """
+    await execute("""
         INSERT INTO seller_subscriptions (seller_id, slots, expires_at, payment_id)
         VALUES ($1, $2, $3, $4)
-        """,
-        seller_id,
-        slots,
-        expires_at,
-        payment_id,
-    )
+    """, seller_id, slots, expires_at, payment_id)
 
 
 async def get_active_subscriptions(seller_id: int):
-    return await fetch(
-        """
+    return await fetch("""
         SELECT slots, created_at, expires_at
         FROM seller_subscriptions
         WHERE seller_id = $1
           AND expires_at > NOW()
         ORDER BY created_at DESC
-        """,
-        seller_id,
-    )
+    """, seller_id)
 
 
 async def get_subscription_history(seller_id: int):
@@ -137,6 +127,26 @@ async def add_seller_car(seller_id: int, model_id: int, photo_id: str, descripti
     """, seller_id, model_id, photo_id, description)
 
 
+# 🔥 ВАЖЛИВО: тепер тільки через seller_id (щоб не було багів)
+async def get_seller_cars_by_seller_id(seller_id: int):
+    return await fetch("""
+        SELECT 
+            sc.id,
+            m.name AS model,
+            b.name AS brand,
+            sc.description,
+            sc.views,
+            sc.phone_clicks,
+            sc.site_clicks
+        FROM seller_cars sc
+        JOIN models m ON sc.model_id = m.id
+        JOIN brands b ON m.brand_id = b.id
+        WHERE sc.seller_id = $1
+        ORDER BY sc.id DESC
+    """, seller_id)
+
+
+# ❌ залишаємо для сумісності (але більше не використовувати)
 async def get_seller_cars(telegram_id: int):
     return await fetch("""
         SELECT 
