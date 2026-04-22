@@ -37,7 +37,7 @@ async def get_active_slots(seller_id: int) -> int:
         SELECT COALESCE(SUM(slots), 0)::int AS total
         FROM seller_subscriptions
         WHERE seller_id = $1
-          AND expires_at > NOW() - INTERVAL '1 minute'
+          AND expires_at > NOW()
     """, seller_id)
 
     return row["total"] if row else 0
@@ -95,7 +95,7 @@ async def get_active_subscriptions(seller_id: int):
         SELECT slots, created_at, expires_at
         FROM seller_subscriptions
         WHERE seller_id = $1
-          AND expires_at > NOW() - INTERVAL '1 minute'
+          AND expires_at > NOW()
         ORDER BY created_at DESC
     """, seller_id)
 
