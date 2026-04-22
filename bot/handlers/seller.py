@@ -236,9 +236,9 @@ async def save_car(message: Message, state: FSMContext):
     await state.clear()
 
 
-# ================= MY CARS =================
+# ================= MY CARS (FIX) =================
 
-@router.message(F.text == "📋 Мої авто")
+@router.message(F.text.in_(["📋 Мої авто", "📋 Мій гараж"]))
 async def my_cars(message: Message, state: FSMContext):
 
     if not await check_verified(message, state):
@@ -257,9 +257,9 @@ async def my_cars(message: Message, state: FSMContext):
     )
 
 
-# ================= PROFILE =================
+# ================= PROFILE (FIX) =================
 
-@router.message(F.text == "👤 Профіль")
+@router.message(F.text.in_(["👤 Профіль", "👤 Мій профіль"]))
 async def seller_profile(message: Message, state: FSMContext):
 
     if not await check_verified(message, state):
