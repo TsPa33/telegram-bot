@@ -34,7 +34,6 @@ async def my_cars(message: Message):
 
     seller_id = seller["id"]
 
-    # 🔥 ВСЕ через seller_id (важливо)
     cars = await get_seller_cars_by_seller_id(seller_id)
     garage = await get_garage_info(seller_id)
     subs = await get_active_subscriptions(seller_id)
@@ -43,13 +42,13 @@ async def my_cars(message: Message):
 
     # ===== ГАРАЖ =====
     text += (
-        f"🚗 <b>Авто:</b> {garage['used']} / {garage['available']}\n"
-        f"📦 <b>Вільно місць:</b> {garage['free']}\n\n"
+        f"🚗 <b>Авто:</b> {garage['used']} / {garage['total']}\n"
+        f" <b>Вільно місць:</b> {garage['free']}\n\n"
     )
 
     # ===== ПІДПИСКИ =====
     if subs:
-        text += "📦 <b>Активні підписки:</b>\n\n"
+        text += " <b>Активні підписки:</b>\n\n"
 
         for sub in subs:
             text += (
@@ -82,86 +81,3 @@ async def my_cars(message: Message):
         reply_markup=cars_list_kb(cars),
         parse_mode="HTML"
     )
-
-
-# ================= OPEN CAR =================
-
-@router.callback_query(F.data.startswith("car:"))
-async def open_car(callback: CallbackQuery):
-    try:
-        car_id = int(callback.data.split(":", 1)[1])
-    except Exception:
-        await callback.answer("Помилка")
-        return
-
-    car = await get_car_by_id(car_id)
-
-    if not car:
-        await callback.answer("Не знайдено")
-        return
-
-    text = format_car_card(car)
-
-    stats = (
-        f"\n\n📊 <b>Статистика:</b>\n"
-        f"👁 Перегляди: {car.get('views', 0)}\n"
-        f"📞 Дзвінки: {car.get('phone_clicks', 0)}\n"
-        f"🌐 Переходи: {car.get('site_clicks', 0)}"
-    )
-
-    text += stats
-
-    photo_id = car.get("photo_id")
-
-    if photo_id:
-        await callback.message.answer_photo(
-            photo=photo_id,
-            caption=text,
-            reply_markup=seller_card_actions_kb(car_id),
-            parse_mode="HTML"
-        )
-    else:
-        await callback.message.answer(
-            text,
-            reply_markup=seller_card_actions_kb(car_id),
-            parse_mode="HTML"
-        )
-
-    await callback.answer()
-
-
-# ================= EDIT CAR =================
-
-@router.callback_query(F.data.startswith("car_edit:"))
-async def edit_car(callback: CallbackQuery, state: FSMContext):
-    try:
-        car_id = int(callback.data.split(":", 1)[1])
-    except Exception:
-        await callback.answer("Помилка")
-        return
-
-    await state.update_data(car_id=car_id)
-    await state.set_state(SellerStates.description)
-
-    await callback.message.answer(
-        "✏️ Введи новий опис\n\n"
-        "⚠️ Поки доступно тільки редагування опису"
-    )
-
-    await callback.answer()
-
-
-# ================= DELETE CAR =================
-
-@router.callback_query(F.data.startswith("delete:"))
-async def delete_car_handler(callback: CallbackQuery):
-    try:
-        car_id = int(callback.data.split(":", 1)[1])
-    except Exception:
-        await callback.answer("Помилка")
-        return
-
-    await delete_car(car_id, callback.from_user.id)
-
-    await callback.message.answer("🗑 Авто видалено")
-    await callback.answer()
