@@ -63,12 +63,11 @@ async def legacy_role_callbacks(callback: CallbackQuery, state: FSMContext):
 
 # ================= ADMIN =================
 
-@router.callback_query(F.data == "admin_panel")
+@router.callback_query(F.data == "nav:admin")  # ✅ FIX
 async def open_admin(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     await state.set_state(None)
 
-    # 🔒 ВАЖЛИВО: заміни на свій Telegram ID
     ADMIN_IDS = [6206952389]
 
     if callback.from_user.id not in ADMIN_IDS:
