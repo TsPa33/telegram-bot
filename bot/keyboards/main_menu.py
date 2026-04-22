@@ -9,20 +9,40 @@ async def main_menu_kb(user_id: int) -> InlineKeyboardMarkup:
 
     buttons: list[list[InlineKeyboardButton]] = []
 
-    if not seller:
+    # ================= ROLES =================
+
+    # покупець доступний завжди
+    buttons.append([
+        InlineKeyboardButton(
+            text="🚗 Покупець",
+            callback_data="role:buyer"
+        )
+    ])
+
+    # продавець (якщо вже продавець або хоче ним стати)
+    if seller:
         buttons.append([
-            InlineKeyboardButton(text="🚗 Шукати розборку", callback_data="buyer:find"),
-            InlineKeyboardButton(text="🏪 Стати продавцем", callback_data="nav:seller"),
+            InlineKeyboardButton(
+                text="🏪 Продавець",
+                callback_data="role:seller"
+            )
         ])
     else:
         buttons.append([
-            InlineKeyboardButton(text="🏪 Мій гараж", callback_data="nav:garage"),
-            InlineKeyboardButton(text="🚗 Знайти розборку", callback_data="buyer:find"),
+            InlineKeyboardButton(
+                text="🏪 Стати продавцем",
+                callback_data="role:seller"
+            )
         ])
+
+    # ================= ADMIN =================
 
     if admin:
         buttons.append([
-            InlineKeyboardButton(text="⚙️ Панель адміністратора", callback_data="nav:admin")
+            InlineKeyboardButton(
+                text="⚙️ Панель адміністратора",
+                callback_data="nav:admin"
+            )
         ])
 
     return InlineKeyboardMarkup(inline_keyboard=buttons)
