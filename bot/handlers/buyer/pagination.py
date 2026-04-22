@@ -40,7 +40,6 @@ async def send_card(message, state: FSMContext, new_message=False, user_id: int 
         await message.answer("⚠️ Сесія втрачена. Почни заново: /find")
         return
 
-    # 🔒 захист
     if page < 1:
         page = 1
     if page > total:
@@ -59,13 +58,10 @@ async def send_card(message, state: FSMContext, new_message=False, user_id: int 
 
     viewer_id = user_id or message.chat.id
 
-    # 📊 унікальний перегляд
     await add_unique_car_view(car_id, viewer_id)
 
-    # 🔥 ВИЗНАЧАЄМО ВЛАСНИКА
     is_owner = car.get("seller_id") == viewer_id
 
-    # 🔥 ФОРМУЄМО КАРТКУ З УРАХУВАННЯМ РОЛІ
     text = format_car_card(
         car,
         page,
@@ -208,24 +204,19 @@ async def restart_search(callback: CallbackQuery, state: FSMContext):
     )
 
 
+# ================= BACK (FIXED) =================
+
 @router.callback_query(F.data == "nav:back")
 async def go_back(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
     data = await state.get_data()
 
-    if "model_id" in data and "brand_id" in data:
-        models = await fetch(
-            "SELECT id, name FROM models WHERE brand_id = $1 ORDER BY name",
-            data["brand_id"]
-        )
+    # ✅ FIX: очищаємо model_id щоб не застрягати в моделях
+    if "model_id" in data:
+        await state.update_data(model_id=None)
 
-        await callback.message.answer(
-            "🚘 Обери модель",
-            reply_markup=model_kb_with_back(models)
-        )
-        return
-
+    # 🔁 повертаємо до брендів
     if "brand_id" in data:
         brands = await fetch(
             "SELECT id, name FROM brands ORDER BY name"
@@ -237,6 +228,7 @@ async def go_back(callback: CallbackQuery, state: FSMContext):
         )
         return
 
+    # fallback
     await callback.message.answer(
         "🏠 <b>Головне меню покупця</b>\n\n"
         "👤 Профіль\n"
@@ -247,6 +239,8 @@ async def go_back(callback: CallbackQuery, state: FSMContext):
         reply_markup=buyer_home_kb(),
     )
 
+
+# ================= SELLER =================
 
 @router.callback_query(F.data == "nav:seller")
 @router.callback_query(F.data == "nav:garage")
