@@ -9,21 +9,21 @@ from bot.database.repositories.seller_repo import (
 )
 
 from bot.states.seller_states import SellerStates
+from bot.keyboards.seller_inline import profile_edit_kb  # ✅ повертаємо кнопки
 from .verification import check_verified
 
 router = Router()
 
-# 🔥 КНОПКИ МЕНЮ (оновлено)
 MENU_BUTTONS = {
     "➕ Додати авто",
     "📋 Мої авто",
-    "📋 Мій гараж",           # ✅ нове
+    "📋 Мій гараж",
     "👤 Профіль",
-    "👤 Мій профіль",         # ✅ нове
+    "👤 Мій профіль",
     "📊 Статистика",
     "🔐 Верифікація",
-    "💳 Пакети послуг",       # ✅ нове
-    "↩️ На головне меню"      # ✅ нове
+    "💳 Пакети послуг",
+    "↩️ На головне меню"
 }
 
 
@@ -55,17 +55,30 @@ async def show_profile(message: Message, state: FSMContext):
 
     verified = "✅ Верифікований" if seller["is_verified"] else "⚠️ Не верифікований"
 
+    # ✅ НОРМАЛЬНИЙ ФОРМАТ
     text = (
-        f"👤 <b>Профіль продавця</b>\n\n"
-        f"🏪 {seller.get('shop_name') or '-'}\n"
+        "👤 <b>Профіль продавця</b>\n"
+        "━━━━━━━━━━━━━━━━━━\n\n"
+
+        f"🏪 <b>{seller.get('shop_name') or '-'}</b>\n"
+        "━━━━━━━━━━━━━━━━━━\n\n"
+
         f"👤 {seller.get('name') or '-'}\n"
+        "━━━━━━━━━━━━━━━━━━\n\n"
+
         f"📞 {seller.get('phone') or '-'}\n"
         f"🌐 {seller.get('website') or '-'}\n"
-        f"📍 {seller.get('city') or '-'}\n\n"
+        f"📍 {seller.get('city') or '-'}\n"
+        "━━━━━━━━━━━━━━━━━━\n\n"
+
         f"{verified}"
     )
 
-    await message.answer(text, parse_mode="HTML")
+    await message.answer(
+        text,
+        reply_markup=profile_edit_kb(),  # ✅ кнопки редагування
+        parse_mode="HTML"
+    )
 
 
 # ================= 📊 DASHBOARD =================
@@ -109,7 +122,7 @@ async def edit_profile(message: Message, state: FSMContext):
     await message.answer("👤 Введи імʼя (або '-'):")
 
 
-# ================= FSM HANDLERS =================
+# ================= FSM =================
 
 @router.message(SellerStates.reg_name)
 async def set_name(message: Message, state: FSMContext):
