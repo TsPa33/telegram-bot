@@ -101,3 +101,21 @@ async def create_tables():
     await execute("CREATE INDEX IF NOT EXISTS idx_status ON seller_cars(status);")
     await execute("CREATE INDEX IF NOT EXISTS idx_seller_id ON seller_cars(seller_id);")
     await execute("CREATE INDEX IF NOT EXISTS idx_brand_id ON models(brand_id);")
+
+    await execute("""
+    CREATE TABLE IF NOT EXISTS seller_subscriptions (
+        id SERIAL PRIMARY KEY,
+        seller_id INTEGER NOT NULL REFERENCES sellers(id) ON DELETE CASCADE,
+        slots INTEGER NOT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        expires_at TIMESTAMP NOT NULL,
+        payment_id INTEGER REFERENCES payments(id) ON DELETE SET NULL
+    );
+    """)
+
+    await execute(
+        "CREATE INDEX IF NOT EXISTS idx_seller_subscriptions_seller_id ON seller_subscriptions(seller_id);"
+    )
+    await execute(
+        "CREATE INDEX IF NOT EXISTS idx_seller_subscriptions_expires_at ON seller_subscriptions(expires_at);"
+    )

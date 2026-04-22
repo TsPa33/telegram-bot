@@ -15,7 +15,8 @@ router = Router()
 liqpay = LiqPayService(LIQPAY_PUBLIC_KEY, LIQPAY_PRIVATE_KEY)
 
 
-# 📦 ПАКЕТИ
+# ================= ПАКЕТИ =================
+
 PACKAGES = {
     "1": {"slots": 1, "amount": 99},
     "5": {"slots": 5, "amount": 199},
@@ -26,31 +27,37 @@ PACKAGES = {
 # ================= CORE PAYMENT =================
 
 async def _create_package_payment(message: Message, package_key: str):
-    package = PACKAGES[package_key]
+    try:
+        package = PACKAGES[package_key]
 
-    seller = await get_or_create_seller(
-        message.from_user.id,
-        message.from_user.username
-    )
+        seller = await get_or_create_seller(
+            message.from_user.id,
+            message.from_user.username
+        )
 
-    payment = await liqpay.create_payment(
-        amount=package["amount"],
-        description=f"Buy {package['slots']} car slot(s)",
-        server_url=LIQPAY_CALLBACK_URL,
-        seller_id=seller["id"]
-    )
+        payment = await liqpay.create_payment(
+            amount=package["amount"],
+            description=f"{package['slots']} car slot(s)",
+            server_url=LIQPAY_CALLBACK_URL,
+            seller_id=seller["id"]
+        )
 
-    url = payment["url"]
+        url = payment["url"]
 
-    kb = InlineKeyboardBuilder()
-    kb.button(text="💳 Оплатити", url=url)
+        kb = InlineKeyboardBuilder()
+        kb.button(text="💳 Оплатити", url=url)
 
-    await message.answer(
-        f"💳 <b>Оплата</b>\n\n"
-        f"🔹 {package['slots']} авто — {package['amount']} грн",
-        parse_mode="HTML",
-        reply_markup=kb.as_markup()
-    )
+        await message.answer(
+            f"💳 <b>Оплата</b>\n\n"
+            f"🔹 {package['slots']} авто — {package['amount']} грн\n\n"
+            f"Натисніть кнопку нижче для оплати:",
+            parse_mode="HTML",
+            reply_markup=kb.as_markup()
+        )
+
+    except Exception as e:
+        print("ERROR BUY PACKAGE:", e)
+        await message.answer("⚠️ Сталась помилка при створенні платежу")
 
 
 # ================= СТАРА КНОПКА =================
@@ -60,7 +67,7 @@ async def buy_one_slot(message: Message):
     await _create_package_payment(message, "1")
 
 
-# ================= НОВЕ МЕНЮ ПАКЕТІВ =================
+# ================= МЕНЮ ПАКЕТІВ =================
 
 @router.message(F.text == "💳 Пакети послуг")
 async def show_packages(message: Message):

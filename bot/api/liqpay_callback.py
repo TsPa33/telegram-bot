@@ -77,10 +77,11 @@ async def liqpay_callback(request: Request):
             299: 10,
         }
 
-        # 🔥 ДОДАЄМО ПІДПИСКУ (БЕЗ ДУБЛІВ)
+        # 🔥 ДОДАЄМО ПІДПИСКУ (ЗАХИСТ ВІД ДУБЛІВ)
         if (
             status == "success"
             and payment
+            and payment["status"] != "success"  # ← важливо
             and payment["amount"] in slots_map
         ):
             await conn.execute(

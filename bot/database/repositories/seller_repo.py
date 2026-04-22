@@ -34,7 +34,7 @@ async def get_seller_by_telegram_id(telegram_id: int):
 
 async def get_active_slots(seller_id: int) -> int:
     row = await fetchrow("""
-        SELECT COALESCE(SUM(slots), 0) AS total
+        SELECT COALESCE(SUM(slots), 0)::int AS total
         FROM seller_subscriptions
         WHERE seller_id = $1
           AND expires_at > NOW()
@@ -45,7 +45,7 @@ async def get_active_slots(seller_id: int) -> int:
 
 async def get_used_slots(seller_id: int) -> int:
     row = await fetchrow("""
-        SELECT COUNT(*) AS total
+        SELECT COUNT(*)::int AS total
         FROM seller_cars
         WHERE seller_id = $1
     """, seller_id)
@@ -67,6 +67,39 @@ async def has_available_slot(telegram_id: int) -> bool:
     used = await get_used_slots(seller_id)
 
     return used < available
+
+
+# ================= SUBSCRIPTIONS =================
+
+async def add_subscription(
+    seller_id: int,
+    slots: int,
+    expires_at,
+    payment_id: int | None = None,
+):
+    await execute(
+        """
+        INSERT INTO seller_subscriptions (seller_id, slots, expires_at, payment_id)
+        VALUES ($1, $2, $3, $4)
+        """,
+        seller_id,
+        slots,
+        expires_at,
+        payment_id,
+    )
+
+
+async def get_active_subscriptions(seller_id: int):
+    return await fetch(
+        """
+        SELECT slots, created_at, expires_at
+        FROM seller_subscriptions
+        WHERE seller_id = $1
+          AND expires_at > NOW()
+        ORDER BY created_at DESC
+        """,
+        seller_id,
+    )
 
 
 async def get_subscription_history(seller_id: int):
