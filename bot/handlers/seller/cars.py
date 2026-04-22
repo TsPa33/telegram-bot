@@ -25,7 +25,7 @@ router = Router()
 
 # ================= MY CARS =================
 
-@router.message(F.text == "📋 Мої авто")
+@router.message(F.text.in_(["📋 Мої авто", "📋 Мій гараж"]))
 async def my_cars(message: Message):
     cars = await get_seller_cars(message.from_user.id)
 
@@ -65,7 +65,6 @@ async def open_car(callback: CallbackQuery):
         await callback.answer("Не знайдено")
         return
 
-    # 🔥 ВАЖЛИВО: без параметрів
     text = format_car_card(car)
 
     stats = (
