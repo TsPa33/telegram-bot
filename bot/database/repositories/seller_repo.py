@@ -4,13 +4,24 @@ from bot.database.base import fetchrow, execute, fetch
 # ================= SELLER =================
 
 async def get_or_create_seller(telegram_id: int, username: str):
-    return await fetchrow("""
+    seller = await fetchrow("""
         INSERT INTO sellers (telegram_id, username)
         VALUES ($1, $2)
         ON CONFLICT (telegram_id)
         DO UPDATE SET username = COALESCE(EXCLUDED.username, sellers.username)
         RETURNING *
     """, telegram_id, username)
+
+    # 🔥 starter subscription (1 слот / 30 днів)
+    await execute("""
+        INSERT INTO seller_subscriptions (seller_id, slots, expires_at)
+        SELECT $1, 1, NOW() + INTERVAL '30 days'
+        WHERE NOT EXISTS (
+            SELECT 1 FROM seller_subscriptions WHERE seller_id = $1
+        )
+    """, seller["id"])
+
+    return seller
 
 
 async def get_seller_by_telegram_id(telegram_id: int):
@@ -19,35 +30,52 @@ async def get_seller_by_telegram_id(telegram_id: int):
     """, telegram_id)
 
 
-# ================= LIMITS =================
+# ================= SLOTS =================
 
-async def increment_used(seller_id: int):
-    await execute("""
-        UPDATE sellers
-        SET cars_used = cars_used + 1
-        WHERE id = $1
+async def get_active_slots(seller_id: int) -> int:
+    row = await fetchrow("""
+        SELECT COALESCE(SUM(slots), 0) AS total
+        FROM seller_subscriptions
+        WHERE seller_id = $1
+          AND expires_at > NOW()
     """, seller_id)
 
+    return row["total"] if row else 0
 
-async def add_slot(seller_id: int, slots: int = 1):
-    await execute("""
-        UPDATE sellers
-        SET cars_limit = cars_limit + $2
-        WHERE id = $1
-    """, seller_id, slots)
+
+async def get_used_slots(seller_id: int) -> int:
+    row = await fetchrow("""
+        SELECT COUNT(*) AS total
+        FROM seller_cars
+        WHERE seller_id = $1
+    """, seller_id)
+
+    return row["total"] if row else 0
 
 
 async def has_available_slot(telegram_id: int) -> bool:
     seller = await fetchrow("""
-        SELECT cars_used, cars_limit
-        FROM sellers
-        WHERE telegram_id = $1
+        SELECT id FROM sellers WHERE telegram_id = $1
     """, telegram_id)
 
     if not seller:
         return True
 
-    return seller["cars_used"] < seller["cars_limit"]
+    seller_id = seller["id"]
+
+    available = await get_active_slots(seller_id)
+    used = await get_used_slots(seller_id)
+
+    return used < available
+
+
+async def get_subscription_history(seller_id: int):
+    return await fetch("""
+        SELECT slots, created_at, expires_at
+        FROM seller_subscriptions
+        WHERE seller_id = $1
+        ORDER BY created_at DESC
+    """, seller_id)
 
 
 # ================= CAR =================
