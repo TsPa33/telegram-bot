@@ -38,7 +38,6 @@ async def liqpay_callback(request: Request):
         if not verify_signature(data, signature):
             raise HTTPException(status_code=400, detail="Invalid signature")
 
-        # decode base64
         decoded = base64.b64decode(data).decode()
         payload = json.loads(decoded)
 
@@ -50,6 +49,7 @@ async def liqpay_callback(request: Request):
 
         conn = await asyncpg.connect(DATABASE_URL)
 
+        # 🔹 отримуємо платіж
         payment = await conn.fetchrow(
             """
             SELECT id, seller_id, amount, status
@@ -59,6 +59,7 @@ async def liqpay_callback(request: Request):
             order_id
         )
 
+        # 🔹 оновлюємо статус
         await conn.execute(
             """
             UPDATE payments
@@ -69,22 +70,27 @@ async def liqpay_callback(request: Request):
             order_id
         )
 
+        # 🔹 мапінг пакетів
         slots_map = {
             99: 1,
             199: 5,
             299: 10,
         }
 
+        # 🔥 ДОДАЄМО ПІДПИСКУ (ЗАХИСТ ВІД ДУБЛІВ)
         if (
             status == "success"
             and payment
-            and payment["status"] != "success"
+            and payment["status"] != "success"  # ← важливо
             and payment["amount"] in slots_map
         ):
             await conn.execute(
                 """
                 INSERT INTO seller_subscriptions (seller_id, slots, expires_at, payment_id)
-                VALUES ($1, $2, NOW() + INTERVAL '30 days', $3)
+                SELECT $1, $2, NOW() + INTERVAL '30 days', $3
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM seller_subscriptions WHERE payment_id = $3
+                )
                 """,
                 payment["seller_id"],
                 slots_map[payment["amount"]],

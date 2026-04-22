@@ -8,8 +8,7 @@ from bot.keyboards.admin_inline import brand_request_kb, model_request_kb
 from bot.database.repositories.seller_repo import (
     get_or_create_seller,
     add_seller_car,
-    has_available_slot,
-    increment_used
+    has_available_slot
 )
 
 from bot.database.repositories.model_repo import (
@@ -46,7 +45,7 @@ async def add_car_start(message: Message, state: FSMContext):
     if not await check_verified(message, state):
         return
 
-    # ❗ ЛІМІТ ПЕРЕД FSM
+    # ✅ НОВА ПЕРЕВІРКА СЛОТІВ
     if not await has_available_slot(message.from_user.id):
         await message.answer("❌ Немає доступних місць")
         return
@@ -233,9 +232,6 @@ async def handle_description(message: Message, state: FSMContext):
         photo_id=data.get("photo_id"),
         description=message.text
     )
-
-    # ❗ ІНКРЕМЕНТ ПІСЛЯ СТВОРЕННЯ
-    await increment_used(seller["id"])
 
     await message.answer(
         "✅ Авто додано",

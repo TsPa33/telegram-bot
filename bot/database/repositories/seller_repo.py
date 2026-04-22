@@ -12,16 +12,14 @@ async def get_or_create_seller(telegram_id: int, username: str):
         RETURNING *
     """, telegram_id, username)
 
-    await execute(
-        """
+    # 🔥 starter subscription (1 слот / 30 днів)
+    await execute("""
         INSERT INTO seller_subscriptions (seller_id, slots, expires_at)
         SELECT $1, 1, NOW() + INTERVAL '30 days'
         WHERE NOT EXISTS (
             SELECT 1 FROM seller_subscriptions WHERE seller_id = $1
         )
-        """,
-        seller["id"],
-    )
+    """, seller["id"])
 
     return seller
 
@@ -32,61 +30,46 @@ async def get_seller_by_telegram_id(telegram_id: int):
     """, telegram_id)
 
 
-# ================= LIMITS =================
+# ================= SLOTS =================
 
-async def increment_used(seller_id: int):
-    await execute("""
-        UPDATE sellers
-        SET cars_used = cars_used + 1
-        WHERE id = $1
+async def get_active_slots(seller_id: int) -> int:
+    row = await fetchrow("""
+        SELECT COALESCE(SUM(slots), 0)::int AS total
+        FROM seller_subscriptions
+        WHERE seller_id = $1
+          AND expires_at > NOW()
     """, seller_id)
 
+    return row["total"] if row else 0
 
-async def add_slot(seller_id: int, slots: int = 1):
-    await execute("""
-        UPDATE sellers
-        SET cars_limit = cars_limit + $2
-        WHERE id = $1
-    """, seller_id, slots)
+
+async def get_used_slots(seller_id: int) -> int:
+    row = await fetchrow("""
+        SELECT COUNT(*)::int AS total
+        FROM seller_cars
+        WHERE seller_id = $1
+    """, seller_id)
+
+    return row["total"] if row else 0
 
 
 async def has_available_slot(telegram_id: int) -> bool:
     seller = await fetchrow("""
-        SELECT id
-        FROM sellers
-        WHERE telegram_id = $1
+        SELECT id FROM sellers WHERE telegram_id = $1
     """, telegram_id)
 
     if not seller:
         return True
 
-    available_slots = await get_active_slots(seller["id"])
+    seller_id = seller["id"]
 
-    used_slots_row = await fetchrow(
-        """
-        SELECT COUNT(*)::int AS used_slots
-        FROM seller_cars
-        WHERE seller_id = $1
-        """,
-        seller["id"],
-    )
-    used_slots = used_slots_row["used_slots"] if used_slots_row else 0
+    available = await get_active_slots(seller_id)
+    used = await get_used_slots(seller_id)
 
-    return used_slots < available_slots
+    return used < available
 
 
-async def get_active_slots(seller_id: int) -> int:
-    row = await fetchrow(
-        """
-        SELECT COALESCE(SUM(slots), 0)::int AS available_slots
-        FROM seller_subscriptions
-        WHERE seller_id = $1
-          AND expires_at > NOW()
-        """,
-        seller_id,
-    )
-    return row["available_slots"] if row else 0
-
+# ================= SUBSCRIPTIONS =================
 
 async def add_subscription(
     seller_id: int,
@@ -109,10 +92,7 @@ async def add_subscription(
 async def get_active_subscriptions(seller_id: int):
     return await fetch(
         """
-        SELECT
-            slots,
-            created_at,
-            expires_at
+        SELECT slots, created_at, expires_at
         FROM seller_subscriptions
         WHERE seller_id = $1
           AND expires_at > NOW()
@@ -120,6 +100,15 @@ async def get_active_subscriptions(seller_id: int):
         """,
         seller_id,
     )
+
+
+async def get_subscription_history(seller_id: int):
+    return await fetch("""
+        SELECT slots, created_at, expires_at
+        FROM seller_subscriptions
+        WHERE seller_id = $1
+        ORDER BY created_at DESC
+    """, seller_id)
 
 
 # ================= CAR =================
