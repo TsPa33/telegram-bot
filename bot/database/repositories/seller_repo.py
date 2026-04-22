@@ -53,6 +53,18 @@ async def get_used_slots(seller_id: int) -> int:
     return row["total"] if row else 0
 
 
+# 🔥 НОВЕ: готова агрегована інфа (для UI)
+async def get_garage_info(seller_id: int):
+    active = await get_active_slots(seller_id)
+    used = await get_used_slots(seller_id)
+
+    return {
+        "used": used,
+        "available": active,
+        "free": max(active - used, 0)
+    }
+
+
 async def has_available_slot(telegram_id: int) -> bool:
     seller = await fetchrow("""
         SELECT id FROM sellers WHERE telegram_id = $1
@@ -61,12 +73,8 @@ async def has_available_slot(telegram_id: int) -> bool:
     if not seller:
         return True
 
-    seller_id = seller["id"]
-
-    available = await get_active_slots(seller_id)
-    used = await get_used_slots(seller_id)
-
-    return used < available
+    info = await get_garage_info(seller["id"])
+    return info["used"] < info["available"]
 
 
 # ================= SUBSCRIPTIONS =================
