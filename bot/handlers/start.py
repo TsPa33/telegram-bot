@@ -69,7 +69,7 @@ async def open_admin(callback: CallbackQuery, state: FSMContext):
     await state.set_state(None)
 
     # 🔒 ВАЖЛИВО: заміни на свій Telegram ID
-    ADMIN_IDS = [123456789]
+    ADMIN_IDS = [6206952389]
 
     if callback.from_user.id not in ADMIN_IDS:
         await callback.message.answer("❌ Немає доступу")
