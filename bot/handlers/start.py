@@ -12,6 +12,8 @@ from bot.database.repositories.seller_repo import get_or_create_seller
 router = Router()
 
 
+# ================= START =================
+
 @router.message(Command("start"))
 async def start(message: Message, state: FSMContext):
     await state.set_state(None)
@@ -22,7 +24,30 @@ async def start(message: Message, state: FSMContext):
     )
 
 
-# ================= SELLER =================
+# ================= ROLE SELLER (FIX) =================
+
+@router.callback_query(F.data == "role:seller")
+async def enter_seller(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+    await state.set_state(None)
+
+    seller = await get_or_create_seller(
+        callback.from_user.id,
+        callback.from_user.username
+    )
+
+    await callback.message.answer(
+        "🏪 Режим продавця\nОберіть дію:",
+        reply_markup=ReplyKeyboardRemove(),
+    )
+
+    await callback.message.answer(
+        "Меню продавця:",
+        reply_markup=seller_menu_kb(is_verified=seller.get("is_verified", False)),
+    )
+
+
+# ================= SELLER (LEGACY НЕ ЧІПАЄМО) =================
 
 @router.callback_query(F.data == "nav:seller")
 @router.callback_query(F.data == "nav:garage")
