@@ -48,7 +48,7 @@ async def liqpay_callback(request: Request):
         if not order_id:
             raise HTTPException(status_code=400, detail="No order_id")
 
-        # нормалізація
+        # ✅ нормалізація статусу
         status = "success" if raw_status in ("success", "sandbox") else "failed"
 
         print("NORMALIZED STATUS:", status)
@@ -68,7 +68,7 @@ async def liqpay_callback(request: Request):
         if not payment:
             return {"ok": True}
 
-        # 🔹 idempotent update
+        # 🔹 оновлюємо статус
         await execute(
             """
             UPDATE payments
@@ -79,17 +79,23 @@ async def liqpay_callback(request: Request):
             order_id
         )
 
+        # 🔥 FIX: нормалізація amount (float → int)
+        try:
+            amount = int(float(payment["amount"]))
+        except Exception:
+            print("❌ INVALID AMOUNT:", payment["amount"])
+            return {"ok": True}
+
         slots_map = {
             99: 1,
             199: 5,
             299: 10,
         }
 
-        # 🔥 гарантія 1 раз
-        if (
-            status == "success"
-            and payment["amount"] in slots_map
-        ):
+        print("AMOUNT NORMALIZED:", amount)
+
+        # 🔥 головний блок (тепер працює)
+        if status == "success" and amount in slots_map:
             print("💰 ADDING SUBSCRIPTION")
 
             await execute(
@@ -103,9 +109,11 @@ async def liqpay_callback(request: Request):
                 )
                 """,
                 payment["seller_id"],
-                slots_map[payment["amount"]],
+                slots_map[amount],
                 payment["id"]
             )
+        else:
+            print("⚠️ SKIPPED SUBSCRIPTION:", status, amount)
 
         print(f"✅ PAYMENT UPDATED: {order_id} -> {status}")
 
