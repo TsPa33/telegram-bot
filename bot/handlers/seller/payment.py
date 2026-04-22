@@ -15,7 +15,8 @@ router = Router()
 liqpay = LiqPayService(LIQPAY_PUBLIC_KEY, LIQPAY_PRIVATE_KEY)
 
 
-@router.message(F.text == "💳 Купити 1 слот — 99 грн")
+# ✅ ПІДТРИМКА НОВОЇ І СТАРОЇ КНОПКИ
+@router.message(F.text.in_(["💳 Купити 1 слот — 99 грн", "💳 Пакети послуг"]))
 async def buy_slot(message: Message):
     try:
         # 🔹 продавець
@@ -39,7 +40,9 @@ async def buy_slot(message: Message):
         kb.button(text="Оплатити", url=url)
 
         await message.answer(
-            "💳 Оплата:",
+            "💳 Оплата:\n\n"
+            "🔹 1 слот — 99 грн\n\n"
+            "Натисни кнопку нижче для оплати:",
             reply_markup=kb.as_markup()
         )
 
