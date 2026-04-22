@@ -13,11 +13,15 @@ async def get_or_create_seller(telegram_id: int, username: str):
     """, telegram_id, username)
 
     # 🔥 стартовий пакет (1 слот / 30 днів)
+    # ✅ FIX: враховуємо тільки АКТИВНІ підписки
     await execute("""
         INSERT INTO seller_subscriptions (seller_id, slots, expires_at)
         SELECT $1, 1, NOW() + INTERVAL '30 days'
         WHERE NOT EXISTS (
-            SELECT 1 FROM seller_subscriptions WHERE seller_id = $1
+            SELECT 1 
+            FROM seller_subscriptions 
+            WHERE seller_id = $1
+              AND expires_at > NOW()
         )
     """, seller["id"])
 
@@ -59,7 +63,7 @@ async def get_garage_info(seller_id: int):
 
     return {
         "used": used,
-        "total": active,           # 🔥 перейменували (було available)
+        "total": active,
         "free": max(active - used, 0)
     }
 
