@@ -4,7 +4,7 @@ from aiogram.fsm.context import FSMContext
 
 from bot.database.repositories.car_repo import get_car_by_id
 from bot.database.repositories.seller_repo import (
-    get_or_create_seller,
+    get_seller_by_telegram_id,   # ✅ змінено
     get_garage_info,
     get_active_subscriptions,
     get_seller_cars_by_seller_id,
@@ -27,10 +27,13 @@ router = Router()
 
 @router.message(F.text.in_(["📋 Мої авто", "📋 Мій гараж"]))
 async def my_cars(message: Message):
-    seller = await get_or_create_seller(
-        message.from_user.id,
-        message.from_user.username
-    )
+    # ❌ було: get_or_create_seller
+    # ✅ тепер тільки читання
+    seller = await get_seller_by_telegram_id(message.from_user.id)
+
+    if not seller:
+        await message.answer("❌ Продавець не знайдений")
+        return
 
     seller_id = seller["id"]
 
