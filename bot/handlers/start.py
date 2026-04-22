@@ -15,8 +15,9 @@ router = Router()
 @router.message(Command("start"))
 async def start(message: Message, state: FSMContext):
     await state.set_state(None)
+
     await message.answer(
-        "🔹 Обери дію",
+        "🔁 Головне меню\n\nОбери дію:",
         reply_markup=await main_menu_kb(message.from_user.id),
     )
 
@@ -63,7 +64,7 @@ async def legacy_role_callbacks(callback: CallbackQuery, state: FSMContext):
 
 # ================= ADMIN =================
 
-@router.callback_query(F.data == "nav:admin")  # ✅ FIX
+@router.callback_query(F.data == "nav:admin")
 async def open_admin(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     await state.set_state(None)
