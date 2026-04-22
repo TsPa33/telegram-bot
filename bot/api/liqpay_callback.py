@@ -27,10 +27,15 @@ def verify_signature(data: str, signature: str | None) -> bool:
 @router.post("/liqpay/callback")
 async def liqpay_callback(request: Request):
     try:
+        print("🔥 CALLBACK HIT")
+
         form = await request.form()
 
         data = form.get("data")
         signature = form.get("signature")
+
+        print("RAW DATA:", data)
+        print("SIGNATURE:", signature)
 
         if not data:
             raise HTTPException(status_code=400, detail="No data")
@@ -41,8 +46,12 @@ async def liqpay_callback(request: Request):
         decoded = base64.b64decode(data).decode()
         payload = json.loads(decoded)
 
+        print("PAYLOAD:", payload)
+
         order_id = payload.get("order_id")
         status = payload.get("status")
+
+        print("STATUS:", status)
 
         if not order_id:
             raise HTTPException(status_code=400, detail="No order_id")
@@ -58,6 +67,8 @@ async def liqpay_callback(request: Request):
             """,
             order_id
         )
+
+        print("DB PAYMENT:", payment)
 
         # 🔹 оновлюємо статус
         await conn.execute(
@@ -77,13 +88,15 @@ async def liqpay_callback(request: Request):
             299: 10,
         }
 
-        # 🔥 ДОДАЄМО ПІДПИСКУ (ЗАХИСТ ВІД ДУБЛІВ)
+        # 🔥 ВАЖЛИВО: підтримка sandbox
         if (
-            status == "success"
+            status in ("success", "sandbox")
             and payment
-            and payment["status"] != "success"  # ← важливо
+            and payment["status"] != "success"
             and payment["amount"] in slots_map
         ):
+            print("💰 ADDING SUBSCRIPTION")
+
             await conn.execute(
                 """
                 INSERT INTO seller_subscriptions (seller_id, slots, expires_at, payment_id)
