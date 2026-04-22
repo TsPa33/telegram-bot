@@ -1,15 +1,12 @@
 from fastapi import APIRouter, Request, HTTPException
 import base64
 import json
-import asyncpg
-import os
 import hashlib
 
 from bot.config import LIQPAY_PRIVATE_KEY
+from bot.database.base import execute, fetchrow
 
 router = APIRouter()
-
-DATABASE_URL = os.getenv("DATABASE_URL")
 
 
 def verify_signature(data: str, signature: str | None) -> bool:
@@ -51,18 +48,13 @@ async def liqpay_callback(request: Request):
         if not order_id:
             raise HTTPException(status_code=400, detail="No order_id")
 
-        # 🔥 НОРМАЛІЗАЦІЯ СТАТУСУ
-        if raw_status in ("success", "sandbox"):
-            status = "success"
-        else:
-            status = "failed"
+        # нормалізація
+        status = "success" if raw_status in ("success", "sandbox") else "failed"
 
         print("NORMALIZED STATUS:", status)
 
-        conn = await asyncpg.connect(DATABASE_URL)
-
         # 🔹 отримуємо платіж
-        payment = await conn.fetchrow(
+        payment = await fetchrow(
             """
             SELECT id, seller_id, amount, status
             FROM payments
@@ -74,11 +66,10 @@ async def liqpay_callback(request: Request):
         print("DB PAYMENT:", payment)
 
         if not payment:
-            await conn.close()
             return {"ok": True}
 
-        # 🔹 оновлюємо статус (вже нормалізований)
-        await conn.execute(
+        # 🔹 idempotent update
+        await execute(
             """
             UPDATE payments
             SET status = $1
@@ -88,35 +79,33 @@ async def liqpay_callback(request: Request):
             order_id
         )
 
-        # 🔹 мапінг пакетів
         slots_map = {
             99: 1,
             199: 5,
             299: 10,
         }
 
-        # 🔥 ДОДАЄМО ПІДПИСКУ (тільки один раз)
+        # 🔥 гарантія 1 раз
         if (
             status == "success"
-            and payment["status"] != "success"
             and payment["amount"] in slots_map
         ):
             print("💰 ADDING SUBSCRIPTION")
 
-            await conn.execute(
+            await execute(
                 """
                 INSERT INTO seller_subscriptions (seller_id, slots, expires_at, payment_id)
                 SELECT $1, $2, NOW() + INTERVAL '30 days', $3
                 WHERE NOT EXISTS (
-                    SELECT 1 FROM seller_subscriptions WHERE payment_id = $3
+                    SELECT 1 
+                    FROM seller_subscriptions 
+                    WHERE payment_id = $3
                 )
                 """,
                 payment["seller_id"],
                 slots_map[payment["amount"]],
                 payment["id"]
             )
-
-        await conn.close()
 
         print(f"✅ PAYMENT UPDATED: {order_id} -> {status}")
 
