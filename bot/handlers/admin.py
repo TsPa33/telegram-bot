@@ -33,23 +33,15 @@ router = Router()
 CANCEL = KeyboardButton(text="❌ Скасувати")
 
 
-def is_command(message: types.Message):
-    return message.text and message.text.startswith("/")
+# ================= ADMIN PANEL (FIX) =================
 
-
-async def cancel(message: types.Message, state: FSMContext):
-    await state.clear()
-    await message.answer("❌ Дію скасовано", reply_markup=admin_kb)
-
-
-# ================= ADMIN PANEL =================
-
-async def show_admin_panel(callback: CallbackQuery):
-    if not await is_admin(callback.from_user.id):
-        await callback.answer("Немає доступу", show_alert=True)
+@router.message(F.text == "⚙️ Адмін панель")
+async def open_admin_panel(message: Message):
+    if not await is_admin(message.from_user.id):
+        await message.answer("⛔ Немає доступу")
         return
 
-    await callback.message.answer(
+    await message.answer(
         "⚙️ Адмін панель",
         reply_markup=admin_kb
     )
@@ -88,7 +80,6 @@ async def show_requests(message: types.Message):
 @router.callback_query(F.data.regexp(r"^admin:(brand|model|verify):"))
 async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
     print("ADMIN CALLBACK:", callback.data)
-    print("ADMIN USER:", callback.from_user.id)
 
     if not await is_admin(callback.from_user.id):
         await callback.answer()
@@ -112,7 +103,7 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
     if entity == "brand":
         if action == "ok":
             await approve_brand(obj_id)
-            clear_brands_cache()  # ❗ FIX
+            clear_brands_cache()
             await callback.message.edit_text("✅ Бренд підтверджено")
 
         elif action == "no":
@@ -128,7 +119,7 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
     elif entity == "model":
         if action == "ok":
             await approve_model(obj_id)
-            clear_models_cache()  # ❗ FIX
+            clear_models_cache()
             await callback.message.edit_text("✅ Модель підтверджено")
 
         elif action == "no":
@@ -190,7 +181,7 @@ async def edit_brand_save(message: Message, state: FSMContext):
 
     await update_brand_request(request_id, new_brand)
     await approve_brand(request_id)
-    clear_brands_cache()  # ❗ FIX
+    clear_brands_cache()
 
     await message.answer(f"✅ Бренд: {new_brand}")
     await state.clear()
@@ -207,7 +198,7 @@ async def edit_model_save(message: Message, state: FSMContext):
 
     await update_model_request(request_id, new_model)
     await approve_model(request_id)
-    clear_models_cache()  # ❗ FIX
+    clear_models_cache()
 
     await message.answer(f"✅ Модель: {new_model}")
     await state.clear()
