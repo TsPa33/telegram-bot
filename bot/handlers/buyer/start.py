@@ -7,6 +7,7 @@ from bot.database.repositories.model_repo import get_brands_with_ids
 from bot.keyboards.brands import brand_kb
 from bot.keyboards.buyer_home import buyer_home_kb
 from bot.keyboards.buyer_reply import buyer_reply_kb
+from bot.keyboards.main_menu import main_menu_kb  # ✅ ДОДАНО
 from bot.states.buyer_states import Buyer
 
 
@@ -27,9 +28,15 @@ async def show_buyer_home(message: types.Message, state: FSMContext):
     await message.answer("Швидкий доступ до меню:", reply_markup=buyer_reply_kb())
 
 
+# ❗ FIX: тепер веде в ГЛОБАЛЬНЕ меню
 @router.message(F.text == "🏠 Меню")
 async def open_home(message: types.Message, state: FSMContext):
-    await show_buyer_home(message, state)
+    await state.clear()
+
+    await message.answer(
+        "🔁 Головне меню\n\nОбери дію:",
+        reply_markup=await main_menu_kb(message.from_user.id),
+    )
 
 
 @router.callback_query(F.data == "nav:home")
