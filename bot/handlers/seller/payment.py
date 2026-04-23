@@ -3,7 +3,7 @@ from aiogram.types import Message, CallbackQuery
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from bot.database.repositories.seller_repo import (
-    get_seller_by_telegram_id,   # ✅ використовуємо тільки це
+    get_seller_by_telegram_id,
 )
 from bot.services.liqpay_service import LiqPayService
 from bot.config import (
@@ -28,13 +28,12 @@ PACKAGES = {
 
 # ================= CORE PAYMENT =================
 
-async def _create_package_payment(message: Message, package_key: str):
+async def _create_package_payment(message: Message, package_key: str, telegram_id: int):
     try:
         package = PACKAGES[package_key]
 
-        # ❌ було: get_or_create_seller
-        # ✅ тепер тільки читаємо існуючого
-        seller = await get_seller_by_telegram_id(message.from_user.id)
+        # ✅ використовуємо правильний telegram_id
+        seller = await get_seller_by_telegram_id(telegram_id)
 
         if not seller:
             await message.answer("❌ Помилка: продавець не знайдений. Напишіть /start")
@@ -42,13 +41,14 @@ async def _create_package_payment(message: Message, package_key: str):
 
         seller_id = seller["id"]
 
+        print("DEBUG TELEGRAM_ID:", telegram_id)
         print("SELLER ID (PAYMENT):", seller_id)
 
         payment = await liqpay.create_payment(
             amount=package["amount"],
             description=f"{package['slots']} car slot(s)",
             server_url=LIQPAY_CALLBACK_URL,
-            seller_id=seller_id   # ✅ гарантовано правильний id
+            seller_id=seller_id
         )
 
         url = payment["url"]
@@ -73,7 +73,7 @@ async def _create_package_payment(message: Message, package_key: str):
 
 @router.message(F.text == "💳 Купити 1 слот — 99 грн")
 async def buy_one_slot(message: Message):
-    await _create_package_payment(message, "1")
+    await _create_package_payment(message, "1", message.from_user.id)
 
 
 # ================= МЕНЮ ПАКЕТІВ =================
@@ -104,5 +104,11 @@ async def buy_package_callback(callback: CallbackQuery):
         await callback.answer("Невідомий пакет", show_alert=True)
         return
 
-    await _create_package_payment(callback.message, package_key)
+    # ✅ КЛЮЧОВИЙ FIX: використовуємо callback.from_user.id
+    await _create_package_payment(
+        callback.message,
+        package_key,
+        callback.from_user.id
+    )
+
     await callback.answer()
