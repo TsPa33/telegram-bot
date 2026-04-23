@@ -3,7 +3,7 @@ from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 
 
-DEFAULT_LOGO = "https://your-cdn.com/default_logo.png"  # заміни на свою заглушку
+DEFAULT_LOGO = "AgACAgIAAxkBAAIJ6WnZ7zNsTF4dV6Fxbqsye8iRF224AAJfEWsbFN_RSsup93hjz4uMAQADAgADeAADOwQ"  # заміни на свою заглушку
 
 
 async def _is_valid_image(url: str) -> bool:
