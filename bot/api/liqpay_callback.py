@@ -6,9 +6,6 @@ import hashlib
 from bot.config import LIQPAY_PRIVATE_KEY
 from bot.database.base import execute, fetchrow
 
-# ✅ додали
-from bot.main import bot
-
 router = APIRouter()
 
 
@@ -87,7 +84,7 @@ async def liqpay_callback(request: Request):
             order_id
         )
 
-        # 🔥 FIX: нормалізація amount (float → int)
+        # 🔥 нормалізація amount (float → int)
         try:
             amount = int(float(payment["amount"]))
         except Exception:
@@ -127,6 +124,9 @@ async def liqpay_callback(request: Request):
             print(f"✅ SUBSCRIPTION ADDED: seller_id={payment['seller_id']}, slots={slots}")
 
             # ================= TELEGRAM NOTIFY =================
+
+            # 🔥 FIX: локальний імпорт (без circular import)
+            from bot.main import bot
 
             seller = await fetchrow(
                 "SELECT telegram_id FROM sellers WHERE id = $1",
