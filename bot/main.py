@@ -3,7 +3,7 @@ import logging
 import traceback
 import os
 
-from aiogram import Bot, Dispatcher, Router, F
+from aiogram import Dispatcher, Router, F
 from aiogram.types import CallbackQuery, ErrorEvent
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.fsm.storage.redis import RedisStorage
@@ -16,7 +16,10 @@ from bot.handlers import start, seller, buyer, admin, profile
 from bot.database.pool import init_pool
 from bot.database.models import create_tables
 
-# ✅ NEW
+# ✅ shared bot instance
+from bot.core.bot_instance import bot
+
+# API
 import uvicorn
 from bot.api.app import app
 
@@ -98,7 +101,6 @@ async def run_bot():
     storage = await get_storage()
 
     dp = Dispatcher(storage=storage)
-    bot = Bot(token=BOT_TOKEN)
 
     dp.callback_query.middleware(CallbackAnswerMiddleware())
     dp.errors.register(global_error_handler)
@@ -112,14 +114,13 @@ async def run_bot():
 
     logger.info("🚀 BOT STARTED")
 
+    # ✅ використовуємо shared bot
     await dp.start_polling(bot)
 
 
 # ================= API =================
 
 async def run_api():
-    import os
-
     port = int(os.getenv("PORT", 8000))
 
     config = uvicorn.Config(
