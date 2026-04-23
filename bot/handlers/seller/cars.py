@@ -4,7 +4,7 @@ from aiogram.fsm.context import FSMContext
 
 from bot.database.repositories.car_repo import get_car_by_id
 from bot.database.repositories.seller_repo import (
-    get_seller_by_telegram_id,   # ✅ змінено
+    get_seller_by_telegram_id,
     get_garage_info,
     get_active_subscriptions,
     get_seller_cars_by_seller_id,
@@ -18,7 +18,7 @@ from bot.keyboards.seller_inline import (
 
 from bot.utils.formatters import format_car_card
 from bot.states.seller_states import SellerStates
-
+from bot.config import DEFAULT_LOGO  # 🔥 ДОДАНО
 
 router = Router()
 
@@ -27,8 +27,6 @@ router = Router()
 
 @router.message(F.text.in_(["📋 Мої авто", "📋 Мій гараж"]))
 async def my_cars(message: Message):
-    # ❌ було: get_or_create_seller
-    # ✅ тепер тільки читання
     seller = await get_seller_by_telegram_id(message.from_user.id)
 
     if not seller:
@@ -36,6 +34,9 @@ async def my_cars(message: Message):
         return
 
     seller_id = seller["id"]
+
+    # 🔥 беремо логотип
+    logo_url = seller.get("logo_url") or DEFAULT_LOGO
 
     cars = await get_seller_cars_by_seller_id(seller_id)
     garage = await get_garage_info(seller_id)
@@ -66,7 +67,12 @@ async def my_cars(message: Message):
     # ===== ЯКЩО НЕМАЄ АВТО =====
     if not cars:
         text += "😕 У тебе ще немає авто"
-        await message.answer(text, parse_mode="HTML")
+
+        await message.answer_photo(
+            photo=logo_url,
+            caption=text,
+            parse_mode="HTML"
+        )
         return
 
     # ===== СПИСОК АВТО =====
@@ -79,8 +85,10 @@ async def my_cars(message: Message):
             f"👁 {car.get('views', 0)} | 📞 {car.get('phone_clicks', 0)} | 🌐 {car.get('site_clicks', 0)}\n\n"
         )
 
-    await message.answer(
-        text,
+    # 🔥 тепер відправка з логотипом
+    await message.answer_photo(
+        photo=logo_url,
+        caption=text,
         reply_markup=cars_list_kb(cars),
         parse_mode="HTML"
     )
