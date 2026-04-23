@@ -71,7 +71,12 @@ async def send_card(message, state: FSMContext, new_message=False, user_id: int 
 
     keyboard = build_card_keyboard(car, page, total)
 
-    new_photo = car.get("photo_id") or DEFAULT_PHOTO
+    # ✅ FIX: правильний fallback
+    new_photo = (
+        car.get("photo_id")
+        or car.get("logo_url")
+        or DEFAULT_PHOTO
+    )
 
     if new_message:
         await message.answer_photo(
@@ -212,11 +217,9 @@ async def go_back(callback: CallbackQuery, state: FSMContext):
 
     data = await state.get_data()
 
-    # ✅ FIX: очищаємо model_id щоб не застрягати в моделях
     if "model_id" in data:
         await state.update_data(model_id=None)
 
-    # 🔁 повертаємо до брендів
     if "brand_id" in data:
         brands = await fetch(
             "SELECT id, name FROM brands ORDER BY name"
@@ -228,7 +231,6 @@ async def go_back(callback: CallbackQuery, state: FSMContext):
         )
         return
 
-    # fallback
     await callback.message.answer(
         "🏠 <b>Головне меню покупця</b>\n\n"
         "👤 Профіль\n"
