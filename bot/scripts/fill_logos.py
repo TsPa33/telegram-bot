@@ -7,34 +7,38 @@ from bot.services.logo_service import get_logo
 async def main():
     await init_pool()
 
-    sellers = await fetch("""
-        SELECT id, website
+    # 🔥 беремо унікальні сайти
+    websites = await fetch("""
+        SELECT DISTINCT website
         FROM sellers
         WHERE website IS NOT NULL
-          AND (logo_url IS NULL OR logo_url = '')
     """)
 
-    seen = set()
+    for row in websites:
+        website = row["website"]
 
-    for s in sellers:
-        website = s["website"]
-
-        if not website or website in seen:
+        if not website:
             continue
-
-        seen.add(website)
 
         print("Processing:", website)
 
         logo = await get_logo(website)
 
+        if not logo:
+            print("❌ No logo:", website)
+            continue
+
+        # 🔥 ОНОВЛЮЄМО ВСІ записи з цим сайтом
         await execute(
-            "UPDATE sellers SET logo_url = $1 WHERE website = $2",
+            """
+            UPDATE sellers
+            SET logo_url = $1
+            WHERE website = $2
+            """,
             logo,
             website
         )
 
-        # невелика пауза
         await asyncio.sleep(0.5)
 
     print("DONE")
