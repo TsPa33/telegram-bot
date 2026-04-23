@@ -18,10 +18,9 @@ from bot.keyboards.brands import brand_kb
 from bot.keyboards.models import model_kb_with_back
 from bot.keyboards.seller_menu import seller_main_kb
 from bot.keyboards.buyer_reply import buyer_reply_kb
+from bot.config import DEFAULT_LOGO
 
 router = Router()
-
-DEFAULT_PHOTO = "AgACAgIAAxkBAAIJ6WnZ7zNsTF4dV6Fxbqsye8iRF224AAJfEWsbFN_RSsup93hjz4uMAQADAgADeAADOwQ"
 
 LIMIT = 1
 
@@ -71,11 +70,10 @@ async def send_card(message, state: FSMContext, new_message=False, user_id: int 
 
     keyboard = build_card_keyboard(car, page, total)
 
-    # ✅ FIX: правильний fallback
     new_photo = (
         car.get("photo_id")
         or car.get("logo_url")
-        or DEFAULT_PHOTO
+        or DEFAULT_LOGO
     )
 
     if new_message:

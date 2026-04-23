@@ -152,6 +152,7 @@ async def get_seller_cars_by_seller_id(seller_id: int):
     return await fetch("""
         SELECT 
             sc.id,
+            sc.photo_id,
             m.name AS model,
             b.name AS brand,
             sc.description,
@@ -170,6 +171,7 @@ async def get_seller_cars(telegram_id: int):
     return await fetch("""
         SELECT 
             sc.id,
+            sc.photo_id,
             m.name AS model,
             b.name AS brand,
             sc.description,
