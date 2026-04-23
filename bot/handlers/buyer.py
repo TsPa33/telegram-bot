@@ -6,6 +6,7 @@ from aiogram.types import InputMediaPhoto
 from bot.database.base import fetch
 from bot.database.repositories.model_repo import get_brands_with_ids, get_models_by_brand_id
 from bot.database.repositories.car_repo import find_cars, count_cars
+from bot.database.repositories.seller_repo import get_seller_by_id  # 🔥 ДОДАНО
 
 from bot.states.buyer_states import Buyer
 
@@ -13,6 +14,8 @@ from bot.utils.formatters import format_car_card
 from bot.keyboards.card_inline import build_card_keyboard
 from bot.keyboards.brands import brand_kb
 from bot.keyboards.models import model_kb
+
+from bot.config import DEFAULT_LOGO  # 🔥 ДОДАНО
 
 router = Router()
 
@@ -133,6 +136,15 @@ async def send_card(message: types.Message, state: FSMContext, new_message=False
 
     car = results[0]
 
+    # 🔥 ГОЛОВНИЙ ФІКС
+    seller = await get_seller_by_id(car["seller_id"])
+
+    photo = (
+        car.get("photo_id")          # 1. фото авто
+        or seller.get("logo_url")    # 2. логотип
+        or DEFAULT_LOGO              # 3. заглушка
+    )
+
     text = format_car_card(car, page, total)
 
     keyboard = build_card_keyboard(
@@ -140,8 +152,6 @@ async def send_card(message: types.Message, state: FSMContext, new_message=False
         page=page,
         total=total
     )
-
-    photo = car.get("photo_id") or DEFAULT_PHOTO
 
     if new_message:
         await message.answer_photo(
