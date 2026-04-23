@@ -2,8 +2,8 @@ import base64
 import json
 import hashlib
 import uuid
-import psycopg2
-import os
+
+from bot.database.repositories.payment_repo import create_payment
 
 
 class LiqPayService:
@@ -19,34 +19,25 @@ class LiqPayService:
             hashlib.sha1(sign_string.encode()).digest()
         ).decode()
 
-    def _get_conn(self):
-        return psycopg2.connect(os.getenv("DATABASE_URL"))
-
     async def create_payment(
         self,
         amount: int,
         description: str,
         server_url: str,
         seller_id: int
-        ):
+    ):
         # 🔹 order_id
         order_id = str(uuid.uuid4())
 
-        # 🔹 DB
-        conn = self._get_conn()
-        cursor = conn.cursor()
+        # 🔍 DEBUG (можеш залишити на час тестів)
+        print("CREATE PAYMENT SELLER_ID:", seller_id)
 
-        cursor.execute(
-        """
-        INSERT INTO payments (order_id, amount, status, seller_id)
-        VALUES (%s, %s, 'pending', %s)
-        """,
-        (order_id, amount, seller_id)
+        # ✅ ЄДИНИЙ правильний спосіб запису в БД
+        await create_payment(
+            seller_id=seller_id,
+            order_id=order_id,
+            amount=amount
         )
-
-        conn.commit()
-        cursor.close()
-        conn.close()
 
         # 🔹 LiqPay payload
         payload = {
