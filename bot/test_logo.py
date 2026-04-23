@@ -50,10 +50,16 @@ async def extract_logo(url: str):
 
 async def main():
     urls = [
+        # ✅ твої (працюють добре)
         "https://tesla-sklad.com.ua",
         "https://motorparts.com.ua",
         "https://tn-group.com.ua",
         "https://razborka-odessa.com.ua",
+
+        # ⚠️ "погані" / edge cases
+        "https://google.com",                     # og:image великий / favicon
+        "https://olx.ua",                         # складна структура
+        "https://this-domain-does-not-exist.xyz", # неіснуючий
     ]
 
     for url in urls:
