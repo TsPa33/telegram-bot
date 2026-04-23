@@ -1,29 +1,16 @@
 from aiogram import Router, F
-from aiogram.types import Message, CallbackQuery
-from aiogram.fsm.context import FSMContext
-
-from bot.database.repositories.car_repo import get_car_by_id
+from aiogram.types import Message
 from bot.database.repositories.seller_repo import (
     get_seller_by_telegram_id,
     get_garage_info,
     get_active_subscriptions,
     get_seller_cars_by_seller_id,
-    delete_car,
 )
-
-from bot.keyboards.seller_inline import (
-    cars_list_kb,
-    seller_card_actions_kb
-)
-
-from bot.utils.formatters import format_car_card
-from bot.states.seller_states import SellerStates
+from bot.keyboards.seller_inline import cars_list_kb
 from bot.config import DEFAULT_LOGO
 
 router = Router()
 
-
-# ================= MY GARAGE =================
 
 @router.message(F.text.in_(["📋 Мої авто", "📋 Мій гараж"]))
 async def my_cars(message: Message):
@@ -35,8 +22,8 @@ async def my_cars(message: Message):
 
     seller_id = seller["id"]
 
-    # 🔥 логотип
-    logo_url = seller.get("logo_url") or DEFAULT_LOGO
+    # 🔥 fallback логотипа
+    seller_logo = seller.get("logo_url") or DEFAULT_LOGO
 
     cars = await get_seller_cars_by_seller_id(seller_id)
     garage = await get_garage_info(seller_id)
@@ -68,10 +55,7 @@ async def my_cars(message: Message):
     if not cars:
         text += "😕 У тебе ще немає авто"
 
-        # ✅ фото окремо
-        await message.answer_photo(photo=logo_url)
-
-        # ✅ текст окремо
+        await message.answer_photo(photo=seller_logo)
         await message.answer(text, parse_mode="HTML")
         return
 
@@ -85,10 +69,20 @@ async def my_cars(message: Message):
             f"👁 {car.get('views', 0)} | 📞 {car.get('phone_clicks', 0)} | 🌐 {car.get('site_clicks', 0)}\n\n"
         )
 
-    # ✅ фото окремо (без caption)
-    await message.answer_photo(photo=logo_url)
+    # 🔥 КЛЮЧОВА ЛОГІКА
+    # показуємо:
+    # - фото першого авто якщо є
+    # - інакше логотип
+    first_car = cars[0]
 
-    # ✅ текст окремо (без обмеження 1024)
+    photo = (
+        first_car.get("image")
+        or seller.get("logo_url")
+        or DEFAULT_LOGO
+    )
+
+    await message.answer_photo(photo=photo)
+
     await message.answer(
         text,
         reply_markup=cars_list_kb(cars),
