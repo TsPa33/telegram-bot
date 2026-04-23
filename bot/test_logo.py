@@ -42,25 +42,34 @@ async def extract_logo(url: str):
                 if await is_valid_image(logo):
                     return logo
 
-    except Exception as e:
-        print("ERROR:", e)
+    except Exception:
+        return None
 
     return None
 
 
 async def main():
     urls = [
-        # ✅ твої (працюють добре)
+        # ✅ твої бізнес-сайти
         "https://tesla-sklad.com.ua",
         "https://motorparts.com.ua",
         "https://tn-group.com.ua",
         "https://razborka-odessa.com.ua",
 
-        # ⚠️ "погані" / edge cases
-        "https://google.com",                     # og:image великий / favicon
-        "https://olx.ua",                         # складна структура
-        "https://this-domain-does-not-exist.xyz", # неіснуючий
+        # 🟡 інші українські сайти
+        "https://autoria.ua",
+        "https://prom.ua",
+
+        # 🟡 міжнародні нормальні
+        "https://apple.com",
+        "https://microsoft.com",
+
+        # 🔴 складні / SPA
+        "https://olx.ua",
+        "https://google.com",
     ]
+
+    success = 0
 
     for url in urls:
         print("\n=== TEST:", url)
@@ -69,8 +78,12 @@ async def main():
 
         if logo:
             print("✅ LOGO:", logo)
+            success += 1
         else:
             print("❌ NOT FOUND")
+
+    print("\n=== RESULT ===")
+    print(f"SUCCESS: {success}/{len(urls)}")
 
 
 if __name__ == "__main__":
