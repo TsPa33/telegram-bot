@@ -8,3 +8,5 @@ beautifulsoup4
 uvicorn
 fastapi
 python-multipart
+httpx
+beautifulsoup4
