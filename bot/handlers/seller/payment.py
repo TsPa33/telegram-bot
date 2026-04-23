@@ -2,7 +2,9 @@ from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from bot.database.repositories.seller_repo import get_or_create_seller
+from bot.database.repositories.seller_repo import (
+    get_seller_by_telegram_id,   # ✅ використовуємо тільки це
+)
 from bot.services.liqpay_service import LiqPayService
 from bot.config import (
     LIQPAY_PUBLIC_KEY,
@@ -30,16 +32,23 @@ async def _create_package_payment(message: Message, package_key: str):
     try:
         package = PACKAGES[package_key]
 
-        seller = await get_or_create_seller(
-            message.from_user.id,
-            message.from_user.username
-        )
+        # ❌ було: get_or_create_seller
+        # ✅ тепер тільки читаємо існуючого
+        seller = await get_seller_by_telegram_id(message.from_user.id)
+
+        if not seller:
+            await message.answer("❌ Помилка: продавець не знайдений. Напишіть /start")
+            return
+
+        seller_id = seller["id"]
+
+        print("SELLER ID (PAYMENT):", seller_id)
 
         payment = await liqpay.create_payment(
             amount=package["amount"],
             description=f"{package['slots']} car slot(s)",
             server_url=LIQPAY_CALLBACK_URL,
-            seller_id=seller["id"]
+            seller_id=seller_id   # ✅ гарантовано правильний id
         )
 
         url = payment["url"]
