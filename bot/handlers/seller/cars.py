@@ -18,7 +18,7 @@ from bot.keyboards.seller_inline import (
 
 from bot.utils.formatters import format_car_card
 from bot.states.seller_states import SellerStates
-from bot.config import DEFAULT_LOGO  # 🔥 ДОДАНО
+from bot.config import DEFAULT_LOGO
 
 router = Router()
 
@@ -35,7 +35,7 @@ async def my_cars(message: Message):
 
     seller_id = seller["id"]
 
-    # 🔥 беремо логотип
+    # 🔥 логотип
     logo_url = seller.get("logo_url") or DEFAULT_LOGO
 
     cars = await get_seller_cars_by_seller_id(seller_id)
@@ -68,11 +68,11 @@ async def my_cars(message: Message):
     if not cars:
         text += "😕 У тебе ще немає авто"
 
-        await message.answer_photo(
-            photo=logo_url,
-            caption=text,
-            parse_mode="HTML"
-        )
+        # ✅ фото окремо
+        await message.answer_photo(photo=logo_url)
+
+        # ✅ текст окремо
+        await message.answer(text, parse_mode="HTML")
         return
 
     # ===== СПИСОК АВТО =====
@@ -85,10 +85,12 @@ async def my_cars(message: Message):
             f"👁 {car.get('views', 0)} | 📞 {car.get('phone_clicks', 0)} | 🌐 {car.get('site_clicks', 0)}\n\n"
         )
 
-    # 🔥 тепер відправка з логотипом
-    await message.answer_photo(
-        photo=logo_url,
-        caption=text,
+    # ✅ фото окремо (без caption)
+    await message.answer_photo(photo=logo_url)
+
+    # ✅ текст окремо (без обмеження 1024)
+    await message.answer(
+        text,
         reply_markup=cars_list_kb(cars),
         parse_mode="HTML"
     )
