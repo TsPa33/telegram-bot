@@ -19,6 +19,9 @@ from bot.database.models import create_tables
 # ✅ shared bot instance
 from bot.core.bot_instance import bot
 
+# 🔥 ДОДАНО
+from bot.scripts.fill_logos import main as fill_logos
+
 # API
 import uvicorn
 from bot.api.app import app
@@ -98,6 +101,9 @@ async def run_bot():
     await init_pool()
     await create_tables()
 
+    # 🔥 ТУТ ЗАПУСКАЄМО ПАРСИНГ
+    await fill_logos()
+
     storage = await get_storage()
 
     dp = Dispatcher(storage=storage)
@@ -114,7 +120,6 @@ async def run_bot():
 
     logger.info("🚀 BOT STARTED")
 
-    # ✅ використовуємо shared bot
     await dp.start_polling(bot)
 
 
