@@ -69,16 +69,12 @@ async def my_cars(message: Message):
             f"👁 {car.get('views', 0)} | 📞 {car.get('phone_clicks', 0)} | 🌐 {car.get('site_clicks', 0)}\n\n"
         )
 
-    # 🔥 КЛЮЧОВА ЛОГІКА
-    # показуємо:
-    # - фото першого авто якщо є
-    # - інакше логотип
+    # 🔥 КЛЮЧОВА ЛОГІКА (ВИПРАВЛЕНО)
     first_car = cars[0]
 
     photo = (
-        first_car.get("image")
-        or seller.get("logo_url")
-        or DEFAULT_LOGO
+        first_car.get("photo_id")  # ✅ було image → виправлено
+        or seller_logo             # ✅ використовуємо fallback
     )
 
     await message.answer_photo(photo=photo)
