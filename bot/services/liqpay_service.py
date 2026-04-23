@@ -6,6 +6,9 @@ import uuid
 from bot.database.repositories.payment_repo import create_payment
 
 
+print("🔥 NEW LIQPAY SERVICE LOADED")  # ← критично для перевірки деплою
+
+
 class LiqPayService:
 
     def __init__(self, public_key: str, private_key: str):
@@ -29,10 +32,10 @@ class LiqPayService:
         # 🔹 order_id
         order_id = str(uuid.uuid4())
 
-        # 🔍 DEBUG (можеш залишити на час тестів)
+        # 🔍 DEBUG (повинен зʼявитись в логах)
         print("CREATE PAYMENT SELLER_ID:", seller_id)
 
-        # ✅ ЄДИНИЙ правильний спосіб запису в БД
+        # ✅ ЄДИНЕ джерело запису в БД
         await create_payment(
             seller_id=seller_id,
             order_id=order_id,
