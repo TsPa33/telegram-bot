@@ -22,8 +22,7 @@ async def my_cars(message: Message):
 
     seller_id = seller["id"]
 
-    # 🔥 fallback логотипа
-    seller_logo = seller.get("logo_url") or DEFAULT_LOGO
+    seller_logo = seller.get("logo_url")
 
     cars = await get_seller_cars_by_seller_id(seller_id)
     garage = await get_garage_info(seller_id)
@@ -55,7 +54,8 @@ async def my_cars(message: Message):
     if not cars:
         text += "😕 У тебе ще немає авто"
 
-        await message.answer_photo(photo=seller_logo)
+        photo = seller_logo or DEFAULT_LOGO
+        await message.answer_photo(photo=photo)
         await message.answer(text, parse_mode="HTML")
         return
 
@@ -69,12 +69,12 @@ async def my_cars(message: Message):
             f"👁 {car.get('views', 0)} | 📞 {car.get('phone_clicks', 0)} | 🌐 {car.get('site_clicks', 0)}\n\n"
         )
 
-    # 🔥 КЛЮЧОВА ЛОГІКА (ВИПРАВЛЕНО)
     first_car = cars[0]
 
     photo = (
-        first_car.get("photo_id")  # ✅ було image → виправлено
-        or seller_logo             # ✅ використовуємо fallback
+        first_car.get("photo_id")
+        or seller_logo
+        or DEFAULT_LOGO
     )
 
     await message.answer_photo(photo=photo)
