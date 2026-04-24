@@ -2,8 +2,8 @@ from aiogram import Router, F
 from aiogram.types import CallbackQuery, InputMediaPhoto, ReplyKeyboardRemove
 from aiogram.fsm.context import FSMContext
 
+from bot.services.car_service import get_cars_page
 from bot.database.repositories.car_repo import (
-    get_cars_page,
     get_car_by_id,
     add_unique_car_view
 )
@@ -40,20 +40,16 @@ async def send_card(message, state: FSMContext, new_message=False, user_id: int 
         await message.answer("⚠️ Сесія втрачена. Почни заново: /find")
         return
 
-    if page < 1:
-        page = 1
-    if page > total:
-        page = total
+    car, total_pages = await get_cars_page(model_id, page, LIMIT)
 
-    offset = (page - 1)
+    if total_pages != total:
+        total = total_pages
+        await state.update_data(total=total_pages)
 
-    cars = await get_cars_page(model_id, LIMIT, offset)
-
-    if not cars:
+    if not car:
         await message.answer("❌ Немає результатів")
         return
 
-    car = cars[0]
     car_id = car["id"]
 
     viewer_id = user_id or message.chat.id
@@ -212,11 +208,9 @@ async def go_back(callback: CallbackQuery, state: FSMContext):
 
     data = await state.get_data()
 
-    # ✅ FIX: очищаємо model_id щоб не застрягати в моделях
     if "model_id" in data:
         await state.update_data(model_id=None)
 
-    # 🔁 повертаємо до брендів
     if "brand_id" in data:
         brands = await fetch(
             "SELECT id, name FROM brands ORDER BY name"
@@ -228,7 +222,6 @@ async def go_back(callback: CallbackQuery, state: FSMContext):
         )
         return
 
-    # fallback
     await callback.message.answer(
         "🏠 <b>Головне меню покупця</b>\n\n"
         "👤 Профіль\n"
