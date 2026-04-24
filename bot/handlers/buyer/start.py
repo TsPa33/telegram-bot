@@ -35,10 +35,16 @@ async def show_buyer_home(message: types.Message, state: FSMContext):
 
 # ================= RESTART BUTTON =================
 
+from bot.keyboards.main_menu import main_menu_kb
+
 @router.message(F.text == "🔄 Оновити Bot")
 async def restart_bot(message: types.Message, state: FSMContext):
     await state.clear()
-    await show_buyer_home(message, state)
+
+    await message.answer(
+        "🔁 Головне меню\n\nОбери дію:",
+        reply_markup=await main_menu_kb(message.from_user.id),
+    )
 
 
 # ================= ROLE ENTRY =================
