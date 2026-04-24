@@ -6,7 +6,7 @@ from bot.database.base import execute, fetchrow
 from bot.database.repositories.seller_repo import get_or_create_seller
 from bot.states.seller_states import SellerStates
 from bot.keyboards.profile_inline import profile_edit_kb, profile_cancel_kb
-
+print("🔥 PROFILE INPUT:", field)
 router = Router()
 
 PROFILE_FIELDS = {
