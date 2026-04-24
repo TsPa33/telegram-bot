@@ -4,7 +4,7 @@ from aiogram.types import KeyboardButton, ReplyKeyboardMarkup
 def buyer_reply_kb() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="🏠 Меню")],
+            [KeyboardButton(text="🔄 Оновити Bot")],
         ],
         resize_keyboard=True,
     )
