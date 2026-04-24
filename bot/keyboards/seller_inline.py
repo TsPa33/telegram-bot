@@ -36,19 +36,24 @@ def seller_card_actions_kb(car_id: int):
     )
 
 
-# ================= PROFILE EDIT (FIXED) =================
+# ================= PROFILE EDIT =================
 
 def profile_edit_kb():
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="🏪 Назва магазину", callback_data="edit:shop_name")],
+
             [InlineKeyboardButton(text="👤 Ім’я", callback_data="edit:name")],
             [InlineKeyboardButton(text="📞 Телефон", callback_data="edit:phone")],
             [InlineKeyboardButton(text="🌐 Сайт", callback_data="edit:website")],
+
             [InlineKeyboardButton(text="📍 Місто", callback_data="edit:city")],
             [InlineKeyboardButton(text="🖼 Фото", callback_data="edit:photo")],
             [InlineKeyboardButton(text="📝 Опис", callback_data="edit:description")],
-            [InlineKeyboardButton(text="⬅️ Назад", callback_data="edit:back")],
+
+            # 🔥 управління
+            [InlineKeyboardButton(text="⬅️ До профілю", callback_data="edit:back")],
+            [InlineKeyboardButton(text="❌ Скасувати", callback_data="edit:cancel")],
         ]
     )
 
@@ -56,6 +61,7 @@ def profile_edit_kb():
 def profile_cancel_kb():
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="❌ Скасувати", callback_data="edit:cancel")]
+            [InlineKeyboardButton(text="❌ Скасувати", callback_data="edit:cancel")],
+            [InlineKeyboardButton(text="⬅️ До профілю", callback_data="edit:back")],
         ]
     )
