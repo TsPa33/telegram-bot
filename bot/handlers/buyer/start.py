@@ -37,7 +37,7 @@ async def show_buyer_home(message: types.Message, state: FSMContext):
 
 # ================= GLOBAL MENU =================
 
-@router.message(F.text == "🏠 Меню")
+@router.message(F.text.in_(["🔄 Оновити Bot", "/start"]))
 async def open_home(message: types.Message, state: FSMContext):
     await state.clear()
 
