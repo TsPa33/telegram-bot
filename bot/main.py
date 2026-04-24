@@ -20,7 +20,7 @@ from bot.database.models import create_tables
 import uvicorn
 from bot.api.app import app
 
-
+print("🔥 VERSION 050ed61 LOADED")
 # ================= LOGGING =================
 
 logging.basicConfig(
