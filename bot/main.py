@@ -13,15 +13,17 @@ from redis.asyncio import from_url
 
 from bot.config import BOT_TOKEN
 from bot.handlers import start, seller, buyer, admin
+
+# 🔥 ДОДАЄМО ПРЯМИЙ ІМПОРТ seller.py
+from bot.handlers.seller import router as seller_root_router
+
 from bot.database.pool import init_pool
 from bot.database.models import create_tables
 
-# ✅ NEW
 import uvicorn
 from bot.api.app import app
 
-print("🔥 VERSION 050ed61 LOADED")
-# ================= LOGGING =================
+print("🔥 VERSION FIXED SELLER ROUTER LOADED")
 
 logging.basicConfig(
     level=logging.INFO,
@@ -74,13 +76,11 @@ async def get_storage():
         await redis.ping()
 
         logger.info("✅ Redis connected")
-
         return RedisStorage(redis)
 
     except Exception as e:
         logger.warning("⚠️ Redis connection failed → fallback MemoryStorage")
         logger.warning(e)
-
         return MemoryStorage()
 
 
@@ -103,8 +103,12 @@ async def run_bot():
     dp.callback_query.middleware(CallbackAnswerMiddleware())
     dp.errors.register(global_error_handler)
 
+    # 🔥 ПОРЯДОК ВАЖЛИВИЙ
     dp.include_router(start.router)
-    dp.include_router(seller.router)
+
+    dp.include_router(seller_root_router)  # ✅ seller.py (add car flow)
+    dp.include_router(seller.router)       # інші seller модулі
+
     dp.include_router(admin.router)
     dp.include_router(buyer.router)
     dp.include_router(router)
@@ -117,8 +121,6 @@ async def run_bot():
 # ================= API =================
 
 async def run_api():
-    import os
-
     port = int(os.getenv("PORT", 8000))
 
     config = uvicorn.Config(
