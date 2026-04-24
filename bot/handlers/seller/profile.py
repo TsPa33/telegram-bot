@@ -1,6 +1,7 @@
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
+from aiogram.filters import StateFilter
 
 from bot.database.base import execute, fetchrow
 from bot.database.repositories.seller_repo import get_or_create_seller
@@ -79,14 +80,17 @@ async def edit_profile(callback: CallbackQuery, state: FSMContext):
     await state.update_data(editing_field=field)
 
     if field == "photo":
-        await callback.message.answer("📸 Надішліть фото")
+        await callback.message.answer("📸 Надішліть фото", reply_markup=profile_cancel_kb())
     else:
-        await callback.message.answer(f"✍️ Введіть {PROFILE_FIELDS[field]}")
+        await callback.message.answer(
+            f"✍️ Введіть {PROFILE_FIELDS[field]}",
+            reply_markup=profile_cancel_kb()
+        )
 
 
-# ================= HANDLE INPUT =================
+# ================= HANDLE PHOTO =================
 
-@router.message(SellerStates.edit_profile, F.photo)
+@router.message(StateFilter(SellerStates.edit_profile), F.photo)
 async def handle_photo(message: Message, state: FSMContext):
     print("🔥 PROFILE PHOTO")
 
@@ -108,7 +112,9 @@ async def handle_photo(message: Message, state: FSMContext):
     await message.answer("✅ Фото оновлено")
 
 
-@router.message(SellerStates.edit_profile)
+# ================= HANDLE TEXT =================
+
+@router.message(StateFilter(SellerStates.edit_profile))
 async def handle_text(message: Message, state: FSMContext):
     data = await state.get_data()
     field = data.get("editing_field")
