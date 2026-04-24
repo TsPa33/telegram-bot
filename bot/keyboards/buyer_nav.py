@@ -36,7 +36,6 @@ async def buyer_nav_kb(user_id: int) -> InlineKeyboardMarkup:
         ],
     ]
 
-    # ✅ FIX: async is_admin
     if await is_admin(user_id):
         inline_keyboard.append(
             [
@@ -49,7 +48,7 @@ async def buyer_nav_kb(user_id: int) -> InlineKeyboardMarkup:
 
     inline_keyboard.append(
         [
-            InlineKeyboardButton(text="🏠 Головне меню", callback_data="nav:home"),
+            InlineKeyboardButton(text="📱 Моє меню", callback_data="nav:home"),
         ]
     )
 
