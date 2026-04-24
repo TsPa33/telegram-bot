@@ -37,8 +37,18 @@ async def show_buyer_home(message: types.Message, state: FSMContext):
 
 # ================= GLOBAL MENU =================
 
-@router.message(F.text.in_(["🔄 Оновити Bot", "/start"]))
-async def open_home(message: types.Message, state: FSMContext):
+@router.message(Command("start"))
+async def start_command(message: types.Message, state: FSMContext):
+    await state.clear()
+
+    await message.answer(
+        "🔁 Головне меню\n\nОбери дію:",
+        reply_markup=await main_menu_kb(message.from_user.id),
+    )
+
+
+@router.message(F.text == "🔄 Оновити Bot")
+async def restart_bot(message: types.Message, state: FSMContext):
     await state.clear()
 
     await message.answer(
