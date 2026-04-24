@@ -35,6 +35,11 @@ async def save_profile(message: Message, state: FSMContext):
     data = await state.get_data()
     field = data.get("edit_field")
 
+    allowed_fields = {"name", "shop_name", "phone", "website", "city"}
+    if field not in allowed_fields:
+        await state.clear()
+        return
+
     value = None if message.text == "-" else message.text
 
     await execute(

@@ -3,10 +3,10 @@ from aiogram.types import CallbackQuery, InputMediaPhoto, ReplyKeyboardRemove
 from aiogram.fsm.context import FSMContext
 
 from bot.database.repositories.car_repo import (
-    get_cars_page,
     get_car_by_id,
     add_unique_car_view
 )
+from bot.services.car_service import get_cars_page
 from bot.database.base import execute
 from bot.database.base import fetch
 
@@ -45,15 +45,16 @@ async def send_card(message, state: FSMContext, new_message=False, user_id: int 
     if page > total:
         page = total
 
-    offset = (page - 1)
+    car, total_pages = await get_cars_page(model_id, page, LIMIT)
 
-    cars = await get_cars_page(model_id, LIMIT, offset)
+    if total_pages != total:
+        total = total_pages
+        await state.update_data(total=total_pages)
 
-    if not cars:
+    if not car:
         await message.answer("❌ Немає результатів")
         return
 
-    car = cars[0]
     car_id = car["id"]
 
     viewer_id = user_id or message.chat.id

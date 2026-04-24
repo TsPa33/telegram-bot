@@ -1,3 +1,5 @@
+import math
+
 from bot.database.repositories.model_repo import get_model_id
 from bot.database.repositories.car_repo import get_cars_page as repo_get_cars_page
 from bot.database.repositories.car_repo import count_cars
@@ -21,14 +23,14 @@ async def get_cars_page(model_id: int, page: int, limit: int = 1):
     if total_items == 0:
         return None, 0
 
-    total_pages = total_items  # бо LIMIT = 1
+    total_pages = max(1, math.ceil(total_items / limit))
 
     if page < 1:
         page = 1
     if page > total_pages:
         page = total_pages
 
-    offset = (page - 1)
+    offset = (page - 1) * limit
 
     cars = await repo_get_cars_page(
         model_id=model_id,
