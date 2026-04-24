@@ -12,7 +12,7 @@ from aiogram.utils.callback_answer import CallbackAnswerMiddleware
 from redis.asyncio import from_url
 
 from bot.config import BOT_TOKEN
-from bot.handlers import start, seller, buyer, admin, profile
+from bot.handlers import start, seller, buyer, admin
 from bot.database.pool import init_pool
 from bot.database.models import create_tables
 
