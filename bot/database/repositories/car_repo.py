@@ -11,6 +11,7 @@ BASE_SELECT = """
         sc.views,
         sc.phone_clicks,
         sc.site_clicks,
+        sc.seller_id,
 
         m.name AS model,
         b.name AS brand,

@@ -26,8 +26,6 @@ DEFAULT_PHOTO = "AgACAgIAAxkBAAIJ6WnZ7zNsTF4dV6Fxbqsye8iRF224AAJfEWsbFN_RSsup93h
 LIMIT = 1
 
 
-# ================= CARD =================
-
 async def send_card(message, state: FSMContext, new_message=False, user_id: int | None = None):
     data = await state.get_data()
 
@@ -110,8 +108,6 @@ async def send_card(message, state: FSMContext, new_message=False, user_id: int 
             await message.answer("Дії:", reply_markup=await buyer_nav_kb(viewer_id))
 
 
-# ================= NEXT =================
-
 @router.callback_query(F.data == "next")
 async def next_car(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
@@ -131,8 +127,6 @@ async def next_car(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
 
-# ================= PREV =================
-
 @router.callback_query(F.data == "prev")
 async def prev_car(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
@@ -150,8 +144,6 @@ async def prev_car(callback: CallbackQuery, state: FSMContext):
 
     await callback.answer()
 
-
-# ================= PHONE =================
 
 @router.callback_query(F.data.startswith("phone:"))
 async def phone_click(callback: CallbackQuery):
@@ -172,8 +164,6 @@ async def phone_click(callback: CallbackQuery):
     await callback.message.answer(f"📞 {car.get('phone') or 'не вказано'}")
     await callback.answer()
 
-
-# ================= NOOP =================
 
 @router.callback_query(F.data == "noop")
 async def noop_handler(callback: CallbackQuery):
@@ -199,8 +189,6 @@ async def restart_search(callback: CallbackQuery, state: FSMContext):
         reply_markup=brand_kb(brands)
     )
 
-
-# ================= BACK (FIXED) =================
 
 @router.callback_query(F.data == "nav:back")
 async def go_back(callback: CallbackQuery, state: FSMContext):
@@ -232,8 +220,6 @@ async def go_back(callback: CallbackQuery, state: FSMContext):
         reply_markup=buyer_home_kb(),
     )
 
-
-# ================= SELLER =================
 
 @router.callback_query(F.data == "nav:seller")
 @router.callback_query(F.data == "nav:garage")
