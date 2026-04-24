@@ -19,7 +19,7 @@ from bot.keyboards.seller_inline import (
 from bot.utils.formatters import format_car_card
 from bot.states.seller_states import SellerStates
 
-
+print("🔥 OPEN CAR CLICK")
 router = Router()
 
 
