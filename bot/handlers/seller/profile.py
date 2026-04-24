@@ -32,6 +32,21 @@ async def _get_seller(telegram_id: int, username: str | None):
     )
 
 
+def render_profile(seller):
+    return (
+        "👤 <b>Профіль продавця</b>\n\n"
+        f"🏪 {seller.get('shop_name') or '-'}\n"
+        f"👤 {seller.get('name') or '-'}\n"
+        f"📞 {seller.get('phone') or '-'}\n"
+        f"🌐 {seller.get('website') or '-'}\n"
+        f"📍 {seller.get('city') or '-'}\n"
+        f"📝 {seller.get('description') or '-'}\n"
+        f"🖼 {'✅' if seller.get('photo_id') else '❌'}"
+    )
+
+
+# ================= SHOW PROFILE =================
+
 @router.message(F.text == "👤 Профіль")
 async def show_profile(message: Message, state: FSMContext):
     print("🔥 OPEN PROFILE")
@@ -40,16 +55,80 @@ async def show_profile(message: Message, state: FSMContext):
 
     seller = await _get_seller(message.from_user.id, message.from_user.username)
 
-    text = f"""
-👤 <b>Профіль продавця</b>
+    await message.answer(
+        render_profile(seller),
+        parse_mode="HTML",
+        reply_markup=profile_edit_kb()
+    )
 
-🏪 {seller.get('shop_name') or '-'}
-👤 {seller.get('name') or '-'}
-📞 {seller.get('phone') or '-'}
-🌐 {seller.get('website') or '-'}
-📍 {seller.get('city') or '-'}
-📝 {seller.get('description') or '-'}
-🖼 {'✅' if seller.get('photo_id') else '❌'}
-"""
 
-    await message.answer(text, parse_mode="HTML", reply_markup=profile_edit_kb())
+# ================= EDIT CLICK =================
+
+@router.callback_query(F.data.startswith("edit:"))
+async def edit_profile(callback: CallbackQuery, state: FSMContext):
+    print("🔥 EDIT CLICK:", callback.data)
+
+    await callback.answer()
+
+    field = callback.data.split(":")[1]
+
+    if field not in PROFILE_FIELDS:
+        return
+
+    await state.set_state(SellerStates.edit_profile)
+    await state.update_data(editing_field=field)
+
+    if field == "photo":
+        await callback.message.answer("📸 Надішліть фото")
+    else:
+        await callback.message.answer(f"✍️ Введіть {PROFILE_FIELDS[field]}")
+
+
+# ================= HANDLE INPUT =================
+
+@router.message(SellerStates.edit_profile, F.photo)
+async def handle_photo(message: Message, state: FSMContext):
+    print("🔥 PROFILE PHOTO")
+
+    data = await state.get_data()
+    field = data.get("editing_field")
+
+    if field != "photo":
+        return
+
+    value = message.photo[-1].file_id
+
+    await execute(
+        "UPDATE sellers SET photo_id = $1 WHERE telegram_id = $2",
+        value,
+        message.from_user.id
+    )
+
+    await state.clear()
+    await message.answer("✅ Фото оновлено")
+
+
+@router.message(SellerStates.edit_profile)
+async def handle_text(message: Message, state: FSMContext):
+    data = await state.get_data()
+    field = data.get("editing_field")
+
+    print("🔥 PROFILE TEXT:", field, message.text)
+
+    if not field:
+        await state.clear()
+        return
+
+    value = message.text.strip()
+
+    if value == "-":
+        value = None
+
+    await execute(
+        f"UPDATE sellers SET {field} = $1 WHERE telegram_id = $2",
+        value,
+        message.from_user.id
+    )
+
+    await state.clear()
+    await message.answer("✅ Дані оновлено")
