@@ -106,7 +106,6 @@ async def run_bot():
     dp.include_router(start.router)
     dp.include_router(seller.router)
     dp.include_router(admin.router)
-    dp.include_router(profile.router)
     dp.include_router(buyer.router)
     dp.include_router(router)
 
