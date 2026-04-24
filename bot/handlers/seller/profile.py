@@ -48,7 +48,7 @@ def render_profile(seller):
 
 # ================= SHOW PROFILE =================
 
-@router.message(F.text == "👤 Профіль")
+@router.message(F.text.in_(["👤 Профіль", "👤 Мій профіль"]))
 async def show_profile(message: Message, state: FSMContext):
     await state.clear()
 
@@ -68,6 +68,12 @@ async def edit_profile(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
     field = callback.data.split(":")[1]
+
+    # ✅ cancel / back FIX
+    if field in ["cancel", "back"]:
+        await state.clear()
+        await callback.message.answer("❌ Скасовано")
+        return
 
     if field not in PROFILE_FIELDS:
         return
