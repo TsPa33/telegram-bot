@@ -50,8 +50,6 @@ def render_profile(seller):
 
 @router.message(F.text == "👤 Профіль")
 async def show_profile(message: Message, state: FSMContext):
-    print("🔥 OPEN PROFILE")
-
     await state.clear()
 
     seller = await _get_seller(message.from_user.id, message.from_user.username)
@@ -67,8 +65,6 @@ async def show_profile(message: Message, state: FSMContext):
 
 @router.callback_query(F.data.startswith("edit:"))
 async def edit_profile(callback: CallbackQuery, state: FSMContext):
-    print("🔥 EDIT CLICK:", callback.data)
-
     await callback.answer()
 
     field = callback.data.split(":")[1]
@@ -79,10 +75,14 @@ async def edit_profile(callback: CallbackQuery, state: FSMContext):
     await state.set_state(SellerStates.edit_profile)
     await state.update_data(editing_field=field)
 
+    # 🔴 КРИТИЧНО: тільки edit_text
     if field == "photo":
-        await callback.message.answer("📸 Надішліть фото", reply_markup=profile_cancel_kb())
+        await callback.message.edit_text(
+            "📸 Надішліть фото",
+            reply_markup=profile_cancel_kb()
+        )
     else:
-        await callback.message.answer(
+        await callback.message.edit_text(
             f"✍️ Введіть {PROFILE_FIELDS[field]}",
             reply_markup=profile_cancel_kb()
         )
@@ -92,8 +92,6 @@ async def edit_profile(callback: CallbackQuery, state: FSMContext):
 
 @router.message(StateFilter(SellerStates.edit_profile), F.photo)
 async def handle_photo(message: Message, state: FSMContext):
-    print("🔥 PROFILE PHOTO")
-
     data = await state.get_data()
     field = data.get("editing_field")
 
@@ -118,8 +116,6 @@ async def handle_photo(message: Message, state: FSMContext):
 async def handle_text(message: Message, state: FSMContext):
     data = await state.get_data()
     field = data.get("editing_field")
-
-    print("🔥 PROFILE TEXT:", field, message.text)
 
     if not field:
         await state.clear()
