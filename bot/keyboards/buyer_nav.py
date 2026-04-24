@@ -29,7 +29,7 @@ async def buyer_nav_kb(user_id: int) -> InlineKeyboardMarkup:
     inline_keyboard = [
         [
             InlineKeyboardButton(text="⬅️ Назад", callback_data="nav:back"),
-            InlineKeyboardButton(text="🔄 Перезапустити Bot", callback_data="nav:restart"),
+            InlineKeyboardButton(text="🔄 Знайти ще", callback_data="nav:restart"),
         ],
         [
             seller_button,
