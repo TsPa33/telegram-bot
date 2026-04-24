@@ -2,11 +2,11 @@ from aiogram import Router, F
 from aiogram.types import CallbackQuery, InputMediaPhoto, ReplyKeyboardRemove
 from aiogram.fsm.context import FSMContext
 
+from bot.services.car_service import get_cars_page
 from bot.database.repositories.car_repo import (
     get_car_by_id,
     add_unique_car_view
 )
-from bot.services.car_service import get_cars_page
 from bot.database.base import execute
 from bot.database.base import fetch
 
@@ -26,8 +26,6 @@ DEFAULT_PHOTO = "AgACAgIAAxkBAAIJ6WnZ7zNsTF4dV6Fxbqsye8iRF224AAJfEWsbFN_RSsup93h
 LIMIT = 1
 
 
-# ================= CARD =================
-
 async def send_card(message, state: FSMContext, new_message=False, user_id: int | None = None):
     data = await state.get_data()
 
@@ -39,11 +37,6 @@ async def send_card(message, state: FSMContext, new_message=False, user_id: int 
         await state.set_state(None)
         await message.answer("⚠️ Сесія втрачена. Почни заново: /find")
         return
-
-    if page < 1:
-        page = 1
-    if page > total:
-        page = total
 
     car, total_pages = await get_cars_page(model_id, page, LIMIT)
 
@@ -115,8 +108,6 @@ async def send_card(message, state: FSMContext, new_message=False, user_id: int 
             await message.answer("Дії:", reply_markup=await buyer_nav_kb(viewer_id))
 
 
-# ================= NEXT =================
-
 @router.callback_query(F.data == "next")
 async def next_car(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
@@ -136,8 +127,6 @@ async def next_car(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
 
-# ================= PREV =================
-
 @router.callback_query(F.data == "prev")
 async def prev_car(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
@@ -155,8 +144,6 @@ async def prev_car(callback: CallbackQuery, state: FSMContext):
 
     await callback.answer()
 
-
-# ================= PHONE =================
 
 @router.callback_query(F.data.startswith("phone:"))
 async def phone_click(callback: CallbackQuery):
@@ -177,8 +164,6 @@ async def phone_click(callback: CallbackQuery):
     await callback.message.answer(f"📞 {car.get('phone') or 'не вказано'}")
     await callback.answer()
 
-
-# ================= NOOP =================
 
 @router.callback_query(F.data == "noop")
 async def noop_handler(callback: CallbackQuery):
@@ -205,19 +190,15 @@ async def restart_search(callback: CallbackQuery, state: FSMContext):
     )
 
 
-# ================= BACK (FIXED) =================
-
 @router.callback_query(F.data == "nav:back")
 async def go_back(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
     data = await state.get_data()
 
-    # ✅ FIX: очищаємо model_id щоб не застрягати в моделях
     if "model_id" in data:
         await state.update_data(model_id=None)
 
-    # 🔁 повертаємо до брендів
     if "brand_id" in data:
         brands = await fetch(
             "SELECT id, name FROM brands ORDER BY name"
@@ -229,7 +210,6 @@ async def go_back(callback: CallbackQuery, state: FSMContext):
         )
         return
 
-    # fallback
     await callback.message.answer(
         "🏠 <b>Головне меню покупця</b>\n\n"
         "👤 Профіль\n"
@@ -240,8 +220,6 @@ async def go_back(callback: CallbackQuery, state: FSMContext):
         reply_markup=buyer_home_kb(),
     )
 
-
-# ================= SELLER =================
 
 @router.callback_query(F.data == "nav:seller")
 @router.callback_query(F.data == "nav:garage")
