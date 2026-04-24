@@ -10,7 +10,6 @@ from bot.database.repositories.seller_repo import (
 
 from bot.states.seller_states import SellerStates
 from bot.keyboards.seller_inline import profile_edit_kb
-from bot.services.seller_service import set_seller_website_and_logo  # 🔥 ДОДАНО
 from .verification import check_verified
 
 router = Router()
@@ -29,7 +28,7 @@ MENU_BUTTONS = {
 }
 
 
-# ================= 🔥 SAVE PROFILE =================
+# ================= 🔥 SAVE PROFILE (ДОДАНО) =================
 
 @router.message(SellerStates.edit_profile)
 async def save_profile(message: Message, state: FSMContext):
@@ -38,18 +37,11 @@ async def save_profile(message: Message, state: FSMContext):
 
     value = None if message.text == "-" else message.text
 
-    # 🔥 ОБРОБКА WEBSITE
-    if field == "website" and value:
-        await set_seller_website_and_logo(
-            telegram_id=message.from_user.id,
-            website_url=value
-        )
-    else:
-        await execute(
-            f"UPDATE sellers SET {field} = $1 WHERE telegram_id = $2",
-            value,
-            message.from_user.id
-        )
+    await execute(
+        f"UPDATE sellers SET {field} = $1 WHERE telegram_id = $2",
+        value,
+        message.from_user.id
+    )
 
     await state.clear()
 
@@ -108,7 +100,7 @@ async def show_profile(message: Message, state: FSMContext):
     )
 
 
-# ================= 🔥 CALLBACK =================
+# ================= 🔥 CALLBACK (ДОДАНО) =================
 
 @router.callback_query(F.data.startswith("profile:"))
 async def profile_edit_callback(callback: CallbackQuery, state: FSMContext):

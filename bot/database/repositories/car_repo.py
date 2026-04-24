@@ -22,7 +22,6 @@ BASE_SELECT = """
         s.city,
         s.shop_name,
         s.website,
-        s.logo_url, 
         s.is_verified
 
     FROM seller_cars sc

@@ -14,8 +14,6 @@ from bot.keyboards.card_inline import build_card_keyboard
 from bot.keyboards.brands import brand_kb
 from bot.keyboards.models import model_kb
 
-from bot.config import DEFAULT_LOGO
-
 router = Router()
 
 DEFAULT_PHOTO = "AgACAgIAAxkBAAIJ6WnZ7zNsTF4dV6Fxbqsye8iRF224AAJfEWsbFN_RSsup93hjz4uMAQADAgADeAADOwQ"
@@ -135,13 +133,6 @@ async def send_card(message: types.Message, state: FSMContext, new_message=False
 
     car = results[0]
 
-    # 🔥 ПРАВИЛЬНИЙ fallback (без додаткових запитів)
-    photo = (
-        car.get("photo_id")      # 1. фото авто
-        or car.get("logo_url")   # 2. логотип продавця (з SQL!)
-        or DEFAULT_LOGO          # 3. заглушка
-    )
-
     text = format_car_card(car, page, total)
 
     keyboard = build_card_keyboard(
@@ -149,6 +140,8 @@ async def send_card(message: types.Message, state: FSMContext, new_message=False
         page=page,
         total=total
     )
+
+    photo = car.get("photo_id") or DEFAULT_PHOTO
 
     if new_message:
         await message.answer_photo(

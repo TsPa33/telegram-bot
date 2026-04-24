@@ -6,9 +6,6 @@ import hashlib
 from bot.config import LIQPAY_PRIVATE_KEY
 from bot.database.base import execute, fetchrow
 
-# ✅ правильний імпорт
-from bot.core.bot_instance import bot
-
 router = APIRouter()
 
 
@@ -71,11 +68,6 @@ async def liqpay_callback(request: Request):
         if not payment:
             return {"ok": True}
 
-        # 🔒 захист від повторної обробки
-        if payment["status"] == "success":
-            print("⚠️ PAYMENT ALREADY PROCESSED")
-            return {"ok": True}
-
         # 🔹 оновлюємо статус
         await execute(
             """
@@ -87,7 +79,7 @@ async def liqpay_callback(request: Request):
             order_id
         )
 
-        # 🔥 нормалізація amount (float → int)
+        # 🔥 FIX: нормалізація amount (float → int)
         try:
             amount = int(float(payment["amount"]))
         except Exception:
@@ -102,12 +94,9 @@ async def liqpay_callback(request: Request):
 
         print("AMOUNT NORMALIZED:", amount)
 
-        # ================= ОСНОВНА ЛОГІКА =================
-
+        # 🔥 головний блок (тепер працює)
         if status == "success" and amount in slots_map:
             print("💰 ADDING SUBSCRIPTION")
-
-            slots = slots_map[amount]
 
             await execute(
                 """
@@ -120,32 +109,9 @@ async def liqpay_callback(request: Request):
                 )
                 """,
                 payment["seller_id"],
-                slots,
+                slots_map[amount],
                 payment["id"]
             )
-
-            print(f"✅ SUBSCRIPTION ADDED: seller_id={payment['seller_id']}, slots={slots}")
-
-            # ================= TELEGRAM NOTIFY =================
-
-            seller = await fetchrow(
-                "SELECT telegram_id FROM sellers WHERE id = $1",
-                payment["seller_id"]
-            )
-
-            if seller:
-                telegram_id = seller["telegram_id"]
-
-                try:
-                    await bot.send_message(
-                        telegram_id,
-                        f"✅ Оплата успішна!\n\n"
-                        f"🎉 Вам нараховано {slots} слот(ів)\n"
-                        f"📅 Дійсно 30 днів"
-                    )
-                except Exception as e:
-                    print("❌ TELEGRAM SEND ERROR:", e)
-
         else:
             print("⚠️ SKIPPED SUBSCRIPTION:", status, amount)
 

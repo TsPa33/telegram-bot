@@ -1,19 +1,34 @@
 from aiogram import Router, F
-from aiogram.types import Message
+from aiogram.types import Message, CallbackQuery
+from aiogram.fsm.context import FSMContext
+
+from bot.database.repositories.car_repo import get_car_by_id
 from bot.database.repositories.seller_repo import (
-    get_seller_by_telegram_id,
+    get_seller_by_telegram_id,   # ✅ змінено
     get_garage_info,
     get_active_subscriptions,
     get_seller_cars_by_seller_id,
+    delete_car,
 )
-from bot.keyboards.seller_inline import cars_list_kb
-from bot.config import DEFAULT_LOGO
+
+from bot.keyboards.seller_inline import (
+    cars_list_kb,
+    seller_card_actions_kb
+)
+
+from bot.utils.formatters import format_car_card
+from bot.states.seller_states import SellerStates
+
 
 router = Router()
 
 
+# ================= MY GARAGE =================
+
 @router.message(F.text.in_(["📋 Мої авто", "📋 Мій гараж"]))
 async def my_cars(message: Message):
+    # ❌ було: get_or_create_seller
+    # ✅ тепер тільки читання
     seller = await get_seller_by_telegram_id(message.from_user.id)
 
     if not seller:
@@ -21,8 +36,6 @@ async def my_cars(message: Message):
         return
 
     seller_id = seller["id"]
-
-    seller_logo = seller.get("logo_url")
 
     cars = await get_seller_cars_by_seller_id(seller_id)
     garage = await get_garage_info(seller_id)
@@ -53,9 +66,6 @@ async def my_cars(message: Message):
     # ===== ЯКЩО НЕМАЄ АВТО =====
     if not cars:
         text += "😕 У тебе ще немає авто"
-
-        photo = seller_logo or DEFAULT_LOGO
-        await message.answer_photo(photo=photo)
         await message.answer(text, parse_mode="HTML")
         return
 
@@ -68,16 +78,6 @@ async def my_cars(message: Message):
             f"{car.get('description') or '-'}\n"
             f"👁 {car.get('views', 0)} | 📞 {car.get('phone_clicks', 0)} | 🌐 {car.get('site_clicks', 0)}\n\n"
         )
-
-    first_car = cars[0]
-
-    photo = (
-        first_car.get("photo_id")
-        or seller_logo
-        or DEFAULT_LOGO
-    )
-
-    await message.answer_photo(photo=photo)
 
     await message.answer(
         text,

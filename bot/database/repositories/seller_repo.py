@@ -12,6 +12,8 @@ async def get_or_create_seller(telegram_id: int, username: str):
         RETURNING *
     """, telegram_id, username)
 
+    # 🔥 стартовий пакет (1 слот / 30 днів)
+    # ✅ FIX: враховуємо тільки АКТИВНІ підписки
     await execute("""
         INSERT INTO seller_subscriptions (seller_id, slots, expires_at)
         SELECT $1, 1, NOW() + INTERVAL '30 days'
@@ -30,25 +32,6 @@ async def get_seller_by_telegram_id(telegram_id: int):
     return await fetchrow("""
         SELECT * FROM sellers WHERE telegram_id = $1
     """, telegram_id)
-
-
-# ================= LOGO =================
-
-async def update_seller_logo(seller_id: int, logo_url: str):
-    await execute("""
-        UPDATE sellers
-        SET logo_url = $1
-        WHERE id = $2
-    """, logo_url, seller_id)
-
-
-async def get_sellers_without_logo():
-    return await fetch("""
-        SELECT id, website
-        FROM sellers
-        WHERE website IS NOT NULL
-          AND (logo_url IS NULL OR logo_url = '')
-    """)
 
 
 # ================= SLOTS =================
@@ -152,7 +135,6 @@ async def get_seller_cars_by_seller_id(seller_id: int):
     return await fetch("""
         SELECT 
             sc.id,
-            sc.photo_id,
             m.name AS model,
             b.name AS brand,
             sc.description,
@@ -171,7 +153,6 @@ async def get_seller_cars(telegram_id: int):
     return await fetch("""
         SELECT 
             sc.id,
-            sc.photo_id,
             m.name AS model,
             b.name AS brand,
             sc.description,
