@@ -75,7 +75,6 @@ async def edit_profile(callback: CallbackQuery, state: FSMContext):
     await state.set_state(SellerStates.edit_profile)
     await state.update_data(editing_field=field)
 
-    # 🔴 КРИТИЧНО: тільки edit_text
     if field == "photo":
         await callback.message.edit_text(
             "📸 Надішліть фото",
@@ -90,7 +89,7 @@ async def edit_profile(callback: CallbackQuery, state: FSMContext):
 
 # ================= HANDLE PHOTO =================
 
-@router.message(StateFilter(SellerStates.edit_profile), F.photo)
+@router.message(F.photo, StateFilter(SellerStates.edit_profile))
 async def handle_photo(message: Message, state: FSMContext):
     data = await state.get_data()
     field = data.get("editing_field")
@@ -112,7 +111,7 @@ async def handle_photo(message: Message, state: FSMContext):
 
 # ================= HANDLE TEXT =================
 
-@router.message(StateFilter(SellerStates.edit_profile))
+@router.message(F.text, StateFilter(SellerStates.edit_profile))
 async def handle_text(message: Message, state: FSMContext):
     data = await state.get_data()
     field = data.get("editing_field")
