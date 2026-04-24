@@ -1,13 +1,11 @@
-from aiogram import Router, types
+from aiogram import Router, types, F
 from aiogram.filters import Command
-from aiogram import F
 from aiogram.fsm.context import FSMContext
 
 from bot.database.repositories.model_repo import get_brands_with_ids
 from bot.keyboards.brands import brand_kb
 from bot.keyboards.buyer_home import buyer_home_kb
 from bot.keyboards.buyer_reply import buyer_reply_kb
-from bot.keyboards.main_menu import main_menu_kb
 from bot.states.buyer_states import Buyer
 
 
@@ -35,44 +33,27 @@ async def show_buyer_home(message: types.Message, state: FSMContext):
     )
 
 
-# ================= GLOBAL MENU =================
-
-@router.message(Command("start"))
-async def start_command(message: types.Message, state: FSMContext):
-    await state.clear()
-
-    await message.answer(
-        "🔁 Головне меню\n\nОбери дію:",
-        reply_markup=await main_menu_kb(message.from_user.id),
-    )
-
+# ================= RESTART BUTTON =================
 
 @router.message(F.text == "🔄 Оновити Bot")
 async def restart_bot(message: types.Message, state: FSMContext):
     await state.clear()
-
-    await message.answer(
-        "🔁 Головне меню\n\nОбери дію:",
-        reply_markup=await main_menu_kb(message.from_user.id),
-    )
+    await show_buyer_home(message, state)
 
 
-# ================= ROLE ENTRY (FIX) =================
+# ================= ROLE ENTRY =================
 
 @router.callback_query(F.data == "role:buyer")
 async def enter_buyer(callback: types.CallbackQuery, state: FSMContext):
     await callback.answer()
-
     await show_buyer_home(callback.message, state)
 
 
-# ================= LEGACY NAV =================
+# ================= NAV =================
 
 @router.callback_query(F.data == "nav:home")
 async def buyer_home_callback(callback: types.CallbackQuery, state: FSMContext):
-    print("NAV:", callback.data)
     await callback.answer()
-
     await show_buyer_home(callback.message, state)
 
 
@@ -80,33 +61,25 @@ async def buyer_home_callback(callback: types.CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data == "buyer:find")
 async def buyer_find_handler(callback: types.CallbackQuery, state: FSMContext):
-    print("NAV:", callback.data)
     await callback.answer()
-
     await start_buyer(callback.message, state)
 
 
 @router.callback_query(F.data == "buyer:views")
 async def buyer_views_handler(callback: types.CallbackQuery):
-    print("NAV:", callback.data)
     await callback.answer()
-
     await callback.message.answer("👀 Мої перегляди будуть доступні скоро.")
 
 
 @router.callback_query(F.data == "buyer:favorites")
 async def buyer_favorites_handler(callback: types.CallbackQuery):
-    print("NAV:", callback.data)
     await callback.answer()
-
     await callback.message.answer("⭐ Обрані будуть доступні скоро.")
 
 
 @router.callback_query(F.data == "buyer:profile")
 async def buyer_profile_handler(callback: types.CallbackQuery):
-    print("NAV:", callback.data)
     await callback.answer()
-
     await callback.message.answer("👤 Профіль покупця буде доступний скоро.")
 
 
@@ -123,7 +96,6 @@ async def start_buyer(message: types.Message, state: FSMContext):
         return
 
     await state.set_state(Buyer.brand)
-    print("STATE SET TO Buyer.brand")
 
     await message.answer(
         "🔎 Переходимо до пошуку...",
