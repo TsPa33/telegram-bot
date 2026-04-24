@@ -4,7 +4,7 @@ from aiogram.fsm.context import FSMContext
 
 from bot.database.repositories.car_repo import get_car_by_id
 from bot.database.repositories.seller_repo import (
-    get_seller_by_telegram_id,   # ✅ змінено
+    get_seller_by_telegram_id,
     get_garage_info,
     get_active_subscriptions,
     get_seller_cars_by_seller_id,
@@ -27,8 +27,6 @@ router = Router()
 
 @router.message(F.text.in_(["📋 Мої авто", "📋 Мій гараж"]))
 async def my_cars(message: Message):
-    # ❌ було: get_or_create_seller
-    # ✅ тепер тільки читання
     seller = await get_seller_by_telegram_id(message.from_user.id)
 
     if not seller:
@@ -43,13 +41,11 @@ async def my_cars(message: Message):
 
     text = "📋 <b>Твій гараж</b>\n\n"
 
-    # ===== ГАРАЖ =====
     text += (
         f"🚗 <b>Авто:</b> {garage['used']} / {garage['total']}\n"
         f" <b>Вільно місць:</b> {garage['free']}\n\n"
     )
 
-    # ===== ПІДПИСКИ =====
     if subs:
         text += " <b>Активні підписки:</b>\n\n"
 
@@ -63,13 +59,11 @@ async def my_cars(message: Message):
 
         text += "\n"
 
-    # ===== ЯКЩО НЕМАЄ АВТО =====
     if not cars:
         text += "😕 У тебе ще немає авто"
         await message.answer(text, parse_mode="HTML")
         return
 
-    # ===== СПИСОК АВТО =====
     text += "🚗 <b>Список авто:</b>\n\n"
 
     for car in cars:
@@ -82,5 +76,38 @@ async def my_cars(message: Message):
     await message.answer(
         text,
         reply_markup=cars_list_kb(cars),
+        parse_mode="HTML"
+    )
+
+
+# ================= OPEN CAR =================
+
+@router.callback_query(F.data.startswith("car:"))
+async def open_car_from_garage(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+
+    try:
+        car_id = int(callback.data.split(":")[1])
+    except (ValueError, IndexError):
+        await callback.message.answer("❌ Невірний ідентифікатор авто")
+        return
+
+    car = await get_car_by_id(car_id)
+
+    if not car:
+        await callback.message.answer("❌ Авто не знайдено")
+        return
+
+    text = format_car_card(
+        car,
+        page=1,
+        total=1,
+        is_owner=True
+    )
+
+    await callback.message.answer_photo(
+        photo=car.get("photo_id"),
+        caption=text,
+        reply_markup=seller_card_actions_kb(car_id),
         parse_mode="HTML"
     )
