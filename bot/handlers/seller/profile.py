@@ -100,86 +100,56 @@ async def show_profile_handler(message: Message, state: FSMContext):
     await show_profile(message, state)
 
 
+@router.callback_query(F.data.startswith("edit:"))
 async def handle_edit_callback(callback_query: CallbackQuery, state: FSMContext):
-    answered = False
+    await callback_query.answer()
 
-    async def safe_answer(text: str | None = None, show_alert: bool = False):
-        nonlocal answered
-        if answered:
-            return
-        try:
-            await callback_query.answer(text=text, show_alert=show_alert)
-            answered = True
-        except Exception:
-            pass
+    data = callback_query.data
+    _, field = data.split(":", 1)
 
-    try:
-        data = callback_query.data
-
-        if not data or ":" not in data:
-            await safe_answer("Помилка")
-            return
-
-        _, field = data.split(":", 1)
-
-        if field == "back":
-            await state.clear()
-            await _show_profile_view(
-                callback=callback_query,
-                telegram_id=callback_query.from_user.id,
-                username=callback_query.from_user.username,
-            )
-            return
-
-        if field == "cancel":
-            await state.clear()
-            await _show_profile_view(
-                callback=callback_query,
-                telegram_id=callback_query.from_user.id,
-                username=callback_query.from_user.username,
-            )
-            await safe_answer("Скасовано")
-            return
-
-        if field not in PROFILE_FIELDS:
-            await safe_answer("Невідоме поле", show_alert=True)
-            return
-
-        seller = await _get_seller(
+    if field == "back":
+        await state.clear()
+        await _show_profile_view(
+            callback=callback_query,
             telegram_id=callback_query.from_user.id,
             username=callback_query.from_user.username,
         )
+        return
 
-        await state.set_state(SellerStates.edit_profile)
-        await state.update_data(
-            editing_field=field,
-            seller_id=seller["id"],
-            profile_chat_id=callback_query.message.chat.id,
-            profile_message_id=callback_query.message.message_id,
+    if field == "cancel":
+        await state.clear()
+        await _show_profile_view(
+            callback=callback_query,
+            telegram_id=callback_query.from_user.id,
+            username=callback_query.from_user.username,
         )
+        return
 
-        prompt = f"Введіть нове значення для {PROFILE_FIELDS[field]}:"
-        if field == "photo":
-            prompt = "Надішліть нове фото профілю:"
+    if field not in PROFILE_FIELDS:
+        await callback_query.answer("Невідоме поле", show_alert=True)
+        return
 
-        await callback_query.message.edit_text(
-            prompt,
-            reply_markup=profile_cancel_kb(),
-        )
+    seller = await _get_seller(
+        telegram_id=callback_query.from_user.id,
+        username=callback_query.from_user.username,
+    )
 
-    except Exception as e:
-        import traceback
-        print("CALLBACK ERROR:", e)
-        traceback.print_exc()
-        await safe_answer("Помилка")
+    await state.set_state(SellerStates.edit_profile)
+    await state.update_data(
+        editing_field=field,
+        seller_id=seller["id"],
+        profile_chat_id=callback_query.message.chat.id,
+        profile_message_id=callback_query.message.message_id,
+    )
 
-    finally:
-        await safe_answer()
+    prompt = f"Введіть нове значення для {PROFILE_FIELDS[field]}:"
+    if field == "photo":
+        prompt = "Надішліть нове фото профілю:"
 
-
-@router.callback_query(F.data.startswith("edit:"))
-async def handle_edit_callback_handler(callback_query: CallbackQuery, state: FSMContext):
-    await handle_edit_callback(callback_query, state)
+    await callback_query.message.edit_text(
+        prompt,
+        reply_markup=profile_cancel_kb(),
+    )
 
 
 def _normalize_phone(value: str) -> str:
@@ -233,23 +203,8 @@ async def handle_profile_input(message: Message, state: FSMContext):
         telegram_id=message.from_user.id,
         username=message.from_user.username,
     )
+
     text = await _render_profile_text(seller)
-
-    profile_chat_id = data.get("profile_chat_id")
-    profile_message_id = data.get("profile_message_id")
-
-    if profile_chat_id and profile_message_id:
-        try:
-            await message.bot.edit_message_text(
-                text=text,
-                chat_id=profile_chat_id,
-                message_id=profile_message_id,
-                parse_mode="HTML",
-                reply_markup=profile_edit_kb(),
-            )
-            return
-        except Exception:
-            pass
 
     await message.answer(text, parse_mode="HTML", reply_markup=profile_edit_kb())
 

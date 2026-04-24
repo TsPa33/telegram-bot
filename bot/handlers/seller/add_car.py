@@ -103,34 +103,6 @@ async def select_brand(message: Message, state: FSMContext):
     await message.answer("🚗 Обери модель:", reply_markup=keyboard)
 
 
-# ================= ADD BRAND =================
-
-@router.message(SellerStates.add_brand)
-async def add_brand(message: Message, state: FSMContext):
-    brand = message.text.strip()
-
-    request_id = await create_brand_request(
-        user_id=message.from_user.id,
-        brand=brand
-    )
-
-    for admin_id in ADMIN_IDS:
-        await message.bot.send_message(
-            admin_id,
-            f"🆕 Новий бренд\n\n"
-            f"👤 {message.from_user.id}\n"
-            f"🏷 {brand}",
-            reply_markup=brand_request_kb(request_id)
-        )
-
-    await state.update_data(brand=brand)
-
-    await message.answer("✅ Бренд відправлено на модерацію")
-
-    await state.set_state(SellerStates.add_model)
-    await message.answer("➡️ Введи модель для цього бренду:")
-
-
 # ================= MODEL =================
 
 @router.message(SellerStates.model)
@@ -185,15 +157,7 @@ async def handle_photo(message: Message, state: FSMContext):
     await state.update_data(photo_id=message.photo[-1].file_id)
     await state.set_state(SellerStates.description)
 
-    keyboard = ReplyKeyboardMarkup(
-        keyboard=[[SKIP], [BACK]],
-        resize_keyboard=True
-    )
-
-    await message.answer(
-        "📝 Додай опис або натисни 'Пропустити'",
-        reply_markup=keyboard
-    )
+    await message.answer("📝 Додай опис або натисни 'Пропустити'")
 
 
 @router.message(SellerStates.photo, F.text == "Пропустити")
