@@ -10,6 +10,7 @@ from bot.keyboards.profile_inline import profile_edit_kb, profile_cancel_kb
 
 router = Router()
 
+# 🔒 whitelist полів (CRITICAL FIX)
 PROFILE_FIELDS = {
     "shop_name": "🏪 Назва магазину",
     "name": "👤 Ім’я",
@@ -20,6 +21,10 @@ PROFILE_FIELDS = {
     "description": "📝 Опис",
 }
 
+ALLOWED_FIELDS = set(PROFILE_FIELDS.keys())
+
+
+# ================= DB =================
 
 async def _get_seller(telegram_id: int, username: str | None):
     await get_or_create_seller(telegram_id=telegram_id, username=username)
@@ -32,6 +37,8 @@ async def _get_seller(telegram_id: int, username: str | None):
         telegram_id,
     )
 
+
+# ================= RENDER =================
 
 def render_profile(seller):
     return (
@@ -69,10 +76,20 @@ async def edit_profile(callback: CallbackQuery, state: FSMContext):
 
     field = callback.data.split(":")[1]
 
-    # ✅ FIX: cancel/back
+    # ✅ FIX: cancel / back
     if field in ["cancel", "back"]:
         await state.clear()
-        await callback.message.answer("❌ Скасовано")
+
+        seller = await _get_seller(
+            callback.from_user.id,
+            callback.from_user.username
+        )
+
+        await callback.message.answer(
+            render_profile(seller),
+            parse_mode="HTML",
+            reply_markup=profile_edit_kb()
+        )
         return
 
     if field not in PROFILE_FIELDS:
@@ -122,8 +139,10 @@ async def handle_text(message: Message, state: FSMContext):
     data = await state.get_data()
     field = data.get("editing_field")
 
-    if not field:
+    # 🔒 захист від state corruption
+    if field not in ALLOWED_FIELDS:
         await state.clear()
+        await message.answer("❌ Помилка поля")
         return
 
     value = message.text.strip()
@@ -138,4 +157,14 @@ async def handle_text(message: Message, state: FSMContext):
     )
 
     await state.clear()
-    await message.answer("✅ Дані оновлено")
+
+    seller = await _get_seller(
+        message.from_user.id,
+        message.from_user.username
+    )
+
+    await message.answer(
+        "✅ Дані оновлено\n\n" + render_profile(seller),
+        parse_mode="HTML",
+        reply_markup=profile_edit_kb()
+    )
