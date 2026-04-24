@@ -36,7 +36,6 @@ async def buyer_nav_kb(user_id: int) -> InlineKeyboardMarkup:
         ],
     ]
 
-    # ✅ FIX: async is_admin
     if await is_admin(user_id):
         inline_keyboard.append(
             [
