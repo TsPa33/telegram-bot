@@ -84,3 +84,27 @@ async def my_cars(message: Message):
         reply_markup=cars_list_kb(cars),
         parse_mode="HTML"
     )
+
+
+@router.callback_query(F.data.startswith("car:"))
+async def open_car_from_garage(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+
+    try:
+        car_id = int(callback.data.split(":")[1])
+    except (ValueError, IndexError):
+        await callback.message.answer("❌ Невірний ідентифікатор авто")
+        return
+
+    car = await get_car_by_id(car_id)
+    if not car:
+        await callback.message.answer("❌ Авто не знайдено")
+        return
+
+    text = format_car_card(car, is_owner=True)
+
+    await callback.message.answer(
+        text,
+        reply_markup=seller_card_actions_kb(car_id),
+        parse_mode="HTML"
+    )

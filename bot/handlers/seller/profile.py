@@ -34,10 +34,15 @@ MENU_BUTTONS = {
 async def save_profile(message: Message, state: FSMContext):
     data = await state.get_data()
     field = data.get("edit_field")
+    if not field:
+        await state.clear()
+        await message.answer("❌ Не вдалося визначити поле для оновлення")
+        return
 
     allowed_fields = {"name", "shop_name", "phone", "website", "city"}
     if field not in allowed_fields:
         await state.clear()
+        await message.answer("❌ Некоректне поле для оновлення")
         return
 
     value = None if message.text == "-" else message.text
@@ -153,7 +158,7 @@ async def seller_stats(message: Message, state: FSMContext):
         f"👀 Перегляди: {stats['total_views']}\n"
         f"📞 Кліки: {stats['phone_clicks']}\n"
         f"🌐 Переходи: {stats['site_clicks']}\n\n"
-        f"⭐ Рейтинг: <b>{score}</b>"
+        "⭐ Рейтинг: в розробці"
     )
 
     await message.answer(text, parse_mode="HTML")

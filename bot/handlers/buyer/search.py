@@ -40,6 +40,7 @@ async def select_brand(callback: types.CallbackQuery, state: FSMContext):
 
     await state.set_state(Buyer.model)
     await callback.message.answer("🚘 Обери модель", reply_markup=model_kb_with_back(models))
+    await callback.message.delete()
 
 
 @router.callback_query(F.data.startswith("buyer:model:"))

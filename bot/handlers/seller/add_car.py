@@ -218,7 +218,7 @@ async def add_model(message: Message, state: FSMContext):
 
 # ================= DESCRIPTION =================
 
-@router.message(SellerStates.description)
+@router.message(SellerStates.description, F.text != "Пропустити")
 async def handle_description(message: Message, state: FSMContext):
     data = await state.get_data()
 
@@ -231,6 +231,42 @@ async def handle_description(message: Message, state: FSMContext):
         model_id=model_id,
         photo_id=data.get("photo_id"),
         description=message.text
+    )
+
+    await message.answer(
+        "✅ Авто додано",
+        reply_markup=seller_menu_kb(is_verified=seller.get("is_verified", False))
+    )
+
+    await state.clear()
+
+
+@router.message(SellerStates.photo, F.photo)
+async def handle_photo(message: Message, state: FSMContext):
+    await state.update_data(photo_id=message.photo[-1].file_id)
+    await state.set_state(SellerStates.description)
+    await message.answer("📝 Додай опис або натисни 'Пропустити'")
+
+
+@router.message(SellerStates.photo, F.text == "Пропустити")
+async def skip_photo(message: Message, state: FSMContext):
+    await state.update_data(photo_id=None)
+    await state.set_state(SellerStates.description)
+    await message.answer("📝 Додай опис або натисни 'Пропустити'")
+
+
+@router.message(SellerStates.description, F.text == "Пропустити")
+async def skip_description(message: Message, state: FSMContext):
+    data = await state.get_data()
+
+    seller = await get_or_create_seller(message.from_user.id, message.from_user.username)
+    model_id = await get_model_id(data["brand"], data["model"])
+
+    await add_seller_car(
+        seller_id=seller["id"],
+        model_id=model_id,
+        photo_id=data.get("photo_id"),
+        description=None
     )
 
     await message.answer(
