@@ -28,7 +28,7 @@ from bot.states.seller_states import SellerStates
 from bot.config import ADMIN_IDS
 
 from .verification import check_verified
-
+print("🔥 ADD CAR STEP:", state)
 router = Router()
 
 BACK = KeyboardButton(text="⬅️ Назад")
