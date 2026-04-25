@@ -14,15 +14,15 @@ router = Router()
 
 # ================= BUYER HOME =================
 
-PHOTO_ID = "AgACAgIAAxkBAAInGmnsyKKciKWOKfA6F-UUAVV69tPXAAIZFGsb1aVhSzZgv4wzD9tCAQADAgADeQADOwQ"
+DOC_ID = "BQACAgIAAxkBAAInSGns0MCyYz_O4mmBD4ZwZYXP0yB1AAKrlAAC1aVhS5z6xKwdGIX6OwQ"
 
 
 async def show_buyer_home(message: types.Message, state: FSMContext):
     await state.set_state(None)
 
-    # 🔥 ЛОГО ЗАМІСТЬ ТЕКСТУ
-    await message.answer_photo(
-        photo=PHOTO_ID,
+    # 🔥 ПРОЗОРИЙ БАНЕР (document)
+    await message.answer_document(
+        document=DOC_ID,
         reply_markup=buyer_home_kb(),
     )
 
@@ -114,11 +114,3 @@ async def start_buyer(message: types.Message, state: FSMContext):
         reply_markup=brand_kb(brands)
     )
 
-@router.message(F.photo)
-async def get_photo_id(message: Message):
-    await message.answer(message.photo[-1].file_id)
-    
-@router.message(F.document)
-async def get_file_id(message: Message):
-    file_id = message.document.file_id
-    await message.answer(f"FILE_ID:\n{file_id}")
