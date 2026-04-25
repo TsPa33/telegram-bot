@@ -10,11 +10,15 @@ def seller_main_kb(is_verified: bool = False):
             KeyboardButton(text="🔐 Верифікація")
         ])
 
-    # ✅ фінальний layout 2x3
+    # ✅ оновлений layout (з послугами)
     buttons.extend([
         [
             KeyboardButton(text="➕ Додати авто"),
+            KeyboardButton(text="➕ Додати послугу"),  # ✅ NEW
+        ],
+        [
             KeyboardButton(text="📋 Мій гараж"),
+            KeyboardButton(text="📋 Мої послуги"),  # ✅ NEW
         ],
         [
             KeyboardButton(text="👤 Мій профіль"),
