@@ -5,6 +5,8 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from bot.database.repositories.seller_repo import (
     get_seller_by_telegram_id,
 )
+from bot.database.repositories.payment_repo import get_user_transactions
+
 from bot.services.liqpay_service import LiqPayService
 from bot.config import (
     LIQPAY_PUBLIC_KEY,
@@ -32,7 +34,6 @@ async def _create_package_payment(message: Message, package_key: str, telegram_i
     try:
         package = PACKAGES[package_key]
 
-        # ✅ використовуємо правильний telegram_id
         seller = await get_seller_by_telegram_id(telegram_id)
 
         if not seller:
@@ -81,9 +82,14 @@ async def buy_one_slot(message: Message):
 @router.message(F.text == "💳 Пакети послуг")
 async def show_packages(message: Message):
     kb = InlineKeyboardBuilder()
+
     kb.button(text="1 авто — 99 грн", callback_data="package:1")
     kb.button(text="5 авто — 199 грн", callback_data="package:5")
     kb.button(text="10 авто — 299 грн", callback_data="package:10")
+
+    # 🔥 НОВА КНОПКА
+    kb.button(text="📊 Історія транзакцій", callback_data="seller:transactions")
+
     kb.adjust(1)
 
     await message.answer(
@@ -94,7 +100,7 @@ async def show_packages(message: Message):
     )
 
 
-# ================= CALLBACK =================
+# ================= CALLBACK ПОКУПКИ =================
 
 @router.callback_query(F.data.startswith("package:"))
 async def buy_package_callback(callback: CallbackQuery):
@@ -104,7 +110,6 @@ async def buy_package_callback(callback: CallbackQuery):
         await callback.answer("Невідомий пакет", show_alert=True)
         return
 
-    # ✅ КЛЮЧОВИЙ FIX: використовуємо callback.from_user.id
     await _create_package_payment(
         callback.message,
         package_key,
@@ -112,3 +117,35 @@ async def buy_package_callback(callback: CallbackQuery):
     )
 
     await callback.answer()
+
+
+# ================= ІСТОРІЯ ТРАНЗАКЦІЙ =================
+
+@router.callback_query(F.data == "seller:transactions")
+async def show_transactions(callback: CallbackQuery):
+    await callback.answer()
+
+    transactions = await get_user_transactions(callback.from_user.id)
+
+    if not transactions:
+        await callback.message.answer("📭 Транзакцій ще немає")
+        return
+
+    text = ""
+
+    for t in transactions:
+        status = "УСПІШНО" if t["status"] == "success" else "ВІДМОВЛЕНО"
+        icon = "✅" if t["status"] == "success" else "⚠️"
+
+        text += f"{icon} Оплата {t['amount']} грн\n"
+        text += f"({status})\n"
+
+        if t["status"] == "success":
+            text += f"Зараховано {t.get('slots', 0)} місце(ць) в гаражі\n"
+
+        if t.get("error"):
+            text += f"Причина: {t['error']}\n"
+
+        text += f"{t['created_at']}\n\n"
+
+    await callback.message.answer(text)
