@@ -35,9 +35,9 @@ async def my_cars(message: Message):
     # ===== 🔥 СТАТИСТИКА ГАРАЖА =====
     garage_info = await get_garage_info(seller["id"])
 
-    total_slots = garage_info.get("total_slots", 0) if garage_info else 0
-    used_slots = len(cars)
-    free_slots = max(total_slots - used_slots, 0)
+    total_slots = garage_info.get("total", 0)
+    used_slots = garage_info.get("used", 0)
+    free_slots = garage_info.get("free", 0)
 
     text = (
         "📋 Мій гараж\n\n"
