@@ -4,13 +4,15 @@ from aiogram.types import CallbackQuery, Message
 from aiogram.filters import StateFilter
 
 from bot.database.base import execute, fetchrow
-from bot.database.repositories.seller_repo import get_or_create_seller
+from bot.database.repositories.seller_repo import (
+    get_or_create_seller,
+    get_seller_stats
+)
 from bot.states.seller_states import SellerStates
 from bot.keyboards.profile_inline import profile_edit_kb, profile_cancel_kb
 
 router = Router()
 
-# 🔒 whitelist полів (CRITICAL FIX)
 PROFILE_FIELDS = {
     "shop_name": "🏪 Назва магазину",
     "name": "👤 Ім’я",
@@ -68,6 +70,28 @@ async def show_profile(message: Message, state: FSMContext):
     )
 
 
+# ================= 📊 STATS =================
+
+@router.message(F.text == "📊 Статистика")
+async def seller_stats(message: Message):
+    stats = await get_seller_stats(message.from_user.id)
+
+    total_cars = stats.get("total_cars", 0)
+    views = stats.get("total_views", 0)
+    phone = stats.get("phone_clicks", 0)
+    site = stats.get("site_clicks", 0)
+
+    text = (
+        "📊 Статистика продавця\n\n"
+        f"Оголошень: {total_cars}\n"
+        f"Всього переглядів 👁 {views}\n"
+        f"Всього дзвінків 📞 {phone}\n"
+        f"Всього переходів 🌐 {site}"
+    )
+
+    await message.answer(text)
+
+
 # ================= EDIT CLICK =================
 
 @router.callback_query(F.data.startswith("edit:"))
@@ -76,7 +100,6 @@ async def edit_profile(callback: CallbackQuery, state: FSMContext):
 
     field = callback.data.split(":")[1]
 
-    # ✅ FIX: cancel / back
     if field in ["cancel", "back"]:
         await state.clear()
 
@@ -139,7 +162,6 @@ async def handle_text(message: Message, state: FSMContext):
     data = await state.get_data()
     field = data.get("editing_field")
 
-    # 🔒 захист від state corruption
     if field not in ALLOWED_FIELDS:
         await state.clear()
         await message.answer("❌ Помилка поля")
