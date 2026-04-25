@@ -32,7 +32,22 @@ async def my_cars(message: Message):
 
     cars = await get_seller_cars_by_seller_id(seller["id"])
 
-    await message.answer("🚗 Твої авто:", reply_markup=cars_list_kb(cars))
+    # ===== 🔥 СТАТИСТИКА ГАРАЖА =====
+    garage_info = await get_garage_info(seller["id"])
+
+    total_slots = garage_info.get("total_slots", 0) if garage_info else 0
+    used_slots = len(cars)
+    free_slots = max(total_slots - used_slots, 0)
+
+    text = (
+        "📋 Мій гараж\n\n"
+        f"Всього місць: {total_slots}\n"
+        f"Зайнято місць: {used_slots}\n"
+        f"Вільно місць: {free_slots}\n\n"
+        "🚗 Твої авто:"
+    )
+
+    await message.answer(text, reply_markup=cars_list_kb(cars))
 
 
 @router.callback_query(F.data.startswith("car:"))
