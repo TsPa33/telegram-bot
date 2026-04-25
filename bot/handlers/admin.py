@@ -26,6 +26,9 @@ from bot.database.repositories.admin_repo import (
     reject_seller
 )
 
+# ✅ NEW
+from bot.database.repositories.user_repo import get_visits
+
 from bot.utils.cache import clear_brands_cache, clear_models_cache
 
 router = Router()
@@ -33,7 +36,7 @@ router = Router()
 CANCEL = KeyboardButton(text="❌ Скасувати")
 
 
-# ================= ADMIN PANEL (FIX) =================
+# ================= ADMIN PANEL =================
 
 @router.message(F.text == "⚙️ Адмін панель")
 async def open_admin_panel(message: Message):
@@ -45,6 +48,38 @@ async def open_admin_panel(message: Message):
         "⚙️ Адмін панель",
         reply_markup=admin_kb
     )
+
+
+# ================= 📊 VISITS =================
+
+@router.message(F.text == "📊 Перегляди")
+async def admin_visits(message: Message):
+    if not await is_admin(message.from_user.id):
+        return
+
+    rows = await get_visits()
+
+    if not rows:
+        await message.answer("Немає даних")
+        return
+
+    text = ""
+    current_date = None
+
+    for row in rows:
+        if row["date"] != current_date:
+            text += f"\n📅 {row['date']}\n"
+            current_date = row["date"]
+
+        text += (
+            f"ID: {row['telegram_id']}\n"
+            f"Name: {row['name']}\n"
+            f"Username: @{row['username'] or '-'}\n"
+            f"Phone: {row['phone'] or '-'}\n"
+            f"Role: {row['role']}\n\n"
+        )
+
+    await message.answer(text)
 
 
 # ================= REQUESTS =================
