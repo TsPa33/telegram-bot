@@ -7,6 +7,7 @@ from bot.keyboards.main_menu import main_menu_kb
 from bot.keyboards.seller_menu import seller_menu_kb
 from bot.keyboards.admin_kb import admin_kb
 from bot.database.repositories.seller_repo import get_or_create_seller
+from bot.database.repositories.user_repo import log_visit  # ✅ NEW
 
 router = Router()
 
@@ -29,6 +30,9 @@ async def back_to_main_menu(message: Message, state: FSMContext):
 async def start(message: Message, state: FSMContext):
     await state.set_state(None)
 
+    # ✅ LOG VISIT
+    await log_visit(message.from_user, role="unknown")
+
     await message.answer(
         "🔁 Головне меню\n\nОбери дію:",
         reply_markup=await main_menu_kb(message.from_user.id),
@@ -41,6 +45,9 @@ async def start(message: Message, state: FSMContext):
 async def enter_seller(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     await state.set_state(None)
+
+    # ✅ LOG VISIT
+    await log_visit(callback.from_user, role="seller")
 
     seller = await get_or_create_seller(
         callback.from_user.id,
@@ -65,6 +72,9 @@ async def open_seller(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     await state.set_state(None)
 
+    # ✅ LOG VISIT
+    await log_visit(callback.from_user, role="seller")
+
     seller = await get_or_create_seller(
         callback.from_user.id,
         callback.from_user.username
@@ -87,6 +97,9 @@ async def open_seller(callback: CallbackQuery, state: FSMContext):
 async def legacy_role_callbacks(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     await state.set_state(None)
+
+    # ✅ LOG VISIT
+    await log_visit(callback.from_user, role="seller")
 
     seller = await get_or_create_seller(
         callback.from_user.id,
