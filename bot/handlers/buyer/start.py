@@ -18,15 +18,13 @@ PHOTO_ID = "AgACAgIAAxkBAAInT2ns1VVBPxs6dClg_laFO2xhDoxmAAJbFGsb1aVhS1XfR9RQ5x8V
 
 
 async def show_buyer_home(message: types.Message, state: FSMContext):
-    await state.set_state(None)
+    await state.clear()  # 🔥 FIX
 
-    # ✅ БАНЕР (правильний варіант)
     await message.answer_photo(
         photo=PHOTO_ID,
         reply_markup=buyer_home_kb(),
     )
 
-    # швидке меню
     await message.answer(
         "Швидкий доступ до меню:",
         reply_markup=buyer_reply_kb()
@@ -94,7 +92,7 @@ async def buyer_profile_handler(callback: types.CallbackQuery):
 
 @router.message(Command("find"))
 async def start_buyer(message: types.Message, state: FSMContext):
-    await state.set_state(None)
+    await state.clear()  # 🔥 FIX
 
     brands = await get_brands_with_ids()
 
