@@ -3,6 +3,7 @@ import base64
 import json
 import hashlib
 from datetime import datetime
+import pytz
 
 from aiogram import Bot
 
@@ -126,7 +127,8 @@ async def liqpay_callback(request: Request):
 
         if seller_data:
             telegram_id = seller_data["telegram_id"]
-            now = datetime.now().strftime("%d.%m.%Y %H:%M")
+            kyiv_tz = pytz.timezone("Europe/Kyiv")
+            now = datetime.now(kyiv_tz).strftime("%d.%m.%Y %H:%M")
 
             if status == "success":
                 await bot.send_message(
