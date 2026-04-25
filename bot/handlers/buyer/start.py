@@ -14,7 +14,7 @@ router = Router()
 
 # ================= BUYER HOME =================
 
-DOC_ID = "BQACAgIAAxkBAAInSGns0MCyYz_O4mmBD4ZwZYXP0yB1AAKrlAAC1aVhS5z6xKwdGIX6OwQ"
+DOC_ID = "AgACAgIAAxkBAAInT2ns1VVBPxs6dClg_laFO2xhDoxmAAJbFGsb1aVhS1XfR9RQ5x8VAQADAgADeQADOwQ"
 
 
 async def show_buyer_home(message: types.Message, state: FSMContext):
