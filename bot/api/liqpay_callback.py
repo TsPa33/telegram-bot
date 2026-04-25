@@ -2,11 +2,16 @@ from fastapi import APIRouter, Request, HTTPException
 import base64
 import json
 import hashlib
+from datetime import datetime
 
-from bot.config import LIQPAY_PRIVATE_KEY
+from aiogram import Bot
+
+from bot.config import LIQPAY_PRIVATE_KEY, BOT_TOKEN
 from bot.database.base import execute, fetchrow
 
 router = APIRouter()
+
+bot = Bot(token=BOT_TOKEN)
 
 
 def verify_signature(data: str, signature: str | None) -> bool:
@@ -48,12 +53,10 @@ async def liqpay_callback(request: Request):
         if not order_id:
             raise HTTPException(status_code=400, detail="No order_id")
 
-        # ✅ нормалізація статусу
         status = "success" if raw_status in ("success", "sandbox") else "failed"
 
         print("NORMALIZED STATUS:", status)
 
-        # 🔹 отримуємо платіж
         payment = await fetchrow(
             """
             SELECT id, seller_id, amount, status
@@ -68,7 +71,6 @@ async def liqpay_callback(request: Request):
         if not payment:
             return {"ok": True}
 
-        # 🔹 оновлюємо статус
         await execute(
             """
             UPDATE payments
@@ -79,7 +81,6 @@ async def liqpay_callback(request: Request):
             order_id
         )
 
-        # 🔥 FIX: нормалізація amount (float → int)
         try:
             amount = int(float(payment["amount"]))
         except Exception:
@@ -94,7 +95,7 @@ async def liqpay_callback(request: Request):
 
         print("AMOUNT NORMALIZED:", amount)
 
-        # 🔥 головний блок (тепер працює)
+        # ===== SUBSCRIPTION =====
         if status == "success" and amount in slots_map:
             print("💰 ADDING SUBSCRIPTION")
 
@@ -112,8 +113,43 @@ async def liqpay_callback(request: Request):
                 slots_map[amount],
                 payment["id"]
             )
+
         else:
             print("⚠️ SKIPPED SUBSCRIPTION:", status, amount)
+
+        # ===== 🔥 НОВИЙ БЛОК: СПОВІЩЕННЯ =====
+
+        seller_data = await fetchrow(
+            "SELECT telegram_id FROM sellers WHERE id = $1",
+            payment["seller_id"]
+        )
+
+        if seller_data:
+            telegram_id = seller_data["telegram_id"]
+            now = datetime.now().strftime("%d.%m.%Y %H:%M")
+
+            if status == "success":
+                await bot.send_message(
+                    telegram_id,
+                    f"✅ Оплата {amount} грн\n"
+                    f"(УСПІШНО)\n"
+                    f"Зараховано {slots_map.get(amount, 0)} місце(ць) в гаражі\n"
+                    f"{now}"
+                )
+            else:
+                reason = payload.get("err_description")
+
+                text = (
+                    f"⚠️ Оплата {amount} грн\n"
+                    f"(В оплаті відмовлено)\n"
+                )
+
+                if reason:
+                    text += f"Причина: {reason}\n"
+
+                text += now
+
+                await bot.send_message(telegram_id, text)
 
         print(f"✅ PAYMENT UPDATED: {order_id} -> {status}")
 
