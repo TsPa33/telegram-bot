@@ -13,7 +13,6 @@ from bot.database.repositories.service_repo import (
     create_service,
     delete_service,
     get_services_by_seller,
-    update_service,
 )
 from bot.database.repositories.seller_repo import get_or_create_seller, get_seller_by_telegram_id
 from bot.keyboards.seller_menu import seller_menu_kb
@@ -32,14 +31,6 @@ SERVICE_CATEGORIES = [
 
 ADD_SERVICE_BACK = KeyboardButton(text="⬅️ Назад у профіль")
 SKIP_WEBSITE = KeyboardButton(text="⚠️ Пропустити")
-
-EDIT_FIELDS = {
-    "title": "Назва",
-    "city": "Місто",
-    "address": "Адреса",
-    "description": "Опис",
-    "website": "Сайт",
-}
 
 
 # ================= KEYBOARDS =================
@@ -81,28 +72,15 @@ def actions_kb(service_id):
     )
 
 
-def edit_fields_kb(service_id):
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text=name,
-                    callback_data=f"service_edit_field:{service_id}:{field}",
-                )
-            ]
-            for field, name in EDIT_FIELDS.items()
-        ]
-    )
-
-
 # ================= ADD SERVICE =================
 
 @router.message(F.text == "➕ Додати послугу")
 async def start_add(message: Message, state: FSMContext):
+    await state.clear()  # 🔥 ВАЖЛИВО
+
     if not await check_verified(message, state):
         return
 
-    await state.clear()
     await state.set_state(ServiceStates.category)
 
     await message.answer("Оберіть категорію:", reply_markup=service_categories_kb())
@@ -111,9 +89,14 @@ async def start_add(message: Message, state: FSMContext):
 @router.message(ServiceStates.category)
 async def set_category(message: Message, state: FSMContext):
     if message.text == "⬅️ Назад у профіль":
-        seller = await get_or_create_seller(message.from_user.id, message.from_user.username)
         await state.clear()
-        await message.answer("Меню", reply_markup=seller_menu_kb(seller.get("is_verified")))
+
+        seller = await get_or_create_seller(message.from_user.id, message.from_user.username)
+
+        await message.answer(
+            "Меню",
+            reply_markup=seller_menu_kb(seller.get("is_verified"))
+        )
         return
 
     if message.text not in SERVICE_CATEGORIES:
@@ -190,7 +173,9 @@ async def set_website(message: Message, state: FSMContext):
 # ================= MY SERVICES =================
 
 @router.message(F.text == "📋 Мої послуги")
-async def my_services(message: Message):
+async def my_services(message: Message, state: FSMContext):
+    await state.clear()  # 🔥 FIX
+
     seller = await get_seller_by_telegram_id(message.from_user.id)
 
     if not seller:
@@ -207,10 +192,12 @@ async def my_services(message: Message):
 
 
 @router.callback_query(F.data.startswith("service:"))
-async def open_service(callback: CallbackQuery):
+async def open_service(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
+    await state.clear()  # 🔥 FIX
 
     service_id = int(callback.data.split(":")[1])
+
     seller = await get_seller_by_telegram_id(callback.from_user.id)
     services = await get_services_by_seller(seller["id"])
 
@@ -229,11 +216,10 @@ async def open_service(callback: CallbackQuery):
     await callback.message.answer(text, reply_markup=actions_kb(service_id))
 
 
-# ================= DELETE =================
-
 @router.callback_query(F.data.startswith("service_delete:"))
-async def delete_handler(callback: CallbackQuery):
+async def delete_handler(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
+    await state.clear()  # 🔥 FIX
 
     service_id = int(callback.data.split(":")[1])
     await delete_service(service_id)
