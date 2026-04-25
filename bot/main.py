@@ -97,6 +97,10 @@ async def run_bot():
     dp = Dispatcher(storage=storage)
     bot = Bot(token=BOT_TOKEN)
 
+    # Drop queued updates (including stale callback queries) to prevent
+    # old button presses from re-triggering flows after restart.
+    await bot.delete_webhook(drop_pending_updates=True)
+
     dp.callback_query.middleware(CallbackAnswerMiddleware())
     dp.errors.register(global_error_handler)
 
