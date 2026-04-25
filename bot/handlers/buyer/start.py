@@ -14,15 +14,15 @@ router = Router()
 
 # ================= BUYER HOME =================
 
-DOC_ID = "AgACAgIAAxkBAAInT2ns1VVBPxs6dClg_laFO2xhDoxmAAJbFGsb1aVhS1XfR9RQ5x8VAQADAgADeQADOwQ"
+PHOTO_ID = "AgACAgIAAxkBAAInT2ns1VVBPxs6dClg_laFO2xhDoxmAAJbFGsb1aVhS1XfR9RQ5x8VAQADAgADeQADOwQ"
 
 
 async def show_buyer_home(message: types.Message, state: FSMContext):
     await state.set_state(None)
 
-    # 🔥 ПРОЗОРИЙ БАНЕР (document)
-    await message.answer_document(
-        document=DOC_ID,
+    # ✅ БАНЕР (правильний варіант)
+    await message.answer_photo(
+        photo=PHOTO_ID,
         reply_markup=buyer_home_kb(),
     )
 
@@ -113,4 +113,3 @@ async def start_buyer(message: types.Message, state: FSMContext):
         "🚗 Обери бренд",
         reply_markup=brand_kb(brands)
     )
-    
