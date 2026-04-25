@@ -165,7 +165,7 @@ async def category(callback: CallbackQuery, state: FSMContext):
 
     services = await get_services_by_filter(data["city"], category)
 
-    # 🔥 FIX ТУТ
+    # 🔥 КРИТИЧНИЙ ФІКС
     services = [dict(s) for s in services]
 
     if not services:
