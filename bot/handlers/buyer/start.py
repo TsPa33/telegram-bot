@@ -8,25 +8,24 @@ from bot.keyboards.buyer_home import buyer_home_kb
 from bot.keyboards.buyer_reply import buyer_reply_kb
 from bot.states.buyer_states import Buyer
 
-
 router = Router()
 
 
 # ================= BUYER HOME =================
 
+PHOTO_ID = "AgACAgIAAxkBAAInGmnsyKKciKWOKfA6F-UUAVV69tPXAAIZFGsb1aVhSzZgv4wzD9tCAQADAgADeQADOwQ"
+
+
 async def show_buyer_home(message: types.Message, state: FSMContext):
     await state.set_state(None)
 
-    await message.answer(
-        "🏠 <b>Головне меню покупця</b>\n\n"
-        "👤 Профіль\n"
-        "🚗 Знайти авто\n"
-        "👀 Мої перегляди\n"
-        "⭐ Обрані",
-        parse_mode="HTML",
+    # 🔥 ЛОГО ЗАМІСТЬ ТЕКСТУ
+    await message.answer_photo(
+        photo=PHOTO_ID,
         reply_markup=buyer_home_kb(),
     )
 
+    # швидке меню
     await message.answer(
         "Швидкий доступ до меню:",
         reply_markup=buyer_reply_kb()
@@ -36,6 +35,7 @@ async def show_buyer_home(message: types.Message, state: FSMContext):
 # ================= RESTART BUTTON =================
 
 from bot.keyboards.main_menu import main_menu_kb
+
 
 @router.message(F.text == "🔄 Оновити Bot")
 async def restart_bot(message: types.Message, state: FSMContext):
