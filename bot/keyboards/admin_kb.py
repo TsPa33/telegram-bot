@@ -5,6 +5,7 @@ admin_kb = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="📋 Заявки (бренди/моделі)")],
         [KeyboardButton(text="🔐 Верифікація продавців")],
+        [KeyboardButton(text="📊 Перегляди")],  # ✅ NEW
         [KeyboardButton(text="➕ Додати користувача")],
     ],
     resize_keyboard=True
