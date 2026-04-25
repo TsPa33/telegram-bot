@@ -120,6 +120,18 @@ async def get_services_by_filter(city: str, category: str):
     )
 
 
+# 🔥 НОВА ФУНКЦІЯ (ВИРІШУЄ ТВОЮ ПРОБЛЕМУ)
+async def get_all_cities():
+    return await fetch(
+        """
+        SELECT DISTINCT city
+        FROM services
+        WHERE city IS NOT NULL
+        ORDER BY city
+        """
+    )
+
+
 async def delete_service(service_id: int):
     await execute("DELETE FROM service_stats WHERE service_id = $1", service_id)
     await execute("DELETE FROM services WHERE id = $1", service_id)
