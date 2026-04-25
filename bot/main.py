@@ -14,9 +14,6 @@ from redis.asyncio import from_url
 from bot.config import BOT_TOKEN
 from bot.handlers import start, seller, buyer, admin
 
-# 🔥 ДОДАЄМО ПРЯМИЙ ІМПОРТ seller.py
-from bot.handlers.seller import router as seller_root_router
-
 from bot.database.pool import init_pool
 from bot.database.models import create_tables
 
@@ -106,7 +103,6 @@ async def run_bot():
     # 🔥 ПОРЯДОК ВАЖЛИВИЙ
     dp.include_router(start.router)
 
-    dp.include_router(seller_root_router)  # ✅ seller.py (add car flow)
     dp.include_router(seller.router)       # інші seller модулі
 
     dp.include_router(admin.router)
