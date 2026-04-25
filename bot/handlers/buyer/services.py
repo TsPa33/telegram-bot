@@ -129,7 +129,7 @@ async def send_card(message: Message, state: FSMContext, new=False):
 @router.callback_query(F.data == "buyer:services")
 async def start(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
-    await state.clear()  # 🔥 FIX
+    await state.clear()
     await state.set_state(ServiceStates.city)
 
     cities = await get_all_cities()
@@ -164,6 +164,9 @@ async def category(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
 
     services = await get_services_by_filter(data["city"], category)
+
+    # 🔥 FIX ТУТ
+    services = [dict(s) for s in services]
 
     if not services:
         await callback.message.answer("❌ Нічого не знайдено")
