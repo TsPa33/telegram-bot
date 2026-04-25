@@ -3,10 +3,11 @@ from urllib.parse import quote_plus
 
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto, Message
+from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
 from bot.database.repositories.service_repo import (
     get_services_by_filter,
+    get_all_cities,
     increment_calls,
     increment_clicks,
     increment_views,
@@ -28,19 +29,22 @@ LIMIT = 1
 
 # ================= KEYBOARDS =================
 
-def service_city_kb():
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="Київ", callback_data="svc_city:Київ")],
-        [InlineKeyboardButton(text="Львів", callback_data="svc_city:Львів")],
-        [InlineKeyboardButton(text="Одеса", callback_data="svc_city:Одеса")],
-    ])
+def service_city_kb(cities):
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text=c["city"], callback_data=f"svc_city:{c['city']}")]
+            for c in cities
+        ]
+    )
 
 
 def service_category_kb():
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text=cat, callback_data=f"svc_category:{cat}")]
-        for cat in SERVICE_CATEGORIES
-    ])
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text=cat, callback_data=f"svc_category:{cat}")]
+            for cat in SERVICE_CATEGORIES
+        ]
+    )
 
 
 # ================= HELPERS =================
@@ -64,7 +68,6 @@ def format_service(service):
 
 
 def build_kb(service, page, total):
-    website = normalize_website(service.get("website"))
     route = f"https://www.google.com/maps/search/?api=1&query={quote_plus(service['address'])}"
 
     rows = [
@@ -95,6 +98,7 @@ async def send_card(message: Message, state: FSMContext, new=False):
 
     if not items:
         await message.answer("❌ Нічого не знайдено")
+        await state.clear()
         return
 
     total = max(1, math.ceil(len(items) / LIMIT))
@@ -125,14 +129,25 @@ async def send_card(message: Message, state: FSMContext, new=False):
 @router.callback_query(F.data == "buyer:services")
 async def start(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
+    await state.clear()  # 🔥 FIX
     await state.set_state(ServiceStates.city)
 
-    await callback.message.answer("Оберіть місто:", reply_markup=service_city_kb())
+    cities = await get_all_cities()
+
+    if not cities:
+        await callback.message.answer("❌ Поки що немає послуг")
+        return
+
+    await callback.message.answer(
+        "Оберіть місто:",
+        reply_markup=service_city_kb(cities)
+    )
 
 
-@router.callback_query(F.data.startswith("svc_city:"))
+@router.callback_query(ServiceStates.city, F.data.startswith("svc_city:"))
 async def city(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
+
     city = callback.data.split(":")[1]
 
     await state.update_data(city=city)
@@ -141,16 +156,18 @@ async def city(callback: CallbackQuery, state: FSMContext):
     await callback.message.answer("Оберіть категорію:", reply_markup=service_category_kb())
 
 
-@router.callback_query(F.data.startswith("svc_category:"))
+@router.callback_query(ServiceStates.category, F.data.startswith("svc_category:"))
 async def category(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
-    category = callback.data.split(":")[1]
 
+    category = callback.data.split(":")[1]
     data = await state.get_data()
+
     services = await get_services_by_filter(data["city"], category)
 
     if not services:
         await callback.message.answer("❌ Нічого не знайдено")
+        await state.clear()
         return
 
     await state.update_data(items=services, page=1)
@@ -160,21 +177,23 @@ async def category(callback: CallbackQuery, state: FSMContext):
 
 # ================= NAV =================
 
-@router.callback_query(F.data == "svc_next")
+@router.callback_query(ServiceStates.category, F.data == "svc_next")
 async def next_page(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
-    data = await state.get_data()
 
+    data = await state.get_data()
     await state.update_data(page=data["page"] + 1)
+
     await send_card(callback.message, state)
 
 
-@router.callback_query(F.data == "svc_prev")
+@router.callback_query(ServiceStates.category, F.data == "svc_prev")
 async def prev_page(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
-    data = await state.get_data()
 
+    data = await state.get_data()
     await state.update_data(page=max(1, data["page"] - 1))
+
     await send_card(callback.message, state)
 
 
@@ -183,23 +202,27 @@ async def prev_page(callback: CallbackQuery, state: FSMContext):
 @router.callback_query(F.data.startswith("svc_call:"))
 async def call(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
-    service_id = int(callback.data.split(":")[1])
 
+    service_id = int(callback.data.split(":")[1])
     await increment_calls(service_id)
 
     data = await state.get_data()
-    service = next((x for x in data["items"] if x["id"] == service_id), None)
+    service = next((x for x in data.get("items", []) if x["id"] == service_id), None)
 
-    await callback.message.answer(f"📞 {service.get('phone') or 'Не вказано'}")
+    await callback.message.answer(f"📞 {service.get('phone') if service else 'Не вказано'}")
 
 
 @router.callback_query(F.data.startswith("svc_site:"))
 async def site(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
+
     service_id = int(callback.data.split(":")[1])
 
     data = await state.get_data()
-    service = next((x for x in data["items"] if x["id"] == service_id), None)
+    service = next((x for x in data.get("items", []) if x["id"] == service_id), None)
+
+    if not service:
+        return
 
     url = normalize_website(service.get("website"))
 
