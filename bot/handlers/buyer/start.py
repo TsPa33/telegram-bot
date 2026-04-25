@@ -117,3 +117,8 @@ async def start_buyer(message: types.Message, state: FSMContext):
 @router.message(F.photo)
 async def get_photo_id(message: Message):
     await message.answer(message.photo[-1].file_id)
+    
+@router.message(F.document)
+async def get_file_id(message: Message):
+    file_id = message.document.file_id
+    await message.answer(f"FILE_ID:\n{file_id}")
