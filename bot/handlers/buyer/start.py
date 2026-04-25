@@ -112,8 +112,3 @@ async def start_buyer(message: types.Message, state: FSMContext):
         "🚗 Обери бренд",
         reply_markup=brand_kb(brands)
     )
-    
-@router.message(F.photo)
-async def get_photo_id(message: types.Message):
-    file_id = message.photo[-1].file_id
-    await message.answer(f"FILE_ID:\n{file_id}")
