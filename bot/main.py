@@ -12,7 +12,8 @@ from aiogram.utils.callback_answer import CallbackAnswerMiddleware
 from redis.asyncio import from_url
 
 from bot.config import BOT_TOKEN
-from bot.handlers import start, seller, buyer, admin
+from bot.handlers import start, buyer, admin
+from bot.handlers.seller import router as seller_router
 
 from bot.database.pool import init_pool
 from bot.database.models import create_tables
@@ -39,49 +40,19 @@ async def debug_all_callbacks(callback: CallbackQuery):
 # ================= ERROR HANDLER =================
 
 async def global_error_handler(event: ErrorEvent):
-    exception = event.exception
-    update = event.update
+    logger.error("Exception occurred", exc_info=event.exception)
+    traceback.print_exception(type(event.exception), event.exception, event.exception.__traceback__)
 
-    error_text = "".join(
-        traceback.format_exception(type(exception), exception, exception.__traceback__)
-    )
-
-    logger.error("🚨 GLOBAL ERROR:\n%s", error_text)
-
-    try:
-        if update.message:
-            await update.message.answer("⚠️ Сталась помилка")
-        elif update.callback_query:
-            await update.callback_query.answer("⚠️ Помилка", show_alert=True)
-    except Exception:
-        logger.error("❌ Failed to notify user")
-
-    return True
-
-
-# ================= REDIS =================
 
 async def get_storage():
     redis_url = os.getenv("REDIS_URL")
 
-    if not redis_url:
-        logger.warning("⚠️ REDIS_URL not found → fallback MemoryStorage")
-        return MemoryStorage()
-
-    try:
+    if redis_url:
         redis = from_url(redis_url)
-        await redis.ping()
-
-        logger.info("✅ Redis connected")
         return RedisStorage(redis)
-
-    except Exception as e:
-        logger.warning("⚠️ Redis connection failed → fallback MemoryStorage")
-        logger.warning(e)
+    else:
         return MemoryStorage()
 
-
-# ================= BOT =================
 
 async def run_bot():
     if not BOT_TOKEN:
@@ -97,18 +68,14 @@ async def run_bot():
     dp = Dispatcher(storage=storage)
     bot = Bot(token=BOT_TOKEN)
 
-    # Drop queued updates (including stale callback queries) to prevent
-    # old button presses from re-triggering flows after restart.
     await bot.delete_webhook(drop_pending_updates=True)
 
     dp.callback_query.middleware(CallbackAnswerMiddleware())
     dp.errors.register(global_error_handler)
 
-    # 🔥 ПОРЯДОК ВАЖЛИВИЙ
+    # ✅ ПРАВИЛЬНИЙ ПОРЯДОК
     dp.include_router(start.router)
-
-    dp.include_router(seller.router)       # інші seller модулі
-
+    dp.include_router(seller_router)  # 🔥 ЄДИНИЙ seller router
     dp.include_router(admin.router)
     dp.include_router(buyer.router)
     dp.include_router(router)
@@ -133,16 +100,5 @@ async def run_api():
     await server.serve()
 
 
-# ================= ENTRY =================
-
-async def main():
-    await asyncio.sleep(2)
-
-    await asyncio.gather(
-        run_bot(),
-        run_api()
-    )
-
-
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(run_bot())
