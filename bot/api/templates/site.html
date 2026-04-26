@@ -30,6 +30,17 @@
             <h2>Послуги</h2>
             <p>Активні: {{ config.services.enabled }}</p>
         </section>
+        <section>
+    <h2>Залишити заявку</h2>
+
+    <form method="post" action="/site/{{ subdomain }}/lead">
+        <input type="text" name="name" placeholder="Ваше ім'я" required><br><br>
+        <input type="text" name="phone" placeholder="Телефон" required><br><br>
+        <textarea name="message" placeholder="Повідомлення"></textarea><br><br>
+
+        <button type="submit">Надіслати</button>
+    </form>
+</section>
 
     </main>
 
