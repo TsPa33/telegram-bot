@@ -5,8 +5,10 @@ from aiogram.fsm.context import FSMContext
 from bot.database.repositories.site_repo import (
     get_site_by_seller,
     create_site,
+    subdomain_exists,
 )
 from bot.services.site_config import get_default_site_config
+from bot.utils.subdomain import generate_unique_subdomain
 
 router = Router()
 
@@ -33,7 +35,11 @@ async def site_menu(message: Message, state: FSMContext):
 
     # 🆕 створення
     if not site:
-        subdomain = f"user{seller_id}"
+        subdomain = await generate_unique_subdomain(
+            base=f"user{seller_id}",
+            exists_func=subdomain_exists,
+        )
+
         config = get_default_site_config()
 
         site = await create_site(
