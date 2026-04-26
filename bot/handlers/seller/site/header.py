@@ -26,7 +26,12 @@ async def start_edit_header(callback: CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data.startswith("site:toggle:"))
 async def toggle_site_block(callback: CallbackQuery, state: FSMContext):
-    block = callback.data.split(":")[2]
+    parts = callback.data.split(":")
+    if len(parts) < 3:
+        await callback.answer()
+        return
+
+    block = parts[2]
 
     data = await state.get_data()
     if data.get("flow") != "seller_site":
@@ -38,13 +43,19 @@ async def toggle_site_block(callback: CallbackQuery, state: FSMContext):
         return
 
     site = await get_site_by_seller(user.id)
-    config = merge_with_default(site["config_draft"])
+    if not site:
+        await callback.answer("Сайт не знайдено", show_alert=True)
+        return
+
+    config = merge_with_default(site.get("config_draft") or {})
 
     if block not in config:
         await callback.answer("Unknown block", show_alert=True)
         return
 
     current = config[block].get("enabled", True)
+
+    # ❗ захист критичних блоків
     if block in {"header", "contacts", "services", "map"} and current:
         await callback.answer("Не можна вимкнути", show_alert=True)
         return
