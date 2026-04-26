@@ -1,4 +1,9 @@
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import (
+    ReplyKeyboardMarkup,
+    KeyboardButton,
+    InlineKeyboardMarkup,
+    InlineKeyboardButton,
+)
 
 
 def seller_main_kb(is_verified: bool = False):
@@ -38,3 +43,14 @@ def seller_main_kb(is_verified: bool = False):
 
 def seller_menu_kb(is_verified: bool = False):
     return seller_main_kb(is_verified=is_verified)
+
+
+
+def site_menu_kb() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="✏️ Шапка", callback_data="site:edit:header")],
+            [InlineKeyboardButton(text="🧱 Про нас", callback_data="site:toggle:about")],
+            [InlineKeyboardButton(text="🚀 Опублікувати", callback_data="site:publish")],
+        ]
+    )

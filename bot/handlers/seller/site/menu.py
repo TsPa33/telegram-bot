@@ -9,6 +9,7 @@ from bot.database.repositories.site_repo import (
 )
 from bot.services.site_config import get_default_site_config
 from bot.utils.subdomain import generate_unique_subdomain
+from bot.keyboards.seller_menu import site_menu_kb
 
 router = Router()
 
@@ -51,5 +52,6 @@ async def site_menu(message: Message, state: FSMContext):
     await message.answer(
         "🌐 Мій сайт\n\n"
         f"Домен: {site['subdomain']}\n"
-        "Статус: draft"
+        f"Статус: {site.get('status', 'draft')}",
+        reply_markup=site_menu_kb(),
     )
