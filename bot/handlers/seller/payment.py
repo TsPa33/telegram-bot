@@ -2,9 +2,7 @@ from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from bot.database.repositories.seller_repo import (
-    get_seller_by_telegram_id,
-)
+from bot.database.repositories.seller_repo import get_seller_by_telegram_id
 from bot.database.repositories.payment_repo import get_user_transactions
 
 from bot.services.liqpay_service import LiqPayService
@@ -19,16 +17,12 @@ router = Router()
 liqpay = LiqPayService(LIQPAY_PUBLIC_KEY, LIQPAY_PRIVATE_KEY)
 
 
-# ================= ПАКЕТИ =================
-
 PACKAGES = {
     "1": {"slots": 1, "amount": 99},
     "5": {"slots": 5, "amount": 199},
     "10": {"slots": 10, "amount": 299},
 }
 
-
-# ================= CORE PAYMENT =================
 
 async def _create_package_payment(message: Message, package_key: str, telegram_id: int):
     try:
@@ -41,9 +35,6 @@ async def _create_package_payment(message: Message, package_key: str, telegram_i
             return
 
         seller_id = seller["id"]
-
-        print("DEBUG TELEGRAM_ID:", telegram_id)
-        print("SELLER ID (PAYMENT):", seller_id)
 
         payment = await liqpay.create_payment(
             amount=package["amount"],
@@ -70,14 +61,10 @@ async def _create_package_payment(message: Message, package_key: str, telegram_i
         await message.answer("⚠️ Сталась помилка при створенні платежу")
 
 
-# ================= СТАРА КНОПКА =================
-
 @router.message(F.text == "💳 Купити 1 слот — 99 грн")
 async def buy_one_slot(message: Message):
     await _create_package_payment(message, "1", message.from_user.id)
 
-
-# ================= МЕНЮ ПАКЕТІВ =================
 
 @router.message(F.text == "💳 Пакети послуг")
 async def show_packages(message: Message):
@@ -86,8 +73,6 @@ async def show_packages(message: Message):
     kb.button(text="1 авто — 99 грн", callback_data="package:1")
     kb.button(text="5 авто — 199 грн", callback_data="package:5")
     kb.button(text="10 авто — 299 грн", callback_data="package:10")
-
-    # 🔥 НОВА КНОПКА
     kb.button(text="📊 Історія транзакцій", callback_data="seller:transactions")
 
     kb.adjust(1)
@@ -99,8 +84,6 @@ async def show_packages(message: Message):
         reply_markup=kb.as_markup()
     )
 
-
-# ================= CALLBACK ПОКУПКИ =================
 
 @router.callback_query(F.data.startswith("package:"))
 async def buy_package_callback(callback: CallbackQuery):
@@ -118,8 +101,6 @@ async def buy_package_callback(callback: CallbackQuery):
 
     await callback.answer()
 
-
-# ================= ІСТОРІЯ ТРАНЗАКЦІЙ =================
 
 @router.callback_query(F.data == "seller:transactions")
 async def show_transactions(callback: CallbackQuery):
