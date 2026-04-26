@@ -33,18 +33,6 @@ async def show_buyer_home(message: types.Message, state: FSMContext):
     )
 
 
-# ================= GLOBAL RESET (🔥 ВАЖЛИВО) =================
-
-@router.message(F.text.in_(["🔄 Оновити Bot", "/start"]))
-async def reset_state_handler(message: Message, state: FSMContext):
-    await state.clear()
-
-    await message.answer(
-        "🔁 Головне меню\n\nОбери дію:",
-        reply_markup=await main_menu_kb(message.from_user.id),
-    )
-
-
 # ================= ROLE ENTRY =================
 
 @router.callback_query(F.data == "role:buyer")
