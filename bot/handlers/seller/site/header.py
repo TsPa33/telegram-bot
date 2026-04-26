@@ -18,6 +18,8 @@ from bot.states.seller_states import SellerSiteStates
 router = Router()
 
 
+# ================= HEADER EDIT =================
+
 @router.callback_query(F.data == "site:edit:header")
 async def start_edit_header(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
@@ -32,6 +34,8 @@ async def start_edit_header(callback: CallbackQuery, state: FSMContext):
 
     await callback.answer()
 
+
+# ================= TOGGLE / ABOUT =================
 
 @router.callback_query(F.data.startswith("site:toggle:"))
 async def toggle_site_block(callback: CallbackQuery, state: FSMContext):
@@ -68,6 +72,16 @@ async def toggle_site_block(callback: CallbackQuery, state: FSMContext):
         await callback.answer("Unknown block", show_alert=True)
         return
 
+    # 🔥 SPECIAL: ABOUT → редагування тексту
+    if block == "about":
+        await state.set_state(SellerSiteStates.edit_about_text)
+
+        if callback.message:
+            await callback.message.answer("Введіть текст блоку 'Про нас'")
+
+        await callback.answer()
+        return
+
     current = config[block].get("enabled", True)
 
     if block in {"header", "contacts", "services", "map"} and current:
@@ -78,7 +92,6 @@ async def toggle_site_block(callback: CallbackQuery, state: FSMContext):
 
     await update_draft(seller_id, config)
 
-    # 🔥 FIX: показуємо стан
     state_text = "увімкнено" if config[block]["enabled"] else "вимкнено"
     await callback.answer(f"{block}: {state_text}")
 
@@ -123,7 +136,7 @@ async def publish_site_handler(callback: CallbackQuery, state: FSMContext):
     await callback.answer("Сайт опубліковано")
 
 
-# ================= EDIT HEADER =================
+# ================= SAVE HEADER =================
 
 @router.message(SellerSiteStates.edit_header_title)
 async def save_header_title(message: Message, state: FSMContext):
@@ -162,3 +175,39 @@ async def save_header_title(message: Message, state: FSMContext):
     await state.clear()
 
     await message.answer("Заголовок оновлено")
+
+
+# ================= SAVE ABOUT =================
+
+@router.message(SellerSiteStates.edit_about_text)
+async def save_about_text(message: Message, state: FSMContext):
+    user = message.from_user
+    if not user:
+        return
+
+    seller = await get_seller_by_telegram_id(user.id)
+    if not seller:
+        return
+
+    seller_id = seller["id"]
+
+    text = (message.text or "").strip()
+
+    if not text:
+        await message.answer("Текст не може бути порожнім")
+        return
+
+    site = await get_site_by_seller(seller_id)
+    if not site:
+        await state.clear()
+        return
+
+    config = merge_with_default(site.get("config_draft") or {})
+
+    config["about"]["enabled"] = True
+    config["about"]["text"] = text
+
+    await update_draft(seller_id, config)
+
+    await state.clear()
+    await message.answer("Блок 'Про нас' оновлено")
