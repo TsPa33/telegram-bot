@@ -27,3 +27,7 @@ class SellerStates(StatesGroup):
 
     # ================= 🔐 ВЕРИФІКАЦІЯ =================
     verification_passport = State()
+
+
+class SellerSiteStates(StatesGroup):
+    edit_header_title = State()
