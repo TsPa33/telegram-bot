@@ -12,11 +12,23 @@ from bot.database.repositories.user_repo import log_visit
 router = Router()
 
 
+# ================= GLOBAL RESET (🔥 КРИТИЧНО) =================
+
+@router.message(F.text == "🔄 Оновити Bot")
+async def global_restart(message: Message, state: FSMContext):
+    await state.clear()
+
+    await message.answer(
+        "🔁 Головне меню\n\nОбери дію:",
+        reply_markup=await main_menu_kb(message.from_user.id),
+    )
+
+
 # ================= GLOBAL HOME =================
 
 @router.message(F.text == "↩️ На головне меню")
 async def back_to_main_menu(message: Message, state: FSMContext):
-    await state.clear()  # ✅ OK
+    await state.clear()
 
     await message.answer(
         "🔁 Головне меню\n\nОбери дію:",
@@ -28,7 +40,7 @@ async def back_to_main_menu(message: Message, state: FSMContext):
 
 @router.message(CommandStart())
 async def start(message: Message, state: FSMContext):
-    await state.clear()  # 🔥 FIX
+    await state.clear()
 
     # ✅ LOG VISIT
     await log_visit(message.from_user, role="unknown")
@@ -44,7 +56,7 @@ async def start(message: Message, state: FSMContext):
 @router.callback_query(F.data == "role:seller")
 async def enter_seller(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
-    await state.clear()  # 🔥 FIX
+    await state.clear()
 
     # ✅ LOG VISIT
     await log_visit(callback.from_user, role="seller")
@@ -70,7 +82,7 @@ async def enter_seller(callback: CallbackQuery, state: FSMContext):
 @router.callback_query(F.data.in_(["nav:seller", "nav:garage"]))
 async def open_seller(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
-    await state.clear()  # 🔥 FIX
+    await state.clear()
 
     # ✅ LOG VISIT
     await log_visit(callback.from_user, role="seller")
@@ -96,7 +108,7 @@ async def open_seller(callback: CallbackQuery, state: FSMContext):
 @router.callback_query(F.data == "role_seller")
 async def legacy_role_callbacks(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
-    await state.clear()  # 🔥 FIX
+    await state.clear()
 
     # ✅ LOG VISIT
     await log_visit(callback.from_user, role="seller")
@@ -117,7 +129,7 @@ async def legacy_role_callbacks(callback: CallbackQuery, state: FSMContext):
 @router.callback_query(F.data == "nav:admin")
 async def open_admin(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
-    await state.clear()  # 🔥 FIX
+    await state.clear()
 
     ADMIN_IDS = [6206952389]
 
