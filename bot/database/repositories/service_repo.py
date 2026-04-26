@@ -90,6 +90,7 @@ async def get_services_by_seller(seller_id: int):
     )
 
 
+# 🔥 ОСЬ ТУТ ГОЛОВНИЙ ФІКС
 async def get_services_by_filter(city: str, category: str):
     return await fetch(
         """
@@ -111,8 +112,8 @@ async def get_services_by_filter(city: str, category: str):
         FROM services s
         LEFT JOIN sellers sel ON sel.id = s.seller_id
         LEFT JOIN service_stats st ON st.service_id = s.id
-        WHERE s.city = $1
-          AND s.category = $2
+        WHERE LOWER(s.city) = LOWER($1)
+          AND LOWER(s.category) = LOWER($2)
         ORDER BY s.id DESC
         """,
         city,
@@ -120,7 +121,6 @@ async def get_services_by_filter(city: str, category: str):
     )
 
 
-# 🔥 НОВА ФУНКЦІЯ (ВИРІШУЄ ТВОЮ ПРОБЛЕМУ)
 async def get_all_cities():
     return await fetch(
         """
