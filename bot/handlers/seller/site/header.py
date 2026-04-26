@@ -72,7 +72,7 @@ async def toggle_site_block(callback: CallbackQuery, state: FSMContext):
         await callback.answer("Unknown block", show_alert=True)
         return
 
-    # 🔥 SPECIAL: ABOUT → редагування тексту
+    # ABOUT → редагування тексту
     if block == "about":
         await state.set_state(SellerSiteStates.edit_about_text)
 
@@ -120,7 +120,8 @@ async def publish_site_handler(callback: CallbackQuery, state: FSMContext):
         await callback.answer("Сайт не знайдено", show_alert=True)
         return
 
-    config = site.get("config_draft") or {}
+    # 🔥 КЛЮЧОВИЙ FIX
+    config = merge_with_default(site.get("config_draft") or {})
 
     if not validate_site_config(config):
         await callback.answer("Заповніть базові блоки", show_alert=True)
