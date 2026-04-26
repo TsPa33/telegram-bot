@@ -17,7 +17,10 @@ async def start_edit_header(callback: CallbackQuery, state: FSMContext):
         return
 
     await state.set_state(SellerSiteStates.edit_header_title)
-    await callback.message.answer("Введіть заголовок сайту")
+
+    if callback.message:
+        await callback.message.answer("Введіть заголовок сайту")
+
     await callback.answer()
 
 
@@ -27,16 +30,28 @@ async def save_header_title(message: Message, state: FSMContext):
     if data.get("flow") != "seller_site":
         return
 
-    site = await get_site_by_seller(message.from_user.id)
+    user = message.from_user
+    if not user:
+        return
+
+    title = (message.text or "").strip()
+
+    if not title:
+        await message.answer("Заголовок не може бути порожнім")
+        return
+
+    title = title[:100]
+
+    site = await get_site_by_seller(user.id)
     if not site:
         await state.clear()
         await message.answer("Сайт не знайдено")
         return
 
     config = merge_with_default(site.get("config_draft") or {})
-    config["header"]["title"] = message.text or ""
+    config["header"]["title"] = title
 
-    await update_draft(message.from_user.id, config)
+    await update_draft(user.id, config)
     await state.clear()
 
     await message.answer("Заголовок оновлено")
