@@ -2,8 +2,15 @@ from aiogram import Router, F
 from aiogram.types import CallbackQuery, Message
 from aiogram.fsm.context import FSMContext
 
-from bot.database.repositories.site_repo import get_site_by_seller, update_draft
-from bot.services.site_config import merge_with_default
+from bot.database.repositories.site_repo import (
+    get_site_by_seller,
+    update_draft,
+    publish_site,  # NEW
+)
+from bot.services.site_config import (
+    merge_with_default,
+    validate_site_config,  # NEW
+)
 from bot.states.seller_states import SellerSiteStates
 
 router = Router()
@@ -55,7 +62,6 @@ async def toggle_site_block(callback: CallbackQuery, state: FSMContext):
 
     current = config[block].get("enabled", True)
 
-    # ❗ захист критичних блоків
     if block in {"header", "contacts", "services", "map"} and current:
         await callback.answer("Не можна вимкнути", show_alert=True)
         return
@@ -65,6 +71,41 @@ async def toggle_site_block(callback: CallbackQuery, state: FSMContext):
     await update_draft(user.id, config)
     await callback.answer("Оновлено")
 
+
+# ================= PUBLISH =================
+
+@router.callback_query(F.data == "site:publish")
+async def publish_site_handler(callback: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    if data.get("flow") != "seller_site":
+        await callback.answer()
+        return
+
+    user = callback.from_user
+    if not user:
+        return
+
+    site = await get_site_by_seller(user.id)
+    if not site:
+        await callback.answer("Сайт не знайдено", show_alert=True)
+        return
+
+    config = site.get("config_draft") or {}
+
+    if not validate_site_config(config):
+        await callback.answer("Заповніть обовʼязкові блоки", show_alert=True)
+        return
+
+    result = await publish_site(user.id)
+
+    if not result:
+        await callback.answer("Помилка публікації", show_alert=True)
+        return
+
+    await callback.answer("Сайт опубліковано")
+
+
+# ================= EDIT HEADER =================
 
 @router.message(SellerSiteStates.edit_header_title)
 async def save_header_title(message: Message, state: FSMContext):
