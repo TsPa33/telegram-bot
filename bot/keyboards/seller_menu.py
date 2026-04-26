@@ -27,6 +27,10 @@ def seller_main_kb(is_verified: bool = False):
             KeyboardButton(text="👤 Мій профіль"),
             KeyboardButton(text="📊 Статистика"),
         ],
+        # ✅ NEW BLOCK
+        [
+            KeyboardButton(text="🌐 Мій сайт"),
+        ],
         [
             KeyboardButton(text="💳 Пакети послуг"),
             KeyboardButton(text="↩️ На головне меню"),
