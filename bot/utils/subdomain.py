@@ -15,6 +15,9 @@ def normalize_subdomain(value: str) -> str:
     normalized = _ALLOWED_CHARS_PATTERN.sub("", normalized)
     normalized = _MULTIPLE_HYPHENS_PATTERN.sub("-", normalized)
 
+    # FIX: remove leading/trailing hyphens
+    normalized = normalized.strip("-")
+
     return normalized
 
 
@@ -42,23 +45,16 @@ async def generate_unique_subdomain(
     """Generate a unique subdomain using incremental numeric suffixes."""
     normalized_base = normalize_subdomain(base)
 
+    # fast path
     if is_valid_subdomain(normalized_base) and not await exists_func(normalized_base):
         return normalized_base
 
-    candidate_base = normalized_base.strip("-")
-
-    if not candidate_base:
-        candidate_base = "site"
-
-    candidate_base = candidate_base[:20]
-
-    if not candidate_base:
-        candidate_base = "site"
+    candidate_base = normalized_base.strip("-") or "site"
+    candidate_base = candidate_base[:20] or "site"
 
     if is_valid_subdomain(candidate_base) and not await exists_func(candidate_base):
         return candidate_base
 
-    # Keep generating candidates until one is available.
     suffix = 1
     while True:
         suffix_str = str(suffix)
@@ -67,9 +63,7 @@ async def generate_unique_subdomain(
         if max_base_len < 1:
             candidate = suffix_str[-20:]
         else:
-            trimmed_base = candidate_base[:max_base_len].rstrip("-")
-            if not trimmed_base:
-                trimmed_base = "site"[:max_base_len] or "s"
+            trimmed_base = candidate_base[:max_base_len].rstrip("-") or "s"
             candidate = f"{trimmed_base}-{suffix_str}"
 
         if is_valid_subdomain(candidate) and not await exists_func(candidate):
