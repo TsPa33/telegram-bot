@@ -5,11 +5,13 @@ from aiogram.fsm.context import FSMContext
 from bot.database.repositories.site_repo import (
     get_site_by_seller,
     update_draft,
-    publish_site,  # NEW
+    publish_site,
 )
+from bot.database.repositories.seller_repo import get_seller_by_telegram_id  # NEW
+
 from bot.services.site_config import (
     merge_with_default,
-    validate_site_config,  # NEW
+    validate_site_config,
 )
 from bot.states.seller_states import SellerSiteStates
 
@@ -49,7 +51,14 @@ async def toggle_site_block(callback: CallbackQuery, state: FSMContext):
     if not user:
         return
 
-    site = await get_site_by_seller(user.id)
+    # ❗ FIX
+    seller = await get_seller_by_telegram_id(user.id)
+    if not seller:
+        return
+
+    seller_id = seller["id"]
+
+    site = await get_site_by_seller(seller_id)
     if not site:
         await callback.answer("Сайт не знайдено", show_alert=True)
         return
@@ -68,7 +77,7 @@ async def toggle_site_block(callback: CallbackQuery, state: FSMContext):
 
     config[block]["enabled"] = not current
 
-    await update_draft(user.id, config)
+    await update_draft(seller_id, config)
     await callback.answer("Оновлено")
 
 
@@ -85,7 +94,14 @@ async def publish_site_handler(callback: CallbackQuery, state: FSMContext):
     if not user:
         return
 
-    site = await get_site_by_seller(user.id)
+    # ❗ FIX
+    seller = await get_seller_by_telegram_id(user.id)
+    if not seller:
+        return
+
+    seller_id = seller["id"]
+
+    site = await get_site_by_seller(seller_id)
     if not site:
         await callback.answer("Сайт не знайдено", show_alert=True)
         return
@@ -96,11 +112,14 @@ async def publish_site_handler(callback: CallbackQuery, state: FSMContext):
         await callback.answer("Заповніть обовʼязкові блоки", show_alert=True)
         return
 
-    result = await publish_site(user.id)
+    result = await publish_site(seller_id)
 
     if not result:
         await callback.answer("Помилка публікації", show_alert=True)
         return
+
+    # ✔ FIX: очищення FSM
+    await state.clear()
 
     await callback.answer("Сайт опубліковано")
 
@@ -117,6 +136,13 @@ async def save_header_title(message: Message, state: FSMContext):
     if not user:
         return
 
+    # ❗ FIX
+    seller = await get_seller_by_telegram_id(user.id)
+    if not seller:
+        return
+
+    seller_id = seller["id"]
+
     title = (message.text or "").strip()
 
     if not title:
@@ -125,7 +151,7 @@ async def save_header_title(message: Message, state: FSMContext):
 
     title = title[:100]
 
-    site = await get_site_by_seller(user.id)
+    site = await get_site_by_seller(seller_id)
     if not site:
         await state.clear()
         await message.answer("Сайт не знайдено")
@@ -134,7 +160,7 @@ async def save_header_title(message: Message, state: FSMContext):
     config = merge_with_default(site.get("config_draft") or {})
     config["header"]["title"] = title
 
-    await update_draft(user.id, config)
+    await update_draft(seller_id, config)
     await state.clear()
 
     await message.answer("Заголовок оновлено")
