@@ -7,7 +7,7 @@ from bot.database.repositories.site_repo import (
     update_draft,
     publish_site,
 )
-from bot.database.repositories.seller_repo import get_seller_by_telegram_id  # NEW
+from bot.database.repositories.seller_repo import get_seller_by_telegram_id
 
 from bot.services.site_config import (
     merge_with_default,
@@ -51,7 +51,6 @@ async def toggle_site_block(callback: CallbackQuery, state: FSMContext):
     if not user:
         return
 
-    # ❗ FIX
     seller = await get_seller_by_telegram_id(user.id)
     if not seller:
         return
@@ -78,7 +77,10 @@ async def toggle_site_block(callback: CallbackQuery, state: FSMContext):
     config[block]["enabled"] = not current
 
     await update_draft(seller_id, config)
-    await callback.answer("Оновлено")
+
+    # 🔥 FIX: показуємо стан
+    state_text = "увімкнено" if config[block]["enabled"] else "вимкнено"
+    await callback.answer(f"{block}: {state_text}")
 
 
 # ================= PUBLISH =================
@@ -94,7 +96,6 @@ async def publish_site_handler(callback: CallbackQuery, state: FSMContext):
     if not user:
         return
 
-    # ❗ FIX
     seller = await get_seller_by_telegram_id(user.id)
     if not seller:
         return
@@ -109,7 +110,7 @@ async def publish_site_handler(callback: CallbackQuery, state: FSMContext):
     config = site.get("config_draft") or {}
 
     if not validate_site_config(config):
-        await callback.answer("Заповніть обовʼязкові блоки", show_alert=True)
+        await callback.answer("Заповніть базові блоки", show_alert=True)
         return
 
     result = await publish_site(seller_id)
@@ -118,9 +119,7 @@ async def publish_site_handler(callback: CallbackQuery, state: FSMContext):
         await callback.answer("Помилка публікації", show_alert=True)
         return
 
-    # ✔ FIX: очищення FSM
     await state.clear()
-
     await callback.answer("Сайт опубліковано")
 
 
@@ -136,7 +135,6 @@ async def save_header_title(message: Message, state: FSMContext):
     if not user:
         return
 
-    # ❗ FIX
     seller = await get_seller_by_telegram_id(user.id)
     if not seller:
         return
