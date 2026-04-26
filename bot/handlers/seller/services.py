@@ -82,12 +82,17 @@ async def start_add(message: Message, state: FSMContext):
         return
 
     await state.set_state(ServiceStates.category)
+    await state.update_data(flow="seller_add_service")
 
     await message.answer("Оберіть категорію:", reply_markup=service_categories_kb())
 
 
 @router.message(ServiceStates.category)
 async def set_category(message: Message, state: FSMContext):
+    data = await state.get_data()
+    if data.get("flow") != "seller_add_service":
+        return
+
     if message.text == "⬅️ Назад у профіль":
         await state.clear()
 

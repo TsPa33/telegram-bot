@@ -131,6 +131,7 @@ async def start(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     await state.clear()
     await state.set_state(ServiceStates.city)
+    await state.update_data(flow="buyer_services")
 
     cities = await get_all_cities()
 
@@ -147,6 +148,9 @@ async def start(callback: CallbackQuery, state: FSMContext):
 @router.callback_query(ServiceStates.city, F.data.startswith("svc_city:"))
 async def city(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
+    data = await state.get_data()
+    if data.get("flow") != "buyer_services":
+        return
 
     city = callback.data.split(":")[1]
 
@@ -159,9 +163,11 @@ async def city(callback: CallbackQuery, state: FSMContext):
 @router.callback_query(ServiceStates.category, F.data.startswith("svc_category:"))
 async def category(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
+    data = await state.get_data()
+    if data.get("flow") != "buyer_services":
+        return
 
     category = callback.data.split(":")[1]
-    data = await state.get_data()
 
     services = await get_services_by_filter(data["city"], category)
 
@@ -194,6 +200,8 @@ async def next_page(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
     data = await state.get_data()
+    if data.get("flow") != "buyer_services":
+        return
     await state.update_data(page=data["page"] + 1)
 
     await send_card(callback.message, state)
@@ -204,6 +212,8 @@ async def prev_page(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
     data = await state.get_data()
+    if data.get("flow") != "buyer_services":
+        return
     await state.update_data(page=max(1, data["page"] - 1))
 
     await send_card(callback.message, state)
@@ -214,11 +224,13 @@ async def prev_page(callback: CallbackQuery, state: FSMContext):
 @router.callback_query(ServiceStates.category, F.data.startswith("svc_call:"))
 async def call(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
+    data = await state.get_data()
+    if data.get("flow") != "buyer_services":
+        return
 
     service_id = int(callback.data.split(":")[1])
     await increment_calls(service_id)
 
-    data = await state.get_data()
     service = next((x for x in data.get("items", []) if x["id"] == service_id), None)
 
     await callback.message.answer(f"📞 {service.get('phone') if service else 'Не вказано'}")
@@ -227,10 +239,11 @@ async def call(callback: CallbackQuery, state: FSMContext):
 @router.callback_query(ServiceStates.category, F.data.startswith("svc_site:"))
 async def site(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
+    data = await state.get_data()
+    if data.get("flow") != "buyer_services":
+        return
 
     service_id = int(callback.data.split(":")[1])
-
-    data = await state.get_data()
     service = next((x for x in data.get("items", []) if x["id"] == service_id), None)
 
     if not service:
