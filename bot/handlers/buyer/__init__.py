@@ -8,7 +8,14 @@ from .services import router as services_router
 
 router = Router()
 
+# 1. Базові entry точки
 router.include_router(start_router)
-router.include_router(search_router)
-router.include_router(pagination_router)
+
+# 2. 🔥 СПОЧАТКУ СПЕЦИФІЧНИЙ МОДУЛЬ (services)
 router.include_router(services_router)
+
+# 3. Потім загальні (cars/search)
+router.include_router(search_router)
+
+# 4. Найзагальніші (pagination / fallback)
+router.include_router(pagination_router)
