@@ -1,3 +1,5 @@
+import json
+
 from fastapi import APIRouter, FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -24,7 +26,16 @@ async def render_site(subdomain: str, request: Request):
     if not site or site["status"] != "active":
         raise HTTPException(status_code=404, detail="Site not found")
 
-    config = merge_with_default(site.get("config_live") or {})
+    # 🔥 FIX: обробка JSONB
+    raw_config = site.get("config_live") or {}
+
+    if isinstance(raw_config, str):
+        try:
+            raw_config = json.loads(raw_config)
+        except Exception:
+            raw_config = {}
+
+    config = merge_with_default(raw_config)
 
     return templates.TemplateResponse(
         "site.html",
