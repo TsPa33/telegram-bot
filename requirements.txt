@@ -9,3 +9,4 @@ uvicorn
 fastapi
 python-multipart
 pytz
+jinja2
