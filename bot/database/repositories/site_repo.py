@@ -1,3 +1,5 @@
+import json
+
 from bot.database.base import fetch, fetchrow, execute
 
 
@@ -18,7 +20,7 @@ async def create_site(seller_id: int, subdomain: str, config: dict):
         """,
         seller_id,
         subdomain,
-        config,
+        json.dumps(config),  # 🔥 FIX
     )
 
 
@@ -54,7 +56,7 @@ async def update_draft(seller_id: int, config: dict) -> bool:
         WHERE seller_id = $2
         RETURNING id
         """,
-        config,
+        json.dumps(config),  # 🔥 FIX
         seller_id,
     )
     return row is not None
