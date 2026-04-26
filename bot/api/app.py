@@ -5,6 +5,7 @@ from fastapi.templating import Jinja2Templates
 from bot.api.liqpay_callback import router as liqpay_router
 from bot.database.repositories.site_repo import get_site_by_subdomain
 from bot.services.site_config import merge_with_default
+from bot.utils.subdomain import is_valid_subdomain  # NEW
 
 app = FastAPI()
 router = APIRouter()
@@ -14,6 +15,10 @@ templates = Jinja2Templates(directory="bot/api/templates")
 
 @router.get("/site/{subdomain}", response_class=HTMLResponse)
 async def render_site(subdomain: str, request: Request):
+    # ❗ FIX: validation
+    if not is_valid_subdomain(subdomain):
+        raise HTTPException(status_code=404)
+
     site = await get_site_by_subdomain(subdomain)
 
     if not site:
