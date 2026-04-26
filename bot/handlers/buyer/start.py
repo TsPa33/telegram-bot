@@ -9,6 +9,8 @@ from bot.keyboards.buyer_home import buyer_home_kb
 from bot.keyboards.buyer_reply import buyer_reply_kb
 from bot.states.buyer_states import Buyer
 
+from bot.keyboards.main_menu import main_menu_kb
+
 router = Router()
 
 
@@ -18,7 +20,7 @@ PHOTO_ID = "AgACAgIAAxkBAAInT2ns1VVBPxs6dClg_laFO2xhDoxmAAJbFGsb1aVhS1XfR9RQ5x8V
 
 
 async def show_buyer_home(message: types.Message, state: FSMContext):
-    await state.clear()  # 🔥 FIX
+    await state.clear()  # 🔥 гарантія чистого входу
 
     await message.answer_photo(
         photo=PHOTO_ID,
@@ -31,13 +33,10 @@ async def show_buyer_home(message: types.Message, state: FSMContext):
     )
 
 
-# ================= RESTART BUTTON =================
+# ================= GLOBAL RESET (🔥 ВАЖЛИВО) =================
 
-from bot.keyboards.main_menu import main_menu_kb
-
-
-@router.message(F.text == "🔄 Оновити Bot")
-async def restart_bot(message: types.Message, state: FSMContext):
+@router.message(F.text.in_(["🔄 Оновити Bot", "/start"]))
+async def reset_state_handler(message: Message, state: FSMContext):
     await state.clear()
 
     await message.answer(
@@ -92,7 +91,7 @@ async def buyer_profile_handler(callback: types.CallbackQuery):
 
 @router.message(Command("find"))
 async def start_buyer(message: types.Message, state: FSMContext):
-    await state.clear()  # 🔥 FIX
+    await state.clear()  # 🔥 ізоляція flow
 
     brands = await get_brands_with_ids()
 
