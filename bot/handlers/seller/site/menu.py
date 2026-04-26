@@ -7,6 +7,8 @@ from bot.database.repositories.site_repo import (
     create_site,
     subdomain_exists,
 )
+from bot.database.repositories.seller_repo import get_seller_by_telegram_id  # NEW
+
 from bot.services.site_config import get_default_site_config
 from bot.utils.subdomain import generate_unique_subdomain
 from bot.keyboards.seller_menu import site_menu_kb
@@ -25,7 +27,13 @@ async def site_menu(message: Message, state: FSMContext):
     if not user or not site_enabled(user.id):
         return
 
-    seller_id = user.id
+    # ❗ FIX: отримуємо seller з БД
+    seller = await get_seller_by_telegram_id(user.id)
+    if not seller:
+        await message.answer("Профіль продавця не знайдено")
+        return
+
+    seller_id = seller["id"]
 
     await state.clear()
     await state.update_data(flow="seller_site")
