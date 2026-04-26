@@ -9,13 +9,13 @@ from bot.database.repositories.site_repo import (
 )
 from bot.services.site_config import get_default_site_config
 from bot.utils.subdomain import generate_unique_subdomain
+from bot.keyboards.seller_menu import site_menu_kb
 
 router = Router()
 
 
-# TEMP FEATURE FLAG
 def site_enabled(user_id: int) -> bool:
-    return user_id == 6206952389  # заміни на свій ID
+    return user_id == 6206952389
 
 
 @router.message(F.text == "🌐 Мій сайт")
@@ -30,10 +30,8 @@ async def site_menu(message: Message, state: FSMContext):
     await state.clear()
     await state.update_data(flow="seller_site")
 
-    # 🔍 перевірка
     site = await get_site_by_seller(seller_id)
 
-    # 🆕 створення
     if not site:
         subdomain = await generate_unique_subdomain(
             base=f"user{seller_id}",
@@ -51,5 +49,6 @@ async def site_menu(message: Message, state: FSMContext):
     await message.answer(
         "🌐 Мій сайт\n\n"
         f"Домен: {site['subdomain']}\n"
-        "Статус: draft"
+        f"Статус: {site.get('status', 'draft')}",
+        reply_markup=site_menu_kb(),
     )
