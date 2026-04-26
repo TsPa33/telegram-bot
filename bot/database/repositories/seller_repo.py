@@ -13,7 +13,6 @@ async def get_or_create_seller(telegram_id: int, username: str):
     """, telegram_id, username)
 
     # 🔥 стартовий пакет (1 слот / 30 днів)
-    # ✅ FIX: враховуємо тільки АКТИВНІ підписки
     await execute("""
         INSERT INTO seller_subscriptions (seller_id, slots, expires_at)
         SELECT $1, 1, NOW() + INTERVAL '30 days'
@@ -32,6 +31,20 @@ async def get_seller_by_telegram_id(telegram_id: int):
     return await fetchrow("""
         SELECT * FROM sellers WHERE telegram_id = $1
     """, telegram_id)
+
+
+# ================= 🔥 NEW: GET BY ID =================
+
+async def get_seller_by_id(seller_id: int):
+    return await fetchrow(
+        """
+        SELECT *
+        FROM sellers
+        WHERE id = $1
+        LIMIT 1
+        """,
+        seller_id,
+    )
 
 
 # ================= SLOTS =================
