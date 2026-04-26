@@ -165,8 +165,17 @@ async def category(callback: CallbackQuery, state: FSMContext):
 
     services = await get_services_by_filter(data["city"], category)
 
-    # 🔥 КРИТИЧНИЙ ФІКС
-    services = [dict(s) for s in services]
+    # 🔥 ФІКС datetime
+    services_clean = []
+    for s in services:
+        item = dict(s)
+
+        if item.get("created_at"):
+            item["created_at"] = item["created_at"].isoformat()
+
+        services_clean.append(item)
+
+    services = services_clean
 
     if not services:
         await callback.message.answer("❌ Нічого не знайдено")
@@ -202,7 +211,7 @@ async def prev_page(callback: CallbackQuery, state: FSMContext):
 
 # ================= ACTIONS =================
 
-@router.callback_query(F.data.startswith("svc_call:"))
+@router.callback_query(ServiceStates.category, F.data.startswith("svc_call:"))
 async def call(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
@@ -215,7 +224,7 @@ async def call(callback: CallbackQuery, state: FSMContext):
     await callback.message.answer(f"📞 {service.get('phone') if service else 'Не вказано'}")
 
 
-@router.callback_query(F.data.startswith("svc_site:"))
+@router.callback_query(ServiceStates.category, F.data.startswith("svc_site:"))
 async def site(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
