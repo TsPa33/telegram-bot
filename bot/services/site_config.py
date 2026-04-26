@@ -58,19 +58,15 @@ def get_default_site_config() -> dict:
     return deepcopy(_DEFAULT_SITE_CONFIG)
 
 
+# 🔥 FIX: MVP VALIDATION (не блокує publish)
 def validate_site_config(config: dict) -> bool:
     if not isinstance(config, dict):
         return False
 
-    required_enabled_sections = ("header", "contacts", "services", "map")
+    required = ("header", "contacts", "services", "map")
 
-    for section_name in required_enabled_sections:
-        section = config.get(section_name)
-
-        if not isinstance(section, dict):
-            return False
-
-        if section.get("enabled") is not True:
+    for key in required:
+        if not config.get(key, {}).get("enabled"):
             return False
 
     return True
@@ -84,7 +80,6 @@ def _deep_merge_missing(target: dict, defaults: dict) -> dict:
 
         current_value = target[key]
 
-        # ❗ FIX: якщо тип не dict — замінюємо
         if isinstance(default_value, dict) and not isinstance(current_value, dict):
             target[key] = deepcopy(default_value)
             continue
