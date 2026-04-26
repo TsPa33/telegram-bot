@@ -24,6 +24,37 @@ async def start_edit_header(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
 
+@router.callback_query(F.data.startswith("site:toggle:"))
+async def toggle_site_block(callback: CallbackQuery, state: FSMContext):
+    block = callback.data.split(":")[2]
+
+    data = await state.get_data()
+    if data.get("flow") != "seller_site":
+        await callback.answer()
+        return
+
+    user = callback.from_user
+    if not user:
+        return
+
+    site = await get_site_by_seller(user.id)
+    config = merge_with_default(site["config_draft"])
+
+    if block not in config:
+        await callback.answer("Unknown block", show_alert=True)
+        return
+
+    current = config[block].get("enabled", True)
+    if block in {"header", "contacts", "services", "map"} and current:
+        await callback.answer("Не можна вимкнути", show_alert=True)
+        return
+
+    config[block]["enabled"] = not current
+
+    await update_draft(user.id, config)
+    await callback.answer("Оновлено")
+
+
 @router.message(SellerSiteStates.edit_header_title)
 async def save_header_title(message: Message, state: FSMContext):
     data = await state.get_data()
