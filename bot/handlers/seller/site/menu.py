@@ -2,36 +2,48 @@ from aiogram import Router, F
 from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
 
-from bot.database.repositories.site_repo import get_site_by_seller, create_site
+from bot.database.repositories.site_repo import (
+    get_site_by_seller,
+    create_site,
+)
 from bot.services.site_config import get_default_site_config
 
 router = Router()
 
 
-# TEMP FEATURE FLAG (тільки для тебе)
+# TEMP FEATURE FLAG
 def site_enabled(user_id: int) -> bool:
     return user_id == 6206952389  # заміни на свій ID
 
 
 @router.message(F.text == "🌐 Мій сайт")
 async def site_menu(message: Message, state: FSMContext):
-    if not message.from_user or not site_enabled(message.from_user.id):
+    user = message.from_user
+
+    if not user or not site_enabled(user.id):
         return
 
-    seller_id = message.from_user.id
+    seller_id = user.id
 
     await state.clear()
     await state.update_data(flow="seller_site")
 
+    # 🔍 перевірка
     site = await get_site_by_seller(seller_id)
 
+    # 🆕 створення
     if not site:
         subdomain = f"user{seller_id}"
-        default_config = get_default_site_config()
-        await create_site(
+        config = get_default_site_config()
+
+        site = await create_site(
             seller_id=seller_id,
             subdomain=subdomain,
-            config=default_config,
+            config=config,
         )
 
-    await message.answer("🌐 Мій сайт")
+    await message.answer(
+        "🌐 Мій сайт\n\n"
+        f"Домен: {site['subdomain']}\n"
+        "Статус: draft"
+    )
