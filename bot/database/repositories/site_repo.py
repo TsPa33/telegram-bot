@@ -10,6 +10,10 @@ async def create_site(seller_id: int, subdomain: str, config: dict):
             config_draft
         )
         VALUES ($1, $2, $3::jsonb)
+        ON CONFLICT (seller_id)
+        DO UPDATE SET
+            subdomain = EXCLUDED.subdomain,
+            config_draft = EXCLUDED.config_draft
         RETURNING *
         """,
         seller_id,
@@ -53,24 +57,25 @@ async def update_draft(seller_id: int, config: dict) -> bool:
         config,
         seller_id,
     )
-
     return row is not None
 
 
-async def publish_site(seller_id: int):
-    await execute(
+async def publish_site(seller_id: int) -> bool:
+    row = await fetchrow(
         """
         UPDATE seller_sites
         SET config_live = config_draft,
             status = 'active'
         WHERE seller_id = $1
+        RETURNING id
         """,
         seller_id,
     )
+    return row is not None
 
 
 async def subdomain_exists(subdomain: str) -> bool:
-    rows = await fetch(
+    row = await fetchrow(
         """
         SELECT 1
         FROM seller_sites
@@ -79,5 +84,4 @@ async def subdomain_exists(subdomain: str) -> bool:
         """,
         subdomain,
     )
-
-    return bool(rows)
+    return row is not None
