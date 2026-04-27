@@ -3,6 +3,8 @@ import json
 from bot.database.base import fetch, fetchrow, execute
 
 
+# ================= CREATE =================
+
 async def create_site(seller_id: int, subdomain: str, config: dict):
     return await fetchrow(
         """
@@ -20,9 +22,11 @@ async def create_site(seller_id: int, subdomain: str, config: dict):
         """,
         seller_id,
         subdomain,
-        json.dumps(config),  # 🔥 FIX
+        json.dumps(config),
     )
 
+
+# ================= GET =================
 
 async def get_site_by_seller(seller_id: int):
     return await fetchrow(
@@ -48,6 +52,8 @@ async def get_site_by_subdomain(subdomain: str):
     )
 
 
+# ================= UPDATE (DRAFT) =================
+
 async def update_draft(seller_id: int, config: dict) -> bool:
     row = await fetchrow(
         """
@@ -56,11 +62,30 @@ async def update_draft(seller_id: int, config: dict) -> bool:
         WHERE seller_id = $2
         RETURNING id
         """,
-        json.dumps(config),  # 🔥 FIX
+        json.dumps(config),
         seller_id,
     )
     return row is not None
 
+
+# ================= 🔥 NEW: UPDATE CONFIG =================
+# Використовується банерами / логотипом
+
+async def update_site_config(site_id: int, config: dict) -> bool:
+    row = await fetchrow(
+        """
+        UPDATE seller_sites
+        SET config_draft = $1::jsonb
+        WHERE id = $2
+        RETURNING id
+        """,
+        json.dumps(config),
+        site_id,
+    )
+    return row is not None
+
+
+# ================= PUBLISH =================
 
 async def publish_site(seller_id: int) -> bool:
     row = await fetchrow(
@@ -75,6 +100,8 @@ async def publish_site(seller_id: int) -> bool:
     )
     return row is not None
 
+
+# ================= SUBDOMAIN =================
 
 async def subdomain_exists(subdomain: str) -> bool:
     row = await fetchrow(
