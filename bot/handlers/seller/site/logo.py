@@ -22,13 +22,18 @@ def parse_config(config_raw):
 @router.callback_query(F.data == "site:edit:logo")
 async def set_logo(callback: CallbackQuery, state: FSMContext):
     await state.set_state("site_logo")
+    print("STATE SET TO site_logo")
     await callback.message.answer("Надішліть логотип")
     await callback.answer()
 
 
 @router.message(F.photo)
 async def save_logo(message: Message, state: FSMContext):
-    if await state.get_state() != "site_logo":
+    print("LOGO HANDLER TRIGGERED")
+    print("STATE:", await state.get_state())
+    current_state = await state.get_state()
+
+    if current_state != "site_logo":
         return
 
     seller = await get_seller_by_telegram_id(message.from_user.id)
