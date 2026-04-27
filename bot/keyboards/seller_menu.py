@@ -30,6 +30,13 @@ def seller_main_kb(is_verified: bool = False):
         [
             KeyboardButton(text="🌐 Мій сайт"),
         ],
+
+        # 🔥 НОВИЙ БЛОК (CMS сайту)
+        [
+            KeyboardButton(text="🖼 Банери"),
+            KeyboardButton(text="🖼 Лого"),
+        ],
+
         [
             KeyboardButton(text="💳 Пакети послуг"),
             KeyboardButton(text="↩️ На головне меню"),
@@ -46,7 +53,7 @@ def seller_menu_kb(is_verified: bool = False):
     return seller_main_kb(is_verified=is_verified)
 
 
-# 🔥 ОНОВЛЕНО — тепер приймає subdomain
+# 🔥 МЕНЮ САЙТУ (inline кнопки)
 def site_menu_kb(subdomain: str, is_active: bool) -> InlineKeyboardMarkup:
     buttons = [
         [InlineKeyboardButton(text="✏️ Шапка", callback_data="site:edit:header")],
@@ -54,7 +61,7 @@ def site_menu_kb(subdomain: str, is_active: bool) -> InlineKeyboardMarkup:
         [InlineKeyboardButton(text="🚀 Опублікувати", callback_data="site:publish")],
     ]
 
-    # 🔥 КНОПКА ВІДКРИТИ САЙТ (тільки якщо active)
+    # 🔥 відкриття сайту
     if is_active:
         buttons.append([
             InlineKeyboardButton(
