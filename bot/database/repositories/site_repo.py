@@ -11,13 +11,16 @@ async def create_site(seller_id: int, subdomain: str, config: dict):
         INSERT INTO seller_sites (
             seller_id,
             subdomain,
-            config_draft
+            config_draft,
+            config_live,
+            status
         )
-        VALUES ($1, $2, $3::jsonb)
+        VALUES ($1, $2, $3::jsonb, $3::jsonb, 'active')
         ON CONFLICT (seller_id)
         DO UPDATE SET
             subdomain = EXCLUDED.subdomain,
-            config_draft = EXCLUDED.config_draft
+            config_draft = EXCLUDED.config_draft,
+            config_live = EXCLUDED.config_draft
         RETURNING *
         """,
         seller_id,
@@ -58,7 +61,8 @@ async def update_draft(seller_id: int, config: dict) -> bool:
     row = await fetchrow(
         """
         UPDATE seller_sites
-        SET config_draft = $1::jsonb
+        SET config_draft = $1::jsonb,
+            config_live = $1::jsonb  -- 🔥 автопублікація
         WHERE seller_id = $2
         RETURNING id
         """,
@@ -68,14 +72,14 @@ async def update_draft(seller_id: int, config: dict) -> bool:
     return row is not None
 
 
-# ================= 🔥 NEW: UPDATE CONFIG =================
-# Використовується банерами / логотипом
+# ================= 🔥 UPDATE CONFIG (MAIN FIX) =================
 
 async def update_site_config(site_id: int, config: dict) -> bool:
     row = await fetchrow(
         """
         UPDATE seller_sites
-        SET config_draft = $1::jsonb
+        SET config_draft = $1::jsonb,
+            config_live = $1::jsonb  -- 🔥 автопублікація
         WHERE id = $2
         RETURNING id
         """,
@@ -85,7 +89,7 @@ async def update_site_config(site_id: int, config: dict) -> bool:
     return row is not None
 
 
-# ================= PUBLISH =================
+# ================= PUBLISH (МОЖНА ЗАЛИШИТИ) =================
 
 async def publish_site(seller_id: int) -> bool:
     row = await fetchrow(
