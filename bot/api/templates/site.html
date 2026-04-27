@@ -7,24 +7,26 @@
 
     <style>
         :root {
-            --bg: #f5f7fa;
-            --surface: #ffffff;
             --primary: #2563eb;
-            --primary-dark: #1d4ed8;
             --dark: #111827;
+            --bg: #f5f7fa;
             --text: #1f2937;
+            --surface: #ffffff;
             --muted: #6b7280;
-            --ring: rgba(37, 99, 235, 0.2);
-
-            --radius-lg: 16px;
+            --primary-dark: #1d4ed8;
+            --ring: rgba(37, 99, 235, 0.24);
             --radius-md: 12px;
-
-            --shadow-soft: 0 12px 30px rgba(0,0,0,0.08);
-            --shadow-card: 0 4px 14px rgba(0,0,0,0.06);
+            --radius-lg: 16px;
+            --shadow-soft: 0 10px 30px rgba(17, 24, 39, 0.08);
+            --shadow-card: 0 6px 18px rgba(17, 24, 39, 0.07);
         }
 
         * {
             box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
         }
 
         body {
@@ -35,227 +37,436 @@
             line-height: 1.6;
         }
 
-        /* HERO */
+        a {
+            color: inherit;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1060px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .section {
+            margin: 24px 0;
+        }
+
+        .site-header {
+            position: sticky;
+            top: 0;
+            z-index: 40;
+            height: 56px;
+            background: rgba(255, 255, 255, 0.94);
+            border-bottom: 1px solid #e5e7eb;
+            backdrop-filter: blur(10px);
+        }
+
+        .site-nav {
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .site-title {
+            margin: 0;
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--dark);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 75%;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            border-radius: var(--radius-md);
+            padding: 12px 18px;
+            font-size: 14px;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            transition: background-color 0.2s ease, transform 0.2s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-nav {
+            padding: 9px 14px;
+            font-size: 13px;
+        }
 
         .hero {
-            background: linear-gradient(135deg, #111827 0%, #1e3a8a 50%, #2563eb 100%);
+            background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 52%, #2563eb 100%);
             color: #fff;
             text-align: center;
-            padding: 70px 20px;
+            padding: 76px 0 72px;
+        }
+
+        .hero-inner {
+            max-width: 840px;
+            margin: 0 auto;
         }
 
         .hero h1 {
             margin: 0;
-            font-size: clamp(28px, 5vw, 40px);
-            line-height: 1.2;
+            font-size: clamp(30px, 6vw, 50px);
+            line-height: 1.15;
+            letter-spacing: -0.02em;
         }
 
         .hero p {
-            margin-top: 16px;
+            margin: 16px auto 28px;
             max-width: 700px;
-            margin-left: auto;
-            margin-right: auto;
-            color: rgba(255,255,255,0.85);
-            font-size: 16px;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 17px;
         }
 
-        /* CONTAINER */
-
-        .container {
-            max-width: 1000px;
-            margin: 0 auto;
-            padding: 20px;
+        .cta-block {
+            margin: -30px auto 12px;
+            background: var(--primary);
+            color: #fff;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-soft);
+            padding: 28px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            flex-wrap: wrap;
         }
 
-        /* CARD */
+        .cta-title {
+            margin: 0;
+            font-size: clamp(22px, 4vw, 30px);
+            line-height: 1.2;
+        }
 
         .card {
             background: var(--surface);
             border-radius: var(--radius-lg);
-            padding: 24px;
-            margin-top: 20px;
+            padding: 26px;
             box-shadow: var(--shadow-card);
         }
 
-        h2 {
+        .card h2 {
             margin-top: 0;
             margin-bottom: 12px;
             color: var(--dark);
+            font-size: clamp(22px, 4vw, 28px);
+            line-height: 1.2;
         }
 
-        /* SERVICES */
+        .about-text {
+            margin: 0;
+            max-width: 760px;
+            color: #374151;
+            font-size: 16px;
+        }
+
+        .services-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
 
         .badge {
-            display: inline-block;
-            background: #e8f0ff;
-            color: #1e40af;
-            padding: 6px 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
             border-radius: 999px;
+            padding: 6px 12px;
             font-size: 12px;
-            font-weight: 600;
+            font-weight: 700;
+            background: #dbeafe;
+            color: #1e40af;
         }
 
-        /* CONTACTS */
+        .service-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 14px;
+        }
+
+        .service-item {
+            border: 1px solid #e5e7eb;
+            border-radius: var(--radius-md);
+            background: #f8fafc;
+            padding: 16px;
+            min-height: 96px;
+        }
+
+        .service-icon {
+            width: 32px;
+            height: 32px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            background: #e0e7ff;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+
+        .service-item p {
+            margin: 0;
+            font-size: 14px;
+            color: #374151;
+        }
 
         .contacts {
+            list-style: none;
+            margin: 0;
+            padding: 0;
             display: grid;
-            gap: 10px;
+            gap: 12px;
         }
 
         .contact-item {
             display: flex;
-            gap: 8px;
             align-items: center;
+            gap: 10px;
+            color: #374151;
+        }
+
+        .contact-item .icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 999px;
+            background: #eff6ff;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
         }
 
         .contact-item a {
             color: var(--primary);
             text-decoration: none;
+            font-weight: 600;
         }
 
-        /* FORM */
+        .contact-item a:hover {
+            text-decoration: underline;
+        }
 
         .lead {
-            background: #ffffff;
-            border: 1px solid #e5e7eb;
+            border: 1px solid #dbeafe;
             box-shadow: var(--shadow-soft);
         }
 
         .lead-desc {
+            margin-top: 0;
+            margin-bottom: 18px;
             color: var(--muted);
-            margin-bottom: 16px;
         }
 
         .form-grid {
             display: grid;
-            gap: 12px;
+            gap: 14px;
         }
 
-        input, textarea {
+        input,
+        textarea {
             width: 100%;
-            padding: 12px 14px;
             border-radius: 12px;
             border: 1px solid #d1d5db;
-            font-size: 14px;
+            padding: 13px 14px;
+            font-size: 15px;
             font-family: inherit;
+            color: var(--text);
+            background: #fff;
         }
 
         textarea {
-            min-height: 120px;
+            min-height: 132px;
             resize: vertical;
         }
 
-        input:focus, textarea:focus {
+        input:focus,
+        textarea:focus {
             outline: none;
             border-color: var(--primary);
             box-shadow: 0 0 0 4px var(--ring);
         }
 
-        button {
-            background: var(--primary);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            padding: 14px;
-            font-size: 15px;
-            font-weight: 600;
-            cursor: pointer;
+        .lead button {
+            width: 100%;
+            padding: 14px 18px;
+            font-size: 16px;
         }
 
-        button:hover {
-            background: var(--primary-dark);
+        .site-footer {
+            margin-top: 32px;
+            padding: 24px 16px 34px;
+            text-align: center;
+            color: #6b7280;
+            font-size: 14px;
         }
 
-        /* MOBILE */
+        @media (max-width: 900px) {
+            .service-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
 
-        @media (max-width: 600px) {
+        @media (max-width: 640px) {
+            .container {
+                padding: 0 16px;
+            }
+
+            .site-header {
+                height: 52px;
+            }
+
+            .site-title {
+                max-width: 62%;
+                font-size: 14px;
+            }
+
             .hero {
-                padding: 50px 16px;
+                padding: 60px 0 56px;
+            }
+
+            .hero p {
+                font-size: 15px;
+                margin-bottom: 22px;
+            }
+
+            .cta-block {
+                margin-top: -20px;
+                padding: 20px;
             }
 
             .card {
-                padding: 18px;
+                padding: 20px;
+            }
+
+            .service-grid {
+                grid-template-columns: 1fr;
             }
         }
     </style>
 </head>
 <body>
 
-<!-- HERO -->
-<div class="hero">
-    <h1>{{ config.header.title or "Сайт продавця" }}</h1>
-    <p>
-        {{ config.header.subtitle or "Швидкий зв’язок, сучасний сервіс та зручне обслуговування клієнтів." }}
-    </p>
-</div>
+<header class="site-header">
+    <div class="container site-nav">
+        <p class="site-title">{{ config.header.title or "Сайт продавця" }}</p>
+        <a href="#lead" class="btn btn-primary btn-nav">Залишити заявку</a>
+    </div>
+</header>
 
-<div class="container">
+<section class="hero">
+    <div class="container hero-inner">
+        <h1>{{ config.header.title or "Сайт продавця" }}</h1>
+        <p>{{ config.header.subtitle or "Швидкий зв’язок, сучасний сервіс та зручне обслуговування клієнтів." }}</p>
+        <a href="#lead" class="btn btn-primary">Залишити заявку</a>
+    </div>
+</section>
 
-    <!-- ABOUT -->
+<main class="container">
+    <section class="cta-block">
+        <h2 class="cta-title">Зв'яжіться з нами вже зараз</h2>
+        <a href="#lead" class="btn btn-primary">Перейти до форми</a>
+    </section>
+
     {% if config.about.enabled %}
     {% if config.about.text %}
-    <div class="card">
+    <section class="section card">
         <h2>Про нас</h2>
-        <p>{{ config.about.text }}</p>
-    </div>
+        <p class="about-text">{{ config.about.text }}</p>
+    </section>
     {% endif %}
     {% endif %}
 
-    <!-- SERVICES -->
     {% if config.services.enabled %}
-    <div class="card">
-        <h2>Послуги</h2>
-        <span class="badge">Активні</span>
-    </div>
+    <section class="section card">
+        <div class="services-header">
+            <h2>Послуги</h2>
+            <span class="badge">Активні</span>
+        </div>
+
+        <div class="service-grid">
+            <article class="service-item">
+                <span class="service-icon">⚡</span>
+                <p>Швидка обробка звернень та оперативний зворотний зв’язок.</p>
+            </article>
+            <article class="service-item">
+                <span class="service-icon">🛡️</span>
+                <p>Надійний сервіс із фокусом на якість та стабільний результат.</p>
+            </article>
+            <article class="service-item">
+                <span class="service-icon">🤝</span>
+                <p>Індивідуальний підхід до кожного клієнта на всіх етапах співпраці.</p>
+            </article>
+        </div>
+    </section>
     {% endif %}
 
-    <!-- CONTACTS -->
     {% if config.contacts.enabled %}
-    <div class="card">
+    <section class="section card">
         <h2>Контакти</h2>
-
-        <div class="contacts">
-
+        <ul class="contacts">
             {% if config.contacts.phone %}
-            <div class="contact-item">
-                📞 <a href="tel:{{ config.contacts.phone }}">{{ config.contacts.phone }}</a>
-            </div>
+            <li class="contact-item">
+                <span class="icon">📞</span>
+                <a href="tel:{{ config.contacts.phone }}">{{ config.contacts.phone }}</a>
+            </li>
             {% endif %}
 
             {% if config.contacts.address %}
-            <div class="contact-item">
-                📍 {{ config.contacts.address }}
-            </div>
+            <li class="contact-item">
+                <span class="icon">📍</span>
+                <span>{{ config.contacts.address }}</span>
+            </li>
             {% endif %}
 
             {% if config.contacts.telegram %}
-            <div class="contact-item">
-                💬 {{ config.contacts.telegram }}
-            </div>
+            <li class="contact-item">
+                <span class="icon">💬</span>
+                <span>{{ config.contacts.telegram }}</span>
+            </li>
             {% endif %}
-
-        </div>
-    </div>
+        </ul>
+    </section>
     {% endif %}
 
-    <!-- LEAD FORM -->
-    <div class="card lead">
+    <section id="lead" class="section card lead">
         <h2>Залишити заявку</h2>
-        <p class="lead-desc">
-            Залиште свої контакти — ми зв’яжемося з вами найближчим часом
-        </p>
+        <p class="lead-desc">Залиште свої контакти — ми зв’яжемося з вами найближчим часом.</p>
 
         <form method="post" action="/site/{{ subdomain }}/lead">
             <div class="form-grid">
                 <input type="text" name="name" placeholder="Ваше ім'я" required>
                 <input type="text" name="phone" placeholder="Телефон" required>
                 <textarea name="message" placeholder="Повідомлення"></textarea>
-                <button type="submit">Надіслати заявку</button>
+                <button class="btn btn-primary" type="submit">Надіслати заявку</button>
             </div>
         </form>
-    </div>
+    </section>
+</main>
 
-</div>
+<footer class="site-footer">© {{ subdomain }}</footer>
 
 </body>
 </html>
