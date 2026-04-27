@@ -22,6 +22,7 @@ body {
     color: var(--text);
 }
 
+/* HEADER */
 .header {
     position: sticky;
     top: 0;
@@ -38,6 +39,7 @@ body {
     height: 40px;
 }
 
+/* BUTTONS */
 .btn {
     background: var(--primary);
     color: white;
@@ -59,28 +61,39 @@ body {
     text-decoration: none;
 }
 
-/* 🔥 БАНЕР НА ВСЮ ШИРИНУ */
+/* 🔥 FULL WIDTH BANNER */
 .hero-banner {
     width: 100%;
+    overflow: hidden;
 }
 
 .hero-banner img {
     width: 100%;
-    height: 320px;
+    height: 340px;
     object-fit: cover;
     display: block;
 }
 
-/* старий hero тепер тільки текст */
+/* HERO TEXT */
 .hero {
     background: linear-gradient(135deg, #111827, #2563eb);
     color: white;
     text-align: center;
-    padding: 40px 20px;
+    padding: 50px 20px;
 }
 
+.hero h1 {
+    margin: 0;
+    font-size: 28px;
+}
+
+.hero p {
+    opacity: 0.9;
+}
+
+/* CONTENT */
 .container {
-    max-width: 900px;
+    max-width: 1000px;
     margin: auto;
     padding: 20px;
 }
@@ -92,6 +105,7 @@ body {
     margin-top: 20px;
 }
 
+/* GRID */
 .car-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -102,6 +116,11 @@ body {
     background: white;
     border-radius: 14px;
     padding: 16px;
+    transition: 0.2s;
+}
+
+.car:hover {
+    transform: translateY(-4px);
 }
 
 .car-image {
@@ -117,6 +136,7 @@ body {
     flex-wrap: wrap;
 }
 
+/* FORM */
 input, textarea {
     width: 100%;
     padding: 12px;
@@ -135,6 +155,7 @@ button {
     color: white;
 }
 
+/* MOBILE */
 @media (max-width: 768px) {
     .car-grid {
         grid-template-columns: 1fr;
@@ -160,7 +181,7 @@ button {
     <a href="#lead" class="btn">Заявка</a>
 </div>
 
-<!-- 🔥 БАНЕРИ ПІД HEADER -->
+<!-- 🔥 БАНЕРИ -->
 {% if config.hero.banners %}
 <div class="hero-banner">
     {% for banner in config.hero.banners %}
@@ -169,7 +190,7 @@ button {
 </div>
 {% endif %}
 
-<!-- HERO (ТЕКСТОВИЙ) -->
+<!-- HERO -->
 <div class="hero">
     <h1>{{ config.header.title }}</h1>
     <p>Швидкий зв’язок та сучасний сервіс</p>
@@ -204,8 +225,11 @@ button {
 
             <div class="car-actions">
                 <a href="#lead" class="btn">Заявка</a>
+
                 {% if config.contacts.phone %}
-                <a href="tel:{{ config.contacts.phone }}" class="btn-secondary">Подзвонити</a>
+                <a href="tel:{{ config.contacts.phone }}" class="btn-secondary">
+                    Подзвонити
+                </a>
                 {% endif %}
             </div>
         </div>
@@ -252,6 +276,7 @@ button {
 </div>
 {% endif %}
 
+<!-- FORM -->
 <div id="lead" class="card">
     <h2>Залишити заявку</h2>
 
