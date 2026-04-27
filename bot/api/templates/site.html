@@ -33,6 +33,10 @@ body {
     align-items: center;
 }
 
+.logo {
+    height: 40px;
+}
+
 .btn {
     background: var(--primary);
     color: white;
@@ -58,7 +62,13 @@ body {
     background: linear-gradient(135deg, #111827, #2563eb);
     color: white;
     text-align: center;
-    padding: 60px 20px;
+    padding: 40px 20px;
+}
+
+.banner img {
+    width: 100%;
+    border-radius: 12px;
+    margin-bottom: 10px;
 }
 
 .container {
@@ -127,12 +137,28 @@ button {
 
 <body>
 
+<!-- HEADER -->
 <div class="header">
-    <b>{{ config.header.title or "Сайт" }}</b>
+    {% if config.header.logo %}
+        <img src="{{ config.header.logo }}" class="logo">
+    {% else %}
+        <b>{{ config.header.title or "Сайт" }}</b>
+    {% endif %}
+
     <a href="#lead" class="btn">Заявка</a>
 </div>
 
+<!-- HERO + БАНЕРИ -->
 <div class="hero">
+
+    {% if config.hero.banners %}
+    <div class="banner">
+        {% for banner in config.hero.banners %}
+            <img src="{{ banner }}">
+        {% endfor %}
+    </div>
+    {% endif %}
+
     <h1>{{ config.header.title }}</h1>
     <p>Швидкий зв’язок та сучасний сервіс</p>
     <a href="#lead" class="btn">Залишити заявку</a>
@@ -175,7 +201,7 @@ button {
     </div>
 </div>
 
-<!-- 🔥 ПОСЛУГИ -->
+<!-- ПОСЛУГИ -->
 <div class="card">
     <h2>Наші послуги</h2>
 
