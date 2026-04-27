@@ -3,15 +3,41 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-
     <title>{{ config.header.title or subdomain }}</title>
 
     <style>
+        :root {
+            --bg: #f5f7fa;
+            --card: #ffffff;
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --dark: #111827;
+            --text: #1f2937;
+            --muted: #6b7280;
+        }
+
         body {
             margin: 0;
             font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-            background: #f5f7fa;
-            color: #1f2937;
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        .hero {
+            background: linear-gradient(135deg, #111827, #2563eb);
+            color: white;
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .hero h1 {
+            margin: 0;
+            font-size: 32px;
+        }
+
+        .hero p {
+            margin-top: 12px;
+            color: rgba(255,255,255,0.8);
         }
 
         .container {
@@ -20,24 +46,12 @@
             padding: 20px;
         }
 
-        header {
-            background: #111827;
-            color: white;
-            padding: 40px 20px;
-            text-align: center;
-        }
-
-        header h1 {
-            margin: 0;
-            font-size: 28px;
-        }
-
-        section {
-            background: white;
-            margin-top: 20px;
+        .card {
+            background: var(--card);
             padding: 20px;
             border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            margin-top: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
         }
 
         h2 {
@@ -45,95 +59,98 @@
         }
 
         .contact-item {
-            margin-bottom: 8px;
+            margin-bottom: 10px;
         }
 
-        form input,
-        form textarea {
+        input, textarea {
             width: 100%;
-            padding: 10px;
+            padding: 12px;
             margin-bottom: 10px;
-            border-radius: 8px;
+            border-radius: 10px;
             border: 1px solid #ddd;
             font-size: 14px;
         }
 
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
         button {
-            background: #2563eb;
+            background: var(--primary);
             color: white;
             border: none;
-            padding: 12px;
+            padding: 14px;
             width: 100%;
-            border-radius: 8px;
+            border-radius: 10px;
             font-size: 16px;
             cursor: pointer;
         }
 
         button:hover {
-            background: #1d4ed8;
-        }
-
-        .badge {
-            display: inline-block;
-            background: #e0f2fe;
-            color: #0369a1;
-            padding: 4px 10px;
-            border-radius: 999px;
-            font-size: 12px;
+            background: var(--primary-dark);
         }
     </style>
 </head>
 <body>
 
-<header>
+<div class="hero">
     <h1>{{ config.header.title or "Сайт продавця" }}</h1>
-</header>
+    <p>Швидкий зв’язок та сучасний сервіс</p>
+</div>
 
 <div class="container">
 
-    {% if config.about.enabled and config.about.text %}
-    <section>
+    {% if config.about.enabled %}
+    {% if config.about.text %}
+    <div class="card">
         <h2>Про нас</h2>
         <p>{{ config.about.text }}</p>
-    </section>
+    </div>
+    {% endif %}
     {% endif %}
 
     {% if config.services.enabled %}
-    <section>
+    <div class="card">
         <h2>Послуги</h2>
-        <span class="badge">Активні</span>
-    </section>
+        <p>Активні</p>
+    </div>
     {% endif %}
 
     {% if config.contacts.enabled %}
-    <section>
+    <div class="card">
         <h2>Контакти</h2>
 
         {% if config.contacts.phone %}
-        <div class="contact-item">📞 {{ config.contacts.phone }}</div>
+        <div class="contact-item">
+            📞 <a href="tel:{{ config.contacts.phone }}">{{ config.contacts.phone }}</a>
+        </div>
         {% endif %}
 
         {% if config.contacts.address %}
-        <div class="contact-item">📍 {{ config.contacts.address }}</div>
+        <div class="contact-item">
+            📍 {{ config.contacts.address }}
+        </div>
         {% endif %}
 
         {% if config.contacts.telegram %}
-        <div class="contact-item">💬 {{ config.contacts.telegram }}</div>
+        <div class="contact-item">
+            💬 {{ config.contacts.telegram }}
+        </div>
         {% endif %}
-    </section>
+    </div>
     {% endif %}
 
-    <section>
+    <div class="card">
         <h2>Залишити заявку</h2>
 
         <form method="post" action="/site/{{ subdomain }}/lead">
             <input type="text" name="name" placeholder="Ваше ім'я" required>
             <input type="text" name="phone" placeholder="Телефон" required>
             <textarea name="message" placeholder="Повідомлення"></textarea>
-
             <button type="submit">Надіслати заявку</button>
         </form>
-    </section>
+    </div>
 
 </div>
 
