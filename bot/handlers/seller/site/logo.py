@@ -8,7 +8,15 @@ from bot.database.repositories.site_repo import (
 )
 from bot.database.repositories.seller_repo import get_seller_by_telegram_id
 
+import json
+
 router = Router()
+
+
+def parse_config(config_raw):
+    if isinstance(config_raw, str):
+        return json.loads(config_raw)
+    return config_raw or {}
 
 
 @router.callback_query(F.data == "site:edit:logo")
@@ -23,22 +31,19 @@ async def save_logo(message: Message, state: FSMContext):
     if await state.get_state() != "site_logo":
         return
 
-    user = message.from_user
-    seller = await get_seller_by_telegram_id(user.id)
-
+    seller = await get_seller_by_telegram_id(message.from_user.id)
     if not seller:
-        await message.answer("Продавця не знайдено")
         return
 
     site = await get_site_by_seller(seller["id"])
     if not site:
-        await message.answer("Сайт не знайдено")
         return
 
-    photo = message.photo[-1].file_id
+    config = parse_config(site.get("config_draft"))
 
-    config = site.get("config_draft") or site.get("config") or {}
     config.setdefault("header", {})
+
+    photo = message.photo[-1].file_id
     config["header"]["logo"] = photo
 
     await update_site_config(site["id"], config)
