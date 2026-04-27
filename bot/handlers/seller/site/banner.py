@@ -30,12 +30,10 @@ async def set_banner(callback: CallbackQuery, state: FSMContext):
 async def delete_banner_menu(callback: CallbackQuery):
     seller = await get_seller_by_telegram_id(callback.from_user.id)
     if not seller:
-        await callback.message.answer("Продавця не знайдено")
         return
 
     site = await get_site_by_seller(seller["id"])
     if not site:
-        await callback.message.answer("Сайт не знайдено")
         return
 
     config = parse_config(site.get("config_draft"))
@@ -78,17 +76,12 @@ async def delete_banner(callback: CallbackQuery):
     config.setdefault("hero", {})
     config["hero"].setdefault("banners", [])
 
-    try:
-        index = int(callback.data.split(":")[-1])
-    except:
+    index = int(callback.data.split(":")[-1])
+
+    if index >= len(config["hero"]["banners"]):
         return
 
-    banners = config["hero"]["banners"]
-
-    if index >= len(banners):
-        return
-
-    banners.pop(index)
+    config["hero"]["banners"].pop(index)
 
     await update_site_config(site["id"], config)
 
@@ -96,7 +89,7 @@ async def delete_banner(callback: CallbackQuery):
     await callback.answer()
 
 
-@router.message(F.photo, F.state == "site_banner")
+@router.message(F.photo)
 async def save_banner(message: Message, state: FSMContext):
     if await state.get_state() != "site_banner":
         return
