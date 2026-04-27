@@ -1,472 +1,201 @@
 <!doctype html>
 <html lang="uk">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ config.header.title or subdomain }}</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ config.header.title or subdomain }}</title>
 
-    <style>
-        :root {
-            --primary: #2563eb;
-            --dark: #111827;
-            --bg: #f5f7fa;
-            --text: #1f2937;
-            --surface: #ffffff;
-            --muted: #6b7280;
-            --primary-dark: #1d4ed8;
-            --ring: rgba(37, 99, 235, 0.24);
-            --radius-md: 12px;
-            --radius-lg: 16px;
-            --shadow-soft: 0 10px 30px rgba(17, 24, 39, 0.08);
-            --shadow-card: 0 6px 18px rgba(17, 24, 39, 0.07);
-        }
+<style>
+:root {
+    --primary: #2563eb;
+    --primary-dark: #1d4ed8;
+    --dark: #111827;
+    --bg: #f5f7fa;
+    --text: #1f2937;
+    --surface: #ffffff;
+}
 
-        * {
-            box-sizing: border-box;
-        }
+body {
+    margin: 0;
+    font-family: -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+}
 
-        html {
-            scroll-behavior: smooth;
-        }
+/* HEADER */
+.header {
+    position: sticky;
+    top: 0;
+    background: white;
+    padding: 12px 20px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
 
-        body {
-            margin: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            line-height: 1.6;
-        }
+/* BUTTON */
+.btn {
+    background: var(--primary);
+    color: white;
+    padding: 10px 16px;
+    border-radius: 10px;
+    text-decoration: none;
+    font-weight: 600;
+}
 
-        a {
-            color: inherit;
-        }
+.btn:hover {
+    background: var(--primary-dark);
+}
 
-        .container {
-            width: 100%;
-            max-width: 1060px;
-            margin: 0 auto;
-            padding: 0 20px;
-        }
+/* HERO */
+.hero {
+    background: linear-gradient(135deg, #111827, #2563eb);
+    color: white;
+    text-align: center;
+    padding: 60px 20px;
+}
 
-        .section {
-            margin: 24px 0;
-        }
+.hero h1 {
+    margin: 0;
+    font-size: 32px;
+}
 
-        .site-header {
-            position: sticky;
-            top: 0;
-            z-index: 40;
-            height: 56px;
-            background: rgba(255, 255, 255, 0.94);
-            border-bottom: 1px solid #e5e7eb;
-            backdrop-filter: blur(10px);
-        }
+.hero p {
+    margin-top: 12px;
+    opacity: 0.9;
+}
 
-        .site-nav {
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 16px;
-        }
+/* CTA BLOCK */
+.cta {
+    background: var(--primary);
+    color: white;
+    padding: 20px;
+    margin: -20px auto 0;
+    max-width: 900px;
+    border-radius: 14px;
+    text-align: center;
+}
 
-        .site-title {
-            margin: 0;
-            font-size: 15px;
-            font-weight: 700;
-            color: var(--dark);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 75%;
-        }
+/* LAYOUT */
+.container {
+    max-width: 900px;
+    margin: auto;
+    padding: 20px;
+}
 
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            border: none;
-            border-radius: var(--radius-md);
-            padding: 12px 18px;
-            font-size: 14px;
-            font-weight: 600;
-            text-decoration: none;
-            cursor: pointer;
-            transition: background-color 0.2s ease, transform 0.2s ease;
-        }
+.card {
+    background: var(--surface);
+    padding: 20px;
+    border-radius: 14px;
+    margin-top: 20px;
+}
 
-        .btn:hover {
-            transform: translateY(-1px);
-        }
+/* FORM */
+input, textarea {
+    width: 100%;
+    padding: 12px;
+    margin-top: 10px;
+    border-radius: 10px;
+    border: 1px solid #ddd;
+}
 
-        .btn-primary {
-            background: var(--primary);
-            color: #fff;
-        }
+button {
+    margin-top: 10px;
+    width: 100%;
+    padding: 12px;
+    border-radius: 10px;
+    border: none;
+    background: var(--primary);
+    color: white;
+    font-weight: 600;
+}
 
-        .btn-primary:hover {
-            background: var(--primary-dark);
-        }
+button:hover {
+    background: var(--primary-dark);
+}
 
-        .btn-nav {
-            padding: 9px 14px;
-            font-size: 13px;
-        }
-
-        .hero {
-            background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 52%, #2563eb 100%);
-            color: #fff;
-            text-align: center;
-            padding: 76px 0 72px;
-        }
-
-        .hero-inner {
-            max-width: 840px;
-            margin: 0 auto;
-        }
-
-        .hero h1 {
-            margin: 0;
-            font-size: clamp(30px, 6vw, 50px);
-            line-height: 1.15;
-            letter-spacing: -0.02em;
-        }
-
-        .hero p {
-            margin: 16px auto 28px;
-            max-width: 700px;
-            color: rgba(255, 255, 255, 0.9);
-            font-size: 17px;
-        }
-
-        .cta-block {
-            margin: -30px auto 12px;
-            background: var(--primary);
-            color: #fff;
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-soft);
-            padding: 28px 24px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 16px;
-            flex-wrap: wrap;
-        }
-
-        .cta-title {
-            margin: 0;
-            font-size: clamp(22px, 4vw, 30px);
-            line-height: 1.2;
-        }
-
-        .card {
-            background: var(--surface);
-            border-radius: var(--radius-lg);
-            padding: 26px;
-            box-shadow: var(--shadow-card);
-        }
-
-        .card h2 {
-            margin-top: 0;
-            margin-bottom: 12px;
-            color: var(--dark);
-            font-size: clamp(22px, 4vw, 28px);
-            line-height: 1.2;
-        }
-
-        .about-text {
-            margin: 0;
-            max-width: 760px;
-            color: #374151;
-            font-size: 16px;
-        }
-
-        .services-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-            margin-bottom: 16px;
-        }
-
-        .badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            border-radius: 999px;
-            padding: 6px 12px;
-            font-size: 12px;
-            font-weight: 700;
-            background: #dbeafe;
-            color: #1e40af;
-        }
-
-        .service-grid {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 14px;
-        }
-
-        .service-item {
-            border: 1px solid #e5e7eb;
-            border-radius: var(--radius-md);
-            background: #f8fafc;
-            padding: 16px;
-            min-height: 96px;
-        }
-
-        .service-icon {
-            width: 32px;
-            height: 32px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 10px;
-            background: #e0e7ff;
-            font-size: 16px;
-            margin-bottom: 10px;
-        }
-
-        .service-item p {
-            margin: 0;
-            font-size: 14px;
-            color: #374151;
-        }
-
-        .contacts {
-            list-style: none;
-            margin: 0;
-            padding: 0;
-            display: grid;
-            gap: 12px;
-        }
-
-        .contact-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            color: #374151;
-        }
-
-        .contact-item .icon {
-            width: 28px;
-            height: 28px;
-            border-radius: 999px;
-            background: #eff6ff;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 14px;
-        }
-
-        .contact-item a {
-            color: var(--primary);
-            text-decoration: none;
-            font-weight: 600;
-        }
-
-        .contact-item a:hover {
-            text-decoration: underline;
-        }
-
-        .lead {
-            border: 1px solid #dbeafe;
-            box-shadow: var(--shadow-soft);
-        }
-
-        .lead-desc {
-            margin-top: 0;
-            margin-bottom: 18px;
-            color: var(--muted);
-        }
-
-        .form-grid {
-            display: grid;
-            gap: 14px;
-        }
-
-        input,
-        textarea {
-            width: 100%;
-            border-radius: 12px;
-            border: 1px solid #d1d5db;
-            padding: 13px 14px;
-            font-size: 15px;
-            font-family: inherit;
-            color: var(--text);
-            background: #fff;
-        }
-
-        textarea {
-            min-height: 132px;
-            resize: vertical;
-        }
-
-        input:focus,
-        textarea:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 4px var(--ring);
-        }
-
-        .lead button {
-            width: 100%;
-            padding: 14px 18px;
-            font-size: 16px;
-        }
-
-        .site-footer {
-            margin-top: 32px;
-            padding: 24px 16px 34px;
-            text-align: center;
-            color: #6b7280;
-            font-size: 14px;
-        }
-
-        @media (max-width: 900px) {
-            .service-grid {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
-        }
-
-        @media (max-width: 640px) {
-            .container {
-                padding: 0 16px;
-            }
-
-            .site-header {
-                height: 52px;
-            }
-
-            .site-title {
-                max-width: 62%;
-                font-size: 14px;
-            }
-
-            .hero {
-                padding: 60px 0 56px;
-            }
-
-            .hero p {
-                font-size: 15px;
-                margin-bottom: 22px;
-            }
-
-            .cta-block {
-                margin-top: -20px;
-                padding: 20px;
-            }
-
-            .card {
-                padding: 20px;
-            }
-
-            .service-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-    </style>
+footer {
+    text-align: center;
+    padding: 20px;
+    color: #888;
+}
+</style>
 </head>
+
 <body>
 
-<header class="site-header">
-    <div class="container site-nav">
-        <p class="site-title">{{ config.header.title or "Сайт продавця" }}</p>
-        <a href="#lead" class="btn btn-primary btn-nav">Залишити заявку</a>
-    </div>
-</header>
+<!-- HEADER -->
+<div class="header">
+    <b>{{ config.header.title or "Сайт" }}</b>
+    <a href="#lead" class="btn">Заявка</a>
+</div>
 
-<section class="hero">
-    <div class="container hero-inner">
-        <h1>{{ config.header.title or "Сайт продавця" }}</h1>
-        <p>{{ config.header.subtitle or "Швидкий зв’язок, сучасний сервіс та зручне обслуговування клієнтів." }}</p>
-        <a href="#lead" class="btn btn-primary">Залишити заявку</a>
-    </div>
-</section>
+<!-- HERO -->
+<div class="hero">
+    <h1>{{ config.header.title or "Сайт продавця" }}</h1>
+    <p>{{ config.header.subtitle or "Швидкий зв’язок та сучасний сервіс" }}</p>
+    <a href="#lead" class="btn">Залишити заявку</a>
+</div>
 
-<main class="container">
-    <section class="cta-block">
-        <h2 class="cta-title">Зв'яжіться з нами вже зараз</h2>
-        <a href="#lead" class="btn btn-primary">Перейти до форми</a>
-    </section>
+<!-- CTA -->
+<div class="cta">
+    <h3>Зв'яжіться з нами вже зараз</h3>
+    <a href="#lead" class="btn">Перейти до форми</a>
+</div>
 
-    {% if config.about.enabled %}
-    {% if config.about.text %}
-    <section class="section card">
-        <h2>Про нас</h2>
-        <p class="about-text">{{ config.about.text }}</p>
-    </section>
-    {% endif %}
-    {% endif %}
+<div class="container">
 
-    {% if config.services.enabled %}
-    <section class="section card">
-        <div class="services-header">
-            <h2>Послуги</h2>
-            <span class="badge">Активні</span>
-        </div>
+{% if config.about.enabled %}
+{% if config.about.text %}
+<div class="card">
+    <h2>Про нас</h2>
+    <p>{{ config.about.text }}</p>
+</div>
+{% endif %}
+{% endif %}
 
-        <div class="service-grid">
-            <article class="service-item">
-                <span class="service-icon">⚡</span>
-                <p>Швидка обробка звернень та оперативний зворотний зв’язок.</p>
-            </article>
-            <article class="service-item">
-                <span class="service-icon">🛡️</span>
-                <p>Надійний сервіс із фокусом на якість та стабільний результат.</p>
-            </article>
-            <article class="service-item">
-                <span class="service-icon">🤝</span>
-                <p>Індивідуальний підхід до кожного клієнта на всіх етапах співпраці.</p>
-            </article>
-        </div>
-    </section>
+{% if config.services.enabled %}
+<div class="card">
+    <h2>Послуги</h2>
+    <p>Активні</p>
+</div>
+{% endif %}
+
+{% if config.contacts.enabled %}
+<div class="card">
+    <h2>Контакти</h2>
+
+    {% if config.contacts.phone %}
+    <p>📞 <a href="tel:{{ config.contacts.phone }}">{{ config.contacts.phone }}</a></p>
     {% endif %}
 
-    {% if config.contacts.enabled %}
-    <section class="section card">
-        <h2>Контакти</h2>
-        <ul class="contacts">
-            {% if config.contacts.phone %}
-            <li class="contact-item">
-                <span class="icon">📞</span>
-                <a href="tel:{{ config.contacts.phone }}">{{ config.contacts.phone }}</a>
-            </li>
-            {% endif %}
-
-            {% if config.contacts.address %}
-            <li class="contact-item">
-                <span class="icon">📍</span>
-                <span>{{ config.contacts.address }}</span>
-            </li>
-            {% endif %}
-
-            {% if config.contacts.telegram %}
-            <li class="contact-item">
-                <span class="icon">💬</span>
-                <span>{{ config.contacts.telegram }}</span>
-            </li>
-            {% endif %}
-        </ul>
-    </section>
+    {% if config.contacts.address %}
+    <p>📍 {{ config.contacts.address }}</p>
     {% endif %}
 
-    <section id="lead" class="section card lead">
-        <h2>Залишити заявку</h2>
-        <p class="lead-desc">Залиште свої контакти — ми зв’яжемося з вами найближчим часом.</p>
+    {% if config.contacts.telegram %}
+    <p>💬 {{ config.contacts.telegram }}</p>
+    {% endif %}
+</div>
+{% endif %}
 
-        <form method="post" action="/site/{{ subdomain }}/lead">
-            <div class="form-grid">
-                <input type="text" name="name" placeholder="Ваше ім'я" required>
-                <input type="text" name="phone" placeholder="Телефон" required>
-                <textarea name="message" placeholder="Повідомлення"></textarea>
-                <button class="btn btn-primary" type="submit">Надіслати заявку</button>
-            </div>
-        </form>
-    </section>
-</main>
+<div id="lead" class="card">
+    <h2>Залишити заявку</h2>
 
-<footer class="site-footer">© {{ subdomain }}</footer>
+    <form method="post" action="/site/{{ subdomain }}/lead">
+        <input name="name" placeholder="Ім'я" required>
+        <input name="phone" placeholder="Телефон" required>
+        <textarea name="message" placeholder="Повідомлення"></textarea>
+        <button type="submit">Надіслати</button>
+    </form>
+</div>
+
+</div>
+
+<footer>
+    © {{ subdomain }}
+</footer>
 
 </body>
 </html>
