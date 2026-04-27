@@ -51,11 +51,9 @@ def site_menu_kb(subdomain: str, is_active: bool) -> InlineKeyboardMarkup:
     buttons = [
         [InlineKeyboardButton(text="✏️ Шапка", callback_data="site:edit:header")],
         [InlineKeyboardButton(text="🧱 Про нас", callback_data="site:toggle:about")],
-
-        # 🔥 НОВІ ДІЇ В САЙТІ
         [InlineKeyboardButton(text="🖼 Банери", callback_data="site:edit:banners")],
         [InlineKeyboardButton(text="🖼 Лого", callback_data="site:edit:logo")],
-
+        [InlineKeyboardButton(text="❌ Видалити банер", callback_data="site:delete:banner")],
         [InlineKeyboardButton(text="🚀 Опублікувати", callback_data="site:publish")],
     ]
 
