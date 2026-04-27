@@ -54,7 +54,6 @@ def site_menu_kb(subdomain: str, is_active: bool) -> InlineKeyboardMarkup:
         [InlineKeyboardButton(text="🖼 Банери", callback_data="site:edit:banners")],
         [InlineKeyboardButton(text="🖼 Лого", callback_data="site:edit:logo")],
         [InlineKeyboardButton(text="❌ Видалити банер", callback_data="site:delete:banner")],
-        [InlineKeyboardButton(text="🚀 Опублікувати", callback_data="site:publish")],
     ]
 
     if is_active:
