@@ -27,7 +27,6 @@ def seller_main_kb(is_verified: bool = False):
             KeyboardButton(text="👤 Мій профіль"),
             KeyboardButton(text="📊 Статистика"),
         ],
-        # ✅ NEW BLOCK
         [
             KeyboardButton(text="🌐 Мій сайт"),
         ],
@@ -47,11 +46,21 @@ def seller_menu_kb(is_verified: bool = False):
     return seller_main_kb(is_verified=is_verified)
 
 
-def site_menu_kb() -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text="✏️ Шапка", callback_data="site:edit:header")],
-            [InlineKeyboardButton(text="🧱 Про нас", callback_data="site:toggle:about")],
-            [InlineKeyboardButton(text="🚀 Опублікувати", callback_data="site:publish")],
-        ]
-    )
+# 🔥 ОНОВЛЕНО — тепер приймає subdomain
+def site_menu_kb(subdomain: str, is_active: bool) -> InlineKeyboardMarkup:
+    buttons = [
+        [InlineKeyboardButton(text="✏️ Шапка", callback_data="site:edit:header")],
+        [InlineKeyboardButton(text="🧱 Про нас", callback_data="site:toggle:about")],
+        [InlineKeyboardButton(text="🚀 Опублікувати", callback_data="site:publish")],
+    ]
+
+    # 🔥 КНОПКА ВІДКРИТИ САЙТ (тільки якщо active)
+    if is_active:
+        buttons.append([
+            InlineKeyboardButton(
+                text="🌍 Відкрити сайт",
+                url=f"https://worker-production-e30f.up.railway.app/site/{subdomain}"
+            )
+        ])
+
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
