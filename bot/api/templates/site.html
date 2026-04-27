@@ -1,261 +1,152 @@
 <!doctype html>
 <html lang="uk">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ config.header.title or subdomain }}</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ config.header.title or subdomain }}</title>
 
-    <style>
-        :root {
-            --bg: #f5f7fa;
-            --surface: #ffffff;
-            --primary: #2563eb;
-            --primary-dark: #1d4ed8;
-            --dark: #111827;
-            --text: #1f2937;
-            --muted: #6b7280;
-            --ring: rgba(37, 99, 235, 0.2);
+<style>
+:root {
+    --primary: #2563eb;
+    --dark: #111827;
+    --bg: #f5f7fa;
+    --text: #1f2937;
+}
 
-            --radius-lg: 16px;
-            --radius-md: 12px;
+body {
+    margin: 0;
+    font-family: -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+}
 
-            --shadow-soft: 0 12px 30px rgba(0,0,0,0.08);
-            --shadow-card: 0 4px 14px rgba(0,0,0,0.06);
-        }
+/* HEADER */
+.header {
+    position: sticky;
+    top: 0;
+    background: white;
+    padding: 12px 20px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
 
-        * {
-            box-sizing: border-box;
-        }
+.btn {
+    background: var(--primary);
+    color: white;
+    padding: 10px 16px;
+    border-radius: 10px;
+    text-decoration: none;
+}
 
-        body {
-            margin: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            line-height: 1.6;
-        }
+/* HERO */
+.hero {
+    background: linear-gradient(135deg, #111827, #2563eb);
+    color: white;
+    text-align: center;
+    padding: 60px 20px;
+}
 
-        /* HERO */
+.container {
+    max-width: 900px;
+    margin: auto;
+    padding: 20px;
+}
 
-        .hero {
-            background: linear-gradient(135deg, #111827 0%, #1e3a8a 50%, #2563eb 100%);
-            color: #fff;
-            text-align: center;
-            padding: 70px 20px;
-        }
+.card {
+    background: white;
+    padding: 20px;
+    border-radius: 14px;
+    margin-top: 20px;
+}
 
-        .hero h1 {
-            margin: 0;
-            font-size: clamp(28px, 5vw, 40px);
-            line-height: 1.2;
-        }
+/* FORM */
+input, textarea {
+    width: 100%;
+    padding: 12px;
+    margin-top: 10px;
+    border-radius: 10px;
+    border: 1px solid #ddd;
+}
 
-        .hero p {
-            margin-top: 16px;
-            max-width: 700px;
-            margin-left: auto;
-            margin-right: auto;
-            color: rgba(255,255,255,0.85);
-            font-size: 16px;
-        }
-
-        /* CONTAINER */
-
-        .container {
-            max-width: 1000px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-
-        /* CARD */
-
-        .card {
-            background: var(--surface);
-            border-radius: var(--radius-lg);
-            padding: 24px;
-            margin-top: 20px;
-            box-shadow: var(--shadow-card);
-        }
-
-        h2 {
-            margin-top: 0;
-            margin-bottom: 12px;
-            color: var(--dark);
-        }
-
-        /* SERVICES */
-
-        .badge {
-            display: inline-block;
-            background: #e8f0ff;
-            color: #1e40af;
-            padding: 6px 12px;
-            border-radius: 999px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-
-        /* CONTACTS */
-
-        .contacts {
-            display: grid;
-            gap: 10px;
-        }
-
-        .contact-item {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-        }
-
-        .contact-item a {
-            color: var(--primary);
-            text-decoration: none;
-        }
-
-        /* FORM */
-
-        .lead {
-            background: #ffffff;
-            border: 1px solid #e5e7eb;
-            box-shadow: var(--shadow-soft);
-        }
-
-        .lead-desc {
-            color: var(--muted);
-            margin-bottom: 16px;
-        }
-
-        .form-grid {
-            display: grid;
-            gap: 12px;
-        }
-
-        input, textarea {
-            width: 100%;
-            padding: 12px 14px;
-            border-radius: 12px;
-            border: 1px solid #d1d5db;
-            font-size: 14px;
-            font-family: inherit;
-        }
-
-        textarea {
-            min-height: 120px;
-            resize: vertical;
-        }
-
-        input:focus, textarea:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 4px var(--ring);
-        }
-
-        button {
-            background: var(--primary);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            padding: 14px;
-            font-size: 15px;
-            font-weight: 600;
-            cursor: pointer;
-        }
-
-        button:hover {
-            background: var(--primary-dark);
-        }
-
-        /* MOBILE */
-
-        @media (max-width: 600px) {
-            .hero {
-                padding: 50px 16px;
-            }
-
-            .card {
-                padding: 18px;
-            }
-        }
-    </style>
+button {
+    margin-top: 10px;
+    width: 100%;
+    padding: 12px;
+    border-radius: 10px;
+    border: none;
+    background: var(--primary);
+    color: white;
+}
+</style>
 </head>
+
 <body>
+
+<!-- HEADER -->
+<div class="header">
+    <b>{{ config.header.title }}</b>
+    <a href="#lead" class="btn">Заявка</a>
+</div>
 
 <!-- HERO -->
 <div class="hero">
-    <h1>{{ config.header.title or "Сайт продавця" }}</h1>
-    <p>
-        {{ config.header.subtitle or "Швидкий зв’язок, сучасний сервіс та зручне обслуговування клієнтів." }}
-    </p>
+    <h1>{{ config.header.title }}</h1>
+    <p>Швидкий зв’язок та сучасний сервіс</p>
+    <a href="#lead" class="btn">Залишити заявку</a>
 </div>
 
 <div class="container">
 
-    <!-- ABOUT -->
-    {% if config.about.enabled %}
-    {% if config.about.text %}
-    <div class="card">
-        <h2>Про нас</h2>
-        <p>{{ config.about.text }}</p>
-    </div>
-    {% endif %}
-    {% endif %}
+{% if config.about.enabled %}
+<div class="card">
+    <h2>Про нас</h2>
+    <p>{{ config.about.text }}</p>
+</div>
+{% endif %}
 
-    <!-- SERVICES -->
-    {% if config.services.enabled %}
-    <div class="card">
-        <h2>Послуги</h2>
-        <span class="badge">Активні</span>
-    </div>
-    {% endif %}
+{% if config.services.enabled %}
+<div class="card">
+    <h2>Послуги</h2>
+    <p>Активні</p>
+</div>
+{% endif %}
 
-    <!-- CONTACTS -->
-    {% if config.contacts.enabled %}
-    <div class="card">
-        <h2>Контакти</h2>
+{% if config.contacts.enabled %}
+<div class="card">
+    <h2>Контакти</h2>
 
-        <div class="contacts">
-
-            {% if config.contacts.phone %}
-            <div class="contact-item">
-                📞 <a href="tel:{{ config.contacts.phone }}">{{ config.contacts.phone }}</a>
-            </div>
-            {% endif %}
-
-            {% if config.contacts.address %}
-            <div class="contact-item">
-                📍 {{ config.contacts.address }}
-            </div>
-            {% endif %}
-
-            {% if config.contacts.telegram %}
-            <div class="contact-item">
-                💬 {{ config.contacts.telegram }}
-            </div>
-            {% endif %}
-
-        </div>
-    </div>
+    {% if config.contacts.phone %}
+    <p>📞 <a href="tel:{{ config.contacts.phone }}">{{ config.contacts.phone }}</a></p>
     {% endif %}
 
-    <!-- LEAD FORM -->
-    <div class="card lead">
-        <h2>Залишити заявку</h2>
-        <p class="lead-desc">
-            Залиште свої контакти — ми зв’яжемося з вами найближчим часом
-        </p>
+    {% if config.contacts.address %}
+    <p>📍 {{ config.contacts.address }}</p>
+    {% endif %}
 
-        <form method="post" action="/site/{{ subdomain }}/lead">
-            <div class="form-grid">
-                <input type="text" name="name" placeholder="Ваше ім'я" required>
-                <input type="text" name="phone" placeholder="Телефон" required>
-                <textarea name="message" placeholder="Повідомлення"></textarea>
-                <button type="submit">Надіслати заявку</button>
-            </div>
-        </form>
-    </div>
+    {% if config.contacts.telegram %}
+    <p>💬 {{ config.contacts.telegram }}</p>
+    {% endif %}
+</div>
+{% endif %}
+
+<div id="lead" class="card">
+    <h2>Залишити заявку</h2>
+
+    <form method="post" action="/site/{{ subdomain }}/lead">
+        <input name="name" placeholder="Ім'я" required>
+        <input name="phone" placeholder="Телефон" required>
+        <textarea name="message" placeholder="Повідомлення"></textarea>
+        <button type="submit">Надіслати</button>
+    </form>
+</div>
 
 </div>
+
+<footer style="text-align:center;padding:20px;color:#888;">
+    © {{ subdomain }}
+</footer>
 
 </body>
 </html>
