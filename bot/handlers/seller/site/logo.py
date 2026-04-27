@@ -1,6 +1,6 @@
 from aiogram import Router, F
-from aiogram.types import CallbackQuery, Message
 from aiogram.fsm.context import FSMContext
+from aiogram.types import CallbackQuery, Message
 
 from bot.database.repositories.site_repo import (
     get_site_by_seller,
@@ -11,7 +11,6 @@ from bot.database.repositories.seller_repo import get_seller_by_telegram_id
 router = Router()
 
 
-# 🔥 ВІДКРИТИ ВВІД ЛОГО
 @router.callback_query(F.data == "site:edit:logo")
 async def set_logo(callback: CallbackQuery, state: FSMContext):
     await state.set_state("site_logo")
@@ -19,7 +18,6 @@ async def set_logo(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
 
-# 🔥 ЗБЕРЕГТИ ЛОГО
 @router.message(F.photo)
 async def save_logo(message: Message, state: FSMContext):
     if await state.get_state() != "site_logo":
@@ -33,11 +31,13 @@ async def save_logo(message: Message, state: FSMContext):
         return
 
     site = await get_site_by_seller(seller["id"])
+    if not site:
+        await message.answer("Сайт не знайдено")
+        return
 
     photo = message.photo[-1].file_id
 
-    config = site["config"]
-
+    config = site.get("config_draft") or site.get("config") or {}
     config.setdefault("header", {})
     config["header"]["logo"] = photo
 

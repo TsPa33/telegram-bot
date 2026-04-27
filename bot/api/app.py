@@ -1,10 +1,12 @@
 import json
 
+from aiogram import Bot
 from fastapi import APIRouter, FastAPI, HTTPException, Request, Form
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from bot.api.liqpay_callback import router as liqpay_router
+from bot.config import BOT_TOKEN
 from bot.database.repositories.site_repo import get_site_by_subdomain
 from bot.database.repositories.seller_repo import get_seller_by_id
 from bot.services.site_config import merge_with_default
@@ -15,6 +17,12 @@ app = FastAPI()
 router = APIRouter()
 
 templates = Jinja2Templates(directory="bot/api/templates")
+bot = Bot(token=BOT_TOKEN)
+
+
+async def tg_file_url(bot: Bot, file_id: str) -> str:
+    file = await bot.get_file(file_id)
+    return f"https://api.telegram.org/file/bot{bot.token}/{file.file_path}"
 
 
 # ================= SITE RENDER =================
@@ -38,6 +46,15 @@ async def render_site(subdomain: str, request: Request):
             raw_config = {}
 
     config = merge_with_default(raw_config)
+
+    if config.get("header", {}).get("logo"):
+        config["header"]["logo"] = await tg_file_url(bot, config["header"]["logo"])
+
+    if config.get("hero", {}).get("banners"):
+        config["hero"]["banners"] = [
+            await tg_file_url(bot, b)
+            for b in config["hero"]["banners"]
+        ]
 
     return templates.TemplateResponse(
         "site.html",
