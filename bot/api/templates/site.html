@@ -8,9 +8,11 @@
 <style>
 :root {
     --primary: #2563eb;
+    --primary-dark: #1d4ed8;
     --dark: #111827;
     --bg: #f5f7fa;
     --text: #1f2937;
+    --surface: #ffffff;
 }
 
 body {
@@ -32,12 +34,18 @@ body {
     align-items: center;
 }
 
+/* BUTTON */
 .btn {
     background: var(--primary);
     color: white;
     padding: 10px 16px;
     border-radius: 10px;
     text-decoration: none;
+    font-weight: 600;
+}
+
+.btn:hover {
+    background: var(--primary-dark);
 }
 
 /* HERO */
@@ -48,6 +56,28 @@ body {
     padding: 60px 20px;
 }
 
+.hero h1 {
+    margin: 0;
+    font-size: 32px;
+}
+
+.hero p {
+    margin-top: 12px;
+    opacity: 0.9;
+}
+
+/* CTA BLOCK */
+.cta {
+    background: var(--primary);
+    color: white;
+    padding: 20px;
+    margin: -20px auto 0;
+    max-width: 900px;
+    border-radius: 14px;
+    text-align: center;
+}
+
+/* LAYOUT */
 .container {
     max-width: 900px;
     margin: auto;
@@ -55,7 +85,7 @@ body {
 }
 
 .card {
-    background: white;
+    background: var(--surface);
     padding: 20px;
     border-radius: 14px;
     margin-top: 20px;
@@ -78,6 +108,17 @@ button {
     border: none;
     background: var(--primary);
     color: white;
+    font-weight: 600;
+}
+
+button:hover {
+    background: var(--primary-dark);
+}
+
+footer {
+    text-align: center;
+    padding: 20px;
+    color: #888;
 }
 </style>
 </head>
@@ -86,24 +127,32 @@ button {
 
 <!-- HEADER -->
 <div class="header">
-    <b>{{ config.header.title }}</b>
+    <b>{{ config.header.title or "Сайт" }}</b>
     <a href="#lead" class="btn">Заявка</a>
 </div>
 
 <!-- HERO -->
 <div class="hero">
-    <h1>{{ config.header.title }}</h1>
-    <p>Швидкий зв’язок та сучасний сервіс</p>
+    <h1>{{ config.header.title or "Сайт продавця" }}</h1>
+    <p>{{ config.header.subtitle or "Швидкий зв’язок та сучасний сервіс" }}</p>
     <a href="#lead" class="btn">Залишити заявку</a>
+</div>
+
+<!-- CTA -->
+<div class="cta">
+    <h3>Зв'яжіться з нами вже зараз</h3>
+    <a href="#lead" class="btn">Перейти до форми</a>
 </div>
 
 <div class="container">
 
 {% if config.about.enabled %}
+{% if config.about.text %}
 <div class="card">
     <h2>Про нас</h2>
     <p>{{ config.about.text }}</p>
 </div>
+{% endif %}
 {% endif %}
 
 {% if config.services.enabled %}
@@ -144,7 +193,7 @@ button {
 
 </div>
 
-<footer style="text-align:center;padding:20px;color:#888;">
+<footer>
     © {{ subdomain }}
 </footer>
 
