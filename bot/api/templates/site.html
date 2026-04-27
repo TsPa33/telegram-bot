@@ -22,7 +22,6 @@ body {
     color: var(--text);
 }
 
-/* HEADER */
 .header {
     position: sticky;
     top: 0;
@@ -34,7 +33,6 @@ body {
     align-items: center;
 }
 
-/* BUTTON */
 .btn {
     background: var(--primary);
     color: white;
@@ -54,14 +52,8 @@ body {
     padding: 10px 16px;
     border-radius: 10px;
     text-decoration: none;
-    font-weight: 600;
 }
 
-.btn-secondary:hover {
-    background: #1f2937;
-}
-
-/* HERO */
 .hero {
     background: linear-gradient(135deg, #111827, #2563eb);
     color: white;
@@ -69,28 +61,6 @@ body {
     padding: 60px 20px;
 }
 
-.hero h1 {
-    margin: 0;
-    font-size: 32px;
-}
-
-.hero p {
-    margin-top: 12px;
-    opacity: 0.9;
-}
-
-/* CTA BLOCK */
-.cta {
-    background: var(--primary);
-    color: white;
-    padding: 20px;
-    margin: -20px auto 0;
-    max-width: 900px;
-    border-radius: 14px;
-    text-align: center;
-}
-
-/* LAYOUT */
 .container {
     max-width: 900px;
     margin: auto;
@@ -108,19 +78,12 @@ body {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 16px;
-    margin-top: 12px;
 }
 
 .car {
     background: white;
     border-radius: 14px;
     padding: 16px;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.car:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 10px 22px rgba(17, 24, 39, 0.12);
 }
 
 .car-image {
@@ -130,21 +93,12 @@ body {
     margin-bottom: 10px;
 }
 
-.car h3 {
-    margin: 0;
-}
-
-.car p {
-    margin: 8px 0 14px;
-}
-
 .car-actions {
     display: flex;
     gap: 10px;
     flex-wrap: wrap;
 }
 
-/* FORM */
 input, textarea {
     width: 100%;
     padding: 12px;
@@ -161,17 +115,6 @@ button {
     border: none;
     background: var(--primary);
     color: white;
-    font-weight: 600;
-}
-
-button:hover {
-    background: var(--primary-dark);
-}
-
-footer {
-    text-align: center;
-    padding: 20px;
-    color: #888;
 }
 
 @media (max-width: 768px) {
@@ -184,62 +127,74 @@ footer {
 
 <body>
 
-<!-- HEADER -->
 <div class="header">
     <b>{{ config.header.title or "Сайт" }}</b>
     <a href="#lead" class="btn">Заявка</a>
 </div>
 
-<!-- HERO -->
 <div class="hero">
-    <h1>{{ config.header.title or "Сайт продавця" }}</h1>
-    <p>{{ config.header.subtitle or "Швидкий зв’язок та сучасний сервіс" }}</p>
+    <h1>{{ config.header.title }}</h1>
+    <p>Швидкий зв’язок та сучасний сервіс</p>
     <a href="#lead" class="btn">Залишити заявку</a>
-</div>
-
-<!-- CTA -->
-<div class="cta">
-    <h3>Зв'яжіться з нами вже зараз</h3>
-    <a href="#lead" class="btn">Перейти до форми</a>
 </div>
 
 <div class="container">
 
 {% if config.about.enabled %}
-{% if config.about.text %}
 <div class="card">
     <h2>Про нас</h2>
     <p>{{ config.about.text }}</p>
 </div>
 {% endif %}
-{% endif %}
 
-{% if config.services.enabled %}
-<div class="card">
-    <h2>Послуги</h2>
-    <p>Активні</p>
-</div>
-{% endif %}
-
+<!-- АВТО -->
 <div class="card">
     <h2>Наші авто</h2>
 
     {% set cars = [
-        {"title": "BMW X5", "desc": "Повний привід, гарний стан"},
-        {"title": "Audi A6", "desc": "Комфортний седан"},
-        {"title": "Volkswagen Passat", "desc": "Надійний сімейний авто"}
+        {"title": "BMW X5", "desc": "Повний привід"},
+        {"title": "Audi A6", "desc": "Комфорт"},
+        {"title": "Passat", "desc": "Надійний"}
     ] %}
 
     <div class="car-grid">
         {% for car in cars %}
         <div class="car">
             <div class="car-image"></div>
-
             <h3>{{ car.title }}</h3>
             <p>{{ car.desc }}</p>
 
             <div class="car-actions">
                 <a href="#lead" class="btn">Заявка</a>
+                {% if config.contacts.phone %}
+                <a href="tel:{{ config.contacts.phone }}" class="btn-secondary">Подзвонити</a>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- 🔥 ПОСЛУГИ -->
+<div class="card">
+    <h2>Наші послуги</h2>
+
+    {% set services = [
+        {"title": "Діагностика", "desc": "Повна перевірка авто"},
+        {"title": "Ремонт двигуна", "desc": "Будь-яка складність"},
+        {"title": "Ходова частина", "desc": "Заміна та ремонт"}
+    ] %}
+
+    <div class="car-grid">
+        {% for service in services %}
+        <div class="car">
+            <div class="car-image"></div>
+
+            <h3>{{ service.title }}</h3>
+            <p>{{ service.desc }}</p>
+
+            <div class="car-actions">
+                <a href="#lead" class="btn">Замовити</a>
 
                 {% if config.contacts.phone %}
                 <a href="tel:{{ config.contacts.phone }}" class="btn-secondary">
@@ -255,18 +210,7 @@ footer {
 {% if config.contacts.enabled %}
 <div class="card">
     <h2>Контакти</h2>
-
-    {% if config.contacts.phone %}
-    <p>📞 <a href="tel:{{ config.contacts.phone }}">{{ config.contacts.phone }}</a></p>
-    {% endif %}
-
-    {% if config.contacts.address %}
-    <p>📍 {{ config.contacts.address }}</p>
-    {% endif %}
-
-    {% if config.contacts.telegram %}
-    <p>💬 {{ config.contacts.telegram }}</p>
-    {% endif %}
+    <p>{{ config.contacts.phone }}</p>
 </div>
 {% endif %}
 
@@ -276,16 +220,12 @@ footer {
     <form method="post" action="/site/{{ subdomain }}/lead">
         <input name="name" placeholder="Ім'я" required>
         <input name="phone" placeholder="Телефон" required>
-        <textarea name="message" placeholder="Повідомлення"></textarea>
+        <textarea name="message"></textarea>
         <button type="submit">Надіслати</button>
     </form>
 </div>
 
 </div>
-
-<footer>
-    © {{ subdomain }}
-</footer>
 
 </body>
 </html>
