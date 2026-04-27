@@ -96,7 +96,7 @@ async def delete_banner(callback: CallbackQuery):
     await callback.answer()
 
 
-@router.message(F.photo)
+@router.message(F.photo, F.state == "site_banner")
 async def save_banner(message: Message, state: FSMContext):
     if await state.get_state() != "site_banner":
         return
