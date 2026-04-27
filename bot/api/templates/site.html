@@ -3,46 +3,139 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+
     <title>{{ config.header.title or subdomain }}</title>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #f5f7fa;
+            color: #1f2937;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: #111827;
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 28px;
+        }
+
+        section {
+            background: white;
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        h2 {
+            margin-top: 0;
+        }
+
+        .contact-item {
+            margin-bottom: 8px;
+        }
+
+        form input,
+        form textarea {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            font-size: 14px;
+        }
+
+        button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 12px;
+            width: 100%;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #1d4ed8;
+        }
+
+        .badge {
+            display: inline-block;
+            background: #e0f2fe;
+            color: #0369a1;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+        }
+    </style>
 </head>
 <body>
 
-    <header>
-        <h1>{{ config.header.title }}</h1>
-    </header>
+<header>
+    <h1>{{ config.header.title or "Сайт продавця" }}</h1>
+</header>
 
-    <main>
+<div class="container">
 
-        {% if config.about.enabled %}
-        <section>
-            <h2>Про нас</h2>
-            <p>{{ config.about.text }}</p>
-        </section>
+    {% if config.about.enabled and config.about.text %}
+    <section>
+        <h2>Про нас</h2>
+        <p>{{ config.about.text }}</p>
+    </section>
+    {% endif %}
+
+    {% if config.services.enabled %}
+    <section>
+        <h2>Послуги</h2>
+        <span class="badge">Активні</span>
+    </section>
+    {% endif %}
+
+    {% if config.contacts.enabled %}
+    <section>
+        <h2>Контакти</h2>
+
+        {% if config.contacts.phone %}
+        <div class="contact-item">📞 {{ config.contacts.phone }}</div>
         {% endif %}
 
-        <section>
-            <h2>Контакти</h2>
-            <p>Телефон: {{ config.contacts.phone }}</p>
-            <p>Адреса: {{ config.contacts.address }}</p>
-        </section>
+        {% if config.contacts.address %}
+        <div class="contact-item">📍 {{ config.contacts.address }}</div>
+        {% endif %}
 
-        <section>
-            <h2>Послуги</h2>
-            <p>Активні: {{ config.services.enabled }}</p>
-        </section>
-        <section>
-    <h2>Залишити заявку</h2>
+        {% if config.contacts.telegram %}
+        <div class="contact-item">💬 {{ config.contacts.telegram }}</div>
+        {% endif %}
+    </section>
+    {% endif %}
 
-    <form method="post" action="/site/{{ subdomain }}/lead">
-        <input type="text" name="name" placeholder="Ваше ім'я" required><br><br>
-        <input type="text" name="phone" placeholder="Телефон" required><br><br>
-        <textarea name="message" placeholder="Повідомлення"></textarea><br><br>
+    <section>
+        <h2>Залишити заявку</h2>
 
-        <button type="submit">Надіслати</button>
-    </form>
-</section>
+        <form method="post" action="/site/{{ subdomain }}/lead">
+            <input type="text" name="name" placeholder="Ваше ім'я" required>
+            <input type="text" name="phone" placeholder="Телефон" required>
+            <textarea name="message" placeholder="Повідомлення"></textarea>
 
-    </main>
+            <button type="submit">Надіслати заявку</button>
+        </form>
+    </section>
+
+</div>
 
 </body>
 </html>
