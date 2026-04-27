@@ -1,5 +1,5 @@
 from aiogram import Router, F
-from aiogram.types import Message
+from aiogram.types import CallbackQuery, Message
 from aiogram.fsm.context import FSMContext
 
 from bot.database.repositories.site_repo import (
@@ -11,12 +11,15 @@ from bot.database.repositories.seller_repo import get_seller_by_telegram_id
 router = Router()
 
 
-@router.message(F.text == "🖼 Банери")
-async def set_banner(message: Message, state: FSMContext):
+# 🔥 ВІДКРИТИ ВВІД БАНЕРА
+@router.callback_query(F.data == "site:edit:banners")
+async def set_banner(callback: CallbackQuery, state: FSMContext):
     await state.set_state("site_banner")
-    await message.answer("Надішліть фото банера")
+    await callback.message.answer("Надішліть фото банера")
+    await callback.answer()
 
 
+# 🔥 ЗБЕРЕГТИ БАНЕР
 @router.message(F.photo)
 async def save_banner(message: Message, state: FSMContext):
     if await state.get_state() != "site_banner":
@@ -35,7 +38,6 @@ async def save_banner(message: Message, state: FSMContext):
 
     config = site["config"]
 
-    # 🔥 safety
     config.setdefault("hero", {})
     config["hero"].setdefault("banners", [])
 
