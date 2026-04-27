@@ -53,25 +53,25 @@ body {
     background: var(--primary-dark);
 }
 
-.btn-secondary {
-    background: #111827;
-    color: white;
-    padding: 10px 16px;
-    border-radius: 10px;
-    text-decoration: none;
-}
-
-/* 🔥 FULL WIDTH BANNER */
-.hero-banner {
+/* 🔥 SLIDER */
+.hero-slider {
+    position: relative;
     width: 100%;
+    height: 340px;
     overflow: hidden;
 }
 
-.hero-banner img {
+.slide {
+    position: absolute;
     width: 100%;
-    height: 340px;
+    height: 100%;
     object-fit: cover;
-    display: block;
+    opacity: 0;
+    transition: opacity 0.8s ease-in-out;
+}
+
+.slide.active {
+    opacity: 1;
 }
 
 /* HERO TEXT */
@@ -80,15 +80,6 @@ body {
     color: white;
     text-align: center;
     padding: 50px 20px;
-}
-
-.hero h1 {
-    margin: 0;
-    font-size: 28px;
-}
-
-.hero p {
-    opacity: 0.9;
 }
 
 /* CONTENT */
@@ -105,7 +96,6 @@ body {
     margin-top: 20px;
 }
 
-/* GRID */
 .car-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -116,11 +106,6 @@ body {
     background: white;
     border-radius: 14px;
     padding: 16px;
-    transition: 0.2s;
-}
-
-.car:hover {
-    transform: translateY(-4px);
 }
 
 .car-image {
@@ -130,38 +115,13 @@ body {
     margin-bottom: 10px;
 }
 
-.car-actions {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-
-/* FORM */
-input, textarea {
-    width: 100%;
-    padding: 12px;
-    margin-top: 10px;
-    border-radius: 10px;
-    border: 1px solid #ddd;
-}
-
-button {
-    margin-top: 10px;
-    width: 100%;
-    padding: 12px;
-    border-radius: 10px;
-    border: none;
-    background: var(--primary);
-    color: white;
-}
-
 /* MOBILE */
 @media (max-width: 768px) {
     .car-grid {
         grid-template-columns: 1fr;
     }
 
-    .hero-banner img {
+    .hero-slider {
         height: 200px;
     }
 }
@@ -181,11 +141,11 @@ button {
     <a href="#lead" class="btn">Заявка</a>
 </div>
 
-<!-- 🔥 БАНЕРИ -->
+<!-- 🔥 SLIDER -->
 {% if config.hero.banners %}
-<div class="hero-banner">
+<div class="hero-slider">
     {% for banner in config.hero.banners %}
-        <img src="{{ banner }}">
+        <img src="{{ banner }}" class="slide {% if loop.index == 1 %}active{% endif %}">
     {% endfor %}
 </div>
 {% endif %}
@@ -194,7 +154,6 @@ button {
 <div class="hero">
     <h1>{{ config.header.title }}</h1>
     <p>Швидкий зв’язок та сучасний сервіс</p>
-    <a href="#lead" class="btn">Залишити заявку</a>
 </div>
 
 <div class="container">
@@ -206,80 +165,9 @@ button {
 </div>
 {% endif %}
 
-<!-- АВТО -->
-<div class="card">
-    <h2>Наші авто</h2>
-
-    {% set cars = [
-        {"title": "BMW X5", "desc": "Повний привід"},
-        {"title": "Audi A6", "desc": "Комфорт"},
-        {"title": "Passat", "desc": "Надійний"}
-    ] %}
-
-    <div class="car-grid">
-        {% for car in cars %}
-        <div class="car">
-            <div class="car-image"></div>
-            <h3>{{ car.title }}</h3>
-            <p>{{ car.desc }}</p>
-
-            <div class="car-actions">
-                <a href="#lead" class="btn">Заявка</a>
-
-                {% if config.contacts.phone %}
-                <a href="tel:{{ config.contacts.phone }}" class="btn-secondary">
-                    Подзвонити
-                </a>
-                {% endif %}
-            </div>
-        </div>
-        {% endfor %}
-    </div>
-</div>
-
-<!-- ПОСЛУГИ -->
-<div class="card">
-    <h2>Наші послуги</h2>
-
-    {% set services = [
-        {"title": "Діагностика", "desc": "Повна перевірка авто"},
-        {"title": "Ремонт двигуна", "desc": "Будь-яка складність"},
-        {"title": "Ходова частина", "desc": "Заміна та ремонт"}
-    ] %}
-
-    <div class="car-grid">
-        {% for service in services %}
-        <div class="car">
-            <div class="car-image"></div>
-
-            <h3>{{ service.title }}</h3>
-            <p>{{ service.desc }}</p>
-
-            <div class="car-actions">
-                <a href="#lead" class="btn">Замовити</a>
-
-                {% if config.contacts.phone %}
-                <a href="tel:{{ config.contacts.phone }}" class="btn-secondary">
-                    Подзвонити
-                </a>
-                {% endif %}
-            </div>
-        </div>
-        {% endfor %}
-    </div>
-</div>
-
-{% if config.contacts.enabled %}
-<div class="card">
-    <h2>Контакти</h2>
-    <p>{{ config.contacts.phone }}</p>
-</div>
-{% endif %}
-
 <!-- FORM -->
 <div id="lead" class="card">
     <h2>Залишити заявку</h2>
-
     <form method="post" action="/site/{{ subdomain }}/lead">
         <input name="name" placeholder="Ім'я" required>
         <input name="phone" placeholder="Телефон" required>
@@ -289,6 +177,23 @@ button {
 </div>
 
 </div>
+
+<!-- 🔥 JS SLIDER -->
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const slides = document.querySelectorAll(".slide");
+
+    if (slides.length <= 1) return;
+
+    let index = 0;
+
+    setInterval(() => {
+        slides[index].classList.remove("active");
+        index = (index + 1) % slides.length;
+        slides[index].classList.add("active");
+    }, 2000);
+});
+</script>
 
 </body>
 </html>
