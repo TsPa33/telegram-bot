@@ -26,7 +26,7 @@ async def set_logo(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
 
-@router.message(F.photo, F.state == "site_logo")
+@router.message(F.photo)
 async def save_logo(message: Message, state: FSMContext):
     if await state.get_state() != "site_logo":
         return
