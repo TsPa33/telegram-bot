@@ -31,6 +31,7 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    z-index: 10;
 }
 
 .logo {
@@ -58,17 +59,24 @@ body {
     text-decoration: none;
 }
 
+/* 🔥 БАНЕР НА ВСЮ ШИРИНУ */
+.hero-banner {
+    width: 100%;
+}
+
+.hero-banner img {
+    width: 100%;
+    height: 320px;
+    object-fit: cover;
+    display: block;
+}
+
+/* старий hero тепер тільки текст */
 .hero {
     background: linear-gradient(135deg, #111827, #2563eb);
     color: white;
     text-align: center;
     padding: 40px 20px;
-}
-
-.banner img {
-    width: 100%;
-    border-radius: 12px;
-    margin-bottom: 10px;
 }
 
 .container {
@@ -131,6 +139,10 @@ button {
     .car-grid {
         grid-template-columns: 1fr;
     }
+
+    .hero-banner img {
+        height: 200px;
+    }
 }
 </style>
 </head>
@@ -148,17 +160,17 @@ button {
     <a href="#lead" class="btn">Заявка</a>
 </div>
 
-<!-- HERO + БАНЕРИ -->
+<!-- 🔥 БАНЕРИ ПІД HEADER -->
+{% if config.hero.banners %}
+<div class="hero-banner">
+    {% for banner in config.hero.banners %}
+        <img src="{{ banner }}">
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- HERO (ТЕКСТОВИЙ) -->
 <div class="hero">
-
-    {% if config.hero.banners %}
-    <div class="banner">
-        {% for banner in config.hero.banners %}
-            <img src="{{ banner }}">
-        {% endfor %}
-    </div>
-    {% endif %}
-
     <h1>{{ config.header.title }}</h1>
     <p>Швидкий зв’язок та сучасний сервіс</p>
     <a href="#lead" class="btn">Залишити заявку</a>
