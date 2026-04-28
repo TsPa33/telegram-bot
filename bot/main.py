@@ -20,6 +20,9 @@ from bot.handlers.seller import router as seller_router
 from bot.handlers.buyer import router as buyer_router
 from bot.handlers.admin import router as admin_router
 
+# 🔥 ДОДАНО (КРИТИЧНО)
+from bot.handlers.seller.site import media
+
 import uvicorn
 from bot.api.app import app
 
@@ -66,9 +69,13 @@ async def run_bot():
     dp.callback_query.middleware(CallbackAnswerMiddleware())
     dp.errors.register(global_error_handler)
 
-    # ✅ ЄДИНИЙ ЧИСТИЙ ПОРЯДОК
+    # ✅ ПРАВИЛЬНИЙ ПОРЯДОК ROUTERS
     dp.include_router(start_router)
     dp.include_router(seller_router)
+
+    # 🔥 КРИТИЧНО — БЕЗ ЦЬОГО НЕ ПРАЦЮЄ MEDIA
+    dp.include_router(media.router)
+
     dp.include_router(admin_router)
     dp.include_router(buyer_router)
     dp.include_router(router)
