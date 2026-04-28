@@ -1,3 +1,5 @@
+import json
+
 from aiogram import Router, F
 from aiogram.types import CallbackQuery, Message
 from aiogram.fsm.context import FSMContext
@@ -21,6 +23,19 @@ router = Router()
 
 
 # ================= HELPERS =================
+
+def safe_config(raw):
+    if not raw:
+        return {}
+
+    if isinstance(raw, str):
+        try:
+            return json.loads(raw)
+        except:
+            return {}
+
+    return dict(raw)
+
 
 async def get_context(callback: CallbackQuery):
     seller = await get_seller_by_telegram_id(callback.from_user.id)
@@ -59,82 +74,6 @@ async def service_create_process(message: Message, state: FSMContext):
     await message.answer("Послугу створено ✅")
 
 
-@router.callback_query(F.data == "site:services:list")
-async def service_list(callback: CallbackQuery):
-    seller, _ = await get_context(callback)
-    services = await get_services_by_seller(seller["id"])
-
-    if not services:
-        await callback.message.answer("Немає послуг")
-        return
-
-    text = "📋 Послуги:\n\n"
-    for s in services:
-        text += f"{s['id']}. {s.get('title')}\n"
-
-    await callback.message.answer(text)
-    await callback.answer()
-
-
-@router.callback_query(F.data.startswith("site:services:delete:"))
-async def service_delete(callback: CallbackQuery):
-    service_id = int(callback.data.split(":")[-1])
-    seller = await get_seller_by_telegram_id(callback.from_user.id)
-
-    await delete_service_by_seller(service_id, seller["id"])
-    await callback.answer("Видалено")
-
-
-# ================= CARS =================
-
-@router.callback_query(F.data == "site:cars:add")
-async def car_add(callback: CallbackQuery, state: FSMContext):
-    await state.set_state(SellerSiteStates.site_car_create)
-    await callback.message.answer("Введи опис авто")
-    await callback.answer()
-
-
-@router.message(SellerSiteStates.site_car_create)
-async def car_create_process(message: Message, state: FSMContext):
-    seller = await get_seller_by_telegram_id(message.from_user.id)
-
-    await create_seller_car(
-        seller_id=seller["id"],
-        model_id=1,
-        description=message.text,
-        photo_id=None,
-    )
-
-    await state.clear()
-    await message.answer("Авто додано ✅")
-
-
-@router.callback_query(F.data == "site:cars:list")
-async def car_list(callback: CallbackQuery):
-    seller, _ = await get_context(callback)
-    cars = await get_cars_by_seller(seller["id"])
-
-    if not cars:
-        await callback.message.answer("Немає авто")
-        return
-
-    text = "🚗 Авто:\n\n"
-    for c in cars:
-        text += f"{c['id']}. {c.get('brand')} {c.get('model')}\n"
-
-    await callback.message.answer(text)
-    await callback.answer()
-
-
-@router.callback_query(F.data.startswith("site:cars:delete:"))
-async def car_delete(callback: CallbackQuery):
-    car_id = int(callback.data.split(":")[-1])
-    seller = await get_seller_by_telegram_id(callback.from_user.id)
-
-    await delete_seller_car(car_id, seller["id"])
-    await callback.answer("Видалено")
-
-
 # ================= CONTACTS =================
 
 @router.callback_query(F.data == "site:contacts:phone")
@@ -149,8 +88,7 @@ async def save_phone(message: Message, state: FSMContext):
     seller = await get_seller_by_telegram_id(message.from_user.id)
     site = await get_site_by_seller(seller["id"])
 
-    # 🔥 FIX: беремо існуючий config
-    config = site.get("config_draft") or {}
+    config = safe_config(site.get("config_draft"))
     config = merge_with_default(config)
 
     config.setdefault("contacts", {})
@@ -162,20 +100,12 @@ async def save_phone(message: Message, state: FSMContext):
     await message.answer("Телефон збережено ✅")
 
 
-@router.callback_query(F.data == "site:contacts:address")
-async def edit_address(callback: CallbackQuery, state: FSMContext):
-    await state.set_state(SellerSiteStates.site_contact_address)
-    await callback.message.answer("Введи адресу")
-    await callback.answer()
-
-
 @router.message(SellerSiteStates.site_contact_address)
 async def save_address(message: Message, state: FSMContext):
     seller = await get_seller_by_telegram_id(message.from_user.id)
     site = await get_site_by_seller(seller["id"])
 
-    # 🔥 FIX
-    config = site.get("config_draft") or {}
+    config = safe_config(site.get("config_draft"))
     config = merge_with_default(config)
 
     config.setdefault("contacts", {})
@@ -187,20 +117,12 @@ async def save_address(message: Message, state: FSMContext):
     await message.answer("Адресу збережено ✅")
 
 
-@router.callback_query(F.data == "site:contacts:map")
-async def edit_map(callback: CallbackQuery, state: FSMContext):
-    await state.set_state(SellerSiteStates.site_contact_map)
-    await callback.message.answer("Встав iframe Google Maps")
-    await callback.answer()
-
-
 @router.message(SellerSiteStates.site_contact_map)
 async def save_map(message: Message, state: FSMContext):
     seller = await get_seller_by_telegram_id(message.from_user.id)
     site = await get_site_by_seller(seller["id"])
 
-    # 🔥 FIX
-    config = site.get("config_draft") or {}
+    config = safe_config(site.get("config_draft"))
     config = merge_with_default(config)
 
     config.setdefault("contacts", {})
