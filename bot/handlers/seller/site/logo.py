@@ -2,11 +2,13 @@ from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery
 
+from bot.states.seller_states import SellerSiteStates
+
 router = Router()
 
 
 @router.callback_query(F.data == "site:edit:logo")
 async def set_logo(callback: CallbackQuery, state: FSMContext):
-    await state.set_state("site_logo")
+    await state.set_state(SellerSiteStates.site_logo)
     await callback.message.answer("Надішліть логотип")
     await callback.answer()
