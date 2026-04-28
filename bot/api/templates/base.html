@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>{% block title %}{% endblock %}</title>
+
+<style>
+/* 👉 ВСТАВ СЮДИ ВСІ СТИЛІ З ПОПЕРЕДНЬОГО ФАЙЛУ */
+</style>
+
+</head>
+<body>
+
+{% block content %}{% endblock %}
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+const slides = document.querySelectorAll(".slide");
+if (slides.length > 1) {
+let i = 0;
+setInterval(() => {
+slides[i].classList.remove("active");
+i = (i + 1) % slides.length;
+slides[i].classList.add("active");
+}, 3000);
+}
+});
+</script>
+
+</body>
+</html>
