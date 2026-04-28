@@ -50,3 +50,12 @@ class SellerSiteStates(StatesGroup):
     site_contact_phone = State()
     site_contact_address = State()
     site_contact_map = State()
+
+
+# 🔥 FIX: BACKWARD COMPATIBILITY
+class ServiceStates(StatesGroup):
+    """
+    Legacy compatibility for old handlers.
+    Do NOT use in new code.
+    """
+    dummy = State()
