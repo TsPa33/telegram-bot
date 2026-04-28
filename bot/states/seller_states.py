@@ -30,15 +30,23 @@ class SellerStates(StatesGroup):
 
 
 class SellerSiteStates(StatesGroup):
+    # ================= HEADER =================
     edit_header_title = State()
     edit_about_text = State()
 
+    # ================= SERVICES =================
     site_service_create = State()
     site_service_edit = State()
 
+    # ================= CARS =================
     site_car_create = State()
     site_car_edit = State()
 
+    # ================= CONTACTS =================
     site_contact_phone = State()
     site_contact_address = State()
     site_contact_map = State()
+
+    # ================= MEDIA (КРИТИЧНО) =================
+    site_banner = State()
+    site_logo = State()
