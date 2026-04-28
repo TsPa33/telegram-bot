@@ -1,0 +1,12 @@
+<header class="header">
+<div class="container header-row">
+
+<a href="#top" class="brand">
+{% if header.get('logo') %}
+<img src="{{ header.get('logo') }}" class="logo">
+{% endif %}
+<span>{{ header.get('title') }}</span>
+</a>
+
+</div>
+</header>
