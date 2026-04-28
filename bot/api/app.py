@@ -49,10 +49,9 @@ async def render_site(subdomain: str, request: Request):
 
     config = merge_with_default(raw_config)
 
-    # SAFE MODULES
     modules = config.setdefault("modules", {})
 
-    # MEDIA (мінімізовано виклики)
+    # MEDIA
     if config.get("header", {}).get("logo"):
         try:
             config["header"]["logo"] = await tg_file_url(bot, config["header"]["logo"])
@@ -73,9 +72,11 @@ async def render_site(subdomain: str, request: Request):
     cars = []
     services = []
 
-    # MODULE FILTERING
+    # ================= FIX HERE =================
+
     if modules.get("cars", True):
         cars = await get_cars_by_seller(seller_id)
+        cars = [dict(c) for c in cars]  # 🔥 FIX
 
         for car in cars:
             car["photo_url"] = None
@@ -87,6 +88,7 @@ async def render_site(subdomain: str, request: Request):
 
     if modules.get("services", True):
         services = await get_services_by_seller(seller_id)
+        services = [dict(s) for s in services]  # 🔥 FIX
 
         for service in services:
             service["photo_url"] = None
@@ -95,6 +97,8 @@ async def render_site(subdomain: str, request: Request):
                     service["photo_url"] = await tg_file_url(bot, service["photo_id"])
                 except Exception:
                     service["photo_url"] = None
+
+    # ===========================================
 
     return templates.TemplateResponse(
         "site.html",
