@@ -5,10 +5,10 @@ from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 
-from bot.database.repositories.seller_repo import get_seller_by_telegram_id
 from bot.database.repositories.site_repo import get_site_by_seller, update_site_config
 from bot.services.site_config import merge_with_default
 from bot.services.storage import upload_image
+from bot.services.seller_identity import resolve_seller
 
 router = Router()
 
@@ -31,11 +31,8 @@ async def handle_media(message: Message, state: FSMContext):
     if current_state not in ["site_banner", "site_logo"]:
         return
 
-    seller = await get_seller_by_telegram_id(message.from_user.id)
-    if not seller:
-        await state.clear()
-        await message.answer("Продавця не знайдено ❌")
-        return
+    # ✅ FIX: централізований seller
+    seller = await resolve_seller(message)
 
     site = await get_site_by_seller(seller["id"])
     if not site:
@@ -49,22 +46,22 @@ async def handle_media(message: Message, state: FSMContext):
     config["hero"].setdefault("banners", [])
     config.setdefault("header", {})
 
-    # 🔥 беремо найкращу якість
+    # 🔥 найкраща якість
     photo = message.photo[-1]
     file = await message.bot.get_file(photo.file_id)
 
-    # тимчасовий файл
-    file_path = f"/tmp/{photo.file_id}.jpg"
+    # ✅ SAFE PATH (без /tmp)
+    file_path = f"{photo.file_id}.jpg"
 
     await message.bot.download_file(file.file_path, file_path)
 
-    # 🔥 upload в cloudinary
-    image_url = await upload_image(file_path)
+    # ❗ FIX: cloudinary sync
+    image_url = upload_image(file_path)
 
-    # очистка
+    # cleanup
     try:
         os.remove(file_path)
-    except:
+    except Exception:
         pass
 
     # ================= SAVE =================
@@ -80,15 +77,26 @@ async def handle_media(message: Message, state: FSMContext):
 
         banners.append(image_url)
 
-        await update_site_config(site["id"], config)
+        updated = await update_site_config(site["id"], config)
+
         await state.clear()
-        await message.answer("Банер додано ✅")
+
+        if updated:
+            await message.answer("Банер додано ✅")
+        else:
+            await message.answer("Помилка збереження ❌")
+
         return
 
     # LOGO
     if current_state == "site_logo":
         config["header"]["logo"] = image_url
 
-        await update_site_config(site["id"], config)
+        updated = await update_site_config(site["id"], config)
+
         await state.clear()
-        await message.answer("Лого збережено ✅")
+
+        if updated:
+            await message.answer("Лого збережено ✅")
+        else:
+            await message.answer("Помилка збереження ❌")
