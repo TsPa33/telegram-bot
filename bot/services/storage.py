@@ -1,7 +1,6 @@
-# bot/services/storage.py
-
 import cloudinary
 import cloudinary.uploader
+
 
 cloudinary.config(
     cloud_name="YOUR_CLOUD_NAME",
@@ -9,3 +8,8 @@ cloudinary.config(
     api_secret="YOUR_API_SECRET",
     secure=True
 )
+
+
+async def upload_image(file_path: str) -> str:
+    result = cloudinary.uploader.upload(file_path)
+    return result["secure_url"]
