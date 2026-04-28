@@ -1,12 +1,12 @@
 <section class="hero">
-    {% set hero = config.get('hero', {}) %}
+    {% set hero = config.get('hero', {}) if config else {} %}
     {% set banners = hero.get('banners', []) %}
 
     {% if banners %}
         <div class="hero-slider" id="heroSlider">
             {% for banner in banners %}
-                <div class="hero-slide">
-                    <img src="{{ banner }}" alt="banner">
+                <div class="hero-slide{% if loop.first %} active{% endif %}">
+                    <img src="{{ banner }}" alt="banner {{ loop.index }}">
                 </div>
             {% endfor %}
         </div>
@@ -23,6 +23,8 @@
 .hero-slider {
     position: relative;
     width: 100%;
+    margin: 0;
+    padding: 0;
 }
 
 .hero-slide {
@@ -46,11 +48,15 @@
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-    const slides = document.querySelectorAll("#heroSlider .hero-slide");
+    const slider = document.getElementById("heroSlider");
+    if (!slider) return;
 
+    const slides = slider.querySelectorAll(".hero-slide");
     if (!slides.length) return;
 
     let index = 0;
+
+    // гарантуємо що перший активний
     slides[index].classList.add("active");
 
     setInterval(() => {
