@@ -1,6 +1,6 @@
 import json
 
-from bot.database.base import fetch, fetchrow, execute
+from bot.database.base import fetch, fetchrow, execute, transaction
 from bot.services.site_config import merge_with_default
 
 
@@ -71,55 +71,68 @@ def _deep_merge(old: dict, new: dict):
 
 async def update_site_config(site_id: int, config: dict) -> bool:
     """
-    SAFE UPDATE (FIXED):
-    - читаємо актуальний config
-    - parse json якщо треба
+    PRODUCTION SAFE UPDATE:
+    - transaction + FOR UPDATE (race-safe)
+    - json parse safe
     - merge default
-    - deep merge нових даних
-    - зберігаємо без втрати полів
+    - deep merge
+    - гарантована структура
     """
 
-    current = await fetchrow(
-        """
-        SELECT config_draft
-        FROM seller_sites
-        WHERE id = $1
-        """,
-        site_id,
-    )
+    async with transaction() as conn:
 
-    if not current:
-        return False
+        current = await conn.fetchrow(
+            """
+            SELECT config_draft
+            FROM seller_sites
+            WHERE id = $1
+            FOR UPDATE
+            """,
+            site_id,
+        )
 
-    current_config = current.get("config_draft") or {}
+        if not current:
+            return False
 
-    # 🔥 FIX: JSON parse
-    if isinstance(current_config, str):
-        try:
-            current_config = json.loads(current_config)
-        except Exception:
-            current_config = {}
+        current_config = current.get("config_draft") or {}
 
-    # default структура
-    merged = merge_with_default(current_config)
+        # parse JSON
+        if isinstance(current_config, str):
+            try:
+                current_config = json.loads(current_config)
+            except Exception:
+                current_config = {}
 
-    # 🔥 FIX: DEEP MERGE
-    if isinstance(config, dict):
-        merged = _deep_merge(merged, config)
+        # merge default
+        merged = merge_with_default(current_config)
 
-    row = await fetchrow(
-        """
-        UPDATE seller_sites
-        SET config_draft = $1::jsonb,
-            config_live = $1::jsonb
-        WHERE id = $2
-        RETURNING id
-        """,
-        json.dumps(merged),
-        site_id,
-    )
+        # incoming
+        incoming = config if isinstance(config, dict) else {}
+        incoming = merge_with_default(incoming)
 
-    return row is not None
+        # deep merge
+        merged = _deep_merge(merged, incoming)
+
+        # 🔥 гарантія структури
+        merged.setdefault("header", {})
+        merged.setdefault("hero", {})
+        merged["hero"].setdefault("banners", [])
+        merged.setdefault("modules", {})
+        merged.setdefault("contacts", {})
+
+        row = await conn.fetchrow(
+            """
+            UPDATE seller_sites
+            SET config_draft = $1::jsonb,
+                config_live = $1::jsonb
+            WHERE id = $2
+            RETURNING id
+            """,
+            json.dumps(merged),
+            site_id,
+        )
+
+        return row is not None
 
 
 # ================= UPDATE DRAFT =================
