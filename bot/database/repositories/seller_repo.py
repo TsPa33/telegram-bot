@@ -4,6 +4,13 @@ from bot.database.base import fetchrow, execute, fetch
 # ================= SELLER =================
 
 async def get_or_create_seller(telegram_id: int, username: str):
+    """
+    SAFE get_or_create:
+    - гарантує 1 seller на telegram_id
+    - не створює дублікати
+    - не створює дублікати підписок
+    """
+
     seller = await fetchrow("""
         INSERT INTO sellers (telegram_id, username)
         VALUES ($1, $2)
@@ -12,7 +19,7 @@ async def get_or_create_seller(telegram_id: int, username: str):
         RETURNING *
     """, telegram_id, username)
 
-    # 🔥 стартовий пакет (1 слот / 30 днів)
+    # 🔥 SAFE subscription create (idempotent)
     await execute("""
         INSERT INTO seller_subscriptions (seller_id, slots, expires_at)
         SELECT $1, 1, NOW() + INTERVAL '30 days'
@@ -33,18 +40,15 @@ async def get_seller_by_telegram_id(telegram_id: int):
     """, telegram_id)
 
 
-# ================= 🔥 NEW: GET BY ID =================
+# ================= GET BY ID =================
 
 async def get_seller_by_id(seller_id: int):
-    return await fetchrow(
-        """
+    return await fetchrow("""
         SELECT *
         FROM sellers
         WHERE id = $1
         LIMIT 1
-        """,
-        seller_id,
-    )
+    """, seller_id)
 
 
 # ================= SLOTS =================
