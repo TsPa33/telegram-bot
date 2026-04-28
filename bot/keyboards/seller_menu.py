@@ -46,7 +46,7 @@ def seller_menu_kb(is_verified: bool = False):
     return seller_main_kb(is_verified=is_verified)
 
 
-# 🔥 CMS MENU (FINAL)
+# 🔥 CMS MENU (UPDATED)
 def site_menu_kb(subdomain: str, is_active: bool) -> InlineKeyboardMarkup:
     buttons = [
         # HEADER
@@ -70,8 +70,9 @@ def site_menu_kb(subdomain: str, is_active: bool) -> InlineKeyboardMarkup:
         [InlineKeyboardButton(text="✏️ Адреса", callback_data="site:contacts:address")],
         [InlineKeyboardButton(text="✏️ Карта", callback_data="site:contacts:map")],
 
-        # MEDIA
-        [InlineKeyboardButton(text="🖼 Банери", callback_data="site:edit:banners")],
+        # MEDIA (UPDATED)
+        [InlineKeyboardButton(text="🖼 Додати банер", callback_data="site:edit:banners")],
+        [InlineKeyboardButton(text="📋 Список банерів", callback_data="site:banners:list")],
         [InlineKeyboardButton(text="🖼 Лого", callback_data="site:edit:logo")],
     ]
 
