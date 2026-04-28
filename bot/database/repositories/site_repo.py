@@ -60,12 +60,23 @@ async def get_site_by_subdomain(subdomain: str):
 
 # ================= SAFE UPDATE =================
 
+def _deep_merge(old: dict, new: dict):
+    for k, v in new.items():
+        if isinstance(v, dict) and isinstance(old.get(k), dict):
+            _deep_merge(old[k], v)
+        else:
+            old[k] = v
+    return old
+
+
 async def update_site_config(site_id: int, config: dict) -> bool:
     """
-    SAFE UPDATE:
+    SAFE UPDATE (FIXED):
     - читаємо актуальний config
-    - merge
-    - пишемо назад
+    - parse json якщо треба
+    - merge default
+    - deep merge нових даних
+    - зберігаємо без втрати полів
     """
 
     current = await fetchrow(
@@ -82,18 +93,19 @@ async def update_site_config(site_id: int, config: dict) -> bool:
 
     current_config = current.get("config_draft") or {}
 
+    # 🔥 FIX: JSON parse
     if isinstance(current_config, str):
         try:
             current_config = json.loads(current_config)
         except Exception:
             current_config = {}
 
-    # 🔥 MERGE (щоб не втрачати інші поля)
+    # default структура
     merged = merge_with_default(current_config)
 
-    # накладаємо нові дані
+    # 🔥 FIX: DEEP MERGE
     if isinstance(config, dict):
-        merged.update(config)
+        merged = _deep_merge(merged, config)
 
     row = await fetchrow(
         """
