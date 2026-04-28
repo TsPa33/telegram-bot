@@ -6,22 +6,25 @@ from aiogram.types import Message
 
 from bot.database.repositories.seller_repo import get_seller_by_telegram_id
 from bot.database.repositories.site_repo import get_site_by_seller, update_site_config
+from bot.services.site_config import merge_with_default
 
 router = Router()
+
+MAX_BANNERS = 10
 
 
 def parse_config(config_raw):
     if isinstance(config_raw, str):
-        return json.loads(config_raw)
+        try:
+            return json.loads(config_raw)
+        except Exception:
+            return {}
     return config_raw or {}
 
 
 @router.message(F.photo)
 async def handle_media(message: Message, state: FSMContext):
     current_state = await state.get_state()
-
-    print("PHOTO HANDLER CALLED")
-    print("STATE:", current_state)
 
     if current_state not in ["site_banner", "site_logo"]:
         return
@@ -38,27 +41,38 @@ async def handle_media(message: Message, state: FSMContext):
         await message.answer("Сайт не знайдено ❌")
         return
 
-    config_raw = site.get("config_draft")
-    if isinstance(config_raw, str):
-        config = json.loads(config_raw)
-    else:
-        config = config_raw or {}
+    config = merge_with_default(parse_config(site.get("config_draft")))
 
     config.setdefault("hero", {})
     config["hero"].setdefault("banners", [])
     config.setdefault("header", {})
 
+    if not message.photo:
+        await state.clear()
+        return
+
     photo = message.photo[-1].file_id
 
+    # BANNER
     if current_state == "site_banner":
-        config["hero"]["banners"].append(photo)
+        banners = config["hero"]["banners"]
+
+        if len(banners) >= MAX_BANNERS:
+            await state.clear()
+            await message.answer(f"Максимум {MAX_BANNERS} банерів")
+            return
+
+        banners.append(photo)
+
         await update_site_config(site["id"], config)
         await state.clear()
         await message.answer("Банер додано ✅")
         return
 
+    # LOGO
     if current_state == "site_logo":
         config["header"]["logo"] = photo
+
         await update_site_config(site["id"], config)
         await state.clear()
         await message.answer("Лого збережено ✅")
