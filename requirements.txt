@@ -10,3 +10,4 @@ fastapi
 python-multipart
 pytz
 jinja2
+cloudinary
