@@ -1,14 +1,62 @@
-{% if hero.get('banners') %}
-<section class="hero-slider">
-{% for banner in hero.get('banners', []) %}
-<img src="{{ banner }}" class="slide {% if loop.index == 1 %}active{% endif %}">
-{% endfor %}
-</section>
-{% endif %}
-
 <section class="hero">
-<div class="container">
-<h1>{{ header.get('title') }}</h1>
-<p>{{ hero.get('subtitle') }}</p>
-</div>
+    {% set hero = config.get('hero', {}) %}
+    {% set banners = hero.get('banners', []) %}
+
+    {% if banners %}
+        <div class="hero-slider" id="heroSlider">
+            {% for banner in banners %}
+                <div class="hero-slide">
+                    <img src="{{ banner }}" alt="banner">
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
 </section>
+
+<style>
+.hero {
+    width: 100%;
+    overflow: hidden;
+    background: #000;
+}
+
+.hero-slider {
+    position: relative;
+    width: 100%;
+}
+
+.hero-slide {
+    display: none;
+    width: 100%;
+}
+
+.hero-slide.active {
+    display: block;
+}
+
+.hero-slide img {
+    width: 100%;
+    height: auto;
+    max-height: 500px;
+    object-fit: contain;
+    display: block;
+    margin: 0 auto;
+}
+</style>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const slides = document.querySelectorAll("#heroSlider .hero-slide");
+
+    if (!slides.length) return;
+
+    let index = 0;
+    slides[index].classList.add("active");
+
+    setInterval(() => {
+        slides[index].classList.remove("active");
+        index = (index + 1) % slides.length;
+        slides[index].classList.add("active");
+    }, 3000);
+});
+</script>
