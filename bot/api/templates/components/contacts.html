@@ -1,0 +1,21 @@
+<section id="contacts" class="section">
+<div class="container">
+
+<h2>Контакти</h2>
+
+<div class="card">
+<p>{{ contacts.get('phone') }}</p>
+<p>{{ contacts.get('address') }}</p>
+</div>
+
+<div class="card">
+<form method="post" action="/site/{{ subdomain }}/lead">
+<input name="name" required>
+<input name="phone" required>
+<textarea name="message"></textarea>
+<button class="btn">Відправити</button>
+</form>
+</div>
+
+</div>
+</section>
