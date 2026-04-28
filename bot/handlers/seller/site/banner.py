@@ -6,6 +6,7 @@ from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMar
 
 from bot.database.repositories.seller_repo import get_seller_by_telegram_id
 from bot.database.repositories.site_repo import get_site_by_seller, update_site_config
+from bot.states.seller_states import SellerSiteStates
 
 router = Router()
 
@@ -18,7 +19,7 @@ def parse_config(config_raw):
 
 @router.callback_query(F.data == "site:edit:banners")
 async def set_banner(callback: CallbackQuery, state: FSMContext):
-    await state.set_state("site_banner")
+    await state.set_state(SellerSiteStates.site_banner)
     await callback.message.answer("Надішліть фото банера")
     await callback.answer()
 
@@ -56,7 +57,10 @@ async def delete_banner_menu(callback: CallbackQuery):
         ]
     )
 
-    await callback.message.answer("Оберіть банер для видалення:", reply_markup=keyboard)
+    await callback.message.answer(
+        "Оберіть банер для видалення:",
+        reply_markup=keyboard
+    )
     await callback.answer()
 
 
