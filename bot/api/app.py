@@ -49,34 +49,52 @@ async def render_site(subdomain: str, request: Request):
 
     config = merge_with_default(raw_config)
 
+    # SAFE MODULES
+    modules = config.setdefault("modules", {})
+
+    # MEDIA (мінімізовано виклики)
     if config.get("header", {}).get("logo"):
-        config["header"]["logo"] = await tg_file_url(bot, config["header"]["logo"])
+        try:
+            config["header"]["logo"] = await tg_file_url(bot, config["header"]["logo"])
+        except Exception:
+            config["header"]["logo"] = None
 
     if config.get("hero", {}).get("banners"):
-        config["hero"]["banners"] = [
-            await tg_file_url(bot, b)
-            for b in config["hero"]["banners"]
-        ]
+        resolved = []
+        for b in config["hero"]["banners"]:
+            try:
+                resolved.append(await tg_file_url(bot, b))
+            except Exception:
+                continue
+        config["hero"]["banners"] = resolved
 
     seller_id = site["seller_id"]
-    cars = await get_cars_by_seller(seller_id)
-    services = await get_services_by_seller(seller_id)
 
-    for car in cars:
-        car["photo_url"] = None
-        if car.get("photo_id"):
-            try:
-                car["photo_url"] = await tg_file_url(bot, car["photo_id"])
-            except Exception:
-                car["photo_url"] = None
+    cars = []
+    services = []
 
-    for service in services:
-        service["photo_url"] = None
-        if service.get("photo_id"):
-            try:
-                service["photo_url"] = await tg_file_url(bot, service["photo_id"])
-            except Exception:
-                service["photo_url"] = None
+    # MODULE FILTERING
+    if modules.get("cars", True):
+        cars = await get_cars_by_seller(seller_id)
+
+        for car in cars:
+            car["photo_url"] = None
+            if car.get("photo_id"):
+                try:
+                    car["photo_url"] = await tg_file_url(bot, car["photo_id"])
+                except Exception:
+                    car["photo_url"] = None
+
+    if modules.get("services", True):
+        services = await get_services_by_seller(seller_id)
+
+        for service in services:
+            service["photo_url"] = None
+            if service.get("photo_id"):
+                try:
+                    service["photo_url"] = await tg_file_url(bot, service["photo_id"])
+                except Exception:
+                    service["photo_url"] = None
 
     return templates.TemplateResponse(
         "site.html",
