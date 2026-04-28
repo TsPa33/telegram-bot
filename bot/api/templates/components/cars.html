@@ -1,0 +1,19 @@
+<section id="cars" class="section">
+<div class="container">
+
+<h2>Авто</h2>
+
+<div class="card-grid">
+{% for c in cars %}
+<div class="card">
+{% if c.photo_url %}
+<img src="{{ c.photo_url }}" class="card-photo">
+{% endif %}
+<h3>{{ c.title or (c.brand ~ " " ~ c.model) }}</h3>
+<p>{{ c.description }}</p>
+</div>
+{% endfor %}
+</div>
+
+</div>
+</section>
