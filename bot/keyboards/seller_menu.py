@@ -46,15 +46,31 @@ def seller_menu_kb(is_verified: bool = False):
     return seller_main_kb(is_verified=is_verified)
 
 
-# 🔥 ГОЛОВНЕ МЕНЮ САЙТУ (CMS)
+# 🔥 CMS MENU (FIXED)
 def site_menu_kb(subdomain: str, is_active: bool) -> InlineKeyboardMarkup:
     buttons = [
+        # HEADER
         [InlineKeyboardButton(text="✏️ Шапка", callback_data="site:edit:header")],
-        [InlineKeyboardButton(text="🛠 Послуги", callback_data="module:toggle:services")],
-        [InlineKeyboardButton(text="🚗 Авто", callback_data="module:toggle:cars")],
-        [InlineKeyboardButton(text="📞 Контакти", callback_data="module:toggle:contacts")],
-        [InlineKeyboardButton(text="🗺 Карта", callback_data="module:toggle:map")],
-        [InlineKeyboardButton(text="🧱 Про нас", callback_data="site:toggle:about")],
+
+        # SERVICES BLOCK
+        [InlineKeyboardButton(text="🛠 Послуги", callback_data="site:services:menu")],
+        [InlineKeyboardButton(text="➕ Додати послугу", callback_data="site:services:add")],
+        [InlineKeyboardButton(text="📋 Список послуг", callback_data="site:services:list")],
+        [InlineKeyboardButton(text="🔛 Вкл/Викл", callback_data="module:toggle:services")],
+
+        # CARS BLOCK
+        [InlineKeyboardButton(text="🚗 Авто", callback_data="site:cars:menu")],
+        [InlineKeyboardButton(text="➕ Додати авто", callback_data="site:cars:add")],
+        [InlineKeyboardButton(text="📋 Список авто", callback_data="site:cars:list")],
+        [InlineKeyboardButton(text="❌ Видалити авто", callback_data="site:cars:delete")],
+
+        # CONTACTS BLOCK
+        [InlineKeyboardButton(text="📞 Контакти", callback_data="site:contacts:menu")],
+        [InlineKeyboardButton(text="✏️ Телефон", callback_data="site:contacts:phone")],
+        [InlineKeyboardButton(text="✏️ Адреса", callback_data="site:contacts:address")],
+        [InlineKeyboardButton(text="✏️ Карта", callback_data="site:contacts:map")],
+
+        # MEDIA
         [InlineKeyboardButton(text="🖼 Банери", callback_data="site:edit:banners")],
         [InlineKeyboardButton(text="🖼 Лого", callback_data="site:edit:logo")],
         [InlineKeyboardButton(text="❌ Видалити банер", callback_data="site:delete:banner")],
