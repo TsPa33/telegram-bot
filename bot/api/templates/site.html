@@ -20,6 +20,7 @@
 
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
+
 body {
     margin: 0;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -33,13 +34,14 @@ body {
     padding: 0 16px;
 }
 
+/* HEADER */
+
 .header {
     position: sticky;
     top: 0;
     z-index: 20;
     background: rgba(255, 255, 255, 0.98);
     border-bottom: 1px solid var(--border);
-    backdrop-filter: blur(8px);
 }
 
 .header-row {
@@ -47,7 +49,6 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
 }
 
 .brand {
@@ -64,133 +65,81 @@ body {
     object-fit: cover;
     border-radius: 10px;
     border: 1px solid var(--border);
-    background: #fff;
 }
 
-.brand-title {
-    font-weight: 700;
-    font-size: 16px;
-}
+/* NAV */
 
-.menu-toggle {
-    width: 42px;
-    height: 42px;
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    background: #fff;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    gap: 4px;
-    cursor: pointer;
-}
-
-.menu-toggle span {
-    display: block;
-    width: 18px;
-    height: 2px;
-    background: var(--dark);
-    border-radius: 8px;
-}
-
-.nav {
-    display: none;
-    padding: 0 0 12px;
-}
-
+.nav { display: none; }
 .nav.open { display: block; }
 
-.nav-list {
-    margin: 0;
-    padding: 0;
-    list-style: none;
-    display: grid;
-    gap: 10px;
-}
-
-.nav-link {
-    display: block;
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    background: #fff;
-    color: var(--text);
-    text-decoration: none;
-    font-weight: 600;
-    padding: 10px 12px;
-}
+/* HERO FIX (ГОЛОВНЕ) */
 
 .hero-slider {
-    position: relative;
     width: 100%;
-    height: 230px;
+    background: #000;
+    display: flex;
+    justify-content: center;
     overflow: hidden;
-    background: #e2e8f0;
 }
 
 .slide {
-    position: absolute;
-    inset: 0;
     width: 100%;
-    height: 100%;
-    object-fit: cover;
+    height: auto;
+    max-height: 420px;
+    object-fit: contain; /* 🔥 НЕ ОБРІЗАЄ */
+    position: relative;
     opacity: 0;
-    transition: opacity .8s ease;
 }
 
 .slide.active { opacity: 1; }
 
+/* HERO TEXT */
+
 .hero {
-    background: linear-gradient(135deg, #0f172a, #2563eb);
-    color: #fff;
-    text-align: center;
-    padding: 44px 0;
+    background: linear-gradient(135deg,#0f172a,#2563eb);
+    color:#fff;
+    text-align:center;
+    padding:40px 0;
 }
 
-.hero h1 {
-    margin: 0 0 10px;
-    font-size: 28px;
-    line-height: 1.2;
-}
-
-.hero p {
-    margin: 0;
-    color: rgba(255,255,255,.85);
-}
-
-.section {
-    padding: 30px 0 0;
-}
-
-.section-title {
-    margin: 0 0 14px;
-    font-size: 24px;
-}
+/* GRID FIX */
 
 .card-grid {
     display: grid;
-    gap: 14px;
-    grid-template-columns: 1fr;
+    gap: 16px;
+    grid-template-columns: repeat(1, 1fr);
 }
+
+@media (min-width: 768px) {
+    .card-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (min-width: 1024px) {
+    .card-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* CARD */
 
 .card {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 14px;
+    border-radius: 16px;
     padding: 16px;
 }
 
+/* IMAGE FIX */
+
 .card-photo {
     width: 100%;
-    height: 180px;
-    object-fit: cover;
+    height: 200px;
+    object-fit: contain; /* 🔥 НЕ ТЯГНЕ */
+    background: #f1f5f9;
     border-radius: 10px;
+    padding: 10px;
     margin-bottom: 12px;
-    background: #e5e7eb;
 }
 
-.card-title { margin: 0 0 8px; font-size: 18px; }
-.card-text { margin: 0 0 12px; color: #334155; }
+/* BUTTON */
 
 .btn {
     display: inline-block;
@@ -198,25 +147,13 @@ body {
     border-radius: 10px;
     background: var(--primary);
     color: #fff;
-    text-decoration: none;
-    font-weight: 700;
     padding: 10px 14px;
-    cursor: pointer;
 }
-
-.btn:hover { background: var(--primary-dark); }
 
 .footer {
     margin-top: 36px;
     border-top: 1px solid var(--border);
     background: #fff;
-}
-
-.footer-content {
-    min-height: 60px;
-    display: flex;
-    align-items: center;
-    color: var(--muted);
 }
 </style>
 </head>
@@ -245,12 +182,12 @@ body {
 
 <nav id="siteNav" class="nav">
 <ul class="nav-list">
-<li><a class="nav-link" href="#top">Головна</a></li>
+<li><a href="#top">Головна</a></li>
 {% if modules.get('services', True) %}
-<li><a class="nav-link" href="#services">Послуги</a></li>
+<li><a href="#services">Послуги</a></li>
 {% endif %}
 {% if modules.get('contacts', True) %}
-<li><a class="nav-link" href="#contacts">Контакти</a></li>
+<li><a href="#contacts">Контакти</a></li>
 {% endif %}
 </ul>
 </nav>
@@ -279,25 +216,20 @@ body {
 {% if modules.get('services', True) %}
 <section id="services" class="section">
 <div class="container">
-<h2 class="section-title">Послуги</h2>
+<h2>Послуги</h2>
 
-{% if services %}
 <div class="card-grid">
 {% for s in services %}
-<article class="card">
+<div class="card">
 {% if s.photo_url %}
-<img class="card-photo" src="{{ s.photo_url }}">
+<img src="{{ s.photo_url }}" class="card-photo">
 {% endif %}
-<h3>{{ s.title or "Послуга" }}</h3>
-<p>{{ s.description or "Опис відсутній" }}</p>
-{% if s.price %}<p class="card-price">{{ s.price }}</p>{% endif %}
+<h3>{{ s.title }}</h3>
+<p>{{ s.description }}</p>
 <a class="btn" href="#contacts">Замовити</a>
-</article>
+</div>
 {% endfor %}
 </div>
-{% else %}
-<div class="card">Немає послуг</div>
-{% endif %}
 
 </div>
 </section>
@@ -306,24 +238,19 @@ body {
 {% if modules.get('cars', True) %}
 <section id="cars" class="section">
 <div class="container">
-<h2 class="section-title">Авто</h2>
+<h2>Авто</h2>
 
-{% if cars %}
 <div class="card-grid">
 {% for c in cars %}
-<article class="card">
+<div class="card">
 {% if c.photo_url %}
-<img class="card-photo" src="{{ c.photo_url }}">
+<img src="{{ c.photo_url }}" class="card-photo">
 {% endif %}
 <h3>{{ c.title or (c.brand ~ " " ~ c.model) }}</h3>
-<p>{{ c.description or "Опис відсутній" }}</p>
-{% if c.price %}<p class="card-price">{{ c.price }}</p>{% endif %}
-</article>
+<p>{{ c.description }}</p>
+</div>
 {% endfor %}
 </div>
-{% else %}
-<div class="card">Немає авто</div>
-{% endif %}
 
 </div>
 </section>
@@ -332,17 +259,17 @@ body {
 {% if modules.get('contacts', True) %}
 <section id="contacts" class="section">
 <div class="container">
-<h2 class="section-title">Контакти</h2>
+<h2>Контакти</h2>
 
 <div class="card">
-<p>📞 {{ contacts.get('phone') or "Не вказано" }}</p>
-<p>📍 {{ contacts.get('address') or "Не вказано" }}</p>
+<p>{{ contacts.get('phone') }}</p>
+<p>{{ contacts.get('address') }}</p>
 </div>
 
-<div class="card" style="margin-top:10px;">
+<div class="card">
 <form method="post" action="/site/{{ subdomain }}/lead">
-<input name="name" required placeholder="Ім'я">
-<input name="phone" required placeholder="Телефон">
+<input name="name" required>
+<input name="phone" required>
 <textarea name="message"></textarea>
 <button class="btn">Відправити</button>
 </form>
@@ -353,14 +280,9 @@ body {
 {% endif %}
 
 {% if modules.get('map', True) and contacts.get('map_embed') %}
-<section class="section">
+<section>
 <div class="container">
-<h2 class="section-title">Мапа</h2>
-
-{% if "iframe" in contacts.get('map_embed') %}
 {{ contacts.get('map_embed') | safe }}
-{% endif %}
-
 </div>
 </section>
 {% endif %}
@@ -368,8 +290,8 @@ body {
 </main>
 
 <footer class="footer">
-<div class="container footer-content">
-© {{ header.get('title') or subdomain }}
+<div class="container">
+© {{ header.get('title') }}
 </div>
 </footer>
 
@@ -383,13 +305,6 @@ slides[i].classList.remove("active");
 i = (i + 1) % slides.length;
 slides[i].classList.add("active");
 }, 3000);
-}
-
-const btn = document.getElementById("menuToggle");
-const nav = document.getElementById("siteNav");
-
-if (btn && nav) {
-btn.onclick = () => nav.classList.toggle("open");
 }
 });
 </script>
