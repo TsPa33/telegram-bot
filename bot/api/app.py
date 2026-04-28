@@ -9,6 +9,8 @@ from bot.api.liqpay_callback import router as liqpay_router
 from bot.config import BOT_TOKEN
 from bot.database.repositories.site_repo import get_site_by_subdomain
 from bot.database.repositories.seller_repo import get_seller_by_id
+from bot.database.repositories.car_repo import get_cars_by_seller
+from bot.database.repositories.service_repo import get_services_by_seller
 from bot.services.site_config import merge_with_default
 from bot.utils.subdomain import is_valid_subdomain
 from bot.services.telegram_sender import send_message_to_seller
@@ -56,12 +58,34 @@ async def render_site(subdomain: str, request: Request):
             for b in config["hero"]["banners"]
         ]
 
+    seller_id = site["seller_id"]
+    cars = await get_cars_by_seller(seller_id)
+    services = await get_services_by_seller(seller_id)
+
+    for car in cars:
+        car["photo_url"] = None
+        if car.get("photo_id"):
+            try:
+                car["photo_url"] = await tg_file_url(bot, car["photo_id"])
+            except Exception:
+                car["photo_url"] = None
+
+    for service in services:
+        service["photo_url"] = None
+        if service.get("photo_id"):
+            try:
+                service["photo_url"] = await tg_file_url(bot, service["photo_id"])
+            except Exception:
+                service["photo_url"] = None
+
     return templates.TemplateResponse(
         "site.html",
         {
             "request": request,
             "subdomain": subdomain,
             "config": config,
+            "cars": cars,
+            "services": services,
         },
     )
 

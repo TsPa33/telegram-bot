@@ -50,6 +50,10 @@ def seller_menu_kb(is_verified: bool = False):
 def site_menu_kb(subdomain: str, is_active: bool) -> InlineKeyboardMarkup:
     buttons = [
         [InlineKeyboardButton(text="✏️ Шапка", callback_data="site:edit:header")],
+        [InlineKeyboardButton(text="🛠 Послуги", callback_data="module:toggle:services")],
+        [InlineKeyboardButton(text="🚗 Авто", callback_data="module:toggle:cars")],
+        [InlineKeyboardButton(text="📞 Контакти", callback_data="module:toggle:contacts")],
+        [InlineKeyboardButton(text="🗺 Карта", callback_data="module:toggle:map")],
         [InlineKeyboardButton(text="🧱 Про нас", callback_data="site:toggle:about")],
         [InlineKeyboardButton(text="🖼 Банери", callback_data="site:edit:banners")],
         [InlineKeyboardButton(text="🖼 Лого", callback_data="site:edit:logo")],

@@ -23,6 +23,12 @@ _DEFAULT_SITE_CONFIG: dict[str, Any] = {
         "enabled": True,
         "mode": "live",
     },
+    "modules": {
+        "services": True,
+        "cars": True,
+        "contacts": True,
+        "map": True,
+    },
     "banner_cta": {
         "enabled": False,
         "text": "",
@@ -46,6 +52,7 @@ _DEFAULT_SITE_CONFIG: dict[str, Any] = {
         "phone": "",
         "telegram": "",
         "address": "",
+        "map_embed": "",
     },
     "footer": {
         "enabled": True,
@@ -63,10 +70,10 @@ def validate_site_config(config: dict) -> bool:
     if not isinstance(config, dict):
         return False
 
-    required = ("header", "contacts", "services", "map")
+    required = ("header", "contacts", "services", "map", "modules")
 
     for key in required:
-        if not config.get(key, {}).get("enabled"):
+        if key not in config or not isinstance(config[key], dict):
             return False
 
     return True
