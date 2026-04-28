@@ -1,11 +1,14 @@
 import json
 
 from bot.database.base import fetch, fetchrow, execute
+from bot.services.site_config import merge_with_default
 
 
 # ================= CREATE =================
 
 async def create_site(seller_id: int, subdomain: str, config: dict):
+    config = merge_with_default(config or {})
+
     return await fetchrow(
         """
         INSERT INTO seller_sites (
@@ -55,41 +58,69 @@ async def get_site_by_subdomain(subdomain: str):
     )
 
 
-# ================= UPDATE (DRAFT) =================
-
-async def update_draft(seller_id: int, config: dict) -> bool:
-    row = await fetchrow(
-        """
-        UPDATE seller_sites
-        SET config_draft = $1::jsonb,
-            config_live = $1::jsonb  -- 🔥 автопублікація
-        WHERE seller_id = $2
-        RETURNING id
-        """,
-        json.dumps(config),
-        seller_id,
-    )
-    return row is not None
-
-
-# ================= 🔥 UPDATE CONFIG (MAIN FIX) =================
+# ================= SAFE UPDATE =================
 
 async def update_site_config(site_id: int, config: dict) -> bool:
+    """
+    SAFE UPDATE:
+    - читаємо актуальний config
+    - merge
+    - пишемо назад
+    """
+
+    current = await fetchrow(
+        """
+        SELECT config_draft
+        FROM seller_sites
+        WHERE id = $1
+        """,
+        site_id,
+    )
+
+    if not current:
+        return False
+
+    current_config = current.get("config_draft") or {}
+
+    if isinstance(current_config, str):
+        try:
+            current_config = json.loads(current_config)
+        except Exception:
+            current_config = {}
+
+    # 🔥 MERGE (щоб не втрачати інші поля)
+    merged = merge_with_default(current_config)
+
+    # накладаємо нові дані
+    if isinstance(config, dict):
+        merged.update(config)
+
     row = await fetchrow(
         """
         UPDATE seller_sites
         SET config_draft = $1::jsonb,
-            config_live = $1::jsonb  -- 🔥 автопублікація
+            config_live = $1::jsonb
         WHERE id = $2
         RETURNING id
         """,
-        json.dumps(config),
+        json.dumps(merged),
         site_id,
     )
+
     return row is not None
 
 
-# ================= PUBLISH (МОЖНА ЗАЛИШИТИ) =================
+# ================= UPDATE DRAFT =================
+
+async def update_draft(seller_id: int, config: dict) -> bool:
+    site = await get_site_by_seller(seller_id)
+    if not site:
+        return False
+
+    return await update_site_config(site["id"], config)
+
+
+# ================= PUBLISH =================
 
 async def publish_site(seller_id: int) -> bool:
     row = await fetchrow(
