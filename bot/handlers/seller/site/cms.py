@@ -6,19 +6,10 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 from bot.states.seller_states import SellerSiteStates
-from bot.database.repositories.seller_repo import get_seller_by_telegram_id
 from bot.database.repositories.site_repo import get_site_by_seller, update_site_config
-from bot.database.repositories.service_repo import (
-    create_service,
-    get_services_by_seller,
-    delete_service_by_seller,
-)
-from bot.database.repositories.car_repo import (
-    create_seller_car,
-    get_cars_by_seller,
-    delete_seller_car,
-)
+from bot.database.repositories.service_repo import create_service
 from bot.services.site_config import merge_with_default
+from bot.services.seller_identity import resolve_seller, resolve_seller_from_user
 
 router = Router()
 
@@ -32,14 +23,14 @@ def safe_config(raw):
     if isinstance(raw, str):
         try:
             return json.loads(raw)
-        except:
+        except Exception:
             return {}
 
     return dict(raw)
 
 
 async def get_context(callback: CallbackQuery):
-    seller = await get_seller_by_telegram_id(callback.from_user.id)
+    seller = await resolve_seller_from_user(callback.from_user)
     if not seller:
         return None, None
 
@@ -58,7 +49,7 @@ async def service_add(callback: CallbackQuery, state: FSMContext):
 
 @router.message(SellerSiteStates.site_service_create)
 async def service_create_process(message: Message, state: FSMContext):
-    seller = await get_seller_by_telegram_id(message.from_user.id)
+    seller = await resolve_seller(message)
 
     await create_service(
         seller_id=seller["id"],
@@ -86,11 +77,14 @@ async def edit_phone(callback: CallbackQuery, state: FSMContext):
 
 @router.message(SellerSiteStates.site_contact_phone)
 async def save_phone(message: Message, state: FSMContext):
-    seller = await get_seller_by_telegram_id(message.from_user.id)
+    seller = await resolve_seller(message)
     site = await get_site_by_seller(seller["id"])
 
-    config = safe_config(site.get("config_draft"))
-    config = merge_with_default(config)
+    if not site:
+        await message.answer("Сайт не знайдено ❌")
+        return
+
+    config = merge_with_default(safe_config(site.get("config_draft")))
 
     config.setdefault("contacts", {})
     config["contacts"]["phone"] = message.text
@@ -103,11 +97,14 @@ async def save_phone(message: Message, state: FSMContext):
 
 @router.message(SellerSiteStates.site_contact_address)
 async def save_address(message: Message, state: FSMContext):
-    seller = await get_seller_by_telegram_id(message.from_user.id)
+    seller = await resolve_seller(message)
     site = await get_site_by_seller(seller["id"])
 
-    config = safe_config(site.get("config_draft"))
-    config = merge_with_default(config)
+    if not site:
+        await message.answer("Сайт не знайдено ❌")
+        return
+
+    config = merge_with_default(safe_config(site.get("config_draft")))
 
     config.setdefault("contacts", {})
     config["contacts"]["address"] = message.text
@@ -120,11 +117,14 @@ async def save_address(message: Message, state: FSMContext):
 
 @router.message(SellerSiteStates.site_contact_map)
 async def save_map(message: Message, state: FSMContext):
-    seller = await get_seller_by_telegram_id(message.from_user.id)
+    seller = await resolve_seller(message)
     site = await get_site_by_seller(seller["id"])
 
-    config = safe_config(site.get("config_draft"))
-    config = merge_with_default(config)
+    if not site:
+        await message.answer("Сайт не знайдено ❌")
+        return
+
+    config = merge_with_default(safe_config(site.get("config_draft")))
 
     config.setdefault("contacts", {})
     config["contacts"]["map_embed"] = message.text
@@ -133,52 +133,67 @@ async def save_map(message: Message, state: FSMContext):
 
     await state.clear()
     await message.answer("Мапу збережено ✅")
-    # ================= BANNERS =================
 
+
+# ================= BANNERS =================
+
+# 👉 ВХІД В FLOW (КРИТИЧНО)
+@router.callback_query(F.data == "site:edit:banners")
+async def add_banner(callback: CallbackQuery, state: FSMContext):
+    await state.set_state(SellerSiteStates.site_banner)
+    await callback.message.answer("📤 Надішли фото банера")
+    await callback.answer()
+
+
+# список
 @router.callback_query(F.data == "site:banners:list")
 async def banners_list(callback: CallbackQuery):
     seller, site = await get_context(callback)
 
-    config = site.get("config_draft") or {}
-    config = merge_with_default(config)
+    if not seller or not site:
+        await callback.answer("Сайт не знайдено", show_alert=True)
+        return
 
+    config = merge_with_default(safe_config(site.get("config_draft")))
     banners = config.get("hero", {}).get("banners", [])
 
     if not banners:
         await callback.message.answer("Банерів немає")
         return
 
-    text = "📋 Банери:\n\n"
-
-    for i, b in enumerate(banners):
-        text += f"{i + 1}. {b}\n"
-
-    # кнопки delete
-    buttons = []
-    for i in range(len(banners)):
-        buttons.append([
-            InlineKeyboardButton(
-                text=f"❌ Видалити {i+1}",
-                callback_data=f"site:banners:delete:{i}"
+    for i, banner in enumerate(banners):
+        try:
+            await callback.message.answer_photo(
+                photo=banner,
+                caption=f"Банер {i+1}",
+                reply_markup=InlineKeyboardMarkup(
+                    inline_keyboard=[[
+                        InlineKeyboardButton(
+                            text="❌ Видалити",
+                            callback_data=f"site:banners:delete:{i}"
+                        )
+                    ]]
+                )
             )
-        ])
+        except Exception:
+            await callback.message.answer(f"{i+1}. {banner}")
 
-    await callback.message.answer(
-        text,
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons)
-    )
 
+# delete
 @router.callback_query(F.data.startswith("site:banners:delete:"))
 async def banner_delete(callback: CallbackQuery):
-    index = int(callback.data.split(":")[-1])
+    seller = await resolve_seller_from_user(callback.from_user)
+    if not seller:
+        return
 
-    seller = await get_seller_by_telegram_id(callback.from_user.id)
     site = await get_site_by_seller(seller["id"])
+    if not site:
+        return
 
-    config = site.get("config_draft") or {}
-    config = merge_with_default(config)
-
+    config = merge_with_default(safe_config(site.get("config_draft")))
     banners = config.get("hero", {}).get("banners", [])
+
+    index = int(callback.data.split(":")[-1])
 
     if index >= len(banners):
         await callback.answer("Помилка")
