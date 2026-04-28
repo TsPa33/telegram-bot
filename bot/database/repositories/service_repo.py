@@ -1,4 +1,4 @@
-from bot.database.base import execute, fetch
+from bot.database.base import execute, fetch, fetchrow
 
 
 ALLOWED_UPDATE_FIELDS = {
@@ -209,3 +209,33 @@ async def get_service_stats(service_id: int):
         return rows[0]
 
     return {"service_id": service_id, "views": 0, "calls": 0, "clicks": 0}
+
+
+async def get_service_by_id(service_id: int):
+    return await fetchrow(
+        """
+        SELECT *
+        FROM services
+        WHERE id = $1
+        LIMIT 1
+        """,
+        service_id,
+    )
+
+
+async def delete_service_by_seller(service_id: int, seller_id: int) -> bool:
+    row = await fetchrow(
+        """
+        DELETE FROM services
+        WHERE id = $1
+          AND seller_id = $2
+        RETURNING id
+        """,
+        service_id,
+        seller_id,
+    )
+    if not row:
+        return False
+
+    await execute("DELETE FROM service_stats WHERE service_id = $1", service_id)
+    return True
