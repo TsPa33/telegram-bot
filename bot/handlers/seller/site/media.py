@@ -1,102 +1,196 @@
 import json
-import os
 
-from aiogram import F, Router
+from aiogram import Router, F
+from aiogram.types import CallbackQuery, Message, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.fsm.context import FSMContext
-from aiogram.types import Message
 
+from bot.states.seller_states import SellerSiteStates
 from bot.database.repositories.site_repo import get_site_by_seller, update_site_config
+from bot.database.repositories.service_repo import create_service
 from bot.services.site_config import merge_with_default
-from bot.services.storage import upload_image
-from bot.services.seller_identity import resolve_seller
+from bot.services.seller_identity import resolve_seller, resolve_seller_from_user
 
 router = Router()
 
-MAX_BANNERS = 10
 
+# ================= HELPERS =================
 
-def parse_config(config_raw):
-    if isinstance(config_raw, str):
+def safe_config(raw):
+    if not raw:
+        return {}
+
+    if isinstance(raw, str):
         try:
-            return json.loads(config_raw)
+            return json.loads(raw)
         except Exception:
             return {}
-    return config_raw or {}
+
+    return dict(raw)
 
 
-@router.message(F.photo)
-async def handle_media(message: Message, state: FSMContext):
-    current_state = await state.get_state()
-
-    if current_state not in ["site_banner", "site_logo"]:
-        return
-
-    # ✅ FIX: централізований seller
-    seller = await resolve_seller(message)
+async def get_context(callback: CallbackQuery):
+    seller = await resolve_seller_from_user(callback.from_user)
+    if not seller:
+        return None, None
 
     site = await get_site_by_seller(seller["id"])
+    return seller, site
+
+
+# ================= SERVICES =================
+
+@router.callback_query(F.data == "site:services:add")
+async def service_add(callback: CallbackQuery, state: FSMContext):
+    await state.set_state(SellerSiteStates.site_service_create)
+    await callback.message.answer("Введи назву послуги")
+    await callback.answer()
+
+
+@router.message(SellerSiteStates.site_service_create)
+async def service_create_process(message: Message, state: FSMContext):
+    seller = await resolve_seller(message)
+
+    await create_service(
+        seller_id=seller["id"],
+        category="default",
+        title=message.text,
+        city="",
+        address="",
+        description=None,
+        website=None,
+        photo_id=None,
+    )
+
+    await state.clear()
+    await message.answer("Послугу створено ✅")
+
+
+# ================= CONTACTS =================
+
+@router.callback_query(F.data == "site:contacts:phone")
+async def edit_phone(callback: CallbackQuery, state: FSMContext):
+    await state.set_state(SellerSiteStates.site_contact_phone)
+    await callback.message.answer("Введи телефон")
+    await callback.answer()
+
+
+@router.message(SellerSiteStates.site_contact_phone)
+async def save_phone(message: Message, state: FSMContext):
+    seller = await resolve_seller(message)
+    site = await get_site_by_seller(seller["id"])
+
     if not site:
-        await state.clear()
         await message.answer("Сайт не знайдено ❌")
         return
 
-    config = merge_with_default(parse_config(site.get("config_draft")))
+    config = merge_with_default(safe_config(site.get("config_draft")))
 
-    config.setdefault("hero", {})
-    config["hero"].setdefault("banners", [])
-    config.setdefault("header", {})
+    config.setdefault("contacts", {})
+    config["contacts"]["phone"] = message.text
 
-    # 🔥 найкраща якість
-    photo = message.photo[-1]
-    file = await message.bot.get_file(photo.file_id)
+    await update_site_config(site["id"], config)
 
-    # ✅ SAFE PATH (без /tmp)
-    file_path = f"{photo.file_id}.jpg"
+    await state.clear()
+    await message.answer("Телефон збережено ✅")
 
-    await message.bot.download_file(file.file_path, file_path)
 
-    # ❗ FIX: cloudinary sync
-    image_url = upload_image(file_path)
+@router.message(SellerSiteStates.site_contact_address)
+async def save_address(message: Message, state: FSMContext):
+    seller = await resolve_seller(message)
+    site = await get_site_by_seller(seller["id"])
 
-    # cleanup
-    try:
-        os.remove(file_path)
-    except Exception:
-        pass
-
-    # ================= SAVE =================
-
-    # BANNER
-    if current_state == "site_banner":
-        banners = config["hero"]["banners"]
-
-        if len(banners) >= MAX_BANNERS:
-            await state.clear()
-            await message.answer(f"Максимум {MAX_BANNERS} банерів")
-            return
-
-        banners.append(image_url)
-
-        updated = await update_site_config(site["id"], config)
-
-        await state.clear()
-
-        if updated:
-            await message.answer("Банер додано ✅")
-        else:
-            await message.answer("Помилка збереження ❌")
-
+    if not site:
+        await message.answer("Сайт не знайдено ❌")
         return
 
-    # LOGO
-    if current_state == "site_logo":
-        config["header"]["logo"] = image_url
+    config = merge_with_default(safe_config(site.get("config_draft")))
 
-        updated = await update_site_config(site["id"], config)
+    config.setdefault("contacts", {})
+    config["contacts"]["address"] = message.text
 
-        await state.clear()
+    await update_site_config(site["id"], config)
 
-        if updated:
-            await message.answer("Лого збережено ✅")
-        else:
-            await message.answer("Помилка збереження ❌")
+    await state.clear()
+    await message.answer("Адресу збережено ✅")
+
+
+@router.message(SellerSiteStates.site_contact_map)
+async def save_map(message: Message, state: FSMContext):
+    seller = await resolve_seller(message)
+    site = await get_site_by_seller(seller["id"])
+
+    if not site:
+        await message.answer("Сайт не знайдено ❌")
+        return
+
+    config = merge_with_default(safe_config(site.get("config_draft")))
+
+    config.setdefault("contacts", {})
+    config["contacts"]["map_embed"] = message.text
+
+    await update_site_config(site["id"], config)
+
+    await state.clear()
+    await message.answer("Мапу збережено ✅")
+
+
+# ================= BANNERS =================
+
+@router.callback_query(F.data == "site:banners:list")
+async def banners_list(callback: CallbackQuery):
+    seller, site = await get_context(callback)
+
+    if not seller or not site:
+        await callback.answer("Сайт не знайдено", show_alert=True)
+        return
+
+    config = merge_with_default(safe_config(site.get("config_draft")))
+    banners = config.get("hero", {}).get("banners", [])
+
+    if not banners:
+        await callback.message.answer("Банерів немає")
+        return
+
+    # 🔥 показуємо фото
+    for i, banner in enumerate(banners):
+        try:
+            await callback.message.answer_photo(
+                photo=banner,
+                caption=f"Банер {i+1}",
+                reply_markup=InlineKeyboardMarkup(
+                    inline_keyboard=[[
+                        InlineKeyboardButton(
+                            text="❌ Видалити",
+                            callback_data=f"site:banners:delete:{i}"
+                        )
+                    ]]
+                )
+            )
+        except Exception:
+            await callback.message.answer(f"{i+1}. {banner}")
+
+
+@router.callback_query(F.data.startswith("site:banners:delete:"))
+async def banner_delete(callback: CallbackQuery):
+    seller = await resolve_seller_from_user(callback.from_user)
+    if not seller:
+        return
+
+    site = await get_site_by_seller(seller["id"])
+    if not site:
+        return
+
+    config = merge_with_default(safe_config(site.get("config_draft")))
+    banners = config.get("hero", {}).get("banners", [])
+
+    index = int(callback.data.split(":")[-1])
+
+    if index >= len(banners):
+        await callback.answer("Помилка")
+        return
+
+    banners.pop(index)
+
+    await update_site_config(site["id"], config)
+
+    await callback.answer("Банер видалено")
