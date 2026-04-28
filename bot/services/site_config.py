@@ -65,7 +65,6 @@ def get_default_site_config() -> dict:
     return deepcopy(_DEFAULT_SITE_CONFIG)
 
 
-# 🔥 FIX: MVP VALIDATION (не блокує publish)
 def validate_site_config(config: dict) -> bool:
     if not isinstance(config, dict):
         return False
@@ -87,7 +86,12 @@ def _deep_merge_missing(target: dict, defaults: dict) -> dict:
 
         current_value = target[key]
 
+        # FIX: якщо тип не той → заміняємо
         if isinstance(default_value, dict) and not isinstance(current_value, dict):
+            target[key] = deepcopy(default_value)
+            continue
+
+        if isinstance(default_value, list) and not isinstance(current_value, list):
             target[key] = deepcopy(default_value)
             continue
 
@@ -97,9 +101,32 @@ def _deep_merge_missing(target: dict, defaults: dict) -> dict:
     return target
 
 
+def _normalize_config(config: dict) -> dict:
+    """
+    Гарантує що критичні поля мають правильний тип
+    """
+
+    # modules завжди dict
+    if not isinstance(config.get("modules"), dict):
+        config["modules"] = deepcopy(_DEFAULT_SITE_CONFIG["modules"])
+
+    # hero.banners завжди list
+    if not isinstance(config.get("hero", {}).get("banners"), list):
+        config.setdefault("hero", {})["banners"] = []
+
+    # price.items
+    if not isinstance(config.get("price", {}).get("items"), list):
+        config.setdefault("price", {})["items"] = []
+
+    return config
+
+
 def merge_with_default(config: dict) -> dict:
     if not isinstance(config, dict):
         return get_default_site_config()
 
-    merged_config = deepcopy(config)
-    return _deep_merge_missing(merged_config, _DEFAULT_SITE_CONFIG)
+    merged = deepcopy(config)
+    merged = _deep_merge_missing(merged, _DEFAULT_SITE_CONFIG)
+    merged = _normalize_config(merged)
+
+    return merged
