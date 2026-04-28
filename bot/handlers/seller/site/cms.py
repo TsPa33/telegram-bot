@@ -149,8 +149,12 @@ async def save_phone(message: Message, state: FSMContext):
     seller = await get_seller_by_telegram_id(message.from_user.id)
     site = await get_site_by_seller(seller["id"])
 
-    config = merge_with_default(site.get("config_draft") or {})
-    config.setdefault("contacts", {})["phone"] = message.text
+    # 🔥 FIX: беремо існуючий config
+    config = site.get("config_draft") or {}
+    config = merge_with_default(config)
+
+    config.setdefault("contacts", {})
+    config["contacts"]["phone"] = message.text
 
     await update_site_config(site["id"], config)
 
@@ -170,8 +174,12 @@ async def save_address(message: Message, state: FSMContext):
     seller = await get_seller_by_telegram_id(message.from_user.id)
     site = await get_site_by_seller(seller["id"])
 
-    config = merge_with_default(site.get("config_draft") or {})
-    config.setdefault("contacts", {})["address"] = message.text
+    # 🔥 FIX
+    config = site.get("config_draft") or {}
+    config = merge_with_default(config)
+
+    config.setdefault("contacts", {})
+    config["contacts"]["address"] = message.text
 
     await update_site_config(site["id"], config)
 
@@ -191,8 +199,12 @@ async def save_map(message: Message, state: FSMContext):
     seller = await get_seller_by_telegram_id(message.from_user.id)
     site = await get_site_by_seller(seller["id"])
 
-    config = merge_with_default(site.get("config_draft") or {})
-    config.setdefault("contacts", {})["map_embed"] = message.text
+    # 🔥 FIX
+    config = site.get("config_draft") or {}
+    config = merge_with_default(config)
+
+    config.setdefault("contacts", {})
+    config["contacts"]["map_embed"] = message.text
 
     await update_site_config(site["id"], config)
 
