@@ -132,3 +132,37 @@ async def save_map(message: Message, state: FSMContext):
 
     await state.clear()
     await message.answer("Мапу збережено ✅")
+    # ================= BANNERS =================
+
+@router.callback_query(F.data == "site:banners:list")
+async def banners_list(callback: CallbackQuery):
+    seller, site = await get_context(callback)
+
+    config = site.get("config_draft") or {}
+    config = merge_with_default(config)
+
+    banners = config.get("hero", {}).get("banners", [])
+
+    if not banners:
+        await callback.message.answer("Банерів немає")
+        return
+
+    text = "📋 Банери:\n\n"
+
+    for i, b in enumerate(banners):
+        text += f"{i + 1}. {b}\n"
+
+    # кнопки delete
+    buttons = []
+    for i in range(len(banners)):
+        buttons.append([
+            InlineKeyboardButton(
+                text=f"❌ Видалити {i+1}",
+                callback_data=f"site:banners:delete:{i}"
+            )
+        ])
+
+    await callback.message.answer(
+        text,
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons)
+    )
