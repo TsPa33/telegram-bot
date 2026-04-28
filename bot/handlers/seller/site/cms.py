@@ -166,3 +166,25 @@ async def banners_list(callback: CallbackQuery):
         text,
         reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons)
     )
+
+@router.callback_query(F.data.startswith("site:banners:delete:"))
+async def banner_delete(callback: CallbackQuery):
+    index = int(callback.data.split(":")[-1])
+
+    seller = await get_seller_by_telegram_id(callback.from_user.id)
+    site = await get_site_by_seller(seller["id"])
+
+    config = site.get("config_draft") or {}
+    config = merge_with_default(config)
+
+    banners = config.get("hero", {}).get("banners", [])
+
+    if index >= len(banners):
+        await callback.answer("Помилка")
+        return
+
+    banners.pop(index)
+
+    await update_site_config(site["id"], config)
+
+    await callback.answer("Банер видалено")
