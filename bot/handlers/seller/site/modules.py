@@ -1,5 +1,4 @@
 from aiogram import F, Router
-from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery
 
 from bot.database.repositories.seller_repo import get_seller_by_telegram_id
@@ -12,18 +11,14 @@ _ALLOWED_MODULES = {"services", "cars", "contacts", "map"}
 
 
 @router.callback_query(F.data.startswith("module:toggle:"))
-async def toggle_site_module(callback: CallbackQuery, state: FSMContext):
-    data = await state.get_data()
-    if data.get("flow") != "seller_site":
-        await callback.answer()
-        return
-
+async def toggle_site_module(callback: CallbackQuery):
     parts = (callback.data or "").split(":")
     if len(parts) != 3:
         await callback.answer()
         return
 
     module_name = parts[2]
+
     if module_name not in _ALLOWED_MODULES:
         await callback.answer("Невідомий модуль", show_alert=True)
         return
@@ -46,13 +41,17 @@ async def toggle_site_module(callback: CallbackQuery, state: FSMContext):
     config = merge_with_default(site.get("config_draft") or {})
     modules = config.setdefault("modules", {})
 
-    current_state = bool(modules.get(module_name, True))
-    modules[module_name] = not current_state
+    # TOGGLE (atomic-like behavior)
+    current = bool(modules.get(module_name, True))
+    new_value = not current
+    modules[module_name] = new_value
 
     updated = await update_site_config(site["id"], config)
     if not updated:
         await callback.answer("Помилка збереження", show_alert=True)
         return
 
-    state_text = "увімкнено" if modules[module_name] else "вимкнено"
+    # UX: чіткий стан
+    state_text = "ON" if new_value else "OFF"
+
     await callback.answer(f"{module_name}: {state_text}")
