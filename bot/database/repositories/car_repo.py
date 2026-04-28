@@ -1,4 +1,4 @@
-from bot.database.base import fetch, fetchrow
+from bot.database.base import fetch, fetchrow, execute
 
 
 # ================= BASE SELECT =================
@@ -149,3 +149,61 @@ async def get_cars_by_seller(seller_id: int):
           AND sc.status = 'active'
         ORDER BY sc.id DESC
     """, seller_id)
+
+
+async def create_seller_car(
+    seller_id: int,
+    model_id: int,
+    description: str | None,
+    photo_id: str | None,
+):
+    return await fetchrow(
+        """
+        INSERT INTO seller_cars (
+            seller_id,
+            model_id,
+            photo_id,
+            description,
+            status,
+            views,
+            phone_clicks,
+            site_clicks
+        )
+        VALUES ($1, $2, $3, $4, 'active', 0, 0, 0)
+        RETURNING id
+        """,
+        seller_id,
+        model_id,
+        photo_id,
+        description,
+    )
+
+
+async def delete_seller_car(car_id: int, seller_id: int) -> bool:
+    row = await fetchrow(
+        """
+        DELETE FROM seller_cars
+        WHERE id = $1
+          AND seller_id = $2
+        RETURNING id
+        """,
+        car_id,
+        seller_id,
+    )
+    return row is not None
+
+
+async def update_seller_car_description(car_id: int, seller_id: int, description: str | None) -> bool:
+    row = await fetchrow(
+        """
+        UPDATE seller_cars
+        SET description = $1
+        WHERE id = $2
+          AND seller_id = $3
+        RETURNING id
+        """,
+        description,
+        car_id,
+        seller_id,
+    )
+    return row is not None

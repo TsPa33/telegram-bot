@@ -290,6 +290,7 @@ body {
 {% endif %}
 <h3>{{ s.title or "Послуга" }}</h3>
 <p>{{ s.description or "Опис відсутній" }}</p>
+{% if s.price %}<p class="card-price">{{ s.price }}</p>{% endif %}
 <a class="btn" href="#contacts">Замовити</a>
 </article>
 {% endfor %}
@@ -316,6 +317,7 @@ body {
 {% endif %}
 <h3>{{ c.title or (c.brand ~ " " ~ c.model) }}</h3>
 <p>{{ c.description or "Опис відсутній" }}</p>
+{% if c.price %}<p class="card-price">{{ c.price }}</p>{% endif %}
 </article>
 {% endfor %}
 </div>

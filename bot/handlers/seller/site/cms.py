@@ -5,8 +5,16 @@ from aiogram.fsm.context import FSMContext
 from bot.states.seller_states import SellerSiteStates
 from bot.database.repositories.seller_repo import get_seller_by_telegram_id
 from bot.database.repositories.site_repo import get_site_by_seller, update_site_config
-from bot.database.repositories.service_repo import create_service, get_services_by_seller, delete_service_by_seller
-from bot.database.repositories.car_repo import create_seller_car, get_cars_by_seller, delete_seller_car
+from bot.database.repositories.service_repo import (
+    create_service,
+    get_services_by_seller,
+    delete_service_by_seller,
+)
+from bot.database.repositories.car_repo import (
+    create_seller_car,
+    get_cars_by_seller,
+    delete_seller_car,
+)
 from bot.services.site_config import merge_with_default
 
 router = Router()
@@ -53,7 +61,7 @@ async def service_create_process(message: Message, state: FSMContext):
 
 @router.callback_query(F.data == "site:services:list")
 async def service_list(callback: CallbackQuery):
-    seller, site = await get_context(callback)
+    seller, _ = await get_context(callback)
     services = await get_services_by_seller(seller["id"])
 
     if not services:
@@ -90,7 +98,6 @@ async def car_add(callback: CallbackQuery, state: FSMContext):
 async def car_create_process(message: Message, state: FSMContext):
     seller = await get_seller_by_telegram_id(message.from_user.id)
 
-    # ⚠️ model_id = 1 (MVP заглушка)
     await create_seller_car(
         seller_id=seller["id"],
         model_id=1,
@@ -104,7 +111,7 @@ async def car_create_process(message: Message, state: FSMContext):
 
 @router.callback_query(F.data == "site:cars:list")
 async def car_list(callback: CallbackQuery):
-    seller, site = await get_context(callback)
+    seller, _ = await get_context(callback)
     cars = await get_cars_by_seller(seller["id"])
 
     if not cars:

@@ -51,6 +51,10 @@ async def render_site(subdomain: str, request: Request):
 
     modules = config.setdefault("modules", {})
 
+    service_prices = config.setdefault("services", {}).setdefault("prices", {})
+    car_titles = config.setdefault("cars", {}).setdefault("titles", {})
+    car_prices = config.setdefault("cars", {}).setdefault("prices", {})
+
     # MEDIA
     if config.get("header", {}).get("logo"):
         try:
@@ -78,6 +82,9 @@ async def render_site(subdomain: str, request: Request):
         cars = [dict(c) for c in cars]
 
         for car in cars:
+            car_id = str(car.get("id"))
+            car["title"] = car_titles.get(car_id) or f"{car.get('brand', '')} {car.get('model', '')}".strip()
+            car["price"] = car_prices.get(car_id) or ""
             car["photo_url"] = None
             if car.get("photo_id"):
                 try:
@@ -91,6 +98,8 @@ async def render_site(subdomain: str, request: Request):
         services = [dict(s) for s in services]
 
         for service in services:
+            service_id = str(service.get("id"))
+            service["price"] = service_prices.get(service_id) or service.get("website") or ""
             service["photo_url"] = None
             if service.get("photo_id"):
                 try:

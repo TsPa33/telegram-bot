@@ -31,4 +31,14 @@ class SellerStates(StatesGroup):
 
 class SellerSiteStates(StatesGroup):
     edit_header_title = State()
-    edit_about_text = State()  # 🔥 ДОДАНО
+    edit_about_text = State()
+
+    site_service_create = State()
+    site_service_edit = State()
+
+    site_car_create = State()
+    site_car_edit = State()
+
+    site_contact_phone = State()
+    site_contact_address = State()
+    site_contact_map = State()
