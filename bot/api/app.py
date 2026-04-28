@@ -55,20 +55,36 @@ async def render_site(subdomain: str, request: Request):
     car_titles = config.setdefault("cars", {}).setdefault("titles", {})
     car_prices = config.setdefault("cars", {}).setdefault("prices", {})
 
-    # MEDIA
-    if config.get("header", {}).get("logo"):
-        try:
-            config["header"]["logo"] = await tg_file_url(bot, config["header"]["logo"])
-        except Exception:
-            config["header"]["logo"] = None
+    # ================= MEDIA =================
 
+    # LOGO
+    if config.get("header", {}).get("logo"):
+        logo = config["header"]["logo"]
+
+        if isinstance(logo, str) and logo.startswith(("http://", "https://")):
+            pass  # already URL
+        else:
+            try:
+                config["header"]["logo"] = await tg_file_url(bot, logo)
+            except Exception:
+                config["header"]["logo"] = None
+
+    # BANNERS (🔥 FIX)
     if config.get("hero", {}).get("banners"):
         resolved = []
+
         for b in config["hero"]["banners"]:
+            # ✅ Cloudinary / external URL
+            if isinstance(b, str) and b.startswith(("http://", "https://")):
+                resolved.append(b)
+                continue
+
+            # Telegram file_id
             try:
                 resolved.append(await tg_file_url(bot, b))
             except Exception:
                 continue
+
         config["hero"]["banners"] = resolved
 
     seller_id = site["seller_id"]
@@ -76,7 +92,8 @@ async def render_site(subdomain: str, request: Request):
     cars = []
     services = []
 
-    # CARS
+    # ================= CARS =================
+
     if modules.get("cars", True):
         cars = await get_cars_by_seller(seller_id)
         cars = [dict(c) for c in cars]
@@ -86,13 +103,15 @@ async def render_site(subdomain: str, request: Request):
             car["title"] = car_titles.get(car_id) or f"{car.get('brand', '')} {car.get('model', '')}".strip()
             car["price"] = car_prices.get(car_id) or ""
             car["photo_url"] = None
+
             if car.get("photo_id"):
                 try:
                     car["photo_url"] = await tg_file_url(bot, car["photo_id"])
                 except Exception:
                     car["photo_url"] = None
 
-    # SERVICES
+    # ================= SERVICES =================
+
     if modules.get("services", True):
         services = await get_services_by_seller(seller_id)
         services = [dict(s) for s in services]
@@ -101,6 +120,7 @@ async def render_site(subdomain: str, request: Request):
             service_id = str(service.get("id"))
             service["price"] = service_prices.get(service_id) or service.get("website") or ""
             service["photo_url"] = None
+
             if service.get("photo_id"):
                 try:
                     service["photo_url"] = await tg_file_url(bot, service["photo_id"])
