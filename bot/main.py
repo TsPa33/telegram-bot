@@ -20,9 +20,6 @@ from bot.handlers.seller import router as seller_router
 from bot.handlers.buyer import router as buyer_router
 from bot.handlers.admin import router as admin_router
 
-# 🔥 ДОДАНО (КРИТИЧНО)
-from bot.handlers.seller.site import media
-
 import uvicorn
 from bot.api.app import app
 
@@ -44,7 +41,11 @@ async def debug_all_callbacks(callback: CallbackQuery):
 
 async def global_error_handler(event: ErrorEvent):
     logger.error("Exception occurred", exc_info=event.exception)
-    traceback.print_exception(type(event.exception), event.exception, event.exception.__traceback__)
+    traceback.print_exception(
+        type(event.exception),
+        event.exception,
+        event.exception.__traceback__,
+    )
 
 
 async def get_storage():
@@ -69,13 +70,9 @@ async def run_bot():
     dp.callback_query.middleware(CallbackAnswerMiddleware())
     dp.errors.register(global_error_handler)
 
-    # ✅ ПРАВИЛЬНИЙ ПОРЯДОК ROUTERS
+    # ✅ ЄДИНА ПРАВИЛЬНА СХЕМА ROUTERS
     dp.include_router(start_router)
-    dp.include_router(seller_router)
-
-    # 🔥 КРИТИЧНО — БЕЗ ЦЬОГО НЕ ПРАЦЮЄ MEDIA
-    dp.include_router(media.router)
-
+    dp.include_router(seller_router)  # ← тут вже підключені cms + media
     dp.include_router(admin_router)
     dp.include_router(buyer_router)
     dp.include_router(router)
