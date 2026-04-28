@@ -76,8 +76,7 @@ async def render_site(subdomain: str, request: Request):
     cars = []
     services = []
 
-    # ================= FIX HERE =================
-
+    # CARS
     if modules.get("cars", True):
         cars = await get_cars_by_seller(seller_id)
         cars = [dict(c) for c in cars]
@@ -93,6 +92,7 @@ async def render_site(subdomain: str, request: Request):
                 except Exception:
                     car["photo_url"] = None
 
+    # SERVICES
     if modules.get("services", True):
         services = await get_services_by_seller(seller_id)
         services = [dict(s) for s in services]
@@ -106,8 +106,6 @@ async def render_site(subdomain: str, request: Request):
                     service["photo_url"] = await tg_file_url(bot, service["photo_id"])
                 except Exception:
                     service["photo_url"] = None
-
-    # ===========================================
 
     return templates.TemplateResponse(
         "site.html",
