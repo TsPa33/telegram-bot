@@ -191,7 +191,6 @@ body {
 
 .card-title { margin: 0 0 8px; font-size: 18px; }
 .card-text { margin: 0 0 12px; color: #334155; }
-.card-price { margin: 0 0 12px; font-weight: 700; color: var(--primary-dark); }
 
 .btn {
     display: inline-block;
@@ -207,46 +206,6 @@ body {
 
 .btn:hover { background: var(--primary-dark); }
 
-.contact-list {
-    margin: 0;
-    padding: 0;
-    list-style: none;
-    display: grid;
-    gap: 8px;
-}
-
-.contact-label { font-weight: 700; color: var(--dark); }
-
-.lead-form {
-    display: grid;
-    gap: 10px;
-}
-
-.input,
-.textarea {
-    width: 100%;
-    padding: 12px;
-    border-radius: 10px;
-    border: 1px solid var(--border);
-    font: inherit;
-    background: #fff;
-}
-
-.textarea { min-height: 110px; resize: vertical; }
-
-.map-wrap {
-    overflow: hidden;
-    border-radius: 14px;
-    border: 1px solid var(--border);
-    background: #fff;
-}
-
-.map-frame {
-    width: 100%;
-    height: 320px;
-    border: 0;
-}
-
 .footer {
     margin-top: 36px;
     border-top: 1px solid var(--border);
@@ -258,20 +217,6 @@ body {
     display: flex;
     align-items: center;
     color: var(--muted);
-}
-
-@media (min-width: 768px) {
-    .container { padding: 0 20px; }
-    .hero-slider { height: 340px; }
-    .card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-
-@media (min-width: 1024px) {
-    .menu-toggle { display: none; }
-    .nav { display: block; padding: 0; }
-    .nav-list { display: flex; gap: 12px; }
-    .nav-link { border: 0; padding: 0; background: transparent; }
-    .card-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 </style>
 </head>
@@ -369,7 +314,7 @@ body {
 {% if c.photo_url %}
 <img class="card-photo" src="{{ c.photo_url }}">
 {% endif %}
-<h3>{{ c.brand }} {{ c.model }}</h3>
+<h3>{{ c.title or (c.brand ~ " " ~ c.model) }}</h3>
 <p>{{ c.description or "Опис відсутній" }}</p>
 </article>
 {% endfor %}
