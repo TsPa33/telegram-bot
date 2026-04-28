@@ -29,47 +29,14 @@ body {
     color: var(--text);
 }
 
+/* CONTAINER */
+
 .container {
     width: min(100%, var(--container));
     margin: 0 auto;
     padding: 0 16px;
 }
-    /* Бургер меню */
-.menu-toggle {
-    width: 42px;
-    height: 42px;
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    background: #fff;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    gap: 4px;
-    cursor: pointer;
-}
 
-.menu-toggle span {
-    display: block;
-    width: 18px;
-    height: 2px;
-    background: var(--dark);
-}
-
-.nav-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-
-.nav-link {
-    display: block;
-    padding: 10px;
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    background: #fff;
-    text-decoration: none;
-}
 /* HEADER */
 
 .header {
@@ -102,29 +69,74 @@ body {
     border-radius: 10px;
 }
 
+/* BURGER */
+
+.menu-toggle {
+    width: 42px;
+    height: 42px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 4px;
+    cursor: pointer;
+}
+
+.menu-toggle span {
+    width: 18px;
+    height: 2px;
+    background: var(--dark);
+}
+
 /* NAV */
 
 .nav { display: none; }
 .nav.open { display: block; }
 
-/* HERO */
-
-.hero-slider {
-    width: 100vw;           /* 🔥 повна ширина */
-    margin-left: calc(-50vw + 50%); /* 🔥 вихід за container */
-    background: #000;
-    overflow: hidden;
+.nav-list {
+    list-style: none;
+    padding: 0;
+    margin: 10px 0;
 }
 
+.nav-link {
+    display: block;
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: #fff;
+    text-decoration: none;
+    margin-bottom: 6px;
+}
+
+/* ================= HERO / BANNER ================= */
+
+/* FULL WIDTH */
+.hero-slider {
+    width: 100vw;
+    margin-left: calc(-50vw + 50%);
+    background: #000;
+    overflow: hidden;
+    position: relative;
+}
+
+/* SLIDES */
 .slide {
     width: 100%;
     height: auto;
-    display: block;
-    margin: 0 auto;
+    display: none;
     object-fit: contain;
 }
 
-.slide.active { opacity: 1; }
+/* ACTIVE */
+.slide.active {
+    display: block;
+}
+
+/* HERO TEXT */
 
 .hero {
     background: linear-gradient(135deg,#0f172a,#2563eb);
@@ -167,6 +179,7 @@ body {
     background:#f1f5f9;
     border-radius:10px;
     padding:10px;
+    margin-bottom:10px;
 }
 
 /* BUTTON */
@@ -198,22 +211,29 @@ body {
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-const slides = document.querySelectorAll(".slide");
-if (slides.length > 1) {
-let i = 0;
-setInterval(() => {
-slides[i].classList.remove("active");
-i = (i + 1) % slides.length;
-slides[i].classList.add("active");
-}, 3000);
-}
 
-const btn = document.getElementById("menuToggle");
-const nav = document.getElementById("siteNav");
+    // 🔥 SLIDER 3s
+    const slides = document.querySelectorAll(".slide");
 
-if (btn && nav) {
-btn.onclick = () => nav.classList.toggle("open");
-}
+    if (slides.length > 0) {
+        let i = 0;
+        slides[i].classList.add("active");
+
+        setInterval(() => {
+            slides[i].classList.remove("active");
+            i = (i + 1) % slides.length;
+            slides[i].classList.add("active");
+        }, 3000);
+    }
+
+    // BURGER
+    const btn = document.getElementById("menuToggle");
+    const nav = document.getElementById("siteNav");
+
+    if (btn && nav) {
+        btn.onclick = () => nav.classList.toggle("open");
+    }
+
 });
 </script>
 
