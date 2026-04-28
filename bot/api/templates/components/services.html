@@ -1,0 +1,20 @@
+<section id="services" class="section">
+<div class="container">
+
+<h2>Послуги</h2>
+
+<div class="card-grid">
+{% for s in services %}
+<div class="card">
+{% if s.photo_url %}
+<img src="{{ s.photo_url }}" class="card-photo">
+{% endif %}
+<h3>{{ s.title }}</h3>
+<p>{{ s.description }}</p>
+<a class="btn" href="#contacts">Замовити</a>
+</div>
+{% endfor %}
+</div>
+
+</div>
+</section>
