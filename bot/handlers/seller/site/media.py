@@ -1,4 +1,5 @@
 import json
+import os
 
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
@@ -7,6 +8,7 @@ from aiogram.types import Message
 from bot.database.repositories.seller_repo import get_seller_by_telegram_id
 from bot.database.repositories.site_repo import get_site_by_seller, update_site_config
 from bot.services.site_config import merge_with_default
+from bot.services.storage import upload_image
 
 router = Router()
 
@@ -47,11 +49,25 @@ async def handle_media(message: Message, state: FSMContext):
     config["hero"].setdefault("banners", [])
     config.setdefault("header", {})
 
-    if not message.photo:
-        await state.clear()
-        return
+    # 🔥 беремо найкращу якість
+    photo = message.photo[-1]
+    file = await message.bot.get_file(photo.file_id)
 
-    photo = message.photo[-1].file_id
+    # тимчасовий файл
+    file_path = f"/tmp/{photo.file_id}.jpg"
+
+    await message.bot.download_file(file.file_path, file_path)
+
+    # 🔥 upload в cloudinary
+    image_url = await upload_image(file_path)
+
+    # очистка
+    try:
+        os.remove(file_path)
+    except:
+        pass
+
+    # ================= SAVE =================
 
     # BANNER
     if current_state == "site_banner":
@@ -62,7 +78,7 @@ async def handle_media(message: Message, state: FSMContext):
             await message.answer(f"Максимум {MAX_BANNERS} банерів")
             return
 
-        banners.append(photo)
+        banners.append(image_url)
 
         await update_site_config(site["id"], config)
         await state.clear()
@@ -71,7 +87,7 @@ async def handle_media(message: Message, state: FSMContext):
 
     # LOGO
     if current_state == "site_logo":
-        config["header"]["logo"] = photo
+        config["header"]["logo"] = image_url
 
         await update_site_config(site["id"], config)
         await state.clear()
