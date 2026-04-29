@@ -30,7 +30,6 @@ body {
 }
 
 /* CONTAINER */
-
 .container {
     width: min(100%, var(--container));
     margin: 0 auto;
@@ -38,7 +37,6 @@ body {
 }
 
 /* HEADER */
-
 .header {
     position: sticky;
     top: 0;
@@ -70,7 +68,6 @@ body {
 }
 
 /* BURGER */
-
 .menu-toggle {
     width: 42px;
     height: 42px;
@@ -89,55 +86,49 @@ body {
     width: 18px;
     height: 2px;
     background: var(--dark);
+    transition: all 0.3s ease;
 }
 
-/* NAV */
+/* BURGER ANIMATION */
+.menu-toggle.active span:nth-child(1) {
+    transform: rotate(45deg) translate(4px, 4px);
+}
+.menu-toggle.active span:nth-child(2) {
+    opacity: 0;
+}
+.menu-toggle.active span:nth-child(3) {
+    transform: rotate(-45deg) translate(5px, -5px);
+}
 
-.nav { display: none; }
-.nav.open { display: block; }
+/* NAV (SMOOTH) */
+.nav {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.4s ease;
+    background: #fff;
+}
 
+.nav.open {
+    max-height: 300px;
+}
+
+/* LINKS */
 .nav-list {
     list-style: none;
     padding: 0;
-    margin: 10px 0;
+    margin: 0;
 }
 
 .nav-link {
     display: block;
-    padding: 10px;
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    background: #fff;
+    padding: 14px;
+    border-bottom: 1px solid var(--border);
     text-decoration: none;
-    margin-bottom: 6px;
-}
-
-/* ================= HERO / BANNER ================= */
-
-/* FULL WIDTH */
-.hero-slider {
-    width: 100vw;
-    margin-left: calc(-50vw + 50%);
-    background: transparent;
-    overflow: hidden;
-    position: relative;
-}
-
-/* SLIDES */
-.slide {
-    width: 100%;
-    height: auto;
-    display: none;
-    object-fit: contain;
-}
-
-/* ACTIVE */
-.slide.active {
-    display: block;
+    color: var(--text);
+    background: #fff;
 }
 
 /* GRID */
-
 .card-grid {
     display:grid;
     gap:16px;
@@ -153,7 +144,6 @@ body {
 }
 
 /* CARD */
-
 .card {
     background:#fff;
     border:1px solid var(--border);
@@ -162,7 +152,6 @@ body {
 }
 
 /* IMAGE */
-
 .card-photo {
     width:100%;
     height:200px;
@@ -174,7 +163,6 @@ body {
 }
 
 /* BUTTON */
-
 .btn {
     background:var(--primary);
     color:#fff;
@@ -184,7 +172,6 @@ body {
 }
 
 /* FOOTER */
-
 .footer {
     margin-top:40px;
     border-top:1px solid var(--border);
@@ -203,26 +190,21 @@ body {
 <script>
 document.addEventListener("DOMContentLoaded", function () {
 
-    // 🔥 SLIDER 3s
-    const slides = document.querySelectorAll(".slide");
-
-    if (slides.length > 0) {
-        let i = 0;
-        slides[i].classList.add("active");
-
-        setInterval(() => {
-            slides[i].classList.remove("active");
-            i = (i + 1) % slides.length;
-            slides[i].classList.add("active");
-        }, 3000);
-    }
-
-    // BURGER
     const btn = document.getElementById("menuToggle");
     const nav = document.getElementById("siteNav");
 
     if (btn && nav) {
-        btn.onclick = () => nav.classList.toggle("open");
+        btn.onclick = () => {
+            nav.classList.toggle("open");
+            btn.classList.toggle("active");
+        };
+
+        document.querySelectorAll(".nav-link").forEach(link => {
+            link.onclick = () => {
+                nav.classList.remove("open");
+                btn.classList.remove("active");
+            };
+        });
     }
 
 });
