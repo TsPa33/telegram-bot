@@ -13,4 +13,11 @@ cloudinary.config(
 
 async def upload_image(file_path: str) -> str:
     result = cloudinary.uploader.upload(file_path)
-    return result["secure_url"]
+
+    # 🔥 ГАРАНТОВАНО ПОВЕРТАЄМО STRING
+    url = result.get("secure_url") or result.get("url")
+
+    if not isinstance(url, str):
+        raise ValueError("Cloudinary did not return a valid URL")
+
+    return url
