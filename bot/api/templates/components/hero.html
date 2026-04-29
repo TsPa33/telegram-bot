@@ -58,17 +58,23 @@
 @media (max-width: 768px) {
 
     .hero {
-        height: auto; /* 🔥 ключ */
+        height: auto;
     }
 
+    .hero-slider {
+        height: auto;
+    }
+
+    /* ❗ НЕ ЧІПАЄМО POSITION */
     .hero-slide {
-        position: relative;
+        position: absolute;
+        inset: 0;
     }
 
     .hero-slide img {
         width: 100%;
         height: auto;
-        object-fit: contain; /* 🔥 без обрізки */
+        object-fit: contain;
     }
 }
 </style>
