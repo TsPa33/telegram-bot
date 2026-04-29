@@ -62,18 +62,22 @@ async def get_site_by_subdomain(subdomain: str):
 
 def _deep_merge(old: dict, new: dict):
     """
-    FIXED:
-    - не перезаписує списки (особливо banners)
+    FIXED VERSION:
+    - dict → merge
+    - list → FULL overwrite (щоб працювало видалення)
     """
+
     for k, v in new.items():
+
+        # dict → рекурсивно merge
         if isinstance(v, dict) and isinstance(old.get(k), dict):
-            _deep_merge(old[k], v)
+            old[k] = _deep_merge(old[k], v)
 
-        # 🔥 КРИТИЧНИЙ ФІКС ДЛЯ СПИСКІВ
-        elif isinstance(v, list) and isinstance(old.get(k), list):
-            # додаємо нові значення, не перезаписуємо
-            old[k] = old[k] + [item for item in v if item not in old[k]]
+        # 🔥 СПИСКИ — ПОВНИЙ overwrite
+        elif isinstance(v, list):
+            old[k] = v
 
+        # інше → replace
         else:
             old[k] = v
 
@@ -83,10 +87,9 @@ def _deep_merge(old: dict, new: dict):
 async def update_site_config(site_id: int, config: dict) -> bool:
     """
     PRODUCTION SAFE UPDATE:
-    - transaction + FOR UPDATE (race-safe)
-    - json parse safe
-    - merge default
-    - deep merge (fixed)
+    - transaction + FOR UPDATE
+    - JSON safe parse
+    - correct overwrite logic for lists
     """
 
     async with transaction() as conn:
@@ -106,20 +109,20 @@ async def update_site_config(site_id: int, config: dict) -> bool:
 
         current_config = current.get("config_draft") or {}
 
-        # parse JSON
+        # safe parse
         if isinstance(current_config, str):
             try:
                 current_config = json.loads(current_config)
             except Exception:
                 current_config = {}
 
-        # merge default тільки для існуючого
+        # default structure
         merged = merge_with_default(current_config)
 
-        # incoming (🔥 БЕЗ merge_with_default щоб не затерти banners)
+        # incoming config
         incoming = config if isinstance(config, dict) else {}
 
-        # deep merge (fixed)
+        # 🔥 правильний merge
         merged = _deep_merge(merged, incoming)
 
         # гарантія структури
