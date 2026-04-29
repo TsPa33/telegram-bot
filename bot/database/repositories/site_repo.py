@@ -61,11 +61,22 @@ async def get_site_by_subdomain(subdomain: str):
 # ================= SAFE UPDATE =================
 
 def _deep_merge(old: dict, new: dict):
+    """
+    FIXED:
+    - не перезаписує списки (особливо banners)
+    """
     for k, v in new.items():
         if isinstance(v, dict) and isinstance(old.get(k), dict):
             _deep_merge(old[k], v)
+
+        # 🔥 КРИТИЧНИЙ ФІКС ДЛЯ СПИСКІВ
+        elif isinstance(v, list) and isinstance(old.get(k), list):
+            # додаємо нові значення, не перезаписуємо
+            old[k] = old[k] + [item for item in v if item not in old[k]]
+
         else:
             old[k] = v
+
     return old
 
 
@@ -75,8 +86,7 @@ async def update_site_config(site_id: int, config: dict) -> bool:
     - transaction + FOR UPDATE (race-safe)
     - json parse safe
     - merge default
-    - deep merge
-    - гарантована структура
+    - deep merge (fixed)
     """
 
     async with transaction() as conn:
@@ -103,17 +113,16 @@ async def update_site_config(site_id: int, config: dict) -> bool:
             except Exception:
                 current_config = {}
 
-        # merge default
+        # merge default тільки для існуючого
         merged = merge_with_default(current_config)
 
-        # incoming
+        # incoming (🔥 БЕЗ merge_with_default щоб не затерти banners)
         incoming = config if isinstance(config, dict) else {}
-        incoming = merge_with_default(incoming)
 
-        # deep merge
+        # deep merge (fixed)
         merged = _deep_merge(merged, incoming)
 
-        # 🔥 гарантія структури
+        # гарантія структури
         merged.setdefault("header", {})
         merged.setdefault("hero", {})
         merged["hero"].setdefault("banners", [])
