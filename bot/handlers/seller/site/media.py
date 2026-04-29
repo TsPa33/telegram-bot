@@ -34,7 +34,7 @@ def safe_config(raw):
 
 @router.message(
     StateFilter(SellerSiteStates.site_banner, SellerSiteStates.site_logo),
-    F.photo
+    F.photo | F.document
 )
 async def handle_media(message: Message, state: FSMContext):
     current_state = await state.get_state()
@@ -55,16 +55,39 @@ async def handle_media(message: Message, state: FSMContext):
 
     # ================= FILE =================
 
-    photo = message.photo[-1]
-    file = await message.bot.get_file(photo.file_id)
+    file_path = None
 
-    file_path = f"{photo.file_id}.jpg"
-    await message.bot.download_file(file.file_path, file_path)
+    # 🔥 1. ПРІОРИТЕТ — DOCUMENT (без стиснення)
+    if message.document:
+        document = message.document
 
-    # 🔥 КЛЮЧОВИЙ ФІКС
+        if not document.mime_type or not document.mime_type.startswith("image/"):
+            await message.answer("Завантажте зображення як файл (PNG/JPG) ❌")
+            return
+
+        file = await message.bot.get_file(document.file_id)
+
+        file_path = document.file_name or f"{document.file_id}.png"
+        await message.bot.download_file(file.file_path, file_path)
+
+    # ⚠️ 2. FALLBACK — PHOTO (зі стисненням)
+    elif message.photo:
+        await message.answer("⚠️ Фото стискається Telegram. Краще надсилати як файл для максимальної якості.")
+
+        photo = message.photo[-1]
+        file = await message.bot.get_file(photo.file_id)
+
+        file_path = f"{photo.file_id}.jpg"
+        await message.bot.download_file(file.file_path, file_path)
+
+    else:
+        await message.answer("Надішліть зображення ❌")
+        return
+
+    # ================= UPLOAD =================
+
     image_url = await upload_image(file_path)
 
-    # 🔒 ВАЛІДАЦІЯ
     if not image_url or not isinstance(image_url, str):
         try:
             os.remove(file_path)
@@ -75,7 +98,7 @@ async def handle_media(message: Message, state: FSMContext):
         await state.clear()
         return
 
-    # 🧹 ЧИСТИМО ФАЙЛ ПІСЛЯ УСПІШНОГО UPLOAD
+    # 🧹 cleanup
     try:
         os.remove(file_path)
     except Exception:
