@@ -4,6 +4,7 @@ import os
 from aiogram import Router, F
 from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
+from aiogram.filters import StateFilter
 
 from bot.states.seller_states import SellerSiteStates
 from bot.database.repositories.site_repo import get_site_by_seller, update_site_config
@@ -31,16 +32,12 @@ def safe_config(raw):
 
 # ================= MEDIA HANDLER =================
 
-@router.message(F.photo)
+@router.message(
+    StateFilter(SellerSiteStates.site_banner, SellerSiteStates.site_logo),
+    F.photo
+)
 async def handle_media(message: Message, state: FSMContext):
     current_state = await state.get_state()
-
-    # працюємо тільки коли активний media state
-    if current_state not in [
-        SellerSiteStates.site_banner.state,
-        SellerSiteStates.site_logo.state,
-    ]:
-        return
 
     seller = await resolve_seller(message)
     site = await get_site_by_seller(seller["id"])
@@ -71,24 +68,15 @@ async def handle_media(message: Message, state: FSMContext):
     except Exception:
         pass
 
-    # ================= BANNER =================
+    # ================= LOGIC =================
 
     if current_state == SellerSiteStates.site_banner.state:
         config["hero"]["banners"].append(image_url)
-
-        await update_site_config(site["id"], config)
-
-        await state.clear()
         await message.answer("Банер додано ✅")
-        return
 
-    # ================= LOGO =================
-
-    if current_state == SellerSiteStates.site_logo.state:
+    elif current_state == SellerSiteStates.site_logo.state:
         config["header"]["logo"] = image_url
-
-        await update_site_config(site["id"], config)
-
-        await state.clear()
         await message.answer("Лого збережено ✅")
-        return
+
+    await update_site_config(site["id"], config)
+    await state.clear()
