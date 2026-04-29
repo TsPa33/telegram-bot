@@ -14,6 +14,7 @@
 </section>
 
 <style>
+/* ===== DESKTOP ===== */
 .hero {
     width: 100vw;
     height: 100vh;
@@ -32,12 +33,12 @@
     position: relative;
 }
 
-/* SLIDES (fade logic) */
+/* SLIDES */
 .hero-slide {
     position: absolute;
     inset: 0;
     opacity: 0;
-    transition: opacity 1s ease; /* 🔥 плавний перехід */
+    transition: opacity 1s ease;
 }
 
 /* ACTIVE */
@@ -46,11 +47,29 @@
     z-index: 1;
 }
 
-/* IMAGE */
+/* IMAGE (desktop) */
 .hero-slide img {
     width: 100%;
     height: 100%;
     object-fit: cover;
+}
+
+/* ===== MOBILE FIX ===== */
+@media (max-width: 768px) {
+
+    .hero {
+        height: auto; /* 🔥 ключ */
+    }
+
+    .hero-slide {
+        position: relative;
+    }
+
+    .hero-slide img {
+        width: 100%;
+        height: auto;
+        object-fit: contain; /* 🔥 без обрізки */
+    }
 }
 </style>
 
