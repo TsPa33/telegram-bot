@@ -1,4 +1,5 @@
 import os
+import asyncio
 import cloudinary
 import cloudinary.uploader
 
@@ -12,12 +13,20 @@ cloudinary.config(
 
 
 async def upload_image(file_path: str) -> str:
-    result = cloudinary.uploader.upload(file_path)
+    try:
+        # 🔥 НЕ БЛОКУЄ async loop
+        result = await asyncio.to_thread(
+            cloudinary.uploader.upload,
+            file_path
+        )
 
-    # 🔥 ГАРАНТОВАНО ПОВЕРТАЄМО STRING
-    url = result.get("secure_url") or result.get("url")
+        url = result.get("secure_url") or result.get("url")
 
-    if not isinstance(url, str):
-        raise ValueError("Cloudinary did not return a valid URL")
+        if not isinstance(url, str):
+            raise ValueError("Cloudinary did not return a valid URL")
 
-    return url
+        return url
+
+    except Exception as e:
+        print(f"[Cloudinary ERROR]: {e}")
+        return None
