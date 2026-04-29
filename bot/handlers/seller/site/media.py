@@ -61,8 +61,21 @@ async def handle_media(message: Message, state: FSMContext):
     file_path = f"{photo.file_id}.jpg"
     await message.bot.download_file(file.file_path, file_path)
 
-    image_url = upload_image(file_path)
+    # 🔥 КЛЮЧОВИЙ ФІКС
+    image_url = await upload_image(file_path)
 
+    # 🔒 ВАЛІДАЦІЯ
+    if not image_url or not isinstance(image_url, str):
+        try:
+            os.remove(file_path)
+        except Exception:
+            pass
+
+        await message.answer("Помилка завантаження зображення ❌")
+        await state.clear()
+        return
+
+    # 🧹 ЧИСТИМО ФАЙЛ ПІСЛЯ УСПІШНОГО UPLOAD
     try:
         os.remove(file_path)
     except Exception:
