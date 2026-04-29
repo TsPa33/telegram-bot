@@ -58,14 +58,13 @@
 @media (max-width: 768px) {
 
     .hero {
-        height: auto;
+        height: 250px; /* 🔥 ключ */
     }
 
     .hero-slider {
-        height: auto;
+        height: 100%;
     }
 
-    /* ❗ НЕ ЧІПАЄМО POSITION */
     .hero-slide {
         position: absolute;
         inset: 0;
@@ -73,8 +72,8 @@
 
     .hero-slide img {
         width: 100%;
-        height: auto;
-        object-fit: contain;
+        height: 100%;
+        object-fit: cover; /* 🔥 стабільніше */
     }
 }
 </style>
