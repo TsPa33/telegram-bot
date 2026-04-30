@@ -25,6 +25,10 @@ from .verification import check_verified
 
 router = Router()
 
+ADD_SERVICE_BACK = KeyboardButton(text="⬅️ Назад у профіль")
+SKIP_WEBSITE = KeyboardButton(text="⚠️ Пропустити")
+
+
 # ================= KEYBOARDS =================
 
 def services_list_kb(services):
@@ -53,8 +57,10 @@ def edit_kb(service_id):
             [InlineKeyboardButton(text="🖼 Фото", callback_data=f"edit_photo:{service_id}")],
             [InlineKeyboardButton(text="✏️ Назва", callback_data=f"edit_title:{service_id}")],
             [InlineKeyboardButton(text="📝 Опис", callback_data=f"edit_desc:{service_id}")],
+            [InlineKeyboardButton(text="💰 Ціна", callback_data=f"edit_price:{service_id}")],
         ]
     )
+
 
 # ================= ADD =================
 
@@ -105,6 +111,7 @@ async def add_desc(message: Message, state: FSMContext):
 
     await message.answer("✅ Послугу створено", reply_markup=seller_menu_kb(seller.get("is_verified")))
 
+
 # ================= LIST =================
 
 @router.message(F.text == "📋 Мої послуги")
@@ -115,7 +122,7 @@ async def my_services(message: Message, state: FSMContext):
     services = await get_services_by_seller(seller["id"])
 
     if not services:
-        await message.answer("Немає послуг")
+        await message.answer("У вас немає послуг")
         return
 
     await message.answer("Ваші послуги:", reply_markup=services_list_kb(services))
@@ -137,10 +144,9 @@ async def open_service(callback: CallbackQuery):
     if not service:
         return
 
-    await callback.message.answer(
-        f"{service['title']}\n{service.get('description')}",
-        reply_markup=actions_kb(service_id)
-    )
+    text = f"{service['title']}\n{service.get('description') or ''}"
+
+    await callback.message.answer(text, reply_markup=actions_kb(service_id))
 
 
 # ================= DELETE =================
@@ -160,9 +166,6 @@ async def delete_handler(callback: CallbackQuery):
     await delete_service(service_id)
 
     await callback.message.answer("🗑 Видалено")
-
-    # refresh
-    await my_services(callback.message, FSMContext(storage=None, key=None))
 
 
 # ================= EDIT =================
@@ -186,12 +189,69 @@ async def edit_title(callback: CallbackQuery, state: FSMContext):
     await callback.message.answer("Нова назва:")
 
 
+@router.callback_query(F.data.startswith("edit_desc:"))
+async def edit_desc(callback: CallbackQuery, state: FSMContext):
+    service_id = int(callback.data.split(":")[1])
+
+    await state.set_state(ServiceStates.edit_value)
+    await state.update_data(field="description", service_id=service_id)
+
+    await callback.message.answer("Новий опис:")
+
+
+@router.callback_query(F.data.startswith("edit_price:"))
+async def edit_price(callback: CallbackQuery, state: FSMContext):
+    service_id = int(callback.data.split(":")[1])
+
+    await state.set_state(ServiceStates.edit_value)
+    await state.update_data(field="price", service_id=service_id)
+
+    await callback.message.answer("Введіть ціну:")
+
+
+@router.callback_query(F.data.startswith("edit_photo:"))
+async def edit_photo(callback: CallbackQuery, state: FSMContext):
+    service_id = int(callback.data.split(":")[1])
+
+    await state.set_state(ServiceStates.photo)
+    await state.update_data(field="photo_id", service_id=service_id)
+
+    await callback.message.answer("Надішліть фото")
+
+
+@router.message(ServiceStates.photo, F.photo)
+async def save_photo(message: Message, state: FSMContext):
+    data = await state.get_data()
+
+    await update_service_field(
+        data["service_id"],
+        "photo_id",
+        message.photo[-1].file_id
+    )
+
+    await state.clear()
+    await message.answer("✅ Фото оновлено")
+
+
 @router.message(ServiceStates.edit_value)
 async def save_edit(message: Message, state: FSMContext):
     data = await state.get_data()
 
-    await update_service_field(data["service_id"], data["field"], message.text)
+    field = data["field"]
+    value = message.text
+
+    if field == "price":
+        try:
+            value = int(value)
+        except:
+            await message.answer("Введіть число")
+            return
+
+    await update_service_field(
+        data["service_id"],
+        field,
+        value
+    )
 
     await state.clear()
-
     await message.answer("✅ Оновлено")
