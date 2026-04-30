@@ -7,7 +7,6 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 from bot.states.seller_states import SellerSiteStates
 from bot.database.repositories.site_repo import get_site_by_seller, update_site_config
-from bot.database.repositories.service_repo import create_service
 from bot.services.site_config import merge_with_default
 from bot.services.seller_identity import resolve_seller, resolve_seller_from_user
 
@@ -39,32 +38,6 @@ async def get_context(callback: CallbackQuery):
 
 
 # ================= SERVICES =================
-
-@router.callback_query(F.data == "site:services:add")
-async def service_add(callback: CallbackQuery, state: FSMContext):
-    await state.set_state(SellerSiteStates.site_service_create)
-    await callback.message.answer("Введи назву послуги")
-    await callback.answer()
-
-
-@router.message(SellerSiteStates.site_service_create)
-async def service_create_process(message: Message, state: FSMContext):
-    seller = await resolve_seller(message)
-
-    await create_service(
-        seller_id=seller["id"],
-        category="default",
-        title=message.text,
-        city="",
-        address="",
-        description=None,
-        website=None,
-        photo_id=None,
-    )
-
-    await state.clear()
-    await message.answer("Послугу створено ✅")
-
 
 # ================= CONTACTS =================
 
