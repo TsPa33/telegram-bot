@@ -52,12 +52,6 @@ def site_menu_kb(subdomain: str, is_active: bool) -> InlineKeyboardMarkup:
         # HEADER
         [InlineKeyboardButton(text="✏️ Шапка", callback_data="site:edit:header")],
 
-        # SERVICES
-        [InlineKeyboardButton(text="🛠 Послуги", callback_data="site:services:menu")],
-        [InlineKeyboardButton(text="➕ Додати послугу", callback_data="site:services:add")],
-        [InlineKeyboardButton(text="📋 Список послуг", callback_data="site:services:list")],
-        [InlineKeyboardButton(text="🔛 Вкл/Викл", callback_data="module:toggle:services")],
-
         # CARS
         [InlineKeyboardButton(text="🚗 Авто", callback_data="site:cars:menu")],
         [InlineKeyboardButton(text="➕ Додати авто", callback_data="site:cars:add")],
