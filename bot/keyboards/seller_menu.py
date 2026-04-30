@@ -46,13 +46,11 @@ def seller_menu_kb(is_verified: bool = False):
     return seller_main_kb(is_verified=is_verified)
 
 
-# 🔥 CMS MENU (UPDATED)
+# 🔥 CMS MENU (CLEAN)
 def site_menu_kb(subdomain: str, is_active: bool) -> InlineKeyboardMarkup:
     buttons = [
         # HEADER
         [InlineKeyboardButton(text="✏️ Шапка", callback_data="site:edit:header")],
-
-        # SERVICES
 
         # CARS
         [InlineKeyboardButton(text="🚗 Авто", callback_data="site:cars:menu")],
@@ -66,7 +64,7 @@ def site_menu_kb(subdomain: str, is_active: bool) -> InlineKeyboardMarkup:
         [InlineKeyboardButton(text="✏️ Адреса", callback_data="site:contacts:address")],
         [InlineKeyboardButton(text="✏️ Карта", callback_data="site:contacts:map")],
 
-        # MEDIA (UPDATED)
+        # MEDIA
         [InlineKeyboardButton(text="🖼 Додати банер", callback_data="site:edit:banners")],
         [InlineKeyboardButton(text="📋 Список банерів", callback_data="site:banners:list")],
         [InlineKeyboardButton(text="🖼 Лого", callback_data="site:edit:logo")],
