@@ -7,7 +7,6 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 from bot.states.seller_states import SellerSiteStates
 from bot.database.repositories.site_repo import get_site_by_seller, update_site_config
-from bot.database.repositories.service_repo import create_service
 from bot.services.site_config import merge_with_default
 from bot.services.seller_identity import resolve_seller, resolve_seller_from_user
 
