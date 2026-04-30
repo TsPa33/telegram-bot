@@ -5,31 +5,40 @@
     <div class="left">
         <h2>Послуги</h2>
 
-        <ul>
+        <ul id="servicesList">
         {% for s in services %}
-            <li>{{ s.title }}</li>
+            <li 
+                class="service-item {% if loop.first %}active{% endif %}"
+                data-title="{{ s.title }}"
+                data-description="{{ s.description }}"
+                data-photo="{{ s.photo_url or '' }}"
+            >
+                {{ s.title }}
+            </li>
         {% endfor %}
         </ul>
     </div>
 
     <!-- RIGHT -->
     <div class="right">
+
         {% if services and services[0] %}
         {% set main = services[0] %}
 
-        <div class="highlight">
+        <div class="highlight" id="serviceDisplay">
 
             {% if main.photo_url %}
-            <img src="{{ main.photo_url }}" class="highlight-img">
+            <img src="{{ main.photo_url }}" class="highlight-img" id="serviceImage">
             {% endif %}
 
-            <h3>{{ main.title }}</h3>
-            <p>{{ main.description }}</p>
+            <h3 id="serviceTitle">{{ main.title }}</h3>
+            <p id="serviceDescription">{{ main.description }}</p>
 
             <a class="btn-primary" href="#contacts">Замовити</a>
 
         </div>
         {% endif %}
+
     </div>
 
 </div>
