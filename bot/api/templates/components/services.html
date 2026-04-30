@@ -1,20 +1,36 @@
-<section id="services" class="section">
-<div class="container">
+<section id="services" class="services-split">
+<div class="container split">
 
-<h2>Послуги</h2>
+    <!-- LEFT -->
+    <div class="left">
+        <h2>Послуги</h2>
 
-<div class="card-grid">
-{% for s in services %}
-<div class="card">
-{% if s.photo_url %}
-<img src="{{ s.photo_url }}" class="card-photo">
-{% endif %}
-<h3>{{ s.title }}</h3>
-<p>{{ s.description }}</p>
-<a class="btn" href="#contacts">Замовити</a>
-</div>
-{% endfor %}
-</div>
+        <ul>
+        {% for s in services %}
+            <li>{{ s.title }}</li>
+        {% endfor %}
+        </ul>
+    </div>
+
+    <!-- RIGHT -->
+    <div class="right">
+        {% if services and services[0] %}
+        {% set main = services[0] %}
+
+        <div class="highlight">
+
+            {% if main.photo_url %}
+            <img src="{{ main.photo_url }}" class="highlight-img">
+            {% endif %}
+
+            <h3>{{ main.title }}</h3>
+            <p>{{ main.description }}</p>
+
+            <a class="btn-primary" href="#contacts">Замовити</a>
+
+        </div>
+        {% endif %}
+    </div>
 
 </div>
 </section>
