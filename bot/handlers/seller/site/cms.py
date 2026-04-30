@@ -36,6 +36,7 @@ async def get_context(callback: CallbackQuery):
     site = await get_site_by_seller(seller["id"])
     return seller, site
 
+
 # ================= CONTACTS =================
 
 @router.callback_query(F.data == "site:contacts:phone")
@@ -107,7 +108,6 @@ async def save_map(message: Message, state: FSMContext):
 
 # ================= BANNERS =================
 
-# 👉 ВХІД В FLOW (КРИТИЧНО)
 @router.callback_query(F.data == "site:edit:banners")
 async def add_banner(callback: CallbackQuery, state: FSMContext):
     await state.set_state(SellerSiteStates.site_banner)
@@ -115,7 +115,6 @@ async def add_banner(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
 
-# список
 @router.callback_query(F.data == "site:banners:list")
 async def banners_list(callback: CallbackQuery):
     seller, site = await get_context(callback)
@@ -149,7 +148,6 @@ async def banners_list(callback: CallbackQuery):
             await callback.message.answer(f"{i+1}. {banner}")
 
 
-# delete
 @router.callback_query(F.data.startswith("site:banners:delete:"))
 async def banner_delete(callback: CallbackQuery):
     seller = await resolve_seller_from_user(callback.from_user)

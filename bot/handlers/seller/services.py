@@ -4,9 +4,7 @@ from aiogram.types import (
     CallbackQuery,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
-    KeyboardButton,
     Message,
-    ReplyKeyboardMarkup,
 )
 
 from bot.database.repositories.service_repo import (
@@ -24,9 +22,6 @@ from bot.states.service_states import ServiceStates
 from .verification import check_verified
 
 router = Router()
-
-ADD_SERVICE_BACK = KeyboardButton(text="⬅️ Назад у профіль")
-SKIP_WEBSITE = KeyboardButton(text="⚠️ Пропустити")
 
 
 # ================= KEYBOARDS =================
