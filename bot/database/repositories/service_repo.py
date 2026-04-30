@@ -9,6 +9,7 @@ ALLOWED_UPDATE_FIELDS = {
     "description",
     "website",
     "photo_id",
+    "price",
 }
 
 
@@ -77,6 +78,7 @@ async def get_services_by_seller(seller_id: int):
             s.description,
             s.website,
             s.photo_id,
+            s.price,
             s.created_at,
             COALESCE(st.views, 0) AS views,
             COALESCE(st.calls, 0) AS calls,
@@ -104,6 +106,7 @@ async def get_services_by_filter(city: str, category: str):
             s.description,
             s.website,
             s.photo_id,
+            s.price,
             s.created_at,
             sel.phone,
             COALESCE(st.views, 0) AS views,
@@ -153,6 +156,10 @@ async def update_service(service_id: int, field: str, value):
     )
 
     return bool(rows)
+
+
+async def update_service_field(service_id: int, field: str, value) -> bool:
+    return await update_service(service_id, field, value)
 
 
 async def increment_views(service_id: int):

@@ -119,3 +119,7 @@ async def create_tables():
     await execute(
         "CREATE INDEX IF NOT EXISTS idx_seller_subscriptions_expires_at ON seller_subscriptions(expires_at);"
     )
+
+    await execute(
+        "ALTER TABLE services ADD COLUMN IF NOT EXISTS price INTEGER;"
+    )
