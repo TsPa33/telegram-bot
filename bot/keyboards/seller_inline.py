@@ -9,7 +9,7 @@ def cars_list_kb(cars: list):
     for car in cars:
         rows.append([
             InlineKeyboardButton(
-                text=f"{car['brand']} {car['model']}",
+                text=f"🚗 {car['brand']} {car['model']}",
                 callback_data=f"car:{car['id']}"
             )
         ])
@@ -22,9 +22,23 @@ def cars_list_kb(cars: list):
 def seller_card_actions_kb(car_id: int):
     return InlineKeyboardMarkup(
         inline_keyboard=[
+
+            # 🔥 РЕДАГУВАННЯ (ШВИДКЕ)
             [
                 InlineKeyboardButton(
-                    text="✏️ Редагувати",
+                    text="🖼 Фото",
+                    callback_data=f"car_edit_photo:{car_id}"
+                ),
+                InlineKeyboardButton(
+                    text="📝 Опис",
+                    callback_data=f"car_edit_desc:{car_id}"
+                ),
+            ],
+
+            # 🔥 ОСНОВНІ ДІЇ
+            [
+                InlineKeyboardButton(
+                    text="✏️ Меню редагування",
                     callback_data=f"car_edit:{car_id}"
                 ),
                 InlineKeyboardButton(
@@ -32,6 +46,17 @@ def seller_card_actions_kb(car_id: int):
                     callback_data=f"delete:{car_id}"
                 )
             ]
+        ]
+    )
+
+
+# ================= EDIT MENU (опціонально, залишаємо) =================
+
+def car_edit_kb(car_id: int):
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="🖼 Змінити фото", callback_data=f"car_edit_photo:{car_id}")],
+            [InlineKeyboardButton(text="📝 Змінити опис", callback_data=f"car_edit_desc:{car_id}")],
         ]
     )
 
@@ -51,9 +76,10 @@ def profile_edit_kb():
             [InlineKeyboardButton(text="🖼 Фото", callback_data="edit:photo")],
             [InlineKeyboardButton(text="📝 Опис", callback_data="edit:description")],
 
-            # 🔥 управління
-            [InlineKeyboardButton(text="⬅️ До профілю", callback_data="edit:back")],
-            [InlineKeyboardButton(text="❌ Скасувати", callback_data="edit:cancel")],
+            [
+                InlineKeyboardButton(text="⬅️ До профілю", callback_data="edit:back"),
+                InlineKeyboardButton(text="❌ Скасувати", callback_data="edit:cancel"),
+            ],
         ]
     )
 
