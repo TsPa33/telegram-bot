@@ -1,7 +1,7 @@
 import json
 
 from aiogram import Router, F
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import CallbackQuery, Message, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.fsm.context import FSMContext
 
 from bot.states.seller_states import SellerSiteStates
@@ -34,26 +34,17 @@ async def get_context(callback: CallbackQuery):
 
 @router.callback_query(F.data == "site:contacts:menu")
 async def open_contacts(callback: CallbackQuery):
-    await callback.message.edit_text(
-        "📞 Контакти",
-        reply_markup=contacts_menu_kb()
-    )
+    await callback.message.edit_text("📞 Контакти", reply_markup=contacts_menu_kb())
 
 
 @router.callback_query(F.data == "site:location:menu")
 async def open_location(callback: CallbackQuery):
-    await callback.message.edit_text(
-        "📍 Адреси та карта",
-        reply_markup=location_menu_kb()
-    )
+    await callback.message.edit_text("📍 Адреси та карта", reply_markup=location_menu_kb())
 
 
 @router.callback_query(F.data == "site:media:menu")
 async def open_media(callback: CallbackQuery):
-    await callback.message.edit_text(
-        "🎨 Медіа та дизайн",
-        reply_markup=media_menu_kb()
-    )
+    await callback.message.edit_text("🎨 Медіа та дизайн", reply_markup=media_menu_kb())
 
 
 @router.callback_query(F.data == "site:back")
@@ -130,7 +121,8 @@ async def save_phone(message: Message, state: FSMContext):
     await state.clear()
     await message.answer("Номер додано ✅")
 
-# ================= PHONE LIST / DELETE =================
+
+# -------- PHONE LIST --------
 
 @router.callback_query(F.data == "contacts:list_phones")
 async def list_phones(callback: CallbackQuery):
@@ -162,7 +154,11 @@ async def list_phones(callback: CallbackQuery):
         )
 
     await callback.answer()
-    @router.callback_query(F.data.startswith("contacts:delete_phone:"))
+
+
+# -------- DELETE PHONE --------
+
+@router.callback_query(F.data.startswith("contacts:delete_phone:"))
 async def delete_phone(callback: CallbackQuery):
     index = int(callback.data.split(":")[-1])
 
@@ -189,6 +185,8 @@ async def delete_phone(callback: CallbackQuery):
 
     await callback.answer("Номер видалено")
     await callback.message.answer(f"Видалено: {deleted}")
+
+
 # -------- TELEGRAM --------
 
 @router.callback_query(F.data == "contacts:telegram")
