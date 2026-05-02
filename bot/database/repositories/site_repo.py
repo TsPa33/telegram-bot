@@ -114,21 +114,21 @@ async def update_site_config(site_id: int, config: dict) -> bool:
         merged.setdefault("hero", {})
         merged["hero"].setdefault("banners", [])
         merged.setdefault("contacts", {})
-        merged.setdefault("modules", {})
 
-        # ===== 🔥 CRITICAL FIX: PROTECT MODULES =====
-        default_modules = merge_with_default({}).get("modules", {})
+        # ===============================
+        # 🔥 FIX: HARD NORMALIZATION MODULES
+        # ===============================
 
-        merged["modules"] = {
-            **default_modules,
-            **merged.get("modules", {})
-        }
+        default_modules = merge_with_default({})["modules"]
+        current_modules = merged.get("modules")
 
-        # 🔒 enforce safe defaults (нічого не "падає")
-        merged["modules"]["services"] = merged["modules"].get("services", True)
-        merged["modules"]["cars"] = merged["modules"].get("cars", True)
-        merged["modules"]["contacts"] = merged["modules"].get("contacts", True)
-        merged["modules"]["map"] = merged["modules"].get("map", True)
+        if not isinstance(current_modules, dict):
+            merged["modules"] = default_modules
+        else:
+            merged["modules"] = {
+                key: bool(current_modules.get(key, True))
+                for key in default_modules
+            }
 
         # ===== SAVE =====
         row = await conn.fetchrow(
