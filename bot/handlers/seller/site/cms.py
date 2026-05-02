@@ -130,7 +130,38 @@ async def save_phone(message: Message, state: FSMContext):
     await state.clear()
     await message.answer("Номер додано ✅")
 
+# ================= PHONE LIST / DELETE =================
 
+@router.callback_query(F.data == "contacts:list_phones")
+async def list_phones(callback: CallbackQuery):
+    seller = await resolve_seller_from_user(callback.from_user)
+    site = await get_site_by_seller(seller["id"])
+
+    config = site.get("config_draft") or {}
+    if isinstance(config, str):
+        config = json.loads(config)
+
+    phones = config.get("contacts", {}).get("phones", [])
+
+    if not phones:
+        await callback.message.answer("Список номерів порожній")
+        await callback.answer()
+        return
+
+    for i, phone in enumerate(phones):
+        await callback.message.answer(
+            f"{i + 1}. {phone}",
+            reply_markup=InlineKeyboardMarkup(
+                inline_keyboard=[[
+                    InlineKeyboardButton(
+                        text="❌ Видалити",
+                        callback_data=f"contacts:delete_phone:{i}"
+                    )
+                ]]
+            )
+        )
+
+    await callback.answer()
 # -------- TELEGRAM --------
 
 @router.callback_query(F.data == "contacts:telegram")
