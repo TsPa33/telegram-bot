@@ -1,5 +1,49 @@
-<section>
-<div class="container">
-{{ contacts.get('map_embed') | safe }}
-</div>
+<section id="map" class="section">
+    <div class="container">
+
+        <h2>Локація</h2>
+
+        <div class="map-card">
+            <div class="map-wrapper">
+                {{ contacts.get('map_embed') | safe }}
+            </div>
+        </div>
+
+    </div>
 </section>
+
+
+<style>
+
+/* ===== CARD ===== */
+.map-card {
+    background: #0f172a;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-top: 20px;
+}
+
+/* ===== RESPONSIVE MAP ===== */
+.map-wrapper {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+}
+
+/* iframe control */
+.map-wrapper iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+}
+
+/* ===== MOBILE ===== */
+@media (max-width: 768px) {
+    .map-wrapper {
+        aspect-ratio: 4 / 3;
+    }
+}
+
+</style>
