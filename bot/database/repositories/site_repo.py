@@ -106,6 +106,10 @@ async def update_site_config(site_id: int, config: dict) -> bool:
         # ===== INCOMING =====
         incoming = config if isinstance(config, dict) else {}
 
+        # 🔥 CRITICAL FIX — НЕ дозволяємо payload ламати modules
+        if isinstance(incoming.get("modules"), dict):
+            incoming.pop("modules")
+
         # ===== MERGE =====
         merged = _deep_merge(merged, incoming)
 
@@ -116,7 +120,7 @@ async def update_site_config(site_id: int, config: dict) -> bool:
         merged.setdefault("contacts", {})
 
         # ===============================
-        # 🔥 FIX: HARD NORMALIZATION MODULES
+        # 🔥 NORMALIZE MODULES (SAFE STATE)
         # ===============================
 
         default_modules = merge_with_default({})["modules"]
