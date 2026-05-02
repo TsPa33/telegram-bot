@@ -38,20 +38,35 @@ async def toggle_site_module(callback: CallbackQuery):
         await callback.answer("Сайт не знайдено", show_alert=True)
         return
 
+    # ✅ беремо повний config тільки для читання
     config = merge_with_default(site.get("config_draft") or {})
-    modules = config.setdefault("modules", {})
+    modules = config.get("modules", {})
 
-    # TOGGLE (atomic-like behavior)
-    current = bool(modules.get(module_name, True))
+    default_modules = merge_with_default({})["modules"]
+
+    # нормалізація
+    modules = {
+        key: bool(modules.get(key, True))
+        for key in default_modules
+    }
+
+    current = modules.get(module_name, True)
     new_value = not current
+
     modules[module_name] = new_value
 
-    updated = await update_site_config(site["id"], config)
+    # 🔥 КРИТИЧНО: передаємо ТІЛЬКИ modules
+    updated = await update_site_config(
+        site["id"],
+        {
+            "modules": modules
+        }
+    )
+
     if not updated:
         await callback.answer("Помилка збереження", show_alert=True)
         return
 
-    # UX: чіткий стан
     state_text = "ON" if new_value else "OFF"
 
     await callback.answer(f"{module_name}: {state_text}")
