@@ -162,6 +162,33 @@ async def list_phones(callback: CallbackQuery):
         )
 
     await callback.answer()
+    @router.callback_query(F.data.startswith("contacts:delete_phone:"))
+async def delete_phone(callback: CallbackQuery):
+    index = int(callback.data.split(":")[-1])
+
+    seller = await resolve_seller_from_user(callback.from_user)
+    site = await get_site_by_seller(seller["id"])
+
+    config = site.get("config_draft") or {}
+    if isinstance(config, str):
+        config = json.loads(config)
+
+    phones = config.get("contacts", {}).get("phones", [])
+
+    if index >= len(phones):
+        await callback.answer("Помилка", show_alert=True)
+        return
+
+    deleted = phones.pop(index)
+
+    await update_site_config(site["id"], {
+        "contacts": {
+            "phones": phones
+        }
+    })
+
+    await callback.answer("Номер видалено")
+    await callback.message.answer(f"Видалено: {deleted}")
 # -------- TELEGRAM --------
 
 @router.callback_query(F.data == "contacts:telegram")
