@@ -86,7 +86,6 @@ def _deep_merge_missing(target: dict, defaults: dict) -> dict:
 
         current_value = target[key]
 
-        # FIX: якщо тип не той → заміняємо
         if isinstance(default_value, dict) and not isinstance(current_value, dict):
             target[key] = deepcopy(default_value)
             continue
@@ -103,18 +102,26 @@ def _deep_merge_missing(target: dict, defaults: dict) -> dict:
 
 def _normalize_config(config: dict) -> dict:
     """
-    Гарантує що критичні поля мають правильний тип
+    Гарантує що критичні поля мають правильний тип + лікує пошкоджені конфіги
     """
 
-    # modules завжди dict
-    if not isinstance(config.get("modules"), dict):
-        config["modules"] = deepcopy(_DEFAULT_SITE_CONFIG["modules"])
+    # ===== MODULES (CRITICAL FIX) =====
+    default_modules = _DEFAULT_SITE_CONFIG["modules"]
+    modules = config.get("modules")
 
-    # hero.banners завжди list
+    if not isinstance(modules, dict):
+        config["modules"] = deepcopy(default_modules)
+    else:
+        config["modules"] = {
+            key: bool(modules.get(key, True))
+            for key in default_modules
+        }
+
+    # ===== HERO.BANNERS =====
     if not isinstance(config.get("hero", {}).get("banners"), list):
         config.setdefault("hero", {})["banners"] = []
 
-    # price.items
+    # ===== PRICE.ITEMS =====
     if not isinstance(config.get("price", {}).get("items"), list):
         config.setdefault("price", {})["items"] = []
 
@@ -126,7 +133,11 @@ def merge_with_default(config: dict) -> dict:
         return get_default_site_config()
 
     merged = deepcopy(config)
+
+    # 1. додаємо відсутні ключі
     merged = _deep_merge_missing(merged, _DEFAULT_SITE_CONFIG)
+
+    # 2. нормалізуємо (🔥 ключовий етап)
     merged = _normalize_config(merged)
 
     return merged
