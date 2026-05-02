@@ -44,4 +44,154 @@
 <!-- FOOTER -->
 {% include "components/footer.html" %}
 
+
+<!-- ================= CTA CALLBACK ================= -->
+
+<div class="callback-widget">
+    <button class="callback-btn" onclick="openCallback()">📞 Замовити дзвінок</button>
+</div>
+
+<div id="callbackModal" class="callback-modal">
+    <div class="callback-box">
+        <h3>Замовити дзвінок</h3>
+
+        <input id="cbName" type="text" placeholder="Ваше ім'я">
+        <input id="cbPhone" type="tel" placeholder="Телефон">
+
+        <button onclick="sendCallback()">Відправити</button>
+        <button class="close" onclick="closeCallback()">✕</button>
+    </div>
+</div>
+
+
+<!-- ================= SCROLL TOP ================= -->
+
+<button id="scrollTopBtn">⬆</button>
+
+
+<!-- ================= STYLES ================= -->
+
+<style>
+
+/* ===== CALLBACK ===== */
+
+.callback-widget {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1000;
+}
+
+.callback-btn {
+    background: #22c55e;
+    color: #fff;
+    border: none;
+    padding: 12px 16px;
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+/* MODAL */
+
+.callback-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 2000;
+}
+
+.callback-box {
+    background: #0f172a;
+    padding: 20px;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 320px;
+    margin: 100px auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.callback-box input {
+    padding: 10px;
+    border-radius: 8px;
+    border: none;
+}
+
+.callback-box button {
+    padding: 10px;
+    border-radius: 8px;
+    border: none;
+    background: #22c55e;
+    color: white;
+}
+
+.close {
+    background: #334155;
+}
+
+
+/* ===== SCROLL BUTTON ===== */
+
+#scrollTopBtn {
+    position: fixed;
+    bottom: 90px;
+    right: 20px;
+    display: none;
+    background: #1e293b;
+    color: #fff;
+    border: none;
+    padding: 10px 14px;
+    border-radius: 10px;
+    cursor: pointer;
+    z-index: 1000;
+}
+
+</style>
+
+
+<!-- ================= JS ================= -->
+
+<script>
+
+// ===== CALLBACK =====
+
+function openCallback() {
+    document.getElementById("callbackModal").style.display = "block";
+}
+
+function closeCallback() {
+    document.getElementById("callbackModal").style.display = "none";
+}
+
+function sendCallback() {
+    const name = document.getElementById("cbName").value;
+    const phone = document.getElementById("cbPhone").value;
+
+    if (!phone) {
+        alert("Введіть телефон");
+        return;
+    }
+
+    alert("Заявка відправлена");
+    closeCallback();
+}
+
+
+// ===== SCROLL TOP =====
+
+const scrollBtn = document.getElementById("scrollTopBtn");
+
+window.addEventListener("scroll", () => {
+    scrollBtn.style.display = window.scrollY > 300 ? "block" : "none";
+});
+
+scrollBtn.onclick = () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+};
+
+</script>
+
 {% endblock %}
