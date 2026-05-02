@@ -7,26 +7,12 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 from bot.states.seller_states import SellerSiteStates
 from bot.database.repositories.site_repo import get_site_by_seller, update_site_config
-from bot.services.site_config import merge_with_default
 from bot.services.seller_identity import resolve_seller, resolve_seller_from_user
 
 router = Router()
 
 
 # ================= HELPERS =================
-
-def safe_config(raw):
-    if not raw:
-        return {}
-
-    if isinstance(raw, str):
-        try:
-            return json.loads(raw)
-        except Exception:
-            return {}
-
-    return dict(raw)
-
 
 async def get_context(callback: CallbackQuery):
     seller = await resolve_seller_from_user(callback.from_user)
@@ -55,12 +41,11 @@ async def save_phone(message: Message, state: FSMContext):
         await message.answer("Сайт не знайдено ❌")
         return
 
-    config = merge_with_default(safe_config(site.get("config_draft")))
-
-    config.setdefault("contacts", {})
-    config["contacts"]["phone"] = message.text
-
-    await update_site_config(site["id"], config)
+    await update_site_config(site["id"], {
+        "contacts": {
+            "phone": message.text
+        }
+    })
 
     await state.clear()
     await message.answer("Телефон збережено ✅")
@@ -75,12 +60,11 @@ async def save_address(message: Message, state: FSMContext):
         await message.answer("Сайт не знайдено ❌")
         return
 
-    config = merge_with_default(safe_config(site.get("config_draft")))
-
-    config.setdefault("contacts", {})
-    config["contacts"]["address"] = message.text
-
-    await update_site_config(site["id"], config)
+    await update_site_config(site["id"], {
+        "contacts": {
+            "address": message.text
+        }
+    })
 
     await state.clear()
     await message.answer("Адресу збережено ✅")
@@ -95,12 +79,11 @@ async def save_map(message: Message, state: FSMContext):
         await message.answer("Сайт не знайдено ❌")
         return
 
-    config = merge_with_default(safe_config(site.get("config_draft")))
-
-    config.setdefault("contacts", {})
-    config["contacts"]["map_embed"] = message.text
-
-    await update_site_config(site["id"], config)
+    await update_site_config(site["id"], {
+        "contacts": {
+            "map_embed": message.text
+        }
+    })
 
     await state.clear()
     await message.answer("Мапу збережено ✅")
@@ -115,6 +98,37 @@ async def add_banner(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
 
+@router.message(SellerSiteStates.site_banner, F.photo)
+async def save_banner(message: Message, state: FSMContext):
+    seller = await resolve_seller(message)
+    site = await get_site_by_seller(seller["id"])
+
+    if not site:
+        return
+
+    file_id = message.photo[-1].file_id
+
+    # беремо тільки банери
+    current = site.get("config_draft") or {}
+    if isinstance(current, str):
+        try:
+            current = json.loads(current)
+        except:
+            current = {}
+
+    banners = current.get("hero", {}).get("banners", [])
+    banners.append(file_id)
+
+    await update_site_config(site["id"], {
+        "hero": {
+            "banners": banners
+        }
+    })
+
+    await state.clear()
+    await message.answer("Банер додано ✅")
+
+
 @router.callback_query(F.data == "site:banners:list")
 async def banners_list(callback: CallbackQuery):
     seller, site = await get_context(callback)
@@ -123,7 +137,13 @@ async def banners_list(callback: CallbackQuery):
         await callback.answer("Сайт не знайдено", show_alert=True)
         return
 
-    config = merge_with_default(safe_config(site.get("config_draft")))
+    config = site.get("config_draft") or {}
+    if isinstance(config, str):
+        try:
+            config = json.loads(config)
+        except:
+            config = {}
+
     banners = config.get("hero", {}).get("banners", [])
 
     if not banners:
@@ -131,21 +151,18 @@ async def banners_list(callback: CallbackQuery):
         return
 
     for i, banner in enumerate(banners):
-        try:
-            await callback.message.answer_photo(
-                photo=banner,
-                caption=f"Банер {i+1}",
-                reply_markup=InlineKeyboardMarkup(
-                    inline_keyboard=[[
-                        InlineKeyboardButton(
-                            text="❌ Видалити",
-                            callback_data=f"site:banners:delete:{i}"
-                        )
-                    ]]
-                )
+        await callback.message.answer_photo(
+            photo=banner,
+            caption=f"Банер {i+1}",
+            reply_markup=InlineKeyboardMarkup(
+                inline_keyboard=[[
+                    InlineKeyboardButton(
+                        text="❌ Видалити",
+                        callback_data=f"site:banners:delete:{i}"
+                    )
+                ]]
             )
-        except Exception:
-            await callback.message.answer(f"{i+1}. {banner}")
+        )
 
 
 @router.callback_query(F.data.startswith("site:banners:delete:"))
@@ -158,7 +175,13 @@ async def banner_delete(callback: CallbackQuery):
     if not site:
         return
 
-    config = merge_with_default(safe_config(site.get("config_draft")))
+    config = site.get("config_draft") or {}
+    if isinstance(config, str):
+        try:
+            config = json.loads(config)
+        except:
+            config = {}
+
     banners = config.get("hero", {}).get("banners", [])
 
     index = int(callback.data.split(":")[-1])
@@ -169,6 +192,10 @@ async def banner_delete(callback: CallbackQuery):
 
     banners.pop(index)
 
-    await update_site_config(site["id"], config)
+    await update_site_config(site["id"], {
+        "hero": {
+            "banners": banners
+        }
+    })
 
     await callback.answer("Банер видалено")
