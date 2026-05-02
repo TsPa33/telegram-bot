@@ -78,6 +78,8 @@ def _deep_merge(old: dict, new: dict):
 async def update_site_config(site_id: int, config: dict) -> bool:
     async with transaction() as conn:
 
+        print("\n========== UPDATE START ==========")
+
         current = await conn.fetchrow(
             """
             SELECT config_draft
@@ -89,50 +91,71 @@ async def update_site_config(site_id: int, config: dict) -> bool:
         )
 
         if not current:
+            print("❌ NO CURRENT CONFIG")
             return False
 
         current_config = current.get("config_draft") or {}
 
-        # safe parse
         if isinstance(current_config, str):
             try:
                 current_config = json.loads(current_config)
             except Exception:
                 current_config = {}
 
+        print("🔵 CURRENT CONFIG MODULES:")
+        print(current_config.get("modules"))
+
         # ===== DEFAULT STRUCTURE =====
         merged = merge_with_default(current_config)
+
+        print("🟢 AFTER merge_with_default:")
+        print(merged.get("modules"))
 
         # ===== INCOMING =====
         incoming = config if isinstance(config, dict) else {}
 
-        # 🔥 CRITICAL FIX — НЕ дозволяємо payload ламати modules
+        print("🟡 INCOMING RAW:")
+        print(incoming)
+
+        if "modules" in incoming:
+            print("🚨 INCOMING HAS MODULES:")
+            print(incoming.get("modules"))
+
+        # 🔥 BLOCK modules
         if isinstance(incoming.get("modules"), dict):
+            print("⛔ REMOVING MODULES FROM INCOMING")
             incoming.pop("modules")
+
+        print("🟡 INCOMING AFTER CLEAN:")
+        print(incoming)
 
         # ===== MERGE =====
         merged = _deep_merge(merged, incoming)
 
-        # ===== HARD STRUCTURE GUARANTEE =====
+        print("🟣 AFTER DEEP MERGE:")
+        print(merged.get("modules"))
+
+        # ===== HARD STRUCTURE =====
         merged.setdefault("header", {})
         merged.setdefault("hero", {})
         merged["hero"].setdefault("banners", [])
         merged.setdefault("contacts", {})
 
-        # ===============================
-        # 🔥 NORMALIZE MODULES (SAFE STATE)
-        # ===============================
-
+        # ===== MODULES NORMALIZATION =====
         default_modules = merge_with_default({})["modules"]
         current_modules = merged.get("modules")
 
         if not isinstance(current_modules, dict):
+            print("⚠️ MODULES NOT DICT → RESET")
             merged["modules"] = default_modules
         else:
             merged["modules"] = {
                 key: bool(current_modules.get(key, True))
                 for key in default_modules
             }
+
+        print("🟢 FINAL MODULES BEFORE SAVE:")
+        print(merged.get("modules"))
 
         # ===== SAVE =====
         row = await conn.fetchrow(
@@ -146,6 +169,8 @@ async def update_site_config(site_id: int, config: dict) -> bool:
             json.dumps(merged),
             site_id,
         )
+
+        print("========== UPDATE END ==========\n")
 
         return row is not None
 
