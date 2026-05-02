@@ -213,15 +213,18 @@
 }
 
 .scroll-top-btn::before {
-    position: absolute;
-    bottom: -20px;
     content: "Вгору";
+    position: absolute;
     color: white;
     font-size: 0;
+    white-space: nowrap;
+    transition: 0.3s;
 }
 
+/* при hover */
 .scroll-top-btn:hover::before {
     font-size: 13px;
+    transform: translateY(0);
 }
 
 </style>
