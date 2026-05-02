@@ -61,23 +61,14 @@ async def get_site_by_subdomain(subdomain: str):
 # ================= SAFE UPDATE =================
 
 def _deep_merge(old: dict, new: dict):
-    """
-    FIXED VERSION:
-    - dict → merge
-    - list → FULL overwrite (щоб працювало видалення)
-    """
-
     for k, v in new.items():
 
-        # dict → рекурсивно merge
         if isinstance(v, dict) and isinstance(old.get(k), dict):
             old[k] = _deep_merge(old[k], v)
 
-        # 🔥 СПИСКИ — ПОВНИЙ overwrite
         elif isinstance(v, list):
             old[k] = v
 
-        # інше → replace
         else:
             old[k] = v
 
@@ -85,13 +76,6 @@ def _deep_merge(old: dict, new: dict):
 
 
 async def update_site_config(site_id: int, config: dict) -> bool:
-    """
-    PRODUCTION SAFE UPDATE:
-    - transaction + FOR UPDATE
-    - JSON safe parse
-    - correct overwrite logic for lists
-    """
-
     async with transaction() as conn:
 
         current = await conn.fetchrow(
@@ -116,22 +100,37 @@ async def update_site_config(site_id: int, config: dict) -> bool:
             except Exception:
                 current_config = {}
 
-        # default structure
+        # ===== DEFAULT STRUCTURE =====
         merged = merge_with_default(current_config)
 
-        # incoming config
+        # ===== INCOMING =====
         incoming = config if isinstance(config, dict) else {}
 
-        # 🔥 правильний merge
+        # ===== MERGE =====
         merged = _deep_merge(merged, incoming)
 
-        # гарантія структури
+        # ===== HARD STRUCTURE GUARANTEE =====
         merged.setdefault("header", {})
         merged.setdefault("hero", {})
         merged["hero"].setdefault("banners", [])
-        merged.setdefault("modules", {})
         merged.setdefault("contacts", {})
+        merged.setdefault("modules", {})
 
+        # ===== 🔥 CRITICAL FIX: PROTECT MODULES =====
+        default_modules = merge_with_default({}).get("modules", {})
+
+        merged["modules"] = {
+            **default_modules,
+            **merged.get("modules", {})
+        }
+
+        # 🔒 enforce safe defaults (нічого не "падає")
+        merged["modules"]["services"] = merged["modules"].get("services", True)
+        merged["modules"]["cars"] = merged["modules"].get("cars", True)
+        merged["modules"]["contacts"] = merged["modules"].get("contacts", True)
+        merged["modules"]["map"] = merged["modules"].get("map", True)
+
+        # ===== SAVE =====
         row = await conn.fetchrow(
             """
             UPDATE seller_sites
