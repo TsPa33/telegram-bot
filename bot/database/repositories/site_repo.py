@@ -58,7 +58,7 @@ async def get_site_by_subdomain(subdomain: str):
     )
 
 
-# ================= SAFE UPDATE =================
+# ================= SAFE MERGE =================
 
 def _deep_merge(old: dict, new: dict):
     for k, v in new.items():
@@ -67,7 +67,7 @@ def _deep_merge(old: dict, new: dict):
             old[k] = _deep_merge(old[k], v)
 
         elif isinstance(v, list):
-            old[k] = v
+            old[k] = v  # списки перезаписуємо (це правильно для phones)
 
         else:
             old[k] = v
@@ -75,10 +75,10 @@ def _deep_merge(old: dict, new: dict):
     return old
 
 
+# ================= UPDATE =================
+
 async def update_site_config(site_id: int, config: dict) -> bool:
     async with transaction() as conn:
-
-        print("\n========== UPDATE START ==========")
 
         current = await conn.fetchrow(
             """
@@ -91,7 +91,6 @@ async def update_site_config(site_id: int, config: dict) -> bool:
         )
 
         if not current:
-            print("❌ NO CURRENT CONFIG")
             return False
 
         current_config = current.get("config_draft") or {}
@@ -102,60 +101,57 @@ async def update_site_config(site_id: int, config: dict) -> bool:
             except Exception:
                 current_config = {}
 
-        print("🔵 CURRENT CONFIG MODULES:")
-        print(current_config.get("modules"))
-
-        # ===== DEFAULT STRUCTURE =====
+        # ===== DEFAULT =====
         merged = merge_with_default(current_config)
-
-        print("🟢 AFTER merge_with_default:")
-        print(merged.get("modules"))
 
         # ===== INCOMING =====
         incoming = config if isinstance(config, dict) else {}
 
-        print("🟡 INCOMING RAW:")
-        print(incoming)
+        # ===============================
+        # 🔥 FIX 1 — SAFE CONTACTS MERGE
+        # ===============================
 
-        if "modules" in incoming:
-            print("🚨 INCOMING HAS MODULES:")
-            print(incoming.get("modules"))
+        if "contacts" in incoming:
+            existing_contacts = merged.get("contacts", {})
+            incoming_contacts = incoming.get("contacts", {})
 
-        # 🔥 BLOCK modules
-        if isinstance(incoming.get("modules"), dict):
-            print("⛔ REMOVING MODULES FROM INCOMING")
-            incoming.pop("modules")
+            if not isinstance(existing_contacts, dict):
+                existing_contacts = {}
 
-        print("🟡 INCOMING AFTER CLEAN:")
-        print(incoming)
+            if not isinstance(incoming_contacts, dict):
+                incoming_contacts = {}
+
+            incoming["contacts"] = _deep_merge(existing_contacts, incoming_contacts)
+
+        # ===============================
+        # 🔥 FIX 2 — MODULES PROTECTION
+        # ===============================
+
+        if isinstance(incoming.get("modules"), dict) and len(incoming) == 1:
+            pass
+        else:
+            incoming.pop("modules", None)
 
         # ===== MERGE =====
         merged = _deep_merge(merged, incoming)
 
-        print("🟣 AFTER DEEP MERGE:")
-        print(merged.get("modules"))
-
-        # ===== HARD STRUCTURE =====
+        # ===== STRUCTURE =====
         merged.setdefault("header", {})
         merged.setdefault("hero", {})
         merged["hero"].setdefault("banners", [])
         merged.setdefault("contacts", {})
 
-        # ===== MODULES NORMALIZATION =====
+        # ===== MODULES NORMALIZE =====
         default_modules = merge_with_default({})["modules"]
         current_modules = merged.get("modules")
 
         if not isinstance(current_modules, dict):
-            print("⚠️ MODULES NOT DICT → RESET")
             merged["modules"] = default_modules
         else:
             merged["modules"] = {
                 key: bool(current_modules.get(key, True))
                 for key in default_modules
             }
-
-        print("🟢 FINAL MODULES BEFORE SAVE:")
-        print(merged.get("modules"))
 
         # ===== SAVE =====
         row = await conn.fetchrow(
@@ -169,8 +165,6 @@ async def update_site_config(site_id: int, config: dict) -> bool:
             json.dumps(merged),
             site_id,
         )
-
-        print("========== UPDATE END ==========\n")
 
         return row is not None
 
