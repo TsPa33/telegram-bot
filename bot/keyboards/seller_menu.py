@@ -32,6 +32,9 @@ def seller_main_kb(is_verified: bool = False):
         [
             KeyboardButton(text="🌐 Мій сайт"),
         ],
+        [
+            KeyboardButton(text="↩️ На головне меню"),  # ✅ ДОДАНО
+        ],
     ])
 
     return ReplyKeyboardMarkup(
