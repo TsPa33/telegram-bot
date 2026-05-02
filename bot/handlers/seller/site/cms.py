@@ -25,6 +25,8 @@ async def get_context(callback: CallbackQuery):
 
 # ================= CONTACTS =================
 
+# -------- PHONE --------
+
 @router.callback_query(F.data == "site:contacts:phone")
 async def edit_phone(callback: CallbackQuery, state: FSMContext):
     await state.set_state(SellerSiteStates.site_contact_phone)
@@ -51,6 +53,15 @@ async def save_phone(message: Message, state: FSMContext):
     await message.answer("Телефон збережено ✅")
 
 
+# -------- ADDRESS (FIX) --------
+
+@router.callback_query(F.data == "site:contacts:address")
+async def edit_address(callback: CallbackQuery, state: FSMContext):
+    await state.set_state(SellerSiteStates.site_contact_address)
+    await callback.message.answer("Введи адресу")
+    await callback.answer()
+
+
 @router.message(SellerSiteStates.site_contact_address)
 async def save_address(message: Message, state: FSMContext):
     seller = await resolve_seller(message)
@@ -68,6 +79,20 @@ async def save_address(message: Message, state: FSMContext):
 
     await state.clear()
     await message.answer("Адресу збережено ✅")
+
+
+# -------- MAP (FIX) --------
+
+@router.callback_query(F.data == "site:contacts:map")
+async def edit_map(callback: CallbackQuery, state: FSMContext):
+    await state.set_state(SellerSiteStates.site_contact_map)
+    await callback.message.answer(
+        "Встав iframe Google Maps\n\n"
+        "❗ Не посилання, а iframe\n\n"
+        "Приклад:\n"
+        "<iframe src='https://www.google.com/maps/embed?...'></iframe>"
+    )
+    await callback.answer()
 
 
 @router.message(SellerSiteStates.site_contact_map)
@@ -108,7 +133,6 @@ async def save_banner(message: Message, state: FSMContext):
 
     file_id = message.photo[-1].file_id
 
-    # беремо тільки банери
     current = site.get("config_draft") or {}
     if isinstance(current, str):
         try:
