@@ -45,7 +45,7 @@ async def count_cars(model_id: int) -> int:
     return row["total"] if row else 0
 
 
-# ================= GET FIRST CAR =================
+# ================= GET FIRST =================
 
 async def get_first_car(model_id: int):
     return await fetchrow(f"""
@@ -103,7 +103,25 @@ async def get_seller_cars(telegram_id: int):
     """, telegram_id)
 
 
-# ================= NEW: OFFSET PAGINATION =================
+async def get_cars_by_seller(seller_id: int):
+    return await fetch("""
+        SELECT
+            sc.id,
+            sc.photo_id,
+            sc.description,
+            sc.seller_id,
+            m.name AS model,
+            b.name AS brand
+        FROM seller_cars sc
+        JOIN models m ON sc.model_id = m.id
+        JOIN brands b ON m.brand_id = b.id
+        WHERE sc.seller_id = $1
+          AND sc.status = 'active'
+        ORDER BY sc.id DESC
+    """, seller_id)
+
+
+# ================= PAGINATION =================
 
 async def get_cars_page(model_id: int, limit: int, offset: int):
     return await fetch(f"""
@@ -114,6 +132,8 @@ async def get_cars_page(model_id: int, limit: int, offset: int):
         LIMIT $2 OFFSET $3
     """, model_id, limit, offset)
 
+
+# ================= VIEW TRACK =================
 
 async def add_unique_car_view(car_id: int, user_id: int) -> bool:
     row = await fetchrow("""
@@ -133,23 +153,7 @@ async def add_unique_car_view(car_id: int, user_id: int) -> bool:
     return bool(row)
 
 
-async def get_cars_by_seller(seller_id: int):
-    return await fetch("""
-        SELECT
-            sc.id,
-            sc.photo_id,
-            sc.description,
-            sc.seller_id,
-            m.name AS model,
-            b.name AS brand
-        FROM seller_cars sc
-        JOIN models m ON sc.model_id = m.id
-        JOIN brands b ON m.brand_id = b.id
-        WHERE sc.seller_id = $1
-          AND sc.status = 'active'
-        ORDER BY sc.id DESC
-    """, seller_id)
-
+# ================= CREATE =================
 
 async def create_seller_car(
     seller_id: int,
@@ -179,6 +183,8 @@ async def create_seller_car(
     )
 
 
+# ================= DELETE =================
+
 async def delete_seller_car(car_id: int, seller_id: int) -> bool:
     row = await fetchrow(
         """
@@ -192,6 +198,8 @@ async def delete_seller_car(car_id: int, seller_id: int) -> bool:
     )
     return row is not None
 
+
+# ================= UPDATE DESCRIPTION =================
 
 async def update_seller_car_description(car_id: int, seller_id: int, description: str | None) -> bool:
     row = await fetchrow(
@@ -207,3 +215,33 @@ async def update_seller_car_description(car_id: int, seller_id: int, description
         seller_id,
     )
     return row is not None
+
+
+# ================= UPDATE PHOTO =================
+
+async def update_seller_car_photo(car_id: int, seller_id: int, photo_id: str) -> bool:
+    row = await fetchrow(
+        """
+        UPDATE seller_cars
+        SET photo_id = $1
+        WHERE id = $2
+          AND seller_id = $3
+        RETURNING id
+        """,
+        photo_id,
+        car_id,
+        seller_id,
+    )
+    return row is not None
+
+
+# ================= SAFE UNIVERSAL UPDATE =================
+
+async def update_car_field(car_id: int, seller_id: int, field: str, value) -> bool:
+    if field == "description":
+        return await update_seller_car_description(car_id, seller_id, value)
+
+    if field == "photo_id":
+        return await update_seller_car_photo(car_id, seller_id, value)
+
+    return False
