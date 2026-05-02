@@ -6,6 +6,8 @@ from aiogram.types import (
 )
 
 
+# ================= MAIN =================
+
 def seller_main_kb(is_verified: bool = False):
     buttons = []
 
@@ -30,10 +32,6 @@ def seller_main_kb(is_verified: bool = False):
         [
             KeyboardButton(text="🌐 Мій сайт"),
         ],
-        [
-            KeyboardButton(text="💳 Пакети послуг"),
-            KeyboardButton(text="↩️ На головне меню"),
-        ],
     ])
 
     return ReplyKeyboardMarkup(
@@ -46,43 +44,14 @@ def seller_menu_kb(is_verified: bool = False):
     return seller_main_kb(is_verified=is_verified)
 
 
-# ================= SITE MENU =================
+# ================= SITE MAIN =================
 
-def site_menu_kb(subdomain: str, is_active: bool) -> InlineKeyboardMarkup:
+def site_menu_kb(subdomain: str, is_active: bool):
     buttons = [
 
-        # HEADER
-        [InlineKeyboardButton(text="✏️ Шапка", callback_data="site:edit:header")],
-
-        # ================= CARS =================
-        [InlineKeyboardButton(text="🚗 Авто", callback_data="site:cars:menu")],
-        [InlineKeyboardButton(text="➕ Додати авто", callback_data="site:cars:add")],
-        [InlineKeyboardButton(text="📋 Список авто", callback_data="site:cars:list")],
-        [InlineKeyboardButton(text="❌ Видалити авто", callback_data="site:cars:delete")],
-
-        # ================= CONTACTS =================
-
-        # 📱 телефони
-        [InlineKeyboardButton(text="➕ Додати номер", callback_data="site:contacts:add_phone")],
-        InlineKeyboardButton(text="📋 Номери (список / видалити)", callback_data="contacts:list_phones"),
-
-        # 💬 месенджери
-        [InlineKeyboardButton(text="💬 Telegram", callback_data="site:contacts:telegram")],
-        [InlineKeyboardButton(text="💬 WhatsApp", callback_data="site:contacts:whatsapp")],
-        [InlineKeyboardButton(text="💬 Viber", callback_data="site:contacts:viber")],
-
-        # 🌐 соцмережі
-        [InlineKeyboardButton(text="📷 Instagram", callback_data="site:contacts:instagram")],
-        [InlineKeyboardButton(text="📘 Facebook", callback_data="site:contacts:facebook")],
-
-        # 📍 базові
-        [InlineKeyboardButton(text="📍 Адреса", callback_data="site:contacts:address")],
-        [InlineKeyboardButton(text="🗺 Карта", callback_data="site:contacts:map")],
-
-        # ================= MEDIA =================
-        [InlineKeyboardButton(text="🖼 Додати банер", callback_data="site:edit:banners")],
-        [InlineKeyboardButton(text="📋 Список банерів", callback_data="site:banners:list")],
-        [InlineKeyboardButton(text="🖼 Лого", callback_data="site:edit:logo")],
+        [InlineKeyboardButton(text="📞 Контакти", callback_data="site:contacts:menu")],
+        [InlineKeyboardButton(text="📍 Адреси та карта", callback_data="site:location:menu")],
+        [InlineKeyboardButton(text="🎨 Медіа та дизайн", callback_data="site:media:menu")],
     ]
 
     if is_active:
@@ -94,3 +63,47 @@ def site_menu_kb(subdomain: str, is_active: bool) -> InlineKeyboardMarkup:
         ])
 
     return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+# ================= CONTACTS MENU =================
+
+def contacts_menu_kb():
+    return InlineKeyboardMarkup(inline_keyboard=[
+
+        [InlineKeyboardButton(text="➕ Додати номер", callback_data="contacts:add_phone")],
+        [InlineKeyboardButton(text="📋 Список номерів", callback_data="contacts:list_phones")],
+
+        [InlineKeyboardButton(text="💬 Telegram", callback_data="contacts:telegram")],
+        [InlineKeyboardButton(text="💬 WhatsApp", callback_data="contacts:whatsapp")],
+        [InlineKeyboardButton(text="💬 Viber", callback_data="contacts:viber")],
+
+        [InlineKeyboardButton(text="📷 Instagram", callback_data="contacts:instagram")],
+        [InlineKeyboardButton(text="📘 Facebook", callback_data="contacts:facebook")],
+
+        [InlineKeyboardButton(text="⬅ Назад", callback_data="site:back")],
+    ])
+
+
+# ================= LOCATION MENU =================
+
+def location_menu_kb():
+    return InlineKeyboardMarkup(inline_keyboard=[
+
+        [InlineKeyboardButton(text="📍 Додати адресу", callback_data="site:contacts:address")],
+        [InlineKeyboardButton(text="🗺 Додати карту", callback_data="site:contacts:map")],
+
+        [InlineKeyboardButton(text="⬅ Назад", callback_data="site:back")],
+    ])
+
+
+# ================= MEDIA MENU =================
+
+def media_menu_kb():
+    return InlineKeyboardMarkup(inline_keyboard=[
+
+        [InlineKeyboardButton(text="🖼 Додати банер", callback_data="site:edit:banners")],
+        [InlineKeyboardButton(text="📋 Список банерів", callback_data="site:banners:list")],
+        [InlineKeyboardButton(text="🖼 Лого", callback_data="site:edit:logo")],
+
+        [InlineKeyboardButton(text="⬅ Назад", callback_data="site:back")],
+    ])
