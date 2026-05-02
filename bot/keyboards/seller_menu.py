@@ -64,6 +64,7 @@ def site_menu_kb(subdomain: str, is_active: bool) -> InlineKeyboardMarkup:
 
         # 📱 телефони
         [InlineKeyboardButton(text="➕ Додати номер", callback_data="site:contacts:add_phone")],
+        InlineKeyboardButton(text="📋 Номери (список / видалити)", callback_data="contacts:list_phones"),
 
         # 💬 месенджери
         [InlineKeyboardButton(text="💬 Telegram", callback_data="site:contacts:telegram")],
