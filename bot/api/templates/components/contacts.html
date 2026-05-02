@@ -5,28 +5,96 @@
 
         <div class="contacts-grid">
 
-            <!-- CONTACT INFO -->
+            <!-- LEFT: INFO -->
             <div class="contact-card">
-                {% if contacts.get('phone') %}
-                    <p class="contact-item">📞 {{ contacts.get('phone') }}</p>
+
+                <!-- PHONES -->
+                {% set phones = contacts.get('phones', []) %}
+                {% if phones %}
+                    <div class="contact-group">
+                        <div class="group-title">📞 Телефони</div>
+
+                        {% for phone in phones %}
+                            <a href="tel:{{ phone }}" class="contact-item">
+                                {{ phone }}
+                            </a>
+                        {% endfor %}
+                    </div>
                 {% endif %}
 
+
+                <!-- ADDRESS -->
                 {% if contacts.get('address') %}
-                    <p class="contact-item">📍 {{ contacts.get('address') }}</p>
+                    <div class="contact-group">
+                        <div class="group-title">📍 Адреса</div>
+                        <div class="contact-item">
+                            {{ contacts.get('address') }}
+                        </div>
+                    </div>
                 {% endif %}
+
             </div>
 
-            <!-- FORM -->
+
+            <!-- RIGHT: MESSENGERS + SOCIALS -->
             <div class="contact-card">
-                <form method="post" action="/site/{{ subdomain }}/lead" class="contact-form">
 
-                    <input type="text" name="name" placeholder="Ваше ім’я" required>
-                    <input type="tel" name="phone" placeholder="Телефон" required>
-                    <textarea name="message" placeholder="Повідомлення"></textarea>
+                {% set m = contacts.get('messengers', {}) %}
+                {% set s = contacts.get('socials', {}) %}
 
-                    <button type="submit" class="btn">Відправити</button>
+                <!-- MESSENGERS -->
+                {% if m %}
+                <div class="contact-group">
+                    <div class="group-title">💬 Месенджери</div>
 
-                </form>
+                    <div class="contact-row">
+
+                        {% if m.telegram %}
+                        <a href="https://t.me/{{ m.telegram }}" target="_blank" class="contact-btn">
+                            Telegram
+                        </a>
+                        {% endif %}
+
+                        {% if m.whatsapp %}
+                        <a href="https://wa.me/{{ m.whatsapp }}" target="_blank" class="contact-btn">
+                            WhatsApp
+                        </a>
+                        {% endif %}
+
+                        {% if m.viber %}
+                        <a href="viber://chat?number={{ m.viber }}" class="contact-btn">
+                            Viber
+                        </a>
+                        {% endif %}
+
+                    </div>
+                </div>
+                {% endif %}
+
+
+                <!-- SOCIALS -->
+                {% if s %}
+                <div class="contact-group">
+                    <div class="group-title">🌐 Соцмережі</div>
+
+                    <div class="contact-row">
+
+                        {% if s.instagram %}
+                        <a href="{{ s.instagram }}" target="_blank" class="contact-btn">
+                            Instagram
+                        </a>
+                        {% endif %}
+
+                        {% if s.facebook %}
+                        <a href="{{ s.facebook }}" target="_blank" class="contact-btn">
+                            Facebook
+                        </a>
+                        {% endif %}
+
+                    </div>
+                </div>
+                {% endif %}
+
             </div>
 
         </div>
@@ -52,49 +120,45 @@
     padding: 20px;
 }
 
-/* ===== TEXT ===== */
-.contact-item {
-    color: #e2e8f0;
-    margin-bottom: 10px;
-    font-size: 16px;
+/* ===== GROUP ===== */
+.contact-group {
+    margin-bottom: 20px;
 }
 
-/* ===== FORM ===== */
-.contact-form {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.contact-form input,
-.contact-form textarea {
-    padding: 12px;
-    border-radius: 10px;
-    border: none;
-    background: #1e293b;
-    color: #fff;
+.group-title {
     font-size: 14px;
+    color: #94a3b8;
+    margin-bottom: 10px;
 }
 
-.contact-form textarea {
-    min-height: 100px;
-    resize: none;
+/* ===== ITEMS ===== */
+.contact-item {
+    display: block;
+    color: #fff;
+    text-decoration: none;
+    margin-bottom: 8px;
+}
+
+/* ===== BUTTON ROW ===== */
+.contact-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
 }
 
 /* ===== BUTTON ===== */
-.btn {
-    background: #ef4444;
-    color: #fff;
-    border: none;
-    padding: 12px;
+.contact-btn {
+    background: #1e293b;
+    padding: 10px 14px;
     border-radius: 10px;
-    cursor: pointer;
-    font-weight: 500;
+    color: #fff;
+    text-decoration: none;
+    font-size: 14px;
     transition: background 0.2s;
 }
 
-.btn:hover {
-    background: #dc2626;
+.contact-btn:hover {
+    background: #334155;
 }
 
 /* ===== MOBILE ===== */
