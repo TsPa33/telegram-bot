@@ -46,25 +46,39 @@ def seller_menu_kb(is_verified: bool = False):
     return seller_main_kb(is_verified=is_verified)
 
 
-# 🔥 CMS MENU (CLEAN)
+# ================= SITE MENU =================
+
 def site_menu_kb(subdomain: str, is_active: bool) -> InlineKeyboardMarkup:
     buttons = [
+
         # HEADER
         [InlineKeyboardButton(text="✏️ Шапка", callback_data="site:edit:header")],
 
-        # CARS
+        # ================= CARS =================
         [InlineKeyboardButton(text="🚗 Авто", callback_data="site:cars:menu")],
         [InlineKeyboardButton(text="➕ Додати авто", callback_data="site:cars:add")],
         [InlineKeyboardButton(text="📋 Список авто", callback_data="site:cars:list")],
         [InlineKeyboardButton(text="❌ Видалити авто", callback_data="site:cars:delete")],
 
-        # CONTACTS
-        [InlineKeyboardButton(text="📞 Контакти", callback_data="site:contacts:menu")],
-        [InlineKeyboardButton(text="✏️ Телефон", callback_data="site:contacts:phone")],
-        [InlineKeyboardButton(text="✏️ Адреса", callback_data="site:contacts:address")],
-        [InlineKeyboardButton(text="✏️ Карта", callback_data="site:contacts:map")],
+        # ================= CONTACTS =================
 
-        # MEDIA
+        # 📱 телефони
+        [InlineKeyboardButton(text="➕ Додати номер", callback_data="site:contacts:add_phone")],
+
+        # 💬 месенджери
+        [InlineKeyboardButton(text="💬 Telegram", callback_data="site:contacts:telegram")],
+        [InlineKeyboardButton(text="💬 WhatsApp", callback_data="site:contacts:whatsapp")],
+        [InlineKeyboardButton(text="💬 Viber", callback_data="site:contacts:viber")],
+
+        # 🌐 соцмережі
+        [InlineKeyboardButton(text="📷 Instagram", callback_data="site:contacts:instagram")],
+        [InlineKeyboardButton(text="📘 Facebook", callback_data="site:contacts:facebook")],
+
+        # 📍 базові
+        [InlineKeyboardButton(text="📍 Адреса", callback_data="site:contacts:address")],
+        [InlineKeyboardButton(text="🗺 Карта", callback_data="site:contacts:map")],
+
+        # ================= MEDIA =================
         [InlineKeyboardButton(text="🖼 Додати банер", callback_data="site:edit:banners")],
         [InlineKeyboardButton(text="📋 Список банерів", callback_data="site:banners:list")],
         [InlineKeyboardButton(text="🖼 Лого", callback_data="site:edit:logo")],
