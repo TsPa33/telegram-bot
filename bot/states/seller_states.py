@@ -43,10 +43,22 @@ class SellerSiteStates(StatesGroup):
     site_car_edit = State()
 
     # ================= CONTACTS =================
-    site_contact_phone = State()
+
+    # базові
+    site_contact_phone = State()          # (залишаємо для backward)
+    site_contact_add_phone = State()      # ➕ новий номер
     site_contact_address = State()
     site_contact_map = State()
 
-    # ================= MEDIA (КРИТИЧНО) =================
+    # месенджери
+    site_contact_telegram = State()
+    site_contact_viber = State()
+    site_contact_whatsapp = State()
+
+    # соцмережі
+    site_contact_instagram = State()
+    site_contact_facebook = State()
+
+    # ================= MEDIA =================
     site_banner = State()
     site_logo = State()
