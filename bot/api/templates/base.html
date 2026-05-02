@@ -260,7 +260,7 @@ document.addEventListener("DOMContentLoaded", function () {
             setTimeout(() => {
 
                 title.textContent = item.dataset.title;
-                desc.textContent = item.dataset.description;
+                desc.textContent = item.dataset.description || "";
 
                 if (img && item.dataset.photo) {
                     img.src = item.dataset.photo;
