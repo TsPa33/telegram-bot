@@ -7,7 +7,12 @@ from bot.keyboards.admin_kb import admin_kb
 from bot.keyboards.admin_inline import (
     brand_request_kb,
     model_request_kb,
-    verification_request_kb
+    verification_request_kb,
+
+    # NEW
+    admin_users_kb,
+    admin_user_actions_kb,
+    admin_confirm_delete_kb
 )
 
 from bot.states.admin_states import EditBrand, EditModel
@@ -26,8 +31,13 @@ from bot.database.repositories.admin_repo import (
     reject_seller
 )
 
-# ✅ NEW
-from bot.database.repositories.user_repo import get_visits
+# NEW
+from bot.database.repositories.user_repo import (
+    get_visits,
+    get_all_users,
+    get_user_by_id,
+    delete_user_full
+)
 
 from bot.utils.cache import clear_brands_cache, clear_models_cache
 
@@ -48,6 +58,89 @@ async def open_admin_panel(message: Message):
         "⚙️ Адмін панель",
         reply_markup=admin_kb
     )
+
+
+# ================= 👥 USERS =================
+
+@router.message(F.text == "👥 Користувачі")
+async def admin_users(message: Message):
+    if not await is_admin(message.from_user.id):
+        return
+
+    users = await get_all_users()
+
+    if not users:
+        await message.answer("Немає користувачів")
+        return
+
+    await message.answer(
+        "👥 Список користувачів:",
+        reply_markup=admin_users_kb(users)
+    )
+
+
+@router.callback_query(F.data == "admin:users")
+async def admin_users_back(callback: CallbackQuery):
+    users = await get_all_users()
+
+    await callback.message.edit_text(
+        "👥 Список користувачів:",
+        reply_markup=admin_users_kb(users)
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("admin:user:"))
+async def user_actions(callback: CallbackQuery):
+    user_id = int(callback.data.split(":")[-1])
+
+    await callback.message.edit_text(
+        f"👤 Користувач ID: {user_id}",
+        reply_markup=admin_user_actions_kb(user_id)
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("admin:view:"))
+async def view_user(callback: CallbackQuery):
+    user_id = int(callback.data.split(":")[-1])
+
+    user = await get_user_by_id(user_id)
+
+    if not user:
+        await callback.message.answer("Користувача не знайдено")
+        await callback.answer()
+        return
+
+    text = (
+        f"👤 ID: {user['id']}\n"
+        f"📱 TG: {user['telegram_id']}\n"
+        f"👤 Username: @{user['username'] or '-'}"
+    )
+
+    await callback.message.answer(text)
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("admin:delete:"))
+async def confirm_delete(callback: CallbackQuery):
+    user_id = int(callback.data.split(":")[-1])
+
+    await callback.message.edit_text(
+        f"⚠️ Видалити користувача {user_id}?",
+        reply_markup=admin_confirm_delete_kb(user_id)
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("admin:delete_confirm:"))
+async def delete_user_handler(callback: CallbackQuery):
+    user_id = int(callback.data.split(":")[-1])
+
+    await delete_user_full(user_id)
+
+    await callback.message.edit_text(f"❌ Користувач {user_id} видалений")
+    await callback.answer()
 
 
 # ================= 📊 VISITS =================
@@ -114,14 +207,11 @@ async def show_requests(message: types.Message):
 
 @router.callback_query(F.data.regexp(r"^admin:(brand|model|verify):"))
 async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
-    print("ADMIN CALLBACK:", callback.data)
-
     if not await is_admin(callback.from_user.id):
         await callback.answer()
         return
 
     parts = callback.data.split(":")
-
     if len(parts) != 4:
         await callback.answer()
         return
@@ -134,7 +224,6 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
         await callback.answer()
         return
 
-    # ===== BRAND =====
     if entity == "brand":
         if action == "ok":
             await approve_brand(obj_id)
@@ -150,7 +239,6 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
             await state.update_data(request_id=obj_id)
             await callback.message.answer("✏️ Введи новий бренд:")
 
-    # ===== MODEL =====
     elif entity == "model":
         if action == "ok":
             await approve_model(obj_id)
@@ -166,7 +254,6 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
             await state.update_data(request_id=obj_id)
             await callback.message.answer("✏️ Введи нову модель:")
 
-    # ===== VERIFY =====
     elif entity == "verify":
         if action == "ok":
             telegram_id = await approve_seller(obj_id)
@@ -175,15 +262,12 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
                 try:
                     await callback.bot.send_message(
                         chat_id=telegram_id,
-                        text="✅ Твій акаунт верифіковано!\n\nТепер ти можеш додавати авто 🚀"
+                        text="✅ Твій акаунт верифіковано!"
                     )
                 except:
                     pass
 
-            try:
-                await callback.message.edit_caption("✅ Верифіковано")
-            except:
-                await callback.message.answer("✅ Верифіковано")
+            await callback.message.answer("✅ Верифіковано")
 
         elif action == "no":
             telegram_id = await reject_seller(obj_id)
@@ -192,15 +276,12 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
                 try:
                     await callback.bot.send_message(
                         chat_id=telegram_id,
-                        text="❌ Верифікацію відхилено\n\nСпробуй ще раз"
+                        text="❌ Верифікацію відхилено"
                     )
                 except:
                     pass
 
-            try:
-                await callback.message.edit_caption("❌ Відхилено")
-            except:
-                await callback.message.answer("❌ Відхилено")
+            await callback.message.answer("❌ Відхилено")
 
     await callback.answer()
 
