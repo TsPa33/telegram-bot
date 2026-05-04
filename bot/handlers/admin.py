@@ -43,9 +43,9 @@ CANCEL = KeyboardButton(text="❌ Скасувати")
 
 # ================= ADMIN PANEL =================
 
-@router.message(F.text.contains("Адмін"))
+@router.message(lambda m: m.text and m.text.startswith("⚙️"))
 async def open_admin_panel(message: Message, state: FSMContext):
-    await state.clear()  # 🔥 КРИТИЧНО
+    await state.clear()
 
     if not await is_admin(message.from_user.id):
         await message.answer("⛔ Немає доступу")
@@ -56,9 +56,9 @@ async def open_admin_panel(message: Message, state: FSMContext):
 
 # ================= USERS =================
 
-@router.message(F.text.contains("Користувачі"))
+@router.message(lambda m: m.text and m.text.startswith("👥"))
 async def admin_users(message: Message, state: FSMContext):
-    await state.clear()  # 🔥 КРИТИЧНО
+    await state.clear()
 
     if not await is_admin(message.from_user.id):
         return
@@ -141,9 +141,9 @@ async def delete_user_handler(callback: CallbackQuery):
 
 # ================= VISITS =================
 
-@router.message(F.text.contains("Перегляди"))
+@router.message(lambda m: m.text and m.text.startswith("📊"))
 async def admin_visits(message: Message, state: FSMContext):
-    await state.clear()  # 🔥 ВАЖЛИВО
+    await state.clear()
 
     if not await is_admin(message.from_user.id):
         return
@@ -177,9 +177,9 @@ async def admin_visits(message: Message, state: FSMContext):
 
 # ================= REQUESTS =================
 
-@router.message(F.text.contains("Заявки"))
+@router.message(lambda m: m.text and m.text.startswith("📋"))
 async def show_requests(message: types.Message, state: FSMContext):
-    await state.clear()  # 🔥 ВАЖЛИВО
+    await state.clear()
 
     if not await is_admin(message.from_user.id):
         return
