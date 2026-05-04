@@ -32,6 +32,17 @@ async def get_visits():
 
 # ================= USERS =================
 
+async def create_user(telegram_id: int, username: str | None):
+    """
+    Створює користувача якщо його ще немає
+    """
+    return await execute("""
+        INSERT INTO users (telegram_id, username)
+        VALUES ($1, $2)
+        ON CONFLICT (telegram_id) DO NOTHING
+    """, telegram_id, username)
+
+
 async def get_all_users(limit: int = 20):
     return await fetch("""
         SELECT id, telegram_id, username
@@ -57,15 +68,9 @@ async def delete_user(user_id: int):
     """, user_id)
 
 
-# ================= SAFE DELETE (RECOMMENDED) =================
+# ================= SAFE DELETE =================
 
 async def delete_user_full(user_id: int):
-    """
-    Безпечне видалення:
-    видаляє все що пов'язано з користувачем
-    """
-
-    # отримати seller
     seller = await fetchrow("""
         SELECT id FROM sellers WHERE user_id = $1
     """, user_id)
@@ -73,20 +78,16 @@ async def delete_user_full(user_id: int):
     if seller:
         seller_id = seller["id"]
 
-        # site
         await execute("DELETE FROM seller_sites WHERE seller_id = $1", seller_id)
-
-        # services
         await execute("DELETE FROM services WHERE seller_id = $1", seller_id)
-
-        # cars (якщо є таблиця)
         await execute("DELETE FROM cars WHERE seller_id = $1", seller_id)
-
-        # seller
         await execute("DELETE FROM sellers WHERE id = $1", seller_id)
 
-    # visits
-    await execute("DELETE FROM user_visits WHERE telegram_id IN (SELECT telegram_id FROM users WHERE id = $1)", user_id)
+    await execute("""
+        DELETE FROM user_visits 
+        WHERE telegram_id IN (
+            SELECT telegram_id FROM users WHERE id = $1
+        )
+    """, user_id)
 
-    # user
     await execute("DELETE FROM users WHERE id = $1", user_id)
