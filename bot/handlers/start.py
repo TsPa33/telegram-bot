@@ -6,13 +6,14 @@ from aiogram.types import CallbackQuery, Message, ReplyKeyboardRemove
 from bot.keyboards.main_menu import main_menu_kb
 from bot.keyboards.seller_menu import seller_menu_kb
 from bot.keyboards.admin_kb import admin_kb
+
 from bot.database.repositories.seller_repo import get_or_create_seller
-from bot.database.repositories.user_repo import log_visit
+from bot.database.repositories.user_repo import log_visit, create_user
 
 router = Router()
 
 
-# ================= GLOBAL RESET (🔥 КРИТИЧНО) =================
+# ================= GLOBAL RESET =================
 
 @router.message(F.text == "🔄 Оновити Bot")
 async def global_restart(message: Message, state: FSMContext):
@@ -42,6 +43,12 @@ async def back_to_main_menu(message: Message, state: FSMContext):
 async def start(message: Message, state: FSMContext):
     await state.clear()
 
+    # 🔥 СТВОРЕННЯ USER (КРИТИЧНО)
+    await create_user(
+        telegram_id=message.from_user.id,
+        username=message.from_user.username
+    )
+
     # ✅ LOG VISIT
     await log_visit(message.from_user, role="unknown")
 
@@ -57,6 +64,12 @@ async def start(message: Message, state: FSMContext):
 async def enter_seller(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     await state.clear()
+
+    # 🔥 СТВОРЕННЯ USER
+    await create_user(
+        telegram_id=callback.from_user.id,
+        username=callback.from_user.username
+    )
 
     # ✅ LOG VISIT
     await log_visit(callback.from_user, role="seller")
@@ -84,7 +97,11 @@ async def open_seller(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     await state.clear()
 
-    # ✅ LOG VISIT
+    await create_user(
+        telegram_id=callback.from_user.id,
+        username=callback.from_user.username
+    )
+
     await log_visit(callback.from_user, role="seller")
 
     seller = await get_or_create_seller(
@@ -95,27 +112,6 @@ async def open_seller(callback: CallbackQuery, state: FSMContext):
     await callback.message.answer(
         "🏪 Режим продавця\nОберіть дію:",
         reply_markup=ReplyKeyboardRemove(),
-    )
-
-    await callback.message.answer(
-        "Меню продавця:",
-        reply_markup=seller_menu_kb(is_verified=seller.get("is_verified", False)),
-    )
-
-
-# ================= LEGACY CALLBACK =================
-
-@router.callback_query(F.data == "role_seller")
-async def legacy_role_callbacks(callback: CallbackQuery, state: FSMContext):
-    await callback.answer()
-    await state.clear()
-
-    # ✅ LOG VISIT
-    await log_visit(callback.from_user, role="seller")
-
-    seller = await get_or_create_seller(
-        callback.from_user.id,
-        callback.from_user.username
     )
 
     await callback.message.answer(
