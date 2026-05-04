@@ -8,8 +8,6 @@ from bot.keyboards.admin_inline import (
     brand_request_kb,
     model_request_kb,
     verification_request_kb,
-
-    # NEW
     admin_users_kb,
     admin_user_actions_kb,
     admin_confirm_delete_kb
@@ -26,12 +24,10 @@ from bot.database.repositories.admin_repo import (
     reject_model,
     update_brand_request,
     update_model_request,
-    get_verification_requests,
     approve_seller,
     reject_seller
 )
 
-# NEW
 from bot.database.repositories.user_repo import (
     get_visits,
     get_all_users,
@@ -42,27 +38,23 @@ from bot.database.repositories.user_repo import (
 from bot.utils.cache import clear_brands_cache, clear_models_cache
 
 router = Router()
-
 CANCEL = KeyboardButton(text="❌ Скасувати")
 
 
 # ================= ADMIN PANEL =================
 
-@router.message(F.text == "⚙️ Адмін панель")
+@router.message(F.text.contains("Адмін"))
 async def open_admin_panel(message: Message):
     if not await is_admin(message.from_user.id):
         await message.answer("⛔ Немає доступу")
         return
 
-    await message.answer(
-        "⚙️ Адмін панель",
-        reply_markup=admin_kb
-    )
+    await message.answer("⚙️ Адмін панель", reply_markup=admin_kb)
 
 
-# ================= 👥 USERS =================
+# ================= USERS =================
 
-@router.message(F.text == "👥 Користувачі")
+@router.message(F.text.contains("Користувачі"))
 async def admin_users(message: Message):
     if not await is_admin(message.from_user.id):
         return
@@ -143,9 +135,9 @@ async def delete_user_handler(callback: CallbackQuery):
     await callback.answer()
 
 
-# ================= 📊 VISITS =================
+# ================= VISITS =================
 
-@router.message(F.text == "📊 Перегляди")
+@router.message(F.text.contains("Перегляди"))
 async def admin_visits(message: Message):
     if not await is_admin(message.from_user.id):
         return
@@ -172,12 +164,15 @@ async def admin_visits(message: Message):
             f"Role: {row['role']}\n\n"
         )
 
-    await message.answer(text)
+    # 🔥 FIX: довгі повідомлення
+    MAX = 4000
+    for i in range(0, len(text), MAX):
+        await message.answer(text[i:i+MAX])
 
 
 # ================= REQUESTS =================
 
-@router.message(F.text.startswith("📋 Заявки"))
+@router.message(F.text.contains("Заявки"))
 async def show_requests(message: types.Message):
     if not await is_admin(message.from_user.id):
         return
@@ -201,120 +196,3 @@ async def show_requests(message: types.Message):
 
     if not brand_requests and not model_requests:
         await message.answer("✅ Немає заявок")
-
-
-# ================= CALLBACK =================
-
-@router.callback_query(F.data.regexp(r"^admin:(brand|model|verify):"))
-async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
-    if not await is_admin(callback.from_user.id):
-        await callback.answer()
-        return
-
-    parts = callback.data.split(":")
-    if len(parts) != 4:
-        await callback.answer()
-        return
-
-    _, entity, action, obj_id = parts
-
-    try:
-        obj_id = int(obj_id)
-    except:
-        await callback.answer()
-        return
-
-    if entity == "brand":
-        if action == "ok":
-            await approve_brand(obj_id)
-            clear_brands_cache()
-            await callback.message.edit_text("✅ Бренд підтверджено")
-
-        elif action == "no":
-            await reject_brand(obj_id)
-            await callback.message.edit_text("❌ Бренд відхилено")
-
-        elif action == "edit":
-            await state.set_state(EditBrand.waiting_for_new_brand)
-            await state.update_data(request_id=obj_id)
-            await callback.message.answer("✏️ Введи новий бренд:")
-
-    elif entity == "model":
-        if action == "ok":
-            await approve_model(obj_id)
-            clear_models_cache()
-            await callback.message.edit_text("✅ Модель підтверджено")
-
-        elif action == "no":
-            await reject_model(obj_id)
-            await callback.message.edit_text("❌ Модель відхилено")
-
-        elif action == "edit":
-            await state.set_state(EditModel.waiting_for_new_model)
-            await state.update_data(request_id=obj_id)
-            await callback.message.answer("✏️ Введи нову модель:")
-
-    elif entity == "verify":
-        if action == "ok":
-            telegram_id = await approve_seller(obj_id)
-
-            if telegram_id:
-                try:
-                    await callback.bot.send_message(
-                        chat_id=telegram_id,
-                        text="✅ Твій акаунт верифіковано!"
-                    )
-                except:
-                    pass
-
-            await callback.message.answer("✅ Верифіковано")
-
-        elif action == "no":
-            telegram_id = await reject_seller(obj_id)
-
-            if telegram_id:
-                try:
-                    await callback.bot.send_message(
-                        chat_id=telegram_id,
-                        text="❌ Верифікацію відхилено"
-                    )
-                except:
-                    pass
-
-            await callback.message.answer("❌ Відхилено")
-
-    await callback.answer()
-
-
-# ================= EDIT BRAND =================
-
-@router.message(EditBrand.waiting_for_new_brand)
-async def edit_brand_save(message: Message, state: FSMContext):
-    new_brand = message.text.strip().title()
-
-    data = await state.get_data()
-    request_id = data.get("request_id")
-
-    await update_brand_request(request_id, new_brand)
-    await approve_brand(request_id)
-    clear_brands_cache()
-
-    await message.answer(f"✅ Бренд: {new_brand}")
-    await state.clear()
-
-
-# ================= EDIT MODEL =================
-
-@router.message(EditModel.waiting_for_new_model)
-async def edit_model_save(message: Message, state: FSMContext):
-    new_model = message.text.strip().upper()
-
-    data = await state.get_data()
-    request_id = data.get("request_id")
-
-    await update_model_request(request_id, new_model)
-    await approve_model(request_id)
-    clear_models_cache()
-
-    await message.answer(f"✅ Модель: {new_model}")
-    await state.clear()
