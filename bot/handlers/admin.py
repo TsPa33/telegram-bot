@@ -44,7 +44,9 @@ CANCEL = KeyboardButton(text="❌ Скасувати")
 # ================= ADMIN PANEL =================
 
 @router.message(F.text.contains("Адмін"))
-async def open_admin_panel(message: Message):
+async def open_admin_panel(message: Message, state: FSMContext):
+    await state.clear()  # 🔥 КРИТИЧНО
+
     if not await is_admin(message.from_user.id):
         await message.answer("⛔ Немає доступу")
         return
@@ -55,7 +57,9 @@ async def open_admin_panel(message: Message):
 # ================= USERS =================
 
 @router.message(F.text.contains("Користувачі"))
-async def admin_users(message: Message):
+async def admin_users(message: Message, state: FSMContext):
+    await state.clear()  # 🔥 КРИТИЧНО
+
     if not await is_admin(message.from_user.id):
         return
 
@@ -138,7 +142,9 @@ async def delete_user_handler(callback: CallbackQuery):
 # ================= VISITS =================
 
 @router.message(F.text.contains("Перегляди"))
-async def admin_visits(message: Message):
+async def admin_visits(message: Message, state: FSMContext):
+    await state.clear()  # 🔥 ВАЖЛИВО
+
     if not await is_admin(message.from_user.id):
         return
 
@@ -164,7 +170,6 @@ async def admin_visits(message: Message):
             f"Role: {row['role']}\n\n"
         )
 
-    # 🔥 FIX: довгі повідомлення
     MAX = 4000
     for i in range(0, len(text), MAX):
         await message.answer(text[i:i+MAX])
@@ -173,7 +178,9 @@ async def admin_visits(message: Message):
 # ================= REQUESTS =================
 
 @router.message(F.text.contains("Заявки"))
-async def show_requests(message: types.Message):
+async def show_requests(message: types.Message, state: FSMContext):
+    await state.clear()  # 🔥 ВАЖЛИВО
+
     if not await is_admin(message.from_user.id):
         return
 
