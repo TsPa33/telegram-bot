@@ -9,6 +9,15 @@ from bot.database.repositories.payment_repo import create_payment
 print("🔥 NEW LIQPAY SERVICE LOADED")
 
 
+# ===== DESCRIPTIONS =====
+DESCRIPTIONS = {
+    "site": "Створення сайту на сервісі Carpot",
+    "garage_1": "1 місце в гаражі",
+    "garage_5": "5 місць в гаражі",
+    "garage_10": "10 місць в гаражі",
+}
+
+
 class LiqPayService:
 
     def __init__(self, public_key: str, private_key: str):
@@ -22,10 +31,26 @@ class LiqPayService:
             hashlib.sha1(sign_string.encode()).digest()
         ).decode()
 
+    def _get_description(self, product: str, amount: int) -> str:
+        """
+        Визначає правильний description для LiqPay
+        """
+        if product == "site":
+            return DESCRIPTIONS["site"]
+
+        if product == "garage":
+            if amount == 99:
+                return DESCRIPTIONS["garage_1"]
+            elif amount == 199:
+                return DESCRIPTIONS["garage_5"]
+            elif amount == 299:
+                return DESCRIPTIONS["garage_10"]
+
+        return "Оплата послуги"
+
     async def create_payment(
         self,
         amount: int,
-        description: str,
         server_url: str,
         seller_id: int,
         product: str
@@ -43,16 +68,17 @@ class LiqPayService:
             product=product
         )
 
-        # ===== INCLUDE PRODUCT IN DESCRIPTION =====
-        full_description = f"{description} | product={product}"
+        # ===== DESCRIPTION =====
+        description = self._get_description(product, amount)
 
+        # ===== PAYLOAD =====
         payload = {
             "public_key": self.public_key,
             "version": "3",
             "action": "pay",
             "amount": amount,
             "currency": "UAH",
-            "description": full_description,
+            "description": description,  # ✔ чистий UX текст
             "order_id": order_id,
             "server_url": server_url,
             "sandbox": 1
