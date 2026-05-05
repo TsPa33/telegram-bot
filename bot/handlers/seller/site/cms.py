@@ -1,4 +1,5 @@
 import json
+import re
 
 from aiogram import Router, F
 from aiogram.types import CallbackQuery, Message, InlineKeyboardMarkup, InlineKeyboardButton
@@ -17,6 +18,20 @@ from bot.keyboards.seller_menu import (
 )
 
 router = Router()
+
+
+# ================= PHONE NORMALIZATION =================
+
+def normalize_phone(phone: str) -> str | None:
+    phone = phone.strip().replace(" ", "")
+
+    if phone.startswith("0"):
+        phone = "+38" + phone
+
+    if re.fullmatch(r"\+380\d{9}", phone):
+        return phone
+
+    return None
 
 
 # ================= HELPERS =================
@@ -96,12 +111,32 @@ async def service_create_process(message: Message, state: FSMContext):
 @router.callback_query(F.data == "contacts:add_phone")
 async def add_phone(callback: CallbackQuery, state: FSMContext):
     await state.set_state(SellerSiteStates.site_contact_add_phone)
-    await callback.message.answer("Введи номер телефону")
+
+    await callback.message.answer(
+        "📞 Введіть номер телефону\n\n"
+        "Формат:\n"
+        "+380XXXXXXXXX\n\n"
+        "Приклад:\n"
+        "+380991234567 або 0991234567"
+    )
+
     await callback.answer()
 
 
 @router.message(SellerSiteStates.site_contact_add_phone)
 async def save_phone(message: Message, state: FSMContext):
+    phone = normalize_phone(message.text)
+
+    if not phone:
+        await message.answer(
+            "❌ Невірний формат номера\n\n"
+            "Введіть у форматі:\n"
+            "+380XXXXXXXXX\n\n"
+            "Приклад:\n"
+            "+380991234567 або 0991234567"
+        )
+        return
+
     seller = await resolve_seller(message)
     site = await get_site_by_seller(seller["id"])
 
@@ -110,7 +145,7 @@ async def save_phone(message: Message, state: FSMContext):
         config = json.loads(config)
 
     phones = config.get("contacts", {}).get("phones", [])
-    phones.append(message.text)
+    phones.append(phone)
 
     await update_site_config(site["id"], {
         "contacts": {
@@ -119,7 +154,7 @@ async def save_phone(message: Message, state: FSMContext):
     })
 
     await state.clear()
-    await message.answer("Номер додано ✅")
+    await message.answer(f"Номер додано ✅\n{phone}")
 
 
 # -------- PHONE LIST --------
