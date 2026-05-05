@@ -24,6 +24,8 @@ PACKAGES = {
 }
 
 
+# ================= CREATE GARAGE PAYMENT =================
+
 async def _create_package_payment(message: Message, package_key: str, telegram_id: int):
     try:
         package = PACKAGES[package_key]
@@ -38,15 +40,14 @@ async def _create_package_payment(message: Message, package_key: str, telegram_i
 
         payment = await liqpay.create_payment(
             amount=package["amount"],
-            description=f"{package['slots']} car slot(s)",
+            description=f"{package['slots']} авто",
             server_url=LIQPAY_CALLBACK_URL,
-            seller_id=seller_id
+            seller_id=seller_id,
+            product="garage"  # 🔥 FIX
         )
 
-        url = payment["url"]
-
         kb = InlineKeyboardBuilder()
-        kb.button(text="💳 Оплатити", url=url)
+        kb.button(text="💳 Оплатити", url=payment["url"])
 
         await message.answer(
             f"💳 <b>Оплата</b>\n\n"
@@ -61,33 +62,72 @@ async def _create_package_payment(message: Message, package_key: str, telegram_i
         await message.answer("⚠️ Сталась помилка при створенні платежу")
 
 
-@router.message(F.text == "💳 Купити 1 слот — 99 грн")
-async def buy_one_slot(message: Message):
-    await _create_package_payment(message, "1", message.from_user.id)
+# ================= CREATE SITE PAYMENT =================
 
+async def _create_site_payment(message: Message, telegram_id: int):
+    try:
+        seller = await get_seller_by_telegram_id(telegram_id)
+
+        if not seller:
+            await message.answer("❌ Помилка: продавець не знайдений. Напишіть /start")
+            return
+
+        seller_id = seller["id"]
+
+        payment = await liqpay.create_payment(
+            amount=499,
+            description="Сайт автошроту",
+            server_url=LIQPAY_CALLBACK_URL,
+            seller_id=seller_id,
+            product="site"  # 🔥 FIX
+        )
+
+        kb = InlineKeyboardBuilder()
+        kb.button(text="💳 Оплатити сайт", url=payment["url"])
+
+        await message.answer(
+            "🌐 <b>Сайт автошроту</b>\n\n"
+            "🔹 Власний сайт\n"
+            "🔹 Список авто\n"
+            "🔹 Контакти клієнтів\n\n"
+            "💰 499 грн\n\n"
+            "Натисніть кнопку для оплати:",
+            parse_mode="HTML",
+            reply_markup=kb.as_markup()
+        )
+
+    except Exception as e:
+        print("ERROR SITE PAYMENT:", e)
+        await message.answer("⚠️ Помилка створення платежу")
+
+
+# ================= MENU =================
 
 @router.message(F.text == "💳 Пакети послуг")
 async def show_packages(message: Message):
     kb = InlineKeyboardBuilder()
 
-    kb.button(text="1 авто — 99 грн", callback_data="package:1")
-    kb.button(text="5 авто — 199 грн", callback_data="package:5")
-    kb.button(text="10 авто — 299 грн", callback_data="package:10")
+    kb.button(text="🚗 1 авто — 99 грн", callback_data="package:1")
+    kb.button(text="🚗 5 авто — 199 грн", callback_data="package:5")
+    kb.button(text="🚗 10 авто — 299 грн", callback_data="package:10")
+    kb.button(text="🌐 Сайт — 499 грн", callback_data="buy:site")
     kb.button(text="📊 Історія транзакцій", callback_data="seller:transactions")
 
     kb.adjust(1)
 
     await message.answer(
         "💳 <b>Пакети послуг</b>\n\n"
-        "Оберіть пакет:",
+        "Оберіть:",
         parse_mode="HTML",
         reply_markup=kb.as_markup()
     )
 
 
+# ================= CALLBACKS =================
+
 @router.callback_query(F.data.startswith("package:"))
 async def buy_package_callback(callback: CallbackQuery):
-    package_key = callback.data.split(":", 1)[1]
+    package_key = callback.data.split(":")[1]
 
     if package_key not in PACKAGES:
         await callback.answer("Невідомий пакет", show_alert=True)
@@ -101,6 +141,17 @@ async def buy_package_callback(callback: CallbackQuery):
 
     await callback.answer()
 
+
+@router.callback_query(F.data == "buy:site")
+async def buy_site(callback: CallbackQuery):
+    await _create_site_payment(
+        callback.message,
+        callback.from_user.id
+    )
+    await callback.answer()
+
+
+# ================= TRANSACTIONS =================
 
 @router.callback_query(F.data == "seller:transactions")
 async def show_transactions(callback: CallbackQuery):
@@ -121,11 +172,11 @@ async def show_transactions(callback: CallbackQuery):
         text += f"{icon} Оплата {t['amount']} грн\n"
         text += f"({status})\n"
 
-        if t["status"] == "success":
-            text += f"Зараховано {t.get('slots', 0)} місце(ць) в гаражі\n"
+        if t.get("product") == "garage":
+            text += f"Зараховано {t.get('slots', 0)} місце(ць)\n"
 
-        if t.get("error"):
-            text += f"Причина: {t['error']}\n"
+        elif t.get("product") == "site" and t["status"] == "success":
+            text += "🌐 Сайт активовано\n"
 
         text += f"{t['created_at']}\n\n"
 
