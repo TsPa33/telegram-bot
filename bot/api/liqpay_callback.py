@@ -33,7 +33,6 @@ async def liqpay_callback(request: Request):
         print("🔥 CALLBACK HIT")
 
         form = await request.form()
-
         data = form.get("data")
         signature = form.get("signature")
 
@@ -46,8 +45,6 @@ async def liqpay_callback(request: Request):
         decoded = base64.b64decode(data).decode()
         payload = json.loads(decoded)
 
-        print("PAYLOAD:", payload)
-
         order_id = payload.get("order_id")
         raw_status = payload.get("status")
 
@@ -56,18 +53,14 @@ async def liqpay_callback(request: Request):
 
         status = "success" if raw_status in ("success", "sandbox") else "failed"
 
-        print("NORMALIZED STATUS:", status)
-
         payment = await fetchrow(
             """
-            SELECT id, seller_id, amount, status
+            SELECT id, seller_id, amount, status, product
             FROM payments
             WHERE order_id = $1
             """,
             order_id
         )
-
-        print("DB PAYMENT:", payment)
 
         if not payment:
             return {"ok": True}
@@ -85,8 +78,9 @@ async def liqpay_callback(request: Request):
         try:
             amount = int(float(payment["amount"]))
         except Exception:
-            print("❌ INVALID AMOUNT:", payment["amount"])
             return {"ok": True}
+
+        product = payment.get("product", "garage")
 
         slots_map = {
             99: 1,
@@ -94,12 +88,8 @@ async def liqpay_callback(request: Request):
             299: 10,
         }
 
-        print("AMOUNT NORMALIZED:", amount)
-
-        # ===== SUBSCRIPTION =====
-        if status == "success" and amount in slots_map:
-            print("💰 ADDING SUBSCRIPTION")
-
+        # ===== ГАРАЖ =====
+        if product == "garage" and status == "success" and amount in slots_map:
             await execute(
                 """
                 INSERT INTO seller_subscriptions (seller_id, slots, expires_at, payment_id)
@@ -115,13 +105,8 @@ async def liqpay_callback(request: Request):
                 payment["id"]
             )
 
-        else:
-            print("⚠️ SKIPPED SUBSCRIPTION:", status, amount)
-
-        # ===== 🔥 ACTIVATE SITE =====
-        if status == "success":
-            print("🌐 ACTIVATING SITE")
-
+        # ===== САЙТ =====
+        if product == "site" and status == "success":
             await execute(
                 """
                 UPDATE sellers
@@ -131,7 +116,7 @@ async def liqpay_callback(request: Request):
                 payment["seller_id"]
             )
 
-        # ===== 🔥 NOTIFICATIONS =====
+        # ===== NOTIFICATIONS =====
 
         seller_data = await fetchrow(
             "SELECT telegram_id FROM sellers WHERE id = $1",
@@ -144,14 +129,20 @@ async def liqpay_callback(request: Request):
             now = datetime.now(kyiv_tz).strftime("%d.%m.%Y %H:%M")
 
             if status == "success":
-                await bot.send_message(
-                    telegram_id,
-                    f"✅ Оплата {amount} грн\n"
-                    f"(УСПІШНО)\n"
-                    f"Зараховано {slots_map.get(amount, 0)} місце(ць)\n"
-                    f"🌐 Сайт активовано\n"
-                    f"{now}"
-                )
+                if product == "garage":
+                    text = (
+                        f"✅ Оплата {amount} грн\n"
+                        f"Зараховано {slots_map.get(amount, 0)} місце(ць)\n"
+                    )
+                else:
+                    text = (
+                        f"🌐 Сайт активовано\n"
+                        f"Оплата {amount} грн\n"
+                    )
+
+                text += now
+                await bot.send_message(telegram_id, text)
+
             else:
                 reason = payload.get("err_description")
 
@@ -166,8 +157,6 @@ async def liqpay_callback(request: Request):
                 text += now
 
                 await bot.send_message(telegram_id, text)
-
-        print(f"✅ PAYMENT UPDATED: {order_id} -> {status}")
 
         return {"ok": True}
 
