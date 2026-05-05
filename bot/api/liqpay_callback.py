@@ -107,6 +107,8 @@ async def liqpay_callback(request: Request):
 
         # ===== САЙТ =====
         if product == "site" and status == "success":
+
+            # 1. активуємо доступ
             await execute(
                 """
                 UPDATE sellers
@@ -115,6 +117,30 @@ async def liqpay_callback(request: Request):
                 """,
                 payment["seller_id"]
             )
+
+            # 2. перевіряємо чи вже є сайт
+            site = await fetchrow(
+                """
+                SELECT * FROM seller_sites
+                WHERE seller_id = $1
+                """,
+                payment["seller_id"]
+            )
+
+            # 3. створюємо якщо нема
+            if not site:
+                from bot.database.repositories.site_repo import create_site
+                from bot.services.site_config import get_default_site_config
+
+                subdomain = f"user{payment['seller_id']}"
+
+                await create_site(
+                    seller_id=payment["seller_id"],
+                    subdomain=subdomain,
+                    config=get_default_site_config()
+                )
+            else:
+                subdomain = site["subdomain"]
 
         # ===== NOTIFICATIONS =====
 
@@ -136,8 +162,9 @@ async def liqpay_callback(request: Request):
                     )
                 else:
                     text = (
-                        f"🌐 Сайт активовано\n"
-                        f"Оплата {amount} грн\n"
+                        f"🌐 Сайт створено автоматично\n\n"
+                        f"🔗 https://worker-production-e30f.up.railway.app/site/{subdomain}\n\n"
+                        f"Редагування: «Мій сайт» у боті\n"
                     )
 
                 text += now
