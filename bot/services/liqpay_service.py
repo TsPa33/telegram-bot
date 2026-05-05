@@ -27,7 +27,8 @@ class LiqPayService:
         amount: int,
         description: str,
         server_url: str,
-        seller_id: int
+        seller_id: int,
+        product: str
     ):
         # 🔹 order_id
         order_id = str(uuid.uuid4())
@@ -39,7 +40,8 @@ class LiqPayService:
         await create_payment(
             seller_id=seller_id,
             order_id=order_id,
-            amount=amount
+            amount=amount,
+            product=product
         )
 
         # 🔹 LiqPay payload
