@@ -6,47 +6,60 @@ _DEFAULT_SITE_CONFIG: dict[str, Any] = {
     "header": {
         "enabled": True,
         "title": "",
-        "logo": None,
+        "logo": "https://res.cloudinary.com/dyem6pgtd/image/upload/w_200/pkkf5awehc8vdwbjo1ja",
         "background": None,
         "quick_buttons": [],
     },
+
     "hero": {
         "enabled": True,
         "title": "",
         "subtitle": "",
-        "banners": [],
+        "banners": [
+            "https://res.cloudinary.com/dyem6pgtd/image/upload/c_fill,w_1200,h_400/pkkf5awehc8vdwbjo1ja",
+            "https://res.cloudinary.com/dyem6pgtd/image/upload/c_fill,w_1200,h_400/uxh9fc5fjza7b2fn48fb",
+            "https://res.cloudinary.com/dyem6pgtd/image/upload/c_fill,w_1200,h_400/bwmvj9y7ajswamgoafhn",
+        ],
     },
+
     "categories": {
         "enabled": True,
     },
+
     "services": {
         "enabled": True,
         "mode": "live",
     },
+
     "modules": {
         "services": True,
         "cars": True,
         "contacts": True,
         "map": True,
     },
+
     "banner_cta": {
         "enabled": False,
         "text": "",
     },
+
     "price": {
         "enabled": False,
         "items": [],
     },
+
     "about": {
         "enabled": False,
         "text": "",
     },
+
     "map": {
         "enabled": True,
         "address": "",
         "lat": None,
         "lng": None,
     },
+
     "contacts": {
         "enabled": True,
         "phone": "",
@@ -54,6 +67,7 @@ _DEFAULT_SITE_CONFIG: dict[str, Any] = {
         "address": "",
         "map_embed": "",
     },
+
     "footer": {
         "enabled": True,
         "text": "",
@@ -101,11 +115,7 @@ def _deep_merge_missing(target: dict, defaults: dict) -> dict:
 
 
 def _normalize_config(config: dict) -> dict:
-    """
-    Гарантує що критичні поля мають правильний тип + лікує пошкоджені конфіги
-    """
-
-    # ===== MODULES (CRITICAL FIX) =====
+    # ===== MODULES =====
     default_modules = _DEFAULT_SITE_CONFIG["modules"]
     modules = config.get("modules")
 
@@ -134,10 +144,7 @@ def merge_with_default(config: dict) -> dict:
 
     merged = deepcopy(config)
 
-    # 1. додаємо відсутні ключі
     merged = _deep_merge_missing(merged, _DEFAULT_SITE_CONFIG)
-
-    # 2. нормалізуємо (🔥 ключовий етап)
     merged = _normalize_config(merged)
 
     return merged
