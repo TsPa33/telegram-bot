@@ -1,11 +1,16 @@
 from bot.database.base import fetchrow, fetch, execute
 
 
-async def create_payment(seller_id: int, order_id: str, amount: int):
+async def create_payment(
+    seller_id: int,
+    order_id: str,
+    amount: int,
+    product: str = "garage"   # 🔥 NEW
+):
     await execute("""
-        INSERT INTO payments (seller_id, order_id, amount, status)
-        VALUES ($1, $2, $3, 'pending')
-    """, seller_id, order_id, amount)
+        INSERT INTO payments (seller_id, order_id, amount, status, product)
+        VALUES ($1, $2, $3, 'pending', $4)
+    """, seller_id, order_id, amount, product)
 
 
 async def get_payment(order_id: str):
@@ -23,13 +28,14 @@ async def mark_payment_success(order_id: str):
     """, order_id)
 
 
-# ================= 🔥 НОВА ФУНКЦІЯ =================
+# ================= 🔥 UPDATED =================
 
 async def get_user_transactions(telegram_id: int):
     return await fetch("""
         SELECT 
             p.amount,
             p.status,
+            p.product,
             p.created_at,
             ss.slots
         FROM payments p
