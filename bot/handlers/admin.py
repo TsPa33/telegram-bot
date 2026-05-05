@@ -203,3 +203,49 @@ async def show_requests(message: types.Message, state: FSMContext):
 
     if not brand_requests and not model_requests:
         await message.answer("✅ Немає заявок")
+# ================= VERIFICATION =================
+
+@router.callback_query(F.data.startswith("admin:verify:ok:"))
+async def approve_verification(callback: CallbackQuery):
+    request_id = int(callback.data.split(":")[-1])
+
+    telegram_id = await approve_seller(request_id)
+
+    if not telegram_id:
+        await callback.answer("❌ Заявка не знайдена", show_alert=True)
+        return
+
+    if callback.message.caption:
+        await callback.message.edit_caption("✅ Верифікацію підтверджено")
+    else:
+        await callback.message.edit_text("✅ Верифікацію підтверджено")
+
+    await callback.bot.send_message(
+        telegram_id,
+        "✅ Ваш акаунт підтверджено\nТепер вам доступні всі функції продавця"
+    )
+
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("admin:verify:no:"))
+async def reject_verification(callback: CallbackQuery):
+    request_id = int(callback.data.split(":")[-1])
+
+    telegram_id = await reject_seller(request_id)
+
+    if not telegram_id:
+        await callback.answer("❌ Заявка не знайдена", show_alert=True)
+        return
+
+    if callback.message.caption:
+        await callback.message.edit_caption("❌ Верифікацію відхилено")
+    else:
+        await callback.message.edit_text("❌ Верифікацію відхилено")
+
+    await callback.bot.send_message(
+        telegram_id,
+        "❌ Верифікацію відхилено\nСпробуйте ще раз"
+    )
+
+    await callback.answer()
