@@ -43,8 +43,13 @@ async def _get_seller(telegram_id: int, username: str | None):
 # ================= RENDER =================
 
 def render_profile(seller):
+    verified = seller.get("is_verified")
+
+    status = "✅ Верифіковано" if verified else "❌ Не верифіковано"
+
     return (
         "👤 <b>Профіль продавця</b>\n\n"
+        f"🔐 {status}\n\n"
         f"🏪 {seller.get('shop_name') or '-'}\n"
         f"👤 {seller.get('name') or '-'}\n"
         f"📞 {seller.get('phone') or '-'}\n"
