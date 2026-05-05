@@ -15,27 +15,29 @@ from bot.keyboards.seller_menu import site_menu_kb
 router = Router()
 
 
-def site_enabled(user_id: int) -> bool:
-    return user_id == 6206952389  # можна прибрати пізніше
-
-
 @router.message(F.text == "🌐 Мій сайт")
 async def site_menu(message: Message, state: FSMContext):
-    user = message.from_user
-
-    if not user or not site_enabled(user.id):
-        return
-
-    # ✅ FIX: централізований seller
     seller = await resolve_seller(message)
     seller_id = seller["id"]
 
     await state.clear()
-    await state.update_data(flow="seller_site")
 
     site = await get_site_by_seller(seller_id)
 
-    # ✅ CREATE SITE IF NOT EXISTS
+    # ================= CASE 1: НЕ ОПЛАЧЕНО =================
+    if not seller.get("has_site"):
+        await message.answer(
+            "🌐 Мій сайт\n\n"
+            "❌ У вас ще немає сайту\n\n"
+            "Отримайте:\n"
+            "• власний сайт автошроту\n"
+            "• сторінку з вашими авто\n"
+            "• контакти для клієнтів\n\n"
+            "👇 Спочатку оплатіть послугу"
+        )
+        return
+
+    # ================= CASE 2: ОПЛАЧЕНО, АЛЕ НЕ СТВОРЕНО =================
     if not site:
         subdomain = await generate_unique_subdomain(
             base=f"user{seller_id}",
@@ -49,6 +51,14 @@ async def site_menu(message: Message, state: FSMContext):
             subdomain=subdomain,
             config=config,
         )
+
+        await message.answer(
+            "⚠️ Оплата отримана\n\n"
+            "👇 Натисніть щоб створити сайт"
+        )
+        return
+
+    # ================= CASE 3: ГОТОВО =================
 
     subdomain = site["subdomain"]
     status = site.get("status", "active")
