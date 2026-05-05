@@ -30,10 +30,8 @@ def seller_main_kb(is_verified: bool = False):
             KeyboardButton(text="📊 Статистика"),
         ],
         [
+            KeyboardButton(text="💳 Пакети послуг"), 
             KeyboardButton(text="🌐 Мій сайт"),
-        ],
-        [
-            KeyboardButton(text="💳 Пакети послуг"),  # 🔥 ДОДАНО
         ],
         [
             KeyboardButton(text="↩️ На головне меню"),  # ✅ ДОДАНО
