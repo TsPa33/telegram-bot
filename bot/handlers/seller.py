@@ -18,6 +18,9 @@ from bot.database.repositories.model_repo import (
 from bot.utils.cache import get_cached_brands, get_cached_models
 from bot.states.seller_states import SellerStates
 
+# 🔥 IMPORT GUARD
+from bot.handlers.seller.verification import check_verified
+
 router = Router()
 
 
@@ -48,6 +51,10 @@ def model_keyboard(models):
 @router.message(F.text == "➕ Додати авто")
 async def add_car_start(message: Message, state: FSMContext):
 
+    # 🔒 GUARD
+    if not await check_verified(message, state):
+        return
+
     seller = await get_or_create_seller(
         message.from_user.id,
         message.from_user.username
@@ -70,7 +77,10 @@ async def select_brand(message: Message, state: FSMContext):
 
     if message.text == "⬅️ Назад у мій профіль":
         await state.clear()
-        seller = await get_or_create_seller(message.from_user.id, message.from_user.username)
+        seller = await get_or_create_seller(
+            message.from_user.id,
+            message.from_user.username
+        )
 
         await message.answer(
             "🏠 Меню",
