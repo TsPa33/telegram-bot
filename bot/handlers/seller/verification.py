@@ -3,7 +3,7 @@ from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
 
 from bot.database.repositories.seller_repo import get_or_create_seller
-from bot.database.repositories.admin_repo import create_verification_request
+from bot.services.verification_service import submit_verification
 from bot.keyboards.admin_inline import verification_request_kb
 from bot.config import ADMIN_IDS
 from bot.states.seller_states import SellerStates
@@ -58,10 +58,15 @@ async def receive_verification_photo(message: Message, state: FSMContext):
         message.from_user.username
     )
 
-    request_id = await create_verification_request(
-        seller_id=seller["id"],
-        photo_id=message.photo[-1].file_id
-    )
+    try:
+        request_id = await submit_verification(
+            seller=seller,
+            photo_id=message.photo[-1].file_id
+        )
+    except ValueError:
+        await message.answer("✅ Ви вже верифіковані")
+        await state.clear()
+        return
 
     # 🔥 повідомлення всім адмінам
     for admin_id in ADMIN_IDS:
