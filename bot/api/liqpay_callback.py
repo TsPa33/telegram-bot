@@ -118,7 +118,20 @@ async def liqpay_callback(request: Request):
         else:
             print("⚠️ SKIPPED SUBSCRIPTION:", status, amount)
 
-        # ===== 🔥 НОВИЙ БЛОК: СПОВІЩЕННЯ =====
+        # ===== 🔥 ACTIVATE SITE =====
+        if status == "success":
+            print("🌐 ACTIVATING SITE")
+
+            await execute(
+                """
+                UPDATE sellers
+                SET has_site = TRUE
+                WHERE id = $1
+                """,
+                payment["seller_id"]
+            )
+
+        # ===== 🔥 NOTIFICATIONS =====
 
         seller_data = await fetchrow(
             "SELECT telegram_id FROM sellers WHERE id = $1",
@@ -135,7 +148,8 @@ async def liqpay_callback(request: Request):
                     telegram_id,
                     f"✅ Оплата {amount} грн\n"
                     f"(УСПІШНО)\n"
-                    f"Зараховано {slots_map.get(amount, 0)} місце(ць) в гаражі\n"
+                    f"Зараховано {slots_map.get(amount, 0)} місце(ць)\n"
+                    f"🌐 Сайт активовано\n"
                     f"{now}"
                 )
             else:
