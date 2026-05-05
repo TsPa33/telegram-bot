@@ -38,12 +38,12 @@ async def _create_package_payment(message: Message, package_key: str, telegram_i
 
         seller_id = seller["id"]
 
+        # ❗ FIX: description прибрано
         payment = await liqpay.create_payment(
             amount=package["amount"],
-            description=f"{package['slots']} авто",
             server_url=LIQPAY_CALLBACK_URL,
             seller_id=seller_id,
-            product="garage"  # 🔥 FIX
+            product="garage"
         )
 
         kb = InlineKeyboardBuilder()
@@ -74,24 +74,24 @@ async def _create_site_payment(message: Message, telegram_id: int):
 
         seller_id = seller["id"]
 
+        # ❗ FIX: description прибрано
         payment = await liqpay.create_payment(
             amount=499,
-            description="Сайт автошроту",
             server_url=LIQPAY_CALLBACK_URL,
             seller_id=seller_id,
-            product="site"  # 🔥 FIX
+            product="site"
         )
 
         kb = InlineKeyboardBuilder()
         kb.button(text="💳 Оплатити сайт", url=payment["url"])
 
         await message.answer(
-            "🌐 <b>Сайт автошроту</b>\n\n"
+            "🌐 <b>Створення сайту</b>\n\n"
             "🔹 Власний сайт\n"
             "🔹 Список авто\n"
-            "🔹 Контакти клієнтів\n\n"
+            "🔹 Прийом заявок\n\n"
             "💰 499 грн\n\n"
-            "Натисніть кнопку для оплати:",
+            "Після оплати сайт створиться автоматично",
             parse_mode="HTML",
             reply_markup=kb.as_markup()
         )
@@ -176,7 +176,7 @@ async def show_transactions(callback: CallbackQuery):
             text += f"Зараховано {t.get('slots', 0)} місце(ць)\n"
 
         elif t.get("product") == "site" and t["status"] == "success":
-            text += "🌐 Сайт активовано\n"
+            text += "🌐 Сайт створено\n"
 
         text += f"{t['created_at']}\n\n"
 
