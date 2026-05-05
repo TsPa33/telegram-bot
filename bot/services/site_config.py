@@ -6,7 +6,7 @@ _DEFAULT_SITE_CONFIG: dict[str, Any] = {
     "header": {
         "enabled": True,
         "title": "",
-        "logo": "https://res.cloudinary.com/dyem6pgtd/image/upload/w_200/pkkf5awehc8vdwbjo1ja",
+        "logo": "https://res.cloudinary.com/dyem6pgtd/image/upload/w_200/nllevu6x2rvr4w718f47",
         "background": None,
         "quick_buttons": [],
     },
@@ -115,7 +115,6 @@ def _deep_merge_missing(target: dict, defaults: dict) -> dict:
 
 
 def _normalize_config(config: dict) -> dict:
-    # ===== MODULES =====
     default_modules = _DEFAULT_SITE_CONFIG["modules"]
     modules = config.get("modules")
 
@@ -127,11 +126,9 @@ def _normalize_config(config: dict) -> dict:
             for key in default_modules
         }
 
-    # ===== HERO.BANNERS =====
     if not isinstance(config.get("hero", {}).get("banners"), list):
         config.setdefault("hero", {})["banners"] = []
 
-    # ===== PRICE.ITEMS =====
     if not isinstance(config.get("price", {}).get("items"), list):
         config.setdefault("price", {})["items"] = []
 
@@ -143,7 +140,6 @@ def merge_with_default(config: dict) -> dict:
         return get_default_site_config()
 
     merged = deepcopy(config)
-
     merged = _deep_merge_missing(merged, _DEFAULT_SITE_CONFIG)
     merged = _normalize_config(merged)
 
