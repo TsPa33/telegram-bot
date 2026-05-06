@@ -203,6 +203,56 @@ async def show_requests(message: types.Message, state: FSMContext):
 
     if not brand_requests and not model_requests:
         await message.answer("✅ Немає заявок")
+        # ================= BRAND APPROVE =================
+
+@router.callback_query(F.data.startswith("admin:brand:ok:"))
+async def approve_brand_handler(callback: CallbackQuery):
+    request_id = int(callback.data.split(":")[-1])
+
+    await approve_brand(request_id)
+
+    clear_brands_cache()
+
+    await callback.message.edit_text("✅ Бренд підтверджено")
+
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("admin:brand:no:"))
+async def reject_brand_handler(callback: CallbackQuery):
+    request_id = int(callback.data.split(":")[-1])
+
+    await reject_brand(request_id)
+
+    await callback.message.edit_text("❌ Бренд відхилено")
+
+    await callback.answer()
+
+
+# ================= MODEL APPROVE =================
+
+@router.callback_query(F.data.startswith("admin:model:ok:"))
+async def approve_model_handler(callback: CallbackQuery):
+    request_id = int(callback.data.split(":")[-1])
+
+    await approve_model(request_id)
+
+    clear_models_cache()
+
+    await callback.message.edit_text("✅ Модель підтверджено")
+
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("admin:model:no:"))
+async def reject_model_handler(callback: CallbackQuery):
+    request_id = int(callback.data.split(":")[-1])
+
+    await reject_model(request_id)
+
+    await callback.message.edit_text("❌ Модель відхилено")
+
+    await callback.answer()
 # ================= VERIFICATION =================
 
 @router.callback_query(F.data.startswith("admin:verify:ok:"))
