@@ -45,27 +45,52 @@ async def get_context(callback: CallbackQuery):
     return seller, site
 
 
+def safe_config(raw):
+    if not raw:
+        return {}
+
+    if isinstance(raw, str):
+        try:
+            return json.loads(raw)
+        except Exception:
+            return {}
+
+    return dict(raw)
+
+
 # ================= MENU NAVIGATION =================
 
 @router.callback_query(F.data == "site:contacts:menu")
 async def open_contacts(callback: CallbackQuery):
     await callback.message.edit_text("📞 Контакти", reply_markup=contacts_menu_kb())
+    await callback.answer()
 
 
 @router.callback_query(F.data == "site:location:menu")
 async def open_location(callback: CallbackQuery):
     await callback.message.edit_text("📍 Адреси та карта", reply_markup=location_menu_kb())
+    await callback.answer()
 
 
 @router.callback_query(F.data == "site:media:menu")
 async def open_media(callback: CallbackQuery):
     await callback.message.edit_text("🎨 Медіа та дизайн", reply_markup=media_menu_kb())
+    await callback.answer()
 
 
 @router.callback_query(F.data == "site:back")
 async def go_back(callback: CallbackQuery):
     seller = await resolve_seller_from_user(callback.from_user)
+
+    if not seller:
+        await callback.answer("Продавця не знайдено", show_alert=True)
+        return
+
     site = await get_site_by_seller(seller["id"])
+
+    if not site:
+        await callback.answer("Сайт не знайдено", show_alert=True)
+        return
 
     await callback.message.edit_text(
         "🌐 Мій сайт",
@@ -74,6 +99,7 @@ async def go_back(callback: CallbackQuery):
             is_active=True
         )
     )
+    await callback.answer()
 
 
 # ================= SERVICES =================
@@ -105,8 +131,6 @@ async def service_create_process(message: Message, state: FSMContext):
 
 
 # ================= CONTACTS =================
-
-# -------- ADD PHONE --------
 
 @router.callback_query(F.data == "contacts:add_phone")
 async def add_phone(callback: CallbackQuery, state: FSMContext):
@@ -140,9 +164,7 @@ async def save_phone(message: Message, state: FSMContext):
     seller = await resolve_seller(message)
     site = await get_site_by_seller(seller["id"])
 
-    config = site.get("config_draft") or {}
-    if isinstance(config, str):
-        config = json.loads(config)
+    config = safe_config(site.get("config_draft"))
 
     phones = config.get("contacts", {}).get("phones", [])
     phones.append(phone)
@@ -157,17 +179,21 @@ async def save_phone(message: Message, state: FSMContext):
     await message.answer(f"Номер додано ✅\n{phone}")
 
 
-# -------- PHONE LIST --------
-
 @router.callback_query(F.data == "contacts:list_phones")
 async def list_phones(callback: CallbackQuery):
     seller = await resolve_seller_from_user(callback.from_user)
+
+    if not seller:
+        await callback.answer("Продавця не знайдено", show_alert=True)
+        return
+
     site = await get_site_by_seller(seller["id"])
 
-    config = site.get("config_draft") or {}
-    if isinstance(config, str):
-        config = json.loads(config)
+    if not site:
+        await callback.answer("Сайт не знайдено", show_alert=True)
+        return
 
+    config = safe_config(site.get("config_draft"))
     phones = config.get("contacts", {}).get("phones", [])
 
     if not phones:
@@ -191,19 +217,23 @@ async def list_phones(callback: CallbackQuery):
     await callback.answer()
 
 
-# -------- DELETE PHONE --------
-
 @router.callback_query(F.data.startswith("contacts:delete_phone:"))
 async def delete_phone(callback: CallbackQuery):
     index = int(callback.data.split(":")[-1])
 
     seller = await resolve_seller_from_user(callback.from_user)
+
+    if not seller:
+        await callback.answer("Продавця не знайдено", show_alert=True)
+        return
+
     site = await get_site_by_seller(seller["id"])
 
-    config = site.get("config_draft") or {}
-    if isinstance(config, str):
-        config = json.loads(config)
+    if not site:
+        await callback.answer("Сайт не знайдено", show_alert=True)
+        return
 
+    config = safe_config(site.get("config_draft"))
     phones = config.get("contacts", {}).get("phones", [])
 
     if index >= len(phones):
@@ -221,8 +251,6 @@ async def delete_phone(callback: CallbackQuery):
     await callback.answer("Номер видалено")
     await callback.message.answer(f"Видалено: {deleted}")
 
-
-# -------- TELEGRAM --------
 
 @router.callback_query(F.data == "contacts:telegram")
 async def set_tg(callback: CallbackQuery, state: FSMContext):
@@ -248,8 +276,6 @@ async def save_tg(message: Message, state: FSMContext):
     await message.answer("Telegram збережено ✅")
 
 
-# -------- WHATSAPP --------
-
 @router.callback_query(F.data == "contacts:whatsapp")
 async def set_wa(callback: CallbackQuery, state: FSMContext):
     await state.set_state(SellerSiteStates.site_contact_whatsapp)
@@ -273,8 +299,6 @@ async def save_wa(message: Message, state: FSMContext):
     await state.clear()
     await message.answer("WhatsApp збережено ✅")
 
-
-# -------- VIBER --------
 
 @router.callback_query(F.data == "contacts:viber")
 async def set_viber(callback: CallbackQuery, state: FSMContext):
@@ -300,8 +324,6 @@ async def save_viber(message: Message, state: FSMContext):
     await message.answer("Viber збережено ✅")
 
 
-# -------- INSTAGRAM --------
-
 @router.callback_query(F.data == "contacts:instagram")
 async def set_inst(callback: CallbackQuery, state: FSMContext):
     await state.set_state(SellerSiteStates.site_contact_instagram)
@@ -326,8 +348,6 @@ async def save_inst(message: Message, state: FSMContext):
     await message.answer("Instagram збережено ✅")
 
 
-# -------- FACEBOOK --------
-
 @router.callback_query(F.data == "contacts:facebook")
 async def set_fb(callback: CallbackQuery, state: FSMContext):
     await state.set_state(SellerSiteStates.site_contact_facebook)
@@ -350,51 +370,33 @@ async def save_fb(message: Message, state: FSMContext):
 
     await state.clear()
     await message.answer("Facebook збережено ✅")
-    
-# -------- BANNERS --------
+
+
+# ================= BANNERS =================
 
 @router.callback_query(F.data == "media:add_banner")
 async def add_banner(callback: CallbackQuery, state: FSMContext):
     await state.set_state(SellerSiteStates.site_banner)
-    await callback.message.answer("Встав URL банера (Cloudinary)")
+    await callback.message.answer("Надішліть зображення банера")
     await callback.answer()
 
-
-@router.callback_query(F.data == "media:add_banner")
-async def add_banner(callback: CallbackQuery, state: FSMContext):
-    await state.set_state(SellerSiteStates.site_banner)
-    await callback.message.answer("Встав URL банера (Cloudinary)")
-    await callback.answer()
-
-    config = site.get("config_draft") or {}
-    if isinstance(config, str):
-        config = json.loads(config)
-
-    hero = config.get("hero", {})
-    banners = hero.get("banners", [])
-
-    banners.append(message.text)
-    hero["banners"] = banners
-
-    await update_site_config(site["id"], {
-        "hero": hero
-    })
-
-    await state.clear()
-    await message.answer("Банер додано ✅")
-
-
-# -------- LIST --------
 
 @router.callback_query(F.data == "media:list_banners")
+@router.callback_query(F.data == "site:banners:list")
 async def list_banners(callback: CallbackQuery):
     seller = await resolve_seller_from_user(callback.from_user)
+
+    if not seller:
+        await callback.answer("Продавця не знайдено", show_alert=True)
+        return
+
     site = await get_site_by_seller(seller["id"])
 
-    config = site.get("config_draft") or {}
-    if isinstance(config, str):
-        config = json.loads(config)
+    if not site:
+        await callback.answer("Сайт не знайдено", show_alert=True)
+        return
 
+    config = safe_config(site.get("config_draft"))
     banners = config.get("hero", {}).get("banners", [])
 
     if not banners:
@@ -404,12 +406,12 @@ async def list_banners(callback: CallbackQuery):
 
     for i, banner in enumerate(banners):
         await callback.message.answer(
-            banner,
+            f"{i + 1}. {banner}",
             reply_markup=InlineKeyboardMarkup(
                 inline_keyboard=[[
                     InlineKeyboardButton(
                         text="❌ Видалити",
-                        callback_data=f"media:delete_banner:{i}"
+                        callback_data=f"site:banners:delete:{i}"
                     )
                 ]]
             )
@@ -418,19 +420,24 @@ async def list_banners(callback: CallbackQuery):
     await callback.answer()
 
 
-# -------- DELETE --------
-
 @router.callback_query(F.data.startswith("media:delete_banner:"))
+@router.callback_query(F.data.startswith("site:banners:delete:"))
 async def delete_banner(callback: CallbackQuery):
     index = int(callback.data.split(":")[-1])
 
     seller = await resolve_seller_from_user(callback.from_user)
+
+    if not seller:
+        await callback.answer("Продавця не знайдено", show_alert=True)
+        return
+
     site = await get_site_by_seller(seller["id"])
 
-    config = site.get("config_draft") or {}
-    if isinstance(config, str):
-        config = json.loads(config)
+    if not site:
+        await callback.answer("Сайт не знайдено", show_alert=True)
+        return
 
+    config = safe_config(site.get("config_draft"))
     hero = config.get("hero", {})
     banners = hero.get("banners", [])
 
