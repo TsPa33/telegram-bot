@@ -355,12 +355,12 @@ async def save_fb(message: Message, state: FSMContext):
 
 @router.callback_query(F.data == "media:add_banner")
 async def add_banner(callback: CallbackQuery, state: FSMContext):
-    await state.set_state(SellerSiteStates.site_add_banner)
+    await state.set_state(SellerSiteStates.site_banner)
     await callback.message.answer("Встав URL банера (Cloudinary)")
     await callback.answer()
 
 
-@router.message(SellerSiteStates.site_add_banner)
+@router.message(SellerSiteStates.site_banner)
 async def save_banner(message: Message, state: FSMContext):
     seller = await resolve_seller(message)
     site = await get_site_by_seller(seller["id"])
