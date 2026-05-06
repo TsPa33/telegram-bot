@@ -38,10 +38,12 @@ def normalize_phone(phone: str) -> str | None:
 
 async def get_context(callback: CallbackQuery):
     seller = await resolve_seller_from_user(callback.from_user)
+
     if not seller:
         return None, None
 
     site = await get_site_by_seller(seller["id"])
+
     return seller, site
 
 
@@ -62,19 +64,31 @@ def safe_config(raw):
 
 @router.callback_query(F.data == "site:contacts:menu")
 async def open_contacts(callback: CallbackQuery):
-    await callback.message.edit_text("📞 Контакти", reply_markup=contacts_menu_kb())
+    await callback.message.edit_text(
+        "📞 Контакти",
+        reply_markup=contacts_menu_kb()
+    )
+
     await callback.answer()
 
 
 @router.callback_query(F.data == "site:location:menu")
 async def open_location(callback: CallbackQuery):
-    await callback.message.edit_text("📍 Адреси та карта", reply_markup=location_menu_kb())
+    await callback.message.edit_text(
+        "📍 Адреси та карта",
+        reply_markup=location_menu_kb()
+    )
+
     await callback.answer()
 
 
 @router.callback_query(F.data == "site:media:menu")
 async def open_media(callback: CallbackQuery):
-    await callback.message.edit_text("🎨 Медіа та дизайн", reply_markup=media_menu_kb())
+    await callback.message.edit_text(
+        "🎨 Медіа та дизайн",
+        reply_markup=media_menu_kb()
+    )
+
     await callback.answer()
 
 
@@ -99,7 +113,108 @@ async def go_back(callback: CallbackQuery):
             is_active=True
         )
     )
+
     await callback.answer()
+
+
+# ================= LOCATION =================
+
+@router.callback_query(F.data == "site:contacts:address")
+async def edit_address(callback: CallbackQuery, state: FSMContext):
+    await state.set_state(SellerSiteStates.site_contact_address)
+
+    await callback.message.answer(
+        "📍 Введіть адресу\n\n"
+        "Приклад:\n"
+        "м. Київ, вул. Центральна, 10"
+    )
+
+    await callback.answer()
+
+
+@router.message(SellerSiteStates.site_contact_address)
+async def save_address(message: Message, state: FSMContext):
+    seller = await resolve_seller(message)
+
+    site = await get_site_by_seller(seller["id"])
+
+    if not site:
+        await state.clear()
+        await message.answer("❌ Сайт не знайдено")
+        return
+
+    address = message.text.strip()
+
+    if not address:
+        await message.answer("❌ Адреса не може бути порожньою")
+        return
+
+    config = safe_config(site.get("config_draft"))
+
+    contacts = config.get("contacts", {})
+    contacts["address"] = address
+
+    map_config = config.get("map", {})
+    map_config["address"] = address
+
+    await update_site_config(site["id"], {
+        "contacts": contacts,
+        "map": map_config,
+    })
+
+    await state.clear()
+
+    await message.answer(
+        "✅ Адресу збережено\n\n"
+        f"📍 {address}"
+    )
+
+
+@router.callback_query(F.data == "site:contacts:map")
+async def edit_map(callback: CallbackQuery, state: FSMContext):
+    await state.set_state(SellerSiteStates.site_contact_map)
+
+    await callback.message.answer(
+        "🗺 Вставте HTML iframe Google Maps\n\n"
+        "Приклад:\n"
+        "<iframe src='...'></iframe>"
+    )
+
+    await callback.answer()
+
+
+@router.message(SellerSiteStates.site_contact_map)
+async def save_map(message: Message, state: FSMContext):
+    seller = await resolve_seller(message)
+
+    site = await get_site_by_seller(seller["id"])
+
+    if not site:
+        await state.clear()
+        await message.answer("❌ Сайт не знайдено")
+        return
+
+    map_embed = message.text.strip()
+
+    if "<iframe" not in map_embed or "</iframe>" not in map_embed:
+        await message.answer(
+            "❌ Невірний формат карти\n\n"
+            "Потрібно вставити iframe код Google Maps."
+        )
+        return
+
+    config = safe_config(site.get("config_draft"))
+
+    contacts = config.get("contacts", {})
+    contacts["map_embed"] = map_embed
+
+    await update_site_config(site["id"], {
+        "contacts": contacts
+    })
+
+    await state.clear()
+
+    await message.answer("✅ Карту збережено")
 
 
 # ================= SERVICES =================
@@ -107,7 +222,9 @@ async def go_back(callback: CallbackQuery):
 @router.callback_query(F.data == "site:services:add")
 async def service_add(callback: CallbackQuery, state: FSMContext):
     await state.set_state(SellerSiteStates.site_service_create)
+
     await callback.message.answer("Введи назву послуги")
+
     await callback.answer()
 
 
@@ -127,6 +244,7 @@ async def service_create_process(message: Message, state: FSMContext):
     )
 
     await state.clear()
+
     await message.answer("Послугу створено ✅")
 
 
@@ -162,6 +280,7 @@ async def save_phone(message: Message, state: FSMContext):
         return
 
     seller = await resolve_seller(message)
+
     site = await get_site_by_seller(seller["id"])
 
     config = safe_config(site.get("config_draft"))
@@ -176,6 +295,7 @@ async def save_phone(message: Message, state: FSMContext):
     })
 
     await state.clear()
+
     await message.answer(f"Номер додано ✅\n{phone}")
 
 
@@ -194,10 +314,12 @@ async def list_phones(callback: CallbackQuery):
         return
 
     config = safe_config(site.get("config_draft"))
+
     phones = config.get("contacts", {}).get("phones", [])
 
     if not phones:
         await callback.message.answer("Список номерів порожній")
+
         await callback.answer()
         return
 
@@ -234,6 +356,7 @@ async def delete_phone(callback: CallbackQuery):
         return
 
     config = safe_config(site.get("config_draft"))
+
     phones = config.get("contacts", {}).get("phones", [])
 
     if index >= len(phones):
@@ -249,19 +372,23 @@ async def delete_phone(callback: CallbackQuery):
     })
 
     await callback.answer("Номер видалено")
+
     await callback.message.answer(f"Видалено: {deleted}")
 
 
 @router.callback_query(F.data == "contacts:telegram")
 async def set_tg(callback: CallbackQuery, state: FSMContext):
     await state.set_state(SellerSiteStates.site_contact_telegram)
+
     await callback.message.answer("Введи username (без @)")
+
     await callback.answer()
 
 
 @router.message(SellerSiteStates.site_contact_telegram)
 async def save_tg(message: Message, state: FSMContext):
     seller = await resolve_seller(message)
+
     site = await get_site_by_seller(seller["id"])
 
     await update_site_config(site["id"], {
@@ -273,19 +400,23 @@ async def save_tg(message: Message, state: FSMContext):
     })
 
     await state.clear()
+
     await message.answer("Telegram збережено ✅")
 
 
 @router.callback_query(F.data == "contacts:whatsapp")
 async def set_wa(callback: CallbackQuery, state: FSMContext):
     await state.set_state(SellerSiteStates.site_contact_whatsapp)
+
     await callback.message.answer("Введи номер WhatsApp")
+
     await callback.answer()
 
 
 @router.message(SellerSiteStates.site_contact_whatsapp)
 async def save_wa(message: Message, state: FSMContext):
     seller = await resolve_seller(message)
+
     site = await get_site_by_seller(seller["id"])
 
     await update_site_config(site["id"], {
@@ -297,19 +428,23 @@ async def save_wa(message: Message, state: FSMContext):
     })
 
     await state.clear()
+
     await message.answer("WhatsApp збережено ✅")
 
 
 @router.callback_query(F.data == "contacts:viber")
 async def set_viber(callback: CallbackQuery, state: FSMContext):
     await state.set_state(SellerSiteStates.site_contact_viber)
+
     await callback.message.answer("Введи номер Viber")
+
     await callback.answer()
 
 
 @router.message(SellerSiteStates.site_contact_viber)
 async def save_viber(message: Message, state: FSMContext):
     seller = await resolve_seller(message)
+
     site = await get_site_by_seller(seller["id"])
 
     await update_site_config(site["id"], {
@@ -321,19 +456,23 @@ async def save_viber(message: Message, state: FSMContext):
     })
 
     await state.clear()
+
     await message.answer("Viber збережено ✅")
 
 
 @router.callback_query(F.data == "contacts:instagram")
 async def set_inst(callback: CallbackQuery, state: FSMContext):
     await state.set_state(SellerSiteStates.site_contact_instagram)
+
     await callback.message.answer("Встав посилання Instagram")
+
     await callback.answer()
 
 
 @router.message(SellerSiteStates.site_contact_instagram)
 async def save_inst(message: Message, state: FSMContext):
     seller = await resolve_seller(message)
+
     site = await get_site_by_seller(seller["id"])
 
     await update_site_config(site["id"], {
@@ -345,19 +484,23 @@ async def save_inst(message: Message, state: FSMContext):
     })
 
     await state.clear()
+
     await message.answer("Instagram збережено ✅")
 
 
 @router.callback_query(F.data == "contacts:facebook")
 async def set_fb(callback: CallbackQuery, state: FSMContext):
     await state.set_state(SellerSiteStates.site_contact_facebook)
+
     await callback.message.answer("Встав посилання Facebook")
+
     await callback.answer()
 
 
 @router.message(SellerSiteStates.site_contact_facebook)
 async def save_fb(message: Message, state: FSMContext):
     seller = await resolve_seller(message)
+
     site = await get_site_by_seller(seller["id"])
 
     await update_site_config(site["id"], {
@@ -369,15 +512,19 @@ async def save_fb(message: Message, state: FSMContext):
     })
 
     await state.clear()
+
     await message.answer("Facebook збережено ✅")
 
 
 # ================= BANNERS =================
 
 @router.callback_query(F.data == "media:add_banner")
+@router.callback_query(F.data == "site:edit:banners")
 async def add_banner(callback: CallbackQuery, state: FSMContext):
     await state.set_state(SellerSiteStates.site_banner)
+
     await callback.message.answer("Надішліть зображення банера")
+
     await callback.answer()
 
 
@@ -397,10 +544,12 @@ async def list_banners(callback: CallbackQuery):
         return
 
     config = safe_config(site.get("config_draft"))
+
     banners = config.get("hero", {}).get("banners", [])
 
     if not banners:
         await callback.message.answer("Банери відсутні")
+
         await callback.answer()
         return
 
@@ -438,6 +587,7 @@ async def delete_banner(callback: CallbackQuery):
         return
 
     config = safe_config(site.get("config_draft"))
+
     hero = config.get("hero", {})
     banners = hero.get("banners", [])
 
@@ -446,6 +596,7 @@ async def delete_banner(callback: CallbackQuery):
         return
 
     deleted = banners.pop(index)
+
     hero["banners"] = banners
 
     await update_site_config(site["id"], {
@@ -453,4 +604,7 @@ async def delete_banner(callback: CallbackQuery):
     })
 
     await callback.answer("Видалено")
-    await callback.message.answer(f"Банер видалено:\n{deleted}")
+
+    await callback.message.answer(
+        f"Банер видалено:\n{deleted}"
+    )
