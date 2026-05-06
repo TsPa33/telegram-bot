@@ -35,6 +35,7 @@ from bot.database.repositories.user_repo import (
     delete_user_full
 )
 
+from bot.database.repositories.seller_repo import get_seller_by_id
 from bot.utils.cache import clear_brands_cache, clear_models_cache
 
 router = Router()
@@ -203,17 +204,48 @@ async def show_requests(message: types.Message, state: FSMContext):
 
     if not brand_requests and not model_requests:
         await message.answer("✅ Немає заявок")
-        # ================= BRAND APPROVE =================
+       # ================= BRAND APPROVE =================
 
 @router.callback_query(F.data.startswith("admin:brand:ok:"))
 async def approve_brand_handler(callback: CallbackQuery):
     request_id = int(callback.data.split(":")[-1])
 
+    requests = await get_pending_brand_requests()
+
+    request_data = next(
+        (r for r in requests if r["id"] == request_id),
+        None
+    )
+
+    if not request_data:
+        await callback.answer("❌ Заявка не знайдена", show_alert=True)
+        return
+
     await approve_brand(request_id)
 
     clear_brands_cache()
 
-    await callback.message.edit_text("✅ Бренд підтверджено")
+    seller = await get_seller_by_id(request_data["user_id"])
+
+    if seller:
+        try:
+            await callback.bot.send_message(
+                seller["telegram_id"],
+                (
+                    "✅ Ваш бренд погоджено модератором\n\n"
+                    f"🏷 Бренд: {request_data['brand']}\n\n"
+                    "Тепер ви можете додати авто у свій гараж."
+                )
+            )
+        except Exception:
+            pass
+
+    await callback.message.edit_text(
+        (
+            "✅ Бренд погоджено\n\n"
+            f"🏷 {request_data['brand']}"
+        )
+    )
 
     await callback.answer()
 
@@ -222,9 +254,39 @@ async def approve_brand_handler(callback: CallbackQuery):
 async def reject_brand_handler(callback: CallbackQuery):
     request_id = int(callback.data.split(":")[-1])
 
+    requests = await get_pending_brand_requests()
+
+    request_data = next(
+        (r for r in requests if r["id"] == request_id),
+        None
+    )
+
+    if not request_data:
+        await callback.answer("❌ Заявка не знайдена", show_alert=True)
+        return
+
     await reject_brand(request_id)
 
-    await callback.message.edit_text("❌ Бренд відхилено")
+    seller = await get_seller_by_id(request_data["user_id"])
+
+    if seller:
+        try:
+            await callback.bot.send_message(
+                seller["telegram_id"],
+                (
+                    "❌ Ваш бренд відхилено модератором\n\n"
+                    f"🏷 Бренд: {request_data['brand']}"
+                )
+            )
+        except Exception:
+            pass
+
+    await callback.message.edit_text(
+        (
+            "❌ Бренд відхилено\n\n"
+            f"🏷 {request_data['brand']}"
+        )
+    )
 
     await callback.answer()
 
@@ -235,11 +297,44 @@ async def reject_brand_handler(callback: CallbackQuery):
 async def approve_model_handler(callback: CallbackQuery):
     request_id = int(callback.data.split(":")[-1])
 
+    requests = await get_pending_model_requests()
+
+    request_data = next(
+        (r for r in requests if r["id"] == request_id),
+        None
+    )
+
+    if not request_data:
+        await callback.answer("❌ Заявка не знайдена", show_alert=True)
+        return
+
     await approve_model(request_id)
 
-    clear_models_cache()
+    clear_models_cache(request_data["brand"])
 
-    await callback.message.edit_text("✅ Модель підтверджено")
+    seller = await get_seller_by_id(request_data["user_id"])
+
+    if seller:
+        try:
+            await callback.bot.send_message(
+                seller["telegram_id"],
+                (
+                    "✅ Вашу модель погоджено модератором\n\n"
+                    f"🏷 Бренд: {request_data['brand']}\n"
+                    f"🚗 Модель: {request_data['model']}\n\n"
+                    "Тепер ви можете додати авто у свій гараж."
+                )
+            )
+        except Exception:
+            pass
+
+    await callback.message.edit_text(
+        (
+            "✅ Модель погоджено\n\n"
+            f"🏷 {request_data['brand']}\n"
+            f"🚗 {request_data['model']}"
+        )
+    )
 
     await callback.answer()
 
@@ -248,9 +343,41 @@ async def approve_model_handler(callback: CallbackQuery):
 async def reject_model_handler(callback: CallbackQuery):
     request_id = int(callback.data.split(":")[-1])
 
+    requests = await get_pending_model_requests()
+
+    request_data = next(
+        (r for r in requests if r["id"] == request_id),
+        None
+    )
+
+    if not request_data:
+        await callback.answer("❌ Заявка не знайдена", show_alert=True)
+        return
+
     await reject_model(request_id)
 
-    await callback.message.edit_text("❌ Модель відхилено")
+    seller = await get_seller_by_id(request_data["user_id"])
+
+    if seller:
+        try:
+            await callback.bot.send_message(
+                seller["telegram_id"],
+                (
+                    "❌ Вашу модель відхилено модератором\n\n"
+                    f"🏷 Бренд: {request_data['brand']}\n"
+                    f"🚗 Модель: {request_data['model']}"
+                )
+            )
+        except Exception:
+            pass
+
+    await callback.message.edit_text(
+        (
+            "❌ Модель відхилено\n\n"
+            f"🏷 {request_data['brand']}\n"
+            f"🚗 {request_data['model']}"
+        )
+    )
 
     await callback.answer()
 # ================= VERIFICATION =================
