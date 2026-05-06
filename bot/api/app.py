@@ -7,10 +7,12 @@ from fastapi.templating import Jinja2Templates
 
 from bot.api.liqpay_callback import router as liqpay_router
 from bot.config import BOT_TOKEN
+
 from bot.database.repositories.site_repo import get_site_by_subdomain
 from bot.database.repositories.seller_repo import get_seller_by_id
 from bot.database.repositories.car_repo import get_cars_by_seller
 from bot.database.repositories.service_repo import get_services_by_seller
+
 from bot.services.site_config import merge_with_default
 from bot.utils.subdomain import is_valid_subdomain
 from bot.services.telegram_sender import send_message_to_seller
@@ -24,7 +26,10 @@ bot = Bot(token=BOT_TOKEN)
 
 async def tg_file_url(bot: Bot, file_id: str) -> str:
     file = await bot.get_file(file_id)
-    return f"https://api.telegram.org/file/bot{bot.token}/{file.file_path}"
+
+    return (
+        f"https://api.telegram.org/file/bot{bot.token}/{file.file_path}"
+    )
 
 
 # ================= SITE RENDER =================
@@ -37,7 +42,10 @@ async def render_site(subdomain: str, request: Request):
     site = await get_site_by_subdomain(subdomain)
 
     if not site or site["status"] != "active":
-        raise HTTPException(status_code=404, detail="Site not found")
+        raise HTTPException(
+            status_code=404,
+            detail="Site not found"
+        )
 
     raw_config = site.get("config_live") or {}
 
@@ -51,37 +59,67 @@ async def render_site(subdomain: str, request: Request):
 
     modules = config.setdefault("modules", {})
 
-    service_prices = config.setdefault("services", {}).setdefault("prices", {})
-    car_titles = config.setdefault("cars", {}).setdefault("titles", {})
-    car_prices = config.setdefault("cars", {}).setdefault("prices", {})
+    service_prices = (
+        config
+        .setdefault("services", {})
+        .setdefault("prices", {})
+    )
+
+    car_titles = (
+        config
+        .setdefault("cars", {})
+        .setdefault("titles", {})
+    )
+
+    car_prices = (
+        config
+        .setdefault("cars", {})
+        .setdefault("prices", {})
+    )
 
     # ================= MEDIA =================
 
-    # LOGO
+    # ===== LOGO =====
+
     if config.get("header", {}).get("logo"):
         logo = config["header"]["logo"]
 
-        if isinstance(logo, str) and logo.startswith(("http://", "https://")):
-            pass  # already URL
+        if isinstance(logo, str) and logo.startswith(
+            ("http://", "https://")
+        ):
+            pass
+
         else:
             try:
-                config["header"]["logo"] = await tg_file_url(bot, logo)
+                config["header"]["logo"] = await tg_file_url(
+                    bot,
+                    logo
+                )
+
             except Exception:
                 config["header"]["logo"] = None
 
-    # BANNERS (🔥 FIX)
+    # ===== BANNERS =====
+
     if config.get("hero", {}).get("banners"):
         resolved = []
 
-        for b in config["hero"]["banners"]:
-            # ✅ Cloudinary / external URL
-            if isinstance(b, str) and b.startswith(("http://", "https://")):
-                resolved.append(b)
+        for banner in config["hero"]["banners"]:
+
+            # external URL
+            if (
+                isinstance(banner, str)
+                and banner.startswith(("http://", "https://"))
+            ):
+                resolved.append(banner)
                 continue
 
-            # Telegram file_id
+            # telegram file_id
             try:
-                resolved.append(await tg_file_url(bot, b))
+                resolved.append(
+                    await tg_file_url(bot, banner)
+                )
+
             except Exception:
                 continue
 
@@ -89,41 +127,74 @@ async def render_site(subdomain: str, request: Request):
 
     seller_id = site["seller_id"]
 
+    # ================= SELLER =================
+
+    seller = await get_seller_by_id(seller_id)
+
     cars = []
     services = []
 
     # ================= CARS =================
 
     if modules.get("cars", True):
+
         cars = await get_cars_by_seller(seller_id)
         cars = [dict(c) for c in cars]
 
         for car in cars:
+
             car_id = str(car.get("id"))
-            car["title"] = car_titles.get(car_id) or f"{car.get('brand', '')} {car.get('model', '')}".strip()
-            car["price"] = car_prices.get(car_id) or ""
+
+            car["title"] = (
+                car_titles.get(car_id)
+                or f"{car.get('brand', '')} {car.get('model', '')}".strip()
+            )
+
+            car["price"] = (
+                car_prices.get(car_id)
+                or ""
+            )
+
             car["photo_url"] = None
 
             if car.get("photo_id"):
+
                 try:
-                    car["photo_url"] = await tg_file_url(bot, car["photo_id"])
+                    car["photo_url"] = await tg_file_url(
+                        bot,
+                        car["photo_id"]
+                    )
+
                 except Exception:
                     car["photo_url"] = None
 
     # ================= SERVICES =================
 
     if modules.get("services", True):
+
         services = await get_services_by_seller(seller_id)
         services = [dict(s) for s in services]
 
         for service in services:
+
             service_id = str(service.get("id"))
-            service["price"] = service_prices.get(service_id) or service.get("website") or ""
+
+            service["price"] = (
+                service_prices.get(service_id)
+                or service.get("website")
+                or ""
+            )
+
             service["photo_url"] = None
 
             if service.get("photo_id"):
+
                 try:
-                    service["photo_url"] = await tg_file_url(bot, service["photo_id"])
+                    service["photo_url"] = await tg_file_url(
+                        bot,
+                        service["photo_id"]
+                    )
+
                 except Exception:
                     service["photo_url"] = None
 
@@ -133,6 +204,7 @@ async def render_site(subdomain: str, request: Request):
             "request": request,
             "subdomain": subdomain,
             "config": config,
+            "seller": seller,
             "cars": cars,
             "services": services,
         },
@@ -169,7 +241,10 @@ async def create_lead(
         f"🌐 Сайт: {subdomain}"
     )
 
-    await send_message_to_seller(seller["telegram_id"], text)
+    await send_message_to_seller(
+        seller["telegram_id"],
+        text
+    )
 
     return {"status": "ok"}
 
