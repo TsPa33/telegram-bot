@@ -60,5 +60,5 @@ class SellerSiteStates(StatesGroup):
     site_contact_facebook = State()
 
     # ================= MEDIA =================
-    site_banner = State()
+    site_add_banner = State()
     site_logo = State()
