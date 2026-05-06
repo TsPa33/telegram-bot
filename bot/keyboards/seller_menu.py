@@ -93,8 +93,8 @@ def contacts_menu_kb():
 def location_menu_kb():
     return InlineKeyboardMarkup(inline_keyboard=[
 
-        [InlineKeyboardButton(text="📍 Додати адресу", callback_data="site:contacts:address")],
-        [InlineKeyboardButton(text="🗺 Додати карту", callback_data="site:contacts:map")],
+        [InlineKeyboardButton(text="📍 Додати / змінити адресу", callback_data="site:contacts:address")],
+        [InlineKeyboardButton(text="🗺 Додати / змінити карту", callback_data="site:contacts:map")],
 
         [InlineKeyboardButton(text="⬅ Назад", callback_data="site:back")],
     ])
