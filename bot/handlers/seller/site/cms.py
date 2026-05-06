@@ -350,3 +350,99 @@ async def save_fb(message: Message, state: FSMContext):
 
     await state.clear()
     await message.answer("Facebook збережено ✅")
+    
+# -------- BANNERS --------
+
+@router.callback_query(F.data == "media:add_banner")
+async def add_banner(callback: CallbackQuery, state: FSMContext):
+    await state.set_state(SellerSiteStates.site_add_banner)
+    await callback.message.answer("Встав URL банера (Cloudinary)")
+    await callback.answer()
+
+
+@router.message(SellerSiteStates.site_add_banner)
+async def save_banner(message: Message, state: FSMContext):
+    seller = await resolve_seller(message)
+    site = await get_site_by_seller(seller["id"])
+
+    config = site.get("config_draft") or {}
+    if isinstance(config, str):
+        config = json.loads(config)
+
+    hero = config.get("hero", {})
+    banners = hero.get("banners", [])
+
+    banners.append(message.text)
+    hero["banners"] = banners
+
+    await update_site_config(site["id"], {
+        "hero": hero
+    })
+
+    await state.clear()
+    await message.answer("Банер додано ✅")
+
+
+# -------- LIST --------
+
+@router.callback_query(F.data == "media:list_banners")
+async def list_banners(callback: CallbackQuery):
+    seller = await resolve_seller_from_user(callback.from_user)
+    site = await get_site_by_seller(seller["id"])
+
+    config = site.get("config_draft") or {}
+    if isinstance(config, str):
+        config = json.loads(config)
+
+    banners = config.get("hero", {}).get("banners", [])
+
+    if not banners:
+        await callback.message.answer("Банери відсутні")
+        await callback.answer()
+        return
+
+    for i, banner in enumerate(banners):
+        await callback.message.answer(
+            banner,
+            reply_markup=InlineKeyboardMarkup(
+                inline_keyboard=[[
+                    InlineKeyboardButton(
+                        text="❌ Видалити",
+                        callback_data=f"media:delete_banner:{i}"
+                    )
+                ]]
+            )
+        )
+
+    await callback.answer()
+
+
+# -------- DELETE --------
+
+@router.callback_query(F.data.startswith("media:delete_banner:"))
+async def delete_banner(callback: CallbackQuery):
+    index = int(callback.data.split(":")[-1])
+
+    seller = await resolve_seller_from_user(callback.from_user)
+    site = await get_site_by_seller(seller["id"])
+
+    config = site.get("config_draft") or {}
+    if isinstance(config, str):
+        config = json.loads(config)
+
+    hero = config.get("hero", {})
+    banners = hero.get("banners", [])
+
+    if index >= len(banners):
+        await callback.answer("Помилка", show_alert=True)
+        return
+
+    deleted = banners.pop(index)
+    hero["banners"] = banners
+
+    await update_site_config(site["id"], {
+        "hero": hero
+    })
+
+    await callback.answer("Видалено")
+    await callback.message.answer(f"Банер видалено:\n{deleted}")
