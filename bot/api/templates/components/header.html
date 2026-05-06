@@ -5,8 +5,13 @@
             {% if header.get('logo') %}
             <img src="{{ header.get('logo') }}" class="logo">
             {% endif %}
-            <span>{{ header.get('title') }}</span>
         </a>
+
+        {% if seller and seller.get('shop_name') %}
+        <div class="shop-title">
+            {{ seller.get('shop_name') }}
+        </div>
+        {% endif %}
 
         <!-- BURGER -->
         <button id="menuToggle" class="menu-toggle">
@@ -28,3 +33,23 @@
         </ul>
     </nav>
 </header>
+
+<style>
+.shop-title {
+    flex: 1;
+    text-align: center;
+    color: #ffffff;
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1.2;
+    padding: 0 16px;
+    word-break: break-word;
+}
+
+@media (max-width: 768px) {
+    .shop-title {
+        font-size: 15px;
+        padding: 0 10px;
+    }
+}
+</style>
