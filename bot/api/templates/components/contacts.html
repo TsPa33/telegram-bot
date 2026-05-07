@@ -5,38 +5,47 @@
 
         <div class="contacts-grid">
 
-            <!-- LEFT: INFO -->
+            <!-- LEFT -->
             <div class="contact-card">
 
                 <!-- PHONES -->
                 {% set phones = contacts.get('phones', []) %}
+
                 {% if phones %}
                     <div class="contact-group">
-                        <div class="group-title">📞 Телефони</div>
+
+                        <div class="group-title">
+                            📞 Телефони
+                        </div>
 
                         {% for phone in phones %}
                             <a href="tel:{{ phone }}" class="contact-item">
                                 {{ phone }}
                             </a>
                         {% endfor %}
+
                     </div>
                 {% endif %}
-
 
                 <!-- ADDRESS -->
                 {% if contacts.get('address') %}
                     <div class="contact-group">
-                        <div class="group-title">📍 Адреса</div>
+
+                        <div class="group-title">
+                            📍 Адреса
+                        </div>
+
                         <div class="contact-item">
                             {{ contacts.get('address') }}
                         </div>
+
                     </div>
                 {% endif %}
 
             </div>
 
 
-            <!-- RIGHT: MESSENGERS + SOCIALS -->
+            <!-- RIGHT -->
             <div class="contact-card">
 
                 {% set m = contacts.get('messengers', {}) %}
@@ -45,29 +54,59 @@
                 <!-- MESSENGERS -->
                 {% if m %}
                 <div class="contact-group">
-                    <div class="group-title">💬 Месенджери</div>
 
-                    <div class="contact-row">
+                    <div class="group-title">
+                        💬 Месенджери
+                    </div>
+
+                    <div class="social-list">
 
                         {% if m.telegram %}
-                        <a href="https://t.me/{{ m.telegram }}" target="_blank" class="contact-btn">
-                            Telegram
+                        <a
+                            href="https://t.me/{{ m.telegram }}"
+                            target="_blank"
+                            class="social-btn"
+                        >
+                            <img
+                                src="https://cdn-icons-png.flaticon.com/512/2111/2111646.png"
+                                class="social-icon"
+                            >
+
+                            <span>Telegram</span>
                         </a>
                         {% endif %}
 
                         {% if m.whatsapp %}
-                        <a href="https://wa.me/{{ m.whatsapp }}" target="_blank" class="contact-btn">
-                            WhatsApp
+                        <a
+                            href="https://wa.me/{{ m.whatsapp }}"
+                            target="_blank"
+                            class="social-btn"
+                        >
+                            <img
+                                src="https://cdn-icons-png.flaticon.com/512/733/733585.png"
+                                class="social-icon"
+                            >
+
+                            <span>WhatsApp</span>
                         </a>
                         {% endif %}
 
                         {% if m.viber %}
-                        <a href="viber://chat?number={{ m.viber }}" class="contact-btn">
-                            Viber
+                        <a
+                            href="viber://chat?number={{ m.viber }}"
+                            class="social-btn"
+                        >
+                            <img
+                                src="https://cdn-icons-png.flaticon.com/512/3670/3670059.png"
+                                class="social-icon"
+                            >
+
+                            <span>Viber</span>
                         </a>
                         {% endif %}
 
                     </div>
+
                 </div>
                 {% endif %}
 
@@ -75,23 +114,45 @@
                 <!-- SOCIALS -->
                 {% if s %}
                 <div class="contact-group">
-                    <div class="group-title">🌐 Соцмережі</div>
 
-                    <div class="contact-row">
+                    <div class="group-title">
+                        🌐 Соцмережі
+                    </div>
+
+                    <div class="social-list">
 
                         {% if s.instagram %}
-                        <a href="{{ s.instagram }}" target="_blank" class="contact-btn">
-                            Instagram
+                        <a
+                            href="{{ s.instagram }}"
+                            target="_blank"
+                            class="social-btn"
+                        >
+                            <img
+                                src="https://cdn-icons-png.flaticon.com/512/2111/2111463.png"
+                                class="social-icon"
+                            >
+
+                            <span>Instagram</span>
                         </a>
                         {% endif %}
 
                         {% if s.facebook %}
-                        <a href="{{ s.facebook }}" target="_blank" class="contact-btn">
-                            Facebook
+                        <a
+                            href="{{ s.facebook }}"
+                            target="_blank"
+                            class="social-btn"
+                        >
+                            <img
+                                src="https://cdn-icons-png.flaticon.com/512/733/733547.png"
+                                class="social-icon"
+                            >
+
+                            <span>Facebook</span>
                         </a>
                         {% endif %}
 
                     </div>
+
                 </div>
                 {% endif %}
 
@@ -106,6 +167,7 @@
 <style>
 
 /* ===== GRID ===== */
+
 .contacts-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -113,14 +175,18 @@
     margin-top: 20px;
 }
 
+
 /* ===== CARD ===== */
+
 .contact-card {
     background: #0f172a;
     border-radius: 16px;
     padding: 20px;
 }
 
+
 /* ===== GROUP ===== */
+
 .contact-group {
     margin-bottom: 20px;
 }
@@ -128,43 +194,79 @@
 .group-title {
     font-size: 14px;
     color: #94a3b8;
-    margin-bottom: 10px;
+    margin-bottom: 12px;
 }
 
+
 /* ===== ITEMS ===== */
+
 .contact-item {
     display: block;
     color: #fff;
     text-decoration: none;
     margin-bottom: 8px;
+    line-height: 1.5;
 }
 
-/* ===== BUTTON ROW ===== */
-.contact-row {
+
+/* ===== SOCIAL LIST ===== */
+
+.social-list {
     display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
+    flex-direction: column;
+    gap: 12px;
 }
 
-/* ===== BUTTON ===== */
-.contact-btn {
+
+/* ===== SOCIAL BUTTON ===== */
+
+.social-btn {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+
     background: #1e293b;
-    padding: 10px 14px;
-    border-radius: 10px;
-    color: #fff;
+
+    border-radius: 14px;
+
+    padding: 14px;
+
     text-decoration: none;
-    font-size: 14px;
-    transition: background 0.2s;
+
+    color: #fff;
+
+    transition: 0.2s;
 }
 
-.contact-btn:hover {
+.social-btn:hover {
     background: #334155;
 }
 
+
+/* ===== ICON ===== */
+
+.social-icon {
+    width: 34px;
+    height: 34px;
+    object-fit: contain;
+}
+
+
 /* ===== MOBILE ===== */
+
 @media (max-width: 768px) {
+
     .contacts-grid {
         grid-template-columns: 1fr;
+    }
+
+    .social-btn {
+        padding: 12px;
+    }
+
+    .social-icon {
+        width: 30px;
+        height: 30px;
     }
 }
 
