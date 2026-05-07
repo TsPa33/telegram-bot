@@ -1,0 +1,223 @@
+{% extends "admin/crm_base.html" %}
+
+{% block title %}CRM Seller {{ seller.id }}{% endblock %}
+
+{% block head %}
+<style>
+    .detail-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px;
+        margin-bottom: 20px;
+    }
+
+    .back-link,
+    .site-link {
+        color: var(--primary);
+        font-weight: 700;
+        text-decoration: none;
+    }
+
+    .section-card {
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 18px;
+        margin-top: 16px;
+        background: #fbfdff;
+    }
+
+    .section-card h2 {
+        margin: 0 0 12px;
+        font-size: 18px;
+    }
+
+    .profile-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 12px;
+    }
+
+    .profile-item {
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 8px;
+    }
+
+    .profile-label {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    .profile-value {
+        margin-top: 4px;
+        word-break: break-word;
+    }
+
+    .table-wrap {
+        overflow-x: auto;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 840px;
+        font-size: 14px;
+    }
+
+    th,
+    td {
+        border-bottom: 1px solid var(--border);
+        padding: 10px 8px;
+        text-align: left;
+        vertical-align: top;
+    }
+
+    th {
+        color: var(--muted);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+
+    .empty-state {
+        padding: 18px;
+        border: 1px dashed var(--border);
+        border-radius: 14px;
+        color: var(--muted);
+        text-align: center;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="crm-panel">
+    <div class="detail-header">
+        <div>
+            <a class="back-link" href="/admin/crm/users">← Back to users</a>
+            <h1 class="crm-title">Seller #{{ seller.id }}</h1>
+            <p class="crm-muted">Read-only CRM seller detail.</p>
+        </div>
+        <p class="crm-muted">Admin: {{ admin.username or admin.telegram_id }}</p>
+    </div>
+
+    <div class="section-card">
+        <h2>Seller profile</h2>
+        <div class="profile-grid">
+            <div class="profile-item"><div class="profile-label">Telegram ID</div><div class="profile-value">{{ seller.telegram_id }}</div></div>
+            <div class="profile-item"><div class="profile-label">Username</div><div class="profile-value">{{ seller.username or '-' }}</div></div>
+            <div class="profile-item"><div class="profile-label">Shop name</div><div class="profile-value">{{ seller.shop_name or '-' }}</div></div>
+            <div class="profile-item"><div class="profile-label">Name</div><div class="profile-value">{{ seller.name or '-' }}</div></div>
+            <div class="profile-item"><div class="profile-label">Phone</div><div class="profile-value">{{ seller.phone or '-' }}</div></div>
+            <div class="profile-item"><div class="profile-label">Website</div><div class="profile-value">{{ seller.website or '-' }}</div></div>
+            <div class="profile-item"><div class="profile-label">City</div><div class="profile-value">{{ seller.city or '-' }}</div></div>
+            <div class="profile-item"><div class="profile-label">Verified</div><div class="profile-value">{{ 'Yes' if seller.is_verified else 'No' }}</div></div>
+            <div class="profile-item"><div class="profile-label">Cars limit / used</div><div class="profile-value">{{ seller.cars_limit or '-' }} / {{ seller.cars_used or '-' }}</div></div>
+            <div class="profile-item"><div class="profile-label">Created at</div><div class="profile-value">{{ seller.created_at.strftime('%Y-%m-%d %H:%M') if seller.created_at else '-' }}</div></div>
+        </div>
+        <p class="crm-muted" style="margin-top: 12px; white-space: pre-wrap;">{{ seller.description or 'No description.' }}</p>
+    </div>
+
+    <div class="section-card">
+        <h2>Site info</h2>
+        {% if site %}
+            <div class="profile-grid">
+                <div class="profile-item"><div class="profile-label">Subdomain</div><div class="profile-value">{{ site.subdomain }}</div></div>
+                <div class="profile-item"><div class="profile-label">Status</div><div class="profile-value">{{ site.status }}</div></div>
+                <div class="profile-item"><div class="profile-label">Custom domain</div><div class="profile-value">{{ site.custom_domain or '-' }}</div></div>
+                <div class="profile-item"><div class="profile-label">Updated at</div><div class="profile-value">{{ site.updated_at.strftime('%Y-%m-%d %H:%M') if site.updated_at else '-' }}</div></div>
+            </div>
+            <p style="margin-bottom: 0;"><a class="site-link" href="/site/{{ site.subdomain }}" target="_blank" rel="noopener">Open site</a></p>
+        {% else %}
+            <div class="empty-state">No site found.</div>
+        {% endif %}
+    </div>
+
+    <div class="section-card">
+        <h2>Cars</h2>
+        {% if cars %}
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr><th>ID</th><th>Brand</th><th>Model</th><th>Status</th><th>Views</th><th>Phone clicks</th><th>Site clicks</th><th>Created at</th><th>Description</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for car in cars %}
+                            <tr>
+                                <td>{{ car.id }}</td>
+                                <td>{{ car.brand or '-' }}</td>
+                                <td>{{ car.model or '-' }}</td>
+                                <td>{{ car.status or '-' }}</td>
+                                <td>{{ car.views or 0 }}</td>
+                                <td>{{ car.phone_clicks or 0 }}</td>
+                                <td>{{ car.site_clicks or 0 }}</td>
+                                <td>{{ car.created_at.strftime('%Y-%m-%d %H:%M') if car.created_at else '-' }}</td>
+                                <td>{{ car.description or '-' }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="empty-state">No cars found.</div>
+        {% endif %}
+    </div>
+
+    <div class="section-card">
+        <h2>Services</h2>
+        {% if services %}
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr><th>ID</th><th>Category</th><th>Title</th><th>City</th><th>Address</th><th>Price</th><th>Stats</th><th>Created at</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for service in services %}
+                            <tr>
+                                <td>{{ service.id }}</td>
+                                <td>{{ service.category }}</td>
+                                <td>{{ service.title }}</td>
+                                <td>{{ service.city }}</td>
+                                <td>{{ service.address }}</td>
+                                <td>{{ service.price or '-' }}</td>
+                                <td>{{ service.views or 0 }} views / {{ service.calls or 0 }} calls / {{ service.clicks or 0 }} clicks</td>
+                                <td>{{ service.created_at.strftime('%Y-%m-%d %H:%M') if service.created_at else '-' }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="empty-state">No services found.</div>
+        {% endif %}
+    </div>
+
+    <div class="section-card">
+        <h2>Subscriptions</h2>
+        {% if subscriptions %}
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr><th>ID</th><th>Slots</th><th>Created at</th><th>Expires at</th><th>Payment ID</th><th>Payment</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for subscription in subscriptions %}
+                            <tr>
+                                <td>{{ subscription.id }}</td>
+                                <td>{{ subscription.slots }}</td>
+                                <td>{{ subscription.created_at.strftime('%Y-%m-%d %H:%M') if subscription.created_at else '-' }}</td>
+                                <td>{{ subscription.expires_at.strftime('%Y-%m-%d %H:%M') if subscription.expires_at else '-' }}</td>
+                                <td>{{ subscription.payment_id or '-' }}</td>
+                                <td>{{ subscription.payment_product or '-' }} / {{ subscription.payment_amount or '-' }} / {{ subscription.payment_status or '-' }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="empty-state">No subscriptions found.</div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

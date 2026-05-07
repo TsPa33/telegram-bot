@@ -9,6 +9,15 @@ from bot.database.repositories.lead_repo import (
     list_site_leads,
     update_site_lead_status,
 )
+from bot.database.repositories.crm_payment_repo import list_crm_payments
+from bot.database.repositories.crm_user_repo import (
+    get_crm_seller_cars,
+    get_crm_seller_detail,
+    get_crm_seller_services,
+    get_crm_seller_site,
+    get_crm_seller_subscriptions,
+    list_crm_sellers,
+)
 from bot.database.repositories.crm_repo import (
     get_admin_by_id,
     get_session_by_token,
@@ -19,6 +28,7 @@ from bot.database.repositories.crm_repo import (
 router = APIRouter(prefix="/admin/crm")
 templates = Jinja2Templates(directory="bot/api/templates")
 CRM_COOKIE_NAME = "crm_session"
+CRM_VIEW_ROLES = {"super_admin", "admin", "manager"}
 
 
 def _is_expired(expires_at) -> bool:
@@ -29,6 +39,11 @@ def _request_ip(request: Request):
     if request.client:
         return request.client.host
     return None
+
+
+def _require_crm_view_role(admin):
+    if admin["role"] not in CRM_VIEW_ROLES:
+        raise HTTPException(status_code=403, detail="CRM access denied")
 
 
 async def get_current_admin(request: Request):
@@ -106,17 +121,37 @@ async def crm_login(request: Request, token: str):
 @router.get("")
 async def crm_dashboard(request: Request):
     admin = await get_current_admin(request)
+    _require_crm_view_role(admin)
 
     return templates.TemplateResponse(
         "admin/crm_dashboard.html",
         {
             "request": request,
             "admin": admin,
-    "cards": [
-        {
-            "title": "Leads",
-            "text": "Manage site requests",
-            "url": "/admin/crm/leads",
+            "cards": [
+                {
+                    "title": "Leads",
+                    "text": "Manage site requests",
+                    "url": "/admin/crm/leads",
+                },
+                {
+                    "title": "Users",
+                    "text": "View sellers and user profiles",
+                    "url": "/admin/crm/users",
+                },
+                {
+                    "title": "Payments",
+                    "text": "Review payment records",
+                    "url": "/admin/crm/payments",
+                },
+                {
+                    "title": "Logs",
+                    "text": "Coming soon",
+                    "url": None,
+                },
+            ],
+        },
+    )
         },
         {
             "title": "Users",
@@ -138,6 +173,7 @@ async def crm_dashboard(request: Request):
 @router.get("/leads")
 async def crm_leads(request: Request, status: str | None = None):
     admin = await get_current_admin(request)
+    _require_crm_view_role(admin)
 
     if status == "":
         status = None
@@ -166,6 +202,7 @@ async def crm_update_lead_status(
     status: str = Form(...),
 ):
     admin = await get_current_admin(request)
+    _require_crm_view_role(admin)
 
     if status not in ALLOWED_STATUSES:
         raise HTTPException(status_code=400, detail="Invalid lead status")
@@ -190,6 +227,113 @@ async def crm_update_lead_status(
     )
 
     return RedirectResponse(url="/admin/crm/leads", status_code=303)
+
+
+@router.get("/users")
+async def crm_users(
+    request: Request,
+    q: str | None = None,
+    verified: str | None = None,
+    has_site: str | None = None,
+):
+    admin = await get_current_admin(request)
+    _require_crm_view_role(admin)
+
+    q = q.strip() if q else None
+
+    if verified == "":
+        verified = None
+
+    if has_site == "":
+        has_site = None
+
+    if verified is not None and verified not in {"yes", "no"}:
+        raise HTTPException(status_code=400, detail="Invalid verified filter")
+
+    if has_site is not None and has_site not in {"yes", "no"}:
+        raise HTTPException(status_code=400, detail="Invalid site filter")
+
+    sellers = await list_crm_sellers(
+        query=q,
+        verified=verified,
+        has_site=has_site,
+    )
+
+    return templates.TemplateResponse(
+        "admin/crm_users.html",
+        {
+            "request": request,
+            "admin": admin,
+            "sellers": sellers,
+            "q": q or "",
+            "verified": verified,
+            "has_site": has_site,
+        },
+    )
+
+
+@router.get("/sellers/{seller_id}")
+async def crm_seller_detail(request: Request, seller_id: int):
+    admin = await get_current_admin(request)
+    _require_crm_view_role(admin)
+
+    seller = await get_crm_seller_detail(seller_id)
+
+    if not seller:
+        raise HTTPException(status_code=404, detail="Seller not found")
+
+    cars = await get_crm_seller_cars(seller_id)
+    services = await get_crm_seller_services(seller_id)
+    site = await get_crm_seller_site(seller_id)
+    subscriptions = await get_crm_seller_subscriptions(seller_id)
+
+    return templates.TemplateResponse(
+        "admin/crm_seller_detail.html",
+        {
+            "request": request,
+            "admin": admin,
+            "seller": seller,
+            "cars": cars,
+            "services": services,
+            "site": site,
+            "subscriptions": subscriptions,
+        },
+    )
+
+
+@router.get("/payments")
+async def crm_payments(
+    request: Request,
+    status: str | None = None,
+    product: str | None = None,
+    seller_id: int | None = None,
+):
+    admin = await get_current_admin(request)
+    _require_crm_view_role(admin)
+
+    if status == "":
+        status = None
+
+    if product == "":
+        product = None
+
+    payments = await list_crm_payments(
+        status=status,
+        product=product,
+        seller_id=seller_id,
+    )
+
+    return templates.TemplateResponse(
+        "admin/crm_payments.html",
+        {
+            "request": request,
+            "admin": admin,
+            "payments": payments,
+            "status": status or "",
+            "product": product or "",
+            "seller_id": seller_id or "",
+        },
+    )
 
 
 @router.get("/logout")
