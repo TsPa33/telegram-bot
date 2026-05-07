@@ -105,6 +105,12 @@
                         <a href="/admin/crm/leads">Leads</a>
                         <a href="/admin/crm/users">Users</a>
                         <a href="/admin/crm/payments">Payments</a>
+                        {% if can_view_audit %}
+                            <a href="/admin/crm/audit">Audit</a>
+                        {% endif %}
+                        {% if can_manage_admins %}
+                            <a href="/admin/crm/admins">Admins</a>
+                        {% endif %}
                         <a href="/admin/crm/logout">Logout</a>
                     {% endblock %}
                 </nav>

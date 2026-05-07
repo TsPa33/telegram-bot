@@ -1,0 +1,161 @@
+{% extends "admin/crm_base.html" %}
+
+{% block title %}CRM Audit{% endblock %}
+
+{% block head %}
+<style>
+    .audit-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px;
+        margin-bottom: 20px;
+    }
+
+    .filters-form {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: flex-end;
+        margin-bottom: 18px;
+    }
+
+    .filter-field {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .filter-field label {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    .filter-field input,
+    .filters-form button,
+    .reset-link {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 9px 10px;
+        background: #fff;
+        font-size: 14px;
+    }
+
+    .filters-form button {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: #fff;
+        cursor: pointer;
+        font-weight: 700;
+    }
+
+    .reset-link {
+        color: var(--primary);
+        font-weight: 700;
+        text-decoration: none;
+    }
+
+    .table-wrap {
+        overflow-x: auto;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 1180px;
+        font-size: 14px;
+    }
+
+    th,
+    td {
+        border-bottom: 1px solid var(--border);
+        padding: 10px 8px;
+        text-align: left;
+        vertical-align: top;
+    }
+
+    th {
+        color: var(--muted);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+
+    .payload-cell,
+    .user-agent-cell {
+        max-width: 280px;
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="crm-panel">
+    <div class="audit-header">
+        <div>
+            <h1 class="crm-title">Audit logs</h1>
+            <p class="crm-muted">Newest CRM audit events first.</p>
+        </div>
+        <p class="crm-muted">Admin: {{ admin.username or admin.telegram_id }}</p>
+    </div>
+
+    <form class="filters-form" method="get" action="/admin/crm/audit">
+        <div class="filter-field">
+            <label for="action">Action</label>
+            <input id="action" type="text" name="action" value="{{ action }}" placeholder="admin_user_created">
+        </div>
+        <div class="filter-field">
+            <label for="actor_admin_id">Actor admin ID</label>
+            <input id="actor_admin_id" type="number" name="actor_admin_id" value="{{ actor_admin_id }}" placeholder="1">
+        </div>
+        <button type="submit">Filter</button>
+        <a class="reset-link" href="/admin/crm/audit">Reset</a>
+    </form>
+
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Created at</th>
+                    <th>Actor</th>
+                    <th>Action</th>
+                    <th>Entity type</th>
+                    <th>Entity ID</th>
+                    <th>Payload</th>
+                    <th>IP</th>
+                    <th>User agent</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                    <tr>
+                        <td>{{ log.id }}</td>
+                        <td>{{ log.created_at.strftime('%Y-%m-%d %H:%M') if log.created_at else '-' }}</td>
+                        <td>
+                            {% if log.actor_admin_id %}
+                                #{{ log.actor_admin_id }} — {{ log.actor_username or log.actor_telegram_id or 'unknown' }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>{{ log.action }}</td>
+                        <td>{{ log.entity_type or '-' }}</td>
+                        <td>{{ log.entity_id or '-' }}</td>
+                        <td class="payload-cell">{{ log.payload }}</td>
+                        <td>{{ log.ip or '-' }}</td>
+                        <td class="user-agent-cell">{{ log.user_agent or '-' }}</td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="9">No audit logs found.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}
