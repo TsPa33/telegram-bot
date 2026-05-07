@@ -51,6 +51,49 @@ async def create_tables():
     ON model_requests (user_id, brand, model);
     """)
 
+
+    await execute("""
+    CREATE TABLE IF NOT EXISTS admin_users (
+        id SERIAL PRIMARY KEY,
+        telegram_id BIGINT UNIQUE NOT NULL,
+        username TEXT,
+        role TEXT NOT NULL CHECK role IN ('super_admin', 'admin', 'manager'),
+        is_active BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT NOW()
+    );
+    """)
+
+    await execute("""
+    CREATE TABLE IF NOT EXISTS admin_sessions (
+        id SERIAL PRIMARY KEY,
+        admin_user_id INTEGER REFERENCES admin_users(id) ON DELETE CASCADE,
+        token TEXT UNIQUE NOT NULL,
+        expires_at TIMESTAMP NOT NULL,
+        used_at TIMESTAMP NULL,
+        created_at TIMESTAMP DEFAULT NOW()
+    );
+    """)
+
+    await execute("""
+    CREATE TABLE IF NOT EXISTS admin_audit_logs (
+        id SERIAL PRIMARY KEY,
+        actor_admin_id INTEGER NULL REFERENCES admin_users(id),
+        action TEXT NOT NULL,
+        entity_type TEXT NULL,
+        entity_id TEXT NULL,
+        payload JSONB DEFAULT '{}'::jsonb,
+        ip TEXT NULL,
+        user_agent TEXT NULL,
+        created_at TIMESTAMP DEFAULT NOW()
+    );
+    """)
+
+    await execute("""
+    INSERT INTO admin_users (telegram_id, role)
+    VALUES (7553546170, 'super_admin')
+    ON CONFLICT (telegram_id) DO NOTHING;
+    """)
+
     await execute("""
     CREATE TABLE IF NOT EXISTS sellers (
         id SERIAL PRIMARY KEY,

@@ -8,6 +8,7 @@ admin_kb = ReplyKeyboardMarkup(
         [KeyboardButton(text="🔐 Верифікація продавців")],
 
         [KeyboardButton(text="📊 Перегляди")],
+        [KeyboardButton(text="🧩 CRM")],
 
         # 🔥 ОСНОВНЕ ДОДАННЯ
         [KeyboardButton(text="👥 Користувачі")],

@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="uk">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}{{ title or "CRM" }}{% endblock %}</title>
+    <style>
+        :root {
+            --bg: #f4f7fb;
+            --surface: #ffffff;
+            --text: #111827;
+            --muted: #6b7280;
+            --border: #e5e7eb;
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        .crm-shell {
+            min-height: 100vh;
+        }
+
+        .crm-header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .crm-header-inner {
+            width: min(100%, 1120px);
+            margin: 0 auto;
+            padding: 18px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .crm-brand {
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .crm-nav {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        .crm-nav a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .crm-nav a:hover {
+            color: var(--primary-dark);
+        }
+
+        .crm-main {
+            width: min(100%, 1120px);
+            margin: 0 auto;
+            padding: 32px 20px;
+        }
+
+        .crm-panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 24px;
+            box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
+        }
+
+        .crm-title {
+            margin: 0 0 8px;
+            font-size: 28px;
+        }
+
+        .crm-muted {
+            color: var(--muted);
+            margin: 0;
+        }
+    </style>
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <div class="crm-shell">
+        <header class="crm-header">
+            <div class="crm-header-inner">
+                <div class="crm-brand">🧩 CRM</div>
+                <nav class="crm-nav">
+                    {% block nav %}{% endblock %}
+                </nav>
+            </div>
+        </header>
+
+        <main class="crm-main">
+            {% block content %}
+                <section class="crm-panel">
+                    <h1 class="crm-title">{{ content_title }}</h1>
+                    <p class="crm-muted">{{ content_text }}</p>
+                </section>
+            {% endblock %}
+        </main>
+    </div>
+</body>
+</html>
