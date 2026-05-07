@@ -10,6 +10,8 @@ from bot.keyboards.admin_kb import admin_kb
 from bot.database.repositories.seller_repo import get_or_create_seller
 from bot.database.repositories.user_repo import log_visit, create_user
 
+from bot.services.roles import is_admin
+
 router = Router()
 
 
@@ -127,9 +129,7 @@ async def open_admin(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     await state.clear()
 
-    ADMIN_IDS = [6206952389]
-
-    if callback.from_user.id not in ADMIN_IDS:
+    if not await is_admin(callback.from_user.id):
         await callback.message.answer("❌ Немає доступу")
         return
 
