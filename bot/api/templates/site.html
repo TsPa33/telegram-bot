@@ -110,9 +110,9 @@
 
     border-radius: 50px;
 
-    background: rgb(20, 20, 20);
+    background: var(--floating-bg);
 
-    color: white;
+    color: var(--button-text);
 
     border: none;
 
@@ -121,7 +121,7 @@
     font-size: 14px;
     font-weight: 500;
 
-    box-shadow: 0px 0px 0px 4px rgba(180, 160, 255, 0.25);
+    box-shadow: 0px 0px 0px 4px var(--floating-shadow);
 
     transition: all 0.3s ease;
 
@@ -129,7 +129,7 @@
 }
 
 .callback-uiverse-btn:hover {
-    background-color: rgb(181, 160, 255);
+    background-color: var(--floating-hover);
 }
 
 .callback-uiverse-btn:active {
@@ -154,7 +154,7 @@
 }
 
 .callback-box {
-    background: #0f172a;
+    background: var(--card-bg);
 
     padding: 20px;
 
@@ -173,7 +173,7 @@
 }
 
 .callback-box h3 {
-    color: #fff;
+    color: var(--card-text);
     margin: 0 0 10px;
 }
 
@@ -185,17 +185,17 @@
 
     border-radius: 10px;
 
-    border: 1px solid #1e293b;
+    border: 1px solid var(--border);
 
-    background: #020617;
+    background: var(--card-inner-bg);
 
-    color: #fff;
+    color: var(--card-text);
 
     font-size: 16px;
 }
 
 .callback-box input::placeholder {
-    color: #94a3b8;
+    color: var(--card-muted);
 }
 
 
@@ -208,9 +208,9 @@
 
     border: none;
 
-    background: #22c55e;
+    background: var(--success);
 
-    color: white;
+    color: var(--button-text);
 
     font-weight: 600;
 
@@ -220,7 +220,7 @@
 }
 
 .callback-submit:hover {
-    background: #16a34a;
+    background: var(--success-dark);
 }
 
 
@@ -231,13 +231,13 @@
 
     padding: 12px;
 
-    border: 1px solid #475569;
+    border: 1px solid var(--border);
 
     border-radius: 10px;
 
-    background: #334155;
+    background: var(--modal-control-bg);
 
-    color: #ef4444;
+    color: var(--modal-danger);
 
     font-size: 18px;
     font-weight: 700;
@@ -248,7 +248,7 @@
 }
 
 .callback-close:hover {
-    background: #475569;
+    background: var(--modal-control-hover);
 }
 
 
@@ -265,7 +265,7 @@
 
     border-radius: 50%;
 
-    background-color: rgb(20, 20, 20);
+    background-color: var(--floating-bg);
 
     border: none;
 
@@ -273,7 +273,7 @@
     align-items: center;
     justify-content: center;
 
-    box-shadow: 0px 0px 0px 4px rgba(180, 160, 255, 0.25);
+    box-shadow: 0px 0px 0px 4px var(--floating-shadow);
 
     cursor: pointer;
 
@@ -297,7 +297,7 @@
 }
 
 .scroll-svgIcon path {
-    fill: white;
+    fill: var(--button-text);
 }
 
 .scroll-top-btn:hover {
@@ -305,7 +305,7 @@
 
     border-radius: 50px;
 
-    background-color: rgb(181, 160, 255);
+    background-color: var(--floating-hover);
 }
 
 .scroll-top-btn:hover .scroll-svgIcon {
@@ -317,7 +317,7 @@
 
     position: absolute;
 
-    color: white;
+    color: var(--button-text);
 
     font-size: 0;
 

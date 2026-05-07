@@ -16,7 +16,115 @@
     --surface: #ffffff;
     --muted: #64748b;
     --border: #e2e8f0;
+    --header-bg: rgba(255,255,255,0.98);
+    --nav-bg: #fff;
+    --on-dark: #e5e7eb;
+    --dark-border: #1f2937;
+    --dark-surface: #111827;
+    --button-text: #fff;
+    --floating-bg: rgb(20, 20, 20);
+    --floating-hover: rgb(181, 160, 255);
+    --floating-shadow: rgba(180, 160, 255, 0.25);
+    --success: #22c55e;
+    --success-dark: #16a34a;
+    --card-bg: #0f172a;
+    --card-inner-bg: #1e293b;
+    --card-hover-bg: #334155;
+    --card-text: #fff;
+    --card-muted: #94a3b8;
+    --card-desc: #cbd5f5;
+    --modal-control-bg: #334155;
+    --modal-control-hover: #475569;
+    --modal-danger: #ef4444;
     --container: 1120px;
+}
+
+.theme-light_blue {
+    --primary: #00ABE4;
+    --primary-dark: #008FC0;
+    --dark: #0f172a;
+    --bg: #E9F1FA;
+    --text: #1f2937;
+    --surface: #FFFFFF;
+    --muted: #64748b;
+    --border: #cbd5e1;
+    --header-bg: #FFFFFF;
+    --nav-bg: #FFFFFF;
+    --dark-surface: #FFFFFF;
+    --floating-bg: var(--primary);
+    --floating-hover: var(--primary-dark);
+    --floating-shadow: rgba(0, 171, 228, 0.25);
+    --success: var(--primary);
+    --success-dark: var(--primary-dark);
+    --card-bg: var(--surface);
+    --card-inner-bg: var(--bg);
+    --card-hover-bg: var(--primary);
+    --card-text: var(--text);
+    --card-muted: var(--muted);
+    --card-desc: var(--muted);
+    --modal-control-bg: var(--surface);
+    --modal-control-hover: var(--border);
+    --modal-danger: var(--primary);
+}
+
+.theme-neon_dark {
+    --primary: #2272FF;
+    --primary-dark: #1557CC;
+    --dark: #1D1D1D;
+    --bg: #1D1D1D;
+    --text: #FFFFFF;
+    --surface: #252525;
+    --muted: #A3A3A3;
+    --border: #333333;
+    --header-bg: #252525;
+    --nav-bg: #252525;
+    --on-dark: #FFFFFF;
+    --dark-border: #333333;
+    --dark-surface: #252525;
+    --floating-bg: var(--primary);
+    --floating-hover: var(--primary-dark);
+    --floating-shadow: rgba(34, 114, 255, 0.25);
+    --success: var(--primary);
+    --success-dark: var(--primary-dark);
+    --card-bg: var(--surface);
+    --card-inner-bg: var(--bg);
+    --card-hover-bg: var(--primary);
+    --card-text: var(--text);
+    --card-muted: var(--muted);
+    --card-desc: var(--muted);
+    --modal-control-bg: var(--surface);
+    --modal-control-hover: var(--border);
+    --modal-danger: var(--primary);
+}
+
+.theme-premium_dark {
+    --primary: #178582;
+    --primary-dark: #0F5F5D;
+    --dark: #0A1828;
+    --bg: #0A1828;
+    --text: #FFFFFF;
+    --surface: #10243A;
+    --muted: #BFA181;
+    --border: #178582;
+    --header-bg: #10243A;
+    --nav-bg: #10243A;
+    --on-dark: #FFFFFF;
+    --dark-border: #178582;
+    --dark-surface: #10243A;
+    --floating-bg: var(--primary);
+    --floating-hover: var(--primary-dark);
+    --floating-shadow: rgba(191, 161, 129, 0.25);
+    --success: var(--primary);
+    --success-dark: var(--primary-dark);
+    --card-bg: var(--surface);
+    --card-inner-bg: var(--bg);
+    --card-hover-bg: var(--primary);
+    --card-text: var(--text);
+    --card-muted: var(--muted);
+    --card-desc: var(--muted);
+    --modal-control-bg: var(--surface);
+    --modal-control-hover: var(--border);
+    --modal-danger: var(--primary);
 }
 
 * { box-sizing: border-box; }
@@ -41,7 +149,7 @@ body {
     position: sticky;
     top: 0;
     z-index: 20;
-    background: rgba(255,255,255,0.98);
+    background: var(--header-bg);
     border-bottom: 1px solid var(--border);
 }
 
@@ -73,7 +181,8 @@ body {
     height: 42px;
     border: 1px solid var(--border);
     border-radius: 10px;
-    background: #fff;
+    background: var(--surface);
+    color: var(--text);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -104,7 +213,7 @@ body {
     max-height: 0;
     overflow: hidden;
     transition: max-height 0.4s ease;
-    background: #fff;
+    background: var(--nav-bg);
 }
 
 .nav.open {
@@ -124,14 +233,14 @@ body {
     border-bottom: 1px solid var(--border);
     text-decoration: none;
     color: var(--text);
-    background: #fff;
+    background: var(--nav-bg);
 }
 
 /* ===== SERVICES ===== */
 
 .services-split {
     background: var(--dark);
-    color: #e5e7eb;
+    color: var(--on-dark);
     padding: 60px 0;
 }
 
@@ -155,7 +264,7 @@ body {
 
 .service-item {
     padding: 12px 0;
-    border-bottom: 1px solid #1f2937;
+    border-bottom: 1px solid var(--dark-border);
     cursor: pointer;
     transition: 0.2s;
 }
@@ -165,16 +274,16 @@ body {
 }
 
 .service-item.active {
-    color: #fff;
+    color: var(--button-text);
     font-weight: 600;
 }
 
 /* RIGHT */
 .highlight {
-    background: #111827;
+    background: var(--dark-surface);
     padding: 24px;
     border-radius: 14px;
-    border: 1px solid #1f2937;
+    border: 1px solid var(--dark-border);
     transition: opacity 0.3s ease;
 }
 
@@ -194,7 +303,7 @@ body {
     display: inline-block;
     margin-top: 15px;
     background: var(--primary);
-    color: #fff;
+    color: var(--button-text);
     padding: 10px 16px;
     border-radius: 10px;
     text-decoration: none;
@@ -215,7 +324,8 @@ body {
 
 </head>
 
-<body>
+{% set theme = config.get('theme', {}).get('scheme', 'default') %}
+<body class="theme-{{ theme }}">
 
 {% block content %}{% endblock %}
 
