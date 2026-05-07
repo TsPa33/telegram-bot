@@ -1,4 +1,5 @@
 import json
+import logging
 
 from aiogram import Bot
 from fastapi import APIRouter, FastAPI, HTTPException, Request, Form
@@ -13,6 +14,7 @@ from bot.database.repositories.site_repo import get_site_by_subdomain
 from bot.database.repositories.seller_repo import get_seller_by_id
 from bot.database.repositories.car_repo import get_cars_by_seller
 from bot.database.repositories.service_repo import get_services_by_seller
+from bot.database.repositories.lead_repo import create_site_lead
 
 from bot.services.site_config import merge_with_default
 from bot.utils.subdomain import is_valid_subdomain
@@ -23,6 +25,7 @@ router = APIRouter()
 
 templates = Jinja2Templates(directory="bot/api/templates")
 bot = Bot(token=BOT_TOKEN)
+logger = logging.getLogger(__name__)
 
 
 async def tg_file_url(bot: Bot, file_id: str) -> str:
@@ -233,6 +236,18 @@ async def create_lead(
 
     if not seller:
         raise HTTPException(status_code=404)
+
+    try:
+        await create_site_lead(
+            seller_id=seller["id"],
+            site_id=site.get("id"),
+            subdomain=subdomain,
+            name=name or None,
+            phone=phone,
+            message=message or None,
+        )
+    except Exception:
+        logger.exception("Failed to save site lead for subdomain %s", subdomain)
 
     text = (
         f"📩 Нова заявка з сайту\n\n"

@@ -1,0 +1,179 @@
+{% extends "admin/crm_base.html" %}
+
+{% block title %}CRM Leads{% endblock %}
+
+{% block head %}
+<style>
+    .leads-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px;
+        margin-bottom: 20px;
+    }
+
+    .filters {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 18px;
+    }
+
+    .filter-link {
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 8px 12px;
+        color: var(--primary);
+        background: #fff;
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 700;
+    }
+
+    .filter-link.active {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: #fff;
+    }
+
+    .table-wrap {
+        overflow-x: auto;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 980px;
+        font-size: 14px;
+    }
+
+    th,
+    td {
+        border-bottom: 1px solid var(--border);
+        padding: 10px 8px;
+        text-align: left;
+        vertical-align: top;
+    }
+
+    th {
+        color: var(--muted);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+
+    .message-cell {
+        max-width: 260px;
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+
+    .status-badge {
+        display: inline-block;
+        border-radius: 999px;
+        padding: 4px 8px;
+        background: #eff6ff;
+        color: #1d4ed8;
+        font-weight: 700;
+        font-size: 12px;
+    }
+
+    .status-form {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+    }
+
+    .status-form select,
+    .status-form button {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 7px 8px;
+        background: #fff;
+    }
+
+    .status-form button {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: #fff;
+        cursor: pointer;
+        font-weight: 700;
+    }
+
+    .empty-state {
+        padding: 24px;
+        border: 1px dashed var(--border);
+        border-radius: 14px;
+        color: var(--muted);
+        text-align: center;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="crm-panel">
+    <div class="leads-header">
+        <div>
+            <h1 class="crm-title">Leads</h1>
+            <p class="crm-muted">Site form requests from buyers.</p>
+        </div>
+        <p class="crm-muted">Admin: {{ admin.username or admin.telegram_id }}</p>
+    </div>
+
+    <div class="filters">
+        <a class="filter-link {% if not current_status %}active{% endif %}" href="/admin/crm/leads">All</a>
+        <a class="filter-link {% if current_status == 'new' %}active{% endif %}" href="/admin/crm/leads?status=new">New</a>
+        <a class="filter-link {% if current_status == 'in_progress' %}active{% endif %}" href="/admin/crm/leads?status=in_progress">In progress</a>
+        <a class="filter-link {% if current_status == 'done' %}active{% endif %}" href="/admin/crm/leads?status=done">Done</a>
+        <a class="filter-link {% if current_status == 'rejected' %}active{% endif %}" href="/admin/crm/leads?status=rejected">Rejected</a>
+    </div>
+
+    {% if leads %}
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Date/time</th>
+                        <th>Seller ID</th>
+                        <th>Subdomain</th>
+                        <th>Name</th>
+                        <th>Phone</th>
+                        <th>Message</th>
+                        <th>Status</th>
+                        <th>Manager/admin ID</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for lead in leads %}
+                        <tr>
+                            <td>{{ lead.id }}</td>
+                            <td>{{ lead.created_at.strftime('%Y-%m-%d %H:%M') if lead.created_at else '-' }}</td>
+                            <td>{{ lead.seller_id }}</td>
+                            <td>{{ lead.subdomain }}</td>
+                            <td>{{ lead.name or '-' }}</td>
+                            <td>{{ lead.phone }}</td>
+                            <td class="message-cell">{{ lead.message or '-' }}</td>
+                            <td><span class="status-badge">{{ lead.status }}</span></td>
+                            <td>{{ lead.manager_admin_id or '-' }}</td>
+                            <td>
+                                <form class="status-form" method="post" action="/admin/crm/leads/{{ lead.id }}/status">
+                                    <select name="status">
+                                        {% for status in allowed_statuses %}
+                                            <option value="{{ status }}" {% if lead.status == status %}selected{% endif %}>{{ status }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <button type="submit">Save</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="empty-state">No leads found.</div>
+    {% endif %}
+</section>
+{% endblock %}

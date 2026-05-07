@@ -100,7 +100,11 @@
             <div class="crm-header-inner">
                 <div class="crm-brand">🧩 CRM</div>
                 <nav class="crm-nav">
-                    {% block nav %}{% endblock %}
+                    {% block nav %}
+                        <a href="/admin/crm">Dashboard</a>
+                        <a href="/admin/crm/leads">Leads</a>
+                        <a href="/admin/crm/logout">Logout</a>
+                    {% endblock %}
                 </nav>
             </div>
         </header>

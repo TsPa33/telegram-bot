@@ -104,6 +104,27 @@ async def create_tables():
     );
     """)
 
+    await execute("""
+    CREATE TABLE IF NOT EXISTS site_leads (
+        id SERIAL PRIMARY KEY,
+        seller_id INTEGER NOT NULL REFERENCES sellers(id) ON DELETE CASCADE,
+        site_id INTEGER NULL REFERENCES seller_sites(id) ON DELETE SET NULL,
+        subdomain TEXT NOT NULL,
+        name TEXT,
+        phone TEXT NOT NULL,
+        message TEXT,
+        status TEXT NOT NULL DEFAULT 'new'
+            CHECK (status IN ('new', 'in_progress', 'done', 'rejected')),
+        manager_admin_id INTEGER NULL REFERENCES admin_users(id) ON DELETE SET NULL,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+    );
+    """)
+
+    await execute("CREATE INDEX IF NOT EXISTS idx_site_leads_seller_id ON site_leads(seller_id);")
+    await execute("CREATE INDEX IF NOT EXISTS idx_site_leads_status ON site_leads(status);")
+    await execute("CREATE INDEX IF NOT EXISTS idx_site_leads_created_at ON site_leads(created_at);")
+
     # === NEW FIELDS ===
     await execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS cars_limit INTEGER DEFAULT 1;")
     await execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS cars_used INTEGER DEFAULT 0;")

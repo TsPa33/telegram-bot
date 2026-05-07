@@ -41,17 +41,21 @@
         font-size: 18px;
     }
 
+    .card-title a {
+        color: var(--primary);
+        text-decoration: none;
+    }
+
+    .card-title a:hover {
+        color: var(--primary-dark);
+    }
+
     .card-text {
         margin: 0;
         color: var(--muted);
         font-size: 14px;
     }
 </style>
-{% endblock %}
-
-{% block nav %}
-    <span>{{ admin.username or admin.telegram_id }}</span>
-    <a href="/admin/crm/logout">Logout</a>
 {% endblock %}
 
 {% block content %}
@@ -67,8 +71,14 @@
     <div class="cards">
         {% for card in cards %}
             <article class="card">
-                <h2 class="card-title">{{ card }}</h2>
-                <p class="card-text">Coming soon</p>
+                <h2 class="card-title">
+                    {% if card.url %}
+                        <a href="{{ card.url }}">{{ card.title }}</a>
+                    {% else %}
+                        {{ card.title }}
+                    {% endif %}
+                </h2>
+                <p class="card-text">{{ card.text }}</p>
             </article>
         {% endfor %}
     </div>
