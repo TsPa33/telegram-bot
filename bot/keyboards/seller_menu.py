@@ -108,6 +108,36 @@ def media_menu_kb():
         [InlineKeyboardButton(text="🖼 Додати банер", callback_data="site:edit:banners")],
         [InlineKeyboardButton(text="📋 Список банерів", callback_data="site:banners:list")],
         [InlineKeyboardButton(text="🖼 Лого", callback_data="site:edit:logo")],
+        [InlineKeyboardButton(text="🎨 Кольорова схема", callback_data="site:theme:menu")],
 
         [InlineKeyboardButton(text="⬅ Назад", callback_data="site:back")],
     ])
+
+# ================= THEME MENU =================
+
+def theme_menu_kb(current_scheme: str | None = None):
+    current_scheme = current_scheme or "default"
+
+    schemes = (
+        ("default", "Стандартна"),
+        ("light_blue", "Блакитна"),
+        ("neon_dark", "Неонова темна"),
+        ("premium_dark", "Преміум темна"),
+    )
+
+    buttons = []
+
+    for scheme, title in schemes:
+        text = f"✅ {title}" if scheme == current_scheme else title
+        buttons.append([
+            InlineKeyboardButton(
+                text=text,
+                callback_data=f"site:theme:set:{scheme}"
+            )
+        ])
+
+    buttons.append([
+        InlineKeyboardButton(text="⬅ Назад", callback_data="site:media:menu")
+    ])
+
+    return InlineKeyboardMarkup(inline_keyboard=buttons)

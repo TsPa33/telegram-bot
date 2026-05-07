@@ -15,6 +15,7 @@ from bot.keyboards.seller_menu import (
     contacts_menu_kb,
     location_menu_kb,
     media_menu_kb,
+    theme_menu_kb,
 )
 
 router = Router()
@@ -122,6 +123,62 @@ async def open_media(callback: CallbackQuery):
     )
 
     await callback.answer()
+
+
+@router.callback_query(F.data == "site:theme:menu")
+async def open_theme_menu(callback: CallbackQuery):
+    seller, site = await get_context(callback)
+
+    if not seller:
+        await callback.answer("Продавця не знайдено", show_alert=True)
+        return
+
+    if not site:
+        await callback.answer("Сайт не знайдено", show_alert=True)
+        return
+
+    config = safe_config(site.get("config_draft"))
+    current_scheme = (config.get("theme") or {}).get("scheme") or "default"
+
+    await callback.message.edit_text(
+        "🎨 Кольорова схема",
+        reply_markup=theme_menu_kb(current_scheme)
+    )
+
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("site:theme:set:"))
+async def set_theme_scheme(callback: CallbackQuery):
+    allowed_schemes = {"default", "light_blue", "neon_dark", "premium_dark"}
+    scheme = callback.data.split(":")[-1]
+
+    if scheme not in allowed_schemes:
+        await callback.answer("Невідома кольорова схема", show_alert=True)
+        return
+
+    seller, site = await get_context(callback)
+
+    if not seller:
+        await callback.answer("Продавця не знайдено", show_alert=True)
+        return
+
+    if not site:
+        await callback.answer("Сайт не знайдено", show_alert=True)
+        return
+
+    await update_site_config(site["id"], {
+        "theme": {
+            "scheme": scheme,
+        }
+    })
+
+    await callback.message.edit_text(
+        "🎨 Кольорова схема",
+        reply_markup=theme_menu_kb(scheme)
+    )
+
+    await callback.answer("✅ Кольорову схему збережено")
 
 
 @router.callback_query(F.data == "site:back")

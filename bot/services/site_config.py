@@ -39,6 +39,10 @@ _DEFAULT_SITE_CONFIG: dict[str, Any] = {
         "map": True,
     },
 
+    "theme": {
+        "scheme": "default",
+    },
+
     "banner_cta": {
         "enabled": False,
         "text": "",
@@ -183,6 +187,15 @@ def _normalize_config(config: dict) -> dict:
             key: bool(modules.get(key, True))
             for key in default_modules
         }
+
+    # ===== THEME =====
+
+    theme = config.get("theme")
+
+    if not isinstance(theme, dict):
+        config["theme"] = deepcopy(_DEFAULT_SITE_CONFIG["theme"])
+    elif theme.get("scheme") not in {"default", "light_blue", "neon_dark", "premium_dark"}:
+        theme["scheme"] = "default"
 
     # ===== HERO =====
 

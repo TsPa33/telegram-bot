@@ -202,7 +202,7 @@
 /* ===== CARD ===== */
 
 .car-card {
-    background: #0f172a;
+    background: var(--card-bg);
 
     border-radius: 16px;
 
@@ -229,7 +229,7 @@
 
     overflow: hidden;
 
-    background: #1e293b;
+    background: var(--card-inner-bg);
 }
 
 .car-image img {
@@ -252,7 +252,7 @@
     align-items: center;
     justify-content: center;
 
-    color: #94a3b8;
+    color: var(--card-muted);
 
     font-size: 14px;
 }
@@ -268,7 +268,7 @@
     font-size: 18px;
     font-weight: 600;
 
-    color: #fff;
+    color: var(--card-text);
 
     margin-bottom: 8px;
 }
@@ -276,7 +276,7 @@
 .car-desc {
     font-size: 14px;
 
-    color: #cbd5f5;
+    color: var(--card-desc);
 
     line-height: 1.4;
 
@@ -295,7 +295,7 @@
 
     border-radius: 12px;
 
-    background: #22c55e;
+    background: var(--success);
 
     color: white;
 
@@ -308,7 +308,7 @@
 }
 
 .contact-seller-btn:hover {
-    background: #16a34a;
+    background: var(--success-dark);
 }
 
 
@@ -334,7 +334,7 @@
 
     margin: 80px auto;
 
-    background: #0f172a;
+    background: var(--card-bg);
 
     border-radius: 18px;
 
@@ -357,7 +357,7 @@
 .seller-modal-header h3 {
     margin: 0;
 
-    color: white;
+    color: var(--card-text);
 
     font-size: 20px;
 }
@@ -366,13 +366,13 @@
     width: 40px;
     height: 40px;
 
-    border: 1px solid #475569;
+    border: 1px solid var(--border);
 
     border-radius: 10px;
 
-    background: #334155;
+    background: var(--modal-control-bg);
 
-    color: #ef4444;
+    color: var(--modal-danger);
 
     font-size: 20px;
     font-weight: 700;
@@ -395,7 +395,7 @@
     align-items: center;
     gap: 14px;
 
-    background: #1e293b;
+    background: var(--card-inner-bg);
 
     border-radius: 14px;
 
@@ -403,13 +403,13 @@
 
     text-decoration: none;
 
-    color: #fff;
+    color: var(--card-text);
 
     transition: 0.2s;
 }
 
 .seller-contact-btn:hover {
-    background: #334155;
+    background: var(--card-hover-bg);
 }
 
 .seller-contact-icon {
