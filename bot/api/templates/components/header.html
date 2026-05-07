@@ -24,42 +24,67 @@
 
     <!-- MENU -->
     <nav id="siteNav" class="nav">
+
+        {% set messengers = contacts.get('messengers', {}) %}
+        {% set socials = contacts.get('socials', {}) %}
+        {% set phones = contacts.get('phones', []) %}
+
+        <!-- OLD FORMAT SUPPORT -->
+        {% set telegram = messengers.get('telegram') or contacts.get('telegram') %}
+        {% set viber = messengers.get('viber') or contacts.get('viber') %}
+        {% set whatsapp = messengers.get('whatsapp') or contacts.get('whatsapp') %}
+
+        {% set instagram = socials.get('instagram') or contacts.get('instagram') %}
+        {% set facebook = socials.get('facebook') or contacts.get('facebook') %}
+
         <ul class="nav-list">
 
+            <!-- HOME -->
             <li>
-                <a href="#top" class="nav-link">Головна</a>
+                <a href="#top" class="nav-link">
+                    Головна
+                </a>
             </li>
 
+            <!-- SERVICES -->
             {% if modules.get('services', True) and services %}
             <li>
-                <a href="#services" class="nav-link">Послуги</a>
+                <a href="#services" class="nav-link">
+                    Послуги
+                </a>
             </li>
             {% endif %}
 
+            <!-- CARS -->
             {% if modules.get('cars', True) and cars %}
             <li>
-                <a href="#cars" class="nav-link">Авто</a>
+                <a href="#cars" class="nav-link">
+                    Авто
+                </a>
             </li>
             {% endif %}
 
+            <!-- CONTACTS -->
             {% if modules.get('contacts', True) %}
-                {% if contacts.get('phones') or contacts.get('address') or contacts.get('messengers') or contacts.get('socials') %}
+                {% if phones or contacts.get('address') or telegram or viber or whatsapp or instagram or facebook %}
                 <li>
-                    <a href="#contacts" class="nav-link">Контакти</a>
+                    <a href="#contacts" class="nav-link">
+                        Контакти
+                    </a>
                 </li>
                 {% endif %}
             {% endif %}
 
+            <!-- MAP -->
             {% if modules.get('map', True) and contacts.get('map_embed') %}
             <li>
-                <a href="#map" class="nav-link">Карта</a>
+                <a href="#map" class="nav-link">
+                    Карта
+                </a>
             </li>
             {% endif %}
 
-            {% set messengers = contacts.get('messengers', {}) %}
-            {% set socials = contacts.get('socials', {}) %}
-            {% set phones = contacts.get('phones', []) %}
-
+            <!-- PHONES -->
             {% if phones %}
                 {% for phone in phones %}
                 <li>
@@ -70,53 +95,80 @@
                 {% endfor %}
             {% endif %}
 
-            {% if messengers.get('telegram') %}
+            <!-- TELEGRAM -->
+            {% if telegram %}
             <li>
-                <a href="https://t.me/{{ messengers.get('telegram') }}" target="_blank" class="nav-link">
+                <a
+                    href="https://t.me/{{ telegram }}"
+                    target="_blank"
+                    class="nav-link"
+                >
                     Telegram
                 </a>
             </li>
             {% endif %}
 
-            {% if messengers.get('viber') %}
+            <!-- VIBER -->
+            {% if viber %}
             <li>
-                <a href="viber://chat?number={{ messengers.get('viber') }}" class="nav-link">
+                <a
+                    href="viber://chat?number={{ viber }}"
+                    class="nav-link"
+                >
                     Viber
                 </a>
             </li>
             {% endif %}
 
-            {% if messengers.get('whatsapp') %}
+            <!-- WHATSAPP -->
+            {% if whatsapp %}
             <li>
-                <a href="https://wa.me/{{ messengers.get('whatsapp') }}" target="_blank" class="nav-link">
+                <a
+                    href="https://wa.me/{{ whatsapp }}"
+                    target="_blank"
+                    class="nav-link"
+                >
                     WhatsApp
                 </a>
             </li>
             {% endif %}
 
-            {% if socials.get('instagram') %}
+            <!-- INSTAGRAM -->
+            {% if instagram %}
             <li>
-                <a href="{{ socials.get('instagram') }}" target="_blank" class="nav-link">
+                <a
+                    href="{{ instagram }}"
+                    target="_blank"
+                    class="nav-link"
+                >
                     Instagram
                 </a>
             </li>
             {% endif %}
 
-            {% if socials.get('facebook') %}
+            <!-- FACEBOOK -->
+            {% if facebook %}
             <li>
-                <a href="{{ socials.get('facebook') }}" target="_blank" class="nav-link">
+                <a
+                    href="{{ facebook }}"
+                    target="_blank"
+                    class="nav-link"
+                >
                     Facebook
                 </a>
             </li>
             {% endif %}
 
         </ul>
+
     </nav>
 </header>
 
 <style>
+
 .shop-title {
     flex: 1;
+
     text-align: center;
 
     color: #111111;
@@ -131,9 +183,11 @@
 }
 
 @media (max-width: 768px) {
+
     .shop-title {
         font-size: 15px;
         padding: 0 10px;
     }
 }
+
 </style>
