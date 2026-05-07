@@ -1,0 +1,76 @@
+{% extends "admin/crm_base.html" %}
+
+{% block title %}CRM Dashboard{% endblock %}
+
+{% block head %}
+<style>
+    .dashboard-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+
+    .role-badge {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        padding: 8px 12px;
+        background: #eff6ff;
+        color: #1d4ed8;
+        font-weight: 700;
+        font-size: 13px;
+    }
+
+    .cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 16px;
+    }
+
+    .card {
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 20px;
+        background: #fbfdff;
+    }
+
+    .card-title {
+        margin: 0 0 8px;
+        font-size: 18px;
+    }
+
+    .card-text {
+        margin: 0;
+        color: var(--muted);
+        font-size: 14px;
+    }
+</style>
+{% endblock %}
+
+{% block nav %}
+    <span>{{ admin.username or admin.telegram_id }}</span>
+    <a href="/admin/crm/logout">Logout</a>
+{% endblock %}
+
+{% block content %}
+<section class="crm-panel">
+    <div class="dashboard-header">
+        <div>
+            <h1 class="crm-title">CRM Dashboard</h1>
+            <p class="crm-muted">Foundation dashboard for future CRM modules.</p>
+        </div>
+        <div class="role-badge">Role: {{ admin.role }}</div>
+    </div>
+
+    <div class="cards">
+        {% for card in cards %}
+            <article class="card">
+                <h2 class="card-title">{{ card }}</h2>
+                <p class="card-text">Coming soon</p>
+            </article>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

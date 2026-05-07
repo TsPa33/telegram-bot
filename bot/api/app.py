@@ -6,6 +6,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from bot.api.liqpay_callback import router as liqpay_router
+from bot.api.crm import router as crm_router
 from bot.config import BOT_TOKEN
 
 from bot.database.repositories.site_repo import get_site_by_subdomain
@@ -252,4 +253,5 @@ async def create_lead(
 # ================= ROUTERS =================
 
 app.include_router(liqpay_router)
+app.include_router(crm_router)
 app.include_router(router)

@@ -1,3 +1,6 @@
+import secrets
+from datetime import datetime, timedelta
+
 from aiogram import Router, types, F
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, KeyboardButton, Message
@@ -28,6 +31,12 @@ from bot.database.repositories.admin_repo import (
     reject_seller
 )
 
+from bot.database.repositories.crm_repo import (
+    create_admin_session,
+    get_admin_by_telegram_id,
+    log_admin_action,
+)
+
 from bot.database.repositories.user_repo import (
     get_visits,
     get_all_users,
@@ -53,6 +62,47 @@ async def open_admin_panel(message: Message, state: FSMContext):
         return
 
     await message.answer("⚙️ Адмін панель", reply_markup=admin_kb)
+
+
+# ================= CRM =================
+
+@router.message(lambda m: m.text == "🧩 CRM")
+async def open_crm(message: Message, state: FSMContext):
+    await state.clear()
+
+    if not await is_admin(message.from_user.id):
+        await message.answer("⛔ Немає доступу")
+        return
+
+    admin = await get_admin_by_telegram_id(message.from_user.id)
+
+    if not admin or not admin["is_active"]:
+        await message.answer("⛔ CRM доступ не налаштований")
+        return
+
+    token = secrets.token_urlsafe(32)
+    expires_at = datetime.utcnow() + timedelta(minutes=10)
+    session = await create_admin_session(
+        message.from_user.id,
+        token,
+        expires_at,
+    )
+
+    if not session:
+        await message.answer("⛔ Не вдалося створити CRM сесію")
+        return
+
+    await log_admin_action(
+        admin["id"],
+        "crm_login_link_created",
+        entity_type="admin_session",
+        entity_id=str(session["id"]),
+    )
+
+    await message.answer(
+        "🧩 CRM доступ дійсний 10 хвилин:\n"
+        f"https://worker-production-e30f.up.railway.app/admin/crm/login?token={token}"
+    )
 
 
 # ================= USERS =================
