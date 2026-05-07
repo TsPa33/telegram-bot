@@ -50,13 +50,36 @@
 
 <div id="callbackModal" class="callback-modal">
     <div class="callback-box">
+
         <h3>Замовити дзвінок</h3>
 
-        <input id="cbName" type="text" placeholder="Ваше ім'я">
-        <input id="cbPhone" type="tel" placeholder="Телефон">
+        <input
+            id="cbName"
+            type="text"
+            placeholder="Ваше ім'я"
+        >
 
-        <button onclick="sendCallback()">Відправити</button>
-        <button class="close" onclick="closeCallback()">✕</button>
+        <input
+            id="cbPhone"
+            type="tel"
+            placeholder="Телефон"
+        >
+
+        <button
+            class="callback-submit"
+            onclick="sendCallback()"
+        >
+            Відправити
+        </button>
+
+        <button
+            type="button"
+            class="callback-close"
+            onclick="closeCallback()"
+        >
+            ✕
+        </button>
+
     </div>
 </div>
 
@@ -72,7 +95,7 @@
 
 <style>
 
-/* ===== CALLBACK (Uiverse style) ===== */
+/* ===== CALLBACK BUTTON ===== */
 
 .callback-uiverse-btn {
     position: fixed;
@@ -84,12 +107,15 @@
     gap: 10px;
 
     padding: 14px 18px;
+
     border-radius: 50px;
 
     background: rgb(20, 20, 20);
+
     color: white;
 
     border: none;
+
     cursor: pointer;
 
     font-size: 14px;
@@ -98,6 +124,7 @@
     box-shadow: 0px 0px 0px 4px rgba(180, 160, 255, 0.25);
 
     transition: all 0.3s ease;
+
     z-index: 1000;
 }
 
@@ -114,19 +141,28 @@
 
 .callback-modal {
     display: none;
+
     position: fixed;
+
     inset: 0;
+
     background: rgba(0,0,0,0.6);
+
     backdrop-filter: blur(6px);
+
     z-index: 2000;
 }
 
 .callback-box {
     background: #0f172a;
+
     padding: 20px;
+
     border-radius: 16px;
+
     width: 90%;
     max-width: 320px;
+
     margin: 120px auto;
 
     display: flex;
@@ -136,28 +172,83 @@
     box-shadow: 0 20px 50px rgba(0,0,0,0.6);
 }
 
+.callback-box h3 {
+    color: #fff;
+    margin: 0 0 10px;
+}
+
+
+/* ===== INPUTS ===== */
+
 .callback-box input {
     padding: 12px;
+
     border-radius: 10px;
+
     border: 1px solid #1e293b;
+
     background: #020617;
+
     color: #fff;
 
     font-size: 16px;
 }
 
-.callback-box button {
-    padding: 12px;
-    border-radius: 10px;
-    border: none;
-    background: #22c55e;
-    color: white;
-    font-weight: 500;
-    cursor: pointer;
+.callback-box input::placeholder {
+    color: #94a3b8;
 }
 
-.close {
-    background: #1e293b;
+
+/* ===== SUBMIT ===== */
+
+.callback-submit {
+    padding: 12px;
+
+    border-radius: 10px;
+
+    border: none;
+
+    background: #22c55e;
+
+    color: white;
+
+    font-weight: 600;
+
+    cursor: pointer;
+
+    transition: 0.2s;
+}
+
+.callback-submit:hover {
+    background: #16a34a;
+}
+
+
+/* ===== CLOSE ===== */
+
+.callback-close {
+    width: 100%;
+
+    padding: 12px;
+
+    border: 1px solid #475569;
+
+    border-radius: 10px;
+
+    background: #334155;
+
+    color: #ef4444;
+
+    font-size: 18px;
+    font-weight: 700;
+
+    cursor: pointer;
+
+    transition: 0.2s;
+}
+
+.callback-close:hover {
+    background: #475569;
 }
 
 
@@ -165,14 +256,17 @@
 
 .scroll-top-btn {
     position: fixed;
+
     bottom: 90px;
     right: 20px;
 
     width: 50px;
     height: 50px;
+
     border-radius: 50%;
 
     background-color: rgb(20, 20, 20);
+
     border: none;
 
     display: flex;
@@ -182,7 +276,9 @@
     box-shadow: 0px 0px 0px 4px rgba(180, 160, 255, 0.25);
 
     cursor: pointer;
+
     transition: all 0.3s ease;
+
     overflow: hidden;
 
     z-index: 1000;
@@ -206,7 +302,9 @@
 
 .scroll-top-btn:hover {
     width: 140px;
+
     border-radius: 50px;
+
     background-color: rgb(181, 160, 255);
 }
 
@@ -216,14 +314,18 @@
 
 .scroll-top-btn::before {
     content: "Вгору";
+
     position: absolute;
+
     color: white;
+
     font-size: 0;
+
     white-space: nowrap;
+
     transition: 0.3s;
 }
 
-/* при hover */
 .scroll-top-btn:hover::before {
     font-size: 13px;
     transform: translateY(0);
@@ -245,6 +347,7 @@ function closeCallback() {
 }
 
 async function sendCallback() {
+
     const name = document.getElementById("cbName").value;
     const phone = document.getElementById("cbPhone").value;
 
@@ -254,11 +357,14 @@ async function sendCallback() {
     }
 
     try {
+
         const res = await fetch(`/site/{{ subdomain }}/lead`, {
             method: "POST",
+
             headers: {
                 "Content-Type": "application/x-www-form-urlencoded"
             },
+
             body: new URLSearchParams({
                 name: name || "",
                 phone: phone,
@@ -286,11 +392,13 @@ document.addEventListener("DOMContentLoaded", function () {
     const btn = document.getElementById("scrollTopBtn");
 
     window.addEventListener("scroll", () => {
+
         if (window.scrollY > 300) {
             btn.classList.add("show");
         } else {
             btn.classList.remove("show");
         }
+
     });
 
     btn.onclick = () => {
