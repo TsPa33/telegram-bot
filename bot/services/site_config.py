@@ -3,6 +3,7 @@ from typing import Any
 
 
 _DEFAULT_SITE_CONFIG: dict[str, Any] = {
+
     "header": {
         "enabled": True,
         "title": "",
@@ -60,12 +61,33 @@ _DEFAULT_SITE_CONFIG: dict[str, Any] = {
         "lng": None,
     },
 
+    # ================= CONTACTS =================
+
     "contacts": {
+
         "enabled": True,
-        "phone": "",
-        "telegram": "",
+
+        # ===== PHONES =====
+        "phones": [],
+
+        # ===== ADDRESS =====
         "address": "",
+
+        # ===== MAP =====
         "map_embed": "",
+
+        # ===== MESSENGERS =====
+        "messengers": {
+            "telegram": "",
+            "whatsapp": "",
+            "viber": "",
+        },
+
+        # ===== SOCIALS =====
+        "socials": {
+            "instagram": "",
+            "facebook": "",
+        },
     },
 
     "footer": {
@@ -75,25 +97,50 @@ _DEFAULT_SITE_CONFIG: dict[str, Any] = {
 }
 
 
+# =========================================================
+# DEFAULT
+# =========================================================
+
 def get_default_site_config() -> dict:
     return deepcopy(_DEFAULT_SITE_CONFIG)
 
 
+# =========================================================
+# VALIDATE
+# =========================================================
+
 def validate_site_config(config: dict) -> bool:
+
     if not isinstance(config, dict):
         return False
 
-    required = ("header", "contacts", "services", "map", "modules")
+    required = (
+        "header",
+        "contacts",
+        "services",
+        "map",
+        "modules",
+    )
 
     for key in required:
-        if key not in config or not isinstance(config[key], dict):
+
+        if key not in config:
+            return False
+
+        if not isinstance(config[key], dict):
             return False
 
     return True
 
 
+# =========================================================
+# DEEP MERGE
+# =========================================================
+
 def _deep_merge_missing(target: dict, defaults: dict) -> dict:
+
     for key, default_value in defaults.items():
+
         if key not in target:
             target[key] = deepcopy(default_value)
             continue
@@ -114,33 +161,78 @@ def _deep_merge_missing(target: dict, defaults: dict) -> dict:
     return target
 
 
+# =========================================================
+# NORMALIZE
+# =========================================================
+
 def _normalize_config(config: dict) -> dict:
+
+    # ===== MODULES =====
+
     default_modules = _DEFAULT_SITE_CONFIG["modules"]
+
     modules = config.get("modules")
 
     if not isinstance(modules, dict):
+
         config["modules"] = deepcopy(default_modules)
+
     else:
+
         config["modules"] = {
             key: bool(modules.get(key, True))
             for key in default_modules
         }
 
+    # ===== HERO =====
+
     if not isinstance(config.get("hero", {}).get("banners"), list):
         config.setdefault("hero", {})["banners"] = []
+
+    # ===== PRICE =====
 
     if not isinstance(config.get("price", {}).get("items"), list):
         config.setdefault("price", {})["items"] = []
 
+    # ===== CONTACTS =====
+
+    contacts = config.setdefault("contacts", {})
+
+    if not isinstance(contacts.get("phones"), list):
+        contacts["phones"] = []
+
+    if not isinstance(contacts.get("messengers"), dict):
+        contacts["messengers"] = {
+            "telegram": "",
+            "whatsapp": "",
+            "viber": "",
+        }
+
+    if not isinstance(contacts.get("socials"), dict):
+        contacts["socials"] = {
+            "instagram": "",
+            "facebook": "",
+        }
+
     return config
 
 
+# =========================================================
+# MERGE
+# =========================================================
+
 def merge_with_default(config: dict) -> dict:
+
     if not isinstance(config, dict):
         return get_default_site_config()
 
     merged = deepcopy(config)
-    merged = _deep_merge_missing(merged, _DEFAULT_SITE_CONFIG)
+
+    merged = _deep_merge_missing(
+        merged,
+        _DEFAULT_SITE_CONFIG
+    )
+
     merged = _normalize_config(merged)
 
     return merged
