@@ -1,6 +1,6 @@
 {% extends "admin/crm_base.html" %}
 
-{% block title %}CRM Leads{% endblock %}
+{% block title %}CRM Заявки{% endblock %}
 
 {% block head %}
 <style>
@@ -111,21 +111,22 @@
 {% endblock %}
 
 {% block content %}
+{% set status_labels = {"new": "Нова", "in_progress": "В роботі", "done": "Завершена", "rejected": "Відхилена"} %}
 <section class="crm-panel">
     <div class="leads-header">
         <div>
-            <h1 class="crm-title">Leads</h1>
-            <p class="crm-muted">Site form requests from buyers.</p>
+            <h1 class="crm-title">Заявки</h1>
+            <p class="crm-muted">Заявки з форм сайтів від покупців.</p>
         </div>
-        <p class="crm-muted">Admin: {{ admin.username or admin.telegram_id }}</p>
+        <p class="crm-muted">Адміністратор: {{ admin.username or admin.telegram_id }}</p>
     </div>
 
     <div class="filters">
-        <a class="filter-link {% if not current_status %}active{% endif %}" href="/admin/crm/leads">All</a>
-        <a class="filter-link {% if current_status == 'new' %}active{% endif %}" href="/admin/crm/leads?status=new">New</a>
-        <a class="filter-link {% if current_status == 'in_progress' %}active{% endif %}" href="/admin/crm/leads?status=in_progress">In progress</a>
-        <a class="filter-link {% if current_status == 'done' %}active{% endif %}" href="/admin/crm/leads?status=done">Done</a>
-        <a class="filter-link {% if current_status == 'rejected' %}active{% endif %}" href="/admin/crm/leads?status=rejected">Rejected</a>
+        <a class="filter-link {% if not current_status %}active{% endif %}" href="/admin/crm/leads">Усі</a>
+        <a class="filter-link {% if current_status == 'new' %}active{% endif %}" href="/admin/crm/leads?status=new">Нова</a>
+        <a class="filter-link {% if current_status == 'in_progress' %}active{% endif %}" href="/admin/crm/leads?status=in_progress">В роботі</a>
+        <a class="filter-link {% if current_status == 'done' %}active{% endif %}" href="/admin/crm/leads?status=done">Завершена</a>
+        <a class="filter-link {% if current_status == 'rejected' %}active{% endif %}" href="/admin/crm/leads?status=rejected">Відхилена</a>
     </div>
 
     {% if leads %}
@@ -134,37 +135,37 @@
                 <thead>
                     <tr>
                         <th>ID</th>
-                        <th>Date/time</th>
-                        <th>Seller ID</th>
-                        <th>Subdomain</th>
-                        <th>Name</th>
-                        <th>Phone</th>
-                        <th>Message</th>
-                        <th>Status</th>
-                        <th>Manager/admin ID</th>
-                        <th>Actions</th>
+                        <th>Дата і час</th>
+                        <th>ID продавця</th>
+                        <th>Піддомен</th>
+                        <th>Ім’я</th>
+                        <th>Телефон</th>
+                        <th>Повідомлення</th>
+                        <th>Статус</th>
+                        <th>ID менеджера/адміністратора</th>
+                        <th>Дії</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for lead in leads %}
                         <tr>
                             <td>{{ lead.id }}</td>
-                            <td>{{ lead.created_at.strftime('%Y-%m-%d %H:%M') if lead.created_at else '-' }}</td>
+                            <td>{{ lead.created_at.strftime('%d.%m.%Y %H:%M') if lead.created_at else '-' }}</td>
                             <td>{{ lead.seller_id }}</td>
                             <td>{{ lead.subdomain }}</td>
                             <td>{{ lead.name or '-' }}</td>
                             <td>{{ lead.phone }}</td>
                             <td class="message-cell">{{ lead.message or '-' }}</td>
-                            <td><span class="status-badge">{{ lead.status }}</span></td>
+                            <td><span class="status-badge">{{ status_labels.get(lead.status, lead.status) }}</span></td>
                             <td>{{ lead.manager_admin_id or '-' }}</td>
                             <td>
                                 <form class="status-form" method="post" action="/admin/crm/leads/{{ lead.id }}/status">
                                     <select name="status">
                                         {% for status in allowed_statuses %}
-                                            <option value="{{ status }}" {% if lead.status == status %}selected{% endif %}>{{ status }}</option>
+                                            <option value="{{ status }}" {% if lead.status == status %}selected{% endif %}>{{ status_labels.get(status, status) }}</option>
                                         {% endfor %}
                                     </select>
-                                    <button type="submit">Save</button>
+                                    <button type="submit">Зберегти</button>
                                 </form>
                             </td>
                         </tr>
@@ -173,7 +174,7 @@
             </table>
         </div>
     {% else %}
-        <div class="empty-state">No leads found.</div>
+        <div class="empty-state">Заявок не знайдено.</div>
     {% endif %}
 </section>
 {% endblock %}

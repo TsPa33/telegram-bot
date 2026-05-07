@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{% block title %}{{ title or "CRM" }}{% endblock %}</title>
+    <title>{% block title %}{{ "Вихід виконано" if request.url.path == "/admin/crm/logged-out" else title or "CRM" }}{% endblock %}</title>
     <style>
         :root {
             --bg: #f4f7fb;
@@ -101,17 +101,17 @@
                 <div class="crm-brand">🧩 CRM</div>
                 <nav class="crm-nav">
                     {% block nav %}
-                        <a href="/admin/crm">Dashboard</a>
-                        <a href="/admin/crm/leads">Leads</a>
-                        <a href="/admin/crm/users">Users</a>
-                        <a href="/admin/crm/payments">Payments</a>
+                        <a href="/admin/crm">Панель</a>
+                        <a href="/admin/crm/leads">Заявки</a>
+                        <a href="/admin/crm/users">Користувачі</a>
+                        <a href="/admin/crm/payments">Оплати</a>
                         {% if can_view_audit %}
-                            <a href="/admin/crm/audit">Audit</a>
+                            <a href="/admin/crm/audit">Аудит</a>
                         {% endif %}
                         {% if can_manage_admins %}
-                            <a href="/admin/crm/admins">Admins</a>
+                            <a href="/admin/crm/admins">Адміністратори</a>
                         {% endif %}
-                        <a href="/admin/crm/logout">Logout</a>
+                        <a href="/admin/crm/logout">Вийти</a>
                     {% endblock %}
                 </nav>
             </div>
@@ -120,8 +120,8 @@
         <main class="crm-main">
             {% block content %}
                 <section class="crm-panel">
-                    <h1 class="crm-title">{{ content_title }}</h1>
-                    <p class="crm-muted">{{ content_text }}</p>
+                    <h1 class="crm-title">{{ "Вихід виконано" if request.url.path == "/admin/crm/logged-out" else content_title }}</h1>
+                    <p class="crm-muted">{{ "Сесію CRM завершено." if request.url.path == "/admin/crm/logged-out" else content_text }}</p>
                 </section>
             {% endblock %}
         </main>
