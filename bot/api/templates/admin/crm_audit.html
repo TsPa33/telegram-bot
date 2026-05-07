@@ -1,6 +1,6 @@
 {% extends "admin/crm_base.html" %}
 
-{% block title %}CRM Audit{% endblock %}
+{% block title %}CRM Аудит{% endblock %}
 
 {% block head %}
 <style>
@@ -96,23 +96,23 @@
 <section class="crm-panel">
     <div class="audit-header">
         <div>
-            <h1 class="crm-title">Audit logs</h1>
-            <p class="crm-muted">Newest CRM audit events first.</p>
+            <h1 class="crm-title">Журнал аудиту</h1>
+            <p class="crm-muted">Найновіші події аудиту CRM спочатку.</p>
         </div>
-        <p class="crm-muted">Admin: {{ admin.username or admin.telegram_id }}</p>
+        <p class="crm-muted">Адміністратор: {{ admin.username or admin.telegram_id }}</p>
     </div>
 
     <form class="filters-form" method="get" action="/admin/crm/audit">
         <div class="filter-field">
-            <label for="action">Action</label>
+            <label for="action">Дія</label>
             <input id="action" type="text" name="action" value="{{ action }}" placeholder="admin_user_created">
         </div>
         <div class="filter-field">
-            <label for="actor_admin_id">Actor admin ID</label>
+            <label for="actor_admin_id">ID адміністратора-виконавця</label>
             <input id="actor_admin_id" type="number" name="actor_admin_id" value="{{ actor_admin_id }}" placeholder="1">
         </div>
-        <button type="submit">Filter</button>
-        <a class="reset-link" href="/admin/crm/audit">Reset</a>
+        <button type="submit">Фільтрувати</button>
+        <a class="reset-link" href="/admin/crm/audit">Скинути</a>
     </form>
 
     <div class="table-wrap">
@@ -120,24 +120,24 @@
             <thead>
                 <tr>
                     <th>ID</th>
-                    <th>Created at</th>
-                    <th>Actor</th>
-                    <th>Action</th>
-                    <th>Entity type</th>
-                    <th>Entity ID</th>
-                    <th>Payload</th>
+                    <th>Створено</th>
+                    <th>Виконавець</th>
+                    <th>Дія</th>
+                    <th>Тип об’єкта</th>
+                    <th>ID об’єкта</th>
+                    <th>Дані</th>
                     <th>IP</th>
-                    <th>User agent</th>
+                    <th>User-Agent</th>
                 </tr>
             </thead>
             <tbody>
                 {% for log in logs %}
                     <tr>
                         <td>{{ log.id }}</td>
-                        <td>{{ log.created_at.strftime('%Y-%m-%d %H:%M') if log.created_at else '-' }}</td>
+                        <td>{{ log.created_at.strftime('%d.%m.%Y %H:%M') if log.created_at else '-' }}</td>
                         <td>
                             {% if log.actor_admin_id %}
-                                #{{ log.actor_admin_id }} — {{ log.actor_username or log.actor_telegram_id or 'unknown' }}
+                                #{{ log.actor_admin_id }} — {{ log.actor_username or log.actor_telegram_id or 'невідомо' }}
                             {% else %}
                                 -
                             {% endif %}
@@ -151,7 +151,7 @@
                     </tr>
                 {% else %}
                     <tr>
-                        <td colspan="9">No audit logs found.</td>
+                        <td colspan="9">Записів аудиту не знайдено.</td>
                     </tr>
                 {% endfor %}
             </tbody>

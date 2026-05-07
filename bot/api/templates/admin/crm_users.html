@@ -1,6 +1,6 @@
 {% extends "admin/crm_base.html" %}
 
-{% block title %}CRM Users{% endblock %}
+{% block title %}CRM Користувачі{% endblock %}
 
 {% block head %}
 <style>
@@ -124,35 +124,35 @@
 <section class="crm-panel">
     <div class="users-header">
         <div>
-            <h1 class="crm-title">Users / Sellers</h1>
-            <p class="crm-muted">Read-only seller profiles and site status.</p>
+            <h1 class="crm-title">Користувачі / Продавці</h1>
+            <p class="crm-muted">Профілі продавців і статус сайтів лише для перегляду.</p>
         </div>
-        <p class="crm-muted">Admin: {{ admin.username or admin.telegram_id }}</p>
+        <p class="crm-muted">Адміністратор: {{ admin.username or admin.telegram_id }}</p>
     </div>
 
     <form class="filters-form" method="get" action="/admin/crm/users">
         <div class="filter-field">
-            <label for="q">Search</label>
-            <input id="q" type="search" name="q" value="{{ q }}" placeholder="ID, username, phone, shop, name">
+            <label for="q">Пошук</label>
+            <input id="q" type="search" name="q" value="{{ q }}" placeholder="ID, username, телефон, магазин, ім’я">
         </div>
         <div class="filter-field">
-            <label for="verified">Verified</label>
+            <label for="verified">Верифікований</label>
             <select id="verified" name="verified">
-                <option value="" {% if not verified %}selected{% endif %}>All</option>
-                <option value="yes" {% if verified == 'yes' %}selected{% endif %}>Yes</option>
-                <option value="no" {% if verified == 'no' %}selected{% endif %}>No</option>
+                <option value="" {% if not verified %}selected{% endif %}>Усі</option>
+                <option value="yes" {% if verified == 'yes' %}selected{% endif %}>Так</option>
+                <option value="no" {% if verified == 'no' %}selected{% endif %}>Ні</option>
             </select>
         </div>
         <div class="filter-field">
-            <label for="has_site">Has site</label>
+            <label for="has_site">Має сайт</label>
             <select id="has_site" name="has_site">
-                <option value="" {% if not has_site %}selected{% endif %}>All</option>
-                <option value="yes" {% if has_site == 'yes' %}selected{% endif %}>Yes</option>
-                <option value="no" {% if has_site == 'no' %}selected{% endif %}>No</option>
+                <option value="" {% if not has_site %}selected{% endif %}>Усі</option>
+                <option value="yes" {% if has_site == 'yes' %}selected{% endif %}>Так</option>
+                <option value="no" {% if has_site == 'no' %}selected{% endif %}>Ні</option>
             </select>
         </div>
-        <button type="submit">Apply</button>
-        <a class="reset-link" href="/admin/crm/users">Reset</a>
+        <button type="submit">Фільтрувати</button>
+        <a class="reset-link" href="/admin/crm/users">Скинути</a>
     </form>
 
     {% if sellers %}
@@ -163,13 +163,13 @@
                         <th>ID</th>
                         <th>Telegram ID</th>
                         <th>Username</th>
-                        <th>Shop name</th>
-                        <th>Name</th>
-                        <th>Phone</th>
-                        <th>Verified</th>
-                        <th>Has site</th>
-                        <th>Created at</th>
-                        <th>Actions</th>
+                        <th>Назва магазину</th>
+                        <th>Ім’я</th>
+                        <th>Телефон</th>
+                        <th>Верифікований</th>
+                        <th>Має сайт</th>
+                        <th>Створено</th>
+                        <th>Дії</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -183,23 +183,23 @@
                             <td>{{ seller.phone or '-' }}</td>
                             <td>
                                 <span class="badge {% if seller.is_verified %}yes{% else %}no{% endif %}">
-                                    {{ 'Yes' if seller.is_verified else 'No' }}
+                                    {{ 'Так' if seller.is_verified else 'Ні' }}
                                 </span>
                             </td>
                             <td>
                                 <span class="badge {% if seller.has_site %}yes{% else %}no{% endif %}">
-                                    {{ 'Yes' if seller.has_site else 'No' }}
+                                    {{ 'Так' if seller.has_site else 'Ні' }}
                                 </span>
                             </td>
-                            <td>{{ seller.created_at.strftime('%Y-%m-%d %H:%M') if seller.created_at else '-' }}</td>
-                            <td><a class="action-link" href="/admin/crm/sellers/{{ seller.id }}">View</a></td>
+                            <td>{{ seller.created_at.strftime('%d.%m.%Y %H:%M') if seller.created_at else '-' }}</td>
+                            <td><a class="action-link" href="/admin/crm/sellers/{{ seller.id }}">Переглянути</a></td>
                         </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
     {% else %}
-        <div class="empty-state">No sellers found.</div>
+        <div class="empty-state">Продавців не знайдено.</div>
     {% endif %}
 </section>
 {% endblock %}

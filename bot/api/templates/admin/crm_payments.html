@@ -1,6 +1,6 @@
 {% extends "admin/crm_base.html" %}
 
-{% block title %}CRM Payments{% endblock %}
+{% block title %}CRM Оплати{% endblock %}
 
 {% block head %}
 <style>
@@ -97,27 +97,27 @@
 <section class="crm-panel">
     <div class="payments-header">
         <div>
-            <h1 class="crm-title">Payments</h1>
-            <p class="crm-muted">Read-only payment records.</p>
+            <h1 class="crm-title">Оплати</h1>
+            <p class="crm-muted">Записи оплат лише для перегляду.</p>
         </div>
-        <p class="crm-muted">Admin: {{ admin.username or admin.telegram_id }}</p>
+        <p class="crm-muted">Адміністратор: {{ admin.username or admin.telegram_id }}</p>
     </div>
 
     <form class="filters-form" method="get" action="/admin/crm/payments">
         <div class="filter-field">
-            <label for="status">Status</label>
+            <label for="status">Статус</label>
             <input id="status" type="text" name="status" value="{{ status }}" placeholder="success, pending, failed">
         </div>
         <div class="filter-field">
-            <label for="product">Product</label>
+            <label for="product">Продукт</label>
             <input id="product" type="text" name="product" value="{{ product }}" placeholder="garage, site">
         </div>
         <div class="filter-field">
-            <label for="seller_id">Seller ID</label>
-            <input id="seller_id" type="number" name="seller_id" value="{{ seller_id }}" min="1" placeholder="Seller ID">
+            <label for="seller_id">ID продавця</label>
+            <input id="seller_id" type="number" name="seller_id" value="{{ seller_id }}" min="1" placeholder="ID продавця">
         </div>
-        <button type="submit">Apply</button>
-        <a class="reset-link" href="/admin/crm/payments">Reset</a>
+        <button type="submit">Фільтрувати</button>
+        <a class="reset-link" href="/admin/crm/payments">Скинути</a>
     </form>
 
     {% if payments %}
@@ -126,14 +126,14 @@
                 <thead>
                     <tr>
                         <th>ID</th>
-                        <th>Seller ID</th>
-                        <th>Seller username/shop name</th>
-                        <th>Product</th>
-                        <th>Amount</th>
-                        <th>Status</th>
-                        <th>Created at</th>
-                        <th>Paid/updated time</th>
-                        <th>Raw order/payment id</th>
+                        <th>ID продавця</th>
+                        <th>Username/назва магазину продавця</th>
+                        <th>Продукт</th>
+                        <th>Сума</th>
+                        <th>Статус</th>
+                        <th>Створено</th>
+                        <th>Час оплати/оновлення</th>
+                        <th>Raw order/payment ID</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -145,12 +145,12 @@
                             <td>{{ payment.product or '-' }}</td>
                             <td>{{ payment.amount or '-' }}</td>
                             <td>{{ payment.status or '-' }}</td>
-                            <td>{{ payment.created_at.strftime('%Y-%m-%d %H:%M') if payment.created_at else '-' }}</td>
+                            <td>{{ payment.created_at.strftime('%d.%m.%Y %H:%M') if payment.created_at else '-' }}</td>
                             <td>
                                 {% if payment.paid_at %}
-                                    {{ payment.paid_at.strftime('%Y-%m-%d %H:%M') }}
+                                    {{ payment.paid_at.strftime('%d.%m.%Y %H:%M') }}
                                 {% elif payment.updated_at %}
-                                    {{ payment.updated_at.strftime('%Y-%m-%d %H:%M') }}
+                                    {{ payment.updated_at.strftime('%d.%m.%Y %H:%M') }}
                                 {% else %}
                                     -
                                 {% endif %}
@@ -162,7 +162,7 @@
             </table>
         </div>
     {% else %}
-        <div class="empty-state">No payments found.</div>
+        <div class="empty-state">Оплат не знайдено.</div>
     {% endif %}
 </section>
 {% endblock %}

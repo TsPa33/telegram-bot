@@ -1,6 +1,6 @@
 {% extends "admin/crm_base.html" %}
 
-{% block title %}CRM Dashboard{% endblock %}
+{% block title %}Панель CRM{% endblock %}
 
 {% block head %}
 <style>
@@ -59,13 +59,16 @@
 {% endblock %}
 
 {% block content %}
+{% set role_labels = {"super_admin": "Супер адміністратор", "admin": "Адміністратор", "manager": "Менеджер"} %}
+{% set card_titles = {"/admin/crm/leads": "Заявки", "/admin/crm/users": "Користувачі", "/admin/crm/payments": "Оплати", "/admin/crm/audit": "Аудит", "/admin/crm/admins": "Адміністратори"} %}
+{% set card_texts = {"/admin/crm/leads": "Заявки з сайтів продавців", "/admin/crm/users": "Перегляд продавців і профілів", "/admin/crm/payments": "Перегляд оплат", "/admin/crm/audit": "Журнал дій CRM", "/admin/crm/admins": "Керування адміністраторами CRM"} %}
 <section class="crm-panel">
     <div class="dashboard-header">
         <div>
-            <h1 class="crm-title">CRM Dashboard</h1>
-            <p class="crm-muted">Foundation dashboard for future CRM modules.</p>
+            <h1 class="crm-title">Панель CRM</h1>
+            <p class="crm-muted">Базова панель для модулів CRM.</p>
         </div>
-        <div class="role-badge">Role: {{ admin.role }}</div>
+        <div class="role-badge">Роль: {{ role_labels.get(admin.role, admin.role) }}</div>
     </div>
 
     <div class="cards">
@@ -73,12 +76,12 @@
             <article class="card">
                 <h2 class="card-title">
                     {% if card.url %}
-                        <a href="{{ card.url }}">{{ card.title }}</a>
+                        <a href="{{ card.url }}">{{ card_titles.get(card.url, card.title) }}</a>
                     {% else %}
-                        {{ card.title }}
+                        {{ card_titles.get(card.url, card.title) }}
                     {% endif %}
                 </h2>
-                <p class="card-text">{{ card.text }}</p>
+                <p class="card-text">{{ card_texts.get(card.url, "Скоро буде доступно") }}</p>
             </article>
         {% endfor %}
     </div>
