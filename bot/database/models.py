@@ -57,7 +57,7 @@ async def create_tables():
         id SERIAL PRIMARY KEY,
         telegram_id BIGINT UNIQUE NOT NULL,
         username TEXT,
-        role TEXT NOT NULL CHECK role IN ('super_admin', 'admin', 'manager'),
+        role TEXT NOT NULL CHECK (role IN ('super_admin', 'admin', 'manager')),
         is_active BOOLEAN DEFAULT TRUE,
         created_at TIMESTAMP DEFAULT NOW()
     );
