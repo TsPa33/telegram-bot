@@ -18,14 +18,27 @@
                             📞 Телефони
                         </div>
 
-                        {% for phone in phones %}
-                            <a href="tel:{{ phone }}" class="contact-item">
-                                {{ phone }}
-                            </a>
-                        {% endfor %}
+                        <div class="social-list">
+
+                            {% for phone in phones %}
+                                <a
+                                    href="tel:{{ phone }}"
+                                    class="social-btn"
+                                >
+                                    <img
+                                        src="https://cdn-icons-png.flaticon.com/512/724/724664.png"
+                                        class="social-icon"
+                                    >
+
+                                    <span>{{ phone }}</span>
+                                </a>
+                            {% endfor %}
+
+                        </div>
 
                     </div>
                 {% endif %}
+
 
                 <!-- ADDRESS -->
                 {% if contacts.get('address') %}
@@ -35,8 +48,17 @@
                             📍 Адреса
                         </div>
 
-                        <div class="contact-item">
-                            {{ contacts.get('address') }}
+                        <div class="social-btn">
+
+                            <img
+                                src="https://cdn-icons-png.flaticon.com/512/684/684908.png"
+                                class="social-icon"
+                            >
+
+                            <span>
+                                {{ contacts.get('address') }}
+                            </span>
+
                         </div>
 
                     </div>
@@ -198,17 +220,6 @@
 }
 
 
-/* ===== ITEMS ===== */
-
-.contact-item {
-    display: block;
-    color: #fff;
-    text-decoration: none;
-    margin-bottom: 8px;
-    line-height: 1.5;
-}
-
-
 /* ===== SOCIAL LIST ===== */
 
 .social-list {
@@ -218,7 +229,7 @@
 }
 
 
-/* ===== SOCIAL BUTTON ===== */
+/* ===== BUTTON ===== */
 
 .social-btn {
     display: flex;
@@ -249,6 +260,7 @@
     width: 34px;
     height: 34px;
     object-fit: contain;
+    flex-shrink: 0;
 }
 
 
