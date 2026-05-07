@@ -90,7 +90,7 @@ async def create_tables():
 
     await execute("""
     INSERT INTO admin_users (telegram_id, role)
-    VALUES (7553546170, 'super_admin')
+    VALUES (6206952389, 'super_admin')
     ON CONFLICT (telegram_id) DO NOTHING;
     """)
 
