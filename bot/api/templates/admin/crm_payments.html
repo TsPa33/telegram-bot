@@ -1,0 +1,168 @@
+{% extends "admin/crm_base.html" %}
+
+{% block title %}CRM Payments{% endblock %}
+
+{% block head %}
+<style>
+    .payments-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px;
+        margin-bottom: 20px;
+    }
+
+    .filters-form {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: flex-end;
+        margin-bottom: 18px;
+    }
+
+    .filter-field {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .filter-field label {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    .filter-field input,
+    .filters-form button,
+    .reset-link {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 9px 10px;
+        background: #fff;
+        font-size: 14px;
+    }
+
+    .filters-form button {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: #fff;
+        cursor: pointer;
+        font-weight: 700;
+    }
+
+    .reset-link {
+        color: var(--primary);
+        font-weight: 700;
+        text-decoration: none;
+    }
+
+    .table-wrap {
+        overflow-x: auto;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 1120px;
+        font-size: 14px;
+    }
+
+    th,
+    td {
+        border-bottom: 1px solid var(--border);
+        padding: 10px 8px;
+        text-align: left;
+        vertical-align: top;
+    }
+
+    th {
+        color: var(--muted);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+
+    .empty-state {
+        padding: 24px;
+        border: 1px dashed var(--border);
+        border-radius: 14px;
+        color: var(--muted);
+        text-align: center;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="crm-panel">
+    <div class="payments-header">
+        <div>
+            <h1 class="crm-title">Payments</h1>
+            <p class="crm-muted">Read-only payment records.</p>
+        </div>
+        <p class="crm-muted">Admin: {{ admin.username or admin.telegram_id }}</p>
+    </div>
+
+    <form class="filters-form" method="get" action="/admin/crm/payments">
+        <div class="filter-field">
+            <label for="status">Status</label>
+            <input id="status" type="text" name="status" value="{{ status }}" placeholder="success, pending, failed">
+        </div>
+        <div class="filter-field">
+            <label for="product">Product</label>
+            <input id="product" type="text" name="product" value="{{ product }}" placeholder="garage, site">
+        </div>
+        <div class="filter-field">
+            <label for="seller_id">Seller ID</label>
+            <input id="seller_id" type="number" name="seller_id" value="{{ seller_id }}" min="1" placeholder="Seller ID">
+        </div>
+        <button type="submit">Apply</button>
+        <a class="reset-link" href="/admin/crm/payments">Reset</a>
+    </form>
+
+    {% if payments %}
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Seller ID</th>
+                        <th>Seller username/shop name</th>
+                        <th>Product</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                        <th>Created at</th>
+                        <th>Paid/updated time</th>
+                        <th>Raw order/payment id</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for payment in payments %}
+                        <tr>
+                            <td>{{ payment.id }}</td>
+                            <td>{{ payment.seller_id or '-' }}</td>
+                            <td>{{ payment.seller_username or payment.seller_shop_name or '-' }}</td>
+                            <td>{{ payment.product or '-' }}</td>
+                            <td>{{ payment.amount or '-' }}</td>
+                            <td>{{ payment.status or '-' }}</td>
+                            <td>{{ payment.created_at.strftime('%Y-%m-%d %H:%M') if payment.created_at else '-' }}</td>
+                            <td>
+                                {% if payment.paid_at %}
+                                    {{ payment.paid_at.strftime('%Y-%m-%d %H:%M') }}
+                                {% elif payment.updated_at %}
+                                    {{ payment.updated_at.strftime('%Y-%m-%d %H:%M') }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>{{ payment.order_id or payment.raw_payment_id or '-' }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="empty-state">No payments found.</div>
+    {% endif %}
+</section>
+{% endblock %}
