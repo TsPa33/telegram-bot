@@ -4,6 +4,14 @@ from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 
+from bot.database.repositories.crm_admin_repo import (
+    ALLOWED_ADMIN_ROLES,
+    create_admin_user,
+    list_admin_users,
+    set_admin_user_active,
+    update_admin_user_role,
+)
+from bot.database.repositories.crm_audit_repo import list_admin_audit_logs
 from bot.database.repositories.lead_repo import (
     ALLOWED_STATUSES,
     list_site_leads,
@@ -29,6 +37,24 @@ router = APIRouter(prefix="/admin/crm")
 templates = Jinja2Templates(directory="bot/api/templates")
 CRM_COOKIE_NAME = "crm_session"
 CRM_VIEW_ROLES = {"super_admin", "admin", "manager"}
+CRM_AUDIT_ROLES = {"super_admin", "admin"}
+
+
+def require_roles(admin, allowed_roles):
+    if admin["role"] not in allowed_roles:
+        raise HTTPException(status_code=403, detail="CRM access denied")
+
+
+def can_manage_admins(admin):
+    return admin["role"] == "super_admin"
+
+
+def can_view_audit_logs(admin):
+    return admin["role"] in CRM_AUDIT_ROLES
+
+
+def can_update_leads(admin):
+    return admin["role"] in CRM_VIEW_ROLES
 
 
 def _is_expired(expires_at) -> bool:
@@ -42,8 +68,22 @@ def _request_ip(request: Request):
 
 
 def _require_crm_view_role(admin):
-    if admin["role"] not in CRM_VIEW_ROLES:
-        raise HTTPException(status_code=403, detail="CRM access denied")
+    require_roles(admin, CRM_VIEW_ROLES)
+
+
+def _template_context(request: Request, admin=None, **kwargs):
+    context = {
+        "request": request,
+        "admin": admin,
+        "can_view_audit": can_view_audit_logs(admin) if admin else False,
+        "can_manage_admins": can_manage_admins(admin) if admin else False,
+    }
+    context.update(kwargs)
+    return context
+
+
+def _parse_is_active(value: str):
+    return value in {"1", "true", "True", "yes", "on", "active"}
 
 
 async def get_current_admin(request: Request):
@@ -123,35 +163,51 @@ async def crm_dashboard(request: Request):
     admin = await get_current_admin(request)
     _require_crm_view_role(admin)
 
+    cards = [
+        {
+            "title": "Leads",
+            "text": "Manage site requests",
+            "url": "/admin/crm/leads",
+        },
+        {
+            "title": "Users",
+            "text": "View sellers and user profiles",
+            "url": "/admin/crm/users",
+        },
+        {
+            "title": "Payments",
+            "text": "Review payment records",
+            "url": "/admin/crm/payments",
+        },
+    ]
+
+    if can_view_audit_logs(admin):
+        cards.append(
+            {
+                "title": "Audit",
+                "text": "Review CRM audit logs",
+                "url": "/admin/crm/audit",
+            }
+        )
+
+    if can_manage_admins(admin):
+        cards.append(
+            {
+                "title": "Admins",
+                "text": "Manage CRM administrators",
+                "url": "/admin/crm/admins",
+            }
+        )
+
     return templates.TemplateResponse(
         "admin/crm_dashboard.html",
-        {
-            "request": request,
-            "admin": admin,
-            "cards": [
-                {
-                    "title": "Leads",
-                    "text": "Manage site requests",
-                    "url": "/admin/crm/leads",
-                },
-                {
-                    "title": "Users",
-                    "text": "View sellers and user profiles",
-                    "url": "/admin/crm/users",
-                },
-                {
-                    "title": "Payments",
-                    "text": "Review payment records",
-                    "url": "/admin/crm/payments",
-                },
-                {
-                    "title": "Logs",
-                    "text": "Coming soon",
-                    "url": None,
-                },
-            ],
-        },
+        _template_context(
+            request,
+            admin,
+            cards=cards,
+        ),
     )
+
 
 @router.get("/leads")
 async def crm_leads(request: Request, status: str | None = None):
@@ -168,13 +224,13 @@ async def crm_leads(request: Request, status: str | None = None):
 
     return templates.TemplateResponse(
         "admin/crm_leads.html",
-        {
-            "request": request,
-            "admin": admin,
-            "leads": leads,
-            "current_status": status,
-            "allowed_statuses": ["new", "in_progress", "done", "rejected"],
-        },
+        _template_context(
+            request,
+            admin,
+            leads=leads,
+            current_status=status,
+            allowed_statuses=["new", "in_progress", "done", "rejected"],
+        ),
     )
 
 
@@ -185,7 +241,8 @@ async def crm_update_lead_status(
     status: str = Form(...),
 ):
     admin = await get_current_admin(request)
-    _require_crm_view_role(admin)
+    if not can_update_leads(admin):
+        raise HTTPException(status_code=403, detail="Lead status update denied")
 
     if status not in ALLOWED_STATUSES:
         raise HTTPException(status_code=400, detail="Invalid lead status")
@@ -244,14 +301,14 @@ async def crm_users(
 
     return templates.TemplateResponse(
         "admin/crm_users.html",
-        {
-            "request": request,
-            "admin": admin,
-            "sellers": sellers,
-            "q": q or "",
-            "verified": verified,
-            "has_site": has_site,
-        },
+        _template_context(
+            request,
+            admin,
+            sellers=sellers,
+            q=q or "",
+            verified=verified,
+            has_site=has_site,
+        ),
     )
 
 
@@ -272,15 +329,15 @@ async def crm_seller_detail(request: Request, seller_id: int):
 
     return templates.TemplateResponse(
         "admin/crm_seller_detail.html",
-        {
-            "request": request,
-            "admin": admin,
-            "seller": seller,
-            "cars": cars,
-            "services": services,
-            "site": site,
-            "subscriptions": subscriptions,
-        },
+        _template_context(
+            request,
+            admin,
+            seller=seller,
+            cars=cars,
+            services=services,
+            site=site,
+            subscriptions=subscriptions,
+        ),
     )
 
 
@@ -308,15 +365,156 @@ async def crm_payments(
 
     return templates.TemplateResponse(
         "admin/crm_payments.html",
-        {
-            "request": request,
-            "admin": admin,
-            "payments": payments,
-            "status": status or "",
-            "product": product or "",
-            "seller_id": seller_id or "",
-        },
+        _template_context(
+            request,
+            admin,
+            payments=payments,
+            status=status or "",
+            product=product or "",
+            seller_id=seller_id or "",
+        ),
     )
+
+
+@router.get("/audit")
+async def crm_audit(
+    request: Request,
+    action: str | None = None,
+    actor_admin_id: int | None = None,
+):
+    admin = await get_current_admin(request)
+    require_roles(admin, CRM_AUDIT_ROLES)
+
+    if action == "":
+        action = None
+
+    logs = await list_admin_audit_logs(
+        action=action,
+        actor_admin_id=actor_admin_id,
+    )
+
+    return templates.TemplateResponse(
+        "admin/crm_audit.html",
+        _template_context(
+            request,
+            admin,
+            logs=logs,
+            action=action or "",
+            actor_admin_id=actor_admin_id or "",
+        ),
+    )
+
+
+@router.get("/admins")
+async def crm_admins(request: Request):
+    admin = await get_current_admin(request)
+    require_roles(admin, {"super_admin"})
+
+    admin_users = await list_admin_users()
+
+    return templates.TemplateResponse(
+        "admin/crm_admins.html",
+        _template_context(
+            request,
+            admin,
+            admin_users=admin_users,
+            allowed_roles=sorted(ALLOWED_ADMIN_ROLES),
+        ),
+    )
+
+
+@router.post("/admins/create")
+async def crm_create_admin(
+    request: Request,
+    telegram_id: int = Form(...),
+    username: str | None = Form(None),
+    role: str = Form(...),
+):
+    admin = await get_current_admin(request)
+    require_roles(admin, {"super_admin"})
+
+    if role not in ALLOWED_ADMIN_ROLES:
+        raise HTTPException(status_code=400, detail="Invalid admin role")
+
+    username = username.strip() if username else None
+    new_admin = await create_admin_user(telegram_id, username, role)
+
+    if not new_admin:
+        raise HTTPException(status_code=400, detail="Admin telegram_id already exists")
+
+    await log_admin_action(
+        admin["id"],
+        "admin_user_created",
+        entity_type="admin_user",
+        entity_id=str(new_admin["id"]),
+        payload={"telegram_id": telegram_id, "username": username, "role": role},
+        ip=_request_ip(request),
+        user_agent=request.headers.get("user-agent"),
+    )
+
+    return RedirectResponse(url="/admin/crm/admins", status_code=303)
+
+
+@router.post("/admins/{admin_id}/role")
+async def crm_update_admin_role(
+    request: Request,
+    admin_id: int,
+    role: str = Form(...),
+):
+    admin = await get_current_admin(request)
+    require_roles(admin, {"super_admin"})
+
+    if role not in ALLOWED_ADMIN_ROLES:
+        raise HTTPException(status_code=400, detail="Invalid admin role")
+
+    updated_admin = await update_admin_user_role(admin_id, role)
+
+    if not updated_admin:
+        raise HTTPException(status_code=404, detail="Admin user not found")
+
+    await log_admin_action(
+        admin["id"],
+        "admin_user_role_updated",
+        entity_type="admin_user",
+        entity_id=str(admin_id),
+        payload={"role": role},
+        ip=_request_ip(request),
+        user_agent=request.headers.get("user-agent"),
+    )
+
+    return RedirectResponse(url="/admin/crm/admins", status_code=303)
+
+
+@router.post("/admins/{admin_id}/active")
+async def crm_update_admin_active(
+    request: Request,
+    admin_id: int,
+    is_active: str = Form(...),
+):
+    admin = await get_current_admin(request)
+    require_roles(admin, {"super_admin"})
+
+    next_is_active = _parse_is_active(is_active)
+
+    if admin_id == admin["id"] and not next_is_active:
+        raise HTTPException(status_code=400, detail="Cannot deactivate yourself")
+
+    updated_admin = await set_admin_user_active(admin_id, next_is_active)
+
+    if not updated_admin:
+        raise HTTPException(status_code=404, detail="Admin user not found")
+
+    await log_admin_action(
+        admin["id"],
+        "admin_user_active_updated",
+        entity_type="admin_user",
+        entity_id=str(admin_id),
+        payload={"is_active": next_is_active},
+        ip=_request_ip(request),
+        user_agent=request.headers.get("user-agent"),
+    )
+
+    return RedirectResponse(url="/admin/crm/admins", status_code=303)
 
 
 @router.get("/logout")
@@ -346,10 +544,10 @@ async def crm_logout(request: Request):
 async def crm_logged_out(request: Request):
     return templates.TemplateResponse(
         "admin/crm_base.html",
-        {
-            "request": request,
-            "title": "CRM Logged Out",
-            "content_title": "Logged out",
-            "content_text": "CRM session cleared.",
-        },
+        _template_context(
+            request,
+            title="CRM Logged Out",
+            content_title="Logged out",
+            content_text="CRM session cleared.",
+        ),
     )
