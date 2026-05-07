@@ -112,19 +112,28 @@ async def crm_dashboard(request: Request):
         {
             "request": request,
             "admin": admin,
-            "cards": [
-                {
-                    "title": "Leads",
-                    "text": "Manage site requests",
-                    "url": "/admin/crm/leads",
-                },
-                {"title": "Users", "text": "Coming soon", "url": None},
-                {"title": "Payments", "text": "Coming soon", "url": None},
-                {"title": "Logs", "text": "Coming soon", "url": None},
-            ],
+    "cards": [
+        {
+            "title": "Leads",
+            "text": "Manage site requests",
+            "url": "/admin/crm/leads",
         },
-    )
-
+        {
+            "title": "Users",
+            "text": "View sellers and user profiles",
+            "url": "/admin/crm/users",
+        },
+        {
+            "title": "Payments",
+            "text": "Review payment records",
+            "url": "/admin/crm/payments",
+        },
+        {
+            "title": "Logs",
+            "text": "Coming soon",
+            "url": None,
+        },
+    ],
 
 @router.get("/leads")
 async def crm_leads(request: Request, status: str | None = None):
