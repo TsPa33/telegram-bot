@@ -223,6 +223,7 @@ async def get_demo_sites():
         FROM seller_sites ss
         JOIN sellers s ON s.id = ss.seller_id
         WHERE ss.subdomain LIKE 'demo-%'
+          AND COALESCE(ss.status, 'active') <> 'deleted'
         ORDER BY ss.created_at DESC, ss.id DESC
         """
     )
@@ -238,3 +239,17 @@ async def get_site_by_id(site_id: int):
         """,
         site_id,
     )
+
+
+async def soft_delete_demo_site(site_id: int) -> bool:
+    row = await fetchrow(
+        """
+        UPDATE seller_sites
+        SET status = 'deleted'
+        WHERE id = $1
+          AND subdomain LIKE 'demo-%'
+        RETURNING id
+        """,
+        site_id,
+    )
+    return row is not None

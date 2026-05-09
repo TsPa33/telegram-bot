@@ -34,7 +34,7 @@ from bot.database.repositories.admin_repo import (
     update_brand_request,
     update_model_request,
     approve_seller,
-    reject_seller
+    reject_seller,
 )
 
 from bot.database.repositories.crm_repo import (
@@ -47,20 +47,22 @@ from bot.database.repositories.user_repo import (
     get_visits,
     get_all_users,
     get_user_by_id,
-    delete_user_full
+    delete_user_full,
 )
 
 from bot.database.repositories.seller_repo import (
     get_seller_by_id,
     create_demo_seller,
-    delete_seller_by_id,
 )
+
 from bot.database.repositories.site_repo import (
     create_site,
     get_demo_sites,
     get_site_by_id,
     subdomain_exists,
+    soft_delete_demo_site,
 )
+
 from bot.services.demo_context import clear_demo_context, set_demo_context
 from bot.services.site_config import get_default_site_config
 from bot.utils.cache import clear_brands_cache, clear_models_cache
@@ -140,7 +142,7 @@ async def admin_users(message: Message, state: FSMContext):
 
     await message.answer(
         "👥 Список користувачів:",
-        reply_markup=admin_users_kb(users)
+        reply_markup=admin_users_kb(users),
     )
 
 
@@ -150,7 +152,7 @@ async def admin_users_back(callback: CallbackQuery):
 
     await callback.message.edit_text(
         "👥 Список користувачів:",
-        reply_markup=admin_users_kb(users)
+        reply_markup=admin_users_kb(users),
     )
     await callback.answer()
 
@@ -161,7 +163,7 @@ async def user_actions(callback: CallbackQuery):
 
     await callback.message.edit_text(
         f"👤 Користувач ID: {user_id}",
-        reply_markup=admin_user_actions_kb(user_id)
+        reply_markup=admin_user_actions_kb(user_id),
     )
     await callback.answer()
 
@@ -193,7 +195,7 @@ async def confirm_delete(callback: CallbackQuery):
 
     await callback.message.edit_text(
         f"⚠️ Видалити користувача {user_id}?",
-        reply_markup=admin_confirm_delete_kb(user_id)
+        reply_markup=admin_confirm_delete_kb(user_id),
     )
     await callback.answer()
 
@@ -241,7 +243,7 @@ async def admin_visits(message: Message, state: FSMContext):
 
     MAX = 4000
     for i in range(0, len(text), MAX):
-        await message.answer(text[i:i+MAX])
+        await message.answer(text[i:i + MAX])
 
 
 # ================= REQUESTS =================
@@ -260,19 +262,21 @@ async def show_requests(message: types.Message, state: FSMContext):
         for r in brand_requests:
             await message.answer(
                 f"🆕 Бренд\n👤 {r['user_id']}\n🏷 {r['brand']}",
-                reply_markup=brand_request_kb(r["id"])
+                reply_markup=brand_request_kb(r["id"]),
             )
 
     if model_requests:
         for r in model_requests:
             await message.answer(
                 f"🆕 Модель\n👤 {r['user_id']}\n🚗 {r['brand']} {r['model']}",
-                reply_markup=model_request_kb(r["id"])
+                reply_markup=model_request_kb(r["id"]),
             )
 
     if not brand_requests and not model_requests:
         await message.answer("✅ Немає заявок")
-       # ================= BRAND APPROVE =================
+
+
+# ================= BRAND APPROVE =================
 
 @router.callback_query(F.data.startswith("admin:brand:ok:"))
 async def approve_brand_handler(callback: CallbackQuery):
@@ -282,7 +286,7 @@ async def approve_brand_handler(callback: CallbackQuery):
 
     request_data = next(
         (r for r in requests if r["id"] == request_id),
-        None
+        None,
     )
 
     if not request_data:
@@ -303,7 +307,7 @@ async def approve_brand_handler(callback: CallbackQuery):
                     "✅ Ваш бренд погоджено модератором\n\n"
                     f"🏷 Бренд: {request_data['brand']}\n\n"
                     "Тепер ви можете додати авто у свій гараж."
-                )
+                ),
             )
         except Exception:
             pass
@@ -326,7 +330,7 @@ async def reject_brand_handler(callback: CallbackQuery):
 
     request_data = next(
         (r for r in requests if r["id"] == request_id),
-        None
+        None,
     )
 
     if not request_data:
@@ -344,7 +348,7 @@ async def reject_brand_handler(callback: CallbackQuery):
                 (
                     "❌ Ваш бренд відхилено модератором\n\n"
                     f"🏷 Бренд: {request_data['brand']}"
-                )
+                ),
             )
         except Exception:
             pass
@@ -369,7 +373,7 @@ async def approve_model_handler(callback: CallbackQuery):
 
     request_data = next(
         (r for r in requests if r["id"] == request_id),
-        None
+        None,
     )
 
     if not request_data:
@@ -391,7 +395,7 @@ async def approve_model_handler(callback: CallbackQuery):
                     f"🏷 Бренд: {request_data['brand']}\n"
                     f"🚗 Модель: {request_data['model']}\n\n"
                     "Тепер ви можете додати авто у свій гараж."
-                )
+                ),
             )
         except Exception:
             pass
@@ -415,7 +419,7 @@ async def reject_model_handler(callback: CallbackQuery):
 
     request_data = next(
         (r for r in requests if r["id"] == request_id),
-        None
+        None,
     )
 
     if not request_data:
@@ -434,7 +438,7 @@ async def reject_model_handler(callback: CallbackQuery):
                     "❌ Вашу модель відхилено модератором\n\n"
                     f"🏷 Бренд: {request_data['brand']}\n"
                     f"🚗 Модель: {request_data['model']}"
-                )
+                ),
             )
         except Exception:
             pass
@@ -448,6 +452,8 @@ async def reject_model_handler(callback: CallbackQuery):
     )
 
     await callback.answer()
+
+
 # ================= VERIFICATION =================
 
 @router.callback_query(F.data.startswith("admin:verify:ok:"))
@@ -467,7 +473,7 @@ async def approve_verification(callback: CallbackQuery):
 
     await callback.bot.send_message(
         telegram_id,
-        "✅ Ваш акаунт підтверджено\nТепер вам доступні всі функції продавця"
+        "✅ Ваш акаунт підтверджено\nТепер вам доступні всі функції продавця",
     )
 
     await callback.answer()
@@ -490,7 +496,7 @@ async def reject_verification(callback: CallbackQuery):
 
     await callback.bot.send_message(
         telegram_id,
-        "❌ Верифікацію відхилено\nСпробуйте ще раз"
+        "❌ Верифікацію відхилено\nСпробуйте ще раз",
     )
 
     await callback.answer()
@@ -580,7 +586,9 @@ async def admin_demo_add_subdomain(message: Message, state: FSMContext):
         return
 
     if not subdomain:
-        await message.answer("❌ Невірний формат. Використайте тільки латиницю, цифри та дефіс: demo-sto")
+        await message.answer(
+            "❌ Невірний формат. Використайте тільки латиницю, цифри та дефіс: demo-sto"
+        )
         return
 
     if not subdomain.startswith("demo-"):
@@ -708,7 +716,7 @@ async def admin_demo_delete(callback: CallbackQuery):
     await callback.message.edit_text(
         "⚠️ Видалити demo сайт?\n\n"
         f"Subdomain: {site['subdomain']}\n"
-        "Буде видалено seller record та повʼязані site/services/cars.",
+        "Сайт буде приховано зі списку demo сайтів без видалення seller record.",
         reply_markup=admin_demo_confirm_delete_kb(site_id),
     )
     await callback.answer()
@@ -727,7 +735,11 @@ async def admin_demo_delete_confirm(callback: CallbackQuery):
         await callback.answer("Демо сайт не знайдено", show_alert=True)
         return
 
-    await delete_seller_by_id(site["seller_id"])
+    deleted = await soft_delete_demo_site(site_id)
+
+    if not deleted:
+        await callback.answer("Не вдалося видалити demo сайт", show_alert=True)
+        return
 
     await callback.message.edit_text(
         "🗑 Демо сайт видалено\n\n"
@@ -751,6 +763,7 @@ async def demo_exit(callback: CallbackQuery, state: FSMContext):
 def _normalize_demo_subdomain(value: str) -> str | None:
     subdomain = value.strip().lower()
     allowed = "abcdefghijklmnopqrstuvwxyz0123456789-"
+
     if not subdomain or any(char not in allowed for char in subdomain):
         return None
 
@@ -770,6 +783,7 @@ def _demo_telegram_id(subdomain: str) -> int:
 def _demo_site_text(site) -> str:
     config = site.get("config_draft") or {}
     title = ""
+
     if isinstance(config, dict):
         title = (config.get("header") or {}).get("title") or ""
 

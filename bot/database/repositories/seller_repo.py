@@ -258,15 +258,3 @@ async def create_demo_seller(telegram_id: int, username: str, title: str):
         username,
         title,
     )
-
-
-async def delete_seller_by_id(seller_id: int) -> bool:
-    row = await fetchrow(
-        """
-        DELETE FROM sellers
-        WHERE id = $1
-        RETURNING id
-        """,
-        seller_id,
-    )
-    return row is not None
