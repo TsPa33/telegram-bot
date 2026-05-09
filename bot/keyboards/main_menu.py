@@ -11,7 +11,7 @@ async def main_menu_kb(user_id: int) -> InlineKeyboardMarkup:
 
     # ================= ROLES =================
 
-    # покупець доступний завжди
+    # покупець
     buttons.append([
         InlineKeyboardButton(
             text="🚗 Покупець",
@@ -19,7 +19,7 @@ async def main_menu_kb(user_id: int) -> InlineKeyboardMarkup:
         )
     ])
 
-    # продавець (якщо вже продавець або хоче ним стати)
+    # продавець
     if seller:
         buttons.append([
             InlineKeyboardButton(
@@ -35,6 +35,15 @@ async def main_menu_kb(user_id: int) -> InlineKeyboardMarkup:
             )
         ])
 
+    # ================= DEMO =================
+
+    buttons.append([
+        InlineKeyboardButton(
+            text="🌐 Демо сайти",
+            callback_data="demo:sites"
+        )
+    ])
+
     # ================= ADMIN =================
 
     if admin:
@@ -45,4 +54,6 @@ async def main_menu_kb(user_id: int) -> InlineKeyboardMarkup:
             )
         ])
 
-    return InlineKeyboardMarkup(inline_keyboard=buttons)
+    return InlineKeyboardMarkup(
+        inline_keyboard=buttons
+    )
