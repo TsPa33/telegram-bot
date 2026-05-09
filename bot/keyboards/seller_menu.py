@@ -50,7 +50,7 @@ def seller_menu_kb(is_verified: bool = False):
 
 # ================= SITE MAIN =================
 
-def site_menu_kb(subdomain: str, is_active: bool):
+def site_menu_kb(subdomain: str, is_active: bool, demo_mode: bool = False):
     buttons = [
 
         [InlineKeyboardButton(text="📞 Контакти", callback_data="site:contacts:menu")],
@@ -63,6 +63,14 @@ def site_menu_kb(subdomain: str, is_active: bool):
             InlineKeyboardButton(
                 text="🌍 Відкрити сайт",
                 url=f"https://worker-production-e30f.up.railway.app/site/{subdomain}"
+            )
+        ])
+
+    if demo_mode:
+        buttons.append([
+            InlineKeyboardButton(
+                text="⬅️ Вийти з demo режиму",
+                callback_data="demo:exit"
             )
         ])
 

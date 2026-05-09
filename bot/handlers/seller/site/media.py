@@ -9,7 +9,7 @@ from aiogram.filters import StateFilter
 from bot.states.seller_states import SellerSiteStates
 from bot.database.repositories.site_repo import get_site_by_seller, update_site_config
 from bot.services.site_config import merge_with_default
-from bot.services.seller_identity import resolve_seller
+from bot.services.demo_context import clear_preserving_demo_context, resolve_active_seller
 from bot.services.storage import upload_image
 
 router = Router()
@@ -39,11 +39,11 @@ def safe_config(raw):
 async def handle_media(message: Message, state: FSMContext):
     current_state = await state.get_state()
 
-    seller = await resolve_seller(message)
+    seller = await resolve_active_seller(message, state)
     site = await get_site_by_seller(seller["id"])
 
     if not site:
-        await state.clear()
+        await clear_preserving_demo_context(state)
         await message.answer("Сайт не знайдено ❌")
         return
 
@@ -95,7 +95,7 @@ async def handle_media(message: Message, state: FSMContext):
             pass
 
         await message.answer("Помилка завантаження зображення ❌")
-        await state.clear()
+        await clear_preserving_demo_context(state)
         return
 
     # 🧹 cleanup
@@ -115,4 +115,4 @@ async def handle_media(message: Message, state: FSMContext):
         await message.answer("Лого збережено ✅")
 
     await update_site_config(site["id"], config)
-    await state.clear()
+    await clear_preserving_demo_context(state)
