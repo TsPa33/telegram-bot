@@ -8,7 +8,7 @@ from aiogram.fsm.context import FSMContext
 from bot.states.seller_states import SellerSiteStates
 from bot.database.repositories.site_repo import get_site_by_seller, update_site_config
 from bot.database.repositories.service_repo import create_service
-from bot.services.seller_identity import resolve_seller, resolve_seller_from_user
+from bot.services.demo_context import clear_preserving_demo_context, resolve_active_seller, resolve_active_seller_from_user, is_demo_mode
 
 from bot.keyboards.seller_menu import (
     site_menu_kb,
@@ -37,8 +37,8 @@ def normalize_phone(phone: str) -> str | None:
 
 # ================= HELPERS =================
 
-async def get_context(callback: CallbackQuery):
-    seller = await resolve_seller_from_user(callback.from_user)
+async def get_context(callback: CallbackQuery, state: FSMContext):
+    seller = await resolve_active_seller_from_user(callback.from_user, state)
 
     if not seller:
         return None, None
@@ -126,8 +126,8 @@ async def open_media(callback: CallbackQuery):
 
 
 @router.callback_query(F.data == "site:theme:menu")
-async def open_theme_menu(callback: CallbackQuery):
-    seller, site = await get_context(callback)
+async def open_theme_menu(callback: CallbackQuery, state: FSMContext):
+    seller, site = await get_context(callback, state)
 
     if not seller:
         await callback.answer("Продавця не знайдено", show_alert=True)
@@ -149,7 +149,7 @@ async def open_theme_menu(callback: CallbackQuery):
 
 
 @router.callback_query(F.data.startswith("site:theme:set:"))
-async def set_theme_scheme(callback: CallbackQuery):
+async def set_theme_scheme(callback: CallbackQuery, state: FSMContext):
     allowed_schemes = {"default", "light_blue", "neon_dark", "premium_dark"}
     scheme = callback.data.split(":")[-1]
 
@@ -157,7 +157,7 @@ async def set_theme_scheme(callback: CallbackQuery):
         await callback.answer("Невідома кольорова схема", show_alert=True)
         return
 
-    seller, site = await get_context(callback)
+    seller, site = await get_context(callback, state)
 
     if not seller:
         await callback.answer("Продавця не знайдено", show_alert=True)
@@ -182,8 +182,8 @@ async def set_theme_scheme(callback: CallbackQuery):
 
 
 @router.callback_query(F.data == "site:back")
-async def go_back(callback: CallbackQuery):
-    seller = await resolve_seller_from_user(callback.from_user)
+async def go_back(callback: CallbackQuery, state: FSMContext):
+    seller = await resolve_active_seller_from_user(callback.from_user, state)
 
     if not seller:
         await callback.answer("Продавця не знайдено", show_alert=True)
@@ -199,7 +199,8 @@ async def go_back(callback: CallbackQuery):
         "🌐 Мій сайт",
         reply_markup=site_menu_kb(
             subdomain=site["subdomain"],
-            is_active=True
+            is_active=True,
+            demo_mode=await is_demo_mode(state)
         )
     )
 
@@ -223,11 +224,11 @@ async def edit_address(callback: CallbackQuery, state: FSMContext):
 
 @router.message(SellerSiteStates.site_contact_address)
 async def save_address(message: Message, state: FSMContext):
-    seller = await resolve_seller(message)
+    seller = await resolve_active_seller(message, state)
     site = await get_site_by_seller(seller["id"])
 
     if not site:
-        await state.clear()
+        await clear_preserving_demo_context(state)
         await message.answer("❌ Сайт не знайдено")
         return
 
@@ -250,7 +251,7 @@ async def save_address(message: Message, state: FSMContext):
         "map": map_config,
     })
 
-    await state.clear()
+    await clear_preserving_demo_context(state)
 
     await message.answer(
         "✅ Адресу збережено\n\n"
@@ -273,11 +274,11 @@ async def edit_map(callback: CallbackQuery, state: FSMContext):
 
 @router.message(SellerSiteStates.site_contact_map)
 async def save_map(message: Message, state: FSMContext):
-    seller = await resolve_seller(message)
+    seller = await resolve_active_seller(message, state)
     site = await get_site_by_seller(seller["id"])
 
     if not site:
-        await state.clear()
+        await clear_preserving_demo_context(state)
         await message.answer("❌ Сайт не знайдено")
         return
 
@@ -299,7 +300,7 @@ async def save_map(message: Message, state: FSMContext):
         "contacts": contacts
     })
 
-    await state.clear()
+    await clear_preserving_demo_context(state)
 
     await message.answer("✅ Карту збережено")
 
@@ -315,7 +316,7 @@ async def service_add(callback: CallbackQuery, state: FSMContext):
 
 @router.message(SellerSiteStates.site_service_create)
 async def service_create_process(message: Message, state: FSMContext):
-    seller = await resolve_seller(message)
+    seller = await resolve_active_seller(message, state)
 
     await create_service(
         seller_id=seller["id"],
@@ -328,7 +329,7 @@ async def service_create_process(message: Message, state: FSMContext):
         photo_id=None,
     )
 
-    await state.clear()
+    await clear_preserving_demo_context(state)
 
     await message.answer("Послугу створено ✅")
 
@@ -364,7 +365,7 @@ async def save_phone(message: Message, state: FSMContext):
         )
         return
 
-    seller = await resolve_seller(message)
+    seller = await resolve_active_seller(message, state)
     site = await get_site_by_seller(seller["id"])
 
     config = safe_config(site.get("config_draft"))
@@ -379,14 +380,14 @@ async def save_phone(message: Message, state: FSMContext):
         }
     })
 
-    await state.clear()
+    await clear_preserving_demo_context(state)
 
     await message.answer(f"Номер додано ✅\n{phone}")
 
 
 @router.callback_query(F.data == "contacts:list_phones")
-async def list_phones(callback: CallbackQuery):
-    seller = await resolve_seller_from_user(callback.from_user)
+async def list_phones(callback: CallbackQuery, state: FSMContext):
+    seller = await resolve_active_seller_from_user(callback.from_user, state)
 
     if not seller:
         await callback.answer("Продавця не знайдено", show_alert=True)
@@ -423,10 +424,10 @@ async def list_phones(callback: CallbackQuery):
 
 
 @router.callback_query(F.data.startswith("contacts:delete_phone:"))
-async def delete_phone(callback: CallbackQuery):
+async def delete_phone(callback: CallbackQuery, state: FSMContext):
     index = int(callback.data.split(":")[-1])
 
-    seller = await resolve_seller_from_user(callback.from_user)
+    seller = await resolve_active_seller_from_user(callback.from_user, state)
 
     if not seller:
         await callback.answer("Продавця не знайдено", show_alert=True)
@@ -480,7 +481,7 @@ async def save_tg(message: Message, state: FSMContext):
         await message.answer("❌ Username не може бути порожнім")
         return
 
-    seller = await resolve_seller(message)
+    seller = await resolve_active_seller(message, state)
     site = await get_site_by_seller(seller["id"])
 
     await update_site_config(site["id"], {
@@ -491,7 +492,7 @@ async def save_tg(message: Message, state: FSMContext):
         }
     })
 
-    await state.clear()
+    await clear_preserving_demo_context(state)
 
     await message.answer(f"Telegram збережено ✅\n@{username}")
 
@@ -525,7 +526,7 @@ async def save_wa(message: Message, state: FSMContext):
         )
         return
 
-    seller = await resolve_seller(message)
+    seller = await resolve_active_seller(message, state)
     site = await get_site_by_seller(seller["id"])
 
     await update_site_config(site["id"], {
@@ -536,7 +537,7 @@ async def save_wa(message: Message, state: FSMContext):
         }
     })
 
-    await state.clear()
+    await clear_preserving_demo_context(state)
 
     await message.answer(f"WhatsApp збережено ✅\n{phone}")
 
@@ -570,7 +571,7 @@ async def save_viber(message: Message, state: FSMContext):
         )
         return
 
-    seller = await resolve_seller(message)
+    seller = await resolve_active_seller(message, state)
     site = await get_site_by_seller(seller["id"])
 
     await update_site_config(site["id"], {
@@ -581,7 +582,7 @@ async def save_viber(message: Message, state: FSMContext):
         }
     })
 
-    await state.clear()
+    await clear_preserving_demo_context(state)
 
     await message.answer(f"Viber збережено ✅\n{phone}")
 
@@ -606,7 +607,7 @@ async def save_inst(message: Message, state: FSMContext):
     if not url.startswith(("http://", "https://")):
         url = f"https://{url}"
 
-    seller = await resolve_seller(message)
+    seller = await resolve_active_seller(message, state)
     site = await get_site_by_seller(seller["id"])
 
     await update_site_config(site["id"], {
@@ -617,7 +618,7 @@ async def save_inst(message: Message, state: FSMContext):
         }
     })
 
-    await state.clear()
+    await clear_preserving_demo_context(state)
 
     await message.answer(f"Instagram збережено ✅\n{url}")
 
@@ -642,7 +643,7 @@ async def save_fb(message: Message, state: FSMContext):
     if not url.startswith(("http://", "https://")):
         url = f"https://{url}"
 
-    seller = await resolve_seller(message)
+    seller = await resolve_active_seller(message, state)
     site = await get_site_by_seller(seller["id"])
 
     await update_site_config(site["id"], {
@@ -653,7 +654,7 @@ async def save_fb(message: Message, state: FSMContext):
         }
     })
 
-    await state.clear()
+    await clear_preserving_demo_context(state)
 
     await message.answer(f"Facebook збережено ✅\n{url}")
 
@@ -670,8 +671,8 @@ async def add_banner(callback: CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data == "media:list_banners")
 @router.callback_query(F.data == "site:banners:list")
-async def list_banners(callback: CallbackQuery):
-    seller = await resolve_seller_from_user(callback.from_user)
+async def list_banners(callback: CallbackQuery, state: FSMContext):
+    seller = await resolve_active_seller_from_user(callback.from_user, state)
 
     if not seller:
         await callback.answer("Продавця не знайдено", show_alert=True)
@@ -709,10 +710,10 @@ async def list_banners(callback: CallbackQuery):
 
 @router.callback_query(F.data.startswith("media:delete_banner:"))
 @router.callback_query(F.data.startswith("site:banners:delete:"))
-async def delete_banner(callback: CallbackQuery):
+async def delete_banner(callback: CallbackQuery, state: FSMContext):
     index = int(callback.data.split(":")[-1])
 
-    seller = await resolve_seller_from_user(callback.from_user)
+    seller = await resolve_active_seller_from_user(callback.from_user, state)
 
     if not seller:
         await callback.answer("Продавця не знайдено", show_alert=True)

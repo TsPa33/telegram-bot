@@ -14,3 +14,8 @@ class EditBrand(StatesGroup):
 
 class EditModel(StatesGroup):
     waiting_for_new_model = State()
+
+
+class DemoSiteStates(StatesGroup):
+    title = State()
+    subdomain = State()

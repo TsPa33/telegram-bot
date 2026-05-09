@@ -125,3 +125,51 @@ def admin_confirm_delete_kb(user_id: int):
             )
         ]
     ])
+
+
+# ================= DEMO SITES =================
+
+def admin_demo_menu_kb():
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="➕ Додати демо сайт", callback_data="admin:demo:add")],
+        [InlineKeyboardButton(text="📋 Список демо сайтів", callback_data="admin:demo:list")],
+    ])
+
+
+def admin_demo_sites_kb(sites):
+    buttons = []
+
+    for site in sites:
+        config = site.get("config_draft") or {}
+        title = (config.get("header") or {}).get("title") if isinstance(config, dict) else None
+        title = title or site.get("seller_shop_name") or site.get("seller_name") or site["subdomain"]
+
+        buttons.append([
+            InlineKeyboardButton(
+                text=f"{title} — {site['subdomain']}",
+                callback_data=f"admin:demo:view:{site['id']}"
+            )
+        ])
+
+    buttons.append([InlineKeyboardButton(text="⬅ Назад", callback_data="admin:demo:menu")])
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+def admin_demo_site_actions_kb(site):
+    subdomain = site["subdomain"]
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✏️ Редагувати", callback_data=f"admin:demo:edit:{site['id']}")],
+        [InlineKeyboardButton(
+            text="🌐 Відкрити сайт",
+            url=f"https://worker-production-e30f.up.railway.app/site/{subdomain}"
+        )],
+        [InlineKeyboardButton(text="🗑 Видалити", callback_data=f"admin:demo:delete:{site['id']}")],
+        [InlineKeyboardButton(text="⬅ До списку", callback_data="admin:demo:list")],
+    ])
+
+
+def admin_demo_confirm_delete_kb(site_id: int):
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="⚠️ Так, видалити", callback_data=f"admin:demo:delete_confirm:{site_id}")],
+        [InlineKeyboardButton(text="❌ Скасувати", callback_data=f"admin:demo:view:{site_id}")],
+    ])

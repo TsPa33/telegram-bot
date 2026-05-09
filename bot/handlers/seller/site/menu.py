@@ -7,8 +7,12 @@ from bot.database.repositories.site_repo import (
     create_site,
     subdomain_exists,
 )
+from bot.services.demo_context import (
+    clear_preserving_demo_context,
+    is_demo_mode,
+    resolve_active_seller,
+)
 from bot.services.site_config import get_default_site_config
-from bot.services.seller_identity import resolve_seller
 from bot.utils.subdomain import generate_unique_subdomain
 from bot.keyboards.seller_menu import site_menu_kb
 
@@ -17,15 +21,21 @@ router = Router()
 
 @router.message(F.text == "🌐 Мій сайт")
 async def site_menu(message: Message, state: FSMContext):
-    seller = await resolve_seller(message)
-    seller_id = seller["id"]
+    seller = await resolve_active_seller(message, state)
+    if not seller:
+        await message.answer("Продавця не знайдено")
+        return
 
-    await state.clear()
+    seller_id = seller["id"]
+    demo_mode = await is_demo_mode(state)
+
+    await clear_preserving_demo_context(state)
+    await state.update_data(flow="seller_site")
 
     site = await get_site_by_seller(seller_id)
 
     # ================= CASE 1: НЕ ОПЛАЧЕНО =================
-    if not seller.get("has_site"):
+    if not demo_mode and not seller.get("has_site"):
         await message.answer(
             "🌐 Мій сайт\n\n"
             "❌ У вас ще немає сайту\n\n"
@@ -70,5 +80,6 @@ async def site_menu(message: Message, state: FSMContext):
         reply_markup=site_menu_kb(
             subdomain=subdomain,
             is_active=(status == "active"),
+            demo_mode=demo_mode,
         ),
     )

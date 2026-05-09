@@ -1,7 +1,8 @@
 from aiogram import F, Router
+from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery
 
-from bot.database.repositories.seller_repo import get_seller_by_telegram_id
+from bot.services.demo_context import resolve_active_seller
 from bot.database.repositories.site_repo import get_site_by_seller, update_site_config
 from bot.services.site_config import merge_with_default
 
@@ -11,7 +12,7 @@ _ALLOWED_MODULES = {"services", "cars", "contacts", "map"}
 
 
 @router.callback_query(F.data.startswith("module:toggle:"))
-async def toggle_site_module(callback: CallbackQuery):
+async def toggle_site_module(callback: CallbackQuery, state: FSMContext):
     parts = (callback.data or "").split(":")
     if len(parts) != 3:
         await callback.answer()
@@ -23,12 +24,7 @@ async def toggle_site_module(callback: CallbackQuery):
         await callback.answer("Невідомий модуль", show_alert=True)
         return
 
-    user = callback.from_user
-    if not user:
-        await callback.answer()
-        return
-
-    seller = await get_seller_by_telegram_id(user.id)
+    seller = await resolve_active_seller(callback, state)
     if not seller:
         await callback.answer("Продавця не знайдено", show_alert=True)
         return

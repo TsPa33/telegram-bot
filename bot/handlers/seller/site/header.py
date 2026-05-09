@@ -7,7 +7,7 @@ from bot.database.repositories.site_repo import (
     update_draft,
     publish_site,
 )
-from bot.database.repositories.seller_repo import get_seller_by_telegram_id
+from bot.services.demo_context import clear_preserving_demo_context, resolve_active_seller
 
 from bot.services.site_config import (
     merge_with_default,
@@ -51,11 +51,7 @@ async def toggle_site_block(callback: CallbackQuery, state: FSMContext):
         await callback.answer()
         return
 
-    user = callback.from_user
-    if not user:
-        return
-
-    seller = await get_seller_by_telegram_id(user.id)
+    seller = await resolve_active_seller(callback, state)
     if not seller:
         return
 
@@ -105,11 +101,7 @@ async def publish_site_handler(callback: CallbackQuery, state: FSMContext):
         await callback.answer()
         return
 
-    user = callback.from_user
-    if not user:
-        return
-
-    seller = await get_seller_by_telegram_id(user.id)
+    seller = await resolve_active_seller(callback, state)
     if not seller:
         return
 
@@ -133,7 +125,7 @@ async def publish_site_handler(callback: CallbackQuery, state: FSMContext):
         await callback.answer("Помилка публікації", show_alert=True)
         return
 
-    await state.clear()
+    await clear_preserving_demo_context(state)
     await callback.answer("Сайт опубліковано")
 
 
@@ -145,11 +137,7 @@ async def save_header_title(message: Message, state: FSMContext):
     if data.get("flow") != "seller_site":
         return
 
-    user = message.from_user
-    if not user:
-        return
-
-    seller = await get_seller_by_telegram_id(user.id)
+    seller = await resolve_active_seller(message, state)
     if not seller:
         return
 
@@ -165,7 +153,7 @@ async def save_header_title(message: Message, state: FSMContext):
 
     site = await get_site_by_seller(seller_id)
     if not site:
-        await state.clear()
+        await clear_preserving_demo_context(state)
         await message.answer("Сайт не знайдено")
         return
 
@@ -173,7 +161,7 @@ async def save_header_title(message: Message, state: FSMContext):
     config["header"]["title"] = title
 
     await update_draft(seller_id, config)
-    await state.clear()
+    await clear_preserving_demo_context(state)
 
     await message.answer("Заголовок оновлено")
 
@@ -182,11 +170,7 @@ async def save_header_title(message: Message, state: FSMContext):
 
 @router.message(SellerSiteStates.edit_about_text)
 async def save_about_text(message: Message, state: FSMContext):
-    user = message.from_user
-    if not user:
-        return
-
-    seller = await get_seller_by_telegram_id(user.id)
+    seller = await resolve_active_seller(message, state)
     if not seller:
         return
 
@@ -200,7 +184,7 @@ async def save_about_text(message: Message, state: FSMContext):
 
     site = await get_site_by_seller(seller_id)
     if not site:
-        await state.clear()
+        await clear_preserving_demo_context(state)
         return
 
     config = merge_with_default(site.get("config_draft") or {})
@@ -210,5 +194,5 @@ async def save_about_text(message: Message, state: FSMContext):
 
     await update_draft(seller_id, config)
 
-    await state.clear()
+    await clear_preserving_demo_context(state)
     await message.answer("Блок 'Про нас' оновлено")

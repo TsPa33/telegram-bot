@@ -208,3 +208,33 @@ async def subdomain_exists(subdomain: str) -> bool:
         subdomain,
     )
     return row is not None
+
+
+# ================= DEMO ADMIN =================
+
+async def get_demo_sites():
+    return await fetch(
+        """
+        SELECT
+            ss.*,
+            s.username AS seller_username,
+            s.shop_name AS seller_shop_name,
+            s.name AS seller_name
+        FROM seller_sites ss
+        JOIN sellers s ON s.id = ss.seller_id
+        WHERE ss.subdomain LIKE 'demo-%'
+        ORDER BY ss.created_at DESC, ss.id DESC
+        """
+    )
+
+
+async def get_site_by_id(site_id: int):
+    return await fetchrow(
+        """
+        SELECT *
+        FROM seller_sites
+        WHERE id = $1
+        LIMIT 1
+        """,
+        site_id,
+    )
