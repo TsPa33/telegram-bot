@@ -16,6 +16,7 @@ from bot.keyboards.admin_kb import admin_kb
 
 from bot.database.repositories.seller_repo import get_or_create_seller
 from bot.database.repositories.user_repo import log_visit, create_user
+from bot.database.repositories.site_repo import get_demo_sites
 
 from bot.services.roles import is_admin
 
@@ -156,46 +157,41 @@ async def open_admin(callback: CallbackQuery, state: FSMContext):
 async def demo_sites(callback: CallbackQuery):
     await callback.answer()
 
-    kb = InlineKeyboardMarkup(
-        inline_keyboard=[
+    sites = await get_demo_sites()
 
-            [
-                InlineKeyboardButton(
-                    text="🛠 СТО",
-                    url="https://worker-production-e30f.up.railway.app/site/demo-sto"
-                )
-            ],
+    if not sites:
+        await callback.message.answer(
+            "🌐 Демо сайти\n\n"
+            "Demo сайти поки відсутні."
+        )
+        return
 
-            [
-                InlineKeyboardButton(
-                    text="🛞 Шиномонтаж",
-                    url="https://worker-production-e30f.up.railway.app/site/demo-tire"
-                )
-            ],
+    rows = []
 
-            [
-                InlineKeyboardButton(
-                    text="🚛 Евакуатор",
-                    url="https://worker-production-e30f.up.railway.app/site/demo-tow"
-                )
-            ],
+    for site in sites:
 
-            [
-                InlineKeyboardButton(
-                    text="⚡ Автоелектрик",
-                    url="https://worker-production-e30f.up.railway.app/site/demo-electric"
-                )
-            ],
+        config = site.get("config_draft") or {}
 
-            [
-                InlineKeyboardButton(
-                    text="🚗 Автозапчастини",
-                    url="https://worker-production-e30f.up.railway.app/site/demo-parts"
-                )
-            ],
+        title = ""
 
-        ]
-    )
+        if isinstance(config, dict):
+            title = (config.get("header") or {}).get("title") or ""
+
+        title = (
+            title
+            or site.get("seller_shop_name")
+            or site.get("seller_name")
+            or site["subdomain"]
+        )
+
+        rows.append([
+            InlineKeyboardButton(
+                text=f"🌐 {title}",
+                url=f"https://worker-production-e30f.up.railway.app/site/{site['subdomain']}"
+            )
+        ])
+
+    kb = InlineKeyboardMarkup(inline_keyboard=rows)
 
     await callback.message.answer(
         "🌐 Демо сайти Carpot\n\n"
