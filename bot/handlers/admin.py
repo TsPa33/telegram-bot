@@ -1,4 +1,5 @@
 import secrets
+import zlib
 from datetime import datetime, timedelta
 
 from aiogram import Router, types, F
@@ -7,16 +8,21 @@ from aiogram.types import CallbackQuery, KeyboardButton, Message
 
 from bot.services.roles import is_admin
 from bot.keyboards.admin_kb import admin_kb
+from bot.keyboards.seller_menu import site_menu_kb
 from bot.keyboards.admin_inline import (
     brand_request_kb,
     model_request_kb,
     verification_request_kb,
     admin_users_kb,
     admin_user_actions_kb,
-    admin_confirm_delete_kb
+    admin_confirm_delete_kb,
+    admin_demo_menu_kb,
+    admin_demo_sites_kb,
+    admin_demo_site_actions_kb,
+    admin_demo_confirm_delete_kb,
 )
 
-from bot.states.admin_states import EditBrand, EditModel
+from bot.states.admin_states import EditBrand, EditModel, DemoSiteStates
 
 from bot.database.repositories.admin_repo import (
     get_pending_brand_requests,
@@ -44,7 +50,19 @@ from bot.database.repositories.user_repo import (
     delete_user_full
 )
 
-from bot.database.repositories.seller_repo import get_seller_by_id
+from bot.database.repositories.seller_repo import (
+    get_seller_by_id,
+    create_demo_seller,
+    delete_seller_by_id,
+)
+from bot.database.repositories.site_repo import (
+    create_site,
+    get_demo_sites,
+    get_site_by_id,
+    subdomain_exists,
+)
+from bot.services.demo_context import clear_demo_context, set_demo_context
+from bot.services.site_config import get_default_site_config
 from bot.utils.cache import clear_brands_cache, clear_models_cache
 
 router = Router()
@@ -476,3 +494,288 @@ async def reject_verification(callback: CallbackQuery):
     )
 
     await callback.answer()
+
+
+# ================= DEMO SITES =================
+
+@router.message(lambda m: m.text == "🌐 Демо сайти")
+async def admin_demo_sites_menu(message: Message, state: FSMContext):
+    await state.clear()
+
+    if not await is_admin(message.from_user.id):
+        await message.answer("⛔ Немає доступу")
+        return
+
+    await message.answer(
+        "🌐 Демо сайти",
+        reply_markup=admin_demo_menu_kb(),
+    )
+
+
+@router.callback_query(F.data == "admin:demo:menu")
+async def admin_demo_sites_menu_callback(callback: CallbackQuery, state: FSMContext):
+    if not await is_admin(callback.from_user.id):
+        await callback.answer("⛔ Немає доступу", show_alert=True)
+        return
+
+    await state.clear()
+    await callback.message.edit_text(
+        "🌐 Демо сайти",
+        reply_markup=admin_demo_menu_kb(),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "admin:demo:add")
+async def admin_demo_add_start(callback: CallbackQuery, state: FSMContext):
+    if not await is_admin(callback.from_user.id):
+        await callback.answer("⛔ Немає доступу", show_alert=True)
+        return
+
+    await state.clear()
+    await state.set_state(DemoSiteStates.title)
+    await callback.message.answer(
+        "➕ Додати демо сайт\n\n"
+        "Введіть назву демо сайту.\n"
+        "Наприклад: СТО, Шиномонтаж, Евакуатор"
+    )
+    await callback.answer()
+
+
+@router.message(DemoSiteStates.title)
+async def admin_demo_add_title(message: Message, state: FSMContext):
+    if not await is_admin(message.from_user.id):
+        await state.clear()
+        await message.answer("⛔ Немає доступу")
+        return
+
+    title = (message.text or "").strip()[:100]
+    if not title:
+        await message.answer("Назва не може бути порожньою")
+        return
+
+    await state.update_data(demo_title=title)
+    await state.set_state(DemoSiteStates.subdomain)
+    await message.answer(
+        "Введіть subdomain для демо сайту.\n\n"
+        "Формат: demo-sto\n"
+        "Приклади: demo-sto, demo-tire, demo-tow, demo-electric, demo-parts"
+    )
+
+
+@router.message(DemoSiteStates.subdomain)
+async def admin_demo_add_subdomain(message: Message, state: FSMContext):
+    if not await is_admin(message.from_user.id):
+        await state.clear()
+        await message.answer("⛔ Немає доступу")
+        return
+
+    data = await state.get_data()
+    title = data.get("demo_title")
+    subdomain = _normalize_demo_subdomain(message.text or "")
+
+    if not title:
+        await state.clear()
+        await message.answer("Сесію створення втрачено. Спробуйте ще раз.")
+        return
+
+    if not subdomain:
+        await message.answer("❌ Невірний формат. Використайте тільки латиницю, цифри та дефіс: demo-sto")
+        return
+
+    if not subdomain.startswith("demo-"):
+        await message.answer("❌ Demo subdomain має починатися з demo-")
+        return
+
+    if await subdomain_exists(subdomain):
+        await message.answer("❌ Такий subdomain вже існує")
+        return
+
+    seller = await create_demo_seller(
+        telegram_id=_demo_telegram_id(subdomain),
+        username=subdomain.replace("-", "_"),
+        title=title,
+    )
+
+    config = get_default_site_config()
+    config["header"]["title"] = title
+    config["hero"]["title"] = title
+
+    site = await create_site(
+        seller_id=seller["id"],
+        subdomain=subdomain,
+        config=config,
+    )
+
+    await state.clear()
+    await message.answer(
+        "✅ Демо сайт створено\n\n"
+        f"Назва: {title}\n"
+        f"Subdomain: {site['subdomain']}\n"
+        f"URL: https://worker-production-e30f.up.railway.app/site/{site['subdomain']}"
+    )
+
+
+@router.callback_query(F.data == "admin:demo:list")
+async def admin_demo_list(callback: CallbackQuery):
+    if not await is_admin(callback.from_user.id):
+        await callback.answer("⛔ Немає доступу", show_alert=True)
+        return
+
+    sites = await get_demo_sites()
+    if not sites:
+        await callback.message.edit_text(
+            "🌐 Демо сайти\n\nПоки немає демо сайтів.",
+            reply_markup=admin_demo_menu_kb(),
+        )
+        await callback.answer()
+        return
+
+    await callback.message.edit_text(
+        "📋 Список демо сайтів",
+        reply_markup=admin_demo_sites_kb(sites),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("admin:demo:view:"))
+async def admin_demo_view(callback: CallbackQuery):
+    if not await is_admin(callback.from_user.id):
+        await callback.answer("⛔ Немає доступу", show_alert=True)
+        return
+
+    site_id = int(callback.data.split(":")[-1])
+    site = await get_site_by_id(site_id)
+
+    if not site or not str(site["subdomain"]).startswith("demo-"):
+        await callback.answer("Демо сайт не знайдено", show_alert=True)
+        return
+
+    await callback.message.edit_text(
+        _demo_site_text(site),
+        reply_markup=admin_demo_site_actions_kb(site),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("admin:demo:edit:"))
+async def admin_demo_edit(callback: CallbackQuery, state: FSMContext):
+    if not await is_admin(callback.from_user.id):
+        await callback.answer("⛔ Немає доступу", show_alert=True)
+        return
+
+    site_id = int(callback.data.split(":")[-1])
+    site = await get_site_by_id(site_id)
+
+    if not site or not str(site["subdomain"]).startswith("demo-"):
+        await callback.answer("Демо сайт не знайдено", show_alert=True)
+        return
+
+    await state.clear()
+    await set_demo_context(
+        state,
+        seller_id=site["seller_id"],
+        site_id=site["id"],
+        subdomain=site["subdomain"],
+    )
+
+    await callback.message.answer(
+        "✅ Demo edit mode увімкнено\n\n"
+        f"Домен: {site['subdomain']}\n"
+        f"Статус: {site.get('status', 'active')}",
+        reply_markup=site_menu_kb(
+            subdomain=site["subdomain"],
+            is_active=(site.get("status", "active") == "active"),
+            demo_mode=True,
+        ),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("admin:demo:delete:"))
+async def admin_demo_delete(callback: CallbackQuery):
+    if not await is_admin(callback.from_user.id):
+        await callback.answer("⛔ Немає доступу", show_alert=True)
+        return
+
+    site_id = int(callback.data.split(":")[-1])
+    site = await get_site_by_id(site_id)
+
+    if not site or not str(site["subdomain"]).startswith("demo-"):
+        await callback.answer("Демо сайт не знайдено", show_alert=True)
+        return
+
+    await callback.message.edit_text(
+        "⚠️ Видалити demo сайт?\n\n"
+        f"Subdomain: {site['subdomain']}\n"
+        "Буде видалено seller record та повʼязані site/services/cars.",
+        reply_markup=admin_demo_confirm_delete_kb(site_id),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("admin:demo:delete_confirm:"))
+async def admin_demo_delete_confirm(callback: CallbackQuery):
+    if not await is_admin(callback.from_user.id):
+        await callback.answer("⛔ Немає доступу", show_alert=True)
+        return
+
+    site_id = int(callback.data.split(":")[-1])
+    site = await get_site_by_id(site_id)
+
+    if not site or not str(site["subdomain"]).startswith("demo-"):
+        await callback.answer("Демо сайт не знайдено", show_alert=True)
+        return
+
+    await delete_seller_by_id(site["seller_id"])
+
+    await callback.message.edit_text(
+        "🗑 Демо сайт видалено\n\n"
+        f"Subdomain: {site['subdomain']}",
+        reply_markup=admin_demo_menu_kb(),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "demo:exit")
+async def demo_exit(callback: CallbackQuery, state: FSMContext):
+    if not await is_admin(callback.from_user.id):
+        await callback.answer("⛔ Немає доступу", show_alert=True)
+        return
+
+    await clear_demo_context(state)
+    await callback.message.answer("⬅️ Demo edit mode вимкнено", reply_markup=admin_kb)
+    await callback.answer()
+
+
+def _normalize_demo_subdomain(value: str) -> str | None:
+    subdomain = value.strip().lower()
+    allowed = "abcdefghijklmnopqrstuvwxyz0123456789-"
+    if not subdomain or any(char not in allowed for char in subdomain):
+        return None
+
+    if subdomain.startswith("-") or subdomain.endswith("-") or "--" in subdomain:
+        return None
+
+    if len(subdomain) > 63:
+        return None
+
+    return subdomain
+
+
+def _demo_telegram_id(subdomain: str) -> int:
+    return -int(zlib.crc32(subdomain.encode("utf-8")))
+
+
+def _demo_site_text(site) -> str:
+    config = site.get("config_draft") or {}
+    title = ""
+    if isinstance(config, dict):
+        title = (config.get("header") or {}).get("title") or ""
+
+    return (
+        "🌐 Демо сайт\n\n"
+        f"Назва: {title or '-'}\n"
+        f"Subdomain: {site['subdomain']}\n"
+        f"URL: https://worker-production-e30f.up.railway.app/site/{site['subdomain']}"
+    )

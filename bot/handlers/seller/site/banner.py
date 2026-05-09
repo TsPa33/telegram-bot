@@ -4,7 +4,7 @@ from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
 
-from bot.database.repositories.seller_repo import get_seller_by_telegram_id
+from bot.services.demo_context import resolve_active_seller
 from bot.database.repositories.site_repo import get_site_by_seller, update_site_config
 from bot.states.seller_states import SellerSiteStates
 
@@ -25,8 +25,8 @@ async def set_banner(callback: CallbackQuery, state: FSMContext):
 
 
 @router.callback_query(F.data == "site:delete:banner")
-async def delete_banner_menu(callback: CallbackQuery):
-    seller = await get_seller_by_telegram_id(callback.from_user.id)
+async def delete_banner_menu(callback: CallbackQuery, state: FSMContext):
+    seller = await resolve_active_seller(callback, state)
     if not seller:
         return
 
@@ -65,8 +65,8 @@ async def delete_banner_menu(callback: CallbackQuery):
 
 
 @router.callback_query(F.data.startswith("site:delete:banner:"))
-async def delete_banner(callback: CallbackQuery):
-    seller = await get_seller_by_telegram_id(callback.from_user.id)
+async def delete_banner(callback: CallbackQuery, state: FSMContext):
+    seller = await resolve_active_seller(callback, state)
     if not seller:
         return
 

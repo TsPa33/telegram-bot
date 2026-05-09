@@ -238,3 +238,35 @@ async def get_seller_rating(telegram_id: int):
         JOIN sellers s ON sc.seller_id = s.id
         WHERE s.telegram_id = $1
     """, telegram_id)
+
+
+# ================= DEMO ADMIN =================
+
+async def create_demo_seller(telegram_id: int, username: str, title: str):
+    return await fetchrow(
+        """
+        INSERT INTO sellers (telegram_id, username, shop_name, name)
+        VALUES ($1, $2, $3, $3)
+        ON CONFLICT (telegram_id)
+        DO UPDATE SET
+            username = EXCLUDED.username,
+            shop_name = EXCLUDED.shop_name,
+            name = EXCLUDED.name
+        RETURNING *
+        """,
+        telegram_id,
+        username,
+        title,
+    )
+
+
+async def delete_seller_by_id(seller_id: int) -> bool:
+    row = await fetchrow(
+        """
+        DELETE FROM sellers
+        WHERE id = $1
+        RETURNING id
+        """,
+        seller_id,
+    )
+    return row is not None
