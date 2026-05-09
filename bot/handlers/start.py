@@ -162,35 +162,35 @@ async def demo_sites(callback: CallbackQuery):
             [
                 InlineKeyboardButton(
                     text="🛠 СТО",
-                    url="https://YOUR_DOMAIN/site/demo-sto"
+                    url="https://worker-production-e30f.up.railway.app/site/demo-sto"
                 )
             ],
 
             [
                 InlineKeyboardButton(
                     text="🛞 Шиномонтаж",
-                    url="https://YOUR_DOMAIN/site/demo-tire"
+                    url="https://worker-production-e30f.up.railway.app/site/demo-tire"
                 )
             ],
 
             [
                 InlineKeyboardButton(
                     text="🚛 Евакуатор",
-                    url="https://YOUR_DOMAIN/site/demo-tow"
+                    url="https://worker-production-e30f.up.railway.app/site/demo-tow"
                 )
             ],
 
             [
                 InlineKeyboardButton(
                     text="⚡ Автоелектрик",
-                    url="https://YOUR_DOMAIN/site/demo-electric"
+                    url="https://worker-production-e30f.up.railway.app/site/demo-electric"
                 )
             ],
 
             [
                 InlineKeyboardButton(
                     text="🚗 Автозапчастини",
-                    url="https://YOUR_DOMAIN/site/demo-parts"
+                    url="https://worker-production-e30f.up.railway.app/site/demo-parts"
                 )
             ],
 
