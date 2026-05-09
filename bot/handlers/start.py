@@ -1,7 +1,14 @@
 from aiogram import Router, F
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, Message, ReplyKeyboardRemove
+
+from aiogram.types import (
+    CallbackQuery,
+    Message,
+    ReplyKeyboardRemove,
+    InlineKeyboardMarkup,
+    InlineKeyboardButton,
+)
 
 from bot.keyboards.main_menu import main_menu_kb
 from bot.keyboards.seller_menu import seller_menu_kb
@@ -88,7 +95,9 @@ async def enter_seller(callback: CallbackQuery, state: FSMContext):
 
     await callback.message.answer(
         "Меню продавця:",
-        reply_markup=seller_menu_kb(is_verified=seller.get("is_verified", False)),
+        reply_markup=seller_menu_kb(
+            is_verified=seller.get("is_verified", False)
+        ),
     )
 
 
@@ -118,7 +127,9 @@ async def open_seller(callback: CallbackQuery, state: FSMContext):
 
     await callback.message.answer(
         "Меню продавця:",
-        reply_markup=seller_menu_kb(is_verified=seller.get("is_verified", False)),
+        reply_markup=seller_menu_kb(
+            is_verified=seller.get("is_verified", False)
+        ),
     )
 
 
@@ -136,4 +147,58 @@ async def open_admin(callback: CallbackQuery, state: FSMContext):
     await callback.message.answer(
         "⚙️ Панель адміністратора",
         reply_markup=admin_kb
+    )
+
+
+# ================= DEMO SITES =================
+
+@router.callback_query(F.data == "demo:sites")
+async def demo_sites(callback: CallbackQuery):
+    await callback.answer()
+
+    kb = InlineKeyboardMarkup(
+        inline_keyboard=[
+
+            [
+                InlineKeyboardButton(
+                    text="🛠 СТО",
+                    url="https://YOUR_DOMAIN/site/demo-sto"
+                )
+            ],
+
+            [
+                InlineKeyboardButton(
+                    text="🛞 Шиномонтаж",
+                    url="https://YOUR_DOMAIN/site/demo-tire"
+                )
+            ],
+
+            [
+                InlineKeyboardButton(
+                    text="🚛 Евакуатор",
+                    url="https://YOUR_DOMAIN/site/demo-tow"
+                )
+            ],
+
+            [
+                InlineKeyboardButton(
+                    text="⚡ Автоелектрик",
+                    url="https://YOUR_DOMAIN/site/demo-electric"
+                )
+            ],
+
+            [
+                InlineKeyboardButton(
+                    text="🚗 Автозапчастини",
+                    url="https://YOUR_DOMAIN/site/demo-parts"
+                )
+            ],
+
+        ]
+    )
+
+    await callback.message.answer(
+        "🌐 Демо сайти Carpot\n\n"
+        "Оберіть приклад сайту:",
+        reply_markup=kb
     )
