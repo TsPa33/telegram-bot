@@ -202,7 +202,13 @@ def _normalize_config(config: dict) -> dict:
 
     if not isinstance(theme, dict):
         config["theme"] = deepcopy(_DEFAULT_SITE_CONFIG["theme"])
-    elif theme.get("scheme") not in {"default", "light_blue", "neon_dark", "premium_dark"}:
+    elif theme.get("scheme") not in {
+        "default",
+        "light_blue",
+        "neon_dark",
+        "premium_dark",
+        "parts_dark_red",
+    }:
         theme["scheme"] = "default"
 
     # ===== HERO =====
