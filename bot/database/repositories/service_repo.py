@@ -230,6 +230,51 @@ async def get_service_by_id(service_id: int):
     )
 
 
+async def get_service_by_seller(service_id: int, seller_id: int):
+    return await fetchrow(
+        """
+        SELECT *
+        FROM services
+        WHERE id = $1
+          AND seller_id = $2
+        LIMIT 1
+        """,
+        service_id,
+        seller_id,
+    )
+
+
+async def update_service_photo(service_id: int, seller_id: int, image_url: str) -> bool:
+    row = await fetchrow(
+        """
+        UPDATE services
+        SET photo_id = $1
+        WHERE id = $2
+          AND seller_id = $3
+        RETURNING id
+        """,
+        image_url,
+        service_id,
+        seller_id,
+    )
+    return row is not None
+
+
+async def clear_service_photo(service_id: int, seller_id: int) -> bool:
+    row = await fetchrow(
+        """
+        UPDATE services
+        SET photo_id = NULL
+        WHERE id = $1
+          AND seller_id = $2
+        RETURNING id
+        """,
+        service_id,
+        seller_id,
+    )
+    return row is not None
+
+
 async def delete_service_by_seller(service_id: int, seller_id: int) -> bool:
     row = await fetchrow(
         """

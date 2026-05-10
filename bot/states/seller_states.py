@@ -62,3 +62,5 @@ class SellerSiteStates(StatesGroup):
     # ================= MEDIA =================
     site_banner = State()
     site_logo = State()
+    site_product_photo = State()
+    site_service_photo = State()
