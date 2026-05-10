@@ -1,0 +1,882 @@
+<section id="products" class="cp-products-section">
+    <div class="container cp-products-container">
+        <div class="cp-products-head">
+            <div>
+                <span class="cp-eyebrow">Mini Shop</span>
+                <h2>{{ products.get('title') or 'Каталог автозапчастин' }}</h2>
+                <p>{{ products.get('subtitle') or 'Перевірені запчастини з розборки з підбором по VIN' }}</p>
+            </div>
+
+            <button type="button" class="cp-cart-open" data-cp-cart-open>
+                <span>🛒 Кошик</span>
+                <strong data-cp-cart-count>0</strong>
+            </button>
+        </div>
+
+        {% set categories = products.get('categories', []) %}
+        {% if categories %}
+        <div class="cp-category-pills" aria-label="Категорії товарів">
+            <button type="button" class="cp-category-pill active" data-cp-category="all">
+                Усі
+            </button>
+            {% for category in categories %}
+            <button type="button" class="cp-category-pill" data-cp-category="{{ category }}">
+                {{ category }}
+            </button>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="cp-product-grid">
+            {% for product in products.get('items', []) %}
+            <article class="cp-product-card" data-cp-product-card data-cp-category-value="{{ product.get('category', '') }}">
+                <div class="cp-product-media">
+                    {% if product.get('image') %}
+                    <img src="{{ product.get('image') }}" alt="{{ product.get('title', 'Автозапчастина') }}" loading="lazy">
+                    {% else %}
+                    <div class="cp-product-placeholder" aria-hidden="true">
+                        <span>⚙️</span>
+                        <small>CARPOT PARTS</small>
+                    </div>
+                    {% endif %}
+                    <span class="cp-product-category">{{ product.get('category') }}</span>
+                </div>
+
+                <div class="cp-product-body">
+                    <h3>{{ product.get('title') }}</h3>
+
+                    <dl class="cp-product-meta">
+                        <div>
+                            <dt>Бренд</dt>
+                            <dd>{{ product.get('brand') or '—' }}</dd>
+                        </div>
+                        <div>
+                            <dt>Стан</dt>
+                            <dd>{{ product.get('condition') or '—' }}</dd>
+                        </div>
+                    </dl>
+
+                    {% if product.get('description') %}
+                    <p class="cp-product-description">{{ product.get('description') }}</p>
+                    {% endif %}
+
+                    <div class="cp-product-bottom">
+                        <div>
+                            <span class="cp-price-label">Ціна</span>
+                            <strong class="cp-product-price">{{ product.get('price') }}</strong>
+                        </div>
+                        {% if product.get('sku') %}
+                        <span class="cp-product-sku">{{ product.get('sku') }}</span>
+                        {% endif %}
+                    </div>
+
+                    <div class="cp-product-actions">
+                        <button type="button" class="cp-btn cp-btn-buy" data-cp-buy="{{ product.get('id') }}">
+                            Купити
+                        </button>
+                        <button type="button" class="cp-btn cp-btn-order" data-cp-order="{{ product.get('id') }}">
+                            Замовити
+                        </button>
+                        <button type="button" class="cp-btn cp-btn-message" data-cp-message>
+                            Написати
+                        </button>
+                    </div>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+    </div>
+
+    <button type="button" class="cp-floating-cart" data-cp-cart-open aria-label="Відкрити кошик">
+        🛒
+        <span data-cp-cart-count>0</span>
+    </button>
+
+    <div class="cp-cart-modal" data-cp-cart-modal aria-hidden="true">
+        <div class="cp-cart-dialog" role="dialog" aria-modal="true" aria-labelledby="cpCartTitle">
+            <div class="cp-cart-top">
+                <div>
+                    <span class="cp-eyebrow">Заявка без оплати</span>
+                    <h3 id="cpCartTitle">Кошик запчастин</h3>
+                </div>
+                <button type="button" class="cp-cart-close" data-cp-cart-close>✕</button>
+            </div>
+
+            <div class="cp-cart-list" data-cp-cart-list></div>
+
+            <form class="cp-cart-form" data-cp-cart-form>
+                <input type="text" name="name" placeholder="Ваше ім'я">
+                <input type="tel" name="phone" placeholder="Телефон" required>
+                <button type="submit" class="cp-btn cp-cart-submit">
+                    Оформити заявку
+                </button>
+                <p class="cp-cart-note">
+                    Менеджер підтвердить наявність, сумісність та доставку. Онлайн-оплати немає.
+                </p>
+            </form>
+        </div>
+    </div>
+
+    <div class="cp-toast" data-cp-toast>Додано до кошика</div>
+</section>
+
+<style>
+.cp-products-section {
+    position: relative;
+    overflow: hidden;
+    padding: 72px 0;
+    background:
+        radial-gradient(circle at 15% 10%, rgba(220, 38, 38, 0.20), transparent 30%),
+        radial-gradient(circle at 85% 20%, rgba(245, 158, 11, 0.12), transparent 28%),
+        linear-gradient(135deg, #07090d 0%, #111827 48%, #090b10 100%);
+    color: #f8fafc;
+}
+
+.cp-products-section::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image:
+        linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px);
+    background-size: 42px 42px;
+    mask-image: linear-gradient(to bottom, rgba(0,0,0,0.75), transparent 80%);
+    pointer-events: none;
+}
+
+.cp-products-container {
+    position: relative;
+    z-index: 1;
+}
+
+.cp-products-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+    margin-bottom: 26px;
+}
+
+.cp-eyebrow {
+    display: inline-flex;
+    width: max-content;
+    margin-bottom: 10px;
+    padding: 6px 10px;
+    border: 1px solid rgba(248, 113, 113, 0.45);
+    border-radius: 999px;
+    background: rgba(127, 29, 29, 0.40);
+    color: #fecaca;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.cp-products-head h2 {
+    margin: 0;
+    color: #ffffff;
+    font-size: clamp(30px, 4vw, 48px);
+    line-height: 1.05;
+}
+
+.cp-products-head p {
+    max-width: 640px;
+    margin: 14px 0 0;
+    color: #cbd5e1;
+    font-size: 17px;
+    line-height: 1.6;
+}
+
+.cp-cart-open,
+.cp-floating-cart {
+    border: 1px solid rgba(248, 113, 113, 0.55);
+    background: linear-gradient(135deg, #dc2626, #991b1b);
+    color: #ffffff;
+    cursor: pointer;
+    box-shadow: 0 18px 45px rgba(220, 38, 38, 0.22);
+}
+
+.cp-cart-open {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    border-radius: 999px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.cp-cart-open strong,
+.cp-floating-cart span {
+    display: inline-grid;
+    min-width: 24px;
+    height: 24px;
+    place-items: center;
+    border-radius: 999px;
+    background: #ffffff;
+    color: #991b1b;
+    font-size: 13px;
+}
+
+.cp-category-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 28px;
+}
+
+.cp-category-pill {
+    padding: 10px 14px;
+    border: 1px solid rgba(148, 163, 184, 0.30);
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.78);
+    color: #e2e8f0;
+    font-weight: 700;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+.cp-category-pill:hover,
+.cp-category-pill.active {
+    border-color: rgba(248, 113, 113, 0.80);
+    background: rgba(220, 38, 38, 0.22);
+    color: #ffffff;
+}
+
+.cp-product-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 18px;
+}
+
+.cp-product-card {
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+    border: 1px solid rgba(148, 163, 184, 0.20);
+    border-radius: 22px;
+    background: linear-gradient(180deg, rgba(17, 24, 39, 0.96), rgba(3, 7, 18, 0.96));
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
+    overflow: hidden;
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.cp-product-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(248, 113, 113, 0.55);
+    box-shadow: 0 28px 80px rgba(220, 38, 38, 0.16);
+}
+
+.cp-product-media {
+    position: relative;
+    height: 170px;
+    background: #020617;
+}
+
+.cp-product-media img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.cp-product-placeholder {
+    display: flex;
+    height: 100%;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 10px;
+    background:
+        linear-gradient(135deg, rgba(248, 113, 113, 0.15), transparent),
+        repeating-linear-gradient(-45deg, rgba(255,255,255,0.04) 0 8px, transparent 8px 16px),
+        #0b1120;
+}
+
+.cp-product-placeholder span {
+    font-size: 42px;
+    filter: drop-shadow(0 8px 20px rgba(248, 113, 113, 0.35));
+}
+
+.cp-product-placeholder small {
+    color: #94a3b8;
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 0.18em;
+}
+
+.cp-product-category {
+    position: absolute;
+    left: 12px;
+    top: 12px;
+    padding: 6px 9px;
+    border-radius: 999px;
+    background: rgba(2, 6, 23, 0.78);
+    color: #fecaca;
+    font-size: 12px;
+    font-weight: 800;
+    backdrop-filter: blur(8px);
+}
+
+.cp-product-body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    padding: 16px;
+}
+
+.cp-product-body h3 {
+    margin: 0 0 12px;
+    color: #ffffff;
+    font-size: 18px;
+    line-height: 1.25;
+}
+
+.cp-product-meta {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    margin: 0 0 12px;
+}
+
+.cp-product-meta div {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+.cp-product-meta dt {
+    color: #94a3b8;
+    font-size: 12px;
+}
+
+.cp-product-meta dd {
+    margin: 0;
+    color: #e5e7eb;
+    font-size: 13px;
+    font-weight: 700;
+    text-align: right;
+}
+
+.cp-product-description {
+    margin: 0 0 14px;
+    color: #aeb8c8;
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.cp-product-bottom {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: auto;
+    padding-top: 10px;
+}
+
+.cp-price-label {
+    display: block;
+    color: #94a3b8;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.cp-product-price {
+    display: block;
+    margin-top: 2px;
+    color: #fbbf24;
+    font-size: 21px;
+    line-height: 1;
+}
+
+.cp-product-sku {
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.cp-product-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+.cp-btn {
+    min-height: 42px;
+    padding: 10px 12px;
+    border: 0;
+    border-radius: 12px;
+    color: #ffffff;
+    font-weight: 800;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+.cp-btn:hover {
+    transform: translateY(-1px);
+}
+
+.cp-btn-buy {
+    background: linear-gradient(135deg, #ef4444, #991b1b);
+    box-shadow: 0 12px 28px rgba(239, 68, 68, 0.20);
+}
+
+.cp-btn-order {
+    background: #1f2937;
+    border: 1px solid rgba(148, 163, 184, 0.28);
+}
+
+.cp-btn-message {
+    grid-column: span 2;
+    background: rgba(15, 23, 42, 0.9);
+    border: 1px solid rgba(45, 212, 191, 0.35);
+    color: #99f6e4;
+}
+
+.cp-floating-cart {
+    position: fixed;
+    right: 18px;
+    bottom: 156px;
+    z-index: 995;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 12px 14px;
+    border-radius: 999px;
+    font-weight: 900;
+}
+
+.cp-cart-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 2500;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 18px;
+    background: rgba(2, 6, 23, 0.76);
+    backdrop-filter: blur(10px);
+}
+
+.cp-cart-modal.open {
+    display: flex;
+}
+
+.cp-cart-dialog {
+    width: min(100%, 520px);
+    max-height: min(92vh, 760px);
+    overflow: auto;
+    border: 1px solid rgba(248, 113, 113, 0.35);
+    border-radius: 24px;
+    background: linear-gradient(180deg, #111827, #030712);
+    color: #f8fafc;
+    box-shadow: 0 35px 100px rgba(0,0,0,0.65);
+    padding: 20px;
+}
+
+.cp-cart-top {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 14px;
+}
+
+.cp-cart-top h3 {
+    margin: 0;
+    color: #ffffff;
+    font-size: 24px;
+}
+
+.cp-cart-close {
+    width: 42px;
+    height: 42px;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    border-radius: 50%;
+    background: rgba(15, 23, 42, 0.95);
+    color: #ffffff;
+    cursor: pointer;
+}
+
+.cp-cart-list {
+    display: grid;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.cp-cart-item,
+.cp-cart-empty {
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 16px;
+    background: rgba(15, 23, 42, 0.76);
+    padding: 12px;
+}
+
+.cp-cart-item {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 10px;
+    align-items: center;
+}
+
+.cp-cart-item strong {
+    color: #ffffff;
+}
+
+.cp-cart-item span,
+.cp-cart-empty {
+    color: #cbd5e1;
+}
+
+.cp-cart-remove {
+    border: 0;
+    border-radius: 10px;
+    background: rgba(239, 68, 68, 0.16);
+    color: #fecaca;
+    padding: 8px 10px;
+    cursor: pointer;
+}
+
+.cp-cart-form {
+    display: grid;
+    gap: 10px;
+}
+
+.cp-cart-form input {
+    width: 100%;
+    padding: 13px 14px;
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    border-radius: 14px;
+    background: #020617;
+    color: #ffffff;
+    font-size: 15px;
+}
+
+.cp-cart-form input::placeholder {
+    color: #94a3b8;
+}
+
+.cp-cart-submit {
+    background: linear-gradient(135deg, #ef4444, #b91c1c);
+}
+
+.cp-cart-note {
+    margin: 0;
+    color: #94a3b8;
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+.cp-toast {
+    position: fixed;
+    left: 50%;
+    bottom: 28px;
+    z-index: 2600;
+    transform: translate(-50%, 20px);
+    opacity: 0;
+    pointer-events: none;
+    padding: 12px 16px;
+    border-radius: 999px;
+    background: #16a34a;
+    color: #ffffff;
+    font-weight: 800;
+    box-shadow: 0 18px 44px rgba(0,0,0,0.35);
+    transition: 0.2s ease;
+}
+
+.cp-toast.show {
+    transform: translate(-50%, 0);
+    opacity: 1;
+}
+
+@media (max-width: 1024px) {
+    .cp-product-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 640px) {
+    .cp-products-section {
+        padding: 48px 0;
+    }
+
+    .cp-products-head {
+        flex-direction: column;
+    }
+
+    .cp-cart-open {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .cp-product-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .cp-floating-cart {
+        right: 14px;
+        bottom: 148px;
+    }
+}
+</style>
+
+<script>
+(function () {
+    const products = {{ products.get('items', []) | tojson }};
+    const contacts = {{ contacts | tojson }};
+    const storageKey = "carpot_products_cart_{{ subdomain }}";
+
+    const productById = new Map(products.map((product) => [String(product.id), product]));
+    const countNodes = document.querySelectorAll("[data-cp-cart-count]");
+    const cartModal = document.querySelector("[data-cp-cart-modal]");
+    const cartList = document.querySelector("[data-cp-cart-list]");
+    const cartForm = document.querySelector("[data-cp-cart-form]");
+    const toast = document.querySelector("[data-cp-toast]");
+
+    function getCart() {
+        try {
+            const value = JSON.parse(localStorage.getItem(storageKey) || "[]");
+            return Array.isArray(value) ? value : [];
+        } catch (error) {
+            return [];
+        }
+    }
+
+    function saveCart(cart) {
+        localStorage.setItem(storageKey, JSON.stringify(cart));
+        renderCart();
+    }
+
+    function cartProducts() {
+        return getCart()
+            .map((id) => productById.get(String(id)))
+            .filter(Boolean);
+    }
+
+    function showToast(text) {
+        if (!toast) return;
+        toast.textContent = text;
+        toast.classList.add("show");
+        setTimeout(() => toast.classList.remove("show"), 1800);
+    }
+
+    function renderCart() {
+        const items = cartProducts();
+        countNodes.forEach((node) => {
+            node.textContent = String(items.length);
+        });
+
+        if (!cartList) return;
+
+        if (!items.length) {
+            cartList.innerHTML = '<div class="cp-cart-empty">Кошик порожній. Додайте запчастину з каталогу.</div>';
+            return;
+        }
+
+        cartList.innerHTML = items.map((item) => `
+            <div class="cp-cart-item">
+                <div>
+                    <strong>${escapeHtml(item.title || "Товар")}</strong><br>
+                    <span>${escapeHtml(item.price || "")} · ${escapeHtml(item.sku || "")}</span>
+                </div>
+                <button type="button" class="cp-cart-remove" data-cp-remove="${escapeHtml(item.id)}">Прибрати</button>
+            </div>
+        `).join("");
+    }
+
+    function escapeHtml(value) {
+        return String(value || "")
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;")
+            .replaceAll('"', "&quot;")
+            .replaceAll("'", "&#039;");
+    }
+
+    function openCart() {
+        renderCart();
+        if (cartModal) {
+            cartModal.classList.add("open");
+            cartModal.setAttribute("aria-hidden", "false");
+        }
+    }
+
+    function closeCart() {
+        if (cartModal) {
+            cartModal.classList.remove("open");
+            cartModal.setAttribute("aria-hidden", "true");
+        }
+    }
+
+    function addToCart(productId) {
+        const product = productById.get(String(productId));
+        if (!product) return;
+
+        const cart = getCart();
+        cart.push(String(productId));
+        saveCart(cart);
+        showToast("Додано до кошика");
+        openCart();
+    }
+
+    function orderProduct(productId) {
+        const product = productById.get(String(productId));
+        if (!product) return;
+
+        const message = `Замовлення товару: ${product.title || "Товар"}, ${product.price || ""}, SKU: ${product.sku || "-"}`;
+
+        if (typeof window.openCallback === "function") {
+            window.openCallback(message);
+            return;
+        }
+
+        window.location.hash = "contacts";
+    }
+
+    function cleanTelegram(value) {
+        return String(value || "")
+            .replace(/^https?:\/\/t\.me\//i, "")
+            .replace(/^@/, "")
+            .trim()
+            .replace(/\/$/, "");
+    }
+
+    function cleanPhone(value) {
+        return String(value || "").replace(/[^0-9+]/g, "");
+    }
+
+    function openMessenger() {
+        const messengers = contacts.messengers || {};
+        const telegram = cleanTelegram(messengers.telegram || contacts.telegram || "");
+        const whatsapp = cleanPhone(messengers.whatsapp || contacts.whatsapp || "");
+        const viber = cleanPhone(messengers.viber || contacts.viber || "");
+
+        if (telegram) {
+            window.open(`https://t.me/${telegram}`, "_blank", "noopener");
+            return;
+        }
+
+        if (whatsapp) {
+            window.open(`https://wa.me/${whatsapp.replace(/^\+/, "")}`, "_blank", "noopener");
+            return;
+        }
+
+        if (viber) {
+            window.location.href = `viber://chat?number=${viber}`;
+            return;
+        }
+
+        window.location.hash = "contacts";
+    }
+
+    document.querySelectorAll("[data-cp-category]").forEach((button) => {
+        button.addEventListener("click", () => {
+            const category = button.dataset.cpCategory;
+
+            document.querySelectorAll("[data-cp-category]").forEach((item) => {
+                item.classList.toggle("active", item === button);
+            });
+
+            document.querySelectorAll("[data-cp-product-card]").forEach((card) => {
+                const isVisible = category === "all" || card.dataset.cpCategoryValue === category;
+                card.style.display = isVisible ? "flex" : "none";
+            });
+        });
+    });
+
+    document.querySelectorAll("[data-cp-buy]").forEach((button) => {
+        button.addEventListener("click", () => addToCart(button.dataset.cpBuy));
+    });
+
+    document.querySelectorAll("[data-cp-order]").forEach((button) => {
+        button.addEventListener("click", () => orderProduct(button.dataset.cpOrder));
+    });
+
+    document.querySelectorAll("[data-cp-message]").forEach((button) => {
+        button.addEventListener("click", openMessenger);
+    });
+
+    document.querySelectorAll("[data-cp-cart-open]").forEach((button) => {
+        button.addEventListener("click", openCart);
+    });
+
+    document.querySelectorAll("[data-cp-cart-close]").forEach((button) => {
+        button.addEventListener("click", closeCart);
+    });
+
+    if (cartModal) {
+        cartModal.addEventListener("click", (event) => {
+            if (event.target === cartModal) {
+                closeCart();
+            }
+        });
+    }
+
+    if (cartList) {
+        cartList.addEventListener("click", (event) => {
+            const removeButton = event.target.closest("[data-cp-remove]");
+            if (!removeButton) return;
+
+            const cart = getCart();
+            const index = cart.indexOf(String(removeButton.dataset.cpRemove));
+            if (index !== -1) {
+                cart.splice(index, 1);
+                saveCart(cart);
+            }
+        });
+    }
+
+    if (cartForm) {
+        cartForm.addEventListener("submit", async (event) => {
+            event.preventDefault();
+
+            const items = cartProducts();
+            if (!items.length) {
+                showToast("Кошик порожній");
+                return;
+            }
+
+            const formData = new FormData(cartForm);
+            const phone = String(formData.get("phone") || "").trim();
+
+            if (!phone) {
+                alert("Введіть телефон");
+                return;
+            }
+
+            const message = "Замовлення з кошика:\n" + items
+                .map((item) => `- ${item.title || "Товар"} — ${item.price || ""}${item.sku ? `, SKU: ${item.sku}` : ""}`)
+                .join("\n");
+
+            try {
+                const response = await fetch(`/site/{{ subdomain }}/lead`, {
+                    method: "POST",
+                    headers: {"Content-Type": "application/x-www-form-urlencoded"},
+                    body: new URLSearchParams({
+                        name: String(formData.get("name") || ""),
+                        phone: phone,
+                        message: message,
+                    }),
+                });
+                const data = await response.json();
+
+                if (data.status === "ok") {
+                    localStorage.removeItem(storageKey);
+                    renderCart();
+                    cartForm.reset();
+                    closeCart();
+                    alert("Заявка відправлена");
+                } else {
+                    alert("Не вдалося відправити заявку");
+                }
+            } catch (error) {
+                alert("Помилка мережі");
+            }
+        });
+    }
+
+    renderCart();
+})();
+</script>

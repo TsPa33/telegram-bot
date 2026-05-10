@@ -46,6 +46,15 @@
                 </a>
             </li>
 
+            <!-- PRODUCTS -->
+            {% if modules.get('products', False) and products.get('items') %}
+            <li>
+                <a href="#products" class="nav-link">
+                    Каталог
+                </a>
+            </li>
+            {% endif %}
+
             <!-- SERVICES -->
             {% if modules.get('services', True) and services %}
             <li>

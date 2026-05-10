@@ -37,6 +37,7 @@ _DEFAULT_SITE_CONFIG: dict[str, Any] = {
         "cars": True,
         "contacts": True,
         "map": True,
+        "products": False,
     },
 
     "theme": {
@@ -50,6 +51,13 @@ _DEFAULT_SITE_CONFIG: dict[str, Any] = {
 
     "price": {
         "enabled": False,
+        "items": [],
+    },
+
+    "products": {
+        "title": "Каталог автозапчастин",
+        "subtitle": "Перевірені запчастини з розборки з підбором по VIN",
+        "categories": [],
         "items": [],
     },
 
@@ -184,8 +192,8 @@ def _normalize_config(config: dict) -> dict:
     else:
 
         config["modules"] = {
-            key: bool(modules.get(key, True))
-            for key in default_modules
+            key: bool(modules.get(key, default_enabled))
+            for key, default_enabled in default_modules.items()
         }
 
     # ===== THEME =====
@@ -206,6 +214,16 @@ def _normalize_config(config: dict) -> dict:
 
     if not isinstance(config.get("price", {}).get("items"), list):
         config.setdefault("price", {})["items"] = []
+
+    # ===== PRODUCTS =====
+
+    products = config.setdefault("products", {})
+
+    if not isinstance(products.get("categories"), list):
+        products["categories"] = []
+
+    if not isinstance(products.get("items"), list):
+        products["items"] = []
 
     # ===== CONTACTS =====
 

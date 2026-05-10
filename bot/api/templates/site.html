@@ -10,6 +10,7 @@
 {% set hero = config.get('hero', {}) %}
 {% set contacts = config.get('contacts', {}) %}
 {% set modules = config.get('modules', {}) %}
+{% set products = products or config.get('products', {}) %}
 
 <!-- HEADER -->
 {% include "components/header.html" %}
@@ -18,6 +19,10 @@
 {% include "components/hero.html" with context %}
 
 <main>
+
+{% if modules.get('products', False) and products.get('items') %}
+    {% include "components/products.html" %}
+{% endif %}
 
 {% if modules.get('services', True) %}
     {% include "components/services.html" %}
@@ -338,7 +343,8 @@
 
 // ===== CALLBACK =====
 
-function openCallback() {
+function openCallback(message) {
+    window.carpotCallbackMessage = message || "Callback request";
     document.getElementById("callbackModal").style.display = "block";
 }
 
@@ -368,7 +374,7 @@ async function sendCallback() {
             body: new URLSearchParams({
                 name: name || "",
                 phone: phone,
-                message: "Callback request"
+                message: window.carpotCallbackMessage || "Callback request"
             })
         });
 
