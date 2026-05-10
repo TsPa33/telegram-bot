@@ -193,15 +193,19 @@ async def render_site(subdomain: str, request: Request):
             service["photo_url"] = None
 
             if service.get("photo_id"):
+                photo_id = service["photo_id"]
 
-                try:
-                    service["photo_url"] = await tg_file_url(
-                        bot,
-                        service["photo_id"]
-                    )
+                if isinstance(photo_id, str) and photo_id.startswith(("http://", "https://")):
+                    service["photo_url"] = photo_id
+                else:
+                    try:
+                        service["photo_url"] = await tg_file_url(
+                            bot,
+                            photo_id
+                        )
 
-                except Exception:
-                    service["photo_url"] = None
+                    except Exception:
+                        service["photo_url"] = None
 
         if not services:
             logger.warning(

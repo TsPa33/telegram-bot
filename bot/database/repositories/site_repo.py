@@ -169,6 +169,69 @@ async def update_site_config(site_id: int, config: dict) -> bool:
         return row is not None
 
 
+async def update_product_image(site_id: int, seller_id: int, product_id: str, image_url: str) -> bool:
+    async with transaction() as conn:
+        current = await conn.fetchrow(
+            """
+            SELECT config_draft, config_live
+            FROM seller_sites
+            WHERE id = $1
+              AND seller_id = $2
+            FOR UPDATE
+            """,
+            site_id,
+            seller_id,
+        )
+
+        if not current:
+            return False
+
+        raw_config = current.get("config_draft") or current.get("config_live") or {}
+
+        if isinstance(raw_config, str):
+            try:
+                raw_config = json.loads(raw_config)
+            except Exception:
+                raw_config = {}
+
+        config = merge_with_default(raw_config if isinstance(raw_config, dict) else {})
+        products = config.setdefault("products", {})
+        items = products.setdefault("items", [])
+
+        if not isinstance(items, list):
+            products["items"] = []
+            return False
+
+        updated = False
+        for product in items:
+            if not isinstance(product, dict):
+                continue
+
+            if str(product.get("id")) == str(product_id):
+                product["image"] = image_url or ""
+                updated = True
+                break
+
+        if not updated:
+            return False
+
+        row = await conn.fetchrow(
+            """
+            UPDATE seller_sites
+            SET config_draft = $1::jsonb,
+                config_live = $1::jsonb
+            WHERE id = $2
+              AND seller_id = $3
+            RETURNING id
+            """,
+            json.dumps(config),
+            site_id,
+            seller_id,
+        )
+
+        return row is not None
+
+
 # ================= UPDATE DRAFT =================
 
 async def update_draft(seller_id: int, config: dict) -> bool:

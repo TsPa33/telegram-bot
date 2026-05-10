@@ -116,6 +116,8 @@ def media_menu_kb():
         [InlineKeyboardButton(text="🖼 Додати банер", callback_data="site:edit:banners")],
         [InlineKeyboardButton(text="📋 Список банерів", callback_data="site:banners:list")],
         [InlineKeyboardButton(text="🖼 Лого", callback_data="site:edit:logo")],
+        [InlineKeyboardButton(text="🖼 Фото товарів", callback_data="site:products:media:list")],
+        [InlineKeyboardButton(text="🛠 Фото послуг", callback_data="site:services:media:list")],
         [InlineKeyboardButton(text="🎨 Кольорова схема", callback_data="site:theme:menu")],
 
         [InlineKeyboardButton(text="⬅ Назад", callback_data="site:back")],
