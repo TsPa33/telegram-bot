@@ -246,3 +246,76 @@ async def delete_service_by_seller(service_id: int, seller_id: int) -> bool:
 
     await execute("DELETE FROM service_stats WHERE service_id = $1", service_id)
     return True
+
+
+async def delete_services_by_seller(seller_id: int) -> int:
+    rows = await fetch(
+        """
+        DELETE FROM service_stats
+        WHERE service_id IN (
+            SELECT id FROM services WHERE seller_id = $1
+        )
+        RETURNING service_id
+        """,
+        seller_id,
+    )
+
+    deleted_services = await fetch(
+        """
+        DELETE FROM services
+        WHERE seller_id = $1
+        RETURNING id
+        """,
+        seller_id,
+    )
+
+    return len(deleted_services) if deleted_services else len(rows)
+
+
+async def bulk_create_services(seller_id: int, services: list[dict]) -> list[int]:
+    service_ids: list[int] = []
+
+    for service in services:
+        row = await fetchrow(
+            """
+            INSERT INTO services (
+                seller_id,
+                category,
+                title,
+                city,
+                address,
+                description,
+                website,
+                photo_id,
+                price
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            RETURNING id
+            """,
+            seller_id,
+            service.get("category"),
+            service.get("title"),
+            service.get("city"),
+            service.get("address"),
+            service.get("description"),
+            service.get("website"),
+            service.get("photo_id") or None,
+            service.get("price"),
+        )
+
+        if not row:
+            continue
+
+        service_id = row["id"]
+        service_ids.append(service_id)
+
+        await execute(
+            """
+            INSERT INTO service_stats (service_id, views, calls, clicks)
+            VALUES ($1, 0, 0, 0)
+            ON CONFLICT (service_id) DO NOTHING
+            """,
+            service_id,
+        )
+
+    return service_ids

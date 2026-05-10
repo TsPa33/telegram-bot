@@ -163,6 +163,7 @@ def admin_demo_site_actions_kb(site):
             text="🌐 Відкрити сайт",
             url=f"https://worker-production-e30f.up.railway.app/site/{subdomain}"
         )],
+        [InlineKeyboardButton(text="🌱 Заповнити demo контентом", callback_data=f"admin:demo:seed:{site['id']}")],
         [InlineKeyboardButton(text="🗑 Видалити", callback_data=f"admin:demo:delete:{site['id']}")],
         [InlineKeyboardButton(text="⬅ До списку", callback_data="admin:demo:list")],
     ])
@@ -172,4 +173,15 @@ def admin_demo_confirm_delete_kb(site_id: int):
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="⚠️ Так, видалити", callback_data=f"admin:demo:delete_confirm:{site_id}")],
         [InlineKeyboardButton(text="❌ Скасувати", callback_data=f"admin:demo:view:{site_id}")],
+    ])
+
+
+def admin_demo_seed_types_kb(site_id: int):
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🛞 Шиномонтаж", callback_data=f"admin:demo:seed_type:{site_id}:tire")],
+        [InlineKeyboardButton(text="🛠 СТО", callback_data=f"admin:demo:seed_type:{site_id}:sto")],
+        [InlineKeyboardButton(text="🚛 Евакуатор", callback_data=f"admin:demo:seed_type:{site_id}:tow")],
+        [InlineKeyboardButton(text="⚡ Автоелектрик", callback_data=f"admin:demo:seed_type:{site_id}:electric")],
+        [InlineKeyboardButton(text="🚗 Автозапчастини", callback_data=f"admin:demo:seed_type:{site_id}:parts")],
+        [InlineKeyboardButton(text="⬅ Назад", callback_data=f"admin:demo:view:{site_id}")],
     ])
