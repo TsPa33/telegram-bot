@@ -258,3 +258,27 @@ async def create_demo_seller(telegram_id: int, username: str, title: str):
         username,
         title,
     )
+
+
+async def update_seller_demo_profile(seller_id: int, data: dict) -> bool:
+    row = await fetchrow(
+        """
+        UPDATE sellers
+        SET shop_name = $1,
+            name = $2,
+            phone = $3,
+            city = $4,
+            description = $5,
+            website = $6
+        WHERE id = $7
+        RETURNING id
+        """,
+        data.get("shop_name"),
+        data.get("name"),
+        data.get("phone"),
+        data.get("city"),
+        data.get("description"),
+        data.get("website"),
+        seller_id,
+    )
+    return row is not None

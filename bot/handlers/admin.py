@@ -20,6 +20,7 @@ from bot.keyboards.admin_inline import (
     admin_demo_sites_kb,
     admin_demo_site_actions_kb,
     admin_demo_confirm_delete_kb,
+    admin_demo_seed_types_kb,
 )
 
 from bot.states.admin_states import EditBrand, EditModel, DemoSiteStates
@@ -64,6 +65,7 @@ from bot.database.repositories.site_repo import (
 )
 
 from bot.services.demo_context import clear_demo_context, set_demo_context
+from bot.services.demo_seed_service import DEMO_SEED_TYPES, seed_demo_site
 from bot.services.site_config import get_default_site_config
 from bot.utils.cache import clear_brands_cache, clear_models_cache
 
@@ -662,6 +664,66 @@ async def admin_demo_view(callback: CallbackQuery):
     await callback.message.edit_text(
         _demo_site_text(site),
         reply_markup=admin_demo_site_actions_kb(site),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("admin:demo:seed:"))
+async def admin_demo_seed(callback: CallbackQuery):
+    if not await is_admin(callback.from_user.id):
+        await callback.answer("⛔ Немає доступу", show_alert=True)
+        return
+
+    site_id = int(callback.data.split(":")[-1])
+    site = await get_site_by_id(site_id)
+
+    if not site or not str(site["subdomain"]).startswith("demo-"):
+        await callback.answer("Демо сайт не знайдено", show_alert=True)
+        return
+
+    await callback.message.edit_text(
+        "🌱 Заповнити demo контентом\n\n"
+        f"Subdomain: {site['subdomain']}\n"
+        "Оберіть тип demo бізнесу:",
+        reply_markup=admin_demo_seed_types_kb(site_id),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("admin:demo:seed_type:"))
+async def admin_demo_seed_type(callback: CallbackQuery):
+    if not await is_admin(callback.from_user.id):
+        await callback.answer("⛔ Немає доступу", show_alert=True)
+        return
+
+    parts = callback.data.split(":")
+    site_id = int(parts[-2])
+    demo_type = parts[-1]
+
+    if demo_type not in DEMO_SEED_TYPES:
+        await callback.answer("Невідомий тип demo контенту", show_alert=True)
+        return
+
+    try:
+        summary = await seed_demo_site(site_id, demo_type)
+    except (PermissionError, ValueError) as exc:
+        await callback.answer(str(exc), show_alert=True)
+        return
+    except Exception:
+        await callback.answer("Не вдалося заповнити demo контент", show_alert=True)
+        return
+
+    await callback.message.edit_text(
+        "✅ Demo контент заповнено\n\n"
+        f"Тип: {summary['demo_type_label']}\n"
+        f"Subdomain: {summary['subdomain']}\n"
+        f"Seller ID: {summary['seller_id']}\n"
+        f"Послуг: {summary['services_count']}\n"
+        f"URL: {summary['site_url']}",
+        reply_markup=admin_demo_site_actions_kb({
+            "id": site_id,
+            "subdomain": summary["subdomain"],
+        }),
     )
     await callback.answer()
 

@@ -253,3 +253,21 @@ async def soft_delete_demo_site(site_id: int) -> bool:
         site_id,
     )
     return row is not None
+
+async def update_demo_site_config(site_id: int, config: dict) -> bool:
+    config = merge_with_default(config or {})
+
+    row = await fetchrow(
+        """
+        UPDATE seller_sites
+        SET config_draft = $1::jsonb,
+            config_live = $1::jsonb,
+            status = 'active'
+        WHERE id = $2
+          AND subdomain LIKE 'demo-%'
+        RETURNING id
+        """,
+        json.dumps(config),
+        site_id,
+    )
+    return row is not None
