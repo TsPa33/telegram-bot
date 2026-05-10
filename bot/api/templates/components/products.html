@@ -2,7 +2,7 @@
     <div class="container cp-products-container">
         <div class="cp-products-head">
             <div>
-                <span class="cp-eyebrow">Mini Shop</span>
+                <span class="cp-eyebrow">Premium Parts</span>
                 <h2>{{ products.get('title') or 'Каталог автозапчастин' }}</h2>
                 <p>{{ products.get('subtitle') or 'Перевірені запчастини з розборки з підбором по VIN' }}</p>
             </div>
@@ -13,15 +13,38 @@
             </button>
         </div>
 
+        <form class="cp-vin-card" data-cp-vin-form>
+            <div class="cp-vin-copy">
+                <span class="cp-eyebrow">VIN підбір</span>
+                <h3>Підберемо сумісну запчастину під ваше авто</h3>
+                <p>Надішліть VIN, марку, модель або назву деталі — менеджер перевірить наявність і запропонує варіанти.</p>
+            </div>
+            <div class="cp-vin-fields">
+                <input type="text" name="vehicle" placeholder="VIN / марка / модель" required>
+                <input type="text" name="part" placeholder="Назва деталі" required>
+                <input type="text" name="name" placeholder="Ваше ім'я">
+                <input type="tel" name="phone" placeholder="Телефон для відповіді" required>
+                <button type="submit" class="cp-btn cp-vin-submit">Підібрати запчастину</button>
+            </div>
+        </form>
+
+        <div class="cp-delivery-strip" aria-label="Доставка та оплата">
+            <span>📦 Нова Пошта</span>
+            <span>🏁 Самовивіз</span>
+            <span>⏱️ Відправка 1–2 дні</span>
+            <span>💳 Оплата при отриманні</span>
+        </div>
+
         {% set categories = products.get('categories', []) %}
+        {% set category_icons = {'Двигуни': '⚙️', 'КПП': '🔩', 'Оптика': '💡', 'Кузов': '🚘', 'Салон': '🪑', 'Ходова': '🛞'} %}
         {% if categories %}
         <div class="cp-category-pills" aria-label="Категорії товарів">
             <button type="button" class="cp-category-pill active" data-cp-category="all">
-                Усі
+                <span>🏎️</span> Усі
             </button>
             {% for category in categories %}
             <button type="button" class="cp-category-pill" data-cp-category="{{ category }}">
-                {{ category }}
+                <span>{{ category_icons.get(category, '🔧') }}</span> {{ category }}
             </button>
             {% endfor %}
         </div>
@@ -35,14 +58,21 @@
                     <img src="{{ product.get('image') }}" alt="{{ product.get('title', 'Автозапчастина') }}" loading="lazy">
                     {% else %}
                     <div class="cp-product-placeholder" aria-hidden="true">
-                        <span>⚙️</span>
-                        <small>CARPOT PARTS</small>
+                        <span>{{ category_icons.get(product.get('category'), '⚙️') }}</span>
+                        <strong>{{ product.get('category') or 'Автодеталі' }}</strong>
+                        <small>{{ product.get('sku') or 'CARPOT PARTS' }}</small>
                     </div>
                     {% endif %}
-                    <span class="cp-product-category">{{ product.get('category') }}</span>
+                    <span class="cp-product-category">{{ category_icons.get(product.get('category'), '🔧') }} {{ product.get('category') }}</span>
+                    {% if product.get('badge') %}
+                    <span class="cp-product-badge cp-badge-{{ product.get('badge')|lower }}">{{ product.get('badge') }}</span>
+                    {% endif %}
                 </div>
 
                 <div class="cp-product-body">
+                    {% if product.get('stock') %}
+                    <div class="cp-stock-row">● {{ product.get('stock') }}</div>
+                    {% endif %}
                     <h3>{{ product.get('title') }}</h3>
 
                     <dl class="cp-product-meta">
@@ -60,19 +90,24 @@
                     <p class="cp-product-description">{{ product.get('description') }}</p>
                     {% endif %}
 
+                    <div class="cp-part-codes">
+                        {% if product.get('sku') %}<span>SKU: <b>{{ product.get('sku') }}</b></span>{% endif %}
+                        {% if product.get('oem') %}<span>OEM: <b>{{ product.get('oem') }}</b></span>{% endif %}
+                    </div>
+
                     <div class="cp-product-bottom">
                         <div>
                             <span class="cp-price-label">Ціна</span>
                             <strong class="cp-product-price">{{ product.get('price') }}</strong>
                         </div>
-                        {% if product.get('sku') %}
-                        <span class="cp-product-sku">{{ product.get('sku') }}</span>
-                        {% endif %}
                     </div>
 
                     <div class="cp-product-actions">
                         <button type="button" class="cp-btn cp-btn-buy" data-cp-buy="{{ product.get('id') }}">
                             Купити
+                        </button>
+                        <button type="button" class="cp-btn cp-btn-detail" data-cp-detail="{{ product.get('id') }}">
+                            Детальніше
                         </button>
                         <button type="button" class="cp-btn cp-btn-order" data-cp-order="{{ product.get('id') }}">
                             Замовити
@@ -85,6 +120,21 @@
             </article>
             {% endfor %}
         </div>
+
+        <div class="cp-trust-block">
+            <div>
+                <span class="cp-eyebrow">Довіра</span>
+                <h3>Чому обирають нас</h3>
+            </div>
+            <div class="cp-trust-grid">
+                <span>✅ Перевірені запчастини</span>
+                <span>📷 Фото перед відправкою</span>
+                <span>🔎 Підбір по VIN</span>
+                <span>🇺🇦 Відправка по Україні</span>
+                <span>🛡️ Гарантія на перевірку</span>
+                <span>💵 Накладений платіж</span>
+            </div>
+        </div>
     </div>
 
     <button type="button" class="cp-floating-cart" data-cp-cart-open aria-label="Відкрити кошик">
@@ -96,13 +146,15 @@
         <div class="cp-cart-dialog" role="dialog" aria-modal="true" aria-labelledby="cpCartTitle">
             <div class="cp-cart-top">
                 <div>
-                    <span class="cp-eyebrow">Заявка без оплати</span>
-                    <h3 id="cpCartTitle">Кошик запчастин</h3>
+                    <span class="cp-eyebrow" data-cp-modal-label>Заявка без оплати</span>
+                    <h3 id="cpCartTitle" data-cp-cart-title>Кошик запчастин</h3>
+                    <p data-cp-lead-preview class="cp-lead-preview" hidden></p>
                 </div>
                 <button type="button" class="cp-cart-close" data-cp-cart-close>✕</button>
             </div>
 
             <div class="cp-cart-list" data-cp-cart-list></div>
+            <div class="cp-cart-summary" data-cp-cart-summary></div>
 
             <form class="cp-cart-form" data-cp-cart-form>
                 <input type="text" name="name" placeholder="Ваше ім'я">
@@ -114,6 +166,29 @@
                     Менеджер підтвердить наявність, сумісність та доставку. Онлайн-оплати немає.
                 </p>
             </form>
+        </div>
+    </div>
+
+    <div class="cp-quick-modal" data-cp-quick-modal aria-hidden="true">
+        <div class="cp-quick-dialog" role="dialog" aria-modal="true" aria-labelledby="cpQuickTitle">
+            <button type="button" class="cp-cart-close cp-quick-close" data-cp-quick-close>✕</button>
+            <div class="cp-quick-layout">
+                <div class="cp-quick-media" data-cp-quick-media></div>
+                <div class="cp-quick-content">
+                    <span class="cp-eyebrow" data-cp-quick-category></span>
+                    <h3 id="cpQuickTitle" data-cp-quick-title></h3>
+                    <div class="cp-stock-row" data-cp-quick-stock></div>
+                    <dl class="cp-quick-specs" data-cp-quick-specs></dl>
+                    <p class="cp-quick-description" data-cp-quick-description></p>
+                    <div class="cp-quick-delivery">Нова Пошта / самовивіз · відправка 1–2 дні · оплата при отриманні</div>
+                    <strong class="cp-quick-price" data-cp-quick-price></strong>
+                    <div class="cp-quick-actions">
+                        <button type="button" class="cp-btn cp-btn-buy" data-cp-quick-buy>Купити</button>
+                        <button type="button" class="cp-btn cp-btn-order" data-cp-quick-order>Замовити</button>
+                        <button type="button" class="cp-btn cp-btn-message" data-cp-message>Написати</button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -144,10 +219,7 @@
     pointer-events: none;
 }
 
-.cp-products-container {
-    position: relative;
-    z-index: 1;
-}
+.cp-products-container { position: relative; z-index: 1; }
 
 .cp-products-head {
     display: flex;
@@ -172,14 +244,17 @@
     text-transform: uppercase;
 }
 
-.cp-products-head h2 {
+.cp-products-head h2,
+.cp-vin-copy h3,
+.cp-trust-block h3 {
     margin: 0;
     color: #ffffff;
     font-size: clamp(30px, 4vw, 48px);
     line-height: 1.05;
 }
 
-.cp-products-head p {
+.cp-products-head p,
+.cp-vin-copy p {
     max-width: 640px;
     margin: 14px 0 0;
     color: #cbd5e1;
@@ -218,332 +293,30 @@
     font-size: 13px;
 }
 
-.cp-category-pills {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-bottom: 28px;
+.cp-vin-card,
+.cp-trust-block {
+    margin-bottom: 22px;
+    border: 1px solid rgba(248, 113, 113, 0.24);
+    border-radius: 28px;
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.92), rgba(69, 10, 10, 0.58));
+    box-shadow: 0 28px 90px rgba(0, 0, 0, 0.35);
 }
 
-.cp-category-pill {
-    padding: 10px 14px;
-    border: 1px solid rgba(148, 163, 184, 0.30);
-    border-radius: 999px;
-    background: rgba(15, 23, 42, 0.78);
-    color: #e2e8f0;
-    font-weight: 700;
-    cursor: pointer;
-    transition: 0.2s ease;
-}
-
-.cp-category-pill:hover,
-.cp-category-pill.active {
-    border-color: rgba(248, 113, 113, 0.80);
-    background: rgba(220, 38, 38, 0.22);
-    color: #ffffff;
-}
-
-.cp-product-grid {
+.cp-vin-card {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 18px;
+    grid-template-columns: minmax(0, 0.9fr) minmax(320px, 1.1fr);
+    gap: 22px;
+    padding: 24px;
 }
 
-.cp-product-card {
-    display: flex;
-    flex-direction: column;
-    min-height: 100%;
-    border: 1px solid rgba(148, 163, 184, 0.20);
-    border-radius: 22px;
-    background: linear-gradient(180deg, rgba(17, 24, 39, 0.96), rgba(3, 7, 18, 0.96));
-    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
-    overflow: hidden;
-    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.cp-product-card:hover {
-    transform: translateY(-4px);
-    border-color: rgba(248, 113, 113, 0.55);
-    box-shadow: 0 28px 80px rgba(220, 38, 38, 0.16);
-}
-
-.cp-product-media {
-    position: relative;
-    height: 170px;
-    background: #020617;
-}
-
-.cp-product-media img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.cp-product-placeholder {
-    display: flex;
-    height: 100%;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    gap: 10px;
-    background:
-        linear-gradient(135deg, rgba(248, 113, 113, 0.15), transparent),
-        repeating-linear-gradient(-45deg, rgba(255,255,255,0.04) 0 8px, transparent 8px 16px),
-        #0b1120;
-}
-
-.cp-product-placeholder span {
-    font-size: 42px;
-    filter: drop-shadow(0 8px 20px rgba(248, 113, 113, 0.35));
-}
-
-.cp-product-placeholder small {
-    color: #94a3b8;
-    font-size: 11px;
-    font-weight: 900;
-    letter-spacing: 0.18em;
-}
-
-.cp-product-category {
-    position: absolute;
-    left: 12px;
-    top: 12px;
-    padding: 6px 9px;
-    border-radius: 999px;
-    background: rgba(2, 6, 23, 0.78);
-    color: #fecaca;
-    font-size: 12px;
-    font-weight: 800;
-    backdrop-filter: blur(8px);
-}
-
-.cp-product-body {
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    padding: 16px;
-}
-
-.cp-product-body h3 {
-    margin: 0 0 12px;
-    color: #ffffff;
-    font-size: 18px;
-    line-height: 1.25;
-}
-
-.cp-product-meta {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 8px;
-    margin: 0 0 12px;
-}
-
-.cp-product-meta div {
-    display: flex;
-    justify-content: space-between;
-    gap: 12px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid rgba(148, 163, 184, 0.16);
-}
-
-.cp-product-meta dt {
-    color: #94a3b8;
-    font-size: 12px;
-}
-
-.cp-product-meta dd {
-    margin: 0;
-    color: #e5e7eb;
-    font-size: 13px;
-    font-weight: 700;
-    text-align: right;
-}
-
-.cp-product-description {
-    margin: 0 0 14px;
-    color: #aeb8c8;
-    font-size: 13px;
-    line-height: 1.45;
-}
-
-.cp-product-bottom {
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 12px;
-    margin-top: auto;
-    padding-top: 10px;
-}
-
-.cp-price-label {
-    display: block;
-    color: #94a3b8;
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-}
-
-.cp-product-price {
-    display: block;
-    margin-top: 2px;
-    color: #fbbf24;
-    font-size: 21px;
-    line-height: 1;
-}
-
-.cp-product-sku {
-    color: #64748b;
-    font-size: 11px;
-    font-weight: 800;
-}
-
-.cp-product-actions {
+.cp-vin-fields {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 8px;
-    margin-top: 16px;
-}
-
-.cp-btn {
-    min-height: 42px;
-    padding: 10px 12px;
-    border: 0;
-    border-radius: 12px;
-    color: #ffffff;
-    font-weight: 800;
-    cursor: pointer;
-    transition: 0.2s ease;
-}
-
-.cp-btn:hover {
-    transform: translateY(-1px);
-}
-
-.cp-btn-buy {
-    background: linear-gradient(135deg, #ef4444, #991b1b);
-    box-shadow: 0 12px 28px rgba(239, 68, 68, 0.20);
-}
-
-.cp-btn-order {
-    background: #1f2937;
-    border: 1px solid rgba(148, 163, 184, 0.28);
-}
-
-.cp-btn-message {
-    grid-column: span 2;
-    background: rgba(15, 23, 42, 0.9);
-    border: 1px solid rgba(45, 212, 191, 0.35);
-    color: #99f6e4;
-}
-
-.cp-floating-cart {
-    position: fixed;
-    right: 18px;
-    bottom: 156px;
-    z-index: 995;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 12px 14px;
-    border-radius: 999px;
-    font-weight: 900;
-}
-
-.cp-cart-modal {
-    position: fixed;
-    inset: 0;
-    z-index: 2500;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    padding: 18px;
-    background: rgba(2, 6, 23, 0.76);
-    backdrop-filter: blur(10px);
-}
-
-.cp-cart-modal.open {
-    display: flex;
-}
-
-.cp-cart-dialog {
-    width: min(100%, 520px);
-    max-height: min(92vh, 760px);
-    overflow: auto;
-    border: 1px solid rgba(248, 113, 113, 0.35);
-    border-radius: 24px;
-    background: linear-gradient(180deg, #111827, #030712);
-    color: #f8fafc;
-    box-shadow: 0 35px 100px rgba(0,0,0,0.65);
-    padding: 20px;
-}
-
-.cp-cart-top {
-    display: flex;
-    justify-content: space-between;
-    gap: 16px;
-    margin-bottom: 14px;
-}
-
-.cp-cart-top h3 {
-    margin: 0;
-    color: #ffffff;
-    font-size: 24px;
-}
-
-.cp-cart-close {
-    width: 42px;
-    height: 42px;
-    border: 1px solid rgba(148, 163, 184, 0.35);
-    border-radius: 50%;
-    background: rgba(15, 23, 42, 0.95);
-    color: #ffffff;
-    cursor: pointer;
-}
-
-.cp-cart-list {
-    display: grid;
     gap: 10px;
-    margin-bottom: 16px;
+    align-content: center;
 }
 
-.cp-cart-item,
-.cp-cart-empty {
-    border: 1px solid rgba(148, 163, 184, 0.18);
-    border-radius: 16px;
-    background: rgba(15, 23, 42, 0.76);
-    padding: 12px;
-}
-
-.cp-cart-item {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 10px;
-    align-items: center;
-}
-
-.cp-cart-item strong {
-    color: #ffffff;
-}
-
-.cp-cart-item span,
-.cp-cart-empty {
-    color: #cbd5e1;
-}
-
-.cp-cart-remove {
-    border: 0;
-    border-radius: 10px;
-    background: rgba(239, 68, 68, 0.16);
-    color: #fecaca;
-    padding: 8px 10px;
-    cursor: pointer;
-}
-
-.cp-cart-form {
-    display: grid;
-    gap: 10px;
-}
-
+.cp-vin-fields input,
 .cp-cart-form input {
     width: 100%;
     padding: 13px 14px;
@@ -554,71 +327,183 @@
     font-size: 15px;
 }
 
-.cp-cart-form input::placeholder {
-    color: #94a3b8;
+.cp-vin-fields input::placeholder,
+.cp-cart-form input::placeholder { color: #94a3b8; }
+.cp-vin-submit { grid-column: span 2; background: linear-gradient(135deg, #ef4444, #991b1b); }
+
+.cp-delivery-strip {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 22px;
 }
 
-.cp-cart-submit {
-    background: linear-gradient(135deg, #ef4444, #b91c1c);
-}
-
-.cp-cart-note {
-    margin: 0;
-    color: #94a3b8;
-    font-size: 12px;
-    line-height: 1.45;
-}
-
-.cp-toast {
-    position: fixed;
-    left: 50%;
-    bottom: 28px;
-    z-index: 2600;
-    transform: translate(-50%, 20px);
-    opacity: 0;
-    pointer-events: none;
-    padding: 12px 16px;
-    border-radius: 999px;
-    background: #16a34a;
-    color: #ffffff;
+.cp-delivery-strip span {
+    padding: 12px 14px;
+    border: 1px solid rgba(245, 158, 11, 0.22);
+    border-radius: 16px;
+    background: rgba(15, 23, 42, 0.74);
+    color: #fef3c7;
     font-weight: 800;
-    box-shadow: 0 18px 44px rgba(0,0,0,0.35);
+    text-align: center;
+}
+
+.cp-category-pills { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 28px; }
+.cp-category-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 10px 14px;
+    border: 1px solid rgba(148, 163, 184, 0.30);
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.78);
+    color: #e2e8f0;
+    font-weight: 700;
+    cursor: pointer;
     transition: 0.2s ease;
 }
+.cp-category-pill:hover,
+.cp-category-pill.active { border-color: rgba(248, 113, 113, 0.80); background: rgba(220, 38, 38, 0.22); color: #ffffff; }
 
-.cp-toast.show {
-    transform: translate(-50%, 0);
-    opacity: 1;
+.cp-product-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }
+.cp-product-card {
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+    border: 1px solid rgba(148, 163, 184, 0.20);
+    border-radius: 22px;
+    background: linear-gradient(180deg, rgba(17, 24, 39, 0.96), rgba(3, 7, 18, 0.96));
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
+    overflow: hidden;
+    transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
 }
+.cp-product-card:hover { transform: translateY(-5px); border-color: rgba(248, 113, 113, 0.62); box-shadow: 0 28px 90px rgba(220, 38, 38, 0.22); }
+.cp-product-card:hover .cp-product-media img,
+.cp-product-card:hover .cp-product-placeholder { transform: scale(1.045); }
+
+.cp-product-media { position: relative; height: 170px; background: #020617; overflow: hidden; }
+.cp-product-media img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.28s ease; }
+.cp-product-placeholder {
+    display: flex;
+    height: 100%;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 8px;
+    background:
+        radial-gradient(circle at 50% 20%, rgba(239, 68, 68, 0.26), transparent 34%),
+        linear-gradient(135deg, rgba(127, 29, 29, 0.48), rgba(2, 6, 23, 0.94)),
+        repeating-linear-gradient(-45deg, rgba(255,255,255,0.045) 0 8px, transparent 8px 16px);
+    transition: transform 0.28s ease;
+}
+.cp-product-placeholder span { font-size: 42px; filter: drop-shadow(0 8px 20px rgba(248, 113, 113, 0.35)); }
+.cp-product-placeholder strong { color: #ffffff; font-size: 18px; }
+.cp-product-placeholder small { color: #fca5a5; font-size: 11px; font-weight: 900; letter-spacing: 0.18em; }
+
+.cp-product-category,
+.cp-product-badge {
+    position: absolute;
+    padding: 6px 9px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 900;
+    backdrop-filter: blur(8px);
+}
+.cp-product-category { left: 12px; top: 12px; background: rgba(2, 6, 23, 0.78); color: #fecaca; }
+.cp-product-badge { right: 12px; top: 12px; background: linear-gradient(135deg, #f59e0b, #b45309); color: #111827; box-shadow: 0 12px 30px rgba(245, 158, 11, 0.22); }
+.cp-badge-sale,
+.cp-badge-hot { background: linear-gradient(135deg, #ef4444, #991b1b); color: #ffffff; }
+
+.cp-product-body { display: flex; flex: 1; flex-direction: column; padding: 16px; }
+.cp-stock-row { margin-bottom: 10px; color: #fbbf24; font-size: 12px; font-weight: 900; letter-spacing: 0.02em; }
+.cp-product-body h3 { margin: 0 0 12px; color: #ffffff; font-size: 18px; line-height: 1.25; }
+.cp-product-meta { display: grid; grid-template-columns: 1fr; gap: 8px; margin: 0 0 12px; }
+.cp-product-meta div,
+.cp-quick-specs div { display: flex; justify-content: space-between; gap: 12px; padding-bottom: 8px; border-bottom: 1px solid rgba(148, 163, 184, 0.16); }
+.cp-product-meta dt,
+.cp-quick-specs dt { color: #94a3b8; font-size: 12px; }
+.cp-product-meta dd,
+.cp-quick-specs dd { margin: 0; color: #e5e7eb; font-size: 13px; font-weight: 700; text-align: right; }
+.cp-product-description { margin: 0 0 14px; color: #aeb8c8; font-size: 13px; line-height: 1.45; }
+.cp-part-codes { display: grid; gap: 6px; margin-top: auto; color: #94a3b8; font-size: 12px; }
+.cp-part-codes b { color: #e5e7eb; }
+.cp-product-bottom { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; padding-top: 10px; }
+.cp-price-label { display: block; color: #94a3b8; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+.cp-product-price { display: block; margin-top: 2px; color: #fbbf24; font-size: 21px; line-height: 1; }
+.cp-product-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 16px; }
+.cp-btn { min-height: 42px; padding: 10px 12px; border: 0; border-radius: 12px; color: #ffffff; font-weight: 800; cursor: pointer; transition: 0.2s ease; }
+.cp-btn:hover { transform: translateY(-1px); }
+.cp-btn-buy { background: linear-gradient(135deg, #ef4444, #991b1b); box-shadow: 0 12px 28px rgba(239, 68, 68, 0.20); }
+.cp-btn-order,
+.cp-btn-detail { background: #1f2937; border: 1px solid rgba(148, 163, 184, 0.28); }
+.cp-btn-message { background: rgba(69, 10, 10, 0.52); border: 1px solid rgba(248, 113, 113, 0.34); color: #fecaca; }
+
+.cp-trust-block { display: grid; grid-template-columns: minmax(220px, 0.7fr) 1fr; gap: 22px; margin-top: 28px; padding: 24px; }
+.cp-trust-block h3 { font-size: clamp(26px, 3vw, 38px); }
+.cp-trust-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.cp-trust-grid span { padding: 13px; border: 1px solid rgba(148, 163, 184, 0.18); border-radius: 16px; background: rgba(2, 6, 23, 0.42); color: #e5e7eb; font-weight: 800; }
+
+.cp-floating-cart { position: fixed; right: 18px; bottom: 156px; z-index: 995; display: inline-flex; align-items: center; gap: 6px; padding: 12px 14px; border-radius: 999px; font-weight: 900; }
+.cp-cart-modal,
+.cp-quick-modal { position: fixed; inset: 0; z-index: 2500; display: none; align-items: center; justify-content: center; padding: 18px; background: rgba(2, 6, 23, 0.76); backdrop-filter: blur(10px); }
+.cp-cart-modal.open,
+.cp-quick-modal.open { display: flex; }
+.cp-cart-dialog,
+.cp-quick-dialog { width: min(100%, 560px); max-height: min(92vh, 760px); overflow: auto; border: 1px solid rgba(248, 113, 113, 0.35); border-radius: 24px; background: linear-gradient(180deg, #111827, #030712); color: #f8fafc; box-shadow: 0 35px 100px rgba(0,0,0,0.65); padding: 20px; }
+.cp-quick-dialog { width: min(100%, 880px); position: relative; }
+.cp-cart-top { display: flex; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
+.cp-cart-top h3 { margin: 0; color: #ffffff; font-size: 24px; }
+.cp-cart-close { width: 42px; height: 42px; border: 1px solid rgba(148, 163, 184, 0.35); border-radius: 50%; background: rgba(15, 23, 42, 0.95); color: #ffffff; cursor: pointer; }
+.cp-quick-close { position: absolute; right: 18px; top: 18px; z-index: 2; }
+.cp-cart-list { display: grid; gap: 10px; margin-bottom: 12px; }
+.cp-cart-item,
+.cp-cart-empty,
+.cp-cart-summary,
+.cp-lead-preview { border: 1px solid rgba(148, 163, 184, 0.18); border-radius: 16px; background: rgba(15, 23, 42, 0.76); padding: 12px; }
+.cp-lead-preview { margin: 10px 0 0; color: #cbd5e1; white-space: pre-line; }
+.cp-cart-item { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; }
+.cp-cart-item strong { color: #ffffff; }
+.cp-cart-item span,
+.cp-cart-empty,
+.cp-cart-summary { color: #cbd5e1; }
+.cp-cart-summary { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 16px; font-weight: 900; }
+.cp-cart-remove { border: 0; border-radius: 10px; background: rgba(239, 68, 68, 0.16); color: #fecaca; padding: 8px 10px; cursor: pointer; }
+.cp-cart-form { display: grid; gap: 10px; }
+.cp-cart-submit { background: linear-gradient(135deg, #ef4444, #b91c1c); }
+.cp-cart-note { margin: 0; color: #94a3b8; font-size: 12px; line-height: 1.45; }
+.cp-quick-layout { display: grid; grid-template-columns: minmax(240px, 0.9fr) 1.1fr; gap: 22px; }
+.cp-quick-media { min-height: 330px; border-radius: 20px; overflow: hidden; background: #020617; }
+.cp-quick-media img { width: 100%; height: 100%; object-fit: cover; }
+.cp-quick-content h3 { margin: 0 44px 12px 0; color: #ffffff; font-size: clamp(26px, 4vw, 38px); line-height: 1.05; }
+.cp-quick-specs { display: grid; gap: 8px; margin: 0 0 14px; }
+.cp-quick-description { color: #cbd5e1; line-height: 1.55; }
+.cp-quick-delivery { margin: 12px 0; padding: 12px; border-radius: 14px; background: rgba(245, 158, 11, 0.10); color: #fef3c7; font-weight: 800; }
+.cp-quick-price { display: block; margin: 14px 0; color: #fbbf24; font-size: 28px; }
+.cp-quick-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.cp-toast { position: fixed; left: 50%; bottom: 28px; z-index: 2600; transform: translate(-50%, 20px); opacity: 0; pointer-events: none; padding: 12px 16px; border-radius: 999px; background: linear-gradient(135deg, #ef4444, #991b1b); color: #ffffff; font-weight: 800; box-shadow: 0 18px 44px rgba(0,0,0,0.35); transition: 0.2s ease; }
+.cp-toast.show { transform: translate(-50%, 0); opacity: 1; }
 
 @media (max-width: 1024px) {
-    .cp-product-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
+    .cp-product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .cp-vin-card,
+    .cp-trust-block,
+    .cp-quick-layout { grid-template-columns: 1fr; }
+    .cp-delivery-strip,
+    .cp-trust-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 640px) {
-    .cp-products-section {
-        padding: 48px 0;
-    }
-
-    .cp-products-head {
-        flex-direction: column;
-    }
-
-    .cp-cart-open {
-        width: 100%;
-        justify-content: center;
-    }
-
-    .cp-product-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .cp-floating-cart {
-        right: 14px;
-        bottom: 148px;
-    }
+    .cp-products-section { padding: 48px 0; }
+    .cp-products-head { flex-direction: column; }
+    .cp-cart-open { width: 100%; justify-content: center; }
+    .cp-product-grid,
+    .cp-vin-fields,
+    .cp-delivery-strip,
+    .cp-trust-grid { grid-template-columns: 1fr; }
+    .cp-vin-submit { grid-column: auto; }
+    .cp-product-actions,
+    .cp-quick-actions { grid-template-columns: 1fr; }
+    .cp-floating-cart { right: 14px; bottom: 148px; }
 }
 </style>
 
@@ -632,8 +517,33 @@
     const countNodes = document.querySelectorAll("[data-cp-cart-count]");
     const cartModal = document.querySelector("[data-cp-cart-modal]");
     const cartList = document.querySelector("[data-cp-cart-list]");
+    const cartSummary = document.querySelector("[data-cp-cart-summary]");
     const cartForm = document.querySelector("[data-cp-cart-form]");
+    const cartTitle = document.querySelector("[data-cp-cart-title]");
+    const modalLabel = document.querySelector("[data-cp-modal-label]");
+    const leadPreview = document.querySelector("[data-cp-lead-preview]");
+    const quickModal = document.querySelector("[data-cp-quick-modal]");
     const toast = document.querySelector("[data-cp-toast]");
+    let customLeadMessage = "";
+    let activeQuickProductId = "";
+
+    function escapeHtml(value) {
+        return String(value || "")
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;")
+            .replaceAll('"', "&quot;")
+            .replaceAll("'", "&#039;");
+    }
+
+    function parsePrice(value) {
+        const number = String(value || "").replace(/[^0-9]/g, "");
+        return number ? Number(number) : 0;
+    }
+
+    function formatUah(value) {
+        return value ? `${value.toLocaleString("uk-UA")} грн` : "Уточнюється";
+    }
 
     function getCart() {
         try {
@@ -650,9 +560,7 @@
     }
 
     function cartProducts() {
-        return getCart()
-            .map((id) => productById.get(String(id)))
-            .filter(Boolean);
+        return getCart().map((id) => productById.get(String(id))).filter(Boolean);
     }
 
     function showToast(text) {
@@ -662,40 +570,64 @@
         setTimeout(() => toast.classList.remove("show"), 1800);
     }
 
+    function resetLeadMode() {
+        customLeadMessage = "";
+        if (cartTitle) cartTitle.textContent = "Кошик запчастин";
+        if (modalLabel) modalLabel.textContent = "Заявка без оплати";
+        if (leadPreview) {
+            leadPreview.hidden = true;
+            leadPreview.textContent = "";
+        }
+        renderCart();
+    }
+
     function renderCart() {
         const items = cartProducts();
-        countNodes.forEach((node) => {
-            node.textContent = String(items.length);
-        });
+        countNodes.forEach((node) => { node.textContent = String(items.length); });
 
         if (!cartList) return;
 
-        if (!items.length) {
-            cartList.innerHTML = '<div class="cp-cart-empty">Кошик порожній. Додайте запчастину з каталогу.</div>';
+        if (customLeadMessage) {
+            cartList.innerHTML = "";
+            if (cartSummary) cartSummary.innerHTML = "<span>Тип заявки</span><strong>Індивідуальний запит</strong>";
             return;
         }
 
+        if (!items.length) {
+            cartList.innerHTML = '<div class="cp-cart-empty">Кошик порожній. Додайте запчастину з каталогу.</div>';
+            if (cartSummary) cartSummary.innerHTML = "<span>Товарів: 0</span><strong>Разом: 0 грн</strong>";
+            return;
+        }
+
+        const subtotal = items.reduce((sum, item) => sum + parsePrice(item.price), 0);
         cartList.innerHTML = items.map((item) => `
             <div class="cp-cart-item">
                 <div>
                     <strong>${escapeHtml(item.title || "Товар")}</strong><br>
-                    <span>${escapeHtml(item.price || "")} · ${escapeHtml(item.sku || "")}</span>
+                    <span>${escapeHtml(item.price || "")} · SKU: ${escapeHtml(item.sku || "—")}${item.oem ? ` · OEM: ${escapeHtml(item.oem)}` : ""}</span>
                 </div>
                 <button type="button" class="cp-cart-remove" data-cp-remove="${escapeHtml(item.id)}">Прибрати</button>
             </div>
         `).join("");
-    }
-
-    function escapeHtml(value) {
-        return String(value || "")
-            .replaceAll("&", "&amp;")
-            .replaceAll("<", "&lt;")
-            .replaceAll(">", "&gt;")
-            .replaceAll('"', "&quot;")
-            .replaceAll("'", "&#039;");
+        if (cartSummary) cartSummary.innerHTML = `<span>Товарів: ${items.length}</span><strong>Разом: ${formatUah(subtotal)}</strong>`;
     }
 
     function openCart() {
+        resetLeadMode();
+        if (cartModal) {
+            cartModal.classList.add("open");
+            cartModal.setAttribute("aria-hidden", "false");
+        }
+    }
+
+    function openLeadModal(message, title) {
+        customLeadMessage = message;
+        if (cartTitle) cartTitle.textContent = title || "Заявка на запчастину";
+        if (modalLabel) modalLabel.textContent = "Швидка заявка";
+        if (leadPreview) {
+            leadPreview.hidden = false;
+            leadPreview.textContent = message;
+        }
         renderCart();
         if (cartModal) {
             cartModal.classList.add("open");
@@ -708,39 +640,27 @@
             cartModal.classList.remove("open");
             cartModal.setAttribute("aria-hidden", "true");
         }
+        customLeadMessage = "";
     }
 
     function addToCart(productId) {
         const product = productById.get(String(productId));
         if (!product) return;
-
         const cart = getCart();
         cart.push(String(productId));
         saveCart(cart);
         showToast("Додано до кошика");
-        openCart();
     }
 
     function orderProduct(productId) {
         const product = productById.get(String(productId));
         if (!product) return;
-
-        const message = `Замовлення товару: ${product.title || "Товар"}, ${product.price || ""}, SKU: ${product.sku || "-"}`;
-
-        if (typeof window.openCallback === "function") {
-            window.openCallback(message);
-            return;
-        }
-
-        window.location.hash = "contacts";
+        const message = `Замовлення товару: ${product.title || "Товар"}, ${product.price || ""}, SKU: ${product.sku || "-"}, OEM: ${product.oem || "-"}`;
+        openLeadModal(message, "Замовлення товару");
     }
 
     function cleanTelegram(value) {
-        return String(value || "")
-            .replace(/^https?:\/\/t\.me\//i, "")
-            .replace(/^@/, "")
-            .trim()
-            .replace(/\/$/, "");
+        return String(value || "").replace(/^https?:\/\/t\.me\//i, "").replace(/^@/, "").trim().replace(/\/$/, "");
     }
 
     function cleanPhone(value) {
@@ -757,28 +677,63 @@
             window.open(`https://t.me/${telegram}`, "_blank", "noopener");
             return;
         }
-
         if (whatsapp) {
             window.open(`https://wa.me/${whatsapp.replace(/^\+/, "")}`, "_blank", "noopener");
             return;
         }
-
         if (viber) {
             window.location.href = `viber://chat?number=${viber}`;
             return;
         }
-
         window.location.hash = "contacts";
+    }
+
+    function placeholderHtml(product) {
+        return `<div class="cp-product-placeholder"><span>⚙️</span><strong>${escapeHtml(product.category || "Автодеталі")}</strong><small>${escapeHtml(product.sku || "CARPOT PARTS")}</small></div>`;
+    }
+
+    function openQuickView(productId) {
+        const product = productById.get(String(productId));
+        if (!product || !quickModal) return;
+        activeQuickProductId = String(productId);
+
+        const media = quickModal.querySelector("[data-cp-quick-media]");
+        const category = quickModal.querySelector("[data-cp-quick-category]");
+        const title = quickModal.querySelector("[data-cp-quick-title]");
+        const stock = quickModal.querySelector("[data-cp-quick-stock]");
+        const specs = quickModal.querySelector("[data-cp-quick-specs]");
+        const description = quickModal.querySelector("[data-cp-quick-description]");
+        const price = quickModal.querySelector("[data-cp-quick-price]");
+
+        if (media) media.innerHTML = product.image ? `<img src="${escapeHtml(product.image)}" alt="${escapeHtml(product.title || "Автозапчастина")}">` : placeholderHtml(product);
+        if (category) category.textContent = product.category || "Каталог";
+        if (title) title.textContent = product.title || "Автозапчастина";
+        if (stock) stock.textContent = product.stock ? `● ${product.stock}` : "";
+        if (description) description.textContent = product.description || "Менеджер уточнить сумісність і стан перед відправкою.";
+        if (price) price.textContent = product.price || "Ціну уточнюйте";
+        if (specs) {
+            specs.innerHTML = [
+                ["Бренд", product.brand || "—"],
+                ["Стан", product.condition || "—"],
+                ["SKU", product.sku || "—"],
+                ["OEM", product.oem || "—"],
+            ].map(([label, value]) => `<div><dt>${label}</dt><dd>${escapeHtml(value)}</dd></div>`).join("");
+        }
+
+        quickModal.classList.add("open");
+        quickModal.setAttribute("aria-hidden", "false");
+    }
+
+    function closeQuickView() {
+        if (!quickModal) return;
+        quickModal.classList.remove("open");
+        quickModal.setAttribute("aria-hidden", "true");
     }
 
     document.querySelectorAll("[data-cp-category]").forEach((button) => {
         button.addEventListener("click", () => {
             const category = button.dataset.cpCategory;
-
-            document.querySelectorAll("[data-cp-category]").forEach((item) => {
-                item.classList.toggle("active", item === button);
-            });
-
+            document.querySelectorAll("[data-cp-category]").forEach((item) => item.classList.toggle("active", item === button));
             document.querySelectorAll("[data-cp-product-card]").forEach((card) => {
                 const isVisible = category === "all" || card.dataset.cpCategoryValue === category;
                 card.style.display = isVisible ? "flex" : "none";
@@ -786,39 +741,30 @@
         });
     });
 
-    document.querySelectorAll("[data-cp-buy]").forEach((button) => {
-        button.addEventListener("click", () => addToCart(button.dataset.cpBuy));
-    });
+    document.querySelectorAll("[data-cp-buy]").forEach((button) => button.addEventListener("click", () => addToCart(button.dataset.cpBuy)));
+    document.querySelectorAll("[data-cp-order]").forEach((button) => button.addEventListener("click", () => orderProduct(button.dataset.cpOrder)));
+    document.querySelectorAll("[data-cp-detail]").forEach((button) => button.addEventListener("click", () => openQuickView(button.dataset.cpDetail)));
+    document.querySelectorAll("[data-cp-message]").forEach((button) => button.addEventListener("click", openMessenger));
+    document.querySelectorAll("[data-cp-cart-open]").forEach((button) => button.addEventListener("click", openCart));
+    document.querySelectorAll("[data-cp-cart-close]").forEach((button) => button.addEventListener("click", closeCart));
+    document.querySelectorAll("[data-cp-quick-close]").forEach((button) => button.addEventListener("click", closeQuickView));
 
-    document.querySelectorAll("[data-cp-order]").forEach((button) => {
-        button.addEventListener("click", () => orderProduct(button.dataset.cpOrder));
-    });
-
-    document.querySelectorAll("[data-cp-message]").forEach((button) => {
-        button.addEventListener("click", openMessenger);
-    });
-
-    document.querySelectorAll("[data-cp-cart-open]").forEach((button) => {
-        button.addEventListener("click", openCart);
-    });
-
-    document.querySelectorAll("[data-cp-cart-close]").forEach((button) => {
-        button.addEventListener("click", closeCart);
-    });
+    const quickBuy = document.querySelector("[data-cp-quick-buy]");
+    const quickOrder = document.querySelector("[data-cp-quick-order]");
+    if (quickBuy) quickBuy.addEventListener("click", () => { addToCart(activeQuickProductId); closeQuickView(); });
+    if (quickOrder) quickOrder.addEventListener("click", () => { closeQuickView(); orderProduct(activeQuickProductId); });
 
     if (cartModal) {
-        cartModal.addEventListener("click", (event) => {
-            if (event.target === cartModal) {
-                closeCart();
-            }
-        });
+        cartModal.addEventListener("click", (event) => { if (event.target === cartModal) closeCart(); });
+    }
+    if (quickModal) {
+        quickModal.addEventListener("click", (event) => { if (event.target === quickModal) closeQuickView(); });
     }
 
     if (cartList) {
         cartList.addEventListener("click", (event) => {
             const removeButton = event.target.closest("[data-cp-remove]");
             if (!removeButton) return;
-
             const cart = getCart();
             const index = cart.indexOf(String(removeButton.dataset.cpRemove));
             if (index !== -1) {
@@ -828,52 +774,71 @@
         });
     }
 
+    const vinForm = document.querySelector("[data-cp-vin-form]");
+    if (vinForm) {
+        vinForm.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const formData = new FormData(vinForm);
+            const phone = String(formData.get("phone") || "").trim();
+            const vehicle = String(formData.get("vehicle") || "").trim();
+            const part = String(formData.get("part") || "").trim();
+            if (!phone || !vehicle || !part) {
+                showToast("Заповніть поля підбору");
+                return;
+            }
+            const message = `Запит на підбір запчастини:\nVIN/Марка/Модель: ${vehicle}\nДеталь: ${part}`;
+            await sendLead({name: String(formData.get("name") || ""), phone, message, onSuccess: () => vinForm.reset()});
+        });
+    }
+
+    async function sendLead({name, phone, message, onSuccess}) {
+        try {
+            const response = await fetch(`/site/{{ subdomain }}/lead`, {
+                method: "POST",
+                headers: {"Content-Type": "application/x-www-form-urlencoded"},
+                body: new URLSearchParams({name: name || "", phone: phone, message: message}),
+            });
+            const data = await response.json();
+            if (data.status === "ok") {
+                if (typeof onSuccess === "function") onSuccess();
+                showToast("Заявка відправлена");
+                alert("Заявка відправлена");
+            } else {
+                alert("Не вдалося відправити заявку");
+            }
+        } catch (error) {
+            alert("Помилка мережі");
+        }
+    }
+
     if (cartForm) {
         cartForm.addEventListener("submit", async (event) => {
             event.preventDefault();
-
             const items = cartProducts();
-            if (!items.length) {
-                showToast("Кошик порожній");
-                return;
-            }
-
             const formData = new FormData(cartForm);
             const phone = String(formData.get("phone") || "").trim();
-
             if (!phone) {
                 alert("Введіть телефон");
                 return;
             }
-
-            const message = "Замовлення з кошика:\n" + items
-                .map((item) => `- ${item.title || "Товар"} — ${item.price || ""}${item.sku ? `, SKU: ${item.sku}` : ""}`)
-                .join("\n");
-
-            try {
-                const response = await fetch(`/site/{{ subdomain }}/lead`, {
-                    method: "POST",
-                    headers: {"Content-Type": "application/x-www-form-urlencoded"},
-                    body: new URLSearchParams({
-                        name: String(formData.get("name") || ""),
-                        phone: phone,
-                        message: message,
-                    }),
-                });
-                const data = await response.json();
-
-                if (data.status === "ok") {
-                    localStorage.removeItem(storageKey);
+            if (!customLeadMessage && !items.length) {
+                showToast("Кошик порожній");
+                return;
+            }
+            const message = customLeadMessage || ("Замовлення з кошика:\n" + items
+                .map((item) => `- ${item.title || "Товар"} — ${item.price || ""}${item.sku ? `, SKU: ${item.sku}` : ""}${item.oem ? `, OEM: ${item.oem}` : ""}`)
+                .join("\n"));
+            await sendLead({
+                name: String(formData.get("name") || ""),
+                phone,
+                message,
+                onSuccess: () => {
+                    if (!customLeadMessage) localStorage.removeItem(storageKey);
                     renderCart();
                     cartForm.reset();
                     closeCart();
-                    alert("Заявка відправлена");
-                } else {
-                    alert("Не вдалося відправити заявку");
-                }
-            } catch (error) {
-                alert("Помилка мережі");
-            }
+                },
+            });
         });
     }
 
