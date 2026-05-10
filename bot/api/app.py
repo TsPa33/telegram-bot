@@ -202,6 +202,14 @@ async def render_site(subdomain: str, request: Request):
                 except Exception:
                     service["photo_url"] = None
 
+        if not services:
+            logger.warning(
+                "SITE DEBUG empty services subdomain=%s seller_id=%s modules=%s",
+                subdomain,
+                seller_id,
+                modules,
+            )
+
     return templates.TemplateResponse(
         "site.html",
         {
