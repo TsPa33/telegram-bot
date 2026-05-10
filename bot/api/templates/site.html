@@ -104,8 +104,8 @@
 
 .callback-uiverse-btn {
     position: fixed;
-    bottom: 20px;
-    right: 20px;
+    bottom: 24px;
+    right: 18px;
 
     display: flex;
     align-items: center;
@@ -262,8 +262,8 @@
 .scroll-top-btn {
     position: fixed;
 
-    bottom: 90px;
-    right: 20px;
+    bottom: 158px;
+    right: 18px;
 
     width: 50px;
     height: 50px;
@@ -295,6 +295,29 @@
 .scroll-top-btn.show {
     opacity: 1;
     pointer-events: auto;
+}
+
+.theme-parts_dark_red .scroll-top-btn,
+.theme-parts_dark_red .back-to-top,
+.theme-parts_dark_red [data-scroll-top] {
+    right: 18px;
+    bottom: 158px;
+    z-index: 996;
+}
+
+@media (max-width: 640px) {
+    .callback-uiverse-btn {
+        right: 14px;
+        bottom: 24px;
+    }
+
+    .scroll-top-btn,
+    .theme-parts_dark_red .scroll-top-btn,
+    .theme-parts_dark_red .back-to-top,
+    .theme-parts_dark_red [data-scroll-top] {
+        right: 14px;
+        bottom: 158px;
+    }
 }
 
 .scroll-svgIcon {
