@@ -7,13 +7,15 @@
 
         <ul id="servicesList">
         {% for s in services %}
-            <li 
+            {% set service_price = s.price if s.price and not (s.price|string).startswith('http') else '' %}
+            <li
                 class="service-item {% if loop.first %}active{% endif %}"
                 data-title="{{ s.title }}"
                 data-description="{{ s.description }}"
                 data-photo="{{ s.photo_url or '' }}"
+                data-price="{{ service_price }}"
             >
-                {{ s.title }}
+                <span>{{ s.title }}</span>
             </li>
         {% endfor %}
         </ul>
@@ -24,6 +26,7 @@
 
         {% if services and services[0] %}
         {% set main = services[0] %}
+        {% set main_price = main.price if main.price and not (main.price|string).startswith('http') else '' %}
 
         <div class="highlight" id="serviceDisplay">
 
@@ -33,8 +36,15 @@
 
             <h3 id="serviceTitle">{{ main.title }}</h3>
             <p id="serviceDescription">{{ main.description or '' }}</p>
+            <span class="service-price" id="servicePrice"{% if not main_price %} style="display:none;"{% endif %}>{% if main_price %}від {{ main_price }} грн{% endif %}</span>
 
-            <a class="btn-primary" href="#contacts">Замовити</a>
+            <a
+                class="btn-primary"
+                href="#contacts"
+                onclick="if (window.openCallback) { openCallback('Замовити діагностику'); return false; }"
+            >
+                Замовити діагностику
+            </a>
 
         </div>
         {% endif %}
@@ -42,4 +52,46 @@
     </div>
 
 </div>
+
+{% if config.get('theme', {}).get('scheme') == 'electric_premium_dark' %}
+<div class="container electric-service-extras">
+    <div class="electric-problems-block">
+        <h2 class="electric-section-title">Типові проблеми, з якими ми допомагаємо</h2>
+        <div class="electric-problems-grid">
+            <div class="electric-problem"><strong>Горить Check Engine</strong></div>
+            <div class="electric-problem"><strong>Авто не заводиться</strong></div>
+            <div class="electric-problem"><strong>Розряджається АКБ</strong></div>
+            <div class="electric-problem"><strong>Не працює світло</strong></div>
+            <div class="electric-problem"><strong>Помилки ABS/ESP</strong></div>
+            <div class="electric-problem"><strong>Проблеми після встановлення обладнання</strong></div>
+        </div>
+    </div>
+
+    <div class="electric-diagnostic-cta">
+        <div>
+            <h3>Горить Check Engine або авто не заводиться?</h3>
+            <p>Опишіть симптом — менеджер підкаже, з чого почати діагностику.</p>
+        </div>
+        <a
+            class="btn-primary"
+            href="#contacts"
+            onclick="if (window.openCallback) { openCallback('Записатися на діагностику'); return false; }"
+        >
+            Записатися на діагностику
+        </a>
+    </div>
+
+    <div class="electric-trust-block">
+        <h2 class="electric-section-title">Чому VoltDrive</h2>
+        <div class="electric-trust-grid">
+            <div class="electric-trust-item"><strong>OBD/ECU діагностика</strong></div>
+            <div class="electric-trust-item"><strong>Пошук причини, не заміна навмання</strong></div>
+            <div class="electric-trust-item"><strong>Фото/відео звіт</strong></div>
+            <div class="electric-trust-item"><strong>Гарантія на роботу</strong></div>
+            <div class="electric-trust-item"><strong>Підбір рішення під бюджет</strong></div>
+            <div class="electric-trust-item"><strong>Відправка звіту в месенджер</strong></div>
+        </div>
+    </div>
+</div>
+{% endif %}
 </section>
