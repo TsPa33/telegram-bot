@@ -208,6 +208,7 @@ def _normalize_config(config: dict) -> dict:
         "neon_dark",
         "premium_dark",
         "parts_dark_red",
+        "electric_premium_dark",
     }:
         theme["scheme"] = "default"
 
