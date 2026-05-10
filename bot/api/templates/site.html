@@ -12,10 +12,7 @@
 {% set modules = config.get('modules', {}) %}
 {% set products = products or config.get('products', {}) %}
 
-<!-- HEADER -->
 {% include "components/header.html" %}
-
-<!-- HERO -->
 {% include "components/hero.html" with context %}
 
 <main>
@@ -42,11 +39,7 @@
 
 </main>
 
-<!-- FOOTER -->
 {% include "components/footer.html" %}
-
-
-<!-- ================= CALLBACK (NEW UI) ================= -->
 
 <button class="callback-uiverse-btn" onclick="openCallback()">
     <span class="callback-icon">📞</span>
@@ -55,81 +48,40 @@
 
 <div id="callbackModal" class="callback-modal">
     <div class="callback-box">
-
         <h3>Замовити дзвінок</h3>
 
-        <input
-            id="cbName"
-            type="text"
-            placeholder="Ваше ім'я"
-        >
+        <input id="cbName" type="text" placeholder="Ваше ім'я">
+        <input id="cbPhone" type="tel" placeholder="Телефон">
 
-        <input
-            id="cbPhone"
-            type="tel"
-            placeholder="Телефон"
-        >
-
-        <button
-            class="callback-submit"
-            onclick="sendCallback()"
-        >
-            Відправити
-        </button>
-
-        <button
-            type="button"
-            class="callback-close"
-            onclick="closeCallback()"
-        >
-            ✕
-        </button>
-
+        <button class="callback-submit" onclick="sendCallback()">Відправити</button>
+        <button type="button" class="callback-close" onclick="closeCallback()">✕</button>
     </div>
 </div>
 
-
-<!-- ================= SCROLL BUTTON ================= -->
-
-<button id="scrollTopBtn" class="scroll-top-btn">
-  <svg class="scroll-svgIcon" viewBox="0 0 384 512">
-    <path d="M214.6 41.4c-12.5-12.5-32.8-12.5-45.3 0l-160 160c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L160 141.2V448c0 17.7 14.3 32 32 32s32-14.3 32-32V141.2L329.4 246.6c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3l-160-160z"/>
-  </svg>
+<button id="scrollTopBtn" class="scroll-top-btn" data-scroll-top>
+    <svg class="scroll-svgIcon" viewBox="0 0 384 512">
+        <path d="M214.6 41.4c-12.5-12.5-32.8-12.5-45.3 0l-160 160c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L160 141.2V448c0 17.7 14.3 32 32 32s32-14.3 32-32V141.2L329.4 246.6c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3l-160-160z"/>
+    </svg>
 </button>
 
-
 <style>
-
-/* ===== CALLBACK BUTTON ===== */
-
 .callback-uiverse-btn {
     position: fixed;
     bottom: 24px;
     right: 18px;
-
     display: flex;
     align-items: center;
     gap: 10px;
-
     padding: 14px 18px;
-
     border-radius: 50px;
-
     background: var(--floating-bg);
-
     color: var(--button-text);
-
     border: none;
-
     cursor: pointer;
-
     font-size: 14px;
     font-weight: 500;
-
-    box-shadow: 0px 0px 0px 4px var(--floating-shadow);
-
+    box-shadow: 0 0 0 4px var(--floating-shadow);
     transition: all 0.3s ease;
-
     z-index: 1000;
 }
 
@@ -141,39 +93,25 @@
     transform: scale(0.95);
 }
 
-
-/* ===== MODAL ===== */
-
 .callback-modal {
     display: none;
-
     position: fixed;
-
     inset: 0;
-
     background: rgba(0,0,0,0.6);
-
     backdrop-filter: blur(6px);
-
     z-index: 2000;
 }
 
 .callback-box {
     background: var(--card-bg);
-
     padding: 20px;
-
     border-radius: 16px;
-
     width: 90%;
     max-width: 320px;
-
     margin: 120px auto;
-
     display: flex;
     flex-direction: column;
     gap: 12px;
-
     box-shadow: 0 20px 50px rgba(0,0,0,0.6);
 }
 
@@ -182,20 +120,12 @@
     margin: 0 0 10px;
 }
 
-
-/* ===== INPUTS ===== */
-
 .callback-box input {
     padding: 12px;
-
     border-radius: 10px;
-
     border: 1px solid var(--border);
-
     background: var(--card-inner-bg);
-
     color: var(--card-text);
-
     font-size: 16px;
 }
 
@@ -203,24 +133,14 @@
     color: var(--card-muted);
 }
 
-
-/* ===== SUBMIT ===== */
-
 .callback-submit {
     padding: 12px;
-
     border-radius: 10px;
-
     border: none;
-
     background: var(--success);
-
     color: var(--button-text);
-
     font-weight: 600;
-
     cursor: pointer;
-
     transition: 0.2s;
 }
 
@@ -228,27 +148,16 @@
     background: var(--success-dark);
 }
 
-
-/* ===== CLOSE ===== */
-
 .callback-close {
     width: 100%;
-
     padding: 12px;
-
     border: 1px solid var(--border);
-
     border-radius: 10px;
-
     background: var(--modal-control-bg);
-
     color: var(--modal-danger);
-
     font-size: 18px;
     font-weight: 700;
-
     cursor: pointer;
-
     transition: 0.2s;
 }
 
@@ -256,38 +165,23 @@
     background: var(--modal-control-hover);
 }
 
-
-/* ===== SCROLL BUTTON ===== */
-
 .scroll-top-btn {
     position: fixed;
-
     bottom: 158px;
     right: 18px;
-
     width: 50px;
     height: 50px;
-
     border-radius: 50%;
-
     background-color: var(--floating-bg);
-
     border: none;
-
     display: flex;
     align-items: center;
     justify-content: center;
-
-    box-shadow: 0px 0px 0px 4px var(--floating-shadow);
-
+    box-shadow: 0 0 0 4px var(--floating-shadow);
     cursor: pointer;
-
-    transition: all 0.3s ease;
-
+    transition: all 0.3s ease, bottom 0.2s ease;
     overflow: hidden;
-
     z-index: 1000;
-
     opacity: 0;
     pointer-events: none;
 }
@@ -297,27 +191,23 @@
     pointer-events: auto;
 }
 
+.theme-parts_dark_red .callback-uiverse-btn {
+    right: 18px;
+    bottom: 24px;
+}
+
 .theme-parts_dark_red .scroll-top-btn,
 .theme-parts_dark_red .back-to-top,
 .theme-parts_dark_red [data-scroll-top] {
     right: 18px;
-    bottom: 158px;
+    bottom: 98px;
     z-index: 996;
 }
 
-@media (max-width: 640px) {
-    .callback-uiverse-btn {
-        right: 14px;
-        bottom: 24px;
-    }
-
-    .scroll-top-btn,
-    .theme-parts_dark_red .scroll-top-btn,
-    .theme-parts_dark_red .back-to-top,
-    .theme-parts_dark_red [data-scroll-top] {
-        right: 14px;
-        bottom: 158px;
-    }
+.theme-parts_dark_red.has-products-cart .scroll-top-btn,
+.theme-parts_dark_red.has-products-cart .back-to-top,
+.theme-parts_dark_red.has-products-cart [data-scroll-top] {
+    bottom: 158px;
 }
 
 .scroll-svgIcon {
@@ -330,9 +220,7 @@
 
 .scroll-top-btn:hover {
     width: 140px;
-
     border-radius: 50px;
-
     background-color: var(--floating-hover);
 }
 
@@ -342,15 +230,10 @@
 
 .scroll-top-btn::before {
     content: "Вгору";
-
     position: absolute;
-
     color: var(--button-text);
-
     font-size: 0;
-
     white-space: nowrap;
-
     transition: 0.3s;
 }
 
@@ -359,13 +242,35 @@
     transform: translateY(0);
 }
 
+@media (max-width: 640px) {
+    .callback-uiverse-btn,
+    .theme-parts_dark_red .callback-uiverse-btn {
+        right: 14px;
+        bottom: 24px;
+    }
+
+    .scroll-top-btn,
+    .theme-parts_dark_red .scroll-top-btn,
+    .theme-parts_dark_red .back-to-top,
+    .theme-parts_dark_red [data-scroll-top] {
+        right: 14px;
+    }
+
+    .theme-parts_dark_red .scroll-top-btn,
+    .theme-parts_dark_red .back-to-top,
+    .theme-parts_dark_red [data-scroll-top] {
+        bottom: 98px;
+    }
+
+    .theme-parts_dark_red.has-products-cart .scroll-top-btn,
+    .theme-parts_dark_red.has-products-cart .back-to-top,
+    .theme-parts_dark_red.has-products-cart [data-scroll-top] {
+        bottom: 158px;
+    }
+}
 </style>
 
-
 <script>
-
-// ===== CALLBACK =====
-
 function openCallback(message) {
     window.carpotCallbackMessage = message || "Callback request";
     document.getElementById("callbackModal").style.display = "block";
@@ -376,7 +281,6 @@ function closeCallback() {
 }
 
 async function sendCallback() {
-
     const name = document.getElementById("cbName").value;
     const phone = document.getElementById("cbPhone").value;
 
@@ -386,14 +290,11 @@ async function sendCallback() {
     }
 
     try {
-
         const res = await fetch(`/site/{{ subdomain }}/lead`, {
             method: "POST",
-
             headers: {
                 "Content-Type": "application/x-www-form-urlencoded"
             },
-
             body: new URLSearchParams({
                 name: name || "",
                 phone: phone,
@@ -407,27 +308,20 @@ async function sendCallback() {
             alert("Заявка відправлена");
             closeCallback();
         }
-
     } catch {
         alert("Помилка мережі");
     }
 }
 
-
-// ===== SCROLL =====
-
 document.addEventListener("DOMContentLoaded", function () {
-
     const btn = document.getElementById("scrollTopBtn");
 
     window.addEventListener("scroll", () => {
-
         if (window.scrollY > 300) {
             btn.classList.add("show");
         } else {
             btn.classList.remove("show");
         }
-
     });
 
     btn.onclick = () => {
@@ -436,9 +330,7 @@ document.addEventListener("DOMContentLoaded", function () {
             behavior: "smooth"
         });
     };
-
 });
-
 </script>
 
 {% endblock %}

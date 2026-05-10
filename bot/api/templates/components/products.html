@@ -103,18 +103,10 @@
                     </div>
 
                     <div class="cp-product-actions">
-                        <button type="button" class="cp-btn cp-btn-buy" data-cp-buy="{{ product.get('id') }}">
-                            Купити
-                        </button>
-                        <button type="button" class="cp-btn cp-btn-detail" data-cp-detail="{{ product.get('id') }}">
-                            Детальніше
-                        </button>
-                        <button type="button" class="cp-btn cp-btn-order" data-cp-order="{{ product.get('id') }}">
-                            Замовити
-                        </button>
-                        <button type="button" class="cp-btn cp-btn-message" data-cp-message>
-                            Написати
-                        </button>
+                        <button type="button" class="cp-btn cp-btn-buy" data-cp-buy="{{ product.get('id') }}">Купити</button>
+                        <button type="button" class="cp-btn cp-btn-detail" data-cp-detail="{{ product.get('id') }}">Детальніше</button>
+                        <button type="button" class="cp-btn cp-btn-order" data-cp-order="{{ product.get('id') }}">Замовити</button>
+                        <button type="button" class="cp-btn cp-btn-message" data-cp-message>Написати</button>
                     </div>
                 </div>
             </article>
@@ -137,14 +129,7 @@
         </div>
     </div>
 
-    <button
-        type="button"
-        class="cp-floating-cart"
-        data-cp-cart-open
-        data-cp-floating-cart
-        hidden
-        aria-label="Відкрити кошик"
-    >
+    <button type="button" class="cp-floating-cart" data-cp-cart-open data-cp-floating-cart hidden aria-label="Відкрити кошик">
         🛒
         <span data-cp-cart-count>0</span>
     </button>
@@ -166,12 +151,8 @@
             <form class="cp-cart-form" data-cp-cart-form>
                 <input type="text" name="name" placeholder="Ваше ім'я">
                 <input type="tel" name="phone" placeholder="Телефон" required>
-                <button type="submit" class="cp-btn cp-cart-submit">
-                    Оформити заявку
-                </button>
-                <p class="cp-cart-note">
-                    Менеджер підтвердить наявність, сумісність та доставку. Онлайн-оплати немає.
-                </p>
+                <button type="submit" class="cp-btn cp-cart-submit">Оформити заявку</button>
+                <p class="cp-cart-note">Менеджер підтвердить наявність, сумісність та доставку. Онлайн-оплати немає.</p>
             </form>
         </div>
     </div>
@@ -336,7 +317,11 @@
 
 .cp-vin-fields input::placeholder,
 .cp-cart-form input::placeholder { color: #94a3b8; }
-.cp-vin-submit { grid-column: span 2; background: linear-gradient(135deg, #ef4444, #991b1b); }
+
+.cp-vin-submit {
+    grid-column: span 2;
+    background: linear-gradient(135deg, #ef4444, #991b1b);
+}
 
 .cp-delivery-strip {
     display: grid;
@@ -356,6 +341,7 @@
 }
 
 .cp-category-pills { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 28px; }
+
 .cp-category-pill {
     display: inline-flex;
     align-items: center;
@@ -369,10 +355,20 @@
     cursor: pointer;
     transition: 0.2s ease;
 }
-.cp-category-pill:hover,
-.cp-category-pill.active { border-color: rgba(248, 113, 113, 0.80); background: rgba(220, 38, 38, 0.22); color: #ffffff; }
 
-.cp-product-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }
+.cp-category-pill:hover,
+.cp-category-pill.active {
+    border-color: rgba(248, 113, 113, 0.80);
+    background: rgba(220, 38, 38, 0.22);
+    color: #ffffff;
+}
+
+.cp-product-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 18px;
+}
+
 .cp-product-card {
     display: flex;
     flex-direction: column;
@@ -384,12 +380,30 @@
     overflow: hidden;
     transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
 }
-.cp-product-card:hover { transform: translateY(-5px); border-color: rgba(248, 113, 113, 0.62); box-shadow: 0 28px 90px rgba(220, 38, 38, 0.22); }
+
+.cp-product-card:hover {
+    transform: translateY(-5px);
+    border-color: rgba(248, 113, 113, 0.62);
+    box-shadow: 0 28px 90px rgba(220, 38, 38, 0.22);
+}
+
 .cp-product-card:hover .cp-product-media img,
 .cp-product-card:hover .cp-product-placeholder { transform: scale(1.045); }
 
-.cp-product-media { position: relative; height: 170px; background: #020617; overflow: hidden; }
-.cp-product-media img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.28s ease; }
+.cp-product-media {
+    position: relative;
+    height: 170px;
+    background: #020617;
+    overflow: hidden;
+}
+
+.cp-product-media img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.28s ease;
+}
+
 .cp-product-placeholder {
     display: flex;
     height: 100%;
@@ -403,6 +417,7 @@
         repeating-linear-gradient(-45deg, rgba(255,255,255,0.045) 0 8px, transparent 8px 16px);
     transition: transform 0.28s ease;
 }
+
 .cp-product-placeholder span { font-size: 42px; filter: drop-shadow(0 8px 20px rgba(248, 113, 113, 0.35)); }
 .cp-product-placeholder strong { color: #ffffff; font-size: 18px; }
 .cp-product-placeholder small { color: #fca5a5; font-size: 11px; font-weight: 900; letter-spacing: 0.18em; }
@@ -416,82 +431,406 @@
     font-weight: 900;
     backdrop-filter: blur(8px);
 }
-.cp-product-category { left: 12px; top: 12px; background: rgba(2, 6, 23, 0.78); color: #fecaca; }
-.cp-product-badge { right: 12px; top: 12px; background: linear-gradient(135deg, #f59e0b, #b45309); color: #111827; box-shadow: 0 12px 30px rgba(245, 158, 11, 0.22); }
-.cp-badge-sale,
-.cp-badge-hot { background: linear-gradient(135deg, #ef4444, #991b1b); color: #ffffff; }
 
-.cp-product-body { display: flex; flex: 1; flex-direction: column; padding: 16px; }
-.cp-stock-row { margin-bottom: 10px; color: #fbbf24; font-size: 12px; font-weight: 900; letter-spacing: 0.02em; }
-.cp-product-body h3 { margin: 0 0 12px; color: #ffffff; font-size: 18px; line-height: 1.25; }
-.cp-product-meta { display: grid; grid-template-columns: 1fr; gap: 8px; margin: 0 0 12px; }
+.cp-product-category {
+    left: 12px;
+    top: 12px;
+    background: rgba(2, 6, 23, 0.78);
+    color: #fecaca;
+}
+
+.cp-product-badge {
+    right: 12px;
+    top: 12px;
+    background: linear-gradient(135deg, #f59e0b, #b45309);
+    color: #111827;
+    box-shadow: 0 12px 30px rgba(245, 158, 11, 0.22);
+}
+
+.cp-badge-sale,
+.cp-badge-hot {
+    background: linear-gradient(135deg, #ef4444, #991b1b);
+    color: #ffffff;
+}
+
+.cp-product-body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    padding: 16px;
+}
+
+.cp-stock-row {
+    margin-bottom: 10px;
+    color: #fbbf24;
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: 0.02em;
+}
+
+.cp-product-body h3 {
+    margin: 0 0 12px;
+    color: #ffffff;
+    font-size: 18px;
+    line-height: 1.25;
+}
+
+.cp-product-meta {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    margin: 0 0 12px;
+}
+
 .cp-product-meta div,
-.cp-quick-specs div { display: flex; justify-content: space-between; gap: 12px; padding-bottom: 8px; border-bottom: 1px solid rgba(148, 163, 184, 0.16); }
+.cp-quick-specs div {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+}
+
 .cp-product-meta dt,
 .cp-quick-specs dt { color: #94a3b8; font-size: 12px; }
+
 .cp-product-meta dd,
-.cp-quick-specs dd { margin: 0; color: #e5e7eb; font-size: 13px; font-weight: 700; text-align: right; }
-.cp-product-description { margin: 0 0 14px; color: #aeb8c8; font-size: 13px; line-height: 1.45; }
-.cp-part-codes { display: grid; gap: 6px; margin-top: auto; color: #94a3b8; font-size: 12px; }
+.cp-quick-specs dd {
+    margin: 0;
+    color: #e5e7eb;
+    font-size: 13px;
+    font-weight: 700;
+    text-align: right;
+}
+
+.cp-product-description {
+    margin: 0 0 14px;
+    color: #aeb8c8;
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.cp-part-codes {
+    display: grid;
+    gap: 6px;
+    margin-top: auto;
+    color: #94a3b8;
+    font-size: 12px;
+}
+
 .cp-part-codes b { color: #e5e7eb; }
-.cp-product-bottom { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; padding-top: 10px; }
-.cp-price-label { display: block; color: #94a3b8; font-size: 11px; font-weight: 700; text-transform: uppercase; }
-.cp-product-price { display: block; margin-top: 2px; color: #fbbf24; font-size: 21px; line-height: 1; }
-.cp-product-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 16px; }
-.cp-btn { min-height: 42px; padding: 10px 12px; border: 0; border-radius: 12px; color: #ffffff; font-weight: 800; cursor: pointer; transition: 0.2s ease; }
+
+.cp-product-bottom {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+    padding-top: 10px;
+}
+
+.cp-price-label {
+    display: block;
+    color: #94a3b8;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.cp-product-price {
+    display: block;
+    margin-top: 2px;
+    color: #fbbf24;
+    font-size: 21px;
+    line-height: 1;
+}
+
+.cp-product-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+.cp-btn {
+    min-height: 42px;
+    padding: 10px 12px;
+    border: 0;
+    border-radius: 12px;
+    color: #ffffff;
+    font-weight: 800;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
 .cp-btn:hover { transform: translateY(-1px); }
-.cp-btn-buy { background: linear-gradient(135deg, #ef4444, #991b1b); box-shadow: 0 12px 28px rgba(239, 68, 68, 0.20); }
+
+.cp-btn-buy {
+    background: linear-gradient(135deg, #ef4444, #991b1b);
+    box-shadow: 0 12px 28px rgba(239, 68, 68, 0.20);
+}
+
 .cp-btn-order,
-.cp-btn-detail { background: #1f2937; border: 1px solid rgba(148, 163, 184, 0.28); }
-.cp-btn-message { background: rgba(69, 10, 10, 0.52); border: 1px solid rgba(248, 113, 113, 0.34); color: #fecaca; }
+.cp-btn-detail {
+    background: #1f2937;
+    border: 1px solid rgba(148, 163, 184, 0.28);
+}
 
-.cp-trust-block { display: grid; grid-template-columns: minmax(220px, 0.7fr) 1fr; gap: 22px; margin-top: 28px; padding: 24px; }
+.cp-btn-message {
+    background: rgba(69, 10, 10, 0.52);
+    border: 1px solid rgba(248, 113, 113, 0.34);
+    color: #fecaca;
+}
+
+.cp-trust-block {
+    display: grid;
+    grid-template-columns: minmax(220px, 0.7fr) 1fr;
+    gap: 22px;
+    margin-top: 28px;
+    padding: 24px;
+}
+
 .cp-trust-block h3 { font-size: clamp(26px, 3vw, 38px); }
-.cp-trust-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-.cp-trust-grid span { padding: 13px; border: 1px solid rgba(148, 163, 184, 0.18); border-radius: 16px; background: rgba(2, 6, 23, 0.42); color: #e5e7eb; font-weight: 800; }
 
-.cp-floating-cart { position: fixed; right: 18px; bottom: 98px; z-index: 996; display: inline-flex; align-items: center; gap: 6px; padding: 12px 14px; border-radius: 999px; font-weight: 900; }
+.cp-trust-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.cp-trust-grid span {
+    padding: 13px;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 16px;
+    background: rgba(2, 6, 23, 0.42);
+    color: #e5e7eb;
+    font-weight: 800;
+}
+
+.cp-floating-cart {
+    position: fixed;
+    right: 18px;
+    bottom: 98px;
+    z-index: 996;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 12px 14px;
+    border-radius: 999px;
+    font-weight: 900;
+}
+
 .cp-floating-cart[hidden] { display: none !important; }
 .cp-floating-cart.is-visible { display: inline-flex; }
-.theme-parts_dark_red .cp-floating-cart { right: 18px; bottom: 98px; z-index: 996; }
+
+.theme-parts_dark_red .cp-floating-cart {
+    right: 18px;
+    bottom: 98px;
+    z-index: 996;
+}
+
+.theme-parts_dark_red .scroll-top,
+.theme-parts_dark_red .back-to-top,
+.theme-parts_dark_red [data-scroll-top] {
+    right: 18px;
+    bottom: 98px;
+    z-index: 996;
+    transition: bottom 0.2s ease;
+}
+
+body.has-products-cart.theme-parts_dark_red .scroll-top,
+body.has-products-cart.theme-parts_dark_red .back-to-top,
+body.has-products-cart.theme-parts_dark_red [data-scroll-top] {
+    bottom: 158px;
+}
+
 .cp-cart-modal,
-.cp-quick-modal { position: fixed; inset: 0; z-index: 2500; display: none; align-items: center; justify-content: center; padding: 18px; background: rgba(2, 6, 23, 0.76); backdrop-filter: blur(10px); }
+.cp-quick-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 2500;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 18px;
+    background: rgba(2, 6, 23, 0.76);
+    backdrop-filter: blur(10px);
+}
+
 .cp-cart-modal.open,
 .cp-quick-modal.open { display: flex; }
+
 .cp-cart-dialog,
-.cp-quick-dialog { width: min(100%, 560px); max-height: min(92vh, 760px); overflow: auto; border: 1px solid rgba(248, 113, 113, 0.35); border-radius: 24px; background: linear-gradient(180deg, #111827, #030712); color: #f8fafc; box-shadow: 0 35px 100px rgba(0,0,0,0.65); padding: 20px; }
-.cp-quick-dialog { width: min(100%, 880px); position: relative; }
-.cp-cart-top { display: flex; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
-.cp-cart-top h3 { margin: 0; color: #ffffff; font-size: 24px; }
-.cp-cart-close { width: 42px; height: 42px; border: 1px solid rgba(148, 163, 184, 0.35); border-radius: 50%; background: rgba(15, 23, 42, 0.95); color: #ffffff; cursor: pointer; }
-.cp-quick-close { position: absolute; right: 18px; top: 18px; z-index: 2; }
+.cp-quick-dialog {
+    width: min(100%, 560px);
+    max-height: min(92vh, 760px);
+    overflow: auto;
+    border: 1px solid rgba(248, 113, 113, 0.35);
+    border-radius: 24px;
+    background: linear-gradient(180deg, #111827, #030712);
+    color: #f8fafc;
+    box-shadow: 0 35px 100px rgba(0,0,0,0.65);
+    padding: 20px;
+}
+
+.cp-quick-dialog {
+    width: min(100%, 880px);
+    position: relative;
+}
+
+.cp-cart-top {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 14px;
+}
+
+.cp-cart-top h3 {
+    margin: 0;
+    color: #ffffff;
+    font-size: 24px;
+}
+
+.cp-cart-close {
+    width: 42px;
+    height: 42px;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    border-radius: 50%;
+    background: rgba(15, 23, 42, 0.95);
+    color: #ffffff;
+    cursor: pointer;
+}
+
+.cp-quick-close {
+    position: absolute;
+    right: 18px;
+    top: 18px;
+    z-index: 2;
+}
+
 .cp-cart-list { display: grid; gap: 10px; margin-bottom: 12px; }
+
 .cp-cart-item,
 .cp-cart-empty,
 .cp-cart-summary,
-.cp-lead-preview { border: 1px solid rgba(148, 163, 184, 0.18); border-radius: 16px; background: rgba(15, 23, 42, 0.76); padding: 12px; }
-.cp-lead-preview { margin: 10px 0 0; color: #cbd5e1; white-space: pre-line; }
-.cp-cart-item { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; }
+.cp-lead-preview {
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 16px;
+    background: rgba(15, 23, 42, 0.76);
+    padding: 12px;
+}
+
+.cp-lead-preview {
+    margin: 10px 0 0;
+    color: #cbd5e1;
+    white-space: pre-line;
+}
+
+.cp-cart-item {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 10px;
+    align-items: center;
+}
+
 .cp-cart-item strong { color: #ffffff; }
+
 .cp-cart-item span,
 .cp-cart-empty,
 .cp-cart-summary { color: #cbd5e1; }
-.cp-cart-summary { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 16px; font-weight: 900; }
-.cp-cart-remove { border: 0; border-radius: 10px; background: rgba(239, 68, 68, 0.16); color: #fecaca; padding: 8px 10px; cursor: pointer; }
+
+.cp-cart-summary {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+    font-weight: 900;
+}
+
+.cp-cart-remove {
+    border: 0;
+    border-radius: 10px;
+    background: rgba(239, 68, 68, 0.16);
+    color: #fecaca;
+    padding: 8px 10px;
+    cursor: pointer;
+}
+
 .cp-cart-form { display: grid; gap: 10px; }
 .cp-cart-submit { background: linear-gradient(135deg, #ef4444, #b91c1c); }
 .cp-cart-note { margin: 0; color: #94a3b8; font-size: 12px; line-height: 1.45; }
-.cp-quick-layout { display: grid; grid-template-columns: minmax(240px, 0.9fr) 1.1fr; gap: 22px; }
-.cp-quick-media { min-height: 330px; border-radius: 20px; overflow: hidden; background: #020617; }
-.cp-quick-media img { width: 100%; height: 100%; object-fit: cover; }
-.cp-quick-content h3 { margin: 0 44px 12px 0; color: #ffffff; font-size: clamp(26px, 4vw, 38px); line-height: 1.05; }
+
+.cp-quick-layout {
+    display: grid;
+    grid-template-columns: minmax(240px, 0.9fr) 1.1fr;
+    gap: 22px;
+}
+
+.cp-quick-media {
+    min-height: 330px;
+    border-radius: 20px;
+    overflow: hidden;
+    background: #020617;
+}
+
+.cp-quick-media img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.cp-quick-content h3 {
+    margin: 0 44px 12px 0;
+    color: #ffffff;
+    font-size: clamp(26px, 4vw, 38px);
+    line-height: 1.05;
+}
+
 .cp-quick-specs { display: grid; gap: 8px; margin: 0 0 14px; }
 .cp-quick-description { color: #cbd5e1; line-height: 1.55; }
-.cp-quick-delivery { margin: 12px 0; padding: 12px; border-radius: 14px; background: rgba(245, 158, 11, 0.10); color: #fef3c7; font-weight: 800; }
-.cp-quick-price { display: block; margin: 14px 0; color: #fbbf24; font-size: 28px; }
-.cp-quick-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-.cp-toast { position: fixed; left: 50%; bottom: 28px; z-index: 2600; transform: translate(-50%, 20px); opacity: 0; pointer-events: none; padding: 12px 16px; border-radius: 999px; background: linear-gradient(135deg, #ef4444, #991b1b); color: #ffffff; font-weight: 800; box-shadow: 0 18px 44px rgba(0,0,0,0.35); transition: 0.2s ease; }
-.cp-toast.show { transform: translate(-50%, 0); opacity: 1; }
+
+.cp-quick-delivery {
+    margin: 12px 0;
+    padding: 12px;
+    border-radius: 14px;
+    background: rgba(245, 158, 11, 0.10);
+    color: #fef3c7;
+    font-weight: 800;
+}
+
+.cp-quick-price {
+    display: block;
+    margin: 14px 0;
+    color: #fbbf24;
+    font-size: 28px;
+}
+
+.cp-quick-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.cp-toast {
+    position: fixed;
+    left: 50%;
+    bottom: 28px;
+    z-index: 2600;
+    transform: translate(-50%, 20px);
+    opacity: 0;
+    pointer-events: none;
+    padding: 12px 16px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #ef4444, #991b1b);
+    color: #ffffff;
+    font-weight: 800;
+    box-shadow: 0 18px 44px rgba(0,0,0,0.35);
+    transition: 0.2s ease;
+}
+
+.cp-toast.show {
+    transform: translate(-50%, 0);
+    opacity: 1;
+}
 
 @media (max-width: 1024px) {
     .cp-product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -513,8 +852,29 @@
     .cp-vin-submit { grid-column: auto; }
     .cp-product-actions,
     .cp-quick-actions { grid-template-columns: 1fr; }
-    .cp-floating-cart { right: 14px; bottom: 98px; }
-    .theme-parts_dark_red .cp-floating-cart { right: 14px; bottom: 98px; }
+
+    .cp-floating-cart {
+        right: 14px;
+        bottom: 98px;
+    }
+
+    .theme-parts_dark_red .cp-floating-cart {
+        right: 14px;
+        bottom: 98px;
+    }
+
+    .theme-parts_dark_red .scroll-top,
+    .theme-parts_dark_red .back-to-top,
+    .theme-parts_dark_red [data-scroll-top] {
+        right: 14px;
+        bottom: 98px;
+    }
+
+    body.has-products-cart.theme-parts_dark_red .scroll-top,
+    body.has-products-cart.theme-parts_dark_red .back-to-top,
+    body.has-products-cart.theme-parts_dark_red [data-scroll-top] {
+        bottom: 158px;
+    }
 }
 </style>
 
@@ -595,7 +955,13 @@
     function renderCart() {
         const items = cartProducts();
         const hasItems = items.length > 0;
-        countNodes.forEach((node) => { node.textContent = String(items.length); });
+
+        countNodes.forEach((node) => {
+            node.textContent = String(items.length);
+        });
+
+        document.body.classList.toggle("has-products-cart", hasItems);
+
         document.querySelectorAll("[data-cp-floating-cart]").forEach((btn) => {
             btn.hidden = !hasItems;
             btn.classList.toggle("is-visible", hasItems);
@@ -625,7 +991,10 @@
                 <button type="button" class="cp-cart-remove" data-cp-remove="${escapeHtml(item.id)}">Прибрати</button>
             </div>
         `).join("");
-        if (cartSummary) cartSummary.innerHTML = `<span>Товарів: ${items.length}</span><strong>Разом: ${formatUah(subtotal)}</strong>`;
+
+        if (cartSummary) {
+            cartSummary.innerHTML = `<span>Товарів: ${items.length}</span><strong>Разом: ${formatUah(subtotal)}</strong>`;
+        }
     }
 
     function openCart() {
@@ -693,14 +1062,17 @@
             window.open(`https://t.me/${telegram}`, "_blank", "noopener");
             return;
         }
+
         if (whatsapp) {
             window.open(`https://wa.me/${whatsapp.replace(/^\+/, "")}`, "_blank", "noopener");
             return;
         }
+
         if (viber) {
             window.location.href = `viber://chat?number=${viber}`;
             return;
         }
+
         window.location.hash = "contacts";
     }
 
@@ -721,12 +1093,18 @@
         const description = quickModal.querySelector("[data-cp-quick-description]");
         const price = quickModal.querySelector("[data-cp-quick-price]");
 
-        if (media) media.innerHTML = product.image ? `<img src="${escapeHtml(product.image)}" alt="${escapeHtml(product.title || "Автозапчастина")}">` : placeholderHtml(product);
+        if (media) {
+            media.innerHTML = product.image
+                ? `<img src="${escapeHtml(product.image)}" alt="${escapeHtml(product.title || "Автозапчастина")}">`
+                : placeholderHtml(product);
+        }
+
         if (category) category.textContent = product.category || "Каталог";
         if (title) title.textContent = product.title || "Автозапчастина";
         if (stock) stock.textContent = product.stock ? `● ${product.stock}` : "";
         if (description) description.textContent = product.description || "Менеджер уточнить сумісність і стан перед відправкою.";
         if (price) price.textContent = product.price || "Ціну уточнюйте";
+
         if (specs) {
             specs.innerHTML = [
                 ["Бренд", product.brand || "—"],
@@ -749,7 +1127,11 @@
     document.querySelectorAll("[data-cp-category]").forEach((button) => {
         button.addEventListener("click", () => {
             const category = button.dataset.cpCategory;
-            document.querySelectorAll("[data-cp-category]").forEach((item) => item.classList.toggle("active", item === button));
+
+            document.querySelectorAll("[data-cp-category]").forEach((item) => {
+                item.classList.toggle("active", item === button);
+            });
+
             document.querySelectorAll("[data-cp-product-card]").forEach((card) => {
                 const isVisible = category === "all" || card.dataset.cpCategoryValue === category;
                 card.style.display = isVisible ? "flex" : "none";
@@ -767,22 +1149,41 @@
 
     const quickBuy = document.querySelector("[data-cp-quick-buy]");
     const quickOrder = document.querySelector("[data-cp-quick-order]");
-    if (quickBuy) quickBuy.addEventListener("click", () => { addToCart(activeQuickProductId); closeQuickView(); });
-    if (quickOrder) quickOrder.addEventListener("click", () => { closeQuickView(); orderProduct(activeQuickProductId); });
+
+    if (quickBuy) {
+        quickBuy.addEventListener("click", () => {
+            addToCart(activeQuickProductId);
+            closeQuickView();
+        });
+    }
+
+    if (quickOrder) {
+        quickOrder.addEventListener("click", () => {
+            closeQuickView();
+            orderProduct(activeQuickProductId);
+        });
+    }
 
     if (cartModal) {
-        cartModal.addEventListener("click", (event) => { if (event.target === cartModal) closeCart(); });
+        cartModal.addEventListener("click", (event) => {
+            if (event.target === cartModal) closeCart();
+        });
     }
+
     if (quickModal) {
-        quickModal.addEventListener("click", (event) => { if (event.target === quickModal) closeQuickView(); });
+        quickModal.addEventListener("click", (event) => {
+            if (event.target === quickModal) closeQuickView();
+        });
     }
 
     if (cartList) {
         cartList.addEventListener("click", (event) => {
             const removeButton = event.target.closest("[data-cp-remove]");
             if (!removeButton) return;
+
             const cart = getCart();
             const index = cart.indexOf(String(removeButton.dataset.cpRemove));
+
             if (index !== -1) {
                 cart.splice(index, 1);
                 saveCart(cart);
@@ -791,19 +1192,29 @@
     }
 
     const vinForm = document.querySelector("[data-cp-vin-form]");
+
     if (vinForm) {
         vinForm.addEventListener("submit", async (event) => {
             event.preventDefault();
+
             const formData = new FormData(vinForm);
             const phone = String(formData.get("phone") || "").trim();
             const vehicle = String(formData.get("vehicle") || "").trim();
             const part = String(formData.get("part") || "").trim();
+
             if (!phone || !vehicle || !part) {
                 showToast("Заповніть поля підбору");
                 return;
             }
+
             const message = `Запит на підбір запчастини:\nVIN/Марка/Модель: ${vehicle}\nДеталь: ${part}`;
-            await sendLead({name: String(formData.get("name") || ""), phone, message, onSuccess: () => vinForm.reset()});
+
+            await sendLead({
+                name: String(formData.get("name") || ""),
+                phone,
+                message,
+                onSuccess: () => vinForm.reset()
+            });
         });
     }
 
@@ -814,7 +1225,9 @@
                 headers: {"Content-Type": "application/x-www-form-urlencoded"},
                 body: new URLSearchParams({name: name || "", phone: phone, message: message}),
             });
+
             const data = await response.json();
+
             if (data.status === "ok") {
                 if (typeof onSuccess === "function") onSuccess();
                 showToast("Заявка відправлена");
@@ -830,20 +1243,25 @@
     if (cartForm) {
         cartForm.addEventListener("submit", async (event) => {
             event.preventDefault();
+
             const items = cartProducts();
             const formData = new FormData(cartForm);
             const phone = String(formData.get("phone") || "").trim();
+
             if (!phone) {
                 alert("Введіть телефон");
                 return;
             }
+
             if (!customLeadMessage && !items.length) {
                 showToast("Кошик порожній");
                 return;
             }
+
             const message = customLeadMessage || ("Замовлення з кошика:\n" + items
                 .map((item) => `- ${item.title || "Товар"} — ${item.price || ""}${item.sku ? `, SKU: ${item.sku}` : ""}${item.oem ? `, OEM: ${item.oem}` : ""}`)
                 .join("\n"));
+
             await sendLead({
                 name: String(formData.get("name") || ""),
                 phone,
