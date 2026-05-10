@@ -196,7 +196,7 @@ DEMO_PRESETS = {
             "website": "https://carpot.demo/rozborka",
         },
         "config": {
-            "theme": {"scheme": "premium_dark"},
+            "theme": {"scheme": "parts_dark_red"},
             "header": {"title": "CARPOT Demo Розборка", "logo": ""},
             "hero": {
                 "title": "Автозапчастини з розборки з підбором по VIN",
