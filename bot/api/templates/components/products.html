@@ -137,7 +137,14 @@
         </div>
     </div>
 
-    <button type="button" class="cp-floating-cart" data-cp-cart-open aria-label="Відкрити кошик">
+    <button
+        type="button"
+        class="cp-floating-cart"
+        data-cp-cart-open
+        data-cp-floating-cart
+        hidden
+        aria-label="Відкрити кошик"
+    >
         🛒
         <span data-cp-cart-count>0</span>
     </button>
@@ -444,6 +451,9 @@
 .cp-trust-grid span { padding: 13px; border: 1px solid rgba(148, 163, 184, 0.18); border-radius: 16px; background: rgba(2, 6, 23, 0.42); color: #e5e7eb; font-weight: 800; }
 
 .cp-floating-cart { position: fixed; right: 18px; bottom: 156px; z-index: 995; display: inline-flex; align-items: center; gap: 6px; padding: 12px 14px; border-radius: 999px; font-weight: 900; }
+.cp-floating-cart[hidden] { display: none !important; }
+.cp-floating-cart.is-visible { display: inline-flex; }
+.theme-parts_dark_red .cp-floating-cart { right: 18px; bottom: 98px; z-index: 996; }
 .cp-cart-modal,
 .cp-quick-modal { position: fixed; inset: 0; z-index: 2500; display: none; align-items: center; justify-content: center; padding: 18px; background: rgba(2, 6, 23, 0.76); backdrop-filter: blur(10px); }
 .cp-cart-modal.open,
@@ -504,6 +514,7 @@
     .cp-product-actions,
     .cp-quick-actions { grid-template-columns: 1fr; }
     .cp-floating-cart { right: 14px; bottom: 148px; }
+    .theme-parts_dark_red .cp-floating-cart { right: 14px; bottom: 98px; }
 }
 </style>
 
@@ -583,7 +594,13 @@
 
     function renderCart() {
         const items = cartProducts();
+        const hasItems = items.length > 0;
         countNodes.forEach((node) => { node.textContent = String(items.length); });
+        document.body.classList.toggle("has-products-cart", hasItems);
+        document.querySelectorAll("[data-cp-floating-cart]").forEach((btn) => {
+            btn.hidden = !hasItems;
+            btn.classList.toggle("is-visible", hasItems);
+        });
 
         if (!cartList) return;
 
