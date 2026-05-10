@@ -62,6 +62,7 @@ async def render_site(subdomain: str, request: Request):
     config = merge_with_default(raw_config)
 
     modules = config.setdefault("modules", {})
+    products = config.setdefault("products", {})
 
     service_prices = (
         config
@@ -219,6 +220,7 @@ async def render_site(subdomain: str, request: Request):
             "seller": seller,
             "cars": cars,
             "services": services,
+            "products": products,
         },
     )
 
