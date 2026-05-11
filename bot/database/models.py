@@ -51,7 +51,6 @@ async def create_tables():
     ON model_requests (user_id, brand, model);
     """)
 
-
     await execute("""
     CREATE TABLE IF NOT EXISTS admin_users (
         id SERIAL PRIMARY KEY,
@@ -104,11 +103,85 @@ async def create_tables():
     );
     """)
 
+    # === SELLER FIELDS ===
+    await execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS cars_limit INTEGER DEFAULT 1;")
+    await execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS cars_used INTEGER DEFAULT 0;")
+    await execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS shop_name TEXT;")
+    await execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS name TEXT;")
+    await execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS website TEXT;")
+    await execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS city TEXT;")
+    await execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT FALSE;")
+    await execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS description TEXT;")
+    await execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS photo_id TEXT;")
+    await execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS has_site BOOLEAN DEFAULT FALSE;")
+
+    await execute("""
+    CREATE TABLE IF NOT EXISTS payments (
+        id SERIAL PRIMARY KEY,
+        seller_id INTEGER NOT NULL REFERENCES sellers(id) ON DELETE CASCADE,
+        order_id TEXT UNIQUE NOT NULL,
+        amount NUMERIC(10,2) NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending',
+        product TEXT NOT NULL DEFAULT 'garage',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    """)
+
+    await execute("""
+    CREATE TABLE IF NOT EXISTS services (
+        id SERIAL PRIMARY KEY,
+        seller_id BIGINT NOT NULL,
+        category TEXT NOT NULL,
+        title TEXT NOT NULL,
+        city TEXT NOT NULL,
+        address TEXT NOT NULL,
+        description TEXT,
+        website TEXT,
+        photo_id TEXT,
+        price INTEGER,
+        created_at TIMESTAMP DEFAULT NOW()
+    );
+    """)
+
+    await execute("""
+    CREATE TABLE IF NOT EXISTS service_stats (
+        service_id INT PRIMARY KEY,
+        views INT DEFAULT 0,
+        calls INT DEFAULT 0,
+        clicks INT DEFAULT 0
+    );
+    """)
+
+    await execute("""
+    CREATE TABLE IF NOT EXISTS seller_sites (
+        id BIGSERIAL PRIMARY KEY,
+        seller_id BIGINT NOT NULL UNIQUE REFERENCES sellers(id) ON DELETE CASCADE,
+        subdomain TEXT NOT NULL UNIQUE,
+        status TEXT NOT NULL DEFAULT 'draft',
+        config_draft JSONB NOT NULL DEFAULT '{}'::jsonb,
+        config_live JSONB NOT NULL DEFAULT '{}'::jsonb,
+        has_custom_domain BOOLEAN NOT NULL DEFAULT FALSE,
+        custom_domain TEXT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    """)
+
+    await execute("""
+    CREATE INDEX IF NOT EXISTS idx_seller_sites_subdomain
+    ON seller_sites (subdomain);
+    """)
+
+    await execute("""
+    CREATE INDEX IF NOT EXISTS idx_seller_sites_seller_id
+    ON seller_sites (seller_id);
+    """)
+
     await execute("""
     CREATE TABLE IF NOT EXISTS site_leads (
         id SERIAL PRIMARY KEY,
         seller_id INTEGER NOT NULL REFERENCES sellers(id) ON DELETE CASCADE,
-        site_id INTEGER NULL REFERENCES seller_sites(id) ON DELETE SET NULL,
+        site_id BIGINT NULL REFERENCES seller_sites(id) ON DELETE SET NULL,
         subdomain TEXT NOT NULL,
         name TEXT,
         phone TEXT NOT NULL,
@@ -124,18 +197,6 @@ async def create_tables():
     await execute("CREATE INDEX IF NOT EXISTS idx_site_leads_seller_id ON site_leads(seller_id);")
     await execute("CREATE INDEX IF NOT EXISTS idx_site_leads_status ON site_leads(status);")
     await execute("CREATE INDEX IF NOT EXISTS idx_site_leads_created_at ON site_leads(created_at);")
-
-    # === NEW FIELDS ===
-    await execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS cars_limit INTEGER DEFAULT 1;")
-    await execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS cars_used INTEGER DEFAULT 0;")
-
-    await execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS shop_name TEXT;")
-    await execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS name TEXT;")
-    await execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS website TEXT;")
-    await execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS city TEXT;")
-    await execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT FALSE;")
-    await execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS description TEXT;")
-    await execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS photo_id TEXT;")
 
     await execute("""
     CREATE TABLE IF NOT EXISTS seller_cars (
@@ -177,13 +238,15 @@ async def create_tables():
     );
     """)
 
-    await execute(
-        "CREATE INDEX IF NOT EXISTS idx_seller_subscriptions_seller_id ON seller_subscriptions(seller_id);"
-    )
-    await execute(
-        "CREATE INDEX IF NOT EXISTS idx_seller_subscriptions_expires_at ON seller_subscriptions(expires_at);"
-    )
+    await execute("""
+    CREATE INDEX IF NOT EXISTS idx_seller_subscriptions_seller_id
+    ON seller_subscriptions(seller_id);
+    """)
 
-    await execute(
-        "ALTER TABLE services ADD COLUMN IF NOT EXISTS price INTEGER;"
-    )
+    await execute("""
+    CREATE INDEX IF NOT EXISTS idx_seller_subscriptions_expires_at
+    ON seller_subscriptions(expires_at);
+    """)
+
+    await execute("ALTER TABLE payments ADD COLUMN IF NOT EXISTS product TEXT DEFAULT 'garage';")
+    await execute("ALTER TABLE services ADD COLUMN IF NOT EXISTS price INTEGER;")
