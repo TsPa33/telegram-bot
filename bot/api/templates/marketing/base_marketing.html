@@ -187,6 +187,70 @@
             box-shadow: inset 0 0 0 1px rgba(0,255,157,0.16);
         }
 
+        .nav-toggle {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border: 1px solid rgba(0, 255, 157, 0.26);
+            border-radius: 14px;
+            color: #dfffee;
+            background: rgba(15, 23, 42, 0.72);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 10px 26px rgba(0,0,0,0.20);
+            cursor: pointer;
+            transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+        }
+
+        .nav-toggle:hover,
+        .nav-toggle:focus-visible {
+            border-color: rgba(0, 255, 157, 0.54);
+            background: rgba(15, 23, 42, 0.92);
+            box-shadow: var(--glow-green), inset 0 1px 0 rgba(255,255,255,0.06);
+        }
+
+        .nav-toggle-lines,
+        .nav-toggle-lines::before,
+        .nav-toggle-lines::after {
+            display: block;
+            width: 17px;
+            height: 2px;
+            border-radius: 999px;
+            background: currentColor;
+            transition: transform 180ms ease, opacity 180ms ease;
+        }
+
+        .nav-toggle-lines {
+            position: relative;
+        }
+
+        .nav-toggle-lines::before,
+        .nav-toggle-lines::after {
+            content: "";
+            position: absolute;
+            left: 0;
+        }
+
+        .nav-toggle-lines::before {
+            transform: translateY(-6px);
+        }
+
+        .nav-toggle-lines::after {
+            transform: translateY(6px);
+        }
+
+        .nav-toggle[aria-expanded="true"] .nav-toggle-lines {
+            transform: rotate(45deg);
+        }
+
+        .nav-toggle[aria-expanded="true"] .nav-toggle-lines::before {
+            opacity: 0;
+        }
+
+        .nav-toggle[aria-expanded="true"] .nav-toggle-lines::after {
+            transform: rotate(90deg);
+        }
+
         .btn {
             display: inline-flex;
             align-items: center;
@@ -848,18 +912,87 @@
                 filter: blur(54px);
             }
 
+            .site-header {
+                background: rgba(5, 8, 22, 0.86);
+                backdrop-filter: blur(18px);
+            }
+
             .nav {
-                align-items: flex-start;
-                flex-direction: column;
-                padding: 16px 0;
+                position: relative;
+                display: grid;
+                grid-template-columns: 1fr auto;
+                align-items: center;
+                min-height: 0;
+                gap: 8px 12px;
+                padding: 10px 0 9px;
+            }
+
+            .logo {
+                font-size: 1.18rem;
+                gap: 8px;
+            }
+
+            .logo-mark {
+                width: 30px;
+                height: 30px;
+                border-radius: 10px;
+            }
+
+            .nav-toggle {
+                display: inline-flex;
+                grid-column: 2;
+                grid-row: 1;
+            }
+
+            .nav .btn-primary {
+                grid-column: 1 / -1;
+                grid-row: 2;
+                width: 100%;
+                min-height: 38px;
+                padding: 9px 14px;
+                font-size: 0.94rem;
             }
 
             .nav-links {
-                justify-content: flex-start;
+                position: absolute;
+                top: calc(100% + 8px);
+                left: 0;
+                right: 0;
+                z-index: 35;
+                display: grid;
+                gap: 4px;
+                justify-content: stretch;
+                padding: 8px;
+                border: 1px solid rgba(0, 255, 157, 0.26);
+                border-radius: 20px;
+                background:
+                    radial-gradient(circle at top right, rgba(0,255,157,0.13), transparent 12rem),
+                    rgba(5, 8, 22, 0.94);
+                box-shadow: 0 22px 58px rgba(0,0,0,0.44), 0 0 34px rgba(0,255,157,0.10), inset 0 1px 0 rgba(255,255,255,0.06);
+                backdrop-filter: blur(22px);
+                opacity: 0;
+                visibility: hidden;
+                pointer-events: none;
+                transform: translateY(-6px);
+                transition: opacity 170ms ease, transform 170ms ease, visibility 170ms ease;
+            }
+
+            .nav-links.is-open {
+                opacity: 1;
+                visibility: visible;
+                pointer-events: auto;
+                transform: translateY(0);
+            }
+
+            .nav-links a {
+                padding: 9px 12px;
+                border-radius: 14px;
+                color: #e2e8f0;
+                font-size: 0.96rem;
             }
 
             .hero {
-                padding-top: 52px;
+                padding-top: 42px;
             }
 
             .hero-grid {
@@ -907,7 +1040,11 @@
             <span>Carpot</span>
         </a>
 
-        <nav class="nav-links" aria-label="Головна навігація">
+        <button class="nav-toggle" type="button" aria-label="Відкрити меню" aria-expanded="false" aria-controls="primary-navigation">
+            <span class="nav-toggle-lines" aria-hidden="true"></span>
+        </button>
+
+        <nav class="nav-links" id="primary-navigation" aria-label="Головна навігація">
             <a href="/#platform">Платформа</a>
             <a href="/#demo">Демо</a>
             <a href="/#pricing">Тарифи</a>
@@ -946,5 +1083,58 @@
         </nav>
     </div>
 </footer>
+<script>
+    (() => {
+        const toggle = document.querySelector('.nav-toggle');
+        const nav = document.querySelector('#primary-navigation');
+
+        if (!toggle || !nav) {
+            return;
+        }
+
+        const closeMenu = () => {
+            toggle.setAttribute('aria-expanded', 'false');
+            toggle.setAttribute('aria-label', 'Відкрити меню');
+            nav.classList.remove('is-open');
+        };
+
+        const openMenu = () => {
+            toggle.setAttribute('aria-expanded', 'true');
+            toggle.setAttribute('aria-label', 'Закрити меню');
+            nav.classList.add('is-open');
+        };
+
+        toggle.addEventListener('click', () => {
+            const isOpen = toggle.getAttribute('aria-expanded') === 'true';
+            isOpen ? closeMenu() : openMenu();
+        });
+
+        nav.addEventListener('click', (event) => {
+            if (event.target.closest('a')) {
+                closeMenu();
+            }
+        });
+
+        document.addEventListener('click', (event) => {
+            if (!event.target.closest('.site-header')) {
+                closeMenu();
+            }
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                closeMenu();
+            }
+        });
+
+        const desktopQuery = window.matchMedia('(min-width: 761px)');
+
+        if (desktopQuery.addEventListener) {
+            desktopQuery.addEventListener('change', closeMenu);
+        } else if (desktopQuery.addListener) {
+            desktopQuery.addListener(closeMenu);
+        }
+    })();
+</script>
 </body>
 </html>
