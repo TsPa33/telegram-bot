@@ -6,6 +6,16 @@ from bot.database.repositories.seller_repo import get_seller_by_telegram_id
 from bot.database.repositories.payment_repo import get_user_transactions
 
 from bot.services.liqpay_service import LiqPayService
+from bot.services.site_packages import (
+    SITE_PACKAGES,
+    format_site_package_title,
+    format_site_packages_text,
+    get_or_create_package_seller,
+    get_site_package,
+    get_site_package_amount,
+    notify_admins_about_site_package,
+)
+from bot.keyboards.admin_inline import site_packages_kb
 from bot.config import (
     LIQPAY_PUBLIC_KEY,
     LIQPAY_PRIVATE_KEY,
@@ -62,43 +72,64 @@ async def _create_package_payment(message: Message, package_key: str, telegram_i
         await message.answer("⚠️ Сталась помилка при створенні платежу")
 
 
-# ================= CREATE SITE PAYMENT =================
+# ================= CREATE SITE PAYMENT / LEAD =================
 
-async def _create_site_payment(message: Message, telegram_id: int):
+async def _create_site_payment(message: Message, telegram_id: int, package_key: str = "standard", user=None):
     try:
-        seller = await get_seller_by_telegram_id(telegram_id)
+        package = get_site_package(package_key)
+
+        if not package:
+            await message.answer("❌ Невідомий пакет сайту")
+            return
+
+        user = user or getattr(message, "from_user", None)
+
+        if not user:
+            await message.answer("❌ Не вдалося визначити користувача. Напишіть /start")
+            return
+
+        seller = await get_or_create_package_seller(user)
 
         if not seller:
             await message.answer("❌ Помилка: продавець не знайдений. Напишіть /start")
             return
 
         seller_id = seller["id"]
+        amount = get_site_package_amount(package_key)
 
-        # ❗ FIX: description прибрано
-        payment = await liqpay.create_payment(
-            amount=499,
-            server_url=LIQPAY_CALLBACK_URL,
-            seller_id=seller_id,
-            product="site"
-        )
+        await notify_admins_about_site_package(message.bot, user, package_key)
 
-        kb = InlineKeyboardBuilder()
-        kb.button(text="💳 Оплатити сайт", url=payment["url"])
+        if package.get("payment_product") == "site" and amount:
+            payment = await liqpay.create_payment(
+                amount=amount,
+                server_url=LIQPAY_CALLBACK_URL,
+                seller_id=seller_id,
+                product=package["payment_product"]
+            )
+
+            kb = InlineKeyboardBuilder()
+            kb.button(text="💳 Оплатити сайт", url=payment["url"])
+
+            await message.answer(
+                f"🌐 <b>{format_site_package_title(package_key)}</b>\n\n"
+                f"{package['description']}\n\n"
+                "Після оплати сайт створиться автоматично.\n"
+                "Адміністратор також отримав заявку.",
+                parse_mode="HTML",
+                reply_markup=kb.as_markup()
+            )
+            return
 
         await message.answer(
-            "🌐 <b>Створення сайту</b>\n\n"
-            "🔹 Власний сайт\n"
-            "🔹 Список авто\n"
-            "🔹 Прийом заявок\n\n"
-            "💰 499 грн\n\n"
-            "Після оплати сайт створиться автоматично",
-            parse_mode="HTML",
-            reply_markup=kb.as_markup()
+            f"✅ <b>Заявку прийнято</b>\n\n"
+            f"Пакет: {format_site_package_title(package_key)}\n\n"
+            "Адміністратор звʼяжеться з вами для уточнення деталей.",
+            parse_mode="HTML"
         )
 
     except Exception as e:
         print("ERROR SITE PAYMENT:", e)
-        await message.answer("⚠️ Помилка створення платежу")
+        await message.answer("⚠️ Помилка створення заявки на сайт")
 
 
 # ================= MENU =================
@@ -110,7 +141,8 @@ async def show_packages(message: Message):
     kb.button(text="🚗 1 авто — 99 грн", callback_data="package:1")
     kb.button(text="🚗 5 авто — 199 грн", callback_data="package:5")
     kb.button(text="🚗 10 авто — 299 грн", callback_data="package:10")
-    kb.button(text="🌐 Сайт — 499 грн", callback_data="buy:site")
+    kb.button(text=f"🌐 {format_site_package_title('standard')}", callback_data="buy:site")
+    kb.button(text="💳 Пакети сайтів", callback_data="site:packages")
     kb.button(text="📊 Історія транзакцій", callback_data="seller:transactions")
 
     kb.adjust(1)
@@ -146,9 +178,38 @@ async def buy_package_callback(callback: CallbackQuery):
 async def buy_site(callback: CallbackQuery):
     await _create_site_payment(
         callback.message,
-        callback.from_user.id
+        callback.from_user.id,
+        "standard",
+        user=callback.from_user
     )
     await callback.answer()
+
+
+@router.callback_query(F.data == "site:packages")
+async def site_packages(callback: CallbackQuery):
+    await callback.message.answer(
+        format_site_packages_text(),
+        parse_mode="HTML",
+        reply_markup=site_packages_kb(back_callback="demo:sites"),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("site:package:"))
+async def site_package_selected(callback: CallbackQuery):
+    package_key = callback.data.split(":")[-1]
+
+    if package_key not in SITE_PACKAGES:
+        await callback.answer("Невідомий пакет сайту", show_alert=True)
+        return
+
+    await _create_site_payment(
+        callback.message,
+        callback.from_user.id,
+        package_key,
+        user=callback.from_user
+    )
+    await callback.answer("Заявку передано адміністратору")
 
 
 # ================= TRANSACTIONS =================

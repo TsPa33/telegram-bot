@@ -21,6 +21,7 @@ from bot.keyboards.admin_inline import (
     admin_demo_site_actions_kb,
     admin_demo_confirm_delete_kb,
     admin_demo_seed_types_kb,
+    demo_categories_kb,
 )
 
 from bot.states.admin_states import EditBrand, EditModel, DemoSiteStates
@@ -67,6 +68,7 @@ from bot.database.repositories.site_repo import (
 from bot.services.demo_context import clear_demo_context, set_demo_context
 from bot.services.demo_seed_service import DEMO_SEED_TYPES, seed_demo_site
 from bot.services.site_config import get_default_site_config
+from bot.services.site_packages import get_demo_site_url
 from bot.utils.cache import clear_brands_cache, clear_models_cache
 
 router = Router()
@@ -515,7 +517,14 @@ async def admin_demo_sites_menu(message: Message, state: FSMContext):
         return
 
     await message.answer(
-        "🌐 Демо сайти",
+        "🌐 <b>Демо сайти</b>\n\n"
+        "Публічні категорії demo сайтів:",
+        parse_mode="HTML",
+        reply_markup=demo_categories_kb(back_callback="admin:demo:menu"),
+    )
+
+    await message.answer(
+        "⚙️ Управління demo сайтами",
         reply_markup=admin_demo_menu_kb(),
     )
 
@@ -528,7 +537,7 @@ async def admin_demo_sites_menu_callback(callback: CallbackQuery, state: FSMCont
 
     await state.clear()
     await callback.message.edit_text(
-        "🌐 Демо сайти",
+        "⚙️ Управління demo сайтами",
         reply_markup=admin_demo_menu_kb(),
     )
     await callback.answer()
@@ -622,7 +631,7 @@ async def admin_demo_add_subdomain(message: Message, state: FSMContext):
         "✅ Демо сайт створено\n\n"
         f"Назва: {title}\n"
         f"Subdomain: {site['subdomain']}\n"
-        f"URL: https://worker-production-e30f.up.railway.app/site/{site['subdomain']}"
+        f"URL: {get_demo_site_url(site['subdomain'])}"
     )
 
 
@@ -853,5 +862,5 @@ def _demo_site_text(site) -> str:
         "🌐 Демо сайт\n\n"
         f"Назва: {title or '-'}\n"
         f"Subdomain: {site['subdomain']}\n"
-        f"URL: https://worker-production-e30f.up.railway.app/site/{site['subdomain']}"
+        f"URL: {get_demo_site_url(site['subdomain'])}"
     )

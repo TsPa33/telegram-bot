@@ -2,23 +2,18 @@ from aiogram import Router, F
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
 
-from aiogram.types import (
-    CallbackQuery,
-    Message,
-    ReplyKeyboardRemove,
-    InlineKeyboardMarkup,
-    InlineKeyboardButton,
-)
+from aiogram.types import CallbackQuery, Message, ReplyKeyboardRemove
 
 from bot.keyboards.main_menu import main_menu_kb
 from bot.keyboards.seller_menu import seller_menu_kb
 from bot.keyboards.admin_kb import admin_kb
+from bot.keyboards.admin_inline import demo_categories_kb, demo_group_kb
 
 from bot.database.repositories.seller_repo import get_or_create_seller
 from bot.database.repositories.user_repo import log_visit, create_user
-from bot.database.repositories.site_repo import get_demo_sites
 
 from bot.services.roles import is_admin
+from bot.services.site_packages import get_demo_group
 
 router = Router()
 
@@ -157,44 +152,53 @@ async def open_admin(callback: CallbackQuery, state: FSMContext):
 async def demo_sites(callback: CallbackQuery):
     await callback.answer()
 
-    sites = await get_demo_sites()
+    await callback.message.answer(
+        "🌐 <b>Демо сайти Carpot</b>\n\n"
+        "Оберіть категорію demo сайту або перейдіть до замовлення:",
+        parse_mode="HTML",
+        reply_markup=demo_categories_kb(),
+    )
 
-    if not sites:
-        await callback.message.answer(
-            "🌐 Демо сайти\n\n"
-            "Demo сайти поки відсутні."
-        )
+
+@router.callback_query(F.data.startswith("demo:category:"))
+async def demo_category(callback: CallbackQuery):
+    group_key = callback.data.split(":")[-1]
+    group = get_demo_group(group_key)
+
+    if not group:
+        await callback.answer("Категорію не знайдено", show_alert=True)
         return
 
-    rows = []
-
-    for site in sites:
-
-        config = site.get("config_draft") or {}
-
-        title = ""
-
-        if isinstance(config, dict):
-            title = (config.get("header") or {}).get("title") or ""
-
-        title = (
-            title
-            or site.get("seller_shop_name")
-            or site.get("seller_name")
-            or site["subdomain"]
-        )
-
-        rows.append([
-            InlineKeyboardButton(
-                text=f"🌐 {title}",
-                url=f"https://worker-production-e30f.up.railway.app/site/{site['subdomain']}"
-            )
-        ])
-
-    kb = InlineKeyboardMarkup(inline_keyboard=rows)
-
-    await callback.message.answer(
-        "🌐 Демо сайти Carpot\n\n"
-        "Оберіть приклад сайту:",
-        reply_markup=kb
+    demos_text = "\n".join(
+        f"• {demo['button_text']} — {demo['description']}"
+        for demo in group["demos"]
     )
+
+    text = (
+        f"{group['emoji']} <b>{group['title']}</b>\n\n"
+        f"{group['description']}\n\n"
+        f"{demos_text}"
+    )
+
+    if callback.message.text:
+        await callback.message.edit_text(
+            text,
+            parse_mode="HTML",
+            reply_markup=demo_group_kb(group_key),
+        )
+    else:
+        await callback.message.answer(
+            text,
+            parse_mode="HTML",
+            reply_markup=demo_group_kb(group_key),
+        )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "demo:back")
+async def demo_back(callback: CallbackQuery):
+    await callback.message.edit_text(
+        "🔁 Головне меню\n\nОбери дію:",
+        reply_markup=await main_menu_kb(callback.from_user.id),
+    )
+    await callback.answer()

@@ -4,6 +4,7 @@ import hashlib
 import uuid
 
 from bot.database.repositories.payment_repo import create_payment
+from bot.services.site_packages import format_site_package_title
 
 
 print("🔥 NEW LIQPAY SERVICE LOADED")
@@ -11,7 +12,7 @@ print("🔥 NEW LIQPAY SERVICE LOADED")
 
 # ===== DESCRIPTIONS =====
 DESCRIPTIONS = {
-    "site": "Створення сайту на сервісі Carpot",
+    "site": format_site_package_title("standard"),
     "garage_1": "1 місце в гаражі",
     "garage_5": "5 місць в гаражі",
     "garage_10": "10 місць в гаражі",
