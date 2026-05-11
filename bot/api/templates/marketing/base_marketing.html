@@ -153,15 +153,12 @@
             letter-spacing: -0.04em;
         }
 
-        .logo-mark {
-            width: 34px;
-            height: 34px;
-            display: grid;
-            place-items: center;
-            border-radius: 12px;
-            color: #03120d;
-            background: linear-gradient(135deg, var(--primary), #b7ffe2 52%, var(--accent));
-            box-shadow: var(--glow-green);
+        .logo-image {
+            width: 52px;
+            height: 52px;
+            object-fit: contain;
+            display: block;
+            flex-shrink: 0;
         }
 
         .nav-links {
@@ -932,10 +929,9 @@
                 gap: 8px;
             }
 
-            .logo-mark {
-                width: 30px;
-                height: 30px;
-                border-radius: 10px;
+            .logo-image {
+                width: 44px;
+                height: 44px;
             }
 
             .nav-toggle {
@@ -1068,8 +1064,11 @@
     <div class="container footer-grid">
         <div>
             <a class="logo" href="/">
-                <span class="logo-mark">C</span>
-                <span>Carpot</span>
+                <img
+                    <src="https://res.cloudinary.com/dyem6pgtd/image/upload/v1778518145/carpot-logo.png_gxrwib.png"
+                    alt="Carpot"
+                    class="logo-image"
+                >
             </a>
             <p style="margin: 12px 0 0; max-width: 460px; line-height: 1.6;">
                 SaaS-платформа для автомобільного бізнесу в Україні: Telegram-бот, сайт, заявки та підготовка до реклами.
