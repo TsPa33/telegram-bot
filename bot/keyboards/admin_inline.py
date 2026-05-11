@@ -1,5 +1,12 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
+from bot.services.site_packages import (
+    DEMO_SITE_GROUPS,
+    SITE_PACKAGES,
+    format_site_package_title,
+    get_demo_site_url,
+)
+
 
 # ================= EXISTING =================
 
@@ -127,6 +134,59 @@ def admin_confirm_delete_kb(user_id: int):
     ])
 
 
+# ================= PUBLIC DEMO / SITE PACKAGES =================
+
+def demo_categories_kb(back_callback: str = "demo:back"):
+    buttons = [
+        [
+            InlineKeyboardButton(
+                text=f"{group['emoji']} {group['title']}",
+                callback_data=f"demo:category:{group_key}",
+            )
+        ]
+        for group_key, group in DEMO_SITE_GROUPS.items()
+    ]
+
+    buttons.append([InlineKeyboardButton(text="💳 Замовити сайт", callback_data="site:packages")])
+    buttons.append([InlineKeyboardButton(text="⬅️ Назад", callback_data=back_callback)])
+
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+def demo_group_kb(group_key: str):
+    group = DEMO_SITE_GROUPS[group_key]
+    buttons = [
+        [
+            InlineKeyboardButton(
+                text=demo["button_text"],
+                url=get_demo_site_url(demo["subdomain"]),
+            )
+        ]
+        for demo in group["demos"]
+    ]
+
+    buttons.append([InlineKeyboardButton(text="💳 Замовити сайт", callback_data="site:packages")])
+    buttons.append([InlineKeyboardButton(text="⬅️ Назад", callback_data="demo:sites")])
+
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+def site_packages_kb(back_callback: str = "demo:sites"):
+    buttons = [
+        [
+            InlineKeyboardButton(
+                text=package["button_text"],
+                callback_data=f"site:package:{package_key}",
+            )
+        ]
+        for package_key, package in SITE_PACKAGES.items()
+    ]
+
+    buttons.append([InlineKeyboardButton(text="⬅️ Назад", callback_data=back_callback)])
+
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
 # ================= DEMO SITES =================
 
 def admin_demo_menu_kb():
@@ -138,8 +198,40 @@ def admin_demo_menu_kb():
 
 def admin_demo_sites_kb(sites):
     buttons = []
+    known_demo_ids = set()
+
+    site_by_subdomain = {site["subdomain"]: site for site in sites}
+
+    for group in DEMO_SITE_GROUPS.values():
+        group_rows = []
+
+        for demo in group["demos"]:
+            site = site_by_subdomain.get(demo["subdomain"])
+
+            if not site:
+                continue
+
+            known_demo_ids.add(site["id"])
+            group_rows.append([
+                InlineKeyboardButton(
+                    text=f"{demo['button_text']} — {site['subdomain']}",
+                    callback_data=f"admin:demo:view:{site['id']}"
+                )
+            ])
+
+        if group_rows:
+            buttons.append([
+                InlineKeyboardButton(
+                    text=f"{group['emoji']} {group['title']}",
+                    callback_data="admin:demo:list"
+                )
+            ])
+            buttons.extend(group_rows)
 
     for site in sites:
+        if site["id"] in known_demo_ids:
+            continue
+
         config = site.get("config_draft") or {}
         title = (config.get("header") or {}).get("title") if isinstance(config, dict) else None
         title = title or site.get("seller_shop_name") or site.get("seller_name") or site["subdomain"]
@@ -161,7 +253,7 @@ def admin_demo_site_actions_kb(site):
         [InlineKeyboardButton(text="✏️ Редагувати", callback_data=f"admin:demo:edit:{site['id']}")],
         [InlineKeyboardButton(
             text="🌐 Відкрити сайт",
-            url=f"https://worker-production-e30f.up.railway.app/site/{subdomain}"
+            url=get_demo_site_url(subdomain)
         )],
         [InlineKeyboardButton(text="🌱 Заповнити demo контентом", callback_data=f"admin:demo:seed:{site['id']}")],
         [InlineKeyboardButton(text="🗑 Видалити", callback_data=f"admin:demo:delete:{site['id']}")],

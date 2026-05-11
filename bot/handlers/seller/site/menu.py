@@ -15,6 +15,8 @@ from bot.services.demo_context import (
 from bot.services.site_config import get_default_site_config
 from bot.utils.subdomain import generate_unique_subdomain
 from bot.keyboards.seller_menu import site_menu_kb
+from bot.keyboards.admin_inline import site_packages_kb
+from bot.services.site_packages import format_site_packages_text
 
 router = Router()
 
@@ -37,13 +39,15 @@ async def site_menu(message: Message, state: FSMContext):
     # ================= CASE 1: НЕ ОПЛАЧЕНО =================
     if not demo_mode and not seller.get("has_site"):
         await message.answer(
-            "🌐 Мій сайт\n\n"
+            "🌐 <b>Мій сайт</b>\n\n"
             "❌ У вас ще немає сайту\n\n"
             "Отримайте:\n"
             "• власний сайт автошроту\n"
             "• сторінку з вашими авто\n"
             "• контакти для клієнтів\n\n"
-            "👇 Спочатку оплатіть послугу"
+            f"{format_site_packages_text()}",
+            parse_mode="HTML",
+            reply_markup=site_packages_kb(),
         )
         return
 

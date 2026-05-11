@@ -1,5 +1,7 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
+from bot.services.site_packages import format_site_package_title
+
 
 def payment_menu_kb():
     return InlineKeyboardMarkup(
@@ -12,7 +14,7 @@ def payment_menu_kb():
             ],
             [
                 InlineKeyboardButton(
-                    text="🌐 Сайт (499 грн)",
+                    text=f"🌐 {format_site_package_title('standard')}",
                     callback_data="pay:site"
                 )
             ]
