@@ -15,6 +15,7 @@
     <meta property="og:type" content="website">
     <meta property="og:url" content="{{ og_url }}">
     <meta name="theme-color" content="#050816">
+
     <style>
         :root {
             --bg: #050816;
@@ -38,9 +39,13 @@
             --max-width: 1180px;
         }
 
-        * { box-sizing: border-box; }
+        * {
+            box-sizing: border-box;
+        }
 
-        html { scroll-behavior: smooth; }
+        html {
+            scroll-behavior: smooth;
+        }
 
         body {
             margin: 0;
@@ -79,12 +84,21 @@
         }
 
         @keyframes floatGlow {
-            from { transform: translate3d(0, 0, 0) scale(0.96); opacity: 0.72; }
-            to { transform: translate3d(-28px, -22px, 0) scale(1.08); opacity: 1; }
+            from {
+                transform: translate3d(0, 0, 0) scale(0.96);
+                opacity: 0.72;
+            }
+
+            to {
+                transform: translate3d(-28px, -22px, 0) scale(1.08);
+                opacity: 1;
+            }
         }
 
         @media (prefers-reduced-motion: reduce) {
-            *, *::before, *::after {
+            *,
+            *::before,
+            *::after {
                 animation-duration: 0.01ms !important;
                 animation-iteration-count: 1 !important;
                 scroll-behavior: auto !important;
@@ -92,7 +106,10 @@
             }
         }
 
-        a { color: inherit; text-decoration: none; }
+        a {
+            color: inherit;
+            text-decoration: none;
+        }
 
         .container {
             width: min(100% - 32px, var(--max-width));
@@ -260,7 +277,12 @@
             font-weight: 750;
         }
 
-        h1, h2, h3, p { margin-top: 0; }
+        h1,
+        h2,
+        h3,
+        p {
+            margin-top: 0;
+        }
 
         h1 {
             margin: 22px 0 18px;
@@ -290,7 +312,8 @@
             max-width: 720px;
         }
 
-        .hero-actions, .cta-actions {
+        .hero-actions,
+        .cta-actions {
             display: flex;
             flex-wrap: wrap;
             gap: 14px;
@@ -358,16 +381,35 @@
         }
 
         @keyframes pulseGlow {
-            0%, 100% { opacity: 0.56; transform: scale(0.96); }
-            50% { opacity: 0.95; transform: scale(1.06); }
+            0%,
+            100% {
+                opacity: 0.56;
+                transform: scale(0.96);
+            }
+
+            50% {
+                opacity: 0.95;
+                transform: scale(1.06);
+            }
         }
 
         @keyframes sheen {
-            0%, 35% { transform: translateX(-110%); }
-            55%, 100% { transform: translateX(110%); }
+            0%,
+            35% {
+                transform: translateX(-110%);
+            }
+
+            55%,
+            100% {
+                transform: translateX(110%);
+            }
         }
 
-        .dash-top, .dash-body, .dash-card { position: relative; }
+        .dash-top,
+        .dash-body,
+        .dash-card {
+            position: relative;
+        }
 
         .dash-top {
             display: flex;
@@ -379,10 +421,28 @@
             border: 1px solid rgba(148, 163, 184, 0.12);
         }
 
-        .window-dots { display: flex; gap: 7px; }
-        .window-dots span { width: 9px; height: 9px; border-radius: 50%; background: var(--success); box-shadow: 0 0 12px rgba(0,255,157,0.42); }
-        .window-dots span:nth-child(2) { background: var(--warning); box-shadow: none; }
-        .window-dots span:nth-child(3) { background: var(--accent); box-shadow: 0 0 12px rgba(56,189,248,0.35); }
+        .window-dots {
+            display: flex;
+            gap: 7px;
+        }
+
+        .window-dots span {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: var(--success);
+            box-shadow: 0 0 12px rgba(0,255,157,0.42);
+        }
+
+        .window-dots span:nth-child(2) {
+            background: var(--warning);
+            box-shadow: none;
+        }
+
+        .window-dots span:nth-child(3) {
+            background: var(--accent);
+            box-shadow: 0 0 12px rgba(56,189,248,0.35);
+        }
 
         .dash-body {
             display: grid;
@@ -391,7 +451,10 @@
             margin-top: 16px;
         }
 
-        .dash-card, .card, .price-card, .legal-card {
+        .dash-card,
+        .card,
+        .price-card,
+        .legal-card {
             border: 1px solid rgba(148, 163, 184, 0.14);
             background: var(--card-bg);
             border-radius: 24px;
@@ -404,10 +467,29 @@
             padding: 18px;
         }
 
-        .dash-card.wide { grid-column: 1 / -1; }
-        .dash-label { color: var(--muted); font-size: 0.82rem; margin-bottom: 12px; }
-        .dash-value { font-size: 1.45rem; font-weight: 850; letter-spacing: -0.04em; }
-        .dash-line { height: 8px; margin-top: 18px; border-radius: 999px; background: linear-gradient(90deg, var(--primary), var(--accent)); box-shadow: 0 0 18px rgba(0,255,157,0.20); }
+        .dash-card.wide {
+            grid-column: 1 / -1;
+        }
+
+        .dash-label {
+            color: var(--muted);
+            font-size: 0.82rem;
+            margin-bottom: 12px;
+        }
+
+        .dash-value {
+            font-size: 1.45rem;
+            font-weight: 850;
+            letter-spacing: -0.04em;
+        }
+
+        .dash-line {
+            height: 8px;
+            margin-top: 18px;
+            border-radius: 999px;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            box-shadow: 0 0 18px rgba(0,255,157,0.20);
+        }
 
         .section-head {
             display: flex;
@@ -424,17 +506,33 @@
             margin-bottom: 0;
         }
 
-        .grid-3, .grid-2, .audience-grid, .faq-grid {
+        .grid-3,
+        .grid-2,
+        .audience-grid,
+        .faq-grid {
             display: grid;
             gap: 18px;
         }
 
-        .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-        .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        .audience-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
-        .faq-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .grid-3 {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
 
-        .card, .price-card, .legal-card {
+        .grid-2 {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .audience-grid {
+            grid-template-columns: repeat(6, minmax(0, 1fr));
+        }
+
+        .faq-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .card,
+        .price-card,
+        .legal-card {
             padding: 24px;
             transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
         }
@@ -447,7 +545,11 @@
             box-shadow: 0 24px 58px rgba(0,0,0,0.26), 0 0 34px rgba(0,255,157,0.08), inset 0 1px 0 rgba(255,255,255,0.06);
         }
 
-        .card p, .price-card p, .legal-card p, .legal-card li, .faq-answer {
+        .card p,
+        .price-card p,
+        .legal-card p,
+        .legal-card li,
+        .faq-answer {
             color: var(--muted);
             line-height: 1.68;
         }
@@ -574,12 +676,18 @@
             letter-spacing: 0;
         }
 
-        .price-card ul, .legal-card ul {
+        .price-card ul,
+        .legal-card ul {
             padding-left: 20px;
         }
 
-        .price-card li { margin: 8px 0; }
-        .price-card .btn { margin-top: auto; }
+        .price-card li {
+            margin: 8px 0;
+        }
+
+        .price-card .btn {
+            margin-top: auto;
+        }
 
         .note {
             margin-top: 18px;
@@ -631,7 +739,9 @@
             list-style: none;
         }
 
-        .faq-item summary::-webkit-details-marker { display: none; }
+        .faq-item summary::-webkit-details-marker {
+            display: none;
+        }
 
         .faq-item summary::after {
             content: "+";
@@ -646,7 +756,9 @@
             background: rgba(0,255,157,0.06);
         }
 
-        .faq-item[open] summary::after { content: "–"; }
+        .faq-item[open] summary::after {
+            content: "–";
+        }
 
         .faq-answer {
             padding: 0 22px 22px;
@@ -691,30 +803,99 @@
         }
 
         .footer-links a:hover,
-        .footer-links a:focus-visible { color: #c9ffea; }
+        .footer-links a:focus-visible {
+            color: #c9ffea;
+        }
 
-        .legal-hero { padding: 76px 0 28px; }
-        .legal-layout { display: grid; gap: 18px; padding-bottom: 82px; }
+        .legal-hero {
+            padding: 76px 0 28px;
+        }
+
+        .legal-layout {
+            display: grid;
+            gap: 18px;
+            padding-bottom: 82px;
+        }
 
         @media (max-width: 1020px) {
-            .hero-grid, .grid-3, .grid-2, .faq-grid { grid-template-columns: 1fr; }
-            .audience-grid, .steps, .ready-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-            .section-head { align-items: flex-start; flex-direction: column; }
-            .steps::before { display: none; }
+            .hero-grid,
+            .grid-3,
+            .grid-2,
+            .faq-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .audience-grid,
+            .steps,
+            .ready-list {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .section-head {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .steps::before {
+                display: none;
+            }
         }
 
         @media (max-width: 760px) {
-            body::after { width: 220px; height: 220px; filter: blur(54px); }
-            .nav { align-items: flex-start; flex-direction: column; padding: 16px 0; }
-            .nav-links { justify-content: flex-start; }
-            .hero { padding-top: 52px; }
-            .hero-grid { gap: 34px; }
-            .dashboard { border-radius: 24px; box-shadow: 0 20px 48px rgba(0,0,0,0.32), 0 0 36px rgba(0,255,157,0.08); }
-            .dash-body, .trust-row, .audience-grid, .steps, .ready-list { grid-template-columns: 1fr; }
-            .section { padding: 58px 0; }
-            .btn { width: 100%; }
-            .card-actions .btn { width: auto; }
-            .card, .price-card, .legal-card { padding: 22px; }
+            body::after {
+                width: 220px;
+                height: 220px;
+                filter: blur(54px);
+            }
+
+            .nav {
+                align-items: flex-start;
+                flex-direction: column;
+                padding: 16px 0;
+            }
+
+            .nav-links {
+                justify-content: flex-start;
+            }
+
+            .hero {
+                padding-top: 52px;
+            }
+
+            .hero-grid {
+                gap: 34px;
+            }
+
+            .dashboard {
+                border-radius: 24px;
+                box-shadow: 0 20px 48px rgba(0,0,0,0.32), 0 0 36px rgba(0,255,157,0.08);
+            }
+
+            .dash-body,
+            .trust-row,
+            .audience-grid,
+            .steps,
+            .ready-list {
+                grid-template-columns: 1fr;
+            }
+
+            .section {
+                padding: 58px 0;
+            }
+
+            .btn {
+                width: 100%;
+            }
+
+            .card-actions .btn {
+                width: auto;
+            }
+
+            .card,
+            .price-card,
+            .legal-card {
+                padding: 22px;
+            }
         }
     </style>
 </head>
@@ -725,6 +906,7 @@
             <span class="logo-mark">C</span>
             <span>Carpot</span>
         </a>
+
         <nav class="nav-links" aria-label="Головна навігація">
             <a href="/#platform">Платформа</a>
             <a href="/#demo">Демо</a>
@@ -733,6 +915,7 @@
             <a href="/#faq">FAQ</a>
             <a href="/contacts">Контакти</a>
         </nav>
+
         <a class="btn btn-primary" href="{{ telegram_bot_url }}" target="_blank" rel="noopener">Відкрити бот</a>
     </div>
 </header>
@@ -744,9 +927,15 @@
 <footer class="site-footer">
     <div class="container footer-grid">
         <div>
-            <a class="logo" href="/"><span class="logo-mark">C</span><span>Carpot</span></a>
-            <p style="margin: 12px 0 0; max-width: 460px; line-height: 1.6;">SaaS-платформа для автомобільного бізнесу в Україні: Telegram-бот, сайт, заявки та підготовка до реклами.</p>
+            <a class="logo" href="/">
+                <span class="logo-mark">C</span>
+                <span>Carpot</span>
+            </a>
+            <p style="margin: 12px 0 0; max-width: 460px; line-height: 1.6;">
+                SaaS-платформа для автомобільного бізнесу в Україні: Telegram-бот, сайт, заявки та підготовка до реклами.
+            </p>
         </div>
+
         <nav class="footer-links" aria-label="Посилання у футері">
             <a href="/">Головна</a>
             <a href="/#demo">Демо</a>
