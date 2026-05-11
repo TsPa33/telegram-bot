@@ -27,12 +27,87 @@ templates = Jinja2Templates(directory="bot/api/templates")
 bot = Bot(token=BOT_TOKEN)
 logger = logging.getLogger(__name__)
 
+MARKETING_TELEGRAM_BOT_URL = "https://t.me/PartiX_ua_bot"
+MARKETING_TELEGRAM_SUPPORT_URL = "https://t.me/PartiX_ua_bot"
+MARKETING_SUPPORT_EMAIL = "support@carpot.com.ua"
+MARKETING_SITE_URL = "https://carpot.com.ua"
+
+
+def marketing_context(
+    request: Request,
+    title: str,
+    description: str,
+    path: str = "/",
+) -> dict:
+    return {
+        "request": request,
+        "page_title": title,
+        "page_description": description,
+        "og_url": f"{MARKETING_SITE_URL}{path}",
+        "telegram_bot_url": MARKETING_TELEGRAM_BOT_URL,
+        "telegram_support_url": MARKETING_TELEGRAM_SUPPORT_URL,
+        "support_email": MARKETING_SUPPORT_EMAIL,
+    }
+
 
 async def tg_file_url(bot: Bot, file_id: str) -> str:
     file = await bot.get_file(file_id)
 
     return (
         f"https://api.telegram.org/file/bot{bot.token}/{file.file_path}"
+    )
+
+
+# ================= MARKETING PAGES =================
+
+@router.get("/", response_class=HTMLResponse)
+async def marketing_home(request: Request):
+    return templates.TemplateResponse(
+        "marketing/index.html",
+        marketing_context(
+            request,
+            "Carpot — сайти для авторозборок, автосервісів та автозапчастин",
+            "Telegram-платформа для створення сайтів, каталогів і заявок для авторозборок, СТО, шиномонтажу, евакуаторів та продавців автозапчастин.",
+        ),
+    )
+
+
+@router.get("/privacy-policy", response_class=HTMLResponse)
+async def marketing_privacy_policy(request: Request):
+    return templates.TemplateResponse(
+        "marketing/privacy_policy.html",
+        marketing_context(
+            request,
+            "Політика конфіденційності — Carpot",
+            "Політика конфіденційності Carpot: які дані обробляються для Telegram-бота, сайтів, заявок і комунікації.",
+            "/privacy-policy",
+        ),
+    )
+
+
+@router.get("/terms", response_class=HTMLResponse)
+async def marketing_terms(request: Request):
+    return templates.TemplateResponse(
+        "marketing/terms.html",
+        marketing_context(
+            request,
+            "Умови користування — Carpot",
+            "Умови користування Carpot: Telegram-бот, конструктор сайтів, демо-шаблони, пакети, реклама та відповідальність користувача.",
+            "/terms",
+        ),
+    )
+
+
+@router.get("/contacts", response_class=HTMLResponse)
+async def marketing_contacts(request: Request):
+    return templates.TemplateResponse(
+        "marketing/contacts.html",
+        marketing_context(
+            request,
+            "Контакти — Carpot",
+            "Контакти Carpot: Telegram-бот, email підтримки, локація в Україні та посилання на демо сайти для автомобільного бізнесу.",
+            "/contacts",
+        ),
     )
 
 
