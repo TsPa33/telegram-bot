@@ -1,0 +1,34 @@
+{% extends "marketing/base_marketing.html" %}
+
+{% block content %}
+<section class="legal-hero">
+    <div class="container">
+        <span class="eyebrow">Контакти</span>
+        <h1>Зв'яжіться з Carpot</h1>
+        <p class="lead">Напишіть у Telegram-бот, щоб замовити сайт, переглянути демо або уточнити пакет для авторозборки, СТО, шиномонтажу, евакуатора чи продавця автозапчастин.</p>
+    </div>
+</section>
+<section class="container legal-layout">
+    <article class="legal-card">
+        <h2>Основні контакти</h2>
+        <ul>
+            <li>Telegram bot: <a class="text-link" href="{{ telegram_bot_url }}" target="_blank" rel="noopener">{{ telegram_bot_url }}</a></li>
+            <li>Telegram support: <a class="text-link" href="{{ telegram_support_url }}" target="_blank" rel="noopener">{{ telegram_support_url }}</a></li>
+            <li>Email: <a class="text-link" href="mailto:{{ support_email }}">{{ support_email }}</a></li>
+            <li>Локація бізнесу: Україна</li>
+        </ul>
+        <div class="cta-actions"><a class="btn btn-primary" href="{{ telegram_bot_url }}" target="_blank" rel="noopener">Відкрити Telegram-бот</a><a class="btn btn-secondary" href="/#pricing">Переглянути тарифи</a></div>
+    </article>
+    <article class="legal-card">
+        <h2>Демо сайти</h2>
+        <p>Відкрийте приклади, щоб обрати формат майбутнього сайту:</p>
+        <ul>
+            <li><a class="text-link" href="https://worker-production-e30f.up.railway.app/site/demo-parts" target="_blank" rel="noopener">Преміум інтернет-магазин автозапчастин</a></li>
+            <li><a class="text-link" href="https://worker-production-e30f.up.railway.app/site/demo-electric" target="_blank" rel="noopener">Сайт автоелектрика та діагностики</a></li>
+            <li><a class="text-link" href="https://worker-production-e30f.up.railway.app/site/demo-sto" target="_blank" rel="noopener">Стандартний шаблон СТО</a></li>
+            <li><a class="text-link" href="https://worker-production-e30f.up.railway.app/site/demo-tow" target="_blank" rel="noopener">Стандартний шаблон евакуатора</a></li>
+            <li><a class="text-link" href="https://worker-production-e30f.up.railway.app/site/demo-shynomontag" target="_blank" rel="noopener">Стандартний шаблон шиномонтажу</a></li>
+        </ul>
+    </article>
+</section>
+{% endblock %}
