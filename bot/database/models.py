@@ -1,4 +1,74 @@
-from bot.database.base import execute
+import logging
+import os
+
+from passlib.context import CryptContext
+from passlib.exc import UnknownHashError
+
+from bot.database.base import execute, fetchrow
+
+logger = logging.getLogger(__name__)
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+def _password_matches(password: str, password_hash: str | None) -> bool:
+    if not password_hash:
+        return False
+
+    try:
+        return pwd_context.verify(password, password_hash)
+    except (UnknownHashError, ValueError):
+        return False
+
+
+async def bootstrap_crm_admin_password():
+    telegram_id_raw = os.getenv("CRM_ADMIN_TELEGRAM_ID")
+    username = os.getenv("CRM_ADMIN_USERNAME")
+    password = os.getenv("CRM_ADMIN_PASSWORD")
+
+    if not telegram_id_raw or not username or not password:
+        return
+
+    username = username.strip()
+    if not username:
+        return
+
+    try:
+        telegram_id = int(telegram_id_raw)
+    except ValueError:
+        return
+
+    admin = await fetchrow(
+        """
+        SELECT id, username, password_hash
+        FROM admin_users
+        WHERE telegram_id = $1
+        LIMIT 1
+        """,
+        telegram_id,
+    )
+
+    if not admin:
+        return
+
+    password_matches = _password_matches(password, admin["password_hash"])
+    next_password_hash = (
+        admin["password_hash"] if password_matches else pwd_context.hash(password)
+    )
+
+    if admin["username"] == username and password_matches:
+        return
+
+    await execute(
+        """
+        UPDATE admin_users
+        SET username = $2, password_hash = $3
+        WHERE id = $1
+        """,
+        admin["id"],
+        username,
+        next_password_hash,
+    )
+    logger.info("CRM admin password initialized")
 
 
 async def create_tables():
@@ -56,11 +126,14 @@ async def create_tables():
         id SERIAL PRIMARY KEY,
         telegram_id BIGINT UNIQUE NOT NULL,
         username TEXT,
+        password_hash TEXT,
         role TEXT NOT NULL CHECK (role IN ('super_admin', 'admin', 'manager')),
         is_active BOOLEAN DEFAULT TRUE,
         created_at TIMESTAMP DEFAULT NOW()
     );
     """)
+
+    await execute("ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS password_hash TEXT;")
 
     await execute("""
     CREATE TABLE IF NOT EXISTS admin_sessions (
@@ -92,6 +165,8 @@ async def create_tables():
     VALUES (6206952389, 'super_admin')
     ON CONFLICT (telegram_id) DO NOTHING;
     """)
+
+    await bootstrap_crm_admin_password()
 
     await execute("""
     CREATE TABLE IF NOT EXISTS sellers (

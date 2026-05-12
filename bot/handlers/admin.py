@@ -1,6 +1,4 @@
-import secrets
 import zlib
-from datetime import datetime, timedelta
 
 from aiogram import Router, types, F
 from aiogram.fsm.context import FSMContext
@@ -39,11 +37,7 @@ from bot.database.repositories.admin_repo import (
     reject_seller,
 )
 
-from bot.database.repositories.crm_repo import (
-    create_admin_session,
-    get_admin_by_telegram_id,
-    log_admin_action,
-)
+from bot.database.repositories.crm_repo import get_admin_by_telegram_id
 
 from bot.database.repositories.user_repo import (
     get_visits,
@@ -104,28 +98,9 @@ async def open_crm(message: Message, state: FSMContext):
         await message.answer("⛔ CRM доступ не налаштований")
         return
 
-    token = secrets.token_urlsafe(32)
-    expires_at = datetime.utcnow() + timedelta(minutes=10)
-    session = await create_admin_session(
-        message.from_user.id,
-        token,
-        expires_at,
-    )
-
-    if not session:
-        await message.answer("⛔ Не вдалося створити CRM сесію")
-        return
-
-    await log_admin_action(
-        admin["id"],
-        "crm_login_link_created",
-        entity_type="admin_session",
-        entity_id=str(session["id"]),
-    )
-
     await message.answer(
-        "🧩 CRM доступ дійсний 10 хвилин:\n"
-        f"https://worker-production-e30f.up.railway.app/admin/crm/login?token={token}"
+        "🧩 CRM доступ:\n"
+        "https://worker-production-e30f.up.railway.app/admin/crm/login"
     )
 
 
