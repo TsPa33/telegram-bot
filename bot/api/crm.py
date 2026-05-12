@@ -9,7 +9,9 @@ from passlib.context import CryptContext
 from bot.database.repositories.crm_admin_repo import (
     ALLOWED_ADMIN_ROLES,
     create_admin_user,
+    get_admin_user,
     list_admin_users,
+    set_admin_password,
     set_admin_user_active,
     update_admin_user_role,
 )
@@ -43,6 +45,8 @@ CRM_COOKIE_NAME = "crm_session"
 CRM_VIEW_ROLES = {"super_admin", "admin", "manager"}
 CRM_AUDIT_ROLES = {"super_admin", "admin"}
 CRM_PASSWORD_SESSION_DAYS = 7
+CRM_ADMIN_PASSWORD_MIN_LENGTH = 8
+CRM_ADMIN_PASSWORD_BCRYPT_MAX_BYTES = 72
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
@@ -126,6 +130,30 @@ async def get_current_admin(request: Request):
         raise HTTPException(status_code=403, detail="Admin user is inactive")
 
     return admin
+
+
+async def _render_crm_admins(
+    request: Request,
+    admin,
+    *,
+    error: str | None = None,
+    success: str | None = None,
+    status_code: int = 200,
+):
+    admin_users = await list_admin_users()
+
+    return templates.TemplateResponse(
+        "admin/crm_admins.html",
+        _template_context(
+            request,
+            admin,
+            admin_users=admin_users,
+            allowed_roles=sorted(ALLOWED_ADMIN_ROLES),
+            error=error,
+            success=success,
+        ),
+        status_code=status_code,
+    )
 
 
 async def _crm_magic_token_login(request: Request, token: str):
@@ -500,17 +528,7 @@ async def crm_admins(request: Request):
     admin = await get_current_admin(request)
     require_roles(admin, {"super_admin"})
 
-    admin_users = await list_admin_users()
-
-    return templates.TemplateResponse(
-        "admin/crm_admins.html",
-        _template_context(
-            request,
-            admin,
-            admin_users=admin_users,
-            allowed_roles=sorted(ALLOWED_ADMIN_ROLES),
-        ),
-    )
+    return await _render_crm_admins(request, admin)
 
 
 @router.post("/admins/create")
@@ -568,6 +586,71 @@ async def crm_update_admin_role(
         entity_type="admin_user",
         entity_id=str(admin_id),
         payload={"role": role},
+        ip=_request_ip(request),
+        user_agent=request.headers.get("user-agent"),
+    )
+
+    return RedirectResponse(url="/admin/crm/admins", status_code=303)
+
+
+@router.post("/admins/{admin_id}/password")
+async def crm_set_admin_password(
+    request: Request,
+    admin_id: int,
+    password: str = Form(...),
+    password_confirm: str = Form(...),
+):
+    admin = await get_current_admin(request)
+    require_roles(admin, {"super_admin"})
+
+    target_admin = await get_admin_user(admin_id)
+    if not target_admin:
+        raise HTTPException(status_code=404, detail="Admin user not found")
+
+    if not password:
+        return await _render_crm_admins(
+            request,
+            admin,
+            error="Password is required",
+            status_code=400,
+        )
+
+    if password != password_confirm:
+        return await _render_crm_admins(
+            request,
+            admin,
+            error="Password confirmation does not match",
+            status_code=400,
+        )
+
+    if len(password) < CRM_ADMIN_PASSWORD_MIN_LENGTH:
+        return await _render_crm_admins(
+            request,
+            admin,
+            error=f"Password must be at least {CRM_ADMIN_PASSWORD_MIN_LENGTH} characters",
+            status_code=400,
+        )
+
+    if len(password.encode("utf-8")) > CRM_ADMIN_PASSWORD_BCRYPT_MAX_BYTES:
+        return await _render_crm_admins(
+            request,
+            admin,
+            error="Password must be 72 bytes or less",
+            status_code=400,
+        )
+
+    password_hash = hash_password(password)
+    updated_admin = await set_admin_password(admin_id, password_hash)
+
+    if not updated_admin:
+        raise HTTPException(status_code=404, detail="Admin user not found")
+
+    await log_admin_action(
+        admin["id"],
+        "admin_password_updated",
+        entity_type="admin_user",
+        entity_id=str(admin_id),
+        payload={"target_admin_id": admin_id},
         ip=_request_ip(request),
         user_agent=request.headers.get("user-agent"),
     )
