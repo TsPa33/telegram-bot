@@ -1,8 +1,10 @@
-from datetime import datetime
+import secrets
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
+from passlib.context import CryptContext
 
 from bot.database.repositories.crm_admin_repo import (
     ALLOWED_ADMIN_ROLES,
@@ -27,7 +29,9 @@ from bot.database.repositories.crm_user_repo import (
     list_crm_sellers,
 )
 from bot.database.repositories.crm_repo import (
+    create_admin_session_by_admin_id,
     get_admin_by_id,
+    get_admin_by_username,
     get_session_by_token,
     log_admin_action,
     mark_session_used,
@@ -38,6 +42,16 @@ templates = Jinja2Templates(directory="bot/api/templates")
 CRM_COOKIE_NAME = "crm_session"
 CRM_VIEW_ROLES = {"super_admin", "admin", "manager"}
 CRM_AUDIT_ROLES = {"super_admin", "admin"}
+CRM_PASSWORD_SESSION_DAYS = 7
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+def verify_password(plain_password: str, password_hash: str) -> bool:
+    return pwd_context.verify(plain_password, password_hash)
+
+
+def hash_password(password: str) -> str:
+    return pwd_context.hash(password)
 
 
 def require_roles(admin, allowed_roles):
@@ -114,8 +128,7 @@ async def get_current_admin(request: Request):
     return admin
 
 
-@router.get("/login")
-async def crm_login(request: Request, token: str):
+async def _crm_magic_token_login(request: Request, token: str):
     session = await get_session_by_token(token)
 
     if not session:
@@ -151,6 +164,83 @@ async def crm_login(request: Request, token: str):
         CRM_COOKIE_NAME,
         token,
         max_age=max_age,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+    )
+    return response
+
+
+@router.get("/login")
+async def crm_login_page(request: Request, token: str | None = None):
+    if token:
+        return await _crm_magic_token_login(request, token)
+
+    return templates.TemplateResponse(
+        "admin/crm_login.html",
+        _template_context(request, title="CRM Login"),
+    )
+
+
+@router.post("/login")
+async def crm_password_login(
+    request: Request,
+    username: str = Form(...),
+    password: str = Form(...),
+):
+    login_error = "Невірний логін або пароль"
+    username = username.strip()
+    admin = await get_admin_by_username(username) if username else None
+
+    if not admin or not admin["is_active"]:
+        return templates.TemplateResponse(
+            "admin/crm_login.html",
+            _template_context(request, title="CRM Login", error=login_error, username=username),
+            status_code=401,
+        )
+
+    if not admin["password_hash"]:
+        return templates.TemplateResponse(
+            "admin/crm_login.html",
+            _template_context(
+                request,
+                title="CRM Login",
+                error="Password is not configured",
+                username=username,
+            ),
+            status_code=401,
+        )
+
+    if not verify_password(password, admin["password_hash"]):
+        return templates.TemplateResponse(
+            "admin/crm_login.html",
+            _template_context(request, title="CRM Login", error=login_error, username=username),
+            status_code=401,
+        )
+
+    token = secrets.token_urlsafe(32)
+    expires_at = datetime.utcnow() + timedelta(days=CRM_PASSWORD_SESSION_DAYS)
+    session = await create_admin_session_by_admin_id(
+        admin["id"],
+        token,
+        expires_at,
+        used=True,
+    )
+
+    await log_admin_action(
+        admin["id"],
+        "crm_password_login",
+        entity_type="admin_session",
+        entity_id=str(session["id"]),
+        ip=_request_ip(request),
+        user_agent=request.headers.get("user-agent"),
+    )
+
+    response = RedirectResponse(url="/admin/crm", status_code=303)
+    response.set_cookie(
+        CRM_COOKIE_NAME,
+        token,
+        max_age=CRM_PASSWORD_SESSION_DAYS * 24 * 60 * 60,
         httponly=True,
         secure=True,
         samesite="lax",
