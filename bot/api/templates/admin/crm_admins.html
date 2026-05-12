@@ -13,7 +13,8 @@
     }
 
     .create-form,
-    .inline-form {
+    .inline-form,
+    .password-form {
         display: flex;
         flex-wrap: wrap;
         gap: 8px;
@@ -51,6 +52,40 @@
         border-color: #dc2626;
     }
 
+    .message {
+        border-radius: 10px;
+        margin-bottom: 16px;
+        padding: 10px 12px;
+        font-weight: 700;
+    }
+
+    .message.error {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .message.success {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .password-form {
+        max-width: 320px;
+    }
+
+    .password-form input {
+        flex: 1 1 130px;
+        min-width: 0;
+    }
+
+    .password-status {
+        display: block;
+        margin-bottom: 8px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+    }
+
     .table-wrap {
         overflow-x: auto;
     }
@@ -58,7 +93,7 @@
     table {
         width: 100%;
         border-collapse: collapse;
-        min-width: 960px;
+        min-width: 1080px;
         font-size: 14px;
     }
 
@@ -105,6 +140,13 @@
         <p class="crm-muted">Адміністратор: {{ admin.username or admin.telegram_id }}</p>
     </div>
 
+    {% if error %}
+        <div class="message error">{{ error }}</div>
+    {% endif %}
+    {% if success %}
+        <div class="message success">{{ success }}</div>
+    {% endif %}
+
     <form class="create-form" method="post" action="/admin/crm/admins/create">
         <input type="number" name="telegram_id" placeholder="Telegram ID" required>
         <input type="text" name="username" placeholder="Username (необов’язково)">
@@ -127,6 +169,7 @@
                     <th>Активний</th>
                     <th>Створено</th>
                     <th>Оновити роль</th>
+                    <th>Пароль</th>
                     <th>Активація</th>
                 </tr>
             </thead>
@@ -154,6 +197,16 @@
                             </form>
                         </td>
                         <td>
+                            <span class="password-status">
+                                {{ '✅ Password set' if item.has_password else '⚠️ No password' }}
+                            </span>
+                            <form class="password-form" method="post" action="/admin/crm/admins/{{ item.id }}/password">
+                                <input type="password" name="password" placeholder="New password" minlength="8" maxlength="72" autocomplete="new-password" required>
+                                <input type="password" name="password_confirm" placeholder="Confirm password" minlength="8" maxlength="72" autocomplete="new-password" required>
+                                <button type="submit">Set password</button>
+                            </form>
+                        </td>
+                        <td>
                             <form class="inline-form" method="post" action="/admin/crm/admins/{{ item.id }}/active">
                                 {% if item.is_active %}
                                     <input type="hidden" name="is_active" value="0">
@@ -167,7 +220,7 @@
                     </tr>
                 {% else %}
                     <tr>
-                        <td colspan="8">Адміністраторів не знайдено.</td>
+                        <td colspan="9">Адміністраторів не знайдено.</td>
                     </tr>
                 {% endfor %}
             </tbody>
