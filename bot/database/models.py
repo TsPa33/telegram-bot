@@ -56,11 +56,14 @@ async def create_tables():
         id SERIAL PRIMARY KEY,
         telegram_id BIGINT UNIQUE NOT NULL,
         username TEXT,
+        password_hash TEXT,
         role TEXT NOT NULL CHECK (role IN ('super_admin', 'admin', 'manager')),
         is_active BOOLEAN DEFAULT TRUE,
         created_at TIMESTAMP DEFAULT NOW()
     );
     """)
+
+    await execute("ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS password_hash TEXT;")
 
     await execute("""
     CREATE TABLE IF NOT EXISTS admin_sessions (
