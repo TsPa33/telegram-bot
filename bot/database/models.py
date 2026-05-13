@@ -191,6 +191,21 @@ async def create_tables():
     await execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS has_site BOOLEAN DEFAULT FALSE;")
 
     await execute("""
+    CREATE TABLE IF NOT EXISTS promo_activations (
+        id SERIAL PRIMARY KEY,
+        telegram_id BIGINT NOT NULL,
+        promo_code TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'active',
+        activated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        expires_at TIMESTAMP NOT NULL,
+        ads_budget_confirmed BOOLEAN NOT NULL DEFAULT FALSE,
+        manager_assigned BOOLEAN NOT NULL DEFAULT FALSE,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        UNIQUE (telegram_id, promo_code)
+    );
+    """)
+
+    await execute("""
     CREATE TABLE IF NOT EXISTS payments (
         id SERIAL PRIMARY KEY,
         seller_id INTEGER NOT NULL REFERENCES sellers(id) ON DELETE CASCADE,

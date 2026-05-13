@@ -2,20 +2,122 @@ from aiogram import Router, F
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
 
-from aiogram.types import CallbackQuery, Message, ReplyKeyboardRemove
+from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message, ReplyKeyboardRemove
 
 from bot.keyboards.main_menu import main_menu_kb
 from bot.keyboards.seller_menu import seller_menu_kb
 from bot.keyboards.admin_kb import admin_kb
 from bot.keyboards.admin_inline import demo_categories_kb, demo_group_kb
 
+from bot.database.base import fetchrow
+from bot.database.repositories.crm_admin_repo import list_admin_users
+from bot.database.repositories.promo_repo import (
+    START_PROMO_CODE,
+    activate_start_promo,
+    get_promo_activation,
+)
 from bot.database.repositories.seller_repo import get_or_create_seller
 from bot.database.repositories.user_repo import log_visit, create_user
 
+from bot.config import ADMIN_IDS
+from bot.keyboards.profile_inline import profile_edit_kb
 from bot.services.roles import is_admin
 from bot.services.site_packages import get_demo_group
 
 router = Router()
+
+
+def _start_payload(message: Message) -> str:
+    parts = (message.text or "").strip().split(maxsplit=1)
+    if len(parts) < 2:
+        return ""
+    return parts[1].strip()
+
+
+def _promo_profile_kb() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="Заповнити профіль", callback_data="promo:fill_profile")],
+        ]
+    )
+
+
+def _promo_activation_text() -> str:
+    return (
+        "✅ Вам активовано стартовий пакет CarPot на 3 місяці.\n\n"
+        "Що входить:\n"
+        "• Сайт для автобізнесу\n"
+        "• Telegram-керування\n"
+        "• Прийом заявок\n"
+        "• Базовий дизайн\n"
+        "• Допомога з запуском реклами\n\n"
+        "Наступний крок:\n"
+        "Заповніть профіль та інформацію про свій бізнес.\n\n"
+        "Для запуску реклами з вами звʼяжеться менеджер CarPot "
+        "і допоможе з базовим налаштуванням."
+    )
+
+
+async def _notify_admins_about_start_promo(bot, user, activation) -> None:
+    username = f"@{user.username}" if user.username else "—"
+    activated_at = activation.get("activated_at")
+    activated_at_text = activated_at.strftime("%d.%m.%Y %H:%M") if activated_at else "—"
+
+    text = (
+        "🟢 <b>Новий безпечний старт CarPot</b>\n\n"
+        "Користувач активував /start START.\n"
+        "Потрібно звʼязатися для профілю та запуску реклами.\n\n"
+        f"Telegram ID: <code>{user.id}</code>\n"
+        f"Username: {username}\n"
+        f"Promo code: {activation.get('promo_code', START_PROMO_CODE)}\n"
+        f"Activation date: {activated_at_text}"
+    )
+
+    admin_ids = set(ADMIN_IDS)
+    try:
+        admin_rows = await list_admin_users()
+        admin_ids.update(
+            row["telegram_id"]
+            for row in admin_rows
+            if row.get("is_active") and row.get("role") in {"super_admin", "admin", "manager"}
+        )
+    except Exception as e:
+        print("ERROR LOAD ADMINS FOR START PROMO:", e)
+
+    for admin_id in admin_ids:
+        try:
+            await bot.send_message(admin_id, text, parse_mode="HTML")
+        except Exception as e:
+            print("ERROR SEND START PROMO ADMIN NOTIFY:", admin_id, e)
+
+
+async def _get_seller_profile(telegram_id: int):
+    return await fetchrow(
+        """
+        SELECT id, shop_name, name, phone, website, city, description, photo_id, is_verified
+        FROM sellers
+        WHERE telegram_id = $1
+        LIMIT 1
+        """,
+        telegram_id,
+    )
+
+
+def _render_seller_profile(seller) -> str:
+    verified = seller.get("is_verified") if seller else False
+    status = "✅ Верифіковано" if verified else "❌ Не верифіковано"
+
+    return (
+        "👤 <b>Профіль продавця</b>\n\n"
+        f"🔐 {status}\n\n"
+        f"🏪 {seller.get('shop_name') or '-'}\n"
+        f"👤 {seller.get('name') or '-'}\n"
+        f"📞 {seller.get('phone') or '-'}\n"
+        f"🌐 {seller.get('website') or '-'}\n"
+        f"📍 {seller.get('city') or '-'}\n"
+        f"📝 {seller.get('description') or '-'}\n"
+        f"🖼 {'✅' if seller.get('photo_id') else '❌'}"
+    )
 
 
 # ================= GLOBAL RESET =================
@@ -57,9 +159,58 @@ async def start(message: Message, state: FSMContext):
     # ✅ LOG VISIT
     await log_visit(message.from_user, role="unknown")
 
+    payload = _start_payload(message)
+    if payload.upper() == START_PROMO_CODE:
+        existing_activation = await get_promo_activation(
+            message.from_user.id,
+            START_PROMO_CODE,
+        )
+        activation = await activate_start_promo(
+            telegram_id=message.from_user.id,
+            username=message.from_user.username,
+        )
+
+        await message.answer(
+            _promo_activation_text(),
+            reply_markup=_promo_profile_kb(),
+        )
+
+        if not existing_activation:
+            await _notify_admins_about_start_promo(
+                message.bot,
+                message.from_user,
+                activation,
+            )
+        return
+
     await message.answer(
         "🔁 Головне меню\n\nОбери дію:",
         reply_markup=await main_menu_kb(message.from_user.id),
+    )
+
+
+@router.callback_query(F.data == "promo:fill_profile")
+async def promo_fill_profile(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+    await state.clear()
+
+    await create_user(
+        telegram_id=callback.from_user.id,
+        username=callback.from_user.username
+    )
+    await log_visit(callback.from_user, role="seller")
+    await get_or_create_seller(callback.from_user.id, callback.from_user.username)
+
+    seller = await _get_seller_profile(callback.from_user.id)
+
+    await callback.message.answer(
+        "🏪 Режим продавця\nЗаповніть профіль та інформацію про бізнес:",
+        reply_markup=ReplyKeyboardRemove(),
+    )
+    await callback.message.answer(
+        _render_seller_profile(seller),
+        parse_mode="HTML",
+        reply_markup=profile_edit_kb(),
     )
 
 
