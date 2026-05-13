@@ -27,8 +27,8 @@ templates = Jinja2Templates(directory="bot/api/templates")
 bot = Bot(token=BOT_TOKEN)
 logger = logging.getLogger(__name__)
 
-MARKETING_TELEGRAM_BOT_URL = "https://t.me/PartiX_ua_bot"
-MARKETING_TELEGRAM_SUPPORT_URL = "https://t.me/PartiX_ua_bot"
+MARKETING_TELEGRAM_BOT_URL = "https://t.me/CarPotbot"
+MARKETING_TELEGRAM_SUPPORT_URL = "https://t.me/CarPotbot"
 MARKETING_SUPPORT_EMAIL = "support@carpot.com.ua"
 MARKETING_SITE_URL = "https://carpot.com.ua"
 
