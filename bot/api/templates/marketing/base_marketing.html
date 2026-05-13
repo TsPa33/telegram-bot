@@ -1088,6 +1088,95 @@
             color: #fde68a;
         }
 
+        .safe-start-section {
+            padding-top: 22px;
+        }
+
+        .safe-start-card {
+            display: grid;
+            grid-template-columns: minmax(0, 1.25fr) minmax(300px, 0.75fr);
+            gap: clamp(22px, 4vw, 42px);
+            align-items: center;
+            padding: clamp(26px, 5vw, 52px);
+            border: 1px solid rgba(0, 255, 157, 0.24);
+            border-radius: 34px;
+            background:
+                radial-gradient(circle at 14% 14%, rgba(0,255,157,0.16), transparent 24rem),
+                radial-gradient(circle at 88% 76%, rgba(56,189,248,0.16), transparent 24rem),
+                linear-gradient(135deg, rgba(15,23,42,0.92), rgba(11,18,32,0.82));
+            box-shadow: 0 28px 84px rgba(0,0,0,0.30), 0 0 52px rgba(0,255,157,0.08), inset 0 1px 0 rgba(255,255,255,0.07);
+            overflow: hidden;
+        }
+
+        :root[data-theme="light"] .safe-start-card {
+            background:
+                radial-gradient(circle at 14% 14%, rgba(0,184,117,0.16), transparent 24rem),
+                radial-gradient(circle at 88% 76%, rgba(2,132,199,0.12), transparent 24rem),
+                linear-gradient(135deg, rgba(255,255,255,0.96), rgba(232,241,251,0.88));
+            box-shadow: 0 26px 62px rgba(15,23,42,0.13), 0 0 38px rgba(0,184,117,0.08);
+        }
+
+        .safe-start-content h2 {
+            margin: 10px 0 14px;
+            font-size: clamp(2rem, 4vw, 3.35rem);
+            letter-spacing: -0.055em;
+        }
+
+        .safe-start-content p {
+            max-width: 760px;
+            color: var(--muted);
+            font-size: 1.05rem;
+            line-height: 1.72;
+        }
+
+        .safe-start-content .lead {
+            color: var(--text);
+            font-size: clamp(1.18rem, 2vw, 1.45rem);
+            font-weight: 800;
+        }
+
+        .promo-command-card {
+            display: grid;
+            gap: 16px;
+            padding: 24px;
+            border-radius: 26px;
+            border: 1px solid rgba(56, 189, 248, 0.26);
+            background: rgba(5, 8, 22, 0.46);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+        }
+
+        :root[data-theme="light"] .promo-command-card {
+            background: rgba(255, 255, 255, 0.70);
+        }
+
+        .promo-command-label {
+            color: var(--muted);
+            font-weight: 750;
+        }
+
+        .promo-command {
+            display: block;
+            padding: 16px 18px;
+            border-radius: 18px;
+            color: var(--primary);
+            background: rgba(0, 0, 0, 0.24);
+            border: 1px solid rgba(0, 255, 157, 0.26);
+            font-size: clamp(1.25rem, 3vw, 1.85rem);
+            font-weight: 900;
+            letter-spacing: 0.01em;
+            overflow-wrap: anywhere;
+        }
+
+        :root[data-theme="light"] .promo-command {
+            color: var(--primary-dark);
+            background: rgba(255, 255, 255, 0.72);
+        }
+
+        .safe-start-actions {
+            display: grid;
+            gap: 12px;
+        }
+
         .cta-panel {
             padding: clamp(28px, 6vw, 54px);
             border-radius: 32px;
@@ -1212,7 +1301,8 @@
             .hero-grid,
             .grid-3,
             .grid-2,
-            .pricing-grid {
+            .pricing-grid,
+            .safe-start-card {
                 grid-template-columns: 1fr;
             }
 
@@ -1348,6 +1438,7 @@
 
             .hero-actions .btn,
             .cta-actions .btn,
+            .safe-start-actions .btn,
             .price-card .btn {
                 width: 100%;
             }
@@ -1543,6 +1634,46 @@
         } else if (desktopQuery.addListener) {
             desktopQuery.addListener(closeMenu);
         }
+    })();
+
+    (() => {
+        const copyButton = document.querySelector('[data-copy-promo]');
+        const promoCommand = document.querySelector('[data-promo-command]');
+
+        if (!copyButton || !promoCommand) {
+            return;
+        }
+
+        const defaultText = copyButton.dataset.defaultText || copyButton.textContent;
+        let resetTimer;
+
+        const showCopied = () => {
+            copyButton.textContent = 'Скопійовано';
+            window.clearTimeout(resetTimer);
+            resetTimer = window.setTimeout(() => {
+                copyButton.textContent = defaultText;
+            }, 1800);
+        };
+
+        copyButton.addEventListener('click', async () => {
+            const command = promoCommand.textContent.trim();
+
+            try {
+                await navigator.clipboard.writeText(command);
+                showCopied();
+            } catch (error) {
+                const textarea = document.createElement('textarea');
+                textarea.value = command;
+                textarea.setAttribute('readonly', '');
+                textarea.style.position = 'fixed';
+                textarea.style.opacity = '0';
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                textarea.remove();
+                showCopied();
+            }
+        });
     })();
 
     (() => {
