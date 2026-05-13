@@ -30,6 +30,18 @@ from bot.database.repositories.crm_user_repo import (
     get_crm_seller_subscriptions,
     list_crm_sellers,
 )
+from bot.database.repositories.support_repo import (
+    add_support_message,
+    assign_ticket,
+    close_ticket,
+    get_ticket,
+    get_ticket_assignments,
+    get_ticket_messages,
+    list_support_tickets,
+)
+from bot.services.support_notifications import notify_support_admins, notify_support_user
+from bot.services.telegram_sender import bot as telegram_bot
+
 from bot.database.repositories.crm_repo import (
     create_admin_session_by_admin_id,
     get_admin_by_id,
@@ -297,6 +309,11 @@ async def crm_dashboard(request: Request):
             "text": "Review payment records",
             "url": "/admin/crm/payments",
         },
+        {
+            "title": "Support",
+            "text": "Manage customer support tickets",
+            "url": "/admin/crm/support",
+        },
     ]
 
     if can_view_audit_logs(admin):
@@ -325,6 +342,183 @@ async def crm_dashboard(request: Request):
             cards=cards,
         ),
     )
+
+
+@router.get("/support")
+async def crm_support(request: Request, status: str | None = None):
+    admin = await get_current_admin(request)
+    _require_crm_view_role(admin)
+
+    if status == "":
+        status = None
+
+    if status is not None and status not in {"open", "in_progress", "closed"}:
+        raise HTTPException(status_code=400, detail="Invalid support status")
+
+    tickets = await list_support_tickets(status=status)
+
+    return templates.TemplateResponse(
+        "admin/crm_support.html",
+        _template_context(
+            request,
+            admin,
+            tickets=tickets,
+            current_status=status,
+        ),
+    )
+
+
+@router.get("/support/{ticket_id}")
+async def crm_support_detail(request: Request, ticket_id: int):
+    admin = await get_current_admin(request)
+    _require_crm_view_role(admin)
+
+    ticket = await get_ticket(ticket_id)
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Support ticket not found")
+
+    messages = await get_ticket_messages(ticket_id)
+    assignments = await get_ticket_assignments(ticket_id)
+    admin_users = await list_admin_users()
+
+    return templates.TemplateResponse(
+        "admin/crm_support_detail.html",
+        _template_context(
+            request,
+            admin,
+            ticket=ticket,
+            messages=messages,
+            assignments=assignments,
+            admin_users=[row for row in admin_users if row["is_active"]],
+        ),
+    )
+
+
+@router.post("/support/{ticket_id}/reply")
+async def crm_support_reply(
+    request: Request,
+    ticket_id: int,
+    message_text: str = Form(...),
+):
+    admin = await get_current_admin(request)
+    _require_crm_view_role(admin)
+
+    ticket = await get_ticket(ticket_id)
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Support ticket not found")
+    if ticket["status"] == "closed":
+        raise HTTPException(status_code=400, detail="Support ticket is closed")
+
+    message_text = message_text.strip()
+    if not message_text:
+        raise HTTPException(status_code=400, detail="Reply text is required")
+
+    await add_support_message(ticket_id, "admin", admin["telegram_id"], message_text)
+    await notify_support_user(
+        telegram_bot,
+        ticket["telegram_id"],
+        "💬 Відповідь служби підтримки CarPot:\n\n" f"{message_text}",
+    )
+    await log_admin_action(
+        admin["id"],
+        "support_reply_sent",
+        entity_type="support_ticket",
+        entity_id=str(ticket_id),
+        ip=_request_ip(request),
+        user_agent=request.headers.get("user-agent"),
+    )
+
+    return RedirectResponse(url=f"/admin/crm/support/{ticket_id}", status_code=303)
+
+
+@router.post("/support/{ticket_id}/assign")
+async def crm_support_assign(
+    request: Request,
+    ticket_id: int,
+    admin_telegram_id: int = Form(...),
+):
+    admin = await get_current_admin(request)
+    _require_crm_view_role(admin)
+
+    admin_users = await list_admin_users()
+    target_admin = next(
+        (
+            row
+            for row in admin_users
+            if row["telegram_id"] == admin_telegram_id and row["is_active"]
+        ),
+        None,
+    )
+    if not target_admin:
+        raise HTTPException(status_code=400, detail="Target admin is not active")
+
+    ticket = await assign_ticket(
+        ticket_id,
+        admin_telegram_id=admin_telegram_id,
+        assigned_by=admin["telegram_id"],
+    )
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Support ticket not found")
+
+    target_label = (
+        f"@{target_admin['username']}"
+        if target_admin.get("username")
+        else str(admin_telegram_id)
+    )
+
+    await add_support_message(
+        ticket_id,
+        "system",
+        admin["telegram_id"],
+        f"Ticket assigned to {target_label}",
+    )
+    await notify_support_admins(
+        telegram_bot,
+        f"👤 Запит підтримки #{ticket_id} переназначено на {target_label}",
+    )
+    await log_admin_action(
+        admin["id"],
+        "support_ticket_assigned",
+        entity_type="support_ticket",
+        entity_id=str(ticket_id),
+        payload={"assigned_admin_telegram_id": admin_telegram_id},
+        ip=_request_ip(request),
+        user_agent=request.headers.get("user-agent"),
+    )
+
+    return RedirectResponse(url=f"/admin/crm/support/{ticket_id}", status_code=303)
+
+
+@router.post("/support/{ticket_id}/close")
+async def crm_support_close(request: Request, ticket_id: int):
+    admin = await get_current_admin(request)
+    _require_crm_view_role(admin)
+
+    ticket = await close_ticket(ticket_id)
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Support ticket not found")
+
+    await add_support_message(
+        ticket_id,
+        "system",
+        admin["telegram_id"],
+        f"Ticket closed from CRM by {admin['username'] or admin['telegram_id']}",
+    )
+    await notify_support_admins(
+        telegram_bot,
+        f"🔒 Запит підтримки #{ticket_id} закрито в CRM адміністратором {admin['username'] or admin['telegram_id']}",
+    )
+    await notify_support_user(telegram_bot, ticket["telegram_id"], "✅ Ваш запит підтримки закрито.")
+    await log_admin_action(
+        admin["id"],
+        "support_ticket_closed",
+        entity_type="support_ticket",
+        entity_id=str(ticket_id),
+        ip=_request_ip(request),
+        user_agent=request.headers.get("user-agent"),
+    )
+
+    return RedirectResponse(url=f"/admin/crm/support/{ticket_id}", status_code=303)
 
 
 @router.get("/leads")

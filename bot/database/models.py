@@ -135,6 +135,50 @@ async def create_tables():
 
     await execute("ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS password_hash TEXT;")
 
+
+    await execute("""
+    CREATE TABLE IF NOT EXISTS support_tickets (
+        id SERIAL PRIMARY KEY,
+        telegram_id BIGINT NOT NULL,
+        username TEXT,
+        full_name TEXT,
+        status TEXT NOT NULL DEFAULT 'open'
+            CHECK (status IN ('open', 'in_progress', 'closed')),
+        assigned_admin_id BIGINT,
+        subject TEXT,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        closed_at TIMESTAMP
+    );
+    """)
+
+    await execute("""
+    CREATE TABLE IF NOT EXISTS support_messages (
+        id SERIAL PRIMARY KEY,
+        ticket_id INTEGER NOT NULL REFERENCES support_tickets(id) ON DELETE CASCADE,
+        sender_type TEXT NOT NULL
+            CHECK (sender_type IN ('user', 'admin', 'system')),
+        sender_telegram_id BIGINT,
+        message_text TEXT NOT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+    );
+    """)
+
+    await execute("""
+    CREATE TABLE IF NOT EXISTS support_assignments (
+        id SERIAL PRIMARY KEY,
+        ticket_id INTEGER NOT NULL REFERENCES support_tickets(id) ON DELETE CASCADE,
+        admin_telegram_id BIGINT NOT NULL,
+        assigned_by BIGINT,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+    );
+    """)
+
+    await execute("CREATE INDEX IF NOT EXISTS idx_support_tickets_telegram_status ON support_tickets(telegram_id, status);")
+    await execute("CREATE INDEX IF NOT EXISTS idx_support_tickets_status_updated ON support_tickets(status, updated_at DESC);")
+    await execute("CREATE INDEX IF NOT EXISTS idx_support_messages_ticket_created ON support_messages(ticket_id, created_at);")
+    await execute("CREATE INDEX IF NOT EXISTS idx_support_assignments_ticket_created ON support_assignments(ticket_id, created_at);")
+
     await execute("""
     CREATE TABLE IF NOT EXISTS admin_sessions (
         id SERIAL PRIMARY KEY,

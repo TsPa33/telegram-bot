@@ -19,6 +19,7 @@ from bot.handlers.start import router as start_router
 from bot.handlers.seller import router as seller_router
 from bot.handlers.buyer import router as buyer_router
 from bot.handlers.admin import router as admin_router
+from bot.handlers.support import router as support_router
 
 import uvicorn
 from bot.api.app import app
@@ -72,6 +73,7 @@ async def run_bot():
 
     # ✅ ЄДИНА ПРАВИЛЬНА СХЕМА ROUTERS
     dp.include_router(start_router)
+    dp.include_router(support_router)
     dp.include_router(seller_router)  # ← тут вже підключені cms + media
     dp.include_router(admin_router)
     dp.include_router(buyer_router)

@@ -36,6 +36,9 @@ def seller_main_kb(is_verified: bool = False):
             KeyboardButton(text="🌐 Мій сайт"),
         ],
         [
+            KeyboardButton(text="🆘 Служба підтримки"),
+        ],
+        [
             KeyboardButton(text="↩️ На головне меню"),  # ✅ ДОДАНО
         ],
     ])
