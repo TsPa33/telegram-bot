@@ -11,7 +11,7 @@ def profile_edit_kb() -> InlineKeyboardMarkup:
             [InlineKeyboardButton(text="📍 Місто", callback_data="edit:city")],
             [InlineKeyboardButton(text="🖼 Фото", callback_data="edit:photo")],
             [InlineKeyboardButton(text="📝 Опис", callback_data="edit:description")],
-            [InlineKeyboardButton(text="⬅️ Назад", callback_data="edit:back")],
+            [InlineKeyboardButton(text="⬅️ Назад", callback_data="nav:seller")],
         ]
     )
 
