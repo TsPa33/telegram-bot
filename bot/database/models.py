@@ -258,6 +258,18 @@ async def create_tables():
     """)
 
     await execute("""
+    UPDATE seller_sites ss
+    SET subdomain = lower(trim(ss.subdomain))
+    WHERE ss.subdomain <> lower(trim(ss.subdomain))
+      AND NOT EXISTS (
+          SELECT 1
+          FROM seller_sites other
+          WHERE other.id <> ss.id
+            AND lower(trim(other.subdomain)) = lower(trim(ss.subdomain))
+      );
+    """)
+
+    await execute("""
     CREATE INDEX IF NOT EXISTS idx_seller_sites_subdomain
     ON seller_sites (subdomain);
     """)

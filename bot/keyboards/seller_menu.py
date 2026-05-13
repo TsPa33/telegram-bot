@@ -5,6 +5,8 @@ from aiogram.types import (
     InlineKeyboardButton,
 )
 
+from bot.services.domain_service import build_site_url
+
 
 # ================= MAIN =================
 
@@ -53,6 +55,7 @@ def seller_menu_kb(is_verified: bool = False):
 def site_menu_kb(subdomain: str, is_active: bool, demo_mode: bool = False):
     buttons = [
 
+        [InlineKeyboardButton(text="🌐 Домен сайту", callback_data="site:domain:menu")],
         [InlineKeyboardButton(text="📞 Контакти", callback_data="site:contacts:menu")],
         [InlineKeyboardButton(text="📍 Адреси та карта", callback_data="site:location:menu")],
         [InlineKeyboardButton(text="🎨 Медіа та дизайн", callback_data="site:media:menu")],
@@ -62,7 +65,7 @@ def site_menu_kb(subdomain: str, is_active: bool, demo_mode: bool = False):
         buttons.append([
             InlineKeyboardButton(
                 text="🌍 Відкрити сайт",
-                url=f"https://worker-production-e30f.up.railway.app/site/{subdomain}"
+                url=build_site_url(subdomain)
             )
         ])
 
@@ -75,6 +78,31 @@ def site_menu_kb(subdomain: str, is_active: bool, demo_mode: bool = False):
         ])
 
     return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+
+
+def site_domain_kb(subdomain: str | None = None):
+    action_text = "✏️ Змінити домен" if subdomain else "Створити домен"
+
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=action_text, callback_data="site:domain:change")],
+        [InlineKeyboardButton(text="⬅ Назад", callback_data="site:back")],
+    ])
+
+
+def site_domain_success_kb(subdomain: str):
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🌍 Відкрити сайт", url=build_site_url(subdomain))],
+        [InlineKeyboardButton(text="✏️ Змінити домен", callback_data="site:domain:change")],
+        [InlineKeyboardButton(text="⬅ Назад", callback_data="site:back")],
+    ])
+
+
+def site_domain_input_kb():
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="⬅ Назад", callback_data="site:back")],
+    ])
 
 
 # ================= CONTACTS MENU =================

@@ -30,6 +30,9 @@ class SellerStates(StatesGroup):
 
 
 class SellerSiteStates(StatesGroup):
+    # ================= DOMAIN =================
+    site_subdomain = State()
+
     # ================= HEADER =================
     edit_header_title = State()
     edit_about_text = State()

@@ -6,7 +6,12 @@ from aiogram.types import CallbackQuery, Message, InlineKeyboardMarkup, InlineKe
 from aiogram.fsm.context import FSMContext
 
 from bot.states.seller_states import SellerSiteStates
-from bot.database.repositories.site_repo import get_site_by_seller, update_site_config
+from bot.database.repositories.site_repo import (
+    get_site_by_seller,
+    subdomain_exists,
+    update_site_config,
+    update_site_subdomain,
+)
 from bot.database.repositories.service_repo import create_service
 from bot.services.demo_context import clear_preserving_demo_context, resolve_active_seller, resolve_active_seller_from_user, is_demo_mode
 
@@ -16,7 +21,11 @@ from bot.keyboards.seller_menu import (
     location_menu_kb,
     media_menu_kb,
     theme_menu_kb,
+    site_domain_input_kb,
+    site_domain_kb,
+    site_domain_success_kb,
 )
+from bot.services.domain_service import build_site_url, normalize_subdomain, validate_subdomain
 
 router = Router()
 
@@ -94,6 +103,138 @@ def safe_config(raw):
 
 
 # ================= MENU NAVIGATION =================
+
+DOMAIN_SETTINGS_TEXT = (
+    "🌐 Налаштування домену\n\n"
+    "Ваш сайт буде доступний за адресою:\n\n"
+    "https://ваш-домен.carpot.com.ua\n\n"
+    "Приклад:\n"
+    "razborka-kyiv.carpot.com.ua\n\n"
+    "Дозволено:\n"
+    "• латинські букви\n"
+    "• цифри\n"
+    "• дефіс -\n\n"
+    "Приклад домену:\n"
+    "razborka\n"
+    "sto-lviv\n"
+    "evakuator-kyiv\n\n"
+    "Введіть бажаний домен:"
+)
+
+INVALID_DOMAIN_TEXT = (
+    "❌ Некоректний домен.\n\n"
+    "Дозволено:\n"
+    "• латинські букви\n"
+    "• цифри\n"
+    "• дефіс -\n\n"
+    "Приклад:\n"
+    "sto-lviv"
+)
+
+
+async def send_domain_settings_message(callback: CallbackQuery, state: FSMContext):
+    seller, site = await get_context(callback, state)
+
+    if not seller:
+        await callback.answer("Продавця не знайдено", show_alert=True)
+        return
+
+    if not site:
+        await callback.answer("Сайт не знайдено", show_alert=True)
+        return
+
+    subdomain = normalize_subdomain(site.get("subdomain"))
+    text = DOMAIN_SETTINGS_TEXT
+
+    if subdomain:
+        text = (
+            "🌐 Налаштування домену\n\n"
+            "Поточний домен:\n"
+            f"{build_site_url(subdomain)}\n\n"
+            "Ви можете змінити домен сайту.\n\n"
+            + DOMAIN_SETTINGS_TEXT.split("\n\n", 1)[1]
+        )
+
+    await callback.message.edit_text(
+        text,
+        reply_markup=site_domain_kb(subdomain),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "site:domain:menu")
+async def open_domain_menu(callback: CallbackQuery, state: FSMContext):
+    await send_domain_settings_message(callback, state)
+
+
+@router.callback_query(F.data == "site:domain:change")
+async def start_domain_change(callback: CallbackQuery, state: FSMContext):
+    seller, site = await get_context(callback, state)
+
+    if not seller:
+        await callback.answer("Продавця не знайдено", show_alert=True)
+        return
+
+    if not site:
+        await callback.answer("Сайт не знайдено", show_alert=True)
+        return
+
+    await state.set_state(SellerSiteStates.site_subdomain)
+    await callback.message.edit_text(
+        DOMAIN_SETTINGS_TEXT,
+        reply_markup=site_domain_input_kb(),
+    )
+    await callback.answer()
+
+
+@router.message(SellerSiteStates.site_subdomain)
+async def save_site_subdomain(message: Message, state: FSMContext):
+    seller = await resolve_active_seller(message, state)
+
+    if not seller:
+        await message.answer("Продавця не знайдено")
+        return
+
+    desired_subdomain = normalize_subdomain(message.text)
+
+    if not validate_subdomain(message.text):
+        await message.answer(INVALID_DOMAIN_TEXT, reply_markup=site_domain_input_kb())
+        return
+
+    if await subdomain_exists(desired_subdomain, exclude_seller_id=seller["id"]):
+        await message.answer(
+            "❌ Домен вже зайнятий.\n\n"
+            "Спробуйте:\n"
+            f"{desired_subdomain}-ua\n"
+            f"{desired_subdomain}-kyiv\n"
+            f"{desired_subdomain}-service",
+            reply_markup=site_domain_input_kb(),
+        )
+        return
+
+    site = await update_site_subdomain(seller["id"], desired_subdomain)
+
+    if not site:
+        await message.answer(
+            "❌ Домен вже зайнятий.\n\n"
+            "Спробуйте:\n"
+            f"{desired_subdomain}-ua\n"
+            f"{desired_subdomain}-kyiv\n"
+            f"{desired_subdomain}-service",
+            reply_markup=site_domain_input_kb(),
+        )
+        return
+
+    await clear_preserving_demo_context(state)
+    await state.update_data(flow="seller_site")
+
+    await message.answer(
+        "✅ Домен успішно оновлено\n\n"
+        "Ваш сайт:\n"
+        f"{build_site_url(desired_subdomain)}",
+        reply_markup=site_domain_success_kb(desired_subdomain),
+    )
+
 
 @router.callback_query(F.data == "site:contacts:menu")
 async def open_contacts(callback: CallbackQuery):
