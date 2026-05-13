@@ -1,4 +1,8 @@
+import logging
+import os
+
 from aiogram import Router, types, F
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import Message
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
@@ -12,20 +16,36 @@ from bot.states.buyer_states import Buyer
 from bot.keyboards.main_menu import main_menu_kb
 
 router = Router()
+logger = logging.getLogger(__name__)
 
 
 # ================= BUYER HOME =================
 
-PHOTO_ID = "AgACAgIAAxkBAAInT2ns1VVBPxs6dClg_laFO2xhDoxmAAJbFGsb1aVhS1XfR9RQ5x8VAQADAgADeQADOwQ"
+BUYER_HOME_TEXT = "🚗 Меню покупця\n\nОбери дію:"
+BUYER_HOME_IMAGE_URL = os.getenv("BUYER_HOME_IMAGE_URL")
 
 
 async def show_buyer_home(message: types.Message, state: FSMContext):
     await state.clear()  # 🔥 гарантія чистого входу
 
-    await message.answer_photo(
-        photo=PHOTO_ID,
-        reply_markup=buyer_home_kb(),
-    )
+    if BUYER_HOME_IMAGE_URL:
+        try:
+            await message.answer_photo(
+                photo=BUYER_HOME_IMAGE_URL,
+                caption=BUYER_HOME_TEXT,
+                reply_markup=buyer_home_kb(),
+            )
+        except TelegramBadRequest as exc:
+            logger.warning("Buyer home image unavailable: %s", exc)
+            await message.answer(
+                BUYER_HOME_TEXT,
+                reply_markup=buyer_home_kb(),
+            )
+    else:
+        await message.answer(
+            BUYER_HOME_TEXT,
+            reply_markup=buyer_home_kb(),
+        )
 
     await message.answer(
         "Швидкий доступ до меню:",

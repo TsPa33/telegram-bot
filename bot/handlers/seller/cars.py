@@ -1,4 +1,7 @@
+import logging
+
 from aiogram import Router, F
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
@@ -23,6 +26,7 @@ from bot.keyboards.seller_inline import (
 from bot.utils.formatters import format_car_card
 
 router = Router()
+logger = logging.getLogger(__name__)
 
 
 # ================= STATES =================
@@ -66,10 +70,24 @@ async def open_car(callback: CallbackQuery):
 
     text = format_car_card(car, 1, 1, True)
 
-    await callback.message.answer_photo(
-        photo=car.get("photo_id"),
-        caption=text,
-        reply_markup=seller_card_actions_kb(car_id),
+    photo_id = car.get("photo_id")
+    reply_markup = seller_card_actions_kb(car_id)
+
+    if photo_id:
+        try:
+            await callback.message.answer_photo(
+                photo=photo_id,
+                caption=text,
+                reply_markup=reply_markup,
+                parse_mode="HTML"
+            )
+            return
+        except TelegramBadRequest as exc:
+            logger.warning("Seller car photo unavailable for car %s: %s", car_id, exc)
+
+    await callback.message.answer(
+        text,
+        reply_markup=reply_markup,
         parse_mode="HTML"
     )
 
