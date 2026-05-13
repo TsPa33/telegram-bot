@@ -1,4 +1,7 @@
+import logging
+
 from aiogram import Router, types, F
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import InputMediaPhoto
@@ -15,8 +18,7 @@ from bot.keyboards.brands import brand_kb
 from bot.keyboards.models import model_kb
 
 router = Router()
-
-DEFAULT_PHOTO = "AgACAgIAAxkBAAIJ6WnZ7zNsTF4dV6Fxbqsye8iRF224AAJfEWsbFN_RSsup93hjz4uMAQADAgADeAADOwQ"
+logger = logging.getLogger(__name__)
 
 
 # ================= START =================
@@ -141,32 +143,50 @@ async def send_card(message: types.Message, state: FSMContext, new_message=False
         total=total
     )
 
-    photo = car.get("photo_id") or DEFAULT_PHOTO
+    photo = car.get("photo_id")
 
     if new_message:
-        await message.answer_photo(
-            photo=photo,
-            caption=text,
-            reply_markup=keyboard,
-            parse_mode="HTML"
-        )
+        if photo:
+            try:
+                await message.answer_photo(
+                    photo=photo,
+                    caption=text,
+                    reply_markup=keyboard,
+                    parse_mode="HTML"
+                )
+            except TelegramBadRequest as exc:
+                logger.warning("Legacy buyer car photo unavailable: %s", exc)
+                await message.answer(text, reply_markup=keyboard, parse_mode="HTML")
+        else:
+            await message.answer(text, reply_markup=keyboard, parse_mode="HTML")
     else:
         try:
-            await message.edit_media(
-                InputMediaPhoto(
-                    media=photo,
-                    caption=text,
-                    parse_mode="HTML"
-                ),
-                reply_markup=keyboard
-            )
-        except:
-            await message.answer_photo(
-                photo=photo,
-                caption=text,
-                reply_markup=keyboard,
-                parse_mode="HTML"
-            )
+            if photo:
+                await message.edit_media(
+                    InputMediaPhoto(
+                        media=photo,
+                        caption=text,
+                        parse_mode="HTML"
+                    ),
+                    reply_markup=keyboard
+                )
+            else:
+                await message.edit_text(text, reply_markup=keyboard, parse_mode="HTML")
+        except Exception as exc:
+            logger.warning("Unable to update legacy buyer car card, sending a new message: %s", exc)
+            if photo:
+                try:
+                    await message.answer_photo(
+                        photo=photo,
+                        caption=text,
+                        reply_markup=keyboard,
+                        parse_mode="HTML"
+                    )
+                except TelegramBadRequest as photo_exc:
+                    logger.warning("Legacy buyer car photo unavailable: %s", photo_exc)
+                    await message.answer(text, reply_markup=keyboard, parse_mode="HTML")
+            else:
+                await message.answer(text, reply_markup=keyboard, parse_mode="HTML")
 
 
 # ================= PAGINATION =================

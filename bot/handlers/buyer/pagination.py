@@ -1,4 +1,7 @@
+import logging
+
 from aiogram import Router, F
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import CallbackQuery, InputMediaPhoto, ReplyKeyboardRemove
 from aiogram.fsm.context import FSMContext
 
@@ -20,8 +23,7 @@ from bot.keyboards.seller_menu import seller_main_kb
 from bot.keyboards.buyer_reply import buyer_reply_kb
 
 router = Router()
-
-DEFAULT_PHOTO = "AgACAgIAAxkBAAIJ6WnZ7zNsTF4dV6Fxbqsye8iRF224AAJfEWsbFN_RSsup93hjz4uMAQADAgADeAADOwQ"
+logger = logging.getLogger(__name__)
 
 LIMIT = 1
 
@@ -65,15 +67,23 @@ async def send_card(message, state: FSMContext, new_message=False, user_id: int 
 
     keyboard = build_card_keyboard(car, page, total)
 
-    new_photo = car.get("photo_id") or DEFAULT_PHOTO
+    new_photo = car.get("photo_id")
 
     if new_message:
-        await message.answer_photo(
-            photo=new_photo,
-            caption=text,
-            reply_markup=keyboard,
-            parse_mode="HTML"
-        )
+        if new_photo:
+            try:
+                await message.answer_photo(
+                    photo=new_photo,
+                    caption=text,
+                    reply_markup=keyboard,
+                    parse_mode="HTML"
+                )
+            except TelegramBadRequest as exc:
+                logger.warning("Car photo unavailable for buyer card %s: %s", car_id, exc)
+                await message.answer(text, reply_markup=keyboard, parse_mode="HTML")
+        else:
+            await message.answer(text, reply_markup=keyboard, parse_mode="HTML")
+
         await message.answer("Дії:", reply_markup=await buyer_nav_kb(viewer_id))
     else:
         try:
@@ -82,7 +92,7 @@ async def send_card(message, state: FSMContext, new_message=False, user_id: int 
             if message.photo:
                 current_photo = message.photo[-1].file_id
 
-            if current_photo != new_photo:
+            if new_photo and current_photo != new_photo:
                 await message.edit_media(
                     media=InputMediaPhoto(
                         media=new_photo,
@@ -91,20 +101,35 @@ async def send_card(message, state: FSMContext, new_message=False, user_id: int 
                     ),
                     reply_markup=keyboard
                 )
-            else:
+            elif message.photo:
                 await message.edit_caption(
                     caption=text,
                     reply_markup=keyboard,
                     parse_mode="HTML"
                 )
+            else:
+                await message.edit_text(
+                    text,
+                    reply_markup=keyboard,
+                    parse_mode="HTML"
+                )
 
-        except Exception:
-            await message.answer_photo(
-                photo=new_photo,
-                caption=text,
-                reply_markup=keyboard,
-                parse_mode="HTML"
-            )
+        except Exception as exc:
+            logger.warning("Unable to update buyer card %s, sending a new message: %s", car_id, exc)
+            if new_photo:
+                try:
+                    await message.answer_photo(
+                        photo=new_photo,
+                        caption=text,
+                        reply_markup=keyboard,
+                        parse_mode="HTML"
+                    )
+                except TelegramBadRequest as photo_exc:
+                    logger.warning("Car photo unavailable for buyer card %s: %s", car_id, photo_exc)
+                    await message.answer(text, reply_markup=keyboard, parse_mode="HTML")
+            else:
+                await message.answer(text, reply_markup=keyboard, parse_mode="HTML")
+
             await message.answer("Дії:", reply_markup=await buyer_nav_kb(viewer_id))
 
 

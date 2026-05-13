@@ -1,7 +1,9 @@
+import logging
 import math
 from urllib.parse import quote_plus
 
 from aiogram import F, Router
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
@@ -15,6 +17,7 @@ from bot.database.repositories.service_repo import (
 from bot.states.service_states import ServiceStates
 
 router = Router()
+logger = logging.getLogger(__name__)
 
 SERVICE_CATEGORIES = [
     "СТО",
@@ -113,7 +116,11 @@ async def send_card(message: Message, state: FSMContext, new=False):
 
     if new:
         if service.get("photo_id"):
-            await message.answer_photo(service["photo_id"], caption=text, reply_markup=kb)
+            try:
+                await message.answer_photo(service["photo_id"], caption=text, reply_markup=kb)
+            except TelegramBadRequest as exc:
+                logger.warning("Service photo unavailable for service %s: %s", service.get("id"), exc)
+                await message.answer(text, reply_markup=kb)
         else:
             await message.answer(text, reply_markup=kb)
         return
