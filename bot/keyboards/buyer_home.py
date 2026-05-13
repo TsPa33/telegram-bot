@@ -9,5 +9,6 @@ def buyer_home_kb() -> InlineKeyboardMarkup:
             [InlineKeyboardButton(text="👀 Мої перегляди", callback_data="buyer:views")],
             [InlineKeyboardButton(text="⭐ Обрані", callback_data="buyer:favorites")],
             [InlineKeyboardButton(text="👤 Профіль", callback_data="buyer:profile")],
+            [InlineKeyboardButton(text="🆘 Служба підтримки", callback_data="support:open")],
         ]
     )

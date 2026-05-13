@@ -277,3 +277,13 @@ def admin_demo_seed_types_kb(site_id: int):
         [InlineKeyboardButton(text="🚗 Автозапчастини", callback_data=f"admin:demo:seed_type:{site_id}:parts")],
         [InlineKeyboardButton(text="⬅ Назад", callback_data=f"admin:demo:view:{site_id}")],
     ])
+
+
+# ================= SUPPORT =================
+
+def support_ticket_actions_kb(ticket_id: int):
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✅ Взяти в роботу", callback_data=f"support:claim:{ticket_id}")],
+        [InlineKeyboardButton(text="💬 Відповісти", callback_data=f"support:reply:{ticket_id}")],
+        [InlineKeyboardButton(text="🔒 Закрити", callback_data=f"support:close:{ticket_id}")],
+    ])

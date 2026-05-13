@@ -1,0 +1,114 @@
+{% extends "admin/crm_base.html" %}
+
+{% block title %}Support #{{ ticket.id }}{% endblock %}
+
+{% block head %}
+<style>
+    .detail-grid { display: grid; grid-template-columns: 1.3fr 0.7fr; gap: 20px; }
+    .card { border: 1px solid var(--border); border-radius: 14px; padding: 16px; background: #fff; margin-bottom: 16px; }
+    .meta-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+    .meta-list strong { display: inline-block; min-width: 120px; }
+    .message { border-left: 4px solid var(--border); padding: 10px 12px; margin-bottom: 12px; background: #f9fafb; border-radius: 10px; white-space: pre-wrap; word-break: break-word; }
+    .message.user { border-left-color: #2563eb; }
+    .message.admin { border-left-color: #16a34a; }
+    .message.system { border-left-color: #f59e0b; }
+    textarea, select { width: 100%; border: 1px solid var(--border); border-radius: 10px; padding: 10px; font: inherit; }
+    textarea { min-height: 120px; resize: vertical; }
+    button { border: 0; border-radius: 10px; padding: 10px 14px; background: var(--primary); color: #fff; cursor: pointer; font-weight: 700; margin-top: 8px; }
+    button.danger { background: #dc2626; }
+    .back-link { color: var(--primary); text-decoration: none; font-weight: 700; }
+    @media (max-width: 860px) { .detail-grid { grid-template-columns: 1fr; } }
+</style>
+{% endblock %}
+
+{% block content %}
+{% set status_labels = {"open": "Відкритий", "in_progress": "В роботі", "closed": "Закритий"} %}
+<section class="crm-panel">
+    <a class="back-link" href="/admin/crm/support">← До списку Support</a>
+    <h1 class="crm-title">Support #{{ ticket.id }}</h1>
+    <p class="crm-muted">{{ status_labels.get(ticket.status, ticket.status) }}</p>
+
+    <div class="detail-grid">
+        <div>
+            <div class="card">
+                <h2>Історія повідомлень</h2>
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="message {{ message.sender_type }}">
+                            <strong>{{ message.sender_type }}</strong>
+                            <span class="crm-muted">{{ message.created_at.strftime('%d.%m.%Y %H:%M') if message.created_at else '' }} · {{ message.sender_telegram_id or '-' }}</span>
+                            <div>{{ message.message_text }}</div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="crm-muted">Повідомлень немає.</p>
+                {% endif %}
+            </div>
+
+            {% if ticket.status != 'closed' %}
+                <div class="card">
+                    <h2>Відповісти користувачу</h2>
+                    <form method="post" action="/admin/crm/support/{{ ticket.id }}/reply">
+                        <textarea name="message_text" required placeholder="Напишіть відповідь..."></textarea>
+                        <button type="submit">Надіслати відповідь</button>
+                    </form>
+                </div>
+            {% endif %}
+        </div>
+
+        <aside>
+            <div class="card">
+                <h2>Дані запиту</h2>
+                <ul class="meta-list">
+                    <li><strong>Користувач:</strong> {{ ticket.full_name or '-' }}</li>
+                    <li><strong>Username:</strong> {{ '@' ~ ticket.username if ticket.username else '—' }}</li>
+                    <li><strong>Telegram ID:</strong> {{ ticket.telegram_id }}</li>
+                    <li><strong>Створено:</strong> {{ ticket.created_at.strftime('%d.%m.%Y %H:%M') if ticket.created_at else '-' }}</li>
+                    <li><strong>Оновлено:</strong> {{ ticket.updated_at.strftime('%d.%m.%Y %H:%M') if ticket.updated_at else '-' }}</li>
+                    <li><strong>Відповідальний:</strong> {{ ticket.assigned_admin_id or '-' }}</li>
+                </ul>
+            </div>
+
+            {% if ticket.status != 'closed' %}
+                <div class="card">
+                    <h2>Переназначити відповідального</h2>
+                    <form method="post" action="/admin/crm/support/{{ ticket.id }}/assign">
+                        <select name="admin_telegram_id" required>
+                            {% for admin_user in admin_users %}
+                                <option value="{{ admin_user.telegram_id }}" {% if ticket.assigned_admin_id == admin_user.telegram_id %}selected{% endif %}>
+                                    {{ admin_user.username or admin_user.telegram_id }} · {{ admin_user.role }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit">Переназначити</button>
+                    </form>
+                </div>
+
+                <div class="card">
+                    <h2>Закрити запит</h2>
+                    <form method="post" action="/admin/crm/support/{{ ticket.id }}/close">
+                        <button class="danger" type="submit">Закрити запит</button>
+                    </form>
+                </div>
+            {% endif %}
+
+            <div class="card">
+                <h2>Історія призначень</h2>
+                {% if assignments %}
+                    <ul class="meta-list">
+                        {% for assignment in assignments %}
+                            <li>
+                                {{ assignment.created_at.strftime('%d.%m.%Y %H:%M') if assignment.created_at else '-' }} —
+                                {{ assignment.admin_username or assignment.admin_telegram_id }}
+                                <span class="crm-muted">by {{ assignment.assigned_by_username or assignment.assigned_by or '-' }}</span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="crm-muted">Призначень ще немає.</p>
+                {% endif %}
+            </div>
+        </aside>
+    </div>
+</section>
+{% endblock %}

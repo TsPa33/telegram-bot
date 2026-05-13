@@ -19,3 +19,8 @@ class EditModel(StatesGroup):
 class DemoSiteStates(StatesGroup):
     title = State()
     subdomain = State()
+
+
+class SupportStates(StatesGroup):
+    waiting_support_message = State()
+    waiting_admin_support_reply = State()

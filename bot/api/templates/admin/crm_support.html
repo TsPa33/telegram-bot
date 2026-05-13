@@ -1,0 +1,79 @@
+{% extends "admin/crm_base.html" %}
+
+{% block title %}CRM Support{% endblock %}
+
+{% block head %}
+<style>
+    .support-header { display: flex; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+    .filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+    .filter-link { border: 1px solid var(--border); border-radius: 999px; padding: 8px 12px; color: var(--primary); background: #fff; text-decoration: none; font-size: 14px; font-weight: 700; }
+    .filter-link.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 980px; font-size: 14px; }
+    th, td { border-bottom: 1px solid var(--border); padding: 10px 8px; text-align: left; vertical-align: top; }
+    th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+    .message-cell { max-width: 280px; white-space: pre-wrap; word-break: break-word; }
+    .status-badge { display: inline-block; border-radius: 999px; padding: 4px 8px; background: #eff6ff; color: #1d4ed8; font-weight: 700; font-size: 12px; }
+    .empty-state { padding: 24px; border: 1px dashed var(--border); border-radius: 14px; color: var(--muted); text-align: center; }
+    .detail-link { color: var(--primary); font-weight: 700; text-decoration: none; }
+</style>
+{% endblock %}
+
+{% block content %}
+{% set status_labels = {"open": "Відкритий", "in_progress": "В роботі", "closed": "Закритий"} %}
+<section class="crm-panel">
+    <div class="support-header">
+        <div>
+            <h1 class="crm-title">Support</h1>
+            <p class="crm-muted">Запити підтримки користувачів CarPot.</p>
+        </div>
+        <p class="crm-muted">Адміністратор: {{ admin.username or admin.telegram_id }}</p>
+    </div>
+
+    <div class="filters">
+        <a class="filter-link {% if not current_status %}active{% endif %}" href="/admin/crm/support">Усі</a>
+        <a class="filter-link {% if current_status == 'open' %}active{% endif %}" href="/admin/crm/support?status=open">Відкриті</a>
+        <a class="filter-link {% if current_status == 'in_progress' %}active{% endif %}" href="/admin/crm/support?status=in_progress">В роботі</a>
+        <a class="filter-link {% if current_status == 'closed' %}active{% endif %}" href="/admin/crm/support?status=closed">Закриті</a>
+    </div>
+
+    {% if tickets %}
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Дата</th>
+                        <th>Користувач</th>
+                        <th>Статус</th>
+                        <th>Відповідальний</th>
+                        <th>Останнє повідомлення</th>
+                        <th>Оновлено</th>
+                        <th>Дії</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ticket in tickets %}
+                        <tr>
+                            <td>#{{ ticket.id }}</td>
+                            <td>{{ ticket.created_at.strftime('%d.%m.%Y %H:%M') if ticket.created_at else '-' }}</td>
+                            <td>
+                                {{ ticket.full_name or '-' }}<br>
+                                {{ '@' ~ ticket.username if ticket.username else '—' }}<br>
+                                <span class="crm-muted">{{ ticket.telegram_id }}</span>
+                            </td>
+                            <td><span class="status-badge">{{ status_labels.get(ticket.status, ticket.status) }}</span></td>
+                            <td>{{ ticket.assigned_admin_username or ticket.assigned_admin_id or '-' }}</td>
+                            <td class="message-cell">{{ ticket.last_message_text or '-' }}</td>
+                            <td>{{ ticket.updated_at.strftime('%d.%m.%Y %H:%M') if ticket.updated_at else '-' }}</td>
+                            <td><a class="detail-link" href="/admin/crm/support/{{ ticket.id }}">Відкрити</a></td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="empty-state">Запитів підтримки не знайдено.</div>
+    {% endif %}
+</section>
+{% endblock %}
