@@ -5,8 +5,7 @@ from __future__ import annotations
 from bot.config import ADMIN_IDS
 from bot.database.repositories.crm_admin_repo import list_admin_users
 from bot.database.repositories.seller_repo import get_seller_by_telegram_id
-
-SITE_BASE_URL = "https://worker-production-e30f.up.railway.app/site"
+from bot.services.domain_service import build_site_url
 
 SITE_PACKAGES = {
     "standard": {
@@ -123,7 +122,7 @@ def format_site_packages_text() -> str:
 
 
 def get_demo_site_url(subdomain: str) -> str:
-    return f"{SITE_BASE_URL}/{subdomain}"
+    return build_site_url(subdomain)
 
 
 def get_demo_group(group_key: str) -> dict | None:

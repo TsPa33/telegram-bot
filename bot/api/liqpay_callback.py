@@ -9,6 +9,7 @@ from aiogram import Bot
 
 from bot.config import LIQPAY_PRIVATE_KEY, BOT_TOKEN
 from bot.database.base import execute, fetchrow
+from bot.services.domain_service import build_site_url
 
 router = APIRouter()
 
@@ -163,7 +164,7 @@ async def liqpay_callback(request: Request):
                 else:
                     text = (
                         f"🌐 Сайт створено автоматично\n\n"
-                        f"🔗 https://worker-production-e30f.up.railway.app/site/{subdomain}\n\n"
+                        f"🔗 {build_site_url(subdomain)}\n\n"
                         f"Редагування: «Мій сайт» у боті\n"
                     )
 

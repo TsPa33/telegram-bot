@@ -2,12 +2,14 @@ import json
 
 from bot.database.base import fetch, fetchrow, execute, transaction
 from bot.services.site_config import merge_with_default
+from bot.services.domain_service import normalize_subdomain
 
 
 # ================= CREATE =================
 
 async def create_site(seller_id: int, subdomain: str, config: dict):
     config = merge_with_default(config or {})
+    subdomain = normalize_subdomain(subdomain)
 
     return await fetchrow(
         """
@@ -51,10 +53,10 @@ async def get_site_by_subdomain(subdomain: str):
         """
         SELECT *
         FROM seller_sites
-        WHERE subdomain = $1
+        WHERE lower(trim(subdomain)) = lower(trim($1))
         LIMIT 1
         """,
-        subdomain,
+        normalize_subdomain(subdomain),
     )
 
 
@@ -260,17 +262,42 @@ async def publish_site(seller_id: int) -> bool:
 
 # ================= SUBDOMAIN =================
 
-async def subdomain_exists(subdomain: str) -> bool:
+async def subdomain_exists(subdomain: str, exclude_seller_id: int | None = None) -> bool:
+    normalized = normalize_subdomain(subdomain)
+
     row = await fetchrow(
         """
         SELECT 1
         FROM seller_sites
-        WHERE subdomain = $1
+        WHERE lower(trim(subdomain)) = lower(trim($1))
+          AND ($2::bigint IS NULL OR seller_id <> $2::bigint)
         LIMIT 1
         """,
-        subdomain,
+        normalized,
+        exclude_seller_id,
     )
     return row is not None
+
+
+async def update_site_subdomain(seller_id: int, subdomain: str):
+    normalized = normalize_subdomain(subdomain)
+
+    return await fetchrow(
+        """
+        UPDATE seller_sites
+        SET subdomain = $2
+        WHERE seller_id = $1
+          AND NOT EXISTS (
+              SELECT 1
+              FROM seller_sites
+              WHERE lower(trim(subdomain)) = lower(trim($2))
+                AND seller_id <> $1
+          )
+        RETURNING *
+        """,
+        seller_id,
+        normalized,
+    )
 
 
 # ================= DEMO ADMIN =================

@@ -18,6 +18,7 @@ from bot.database.repositories.lead_repo import create_site_lead
 
 from bot.services.site_config import merge_with_default
 from bot.utils.subdomain import is_valid_subdomain
+from bot.services.domain_service import extract_subdomain_from_host
 from bot.services.telegram_sender import send_message_to_seller
 
 app = FastAPI()
@@ -62,6 +63,11 @@ async def tg_file_url(bot: Bot, file_id: str) -> str:
 
 @router.get("/", response_class=HTMLResponse)
 async def marketing_home(request: Request):
+    host_subdomain = extract_subdomain_from_host(request.headers.get("host"))
+
+    if host_subdomain:
+        return await _render_site_by_subdomain(host_subdomain, request)
+
     return templates.TemplateResponse(
         "marketing/index.html",
         marketing_context(
@@ -113,8 +119,7 @@ async def marketing_contacts(request: Request):
 
 # ================= SITE RENDER =================
 
-@router.get("/site/{subdomain}", response_class=HTMLResponse)
-async def render_site(subdomain: str, request: Request):
+async def _render_site_by_subdomain(subdomain: str, request: Request):
     if not is_valid_subdomain(subdomain):
         raise HTTPException(status_code=404)
 
@@ -304,14 +309,18 @@ async def render_site(subdomain: str, request: Request):
     )
 
 
+@router.get("/site/{subdomain}", response_class=HTMLResponse)
+async def render_site(subdomain: str, request: Request):
+    return await _render_site_by_subdomain(subdomain, request)
+
+
 # ================= LEAD FORM =================
 
-@router.post("/site/{subdomain}/lead")
-async def create_lead(
+async def _create_lead_for_subdomain(
     subdomain: str,
-    name: str = Form(...),
-    phone: str = Form(...),
-    message: str = Form(""),
+    name: str,
+    phone: str,
+    message: str,
 ):
     if not is_valid_subdomain(subdomain):
         raise HTTPException(status_code=404)
@@ -352,6 +361,31 @@ async def create_lead(
     )
 
     return {"status": "ok"}
+
+
+@router.post("/site/{subdomain}/lead")
+async def create_lead(
+    subdomain: str,
+    name: str = Form(...),
+    phone: str = Form(...),
+    message: str = Form(""),
+):
+    return await _create_lead_for_subdomain(subdomain, name, phone, message)
+
+
+@router.post("/lead")
+async def create_host_lead(
+    request: Request,
+    name: str = Form(...),
+    phone: str = Form(...),
+    message: str = Form(""),
+):
+    host_subdomain = extract_subdomain_from_host(request.headers.get("host"))
+
+    if not host_subdomain:
+        raise HTTPException(status_code=404)
+
+    return await _create_lead_for_subdomain(host_subdomain, name, phone, message)
 
 
 # ================= ROUTERS =================
