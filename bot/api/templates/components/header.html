@@ -64,6 +64,26 @@
             </li>
             {% endif %}
 
+            <!-- PRICING -->
+            {% if modules.get('pricing', False) and config.get('pricing', {}).get('items') %}
+            <li><a href="#pricing" class="nav-link">Ціни</a></li>
+            {% endif %}
+
+            <!-- WORKS -->
+            {% if modules.get('works', False) and config.get('works', {}).get('items') %}
+            <li><a href="#works" class="nav-link">Роботи</a></li>
+            {% endif %}
+
+            <!-- GALLERY -->
+            {% if modules.get('gallery', False) and config.get('gallery', {}).get('images') %}
+            <li><a href="#gallery" class="nav-link">Галерея</a></li>
+            {% endif %}
+
+            <!-- REVIEWS -->
+            {% if modules.get('reviews', False) and config.get('reviews', {}).get('items') %}
+            <li><a href="#reviews" class="nav-link">Відгуки</a></li>
+            {% endif %}
+
             <!-- CARS -->
             {% if modules.get('cars', True) and cars %}
             <li>

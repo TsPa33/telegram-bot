@@ -383,7 +383,7 @@ DEMO_PRESETS["sto"] = {
         "website": "https://worker-production-e30f.up.railway.app/site/demo-sto",
     },
     "config": {
-        "theme": {"scheme": "default"},
+        "theme": {"scheme": "premium_dark"},
         "header": {"title": "CarPot AutoService", "logo": ""},
         "hero": {
             "enabled": True,
@@ -516,6 +516,72 @@ DEMO_PRESETS["tire"] = {
         _service(category="Шиномонтаж", title="Сезонний запис", city="Тернопіль", address="вул. Шинна, 5", description="Попереднє бронювання зручного часу, щоб пройти сезон без черг і очікування.", website="https://worker-production-e30f.up.railway.app/site/demo-shynomontag", price=0, price_label="за попереднім бронюванням"),
     ],
 }
+
+
+_DEMO_STANDARD_MODULES = {
+    "pricing": True,
+    "gallery": True,
+    "works": True,
+    "cta": True,
+    "reviews": True,
+}
+
+_DEMO_STANDARD_CONTENT = {
+    "sto": {
+        "pricing": {
+            "title": "Наші ціни",
+            "subtitle": "Популярні роботи для швидкого старту. Точну суму підтвердимо після діагностики.",
+            "items": [
+                {"title": "Компʼютерна діагностика", "prefix": "від", "price": "500 грн", "description": "OBD-сканування, перевірка помилок і рекомендації майстра."},
+                {"title": "Заміна мастила", "prefix": "від", "price": "700 грн", "description": "Підбір мастила, фільтрів і базовий огляд авто."},
+                {"title": "Ремонт ходової", "prefix": "від", "price": "900 грн", "description": "Діагностика підвіски та заміна зношених елементів."},
+                {"title": "Гальмівна система", "prefix": "від", "price": "800 грн", "description": "Колодки, диски, супорти та контроль безпеки."},
+                {"title": "Підготовка до сезону", "prefix": "від", "price": "1200 грн", "description": "Комплексна перевірка перед зимою або літнім сезоном."},
+                {"title": "Консультація майстра", "price": "безкоштовно", "description": "Підкажемо оптимальний план ремонту та бюджет."},
+            ],
+        },
+        "gallery": {
+            "title": "Галерея сервісу",
+            "subtitle": "Робочі зони, обладнання та процес обслуговування авто.",
+            "images": [
+                {"url": "https://images.unsplash.com/photo-1487754180451-c456f719a1fc?auto=format&fit=crop&w=900&q=80", "alt": "СТО бокс"},
+                {"url": "https://images.unsplash.com/photo-1632823471565-1ecdf5c611dc?auto=format&fit=crop&w=900&q=80", "alt": "Ремонт авто"},
+                {"url": "https://images.unsplash.com/photo-1625047509168-a7026f36de04?auto=format&fit=crop&w=900&q=80", "alt": "Майстерня"},
+                {"url": "https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?auto=format&fit=crop&w=900&q=80", "alt": "Обслуговування"},
+            ],
+        },
+        "works": {
+            "title": "Наші роботи",
+            "subtitle": "Типові задачі, які формують довіру до сервісу ще до першого дзвінка.",
+            "items": [
+                {"title": "Ремонт ходової BMW", "badge": "Підвіска", "description": "Провели діагностику, замінили важелі та стабілізували керованість авто.", "image": "https://images.unsplash.com/photo-1606577924006-27d39b132ae2?auto=format&fit=crop&w=900&q=80", "before": "стук і люфт", "after": "тиха робота підвіски"},
+                {"title": "ТО перед поїздкою", "badge": "Сервіс", "description": "Замінили мастило, фільтри, перевірили гальма, АКБ та рідини перед маршрутом.", "image": "https://images.unsplash.com/photo-1613214150384-4f6cc4b3b54a?auto=format&fit=crop&w=900&q=80"},
+                {"title": "Діагностика Check Engine", "badge": "Діагностика", "description": "Знайшли причину помилки, узгодили ремонт і віддали авто з прозорим звітом.", "image": "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=900&q=80"},
+            ],
+        },
+        "cta": {"title": "Потрібна консультація майстра?", "text": "Опишіть симптоми — ми підкажемо, чи потрібна діагностика, які терміни та орієнтовний бюджет.", "telegram_text": "Telegram", "phone_text": "Подзвонити", "lead_text": "Залишити заявку"},
+        "reviews": {"title": "Відгуки клієнтів", "subtitle": "Клієнти цінують швидкий запис, зрозумілі ціни та фото-звіт після робіт.", "items": [{"name": "Олександр", "text": "Швидко знайшли причину стуку, погодили кошторис і зробили в той самий день.", "stars": 5}, {"name": "Марина", "text": "Записалась через сайт, майстер пояснив усе простими словами. Дуже зручно.", "stars": 5}, {"name": "Ігор", "text": "Після ТО авто готове до дороги, отримав рекомендації на майбутнє.", "stars": 5}]},
+    },
+    "tow": {
+        "pricing": {"title": "Тарифи евакуатора", "subtitle": "Базові тарифи для міста й області. Міжміські маршрути рахуємо індивідуально.", "items": [{"title": "Евакуація легкового авто", "prefix": "від", "price": "1200 грн", "description": "Подача платформи та безпечне завантаження."}, {"title": "Евакуатор після ДТП", "prefix": "від", "price": "1500 грн", "description": "Акуратне транспортування пошкодженого авто."}, {"title": "Перевезення по місту", "prefix": "від", "price": "1000 грн", "description": "Доставка до СТО, стоянки або за адресою."}, {"title": "Міжміська доставка", "prefix": "від", "price": "25 грн/км", "description": "Попередній розрахунок маршруту та часу."}, {"title": "Запуск АКБ", "prefix": "від", "price": "500 грн", "description": "Допомога при розрядженому акумуляторі."}, {"title": "Терміновий виїзд", "price": "за домовленістю", "description": "Пріоритетна подача екіпажу."}]},
+        "gallery": {"title": "Галерея виїздів", "subtitle": "Евакуатор у роботі: місто, траса, доставка на СТО.", "images": [{"url": "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=900&q=80", "alt": "Авто на дорозі"}, {"url": "https://images.unsplash.com/photo-1542362567-b07e54358753?auto=format&fit=crop&w=900&q=80", "alt": "Автомобіль"}, {"url": "https://images.unsplash.com/photo-1511919884226-fd3cad34687c?auto=format&fit=crop&w=900&q=80", "alt": "Дорога"}, {"url": "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=900&q=80", "alt": "Транспортування"}]},
+        "works": {"title": "Наші роботи", "subtitle": "Сценарії, де швидкість і акуратність критично важливі.", "items": [{"title": "Евакуація після ДТП", "badge": "Терміново", "description": "Забрали пошкоджене авто з дороги та доставили на СТО без додаткових ризиків.", "image": "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=900&q=80"}, {"title": "Доставка авто на сервіс", "badge": "Місто", "description": "Перевезли несправний автомобіль до майстра та передали ключі відповідальному співробітнику.", "image": "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&w=900&q=80"}, {"title": "Міжміський маршрут", "badge": "Область", "description": "Погодили маршрут, час подачі та доставили авто власнику в інше місто.", "image": "https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?auto=format&fit=crop&w=900&q=80"}]},
+        "cta": {"title": "Потрібен евакуатор зараз?", "text": "Надішліть геолокацію у Telegram або залиште номер — диспетчер швидко уточнить адресу й подачу.", "telegram_text": "Telegram", "phone_text": "Подзвонити", "lead_text": "Залишити заявку"},
+        "reviews": {"title": "Відгуки водіїв", "subtitle": "Клієнти звертаються, коли важлива швидка подача та зрозумілий тариф.", "items": [{"name": "Андрій", "text": "Приїхали швидко після ДТП, акуратно завантажили авто і довезли до сервісу.", "stars": 5}, {"name": "Наталія", "text": "Диспетчер одразу назвав ціну й час подачі. Без сюрпризів.", "stars": 5}, {"name": "Віталій", "text": "Виручили вночі з розрядженим акумулятором. Рекомендую.", "stars": 5}]},
+    },
+    "tire": {
+        "pricing": {"title": "Ціни на шиномонтаж", "subtitle": "Популярні послуги для сезонної заміни, балансування та догляду за колесами.", "items": [{"title": "Заміна шин R13–R15", "prefix": "від", "price": "600 грн", "description": "Комплексна заміна для компактних авто."}, {"title": "Заміна шин R16–R18", "prefix": "від", "price": "800 грн", "description": "Монтаж для легкових авто та кросоверів."}, {"title": "Балансування коліс", "prefix": "від", "price": "150 грн/колесо", "description": "Точне балансування без вібрацій."}, {"title": "Ремонт проколу", "prefix": "від", "price": "250 грн", "description": "Герметизація та контроль тиску."}, {"title": "Зберігання шин", "prefix": "від", "price": "1200 грн/сезон", "description": "Сухе зберігання з маркуванням комплектів."}, {"title": "Перевірка тиску", "price": "безкоштовно", "description": "Швидка перевірка перед дорогою."}]},
+        "gallery": {"title": "Галерея шиномонтажу", "subtitle": "Зона монтажу, балансування та сезонного обслуговування.", "images": [{"url": "https://images.unsplash.com/photo-1580273916550-e323be2ae537?auto=format&fit=crop&w=900&q=80", "alt": "Авто"}, {"url": "https://images.unsplash.com/photo-1600706432502-77a0e2e327a9?auto=format&fit=crop&w=900&q=80", "alt": "Колесо"}, {"url": "https://images.unsplash.com/photo-1609521263047-f8f205293f24?auto=format&fit=crop&w=900&q=80", "alt": "Шини"}, {"url": "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&w=900&q=80", "alt": "Авто після сервісу"}]},
+        "works": {"title": "Наші роботи", "subtitle": "Приклади сезонних задач, які клієнти часто замовляють онлайн.", "items": [{"title": "Сезонний шиномонтаж", "badge": "Сезон", "description": "Замінили комплект шин, перевірили тиск і стан протектора перед сезоном.", "image": "https://images.unsplash.com/photo-1600706432502-77a0e2e327a9?auto=format&fit=crop&w=900&q=80"}, {"title": "Балансування коліс", "badge": "Комфорт", "description": "Прибрали вібрацію на швидкості після точного балансування комплекту.", "image": "https://images.unsplash.com/photo-1503736334956-4c8f8e92946d?auto=format&fit=crop&w=900&q=80"}, {"title": "Ремонт проколу", "badge": "Швидко", "description": "Відремонтували прокол, перевірили герметичність і повернули авто в дорогу.", "image": "https://images.unsplash.com/photo-1502877338535-766e1452684a?auto=format&fit=crop&w=900&q=80"}]},
+        "cta": {"title": "Записатися на шиномонтаж?", "text": "Оберіть зручний час через Telegram або залиште заявку — менеджер підтвердить слот без черги.", "telegram_text": "Telegram", "phone_text": "Подзвонити", "lead_text": "Залишити заявку"},
+        "reviews": {"title": "Відгуки клієнтів", "subtitle": "Водії відзначають швидкий запис, чисту роботу та точне балансування.", "items": [{"name": "Сергій", "text": "Перевзули авто без черги, балансування ідеальне — вібрації зникли.", "stars": 5}, {"name": "Олена", "text": "Зручно записалась через Telegram, приїхала на свій час і швидко поїхала.", "stars": 5}, {"name": "Роман", "text": "Прокол зробили за 20 хвилин і перевірили всі колеса.", "stars": 5}]},
+    },
+}
+
+for _demo_key, _demo_content in _DEMO_STANDARD_CONTENT.items():
+    _config = DEMO_PRESETS[_demo_key].setdefault("config", {})
+    _config.setdefault("modules", {}).update(_DEMO_STANDARD_MODULES)
+    _config.update(_demo_content)
 
 
 def get_demo_render_preset(subdomain: str) -> dict | None:

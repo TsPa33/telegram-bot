@@ -1,0 +1,79 @@
+{% set works = config.get('works', {}) %}
+{% set works_items = works.get('items', []) %}
+<section id="works" class="section cp-section cp-works-section">
+    <div class="container">
+        <div class="cp-section-head">
+            <span class="cp-section-kicker">Кейси</span>
+            <h2>{{ works.get('title') or 'Наші роботи' }}</h2>
+            {% if works.get('subtitle') %}<p>{{ works.get('subtitle') }}</p>{% endif %}
+        </div>
+
+        <div class="cp-works-grid">
+            {% for item in works_items %}
+            <article class="cp-work-card">
+                {% if item.get('image') %}
+                <img src="{{ item.get('image') }}" alt="{{ item.get('title') }}" loading="lazy">
+                {% endif %}
+                <div class="cp-work-body">
+                    {% if item.get('badge') %}<span class="cp-work-badge">{{ item.get('badge') }}</span>{% endif %}
+                    <h3>{{ item.get('title') }}</h3>
+                    {% if item.get('description') %}<p>{{ item.get('description') }}</p>{% endif %}
+                    {% if item.get('before') or item.get('after') %}
+                    <div class="cp-before-after">
+                        {% if item.get('before') %}<span><b>Було:</b> {{ item.get('before') }}</span>{% endif %}
+                        {% if item.get('after') %}<span><b>Стало:</b> {{ item.get('after') }}</span>{% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<style>
+.cp-works-section { background: var(--bg); }
+.cp-works-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px;
+}
+.cp-work-card {
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--border) 78%, var(--primary));
+    border-radius: 28px;
+    background: var(--card-bg);
+    color: var(--card-text);
+    box-shadow: 0 22px 64px rgba(2, 6, 23, 0.14);
+}
+.cp-work-card img {
+    width: 100%;
+    height: 210px;
+    object-fit: cover;
+    display: block;
+}
+.cp-work-body { padding: 22px; }
+.cp-work-badge {
+    display: inline-flex;
+    margin-bottom: 12px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    color: var(--button-text);
+    background: var(--primary);
+    font-size: 12px;
+    font-weight: 900;
+}
+.cp-work-body h3 { margin: 0 0 10px; color: var(--card-text); font-size: 21px; }
+.cp-work-body p { margin: 0; color: var(--card-desc); line-height: 1.6; }
+.cp-before-after {
+    display: grid;
+    gap: 8px;
+    margin-top: 16px;
+    color: var(--card-desc);
+    font-size: 14px;
+}
+.cp-before-after b { color: var(--card-text); }
+.theme-light_blue .cp-work-card { background: #ffffff; }
+@media (max-width: 900px) { .cp-works-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .cp-works-grid { grid-template-columns: 1fr; } .cp-work-card img { height: 220px; } }
+</style>

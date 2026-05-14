@@ -38,6 +38,11 @@ _DEFAULT_SITE_CONFIG: dict[str, Any] = {
         "contacts": True,
         "map": True,
         "products": False,
+        "pricing": False,
+        "gallery": False,
+        "works": False,
+        "cta": False,
+        "reviews": False,
     },
 
     "theme": {
@@ -51,6 +56,38 @@ _DEFAULT_SITE_CONFIG: dict[str, Any] = {
 
     "price": {
         "enabled": False,
+        "items": [],
+    },
+
+    "pricing": {
+        "title": "Наші ціни",
+        "subtitle": "Прозорі базові ціни. Остаточну вартість узгоджуємо після огляду авто або уточнення задачі.",
+        "items": [],
+    },
+
+    "gallery": {
+        "title": "Галерея",
+        "subtitle": "Атмосфера сервісу, обладнання та реальні робочі процеси.",
+        "images": [],
+    },
+
+    "works": {
+        "title": "Наші роботи",
+        "subtitle": "Приклади задач, які бізнес може показати клієнтам для довіри перед заявкою.",
+        "items": [],
+    },
+
+    "cta": {
+        "title": "Потрібна консультація?",
+        "text": "Напишіть нам у Telegram або залиште заявку — підкажемо рішення, терміни та орієнтовну вартість.",
+        "telegram_text": "Telegram",
+        "phone_text": "Подзвонити",
+        "lead_text": "Залишити заявку",
+    },
+
+    "reviews": {
+        "title": "Відгуки клієнтів",
+        "subtitle": "Короткі рекомендації від клієнтів після сервісу, ремонту або виїзду.",
         "items": [],
     },
 
@@ -221,6 +258,21 @@ def _normalize_config(config: dict) -> dict:
 
     if not isinstance(config.get("price", {}).get("items"), list):
         config.setdefault("price", {})["items"] = []
+
+    # ===== NEW OPTIONAL MODULE DATA =====
+
+    for section_name, list_key in {
+        "pricing": "items",
+        "gallery": "images",
+        "works": "items",
+        "reviews": "items",
+    }.items():
+        section = config.setdefault(section_name, {})
+        if not isinstance(section.get(list_key), list):
+            section[list_key] = []
+
+    if not isinstance(config.get("cta"), dict):
+        config["cta"] = deepcopy(_DEFAULT_SITE_CONFIG["cta"])
 
     # ===== PRODUCTS =====
 

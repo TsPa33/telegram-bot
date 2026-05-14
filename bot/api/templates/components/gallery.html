@@ -1,0 +1,105 @@
+{% set gallery = config.get('gallery', {}) %}
+{% set gallery_images = gallery.get('images', []) %}
+<section id="gallery" class="section cp-section cp-gallery-section">
+    <div class="container">
+        <div class="cp-section-head">
+            <span class="cp-section-kicker">Фото</span>
+            <h2>{{ gallery.get('title') or 'Галерея' }}</h2>
+            {% if gallery.get('subtitle') %}<p>{{ gallery.get('subtitle') }}</p>{% endif %}
+        </div>
+
+        <div class="cp-gallery-grid">
+            {% for image in gallery_images %}
+                {% set image_url = image.get('url') if image is mapping else image %}
+                {% set image_alt = image.get('alt') if image is mapping else 'Галерея' %}
+                {% if image_url %}
+                <a class="cp-gallery-card" href="{{ image_url }}" target="_blank" aria-label="Відкрити фото">
+                    <img src="{{ image_url }}" alt="{{ image_alt or 'Галерея' }}" loading="lazy">
+                    <span>Переглянути</span>
+                </a>
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<style>
+.cp-gallery-section {
+    background:
+        linear-gradient(180deg, color-mix(in srgb, var(--bg) 92%, #000 8%), var(--bg));
+}
+
+.cp-gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    padding-bottom: 4px;
+}
+
+.cp-gallery-card {
+    position: relative;
+    min-height: 210px;
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--border) 72%, var(--primary));
+    border-radius: 24px;
+    background: var(--card-bg);
+    box-shadow: 0 18px 50px rgba(2, 6, 23, 0.14);
+    text-decoration: none;
+    scroll-snap-align: start;
+}
+
+.cp-gallery-card img {
+    width: 100%;
+    height: 100%;
+    min-height: 210px;
+    object-fit: cover;
+    display: block;
+    transform: scale(1.01);
+    transition: transform 0.35s ease, filter 0.35s ease;
+}
+
+.cp-gallery-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, transparent 42%, rgba(2, 6, 23, 0.72));
+    opacity: 0;
+    transition: opacity 0.25s ease;
+}
+
+.cp-gallery-card span {
+    position: absolute;
+    left: 16px;
+    bottom: 16px;
+    z-index: 1;
+    padding: 8px 12px;
+    border-radius: 999px;
+    color: #ffffff;
+    background: rgba(15, 23, 42, 0.72);
+    font-size: 13px;
+    font-weight: 800;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: 0.25s ease;
+}
+
+.cp-gallery-card:hover img { transform: scale(1.08); filter: saturate(1.12); }
+.cp-gallery-card:hover::after,
+.cp-gallery-card:hover span { opacity: 1; transform: translateY(0); }
+
+@media (max-width: 900px) {
+    .cp-gallery-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 640px) {
+    .cp-gallery-grid {
+        display: flex;
+        margin: 0 -16px;
+        padding: 0 16px 8px;
+    }
+    .cp-gallery-card { flex: 0 0 82%; min-height: 230px; }
+    .cp-gallery-card img { min-height: 230px; }
+}
+</style>

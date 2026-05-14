@@ -11,6 +11,10 @@
 {% set contacts = config.get('contacts', {}) %}
 {% set modules = config.get('modules', {}) %}
 {% set products = products or config.get('products', {}) %}
+{% set pricing = config.get('pricing', {}) %}
+{% set gallery = config.get('gallery', {}) %}
+{% set works = config.get('works', {}) %}
+{% set reviews = config.get('reviews', {}) %}
 
 {% include "components/header.html" %}
 {% include "components/hero.html" with context %}
@@ -23,6 +27,26 @@
 
 {% if modules.get('services', True) %}
     {% include "components/services.html" %}
+{% endif %}
+
+{% if modules.get('pricing', False) and pricing.get('items') %}
+    {% include "components/pricing.html" %}
+{% endif %}
+
+{% if modules.get('works', False) and works.get('items') %}
+    {% include "components/works.html" %}
+{% endif %}
+
+{% if modules.get('gallery', False) and gallery.get('images') %}
+    {% include "components/gallery.html" %}
+{% endif %}
+
+{% if modules.get('cta', False) %}
+    {% include "components/cta.html" %}
+{% endif %}
+
+{% if modules.get('reviews', False) and reviews.get('items') %}
+    {% include "components/reviews.html" %}
 {% endif %}
 
 {% if modules.get('cars', True) %}
@@ -167,7 +191,7 @@
 
 .scroll-top-btn {
     position: fixed;
-    bottom: 158px;
+    bottom: 98px;
     right: 18px;
     width: 50px;
     height: 50px;
@@ -191,6 +215,12 @@
     pointer-events: auto;
 }
 
+body.has-products-cart .scroll-top-btn,
+body.has-products-cart .back-to-top,
+body.has-products-cart [data-scroll-top] {
+    bottom: 158px;
+}
+
 .theme-parts_dark_red .callback-uiverse-btn {
     right: 18px;
     bottom: 24px;
@@ -204,9 +234,9 @@
     z-index: 996;
 }
 
-.theme-parts_dark_red.has-products-cart .scroll-top-btn,
-.theme-parts_dark_red.has-products-cart .back-to-top,
-.theme-parts_dark_red.has-products-cart [data-scroll-top] {
+body.has-products-cart.theme-parts_dark_red .scroll-top-btn,
+body.has-products-cart.theme-parts_dark_red .back-to-top,
+body.has-products-cart.theme-parts_dark_red [data-scroll-top] {
     bottom: 158px;
 }
 
@@ -262,9 +292,9 @@
         bottom: 98px;
     }
 
-    .theme-parts_dark_red.has-products-cart .scroll-top-btn,
-    .theme-parts_dark_red.has-products-cart .back-to-top,
-    .theme-parts_dark_red.has-products-cart [data-scroll-top] {
+    body.has-products-cart.theme-parts_dark_red .scroll-top-btn,
+    body.has-products-cart.theme-parts_dark_red .back-to-top,
+    body.has-products-cart.theme-parts_dark_red [data-scroll-top] {
         bottom: 158px;
     }
 }

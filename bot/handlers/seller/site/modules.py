@@ -9,7 +9,7 @@ from bot.services.site_config import merge_with_default
 
 router = Router()
 
-_ALLOWED_MODULES = {"services", "cars", "products", "contacts", "map"}
+_ALLOWED_MODULES = {"services", "cars", "products", "contacts", "map", "pricing", "gallery", "works", "cta", "reviews"}
 
 
 async def _get_site_modules(callback: CallbackQuery, state: FSMContext):

@@ -1,0 +1,67 @@
+{% set reviews = config.get('reviews', {}) %}
+{% set review_items = reviews.get('items', []) %}
+<section id="reviews" class="section cp-section cp-reviews-section">
+    <div class="container">
+        <div class="cp-section-head">
+            <span class="cp-section-kicker">Довіра</span>
+            <h2>{{ reviews.get('title') or 'Відгуки клієнтів' }}</h2>
+            {% if reviews.get('subtitle') %}<p>{{ reviews.get('subtitle') }}</p>{% endif %}
+        </div>
+
+        <div class="cp-reviews-grid">
+            {% for item in review_items %}
+            {% set stars = item.get('stars', 5) | int %}
+            <article class="cp-review-card">
+                <div class="cp-review-top">
+                    {% if item.get('avatar') %}
+                    <img src="{{ item.get('avatar') }}" alt="{{ item.get('name') }}" loading="lazy">
+                    {% else %}
+                    <span class="cp-review-avatar">{{ (item.get('name') or 'К')[:1] }}</span>
+                    {% endif %}
+                    <div>
+                        <h3>{{ item.get('name') }}</h3>
+                        <div class="cp-stars" aria-label="{{ stars }} зірок">{{ '★' * stars }}{{ '☆' * (5 - stars) }}</div>
+                    </div>
+                </div>
+                <p>“{{ item.get('text') }}”</p>
+            </article>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<style>
+.cp-reviews-section { background: var(--bg); }
+.cp-reviews-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+}
+.cp-review-card {
+    padding: 22px;
+    border: 1px solid color-mix(in srgb, var(--border) 76%, var(--primary));
+    border-radius: 26px;
+    background: var(--card-bg);
+    color: var(--card-text);
+    box-shadow: 0 18px 54px rgba(2, 6, 23, 0.12);
+}
+.cp-review-top { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+.cp-review-top img,
+.cp-review-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+    display: inline-grid;
+    place-items: center;
+    background: linear-gradient(135deg, var(--primary), var(--success));
+    color: var(--button-text);
+    font-weight: 900;
+}
+.cp-review-top h3 { margin: 0 0 4px; color: var(--card-text); font-size: 17px; }
+.cp-stars { color: #f59e0b; letter-spacing: 0.04em; }
+.cp-review-card p { margin: 0; color: var(--card-desc); line-height: 1.65; }
+.theme-light_blue .cp-review-card { background: #ffffff; }
+@media (max-width: 900px) { .cp-reviews-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .cp-reviews-grid { grid-template-columns: 1fr; } }
+</style>
