@@ -1,0 +1,26 @@
+{% extends "admin/crm_base.html" %}
+{% block title %}Analytics{% endblock %}
+{% block head %}
+<style>
+.analytics-nav,.kpi-grid{display:grid;gap:14px}.analytics-nav{grid-template-columns:repeat(auto-fit,minmax(160px,1fr));margin:18px 0}.kpi-grid{grid-template-columns:repeat(auto-fit,minmax(180px,1fr));margin-top:20px}.kpi,.analytics-link{border:1px solid var(--border);border-radius:16px;padding:18px;background:#fbfdff}.analytics-link{text-decoration:none;color:var(--primary);font-weight:800}.kpi span{display:block;color:var(--muted);font-size:13px}.kpi strong{display:block;margin-top:8px;font-size:28px;color:var(--text)}
+</style>
+{% endblock %}
+{% block content %}
+<section class="crm-panel">
+    <h1 class="crm-title">📊 Analytics</h1>
+    <p class="crm-muted">Internal first-party analytics. Visible only to super admins.</p>
+    <nav class="analytics-nav">
+        <a class="analytics-link" href="/admin/crm/analytics/sources">Traffic sources</a>
+        <a class="analytics-link" href="/admin/crm/analytics/demos">Demo performance</a>
+        <a class="analytics-link" href="/admin/crm/analytics/sessions">Sessions</a>
+        <a class="analytics-link" href="/admin/crm/analytics/events">Events</a>
+    </nav>
+    <div class="kpi-grid">
+        <article class="kpi"><span>Visits today</span><strong>{{ summary.visits_today or 0 }}</strong></article>
+        <article class="kpi"><span>Leads today</span><strong>{{ summary.leads_today or 0 }}</strong></article>
+        <article class="kpi"><span>Telegram starts today</span><strong>{{ summary.telegram_starts_today or 0 }}</strong></article>
+        <article class="kpi"><span>CTA clicks today</span><strong>{{ summary.cta_clicks_today or 0 }}</strong></article>
+        <article class="kpi"><span>Top source today</span><strong>{{ summary.top_source_today or 'direct' }}</strong></article>
+    </div>
+</section>
+{% endblock %}

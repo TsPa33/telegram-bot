@@ -1,0 +1,11 @@
+{% extends "admin/crm_base.html" %}
+{% block title %}Analytics Sources{% endblock %}
+{% block head %}<style>.table{width:100%;border-collapse:collapse;margin-top:18px}.table th,.table td{padding:12px;border-bottom:1px solid var(--border);text-align:left}.table th{color:var(--muted);font-size:12px;text-transform:uppercase}</style>{% endblock %}
+{% block content %}
+<section class="crm-panel">
+<h1 class="crm-title">Traffic sources</h1><p class="crm-muted"><a href="/admin/crm/analytics">← Analytics</a></p>
+<table class="table"><thead><tr><th>Source</th><th>Sessions</th><th>Leads</th><th>Telegram starts</th><th>Phone clicks</th><th>Conversion rate</th></tr></thead><tbody>
+{% for row in sources %}<tr><td>{{ row.source }}</td><td>{{ row.sessions }}</td><td>{{ row.leads }}</td><td>{{ row.telegram_starts }}</td><td>{{ row.phone_clicks }}</td><td>{{ row.conversion_rate }}%</td></tr>{% else %}<tr><td colspan="6">No source data yet.</td></tr>{% endfor %}
+</tbody></table>
+</section>
+{% endblock %}

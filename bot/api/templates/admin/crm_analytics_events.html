@@ -1,0 +1,11 @@
+{% extends "admin/crm_base.html" %}
+{% block title %}Analytics Events{% endblock %}
+{% block head %}<style>.table{width:100%;border-collapse:collapse;margin-top:18px}.table th,.table td{padding:10px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}.table th{color:var(--muted);font-size:12px;text-transform:uppercase}.small{font-size:12px;color:var(--muted);max-width:260px;word-break:break-word}</style>{% endblock %}
+{% block content %}
+<section class="crm-panel">
+<h1 class="crm-title">Events</h1><p class="crm-muted"><a href="/admin/crm/analytics">← Analytics</a></p>
+<table class="table"><thead><tr><th>Time</th><th>Subdomain</th><th>Event type</th><th>Event name</th><th>Event target</th><th>Source/session</th></tr></thead><tbody>
+{% for row in events %}<tr><td>{{ row.created_at.strftime('%d.%m.%Y %H:%M') if row.created_at else '-' }}</td><td>{{ row.subdomain or '-' }}</td><td>{{ row.event_type }}</td><td>{{ row.event_name or '-' }}</td><td class="small">{{ row.event_target or row.page_url or '-' }}</td><td class="small">{{ row.source or 'direct' }} / {{ row.session_id }}</td></tr>{% else %}<tr><td colspan="6">No events yet.</td></tr>{% endfor %}
+</tbody></table>
+</section>
+{% endblock %}

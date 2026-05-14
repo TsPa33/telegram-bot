@@ -106,6 +106,9 @@
                         <a href="/admin/crm/users">Користувачі</a>
                         <a href="/admin/crm/payments">Оплати</a>
                         <a href="/admin/crm/support">Support</a>
+                        {% if can_view_analytics %}
+                            <a href="/admin/crm/analytics">📊 Analytics</a>
+                        {% endif %}
                         {% if can_view_audit %}
                             <a href="/admin/crm/audit">Аудит</a>
                         {% endif %}

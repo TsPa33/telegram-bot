@@ -1,0 +1,11 @@
+{% extends "admin/crm_base.html" %}
+{% block title %}Analytics Demos{% endblock %}
+{% block head %}<style>.table{width:100%;border-collapse:collapse;margin-top:18px}.table th,.table td{padding:12px;border-bottom:1px solid var(--border);text-align:left}.table th{color:var(--muted);font-size:12px;text-transform:uppercase}</style>{% endblock %}
+{% block content %}
+<section class="crm-panel">
+<h1 class="crm-title">Demo performance</h1><p class="crm-muted"><a href="/admin/crm/analytics">← Analytics</a></p>
+<table class="table"><thead><tr><th>Demo</th><th>Views</th><th>CTA clicks</th><th>Leads</th><th>Telegram clicks</th><th>Telegram starts</th></tr></thead><tbody>
+{% for row in demos %}<tr><td>{{ row.subdomain }}</td><td>{{ row.views }}</td><td>{{ row.cta_clicks }}</td><td>{{ row.leads }}</td><td>{{ row.telegram_clicks }}</td><td>{{ row.telegram_starts }}</td></tr>{% endfor %}
+</tbody></table>
+</section>
+{% endblock %}

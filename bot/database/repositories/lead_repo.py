@@ -17,6 +17,11 @@ async def create_site_lead(
     name: str | None,
     phone: str,
     message: str | None,
+    session_id: str | None = None,
+    utm_source: str | None = None,
+    utm_medium: str | None = None,
+    utm_campaign: str | None = None,
+    referrer: str | None = None,
 ):
     return await fetchrow(
         """
@@ -26,9 +31,14 @@ async def create_site_lead(
             subdomain,
             name,
             phone,
-            message
+            message,
+            session_id,
+            utm_source,
+            utm_medium,
+            utm_campaign,
+            referrer
         )
-        VALUES ($1, $2, $3, $4, $5, $6)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         RETURNING *
         """,
         seller_id,
@@ -37,6 +47,11 @@ async def create_site_lead(
         name,
         phone,
         message,
+        session_id,
+        utm_source,
+        utm_medium,
+        utm_campaign,
+        referrer,
     )
 
 

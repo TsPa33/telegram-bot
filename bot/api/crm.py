@@ -15,6 +15,13 @@ from bot.database.repositories.crm_admin_repo import (
     set_admin_user_active,
     update_admin_user_role,
 )
+from bot.database.repositories.analytics_repo import (
+    get_analytics_summary,
+    get_demo_summary,
+    get_source_summary,
+    list_events,
+    list_sessions,
+)
 from bot.database.repositories.crm_audit_repo import list_admin_audit_logs
 from bot.database.repositories.lead_repo import (
     ALLOWED_STATUSES,
@@ -83,6 +90,10 @@ def can_view_audit_logs(admin):
     return admin["role"] in CRM_AUDIT_ROLES
 
 
+def can_view_analytics(admin):
+    return admin["role"] == "super_admin"
+
+
 def can_update_leads(admin):
     return admin["role"] in CRM_VIEW_ROLES
 
@@ -107,6 +118,7 @@ def _template_context(request: Request, admin=None, **kwargs):
         "admin": admin,
         "can_view_audit": can_view_audit_logs(admin) if admin else False,
         "can_manage_admins": can_manage_admins(admin) if admin else False,
+        "can_view_analytics": can_view_analytics(admin) if admin else False,
     }
     context.update(kwargs)
     return context
@@ -325,6 +337,15 @@ async def crm_dashboard(request: Request):
             }
         )
 
+    if can_view_analytics(admin):
+        cards.append(
+            {
+                "title": "📊 Analytics",
+                "text": "Internal first-party analytics",
+                "url": "/admin/crm/analytics",
+            }
+        )
+
     if can_manage_admins(admin):
         cards.append(
             {
@@ -341,6 +362,66 @@ async def crm_dashboard(request: Request):
             admin,
             cards=cards,
         ),
+    )
+
+
+@router.get("/analytics")
+async def crm_analytics(request: Request):
+    admin = await get_current_admin(request)
+    require_roles(admin, {"super_admin"})
+
+    summary = await get_analytics_summary()
+    return templates.TemplateResponse(
+        "admin/crm_analytics.html",
+        _template_context(request, admin, summary=summary),
+    )
+
+
+@router.get("/analytics/sources")
+async def crm_analytics_sources(request: Request):
+    admin = await get_current_admin(request)
+    require_roles(admin, {"super_admin"})
+
+    sources = await get_source_summary()
+    return templates.TemplateResponse(
+        "admin/crm_analytics_sources.html",
+        _template_context(request, admin, sources=sources),
+    )
+
+
+@router.get("/analytics/demos")
+async def crm_analytics_demos(request: Request):
+    admin = await get_current_admin(request)
+    require_roles(admin, {"super_admin"})
+
+    demos = await get_demo_summary()
+    return templates.TemplateResponse(
+        "admin/crm_analytics_demos.html",
+        _template_context(request, admin, demos=demos),
+    )
+
+
+@router.get("/analytics/sessions")
+async def crm_analytics_sessions(request: Request):
+    admin = await get_current_admin(request)
+    require_roles(admin, {"super_admin"})
+
+    sessions = await list_sessions()
+    return templates.TemplateResponse(
+        "admin/crm_analytics_sessions.html",
+        _template_context(request, admin, sessions=sessions),
+    )
+
+
+@router.get("/analytics/events")
+async def crm_analytics_events(request: Request):
+    admin = await get_current_admin(request)
+    require_roles(admin, {"super_admin"})
+
+    events = await list_events()
+    return templates.TemplateResponse(
+        "admin/crm_analytics_events.html",
+        _template_context(request, admin, events=events),
     )
 
 
