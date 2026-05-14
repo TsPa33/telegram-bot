@@ -545,7 +545,7 @@ _DEMO_STANDARD_CONTENT = {
             "subtitle": "Робочі зони, обладнання та процес обслуговування авто.",
             "images": [
                 {"url": "https://images.unsplash.com/photo-1487754180451-c456f719a1fc?auto=format&fit=crop&w=900&q=80", "alt": "СТО бокс"},
-                {"url": "https://images.unsplash.com/photo-1632823471565-1ecdf5c611dc?auto=format&fit=crop&w=900&q=80", "alt": "Ремонт авто"},
+                {"url": "https://images.unsplash.com/photo-1606577924006-27d39b132ae2?auto=format&fit=crop&w=900&q=80", "alt": "Ремонт авто"},
                 {"url": "https://images.unsplash.com/photo-1625047509168-a7026f36de04?auto=format&fit=crop&w=900&q=80", "alt": "Майстерня"},
                 {"url": "https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?auto=format&fit=crop&w=900&q=80", "alt": "Обслуговування"},
             ],
@@ -555,7 +555,7 @@ _DEMO_STANDARD_CONTENT = {
             "subtitle": "Типові задачі, які формують довіру до сервісу ще до першого дзвінка.",
             "items": [
                 {"title": "Ремонт ходової BMW", "badge": "Підвіска", "description": "Провели діагностику, замінили важелі та стабілізували керованість авто.", "image": "https://images.unsplash.com/photo-1606577924006-27d39b132ae2?auto=format&fit=crop&w=900&q=80", "before": "стук і люфт", "after": "тиха робота підвіски"},
-                {"title": "ТО перед поїздкою", "badge": "Сервіс", "description": "Замінили мастило, фільтри, перевірили гальма, АКБ та рідини перед маршрутом.", "image": "https://images.unsplash.com/photo-1613214150384-4f6cc4b3b54a?auto=format&fit=crop&w=900&q=80"},
+                {"title": "ТО перед поїздкою", "badge": "Сервіс", "description": "Замінили мастило, фільтри, перевірили гальма, АКБ та рідини перед маршрутом.", "image": "https://images.unsplash.com/photo-1625047509168-a7026f36de04?auto=format&fit=crop&w=900&q=80"},
                 {"title": "Діагностика Check Engine", "badge": "Діагностика", "description": "Знайшли причину помилки, узгодили ремонт і віддали авто з прозорим звітом.", "image": "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=900&q=80"},
             ],
         },

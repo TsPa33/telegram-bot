@@ -10,9 +10,10 @@
 
         <div class="cp-works-grid">
             {% for item in works_items %}
+            {% set item_image = (item.get('image') or item.get('photo') or item.get('url') or item.get('src')) if item is mapping else none %}
             <article class="cp-work-card">
-                {% if item.get('image') %}
-                <img src="{{ item.get('image') }}" alt="{{ item.get('title') }}" loading="lazy">
+                {% if item_image %}
+                <img src="{{ item_image }}" alt="{{ item.get('title') }}" loading="lazy" onerror="this.remove()">
                 {% endif %}
                 <div class="cp-work-body">
                     {% if item.get('badge') %}<span class="cp-work-badge">{{ item.get('badge') }}</span>{% endif %}

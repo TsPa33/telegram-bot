@@ -10,11 +10,11 @@
 
         <div class="cp-gallery-grid">
             {% for image in gallery_images %}
-                {% set image_url = image.get('url') if image is mapping else image %}
+                {% set image_url = (image.get('url') or image.get('src') or image.get('image') or image.get('photo')) if image is mapping else image %}
                 {% set image_alt = image.get('alt') if image is mapping else 'Галерея' %}
                 {% if image_url %}
                 <a class="cp-gallery-card" href="{{ image_url }}" target="_blank" aria-label="Відкрити фото">
-                    <img src="{{ image_url }}" alt="{{ image_alt or 'Галерея' }}" loading="lazy">
+                    <img src="{{ image_url }}" alt="{{ image_alt or 'Галерея' }}" loading="lazy" onerror="this.closest('.cp-gallery-card').remove()">
                     <span>Переглянути</span>
                 </a>
                 {% endif %}
