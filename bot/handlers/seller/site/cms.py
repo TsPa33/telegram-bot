@@ -17,6 +17,7 @@ from bot.services.demo_context import clear_preserving_demo_context, resolve_act
 
 from bot.keyboards.seller_menu import (
     site_menu_kb,
+    site_menu_text,
     contacts_menu_kb,
     location_menu_kb,
     media_menu_kb,
@@ -24,6 +25,8 @@ from bot.keyboards.seller_menu import (
     site_domain_input_kb,
     site_domain_kb,
     site_domain_success_kb,
+    texts_menu_kb,
+    stats_menu_kb,
 )
 from bot.services.domain_service import build_site_url, normalize_subdomain, validate_subdomain
 
@@ -167,6 +170,21 @@ async def open_domain_menu(callback: CallbackQuery, state: FSMContext):
     await send_domain_settings_message(callback, state)
 
 
+@router.callback_query(F.data == "site:view")
+async def view_site_without_domain(callback: CallbackQuery, state: FSMContext):
+    seller, site = await get_context(callback, state)
+
+    if not seller:
+        await callback.answer("Продавця не знайдено", show_alert=True)
+        return
+
+    if not site or not normalize_subdomain(site.get("subdomain")):
+        await callback.answer("Спочатку створіть домен сайту.", show_alert=True)
+        return
+
+    await callback.answer("Відкрийте сайт кнопкою перегляду в меню.", show_alert=True)
+
+
 @router.callback_query(F.data == "site:domain:change")
 async def start_domain_change(callback: CallbackQuery, state: FSMContext):
     seller, site = await get_context(callback, state)
@@ -266,6 +284,29 @@ async def open_media(callback: CallbackQuery):
     await callback.answer()
 
 
+@router.callback_query(F.data == "site:texts:menu")
+async def open_texts(callback: CallbackQuery):
+    await callback.message.edit_text(
+        "✏️ Тексти сайту\n\n"
+        "Тут можна змінити основні тексти сайту. "
+        "Додаткові текстові блоки будуть доступні пізніше.",
+        reply_markup=texts_menu_kb(),
+    )
+
+    await callback.answer()
+
+
+@router.callback_query(F.data == "site:stats:menu")
+async def open_site_stats(callback: CallbackQuery):
+    await callback.message.edit_text(
+        "📊 Статистика сайту\n\n"
+        "Статистика сайту буде доступна після перших переглядів та заявок.",
+        reply_markup=stats_menu_kb(),
+    )
+
+    await callback.answer()
+
+
 @router.callback_query(F.data == "site:theme:menu")
 async def open_theme_menu(callback: CallbackQuery, state: FSMContext):
     seller, site = await get_context(callback, state)
@@ -336,11 +377,14 @@ async def go_back(callback: CallbackQuery, state: FSMContext):
         await callback.answer("Сайт не знайдено", show_alert=True)
         return
 
+    status = site.get("status", "active")
+    is_active = status == "active"
+
     await callback.message.edit_text(
-        "🌐 Мій сайт",
+        site_menu_text(subdomain=site["subdomain"], status=status, is_active=is_active),
         reply_markup=site_menu_kb(
             subdomain=site["subdomain"],
-            is_active=True,
+            is_active=is_active,
             demo_mode=await is_demo_mode(state)
         )
     )

@@ -5,7 +5,7 @@ from aiogram.types import (
     InlineKeyboardButton,
 )
 
-from bot.services.domain_service import build_site_url
+from bot.services.domain_service import build_site_url, normalize_subdomain
 
 
 # ================= MAIN =================
@@ -55,22 +55,56 @@ def seller_menu_kb(is_verified: bool = False):
 
 # ================= SITE MAIN =================
 
-def site_menu_kb(subdomain: str, is_active: bool, demo_mode: bool = False):
+def site_status_label(status: str | None = None, is_active: bool | None = None) -> str:
+    normalized_status = (status or "").strip().lower()
+
+    if is_active is True or normalized_status in {"active", "published", "опубліковано"}:
+        return "Опубліковано"
+
+    return "Чернетка"
+
+
+def site_menu_text(subdomain: str | None, status: str | None = None, is_active: bool | None = None) -> str:
+    normalized_subdomain = normalize_subdomain(subdomain)
+    site_url = build_site_url(normalized_subdomain) if normalized_subdomain else "—"
+    current_domain = normalized_subdomain or "не створено"
+
+    return (
+        "🌐 Мій сайт\n\n"
+        f"Статус: {site_status_label(status, is_active)}\n"
+        f"Поточний домен: {current_domain}\n"
+        f"Site URL: {site_url}"
+    )
+
+
+def site_menu_kb(subdomain: str | None, is_active: bool, demo_mode: bool = False):
+    normalized_subdomain = normalize_subdomain(subdomain)
+
+    view_button = InlineKeyboardButton(
+        text="👁 Переглянути сайт",
+        url=build_site_url(normalized_subdomain),
+    ) if normalized_subdomain else InlineKeyboardButton(
+        text="👁 Переглянути сайт",
+        callback_data="site:view",
+    )
+
     buttons = [
-
-        [InlineKeyboardButton(text="🌐 Домен сайту", callback_data="site:domain:menu")],
-        [InlineKeyboardButton(text="📞 Контакти", callback_data="site:contacts:menu")],
-        [InlineKeyboardButton(text="📍 Адреси та карта", callback_data="site:location:menu")],
+        [
+            InlineKeyboardButton(text="🌐 Домен сайту", callback_data="site:domain:menu"),
+            view_button,
+        ],
+        [InlineKeyboardButton(text="🚀 Опублікувати сайт", callback_data="site:publish")],
+        [
+            InlineKeyboardButton(text="🧩 Модулі сайту", callback_data="site:modules:menu"),
+            InlineKeyboardButton(text="✏️ Тексти сайту", callback_data="site:texts:menu"),
+        ],
+        [
+            InlineKeyboardButton(text="📞 Контакти", callback_data="site:contacts:menu"),
+            InlineKeyboardButton(text="📍 Адреси та карта", callback_data="site:location:menu"),
+        ],
         [InlineKeyboardButton(text="🎨 Медіа та дизайн", callback_data="site:media:menu")],
+        [InlineKeyboardButton(text="📊 Статистика сайту", callback_data="site:stats:menu")],
     ]
-
-    if is_active:
-        buttons.append([
-            InlineKeyboardButton(
-                text="🌍 Відкрити сайт",
-                url=build_site_url(subdomain)
-            )
-        ])
 
     if demo_mode:
         buttons.append([
@@ -83,6 +117,45 @@ def site_menu_kb(subdomain: str, is_active: bool, demo_mode: bool = False):
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
+def modules_menu_kb(modules: dict | None = None):
+    modules = modules or {}
+    module_titles = (
+        ("services", "🛠 Послуги"),
+        ("cars", "🚗 Авто"),
+        ("products", "🧰 Запчастини"),
+        ("contacts", "📞 Контакти"),
+        ("map", "📍 Карта"),
+    )
+
+    buttons = []
+
+    for key, title in module_titles:
+        enabled = bool(modules.get(key, True))
+        marker = "✅" if enabled else "⬜️"
+        buttons.append([
+            InlineKeyboardButton(
+                text=f"{marker} {title}",
+                callback_data=f"module:toggle:{key}",
+            )
+        ])
+
+    buttons.append([InlineKeyboardButton(text="⬅ Назад", callback_data="site:back")])
+
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+def texts_menu_kb():
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🏷 Заголовок сайту", callback_data="site:edit:header")],
+        [InlineKeyboardButton(text="ℹ️ Блок 'Про нас'", callback_data="site:toggle:about")],
+        [InlineKeyboardButton(text="⬅ Назад", callback_data="site:back")],
+    ])
+
+
+def stats_menu_kb():
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="⬅ Назад", callback_data="site:back")],
+    ])
 
 
 def site_domain_kb(subdomain: str | None = None):
