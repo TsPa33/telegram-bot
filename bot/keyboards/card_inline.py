@@ -33,9 +33,33 @@ def normalize_url(url: str) -> str | None:
     return url
 
 
-def build_card_keyboard(car: dict, page: int | None = None, total: int | None = None):
+def build_card_keyboard(
+    car: dict,
+    page: int | None = None,
+    total: int | None = None,
+    is_car_favorite: bool = False,
+    is_seller_favorite: bool = False,
+    is_website_favorite: bool = False,
+):
     rows = []
     car_id = car.get("id")
+
+    # ================= CRM ACTIONS =================
+
+    rows.append([
+        InlineKeyboardButton(
+            text="💔 Прибрати авто" if is_car_favorite else "❤️ Зберегти авто",
+            callback_data=f"fav:toggle:car:{car_id}",
+        )
+    ])
+
+    if car.get("seller_id"):
+        rows.append([
+            InlineKeyboardButton(
+                text="💔 Прибрати продавця" if is_seller_favorite else "🏪 Зберегти продавця",
+                callback_data=f"fav:toggle:seller:{car['seller_id']}",
+            )
+        ])
 
     # ================= CONTACT =================
 
@@ -76,6 +100,12 @@ def build_card_keyboard(car: dict, page: int | None = None, total: int | None = 
             InlineKeyboardButton(
                 text="🌐 Відкрити сайт",
                 url=normalized_url
+            )
+        ])
+        rows.append([
+            InlineKeyboardButton(
+                text="💔 Прибрати сайт" if is_website_favorite else "❤️ Зберегти сайт",
+                callback_data=f"fav:toggle:website:{car_id}",
             )
         ])
     else:
