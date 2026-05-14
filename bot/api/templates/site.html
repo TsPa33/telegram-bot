@@ -65,8 +65,8 @@
 
 {% include "components/footer.html" %}
 
-<button class="callback-uiverse-btn" onclick="openCallback()">
-    <span class="callback-icon">📞</span>
+<button class="callback-uiverse-btn" type="button" data-callback-fab aria-label="Передзвоніть мені" aria-expanded="false">
+    <span class="callback-icon" aria-hidden="true">📞</span>
     <span class="callback-text">Передзвоніть мені</span>
 </button>
 
@@ -77,8 +77,8 @@
         <input id="cbName" type="text" placeholder="Ваше ім'я">
         <input id="cbPhone" type="tel" placeholder="Телефон">
 
-        <button class="callback-submit" onclick="sendCallback()">Відправити</button>
-        <button type="button" class="callback-close" onclick="closeCallback()">✕</button>
+        <button class="callback-submit" type="button" data-callback-submit>Відправити</button>
+        <button type="button" class="callback-close" data-callback-close>✕</button>
     </div>
 </div>
 
@@ -89,32 +89,98 @@
 </button>
 
 <style>
-.callback-uiverse-btn {
+.callback-uiverse-btn,
+.scroll-top-btn {
+    --fab-size: 58px;
+    --fab-right: 18px;
     position: fixed;
-    bottom: 24px;
-    right: 18px;
-    display: flex;
+    right: var(--fab-right);
+    display: inline-flex;
     align-items: center;
-    gap: 10px;
-    padding: 14px 18px;
-    border-radius: 50px;
-    background: var(--floating-bg);
-    color: var(--button-text);
-    border: none;
+    justify-content: center;
+    border-radius: 999px;
+    border: 1px solid rgba(34, 211, 238, 0.25);
+    background: rgba(11, 18, 32, 0.72);
+    color: #f8fafc;
+    box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.06), 0 10px 34px rgba(34, 211, 238, 0.14);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
     cursor: pointer;
-    font-size: 14px;
-    font-weight: 500;
-    box-shadow: 0 0 0 4px var(--floating-shadow);
-    transition: all 0.3s ease;
     z-index: 1000;
 }
 
-.callback-uiverse-btn:hover {
-    background-color: var(--floating-hover);
+.callback-uiverse-btn {
+    bottom: 24px;
+    width: var(--fab-size);
+    min-width: var(--fab-size);
+    height: var(--fab-size);
+    gap: 9px;
+    padding: 0;
+    overflow: hidden;
+    opacity: 0.72;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1;
+    white-space: nowrap;
+    transform: translateZ(0);
+    transition:
+        width 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+        min-width 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+        padding 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+        opacity 0.25s ease,
+        border-color 0.25s ease,
+        box-shadow 0.25s ease,
+        background 0.25s ease,
+        transform 0.25s ease;
+}
+
+.callback-uiverse-btn:hover,
+.callback-uiverse-btn:focus-visible,
+.callback-uiverse-btn.is-expanded {
+    width: 196px;
+    min-width: 196px;
+    padding: 0 18px;
+    justify-content: flex-start;
+    opacity: 0.96;
+    border-color: rgba(34, 211, 238, 0.46);
+    background: rgba(11, 18, 32, 0.84);
+    box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.12), 0 14px 42px rgba(34, 211, 238, 0.2), 0 0 26px rgba(16, 185, 129, 0.12);
+}
+
+.callback-uiverse-btn:focus-visible,
+.scroll-top-btn:focus-visible {
+    outline: 2px solid rgba(34, 211, 238, 0.75);
+    outline-offset: 4px;
 }
 
 .callback-uiverse-btn:active {
-    transform: scale(0.95);
+    transform: scale(0.97);
+}
+
+.callback-icon {
+    display: inline-grid;
+    width: 24px;
+    min-width: 24px;
+    height: 24px;
+    place-items: center;
+    font-size: 20px;
+    filter: drop-shadow(0 0 9px rgba(34, 211, 238, 0.45));
+}
+
+.callback-text {
+    max-width: 0;
+    opacity: 0;
+    transform: translateX(-5px);
+    overflow: hidden;
+    transition: max-width 0.28s ease, opacity 0.22s ease, transform 0.28s ease;
+}
+
+.callback-uiverse-btn:hover .callback-text,
+.callback-uiverse-btn:focus-visible .callback-text,
+.callback-uiverse-btn.is-expanded .callback-text {
+    max-width: 140px;
+    opacity: 1;
+    transform: translateX(0);
 }
 
 .callback-modal {
@@ -124,6 +190,10 @@
     background: rgba(0,0,0,0.6);
     backdrop-filter: blur(6px);
     z-index: 2000;
+}
+
+.callback-modal.is-open {
+    display: block;
 }
 
 .callback-box {
@@ -190,35 +260,41 @@
 }
 
 .scroll-top-btn {
-    position: fixed;
     bottom: 98px;
-    right: 18px;
     width: 50px;
     height: 50px;
-    border-radius: 50%;
-    background-color: var(--floating-bg);
-    border: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 0 0 4px var(--floating-shadow);
-    cursor: pointer;
+    background-color: rgba(11, 18, 32, 0.68);
     transition: all 0.3s ease, bottom 0.2s ease;
     overflow: hidden;
-    z-index: 1000;
     opacity: 0;
     pointer-events: none;
 }
 
 .scroll-top-btn.show {
-    opacity: 1;
+    opacity: 0.82;
     pointer-events: auto;
 }
 
 body.has-products-cart .scroll-top-btn,
 body.has-products-cart .back-to-top,
 body.has-products-cart [data-scroll-top] {
-    bottom: 158px;
+    bottom: 172px;
+}
+
+.theme-light_blue .callback-uiverse-btn,
+.theme-light_blue .scroll-top-btn {
+    background: rgba(255, 255, 255, 0.72);
+    color: #0f172a;
+    border-color: rgba(0, 171, 228, 0.34);
+    box-shadow: 0 0 0 1px rgba(0, 171, 228, 0.08), 0 12px 34px rgba(0, 143, 192, 0.16);
+}
+
+.theme-light_blue .callback-uiverse-btn:hover,
+.theme-light_blue .callback-uiverse-btn:focus-visible,
+.theme-light_blue .callback-uiverse-btn.is-expanded {
+    background: rgba(255, 255, 255, 0.9);
+    border-color: rgba(0, 171, 228, 0.52);
+    box-shadow: 0 0 0 1px rgba(0, 171, 228, 0.14), 0 16px 42px rgba(0, 143, 192, 0.22);
 }
 
 .theme-parts_dark_red .callback-uiverse-btn {
@@ -237,7 +313,7 @@ body.has-products-cart [data-scroll-top] {
 body.has-products-cart.theme-parts_dark_red .scroll-top-btn,
 body.has-products-cart.theme-parts_dark_red .back-to-top,
 body.has-products-cart.theme-parts_dark_red [data-scroll-top] {
-    bottom: 158px;
+    bottom: 172px;
 }
 
 .scroll-svgIcon {
@@ -245,13 +321,18 @@ body.has-products-cart.theme-parts_dark_red [data-scroll-top] {
 }
 
 .scroll-svgIcon path {
-    fill: var(--button-text);
+    fill: currentColor;
 }
 
 .scroll-top-btn:hover {
-    width: 140px;
+    width: 116px;
     border-radius: 50px;
-    background-color: var(--floating-hover);
+    background-color: rgba(11, 18, 32, 0.86);
+    opacity: 0.96;
+}
+
+.theme-light_blue .scroll-top-btn:hover {
+    background-color: rgba(255, 255, 255, 0.92);
 }
 
 .scroll-top-btn:hover .scroll-svgIcon {
@@ -261,7 +342,7 @@ body.has-products-cart.theme-parts_dark_red [data-scroll-top] {
 .scroll-top-btn::before {
     content: "Вгору";
     position: absolute;
-    color: var(--button-text);
+    color: currentColor;
     font-size: 0;
     white-space: nowrap;
     transition: 0.3s;
@@ -272,11 +353,49 @@ body.has-products-cart.theme-parts_dark_red [data-scroll-top] {
     transform: translateY(0);
 }
 
+@media (hover: none), (pointer: coarse) {
+    .callback-uiverse-btn:hover {
+        width: var(--fab-size);
+        min-width: var(--fab-size);
+        padding: 0;
+        justify-content: center;
+        opacity: 0.72;
+    }
+
+    .callback-uiverse-btn:hover .callback-text {
+        max-width: 0;
+        opacity: 0;
+        transform: translateX(-5px);
+    }
+
+    .callback-uiverse-btn.is-expanded {
+        width: 196px;
+        min-width: 196px;
+        padding: 0 18px;
+        justify-content: flex-start;
+        opacity: 0.96;
+    }
+
+    .callback-uiverse-btn.is-expanded .callback-text {
+        max-width: 140px;
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
 @media (max-width: 640px) {
     .callback-uiverse-btn,
     .theme-parts_dark_red .callback-uiverse-btn {
-        right: 14px;
-        bottom: 24px;
+        --fab-size: 56px;
+        --fab-right: 14px;
+        bottom: 22px;
+    }
+
+    .callback-uiverse-btn:hover,
+    .callback-uiverse-btn:focus-visible,
+    .callback-uiverse-btn.is-expanded {
+        width: 188px;
+        min-width: 188px;
     }
 
     .scroll-top-btn,
@@ -289,78 +408,152 @@ body.has-products-cart.theme-parts_dark_red [data-scroll-top] {
     .theme-parts_dark_red .scroll-top-btn,
     .theme-parts_dark_red .back-to-top,
     .theme-parts_dark_red [data-scroll-top] {
-        bottom: 98px;
+        bottom: 94px;
     }
 
+    body.has-products-cart .scroll-top-btn,
+    body.has-products-cart .back-to-top,
+    body.has-products-cart [data-scroll-top],
     body.has-products-cart.theme-parts_dark_red .scroll-top-btn,
     body.has-products-cart.theme-parts_dark_red .back-to-top,
     body.has-products-cart.theme-parts_dark_red [data-scroll-top] {
-        bottom: 158px;
+        bottom: 164px;
     }
 }
 </style>
 
 <script>
-function openCallback(message) {
-    window.carpotCallbackMessage = message || "Callback request";
-    document.getElementById("callbackModal").style.display = "block";
-}
+(function () {
+    const CALLBACK_MESSAGE_DEFAULT = "Callback request";
+    let callbackCollapseTimer;
 
-function closeCallback() {
-    document.getElementById("callbackModal").style.display = "none";
-}
-
-async function sendCallback() {
-    const name = document.getElementById("cbName").value;
-    const phone = document.getElementById("cbPhone").value;
-
-    if (!phone) {
-        alert("Введіть телефон");
-        return;
+    function callbackModal() {
+        return document.getElementById("callbackModal");
     }
 
-    try {
-        const res = await fetch(`/site/{{ subdomain }}/lead`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/x-www-form-urlencoded"
-            },
-            body: new URLSearchParams({
-                name: name || "",
-                phone: phone,
-                message: window.carpotCallbackMessage || "Callback request"
-            })
-        });
+    function callbackFab() {
+        return document.querySelector("[data-callback-fab]");
+    }
 
-        const data = await res.json();
+    function setCallbackExpanded(expanded) {
+        const fab = callbackFab();
+        if (!fab) return;
 
-        if (data.status === "ok") {
-            alert("Заявка відправлена");
-            closeCallback();
+        fab.classList.toggle("is-expanded", expanded);
+        fab.setAttribute("aria-expanded", expanded ? "true" : "false");
+    }
+
+    function scheduleCallbackCollapse() {
+        window.clearTimeout(callbackCollapseTimer);
+        callbackCollapseTimer = window.setTimeout(() => setCallbackExpanded(false), 3200);
+    }
+
+    window.openCallback = function (message) {
+        window.carpotCallbackMessage = message || CALLBACK_MESSAGE_DEFAULT;
+        const modal = callbackModal();
+        if (modal) {
+            modal.classList.add("is-open");
         }
-    } catch {
-        alert("Помилка мережі");
-    }
-}
+        setCallbackExpanded(false);
+    };
 
-document.addEventListener("DOMContentLoaded", function () {
-    const btn = document.getElementById("scrollTopBtn");
+    window.closeCallback = function () {
+        const modal = callbackModal();
+        if (modal) {
+            modal.classList.remove("is-open");
+        }
+    };
 
-    window.addEventListener("scroll", () => {
-        if (window.scrollY > 300) {
-            btn.classList.add("show");
-        } else {
-            btn.classList.remove("show");
+    window.sendCallback = async function () {
+        const nameInput = document.getElementById("cbName");
+        const phoneInput = document.getElementById("cbPhone");
+        const name = nameInput ? nameInput.value : "";
+        const phone = phoneInput ? phoneInput.value : "";
+
+        if (!phone) {
+            alert("Введіть телефон");
+            return;
+        }
+
+        try {
+            const res = await fetch(`/site/{{ subdomain }}/lead`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded"
+                },
+                body: new URLSearchParams({
+                    name: name || "",
+                    phone: phone,
+                    message: window.carpotCallbackMessage || CALLBACK_MESSAGE_DEFAULT
+                })
+            });
+
+            const data = await res.json();
+
+            if (data.status === "ok") {
+                alert("Заявка відправлена");
+                window.closeCallback();
+            }
+        } catch {
+            alert("Помилка мережі");
+        }
+    };
+
+    document.addEventListener("DOMContentLoaded", function () {
+        const fab = callbackFab();
+        const modal = callbackModal();
+        const submit = document.querySelector("[data-callback-submit]");
+        const close = document.querySelector("[data-callback-close]");
+        const scrollTopBtn = document.getElementById("scrollTopBtn");
+        const coarsePointer = window.matchMedia("(hover: none), (pointer: coarse)");
+
+        if (fab) {
+            fab.addEventListener("click", (event) => {
+                if (coarsePointer.matches && !fab.classList.contains("is-expanded")) {
+                    event.preventDefault();
+                    setCallbackExpanded(true);
+                    scheduleCallbackCollapse();
+                    return;
+                }
+
+                window.openCallback();
+            });
+
+            fab.addEventListener("pointerenter", () => {
+                if (!coarsePointer.matches) setCallbackExpanded(true);
+            });
+
+            fab.addEventListener("pointerleave", () => {
+                if (!coarsePointer.matches) setCallbackExpanded(false);
+            });
+        }
+
+        if (submit) submit.addEventListener("click", window.sendCallback);
+        if (close) close.addEventListener("click", window.closeCallback);
+        if (modal) {
+            modal.addEventListener("click", (event) => {
+                if (event.target === modal) window.closeCallback();
+            });
+        }
+
+        if (scrollTopBtn) {
+            window.addEventListener("scroll", () => {
+                if (window.scrollY > 300) {
+                    scrollTopBtn.classList.add("show");
+                } else {
+                    scrollTopBtn.classList.remove("show");
+                }
+            });
+
+            scrollTopBtn.addEventListener("click", () => {
+                window.scrollTo({
+                    top: 0,
+                    behavior: "smooth"
+                });
+            });
         }
     });
-
-    btn.onclick = () => {
-        window.scrollTo({
-            top: 0,
-            behavior: "smooth"
-        });
-    };
-});
+}());
 </script>
 
 {% endblock %}
