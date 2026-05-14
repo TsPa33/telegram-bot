@@ -10,11 +10,16 @@ from bot.database.repositories.car_repo import (
     get_car_by_id,
     add_unique_car_view
 )
+from bot.database.repositories.buyer_repo import (
+    add_history,
+    create_buyer_request,
+    is_favorite,
+)
 from bot.database.base import execute
 from bot.database.base import fetch
 
 from bot.utils.formatters import format_car_card
-from bot.keyboards.card_inline import build_card_keyboard
+from bot.keyboards.card_inline import build_card_keyboard, normalize_url
 from bot.keyboards.buyer_nav import buyer_nav_kb
 from bot.keyboards.buyer_home import buyer_home_kb
 from bot.keyboards.brands import brand_kb
@@ -55,6 +60,9 @@ async def send_card(message, state: FSMContext, new_message=False, user_id: int 
     viewer_id = user_id or message.chat.id
 
     await add_unique_car_view(car_id, viewer_id)
+    await add_history(viewer_id, "car", str(car_id))
+    if car.get("seller_id"):
+        await add_history(viewer_id, "seller", str(car["seller_id"]))
 
     is_owner = car.get("seller_id") == viewer_id
 
@@ -65,7 +73,14 @@ async def send_card(message, state: FSMContext, new_message=False, user_id: int 
         is_owner=is_owner
     )
 
-    keyboard = build_card_keyboard(car, page, total)
+    keyboard = build_card_keyboard(
+        car,
+        page,
+        total,
+        is_car_favorite=await is_favorite(viewer_id, "car", str(car_id)),
+        is_seller_favorite=await is_favorite(viewer_id, "seller", str(car.get("seller_id"))),
+        is_website_favorite=await is_favorite(viewer_id, "website", str(normalize_url(car.get("website")))),
+    )
 
     new_photo = car.get("photo_id")
 
@@ -185,6 +200,15 @@ async def phone_click(callback: CallbackQuery):
     if not car:
         await callback.answer("Не знайдено")
         return
+
+    await create_buyer_request(
+        telegram_id=callback.from_user.id,
+        request_type="car_phone",
+        entity_type="car",
+        entity_ref=str(car_id),
+        seller_id=car.get("seller_id"),
+        message="Buyer opened seller phone from car card",
+    )
 
     await callback.message.answer(f"📞 {car.get('phone') or 'не вказано'}")
     await callback.answer()

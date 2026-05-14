@@ -14,6 +14,12 @@ from bot.database.repositories.service_repo import (
     increment_clicks,
     increment_views,
 )
+from bot.database.repositories.buyer_repo import (
+    add_history,
+    create_buyer_request,
+    is_favorite,
+    toggle_favorite,
+)
 from bot.states.service_states import ServiceStates
 
 router = Router()
@@ -70,12 +76,23 @@ def format_service(service):
     )
 
 
-def build_kb(service, page, total):
+async def build_kb(service, page, total, telegram_id: int):
     route = f"https://www.google.com/maps/search/?api=1&query={quote_plus(service['address'])}"
 
+    service_favorite = await is_favorite(telegram_id, "service", str(service["id"]))
+    website_favorite = await is_favorite(telegram_id, "website", normalize_website(service.get("website")) or str(service["id"]))
+
     rows = [
+        [InlineKeyboardButton(
+            text="💔 Прибрати послугу" if service_favorite else "❤️ Зберегти послугу",
+            callback_data=f"fav:toggle:service:{service['id']}",
+        )],
         [InlineKeyboardButton(text="📞 Подзвонити", callback_data=f"svc_call:{service['id']}")],
         [InlineKeyboardButton(text="🌐 Сайт", callback_data=f"svc_site:{service['id']}")],
+        [InlineKeyboardButton(
+            text="💔 Прибрати сайт" if website_favorite else "❤️ Зберегти сайт",
+            callback_data=f"fav:toggle:website_svc:{service['id']}",
+        )],
         [InlineKeyboardButton(text="📍 Маршрут", url=route)],
     ]
 
@@ -93,7 +110,7 @@ def build_kb(service, page, total):
 
 # ================= CARD =================
 
-async def send_card(message: Message, state: FSMContext, new=False):
+async def send_card(message: Message, state: FSMContext, new=False, user_id: int | None = None):
     data = await state.get_data()
 
     items = data.get("items", [])
@@ -109,10 +126,12 @@ async def send_card(message: Message, state: FSMContext, new=False):
 
     service = items[start]
 
+    viewer_id = user_id or message.chat.id
     await increment_views(service["id"])
+    await add_history(viewer_id, "service", str(service["id"]))
 
     text = format_service(service)
-    kb = build_kb(service, page, total)
+    kb = await build_kb(service, page, total, viewer_id)
 
     if new:
         if service.get("photo_id"):
@@ -197,7 +216,7 @@ async def category(callback: CallbackQuery, state: FSMContext):
 
     await state.update_data(items=services, page=1)
 
-    await send_card(callback.message, state, new=True)
+    await send_card(callback.message, state, new=True, user_id=callback.from_user.id)
 
 
 # ================= NAV =================
@@ -211,7 +230,7 @@ async def next_page(callback: CallbackQuery, state: FSMContext):
         return
     await state.update_data(page=data["page"] + 1)
 
-    await send_card(callback.message, state)
+    await send_card(callback.message, state, user_id=callback.from_user.id)
 
 
 @router.callback_query(ServiceStates.category, F.data == "svc_prev")
@@ -223,7 +242,7 @@ async def prev_page(callback: CallbackQuery, state: FSMContext):
         return
     await state.update_data(page=max(1, data["page"] - 1))
 
-    await send_card(callback.message, state)
+    await send_card(callback.message, state, user_id=callback.from_user.id)
 
 
 # ================= ACTIONS =================
@@ -239,6 +258,15 @@ async def call(callback: CallbackQuery, state: FSMContext):
     await increment_calls(service_id)
 
     service = next((x for x in data.get("items", []) if x["id"] == service_id), None)
+
+    await create_buyer_request(
+        telegram_id=callback.from_user.id,
+        request_type="service_phone",
+        entity_type="service",
+        entity_ref=str(service_id),
+        seller_id=service.get("seller_id") if service else None,
+        message="Buyer opened service phone",
+    )
 
     await callback.message.answer(f"📞 {service.get('phone') if service else 'Не вказано'}")
 
@@ -263,6 +291,14 @@ async def site(callback: CallbackQuery, state: FSMContext):
         return
 
     await increment_clicks(service_id)
+    await create_buyer_request(
+        telegram_id=callback.from_user.id,
+        request_type="service_site",
+        entity_type="service",
+        entity_ref=str(service_id),
+        seller_id=service.get("seller_id"),
+        message="Buyer opened service website",
+    )
 
     await callback.message.answer(
         "🌐 Відкрити сайт",
@@ -270,3 +306,24 @@ async def site(callback: CallbackQuery, state: FSMContext):
             inline_keyboard=[[InlineKeyboardButton(text="Відкрити", url=url)]]
         ),
     )
+
+
+@router.callback_query(ServiceStates.category, F.data.startswith("fav:toggle:website_svc:"))
+async def toggle_service_website_favorite(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+    data = await state.get_data()
+    if data.get("flow") != "buyer_services":
+        return
+
+    service_id = int(callback.data.split(":")[-1])
+    service = next((x for x in data.get("items", []) if x["id"] == service_id), None)
+    if not service:
+        return
+
+    url = normalize_website(service.get("website"))
+    if not url:
+        await callback.message.answer("❌ Сайт не вказано")
+        return
+
+    is_added = await toggle_favorite(callback.from_user.id, "website", url)
+    await callback.message.answer("Додано в обране" if is_added else "Прибрано з обраного")

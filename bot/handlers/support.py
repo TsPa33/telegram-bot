@@ -17,7 +17,7 @@ from bot.services.support_notifications import admin_display, notify_support_adm
 from bot.states.admin_states import SupportStates
 
 router = Router()
-SUPPORT_BUTTON_TEXT = "🆘 Служба підтримки"
+SUPPORT_BUTTON_TEXT = "💬 Підтримка"
 CANCEL_TEXT = "❌ Скасувати"
 
 
@@ -41,7 +41,7 @@ def _ticket_user_line(ticket) -> str:
 
 def _new_ticket_admin_text(ticket, message_text: str) -> str:
     return (
-        f"🆘 Новий запит підтримки #{ticket['id']}\n\n"
+        f"💬 Новий запит підтримки #{ticket['id']}\n\n"
         "Користувач:\n"
         f"{_ticket_user_line(ticket)}\n\n"
         "Повідомлення:\n"
@@ -73,9 +73,9 @@ async def _open_support(message: Message, state: FSMContext, user):
 
     await state.set_state(SupportStates.waiting_support_message)
     await message.answer(
-        "🆘 Служба підтримки\n\n"
+        "💬 Підтримка\n\n"
         "Опишіть ваше питання одним повідомленням.\n\n"
-        "Після відправки повідомлення наш менеджер отримає запит та допоможе вирішити проблему.",
+        "Менеджер CarPot отримає звернення та спокійно допоможе у чаті.",
         reply_markup=support_cancel_kb(),
     )
 

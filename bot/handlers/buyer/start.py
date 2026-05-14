@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 # ================= BUYER HOME =================
 
-BUYER_HOME_TEXT = "🚗 Меню покупця\n\nОбери дію:"
+BUYER_HOME_TEXT = "🚗 Твій автомобільний асистент\n\nОбери, що потрібно зараз:"
 BUYER_HOME_IMAGE_URL = os.getenv("BUYER_HOME_IMAGE_URL")
 
 
@@ -75,24 +75,6 @@ async def buyer_home_callback(callback: types.CallbackQuery, state: FSMContext):
 async def buyer_find_handler(callback: types.CallbackQuery, state: FSMContext):
     await callback.answer()
     await start_buyer(callback.message, state)
-
-
-@router.callback_query(F.data == "buyer:views")
-async def buyer_views_handler(callback: types.CallbackQuery):
-    await callback.answer()
-    await callback.message.answer("👀 Мої перегляди будуть доступні скоро.")
-
-
-@router.callback_query(F.data == "buyer:favorites")
-async def buyer_favorites_handler(callback: types.CallbackQuery):
-    await callback.answer()
-    await callback.message.answer("⭐ Обрані будуть доступні скоро.")
-
-
-@router.callback_query(F.data == "buyer:profile")
-async def buyer_profile_handler(callback: types.CallbackQuery):
-    await callback.answer()
-    await callback.message.answer("👤 Профіль покупця буде доступний скоро.")
 
 
 # ================= SEARCH FLOW =================

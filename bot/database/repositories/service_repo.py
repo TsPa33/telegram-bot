@@ -124,6 +124,35 @@ async def get_services_by_filter(city: str, category: str):
     )
 
 
+async def get_service_by_id(service_id: int):
+    return await fetchrow(
+        """
+        SELECT
+            s.id,
+            s.seller_id,
+            s.category,
+            s.title,
+            s.city,
+            s.address,
+            s.description,
+            s.website,
+            s.photo_id,
+            s.price,
+            s.created_at,
+            sel.phone,
+            COALESCE(st.views, 0) AS views,
+            COALESCE(st.calls, 0) AS calls,
+            COALESCE(st.clicks, 0) AS clicks
+        FROM services s
+        LEFT JOIN sellers sel ON sel.id = s.seller_id
+        LEFT JOIN service_stats st ON st.service_id = s.id
+        WHERE s.id = $1
+        LIMIT 1
+        """,
+        service_id,
+    )
+
+
 async def get_all_cities():
     return await fetch(
         """
