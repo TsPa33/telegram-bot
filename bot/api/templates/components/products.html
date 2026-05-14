@@ -1059,16 +1059,19 @@ body.has-products-cart.theme-parts_dark_red [data-scroll-top] {
         const viber = cleanPhone(messengers.viber || contacts.viber || "");
 
         if (telegram) {
+            if (window.CarpotAnalytics) window.CarpotAnalytics.trackEvent("telegram_click", "products", telegram);
             window.open(`https://t.me/${telegram}`, "_blank", "noopener");
             return;
         }
 
         if (whatsapp) {
+            if (window.CarpotAnalytics) window.CarpotAnalytics.trackEvent("whatsapp_click", "products", whatsapp);
             window.open(`https://wa.me/${whatsapp.replace(/^\+/, "")}`, "_blank", "noopener");
             return;
         }
 
         if (viber) {
+            if (window.CarpotAnalytics) window.CarpotAnalytics.trackEvent("viber_click", "products", viber);
             window.location.href = `viber://chat?number=${viber}`;
             return;
         }
@@ -1223,12 +1226,18 @@ body.has-products-cart.theme-parts_dark_red [data-scroll-top] {
             const response = await fetch(`/site/{{ subdomain }}/lead`, {
                 method: "POST",
                 headers: {"Content-Type": "application/x-www-form-urlencoded"},
-                body: new URLSearchParams({name: name || "", phone: phone, message: message}),
+                body: new URLSearchParams(Object.assign(
+                    {name: name || "", phone: phone, message: message},
+                    window.CarpotAnalytics ? window.CarpotAnalytics.leadParams() : {}
+                )),
             });
 
             const data = await response.json();
 
             if (data.status === "ok") {
+                if (window.CarpotAnalytics) {
+                    window.CarpotAnalytics.trackEvent("lead_submit", "products", message || "products");
+                }
                 if (typeof onSuccess === "function") onSuccess();
                 showToast("Заявка відправлена");
                 alert("Заявка відправлена");

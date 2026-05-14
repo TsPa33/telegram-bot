@@ -340,9 +340,92 @@ async def create_tables():
     );
     """)
 
+    await execute("ALTER TABLE site_leads ADD COLUMN IF NOT EXISTS session_id TEXT;")
+    await execute("ALTER TABLE site_leads ADD COLUMN IF NOT EXISTS utm_source TEXT;")
+    await execute("ALTER TABLE site_leads ADD COLUMN IF NOT EXISTS utm_medium TEXT;")
+    await execute("ALTER TABLE site_leads ADD COLUMN IF NOT EXISTS utm_campaign TEXT;")
+    await execute("ALTER TABLE site_leads ADD COLUMN IF NOT EXISTS referrer TEXT;")
+
     await execute("CREATE INDEX IF NOT EXISTS idx_site_leads_seller_id ON site_leads(seller_id);")
     await execute("CREATE INDEX IF NOT EXISTS idx_site_leads_status ON site_leads(status);")
     await execute("CREATE INDEX IF NOT EXISTS idx_site_leads_created_at ON site_leads(created_at);")
+    await execute("CREATE INDEX IF NOT EXISTS idx_site_leads_session_id ON site_leads(session_id);")
+    await execute("CREATE INDEX IF NOT EXISTS idx_site_leads_utm_source ON site_leads(utm_source);")
+
+    await execute("""
+    CREATE TABLE IF NOT EXISTS analytics_sessions (
+        id SERIAL PRIMARY KEY,
+        session_id TEXT NOT NULL UNIQUE,
+        seller_site_id INTEGER NULL,
+        subdomain TEXT,
+        landing_page TEXT,
+        current_page TEXT,
+        referrer TEXT,
+        utm_source TEXT,
+        utm_medium TEXT,
+        utm_campaign TEXT,
+        utm_content TEXT,
+        utm_term TEXT,
+        ip_address TEXT,
+        country TEXT,
+        city TEXT,
+        device_type TEXT,
+        browser TEXT,
+        operating_system TEXT,
+        language TEXT,
+        user_agent TEXT,
+        started_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        last_seen_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        time_on_site_seconds INTEGER NOT NULL DEFAULT 0,
+        pages_viewed INTEGER NOT NULL DEFAULT 1
+    );
+    """)
+
+    await execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_analytics_sessions_session_id ON analytics_sessions(session_id);")
+    await execute("CREATE INDEX IF NOT EXISTS idx_analytics_sessions_subdomain ON analytics_sessions(subdomain);")
+    await execute("CREATE INDEX IF NOT EXISTS idx_analytics_sessions_seller_site_id ON analytics_sessions(seller_site_id);")
+    await execute("CREATE INDEX IF NOT EXISTS idx_analytics_sessions_utm_source ON analytics_sessions(utm_source);")
+    await execute("CREATE INDEX IF NOT EXISTS idx_analytics_sessions_started_at ON analytics_sessions(started_at);")
+
+    await execute("""
+    CREATE TABLE IF NOT EXISTS analytics_events (
+        id SERIAL PRIMARY KEY,
+        session_id TEXT NOT NULL,
+        seller_site_id INTEGER NULL,
+        subdomain TEXT,
+        event_type TEXT NOT NULL,
+        event_name TEXT,
+        event_target TEXT,
+        page_url TEXT,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+    );
+    """)
+
+    await execute("CREATE INDEX IF NOT EXISTS idx_analytics_events_session_id ON analytics_events(session_id);")
+    await execute("CREATE INDEX IF NOT EXISTS idx_analytics_events_subdomain ON analytics_events(subdomain);")
+    await execute("CREATE INDEX IF NOT EXISTS idx_analytics_events_seller_site_id ON analytics_events(seller_site_id);")
+    await execute("CREATE INDEX IF NOT EXISTS idx_analytics_events_event_type ON analytics_events(event_type);")
+    await execute("CREATE INDEX IF NOT EXISTS idx_analytics_events_created_at ON analytics_events(created_at);")
+
+    await execute("""
+    CREATE TABLE IF NOT EXISTS telegram_attribution (
+        id SERIAL PRIMARY KEY,
+        telegram_id BIGINT NOT NULL,
+        username TEXT,
+        first_name TEXT,
+        language_code TEXT,
+        start_param TEXT,
+        source TEXT,
+        campaign TEXT,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        last_seen_at TIMESTAMP NOT NULL DEFAULT NOW()
+    );
+    """)
+
+    await execute("CREATE INDEX IF NOT EXISTS idx_telegram_attribution_telegram_id ON telegram_attribution(telegram_id);")
+    await execute("CREATE INDEX IF NOT EXISTS idx_telegram_attribution_start_param ON telegram_attribution(start_param);")
+    await execute("CREATE INDEX IF NOT EXISTS idx_telegram_attribution_source ON telegram_attribution(source);")
+    await execute("CREATE INDEX IF NOT EXISTS idx_telegram_attribution_created_at ON telegram_attribution(created_at);")
 
     await execute("""
     CREATE TABLE IF NOT EXISTS seller_cars (

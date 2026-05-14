@@ -3,7 +3,7 @@ import logging
 
 from aiogram import Bot
 from fastapi import APIRouter, FastAPI, HTTPException, Request, Form
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
 from bot.api.liqpay_callback import router as liqpay_router
@@ -15,6 +15,11 @@ from bot.database.repositories.seller_repo import get_seller_by_id
 from bot.database.repositories.car_repo import get_cars_by_seller
 from bot.database.repositories.service_repo import get_services_by_seller
 from bot.database.repositories.lead_repo import create_site_lead
+from bot.database.repositories.analytics_repo import (
+    ALLOWED_ANALYTICS_EVENT_TYPES,
+    add_event,
+    upsert_session,
+)
 
 from bot.services.demo_seed_service import get_demo_render_preset
 from bot.services.site_config import merge_with_default
@@ -33,6 +38,104 @@ MARKETING_TELEGRAM_BOT_URL = "https://t.me/CarPotbot"
 MARKETING_TELEGRAM_SUPPORT_URL = "https://t.me/CarPotbot"
 MARKETING_SUPPORT_EMAIL = "support@carpot.com.ua"
 MARKETING_SITE_URL = "https://carpot.com.ua"
+
+MAX_ANALYTICS_PAYLOAD_BYTES = 8192
+VALID_DEVICE_TYPES = {"mobile", "desktop", "tablet", "bot", "unknown"}
+
+
+def _client_ip(request: Request) -> str | None:
+    cf_ip = request.headers.get("cf-connecting-ip")
+    if cf_ip:
+        return cf_ip.split(",", 1)[0].strip()[:80]
+
+    forwarded_for = request.headers.get("x-forwarded-for")
+    if forwarded_for:
+        return forwarded_for.split(",", 1)[0].strip()[:80]
+
+    if request.client:
+        return request.client.host[:80]
+    return None
+
+
+def _optional_int(value) -> int | None:
+    if value in (None, ""):
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _short_text(value, max_length: int = 500) -> str | None:
+    if value is None:
+        return None
+    value = str(value).strip()
+    if not value:
+        return None
+    return value[:max_length]
+
+
+def _detect_client(user_agent: str | None) -> tuple[str, str, str]:
+    ua = (user_agent or "").lower()
+
+    if not ua:
+        return "unknown", "unknown", "unknown"
+
+    if any(marker in ua for marker in ("bot", "crawler", "spider", "telegrambot")):
+        device_type = "bot"
+    elif "ipad" in ua or "tablet" in ua:
+        device_type = "tablet"
+    elif "mobile" in ua or "iphone" in ua or "android" in ua:
+        device_type = "mobile"
+    else:
+        device_type = "desktop"
+
+    if "edg/" in ua:
+        browser = "Edge"
+    elif "chrome/" in ua or "crios/" in ua:
+        browser = "Chrome"
+    elif "safari/" in ua and "chrome" not in ua:
+        browser = "Safari"
+    elif "firefox/" in ua:
+        browser = "Firefox"
+    elif "telegram" in ua:
+        browser = "Telegram"
+    else:
+        browser = "unknown"
+
+    if "windows" in ua:
+        os_name = "Windows"
+    elif "iphone" in ua or "ipad" in ua or "ios" in ua:
+        os_name = "iOS"
+    elif "android" in ua:
+        os_name = "Android"
+    elif "mac os" in ua or "macintosh" in ua:
+        os_name = "macOS"
+    elif "linux" in ua:
+        os_name = "Linux"
+    else:
+        os_name = "unknown"
+
+    return device_type, browser, os_name
+
+
+async def _analytics_payload(request: Request) -> dict:
+    content_length = request.headers.get("content-length")
+    try:
+        payload_size = int(content_length or 0)
+    except ValueError:
+        payload_size = 0
+    if payload_size > MAX_ANALYTICS_PAYLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="Analytics payload too large")
+
+    try:
+        payload = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid analytics payload")
+
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="Invalid analytics payload")
+    return payload
 
 
 def marketing_context(
@@ -325,6 +428,7 @@ async def _render_site_by_subdomain(subdomain: str, request: Request):
         {
             "request": request,
             "subdomain": subdomain,
+            "site_id": site.get("id"),
             "config": config,
             "seller": seller,
             "cars": cars,
@@ -346,6 +450,11 @@ async def _create_lead_for_subdomain(
     name: str,
     phone: str,
     message: str,
+    session_id: str | None = None,
+    utm_source: str | None = None,
+    utm_medium: str | None = None,
+    utm_campaign: str | None = None,
+    referrer: str | None = None,
 ):
     if not is_valid_subdomain(subdomain):
         raise HTTPException(status_code=404)
@@ -368,6 +477,11 @@ async def _create_lead_for_subdomain(
             name=name or None,
             phone=phone,
             message=message or None,
+            session_id=_short_text(session_id, 120),
+            utm_source=_short_text(utm_source, 200),
+            utm_medium=_short_text(utm_medium, 200),
+            utm_campaign=_short_text(utm_campaign, 200),
+            referrer=_short_text(referrer, 1000),
         )
     except Exception:
         logger.exception("Failed to save site lead for subdomain %s", subdomain)
@@ -394,8 +508,15 @@ async def create_lead(
     name: str = Form(...),
     phone: str = Form(...),
     message: str = Form(""),
+    session_id: str | None = Form(None),
+    utm_source: str | None = Form(None),
+    utm_medium: str | None = Form(None),
+    utm_campaign: str | None = Form(None),
+    referrer: str | None = Form(None),
 ):
-    return await _create_lead_for_subdomain(subdomain, name, phone, message)
+    return await _create_lead_for_subdomain(
+        subdomain, name, phone, message, session_id, utm_source, utm_medium, utm_campaign, referrer
+    )
 
 
 @router.post("/lead")
@@ -404,13 +525,89 @@ async def create_host_lead(
     name: str = Form(...),
     phone: str = Form(...),
     message: str = Form(""),
+    session_id: str | None = Form(None),
+    utm_source: str | None = Form(None),
+    utm_medium: str | None = Form(None),
+    utm_campaign: str | None = Form(None),
+    referrer: str | None = Form(None),
 ):
     host_subdomain = extract_subdomain_from_host(request.headers.get("host"))
 
     if not host_subdomain:
         raise HTTPException(status_code=404)
 
-    return await _create_lead_for_subdomain(host_subdomain, name, phone, message)
+    return await _create_lead_for_subdomain(
+        host_subdomain, name, phone, message, session_id, utm_source, utm_medium, utm_campaign, referrer
+    )
+
+
+# ================= ANALYTICS =================
+
+@router.post("/analytics/session")
+async def analytics_session(request: Request):
+    payload = await _analytics_payload(request)
+    session_id = _short_text(payload.get("session_id"), 120)
+    if not session_id:
+        raise HTTPException(status_code=400, detail="session_id is required")
+
+    user_agent = _short_text(request.headers.get("user-agent") or payload.get("user_agent"), 600)
+    detected_device, detected_browser, detected_os = _detect_client(user_agent)
+    device_type = _short_text(payload.get("device_type"), 40) or detected_device
+    if device_type not in VALID_DEVICE_TYPES:
+        device_type = detected_device
+
+    try:
+        await upsert_session(
+            session_id=session_id,
+            seller_site_id=_optional_int(payload.get("seller_site_id")),
+            subdomain=_short_text(payload.get("subdomain"), 120),
+            landing_page=_short_text(payload.get("landing_page"), 1000),
+            current_page=_short_text(payload.get("current_page"), 1000),
+            referrer=_short_text(payload.get("referrer"), 1000),
+            utm_source=_short_text(payload.get("utm_source"), 200),
+            utm_medium=_short_text(payload.get("utm_medium"), 200),
+            utm_campaign=_short_text(payload.get("utm_campaign"), 200),
+            utm_content=_short_text(payload.get("utm_content"), 200),
+            utm_term=_short_text(payload.get("utm_term"), 200),
+            ip_address=_client_ip(request),
+            country=_short_text(request.headers.get("cf-ipcountry"), 120),
+            city=None,
+            device_type=device_type,
+            browser=_short_text(payload.get("browser"), 120) or detected_browser,
+            operating_system=_short_text(payload.get("operating_system"), 120) or detected_os,
+            language=_short_text(payload.get("language") or request.headers.get("accept-language"), 120),
+            user_agent=user_agent,
+            time_on_site_seconds=int(payload.get("time_on_site_seconds") or 0),
+        )
+    except Exception:
+        logger.exception("Failed to save analytics session")
+
+    return JSONResponse({"ok": True})
+
+
+@router.post("/analytics/event")
+async def analytics_event(request: Request):
+    payload = await _analytics_payload(request)
+    session_id = _short_text(payload.get("session_id"), 120)
+    event_type = _short_text(payload.get("event_type"), 80)
+
+    if not session_id or event_type not in ALLOWED_ANALYTICS_EVENT_TYPES:
+        raise HTTPException(status_code=400, detail="Invalid analytics event")
+
+    try:
+        await add_event(
+            session_id=session_id,
+            seller_site_id=_optional_int(payload.get("seller_site_id")),
+            subdomain=_short_text(payload.get("subdomain"), 120),
+            event_type=event_type,
+            event_name=_short_text(payload.get("event_name"), 200),
+            event_target=_short_text(payload.get("event_target"), 500),
+            page_url=_short_text(payload.get("page_url"), 1000),
+        )
+    except Exception:
+        logger.exception("Failed to save analytics event")
+
+    return JSONResponse({"ok": True})
 
 
 # ================= ROUTERS =================

@@ -10,7 +10,7 @@
 
         <div class="cp-pricing-grid">
             {% for item in pricing_items %}
-            <article class="cp-pricing-card">
+            <article class="cp-pricing-card" data-analytics-event="pricing_click">
                 <div>
                     <h3>{{ item.get('title') }}</h3>
                     {% if item.get('description') %}<p>{{ item.get('description') }}</p>{% endif %}

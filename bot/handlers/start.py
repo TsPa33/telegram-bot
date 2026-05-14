@@ -10,6 +10,7 @@ from bot.keyboards.admin_kb import admin_kb
 from bot.keyboards.admin_inline import demo_categories_kb, demo_group_kb
 
 from bot.database.base import fetchrow
+from bot.database.repositories.analytics_repo import upsert_telegram_attribution
 from bot.database.repositories.crm_admin_repo import list_admin_users
 from bot.database.repositories.promo_repo import (
     START_PROMO_CODE,
@@ -160,6 +161,17 @@ async def start(message: Message, state: FSMContext):
     await log_visit(message.from_user, role="unknown")
 
     payload = _start_payload(message)
+    try:
+        await upsert_telegram_attribution(
+            telegram_id=message.from_user.id,
+            username=message.from_user.username,
+            first_name=message.from_user.first_name,
+            language_code=message.from_user.language_code,
+            start_param=payload or None,
+        )
+    except Exception as e:
+        print("ERROR SAVE TELEGRAM ATTRIBUTION:", e)
+
     if payload.upper() == START_PROMO_CODE:
         existing_activation = await get_promo_activation(
             message.from_user.id,
