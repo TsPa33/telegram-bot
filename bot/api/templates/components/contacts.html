@@ -1,7 +1,11 @@
-<section id="contacts" class="section">
+<section id="contacts" class="section cp-contacts-section">
     <div class="container">
 
-        <h2>Контакти</h2>
+        <div class="cp-section-head">
+            <span class="cp-section-kicker">Контакти</span>
+            <h2>Звʼяжіться з нами</h2>
+            <p>Оберіть зручний канал: дзвінок, месенджер або заявка на сайті.</p>
+        </div>
 
         <div class="contacts-grid">
 
@@ -212,6 +216,12 @@
 
 /* ===== GRID ===== */
 
+.cp-contacts-section {
+    position: relative;
+    padding: clamp(56px, 8vw, 92px) 0;
+    background: var(--bg);
+}
+
 .contacts-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -224,8 +234,14 @@
 
 .contact-card {
     background: var(--card-bg);
-    border-radius: 16px;
-    padding: 20px;
+    border: 1px solid color-mix(in srgb, var(--border) 76%, var(--primary));
+    border-radius: 24px;
+    padding: clamp(18px, 3vw, 26px);
+    box-shadow: 0 18px 54px rgba(2, 6, 23, 0.12);
+}
+
+.theme-light_blue .contact-card {
+    background: #ffffff;
 }
 
 
@@ -259,6 +275,8 @@
     gap: 14px;
 
     background: var(--card-inner-bg);
+
+    border: 1px solid color-mix(in srgb, var(--border) 52%, transparent);
 
     border-radius: 14px;
 

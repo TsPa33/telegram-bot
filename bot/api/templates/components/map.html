@@ -1,49 +1,67 @@
-<section id="map" class="section">
+<section id="map" class="section cp-map-section">
     <div class="container">
+        <div class="cp-map-layout">
+            <div class="cp-map-info">
+                <span class="cp-section-kicker">Локація</span>
+                <h2>Як нас знайти</h2>
+                {% if contacts.get('address') %}<p>{{ contacts.get('address') }}</p>{% endif %}
+                {% if contacts.get('hours') %}<div class="cp-map-meta"><span>Графік</span><strong>{{ contacts.get('hours') }}</strong></div>{% endif %}
+                {% if contacts.get('phones') %}<div class="cp-map-meta"><span>Телефон</span><strong>{{ contacts.get('phones')[0] }}</strong></div>{% endif %}
+            </div>
 
-        <h2>Локація</h2>
-
-        <div class="map-card">
-            <div class="map-wrapper">
-                {{ contacts.get('map_embed') | safe }}
+            <div class="cp-map-card">
+                <div class="map-wrapper">
+                    {{ contacts.get('map_embed') | safe }}
+                </div>
             </div>
         </div>
-
     </div>
 </section>
 
-
 <style>
-
-/* ===== CARD ===== */
-.map-card {
-    background: var(--card-bg);
-    border-radius: 16px;
-    overflow: hidden;
-    margin-top: 20px;
-}
-
-/* ===== RESPONSIVE MAP ===== */
-.map-wrapper {
+.cp-map-section {
     position: relative;
-    width: 100%;
-    aspect-ratio: 16 / 9;
+    padding: clamp(56px, 8vw, 92px) 0;
+    background:
+        radial-gradient(circle at 16% 12%, color-mix(in srgb, var(--primary) 18%, transparent), transparent 28%),
+        var(--bg);
 }
-
-/* iframe control */
-.map-wrapper iframe {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    border: 0;
+.cp-map-layout {
+    display: grid;
+    grid-template-columns: minmax(260px, 0.85fr) minmax(0, 1.55fr);
+    gap: 22px;
+    align-items: stretch;
 }
-
-/* ===== MOBILE ===== */
-@media (max-width: 768px) {
-    .map-wrapper {
-        aspect-ratio: 4 / 3;
-    }
+.cp-map-info,
+.cp-map-card {
+    border: 1px solid color-mix(in srgb, var(--border) 78%, var(--primary));
+    border-radius: 28px;
+    background: var(--card-bg);
+    color: var(--card-text);
+    box-shadow: 0 22px 68px rgba(2, 6, 23, 0.14);
 }
-
+.cp-map-info { padding: clamp(22px, 4vw, 34px); }
+.cp-map-info h2 {
+    margin: 0;
+    color: var(--card-text);
+    font-size: clamp(30px, 4vw, 48px);
+    line-height: 1;
+    letter-spacing: -0.045em;
+}
+.cp-map-info p { margin: 16px 0 24px; color: var(--card-desc); line-height: 1.65; }
+.cp-map-meta {
+    display: grid;
+    gap: 5px;
+    padding: 14px 0;
+    border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+}
+.cp-map-meta span { color: var(--card-muted); font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; }
+.cp-map-meta strong { color: var(--card-text); }
+.cp-map-card { overflow: hidden; min-height: 430px; }
+.map-wrapper { position: relative; width: 100%; height: 100%; min-height: 430px; }
+.map-wrapper iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; filter: saturate(0.95) contrast(1.02); }
+.theme-light_blue .cp-map-info,
+.theme-light_blue .cp-map-card { background: #ffffff; }
+@media (max-width: 860px) { .cp-map-layout { grid-template-columns: 1fr; } .cp-map-card, .map-wrapper { min-height: 360px; } }
+@media (max-width: 520px) { .cp-map-card, .map-wrapper { min-height: 300px; } }
 </style>

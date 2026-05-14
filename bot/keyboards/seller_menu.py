@@ -123,6 +123,11 @@ def modules_menu_kb(modules: dict | None = None):
         ("services", "🛠 Послуги"),
         ("cars", "🚗 Авто"),
         ("products", "🧰 Запчастини"),
+        ("pricing", "💳 Ціни"),
+        ("works", "🧑‍🔧 Роботи"),
+        ("gallery", "🖼 Галерея"),
+        ("cta", "🚀 CTA"),
+        ("reviews", "⭐ Відгуки"),
         ("contacts", "📞 Контакти"),
         ("map", "📍 Карта"),
     )
