@@ -66,7 +66,11 @@
 {% include "components/footer.html" %}
 
 <button class="callback-uiverse-btn" type="button" data-callback-fab aria-label="Передзвоніть мені" aria-expanded="false">
-    <span class="callback-icon" aria-hidden="true">📞</span>
+    <span class="callback-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" focusable="false">
+            <path d="M6.62 10.79c1.44 2.83 3.76 5.15 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1C10.61 21 3 13.39 3 4c0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.24.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
+        </svg>
+    </span>
     <span class="callback-text">Передзвоніть мені</span>
 </button>
 
@@ -82,7 +86,7 @@
     </div>
 </div>
 
-<button id="scrollTopBtn" class="scroll-top-btn" data-scroll-top>
+<button id="scrollTopBtn" class="scroll-top-btn" data-scroll-top aria-label="Повернутися нагору">
     <svg class="scroll-svgIcon" viewBox="0 0 384 512">
         <path d="M214.6 41.4c-12.5-12.5-32.8-12.5-45.3 0l-160 160c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L160 141.2V448c0 17.7 14.3 32 32 32s32-14.3 32-32V141.2L329.4 246.6c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3l-160-160z"/>
     </svg>
@@ -91,13 +95,20 @@
 <style>
 .callback-uiverse-btn,
 .scroll-top-btn {
-    --fab-size: 58px;
+    --fab-size: 60px;
     --fab-right: 18px;
+    --fab-bottom: 24px;
+    --fab-gap: 14px;
     position: fixed;
     right: var(--fab-right);
-    display: inline-flex;
+    display: flex;
     align-items: center;
     justify-content: center;
+    width: var(--fab-size);
+    min-width: var(--fab-size);
+    height: var(--fab-size);
+    min-height: var(--fab-size);
+    padding: 0;
     border-radius: 999px;
     border: 1px solid rgba(34, 211, 238, 0.25);
     background: rgba(11, 18, 32, 0.72);
@@ -107,26 +118,9 @@
     -webkit-backdrop-filter: blur(14px);
     cursor: pointer;
     z-index: 1000;
-}
-
-.callback-uiverse-btn {
-    bottom: 24px;
-    width: var(--fab-size);
-    min-width: var(--fab-size);
-    height: var(--fab-size);
-    gap: 9px;
-    padding: 0;
     overflow: hidden;
-    opacity: 0.72;
-    font-size: 14px;
-    font-weight: 700;
-    line-height: 1;
-    white-space: nowrap;
     transform: translateZ(0);
     transition:
-        width 0.32s cubic-bezier(0.22, 1, 0.36, 1),
-        min-width 0.32s cubic-bezier(0.22, 1, 0.36, 1),
-        padding 0.32s cubic-bezier(0.22, 1, 0.36, 1),
         opacity 0.25s ease,
         border-color 0.25s ease,
         box-shadow 0.25s ease,
@@ -134,17 +128,19 @@
         transform 0.25s ease;
 }
 
+.callback-uiverse-btn {
+    bottom: var(--fab-bottom);
+    opacity: 0.72;
+}
+
 .callback-uiverse-btn:hover,
 .callback-uiverse-btn:focus-visible,
 .callback-uiverse-btn.is-expanded {
-    width: 196px;
-    min-width: 196px;
-    padding: 0 18px;
-    justify-content: flex-start;
     opacity: 0.96;
     border-color: rgba(34, 211, 238, 0.46);
     background: rgba(11, 18, 32, 0.84);
     box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.12), 0 14px 42px rgba(34, 211, 238, 0.2), 0 0 26px rgba(16, 185, 129, 0.12);
+    transform: scale(1.04) translateZ(0);
 }
 
 .callback-uiverse-btn:focus-visible,
@@ -153,34 +149,56 @@
     outline-offset: 4px;
 }
 
-.callback-uiverse-btn:active {
-    transform: scale(0.97);
+.callback-uiverse-btn:active,
+.scroll-top-btn:active {
+    transform: scale(0.97) translateZ(0);
 }
 
-.callback-icon {
-    display: inline-grid;
+.callback-icon,
+.scroll-svgIcon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     width: 24px;
     min-width: 24px;
     height: 24px;
-    place-items: center;
-    font-size: 20px;
+    min-height: 24px;
+    color: currentColor;
     filter: drop-shadow(0 0 9px rgba(34, 211, 238, 0.45));
+    pointer-events: none;
+}
+
+.callback-icon svg,
+.scroll-svgIcon {
+    display: block;
+    flex: 0 0 auto;
+}
+
+.callback-icon svg {
+    width: 23px;
+    height: 23px;
+}
+
+.callback-icon path,
+.scroll-svgIcon path {
+    fill: currentColor;
+}
+
+.scroll-svgIcon {
+    width: 23px;
+    height: 23px;
 }
 
 .callback-text {
-    max-width: 0;
-    opacity: 0;
-    transform: translateX(-5px);
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
     overflow: hidden;
-    transition: max-width 0.28s ease, opacity 0.22s ease, transform 0.28s ease;
-}
-
-.callback-uiverse-btn:hover .callback-text,
-.callback-uiverse-btn:focus-visible .callback-text,
-.callback-uiverse-btn.is-expanded .callback-text {
-    max-width: 140px;
-    opacity: 1;
-    transform: translateX(0);
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
 }
 
 .callback-modal {
@@ -260,12 +278,7 @@
 }
 
 .scroll-top-btn {
-    bottom: 98px;
-    width: 50px;
-    height: 50px;
-    background-color: rgba(11, 18, 32, 0.68);
-    transition: all 0.3s ease, bottom 0.2s ease;
-    overflow: hidden;
+    bottom: calc(var(--fab-bottom) + var(--fab-size) + var(--fab-gap));
     opacity: 0;
     pointer-events: none;
 }
@@ -273,6 +286,15 @@
 .scroll-top-btn.show {
     opacity: 0.82;
     pointer-events: auto;
+}
+
+.scroll-top-btn.show:hover,
+.scroll-top-btn.show:focus-visible {
+    opacity: 0.96;
+    border-color: rgba(34, 211, 238, 0.46);
+    background: rgba(11, 18, 32, 0.84);
+    box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.12), 0 14px 42px rgba(34, 211, 238, 0.2), 0 0 26px rgba(16, 185, 129, 0.12);
+    transform: scale(1.04) translateZ(0);
 }
 
 body.has-products-cart .scroll-top-btn,
@@ -291,22 +313,24 @@ body.has-products-cart [data-scroll-top] {
 
 .theme-light_blue .callback-uiverse-btn:hover,
 .theme-light_blue .callback-uiverse-btn:focus-visible,
-.theme-light_blue .callback-uiverse-btn.is-expanded {
+.theme-light_blue .callback-uiverse-btn.is-expanded,
+.theme-light_blue .scroll-top-btn.show:hover,
+.theme-light_blue .scroll-top-btn.show:focus-visible {
     background: rgba(255, 255, 255, 0.9);
     border-color: rgba(0, 171, 228, 0.52);
     box-shadow: 0 0 0 1px rgba(0, 171, 228, 0.14), 0 16px 42px rgba(0, 143, 192, 0.22);
 }
 
 .theme-parts_dark_red .callback-uiverse-btn {
-    right: 18px;
-    bottom: 24px;
+    right: var(--fab-right);
+    bottom: var(--fab-bottom);
 }
 
 .theme-parts_dark_red .scroll-top-btn,
 .theme-parts_dark_red .back-to-top,
 .theme-parts_dark_red [data-scroll-top] {
-    right: 18px;
-    bottom: 98px;
+    right: var(--fab-right);
+    bottom: calc(var(--fab-bottom) + var(--fab-size) + var(--fab-gap));
     z-index: 996;
 }
 
@@ -316,99 +340,29 @@ body.has-products-cart.theme-parts_dark_red [data-scroll-top] {
     bottom: 172px;
 }
 
-.scroll-svgIcon {
-    width: 12px;
-}
-
-.scroll-svgIcon path {
-    fill: currentColor;
-}
-
-.scroll-top-btn:hover {
-    width: 116px;
-    border-radius: 50px;
-    background-color: rgba(11, 18, 32, 0.86);
-    opacity: 0.96;
-}
-
-.theme-light_blue .scroll-top-btn:hover {
-    background-color: rgba(255, 255, 255, 0.92);
-}
-
-.scroll-top-btn:hover .scroll-svgIcon {
-    transform: translateY(-200%);
-}
-
-.scroll-top-btn::before {
-    content: "Вгору";
-    position: absolute;
-    color: currentColor;
-    font-size: 0;
-    white-space: nowrap;
-    transition: 0.3s;
-}
-
-.scroll-top-btn:hover::before {
-    font-size: 13px;
-    transform: translateY(0);
-}
-
 @media (hover: none), (pointer: coarse) {
-    .callback-uiverse-btn:hover {
-        width: var(--fab-size);
-        min-width: var(--fab-size);
-        padding: 0;
-        justify-content: center;
-        opacity: 0.72;
-    }
-
-    .callback-uiverse-btn:hover .callback-text {
-        max-width: 0;
-        opacity: 0;
-        transform: translateX(-5px);
+    .callback-uiverse-btn:hover,
+    .scroll-top-btn.show:hover {
+        opacity: 0.82;
+        transform: translateZ(0);
     }
 
     .callback-uiverse-btn.is-expanded {
-        width: 196px;
-        min-width: 196px;
-        padding: 0 18px;
-        justify-content: flex-start;
         opacity: 0.96;
-    }
-
-    .callback-uiverse-btn.is-expanded .callback-text {
-        max-width: 140px;
-        opacity: 1;
-        transform: translateX(0);
+        transform: scale(1.04) translateZ(0);
     }
 }
 
 @media (max-width: 640px) {
     .callback-uiverse-btn,
-    .theme-parts_dark_red .callback-uiverse-btn {
-        --fab-size: 56px;
-        --fab-right: 14px;
-        bottom: 22px;
-    }
-
-    .callback-uiverse-btn:hover,
-    .callback-uiverse-btn:focus-visible,
-    .callback-uiverse-btn.is-expanded {
-        width: 188px;
-        min-width: 188px;
-    }
-
     .scroll-top-btn,
+    .theme-parts_dark_red .callback-uiverse-btn,
     .theme-parts_dark_red .scroll-top-btn,
     .theme-parts_dark_red .back-to-top,
     .theme-parts_dark_red [data-scroll-top] {
-        right: 14px;
-    }
-
-    .theme-parts_dark_red .scroll-top-btn,
-    .theme-parts_dark_red .back-to-top,
-    .theme-parts_dark_red [data-scroll-top] {
-        bottom: 94px;
+        --fab-right: 18px;
+        --fab-bottom: 18px;
+        --fab-gap: 14px;
     }
 
     body.has-products-cart .scroll-top-btn,
@@ -417,7 +371,7 @@ body.has-products-cart.theme-parts_dark_red [data-scroll-top] {
     body.has-products-cart.theme-parts_dark_red .scroll-top-btn,
     body.has-products-cart.theme-parts_dark_red .back-to-top,
     body.has-products-cart.theme-parts_dark_red [data-scroll-top] {
-        bottom: 164px;
+        bottom: 172px;
     }
 }
 </style>
@@ -425,8 +379,6 @@ body.has-products-cart.theme-parts_dark_red [data-scroll-top] {
 <script>
 (function () {
     const CALLBACK_MESSAGE_DEFAULT = "Callback request";
-    let callbackCollapseTimer;
-
     function callbackModal() {
         return document.getElementById("callbackModal");
     }
@@ -441,11 +393,6 @@ body.has-products-cart.theme-parts_dark_red [data-scroll-top] {
 
         fab.classList.toggle("is-expanded", expanded);
         fab.setAttribute("aria-expanded", expanded ? "true" : "false");
-    }
-
-    function scheduleCallbackCollapse() {
-        window.clearTimeout(callbackCollapseTimer);
-        callbackCollapseTimer = window.setTimeout(() => setCallbackExpanded(false), 3200);
     }
 
     window.openCallback = function (message) {
@@ -505,26 +452,19 @@ body.has-products-cart.theme-parts_dark_red [data-scroll-top] {
         const submit = document.querySelector("[data-callback-submit]");
         const close = document.querySelector("[data-callback-close]");
         const scrollTopBtn = document.getElementById("scrollTopBtn");
-        const coarsePointer = window.matchMedia("(hover: none), (pointer: coarse)");
+        const finePointer = window.matchMedia("(hover: hover) and (pointer: fine)");
 
         if (fab) {
-            fab.addEventListener("click", (event) => {
-                if (coarsePointer.matches && !fab.classList.contains("is-expanded")) {
-                    event.preventDefault();
-                    setCallbackExpanded(true);
-                    scheduleCallbackCollapse();
-                    return;
-                }
-
+            fab.addEventListener("click", () => {
                 window.openCallback();
             });
 
             fab.addEventListener("pointerenter", () => {
-                if (!coarsePointer.matches) setCallbackExpanded(true);
+                if (finePointer.matches) setCallbackExpanded(true);
             });
 
             fab.addEventListener("pointerleave", () => {
-                if (!coarsePointer.matches) setCallbackExpanded(false);
+                if (finePointer.matches) setCallbackExpanded(false);
             });
         }
 
