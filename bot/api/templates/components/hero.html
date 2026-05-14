@@ -73,6 +73,34 @@
                 {% endfor %}
             </div>
         {% endif %}
+
+        <div class="hero-overlay">
+            <div class="container hero-content">
+                {% if hero.get('eyebrow') %}
+                    <div class="hero-eyebrow">{{ hero.get('eyebrow') }}</div>
+                {% endif %}
+
+                <h1>{{ hero.get('title') or config.get('header', {}).get('title') or 'Автомобільні послуги поруч' }}</h1>
+
+                {% if hero.get('subtitle') %}
+                    <p>{{ hero.get('subtitle') }}</p>
+                {% endif %}
+
+                <div class="hero-actions">
+                    {% set primary_phone = contacts.get('phones', [])[0] if contacts.get('phones') else '' %}
+                    {% if primary_phone %}
+                        <a class="hero-btn hero-btn-primary" href="tel:{{ primary_phone }}">Подзвонити</a>
+                    {% endif %}
+                    <a
+                        class="hero-btn hero-btn-secondary"
+                        href="#contacts"
+                        onclick="if (window.openCallback) { openCallback('Заявка з головного банера'); return false; }"
+                    >
+                        Залишити заявку
+                    </a>
+                </div>
+            </div>
+        </div>
     {% endif %}
 </section>
 
@@ -358,6 +386,101 @@
     50% { opacity: 0.72; transform: scale(1.02); }
 }
 
+
+/* ===== STANDARD HERO CONTENT ===== */
+.hero-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    background:
+        linear-gradient(90deg, rgba(2, 6, 23, 0.82) 0%, rgba(15, 23, 42, 0.62) 45%, rgba(15, 23, 42, 0.16) 100%),
+        linear-gradient(180deg, rgba(2, 6, 23, 0.10) 0%, rgba(2, 6, 23, 0.58) 100%);
+    pointer-events: none;
+}
+
+.hero-content {
+    pointer-events: auto;
+    color: #ffffff;
+}
+
+.hero-eyebrow {
+    display: inline-flex;
+    margin-bottom: 16px;
+    padding: 8px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.26);
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.48);
+    color: #dbeafe;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    backdrop-filter: blur(10px);
+}
+
+.hero-content h1 {
+    max-width: 780px;
+    margin: 0;
+    font-size: clamp(38px, 6vw, 76px);
+    line-height: 0.98;
+    letter-spacing: -0.055em;
+    text-shadow: 0 18px 48px rgba(0, 0, 0, 0.46);
+}
+
+.hero-content p {
+    max-width: 660px;
+    margin: 22px 0 0;
+    color: #e2e8f0;
+    font-size: clamp(17px, 2.2vw, 22px);
+    line-height: 1.55;
+    text-shadow: 0 12px 36px rgba(0, 0, 0, 0.46);
+}
+
+.hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-top: 32px;
+}
+
+.hero-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 50px;
+    padding: 14px 22px;
+    border-radius: 999px;
+    text-decoration: none;
+    font-weight: 800;
+    transition: 0.2s ease;
+}
+
+.hero-btn-primary {
+    background: var(--primary);
+    color: var(--button-text);
+    box-shadow: 0 18px 42px rgba(0, 0, 0, 0.28);
+}
+
+.hero-btn-primary:hover {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+}
+
+.hero-btn-secondary {
+    border: 1px solid rgba(255, 255, 255, 0.38);
+    background: rgba(15, 23, 42, 0.44);
+    color: #ffffff;
+    backdrop-filter: blur(12px);
+}
+
+.hero-btn-secondary:hover {
+    border-color: rgba(255, 255, 255, 0.68);
+    background: rgba(15, 23, 42, 0.68);
+    transform: translateY(-2px);
+}
+
 /* ===== SLIDER ===== */
 .hero-slider {
     width: 100%;
@@ -416,6 +539,36 @@
         height: auto;
         object-fit: contain;
         display: block;
+    }
+
+
+    .hero-overlay {
+        position: relative;
+        inset: auto;
+        min-height: 420px;
+        padding: 56px 0;
+        background:
+            linear-gradient(180deg, rgba(2, 6, 23, 0.18) 0%, rgba(2, 6, 23, 0.88) 100%),
+            var(--dark);
+    }
+
+    .hero-slider {
+        position: absolute;
+        inset: 0;
+        height: 100%;
+    }
+
+    .hero-slide.active {
+        position: absolute;
+    }
+
+    .hero-content h1 {
+        font-size: clamp(34px, 11vw, 52px);
+    }
+
+    .hero-actions,
+    .hero-btn {
+        width: 100%;
     }
 
     .electric-hero-shell {

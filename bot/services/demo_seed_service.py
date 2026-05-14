@@ -29,17 +29,24 @@ def _service(
     description: str,
     website: str,
     price: int,
+    price_label: str | None = None,
+    photo_id: str = "",
 ) -> dict:
-    return {
+    service = {
         "category": category,
         "title": title,
         "city": city,
         "address": address,
         "description": description,
         "website": website,
-        "photo_id": "",
+        "photo_id": photo_id,
         "price": price,
     }
+
+    if price_label:
+        service["price_label"] = price_label
+
+    return service
 
 
 DEMO_PRESETS = {
@@ -350,6 +357,179 @@ DEMO_PRESETS = {
 }
 
 
+DEMO_STANDARD_SUBDOMAIN_TYPES = {
+    "demo-sto": "sto",
+    "demo-tow": "tow",
+    "demo-shynomontag": "tire",
+}
+
+
+def _map_embed(address: str) -> str:
+    query = address.replace(" ", "+")
+    return (
+        '<iframe src="https://www.google.com/maps?q='
+        f'{query}&output=embed" loading="lazy" '
+        'referrerpolicy="no-referrer-when-downgrade"></iframe>'
+    )
+
+
+DEMO_PRESETS["sto"] = {
+    "seller": {
+        "shop_name": "CarPot AutoService",
+        "name": "CarPot AutoService",
+        "phone": "+380671112233",
+        "city": "Київ",
+        "description": "СТО та автосервіс: діагностика, ремонт ходової, заміна мастила, гальмівна система та сезонна підготовка авто.",
+        "website": "https://worker-production-e30f.up.railway.app/site/demo-sto",
+    },
+    "config": {
+        "theme": {"scheme": "default"},
+        "header": {"title": "CarPot AutoService", "logo": ""},
+        "hero": {
+            "enabled": True,
+            "eyebrow": "СТО · ДІАГНОСТИКА · РЕМОНТ",
+            "title": "СТО та ремонт авто у вашому місті",
+            "subtitle": "Діагностика, ремонт ходової, заміна мастила, гальмівна система та підготовка авто до сезону. Залиште заявку — ми звʼяжемося з вами.",
+            "banners": [
+                "https://images.unsplash.com/photo-1487754180451-c456f719a1fc?auto=format&fit=crop&w=1800&q=80",
+            ],
+        },
+        "contacts": {
+            "phones": ["+380671112233"],
+            "address": "м. Київ, вул. Автосервісна, 12",
+            "hours": "Пн-Сб 09:00–19:00",
+            "messengers": {
+                "telegram": "https://t.me/CarPotbot",
+                "whatsapp": "380671112233",
+                "viber": "+380671112233",
+            },
+            "socials": {"instagram": "", "facebook": ""},
+            "map_embed": _map_embed("м. Київ, вул. Автосервісна, 12"),
+        },
+        "modules": {"services": True, "cars": False, "contacts": True, "map": True, "products": False},
+        "footer": {"enabled": True, "text": "CarPot AutoService — якісний автосервіс, прозорі ціни та запис через Telegram."},
+    },
+    "services": [
+        _service(category="СТО", title="Компʼютерна діагностика", city="Київ", address="вул. Автосервісна, 12", description="Зчитування помилок, перевірка електронних систем та зрозумілі рекомендації майстра.", website="https://worker-production-e30f.up.railway.app/site/demo-sto", price=500),
+        _service(category="СТО", title="Заміна мастила та фільтрів", city="Київ", address="вул. Автосервісна, 12", description="Підбір мастила, заміна фільтрів і швидка базова перевірка авто перед виїздом.", website="https://worker-production-e30f.up.railway.app/site/demo-sto", price=700),
+        _service(category="СТО", title="Ремонт ходової", city="Київ", address="вул. Автосервісна, 12", description="Діагностика підвіски, заміна важелів, амортизаторів, тяг, сайлентблоків і втулок.", website="https://worker-production-e30f.up.railway.app/site/demo-sto", price=900),
+        _service(category="СТО", title="Заміна гальмівних колодок", city="Київ", address="вул. Автосервісна, 12", description="Огляд дисків і супортів, заміна колодок та перевірка гальмівної системи.", website="https://worker-production-e30f.up.railway.app/site/demo-sto", price=800),
+        _service(category="СТО", title="Діагностика двигуна", city="Київ", address="вул. Автосервісна, 12", description="Перевірка роботи двигуна, датчиків, витоків і симптомів перед ремонтом.", website="https://worker-production-e30f.up.railway.app/site/demo-sto", price=600),
+        _service(category="СТО", title="Підготовка авто до сезону", city="Київ", address="вул. Автосервісна, 12", description="Комплексна перевірка рідин, АКБ, шин, гальм і підвіски перед зимою або літом.", website="https://worker-production-e30f.up.railway.app/site/demo-sto", price=1200),
+        _service(category="СТО", title="Заміна акумулятора", city="Київ", address="вул. Автосервісна, 12", description="Перевірка зарядки, підбір АКБ, встановлення та контроль запуску авто.", website="https://worker-production-e30f.up.railway.app/site/demo-sto", price=400),
+        _service(category="СТО", title="Консультація майстра", city="Київ", address="вул. Автосервісна, 12", description="Швидко підкажемо, з чого почати ремонт, та зорієнтуємо по термінах і бюджету.", website="https://worker-production-e30f.up.railway.app/site/demo-sto", price=0, price_label="безкоштовно"),
+    ],
+}
+
+DEMO_PRESETS["tow"] = {
+    "seller": {
+        "shop_name": "CarPot Tow Service",
+        "name": "CarPot Tow Service",
+        "phone": "+380672223344",
+        "city": "Львів",
+        "description": "Евакуатор 24/7, допомога після ДТП, запуск акумулятора та транспортування авто по місту й області.",
+        "website": "https://worker-production-e30f.up.railway.app/site/demo-tow",
+    },
+    "config": {
+        "theme": {"scheme": "premium_dark"},
+        "header": {"title": "CarPot Tow Service", "logo": ""},
+        "hero": {
+            "enabled": True,
+            "eyebrow": "ЕВАКУАТОР · 24/7 · ДОПОМОГА В ДОРОЗІ",
+            "title": "Евакуатор 24/7 та допомога в дорозі",
+            "subtitle": "Швидка подача евакуатора, перевезення авто, допомога після ДТП, запуск акумулятора та транспортування по місту й області.",
+            "banners": [
+                "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1800&q=80",
+            ],
+        },
+        "contacts": {
+            "phones": ["+380672223344"],
+            "address": "м. Львів, вул. Дорожня, 8",
+            "hours": "Цілодобово",
+            "messengers": {
+                "telegram": "https://t.me/CarPotbot",
+                "whatsapp": "380672223344",
+                "viber": "+380672223344",
+            },
+            "socials": {"instagram": "", "facebook": ""},
+            "map_embed": _map_embed("м. Львів, вул. Дорожня, 8"),
+        },
+        "modules": {"services": True, "cars": False, "contacts": True, "map": True, "products": False},
+        "footer": {"enabled": True, "text": "CarPot Tow Service — евакуатор 24/7, місто та область, заявки з сайту і Telegram."},
+    },
+    "services": [
+        _service(category="Евакуатор", title="Евакуація легкового авто", city="Львів", address="вул. Дорожня, 8", description="Подача платформи для легкового авто з безпечним завантаженням і фіксацією.", website="https://worker-production-e30f.up.railway.app/site/demo-tow", price=1200),
+        _service(category="Евакуатор", title="Евакуатор після ДТП", city="Львів", address="вул. Дорожня, 8", description="Акуратне завантаження пошкодженого авто та доставка на СТО, стоянку або за адресою.", website="https://worker-production-e30f.up.railway.app/site/demo-tow", price=1500),
+        _service(category="Евакуатор", title="Перевезення авто по місту", city="Львів", address="вул. Дорожня, 8", description="Перевеземо авто між районами міста, до сервісу, дилера або місця зберігання.", website="https://worker-production-e30f.up.railway.app/site/demo-tow", price=1000),
+        _service(category="Евакуатор", title="Перевезення авто між містами", city="Львів", address="вул. Дорожня, 8", description="Міжміська доставка авто з попереднім розрахунком маршруту та вартості.", website="https://worker-production-e30f.up.railway.app/site/demo-tow", price=25, price_label="від 25 грн/км"),
+        _service(category="Евакуатор", title="Допомога при розрядженому АКБ", city="Львів", address="вул. Дорожня, 8", description="Приїдемо, допоможемо запустити авто та підкажемо, чи потрібна заміна акумулятора.", website="https://worker-production-e30f.up.railway.app/site/demo-tow", price=500),
+        _service(category="Евакуатор", title="Доставка авто на СТО", city="Львів", address="вул. Дорожня, 8", description="Доставимо несправне авто на сервіс і передамо майстру без зайвої логістики для власника.", website="https://worker-production-e30f.up.railway.app/site/demo-tow", price=900),
+        _service(category="Евакуатор", title="Евакуація мотоцикла", city="Львів", address="вул. Дорожня, 8", description="Перевезення мотоциклів і скутерів із додатковою фіксацією на платформі.", website="https://worker-production-e30f.up.railway.app/site/demo-tow", price=900),
+        _service(category="Евакуатор", title="Терміновий виїзд", city="Львів", address="вул. Дорожня, 8", description="Пріоритетна подача екіпажу, коли авто потрібно забрати максимально швидко.", website="https://worker-production-e30f.up.railway.app/site/demo-tow", price=0, price_label="за домовленістю"),
+    ],
+}
+
+DEMO_PRESETS["tire"] = {
+    "seller": {
+        "shop_name": "CarPot Tyre Service",
+        "name": "CarPot Tyre Service",
+        "phone": "+380673334455",
+        "city": "Тернопіль",
+        "description": "Шиномонтаж, балансування, ремонт проколів, зберігання коліс та сезонний запис через Telegram.",
+        "website": "https://worker-production-e30f.up.railway.app/site/demo-shynomontag",
+    },
+    "config": {
+        "theme": {"scheme": "light_blue"},
+        "header": {"title": "CarPot Tyre Service", "logo": ""},
+        "hero": {
+            "enabled": True,
+            "eyebrow": "ШИНОМОНТАЖ · БАЛАНСУВАННЯ · СЕЗОН",
+            "title": "Шиномонтаж та сезонна заміна шин",
+            "subtitle": "Заміна шин, балансування, ремонт проколів, зберігання коліс та підготовка авто до сезону. Запис через Telegram або заявку на сайті.",
+            "banners": [
+                "https://images.unsplash.com/photo-1580273916550-e323be2ae537?auto=format&fit=crop&w=1800&q=80",
+            ],
+        },
+        "contacts": {
+            "phones": ["+380673334455"],
+            "address": "м. Тернопіль, вул. Шинна, 5",
+            "hours": "Пн-Нд 08:00–20:00",
+            "messengers": {
+                "telegram": "https://t.me/CarPotbot",
+                "whatsapp": "380673334455",
+                "viber": "+380673334455",
+            },
+            "socials": {"instagram": "", "facebook": ""},
+            "map_embed": _map_embed("м. Тернопіль, вул. Шинна, 5"),
+        },
+        "modules": {"services": True, "cars": False, "contacts": True, "map": True, "products": False},
+        "footer": {"enabled": True, "text": "CarPot Tyre Service — шиномонтаж, балансування, сезонне зберігання та запис без черги."},
+    },
+    "services": [
+        _service(category="Шиномонтаж", title="Заміна шин R13–R15", city="Тернопіль", address="вул. Шинна, 5", description="Швидка сезонна заміна шин для компактних авто з перевіркою стану коліс.", website="https://worker-production-e30f.up.railway.app/site/demo-shynomontag", price=600),
+        _service(category="Шиномонтаж", title="Заміна шин R16–R18", city="Тернопіль", address="вул. Шинна, 5", description="Монтаж і демонтаж шин для легкових авто та кросоверів із дбайливим ставленням до дисків.", website="https://worker-production-e30f.up.railway.app/site/demo-shynomontag", price=800),
+        _service(category="Шиномонтаж", title="Балансування коліс", city="Тернопіль", address="вул. Шинна, 5", description="Точне балансування кожного колеса для комфортної їзди без вібрацій на швидкості.", website="https://worker-production-e30f.up.railway.app/site/demo-shynomontag", price=150, price_label="від 150 грн/колесо"),
+        _service(category="Шиномонтаж", title="Ремонт проколу", city="Тернопіль", address="вул. Шинна, 5", description="Професійний ремонт проколів, герметизація борту та контроль тиску після роботи.", website="https://worker-production-e30f.up.railway.app/site/demo-shynomontag", price=250),
+        _service(category="Шиномонтаж", title="Підкачка шин", city="Тернопіль", address="вул. Шинна, 5", description="Перевірка й корекція тиску відповідно до рекомендацій для вашого авто.", website="https://worker-production-e30f.up.railway.app/site/demo-shynomontag", price=50),
+        _service(category="Шиномонтаж", title="Зберігання шин", city="Тернопіль", address="вул. Шинна, 5", description="Сезонне зберігання комплекту шин або коліс у сухому приміщенні з маркуванням.", website="https://worker-production-e30f.up.railway.app/site/demo-shynomontag", price=1200, price_label="від 1200 грн/сезон"),
+        _service(category="Шиномонтаж", title="Перевірка тиску", city="Тернопіль", address="вул. Шинна, 5", description="Безкоштовно перевіримо тиск і підкажемо, коли краще планувати сезонну заміну.", website="https://worker-production-e30f.up.railway.app/site/demo-shynomontag", price=0, price_label="безкоштовно"),
+        _service(category="Шиномонтаж", title="Сезонний запис", city="Тернопіль", address="вул. Шинна, 5", description="Попереднє бронювання зручного часу, щоб пройти сезон без черг і очікування.", website="https://worker-production-e30f.up.railway.app/site/demo-shynomontag", price=0, price_label="за попереднім бронюванням"),
+    ],
+}
+
+
+def get_demo_render_preset(subdomain: str) -> dict | None:
+    demo_type = DEMO_STANDARD_SUBDOMAIN_TYPES.get(str(subdomain or "").strip().lower())
+    if not demo_type:
+        return None
+
+    preset = DEMO_PRESETS.get(demo_type)
+    if not preset:
+        return None
+
+    return {**copy.deepcopy(preset), "demo_type": demo_type}
+
+
 def _as_dict(value) -> dict:
     if isinstance(value, dict):
         return copy.deepcopy(value)
@@ -374,7 +554,9 @@ def _config_with_preserved_banners(site, preset_config: dict) -> dict:
 
     config = copy.deepcopy(preset_config)
     config.setdefault("header", {})["logo"] = ""
-    config.setdefault("hero", {})["banners"] = current_banners if isinstance(current_banners, list) else []
+
+    if isinstance(current_banners, list) and current_banners:
+        config.setdefault("hero", {})["banners"] = current_banners
 
     return merge_with_default(config)
 

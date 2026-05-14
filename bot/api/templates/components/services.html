@@ -7,13 +7,15 @@
 
         <ul id="servicesList">
         {% for s in services %}
-            {% set service_price = s.price if s.price and not (s.price|string).startswith('http') else '' %}
+            {% set service_price = s.price if s.price is not none and not (s.price|string).startswith('http') else '' %}
+            {% set service_price_label = s.price_label or (('від ' ~ service_price ~ ' грн') if service_price else '') %}
             <li
                 class="service-item {% if loop.first %}active{% endif %}"
                 data-title="{{ s.title }}"
                 data-description="{{ s.description }}"
                 data-photo="{{ s.photo_url or '' }}"
                 data-price="{{ service_price }}"
+                data-price-label="{{ service_price_label }}"
             >
                 <span>{{ s.title }}</span>
             </li>
@@ -26,7 +28,8 @@
 
         {% if services and services[0] %}
         {% set main = services[0] %}
-        {% set main_price = main.price if main.price and not (main.price|string).startswith('http') else '' %}
+        {% set main_price = main.price if main.price is not none and not (main.price|string).startswith('http') else '' %}
+        {% set main_price_label = main.price_label or (('від ' ~ main_price ~ ' грн') if main_price else '') %}
 
         <div class="highlight" id="serviceDisplay">
 
@@ -36,7 +39,7 @@
 
             <h3 id="serviceTitle">{{ main.title }}</h3>
             <p id="serviceDescription">{{ main.description or '' }}</p>
-            <span class="service-price" id="servicePrice"{% if not main_price %} style="display:none;"{% endif %}>{% if main_price %}від {{ main_price }} грн{% endif %}</span>
+            <span class="service-price" id="servicePrice"{% if not main_price_label %} style="display:none;"{% endif %}>{{ main_price_label }}</span>
 
             <a
                 class="btn-primary"

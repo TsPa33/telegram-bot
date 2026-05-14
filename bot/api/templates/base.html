@@ -706,8 +706,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 desc.textContent = item.dataset.description || "";
 
                 if (price) {
-                    price.textContent = item.dataset.price ? `від ${item.dataset.price} грн` : "";
-                    price.style.display = item.dataset.price ? "inline-flex" : "none";
+                    const priceLabel = item.dataset.priceLabel || (item.dataset.price ? `від ${item.dataset.price} грн` : "");
+                    price.textContent = priceLabel;
+                    price.style.display = priceLabel ? "inline-flex" : "none";
                 }
 
                 if (img && item.dataset.photo) {

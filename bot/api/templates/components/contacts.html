@@ -64,6 +64,28 @@
                     </div>
                 {% endif %}
 
+                <!-- WORKING HOURS -->
+                {% if contacts.get('hours') %}
+                    <div class="contact-group">
+
+                        <div class="group-title">
+                            🕘 Графік роботи
+                        </div>
+
+                        <div class="social-btn">
+
+                            <img
+                                src="https://cdn-icons-png.flaticon.com/512/2088/2088617.png"
+                                class="social-icon"
+                            >
+
+                            <span>{{ contacts.get('hours') }}</span>
+
+                        </div>
+
+                    </div>
+                {% endif %}
+
             </div>
 
 
@@ -74,7 +96,7 @@
                 {% set s = contacts.get('socials', {}) %}
 
                 <!-- MESSENGERS -->
-                {% if m %}
+                {% if m.telegram or m.whatsapp or m.viber %}
                 <div class="contact-group">
 
                     <div class="group-title">
@@ -85,7 +107,7 @@
 
                         {% if m.telegram %}
                         <a
-                            href="https://t.me/{{ m.telegram }}"
+                            href="{{ m.telegram if m.telegram.startswith('http') else 'https://t.me/' ~ m.telegram }}"
                             target="_blank"
                             class="social-btn"
                         >
@@ -134,7 +156,7 @@
 
 
                 <!-- SOCIALS -->
-                {% if s %}
+                {% if s.instagram or s.facebook %}
                 <div class="contact-group">
 
                     <div class="group-title">

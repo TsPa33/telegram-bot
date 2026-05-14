@@ -16,6 +16,7 @@ from bot.database.repositories.car_repo import get_cars_by_seller
 from bot.database.repositories.service_repo import get_services_by_seller
 from bot.database.repositories.lead_repo import create_site_lead
 
+from bot.services.demo_seed_service import get_demo_render_preset
 from bot.services.site_config import merge_with_default
 from bot.utils.subdomain import is_valid_subdomain
 from bot.services.domain_service import extract_subdomain_from_host
@@ -140,6 +141,10 @@ async def _render_site_by_subdomain(subdomain: str, request: Request):
             raw_config = {}
 
     config = merge_with_default(raw_config)
+    demo_preset = get_demo_render_preset(subdomain)
+
+    if demo_preset:
+        config = merge_with_default(demo_preset["config"])
 
     modules = config.setdefault("modules", {})
     products = config.setdefault("products", {})
@@ -264,11 +269,15 @@ async def _render_site_by_subdomain(subdomain: str, request: Request):
 
             service_id = str(service.get("id"))
 
-            service["price"] = (
-                service_prices.get(service_id)
-                or service.get("website")
-                or ""
-            )
+            service_price = service_prices.get(service_id)
+
+            if service_price is None or service_price == "":
+                service_price = service.get("price")
+
+            if service_price is None or service_price == "":
+                service_price = service.get("website") or ""
+
+            service["price"] = service_price
 
             service["photo_url"] = None
 
@@ -294,6 +303,22 @@ async def _render_site_by_subdomain(subdomain: str, request: Request):
                 seller_id,
                 modules,
             )
+
+    if demo_preset:
+        demo_key = demo_preset["demo_type"]
+        services = []
+
+        for index, service in enumerate(demo_preset.get("services", []), start=1):
+            demo_service = dict(service)
+            demo_service["id"] = f"demo-{demo_key}-{index}"
+            demo_service["seller_id"] = seller_id
+            demo_service["photo_url"] = (
+                demo_service.get("photo_id")
+                if isinstance(demo_service.get("photo_id"), str)
+                and demo_service.get("photo_id").startswith(("http://", "https://"))
+                else None
+            )
+            services.append(demo_service)
 
     return templates.TemplateResponse(
         "site.html",
