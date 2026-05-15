@@ -1,5 +1,7 @@
 from dataclasses import dataclass, asdict
 
+from bot.services.lead_scoring import LeadScoringService
+
 
 @dataclass(slots=True)
 class BuyerRequestRoutingPlan:
@@ -10,6 +12,7 @@ class BuyerRequestRoutingPlan:
     priority: str
     paid_lead_ready: bool
     telegram_preview: str
+    scoring_foundation: dict
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -34,6 +37,18 @@ def build_buyer_request_routing_plan(
     title = " ".join(part for part in [brand, model, category] if part).strip() or category
     preview = f"🔥 Нова заявка\n{title}\n{city}\n\n[Запропонувати] [Пропустити]"
 
+    scoring = LeadScoringService()
+    scoring_foundation = scoring.score(
+        buyer_city=city,
+        seller_city=None,
+        request_terms=tags,
+        seller_tags=[],
+        marketplace_activity=None,
+        is_verified=None,
+        has_site=None,
+        crm_enabled=None,
+    ).to_dict()
+
     return BuyerRequestRoutingPlan(
         city=city,
         category=category,
@@ -42,4 +57,5 @@ def build_buyer_request_routing_plan(
         priority=priority,
         paid_lead_ready=True,
         telegram_preview=preview,
+        scoring_foundation=scoring_foundation,
     ).to_dict()

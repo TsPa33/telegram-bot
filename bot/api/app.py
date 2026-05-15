@@ -23,6 +23,10 @@ from bot.services.buyer_request_service import (
     BuyerRequestValidationError,
     submit_marketplace_buyer_request,
 )
+from bot.services.buyer_offer_service import (
+    accept_offer_for_buyer,
+    get_buyer_offer_comparison,
+)
 from bot.database.repositories.marketplace_repo import (
     get_featured_sellers,
     get_latest_cars,
@@ -571,6 +575,55 @@ async def buyer_request_submit(
             ),
             **await _safe_buyer_context(),
             "lead_created": True,
+        },
+    )
+
+
+@router.get("/requests/{request_id}/offers", response_class=HTMLResponse)
+async def buyer_request_offers(request: Request, request_id: int):
+    request_model = await get_buyer_offer_comparison(request_id)
+    if not request_model:
+        raise HTTPException(status_code=404, detail="Заявку не знайдено")
+
+    return templates.TemplateResponse(
+        "marketing/buyer_offer_comparison.html",
+        {
+            **marketing_context(
+                request,
+                f"Пропозиції для заявки #{request_id} — CarPot",
+                "Порівняння пропозицій продавців CarPot для покупця.",
+                f"/requests/{request_id}/offers",
+            ),
+            "request_model": request_model,
+        },
+    )
+
+
+@router.post("/requests/{request_id}/offers/{offer_id}/accept", response_class=HTMLResponse)
+async def buyer_accept_offer(request: Request, request_id: int, offer_id: int):
+    result = await accept_offer_for_buyer(request_id, offer_id)
+    if not result.accepted:
+        raise HTTPException(status_code=404, detail="Пропозицію не знайдено або її не можна обрати")
+
+    request_model = await get_buyer_offer_comparison(request_id)
+    if not request_model:
+        raise HTTPException(status_code=404, detail="Заявку не знайдено")
+
+    wants_json = "application/json" in request.headers.get("accept", "")
+    if wants_json:
+        return JSONResponse({"ok": True, "request_id": request_id, "offer_id": offer_id, "match": result.match})
+
+    return templates.TemplateResponse(
+        "marketing/buyer_offer_comparison.html",
+        {
+            **marketing_context(
+                request,
+                f"Пропозицію обрано — заявка #{request_id} — CarPot",
+                "Marketplace match створено, контакти продавця відкрито для покупця.",
+                f"/requests/{request_id}/offers",
+            ),
+            "request_model": request_model,
+            "offer_accepted": True,
         },
     )
 

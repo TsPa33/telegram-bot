@@ -1,0 +1,80 @@
+<article class="offer-card{% if offer.is_accepted %} offer-card-accepted{% elif offer.is_rejected %} offer-card-muted{% endif %}">
+    <div class="offer-card-top">
+        <div class="seller-avatar" aria-hidden="true">{{ offer.seller_initial }}</div>
+        <div class="seller-heading">
+            <div class="seller-name-row">
+                <h3>{{ offer.seller_display_name }}</h3>
+                {% if offer.is_accepted %}
+                    <span class="status-pill status-accepted">Обрано</span>
+                {% elif offer.is_rejected %}
+                    <span class="status-pill status-rejected">Неактивна</span>
+                {% else %}
+                    <span class="status-pill status-new">Нова пропозиція</span>
+                {% endif %}
+            </div>
+            <div class="seller-meta-line">
+                {% if offer.seller_city %}<span>📍 {{ offer.seller_city }}</span>{% endif %}
+                {% if offer.is_verified %}<span>✅ Верифіковано</span>{% endif %}
+                {% if offer.response_speed_label %}<span>⚡ Відповідь {{ offer.response_speed_label }}</span>{% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="offer-value-row">
+        <div>
+            <span class="offer-label">Орієнтир ціни</span>
+            <strong>{{ offer.price_label }}</strong>
+        </div>
+        <div>
+            <span class="offer-label">Наявність</span>
+            <strong>{{ offer.availability_note or 'Уточнюється продавцем' }}</strong>
+        </div>
+    </div>
+
+    <div class="offer-message">
+        <span class="offer-label">Коментар продавця</span>
+        <p>{{ offer.message }}</p>
+    </div>
+
+    {% if offer.trust_indicators %}
+        <div class="trust-strip" aria-label="Індикатори довіри продавця">
+            {% for indicator in offer.trust_indicators %}
+                <span>{{ indicator }}</span>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <div class="offer-footer">
+        <span class="offer-time">Надіслано: {{ offer.created_at.strftime('%d.%m.%Y %H:%M') if offer.created_at else 'щойно' }}</span>
+        {% if request_model.is_matched %}
+            {% if offer.is_accepted %}
+                <span class="contact-unlocked-note">Контакти розблоковано</span>
+            {% else %}
+                <span class="contact-locked-note">Контакти приховано після вибору</span>
+            {% endif %}
+        {% else %}
+            <form method="post" action="/requests/{{ request_model.id }}/offers/{{ offer.id }}/accept">
+                <button class="btn btn-primary offer-cta" type="submit">Обрати пропозицію</button>
+            </form>
+        {% endif %}
+    </div>
+
+    {% if offer.contact_unlocked %}
+        <div class="seller-contact-panel">
+            <div>
+                <span class="offer-label">Звʼязок із продавцем</span>
+                <strong>{{ offer.seller_display_name }}</strong>
+            </div>
+            <div class="contact-actions">
+                {% if offer.telegram_url %}<a class="btn btn-primary" href="{{ offer.telegram_url }}" target="_blank" rel="noopener">Telegram</a>{% endif %}
+                {% if offer.phone_visible %}<a class="btn btn-secondary" href="tel:{{ offer.phone_visible }}">Телефон</a>{% endif %}
+                {% if offer.website_url %}<a class="btn btn-secondary" href="{{ offer.website_url }}" target="_blank" rel="noopener">Сайт</a>{% endif %}
+                <a class="btn btn-secondary" href="/catalog?verified=true&city={{ offer.seller_city or '' }}">Профіль продавця</a>
+            </div>
+        </div>
+    {% else %}
+        <div class="seller-contact-locked">
+            🔒 Telegram, телефон і сайт відкриються після вибору пропозиції — так CarPot зберігає цінність lead-routing.
+        </div>
+    {% endif %}
+</article>
