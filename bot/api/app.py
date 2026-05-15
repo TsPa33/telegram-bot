@@ -34,6 +34,8 @@ from bot.database.repositories.marketplace_repo import (
     get_marketplace_summary,
     search_marketplace,
 )
+from bot.database.repositories.ai_search_repo import log_ai_search
+from bot.services.ai_request_interpreter import interpret_buyer_request, normalize_query
 from bot.database.repositories.analytics_repo import (
     ALLOWED_ANALYTICS_EVENT_TYPES,
     add_event,
@@ -138,6 +140,97 @@ def _buyer_filter_context(results: dict | None = None, **overrides) -> dict:
     pagination_query = urlencode({key: value for key, value in pagination_params.items() if value})
     selected["pagination_query"] = f"&{pagination_query}" if pagination_query else ""
     return selected
+
+
+def _record_to_plain(value):
+    if isinstance(value, dict):
+        return {key: _record_to_plain(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_record_to_plain(item) for item in value]
+    if hasattr(value, "items"):
+        return {key: _record_to_plain(item) for key, item in dict(value).items()}
+    return value
+
+
+def _ai_search_query(interpretation: dict, raw_query: str) -> str:
+    terms = [
+        interpretation.get("part_name"),
+        interpretation.get("service_type"),
+        interpretation.get("brand"),
+        interpretation.get("model"),
+        interpretation.get("generation"),
+        interpretation.get("engine"),
+    ]
+    compact_terms = [str(term).strip() for term in terms if str(term or "").strip()]
+    if compact_terms:
+        return " ".join(dict.fromkeys(compact_terms))[:240]
+    search_terms = interpretation.get("search_terms") or []
+    if isinstance(search_terms, list) and search_terms:
+        return " ".join(str(term).strip() for term in search_terms if str(term or "").strip())[:240]
+    return (interpretation.get("normalized_query") or raw_query or "")[:240]
+
+
+def _ai_search_type(interpretation: dict) -> str:
+    intent = interpretation.get("intent")
+    category = interpretation.get("category")
+    if intent == "service_search" or category == "services":
+        return "services"
+    if intent == "car_search" or category == "cars":
+        return "cars"
+    return "all"
+
+
+def _ai_request_prefill(interpretation: dict, raw_query: str) -> dict:
+    category = interpretation.get("category") or "unknown"
+    request_type = "other"
+    request_category = "other"
+    if category == "parts":
+        request_type = "part"
+        request_category = "parts"
+    elif category == "services":
+        service_type = (interpretation.get("service_type") or "").lower()
+        request_type = "service"
+        request_category = "service"
+        if "евакуатор" in service_type:
+            request_type = "tow"
+            request_category = "tow"
+        elif "діаг" in service_type or "диаг" in service_type:
+            request_type = "diagnostics"
+            request_category = "diagnostics"
+        elif "шин" in service_type:
+            request_category = "tires"
+    elif category == "cars":
+        request_type = "car"
+        request_category = "cars"
+
+    urgency = interpretation.get("urgency") or "normal"
+    request_urgency = {"urgent": "today", "normal": "soon", "low": "flexible"}.get(urgency, "soon")
+    need = interpretation.get("part_name") or interpretation.get("service_type") or ""
+    description = raw_query or interpretation.get("normalized_query") or ""
+    if need and need.lower() not in description.lower():
+        description = f"{need}: {description}".strip()
+
+    return {
+        "query": description[:1400],
+        "category": request_category,
+        "request_type": request_type,
+        "brand": interpretation.get("brand") or "",
+        "model": interpretation.get("model") or interpretation.get("generation") or "",
+        "city": interpretation.get("city") or "",
+        "vin": interpretation.get("vin") or "",
+        "urgency": request_urgency,
+        "part_name": interpretation.get("part_name") or "",
+        "service_type": interpretation.get("service_type") or "",
+    }
+
+
+def _ai_results_count(results: dict) -> int:
+    return len(results.get("cars") or []) + len(results.get("services") or []) + len(results.get("sellers") or [])
+
+
+def _should_create_request(interpretation: dict, result_count: int) -> bool:
+    confidence = float(interpretation.get("confidence") or 0)
+    return confidence < 0.7 or result_count == 0 or bool(interpretation.get("clarification_needed"))
 
 def _detect_client(user_agent: str | None) -> tuple[str, str, str]:
     ua = (user_agent or "").lower()
@@ -506,6 +599,111 @@ async def buyer_search(
         "page": page,
         "catalog_type": "search",
         "filter_action": "/search",
+    })
+    context.update(_buyer_filter_context(results))
+    return templates.TemplateResponse("marketing/catalog.html", context)
+
+
+@router.post("/buyer/ai-search")
+async def buyer_ai_search(request: Request):
+    raw_query = None
+    content_type = request.headers.get("content-type", "")
+    if "application/json" in content_type:
+        body = await request.json()
+        raw_query = body.get("query")
+    else:
+        form = await request.form()
+        raw_query = form.get("query")
+
+    raw_query = normalize_query(raw_query)
+    if not raw_query:
+        interpretation = await interpret_buyer_request(raw_query)
+        results = {"cars": [], "services": [], "sellers": [], "query": "", "city": "", "type": "all"}
+        result_count = 0
+        response_payload = {
+            "ok": True,
+            "interpretation": interpretation,
+            "results": results,
+            "result_count": result_count,
+            "should_create_request": True,
+            "prefill": _ai_request_prefill(interpretation, raw_query),
+            "search_url": "/search",
+        }
+        return JSONResponse(response_payload)
+
+    interpretation = await interpret_buyer_request(raw_query)
+    try:
+        item_type = _ai_search_type(interpretation)
+        search_query = _ai_search_query(interpretation, raw_query)
+        results = await search_marketplace(
+            q=search_query,
+            city=interpretation.get("city"),
+            item_type=item_type,
+            limit=9,
+            offset=0,
+            category=interpretation.get("category") if interpretation.get("category") != "unknown" else None,
+            service_type=interpretation.get("service_type"),
+            brand=interpretation.get("brand"),
+            sort="trusted" if float(interpretation.get("confidence") or 0) >= 0.75 else "new",
+        )
+    except Exception:
+        logger.exception("Buyer AI marketplace search failed; returning safe empty result")
+        results = {"cars": [], "services": [], "sellers": [], "query": raw_query, "city": interpretation.get("city") or "", "type": "all"}
+
+    result_count = _ai_results_count(results)
+    should_create_request = _should_create_request(interpretation, result_count)
+    prefill = _ai_request_prefill(interpretation, raw_query)
+    search_params = {
+        "q": results.get("query") or raw_query,
+        "city": results.get("city") or interpretation.get("city") or "",
+        "type": results.get("type") or _ai_search_type(interpretation),
+        "category": results.get("category") or "",
+        "service_type": results.get("service_type") or "",
+        "brand": results.get("brand") or "",
+    }
+    search_url = "/search?" + urlencode({key: value for key, value in search_params.items() if value})
+
+    await log_ai_search(
+        raw_query=raw_query,
+        normalized_query=interpretation.get("normalized_query"),
+        intent=interpretation.get("intent"),
+        category=interpretation.get("category"),
+        confidence=interpretation.get("confidence"),
+        clarification_needed=bool(interpretation.get("clarification_needed")),
+        result_count=result_count,
+    )
+
+    response_payload = {
+        "ok": True,
+        "interpretation": interpretation,
+        "results": _record_to_plain(results),
+        "result_count": result_count,
+        "should_create_request": should_create_request,
+        "prefill": prefill,
+        "search_url": search_url,
+    }
+
+    wants_json = "application/json" in request.headers.get("accept", "") or "application/json" in content_type
+    if wants_json:
+        return JSONResponse(response_payload)
+
+    summary = await get_marketplace_summary()
+    sellers = results.get("sellers") or await get_featured_sellers(limit=8)
+    context = marketing_context(
+        request,
+        "AI-пошук CarPot — знайти авто, запчастини або сервіс",
+        "AI-інтерпретація buyer-запиту CarPot із безпечним fallback та маркетплейс-пошуком.",
+        "/catalog",
+    )
+    context.update({
+        "marketplace_summary": summary,
+        "marketplace_cars": results.get("cars") or [],
+        "marketplace_services": results.get("services") or [],
+        "featured_sellers": sellers,
+        "page": 1,
+        "catalog_type": "ai-search",
+        "filter_action": "/search",
+        "ai_search_response": response_payload,
     })
     context.update(_buyer_filter_context(results))
     return templates.TemplateResponse("marketing/catalog.html", context)

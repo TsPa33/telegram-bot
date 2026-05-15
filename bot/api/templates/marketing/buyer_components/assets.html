@@ -671,6 +671,111 @@
         padding: 14px 16px;
     }
 
+
+    .buyer-ai-search {
+        display: grid;
+        grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+        gap: 18px;
+        align-items: start;
+        padding: 22px;
+        margin: 22px 0 34px;
+    }
+
+    .buyer-ai-search-copy h3,
+    .buyer-ai-search-copy p {
+        margin: 0;
+    }
+
+    .buyer-ai-search-copy p {
+        color: var(--muted);
+        margin-top: 8px;
+        line-height: 1.65;
+    }
+
+    .buyer-ai-search-form {
+        display: grid;
+        gap: 12px;
+    }
+
+    .buyer-ai-query-field textarea.buyer-control {
+        min-height: 86px;
+        resize: vertical;
+        padding-top: 13px;
+    }
+
+    .buyer-ai-examples,
+    .buyer-ai-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .buyer-ai-examples button {
+        border: 1px solid rgba(148, 163, 184, 0.22);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.07);
+        color: var(--muted);
+        cursor: pointer;
+        padding: 8px 11px;
+        font: inherit;
+        font-size: 0.86rem;
+    }
+
+    .buyer-ai-examples button:hover,
+    .buyer-ai-examples button:focus-visible {
+        border-color: rgba(0, 255, 157, 0.42);
+        color: var(--text);
+    }
+
+    .buyer-ai-status {
+        min-height: 22px;
+        color: var(--muted);
+        font-weight: 800;
+    }
+
+    .buyer-ai-status.is-error {
+        color: #fca5a5;
+    }
+
+    .buyer-ai-result {
+        grid-column: 1 / -1;
+        border-radius: 22px;
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        background: rgba(255, 255, 255, 0.06);
+        padding: 16px;
+    }
+
+    .buyer-ai-result-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+
+    .buyer-ai-result p {
+        color: var(--muted);
+        margin: 0 0 12px;
+    }
+
+    .buyer-ai-match-list {
+        display: grid;
+        gap: 8px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .buyer-ai-match-list li {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        border-radius: 16px;
+        background: rgba(15, 23, 42, 0.4);
+        padding: 10px 12px;
+        color: var(--text);
+    }
+
     @media (max-width: 1100px) {
         .buyer-filter-form {
             grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -682,7 +787,8 @@
         .workflow-market,
         .buyer-modal-grid,
         .buyer-request-modal-grid,
-        .buyer-request-cta {
+        .buyer-request-cta,
+        .buyer-ai-search {
             grid-template-columns: 1fr;
         }
 
@@ -1078,6 +1184,65 @@
         if (requestType && item.itemType === 'service') requestType.value = 'service';
     };
 
+
+    const setLeadValue = (selector, value, overwrite = true) => {
+        const field = leadModal?.querySelector(selector);
+        if (!field || value === undefined || value === null || value === '') return;
+        if (!overwrite && field.value) return;
+        if (field.tagName === 'SELECT') {
+            const matchingOption = [...field.options || []].find((option) => normalize(option.value || option.textContent) === normalize(value));
+            field.value = matchingOption ? matchingOption.value : value;
+            if (!field.value && field.name === 'city') field.value = 'Інше місто';
+            return;
+        }
+        field.value = value;
+    };
+
+    const fillLeadFromAiPrefill = (prefill) => {
+        if (!leadModal || !prefill) return;
+        setLeadValue('textarea[name="query"]', prefill.query);
+        setLeadValue('[name="city"]', prefill.city);
+        setLeadValue('select[name="category"]', prefill.category);
+        setLeadValue('select[name="request_type"]', prefill.request_type);
+        setLeadValue('input[name="brand"]', prefill.brand);
+        setLeadValue('input[name="model"]', prefill.model);
+        setLeadValue('input[name="vin"]', prefill.vin);
+        setLeadValue('select[name="urgency"]', prefill.urgency);
+        const started = leadModal.querySelector('[data-lead-started-at]');
+        if (started) started.value = Date.now().toString();
+    };
+
+    const renderAiMatches = (payload) => {
+        const resultBox = document.querySelector('[data-ai-search-result]');
+        if (!resultBox || !payload) return;
+        const interpretation = payload.interpretation || {};
+        const results = payload.results || {};
+        const cars = Array.isArray(results.cars) ? results.cars : [];
+        const services = Array.isArray(results.services) ? results.services : [];
+        const sellers = Array.isArray(results.sellers) ? results.sellers : [];
+        const matches = [
+            ...cars.slice(0, 3).map((item) => ({ title: `${item.brand || ''} ${item.model || ''}`.trim() || item.description || 'Авто / запчастина', meta: item.city || item.shop_name || 'CarPot' })),
+            ...services.slice(0, 3).map((item) => ({ title: item.title || item.category || 'Послуга', meta: item.city || item.shop_name || 'CarPot' })),
+            ...sellers.slice(0, 2).map((item) => ({ title: item.shop_name || item.name || 'Продавець', meta: item.city || 'CarPot' })),
+        ].slice(0, 5);
+        const confidence = Math.round(Number(interpretation.confidence || 0) * 100);
+        const question = interpretation.clarification_question || (payload.should_create_request
+            ? 'Точних збігів мало. Можна створити заявку для продавців.'
+            : 'Знайшли релевантні smart matches.');
+        const listHtml = matches.length
+            ? `<ul class="buyer-ai-match-list">${matches.map((item) => `<li><span>${item.title}</span><small>${item.meta || ''}</small></li>`).join('')}</ul>`
+            : '';
+        resultBox.innerHTML = `
+            <div class="buyer-ai-result-head">
+                <span class="buyer-pill">${interpretation.category || 'unknown'} · ${confidence}%</span>
+                <strong>${payload.result_count || 0} збігів</strong>
+            </div>
+            <p>${question}</p>
+            ${listHtml}
+        `;
+        resultBox.classList.remove('buyer-hidden');
+    };
+
     const openItemModal = (card) => {
         if (!itemModal || !card) return;
         activeItem = { ...card.dataset };
@@ -1250,6 +1415,25 @@
             return;
         }
 
+        const aiCreateButton = event.target.closest('[data-ai-create-request]');
+        if (aiCreateButton) {
+            const prefill = window.__carpotAiSearchPrefill || null;
+            fillLeadFromAiPrefill(prefill);
+            openModal(leadModal);
+            return;
+        }
+
+        const aiExample = event.target.closest('[data-ai-example]');
+        if (aiExample) {
+            const shell = aiExample.closest('[data-ai-search-shell]');
+            const input = shell?.querySelector('[data-ai-search-input]');
+            if (input) {
+                input.value = aiExample.dataset.aiExample || '';
+                input.focus();
+            }
+            return;
+        }
+
         const leadButton = event.target.closest('[data-open-lead-modal], [data-order-from-modal]');
         if (leadButton) {
             fillLeadFromItem(activeItem);
@@ -1320,6 +1504,69 @@
         document.querySelectorAll('[data-buyer-filter-form]').forEach((form) => {
             setFormFromUrl(form);
             applyFilters(form, false);
+        });
+    });
+
+    const initialAiPrefill = document.querySelector('[data-ai-prefill-json]');
+    if (initialAiPrefill) {
+        try {
+            window.__carpotAiSearchPrefill = JSON.parse(initialAiPrefill.textContent || '{}');
+        } catch (error) {
+            window.__carpotAiSearchPrefill = null;
+        }
+    }
+
+    document.querySelectorAll('[data-ai-search-form]').forEach((form) => {
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const shell = form.closest('[data-ai-search-shell]');
+            const input = form.querySelector('[data-ai-search-input]');
+            const status = form.querySelector('[data-ai-search-status]');
+            const submit = form.querySelector('[data-ai-search-submit]');
+            const createButton = shell?.querySelector('[data-ai-create-request]');
+            const openResults = shell?.querySelector('[data-ai-open-results]');
+            const query = (input?.value || '').trim();
+            status?.classList.remove('is-error');
+            if (!query || query.length < 3) {
+                if (status) {
+                    status.textContent = 'Напишіть короткий запит: запчастина, авто або послуга.';
+                    status.classList.add('is-error');
+                }
+                return;
+            }
+            if (status) status.textContent = 'Інтерпретуємо запит і шукаємо в marketplace...';
+            if (submit) submit.disabled = true;
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    body: JSON.stringify({ query }),
+                });
+                const payload = await response.json().catch(() => ({}));
+                if (!response.ok || !payload.ok) throw new Error(payload.detail || 'AI search failed');
+                window.__carpotAiSearchPrefill = payload.prefill || null;
+                renderAiMatches(payload);
+                if (createButton) {
+                    createButton.classList.toggle('buyer-hidden', !payload.should_create_request);
+                    createButton.textContent = payload.should_create_request ? 'Створити заявку' : 'Створити заявку для продавців';
+                }
+                if (openResults) {
+                    openResults.href = payload.search_url || '/search';
+                    openResults.classList.toggle('buyer-hidden', !payload.result_count);
+                }
+                if (status) status.textContent = payload.should_create_request
+                    ? 'Якщо результатів мало, створіть заявку — продавці отримають структурований запит.'
+                    : 'Є релевантні smart matches. Перегляньте результати або уточніть запит.';
+            } catch (error) {
+                if (status) {
+                    status.textContent = 'AI-пошук тимчасово недоступний. Можете скористатися звичайним пошуком або створити заявку.';
+                    status.classList.add('is-error');
+                }
+                window.__carpotAiSearchPrefill = { query };
+                createButton?.classList.remove('buyer-hidden');
+            } finally {
+                if (submit) submit.disabled = false;
+            }
         });
     });
 

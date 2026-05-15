@@ -1,0 +1,37 @@
+<div class="buyer-ai-search buyer-panel" data-ai-search-shell>
+    <div class="buyer-ai-search-copy">
+        <span class="eyebrow">AI request interpreter</span>
+        <h3>Опишіть, що потрібно знайти</h3>
+        <p>CarPot перетворить вільний текст на структурований пошук. AI лише інтерпретує запит — пошук, заявки й маршрутизація залишаються логікою marketplace.</p>
+    </div>
+    <form class="buyer-ai-search-form" action="/buyer/ai-search" method="post" data-ai-search-form>
+        <label class="buyer-field buyer-ai-query-field">
+            <span class="dash-label">Ваш запит</span>
+            <textarea class="buyer-control" name="query" rows="2" maxlength="700" placeholder="потрібна акпп BMW F10 дизель Київ" data-ai-search-input required>{{ ai_search_response.interpretation.normalized_query if ai_search_response else '' }}</textarea>
+        </label>
+        <div class="buyer-ai-examples" aria-label="Приклади запитів">
+            <button type="button" data-ai-example="потрібна акпп BMW F10 дизель Київ">потрібна акпп BMW F10 дизель Київ</button>
+            <button type="button" data-ai-example="шукаю автоелектрика у Львові">шукаю автоелектрика у Львові</button>
+            <button type="button" data-ai-example="фара Audi A6 C7 рестайлінг ліва">фара Audi A6 C7 рестайлінг ліва</button>
+        </div>
+        <div class="buyer-ai-actions">
+            <button class="btn btn-primary" type="submit" data-ai-search-submit>Знайти</button>
+            <button class="btn btn-secondary {% if not ai_search_response or not ai_search_response.should_create_request %}buyer-hidden{% endif %}" type="button" data-ai-create-request>Створити заявку</button>
+            <a class="btn btn-secondary {% if not ai_search_response or not ai_search_response.result_count %}buyer-hidden{% endif %}" href="{{ ai_search_response.search_url if ai_search_response else '/search' }}" data-ai-open-results>Відкрити результати</a>
+        </div>
+        <div class="buyer-ai-status" data-ai-search-status role="status" aria-live="polite"></div>
+    </form>
+    <div class="buyer-ai-result {% if not ai_search_response %}buyer-hidden{% endif %}" data-ai-search-result>
+        {% if ai_search_response %}
+        <div class="buyer-ai-result-head">
+            <span class="buyer-pill">{{ ai_search_response.interpretation.category }}</span>
+            <strong>{{ ai_search_response.result_count }} збігів</strong>
+        </div>
+        <p>{{ ai_search_response.interpretation.clarification_question or 'Запит інтерпретовано. Перегляньте релевантні результати нижче або створіть заявку для продавців.' }}</p>
+        {% endif %}
+    </div>
+</div>
+
+{% if ai_search_response %}
+<script type="application/json" data-ai-prefill-json>{{ ai_search_response.prefill | tojson }}</script>
+{% endif %}

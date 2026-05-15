@@ -614,6 +614,22 @@ async def create_tables():
     await execute("CREATE INDEX IF NOT EXISTS idx_buyer_leads_created_at ON buyer_leads(created_at DESC);")
     await execute("CREATE INDEX IF NOT EXISTS idx_buyer_leads_city ON buyer_leads(city);")
 
+    await execute("""
+    CREATE TABLE IF NOT EXISTS ai_search_logs (
+        id SERIAL PRIMARY KEY,
+        raw_query TEXT,
+        normalized_query TEXT,
+        intent TEXT,
+        category TEXT,
+        confidence NUMERIC(4,3),
+        clarification_needed BOOLEAN NOT NULL DEFAULT FALSE,
+        result_count INTEGER NOT NULL DEFAULT 0,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+    );
+    """)
+    await execute("CREATE INDEX IF NOT EXISTS idx_ai_search_logs_created_at ON ai_search_logs(created_at DESC);")
+    await execute("CREATE INDEX IF NOT EXISTS idx_ai_search_logs_intent_category ON ai_search_logs(intent, category);")
+
     await execute("CREATE INDEX IF NOT EXISTS idx_model_id ON seller_cars(model_id);")
     await execute("CREATE INDEX IF NOT EXISTS idx_status ON seller_cars(status);")
     await execute("CREATE INDEX IF NOT EXISTS idx_seller_id ON seller_cars(seller_id);")
