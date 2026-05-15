@@ -128,9 +128,18 @@ async def _analytics_payload(request: Request) -> dict:
     if payload_size > MAX_ANALYTICS_PAYLOAD_BYTES:
         raise HTTPException(status_code=413, detail="Analytics payload too large")
 
+    body = await request.body()
+    if len(body) > MAX_ANALYTICS_PAYLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="Analytics payload too large")
+
     try:
-        payload = await request.json()
-    except Exception:
+        payload = json.loads(body.decode("utf-8") or "{}")
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        logger.warning(
+            "Invalid analytics payload content_type=%s size=%s",
+            request.headers.get("content-type"),
+            len(body),
+        )
         raise HTTPException(status_code=400, detail="Invalid analytics payload")
 
     if not isinstance(payload, dict):

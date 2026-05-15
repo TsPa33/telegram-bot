@@ -1,0 +1,205 @@
+{% set analytics_subdomain = subdomain | default('marketing') %}
+{% set analytics_site_id = site_id | default(none) %}
+<script>
+(function () {
+    if (window.CarpotAnalytics && window.CarpotAnalytics.__initialized) return;
+
+    const config = {
+        subdomain: {{ analytics_subdomain|tojson }},
+        sellerSiteId: {{ analytics_site_id|tojson }}
+    };
+    const storageKey = "carpot_analytics_session_id";
+    const utmKeys = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"];
+    const startedAt = Date.now();
+    const debug = new URLSearchParams(window.location.search).get("analytics_debug") === "1"
+        || (function () {
+            try { return window.localStorage.getItem("carpot_analytics_debug") === "1"; }
+            catch (ignored) { return false; }
+        }());
+
+    function log() {
+        if (!debug || !window.console || !console.debug) return;
+        console.debug.apply(console, ["[CarPot analytics]"].concat(Array.prototype.slice.call(arguments)));
+    }
+
+    function warn() {
+        if (!debug || !window.console || !console.warn) return;
+        console.warn.apply(console, ["[CarPot analytics]"].concat(Array.prototype.slice.call(arguments)));
+    }
+
+    function uuid() {
+        if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+        return "cp-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 12);
+    }
+
+    function sessionId() {
+        try {
+            let id = window.localStorage.getItem(storageKey);
+            if (!id) {
+                id = uuid();
+                window.localStorage.setItem(storageKey, id);
+            }
+            return id;
+        } catch (error) {
+            try {
+                let id = window.sessionStorage.getItem(storageKey);
+                if (!id) {
+                    id = uuid();
+                    window.sessionStorage.setItem(storageKey, id);
+                }
+                return id;
+            } catch (ignored) {
+                return uuid();
+            }
+        }
+    }
+
+    function storedUtm(key, value) {
+        try {
+            if (value) window.localStorage.setItem("carpot_" + key, value);
+            return window.localStorage.getItem("carpot_" + key);
+        } catch (ignored) {
+            return value || "";
+        }
+    }
+
+    function utmPayload() {
+        const params = new URLSearchParams(window.location.search);
+        const payload = {};
+        utmKeys.forEach((key) => {
+            const current = params.get(key);
+            const value = current ? current.slice(0, 200) : storedUtm(key);
+            if (current) storedUtm(key, value);
+            if (value) payload[key] = value;
+        });
+        return payload;
+    }
+
+    function basePayload() {
+        return Object.assign({
+            session_id: sessionId(),
+            seller_site_id: config.sellerSiteId || null,
+            subdomain: config.subdomain || "marketing",
+            current_page: window.location.href,
+            page_url: window.location.href,
+            referrer: document.referrer || "",
+            language: navigator.language || "",
+            user_agent: navigator.userAgent || "",
+            time_on_site_seconds: Math.max(0, Math.round((Date.now() - startedAt) / 1000))
+        }, utmPayload());
+    }
+
+    function fetchFallback(path, body) {
+        return fetch(path, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: body,
+            keepalive: true,
+            credentials: "same-origin"
+        }).then(function (response) {
+            if (!response.ok) warn("request failed", path, response.status);
+            else log("sent", path);
+        }).catch(function (error) {
+            warn("request error", path, error);
+        });
+    }
+
+    function send(path, payload) {
+        const body = JSON.stringify(payload);
+
+        try {
+            if (navigator.sendBeacon) {
+                const blob = new Blob([body], {type: "application/json"});
+                if (navigator.sendBeacon(path, blob)) {
+                    log("beacon queued", path, payload.event_type || "session");
+                    return Promise.resolve();
+                }
+            }
+        } catch (error) {
+            warn("sendBeacon failed", path, error);
+        }
+
+        return fetchFallback(path, body);
+    }
+
+    function trackSession() {
+        const payload = basePayload();
+        payload.landing_page = window.location.href;
+        return send("/analytics/session", payload);
+    }
+
+    function trackEvent(eventType, eventName, eventTarget) {
+        if (!eventType) return Promise.resolve();
+        return send("/analytics/event", Object.assign(basePayload(), {
+            event_type: eventType,
+            event_name: eventName || eventType,
+            event_target: (eventTarget || "").toString().slice(0, 500)
+        }));
+    }
+
+    window.CarpotAnalytics = {
+        __initialized: true,
+        sessionId: sessionId,
+        trackEvent: trackEvent,
+        trackSession: trackSession,
+        leadParams: function () {
+            const payload = basePayload();
+            return {
+                session_id: payload.session_id,
+                utm_source: payload.utm_source || "",
+                utm_medium: payload.utm_medium || "",
+                utm_campaign: payload.utm_campaign || "",
+                referrer: payload.referrer || ""
+            };
+        }
+    };
+
+    function trackInitialPageOpen() {
+        trackSession();
+        trackEvent("page_view", "page_view", window.location.pathname);
+        if ((config.subdomain || "").startsWith("demo-")) {
+            trackEvent("demo_open", "demo_open", config.subdomain);
+        } else {
+            trackEvent("site_open", "site_open", config.subdomain || "marketing");
+        }
+    }
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", trackInitialPageOpen, {once: true});
+    } else {
+        window.setTimeout(trackInitialPageOpen, 0);
+    }
+
+    document.addEventListener("click", function (event) {
+        const target = event.target.closest("a, button, [data-analytics-event]");
+        if (!target) return;
+
+        const explicit = target.getAttribute("data-analytics-event");
+        const href = target.getAttribute("href") || "";
+        const text = (target.textContent || target.getAttribute("aria-label") || "").trim();
+        const targetValue = href || target.getAttribute("data-analytics-target") || "";
+
+        if (explicit) {
+            trackEvent(explicit, text || explicit, targetValue);
+        } else if (href.startsWith("tel:")) {
+            trackEvent("phone_click", text || "phone", href);
+        } else if (href.includes("t.me") || href.includes("telegram")) {
+            trackEvent("telegram_click", text || "telegram", href);
+        } else if (href.includes("wa.me") || href.includes("whatsapp")) {
+            trackEvent("whatsapp_click", text || "whatsapp", href);
+        } else if (href.startsWith("viber:")) {
+            trackEvent("viber_click", text || "viber", href);
+        } else if (href.indexOf("#pricing") >= 0 || target.closest(".pricing, .price-card, .cp-pricing-card")) {
+            trackEvent("pricing_click", text || "pricing", href);
+        } else if (target.closest(".gallery, .cp-gallery-section") || href.indexOf("#gallery") >= 0) {
+            trackEvent("gallery_open", text || "gallery", href);
+        }
+    }, true);
+
+    document.addEventListener("submit", function (event) {
+        const form = event.target;
+        if (!form || !form.matches || !form.matches("form")) return;
+        trackEvent("lead_submit", form.getAttribute("name") || form.id || "form", form.getAttribute("action") || window.location.href);
+    }, true);
+}());
+</script>
