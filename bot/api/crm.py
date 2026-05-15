@@ -17,8 +17,12 @@ from bot.database.repositories.crm_admin_repo import (
 )
 from bot.database.repositories.analytics_repo import (
     get_analytics_summary,
+    get_conversion_funnel,
     get_demo_summary,
+    get_leads_over_time,
     get_source_summary,
+    get_traffic_sources,
+    get_visits_over_time,
     list_events,
     list_sessions,
 )
@@ -355,12 +359,15 @@ async def crm_dashboard(request: Request):
             }
         )
 
+    summary = await get_analytics_summary()
+
     return templates.TemplateResponse(
         "admin/crm_dashboard.html",
         _template_context(
             request,
             admin,
             cards=cards,
+            summary=summary,
         ),
     )
 
@@ -371,9 +378,51 @@ async def crm_analytics(request: Request):
     require_roles(admin, {"super_admin"})
 
     summary = await get_analytics_summary()
+    visits_7 = await get_visits_over_time(7)
+    visits_30 = await get_visits_over_time(30)
+    leads_30 = await get_leads_over_time(30)
+    sources = await get_traffic_sources(30)
+    demos = await get_demo_summary()
+    funnel = await get_conversion_funnel(30)
+
+    chart_data = {
+        "visits7": {
+            "labels": [row["day"].strftime("%d.%m") for row in visits_7],
+            "values": [row["visits"] for row in visits_7],
+        },
+        "visits30": {
+            "labels": [row["day"].strftime("%d.%m") for row in visits_30],
+            "values": [row["visits"] for row in visits_30],
+        },
+        "leads30": {
+            "labels": [row["day"].strftime("%d.%m") for row in leads_30],
+            "values": [row["leads"] for row in leads_30],
+        },
+        "sources": {
+            "labels": [row["source"] for row in sources],
+            "values": [row["sessions"] for row in sources],
+        },
+        "demos": {
+            "labels": [row["subdomain"] for row in demos],
+            "visits": [row["views"] for row in demos],
+            "telegramClicks": [row["telegram_clicks"] for row in demos],
+            "leads": [row["leads"] for row in demos],
+        },
+        "funnel": {
+            "labels": ["Site Visit", "CTA Click", "Telegram Open", "/start in bot", "Lead / Registration"],
+            "values": [
+                funnel.get("site_visits", 0),
+                funnel.get("cta_clicks", 0),
+                funnel.get("telegram_opens", 0),
+                funnel.get("bot_starts", 0),
+                funnel.get("leads", 0),
+            ],
+        },
+    }
+
     return templates.TemplateResponse(
         "admin/crm_analytics.html",
-        _template_context(request, admin, summary=summary),
+        _template_context(request, admin, summary=summary, chart_data=chart_data),
     )
 
 

@@ -214,7 +214,14 @@ async def get_analytics_summary(day: date | None = None) -> dict[str, Any]:
             (SELECT COUNT(*) FROM analytics_sessions, bounds WHERE started_at >= bounds.day AND started_at < bounds.day + INTERVAL '1 day') AS visits_today,
             (SELECT COUNT(*) FROM site_leads, bounds WHERE created_at >= bounds.day AND created_at < bounds.day + INTERVAL '1 day') AS leads_today,
             (SELECT COUNT(*) FROM telegram_attribution, bounds WHERE created_at >= bounds.day AND created_at < bounds.day + INTERVAL '1 day') AS telegram_starts_today,
+            (SELECT COUNT(*) FROM analytics_events, bounds WHERE created_at >= bounds.day AND created_at < bounds.day + INTERVAL '1 day' AND event_type = 'telegram_click') AS telegram_clicks_today,
             (SELECT COUNT(*) FROM analytics_events, bounds WHERE created_at >= bounds.day AND created_at < bounds.day + INTERVAL '1 day' AND event_type = ANY($2::text[])) AS cta_clicks_today,
+            (SELECT COUNT(*) FROM seller_sites WHERE status = 'active') AS active_sellers,
+            (SELECT COUNT(*) FROM support_tickets, bounds WHERE created_at >= bounds.day AND created_at < bounds.day + INTERVAL '1 day' AND status IN ('open', 'in_progress')) AS new_support_tickets,
+            CASE WHEN (SELECT COUNT(*) FROM analytics_sessions, bounds WHERE started_at >= bounds.day AND started_at < bounds.day + INTERVAL '1 day') = 0 THEN 0
+                 ELSE ROUND(((SELECT COUNT(*) FROM analytics_events, bounds WHERE created_at >= bounds.day AND created_at < bounds.day + INTERVAL '1 day' AND event_type = 'telegram_click')::numeric /
+                    NULLIF((SELECT COUNT(*) FROM analytics_sessions, bounds WHERE started_at >= bounds.day AND started_at < bounds.day + INTERVAL '1 day')::numeric, 0)) * 100, 2)
+            END AS site_to_telegram_conversion,
             (SELECT source FROM source_counts LIMIT 1) AS top_source_today
         """,
         day,
@@ -320,6 +327,100 @@ async def get_demo_summary():
         DEMO_SUBDOMAINS,
         list(CTA_EVENT_TYPES),
     )
+
+
+async def get_visits_over_time(days: int = 30):
+    days = min(max(int(days), 1), 90)
+    return await fetch(
+        """
+        WITH bounds AS (
+            SELECT generate_series(CURRENT_DATE - ($1::int - 1), CURRENT_DATE, INTERVAL '1 day')::date AS day
+        )
+        SELECT bounds.day, COALESCE(COUNT(s.id), 0) AS visits
+        FROM bounds
+        LEFT JOIN analytics_sessions s
+            ON s.started_at >= bounds.day
+           AND s.started_at < bounds.day + INTERVAL '1 day'
+        GROUP BY bounds.day
+        ORDER BY bounds.day
+        """,
+        days,
+    )
+
+
+async def get_leads_over_time(days: int = 30):
+    days = min(max(int(days), 1), 90)
+    return await fetch(
+        """
+        WITH bounds AS (
+            SELECT generate_series(CURRENT_DATE - ($1::int - 1), CURRENT_DATE, INTERVAL '1 day')::date AS day
+        )
+        SELECT bounds.day, COALESCE(COUNT(l.id), 0) AS leads
+        FROM bounds
+        LEFT JOIN site_leads l
+            ON l.created_at >= bounds.day
+           AND l.created_at < bounds.day + INTERVAL '1 day'
+        GROUP BY bounds.day
+        ORDER BY bounds.day
+        """,
+        days,
+    )
+
+
+def _source_bucket_sql(column: str) -> str:
+    return f"""
+        CASE
+            WHEN {column} IS NULL OR trim({column}) = '' THEN 'Direct'
+            WHEN lower({column}) LIKE '%google%' THEN 'Google'
+            WHEN lower({column}) LIKE '%instagram%' OR lower({column}) = 'ig' THEN 'Instagram'
+            WHEN lower({column}) LIKE '%telegram%' OR lower({column}) = 'tg' THEN 'Telegram'
+            WHEN lower({column}) LIKE '%facebook%' OR lower({column}) = 'fb' THEN 'Facebook'
+            WHEN lower({column}) = 'direct' THEN 'Direct'
+            ELSE 'Unknown'
+        END
+    """
+
+
+async def get_traffic_sources(days: int = 30):
+    days = min(max(int(days), 1), 90)
+    source_bucket = _source_bucket_sql("utm_source")
+    return await fetch(
+        f"""
+        WITH labels AS (
+            SELECT unnest(ARRAY['Google', 'Instagram', 'Telegram', 'Direct', 'Facebook', 'Unknown']) AS source
+        ), session_sources AS (
+            SELECT {source_bucket} AS source, COUNT(*) AS sessions
+            FROM analytics_sessions
+            WHERE started_at >= CURRENT_DATE - ($1::int - 1)
+            GROUP BY 1
+        )
+        SELECT labels.source, COALESCE(session_sources.sessions, 0) AS sessions
+        FROM labels
+        LEFT JOIN session_sources ON session_sources.source = labels.source
+        ORDER BY array_position(ARRAY['Google', 'Instagram', 'Telegram', 'Direct', 'Facebook', 'Unknown'], labels.source)
+        """,
+        days,
+    )
+
+
+async def get_conversion_funnel(days: int = 30):
+    days = min(max(int(days), 1), 90)
+    row = await fetchrow(
+        """
+        WITH bounds AS (
+            SELECT CURRENT_DATE - ($1::int - 1) AS start_day, CURRENT_DATE + INTERVAL '1 day' AS end_day
+        )
+        SELECT
+            (SELECT COUNT(*) FROM analytics_sessions, bounds WHERE started_at >= bounds.start_day AND started_at < bounds.end_day) AS site_visits,
+            (SELECT COUNT(*) FROM analytics_events, bounds WHERE created_at >= bounds.start_day AND created_at < bounds.end_day AND event_type = ANY($2::text[])) AS cta_clicks,
+            (SELECT COUNT(*) FROM analytics_events, bounds WHERE created_at >= bounds.start_day AND created_at < bounds.end_day AND event_type = 'telegram_click') AS telegram_opens,
+            (SELECT COUNT(*) FROM telegram_attribution, bounds WHERE created_at >= bounds.start_day AND created_at < bounds.end_day) AS bot_starts,
+            (SELECT COUNT(*) FROM site_leads, bounds WHERE created_at >= bounds.start_day AND created_at < bounds.end_day) AS leads
+        """,
+        days,
+        list(CTA_EVENT_TYPES),
+    )
+    return dict(row or {})
 
 
 async def upsert_telegram_attribution(

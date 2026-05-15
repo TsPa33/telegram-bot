@@ -62,7 +62,7 @@
                                 {{ '@' ~ ticket.username if ticket.username else '—' }}<br>
                                 <span class="crm-muted">{{ ticket.telegram_id }}</span>
                             </td>
-                            <td><span class="status-badge">{{ status_labels.get(ticket.status, ticket.status) }}</span></td>
+                            <td><span class="status-badge status-{{ ticket.status }}">{{ status_labels.get(ticket.status, ticket.status) }}</span></td>
                             <td>{{ ticket.assigned_admin_username or ticket.assigned_admin_id or '-' }}</td>
                             <td class="message-cell">{{ ticket.last_message_text or '-' }}</td>
                             <td>{{ ticket.updated_at.strftime('%d.%m.%Y %H:%M') if ticket.updated_at else '-' }}</td>

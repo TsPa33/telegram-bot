@@ -1,11 +1,18 @@
 {% extends "admin/crm_base.html" %}
 {% block title %}Сесії аналітики{% endblock %}
-{% block head %}<style>.table{width:100%;border-collapse:collapse;margin-top:18px}.table th,.table td{padding:10px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}.table th{color:var(--muted);font-size:12px;text-transform:uppercase}.small{font-size:12px;color:var(--muted);max-width:260px;word-break:break-word}</style>{% endblock %}
+{% block head %}<style>.small{font-size:12px;color:var(--muted);max-width:260px;word-break:break-word}</style>{% endblock %}
 {% block content %}
 <section class="crm-panel">
-<h1 class="crm-title">Сесії</h1><p class="crm-muted"><a href="/admin/crm/analytics">← Аналітика</a></p>
-<table class="table"><thead><tr><th>Створено</th><th>Субдомен</th><th>Джерело</th><th>Пристрій</th><th>Браузер</th><th>Місто/країна</th><th>Сторінка входу</th><th>Переглянуто сторінок</th><th>Час на сайті</th></tr></thead><tbody>
-{% for row in sessions %}<tr><td>{{ row.started_at.strftime('%d.%m.%Y %H:%M') if row.started_at else '-' }}</td><td>{{ row.subdomain or '-' }}</td><td>{{ 'прямий' if not row.utm_source or row.utm_source == 'direct' else row.utm_source }}</td><td>{{ row.device_type or '-' }}</td><td>{{ row.browser or '-' }}</td><td>{{ row.city or '-' }}{% if row.country %}/{{ row.country }}{% endif %}</td><td class="small">{{ row.landing_page or '-' }}</td><td>{{ row.pages_viewed }}</td><td>{{ row.time_on_site_seconds }}с</td></tr>{% else %}<tr><td colspan="9">Сесії не знайдені</td></tr>{% endfor %}
-</tbody></table>
+    <span class="crm-eyebrow">Analytics detail</span>
+    <h1 class="crm-title">Сесії</h1>
+    <p class="crm-muted"><a href="/admin/crm/analytics">← Аналітика</a></p>
+    <div class="table-wrap" style="margin-top:18px">
+        <table style="min-width: 1120px">
+            <thead><tr><th>Створено</th><th>Субдомен</th><th>Джерело</th><th>Пристрій</th><th>Браузер</th><th>Місто/країна</th><th>Сторінка входу</th><th>Переглянуто сторінок</th><th>Час на сайті</th></tr></thead>
+            <tbody>
+            {% for row in sessions %}<tr><td>{{ row.started_at.strftime('%d.%m.%Y %H:%M') if row.started_at else '-' }}</td><td>{{ row.subdomain or '-' }}</td><td>{{ 'прямий' if not row.utm_source or row.utm_source == 'direct' else row.utm_source }}</td><td>{{ row.device_type or '-' }}</td><td>{{ row.browser or '-' }}</td><td>{{ row.city or '-' }}{% if row.country %}/{{ row.country }}{% endif %}</td><td class="small">{{ row.landing_page or '-' }}</td><td>{{ row.pages_viewed }}</td><td>{{ row.time_on_site_seconds }}с</td></tr>{% else %}<tr><td colspan="9">Сесії не знайдені</td></tr>{% endfor %}
+            </tbody>
+        </table>
+    </div>
 </section>
 {% endblock %}

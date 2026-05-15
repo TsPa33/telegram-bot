@@ -1,89 +1,202 @@
 {% extends "admin/crm_base.html" %}
 
-{% block title %}Панель CRM{% endblock %}
+{% block title %}CarPot Operations Center{% endblock %}
 
 {% block head %}
 <style>
-    .dashboard-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        gap: 16px;
-        margin-bottom: 24px;
+    .ops-hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1.25fr) minmax(280px, .75fr);
+        gap: 18px;
+        margin-bottom: 20px;
+    }
+
+    .ops-hero-card {
+        padding: clamp(24px, 3vw, 34px);
+    }
+
+    .ops-hero-copy {
+        max-width: 720px;
     }
 
     .role-badge {
         display: inline-flex;
         align-items: center;
+        gap: 8px;
         border-radius: 999px;
         padding: 8px 12px;
-        background: #eff6ff;
-        color: #1d4ed8;
-        font-weight: 700;
-        font-size: 13px;
+        background: rgba(52, 245, 166, .12);
+        border: 1px solid rgba(52, 245, 166, .26);
+        color: #86efac;
+        font-weight: 850;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: .05em;
     }
 
-    .cards {
+    .ops-hero-side {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        align-content: center;
+        gap: 12px;
+        padding: 22px;
+    }
+
+    .ops-signal {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px 0;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .ops-signal:last-child { border-bottom: 0; }
+    .ops-signal span { color: var(--muted); font-size: 13px; }
+    .ops-signal strong { color: var(--text-strong); }
+
+    .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(6, minmax(150px, 1fr));
+        gap: 14px;
+        margin-bottom: 20px;
+    }
+
+    .kpi-card {
+        padding: 18px;
+        transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+    }
+
+    .kpi-card:hover {
+        transform: translateY(-3px);
+        border-color: rgba(37, 215, 255, .34);
+        box-shadow: var(--shadow), var(--glow);
+    }
+
+    .kpi-icon {
+        width: 38px;
+        height: 38px;
+        display: grid;
+        place-items: center;
+        border-radius: 14px;
+        background: linear-gradient(135deg, rgba(37, 215, 255, .16), rgba(52, 245, 166, .12));
+        margin-bottom: 14px;
+    }
+
+    .kpi-label {
+        margin: 0 0 8px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 820;
+        text-transform: uppercase;
+        letter-spacing: .07em;
+    }
+
+    .kpi-value {
+        margin: 0;
+        color: var(--text-strong);
+        font-size: clamp(26px, 2.5vw, 36px);
+        font-weight: 900;
+        letter-spacing: -.05em;
+        line-height: 1;
+    }
+
+    .kpi-trend {
+        margin-top: 10px;
+        color: var(--accent);
+        font-size: 12px;
+        font-weight: 760;
+    }
+
+    .module-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
         gap: 16px;
     }
 
-    .card {
-        border: 1px solid var(--border);
-        border-radius: 16px;
+    .module-card {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        min-height: 170px;
         padding: 20px;
-        background: #fbfdff;
-    }
-
-    .card-title {
-        margin: 0 0 8px;
-        font-size: 18px;
-    }
-
-    .card-title a {
-        color: var(--primary);
+        color: var(--text);
         text-decoration: none;
+        transition: transform .18s ease, border-color .18s ease, background .18s ease;
     }
 
-    .card-title a:hover {
-        color: var(--primary-dark);
+    .module-card:hover {
+        transform: translateY(-3px);
+        border-color: rgba(37, 215, 255, .32);
+        background: var(--surface-strong);
     }
 
-    .card-text {
+    .module-card h2 {
         margin: 0;
-        color: var(--muted);
-        font-size: 14px;
+        color: var(--text-strong);
+        font-size: 20px;
+        letter-spacing: -.04em;
+    }
+
+    .module-card p { margin: 0; color: var(--muted); line-height: 1.55; }
+    .module-arrow { margin-top: auto; color: var(--primary); font-weight: 850; }
+
+    @media (max-width: 1180px) {
+        .kpi-grid { grid-template-columns: repeat(3, minmax(160px, 1fr)); }
+        .ops-hero { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 700px) {
+        .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .module-grid { grid-template-columns: 1fr; }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-{% set role_labels = {"super_admin": "Супер адміністратор", "admin": "Адміністратор", "manager": "Менеджер"} %}
-{% set card_titles = {"/admin/crm/leads": "Заявки", "/admin/crm/users": "Користувачі", "/admin/crm/payments": "Оплати", "/admin/crm/audit": "Аудит", "/admin/crm/admins": "Адміністратори", "/admin/crm/analytics": "📊 Аналітика"} %}
-{% set card_texts = {"/admin/crm/leads": "Заявки з сайтів продавців", "/admin/crm/users": "Перегляд продавців і профілів", "/admin/crm/payments": "Перегляд оплат", "/admin/crm/audit": "Журнал дій CRM", "/admin/crm/admins": "Керування адміністраторами CRM", "/admin/crm/analytics": "Візити, джерела, CTA, демо та атрибуція Telegram"} %}
-<section class="crm-panel">
-    <div class="dashboard-header">
-        <div>
-            <h1 class="crm-title">Панель CRM</h1>
-            <p class="crm-muted">Базова панель для модулів CRM.</p>
-        </div>
-        <div class="role-badge">Роль: {{ role_labels.get(admin.role, admin.role) }}</div>
-    </div>
+{% set role_labels = {"super_admin": "Супер адміністратор", "admin": "Адміністратор", "manager": "Операції"} %}
+{% set card_titles = {"/admin/crm/leads": "Заявки", "/admin/crm/users": "Продавці", "/admin/crm/payments": "Оплати", "/admin/crm/support": "Support", "/admin/crm/audit": "Аудит", "/admin/crm/admins": "Адміністратори", "/admin/crm/analytics": "Аналітика"} %}
+{% set card_texts = {"/admin/crm/leads": "Контроль нових заявок із сайтів продавців і швидка зміна статусів.", "/admin/crm/users": "Моніторинг продавців, сайтів, верифікації та профілів.", "/admin/crm/payments": "Операційний перегляд оплат, продуктів і статусів платежів.", "/admin/crm/support": "Запити підтримки, відповідальні адміністратори та SLA реагування.", "/admin/crm/audit": "Журнал критичних дій адміністраторів CRM.", "/admin/crm/admins": "Керування ролями, паролями та доступом CRM.", "/admin/crm/analytics": "Візити, джерела, демо, CTA та Telegram conversion funnel."} %}
 
-    <div class="cards">
-        {% for card in cards %}
-            <article class="card">
-                <h2 class="card-title">
-                    {% if card.url %}
-                        <a href="{{ card.url }}">{{ card_titles.get(card.url, card.title) }}</a>
-                    {% else %}
-                        {{ card_titles.get(card.url, card.title) }}
-                    {% endif %}
-                </h2>
-                <p class="card-text">{{ card_texts.get(card.url, "Скоро буде доступно") }}</p>
+<div class="ops-hero">
+    <section class="crm-panel ops-hero-card">
+        <div class="ops-hero-copy">
+            <span class="crm-eyebrow">Premium internal dashboard</span>
+            <h1 class="crm-title">CarPot Operations Center</h1>
+            <p class="crm-muted">Єдиний центр для суперадмінів, операцій і аналітики: заявки, продавці, платежі, support та перша-party conversion tracking для Telegram SaaS екосистеми.</p>
+        </div>
+    </section>
+    <aside class="glass-card ops-hero-side">
+        <span class="role-badge">Роль: {{ role_labels.get(admin.role, admin.role) }}</span>
+        <div class="ops-signal"><span>Адміністратор</span><strong>{{ admin.username or admin.telegram_id }}</strong></div>
+        <div class="ops-signal"><span>Основне джерело сьогодні</span><strong>{{ 'Direct' if not summary.top_source_today or summary.top_source_today == 'direct' else summary.top_source_today }}</strong></div>
+        <div class="ops-signal"><span>Сайт → Telegram</span><strong>{{ summary.site_to_telegram_conversion or 0 }}%</strong></div>
+    </aside>
+</div>
+
+<section class="kpi-grid" aria-label="CRM KPI">
+    <article class="kpi-card"><div class="kpi-icon">👁</div><p class="kpi-label">Відвідувань сьогодні</p><p class="kpi-value">{{ summary.visits_today or 0 }}</p><div class="kpi-trend">first-party sessions</div></article>
+    <article class="kpi-card"><div class="kpi-icon">◆</div><p class="kpi-label">Заявок сьогодні</p><p class="kpi-value">{{ summary.leads_today or 0 }}</p><div class="kpi-trend">site lead forms</div></article>
+    <article class="kpi-card"><div class="kpi-icon">↗</div><p class="kpi-label">Telegram переходів</p><p class="kpi-value">{{ summary.telegram_clicks_today or 0 }}</p><div class="kpi-trend">CTA to messenger</div></article>
+    <article class="kpi-card"><div class="kpi-icon">◉</div><p class="kpi-label">Активних продавців</p><p class="kpi-value">{{ summary.active_sellers or 0 }}</p><div class="kpi-trend">active seller sites</div></article>
+    <article class="kpi-card"><div class="kpi-icon">✦</div><p class="kpi-label">Нових support-запитів</p><p class="kpi-value">{{ summary.new_support_tickets or 0 }}</p><div class="kpi-trend">open today</div></article>
+    <article class="kpi-card"><div class="kpi-icon">%</div><p class="kpi-label">Конверсія сайт → Telegram</p><p class="kpi-value">{{ summary.site_to_telegram_conversion or 0 }}%</p><div class="kpi-trend">today</div></article>
+</section>
+
+<section class="module-grid" aria-label="CRM modules">
+    {% for card in cards %}
+        {% if card.url %}
+            <a class="glass-card module-card" href="{{ card.url }}">
+                <span class="crm-eyebrow">Module</span>
+                <h2>{{ card_titles.get(card.url, card.title) }}</h2>
+                <p>{{ card_texts.get(card.url, card.text or "Операційний модуль CarPot CRM.") }}</p>
+                <span class="module-arrow">Відкрити →</span>
+            </a>
+        {% else %}
+            <article class="glass-card module-card">
+                <span class="crm-eyebrow">Module</span>
+                <h2>{{ card_titles.get(card.url, card.title) }}</h2>
+                <p>{{ card_texts.get(card.url, card.text or "Скоро буде доступно") }}</p>
             </article>
-        {% endfor %}
-    </div>
+        {% endif %}
+    {% endfor %}
 </section>
 {% endblock %}
