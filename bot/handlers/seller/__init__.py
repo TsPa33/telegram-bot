@@ -8,6 +8,7 @@ from .add_car import router as add_car_router
 from .site import router as site_router
 from .services import router as services_router
 from .crm import router as crm_router
+from .leads import router as leads_router
 
 router = Router()
 
@@ -18,5 +19,6 @@ router.include_router(profile_router)
 router.include_router(verification_router)
 router.include_router(payment_router)
 router.include_router(crm_router)
+router.include_router(leads_router)
 router.include_router(services_router)
 router.include_router(site_router)
