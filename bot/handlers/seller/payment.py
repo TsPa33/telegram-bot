@@ -239,6 +239,9 @@ async def show_transactions(callback: CallbackQuery):
         elif t.get("product") == "site" and t["status"] == "success":
             text += "🌐 Сайт створено\n"
 
+        elif t.get("product") == "seller_crm" and t["status"] == "success":
+            text += "💼 CRM активовано на 30 днів\n"
+
         text += f"{t['created_at']}\n\n"
 
     await callback.message.answer(text)

@@ -10,6 +10,8 @@ from aiogram import Bot
 from bot.config import LIQPAY_PRIVATE_KEY, BOT_TOKEN
 from bot.database.base import execute, fetchrow
 from bot.services.domain_service import build_site_url
+from bot.config import SELLER_CRM_BASE_URL
+from bot.services.seller_crm import SELLER_CRM_PRODUCT, SELLER_CRM_SUBSCRIPTION_DAYS
 
 router = APIRouter()
 
@@ -143,6 +145,16 @@ async def liqpay_callback(request: Request):
             else:
                 subdomain = site["subdomain"]
 
+        # ===== ПРОФЕСІЙНА CRM =====
+        if product == SELLER_CRM_PRODUCT and status == "success":
+            from bot.database.repositories.seller_crm_repo import create_crm_subscription
+
+            await create_crm_subscription(
+                payment["seller_id"],
+                payment["id"],
+                days=SELLER_CRM_SUBSCRIPTION_DAYS,
+            )
+
         # ===== NOTIFICATIONS =====
 
         seller_data = await fetchrow(
@@ -160,6 +172,14 @@ async def liqpay_callback(request: Request):
                     text = (
                         f"✅ Оплата {amount} грн\n"
                         f"Зараховано {slots_map.get(amount, 0)} місце(ць)\n"
+                    )
+                elif product == SELLER_CRM_PRODUCT:
+                    crm_base_url = (SELLER_CRM_BASE_URL or "https://crm.carpot.com.ua").rstrip("/")
+                    text = (
+                        "💼 Професійна CRM активована на 30 днів\n\n"
+                        "Натисніть у боті «💼 Професійна CRM» → «Створити CRM акаунт», "
+                        "щоб обрати адресу та пароль.\n\n"
+                        f"Демо: {crm_base_url}/crm/seller/demo\n"
                     )
                 else:
                     text = (
