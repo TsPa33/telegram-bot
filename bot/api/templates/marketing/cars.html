@@ -23,6 +23,15 @@
             </div>
             <p>Натисніть картку, щоб відкрити cinematic detail modal із продавцем, містом, описом, телефоном, сайтом і дією “В обране”.</p>
         </div>
+        <div class="buyer-request-cta buyer-panel">
+            <div>
+                <span class="eyebrow">Не знайшли потрібне?</span>
+                <h3>Залиште заявку — це основний механізм CarPot marketplace</h3>
+                <p>Опишіть запит один раз, а архітектура підготує його до маршрутизації продавцям за містом, категорією та спеціалізацією.</p>
+            </div>
+            <button class="btn btn-primary" type="button" data-open-lead-modal>Залишити заявку</button>
+        </div>
+
         <div class="favorites-bar buyer-panel">
             <span>Збережені авто / запчастини: <strong><span data-favorites-count>0</span></strong></span>
             <button class="btn btn-secondary" type="button" data-open-lead-modal>Запит на підбір</button>
@@ -48,6 +57,10 @@
         <div class="buyer-pagination">
             {% if page > 1 %}<a class="btn btn-secondary" href="/cars?page={{ page - 1 }}{{ pagination_query }}">Назад</a>{% endif %}
             <a class="btn btn-secondary" href="/cars?page={{ page + 1 }}{{ pagination_query }}">Показати ще</a>
+        </div>
+        <div class="buyer-sticky-request buyer-panel">
+            <div><strong>Не знайшли точну пропозицію?</strong><span>Створіть заявку — продавці зможуть відгукнутися.</span></div>
+            <button class="btn btn-primary" type="button" data-open-lead-modal>Залишити заявку</button>
         </div>
     </div>
 </section>

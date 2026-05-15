@@ -15,6 +15,7 @@
          data-website="{{ car.website|default('', true)|e }}"
          data-phone="{{ car.phone|default('', true)|e }}"
          data-username="{{ car.username|default('', true)|e }}"
+         data-telegram-link="{% if car.username %}https://t.me/{{ car.username|replace('@', '') }}{% else %}{{ telegram_bot_url }}?start=seller_{{ car.seller_id }}{% endif %}"
          data-description="{{ (car.description or 'Опис пропозиції можна уточнити у продавця.')|e }}"
          data-price="{{ car.price|default('', true)|e }}"
          data-verified="{{ 'true' if car.is_verified else 'false' }}">
@@ -32,15 +33,18 @@
         <p class="buyer-card-copy">{{ car.description or 'Опис пропозиції можна уточнити у продавця.' }}</p>
         <div class="buyer-card-meta">
             <span class="buyer-pill">{{ car.shop_name or car.name or car.username or 'Продавець CarPot' }}</span>
-            <span class="buyer-pill">👁 {{ car.views or 0 }}</span>
+            {% if car.is_verified %}<span class="buyer-pill">🛡 Перевірений профіль</span>{% endif %}
+            {% if car.views %}<span class="buyer-pill">👁 {{ car.views }}</span>{% endif %}
+            <span class="buyer-pill">↗ Telegram-ready</span>
         </div>
         <div class="buyer-price-row">
             <strong class="buyer-price">{% if car.price %}{{ car.price }} грн{% else %}Ціна за запитом{% endif %}</strong>
-            <span class="buyer-pill">Швидкий контакт</span>
+            <span class="buyer-pill">Активна пропозиція</span>
         </div>
         <div class="buyer-card-actions">
             <button class="btn btn-secondary buyer-favorite-button" type="button" data-favorite-card aria-pressed="false">♡ В обране</button>
             {% if car.phone %}<a class="btn btn-primary" href="tel:{{ car.phone }}">Подзвонити</a>{% endif %}
+            {% if car.username %}<a class="btn btn-secondary" href="https://t.me/{{ car.username|replace('@', '') }}" target="_blank" rel="noopener">Telegram</a>{% endif %}
             <button class="btn btn-secondary" type="button" data-open-lead-modal>Заявка</button>
         </div>
     </div>
