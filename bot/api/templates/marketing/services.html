@@ -1,0 +1,53 @@
+{% extends "marketing/base_marketing.html" %}
+
+{% block content %}
+<section class="legal-hero">
+    <div class="container">
+        <span class="eyebrow">Автосервіси</span>
+        <h1>СТО, евакуатори, шиномонтаж та automotive-послуги</h1>
+        <p class="lead">Окрема buyer-сторінка для пошуку послуг і контакту з виконавцями CarPot.</p>
+        <div class="hero-actions">
+            <a class="btn btn-primary" href="/search?type=services">Пошук послуг</a>
+            <a class="btn btn-secondary" href="/catalog">Весь каталог</a>
+        </div>
+    </div>
+</section>
+
+<section class="section" style="padding-top: 24px;">
+    <div class="container">
+        <div class="section-head">
+            <div>
+                <span class="eyebrow">{{ marketplace_summary.services_count }} активних</span>
+                <h2>Каталог послуг</h2>
+            </div>
+            <p>Read-only вибірка з services для buyer ecosystem.</p>
+        </div>
+        <div class="grid-3">
+            {% for service in marketplace_services %}
+            <article class="card">
+                <span class="eyebrow">{{ service.category }}</span>
+                <h3>{{ service.title }}</h3>
+                <p>{{ service.description or 'Деталі послуги можна уточнити напряму у виконавця.' }}</p>
+                <p><strong>{{ service.shop_name or service.name or service.username or 'Сервіс CarPot' }}</strong>{% if service.city %} · {{ service.city }}{% endif %}</p>
+                {% if service.address %}<p>Адреса: {{ service.address }}</p>{% endif %}
+                {% if service.price %}<p>Орієнтир: {{ service.price }} грн</p>{% endif %}
+                <div class="card-actions">
+                    {% if service.website %}<a class="btn btn-secondary" href="{{ service.website }}" target="_blank" rel="noopener">Сайт</a>{% endif %}
+                    {% if service.phone %}<a class="btn btn-primary" href="tel:{{ service.phone }}">Подзвонити</a>{% endif %}
+                </div>
+            </article>
+            {% else %}
+            <article class="card">
+                <h3>Поки немає активних послуг</h3>
+                <p>Спробуйте загальний каталог або залиште запит у Telegram-боті.</p>
+                <a class="btn btn-primary" href="{{ telegram_bot_url }}" target="_blank" rel="noopener">Відкрити бот</a>
+            </article>
+            {% endfor %}
+        </div>
+        <div class="hero-actions">
+            {% if page > 1 %}<a class="btn btn-secondary" href="/services?page={{ page - 1 }}">Назад</a>{% endif %}
+            <a class="btn btn-secondary" href="/services?page={{ page + 1 }}">Наступна сторінка</a>
+        </div>
+    </div>
+</section>
+{% endblock %}

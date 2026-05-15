@@ -1,0 +1,159 @@
+{% extends "marketing/base_marketing.html" %}
+
+{% block content %}
+<section class="hero">
+    <div class="container hero-grid">
+        <div>
+            <span class="eyebrow">CarPot для покупця</span>
+            <h1>Знайдіть автозапчастини, авто та перевірені автосервіси в одному Telegram-екосередовищі</h1>
+            <p class="lead">
+                CarPot допомагає покупцю швидко перейти від потреби до контакту з продавцем: подивитися каталог,
+                відфільтрувати пропозиції, знайти місто та продовжити спілкування у Telegram.
+            </p>
+            <div class="hero-actions">
+                <a class="btn btn-primary" href="/catalog">Перейти в каталог</a>
+                <a class="btn btn-secondary" href="{{ telegram_bot_url }}" target="_blank" rel="noopener">Відкрити Telegram-бот</a>
+            </div>
+        </div>
+
+        <div class="dashboard" aria-label="Переваги покупця CarPot">
+            <div class="dash-top">
+                <div class="window-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+                <strong>Buyer marketplace</strong>
+            </div>
+            <div class="dash-body">
+                <div class="dash-card">
+                    <div class="dash-label">Авто / пропозиції</div>
+                    <div class="dash-value">{{ marketplace_summary.cars_count }}</div>
+                    <div class="dash-line"></div>
+                </div>
+                <div class="dash-card">
+                    <div class="dash-label">Послуги</div>
+                    <div class="dash-value">{{ marketplace_summary.services_count }}</div>
+                    <div class="dash-line"></div>
+                </div>
+                <div class="dash-card">
+                    <div class="dash-label">Продавці</div>
+                    <div class="dash-value">{{ marketplace_summary.sellers_count }}</div>
+                    <div class="dash-line"></div>
+                </div>
+                <div class="dash-card">
+                    <div class="dash-label">Міста</div>
+                    <div class="dash-value">{{ marketplace_summary.cities_count }}</div>
+                    <div class="dash-line"></div>
+                </div>
+                <div class="dash-card wide">
+                    <div class="dash-label">Пошук</div>
+                    <div class="dash-value">запчастини · СТО · евакуатор</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="section" id="buyer-search">
+    <div class="container">
+        <div class="section-head">
+            <div>
+                <span class="eyebrow">Швидкий старт</span>
+                <h2>Почніть з пошуку</h2>
+            </div>
+            <p>Введіть бренд, модель, послугу або місто — покупець переходить на окрему сторінку пошуку без впливу на seller landing.</p>
+        </div>
+        <form class="card" action="/search" method="get" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; align-items:end;">
+            <label>
+                <span class="dash-label">Що шукаєте</span>
+                <input name="q" type="search" placeholder="Наприклад: BMW, коробка, автоелектрик" style="width:100%; min-height:48px; border-radius:16px; border:1px solid rgba(148,163,184,0.22); background:rgba(255,255,255,0.06); color:var(--text); padding:0 14px;">
+            </label>
+            <label>
+                <span class="dash-label">Місто</span>
+                <input name="city" type="text" placeholder="Київ" style="width:100%; min-height:48px; border-radius:16px; border:1px solid rgba(148,163,184,0.22); background:rgba(255,255,255,0.06); color:var(--text); padding:0 14px;">
+            </label>
+            <label>
+                <span class="dash-label">Тип</span>
+                <select name="type" style="width:100%; min-height:48px; border-radius:16px; border:1px solid rgba(148,163,184,0.22); background:rgba(15,23,42,0.92); color:var(--text); padding:0 14px;">
+                    <option value="all">Усе</option>
+                    <option value="cars">Авто / запчастини</option>
+                    <option value="services">Послуги</option>
+                </select>
+            </label>
+            <button class="btn btn-primary" type="submit">Знайти</button>
+        </form>
+    </div>
+</section>
+
+<section class="section">
+    <div class="container">
+        <div class="section-head">
+            <div>
+                <span class="eyebrow">Як це працює</span>
+                <h2>Покупець рухається простим сценарієм</h2>
+            </div>
+            <p>Без складних кабінетів: каталог і пошук ведуть до контакту з продавцем або в Telegram-бот.</p>
+        </div>
+        <div class="grid-3">
+            <article class="card">
+                <h3>1. Формує потребу</h3>
+                <p>Покупець шукає авто, запчастину, СТО, шиномонтаж, евакуатор або іншу автомобільну послугу.</p>
+            </article>
+            <article class="card">
+                <h3>2. Переглядає пропозиції</h3>
+                <p>Окремі buyer-сторінки показують активні авто, послуги й продавців з міста покупця.</p>
+            </article>
+            <article class="card">
+                <h3>3. Переходить до контакту</h3>
+                <p>Покупець відкриває сайт, телефон, Telegram або продовжує діалог у боті CarPot.</p>
+            </article>
+        </div>
+    </div>
+</section>
+
+<section class="section">
+    <div class="container">
+        <div class="section-head">
+            <div>
+                <span class="eyebrow">Останні пропозиції</span>
+                <h2>Каталог для покупця</h2>
+            </div>
+            <p>Дані беруться тільки для buyer routes і не передаються у seller landing.</p>
+        </div>
+        <div class="grid-3">
+            {% for car in marketplace_cars[:3] %}
+            <article class="card">
+                <span class="eyebrow">Авто / запчастини</span>
+                <h3>{{ car.brand }} {{ car.model }}</h3>
+                <p>{{ car.description or 'Активна пропозиція продавця CarPot.' }}</p>
+                <p><strong>{{ car.shop_name or car.name or 'Продавець CarPot' }}</strong>{% if car.city %} · {{ car.city }}{% endif %}</p>
+            </article>
+            {% endfor %}
+            {% for service in marketplace_services[:3] %}
+            <article class="card">
+                <span class="eyebrow">Послуга</span>
+                <h3>{{ service.title }}</h3>
+                <p>{{ service.description or service.category }}</p>
+                <p><strong>{{ service.shop_name or service.name or 'Сервіс CarPot' }}</strong>{% if service.city %} · {{ service.city }}{% endif %}</p>
+            </article>
+            {% endfor %}
+        </div>
+        <div class="hero-actions">
+            <a class="btn btn-primary" href="/catalog">Дивитися весь каталог</a>
+            <a class="btn btn-secondary" href="/services">Автосервіси</a>
+            <a class="btn btn-secondary" href="/cars">Авто та запчастини</a>
+        </div>
+    </div>
+</section>
+
+<section class="section safe-start-section">
+    <div class="container safe-start-card">
+        <div class="safe-start-content">
+            <span class="eyebrow">Telegram-first</span>
+            <h2>Потрібна допомога з підбором?</h2>
+            <p class="lead">Відкрийте CarPot у Telegram і залиште запит — екосистема веде покупця до потрібного продавця або послуги.</p>
+        </div>
+        <div class="safe-start-actions">
+            <a class="btn btn-primary" href="{{ telegram_bot_url }}" target="_blank" rel="noopener">Перейти в Telegram</a>
+            <a class="btn btn-secondary" href="/seller">Я продавець</a>
+        </div>
+    </div>
+</section>
+{% endblock %}
