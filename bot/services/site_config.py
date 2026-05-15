@@ -2,6 +2,27 @@ from copy import deepcopy
 from typing import Any
 
 
+THEME_PRESETS: dict[str, dict[str, str]] = {
+    "default": {"name": "CarPot Default", "scheme": "default", "accent": "#2563eb"},
+    "dark_blue": {"name": "Dark Blue", "scheme": "electric_premium_dark", "accent": "#2563eb"},
+    "dark_red": {"name": "Dark Red", "scheme": "parts_dark_red", "accent": "#dc2626"},
+    "dark_green": {"name": "Dark Green", "scheme": "premium_dark", "accent": "#178582"},
+    "premium_black": {"name": "Premium Black", "scheme": "premium_dark", "accent": "#BFA181"},
+    "auto_service": {"name": "Auto Service", "scheme": "neon_dark", "accent": "#2272FF"},
+    "tow_dark": {"name": "Tow Dark", "scheme": "parts_dark_red", "accent": "#f59e0b"},
+    "sto_modern": {"name": "STO Modern", "scheme": "light_blue", "accent": "#00ABE4"},
+    "light_blue": {"name": "Light Blue", "scheme": "light_blue", "accent": "#00ABE4"},
+    "neon_dark": {"name": "Neon Dark", "scheme": "neon_dark", "accent": "#2272FF"},
+    "premium_dark": {"name": "Premium Dark", "scheme": "premium_dark", "accent": "#178582"},
+    "parts_dark_red": {"name": "Parts Dark Red", "scheme": "parts_dark_red", "accent": "#dc2626"},
+    "electric_premium_dark": {"name": "Electric Premium", "scheme": "electric_premium_dark", "accent": "#2563eb"},
+}
+
+
+def get_theme_presets() -> dict[str, dict[str, str]]:
+    return deepcopy(THEME_PRESETS)
+
+
 _DEFAULT_SITE_CONFIG: dict[str, Any] = {
 
     "header": {
@@ -33,6 +54,7 @@ _DEFAULT_SITE_CONFIG: dict[str, Any] = {
     },
 
     "modules": {
+        "hero": True,
         "services": True,
         "cars": True,
         "contacts": True,
@@ -43,6 +65,7 @@ _DEFAULT_SITE_CONFIG: dict[str, Any] = {
         "works": False,
         "cta": False,
         "reviews": False,
+        "footer": True,
     },
 
     "theme": {
@@ -239,14 +262,7 @@ def _normalize_config(config: dict) -> dict:
 
     if not isinstance(theme, dict):
         config["theme"] = deepcopy(_DEFAULT_SITE_CONFIG["theme"])
-    elif theme.get("scheme") not in {
-        "default",
-        "light_blue",
-        "neon_dark",
-        "premium_dark",
-        "parts_dark_red",
-        "electric_premium_dark",
-    }:
+    elif theme.get("scheme") not in THEME_PRESETS:
         theme["scheme"] = "default"
 
     # ===== HERO =====
