@@ -156,7 +156,7 @@
                             <td>{{ lead.name or '-' }}</td>
                             <td>{{ lead.phone }}</td>
                             <td class="message-cell">{{ lead.message or '-' }}</td>
-                            <td><span class="status-badge">{{ status_labels.get(lead.status, lead.status) }}</span></td>
+                            <td><span class="status-badge status-{{ lead.status }}">{{ status_labels.get(lead.status, lead.status) }}</span></td>
                             <td>{{ lead.manager_admin_id or '-' }}</td>
                             <td>
                                 <form class="status-form" method="post" action="/admin/crm/leads/{{ lead.id }}/status">

@@ -144,7 +144,7 @@
                             <td>{{ payment.seller_username or payment.seller_shop_name or '-' }}</td>
                             <td>{{ payment.product or '-' }}</td>
                             <td>{{ payment.amount or '-' }}</td>
-                            <td>{{ payment.status or '-' }}</td>
+                            <td><span class="status-badge status-{{ payment.status or 'unknown' }}">{{ payment.status or '-' }}</span></td>
                             <td>{{ payment.created_at.strftime('%d.%m.%Y %H:%M') if payment.created_at else '-' }}</td>
                             <td>
                                 {% if payment.paid_at %}

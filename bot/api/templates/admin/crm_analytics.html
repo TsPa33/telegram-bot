@@ -1,26 +1,327 @@
 {% extends "admin/crm_base.html" %}
-{% block title %}Аналітика{% endblock %}
+{% block title %}Аналітика — CarPot Operations Center{% endblock %}
 {% block head %}
 <style>
-.analytics-nav,.kpi-grid{display:grid;gap:14px}.analytics-nav{grid-template-columns:repeat(auto-fit,minmax(160px,1fr));margin:18px 0}.kpi-grid{grid-template-columns:repeat(auto-fit,minmax(180px,1fr));margin-top:20px}.kpi,.analytics-link{border:1px solid var(--border);border-radius:16px;padding:18px;background:#fbfdff}.analytics-link{text-decoration:none;color:var(--primary);font-weight:800}.kpi span{display:block;color:var(--muted);font-size:13px}.kpi strong{display:block;margin-top:8px;font-size:28px;color:var(--text)}
+    .analytics-hero {
+        display: flex;
+        justify-content: space-between;
+        gap: 20px;
+        align-items: flex-start;
+        margin-bottom: 20px;
+    }
+
+    .analytics-nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 18px;
+    }
+
+    .analytics-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 10px 13px;
+        background: var(--surface-muted);
+        color: var(--text);
+        text-decoration: none;
+        font-size: 13px;
+        font-weight: 850;
+        transition: transform .18s ease, border-color .18s ease, background .18s ease;
+    }
+
+    .analytics-link:hover {
+        transform: translateY(-2px);
+        border-color: rgba(37, 215, 255, .36);
+        background: rgba(37, 215, 255, .12);
+    }
+
+    .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(6, minmax(150px, 1fr));
+        gap: 14px;
+        margin: 20px 0;
+    }
+
+    .kpi-card { padding: 18px; }
+    .kpi-card span { display: block; color: var(--muted); font-size: 12px; font-weight: 820; text-transform: uppercase; letter-spacing: .07em; }
+    .kpi-card strong { display: block; margin-top: 10px; color: var(--text-strong); font-size: clamp(25px, 2.5vw, 36px); line-height: 1; letter-spacing: -.05em; }
+
+    .charts-grid {
+        display: grid;
+        grid-template-columns: repeat(12, minmax(0, 1fr));
+        gap: 16px;
+    }
+
+    .chart-card {
+        min-height: 360px;
+        padding: 20px;
+        animation: chartFade .32s ease both;
+    }
+
+    .chart-card.wide { grid-column: span 8; }
+    .chart-card.side { grid-column: span 4; }
+    .chart-card.full { grid-column: 1 / -1; }
+
+    .chart-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 14px;
+        margin-bottom: 16px;
+    }
+
+    .chart-head h2 {
+        margin: 0;
+        color: var(--text-strong);
+        font-size: 20px;
+        letter-spacing: -.04em;
+    }
+
+    .chart-head p { margin: 5px 0 0; color: var(--muted); font-size: 13px; }
+
+    .period-switch {
+        display: inline-flex;
+        gap: 6px;
+        padding: 4px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        background: var(--surface-muted);
+    }
+
+    .period-switch button {
+        border: 0;
+        border-radius: 999px;
+        padding: 7px 10px;
+        background: transparent;
+        color: var(--muted);
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 850;
+    }
+
+    .period-switch button.active {
+        background: rgba(37, 215, 255, .16);
+        color: var(--text-strong);
+    }
+
+    .chart-canvas-wrap {
+        position: relative;
+        height: 275px;
+    }
+
+    .funnel-list {
+        display: grid;
+        gap: 12px;
+    }
+
+    .funnel-step {
+        display: grid;
+        grid-template-columns: 160px minmax(0, 1fr) 88px;
+        gap: 14px;
+        align-items: center;
+    }
+
+    .funnel-label { color: var(--text-strong); font-weight: 850; }
+    .funnel-track {
+        height: 16px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: var(--surface-muted);
+        border: 1px solid var(--border);
+    }
+
+    .funnel-fill {
+        width: var(--width);
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, var(--primary), var(--accent));
+        box-shadow: 0 0 20px rgba(37, 215, 255, .24);
+    }
+
+    .funnel-value { color: var(--text-strong); font-weight: 900; text-align: right; }
+
+    @keyframes chartFade {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 1180px) {
+        .kpi-grid { grid-template-columns: repeat(3, minmax(160px, 1fr)); }
+        .chart-card.wide, .chart-card.side { grid-column: 1 / -1; }
+    }
+
+    @media (max-width: 700px) {
+        .analytics-hero, .chart-head { flex-direction: column; }
+        .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .chart-card { min-height: 320px; padding: 16px; }
+        .chart-canvas-wrap { height: 245px; }
+        .funnel-step { grid-template-columns: 1fr; gap: 8px; }
+        .funnel-value { text-align: left; }
+    }
 </style>
 {% endblock %}
 {% block content %}
 <section class="crm-panel">
-    <h1 class="crm-title">📊 Аналітика</h1>
-    <p class="crm-muted">Внутрішня аналітика першої сторони. Доступна лише суперадміністраторам.</p>
-    <nav class="analytics-nav">
-        <a class="analytics-link" href="/admin/crm/analytics/sources">Джерела</a>
-        <a class="analytics-link" href="/admin/crm/analytics/demos">Аналітика демо</a>
-        <a class="analytics-link" href="/admin/crm/analytics/sessions">Сесії</a>
-        <a class="analytics-link" href="/admin/crm/analytics/events">Події</a>
-    </nav>
+    <div class="analytics-hero">
+        <div>
+            <span class="crm-eyebrow">First-party analytics</span>
+            <h1 class="crm-title">Аналітика операцій</h1>
+            <p class="crm-muted">Візити, джерела, демо-продукти, Telegram переходи та conversion funnel для оптимізації Google Ads і Telegram SaaS продажів.</p>
+            <nav class="analytics-nav">
+                <a class="analytics-link" href="/admin/crm/analytics/sources">Джерела →</a>
+                <a class="analytics-link" href="/admin/crm/analytics/demos">Демо →</a>
+                <a class="analytics-link" href="/admin/crm/analytics/sessions">Сесії →</a>
+                <a class="analytics-link" href="/admin/crm/analytics/events">Події →</a>
+            </nav>
+        </div>
+    </div>
+
     <div class="kpi-grid">
-        <article class="kpi"><span>Відвідувань сьогодні</span><strong>{{ summary.visits_today or 0 }}</strong></article>
-        <article class="kpi"><span>Заявок сьогодні</span><strong>{{ summary.leads_today or 0 }}</strong></article>
-        <article class="kpi"><span>Запусків Telegram</span><strong>{{ summary.telegram_starts_today or 0 }}</strong></article>
-        <article class="kpi"><span>Натискань CTA</span><strong>{{ summary.cta_clicks_today or 0 }}</strong></article>
-        <article class="kpi"><span>Основне джерело</span><strong>{{ 'прямий' if not summary.top_source_today or summary.top_source_today == 'direct' else summary.top_source_today }}</strong></article>
+        <article class="kpi-card"><span>Відвідувань сьогодні</span><strong>{{ summary.visits_today or 0 }}</strong></article>
+        <article class="kpi-card"><span>Заявок сьогодні</span><strong>{{ summary.leads_today or 0 }}</strong></article>
+        <article class="kpi-card"><span>Telegram переходів</span><strong>{{ summary.telegram_clicks_today or 0 }}</strong></article>
+        <article class="kpi-card"><span>Активних продавців</span><strong>{{ summary.active_sellers or 0 }}</strong></article>
+        <article class="kpi-card"><span>Нових support-запитів</span><strong>{{ summary.new_support_tickets or 0 }}</strong></article>
+        <article class="kpi-card"><span>Сайт → Telegram</span><strong>{{ summary.site_to_telegram_conversion or 0 }}%</strong></article>
+    </div>
+
+    <div class="charts-grid">
+        <article class="chart-card wide">
+            <div class="chart-head">
+                <div><h2>Visits over time</h2><p>Line chart, перемикач 7 / 30 днів.</p></div>
+                <div class="period-switch" aria-label="Visits period"><button class="active" type="button" data-visits-period="7">7 днів</button><button type="button" data-visits-period="30">30 днів</button></div>
+            </div>
+            <div class="chart-canvas-wrap"><canvas id="visitsChart"></canvas></div>
+        </article>
+
+        <article class="chart-card side">
+            <div class="chart-head"><div><h2>Traffic sources</h2><p>Google, Instagram, Telegram, Direct, Facebook, Unknown.</p></div></div>
+            <div class="chart-canvas-wrap"><canvas id="sourcesChart"></canvas></div>
+        </article>
+
+        <article class="chart-card wide">
+            <div class="chart-head"><div><h2>Leads per day</h2><p>Daily lead form volume за останні 30 днів.</p></div></div>
+            <div class="chart-canvas-wrap"><canvas id="leadsChart"></canvas></div>
+        </article>
+
+        <article class="chart-card side">
+            <div class="chart-head"><div><h2>Conversion funnel</h2><p>Site Visit → CTA → Telegram → /start → Lead.</p></div></div>
+            <div class="funnel-list" id="funnelList"></div>
+        </article>
+
+        <article class="chart-card full">
+            <div class="chart-head"><div><h2>Demo performance</h2><p>demo-sto, demo-tow, demo-parts, demo-electric, demo-shynomontag: visits / Telegram clicks / leads.</p></div></div>
+            <div class="chart-canvas-wrap"><canvas id="demoChart"></canvas></div>
+        </article>
     </div>
 </section>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script>
+    const analyticsData = {{ chart_data|tojson }};
+
+    if (typeof Chart === 'undefined') {
+        document.querySelectorAll('.chart-canvas-wrap').forEach((node) => {
+            node.innerHTML = '<p class="crm-muted">Chart.js не завантажився. Перевірте мережу або CDN.</p>';
+        });
+    } else {
+    const cssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    const colors = {
+        text: cssVar('--text'),
+        muted: cssVar('--muted'),
+        border: cssVar('--border'),
+        primary: cssVar('--primary'),
+        accent: cssVar('--accent'),
+        warning: cssVar('--warning'),
+        danger: cssVar('--danger'),
+    };
+
+    Chart.defaults.color = colors.muted;
+    Chart.defaults.borderColor = colors.border;
+    Chart.defaults.font.family = 'Inter, system-ui, sans-serif';
+    Chart.defaults.plugins.legend.labels.usePointStyle = true;
+    Chart.defaults.responsive = true;
+    Chart.defaults.maintainAspectRatio = false;
+
+    const lineGradient = (ctx) => {
+        const gradient = ctx.chart.ctx.createLinearGradient(0, 0, 0, 260);
+        gradient.addColorStop(0, 'rgba(37, 215, 255, .28)');
+        gradient.addColorStop(1, 'rgba(37, 215, 255, 0)');
+        return gradient;
+    };
+
+    const visitsCtx = document.getElementById('visitsChart');
+    const visitsChart = new Chart(visitsCtx, {
+        type: 'line',
+        data: {
+            labels: analyticsData.visits7.labels,
+            datasets: [{
+                label: 'Visits',
+                data: analyticsData.visits7.values,
+                borderColor: colors.primary,
+                backgroundColor: lineGradient,
+                fill: true,
+                tension: .38,
+                pointRadius: 3,
+                pointHoverRadius: 5,
+            }],
+        },
+        options: { scales: { y: { beginAtZero: true, ticks: { precision: 0 } }, x: { grid: { display: false } } } },
+    });
+
+    document.querySelectorAll('[data-visits-period]').forEach((button) => {
+        button.addEventListener('click', () => {
+            document.querySelectorAll('[data-visits-period]').forEach((node) => node.classList.remove('active'));
+            button.classList.add('active');
+            const key = button.dataset.visitsPeriod === '30' ? 'visits30' : 'visits7';
+            visitsChart.data.labels = analyticsData[key].labels;
+            visitsChart.data.datasets[0].data = analyticsData[key].values;
+            visitsChart.update();
+        });
+    });
+
+    new Chart(document.getElementById('leadsChart'), {
+        type: 'bar',
+        data: {
+            labels: analyticsData.leads30.labels,
+            datasets: [{ label: 'Leads', data: analyticsData.leads30.values, backgroundColor: 'rgba(52, 245, 166, .55)', borderColor: colors.accent, borderWidth: 1, borderRadius: 8 }],
+        },
+        options: { scales: { y: { beginAtZero: true, ticks: { precision: 0 } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } } },
+    });
+
+    new Chart(document.getElementById('sourcesChart'), {
+        type: 'doughnut',
+        data: {
+            labels: analyticsData.sources.labels,
+            datasets: [{ data: analyticsData.sources.values, backgroundColor: ['#25d7ff', '#34f5a6', '#8b5cf6', '#64748b', '#3b82f6', '#fbbf24'], borderColor: 'rgba(7, 17, 31, .8)', borderWidth: 2 }],
+        },
+        options: { cutout: '66%', plugins: { legend: { position: 'bottom' } } },
+    });
+
+    new Chart(document.getElementById('demoChart'), {
+        type: 'bar',
+        data: {
+            labels: analyticsData.demos.labels,
+            datasets: [
+                { label: 'Visits', data: analyticsData.demos.visits, backgroundColor: 'rgba(37, 215, 255, .55)', borderRadius: 8 },
+                { label: 'Telegram clicks', data: analyticsData.demos.telegramClicks, backgroundColor: 'rgba(52, 245, 166, .55)', borderRadius: 8 },
+                { label: 'Leads', data: analyticsData.demos.leads, backgroundColor: 'rgba(251, 191, 36, .62)', borderRadius: 8 },
+            ],
+        },
+        options: { indexAxis: 'y', scales: { x: { beginAtZero: true, ticks: { precision: 0 } }, y: { grid: { display: false } } } },
+    });
+
+    const funnelMax = Math.max(...analyticsData.funnel.values, 1);
+    document.getElementById('funnelList').innerHTML = analyticsData.funnel.labels.map((label, index) => {
+        const value = analyticsData.funnel.values[index] || 0;
+        const width = Math.max(4, Math.round((value / funnelMax) * 100));
+        return `<div class="funnel-step"><span class="funnel-label">${label}</span><span class="funnel-track"><span class="funnel-fill" style="--width:${width}%"></span></span><span class="funnel-value">${value}</span></div>`;
+    }).join('');
+    }
+</script>
 {% endblock %}

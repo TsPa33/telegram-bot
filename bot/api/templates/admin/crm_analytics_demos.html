@@ -1,11 +1,17 @@
 {% extends "admin/crm_base.html" %}
 {% block title %}Аналітика демо{% endblock %}
-{% block head %}<style>.table{width:100%;border-collapse:collapse;margin-top:18px}.table th,.table td{padding:12px;border-bottom:1px solid var(--border);text-align:left}.table th{color:var(--muted);font-size:12px;text-transform:uppercase}</style>{% endblock %}
 {% block content %}
 <section class="crm-panel">
-<h1 class="crm-title">Аналітика демо</h1><p class="crm-muted"><a href="/admin/crm/analytics">← Аналітика</a></p>
-<table class="table"><thead><tr><th>Демо</th><th>Перегляди</th><th>Натискань CTA</th><th>Заявки</th><th>Переходів у Telegram</th><th>Запусків Telegram</th></tr></thead><tbody>
-{% for row in demos %}<tr><td>{{ row.subdomain }}</td><td>{{ row.views }}</td><td>{{ row.cta_clicks }}</td><td>{{ row.leads }}</td><td>{{ row.telegram_clicks }}</td><td>{{ row.telegram_starts }}</td></tr>{% else %}<tr><td colspan="6">Дані відсутні</td></tr>{% endfor %}
-</tbody></table>
+    <span class="crm-eyebrow">Analytics detail</span>
+    <h1 class="crm-title">Аналітика демо</h1>
+    <p class="crm-muted"><a href="/admin/crm/analytics">← Аналітика</a></p>
+    <div class="table-wrap" style="margin-top:18px">
+        <table style="min-width: 860px">
+            <thead><tr><th>Демо</th><th>Перегляди</th><th>Натискань CTA</th><th>Заявки</th><th>Переходів у Telegram</th><th>Запусків Telegram</th></tr></thead>
+            <tbody>
+            {% for row in demos %}<tr><td>{{ row.subdomain }}</td><td>{{ row.views }}</td><td>{{ row.cta_clicks }}</td><td>{{ row.leads }}</td><td>{{ row.telegram_clicks }}</td><td>{{ row.telegram_starts }}</td></tr>{% else %}<tr><td colspan="6">Дані відсутні</td></tr>{% endfor %}
+            </tbody>
+        </table>
+    </div>
 </section>
 {% endblock %}
