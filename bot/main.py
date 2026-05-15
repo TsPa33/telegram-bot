@@ -13,6 +13,7 @@ from redis.asyncio import from_url
 
 from bot.config import BOT_TOKEN
 from bot.database.pool import init_pool
+from bot.database import pool as pool_module
 from bot.database.models import create_tables
 
 from bot.handlers.start import router as start_router
@@ -63,25 +64,39 @@ async def run_bot():
     await init_pool()
     await create_tables()
 
+    lock_conn = await pool_module.pool.acquire()
+    got_lock = await lock_conn.fetchval("SELECT pg_try_advisory_lock($1)", 2026051501)
+    if not got_lock:
+        logger.warning("Telegram polling is already running in another process; skipping bot startup here")
+        await pool_module.pool.release(lock_conn)
+        return
+
     dp = Dispatcher(storage=await get_storage())
     bot = Bot(token=BOT_TOKEN)
 
-    await bot.delete_webhook(drop_pending_updates=True)
+    try:
+        await bot.delete_webhook(drop_pending_updates=True)
 
-    dp.callback_query.middleware(CallbackAnswerMiddleware())
-    dp.errors.register(global_error_handler)
+        dp.callback_query.middleware(CallbackAnswerMiddleware())
+        dp.errors.register(global_error_handler)
 
-    # ✅ ЄДИНА ПРАВИЛЬНА СХЕМА ROUTERS
-    dp.include_router(start_router)
-    dp.include_router(support_router)
-    dp.include_router(seller_router)  # ← тут вже підключені cms + media
-    dp.include_router(admin_router)
-    dp.include_router(buyer_router)
-    dp.include_router(router)
+        # ✅ ЄДИНА ПРАВИЛЬНА СХЕМА ROUTERS
+        dp.include_router(start_router)
+        dp.include_router(support_router)
+        dp.include_router(seller_router)  # ← тут вже підключені cms + media
+        dp.include_router(admin_router)
+        dp.include_router(buyer_router)
+        dp.include_router(router)
 
-    logger.info("🚀 BOT STARTED")
+        logger.info("🚀 BOT STARTED")
 
-    await dp.start_polling(bot)
+        await dp.start_polling(bot)
+    finally:
+        await bot.session.close()
+        try:
+            await lock_conn.execute("SELECT pg_advisory_unlock($1)", 2026051501)
+        finally:
+            await pool_module.pool.release(lock_conn)
 
 
 async def run_api():
