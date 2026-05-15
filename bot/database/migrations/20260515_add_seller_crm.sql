@@ -1,3 +1,11 @@
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS product_type TEXT NOT NULL DEFAULT 'garage';
+
+UPDATE payments
+SET product_type = product
+WHERE product IS NOT NULL
+  AND product_type = 'garage'
+  AND product <> 'garage';
+
 ALTER TABLE sellers ADD COLUMN IF NOT EXISTS crm_enabled BOOLEAN NOT NULL DEFAULT FALSE;
 
 CREATE TABLE IF NOT EXISTS seller_crm_subscriptions (

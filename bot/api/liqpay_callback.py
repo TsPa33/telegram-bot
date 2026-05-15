@@ -2,6 +2,7 @@ from fastapi import APIRouter, Request, HTTPException
 import base64
 import json
 import hashlib
+import logging
 from datetime import datetime
 import pytz
 
@@ -12,6 +13,8 @@ from bot.database.base import execute, fetchrow
 from bot.services.domain_service import build_site_url
 from bot.config import SELLER_CRM_BASE_URL
 from bot.services.seller_crm import SELLER_CRM_PRODUCT, SELLER_CRM_SUBSCRIPTION_DAYS
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -33,7 +36,7 @@ def verify_signature(data: str, signature: str | None) -> bool:
 @router.post("/liqpay/callback")
 async def liqpay_callback(request: Request):
     try:
-        print("🔥 CALLBACK HIT")
+        logger.info("LIQPAY_CALLBACK_HIT")
 
         form = await request.form()
         data = form.get("data")
@@ -58,7 +61,7 @@ async def liqpay_callback(request: Request):
 
         payment = await fetchrow(
             """
-            SELECT id, seller_id, amount, status, product
+            SELECT id, seller_id, amount, status, COALESCE(product_type, product) AS product
             FROM payments
             WHERE order_id = $1
             """,
@@ -66,6 +69,7 @@ async def liqpay_callback(request: Request):
         )
 
         if not payment:
+            logger.warning("LIQPAY_CALLBACK_PAYMENT_NOT_FOUND order_id=%s", order_id)
             return {"ok": True}
 
         await execute(
@@ -83,7 +87,7 @@ async def liqpay_callback(request: Request):
         except Exception:
             return {"ok": True}
 
-        product = payment.get("product", "garage")
+        product = payment.get("product") or "garage"
 
         slots_map = {
             99: 1,
@@ -209,5 +213,5 @@ async def liqpay_callback(request: Request):
         return {"ok": True}
 
     except Exception as e:
-        print(f"❌ CALLBACK ERROR: {e}")
+        logger.exception("LIQPAY_CALLBACK_ERROR")
         raise HTTPException(status_code=500, detail=str(e))

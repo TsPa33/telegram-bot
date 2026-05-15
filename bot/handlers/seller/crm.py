@@ -1,3 +1,5 @@
+import logging
+
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
@@ -21,6 +23,8 @@ from bot.services.seller_crm import (
     validate_crm_slug,
 )
 from bot.states.seller_states import SellerCrmStates
+
+logger = logging.getLogger(__name__)
 
 router = Router()
 liqpay = LiqPayService(LIQPAY_PUBLIC_KEY, LIQPAY_PRIVATE_KEY)
@@ -101,17 +105,30 @@ async def seller_crm_back(callback: CallbackQuery):
 
 @router.callback_query(F.data == "seller_crm:buy")
 async def seller_crm_buy(callback: CallbackQuery):
-    seller = await get_seller_by_telegram_id(callback.from_user.id)
-    if not seller:
-        await callback.answer("Продавця не знайдено", show_alert=True)
-        return
+    logger.info("CRM_PAYMENT_BUTTON_CLICKED telegram_id=%s", callback.from_user.id)
 
-    payment = await liqpay.create_payment(
-        amount=SELLER_CRM_MONTHLY_PRICE_UAH,
-        server_url=LIQPAY_CALLBACK_URL,
-        seller_id=seller["id"],
-        product=SELLER_CRM_PRODUCT,
-    )
+    try:
+        seller = await get_seller_by_telegram_id(callback.from_user.id)
+        if not seller:
+            logger.warning("CRM_PAYMENT_SELLER_NOT_FOUND telegram_id=%s", callback.from_user.id)
+            await callback.answer("Продавця не знайдено", show_alert=True)
+            return
+
+        logger.info("CRM_PAYMENT_SELLER_RESOLVED seller_id=%s", seller["id"])
+
+        payment = await liqpay.create_payment(
+            amount=SELLER_CRM_MONTHLY_PRICE_UAH,
+            server_url=LIQPAY_CALLBACK_URL,
+            seller_id=seller["id"],
+            product=SELLER_CRM_PRODUCT,
+        )
+    except Exception:
+        logger.exception(
+            "CRM_PAYMENT_CREATE_FAILED telegram_id=%s",
+            callback.from_user.id,
+        )
+        await callback.answer("Не вдалося створити оплату CRM. Спробуйте ще раз.", show_alert=True)
+        return
 
     kb = InlineKeyboardBuilder()
     kb.button(text="💳 Оплатити CRM", url=payment["url"])
