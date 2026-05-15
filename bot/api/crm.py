@@ -340,8 +340,8 @@ async def crm_dashboard(request: Request):
     if can_view_analytics(admin):
         cards.append(
             {
-                "title": "📊 Analytics",
-                "text": "Internal first-party analytics",
+                "title": "📊 Аналітика",
+                "text": "Внутрішня аналітика першої сторони",
                 "url": "/admin/crm/analytics",
             }
         )
