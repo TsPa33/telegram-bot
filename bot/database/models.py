@@ -258,6 +258,7 @@ async def create_tables():
         amount NUMERIC(10,2) NOT NULL,
         status TEXT NOT NULL DEFAULT 'pending',
         product TEXT NOT NULL DEFAULT 'garage',
+        product_type TEXT NOT NULL DEFAULT 'garage',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
     """)
@@ -602,4 +603,12 @@ async def create_tables():
     """)
 
     await execute("ALTER TABLE payments ADD COLUMN IF NOT EXISTS product TEXT DEFAULT 'garage';")
+    await execute("ALTER TABLE payments ADD COLUMN IF NOT EXISTS product_type TEXT NOT NULL DEFAULT 'garage';")
+    await execute("""
+        UPDATE payments
+        SET product_type = product
+        WHERE product IS NOT NULL
+          AND product_type = 'garage'
+          AND product <> 'garage'
+    """)
     await execute("ALTER TABLE services ADD COLUMN IF NOT EXISTS price INTEGER;")

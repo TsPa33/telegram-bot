@@ -1,3 +1,5 @@
+import logging
+
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
@@ -5,8 +7,10 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from bot.config import LIQPAY_CALLBACK_URL, LIQPAY_PRIVATE_KEY, LIQPAY_PUBLIC_KEY, SELLER_CRM_BASE_URL
 from bot.database.repositories.seller_crm_repo import (
+    create_crm_subscription,
     get_active_crm_subscription,
     get_crm_account_by_seller,
+    get_successful_crm_payment_without_subscription,
     seller_has_active_crm,
     upsert_crm_account,
 )
@@ -16,11 +20,14 @@ from bot.services.liqpay_service import LiqPayService
 from bot.services.seller_crm import (
     SELLER_CRM_MONTHLY_PRICE_UAH,
     SELLER_CRM_PRODUCT,
+    SELLER_CRM_SUBSCRIPTION_DAYS,
     hash_crm_password,
     validate_crm_password,
     validate_crm_slug,
 )
 from bot.states.seller_states import SellerCrmStates
+
+logger = logging.getLogger(__name__)
 
 router = Router()
 liqpay = LiqPayService(LIQPAY_PUBLIC_KEY, LIQPAY_PRIVATE_KEY)
@@ -33,7 +40,7 @@ def _crm_url(slug: str | None = None) -> str:
 
 def _landing_kb(has_active_subscription: bool = False, account_slug: str | None = None):
     kb = InlineKeyboardBuilder()
-    kb.button(text="👀 Переглянути демо", url=f"{_crm_url()}/crm/seller/demo")
+    kb.button(text="👀 Переглянути демо", url="https://worker-production-e30f.up.railway.app/crm/seller/demo")
     if account_slug:
         kb.button(text="🚀 Відкрити CRM", url=_crm_url(account_slug))
     elif has_active_subscription:
@@ -101,17 +108,30 @@ async def seller_crm_back(callback: CallbackQuery):
 
 @router.callback_query(F.data == "seller_crm:buy")
 async def seller_crm_buy(callback: CallbackQuery):
-    seller = await get_seller_by_telegram_id(callback.from_user.id)
-    if not seller:
-        await callback.answer("Продавця не знайдено", show_alert=True)
-        return
+    logger.info("CRM_PAYMENT_BUTTON_CLICKED telegram_id=%s", callback.from_user.id)
 
-    payment = await liqpay.create_payment(
-        amount=SELLER_CRM_MONTHLY_PRICE_UAH,
-        server_url=LIQPAY_CALLBACK_URL,
-        seller_id=seller["id"],
-        product=SELLER_CRM_PRODUCT,
-    )
+    try:
+        seller = await get_seller_by_telegram_id(callback.from_user.id)
+        if not seller:
+            logger.warning("CRM_PAYMENT_SELLER_NOT_FOUND telegram_id=%s", callback.from_user.id)
+            await callback.answer("Продавця не знайдено", show_alert=True)
+            return
+
+        logger.info("CRM_PAYMENT_SELLER_RESOLVED seller_id=%s", seller["id"])
+
+        payment = await liqpay.create_payment(
+            amount=SELLER_CRM_MONTHLY_PRICE_UAH,
+            server_url=LIQPAY_CALLBACK_URL,
+            seller_id=seller["id"],
+            product=SELLER_CRM_PRODUCT,
+        )
+    except Exception:
+        logger.exception(
+            "CRM_PAYMENT_CREATE_FAILED telegram_id=%s",
+            callback.from_user.id,
+        )
+        await callback.answer("Не вдалося створити оплату CRM. Спробуйте ще раз.", show_alert=True)
+        return
 
     kb = InlineKeyboardBuilder()
     kb.button(text="💳 Оплатити CRM", url=payment["url"])
@@ -136,6 +156,30 @@ async def seller_crm_setup(callback: CallbackQuery, state: FSMContext):
         return
 
     subscription = await get_active_crm_subscription(seller["id"])
+    if not subscription:
+        successful_payment = await get_successful_crm_payment_without_subscription(
+            seller["id"],
+            SELLER_CRM_PRODUCT,
+        )
+        if successful_payment:
+            try:
+                subscription = await create_crm_subscription(
+                    seller["id"],
+                    successful_payment["id"],
+                    days=SELLER_CRM_SUBSCRIPTION_DAYS,
+                )
+            except Exception:
+                logger.exception(
+                    "CRM_SUBSCRIPTION_RECOVERY_FAILED seller_id=%s payment_id=%s",
+                    seller["id"],
+                    successful_payment["id"],
+                )
+                await callback.answer(
+                    "Оплату знайдено, але CRM ще не активувалась. Напишіть у підтримку.",
+                    show_alert=True,
+                )
+                return
+
     if not subscription:
         await callback.answer("CRM активується після успішної оплати", show_alert=True)
         return

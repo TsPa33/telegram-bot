@@ -1,13 +1,15 @@
 import base64
 import json
 import hashlib
+import logging
 import uuid
 
 from bot.database.repositories.payment_repo import create_payment
 from bot.services.site_packages import format_site_package_title
 
 
-print("🔥 NEW LIQPAY SERVICE LOADED")
+logger = logging.getLogger(__name__)
+logger.info("🔥 NEW LIQPAY SERVICE LOADED")
 
 
 # ===== DESCRIPTIONS =====
@@ -62,11 +64,16 @@ class LiqPayService:
     ):
         order_id = str(uuid.uuid4())
 
-        print("CREATE PAYMENT SELLER_ID:", seller_id)
-        print("PRODUCT:", product)
+        logger.info(
+            "CREATE_PAYMENT_REQUEST seller_id=%s product_type=%s amount=%s order_id=%s",
+            seller_id,
+            product,
+            amount,
+            order_id,
+        )
 
         # ===== SAVE TO DB =====
-        await create_payment(
+        payment = await create_payment(
             seller_id=seller_id,
             order_id=order_id,
             amount=amount,
@@ -92,8 +99,13 @@ class LiqPayService:
         json_data = json.dumps(payload)
         data = base64.b64encode(json_data.encode()).decode()
         signature = self._sign(data)
+        url = f"{self.api_url}?data={data}&signature={signature}"
+
+        if product == "seller_crm":
+            logger.info("CRM_PAYMENT_ROW_CREATED order_id=%s", payment["order_id"])
+            logger.info("CRM_LIQPAY_URL_CREATED order_id=%s", order_id)
 
         return {
-            "url": f"{self.api_url}?data={data}&signature={signature}",
+            "url": url,
             "order_id": order_id
         }
