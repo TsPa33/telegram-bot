@@ -361,3 +361,66 @@ async def update_demo_site_config(site_id: int, config: dict) -> bool:
         site_id,
     )
     return row is not None
+
+# ================= SELLER CRM SAFE DRAFT HELPERS =================
+
+async def update_site_config_draft(seller_id: int, patch: dict) -> bool:
+    """Safely merge a CRM patch into config_draft only.
+
+    This intentionally leaves config_live untouched so the CRM can offer an
+    explicit draft -> live publish flow while Telegram CMS keeps using the
+    legacy update_site_config behaviour.
+    """
+    async with transaction() as conn:
+        current = await conn.fetchrow(
+            """
+            SELECT config_draft, config_live
+            FROM seller_sites
+            WHERE seller_id = $1
+            FOR UPDATE
+            """,
+            seller_id,
+        )
+
+        if not current:
+            return False
+
+        raw_config = current.get("config_draft") or current.get("config_live") or {}
+        if isinstance(raw_config, str):
+            try:
+                raw_config = json.loads(raw_config)
+            except Exception:
+                raw_config = {}
+
+        merged = merge_with_default(raw_config if isinstance(raw_config, dict) else {})
+        incoming = patch if isinstance(patch, dict) else {}
+        merged = _deep_merge(merged, incoming)
+        merged = merge_with_default(merged)
+
+        row = await conn.fetchrow(
+            """
+            UPDATE seller_sites
+            SET config_draft = $2::jsonb
+            WHERE seller_id = $1
+            RETURNING id
+            """,
+            seller_id,
+            json.dumps(merged),
+        )
+        return row is not None
+
+
+async def replace_site_config_draft(seller_id: int, config: dict) -> bool:
+    """Replace draft with a fully-normalized config under seller ownership."""
+    normalized = merge_with_default(config or {})
+    row = await fetchrow(
+        """
+        UPDATE seller_sites
+        SET config_draft = $2::jsonb
+        WHERE seller_id = $1
+        RETURNING id
+        """,
+        seller_id,
+        json.dumps(normalized),
+    )
+    return row is not None

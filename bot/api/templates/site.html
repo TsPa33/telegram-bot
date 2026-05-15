@@ -15,7 +15,9 @@
 {% set reviews = config.get('reviews', {}) %}
 
 {% include "components/header.html" %}
+{% if modules.get('hero', True) %}
 {% include "components/hero.html" with context %}
+{% endif %}
 
 <main>
 
@@ -61,7 +63,9 @@
 
 </main>
 
+{% if modules.get('footer', True) %}
 {% include "components/footer.html" %}
+{% endif %}
 
 <button class="callback-uiverse-btn" type="button" data-callback-fab aria-label="Передзвоніть мені" aria-expanded="false">
     <span class="callback-icon" aria-hidden="true">
