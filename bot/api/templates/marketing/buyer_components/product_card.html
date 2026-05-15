@@ -1,0 +1,47 @@
+<article class="buyer-card"
+         tabindex="0"
+         role="button"
+         aria-label="Відкрити {{ car.brand }} {{ car.model }}"
+         data-marketplace-card
+         data-item-type="product"
+         data-item-id="{{ car.id }}"
+         data-title="{{ (car.brand ~ ' ' ~ car.model)|e }}"
+         data-category="Авто / запчастини"
+         data-brand="{{ car.brand|default('', true)|e }}"
+         data-model="{{ car.model|default('', true)|e }}"
+         data-condition="{{ car.condition|default('Уточнюйте у продавця', true)|e }}"
+         data-city="{{ car.city|default('', true)|e }}"
+         data-seller="{{ (car.shop_name or car.name or car.username or 'Продавець CarPot')|e }}"
+         data-website="{{ car.website|default('', true)|e }}"
+         data-phone="{{ car.phone|default('', true)|e }}"
+         data-username="{{ car.username|default('', true)|e }}"
+         data-description="{{ (car.description or 'Опис пропозиції можна уточнити у продавця.')|e }}"
+         data-price="{{ car.price|default('', true)|e }}"
+         data-verified="{{ 'true' if car.is_verified else 'false' }}">
+    <div class="buyer-card-media">
+        <div class="buyer-card-icon" aria-hidden="true">🚗</div>
+        <div class="buyer-badge-stack">
+            {% if car.is_verified %}<span class="buyer-pill buyer-trust-pill">✓ Перевірений</span>{% endif %}
+            <span class="buyer-pill">{{ car.brand or 'Авто' }}</span>
+            {% if car.city %}<span class="buyer-pill">📍 {{ car.city }}</span>{% endif %}
+        </div>
+    </div>
+    <div class="buyer-card-body">
+        <span class="eyebrow">Авто / запчастини</span>
+        <h3>{{ car.brand }} {{ car.model }}</h3>
+        <p class="buyer-card-copy">{{ car.description or 'Опис пропозиції можна уточнити у продавця.' }}</p>
+        <div class="buyer-card-meta">
+            <span class="buyer-pill">{{ car.shop_name or car.name or car.username or 'Продавець CarPot' }}</span>
+            <span class="buyer-pill">👁 {{ car.views or 0 }}</span>
+        </div>
+        <div class="buyer-price-row">
+            <strong class="buyer-price">{% if car.price %}{{ car.price }} грн{% else %}Ціна за запитом{% endif %}</strong>
+            <span class="buyer-pill">Швидкий контакт</span>
+        </div>
+        <div class="buyer-card-actions">
+            <button class="btn btn-secondary buyer-favorite-button" type="button" data-favorite-card aria-pressed="false">♡ В обране</button>
+            {% if car.phone %}<a class="btn btn-primary" href="tel:{{ car.phone }}">Подзвонити</a>{% endif %}
+            <button class="btn btn-secondary" type="button" data-open-lead-modal>Заявка</button>
+        </div>
+    </div>
+</article>

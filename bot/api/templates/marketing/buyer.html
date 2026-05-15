@@ -12,6 +12,7 @@
             </p>
             <div class="hero-actions">
                 <a class="btn btn-primary" href="/catalog">Перейти в каталог</a>
+                <button class="btn btn-secondary" type="button" data-open-lead-modal>Залишити заявку</button>
                 <a class="btn btn-secondary" href="{{ telegram_bot_url }}" target="_blank" rel="noopener">Відкрити Telegram-бот</a>
             </div>
         </div>
@@ -43,8 +44,8 @@
                     <div class="dash-line"></div>
                 </div>
                 <div class="dash-card wide">
-                    <div class="dash-label">Пошук</div>
-                    <div class="dash-value">запчастини · СТО · евакуатор</div>
+                    <div class="dash-label">Збережено</div>
+                    <div class="dash-value"><span data-favorites-count>0</span> в обраному</div>
                 </div>
             </div>
         </div>
@@ -58,23 +59,31 @@
                 <span class="eyebrow">Швидкий старт</span>
                 <h2>Почніть з пошуку</h2>
             </div>
-            <p>Введіть бренд, модель, послугу або місто — покупець переходить на окрему сторінку пошуку без впливу на seller landing.</p>
+            <p>Введіть бренд, модель, послугу або місто — CarPot покаже релевантні авто, запчастини, сервіси та продавців.</p>
         </div>
-        <form class="card" action="/search" method="get" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; align-items:end;">
-            <label>
+        <form class="buyer-search-form buyer-panel" action="/search" method="get">
+            <label class="buyer-field">
                 <span class="dash-label">Що шукаєте</span>
-                <input name="q" type="search" placeholder="Наприклад: BMW, коробка, автоелектрик" style="width:100%; min-height:48px; border-radius:16px; border:1px solid rgba(148,163,184,0.22); background:rgba(255,255,255,0.06); color:var(--text); padding:0 14px;">
+                <input class="buyer-control" name="q" type="search" placeholder="Наприклад: BMW, коробка, автоелектрик">
             </label>
-            <label>
+            <label class="buyer-field">
                 <span class="dash-label">Місто</span>
-                <input name="city" type="text" placeholder="Київ" style="width:100%; min-height:48px; border-radius:16px; border:1px solid rgba(148,163,184,0.22); background:rgba(255,255,255,0.06); color:var(--text); padding:0 14px;">
+                <input class="buyer-control" name="city" type="text" placeholder="Київ">
             </label>
-            <label>
+            <label class="buyer-field">
                 <span class="dash-label">Тип</span>
-                <select name="type" style="width:100%; min-height:48px; border-radius:16px; border:1px solid rgba(148,163,184,0.22); background:rgba(15,23,42,0.92); color:var(--text); padding:0 14px;">
+                <select class="buyer-control" name="type">
                     <option value="all">Усе</option>
                     <option value="cars">Авто / запчастини</option>
                     <option value="services">Послуги</option>
+                </select>
+            </label>
+            <label class="buyer-field">
+                <span class="dash-label">Сценарій</span>
+                <select class="buyer-control" name="intent">
+                    <option value="buy">Купити / замовити</option>
+                    <option value="compare">Порівняти пропозиції</option>
+                    <option value="request">Залишити запит</option>
                 </select>
             </label>
             <button class="btn btn-primary" type="submit">Знайти</button>
@@ -86,24 +95,50 @@
     <div class="container">
         <div class="section-head">
             <div>
-                <span class="eyebrow">Як це працює</span>
-                <h2>Покупець рухається простим сценарієм</h2>
+                <span class="eyebrow">Сценарій покупки</span>
+                <h2>Заявка покупця → пропозиції продавців → найкращий вибір</h2>
             </div>
-            <p>Без складних кабінетів: каталог і пошук ведуть до контакту з продавцем або в Telegram-бот.</p>
+            <p>Опишіть потребу один раз: CarPot допомагає зібрати важливі деталі, показати релевантні пропозиції та швидко перейти до продавця або сервісу.</p>
         </div>
-        <div class="grid-3">
-            <article class="card">
-                <h3>1. Формує потребу</h3>
-                <p>Покупець шукає авто, запчастину, СТО, шиномонтаж, евакуатор або іншу автомобільну послугу.</p>
-            </article>
-            <article class="card">
-                <h3>2. Переглядає пропозиції</h3>
-                <p>Окремі buyer-сторінки показують активні авто, послуги й продавців з міста покупця.</p>
-            </article>
-            <article class="card">
-                <h3>3. Переходить до контакту</h3>
-                <p>Покупець відкриває сайт, телефон, Telegram або продовжує діалог у боті CarPot.</p>
-            </article>
+        <div class="workflow-market">
+            <div class="buyer-panel workflow-visual">
+                <div>
+                    <span class="eyebrow">Живий запит</span>
+                    <h3>Потрібна фара BMW F10 у Києві</h3>
+                    <p class="lead">VIN, фото, бюджет і місто збираються в одному акуратному запиті.</p>
+                </div>
+                <div class="workflow-request-card">
+                    <div class="buyer-card-meta">
+                        <span class="buyer-pill">Київ</span>
+                        <span class="buyer-pill">Запчастини</span>
+                        <span class="buyer-pill">VIN optional</span>
+                    </div>
+                    <p style="margin: 14px 0 0; color: var(--muted);">Майбутній етап: продавці зможуть запропонувати ціну, наявність і доставку.</p>
+                </div>
+            </div>
+            <div class="workflow-steps">
+                <article class="workflow-step">
+                    <div class="workflow-index">1</div>
+                    <div>
+                        <h3>Залиште запит</h3>
+                        <p>Покупець описує деталь, авто або послугу, додає місто, телефон, VIN і фото за потреби.</p>
+                    </div>
+                </article>
+                <article class="workflow-step">
+                    <div class="workflow-index">2</div>
+                    <div>
+                        <h3>Продавці отримують заявку</h3>
+                        <p>Запит зберігає ключові деталі, щоб продавці й сервіси могли швидше підготувати відповідь.</p>
+                    </div>
+                </article>
+                <article class="workflow-step">
+                    <div class="workflow-index">3</div>
+                    <div>
+                        <h3>Оберіть кращу пропозицію</h3>
+                        <p>Порівняйте продавця, місто, сайт, телефон, опис і орієнтир ціни в одному marketplace UX.</p>
+                    </div>
+                </article>
+            </div>
         </div>
     </div>
 </section>
@@ -113,26 +148,22 @@
         <div class="section-head">
             <div>
                 <span class="eyebrow">Останні пропозиції</span>
-                <h2>Каталог для покупця</h2>
+                <h2>Інтерактивний каталог для покупця</h2>
             </div>
-            <p>Дані беруться тільки для buyer routes і не передаються у seller landing.</p>
+            <p>Відкривайте картки, зберігайте в обране, телефонуйте продавцю або залишайте заявку на підбір.</p>
         </div>
-        <div class="grid-3">
+        <div class="favorites-bar buyer-panel">
+            <span>У цьому браузері збережено: <strong><span data-favorites-count>0</span></strong></span>
+            <button class="btn btn-secondary" type="button" data-open-lead-modal>Створити запит</button>
+        </div>
+        {% set filter_scope = 'home-marketplace' %}
+        {% include "marketing/buyer_components/filter_bar.html" %}
+        <div class="buyer-market-grid" data-filter-group="home-marketplace">
             {% for car in marketplace_cars[:3] %}
-            <article class="card">
-                <span class="eyebrow">Авто / запчастини</span>
-                <h3>{{ car.brand }} {{ car.model }}</h3>
-                <p>{{ car.description or 'Активна пропозиція продавця CarPot.' }}</p>
-                <p><strong>{{ car.shop_name or car.name or 'Продавець CarPot' }}</strong>{% if car.city %} · {{ car.city }}{% endif %}</p>
-            </article>
+                {% include "marketing/buyer_components/product_card.html" %}
             {% endfor %}
             {% for service in marketplace_services[:3] %}
-            <article class="card">
-                <span class="eyebrow">Послуга</span>
-                <h3>{{ service.title }}</h3>
-                <p>{{ service.description or service.category }}</p>
-                <p><strong>{{ service.shop_name or service.name or 'Сервіс CarPot' }}</strong>{% if service.city %} · {{ service.city }}{% endif %}</p>
-            </article>
+                {% include "marketing/buyer_components/service_card.html" %}
             {% endfor %}
         </div>
         <div class="hero-actions">
@@ -148,12 +179,14 @@
         <div class="safe-start-content">
             <span class="eyebrow">Telegram-first</span>
             <h2>Потрібна допомога з підбором?</h2>
-            <p class="lead">Відкрийте CarPot у Telegram і залиште запит — екосистема веде покупця до потрібного продавця або послуги.</p>
+            <p class="lead">Відкрийте CarPot у Telegram або залиште web-заявку — екосистема веде покупця до потрібного продавця або послуги.</p>
         </div>
         <div class="safe-start-actions">
-            <a class="btn btn-primary" href="{{ telegram_bot_url }}" target="_blank" rel="noopener">Перейти в Telegram</a>
+            <button class="btn btn-primary" type="button" data-open-lead-modal>Залишити заявку</button>
+            <a class="btn btn-secondary" href="{{ telegram_bot_url }}" target="_blank" rel="noopener">Перейти в Telegram</a>
             <a class="btn btn-secondary" href="/seller">Я продавець</a>
         </div>
     </div>
 </section>
+{% include "marketing/buyer_components/assets.html" %}
 {% endblock %}

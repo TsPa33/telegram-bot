@@ -5,9 +5,10 @@
     <div class="container">
         <span class="eyebrow">Авто та запчастини</span>
         <h1>Активні пропозиції продавців CarPot</h1>
-        <p class="lead">Окрема buyer-сторінка для перегляду авто й пропозицій продавців без зміни seller landing.</p>
+        <p class="lead">Інтерактивна buyer-сторінка для перегляду авто й пропозицій продавців: фільтри, детальна картка, обране та заявка на підбір.</p>
         <div class="hero-actions">
             <a class="btn btn-primary" href="/search?type=cars">Пошук авто / запчастин</a>
+            <button class="btn btn-secondary" type="button" data-open-lead-modal>Залишити заявку</button>
             <a class="btn btn-secondary" href="/catalog">Весь каталог</a>
         </div>
     </div>
@@ -18,35 +19,37 @@
         <div class="section-head">
             <div>
                 <span class="eyebrow">{{ marketplace_summary.cars_count }} активних</span>
-                <h2>Каталог авто</h2>
+                <h2>Каталог авто та запчастин</h2>
             </div>
-            <p>Read-only вибірка з активних seller_cars для buyer ecosystem.</p>
+            <p>Натисніть картку, щоб відкрити cinematic detail modal із продавцем, містом, описом, телефоном, сайтом і дією “В обране”.</p>
         </div>
-        <div class="grid-3">
+        <div class="favorites-bar buyer-panel">
+            <span>Збережені авто / запчастини: <strong><span data-favorites-count>0</span></strong></span>
+            <button class="btn btn-secondary" type="button" data-open-lead-modal>Запит на підбір</button>
+        </div>
+        {% set filter_scope = 'cars-marketplace' %}
+        {% include "marketing/buyer_components/filter_bar.html" %}
+        <div class="buyer-loading-state buyer-panel" data-loading-state="cars-marketplace">
+            <p>Оновлюємо добірку...</p>
+            <div class="buyer-skeleton-grid" aria-hidden="true"><span class="buyer-skeleton-card"></span><span class="buyer-skeleton-card"></span></div>
+        </div>
+        <div class="buyer-market-grid" data-filter-group="cars-marketplace">
             {% for car in marketplace_cars %}
-            <article class="card">
-                <span class="eyebrow">{{ car.brand }}</span>
-                <h3>{{ car.brand }} {{ car.model }}</h3>
-                <p>{{ car.description or 'Опис пропозиції можна уточнити у продавця CarPot.' }}</p>
-                <p><strong>{{ car.shop_name or car.name or car.username or 'Продавець CarPot' }}</strong>{% if car.city %} · {{ car.city }}{% endif %}</p>
-                <p>Перегляди: {{ car.views or 0 }}</p>
-                <div class="card-actions">
-                    {% if car.website %}<a class="btn btn-secondary" href="{{ car.website }}" target="_blank" rel="noopener">Сайт продавця</a>{% endif %}
-                    {% if car.phone %}<a class="btn btn-primary" href="tel:{{ car.phone }}">Подзвонити</a>{% endif %}
-                </div>
-            </article>
+                {% include "marketing/buyer_components/product_card.html" %}
             {% else %}
-            <article class="card">
+            <article class="buyer-empty-state buyer-panel">
                 <h3>Поки немає активних авто</h3>
-                <p>Спробуйте загальний каталог або залиште запит у Telegram-боті.</p>
-                <a class="btn btn-primary" href="{{ telegram_bot_url }}" target="_blank" rel="noopener">Відкрити бот</a>
+                <p>Спробуйте загальний каталог або залиште запит на підбір.</p>
+                <button class="btn btn-primary" type="button" data-open-lead-modal>Залишити заявку</button>
             </article>
             {% endfor %}
+            <article class="buyer-empty-state buyer-panel buyer-hidden" data-no-results="cars-marketplace"><h3>За цими фільтрами нічого не знайдено</h3><p>Змініть місто, бренд або стан.</p></article>
         </div>
-        <div class="hero-actions">
-            {% if page > 1 %}<a class="btn btn-secondary" href="/cars?page={{ page - 1 }}">Назад</a>{% endif %}
-            <a class="btn btn-secondary" href="/cars?page={{ page + 1 }}">Наступна сторінка</a>
+        <div class="buyer-pagination">
+            {% if page > 1 %}<a class="btn btn-secondary" href="/cars?page={{ page - 1 }}{{ pagination_query }}">Назад</a>{% endif %}
+            <a class="btn btn-secondary" href="/cars?page={{ page + 1 }}{{ pagination_query }}">Показати ще</a>
         </div>
     </div>
 </section>
+{% include "marketing/buyer_components/assets.html" %}
 {% endblock %}

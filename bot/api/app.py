@@ -1,5 +1,7 @@
 import json
 import logging
+import re
+from urllib.parse import urlencode
 
 from aiogram import Bot
 from fastapi import APIRouter, FastAPI, HTTPException, Request, Form
@@ -16,6 +18,7 @@ from bot.database.repositories.seller_repo import get_seller_by_id
 from bot.database.repositories.car_repo import get_cars_by_seller
 from bot.database.repositories.service_repo import get_services_by_seller
 from bot.database.repositories.lead_repo import create_site_lead
+from bot.database.repositories.buyer_lead_repo import create_buyer_lead
 from bot.database.repositories.marketplace_repo import (
     get_featured_sellers,
     get_latest_cars,
@@ -82,6 +85,51 @@ def _short_text(value, max_length: int = 500) -> str | None:
         return None
     return value[:max_length]
 
+
+
+def _normalize_phone(value: str | None) -> str | None:
+    value = _short_text(value, 40)
+    if not value:
+        return None
+    digits = re.sub(r"\D+", "", value)
+    if value.startswith("+") and 9 <= len(digits) <= 15:
+        return f"+{digits}"
+    if len(digits) == 10 and digits.startswith("0"):
+        return f"+38{digits}"
+    if len(digits) == 12 and digits.startswith("380"):
+        return f"+{digits}"
+    if 9 <= len(digits) <= 15:
+        return f"+{digits}"
+    return value
+
+
+def _buyer_filter_context(results: dict | None = None, **overrides) -> dict:
+    results = results or {}
+    selected = {
+        "search_query": results.get("query", overrides.get("q", "")),
+        "selected_city": results.get("city", overrides.get("city", "")),
+        "selected_type": results.get("type", overrides.get("type", "all")),
+        "selected_category": results.get("category", overrides.get("category", "")),
+        "selected_service_type": results.get("service_type", overrides.get("service_type", "")),
+        "selected_brand": results.get("brand", overrides.get("brand", "")),
+        "selected_condition": results.get("condition", overrides.get("condition", "")),
+        "selected_verified": results.get("verified", overrides.get("verified", "")),
+        "selected_sort": results.get("sort", overrides.get("sort", "new")) or "new",
+    }
+    pagination_params = {
+        "q": selected["search_query"],
+        "city": selected["selected_city"],
+        "type": selected["selected_type"],
+        "category": selected["selected_category"],
+        "service_type": selected["selected_service_type"],
+        "brand": selected["selected_brand"],
+        "condition": selected["selected_condition"],
+        "verified": selected["selected_verified"],
+        "sort": selected["selected_sort"],
+    }
+    pagination_query = urlencode({key: value for key, value in pagination_params.items() if value})
+    selected["pagination_query"] = f"&{pagination_query}" if pagination_query else ""
+    return selected
 
 def _detect_client(user_agent: str | None) -> tuple[str, str, str]:
     ua = (user_agent or "").lower()
@@ -251,21 +299,42 @@ async def buyer_home(request: Request):
 
 
 @router.get("/catalog", response_class=HTMLResponse)
-async def buyer_catalog(request: Request, page: int = 1):
+async def buyer_catalog(
+    request: Request,
+    page: int = 1,
+    q: str | None = None,
+    city: str | None = None,
+    category: str | None = None,
+    service_type: str | None = None,
+    brand: str | None = None,
+    condition: str | None = None,
+    verified: str | None = None,
+    sort: str = "new",
+):
     page = max(page, 1)
     limit = 12
     offset = (page - 1) * limit
 
     try:
         summary = await get_marketplace_summary()
-        cars = await get_latest_cars(limit=limit, offset=offset)
-        services = await get_latest_services(limit=limit, offset=offset)
-        sellers = await get_featured_sellers(limit=8)
+        results = await search_marketplace(
+            q=q,
+            city=city,
+            item_type="all",
+            limit=limit,
+            offset=offset,
+            category=category,
+            service_type=service_type,
+            brand=brand,
+            condition=condition,
+            verified=verified,
+            sort=sort,
+        )
+        sellers = results["sellers"] or await get_featured_sellers(limit=8)
     except Exception:
         logger.exception("Failed to load buyer catalog")
         summary = {"cars_count": 0, "services_count": 0, "sellers_count": 0, "cities_count": 0}
-        cars = []
-        services = []
+        results = {"cars": [], "services": [], "sellers": [], "query": q or "", "city": city or "", "type": "all"}
         sellers = []
 
     context = marketing_context(
@@ -276,26 +345,49 @@ async def buyer_catalog(request: Request, page: int = 1):
     )
     context.update({
         "marketplace_summary": summary,
-        "marketplace_cars": cars,
-        "marketplace_services": services,
+        "marketplace_cars": results["cars"],
+        "marketplace_services": results["services"],
         "featured_sellers": sellers,
         "page": page,
         "catalog_type": "all",
+        "filter_action": "/catalog",
     })
+    context.update(_buyer_filter_context(results, type="all"))
     return templates.TemplateResponse("marketing/catalog.html", context)
 
 
 @router.get("/cars", response_class=HTMLResponse)
-async def buyer_cars(request: Request, page: int = 1):
+async def buyer_cars(
+    request: Request,
+    page: int = 1,
+    city: str | None = None,
+    category: str | None = None,
+    brand: str | None = None,
+    condition: str | None = None,
+    verified: str | None = None,
+    sort: str = "new",
+):
     page = max(page, 1)
     limit = 18
     offset = (page - 1) * limit
 
     try:
-        cars = await get_latest_cars(limit=limit, offset=offset)
+        results = await search_marketplace(
+            city=city,
+            item_type="cars",
+            limit=limit,
+            offset=offset,
+            category=category,
+            brand=brand,
+            condition=condition,
+            verified=verified,
+            sort=sort,
+        )
+        cars = results["cars"]
         summary = await get_marketplace_summary()
     except Exception:
         logger.exception("Failed to load buyer cars")
+        results = {"cars": [], "query": "", "city": city or "", "type": "cars"}
         cars = []
         summary = {"cars_count": 0, "services_count": 0, "sellers_count": 0, "cities_count": 0}
 
@@ -305,21 +397,41 @@ async def buyer_cars(request: Request, page: int = 1):
         "Активні авто й пропозиції продавців CarPot з контактами та описами.",
         "/cars",
     )
-    context.update({"marketplace_cars": cars, "marketplace_summary": summary, "page": page})
+    context.update({"marketplace_cars": cars, "marketplace_summary": summary, "page": page, "filter_action": "/cars"})
+    context.update(_buyer_filter_context(results, type="cars"))
     return templates.TemplateResponse("marketing/cars.html", context)
 
 
 @router.get("/services", response_class=HTMLResponse)
-async def buyer_services(request: Request, page: int = 1):
+async def buyer_services(
+    request: Request,
+    page: int = 1,
+    city: str | None = None,
+    category: str | None = None,
+    service_type: str | None = None,
+    verified: str | None = None,
+    sort: str = "new",
+):
     page = max(page, 1)
     limit = 18
     offset = (page - 1) * limit
 
     try:
-        services = await get_latest_services(limit=limit, offset=offset)
+        results = await search_marketplace(
+            city=city,
+            item_type="services",
+            limit=limit,
+            offset=offset,
+            category=category,
+            service_type=service_type,
+            verified=verified,
+            sort=sort,
+        )
+        services = results["services"]
         summary = await get_marketplace_summary()
     except Exception:
         logger.exception("Failed to load buyer services")
+        results = {"services": [], "query": "", "city": city or "", "type": "services"}
         services = []
         summary = {"cars_count": 0, "services_count": 0, "sellers_count": 0, "cities_count": 0}
 
@@ -329,18 +441,43 @@ async def buyer_services(request: Request, page: int = 1):
         "СТО, автоелектрики, шиномонтаж, евакуатори та інші автомобільні послуги в каталозі CarPot.",
         "/services",
     )
-    context.update({"marketplace_services": services, "marketplace_summary": summary, "page": page})
+    context.update({"marketplace_services": services, "marketplace_summary": summary, "page": page, "filter_action": "/services"})
+    context.update(_buyer_filter_context(results, type="services"))
     return templates.TemplateResponse("marketing/services.html", context)
 
 
 @router.get("/search", response_class=HTMLResponse)
-async def buyer_search(request: Request, q: str | None = None, city: str | None = None, type: str = "all", page: int = 1):
+async def buyer_search(
+    request: Request,
+    q: str | None = None,
+    city: str | None = None,
+    type: str = "all",
+    page: int = 1,
+    category: str | None = None,
+    service_type: str | None = None,
+    brand: str | None = None,
+    condition: str | None = None,
+    verified: str | None = None,
+    sort: str = "new",
+):
     page = max(page, 1)
     limit = 12
     offset = (page - 1) * limit
 
     try:
-        results = await search_marketplace(q=q, city=city, item_type=type, limit=limit, offset=offset)
+        results = await search_marketplace(
+            q=q,
+            city=city,
+            item_type=type,
+            limit=limit,
+            offset=offset,
+            category=category,
+            service_type=service_type,
+            brand=brand,
+            condition=condition,
+            verified=verified,
+            sort=sort,
+        )
         summary = await get_marketplace_summary()
     except Exception:
         logger.exception("Failed to search buyer marketplace")
@@ -358,13 +495,76 @@ async def buyer_search(request: Request, q: str | None = None, city: str | None 
         "marketplace_cars": results["cars"],
         "marketplace_services": results["services"],
         "featured_sellers": results["sellers"],
-        "search_query": results["query"],
-        "selected_city": results["city"],
-        "selected_type": results["type"],
         "page": page,
         "catalog_type": "search",
+        "filter_action": "/search",
     })
+    context.update(_buyer_filter_context(results))
     return templates.TemplateResponse("marketing/catalog.html", context)
+
+
+@router.post("/buyer/leads")
+async def buyer_lead_submit(
+    request: Request,
+    name: str | None = Form(default=None),
+    phone: str | None = Form(default=None),
+    query: str = Form(...),
+    city: str | None = Form(default=None),
+    vin: str | None = Form(default=None),
+    website: str | None = Form(default=None),
+    lead_started_at: str | None = Form(default=None),
+):
+    if _short_text(website, 80):
+        return JSONResponse({"ok": True, "lead_id": None})
+
+    normalized_query = _short_text(query, 1200)
+    normalized_phone = _normalize_phone(phone)
+    normalized_city = _short_text(city, 120)
+    normalized_name = _short_text(name, 120)
+    vin_value = _short_text(vin, 32)
+
+    if not normalized_query or len(normalized_query) < 8:
+        raise HTTPException(status_code=422, detail="Опишіть, що потрібно знайти.")
+
+    phone_digits = re.sub(r"\D+", "", normalized_phone or "")
+    if len(phone_digits) < 9:
+        raise HTTPException(status_code=422, detail="Вкажіть коректний телефон.")
+
+    lead_query_parts = [normalized_query]
+    if vin_value:
+        lead_query_parts.append(f"VIN: {vin_value}")
+    if lead_started_at:
+        lead_query_parts.append("Джерело: buyer marketplace web form")
+
+    try:
+        lead = await create_buyer_lead(
+            name=normalized_name,
+            phone=normalized_phone,
+            query="\n".join(part for part in lead_query_parts if part),
+            city=normalized_city,
+            source="web_marketplace",
+        )
+    except Exception:
+        logger.exception("Failed to create buyer marketplace lead")
+        raise HTTPException(status_code=500, detail="Не вдалося зберегти заявку")
+
+    wants_json = "application/json" in request.headers.get("accept", "")
+    if wants_json:
+        return JSONResponse({"ok": True, "lead_id": lead["id"] if lead else None})
+
+    return templates.TemplateResponse(
+        "marketing/buyer.html",
+        {
+            **marketing_context(
+                request,
+                "CarPot для покупця — заявку отримано",
+                "Заявка покупця CarPot збережена.",
+                "/buyer",
+            ),
+            **await _safe_buyer_context(),
+            "lead_created": True,
+        },
+    )
 
 
 @router.get("/privacy-policy", response_class=HTMLResponse)

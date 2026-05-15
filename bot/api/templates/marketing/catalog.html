@@ -7,31 +7,44 @@
         <h1>{% if catalog_type == 'search' %}Результати пошуку для покупця{% else %}Каталог авто, послуг і продавців{% endif %}</h1>
         <p class="lead">
             {% if catalog_type == 'search' %}
-                Пошук працює тільки в buyer ecosystem і не змінює seller landing або його контекст.
+                Знайдені авто, запчастини, послуги та продавці з buyer marketplace. Відкривайте картку, зберігайте в обране або залишайте заявку.
             {% else %}
-                Публічна buyer-сторінка з активними пропозиціями продавців CarPot, автосервісами та контактами.
+                Публічна buyer-сторінка з активними пропозиціями продавців CarPot, автосервісами, контактами й інтерактивними деталями.
             {% endif %}
         </p>
+        <div class="hero-actions">
+            <button class="btn btn-primary" type="button" data-open-lead-modal>Залишити заявку</button>
+            <a class="btn btn-secondary" href="/cars">Авто та запчастини</a>
+            <a class="btn btn-secondary" href="/services">Послуги</a>
+        </div>
     </div>
 </section>
 
 <section class="section" style="padding-top: 24px;">
     <div class="container">
-        <form class="card" action="/search" method="get" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; align-items:end; margin-bottom: 24px;">
-            <label>
+        <form class="buyer-search-form buyer-panel" action="/search" method="get" style="margin-bottom: 24px;">
+            <label class="buyer-field">
                 <span class="dash-label">Запит</span>
-                <input name="q" value="{{ search_query or '' }}" type="search" placeholder="BMW, фара, діагностика" style="width:100%; min-height:48px; border-radius:16px; border:1px solid rgba(148,163,184,0.22); background:rgba(255,255,255,0.06); color:var(--text); padding:0 14px;">
+                <input class="buyer-control" name="q" value="{{ search_query or '' }}" type="search" placeholder="BMW, фара, діагностика">
             </label>
-            <label>
+            <label class="buyer-field">
                 <span class="dash-label">Місто</span>
-                <input name="city" value="{{ selected_city or '' }}" type="text" placeholder="Львів" style="width:100%; min-height:48px; border-radius:16px; border:1px solid rgba(148,163,184,0.22); background:rgba(255,255,255,0.06); color:var(--text); padding:0 14px;">
+                <input class="buyer-control" name="city" value="{{ selected_city or '' }}" type="text" placeholder="Львів">
             </label>
-            <label>
+            <label class="buyer-field">
                 <span class="dash-label">Тип</span>
-                <select name="type" style="width:100%; min-height:48px; border-radius:16px; border:1px solid rgba(148,163,184,0.22); background:rgba(15,23,42,0.92); color:var(--text); padding:0 14px;">
+                <select class="buyer-control" name="type">
                     <option value="all" {% if selected_type == 'all' %}selected{% endif %}>Усе</option>
                     <option value="cars" {% if selected_type == 'cars' %}selected{% endif %}>Авто / запчастини</option>
                     <option value="services" {% if selected_type == 'services' %}selected{% endif %}>Послуги</option>
+                </select>
+            </label>
+            <label class="buyer-field">
+                <span class="dash-label">Дія</span>
+                <select class="buyer-control" name="intent">
+                    <option value="buy">Купити / замовити</option>
+                    <option value="compare">Порівняти</option>
+                    <option value="request">Заявка</option>
                 </select>
             </label>
             <button class="btn btn-primary" type="submit">Шукати</button>
@@ -41,6 +54,11 @@
             <article class="card"><h3>{{ marketplace_summary.cars_count }}</h3><p>Активні авто / пропозиції</p></article>
             <article class="card"><h3>{{ marketplace_summary.services_count }}</h3><p>Автомобільні послуги</p></article>
             <article class="card"><h3>{{ marketplace_summary.sellers_count }}</h3><p>Продавці CarPot</p></article>
+        </div>
+
+        <div class="favorites-bar buyer-panel">
+            <span>Збережені товари й послуги: <strong><span data-favorites-count>0</span></strong></span>
+            <button class="btn btn-secondary" type="button" data-open-lead-modal>Запит на підбір</button>
         </div>
 
         {% if featured_sellers %}
@@ -69,51 +87,33 @@
 
         <div class="section-head">
             <div>
-                <span class="eyebrow">Авто / запчастини</span>
-                <h2>Останні пропозиції</h2>
+                <span class="eyebrow">Маркетплейс</span>
+                <h2>Інтерактивні пропозиції</h2>
             </div>
-            <p>Активні записи з seller_cars у read-only режимі для buyer catalog.</p>
+            <p>Фільтруйте поточну вибірку за містом, категорією, типом послуги, брендом і станом.</p>
         </div>
-        <div class="grid-3" style="margin-bottom: 54px;">
+        {% set filter_scope = 'catalog-marketplace' %}
+        {% include "marketing/buyer_components/filter_bar.html" %}
+        <div class="buyer-loading-state buyer-panel" data-loading-state="catalog-marketplace">
+            <p>Оновлюємо добірку...</p>
+            <div class="buyer-skeleton-grid" aria-hidden="true"><span class="buyer-skeleton-card"></span><span class="buyer-skeleton-card"></span><span class="buyer-skeleton-card"></span></div>
+        </div>
+        <div class="buyer-market-grid" data-filter-group="catalog-marketplace" style="margin-bottom: 28px;">
             {% for car in marketplace_cars %}
-            <article class="card">
-                <span class="eyebrow">{{ car.brand }}</span>
-                <h3>{{ car.brand }} {{ car.model }}</h3>
-                <p>{{ car.description or 'Опис пропозиції можна уточнити у продавця.' }}</p>
-                <p><strong>{{ car.shop_name or car.name or car.username or 'Продавець CarPot' }}</strong>{% if car.city %} · {{ car.city }}{% endif %}</p>
-                <div class="card-actions">
-                    {% if car.website %}<a class="btn btn-secondary" href="{{ car.website }}" target="_blank" rel="noopener">Сайт</a>{% endif %}
-                    {% if car.phone %}<a class="btn btn-primary" href="tel:{{ car.phone }}">Подзвонити</a>{% endif %}
-                </div>
-            </article>
-            {% else %}
-            <article class="card"><h3>Немає активних пропозицій</h3><p>Спробуйте інший запит або перейдіть у Telegram-бот CarPot.</p></article>
+                {% include "marketing/buyer_components/product_card.html" %}
             {% endfor %}
+            {% for service in marketplace_services %}
+                {% include "marketing/buyer_components/service_card.html" %}
+            {% endfor %}
+            <article class="buyer-empty-state buyer-panel buyer-hidden" data-no-results="catalog-marketplace"><h3>За цими фільтрами нічого не знайдено</h3><p>Спробуйте змінити місто, категорію або залиште заявку на підбір.</p><button class="btn btn-primary" type="button" data-open-lead-modal>Залишити заявку</button></article>
+            {% if not marketplace_cars and not marketplace_services %}
+            <article class="buyer-empty-state buyer-panel"><h3>Немає активних пропозицій</h3><p>Спробуйте інший запит або залиште заявку — CarPot допоможе знайти релевантного продавця чи сервіс.</p><button class="btn btn-primary" type="button" data-open-lead-modal>Залишити заявку</button></article>
+            {% endif %}
         </div>
 
-        <div class="section-head">
-            <div>
-                <span class="eyebrow">Послуги</span>
-                <h2>Автосервіси та послуги</h2>
-            </div>
-            <p>СТО, автоелектрики, шиномонтаж, евакуатори та інші automotive-послуги.</p>
-        </div>
-        <div class="grid-3">
-            {% for service in marketplace_services %}
-            <article class="card">
-                <span class="eyebrow">{{ service.category }}</span>
-                <h3>{{ service.title }}</h3>
-                <p>{{ service.description or 'Деталі послуги можна уточнити напряму у виконавця.' }}</p>
-                <p><strong>{{ service.shop_name or service.name or service.username or 'Сервіс CarPot' }}</strong>{% if service.city %} · {{ service.city }}{% endif %}</p>
-                {% if service.price %}<p>Орієнтир: {{ service.price }} грн</p>{% endif %}
-                <div class="card-actions">
-                    {% if service.website %}<a class="btn btn-secondary" href="{{ service.website }}" target="_blank" rel="noopener">Сайт</a>{% endif %}
-                    {% if service.phone %}<a class="btn btn-primary" href="tel:{{ service.phone }}">Подзвонити</a>{% endif %}
-                </div>
-            </article>
-            {% else %}
-            <article class="card"><h3>Немає активних послуг</h3><p>Спробуйте інший запит або відкрийте Telegram-бот.</p></article>
-            {% endfor %}
+        <div class="buyer-pagination">
+            {% if page > 1 %}<a class="btn btn-secondary" href="{{ filter_action }}?page={{ page - 1 }}{{ pagination_query }}">Назад</a>{% endif %}
+            <a class="btn btn-secondary" href="{{ filter_action }}?page={{ page + 1 }}{{ pagination_query }}">Показати ще</a>
         </div>
 
         <div class="hero-actions">
@@ -124,4 +124,5 @@
         </div>
     </div>
 </section>
+{% include "marketing/buyer_components/assets.html" %}
 {% endblock %}

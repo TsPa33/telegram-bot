@@ -1,0 +1,48 @@
+<article class="buyer-card"
+         tabindex="0"
+         role="button"
+         aria-label="Відкрити послугу {{ service.title }}"
+         data-marketplace-card
+         data-item-type="service"
+         data-item-id="{{ service.id }}"
+         data-title="{{ service.title|default('Автопослуга CarPot', true)|e }}"
+         data-category="{{ service.category|default('Автопослуга', true)|e }}"
+         data-brand=""
+         data-model=""
+         data-condition="{{ service.category|default('Автопослуга', true)|e }}"
+         data-city="{{ (service.city or '')|e }}"
+         data-address="{{ service.address|default('', true)|e }}"
+         data-seller="{{ (service.shop_name or service.name or service.username or 'Сервіс CarPot')|e }}"
+         data-website="{{ service.website|default('', true)|e }}"
+         data-phone="{{ service.phone|default('', true)|e }}"
+         data-username="{{ service.username|default('', true)|e }}"
+         data-description="{{ (service.description or 'Деталі послуги можна уточнити напряму у виконавця.')|e }}"
+         data-price="{{ service.price|default('', true)|e }}"
+         data-verified="{{ 'true' if service.is_verified else 'false' }}">
+    <div class="buyer-card-media">
+        <div class="buyer-card-icon" aria-hidden="true">🛠️</div>
+        <div class="buyer-badge-stack">
+            {% if service.is_verified %}<span class="buyer-pill buyer-trust-pill">✓ Перевірений</span>{% endif %}
+            <span class="buyer-pill">{{ service.category or 'Послуга' }}</span>
+            {% if service.city %}<span class="buyer-pill">📍 {{ service.city }}</span>{% endif %}
+        </div>
+    </div>
+    <div class="buyer-card-body">
+        <span class="eyebrow">Автосервіс / послуга</span>
+        <h3>{{ service.title }}</h3>
+        <p class="buyer-card-copy">{{ service.description or 'Деталі послуги можна уточнити напряму у виконавця.' }}</p>
+        <div class="buyer-card-meta">
+            <span class="buyer-pill">{{ service.shop_name or service.name or service.username or 'Сервіс CarPot' }}</span>
+            {% if service.address %}<span class="buyer-pill">{{ service.address }}</span>{% endif %}
+        </div>
+        <div class="buyer-price-row">
+            <strong class="buyer-price">{% if service.price %}від {{ service.price }} грн{% else %}Ціна за запитом{% endif %}</strong>
+            <span class="buyer-pill">Запис / консультація</span>
+        </div>
+        <div class="buyer-card-actions">
+            <button class="btn btn-secondary buyer-favorite-button" type="button" data-favorite-card aria-pressed="false">♡ В обране</button>
+            {% if service.phone %}<a class="btn btn-primary" href="tel:{{ service.phone }}">Подзвонити</a>{% endif %}
+            <button class="btn btn-secondary" type="button" data-open-lead-modal>Заявка</button>
+        </div>
+    </div>
+</article>

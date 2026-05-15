@@ -5,9 +5,10 @@
     <div class="container">
         <span class="eyebrow">Автосервіси</span>
         <h1>СТО, евакуатори, шиномонтаж та automotive-послуги</h1>
-        <p class="lead">Окрема buyer-сторінка для пошуку послуг і контакту з виконавцями CarPot.</p>
+        <p class="lead">Інтерактивна buyer-сторінка для пошуку послуг, відкриття detail modal і швидкого контакту з виконавцями CarPot.</p>
         <div class="hero-actions">
             <a class="btn btn-primary" href="/search?type=services">Пошук послуг</a>
+            <button class="btn btn-secondary" type="button" data-open-lead-modal>Залишити заявку</button>
             <a class="btn btn-secondary" href="/catalog">Весь каталог</a>
         </div>
     </div>
@@ -20,34 +21,35 @@
                 <span class="eyebrow">{{ marketplace_summary.services_count }} активних</span>
                 <h2>Каталог послуг</h2>
             </div>
-            <p>Read-only вибірка з services для buyer ecosystem.</p>
+            <p>Картки послуг відкривають модальне вікно з категорією, містом, адресою, телефоном, сайтом, описом і орієнтовною ціною.</p>
         </div>
-        <div class="grid-3">
+        <div class="favorites-bar buyer-panel">
+            <span>Збережені послуги: <strong><span data-favorites-count>0</span></strong></span>
+            <button class="btn btn-secondary" type="button" data-open-lead-modal>Запит на сервіс</button>
+        </div>
+        {% set filter_scope = 'services-marketplace' %}
+        {% include "marketing/buyer_components/filter_bar.html" %}
+        <div class="buyer-loading-state buyer-panel" data-loading-state="services-marketplace">
+            <p>Оновлюємо добірку...</p>
+            <div class="buyer-skeleton-grid" aria-hidden="true"><span class="buyer-skeleton-card"></span><span class="buyer-skeleton-card"></span></div>
+        </div>
+        <div class="buyer-market-grid" data-filter-group="services-marketplace">
             {% for service in marketplace_services %}
-            <article class="card">
-                <span class="eyebrow">{{ service.category }}</span>
-                <h3>{{ service.title }}</h3>
-                <p>{{ service.description or 'Деталі послуги можна уточнити напряму у виконавця.' }}</p>
-                <p><strong>{{ service.shop_name or service.name or service.username or 'Сервіс CarPot' }}</strong>{% if service.city %} · {{ service.city }}{% endif %}</p>
-                {% if service.address %}<p>Адреса: {{ service.address }}</p>{% endif %}
-                {% if service.price %}<p>Орієнтир: {{ service.price }} грн</p>{% endif %}
-                <div class="card-actions">
-                    {% if service.website %}<a class="btn btn-secondary" href="{{ service.website }}" target="_blank" rel="noopener">Сайт</a>{% endif %}
-                    {% if service.phone %}<a class="btn btn-primary" href="tel:{{ service.phone }}">Подзвонити</a>{% endif %}
-                </div>
-            </article>
+                {% include "marketing/buyer_components/service_card.html" %}
             {% else %}
-            <article class="card">
+            <article class="buyer-empty-state buyer-panel">
                 <h3>Поки немає активних послуг</h3>
-                <p>Спробуйте загальний каталог або залиште запит у Telegram-боті.</p>
-                <a class="btn btn-primary" href="{{ telegram_bot_url }}" target="_blank" rel="noopener">Відкрити бот</a>
+                <p>Спробуйте загальний каталог або залиште запит на сервіс.</p>
+                <button class="btn btn-primary" type="button" data-open-lead-modal>Залишити заявку</button>
             </article>
             {% endfor %}
+            <article class="buyer-empty-state buyer-panel buyer-hidden" data-no-results="services-marketplace"><h3>За цими фільтрами нічого не знайдено</h3><p>Змініть місто, категорію або тип послуги.</p></article>
         </div>
-        <div class="hero-actions">
-            {% if page > 1 %}<a class="btn btn-secondary" href="/services?page={{ page - 1 }}">Назад</a>{% endif %}
-            <a class="btn btn-secondary" href="/services?page={{ page + 1 }}">Наступна сторінка</a>
+        <div class="buyer-pagination">
+            {% if page > 1 %}<a class="btn btn-secondary" href="/services?page={{ page - 1 }}{{ pagination_query }}">Назад</a>{% endif %}
+            <a class="btn btn-secondary" href="/services?page={{ page + 1 }}{{ pagination_query }}">Показати ще</a>
         </div>
     </div>
 </section>
+{% include "marketing/buyer_components/assets.html" %}
 {% endblock %}
