@@ -12,6 +12,7 @@ async def ensure_payment_product_type_column():
         ADD COLUMN IF NOT EXISTS product_type TEXT NOT NULL DEFAULT 'garage'
         """
     )
+
     await execute(
         """
         UPDATE payments
@@ -34,7 +35,14 @@ async def create_payment(
     try:
         payment = await fetchrow(
             """
-            INSERT INTO payments (seller_id, order_id, amount, status, product, product_type)
+            INSERT INTO payments (
+                seller_id,
+                order_id,
+                amount,
+                status,
+                product,
+                product_type
+            )
             VALUES ($1, $2, $3, 'pending', $4, $4)
             RETURNING id, seller_id, order_id, amount, status, product, product_type, created_at
             """,
@@ -43,6 +51,7 @@ async def create_payment(
             amount,
             product,
         )
+
     except Exception:
         logger.exception(
             "PAYMENT_ROW_CREATE_FAILED seller_id=%s order_id=%s amount=%s product_type=%s",
@@ -72,30 +81,38 @@ async def create_payment(
         payment["status"],
         payment["product_type"],
     )
+
     return payment
 
 
 async def get_payment(order_id: str):
-    return await fetchrow("""
-        SELECT * FROM payments
+    return await fetchrow(
+        """
+        SELECT *
+        FROM payments
         WHERE order_id = $1
-    """, order_id)
+        """,
+        order_id,
+    )
 
 
 async def mark_payment_success(order_id: str):
-    await execute("""
+    await execute(
+        """
         UPDATE payments
         SET status = 'success'
         WHERE order_id = $1
-    """, order_id)
+        """,
+        order_id,
+    )
 
-
-# ================= 🔥 UPDATED =================
 
 async def get_user_transactions(telegram_id: int):
     await ensure_payment_product_type_column()
-    return await fetch("""
-        SELECT 
+
+    return await fetch(
+        """
+        SELECT
             p.amount,
             p.status,
             COALESCE(p.product_type, p.product) AS product,
@@ -107,4 +124,6 @@ async def get_user_transactions(telegram_id: int):
         WHERE s.telegram_id = $1
         ORDER BY p.created_at DESC
         LIMIT 20
-    """, telegram_id)
+        """,
+        telegram_id,
+    )

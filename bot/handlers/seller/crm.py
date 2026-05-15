@@ -7,8 +7,10 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from bot.config import LIQPAY_CALLBACK_URL, LIQPAY_PRIVATE_KEY, LIQPAY_PUBLIC_KEY, SELLER_CRM_BASE_URL
 from bot.database.repositories.seller_crm_repo import (
+    create_crm_subscription,
     get_active_crm_subscription,
     get_crm_account_by_seller,
+    get_successful_crm_payment_without_subscription,
     seller_has_active_crm,
     upsert_crm_account,
 )
@@ -18,6 +20,7 @@ from bot.services.liqpay_service import LiqPayService
 from bot.services.seller_crm import (
     SELLER_CRM_MONTHLY_PRICE_UAH,
     SELLER_CRM_PRODUCT,
+    SELLER_CRM_SUBSCRIPTION_DAYS,
     hash_crm_password,
     validate_crm_password,
     validate_crm_slug,
@@ -153,6 +156,30 @@ async def seller_crm_setup(callback: CallbackQuery, state: FSMContext):
         return
 
     subscription = await get_active_crm_subscription(seller["id"])
+    if not subscription:
+        successful_payment = await get_successful_crm_payment_without_subscription(
+            seller["id"],
+            SELLER_CRM_PRODUCT,
+        )
+        if successful_payment:
+            try:
+                subscription = await create_crm_subscription(
+                    seller["id"],
+                    successful_payment["id"],
+                    days=SELLER_CRM_SUBSCRIPTION_DAYS,
+                )
+            except Exception:
+                logger.exception(
+                    "CRM_SUBSCRIPTION_RECOVERY_FAILED seller_id=%s payment_id=%s",
+                    seller["id"],
+                    successful_payment["id"],
+                )
+                await callback.answer(
+                    "Оплату знайдено, але CRM ще не активувалась. Напишіть у підтримку.",
+                    show_alert=True,
+                )
+                return
+
     if not subscription:
         await callback.answer("CRM активується після успішної оплати", show_alert=True)
         return

@@ -1,28 +1,105 @@
 from datetime import datetime
+import logging
 
 from bot.database.base import execute, fetch, fetchrow
 
+logger = logging.getLogger(__name__)
 
-async def create_crm_subscription(seller_id: int, payment_id: int, days: int = 30):
-    return await fetchrow(
+
+async def create_crm_subscription(
+    seller_id: int,
+    payment_id: int,
+    days: int = 30,
+    status: str = "active",
+):
+    logger.info(
+        "CRM_SUBSCRIPTION_CREATE_REQUEST seller_id=%s payment_id=%s days=%s",
+        seller_id,
+        payment_id,
+        days,
+    )
+
+    existing = await fetchrow(
         """
-        WITH updated_seller AS (
-            UPDATE sellers
-            SET crm_enabled = TRUE
-            WHERE id = $1
-            RETURNING id
+        SELECT *
+        FROM seller_crm_subscriptions
+        WHERE payment_id = $1
+        LIMIT 1
+        """,
+        payment_id,
+    )
+    if existing:
+        await execute("UPDATE sellers SET crm_enabled = TRUE WHERE id = $1", seller_id)
+        logger.info("CRM_SUBSCRIPTION_ALREADY_EXISTS payment_id=%s", payment_id)
+        return existing
+
+    await execute("UPDATE sellers SET crm_enabled = TRUE WHERE id = $1", seller_id)
+
+    subscription = await fetchrow(
+        """
+        INSERT INTO seller_crm_subscriptions (
+            seller_id,
+            payment_id,
+            status,
+            started_at,
+            expires_at
         )
-        INSERT INTO seller_crm_subscriptions (seller_id, payment_id, status, started_at, expires_at)
-        SELECT $1, $2, 'active', NOW(), NOW() + ($3::text || ' days')::interval
-        WHERE EXISTS (SELECT 1 FROM updated_seller)
-          AND NOT EXISTS (
-              SELECT 1 FROM seller_crm_subscriptions WHERE payment_id = $2
-          )
+        VALUES (
+            $1,
+            $2,
+            $3,
+            NOW(),
+            NOW() + ($4::int * INTERVAL '1 day')
+        )
+        ON CONFLICT (payment_id) DO NOTHING
         RETURNING *
         """,
         seller_id,
         payment_id,
+        status,
         days,
+    )
+
+    if subscription:
+        logger.info(
+            "CRM_SUBSCRIPTION_ACTIVATED seller_id=%s payment_id=%s",
+            seller_id,
+            payment_id,
+        )
+        return subscription
+
+    existing = await fetchrow(
+        """
+        SELECT *
+        FROM seller_crm_subscriptions
+        WHERE payment_id = $1
+        LIMIT 1
+        """,
+        payment_id,
+    )
+    if existing:
+        await execute("UPDATE sellers SET crm_enabled = TRUE WHERE id = $1", seller_id)
+        logger.info("CRM_SUBSCRIPTION_ALREADY_EXISTS payment_id=%s", payment_id)
+        return existing
+
+    raise RuntimeError(f"CRM subscription was not created for payment_id={payment_id}")
+
+
+async def get_successful_crm_payment_without_subscription(seller_id: int, product_type: str):
+    return await fetchrow(
+        """
+        SELECT p.*
+        FROM payments p
+        LEFT JOIN seller_crm_subscriptions scs ON scs.payment_id = p.id
+        WHERE p.seller_id = $1
+          AND p.status = 'success'
+          AND COALESCE(p.product_type, p.product) = $2
+          AND scs.id IS NULL
+        ORDER BY p.created_at DESC, p.id DESC
+        LIMIT 1
+        """,
+        seller_id,
+        product_type,
     )
 
 
