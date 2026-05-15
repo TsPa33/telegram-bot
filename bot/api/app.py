@@ -133,10 +133,12 @@ async def _analytics_payload(request: Request) -> dict:
         payload_size = int(content_length or 0)
     except ValueError:
         payload_size = 0
+
     if payload_size > MAX_ANALYTICS_PAYLOAD_BYTES:
         raise HTTPException(status_code=413, detail="Analytics payload too large")
 
     body = await request.body()
+
     if len(body) > MAX_ANALYTICS_PAYLOAD_BYTES:
         raise HTTPException(status_code=413, detail="Analytics payload too large")
 
@@ -152,6 +154,7 @@ async def _analytics_payload(request: Request) -> dict:
 
     if not isinstance(payload, dict):
         raise HTTPException(status_code=400, detail="Invalid analytics payload")
+
     return payload
 
 
@@ -169,21 +172,26 @@ def marketing_context(
         "telegram_bot_url": MARKETING_TELEGRAM_BOT_URL,
         "telegram_support_url": MARKETING_TELEGRAM_SUPPORT_URL,
         "support_email": MARKETING_SUPPORT_EMAIL,
+        "buyer_mode": False,
     }
 
 
 def _as_text(value, max_length: int = 500) -> str | None:
     if value is None:
         return None
+
     cleaned = str(value).strip()
+
     if not cleaned:
         return None
+
     return cleaned[:max_length]
 
 
 def _boolean_filter(value: str | None) -> bool | None:
     if value in (None, "", "all"):
         return None
+
     return value in {"1", "true", "yes", "on", "verified"}
 
 
@@ -217,6 +225,7 @@ async def buyer_marketplace_context(
         verified=verified_filter,
         limit=limit,
     )
+
     services = await list_marketplace_services(
         query=q,
         city=city_filter,
@@ -225,7 +234,13 @@ async def buyer_marketplace_context(
         urgent=urgent_filter,
         limit=limit,
     )
-    sellers = await list_featured_sellers(query=q, city=city_filter, limit=8)
+
+    sellers = await list_featured_sellers(
+        query=q,
+        city=city_filter,
+        limit=8,
+    )
+
     summary = await marketplace_summary()
 
     context = marketing_context(request, title, description, path)
@@ -246,15 +261,14 @@ async def buyer_marketplace_context(
             "marketplace_summary": dict(summary) if summary else {},
         }
     )
+
     return context
 
 
 async def tg_file_url(bot: Bot, file_id: str) -> str:
     file = await bot.get_file(file_id)
 
-    return (
-        f"https://api.telegram.org/file/bot{bot.token}/{file.file_path}"
-    )
+    return f"https://api.telegram.org/file/bot{bot.token}/{file.file_path}"
 
 
 # ================= MARKETING PAGES =================
@@ -272,6 +286,20 @@ async def marketing_home(request: Request):
             request,
             "Carpot — сайти для авторозборок, автосервісів та автозапчастин",
             "Telegram-платформа для створення сайтів, каталогів і заявок для авторозборок, СТО, шиномонтажу, евакуаторів та продавців автозапчастин.",
+            "/",
+        ),
+    )
+
+
+@router.get("/seller", response_class=HTMLResponse)
+async def seller_home(request: Request):
+    return templates.TemplateResponse(
+        "marketing/index.html",
+        marketing_context(
+            request,
+            "Carpot — сайти для авторозборок, автосервісів та автозапчастин",
+            "Telegram-платформа для створення сайтів, каталогів і заявок для авторозборок, СТО, шиномонтажу, евакуаторів та продавців автозапчастин.",
+            "/seller",
         ),
     )
 
@@ -286,19 +314,6 @@ async def buyer_home(request: Request):
             "Пошук авто, запчастин, сервісів, продавців і заявок у єдиній CarPot-екосистемі з продовженням у Telegram.",
             "/buyer",
             limit=9,
-        ),
-    )
-
-
-@router.get("/seller", response_class=HTMLResponse)
-async def seller_home(request: Request):
-    return templates.TemplateResponse(
-        "marketing/index.html",
-        marketing_context(
-            request,
-            "Carpot — сайти для авторозборок, автосервісів та автозапчастин",
-            "Telegram-платформа для створення сайтів, каталогів і заявок для авторозборок, СТО, шиномонтажу, евакуаторів та продавців автозапчастин.",
-            "/seller",
         ),
     )
 
@@ -354,7 +369,9 @@ async def buyer_cars(
         verified=verified,
         limit=24,
     )
+
     context["catalog_focus"] = "cars"
+
     return templates.TemplateResponse("marketing/catalog.html", context)
 
 
@@ -379,7 +396,9 @@ async def buyer_services(
         verified=verified,
         limit=24,
     )
+
     context["catalog_focus"] = "services"
+
     return templates.TemplateResponse("marketing/catalog.html", context)
 
 
@@ -434,6 +453,7 @@ async def create_buyer_platform_lead(
         photos=_short_text(photos, 1000),
         source_path=_short_text(str(request.url.path), 500),
     )
+
     return RedirectResponse(url="/buyer?lead=sent#request", status_code=303)
 
 
@@ -487,10 +507,12 @@ SEO_SEARCH_PAGES = {
 @router.get("/{seo_slug}", response_class=HTMLResponse)
 async def buyer_seo_search_page(seo_slug: str, request: Request):
     seo_config = SEO_SEARCH_PAGES.get(seo_slug)
+
     if not seo_config:
         raise HTTPException(status_code=404)
 
     seo_query, seo_city = seo_config
+
     return templates.TemplateResponse(
         "marketing/catalog.html",
         await buyer_marketplace_context(
@@ -516,7 +538,7 @@ async def _render_site_by_subdomain(subdomain: str, request: Request):
     if not site or site["status"] != "active":
         raise HTTPException(
             status_code=404,
-            detail="Site not found"
+            detail="Site not found",
         )
 
     raw_config = site.get("config_live") or {}
@@ -554,58 +576,37 @@ async def _render_site_by_subdomain(subdomain: str, request: Request):
         .setdefault("prices", {})
     )
 
-    # ================= MEDIA =================
-
-    # ===== LOGO =====
+    # ================= LOGO =================
 
     if config.get("header", {}).get("logo"):
         logo = config["header"]["logo"]
 
-        if isinstance(logo, str) and logo.startswith(
-            ("http://", "https://")
-        ):
+        if isinstance(logo, str) and logo.startswith(("http://", "https://")):
             pass
-
         else:
             try:
-                config["header"]["logo"] = await tg_file_url(
-                    bot,
-                    logo
-                )
-
+                config["header"]["logo"] = await tg_file_url(bot, logo)
             except Exception:
                 config["header"]["logo"] = None
 
-    # ===== BANNERS =====
+    # ================= BANNERS =================
 
     if config.get("hero", {}).get("banners"):
         resolved = []
 
         for banner in config["hero"]["banners"]:
-
-            # external URL
-            if (
-                isinstance(banner, str)
-                and banner.startswith(("http://", "https://"))
-            ):
+            if isinstance(banner, str) and banner.startswith(("http://", "https://")):
                 resolved.append(banner)
                 continue
 
-            # telegram file_id
             try:
-                resolved.append(
-                    await tg_file_url(bot, banner)
-                )
-
+                resolved.append(await tg_file_url(bot, banner))
             except Exception:
                 continue
 
         config["hero"]["banners"] = resolved
 
     seller_id = site["seller_id"]
-
-    # ================= SELLER =================
-
     seller = await get_seller_by_id(seller_id)
 
     cars = []
@@ -614,12 +615,10 @@ async def _render_site_by_subdomain(subdomain: str, request: Request):
     # ================= CARS =================
 
     if modules.get("cars", True):
-
         cars = await get_cars_by_seller(seller_id)
         cars = [dict(c) for c in cars]
 
         for car in cars:
-
             car_id = str(car.get("id"))
 
             car["title"] = (
@@ -627,33 +626,22 @@ async def _render_site_by_subdomain(subdomain: str, request: Request):
                 or f"{car.get('brand', '')} {car.get('model', '')}".strip()
             )
 
-            car["price"] = (
-                car_prices.get(car_id)
-                or ""
-            )
-
+            car["price"] = car_prices.get(car_id) or ""
             car["photo_url"] = None
 
             if car.get("photo_id"):
-
                 try:
-                    car["photo_url"] = await tg_file_url(
-                        bot,
-                        car["photo_id"]
-                    )
-
+                    car["photo_url"] = await tg_file_url(bot, car["photo_id"])
                 except Exception:
                     car["photo_url"] = None
 
     # ================= SERVICES =================
 
     if modules.get("services", True):
-
         services = await get_services_by_seller(seller_id)
         services = [dict(s) for s in services]
 
         for service in services:
-
             service_id = str(service.get("id"))
 
             service_price = service_prices.get(service_id)
@@ -665,7 +653,6 @@ async def _render_site_by_subdomain(subdomain: str, request: Request):
                 service_price = service.get("website") or ""
 
             service["price"] = service_price
-
             service["photo_url"] = None
 
             if service.get("photo_id"):
@@ -675,11 +662,7 @@ async def _render_site_by_subdomain(subdomain: str, request: Request):
                     service["photo_url"] = photo_id
                 else:
                     try:
-                        service["photo_url"] = await tg_file_url(
-                            bot,
-                            photo_id
-                        )
-
+                        service["photo_url"] = await tg_file_url(bot, photo_id)
                     except Exception:
                         service["photo_url"] = None
 
@@ -778,10 +761,7 @@ async def _create_lead_for_subdomain(
         f"🌐 Сайт: {subdomain}"
     )
 
-    await send_message_to_seller(
-        seller["telegram_id"],
-        text
-    )
+    await send_message_to_seller(seller["telegram_id"], text)
 
     return {"status": "ok"}
 
@@ -799,7 +779,15 @@ async def create_lead(
     referrer: str | None = Form(None),
 ):
     return await _create_lead_for_subdomain(
-        subdomain, name, phone, message, session_id, utm_source, utm_medium, utm_campaign, referrer
+        subdomain,
+        name,
+        phone,
+        message,
+        session_id,
+        utm_source,
+        utm_medium,
+        utm_campaign,
+        referrer,
     )
 
 
@@ -821,7 +809,15 @@ async def create_host_lead(
         raise HTTPException(status_code=404)
 
     return await _create_lead_for_subdomain(
-        host_subdomain, name, phone, message, session_id, utm_source, utm_medium, utm_campaign, referrer
+        host_subdomain,
+        name,
+        phone,
+        message,
+        session_id,
+        utm_source,
+        utm_medium,
+        utm_campaign,
+        referrer,
     )
 
 
@@ -831,12 +827,19 @@ async def create_host_lead(
 async def analytics_session(request: Request):
     payload = await _analytics_payload(request)
     session_id = _short_text(payload.get("session_id"), 120)
+
     if not session_id:
         raise HTTPException(status_code=400, detail="session_id is required")
 
-    user_agent = _short_text(request.headers.get("user-agent") or payload.get("user_agent"), 600)
+    user_agent = _short_text(
+        request.headers.get("user-agent") or payload.get("user_agent"),
+        600,
+    )
+
     detected_device, detected_browser, detected_os = _detect_client(user_agent)
+
     device_type = _short_text(payload.get("device_type"), 40) or detected_device
+
     if device_type not in VALID_DEVICE_TYPES:
         device_type = detected_device
 
@@ -859,7 +862,10 @@ async def analytics_session(request: Request):
             device_type=device_type,
             browser=_short_text(payload.get("browser"), 120) or detected_browser,
             operating_system=_short_text(payload.get("operating_system"), 120) or detected_os,
-            language=_short_text(payload.get("language") or request.headers.get("accept-language"), 120),
+            language=_short_text(
+                payload.get("language") or request.headers.get("accept-language"),
+                120,
+            ),
             user_agent=user_agent,
             time_on_site_seconds=int(payload.get("time_on_site_seconds") or 0),
         )
