@@ -4,7 +4,7 @@ import re
 from urllib.parse import urlencode
 
 from aiogram import Bot
-from fastapi import APIRouter, FastAPI, HTTPException, Request, Form
+from fastapi import APIRouter, FastAPI, HTTPException, Request, Form, File, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
@@ -18,7 +18,11 @@ from bot.database.repositories.seller_repo import get_seller_by_id
 from bot.database.repositories.car_repo import get_cars_by_seller
 from bot.database.repositories.service_repo import get_services_by_seller
 from bot.database.repositories.lead_repo import create_site_lead
-from bot.database.repositories.buyer_lead_repo import create_buyer_lead
+from bot.services.buyer_request_service import (
+    BuyerRequestInput,
+    BuyerRequestValidationError,
+    submit_marketplace_buyer_request,
+)
 from bot.database.repositories.marketplace_repo import (
     get_featured_sellers,
     get_latest_cars,
@@ -503,54 +507,58 @@ async def buyer_search(
     return templates.TemplateResponse("marketing/catalog.html", context)
 
 
-@router.post("/buyer/leads")
-async def buyer_lead_submit(
+@router.post("/buyer/requests")
+async def buyer_request_submit(
     request: Request,
     name: str | None = Form(default=None),
     phone: str | None = Form(default=None),
-    query: str = Form(...),
+    buyer_telegram: str | None = Form(default=None),
     city: str | None = Form(default=None),
+    request_type: str | None = Form(default="part"),
+    category: str | None = Form(default="parts"),
+    brand: str | None = Form(default=None),
+    model: str | None = Form(default=None),
     vin: str | None = Form(default=None),
+    query: str = Form(...),
+    urgency: str | None = Form(default="soon"),
     website: str | None = Form(default=None),
     lead_started_at: str | None = Form(default=None),
+    photos: list[UploadFile] | None = File(default=None),
 ):
     if _short_text(website, 80):
-        return JSONResponse({"ok": True, "lead_id": None})
+        return JSONResponse({"ok": True, "request_id": None})
 
-    normalized_query = _short_text(query, 1200)
-    normalized_phone = _normalize_phone(phone)
-    normalized_city = _short_text(city, 120)
-    normalized_name = _short_text(name, 120)
-    vin_value = _short_text(vin, 32)
-
-    if not normalized_query or len(normalized_query) < 8:
-        raise HTTPException(status_code=422, detail="Опишіть, що потрібно знайти.")
-
-    phone_digits = re.sub(r"\D+", "", normalized_phone or "")
-    if len(phone_digits) < 9:
-        raise HTTPException(status_code=422, detail="Вкажіть коректний телефон.")
-
-    lead_query_parts = [normalized_query]
-    if vin_value:
-        lead_query_parts.append(f"VIN: {vin_value}")
-    if lead_started_at:
-        lead_query_parts.append("Джерело: buyer marketplace web form")
+    payload = BuyerRequestInput(
+        buyer_name=name,
+        buyer_phone=phone,
+        buyer_telegram=buyer_telegram,
+        city=city,
+        request_type=request_type,
+        category=category,
+        brand=brand,
+        model=model,
+        vin=vin,
+        description=query,
+        urgency=urgency,
+        photos=photos,
+    )
 
     try:
-        lead = await create_buyer_lead(
-            name=normalized_name,
-            phone=normalized_phone,
-            query="\n".join(part for part in lead_query_parts if part),
-            city=normalized_city,
-            source="web_marketplace",
-        )
+        result = await submit_marketplace_buyer_request(payload)
+        request_row = result.get("request")
+    except BuyerRequestValidationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
     except Exception:
-        logger.exception("Failed to create buyer marketplace lead")
+        logger.exception("Failed to create buyer marketplace request")
         raise HTTPException(status_code=500, detail="Не вдалося зберегти заявку")
 
     wants_json = "application/json" in request.headers.get("accept", "")
     if wants_json:
-        return JSONResponse({"ok": True, "lead_id": lead["id"] if lead else None})
+        return JSONResponse({
+            "ok": True,
+            "request_id": request_row["id"] if request_row else None,
+            "routing": result.get("routing_plan"),
+        })
 
     return templates.TemplateResponse(
         "marketing/buyer.html",
@@ -564,6 +572,36 @@ async def buyer_lead_submit(
             **await _safe_buyer_context(),
             "lead_created": True,
         },
+    )
+
+
+@router.post("/buyer/leads")
+async def buyer_lead_submit(
+    request: Request,
+    name: str | None = Form(default=None),
+    phone: str | None = Form(default=None),
+    query: str = Form(...),
+    city: str | None = Form(default=None),
+    vin: str | None = Form(default=None),
+    website: str | None = Form(default=None),
+    lead_started_at: str | None = Form(default=None),
+):
+    return await buyer_request_submit(
+        request=request,
+        name=name,
+        phone=phone,
+        buyer_telegram=None,
+        city=city,
+        request_type="part",
+        category="parts",
+        brand=None,
+        model=None,
+        vin=vin,
+        query=query,
+        urgency="soon",
+        website=website,
+        lead_started_at=lead_started_at,
+        photos=None,
     )
 
 

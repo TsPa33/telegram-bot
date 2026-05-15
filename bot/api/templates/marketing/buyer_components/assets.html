@@ -577,6 +577,90 @@
         color: #fca5a5;
     }
 
+
+    .buyer-request-cta {
+        display: grid;
+        grid-template-columns: minmax(0, 1.3fr) auto;
+        gap: 18px;
+        align-items: center;
+        padding: 22px;
+        margin: 22px 0 34px;
+    }
+
+    .buyer-request-cta h3,
+    .buyer-request-cta p {
+        margin: 0;
+    }
+
+    .buyer-request-cta p {
+        color: var(--muted);
+        margin-top: 8px;
+    }
+
+    .buyer-sticky-request {
+        position: sticky;
+        bottom: 18px;
+        z-index: 50;
+        max-width: 1180px;
+        margin: 28px auto 0;
+        padding: 14px 16px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 14px;
+        backdrop-filter: blur(18px);
+    }
+
+    .buyer-sticky-request strong,
+    .buyer-sticky-request span {
+        display: block;
+    }
+
+    .buyer-sticky-request span {
+        color: var(--muted);
+        font-size: 0.92rem;
+    }
+
+    .buyer-density-row,
+    .buyer-trust-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .buyer-request-modal-grid {
+        display: grid;
+        grid-template-columns: 0.86fr 1.14fr;
+        gap: 18px;
+    }
+
+    .buyer-request-aside {
+        padding: 20px;
+        display: grid;
+        align-content: space-between;
+        gap: 18px;
+        border-radius: 24px;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .buyer-request-aside ul {
+        margin: 0;
+        padding-left: 20px;
+        color: #cbd5e1;
+        line-height: 1.7;
+    }
+
+    .lead-form-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+    }
+
+    .lead-form-grid .wide {
+        grid-column: 1 / -1;
+    }
+
     .favorites-bar {
         display: flex;
         flex-wrap: wrap;
@@ -596,7 +680,9 @@
     @media (max-width: 980px) {
         .buyer-search-form,
         .workflow-market,
-        .buyer-modal-grid {
+        .buyer-modal-grid,
+        .buyer-request-modal-grid,
+        .buyer-request-cta {
             grid-template-columns: 1fr;
         }
 
@@ -620,15 +706,21 @@
         .buyer-filter-meta,
         .buyer-price-row,
         .buyer-modal-top,
-        .favorites-bar {
+        .favorites-bar,
+        .buyer-sticky-request {
             align-items: flex-start;
             flex-direction: column;
         }
 
         .buyer-market-grid,
         .buyer-skeleton-grid,
-        .buyer-spec-grid {
+        .buyer-spec-grid,
+        .lead-form-grid {
             grid-template-columns: 1fr;
+        }
+
+        .lead-form-grid .wide {
+            grid-column: auto;
         }
 
         .buyer-card-media {
@@ -722,48 +814,118 @@
         <div class="buyer-modal-content">
             <div class="buyer-modal-top">
                 <div>
-                    <span class="eyebrow">Заявка на підбір</span>
-                    <h2 id="buyer-lead-title">Опишіть, що потрібно знайти</h2>
+                    <span class="eyebrow">Маркетплейс-заявка</span>
+                    <h2 id="buyer-lead-title">Опишіть запит — продавці зможуть підготувати пропозиції</h2>
                 </div>
                 <button class="buyer-modal-close" type="button" data-close-buyer-modal aria-label="Закрити">×</button>
             </div>
-            <p class="buyer-help-text">Вкажіть місто, деталь, авто або послугу. CarPot допоможе передати запит релевантним продавцям і сервісам.</p>
-            <form class="lead-form" action="/buyer/leads" method="post" enctype="multipart/form-data" data-buyer-lead-form novalidate>
-                <input type="hidden" name="lead_started_at" data-lead-started-at>
-                <label class="buyer-honeypot" aria-hidden="true">
-                    <span>Website</span>
-                    <input name="website" type="text" tabindex="-1" autocomplete="off">
-                </label>
-                <label class="buyer-field">
-                    <span class="dash-label">Імʼя</span>
-                    <input class="buyer-control" name="name" type="text" autocomplete="name" placeholder="Ваше імʼя" maxlength="120">
-                </label>
-                <label class="buyer-field">
-                    <span class="dash-label">Телефон</span>
-                    <input class="buyer-control" name="phone" type="tel" autocomplete="tel" placeholder="+380" maxlength="32" required>
-                </label>
-                <label class="buyer-field">
-                    <span class="dash-label">Місто</span>
-                    <input class="buyer-control" name="city" type="text" autocomplete="address-level2" placeholder="Київ" maxlength="120">
-                </label>
-                <label class="buyer-field">
-                    <span class="dash-label">Запит</span>
-                    <textarea class="buyer-control" name="query" placeholder="Наприклад: потрібна фара BMW F10, бюджет до 6000 грн" minlength="8" maxlength="1200" required></textarea>
-                </label>
-                <label class="buyer-field">
-                    <span class="dash-label">VIN (необовʼязково)</span>
-                    <input class="buyer-control" name="vin" type="text" placeholder="VIN для точного підбору" maxlength="32">
-                </label>
-                <label class="buyer-field">
-                    <span class="dash-label">Фото (необовʼязково)</span>
-                    <input class="buyer-control" name="photos" type="file" accept="image/*" multiple>
-                </label>
-                <div class="lead-form-actions">
-                    <button class="btn btn-primary" type="submit" data-lead-submit>Надіслати заявку</button>
-                    <button class="btn btn-secondary" type="button" data-close-buyer-modal>Скасувати</button>
-                    <span class="lead-form-status" data-lead-status role="status" aria-live="polite"></span>
-                </div>
-            </form>
+            <div class="buyer-request-modal-grid">
+                <aside class="buyer-request-aside">
+                    <div>
+                        <span class="buyer-pill buyer-trust-pill">Request-driven marketplace</span>
+                        <h3>Не витрачайте час на десятки дзвінків</h3>
+                        <p class="buyer-help-text">Залиште місто, категорію, авто та опис потреби. Архітектура CarPot підготує заявку до маршрутизації релевантним продавцям за містом, категорією та спеціалізацією.</p>
+                    </div>
+                    <ul>
+                        <li>VIN і фото необовʼязкові, але підвищують точність.</li>
+                        <li>Телефон потрібен для швидкого контакту після відгуку.</li>
+                        <li>Telegram-нік готує майбутній прямий діалог.</li>
+                    </ul>
+                </aside>
+                <form class="lead-form" action="/buyer/requests" method="post" enctype="multipart/form-data" data-buyer-lead-form novalidate>
+                    <input type="hidden" name="lead_started_at" data-lead-started-at>
+                    <label class="buyer-honeypot" aria-hidden="true">
+                        <span>Website</span>
+                        <input name="website" type="text" tabindex="-1" autocomplete="off">
+                    </label>
+                    <div class="lead-form-grid">
+                        <label class="buyer-field">
+                            <span class="dash-label">Імʼя</span>
+                            <input class="buyer-control" name="name" type="text" autocomplete="name" placeholder="Ваше імʼя" maxlength="120">
+                        </label>
+                        <label class="buyer-field">
+                            <span class="dash-label">Телефон</span>
+                            <input class="buyer-control" name="phone" type="tel" autocomplete="tel" placeholder="+380" maxlength="32" required>
+                        </label>
+                        <label class="buyer-field">
+                            <span class="dash-label">Telegram (необовʼязково)</span>
+                            <input class="buyer-control" name="buyer_telegram" type="text" placeholder="@username" maxlength="80">
+                        </label>
+                        <label class="buyer-field">
+                            <span class="dash-label">Місто</span>
+                            <select class="buyer-control" name="city" required>
+                                <option value="">Оберіть місто</option>
+                                <option>Київ</option>
+                                <option>Львів</option>
+                                <option>Одеса</option>
+                                <option>Дніпро</option>
+                                <option>Харків</option>
+                                <option>Запоріжжя</option>
+                                <option>Івано-Франківськ</option>
+                                <option>Вінниця</option>
+                                <option>Інше місто</option>
+                            </select>
+                        </label>
+                        <label class="buyer-field">
+                            <span class="dash-label">Категорія</span>
+                            <select class="buyer-control" name="category" required>
+                                <option value="parts">Запчастини</option>
+                                <option value="cars">Авто</option>
+                                <option value="service">СТО / ремонт</option>
+                                <option value="diagnostics">Діагностика</option>
+                                <option value="tires">Шини / диски</option>
+                                <option value="tow">Евакуатор</option>
+                                <option value="other">Інше</option>
+                            </select>
+                        </label>
+                        <label class="buyer-field">
+                            <span class="dash-label">Тип запиту</span>
+                            <select class="buyer-control" name="request_type" required>
+                                <option value="part">Підібрати запчастину</option>
+                                <option value="car">Знайти авто</option>
+                                <option value="service">Отримати послугу</option>
+                                <option value="diagnostics">Діагностика</option>
+                                <option value="tow">Евакуатор</option>
+                                <option value="other">Інше</option>
+                            </select>
+                        </label>
+                        <label class="buyer-field">
+                            <span class="dash-label">Бренд</span>
+                            <input class="buyer-control" name="brand" type="text" placeholder="BMW" maxlength="80">
+                        </label>
+                        <label class="buyer-field">
+                            <span class="dash-label">Модель</span>
+                            <input class="buyer-control" name="model" type="text" placeholder="F10, Passat B7..." maxlength="80">
+                        </label>
+                        <label class="buyer-field">
+                            <span class="dash-label">Терміновість</span>
+                            <select class="buyer-control" name="urgency">
+                                <option value="soon">Найближчими днями</option>
+                                <option value="today">Потрібно сьогодні</option>
+                                <option value="week">Протягом тижня</option>
+                                <option value="flexible">Не терміново</option>
+                            </select>
+                        </label>
+                        <label class="buyer-field">
+                            <span class="dash-label">VIN (необовʼязково)</span>
+                            <input class="buyer-control" name="vin" type="text" placeholder="VIN для точного підбору" maxlength="32">
+                        </label>
+                        <label class="buyer-field wide">
+                            <span class="dash-label">Опис запиту</span>
+                            <textarea class="buyer-control" name="query" placeholder="Наприклад: потрібна ліва LED фара BMW F10, Київ, бажано з гарантією" minlength="12" maxlength="1400" required></textarea>
+                        </label>
+                        <label class="buyer-field wide">
+                            <span class="dash-label">Фото (необовʼязково, до 5)</span>
+                            <input class="buyer-control" name="photos" type="file" accept="image/*" multiple>
+                        </label>
+                    </div>
+                    <div class="lead-form-actions">
+                        <button class="btn btn-primary" type="submit" data-lead-submit>Надіслати заявку продавцям</button>
+                        <button class="btn btn-secondary" type="button" data-close-buyer-modal>Скасувати</button>
+                        <span class="lead-form-status" data-lead-status role="status" aria-live="polite"></span>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 </div>
@@ -900,9 +1062,20 @@
     const fillLeadFromItem = (item) => {
         if (!leadModal || !item) return;
         const query = leadModal.querySelector('textarea[name="query"]');
-        const city = leadModal.querySelector('input[name="city"]');
+        const city = leadModal.querySelector('[name="city"]');
         if (query && !query.value) query.value = `Цікавить: ${item.title || 'пропозиція CarPot'}`;
-        if (city && !city.value && item.city) city.value = item.city;
+        if (city && !city.value && item.city) {
+            const matchingOption = [...city.options || []].find((option) => normalize(option.value || option.textContent) === normalize(item.city));
+            city.value = matchingOption ? matchingOption.value : 'Інше місто';
+        }
+        const brand = leadModal.querySelector('input[name="brand"]');
+        const model = leadModal.querySelector('input[name="model"]');
+        const category = leadModal.querySelector('select[name="category"]');
+        const requestType = leadModal.querySelector('select[name="request_type"]');
+        if (brand && !brand.value && item.brand) brand.value = item.brand;
+        if (model && !model.value && item.model) model.value = item.model;
+        if (category && item.itemType === 'service') category.value = 'service';
+        if (requestType && item.itemType === 'service') requestType.value = 'service';
     };
 
     const openItemModal = (card) => {
@@ -913,7 +1086,7 @@
         const price = activeItem.price ? `${activeItem.price} грн` : (isService ? 'Орієнтовна ціна за запитом' : 'Ціна за запитом');
         const description = activeItem.description || (isService ? 'Деталі послуги можна уточнити напряму у виконавця.' : 'Опис пропозиції можна уточнити у продавця.');
         const username = activeItem.username ? activeItem.username.replace(/^@/, '') : '';
-        const messageHref = username ? `https://t.me/${username}` : telegramBotUrl;
+        const messageHref = activeItem.telegramLink || (username ? `https://t.me/${username}` : telegramBotUrl);
         const galleryIcon = isService ? '🛠️' : '🚗';
         activeGallery = [
             { src: activeItem.image || '', label: galleryIcon },
@@ -1048,11 +1221,16 @@
         form.querySelectorAll('.buyer-control').forEach((field) => field.classList.remove('is-invalid'));
         const phone = form.elements.phone;
         const query = form.elements.query;
+        const city = form.elements.city;
+        if (city && !city.value.trim()) {
+            city.classList.add('is-invalid');
+            ok = false;
+        }
         if (!phone.value.trim() || phone.value.replace(/\D/g, '').length < 9) {
             phone.classList.add('is-invalid');
             ok = false;
         }
-        if (!query.value.trim() || query.value.trim().length < 8) {
+        if (!query.value.trim() || query.value.trim().length < 12) {
             query.classList.add('is-invalid');
             ok = false;
         }
@@ -1153,7 +1331,7 @@
             status?.classList.remove('is-success', 'is-error');
             if (!validateLeadForm(form)) {
                 if (status) {
-                    status.textContent = 'Перевірте телефон і опис запиту.';
+                    status.textContent = 'Перевірте місто, телефон і опис запиту.';
                     status.classList.add('is-error');
                 }
                 return;
@@ -1165,7 +1343,7 @@
                 const payload = await response.json().catch(() => ({}));
                 if (!response.ok || !payload.ok) throw new Error(payload.detail || 'Lead request failed');
                 if (status) {
-                    status.textContent = 'Заявку прийнято. Ми підготуємо наступний крок.';
+                    status.textContent = 'Заявку прийнято. Продавці зможуть підготувати пропозиції.';
                     status.classList.add('is-success');
                 }
                 form.reset();

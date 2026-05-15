@@ -508,6 +508,35 @@ async def create_tables():
     await execute("CREATE INDEX IF NOT EXISTS idx_buyer_requests_user_created ON buyer_requests(telegram_id, created_at DESC);")
     await execute("CREATE INDEX IF NOT EXISTS idx_buyer_requests_status ON buyer_requests(status);")
     await execute("CREATE INDEX IF NOT EXISTS idx_buyer_requests_seller ON buyer_requests(seller_id);")
+    await execute("ALTER TABLE buyer_requests ADD COLUMN IF NOT EXISTS buyer_name TEXT;")
+    await execute("ALTER TABLE buyer_requests ADD COLUMN IF NOT EXISTS buyer_phone TEXT;")
+    await execute("ALTER TABLE buyer_requests ADD COLUMN IF NOT EXISTS buyer_telegram TEXT;")
+    await execute("ALTER TABLE buyer_requests ADD COLUMN IF NOT EXISTS city TEXT;")
+    await execute("ALTER TABLE buyer_requests ADD COLUMN IF NOT EXISTS category TEXT;")
+    await execute("ALTER TABLE buyer_requests ADD COLUMN IF NOT EXISTS brand TEXT;")
+    await execute("ALTER TABLE buyer_requests ADD COLUMN IF NOT EXISTS model TEXT;")
+    await execute("ALTER TABLE buyer_requests ADD COLUMN IF NOT EXISTS vin TEXT;")
+    await execute("ALTER TABLE buyer_requests ADD COLUMN IF NOT EXISTS description TEXT;")
+    await execute("ALTER TABLE buyer_requests ADD COLUMN IF NOT EXISTS photos JSONB DEFAULT '[]'::jsonb;")
+    await execute("ALTER TABLE buyer_requests ADD COLUMN IF NOT EXISTS urgency TEXT;")
+    await execute("ALTER TABLE buyer_requests ADD COLUMN IF NOT EXISTS marketplace_status TEXT NOT NULL DEFAULT 'pending';")
+    await execute("CREATE INDEX IF NOT EXISTS idx_buyer_requests_marketplace_status ON buyer_requests(marketplace_status, created_at DESC);")
+    await execute("CREATE INDEX IF NOT EXISTS idx_buyer_requests_city_category ON buyer_requests(city, category);")
+
+    await execute("""
+    CREATE TABLE IF NOT EXISTS buyer_request_offers (
+        id SERIAL PRIMARY KEY,
+        request_id INTEGER NOT NULL REFERENCES buyer_requests(id) ON DELETE CASCADE,
+        seller_id INTEGER NOT NULL REFERENCES sellers(id) ON DELETE CASCADE,
+        message TEXT NOT NULL,
+        price_offer NUMERIC(12,2),
+        status TEXT NOT NULL DEFAULT 'pending'
+            CHECK (status IN ('pending', 'accepted', 'rejected')),
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+    );
+    """)
+    await execute("CREATE INDEX IF NOT EXISTS idx_buyer_request_offers_request ON buyer_request_offers(request_id, created_at DESC);")
+    await execute("CREATE INDEX IF NOT EXISTS idx_buyer_request_offers_seller ON buyer_request_offers(seller_id, created_at DESC);")
     await execute("CREATE UNIQUE INDEX IF NOT EXISTS uq_buyer_garage_user_vehicle_lower ON buyer_garage(telegram_id, lower(vehicle_name));")
     await execute("CREATE INDEX IF NOT EXISTS idx_buyer_garage_user_updated ON buyer_garage(telegram_id, updated_at DESC);")
     await execute("CREATE INDEX IF NOT EXISTS idx_buyer_history_user_viewed ON buyer_history(telegram_id, viewed_at DESC);")

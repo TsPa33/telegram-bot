@@ -88,6 +88,14 @@
             </label>
             <button class="btn btn-primary" type="submit">Знайти</button>
         </form>
+        <div class="buyer-request-cta buyer-panel">
+            <div>
+                <span class="eyebrow">Не знайшли потрібне?</span>
+                <h3>Залиште заявку — це основний механізм CarPot marketplace</h3>
+                <p>Опишіть запит один раз, а архітектура підготує його до маршрутизації продавцям за містом, категорією та спеціалізацією.</p>
+            </div>
+            <button class="btn btn-primary" type="button" data-open-lead-modal>Залишити заявку</button>
+        </div>
     </div>
 </section>
 
@@ -188,5 +196,11 @@
         </div>
     </div>
 </section>
+<div class="container">
+        <div class="buyer-sticky-request buyer-panel">
+            <div><strong>Не знайшли точну пропозицію?</strong><span>Створіть заявку — продавці зможуть відгукнутися.</span></div>
+            <button class="btn btn-primary" type="button" data-open-lead-modal>Залишити заявку</button>
+        </div>
+</div>
 {% include "marketing/buyer_components/assets.html" %}
 {% endblock %}
