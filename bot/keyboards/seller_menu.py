@@ -36,6 +36,9 @@ def seller_main_kb(is_verified: bool = False):
             KeyboardButton(text="🌐 Мій сайт"),
         ],
         [
+            KeyboardButton(text="💼 Професійна CRM"),
+        ],
+        [
             KeyboardButton(text="💬 Підтримка"),
         ],
         [

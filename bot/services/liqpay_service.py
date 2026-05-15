@@ -16,6 +16,7 @@ DESCRIPTIONS = {
     "garage_1": "1 місце в гаражі",
     "garage_5": "5 місць в гаражі",
     "garage_10": "10 місць в гаражі",
+    "seller_crm": "Професійна CRM CarPot — 1 місяць",
 }
 
 
@@ -38,6 +39,9 @@ class LiqPayService:
         """
         if product == "site":
             return DESCRIPTIONS["site"]
+
+        if product == "seller_crm":
+            return DESCRIPTIONS["seller_crm"]
 
         if product == "garage":
             if amount == 99:

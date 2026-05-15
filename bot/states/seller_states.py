@@ -67,3 +67,8 @@ class SellerSiteStates(StatesGroup):
     site_logo = State()
     site_product_photo = State()
     site_service_photo = State()
+
+
+class SellerCrmStates(StatesGroup):
+    crm_slug = State()
+    crm_password = State()
