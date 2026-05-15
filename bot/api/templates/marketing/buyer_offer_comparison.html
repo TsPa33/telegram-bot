@@ -1,0 +1,131 @@
+{% extends "marketing/base_marketing.html" %}
+{% block content %}
+<style>
+    .offers-hero { padding: 82px 0 32px; }
+    .offers-shell { width: min(var(--max-width), calc(100% - 32px)); margin: 0 auto; }
+    .offers-hero-card {
+        display: grid;
+        grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
+        gap: 22px;
+        padding: 28px;
+        border: 1px solid rgba(0,255,157,0.24);
+        border-radius: 30px;
+        background: linear-gradient(135deg, rgba(15,23,42,0.88), rgba(8,13,27,0.72));
+        box-shadow: var(--glow-green);
+    }
+    :root[data-theme="light"] .offers-hero-card { background: linear-gradient(135deg, rgba(255,255,255,0.94), rgba(232,241,251,0.78)); }
+    .offers-kicker { color: var(--primary); font-weight: 800; letter-spacing: .08em; text-transform: uppercase; font-size: .78rem; }
+    .offers-hero h1 { font-size: clamp(2rem, 5vw, 4.2rem); line-height: .95; margin: 10px 0 14px; }
+    .offers-hero p { color: var(--muted); font-size: 1.05rem; line-height: 1.7; margin: 0; }
+    .request-facts { display: grid; gap: 10px; align-content: start; }
+    .request-fact { border: 1px solid var(--border); border-radius: 18px; padding: 13px 15px; background: rgba(255,255,255,.04); }
+    .request-fact span { color: var(--muted); display: block; font-size: .78rem; margin-bottom: 4px; }
+    .request-fact strong { font-size: 1rem; }
+    .market-pulse { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
+    .pulse-pill { border: 1px solid rgba(0,255,157,.24); color: var(--text); background: rgba(0,255,157,.08); border-radius: 999px; padding: 9px 13px; font-weight: 800; }
+    .offers-layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 22px; align-items: start; padding-bottom: 80px; }
+    .comparison-sidebar { position: sticky; top: 92px; border: 1px solid var(--border); border-radius: 24px; background: var(--card-bg); padding: 18px; backdrop-filter: blur(18px); }
+    .comparison-sidebar h2 { margin: 0 0 12px; font-size: 1.05rem; }
+    .comparison-sidebar ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+    .comparison-sidebar li { color: var(--muted); display: flex; gap: 8px; align-items: flex-start; }
+    .offers-stack { display: grid; gap: 18px; }
+    .offer-card { border: 1px solid rgba(148,163,184,.22); border-radius: 28px; background: var(--card-bg); padding: 20px; box-shadow: 0 20px 55px var(--soft-shadow); backdrop-filter: blur(18px); }
+    .offer-card-accepted { border-color: rgba(0,255,157,.62); box-shadow: var(--glow-green); }
+    .offer-card-muted { opacity: .72; }
+    .offer-card-top { display: flex; gap: 14px; align-items: flex-start; }
+    .seller-avatar { width: 54px; height: 54px; border-radius: 18px; display: grid; place-items: center; flex: 0 0 auto; font-weight: 900; font-size: 1.35rem; background: linear-gradient(135deg, var(--primary), var(--accent)); color: #041013; }
+    .seller-heading { min-width: 0; flex: 1; }
+    .seller-name-row { display: flex; gap: 10px; justify-content: space-between; align-items: flex-start; }
+    .seller-name-row h3 { margin: 0; font-size: 1.28rem; }
+    .seller-meta-line { display: flex; flex-wrap: wrap; gap: 8px 12px; color: var(--muted); margin-top: 7px; font-size: .92rem; }
+    .status-pill { white-space: nowrap; border-radius: 999px; padding: 6px 10px; font-weight: 900; font-size: .78rem; }
+    .status-new { color: #041013; background: var(--primary); }
+    .status-accepted { color: #041013; background: linear-gradient(135deg, var(--primary), #a7f3d0); }
+    .status-rejected { color: var(--muted); background: rgba(148,163,184,.12); border: 1px solid var(--border); }
+    .offer-value-row { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 12px; margin: 18px 0; }
+    .offer-value-row > div, .offer-message { border: 1px solid var(--border); border-radius: 18px; padding: 14px; background: rgba(255,255,255,.035); }
+    .offer-label { display: block; color: var(--muted); font-size: .78rem; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
+    .offer-value-row strong { font-size: 1.04rem; }
+    .offer-message p { margin: 0; color: var(--text); line-height: 1.55; }
+    .trust-strip { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+    .trust-strip span { border: 1px solid rgba(0,255,157,.20); background: rgba(0,255,157,.07); border-radius: 999px; padding: 7px 10px; color: var(--link-hover); font-weight: 750; font-size: .88rem; }
+    .offer-footer { display: flex; gap: 12px; justify-content: space-between; align-items: center; margin-top: 18px; }
+    .offer-time, .contact-locked-note { color: var(--muted); font-size: .9rem; }
+    .contact-unlocked-note { color: var(--primary); font-weight: 900; }
+    .offer-cta { min-width: 190px; justify-content: center; }
+    .seller-contact-panel, .seller-contact-locked { margin-top: 16px; border-radius: 20px; padding: 14px; }
+    .seller-contact-panel { border: 1px solid rgba(0,255,157,.30); background: rgba(0,255,157,.08); display: grid; gap: 12px; }
+    .seller-contact-locked { border: 1px dashed var(--border); color: var(--muted); background: rgba(148,163,184,.06); }
+    .contact-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+    .empty-offers { text-align: center; padding: 48px 24px; border: 1px dashed var(--border); border-radius: 28px; background: var(--card-bg); }
+    .empty-offers h2 { margin: 0 0 10px; }
+    .empty-offers p { margin: 0 auto 18px; color: var(--muted); max-width: 560px; }
+    @media (max-width: 860px) {
+        .offers-hero { padding-top: 64px; }
+        .offers-hero-card, .offers-layout { grid-template-columns: 1fr; }
+        .comparison-sidebar { position: static; }
+        .offer-value-row { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 560px) {
+        .offers-shell { width: min(100% - 22px, var(--max-width)); }
+        .offers-hero-card, .offer-card { border-radius: 22px; padding: 16px; }
+        .seller-name-row, .offer-footer { flex-direction: column; align-items: stretch; }
+        .offer-cta { width: 100%; }
+        .contact-actions .btn { width: 100%; justify-content: center; }
+    }
+</style>
+
+<section class="offers-hero">
+    <div class="offers-shell offers-hero-card">
+        <div>
+            <span class="offers-kicker">🔥 Вам надійшли нові пропозиції</span>
+            <h1>{{ request_model.title }}</h1>
+            <p>{{ request_model.description }}</p>
+            <div class="market-pulse">
+                <span class="pulse-pill">{{ request_model.offers_count }} пропозицій</span>
+                {% if request_model.new_offers_count %}<span class="pulse-pill">{{ request_model.new_offers_count }} нових</span>{% endif %}
+                <span class="pulse-pill">Статус: {{ 'знайдено збіг' if request_model.is_matched else 'активний вибір' }}</span>
+            </div>
+        </div>
+        <div class="request-facts">
+            <div class="request-fact"><span>Місто</span><strong>{{ request_model.city or 'Україна' }}</strong></div>
+            <div class="request-fact"><span>Категорія</span><strong>{{ request_model.category or request_model.request_type }}</strong></div>
+            <div class="request-fact"><span>Авто</span><strong>{{ [request_model.brand, request_model.model]|select|join(' ') or 'Не вказано' }}</strong></div>
+            <div class="request-fact"><span>Терміновість</span><strong>{{ request_model.urgency or 'soon' }}</strong></div>
+        </div>
+    </div>
+</section>
+
+<section class="offers-shell offers-layout">
+    <aside class="comparison-sidebar">
+        <h2>Як порівнювати</h2>
+        <ul>
+            <li>✅ Спершу дивіться верифікацію та активність продавця.</li>
+            <li>💬 Порівняйте текст пропозиції, наявність і ціну.</li>
+            <li>🔒 Контакти відкриваються тільки після вибору.</li>
+            <li>🎯 Після вибору заявка переходить у match state.</li>
+        </ul>
+    </aside>
+
+    <div class="offers-stack">
+        {% if request_model.accepted_offer %}
+            <div class="seller-contact-panel">
+                <strong>Marketplace match створено.</strong>
+                <span>Ви обрали продавця — нижче відкрито Telegram, телефон, сайт і профіль для безпечного контакту.</span>
+            </div>
+        {% endif %}
+
+        {% if request_model.offers %}
+            {% for offer in request_model.offers %}
+                {% include "marketing/buyer_components/offer_card.html" %}
+            {% endfor %}
+        {% else %}
+            <div class="empty-offers">
+                <h2>Пропозицій ще немає</h2>
+                <p>Заявка активна. Коли продавці надішлють ціну, наявність і коментар, вони зʼявляться тут у форматі порівняння.</p>
+                <a class="btn btn-secondary" href="/buyer">Повернутися в маркетплейс</a>
+            </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}
