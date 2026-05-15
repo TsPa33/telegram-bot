@@ -1,33 +1,32 @@
 {% extends "seller_crm/base.html" %}
-{% block body %}
-<div class="shell">
-  <aside class="side">
-    <a class="brand" href="#dashboard"><div class="mark">🏎️</div><div><b>CarPot CRM</b><span>{{ account.shop_name or account.name or account.crm_slug }}</span></div></a>
-    <nav class="nav">
-      <a class="active" href="#dashboard">📊 Dashboard</a><a href="#leads">🧲 Leads</a><a href="#analytics">📈 Website Analytics</a><a href="#cars">🚗 Cars / Listings</a><a href="#services">🛠 Services</a><a href="#subscription">💳 Subscription</a>
-    </nav>
-  </aside>
-  <main class="main">
-    <header class="top"><div><p class="kicker">Professional automotive business operating system</p><h1>💼 Професійна CRM CarPot</h1></div><div class="pill">{{ "Demo mode" if demo_mode else "Seller-only" }}</div></header>
-    <section class="content">
-      {% if demo_mode %}<div class="demo-ribbon">👀 Read-only demo dashboard</div>{% endif %}
-      <div id="dashboard" class="grid cards">
-        <article class="card"><h3>Visits today</h3><div class="metric">{{ stats.visits_today or 0 }}</div><p class="muted">сайт-візити без IP адрес</p></article>
-        <article class="card"><h3>Leads today</h3><div class="metric">{{ stats.leads_today or 0 }}</div><p class="muted">Telegram + сайт заявки</p></article>
-        <article class="card"><h3>Telegram clicks</h3><div class="metric">{{ stats.telegram_clicks_today or 0 }}</div><p class="muted">контактні переходи</p></article>
-        <article class="card"><h3>Active listings</h3><div class="metric">{{ stats.active_listings or 0 }}</div><p class="muted">активні авто</p></article>
-        <article class="card"><h3>Conversion</h3><div class="metric">{{ stats.conversion or 0 }}%</div><p class="muted">leads / visits</p></article>
-      </div>
-      <div class="grid two" style="margin-top:16px">
-        <article id="leads" class="card"><h3>🧲 Leads pipeline</h3><p><span class="badge">New {{ stats.new_leads or 0 }}</span> <span class="badge">In progress {{ stats.in_progress_leads or 0 }}</span> <span class="badge">Closed {{ stats.closed_leads or 0 }}</span></p><table class="table"><thead><tr><th>Клієнт</th><th>Контакт</th><th>Джерело</th><th>Статус</th></tr></thead><tbody>{% for lead in leads %}<tr><td>{{ lead.name or "Новий клієнт" }}<br><span class="muted">{{ lead.message or "—" }}</span></td><td>{{ lead.phone }}</td><td>{{ lead.source or "direct" }}</td><td><span class="badge">{{ lead.status }}</span></td></tr>{% else %}<tr><td colspan="4" class="muted">Заявок ще немає</td></tr>{% endfor %}</tbody></table></article>
-        <article id="analytics" class="card"><h3>📈 Website analytics</h3><p class="muted">Без IP, логів і внутрішніх системних метрик.</p><p><b>{{ stats.page_views_today or 0 }}</b> page views today</p><p><b>{{ stats.cta_clicks_today or 0 }}</b> CTA clicks today</p><h3>Traffic sources</h3>{% for source in sources %}<p><span class="badge">{{ source.source }}</span> {{ source.visits }} visits</p>{% else %}<p class="muted">Поки немає джерел</p>{% endfor %}</article>
-      </div>
-      <div class="grid two" style="margin-top:16px">
-        <article id="cars" class="card"><h3>🚗 Cars / Listings</h3><p><b>{{ stats.listing_views or 0 }}</b> views · <b>{{ stats.listing_clicks or 0 }}</b> clicks/favorites</p><table class="table"><thead><tr><th>Авто</th><th>Views</th><th>Clicks</th></tr></thead><tbody>{% for car in cars %}<tr><td>{{ car.brand }} {{ car.model }}</td><td>{{ car.views }}</td><td>{{ car.phone_clicks + car.site_clicks }}</td></tr>{% else %}<tr><td colspan="3" class="muted">Немає активних авто</td></tr>{% endfor %}</tbody></table></article>
-        <article id="services" class="card"><h3>🛠 Services</h3><p><b>{{ stats.services_count or 0 }}</b> services · <b>{{ stats.service_requests or 0 }}</b> requests/clicks</p><table class="table"><thead><tr><th>Послуга</th><th>Views</th><th>Requests</th></tr></thead><tbody>{% for service in services %}<tr><td>{{ service.title }}<br><span class="muted">{{ service.category }}</span></td><td>{{ service.views }}</td><td>{{ service.calls + service.clicks }}</td></tr>{% else %}<tr><td colspan="3" class="muted">Послуг ще немає</td></tr>{% endfor %}</tbody></table></article>
-      </div>
-      <article id="subscription" class="card" style="margin-top:16px"><h3>💳 Subscription</h3><p>Package: <b>Професійна CRM — 99 грн/міс</b></p><p>Expiration: <b>{{ subscription.expires_at.strftime('%d.%m.%Y') if subscription and subscription.expires_at else '—' }}</b></p>{% if not demo_mode %}<form method="post" action="/crm/seller/logout"><button class="btn" type="submit">Вийти</button></form>{% endif %}</article>
-    </section>
-  </main>
-</div>
+{% block crm_kicker %}Єдина панель керування продажами, сайтом і заявками{% endblock %}
+{% block crm_heading %}💼 Професійна CRM CarPot{% endblock %}
+{% block content %}
+  {% if demo_mode %}<div class="demo-ribbon">👀 Демо-панель тільки для перегляду</div>{% endif %}
+  <div id="dashboard" class="grid cards">
+    <article class="card"><h3>Візити сьогодні</h3><div class="metric">{{ stats.visits_today or 0 }}</div><p class="muted">сайт-візити без IP адрес</p></article>
+    <article class="card"><h3>Заявки сьогодні</h3><div class="metric">{{ stats.leads_today or 0 }}</div><p class="muted">Telegram + сайт заявки</p></article>
+    <article class="card"><h3>Кліки Telegram</h3><div class="metric">{{ stats.telegram_clicks_today or 0 }}</div><p class="muted">контактні переходи</p></article>
+    <article class="card"><h3>Активні авто</h3><div class="metric">{{ stats.active_listings or 0 }}</div><p class="muted">активні оголошення</p></article>
+    <article class="card"><h3>Конверсія</h3><div class="metric">{{ stats.conversion or 0 }}%</div><p class="muted">заявки / візити</p></article>
+  </div>
+
+  <div class="grid quick-cards">
+    <a class="card quick-card" href="/crm/seller/{{ account.crm_slug }}/website#website"><span class="icon">🌐</span><b>Керувати сайтом</b><span>Тексти, контакти, SEO і CTA</span></a>
+    <a class="card quick-card" href="/crm/seller/{{ account.crm_slug }}/website#banners"><span class="icon">🖼</span><b>Банери</b><span>Hero-зображення та порядок показу</span></a>
+    <a class="card quick-card" href="/crm/seller/{{ account.crm_slug }}/website#logo"><span class="icon">🏷</span><b>Лого</b><span>Оновити бренд у шапці сайту</span></a>
+    <a class="card quick-card" href="/crm/seller/{{ account.crm_slug }}/website#services"><span class="icon">🛠</span><b>Послуги</b><span>Додати або відредагувати послуги</span></a>
+    <a class="card quick-card" href="/crm/seller/{{ account.crm_slug }}/website#cars"><span class="icon">🚗</span><b>Авто</b><span>Керування автокаталогом</span></a>
+    <a class="card quick-card" href="/crm/seller/{{ account.crm_slug }}/website#publish"><span class="icon">🚀</span><b>Публікація</b><span>Опублікувати чернетку сайту</span></a>
+  </div>
+
+  <div class="grid two" style="margin-top:16px">
+    <article id="leads" class="card"><h3>📩 Заявки</h3><p><span class="badge">Нові {{ stats.new_leads or 0 }}</span> <span class="badge">У роботі {{ stats.in_progress_leads or 0 }}</span> <span class="badge">Закриті {{ stats.closed_leads or 0 }}</span></p><table class="table"><thead><tr><th>Клієнт</th><th>Контакт</th><th>Джерело</th><th>Статус</th></tr></thead><tbody>{% for lead in leads %}<tr><td>{{ lead.name or "Новий клієнт" }}<br><span class="muted">{{ lead.message or "—" }}</span></td><td>{{ lead.phone }}</td><td>{{ lead.source or "direct" }}</td><td><span class="badge">{{ lead.status }}</span></td></tr>{% else %}<tr><td colspan="4" class="muted">Заявок ще немає</td></tr>{% endfor %}</tbody></table></article>
+    <article id="analytics" class="card"><h3>📈 Аналітика сайту</h3><p class="muted">Без IP, логів і внутрішніх системних метрик.</p><p><b>{{ stats.page_views_today or 0 }}</b> переглядів сторінок сьогодні</p><p><b>{{ stats.cta_clicks_today or 0 }}</b> кліків CTA сьогодні</p><h3>Джерела трафіку</h3>{% for source in sources %}<p><span class="badge">{{ source.source }}</span> {{ source.visits }} візитів</p>{% else %}<p class="muted">Поки немає джерел</p>{% endfor %}</article>
+  </div>
+  <div class="grid two" style="margin-top:16px">
+    <article id="cars" class="card"><h3>🚗 Авто</h3><p><b>{{ stats.listing_views or 0 }}</b> переглядів · <b>{{ stats.listing_clicks or 0 }}</b> кліків/обраних</p><table class="table"><thead><tr><th>Авто</th><th>Перегляди</th><th>Кліки</th></tr></thead><tbody>{% for car in cars %}<tr><td>{{ car.brand }} {{ car.model }}</td><td>{{ car.views }}</td><td>{{ car.phone_clicks + car.site_clicks }}</td></tr>{% else %}<tr><td colspan="3" class="muted">Немає активних авто</td></tr>{% endfor %}</tbody></table></article>
+    <article id="services" class="card"><h3>🛠 Послуги</h3><p><b>{{ stats.services_count or 0 }}</b> послуг · <b>{{ stats.service_requests or 0 }}</b> заявок/кліків</p><table class="table"><thead><tr><th>Послуга</th><th>Перегляди</th><th>Заявки</th></tr></thead><tbody>{% for service in services %}<tr><td>{{ service.title }}<br><span class="muted">{{ service.category }}</span></td><td>{{ service.views }}</td><td>{{ service.calls + service.clicks }}</td></tr>{% else %}<tr><td colspan="3" class="muted">Послуг ще немає</td></tr>{% endfor %}</tbody></table></article>
+  </div>
+  <article id="subscription" class="card" style="margin-top:16px"><h3>💳 Підписка</h3><p>Пакет: <b>Професійна CRM — 99 грн/міс</b></p><p>Діє до: <b>{{ subscription.expires_at.strftime('%d.%m.%Y') if subscription and subscription.expires_at else '—' }}</b></p>{% if not demo_mode %}<form method="post" action="/crm/seller/logout"><button class="btn" type="submit">Вийти</button></form>{% endif %}</article>
 {% endblock %}

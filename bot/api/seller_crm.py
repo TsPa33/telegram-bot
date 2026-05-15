@@ -117,7 +117,7 @@ async def _authorized_account(request: Request, crm_slug: str):
 
 def _redirect(crm_slug: str, section: str = "website", status: str = "saved"):
     return RedirectResponse(
-        url=f"/crm/seller/{crm_slug}/website?section={section}&status={status}",
+        url=f"/crm/seller/{crm_slug}/website?status={status}#{section}",
         status_code=303,
     )
 
@@ -212,6 +212,7 @@ async def seller_crm_demo(request: Request):
             request,
             title="Демо CRM CarPot",
             demo_mode=True,
+            current_page="dashboard",
             account={"crm_slug": "demo", "shop_name": "Demo Auto Hub"},
             subscription={"expires_at": datetime.utcnow() + timedelta(days=30)},
             stats=demo_stats,
@@ -310,6 +311,7 @@ async def seller_crm_dashboard(request: Request, crm_slug: str):
             request,
             title="Професійна CRM CarPot",
             demo_mode=False,
+            current_page="dashboard",
             account=account,
             subscription=subscription,
             stats=stats or {},
@@ -348,7 +350,8 @@ async def seller_crm_website(request: Request, crm_slug: str, section: str = "we
         "seller_crm/website.html",
         _seller_crm_context(
             request,
-            title="Медіа та дизайн — Seller CRM",
+            title="Керування сайтом — Seller CRM",
+            current_page="website",
             account=account,
             subscription=subscription,
             site=site,
