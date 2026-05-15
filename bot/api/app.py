@@ -16,6 +16,13 @@ from bot.database.repositories.seller_repo import get_seller_by_id
 from bot.database.repositories.car_repo import get_cars_by_seller
 from bot.database.repositories.service_repo import get_services_by_seller
 from bot.database.repositories.lead_repo import create_site_lead
+from bot.database.repositories.marketplace_repo import (
+    get_featured_sellers,
+    get_latest_cars,
+    get_latest_services,
+    get_marketplace_summary,
+    search_marketplace,
+)
 from bot.database.repositories.analytics_repo import (
     ALLOWED_ANALYTICS_EVENT_TYPES,
     add_event,
@@ -190,6 +197,174 @@ async def marketing_home(request: Request):
             "Telegram-платформа для створення сайтів, каталогів і заявок для авторозборок, СТО, шиномонтажу, евакуаторів та продавців автозапчастин.",
         ),
     )
+
+
+@router.get("/seller", response_class=HTMLResponse)
+async def marketing_seller(request: Request):
+    return templates.TemplateResponse(
+        "marketing/index.html",
+        marketing_context(
+            request,
+            "Carpot — сайти для авторозборок, автосервісів та автозапчастин",
+            "Telegram-платформа для створення сайтів, каталогів і заявок для авторозборок, СТО, шиномонтажу, евакуаторів та продавців автозапчастин.",
+            "/seller",
+        ),
+    )
+
+
+async def _safe_buyer_context() -> dict:
+    try:
+        summary = await get_marketplace_summary()
+        latest_cars = await get_latest_cars(limit=6)
+        latest_services = await get_latest_services(limit=6)
+        featured_sellers = await get_featured_sellers(limit=6)
+    except Exception:
+        logger.exception("Failed to load buyer marketplace context")
+        summary = {
+            "cars_count": 0,
+            "services_count": 0,
+            "sellers_count": 0,
+            "cities_count": 0,
+        }
+        latest_cars = []
+        latest_services = []
+        featured_sellers = []
+
+    return {
+        "marketplace_summary": summary,
+        "marketplace_cars": latest_cars,
+        "marketplace_services": latest_services,
+        "featured_sellers": featured_sellers,
+    }
+
+
+@router.get("/buyer", response_class=HTMLResponse)
+async def buyer_home(request: Request):
+    context = marketing_context(
+        request,
+        "CarPot для покупця — пошук автозапчастин, авто та послуг",
+        "Покупець CarPot знаходить автозапчастини, авто, СТО, евакуаторів та інших автомобільних продавців через Telegram-екосистему й публічний каталог.",
+        "/buyer",
+    )
+    context.update(await _safe_buyer_context())
+    return templates.TemplateResponse("marketing/buyer.html", context)
+
+
+@router.get("/catalog", response_class=HTMLResponse)
+async def buyer_catalog(request: Request, page: int = 1):
+    page = max(page, 1)
+    limit = 12
+    offset = (page - 1) * limit
+
+    try:
+        summary = await get_marketplace_summary()
+        cars = await get_latest_cars(limit=limit, offset=offset)
+        services = await get_latest_services(limit=limit, offset=offset)
+        sellers = await get_featured_sellers(limit=8)
+    except Exception:
+        logger.exception("Failed to load buyer catalog")
+        summary = {"cars_count": 0, "services_count": 0, "sellers_count": 0, "cities_count": 0}
+        cars = []
+        services = []
+        sellers = []
+
+    context = marketing_context(
+        request,
+        "Каталог CarPot — авто, запчастини, сервіси та продавці",
+        "Публічний каталог активних авто, автосервісів і продавців CarPot для покупців.",
+        "/catalog",
+    )
+    context.update({
+        "marketplace_summary": summary,
+        "marketplace_cars": cars,
+        "marketplace_services": services,
+        "featured_sellers": sellers,
+        "page": page,
+        "catalog_type": "all",
+    })
+    return templates.TemplateResponse("marketing/catalog.html", context)
+
+
+@router.get("/cars", response_class=HTMLResponse)
+async def buyer_cars(request: Request, page: int = 1):
+    page = max(page, 1)
+    limit = 18
+    offset = (page - 1) * limit
+
+    try:
+        cars = await get_latest_cars(limit=limit, offset=offset)
+        summary = await get_marketplace_summary()
+    except Exception:
+        logger.exception("Failed to load buyer cars")
+        cars = []
+        summary = {"cars_count": 0, "services_count": 0, "sellers_count": 0, "cities_count": 0}
+
+    context = marketing_context(
+        request,
+        "Авто та запчастини CarPot — каталог для покупця",
+        "Активні авто й пропозиції продавців CarPot з контактами та описами.",
+        "/cars",
+    )
+    context.update({"marketplace_cars": cars, "marketplace_summary": summary, "page": page})
+    return templates.TemplateResponse("marketing/cars.html", context)
+
+
+@router.get("/services", response_class=HTMLResponse)
+async def buyer_services(request: Request, page: int = 1):
+    page = max(page, 1)
+    limit = 18
+    offset = (page - 1) * limit
+
+    try:
+        services = await get_latest_services(limit=limit, offset=offset)
+        summary = await get_marketplace_summary()
+    except Exception:
+        logger.exception("Failed to load buyer services")
+        services = []
+        summary = {"cars_count": 0, "services_count": 0, "sellers_count": 0, "cities_count": 0}
+
+    context = marketing_context(
+        request,
+        "Автосервіси CarPot — каталог послуг для покупця",
+        "СТО, автоелектрики, шиномонтаж, евакуатори та інші автомобільні послуги в каталозі CarPot.",
+        "/services",
+    )
+    context.update({"marketplace_services": services, "marketplace_summary": summary, "page": page})
+    return templates.TemplateResponse("marketing/services.html", context)
+
+
+@router.get("/search", response_class=HTMLResponse)
+async def buyer_search(request: Request, q: str | None = None, city: str | None = None, type: str = "all", page: int = 1):
+    page = max(page, 1)
+    limit = 12
+    offset = (page - 1) * limit
+
+    try:
+        results = await search_marketplace(q=q, city=city, item_type=type, limit=limit, offset=offset)
+        summary = await get_marketplace_summary()
+    except Exception:
+        logger.exception("Failed to search buyer marketplace")
+        results = {"cars": [], "services": [], "sellers": [], "query": (q or "").strip(), "city": (city or "").strip(), "type": type}
+        summary = {"cars_count": 0, "services_count": 0, "sellers_count": 0, "cities_count": 0}
+
+    context = marketing_context(
+        request,
+        "Пошук CarPot — знайти авто, запчастини або сервіс",
+        "Пошук по каталогу CarPot: авто, запчастини, продавці, СТО, евакуатори та автопослуги за містом або запитом.",
+        "/search",
+    )
+    context.update({
+        "marketplace_summary": summary,
+        "marketplace_cars": results["cars"],
+        "marketplace_services": results["services"],
+        "featured_sellers": results["sellers"],
+        "search_query": results["query"],
+        "selected_city": results["city"],
+        "selected_type": results["type"],
+        "page": page,
+        "catalog_type": "search",
+    })
+    return templates.TemplateResponse("marketing/catalog.html", context)
 
 
 @router.get("/privacy-policy", response_class=HTMLResponse)

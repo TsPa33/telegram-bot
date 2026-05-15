@@ -513,6 +513,21 @@ async def create_tables():
     await execute("CREATE INDEX IF NOT EXISTS idx_buyer_history_user_viewed ON buyer_history(telegram_id, viewed_at DESC);")
     await execute("CREATE INDEX IF NOT EXISTS idx_buyer_history_entity ON buyer_history(entity_type, entity_ref);")
 
+    await execute("""
+    CREATE TABLE IF NOT EXISTS buyer_leads (
+        id SERIAL PRIMARY KEY,
+        name TEXT,
+        phone TEXT,
+        query TEXT,
+        city TEXT,
+        source TEXT,
+        created_at TIMESTAMP DEFAULT NOW()
+    );
+    """)
+
+    await execute("CREATE INDEX IF NOT EXISTS idx_buyer_leads_created_at ON buyer_leads(created_at DESC);")
+    await execute("CREATE INDEX IF NOT EXISTS idx_buyer_leads_city ON buyer_leads(city);")
+
     await execute("CREATE INDEX IF NOT EXISTS idx_model_id ON seller_cars(model_id);")
     await execute("CREATE INDEX IF NOT EXISTS idx_status ON seller_cars(status);")
     await execute("CREATE INDEX IF NOT EXISTS idx_seller_id ON seller_cars(seller_id);")

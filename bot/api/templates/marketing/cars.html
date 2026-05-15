@@ -1,0 +1,52 @@
+{% extends "marketing/base_marketing.html" %}
+
+{% block content %}
+<section class="legal-hero">
+    <div class="container">
+        <span class="eyebrow">Авто та запчастини</span>
+        <h1>Активні пропозиції продавців CarPot</h1>
+        <p class="lead">Окрема buyer-сторінка для перегляду авто й пропозицій продавців без зміни seller landing.</p>
+        <div class="hero-actions">
+            <a class="btn btn-primary" href="/search?type=cars">Пошук авто / запчастин</a>
+            <a class="btn btn-secondary" href="/catalog">Весь каталог</a>
+        </div>
+    </div>
+</section>
+
+<section class="section" style="padding-top: 24px;">
+    <div class="container">
+        <div class="section-head">
+            <div>
+                <span class="eyebrow">{{ marketplace_summary.cars_count }} активних</span>
+                <h2>Каталог авто</h2>
+            </div>
+            <p>Read-only вибірка з активних seller_cars для buyer ecosystem.</p>
+        </div>
+        <div class="grid-3">
+            {% for car in marketplace_cars %}
+            <article class="card">
+                <span class="eyebrow">{{ car.brand }}</span>
+                <h3>{{ car.brand }} {{ car.model }}</h3>
+                <p>{{ car.description or 'Опис пропозиції можна уточнити у продавця CarPot.' }}</p>
+                <p><strong>{{ car.shop_name or car.name or car.username or 'Продавець CarPot' }}</strong>{% if car.city %} · {{ car.city }}{% endif %}</p>
+                <p>Перегляди: {{ car.views or 0 }}</p>
+                <div class="card-actions">
+                    {% if car.website %}<a class="btn btn-secondary" href="{{ car.website }}" target="_blank" rel="noopener">Сайт продавця</a>{% endif %}
+                    {% if car.phone %}<a class="btn btn-primary" href="tel:{{ car.phone }}">Подзвонити</a>{% endif %}
+                </div>
+            </article>
+            {% else %}
+            <article class="card">
+                <h3>Поки немає активних авто</h3>
+                <p>Спробуйте загальний каталог або залиште запит у Telegram-боті.</p>
+                <a class="btn btn-primary" href="{{ telegram_bot_url }}" target="_blank" rel="noopener">Відкрити бот</a>
+            </article>
+            {% endfor %}
+        </div>
+        <div class="hero-actions">
+            {% if page > 1 %}<a class="btn btn-secondary" href="/cars?page={{ page - 1 }}">Назад</a>{% endif %}
+            <a class="btn btn-secondary" href="/cars?page={{ page + 1 }}">Наступна сторінка</a>
+        </div>
+    </div>
+</section>
+{% endblock %}
