@@ -32,13 +32,27 @@ async def list_crm_payments(
         args.append(status)
         filters.append(f"p.status = ${len(args)}")
 
-    if product and "product" in columns:
-        args.append(product)
-        filters.append(f"p.product = ${len(args)}")
+    if product:
+        if "product_type" in columns and "product" in columns:
+            args.append(product)
+            filters.append(f"COALESCE(p.product_type, p.product) = ${len(args)}")
+        elif "product_type" in columns:
+            args.append(product)
+            filters.append(f"p.product_type = ${len(args)}")
+        elif "product" in columns:
+            args.append(product)
+            filters.append(f"p.product = ${len(args)}")
 
     if seller_id is not None and "seller_id" in columns:
         args.append(seller_id)
         filters.append(f"p.seller_id = ${len(args)}")
+
+    if "product_type" in columns and "product" in columns:
+        product_select_sql = "COALESCE(p.product_type, p.product) AS product"
+    elif "product_type" in columns:
+        product_select_sql = select_column("product_type", "product")
+    else:
+        product_select_sql = select_column("product", "product")
 
     args.append(limit)
     limit_param = f"${len(args)}"
@@ -64,7 +78,7 @@ async def list_crm_payments(
             {select_column("seller_id")},
             {seller_username_sql},
             {seller_shop_name_sql},
-            {select_column("product")},
+            {product_select_sql},
             {select_column("amount")},
             {select_column("status")},
             {select_column("created_at")},
