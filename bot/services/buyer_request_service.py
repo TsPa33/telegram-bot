@@ -6,7 +6,9 @@ from typing import Iterable
 from fastapi import UploadFile
 
 from bot.database.repositories.buyer_request_repo import create_marketplace_buyer_request
+from bot.services.buyer_request_safety import inspect_buyer_request_safety
 from bot.services.marketplace_routing import build_buyer_request_routing_plan
+from bot.services.request_photo_pipeline import RequestPhotoValidationError, prepare_request_photo_assets
 
 
 REQUEST_TYPES = {"part", "car", "service", "diagnostics", "tow", "other"}
@@ -89,20 +91,10 @@ def normalize_vin(value: str | None) -> str | None:
 
 
 def serialize_photo_metadata(photos: Iterable[UploadFile] | None) -> str | None:
-    metadata = []
-    for photo in photos or []:
-        if not photo or not photo.filename:
-            continue
-        if photo.content_type and not photo.content_type.startswith("image/"):
-            raise BuyerRequestValidationError("Фото мають бути зображеннями.")
-        metadata.append(
-            {
-                "filename": short_text(photo.filename, 180),
-                "content_type": short_text(photo.content_type, 80),
-            }
-        )
-        if len(metadata) >= 5:
-            break
+    try:
+        metadata = prepare_request_photo_assets(photos)
+    except RequestPhotoValidationError as exc:
+        raise BuyerRequestValidationError(str(exc)) from exc
     return json.dumps(metadata, ensure_ascii=False) if metadata else None
 
 
@@ -133,6 +125,15 @@ async def submit_marketplace_buyer_request(payload: BuyerRequestInput) -> dict:
     vin = normalize_vin(payload.vin)
     photos = serialize_photo_metadata(payload.photos)
 
+    safety = inspect_buyer_request_safety(
+        phone=phone,
+        city=city,
+        request_type=request_type,
+        category=category,
+        description=description,
+        vin=vin,
+    )
+
     row = await create_marketplace_buyer_request(
         buyer_name=short_text(payload.buyer_name, 120),
         buyer_phone=phone,
@@ -147,6 +148,10 @@ async def submit_marketplace_buyer_request(payload: BuyerRequestInput) -> dict:
         photos=photos,
         urgency=urgency,
         status="pending",
+        request_fingerprint=safety.fingerprint,
+        normalized_phone=safety.normalized_phone,
+        safety_status="suspicious" if safety.suspicious else "clear",
+        safety_flags=safety.to_dict(),
     )
 
     routing_plan = build_buyer_request_routing_plan(
@@ -158,4 +163,4 @@ async def submit_marketplace_buyer_request(payload: BuyerRequestInput) -> dict:
         urgency=urgency,
     )
 
-    return {"request": dict(row) if row else None, "routing_plan": routing_plan}
+    return {"request": dict(row) if row else None, "routing_plan": routing_plan, "safety": safety.to_dict()}

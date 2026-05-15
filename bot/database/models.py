@@ -520,8 +520,15 @@ async def create_tables():
     await execute("ALTER TABLE buyer_requests ADD COLUMN IF NOT EXISTS photos JSONB DEFAULT '[]'::jsonb;")
     await execute("ALTER TABLE buyer_requests ADD COLUMN IF NOT EXISTS urgency TEXT;")
     await execute("ALTER TABLE buyer_requests ADD COLUMN IF NOT EXISTS marketplace_status TEXT NOT NULL DEFAULT 'pending';")
+    await execute("ALTER TABLE buyer_requests ADD COLUMN IF NOT EXISTS request_fingerprint TEXT;")
+    await execute("ALTER TABLE buyer_requests ADD COLUMN IF NOT EXISTS normalized_phone TEXT;")
+    await execute("ALTER TABLE buyer_requests ADD COLUMN IF NOT EXISTS safety_status TEXT NOT NULL DEFAULT 'clear';")
+    await execute("ALTER TABLE buyer_requests ADD COLUMN IF NOT EXISTS safety_flags JSONB NOT NULL DEFAULT '{}'::jsonb;")
+    await execute("ALTER TABLE buyer_requests ADD COLUMN IF NOT EXISTS photo_pipeline_status TEXT NOT NULL DEFAULT 'metadata_only';")
     await execute("CREATE INDEX IF NOT EXISTS idx_buyer_requests_marketplace_status ON buyer_requests(marketplace_status, created_at DESC);")
     await execute("CREATE INDEX IF NOT EXISTS idx_buyer_requests_city_category ON buyer_requests(city, category);")
+    await execute("CREATE INDEX IF NOT EXISTS idx_buyer_requests_fingerprint ON buyer_requests(request_fingerprint);")
+    await execute("CREATE INDEX IF NOT EXISTS idx_buyer_requests_safety_status ON buyer_requests(safety_status, created_at DESC);")
 
     await execute("""
     CREATE TABLE IF NOT EXISTS buyer_request_offers (
@@ -535,8 +542,25 @@ async def create_tables():
         created_at TIMESTAMP NOT NULL DEFAULT NOW()
     );
     """)
+    await execute("ALTER TABLE buyer_request_offers ADD COLUMN IF NOT EXISTS availability_note TEXT;")
+    await execute("ALTER TABLE buyer_request_offers ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT NOW();")
     await execute("CREATE INDEX IF NOT EXISTS idx_buyer_request_offers_request ON buyer_request_offers(request_id, created_at DESC);")
     await execute("CREATE INDEX IF NOT EXISTS idx_buyer_request_offers_seller ON buyer_request_offers(seller_id, created_at DESC);")
+
+    await execute("""
+    CREATE TABLE IF NOT EXISTS seller_lead_actions (
+        id SERIAL PRIMARY KEY,
+        seller_id INTEGER NOT NULL REFERENCES sellers(id) ON DELETE CASCADE,
+        request_id INTEGER NOT NULL REFERENCES buyer_requests(id) ON DELETE CASCADE,
+        action TEXT NOT NULL CHECK (action IN ('viewed', 'skipped', 'offered')),
+        metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        UNIQUE (seller_id, request_id, action)
+    );
+    """)
+    await execute("CREATE INDEX IF NOT EXISTS idx_seller_lead_actions_seller_action ON seller_lead_actions(seller_id, action, updated_at DESC);")
+    await execute("CREATE INDEX IF NOT EXISTS idx_seller_lead_actions_request ON seller_lead_actions(request_id, updated_at DESC);")
     await execute("CREATE UNIQUE INDEX IF NOT EXISTS uq_buyer_garage_user_vehicle_lower ON buyer_garage(telegram_id, lower(vehicle_name));")
     await execute("CREATE INDEX IF NOT EXISTS idx_buyer_garage_user_updated ON buyer_garage(telegram_id, updated_at DESC);")
     await execute("CREATE INDEX IF NOT EXISTS idx_buyer_history_user_viewed ON buyer_history(telegram_id, viewed_at DESC);")

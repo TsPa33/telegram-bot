@@ -72,3 +72,9 @@ class SellerSiteStates(StatesGroup):
 class SellerCrmStates(StatesGroup):
     crm_slug = State()
     crm_password = State()
+
+
+class SellerLeadOfferStates(StatesGroup):
+    price = State()
+    availability = State()
+    message = State()
