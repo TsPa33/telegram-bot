@@ -1,140 +1,161 @@
 {% extends "seller_crm/base.html" %}
-{% block body %}
-<div class="shell">
-  <aside class="side">
-    <a class="brand" href="/crm/seller/{{ account.crm_slug }}"><div class="mark">🏎️</div><div><b>CarPot CRM</b><span>{{ account.shop_name or account.name or account.crm_slug }}</span></div></a>
-    <nav class="nav">
-      <a href="/crm/seller/{{ account.crm_slug }}">📊 Dashboard</a>
-      <a class="active" href="#website">🎨 Медіа та дизайн</a>
-      <a href="#website">🌐 Сайт</a>
-      <a href="#banners">🖼 Банери</a>
-      <a href="#logo">🏷 Лого</a>
-      <a href="#theme">🎨 Кольорова схема</a>
-      <a href="#services">🛠 Послуги</a>
-      <a href="#cars">🚗 Авто</a>
-      <a href="#gallery">📷 Наші роботи</a>
-      <a href="#modules">🧩 Модулі сайту</a>
-      <a href="#prices">💰 Ціни</a>
-      <a href="#media">📂 Медіа</a>
-      <a href="#publish">🚀 Публікація</a>
-    </nav>
-  </aside>
+{% set site_config = config or {} %}
+{% set header = site_config['header'] if site_config is mapping and 'header' in site_config and site_config['header'] is mapping else {} %}
+{% set hero = site_config['hero'] if site_config is mapping and 'hero' in site_config and site_config['hero'] is mapping else {} %}
+{% set contacts = site_config['contacts'] if site_config is mapping and 'contacts' in site_config and site_config['contacts'] is mapping else {} %}
+{% set messengers = contacts.get('messengers') or {} %}
+{% set socials = contacts.get('socials') or {} %}
+{% set cta = site_config['cta'] if site_config is mapping and 'cta' in site_config and site_config['cta'] is mapping else {} %}
+{% set footer = site_config['footer'] if site_config is mapping and 'footer' in site_config and site_config['footer'] is mapping else {} %}
+{% set theme_config = site_config['theme'] if site_config is mapping and 'theme' in site_config and site_config['theme'] is mapping else {} %}
+{% set modules_config = site_config['modules'] if site_config is mapping and 'modules' in site_config and site_config['modules'] is mapping else {} %}
+{% set gallery_config = site_config['gallery'] if site_config is mapping and 'gallery' in site_config and site_config['gallery'] is mapping else {} %}
+{% set pricing = site_config['pricing'] if site_config is mapping and 'pricing' in site_config and site_config['pricing'] is mapping else {} %}
+{% set gallery_images = gallery_config['images'] if 'images' in gallery_config and gallery_config['images'] is iterable and gallery_config['images'] is not string else [] %}
+{% set price_items = pricing['items'] if 'items' in pricing and pricing['items'] is iterable and pricing['items'] is not string else [] %}
+{% block crm_kicker %}Єдина CRM: сайт, медіа, авто, послуги й публікація{% endblock %}
+{% block crm_heading %}Керування сайтом продавця{% endblock %}
+{% block crm_top_actions %}<div class="top-actions"><a class="btn ghost" href="{{ live_url }}" target="_blank">Відкрити сайт</a><a class="btn" href="/crm/seller/{{ account.crm_slug }}/website/preview" target="_blank">Чернетка</a></div>{% endblock %}
+{% block content_class %}crm-site{% endblock %}
+{% block content %}
+  {% if status %}<div class="notice">{{ "Опубліковано" if status == "published" else "Чернетку збережено" }}</div>{% endif %}
 
-  <main class="main">
-    <header class="top">
-      <div><p class="kicker">Same seller_sites / config_draft / config_live / Cloudinary</p><h1>🎨 Медіа та дизайн сайту</h1></div>
-      <div class="top-actions"><a class="btn ghost" href="{{ live_url }}" target="_blank">Відкрити сайт</a><a class="btn" href="/crm/seller/{{ account.crm_slug }}/website/preview" target="_blank">Draft preview</a></div>
-    </header>
+  <nav class="section-nav" aria-label="Навігація сторінкою сайту">
+    <a href="#site-section">Сайт</a>
+    <a href="#media-section">Медіа</a>
+    <a href="#content-section">Контент</a>
+    <a href="#modules-section">Модулі</a>
+    <a href="#publish-section">Публікація</a>
+  </nav>
 
-    <section class="content crm-site">
-      {% if status %}<div class="notice">{{ "Опубліковано live" if status == "published" else "Чернетку збережено" }}</div>{% endif %}
+  <section id="site-section" class="section-group">
+    <h2 class="section-heading">Сайт</h2>
+    <p class="section-intro">Основні тексти, контакти, SEO, заклики та футер зібрані в один компактний блок.</p>
+    <div class="grid two">
+      <article id="website" class="card">
+        <h3>Основні тексти</h3>
+        <form method="post" action="/crm/seller/{{ account.crm_slug }}/website/texts" class="form-grid">
+          <label>Назва сайту<input name="header_title" value="{{ header.get('title', '') }}"></label>
+          <label>SEO заголовок<input name="seo_title" value="{{ header.get('seo_title', '') }}"></label>
+          <label class="wide">Заголовок першого екрана<input name="hero_title" value="{{ hero.get('title', '') }}"></label>
+          <label class="wide">Опис першого екрана<textarea name="hero_subtitle">{{ hero.get('subtitle', '') }}</textarea></label>
 
-      <div class="grid two">
-        <article id="website" class="card">
-          <h3>🌐 Сайт: тексти, контакти, CTA, SEO</h3>
-          <form method="post" action="/crm/seller/{{ account.crm_slug }}/website/texts" class="form-grid">
-            <label>Назва / title<input name="header_title" value="{{ config.header.title }}"></label>
-            <label>SEO title<input name="seo_title" value="{{ config.header.seo_title or '' }}"></label>
-            <label class="wide">Hero заголовок<input name="hero_title" value="{{ config.hero.title }}"></label>
-            <label class="wide">Hero опис<textarea name="hero_subtitle">{{ config.hero.subtitle }}</textarea></label>
-            <label class="wide">SEO description<textarea name="seo_description">{{ config.header.seo_description or '' }}</textarea></label>
-            <label>Телефони (кожен з нового рядка)<textarea name="phones">{{ config.contacts.phones | join('\n') }}</textarea></label>
-            <label>Адреса<textarea name="address">{{ config.contacts.address }}</textarea></label>
-            <label>Telegram<input name="telegram" value="{{ config.contacts.messengers.telegram }}"></label>
-            <label>WhatsApp<input name="whatsapp" value="{{ config.contacts.messengers.whatsapp }}"></label>
-            <label>Viber<input name="viber" value="{{ config.contacts.messengers.viber }}"></label>
-            <label>Instagram<input name="instagram" value="{{ config.contacts.socials.instagram }}"></label>
-            <label>Facebook<input name="facebook" value="{{ config.contacts.socials.facebook }}"></label>
-            <label class="wide">Google Maps embed<textarea name="map_embed">{{ config.contacts.map_embed }}</textarea></label>
-            <label>CTA title<input name="cta_title" value="{{ config.cta.title }}"></label>
-            <label>CTA text<textarea name="cta_text">{{ config.cta.text }}</textarea></label>
-            <label class="wide">Footer<textarea name="footer_text">{{ config.footer.text }}</textarea></label>
-            <div class="wide"><button class="btn" type="submit">Зберегти draft</button></div>
-          </form>
-        </article>
+          <div class="wide form-section"><p class="form-section-title">Контакти</p></div>
+          <label>Телефони<textarea name="phones">{{ contacts.get('phones', []) | join('\n') }}</textarea></label>
+          <label>Адреса<textarea name="address">{{ contacts.get('address', '') }}</textarea></label>
+          <label>Telegram<input name="telegram" value="{{ messengers.get('telegram', '') }}"></label>
+          <label>WhatsApp<input name="whatsapp" value="{{ messengers.get('whatsapp', '') }}"></label>
+          <label>Viber<input name="viber" value="{{ messengers.get('viber', '') }}"></label>
+          <label>Instagram<input name="instagram" value="{{ socials.get('instagram', '') }}"></label>
+          <label>Facebook<input name="facebook" value="{{ socials.get('facebook', '') }}"></label>
+          <label class="wide">Google Maps код<textarea name="map_embed">{{ contacts.get('map_embed', '') }}</textarea></label>
 
-        <article class="card preview-card">
-          <h3>👁 Live / draft preview</h3>
-          <p class="muted">Live використовує config_live. Draft preview показує config_draft до публікації.</p>
-          <iframe src="/crm/seller/{{ account.crm_slug }}/website/preview" title="Draft preview"></iframe>
-        </article>
-      </div>
-
-      <div class="grid two stack-top">
-        <article id="banners" class="card">
-          <h3>🖼 Банери</h3>
-          <div class="thumbs">{% for banner in config.hero.banners %}<img src="{{ banner }}" alt="banner">{% endfor %}</div>
-          <form method="post" enctype="multipart/form-data" action="/crm/seller/{{ account.crm_slug }}/website/banners/add" class="inline-form"><input type="file" name="banner" accept="image/*"><input name="url" placeholder="або URL"><button class="btn">Додати</button></form>
-          <form method="post" action="/crm/seller/{{ account.crm_slug }}/website/banners/update"><label>Порядок банерів (URL з нового рядка)<textarea name="banners">{{ config.hero.banners | join('\n') }}</textarea></label><button class="btn">Зберегти порядок / видалення</button></form>
-        </article>
-
-        <article id="logo" class="card">
-          <h3>🏷 Лого</h3>
-          {% if config.header.logo %}<img class="logo-preview" src="{{ config.header.logo }}" alt="logo">{% else %}<p class="muted">Лого не задано</p>{% endif %}
-          <form method="post" enctype="multipart/form-data" action="/crm/seller/{{ account.crm_slug }}/website/logo" class="inline-form"><input type="file" name="logo" accept="image/*"><button class="btn">Замінити</button><button class="btn danger" name="remove" value="1">Видалити</button></form>
-        </article>
-      </div>
-
-      <div class="grid two stack-top">
-        <article id="theme" class="card">
-          <h3>🎨 Кольорова схема</h3>
-          <form method="post" action="/crm/seller/{{ account.crm_slug }}/website/theme" class="theme-grid">
-            {% for key, theme in themes.items() %}
-            <label class="theme-option"><input type="radio" name="theme" value="{{ key }}" {% if config.theme.preset == key or config.theme.scheme == key %}checked{% endif %}><span style="--swatch:{{ theme.accent }}"></span><b>{{ theme.name }}</b></label>
-            {% endfor %}
-            <button class="btn wide">Apply theme</button>
-          </form>
-        </article>
-
-        <article id="modules" class="card">
-          <h3>🧩 Модулі сайту</h3>
-          <form method="post" action="/crm/seller/{{ account.crm_slug }}/website/modules" class="module-grid">
-            {% for key, label in module_keys %}<label><input type="checkbox" name="{{ key }}" {% if config.modules.get(key, key in ['hero','services','cars','contacts','map','footer']) %}checked{% endif %}> {{ label }}</label>{% endfor %}
-            <button class="btn wide">Зберегти модулі</button>
-          </form>
-        </article>
-      </div>
-
-      <article id="services" class="card stack-top">
-        <h3>🛠 Послуги</h3>
-        <form method="post" enctype="multipart/form-data" action="/crm/seller/{{ account.crm_slug }}/website/services/save" class="form-grid">
-          <label>Назва<input required name="title" placeholder="Діагностика ходової"></label><label>Категорія<input name="category" value="СТО"></label>
-          <label>Місто<input name="city"></label><label>Адреса<input name="address"></label><label>Ціна<input name="price" placeholder="від 500 грн"></label><label>Фото<input type="file" name="photo" accept="image/*"></label>
-          <label class="wide">Опис<textarea name="description"></textarea></label><div class="wide"><button class="btn">Додати послугу</button></div>
+          <div class="wide form-section"><p class="form-section-title">SEO та заклик до дії</p></div>
+          <label class="wide">SEO опис<textarea name="seo_description">{{ header.get('seo_description', '') }}</textarea></label>
+          <label>Заголовок заклику<input name="cta_title" value="{{ cta.get('title', '') }}"></label>
+          <label>Текст заклику<textarea name="cta_text">{{ cta.get('text', '') }}</textarea></label>
+          <label class="wide">Футер<textarea name="footer_text">{{ footer.get('text', '') }}</textarea></label>
+          <div class="wide action-row"><button class="btn" type="submit">Зберегти</button></div>
         </form>
-        <div class="cards-list">{% for service in services %}<div class="mini-card edit-card">{% if service.photo_id %}<img src="{{ service.photo_id }}">{% endif %}<div><b>{{ service.title }}</b><p class="muted">{{ service.category }} · {{ service.views }} views · {{ service.calls + service.clicks }} requests</p><form method="post" enctype="multipart/form-data" action="/crm/seller/{{ account.crm_slug }}/website/services/save" class="form-grid compact"><input type="hidden" name="service_id" value="{{ service.id }}"><label>Назва<input name="title" value="{{ service.title }}"></label><label>Категорія<input name="category" value="{{ service.category }}"></label><label>Місто<input name="city" value="{{ service.city or '' }}"></label><label>Ціна<input name="price" value="{{ service.price or '' }}"></label><label class="wide">Опис<textarea name="description">{{ service.description or '' }}</textarea></label><label>Фото<input type="file" name="photo" accept="image/*"></label><label>Сайт/посилання<input name="website" value="{{ service.website or '' }}"></label><input type="hidden" name="address" value="{{ service.address or '' }}"><button class="btn">Зберегти</button></form><form method="post" action="/crm/seller/{{ account.crm_slug }}/website/services/delete"><input type="hidden" name="service_id" value="{{ service.id }}"><button class="btn danger">Видалити</button></form></div></div>{% else %}<p class="muted">Послуг ще немає.</p>{% endfor %}</div>
       </article>
 
-      <article id="cars" class="card stack-top">
-        <h3>🚗 Авто</h3>
-        <form method="post" enctype="multipart/form-data" action="/crm/seller/{{ account.crm_slug }}/website/cars/save" class="form-grid">
-          <label>Brand<input required name="brand" placeholder="BMW"></label><label>Model<input required name="model" placeholder="X5"></label><label>Фото<input type="file" name="photo" accept="image/*"></label><label class="wide">Опис<textarea name="description"></textarea></label><div class="wide"><button class="btn">Додати авто</button></div>
-        </form>
-        <div class="cards-list">{% for car in cars %}<div class="mini-card edit-card">{% if car.photo_id %}<img src="{{ car.photo_id }}">{% endif %}<div><b>{{ car.brand }} {{ car.model }}</b><p><span class="badge">{{ car.views or 0 }} views</span> <span class="badge">{{ car.phone_clicks or 0 }} phone</span> <span class="badge">{{ car.site_clicks or 0 }} Telegram/site</span></p><form method="post" enctype="multipart/form-data" action="/crm/seller/{{ account.crm_slug }}/website/cars/save" class="form-grid compact"><input type="hidden" name="car_id" value="{{ car.id }}"><input type="hidden" name="brand" value="{{ car.brand }}"><input type="hidden" name="model" value="{{ car.model }}"><label class="wide">Опис<textarea name="description">{{ car.description or '' }}</textarea></label><label>Фото<input type="file" name="photo" accept="image/*"></label><button class="btn">Зберегти</button></form><form method="post" action="/crm/seller/{{ account.crm_slug }}/website/cars/delete"><input type="hidden" name="car_id" value="{{ car.id }}"><button class="btn danger">Видалити</button></form></div></div>{% else %}<p class="muted">Авто ще немає.</p>{% endfor %}</div>
+      <article class="card preview-card">
+        <h3>Перегляд</h3>
+        <p class="muted">Опублікований сайт показує поточну публічну версію. Чернетка доступна для перевірки до публікації.</p>
+        <iframe src="/crm/seller/{{ account.crm_slug }}/website/preview" title="Перегляд чернетки"></iframe>
+      </article>
+    </div>
+  </section>
+
+  <section id="media-section" class="section-group">
+    <h2 class="section-heading">Медіа та дизайн</h2>
+    <p class="section-intro">Банери, лого, кольорова схема та галерея відокремлені від контенту каталогу.</p>
+    <div class="subgrid">
+      <article id="banners" class="card">
+        <h3>Банери</h3>
+        <div class="thumbs">{% for banner in hero.get('banners', []) %}<img src="{{ banner }}" alt="banner">{% endfor %}</div>
+        <form method="post" enctype="multipart/form-data" action="/crm/seller/{{ account.crm_slug }}/website/banners/add" class="inline-form"><input type="file" name="banner" accept="image/*"><input name="url" placeholder="або URL"><button class="btn">Додати</button></form>
+        <form method="post" action="/crm/seller/{{ account.crm_slug }}/website/banners/update"><label>Порядок банерів (URL з нового рядка)<textarea name="banners">{{ hero.get('banners', []) | join('\n') }}</textarea></label><div class="action-row stack-top"><button class="btn">Зберегти</button></div></form>
       </article>
 
-      <div class="grid two stack-top">
-        <article id="gallery" class="card">
-          <h3>📷 Наші роботи / галерея</h3>
-          <div class="thumbs">{% for image in config.gallery.images %}<img src="{{ image.url if image is mapping else image }}" alt="gallery">{% endfor %}</div>
-          <form method="post" enctype="multipart/form-data" action="/crm/seller/{{ account.crm_slug }}/website/gallery/add" class="form-grid"><label>Назва<input name="title"></label><label>Фото<input type="file" name="image" accept="image/*"></label><label class="wide">Опис<textarea name="description"></textarea></label><label class="wide">або URL<input name="url"></label><button class="btn wide">Додати</button></form>
-          <form method="post" action="/crm/seller/{{ account.crm_slug }}/website/gallery/update"><label>URL галереї (з нового рядка)<textarea name="images">{% for image in config.gallery.images %}{{ image.url if image is mapping else image }}
-{% endfor %}</textarea></label><button class="btn">Зберегти порядок</button></form>
-        </article>
+      <article id="logo" class="card">
+        <h3>Лого</h3>
+        {% if header.get('logo') %}<img class="logo-preview" src="{{ header.get('logo') }}" alt="logo">{% else %}<p class="muted">Лого не задано</p>{% endif %}
+        <form method="post" enctype="multipart/form-data" action="/crm/seller/{{ account.crm_slug }}/website/logo" class="inline-form"><input type="file" name="logo" accept="image/*"><button class="btn">Замінити</button><button class="btn danger" name="remove" value="1">Видалити</button></form>
+      </article>
 
-        <article id="prices" class="card">
-          <h3>💰 Ціни</h3>
-          <form method="post" action="/crm/seller/{{ account.crm_slug }}/website/prices/add" class="form-grid"><label>Назва<input name="title" placeholder="Tire service"></label><label>Ціна<input name="price" placeholder="від 700 грн"></label><label class="wide">Опис<textarea name="description"></textarea></label><button class="btn wide">Додати ціну</button></form>
-          <form method="post" action="/crm/seller/{{ account.crm_slug }}/website/prices/update"><label>Прайс: title | price | description<textarea name="prices">{% for item in config.pricing.items %}{{ item.title }} | {{ item.price }} | {{ item.description }}
-{% endfor %}</textarea></label><button class="btn">Зберегти прайс</button></form>
-        </article>
-      </div>
+      <article id="theme" class="card">
+        <h3>Кольорова схема</h3>
+        <form method="post" action="/crm/seller/{{ account.crm_slug }}/website/theme" class="theme-grid">
+          {% for key, theme in themes|dictsort %}
+          <label class="theme-option"><input type="radio" name="theme" value="{{ key }}" {% if ('preset' in theme_config and theme_config['preset'] == key) or ('scheme' in theme_config and theme_config['scheme'] == key) %}checked{% endif %}><span style="--swatch:{{ theme.get('accent', '') }}"></span><b>{{ theme.get('name', '') }}</b></label>
+          {% endfor %}
+          <button class="btn wide">Застосувати тему</button>
+        </form>
+      </article>
 
-      <div class="grid two stack-top">
-        <article id="media" class="card"><h3>📂 Медіа</h3><div class="media-grid">{% for item in media %}<a href="{{ item.url }}" target="_blank" class="media-item"><img src="{{ item.url }}"><span>{{ item.type }}</span><b>{{ item.title }}</b></a>{% else %}<p class="muted">Поки немає завантажених медіа.</p>{% endfor %}</div></article>
-        <article id="publish" class="card"><h3>🚀 Публікація</h3><p class="muted">Save draft змінює тільки config_draft. Publish копіює config_draft → config_live без створення другого CMS.</p><p><b>Live:</b> <a href="{{ live_url }}" target="_blank">{{ live_url }}</a></p><form method="post" action="/crm/seller/{{ account.crm_slug }}/website/publish"><button class="btn">Опублікувати live</button></form></article>
-      </div>
-    </section>
-  </main>
-</div>
+      <article id="gallery" class="card">
+        <h3>Галерея</h3>
+        <div class="thumbs">{% for image in gallery_images %}<img src="{{ image.get('url', '') if image is mapping else image }}" alt="gallery">{% endfor %}</div>
+        <form method="post" enctype="multipart/form-data" action="/crm/seller/{{ account.crm_slug }}/website/gallery/add" class="form-grid"><label>Назва<input name="title"></label><label>Фото<input type="file" name="image" accept="image/*"></label><label class="wide">Опис<textarea name="description"></textarea></label><label class="wide">або URL<input name="url"></label><div class="wide action-row"><button class="btn">Додати</button></div></form>
+        <form method="post" action="/crm/seller/{{ account.crm_slug }}/website/gallery/update"><label>URL галереї (з нового рядка)<textarea name="images">{% for image in gallery_images %}{{ image.get('url', '') if image is mapping else image }}
+{% endfor %}</textarea></label><div class="action-row stack-top"><button class="btn">Зберегти порядок</button></div></form>
+      </article>
+
+      <article id="media" class="card"><h3>Медіа</h3><div class="media-grid">{% for item in media %}<a href="{{ item.url }}" target="_blank" class="media-item"><img src="{{ item.url }}" alt="{{ item.title }}"><span>{{ item.type }}</span><b>{{ item.title }}</b></a>{% else %}<p class="muted">Поки немає завантажених медіа.</p>{% endfor %}</div></article>
+    </div>
+  </section>
+
+  <section id="content-section" class="section-group">
+    <h2 class="section-heading">Контент</h2>
+    <p class="section-intro">Послуги, авто та ціни мають окремі компактні картки з діями поруч із контентом.</p>
+
+    <article id="services" class="card">
+      <h3>Послуги</h3>
+      <form method="post" enctype="multipart/form-data" action="/crm/seller/{{ account.crm_slug }}/website/services/save" class="form-grid">
+        <label>Назва<input required name="title" placeholder="Діагностика ходової"></label><label>Категорія<input name="category" value="СТО"></label>
+        <label>Місто<input name="city"></label><label>Адреса<input name="address"></label><label>Ціна<input name="price" placeholder="від 500 грн"></label><label>Фото<input type="file" name="photo" accept="image/*"></label>
+        <label class="wide">Опис<textarea name="description"></textarea></label><div class="wide action-row"><button class="btn">Додати</button></div>
+      </form>
+      <div class="cards-list">{% for service in services %}<div class="mini-card edit-card">{% if service.photo_id %}<img src="{{ service.photo_id }}" alt="{{ service.title }}">{% endif %}<div class="mini-card-content"><div class="mini-card-title"><b>{{ service.title }}</b><span class="badge">{{ service.category }}</span></div><p><span class="badge">{{ service.views }} переглядів</span> <span class="badge">{{ service.calls + service.clicks }} заявок</span></p><form method="post" enctype="multipart/form-data" action="/crm/seller/{{ account.crm_slug }}/website/services/save" class="form-grid compact"><input type="hidden" name="service_id" value="{{ service.id }}"><label>Назва<input name="title" value="{{ service.title }}"></label><label>Категорія<input name="category" value="{{ service.category }}"></label><label>Місто<input name="city" value="{{ service.city or '' }}"></label><label>Ціна<input name="price" value="{{ service.price or '' }}"></label><label class="wide">Опис<textarea name="description">{{ service.description or '' }}</textarea></label><label>Фото<input type="file" name="photo" accept="image/*"></label><label>Сайт/посилання<input name="website" value="{{ service.website or '' }}"></label><input type="hidden" name="address" value="{{ service.address or '' }}"><div class="action-row"><button class="btn">Зберегти</button></div></form></div><div class="mini-card-actions"><form method="post" action="/crm/seller/{{ account.crm_slug }}/website/services/delete"><input type="hidden" name="service_id" value="{{ service.id }}"><button class="btn danger">Видалити</button></form></div></div>{% else %}<p class="muted">Послуг ще немає.</p>{% endfor %}</div>
+    </article>
+
+    <article id="cars" class="card stack-top">
+      <h3>Авто</h3>
+      <form method="post" enctype="multipart/form-data" action="/crm/seller/{{ account.crm_slug }}/website/cars/save" class="form-grid">
+        <label>Марка<input required name="brand" placeholder="BMW"></label><label>Модель<input required name="model" placeholder="X5"></label><label>Фото<input type="file" name="photo" accept="image/*"></label><label class="wide">Опис<textarea name="description"></textarea></label><div class="wide action-row"><button class="btn">Додати</button></div>
+      </form>
+      <div class="cards-list">{% for car in cars %}<div class="mini-card edit-card">{% if car.photo_id %}<img src="{{ car.photo_id }}" alt="{{ car.brand }} {{ car.model }}">{% endif %}<div class="mini-card-content"><div class="mini-card-title"><b>{{ car.brand }} {{ car.model }}</b></div><p><span class="badge">{{ car.views or 0 }} переглядів</span> <span class="badge">{{ car.phone_clicks or 0 }} телефон</span> <span class="badge">{{ car.site_clicks or 0 }} Telegram/сайт</span></p><form method="post" enctype="multipart/form-data" action="/crm/seller/{{ account.crm_slug }}/website/cars/save" class="form-grid compact"><input type="hidden" name="car_id" value="{{ car.id }}"><input type="hidden" name="brand" value="{{ car.brand }}"><input type="hidden" name="model" value="{{ car.model }}"><label class="wide">Опис<textarea name="description">{{ car.description or '' }}</textarea></label><label>Фото<input type="file" name="photo" accept="image/*"></label><div class="action-row"><button class="btn">Зберегти</button></div></form></div><div class="mini-card-actions"><form method="post" action="/crm/seller/{{ account.crm_slug }}/website/cars/delete"><input type="hidden" name="car_id" value="{{ car.id }}"><button class="btn danger">Видалити</button></form></div></div>{% else %}<p class="muted">Авто ще немає.</p>{% endfor %}</div>
+    </article>
+
+    <article id="prices" class="card stack-top">
+      <h3>Ціни</h3>
+      <form method="post" action="/crm/seller/{{ account.crm_slug }}/website/prices/add" class="form-grid"><label>Назва<input name="title" placeholder="Шиномонтаж"></label><label>Ціна<input name="price" placeholder="від 700 грн"></label><label class="wide">Опис<textarea name="description"></textarea></label><div class="wide action-row"><button class="btn">Додати</button></div></form>
+      <form method="post" action="/crm/seller/{{ account.crm_slug }}/website/prices/update" class="stack-top"><label>Прайс: назва | ціна | опис<textarea name="prices">{% for item in price_items %}{{ item.get('title', '') if item is mapping else item }} | {{ item.get('price', '') if item is mapping else '' }} | {{ item.get('description', '') if item is mapping else '' }}
+{% endfor %}</textarea></label><div class="action-row stack-top"><button class="btn">Зберегти прайс</button></div></form>
+    </article>
+  </section>
+
+  <section id="modules-section" class="section-group">
+    <h2 class="section-heading">Модулі</h2>
+    <p class="section-intro">Увімкніть тільки ті блоки, які мають бути видимими на сайті.</p>
+    <article id="modules" class="card">
+      <h3>Модулі сайту</h3>
+      <form method="post" action="/crm/seller/{{ account.crm_slug }}/website/modules" class="module-grid">
+        {% for key, label in module_keys %}
+        {% set module_enabled = modules_config[key] if key in modules_config else key in ['hero','services','cars','contacts','map','footer'] %}
+        <label><input type="checkbox" name="{{ key }}" {% if module_enabled %}checked{% endif %}> {{ label }}</label>
+        {% endfor %}
+        <button class="btn wide">Зберегти модулі</button>
+      </form>
+    </article>
+  </section>
+
+  <section id="publish-section" class="section-group">
+    <h2 class="section-heading">Публікація</h2>
+    <p class="section-intro">Перевірте чернетку перед публікацією та перенесіть її у публічну версію сайту.</p>
+    <div class="grid">
+      <article id="publish" class="card"><h3>Публікація</h3><p class="muted">Збереження оновлює чернетку. Публікація переносить перевірені зміни на публічний сайт.</p><p><b>Опублікований сайт:</b> <a href="{{ live_url }}" target="_blank">{{ live_url }}</a></p><div class="action-row"><a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/website/preview" target="_blank">Переглянути</a><form method="post" action="/crm/seller/{{ account.crm_slug }}/website/publish"><button class="btn">Опублікувати</button></form></div></article>
+    </div>
+  </section>
 {% endblock %}
