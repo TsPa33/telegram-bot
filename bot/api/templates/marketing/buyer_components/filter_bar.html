@@ -1,0 +1,62 @@
+<div class="buyer-filter-shell buyer-panel">
+    <div class="buyer-filter-meta">
+        <span>Фільтруйте пропозиції та зберігайте посилання на потрібну вибірку</span>
+        <strong>Показано: <span data-filter-count="{{ filter_scope }}">0</span></strong>
+    </div>
+    <form class="buyer-filter-form" method="get" action="{{ filter_action | default(request.url.path) }}" data-buyer-filter-form data-sync-url="true" data-filter-scope="{{ filter_scope }}">
+        {% if search_query %}<input type="hidden" name="q" value="{{ search_query }}">{% endif %}
+        {% if selected_type %}<input type="hidden" name="type" value="{{ selected_type }}">{% endif %}
+        <label class="buyer-field">
+            <span class="dash-label">Місто</span>
+            <input class="buyer-control" name="city" type="search" value="{{ selected_city or '' }}" placeholder="Київ, Львів">
+        </label>
+        <label class="buyer-field">
+            <span class="dash-label">Категорія</span>
+            <select class="buyer-control" name="category">
+                <option value="">Усі категорії</option>
+                <option value="Авто" {% if selected_category == 'Авто' %}selected{% endif %}>Авто / запчастини</option>
+                <option value="СТО" {% if selected_category == 'СТО' %}selected{% endif %}>СТО</option>
+                <option value="Шиномонтаж" {% if selected_category == 'Шиномонтаж' %}selected{% endif %}>Шиномонтаж</option>
+                <option value="Евакуатор" {% if selected_category == 'Евакуатор' %}selected{% endif %}>Евакуатор</option>
+                <option value="Діагностика" {% if selected_category == 'Діагностика' %}selected{% endif %}>Діагностика</option>
+                <option value="Автоелектрик" {% if selected_category == 'Автоелектрик' %}selected{% endif %}>Автоелектрик</option>
+            </select>
+        </label>
+        <label class="buyer-field">
+            <span class="dash-label">Тип послуги</span>
+            <input class="buyer-control" name="service_type" type="search" value="{{ selected_service_type or '' }}" placeholder="Ремонт, евакуатор">
+        </label>
+        <label class="buyer-field">
+            <span class="dash-label">Бренд</span>
+            <input class="buyer-control" name="brand" type="search" value="{{ selected_brand or '' }}" placeholder="BMW, Audi">
+        </label>
+        <label class="buyer-field">
+            <span class="dash-label">Стан</span>
+            <select class="buyer-control" name="condition">
+                <option value="">Будь-який</option>
+                <option value="Нов" {% if selected_condition == 'Нов' %}selected{% endif %}>Новий</option>
+                <option value="Вжив" {% if selected_condition == 'Вжив' %}selected{% endif %}>Вживаний</option>
+                <option value="Уточнюйте" {% if selected_condition == 'Уточнюйте' %}selected{% endif %}>Уточнюйте</option>
+            </select>
+        </label>
+        <label class="buyer-field">
+            <span class="dash-label">Довіра</span>
+            <select class="buyer-control" name="verified">
+                <option value="">Усі продавці</option>
+                <option value="true" {% if selected_verified == 'true' %}selected{% endif %}>Перевірені</option>
+            </select>
+        </label>
+        <label class="buyer-field">
+            <span class="dash-label">Сортування</span>
+            <select class="buyer-control" name="sort">
+                <option value="new" {% if selected_sort == 'new' %}selected{% endif %}>Нові спочатку</option>
+                <option value="popular" {% if selected_sort == 'popular' %}selected{% endif %}>Популярні</option>
+                <option value="trusted" {% if selected_sort == 'trusted' %}selected{% endif %}>Перевірені вище</option>
+            </select>
+        </label>
+        <div class="buyer-filter-actions">
+            <button class="btn btn-primary" type="submit">Застосувати</button>
+            <button class="btn btn-secondary" type="reset">Очистити</button>
+        </div>
+    </form>
+</div>

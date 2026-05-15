@@ -1,0 +1,1188 @@
+<style>
+    body.buyer-modal-lock {
+        overflow: hidden;
+        touch-action: none;
+    }
+
+    .buyer-panel {
+        position: relative;
+        overflow: hidden;
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        background:
+            linear-gradient(135deg, rgba(15, 23, 42, 0.92), rgba(5, 8, 22, 0.76)),
+            radial-gradient(circle at 12% 0%, rgba(0, 255, 157, 0.14), transparent 34%),
+            radial-gradient(circle at 88% 100%, rgba(56, 189, 248, 0.12), transparent 32%);
+        border-radius: 28px;
+        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
+    }
+
+    :root[data-theme="light"] .buyer-panel {
+        background:
+            linear-gradient(135deg, rgba(255, 255, 255, 0.94), rgba(232, 241, 251, 0.82)),
+            radial-gradient(circle at 12% 0%, rgba(0, 184, 117, 0.16), transparent 34%),
+            radial-gradient(circle at 88% 100%, rgba(2, 132, 199, 0.12), transparent 32%);
+        box-shadow: 0 24px 70px rgba(15, 23, 42, 0.12);
+    }
+
+    .buyer-search-form,
+    .buyer-filter-form {
+        display: grid;
+        grid-template-columns: minmax(220px, 1.5fr) repeat(3, minmax(150px, 1fr)) auto;
+        gap: 12px;
+        align-items: end;
+        padding: 18px;
+    }
+
+    .buyer-filter-form {
+        grid-template-columns: repeat(6, minmax(130px, 1fr)) auto;
+        margin-bottom: 0;
+    }
+
+    .buyer-field {
+        display: grid;
+        gap: 8px;
+    }
+
+    .buyer-control {
+        width: 100%;
+        min-height: 50px;
+        border: 1px solid rgba(148, 163, 184, 0.24);
+        border-radius: 17px;
+        background-color: rgba(255, 255, 255, 0.075);
+        color: var(--text);
+        padding: 0 14px;
+        font: inherit;
+        outline: none;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+        appearance: none;
+    }
+
+    select.buyer-control {
+        padding-right: 42px;
+        background-image:
+            linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+            linear-gradient(135deg, var(--muted) 50%, transparent 50%),
+            linear-gradient(to right, rgba(148, 163, 184, 0.18), rgba(148, 163, 184, 0.18));
+        background-position:
+            calc(100% - 22px) 22px,
+            calc(100% - 16px) 22px,
+            calc(100% - 38px) 14px;
+        background-size: 6px 6px, 6px 6px, 1px 22px;
+        background-repeat: no-repeat;
+    }
+
+    .buyer-control::placeholder {
+        color: color-mix(in srgb, var(--muted) 78%, transparent);
+    }
+
+    .buyer-control:focus,
+    .buyer-control.is-invalid {
+        border-color: rgba(0, 255, 157, 0.58);
+        background-color: rgba(255, 255, 255, 0.1);
+        box-shadow: 0 0 0 4px rgba(0, 255, 157, 0.1), var(--glow-green);
+    }
+
+    .buyer-control.is-invalid {
+        border-color: rgba(248, 113, 113, 0.78);
+        box-shadow: 0 0 0 4px rgba(248, 113, 113, 0.1);
+    }
+
+    :root[data-theme="light"] .buyer-control {
+        background-color: rgba(255, 255, 255, 0.78);
+        color: var(--text);
+    }
+
+    .buyer-control option {
+        background: var(--surface);
+        color: var(--text);
+    }
+
+    .buyer-filter-shell {
+        margin-bottom: 32px;
+    }
+
+    .buyer-filter-meta {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        align-items: center;
+        padding: 16px 18px 0;
+        color: var(--muted);
+        font-size: 0.94rem;
+    }
+
+    .buyer-filter-actions {
+        display: flex;
+        gap: 10px;
+        align-items: end;
+    }
+
+    .buyer-market-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 18px;
+    }
+
+    .buyer-card {
+        position: relative;
+        isolation: isolate;
+        min-height: 100%;
+        cursor: pointer;
+        padding: 0;
+        overflow: hidden;
+        border-radius: 26px;
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        background:
+            linear-gradient(180deg, rgba(15, 23, 42, 0.88), rgba(5, 8, 22, 0.94)),
+            radial-gradient(circle at 12% 0%, rgba(0, 255, 157, 0.12), transparent 34%);
+        box-shadow: 0 18px 50px rgba(0, 0, 0, 0.2);
+        transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
+    }
+
+    :root[data-theme="light"] .buyer-card {
+        background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(232, 241, 251, 0.86)),
+            radial-gradient(circle at 12% 0%, rgba(0, 184, 117, 0.12), transparent 34%);
+        box-shadow: 0 18px 50px rgba(15, 23, 42, 0.1);
+    }
+
+    .buyer-card:hover,
+    .buyer-card:focus-visible,
+    .buyer-card:focus-within {
+        transform: translateY(-4px);
+        border-color: rgba(0, 255, 157, 0.4);
+        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.3), var(--glow-green);
+    }
+
+    .buyer-card-media {
+        min-height: 168px;
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 14px;
+        padding: 16px;
+        background:
+            radial-gradient(circle at 28% 26%, rgba(0, 255, 157, 0.22), transparent 26%),
+            radial-gradient(circle at 78% 36%, rgba(56, 189, 248, 0.18), transparent 28%),
+            linear-gradient(135deg, rgba(2, 6, 23, 0.36), rgba(15, 23, 42, 0.84));
+    }
+
+    .buyer-card-icon {
+        width: 78px;
+        height: 78px;
+        border-radius: 24px;
+        display: grid;
+        place-items: center;
+        font-size: 2rem;
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        box-shadow: inset 0 0 36px rgba(255, 255, 255, 0.08);
+    }
+
+    .buyer-badge-stack,
+    .buyer-card-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .buyer-badge-stack {
+        justify-content: flex-end;
+    }
+
+    .buyer-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        min-height: 30px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: rgba(5, 8, 22, 0.58);
+        color: #e2e8f0;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        font-size: 0.78rem;
+        font-weight: 800;
+        letter-spacing: 0.02em;
+    }
+
+    :root[data-theme="light"] .buyer-pill {
+        background: rgba(255, 255, 255, 0.72);
+        color: #0f172a;
+        border-color: rgba(15, 23, 42, 0.12);
+    }
+
+    .buyer-trust-pill {
+        color: #03110b;
+        background: linear-gradient(135deg, var(--primary), var(--accent));
+        border-color: transparent;
+    }
+
+    .buyer-card-body {
+        padding: 18px;
+        display: grid;
+        gap: 12px;
+    }
+
+    .buyer-card-body h3 {
+        margin: 0;
+        font-size: clamp(1.08rem, 2.4vw, 1.22rem);
+        line-height: 1.18;
+    }
+
+    .buyer-card-body p {
+        margin: 0;
+        color: var(--muted);
+    }
+
+    .buyer-card-copy {
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .buyer-price-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: center;
+        padding-top: 4px;
+    }
+
+    .buyer-price {
+        font-size: 1.14rem;
+        font-weight: 950;
+        color: var(--primary);
+    }
+
+    .buyer-card-actions,
+    .buyer-pagination {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        padding-top: 4px;
+    }
+
+    .buyer-card-actions .btn,
+    .buyer-pagination .btn {
+        min-height: 42px;
+        padding-inline: 14px;
+        font-size: 0.92rem;
+    }
+
+    .buyer-favorite-button[aria-pressed="true"],
+    [data-favorite-from-modal][aria-pressed="true"] {
+        border-color: rgba(0, 255, 157, 0.5);
+        box-shadow: var(--glow-green);
+    }
+
+    .buyer-empty-state,
+    .buyer-loading-state {
+        grid-column: 1 / -1;
+        padding: 28px;
+        text-align: center;
+        border-radius: 28px;
+    }
+
+    .buyer-loading-state {
+        display: none;
+    }
+
+    .buyer-loading-state.is-visible {
+        display: block;
+    }
+
+    .buyer-skeleton-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+    }
+
+    .buyer-skeleton-card {
+        min-height: 190px;
+        border-radius: 24px;
+        background: linear-gradient(90deg, rgba(148, 163, 184, 0.08), rgba(148, 163, 184, 0.2), rgba(148, 163, 184, 0.08));
+        background-size: 220% 100%;
+        animation: buyerSkeleton 1.25s ease-in-out infinite;
+    }
+
+    @keyframes buyerSkeleton {
+        from { background-position: 120% 0; }
+        to { background-position: -120% 0; }
+    }
+
+    .workflow-market {
+        display: grid;
+        grid-template-columns: 0.9fr 1.1fr;
+        gap: 20px;
+        align-items: stretch;
+    }
+
+    .workflow-visual {
+        padding: 24px;
+        display: grid;
+        align-content: space-between;
+        min-height: 360px;
+    }
+
+    .workflow-request-card {
+        border-radius: 24px;
+        padding: 18px;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+    }
+
+    .workflow-steps {
+        display: grid;
+        gap: 14px;
+    }
+
+    .workflow-step {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 14px;
+        align-items: start;
+        padding: 18px;
+        border-radius: 24px;
+        background: rgba(255, 255, 255, 0.055);
+        border: 1px solid rgba(148, 163, 184, 0.16);
+    }
+
+    .workflow-index {
+        width: 42px;
+        height: 42px;
+        border-radius: 15px;
+        display: grid;
+        place-items: center;
+        background: linear-gradient(135deg, var(--primary), var(--accent));
+        color: #03110b;
+        font-weight: 950;
+    }
+
+    .workflow-step h3,
+    .workflow-step p {
+        margin: 0;
+    }
+
+    .workflow-step p {
+        color: var(--muted);
+        margin-top: 6px;
+    }
+
+    .buyer-modal-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 22px;
+        background: rgba(2, 6, 23, 0);
+        backdrop-filter: blur(0);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.22s ease, background 0.22s ease, backdrop-filter 0.22s ease;
+    }
+
+    .buyer-modal-backdrop.is-open {
+        opacity: 1;
+        pointer-events: auto;
+        background: rgba(2, 6, 23, 0.78);
+        backdrop-filter: blur(18px);
+    }
+
+    .buyer-modal {
+        width: min(1080px, 100%);
+        max-height: min(88vh, 920px);
+        overflow: auto;
+        overscroll-behavior: contain;
+        border-radius: 30px;
+        border: 1px solid rgba(148, 163, 184, 0.22);
+        background:
+            radial-gradient(circle at 14% 0%, rgba(0, 255, 157, 0.12), transparent 34%),
+            linear-gradient(145deg, rgba(15, 23, 42, 0.98), rgba(3, 7, 18, 0.98));
+        box-shadow: 0 30px 110px rgba(0, 0, 0, 0.54);
+        color: #f8fafc;
+        transform: translateY(18px) scale(0.98);
+        transition: transform 0.24s ease;
+    }
+
+    .buyer-modal-backdrop.is-open .buyer-modal {
+        transform: translateY(0) scale(1);
+    }
+
+    .buyer-modal-grid {
+        display: grid;
+        grid-template-columns: 1.02fr 0.98fr;
+        gap: 0;
+    }
+
+    .buyer-modal-gallery {
+        min-height: 520px;
+        padding: 22px;
+        display: grid;
+        align-content: space-between;
+        background:
+            radial-gradient(circle at 36% 24%, rgba(0, 255, 157, 0.2), transparent 28%),
+            radial-gradient(circle at 76% 52%, rgba(56, 189, 248, 0.16), transparent 32%),
+            linear-gradient(135deg, rgba(15, 23, 42, 0.58), rgba(2, 6, 23, 0.9));
+    }
+
+    .buyer-modal-hero-media {
+        min-height: 330px;
+        border-radius: 26px;
+        display: grid;
+        place-items: center;
+        font-size: clamp(4rem, 13vw, 8rem);
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        box-shadow: inset 0 0 60px rgba(255, 255, 255, 0.07);
+        overflow: hidden;
+    }
+
+    .buyer-modal-hero-media img {
+        width: 100%;
+        height: 100%;
+        min-height: 330px;
+        object-fit: cover;
+        display: block;
+    }
+
+    .buyer-gallery-thumbs {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+        margin-top: 14px;
+    }
+
+    .buyer-gallery-thumb {
+        min-height: 76px;
+        border-radius: 18px;
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        background: rgba(255, 255, 255, 0.08);
+        display: grid;
+        place-items: center;
+        color: rgba(248, 250, 252, 0.82);
+        font-weight: 900;
+        cursor: pointer;
+    }
+
+    .buyer-gallery-thumb.is-active {
+        border-color: rgba(0, 255, 157, 0.6);
+        box-shadow: var(--glow-green);
+    }
+
+    .buyer-modal-content {
+        padding: 24px;
+        display: grid;
+        gap: 18px;
+        align-content: start;
+    }
+
+    .buyer-modal-top {
+        display: flex;
+        justify-content: space-between;
+        gap: 14px;
+        align-items: start;
+    }
+
+    .buyer-modal-close {
+        width: 42px;
+        height: 42px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 14px;
+        color: #f8fafc;
+        background: rgba(255, 255, 255, 0.08);
+        cursor: pointer;
+        font-size: 1.2rem;
+    }
+
+    .buyer-modal h2 {
+        margin: 6px 0 0;
+        font-size: clamp(1.8rem, 4vw, 3rem);
+        line-height: 1.02;
+    }
+
+    .buyer-modal-description,
+    .buyer-help-text {
+        color: #cbd5e1;
+        line-height: 1.65;
+    }
+
+    .buyer-spec-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+    }
+
+    .buyer-spec {
+        padding: 12px;
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.065);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .buyer-spec span {
+        display: block;
+        color: #94a3b8;
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        margin-bottom: 5px;
+    }
+
+    .buyer-spec strong {
+        color: #f8fafc;
+    }
+
+    .buyer-modal-actions,
+    .lead-form-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .buyer-modal-actions .btn,
+    .lead-form-actions .btn {
+        min-height: 44px;
+        padding-inline: 16px;
+    }
+
+    .buyer-hidden,
+    .buyer-honeypot {
+        display: none !important;
+    }
+
+    .lead-form {
+        display: grid;
+        gap: 12px;
+    }
+
+    .lead-form textarea.buyer-control {
+        min-height: 118px;
+        resize: vertical;
+        padding-top: 13px;
+    }
+
+    .lead-form-status {
+        color: #cbd5e1;
+        font-weight: 800;
+    }
+
+    .lead-form-status.is-success {
+        color: var(--primary);
+    }
+
+    .lead-form-status.is-error {
+        color: #fca5a5;
+    }
+
+    .favorites-bar {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin: 22px 0;
+        padding: 14px 16px;
+    }
+
+    @media (max-width: 1100px) {
+        .buyer-filter-form {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+    }
+
+    @media (max-width: 980px) {
+        .buyer-search-form,
+        .workflow-market,
+        .buyer-modal-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .buyer-market-grid,
+        .buyer-skeleton-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .buyer-modal-gallery {
+            min-height: 360px;
+        }
+    }
+
+    @media (max-width: 640px) {
+        .buyer-search-form,
+        .buyer-filter-form {
+            grid-template-columns: 1fr;
+            padding: 14px;
+        }
+
+        .buyer-filter-meta,
+        .buyer-price-row,
+        .buyer-modal-top,
+        .favorites-bar {
+            align-items: flex-start;
+            flex-direction: column;
+        }
+
+        .buyer-market-grid,
+        .buyer-skeleton-grid,
+        .buyer-spec-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .buyer-card-media {
+            min-height: 140px;
+        }
+
+        .buyer-modal-backdrop {
+            align-items: flex-end;
+            padding: 0;
+        }
+
+        .buyer-modal {
+            width: 100%;
+            max-height: 92dvh;
+            border-radius: 24px 24px 0 0;
+        }
+
+        .buyer-modal-gallery {
+            min-height: 260px;
+            padding: 14px;
+        }
+
+        .buyer-modal-hero-media,
+        .buyer-modal-hero-media img {
+            min-height: 210px;
+        }
+
+        .buyer-modal-content {
+            padding: 18px;
+        }
+
+        .buyer-modal-actions .btn,
+        .buyer-card-actions .btn,
+        .lead-form-actions .btn {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+</style>
+
+<div class="buyer-modal-backdrop" data-buyer-modal="item" aria-hidden="true">
+    <div class="buyer-modal" role="dialog" aria-modal="true" aria-labelledby="buyer-modal-title" tabindex="-1">
+        <div class="buyer-modal-grid">
+            <div class="buyer-modal-gallery">
+                <div>
+                    <div class="buyer-badge-stack">
+                        <span class="buyer-pill" data-modal-field="category"></span>
+                        <span class="buyer-pill" data-modal-field="city"></span>
+                    </div>
+                    <div class="buyer-modal-hero-media" data-modal-media aria-live="polite">🚗</div>
+                </div>
+                <div class="buyer-gallery-thumbs" aria-label="Галерея пропозиції" data-gallery-thumbs>
+                    <button class="buyer-gallery-thumb is-active" type="button" data-gallery-index="0">01</button>
+                    <button class="buyer-gallery-thumb" type="button" data-gallery-index="1">02</button>
+                    <button class="buyer-gallery-thumb" type="button" data-gallery-index="2">03</button>
+                </div>
+            </div>
+            <div class="buyer-modal-content">
+                <div class="buyer-modal-top">
+                    <div>
+                        <span class="eyebrow" data-modal-field="typeLabel">Маркетплейс</span>
+                        <h2 id="buyer-modal-title" data-modal-field="title"></h2>
+                    </div>
+                    <button class="buyer-modal-close" type="button" data-close-buyer-modal aria-label="Закрити">×</button>
+                </div>
+                <div class="buyer-price" data-modal-field="price"></div>
+                <p class="buyer-modal-description" data-modal-field="description"></p>
+                <div class="buyer-spec-grid">
+                    <div class="buyer-spec"><span>Бренд</span><strong data-modal-field="brand">—</strong></div>
+                    <div class="buyer-spec"><span>Модель</span><strong data-modal-field="model">—</strong></div>
+                    <div class="buyer-spec"><span>Стан / тип</span><strong data-modal-field="condition">—</strong></div>
+                    <div class="buyer-spec"><span>Місто</span><strong data-modal-field="citySpec">—</strong></div>
+                    <div class="buyer-spec"><span>Продавець</span><strong data-modal-field="seller">—</strong></div>
+                    <div class="buyer-spec"><span>Адреса</span><strong data-modal-field="address">—</strong></div>
+                </div>
+                <div class="buyer-modal-actions">
+                    <a class="btn btn-primary" data-modal-link="phone" href="#">Подзвонити</a>
+                    <a class="btn btn-secondary" data-modal-link="message" href="#" target="_blank" rel="noopener">Написати</a>
+                    <button class="btn btn-secondary" type="button" data-order-from-modal>Замовити</button>
+                    <button class="btn btn-secondary" type="button" data-favorite-from-modal aria-pressed="false">В обране</button>
+                    <a class="btn btn-secondary" data-modal-link="website" href="#" target="_blank" rel="noopener">Сайт продавця</a>
+                    <button class="btn btn-primary" type="button" data-open-lead-modal>Залишити заявку</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="buyer-modal-backdrop" data-buyer-modal="lead" aria-hidden="true">
+    <div class="buyer-modal" role="dialog" aria-modal="true" aria-labelledby="buyer-lead-title" tabindex="-1">
+        <div class="buyer-modal-content">
+            <div class="buyer-modal-top">
+                <div>
+                    <span class="eyebrow">Заявка на підбір</span>
+                    <h2 id="buyer-lead-title">Опишіть, що потрібно знайти</h2>
+                </div>
+                <button class="buyer-modal-close" type="button" data-close-buyer-modal aria-label="Закрити">×</button>
+            </div>
+            <p class="buyer-help-text">Вкажіть місто, деталь, авто або послугу. CarPot допоможе передати запит релевантним продавцям і сервісам.</p>
+            <form class="lead-form" action="/buyer/leads" method="post" enctype="multipart/form-data" data-buyer-lead-form novalidate>
+                <input type="hidden" name="lead_started_at" data-lead-started-at>
+                <label class="buyer-honeypot" aria-hidden="true">
+                    <span>Website</span>
+                    <input name="website" type="text" tabindex="-1" autocomplete="off">
+                </label>
+                <label class="buyer-field">
+                    <span class="dash-label">Імʼя</span>
+                    <input class="buyer-control" name="name" type="text" autocomplete="name" placeholder="Ваше імʼя" maxlength="120">
+                </label>
+                <label class="buyer-field">
+                    <span class="dash-label">Телефон</span>
+                    <input class="buyer-control" name="phone" type="tel" autocomplete="tel" placeholder="+380" maxlength="32" required>
+                </label>
+                <label class="buyer-field">
+                    <span class="dash-label">Місто</span>
+                    <input class="buyer-control" name="city" type="text" autocomplete="address-level2" placeholder="Київ" maxlength="120">
+                </label>
+                <label class="buyer-field">
+                    <span class="dash-label">Запит</span>
+                    <textarea class="buyer-control" name="query" placeholder="Наприклад: потрібна фара BMW F10, бюджет до 6000 грн" minlength="8" maxlength="1200" required></textarea>
+                </label>
+                <label class="buyer-field">
+                    <span class="dash-label">VIN (необовʼязково)</span>
+                    <input class="buyer-control" name="vin" type="text" placeholder="VIN для точного підбору" maxlength="32">
+                </label>
+                <label class="buyer-field">
+                    <span class="dash-label">Фото (необовʼязково)</span>
+                    <input class="buyer-control" name="photos" type="file" accept="image/*" multiple>
+                </label>
+                <div class="lead-form-actions">
+                    <button class="btn btn-primary" type="submit" data-lead-submit>Надіслати заявку</button>
+                    <button class="btn btn-secondary" type="button" data-close-buyer-modal>Скасувати</button>
+                    <span class="lead-form-status" data-lead-status role="status" aria-live="polite"></span>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+(() => {
+    if (window.__carpotBuyerMarketplaceReady) return;
+    window.__carpotBuyerMarketplaceReady = true;
+
+    const itemModal = document.querySelector('[data-buyer-modal="item"]');
+    const leadModal = document.querySelector('[data-buyer-modal="lead"]');
+    const favoriteKey = 'carpot_buyer_favorites_v2';
+    const legacyFavoriteKey = 'carpot_buyer_favorites_v1';
+    const telegramBotUrl = '{{ telegram_bot_url }}';
+    let activeItem = null;
+    let activeGallery = [];
+    let lastFocused = null;
+    let scrollY = 0;
+
+    const normalize = (value) => (value || '').toString().trim().toLowerCase();
+    const focusableSelector = 'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+    const getFavorites = () => {
+        try {
+            const current = JSON.parse(window.localStorage.getItem(favoriteKey) || '[]');
+            if (Array.isArray(current) && current.length) return current;
+            const legacy = JSON.parse(window.localStorage.getItem(legacyFavoriteKey) || '[]');
+            return Array.isArray(legacy) ? legacy : [];
+        } catch (error) {
+            return [];
+        }
+    };
+
+    const saveFavorites = (items) => {
+        window.localStorage.setItem(favoriteKey, JSON.stringify(items));
+        updateFavoriteCounters();
+    };
+
+    const favoriteId = (item) => item ? `${item.itemType || 'item'}:${item.itemId || item.title}` : null;
+    const isFavorite = (item) => {
+        const id = favoriteId(item);
+        return id ? getFavorites().some((favorite) => favorite.id === id) : false;
+    };
+
+    const setText = (name, value, fallback = '—') => {
+        itemModal?.querySelectorAll(`[data-modal-field="${name}"]`).forEach((node) => {
+            node.textContent = value || fallback;
+        });
+    };
+
+    const setLink = (name, href, hiddenWhenEmpty = true) => {
+        const link = itemModal?.querySelector(`[data-modal-link="${name}"]`);
+        if (!link) return;
+        const hasHref = Boolean(href && href !== '#');
+        link.href = hasHref ? href : '#';
+        link.classList.toggle('buyer-hidden', hiddenWhenEmpty && !hasHref);
+    };
+
+    const renderGallery = (index = 0) => {
+        const media = itemModal?.querySelector('[data-modal-media]');
+        if (!media) return;
+        const selected = activeGallery[index] || activeGallery[0];
+        media.innerHTML = '';
+        if (selected?.src) {
+            const image = document.createElement('img');
+            image.loading = 'lazy';
+            image.decoding = 'async';
+            image.src = selected.src;
+            image.alt = activeItem?.title || 'Пропозиція CarPot';
+            media.appendChild(image);
+        } else {
+            media.textContent = selected?.label || (activeItem?.itemType === 'service' ? '🛠️' : '🚗');
+        }
+        itemModal?.querySelectorAll('[data-gallery-index]').forEach((button) => {
+            button.classList.toggle('is-active', Number(button.dataset.galleryIndex) === index);
+        });
+    };
+
+    const lockBody = () => {
+        if (document.body.classList.contains('buyer-modal-lock')) return;
+        scrollY = window.scrollY || document.documentElement.scrollTop;
+        document.body.classList.add('buyer-modal-lock');
+        document.body.style.position = 'fixed';
+        document.body.style.top = `-${scrollY}px`;
+        document.body.style.left = '0';
+        document.body.style.right = '0';
+        document.body.style.width = '100%';
+    };
+
+    const unlockBody = () => {
+        if (!document.body.classList.contains('buyer-modal-lock')) return;
+        document.body.classList.remove('buyer-modal-lock');
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.left = '';
+        document.body.style.right = '';
+        document.body.style.width = '';
+        window.scrollTo(0, scrollY);
+    };
+
+    const openModal = (modal) => {
+        if (!modal) return;
+        lastFocused = document.activeElement;
+        modal.classList.add('is-open');
+        modal.setAttribute('aria-hidden', 'false');
+        lockBody();
+        window.setTimeout(() => {
+            const dialog = modal.querySelector('.buyer-modal');
+            const focusTarget = modal.querySelector('[data-close-buyer-modal], input, textarea, button, a') || dialog;
+            focusTarget?.focus({ preventScroll: true });
+        }, 40);
+    };
+
+    const cleanupItemModal = () => {
+        activeItem = null;
+        activeGallery = [];
+        const media = itemModal?.querySelector('[data-modal-media]');
+        if (media) media.textContent = '🚗';
+    };
+
+    const closeModals = () => {
+        document.querySelectorAll('.buyer-modal-backdrop.is-open').forEach((modal) => {
+            modal.classList.remove('is-open');
+            modal.setAttribute('aria-hidden', 'true');
+        });
+        unlockBody();
+        cleanupItemModal();
+        if (lastFocused && typeof lastFocused.focus === 'function') {
+            lastFocused.focus({ preventScroll: true });
+        }
+        lastFocused = null;
+    };
+
+    const fillLeadFromItem = (item) => {
+        if (!leadModal || !item) return;
+        const query = leadModal.querySelector('textarea[name="query"]');
+        const city = leadModal.querySelector('input[name="city"]');
+        if (query && !query.value) query.value = `Цікавить: ${item.title || 'пропозиція CarPot'}`;
+        if (city && !city.value && item.city) city.value = item.city;
+    };
+
+    const openItemModal = (card) => {
+        if (!itemModal || !card) return;
+        activeItem = { ...card.dataset };
+        const isService = activeItem.itemType === 'service';
+        const title = activeItem.title || 'Пропозиція CarPot';
+        const price = activeItem.price ? `${activeItem.price} грн` : (isService ? 'Орієнтовна ціна за запитом' : 'Ціна за запитом');
+        const description = activeItem.description || (isService ? 'Деталі послуги можна уточнити напряму у виконавця.' : 'Опис пропозиції можна уточнити у продавця.');
+        const username = activeItem.username ? activeItem.username.replace(/^@/, '') : '';
+        const messageHref = username ? `https://t.me/${username}` : telegramBotUrl;
+        const galleryIcon = isService ? '🛠️' : '🚗';
+        activeGallery = [
+            { src: activeItem.image || '', label: galleryIcon },
+            { src: activeItem.imageAlt || '', label: isService ? '🔧' : '⚙️' },
+            { src: activeItem.imageThird || '', label: isService ? '📍' : '📦' },
+        ];
+
+        setText('typeLabel', isService ? 'Деталі послуги' : 'Деталі пропозиції');
+        setText('title', title);
+        setText('category', activeItem.category || (isService ? 'Послуга' : 'Авто / запчастини'));
+        setText('city', activeItem.city || 'Україна');
+        setText('citySpec', activeItem.city || 'Україна');
+        setText('price', price, 'Ціна за запитом');
+        setText('description', description);
+        setText('brand', activeItem.brand);
+        setText('model', activeItem.model);
+        setText('condition', activeItem.condition || (isService ? (activeItem.category || 'Автопослуга') : 'Уточнюйте у продавця'));
+        setText('seller', activeItem.seller || 'Продавець CarPot');
+        setText('address', activeItem.address || (isService ? 'Адресу уточнюйте у виконавця' : 'Не застосовується'));
+        setLink('phone', activeItem.phone ? `tel:${activeItem.phone}` : '#');
+        setLink('message', messageHref, false);
+        setLink('website', activeItem.website || '#');
+
+        const websiteLink = itemModal.querySelector('[data-modal-link="website"]');
+        if (websiteLink) websiteLink.textContent = isService ? 'Сайт' : 'Сайт продавця';
+        const orderButton = itemModal.querySelector('[data-order-from-modal]');
+        if (orderButton) orderButton.textContent = isService ? 'Залишити заявку' : 'Замовити';
+
+        renderGallery(0);
+        updateFavoriteButtons();
+        openModal(itemModal);
+    };
+
+    const toggleFavorite = (item) => {
+        if (!item) return;
+        const id = favoriteId(item);
+        if (!id) return;
+        const favorites = getFavorites();
+        const exists = favorites.some((favorite) => favorite.id === id);
+        const next = exists
+            ? favorites.filter((favorite) => favorite.id !== id)
+            : [...favorites, { id, type: item.itemType, title: item.title, city: item.city, seller: item.seller, savedAt: new Date().toISOString() }];
+        saveFavorites(next);
+        updateFavoriteButtons();
+    };
+
+    const updateFavoriteButtons = () => {
+        document.querySelectorAll('[data-favorite-card]').forEach((button) => {
+            const card = button.closest('[data-marketplace-card]');
+            const active = isFavorite(card?.dataset);
+            button.textContent = active ? '✓ В обраному' : '♡ В обране';
+            button.setAttribute('aria-pressed', active ? 'true' : 'false');
+        });
+        const modalButton = itemModal?.querySelector('[data-favorite-from-modal]');
+        if (modalButton) {
+            const active = isFavorite(activeItem);
+            modalButton.textContent = active ? '✓ В обраному' : '♡ В обране';
+            modalButton.setAttribute('aria-pressed', active ? 'true' : 'false');
+        }
+    };
+
+    const updateFavoriteCounters = () => {
+        const favorites = getFavorites();
+        document.querySelectorAll('[data-favorites-count]').forEach((node) => {
+            node.textContent = favorites.length;
+        });
+        document.querySelectorAll('[data-favorites-empty]').forEach((node) => {
+            node.classList.toggle('buyer-hidden', favorites.length > 0);
+        });
+    };
+
+    const setFormFromUrl = (form) => {
+        const params = new URLSearchParams(window.location.search);
+        ['city', 'category', 'service_type', 'brand', 'condition', 'verified', 'sort'].forEach((name) => {
+            if (form.elements[name] && params.has(name)) form.elements[name].value = params.get(name) || '';
+        });
+    };
+
+    const updateUrlFromForm = (form) => {
+        if (!form.dataset.syncUrl) return;
+        const params = new URLSearchParams(window.location.search);
+        ['city', 'category', 'service_type', 'brand', 'condition', 'verified', 'sort'].forEach((name) => {
+            const value = form.elements[name]?.value?.trim();
+            if (value) params.set(name, value); else params.delete(name);
+        });
+        params.delete('page');
+        const next = `${window.location.pathname}${params.toString() ? `?${params}` : ''}`;
+        window.history.replaceState({ buyerFilters: true }, '', next);
+    };
+
+    const applyFilters = (form, syncUrl = true) => {
+        const scope = form.dataset.filterScope || 'all';
+        const city = normalize(form.elements.city?.value);
+        const category = normalize(form.elements.category?.value);
+        const serviceType = normalize(form.elements.service_type?.value);
+        const brand = normalize(form.elements.brand?.value);
+        const condition = normalize(form.elements.condition?.value);
+        const verified = normalize(form.elements.verified?.value);
+        let visible = 0;
+
+        document.querySelectorAll(`[data-filter-group="${scope}"] [data-marketplace-card]`).forEach((card) => {
+            const data = card.dataset;
+            const isVisible = (!city || normalize(data.city).includes(city))
+                && (!category || normalize(data.category).includes(category) || normalize(data.itemType).includes(category))
+                && (!serviceType || normalize(data.category).includes(serviceType) || normalize(data.title).includes(serviceType))
+                && (!brand || normalize(data.brand).includes(brand))
+                && (!condition || normalize(data.condition).includes(condition))
+                && (!verified || normalize(data.verified) === verified);
+            card.classList.toggle('buyer-hidden', !isVisible);
+            if (isVisible) visible += 1;
+        });
+
+        document.querySelectorAll(`[data-filter-count="${scope}"]`).forEach((node) => {
+            node.textContent = visible;
+        });
+        document.querySelectorAll(`[data-no-results="${scope}"]`).forEach((node) => {
+            node.classList.toggle('buyer-hidden', visible > 0);
+        });
+        if (syncUrl) updateUrlFromForm(form);
+    };
+
+    const showLoading = (form) => {
+        const scope = form.dataset.filterScope || 'all';
+        document.querySelectorAll(`[data-loading-state="${scope}"]`).forEach((node) => node.classList.add('is-visible'));
+        window.setTimeout(() => {
+            document.querySelectorAll(`[data-loading-state="${scope}"]`).forEach((node) => node.classList.remove('is-visible'));
+        }, 420);
+    };
+
+    const validateLeadForm = (form) => {
+        let ok = true;
+        form.querySelectorAll('.buyer-control').forEach((field) => field.classList.remove('is-invalid'));
+        const phone = form.elements.phone;
+        const query = form.elements.query;
+        if (!phone.value.trim() || phone.value.replace(/\D/g, '').length < 9) {
+            phone.classList.add('is-invalid');
+            ok = false;
+        }
+        if (!query.value.trim() || query.value.trim().length < 8) {
+            query.classList.add('is-invalid');
+            ok = false;
+        }
+        return ok;
+    };
+
+    document.addEventListener('click', (event) => {
+        const closeButton = event.target.closest('[data-close-buyer-modal]');
+        if (closeButton || event.target.classList.contains('buyer-modal-backdrop')) {
+            closeModals();
+            return;
+        }
+
+        const galleryButton = event.target.closest('[data-gallery-index]');
+        if (galleryButton) {
+            renderGallery(Number(galleryButton.dataset.galleryIndex || 0));
+            return;
+        }
+
+        const leadButton = event.target.closest('[data-open-lead-modal], [data-order-from-modal]');
+        if (leadButton) {
+            fillLeadFromItem(activeItem);
+            const started = leadModal?.querySelector('[data-lead-started-at]');
+            if (started) started.value = Date.now().toString();
+            openModal(leadModal);
+            return;
+        }
+
+        const favoriteButton = event.target.closest('[data-favorite-card]');
+        if (favoriteButton) {
+            event.preventDefault();
+            event.stopPropagation();
+            toggleFavorite(favoriteButton.closest('[data-marketplace-card]')?.dataset);
+            return;
+        }
+
+        const modalFavorite = event.target.closest('[data-favorite-from-modal]');
+        if (modalFavorite) {
+            toggleFavorite(activeItem);
+            return;
+        }
+
+        const card = event.target.closest('[data-marketplace-card]');
+        if (card && !event.target.closest('a, button, input, select, textarea')) {
+            openItemModal(card);
+        }
+    });
+
+    document.addEventListener('keydown', (event) => {
+        const openModalNode = document.querySelector('.buyer-modal-backdrop.is-open');
+        if (event.key === 'Escape') closeModals();
+        if (openModalNode && event.key === 'Tab') {
+            const focusable = [...openModalNode.querySelectorAll(focusableSelector)].filter((node) => node.offsetParent !== null);
+            if (!focusable.length) return;
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            if (event.shiftKey && document.activeElement === first) {
+                event.preventDefault();
+                last.focus();
+            } else if (!event.shiftKey && document.activeElement === last) {
+                event.preventDefault();
+                first.focus();
+            }
+        }
+        if ((event.key === 'Enter' || event.key === ' ') && event.target.matches('[data-marketplace-card]')) {
+            event.preventDefault();
+            openItemModal(event.target);
+        }
+    });
+
+    document.querySelectorAll('[data-buyer-filter-form]').forEach((form) => {
+        setFormFromUrl(form);
+        form.addEventListener('input', () => {
+            showLoading(form);
+            applyFilters(form);
+        });
+        form.addEventListener('change', () => applyFilters(form));
+        form.addEventListener('reset', () => window.setTimeout(() => {
+            applyFilters(form);
+            form.submit();
+        }, 0));
+        form.addEventListener('submit', () => showLoading(form));
+        applyFilters(form, false);
+    });
+
+    window.addEventListener('popstate', () => {
+        document.querySelectorAll('[data-buyer-filter-form]').forEach((form) => {
+            setFormFromUrl(form);
+            applyFilters(form, false);
+        });
+    });
+
+    document.querySelectorAll('[data-buyer-lead-form]').forEach((form) => {
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const status = form.querySelector('[data-lead-status]');
+            const submit = form.querySelector('[data-lead-submit]');
+            status?.classList.remove('is-success', 'is-error');
+            if (!validateLeadForm(form)) {
+                if (status) {
+                    status.textContent = 'Перевірте телефон і опис запиту.';
+                    status.classList.add('is-error');
+                }
+                return;
+            }
+            if (status) status.textContent = 'Надсилаємо...';
+            if (submit) submit.disabled = true;
+            try {
+                const response = await fetch(form.action, { method: 'POST', body: new FormData(form), headers: { 'Accept': 'application/json' } });
+                const payload = await response.json().catch(() => ({}));
+                if (!response.ok || !payload.ok) throw new Error(payload.detail || 'Lead request failed');
+                if (status) {
+                    status.textContent = 'Заявку прийнято. Ми підготуємо наступний крок.';
+                    status.classList.add('is-success');
+                }
+                form.reset();
+                const started = form.querySelector('[data-lead-started-at]');
+                if (started) started.value = Date.now().toString();
+            } catch (error) {
+                if (status) {
+                    status.textContent = 'Не вдалося надіслати. Спробуйте ще раз або відкрийте Telegram-бот.';
+                    status.classList.add('is-error');
+                }
+            } finally {
+                if (submit) submit.disabled = false;
+            }
+        });
+    });
+
+    updateFavoriteCounters();
+    updateFavoriteButtons();
+})();
+</script>
