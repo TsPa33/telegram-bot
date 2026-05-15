@@ -503,6 +503,24 @@ async def create_tables():
     );
     """)
 
+    await execute("""
+    CREATE TABLE IF NOT EXISTS buyer_leads (
+        id SERIAL PRIMARY KEY,
+        what_needed TEXT NOT NULL,
+        phone TEXT NOT NULL,
+        city TEXT,
+        telegram TEXT,
+        vin TEXT,
+        description TEXT,
+        photos TEXT,
+        status TEXT NOT NULL DEFAULT 'new'
+            CHECK (status IN ('new', 'matched', 'answered', 'closed', 'rejected')),
+        source_path TEXT,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+    );
+    """)
+
     await execute("CREATE INDEX IF NOT EXISTS idx_buyer_favorites_user_created ON buyer_favorites(telegram_id, created_at DESC);")
     await execute("CREATE INDEX IF NOT EXISTS idx_buyer_favorites_entity ON buyer_favorites(entity_type, entity_ref);")
     await execute("CREATE INDEX IF NOT EXISTS idx_buyer_requests_user_created ON buyer_requests(telegram_id, created_at DESC);")
@@ -512,6 +530,10 @@ async def create_tables():
     await execute("CREATE INDEX IF NOT EXISTS idx_buyer_garage_user_updated ON buyer_garage(telegram_id, updated_at DESC);")
     await execute("CREATE INDEX IF NOT EXISTS idx_buyer_history_user_viewed ON buyer_history(telegram_id, viewed_at DESC);")
     await execute("CREATE INDEX IF NOT EXISTS idx_buyer_history_entity ON buyer_history(entity_type, entity_ref);")
+
+    await execute("CREATE INDEX IF NOT EXISTS idx_buyer_leads_status ON buyer_leads(status);")
+    await execute("CREATE INDEX IF NOT EXISTS idx_buyer_leads_city ON buyer_leads(city);")
+    await execute("CREATE INDEX IF NOT EXISTS idx_buyer_leads_created_at ON buyer_leads(created_at DESC);")
 
     await execute("CREATE INDEX IF NOT EXISTS idx_model_id ON seller_cars(model_id);")
     await execute("CREATE INDEX IF NOT EXISTS idx_status ON seller_cars(status);")

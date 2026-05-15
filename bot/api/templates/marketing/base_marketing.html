@@ -1287,6 +1287,348 @@
             padding-bottom: 82px;
         }
 
+
+
+        .mode-switch {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px;
+            border: 1px solid rgba(0, 255, 157, 0.20);
+            border-radius: 999px;
+            background: rgba(255,255,255,0.045);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+        }
+
+        .mode-switch button {
+            border: 0;
+            border-radius: 999px;
+            padding: 9px 13px;
+            color: var(--nav-text);
+            background: transparent;
+            font: inherit;
+            font-weight: 800;
+            cursor: pointer;
+            transition: color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+        }
+
+        .mode-switch button[aria-pressed="true"] {
+            color: #03120d;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            box-shadow: var(--glow-green);
+        }
+
+        .role-panel {
+            margin: 0 0 24px;
+            padding: 18px;
+            border: 1px solid rgba(0,255,157,0.18);
+            border-radius: 26px;
+            background: rgba(255,255,255,0.045);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.055), 0 18px 46px var(--soft-shadow);
+        }
+
+        .role-panel h2 {
+            margin: 0 0 12px;
+            font-size: clamp(1.1rem, 2vw, 1.45rem);
+        }
+
+        .role-options {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .role-option {
+            width: 100%;
+            min-height: 74px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 16px 18px;
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            border-radius: 20px;
+            color: var(--text);
+            background: var(--card-bg);
+            font: inherit;
+            font-weight: 900;
+            text-align: left;
+            cursor: pointer;
+            transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
+        }
+
+        .role-option span {
+            display: block;
+            color: var(--muted);
+            font-size: 0.88rem;
+            font-weight: 650;
+            margin-top: 4px;
+        }
+
+        .role-option[aria-pressed="true"],
+        .role-option:hover,
+        .role-option:focus-visible {
+            transform: translateY(-2px);
+            border-color: rgba(0,255,157,0.40);
+            box-shadow: 0 18px 48px var(--soft-shadow), 0 0 26px rgba(0,255,157,0.10);
+        }
+
+        .buyer-search-panel,
+        .filters-panel,
+        .request-form {
+            border: 1px solid rgba(0,255,157,0.18);
+            border-radius: 26px;
+            background: rgba(255,255,255,0.055);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 20px 52px var(--soft-shadow);
+        }
+
+        .buyer-search-panel {
+            padding: 16px;
+            margin-top: 24px;
+        }
+
+        .search-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1.5fr) minmax(160px, 0.7fr) auto;
+            gap: 10px;
+        }
+
+        .field,
+        .request-form textarea,
+        .request-form select,
+        .filters-panel input,
+        .filters-panel select {
+            width: 100%;
+            min-height: 48px;
+            border: 1px solid rgba(148, 163, 184, 0.22);
+            border-radius: 16px;
+            color: var(--text);
+            background: rgba(255,255,255,0.07);
+            padding: 12px 14px;
+            font: inherit;
+            outline: none;
+            transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+        }
+
+        .filters-panel input[type="checkbox"] {
+            width: auto;
+            min-height: auto;
+            margin: 0 6px 0 0;
+            accent-color: var(--primary);
+        }
+
+        .field:focus,
+        .request-form textarea:focus,
+        .filters-panel input:focus,
+        .filters-panel select:focus {
+            border-color: rgba(0,255,157,0.46);
+            box-shadow: 0 0 0 4px rgba(0,255,157,0.10);
+        }
+
+        .request-form textarea {
+            min-height: 112px;
+            resize: vertical;
+        }
+
+        .quick-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 14px;
+        }
+
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            min-height: 36px;
+            padding: 8px 12px;
+            border: 1px solid rgba(0,255,157,0.20);
+            border-radius: 999px;
+            color: var(--link);
+            background: rgba(0,255,157,0.075);
+            font-weight: 800;
+            transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+        }
+
+        .chip:hover,
+        .chip:focus-visible {
+            transform: translateY(-2px);
+            border-color: rgba(56,189,248,0.34);
+            background: rgba(56,189,248,0.10);
+        }
+
+        .action-card,
+        .listing-card,
+        .seller-card,
+        .favorite-card {
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(148, 163, 184, 0.16);
+            border-radius: 24px;
+            background: var(--card-bg);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 16px 42px var(--soft-shadow);
+        }
+
+        .action-card {
+            display: grid;
+            gap: 14px;
+            padding: 22px;
+        }
+
+        .action-icon {
+            width: 48px;
+            height: 48px;
+            display: grid;
+            place-items: center;
+            border-radius: 16px;
+            color: #03120d;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            box-shadow: var(--glow-green);
+        }
+
+        .action-icon svg,
+        .inline-icon svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        .catalog-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 18px;
+        }
+
+        .listing-card,
+        .seller-card,
+        .favorite-card {
+            padding: 18px;
+        }
+
+        .listing-media {
+            min-height: 142px;
+            display: grid;
+            place-items: center;
+            margin: -2px -2px 16px;
+            border-radius: 20px;
+            color: var(--primary);
+            background:
+                radial-gradient(circle at 30% 20%, rgba(0,255,157,0.18), transparent 12rem),
+                linear-gradient(135deg, rgba(15,23,42,0.92), rgba(56,189,248,0.10));
+        }
+
+        .listing-media img {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+            border-radius: 20px;
+        }
+
+        .listing-type,
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            width: fit-content;
+            min-height: 28px;
+            padding: 5px 9px;
+            border-radius: 999px;
+            color: var(--primary);
+            background: rgba(0,255,157,0.10);
+            border: 1px solid rgba(0,255,157,0.18);
+            font-size: 0.78rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.055em;
+        }
+
+        .listing-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 12px 0;
+            color: var(--muted);
+            font-size: 0.92rem;
+        }
+
+        .listing-card h3,
+        .seller-card h3,
+        .action-card h3 {
+            margin: 10px 0 8px;
+        }
+
+        .listing-card p,
+        .seller-card p,
+        .action-card p,
+        .favorite-card p {
+            color: var(--muted);
+            line-height: 1.62;
+        }
+
+        .filters-panel {
+            padding: 18px;
+            margin-bottom: 22px;
+        }
+
+        .filters-grid,
+        .request-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .request-form {
+            display: grid;
+            gap: 12px;
+            padding: 20px;
+        }
+
+        .request-form label {
+            display: grid;
+            gap: 7px;
+            color: var(--muted);
+            font-weight: 800;
+        }
+
+        .telegram-panel {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 18px;
+            align-items: center;
+            padding: clamp(24px, 4vw, 36px);
+            border: 1px solid rgba(56,189,248,0.24);
+            border-radius: 30px;
+            background:
+                radial-gradient(circle at 80% 16%, rgba(56,189,248,0.16), transparent 18rem),
+                var(--card-bg);
+            box-shadow: 0 22px 62px var(--soft-shadow);
+        }
+
+        .mode-content[hidden] {
+            display: none !important;
+        }
+
+        :root[data-theme="light"] .role-panel,
+        :root[data-theme="light"] .buyer-search-panel,
+        :root[data-theme="light"] .filters-panel,
+        :root[data-theme="light"] .request-form,
+        :root[data-theme="light"] .action-card,
+        :root[data-theme="light"] .listing-card,
+        :root[data-theme="light"] .seller-card,
+        :root[data-theme="light"] .favorite-card,
+        :root[data-theme="light"] .telegram-panel {
+            border-color: rgba(0, 143, 92, 0.14);
+            background: rgba(255,255,255,0.86);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.76), 0 18px 42px rgba(15,23,42,0.08);
+        }
+
+        :root[data-theme="light"] .field,
+        :root[data-theme="light"] .request-form textarea,
+        :root[data-theme="light"] .filters-panel input,
+        :root[data-theme="light"] .filters-panel select {
+            color: var(--text);
+            background: rgba(255,255,255,0.94);
+            border-color: rgba(0, 143, 92, 0.16);
+        }
+
         @media (min-width: 1021px) {
             .hero {
                 min-height: calc(100svh - 72px);
@@ -1504,15 +1846,23 @@
             <span class="nav-toggle-lines" aria-hidden="true"></span>
         </button>
 
+        <div class="mode-switch" aria-label="Перемикач режиму CarPot">
+            <button type="button" data-mode-switch="buyer" aria-pressed="{{ 'true' if buyer_mode | default(false) else 'false' }}">Покупець</button>
+            <button type="button" data-mode-switch="seller" aria-pressed="{{ 'false' if buyer_mode | default(false) else 'true' }}">Продавець</button>
+        </div>
+
         <nav class="nav-links" id="primary-navigation" aria-label="Головна навігація">
-            <a href="/#platform">Платформа</a>
-            <a href="/#demo">Демо</a>
-            <a href="/#pricing">Тарифи</a>
-            <a href="/#how-it-works">Як працює</a>
+            <a href="/buyer" data-nav-buyer>Пошук</a>
+            <a href="/catalog" data-nav-buyer>Каталог</a>
+            <a href="/cars" data-nav-buyer>Авто</a>
+            <a href="/services" data-nav-buyer>Послуги</a>
+            <a href="/seller" data-nav-seller>Для бізнесу</a>
+            <a href="/#demo" data-nav-seller>Демо</a>
+            <a href="/#pricing" data-nav-seller>Тарифи</a>
             <a href="/contacts">Контакти</a>
         </nav>
 
-        <a class="btn btn-primary" href="{{ telegram_bot_url }}" target="_blank" rel="noopener">Відкрити бот</a>
+        <a class="btn btn-primary" data-primary-cta href="{{ telegram_bot_url }}" target="_blank" rel="noopener">Відкрити бот</a>
     </div>
 </header>
 
@@ -1695,6 +2045,84 @@
         window.addEventListener('scroll', updateVisibility, { passive: true });
         updateVisibility();
     })();
+
+
+    (() => {
+        const root = document.documentElement;
+        const storageKey = 'carpot-mode';
+        const modeButtons = [...document.querySelectorAll('[data-mode-switch]')];
+        const modeContents = [...document.querySelectorAll('[data-mode-content]')];
+        const roleOptions = [...document.querySelectorAll('[data-role-select]')];
+        const primaryCta = document.querySelector('[data-primary-cta]');
+        const buyerNav = [...document.querySelectorAll('[data-nav-buyer]')];
+        const sellerNav = [...document.querySelectorAll('[data-nav-seller]')];
+
+        if (!modeButtons.length) {
+            return;
+        }
+
+        const initialMode = () => {
+            if (window.location.pathname.startsWith('/seller')) {
+                return 'seller';
+            }
+            if (window.location.pathname.startsWith('/buyer') || window.location.pathname.startsWith('/search') || window.location.pathname.startsWith('/cars') || window.location.pathname.startsWith('/services') || window.location.pathname.startsWith('/catalog')) {
+                return 'buyer';
+            }
+            const savedMode = window.localStorage.getItem(storageKey);
+            return savedMode === 'seller' ? 'seller' : 'buyer';
+        };
+
+        const applyMode = (mode, persist = true) => {
+            const normalizedMode = mode === 'seller' ? 'seller' : 'buyer';
+            root.dataset.carpotMode = normalizedMode;
+
+            modeButtons.forEach((button) => {
+                button.setAttribute('aria-pressed', String(button.dataset.modeSwitch === normalizedMode));
+            });
+
+            roleOptions.forEach((button) => {
+                button.setAttribute('aria-pressed', String(button.dataset.roleSelect === normalizedMode));
+            });
+
+            modeContents.forEach((section) => {
+                section.hidden = section.dataset.modeContent !== normalizedMode;
+            });
+
+            buyerNav.forEach((link) => {
+                link.style.display = normalizedMode === 'buyer' ? '' : 'none';
+            });
+            sellerNav.forEach((link) => {
+                link.style.display = normalizedMode === 'seller' ? '' : 'none';
+            });
+
+            if (primaryCta) {
+                primaryCta.textContent = normalizedMode === 'buyer' ? 'Продовжити в Telegram' : 'Відкрити бот';
+                primaryCta.setAttribute('href', '{{ telegram_bot_url }}');
+            }
+
+            if (persist) {
+                window.localStorage.setItem(storageKey, normalizedMode);
+            }
+        };
+
+        modeButtons.forEach((button) => {
+            button.addEventListener('click', () => {
+                const mode = button.dataset.modeSwitch;
+                applyMode(mode);
+            });
+        });
+
+        document.addEventListener('click', (event) => {
+            const option = event.target.closest('[data-role-select]');
+            if (!option) {
+                return;
+            }
+            applyMode(option.dataset.roleSelect);
+        });
+
+        applyMode(initialMode(), false);
+    })();
+
 </script>
 </body>
 </html>

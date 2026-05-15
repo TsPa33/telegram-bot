@@ -3,7 +3,7 @@ import logging
 
 from aiogram import Bot
 from fastapi import APIRouter, FastAPI, HTTPException, Request, Form
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from bot.api.liqpay_callback import router as liqpay_router
@@ -16,6 +16,13 @@ from bot.database.repositories.seller_repo import get_seller_by_id
 from bot.database.repositories.car_repo import get_cars_by_seller
 from bot.database.repositories.service_repo import get_services_by_seller
 from bot.database.repositories.lead_repo import create_site_lead
+from bot.database.repositories.buyer_lead_repo import create_buyer_lead
+from bot.database.repositories.marketplace_repo import (
+    list_featured_sellers,
+    list_marketplace_cars,
+    list_marketplace_services,
+    marketplace_summary,
+)
 from bot.database.repositories.analytics_repo import (
     ALLOWED_ANALYTICS_EVENT_TYPES,
     add_event,
@@ -165,6 +172,83 @@ def marketing_context(
     }
 
 
+def _as_text(value, max_length: int = 500) -> str | None:
+    if value is None:
+        return None
+    cleaned = str(value).strip()
+    if not cleaned:
+        return None
+    return cleaned[:max_length]
+
+
+def _boolean_filter(value: str | None) -> bool | None:
+    if value in (None, "", "all"):
+        return None
+    return value in {"1", "true", "yes", "on", "verified"}
+
+
+async def buyer_marketplace_context(
+    request: Request,
+    title: str,
+    description: str,
+    path: str,
+    query: str | None = None,
+    city: str | None = None,
+    brand: str | None = None,
+    model: str | None = None,
+    category: str | None = None,
+    urgent: str | None = None,
+    verified: str | None = None,
+    limit: int = 12,
+) -> dict:
+    q = _as_text(query, 160)
+    city_filter = _as_text(city, 120)
+    brand_filter = _as_text(brand, 120)
+    model_filter = _as_text(model, 120)
+    category_filter = _as_text(category, 120)
+    verified_filter = _boolean_filter(verified)
+    urgent_filter = _boolean_filter(urgent)
+
+    cars = await list_marketplace_cars(
+        query=q,
+        city=city_filter,
+        brand=brand_filter,
+        model=model_filter,
+        verified=verified_filter,
+        limit=limit,
+    )
+    services = await list_marketplace_services(
+        query=q,
+        city=city_filter,
+        category=category_filter,
+        verified=verified_filter,
+        urgent=urgent_filter,
+        limit=limit,
+    )
+    sellers = await list_featured_sellers(query=q, city=city_filter, limit=8)
+    summary = await marketplace_summary()
+
+    context = marketing_context(request, title, description, path)
+    context.update(
+        {
+            "buyer_mode": True,
+            "lead_sent": request.query_params.get("lead") == "sent",
+            "search_query": q or "",
+            "selected_city": city_filter or "",
+            "selected_brand": brand_filter or "",
+            "selected_model": model_filter or "",
+            "selected_category": category_filter or "",
+            "selected_urgent": bool(urgent_filter),
+            "selected_verified": bool(verified_filter),
+            "marketplace_cars": [dict(item) for item in cars],
+            "marketplace_services": [dict(item) for item in services],
+            "featured_sellers": [dict(item) for item in sellers],
+            "marketplace_summary": dict(summary) if summary else {},
+        }
+    )
+    return context
+
+
 async def tg_file_url(bot: Bot, file_id: str) -> str:
     file = await bot.get_file(file_id)
 
@@ -184,12 +268,175 @@ async def marketing_home(request: Request):
 
     return templates.TemplateResponse(
         "marketing/index.html",
-        marketing_context(
+        await buyer_marketplace_context(
             request,
-            "Carpot — сайти для авторозборок, автосервісів та автозапчастин",
-            "Telegram-платформа для створення сайтів, каталогів і заявок для авторозборок, СТО, шиномонтажу, евакуаторів та продавців автозапчастин.",
+            "CarPot — пошук авто, запчастин, автопослуг і CRM для автобізнесу",
+            "Єдина автомобільна екосистема CarPot: покупці знаходять авто, запчастини й послуги, продавці керують сайтами, CRM, лідами та Telegram-автоматизацією.",
+            "/",
+            limit=6,
         ),
     )
+
+
+@router.get("/buyer", response_class=HTMLResponse)
+async def buyer_home(request: Request):
+    return templates.TemplateResponse(
+        "marketing/index.html",
+        await buyer_marketplace_context(
+            request,
+            "Покупець CarPot — знайти авто, запчастини або автопослуги",
+            "Пошук авто, запчастин, сервісів, продавців і заявок у єдиній CarPot-екосистемі з продовженням у Telegram.",
+            "/buyer",
+            limit=9,
+        ),
+    )
+
+
+@router.get("/seller", response_class=HTMLResponse)
+async def seller_home(request: Request):
+    context = await buyer_marketplace_context(
+        request,
+        "Продавець CarPot — сайти, CRM, ліди та Telegram-автоматизація",
+        "Інструменти CarPot для авторозборок, СТО, евакуаторів, шиномонтажу та продавців автозапчастин: сайт, CRM, заявки й аналітика.",
+        "/seller",
+        limit=6,
+    )
+    context["buyer_mode"] = False
+    return templates.TemplateResponse("marketing/index.html", context)
+
+
+@router.get("/search", response_class=HTMLResponse)
+async def buyer_search(
+    request: Request,
+    q: str | None = None,
+    city: str | None = None,
+    brand: str | None = None,
+    model: str | None = None,
+    category: str | None = None,
+    urgent: str | None = None,
+    verified: str | None = None,
+):
+    return templates.TemplateResponse(
+        "marketing/catalog.html",
+        await buyer_marketplace_context(
+            request,
+            "Пошук CarPot — авто, послуги, продавці та категорії",
+            "Єдиний пошук CarPot по авто, автопослугах, продавцях і категоріях з фільтрами міста, бренду, моделі та перевірених бізнесів.",
+            "/search",
+            query=q,
+            city=city,
+            brand=brand,
+            model=model,
+            category=category,
+            urgent=urgent,
+            verified=verified,
+            limit=18,
+        ),
+    )
+
+
+@router.get("/cars", response_class=HTMLResponse)
+async def buyer_cars(
+    request: Request,
+    q: str | None = None,
+    city: str | None = None,
+    brand: str | None = None,
+    model: str | None = None,
+    verified: str | None = None,
+):
+    context = await buyer_marketplace_context(
+        request,
+        "Каталог авто CarPot — авто в наявності та на розборі",
+        "Каталог автомобілів і авто на розборі в CarPot з фільтрами міста, бренду, моделі та перевірених продавців.",
+        "/cars",
+        query=q,
+        city=city,
+        brand=brand,
+        model=model,
+        verified=verified,
+        limit=24,
+    )
+    context["catalog_focus"] = "cars"
+    return templates.TemplateResponse("marketing/catalog.html", context)
+
+
+@router.get("/services", response_class=HTMLResponse)
+async def buyer_services(
+    request: Request,
+    q: str | None = None,
+    city: str | None = None,
+    category: str | None = None,
+    urgent: str | None = None,
+    verified: str | None = None,
+):
+    context = await buyer_marketplace_context(
+        request,
+        "Автопослуги CarPot — СТО, евакуатор, шиномонтаж, автоелектрик",
+        "Каталог автопослуг CarPot: евакуатор, СТО, шиномонтаж, автоелектрик та інші перевірені виконавці з Telegram-продовженням.",
+        "/services",
+        query=q,
+        city=city,
+        category=category,
+        urgent=urgent,
+        verified=verified,
+        limit=24,
+    )
+    context["catalog_focus"] = "services"
+    return templates.TemplateResponse("marketing/catalog.html", context)
+
+
+@router.get("/catalog", response_class=HTMLResponse)
+async def buyer_catalog(
+    request: Request,
+    q: str | None = None,
+    city: str | None = None,
+    brand: str | None = None,
+    model: str | None = None,
+    category: str | None = None,
+    urgent: str | None = None,
+    verified: str | None = None,
+):
+    return templates.TemplateResponse(
+        "marketing/catalog.html",
+        await buyer_marketplace_context(
+            request,
+            "Каталог CarPot — авто, послуги, продавці та сайти",
+            "Об'єднаний каталог CarPot для покупців: авто, автопослуги, авторозборки, продавці та SEO-ready категорії.",
+            "/catalog",
+            query=q,
+            city=city,
+            brand=brand,
+            model=model,
+            category=category,
+            urgent=urgent,
+            verified=verified,
+            limit=24,
+        ),
+    )
+
+
+@router.post("/buyer/lead")
+async def create_buyer_platform_lead(
+    request: Request,
+    what_needed: str = Form(...),
+    phone: str = Form(...),
+    city: str | None = Form(None),
+    telegram: str | None = Form(None),
+    vin: str | None = Form(None),
+    description: str | None = Form(None),
+    photos: str | None = Form(None),
+):
+    await create_buyer_lead(
+        what_needed=_short_text(what_needed, 500) or "Потрібна допомога з підбором",
+        phone=_short_text(phone, 80) or "",
+        city=_short_text(city, 120),
+        telegram=_short_text(telegram, 120),
+        vin=_short_text(vin, 80),
+        description=_short_text(description, 2000),
+        photos=_short_text(photos, 1000),
+        source_path=_short_text(str(request.url.path), 500),
+    )
+    return RedirectResponse(url="/buyer?lead=sent#request", status_code=303)
 
 
 @router.get("/privacy-policy", response_class=HTMLResponse)
@@ -227,6 +474,35 @@ async def marketing_contacts(request: Request):
             "Контакти — Carpot",
             "Контакти Carpot: Telegram-бот, email підтримки, локація в Україні та посилання на демо сайти для автомобільного бізнесу.",
             "/contacts",
+        ),
+    )
+
+
+SEO_SEARCH_PAGES = {
+    "evakuator-kyiv": ("евакуатор", "Київ"),
+    "shynomontazh-lviv": ("шиномонтаж", "Львів"),
+    "bmw-parts": ("BMW запчастини", None),
+    "audi-a6-headlights": ("Audi A6 фара", None),
+}
+
+
+@router.get("/{seo_slug}", response_class=HTMLResponse)
+async def buyer_seo_search_page(seo_slug: str, request: Request):
+    seo_config = SEO_SEARCH_PAGES.get(seo_slug)
+    if not seo_config:
+        raise HTTPException(status_code=404)
+
+    seo_query, seo_city = seo_config
+    return templates.TemplateResponse(
+        "marketing/catalog.html",
+        await buyer_marketplace_context(
+            request,
+            f"CarPot — {seo_query} {seo_city or ''}".strip(),
+            "SEO-ready buyer route CarPot для пошуку авто, запчастин, послуг і продавців у єдиній marketplace-екосистемі.",
+            f"/{seo_slug}",
+            query=seo_query,
+            city=seo_city,
+            limit=18,
         ),
     )
 

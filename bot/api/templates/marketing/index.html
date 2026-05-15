@@ -1,270 +1,203 @@
 {% extends "marketing/base_marketing.html" %}
 
+{% macro car_icon() -%}
+<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 17h14M7 17v2M17 17v2M6.2 13l1.6-4.2A2 2 0 0 1 9.7 7h4.6a2 2 0 0 1 1.9 1.3L17.8 13M5 13h14v4H5v-4Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+{%- endmacro %}
+{% macro tool_icon() -%}
+<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14.7 6.3a4 4 0 0 0 5 5L11 20a2.1 2.1 0 0 1-3-3l8.7-8.7ZM6 6l3 3M4 4l2 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+{%- endmacro %}
+{% macro request_icon() -%}
+<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 6h16v12H4V6Zm0 0 8 7 8-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+{%- endmacro %}
+{% macro listing_card(item, kind) -%}
+<article class="listing-card">
+    <div class="listing-media">
+        {% if item.photo_id and item.photo_id.startswith('http') %}
+            <img src="{{ item.photo_id }}" alt="{{ item.title if kind == 'service' else item.brand ~ ' ' ~ item.model }}" loading="lazy">
+        {% else %}
+            <span class="inline-icon">{{ tool_icon() if kind == 'service' else car_icon() }}</span>
+        {% endif %}
+    </div>
+    <span class="listing-type">{{ 'Послуга' if kind == 'service' else 'Авто' }}</span>
+    <h3>{{ item.title if kind == 'service' else (item.brand ~ ' ' ~ item.model) }}</h3>
+    <div class="listing-meta">
+        <span>{{ item.city or 'Україна' }}</span>
+        {% if item.category %}<span>{{ item.category }}</span>{% endif %}
+        {% if item.is_verified %}<span>Перевірено</span>{% endif %}
+    </div>
+    <p>{{ (item.description or 'Картка продавця CarPot з контактами, сайтом і швидким продовженням у Telegram.')[:150] }}</p>
+    <div class="card-actions">
+        <a class="btn btn-primary" href="{{ telegram_bot_url }}" target="_blank" rel="noopener">Звʼязатися</a>
+        <button class="btn btn-secondary" type="button" data-favorite-preview="{{ kind }}:{{ item.id }}">В обране</button>
+    </div>
+</article>
+{%- endmacro %}
+
 {% block content %}
 <section class="hero">
     <div class="container hero-grid">
         <div>
-            <span class="eyebrow">Платформа для автобізнесу</span>
-            <h1>CarPot — платформа для авторозборок, автосервісів і продавців автозапчастин</h1>
-            <p class="lead">Просто та швидко налаштуйте свій бізнес за допомогою CarPot. Керуйте всім через бот в Telegram. Ніяких складних адмінок, все управління у вас в телефоні!</p>
-            <div class="hero-actions">
-                <a class="btn btn-primary" href="{{ telegram_bot_url }}" target="_blank" rel="noopener"><img class="btn-icon" src="https://res.cloudinary.com/dyem6pgtd/image/upload/v1778623336/Telegram_icon_n3njap.png" alt="Telegram" width="20" height="20">Відкрити Telegram-бот</a>
-                <a class="btn btn-primary" href="#demo"><img class="btn-icon" src="https://res.cloudinary.com/dyem6pgtd/image/upload/v1778623336/Viewdemo_icon_dyovkt.png" alt="Перегляд демо" width="20" height="20">Переглянути демо</a>
+            <div class="role-panel" aria-label="Вибір ролі CarPot">
+                <h2>Що вас цікавить?</h2>
+                <div class="role-options">
+                    <button class="role-option" type="button" data-role-select="buyer" aria-pressed="{{ 'true' if buyer_mode else 'false' }}">
+                        <strong>Знайти авто або послугу</strong>
+                        <span>Пошук, каталог, заявки, обране</span>
+                    </button>
+                    <button class="role-option" type="button" data-role-select="seller" aria-pressed="{{ 'false' if buyer_mode else 'true' }}">
+                        <strong>Розвивати автобізнес</strong>
+                        <span>Сайт, CRM, ліди, Telegram</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="mode-content" data-mode-content="buyer" {% if not buyer_mode %}hidden{% endif %}>
+                <span class="eyebrow">Buyer ecosystem</span>
+                <h1>Знайдіть авто, запчастини або автопослуги</h1>
+                <p class="lead">CarPot обʼєднує каталог продавців, послуги, авто на розборі, заявки та Telegram-продовження в одному автомобільному маркетплейсі.</p>
+                <form class="buyer-search-panel" action="/search" method="get">
+                    <div class="search-grid">
+                        <input class="field" type="search" name="q" value="{{ search_query }}" placeholder="Що шукаєте" aria-label="Що шукаєте">
+                        <input class="field" type="text" name="city" value="{{ selected_city }}" placeholder="Місто" aria-label="Місто">
+                        <button class="btn btn-primary" type="submit">Знайти</button>
+                    </div>
+                    <div class="quick-chips" aria-label="Швидкі категорії">
+                        {% for chip in ['Евакуатор', 'СТО', 'Шиномонтаж', 'Автоелектрик', 'BMW', 'Audi', 'Toyota'] %}
+                            <a class="chip" href="/search?q={{ chip | urlencode }}">{{ chip }}</a>
+                        {% endfor %}
+                    </div>
+                </form>
+                <div class="hero-actions">
+                    <a class="btn btn-primary" href="/cars">Знайти авто</a>
+                    <a class="btn btn-secondary" href="/services">Знайти послугу</a>
+                    <a class="btn btn-secondary" href="#request">Залишити заявку</a>
+                </div>
+            </div>
+
+            <div class="mode-content" data-mode-content="seller" {% if buyer_mode %}hidden{% endif %}>
+                <span class="eyebrow">Платформа для автобізнесу</span>
+                <h1>CarPot — сайти, CRM, заявки та Telegram-автоматизація для автобізнесу</h1>
+                <p class="lead">Продавці запускають сайт, керують авто й послугами, отримують ліди, бачать аналітику та продовжують роботу з клієнтами в Telegram.</p>
+                <div class="hero-actions">
+                    <a class="btn btn-primary" href="{{ telegram_bot_url }}" target="_blank" rel="noopener">Відкрити Telegram-бот</a>
+                    <a class="btn btn-secondary" href="#demo">Переглянути демо</a>
+                </div>
             </div>
         </div>
 
-        <div class="dashboard" aria-label="Як працює Carpot">
-            <div class="dash-top">
-                <strong>Як працює Carpot</strong>
-                <div class="window-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+        <div class="dashboard" aria-label="Екосистема CarPot">
+            <div class="dash-top"><span></span><span></span><span></span></div>
+            <div class="dash-body">
+                <div class="dash-card"><strong>{{ marketplace_summary.cars_count or 0 }}</strong><span>авто в каталозі</span></div>
+                <div class="dash-card"><strong>{{ marketplace_summary.services_count or 0 }}</strong><span>послуг</span></div>
+                <div class="dash-card"><strong>{{ marketplace_summary.sellers_count or 0 }}</strong><span>продавців</span></div>
+                <div class="dash-card"><strong>{{ marketplace_summary.sites_count or 0 }}</strong><span>сайтів</span></div>
             </div>
-
             <div class="workflow-list">
-                <div class="workflow-step"><span class="workflow-number">1</span><span>Відкриваєте Telegram-бот</span></div>
-                <div class="workflow-step"><span class="workflow-number">2</span><span>Обираєте роль продавця</span></div>
-                <div class="workflow-step"><span class="workflow-number">3</span><span>Заповнюєте профіль</span></div>
-                <div class="workflow-step"><span class="workflow-number">4</span><span>Додаєте послуги / товари / авто</span></div>
-                <div class="workflow-step"><span class="workflow-number">5</span><span>Отримуєте сайт</span></div>
-                <div class="workflow-step"><span class="workflow-number">6</span><span>Приймаєте заявки або запускаєте рекламу</span></div>
+                <div class="workflow-step"><span class="workflow-number">1</span>Website discovery + SEO + ads</div>
+                <div class="workflow-step"><span class="workflow-number">2</span>Каталог, пошук, заявки й обране</div>
+                <div class="workflow-step"><span class="workflow-number">3</span>Telegram retention + CRM для продавця</div>
             </div>
         </div>
     </div>
 </section>
 
-<section id="platform" class="section">
+<section class="section mode-content" data-mode-content="buyer" {% if not buyer_mode %}hidden{% endif %}>
     <div class="container">
         <div class="section-head">
-            <div>
-                <span class="eyebrow">Платформа</span>
-                <h2>Що таке Carpot?</h2>
-            </div>
-            <p>CarPot поєднує Telegram-бот, сайт для запчастин або послуг СТО, заявки від покупців з Telegram-бота готові шаблони дизайну та налаштування реклами в одному простому інструменті для автовласників бізнесу.</p>
+            <div><span class="eyebrow">Основні дії</span><h2>Покупець рухається від пошуку до контакту</h2></div>
+            <p>Три швидкі сценарії закривають основні наміри: знайти авто, знайти послугу або залишити заявку для продавців CarPot.</p>
         </div>
-
         <div class="grid-3">
-            <article class="card">
-                <div class="icon icon-box"><img src="https://res.cloudinary.com/dyem6pgtd/image/upload/v1778623335/Bot_icon_dnlfct.png" alt="Telegram-бот" loading="lazy" width="48" height="48"></div>
-                <h3>Telegram-бот для продавців</h3>
-                <p>Стартуйте з бота, заповнюйте профіль, контакти, опис бізнесу й отримуйте зручний канал для роботи.</p>
-            </article>
-
-            <article class="card">
-                <div class="icon icon-box"><img src="https://res.cloudinary.com/dyem6pgtd/image/upload/v1778623335/Website_icon_cru6aj.png" alt="Сайт" loading="lazy" width="48" height="48"></div>
-                <h3>Сучасний сайт</h3>
-                <p>Показуйте авто, товари, послуги, контакти, карту проїзду та отримуйте замовлення та заявки у Telegram.</p>
-            </article>
-
-            <article class="card">
-                <div class="icon icon-box"><img src="https://res.cloudinary.com/dyem6pgtd/image/upload/v1778623336/leeds_srvlyy.png" alt="CRM-заявки" loading="lazy" width="48" height="48"></div>
-                <h3>Заявки</h3>
-                <p>Пошук запчастин на авторозбірках. Отримуйте заявки з Telegram-бота яким користується 10 тисяч автовласників.</p>
-            </article>
-
-            <article class="card">
-                <div class="icon icon-box"><img src="https://res.cloudinary.com/dyem6pgtd/image/upload/v1778623335/demo_rbfcaa.png" alt="Демо шаблони" loading="lazy" width="48" height="48"></div>
-                <h3>Готовий дизайн</h3>
-                <p>Оберіть зручний шаблон дизайну під свій колір та напрям: автозапчастини, СТО, автоелектрика, евакуатор або шиномонтаж.</p>
-            </article>
-
-            <article class="card">
-                <div class="icon icon-box"><img src="https://res.cloudinary.com/dyem6pgtd/image/upload/v1778623335/ads_rm0qym.png" alt="Google Ads" loading="lazy" width="48" height="48"></div>
-                <h3>Реклама Google Ads</h3>
-                <p>Швидкий запуск контекстної реклами в Google. Випереджайте конкурентів — будьте на перших позиціях в пошуку!</p>
-            </article>
-
-            <article class="card">
-                <div class="icon icon-box"><img src="https://res.cloudinary.com/dyem6pgtd/image/upload/v1778623336/Settingsautomation_totiaz.png" alt="Автоматизація" loading="lazy" width="48" height="48"></div>
-                <h3>Керування без програміста</h3>
-                <p>Carpot створений для малого й середнього автобізнесу, якому потрібен швидкий запуск без складних адмінок. Все налаштування через Telegram.</p>
-            </article>
+            <a class="action-card" href="/cars"><span class="action-icon">{{ car_icon() }}</span><h3>Знайти авто</h3><p>Каталог авто та авто на розборі з фільтрами міста, бренду й моделі.</p></a>
+            <a class="action-card" href="/services"><span class="action-icon">{{ tool_icon() }}</span><h3>Знайти послугу</h3><p>Евакуатор, СТО, шиномонтаж, автоелектрик та інші категорії.</p></a>
+            <a class="action-card" href="#request"><span class="action-icon">{{ request_icon() }}</span><h3>Залишити заявку</h3><p>Якщо потрібного немає в каталозі, заявка потрапляє в CRM/admin контур.</p></a>
         </div>
     </div>
 </section>
 
-<section class="section">
+<section id="catalog" class="section mode-content" data-mode-content="buyer" {% if not buyer_mode %}hidden{% endif %}>
     <div class="container">
         <div class="section-head">
-            <div>
-                <span class="eyebrow">Аудиторія</span>
-                <h2>Для кого Carpot</h2>
-            </div>
-            <p>Платформа сфокусована на українському автомобільному ринку та типових послугах, які шукають клієнти.</p>
+            <div><span class="eyebrow">Каталог</span><h2>Реальні пропозиції з екосистеми CarPot</h2></div>
+            <p>Перший екран каталогу показує авто, автопослуги, авторозборки та продавців у тому ж UI, що й CRM та сайти продавців.</p>
         </div>
-
-        <div class="audience-grid">
-            <div class="audience-item">Авторозборки</div>
-            <div class="audience-item">СТО</div>
-            <div class="audience-item">Автоелектрики</div>
-            <div class="audience-item">Шиномонтаж</div>
-            <div class="audience-item">Евакуатори</div>
-            <div class="audience-item">Продавці автозапчастин</div>
+        <div class="catalog-grid">
+            {% for car in marketplace_cars[:3] %}{{ listing_card(car, 'car') }}{% endfor %}
+            {% for service in marketplace_services[:3] %}{{ listing_card(service, 'service') }}{% endfor %}
         </div>
+        <div class="card-actions" style="margin-top: 22px;"><a class="btn btn-primary" href="/catalog">Відкрити весь каталог</a><a class="btn btn-secondary" href="/search?q=евакуатор+київ">Приклад пошуку: евакуатор Київ</a></div>
     </div>
 </section>
 
-<section id="demo" class="section">
-    <div class="container">
-        <div class="section-head">
-            <div>
-                <span class="eyebrow">Демо</span>
-                <h2>Демо сайти Carpot</h2>
-            </div>
-            <p>Перегляньте приклади сторінок, які можна адаптувати під ваш бізнес, послуги й рекламні кампанії.</p>
+<section id="request" class="section mode-content" data-mode-content="buyer" {% if not buyer_mode %}hidden{% endif %}>
+    <div class="container grid-2">
+        <div>
+            <span class="eyebrow">Lead request</span>
+            <h2>Не знайшли потрібне?</h2>
+            <p class="lead">Опишіть авто, запчастину або послугу. Заявка зберігається в buyer lead контурі CarPot і готова для майбутніх відповідей продавців.</p>
+            {% if lead_sent %}<p class="status-pill">Заявку отримано</p>{% endif %}
         </div>
+        <form class="request-form" action="/buyer/lead" method="post">
+            <div class="request-grid">
+                <label>Що потрібно<input class="field" name="what_needed" required placeholder="BMW E60 фара"></label>
+                <label>Телефон<input class="field" name="phone" required placeholder="+380"></label>
+                <label>Місто<input class="field" name="city" placeholder="Київ"></label>
+            </div>
+            <div class="request-grid">
+                <label>Telegram<input class="field" name="telegram" placeholder="@username"></label>
+                <label>VIN<input class="field" name="vin" placeholder="за наявності"></label>
+                <label>Фото / посилання<input class="field" name="photos" placeholder="посилання на фото"></label>
+            </div>
+            <label>Опис<textarea name="description" placeholder="Марка, модель, рік, деталі, терміновість"></textarea></label>
+            <button class="btn btn-primary" type="submit">Надіслати заявку</button>
+        </form>
+    </div>
+</section>
 
+<section class="section mode-content" data-mode-content="buyer" {% if not buyer_mode %}hidden{% endif %}>
+    <div class="container grid-2">
+        <article class="favorite-card">
+            <span class="eyebrow">Favorites architecture</span>
+            <h2>Обране, перегляди, збережені пошуки</h2>
+            <p>Buyer CRM вже має контури favorites, request history, garage/viewed listings. Веб-кнопки підготовлені як легкий front-end шар для подальшої Telegram-auth інтеграції.</p>
+        </article>
+        <article class="telegram-panel">
+            <div><span class="eyebrow">Telegram continuation</span><h2>Website знаходить. Telegram утримує.</h2><p>Покупець може продовжити діалог у боті, отримати сповіщення, зберегти пошук і повернутися до заявок.</p></div>
+            <a class="btn btn-primary" href="{{ telegram_bot_url }}" target="_blank" rel="noopener">Продовжити в Telegram</a>
+        </article>
+    </div>
+</section>
+
+<section id="platform" class="section mode-content" data-mode-content="seller" {% if buyer_mode %}hidden{% endif %}>
+    <div class="container">
+        <div class="section-head"><div><span class="eyebrow">Seller mode</span><h2>Один кабінет для сайту, каталогу, CRM і лідів</h2></div><p>Seller mode залишається в тій самій дизайн-системі CarPot, але має бізнес-пріоритет: сайти, CRM, аналітика, ліди, автоматизація та підписки.</p></div>
         <div class="grid-3">
-            <article class="card demo-card">
-                <div class="icon icon-box"><img src="https://res.cloudinary.com/dyem6pgtd/image/upload/v1778623336/Demo_premium_icon_hljpqj.png" alt="Преміум демо" loading="lazy" width="48" height="48"></div>
-                <h3>Сайти для авторозборок та продавців запчастин</h3>
-                <p>Преміум інтернет-магазин автозапчастин з каталогом і заявками.</p>
-                <div class="demo-links">
-                    <a class="text-link" href="https://worker-production-e30f.up.railway.app/site/demo-parts" target="_blank" rel="noopener">demo-parts</a>
-                </div>
-                <div class="card-actions">
-                    <a class="btn btn-primary" href="{{ telegram_bot_url }}" target="_blank" rel="noopener">Замовити такий сайт</a>
-                </div>
-            </article>
-
-            <article class="card demo-card">
-                <div class="icon icon-box"><img src="https://res.cloudinary.com/dyem6pgtd/image/upload/v1778623336/sayt_vizitka_p5qzsr.png" alt="Сайт-візитка" loading="lazy" width="48" height="48"></div>
-                <h3>Сайти для СТО та автосервісів</h3>
-                <p>Преміум сайт автоелектрика та діагностики.</p>
-                <div class="demo-links">
-                    <a class="text-link" href="https://worker-production-e30f.up.railway.app/site/demo-electric" target="_blank" rel="noopener">demo-electric</a>
-                </div>
-                <div class="card-actions">
-                    <a class="btn btn-primary" href="{{ telegram_bot_url }}" target="_blank" rel="noopener">Замовити такий сайт</a>
-                </div>
-            </article>
-
-            <article class="card demo-card">
-                <div class="icon icon-box"><img src="https://res.cloudinary.com/dyem6pgtd/image/upload/v1778682275/bazoviy_shablon_rhkwmf.png" alt="Стандартні шаблони" loading="lazy" width="48" height="48"></div>
-                <h3>Сайти для автоелектриків, евакуаторів та шиномонтажу</h3>
-                <p>Шаблони для СТО, евакуатора й шиномонтажу зі швидким запуском.</p>
-                <div class="demo-links">
-                    <a class="text-link" href="https://worker-production-e30f.up.railway.app/site/demo-sto" target="_blank" rel="noopener">demo-sto</a>
-                    <a class="text-link" href="https://worker-production-e30f.up.railway.app/site/demo-tow" target="_blank" rel="noopener">demo-tow</a>
-                    <a class="text-link" href="https://worker-production-e30f.up.railway.app/site/demo-shynomontag" target="_blank" rel="noopener">demo-shynomontag</a>
-                </div>
-                <div class="card-actions">
-                    <a class="btn btn-primary" href="{{ telegram_bot_url }}" target="_blank" rel="noopener">Замовити такий сайт</a>
-                </div>
-            </article>
+            <article class="card"><h3>Сайт продавця</h3><p>Авторозборка, СТО, евакуатор або шиномонтаж отримує сайт з каталогом, заявками й аналітикою.</p></article>
+            <article class="card"><h3>CRM і ліди</h3><p>Контакти, заявки з сайту, buyer requests, статуси та майбутні відповіді продавців.</p></article>
+            <article class="card"><h3>Telegram automation</h3><p>Керування бізнесом і комунікація в Telegram без складних адмінок.</p></article>
         </div>
     </div>
 </section>
 
-<section id="how-it-works" class="section">
+<section id="demo" class="section mode-content" data-mode-content="seller" {% if buyer_mode %}hidden{% endif %}>
     <div class="container">
-        <div class="section-head">
-            <div>
-                <span class="eyebrow">Процес</span>
-                <h2>Як працює Carpot</h2>
-            </div>
-            <p>Запуск побудований навколо простих кроків у Telegram — без складної адмін-панелі, знань програмування чи дизайну</p>
-        </div>
-
-        <div class="steps">
-            <div class="step">Відкриваєте Telegram-бот</div>
-            <div class="step">Обираєте роль продавця</div>
-            <div class="step">Заповнюєте профіль</div>
-            <div class="step">Додаєте послуги / товари / авто</div>
-            <div class="step">Отримуєте сайт</div>
-            <div class="step">Приймаєте заявки або запускаєте рекламу</div>
+        <div class="section-head"><div><span class="eyebrow">Демо</span><h2>Сайти для автомобільного бізнесу</h2></div><p>Приклади залишаються частиною єдиної CarPot-екосистеми та водночас наповнюють buyer discovery.</p></div>
+        <div class="grid-3">
+            <article class="card demo-card"><h3>Авторозборка</h3><p>Каталог авто, запчастини, заявки та контакт у Telegram.</p><div class="card-actions"><a class="btn btn-primary" href="/site/demo-parts">Дивитись демо</a></div></article>
+            <article class="card demo-card"><h3>СТО / автоелектрик</h3><p>Послуги, ціни, адреса, швидка заявка та CRM для звернень.</p><div class="card-actions"><a class="btn btn-primary" href="/site/demo-sto">Дивитись демо</a></div></article>
+            <article class="card demo-card"><h3>Евакуатор / шиномонтаж</h3><p>Мобільний сайт із терміновими CTA та Telegram-продовженням.</p><div class="card-actions"><a class="btn btn-primary" href="/site/demo-tow">Дивитись демо</a></div></article>
         </div>
     </div>
 </section>
 
-<section id="pricing" class="section">
+<section id="pricing" class="section mode-content" data-mode-content="seller" {% if buyer_mode %}hidden{% endif %}>
     <div class="container">
-        <div class="section-head">
-            <div>
-                <span class="eyebrow">Тарифи</span>
-                <h2>Вартість розміщення</h2>
-            </div>
-        </div>
-
+        <div class="section-head"><div><span class="eyebrow">Тарифи</span><h2>Вартість розміщення</h2></div></div>
         <div class="pricing-grid">
-            <article class="price-card">
-                <div class="icon icon-box price-icon"><img src="https://res.cloudinary.com/dyem6pgtd/image/upload/v1778623335/Bot_icon_dnlfct.png" alt="Перше авто на розборі" loading="lazy" width="48" height="48"></div>
-                <h3>Перше авто на розборі</h3>
-                <div class="price">Безкоштовно</div>
-            </article>
-
-            <article class="price-card">
-                <div class="icon icon-box price-icon"><img src="https://res.cloudinary.com/dyem6pgtd/image/upload/v1778623336/Settingsautomation_totiaz.png" alt="Добавлення автопослуг" loading="lazy" width="48" height="48"></div>
-                <h3>Добавлення автопослуг</h3>
-                <div class="price">Безкоштовно</div>
-            </article>
-
-            <article class="price-card">
-                <div class="icon icon-box price-icon"><img src="https://res.cloudinary.com/dyem6pgtd/image/upload/v1778623335/Website_icon_cru6aj.png" alt="Друге та наступні авто у розборі" loading="lazy" width="48" height="48"></div>
-                <h3>Друге та наступні авто у розборі</h3>
-                <div class="price">99 грн</div>
-            </article>
-
-            <article class="price-card">
-                <div class="icon icon-box price-icon"><img src="https://res.cloudinary.com/dyem6pgtd/image/upload/v1778682275/bazoviy_shablon_rhkwmf.png" alt="Сайт-візитка" loading="lazy" width="48" height="48"></div>
-                <h3>Сайт-візитка</h3>
-                <div class="price">499 грн/рік</div>
-            </article>
-
-            <article class="price-card featured">
-                <div class="icon icon-box price-icon"><img src="https://res.cloudinary.com/dyem6pgtd/image/upload/v1778623336/sayt_vizitka_p5qzsr.png" alt="Сайт інтернет-магазин" loading="lazy" width="48" height="48"></div>
-                <h3>Сайт інтернет-магазин</h3>
-                <div class="price">1499 грн/рік</div>
-            </article>
-
-            <article class="price-card">
-                <div class="icon icon-box price-icon"><img src="https://res.cloudinary.com/dyem6pgtd/image/upload/v1778623336/Demo_premium_icon_hljpqj.png" alt="Індивідуальний дизайн сайту" loading="lazy" width="48" height="48"></div>
-                <h3>Індивідуальний дизайн сайту</h3>
-                <div class="price">Ціна договірна</div>
-            </article>
-        </div>
-    </div>
-</section>
-
-<section id="safe-start" class="section safe-start-section">
-    <div class="container">
-        <div class="safe-start-card">
-            <div class="safe-start-content">
-                <span class="eyebrow">Старт без ризику</span>
-                <h2>Безпечний старт з CarPot</h2>
-                <p class="lead">Хочете спробувати автобізнес онлайн?</p>
-                <p>CarPot допоможе швидко запустити сайт, Telegram-бот та прийом заявок без складних адмінок і великих вкладень.</p>
-                <p>Ми безкоштовно активуємо стартовий пакет на 3 місяці та допоможемо з базовим запуском.</p>
-                <p>Ваші перші 1000 грн йдуть не нам — вони використовуються для запуску реклами Google Ads вашого бізнесу.</p>
-            </div>
-
-            <div class="promo-command-card" aria-label="Команда для активації стартового пакета">
-                <div class="promo-command-label">Команда для активації:</div>
-                <code class="promo-command" data-promo-command>/start START</code>
-
-                <div class="safe-start-actions">
-                    <button class="btn btn-secondary" type="button" data-copy-promo data-default-text="Скопіювати команду">Скопіювати команду</button>
-                    <a class="btn btn-primary" href="https://t.me/CarPotbot?start=START" target="_blank" rel="noopener">Перейти в Telegram-бот</a>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
-<section class="section">
-    <div class="container">
-        <div class="cta-panel">
-            <span class="eyebrow">Старт</span>
-            <h2>Запустіть свій сайт через Carpot</h2>
-            <p class="lead">Напишіть у Telegram-бот, оберіть формат сайту та покажіть клієнтам послуги, товари й контакти на сучасній сторінці.</p>
-
-            <div class="cta-actions">
-                <a class="btn btn-primary" href="{{ telegram_bot_url }}" target="_blank" rel="noopener">Відкрити Telegram-бот</a>
-                <a class="btn btn-primary" href="#demo">Переглянути демо</a>
-            </div>
-
-            <div class="contact-lines">
-                <div>Telegram bot: <a class="text-link" href="{{ telegram_bot_url }}" target="_blank" rel="noopener">{{ telegram_bot_url }}</a></div>
-                <div>Telegram support: <a class="text-link" href="{{ telegram_support_url }}" target="_blank" rel="noopener">{{ telegram_support_url }}</a></div>
-                <div>Email: <a class="text-link" href="mailto:{{ support_email }}">{{ support_email }}</a></div>
-            </div>
+            <article class="price-card"><h3>Перше авто на розборі</h3><div class="price">Безкоштовно</div></article>
+            <article class="price-card"><h3>Автопослуги</h3><div class="price">Безкоштовно</div></article>
+            <article class="price-card featured"><h3>Сайт + CRM</h3><div class="price">від 499 грн<small>/рік</small></div><a class="btn btn-primary" href="{{ telegram_bot_url }}" target="_blank" rel="noopener">Запустити</a></article>
         </div>
     </div>
 </section>
