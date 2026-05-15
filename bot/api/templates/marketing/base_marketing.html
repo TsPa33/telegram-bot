@@ -1485,6 +1485,8 @@
                 padding: 22px;
             }
         }
+
+        {% block extra_styles %}{% endblock %}
     </style>
 </head>
 <body>
@@ -1505,6 +1507,8 @@
         </button>
 
         <nav class="nav-links" id="primary-navigation" aria-label="Головна навігація">
+            <a href="/buyer">Покупець</a>
+            <a href="/seller">Продавець</a>
             <a href="/#platform">Платформа</a>
             <a href="/#demo">Демо</a>
             <a href="/#pricing">Тарифи</a>

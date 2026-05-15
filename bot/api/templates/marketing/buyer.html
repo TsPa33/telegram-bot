@@ -1,0 +1,157 @@
+{% extends "marketing/base_marketing.html" %}
+
+{% block extra_styles %}
+{% include "marketing/buyer_styles.html" %}
+{% endblock %}
+
+{% macro car_icon() -%}
+<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 17h14M7 17v2M17 17v2M6.2 13l1.6-4.2A2 2 0 0 1 9.7 7h4.6a2 2 0 0 1 1.9 1.3L17.8 13M5 13h14v4H5v-4Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+{%- endmacro %}
+{% macro tool_icon() -%}
+<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14.7 6.3a4 4 0 0 0 5 5L11 20a2.1 2.1 0 0 1-3-3l8.7-8.7ZM6 6l3 3M4 4l2 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+{%- endmacro %}
+{% macro request_icon() -%}
+<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 6h16v12H4V6Zm0 0 8 7 8-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+{%- endmacro %}
+{% macro listing_card(item, kind) -%}
+<article class="listing-card">
+    <div class="listing-media">
+        {% if item.photo_id and item.photo_id.startswith('http') %}
+            <img src="{{ item.photo_id }}" alt="{{ item.title if kind == 'service' else item.brand ~ ' ' ~ item.model }}" loading="lazy">
+        {% else %}
+            <span class="inline-icon">{{ tool_icon() if kind == 'service' else car_icon() }}</span>
+        {% endif %}
+    </div>
+    <span class="listing-type">{{ 'Послуга' if kind == 'service' else 'Авто' }}</span>
+    <h3>{{ item.title if kind == 'service' else (item.brand ~ ' ' ~ item.model) }}</h3>
+    <div class="listing-meta">
+        <span>{{ item.city or 'Україна' }}</span>
+        {% if item.category %}<span>{{ item.category }}</span>{% endif %}
+        {% if item.is_verified %}<span>Перевірено</span>{% endif %}
+    </div>
+    <p>{{ (item.description or 'Картка продавця CarPot з контактами, сайтом і швидким продовженням у Telegram.')[:150] }}</p>
+    <div class="card-actions">
+        <a class="btn btn-primary" href="{{ telegram_bot_url }}" target="_blank" rel="noopener">Звʼязатися</a>
+        <button class="btn btn-secondary" type="button" data-favorite-preview="{{ kind }}:{{ item.id }}">В обране</button>
+    </div>
+</article>
+{%- endmacro %}
+
+{% block content %}
+<section class="hero">
+    <div class="container hero-grid">
+        <div>
+            <div class="role-panel" aria-label="Вибір ролі CarPot">
+                <h2>Що вас цікавить?</h2>
+                <div class="role-options">
+                    <a class="role-option is-active" href="/buyer">
+                        <strong>Знайти авто або послугу</strong>
+                        <span>Пошук, каталог, заявки, обране</span>
+                    </a>
+                    <a class="role-option" href="/seller">
+                        <strong>Розвивати автобізнес</strong>
+                        <span>Сайт, CRM, ліди, Telegram</span>
+                    </a>
+                </div>
+            </div>
+
+            <span class="eyebrow">Buyer ecosystem</span>
+            <h1>Знайдіть авто, запчастини або автопослуги</h1>
+            <p class="lead">CarPot обʼєднує каталог продавців, послуги, авто на розборі, заявки та Telegram-продовження в одному автомобільному маркетплейсі.</p>
+            <form class="buyer-search-panel" action="/search" method="get">
+                <div class="search-grid">
+                    <input class="field" type="search" name="q" value="{{ search_query }}" placeholder="Що шукаєте" aria-label="Що шукаєте">
+                    <input class="field" type="text" name="city" value="{{ selected_city }}" placeholder="Місто" aria-label="Місто">
+                    <button class="btn btn-primary" type="submit">Знайти</button>
+                </div>
+                <div class="quick-chips" aria-label="Швидкі категорії">
+                    {% for chip in ['Евакуатор', 'СТО', 'Шиномонтаж', 'Автоелектрик', 'BMW', 'Audi', 'Toyota'] %}
+                        <a class="chip" href="/search?q={{ chip | urlencode }}">{{ chip }}</a>
+                    {% endfor %}
+                </div>
+            </form>
+            <div class="hero-actions">
+                <a class="btn btn-primary" href="/cars">Знайти авто</a>
+                <a class="btn btn-secondary" href="/services">Знайти послугу</a>
+                <a class="btn btn-secondary" href="#request">Залишити заявку</a>
+            </div>
+        </div>
+
+        <div class="dashboard" aria-label="Екосистема CarPot">
+            <div class="dash-top"><strong>CarPot buyer network</strong><div class="window-dots" aria-hidden="true"><span></span><span></span><span></span></div></div>
+            <div class="workflow-list">
+                <div class="workflow-step"><span class="workflow-number">1</span><span>Website discovery + SEO + ads</span></div>
+                <div class="workflow-step"><span class="workflow-number">2</span><span>Каталог, пошук, заявки й обране</span></div>
+                <div class="workflow-step"><span class="workflow-number">3</span><span>Telegram retention + CRM для продавця</span></div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="section">
+    <div class="container">
+        <div class="section-head">
+            <div><span class="eyebrow">Основні дії</span><h2>Покупець рухається від пошуку до контакту</h2></div>
+            <p>Три швидкі сценарії закривають основні наміри: знайти авто, знайти послугу або залишити заявку для продавців CarPot.</p>
+        </div>
+        <div class="grid-3">
+            <a class="action-card" href="/cars"><span class="action-icon">{{ car_icon() }}</span><h3>Знайти авто</h3><p>Каталог авто та авто на розборі з фільтрами міста, бренду й моделі.</p></a>
+            <a class="action-card" href="/services"><span class="action-icon">{{ tool_icon() }}</span><h3>Знайти послугу</h3><p>Евакуатор, СТО, шиномонтаж, автоелектрик та інші категорії.</p></a>
+            <a class="action-card" href="#request"><span class="action-icon">{{ request_icon() }}</span><h3>Залишити заявку</h3><p>Якщо потрібного немає в каталозі, заявка потрапляє в CRM/admin контур.</p></a>
+        </div>
+    </div>
+</section>
+
+<section id="catalog" class="section">
+    <div class="container">
+        <div class="section-head">
+            <div><span class="eyebrow">Каталог</span><h2>Реальні пропозиції з екосистеми CarPot</h2></div>
+            <p>Перший екран каталогу показує авто, автопослуги, авторозборки та продавців у тому ж UI, що й CRM та сайти продавців.</p>
+        </div>
+        <div class="catalog-grid">
+            {% for car in marketplace_cars[:3] %}{{ listing_card(car, 'car') }}{% endfor %}
+            {% for service in marketplace_services[:3] %}{{ listing_card(service, 'service') }}{% endfor %}
+        </div>
+        <div class="card-actions" style="margin-top: 22px;"><a class="btn btn-primary" href="/catalog">Відкрити весь каталог</a><a class="btn btn-secondary" href="/search?q=евакуатор+київ">Приклад пошуку: евакуатор Київ</a></div>
+    </div>
+</section>
+
+<section id="request" class="section">
+    <div class="container grid-2">
+        <div>
+            <span class="eyebrow">Lead request</span>
+            <h2>Не знайшли потрібне?</h2>
+            <p class="lead">Опишіть авто, запчастину або послугу. Заявка зберігається в buyer lead контурі CarPot і готова для майбутніх відповідей продавців.</p>
+            {% if lead_sent %}<p class="status-pill">Заявку отримано</p>{% endif %}
+        </div>
+        <form class="request-form" action="/buyer/lead" method="post">
+            <div class="request-grid">
+                <label>Що потрібно<input class="field" name="what_needed" required placeholder="BMW E60 фара"></label>
+                <label>Телефон<input class="field" name="phone" required placeholder="+380"></label>
+                <label>Місто<input class="field" name="city" placeholder="Київ"></label>
+            </div>
+            <div class="request-grid">
+                <label>Telegram<input class="field" name="telegram" placeholder="@username"></label>
+                <label>VIN<input class="field" name="vin" placeholder="за наявності"></label>
+                <label>Фото / посилання<input class="field" name="photos" placeholder="посилання на фото"></label>
+            </div>
+            <label>Опис<textarea name="description" placeholder="Марка, модель, рік, деталі, терміновість"></textarea></label>
+            <button class="btn btn-primary" type="submit">Надіслати заявку</button>
+        </form>
+    </div>
+</section>
+
+<section class="section">
+    <div class="container grid-2">
+        <article class="favorite-card">
+            <span class="eyebrow">Favorites architecture</span>
+            <h2>Обране, перегляди, збережені пошуки</h2>
+            <p>Buyer CRM вже має контури favorites, request history, garage/viewed listings. Веб-кнопки підготовлені як легкий front-end шар для подальшої Telegram-auth інтеграції.</p>
+        </article>
+        <article class="telegram-panel">
+            <div><span class="eyebrow">Telegram continuation</span><h2>Website знаходить. Telegram утримує.</h2><p>Покупець може продовжити діалог у боті, отримати сповіщення, зберегти пошук і повернутися до заявок.</p></div>
+            <a class="btn btn-primary" href="{{ telegram_bot_url }}" target="_blank" rel="noopener">Продовжити в Telegram</a>
+        </article>
+    </div>
+</section>
+{% endblock %}
