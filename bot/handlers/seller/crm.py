@@ -40,7 +40,7 @@ def _crm_url(slug: str | None = None) -> str:
 
 def _landing_kb(has_active_subscription: bool = False, account_slug: str | None = None):
     kb = InlineKeyboardBuilder()
-    kb.button(text="👀 Переглянути демо", url=f"{_crm_url()}/crm/seller/demo")
+    kb.button(text="👀 Переглянути демо", url="https://worker-production-e30f.up.railway.app/crm/seller/demo")
     if account_slug:
         kb.button(text="🚀 Відкрити CRM", url=_crm_url(account_slug))
     elif has_active_subscription:
