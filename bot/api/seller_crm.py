@@ -53,7 +53,7 @@ templates = Jinja2Templates(directory="bot/api/templates")
 SELLER_CRM_COOKIE = "seller_crm_session"
 
 MODULE_KEYS = [
-    ("hero", "Hero"),
+    ("hero", "Перший екран"),
     ("services", "Послуги"),
     ("cars", "Авто"),
     ("gallery", "Галерея"),
@@ -61,14 +61,14 @@ MODULE_KEYS = [
     ("pricing", "Ціни"),
     ("contacts", "Контакти"),
     ("map", "Карта"),
-    ("cta", "Callback / CTA"),
+    ("cta", "Заклик до дії"),
     ("reviews", "Відгуки"),
-    ("footer", "Footer"),
+    ("footer", "Футер"),
 ]
 
 
 def _seller_crm_context(request: Request, **kwargs):
-    context = {"request": request, "title": "Seller CRM"}
+    context = {"request": request, "title": "CRM продавця"}
     context.update(kwargs)
     return context
 
@@ -163,13 +163,13 @@ def _collect_media(config: dict[str, Any], services, cars) -> list[dict[str, str
     media: list[dict[str, str]] = []
     logo = config.get("header", {}).get("logo")
     if logo:
-        media.append({"type": "Лого", "url": logo, "title": "Header logo"})
+        media.append({"type": "Лого", "url": logo, "title": "Лого у шапці"})
     for url in config.get("hero", {}).get("banners", []):
-        media.append({"type": "Банер", "url": url, "title": "Hero banner"})
+        media.append({"type": "Банер", "url": url, "title": "Банер першого екрана"})
     for image in config.get("gallery", {}).get("images", []):
         url = image.get("url") if isinstance(image, dict) else image
         if url:
-            media.append({"type": "Галерея", "url": url, "title": image.get("title", "Gallery") if isinstance(image, dict) else "Gallery"})
+            media.append({"type": "Галерея", "url": url, "title": image.get("title", "Галерея") if isinstance(image, dict) else "Галерея"})
     for work in config.get("works", {}).get("items", []):
         if isinstance(work, dict) and work.get("image"):
             media.append({"type": "Робота", "url": work["image"], "title": work.get("title") or "Work"})
@@ -350,7 +350,7 @@ async def seller_crm_website(request: Request, crm_slug: str, section: str = "we
         "seller_crm/website.html",
         _seller_crm_context(
             request,
-            title="Керування сайтом — Seller CRM",
+            title="Керування сайтом — CRM продавця",
             current_page="website",
             account=account,
             subscription=subscription,
