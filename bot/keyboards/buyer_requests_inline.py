@@ -2,6 +2,7 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 
 BUYER_REQUESTS_NAMESPACE = "buyer_requests"
+BUYER_OFFER_NAMESPACE = "buyer_offer"
 
 
 def request_list_kb(requests, *, page: int, total_pages: int) -> InlineKeyboardMarkup:
@@ -31,21 +32,18 @@ def request_details_kb(request_id: int, offers, *, page: int = 1) -> InlineKeybo
     rows = []
     for offer in offers[:5]:
         offer_id = offer["id"]
-        username = (offer.get("seller_username") or "").strip().lstrip("@")
-        if username:
-            rows.append([InlineKeyboardButton(text="Написати", url=f"https://t.me/{username}")])
-        else:
-            rows.append([
-                InlineKeyboardButton(
-                    text="Написати",
-                    callback_data=f"{BUYER_REQUESTS_NAMESPACE}:contact:{request_id}:{offer_id}",
-                )
-            ])
+        is_selected = offer.get("is_selected_match") or offer.get("status") == "accepted"
         rows.append([
             InlineKeyboardButton(
-                text="Обрати",
-                callback_data=f"{BUYER_REQUESTS_NAMESPACE}:select:{request_id}:{offer_id}",
-            )
+                text="Написати",
+                callback_data=f"{BUYER_OFFER_NAMESPACE}:contact:{offer_id}",
+            ),
+            InlineKeyboardButton(
+                text="✅ Обрано" if is_selected else "Обрати",
+                callback_data=f"{BUYER_REQUESTS_NAMESPACE}:noop"
+                if is_selected
+                else f"{BUYER_OFFER_NAMESPACE}:select:{offer_id}",
+            ),
         ])
 
     if not offers:
@@ -56,7 +54,7 @@ def request_details_kb(request_id: int, offers, *, page: int = 1) -> InlineKeybo
             )
         ])
 
-    rows.append([InlineKeyboardButton(text="Назад", callback_data=f"{BUYER_REQUESTS_NAMESPACE}:page:{page}")])
+    rows.append([InlineKeyboardButton(text="Назад", callback_data=f"{BUYER_OFFER_NAMESPACE}:back")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
