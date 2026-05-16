@@ -1,8 +1,8 @@
 <div class="buyer-ai-search buyer-panel" data-ai-search-shell>
     <div class="buyer-ai-search-copy">
-        <span class="eyebrow">AI request interpreter</span>
-        <h3>Опишіть, що потрібно знайти</h3>
-        <p>CarPot перетворить вільний текст на структурований пошук. AI лише інтерпретує запит — exact part, donor vehicle, seller specialization і заявки контролює marketplace engine.</p>
+        <span class="eyebrow">Пошук CarPot</span>
+        <h3>Розумний пошук автозапчастин і послуг</h3>
+        <p>Опишіть, що потрібно знайти: запчастину, авто на розборці або автопослугу. CarPot підбере релевантні варіанти або допоможе створити заявку для продавців.</p>
     </div>
     <form class="buyer-ai-search-form" action="/buyer/ai-search" method="post" data-ai-search-form>
         <label class="buyer-field buyer-ai-query-field">
@@ -24,14 +24,15 @@
     <div class="buyer-ai-result {% if not ai_search_response %}buyer-hidden{% endif %}" data-ai-search-result>
         {% if ai_search_response %}
         <div class="buyer-ai-result-head">
-            <span class="buyer-pill">{{ ai_search_response.interpretation.category }}</span>
-            <strong>{{ ai_search_response.result_count }} збігів</strong>
+            <span class="buyer-pill">Пошук CarPot</span>
+            <strong>{% if ai_search_response.result_count %}Знайдено релевантні варіанти{% else %}Точного результату поки немає{% endif %}</strong>
         </div>
-        <p>{{ ai_search_response.interpretation.clarification_question or 'Запит інтерпретовано. Якщо exact part слабкий, CarPot показує donor vehicles або продавців за спеціалізацією без обіцянки точного інвентарю.' }}</p>
+        <p>{% if ai_search_response.result_count %}Перегляньте добірку нижче або відкрийте повний список результатів.{% else %}Створіть заявку — продавці отримають ваш запит і зможуть запропонувати варіанти.{% endif %}</p>
         {% endif %}
     </div>
 </div>
 
 {% if ai_search_response %}
 <script type="application/json" data-ai-prefill-json>{{ ai_search_response.prefill | tojson }}</script>
+<script type="application/json" data-ai-initial-response>{{ ai_search_response | tojson }}</script>
 {% endif %}
