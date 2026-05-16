@@ -311,64 +311,6 @@
         to { background-position: -120% 0; }
     }
 
-    .workflow-market {
-        display: grid;
-        grid-template-columns: 0.9fr 1.1fr;
-        gap: 20px;
-        align-items: stretch;
-    }
-
-    .workflow-visual {
-        padding: 24px;
-        display: grid;
-        align-content: space-between;
-        min-height: 360px;
-    }
-
-    .workflow-request-card {
-        border-radius: 24px;
-        padding: 18px;
-        background: rgba(255, 255, 255, 0.08);
-        border: 1px solid rgba(255, 255, 255, 0.14);
-    }
-
-    .workflow-steps {
-        display: grid;
-        gap: 14px;
-    }
-
-    .workflow-step {
-        display: grid;
-        grid-template-columns: auto 1fr;
-        gap: 14px;
-        align-items: start;
-        padding: 18px;
-        border-radius: 24px;
-        background: rgba(255, 255, 255, 0.055);
-        border: 1px solid rgba(148, 163, 184, 0.16);
-    }
-
-    .workflow-index {
-        width: 42px;
-        height: 42px;
-        border-radius: 15px;
-        display: grid;
-        place-items: center;
-        background: linear-gradient(135deg, var(--primary), var(--accent));
-        color: #03110b;
-        font-weight: 950;
-    }
-
-    .workflow-step h3,
-    .workflow-step p {
-        margin: 0;
-    }
-
-    .workflow-step p {
-        color: var(--muted);
-        margin-top: 6px;
-    }
-
     .buyer-modal-backdrop {
         position: fixed;
         inset: 0;
@@ -577,50 +519,6 @@
         color: #fca5a5;
     }
 
-
-    .buyer-request-cta {
-        display: grid;
-        grid-template-columns: minmax(0, 1.3fr) auto;
-        gap: 18px;
-        align-items: center;
-        padding: 22px;
-        margin: 22px 0 34px;
-    }
-
-    .buyer-request-cta h3,
-    .buyer-request-cta p {
-        margin: 0;
-    }
-
-    .buyer-request-cta p {
-        color: var(--muted);
-        margin-top: 8px;
-    }
-
-    .buyer-sticky-request {
-        position: sticky;
-        bottom: 18px;
-        z-index: 50;
-        max-width: 1180px;
-        margin: 28px auto 0;
-        padding: 14px 16px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 14px;
-        backdrop-filter: blur(18px);
-    }
-
-    .buyer-sticky-request strong,
-    .buyer-sticky-request span {
-        display: block;
-    }
-
-    .buyer-sticky-request span {
-        color: var(--muted);
-        font-size: 0.92rem;
-    }
-
     .buyer-density-row,
     .buyer-trust-row {
         display: flex;
@@ -672,36 +570,105 @@
     }
 
 
-    .buyer-ai-search {
-        display: grid;
-        grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
-        gap: 18px;
-        align-items: start;
-        padding: 22px;
-        margin: 22px 0 34px;
-    }
+   .buyer-search-page {
+    min-height: calc(100vh - 120px);
+    display: flex;
+    align-items: center;
+    padding: 60px 0;
+}
 
-    .buyer-ai-search-copy h3,
-    .buyer-ai-search-copy p {
-        margin: 0;
-    }
+.buyer-search-container {
+    width: 100%;
+}
 
-    .buyer-ai-search-copy p {
-        color: var(--muted);
-        margin-top: 8px;
-        line-height: 1.65;
-    }
+.buyer-search-brand {
+    display: grid;
+    justify-items: center;
+    gap: 8px;
+    margin-bottom: 26px;
+    text-align: center;
+}
 
-    .buyer-ai-search-form {
-        display: grid;
-        gap: 12px;
-    }
+.buyer-search-logo {
+    font-size: clamp(2.4rem, 7vw, 4.8rem);
+    font-weight: 950;
+    letter-spacing: -0.05em;
+    color: white;
+}
 
-    .buyer-ai-query-field textarea.buyer-control {
-        min-height: 86px;
-        resize: vertical;
-        padding-top: 13px;
-    }
+.buyer-search-tagline {
+    color: var(--muted);
+    font-size: 0.95rem;
+}
+
+.buyer-search-hero {
+    max-width: 760px;
+    margin: 0 auto 28px;
+    text-align: center;
+}
+
+.buyer-search-hero h1 {
+    margin: 0;
+    font-size: clamp(2rem, 5vw, 4rem);
+    line-height: 1.02;
+}
+
+.buyer-search-hero .lead {
+    margin: 16px 0 0;
+    color: var(--muted);
+    line-height: 1.7;
+    font-size: 1.05rem;
+}
+
+.buyer-ai-search {
+    width: 100%;
+    max-width: 760px;
+    margin: 0 auto;
+    display: grid;
+    gap: 18px;
+}
+
+.buyer-ai-search-copy h3,
+.buyer-ai-search-copy p {
+    margin: 0;
+}
+
+.buyer-ai-search-copy p {
+    color: var(--muted);
+    margin-top: 8px;
+    line-height: 1.65;
+}
+
+.buyer-ai-search-form {
+    display: grid;
+    gap: 16px;
+    padding: 28px;
+    border-radius: 28px;
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    background:
+        linear-gradient(180deg, rgba(15, 23, 42, 0.92), rgba(5, 8, 22, 0.96));
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.32);
+}
+
+.buyer-ai-query-field textarea.buyer-control {
+    min-height: 84px;
+    resize: none;
+    padding: 18px 20px;
+    font-size: 1.05rem;
+    line-height: 1.5;
+    border-radius: 22px;
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0,0,0,0);
+    border: 0;
+}
 
     .buyer-ai-examples,
     .buyer-ai-actions {
@@ -869,16 +836,12 @@
             grid-template-columns: repeat(3, minmax(0, 1fr));
         }
     }
-
-    @media (max-width: 980px) {
-        .buyer-search-form,
-        .workflow-market,
-        .buyer-modal-grid,
-        .buyer-request-modal-grid,
-        .buyer-request-cta,
-        .buyer-ai-search {
-            grid-template-columns: 1fr;
-        }
+@media (max-width: 980px) {
+    .buyer-search-form,
+    .buyer-modal-grid,
+    .buyer-request-modal-grid {
+        grid-template-columns: 1fr;
+    }
 
         .buyer-market-grid,
         .buyer-skeleton-grid {
@@ -900,8 +863,7 @@
         .buyer-filter-meta,
         .buyer-price-row,
         .buyer-modal-top,
-        .favorites-bar,
-        .buyer-sticky-request {
+        .favorites-bar {
             align-items: flex-start;
             flex-direction: column;
         }
@@ -1438,15 +1400,15 @@
         resultBox.innerHTML = hasResults ? `
             <div class="buyer-ai-result-head">
                 <span class="buyer-pill">${escapeHtml(primaryLabel)}</span>
-                <strong>Знайдено релевантні варіанти</strong>
+                <strong>Знайдені варіанти</strong>
             </div>
             <div class="buyer-ai-result-summary">
-                <p>Перегляньте добірку нижче або створіть заявку, якщо потрібно уточнити наявність чи деталі.</p>
+                <p>Оберіть пропозицію або створіть заявку для продавців.</p>
             </div>
             <div class="buyer-ai-group-list">${groups}${requestGroup}</div>
         ` : `
             <div class="buyer-ai-empty">
-                <h4>Точного результату поки немає.</h4>
+                <h4>Не знайшли точний варіант?</h4>
                 <p>Створіть заявку — продавці отримають ваш запит і зможуть запропонувати варіанти.</p>
                 ${requestButtonHtml('Створити заявку')}
             </div>
@@ -1744,7 +1706,6 @@
             const status = form.querySelector('[data-ai-search-status]');
             const submit = form.querySelector('[data-ai-search-submit]');
             const createButton = shell?.querySelector('[data-ai-create-request]');
-            const openResults = shell?.querySelector('[data-ai-open-results]');
             const query = (input?.value || '').trim();
             status?.classList.remove('is-error');
             if (!query || query.length < 3) {
@@ -1769,10 +1730,6 @@
                 if (createButton) {
                     createButton.classList.toggle('buyer-hidden', !payload.should_create_request);
                     createButton.textContent = 'Створити заявку';
-                }
-                if (openResults) {
-                    openResults.href = payload.search_url || '/search';
-                    openResults.classList.toggle('buyer-hidden', !payload.result_count);
                 }
                 if (status) status.textContent = payload.should_create_request
                     ? 'Створіть заявку — продавці отримають ваш запит і зможуть запропонувати варіанти.'
