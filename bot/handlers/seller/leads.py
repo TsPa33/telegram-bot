@@ -6,6 +6,7 @@ from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
+from bot.database.base import fetchrow
 from bot.database.repositories.seller_lead_repo import (
     cancel_seller_lead_notifications,
     create_seller_offer,
@@ -48,6 +49,13 @@ def _row_to_dict(row) -> dict:
 
 
 def _lead_title(lead: dict) -> str:
+    description = (lead.get("description") or "").strip()
+    for line in description.splitlines():
+        line = line.strip()
+        if line.startswith("Запит:") or line.startswith("Потрібно:"):
+            title = line.split(":", 1)[1].strip()
+            if title:
+                return title[:120]
     return " ".join(
         part for part in [lead.get("brand"), lead.get("model"), lead.get("category")] if part
     ).strip() or lead.get("category") or "Автомобільна заявка"
@@ -99,6 +107,7 @@ def _format_lead_card(lead: dict, *, detailed: bool = False) -> str:
         "",
         f"<b>{title}</b>",
         f"📍 {city}",
+        f"📞 {escape(lead.get('buyer_phone') or '—')}",
         f"🧩 {category} · {request_type}",
         f"{urgency}",
     ]
@@ -136,6 +145,25 @@ async def _seller_context(telegram_id: int):
     seller_dict = dict(seller)
     tags = await get_seller_specialization_tags(seller_dict["id"])
     return seller_dict, tags
+
+
+async def _hydrate_lead_contacts(lead: dict) -> dict:
+    if lead.get("buyer_phone"):
+        return lead
+    row = await fetchrow(
+        """
+        SELECT buyer_phone, buyer_telegram
+        FROM buyer_requests
+        WHERE id = $1 AND entity_type = 'marketplace_request'
+        LIMIT 1
+        """,
+        lead.get("id"),
+    )
+    if row:
+        row_dict = dict(row)
+        lead["buyer_phone"] = row_dict.get("buyer_phone")
+        lead["buyer_telegram"] = row_dict.get("buyer_telegram")
+    return lead
 
 
 async def _render_inbox(message_or_callback, telegram_id: int):
@@ -211,8 +239,9 @@ async def seller_lead_open(callback: CallbackQuery, state: FSMContext):
 
     await mark_seller_lead_action(seller_id=seller["id"], request_id=request_id, action="viewed")
     logger.info("Seller opened buyer request lead seller_id=%s request_id=%s", seller["id"], request_id)
+    lead_card = await _hydrate_lead_contacts(_row_to_dict(lead))
     await callback.message.edit_text(
-        _format_lead_card(_row_to_dict(lead), detailed=True),
+        _format_lead_card(lead_card, detailed=True),
         parse_mode="HTML",
         reply_markup=seller_lead_actions_kb(request_id),
     )
@@ -257,6 +286,7 @@ async def seller_lead_decline(callback: CallbackQuery, state: FSMContext):
 @router.callback_query(F.data.startswith("seller_leads:offer:"))
 async def seller_offer_start(callback: CallbackQuery, state: FSMContext):
     request_id = int(callback.data.rsplit(":", 1)[1])
+    await callback.answer()
     seller, _tags = await _seller_context(callback.from_user.id)
     if not seller or not await get_matching_seller_lead(seller["id"], request_id):
         await callback.message.edit_text("Заявка вже недоступна.", reply_markup=seller_lead_back_kb())
@@ -265,7 +295,7 @@ async def seller_offer_start(callback: CallbackQuery, state: FSMContext):
     await state.set_state(SellerLeadOfferStates.price)
     await state.update_data(request_id=request_id, seller_id=seller["id"])
     await callback.message.edit_text(
-        "💬 <b>Ваша пропозиція</b>\n\nВкажіть орієнтовну ціну в грн. Якщо ціна залежить від деталей — пропустіть поле.",
+        "💰 <b>Вкажіть ціну</b>\n\nНапишіть суму цифрами або “договірна”.",
         parse_mode="HTML",
         reply_markup=seller_offer_skip_step_kb(request_id),
     )
@@ -279,18 +309,10 @@ async def seller_offer_skip_optional(callback: CallbackQuery, state: FSMContext)
 
     if current_state == SellerLeadOfferStates.price.state:
         await state.update_data(price_offer=None)
-        await state.set_state(SellerLeadOfferStates.availability)
-        await callback.message.edit_text(
-            "🕒 Доступність\n\nНапишіть, коли можете виконати або відправити. Наприклад: “сьогодні”, “1–2 дні”, “під замовлення”.",
-            reply_markup=seller_offer_skip_step_kb(request_id),
-        )
-        return
-
-    if current_state == SellerLeadOfferStates.availability.state:
-        await state.update_data(availability_note=None)
         await state.set_state(SellerLeadOfferStates.message)
         await callback.message.edit_text(
-            "💬 Коментар\n\nКоротко поясніть покупцю, що саме пропонуєте.",
+            "💬 <b>Коментар до пропозиції</b>\n\nНаприклад: є в наявності, стан хороший, можна відправити сьогодні.",
+            parse_mode="HTML",
             reply_markup=seller_lead_back_kb(request_id),
         )
         return
@@ -314,22 +336,26 @@ def _price_offer_from_state(value) -> Decimal | None:
 async def seller_offer_price(message: Message, state: FSMContext):
     data = await state.get_data()
     text = (message.text or "").replace(" ", "").replace(",", ".")
-    try:
-        price = Decimal(text)
-        if price < 0 or price > Decimal("99999999"):
-            raise InvalidOperation
-    except (InvalidOperation, ValueError):
-        await message.answer(
-            "Вкажіть суму цифрами, наприклад 4500, або пропустіть поле.",
-            reply_markup=seller_offer_skip_step_kb(data["request_id"]),
-        )
-        return
+    if text.lower() in {"договірна", "договiрна", "договорная", "за домовленістю", "задомовленістю"}:
+        price = None
+    else:
+        try:
+            price = Decimal(text)
+            if price < 0 or price > Decimal("99999999"):
+                raise InvalidOperation
+        except (InvalidOperation, ValueError):
+            await message.answer(
+                "Вкажіть суму цифрами, наприклад 4500, або напишіть “договірна”.",
+                reply_markup=seller_offer_skip_step_kb(data["request_id"]),
+            )
+            return
 
-    await state.update_data(price_offer=str(price))
-    await state.set_state(SellerLeadOfferStates.availability)
+    await state.update_data(price_offer=str(price) if price is not None else None)
+    await state.set_state(SellerLeadOfferStates.message)
     await message.answer(
-        "🕒 Доступність\n\nКоли можете виконати або відправити?",
-        reply_markup=seller_offer_skip_step_kb(data["request_id"]),
+        "💬 <b>Коментар до пропозиції</b>\n\nНаприклад: є в наявності, стан хороший, можна відправити сьогодні.",
+        parse_mode="HTML",
+        reply_markup=seller_lead_back_kb(data["request_id"]),
     )
 
 
@@ -362,7 +388,7 @@ async def seller_offer_message(message: Message, state: FSMContext):
         seller_id=seller_id,
         message=comment[:1200],
         price_offer=price_offer,
-        availability_note=data.get("availability_note"),
+        availability_note="Готовий обговорити",
         status="pending",
     )
     await mark_seller_lead_action(seller_id=seller_id, request_id=request_id, action="offered")
@@ -371,7 +397,7 @@ async def seller_offer_message(message: Message, state: FSMContext):
     await state.clear()
 
     price = offer.get("price_offer") if offer else price_offer
-    availability = offer.get("availability_note") if offer else data.get("availability_note")
+    availability = offer.get("availability_note") if offer else "Готовий обговорити"
     summary = ["✅ <b>Пропозицію надіслано</b>", "", f"💰 Ціна: {price or 'за домовленістю'}"]
     if availability:
         summary.append(f"🕒 Доступність: {escape(str(availability))}")
