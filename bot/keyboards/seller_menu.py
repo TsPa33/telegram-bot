@@ -11,49 +11,16 @@ from bot.services.domain_service import build_site_url, normalize_subdomain
 # ================= MAIN =================
 
 def seller_main_kb(is_verified: bool = False):
-    buttons = []
-
-    if not is_verified:
-        buttons.append([
-            KeyboardButton(text="🔐 Верифікація")
-        ])
-
-    buttons.extend([
-        [
-            KeyboardButton(text="➕ Додати авто"),
-            KeyboardButton(text="➕ Додати послугу"),
-        ],
-        [
-            KeyboardButton(text="📋 Мій гараж"),
-            KeyboardButton(text="📋 Мої послуги"),
-        ],
-        [
-            KeyboardButton(text="📥 Нові заявки"),
-            KeyboardButton(text="👤 Мій профіль"),
-        ],
-        [
-            KeyboardButton(text="📊 Статистика"),
-        ],
-        [
-            KeyboardButton(text="💳 Пакети послуг"), 
-            KeyboardButton(text="🌐 Мій сайт"),
-        ],
-        [
-            KeyboardButton(text="💼 Професійна CRM"),
-        ],
-        [
-            KeyboardButton(text="💬 Підтримка"),
-        ],
-        [
-            KeyboardButton(text="↩️ На головне меню"),  # ✅ ДОДАНО
-        ],
-    ])
-
     return ReplyKeyboardMarkup(
-        keyboard=buttons,
+        keyboard=[
+            [KeyboardButton(text="📥 Нові заявки")],
+            [KeyboardButton(text="🧾 Відкрити CRM")],
+            [KeyboardButton(text="💳 Пакети послуг")],
+            [KeyboardButton(text="💬 Підтримка")],
+            [KeyboardButton(text="↩️ Головне меню")],
+        ],
         resize_keyboard=True
     )
-
 
 def seller_menu_kb(is_verified: bool = False):
     return seller_main_kb(is_verified=is_verified)

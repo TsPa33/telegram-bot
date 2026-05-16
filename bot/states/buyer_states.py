@@ -7,6 +7,10 @@ class Buyer(StatesGroup):
     garage_vehicle = State()
 
 
+class BuyerStates(StatesGroup):
+    waiting_for_search_query = State()
+
+
 class AddBrand(StatesGroup):
     waiting_for_brand = State()
 
