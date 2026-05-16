@@ -55,12 +55,16 @@ def _record_to_dict(record) -> dict:
 def _json_safe(value):
     if value is None or isinstance(value, (str, int, float, bool)):
         return value
+
     if isinstance(value, (datetime, date)):
         return value.isoformat()
+
     if isinstance(value, Mapping) or hasattr(value, "items"):
         return {str(key): _json_safe(item) for key, item in dict(value).items()}
+
     if isinstance(value, (list, tuple, set)):
         return [_json_safe(item) for item in value]
+
     return str(value)
 
 
@@ -73,17 +77,31 @@ def _ai_search_query(interpretation: dict, raw_query: str) -> str:
         interpretation.get("generation"),
         interpretation.get("engine"),
     ]
-    compact_terms = [str(term).strip() for term in terms if str(term or "").strip()]
+
+    compact_terms = [
+        str(term).strip()
+        for term in terms
+        if str(term or "").strip()
+    ]
+
     if compact_terms:
         return " ".join(dict.fromkeys(compact_terms))[:240]
+
     search_terms = interpretation.get("search_terms") or []
+
     if isinstance(search_terms, list) and search_terms:
-        return " ".join(str(term).strip() for term in search_terms if str(term or "").strip())[:240]
+        return " ".join(
+            str(term).strip()
+            for term in search_terms
+            if str(term or "").strip()
+        )[:240]
+
     return (interpretation.get("normalized_query") or raw_query or "")[:240]
 
 
 def _compact_search_item(item, item_type: str) -> dict:
     payload = _record_to_dict(item)
+
     allowed_keys = {
         "id",
         "seller_id",
@@ -104,19 +122,29 @@ def _compact_search_item(item, item_type: str) -> dict:
         "cars_count",
         "services_count",
     }
-    compact = {key: payload.get(key) for key in allowed_keys if key in payload}
+
+    compact = {
+        key: payload.get(key)
+        for key in allowed_keys
+        if key in payload
+    }
+
     compact["_type"] = item_type
-    return compact
+    return _json_safe(compact)
 
 
 def _collect_search_items(results: dict) -> list[dict]:
     items: list[dict] = []
+
     for item in (results.get("cars") or [])[:6]:
         items.append(_compact_search_item(item, "car"))
+
     for item in (results.get("services") or [])[:6]:
         items.append(_compact_search_item(item, "service"))
+
     for item in (results.get("sellers") or [])[:6]:
         items.append(_compact_search_item(item, "seller"))
+
     return items[:9]
 
 
@@ -129,6 +157,7 @@ def _search_session_payload(items: list[dict], raw_query: str, interpretation: d
         "city": interpretation.get("city") or "",
         "category": interpretation.get("category") or "",
     }
+
     return {
         "buyer_search_items": _json_safe(items),
         "buyer_search_page": 1,
@@ -138,7 +167,7 @@ def _search_session_payload(items: list[dict], raw_query: str, interpretation: d
 
 
 async def show_buyer_home(message: types.Message, state: FSMContext):
-    await state.clear()  # 🔥 гарантія чистого входу
+    await state.clear()
 
     if BUYER_HOME_IMAGE_URL:
         try:
@@ -161,7 +190,7 @@ async def show_buyer_home(message: types.Message, state: FSMContext):
 
     await message.answer(
         "Швидкий доступ до меню:",
-        reply_markup=buyer_reply_kb()
+        reply_markup=buyer_reply_kb(),
     )
 
 
@@ -198,7 +227,10 @@ async def buyer_find_handler(callback: types.CallbackQuery, state: FSMContext):
     await callback.answer()
     await state.clear()
     await state.set_state(BuyerStates.waiting_for_search_query)
-    await callback.message.answer(SEARCH_PROMPT_TEXT, reply_markup=buyer_reply_kb())
+    await callback.message.answer(
+        SEARCH_PROMPT_TEXT,
+        reply_markup=buyer_reply_kb(),
+    )
 
 
 @router.callback_query(F.data == "buyer:history")
@@ -210,19 +242,28 @@ async def buyer_history_handler(callback: types.CallbackQuery):
 @router.callback_query(F.data == "buyer_ai:details")
 async def buyer_ai_details(callback: types.CallbackQuery):
     await callback.answer()
-    await callback.message.answer("Детальний перегляд у Telegram буде доступний незабаром. Для уточнення натисніть «Запитати» або створіть заявку.")
+    await callback.message.answer(
+        "Детальний перегляд у Telegram буде доступний незабаром. "
+        "Для уточнення натисніть «Запитати» або створіть заявку."
+    )
 
 
 @router.callback_query(F.data == "buyer_ai:ask")
 async def buyer_ai_ask(callback: types.CallbackQuery):
     await callback.answer()
-    await callback.message.answer("Контакт продавця недоступний у цьому результаті. Створіть заявку — CarPot передасть її релевантним продавцям.")
+    await callback.message.answer(
+        "Контакт продавця недоступний у цьому результаті. "
+        "Створіть заявку — CarPot передасть її релевантним продавцям."
+    )
 
 
 @router.callback_query(F.data == "buyer_ai:create_request")
 async def buyer_ai_create_request(callback: types.CallbackQuery):
     await callback.answer()
-    await callback.message.answer("Створення заявки з AI-пошуку буде доступне незабаром. Поки що відкрийте «📋 Мої заявки» або напишіть запит у підтримку.")
+    await callback.message.answer(
+        "Створення заявки з AI-пошуку буде доступне незабаром. "
+        "Поки що відкрийте «📋 Мої заявки» або напишіть запит у підтримку."
+    )
 
 
 # ================= MODERN SEARCH FLOW =================
@@ -230,33 +271,43 @@ async def buyer_ai_create_request(callback: types.CallbackQuery):
 @router.message(BuyerStates.waiting_for_search_query, F.text)
 async def handle_buyer_ai_search_query(message: Message, state: FSMContext):
     raw_query = (message.text or "").strip()
+
     if len(raw_query) < 3:
-        await message.answer("Опишіть запит трохи детальніше, наприклад: фара Audi A6 C7")
+        await message.answer(
+            "Опишіть запит трохи детальніше, наприклад: фара Audi A6 C7"
+        )
         return
 
     await message.answer("🔎 Шукаю в CarPot...")
 
     try:
         interpretation = await interpret_buyer_request(raw_query)
+
         search_query = _ai_search_query(interpretation, raw_query)
+
         results = await run_priority_marketplace_search(
             interpretation=interpretation,
             raw_query=raw_query,
             search_query=search_query,
             limit=3,
         )
+
     except Exception as exc:
         logger.exception("Telegram buyer AI search failed: %s", exc)
         await state.clear()
         await message.answer(
-            "⚠️ Не вдалося виконати пошук зараз. Спробуйте ще раз або зверніться в підтримку.",
+            "⚠️ Не вдалося виконати пошук зараз. "
+            "Спробуйте ще раз або зверніться в підтримку.",
             reply_markup=buyer_home_kb(),
         )
         return
 
     items = _collect_search_items(results)
+
     await state.clear()
-    await state.update_data(**_search_session_payload(items, raw_query, interpretation))
+    await state.update_data(
+        **_search_session_payload(items, raw_query, interpretation)
+    )
 
     if not items:
         await message.answer(
@@ -268,10 +319,16 @@ async def handle_buyer_ai_search_query(message: Message, state: FSMContext):
 
     first_item = items[0]
     item_type = first_item.get("_type", "car")
+
     await message.answer(
         format_search_card(first_item, item_type),
         parse_mode="HTML",
-        reply_markup=search_result_kb(first_item, item_type, page=1, total=len(items)),
+        reply_markup=search_result_kb(
+            first_item,
+            item_type,
+            page=1,
+            total=len(items),
+        ),
     )
 
 
@@ -279,7 +336,7 @@ async def handle_buyer_ai_search_query(message: Message, state: FSMContext):
 
 @router.message(Command("find"))
 async def start_buyer(message: types.Message, state: FSMContext):
-    await state.clear()  # 🔥 ізоляція flow
+    await state.clear()
 
     brands = await get_brands_with_ids()
 
@@ -296,5 +353,5 @@ async def start_buyer(message: types.Message, state: FSMContext):
 
     await message.answer(
         "🚗 Обери бренд",
-        reply_markup=brand_kb(brands)
+        reply_markup=brand_kb(brands),
     )
