@@ -361,8 +361,8 @@ async def search_exact_part_matches(*, interpretation: dict, query: str | None, 
     brand, model, generation, engine, fuel, transmission, city = _vehicle_search_values(interpretation)
     part_name = _text_or_none(interpretation.get("part_name"))
     normalized_query = _text_or_none(query)
-    part_pattern = _pattern(part_name or normalized_query)
-    query_pattern = _pattern(normalized_query)
+    part_pattern = _pattern(part_name)
+    query_pattern = None if part_name else _pattern(normalized_query)
     brand_pattern = _pattern(brand)
     model_pattern = _pattern(model)
     generation_pattern = _pattern(generation)
@@ -448,7 +448,7 @@ async def search_donor_vehicle_matches(*, interpretation: dict, query: str | Non
     part_name = _text_or_none(interpretation.get("part_name"))
     normalized_query = _text_or_none(query)
     part_pattern = _pattern(part_name)
-    query_pattern = _pattern(normalized_query)
+    query_pattern = None if any((brand, model, generation, engine, fuel, transmission, part_name)) else _pattern(normalized_query)
     brand_pattern = _pattern(brand)
     model_pattern = _pattern(model)
     generation_pattern = _pattern(generation)
@@ -536,7 +536,7 @@ async def search_seller_specialization_matches(*, interpretation: dict, query: s
     category = _text_or_none(interpretation.get("category"))
     service_type = _text_or_none(interpretation.get("service_type"))
     normalized_query = _text_or_none(query)
-    query_pattern = _pattern(normalized_query)
+    query_pattern = None if any((brand, model, generation, engine, fuel, transmission, part_name, category, service_type)) else _pattern(normalized_query)
     brand_pattern = _pattern(brand)
     model_pattern = _pattern(model)
     generation_pattern = _pattern(generation)
@@ -623,6 +623,83 @@ async def search_seller_specialization_matches(*, interpretation: dict, query: s
         part_pattern,
         category_pattern,
         service_type_pattern,
+        city_pattern,
+        _safe_limit(limit),
+    )
+
+
+async def search_service_provider_matches(*, interpretation: dict, query: str | None, limit: int = DEFAULT_LIMIT):
+    """Search automotive services with city as an optional refinement, never a blocker."""
+    _, _, _, _, _, _, city = _vehicle_search_values(interpretation)
+    service_type = _text_or_none(interpretation.get("service_type"))
+    category = _text_or_none(interpretation.get("category"))
+    normalized_query = _text_or_none(query)
+    service_pattern = _pattern(service_type or normalized_query)
+    category_pattern = _pattern(category if category not in {"unknown", "services"} else None)
+    query_pattern = None if service_type or category_pattern else _pattern(normalized_query)
+    city_pattern = _pattern(city)
+
+    return await fetch(
+        """
+        SELECT
+            srv.id,
+            srv.seller_id,
+            srv.category,
+            srv.title,
+            srv.city,
+            srv.address,
+            srv.description,
+            srv.website,
+            srv.price,
+            srv.created_at,
+            sel.username,
+            sel.telegram_id,
+            sel.phone,
+            sel.name,
+            sel.shop_name,
+            sel.is_verified,
+            COALESCE(st.views, 0) AS views,
+            'service_provider_match' AS result_type,
+            'Релевантний сервіс або провайдер' AS match_label,
+            'Послуга або профіль виконавця збігається з типом сервісу; місто використовується тільки як уточнення.' AS match_explanation,
+            'Місто не блокує пошук — уточніть локацію для точнішого результату.' AS trust_message,
+            'Зв’язатися з сервісом' AS primary_cta,
+            'Створити заявку' AS secondary_cta,
+            (
+                CASE WHEN $1::text IS NOT NULL AND (srv.category ILIKE $1 OR srv.title ILIKE $1 OR srv.description ILIKE $1) THEN 45 ELSE 0 END +
+                CASE WHEN $2::text IS NOT NULL AND (srv.category ILIKE $2 OR srv.title ILIKE $2 OR srv.description ILIKE $2) THEN 20 ELSE 0 END +
+                CASE WHEN $3::text IS NOT NULL AND (srv.category ILIKE $3 OR srv.title ILIKE $3 OR srv.description ILIKE $3 OR sel.shop_name ILIKE $3 OR sel.name ILIKE $3 OR sel.description ILIKE $3) THEN 15 ELSE 0 END +
+                CASE WHEN $4::text IS NOT NULL AND (srv.city ILIKE $4 OR sel.city ILIKE $4) THEN 10 ELSE 0 END +
+                CASE WHEN sel.is_verified THEN 5 ELSE 0 END
+            )::int AS match_score
+        FROM services srv
+        LEFT JOIN sellers sel ON sel.id = srv.seller_id
+        LEFT JOIN service_stats st ON st.service_id = srv.id
+        WHERE (
+            $1::text IS NULL
+            OR srv.category ILIKE $1
+            OR srv.title ILIKE $1
+            OR srv.description ILIKE $1
+            OR sel.shop_name ILIKE $1
+            OR sel.name ILIKE $1
+            OR sel.description ILIKE $1
+        )
+          AND ($2::text IS NULL OR srv.category ILIKE $2 OR srv.title ILIKE $2 OR srv.description ILIKE $2)
+          AND (
+            $3::text IS NULL
+            OR srv.category ILIKE $3
+            OR srv.title ILIKE $3
+            OR srv.description ILIKE $3
+            OR sel.shop_name ILIKE $3
+            OR sel.name ILIKE $3
+            OR sel.description ILIKE $3
+          )
+        ORDER BY match_score DESC, sel.is_verified DESC, COALESCE(st.views, 0) DESC, srv.id DESC
+        LIMIT $5
+        """,
+        service_pattern,
+        category_pattern,
+        query_pattern,
         city_pattern,
         _safe_limit(limit),
     )

@@ -37,6 +37,7 @@ BRAND_ALIASES = {
     "ауди": "Audi",
     "audi": "Audi",
     "vw": "Volkswagen",
+    "vag": "Volkswagen",
     "volkswagen": "Volkswagen",
     "фольксваген": "Volkswagen",
     "фольцваген": "Volkswagen",
@@ -169,7 +170,9 @@ SERVICE_KEYWORDS = {
     "сервис": "автосервіс",
     "ремонт": "ремонт",
     "автоелектрик": "автоелектрик",
+    "автоелектрика": "автоелектрик",
     "автоэлектрик": "автоелектрик",
+    "автоэлектрика": "автоелектрик",
     "електрик": "автоелектрик",
     "эвакуатор": "евакуатор",
     "евакуатор": "евакуатор",
@@ -348,8 +351,6 @@ def _clarification_for(result: InterpretedRequest) -> str | None:
         return "Яку саме запчастину потрібно знайти?"
     if result.category == "services" and not result.service_type:
         return "Яка саме послуга потрібна: СТО, автоелектрик, евакуатор, шиномонтаж чи інше?"
-    if not result.city:
-        return "У якому місті шукати?"
     return None
 
 
@@ -405,8 +406,9 @@ def normalize_interpretation(payload: dict[str, Any] | None, raw_text: str, sour
     question = _clarification_for(result)
     if question and result.confidence < 0.75:
         result.clarification_needed = True
-        result.clarification_question = result.clarification_question or question
-    elif not result.clarification_question:
+        result.clarification_question = question
+    elif question is None:
+        result.clarification_needed = False
         result.clarification_question = None
 
     if result.source == "fallback":
@@ -466,7 +468,7 @@ def fallback_parse_request(raw_text: str | None) -> InterpretedRequest:
     elif any(word in lowered for word in SELLER_WORDS):
         result.intent = "seller_search"
         result.category = "sellers"
-    elif any(word in lowered for word in CAR_WORDS):
+    elif any(word in lowered for word in CAR_WORDS) or result.brand:
         result.intent = "car_search"
         result.category = "cars"
 
@@ -498,7 +500,7 @@ def fallback_parse_request(raw_text: str | None) -> InterpretedRequest:
     result.confidence = min(score, 0.65)
     result.search_terms = _build_search_terms(result)
     result.clarification_question = _clarification_for(result)
-    result.clarification_needed = bool(result.clarification_question) or result.confidence < 0.5
+    result.clarification_needed = bool(result.clarification_question) or (result.intent == "unknown" and result.confidence < 0.5)
     return result
 
 
