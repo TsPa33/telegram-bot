@@ -631,31 +631,17 @@ async def buyer_ai_search(request: Request):
             "prefill": _ai_request_prefill(interpretation, raw_query),
             "search_url": "/search",
         }
-        return JSONResponse(response_payload)
+        return JSONResponse(content=jsonable_encoder(response_payload))
 
     interpretation = await interpret_buyer_request(raw_query)
     try:
-        item_type = _ai_search_type(interpretation)
         search_query = _ai_search_query(interpretation, raw_query)
-        if interpretation.get("intent") == "parts_search" or interpretation.get("category") == "parts":
-            results = await run_priority_marketplace_search(
-                interpretation=interpretation,
-                raw_query=raw_query,
-                search_query=search_query,
-                limit=9,
-            )
-        else:
-            results = await search_marketplace(
-                q=search_query,
-                city=interpretation.get("city"),
-                item_type=item_type,
-                limit=9,
-                offset=0,
-                category=interpretation.get("category") if interpretation.get("category") != "unknown" else None,
-                service_type=interpretation.get("service_type"),
-                brand=interpretation.get("brand"),
-                sort="trusted" if float(interpretation.get("confidence") or 0) >= 0.75 else "new",
-            )
+        results = await run_priority_marketplace_search(
+            interpretation=interpretation,
+            raw_query=raw_query,
+            search_query=search_query,
+            limit=9,
+        )
     except Exception:
         logger.exception("Buyer AI marketplace search failed; returning safe empty result")
         results = {"cars": [], "services": [], "sellers": [], "query": raw_query, "city": interpretation.get("city") or "", "type": "all", "decisions": [], "primary_result_type": "marketplace_request_fallback"}

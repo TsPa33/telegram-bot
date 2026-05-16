@@ -16,16 +16,19 @@ from bot.database.repositories.marketplace_repo import (
     search_donor_vehicle_matches,
     search_exact_part_matches,
     search_seller_specialization_matches,
+    search_service_provider_matches,
 )
 
 RESULT_EXACT_PART = "exact_part_match"
 RESULT_DONOR_VEHICLE = "donor_vehicle_match"
 RESULT_SELLER_SPECIALIZATION = "seller_specialization_match"
+RESULT_SERVICE_PROVIDER = "service_provider_match"
 RESULT_REQUEST_FALLBACK = "marketplace_request_fallback"
 
 STRONG_EXACT_THRESHOLD = 3
 STRONG_DONOR_THRESHOLD = 3
 STRONG_SPECIALIZATION_THRESHOLD = 2
+STRONG_SERVICE_THRESHOLD = 3
 
 
 @dataclass(slots=True)
@@ -124,11 +127,11 @@ async def run_priority_marketplace_search(
     search_query: str,
     limit: int = 9,
 ) -> dict[str, Any]:
-    """Run exact → donor → specialization → request CTA without AI DB access.
+    """Run progressive relaxed marketplace search before any clarification.
 
-    The function never skips priority levels for parts requests. Lower-priority
-    levels are only queried when the previous level is weak, preserving exact
-    inventory precedence while still serving dismantler donor-vehicle logic.
+    Missing city/model/engine/part details are optional filters, not blockers. The
+    engine keeps result priority stable: exact part → donor vehicles → seller
+    specialization → service/provider → buyer request CTA.
     """
 
     city = _clean(interpretation.get("city"))
@@ -138,11 +141,14 @@ async def run_priority_marketplace_search(
     part_name = _part_label(interpretation)
     vehicle = _vehicle_label(interpretation)
     parsed_confidence = float(interpretation.get("confidence") or 0.0)
+    intent = _clean(interpretation.get("intent"))
+    is_service_request = intent == "service_search" or category == "services"
+    is_parts_request = intent == "parts_search" or category == "parts"
 
     result = MarketplacePrioritySearchResult(
         query=search_query or raw_query,
         city=city,
-        type="all",
+        type="services" if is_service_request else "all",
         category=category if category != "unknown" else "",
         service_type=service_type,
         brand=brand,
@@ -150,53 +156,55 @@ async def run_priority_marketplace_search(
         fallback=_fallback_payload(interpretation, raw_query),
     )
 
-    exact_matches = await search_exact_part_matches(
-        interpretation=interpretation,
-        query=search_query or raw_query,
-        limit=limit,
-    )
-    exact_count = len(exact_matches)
-    exact_strong = exact_count >= STRONG_EXACT_THRESHOLD
-    result.decisions.append(
-        MarketplaceSearchDecision(
-            step=1,
-            result_type=RESULT_EXACT_PART,
-            title="Точні збіги по запчастині",
-            explanation=(
-                f"Шукали {part_name} у явних описах інвентарю продавців за брендом, моделлю, містом "
-                "та текстом оголошення."
-            ),
-            trust_message="Це потенційно точний інвентар продавця, але наявність і стан потрібно підтвердити напряму.",
-            result_count=exact_count,
-            cta_primary="Відкрити пропозицію",
-            cta_secondary="Створити заявку",
-            confidence=_decision_confidence(exact_count, STRONG_EXACT_THRESHOLD, 0.55),
-            is_strong=exact_strong,
-        )
-    )
-    result.cars.extend(exact_matches)
-    if exact_count:
-        result.primary_result_type = RESULT_EXACT_PART
-        result.should_create_request = not exact_strong
-
-    donor_matches: list[Any] = []
-    donor_strong = False
-    if not exact_strong:
-        donor_matches = await search_donor_vehicle_matches(
+    step = 1
+    exact_strong = False
+    if is_parts_request:
+        exact_matches = await search_exact_part_matches(
             interpretation=interpretation,
             query=search_query or raw_query,
             limit=limit,
         )
-        donor_count = len(donor_matches)
-        donor_strong = donor_count >= STRONG_DONOR_THRESHOLD
+        exact_count = len(exact_matches)
+        exact_strong = exact_count >= STRONG_EXACT_THRESHOLD
         result.decisions.append(
             MarketplaceSearchDecision(
-                step=2,
+                step=step,
+                result_type=RESULT_EXACT_PART,
+                title="Точні збіги по запчастині",
+                explanation=(
+                    f"Progressive level 1-3: шукали {part_name} з доступними фільтрами brand/model/engine/city. "
+                    "Відсутні поля не блокують пошук."
+                ),
+                trust_message="Це потенційно точний інвентар продавця, але наявність і стан потрібно підтвердити напряму.",
+                result_count=exact_count,
+                cta_primary="Відкрити пропозицію",
+                cta_secondary="Створити заявку",
+                confidence=_decision_confidence(exact_count, STRONG_EXACT_THRESHOLD, 0.55),
+                is_strong=exact_strong,
+            )
+        )
+        step += 1
+        result.cars.extend(exact_matches)
+        if exact_count:
+            result.primary_result_type = RESULT_EXACT_PART
+            result.should_create_request = not exact_strong
+
+    donor_matches = await search_donor_vehicle_matches(
+        interpretation=interpretation,
+        query=search_query or raw_query,
+        limit=limit,
+    )
+    donor_count = len(donor_matches)
+    donor_strong = donor_count >= STRONG_DONOR_THRESHOLD
+    if not is_service_request or donor_count:
+        result.decisions.append(
+            MarketplaceSearchDecision(
+                step=step,
                 result_type=RESULT_DONOR_VEHICLE,
                 title="Потенційні donor vehicles",
                 explanation=(
-                    f"Точної {part_name} недостатньо. Знайдено donor vehicles {vehicle}, "
-                    "де ця запчастина може бути доступною після уточнення у розбірника."
+                    f"Progressive donor levels: {vehicle} за brand+model+engine → brand+model → brand-only. "
+                    "Модель, двигун і місто є optional filters."
                 ),
                 trust_message="Donor vehicle не означає точну наявність деталі — продавець має підтвердити демонтаж, стан і сумісність.",
                 result_count=donor_count,
@@ -206,48 +214,80 @@ async def run_priority_marketplace_search(
                 is_strong=donor_strong,
             )
         )
-        result.cars.extend(donor_matches)
-        if donor_count and result.primary_result_type == RESULT_REQUEST_FALLBACK:
-            result.primary_result_type = RESULT_DONOR_VEHICLE
-        if donor_count:
-            result.should_create_request = not donor_strong
+        step += 1
+    result.cars.extend(donor_matches)
+    if donor_count and result.primary_result_type == RESULT_REQUEST_FALLBACK:
+        result.primary_result_type = RESULT_DONOR_VEHICLE
+    if donor_count:
+        result.should_create_request = not donor_strong
 
-    specialization_matches: list[Any] = []
-    if not exact_strong and not donor_strong:
-        specialization_matches = await search_seller_specialization_matches(
-            interpretation=interpretation,
-            query=search_query or raw_query,
-            limit=8,
+    specialization_matches = await search_seller_specialization_matches(
+        interpretation=interpretation,
+        query=search_query or raw_query,
+        limit=8,
+    )
+    specialization_count = len(specialization_matches)
+    specialization_strong = specialization_count >= STRONG_SPECIALIZATION_THRESHOLD
+    result.decisions.append(
+        MarketplaceSearchDecision(
+            step=step,
+            result_type=RESULT_SELLER_SPECIALIZATION,
+            title="Продавці за спеціалізацією",
+            explanation=(
+                f"Progressive specialization fallback: продавці для {vehicle} або напрямку {part_name}. "
+                "Використовується після/разом із donor fallback, не замість buyer request flow."
+            ),
+            trust_message="Спеціалізація базується на профілі продавця, donor vehicles, послугах і описах — деталь потрібно уточнити.",
+            result_count=specialization_count,
+            cta_primary="Зв'язатися з продавцем",
+            cta_secondary="Створити заявку",
+            confidence=_decision_confidence(specialization_count, STRONG_SPECIALIZATION_THRESHOLD, 0.35),
+            is_strong=specialization_strong,
         )
-        specialization_count = len(specialization_matches)
-        specialization_strong = specialization_count >= STRONG_SPECIALIZATION_THRESHOLD
+    )
+    step += 1
+    result.sellers.extend(specialization_matches)
+    if specialization_count and result.primary_result_type == RESULT_REQUEST_FALLBACK:
+        result.primary_result_type = RESULT_SELLER_SPECIALIZATION
+    if specialization_count:
+        result.should_create_request = not specialization_strong
+
+    service_matches = await search_service_provider_matches(
+        interpretation=interpretation,
+        query=search_query or raw_query,
+        limit=limit,
+    )
+    service_count = len(service_matches)
+    service_strong = service_count >= STRONG_SERVICE_THRESHOLD
+    if is_service_request or service_count:
         result.decisions.append(
             MarketplaceSearchDecision(
-                step=3,
-                result_type=RESULT_SELLER_SPECIALIZATION,
-                title="Продавці за спеціалізацією",
+                step=step,
+                result_type=RESULT_SERVICE_PROVIDER,
+                title="Сервіси та провайдери",
                 explanation=(
-                    f"Знайдено продавців, які спеціалізуються на {vehicle} або напрямку {part_name}. "
-                    "Це lead-routing можливість, а не підтверджений складський залишок."
+                    "Progressive service levels: service_type+city → service_type-only → category services → providers. "
+                    "Якщо місто не вказано, пошук іде по всіх містах; уточніть місто для точнішого результату."
                 ),
-                trust_message="Спеціалізація базується на профілі продавця, donor vehicles, послугах і описах — деталь потрібно уточнити.",
-                result_count=specialization_count,
-                cta_primary="Зв'язатися з продавцем",
+                trust_message="Місто є optional filter, тому результат може бути з будь-якого міста.",
+                result_count=service_count,
+                cta_primary="Зв'язатися з сервісом",
                 cta_secondary="Створити заявку",
-                confidence=_decision_confidence(specialization_count, STRONG_SPECIALIZATION_THRESHOLD, 0.35),
-                is_strong=specialization_strong,
+                confidence=_decision_confidence(service_count, STRONG_SERVICE_THRESHOLD, 0.4),
+                is_strong=service_strong,
             )
         )
-        result.sellers.extend(specialization_matches)
-        if specialization_count and result.primary_result_type == RESULT_REQUEST_FALLBACK:
-            result.primary_result_type = RESULT_SELLER_SPECIALIZATION
-        if specialization_count:
-            result.should_create_request = not specialization_strong
+        step += 1
+    result.services.extend(service_matches)
+    if service_count and result.primary_result_type == RESULT_REQUEST_FALLBACK:
+        result.primary_result_type = RESULT_SERVICE_PROVIDER
+    if service_count:
+        result.should_create_request = not service_strong
 
     visible_count = len(result.cars) + len(result.services) + len(result.sellers)
     result.decisions.append(
         MarketplaceSearchDecision(
-            step=4,
+            step=step,
             result_type=RESULT_REQUEST_FALLBACK,
             title="Заявка продавцям",
             explanation="Якщо marketplace confidence слабкий або потрібне підтвердження наявності, створіть заявку для продавців.",
