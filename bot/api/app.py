@@ -5,6 +5,7 @@ from urllib.parse import urlencode
 
 from aiogram import Bot
 from fastapi import APIRouter, FastAPI, HTTPException, Request, Form, File, UploadFile
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
@@ -697,7 +698,7 @@ async def buyer_ai_search(request: Request):
 
     wants_json = "application/json" in request.headers.get("accept", "") or "application/json" in content_type
     if wants_json:
-        return JSONResponse(response_payload)
+        return JSONResponse(content=jsonable_encoder(response_payload))
 
     summary = await get_marketplace_summary()
     sellers = results.get("sellers") or await get_featured_sellers(limit=8)
