@@ -274,6 +274,18 @@ async def seller_offer_skip_optional(callback: CallbackQuery, state: FSMContext)
     await callback.message.edit_text("Продовжіть створення пропозиції.", reply_markup=seller_lead_back_kb(data.get("request_id")))
 
 
+def _price_offer_from_state(value) -> Decimal | None:
+    if value is None:
+        return None
+    if isinstance(value, Decimal):
+        return value
+    try:
+        return Decimal(str(value))
+    except (InvalidOperation, ValueError):
+        logger.warning("Invalid price_offer in seller lead FSM data: %r", value)
+        return None
+
+
 @router.message(SellerLeadOfferStates.price)
 async def seller_offer_price(message: Message, state: FSMContext):
     data = await state.get_data()
@@ -289,7 +301,7 @@ async def seller_offer_price(message: Message, state: FSMContext):
         )
         return
 
-    await state.update_data(price_offer=price)
+    await state.update_data(price_offer=str(price))
     await state.set_state(SellerLeadOfferStates.availability)
     await message.answer(
         "🕒 Доступність\n\nКоли можете виконати або відправити?",
@@ -320,11 +332,12 @@ async def seller_offer_message(message: Message, state: FSMContext):
         await message.answer("Додайте короткий коментар — мінімум 5 символів.", reply_markup=seller_lead_back_kb(request_id))
         return
 
+    price_offer = _price_offer_from_state(data.get("price_offer"))
     offer = await create_seller_offer(
         request_id=request_id,
         seller_id=seller_id,
         message=comment[:1200],
-        price_offer=data.get("price_offer"),
+        price_offer=price_offer,
         availability_note=data.get("availability_note"),
         status="pending",
     )
@@ -333,7 +346,7 @@ async def seller_offer_message(message: Message, state: FSMContext):
     logger.info("Seller submitted buyer request offer seller_id=%s request_id=%s offer_id=%s", seller_id, request_id, offer.get("id") if offer else None)
     await state.clear()
 
-    price = offer.get("price_offer") if offer else data.get("price_offer")
+    price = offer.get("price_offer") if offer else price_offer
     availability = offer.get("availability_note") if offer else data.get("availability_note")
     summary = ["✅ <b>Пропозицію надіслано</b>", "", f"💰 Ціна: {price or 'за домовленістю'}"]
     if availability:
