@@ -512,7 +512,6 @@ async def search_donor_vehicle_matches(*, interpretation: dict, query: str | Non
           AND ($6::text IS NULL OR sc.description ILIKE $6 OR sc.engine_code ILIKE $6 OR sc.engine_family ILIKE $6)
           AND ($7::text IS NULL OR sc.description ILIKE $7 OR sc.fuel_type ILIKE $7)
           AND ($8::text IS NULL OR sc.description ILIKE $8 OR sc.transmission_type ILIKE $8 OR sc.compatibility_notes ILIKE $8)
-          AND ($1::text IS NULL OR sc.description NOT ILIKE $1)
         ORDER BY match_score DESC, sel.is_verified DESC, sc.id DESC
         LIMIT $10
         """,
