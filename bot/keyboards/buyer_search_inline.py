@@ -159,8 +159,7 @@ def search_result_kb(item: dict[str, Any], item_type: str, page: int, total: int
         [_contact_button(item, ask_text, f"buyer_search:ask:{item_type}:{item_id}")],
     ]
 
-    if item_type != "service":
-        rows.append([InlineKeyboardButton(text="Створити заявку", callback_data=f"buyer_search:create_request:{item_type}:{item_id}")])
+    rows.append([InlineKeyboardButton(text="Створити заявку", callback_data=f"buyer_search:create_request:{item_type}:{item_id}")])
 
     if total > 1:
         nav_row = []
@@ -179,5 +178,23 @@ def no_results_kb() -> InlineKeyboardMarkup:
         inline_keyboard=[
             [InlineKeyboardButton(text="Створити заявку", callback_data="buyer_search:create_request:fallback:0")],
             [InlineKeyboardButton(text="Мої заявки", callback_data="buyer:requests")],
+        ]
+    )
+
+
+def request_confirm_kb() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="✅ Підтвердити", callback_data="buyer_request:confirm")],
+            [InlineKeyboardButton(text="🔎 Новий пошук", callback_data="buyer:find")],
+        ]
+    )
+
+
+def request_created_kb() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="📋 Мої заявки", callback_data="buyer:requests")],
+            [InlineKeyboardButton(text="🔎 Новий пошук", callback_data="buyer:find")],
         ]
     )

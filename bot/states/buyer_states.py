@@ -9,6 +9,9 @@ class Buyer(StatesGroup):
 
 class BuyerStates(StatesGroup):
     waiting_for_search_query = State()
+    request_city = State()
+    request_phone = State()
+    request_confirm = State()
 
 
 class AddBrand(StatesGroup):
