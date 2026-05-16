@@ -7,6 +7,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
 from bot.database.repositories.seller_lead_repo import (
+    cancel_seller_lead_notifications,
     create_seller_offer,
     get_matching_seller_lead,
     get_seller_marketplace_profile,
@@ -18,6 +19,7 @@ from bot.database.repositories.seller_lead_repo import (
 from bot.keyboards.seller_leads import (
     seller_lead_actions_kb,
     seller_lead_back_kb,
+    seller_lead_declined_kb,
     seller_leads_inbox_kb,
     seller_offer_skip_step_kb,
 )
@@ -227,6 +229,28 @@ async def seller_lead_skip(callback: CallbackQuery, state: FSMContext):
     await callback.message.edit_text(
         "⏭ Заявку пропущено. Ми покажемо інші релевантні ліди.",
         reply_markup=seller_lead_back_kb(),
+    )
+
+
+@router.callback_query(F.data.startswith("seller_leads:decline:"))
+async def seller_lead_decline(callback: CallbackQuery, state: FSMContext):
+    await state.clear()
+    request_id = int(callback.data.rsplit(":", 1)[1])
+    seller, _tags = await _seller_context(callback.from_user.id)
+    if seller:
+        await mark_seller_lead_action(
+            seller_id=seller["id"],
+            request_id=request_id,
+            action="declined",
+            metadata={"source": "seller_lead_notification"},
+        )
+        await cancel_seller_lead_notifications(seller_id=seller["id"], request_id=request_id)
+        logger.info("Seller declined buyer request lead seller_id=%s request_id=%s", seller["id"], request_id)
+
+    await callback.message.edit_text(
+        "❌ <b>Заявку відхилено.</b>\nВи більше не будете отримувати оновлення по цьому запиту.",
+        parse_mode="HTML",
+        reply_markup=seller_lead_declined_kb(),
     )
 
 
