@@ -1,9 +1,12 @@
+import logging
+
 from bot.database.base import fetch, fetchrow, transaction
 
 
 BUYER_REQUEST_STATUSES = {"pending", "active", "matched", "closed"}
 BUYER_REQUEST_OFFER_STATUSES = {"pending", "accepted", "rejected"}
 MATCH_STATUSES = {"matched", "contacted", "closed", "cancelled"}
+logger = logging.getLogger(__name__)
 
 
 def _validate(value: str, allowed: set[str], message: str) -> None:
@@ -199,6 +202,14 @@ async def accept_buyer_offer(request_id: int, offer_id: int, *, reject_other_off
             selected["seller_id"],
         )
 
+        logger.info(
+            "Buyer accepted seller offer request_id=%s offer_id=%s seller_id=%s match_id=%s notification_event_id=%s",
+            request_id,
+            offer_id,
+            selected["seller_id"],
+            match["id"] if match else None,
+            notification["id"] if notification else None,
+        )
         return {"match": dict(match) if match else None, "notification_event": dict(notification) if notification else None}
 
 

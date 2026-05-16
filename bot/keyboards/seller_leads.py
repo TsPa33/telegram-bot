@@ -12,7 +12,7 @@ def seller_leads_inbox_kb(leads) -> InlineKeyboardMarkup:
         score_label = f" · {int(score)}%" if score is not None else ""
         buttons.append([
             InlineKeyboardButton(
-                text=f"🔥 {title[:28]} · {city[:14]}{score_label}",
+                text=f"👁 {title[:28]} · {city[:14]}{score_label}",
                 callback_data=f"seller_leads:open:{lead['id']}",
             )
         ])

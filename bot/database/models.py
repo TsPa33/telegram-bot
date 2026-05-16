@@ -525,6 +525,9 @@ async def create_tables():
     await execute("ALTER TABLE buyer_requests ADD COLUMN IF NOT EXISTS safety_status TEXT NOT NULL DEFAULT 'clear';")
     await execute("ALTER TABLE buyer_requests ADD COLUMN IF NOT EXISTS safety_flags JSONB NOT NULL DEFAULT '{}'::jsonb;")
     await execute("ALTER TABLE buyer_requests ADD COLUMN IF NOT EXISTS photo_pipeline_status TEXT NOT NULL DEFAULT 'metadata_only';")
+    await execute("ALTER TABLE buyer_requests ADD COLUMN IF NOT EXISTS raw_query TEXT;")
+    await execute("ALTER TABLE buyer_requests ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'buyer_web';")
+    await execute("ALTER TABLE buyer_requests ADD COLUMN IF NOT EXISTS parsed_payload JSONB NOT NULL DEFAULT '{}'::jsonb;")
     await execute("CREATE INDEX IF NOT EXISTS idx_buyer_requests_marketplace_status ON buyer_requests(marketplace_status, created_at DESC);")
     await execute("CREATE INDEX IF NOT EXISTS idx_buyer_requests_city_category ON buyer_requests(city, category);")
     await execute("CREATE INDEX IF NOT EXISTS idx_buyer_requests_fingerprint ON buyer_requests(request_fingerprint);")
@@ -579,6 +582,7 @@ async def create_tables():
     """)
     await execute("CREATE INDEX IF NOT EXISTS idx_marketplace_notification_events_status ON marketplace_notification_events(status, created_at);")
     await execute("CREATE INDEX IF NOT EXISTS idx_marketplace_notification_events_seller ON marketplace_notification_events(seller_id, created_at DESC);")
+    await execute("CREATE UNIQUE INDEX IF NOT EXISTS uq_marketplace_notification_events_request_seller_lead ON marketplace_notification_events(event_type, request_id, seller_id) WHERE event_type = 'buyer_request_created' AND request_id IS NOT NULL AND seller_id IS NOT NULL;")
 
     await execute("""
     CREATE TABLE IF NOT EXISTS seller_lead_actions (
