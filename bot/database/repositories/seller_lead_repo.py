@@ -1,4 +1,5 @@
 import json
+import logging
 from decimal import Decimal
 
 from bot.database.base import execute, fetch, fetchrow
@@ -6,6 +7,7 @@ from bot.database.base import execute, fetch, fetchrow
 
 SELLER_LEAD_ACTIONS = {"viewed", "skipped", "offered"}
 BUYER_REQUEST_OFFER_STATUSES = {"pending", "accepted", "rejected"}
+logger = logging.getLogger(__name__)
 
 
 def _validate(value: str, allowed: set[str], message: str) -> None:
@@ -63,6 +65,8 @@ async def list_matching_seller_leads(seller_id: int, *, limit: int = 10):
             UNION
             SELECT LOWER(title) AS tag FROM services WHERE seller_id = $1 AND title IS NOT NULL
             UNION
+            SELECT LOWER(description) AS tag FROM services WHERE seller_id = $1 AND description IS NOT NULL
+            UNION
             SELECT LOWER(b.name) AS tag
             FROM seller_cars sc
             JOIN models m ON m.id = sc.model_id
@@ -73,24 +77,35 @@ async def list_matching_seller_leads(seller_id: int, *, limit: int = 10):
             FROM seller_cars sc
             JOIN models m ON m.id = sc.model_id
             WHERE sc.seller_id = $1
+            UNION
+            SELECT LOWER(description) AS tag FROM seller_cars WHERE seller_id = $1 AND description IS NOT NULL
         )
         SELECT br.id, br.buyer_name, br.city, br.request_type, br.category,
                br.brand, br.model, br.vin, br.description, br.photos,
                br.urgency, br.marketplace_status, br.created_at,
                COALESCE(offer_counts.total_offers, 0) AS offers_count,
-               (
-                   CASE WHEN sp.city IS NOT NULL AND br.city ILIKE sp.city THEN 40 ELSE 0 END +
-                   CASE WHEN EXISTS (
-                       SELECT 1 FROM seller_specs ss
-                       WHERE LOWER(COALESCE(br.category, '')) LIKE '%' || ss.tag || '%'
-                          OR LOWER(COALESCE(br.request_type, '')) LIKE '%' || ss.tag || '%'
-                          OR LOWER(COALESCE(br.brand, '')) LIKE '%' || ss.tag || '%'
-                          OR LOWER(COALESCE(br.model, '')) LIKE '%' || ss.tag || '%'
-                   ) THEN 35 ELSE 0 END +
-                   CASE WHEN br.urgency = 'today' THEN 15 ELSE 0 END +
-                   CASE WHEN sp.is_verified THEN 5 ELSE 0 END +
-                   CASE WHEN sp.has_site OR sp.crm_enabled THEN 5 ELSE 0 END
-               ) AS match_score
+               route_event.id AS route_event_id,
+               COALESCE(
+                   NULLIF(route_event.payload->>'score', '')::int,
+                   (
+                       CASE WHEN sp.city IS NOT NULL AND br.city ILIKE sp.city THEN 40 ELSE 0 END +
+                       CASE WHEN EXISTS (
+                           SELECT 1 FROM seller_specs ss
+                           WHERE ss.tag <> ''
+                             AND (
+                                  LOWER(COALESCE(br.category, '')) LIKE '%' || ss.tag || '%'
+                               OR LOWER(COALESCE(br.request_type, '')) LIKE '%' || ss.tag || '%'
+                               OR LOWER(COALESCE(br.brand, '')) LIKE '%' || ss.tag || '%'
+                               OR LOWER(COALESCE(br.model, '')) LIKE '%' || ss.tag || '%'
+                               OR LOWER(COALESCE(br.description, '')) LIKE '%' || ss.tag || '%'
+                             )
+                       ) THEN 35 ELSE 0 END +
+                       CASE WHEN br.urgency = 'today' THEN 15 ELSE 0 END +
+                       CASE WHEN sp.is_verified THEN 5 ELSE 0 END +
+                       CASE WHEN sp.has_site OR sp.crm_enabled THEN 5 ELSE 0 END
+                   )
+               ) AS match_score,
+               route_event.payload->'reasons' AS match_reasons
         FROM buyer_requests br
         CROSS JOIN seller_profile sp
         LEFT JOIN LATERAL (
@@ -98,6 +113,15 @@ async def list_matching_seller_leads(seller_id: int, *, limit: int = 10):
             FROM buyer_request_offers bro
             WHERE bro.request_id = br.id
         ) offer_counts ON TRUE
+        LEFT JOIN LATERAL (
+            SELECT id, payload, status
+            FROM marketplace_notification_events mne
+            WHERE mne.event_type = 'buyer_request_created'
+              AND mne.request_id = br.id
+              AND mne.seller_id = $1
+            ORDER BY mne.created_at DESC, mne.id DESC
+            LIMIT 1
+        ) route_event ON TRUE
         WHERE br.entity_type = 'marketplace_request'
           AND br.marketplace_status IN ('pending', 'active', 'matched')
           AND NOT EXISTS (
@@ -109,29 +133,33 @@ async def list_matching_seller_leads(seller_id: int, *, limit: int = 10):
               WHERE sla.request_id = br.id AND sla.seller_id = $1 AND sla.action = 'skipped'
           )
           AND (
-              sp.city IS NULL
+              route_event.id IS NOT NULL
+              OR sp.city IS NULL
               OR br.city ILIKE sp.city
               OR EXISTS (
                   SELECT 1 FROM seller_specs ss
-                  WHERE LOWER(COALESCE(br.category, '')) LIKE '%' || ss.tag || '%'
-                     OR LOWER(COALESCE(br.request_type, '')) LIKE '%' || ss.tag || '%'
-                     OR LOWER(COALESCE(br.brand, '')) LIKE '%' || ss.tag || '%'
-                     OR LOWER(COALESCE(br.model, '')) LIKE '%' || ss.tag || '%'
+                  WHERE ss.tag <> ''
+                    AND (
+                         LOWER(COALESCE(br.category, '')) LIKE '%' || ss.tag || '%'
+                      OR LOWER(COALESCE(br.request_type, '')) LIKE '%' || ss.tag || '%'
+                      OR LOWER(COALESCE(br.brand, '')) LIKE '%' || ss.tag || '%'
+                      OR LOWER(COALESCE(br.model, '')) LIKE '%' || ss.tag || '%'
+                      OR LOWER(COALESCE(br.description, '')) LIKE '%' || ss.tag || '%'
+                    )
               )
           )
-        ORDER BY match_score DESC, br.created_at DESC, br.id DESC
+        ORDER BY route_event.id IS NOT NULL DESC, match_score DESC, br.created_at DESC, br.id DESC
         LIMIT $2
         """,
         seller_id,
         normalized_limit,
     )
 
-
 async def get_matching_seller_lead(seller_id: int, request_id: int):
     row = await fetchrow(
         """
         WITH seller_profile AS (
-            SELECT id, city
+            SELECT id, city, is_verified, has_site, crm_enabled
             FROM sellers
             WHERE id = $1
             LIMIT 1
@@ -139,6 +167,8 @@ async def get_matching_seller_lead(seller_id: int, request_id: int):
             SELECT LOWER(category) AS tag FROM services WHERE seller_id = $1 AND category IS NOT NULL
             UNION
             SELECT LOWER(title) AS tag FROM services WHERE seller_id = $1 AND title IS NOT NULL
+            UNION
+            SELECT LOWER(description) AS tag FROM services WHERE seller_id = $1 AND description IS NOT NULL
             UNION
             SELECT LOWER(b.name) AS tag
             FROM seller_cars sc
@@ -150,11 +180,35 @@ async def get_matching_seller_lead(seller_id: int, request_id: int):
             FROM seller_cars sc
             JOIN models m ON m.id = sc.model_id
             WHERE sc.seller_id = $1
+            UNION
+            SELECT LOWER(description) AS tag FROM seller_cars WHERE seller_id = $1 AND description IS NOT NULL
         )
         SELECT br.id, br.buyer_name, br.city, br.request_type, br.category,
                br.brand, br.model, br.vin, br.description, br.photos,
                br.urgency, br.marketplace_status, br.created_at,
-               COALESCE(offer_counts.total_offers, 0) AS offers_count
+               COALESCE(offer_counts.total_offers, 0) AS offers_count,
+               route_event.id AS route_event_id,
+               COALESCE(
+                   NULLIF(route_event.payload->>'score', '')::int,
+                   (
+                       CASE WHEN sp.city IS NOT NULL AND br.city ILIKE sp.city THEN 40 ELSE 0 END +
+                       CASE WHEN EXISTS (
+                           SELECT 1 FROM seller_specs ss
+                           WHERE ss.tag <> ''
+                             AND (
+                                  LOWER(COALESCE(br.category, '')) LIKE '%' || ss.tag || '%'
+                               OR LOWER(COALESCE(br.request_type, '')) LIKE '%' || ss.tag || '%'
+                               OR LOWER(COALESCE(br.brand, '')) LIKE '%' || ss.tag || '%'
+                               OR LOWER(COALESCE(br.model, '')) LIKE '%' || ss.tag || '%'
+                               OR LOWER(COALESCE(br.description, '')) LIKE '%' || ss.tag || '%'
+                             )
+                       ) THEN 35 ELSE 0 END +
+                       CASE WHEN br.urgency = 'today' THEN 15 ELSE 0 END +
+                       CASE WHEN sp.is_verified THEN 5 ELSE 0 END +
+                       CASE WHEN sp.has_site OR sp.crm_enabled THEN 5 ELSE 0 END
+                   )
+               ) AS match_score,
+               route_event.payload->'reasons' AS match_reasons
         FROM buyer_requests br
         CROSS JOIN seller_profile sp
         LEFT JOIN LATERAL (
@@ -162,6 +216,15 @@ async def get_matching_seller_lead(seller_id: int, request_id: int):
             FROM buyer_request_offers bro
             WHERE bro.request_id = br.id
         ) offer_counts ON TRUE
+        LEFT JOIN LATERAL (
+            SELECT id, payload, status
+            FROM marketplace_notification_events mne
+            WHERE mne.event_type = 'buyer_request_created'
+              AND mne.request_id = br.id
+              AND mne.seller_id = $1
+            ORDER BY mne.created_at DESC, mne.id DESC
+            LIMIT 1
+        ) route_event ON TRUE
         WHERE br.id = $2
           AND br.entity_type = 'marketplace_request'
           AND br.marketplace_status IN ('pending', 'active', 'matched')
@@ -170,14 +233,19 @@ async def get_matching_seller_lead(seller_id: int, request_id: int):
               WHERE sla.request_id = br.id AND sla.seller_id = $1 AND sla.action = 'skipped'
           )
           AND (
-              sp.city IS NULL
+              route_event.id IS NOT NULL
+              OR sp.city IS NULL
               OR br.city ILIKE sp.city
               OR EXISTS (
                   SELECT 1 FROM seller_specs ss
-                  WHERE LOWER(COALESCE(br.category, '')) LIKE '%' || ss.tag || '%'
-                     OR LOWER(COALESCE(br.request_type, '')) LIKE '%' || ss.tag || '%'
-                     OR LOWER(COALESCE(br.brand, '')) LIKE '%' || ss.tag || '%'
-                     OR LOWER(COALESCE(br.model, '')) LIKE '%' || ss.tag || '%'
+                  WHERE ss.tag <> ''
+                    AND (
+                         LOWER(COALESCE(br.category, '')) LIKE '%' || ss.tag || '%'
+                      OR LOWER(COALESCE(br.request_type, '')) LIKE '%' || ss.tag || '%'
+                      OR LOWER(COALESCE(br.brand, '')) LIKE '%' || ss.tag || '%'
+                      OR LOWER(COALESCE(br.model, '')) LIKE '%' || ss.tag || '%'
+                      OR LOWER(COALESCE(br.description, '')) LIKE '%' || ss.tag || '%'
+                    )
               )
           )
         LIMIT 1
@@ -186,7 +254,6 @@ async def get_matching_seller_lead(seller_id: int, request_id: int):
         request_id,
     )
     return row
-
 
 async def mark_seller_lead_action(
     *,

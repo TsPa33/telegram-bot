@@ -1,11 +1,12 @@
 import json
+import logging
 import re
 from dataclasses import dataclass
 from typing import Iterable
 
 from fastapi import UploadFile
 
-from bot.database.repositories.buyer_request_repo import create_marketplace_buyer_request
+from bot.database.repositories.buyer_request_repo import create_marketplace_buyer_request_with_routing
 from bot.services.buyer_request_safety import inspect_buyer_request_safety
 from bot.services.marketplace_routing import build_buyer_request_routing_plan
 from bot.services.request_photo_pipeline import RequestPhotoValidationError, prepare_request_photo_assets
@@ -22,6 +23,7 @@ REQUEST_CATEGORIES = {
     "other": "Інше",
 }
 URGENCY_LEVELS = {"today", "soon", "week", "flexible"}
+logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
@@ -67,6 +69,15 @@ def normalize_phone(value: str | None) -> str | None:
     if 9 <= len(digits) <= 15:
         return f"+{digits}"
     return None
+
+
+def mask_phone_for_logs(phone: str | None) -> str:
+    if not phone:
+        return "—"
+    digits = re.sub(r"\D+", "", phone)
+    if len(digits) <= 4:
+        return "***"
+    return f"***{digits[-4:]}"
 
 
 def normalize_telegram(value: str | None) -> str | None:
@@ -134,15 +145,28 @@ async def submit_marketplace_buyer_request(payload: BuyerRequestInput) -> dict:
         vin=vin,
     )
 
-    row = await create_marketplace_buyer_request(
+    brand = short_text(payload.brand, 80)
+    model = short_text(payload.model, 80)
+    parsed_payload = {
+        "category": category,
+        "request_type": request_type,
+        "brand": brand,
+        "model": model,
+        "city": city,
+        "urgency": urgency,
+        "vin_present": bool(vin),
+        "photo_count": len(json.loads(photos)) if photos else 0,
+    }
+
+    creation = await create_marketplace_buyer_request_with_routing(
         buyer_name=short_text(payload.buyer_name, 120),
         buyer_phone=phone,
         buyer_telegram=normalize_telegram(payload.buyer_telegram),
         city=city,
         request_type=request_type,
         category=category,
-        brand=short_text(payload.brand, 80),
-        model=short_text(payload.model, 80),
+        brand=brand,
+        model=model,
         vin=vin,
         description=description,
         photos=photos,
@@ -152,15 +176,50 @@ async def submit_marketplace_buyer_request(payload: BuyerRequestInput) -> dict:
         normalized_phone=safety.normalized_phone,
         safety_status="suspicious" if safety.suspicious else "clear",
         safety_flags=safety.to_dict(),
+        source="buyer_web",
+        parsed_payload=parsed_payload,
+        seller_limit=20,
     )
+    row = creation.get("request")
+    matches = [dict(match) for match in creation.get("matches", [])]
 
     routing_plan = build_buyer_request_routing_plan(
         city=city,
         category=category,
         request_type=request_type,
-        brand=short_text(payload.brand, 80),
-        model=short_text(payload.model, 80),
+        brand=brand,
+        model=model,
         urgency=urgency,
     )
+    routing_plan["matched_sellers"] = len(matches)
+    routing_plan["notification_events_created"] = creation.get("notification_events_created", 0)
+    routing_plan["matches"] = [
+        {
+            "seller_id": match.get("seller_id"),
+            "telegram_id": match.get("telegram_id"),
+            "score": match.get("score"),
+            "reasons": list(match.get("reasons") or []),
+            "city": match.get("city"),
+            "shop_name": match.get("shop_name") or match.get("name"),
+            "is_verified": bool(match.get("is_verified")),
+        }
+        for match in matches
+    ]
 
-    return {"request": dict(row) if row else None, "routing_plan": routing_plan, "safety": safety.to_dict()}
+    logger.info(
+        "Buyer request created request_id=%s city=%s category=%s phone=%s matched_sellers=%s notification_events=%s",
+        row["id"] if row else None,
+        city,
+        category,
+        mask_phone_for_logs(phone),
+        len(matches),
+        creation.get("notification_events_created", 0),
+    )
+
+    return {
+        "request": dict(row) if row else None,
+        "routing_plan": routing_plan,
+        "matched_sellers": len(matches),
+        "notification_events_created": creation.get("notification_events_created", 0),
+        "safety": safety.to_dict(),
+    }

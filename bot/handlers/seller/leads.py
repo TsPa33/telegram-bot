@@ -1,3 +1,4 @@
+import logging
 from decimal import Decimal, InvalidOperation
 from html import escape
 
@@ -24,6 +25,7 @@ from bot.services.seller_lead_matching import score_seller_lead
 from bot.states.seller_states import SellerLeadOfferStates
 
 router = Router()
+logger = logging.getLogger(__name__)
 
 URGENCY_LABELS = {
     "today": "🔥 Терміново",
@@ -81,6 +83,14 @@ def _format_lead_card(lead: dict, *, detailed: bool = False) -> str:
     vin = escape(lead.get("vin") or "")
     photos = "📷 Є фото" if _has_photos(lead) else "📷 Без фото"
     offers_count = int(lead.get("offers_count") or 0)
+    match_score = lead.get("match_score")
+    match_reasons = lead.get("match_reasons")
+    if isinstance(match_reasons, str):
+        match_reasons_label = match_reasons
+    elif match_reasons:
+        match_reasons_label = ", ".join(str(reason) for reason in match_reasons)
+    else:
+        match_reasons_label = None
 
     lines = [
         "🔥 <b>Нова заявка</b>",
@@ -104,6 +114,10 @@ def _format_lead_card(lead: dict, *, detailed: bool = False) -> str:
 
     if offers_count:
         lines.append(f"🤝 Пропозицій: {offers_count}")
+    if match_score is not None:
+        lines.append(f"🎯 Релевантність: {int(match_score)}")
+    if detailed and match_reasons_label:
+        lines.append(f"🔎 Причини: {escape(match_reasons_label)}")
 
     if detailed:
         lines.extend(["", escape(_short_description(lead.get("description")))])
@@ -194,6 +208,7 @@ async def seller_lead_open(callback: CallbackQuery, state: FSMContext):
         return
 
     await mark_seller_lead_action(seller_id=seller["id"], request_id=request_id, action="viewed")
+    logger.info("Seller opened buyer request lead seller_id=%s request_id=%s", seller["id"], request_id)
     await callback.message.edit_text(
         _format_lead_card(_row_to_dict(lead), detailed=True),
         parse_mode="HTML",
@@ -208,6 +223,7 @@ async def seller_lead_skip(callback: CallbackQuery, state: FSMContext):
     seller, _tags = await _seller_context(callback.from_user.id)
     if seller:
         await mark_seller_lead_action(seller_id=seller["id"], request_id=request_id, action="skipped")
+        logger.info("Seller skipped buyer request lead seller_id=%s request_id=%s", seller["id"], request_id)
     await callback.message.edit_text(
         "⏭ Заявку пропущено. Ми покажемо інші релевантні ліди.",
         reply_markup=seller_lead_back_kb(),
@@ -314,6 +330,7 @@ async def seller_offer_message(message: Message, state: FSMContext):
     )
     await mark_seller_lead_action(seller_id=seller_id, request_id=request_id, action="offered")
     await touch_request_matched(request_id)
+    logger.info("Seller submitted buyer request offer seller_id=%s request_id=%s offer_id=%s", seller_id, request_id, offer.get("id") if offer else None)
     await state.clear()
 
     price = offer.get("price_offer") if offer else data.get("price_offer")

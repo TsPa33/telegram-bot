@@ -758,6 +758,9 @@ async def buyer_request_submit(
         return JSONResponse({
             "ok": True,
             "request_id": request_row["id"] if request_row else None,
+            "status": "created",
+            "matched_sellers": int(result.get("matched_sellers") or 0),
+            "message": "Заявку створено. Продавці зможуть запропонувати варіанти.",
             "routing": result.get("routing_plan"),
         })
 
