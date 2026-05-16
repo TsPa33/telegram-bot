@@ -445,10 +445,8 @@ async def search_exact_part_matches(*, interpretation: dict, query: str | None, 
 async def search_donor_vehicle_matches(*, interpretation: dict, query: str | None, limit: int = DEFAULT_LIMIT):
     """Search donor vehicles compatible with interpreted vehicle signals."""
     brand, model, generation, engine, fuel, transmission, city = _vehicle_search_values(interpretation)
-    part_name = _text_or_none(interpretation.get("part_name"))
     normalized_query = _text_or_none(query)
-    part_pattern = _pattern(part_name)
-    query_pattern = None if any((brand, model, generation, engine, fuel, transmission, part_name)) else _pattern(normalized_query)
+    query_pattern = _pattern(normalized_query)
     brand_pattern = _pattern(brand)
     model_pattern = _pattern(model)
     generation_pattern = _pattern(generation)
@@ -492,12 +490,23 @@ async def search_donor_vehicle_matches(*, interpretation: dict, query: str | Non
             'Запитати про деталь' AS primary_cta,
             'Створити заявку' AS secondary_cta,
             (
-                CASE WHEN $3::text IS NOT NULL AND b.name ILIKE $3 THEN 35 ELSE 0 END +
-                CASE WHEN $4::text IS NOT NULL AND (m.name ILIKE $4 OR sc.description ILIKE $4) THEN 25 ELSE 0 END +
-                CASE WHEN $5::text IS NOT NULL AND (sc.description ILIKE $5 OR sc.donor_generation ILIKE $5) THEN 15 ELSE 0 END +
-                CASE WHEN $6::text IS NOT NULL AND (sc.description ILIKE $6 OR sc.engine_code ILIKE $6 OR sc.engine_family ILIKE $6) THEN 15 ELSE 0 END +
-                CASE WHEN $7::text IS NOT NULL AND (sc.description ILIKE $7 OR sc.fuel_type ILIKE $7) THEN 10 ELSE 0 END +
-                CASE WHEN $8::text IS NOT NULL AND (sc.description ILIKE $8 OR sc.transmission_type ILIKE $8 OR sc.compatibility_notes ILIKE $8) THEN 10 ELSE 0 END +
+                CASE WHEN $1::text IS NOT NULL AND (
+                    b.name ILIKE $1::text
+                    OR m.name ILIKE $1::text
+                    OR sc.description ILIKE $1::text
+                    OR sc.donor_generation ILIKE $1::text
+                    OR sc.engine_code ILIKE $1::text
+                    OR sc.engine_family ILIKE $1::text
+                    OR sc.fuel_type ILIKE $1::text
+                    OR sc.transmission_type ILIKE $1::text
+                    OR sc.compatibility_notes ILIKE $1::text
+                ) THEN 10 ELSE 0 END +
+                CASE WHEN $2::text IS NOT NULL AND b.name ILIKE $2::text THEN 35 ELSE 0 END +
+                CASE WHEN $3::text IS NOT NULL AND (m.name ILIKE $3::text OR sc.description ILIKE $3::text) THEN 25 ELSE 0 END +
+                CASE WHEN $4::text IS NOT NULL AND (sc.description ILIKE $4::text OR sc.donor_generation ILIKE $4::text) THEN 15 ELSE 0 END +
+                CASE WHEN $5::text IS NOT NULL AND (sc.description ILIKE $5::text OR sc.engine_code ILIKE $5::text OR sc.engine_family ILIKE $5::text) THEN 15 ELSE 0 END +
+                CASE WHEN $6::text IS NOT NULL AND (sc.description ILIKE $6::text OR sc.fuel_type ILIKE $6::text) THEN 10 ELSE 0 END +
+                CASE WHEN $7::text IS NOT NULL AND (sc.description ILIKE $7::text OR sc.transmission_type ILIKE $7::text OR sc.compatibility_notes ILIKE $7::text) THEN 10 ELSE 0 END +
                 CASE WHEN sel.is_verified THEN 5 ELSE 0 END
             )::int AS match_score
         FROM seller_cars sc
@@ -505,17 +514,28 @@ async def search_donor_vehicle_matches(*, interpretation: dict, query: str | Non
         JOIN models m ON m.id = sc.model_id
         JOIN brands b ON b.id = m.brand_id
         WHERE sc.status::text IN ('active', '1')
-          AND ($9::text IS NULL OR sel.city ILIKE $9)
-          AND ($3::text IS NULL OR b.name ILIKE $3)
-          AND ($4::text IS NULL OR m.name ILIKE $4 OR sc.description ILIKE $4)
-          AND ($5::text IS NULL OR sc.description ILIKE $5 OR sc.donor_generation ILIKE $5)
-          AND ($6::text IS NULL OR sc.description ILIKE $6 OR sc.engine_code ILIKE $6 OR sc.engine_family ILIKE $6)
-          AND ($7::text IS NULL OR sc.description ILIKE $7 OR sc.fuel_type ILIKE $7)
-          AND ($8::text IS NULL OR sc.description ILIKE $8 OR sc.transmission_type ILIKE $8 OR sc.compatibility_notes ILIKE $8)
+          AND (
+              $1::text IS NULL
+              OR b.name ILIKE $1::text
+              OR m.name ILIKE $1::text
+              OR sc.description ILIKE $1::text
+              OR sc.donor_generation ILIKE $1::text
+              OR sc.engine_code ILIKE $1::text
+              OR sc.engine_family ILIKE $1::text
+              OR sc.fuel_type ILIKE $1::text
+              OR sc.transmission_type ILIKE $1::text
+              OR sc.compatibility_notes ILIKE $1::text
+          )
+          AND ($2::text IS NULL OR b.name ILIKE $2::text)
+          AND ($3::text IS NULL OR m.name ILIKE $3::text OR sc.description ILIKE $3::text)
+          AND ($4::text IS NULL OR sc.description ILIKE $4::text OR sc.donor_generation ILIKE $4::text)
+          AND ($5::text IS NULL OR sc.description ILIKE $5::text OR sc.engine_code ILIKE $5::text OR sc.engine_family ILIKE $5::text)
+          AND ($6::text IS NULL OR sc.description ILIKE $6::text OR sc.fuel_type ILIKE $6::text)
+          AND ($7::text IS NULL OR sc.description ILIKE $7::text OR sc.transmission_type ILIKE $7::text OR sc.compatibility_notes ILIKE $7::text)
+          AND ($8::text IS NULL OR sel.city ILIKE $8::text)
         ORDER BY match_score DESC, sel.is_verified DESC, sc.id DESC
-        LIMIT $10
+        LIMIT $9::int
         """,
-        part_pattern,
         query_pattern,
         brand_pattern,
         model_pattern,
