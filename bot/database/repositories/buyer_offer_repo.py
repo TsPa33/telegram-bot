@@ -192,7 +192,11 @@ async def accept_buyer_offer(request_id: int, offer_id: int, *, reject_other_off
             )
             VALUES (
                 'seller_offer_accepted', $1, $2, $3,
-                jsonb_build_object('request_id', $1, 'offer_id', $2, 'seller_id', $3),
+                jsonb_build_object(
+                    'request_id', $1::bigint,
+                    'offer_id', $2::bigint,
+                    'seller_id', $3::bigint
+                ),
                 'pending', NOW(), NOW()
             )
             RETURNING id, event_type, request_id, offer_id, seller_id, payload, status, created_at
