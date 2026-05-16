@@ -1,207 +1,29 @@
 {% extends "marketing/base_marketing.html" %}
 
 {% block content %}
-<section class="hero">
-    <div class="container hero-grid">
-        <div>
-            <span class="eyebrow">CarPot для покупця</span>
-            <h1>Знайдіть автозапчастини, авто та перевірені автосервіси в одному Telegram-екосередовищі</h1>
+<section class="buyer-search-page" id="buyer-search">
+    <div class="container buyer-search-container">
+
+        <div class="buyer-search-brand" aria-label="CarPot">
+            <span class="buyer-search-logo">CarPot</span>
+            <span class="buyer-search-tagline">
+                пошук автозапчастин та автопослуг
+            </span>
+        </div>
+
+        <div class="buyer-search-hero">
+            <h1>Що шукаєте?</h1>
+
             <p class="lead">
-                CarPot допомагає покупцю швидко перейти від потреби до контакту з продавцем: подивитися каталог,
-                відфільтрувати пропозиції, знайти місто та продовжити спілкування у Telegram.
+                Опишіть запчастину, авто на розборці або автопослугу —
+                CarPot підбере релевантні варіанти.
             </p>
-            <div class="hero-actions">
-                <a class="btn btn-primary" href="/catalog">Перейти в каталог</a>
-                <button class="btn btn-secondary" type="button" data-open-lead-modal>Залишити заявку</button>
-                <a class="btn btn-secondary" href="{{ telegram_bot_url }}" target="_blank" rel="noopener">Відкрити Telegram-бот</a>
-            </div>
         </div>
 
-        <div class="dashboard" aria-label="Переваги покупця CarPot">
-            <div class="dash-top">
-                <div class="window-dots" aria-hidden="true"><span></span><span></span><span></span></div>
-                <strong>Покупець CarPot</strong>
-            </div>
-            <div class="dash-body">
-                <div class="dash-card">
-                    <div class="dash-label">Авто / пропозиції</div>
-                    <div class="dash-value">{{ marketplace_summary.cars_count }}</div>
-                    <div class="dash-line"></div>
-                </div>
-                <div class="dash-card">
-                    <div class="dash-label">Послуги</div>
-                    <div class="dash-value">{{ marketplace_summary.services_count }}</div>
-                    <div class="dash-line"></div>
-                </div>
-                <div class="dash-card">
-                    <div class="dash-label">Продавці</div>
-                    <div class="dash-value">{{ marketplace_summary.sellers_count }}</div>
-                    <div class="dash-line"></div>
-                </div>
-                <div class="dash-card">
-                    <div class="dash-label">Міста</div>
-                    <div class="dash-value">{{ marketplace_summary.cities_count }}</div>
-                    <div class="dash-line"></div>
-                </div>
-                <div class="dash-card wide">
-                    <div class="dash-label">Збережено</div>
-                    <div class="dash-value"><span data-favorites-count>0</span> в обраному</div>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
-
-<section class="section" id="buyer-search">
-    <div class="container">
-        <div class="section-head">
-            <div>
-                <span class="eyebrow">Швидкий старт</span>
-                <h2>Почніть з пошуку</h2>
-            </div>
-            <p>Введіть бренд, модель, послугу або місто — CarPot покаже релевантні авто, запчастини, сервіси та продавців.</p>
-        </div>
-        <form class="buyer-search-form buyer-panel" action="/search" method="get">
-            <label class="buyer-field">
-                <span class="dash-label">Що шукаєте</span>
-                <input class="buyer-control" name="q" type="search" placeholder="Наприклад: BMW, коробка, автоелектрик">
-            </label>
-            <label class="buyer-field">
-                <span class="dash-label">Місто</span>
-                <input class="buyer-control" name="city" type="text" placeholder="Київ">
-            </label>
-            <label class="buyer-field">
-                <span class="dash-label">Тип</span>
-                <select class="buyer-control" name="type">
-                    <option value="all">Усе</option>
-                    <option value="cars">Авто / запчастини</option>
-                    <option value="services">Послуги</option>
-                </select>
-            </label>
-            <label class="buyer-field">
-                <span class="dash-label">Сценарій</span>
-                <select class="buyer-control" name="intent">
-                    <option value="buy">Купити / замовити</option>
-                    <option value="compare">Порівняти пропозиції</option>
-                    <option value="request">Залишити запит</option>
-                </select>
-            </label>
-            <button class="btn btn-primary" type="submit">Знайти</button>
-        </form>
         {% include "marketing/buyer_components/ai_search_panel.html" %}
-        <div class="buyer-request-cta buyer-panel">
-            <div>
-                <span class="eyebrow">Не знайшли потрібне?</span>
-                <h3>Залиште заявку — продавці зможуть запропонувати варіанти</h3>
-                <p>Опишіть запит один раз: місто, авто, потрібну деталь або послугу. CarPot допоможе передати його релевантним продавцям.</p>
-            </div>
-            <button class="btn btn-primary" type="button" data-open-lead-modal>Залишити заявку</button>
-        </div>
+
     </div>
 </section>
 
-<section class="section">
-    <div class="container">
-        <div class="section-head">
-            <div>
-                <span class="eyebrow">Сценарій покупки</span>
-                <h2>Заявка покупця → пропозиції продавців → найкращий вибір</h2>
-            </div>
-            <p>Опишіть потребу один раз: CarPot допомагає зібрати важливі деталі, показати релевантні пропозиції та швидко перейти до продавця або сервісу.</p>
-        </div>
-        <div class="workflow-market">
-            <div class="buyer-panel workflow-visual">
-                <div>
-                    <span class="eyebrow">Живий запит</span>
-                    <h3>Потрібна фара BMW F10 у Києві</h3>
-                    <p class="lead">VIN, фото, бюджет і місто збираються в одному акуратному запиті.</p>
-                </div>
-                <div class="workflow-request-card">
-                    <div class="buyer-card-meta">
-                        <span class="buyer-pill">Київ</span>
-                        <span class="buyer-pill">Запчастини</span>
-                        <span class="buyer-pill">VIN optional</span>
-                    </div>
-                    <p style="margin: 14px 0 0; color: var(--muted);">Майбутній етап: продавці зможуть запропонувати ціну, наявність і доставку.</p>
-                </div>
-            </div>
-            <div class="workflow-steps">
-                <article class="workflow-step">
-                    <div class="workflow-index">✓</div>
-                    <div>
-                        <h3>Опишіть потребу</h3>
-                        <p>Вкажіть деталь, авто або послугу, місто, телефон, VIN і фото за потреби.</p>
-                    </div>
-                </article>
-                <article class="workflow-step">
-                    <div class="workflow-index">✓</div>
-                    <div>
-                        <h3>Отримайте релевантні варіанти</h3>
-                        <p>CarPot показує пропозиції, продавців і сервіси, які можуть допомогти з вашим запитом.</p>
-                    </div>
-                </article>
-                <article class="workflow-step">
-                    <div class="workflow-index">✓</div>
-                    <div>
-                        <h3>Зв’яжіться з продавцем</h3>
-                        <p>Порівняйте місто, опис, ціну та швидко перейдіть до дзвінка або Telegram-діалогу.</p>
-                    </div>
-                </article>
-            </div>
-        </div>
-    </div>
-</section>
-
-<section class="section">
-    <div class="container">
-        <div class="section-head">
-            <div>
-                <span class="eyebrow">Останні пропозиції</span>
-                <h2>Інтерактивний каталог для покупця</h2>
-            </div>
-            <p>Відкривайте картки, зберігайте в обране, телефонуйте продавцю або залишайте заявку на підбір.</p>
-        </div>
-        <div class="favorites-bar buyer-panel">
-            <span>У цьому браузері збережено: <strong><span data-favorites-count>0</span></strong></span>
-            <button class="btn btn-secondary" type="button" data-open-lead-modal>Створити запит</button>
-        </div>
-        {% set filter_scope = 'home-marketplace' %}
-        {% include "marketing/buyer_components/filter_bar.html" %}
-        <div class="buyer-market-grid" data-filter-group="home-marketplace">
-            {% for car in marketplace_cars[:3] %}
-                {% include "marketing/buyer_components/product_card.html" %}
-            {% endfor %}
-            {% for service in marketplace_services[:3] %}
-                {% include "marketing/buyer_components/service_card.html" %}
-            {% endfor %}
-        </div>
-        <div class="hero-actions">
-            <a class="btn btn-primary" href="/catalog">Дивитися весь каталог</a>
-            <a class="btn btn-secondary" href="/services">Автосервіси</a>
-            <a class="btn btn-secondary" href="/cars">Авто та запчастини</a>
-        </div>
-    </div>
-</section>
-
-<section class="section safe-start-section">
-    <div class="container safe-start-card">
-        <div class="safe-start-content">
-            <span class="eyebrow">Telegram-first</span>
-            <h2>Потрібна допомога з підбором?</h2>
-            <p class="lead">Відкрийте CarPot у Telegram або залиште web-заявку — екосистема веде покупця до потрібного продавця або послуги.</p>
-        </div>
-        <div class="safe-start-actions">
-            <button class="btn btn-primary" type="button" data-open-lead-modal>Залишити заявку</button>
-            <a class="btn btn-secondary" href="{{ telegram_bot_url }}" target="_blank" rel="noopener">Перейти в Telegram</a>
-            <a class="btn btn-secondary" href="/seller">Я продавець</a>
-        </div>
-    </div>
-</section>
-<div class="container">
-        <div class="buyer-sticky-request buyer-panel">
-            <div><strong>Не знайшли точну пропозицію?</strong><span>Створіть заявку — продавці зможуть відгукнутися.</span></div>
-            <button class="btn btn-primary" type="button" data-open-lead-modal>Залишити заявку</button>
-        </div>
-</div>
 {% include "marketing/buyer_components/assets.html" %}
 {% endblock %}
