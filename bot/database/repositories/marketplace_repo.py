@@ -352,15 +352,16 @@ def _vehicle_search_values(interpretation: dict) -> tuple[str | None, str | None
 
 
 async def search_exact_part_matches(*, interpretation: dict, query: str | None, limit: int = DEFAULT_LIMIT):
-    """Search explicit inventory/description matches for the requested part.
+    """Search explicit part mentions in seller car descriptions.
 
-    This is the highest-priority marketplace layer and represents potential exact
-    part inventory. It is intentionally separate from donor vehicles so the UI can
-    avoid misleading buyers.
+    This layer is intentionally stricter than donor matching: it requires the
+    requested part name, or the raw query only when no structured part name exists,
+    to appear in the car description. City is used as a score boost only.
     """
     brand, model, generation, engine, fuel, transmission, city = _vehicle_search_values(interpretation)
     part_name = _text_or_none(interpretation.get("part_name"))
     normalized_query = _text_or_none(query)
+
     part_pattern = _pattern(part_name)
     query_pattern = None if part_name else _pattern(normalized_query)
     brand_pattern = _pattern(brand)
@@ -406,11 +407,15 @@ async def search_exact_part_matches(*, interpretation: dict, query: str | None, 
             'Відкрити пропозицію' AS primary_cta,
             'Створити заявку' AS secondary_cta,
             (
-                CASE WHEN $3::text IS NOT NULL AND b.name ILIKE $3 THEN 30 ELSE 0 END +
-                CASE WHEN $4::text IS NOT NULL AND m.name ILIKE $4 THEN 25 ELSE 0 END +
-                CASE WHEN $1::text IS NOT NULL AND sc.description ILIKE $1 THEN 35 ELSE 0 END +
-                CASE WHEN $5::text IS NOT NULL AND (sc.description ILIKE $5 OR sc.donor_generation ILIKE $5) THEN 10 ELSE 0 END +
-                CASE WHEN $6::text IS NOT NULL AND (sc.description ILIKE $6 OR sc.engine_code ILIKE $6 OR sc.engine_family ILIKE $6) THEN 10 ELSE 0 END +
+                CASE WHEN $1::text IS NOT NULL AND sc.description ILIKE $1::text THEN 45 ELSE 0 END +
+                CASE WHEN $2::text IS NOT NULL AND sc.description ILIKE $2::text THEN 8 ELSE 0 END +
+                CASE WHEN $3::text IS NOT NULL AND b.name ILIKE $3::text THEN 30 ELSE 0 END +
+                CASE WHEN $4::text IS NOT NULL AND (m.name ILIKE $4::text OR sc.description ILIKE $4::text) THEN 22 ELSE 0 END +
+                CASE WHEN $5::text IS NOT NULL AND (sc.description ILIKE $5::text OR sc.donor_generation ILIKE $5::text) THEN 10 ELSE 0 END +
+                CASE WHEN $6::text IS NOT NULL AND (sc.description ILIKE $6::text OR sc.engine_code ILIKE $6::text OR sc.engine_family ILIKE $6::text) THEN 10 ELSE 0 END +
+                CASE WHEN $7::text IS NOT NULL AND (sc.description ILIKE $7::text OR sc.fuel_type ILIKE $7::text) THEN 6 ELSE 0 END +
+                CASE WHEN $8::text IS NOT NULL AND (sc.description ILIKE $8::text OR sc.transmission_type ILIKE $8::text) THEN 6 ELSE 0 END +
+                CASE WHEN $9::text IS NOT NULL AND sel.city ILIKE $9::text THEN 5 ELSE 0 END +
                 CASE WHEN sel.is_verified THEN 5 ELSE 0 END
             )::int AS match_score
         FROM seller_cars sc
@@ -418,16 +423,18 @@ async def search_exact_part_matches(*, interpretation: dict, query: str | None, 
         JOIN models m ON m.id = sc.model_id
         JOIN brands b ON b.id = m.brand_id
         WHERE sc.status::text IN ('active', '1')
-          AND ($9::text IS NULL OR sel.city ILIKE $9)
-          AND ($3::text IS NULL OR b.name ILIKE $3)
-          AND ($4::text IS NULL OR m.name ILIKE $4 OR sc.description ILIKE $4)
-          AND ($1::text IS NULL OR sc.description ILIKE $1 OR $2::text IS NOT NULL AND sc.description ILIKE $2)
-          AND ($5::text IS NULL OR sc.description ILIKE $5 OR sc.donor_generation ILIKE $5)
-          AND ($6::text IS NULL OR sc.description ILIKE $6 OR sc.engine_code ILIKE $6 OR sc.engine_family ILIKE $6)
-          AND ($7::text IS NULL OR sc.description ILIKE $7 OR sc.fuel_type ILIKE $7)
-          AND ($8::text IS NULL OR sc.description ILIKE $8 OR sc.transmission_type ILIKE $8)
+          AND (
+              ($1::text IS NOT NULL AND sc.description ILIKE $1::text)
+              OR ($1::text IS NULL AND $2::text IS NOT NULL AND sc.description ILIKE $2::text)
+          )
+          AND ($3::text IS NULL OR b.name ILIKE $3::text)
+          AND ($4::text IS NULL OR m.name ILIKE $4::text OR sc.description ILIKE $4::text)
+          AND ($5::text IS NULL OR sc.description ILIKE $5::text OR sc.donor_generation ILIKE $5::text)
+          AND ($6::text IS NULL OR sc.description ILIKE $6::text OR sc.engine_code ILIKE $6::text OR sc.engine_family ILIKE $6::text)
+          AND ($7::text IS NULL OR sc.description ILIKE $7::text OR sc.fuel_type ILIKE $7::text)
+          AND ($8::text IS NULL OR sc.description ILIKE $8::text OR sc.transmission_type ILIKE $8::text)
         ORDER BY match_score DESC, sel.is_verified DESC, sc.id DESC
-        LIMIT $10
+        LIMIT $10::int
         """,
         part_pattern,
         query_pattern,
@@ -443,16 +450,24 @@ async def search_exact_part_matches(*, interpretation: dict, query: str | None, 
 
 
 async def search_donor_vehicle_matches(*, interpretation: dict, query: str | None, limit: int = DEFAULT_LIMIT):
-    """Search donor vehicles compatible with interpreted vehicle signals."""
+    """Search donor vehicles with progressive, non-blocking vehicle matching.
+
+    Structured signals score strongly and may match independently. Missing
+    model/engine/fuel/transmission/city values must not eliminate broader donor
+    results. The raw buyer query is a weak fallback only when no structured
+    vehicle signal exists.
+    """
     brand, model, generation, engine, fuel, transmission, city = _vehicle_search_values(interpretation)
     normalized_query = _text_or_none(query)
-    query_pattern = _pattern(normalized_query)
+    has_vehicle_signal = any((brand, model, generation, engine, fuel, transmission))
+
     brand_pattern = _pattern(brand)
     model_pattern = _pattern(model)
     generation_pattern = _pattern(generation)
     engine_pattern = _pattern(engine)
     fuel_pattern = _pattern(fuel)
     transmission_pattern = _pattern(transmission)
+    broad_query_pattern = None if has_vehicle_signal else _pattern(normalized_query)
     city_pattern = _pattern(city)
 
     return await fetch(
@@ -490,23 +505,24 @@ async def search_donor_vehicle_matches(*, interpretation: dict, query: str | Non
             'Запитати про деталь' AS primary_cta,
             'Створити заявку' AS secondary_cta,
             (
-                CASE WHEN $1::text IS NOT NULL AND (
-                    b.name ILIKE $1::text
-                    OR m.name ILIKE $1::text
-                    OR sc.description ILIKE $1::text
-                    OR sc.donor_generation ILIKE $1::text
-                    OR sc.engine_code ILIKE $1::text
-                    OR sc.engine_family ILIKE $1::text
-                    OR sc.fuel_type ILIKE $1::text
-                    OR sc.transmission_type ILIKE $1::text
-                    OR sc.compatibility_notes ILIKE $1::text
-                ) THEN 10 ELSE 0 END +
-                CASE WHEN $2::text IS NOT NULL AND b.name ILIKE $2::text THEN 35 ELSE 0 END +
-                CASE WHEN $3::text IS NOT NULL AND (m.name ILIKE $3::text OR sc.description ILIKE $3::text) THEN 25 ELSE 0 END +
-                CASE WHEN $4::text IS NOT NULL AND (sc.description ILIKE $4::text OR sc.donor_generation ILIKE $4::text) THEN 15 ELSE 0 END +
-                CASE WHEN $5::text IS NOT NULL AND (sc.description ILIKE $5::text OR sc.engine_code ILIKE $5::text OR sc.engine_family ILIKE $5::text) THEN 15 ELSE 0 END +
-                CASE WHEN $6::text IS NOT NULL AND (sc.description ILIKE $6::text OR sc.fuel_type ILIKE $6::text) THEN 10 ELSE 0 END +
-                CASE WHEN $7::text IS NOT NULL AND (sc.description ILIKE $7::text OR sc.transmission_type ILIKE $7::text OR sc.compatibility_notes ILIKE $7::text) THEN 10 ELSE 0 END +
+                CASE WHEN $1::text IS NOT NULL AND b.name ILIKE $1::text THEN 40 ELSE 0 END +
+                CASE WHEN $2::text IS NOT NULL AND (m.name ILIKE $2::text OR sc.description ILIKE $2::text OR sc.compatibility_notes ILIKE $2::text) THEN 30 ELSE 0 END +
+                CASE WHEN $3::text IS NOT NULL AND (sc.donor_generation ILIKE $3::text OR sc.description ILIKE $3::text OR sc.compatibility_notes ILIKE $3::text) THEN 18 ELSE 0 END +
+                CASE WHEN $4::text IS NOT NULL AND (sc.engine_code ILIKE $4::text OR sc.engine_family ILIKE $4::text OR sc.description ILIKE $4::text OR sc.compatibility_notes ILIKE $4::text) THEN 18 ELSE 0 END +
+                CASE WHEN $5::text IS NOT NULL AND (sc.fuel_type ILIKE $5::text OR sc.description ILIKE $5::text OR sc.compatibility_notes ILIKE $5::text) THEN 8 ELSE 0 END +
+                CASE WHEN $6::text IS NOT NULL AND (sc.transmission_type ILIKE $6::text OR sc.description ILIKE $6::text OR sc.compatibility_notes ILIKE $6::text) THEN 8 ELSE 0 END +
+                CASE WHEN $7::text IS NOT NULL AND (
+                    b.name ILIKE $7::text
+                    OR m.name ILIKE $7::text
+                    OR sc.description ILIKE $7::text
+                    OR sc.donor_generation ILIKE $7::text
+                    OR sc.engine_code ILIKE $7::text
+                    OR sc.engine_family ILIKE $7::text
+                    OR sc.fuel_type ILIKE $7::text
+                    OR sc.transmission_type ILIKE $7::text
+                    OR sc.compatibility_notes ILIKE $7::text
+                ) THEN 5 ELSE 0 END +
+                CASE WHEN $8::text IS NOT NULL AND sel.city ILIKE $8::text THEN 6 ELSE 0 END +
                 CASE WHEN sel.is_verified THEN 5 ELSE 0 END
             )::int AS match_score
         FROM seller_cars sc
@@ -515,47 +531,52 @@ async def search_donor_vehicle_matches(*, interpretation: dict, query: str | Non
         JOIN brands b ON b.id = m.brand_id
         WHERE sc.status::text IN ('active', '1')
           AND (
-              $1::text IS NULL
-              OR b.name ILIKE $1::text
-              OR m.name ILIKE $1::text
-              OR sc.description ILIKE $1::text
-              OR sc.donor_generation ILIKE $1::text
-              OR sc.engine_code ILIKE $1::text
-              OR sc.engine_family ILIKE $1::text
-              OR sc.fuel_type ILIKE $1::text
-              OR sc.transmission_type ILIKE $1::text
-              OR sc.compatibility_notes ILIKE $1::text
+              ($1::text IS NOT NULL AND b.name ILIKE $1::text)
+              OR ($2::text IS NOT NULL AND (m.name ILIKE $2::text OR sc.description ILIKE $2::text OR sc.compatibility_notes ILIKE $2::text))
+              OR ($3::text IS NOT NULL AND (sc.donor_generation ILIKE $3::text OR sc.description ILIKE $3::text OR sc.compatibility_notes ILIKE $3::text))
+              OR ($4::text IS NOT NULL AND (sc.engine_code ILIKE $4::text OR sc.engine_family ILIKE $4::text OR sc.description ILIKE $4::text OR sc.compatibility_notes ILIKE $4::text))
+              OR ($5::text IS NOT NULL AND (sc.fuel_type ILIKE $5::text OR sc.description ILIKE $5::text OR sc.compatibility_notes ILIKE $5::text))
+              OR ($6::text IS NOT NULL AND (sc.transmission_type ILIKE $6::text OR sc.description ILIKE $6::text OR sc.compatibility_notes ILIKE $6::text))
+              OR (
+                  $7::text IS NOT NULL
+                  AND (
+                      b.name ILIKE $7::text
+                      OR m.name ILIKE $7::text
+                      OR sc.description ILIKE $7::text
+                      OR sc.donor_generation ILIKE $7::text
+                      OR sc.engine_code ILIKE $7::text
+                      OR sc.engine_family ILIKE $7::text
+                      OR sc.fuel_type ILIKE $7::text
+                      OR sc.transmission_type ILIKE $7::text
+                      OR sc.compatibility_notes ILIKE $7::text
+                  )
+              )
           )
-          AND ($2::text IS NULL OR b.name ILIKE $2::text)
-          AND ($3::text IS NULL OR m.name ILIKE $3::text OR sc.description ILIKE $3::text)
-          AND ($4::text IS NULL OR sc.description ILIKE $4::text OR sc.donor_generation ILIKE $4::text)
-          AND ($5::text IS NULL OR sc.description ILIKE $5::text OR sc.engine_code ILIKE $5::text OR sc.engine_family ILIKE $5::text)
-          AND ($6::text IS NULL OR sc.description ILIKE $6::text OR sc.fuel_type ILIKE $6::text)
-          AND ($7::text IS NULL OR sc.description ILIKE $7::text OR sc.transmission_type ILIKE $7::text OR sc.compatibility_notes ILIKE $7::text)
-          AND ($8::text IS NULL OR sel.city ILIKE $8::text)
         ORDER BY match_score DESC, sel.is_verified DESC, sc.id DESC
         LIMIT $9::int
         """,
-        query_pattern,
         brand_pattern,
         model_pattern,
         generation_pattern,
         engine_pattern,
         fuel_pattern,
         transmission_pattern,
+        broad_query_pattern,
         city_pattern,
         _safe_limit(limit),
     )
 
 
 async def search_seller_specialization_matches(*, interpretation: dict, query: str | None, limit: int = 8):
-    """Find sellers whose profile, donor vehicles or services match the buyer need."""
+    """Find sellers whose profile, specialization tags, cars or services match the buyer need."""
     brand, model, generation, engine, fuel, transmission, city = _vehicle_search_values(interpretation)
     part_name = _text_or_none(interpretation.get("part_name"))
     category = _text_or_none(interpretation.get("category"))
     service_type = _text_or_none(interpretation.get("service_type"))
     normalized_query = _text_or_none(query)
-    query_pattern = None if any((brand, model, generation, engine, fuel, transmission, part_name, category, service_type)) else _pattern(normalized_query)
+    has_structured_signal = any((brand, model, generation, engine, fuel, transmission, part_name, category, service_type))
+
+    broad_query_pattern = None if has_structured_signal else _pattern(normalized_query)
     brand_pattern = _pattern(brand)
     model_pattern = _pattern(model)
     generation_pattern = _pattern(generation)
@@ -563,7 +584,7 @@ async def search_seller_specialization_matches(*, interpretation: dict, query: s
     fuel_pattern = _pattern(fuel)
     transmission_pattern = _pattern(transmission)
     part_pattern = _pattern(part_name)
-    category_pattern = _pattern(category)
+    category_pattern = _pattern(category if category not in {"unknown", "parts", "services", "cars", "sellers"} else None)
     service_type_pattern = _pattern(service_type)
     city_pattern = _pattern(city)
 
@@ -585,19 +606,120 @@ async def search_seller_specialization_matches(*, interpretation: dict, query: s
             COUNT(DISTINCT srv.id)::int AS services_count,
             'seller_specialization_match' AS result_type,
             'Спеціалізований продавець' AS match_label,
-            'Профіль продавця, donor vehicles або послуги збігаються з брендом/моделлю/категорією запиту.' AS match_explanation,
+            'Профіль продавця, specialization tags, donor vehicles або послуги збігаються з вашим запитом.' AS match_explanation,
             'Це спеціалізація продавця, а не підтверджений точний складський залишок.' AS trust_message,
             'Зв’язатися з продавцем' AS primary_cta,
             'Створити заявку' AS secondary_cta,
             MAX(
-                CASE WHEN $3::text IS NOT NULL AND b.name ILIKE $3 THEN 35 ELSE 0 END +
-                CASE WHEN $4::text IS NOT NULL AND m.name ILIKE $4 THEN 20 ELSE 0 END +
-                CASE WHEN $8::text IS NOT NULL AND (srv.category ILIKE $8 OR srv.title ILIKE $8 OR srv.description ILIKE $8 OR sel.description ILIKE $8 OR sc.description ILIKE $8) THEN 25 ELSE 0 END +
-                CASE WHEN $9::text IS NOT NULL AND (srv.category ILIKE $9 OR srv.title ILIKE $9 OR srv.description ILIKE $9) THEN 20 ELSE 0 END +
-                CASE WHEN $10::text IS NOT NULL AND (srv.category ILIKE $10 OR srv.title ILIKE $10 OR srv.description ILIKE $10) THEN 15 ELSE 0 END +
-                CASE WHEN $5::text IS NOT NULL AND (sc.description ILIKE $5 OR sc.donor_generation ILIKE $5) THEN 10 ELSE 0 END +
-                CASE WHEN $6::text IS NOT NULL AND (sc.description ILIKE $6 OR sc.engine_code ILIKE $6 OR sc.engine_family ILIKE $6) THEN 10 ELSE 0 END +
-                CASE WHEN $7::text IS NOT NULL AND (sc.description ILIKE $7 OR sc.fuel_type ILIKE $7 OR sc.transmission_type ILIKE $7) THEN 10 ELSE 0 END +
+                CASE WHEN $2::text IS NOT NULL AND (
+                    b.name ILIKE $2::text
+                    OR sel.description ILIKE $2::text
+                    OR srv.description ILIKE $2::text
+                    OR sc.description ILIKE $2::text
+                    OR EXISTS (
+                        SELECT 1
+                        FROM unnest(COALESCE(sel.specialization_tags, ARRAY[]::text[])) AS tag(value)
+                        WHERE tag.value ILIKE $2::text
+                    )
+                ) THEN 35 ELSE 0 END +
+                CASE WHEN $3::text IS NOT NULL AND (
+                    m.name ILIKE $3::text
+                    OR sc.description ILIKE $3::text
+                    OR srv.description ILIKE $3::text
+                    OR EXISTS (
+                        SELECT 1
+                        FROM unnest(COALESCE(sel.specialization_tags, ARRAY[]::text[])) AS tag(value)
+                        WHERE tag.value ILIKE $3::text
+                    )
+                ) THEN 22 ELSE 0 END +
+                CASE WHEN $4::text IS NOT NULL AND (
+                    sc.donor_generation ILIKE $4::text
+                    OR sc.description ILIKE $4::text
+                    OR EXISTS (
+                        SELECT 1
+                        FROM unnest(COALESCE(sel.specialization_tags, ARRAY[]::text[])) AS tag(value)
+                        WHERE tag.value ILIKE $4::text
+                    )
+                ) THEN 12 ELSE 0 END +
+                CASE WHEN $5::text IS NOT NULL AND (
+                    sc.engine_code ILIKE $5::text
+                    OR sc.engine_family ILIKE $5::text
+                    OR sc.description ILIKE $5::text
+                    OR EXISTS (
+                        SELECT 1
+                        FROM unnest(COALESCE(sel.specialization_tags, ARRAY[]::text[])) AS tag(value)
+                        WHERE tag.value ILIKE $5::text
+                    )
+                ) THEN 12 ELSE 0 END +
+                CASE WHEN $6::text IS NOT NULL AND (
+                    sc.fuel_type ILIKE $6::text
+                    OR sc.description ILIKE $6::text
+                    OR EXISTS (
+                        SELECT 1
+                        FROM unnest(COALESCE(sel.specialization_tags, ARRAY[]::text[])) AS tag(value)
+                        WHERE tag.value ILIKE $6::text
+                    )
+                ) THEN 8 ELSE 0 END +
+                CASE WHEN $7::text IS NOT NULL AND (
+                    sc.transmission_type ILIKE $7::text
+                    OR sc.description ILIKE $7::text
+                    OR EXISTS (
+                        SELECT 1
+                        FROM unnest(COALESCE(sel.specialization_tags, ARRAY[]::text[])) AS tag(value)
+                        WHERE tag.value ILIKE $7::text
+                    )
+                ) THEN 8 ELSE 0 END +
+                CASE WHEN $8::text IS NOT NULL AND (
+                    sel.description ILIKE $8::text
+                    OR sc.description ILIKE $8::text
+                    OR srv.category ILIKE $8::text
+                    OR srv.title ILIKE $8::text
+                    OR srv.description ILIKE $8::text
+                    OR EXISTS (
+                        SELECT 1
+                        FROM unnest(COALESCE(sel.specialization_tags, ARRAY[]::text[])) AS tag(value)
+                        WHERE tag.value ILIKE $8::text
+                    )
+                ) THEN 24 ELSE 0 END +
+                CASE WHEN $9::text IS NOT NULL AND (
+                    srv.category ILIKE $9::text
+                    OR srv.title ILIKE $9::text
+                    OR srv.description ILIKE $9::text
+                    OR sel.description ILIKE $9::text
+                    OR EXISTS (
+                        SELECT 1
+                        FROM unnest(COALESCE(sel.specialization_tags, ARRAY[]::text[])) AS tag(value)
+                        WHERE tag.value ILIKE $9::text
+                    )
+                ) THEN 18 ELSE 0 END +
+                CASE WHEN $10::text IS NOT NULL AND (
+                    srv.category ILIKE $10::text
+                    OR srv.title ILIKE $10::text
+                    OR srv.description ILIKE $10::text
+                    OR sel.description ILIKE $10::text
+                    OR EXISTS (
+                        SELECT 1
+                        FROM unnest(COALESCE(sel.specialization_tags, ARRAY[]::text[])) AS tag(value)
+                        WHERE tag.value ILIKE $10::text
+                    )
+                ) THEN 16 ELSE 0 END +
+                CASE WHEN $1::text IS NOT NULL AND (
+                    sel.shop_name ILIKE $1::text
+                    OR sel.name ILIKE $1::text
+                    OR sel.description ILIKE $1::text
+                    OR srv.category ILIKE $1::text
+                    OR srv.title ILIKE $1::text
+                    OR srv.description ILIKE $1::text
+                    OR b.name ILIKE $1::text
+                    OR m.name ILIKE $1::text
+                    OR sc.description ILIKE $1::text
+                    OR EXISTS (
+                        SELECT 1
+                        FROM unnest(COALESCE(sel.specialization_tags, ARRAY[]::text[])) AS tag(value)
+                        WHERE tag.value ILIKE $1::text
+                    )
+                ) THEN 5 ELSE 0 END +
+                CASE WHEN $11::text IS NOT NULL AND (sel.city ILIKE $11::text OR srv.city ILIKE $11::text) THEN 6 ELSE 0 END +
                 CASE WHEN sel.is_verified THEN 5 ELSE 0 END
             )::int AS match_score
         FROM sellers sel
@@ -607,38 +729,131 @@ async def search_seller_specialization_matches(*, interpretation: dict, query: s
         LEFT JOIN models m ON m.id = sc.model_id
         LEFT JOIN brands b ON b.id = m.brand_id
         LEFT JOIN services srv ON srv.seller_id = sel.id
-        WHERE ($11::text IS NULL OR sel.city ILIKE $11 OR srv.city ILIKE $11)
-          AND (
-            $1::text IS NULL
-            OR sel.shop_name ILIKE $1
-            OR sel.name ILIKE $1
-            OR sel.description ILIKE $1
-            OR srv.category ILIKE $1
-            OR srv.title ILIKE $1
-            OR srv.description ILIKE $1
-            OR b.name ILIKE $1
-            OR m.name ILIKE $1
-            OR sc.description ILIKE $1
-          )
-          AND (
-            $3::text IS NULL
-            OR b.name ILIKE $3
-            OR sel.description ILIKE $3
-            OR srv.description ILIKE $3
-            OR sc.description ILIKE $3
-          )
+        WHERE (
+            ($2::text IS NOT NULL AND (
+                b.name ILIKE $2::text
+                OR sel.description ILIKE $2::text
+                OR srv.description ILIKE $2::text
+                OR sc.description ILIKE $2::text
+                OR EXISTS (
+                    SELECT 1
+                    FROM unnest(COALESCE(sel.specialization_tags, ARRAY[]::text[])) AS tag(value)
+                    WHERE tag.value ILIKE $2::text
+                )
+            ))
+            OR ($3::text IS NOT NULL AND (
+                m.name ILIKE $3::text
+                OR sc.description ILIKE $3::text
+                OR srv.description ILIKE $3::text
+                OR EXISTS (
+                    SELECT 1
+                    FROM unnest(COALESCE(sel.specialization_tags, ARRAY[]::text[])) AS tag(value)
+                    WHERE tag.value ILIKE $3::text
+                )
+            ))
+            OR ($4::text IS NOT NULL AND (
+                sc.donor_generation ILIKE $4::text
+                OR sc.description ILIKE $4::text
+                OR EXISTS (
+                    SELECT 1
+                    FROM unnest(COALESCE(sel.specialization_tags, ARRAY[]::text[])) AS tag(value)
+                    WHERE tag.value ILIKE $4::text
+                )
+            ))
+            OR ($5::text IS NOT NULL AND (
+                sc.engine_code ILIKE $5::text
+                OR sc.engine_family ILIKE $5::text
+                OR sc.description ILIKE $5::text
+                OR EXISTS (
+                    SELECT 1
+                    FROM unnest(COALESCE(sel.specialization_tags, ARRAY[]::text[])) AS tag(value)
+                    WHERE tag.value ILIKE $5::text
+                )
+            ))
+            OR ($6::text IS NOT NULL AND (
+                sc.fuel_type ILIKE $6::text
+                OR sc.description ILIKE $6::text
+                OR EXISTS (
+                    SELECT 1
+                    FROM unnest(COALESCE(sel.specialization_tags, ARRAY[]::text[])) AS tag(value)
+                    WHERE tag.value ILIKE $6::text
+                )
+            ))
+            OR ($7::text IS NOT NULL AND (
+                sc.transmission_type ILIKE $7::text
+                OR sc.description ILIKE $7::text
+                OR EXISTS (
+                    SELECT 1
+                    FROM unnest(COALESCE(sel.specialization_tags, ARRAY[]::text[])) AS tag(value)
+                    WHERE tag.value ILIKE $7::text
+                )
+            ))
+            OR ($8::text IS NOT NULL AND (
+                sel.description ILIKE $8::text
+                OR sc.description ILIKE $8::text
+                OR srv.category ILIKE $8::text
+                OR srv.title ILIKE $8::text
+                OR srv.description ILIKE $8::text
+                OR EXISTS (
+                    SELECT 1
+                    FROM unnest(COALESCE(sel.specialization_tags, ARRAY[]::text[])) AS tag(value)
+                    WHERE tag.value ILIKE $8::text
+                )
+            ))
+            OR ($9::text IS NOT NULL AND (
+                srv.category ILIKE $9::text
+                OR srv.title ILIKE $9::text
+                OR srv.description ILIKE $9::text
+                OR sel.description ILIKE $9::text
+                OR EXISTS (
+                    SELECT 1
+                    FROM unnest(COALESCE(sel.specialization_tags, ARRAY[]::text[])) AS tag(value)
+                    WHERE tag.value ILIKE $9::text
+                )
+            ))
+            OR ($10::text IS NOT NULL AND (
+                srv.category ILIKE $10::text
+                OR srv.title ILIKE $10::text
+                OR srv.description ILIKE $10::text
+                OR sel.description ILIKE $10::text
+                OR EXISTS (
+                    SELECT 1
+                    FROM unnest(COALESCE(sel.specialization_tags, ARRAY[]::text[])) AS tag(value)
+                    WHERE tag.value ILIKE $10::text
+                )
+            ))
+            OR (
+                $1::text IS NOT NULL
+                AND (
+                    sel.shop_name ILIKE $1::text
+                    OR sel.name ILIKE $1::text
+                    OR sel.description ILIKE $1::text
+                    OR srv.category ILIKE $1::text
+                    OR srv.title ILIKE $1::text
+                    OR srv.description ILIKE $1::text
+                    OR b.name ILIKE $1::text
+                    OR m.name ILIKE $1::text
+                    OR sc.description ILIKE $1::text
+                    OR EXISTS (
+                        SELECT 1
+                        FROM unnest(COALESCE(sel.specialization_tags, ARRAY[]::text[])) AS tag(value)
+                        WHERE tag.value ILIKE $1::text
+                    )
+                )
+            )
+        )
         GROUP BY sel.id
         HAVING COUNT(DISTINCT sc.id) > 0 OR COUNT(DISTINCT srv.id) > 0 OR sel.is_verified = TRUE
         ORDER BY match_score DESC, sel.is_verified DESC, (COUNT(DISTINCT sc.id) + COUNT(DISTINCT srv.id)) DESC, sel.id DESC
-        LIMIT $12
+        LIMIT $12::int
         """,
-        query_pattern,
-        normalized_query,
+        broad_query_pattern,
         brand_pattern,
         model_pattern,
         generation_pattern,
         engine_pattern,
-        fuel_pattern or transmission_pattern,
+        fuel_pattern,
+        transmission_pattern,
         part_pattern,
         category_pattern,
         service_type_pattern,
@@ -653,7 +868,8 @@ async def search_service_provider_matches(*, interpretation: dict, query: str | 
     service_type = _text_or_none(interpretation.get("service_type"))
     category = _text_or_none(interpretation.get("category"))
     normalized_query = _text_or_none(query)
-    service_pattern = _pattern(service_type or normalized_query)
+
+    service_pattern = _pattern(service_type)
     category_pattern = _pattern(category if category not in {"unknown", "services"} else None)
     query_pattern = None if service_type or category_pattern else _pattern(normalized_query)
     city_pattern = _pattern(city)
@@ -685,36 +901,39 @@ async def search_service_provider_matches(*, interpretation: dict, query: str | 
             'Зв’язатися з сервісом' AS primary_cta,
             'Створити заявку' AS secondary_cta,
             (
-                CASE WHEN $1::text IS NOT NULL AND (srv.category ILIKE $1 OR srv.title ILIKE $1 OR srv.description ILIKE $1) THEN 45 ELSE 0 END +
-                CASE WHEN $2::text IS NOT NULL AND (srv.category ILIKE $2 OR srv.title ILIKE $2 OR srv.description ILIKE $2) THEN 20 ELSE 0 END +
-                CASE WHEN $3::text IS NOT NULL AND (srv.category ILIKE $3 OR srv.title ILIKE $3 OR srv.description ILIKE $3 OR sel.shop_name ILIKE $3 OR sel.name ILIKE $3 OR sel.description ILIKE $3) THEN 15 ELSE 0 END +
-                CASE WHEN $4::text IS NOT NULL AND (srv.city ILIKE $4 OR sel.city ILIKE $4) THEN 10 ELSE 0 END +
+                CASE WHEN $1::text IS NOT NULL AND (srv.category ILIKE $1::text OR srv.title ILIKE $1::text OR srv.description ILIKE $1::text) THEN 45 ELSE 0 END +
+                CASE WHEN $2::text IS NOT NULL AND (srv.category ILIKE $2::text OR srv.title ILIKE $2::text OR srv.description ILIKE $2::text) THEN 20 ELSE 0 END +
+                CASE WHEN $3::text IS NOT NULL AND (
+                    srv.category ILIKE $3::text
+                    OR srv.title ILIKE $3::text
+                    OR srv.description ILIKE $3::text
+                    OR sel.shop_name ILIKE $3::text
+                    OR sel.name ILIKE $3::text
+                    OR sel.description ILIKE $3::text
+                ) THEN 8 ELSE 0 END +
+                CASE WHEN $4::text IS NOT NULL AND (srv.city ILIKE $4::text OR sel.city ILIKE $4::text) THEN 10 ELSE 0 END +
                 CASE WHEN sel.is_verified THEN 5 ELSE 0 END
             )::int AS match_score
         FROM services srv
         LEFT JOIN sellers sel ON sel.id = srv.seller_id
         LEFT JOIN service_stats st ON st.service_id = srv.id
         WHERE (
-            $1::text IS NULL
-            OR srv.category ILIKE $1
-            OR srv.title ILIKE $1
-            OR srv.description ILIKE $1
-            OR sel.shop_name ILIKE $1
-            OR sel.name ILIKE $1
-            OR sel.description ILIKE $1
+            ($1::text IS NOT NULL AND (srv.category ILIKE $1::text OR srv.title ILIKE $1::text OR srv.description ILIKE $1::text))
+            OR ($2::text IS NOT NULL AND (srv.category ILIKE $2::text OR srv.title ILIKE $2::text OR srv.description ILIKE $2::text))
+            OR (
+                $3::text IS NOT NULL
+                AND (
+                    srv.category ILIKE $3::text
+                    OR srv.title ILIKE $3::text
+                    OR srv.description ILIKE $3::text
+                    OR sel.shop_name ILIKE $3::text
+                    OR sel.name ILIKE $3::text
+                    OR sel.description ILIKE $3::text
+                )
+            )
         )
-          AND ($2::text IS NULL OR srv.category ILIKE $2 OR srv.title ILIKE $2 OR srv.description ILIKE $2)
-          AND (
-            $3::text IS NULL
-            OR srv.category ILIKE $3
-            OR srv.title ILIKE $3
-            OR srv.description ILIKE $3
-            OR sel.shop_name ILIKE $3
-            OR sel.name ILIKE $3
-            OR sel.description ILIKE $3
-          )
         ORDER BY match_score DESC, sel.is_verified DESC, COALESCE(st.views, 0) DESC, srv.id DESC
-        LIMIT $5
+        LIMIT $5::int
         """,
         service_pattern,
         category_pattern,
