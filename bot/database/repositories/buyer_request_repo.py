@@ -150,7 +150,7 @@ async def _find_matching_sellers_for_request(
                    COUNT(DISTINCT sc.id)::int AS cars_count,
                    COUNT(DISTINCT sv.id)::int AS services_count
             FROM sellers s
-            LEFT JOIN seller_cars sc ON sc.seller_id = s.id AND COALESCE(sc.status, 1) = 1
+            LEFT JOIN seller_cars sc ON sc.seller_id = s.id AND sc.status::text IN ('active', '1')
             LEFT JOIN services sv ON sv.seller_id = s.id
             GROUP BY s.id
         ), seller_signals AS (
@@ -182,7 +182,7 @@ async def _find_matching_sellers_for_request(
                        JOIN models m ON m.id = sc.model_id
                        JOIN brands b ON b.id = m.brand_id
                        WHERE sc.seller_id = s.id
-                         AND COALESCE(sc.status, 1) = 1
+                         AND sc.status::text IN ('active', '1')
                          AND (
                               (COALESCE($4, '') <> '' AND LOWER(b.name) = LOWER($4))
                            OR (COALESCE($5, '') <> '' AND LOWER(m.name) = LOWER($5))
