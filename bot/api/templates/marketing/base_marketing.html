@@ -297,14 +297,27 @@
             content: "";
             position: absolute;
             inset: 1px;
+            z-index: 0;
             border-radius: inherit;
             background: linear-gradient(180deg, rgba(255,255,255,0.26), transparent 52%);
             pointer-events: none;
         }
 
+        .theme-toggle::after {
+            content: "🌙";
+            position: absolute;
+            left: 9px;
+            top: 50%;
+            z-index: 1;
+            transform: translateY(-50%);
+            font-size: 0.84rem;
+            line-height: 1;
+            pointer-events: none;
+        }
+
         .toggle-knob {
             position: relative;
-            z-index: 1;
+            z-index: 2;
             display: block;
             width: 28px;
             height: 28px;
@@ -331,6 +344,12 @@
 
         :root[data-theme="light"] .toggle-knob {
             transform: translateX(0);
+        }
+
+        :root[data-theme="light"] .theme-toggle::after {
+            content: "☀️";
+            left: auto;
+            right: 9px;
         }
 
         .theme-toggle:hover,

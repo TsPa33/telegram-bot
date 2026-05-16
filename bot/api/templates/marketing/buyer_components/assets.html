@@ -571,10 +571,9 @@
 
 
    .buyer-search-page {
-    min-height: calc(100vh - 120px);
-    display: flex;
-    align-items: center;
-    padding: 60px 0;
+    min-height: auto;
+    display: block;
+    padding: 28px 0 44px;
 }
 
 .buyer-search-container {
@@ -582,50 +581,48 @@
 }
 
 .buyer-search-brand {
-    display: grid;
-    justify-items: center;
-    gap: 8px;
-    margin-bottom: 26px;
-    text-align: center;
-}
-
-.buyer-search-logo {
-    font-size: clamp(2.4rem, 7vw, 4.8rem);
-    font-weight: 950;
-    letter-spacing: -0.05em;
-    color: white;
-}
-
-.buyer-search-tagline {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 28px;
+    margin-bottom: 12px;
+    padding: 5px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    background: rgba(255, 255, 255, 0.07);
     color: var(--muted);
-    font-size: 0.95rem;
+    font-size: 0.78rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
 }
 
 .buyer-search-hero {
     max-width: 760px;
-    margin: 0 auto 28px;
+    margin: 0 auto 14px;
     text-align: center;
 }
 
 .buyer-search-hero h1 {
     margin: 0;
-    font-size: clamp(2rem, 5vw, 4rem);
-    line-height: 1.02;
+    font-size: clamp(1.9rem, 4vw, 3rem);
+    line-height: 1.04;
+    letter-spacing: -0.04em;
 }
 
 .buyer-search-hero .lead {
-    margin: 16px 0 0;
+    margin: 10px 0 0;
     color: var(--muted);
-    line-height: 1.7;
-    font-size: 1.05rem;
+    line-height: 1.55;
+    font-size: clamp(0.98rem, 2vw, 1.05rem);
 }
 
 .buyer-ai-search {
     width: 100%;
-    max-width: 760px;
+    max-width: 860px;
     margin: 0 auto;
     display: grid;
-    gap: 18px;
+    gap: 16px;
 }
 
 .buyer-ai-search-copy h3,
@@ -641,22 +638,45 @@
 
 .buyer-ai-search-form {
     display: grid;
-    gap: 16px;
-    padding: 28px;
+    gap: 14px;
+    padding: clamp(18px, 3vw, 24px);
     border-radius: 28px;
-    border: 1px solid rgba(148, 163, 184, 0.16);
+    border: 1px solid rgba(148, 163, 184, 0.18);
     background:
-        linear-gradient(180deg, rgba(15, 23, 42, 0.92), rgba(5, 8, 22, 0.96));
-    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.32);
+        radial-gradient(circle at 14% 0%, rgba(0, 255, 157, 0.14), transparent 34%),
+        linear-gradient(180deg, rgba(15, 23, 42, 0.94), rgba(5, 8, 22, 0.96));
+    box-shadow: 0 22px 70px rgba(0, 0, 0, 0.3);
+}
+
+:root[data-theme="light"] .buyer-ai-search-form {
+    border-color: rgba(15, 23, 42, 0.1);
+    background:
+        radial-gradient(circle at 14% 0%, rgba(0, 184, 117, 0.14), transparent 34%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(241, 247, 255, 0.92));
+    box-shadow: 0 22px 60px rgba(15, 23, 42, 0.13);
 }
 
 .buyer-ai-query-field textarea.buyer-control {
-    min-height: 84px;
+    min-height: 92px;
     resize: none;
     padding: 18px 20px;
-    font-size: 1.05rem;
+    font-size: 1.08rem;
     line-height: 1.5;
     border-radius: 22px;
+    background-color: rgba(255, 255, 255, 0.09);
+}
+
+:root[data-theme="light"] .buyer-ai-query-field textarea.buyer-control,
+:root[data-theme="light"] .buyer-control {
+    border-color: rgba(15, 23, 42, 0.12);
+    background-color: rgba(255, 255, 255, 0.9);
+    color: #0f172a;
+}
+
+:root[data-theme="light"] .buyer-control:focus,
+:root[data-theme="light"] .buyer-control.is-invalid {
+    background-color: #ffffff;
+    box-shadow: 0 0 0 4px rgba(0, 184, 117, 0.13);
 }
 
 .sr-only {
@@ -677,6 +697,11 @@
         gap: 10px;
     }
 
+    .buyer-ai-actions .btn {
+        min-height: 44px;
+        padding-inline: 18px;
+    }
+
     .buyer-ai-examples button {
         border: 1px solid rgba(148, 163, 184, 0.22);
         border-radius: 999px;
@@ -688,10 +713,23 @@
         font-size: 0.86rem;
     }
 
+    :root[data-theme="light"] .buyer-ai-examples button {
+        border-color: rgba(15, 23, 42, 0.12);
+        background: rgba(255, 255, 255, 0.78);
+        color: #475569;
+    }
+
     .buyer-ai-examples button:hover,
     .buyer-ai-examples button:focus-visible {
         border-color: rgba(0, 255, 157, 0.42);
         color: var(--text);
+    }
+
+    :root[data-theme="light"] .buyer-ai-examples button:hover,
+    :root[data-theme="light"] .buyer-ai-examples button:focus-visible {
+        border-color: rgba(0, 184, 117, 0.42);
+        color: #0f172a;
+        background: #ffffff;
     }
 
     .buyer-ai-status {
@@ -706,10 +744,16 @@
 
     .buyer-ai-result {
         grid-column: 1 / -1;
-        border-radius: 22px;
-        border: 1px solid rgba(148, 163, 184, 0.2);
-        background: rgba(255, 255, 255, 0.06);
-        padding: 16px;
+        border-radius: 24px;
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        background: rgba(15, 23, 42, 0.3);
+        padding: clamp(14px, 2.4vw, 18px);
+    }
+
+    :root[data-theme="light"] .buyer-ai-result {
+        border-color: rgba(15, 23, 42, 0.1);
+        background: rgba(255, 255, 255, 0.76);
+        box-shadow: 0 14px 42px rgba(15, 23, 42, 0.08);
     }
 
     .buyer-ai-result-head {
@@ -769,34 +813,80 @@
 
     .buyer-ai-card-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-        gap: 12px;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 14px;
+        align-items: stretch;
     }
 
     .buyer-ai-result-card {
         display: grid;
-        gap: 11px;
-        align-content: start;
-        border-radius: 20px;
+        grid-template-rows: auto 1fr auto;
+        gap: 0;
+        min-height: 100%;
+        overflow: hidden;
+        border-radius: 22px;
         border: 1px solid rgba(148, 163, 184, 0.18);
-        background: rgba(15, 23, 42, 0.38);
-        padding: 14px;
+        background: rgba(15, 23, 42, 0.48);
+        box-shadow: 0 14px 34px rgba(0, 0, 0, 0.16);
     }
 
     :root[data-theme="light"] .buyer-ai-result-card {
-        background: rgba(255, 255, 255, 0.66);
+        border-color: rgba(15, 23, 42, 0.1);
+        background: #ffffff;
+        box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
+    }
+
+    .buyer-ai-card-media {
+        min-height: 132px;
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px;
+        background:
+            radial-gradient(circle at 20% 18%, rgba(0, 255, 157, 0.2), transparent 28%),
+            radial-gradient(circle at 84% 36%, rgba(56, 189, 248, 0.18), transparent 30%),
+            linear-gradient(135deg, rgba(2, 6, 23, 0.28), rgba(15, 23, 42, 0.82));
+    }
+
+    :root[data-theme="light"] .buyer-ai-card-media {
+        background:
+            radial-gradient(circle at 20% 18%, rgba(0, 184, 117, 0.16), transparent 28%),
+            radial-gradient(circle at 84% 36%, rgba(2, 132, 199, 0.14), transparent 30%),
+            linear-gradient(135deg, rgba(241, 247, 255, 0.92), rgba(226, 232, 240, 0.84));
+    }
+
+    .buyer-ai-card-icon {
+        width: 58px;
+        height: 58px;
+        border-radius: 18px;
+        display: grid;
+        place-items: center;
+        font-size: 1.75rem;
+        background: rgba(255, 255, 255, 0.12);
+        border: 1px solid rgba(255, 255, 255, 0.16);
+    }
+
+    :root[data-theme="light"] .buyer-ai-card-icon {
+        background: rgba(255, 255, 255, 0.72);
+        border-color: rgba(15, 23, 42, 0.08);
+    }
+
+    .buyer-ai-card-content {
+        display: grid;
+        align-content: start;
+        gap: 10px;
+        padding: 14px;
     }
 
     .buyer-ai-card-top {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        gap: 10px;
+        display: grid;
+        gap: 7px;
     }
 
     .buyer-ai-card-top h5 {
         margin: 0;
-        font-size: 1rem;
+        font-size: 1.04rem;
         line-height: 1.25;
     }
 
@@ -807,9 +897,86 @@
     }
 
     .buyer-ai-card-copy {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
         color: var(--muted);
         margin: 0;
-        line-height: 1.55;
+        line-height: 1.5;
+        font-size: 0.94rem;
+    }
+
+    .buyer-ai-card-price {
+        color: var(--primary);
+        font-size: 1.05rem;
+        font-weight: 950;
+    }
+
+    .buyer-ai-card-note {
+        color: var(--muted);
+        font-size: 0.82rem;
+    }
+
+    .buyer-ai-result-card .buyer-pill {
+        min-height: 24px;
+        padding: 4px 8px;
+        font-size: 0.72rem;
+        font-weight: 800;
+    }
+
+    :root[data-theme="light"] .buyer-pill {
+        background: rgba(241, 245, 249, 0.92);
+        color: #334155;
+        border-color: rgba(15, 23, 42, 0.1);
+    }
+
+    .buyer-ai-result-card .buyer-card-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        align-self: end;
+        margin-top: auto;
+        padding: 0 14px 14px;
+    }
+
+    .buyer-ai-result-card .btn {
+        min-height: 38px;
+        padding: 8px 12px;
+        justify-content: center;
+        border-radius: 13px;
+        font-size: 0.86rem;
+        box-shadow: none;
+    }
+
+    .buyer-ai-result-card .btn-primary {
+        background: rgba(0, 255, 157, 0.12);
+        border: 1px solid rgba(0, 255, 157, 0.34);
+        color: var(--primary);
+    }
+
+    .buyer-ai-result-card .btn-primary:hover,
+    .buyer-ai-result-card .btn-primary:focus-visible {
+        background: rgba(0, 255, 157, 0.18);
+        box-shadow: none;
+    }
+
+    .buyer-ai-result-card .btn-secondary {
+        background: rgba(255, 255, 255, 0.04);
+        border-color: rgba(148, 163, 184, 0.2);
+        color: var(--text);
+    }
+
+    :root[data-theme="light"] .buyer-ai-result-card .btn-primary {
+        background: rgba(0, 184, 117, 0.1);
+        border-color: rgba(0, 184, 117, 0.28);
+        color: #047857;
+    }
+
+    :root[data-theme="light"] .buyer-ai-result-card .btn-secondary {
+        background: #ffffff;
+        border-color: rgba(15, 23, 42, 0.12);
+        color: #334155;
     }
 
     .buyer-ai-empty {
@@ -817,13 +984,14 @@
         gap: 12px;
         justify-items: start;
         border-radius: 20px;
-        border: 1px solid rgba(148, 163, 184, 0.18);
-        background: rgba(15, 23, 42, 0.32);
-        padding: 16px;
+        border: 1px dashed rgba(148, 163, 184, 0.24);
+        background: rgba(15, 23, 42, 0.28);
+        padding: 18px;
     }
 
     :root[data-theme="light"] .buyer-ai-empty {
-        background: rgba(255, 255, 255, 0.62);
+        border-color: rgba(15, 23, 42, 0.12);
+        background: rgba(248, 250, 252, 0.9);
     }
 
     .buyer-ai-empty h4,
@@ -906,6 +1074,27 @@
 
         .buyer-modal-content {
             padding: 18px;
+        }
+
+        .buyer-search-page {
+            padding: 18px 0 32px;
+        }
+
+        .buyer-search-hero {
+            margin-bottom: 12px;
+        }
+
+        .buyer-ai-card-grid,
+        .buyer-ai-result-card .buyer-card-actions {
+            grid-template-columns: 1fr;
+        }
+
+        .buyer-ai-search-form {
+            border-radius: 22px;
+        }
+
+        .buyer-ai-card-media {
+            min-height: 118px;
         }
 
         .buyer-modal-actions .btn,
@@ -1311,24 +1500,60 @@
         return telegramBotUrl;
     };
     const buttonHtml = (href, label, variant = 'secondary') => `<a class="btn btn-${variant}" href="${escapeHtml(href || telegramBotUrl)}" target="_blank" rel="noopener">${escapeHtml(label)}</a>`;
+    const detailsButtonHtml = () => '<button class="btn btn-primary" type="button" data-ai-open-details>Детальніше</button>';
     const requestButtonHtml = (label = 'Створити заявку') => `<button class="btn btn-secondary" type="button" data-ai-create-request>${escapeHtml(label)}</button>`;
     const pillHtml = (text, extraClass = '') => text ? `<span class="buyer-pill ${extraClass}">${escapeHtml(text)}</span>` : '';
+    const dataAttr = (name, value) => {
+        const text = (value ?? '').toString().trim();
+        return text ? ` data-${name}="${escapeHtml(text)}"` : '';
+    };
+    const aiCardAttrs = (item, overrides = {}) => {
+        const data = { ...item, ...overrides };
+        return [
+            'data-marketplace-card',
+            'tabindex="0"',
+            'role="button"',
+            dataAttr('item-type', data.itemType),
+            dataAttr('title', data.title),
+            dataAttr('description', data.description),
+            dataAttr('brand', data.brand),
+            dataAttr('model', data.model),
+            dataAttr('category', data.category),
+            dataAttr('city', data.city),
+            dataAttr('price', data.price),
+            dataAttr('seller', data.seller),
+            dataAttr('username', data.username),
+            dataAttr('telegram-link', data.telegram_link),
+            dataAttr('website', data.website),
+            dataAttr('phone', data.phone),
+            dataAttr('condition', data.condition),
+            dataAttr('address', data.address),
+        ].filter(Boolean).join(' ');
+    };
 
     const carCardHtml = (item) => {
         const title = firstValue(`${item.brand || ''} ${item.model || ''}`, item.title, item.description, 'Авто на розборці');
-        const description = firstValue(item.description);
+        const description = firstValue(item.description, 'Деталі пропозиції можна уточнити у продавця.');
         const seller = firstValue(item.shop_name, item.name, item.username, 'Продавець CarPot');
-        const meta = compact(seller, item.city).map((text) => pillHtml(text)).join('');
-        return `<article class="buyer-ai-result-card">
-            <div class="buyer-ai-card-top">
-                <h5>${escapeHtml(title)}</h5>
+        const price = formatMoney(item.price);
+        const meta = compact(item.city, seller).map((text) => pillHtml(text)).join('');
+        return `<article class="buyer-ai-result-card" ${aiCardAttrs(item, { itemType: 'car', title, description, seller, price })}>
+            <div class="buyer-ai-card-media" aria-hidden="true">
+                <span class="buyer-ai-card-icon">🚗</span>
                 ${item.is_verified ? pillHtml('✓ Перевірений', 'buyer-trust-pill') : ''}
             </div>
-            ${description ? `<p class="buyer-ai-card-copy">${escapeHtml(description)}</p>` : ''}
-            <div class="buyer-ai-card-meta">${meta}${pillHtml('Потрібно уточнити наявність деталі')}</div>
+            <div class="buyer-ai-card-content">
+                <div class="buyer-ai-card-top">
+                    <h5>${escapeHtml(title)}</h5>
+                    ${price ? `<div class="buyer-ai-card-price">${escapeHtml(price)}</div>` : ''}
+                </div>
+                <p class="buyer-ai-card-copy">${escapeHtml(description)}</p>
+                <div class="buyer-ai-card-meta">${meta || pillHtml('Україна')}</div>
+                <div class="buyer-ai-card-note">Наявність і комплектацію уточнюйте у продавця.</div>
+            </div>
             <div class="buyer-card-actions">
-                ${buttonHtml(sellerHref(item), 'Запитати продавця', 'primary')}
-                ${requestButtonHtml('Створити заявку')}
+                ${detailsButtonHtml()}
+                ${buttonHtml(sellerHref(item), 'Запитати', 'secondary')}
             </div>
         </article>`;
     };
@@ -1336,16 +1561,21 @@
     const sellerCardHtml = (item) => {
         const title = firstValue(item.shop_name, item.name, item.username, 'Продавець CarPot');
         const counts = countLabel(item);
+        const description = firstValue(item.description, counts, 'Продавець може допомогти з підбором запчастин або послуг.');
         const meta = compact(item.city, counts).map((text) => pillHtml(text)).join('');
-        return `<article class="buyer-ai-result-card">
-            <div class="buyer-ai-card-top">
-                <h5>${escapeHtml(title)}</h5>
+        return `<article class="buyer-ai-result-card" ${aiCardAttrs(item, { itemType: 'seller', title, description, seller: title, category: 'Продавець' })}>
+            <div class="buyer-ai-card-media" aria-hidden="true">
+                <span class="buyer-ai-card-icon">🏪</span>
                 ${item.is_verified ? pillHtml('✓ Перевірений', 'buyer-trust-pill') : ''}
             </div>
-            <div class="buyer-ai-card-meta">${meta || pillHtml('Продавець CarPot')}</div>
+            <div class="buyer-ai-card-content">
+                <div class="buyer-ai-card-top"><h5>${escapeHtml(title)}</h5></div>
+                <p class="buyer-ai-card-copy">${escapeHtml(description)}</p>
+                <div class="buyer-ai-card-meta">${meta || pillHtml('Продавець CarPot')}</div>
+            </div>
             <div class="buyer-card-actions">
-                ${buttonHtml(sellerHref(item), 'Зв’язатися', 'primary')}
-                ${requestButtonHtml('Створити заявку')}
+                ${detailsButtonHtml()}
+                ${buttonHtml(sellerHref(item), 'Зв’язатися', 'secondary')}
             </div>
         </article>`;
     };
@@ -1354,12 +1584,25 @@
         const title = firstValue(item.title, item.category, 'Автопослуга');
         const seller = firstValue(item.shop_name, item.name, item.username);
         const price = formatMoney(item.price, 'від ');
-        const meta = compact(item.category, item.city, price, seller).map((text) => pillHtml(text)).join('');
-        return `<article class="buyer-ai-result-card">
-            <div class="buyer-ai-card-top"><h5>${escapeHtml(title)}</h5>${item.is_verified ? pillHtml('✓ Перевірений', 'buyer-trust-pill') : ''}</div>
-            ${item.description ? `<p class="buyer-ai-card-copy">${escapeHtml(item.description)}</p>` : ''}
-            <div class="buyer-ai-card-meta">${meta || pillHtml('Автопослуга')}</div>
-            <div class="buyer-card-actions">${buttonHtml(sellerHref(item), 'Зв’язатися', 'primary')}</div>
+        const description = firstValue(item.description, 'Деталі послуги можна уточнити напряму у виконавця.');
+        const meta = compact(item.category, item.city, seller).map((text) => pillHtml(text)).join('');
+        return `<article class="buyer-ai-result-card" ${aiCardAttrs(item, { itemType: 'service', title, description, seller, price })}>
+            <div class="buyer-ai-card-media" aria-hidden="true">
+                <span class="buyer-ai-card-icon">🛠️</span>
+                ${item.is_verified ? pillHtml('✓ Перевірений', 'buyer-trust-pill') : ''}
+            </div>
+            <div class="buyer-ai-card-content">
+                <div class="buyer-ai-card-top">
+                    <h5>${escapeHtml(title)}</h5>
+                    ${price ? `<div class="buyer-ai-card-price">${escapeHtml(price)}</div>` : ''}
+                </div>
+                <p class="buyer-ai-card-copy">${escapeHtml(description)}</p>
+                <div class="buyer-ai-card-meta">${meta || pillHtml('Автопослуга')}</div>
+            </div>
+            <div class="buyer-card-actions">
+                ${detailsButtonHtml()}
+                ${buttonHtml(sellerHref(item), 'Зв’язатися', 'secondary')}
+            </div>
         </article>`;
     };
 
@@ -1374,7 +1617,8 @@
     const requestGroupHtml = () => `<section class="buyer-ai-group" aria-label="Заявка продавцям">
         <h4 class="buyer-ai-group-title"><span>Заявка продавцям</span></h4>
         <div class="buyer-ai-empty">
-            <p>Не бачите точного варіанта? Створіть заявку — продавці отримають ваш запит і зможуть запропонувати рішення.</p>
+            <h4>Не знайшли точний варіант?</h4>
+            <p>Створіть заявку — продавці зможуть запропонувати варіанти.</p>
             ${requestButtonHtml('Створити заявку')}
         </div>
     </section>`;
@@ -1409,7 +1653,7 @@
         ` : `
             <div class="buyer-ai-empty">
                 <h4>Не знайшли точний варіант?</h4>
-                <p>Створіть заявку — продавці отримають ваш запит і зможуть запропонувати варіанти.</p>
+                <p>Створіть заявку — продавці зможуть запропонувати варіанти.</p>
                 ${requestButtonHtml('Створити заявку')}
             </div>
         `;
@@ -1421,7 +1665,7 @@
         activeItem = { ...card.dataset };
         const isService = activeItem.itemType === 'service';
         const title = activeItem.title || 'Пропозиція CarPot';
-        const price = activeItem.price ? `${activeItem.price} грн` : (isService ? 'Орієнтовна ціна за запитом' : 'Ціна за запитом');
+        const price = activeItem.price ? `${activeItem.price}${/грн|uah|₴/i.test(activeItem.price) ? '' : ' грн'}` : (isService ? 'Орієнтовна ціна за запитом' : 'Ціна за запитом');
         const description = activeItem.description || (isService ? 'Деталі послуги можна уточнити напряму у виконавця.' : 'Опис пропозиції можна уточнити у продавця.');
         const username = activeItem.username ? activeItem.username.replace(/^@/, '') : '';
         const messageHref = activeItem.telegramLink || (username ? `https://t.me/${username}` : telegramBotUrl);
@@ -1593,6 +1837,14 @@
             const prefill = window.__carpotAiSearchPrefill || null;
             fillLeadFromAiPrefill(prefill);
             openModal(leadModal);
+            return;
+        }
+
+        const aiDetailsButton = event.target.closest('[data-ai-open-details]');
+        if (aiDetailsButton) {
+            event.preventDefault();
+            event.stopPropagation();
+            openItemModal(aiDetailsButton.closest('[data-marketplace-card]'));
             return;
         }
 

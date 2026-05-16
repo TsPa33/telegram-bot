@@ -6,7 +6,7 @@ from urllib.parse import urlencode
 from aiogram import Bot
 from fastapi import APIRouter, FastAPI, HTTPException, Request, Form, File, UploadFile
 from fastapi.encoders import jsonable_encoder
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from bot.api.liqpay_callback import router as liqpay_router
@@ -333,21 +333,14 @@ async def tg_file_url(bot: Bot, file_id: str) -> str:
 
 # ================= MARKETING PAGES =================
 
-@router.get("/", response_class=HTMLResponse)
+@router.get("/")
 async def marketing_home(request: Request):
     host_subdomain = extract_subdomain_from_host(request.headers.get("host"))
 
     if host_subdomain:
         return await _render_site_by_subdomain(host_subdomain, request)
 
-    return templates.TemplateResponse(
-        "marketing/index.html",
-        marketing_context(
-            request,
-            "Carpot — сайти для авторозборок, автосервісів та автозапчастин",
-            "Telegram-платформа для створення сайтів, каталогів і заявок для авторозборок, СТО, шиномонтажу, евакуаторів та продавців автозапчастин.",
-        ),
-    )
+    return RedirectResponse(url="/buyer", status_code=302)
 
 
 @router.get("/seller", response_class=HTMLResponse)
