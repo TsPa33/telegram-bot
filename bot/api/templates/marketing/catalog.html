@@ -66,6 +66,25 @@
             <button class="btn btn-primary" type="button" data-open-lead-modal>Залишити заявку</button>
         </div>
 
+
+        {% if ai_search_response and ai_search_response.decisions %}
+        <div class="buyer-panel marketplace-explanation-panel">
+            <span class="eyebrow">Marketplace search priority</span>
+            <h3>Як CarPot підібрав результати</h3>
+            <div class="buyer-ai-decision-list">
+                {% for decision in ai_search_response.decisions %}
+                <article class="buyer-ai-decision-card">
+                    <span class="buyer-pill">Step {{ decision.step }} · {{ decision.result_type }}</span>
+                    <h4>{{ decision.title }}</h4>
+                    <p>{{ decision.explanation }}</p>
+                    <small>{{ decision.trust_message }}</small>
+                    <strong>{{ decision.result_count }} результатів</strong>
+                </article>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
         <div class="favorites-bar buyer-panel">
             <span>Збережені товари й послуги: <strong><span data-favorites-count>0</span></strong></span>
             <button class="btn btn-secondary" type="button" data-open-lead-modal>Запит на підбір</button>
@@ -84,11 +103,14 @@
             <article class="card">
                 <span class="eyebrow">{% if seller.is_verified %}Перевірений{% else %}Продавець{% endif %}</span>
                 <h3>{{ seller.shop_name or seller.name or seller.username or 'Продавець CarPot' }}</h3>
+                {% if seller.match_explanation %}<p><strong>{{ seller.match_label }}:</strong> {{ seller.match_explanation }}</p>{% endif %}
                 <p>{{ seller.description or 'Профіль продавця з активними пропозиціями для покупців CarPot.' }}</p>
+                {% if seller.trust_message %}<p>{{ seller.trust_message }}</p>{% endif %}
                 <p>{% if seller.city %}{{ seller.city }} · {% endif %}{{ seller.cars_count }} авто · {{ seller.services_count }} послуг</p>
                 <div class="card-actions">
-                    {% if seller.website %}<a class="btn btn-secondary" href="{{ seller.website }}" target="_blank" rel="noopener">Сайт</a>{% endif %}
+                    {% if seller.website %}<a class="btn btn-secondary" href="{{ seller.website }}" target="_blank" rel="noopener">Відкрити сайт</a>{% endif %}
                     {% if seller.phone %}<a class="btn btn-primary" href="tel:{{ seller.phone }}">Подзвонити</a>{% endif %}
+                    <button class="btn btn-secondary" type="button" data-open-lead-modal>Створити заявку</button>
                 </div>
             </article>
             {% endfor %}

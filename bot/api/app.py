@@ -36,6 +36,7 @@ from bot.database.repositories.marketplace_repo import (
 )
 from bot.database.repositories.ai_search_repo import log_ai_search
 from bot.services.ai_request_interpreter import interpret_buyer_request, normalize_query
+from bot.services.marketplace_search import run_priority_marketplace_search
 from bot.database.repositories.analytics_repo import (
     ALLOWED_ANALYTICS_EVENT_TYPES,
     add_event,
@@ -635,23 +636,31 @@ async def buyer_ai_search(request: Request):
     try:
         item_type = _ai_search_type(interpretation)
         search_query = _ai_search_query(interpretation, raw_query)
-        results = await search_marketplace(
-            q=search_query,
-            city=interpretation.get("city"),
-            item_type=item_type,
-            limit=9,
-            offset=0,
-            category=interpretation.get("category") if interpretation.get("category") != "unknown" else None,
-            service_type=interpretation.get("service_type"),
-            brand=interpretation.get("brand"),
-            sort="trusted" if float(interpretation.get("confidence") or 0) >= 0.75 else "new",
-        )
+        if interpretation.get("intent") == "parts_search" or interpretation.get("category") == "parts":
+            results = await run_priority_marketplace_search(
+                interpretation=interpretation,
+                raw_query=raw_query,
+                search_query=search_query,
+                limit=9,
+            )
+        else:
+            results = await search_marketplace(
+                q=search_query,
+                city=interpretation.get("city"),
+                item_type=item_type,
+                limit=9,
+                offset=0,
+                category=interpretation.get("category") if interpretation.get("category") != "unknown" else None,
+                service_type=interpretation.get("service_type"),
+                brand=interpretation.get("brand"),
+                sort="trusted" if float(interpretation.get("confidence") or 0) >= 0.75 else "new",
+            )
     except Exception:
         logger.exception("Buyer AI marketplace search failed; returning safe empty result")
-        results = {"cars": [], "services": [], "sellers": [], "query": raw_query, "city": interpretation.get("city") or "", "type": "all"}
+        results = {"cars": [], "services": [], "sellers": [], "query": raw_query, "city": interpretation.get("city") or "", "type": "all", "decisions": [], "primary_result_type": "marketplace_request_fallback"}
 
     result_count = _ai_results_count(results)
-    should_create_request = _should_create_request(interpretation, result_count)
+    should_create_request = bool(results.get("should_create_request", _should_create_request(interpretation, result_count)))
     prefill = _ai_request_prefill(interpretation, raw_query)
     search_params = {
         "q": results.get("query") or raw_query,
@@ -681,6 +690,9 @@ async def buyer_ai_search(request: Request):
         "should_create_request": should_create_request,
         "prefill": prefill,
         "search_url": search_url,
+        "decisions": _record_to_plain(results.get("decisions") or []),
+        "primary_result_type": results.get("primary_result_type") or "marketplace_request_fallback",
+        "fallback": _record_to_plain(results.get("fallback") or {}),
     }
 
     wants_json = "application/json" in request.headers.get("accept", "") or "application/json" in content_type
