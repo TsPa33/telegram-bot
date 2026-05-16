@@ -5,7 +5,7 @@ from decimal import Decimal
 from bot.database.base import execute, fetch, fetchrow
 
 
-SELLER_LEAD_ACTIONS = {"viewed", "skipped", "offered"}
+SELLER_LEAD_ACTIONS = {"viewed", "skipped", "offered", "declined"}
 BUYER_REQUEST_OFFER_STATUSES = {"pending", "accepted", "rejected"}
 logger = logging.getLogger(__name__)
 
@@ -130,7 +130,7 @@ async def list_matching_seller_leads(seller_id: int, *, limit: int = 10):
           )
           AND NOT EXISTS (
               SELECT 1 FROM seller_lead_actions sla
-              WHERE sla.request_id = br.id AND sla.seller_id = $1 AND sla.action = 'skipped'
+              WHERE sla.request_id = br.id AND sla.seller_id = $1 AND sla.action IN ('skipped', 'declined')
           )
           AND (
               route_event.id IS NOT NULL
@@ -230,7 +230,7 @@ async def get_matching_seller_lead(seller_id: int, request_id: int):
           AND br.marketplace_status IN ('pending', 'active', 'matched')
           AND NOT EXISTS (
               SELECT 1 FROM seller_lead_actions sla
-              WHERE sla.request_id = br.id AND sla.seller_id = $1 AND sla.action = 'skipped'
+              WHERE sla.request_id = br.id AND sla.seller_id = $1 AND sla.action IN ('skipped', 'declined')
           )
           AND (
               route_event.id IS NOT NULL
@@ -275,6 +275,21 @@ async def mark_seller_lead_action(
         request_id,
         action,
         json.dumps(metadata or {}, ensure_ascii=False),
+    )
+
+
+async def cancel_seller_lead_notifications(*, seller_id: int, request_id: int) -> None:
+    await execute(
+        """
+        UPDATE marketplace_notification_events
+        SET status = 'cancelled', updated_at = NOW()
+        WHERE event_type = 'buyer_request_created'
+          AND request_id = $1
+          AND seller_id = $2
+          AND status = 'pending'
+        """,
+        request_id,
+        seller_id,
     )
 
 

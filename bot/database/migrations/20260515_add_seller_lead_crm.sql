@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS seller_lead_actions (
     id SERIAL PRIMARY KEY,
     seller_id INTEGER NOT NULL REFERENCES sellers(id) ON DELETE CASCADE,
     request_id INTEGER NOT NULL REFERENCES buyer_requests(id) ON DELETE CASCADE,
-    action TEXT NOT NULL CHECK (action IN ('viewed', 'skipped', 'offered')),
+    action TEXT NOT NULL CHECK (action IN ('viewed', 'skipped', 'offered', 'declined')),
     metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW(),

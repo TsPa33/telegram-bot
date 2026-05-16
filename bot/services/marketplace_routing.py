@@ -35,7 +35,7 @@ def build_buyer_request_routing_plan(
 
     priority = "high" if urgency == "today" else "normal"
     title = " ".join(part for part in [brand, model, category] if part).strip() or category
-    preview = f"🔥 Нова заявка\n{title}\n{city}\n\n[Запропонувати] [Пропустити]"
+    preview = f"🔥 Нова заявка\n{title}\n{city}\n\n[Запропонувати] [Відхилити заявку] [Пропустити]"
 
     scoring = LeadScoringService()
     scoring_foundation = scoring.score(
