@@ -1,10 +1,9 @@
 import logging
 import os
-from html import escape
 
 from aiogram import Router, types, F
 from aiogram.exceptions import TelegramBadRequest
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
+from aiogram.types import Message
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 
@@ -12,6 +11,11 @@ from bot.database.repositories.model_repo import get_brands_with_ids
 from bot.keyboards.brands import brand_kb
 from bot.keyboards.buyer_home import buyer_home_kb
 from bot.keyboards.buyer_reply import buyer_reply_kb
+from bot.keyboards.buyer_search_inline import (
+    format_search_card,
+    no_results_kb,
+    search_result_kb,
+)
 from bot.states.buyer_states import Buyer, BuyerStates
 from bot.services.ai_request_interpreter import interpret_buyer_request
 from bot.services.marketplace_search import run_priority_marketplace_search
@@ -64,46 +68,37 @@ def _ai_search_query(interpretation: dict, raw_query: str) -> str:
     return (interpretation.get("normalized_query") or raw_query or "")[:240]
 
 
-def _compact_result_text(item: dict, item_type: str) -> str:
-    if item_type == "service":
-        title = item.get("title") or item.get("category") or "Автопослуга"
-        vehicle = item.get("category") or "CarPot Service"
-        price = item.get("price") or "уточнюйте"
-    elif item_type == "seller":
-        title = item.get("description") or "Продавець може мати потрібну пропозицію"
-        vehicle = "Продавець CarPot"
-        price = "уточнюйте"
-    else:
-        brand_model = " ".join(part for part in [item.get("brand"), item.get("model")] if part)
-        title = item.get("description") or "Авто на розборці / запчастини"
-        vehicle = brand_model or "CarPot Marketplace"
-        price = item.get("price") or "уточнюйте"
-
-    seller = item.get("shop_name") or item.get("name") or item.get("username") or "Продавець CarPot"
-    city = item.get("city") or "Україна"
-
-    return (
-        f"🚘 <b>{escape(str(vehicle))}</b>\n\n"
-        f"{escape(str(title))[:180]}\n"
-        f"💰 {escape(str(price))}\n\n"
-        f"🏪 {escape(str(seller))}\n"
-        f"📍 {escape(str(city))}"
-    )
+def _collect_search_items(results: dict) -> list[dict]:
+    items: list[dict] = []
+    for item in (results.get("cars") or [])[:6]:
+        payload = _record_to_dict(item)
+        payload["_type"] = "car"
+        items.append(payload)
+    for item in (results.get("services") or [])[:6]:
+        payload = _record_to_dict(item)
+        payload["_type"] = "service"
+        items.append(payload)
+    for item in (results.get("sellers") or [])[:6]:
+        payload = _record_to_dict(item)
+        payload["_type"] = "seller"
+        items.append(payload)
+    return items[:9]
 
 
-def _compact_result_kb(item: dict, item_type: str) -> InlineKeyboardMarkup:
-    row = [InlineKeyboardButton(text="Детальніше", callback_data="buyer_ai:details")]
-    username = (item.get("username") or "").strip() if isinstance(item.get("username"), str) else ""
-    if username:
-        row.append(InlineKeyboardButton(text="Запитати", url=f"https://t.me/{username.lstrip('@')}"))
-    else:
-        row.append(InlineKeyboardButton(text="Запитати", callback_data="buyer_ai:ask"))
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            row,
-            [InlineKeyboardButton(text="Створити заявку", callback_data="buyer_ai:create_request")],
-        ]
-    )
+def _search_session_payload(items: list[dict], raw_query: str, interpretation: dict) -> dict:
+    return {
+        "buyer_search_items": items,
+        "buyer_search_page": 1,
+        "buyer_search_query": raw_query,
+        "buyer_search_interpretation": {
+            "brand": interpretation.get("brand") or "",
+            "model": interpretation.get("model") or interpretation.get("generation") or "",
+            "part_name": interpretation.get("part_name") or "",
+            "service_type": interpretation.get("service_type") or "",
+            "city": interpretation.get("city") or "",
+            "category": interpretation.get("category") or "",
+        },
+    }
 
 
 async def show_buyer_home(message: types.Message, state: FSMContext):
@@ -203,7 +198,7 @@ async def handle_buyer_ai_search_query(message: Message, state: FSMContext):
         await message.answer("Опишіть запит трохи детальніше, наприклад: фара Audi A6 C7")
         return
 
-    await message.answer("🔎 Шукаю в CarPot Marketplace...")
+    await message.answer("🔎 Шукаю в CarPot...")
 
     try:
         interpretation = await interpret_buyer_request(raw_query)
@@ -223,31 +218,25 @@ async def handle_buyer_ai_search_query(message: Message, state: FSMContext):
         )
         return
 
-    items: list[tuple[dict, str]] = []
-    items.extend((_record_to_dict(item), "car") for item in (results.get("cars") or [])[:3])
-    if len(items) < 3:
-        items.extend((_record_to_dict(item), "service") for item in (results.get("services") or [])[: 3 - len(items)])
-    if len(items) < 3:
-        items.extend((_record_to_dict(item), "seller") for item in (results.get("sellers") or [])[: 3 - len(items)])
-
+    items = _collect_search_items(results)
     await state.clear()
+    await state.update_data(**_search_session_payload(items, raw_query, interpretation))
 
     if not items:
         await message.answer(
-            "😕 Точних результатів поки не знайшли.\n\nСтворіть заявку — CarPot передасть її релевантним продавцям.",
-            reply_markup=InlineKeyboardMarkup(
-                inline_keyboard=[[InlineKeyboardButton(text="Створити заявку", callback_data="buyer_ai:create_request")]]
-            ),
+            "❌ Точного результату поки немає.\n\n"
+            "Створіть заявку — продавці отримають ваш запит і зможуть запропонувати варіанти.",
+            reply_markup=no_results_kb(),
         )
         return
 
-    await message.answer(f"✅ Знайшли {len(items)} релевантні результати:")
-    for item, item_type in items:
-        await message.answer(
-            _compact_result_text(item, item_type),
-            parse_mode="HTML",
-            reply_markup=_compact_result_kb(item, item_type),
-        )
+    first_item = items[0]
+    item_type = first_item.get("_type", "car")
+    await message.answer(
+        format_search_card(first_item, item_type),
+        parse_mode="HTML",
+        reply_markup=search_result_kb(first_item, item_type, page=1, total=len(items)),
+    )
 
 
 # ================= LEGACY SEARCH FLOW =================

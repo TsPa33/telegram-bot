@@ -2,7 +2,7 @@ import logging
 
 from aiogram import Router, F
 from aiogram.exceptions import TelegramBadRequest
-from aiogram.types import CallbackQuery, InputMediaPhoto, ReplyKeyboardRemove
+from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto, ReplyKeyboardRemove
 from aiogram.fsm.context import FSMContext
 
 from bot.services.car_service import get_cars_page
@@ -26,6 +26,11 @@ from bot.keyboards.brands import brand_kb
 from bot.keyboards.models import model_kb_with_back
 from bot.keyboards.seller_menu import seller_main_kb
 from bot.keyboards.buyer_reply import buyer_reply_kb
+from bot.keyboards.buyer_search_inline import (
+    format_search_card,
+    format_search_details,
+    search_result_kb,
+)
 
 router = Router()
 logger = logging.getLogger(__name__)
@@ -284,3 +289,143 @@ async def go_seller(callback: CallbackQuery, state: FSMContext):
         "🏪 Режим продавця\nОберіть дію:",
         reply_markup=seller_main_kb()
     )
+
+
+def _buyer_search_item(data: dict, item_type: str, item_id: str) -> dict | None:
+    for item in data.get("buyer_search_items") or []:
+        if str(item.get("_type")) == item_type and str(item.get("id")) == str(item_id):
+            return item
+    return None
+
+
+def _buyer_search_request_message(data: dict, item: dict | None = None) -> str:
+    query = str(data.get("buyer_search_query") or "").strip()
+    if item:
+        title = item.get("description") or item.get("title") or item.get("shop_name") or item.get("name")
+        if title:
+            return f"Покупець цікавиться: {title}"
+    if query:
+        return f"Покупець шукає: {query}"
+    return "Покупець створив заявку з Telegram-пошуку CarPot"
+
+
+async def _show_buyer_search_page(callback: CallbackQuery, state: FSMContext, page: int):
+    data = await state.get_data()
+    items = data.get("buyer_search_items") or []
+    total = len(items)
+
+    if not items:
+        await callback.answer("Сесія пошуку завершена")
+        return
+
+    safe_page = max(1, min(int(page or 1), total))
+    item = items[safe_page - 1]
+    item_type = item.get("_type", "car")
+    await state.update_data(buyer_search_page=safe_page)
+
+    try:
+        await callback.message.edit_text(
+            format_search_card(item, item_type),
+            parse_mode="HTML",
+            reply_markup=search_result_kb(item, item_type, page=safe_page, total=total),
+        )
+    except Exception as exc:
+        logger.warning("Unable to edit buyer search card page=%s: %s", safe_page, exc)
+        await callback.message.answer(
+            format_search_card(item, item_type),
+            parse_mode="HTML",
+            reply_markup=search_result_kb(item, item_type, page=safe_page, total=total),
+        )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("buyer_search:next:"))
+async def buyer_search_next(callback: CallbackQuery, state: FSMContext):
+    page = int(callback.data.split(":")[-1])
+    await _show_buyer_search_page(callback, state, page)
+
+
+@router.callback_query(F.data.startswith("buyer_search:prev:"))
+async def buyer_search_prev(callback: CallbackQuery, state: FSMContext):
+    page = int(callback.data.split(":")[-1])
+    await _show_buyer_search_page(callback, state, page)
+
+
+@router.callback_query(F.data.startswith("buyer_search:details:"))
+async def buyer_search_details(callback: CallbackQuery, state: FSMContext):
+    parts = callback.data.split(":")
+    if len(parts) < 4:
+        await callback.answer("Не вдалося відкрити деталі")
+        return
+
+    item_type, item_id = parts[2], parts[3]
+    data = await state.get_data()
+    item = _buyer_search_item(data, item_type, item_id)
+    if not item:
+        await callback.answer("Результат більше недоступний")
+        return
+
+    await callback.message.answer(format_search_details(item, item_type), parse_mode="HTML")
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("buyer_search:ask:"))
+async def buyer_search_ask(callback: CallbackQuery, state: FSMContext):
+    parts = callback.data.split(":")
+    if len(parts) < 4:
+        await callback.answer("Не вдалося створити звернення")
+        return
+
+    item_type, item_id = parts[2], parts[3]
+    data = await state.get_data()
+    item = _buyer_search_item(data, item_type, item_id)
+    if not item:
+        await callback.answer("Результат більше недоступний")
+        return
+
+    request = await create_buyer_request(
+        telegram_id=callback.from_user.id,
+        request_type=f"search_{item_type}_ask",
+        entity_type=item_type,
+        entity_ref=str(item_id),
+        seller_id=item.get("seller_id") or (item.get("id") if item_type == "seller" else None),
+        message=_buyer_search_request_message(data, item),
+    )
+    if request:
+        await callback.message.answer("✅ Звернення створено. Продавець побачить ваш інтерес у заявках.")
+    else:
+        await callback.message.answer("⚠️ Не вдалося створити звернення. Спробуйте створити заявку.")
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("buyer_search:create_request:"))
+async def buyer_search_create_request(callback: CallbackQuery, state: FSMContext):
+    parts = callback.data.split(":")
+    item_type = parts[2] if len(parts) > 2 else "fallback"
+    item_id = parts[3] if len(parts) > 3 else "0"
+    data = await state.get_data()
+    item = _buyer_search_item(data, item_type, item_id) if item_type != "fallback" else None
+
+    request = await create_buyer_request(
+        telegram_id=callback.from_user.id,
+        request_type="search_request",
+        entity_type=item_type if item_type != "fallback" else "marketplace_search",
+        entity_ref=str(item_id),
+        seller_id=(item or {}).get("seller_id") or ((item or {}).get("id") if item_type == "seller" else None),
+        message=_buyer_search_request_message(data, item),
+    )
+    if request:
+        await callback.message.answer(
+            f"✅ Заявку створено #{request['id']}.\n\nВідкрити історію можна в «Мої заявки».",
+            reply_markup=InlineKeyboardMarkup(
+                inline_keyboard=[[InlineKeyboardButton(text="Мої заявки", callback_data="buyer:requests")]]
+            ),
+        )
+    else:
+        await callback.message.answer("⚠️ Не вдалося створити заявку. Спробуйте ще раз.")
+    await callback.answer()
+
+
+@router.callback_query(F.data == "buyer_search:noop")
+async def buyer_search_noop(callback: CallbackQuery):
+    await callback.answer()
