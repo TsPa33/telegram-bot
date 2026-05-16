@@ -135,7 +135,7 @@ async def global_restart(message: Message, state: FSMContext):
 
 # ================= GLOBAL HOME =================
 
-@router.message(F.text == "↩️ На головне меню")
+@router.message(F.text.in_(["↩️ На головне меню", "↩️ Головне меню"]))
 async def back_to_main_menu(message: Message, state: FSMContext):
     await state.clear()
 

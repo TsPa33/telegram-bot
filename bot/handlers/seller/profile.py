@@ -195,3 +195,12 @@ async def handle_text(message: Message, state: FSMContext):
         parse_mode="HTML",
         reply_markup=profile_edit_kb()
     )
+
+
+# ================= CRM QUICK ACCESS =================
+
+@router.message(F.text == "🧾 Відкрити CRM")
+async def open_crm_quick_access(message: Message):
+    from bot.handlers.seller.crm import seller_crm_landing
+
+    await seller_crm_landing(message)
