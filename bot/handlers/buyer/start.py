@@ -126,6 +126,12 @@ def _compact_search_item(item, item_type: str) -> dict:
         "username",
         "city",
         "website",
+        "phone",
+        "telegram",
+        "telegram_username",
+        "photo",
+        "photo_id",
+        "file_id",
         "compatibility_notes",
         "category",
         "title",
@@ -257,6 +263,30 @@ def _request_description(data: dict, item: dict | None) -> str:
     return "Покупець створив заявку з Telegram-пошуку CarPot"
 
 
+def _pending_request_title(data: dict, item: dict | None) -> str:
+    raw_query = _clean_text(data.get("buyer_search_query"))
+    if raw_query:
+        return raw_query[:160]
+
+    interpretation = data.get("buyer_search_interpretation") or {}
+    parts = [
+        _clean_text(interpretation.get("part_name") or interpretation.get("service_type")),
+        _clean_text(interpretation.get("brand")),
+        _clean_text(interpretation.get("model")),
+    ]
+    title = " ".join(part for part in parts if part).strip()
+    if title:
+        return title[:160]
+
+    if item:
+        return _clean_text(
+            item.get("title") or item.get("description") or item.get("shop_name") or item.get("name"),
+            "Заявка CarPot",
+        )[:160]
+
+    return "Заявка CarPot"
+
+
 def _request_summary(data: dict) -> str:
     interpretation = data.get("buyer_search_interpretation") or {}
     item = _current_buyer_search_item(data)
@@ -274,6 +304,9 @@ def _request_summary(data: dict) -> str:
     lines = [
         "📝 <b>Підтвердіть заявку</b>",
         "",
+        "Ваш запит:",
+        escape(_pending_request_title(data, item)),
+        "",
         f"Тип: {escape(labels.get(request_type, request_type))}",
         f"Категорія: {escape(category)}",
     ]
@@ -288,12 +321,39 @@ def _request_summary(data: dict) -> str:
         lines.append(f"Потрібно: {escape(part_or_service)}")
 
     lines.extend([
-        f"Місто: {escape(_clean_text(data.get('buyer_request_city'), '—'))}",
-        f"Телефон: {escape(_clean_text(data.get('buyer_request_phone'), '—'))}",
+        f"📍 Місто: {escape(_clean_text(data.get('buyer_request_city'), '—'))}",
+        f"📞 Телефон: {escape(_clean_text(data.get('buyer_request_phone'), '—'))}",
         "",
+        "Опис:",
         escape(_request_description(data, item)),
     ])
     return "\n".join(lines)
+
+
+def _request_created_summary(data: dict, request_row: dict | None = None) -> str:
+    item = _current_buyer_search_item(data)
+    title = _pending_request_title(data, item)
+    city = (request_row or {}).get("city") or data.get("buyer_request_city")
+    phone = (request_row or {}).get("buyer_phone") or data.get("buyer_request_phone")
+    description = (request_row or {}).get("description") or _request_description(data, item)
+
+    return "\n".join(
+        [
+            "✅ <b>Заявку створено</b>",
+            "",
+            "Ваш запит:",
+            escape(_clean_text(title, "Заявка CarPot")),
+            "",
+            f"📍 Місто: {escape(_clean_text(city, '—'))}",
+            f"📞 Телефон: {escape(_clean_text(phone, '—'))}",
+            "",
+            "Опис:",
+            escape(_clean_text(description, "Опис не вказано")),
+            "",
+            "Продавці отримають заявку.",
+            "Відповіді будуть у розділі 📋 Мої заявки.",
+        ]
+    )
 
 
 def _buyer_telegram_username(user: types.User) -> str | None:
@@ -466,6 +526,17 @@ async def buyer_request_phone(message: Message, state: FSMContext):
     )
 
 
+@router.callback_query(BuyerStates.request_confirm, F.data == "buyer_request:edit")
+async def buyer_request_edit(callback: types.CallbackQuery, state: FSMContext):
+    await callback.answer()
+    await state.set_state(BuyerStates.waiting_for_search_query)
+    await callback.message.answer(
+        "✏️ Напишіть уточнений запит одним повідомленням.\n\n"
+        "Наприклад: діагностика CAN Дніпро. Після нового пошуку ви зможете знову створити заявку.",
+        reply_markup=buyer_reply_kb(),
+    )
+
+
 @router.callback_query(BuyerStates.request_confirm, F.data == "buyer_request:confirm")
 async def buyer_request_confirm(callback: types.CallbackQuery, state: FSMContext):
     data = await state.get_data()
@@ -517,10 +588,11 @@ async def buyer_request_confirm(callback: types.CallbackQuery, state: FSMContext
         )
         return
 
+    success_text = _request_created_summary(data, request_row)
     await state.clear()
     await callback.message.answer(
-        "✅ Заявку створено.\n"
-        "Продавці отримають запит і зможуть запропонувати варіанти.",
+        success_text,
+        parse_mode="HTML",
         reply_markup=request_created_kb(),
     )
 
@@ -669,7 +741,7 @@ def _format_price(value) -> str:
     if value is None:
         return "ціну уточнюйте"
     text = str(value).rstrip("0").rstrip(".")
-    return f"{text}$" if text else "ціну уточнюйте"
+    return f"{text} грн" if text else "ціну уточнюйте"
 
 
 def _format_availability(value) -> str:
@@ -734,12 +806,19 @@ def _format_offers(offers) -> str:
             "",
             f"💰 {escape(_format_price(offer.get('price_offer')))}",
             f"📍 {escape(_clean_text(offer.get('seller_city'), '—'))}",
-            escape(_format_availability(offer.get("availability_note"))),
         ])
+
+        availability = _clean_text(offer.get("availability_note"))
+        if availability:
+            lines.append(escape(_format_availability(availability)))
 
         message = _clean_text(offer.get("message"))
         if message:
             lines.extend(["", escape(message[:220])])
+
+        contact_lines = _format_seller_contacts(offer)
+        if contact_lines:
+            lines.extend(["", *contact_lines])
 
         blocks.append("\n".join(lines))
     return "\n\n".join(blocks)
@@ -752,13 +831,19 @@ def _format_request_details(request, offers) -> str:
         "",
         f"📍 {escape(_clean_text(request.get('city'), '—'))}",
         f"📞 {escape(_clean_text(request.get('buyer_phone'), '—'))}",
+    ]
+    description = _clean_text(request.get("description"))
+    if description:
+        lines.extend(["", "Опис:", escape(description[:700])])
+
+    lines.extend([
         "",
         f"🕒 Створено: {escape(_created_label(request.get('created_at')))}",
         f"👥 Відповідей: {offers_count}",
         f"Статус: {escape(_status_label(request.get('marketplace_status') or request.get('status')))}",
         "",
         _format_offers(offers),
-    ]
+    ])
     return "\n".join(lines)
 
 

@@ -20,6 +20,16 @@ def seller_leads_inbox_kb(leads) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
+def seller_lead_notification_kb(request_id: int) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="Відповісти", callback_data=f"seller_leads:offer:{request_id}")],
+            [InlineKeyboardButton(text="Відкрити заявку", callback_data=f"seller_leads:open:{request_id}")],
+            [InlineKeyboardButton(text="Відхилити заявку", callback_data=f"seller_leads:decline:{request_id}")],
+        ]
+    )
+
+
 def seller_lead_actions_kb(request_id: int) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[

@@ -2,14 +2,17 @@ import json
 import logging
 import re
 from dataclasses import dataclass
+from html import escape
 from typing import Iterable
 
 from fastapi import UploadFile
 
 from bot.database.repositories.buyer_request_repo import create_marketplace_buyer_request_with_routing
+from bot.keyboards.seller_leads import seller_lead_notification_kb
 from bot.services.buyer_request_safety import inspect_buyer_request_safety
 from bot.services.marketplace_routing import build_buyer_request_routing_plan
 from bot.services.request_photo_pipeline import RequestPhotoValidationError, prepare_request_photo_assets
+from bot.services.telegram_sender import send_message_to_seller
 
 
 REQUEST_TYPES = {"part", "car", "service", "diagnostics", "tow", "other"}
@@ -24,6 +27,16 @@ REQUEST_CATEGORIES = {
 }
 URGENCY_LEVELS = {"today", "soon", "week", "flexible"}
 logger = logging.getLogger(__name__)
+
+CATEGORY_ICONS = {
+    "Запчастини": "🔩",
+    "Авто": "🚘",
+    "СТО / ремонт": "🔧",
+    "Діагностика": "🧰",
+    "Шини / диски": "🛞",
+    "Евакуатор": "🚚",
+    "Інше": "📋",
+}
 
 
 @dataclass(slots=True)
@@ -89,6 +102,96 @@ def normalize_telegram(value: str | None) -> str | None:
         value = value[1:]
     value = re.sub(r"[^A-Za-z0-9_]", "", value)
     return f"@{value}" if value else None
+
+
+def buyer_request_title(row: dict | None) -> str:
+    if not row:
+        return "Заявка CarPot"
+
+    description = short_text(row.get("description"), 120)
+    if description:
+        for line in description.splitlines():
+            line = line.strip()
+            if line.startswith("Запит:") or line.startswith("Потрібно:"):
+                return line.split(":", 1)[1].strip()[:120] or "Заявка CarPot"
+
+    parts = [
+        short_text(row.get("brand"), 80),
+        short_text(row.get("model"), 80),
+        short_text(row.get("category"), 80),
+    ]
+    title = " ".join(part for part in parts if part).strip()
+    if title:
+        return title[:120]
+
+    if description:
+        return description[:120]
+
+    return "Заявка CarPot"
+
+
+def _seller_notification_text(request_row: dict) -> str:
+    category = short_text(request_row.get("category"), 80) or "Заявка"
+    icon = CATEGORY_ICONS.get(category, "📋")
+    title = buyer_request_title(request_row)
+    city = short_text(request_row.get("city"), 120) or "—"
+    phone = short_text(request_row.get("buyer_phone"), 40) or "—"
+    description = short_text(request_row.get("description"), 900) or "Опис не вказано"
+
+    return "\n".join(
+        [
+            "📥 <b>Нова заявка</b>",
+            "",
+            f"{escape(icon)} <b>{escape(title)}</b>",
+            f"📍 {escape(city)}",
+            f"📞 {escape(phone)}",
+            "",
+            "Опис:",
+            escape(description),
+        ]
+    )
+
+
+async def _notify_matched_sellers(request_row: dict | None, matches: list[dict]) -> int:
+    if not request_row or not matches:
+        return 0
+
+    delivered = 0
+    request_id = int(request_row["id"])
+    text = _seller_notification_text(request_row)
+    markup = seller_lead_notification_kb(request_id)
+
+    for match in matches:
+        telegram_id = match.get("telegram_id")
+        if not telegram_id:
+            continue
+        try:
+            message = await send_message_to_seller(
+                int(telegram_id),
+                text,
+                reply_markup=markup,
+                parse_mode="HTML",
+            )
+        except Exception as exc:
+            logger.warning(
+                "Immediate seller notification failed request_id=%s seller_id=%s telegram_id=%s: %s",
+                request_id,
+                match.get("seller_id"),
+                telegram_id,
+                exc,
+            )
+            continue
+        if message:
+            delivered += 1
+        else:
+            logger.warning(
+                "Immediate seller notification was not delivered request_id=%s seller_id=%s telegram_id=%s",
+                request_id,
+                match.get("seller_id"),
+                telegram_id,
+            )
+
+    return delivered
 
 
 def normalize_vin(value: str | None) -> str | None:
@@ -216,10 +319,21 @@ async def submit_marketplace_buyer_request(payload: BuyerRequestInput) -> dict:
         creation.get("notification_events_created", 0),
     )
 
+    try:
+        delivered_notifications = await _notify_matched_sellers(dict(row) if row else None, matches)
+    except Exception as exc:
+        delivered_notifications = 0
+        logger.warning(
+            "Immediate seller notification delivery skipped after request creation request_id=%s: %s",
+            row["id"] if row else None,
+            exc,
+        )
+
     return {
         "request": dict(row) if row else None,
         "routing_plan": routing_plan,
         "matched_sellers": len(matches),
         "notification_events_created": creation.get("notification_events_created", 0),
+        "telegram_notifications_delivered": delivered_notifications,
         "safety": safety.to_dict(),
     }

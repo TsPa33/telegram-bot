@@ -67,30 +67,66 @@ def _seller_specialization(item: dict[str, Any]) -> str:
     return " / ".join(counters) or "Автозапчастини / сервіс"
 
 
+def _contact_lines(item: dict[str, Any]) -> list[str]:
+    lines = []
+    phone = _clean(item.get("phone"))
+    username = _clean(item.get("telegram_username") or item.get("telegram") or item.get("username")).lstrip("@")
+    website = _clean(item.get("website"))
+
+    if phone:
+        lines.append(f"📞 {escape(phone)}")
+    if username:
+        lines.append(f"💬 @{escape(username)}")
+    if website:
+        lines.append(f"🌐 {escape(website)}")
+    return lines
+
+
+def _photo_line(item: dict[str, Any]) -> str | None:
+    if item.get("photo") or item.get("photo_id") or item.get("file_id"):
+        return "📷 Є фото"
+    return None
+
+
 def format_search_card(item: dict[str, Any], item_type: str) -> str:
     if item_type == "service":
         title, description = _service_lines(item)
-        return (
-            f"🔧 <b>{escape(title)}</b>\n\n"
-            f"{escape(description)}\n\n"
-            f"📍 {escape(_city(item))}"
-        )
+        lines = [f"🔧 <b>{escape(title)}</b>", "", escape(description), "", f"📍 {escape(_city(item))}"]
+        photo_line = _photo_line(item)
+        if photo_line:
+            lines.append(photo_line)
+        return "\n".join(lines)
 
     if item_type == "seller":
-        return (
-            f"🏪 <b>{escape(_seller_name(item))}</b>\n\n"
-            f"Спеціалізація:\n{escape(_seller_specialization(item))}\n\n"
-            f"📍 {escape(_city(item))}"
-        )
+        lines = [
+            f"🏪 <b>{escape(_seller_name(item))}</b>",
+            "",
+            "Спеціалізація:",
+            escape(_seller_specialization(item)),
+            "",
+            f"📍 {escape(_city(item))}",
+        ]
+        lines.extend(_contact_lines(item))
+        photo_line = _photo_line(item)
+        if photo_line:
+            lines.append(photo_line)
+        return "\n".join(lines)
 
     title = _short(item.get("description"), 120, "Авто на розборці / запчастини")
-    return (
-        f"🚘 <b>{escape(_vehicle_label(item))}</b>\n\n"
-        f"{escape(title)}\n"
-        f"💰 {escape(_price(item.get('price')))}\n\n"
-        f"🏪 {escape(_seller_name(item))}\n"
-        f"📍 {escape(_city(item))}"
-    )
+    lines = [
+        f"🚘 <b>{escape(_vehicle_label(item))}</b>",
+        "",
+        escape(title),
+        f"💰 {escape(_price(item.get('price')))}",
+        "",
+        f"🏪 {escape(_seller_name(item))}",
+        f"📍 {escape(_city(item))}",
+    ]
+    lines.extend(_contact_lines(item))
+    photo_line = _photo_line(item)
+    if photo_line:
+        lines.append(photo_line)
+    return "\n".join(lines)
 
 
 def format_search_details(item: dict[str, Any], item_type: str) -> str:
@@ -110,10 +146,13 @@ def format_search_details(item: dict[str, Any], item_type: str) -> str:
             lines.append(f"Адреса: {escape(address)}")
         if item.get("price"):
             lines.append(f"💰 {escape(_price(item.get('price')))}")
+        lines.extend(_contact_lines(item))
+        photo_line = _photo_line(item)
+        if photo_line:
+            lines.append(photo_line)
         return "\n".join(lines)
 
     if item_type == "seller":
-        website = _clean(item.get("website"))
         lines = [
             f"🏪 <b>{escape(_seller_name(item))}</b>",
             "",
@@ -122,8 +161,10 @@ def format_search_details(item: dict[str, Any], item_type: str) -> str:
             "",
             f"📍 {escape(_city(item))}",
         ]
-        if website:
-            lines.append(f"🌐 {escape(website)}")
+        lines.extend(_contact_lines(item))
+        photo_line = _photo_line(item)
+        if photo_line:
+            lines.append(photo_line)
         return "\n".join(lines)
 
     details = _short(item.get("description"), MAX_DETAIL_TEXT, "Авто на розборці / запчастини")
@@ -141,11 +182,15 @@ def format_search_details(item: dict[str, Any], item_type: str) -> str:
         f"🏪 {escape(_seller_name(item))}",
         f"📍 {escape(_city(item))}",
     ])
+    lines.extend(_contact_lines(item))
+    photo_line = _photo_line(item)
+    if photo_line:
+        lines.append(photo_line)
     return "\n".join(lines)
 
 
 def _contact_button(item: dict[str, Any], text: str, fallback_callback: str) -> InlineKeyboardButton:
-    username = _clean(item.get("username"))
+    username = _clean(item.get("telegram_username") or item.get("telegram") or item.get("username"))
     if username:
         return InlineKeyboardButton(text=text, url=f"https://t.me/{username.lstrip('@')}")
     return InlineKeyboardButton(text=text, callback_data=fallback_callback)
@@ -186,6 +231,7 @@ def request_confirm_kb() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="✅ Підтвердити", callback_data="buyer_request:confirm")],
+            [InlineKeyboardButton(text="✏️ Редагувати", callback_data="buyer_request:edit")],
             [InlineKeyboardButton(text="🔎 Новий пошук", callback_data="buyer:find")],
         ]
     )
