@@ -672,35 +672,6 @@
     }
 
 
-
-    .marketplace-explanation-panel {
-        margin: 24px 0;
-    }
-
-    .buyer-ai-decision-list {
-        display: grid;
-        gap: 14px;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    }
-
-    .buyer-ai-decision-card {
-        border: 1px solid rgba(148, 163, 184, 0.24);
-        border-radius: 18px;
-        padding: 16px;
-        background: rgba(15, 23, 42, 0.52);
-    }
-
-    .buyer-ai-decision-card h4,
-    .buyer-ai-decision-card p {
-        margin: 8px 0;
-    }
-
-    .buyer-ai-decision-card small {
-        display: block;
-        color: var(--muted);
-        margin-bottom: 8px;
-    }
-
     .buyer-ai-search {
         display: grid;
         grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
@@ -787,22 +758,110 @@
         margin: 0 0 12px;
     }
 
-    .buyer-ai-match-list {
+    .buyer-ai-result-summary {
         display: grid;
-        gap: 8px;
-        margin: 0;
-        padding: 0;
-        list-style: none;
+        gap: 6px;
+        margin-bottom: 14px;
     }
 
-    .buyer-ai-match-list li {
+    .buyer-ai-result-summary h4,
+    .buyer-ai-result-summary p {
+        margin: 0;
+    }
+
+    .buyer-ai-result-summary h4 {
+        font-size: clamp(1.08rem, 2.3vw, 1.28rem);
+    }
+
+    .buyer-ai-match-list {
+        display: grid;
+        gap: 12px;
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .buyer-ai-group-list {
+        display: grid;
+        gap: 18px;
+    }
+
+    .buyer-ai-group {
+        display: grid;
+        gap: 10px;
+    }
+
+    .buyer-ai-group-title {
         display: flex;
         justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin: 0;
+        font-size: 1rem;
+    }
+
+    .buyer-ai-card-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+        gap: 12px;
+    }
+
+    .buyer-ai-result-card {
+        display: grid;
+        gap: 11px;
+        align-content: start;
+        border-radius: 20px;
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        background: rgba(15, 23, 42, 0.38);
+        padding: 14px;
+    }
+
+    :root[data-theme="light"] .buyer-ai-result-card {
+        background: rgba(255, 255, 255, 0.66);
+    }
+
+    .buyer-ai-card-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
         gap: 10px;
-        border-radius: 16px;
-        background: rgba(15, 23, 42, 0.4);
-        padding: 10px 12px;
-        color: var(--text);
+    }
+
+    .buyer-ai-card-top h5 {
+        margin: 0;
+        font-size: 1rem;
+        line-height: 1.25;
+    }
+
+    .buyer-ai-card-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+    }
+
+    .buyer-ai-card-copy {
+        color: var(--muted);
+        margin: 0;
+        line-height: 1.55;
+    }
+
+    .buyer-ai-empty {
+        display: grid;
+        gap: 12px;
+        justify-items: start;
+        border-radius: 20px;
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        background: rgba(15, 23, 42, 0.32);
+        padding: 16px;
+    }
+
+    :root[data-theme="light"] .buyer-ai-empty {
+        background: rgba(255, 255, 255, 0.62);
+    }
+
+    .buyer-ai-empty h4,
+    .buyer-ai-empty p {
+        margin: 0;
     }
 
     @media (max-width: 1100px) {
@@ -817,36 +876,7 @@
         .buyer-modal-grid,
         .buyer-request-modal-grid,
         .buyer-request-cta,
-
-    .marketplace-explanation-panel {
-        margin: 24px 0;
-    }
-
-    .buyer-ai-decision-list {
-        display: grid;
-        gap: 14px;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    }
-
-    .buyer-ai-decision-card {
-        border: 1px solid rgba(148, 163, 184, 0.24);
-        border-radius: 18px;
-        padding: 16px;
-        background: rgba(15, 23, 42, 0.52);
-    }
-
-    .buyer-ai-decision-card h4,
-    .buyer-ai-decision-card p {
-        margin: 8px 0;
-    }
-
-    .buyer-ai-decision-card small {
-        display: block;
-        color: var(--muted);
-        margin-bottom: 8px;
-    }
-
-    .buyer-ai-search {
+        .buyer-ai-search {
             grid-template-columns: 1fr;
         }
 
@@ -978,7 +1008,7 @@
         <div class="buyer-modal-content">
             <div class="buyer-modal-top">
                 <div>
-                    <span class="eyebrow">Маркетплейс-заявка</span>
+                    <span class="eyebrow">Заявка продавцям</span>
                     <h2 id="buyer-lead-title">Опишіть запит — продавці зможуть підготувати пропозиції</h2>
                 </div>
                 <button class="buyer-modal-close" type="button" data-close-buyer-modal aria-label="Закрити">×</button>
@@ -986,14 +1016,14 @@
             <div class="buyer-request-modal-grid">
                 <aside class="buyer-request-aside">
                     <div>
-                        <span class="buyer-pill buyer-trust-pill">Request-driven marketplace</span>
+                        <span class="buyer-pill buyer-trust-pill">Запит продавцям</span>
                         <h3>Не витрачайте час на десятки дзвінків</h3>
-                        <p class="buyer-help-text">Залиште місто, категорію, авто та опис потреби. Архітектура CarPot підготує заявку до маршрутизації релевантним продавцям за містом, категорією та спеціалізацією.</p>
+                        <p class="buyer-help-text">Залиште місто, категорію, авто та опис потреби. CarPot допоможе передати заявку продавцям, які можуть запропонувати деталь, авто або послугу.</p>
                     </div>
                     <ul>
                         <li>VIN і фото необовʼязкові, але підвищують точність.</li>
                         <li>Телефон потрібен для швидкого контакту після відгуку.</li>
-                        <li>Telegram-нік готує майбутній прямий діалог.</li>
+                        <li>Telegram-нік допоможе швидше перейти до прямого діалогу.</li>
                     </ul>
                 </aside>
                 <form class="lead-form" action="/buyer/requests" method="post" enctype="multipart/form-data" data-buyer-lead-form novalidate>
@@ -1270,38 +1300,156 @@
         if (started) started.value = Date.now().toString();
     };
 
+    const aiResultTypes = {
+        exactPart: ['exact', 'part', 'match'].join('_'),
+        donorVehicle: ['donor', 'vehicle', 'match'].join('_'),
+        sellerSpecialization: ['seller', 'specialization', 'match'].join('_'),
+        serviceProvider: ['service', 'provider', 'match'].join('_'),
+        requestFallback: ['marketplace', 'request', 'fallback'].join('_'),
+    };
+
+    const aiResultLabels = {
+        [aiResultTypes.exactPart]: 'Знайдені пропозиції',
+        [aiResultTypes.donorVehicle]: 'Схожі авто на розборці',
+        [aiResultTypes.sellerSpecialization]: 'Релевантні продавці',
+        [aiResultTypes.serviceProvider]: 'Автопослуги',
+        [aiResultTypes.requestFallback]: 'Заявка продавцям',
+    };
+
+    const escapeHtml = (value) => (value ?? '').toString().replace(/[&<>'"]/g, (char) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        "'": '&#39;',
+        '"': '&quot;',
+    })[char]);
+
+    const compact = (...values) => values.map((value) => (value ?? '').toString().trim()).filter(Boolean);
+    const firstValue = (...values) => compact(...values)[0] || '';
+    const formatMoney = (value, prefix = '') => {
+        const text = (value ?? '').toString().trim();
+        if (!text) return '';
+        return `${prefix}${text}${/грн|uah|₴/i.test(text) ? '' : ' грн'}`;
+    };
+    const countLabel = (item) => {
+        const cars = Number(item.cars_count ?? item.car_count ?? item.vehicles_count ?? 0);
+        const services = Number(item.services_count ?? item.service_count ?? 0);
+        const parts = Number(item.parts_count ?? item.items_count ?? item.products_count ?? 0);
+        const labels = [];
+        if (cars) labels.push(`${cars} авто`);
+        if (services) labels.push(`${services} послуг`);
+        if (parts) labels.push(`${parts} пропозицій`);
+        return labels.join(' · ');
+    };
+    const sellerHref = (item) => {
+        const username = (item.username || '').toString().replace(/^@/, '');
+        if (username) return `https://t.me/${encodeURIComponent(username)}`;
+        if (item.telegram_link) return item.telegram_link;
+        if (item.seller_id) return `${telegramBotUrl}?start=seller_${encodeURIComponent(item.seller_id)}`;
+        return telegramBotUrl;
+    };
+    const buttonHtml = (href, label, variant = 'secondary') => `<a class="btn btn-${variant}" href="${escapeHtml(href || telegramBotUrl)}" target="_blank" rel="noopener">${escapeHtml(label)}</a>`;
+    const requestButtonHtml = (label = 'Створити заявку') => `<button class="btn btn-secondary" type="button" data-ai-create-request>${escapeHtml(label)}</button>`;
+    const pillHtml = (text, extraClass = '') => text ? `<span class="buyer-pill ${extraClass}">${escapeHtml(text)}</span>` : '';
+
+    const carCardHtml = (item) => {
+        const title = firstValue(`${item.brand || ''} ${item.model || ''}`, item.title, item.description, 'Авто на розборці');
+        const description = firstValue(item.description);
+        const seller = firstValue(item.shop_name, item.name, item.username, 'Продавець CarPot');
+        const meta = compact(seller, item.city).map((text) => pillHtml(text)).join('');
+        return `<article class="buyer-ai-result-card">
+            <div class="buyer-ai-card-top">
+                <h5>${escapeHtml(title)}</h5>
+                ${item.is_verified ? pillHtml('✓ Перевірений', 'buyer-trust-pill') : ''}
+            </div>
+            ${description ? `<p class="buyer-ai-card-copy">${escapeHtml(description)}</p>` : ''}
+            <div class="buyer-ai-card-meta">${meta}${pillHtml('Потрібно уточнити наявність деталі')}</div>
+            <div class="buyer-card-actions">
+                ${buttonHtml(sellerHref(item), 'Запитати продавця', 'primary')}
+                ${requestButtonHtml('Створити заявку')}
+            </div>
+        </article>`;
+    };
+
+    const sellerCardHtml = (item) => {
+        const title = firstValue(item.shop_name, item.name, item.username, 'Продавець CarPot');
+        const counts = countLabel(item);
+        const meta = compact(item.city, counts).map((text) => pillHtml(text)).join('');
+        return `<article class="buyer-ai-result-card">
+            <div class="buyer-ai-card-top">
+                <h5>${escapeHtml(title)}</h5>
+                ${item.is_verified ? pillHtml('✓ Перевірений', 'buyer-trust-pill') : ''}
+            </div>
+            <div class="buyer-ai-card-meta">${meta || pillHtml('Продавець CarPot')}</div>
+            <div class="buyer-card-actions">
+                ${buttonHtml(sellerHref(item), 'Зв’язатися', 'primary')}
+                ${requestButtonHtml('Створити заявку')}
+            </div>
+        </article>`;
+    };
+
+    const serviceCardHtml = (item) => {
+        const title = firstValue(item.title, item.category, 'Автопослуга');
+        const seller = firstValue(item.shop_name, item.name, item.username);
+        const price = formatMoney(item.price, 'від ');
+        const meta = compact(item.category, item.city, price, seller).map((text) => pillHtml(text)).join('');
+        return `<article class="buyer-ai-result-card">
+            <div class="buyer-ai-card-top"><h5>${escapeHtml(title)}</h5>${item.is_verified ? pillHtml('✓ Перевірений', 'buyer-trust-pill') : ''}</div>
+            ${item.description ? `<p class="buyer-ai-card-copy">${escapeHtml(item.description)}</p>` : ''}
+            <div class="buyer-ai-card-meta">${meta || pillHtml('Автопослуга')}</div>
+            <div class="buyer-card-actions">${buttonHtml(sellerHref(item), 'Зв’язатися', 'primary')}</div>
+        </article>`;
+    };
+
+    const resultGroupHtml = (title, items, renderer) => {
+        if (!items.length) return '';
+        return `<section class="buyer-ai-group" aria-label="${escapeHtml(title)}">
+            <h4 class="buyer-ai-group-title"><span>${escapeHtml(title)}</span><span class="buyer-pill">${items.length}</span></h4>
+            <div class="buyer-ai-card-grid">${items.map(renderer).join('')}</div>
+        </section>`;
+    };
+
+    const requestGroupHtml = () => `<section class="buyer-ai-group" aria-label="Заявка продавцям">
+        <h4 class="buyer-ai-group-title"><span>Заявка продавцям</span></h4>
+        <div class="buyer-ai-empty">
+            <p>Не бачите точного варіанта? Створіть заявку — продавці отримають ваш запит і зможуть запропонувати рішення.</p>
+            ${requestButtonHtml('Створити заявку')}
+        </div>
+    </section>`;
+
     const renderAiMatches = (payload) => {
         const resultBox = document.querySelector('[data-ai-search-result]');
         if (!resultBox || !payload) return;
-        const interpretation = payload.interpretation || {};
         const results = payload.results || {};
         const cars = Array.isArray(results.cars) ? results.cars : [];
         const services = Array.isArray(results.services) ? results.services : [];
         const sellers = Array.isArray(results.sellers) ? results.sellers : [];
-        const decisions = Array.isArray(payload.decisions) ? payload.decisions : [];
-        const matches = [
-            ...cars.slice(0, 3).map((item) => ({ title: `${item.brand || ''} ${item.model || ''}`.trim() || item.description || 'Авто / запчастина', meta: item.match_label || item.city || item.shop_name || 'CarPot' })),
-            ...services.slice(0, 3).map((item) => ({ title: item.title || item.category || 'Послуга', meta: item.city || item.shop_name || 'CarPot' })),
-            ...sellers.slice(0, 2).map((item) => ({ title: item.shop_name || item.name || 'Продавець', meta: item.match_label || item.city || 'CarPot' })),
-        ].slice(0, 5);
-        const confidence = Math.round(Number(interpretation.confidence || 0) * 100);
-        const question = interpretation.clarification_question || (payload.should_create_request
-            ? 'Точних збігів мало. Можна створити заявку для продавців.'
-            : 'Знайшли релевантні smart matches.');
-        const listHtml = matches.length
-            ? `<ul class="buyer-ai-match-list">${matches.map((item) => `<li><span>${item.title}</span><small>${item.meta || ''}</small></li>`).join('')}</ul>`
-            : '';
-        const decisionHtml = decisions.length
-            ? `<div class="buyer-ai-decision-list">${decisions.map((item) => `<article class="buyer-ai-decision-card"><span class="buyer-pill">Step ${item.step} · ${item.result_type}</span><h4>${item.title}</h4><p>${item.explanation}</p><small>${item.trust_message || ''}</small></article>`).join('')}</div>`
-            : '';
-        resultBox.innerHTML = `
+        const exactCars = cars.filter((item) => item.result_type === aiResultTypes.exactPart);
+        const donorCars = cars.filter((item) => item.result_type !== aiResultTypes.exactPart);
+        const hasResults = Boolean(payload.result_count || cars.length || services.length || sellers.length);
+        const primaryLabel = aiResultLabels[payload.primary_result_type] || 'Пошук CarPot';
+        const groups = [
+            resultGroupHtml('Знайдені пропозиції', exactCars, carCardHtml),
+            resultGroupHtml('Схожі авто на розборці', donorCars, carCardHtml),
+            resultGroupHtml('Релевантні продавці', sellers, sellerCardHtml),
+            resultGroupHtml('Автопослуги', services, serviceCardHtml),
+        ].filter(Boolean).join('');
+        const requestGroup = payload.should_create_request ? requestGroupHtml() : '';
+        resultBox.innerHTML = hasResults ? `
             <div class="buyer-ai-result-head">
-                <span class="buyer-pill">${interpretation.category || 'unknown'} · ${confidence}%</span>
-                <strong>${payload.result_count || 0} збігів</strong>
+                <span class="buyer-pill">${escapeHtml(primaryLabel)}</span>
+                <strong>Знайдено релевантні варіанти</strong>
             </div>
-            <p>${question}</p>
-            ${decisionHtml}
-            ${listHtml}
+            <div class="buyer-ai-result-summary">
+                <p>Перегляньте добірку нижче або створіть заявку, якщо потрібно уточнити наявність чи деталі.</p>
+            </div>
+            <div class="buyer-ai-group-list">${groups}${requestGroup}</div>
+        ` : `
+            <div class="buyer-ai-empty">
+                <h4>Точного результату поки немає.</h4>
+                <p>Створіть заявку — продавці отримають ваш запит і зможуть запропонувати варіанти.</p>
+                ${requestButtonHtml('Створити заявку')}
+            </div>
         `;
         resultBox.classList.remove('buyer-hidden');
     };
@@ -1579,6 +1727,15 @@
         }
     }
 
+    const initialAiResponse = document.querySelector('[data-ai-initial-response]');
+    if (initialAiResponse) {
+        try {
+            renderAiMatches(JSON.parse(initialAiResponse.textContent || '{}'));
+        } catch (error) {
+            // Keep the static fallback content if the embedded payload cannot be parsed.
+        }
+    }
+
     document.querySelectorAll('[data-ai-search-form]').forEach((form) => {
         form.addEventListener('submit', async (event) => {
             event.preventDefault();
@@ -1597,7 +1754,7 @@
                 }
                 return;
             }
-            if (status) status.textContent = 'Інтерпретуємо запит і шукаємо в marketplace...';
+            if (status) status.textContent = 'Шукаємо релевантні варіанти...';
             if (submit) submit.disabled = true;
             try {
                 const response = await fetch(form.action, {
@@ -1606,23 +1763,23 @@
                     body: JSON.stringify({ query }),
                 });
                 const payload = await response.json().catch(() => ({}));
-                if (!response.ok || !payload.ok) throw new Error(payload.detail || 'AI search failed');
+                if (!response.ok || !payload.ok) throw new Error(payload.detail || 'Search failed');
                 window.__carpotAiSearchPrefill = payload.prefill || null;
                 renderAiMatches(payload);
                 if (createButton) {
                     createButton.classList.toggle('buyer-hidden', !payload.should_create_request);
-                    createButton.textContent = payload.should_create_request ? 'Створити заявку' : 'Створити заявку для продавців';
+                    createButton.textContent = 'Створити заявку';
                 }
                 if (openResults) {
                     openResults.href = payload.search_url || '/search';
                     openResults.classList.toggle('buyer-hidden', !payload.result_count);
                 }
                 if (status) status.textContent = payload.should_create_request
-                    ? 'Якщо результатів мало, створіть заявку — продавці отримають структурований запит.'
-                    : 'Є релевантні smart matches. Перегляньте результати або уточніть запит.';
+                    ? 'Створіть заявку — продавці отримають ваш запит і зможуть запропонувати варіанти.'
+                    : 'Знайдено релевантні варіанти. Перегляньте добірку або уточніть запит.';
             } catch (error) {
                 if (status) {
-                    status.textContent = 'AI-пошук тимчасово недоступний. Можете скористатися звичайним пошуком або створити заявку.';
+                    status.textContent = 'Пошук тимчасово недоступний. Можете скористатися звичайним пошуком або створити заявку.';
                     status.classList.add('is-error');
                 }
                 window.__carpotAiSearchPrefill = { query };
