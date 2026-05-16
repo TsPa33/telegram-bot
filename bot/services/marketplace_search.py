@@ -72,10 +72,39 @@ class MarketplacePrioritySearchResult:
     confidence: float = 0.0
     should_create_request: bool = True
 
+    @staticmethod
+    def _record_to_dict(row: Any) -> dict[str, Any]:
+        """Convert asyncpg.Record or dict-like row into a JSON-safe plain dict."""
+        if isinstance(row, dict):
+            return row
+        return dict(row)
+
     def to_dict(self) -> dict[str, Any]:
-        data = asdict(self)
-        data["decisions"] = [decision.to_dict() for decision in self.decisions]
-        return data
+        """Return JSON-safe data without dataclasses.asdict deep-copying asyncpg.Record.
+
+        asyncpg.Record cannot be deep-copied/pickled. dataclasses.asdict() performs
+        deepcopy internally, so marketplace rows must be converted manually at this
+        service/API boundary.
+        """
+        return {
+            "cars": [self._record_to_dict(row) for row in self.cars],
+            "services": [self._record_to_dict(row) for row in self.services],
+            "sellers": [self._record_to_dict(row) for row in self.sellers],
+            "fallback": self.fallback,
+            "decisions": [decision.to_dict() for decision in self.decisions],
+            "query": self.query,
+            "city": self.city,
+            "type": self.type,
+            "category": self.category,
+            "service_type": self.service_type,
+            "brand": self.brand,
+            "condition": self.condition,
+            "verified": self.verified,
+            "sort": self.sort,
+            "primary_result_type": self.primary_result_type,
+            "confidence": self.confidence,
+            "should_create_request": self.should_create_request,
+        }
 
 
 def _clean(value: Any) -> str:
