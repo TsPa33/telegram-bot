@@ -1,33 +1,57 @@
-<div class="buyer-ai-search buyer-panel" data-ai-search-shell>
-    <div class="buyer-ai-search-copy">
-        <span class="eyebrow">Пошук CarPot</span>
-        <h3>Розумний пошук автозапчастин і послуг</h3>
-        <p>Опишіть, що потрібно знайти: запчастину, авто на розборці або автопослугу. CarPot підбере релевантні варіанти або допоможе створити заявку для продавців.</p>
-    </div>
+<div class="buyer-ai-search" data-ai-search-shell>
     <form class="buyer-ai-search-form" action="/buyer/ai-search" method="post" data-ai-search-form>
         <label class="buyer-field buyer-ai-query-field">
-            <span class="dash-label">Ваш запит</span>
-            <textarea class="buyer-control" name="query" rows="2" maxlength="700" placeholder="потрібна акпп BMW F10 дизель Київ" data-ai-search-input required>{{ ai_search_response.interpretation.normalized_query if ai_search_response else '' }}</textarea>
+            <span class="sr-only">Що шукаєте?</span>
+            <textarea
+                class="buyer-control"
+                name="query"
+                rows="2"
+                maxlength="700"
+                placeholder="Наприклад: фара Audi A6 C7, АКПП BMW F10, автоелектрик Львів"
+                data-ai-search-input
+                required
+            >{{ ai_search_response.interpretation.normalized_query if ai_search_response else '' }}</textarea>
         </label>
+
         <div class="buyer-ai-examples" aria-label="Приклади запитів">
-            <button type="button" data-ai-example="потрібна акпп BMW F10 дизель Київ">потрібна акпп BMW F10 дизель Київ</button>
-            <button type="button" data-ai-example="шукаю автоелектрика у Львові">шукаю автоелектрика у Львові</button>
-            <button type="button" data-ai-example="фара Audi A6 C7 рестайлінг ліва">фара Audi A6 C7 рестайлінг ліва</button>
+            <button type="button" data-ai-example="фара Audi A6 C7">фара Audi A6 C7</button>
+            <button type="button" data-ai-example="АКПП BMW F10">АКПП BMW F10</button>
+            <button type="button" data-ai-example="автоелектрик Львів">автоелектрик Львів</button>
+            <button type="button" data-ai-example="двигун 1.6 TDI">двигун 1.6 TDI</button>
         </div>
+
         <div class="buyer-ai-actions">
-            <button class="btn btn-primary" type="submit" data-ai-search-submit>Знайти</button>
-            <button class="btn btn-secondary {% if not ai_search_response or not ai_search_response.should_create_request %}buyer-hidden{% endif %}" type="button" data-ai-create-request>Створити заявку</button>
-            <a class="btn btn-secondary {% if not ai_search_response or not ai_search_response.result_count %}buyer-hidden{% endif %}" href="{{ ai_search_response.search_url if ai_search_response else '/search' }}" data-ai-open-results>Відкрити результати</a>
+            <button class="btn btn-primary" type="submit" data-ai-search-submit>
+                Знайти
+            </button>
+
+            <button class="btn btn-secondary" type="button" data-ai-create-request>
+                Створити заявку
+            </button>
         </div>
+
         <div class="buyer-ai-status" data-ai-search-status role="status" aria-live="polite"></div>
     </form>
+
     <div class="buyer-ai-result {% if not ai_search_response %}buyer-hidden{% endif %}" data-ai-search-result>
         {% if ai_search_response %}
-        <div class="buyer-ai-result-head">
-            <span class="buyer-pill">Пошук CarPot</span>
-            <strong>{% if ai_search_response.result_count %}Знайдено релевантні варіанти{% else %}Точного результату поки немає{% endif %}</strong>
-        </div>
-        <p>{% if ai_search_response.result_count %}Перегляньте добірку нижче або відкрийте повний список результатів.{% else %}Створіть заявку — продавці отримають ваш запит і зможуть запропонувати варіанти.{% endif %}</p>
+            <div class="buyer-ai-result-head">
+                <strong>
+                    {% if ai_search_response.result_count %}
+                        Знайдені варіанти
+                    {% else %}
+                        Не знайшли точний варіант?
+                    {% endif %}
+                </strong>
+            </div>
+
+            <p>
+                {% if ai_search_response.result_count %}
+                    Оберіть пропозицію або створіть заявку для продавців.
+                {% else %}
+                    Створіть заявку — продавці зможуть запропонувати деталь, авто або послугу.
+                {% endif %}
+            </p>
         {% endif %}
     </div>
 </div>
