@@ -131,8 +131,13 @@ CITY_ALIASES = {
 PART_KEYWORDS = {
     "акпп": "АКПП",
     "кпп": "КПП",
+    "мкпп": "МКПП",
     "коробка": "коробка передач",
     "автомат": "АКПП",
+    "автоматична": "АКПП",
+    "автоматическая": "АКПП",
+    "dsg": "DSG",
+    "8hp": "ZF 8HP",
     "двигун": "двигун",
     "двигатель": "двигун",
     "мотор": "двигун",
@@ -142,6 +147,9 @@ PART_KEYWORDS = {
     "дверь": "двері",
     "крило": "крило",
     "капот": "капот",
+    "морда": "передня частина",
+    "телевізор": "передня панель",
+    "телевизор": "передня панель",
     "стартер": "стартер",
     "генератор": "генератор",
     "турбіна": "турбіна",
@@ -186,6 +194,10 @@ FUEL_KEYWORDS = {
 TRANSMISSION_KEYWORDS = {
     "акпп": "automatic",
     "автомат": "automatic",
+    "автоматична": "automatic",
+    "автоматическая": "automatic",
+    "dsg": "DSG",
+    "8hp": "ZF 8HP",
     "at": "automatic",
     "кпп": "manual",
     "мкпп": "manual",
@@ -211,10 +223,12 @@ SIDE_KEYWORDS = {
 URGENT_WORDS = {"терміново", "срочно", "urgent", "сьогодні", "сегодня", "зараз", "asap"}
 LOW_URGENCY_WORDS = {"не терміново", "несрочно", "не срочно", "коли буде", "можна пізніше"}
 CAR_WORDS = {"авто", "машина", "автомобіль", "купити авто", "куплю авто"}
-SELLER_WORDS = {"продавець", "магазин", "розборка", "авторозборка", "постачальник"}
+SELLER_WORDS = {"продавець", "магазин", "розборка", "авторозборка", "шрот", "разборка", "автошрот", "постачальник"}
 VIN_RE = re.compile(r"\b[A-HJ-NPR-Z0-9]{17}\b", re.IGNORECASE)
 MODEL_RE = re.compile(r"\b([a-zа-яіїєґ]{1,4}\d{1,3}|[a-zа-яіїєґ]?\d{1,3}[a-zа-яіїєґ]?)\b", re.IGNORECASE)
 ENGINE_RE = re.compile(r"\b\d[.,]\d\s?(?:tdi|tsi|cdi|hdi|dci|jtd|mpi|turbo)?\b", re.IGNORECASE)
+ENGINE_CODE_RE = re.compile(r"\b(?:[a-z]{2,4}\d{1,2}|\d{1,2}hp|dsg|n\d{2}|b\d{2}|m\d{2}|cayc|cbbb|cfhc)\b", re.IGNORECASE)
+RESTYLE_WORDS = {"рест", "рестайл", "рестайлінг", "рестайлинг", "facelift"}
 
 
 @dataclass(slots=True)
@@ -425,7 +439,16 @@ def fallback_parse_request(raw_text: str | None) -> InterpretedRequest:
 
     engine_match = ENGINE_RE.search(lowered)
     if engine_match:
-        result.engine = engine_match.group(0).replace(",", ".")
+        result.engine = engine_match.group(0).replace(",", ".").strip()
+    else:
+        for engine_code_match in ENGINE_CODE_RE.finditer(lowered):
+            code = engine_code_match.group(0).lower()
+            if code not in BRAND_ALIASES and code not in {"dsg", "8hp"}:
+                result.engine = engine_code_match.group(0).upper()
+                break
+
+    if any(word in lowered for word in RESTYLE_WORDS):
+        result.generation = result.generation or "рестайлінг"
 
     if any(phrase in lowered for phrase in LOW_URGENCY_WORDS):
         result.urgency = "low"
@@ -454,9 +477,9 @@ def fallback_parse_request(raw_text: str | None) -> InterpretedRequest:
             result.model = candidate.upper() if any(char.isdigit() for char in candidate) else candidate.title()
             break
 
-    generation_match = re.search(r"\b([cfegw]\d{1,2}|b\d|c\d|a\d|e\d{2}|w\d{3})\b", lowered, re.IGNORECASE)
-    if generation_match:
-        result.generation = generation_match.group(1).upper()
+    generation_candidates = [match.group(1).upper() for match in re.finditer(r"\b([cfegw]\d{1,2}|b\d|c\d|a\d|e\d{2}|w\d{3})\b", lowered, re.IGNORECASE)]
+    if generation_candidates:
+        result.generation = next((candidate for candidate in generation_candidates if candidate != result.model), generation_candidates[-1])
         if not result.model:
             result.model = result.generation
 
@@ -494,7 +517,7 @@ def _system_prompt() -> str:
         "Allowed urgency: low, normal, urgent. "
         "Use null for unknown scalar values. search_terms must be an array of concise terms. "
         "Normalize common car brands to Latin canonical names where obvious, cities to Ukrainian names, "
-        "and side to left/right/front/rear. Confidence is 0..1."
+        "and side to left/right/front/rear. Understand Ukrainian/Russian dismantler slang: АКПП, КПП, автомат, коробка, морда, рест/рестайл, шрот, розборка, мотор/двигун, DSG, 8HP, N47, CAYC. Confidence is 0..1."
     )
 
 

@@ -2,7 +2,7 @@
     <div class="buyer-ai-search-copy">
         <span class="eyebrow">AI request interpreter</span>
         <h3>Опишіть, що потрібно знайти</h3>
-        <p>CarPot перетворить вільний текст на структурований пошук. AI лише інтерпретує запит — пошук, заявки й маршрутизація залишаються логікою marketplace.</p>
+        <p>CarPot перетворить вільний текст на структурований пошук. AI лише інтерпретує запит — exact part, donor vehicle, seller specialization і заявки контролює marketplace engine.</p>
     </div>
     <form class="buyer-ai-search-form" action="/buyer/ai-search" method="post" data-ai-search-form>
         <label class="buyer-field buyer-ai-query-field">
@@ -27,7 +27,7 @@
             <span class="buyer-pill">{{ ai_search_response.interpretation.category }}</span>
             <strong>{{ ai_search_response.result_count }} збігів</strong>
         </div>
-        <p>{{ ai_search_response.interpretation.clarification_question or 'Запит інтерпретовано. Перегляньте релевантні результати нижче або створіть заявку для продавців.' }}</p>
+        <p>{{ ai_search_response.interpretation.clarification_question or 'Запит інтерпретовано. Якщо exact part слабкий, CarPot показує donor vehicles або продавців за спеціалізацією без обіцянки точного інвентарю.' }}</p>
         {% endif %}
     </div>
 </div>

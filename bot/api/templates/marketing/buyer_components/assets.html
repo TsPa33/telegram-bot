@@ -672,6 +672,35 @@
     }
 
 
+
+    .marketplace-explanation-panel {
+        margin: 24px 0;
+    }
+
+    .buyer-ai-decision-list {
+        display: grid;
+        gap: 14px;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+
+    .buyer-ai-decision-card {
+        border: 1px solid rgba(148, 163, 184, 0.24);
+        border-radius: 18px;
+        padding: 16px;
+        background: rgba(15, 23, 42, 0.52);
+    }
+
+    .buyer-ai-decision-card h4,
+    .buyer-ai-decision-card p {
+        margin: 8px 0;
+    }
+
+    .buyer-ai-decision-card small {
+        display: block;
+        color: var(--muted);
+        margin-bottom: 8px;
+    }
+
     .buyer-ai-search {
         display: grid;
         grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
@@ -788,7 +817,36 @@
         .buyer-modal-grid,
         .buyer-request-modal-grid,
         .buyer-request-cta,
-        .buyer-ai-search {
+
+    .marketplace-explanation-panel {
+        margin: 24px 0;
+    }
+
+    .buyer-ai-decision-list {
+        display: grid;
+        gap: 14px;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+
+    .buyer-ai-decision-card {
+        border: 1px solid rgba(148, 163, 184, 0.24);
+        border-radius: 18px;
+        padding: 16px;
+        background: rgba(15, 23, 42, 0.52);
+    }
+
+    .buyer-ai-decision-card h4,
+    .buyer-ai-decision-card p {
+        margin: 8px 0;
+    }
+
+    .buyer-ai-decision-card small {
+        display: block;
+        color: var(--muted);
+        margin-bottom: 8px;
+    }
+
+    .buyer-ai-search {
             grid-template-columns: 1fr;
         }
 
@@ -1220,10 +1278,11 @@
         const cars = Array.isArray(results.cars) ? results.cars : [];
         const services = Array.isArray(results.services) ? results.services : [];
         const sellers = Array.isArray(results.sellers) ? results.sellers : [];
+        const decisions = Array.isArray(payload.decisions) ? payload.decisions : [];
         const matches = [
-            ...cars.slice(0, 3).map((item) => ({ title: `${item.brand || ''} ${item.model || ''}`.trim() || item.description || 'Авто / запчастина', meta: item.city || item.shop_name || 'CarPot' })),
+            ...cars.slice(0, 3).map((item) => ({ title: `${item.brand || ''} ${item.model || ''}`.trim() || item.description || 'Авто / запчастина', meta: item.match_label || item.city || item.shop_name || 'CarPot' })),
             ...services.slice(0, 3).map((item) => ({ title: item.title || item.category || 'Послуга', meta: item.city || item.shop_name || 'CarPot' })),
-            ...sellers.slice(0, 2).map((item) => ({ title: item.shop_name || item.name || 'Продавець', meta: item.city || 'CarPot' })),
+            ...sellers.slice(0, 2).map((item) => ({ title: item.shop_name || item.name || 'Продавець', meta: item.match_label || item.city || 'CarPot' })),
         ].slice(0, 5);
         const confidence = Math.round(Number(interpretation.confidence || 0) * 100);
         const question = interpretation.clarification_question || (payload.should_create_request
@@ -1232,12 +1291,16 @@
         const listHtml = matches.length
             ? `<ul class="buyer-ai-match-list">${matches.map((item) => `<li><span>${item.title}</span><small>${item.meta || ''}</small></li>`).join('')}</ul>`
             : '';
+        const decisionHtml = decisions.length
+            ? `<div class="buyer-ai-decision-list">${decisions.map((item) => `<article class="buyer-ai-decision-card"><span class="buyer-pill">Step ${item.step} · ${item.result_type}</span><h4>${item.title}</h4><p>${item.explanation}</p><small>${item.trust_message || ''}</small></article>`).join('')}</div>`
+            : '';
         resultBox.innerHTML = `
             <div class="buyer-ai-result-head">
                 <span class="buyer-pill">${interpretation.category || 'unknown'} · ${confidence}%</span>
                 <strong>${payload.result_count || 0} збігів</strong>
             </div>
             <p>${question}</p>
+            ${decisionHtml}
             ${listHtml}
         `;
         resultBox.classList.remove('buyer-hidden');

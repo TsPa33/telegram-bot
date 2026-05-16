@@ -632,6 +632,21 @@ async def create_tables():
 
     await execute("CREATE INDEX IF NOT EXISTS idx_model_id ON seller_cars(model_id);")
     await execute("CREATE INDEX IF NOT EXISTS idx_status ON seller_cars(status);")
+    await execute("ALTER TABLE seller_cars ADD COLUMN IF NOT EXISTS inventory_kind TEXT NOT NULL DEFAULT 'donor_vehicle';")
+    await execute("ALTER TABLE seller_cars ADD COLUMN IF NOT EXISTS donor_generation TEXT;")
+    await execute("ALTER TABLE seller_cars ADD COLUMN IF NOT EXISTS engine_code TEXT;")
+    await execute("ALTER TABLE seller_cars ADD COLUMN IF NOT EXISTS engine_family TEXT;")
+    await execute("ALTER TABLE seller_cars ADD COLUMN IF NOT EXISTS fuel_type TEXT;")
+    await execute("ALTER TABLE seller_cars ADD COLUMN IF NOT EXISTS transmission_type TEXT;")
+    await execute("ALTER TABLE seller_cars ADD COLUMN IF NOT EXISTS compatibility_notes TEXT;")
+    await execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS specialization_tags TEXT[] NOT NULL DEFAULT '{}';")
+    await execute("CREATE INDEX IF NOT EXISTS idx_seller_cars_inventory_kind ON seller_cars(inventory_kind);")
+    await execute("CREATE INDEX IF NOT EXISTS idx_seller_cars_donor_generation ON seller_cars(donor_generation);")
+    await execute("CREATE INDEX IF NOT EXISTS idx_seller_cars_engine_code ON seller_cars(engine_code);")
+    await execute("CREATE INDEX IF NOT EXISTS idx_seller_cars_fuel_type ON seller_cars(fuel_type);")
+    await execute("CREATE INDEX IF NOT EXISTS idx_seller_cars_transmission_type ON seller_cars(transmission_type);")
+    await execute("CREATE INDEX IF NOT EXISTS idx_sellers_specialization_tags ON sellers USING GIN (specialization_tags);")
+
     await execute("CREATE INDEX IF NOT EXISTS idx_seller_id ON seller_cars(seller_id);")
     await execute("CREATE INDEX IF NOT EXISTS idx_brand_id ON models(brand_id);")
 

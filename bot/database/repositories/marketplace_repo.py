@@ -329,3 +329,300 @@ async def search_marketplace(
         "verified": normalized_verified,
         "sort": normalized_sort,
     }
+
+def _text_or_none(value: str | None) -> str | None:
+    value = (value or "").strip()
+    return value or None
+
+
+def _pattern(value: str | None) -> str | None:
+    value = _text_or_none(value)
+    return f"%{value}%" if value else None
+
+
+def _vehicle_search_values(interpretation: dict) -> tuple[str | None, str | None, str | None, str | None, str | None, str | None, str | None]:
+    brand = _text_or_none(interpretation.get("brand"))
+    model = _text_or_none(interpretation.get("model") or interpretation.get("generation"))
+    generation = _text_or_none(interpretation.get("generation"))
+    engine = _text_or_none(interpretation.get("engine"))
+    fuel = _text_or_none(interpretation.get("fuel"))
+    transmission = _text_or_none(interpretation.get("transmission"))
+    city = _text_or_none(interpretation.get("city"))
+    return brand, model, generation, engine, fuel, transmission, city
+
+
+async def search_exact_part_matches(*, interpretation: dict, query: str | None, limit: int = DEFAULT_LIMIT):
+    """Search explicit inventory/description matches for the requested part.
+
+    This is the highest-priority marketplace layer and represents potential exact
+    part inventory. It is intentionally separate from donor vehicles so the UI can
+    avoid misleading buyers.
+    """
+    brand, model, generation, engine, fuel, transmission, city = _vehicle_search_values(interpretation)
+    part_name = _text_or_none(interpretation.get("part_name"))
+    normalized_query = _text_or_none(query)
+    part_pattern = _pattern(part_name or normalized_query)
+    query_pattern = _pattern(normalized_query)
+    brand_pattern = _pattern(brand)
+    model_pattern = _pattern(model)
+    generation_pattern = _pattern(generation)
+    engine_pattern = _pattern(engine)
+    fuel_pattern = _pattern(fuel)
+    transmission_pattern = _pattern(transmission)
+    city_pattern = _pattern(city)
+
+    return await fetch(
+        """
+        SELECT
+            sc.id,
+            sc.seller_id,
+            sc.photo_id,
+            sc.description,
+            sc.views,
+            sc.phone_clicks,
+            sc.site_clicks,
+            sc.created_at,
+            sc.inventory_kind,
+            sc.donor_generation,
+            sc.engine_code,
+            sc.engine_family,
+            sc.fuel_type,
+            sc.transmission_type,
+            sc.compatibility_notes,
+            m.name AS model,
+            b.name AS brand,
+            sel.username,
+            sel.telegram_id,
+            sel.phone,
+            sel.name,
+            sel.city,
+            sel.shop_name,
+            sel.website,
+            sel.is_verified,
+            'exact_part_match' AS result_type,
+            'Точний збіг по опису запчастини' AS match_label,
+            'Знайдено явну згадку запчастини у пропозиції продавця. Наявність і стан підтвердіть напряму.' AS match_explanation,
+            'Це не donor vehicle — це потенційний точний інвентар.' AS trust_message,
+            'Відкрити пропозицію' AS primary_cta,
+            'Створити заявку' AS secondary_cta,
+            (
+                CASE WHEN $3::text IS NOT NULL AND b.name ILIKE $3 THEN 30 ELSE 0 END +
+                CASE WHEN $4::text IS NOT NULL AND m.name ILIKE $4 THEN 25 ELSE 0 END +
+                CASE WHEN $1::text IS NOT NULL AND sc.description ILIKE $1 THEN 35 ELSE 0 END +
+                CASE WHEN $5::text IS NOT NULL AND (sc.description ILIKE $5 OR sc.donor_generation ILIKE $5) THEN 10 ELSE 0 END +
+                CASE WHEN $6::text IS NOT NULL AND (sc.description ILIKE $6 OR sc.engine_code ILIKE $6 OR sc.engine_family ILIKE $6) THEN 10 ELSE 0 END +
+                CASE WHEN sel.is_verified THEN 5 ELSE 0 END
+            )::int AS match_score
+        FROM seller_cars sc
+        JOIN sellers sel ON sel.id = sc.seller_id
+        JOIN models m ON m.id = sc.model_id
+        JOIN brands b ON b.id = m.brand_id
+        WHERE sc.status::text IN ('active', '1')
+          AND ($9::text IS NULL OR sel.city ILIKE $9)
+          AND ($3::text IS NULL OR b.name ILIKE $3)
+          AND ($4::text IS NULL OR m.name ILIKE $4 OR sc.description ILIKE $4)
+          AND ($1::text IS NULL OR sc.description ILIKE $1 OR $2::text IS NOT NULL AND sc.description ILIKE $2)
+          AND ($5::text IS NULL OR sc.description ILIKE $5 OR sc.donor_generation ILIKE $5)
+          AND ($6::text IS NULL OR sc.description ILIKE $6 OR sc.engine_code ILIKE $6 OR sc.engine_family ILIKE $6)
+          AND ($7::text IS NULL OR sc.description ILIKE $7 OR sc.fuel_type ILIKE $7)
+          AND ($8::text IS NULL OR sc.description ILIKE $8 OR sc.transmission_type ILIKE $8)
+        ORDER BY match_score DESC, sel.is_verified DESC, sc.id DESC
+        LIMIT $10
+        """,
+        part_pattern,
+        query_pattern,
+        brand_pattern,
+        model_pattern,
+        generation_pattern,
+        engine_pattern,
+        fuel_pattern,
+        transmission_pattern,
+        city_pattern,
+        _safe_limit(limit),
+    )
+
+
+async def search_donor_vehicle_matches(*, interpretation: dict, query: str | None, limit: int = DEFAULT_LIMIT):
+    """Search donor vehicles compatible with interpreted vehicle signals."""
+    brand, model, generation, engine, fuel, transmission, city = _vehicle_search_values(interpretation)
+    part_name = _text_or_none(interpretation.get("part_name"))
+    normalized_query = _text_or_none(query)
+    part_pattern = _pattern(part_name)
+    query_pattern = _pattern(normalized_query)
+    brand_pattern = _pattern(brand)
+    model_pattern = _pattern(model)
+    generation_pattern = _pattern(generation)
+    engine_pattern = _pattern(engine)
+    fuel_pattern = _pattern(fuel)
+    transmission_pattern = _pattern(transmission)
+    city_pattern = _pattern(city)
+
+    return await fetch(
+        """
+        SELECT
+            sc.id,
+            sc.seller_id,
+            sc.photo_id,
+            sc.description,
+            sc.views,
+            sc.phone_clicks,
+            sc.site_clicks,
+            sc.created_at,
+            sc.inventory_kind,
+            sc.donor_generation,
+            sc.engine_code,
+            sc.engine_family,
+            sc.fuel_type,
+            sc.transmission_type,
+            sc.compatibility_notes,
+            m.name AS model,
+            b.name AS brand,
+            sel.username,
+            sel.telegram_id,
+            sel.phone,
+            sel.name,
+            sel.city,
+            sel.shop_name,
+            sel.website,
+            sel.is_verified,
+            'donor_vehicle_match' AS result_type,
+            'Potential donor vehicle' AS match_label,
+            'Точної запчастини не підтверджено, але авто-донор відповідає бренду/моделі/двигуну або трансмісії.' AS match_explanation,
+            'Donor vehicle не гарантує наявність конкретної деталі — запитайте продавця про демонтаж, стан і сумісність.' AS trust_message,
+            'Запитати про деталь' AS primary_cta,
+            'Створити заявку' AS secondary_cta,
+            (
+                CASE WHEN $3::text IS NOT NULL AND b.name ILIKE $3 THEN 35 ELSE 0 END +
+                CASE WHEN $4::text IS NOT NULL AND (m.name ILIKE $4 OR sc.description ILIKE $4) THEN 25 ELSE 0 END +
+                CASE WHEN $5::text IS NOT NULL AND (sc.description ILIKE $5 OR sc.donor_generation ILIKE $5) THEN 15 ELSE 0 END +
+                CASE WHEN $6::text IS NOT NULL AND (sc.description ILIKE $6 OR sc.engine_code ILIKE $6 OR sc.engine_family ILIKE $6) THEN 15 ELSE 0 END +
+                CASE WHEN $7::text IS NOT NULL AND (sc.description ILIKE $7 OR sc.fuel_type ILIKE $7) THEN 10 ELSE 0 END +
+                CASE WHEN $8::text IS NOT NULL AND (sc.description ILIKE $8 OR sc.transmission_type ILIKE $8 OR sc.compatibility_notes ILIKE $8) THEN 10 ELSE 0 END +
+                CASE WHEN sel.is_verified THEN 5 ELSE 0 END
+            )::int AS match_score
+        FROM seller_cars sc
+        JOIN sellers sel ON sel.id = sc.seller_id
+        JOIN models m ON m.id = sc.model_id
+        JOIN brands b ON b.id = m.brand_id
+        WHERE sc.status::text IN ('active', '1')
+          AND ($9::text IS NULL OR sel.city ILIKE $9)
+          AND ($3::text IS NULL OR b.name ILIKE $3)
+          AND ($4::text IS NULL OR m.name ILIKE $4 OR sc.description ILIKE $4)
+          AND ($5::text IS NULL OR sc.description ILIKE $5 OR sc.donor_generation ILIKE $5)
+          AND ($6::text IS NULL OR sc.description ILIKE $6 OR sc.engine_code ILIKE $6 OR sc.engine_family ILIKE $6)
+          AND ($7::text IS NULL OR sc.description ILIKE $7 OR sc.fuel_type ILIKE $7)
+          AND ($8::text IS NULL OR sc.description ILIKE $8 OR sc.transmission_type ILIKE $8 OR sc.compatibility_notes ILIKE $8)
+          AND ($1::text IS NULL OR sc.description NOT ILIKE $1)
+        ORDER BY match_score DESC, sel.is_verified DESC, sc.id DESC
+        LIMIT $10
+        """,
+        part_pattern,
+        query_pattern,
+        brand_pattern,
+        model_pattern,
+        generation_pattern,
+        engine_pattern,
+        fuel_pattern,
+        transmission_pattern,
+        city_pattern,
+        _safe_limit(limit),
+    )
+
+
+async def search_seller_specialization_matches(*, interpretation: dict, query: str | None, limit: int = 8):
+    """Find sellers whose profile, donor vehicles or services match the buyer need."""
+    brand, model, generation, engine, fuel, transmission, city = _vehicle_search_values(interpretation)
+    part_name = _text_or_none(interpretation.get("part_name"))
+    category = _text_or_none(interpretation.get("category"))
+    service_type = _text_or_none(interpretation.get("service_type"))
+    normalized_query = _text_or_none(query)
+    query_pattern = _pattern(normalized_query)
+    brand_pattern = _pattern(brand)
+    model_pattern = _pattern(model)
+    generation_pattern = _pattern(generation)
+    engine_pattern = _pattern(engine)
+    fuel_pattern = _pattern(fuel)
+    transmission_pattern = _pattern(transmission)
+    part_pattern = _pattern(part_name)
+    category_pattern = _pattern(category)
+    service_type_pattern = _pattern(service_type)
+    city_pattern = _pattern(city)
+
+    return await fetch(
+        """
+        SELECT
+            sel.id,
+            sel.telegram_id,
+            sel.username,
+            sel.phone,
+            sel.name,
+            sel.city,
+            sel.shop_name,
+            sel.website,
+            sel.is_verified,
+            sel.description,
+            sel.photo_id,
+            COUNT(DISTINCT sc.id)::int AS cars_count,
+            COUNT(DISTINCT srv.id)::int AS services_count,
+            'seller_specialization_match' AS result_type,
+            'Спеціалізований продавець' AS match_label,
+            'Профіль продавця, donor vehicles або послуги збігаються з брендом/моделлю/категорією запиту.' AS match_explanation,
+            'Це спеціалізація продавця, а не підтверджений точний складський залишок.' AS trust_message,
+            'Зв’язатися з продавцем' AS primary_cta,
+            'Створити заявку' AS secondary_cta,
+            MAX(
+                CASE WHEN $3::text IS NOT NULL AND b.name ILIKE $3 THEN 35 ELSE 0 END +
+                CASE WHEN $4::text IS NOT NULL AND m.name ILIKE $4 THEN 20 ELSE 0 END +
+                CASE WHEN $8::text IS NOT NULL AND (srv.category ILIKE $8 OR srv.title ILIKE $8 OR srv.description ILIKE $8 OR sel.description ILIKE $8 OR sc.description ILIKE $8) THEN 25 ELSE 0 END +
+                CASE WHEN $9::text IS NOT NULL AND (srv.category ILIKE $9 OR srv.title ILIKE $9 OR srv.description ILIKE $9) THEN 20 ELSE 0 END +
+                CASE WHEN $10::text IS NOT NULL AND (srv.category ILIKE $10 OR srv.title ILIKE $10 OR srv.description ILIKE $10) THEN 15 ELSE 0 END +
+                CASE WHEN $5::text IS NOT NULL AND (sc.description ILIKE $5 OR sc.donor_generation ILIKE $5) THEN 10 ELSE 0 END +
+                CASE WHEN $6::text IS NOT NULL AND (sc.description ILIKE $6 OR sc.engine_code ILIKE $6 OR sc.engine_family ILIKE $6) THEN 10 ELSE 0 END +
+                CASE WHEN $7::text IS NOT NULL AND (sc.description ILIKE $7 OR sc.fuel_type ILIKE $7 OR sc.transmission_type ILIKE $7) THEN 10 ELSE 0 END +
+                CASE WHEN sel.is_verified THEN 5 ELSE 0 END
+            )::int AS match_score
+        FROM sellers sel
+        LEFT JOIN seller_cars sc
+            ON sc.seller_id = sel.id
+           AND sc.status::text IN ('active', '1')
+        LEFT JOIN models m ON m.id = sc.model_id
+        LEFT JOIN brands b ON b.id = m.brand_id
+        LEFT JOIN services srv ON srv.seller_id = sel.id
+        WHERE ($11::text IS NULL OR sel.city ILIKE $11 OR srv.city ILIKE $11)
+          AND (
+            $1::text IS NULL
+            OR sel.shop_name ILIKE $1
+            OR sel.name ILIKE $1
+            OR sel.description ILIKE $1
+            OR srv.category ILIKE $1
+            OR srv.title ILIKE $1
+            OR srv.description ILIKE $1
+            OR b.name ILIKE $1
+            OR m.name ILIKE $1
+            OR sc.description ILIKE $1
+          )
+          AND (
+            $3::text IS NULL
+            OR b.name ILIKE $3
+            OR sel.description ILIKE $3
+            OR srv.description ILIKE $3
+            OR sc.description ILIKE $3
+          )
+        GROUP BY sel.id
+        HAVING COUNT(DISTINCT sc.id) > 0 OR COUNT(DISTINCT srv.id) > 0 OR sel.is_verified = TRUE
+        ORDER BY match_score DESC, sel.is_verified DESC, (COUNT(DISTINCT sc.id) + COUNT(DISTINCT srv.id)) DESC, sel.id DESC
+        LIMIT $12
+        """,
+        query_pattern,
+        normalized_query,
+        brand_pattern,
+        model_pattern,
+        generation_pattern,
+        engine_pattern,
+        fuel_pattern or transmission_pattern,
+        part_pattern,
+        category_pattern,
+        service_type_pattern,
+        city_pattern,
+        _safe_limit(limit),
+    )
