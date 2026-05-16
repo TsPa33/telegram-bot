@@ -10,10 +10,13 @@ from aiogram.types import Message
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 
+from bot.database.base import execute, fetch, fetchrow
+from bot.database.repositories.buyer_offer_repo import accept_buyer_offer, list_buyer_offer_cards
 from bot.database.repositories.model_repo import get_brands_with_ids
 from bot.keyboards.brands import brand_kb
 from bot.keyboards.buyer_home import buyer_home_kb
 from bot.keyboards.buyer_reply import buyer_reply_kb
+from bot.keyboards.buyer_requests_inline import request_details_kb, request_list_kb
 from bot.keyboards.buyer_search_inline import (
     format_search_card,
     no_results_kb,
@@ -488,7 +491,18 @@ async def buyer_request_confirm(callback: types.CallbackQuery, state: FSMContext
     await callback.answer()
 
     try:
-        await submit_marketplace_buyer_request(payload)
+        result = await submit_marketplace_buyer_request(payload)
+        request_row = (result or {}).get("request") or {}
+        if request_row.get("id"):
+            await execute(
+                """
+                UPDATE buyer_requests
+                SET telegram_id = $1, updated_at = NOW()
+                WHERE id = $2 AND entity_type = 'marketplace_request'
+                """,
+                callback.from_user.id,
+                request_row["id"],
+            )
     except BuyerRequestValidationError as exc:
         await callback.message.answer(str(exc))
         if "місто" in str(exc).lower():
@@ -575,6 +589,302 @@ async def handle_buyer_ai_search_query(message: Message, state: FSMContext):
             total=len(items),
         ),
     )
+
+
+
+
+# ================= BUYER REQUEST CABINET =================
+
+BUYER_REQUESTS_PAGE_SIZE = 5
+
+STATUS_UX_LABELS = {
+    "pending": "Очікує відповіді",
+    "new": "Очікує відповіді",
+    "viewed": "В роботі",
+    "answered": "В роботі",
+    "active": "В роботі",
+    "matched": "В роботі",
+    "completed": "Завершено",
+    "closed": "Завершено",
+}
+
+
+def _buyer_telegram_key(user: types.User) -> str | None:
+    return f"@{user.username}" if user and user.username else None
+
+
+def _status_label(status: str | None) -> str:
+    return STATUS_UX_LABELS.get(str(status or "").lower(), "В роботі")
+
+
+def _plural_responses(count: int) -> str:
+    count = int(count or 0)
+    if count % 10 == 1 and count % 100 != 11:
+        word = "відповідь"
+    elif count % 10 in {2, 3, 4} and count % 100 not in {12, 13, 14}:
+        word = "відповіді"
+    else:
+        word = "відповідей"
+    return f"{count} {word}"
+
+
+def _created_label(value) -> str:
+    if not value:
+        return "—"
+    today = datetime.now(value.tzinfo).date() if getattr(value, "tzinfo", None) else datetime.now().date()
+    created_date = value.date() if hasattr(value, "date") else None
+    if created_date == today:
+        return "сьогодні"
+    if created_date:
+        return value.strftime("%d.%m.%Y")
+    return "—"
+
+
+def _extract_need(description: str | None) -> str:
+    text = _clean_text(description)
+    for line in text.splitlines():
+        line = line.strip()
+        for prefix in ("Потрібно:", "Запит:"):
+            if line.startswith(prefix):
+                return _clean_text(line.removeprefix(prefix))[:80]
+    return text[:80]
+
+
+def _request_title(request) -> str:
+    parts = [
+        _extract_need(request.get("description")),
+        _clean_text(request.get("brand")),
+        _clean_text(request.get("model")),
+    ]
+    title = " ".join(dict.fromkeys(part for part in parts if part)).strip()
+    return title[:90] or "Заявка CarPot"
+
+
+def _offer_seller_name(offer) -> str:
+    return _clean_text(offer.get("shop_name") or offer.get("seller_name"), "Продавець")
+
+
+def _format_price(value) -> str:
+    if value is None:
+        return "ціну уточнюйте"
+    text = str(value).rstrip("0").rstrip(".")
+    return f"{text}$" if text else "ціну уточнюйте"
+
+
+def _format_request_list(requests) -> str:
+    if not requests:
+        return "📋 Мої заявки\n\nТут зʼявляться заявки, які ви створили з Telegram-пошуку CarPot."
+
+    blocks = []
+    for index, request in enumerate(requests, start=1):
+        offers_count = int(request.get("offers_count") or 0)
+        blocks.append(
+            "\n".join([
+                f"{index}. 📋 <b>{escape(_request_title(request))}</b>",
+                "",
+                f"🕒 {escape(_status_label(request.get('marketplace_status') or request.get('status')))}",
+                f"👥 {escape(_plural_responses(offers_count))}",
+            ])
+        )
+    return "\n\n".join(blocks)
+
+
+def _format_offers(offers) -> str:
+    if not offers:
+        return "Продавці ще не відповіли на заявку."
+
+    blocks = []
+    for offer in offers[:5]:
+        lines = [
+            f"🏪 <b>{escape(_offer_seller_name(offer))}</b>",
+            f"💰 {escape(_format_price(offer.get('price_offer')))}",
+            f"📍 {escape(_clean_text(offer.get('seller_city'), '—'))}",
+        ]
+        note = _clean_text(offer.get("availability_note"))
+        message = _clean_text(offer.get("message"))
+        body = "\n".join(part for part in [note, message] if part)
+        if body:
+            lines.extend(["", escape(body[:300])])
+        if offer.get("is_selected_match") or offer.get("status") == "accepted":
+            lines.append("\n✅ Обрано")
+        blocks.append("\n".join(lines))
+    return "\n\n".join(blocks)
+
+
+def _format_request_details(request, offers) -> str:
+    offers_count = int(request.get("offers_count") or len(offers) or 0)
+    lines = [
+        f"📋 <b>{escape(_request_title(request))}</b>",
+        "",
+        f"📍 {escape(_clean_text(request.get('city'), '—'))}",
+        f"📞 {escape(_clean_text(request.get('buyer_phone'), '—'))}",
+        "",
+        f"🕒 Створено: {escape(_created_label(request.get('created_at')))}",
+        f"👥 Відповідей: {offers_count}",
+        f"Статус: {escape(_status_label(request.get('marketplace_status') or request.get('status')))}",
+        "",
+        _format_offers(offers),
+    ]
+    return "\n".join(lines)
+
+
+async def _list_own_marketplace_requests(user: types.User, *, page: int):
+    normalized_page = max(1, int(page or 1))
+    offset = (normalized_page - 1) * BUYER_REQUESTS_PAGE_SIZE
+    telegram_key = _buyer_telegram_key(user)
+    rows = await fetch(
+        """
+        SELECT br.id, br.telegram_id, br.buyer_phone, br.buyer_telegram, br.city,
+               br.request_type, br.category, br.brand, br.model, br.description,
+               br.status, br.marketplace_status, br.created_at,
+               COALESCE(offer_counts.total_offers, 0)::int AS offers_count,
+               COUNT(*) OVER()::int AS total_count
+        FROM buyer_requests br
+        LEFT JOIN LATERAL (
+            SELECT COUNT(*)::int AS total_offers
+            FROM buyer_request_offers bro
+            WHERE bro.request_id = br.id
+        ) offer_counts ON TRUE
+        WHERE br.entity_type = 'marketplace_request'
+          AND (br.telegram_id = $1 OR ($2::text IS NOT NULL AND br.buyer_telegram = $2))
+        ORDER BY br.created_at DESC, br.id DESC
+        LIMIT $3 OFFSET $4
+        """,
+        user.id,
+        telegram_key,
+        BUYER_REQUESTS_PAGE_SIZE,
+        offset,
+    )
+    total = int(rows[0]["total_count"] if rows else 0)
+    total_pages = max(1, (total + BUYER_REQUESTS_PAGE_SIZE - 1) // BUYER_REQUESTS_PAGE_SIZE)
+    return rows, total_pages
+
+
+async def _get_own_marketplace_request(request_id: int, user: types.User):
+    telegram_key = _buyer_telegram_key(user)
+    return await fetchrow(
+        """
+        SELECT br.id, br.telegram_id, br.buyer_phone, br.buyer_telegram, br.city,
+               br.request_type, br.category, br.brand, br.model, br.description,
+               br.status, br.marketplace_status, br.created_at,
+               COALESCE(offer_counts.total_offers, 0)::int AS offers_count
+        FROM buyer_requests br
+        LEFT JOIN LATERAL (
+            SELECT COUNT(*)::int AS total_offers
+            FROM buyer_request_offers bro
+            WHERE bro.request_id = br.id
+        ) offer_counts ON TRUE
+        WHERE br.id = $1
+          AND br.entity_type = 'marketplace_request'
+          AND (br.telegram_id = $2 OR ($3::text IS NOT NULL AND br.buyer_telegram = $3))
+        LIMIT 1
+        """,
+        request_id,
+        user.id,
+        telegram_key,
+    )
+
+
+async def _show_buyer_requests_page(message: types.Message, user: types.User, *, page: int = 1):
+    requests, total_pages = await _list_own_marketplace_requests(user, page=page)
+    await message.answer(
+        _format_request_list(requests),
+        parse_mode="HTML",
+        reply_markup=request_list_kb(requests, page=page, total_pages=total_pages),
+    )
+
+
+async def _show_buyer_request_details(message: types.Message, user: types.User, request_id: int, *, page: int = 1):
+    request = await _get_own_marketplace_request(request_id, user)
+    if not request:
+        await message.answer("Заявку не знайдено.")
+        return
+
+    offers = await list_buyer_offer_cards(request_id)
+    await message.answer(
+        _format_request_details(request, offers),
+        parse_mode="HTML",
+        reply_markup=request_details_kb(request_id, offers, page=page),
+    )
+
+
+@router.callback_query(F.data == "buyer:requests")
+async def buyer_requests_entry(callback: types.CallbackQuery):
+    await callback.answer()
+    await _show_buyer_requests_page(callback.message, callback.from_user, page=1)
+
+
+@router.callback_query(F.data.startswith("buyer_requests:page:"))
+async def buyer_requests_page(callback: types.CallbackQuery):
+    page = int((callback.data or "").split(":")[-1])
+    await callback.answer()
+    await _show_buyer_requests_page(callback.message, callback.from_user, page=page)
+
+
+@router.callback_query(F.data.startswith("buyer_requests:open:"))
+async def buyer_requests_open(callback: types.CallbackQuery):
+    parts = (callback.data or "").split(":")
+    request_id = int(parts[2])
+    page = int(parts[3]) if len(parts) > 3 else 1
+    await callback.answer()
+    await _show_buyer_request_details(callback.message, callback.from_user, request_id, page=page)
+
+
+@router.callback_query(F.data.startswith("buyer_requests:contact:"))
+async def buyer_requests_contact(callback: types.CallbackQuery):
+    parts = (callback.data or "").split(":")
+    request_id = int(parts[2])
+    offer_id = int(parts[3])
+    request = await _get_own_marketplace_request(request_id, callback.from_user)
+    if not request:
+        await callback.answer("Заявку не знайдено", show_alert=True)
+        return
+
+    offers = await list_buyer_offer_cards(request_id)
+    offer = next((item for item in offers if int(item["id"]) == offer_id), None)
+    if not offer:
+        await callback.answer("Відповідь не знайдено", show_alert=True)
+        return
+
+    contacts = []
+    if offer.get("seller_phone"):
+        contacts.append(f"📞 {escape(str(offer['seller_phone']))}")
+    if offer.get("seller_website"):
+        contacts.append(f"🌐 {escape(str(offer['seller_website']))}")
+    if offer.get("seller_username"):
+        contacts.append(f"Telegram: {escape(str(offer['seller_username']))}")
+
+    await callback.answer()
+    contact_lines = [
+        f"🏪 {escape(_offer_seller_name(offer))}",
+        "",
+        *(contacts or ["Продавець не додав публічні контакти."]),
+    ]
+    await callback.message.answer("\n".join(contact_lines), parse_mode="HTML")
+
+
+@router.callback_query(F.data.startswith("buyer_requests:select:"))
+async def buyer_requests_select_offer(callback: types.CallbackQuery):
+    parts = (callback.data or "").split(":")
+    request_id = int(parts[2])
+    offer_id = int(parts[3])
+    request = await _get_own_marketplace_request(request_id, callback.from_user)
+    if not request:
+        await callback.answer("Заявку не знайдено", show_alert=True)
+        return
+
+    result = await accept_buyer_offer(request_id, offer_id, reject_other_offers=True)
+    if not result:
+        await callback.answer("Не вдалося обрати цю відповідь", show_alert=True)
+        return
+
+    await callback.answer("Продавця обрано")
+    await _show_buyer_request_details(callback.message, callback.from_user, request_id, page=1)
+
+
+@router.callback_query(F.data == "buyer_requests:noop")
+async def buyer_requests_noop(callback: types.CallbackQuery):
+    await callback.answer()
 
 
 # ================= LEGACY SEARCH FLOW =================
