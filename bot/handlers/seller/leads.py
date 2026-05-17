@@ -10,13 +10,17 @@ from bot.database.base import fetchrow
 from bot.database.repositories.seller_lead_repo import (
     cancel_seller_lead_notifications,
     create_seller_offer,
+    ensure_buyer_offer_created_event,
+    get_buyer_offer_notification_context,
     get_matching_seller_lead,
     get_seller_marketplace_profile,
     get_seller_specialization_tags,
     list_matching_seller_leads,
+    mark_marketplace_notification_event,
     mark_seller_lead_action,
     touch_request_matched,
 )
+from bot.keyboards.buyer_requests_inline import buyer_offer_created_notification_kb
 from bot.keyboards.seller_leads import (
     seller_lead_actions_kb,
     seller_lead_back_kb,
@@ -25,6 +29,7 @@ from bot.keyboards.seller_leads import (
     seller_offer_skip_step_kb,
 )
 from bot.services.seller_lead_matching import score_seller_lead
+from bot.services.telegram_sender import send_message_to_buyer
 from bot.states.seller_states import SellerLeadOfferStates
 
 router = Router()
@@ -81,6 +86,94 @@ def _short_description(value: str | None, limit: int = 260) -> str:
     if len(text) <= limit:
         return text or "Опис не вказано"
     return text[: limit - 1].rstrip() + "…"
+
+
+def _format_price_offer(value) -> str:
+    if value in (None, ""):
+        return "договірна"
+    text = str(value).rstrip("0").rstrip(".")
+    return f"{text} грн" if text else "договірна"
+
+
+def _format_buyer_offer_notification(context: dict) -> str:
+    title = escape(_lead_title(context))
+    seller_name = escape(context.get("shop_name") or context.get("seller_name") or "Продавець CarPot")
+    lines = [
+        "🆕 <b>Нова відповідь на вашу заявку</b>",
+        "",
+        f"<b>{title}</b>",
+        f"🏪 {seller_name}",
+        f"💰 {escape(_format_price_offer(context.get('price_offer')))}",
+    ]
+    seller_city = (context.get("seller_city") or "").strip()
+    if seller_city:
+        lines.append(f"📍 {escape(seller_city)}")
+
+    message = (context.get("message") or "").strip()
+    if message:
+        lines.extend(["", "Коментар:", escape(message[:700])])
+    return "\n".join(lines)
+
+
+async def _notify_buyer_about_offer(*, request_id: int, seller_id: int, offer: dict) -> None:
+    offer_id = offer.get("id") if offer else None
+    if not offer_id:
+        return
+
+    event = await ensure_buyer_offer_created_event(
+        request_id=request_id,
+        seller_id=seller_id,
+        offer_id=int(offer_id),
+    )
+    if event.get("already_exists"):
+        logger.info(
+            "Buyer offer-created notification already recorded request_id=%s offer_id=%s seller_id=%s event_id=%s",
+            request_id,
+            offer_id,
+            seller_id,
+            event.get("id"),
+        )
+        return
+
+    context_row = await get_buyer_offer_notification_context(
+        request_id=request_id,
+        seller_id=seller_id,
+        offer_id=int(offer_id),
+    )
+    context = _row_to_dict(context_row)
+    buyer_telegram_id = context.get("buyer_telegram_id")
+    if not buyer_telegram_id:
+        logger.warning(
+            "Buyer telegram_id missing for offer notification request_id=%s offer_id=%s seller_id=%s",
+            request_id,
+            offer_id,
+            seller_id,
+        )
+        await mark_marketplace_notification_event(event.get("id"), status="failed")
+        return
+
+    sent = await send_message_to_buyer(
+        int(buyer_telegram_id),
+        _format_buyer_offer_notification(context),
+        parse_mode="HTML",
+        reply_markup=buyer_offer_created_notification_kb(request_id),
+    )
+    if sent:
+        await mark_marketplace_notification_event(event.get("id"), status="sent")
+        logger.info(
+            "Buyer notified about seller offer buyer_telegram_id=%s request_id=%s offer_id=%s",
+            buyer_telegram_id,
+            request_id,
+            offer_id,
+        )
+    else:
+        await mark_marketplace_notification_event(event.get("id"), status="failed")
+        logger.warning(
+            "Telegram send failure buyer offer notification buyer_telegram_id=%s request_id=%s offer_id=%s",
+            buyer_telegram_id,
+            request_id,
+            offer_id,
+        )
 
 
 def _format_lead_card(lead: dict, *, detailed: bool = False) -> str:
@@ -393,7 +486,16 @@ async def seller_offer_message(message: Message, state: FSMContext):
     )
     await mark_seller_lead_action(seller_id=seller_id, request_id=request_id, action="offered")
     await touch_request_matched(request_id)
-    logger.info("Seller submitted buyer request offer seller_id=%s request_id=%s offer_id=%s", seller_id, request_id, offer.get("id") if offer else None)
+    logger.info("Seller offer created seller_id=%s request_id=%s offer_id=%s", seller_id, request_id, offer.get("id") if offer else None)
+    try:
+        await _notify_buyer_about_offer(request_id=request_id, seller_id=seller_id, offer=dict(offer) if offer else {})
+    except Exception as exc:
+        logger.warning(
+            "Buyer offer notification failed without blocking seller flow request_id=%s offer_id=%s: %s",
+            request_id,
+            offer.get("id") if offer else None,
+            exc,
+        )
     await state.clear()
 
     price = offer.get("price_offer") if offer else price_offer

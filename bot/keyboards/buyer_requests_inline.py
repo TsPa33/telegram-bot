@@ -58,3 +58,25 @@ def request_details_kb(request_id: int, offers, *, page: int = 1) -> InlineKeybo
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
+
+def buyer_offer_created_notification_kb(request_id: int) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="📋 Переглянути заявку",
+                    callback_data=f"{BUYER_REQUESTS_NAMESPACE}:open:{request_id}:1",
+                )
+            ],
+            [InlineKeyboardButton(text="🔎 Новий пошук", callback_data="buyer:find")],
+        ]
+    )
+
+
+def buyer_selected_offer_kb() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="📋 Мої заявки", callback_data="buyer:requests")],
+            [InlineKeyboardButton(text="🔎 Новий пошук", callback_data="buyer:find")],
+        ]
+    )

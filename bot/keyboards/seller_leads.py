@@ -1,3 +1,5 @@
+import os
+
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 
@@ -62,5 +64,19 @@ def seller_offer_skip_step_kb(request_id: int) -> InlineKeyboardMarkup:
         inline_keyboard=[
             [InlineKeyboardButton(text="Пропустити поле", callback_data=f"seller_leads:offer_skip:{request_id}")],
             [InlineKeyboardButton(text="Скасувати", callback_data=f"seller_leads:open:{request_id}")],
+        ]
+    )
+
+
+def seller_offer_accepted_notification_kb(request_id: int) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="📥 Відкрити заявку", callback_data=f"seller_leads:open:{request_id}")],
+            [
+                InlineKeyboardButton(
+                    text="🧾 Відкрити CRM",
+                    url=(os.getenv("SELLER_CRM_BASE_URL") or "https://crm.carpot.com.ua").rstrip("/"),
+                )
+            ],
         ]
     )

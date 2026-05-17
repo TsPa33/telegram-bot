@@ -16,7 +16,11 @@ from bot.database.repositories.model_repo import get_brands_with_ids
 from bot.keyboards.brands import brand_kb
 from bot.keyboards.buyer_home import buyer_home_kb
 from bot.keyboards.buyer_reply import buyer_reply_kb
-from bot.keyboards.buyer_requests_inline import request_details_kb, request_list_kb
+from bot.keyboards.buyer_requests_inline import (
+    buyer_selected_offer_kb,
+    request_details_kb,
+    request_list_kb,
+)
 from bot.keyboards.buyer_search_inline import (
     format_search_card,
     no_results_kb,
@@ -27,11 +31,13 @@ from bot.keyboards.buyer_search_inline import (
 from bot.states.buyer_states import Buyer, BuyerStates
 from bot.services.ai_request_interpreter import interpret_buyer_request
 from bot.services.marketplace_search import run_priority_marketplace_search
+from bot.keyboards.seller_leads import seller_offer_accepted_notification_kb
 from bot.services.buyer_request_service import (
     BuyerRequestInput,
     BuyerRequestValidationError,
     submit_marketplace_buyer_request,
 )
+from bot.services.telegram_sender import send_message_to_seller
 
 from bot.keyboards.main_menu import main_menu_kb
 
@@ -910,6 +916,9 @@ async def _get_own_offer(offer_id: int, user: types.User):
         """
         SELECT bro.id, bro.request_id, bro.seller_id, bro.message, bro.price_offer,
                bro.availability_note, bro.status, bro.created_at, bro.updated_at,
+               br.buyer_phone, br.city AS buyer_city, br.brand, br.model, br.category,
+               br.request_type, br.description AS request_description, br.telegram_id AS buyer_telegram_id,
+               s.telegram_id AS seller_telegram_id,
                s.shop_name, s.name AS seller_name, s.username AS seller_username,
                s.phone AS seller_phone, s.website AS seller_website,
                s.city AS seller_city, s.is_verified, s.has_site, s.crm_enabled,
@@ -992,6 +1001,87 @@ async def _send_offer_contacts(callback: types.CallbackQuery, offer_id: int):
     await callback.message.answer("\n".join(contact_lines), parse_mode="HTML")
 
 
+def _selected_offer_request_title(offer) -> str:
+    pseudo_request = {
+        "description": offer.get("request_description"),
+        "brand": offer.get("brand"),
+        "model": offer.get("model"),
+        "category": offer.get("category") or offer.get("request_type"),
+    }
+    return _request_title(pseudo_request)
+
+
+def _format_seller_offer_accepted_notification(offer) -> str:
+    lines = [
+        "✅ <b>Покупець обрав вашу пропозицію</b>",
+        "",
+        "Заявка:",
+        escape(_selected_offer_request_title(offer)),
+    ]
+    buyer_city = _clean_text(offer.get("buyer_city"))
+    if buyer_city:
+        lines.append(f"📍 {escape(buyer_city)}")
+    buyer_phone = _clean_text(offer.get("buyer_phone"))
+    if buyer_phone:
+        lines.append(f"📞 {escape(buyer_phone)}")
+    lines.extend(["", "Покупець може звʼязатися з вами напряму."])
+    return "\n".join(lines)
+
+
+async def _mark_notification_event_status(event_id: int | None, status: str) -> None:
+    if not event_id:
+        return
+    await execute(
+        """
+        UPDATE marketplace_notification_events
+        SET status = $2, updated_at = NOW()
+        WHERE id = $1
+        """,
+        event_id,
+        status,
+    )
+
+
+async def _notify_seller_offer_selected(*, offer, notification_event: dict | None) -> None:
+    seller_telegram_id = offer.get("seller_telegram_id")
+    request_id = int(offer["request_id"])
+    offer_id = int(offer["id"])
+    seller_id = int(offer["seller_id"])
+
+    if not seller_telegram_id:
+        logger.warning(
+            "Seller telegram_id missing for accepted offer notification seller_id=%s request_id=%s offer_id=%s",
+            seller_id,
+            request_id,
+            offer_id,
+        )
+        await _mark_notification_event_status((notification_event or {}).get("id"), "failed")
+        return
+
+    sent = await send_message_to_seller(
+        int(seller_telegram_id),
+        _format_seller_offer_accepted_notification(offer),
+        parse_mode="HTML",
+        reply_markup=seller_offer_accepted_notification_kb(request_id),
+    )
+    if sent:
+        await _mark_notification_event_status((notification_event or {}).get("id"), "sent")
+        logger.info(
+            "Seller notified about accepted offer seller_telegram_id=%s request_id=%s offer_id=%s",
+            seller_telegram_id,
+            request_id,
+            offer_id,
+        )
+    else:
+        await _mark_notification_event_status((notification_event or {}).get("id"), "failed")
+        logger.warning(
+            "Telegram send failure seller accepted-offer notification seller_telegram_id=%s request_id=%s offer_id=%s",
+            seller_telegram_id,
+            request_id,
+            offer_id,
+        )
+
+
 async def _select_offer(callback: types.CallbackQuery, offer_id: int):
     offer = await _get_own_offer(offer_id, callback.from_user)
     if not offer:
@@ -1004,6 +1094,26 @@ async def _select_offer(callback: types.CallbackQuery, offer_id: int):
         await callback.answer("Не вдалося обрати цю пропозицію", show_alert=True)
         return
 
+    logger.info(
+        "Buyer selected offer buyer_telegram_id=%s seller_id=%s request_id=%s offer_id=%s",
+        callback.from_user.id,
+        offer.get("seller_id"),
+        request_id,
+        offer_id,
+    )
+    try:
+        await _notify_seller_offer_selected(
+            offer=offer,
+            notification_event=(result or {}).get("notification_event"),
+        )
+    except Exception as exc:
+        logger.warning(
+            "Seller accepted-offer notification failed without blocking buyer flow request_id=%s offer_id=%s: %s",
+            request_id,
+            offer_id,
+            exc,
+        )
+
     await callback.answer("Продавця обрано")
     seller_name = _offer_seller_name(offer)
     contact_lines = _format_seller_contacts(offer)
@@ -1015,7 +1125,11 @@ async def _select_offer(callback: types.CallbackQuery, offer_id: int):
     ]
     if contact_lines:
         selected_lines.extend(["", *contact_lines])
-    await callback.message.answer("\n".join(selected_lines), parse_mode="HTML")
+    await callback.message.answer(
+        "\n".join(selected_lines),
+        parse_mode="HTML",
+        reply_markup=buyer_selected_offer_kb(),
+    )
     await _show_buyer_request_details(callback.message, callback.from_user, request_id, page=1)
 
 
