@@ -1207,6 +1207,15 @@ async def seller_crm_content(request: Request, crm_slug: str):
         ),
     )
 
+# Future products routes must keep this order:
+# /content/products
+# /content/products/create
+# /content/products/{product_id}/edit
+# /content/products/{product_id}
+# /content/products/{product_id}/photo
+# /content/products/{product_id}/enable
+# /content/products/{product_id}/disable
+
 
 @router.get("/{crm_slug}/content/services")
 async def seller_crm_content_services(request: Request, crm_slug: str):
@@ -1543,6 +1552,55 @@ async def seller_crm_service_disable(request: Request, crm_slug: str, service_id
     return await _toggle_crm_service(request, crm_slug, service_id, False)
 
 
+# Static route must be registered before dynamic {id} route.
+@router.get("/{crm_slug}/content/cars")
+async def seller_crm_content_cars(request: Request, crm_slug: str):
+    try:
+        account, subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+
+    seller_id = account["seller_id"]
+    summary = dict(await get_seller_crm_content_summary(seller_id) or {})
+    cars = [dict(car) for car in await list_seller_crm_cars_inventory(seller_id)]
+    for car in cars:
+        status_meta = get_car_display_status(car.get("status"))
+        car["status_meta"] = status_meta
+        car["status_label"] = status_meta["label"]
+        car["status_class"] = status_meta["css_class"]
+        car["is_active"] = status_meta["is_active"]
+        photo_id = car.get("photo_id") or ""
+        car["photo_is_url"] = isinstance(photo_id, str) and photo_id.startswith(("http://", "https://"))
+    totals = {
+        "views": sum(int(car.get("views") or 0) for car in cars),
+        "phone_clicks": sum(int(car.get("phone_clicks") or 0) for car in cars),
+        "site_clicks": sum(int(car.get("site_clicks") or 0) for car in cars),
+    }
+    site = await get_site_by_seller(seller_id)
+    account_flags = dict(account)
+    has_website = bool(site or account_flags.get("has_site") or account_flags.get("website"))
+
+    return templates.TemplateResponse(
+        "seller_crm/content_cars.html",
+        _seller_crm_context(
+            request,
+            title="Авто на розборі — CRM продавця CarPot",
+            demo_mode=False,
+            current_page="content_cars",
+            account=account,
+            subscription=subscription,
+            summary=summary,
+            cars=cars,
+            totals=totals,
+            has_website=has_website,
+            has_cars=bool(cars),
+            has_services=int(summary.get("active_services") or 0) > 0,
+        ),
+    )
+
+
 @router.get("/{crm_slug}/content/cars/create")
 async def seller_crm_car_create_form(request: Request, crm_slug: str):
     try:
@@ -1833,54 +1891,6 @@ async def seller_crm_car_enable(request: Request, crm_slug: str, car_id: int):
 @router.post("/{crm_slug}/content/cars/{car_id}/disable")
 async def seller_crm_car_disable(request: Request, crm_slug: str, car_id: int):
     return await _toggle_crm_car(request, crm_slug, car_id, "inactive")
-
-
-@router.get("/{crm_slug}/content/cars")
-async def seller_crm_content_cars(request: Request, crm_slug: str):
-    try:
-        account, subscription = await _authorized_account(request, crm_slug)
-    except HTTPException as exc:
-        if exc.status_code == 303:
-            return RedirectResponse(url=exc.detail, status_code=303)
-        raise
-
-    seller_id = account["seller_id"]
-    summary = dict(await get_seller_crm_content_summary(seller_id) or {})
-    cars = [dict(car) for car in await list_seller_crm_cars_inventory(seller_id)]
-    for car in cars:
-        status_meta = get_car_display_status(car.get("status"))
-        car["status_meta"] = status_meta
-        car["status_label"] = status_meta["label"]
-        car["status_class"] = status_meta["css_class"]
-        car["is_active"] = status_meta["is_active"]
-        photo_id = car.get("photo_id") or ""
-        car["photo_is_url"] = isinstance(photo_id, str) and photo_id.startswith(("http://", "https://"))
-    totals = {
-        "views": sum(int(car.get("views") or 0) for car in cars),
-        "phone_clicks": sum(int(car.get("phone_clicks") or 0) for car in cars),
-        "site_clicks": sum(int(car.get("site_clicks") or 0) for car in cars),
-    }
-    site = await get_site_by_seller(seller_id)
-    account_flags = dict(account)
-    has_website = bool(site or account_flags.get("has_site") or account_flags.get("website"))
-
-    return templates.TemplateResponse(
-        "seller_crm/content_cars.html",
-        _seller_crm_context(
-            request,
-            title="Авто на розборі — CRM продавця CarPot",
-            demo_mode=False,
-            current_page="content_cars",
-            account=account,
-            subscription=subscription,
-            summary=summary,
-            cars=cars,
-            totals=totals,
-            has_website=has_website,
-            has_cars=bool(cars),
-            has_services=int(summary.get("active_services") or 0) > 0,
-        ),
-    )
 
 
 @router.get("/{crm_slug}/settings")
