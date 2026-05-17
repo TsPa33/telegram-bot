@@ -1488,6 +1488,44 @@ async def list_seller_crm_services(seller_id: int, limit: int = 20):
     )
 
 
+async def list_seller_crm_services_inventory(
+    seller_id: int,
+    limit: int = 50,
+    offset: int = 0,
+):
+    normalized_limit = max(1, min(int(limit or 50), 100))
+    normalized_offset = max(0, int(offset or 0))
+
+    return await fetch(
+        """
+        SELECT
+            sv.id AS service_id,
+            sv.title,
+            sv.title AS name,
+            sv.category,
+            sv.description,
+            sv.price,
+            sv.photo_id,
+            sv.photo_id AS image,
+            COALESCE(st.views, 0)::int AS views,
+            COALESCE(st.calls, 0)::int AS calls,
+            COALESCE(st.clicks, 0)::int AS clicks,
+            sv.created_at,
+            (COALESCE(NULLIF(BTRIM(sv.description), ''), '') <> '') AS has_description,
+            (sv.price IS NOT NULL) AS has_price,
+            (COALESCE(NULLIF(sv.photo_id, ''), '') <> '') AS has_photo
+        FROM services sv
+        LEFT JOIN service_stats st ON st.service_id = sv.id
+        WHERE sv.seller_id = $1
+        ORDER BY sv.created_at DESC, sv.id DESC
+        LIMIT $2 OFFSET $3
+        """,
+        seller_id,
+        normalized_limit,
+        normalized_offset,
+    )
+
+
 async def list_seller_crm_sources(seller_id: int, limit: int = 6):
     return await fetch(
         """
