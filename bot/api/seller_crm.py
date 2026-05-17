@@ -52,10 +52,14 @@ from bot.database.repositories.seller_lead_repo import (
     reopen_seller_lead_action,
 )
 from bot.database.repositories.service_repo import (
+    create_seller_service,
     create_service,
     delete_service_by_seller,
+    get_seller_service_detail,
     get_service_by_seller,
     get_services_by_seller,
+    toggle_seller_service_status,
+    update_seller_service,
     update_service_field,
 )
 from bot.database.repositories.site_repo import (
@@ -143,6 +147,41 @@ def _lead_action_notice(action: str) -> str:
         "skipped": "Заявку пропущено локально для вашого CRM.",
         "reopened": "Заявку повернуто в роботу.",
     }.get(action, "Дію виконано.")
+
+
+def _parse_service_price(value: str | None) -> tuple[int | None, str | None]:
+    raw = (value or "").strip().replace(" ", "")
+    if not raw:
+        return None, None
+    if not raw.isdigit():
+        return None, "Ціна має бути цілим додатним числом."
+    price = int(raw)
+    if price > 100_000_000:
+        return None, "Ціна занадто велика."
+    return price, None
+
+
+def _validate_service_form(title: str, description: str, price: str) -> tuple[int | None, str | None]:
+    if not (title or "").strip():
+        return None, "Назва послуги обов’язкова."
+    if len((description or "").strip()) > 2000:
+        return None, "Опис має бути до 2000 символів."
+    return _parse_service_price(price)
+
+
+def _service_form_payload(
+    *,
+    title: str = "",
+    category: str = "",
+    description: str = "",
+    price: str = "",
+) -> dict[str, str]:
+    return {
+        "title": (title or "").strip(),
+        "category": (category or "").strip(),
+        "description": (description or "").strip(),
+        "price": (price or "").strip(),
+    }
 
 
 def _is_expired(expires_at) -> bool:
@@ -1009,6 +1048,15 @@ async def seller_crm_content_services(request: Request, crm_slug: str):
     summary = dict(await get_seller_crm_content_summary(seller_id) or {})
     services = [dict(service) for service in await list_seller_crm_services_inventory(seller_id)]
     for service in services:
+        detail = await get_seller_service_detail(seller_id=seller_id, service_id=service["service_id"])
+        if detail:
+            service["is_active"] = detail.get("is_active", True)
+            service["status_supported"] = detail.get("status_supported", False)
+            service["content_completeness"] = detail.get("content_completeness", 0)
+        else:
+            service["is_active"] = True
+            service["status_supported"] = False
+            service["content_completeness"] = 0
         photo_id = service.get("photo_id") or ""
         service["photo_is_url"] = isinstance(photo_id, str) and photo_id.startswith(("http://", "https://"))
     totals = {
@@ -1040,6 +1088,282 @@ async def seller_crm_content_services(request: Request, crm_slug: str):
             has_services=bool(services),
         ),
     )
+
+
+@router.get("/{crm_slug}/content/services/create")
+async def seller_crm_service_create_form(request: Request, crm_slug: str):
+    try:
+        account, subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+
+    return templates.TemplateResponse(
+        "seller_crm/service_form.html",
+        _seller_crm_context(
+            request,
+            title="Додати послугу — CRM продавця CarPot",
+            demo_mode=False,
+            current_page="content_services",
+            account=account,
+            subscription=subscription,
+            form_title="Додати послугу",
+            service=None,
+            form=_service_form_payload(),
+            error=None,
+            action_url=f"/crm/seller/{crm_slug}/content/services/create",
+            cancel_url=f"/crm/seller/{crm_slug}/content/services",
+            has_website=False,
+            has_cars=False,
+            has_services=True,
+        ),
+    )
+
+
+@router.post("/{crm_slug}/content/services/create")
+async def seller_crm_service_create(
+    request: Request,
+    crm_slug: str,
+    title: str = Form(""),
+    category: str = Form(""),
+    description: str = Form(""),
+    price: str = Form(""),
+):
+    try:
+        account, subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+
+    parsed_price, error = _validate_service_form(title, description, price)
+    form = _service_form_payload(title=title, category=category, description=description, price=price)
+    if error:
+        return templates.TemplateResponse(
+            "seller_crm/service_form.html",
+            _seller_crm_context(
+                request,
+                title="Додати послугу — CRM продавця CarPot",
+                demo_mode=False,
+                current_page="content_services",
+                account=account,
+                subscription=subscription,
+                form_title="Додати послугу",
+                service=None,
+                form=form,
+                error=error,
+                action_url=f"/crm/seller/{crm_slug}/content/services/create",
+                cancel_url=f"/crm/seller/{crm_slug}/content/services",
+                has_website=False,
+                has_cars=False,
+                has_services=True,
+            ),
+            status_code=400,
+        )
+
+    service_id = await create_seller_service(
+        seller_id=account["seller_id"],
+        title=title,
+        category=category,
+        description=description,
+        price=parsed_price,
+        city=account.get("city") or "",
+        address="",
+    )
+    if not service_id:
+        return templates.TemplateResponse(
+            "seller_crm/service_form.html",
+            _seller_crm_context(
+                request,
+                title="Додати послугу — CRM продавця CarPot",
+                demo_mode=False,
+                current_page="content_services",
+                account=account,
+                subscription=subscription,
+                form_title="Додати послугу",
+                service=None,
+                form=form,
+                error="Не вдалося створити послугу. Перевірте поля й спробуйте ще раз.",
+                action_url=f"/crm/seller/{crm_slug}/content/services/create",
+                cancel_url=f"/crm/seller/{crm_slug}/content/services",
+                has_website=False,
+                has_cars=False,
+                has_services=True,
+            ),
+            status_code=400,
+        )
+
+    return RedirectResponse(url=f"/crm/seller/{crm_slug}/content/services/{service_id}?status=created", status_code=303)
+
+
+@router.get("/{crm_slug}/content/services/{service_id}/edit")
+async def seller_crm_service_edit_form(request: Request, crm_slug: str, service_id: int):
+    try:
+        account, subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+
+    service = await get_seller_service_detail(seller_id=account["seller_id"], service_id=service_id)
+    if not service:
+        raise HTTPException(status_code=404, detail="Service not found")
+
+    return templates.TemplateResponse(
+        "seller_crm/service_form.html",
+        _seller_crm_context(
+            request,
+            title="Редагувати послугу — CRM продавця CarPot",
+            demo_mode=False,
+            current_page="content_services",
+            account=account,
+            subscription=subscription,
+            form_title="Редагувати послугу",
+            service=service,
+            form=_service_form_payload(
+                title=service.get("title"),
+                category=service.get("category"),
+                description=service.get("description"),
+                price="" if service.get("price") is None else str(service.get("price")),
+            ),
+            error=None,
+            action_url=f"/crm/seller/{crm_slug}/content/services/{service_id}/edit",
+            cancel_url=f"/crm/seller/{crm_slug}/content/services/{service_id}",
+            has_website=False,
+            has_cars=False,
+            has_services=True,
+        ),
+    )
+
+
+@router.post("/{crm_slug}/content/services/{service_id}/edit")
+async def seller_crm_service_edit(
+    request: Request,
+    crm_slug: str,
+    service_id: int,
+    title: str = Form(""),
+    category: str = Form(""),
+    description: str = Form(""),
+    price: str = Form(""),
+):
+    try:
+        account, subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+
+    service = await get_seller_service_detail(seller_id=account["seller_id"], service_id=service_id)
+    if not service:
+        raise HTTPException(status_code=404, detail="Service not found")
+
+    parsed_price, error = _validate_service_form(title, description, price)
+    form = _service_form_payload(title=title, category=category, description=description, price=price)
+    if error:
+        return templates.TemplateResponse(
+            "seller_crm/service_form.html",
+            _seller_crm_context(
+                request,
+                title="Редагувати послугу — CRM продавця CarPot",
+                demo_mode=False,
+                current_page="content_services",
+                account=account,
+                subscription=subscription,
+                form_title="Редагувати послугу",
+                service=service,
+                form=form,
+                error=error,
+                action_url=f"/crm/seller/{crm_slug}/content/services/{service_id}/edit",
+                cancel_url=f"/crm/seller/{crm_slug}/content/services/{service_id}",
+                has_website=False,
+                has_cars=False,
+                has_services=True,
+            ),
+            status_code=400,
+        )
+
+    saved = await update_seller_service(
+        seller_id=account["seller_id"],
+        service_id=service_id,
+        title=title,
+        category=category,
+        description=description,
+        price=parsed_price,
+    )
+    if not saved:
+        raise HTTPException(status_code=404, detail="Service not found")
+
+    return RedirectResponse(url=f"/crm/seller/{crm_slug}/content/services/{service_id}?status=updated", status_code=303)
+
+
+@router.get("/{crm_slug}/content/services/{service_id}")
+async def seller_crm_service_detail(request: Request, crm_slug: str, service_id: int, status: str | None = None, error: str | None = None):
+    try:
+        account, subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+
+    service = await get_seller_service_detail(seller_id=account["seller_id"], service_id=service_id)
+    if not service:
+        raise HTTPException(status_code=404, detail="Service not found")
+
+    return templates.TemplateResponse(
+        "seller_crm/service_detail.html",
+        _seller_crm_context(
+            request,
+            title=f"{service.get('title') or 'Послуга'} — CRM продавця CarPot",
+            demo_mode=False,
+            current_page="content_services",
+            account=account,
+            subscription=subscription,
+            service=service,
+            status=status,
+            error=error,
+            has_website=False,
+            has_cars=False,
+            has_services=True,
+        ),
+    )
+
+
+async def _toggle_crm_service(request: Request, crm_slug: str, service_id: int, is_active: bool):
+    try:
+        account, _subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+
+    service = await get_seller_service_detail(seller_id=account["seller_id"], service_id=service_id)
+    if not service:
+        raise HTTPException(status_code=404, detail="Service not found")
+
+    toggled = await toggle_seller_service_status(
+        seller_id=account["seller_id"],
+        service_id=service_id,
+        is_active=is_active,
+    )
+    query_key = "status" if toggled else "error"
+    query_value = "enabled" if is_active else "disabled"
+    if not toggled:
+        query_value = "status_not_supported"
+    return RedirectResponse(
+        url=f"/crm/seller/{crm_slug}/content/services/{service_id}?{query_key}={query_value}",
+        status_code=303,
+    )
+
+
+@router.post("/{crm_slug}/content/services/{service_id}/enable")
+async def seller_crm_service_enable(request: Request, crm_slug: str, service_id: int):
+    return await _toggle_crm_service(request, crm_slug, service_id, True)
+
+
+@router.post("/{crm_slug}/content/services/{service_id}/disable")
+async def seller_crm_service_disable(request: Request, crm_slug: str, service_id: int):
+    return await _toggle_crm_service(request, crm_slug, service_id, False)
 
 
 @router.get("/{crm_slug}/content/cars")
