@@ -1301,14 +1301,14 @@
             </section>
 
             <section class="nav-accordion">
-                <input id="nav-profile" name="crm-nav" type="radio">
+                <input id="nav-profile" name="crm-nav" type="radio" {% if current_page == 'profile' %}checked{% endif %}>
                 <label class="nav-title" data-icon="◉" for="nav-profile">
                     <span>Профіль</span>
                 </label>
                 <div class="nav-panel">
-                    <a href="/crm/seller/{{ account.crm_slug }}{% if has_website %}/website{% endif %}#contacts" title="Майбутня сторінка: /profile">Контакти</a>
-                    <a href="/crm/seller/{{ account.crm_slug }}#public-card">Публічна картка</a>
-                    <a href="/crm/seller/{{ account.crm_slug }}#account">Telegram/profile settings</a>
+                    <a class="{% if current_page == 'profile' %}active{% endif %}" href="/crm/seller/{{ account.crm_slug }}/profile">Контакти</a>
+                    <a class="{% if current_page == 'profile' %}active{% endif %}" href="/crm/seller/{{ account.crm_slug }}/profile">Публічна картка</a>
+                    <a class="{% if current_page == 'profile' %}active{% endif %}" href="/crm/seller/{{ account.crm_slug }}/profile">Telegram/profile settings</a>
                 </div>
             </section>
 

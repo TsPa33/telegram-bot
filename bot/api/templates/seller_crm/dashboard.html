@@ -125,11 +125,11 @@
 
   <section id="account" class="card secondary-section">
     <h2>Профіль і тарифи</h2>
-    <p id="public-card">Базовий CRM продавця: <b>безкоштовно</b>. Публічна картка та Telegram/profile settings залишаються в існуючому профілі продавця.</p>
+    <p id="public-card">Базовий CRM продавця: <b>безкоштовно</b>. <a href="/crm/seller/{{ account.crm_slug }}/profile">Публічна картка та контакти продавця</a> доступні в окремому workspace.</p>
     <p id="packages"><span class="badge">Active packages</span> Free CRM</p>
     <p id="garage-slots" class="{% if not has_cars %}muted{% endif %}">Garage slots{% if not has_cars %}: де-емфазовано до появи авто{% endif %}</p>
     <p id="payment-history" class="muted">Payment history не змінювався у Phase 1.</p>
-    <p>Адреса кабінету: <b>/crm/seller/{{ account.crm_slug }}</b></p>
+    <p>Адреса кабінету: <b>/crm/seller/{{ account.crm_slug }}</b> · <a href="/crm/seller/{{ account.crm_slug }}/profile">Профіль продавця</a></p>
     {% if not demo_mode %}<form method="post" action="/crm/seller/logout"><button class="btn" type="submit">Вийти</button></form>{% endif %}
   </section>
 {% endblock %}
