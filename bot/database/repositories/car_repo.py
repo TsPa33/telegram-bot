@@ -39,7 +39,7 @@ async def count_cars(model_id: int) -> int:
         SELECT COUNT(*) as total
         FROM seller_cars
         WHERE model_id = $1
-          AND status = 'active'
+          AND status::text IN ('active', '1', 'true', 'enabled', 'published')
     """, model_id)
 
     return row["total"] if row else 0
@@ -51,7 +51,7 @@ async def get_first_car(model_id: int):
     return await fetchrow(f"""
         {BASE_SELECT}
         WHERE sc.model_id = $1
-          AND sc.status = 'active'
+          AND sc.status::text IN ('active', '1', 'true', 'enabled', 'published')
         ORDER BY sc.id DESC
         LIMIT 1
     """, model_id)
@@ -63,7 +63,7 @@ async def get_next_car(model_id: int, last_id: int):
     return await fetchrow(f"""
         {BASE_SELECT}
         WHERE sc.model_id = $1
-          AND sc.status = 'active'
+          AND sc.status::text IN ('active', '1', 'true', 'enabled', 'published')
           AND sc.id < $2
         ORDER BY sc.id DESC
         LIMIT 1
@@ -76,7 +76,7 @@ async def get_prev_car(model_id: int, current_id: int):
     return await fetchrow(f"""
         {BASE_SELECT}
         WHERE sc.model_id = $1
-          AND sc.status = 'active'
+          AND sc.status::text IN ('active', '1', 'true', 'enabled', 'published')
           AND sc.id > $2
         ORDER BY sc.id ASC
         LIMIT 1
@@ -116,7 +116,7 @@ async def get_cars_by_seller(seller_id: int):
         JOIN models m ON sc.model_id = m.id
         JOIN brands b ON m.brand_id = b.id
         WHERE sc.seller_id = $1
-          AND sc.status = 'active'
+          AND sc.status::text IN ('active', '1', 'true', 'enabled', 'published')
         ORDER BY sc.id DESC
     """, seller_id)
 
@@ -127,7 +127,7 @@ async def get_cars_page(model_id: int, limit: int, offset: int):
     return await fetch(f"""
         {BASE_SELECT}
         WHERE sc.model_id = $1
-          AND sc.status = 'active'
+          AND sc.status::text IN ('active', '1', 'true', 'enabled', 'published')
         ORDER BY sc.id DESC
         LIMIT $2 OFFSET $3
     """, model_id, limit, offset)
