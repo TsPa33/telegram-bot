@@ -499,6 +499,147 @@ async def list_seller_crm_marketplace_requests(seller_id: int, limit: int = 8):
     )
 
 
+async def list_seller_crm_marketplace_leads(
+    seller_id: int,
+    status: str = "new",
+    limit: int = 30,
+    offset: int = 0,
+):
+    allowed_statuses = {"new", "in_work", "replied", "selected", "declined", "skipped"}
+    normalized_status = status if status in allowed_statuses else "new"
+    normalized_limit = max(1, min(int(limit or 30), 50))
+    normalized_offset = max(0, int(offset or 0))
+
+    return await fetch(
+        """
+        WITH relevant_leads AS (
+            SELECT br.id AS request_id,
+                   NULLIF(CONCAT_WS(' ', br.brand, br.model), '') AS vehicle_title,
+                   br.city, br.request_type, br.category, br.brand, br.model,
+                   br.description, br.urgency, br.marketplace_status, br.created_at,
+                   route_event.id AS route_event_id,
+                   NULLIF(route_event.payload->>'score', '')::int AS routed_match_score,
+                   route_event.payload->'reasons' AS routed_match_reasons,
+                   seller_offer.id AS offer_id,
+                   seller_offer.status AS offer_status,
+                   seller_offer.price_offer,
+                   seller_offer.message AS offer_message,
+                   seller_offer.created_at AS offer_created_at,
+                   selected_match.id AS selected_match_id,
+                   selected_match.status AS selected_match_status,
+                   selected_match.matched_at AS selected_matched_at,
+                   actions.latest_action,
+                   actions.latest_action_at,
+                   COALESCE(actions.has_viewed, FALSE) AS has_viewed,
+                   COALESCE(actions.has_offered, FALSE) AS has_offered,
+                   COALESCE(actions.has_declined, FALSE) AS has_declined,
+                   COALESCE(actions.has_skipped, FALSE) AS has_skipped,
+                   CASE
+                       WHEN seller_offer.status = 'accepted' OR selected_match.id IS NOT NULL THEN br.buyer_phone
+                       ELSE NULL
+                   END AS buyer_phone_visible
+            FROM buyer_requests br
+            LEFT JOIN LATERAL (
+                SELECT id, payload, status, created_at
+                FROM marketplace_notification_events mne
+                WHERE mne.request_id = br.id
+                  AND mne.seller_id = $1
+                  AND mne.event_type = 'buyer_request_created'
+                ORDER BY mne.created_at DESC, mne.id DESC
+                LIMIT 1
+            ) route_event ON TRUE
+            LEFT JOIN LATERAL (
+                SELECT id, status, price_offer, message, created_at, updated_at
+                FROM buyer_request_offers bro
+                WHERE bro.request_id = br.id
+                  AND bro.seller_id = $1
+                ORDER BY
+                    CASE bro.status WHEN 'accepted' THEN 0 WHEN 'pending' THEN 1 ELSE 2 END,
+                    bro.updated_at DESC,
+                    bro.id DESC
+                LIMIT 1
+            ) seller_offer ON TRUE
+            LEFT JOIN LATERAL (
+                SELECT id, status, matched_at
+                FROM marketplace_matches mm
+                WHERE mm.request_id = br.id
+                  AND mm.seller_id = $1
+                ORDER BY mm.matched_at DESC, mm.id DESC
+                LIMIT 1
+            ) selected_match ON TRUE
+            LEFT JOIN LATERAL (
+                SELECT (ARRAY_AGG(sla.action ORDER BY sla.updated_at DESC, sla.id DESC))[1] AS latest_action,
+                       MAX(sla.updated_at) AS latest_action_at,
+                       BOOL_OR(sla.action = 'viewed') AS has_viewed,
+                       BOOL_OR(sla.action = 'offered') AS has_offered,
+                       BOOL_OR(sla.action = 'declined') AS has_declined,
+                       BOOL_OR(sla.action = 'skipped') AS has_skipped
+                FROM seller_lead_actions sla
+                WHERE sla.request_id = br.id
+                  AND sla.seller_id = $1
+            ) actions ON TRUE
+            WHERE br.entity_type = 'marketplace_request'
+              AND (
+                  route_event.id IS NOT NULL
+                  OR actions.latest_action IS NOT NULL
+                  OR seller_offer.id IS NOT NULL
+                  OR selected_match.id IS NOT NULL
+              )
+        ), classified AS (
+            SELECT request_id,
+                   COALESCE(vehicle_title, category, request_type, 'Marketplace заявка') AS title,
+                   city, category, brand, model, description, urgency, marketplace_status, created_at,
+                   CASE
+                       WHEN offer_status = 'accepted' OR selected_match_id IS NOT NULL THEN 'selected'
+                       WHEN has_declined THEN 'declined'
+                       WHEN has_skipped THEN 'skipped'
+                       WHEN offer_status = 'pending' THEN 'replied'
+                       WHEN has_viewed AND offer_id IS NULL AND NOT has_declined AND NOT has_skipped THEN 'in_work'
+                       ELSE 'new'
+                   END AS seller_status,
+                   offer_status, price_offer, offer_message,
+                   routed_match_score AS match_score,
+                   routed_match_reasons AS match_reasons,
+                   buyer_phone_visible,
+                   GREATEST(
+                       created_at,
+                       COALESCE(offer_created_at, created_at),
+                       COALESCE(latest_action_at, created_at),
+                       COALESCE(selected_matched_at, created_at)
+                   ) AS sort_at
+            FROM relevant_leads
+            WHERE CASE $2
+                WHEN 'new' THEN route_event_id IS NOT NULL
+                    AND offer_id IS NULL
+                    AND NOT has_viewed
+                    AND NOT has_offered
+                    AND NOT has_declined
+                    AND NOT has_skipped
+                WHEN 'in_work' THEN has_viewed
+                    AND offer_id IS NULL
+                    AND NOT has_declined
+                    AND NOT has_skipped
+                WHEN 'replied' THEN offer_status = 'pending'
+                WHEN 'selected' THEN offer_status = 'accepted' OR selected_match_id IS NOT NULL
+                WHEN 'declined' THEN has_declined
+                WHEN 'skipped' THEN has_skipped
+                ELSE FALSE
+            END
+        )
+        SELECT request_id, title, city, category, brand, model, description, urgency,
+               marketplace_status, created_at, seller_status, offer_status, price_offer,
+               offer_message, match_score, match_reasons, buyer_phone_visible
+        FROM classified
+        ORDER BY sort_at DESC, request_id DESC
+        LIMIT $3 OFFSET $4
+        """,
+        seller_id,
+        normalized_status,
+        normalized_limit,
+        normalized_offset,
+    )
+
+
 async def list_seller_crm_marketplace_activity(seller_id: int, limit: int = 12):
     normalized_limit = max(1, min(int(limit or 12), 30))
     return await fetch(
