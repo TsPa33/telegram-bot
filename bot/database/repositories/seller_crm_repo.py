@@ -445,6 +445,139 @@ async def get_seller_crm_marketplace_summary(seller_id: int):
     )
 
 
+async def get_seller_crm_analytics(seller_id: int, days: int = 30):
+    normalized_days = max(1, min(int(days or 30), 365))
+    return await fetchrow(
+        """
+        WITH bounds AS (
+            SELECT NOW() - ($2::int * INTERVAL '1 day') AS since
+        ), seller_site AS (
+            SELECT id, subdomain
+            FROM seller_sites
+            WHERE seller_id = $1
+            LIMIT 1
+        ), routed AS (
+            SELECT DISTINCT mne.request_id
+            FROM marketplace_notification_events mne, bounds
+            WHERE mne.seller_id = $1
+              AND mne.request_id IS NOT NULL
+              AND mne.event_type = 'buyer_request_created'
+              AND mne.created_at >= bounds.since
+        ), viewed AS (
+            SELECT DISTINCT sla.request_id
+            FROM seller_lead_actions sla, bounds
+            WHERE sla.seller_id = $1
+              AND sla.action = 'viewed'
+              AND sla.updated_at >= bounds.since
+        ), declined AS (
+            SELECT DISTINCT sla.request_id
+            FROM seller_lead_actions sla, bounds
+            WHERE sla.seller_id = $1
+              AND sla.action = 'declined'
+              AND sla.updated_at >= bounds.since
+        ), skipped AS (
+            SELECT DISTINCT sla.request_id
+            FROM seller_lead_actions sla, bounds
+            WHERE sla.seller_id = $1
+              AND sla.action = 'skipped'
+              AND sla.updated_at >= bounds.since
+        ), offers AS (
+            SELECT bro.id, bro.request_id, bro.status, bro.created_at
+            FROM buyer_request_offers bro, bounds
+            WHERE bro.seller_id = $1
+              AND bro.created_at >= bounds.since
+        ), response_pairs AS (
+            SELECT EXTRACT(EPOCH FROM (bro.created_at - COALESCE(route_event.created_at, br.created_at)))::int AS response_seconds
+            FROM buyer_request_offers bro
+            JOIN buyer_requests br ON br.id = bro.request_id
+            LEFT JOIN LATERAL (
+                SELECT mne.created_at
+                FROM marketplace_notification_events mne
+                WHERE mne.request_id = bro.request_id
+                  AND mne.seller_id = bro.seller_id
+                  AND mne.event_type = 'buyer_request_created'
+                ORDER BY mne.created_at ASC, mne.id ASC
+                LIMIT 1
+            ) route_event ON TRUE
+            CROSS JOIN bounds
+            WHERE bro.seller_id = $1
+              AND bro.created_at >= bounds.since
+              AND bro.created_at >= COALESCE(route_event.created_at, br.created_at)
+        ), car_counts AS (
+            SELECT COUNT(*) FILTER (WHERE COALESCE(status, 1) = 1)::int AS active_cars,
+                   COALESCE(SUM(views) FILTER (WHERE COALESCE(status, 1) = 1), 0)::int AS car_views,
+                   COALESCE(SUM(phone_clicks) FILTER (WHERE COALESCE(status, 1) = 1), 0)::int AS car_phone_clicks,
+                   COALESCE(SUM(site_clicks) FILTER (WHERE COALESCE(status, 1) = 1), 0)::int AS car_site_clicks
+            FROM seller_cars
+            WHERE seller_id = $1
+        ), service_counts AS (
+            SELECT COUNT(*)::int AS services_count,
+                   COALESCE(SUM(st.views), 0)::int AS service_views,
+                   COALESCE(SUM(st.calls + st.clicks), 0)::int AS service_clicks
+            FROM services sv
+            LEFT JOIN service_stats st ON st.service_id = sv.id
+            WHERE sv.seller_id = $1
+        ), site_sessions AS (
+            SELECT COUNT(*)::int AS visits,
+                   COALESCE(SUM(a.pages_viewed), 0)::int AS page_views
+            FROM analytics_sessions a
+            JOIN seller_site ss ON ss.id = a.seller_site_id OR lower(ss.subdomain) = lower(a.subdomain)
+            CROSS JOIN bounds
+            WHERE a.started_at >= bounds.since
+        ), site_events AS (
+            SELECT COUNT(*) FILTER (WHERE e.event_type = 'telegram_click')::int AS telegram_clicks,
+                   COUNT(*) FILTER (WHERE e.event_type IN ('cta_click', 'phone_click', 'site_click'))::int AS cta_clicks
+            FROM analytics_events e
+            JOIN seller_site ss ON ss.id = e.seller_site_id OR lower(ss.subdomain) = lower(e.subdomain)
+            CROSS JOIN bounds
+            WHERE e.created_at >= bounds.since
+        ), site_lead_counts AS (
+            SELECT COUNT(*)::int AS leads
+            FROM site_leads sl
+            CROSS JOIN bounds
+            WHERE sl.seller_id = $1
+              AND sl.created_at >= bounds.since
+        )
+        SELECT
+            $2::int AS days,
+            EXISTS (SELECT 1 FROM seller_site) AS has_website,
+            COALESCE((SELECT COUNT(*) FROM routed), 0)::int AS routed_requests,
+            COALESCE((SELECT COUNT(*) FROM viewed), 0)::int AS viewed_requests,
+            COALESCE((SELECT COUNT(*) FROM declined), 0)::int AS declined_requests,
+            COALESCE((SELECT COUNT(*) FROM skipped), 0)::int AS skipped_requests,
+            COALESCE((SELECT COUNT(*) FROM offers), 0)::int AS offers_sent,
+            COALESCE((SELECT COUNT(*) FROM offers WHERE status = 'accepted'), 0)::int AS offers_selected,
+            COALESCE((SELECT COUNT(*) FROM offers WHERE status = 'rejected'), 0)::int AS offers_rejected,
+            CASE WHEN COALESCE((SELECT COUNT(*) FROM offers), 0) = 0 THEN 0
+                 ELSE ROUND(((SELECT COUNT(*) FROM offers WHERE status = 'accepted')::numeric / NULLIF((SELECT COUNT(*) FROM offers)::numeric, 0)) * 100, 1)
+            END AS selected_conversion_percent,
+            (SELECT AVG(response_seconds)::int FROM response_pairs) AS average_response_seconds,
+            COALESCE(cc.active_cars, 0)::int AS active_cars,
+            COALESCE(cc.car_views, 0)::int AS car_views,
+            COALESCE(cc.car_phone_clicks, 0)::int AS car_phone_clicks,
+            COALESCE(cc.car_site_clicks, 0)::int AS car_site_clicks,
+            COALESCE(sc.services_count, 0)::int AS services_count,
+            COALESCE(sc.service_views, 0)::int AS service_views,
+            COALESCE(sc.service_clicks, 0)::int AS service_clicks,
+            COALESCE(ss.visits, 0)::int AS visits,
+            COALESCE(ss.page_views, 0)::int AS page_views,
+            COALESCE(slc.leads, 0)::int AS leads,
+            COALESCE(se.telegram_clicks, 0)::int AS telegram_clicks,
+            COALESCE(se.cta_clicks, 0)::int AS cta_clicks,
+            CASE WHEN COALESCE(ss.visits, 0) = 0 THEN 0
+                 ELSE ROUND((COALESCE(slc.leads, 0)::numeric / NULLIF(ss.visits::numeric, 0)) * 100, 1)
+            END AS conversion_percent
+        FROM car_counts cc
+        CROSS JOIN service_counts sc
+        CROSS JOIN site_sessions ss
+        CROSS JOIN site_events se
+        CROSS JOIN site_lead_counts slc
+        """,
+        seller_id,
+        normalized_days,
+    )
+
+
 async def list_seller_crm_marketplace_requests(seller_id: int, limit: int = 8):
     normalized_limit = max(1, min(int(limit or 8), 20))
     return await fetch(

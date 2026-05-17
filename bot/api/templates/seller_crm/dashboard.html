@@ -13,30 +13,30 @@
   </section>
 
   <section id="marketplace-analytics" class="grid kpi-cards" aria-label="Marketplace KPI">
-    <article class="card kpi-card">
+    <a class="card kpi-card" href="/crm/seller/{{ account.crm_slug }}/analytics">
       <div class="emoji">🔥</div>
       <h3>Нові заявки</h3>
       <div class="metric">{{ marketplace_summary.new_requests or 0 }}</div>
       <p class="muted">релевантні за останні 24 години</p>
-    </article>
-    <article class="card kpi-card">
+    </a>
+    <a class="card kpi-card" href="/crm/seller/{{ account.crm_slug }}/analytics">
       <div class="emoji">⏳</div>
       <h3>Очікують відповіді</h3>
       <div class="metric">{{ marketplace_summary.waiting_response or 0 }}</div>
       <p class="muted">без пропозиції, відхилення або пропуску</p>
-    </article>
-    <a class="card kpi-card" id="offers" href="/crm/seller/{{ account.crm_slug }}/offers?status=selected">
+    </a>
+    <a class="card kpi-card" id="offers" href="/crm/seller/{{ account.crm_slug }}/analytics">
       <div class="emoji">✅</div>
       <h3>Обрані покупцем</h3>
       <div class="metric">{{ marketplace_summary.accepted_offers or 0 }}</div>
       <p class="muted">accepted offers продавця</p>
     </a>
-    <article class="card kpi-card">
+    <a class="card kpi-card" href="/crm/seller/{{ account.crm_slug }}/analytics">
       <div class="emoji">⚡</div>
       <h3>Середній час відповіді</h3>
       <div class="metric">{{ marketplace_summary.avg_response_label or "—" }}</div>
       <p class="muted">від заявки до seller offer</p>
-    </article>
+    </a>
   </section>
 
   <section class="grid dashboard-layout" style="margin-top:14px">
@@ -96,13 +96,13 @@
   </section>
 
   <section id="website-analytics" class="grid two secondary-section">
-    <article class="card">
+    <a class="card" href="/crm/seller/{{ account.crm_slug }}/analytics#website-analytics" style="text-decoration:none;color:inherit">
       <h2>Website/catalog analytics</h2>
       <p class="section-note">Другорядний блок: сайт лишається робочим, але не домінує над marketplace workflow.</p>
       <p><b>{{ stats.visits_today or 0 }}</b> візитів сьогодні · <b>{{ stats.page_views_today or 0 }}</b> переглядів сторінок</p>
       <p><b>{{ stats.telegram_clicks_today or 0 }}</b> Telegram переходів · <b>{{ stats.cta_clicks_today or 0 }}</b> CTA кліків</p>
       {% for source in sources %}<p><span class="badge">{{ source.source }}</span> {{ source.visits }} візитів</p>{% else %}<p class="muted">Поки немає джерел трафіку</p>{% endfor %}
-    </article>
+    </a>
     <article class="card">
       <h2>Мій контент</h2>
       {% if has_services or not has_cars %}<p id="services"><b>{{ stats.services_count or 0 }}</b> послуг · <b>{{ stats.service_requests or 0 }}</b> заявок/кліків</p>{% endif %}
