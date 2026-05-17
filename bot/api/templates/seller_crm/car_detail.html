@@ -9,18 +9,22 @@
   .detail-meta, .detail-actions, .detail-badges { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; min-width: 0; }
   .detail-meta { color: var(--muted); font-size: 13px; font-weight: 850; }
   .detail-desc { color: var(--muted); line-height: 1.55; overflow-wrap: anywhere; white-space: pre-wrap; }
+  .photo-panel { display: grid; gap: 10px; min-width: 0; }
   .photo-preview { width: 100%; min-height: 210px; border-radius: 18px; border: 1px solid var(--line); background: rgba(255,255,255,.045); overflow: hidden; display: grid; place-items: center; color: var(--muted); font-weight: 900; text-align: center; }
   .photo-preview img { width: 100%; height: 100%; min-height: 210px; object-fit: cover; }
+  .photo-upload { display: grid; gap: 9px; min-width: 0; }
+  .photo-upload input[type="file"] { width: 100%; max-width: 100%; min-width: 0; color: var(--muted); }
+  .photo-upload .field-help { color: var(--muted); font-size: 12px; line-height: 1.4; }
   .stats-grid { grid-template-columns: repeat(4,minmax(0,1fr)); }
   .notice { border: 1px solid rgba(52,245,166,.24); background: rgba(52,245,166,.1); color: #bbf7d0; border-radius: 14px; padding: 10px 12px; font-weight: 850; }
   .notice.error { border-color: rgba(251,113,133,.28); background: rgba(251,113,133,.1); color: #fecdd3; }
   .toggle-form { margin: 0; }
   @media (max-width: 880px) { .detail-head { grid-template-columns: 1fr; } .stats-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
-  @media (max-width: 620px) { .stats-grid { grid-template-columns: 1fr; } .detail-actions { display: grid; grid-template-columns: 1fr; } .detail-actions .btn, .detail-actions button { width: 100%; white-space: normal; } }
+  @media (max-width: 620px) { .stats-grid { grid-template-columns: 1fr; } .detail-actions { display: grid; grid-template-columns: 1fr; } .detail-actions .btn, .detail-actions button, .photo-upload .btn { width: 100%; white-space: normal; } }
 </style>
 
-{% set status_messages = {"updated": "Авто оновлено.", "enabled": "Авто увімкнено.", "disabled": "Авто вимкнено."} %}
-{% set error_messages = {"status_not_supported": "Статус авто недоступний у поточній схемі."} %}
+{% set status_messages = {"updated": "Авто оновлено.", "enabled": "Авто увімкнено.", "disabled": "Авто вимкнено.", "photo_updated": "Фото авто оновлено."} %}
+{% set error_messages = {"status_not_supported": "Статус авто недоступний у поточній схемі.", "empty_photo": "Оберіть непорожній файл фото.", "invalid_photo_type": "Підтримуються лише JPG, PNG або WebP.", "photo_too_large": "Фото завелике. Завантажте файл до 5 МБ.", "photo_upload_failed": "Не вдалося завантажити фото. Спробуйте ще раз.", "photo_save_failed": "Фото завантажено, але не вдалося зберегти його для авто."} %}
 
 <div class="car-detail-wrap">
   {% if status and status_messages.get(status) %}<div class="notice" role="status">{{ status_messages.get(status) }}</div>{% endif %}
@@ -47,14 +51,21 @@
         <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content/cars">Назад до авто</a>
       </div>
     </div>
-    <div class="photo-preview" aria-label="Фото авто">
-      {% if car.photo_is_url %}
-        <img src="{{ car.photo_id }}" alt="{{ car.brand }} {{ car.model }}">
-      {% elif car.has_photo %}
-        Фото додано
-      {% else %}
-        Немає фото
-      {% endif %}
+    <div class="photo-panel">
+      <div class="photo-preview" aria-label="Фото авто">
+        {% if car.photo_is_url %}
+          <img src="{{ car.photo_id }}" alt="{{ car.brand }} {{ car.model }}">
+        {% elif car.has_photo %}
+          Фото додано
+        {% else %}
+          Немає фото
+        {% endif %}
+      </div>
+      <form class="photo-upload" method="post" action="/crm/seller/{{ account.crm_slug }}/content/cars/{{ car.car_id }}/photo" enctype="multipart/form-data">
+        <label class="field-help" for="car-photo">JPG/PNG/WebP recommended · до 5 МБ</label>
+        <input id="car-photo" name="photo" type="file" accept="image/jpeg,image/png,image/webp" required>
+        <button class="btn" type="submit">Оновити фото</button>
+      </form>
     </div>
   </section>
 

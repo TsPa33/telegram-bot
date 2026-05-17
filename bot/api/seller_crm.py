@@ -57,6 +57,7 @@ from bot.database.repositories.seller_crm_repo import (
     seller_crm_car_supports_is_catalog,
     set_seller_crm_car_status,
     update_seller_crm_car,
+    update_seller_crm_car_photo,
 )
 from bot.database.repositories.seller_lead_repo import (
     cancel_seller_lead_notifications,
@@ -109,6 +110,15 @@ OFFER_STATUS_TABS = [
     {"key": "all", "label": "Архів / всі", "empty": "Пропозицій ще немає."},
 ]
 ALLOWED_OFFER_STATUSES = {tab["key"] for tab in OFFER_STATUS_TABS}
+
+ALLOWED_CAR_PHOTO_MIME_TYPES = {"image/jpeg", "image/png", "image/webp"}
+CAR_PHOTO_MAX_BYTES = 5 * 1024 * 1024
+CAR_PHOTO_SUFFIX_BY_MIME = {
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+}
+
 
 MODULE_KEYS = [
     ("hero", "Перший екран"),
@@ -588,6 +598,45 @@ async def _upload_to_cloudinary(file: UploadFile | None) -> str | None:
             return None
         Path(temp_path).write_bytes(content)
         return await upload_image(temp_path)
+    finally:
+        try:
+            os.remove(temp_path)
+        except FileNotFoundError:
+            pass
+
+
+async def _upload_validated_car_photo(file: UploadFile | None) -> tuple[str | None, str | None]:
+    if not file or not file.filename:
+        return None, "empty_photo"
+
+    content_type = (file.content_type or "").split(";", 1)[0].strip().lower()
+    if content_type not in ALLOWED_CAR_PHOTO_MIME_TYPES:
+        return None, "invalid_photo_type"
+
+    suffix = CAR_PHOTO_SUFFIX_BY_MIME.get(content_type, Path(file.filename).suffix or ".jpg")
+    fd, temp_path = tempfile.mkstemp(prefix="carpot-crm-car-", suffix=suffix)
+    total_size = 0
+    try:
+        with os.fdopen(fd, "wb") as temp_file:
+            while True:
+                chunk = await file.read(1024 * 1024)
+                if not chunk:
+                    break
+                total_size += len(chunk)
+                if total_size > CAR_PHOTO_MAX_BYTES:
+                    return None, "photo_too_large"
+                temp_file.write(chunk)
+
+        if total_size <= 0:
+            return None, "empty_photo"
+
+        image_url = await upload_image(temp_path)
+        if not image_url:
+            return None, "photo_upload_failed"
+        return image_url, None
+    except Exception:
+        logger.exception("CRM_CAR_PHOTO_UPLOAD_FAILED")
+        return None, "photo_upload_failed"
     finally:
         try:
             os.remove(temp_path)
@@ -1688,6 +1737,36 @@ async def seller_crm_car_detail(request: Request, crm_slug: str, car_id: int, st
             has_services=False,
         ),
     )
+
+
+@router.post("/{crm_slug}/content/cars/{car_id}/photo")
+async def seller_crm_car_photo_upload(
+    request: Request,
+    crm_slug: str,
+    car_id: int,
+    photo: UploadFile | None = File(None),
+):
+    detail_url = f"/crm/seller/{crm_slug}/content/cars/{car_id}"
+    try:
+        account, _subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+
+    car = await get_seller_crm_car_detail(account["seller_id"], car_id)
+    if not car:
+        return RedirectResponse(url=f"/crm/seller/{crm_slug}/content/cars?error=car_not_found", status_code=303)
+
+    image_url, error_key = await _upload_validated_car_photo(photo)
+    if error_key or not image_url:
+        return RedirectResponse(url=f"{detail_url}?error={error_key or 'photo_upload_failed'}", status_code=303)
+
+    saved = await update_seller_crm_car_photo(account["seller_id"], car_id, image_url)
+    if not saved:
+        return RedirectResponse(url=f"{detail_url}?error=photo_save_failed", status_code=303)
+
+    return RedirectResponse(url=f"{detail_url}?status=photo_updated", status_code=303)
 
 
 async def _toggle_crm_car(request: Request, crm_slug: str, car_id: int, new_status: str):
