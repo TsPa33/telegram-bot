@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{% block title %}{{ title or "Професійна CRM CarPot" }}{% endblock %}</title>
+    <title>{% block title %}{{ title or "CRM продавця CarPot" }}{% endblock %}</title>
     <style>
         :root{color-scheme:dark;--bg:#06111f;--panel:rgba(12,24,41,.82);--panel2:rgba(15,29,49,.96);--line:rgba(148,163,184,.18);--text:#edf7ff;--muted:#92a6bb;--blue:#25d7ff;--green:#34f5a6;--red:#fb7185;--yellow:#fbbf24;--shadow:0 18px 54px rgba(0,0,0,.28);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
         *{box-sizing:border-box} html{scroll-behavior:smooth} body{margin:0;min-height:100vh;background:radial-gradient(circle at 14% 0%,rgba(37,215,255,.14),transparent 34rem),radial-gradient(circle at 86% 10%,rgba(52,245,166,.1),transparent 32rem),linear-gradient(135deg,#06111f,#0b1628);color:var(--text)}
@@ -41,11 +41,11 @@
       <a href="/crm/seller/{{ account.crm_slug }}/website#modules">Модулі</a>
       <a href="/crm/seller/{{ account.crm_slug }}/website#publish-section">Публікація</a>
       <div class="nav-group">Налаштування</div>
-      <a href="/crm/seller/{{ account.crm_slug }}#subscription">Підписка</a>
+      <a href="/crm/seller/{{ account.crm_slug }}#account">Акаунт CRM</a>
     </nav>
   </aside>
   <main class="main">
-    <header class="top"><div><p class="kicker">{% block crm_kicker %}Професійна CRM для автобізнесу{% endblock %}</p><h1>{% block crm_heading %}Професійна CRM CarPot{% endblock %}</h1></div>{% block crm_top_actions %}<div class="pill">{{ "Демо режим" if demo_mode else "Кабінет продавця" }}</div>{% endblock %}</header>
+    <header class="top"><div><p class="kicker">{% block crm_kicker %}CRM продавця для автобізнесу{% endblock %}</p><h1>{% block crm_heading %}CRM продавця CarPot{% endblock %}</h1></div>{% block crm_top_actions %}<div class="pill">{{ "Демо режим" if demo_mode else "Кабінет продавця" }}</div>{% endblock %}</header>
     <section class="content {% block content_class %}{% endblock %}">
       {% block content %}{% endblock %}
     </section>

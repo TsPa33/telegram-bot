@@ -15,10 +15,18 @@
 {% set price_items = pricing['items'] if 'items' in pricing and pricing['items'] is iterable and pricing['items'] is not string else [] %}
 {% block crm_kicker %}Єдина CRM: сайт, медіа, авто, послуги й публікація{% endblock %}
 {% block crm_heading %}Керування сайтом продавця{% endblock %}
-{% block crm_top_actions %}<div class="top-actions"><a class="btn ghost" href="{{ live_url }}" target="_blank">Відкрити сайт</a><a class="btn" href="/crm/seller/{{ account.crm_slug }}/website/preview" target="_blank">Чернетка</a></div>{% endblock %}
+{% block crm_top_actions %}{% if site_missing %}<div class="pill">Сайт не налаштовано</div>{% else %}<div class="top-actions"><a class="btn ghost" href="{{ live_url }}" target="_blank">Відкрити сайт</a><a class="btn" href="/crm/seller/{{ account.crm_slug }}/website/preview" target="_blank">Чернетка</a></div>{% endif %}{% endblock %}
 {% block content_class %}crm-site{% endblock %}
 {% block content %}
   {% if status %}<div class="notice">{{ "Опубліковано" if status == "published" else "Чернетку збережено" }}</div>{% endif %}
+
+  {% if site_missing %}
+    <article class="card">
+      <h3>Сайт ще не налаштовано</h3>
+      <p class="muted">CRM продавця вже доступний безкоштовно. Розділ сайту зʼявиться після створення або підключення сайту продавця.</p>
+      <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}">Повернутися на панель</a>
+    </article>
+  {% else %}
 
   <nav class="section-nav" aria-label="Навігація сторінкою сайту">
     <a href="#site-section">Сайт</a>
@@ -158,4 +166,5 @@
       <article id="publish" class="card"><h3>Публікація</h3><p class="muted">Збереження оновлює чернетку. Публікація переносить перевірені зміни на публічний сайт.</p><p><b>Опублікований сайт:</b> <a href="{{ live_url }}" target="_blank">{{ live_url }}</a></p><div class="action-row"><a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/website/preview" target="_blank">Переглянути</a><form method="post" action="/crm/seller/{{ account.crm_slug }}/website/publish"><button class="btn">Опублікувати</button></form></div></article>
     </div>
   </section>
+  {% endif %}
 {% endblock %}

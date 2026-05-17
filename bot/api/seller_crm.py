@@ -1,3 +1,4 @@
+import logging
 import os
 import secrets
 import tempfile
@@ -6,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from bot.database.repositories.car_repo import (
@@ -20,7 +21,6 @@ from bot.database.repositories.model_repo import get_brands_with_ids, get_model_
 from bot.database.repositories.seller_crm_repo import (
     create_crm_session,
     delete_crm_session,
-    get_active_crm_subscription,
     get_crm_account_by_slug,
     get_crm_account_for_login,
     get_crm_session,
@@ -51,6 +51,7 @@ from bot.services.storage import upload_image
 router = APIRouter(prefix="/crm/seller")
 templates = Jinja2Templates(directory="bot/api/templates")
 SELLER_CRM_COOKIE = "seller_crm_session"
+logger = logging.getLogger(__name__)
 
 MODULE_KEYS = [
     ("hero", "Перший екран"),
@@ -88,10 +89,7 @@ async def _current_session(request: Request):
     if not session["is_active"] or not session["crm_enabled"]:
         raise HTTPException(status_code=403, detail="Seller CRM account disabled")
 
-    subscription = await get_active_crm_subscription(session["seller_id"])
-    if not subscription:
-        raise HTTPException(status_code=402, detail="Seller CRM subscription expired")
-    return session, subscription
+    return session, None
 
 
 async def _authorized_account(request: Request, crm_slug: str):
@@ -249,14 +247,6 @@ async def seller_crm_login(
             status_code=401,
         )
 
-    subscription = await get_active_crm_subscription(account["seller_id"])
-    if not subscription:
-        return templates.TemplateResponse(
-            "seller_crm/login.html",
-            _seller_crm_context(request, error="CRM підписка завершилась. Продовжіть її в Telegram.", identifier=identifier, slug=slug),
-            status_code=402,
-        )
-
     if not verify_crm_password(password, account["password_hash"]):
         return templates.TemplateResponse(
             "seller_crm/login.html",
@@ -266,6 +256,12 @@ async def seller_crm_login(
 
     token = secrets.token_urlsafe(32)
     await create_crm_session(account["id"], token, datetime.utcnow() + timedelta(days=SELLER_CRM_SESSION_DAYS))
+    logger.info(
+        "CRM_LOGIN_SUCCESS seller_id=%s account_id=%s slug=%s",
+        account["seller_id"],
+        account["id"],
+        account["crm_slug"],
+    )
 
     response = RedirectResponse(url=f"/crm/seller/{account['crm_slug']}", status_code=303)
     response.set_cookie(
@@ -309,7 +305,7 @@ async def seller_crm_dashboard(request: Request, crm_slug: str):
         "seller_crm/dashboard.html",
         _seller_crm_context(
             request,
-            title="Професійна CRM CarPot",
+            title="CRM продавця CarPot",
             demo_mode=False,
             current_page="dashboard",
             account=account,
@@ -335,7 +331,29 @@ async def seller_crm_website(request: Request, crm_slug: str, section: str = "we
     seller_id = account["seller_id"]
     site = await get_site_by_seller(seller_id)
     if not site:
-        raise HTTPException(status_code=404, detail="Seller site is not created yet")
+        return templates.TemplateResponse(
+            "seller_crm/website.html",
+            _seller_crm_context(
+                request,
+                title="Сайт не налаштовано — CRM продавця",
+                current_page="website",
+                account=account,
+                subscription=subscription,
+                site=None,
+                site_missing=True,
+                config={},
+                services=[],
+                cars=[],
+                brands=[],
+                models=[],
+                media=[],
+                live_url="#",
+                section=section,
+                status=status,
+                themes=get_theme_presets(),
+                module_keys=MODULE_KEYS,
+            ),
+        )
 
     config = _as_config(site)
     services = [dict(row) for row in await get_services_by_seller(seller_id)]
@@ -600,7 +618,10 @@ async def preview_draft_site(request: Request, crm_slug: str):
     account, _ = await _authorized_account(request, crm_slug)
     site = await get_site_by_seller(account["seller_id"])
     if not site:
-        raise HTTPException(status_code=404, detail="Seller site is not created yet")
+        return HTMLResponse(
+            "<h1>Сайт ще не налаштовано</h1><p>Поверніться до CRM продавця та налаштуйте сайт.</p>",
+            status_code=200,
+        )
     config = _as_config(site)
     return templates.TemplateResponse(
         "site.html",
