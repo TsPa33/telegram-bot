@@ -236,7 +236,7 @@ async def ensure_free_crm_account(
 async def get_crm_account_by_slug(crm_slug: str):
     return await fetchrow(
         """
-        SELECT sca.*, s.telegram_id, s.username, s.shop_name, s.name, s.crm_enabled
+        SELECT sca.*, s.telegram_id, s.username, s.shop_name, s.name, s.crm_enabled, s.has_site, s.website, s.city
         FROM seller_crm_accounts sca
         JOIN sellers s ON s.id = sca.seller_id
         WHERE lower(sca.crm_slug) = lower($1)
@@ -386,6 +386,159 @@ async def get_seller_crm_dashboard(seller_id: int):
         CROSS JOIN service_counts src
         """,
         seller_id,
+    )
+
+
+async def get_seller_crm_marketplace_summary(seller_id: int):
+    return await fetchrow(
+        """
+        WITH relevant_requests AS (
+            SELECT DISTINCT br.id, br.created_at
+            FROM buyer_requests br
+            LEFT JOIN marketplace_notification_events mne
+              ON mne.request_id = br.id
+             AND mne.seller_id = $1
+             AND mne.event_type = 'buyer_request_created'
+            LEFT JOIN buyer_request_offers bro
+              ON bro.request_id = br.id
+             AND bro.seller_id = $1
+            WHERE br.entity_type = 'marketplace_request'
+              AND (mne.id IS NOT NULL OR bro.id IS NOT NULL OR br.seller_id = $1)
+        ), pending_requests AS (
+            SELECT rr.id
+            FROM relevant_requests rr
+            WHERE NOT EXISTS (
+                SELECT 1 FROM buyer_request_offers bro
+                WHERE bro.request_id = rr.id AND bro.seller_id = $1
+            )
+              AND NOT EXISTS (
+                SELECT 1 FROM seller_lead_actions sla
+                WHERE sla.request_id = rr.id
+                  AND sla.seller_id = $1
+                  AND sla.action IN ('skipped', 'declined', 'offered')
+            )
+        ), response_pairs AS (
+            SELECT EXTRACT(EPOCH FROM (bro.created_at - COALESCE(mne.created_at, br.created_at)))::int AS response_seconds
+            FROM buyer_request_offers bro
+            JOIN buyer_requests br ON br.id = bro.request_id
+            LEFT JOIN LATERAL (
+                SELECT created_at
+                FROM marketplace_notification_events route_event
+                WHERE route_event.request_id = bro.request_id
+                  AND route_event.seller_id = bro.seller_id
+                  AND route_event.event_type = 'buyer_request_created'
+                ORDER BY route_event.created_at ASC, route_event.id ASC
+                LIMIT 1
+            ) mne ON TRUE
+            WHERE bro.seller_id = $1
+              AND bro.created_at >= COALESCE(mne.created_at, br.created_at)
+        )
+        SELECT
+            (SELECT COUNT(*)::int FROM relevant_requests WHERE created_at >= NOW() - INTERVAL '24 hours') AS new_requests,
+            (SELECT COUNT(*)::int FROM pending_requests) AS waiting_response,
+            (SELECT COUNT(*)::int FROM buyer_request_offers WHERE seller_id = $1 AND status = 'accepted') AS accepted_offers,
+            (SELECT AVG(response_seconds)::int FROM response_pairs) AS avg_response_seconds,
+            (SELECT COUNT(*)::int FROM buyer_request_offers WHERE seller_id = $1) AS total_offers
+        """,
+        seller_id,
+    )
+
+
+async def list_seller_crm_marketplace_requests(seller_id: int, limit: int = 8):
+    normalized_limit = max(1, min(int(limit or 8), 20))
+    return await fetch(
+        """
+        SELECT br.id, br.city, br.request_type, br.category, br.brand, br.model,
+               br.description, br.message, br.marketplace_status, br.created_at,
+               route_event.status AS notification_status,
+               bro.id AS offer_id, bro.status AS offer_status, bro.created_at AS offer_created_at,
+               sla.action AS seller_action,
+               COALESCE(offer_counts.total_offers, 0)::int AS offers_count
+        FROM buyer_requests br
+        LEFT JOIN LATERAL (
+            SELECT id, status, created_at
+            FROM marketplace_notification_events mne
+            WHERE mne.request_id = br.id
+              AND mne.seller_id = $1
+              AND mne.event_type = 'buyer_request_created'
+            ORDER BY mne.created_at DESC, mne.id DESC
+            LIMIT 1
+        ) route_event ON TRUE
+        LEFT JOIN LATERAL (
+            SELECT id, status, created_at
+            FROM buyer_request_offers seller_offer
+            WHERE seller_offer.request_id = br.id
+              AND seller_offer.seller_id = $1
+            ORDER BY seller_offer.created_at DESC, seller_offer.id DESC
+            LIMIT 1
+        ) bro ON TRUE
+        LEFT JOIN LATERAL (
+            SELECT action, updated_at
+            FROM seller_lead_actions action_row
+            WHERE action_row.request_id = br.id
+              AND action_row.seller_id = $1
+            ORDER BY action_row.updated_at DESC, action_row.id DESC
+            LIMIT 1
+        ) sla ON TRUE
+        LEFT JOIN LATERAL (
+            SELECT COUNT(*)::int AS total_offers
+            FROM buyer_request_offers request_offer
+            WHERE request_offer.request_id = br.id
+        ) offer_counts ON TRUE
+        WHERE br.entity_type = 'marketplace_request'
+          AND (route_event.id IS NOT NULL OR bro.id IS NOT NULL OR br.seller_id = $1)
+        ORDER BY GREATEST(
+            br.created_at,
+            COALESCE(route_event.created_at, br.created_at),
+            COALESCE(bro.created_at, br.created_at)
+        ) DESC, br.id DESC
+        LIMIT $2
+        """,
+        seller_id,
+        normalized_limit,
+    )
+
+
+async def list_seller_crm_marketplace_activity(seller_id: int, limit: int = 12):
+    normalized_limit = max(1, min(int(limit or 12), 30))
+    return await fetch(
+        """
+        SELECT * FROM (
+            SELECT mne.created_at,
+                   'notification' AS source,
+                   mne.event_type AS action,
+                   mne.status,
+                   mne.request_id,
+                   mne.offer_id,
+                   br.city,
+                   br.category,
+                   br.brand,
+                   br.model,
+                   br.description
+            FROM marketplace_notification_events mne
+            LEFT JOIN buyer_requests br ON br.id = mne.request_id
+            WHERE mne.seller_id = $1
+            UNION ALL
+            SELECT sla.updated_at AS created_at,
+                   'seller_action' AS source,
+                   sla.action,
+                   NULL::text AS status,
+                   sla.request_id,
+                   NULL::int AS offer_id,
+                   br.city,
+                   br.category,
+                   br.brand,
+                   br.model,
+                   br.description
+            FROM seller_lead_actions sla
+            LEFT JOIN buyer_requests br ON br.id = sla.request_id
+            WHERE sla.seller_id = $1
+        ) activity
+        ORDER BY created_at DESC
+        LIMIT $2
+        """,
+        seller_id,
+        normalized_limit,
     )
 
 
