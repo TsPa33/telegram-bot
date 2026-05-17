@@ -29,16 +29,15 @@
   {% else %}
 
   <nav class="section-nav" aria-label="Навігація сторінкою сайту">
-    <a href="#site-section">Сайт</a>
+    <a href="#site-section">Основне</a>
     <a href="#media-section">Медіа</a>
     <a href="#content-section">Контент</a>
     <a href="#modules-section">Модулі</a>
     <a href="#publish-section">Публікація</a>
   </nav>
 
-  <section id="site-section" class="section-group">
-    <h2 class="section-heading">Сайт</h2>
-    <p class="section-intro">Основні тексти, контакти, SEO, заклики та футер зібрані в один компактний блок.</p>
+  <details id="site-section" class="section-group" open>
+    <summary><h2 class="section-heading">Основне</h2><p class="section-intro">Основні тексти, контакти, SEO, заклики та футер зібрані в один компактний блок.</p></summary>
     <div class="grid two">
       <article id="website" class="card">
         <h3>Основні тексти</h3>
@@ -73,11 +72,10 @@
         <iframe src="/crm/seller/{{ account.crm_slug }}/website/preview" title="Перегляд чернетки"></iframe>
       </article>
     </div>
-  </section>
+  </details>
 
-  <section id="media-section" class="section-group">
-    <h2 class="section-heading">Медіа та дизайн</h2>
-    <p class="section-intro">Банери, лого, кольорова схема та галерея відокремлені від контенту каталогу.</p>
+  <details id="media-section" class="section-group">
+    <summary><h2 class="section-heading">Медіа</h2><p class="section-intro">Банери, лого, кольорова схема та галерея відокремлені від контенту каталогу.</p></summary>
     <div class="subgrid">
       <article id="banners" class="card">
         <h3>Банери</h3>
@@ -112,11 +110,10 @@
 
       <article id="media" class="card"><h3>Медіа</h3><div class="media-grid">{% for item in media %}<a href="{{ item.url }}" target="_blank" class="media-item"><img src="{{ item.url }}" alt="{{ item.title }}"><span>{{ item.type }}</span><b>{{ item.title }}</b></a>{% else %}<p class="muted">Поки немає завантажених медіа.</p>{% endfor %}</div></article>
     </div>
-  </section>
+  </details>
 
-  <section id="content-section" class="section-group">
-    <h2 class="section-heading">Контент</h2>
-    <p class="section-intro">Послуги, авто та ціни мають окремі компактні картки з діями поруч із контентом.</p>
+  <details id="content-section" class="section-group">
+    <summary><h2 class="section-heading">Контент</h2><p class="section-intro">Послуги, авто та ціни мають окремі компактні картки з діями поруч із контентом.</p></summary>
 
     <article id="services" class="card">
       <h3>Послуги</h3>
@@ -142,11 +139,10 @@
       <form method="post" action="/crm/seller/{{ account.crm_slug }}/website/prices/update" class="stack-top"><label>Прайс: назва | ціна | опис<textarea name="prices">{% for item in price_items %}{{ item.get('title', '') if item is mapping else item }} | {{ item.get('price', '') if item is mapping else '' }} | {{ item.get('description', '') if item is mapping else '' }}
 {% endfor %}</textarea></label><div class="action-row stack-top"><button class="btn">Зберегти прайс</button></div></form>
     </article>
-  </section>
+  </details>
 
-  <section id="modules-section" class="section-group">
-    <h2 class="section-heading">Модулі</h2>
-    <p class="section-intro">Увімкніть тільки ті блоки, які мають бути видимими на сайті.</p>
+  <details id="modules-section" class="section-group">
+    <summary><h2 class="section-heading">Модулі</h2><p class="section-intro">Увімкніть тільки ті блоки, які мають бути видимими на сайті.</p></summary>
     <article id="modules" class="card">
       <h3>Модулі сайту</h3>
       <form method="post" action="/crm/seller/{{ account.crm_slug }}/website/modules" class="module-grid">
@@ -157,14 +153,13 @@
         <button class="btn wide">Зберегти модулі</button>
       </form>
     </article>
-  </section>
+  </details>
 
-  <section id="publish-section" class="section-group">
-    <h2 class="section-heading">Публікація</h2>
-    <p class="section-intro">Перевірте чернетку перед публікацією та перенесіть її у публічну версію сайту.</p>
+  <details id="publish-section" class="section-group">
+    <summary><h2 class="section-heading">Публікація</h2><p class="section-intro">Перевірте чернетку перед публікацією та перенесіть її у публічну версію сайту.</p></summary>
     <div class="grid">
       <article id="publish" class="card"><h3>Публікація</h3><p class="muted">Збереження оновлює чернетку. Публікація переносить перевірені зміни на публічний сайт.</p><p><b>Опублікований сайт:</b> <a href="{{ live_url }}" target="_blank">{{ live_url }}</a></p><div class="action-row"><a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/website/preview" target="_blank">Переглянути</a><form method="post" action="/crm/seller/{{ account.crm_slug }}/website/publish"><button class="btn">Опублікувати</button></form></div></article>
     </div>
-  </section>
+  </details>
   {% endif %}
 {% endblock %}
