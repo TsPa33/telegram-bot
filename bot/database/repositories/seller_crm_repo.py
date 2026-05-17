@@ -1628,3 +1628,120 @@ async def list_seller_crm_sources(seller_id: int, limit: int = 6):
         seller_id,
         limit,
     )
+
+async def get_seller_crm_settings_summary(seller_id: int):
+    seller = await fetchrow(
+        """
+        SELECT
+            s.id,
+            s.telegram_id,
+            s.username,
+            s.phone,
+            s.shop_name,
+            s.name,
+            s.website,
+            s.city,
+            s.has_site,
+            s.crm_enabled,
+            s.created_at AS account_created_at,
+            sca.crm_slug,
+            sca.is_active AS crm_account_active,
+            sca.created_at AS crm_account_created_at
+        FROM sellers s
+        LEFT JOIN seller_crm_accounts sca ON sca.seller_id = s.id
+        WHERE s.id = $1
+        LIMIT 1
+        """,
+        seller_id,
+    )
+    if not seller:
+        return None
+
+    active_subscriptions = await fetch(
+        """
+        SELECT slots, created_at, expires_at, (payment_id IS NOT NULL) AS is_paid
+        FROM seller_subscriptions
+        WHERE seller_id = $1
+          AND expires_at > NOW()
+        ORDER BY expires_at DESC, created_at DESC
+        """,
+        seller_id,
+    )
+    used_slots_row = await fetchrow(
+        """
+        SELECT COUNT(*)::int AS used_slots
+        FROM seller_cars
+        WHERE seller_id = $1
+        """,
+        seller_id,
+    )
+    active_cars_row = await fetchrow(
+        """
+        SELECT COUNT(*)::int AS active_cars_count
+        FROM seller_cars
+        WHERE seller_id = $1
+          AND COALESCE(status, 'active') = 'active'
+        """,
+        seller_id,
+    )
+    crm_subscriptions = await fetch(
+        """
+        SELECT status, started_at, expires_at, created_at
+        FROM seller_crm_subscriptions
+        WHERE seller_id = $1
+          AND status = 'active'
+          AND expires_at > NOW()
+        ORDER BY expires_at DESC, created_at DESC
+        """,
+        seller_id,
+    )
+    payments = await fetch(
+        """
+        SELECT amount, status, COALESCE(product_type, product) AS product, product_type, created_at
+        FROM payments
+        WHERE seller_id = $1
+        ORDER BY created_at DESC, id DESC
+        LIMIT 10
+        """,
+        seller_id,
+    )
+    site = await fetchrow(
+        """
+        SELECT subdomain, status, has_custom_domain, custom_domain, created_at, updated_at
+        FROM seller_sites
+        WHERE seller_id = $1
+        LIMIT 1
+        """,
+        seller_id,
+    )
+
+    seller_data = dict(seller)
+    site_data = dict(site) if site else None
+    subscriptions = [dict(row) for row in active_subscriptions]
+    active_garage_slots = sum(int(row.get("slots") or 0) for row in subscriptions) if subscriptions else None
+    used_data = dict(used_slots_row) if used_slots_row else {}
+    active_cars_data = dict(active_cars_row) if active_cars_row else {}
+    used_garage_slots = int(used_data.get("used_slots") or 0)
+    active_cars_count = int(active_cars_data.get("active_cars_count") or 0)
+
+    paid_subscriptions = [row for row in subscriptions if row.get("is_paid")]
+
+    return {
+        "seller": seller_data,
+        "crm_slug": seller_data.get("crm_slug"),
+        "crm_enabled": bool(seller_data.get("crm_enabled")),
+        "crm_account_status": "active" if seller_data.get("crm_account_active") and seller_data.get("crm_enabled") else "inactive",
+        "account_created_at": seller_data.get("crm_account_created_at") or seller_data.get("account_created_at"),
+        "active_garage_slots": active_garage_slots,
+        "used_garage_slots": used_garage_slots if active_garage_slots is not None else active_cars_count,
+        "free_garage_slots": max(active_garage_slots - used_garage_slots, 0) if active_garage_slots is not None else None,
+        "active_cars_count": active_cars_count,
+        "garage_slots_available": active_garage_slots is not None,
+        "active_seller_subscriptions": subscriptions,
+        "active_paid_seller_subscriptions": paid_subscriptions,
+        "active_crm_subscriptions": [dict(row) for row in crm_subscriptions],
+        "latest_payments": [dict(row) for row in payments],
+        "site": site_data,
+        "has_site": bool(site_data or seller_data.get("has_site") or seller_data.get("website")),
+        "custom_domain": site_data.get("custom_domain") if site_data else None,
+    }
