@@ -1,0 +1,182 @@
+{% extends "seller_crm/base.html" %}
+{% block crm_kicker %}Read-only offer workspace{% endblock %}
+{% block crm_heading %}Пропозиції покупцям{% endblock %}
+{% block content %}
+  <style>
+    .offers-toolbar {
+      display: grid;
+      gap: 12px;
+      margin-bottom: 16px;
+      min-width: 0;
+    }
+
+    .offer-tabs {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .offer-tab {
+      flex: 0 0 auto;
+      min-height: 36px;
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 8px 12px;
+      background: rgba(255,255,255,.045);
+      color: var(--text);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .offer-tab.active {
+      color: #03111d;
+      background: linear-gradient(135deg, var(--blue), var(--green));
+      border-color: transparent;
+    }
+
+    .offer-list {
+      display: grid;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .offer-card {
+      display: grid;
+      gap: 12px;
+      min-width: 0;
+      border: 1px solid rgba(148,163,184,.14);
+      border-radius: 18px;
+      background: rgba(255,255,255,.035);
+      padding: 14px;
+    }
+
+    .offer-card-top {
+      display: grid;
+      grid-template-columns: minmax(0,1fr) auto;
+      gap: 10px;
+      align-items: start;
+    }
+
+    .offer-title {
+      color: #fff;
+      font-size: 17px;
+      font-weight: 950;
+      letter-spacing: -.025em;
+      overflow-wrap: anywhere;
+    }
+
+    .offer-meta,
+    .offer-times {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .offer-price {
+      color: #fff;
+      font-size: 21px;
+      font-weight: 950;
+      letter-spacing: -.03em;
+    }
+
+    .offer-comment {
+      margin: 0;
+      color: #c7d2e1;
+      line-height: 1.45;
+      overflow-wrap: anywhere;
+    }
+
+    .offer-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .empty-offers {
+      text-align: center;
+      padding: 28px 14px;
+    }
+
+    @media (max-width: 640px) {
+      .offers-toolbar .workspace-hero { grid-template-columns: 1fr; }
+      .offer-card-top { grid-template-columns: 1fr; }
+      .offer-actions .btn { flex: 1 1 150px; }
+    }
+  </style>
+
+  <section class="offers-toolbar" aria-labelledby="offers-title">
+    <div class="workspace-hero">
+      <div>
+        <h2 id="offers-title">Усі надіслані пропозиції</h2>
+        <p class="section-note">Read-only CRM перегляд пропозицій, які продавець вже надіслав покупцям через Telegram workflow.</p>
+      </div>
+      <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}">На панель</a>
+    </div>
+
+    <nav class="offer-tabs" aria-label="Фільтр пропозицій">
+      {% for tab in offer_tabs %}
+        <a class="offer-tab {% if tab.active %}active{% endif %}" href="{{ tab.href }}" {% if tab.active %}aria-current="page"{% endif %}>{{ tab.label }}</a>
+      {% endfor %}
+    </nav>
+  </section>
+
+  <section class="card" aria-live="polite">
+    <div class="offer-list">
+      {% for offer in offers %}
+        <article class="offer-card">
+          <div class="offer-card-top">
+            <div>
+              <div class="offer-title">{{ offer.request_title }}</div>
+              <div class="offer-meta">
+                <span>📍 {{ offer.city or "Місто не вказано" }}</span>
+                {% if offer.category %}<span>🧩 {{ offer.category }}</span>{% endif %}
+                {% if offer.brand or offer.model %}<span>🚗 {{ [offer.brand, offer.model]|select|join(' ') }}</span>{% endif %}
+              </div>
+            </div>
+            <span class="badge {{ offer.status_class }}">{{ offer.status_label }}</span>
+          </div>
+
+          <div class="offer-price">💰 ₴ {{ offer.price_label }}</div>
+          <p class="offer-comment">{{ offer.offer_message or "Без коментаря продавця" }}</p>
+          <p class="request-desc">{{ offer.request_description_short }}</p>
+
+          <div class="lead-tags">
+            <span class="badge">Offer: {{ offer.offer_status or "pending" }}</span>
+            <span class="badge {% if offer.is_selected %}status-success{% else %}status-waiting{% endif %}">
+              {% if offer.is_selected %}Покупець обрав{% else %}Очікує вибору{% endif %}
+            </span>
+            {% if offer.request_marketplace_status %}<span class="badge">Request: {{ offer.request_marketplace_status }}</span>{% endif %}
+          </div>
+
+          <div class="offer-times">
+            <span>Надіслано {{ offer.created_at.strftime("%d.%m.%Y %H:%M") if offer.created_at else "—" }}</span>
+            <span>Оновлено {{ offer.updated_at.strftime("%d.%m.%Y %H:%M") if offer.updated_at else "—" }}</span>
+            {% if offer.buyer_selected_at %}<span>Обрано {{ offer.buyer_selected_at.strftime("%d.%m.%Y %H:%M") }}</span>{% endif %}
+          </div>
+
+          <div class="offer-actions">
+            <a class="btn small" href="/crm/seller/{{ account.crm_slug }}/offers/{{ offer.offer_id }}">Відкрити пропозицію</a>
+            <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/leads/{{ offer.request_id }}">Відкрити заявку</a>
+          </div>
+        </article>
+      {% else %}
+        <div class="empty-offers">
+          <div class="request-title">{{ empty_message }}</div>
+          <p class="request-desc">Спробуйте інший таб або поверніться на панель. CRM тільки показує пропозиції — створення та відповіді залишаються в Telegram.</p>
+          <div class="request-actions" style="justify-content:center;margin-top:12px">
+            <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}">На панель</a>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+{% endblock %}

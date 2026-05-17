@@ -26,11 +26,13 @@ from bot.database.repositories.seller_crm_repo import (
     get_crm_session,
     get_seller_crm_dashboard,
     get_seller_crm_lead_detail,
+    get_seller_crm_offer_detail,
     get_seller_crm_marketplace_summary,
     list_seller_crm_cars,
     list_seller_crm_marketplace_activity,
     list_seller_crm_marketplace_leads,
     list_seller_crm_marketplace_requests,
+    list_seller_crm_offers,
     list_seller_crm_leads,
     list_seller_crm_services,
     list_seller_crm_sources,
@@ -68,6 +70,14 @@ LEAD_STATUS_TABS = [
     {"key": "skipped", "label": "Пропущені", "empty": "Пропущених заявок немає."},
 ]
 ALLOWED_LEAD_STATUSES = {tab["key"] for tab in LEAD_STATUS_TABS}
+
+OFFER_STATUS_TABS = [
+    {"key": "active", "label": "Активні", "empty": "Активних пропозицій поки немає."},
+    {"key": "selected", "label": "Обрані покупцем", "empty": "Покупці ще не обрали ваші пропозиції."},
+    {"key": "rejected", "label": "Не обрані", "empty": "Немає відхилених пропозицій."},
+    {"key": "all", "label": "Архів / всі", "empty": "Пропозицій ще немає."},
+]
+ALLOWED_OFFER_STATUSES = {tab["key"] for tab in OFFER_STATUS_TABS}
 
 MODULE_KEYS = [
     ("hero", "Перший екран"),
@@ -297,6 +307,60 @@ def _prepare_lead_detail(detail: dict[str, Any] | None) -> dict[str, Any] | None
     prepared["seller_state"] = seller_state
     prepared["offer"] = offer
     prepared["marketplace"] = marketplace
+    prepared["timeline"] = prepared.get("timeline") or []
+    return prepared
+
+
+def _offer_workspace_status_meta(offer: dict[str, Any]) -> dict[str, str]:
+    if offer.get("is_selected"):
+        return {"label": "Обрано покупцем", "class": "status-success", "state": "selected"}
+    if offer.get("offer_status") == "rejected" or offer.get("status") == "rejected":
+        return {"label": "Не обрано", "class": "status-rejected", "state": "rejected"}
+    if offer.get("offer_status") == "accepted" or offer.get("status") == "accepted":
+        return {"label": "Обрано покупцем", "class": "status-success", "state": "selected"}
+    return {"label": "Очікує рішення", "class": "status-waiting", "state": "waiting"}
+
+
+def _prepare_offer_cards(rows) -> list[dict[str, Any]]:
+    prepared = []
+    for row in rows or []:
+        item = dict(row)
+        item["request_title"] = item.get("request_title") or _request_title(item)
+        item["request_description_short"] = item.get("request_description_short") or "Покупець не додав опис."
+        item["price_label"] = _format_price(item.get("price_offer"))
+        status_meta = _offer_workspace_status_meta(item)
+        item["status_label"] = status_meta["label"]
+        item["status_class"] = status_meta["class"]
+        item["selection_state"] = status_meta["state"]
+        prepared.append(item)
+    return prepared
+
+
+def _prepare_offer_detail(detail: dict[str, Any] | None) -> dict[str, Any] | None:
+    if not detail:
+        return None
+    prepared = {**detail}
+    offer = {**prepared.get("offer", {})}
+    request_data = {**prepared.get("request", {})}
+    selection = {**prepared.get("selection", {})}
+
+    request_data["title"] = request_data.get("title") or _request_title(request_data)
+    request_data["description"] = request_data.get("description") or "Покупець не додав детальний опис."
+    offer["price_label"] = _format_price(offer.get("price"))
+
+    status_meta = _offer_workspace_status_meta({
+        "status": offer.get("status"),
+        "is_selected": selection.get("is_selected"),
+    })
+    offer["status_label"] = status_meta["label"]
+    offer["status_class"] = status_meta["class"]
+    selection["state"] = status_meta["state"]
+    selection["state_label"] = status_meta["label"]
+    selection["state_class"] = status_meta["class"]
+
+    prepared["offer"] = offer
+    prepared["request"] = request_data
+    prepared["selection"] = selection
     prepared["timeline"] = prepared.get("timeline") or []
     return prepared
 
@@ -553,6 +617,86 @@ async def seller_crm_lead_detail(request: Request, crm_slug: str, request_id: st
             account=account,
             subscription=subscription,
             lead=lead_detail,
+        ),
+    )
+
+
+@router.get("/{crm_slug}/offers")
+async def seller_crm_offers(request: Request, crm_slug: str, status: str = "active"):
+    try:
+        account, subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+
+    active_status = status if status in ALLOWED_OFFER_STATUSES else "active"
+    tabs = [
+        {
+            **tab,
+            "active": tab["key"] == active_status,
+            "href": f"/crm/seller/{crm_slug}/offers?status={tab['key']}",
+        }
+        for tab in OFFER_STATUS_TABS
+    ]
+    active_tab = next(tab for tab in tabs if tab["active"])
+    offers = _prepare_offer_cards(
+        await list_seller_crm_offers(
+            account["seller_id"],
+            status=active_status,
+        )
+    )
+
+    return templates.TemplateResponse(
+        "seller_crm/offers.html",
+        _seller_crm_context(
+            request,
+            title="Пропозиції — CRM продавця CarPot",
+            demo_mode=False,
+            current_page="offers",
+            account=account,
+            subscription=subscription,
+            offers=offers,
+            offer_tabs=tabs,
+            active_status=active_status,
+            empty_message=active_tab["empty"],
+        ),
+    )
+
+
+@router.get("/{crm_slug}/offers/{offer_id}")
+async def seller_crm_offer_detail(request: Request, crm_slug: str, offer_id: str):
+    try:
+        account, subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+
+    try:
+        parsed_offer_id = int(offer_id)
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=404, detail="Offer not found") from exc
+
+    offer_detail = _prepare_offer_detail(
+        await get_seller_crm_offer_detail(
+            account["seller_id"],
+            parsed_offer_id,
+        )
+    )
+    if not offer_detail:
+        raise HTTPException(status_code=404, detail="Offer not found")
+
+    return templates.TemplateResponse(
+        "seller_crm/offer_detail.html",
+        _seller_crm_context(
+            request,
+            title=f"Пропозиція #{parsed_offer_id} — CRM продавця CarPot",
+            demo_mode=False,
+            current_page="offers",
+            account=account,
+            subscription=subscription,
+            offer_detail=offer_detail,
         ),
     )
 
