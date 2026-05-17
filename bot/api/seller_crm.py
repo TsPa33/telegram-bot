@@ -26,10 +26,12 @@ from bot.database.repositories.seller_crm_repo import (
     get_crm_session,
     get_seller_crm_dashboard,
     get_seller_crm_analytics,
+    get_seller_crm_content_summary,
     get_seller_crm_lead_detail,
     get_seller_crm_offer_detail,
     get_seller_crm_marketplace_summary,
     list_seller_crm_cars,
+    list_seller_crm_cars_inventory,
     list_seller_crm_marketplace_activity,
     list_seller_crm_marketplace_leads,
     list_seller_crm_marketplace_requests,
@@ -698,6 +700,94 @@ async def seller_crm_offer_detail(request: Request, crm_slug: str, offer_id: str
             account=account,
             subscription=subscription,
             offer_detail=offer_detail,
+        ),
+    )
+
+
+@router.get("/{crm_slug}/content")
+async def seller_crm_content(request: Request, crm_slug: str):
+    try:
+        account, subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+
+    seller_id = account["seller_id"]
+    summary = dict(await get_seller_crm_content_summary(seller_id) or {})
+    site = await get_site_by_seller(seller_id)
+    account_flags = dict(account)
+    has_website = bool(site or account_flags.get("has_site") or account_flags.get("website"))
+    has_cars = int(summary.get("active_cars") or 0) > 0
+    has_services = int(summary.get("active_services") or 0) > 0
+
+    priority_sections = [
+        {"key": "cars", "label": "Авто на розборі", "href": f"/crm/seller/{crm_slug}/content/cars"},
+        {"key": "services", "label": "Послуги", "href": f"/crm/seller/{crm_slug}/content"},
+        {"key": "parts", "label": "Товари / Запчастини", "href": f"/crm/seller/{crm_slug}/content"},
+    ]
+    if has_services and not has_cars:
+        priority_sections = [priority_sections[1], priority_sections[0], priority_sections[2]]
+
+    return templates.TemplateResponse(
+        "seller_crm/content.html",
+        _seller_crm_context(
+            request,
+            title="Мій контент — CRM продавця CarPot",
+            demo_mode=False,
+            current_page="content",
+            account=account,
+            subscription=subscription,
+            summary=summary,
+            priority_sections=priority_sections,
+            has_website=has_website,
+            has_cars=has_cars,
+            has_services=has_services,
+        ),
+    )
+
+
+@router.get("/{crm_slug}/content/cars")
+async def seller_crm_content_cars(request: Request, crm_slug: str):
+    try:
+        account, subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+
+    seller_id = account["seller_id"]
+    summary = dict(await get_seller_crm_content_summary(seller_id) or {})
+    cars = [dict(car) for car in await list_seller_crm_cars_inventory(seller_id)]
+    for car in cars:
+        raw_status = str(car.get("status") or "active")
+        car["status_label"] = "active" if raw_status in {"1", "active"} else raw_status
+        photo_id = car.get("photo_id") or ""
+        car["photo_is_url"] = isinstance(photo_id, str) and photo_id.startswith(("http://", "https://"))
+    totals = {
+        "views": sum(int(car.get("views") or 0) for car in cars),
+        "phone_clicks": sum(int(car.get("phone_clicks") or 0) for car in cars),
+        "site_clicks": sum(int(car.get("site_clicks") or 0) for car in cars),
+    }
+    site = await get_site_by_seller(seller_id)
+    account_flags = dict(account)
+    has_website = bool(site or account_flags.get("has_site") or account_flags.get("website"))
+
+    return templates.TemplateResponse(
+        "seller_crm/content_cars.html",
+        _seller_crm_context(
+            request,
+            title="Авто на розборі — CRM продавця CarPot",
+            demo_mode=False,
+            current_page="content_cars",
+            account=account,
+            subscription=subscription,
+            summary=summary,
+            cars=cars,
+            totals=totals,
+            has_website=has_website,
+            has_cars=bool(cars),
+            has_services=int(summary.get("active_services") or 0) > 0,
         ),
     )
 

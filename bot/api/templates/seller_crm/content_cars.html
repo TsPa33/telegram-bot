@@ -1,0 +1,110 @@
+{% extends "seller_crm/base.html" %}
+{% block crm_kicker %}Інвентар продавця{% endblock %}
+{% block crm_heading %}Авто на розборі{% endblock %}
+{% block content %}
+<style>
+  .cars-workspace { display: grid; gap: 14px; min-width: 0; }
+  .garage-summary { grid-template-columns: repeat(4,minmax(0,1fr)); }
+  .car-inventory-list { display: grid; gap: 12px; }
+  .inventory-card { display: grid; grid-template-columns: 132px minmax(0,1fr); gap: 14px; align-items: start; }
+  .inventory-photo { width: 132px; height: 98px; border-radius: 16px; border: 1px solid var(--line); background: rgba(255,255,255,.045); overflow: hidden; display: grid; place-items: center; color: var(--muted); font-weight: 900; font-size: 12px; text-align: center; }
+  .inventory-photo img { width: 100%; height: 100%; object-fit: cover; }
+  .inventory-body { min-width: 0; display: grid; gap: 9px; }
+  .inventory-top { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; min-width: 0; }
+  .inventory-title { margin: 0; color: #fff; font-size: 18px; line-height: 1.25; overflow-wrap: anywhere; }
+  .inventory-desc { margin: 0; color: #b7c8d8; line-height: 1.45; overflow-wrap: anywhere; }
+  .inventory-meta, .inventory-badges, .inventory-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .inventory-meta { color: var(--muted); font-size: 12px; font-weight: 850; }
+  @media (max-width: 980px) { .garage-summary { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+  @media (max-width: 720px) { .inventory-card { grid-template-columns: 1fr; } .inventory-photo { width: 100%; height: 170px; } }
+  @media (max-width: 620px) { .garage-summary { grid-template-columns: 1fr; } .inventory-actions { display: grid; grid-template-columns: 1fr; } .inventory-actions .btn { width: 100%; } }
+</style>
+
+<div class="cars-workspace">
+  <section class="workspace-hero" aria-labelledby="cars-title">
+    <div>
+      <h2 id="cars-title">Авто на розборі</h2>
+      <p class="section-note">Read-first workspace для донорських авто. Форми створення, редагування та фото залишаються у Telegram-боті.</p>
+    </div>
+    <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content">← Мій контент</a>
+  </section>
+
+  <section class="grid garage-summary" aria-label="Підсумок гаража">
+    <article class="card">
+      <h3>Активні авто</h3>
+      <div class="metric">{{ summary.active_cars or 0 }}</div>
+      <p class="section-note">позицій у CRM</p>
+    </article>
+    <article class="card">
+      <h3>Гараж</h3>
+      {% if summary.garage_slots_total %}
+        <div class="metric">{{ summary.garage_slots_used or 0 }}/{{ summary.garage_slots_total or 0 }}</div>
+        <p class="section-note">вільно {{ summary.garage_slots_free or 0 }} місць</p>
+      {% else %}
+        <div class="metric">{{ summary.active_cars or 0 }}</div>
+        <p class="section-note">Ліміти гаража будуть доступні окремо</p>
+      {% endif %}
+    </article>
+    <article class="card">
+      <h3>Перегляди</h3>
+      <div class="metric">{{ totals.views or 0 }}</div>
+      <p class="section-note">по активних авто</p>
+    </article>
+    <article class="card">
+      <h3>Кліки</h3>
+      <div class="metric">{{ (totals.phone_clicks or 0) + (totals.site_clicks or 0) }}</div>
+      <p class="section-note">телефон: {{ totals.phone_clicks or 0 }} · сайт: {{ totals.site_clicks or 0 }}</p>
+    </article>
+  </section>
+
+  <section class="card">
+    <h2>Список авто</h2>
+    <div class="car-inventory-list">
+      {% for car in cars %}
+        <article class="request-card inventory-card">
+          <div class="inventory-photo">
+            {% if car.photo_is_url %}
+              <img src="{{ car.photo_id }}" alt="{{ car.brand }} {{ car.model }}">
+            {% elif car.has_photo %}
+              Фото додано
+            {% else %}
+              Немає фото
+            {% endif %}
+          </div>
+          <div class="inventory-body">
+            <div class="inventory-top">
+              <div>
+                <h3 class="inventory-title">{{ car.brand }} {{ car.model }}</h3>
+                <div class="inventory-meta">
+                  <span>ID {{ car.car_id }}</span>
+                  <span>·</span>
+                  <span>{{ car.created_at.strftime("%d.%m.%Y") if car.created_at else "—" }}</span>
+                </div>
+              </div>
+              <span class="badge status-new">{{ car.status_label }}</span>
+            </div>
+            <p class="inventory-desc">{{ (car.description[:180] ~ ('…' if car.description and car.description|length > 180 else '')) if car.description else 'Опис ще не додано.' }}</p>
+            <div class="inventory-badges">
+              <span class="badge">{{ car.views or 0 }} переглядів</span>
+              <span class="badge">{{ car.phone_clicks or 0 }} телефон</span>
+              <span class="badge">{{ car.site_clicks or 0 }} сайт</span>
+              {% if car.is_catalog %}<span class="badge status-viewed">Каталог</span>{% endif %}
+              {% if not car.has_photo %}<span class="badge status-waiting">Немає фото</span>{% endif %}
+              {% if not car.has_description %}<span class="badge status-waiting">Немає опису</span>{% endif %}
+            </div>
+            <div class="inventory-actions">
+              <span class="btn small ghost" aria-disabled="true">Детальніше</span>
+              <span class="btn small ghost" aria-disabled="true">Редагувати через Telegram</span>
+            </div>
+          </div>
+        </article>
+      {% else %}
+        <div class="request-card">
+          <div class="request-title">Авто на розборі ще немає</div>
+          <p class="request-desc">Коли продавець додасть авто через Telegram-бот, воно з’явиться тут зі статистикою та індикаторами заповнення.</p>
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+</div>
+{% endblock %}
