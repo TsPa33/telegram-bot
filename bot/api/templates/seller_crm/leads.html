@@ -89,8 +89,6 @@
   <section class="card" aria-live="polite">
     <div class="request-list">
       {% for lead in leads %}
-        {% set status_class = 'status-success' if lead.seller_status == 'selected' else 'status-rejected' if lead.seller_status in ['declined', 'skipped'] else 'status-replied' if lead.seller_status == 'replied' else 'status-viewed' if lead.seller_status == 'in_work' else 'status-new' %}
-        {% set status_label = 'Обрано' if lead.seller_status == 'selected' else 'Відхилено' if lead.seller_status == 'declined' else 'Пропущено' if lead.seller_status == 'skipped' else 'Відповіли' if lead.seller_status == 'replied' else 'В роботі' if lead.seller_status == 'in_work' else 'Нова' %}
         <article class="request-card">
           <div class="request-card-top">
             <div>
@@ -101,14 +99,14 @@
                 {% if lead.category %}<span>🧩 {{ lead.category }}</span>{% endif %}
               </div>
             </div>
-            <span class="badge {{ status_class }}">{{ status_label }}</span>
+            <span class="badge {{ lead.status_class }}">{{ lead.status_label }}</span>
           </div>
 
           <p class="request-desc">{{ lead.short_description }}</p>
 
           <div class="lead-card-footer">
             <div class="lead-tags">
-              <span class="badge">Локально: {{ status_label }}</span>
+              <span class="badge">Локально: {{ lead.status_label }}</span>
               {% if lead.offer_status %}<span class="badge status-replied">Offer: {{ lead.offer_status }}</span>{% endif %}
               {% if lead.price_offer %}<span class="badge">₴ {{ lead.price_offer }}</span>{% endif %}
               {% if lead.match_score is not none %}<span class="badge">Match {{ lead.match_score }}</span>{% endif %}
@@ -117,8 +115,8 @@
             {% if lead.offer_message %}<p class="request-desc">Ваша пропозиція: {{ lead.offer_message }}</p>{% endif %}
             {% if lead.match_reasons_label %}<p class="request-desc">Причини match: {{ lead.match_reasons_label }}</p>{% endif %}
             <div class="request-actions">
-              <a class="btn small" href="/crm/seller/{{ account.crm_slug }}#requests">Відкрити в Telegram / До заявки</a>
-              <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}">На панель</a>
+              <a class="btn small" href="/crm/seller/{{ account.crm_slug }}/leads/{{ lead.request_id }}">Відкрити</a>
+              <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}#requests">Telegram</a>
             </div>
           </div>
         </article>
