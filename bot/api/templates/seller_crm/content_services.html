@@ -1,4 +1,7 @@
 {% extends "seller_crm/base.html" %}
+{% import "seller_crm/components/badges.html" as badges %}
+{% import "seller_crm/components/cards.html" as cards %}
+{% import "seller_crm/components/layout.html" as layout %}
 {% block crm_kicker %}Контент продавця{% endblock %}
 {% block crm_heading %}Послуги{% endblock %}
 {% block content %}
@@ -51,26 +54,10 @@
   </section>
 
   <section class="grid services-summary" aria-label="Підсумок послуг">
-    <article class="card">
-      <h3>Активні послуги</h3>
-      <div class="metric">{{ summary.active_services or services|length }}</div>
-      <p class="section-note">позицій у CRM</p>
-    </article>
-    <article class="card">
-      <h3>Перегляди</h3>
-      <div class="metric">{{ totals.views or 0 }}</div>
-      <p class="section-note">по послугах</p>
-    </article>
-    <article class="card">
-      <h3>Дзвінки / кліки</h3>
-      <div class="metric">{{ (totals.calls or 0) + (totals.clicks or 0) }}</div>
-      <p class="section-note">дзвінки: {{ totals.calls or 0 }} · кліки: {{ totals.clicks or 0 }}</p>
-    </article>
-    <article class="card">
-      <h3>Потрібно доповнити</h3>
-      <div class="metric">{{ (totals.without_description or 0) + (totals.without_price or 0) + (totals.without_photo or 0) }}</div>
-      <p class="section-note">опис: {{ totals.without_description or 0 }} · ціна: {{ totals.without_price or 0 }} · фото: {{ totals.without_photo or 0 }}</p>
-    </article>
+    {{ cards.metric_card("Активні послуги", summary.active_services or services|length, "позицій у CRM") }}
+    {{ cards.metric_card("Перегляди", totals.views or 0, "по послугах") }}
+    {{ cards.metric_card("Дзвінки / кліки", (totals.calls or 0) + (totals.clicks or 0), "дзвінки: " ~ (totals.calls or 0) ~ " · кліки: " ~ (totals.clicks or 0)) }}
+    {{ cards.metric_card("Потрібно доповнити", (totals.without_description or 0) + (totals.without_price or 0) + (totals.without_photo or 0), "опис: " ~ (totals.without_description or 0) ~ " · ціна: " ~ (totals.without_price or 0) ~ " · фото: " ~ (totals.without_photo or 0)) }}
   </section>
 
   <section class="card">
@@ -100,22 +87,22 @@
                 </div>
               </div>
               <div class="service-badges">
-                {% if service.is_active %}<span class="badge status-success">Активна</span>{% else %}<span class="badge status-rejected">Неактивна</span>{% endif %}
+                {% if service.is_active %}{{ badges.status_badge("Активна", "status-success") }}{% else %}{{ badges.status_badge("Неактивна", "status-rejected") }}{% endif %}
                 {% if service.price is not none %}
-                  <span class="badge status-viewed service-price">{{ service.price }} ₴</span>
+                  {{ badges.status_badge(service.price ~ " ₴", "status-viewed service-price") }}
                 {% else %}
-                  <span class="badge status-waiting">Ціну не вказано</span>
+                  {{ badges.status_badge("Ціну не вказано", "status-waiting") }}
                 {% endif %}
               </div>
             </div>
             <p class="service-desc">{{ (service.description[:180] ~ ('…' if service.description and service.description|length > 180 else '')) if service.description else 'Опис ще не додано.' }}</p>
             <div class="service-badges">
-              <span class="badge">{{ service.views or 0 }} переглядів</span>
-              <span class="badge">{{ service.calls or 0 }} дзвінків</span>
-              <span class="badge">{{ service.clicks or 0 }} кліків</span>
-              {% if not service.has_description %}<span class="badge status-waiting">Немає опису</span>{% endif %}
-              {% if not service.has_price %}<span class="badge status-waiting">Немає ціни</span>{% endif %}
-              {% if not service.has_photo %}<span class="badge status-waiting">Немає фото</span>{% endif %}
+              {{ badges.status_badge((service.views or 0) ~ " переглядів") }}
+              {{ badges.status_badge((service.calls or 0) ~ " дзвінків") }}
+              {{ badges.status_badge((service.clicks or 0) ~ " кліків") }}
+              {% if not service.has_description %}{{ badges.status_badge("Немає опису", "status-waiting") }}{% endif %}
+              {% if not service.has_price %}{{ badges.status_badge("Немає ціни", "status-waiting") }}{% endif %}
+              {% if not service.has_photo %}{{ badges.status_badge("Немає фото", "status-waiting") }}{% endif %}
             </div>
             <div class="service-actions">
               <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/content/services/{{ service.service_id }}">Детальніше</a>
@@ -129,11 +116,7 @@
           </div>
         </article>
       {% else %}
-        <div class="request-card">
-          <div class="request-title">Додайте першу послугу.</div>
-          <p class="request-desc">Створіть сервісну пропозицію в CRM — вона з’явиться тут зі статистикою та індикаторами заповнення.</p>
-          <div class="service-actions"><a class="btn" href="/crm/seller/{{ account.crm_slug }}/content/services/create">＋ Додати послугу</a></div>
-        </div>
+        {{ badges.empty_state("Додайте першу послугу.", "Створіть сервісну пропозицію в CRM — вона з’явиться тут зі статистикою та індикаторами заповнення.", "/crm/seller/" ~ account.crm_slug ~ "/content/services/create", "＋ Додати послугу") }}
       {% endfor %}
     </div>
   </section>

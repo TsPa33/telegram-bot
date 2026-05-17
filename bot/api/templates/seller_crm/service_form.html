@@ -1,4 +1,6 @@
 {% extends "seller_crm/base.html" %}
+{% import "seller_crm/components/forms.html" as forms %}
+{% import "seller_crm/components/layout.html" as layout %}
 {% block crm_kicker %}Контент продавця{% endblock %}
 {% block crm_heading %}{{ form_title }}{% endblock %}
 {% block content %}
@@ -19,41 +21,23 @@
 </style>
 
 <div class="service-form-wrap">
-  <section class="workspace-hero" aria-labelledby="service-form-title">
-    <div>
-      <h2 id="service-form-title">{{ form_title }}</h2>
-      <p class="section-note">Заповніть основні дані послуги. Фото та галерея будуть додані окремим етапом.</p>
-    </div>
-    <a class="btn ghost" href="{{ cancel_url }}">← Скасувати</a>
-  </section>
+  {% set cancel_action %}<a class="btn ghost" href="{{ cancel_url }}">← Скасувати</a>{% endset %}
+  {{ layout.page_header(form_title, "Заповніть основні дані послуги. Фото та галерея будуть додані окремим етапом.", [cancel_action]) }}
 
   <section class="card service-form-card">
     {% if error %}<div class="form-error" role="alert">{{ error }}</div>{% endif %}
     <form class="service-form" method="post" action="{{ action_url }}">
       <div class="form-grid">
-        <div class="form-field">
-          <label for="title">Назва послуги *</label>
-          <input id="title" name="title" value="{{ form.title }}" required maxlength="160" autocomplete="off" placeholder="Наприклад: Ремонт АКПП">
-        </div>
-        <div class="form-field">
-          <label for="category">Категорія</label>
-          <input id="category" name="category" value="{{ form.category }}" maxlength="80" autocomplete="off" placeholder="СТО, евакуатор, шиномонтаж">
-        </div>
-        <div class="form-field full">
-          <label for="description">Опис</label>
-          <textarea id="description" name="description" maxlength="2000" placeholder="Що саме ви робите, умови, досвід, гарантії">{{ form.description }}</textarea>
-          <span class="field-help">До 2000 символів. Без медіа-завантажень у цій версії.</span>
-        </div>
+        {{ forms.text_input("title", "Назва послуги *", form.title, "Наприклад: Ремонт АКПП", required=True, maxlength=160) }}
+        {{ forms.text_input("category", "Категорія", form.category, "СТО, евакуатор, шиномонтаж", maxlength=80) }}
+        {{ forms.textarea_input("description", "Опис", form.description, "Що саме ви робите, умови, досвід, гарантії", maxlength=2000, hint="До 2000 символів. Без медіа-завантажень у цій версії.") }}
         <div class="form-field">
           <label for="price">Ціна</label>
-          <input id="price" name="price" value="{{ form.price }}" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="Наприклад: 1500">
+          <input id="price" name="price" value="{{ form.price if form.price is not none else '' }}" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="Наприклад: 1500">
           <span class="field-help">Необов’язково, лише ціле число у гривнях.</span>
         </div>
       </div>
-      <div class="form-actions">
-        <button class="btn" type="submit">Зберегти</button>
-        <a class="btn ghost" href="{{ cancel_url }}">Скасувати</a>
-      </div>
+      {{ forms.form_actions("Зберегти", cancel_url) }}
     </form>
   </section>
 </div>
