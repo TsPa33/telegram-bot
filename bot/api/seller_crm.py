@@ -28,6 +28,7 @@ from bot.database.repositories.seller_crm_repo import (
     get_crm_session,
     get_seller_crm_dashboard,
     get_seller_crm_analytics,
+    get_seller_crm_car_detail,
     get_seller_crm_content_summary,
     get_seller_crm_lead_detail,
     get_seller_crm_offer_detail,
@@ -45,6 +46,8 @@ from bot.database.repositories.seller_crm_repo import (
     list_seller_crm_services,
     list_seller_crm_services_inventory,
     list_seller_crm_sources,
+    set_seller_crm_car_status,
+    update_seller_crm_car,
 )
 from bot.database.repositories.seller_lead_repo import (
     cancel_seller_lead_notifications,
@@ -168,6 +171,25 @@ def _validate_service_form(title: str, description: str, price: str) -> tuple[in
         return None, "Опис має бути до 2000 символів."
     return _parse_service_price(price)
 
+
+
+def _car_form_payload(description: str = "", status: str = "active", is_catalog: bool = False) -> dict[str, Any]:
+    normalized_status = str(status or "active").strip().lower()
+    if normalized_status in {"1", "active", "enabled", "published", "true"}:
+        normalized_status = "active"
+    elif normalized_status in {"0", "inactive", "disabled", "archived", "false"}:
+        normalized_status = "inactive"
+    return {
+        "description": (description or "").strip(),
+        "status": normalized_status,
+        "is_catalog": bool(is_catalog),
+    }
+
+
+def _validate_car_form(description: str) -> str | None:
+    if len((description or "").strip()) > 2000:
+        return "Опис має бути до 2000 символів."
+    return None
 
 def _service_form_payload(
     *,
@@ -1366,6 +1388,166 @@ async def seller_crm_service_disable(request: Request, crm_slug: str, service_id
     return await _toggle_crm_service(request, crm_slug, service_id, False)
 
 
+@router.get("/{crm_slug}/content/cars/{car_id}/edit")
+async def seller_crm_car_edit_form(request: Request, crm_slug: str, car_id: int):
+    try:
+        account, subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+
+    car = await get_seller_crm_car_detail(account["seller_id"], car_id)
+    if not car:
+        raise HTTPException(status_code=404, detail="Car not found")
+
+    return templates.TemplateResponse(
+        "seller_crm/car_form.html",
+        _seller_crm_context(
+            request,
+            title="Редагувати авто — CRM продавця CarPot",
+            demo_mode=False,
+            current_page="content_cars",
+            account=account,
+            subscription=subscription,
+            form_title="Редагувати авто",
+            car=car,
+            form=_car_form_payload(
+                description=car.get("description") or "",
+                status=car.get("status_label") or "active",
+                is_catalog=bool(car.get("is_catalog")),
+            ),
+            error=None,
+            action_url=f"/crm/seller/{crm_slug}/content/cars/{car_id}/edit",
+            cancel_url=f"/crm/seller/{crm_slug}/content/cars/{car_id}",
+            has_website=False,
+            has_cars=True,
+            has_services=False,
+        ),
+    )
+
+
+@router.post("/{crm_slug}/content/cars/{car_id}/edit")
+async def seller_crm_car_edit(
+    request: Request,
+    crm_slug: str,
+    car_id: int,
+    description: str = Form(""),
+    status: str = Form("active"),
+    is_catalog: str | None = Form(None),
+):
+    try:
+        account, subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+
+    car = await get_seller_crm_car_detail(account["seller_id"], car_id)
+    if not car:
+        raise HTTPException(status_code=404, detail="Car not found")
+
+    normalized_status = _car_form_payload(status=status)["status"]
+    catalog_value = is_catalog in {"1", "true", "on", "yes"}
+    error = _validate_car_form(description)
+    if error:
+        return templates.TemplateResponse(
+            "seller_crm/car_form.html",
+            _seller_crm_context(
+                request,
+                title="Редагувати авто — CRM продавця CarPot",
+                demo_mode=False,
+                current_page="content_cars",
+                account=account,
+                subscription=subscription,
+                form_title="Редагувати авто",
+                car=car,
+                form=_car_form_payload(description=description, status=normalized_status, is_catalog=catalog_value),
+                error=error,
+                action_url=f"/crm/seller/{crm_slug}/content/cars/{car_id}/edit",
+                cancel_url=f"/crm/seller/{crm_slug}/content/cars/{car_id}",
+                has_website=False,
+                has_cars=True,
+                has_services=False,
+            ),
+            status_code=400,
+        )
+
+    saved = await update_seller_crm_car(
+        seller_id=account["seller_id"],
+        car_id=car_id,
+        description=description,
+        status=normalized_status,
+        is_catalog=catalog_value if car.get("has_is_catalog") else None,
+    )
+    if not saved:
+        raise HTTPException(status_code=404, detail="Car not found")
+
+    return RedirectResponse(url=f"/crm/seller/{crm_slug}/content/cars/{car_id}?status=updated", status_code=303)
+
+
+@router.get("/{crm_slug}/content/cars/{car_id}")
+async def seller_crm_car_detail(request: Request, crm_slug: str, car_id: int, status: str | None = None, error: str | None = None):
+    try:
+        account, subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+
+    car = await get_seller_crm_car_detail(account["seller_id"], car_id)
+    if not car:
+        raise HTTPException(status_code=404, detail="Car not found")
+
+    return templates.TemplateResponse(
+        "seller_crm/car_detail.html",
+        _seller_crm_context(
+            request,
+            title=f"{car.get('brand') or 'Авто'} {car.get('model') or ''} — CRM продавця CarPot",
+            demo_mode=False,
+            current_page="content_cars",
+            account=account,
+            subscription=subscription,
+            car=car,
+            status=status,
+            error=error,
+            has_website=False,
+            has_cars=True,
+            has_services=False,
+        ),
+    )
+
+
+async def _toggle_crm_car(request: Request, crm_slug: str, car_id: int, new_status: str):
+    try:
+        account, _subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+
+    car = await get_seller_crm_car_detail(account["seller_id"], car_id)
+    if not car:
+        raise HTTPException(status_code=404, detail="Car not found")
+
+    toggled = await set_seller_crm_car_status(account["seller_id"], car_id, new_status)
+    query_key = "status" if toggled else "error"
+    query_value = "enabled" if new_status == "active" else "disabled"
+    if not toggled:
+        query_value = "status_not_supported"
+    return RedirectResponse(url=f"/crm/seller/{crm_slug}/content/cars/{car_id}?{query_key}={query_value}", status_code=303)
+
+
+@router.post("/{crm_slug}/content/cars/{car_id}/enable")
+async def seller_crm_car_enable(request: Request, crm_slug: str, car_id: int):
+    return await _toggle_crm_car(request, crm_slug, car_id, "active")
+
+
+@router.post("/{crm_slug}/content/cars/{car_id}/disable")
+async def seller_crm_car_disable(request: Request, crm_slug: str, car_id: int):
+    return await _toggle_crm_car(request, crm_slug, car_id, "inactive")
+
+
 @router.get("/{crm_slug}/content/cars")
 async def seller_crm_content_cars(request: Request, crm_slug: str):
     try:
@@ -1379,8 +1561,8 @@ async def seller_crm_content_cars(request: Request, crm_slug: str):
     summary = dict(await get_seller_crm_content_summary(seller_id) or {})
     cars = [dict(car) for car in await list_seller_crm_cars_inventory(seller_id)]
     for car in cars:
-        raw_status = str(car.get("status") or "active")
-        car["status_label"] = "active" if raw_status in {"1", "active"} else raw_status
+        raw_status = str(car.get("status") if car.get("status") is not None else "active").strip().lower()
+        car["status_label"] = "active" if raw_status in {"1", "active", "enabled", "published", "true"} else "inactive"
         photo_id = car.get("photo_id") or ""
         car["photo_is_url"] = isinstance(photo_id, str) and photo_id.startswith(("http://", "https://"))
     totals = {

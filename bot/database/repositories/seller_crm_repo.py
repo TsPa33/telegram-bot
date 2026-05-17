@@ -1574,6 +1574,151 @@ async def get_seller_crm_content_summary(seller_id: int):
     )
 
 
+async def _get_seller_cars_columns() -> dict[str, str]:
+    rows = await fetch(
+        """
+        SELECT column_name, data_type
+        FROM information_schema.columns
+        WHERE table_name = 'seller_cars'
+        """
+    )
+    return {row["column_name"]: row["data_type"] for row in rows}
+
+
+def _clean_car_description(value: str | None) -> str | None:
+    cleaned = (value or "").strip()[:2000]
+    return cleaned or None
+
+
+def _normalize_car_status_for_display(value) -> str:
+    raw = str(value if value is not None else "active").strip().lower()
+    if raw in {"1", "active", "enabled", "published", "true"}:
+        return "active"
+    if raw in {"0", "inactive", "disabled", "archived", "false"}:
+        return "inactive"
+    return raw or "active"
+
+
+def _car_status_db_value(status: str, status_type: str | None):
+    normalized = _normalize_car_status_for_display(status)
+    active = normalized == "active"
+    if status_type in {"integer", "bigint", "smallint"}:
+        return 1 if active else 0
+    if status_type == "boolean":
+        return active
+    return "active" if active else "inactive"
+
+
+def _is_car_active_status(value) -> bool:
+    return _normalize_car_status_for_display(value) == "active"
+
+
+def _prepare_seller_crm_car(row, *, has_is_catalog: bool) -> dict | None:
+    if not row:
+        return None
+    car = dict(row)
+    car["status_label"] = _normalize_car_status_for_display(car.get("status"))
+    car["is_active"] = _is_car_active_status(car.get("status"))
+    car["has_is_catalog"] = has_is_catalog
+    car["is_catalog"] = bool(car.get("is_catalog")) if has_is_catalog else False
+    car["has_photo"] = bool(car.get("has_photo"))
+    car["has_description"] = bool(car.get("has_description"))
+    car["photo_is_url"] = isinstance(car.get("photo_id"), str) and car.get("photo_id", "").startswith(("http://", "https://"))
+    completed = 2  # brand and model are immutable existing content.
+    completed += 1 if car["has_description"] else 0
+    completed += 1 if car["has_photo"] else 0
+    completed += 1 if car["is_active"] else 0
+    car["content_completeness"] = round((completed / 5) * 100)
+    return car
+
+
+async def get_seller_crm_car_detail(seller_id: int, car_id: int):
+    columns = await _get_seller_cars_columns()
+    has_is_catalog = "is_catalog" in columns
+    is_catalog_select = "sc.is_catalog" if has_is_catalog else "FALSE AS is_catalog"
+    row = await fetchrow(
+        f"""
+        SELECT
+            sc.id AS car_id,
+            sc.id,
+            sc.seller_id,
+            b.name AS brand,
+            m.name AS model,
+            sc.description,
+            sc.photo_id,
+            COALESCE(sc.views, 0)::int AS views,
+            COALESCE(sc.phone_clicks, 0)::int AS phone_clicks,
+            COALESCE(sc.site_clicks, 0)::int AS site_clicks,
+            sc.status,
+            {is_catalog_select},
+            sc.created_at,
+            (COALESCE(NULLIF(sc.photo_id, ''), '') <> '') AS has_photo,
+            (COALESCE(NULLIF(BTRIM(sc.description), ''), '') <> '') AS has_description
+        FROM seller_cars sc
+        JOIN models m ON m.id = sc.model_id
+        JOIN brands b ON b.id = m.brand_id
+        WHERE sc.id = $1
+          AND sc.seller_id = $2
+        LIMIT 1
+        """,
+        car_id,
+        seller_id,
+    )
+    return _prepare_seller_crm_car(row, has_is_catalog=has_is_catalog)
+
+
+async def update_seller_crm_car(
+    seller_id: int,
+    car_id: int,
+    description: str | None,
+    status: str | None,
+    is_catalog: bool | None,
+) -> bool:
+    columns = await _get_seller_cars_columns()
+    assignments = ["description = $1"]
+    args = [_clean_car_description(description)]
+
+    if "status" in columns and status:
+        args.append(_car_status_db_value(status, columns.get("status")))
+        assignments.append(f"status = ${len(args)}")
+
+    if "is_catalog" in columns and is_catalog is not None:
+        args.append(bool(is_catalog))
+        assignments.append(f"is_catalog = ${len(args)}")
+
+    args.extend([car_id, seller_id])
+    row = await fetchrow(
+        f"""
+        UPDATE seller_cars
+        SET {', '.join(assignments)}
+        WHERE id = ${len(args) - 1}
+          AND seller_id = ${len(args)}
+        RETURNING id
+        """,
+        *args,
+    )
+    return row is not None
+
+
+async def set_seller_crm_car_status(seller_id: int, car_id: int, status: str) -> bool:
+    columns = await _get_seller_cars_columns()
+    if "status" not in columns:
+        return False
+    row = await fetchrow(
+        """
+        UPDATE seller_cars
+        SET status = $1
+        WHERE id = $2
+          AND seller_id = $3
+        RETURNING id
+        """,
+        _car_status_db_value(status, columns.get("status")),
+        car_id,
+        seller_id,
+    )
+    return row is not None
+
+
 async def list_seller_crm_cars_inventory(
     seller_id: int,
     limit: int = 50,
@@ -1602,7 +1747,6 @@ async def list_seller_crm_cars_inventory(
         JOIN models m ON m.id = sc.model_id
         JOIN brands b ON b.id = m.brand_id
         WHERE sc.seller_id = $1
-          AND COALESCE(sc.status::text, '1') IN ('1', 'active')
         ORDER BY sc.created_at DESC, sc.id DESC
         LIMIT $2 OFFSET $3
         """,
