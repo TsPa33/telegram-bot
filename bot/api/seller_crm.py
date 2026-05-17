@@ -81,6 +81,34 @@ from bot.database.repositories.site_repo import (
     replace_site_config_draft,
     update_site_config_draft,
 )
+from bot.domain.statuses import (
+    CAR_STATUS_INACTIVE_VALUES,
+    CRM_LEAD_STATUS_DECLINED,
+    CRM_LEAD_STATUS_IN_WORK,
+    CRM_LEAD_STATUS_NEW,
+    CRM_LEAD_STATUS_REPLIED,
+    CRM_LEAD_STATUS_SELECTED,
+    CRM_LEAD_STATUS_SKIPPED,
+    CRM_LEAD_STATUSES,
+    CRM_OFFER_STATUS_ACTIVE,
+    CRM_OFFER_STATUS_ALL,
+    CRM_OFFER_STATUS_REJECTED,
+    CRM_OFFER_STATUS_SELECTED,
+    CRM_OFFER_STATUSES,
+    BUYER_OFFER_STATUS_ACCEPTED,
+    BUYER_OFFER_STATUS_PENDING,
+    BUYER_OFFER_STATUS_REJECTED,
+    NOTIFICATION_STATUS_CANCELLED,
+    NOTIFICATION_STATUS_FAILED,
+    NOTIFICATION_STATUS_PENDING,
+    NOTIFICATION_STATUS_SENT,
+    SELLER_LEAD_ACTION_DECLINED,
+    SELLER_LEAD_ACTION_OFFERED,
+    SELLER_LEAD_ACTION_SKIPPED,
+    SELLER_LEAD_ACTION_VIEWED,
+    is_car_active_status,
+    normalize_text_status,
+)
 from bot.services.domain_service import build_site_url
 from bot.services.seller_crm import SELLER_CRM_SESSION_DAYS, verify_crm_password
 from bot.services.seller_offer_service import submit_seller_offer_from_crm
@@ -94,22 +122,22 @@ logger = logging.getLogger(__name__)
 
 
 LEAD_STATUS_TABS = [
-    {"key": "new", "label": "Нові", "empty": "Нових заявок поки немає."},
-    {"key": "in_work", "label": "В роботі", "empty": "Немає заявок у роботі."},
-    {"key": "replied", "label": "Відповіли", "empty": "Ви ще не надіслали пропозиції."},
-    {"key": "selected", "label": "Обрані", "empty": "Покупці ще не обрали ваші пропозиції."},
-    {"key": "declined", "label": "Відхилені", "empty": "Відхилених заявок немає."},
-    {"key": "skipped", "label": "Пропущені", "empty": "Пропущених заявок немає."},
+    {"key": CRM_LEAD_STATUS_NEW, "label": "Нові", "empty": "Нових заявок поки немає."},
+    {"key": CRM_LEAD_STATUS_IN_WORK, "label": "В роботі", "empty": "Немає заявок у роботі."},
+    {"key": CRM_LEAD_STATUS_REPLIED, "label": "Відповіли", "empty": "Ви ще не надіслали пропозиції."},
+    {"key": CRM_LEAD_STATUS_SELECTED, "label": "Обрані", "empty": "Покупці ще не обрали ваші пропозиції."},
+    {"key": CRM_LEAD_STATUS_DECLINED, "label": "Відхилені", "empty": "Відхилених заявок немає."},
+    {"key": CRM_LEAD_STATUS_SKIPPED, "label": "Пропущені", "empty": "Пропущених заявок немає."},
 ]
-ALLOWED_LEAD_STATUSES = {tab["key"] for tab in LEAD_STATUS_TABS}
+ALLOWED_LEAD_STATUSES = CRM_LEAD_STATUSES
 
 OFFER_STATUS_TABS = [
-    {"key": "active", "label": "Активні", "empty": "Активних пропозицій поки немає."},
-    {"key": "selected", "label": "Обрані покупцем", "empty": "Покупці ще не обрали ваші пропозиції."},
-    {"key": "rejected", "label": "Не обрані", "empty": "Немає відхилених пропозицій."},
-    {"key": "all", "label": "Архів / всі", "empty": "Пропозицій ще немає."},
+    {"key": CRM_OFFER_STATUS_ACTIVE, "label": "Активні", "empty": "Активних пропозицій поки немає."},
+    {"key": CRM_OFFER_STATUS_SELECTED, "label": "Обрані покупцем", "empty": "Покупці ще не обрали ваші пропозиції."},
+    {"key": CRM_OFFER_STATUS_REJECTED, "label": "Не обрані", "empty": "Немає відхилених пропозицій."},
+    {"key": CRM_OFFER_STATUS_ALL, "label": "Архів / всі", "empty": "Пропозицій ще немає."},
 ]
-ALLOWED_OFFER_STATUSES = {tab["key"] for tab in OFFER_STATUS_TABS}
+ALLOWED_OFFER_STATUSES = CRM_OFFER_STATUSES
 
 ALLOWED_CAR_PHOTO_MIME_TYPES = {"image/jpeg", "image/png", "image/webp"}
 CAR_PHOTO_MAX_BYTES = 5 * 1024 * 1024
@@ -164,9 +192,9 @@ def _safe_crm_redirect_url(request: Request, crm_slug: str, fallback: str, next_
 
 def _lead_action_notice(action: str) -> str:
     return {
-        "viewed": "Заявку позначено переглянутою.",
-        "declined": "Заявку відхилено локально для вашого CRM.",
-        "skipped": "Заявку пропущено локально для вашого CRM.",
+        SELLER_LEAD_ACTION_VIEWED: "Заявку позначено переглянутою.",
+        SELLER_LEAD_ACTION_DECLINED: "Заявку відхилено локально для вашого CRM.",
+        SELLER_LEAD_ACTION_SKIPPED: "Заявку пропущено локально для вашого CRM.",
         "reopened": "Заявку повернуто в роботу.",
     }.get(action, "Дію виконано.")
 
@@ -193,10 +221,10 @@ def _validate_service_form(title: str, description: str, price: str) -> tuple[in
 
 
 def _car_form_payload(description: str = "", status: str = "active", is_catalog: bool = False) -> dict[str, Any]:
-    normalized_status = str(status or "active").strip().lower()
-    if normalized_status in {"1", "active", "enabled", "published", "true"}:
-        normalized_status = "active"
-    elif normalized_status in {"0", "inactive", "disabled", "archived", "false"}:
+    normalized_status = normalize_text_status(status, CRM_OFFER_STATUS_ACTIVE)
+    if is_car_active_status(normalized_status):
+        normalized_status = CRM_OFFER_STATUS_ACTIVE
+    elif normalized_status in CAR_STATUS_INACTIVE_VALUES:
         normalized_status = "inactive"
     return {
         "description": (description or "").strip(),
@@ -362,17 +390,17 @@ def _request_title(row) -> str:
 def _request_status_label(row) -> str:
     offer_status = row.get("offer_status")
     action = row.get("seller_action")
-    if offer_status == "accepted":
+    if offer_status == BUYER_OFFER_STATUS_ACCEPTED:
         return "Обрано покупцем"
-    if offer_status == "pending":
+    if offer_status == BUYER_OFFER_STATUS_PENDING:
         return "Пропозиція надіслана"
-    if offer_status == "rejected":
+    if offer_status == BUYER_OFFER_STATUS_REJECTED:
         return "Не обрано"
-    if action == "declined":
+    if action == SELLER_LEAD_ACTION_DECLINED:
         return "Відхилено"
-    if action == "skipped":
+    if action == SELLER_LEAD_ACTION_SKIPPED:
         return "Пропущено"
-    if action == "viewed":
+    if action == SELLER_LEAD_ACTION_VIEWED:
         return "Переглянуто"
     return "Очікує відповіді"
 
@@ -384,14 +412,14 @@ def _activity_label(row) -> str:
         "buyer_request_created": "Нова заявка для вас",
         "buyer_offer_created": "Пропозицію надіслано покупцю",
         "buyer_offer_accepted": "Покупець обрав вашу пропозицію",
-        "viewed": "Заявку переглянуто",
-        "offered": "Ви відповіли на заявку",
-        "declined": "Заявку відхилено",
-        "skipped": "Заявку пропущено",
+        SELLER_LEAD_ACTION_VIEWED: "Заявку переглянуто",
+        SELLER_LEAD_ACTION_OFFERED: "Ви відповіли на заявку",
+        SELLER_LEAD_ACTION_DECLINED: "Заявку відхилено",
+        SELLER_LEAD_ACTION_SKIPPED: "Заявку пропущено",
     }
     label = labels.get(action, "Оновлення заявки")
     if row.get("source") == "notification" and status:
-        status_labels = {"sent": "сповіщення доставлено", "pending": "сповіщення очікує", "failed": "сповіщення не доставлено", "cancelled": "сповіщення скасовано"}
+        status_labels = {NOTIFICATION_STATUS_SENT: "сповіщення доставлено", NOTIFICATION_STATUS_PENDING: "сповіщення очікує", NOTIFICATION_STATUS_FAILED: "сповіщення не доставлено", NOTIFICATION_STATUS_CANCELLED: "сповіщення скасовано"}
         label = f"{label} · {status_labels.get(status, status)}"
     return label
 
@@ -421,22 +449,22 @@ def _format_price(value) -> str:
 
 def _lead_status_meta(status: str | None) -> dict[str, str]:
     mapping = {
-        "selected": {"label": "Обрано", "class": "status-success"},
-        "declined": {"label": "Відхилено", "class": "status-rejected"},
-        "skipped": {"label": "Пропущено", "class": "status-rejected"},
-        "replied": {"label": "Відповіли", "class": "status-replied"},
-        "in_work": {"label": "В роботі", "class": "status-viewed"},
-        "new": {"label": "Нова", "class": "status-new"},
+        CRM_LEAD_STATUS_SELECTED: {"label": "Обрано", "class": "status-success"},
+        CRM_LEAD_STATUS_DECLINED: {"label": "Відхилено", "class": "status-rejected"},
+        CRM_LEAD_STATUS_SKIPPED: {"label": "Пропущено", "class": "status-rejected"},
+        CRM_LEAD_STATUS_REPLIED: {"label": "Відповіли", "class": "status-replied"},
+        CRM_LEAD_STATUS_IN_WORK: {"label": "В роботі", "class": "status-viewed"},
+        CRM_LEAD_STATUS_NEW: {"label": "Нова", "class": "status-new"},
     }
-    return mapping.get(status or "new", mapping["new"])
+    return mapping.get(status or CRM_LEAD_STATUS_NEW, mapping[CRM_LEAD_STATUS_NEW])
 
 
 def _offer_status_meta(status: str | None) -> dict[str, str]:
     mapping = {
-        "accepted": {"label": "selected", "class": "status-success"},
+        BUYER_OFFER_STATUS_ACCEPTED: {"label": "selected", "class": "status-success"},
         "selected": {"label": "selected", "class": "status-success"},
-        "rejected": {"label": "rejected", "class": "status-rejected"},
-        "pending": {"label": "pending", "class": "status-waiting"},
+        BUYER_OFFER_STATUS_REJECTED: {"label": "rejected", "class": "status-rejected"},
+        BUYER_OFFER_STATUS_PENDING: {"label": "pending", "class": "status-waiting"},
     }
     return mapping.get(status or "", {"label": status or "—", "class": ""})
 
@@ -459,8 +487,8 @@ def _prepare_marketplace_leads(rows) -> list[dict[str, Any]]:
             item["match_reasons_label"] = None
         status = item.get("seller_status")
         item["can_mark_viewed"] = status == "new" and not item.get("has_viewed")
-        item["can_decline"] = status not in {"declined", "skipped", "selected"}
-        item["can_skip"] = status not in {"declined", "skipped", "selected"}
+        item["can_decline"] = status not in {CRM_LEAD_STATUS_DECLINED, CRM_LEAD_STATUS_SKIPPED, CRM_LEAD_STATUS_SELECTED}
+        item["can_skip"] = status not in {CRM_LEAD_STATUS_DECLINED, CRM_LEAD_STATUS_SKIPPED, CRM_LEAD_STATUS_SELECTED}
         prepared.append(item)
     return prepared
 
@@ -496,15 +524,15 @@ def _prepare_lead_detail(detail: dict[str, Any] | None) -> dict[str, Any] | None
 
     seller_status = seller_state.get("seller_status")
     prepared["can_mark_viewed"] = not seller_state.get("has_viewed")
-    prepared["can_decline"] = seller_status not in {"declined", "skipped", "selected"}
-    prepared["can_skip"] = seller_status not in {"declined", "skipped", "selected"}
-    prepared["can_reopen"] = seller_status in {"declined", "skipped"}
+    prepared["can_decline"] = seller_status not in {CRM_LEAD_STATUS_DECLINED, CRM_LEAD_STATUS_SKIPPED, CRM_LEAD_STATUS_SELECTED}
+    prepared["can_skip"] = seller_status not in {CRM_LEAD_STATUS_DECLINED, CRM_LEAD_STATUS_SKIPPED, CRM_LEAD_STATUS_SELECTED}
+    prepared["can_reopen"] = seller_status in {CRM_LEAD_STATUS_DECLINED, CRM_LEAD_STATUS_SKIPPED}
     prepared["may_respond"] = not marketplace.get("selected_other_seller") and (
-        bool(offer) or seller_status not in {"declined", "skipped"}
+        bool(offer) or seller_status not in {CRM_LEAD_STATUS_DECLINED, CRM_LEAD_STATUS_SKIPPED}
     )
     if marketplace.get("selected_other_seller"):
         prepared["response_block_reason"] = "Покупець уже обрав іншого продавця."
-    elif seller_status in {"declined", "skipped"} and not offer:
+    elif seller_status in {CRM_LEAD_STATUS_DECLINED, CRM_LEAD_STATUS_SKIPPED} and not offer:
         prepared["response_block_reason"] = "Цю заявку вже відхилено або пропущено."
     else:
         prepared["response_block_reason"] = None
@@ -520,9 +548,9 @@ def _prepare_lead_detail(detail: dict[str, Any] | None) -> dict[str, Any] | None
 def _offer_workspace_status_meta(offer: dict[str, Any]) -> dict[str, str]:
     if offer.get("is_selected"):
         return {"label": "Обрано покупцем", "class": "status-success", "state": "selected"}
-    if offer.get("offer_status") == "rejected" or offer.get("status") == "rejected":
+    if offer.get("offer_status") == BUYER_OFFER_STATUS_REJECTED or offer.get("status") == BUYER_OFFER_STATUS_REJECTED:
         return {"label": "Не обрано", "class": "status-rejected", "state": "rejected"}
-    if offer.get("offer_status") == "accepted" or offer.get("status") == "accepted":
+    if offer.get("offer_status") == BUYER_OFFER_STATUS_ACCEPTED or offer.get("status") == BUYER_OFFER_STATUS_ACCEPTED:
         return {"label": "Обрано покупцем", "class": "status-success", "state": "selected"}
     return {"label": "Очікує рішення", "class": "status-waiting", "state": "waiting"}
 
@@ -926,7 +954,11 @@ async def _handle_seller_crm_lead_action(
         if action == "reopened":
             await reopen_seller_lead_action(seller_id=seller_id, request_id=parsed_request_id)
         else:
-            repository_action = {"viewed": "viewed", "declined": "declined", "skipped": "skipped"}.get(action)
+            repository_action = {
+                SELLER_LEAD_ACTION_VIEWED: SELLER_LEAD_ACTION_VIEWED,
+                SELLER_LEAD_ACTION_DECLINED: SELLER_LEAD_ACTION_DECLINED,
+                SELLER_LEAD_ACTION_SKIPPED: SELLER_LEAD_ACTION_SKIPPED,
+            }.get(action)
             if not repository_action:
                 raise ValueError("Invalid CRM lead action")
             await mark_seller_lead_action(
@@ -935,7 +967,7 @@ async def _handle_seller_crm_lead_action(
                 action=repository_action,
                 metadata={"source": "seller_crm"},
             )
-            if repository_action == "declined":
+            if repository_action == SELLER_LEAD_ACTION_DECLINED:
                 await cancel_seller_lead_notifications(seller_id=seller_id, request_id=parsed_request_id)
 
         logger.info(
@@ -968,7 +1000,7 @@ async def seller_crm_mark_lead_viewed(
     request_id: str,
     next_url: str = Form(""),
 ):
-    return await _handle_seller_crm_lead_action(request, crm_slug, request_id, "viewed", next_url)
+    return await _handle_seller_crm_lead_action(request, crm_slug, request_id, SELLER_LEAD_ACTION_VIEWED, next_url)
 
 
 @router.post("/{crm_slug}/leads/{request_id}/decline")
@@ -978,7 +1010,7 @@ async def seller_crm_decline_lead(
     request_id: str,
     next_url: str = Form(""),
 ):
-    return await _handle_seller_crm_lead_action(request, crm_slug, request_id, "declined", next_url)
+    return await _handle_seller_crm_lead_action(request, crm_slug, request_id, SELLER_LEAD_ACTION_DECLINED, next_url)
 
 
 @router.post("/{crm_slug}/leads/{request_id}/skip")
@@ -988,7 +1020,7 @@ async def seller_crm_skip_lead(
     request_id: str,
     next_url: str = Form(""),
 ):
-    return await _handle_seller_crm_lead_action(request, crm_slug, request_id, "skipped", next_url)
+    return await _handle_seller_crm_lead_action(request, crm_slug, request_id, SELLER_LEAD_ACTION_SKIPPED, next_url)
 
 
 @router.post("/{crm_slug}/leads/{request_id}/reopen")
@@ -1045,8 +1077,8 @@ async def seller_crm_submit_offer(
     notification_status = result.get("notification_status")
     if notification_status == "already_recorded":
         status = "updated"
-    elif notification_status == "sent":
-        status = "sent"
+    elif notification_status == NOTIFICATION_STATUS_SENT:
+        status = NOTIFICATION_STATUS_SENT
     else:
         status = "saved"
     query = urlencode({"offer_status": status})
@@ -1054,7 +1086,7 @@ async def seller_crm_submit_offer(
 
 
 @router.get("/{crm_slug}/offers")
-async def seller_crm_offers(request: Request, crm_slug: str, status: str = "active"):
+async def seller_crm_offers(request: Request, crm_slug: str, status: str = CRM_OFFER_STATUS_ACTIVE):
     try:
         account, subscription = await _authorized_account(request, crm_slug)
     except HTTPException as exc:
@@ -1062,7 +1094,7 @@ async def seller_crm_offers(request: Request, crm_slug: str, status: str = "acti
             return RedirectResponse(url=exc.detail, status_code=303)
         raise
 
-    active_status = status if status in ALLOWED_OFFER_STATUSES else "active"
+    active_status = status if status in ALLOWED_OFFER_STATUSES else CRM_OFFER_STATUS_ACTIVE
     tabs = [
         {
             **tab,
@@ -1812,8 +1844,7 @@ async def seller_crm_content_cars(request: Request, crm_slug: str):
     summary = dict(await get_seller_crm_content_summary(seller_id) or {})
     cars = [dict(car) for car in await list_seller_crm_cars_inventory(seller_id)]
     for car in cars:
-        raw_status = str(car.get("status") if car.get("status") is not None else "active").strip().lower()
-        car["status_label"] = "active" if raw_status in {"1", "active", "enabled", "published", "true"} else "inactive"
+        car["status_label"] = CRM_OFFER_STATUS_ACTIVE if is_car_active_status(car.get("status") if car.get("status") is not None else CRM_OFFER_STATUS_ACTIVE) else "inactive"
         photo_id = car.get("photo_id") or ""
         car["photo_is_url"] = isinstance(photo_id, str) and photo_id.startswith(("http://", "https://"))
     totals = {

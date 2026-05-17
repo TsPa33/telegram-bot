@@ -2,10 +2,11 @@ import json
 from decimal import Decimal
 
 from bot.database.base import fetch, fetchrow, transaction
+from bot.domain.statuses import BUYER_OFFER_STATUSES, MARKETPLACE_REQUEST_STATUSES
 
 
-BUYER_REQUEST_STATUSES = {"pending", "active", "matched", "closed"}
-BUYER_REQUEST_OFFER_STATUSES = {"pending", "accepted", "rejected"}
+BUYER_REQUEST_STATUSES = MARKETPLACE_REQUEST_STATUSES
+BUYER_REQUEST_OFFER_STATUSES = BUYER_OFFER_STATUSES
 LEGACY_REQUEST_STATUS = "new"
 MAX_ROUTED_SELLERS = 20
 BUYER_REQUEST_CREATED_EVENT = "buyer_request_created"

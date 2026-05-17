@@ -4,10 +4,10 @@ from datetime import date, datetime
 from decimal import Decimal
 
 from bot.database.base import execute, fetch, fetchrow
+from bot.domain.statuses import BUYER_OFFER_STATUSES, SELLER_LEAD_ACTIONS
 
 
-SELLER_LEAD_ACTIONS = {"viewed", "skipped", "offered", "declined"}
-BUYER_REQUEST_OFFER_STATUSES = {"pending", "accepted", "rejected"}
+BUYER_REQUEST_OFFER_STATUSES = BUYER_OFFER_STATUSES
 logger = logging.getLogger(__name__)
 
 
