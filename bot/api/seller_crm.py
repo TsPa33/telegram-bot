@@ -25,7 +25,10 @@ from bot.database.repositories.seller_crm_repo import (
     get_crm_account_for_login,
     get_crm_session,
     get_seller_crm_dashboard,
+    get_seller_crm_marketplace_summary,
     list_seller_crm_cars,
+    list_seller_crm_marketplace_activity,
+    list_seller_crm_marketplace_requests,
     list_seller_crm_leads,
     list_seller_crm_services,
     list_seller_crm_sources,
@@ -125,6 +128,86 @@ def _as_config(site) -> dict[str, Any]:
     return merge_with_default(raw if isinstance(raw, dict) else {})
 
 
+def _format_duration(seconds: int | None) -> str:
+    if seconds is None:
+        return "—"
+    seconds = max(0, int(seconds))
+    if seconds < 60:
+        return "<1 хв"
+    minutes = seconds // 60
+    if minutes < 60:
+        return f"{minutes} хв"
+    hours = minutes // 60
+    if hours < 24:
+        return f"{hours} год"
+    days = hours // 24
+    return f"{days} дн"
+
+
+def _request_title(row) -> str:
+    parts = [row.get("brand"), row.get("model")]
+    title = " ".join(str(part).strip() for part in parts if part)
+    return title or row.get("category") or row.get("request_type") or "Marketplace заявка"
+
+
+def _request_status_label(row) -> str:
+    offer_status = row.get("offer_status")
+    action = row.get("seller_action")
+    if offer_status == "accepted":
+        return "Обрано покупцем"
+    if offer_status == "pending":
+        return "Пропозиція надіслана"
+    if offer_status == "rejected":
+        return "Не обрано"
+    if action == "declined":
+        return "Відхилено"
+    if action == "skipped":
+        return "Пропущено"
+    if action == "viewed":
+        return "Переглянуто"
+    return "Очікує відповіді"
+
+
+def _activity_label(row) -> str:
+    action = row.get("action")
+    status = row.get("status")
+    labels = {
+        "buyer_request_created": "Нова заявка для вас",
+        "buyer_offer_created": "Пропозицію надіслано покупцю",
+        "buyer_offer_accepted": "Покупець обрав вашу пропозицію",
+        "viewed": "Заявку переглянуто",
+        "offered": "Ви відповіли на заявку",
+        "declined": "Заявку відхилено",
+        "skipped": "Заявку пропущено",
+    }
+    label = labels.get(action, "Оновлення заявки")
+    if row.get("source") == "notification" and status:
+        status_labels = {"sent": "сповіщення доставлено", "pending": "сповіщення очікує", "failed": "сповіщення не доставлено", "cancelled": "сповіщення скасовано"}
+        label = f"{label} · {status_labels.get(status, status)}"
+    return label
+
+
+def _prepare_marketplace_requests(rows) -> list[dict[str, Any]]:
+    prepared = []
+    for row in rows or []:
+        item = dict(row)
+        item["title"] = _request_title(item)
+        item["short_description"] = item.get("description") or item.get("message") or "Покупець не додав опис"
+        item["status_label"] = _request_status_label(item)
+        prepared.append(item)
+    return prepared
+
+
+def _prepare_activity(rows) -> list[dict[str, Any]]:
+    prepared = []
+    for row in rows or []:
+        item = dict(row)
+        item["label"] = _activity_label(item)
+        item["title"] = _request_title(item)
+        prepared.append(item)
+    return prepared
+
+
 def _split_lines(value: str | None) -> list[str]:
     return [line.strip() for line in (value or "").splitlines() if line.strip()]
 
@@ -214,10 +297,16 @@ async def seller_crm_demo(request: Request):
             account={"crm_slug": "demo", "shop_name": "Demo Auto Hub"},
             subscription={"expires_at": datetime.utcnow() + timedelta(days=30)},
             stats=demo_stats,
+            marketplace_summary={"new_requests": 3, "waiting_response": 2, "accepted_offers": 1, "avg_response_label": "18 хв"},
+            marketplace_requests=[],
+            marketplace_activity=[],
             leads=demo_leads,
             cars=[],
             services=[],
             sources=[{"source": "telegram", "visits": 93}, {"source": "google", "visits": 71}, {"source": "direct", "visits": 22}],
+            has_website=True,
+            has_cars=False,
+            has_services=True,
         ),
     )
 
@@ -295,11 +384,20 @@ async def seller_crm_dashboard(request: Request, crm_slug: str):
         raise
 
     seller_id = account["seller_id"]
+    account_flags = dict(account)
     stats = await get_seller_crm_dashboard(seller_id)
+    marketplace_summary = dict(await get_seller_crm_marketplace_summary(seller_id) or {})
+    marketplace_summary["avg_response_label"] = _format_duration(marketplace_summary.get("avg_response_seconds"))
+    marketplace_requests = _prepare_marketplace_requests(await list_seller_crm_marketplace_requests(seller_id))
+    marketplace_activity = _prepare_activity(await list_seller_crm_marketplace_activity(seller_id))
     leads = await list_seller_crm_leads(seller_id)
     cars = await list_seller_crm_cars(seller_id)
     services = await list_seller_crm_services(seller_id)
     sources = await list_seller_crm_sources(seller_id)
+    site = await get_site_by_seller(seller_id)
+    has_website = bool(site or account_flags.get("has_site") or account_flags.get("website"))
+    has_cars = bool(cars)
+    has_services = bool(services)
 
     return templates.TemplateResponse(
         "seller_crm/dashboard.html",
@@ -311,10 +409,16 @@ async def seller_crm_dashboard(request: Request, crm_slug: str):
             account=account,
             subscription=subscription,
             stats=stats or {},
+            marketplace_summary=marketplace_summary,
+            marketplace_requests=marketplace_requests,
+            marketplace_activity=marketplace_activity,
             leads=leads,
             cars=cars,
             services=services,
             sources=sources,
+            has_website=has_website,
+            has_cars=has_cars,
+            has_services=has_services,
         ),
     )
 
@@ -341,6 +445,9 @@ async def seller_crm_website(request: Request, crm_slug: str, section: str = "we
                 subscription=subscription,
                 site=None,
                 site_missing=True,
+                has_website=False,
+                has_cars=False,
+                has_services=False,
                 config={},
                 services=[],
                 cars=[],
@@ -373,6 +480,9 @@ async def seller_crm_website(request: Request, crm_slug: str, section: str = "we
             account=account,
             subscription=subscription,
             site=site,
+            has_website=True,
+            has_cars=bool(cars),
+            has_services=bool(services),
             config=config,
             services=services,
             cars=cars,

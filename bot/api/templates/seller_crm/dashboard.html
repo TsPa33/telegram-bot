@@ -1,32 +1,133 @@
 {% extends "seller_crm/base.html" %}
-{% block crm_kicker %}Єдина панель керування продажами, сайтом і заявками{% endblock %}
-{% block crm_heading %}CRM продавця CarPot{% endblock %}
+{% block crm_kicker %}Marketplace-first операційний простір продавця{% endblock %}
+{% block crm_heading %}Що потребує уваги зараз{% endblock %}
 {% block content %}
   {% if demo_mode %}<div class="demo-ribbon">Демо-панель тільки для перегляду</div>{% endif %}
-  <div id="dashboard" class="grid cards">
-    <article class="card"><h3>Візити сьогодні</h3><div class="metric">{{ stats.visits_today or 0 }}</div><p class="muted">сайт-візити без IP адрес</p></article>
-    <article class="card"><h3>Заявки сьогодні</h3><div class="metric">{{ stats.leads_today or 0 }}</div><p class="muted">Telegram + сайт заявки</p></article>
-    <article class="card"><h3>Telegram переходи</h3><div class="metric">{{ stats.telegram_clicks_today or 0 }}</div><p class="muted">контактні переходи</p></article>
-    <article class="card"><h3>Активні оголошення</h3><div class="metric">{{ stats.active_listings or 0 }}</div><p class="muted">активні авто</p></article>
-    <article class="card"><h3>Конверсія</h3><div class="metric">{{ stats.conversion or 0 }}%</div><p class="muted">заявки / візити</p></article>
-  </div>
 
-  <div class="grid quick-cards">
-    <a class="card quick-card" href="/crm/seller/{{ account.crm_slug }}/website#site-section"><b>Керувати сайтом</b><span>Тексти, контакти, SEO та заклики до дії</span></a>
-    <a class="card quick-card" href="/crm/seller/{{ account.crm_slug }}/website#banners"><b>Банери</b><span>Зображення першого екрана та порядок</span></a>
-    <a class="card quick-card" href="/crm/seller/{{ account.crm_slug }}/website#logo"><b>Лого</b><span>Оновити бренд у шапці сайту</span></a>
-    <a class="card quick-card" href="/crm/seller/{{ account.crm_slug }}/website#services"><b>Послуги</b><span>Додати або відредагувати послуги</span></a>
-    <a class="card quick-card" href="/crm/seller/{{ account.crm_slug }}/website#cars"><b>Авто</b><span>Керування автокаталогом</span></a>
-    <a class="card quick-card" href="/crm/seller/{{ account.crm_slug }}/website#publish-section"><b>Публікація</b><span>Опублікувати чернетку сайту</span></a>
-  </div>
+  <section class="workspace-hero" aria-labelledby="workspace-title">
+    <div>
+      <h2 id="workspace-title">Робочий простір marketplace</h2>
+      <p class="section-note">Спочатку показуємо нові заявки, стан відповідей і buyer activity. Сайт і візуальні налаштування винесені нижче.</p>
+    </div>
+    <div class="pill">Telegram-connected</div>
+  </section>
 
-  <div class="grid two" style="margin-top:14px">
-    <article id="leads" class="card"><h3>Заявки</h3><p><span class="badge">Нові {{ stats.new_leads or 0 }}</span> <span class="badge">У роботі {{ stats.in_progress_leads or 0 }}</span> <span class="badge">Закриті {{ stats.closed_leads or 0 }}</span></p><table class="table"><thead><tr><th>Клієнт</th><th>Контакт</th><th>Джерело</th><th>Статус</th></tr></thead><tbody>{% for lead in leads %}<tr><td>{{ lead.name or "Новий клієнт" }}<br><span class="muted">{{ lead.message or "—" }}</span></td><td>{{ lead.phone }}</td><td>{{ lead.source or "direct" }}</td><td><span class="badge">{{ lead.status }}</span></td></tr>{% else %}<tr><td colspan="4" class="muted">Заявок ще немає</td></tr>{% endfor %}</tbody></table></article>
-    <article id="analytics" class="card"><h3>Аналітика сайту</h3><p class="muted">Без IP, логів і внутрішніх системних метрик.</p><p><b>{{ stats.page_views_today or 0 }}</b> переглядів сторінок сьогодні</p><p><b>{{ stats.cta_clicks_today or 0 }}</b> кліків заклику сьогодні</p><h3>Джерела трафіку</h3>{% for source in sources %}<p><span class="badge">{{ source.source }}</span> {{ source.visits }} візитів</p>{% else %}<p class="muted">Поки немає джерел</p>{% endfor %}</article>
-  </div>
-  <div class="grid two" style="margin-top:14px">
-    <article id="cars" class="card"><h3>Авто</h3><p><b>{{ stats.listing_views or 0 }}</b> переглядів · <b>{{ stats.listing_clicks or 0 }}</b> кліків/обраних</p><table class="table"><thead><tr><th>Авто</th><th>Перегляди</th><th>Кліки</th></tr></thead><tbody>{% for car in cars %}<tr><td>{{ car.brand }} {{ car.model }}</td><td>{{ car.views }}</td><td>{{ car.phone_clicks + car.site_clicks }}</td></tr>{% else %}<tr><td colspan="3" class="muted">Немає активних авто</td></tr>{% endfor %}</tbody></table></article>
-    <article id="services" class="card"><h3>Послуги</h3><p><b>{{ stats.services_count or 0 }}</b> послуг · <b>{{ stats.service_requests or 0 }}</b> заявок/кліків</p><table class="table"><thead><tr><th>Послуга</th><th>Перегляди</th><th>Заявки</th></tr></thead><tbody>{% for service in services %}<tr><td>{{ service.title }}<br><span class="muted">{{ service.category }}</span></td><td>{{ service.views }}</td><td>{{ service.calls + service.clicks }}</td></tr>{% else %}<tr><td colspan="3" class="muted">Послуг ще немає</td></tr>{% endfor %}</tbody></table></article>
-  </div>
-  <article id="account" class="card" style="margin-top:14px"><h3>Акаунт CRM</h3><p>Базовий CRM продавця: <b>безкоштовно</b></p><p>Адреса кабінету: <b>/crm/seller/{{ account.crm_slug }}</b></p>{% if not demo_mode %}<form method="post" action="/crm/seller/logout"><button class="btn" type="submit">Вийти</button></form>{% endif %}</article>
+  <section id="marketplace-analytics" class="grid kpi-cards" aria-label="Marketplace KPI">
+    <article class="card kpi-card">
+      <div class="emoji">🔥</div>
+      <h3>Нові заявки</h3>
+      <div class="metric">{{ marketplace_summary.new_requests or 0 }}</div>
+      <p class="muted">релевантні за останні 24 години</p>
+    </article>
+    <article class="card kpi-card">
+      <div class="emoji">⏳</div>
+      <h3>Очікують відповіді</h3>
+      <div class="metric">{{ marketplace_summary.waiting_response or 0 }}</div>
+      <p class="muted">без пропозиції, відхилення або пропуску</p>
+    </article>
+    <article class="card kpi-card" id="offers">
+      <div class="emoji">✅</div>
+      <h3>Обрані покупцем</h3>
+      <div class="metric">{{ marketplace_summary.accepted_offers or 0 }}</div>
+      <p class="muted">accepted offers продавця</p>
+    </article>
+    <article class="card kpi-card">
+      <div class="emoji">⚡</div>
+      <h3>Середній час відповіді</h3>
+      <div class="metric">{{ marketplace_summary.avg_response_label or "—" }}</div>
+      <p class="muted">від заявки до seller offer</p>
+    </article>
+  </section>
+
+  <section class="grid dashboard-layout" style="margin-top:14px">
+    <article id="requests" class="card">
+      <h2>Останні marketplace заявки</h2>
+      <p class="section-note">Dashboard preview без повного workspace: тільки компактна черга того, що вже пов’язано з продавцем через marketplace routing, дії або пропозиції.</p>
+      <div class="request-list">
+        {% for item in marketplace_requests %}
+          <div class="request-card">
+            <div class="request-card-top">
+              <div>
+                <div class="request-title">{{ item.title }}</div>
+                <div class="request-meta">
+                  <span>{{ item.city or "Місто не вказано" }}</span>
+                  <span>·</span>
+                  <span>{{ item.created_at.strftime("%d.%m %H:%M") if item.created_at else "—" }}</span>
+                  {% if item.offers_count %}<span>· {{ item.offers_count }} проп.</span>{% endif %}
+                </div>
+              </div>
+              <span class="badge">{{ item.status_label }}</span>
+            </div>
+            <p class="request-desc">{{ item.short_description }}</p>
+            <div class="request-actions">
+              <a class="btn small" href="/crm/seller/{{ account.crm_slug }}#requests">Відкрити</a>
+              <a class="btn small ghost" href="https://t.me/{{ account.username if account.username else '' }}" target="_blank" rel="noopener">Telegram</a>
+            </div>
+          </div>
+        {% else %}
+          <div class="request-card">
+            <div class="request-title">Нових marketplace заявок поки немає</div>
+            <p class="request-desc">Коли buyer request буде направлено цьому продавцю або продавець відповість на заявку, вона з’явиться тут.</p>
+          </div>
+        {% endfor %}
+      </div>
+    </article>
+
+    <aside id="activity" class="card" aria-label="Активність marketplace">
+      <h2>Активність</h2>
+      <p class="section-note">Коротка стрічка без raw JSON: сповіщення marketplace і дії продавця.</p>
+      <div class="activity-list">
+        {% for event in marketplace_activity %}
+          <div class="activity-item">
+            <div class="activity-title">{{ event.label }}</div>
+            <div class="activity-meta">
+              <span>{{ event.title }}</span>
+              <span>·</span>
+              <span>{{ event.created_at.strftime("%d.%m %H:%M") if event.created_at else "—" }}</span>
+            </div>
+          </div>
+        {% else %}
+          <p class="muted">Активності ще немає.</p>
+        {% endfor %}
+      </div>
+    </aside>
+  </section>
+
+  <section id="website-analytics" class="grid two secondary-section">
+    <article class="card">
+      <h2>Website/catalog analytics</h2>
+      <p class="section-note">Другорядний блок: сайт лишається робочим, але не домінує над marketplace workflow.</p>
+      <p><b>{{ stats.visits_today or 0 }}</b> візитів сьогодні · <b>{{ stats.page_views_today or 0 }}</b> переглядів сторінок</p>
+      <p><b>{{ stats.telegram_clicks_today or 0 }}</b> Telegram переходів · <b>{{ stats.cta_clicks_today or 0 }}</b> CTA кліків</p>
+      {% for source in sources %}<p><span class="badge">{{ source.source }}</span> {{ source.visits }} візитів</p>{% else %}<p class="muted">Поки немає джерел трафіку</p>{% endfor %}
+    </article>
+    <article class="card">
+      <h2>Мій контент</h2>
+      {% if has_services or not has_cars %}<p id="services"><b>{{ stats.services_count or 0 }}</b> послуг · <b>{{ stats.service_requests or 0 }}</b> заявок/кліків</p>{% endif %}
+      <p id="parts-placeholder"><span class="badge">Placeholder</span> Товари / Запчастини — окремий workspace не впроваджується в Phase 1.</p>
+      <p id="cars" class="{% if not has_cars %}muted{% endif %}"><b>{{ stats.active_listings or 0 }}</b> авто на розборі{% if not has_cars %} · garage де-емфазовано, бо авто ще не додані{% endif %}</p>
+    </article>
+  </section>
+
+  {% if has_website %}
+    <section class="secondary-section">
+      <h2 class="section-heading">Сайт — нижчий пріоритет</h2>
+      <p class="section-note">Website builder не змінено: ключові входи залишились, але перенесені нижче операційної панелі.</p>
+      <div class="grid site-tools">
+        <a class="card quick-card" href="/crm/seller/{{ account.crm_slug }}/website#site-section"><b>Hero / Контакти</b><span>Тексти, контакти, SEO та CTA</span></a>
+        <a class="card quick-card" href="/crm/seller/{{ account.crm_slug }}/website#media-section"><b>Logo / Banners</b><span>Медіа та перший екран</span></a>
+        <a class="card quick-card" href="/crm/seller/{{ account.crm_slug }}/website#theme"><b>Theme / Modules / Publication</b><span>Дизайн, блоки та публікація</span></a>
+      </div>
+    </section>
+  {% endif %}
+
+  <section id="account" class="card secondary-section">
+    <h2>Профіль і тарифи</h2>
+    <p id="public-card">Базовий CRM продавця: <b>безкоштовно</b>. Публічна картка та Telegram/profile settings залишаються в існуючому профілі продавця.</p>
+    <p id="packages"><span class="badge">Active packages</span> Free CRM</p>
+    <p id="garage-slots" class="{% if not has_cars %}muted{% endif %}">Garage slots{% if not has_cars %}: де-емфазовано до появи авто{% endif %}</p>
+    <p id="payment-history" class="muted">Payment history не змінювався у Phase 1.</p>
+    <p>Адреса кабінету: <b>/crm/seller/{{ account.crm_slug }}</b></p>
+    {% if not demo_mode %}<form method="post" action="/crm/seller/logout"><button class="btn" type="submit">Вийти</button></form>{% endif %}
+  </section>
 {% endblock %}
