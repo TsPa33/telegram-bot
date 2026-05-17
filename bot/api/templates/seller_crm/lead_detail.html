@@ -1,5 +1,5 @@
 {% extends "seller_crm/base.html" %}
-{% block crm_kicker %}Read-only lead detail workspace{% endblock %}
+{% block crm_kicker %}Lead detail workspace{% endblock %}
 {% block crm_heading %}Заявка #{{ lead.request.request_id }}{% endblock %}
 {% block content %}
   <style>
@@ -143,6 +143,54 @@
       letter-spacing: -.04em;
     }
 
+    .offer-form {
+      display: grid;
+      gap: 10px;
+      margin-top: 12px;
+      min-width: 0;
+    }
+
+    .offer-form label {
+      display: grid;
+      gap: 6px;
+      color: #dbeafe;
+      font-size: 13px;
+      font-weight: 900;
+      min-width: 0;
+    }
+
+    .offer-form input,
+    .offer-form textarea {
+      width: 100%;
+      min-width: 0;
+      border: 1px solid rgba(148,163,184,.2);
+      border-radius: 13px;
+      background: rgba(2,6,23,.42);
+      color: #fff;
+      padding: 11px 12px;
+      font: inherit;
+      font-weight: 750;
+      outline: none;
+    }
+
+    .offer-form textarea {
+      min-height: 118px;
+      resize: vertical;
+      line-height: 1.45;
+    }
+
+    .offer-form input:focus,
+    .offer-form textarea:focus {
+      border-color: rgba(37,215,255,.6);
+      box-shadow: 0 0 0 3px rgba(37,215,255,.1);
+    }
+
+    .notice.error {
+      border-color: rgba(251,113,133,.35);
+      background: rgba(251,113,133,.09);
+      color: #fecdd3;
+    }
+
     .empty-state {
       display: grid;
       gap: 10px;
@@ -214,6 +262,10 @@
   </style>
 
   <div class="lead-detail">
+    {% if offer_status %}
+      <div class="notice">{{ "Пропозицію оновлено." if offer_status == "updated" else "Пропозицію надіслано покупцю." if offer_status == "sent" else "Пропозицію збережено. Якщо Telegram недоступний, покупець побачить її в заявці." }}</div>
+    {% endif %}
+    {% if error %}<div class="notice error">{{ error }}</div>{% endif %}
     <nav class="lead-breadcrumbs" aria-label="Навігація">
       <a href="/crm/seller/{{ account.crm_slug }}">Робочий простір</a>
       <span>→</span>
@@ -300,11 +352,24 @@
                 <a class="btn small" href="/crm/seller/{{ account.crm_slug }}/offers/{{ lead.offer.offer_id }}">Відкрити пропозицію</a>
               </div>
             </div>
+          {% endif %}
+
+          {% if lead.may_respond %}
+            <form class="offer-form" method="post" action="/crm/seller/{{ account.crm_slug }}/leads/{{ lead.request.request_id }}/offer">
+              <label>
+                💰 Ціна або "договірна"
+                <input name="price_text" maxlength="80" inputmode="decimal" autocomplete="off" placeholder="500 або договірна" value="{{ lead.offer.price_input if lead.offer else '' }}">
+              </label>
+              <label>
+                💬 Коментар до пропозиції
+                <textarea name="message" maxlength="1000" required placeholder="Є в наявності, можна відправити сьогодні.">{{ lead.offer.comment if lead.offer else '' }}</textarea>
+              </label>
+              <button class="btn" type="submit">{{ "Оновити пропозицію" if lead.offer else "Надіслати пропозицію" }}</button>
+            </form>
           {% else %}
             <div class="empty-state">
-              <b>Пропозицію ще не надіслано через Telegram.</b>
-              <span>CRM не створює пропозиції — відповідь покупцю залишається в Telegram workflow.</span>
-              <a class="btn small" href="https://t.me/CarPotbot" target="_blank" rel="noopener">Відкрити Telegram</a>
+              <b>{{ lead.response_block_reason or "Відповідь із CRM зараз недоступна." }}</b>
+              <span>Дія не змінює глобальну заявку покупця і не відкриває сторонні дані.</span>
             </div>
           {% endif %}
         </section>
