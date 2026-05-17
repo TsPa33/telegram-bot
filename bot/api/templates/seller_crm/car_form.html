@@ -10,7 +10,7 @@
   .form-field { display: grid; gap: 7px; min-width: 0; }
   .form-field.full { grid-column: 1 / -1; }
   .form-field label { color: var(--text); font-weight: 900; font-size: 13px; }
-  .form-field textarea, .form-field select { width: 100%; border: 1px solid var(--line); border-radius: 13px; background: rgba(255,255,255,.055); color: var(--text); padding: 11px 12px; font: inherit; outline: none; min-width: 0; }
+  .form-field textarea, .form-field select, .form-field input[type="text"] { width: 100%; border: 1px solid var(--line); border-radius: 13px; background: rgba(255,255,255,.055); color: var(--text); padding: 11px 12px; font: inherit; outline: none; min-width: 0; }
   .form-field textarea { min-height: 160px; resize: vertical; line-height: 1.45; }
   .checkbox-field { display: flex; gap: 10px; align-items: center; color: var(--text); font-weight: 900; min-width: 0; }
   .checkbox-field input { width: 18px; height: 18px; flex: 0 0 auto; }
@@ -25,28 +25,51 @@
   <section class="workspace-hero" aria-labelledby="car-form-title">
     <div>
       <h2 id="car-form-title">{{ form_title }}</h2>
-      <p class="section-note">Редагуйте лише опис, статус і показ у каталозі. Бренд, модель, фото та продавець не змінюються.</p>
+      <p class="section-note">{% if create_mode %}Створіть авто з існуючої марки та моделі. Фото можна буде додати окремо. Поки авто буде створено без фото.{% else %}Редагуйте лише опис, статус і показ у каталозі. Бренд, модель, фото та продавець не змінюються.{% endif %}</p>
     </div>
     <a class="btn ghost" href="{{ cancel_url }}">← Скасувати</a>
   </section>
 
   <section class="card car-form-card">
     {% if error %}<div class="form-error" role="alert">{{ error }}</div>{% endif %}
-    <div class="readonly-note">{{ car.brand }} {{ car.model }} · Зміна фото буде додана окремо.</div>
+    <div class="readonly-note">{% if create_mode %}Фото можна буде додати окремо. Поки авто буде створено без фото.{% else %}{{ car.brand }} {{ car.model }} · Зміна фото буде додана окремо.{% endif %}</div>
     <form class="car-form" method="post" action="{{ action_url }}">
       <div class="form-grid">
+        {% if create_mode %}
+          <div class="form-field">
+            <label for="brand">Марка</label>
+            <select id="brand" name="brand" required>
+              <option value="">Оберіть марку</option>
+              {% for brand in brands %}
+                <option value="{{ brand.id }}" {% if form.brand == brand.id|string %}selected{% endif %}>{{ brand.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-field">
+            <label for="model">Модель</label>
+            <select id="model" name="model" required>
+              <option value="">Оберіть модель</option>
+              {% for model in models %}
+                <option value="{{ model.id }}" {% if form.model == model.id|string %}selected{% endif %}>{{ model.brand_name }} {{ model.name }}</option>
+              {% endfor %}
+            </select>
+            <span class="field-help">Марка й модель мають бути вже додані в довідник CarPot.</span>
+          </div>
+        {% endif %}
         <div class="form-field full">
           <label for="description">Опис</label>
           <textarea id="description" name="description" maxlength="2000" placeholder="Стан авто, доступні вузли, особливості, умови продажу">{{ form.description }}</textarea>
           <span class="field-help">До 2000 символів. Без завантаження фото у цій версії.</span>
         </div>
-        <div class="form-field">
-          <label for="status">Статус</label>
-          <select id="status" name="status">
-            <option value="active" {% if form.status == 'active' %}selected{% endif %}>active</option>
-            <option value="inactive" {% if form.status != 'active' %}selected{% endif %}>inactive</option>
-          </select>
-        </div>
+        {% if not create_mode %}
+          <div class="form-field">
+            <label for="status">Статус</label>
+            <select id="status" name="status">
+              <option value="active" {% if form.status == 'active' %}selected{% endif %}>active</option>
+              <option value="inactive" {% if form.status != 'active' %}selected{% endif %}>inactive</option>
+            </select>
+          </div>
+        {% endif %}
         {% if car.has_is_catalog %}
           <div class="form-field">
             <label class="checkbox-field" for="is_catalog">
@@ -58,7 +81,7 @@
         {% endif %}
       </div>
       <div class="form-actions">
-        <button class="btn" type="submit">Зберегти</button>
+        <button class="btn" type="submit">{% if create_mode %}Створити авто{% else %}Зберегти{% endif %}</button>
         <a class="btn ghost" href="{{ cancel_url }}">Скасувати</a>
       </div>
     </form>
