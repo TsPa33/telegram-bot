@@ -1775,6 +1775,22 @@ async def update_seller_crm_car(
     return row is not None
 
 
+async def update_seller_crm_car_photo(seller_id: int, car_id: int, photo_id_or_url: str) -> bool:
+    row = await fetchrow(
+        """
+        UPDATE seller_cars
+        SET photo_id = $1
+        WHERE id = $2
+          AND seller_id = $3
+        RETURNING id
+        """,
+        photo_id_or_url,
+        car_id,
+        seller_id,
+    )
+    return row is not None
+
+
 async def set_seller_crm_car_status(seller_id: int, car_id: int, status: str) -> bool:
     columns = await _get_seller_cars_columns()
     if "status" not in columns:

@@ -16,9 +16,11 @@
   .checkbox-field input { width: 18px; height: 18px; flex: 0 0 auto; }
   .field-help { color: var(--muted); font-size: 12px; line-height: 1.4; }
   .readonly-note { border: 1px dashed rgba(251,191,36,.34); background: rgba(251,191,36,.08); color: #fde68a; border-radius: 14px; padding: 10px 12px; line-height: 1.45; }
+  .photo-link-note { border: 1px solid rgba(37,215,255,.22); background: rgba(37,215,255,.08); color: var(--text); border-radius: 14px; padding: 10px 12px; display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; min-width: 0; }
+  .photo-link-note span { color: var(--muted); overflow-wrap: anywhere; }
   .form-actions { display: flex; gap: 9px; flex-wrap: wrap; align-items: center; min-width: 0; }
   .form-error { border: 1px solid rgba(251,113,133,.28); background: rgba(251,113,133,.1); color: #fecdd3; border-radius: 14px; padding: 10px 12px; font-weight: 850; }
-  @media (max-width: 680px) { .form-grid { grid-template-columns: 1fr; } .form-actions { display: grid; grid-template-columns: 1fr; } .form-actions .btn { width: 100%; white-space: normal; } }
+  @media (max-width: 680px) { .form-grid { grid-template-columns: 1fr; } .form-actions, .photo-link-note { display: grid; grid-template-columns: 1fr; } .form-actions .btn, .photo-link-note .btn { width: 100%; white-space: normal; } }
 </style>
 
 <div class="car-form-wrap">
@@ -32,7 +34,13 @@
 
   <section class="card car-form-card">
     {% if error %}<div class="form-error" role="alert">{{ error }}</div>{% endif %}
-    <div class="readonly-note">{% if create_mode %}Фото можна буде додати окремо. Поки авто буде створено без фото.{% else %}{{ car.brand }} {{ car.model }} · Зміна фото буде додана окремо.{% endif %}</div>
+    <div class="readonly-note">{% if create_mode %}Фото можна буде додати окремо. Поки авто буде створено без фото.{% else %}{{ car.brand }} {{ car.model }} · Фото оновлюється на сторінці авто.{% endif %}</div>
+    {% if not create_mode %}
+      <div class="photo-link-note">
+        <span>{% if car.has_photo %}Поточне фото можна замінити на сторінці деталей.{% else %}Фото ще немає — додайте його на сторінці деталей авто.{% endif %}</span>
+        <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content/cars/{{ car.car_id }}">Перейти до фото</a>
+      </div>
+    {% endif %}
     <form class="car-form" method="post" action="{{ action_url }}">
       <div class="form-grid">
         {% if create_mode %}
@@ -59,7 +67,7 @@
         <div class="form-field full">
           <label for="description">Опис</label>
           <textarea id="description" name="description" maxlength="2000" placeholder="Стан авто, доступні вузли, особливості, умови продажу">{{ form.description }}</textarea>
-          <span class="field-help">До 2000 символів. Без завантаження фото у цій версії.</span>
+          <span class="field-help">До 2000 символів. Фото додається на сторінці деталей авто.</span>
         </div>
         {% if not create_mode %}
           <div class="form-field">
