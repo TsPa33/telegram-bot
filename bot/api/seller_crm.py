@@ -38,6 +38,7 @@ from bot.database.repositories.seller_crm_repo import (
     list_seller_crm_offers,
     list_seller_crm_leads,
     list_seller_crm_services,
+    list_seller_crm_services_inventory,
     list_seller_crm_sources,
 )
 from bot.database.repositories.service_repo import (
@@ -723,7 +724,7 @@ async def seller_crm_content(request: Request, crm_slug: str):
 
     priority_sections = [
         {"key": "cars", "label": "Авто на розборі", "href": f"/crm/seller/{crm_slug}/content/cars"},
-        {"key": "services", "label": "Послуги", "href": f"/crm/seller/{crm_slug}/content"},
+        {"key": "services", "label": "Послуги", "href": f"/crm/seller/{crm_slug}/content/services"},
         {"key": "parts", "label": "Товари / Запчастини", "href": f"/crm/seller/{crm_slug}/content"},
     ]
     if has_services and not has_cars:
@@ -743,6 +744,52 @@ async def seller_crm_content(request: Request, crm_slug: str):
             has_website=has_website,
             has_cars=has_cars,
             has_services=has_services,
+        ),
+    )
+
+
+@router.get("/{crm_slug}/content/services")
+async def seller_crm_content_services(request: Request, crm_slug: str):
+    try:
+        account, subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+
+    seller_id = account["seller_id"]
+    summary = dict(await get_seller_crm_content_summary(seller_id) or {})
+    services = [dict(service) for service in await list_seller_crm_services_inventory(seller_id)]
+    for service in services:
+        photo_id = service.get("photo_id") or ""
+        service["photo_is_url"] = isinstance(photo_id, str) and photo_id.startswith(("http://", "https://"))
+    totals = {
+        "views": sum(int(service.get("views") or 0) for service in services),
+        "calls": sum(int(service.get("calls") or 0) for service in services),
+        "clicks": sum(int(service.get("clicks") or 0) for service in services),
+        "without_description": sum(1 for service in services if not service.get("has_description")),
+        "without_price": sum(1 for service in services if not service.get("has_price")),
+        "without_photo": sum(1 for service in services if not service.get("has_photo")),
+    }
+    site = await get_site_by_seller(seller_id)
+    account_flags = dict(account)
+    has_website = bool(site or account_flags.get("has_site") or account_flags.get("website"))
+
+    return templates.TemplateResponse(
+        "seller_crm/content_services.html",
+        _seller_crm_context(
+            request,
+            title="Послуги — CRM продавця CarPot",
+            demo_mode=False,
+            current_page="content_services",
+            account=account,
+            subscription=subscription,
+            summary=summary,
+            services=services,
+            totals=totals,
+            has_website=has_website,
+            has_cars=int(summary.get("active_cars") or 0) > 0,
+            has_services=bool(services),
         ),
     )
 

@@ -1,0 +1,112 @@
+{% extends "seller_crm/base.html" %}
+{% block crm_kicker %}Контент продавця{% endblock %}
+{% block crm_heading %}Послуги{% endblock %}
+{% block content %}
+<style>
+  .services-workspace { display: grid; gap: 14px; min-width: 0; }
+  .services-summary { grid-template-columns: repeat(4,minmax(0,1fr)); }
+  .service-inventory-list { display: grid; gap: 12px; min-width: 0; }
+  .service-card { display: grid; grid-template-columns: 132px minmax(0,1fr); gap: 14px; align-items: start; min-width: 0; }
+  .service-photo { width: 132px; height: 98px; border-radius: 16px; border: 1px solid var(--line); background: rgba(255,255,255,.045); overflow: hidden; display: grid; place-items: center; color: var(--muted); font-weight: 900; font-size: 12px; text-align: center; }
+  .service-photo img { width: 100%; height: 100%; object-fit: cover; }
+  .service-body { min-width: 0; display: grid; gap: 9px; }
+  .service-top { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; min-width: 0; }
+  .service-title { margin: 0; color: #fff; font-size: 18px; line-height: 1.25; overflow-wrap: anywhere; }
+  .service-desc { margin: 0; color: #b7c8d8; line-height: 1.45; overflow-wrap: anywhere; }
+  .service-meta, .service-badges, .service-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; min-width: 0; }
+  .service-meta { color: var(--muted); font-size: 12px; font-weight: 850; }
+  .service-price { color: #bbf7d0; font-weight: 950; }
+  @media (max-width: 980px) { .services-summary { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+  @media (max-width: 720px) { .service-card { grid-template-columns: 1fr; } .service-photo { width: 100%; height: 170px; } .service-top { display: grid; } }
+  @media (max-width: 620px) { .services-summary { grid-template-columns: 1fr; } .service-actions { display: grid; grid-template-columns: 1fr; } .service-actions .btn { width: 100%; white-space: normal; } }
+</style>
+
+<div class="services-workspace">
+  <section class="workspace-hero" aria-labelledby="services-title">
+    <div>
+      <h2 id="services-title">Послуги</h2>
+      <p class="section-note">Read-first workspace для сервісних пропозицій продавця. Створення та редагування залишаються у Telegram-боті.</p>
+    </div>
+    <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content">← Мій контент</a>
+  </section>
+
+  <section class="grid services-summary" aria-label="Підсумок послуг">
+    <article class="card">
+      <h3>Активні послуги</h3>
+      <div class="metric">{{ summary.active_services or services|length }}</div>
+      <p class="section-note">позицій у CRM</p>
+    </article>
+    <article class="card">
+      <h3>Перегляди</h3>
+      <div class="metric">{{ totals.views or 0 }}</div>
+      <p class="section-note">по послугах</p>
+    </article>
+    <article class="card">
+      <h3>Дзвінки / кліки</h3>
+      <div class="metric">{{ (totals.calls or 0) + (totals.clicks or 0) }}</div>
+      <p class="section-note">дзвінки: {{ totals.calls or 0 }} · кліки: {{ totals.clicks or 0 }}</p>
+    </article>
+    <article class="card">
+      <h3>Потрібно доповнити</h3>
+      <div class="metric">{{ (totals.without_description or 0) + (totals.without_price or 0) + (totals.without_photo or 0) }}</div>
+      <p class="section-note">опис: {{ totals.without_description or 0 }} · ціна: {{ totals.without_price or 0 }} · фото: {{ totals.without_photo or 0 }}</p>
+    </article>
+  </section>
+
+  <section class="card">
+    <h2>Список послуг</h2>
+    <div class="service-inventory-list">
+      {% for service in services %}
+        <article class="request-card service-card">
+          <div class="service-photo">
+            {% if service.photo_is_url %}
+              <img src="{{ service.photo_id }}" alt="{{ service.title }}">
+            {% elif service.has_photo %}
+              Фото додано
+            {% else %}
+              Немає фото
+            {% endif %}
+          </div>
+          <div class="service-body">
+            <div class="service-top">
+              <div>
+                <h3 class="service-title">{{ service.title or service.name or 'Послуга' }}</h3>
+                <div class="service-meta">
+                  <span>ID {{ service.service_id }}</span>
+                  <span>·</span>
+                  <span>{{ service.category or 'Без категорії' }}</span>
+                  <span>·</span>
+                  <span>{{ service.created_at.strftime("%d.%m.%Y") if service.created_at else "—" }}</span>
+                </div>
+              </div>
+              {% if service.price is not none %}
+                <span class="badge status-viewed service-price">{{ service.price }} ₴</span>
+              {% else %}
+                <span class="badge status-waiting">Ціну не вказано</span>
+              {% endif %}
+            </div>
+            <p class="service-desc">{{ (service.description[:180] ~ ('…' if service.description and service.description|length > 180 else '')) if service.description else 'Опис ще не додано.' }}</p>
+            <div class="service-badges">
+              <span class="badge">{{ service.views or 0 }} переглядів</span>
+              <span class="badge">{{ service.calls or 0 }} дзвінків</span>
+              <span class="badge">{{ service.clicks or 0 }} кліків</span>
+              {% if not service.has_description %}<span class="badge status-waiting">Немає опису</span>{% endif %}
+              {% if not service.has_price %}<span class="badge status-waiting">Немає ціни</span>{% endif %}
+              {% if not service.has_photo %}<span class="badge status-waiting">Немає фото</span>{% endif %}
+            </div>
+            <div class="service-actions">
+              <span class="btn small ghost" aria-disabled="true">Детальніше</span>
+              <span class="btn small ghost" aria-disabled="true">Редагувати через Telegram</span>
+            </div>
+          </div>
+        </article>
+      {% else %}
+        <div class="request-card">
+          <div class="request-title">Послуг ще немає. Додайте першу послугу через Telegram-бот.</div>
+          <p class="request-desc">Коли продавець додасть послугу через Telegram, вона з’явиться тут зі статистикою та індикаторами заповнення.</p>
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+</div>
+{% endblock %}
