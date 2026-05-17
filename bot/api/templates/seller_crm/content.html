@@ -1,0 +1,107 @@
+{% extends "seller_crm/base.html" %}
+{% block crm_kicker %}Контент продавця{% endblock %}
+{% block crm_heading %}Мій контент{% endblock %}
+{% block content %}
+<style>
+  .content-hub { display: grid; gap: 14px; min-width: 0; }
+  .content-priority { grid-template-columns: repeat(3,minmax(0,1fr)); }
+  .content-card { display: grid; gap: 10px; text-decoration: none; color: inherit; min-height: 148px; }
+  .content-card:hover { border-color: rgba(37,215,255,.28); background: linear-gradient(135deg, rgba(37,215,255,.08), rgba(52,245,166,.04)); }
+  .content-card-top { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; min-width: 0; }
+  .content-card-title { font-size: 18px; font-weight: 950; color: #fff; overflow-wrap: anywhere; }
+  .content-card-note { margin: 0; color: var(--muted); line-height: 1.45; overflow-wrap: anywhere; }
+  .health-list { display: grid; gap: 9px; margin: 0; padding: 0; list-style: none; }
+  .health-item { display: flex; gap: 9px; align-items: flex-start; border: 1px solid var(--line); border-radius: 14px; padding: 10px 11px; background: rgba(255,255,255,.035); color: #d8e8f5; overflow-wrap: anywhere; }
+  .health-item.ok { color: #bbf7d0; border-color: rgba(52,245,166,.18); background: rgba(52,245,166,.06); }
+  .quick-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .content-empty { border: 1px dashed rgba(251,191,36,.32); background: rgba(251,191,36,.08); color: #fde68a; }
+  @media (max-width: 980px) { .content-priority { grid-template-columns: 1fr; } }
+  @media (max-width: 620px) { .quick-actions { display: grid; grid-template-columns: 1fr; } .quick-actions .btn { width: 100%; } }
+</style>
+
+<div class="content-hub">
+  <section class="workspace-hero" aria-labelledby="content-title">
+    <div>
+      <h2 id="content-title">Мій контент</h2>
+      <p class="section-note">Огляд того, що покупці бачать у marketplace та на сайті. Додавання й редагування залишаються у Telegram-боті.</p>
+    </div>
+    <div class="pill">Read-first</div>
+  </section>
+
+  {% if not has_cars and not has_services %}
+    <section class="card content-empty">
+      <h2>Почніть з першої позиції</h2>
+      <p class="section-note">Додайте перше авто або послугу, щоб покупці могли вас знаходити.</p>
+    </section>
+  {% endif %}
+
+  <section class="grid content-priority" aria-label="Розділи контенту">
+    {% for section in priority_sections %}
+      {% if section.key == 'cars' %}
+        <a class="card content-card" href="{{ section.href }}">
+          <div class="content-card-top">
+            <div class="content-card-title">Авто на розборі</div>
+            <span class="badge status-new">{{ summary.active_cars or 0 }}</span>
+          </div>
+          <p class="content-card-note">Донорські авто та інвентар, який допомагає покупцям знайти потрібні запчастини.</p>
+          {% if summary.garage_slots_total %}
+            <span class="badge">Вільно місць: {{ summary.garage_slots_free or 0 }}</span>
+          {% else %}
+            <span class="badge status-waiting">Ліміти гаража будуть доступні окремо</span>
+          {% endif %}
+        </a>
+      {% elif section.key == 'services' %}
+        <a class="card content-card" href="{{ section.href }}">
+          <div class="content-card-top">
+            <div class="content-card-title">Послуги</div>
+            <span class="badge status-new">{{ summary.active_services or 0 }}</span>
+          </div>
+          <p class="content-card-note">Сервісні пропозиції продавця: ремонт, підбір, доставка або інші послуги.</p>
+          {% if not has_services %}<span class="badge status-waiting">Послуг ще немає</span>{% endif %}
+        </a>
+      {% else %}
+        <a class="card content-card" href="{{ section.href }}">
+          <div class="content-card-top">
+            <div class="content-card-title">Товари / Запчастини</div>
+            <span class="badge">Скоро</span>
+          </div>
+          <p class="content-card-note">Окремий workspace для товарів і запчастин буде додано наступними фазами.</p>
+          <span class="badge status-viewed">Плейсхолдер</span>
+        </a>
+      {% endif %}
+    {% endfor %}
+  </section>
+
+  <section class="card">
+    <h2>Потрібно доповнити</h2>
+    <ul class="health-list">
+      {% if summary.cars_without_photo %}
+        <li class="health-item">⚠️ {{ summary.cars_without_photo }} авто без фото.</li>
+      {% endif %}
+      {% if summary.cars_without_description %}
+        <li class="health-item">⚠️ {{ summary.cars_without_description }} авто без опису.</li>
+      {% endif %}
+      {% if not has_services %}
+        <li class="health-item">⚠️ Послуг ще немає.</li>
+      {% endif %}
+      {% if not has_cars %}
+        <li class="health-item">⚠️ Авто на розборі ще немає.</li>
+      {% endif %}
+      {% if has_cars and has_services and not summary.cars_without_photo and not summary.cars_without_description %}
+        <li class="health-item ok">✅ Основні блоки контенту заповнені.</li>
+      {% endif %}
+    </ul>
+  </section>
+
+  <section class="card">
+    <h2>Швидкі дії</h2>
+    <div class="quick-actions">
+      <a class="btn" href="/crm/seller/{{ account.crm_slug }}/content/cars">Відкрити авто</a>
+      <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content">Відкрити послуги</a>
+      <span class="btn ghost" aria-disabled="true">Додати авто через Telegram</span>
+      <span class="btn ghost" aria-disabled="true">Додати послугу через Telegram</span>
+    </div>
+    <p class="section-note" style="margin-top:12px">Додавання зараз доступне через Telegram-бот.</p>
+  </section>
+</div>
+{% endblock %}

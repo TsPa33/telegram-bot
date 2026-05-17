@@ -1373,6 +1373,89 @@ async def list_seller_crm_leads(seller_id: int, limit: int = 20):
     )
 
 
+async def get_seller_crm_content_summary(seller_id: int):
+    return await fetchrow(
+        """
+        WITH car_counts AS (
+            SELECT
+                COUNT(*) FILTER (WHERE COALESCE(status::text, '1') IN ('1', 'active'))::int AS active_cars,
+                COUNT(*) FILTER (
+                    WHERE COALESCE(status::text, '1') IN ('1', 'active')
+                      AND COALESCE(NULLIF(photo_id, ''), '') = ''
+                )::int AS cars_without_photo,
+                COUNT(*) FILTER (
+                    WHERE COALESCE(status::text, '1') IN ('1', 'active')
+                      AND COALESCE(NULLIF(BTRIM(description), ''), '') = ''
+                )::int AS cars_without_description
+            FROM seller_cars
+            WHERE seller_id = $1
+        ), service_counts AS (
+            SELECT
+                COUNT(*)::int AS active_services,
+                COUNT(*) FILTER (WHERE COALESCE(NULLIF(BTRIM(description), ''), '') = '')::int AS services_without_description
+            FROM services
+            WHERE seller_id = $1
+        ), garage AS (
+            SELECT COALESCE(SUM(slots), 0)::int AS garage_slots_total
+            FROM seller_subscriptions
+            WHERE seller_id = $1
+              AND expires_at > NOW()
+        )
+        SELECT
+            COALESCE(cc.active_cars, 0)::int AS active_cars,
+            COALESCE(cc.cars_without_photo, 0)::int AS cars_without_photo,
+            COALESCE(cc.cars_without_description, 0)::int AS cars_without_description,
+            COALESCE(sc.active_services, 0)::int AS active_services,
+            COALESCE(sc.services_without_description, 0)::int AS services_without_description,
+            COALESCE(g.garage_slots_total, 0)::int AS garage_slots_total,
+            COALESCE(cc.active_cars, 0)::int AS garage_slots_used,
+            GREATEST(COALESCE(g.garage_slots_total, 0) - COALESCE(cc.active_cars, 0), 0)::int AS garage_slots_free
+        FROM car_counts cc
+        CROSS JOIN service_counts sc
+        CROSS JOIN garage g
+        """,
+        seller_id,
+    )
+
+
+async def list_seller_crm_cars_inventory(
+    seller_id: int,
+    limit: int = 50,
+    offset: int = 0,
+):
+    normalized_limit = max(1, min(int(limit or 50), 100))
+    normalized_offset = max(0, int(offset or 0))
+
+    return await fetch(
+        """
+        SELECT
+            sc.id AS car_id,
+            b.name AS brand,
+            m.name AS model,
+            sc.description,
+            sc.photo_id,
+            COALESCE(sc.views, 0)::int AS views,
+            COALESCE(sc.phone_clicks, 0)::int AS phone_clicks,
+            COALESCE(sc.site_clicks, 0)::int AS site_clicks,
+            sc.status,
+            FALSE AS is_catalog,
+            sc.created_at,
+            (COALESCE(NULLIF(sc.photo_id, ''), '') <> '') AS has_photo,
+            (COALESCE(NULLIF(BTRIM(sc.description), ''), '') <> '') AS has_description
+        FROM seller_cars sc
+        JOIN models m ON m.id = sc.model_id
+        JOIN brands b ON b.id = m.brand_id
+        WHERE sc.seller_id = $1
+          AND COALESCE(sc.status::text, '1') IN ('1', 'active')
+        ORDER BY sc.created_at DESC, sc.id DESC
+        LIMIT $2 OFFSET $3
+        """,
+        seller_id,
+        normalized_limit,
+        normalized_offset,
+    )
+
+
 async def list_seller_crm_cars(seller_id: int, limit: int = 20):
     return await fetch(
         """

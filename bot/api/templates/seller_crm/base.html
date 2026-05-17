@@ -1284,24 +1284,17 @@
             </section>
 
             <section class="nav-accordion">
-                <input id="nav-content" name="crm-nav" type="radio">
+                <input id="nav-content" name="crm-nav" type="radio" {% if current_page in ['content', 'content_cars'] or current_page[:7] == 'content' %}checked{% endif %}>
                 <label class="nav-title" data-icon="▤" for="nav-content">
                     <span>Мій контент</span>
                 </label>
                 <div class="nav-panel">
-                    {% if has_services or not has_cars %}
-                    <a href="/crm/seller/{{ account.crm_slug }}{% if has_website %}/website{% endif %}#services" title="Майбутня сторінка: /content/services">Послуги</a>
-                    {% endif %}
-
-                    <a class="placeholder" href="/crm/seller/{{ account.crm_slug }}#parts-placeholder">Товари / Запчастини</a>
-
-                    <a class="{% if not has_cars %}deemphasized{% endif %}" href="/crm/seller/{{ account.crm_slug }}{% if has_website %}/website{% endif %}#cars" title="Майбутня сторінка: /content/cars">
+                    <a class="{% if current_page == 'content' %}active{% endif %}" href="/crm/seller/{{ account.crm_slug }}/content">Огляд контенту</a>
+                    <a href="/crm/seller/{{ account.crm_slug }}/content" title="Окремий workspace послуг буде додано пізніше">Послуги</a>
+                    <a class="placeholder" href="/crm/seller/{{ account.crm_slug }}/content" title="Workspace товарів / запчастин буде додано пізніше">Товари / Запчастини</a>
+                    <a class="{% if current_page == 'content_cars' %}active{% endif %}{% if not has_cars %} deemphasized{% endif %}" href="/crm/seller/{{ account.crm_slug }}/content/cars">
                         Авто на розборі{% if not has_cars %} · немає авто{% endif %}
                     </a>
-
-                    {% if has_cars and has_services %}
-                    <a href="/crm/seller/{{ account.crm_slug }}/website#services">Послуги</a>
-                    {% endif %}
                 </div>
             </section>
 
