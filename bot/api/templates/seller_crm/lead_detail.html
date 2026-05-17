@@ -1,0 +1,329 @@
+{% extends "seller_crm/base.html" %}
+{% block crm_kicker %}Read-only lead detail workspace{% endblock %}
+{% block crm_heading %}Заявка #{{ lead.request.request_id }}{% endblock %}
+{% block content %}
+  <style>
+    .lead-detail {
+      display: grid;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .lead-breadcrumbs {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 850;
+      margin-bottom: 4px;
+    }
+
+    .lead-breadcrumbs a {
+      color: #dbeafe;
+      text-decoration: none;
+    }
+
+    .lead-summary {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 14px;
+      align-items: start;
+    }
+
+    .lead-title-stack {
+      display: grid;
+      gap: 9px;
+      min-width: 0;
+    }
+
+    .lead-title-stack h2 {
+      margin: 0;
+      font-size: clamp(22px, 4vw, 34px);
+      line-height: 1.05;
+      letter-spacing: -.045em;
+      overflow-wrap: anywhere;
+    }
+
+    .lead-tags {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .lead-meta-grid,
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .detail-chip {
+      min-width: 0;
+      border: 1px solid rgba(148,163,184,.14);
+      border-radius: 14px;
+      background: rgba(255,255,255,.035);
+      padding: 10px;
+    }
+
+    .detail-chip span,
+    .field-label {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .detail-chip b,
+    .field-value {
+      color: #fff;
+      font-size: 14px;
+      font-weight: 900;
+      overflow-wrap: anywhere;
+    }
+
+    .lead-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(280px, .85fr);
+      gap: 14px;
+      align-items: start;
+    }
+
+    .detail-stack {
+      display: grid;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .detail-text {
+      margin: 0;
+      color: #dbeafe;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    .contact-list,
+    .timeline-list {
+      display: grid;
+      gap: 9px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .contact-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(148,163,184,.12);
+      min-width: 0;
+    }
+
+    .contact-row:last-child { border-bottom: 0; }
+
+    .offer-card {
+      display: grid;
+      gap: 10px;
+      border: 1px solid rgba(34,211,238,.18);
+      border-radius: 16px;
+      background: linear-gradient(135deg, rgba(34,211,238,.09), rgba(52,245,166,.045));
+      padding: 13px;
+      min-width: 0;
+    }
+
+    .offer-price {
+      font-size: 26px;
+      font-weight: 950;
+      letter-spacing: -.04em;
+    }
+
+    .empty-state {
+      display: grid;
+      gap: 10px;
+      padding: 14px;
+      border: 1px dashed rgba(148,163,184,.24);
+      border-radius: 16px;
+      background: rgba(255,255,255,.025);
+      color: var(--muted);
+    }
+
+    .timeline-item {
+      position: relative;
+      display: grid;
+      grid-template-columns: 13px minmax(0, 1fr);
+      gap: 10px;
+      align-items: start;
+    }
+
+    .timeline-dot {
+      width: 10px;
+      height: 10px;
+      margin-top: 5px;
+      border-radius: 999px;
+      background: var(--blue);
+      box-shadow: 0 0 16px rgba(37,215,255,.35);
+    }
+
+    .timeline-body {
+      min-width: 0;
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(148,163,184,.1);
+    }
+
+    .timeline-body b {
+      display: block;
+      color: #fff;
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .timeline-body span {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .lead-actions-mobile {
+      position: sticky;
+      bottom: 10px;
+      display: none;
+      z-index: 2;
+    }
+
+    @media (max-width: 860px) {
+      .lead-summary,
+      .lead-layout { grid-template-columns: 1fr; }
+      .lead-meta-grid,
+      .status-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 560px) {
+      .lead-meta-grid,
+      .status-grid { grid-template-columns: 1fr; }
+      .card { padding: 14px; border-radius: 18px; }
+      .lead-actions-mobile { display: grid; }
+      .lead-actions-mobile .btn { width: 100%; justify-content: center; }
+      .contact-row { display: grid; gap: 4px; }
+    }
+  </style>
+
+  <div class="lead-detail">
+    <nav class="lead-breadcrumbs" aria-label="Навігація">
+      <a href="/crm/seller/{{ account.crm_slug }}">Робочий простір</a>
+      <span>→</span>
+      <a href="/crm/seller/{{ account.crm_slug }}/leads">Заявки</a>
+      <span>→</span>
+      <span>Заявка #{{ lead.request.request_id }}</span>
+    </nav>
+
+    <section class="card lead-summary" aria-labelledby="summary-title">
+      <div class="lead-title-stack">
+        <div class="lead-tags">
+          <span class="badge {{ lead.seller_state.status_class }}">{{ lead.seller_state.status_label }}</span>
+          {% if lead.marketplace.is_selected %}<span class="badge status-success">Обрано покупцем</span>{% endif %}
+          {% if lead.request.match_score is not none %}<span class="badge">Match {{ lead.request.match_score }}</span>{% endif %}
+        </div>
+        <h2 id="summary-title">{{ lead.request.title }}</h2>
+        <div class="lead-meta-grid">
+          <div class="detail-chip"><span>Місто</span><b>{{ lead.request.city or "Не вказано" }}</b></div>
+          <div class="detail-chip"><span>Створено</span><b>{{ lead.request.created_at.strftime("%d.%m.%Y %H:%M") if lead.request.created_at else "—" }}</b></div>
+          <div class="detail-chip"><span>Терміновість</span><b>{{ lead.request.urgency or "Звичайна" }}</b></div>
+          <div class="detail-chip"><span>Категорія</span><b>{{ lead.request.category or "Не вказано" }}</b></div>
+        </div>
+      </div>
+      <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/leads">Назад до заявок</a>
+    </section>
+
+    <div class="lead-layout">
+      <div class="detail-stack">
+        <section class="card" aria-labelledby="request-details-title">
+          <h2 id="request-details-title" class="section-heading">Деталі заявки покупця</h2>
+          <p class="detail-text">{{ lead.request.description }}</p>
+          <div class="lead-meta-grid" style="margin-top:14px">
+            <div class="detail-chip"><span>Марка</span><b>{{ lead.request.brand or "—" }}</b></div>
+            <div class="detail-chip"><span>Модель</span><b>{{ lead.request.model or "—" }}</b></div>
+            <div class="detail-chip"><span>VIN</span><b>{{ lead.request.vin or "Не вказано" }}</b></div>
+            <div class="detail-chip"><span>Routing</span><b>{{ lead.request.match_reasons_label or "Без додаткових даних" }}</b></div>
+          </div>
+
+          <h3 style="margin-top:16px">Контакти покупця</h3>
+          {% if lead.request.buyer_contact %}
+            <ul class="contact-list">
+              {% if lead.request.buyer_contact.name %}<li class="contact-row"><span class="field-label">Ім’я</span><b class="field-value">{{ lead.request.buyer_contact.name }}</b></li>{% endif %}
+              {% if lead.request.buyer_contact.phone %}<li class="contact-row"><span class="field-label">Телефон</span><b class="field-value">{{ lead.request.buyer_contact.phone }}</b></li>{% endif %}
+              {% if lead.request.buyer_contact.telegram %}<li class="contact-row"><span class="field-label">Telegram</span><b class="field-value">{{ lead.request.buyer_contact.telegram }}</b></li>{% endif %}
+            </ul>
+          {% else %}
+            <div class="empty-state">Контакти покупця поки недоступні в CRM. Вони показуються лише після marketplace-вибору або прийнятої пропозиції.</div>
+          {% endif %}
+        </section>
+
+        <section class="card" aria-labelledby="timeline-title">
+          <h2 id="timeline-title" class="section-heading">Активність</h2>
+          {% if lead.timeline %}
+            <ol class="timeline-list">
+              {% for event in lead.timeline %}
+                <li class="timeline-item">
+                  <span class="timeline-dot" aria-hidden="true"></span>
+                  <div class="timeline-body">
+                    <b>{{ event.label }}</b>
+                    <span>{{ event.created_at.strftime("%d.%m.%Y %H:%M") if event.created_at else "—" }}</span>
+                  </div>
+                </li>
+              {% endfor %}
+            </ol>
+          {% else %}
+            <div class="empty-state">Подій по цій заявці ще немає.</div>
+          {% endif %}
+        </section>
+      </div>
+
+      <aside class="detail-stack">
+        <section class="card" aria-labelledby="offer-title">
+          <h2 id="offer-title" class="section-heading">Ваша пропозиція</h2>
+          {% if lead.offer %}
+            <div class="offer-card">
+              <div class="lead-tags">
+                <span class="badge {{ lead.offer.status_class }}">{{ lead.offer.status_label }}</span>
+                <span class="badge">#{{ lead.offer.offer_id }}</span>
+              </div>
+              <div class="offer-price">₴ {{ lead.offer.price_label }}</div>
+              <p class="detail-text">{{ lead.offer.comment or "Без коментаря" }}</p>
+              <span class="muted">Надіслано {{ lead.offer.created_at.strftime("%d.%m.%Y %H:%M") if lead.offer.created_at else "—" }}</span>
+            </div>
+          {% else %}
+            <div class="empty-state">
+              <b>Пропозицію ще не надіслано через Telegram.</b>
+              <span>CRM не створює пропозиції — відповідь покупцю залишається в Telegram workflow.</span>
+              <a class="btn small" href="https://t.me/CarPotbot" target="_blank" rel="noopener">Відкрити Telegram</a>
+            </div>
+          {% endif %}
+        </section>
+
+        <section class="card" aria-labelledby="marketplace-title">
+          <h2 id="marketplace-title" class="section-heading">Marketplace статус</h2>
+          <div class="status-grid">
+            <div class="detail-chip"><span>Вибір покупця</span><b><span class="badge {{ lead.marketplace.state_class }}">{{ lead.marketplace.state_label }}</span></b></div>
+            <div class="detail-chip"><span>Стан відповіді</span><b><span class="badge {{ lead.seller_state.status_class }}">{{ lead.seller_state.status_label }}</span></b></div>
+            <div class="detail-chip"><span>Переглянуто</span><b>{{ lead.seller_state.viewed_at.strftime("%d.%m %H:%M") if lead.seller_state.viewed_at else "—" }}</b></div>
+            <div class="detail-chip"><span>Відповідь</span><b>{{ lead.seller_state.responded_at.strftime("%d.%m %H:%M") if lead.seller_state.responded_at else "—" }}</b></div>
+            <div class="detail-chip"><span>Відхилено</span><b>{{ lead.seller_state.declined_at.strftime("%d.%m %H:%M") if lead.seller_state.declined_at else "—" }}</b></div>
+            <div class="detail-chip"><span>Пропущено</span><b>{{ lead.seller_state.skipped_at.strftime("%d.%m %H:%M") if lead.seller_state.skipped_at else "—" }}</b></div>
+            <div class="detail-chip"><span>Обрано</span><b>{{ lead.marketplace.selected_at.strftime("%d.%m.%Y %H:%M") if lead.marketplace.selected_at else "—" }}</b></div>
+            <div class="detail-chip"><span>Marketplace</span><b>{{ lead.marketplace.status or "pending" }}</b></div>
+          </div>
+        </section>
+      </aside>
+    </div>
+
+    <div class="lead-actions-mobile">
+      <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/leads">Назад до заявок</a>
+    </div>
+  </div>
+{% endblock %}

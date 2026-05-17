@@ -25,6 +25,7 @@ from bot.database.repositories.seller_crm_repo import (
     get_crm_account_for_login,
     get_crm_session,
     get_seller_crm_dashboard,
+    get_seller_crm_lead_detail,
     get_seller_crm_marketplace_summary,
     list_seller_crm_cars,
     list_seller_crm_marketplace_activity,
@@ -210,12 +211,49 @@ def _prepare_marketplace_requests(rows) -> list[dict[str, Any]]:
     return prepared
 
 
+def _format_price(value) -> str:
+    if value is None:
+        return "—"
+    try:
+        amount = float(value)
+    except (TypeError, ValueError):
+        return str(value)
+    if amount.is_integer():
+        return f"{int(amount):,}".replace(",", " ")
+    return f"{amount:,.2f}".replace(",", " ")
+
+
+def _lead_status_meta(status: str | None) -> dict[str, str]:
+    mapping = {
+        "selected": {"label": "Обрано", "class": "status-success"},
+        "declined": {"label": "Відхилено", "class": "status-rejected"},
+        "skipped": {"label": "Пропущено", "class": "status-rejected"},
+        "replied": {"label": "Відповіли", "class": "status-replied"},
+        "in_work": {"label": "В роботі", "class": "status-viewed"},
+        "new": {"label": "Нова", "class": "status-new"},
+    }
+    return mapping.get(status or "new", mapping["new"])
+
+
+def _offer_status_meta(status: str | None) -> dict[str, str]:
+    mapping = {
+        "accepted": {"label": "selected", "class": "status-success"},
+        "selected": {"label": "selected", "class": "status-success"},
+        "rejected": {"label": "rejected", "class": "status-rejected"},
+        "pending": {"label": "pending", "class": "status-waiting"},
+    }
+    return mapping.get(status or "", {"label": status or "—", "class": ""})
+
+
 def _prepare_marketplace_leads(rows) -> list[dict[str, Any]]:
     prepared = []
     for row in rows or []:
         item = dict(row)
         item["title"] = item.get("title") or _request_title(item)
         item["short_description"] = item.get("description") or "Покупець не додав опис"
+        status_meta = _lead_status_meta(item.get("seller_status"))
+        item["status_label"] = status_meta["label"]
+        item["status_class"] = status_meta["class"]
         match_reasons = item.get("match_reasons")
         if isinstance(match_reasons, str):
             item["match_reasons_label"] = match_reasons
@@ -224,6 +262,42 @@ def _prepare_marketplace_leads(rows) -> list[dict[str, Any]]:
         else:
             item["match_reasons_label"] = None
         prepared.append(item)
+    return prepared
+
+
+def _prepare_lead_detail(detail: dict[str, Any] | None) -> dict[str, Any] | None:
+    if not detail:
+        return None
+    prepared = {**detail}
+    request_data = {**prepared.get("request", {})}
+    seller_state = {**prepared.get("seller_state", {})}
+    offer = prepared.get("offer")
+    marketplace = {**prepared.get("marketplace", {})}
+
+    request_data["title"] = request_data.get("title") or _request_title(request_data)
+    request_data["description"] = request_data.get("description") or "Покупець не додав детальний опис."
+    match_reasons = request_data.get("match_reasons") or []
+    request_data["match_reasons_label"] = ", ".join(str(reason) for reason in match_reasons) if match_reasons else None
+
+    status_meta = _lead_status_meta(seller_state.get("seller_status"))
+    seller_state["status_label"] = status_meta["label"]
+    seller_state["status_class"] = status_meta["class"]
+
+    if offer:
+        offer = {**offer}
+        offer_meta = _offer_status_meta(offer.get("status"))
+        offer["status_label"] = offer_meta["label"]
+        offer["status_class"] = offer_meta["class"]
+        offer["price_label"] = _format_price(offer.get("price"))
+
+    marketplace["state_label"] = "Обрано покупцем" if marketplace.get("is_selected") else "Очікує рішення покупця"
+    marketplace["state_class"] = "status-success" if marketplace.get("is_selected") else "status-waiting"
+
+    prepared["request"] = request_data
+    prepared["seller_state"] = seller_state
+    prepared["offer"] = offer
+    prepared["marketplace"] = marketplace
+    prepared["timeline"] = prepared.get("timeline") or []
     return prepared
 
 
@@ -442,6 +516,43 @@ async def seller_crm_marketplace_leads(request: Request, crm_slug: str, status: 
             lead_tabs=tabs,
             active_status=active_status,
             empty_message=active_tab["empty"],
+        ),
+    )
+
+
+@router.get("/{crm_slug}/leads/{request_id}")
+async def seller_crm_lead_detail(request: Request, crm_slug: str, request_id: str):
+    try:
+        account, subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+
+    try:
+        parsed_request_id = int(request_id)
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=404, detail="Lead not found") from exc
+
+    lead_detail = _prepare_lead_detail(
+        await get_seller_crm_lead_detail(
+            account["seller_id"],
+            parsed_request_id,
+        )
+    )
+    if not lead_detail:
+        raise HTTPException(status_code=404, detail="Lead not found")
+
+    return templates.TemplateResponse(
+        "seller_crm/lead_detail.html",
+        _seller_crm_context(
+            request,
+            title=f"Заявка #{parsed_request_id} — CRM продавця CarPot",
+            demo_mode=False,
+            current_page="leads",
+            account=account,
+            subscription=subscription,
+            lead=lead_detail,
         ),
     )
 
