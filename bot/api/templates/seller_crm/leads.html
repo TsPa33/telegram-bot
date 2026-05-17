@@ -1,0 +1,136 @@
+{% extends "seller_crm/base.html" %}
+{% block crm_kicker %}Read-only marketplace leads workspace{% endblock %}
+{% block crm_heading %}Заявки marketplace{% endblock %}
+{% block content %}
+  <style>
+    .leads-toolbar {
+      display: grid;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .lead-tabs {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .lead-tab {
+      flex: 0 0 auto;
+      min-height: 36px;
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 8px 12px;
+      background: rgba(255,255,255,.045);
+      color: var(--text);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .lead-tab.active {
+      color: #03111d;
+      background: linear-gradient(135deg, var(--blue), var(--green));
+      border-color: transparent;
+    }
+
+    .lead-card-meta {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .lead-card-footer {
+      display: grid;
+      gap: 8px;
+    }
+
+    .lead-tags {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .empty-leads {
+      text-align: center;
+      padding: 26px 14px;
+    }
+
+    @media (max-width: 640px) {
+      .leads-toolbar .workspace-hero { grid-template-columns: 1fr; }
+      .lead-card-footer .request-actions .btn { flex: 1; }
+    }
+  </style>
+
+  <section class="leads-toolbar" aria-labelledby="leads-title">
+    <div class="workspace-hero">
+      <div>
+        <h2 id="leads-title">Marketplace заявки</h2>
+        <p class="section-note">Окрема read-only черга заявок, які вже пов’язані з цим продавцем через routing, дії, пропозиції або вибір покупця.</p>
+      </div>
+      <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}">На панель</a>
+    </div>
+
+    <nav class="lead-tabs" aria-label="Фільтр заявок">
+      {% for tab in lead_tabs %}
+        <a class="lead-tab {% if tab.active %}active{% endif %}" href="{{ tab.href }}" {% if tab.active %}aria-current="page"{% endif %}>{{ tab.label }}</a>
+      {% endfor %}
+    </nav>
+  </section>
+
+  <section class="card" aria-live="polite">
+    <div class="request-list">
+      {% for lead in leads %}
+        {% set status_class = 'status-success' if lead.seller_status == 'selected' else 'status-rejected' if lead.seller_status in ['declined', 'skipped'] else 'status-replied' if lead.seller_status == 'replied' else 'status-viewed' if lead.seller_status == 'in_work' else 'status-new' %}
+        {% set status_label = 'Обрано' if lead.seller_status == 'selected' else 'Відхилено' if lead.seller_status == 'declined' else 'Пропущено' if lead.seller_status == 'skipped' else 'Відповіли' if lead.seller_status == 'replied' else 'В роботі' if lead.seller_status == 'in_work' else 'Нова' %}
+        <article class="request-card">
+          <div class="request-card-top">
+            <div>
+              <div class="request-title">{{ lead.title }}</div>
+              <div class="lead-card-meta">
+                <span>📍 {{ lead.city or "Місто не вказано" }}</span>
+                <span>🕒 {{ lead.created_at.strftime("%d.%m %H:%M") if lead.created_at else "—" }}</span>
+                {% if lead.category %}<span>🧩 {{ lead.category }}</span>{% endif %}
+              </div>
+            </div>
+            <span class="badge {{ status_class }}">{{ status_label }}</span>
+          </div>
+
+          <p class="request-desc">{{ lead.short_description }}</p>
+
+          <div class="lead-card-footer">
+            <div class="lead-tags">
+              <span class="badge">Локально: {{ status_label }}</span>
+              {% if lead.offer_status %}<span class="badge status-replied">Offer: {{ lead.offer_status }}</span>{% endif %}
+              {% if lead.price_offer %}<span class="badge">₴ {{ lead.price_offer }}</span>{% endif %}
+              {% if lead.match_score is not none %}<span class="badge">Match {{ lead.match_score }}</span>{% endif %}
+              {% if lead.buyer_phone_visible %}<span class="badge status-success">Телефон доступний</span>{% endif %}
+            </div>
+            {% if lead.offer_message %}<p class="request-desc">Ваша пропозиція: {{ lead.offer_message }}</p>{% endif %}
+            {% if lead.match_reasons_label %}<p class="request-desc">Причини match: {{ lead.match_reasons_label }}</p>{% endif %}
+            <div class="request-actions">
+              <a class="btn small" href="/crm/seller/{{ account.crm_slug }}#requests">Відкрити в Telegram / До заявки</a>
+              <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}">На панель</a>
+            </div>
+          </div>
+        </article>
+      {% else %}
+        <div class="empty-leads">
+          <div class="request-title">{{ empty_message }}</div>
+          <p class="request-desc">Спробуйте інший таб або поверніться на панель. CRM не створює відповідь: робота із заявкою лишається в Telegram.</p>
+          <div class="request-actions" style="justify-content:center;margin-top:12px">
+            <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}">На панель</a>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+{% endblock %}

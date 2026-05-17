@@ -28,6 +28,7 @@ from bot.database.repositories.seller_crm_repo import (
     get_seller_crm_marketplace_summary,
     list_seller_crm_cars,
     list_seller_crm_marketplace_activity,
+    list_seller_crm_marketplace_leads,
     list_seller_crm_marketplace_requests,
     list_seller_crm_leads,
     list_seller_crm_services,
@@ -55,6 +56,17 @@ router = APIRouter(prefix="/crm/seller")
 templates = Jinja2Templates(directory="bot/api/templates")
 SELLER_CRM_COOKIE = "seller_crm_session"
 logger = logging.getLogger(__name__)
+
+
+LEAD_STATUS_TABS = [
+    {"key": "new", "label": "Нові", "empty": "Нових заявок поки немає."},
+    {"key": "in_work", "label": "В роботі", "empty": "Немає заявок у роботі."},
+    {"key": "replied", "label": "Відповіли", "empty": "Ви ще не надіслали пропозиції."},
+    {"key": "selected", "label": "Обрані", "empty": "Покупці ще не обрали ваші пропозиції."},
+    {"key": "declined", "label": "Відхилені", "empty": "Відхилених заявок немає."},
+    {"key": "skipped", "label": "Пропущені", "empty": "Пропущених заявок немає."},
+]
+ALLOWED_LEAD_STATUSES = {tab["key"] for tab in LEAD_STATUS_TABS}
 
 MODULE_KEYS = [
     ("hero", "Перший екран"),
@@ -194,6 +206,23 @@ def _prepare_marketplace_requests(rows) -> list[dict[str, Any]]:
         item["title"] = _request_title(item)
         item["short_description"] = item.get("description") or item.get("message") or "Покупець не додав опис"
         item["status_label"] = _request_status_label(item)
+        prepared.append(item)
+    return prepared
+
+
+def _prepare_marketplace_leads(rows) -> list[dict[str, Any]]:
+    prepared = []
+    for row in rows or []:
+        item = dict(row)
+        item["title"] = item.get("title") or _request_title(item)
+        item["short_description"] = item.get("description") or "Покупець не додав опис"
+        match_reasons = item.get("match_reasons")
+        if isinstance(match_reasons, str):
+            item["match_reasons_label"] = match_reasons
+        elif match_reasons:
+            item["match_reasons_label"] = ", ".join(str(reason) for reason in match_reasons)
+        else:
+            item["match_reasons_label"] = None
         prepared.append(item)
     return prepared
 
@@ -372,6 +401,49 @@ async def seller_crm_logout(request: Request):
     response = RedirectResponse(url="/crm/seller/login", status_code=303)
     response.delete_cookie(SELLER_CRM_COOKIE)
     return response
+
+
+@router.get("/{crm_slug}/leads")
+async def seller_crm_marketplace_leads(request: Request, crm_slug: str, status: str = "new"):
+    try:
+        account, subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+
+    active_status = status if status in ALLOWED_LEAD_STATUSES else "new"
+    tabs = [
+        {
+            **tab,
+            "active": tab["key"] == active_status,
+            "href": f"/crm/seller/{crm_slug}/leads?status={tab['key']}",
+        }
+        for tab in LEAD_STATUS_TABS
+    ]
+    active_tab = next(tab for tab in tabs if tab["active"])
+    leads = _prepare_marketplace_leads(
+        await list_seller_crm_marketplace_leads(
+            account["seller_id"],
+            status=active_status,
+        )
+    )
+
+    return templates.TemplateResponse(
+        "seller_crm/leads.html",
+        _seller_crm_context(
+            request,
+            title="Marketplace заявки — CRM продавця CarPot",
+            demo_mode=False,
+            current_page="leads",
+            account=account,
+            subscription=subscription,
+            leads=leads,
+            lead_tabs=tabs,
+            active_status=active_status,
+            empty_message=active_tab["empty"],
+        ),
+    )
 
 
 @router.get("/{crm_slug}")

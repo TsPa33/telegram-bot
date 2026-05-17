@@ -1260,13 +1260,13 @@
 
         <nav class="nav" aria-label="CRM продавця">
             <section class="nav-accordion">
-                <input id="nav-workspace" name="crm-nav" type="radio" {% if current_page == 'dashboard' %}checked{% endif %}>
+                <input id="nav-workspace" name="crm-nav" type="radio" {% if current_page in ['dashboard', 'leads'] %}checked{% endif %}>
                 <label class="nav-title" data-icon="▣" for="nav-workspace">
                     <span>Робочий простір</span>
                 </label>
                 <div class="nav-panel">
                     <a class="{% if current_page == 'dashboard' %}active{% endif %}" href="/crm/seller/{{ account.crm_slug }}">Панель</a>
-                    <a href="/crm/seller/{{ account.crm_slug }}#requests" title="Майбутня сторінка: /leads">Заявки</a>
+                    <a class="{% if current_page == 'leads' %}active{% endif %}" href="/crm/seller/{{ account.crm_slug }}/leads">Заявки</a>
                     <a href="/crm/seller/{{ account.crm_slug }}#offers" title="Майбутня сторінка: /offers">Пропозиції</a>
                     <a href="/crm/seller/{{ account.crm_slug }}#activity" title="Майбутня сторінка: /activity">Активність</a>
                 </div>
