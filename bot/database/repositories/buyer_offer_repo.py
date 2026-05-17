@@ -191,7 +191,7 @@ async def accept_buyer_offer(request_id: int, offer_id: int, *, reject_other_off
                 event_type, request_id, offer_id, seller_id, payload, status, created_at, updated_at
             )
             VALUES (
-                'seller_offer_accepted',
+                'buyer_offer_accepted',
                 $1::int,
                 $2::int,
                 $3::int,

@@ -380,3 +380,86 @@ async def touch_request_matched(request_id: int):
         """,
         request_id,
     )
+
+
+async def get_buyer_offer_notification_context(*, request_id: int, seller_id: int, offer_id: int):
+    return await fetchrow(
+        """
+        SELECT br.id AS request_id, br.telegram_id AS buyer_telegram_id,
+               br.brand, br.model, br.category, br.request_type, br.description,
+               s.shop_name, s.name AS seller_name, s.city AS seller_city,
+               bro.id AS offer_id, bro.message, bro.price_offer
+        FROM buyer_request_offers bro
+        JOIN buyer_requests br ON br.id = bro.request_id
+        JOIN sellers s ON s.id = bro.seller_id
+        WHERE bro.id = $1
+          AND bro.request_id = $2
+          AND bro.seller_id = $3
+          AND br.entity_type = 'marketplace_request'
+        LIMIT 1
+        """,
+        offer_id,
+        request_id,
+        seller_id,
+    )
+
+
+async def ensure_buyer_offer_created_event(*, request_id: int, seller_id: int, offer_id: int):
+    existing = await fetchrow(
+        """
+        SELECT id, event_type, request_id, offer_id, seller_id, payload, status, created_at
+        FROM marketplace_notification_events
+        WHERE event_type = 'buyer_offer_created'
+          AND offer_id = $1
+        ORDER BY created_at DESC, id DESC
+        LIMIT 1
+        """,
+        offer_id,
+    )
+    if existing:
+        event = dict(existing)
+        event["already_exists"] = True
+        return event
+
+    inserted = await fetchrow(
+        """
+        INSERT INTO marketplace_notification_events (
+            event_type, request_id, offer_id, seller_id, payload, status, created_at, updated_at
+        )
+        VALUES (
+            'buyer_offer_created',
+            $1::int,
+            $2::int,
+            $3::int,
+            jsonb_build_object(
+                'request_id', $1::int,
+                'offer_id', $2::int,
+                'seller_id', $3::int
+            ),
+            'pending',
+            NOW(),
+            NOW()
+        )
+        RETURNING id, event_type, request_id, offer_id, seller_id, payload, status, created_at
+        """,
+        request_id,
+        offer_id,
+        seller_id,
+    )
+    event = dict(inserted) if inserted else {}
+    event["already_exists"] = False
+    return event
+
+
+async def mark_marketplace_notification_event(event_id: int | None, *, status: str) -> None:
+    if not event_id:
+        return
+    await execute(
+        """
+        UPDATE marketplace_notification_events
+        SET status = $2, updated_at = NOW()
+        WHERE id = $1
+        """,
+        event_id,
+        status,
+    )
