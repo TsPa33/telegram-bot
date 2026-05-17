@@ -333,7 +333,7 @@ async def get_seller_crm_public_profile(seller_id: int):
     return await fetchrow(
         """
         WITH car_counts AS (
-            SELECT COUNT(*) FILTER (WHERE COALESCE(status::text, '1') IN ('1', 'active'))::int AS active_cars_count
+            SELECT COUNT(*) FILTER (WHERE status::text IN ('active', '1', 'true', 'enabled', 'published'))::int AS active_cars_count
             FROM seller_cars
             WHERE seller_id = $1
         ), service_counts AS (
@@ -596,26 +596,26 @@ async def get_seller_crm_analytics(seller_id: int, days: int = 30):
         ), car_counts AS (
             SELECT 
                 COUNT(*) FILTER (
-                    WHERE COALESCE(status, 'active') = 'active'
+                    WHERE status::text IN ('active', '1', 'true', 'enabled', 'published')
                 )::int AS active_cars,
                 
                 COALESCE(
                     SUM(views) FILTER (
-                        WHERE COALESCE(status, 'active') = 'active'
+                        WHERE status::text IN ('active', '1', 'true', 'enabled', 'published')
                    ),
                    0
                 )::int AS car_views,    
                 
                 COALESCE(
                     SUM(phone_clicks) FILTER (
-                        WHERE COALESCE(status, 'active') = 'active'
+                        WHERE status::text IN ('active', '1', 'true', 'enabled', 'published')
                    ),
                    0
                 )::int AS car_phone_clicks,
                 
                 COALESCE(
                     SUM(site_clicks) FILTER (
-                        WHERE COALESCE(status, 'active') = 'active'
+                        WHERE status::text IN ('active', '1', 'true', 'enabled', 'published')
                     ),
                     0
                 )::int AS car_site_clicks
@@ -1535,13 +1535,13 @@ async def get_seller_crm_content_summary(seller_id: int):
         """
         WITH car_counts AS (
             SELECT
-                COUNT(*) FILTER (WHERE COALESCE(status::text, '1') IN ('1', 'active'))::int AS active_cars,
+                COUNT(*) FILTER (WHERE status::text IN ('active', '1', 'true', 'enabled', 'published'))::int AS active_cars,
                 COUNT(*) FILTER (
-                    WHERE COALESCE(status::text, '1') IN ('1', 'active')
+                    WHERE status::text IN ('active', '1', 'true', 'enabled', 'published')
                       AND COALESCE(NULLIF(photo_id, ''), '') = ''
                 )::int AS cars_without_photo,
                 COUNT(*) FILTER (
-                    WHERE COALESCE(status::text, '1') IN ('1', 'active')
+                    WHERE status::text IN ('active', '1', 'true', 'enabled', 'published')
                       AND COALESCE(NULLIF(BTRIM(description), ''), '') = ''
                 )::int AS cars_without_description
             FROM seller_cars
@@ -1878,6 +1878,20 @@ async def list_seller_crm_services(seller_id: int, limit: int = 20):
     )
 
 
+async def _get_services_status_column() -> str | None:
+    row = await fetchrow(
+        """
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_name = 'services'
+          AND column_name IN ('is_active', 'status')
+        ORDER BY CASE column_name WHEN 'is_active' THEN 1 ELSE 2 END
+        LIMIT 1
+        """
+    )
+    return row["column_name"] if row else None
+
+
 async def list_seller_crm_services_inventory(
     seller_id: int,
     limit: int = 50,
@@ -1885,9 +1899,22 @@ async def list_seller_crm_services_inventory(
 ):
     normalized_limit = max(1, min(int(limit or 50), 100))
     normalized_offset = max(0, int(offset or 0))
+    status_column = await _get_services_status_column()
+    if status_column:
+        status_select = f""",
+            sv.{status_column} AS status,
+            (COALESCE(sv.{status_column}::text, 'active') IN ('active', '1', 'true', 'enabled', 'published')) AS is_active,
+            TRUE AS status_supported,
+            '{status_column}' AS status_field"""
+    else:
+        status_select = """,
+            'active' AS status,
+            TRUE AS is_active,
+            FALSE AS status_supported,
+            NULL::text AS status_field"""
 
     return await fetch(
-        """
+        f"""
         SELECT
             sv.id AS service_id,
             sv.title,
@@ -1903,7 +1930,15 @@ async def list_seller_crm_services_inventory(
             sv.created_at,
             (COALESCE(NULLIF(BTRIM(sv.description), ''), '') <> '') AS has_description,
             (sv.price IS NOT NULL) AS has_price,
-            (COALESCE(NULLIF(sv.photo_id, ''), '') <> '') AS has_photo
+            (COALESCE(NULLIF(sv.photo_id, ''), '') <> '') AS has_photo,
+            (
+                ((COALESCE(NULLIF(BTRIM(sv.title), ''), '') <> '')::int)
+                + ((COALESCE(NULLIF(BTRIM(sv.category), ''), '') <> '')::int)
+                + ((COALESCE(NULLIF(BTRIM(sv.description), ''), '') <> '')::int)
+                + ((sv.price IS NOT NULL)::int)
+                + ((COALESCE(NULLIF(sv.photo_id, ''), '') <> '')::int)
+            ) * 20 AS content_completeness
+            {status_select}
         FROM services sv
         LEFT JOIN service_stats st ON st.service_id = sv.id
         WHERE sv.seller_id = $1
@@ -1981,7 +2016,7 @@ async def get_seller_crm_settings_summary(seller_id: int):
         SELECT COUNT(*)::int AS active_cars_count
         FROM seller_cars
         WHERE seller_id = $1
-          AND COALESCE(status, 'active') = 'active'
+          AND status::text IN ('active', '1', 'true', 'enabled', 'published')
         """,
         seller_id,
     )

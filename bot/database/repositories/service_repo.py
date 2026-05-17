@@ -129,17 +129,7 @@ async def get_service_by_id(service_id: int):
     return await fetchrow(
         """
         SELECT
-            s.id,
-            s.seller_id,
-            s.category,
-            s.title,
-            s.city,
-            s.address,
-            s.description,
-            s.website,
-            s.photo_id,
-            s.price,
-            s.created_at,
+            s.*,
             sel.phone,
             COALESCE(st.views, 0) AS views,
             COALESCE(st.calls, 0) AS calls,
@@ -152,6 +142,10 @@ async def get_service_by_id(service_id: int):
         """,
         service_id,
     )
+
+
+async def get_service_with_seller_by_id(service_id: int):
+    return await get_service_by_id(service_id)
 
 
 async def get_all_cities():
@@ -248,7 +242,7 @@ async def get_service_stats(service_id: int):
     return {"service_id": service_id, "views": 0, "calls": 0, "clicks": 0}
 
 
-async def get_service_by_id(service_id: int):
+async def get_service_raw_by_id(service_id: int):
     return await fetchrow(
         """
         SELECT *
