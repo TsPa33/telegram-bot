@@ -1,0 +1,142 @@
+{% extends "seller_crm/base.html" %}
+{% block crm_kicker %}Обліковий запис, тарифи та безпечна історія оплат{% endblock %}
+{% block crm_heading %}Налаштування та тарифи{% endblock %}
+{% block content %}
+  <section class="workspace-hero" aria-labelledby="settings-title">
+    <div>
+      <h2 id="settings-title">Налаштування та тарифи</h2>
+      <p class="section-note">Огляд CRM-акаунта, гаражних слотів, активних пакетів, останніх оплат і статусу сайту без зміни платіжної логіки.</p>
+    </div>
+    <span class="pill">{{ "CRM active" if settings.crm_account_status == "active" else "CRM inactive" }}</span>
+  </section>
+
+  <nav class="section-nav" aria-label="Розділи налаштувань">
+    <a href="#account">CRM account</a>
+    <a href="#packages">Пакети</a>
+    <a href="#garage">Garage slots</a>
+    <a href="#payments">Оплати</a>
+    <a href="#telegram">Telegram</a>
+  </nav>
+
+  <section id="account" class="grid two section-group" aria-labelledby="account-title">
+    <article class="card">
+      <h2 id="account-title">CRM account</h2>
+      <p class="section-note">Базова інформація кабінету продавця.</p>
+      <div class="cards-list">
+        <div class="mini-card">
+          <div class="mini-card-content">
+            <div class="mini-card-title"><b>CRM URL / slug</b><span class="badge">{{ settings.crm_slug or account.crm_slug }}</span></div>
+            <p class="muted">/crm/seller/{{ settings.crm_slug or account.crm_slug }}</p>
+          </div>
+        </div>
+        <div class="mini-card">
+          <div class="mini-card-content">
+            <div class="mini-card-title">
+              <b>Account status</b>
+              <span class="badge {{ 'status-success' if settings.crm_account_status == 'active' else 'status-rejected' }}">
+                {{ "Активний" if settings.crm_account_status == "active" else "Неактивний" }}
+              </span>
+            </div>
+            <p class="muted">CRM enabled: {{ "так" if settings.crm_enabled else "ні" }}</p>
+          </div>
+        </div>
+        <div class="mini-card">
+          <div class="mini-card-content">
+            <div class="mini-card-title"><b>Дата створення</b></div>
+            <p class="muted">{{ settings.account_created_at.strftime("%d.%m.%Y %H:%M") if settings.account_created_at else "—" }}</p>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <aside class="card" aria-labelledby="seller-title">
+      <h2 id="seller-title">Account info</h2>
+      <p><b>{{ settings.seller.shop_name or settings.seller.name or account.shop_name or account.name or account.crm_slug }}</b></p>
+      <p class="muted">{{ settings.seller.city or "Місто не вказано" }}</p>
+      {% if settings.seller.website %}<p><a href="{{ settings.seller.website }}" target="_blank" rel="noopener">{{ settings.seller.website }}</a></p>{% endif %}
+    </aside>
+  </section>
+
+  <section id="packages" class="grid two secondary-section" aria-labelledby="packages-title">
+    <article class="card">
+      <h2 id="packages-title">Garage / packages</h2>
+      <p class="section-note">Поточний стан пакетів і місць для авто без зміни subscription logic.</p>
+      {% if settings.active_paid_seller_subscriptions %}
+        <div class="cards-list">
+          {% for package in settings.active_paid_seller_subscriptions %}
+            <div class="mini-card">
+              <div class="mini-card-content">
+                <div class="mini-card-title"><b>{{ package.slots }} слот(ів)</b><span class="badge status-success">Активний</span></div>
+                <p class="muted">до {{ package.expires_at.strftime("%d.%m.%Y") if package.expires_at else "—" }}</p>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty-state">Активних платних пакетів немає.</div>
+      {% endif %}
+    </article>
+
+    <article id="garage" class="card" aria-labelledby="garage-title">
+      <h2 id="garage-title">Garage slots</h2>
+      {% if settings.garage_slots_available %}
+        <div class="grid kpi-cards">
+          <div>
+            <p class="muted">Total slots</p>
+            <div class="metric">{{ settings.active_garage_slots }}</div>
+          </div>
+          <div>
+            <p class="muted">Used</p>
+            <div class="metric">{{ settings.used_garage_slots }}</div>
+          </div>
+          <div>
+            <p class="muted">Free</p>
+            <div class="metric">{{ settings.free_garage_slots }}</div>
+          </div>
+        </div>
+      {% else %}
+        <div class="empty-state">Дані гаражних слотів недоступні. Активних авто: {{ settings.active_cars_count or settings.used_garage_slots or 0 }}.</div>
+      {% endif %}
+    </article>
+  </section>
+
+  <section id="payments" class="card secondary-section" aria-labelledby="payments-title">
+    <h2 id="payments-title">Payment history</h2>
+    <p class="section-note">Показуємо тільки безпечні поля: сума, статус, продукт і дата.</p>
+    {% if settings.latest_payments %}
+      <div class="cards-list">
+        {% for payment in settings.latest_payments %}
+          {% set payment_status = (payment.status or '')|lower %}
+          <div class="mini-card">
+            <div class="mini-card-content">
+              <div class="mini-card-title">
+                <b>{{ payment.amount }} грн</b>
+                <span class="badge {{ 'status-success' if payment_status == 'success' else 'status-waiting' if payment_status == 'pending' else 'status-rejected' }}">{{ payment.status or "—" }}</span>
+              </div>
+              <p class="muted">{{ payment.product or payment.product_type or "—" }} · {{ payment.created_at.strftime("%d.%m.%Y %H:%M") if payment.created_at else "—" }}</p>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state">Історії оплат поки немає.</div>
+    {% endif %}
+  </section>
+
+  {% if settings.site %}
+    <section id="website-status" class="card secondary-section" aria-labelledby="website-title">
+      <h2 id="website-title">Website status</h2>
+      <p><span class="badge {{ 'status-success' if settings.site.status == 'active' else 'status-waiting' }}">{{ settings.site.status or "draft" }}</span></p>
+      <p class="muted">Subdomain: <b>{{ settings.site.subdomain or "—" }}</b></p>
+      {% if settings.custom_domain %}<p class="muted">Custom domain: <b>{{ settings.custom_domain }}</b></p>{% endif %}
+      <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/website">Керувати сайтом</a>
+    </section>
+  {% endif %}
+
+  <section id="telegram" class="card secondary-section" aria-labelledby="telegram-title">
+    <h2 id="telegram-title">Telegram</h2>
+    <p>Telegram ID: <b>{{ settings.seller.telegram_id or "—" }}</b></p>
+    <p>Username: <b>{% if settings.seller.username %}@{{ settings.seller.username }}{% else %}—{% endif %}</b></p>
+    <p class="section-note">Сповіщення та швидкі дії керуються через Telegram bot.</p>
+  </section>
+{% endblock %}

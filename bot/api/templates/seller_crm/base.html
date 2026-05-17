@@ -1409,16 +1409,17 @@
             {% endif %}
 
             <section class="nav-accordion">
-                <input id="nav-shop" name="crm-nav" type="radio">
+                <input id="nav-shop" name="crm-nav" type="radio" {% if current_page == 'settings' %}checked{% endif %}>
                 <label class="nav-title" data-icon="₴" for="nav-shop">
                     <span>Магазин / Тарифи</span>
                 </label>
                 <div class="nav-panel">
-                    <a href="/crm/seller/{{ account.crm_slug }}#packages">Active packages</a>
-                    <a class="{% if not has_cars %}deemphasized{% endif %}" href="/crm/seller/{{ account.crm_slug }}#garage-slots">
+                    <a class="{% if current_page == 'settings' %}active{% endif %}" href="/crm/seller/{{ account.crm_slug }}/settings">Налаштування</a>
+                    <a href="/crm/seller/{{ account.crm_slug }}/settings#packages">Активні пакети</a>
+                    <a class="{% if not has_cars %}deemphasized{% endif %}" href="/crm/seller/{{ account.crm_slug }}/settings#garage">
                         Garage slots{% if not has_cars %} · неактивно{% endif %}
                     </a>
-                    <a href="/crm/seller/{{ account.crm_slug }}#payment-history">Payment history</a>
+                    <a href="/crm/seller/{{ account.crm_slug }}/settings#payments">Payment history</a>
                 </div>
             </section>
         </nav>

@@ -32,6 +32,7 @@ from bot.database.repositories.seller_crm_repo import (
     get_seller_crm_offer_detail,
     get_seller_crm_public_profile,
     get_seller_crm_marketplace_summary,
+    get_seller_crm_settings_summary,
     list_seller_crm_cars,
     list_seller_crm_cars_inventory,
     list_seller_crm_marketplace_activity,
@@ -837,6 +838,40 @@ async def seller_crm_content_cars(request: Request, crm_slug: str):
             has_website=has_website,
             has_cars=bool(cars),
             has_services=int(summary.get("active_services") or 0) > 0,
+        ),
+    )
+
+
+@router.get("/{crm_slug}/settings")
+async def seller_crm_settings(request: Request, crm_slug: str):
+    try:
+        account, subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+
+    seller_id = account["seller_id"]
+    settings_summary = await get_seller_crm_settings_summary(seller_id)
+    if not settings_summary:
+        raise HTTPException(status_code=404, detail="Seller settings not found")
+
+    has_website = bool(settings_summary.get("site") or settings_summary.get("has_site"))
+    content_summary = dict(await get_seller_crm_content_summary(seller_id) or {})
+
+    return templates.TemplateResponse(
+        "seller_crm/settings.html",
+        _seller_crm_context(
+            request,
+            title="Налаштування та тарифи — CRM продавця CarPot",
+            demo_mode=False,
+            current_page="settings",
+            account=account,
+            subscription=subscription,
+            settings=settings_summary,
+            has_website=has_website,
+            has_cars=int(settings_summary.get("used_garage_slots") or 0) > 0,
+            has_services=int(content_summary.get("active_services") or 0) > 0,
         ),
     )
 
