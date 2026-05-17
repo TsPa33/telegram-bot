@@ -1,0 +1,46 @@
+{% macro text_input(name, label, value="", placeholder="", required=False, maxlength=None, type="text", hint=None) -%}
+  <div class="form-field">
+    <label for="{{ name }}">{{ label }}</label>
+    <input id="{{ name }}" name="{{ name }}" type="{{ type }}" autocomplete="off" value="{{ value if value is not none else '' }}"{% if placeholder %} placeholder="{{ placeholder }}"{% endif %}{% if required %} required{% endif %}{% if maxlength is not none %} maxlength="{{ maxlength }}"{% endif %}>
+    {% if hint %}<span class="field-help">{{ hint }}</span>{% endif %}
+  </div>
+{%- endmacro %}
+
+{% macro textarea_input(name, label, value="", placeholder="", required=False, maxlength=None, rows=4, hint=None) -%}
+  <div class="form-field full">
+    <label for="{{ name }}">{{ label }}</label>
+    <textarea id="{{ name }}" name="{{ name }}" rows="{{ rows }}"{% if placeholder %} placeholder="{{ placeholder }}"{% endif %}{% if required %} required{% endif %}{% if maxlength is not none %} maxlength="{{ maxlength }}"{% endif %}>{{ value if value is not none else '' }}</textarea>
+    {% if hint %}<span class="field-help">{{ hint }}</span>{% endif %}
+  </div>
+{%- endmacro %}
+
+{% macro select_input(name, label, options, value="", required=False, hint=None) -%}
+  <div class="form-field">
+    <label for="{{ name }}">{{ label }}</label>
+    <select id="{{ name }}" name="{{ name }}"{% if required %} required{% endif %}>
+      {% for option in options %}
+        {% set option_value = option.value if option.value is defined else option[0] %}
+        {% set option_label = option.label if option.label is defined else option[1] %}
+        <option value="{{ option_value if option_value is not none else '' }}"{% if (value if value is not none else '')|string == (option_value if option_value is not none else '')|string %} selected{% endif %}>{{ option_label }}</option>
+      {% endfor %}
+    </select>
+    {% if hint %}<span class="field-help">{{ hint }}</span>{% endif %}
+  </div>
+{%- endmacro %}
+
+{% macro checkbox_input(name, label, checked=False, value="1", hint=None) -%}
+  <div class="form-field">
+    <label class="checkbox-field" for="{{ name }}">
+      <input id="{{ name }}" name="{{ name }}" value="{{ value if value is not none else '1' }}" type="checkbox"{% if checked %} checked{% endif %}>
+      {{ label }}
+    </label>
+    {% if hint %}<span class="field-help">{{ hint }}</span>{% endif %}
+  </div>
+{%- endmacro %}
+
+{% macro form_actions(submit_label="Зберегти", cancel_url=None, cancel_label="Скасувати") -%}
+  <div class="form-actions">
+    <button class="btn" type="submit">{{ submit_label }}</button>
+    {% if cancel_url %}<a class="btn ghost" href="{{ cancel_url }}">{{ cancel_label }}</a>{% endif %}
+  </div>
+{%- endmacro %}

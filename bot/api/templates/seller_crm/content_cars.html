@@ -1,4 +1,7 @@
 {% extends "seller_crm/base.html" %}
+{% import "seller_crm/components/badges.html" as badges %}
+{% import "seller_crm/components/cards.html" as cards %}
+{% import "seller_crm/components/layout.html" as layout %}
 {% block crm_kicker %}Інвентар продавця{% endblock %}
 {% block crm_heading %}Авто на розборі{% endblock %}
 {% block content %}
@@ -52,11 +55,7 @@
   </section>
 
   <section class="grid garage-summary" aria-label="Підсумок гаража">
-    <article class="card">
-      <h3>Активні авто</h3>
-      <div class="metric">{{ summary.active_cars or 0 }}</div>
-      <p class="section-note">позицій у CRM</p>
-    </article>
+    {{ cards.metric_card("Активні авто", summary.active_cars or 0, "позицій у CRM") }}
     <article class="card">
       <h3>Гараж</h3>
       {% if summary.garage_slots_total %}
@@ -67,16 +66,8 @@
         <p class="section-note">Ліміти гаража будуть доступні окремо</p>
       {% endif %}
     </article>
-    <article class="card">
-      <h3>Перегляди</h3>
-      <div class="metric">{{ totals.views or 0 }}</div>
-      <p class="section-note">по активних авто</p>
-    </article>
-    <article class="card">
-      <h3>Кліки</h3>
-      <div class="metric">{{ (totals.phone_clicks or 0) + (totals.site_clicks or 0) }}</div>
-      <p class="section-note">телефон: {{ totals.phone_clicks or 0 }} · сайт: {{ totals.site_clicks or 0 }}</p>
-    </article>
+    {{ cards.metric_card("Перегляди", totals.views or 0, "по активних авто") }}
+    {{ cards.metric_card("Кліки", (totals.phone_clicks or 0) + (totals.site_clicks or 0), "телефон: " ~ (totals.phone_clicks or 0) ~ " · сайт: " ~ (totals.site_clicks or 0)) }}
   </section>
 
   <section class="card">
@@ -90,7 +81,7 @@
             {% elif car.has_photo %}
               Фото додано
             {% else %}
-              <span class="badge status-waiting">Немає фото</span>
+              {{ badges.status_badge("Немає фото", "status-waiting") }}
             {% endif %}
           </div>
           <div class="inventory-body">
@@ -103,16 +94,16 @@
                   <span>{{ car.created_at.strftime("%d.%m.%Y") if car.created_at else "—" }}</span>
                 </div>
               </div>
-              <span class="badge status-new">{{ car.status_label }}</span>
+              {{ badges.status_badge(car.status_label, "status-new") }}
             </div>
             <p class="inventory-desc">{{ (car.description[:180] ~ ('…' if car.description and car.description|length > 180 else '')) if car.description else 'Опис ще не додано.' }}</p>
             <div class="inventory-badges">
-              <span class="badge">{{ car.views or 0 }} переглядів</span>
-              <span class="badge">{{ car.phone_clicks or 0 }} телефон</span>
-              <span class="badge">{{ car.site_clicks or 0 }} сайт</span>
-              {% if car.is_catalog %}<span class="badge status-viewed">Каталог</span>{% endif %}
-              {% if not car.has_photo %}<span class="badge status-waiting">Немає фото</span>{% endif %}
-              {% if not car.has_description %}<span class="badge status-waiting">Немає опису</span>{% endif %}
+              {{ badges.status_badge((car.views or 0) ~ " переглядів") }}
+              {{ badges.status_badge((car.phone_clicks or 0) ~ " телефон") }}
+              {{ badges.status_badge((car.site_clicks or 0) ~ " сайт") }}
+              {% if car.is_catalog %}{{ badges.status_badge("Каталог", "status-viewed") }}{% endif %}
+              {% if not car.has_photo %}{{ badges.status_badge("Немає фото", "status-waiting") }}{% endif %}
+              {% if not car.has_description %}{{ badges.status_badge("Немає опису", "status-waiting") }}{% endif %}
             </div>
             <div class="inventory-actions">
               <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/content/cars/{{ car.car_id }}">Детальніше</a>
@@ -121,10 +112,7 @@
           </div>
         </article>
       {% else %}
-        <div class="request-card">
-          <div class="request-title">Авто на розборі ще немає</div>
-          <p class="request-desc">Коли продавець додасть авто через Telegram-бот, воно з’явиться тут зі статистикою та індикаторами заповнення.</p>
-        </div>
+        {{ badges.empty_state("Авто на розборі ще немає", "Коли продавець додасть авто через Telegram-бот, воно з’явиться тут зі статистикою та індикаторами заповнення.") }}
       {% endfor %}
     </div>
   </section>

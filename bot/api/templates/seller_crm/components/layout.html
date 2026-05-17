@@ -1,0 +1,16 @@
+{% macro page_header(title, subtitle="", actions=[]) -%}
+  <section class="workspace-hero" aria-labelledby="page-title">
+    <div>
+      <h2 id="page-title">{{ title }}</h2>
+      {% if subtitle %}<p class="section-note">{{ subtitle }}</p>{% endif %}
+    </div>
+    {% if actions %}<div class="page-actions">{% for action in actions %}{{ action|safe }}{% endfor %}</div>{% endif %}
+  </section>
+{%- endmacro %}
+
+{% macro section_header(title, subtitle="") -%}
+  <div class="section-header">
+    <h2>{{ title }}</h2>
+    {% if subtitle %}<p class="section-note">{{ subtitle }}</p>{% endif %}
+  </div>
+{%- endmacro %}

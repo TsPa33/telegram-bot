@@ -1,4 +1,7 @@
 {% extends "seller_crm/base.html" %}
+{% import "seller_crm/components/badges.html" as badges %}
+{% import "seller_crm/components/cards.html" as cards %}
+{% import "seller_crm/components/layout.html" as layout %}
 {% block crm_kicker %}Контент продавця{% endblock %}
 {% block crm_heading %}{{ service.title or 'Послуга' }}{% endblock %}
 {% block content %}
@@ -37,8 +40,8 @@
         </div>
       </div>
       <div class="detail-badges">
-        {% if service.is_active %}<span class="badge status-success">Активна</span>{% else %}<span class="badge status-rejected">Неактивна</span>{% endif %}
-        {% if service.price is not none %}<span class="badge status-viewed">{{ service.price }} ₴</span>{% else %}<span class="badge status-waiting">Ціну не вказано</span>{% endif %}
+        {% if service.is_active %}{{ badges.status_badge("Активна", "status-success") }}{% else %}{{ badges.status_badge("Неактивна", "status-rejected") }}{% endif %}
+        {% if service.price is not none %}{{ badges.status_badge(service.price ~ " ₴", "status-viewed") }}{% else %}{{ badges.status_badge("Ціну не вказано", "status-waiting") }}{% endif %}
       </div>
     </div>
     <p class="detail-desc">{{ service.description or 'Опис ще не додано.' }}</p>
@@ -54,20 +57,20 @@
   </section>
 
   <section class="grid stats-grid" aria-label="Статистика послуги">
-    <article class="card"><h3>Перегляди</h3><div class="metric">{{ service.views or 0 }}</div></article>
-    <article class="card"><h3>Дзвінки</h3><div class="metric">{{ service.calls or 0 }}</div></article>
-    <article class="card"><h3>Кліки</h3><div class="metric">{{ service.clicks or 0 }}</div></article>
-    <article class="card"><h3>Заповненість</h3><div class="metric">{{ service.content_completeness or 0 }}%</div></article>
+    {{ cards.metric_card("Перегляди", service.views or 0) }}
+    {{ cards.metric_card("Дзвінки", service.calls or 0) }}
+    {{ cards.metric_card("Кліки", service.clicks or 0) }}
+    {{ cards.metric_card("Заповненість", (service.content_completeness or 0) ~ "%") }}
   </section>
 
   <section class="card">
-    <h2>Заповнення контенту</h2>
+    {{ layout.section_header("Заповнення контенту") }}
     <div class="detail-badges">
-      <span class="badge status-success">Назва</span>
-      <span class="badge status-success">Категорія</span>
-      {% if service.has_description %}<span class="badge status-success">Опис</span>{% else %}<span class="badge status-waiting">Немає опису</span>{% endif %}
-      {% if service.has_price %}<span class="badge status-success">Ціна</span>{% else %}<span class="badge status-waiting">Немає ціни</span>{% endif %}
-      {% if service.has_photo %}<span class="badge status-success">Фото</span>{% else %}<span class="badge status-waiting">Фото буде додано пізніше</span>{% endif %}
+      {{ badges.health_badge("Назва", "status-success") }}
+      {{ badges.health_badge("Категорія", "status-success") }}
+      {% if service.has_description %}{{ badges.health_badge("Опис", "status-success") }}{% else %}{{ badges.health_badge("Немає опису") }}{% endif %}
+      {% if service.has_price %}{{ badges.health_badge("Ціна", "status-success") }}{% else %}{{ badges.health_badge("Немає ціни") }}{% endif %}
+      {% if service.has_photo %}{{ badges.health_badge("Фото", "status-success") }}{% else %}{{ badges.health_badge("Фото буде додано пізніше") }}{% endif %}
     </div>
   </section>
 </div>

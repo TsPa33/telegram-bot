@@ -1,4 +1,6 @@
 {% extends "seller_crm/base.html" %}
+{% import "seller_crm/components/forms.html" as forms %}
+{% import "seller_crm/components/layout.html" as layout %}
 {% block crm_kicker %}Контент продавця{% endblock %}
 {% block crm_heading %}{{ form_title }}{% endblock %}
 {% block content %}
@@ -24,13 +26,8 @@
 </style>
 
 <div class="car-form-wrap">
-  <section class="workspace-hero" aria-labelledby="car-form-title">
-    <div>
-      <h2 id="car-form-title">{{ form_title }}</h2>
-      <p class="section-note">{% if create_mode %}Створіть авто з існуючої марки та моделі. Фото можна буде додати окремо. Поки авто буде створено без фото.{% else %}Редагуйте лише опис, статус і показ у каталозі. Бренд, модель, фото та продавець не змінюються.{% endif %}</p>
-    </div>
-    <a class="btn ghost" href="{{ cancel_url }}">← Скасувати</a>
-  </section>
+  {% set cancel_action %}<a class="btn ghost" href="{{ cancel_url }}">← Скасувати</a>{% endset %}
+  {{ layout.page_header(form_title, "Створіть авто з існуючої марки та моделі. Фото можна буде додати окремо. Поки авто буде створено без фото." if create_mode else "Редагуйте лише опис, статус і показ у каталозі. Бренд, модель, фото та продавець не змінюються.", [cancel_action]) }}
 
   <section class="card car-form-card">
     {% if error %}<div class="form-error" role="alert">{{ error }}</div>{% endif %}
@@ -64,34 +61,15 @@
             <span class="field-help">Марка й модель мають бути вже додані в довідник CarPot.</span>
           </div>
         {% endif %}
-        <div class="form-field full">
-          <label for="description">Опис</label>
-          <textarea id="description" name="description" maxlength="2000" placeholder="Стан авто, доступні вузли, особливості, умови продажу">{{ form.description }}</textarea>
-          <span class="field-help">До 2000 символів. Фото додається на сторінці деталей авто.</span>
-        </div>
+        {{ forms.textarea_input("description", "Опис", form.description, "Стан авто, доступні вузли, особливості, умови продажу", maxlength=2000, hint="До 2000 символів. Фото додається на сторінці деталей авто.") }}
         {% if not create_mode %}
-          <div class="form-field">
-            <label for="status">Статус</label>
-            <select id="status" name="status">
-              <option value="active" {% if form.status == 'active' %}selected{% endif %}>active</option>
-              <option value="inactive" {% if form.status != 'active' %}selected{% endif %}>inactive</option>
-            </select>
-          </div>
+          {{ forms.select_input("status", "Статус", [("active", "active"), ("inactive", "inactive")], form.status) }}
         {% endif %}
         {% if car.has_is_catalog %}
-          <div class="form-field">
-            <label class="checkbox-field" for="is_catalog">
-              <input id="is_catalog" name="is_catalog" value="1" type="checkbox" {% if form.is_catalog %}checked{% endif %}>
-              Показувати в каталозі
-            </label>
-            <span class="field-help">Опція доступна лише якщо поле є в поточній схемі.</span>
-          </div>
+          {{ forms.checkbox_input("is_catalog", "Показувати в каталозі", form.is_catalog, hint="Опція доступна лише якщо поле є в поточній схемі.") }}
         {% endif %}
       </div>
-      <div class="form-actions">
-        <button class="btn" type="submit">{% if create_mode %}Створити авто{% else %}Зберегти{% endif %}</button>
-        <a class="btn ghost" href="{{ cancel_url }}">Скасувати</a>
-      </div>
+      {{ forms.form_actions("Створити авто" if create_mode else "Зберегти", cancel_url) }}
     </form>
   </section>
 </div>

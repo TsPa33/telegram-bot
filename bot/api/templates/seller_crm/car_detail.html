@@ -1,4 +1,7 @@
 {% extends "seller_crm/base.html" %}
+{% import "seller_crm/components/badges.html" as badges %}
+{% import "seller_crm/components/cards.html" as cards %}
+{% import "seller_crm/components/layout.html" as layout %}
 {% block crm_kicker %}Контент продавця{% endblock %}
 {% block crm_heading %}{{ car.brand }} {{ car.model }}{% endblock %}
 {% block content %}
@@ -70,21 +73,21 @@
   </section>
 
   <section class="grid stats-grid" aria-label="Статистика авто">
-    <article class="card"><h3>Перегляди</h3><div class="metric">{{ car.views or 0 }}</div></article>
-    <article class="card"><h3>Кліки телефону</h3><div class="metric">{{ car.phone_clicks or 0 }}</div></article>
-    <article class="card"><h3>Кліки сайту</h3><div class="metric">{{ car.site_clicks or 0 }}</div></article>
-    <article class="card"><h3>Заповненість</h3><div class="metric">{{ car.content_completeness or 0 }}%</div></article>
+    {{ cards.metric_card("Перегляди", car.views or 0) }}
+    {{ cards.metric_card("Кліки телефону", car.phone_clicks or 0) }}
+    {{ cards.metric_card("Кліки сайту", car.site_clicks or 0) }}
+    {{ cards.metric_card("Заповненість", (car.content_completeness or 0) ~ "%") }}
   </section>
 
   <section class="card">
-    <h2>Заповнення контенту</h2>
+    {{ layout.section_header("Заповнення контенту") }}
     <div class="detail-badges">
-      <span class="badge status-success">Бренд</span>
-      <span class="badge status-success">Модель</span>
-      {% if car.has_description %}<span class="badge status-success">Опис</span>{% else %}<span class="badge status-waiting">Немає опису</span>{% endif %}
-      {% if car.has_photo %}<span class="badge status-success">Фото</span>{% else %}<span class="badge status-waiting">Немає фото</span>{% endif %}
-      {% if car.is_active %}<span class="badge status-success">Активне</span>{% else %}<span class="badge status-waiting">Вимкнене</span>{% endif %}
-      {% if car.has_is_catalog %}<span class="badge {% if car.is_catalog %}status-success{% else %}status-waiting{% endif %}">Каталог: {{ 'так' if car.is_catalog else 'ні' }}</span>{% endif %}
+      {{ badges.health_badge("Бренд", "status-success") }}
+      {{ badges.health_badge("Модель", "status-success") }}
+      {% if car.has_description %}{{ badges.health_badge("Опис", "status-success") }}{% else %}{{ badges.health_badge("Немає опису") }}{% endif %}
+      {% if car.has_photo %}{{ badges.health_badge("Фото", "status-success") }}{% else %}{{ badges.health_badge("Немає фото") }}{% endif %}
+      {% if car.is_active %}{{ badges.status_badge("Активне", "status-success") }}{% else %}{{ badges.status_badge("Вимкнене", "status-waiting") }}{% endif %}
+      {% if car.has_is_catalog %}{{ badges.status_badge("Каталог: " ~ ("так" if car.is_catalog else "ні"), "status-success" if car.is_catalog else "status-waiting") }}{% endif %}
     </div>
   </section>
 </div>
