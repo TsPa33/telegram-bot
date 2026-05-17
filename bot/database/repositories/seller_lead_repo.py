@@ -1,5 +1,6 @@
 import json
 import logging
+from datetime import date, datetime
 from decimal import Decimal
 
 from bot.database.base import execute, fetch, fetchrow
@@ -13,6 +14,20 @@ logger = logging.getLogger(__name__)
 def _validate(value: str, allowed: set[str], message: str) -> None:
     if value not in allowed:
         raise ValueError(message)
+
+
+def _json_safe(value):
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+    if isinstance(value, Decimal):
+        return float(value)
+    if isinstance(value, (datetime, date)):
+        return value.isoformat()
+    if isinstance(value, dict):
+        return {str(key): _json_safe(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple, set)):
+        return [_json_safe(item) for item in value]
+    return str(value)
 
 
 async def get_seller_marketplace_profile(telegram_id: int):
@@ -274,7 +289,25 @@ async def mark_seller_lead_action(
         seller_id,
         request_id,
         action,
-        json.dumps(metadata or {}, ensure_ascii=False),
+        json.dumps(_json_safe(metadata or {}), ensure_ascii=False),
+    )
+
+
+async def reopen_seller_lead_action(*, seller_id: int, request_id: int):
+    return await fetchrow(
+        """
+        WITH deleted AS (
+            DELETE FROM seller_lead_actions
+            WHERE seller_id = $1
+              AND request_id = $2
+              AND action IN ('skipped', 'declined')
+            RETURNING id
+        )
+        SELECT COUNT(*)::int AS deleted_count
+        FROM deleted
+        """,
+        seller_id,
+        request_id,
     )
 
 

@@ -1,5 +1,5 @@
 {% extends "seller_crm/base.html" %}
-{% block crm_kicker %}Read-only marketplace leads workspace{% endblock %}
+{% block crm_kicker %}Marketplace lead actions workspace{% endblock %}
 {% block crm_heading %}Заявки marketplace{% endblock %}
 {% block content %}
   <style>
@@ -59,22 +59,43 @@
       flex-wrap: wrap;
     }
 
+    .lead-inline-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .lead-inline-actions form {
+      margin: 0;
+    }
+
     .empty-leads {
       text-align: center;
       padding: 26px 14px;
     }
 
+    .notice.error {
+      border-color: rgba(251,113,133,.35);
+      background: rgba(251,113,133,.09);
+      color: #fecdd3;
+    }
+
     @media (max-width: 640px) {
       .leads-toolbar .workspace-hero { grid-template-columns: 1fr; }
-      .lead-card-footer .request-actions .btn { flex: 1; }
+      .lead-card-footer .request-actions .btn,
+      .lead-inline-actions .btn { flex: 1 1 auto; }
     }
   </style>
+
+  {% if action_status %}<div class="notice">{{ action_status }}</div>{% endif %}
+  {% if action_error %}<div class="notice error">{{ action_error }}</div>{% endif %}
 
   <section class="leads-toolbar" aria-labelledby="leads-title">
     <div class="workspace-hero">
       <div>
         <h2 id="leads-title">Marketplace заявки</h2>
-        <p class="section-note">Окрема read-only черга заявок, які вже пов’язані з цим продавцем через routing, дії, пропозиції або вибір покупця.</p>
+        <p class="section-note">Окрема черга заявок, які вже пов’язані з цим продавцем через routing, дії, пропозиції або вибір покупця.</p>
       </div>
       <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}">На панель</a>
     </div>
@@ -114,16 +135,33 @@
             </div>
             {% if lead.offer_message %}<p class="request-desc">Ваша пропозиція: {{ lead.offer_message }}</p>{% endif %}
             {% if lead.match_reasons_label %}<p class="request-desc">Причини match: {{ lead.match_reasons_label }}</p>{% endif %}
-            <div class="request-actions">
+            <div class="lead-inline-actions">
               <a class="btn small" href="/crm/seller/{{ account.crm_slug }}/leads/{{ lead.request_id }}">Відкрити</a>
-              <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}#requests">Telegram</a>
+              {% if lead.can_mark_viewed %}
+                <form method="post" action="/crm/seller/{{ account.crm_slug }}/leads/{{ lead.request_id }}/view">
+                  <input type="hidden" name="next_url" value="{{ request.url.path }}?status={{ active_status }}">
+                  <button class="btn small ghost" type="submit">Переглянуто</button>
+                </form>
+              {% endif %}
+              {% if lead.can_decline %}
+                <form method="post" action="/crm/seller/{{ account.crm_slug }}/leads/{{ lead.request_id }}/decline">
+                  <input type="hidden" name="next_url" value="{{ request.url.path }}?status={{ active_status }}">
+                  <button class="btn small ghost" type="submit">Відхилити</button>
+                </form>
+              {% endif %}
+              {% if lead.can_skip %}
+                <form method="post" action="/crm/seller/{{ account.crm_slug }}/leads/{{ lead.request_id }}/skip">
+                  <input type="hidden" name="next_url" value="{{ request.url.path }}?status={{ active_status }}">
+                  <button class="btn small ghost" type="submit">Пропустити</button>
+                </form>
+              {% endif %}
             </div>
           </div>
         </article>
       {% else %}
         <div class="empty-leads">
           <div class="request-title">{{ empty_message }}</div>
-          <p class="request-desc">Спробуйте інший таб або поверніться на панель. CRM не створює відповідь: робота із заявкою лишається в Telegram.</p>
+          <p class="request-desc">Спробуйте інший таб або поверніться на панель. Дії CRM змінюють лише ваш локальний стан заявки.</p>
           <div class="request-actions" style="justify-content:center;margin-top:12px">
             <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}">На панель</a>
           </div>
