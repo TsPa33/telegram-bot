@@ -641,6 +641,250 @@ async def list_seller_crm_marketplace_leads(
     )
 
 
+async def list_seller_crm_offers(
+    seller_id: int,
+    status: str = "active",
+    limit: int = 30,
+    offset: int = 0,
+):
+    """Return seller-scoped CRM offer cards using existing marketplace statuses only."""
+    allowed_statuses = {"active", "selected", "rejected", "all"}
+    normalized_status = status if status in allowed_statuses else "active"
+    normalized_limit = max(1, min(int(limit or 30), 100))
+    normalized_offset = max(0, int(offset or 0))
+
+    return await fetch(
+        """
+        WITH seller_offers AS (
+            SELECT bro.id AS offer_id,
+                   bro.request_id,
+                   bro.price_offer,
+                   bro.message AS offer_message,
+                   bro.status AS offer_status,
+                   bro.created_at,
+                   bro.updated_at,
+                   br.request_type,
+                   br.category,
+                   br.brand,
+                   br.model,
+                   br.city,
+                   COALESCE(NULLIF(br.description, ''), br.message) AS request_description,
+                   br.marketplace_status AS request_marketplace_status,
+                   selected_match.matched_at AS buyer_selected_at,
+                   selected_match.status AS match_status,
+                   CASE
+                       WHEN bro.status = 'accepted' OR selected_match.offer_id IS NOT NULL THEN TRUE
+                       ELSE FALSE
+                   END AS is_selected
+            FROM buyer_request_offers bro
+            JOIN buyer_requests br ON br.id = bro.request_id
+            LEFT JOIN LATERAL (
+                SELECT mm.offer_id, mm.status, mm.matched_at
+                FROM marketplace_matches mm
+                WHERE mm.seller_id = $1
+                  AND mm.offer_id = bro.id
+                ORDER BY mm.matched_at DESC, mm.id DESC
+                LIMIT 1
+            ) selected_match ON TRUE
+            WHERE bro.seller_id = $1
+              AND br.entity_type = 'marketplace_request'
+        )
+        SELECT offer_id,
+               request_id,
+               COALESCE(NULLIF(CONCAT_WS(' ', brand, model), ''), category, request_type, 'Marketplace заявка') AS request_title,
+               city,
+               category,
+               brand,
+               model,
+               CASE
+                   WHEN request_description IS NULL OR request_description = '' THEN NULL
+                   WHEN length(request_description) > 150 THEN left(request_description, 147) || '…'
+                   ELSE request_description
+               END AS request_description_short,
+               price_offer,
+               offer_message,
+               offer_status,
+               is_selected,
+               created_at,
+               updated_at,
+               buyer_selected_at,
+               request_marketplace_status
+        FROM seller_offers
+        WHERE CASE
+            WHEN $2 = 'active' THEN offer_status = 'pending'
+            WHEN $2 = 'selected' THEN is_selected
+            WHEN $2 = 'rejected' THEN offer_status = 'rejected'
+            ELSE TRUE
+        END
+        ORDER BY COALESCE(updated_at, created_at) DESC, offer_id DESC
+        LIMIT $3 OFFSET $4
+        """,
+        seller_id,
+        normalized_status,
+        normalized_limit,
+        normalized_offset,
+    )
+
+
+async def get_seller_crm_offer_detail(seller_id: int, offer_id: int):
+    """Return one seller-owned offer with request context and compact timeline."""
+    row = await fetchrow(
+        """
+        SELECT bro.id AS offer_id,
+               bro.request_id,
+               bro.price_offer,
+               bro.message AS offer_message,
+               bro.status AS offer_status,
+               bro.created_at AS offer_created_at,
+               bro.updated_at AS offer_updated_at,
+               COALESCE(NULLIF(CONCAT_WS(' ', br.brand, br.model), ''), br.category, br.request_type, 'Marketplace заявка') AS request_title,
+               br.request_type,
+               br.category,
+               br.brand,
+               br.model,
+               br.city,
+               COALESCE(NULLIF(br.description, ''), br.message) AS request_description,
+               br.urgency,
+               br.created_at AS request_created_at,
+               br.marketplace_status AS request_marketplace_status,
+               selected_match.status AS match_status,
+               selected_match.matched_at AS selected_at,
+               CASE
+                   WHEN bro.status = 'accepted' OR selected_match.offer_id IS NOT NULL THEN TRUE
+                   ELSE FALSE
+               END AS is_selected,
+               latest_notification.status AS notification_status,
+               latest_notification.created_at AS notification_created_at,
+               latest_notification.updated_at AS notification_updated_at
+        FROM buyer_request_offers bro
+        JOIN buyer_requests br ON br.id = bro.request_id
+        LEFT JOIN LATERAL (
+            SELECT mm.offer_id, mm.status, mm.matched_at
+            FROM marketplace_matches mm
+            WHERE mm.seller_id = $1
+              AND mm.offer_id = bro.id
+            ORDER BY mm.matched_at DESC, mm.id DESC
+            LIMIT 1
+        ) selected_match ON TRUE
+        LEFT JOIN LATERAL (
+            SELECT mne.status, mne.created_at, mne.updated_at
+            FROM marketplace_notification_events mne
+            WHERE mne.seller_id = $1
+              AND (mne.offer_id = bro.id OR mne.request_id = bro.request_id)
+            ORDER BY mne.created_at DESC, mne.id DESC
+            LIMIT 1
+        ) latest_notification ON TRUE
+        WHERE bro.seller_id = $1
+          AND bro.id = $2
+          AND br.entity_type = 'marketplace_request'
+        LIMIT 1
+        """,
+        seller_id,
+        offer_id,
+    )
+    if not row:
+        return None
+
+    data = dict(row)
+    timeline_rows = await fetch(
+        """
+        SELECT * FROM (
+            SELECT bro.created_at,
+                   'offer' AS source,
+                   'created' AS action,
+                   bro.status
+            FROM buyer_request_offers bro
+            WHERE bro.seller_id = $1
+              AND bro.id = $2
+            UNION ALL
+            SELECT mm.matched_at AS created_at,
+                   'marketplace' AS source,
+                   'selected' AS action,
+                   mm.status
+            FROM marketplace_matches mm
+            JOIN buyer_request_offers bro ON bro.id = mm.offer_id
+            WHERE bro.seller_id = $1
+              AND mm.seller_id = $1
+              AND mm.offer_id = $2
+            UNION ALL
+            SELECT mne.created_at,
+                   'notification' AS source,
+                   mne.event_type AS action,
+                   mne.status
+            FROM marketplace_notification_events mne
+            JOIN buyer_request_offers bro ON bro.id = $2
+            WHERE bro.seller_id = $1
+              AND mne.seller_id = $1
+              AND (mne.offer_id = bro.id OR mne.request_id = bro.request_id)
+        ) timeline
+        WHERE created_at IS NOT NULL
+        ORDER BY created_at ASC
+        """,
+        seller_id,
+        offer_id,
+    )
+
+    def timeline_label(source: str | None, action: str | None, status: str | None = None) -> str:
+        labels = {
+            "offer": {"created": "Пропозицію надіслано покупцю"},
+            "marketplace": {"selected": "Покупець обрав цю пропозицію"},
+            "notification": {
+                "buyer_offer_accepted": "Сповіщення про вибір покупця",
+                "buyer_request_created": "Telegram-сповіщення по заявці",
+            },
+        }
+        label = labels.get(source or "", {}).get(action or "", "Оновлення пропозиції")
+        if source == "notification" and status:
+            status_labels = {
+                "sent": "доставлено",
+                "pending": "очікує",
+                "failed": "не доставлено",
+                "cancelled": "скасовано",
+            }
+            label = f"{label} · {status_labels.get(status, status)}"
+        return label
+
+    return {
+        "offer": {
+            "offer_id": data["offer_id"],
+            "price": data.get("price_offer"),
+            "message": data.get("offer_message"),
+            "status": data.get("offer_status"),
+            "created_at": data.get("offer_created_at"),
+            "updated_at": data.get("offer_updated_at"),
+        },
+        "request": {
+            "request_id": data["request_id"],
+            "title": data.get("request_title") or "Marketplace заявка",
+            "city": data.get("city"),
+            "category": data.get("category"),
+            "brand": data.get("brand"),
+            "model": data.get("model"),
+            "description": data.get("request_description"),
+            "urgency": data.get("urgency"),
+            "created_at": data.get("request_created_at"),
+            "marketplace_status": data.get("request_marketplace_status"),
+        },
+        "selection": {
+            "is_selected": data.get("is_selected"),
+            "selected_at": data.get("selected_at"),
+            "match_status": data.get("match_status"),
+            "notification_status": data.get("notification_status"),
+            "notification_at": data.get("notification_updated_at") or data.get("notification_created_at"),
+        },
+        "timeline": [
+            {
+                "created_at": item["created_at"],
+                "source": item["source"],
+                "action": item["action"],
+                "status": item["status"],
+                "label": timeline_label(item["source"], item["action"], item["status"]),
+            }
+            for item in timeline_rows
+        ],
+    }
+
+
 def _json_list(value) -> list[str]:
     if not value:
         return []

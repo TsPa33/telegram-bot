@@ -25,12 +25,12 @@
       <div class="metric">{{ marketplace_summary.waiting_response or 0 }}</div>
       <p class="muted">без пропозиції, відхилення або пропуску</p>
     </article>
-    <article class="card kpi-card" id="offers">
+    <a class="card kpi-card" id="offers" href="/crm/seller/{{ account.crm_slug }}/offers?status=selected">
       <div class="emoji">✅</div>
       <h3>Обрані покупцем</h3>
       <div class="metric">{{ marketplace_summary.accepted_offers or 0 }}</div>
       <p class="muted">accepted offers продавця</p>
-    </article>
+    </a>
     <article class="card kpi-card">
       <div class="emoji">⚡</div>
       <h3>Середній час відповіді</h3>

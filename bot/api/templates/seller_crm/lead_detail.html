@@ -296,6 +296,9 @@
               <div class="offer-price">₴ {{ lead.offer.price_label }}</div>
               <p class="detail-text">{{ lead.offer.comment or "Без коментаря" }}</p>
               <span class="muted">Надіслано {{ lead.offer.created_at.strftime("%d.%m.%Y %H:%M") if lead.offer.created_at else "—" }}</span>
+              <div class="request-actions" style="margin-top:12px">
+                <a class="btn small" href="/crm/seller/{{ account.crm_slug }}/offers/{{ lead.offer.offer_id }}">Відкрити пропозицію</a>
+              </div>
             </div>
           {% else %}
             <div class="empty-state">
