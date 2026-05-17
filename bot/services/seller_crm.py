@@ -1,5 +1,7 @@
 import os
 import re
+import secrets
+import string
 
 from passlib.context import CryptContext
 
@@ -51,3 +53,22 @@ def verify_crm_password(password: str, password_hash: str | None) -> bool:
     if not password_hash:
         return False
     return pwd_context.verify(password, password_hash)
+
+
+def generate_crm_temp_password(length: int = 14) -> str:
+    alphabet = string.ascii_letters + string.digits
+    while True:
+        password = "".join(secrets.choice(alphabet) for _ in range(length))
+        valid, _ = validate_crm_password(password)
+        if valid:
+            return password
+
+
+def crm_slug_base_from_seller(seller: dict | None) -> str:
+    seller = seller or {}
+    for value in (seller.get("shop_name"), seller.get("username")):
+        slug = normalize_crm_slug(value)
+        if slug and slug not in {"admin", "api", "login", "logout", "demo", "seller", "crm", "www"}:
+            return slug
+    seller_id = seller.get("id")
+    return normalize_crm_slug(f"seller-{seller_id}") if seller_id else "seller"

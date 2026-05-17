@@ -160,6 +160,79 @@ async def get_crm_account_by_seller(seller_id: int):
     )
 
 
+async def enable_seller_crm(seller_id: int) -> None:
+    await execute("UPDATE sellers SET crm_enabled = TRUE WHERE id = $1", seller_id)
+
+
+def _slug_candidates(base_slug: str, seller_id: int) -> list[str]:
+    base_slug = (base_slug or "").strip("-")[:40]
+    if len(base_slug) < 3:
+        base_slug = f"seller-{seller_id}"
+
+    candidates = [base_slug]
+    suffixes = [str(seller_id), *[str(index) for index in range(2, 21)]]
+    for suffix in suffixes:
+        prefix = base_slug[: max(1, 39 - len(suffix))].strip("-")
+        candidates.append(f"{prefix}-{suffix}" if prefix else f"seller-{seller_id}")
+
+    fallback = f"seller-{seller_id}"
+    if fallback not in candidates:
+        candidates.append(fallback)
+
+    seen = set()
+    unique = []
+    for candidate in candidates:
+        if candidate not in seen:
+            seen.add(candidate)
+            unique.append(candidate)
+    return unique
+
+
+async def ensure_free_crm_account(
+    *,
+    seller_id: int,
+    base_slug: str,
+    password_hash: str,
+):
+    await enable_seller_crm(seller_id)
+
+    existing = await get_crm_account_by_seller(seller_id)
+    if existing:
+        logger.info(
+            "CRM_FREE_ACCESS_EXISTING seller_id=%s slug=%s",
+            seller_id,
+            existing["crm_slug"],
+        )
+        return existing, False
+
+    for slug in _slug_candidates(base_slug, seller_id):
+        account = await fetchrow(
+            """
+            INSERT INTO seller_crm_accounts (seller_id, crm_slug, password_hash, is_active)
+            VALUES ($1, $2, $3, TRUE)
+            ON CONFLICT DO NOTHING
+            RETURNING *
+            """,
+            seller_id,
+            slug,
+            password_hash,
+        )
+        if account:
+            logger.info("CRM_AUTO_PROVISIONED seller_id=%s slug=%s", seller_id, slug)
+            return account, True
+
+        existing = await get_crm_account_by_seller(seller_id)
+        if existing:
+            logger.info(
+                "CRM_FREE_ACCESS_RACE_RESOLVED seller_id=%s slug=%s",
+                seller_id,
+                existing["crm_slug"],
+            )
+            return existing, False
+
+    raise RuntimeError(f"Unable to provision seller CRM account for seller_id={seller_id}")
+
+
 async def get_crm_account_by_slug(crm_slug: str):
     return await fetchrow(
         """

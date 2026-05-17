@@ -4,7 +4,7 @@
 <div class="login">
   <form class="login-card" method="post" action="/crm/seller/login">
     <div class="brand"><div class="mark">💼</div><div><b>CRM CarPot</b><span>seller-only secure access</span></div></div>
-    <h1>Вхід у Професійну CRM</h1>
+    <h1>Вхід у CRM продавця</h1>
     <p class="muted">Використовуйте Telegram ID або seller login. Сесія ізольована від admin CRM.</p>
     {% if error %}<div class="error">{{ error }}</div>{% endif %}
     <input type="hidden" name="slug" value="{{ slug or '' }}">

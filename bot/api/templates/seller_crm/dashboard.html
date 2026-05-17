@@ -1,6 +1,6 @@
 {% extends "seller_crm/base.html" %}
 {% block crm_kicker %}Єдина панель керування продажами, сайтом і заявками{% endblock %}
-{% block crm_heading %}Професійна CRM CarPot{% endblock %}
+{% block crm_heading %}CRM продавця CarPot{% endblock %}
 {% block content %}
   {% if demo_mode %}<div class="demo-ribbon">Демо-панель тільки для перегляду</div>{% endif %}
   <div id="dashboard" class="grid cards">
@@ -28,5 +28,5 @@
     <article id="cars" class="card"><h3>Авто</h3><p><b>{{ stats.listing_views or 0 }}</b> переглядів · <b>{{ stats.listing_clicks or 0 }}</b> кліків/обраних</p><table class="table"><thead><tr><th>Авто</th><th>Перегляди</th><th>Кліки</th></tr></thead><tbody>{% for car in cars %}<tr><td>{{ car.brand }} {{ car.model }}</td><td>{{ car.views }}</td><td>{{ car.phone_clicks + car.site_clicks }}</td></tr>{% else %}<tr><td colspan="3" class="muted">Немає активних авто</td></tr>{% endfor %}</tbody></table></article>
     <article id="services" class="card"><h3>Послуги</h3><p><b>{{ stats.services_count or 0 }}</b> послуг · <b>{{ stats.service_requests or 0 }}</b> заявок/кліків</p><table class="table"><thead><tr><th>Послуга</th><th>Перегляди</th><th>Заявки</th></tr></thead><tbody>{% for service in services %}<tr><td>{{ service.title }}<br><span class="muted">{{ service.category }}</span></td><td>{{ service.views }}</td><td>{{ service.calls + service.clicks }}</td></tr>{% else %}<tr><td colspan="3" class="muted">Послуг ще немає</td></tr>{% endfor %}</tbody></table></article>
   </div>
-  <article id="subscription" class="card" style="margin-top:14px"><h3>Підписка</h3><p>Пакет: <b>Професійна CRM — 99 грн/міс</b></p><p>Діє до: <b>{{ subscription.expires_at.strftime('%d.%m.%Y') if subscription and subscription.expires_at else '—' }}</b></p>{% if not demo_mode %}<form method="post" action="/crm/seller/logout"><button class="btn" type="submit">Вийти</button></form>{% endif %}</article>
+  <article id="account" class="card" style="margin-top:14px"><h3>Акаунт CRM</h3><p>Базовий CRM продавця: <b>безкоштовно</b></p><p>Адреса кабінету: <b>/crm/seller/{{ account.crm_slug }}</b></p>{% if not demo_mode %}<form method="post" action="/crm/seller/logout"><button class="btn" type="submit">Вийти</button></form>{% endif %}</article>
 {% endblock %}
