@@ -1,0 +1,285 @@
+{% extends "seller_crm/base.html" %}
+{% block crm_kicker %}Публічна seller identity layer{% endblock %}
+{% block crm_heading %}Профіль продавця{% endblock %}
+{% block crm_top_actions %}
+  <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}">Назад на панель</a>
+{% endblock %}
+{% block content %}
+<style>
+  .profile-layout {
+    grid-template-columns: minmax(0,1.12fr) minmax(0,.88fr);
+    align-items: start;
+  }
+
+  .public-card-preview {
+    display: grid;
+    grid-template-columns: 96px minmax(0,1fr);
+    gap: 14px;
+    align-items: start;
+  }
+
+  .seller-photo {
+    width: 96px;
+    height: 96px;
+    border-radius: 22px;
+    border: 1px solid rgba(37,215,255,.2);
+    background: linear-gradient(135deg, rgba(37,215,255,.12), rgba(52,245,166,.08));
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    color: #c7f9ff;
+    font-weight: 950;
+    text-align: center;
+    font-size: 12px;
+    line-height: 1.25;
+  }
+
+  .seller-photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .seller-card-body {
+    min-width: 0;
+    display: grid;
+    gap: 10px;
+  }
+
+  .seller-card-title {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .seller-card-title h2 {
+    margin: 0;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .profile-desc,
+  .profile-value {
+    overflow-wrap: anywhere;
+  }
+
+  .profile-list,
+  .checklist {
+    display: grid;
+    gap: 10px;
+  }
+
+  .profile-row,
+  .check-item {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    justify-content: space-between;
+    border: 1px solid rgba(148,163,184,.14);
+    border-radius: 14px;
+    padding: 10px 12px;
+    background: rgba(255,255,255,.035);
+    min-width: 0;
+  }
+
+  .profile-row > div,
+  .check-item > div {
+    min-width: 0;
+  }
+
+  .profile-label {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 850;
+  }
+
+  .profile-value {
+    margin-top: 3px;
+    color: #fff;
+    font-weight: 900;
+  }
+
+  .warning-text {
+    color: #fde68a;
+  }
+
+  .trust-grid {
+    grid-template-columns: repeat(2,minmax(0,1fr));
+  }
+
+  .trust-metric {
+    border: 1px solid rgba(148,163,184,.14);
+    border-radius: 16px;
+    padding: 13px;
+    background: rgba(255,255,255,.035);
+  }
+
+  .trust-metric b {
+    display: block;
+    font-size: 24px;
+    letter-spacing: -.04em;
+  }
+
+  .progress-track {
+    height: 10px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.08);
+    overflow: hidden;
+    margin: 8px 0 12px;
+  }
+
+  .progress-fill {
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(135deg, var(--blue), var(--green));
+  }
+
+  .check-item {
+    align-items: center;
+  }
+
+  .check-icon {
+    flex: 0 0 auto;
+    width: 26px;
+    height: 26px;
+    display: grid;
+    place-items: center;
+    border-radius: 999px;
+    background: rgba(251,191,36,.12);
+    color: #fde68a;
+    border: 1px solid rgba(251,191,36,.25);
+    font-weight: 950;
+  }
+
+  .check-item.done .check-icon {
+    background: rgba(52,245,166,.12);
+    color: #bbf7d0;
+    border-color: rgba(52,245,166,.25);
+  }
+
+  .profile-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  @media (max-width:980px) {
+    .profile-layout,
+    .trust-grid { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width:620px) {
+    .public-card-preview { grid-template-columns: 1fr; }
+    .seller-photo { width: 100%; height: 130px; }
+    .profile-row,
+    .check-item { display: grid; }
+    .profile-actions { display: grid; grid-template-columns: 1fr; }
+    .profile-actions .btn { width: 100%; white-space: normal; text-align: center; line-height: 1.2; }
+  }
+</style>
+
+<section class="workspace-hero" aria-labelledby="profile-title">
+  <div>
+    <h2 id="profile-title">Профіль продавця</h2>
+    <p class="section-note">Read-first workspace: як покупець бачить продавця, контакти, довіра та готовність публічної картки. Редагування поки залишається у Telegram.</p>
+  </div>
+  <div class="pill">{{ completeness_percent }}% заповнено</div>
+</section>
+
+<section class="grid profile-layout">
+  <article class="card" aria-labelledby="public-card-title">
+    <h2 id="public-card-title">Публічна картка</h2>
+    <div class="public-card-preview">
+      <div class="seller-photo" aria-label="Фото або логотип продавця">
+        {% if profile.photo_is_url %}
+          <img src="{{ profile.photo_id }}" alt="Фото {{ profile.shop_name or profile.name or 'продавця' }}">
+        {% elif profile.photo_id %}
+          Фото додано
+        {% else %}
+          Фото/логотип<br>не додано
+        {% endif %}
+      </div>
+      <div class="seller-card-body">
+        <div class="seller-card-title">
+          <h2>{{ profile.shop_name or profile.name or "Назву магазину не вказано" }}</h2>
+          {% if profile.is_verified %}<span class="badge status-success">✓ Верифіковано</span>{% else %}<span class="badge status-waiting">Не верифіковано</span>{% endif %}
+        </div>
+        <div class="request-meta">
+          <span>{{ profile.city or "Місто не вказано" }}</span>
+          {% if profile.has_site or public_site_url %}<span>· сайт активний</span>{% endif %}
+        </div>
+        <p class="profile-desc {% if not profile.description %}warning-text{% endif %}">{{ profile.description or "Опис профілю не додано" }}</p>
+        <div class="request-meta">
+          <span>{{ profile.phone or "Телефон не вказано" }}</span>
+          <span>·</span>
+          <span>{% if profile.username %}@{{ profile.username }}{% else %}Telegram username не вказано{% endif %}</span>
+          <span>·</span>
+          <span>{{ profile.website or public_site_url or "Website не вказано" }}</span>
+        </div>
+      </div>
+    </div>
+  </article>
+
+  <aside class="card" aria-labelledby="contacts-title">
+    <h2 id="contacts-title">Контакти</h2>
+    <div class="profile-list">
+      <div class="profile-row">
+        <div><div class="profile-label">Телефон</div><div class="profile-value {% if not profile.phone %}warning-text{% endif %}">{{ profile.phone or "Телефон не вказано" }}</div></div>
+      </div>
+      <div class="profile-row">
+        <div><div class="profile-label">Telegram</div><div class="profile-value {% if not profile.username %}warning-text{% endif %}">{% if profile.username %}@{{ profile.username }}{% else %}Telegram username не вказано{% endif %}</div></div>
+      </div>
+      <div class="profile-row">
+        <div><div class="profile-label">Website</div><div class="profile-value {% if not profile.website and not public_site_url %}warning-text{% endif %}">{{ profile.website or public_site_url or "Website не вказано" }}</div></div>
+      </div>
+      <div class="profile-row">
+        <div><div class="profile-label">Місто</div><div class="profile-value {% if not profile.city %}warning-text{% endif %}">{{ profile.city or "Місто не вказано" }}</div></div>
+      </div>
+    </div>
+  </aside>
+</section>
+
+<section class="grid profile-layout secondary-section">
+  <article class="card" aria-labelledby="trust-title">
+    <h2 id="trust-title">Довіра та активність</h2>
+    <div class="grid trust-grid">
+      <div class="trust-metric"><span class="muted">Верифікація</span><b>{{ "Так" if profile.is_verified else "Ні" }}</b></div>
+      <div class="trust-metric"><span class="muted">CRM активний</span><b>{{ "Так" if profile.crm_enabled else "Ні" }}</b></div>
+      <div class="trust-metric"><span class="muted">Активні авто</span><b>{{ profile.active_cars_count or 0 }}</b></div>
+      <div class="trust-metric"><span class="muted">Активні послуги</span><b>{{ profile.active_services_count or 0 }}</b></div>
+      <div class="trust-metric"><span class="muted">Надіслані пропозиції</span><b>{{ profile.offers_sent_count or 0 }}</b></div>
+      <div class="trust-metric"><span class="muted">Обрані пропозиції</span><b>{{ profile.selected_offers_count or 0 }}</b></div>
+    </div>
+    <p class="section-note stack-top">Середній час відповіді: <b>{{ profile.avg_response_label }}</b>.</p>
+  </article>
+
+  <aside class="card" aria-labelledby="complete-title">
+    <h2 id="complete-title">Profile completeness</h2>
+    <p class="section-note">{{ completed_count }} з {{ completeness_items|length }} пунктів готові.</p>
+    <div class="progress-track" aria-hidden="true"><div class="progress-fill" style="width: {{ completeness_percent }}%"></div></div>
+    <div class="checklist">
+      {% for item in completeness_items %}
+        <div class="check-item {% if item.done %}done{% endif %}">
+          <span class="check-icon">{{ "✓" if item.done else "!" }}</span>
+          <div>
+            <div class="profile-value">{{ item.label }}</div>
+            <div class="profile-label">{{ "Готово" if item.done else item.missing }}</div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </aside>
+</section>
+
+<section class="card secondary-section" aria-labelledby="actions-title">
+  <h2 id="actions-title">Дії</h2>
+  <p class="section-note">Без CRM edit forms у цій фазі. Для безпечного редагування відкрийте Telegram-профіль продавця або перевірте статус верифікації.</p>
+  <div class="profile-actions">
+    <a class="btn" href="{% if profile.username %}https://t.me/{{ profile.username }}{% else %}https://t.me/{% endif %}" target="_blank" rel="noopener">Редагувати через Telegram</a>
+    <a class="btn ghost" href="{% if profile.username %}https://t.me/{{ profile.username }}{% else %}https://t.me/{% endif %}" target="_blank" rel="noopener">{{ "Статус верифікації" if profile.is_verified else "Подати на верифікацію" }}</a>
+    {% if public_site_url %}<a class="btn ghost" href="{{ public_site_url }}" target="_blank" rel="noopener">Відкрити сайт</a>{% endif %}
+    <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}">Назад на панель</a>
+  </div>
+</section>
+{% endblock %}

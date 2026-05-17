@@ -328,6 +328,95 @@ async def delete_crm_session(token: str):
     await execute("DELETE FROM seller_crm_sessions WHERE token = $1", token)
 
 
+async def get_seller_crm_public_profile(seller_id: int):
+    return await fetchrow(
+        """
+        WITH car_counts AS (
+            SELECT COUNT(*) FILTER (WHERE COALESCE(status::text, '1') IN ('1', 'active'))::int AS active_cars_count
+            FROM seller_cars
+            WHERE seller_id = $1
+        ), service_counts AS (
+            SELECT COUNT(*)::int AS active_services_count
+            FROM services
+            WHERE seller_id = $1
+        ), offer_counts AS (
+            SELECT COUNT(*)::int AS offers_sent_count
+            FROM buyer_request_offers
+            WHERE seller_id = $1
+        ), selected_offers AS (
+            SELECT COUNT(DISTINCT offer_id)::int AS selected_offers_count
+            FROM (
+                SELECT bro.id AS offer_id
+                FROM buyer_request_offers bro
+                WHERE bro.seller_id = $1
+                  AND bro.status = 'accepted'
+                UNION
+                SELECT mm.offer_id
+                FROM marketplace_matches mm
+                WHERE mm.seller_id = $1
+                  AND mm.offer_id IS NOT NULL
+            ) selected
+        ), response_pairs AS (
+            SELECT
+                EXTRACT(EPOCH FROM (bro.created_at - COALESCE(route_event.created_at, br.created_at)))::int AS response_seconds,
+                bro.created_at AS offer_created_at
+            FROM buyer_request_offers bro
+            JOIN buyer_requests br ON br.id = bro.request_id
+            LEFT JOIN LATERAL (
+                SELECT mne.created_at
+                FROM marketplace_notification_events mne
+                WHERE mne.seller_id = $1
+                  AND mne.request_id = bro.request_id
+                  AND mne.event_type = 'buyer_request_created'
+                ORDER BY mne.created_at ASC, mne.id ASC
+                LIMIT 1
+            ) route_event ON TRUE
+            WHERE bro.seller_id = $1
+              AND bro.created_at >= COALESCE(route_event.created_at, br.created_at)
+        ), response_summary AS (
+            SELECT
+                AVG(response_seconds)::int AS avg_response_seconds,
+                MAX(offer_created_at) AS last_offer_at,
+                COUNT(*)::int AS measured_responses
+            FROM response_pairs
+        )
+        SELECT
+            s.id AS seller_id,
+            s.telegram_id,
+            s.username,
+            s.shop_name,
+            s.name,
+            s.phone,
+            s.website,
+            s.city,
+            s.description,
+            s.photo_id,
+            COALESCE(s.is_verified, FALSE) AS is_verified,
+            COALESCE(s.has_site, FALSE) AS has_site,
+            COALESCE(s.crm_enabled, FALSE) AS crm_enabled,
+            s.created_at,
+            COALESCE(cc.active_cars_count, 0)::int AS active_cars_count,
+            COALESCE(sc.active_services_count, 0)::int AS active_services_count,
+            COALESCE(oc.offers_sent_count, 0)::int AS offers_sent_count,
+            COALESCE(so.selected_offers_count, 0)::int AS selected_offers_count,
+            jsonb_build_object(
+                'avg_response_seconds', rs.avg_response_seconds,
+                'last_offer_at', rs.last_offer_at,
+                'measured_responses', COALESCE(rs.measured_responses, 0)
+            ) AS response_activity
+        FROM sellers s
+        CROSS JOIN car_counts cc
+        CROSS JOIN service_counts sc
+        CROSS JOIN offer_counts oc
+        CROSS JOIN selected_offers so
+        CROSS JOIN response_summary rs
+        WHERE s.id = $1
+        LIMIT 1
+        """,
+        seller_id,
+    )
+
+
 async def get_seller_crm_dashboard(seller_id: int):
     return await fetchrow(
         """

@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import secrets
@@ -29,6 +30,7 @@ from bot.database.repositories.seller_crm_repo import (
     get_seller_crm_content_summary,
     get_seller_crm_lead_detail,
     get_seller_crm_offer_detail,
+    get_seller_crm_public_profile,
     get_seller_crm_marketplace_summary,
     list_seller_crm_cars,
     list_seller_crm_cars_inventory,
@@ -835,6 +837,71 @@ async def seller_crm_content_cars(request: Request, crm_slug: str):
             has_website=has_website,
             has_cars=bool(cars),
             has_services=int(summary.get("active_services") or 0) > 0,
+        ),
+    )
+
+
+@router.get("/{crm_slug}/profile")
+async def seller_crm_profile(request: Request, crm_slug: str):
+    try:
+        account, subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+
+    seller_id = account["seller_id"]
+    profile = dict(await get_seller_crm_public_profile(seller_id) or {})
+    if not profile:
+        raise HTTPException(status_code=404, detail="Seller profile not found")
+
+    site = await get_site_by_seller(seller_id)
+    public_site_url = build_site_url(site["subdomain"]) if site and site.get("subdomain") else None
+    has_website = bool(public_site_url or profile.get("has_site") or profile.get("website"))
+
+    response_activity = profile.get("response_activity") or {}
+    if isinstance(response_activity, str):
+        try:
+            response_activity = json.loads(response_activity)
+        except json.JSONDecodeError:
+            response_activity = {}
+    profile["avg_response_label"] = _format_duration(response_activity.get("avg_response_seconds"))
+    photo_id = profile.get("photo_id") or ""
+    profile["photo_is_url"] = isinstance(photo_id, str) and photo_id.startswith(("http://", "https://"))
+
+    completeness_items = [
+        {"label": "Назва магазину", "done": bool(profile.get("shop_name") or profile.get("name")), "missing": "Назву магазину не вказано"},
+        {"label": "Телефон", "done": bool(profile.get("phone")), "missing": "Телефон не вказано"},
+        {"label": "Місто", "done": bool(profile.get("city")), "missing": "Місто не вказано"},
+        {"label": "Опис профілю", "done": bool(profile.get("description")), "missing": "Опис профілю не додано"},
+        {"label": "Фото/логотип", "done": bool(profile.get("photo_id")), "missing": "Фото/логотип не додано"},
+        {
+            "label": "Авто або послуга",
+            "done": int(profile.get("active_cars_count") or 0) + int(profile.get("active_services_count") or 0) > 0,
+            "missing": "Додайте хоча б одне авто або послугу",
+        },
+        {"label": "Верифікація", "done": bool(profile.get("is_verified")), "missing": "Профіль ще не верифіковано"},
+    ]
+    completed_count = sum(1 for item in completeness_items if item["done"])
+    completeness_percent = round((completed_count / len(completeness_items)) * 100)
+
+    return templates.TemplateResponse(
+        "seller_crm/profile.html",
+        _seller_crm_context(
+            request,
+            title="Профіль продавця — CRM продавця CarPot",
+            demo_mode=False,
+            current_page="profile",
+            account=account,
+            subscription=subscription,
+            profile=profile,
+            completeness_items=completeness_items,
+            completed_count=completed_count,
+            completeness_percent=completeness_percent,
+            public_site_url=public_site_url,
+            has_website=has_website,
+            has_cars=int(profile.get("active_cars_count") or 0) > 0,
+            has_services=int(profile.get("active_services_count") or 0) > 0,
         ),
     )
 
