@@ -1273,13 +1273,13 @@
             </section>
 
             <section class="nav-accordion">
-                <input id="nav-analytics" name="crm-nav" type="radio">
+                <input id="nav-analytics" name="crm-nav" type="radio" {% if current_page == 'analytics' %}checked{% endif %}>
                 <label class="nav-title" data-icon="↗" for="nav-analytics">
                     <span>Аналітика та статистика</span>
                 </label>
                 <div class="nav-panel">
-                    <a href="/crm/seller/{{ account.crm_slug }}#marketplace-analytics" title="Майбутня сторінка: /analytics">Marketplace analytics</a>
-                    <a href="/crm/seller/{{ account.crm_slug }}#website-analytics">Website/catalog analytics</a>
+                    <a class="{% if current_page == 'analytics' %}active{% endif %}" href="/crm/seller/{{ account.crm_slug }}/analytics">Marketplace analytics</a>
+                    <a class="{% if current_page == 'analytics' %}active{% endif %}" href="/crm/seller/{{ account.crm_slug }}/analytics#website-analytics">Website/catalog analytics</a>
                 </div>
             </section>
 

@@ -25,6 +25,7 @@ from bot.database.repositories.seller_crm_repo import (
     get_crm_account_for_login,
     get_crm_session,
     get_seller_crm_dashboard,
+    get_seller_crm_analytics,
     get_seller_crm_lead_detail,
     get_seller_crm_offer_detail,
     get_seller_crm_marketplace_summary,
@@ -746,6 +747,66 @@ async def seller_crm_dashboard(request: Request, crm_slug: str):
             has_website=has_website,
             has_cars=has_cars,
             has_services=has_services,
+        ),
+    )
+
+
+@router.get("/{crm_slug}/analytics")
+async def seller_crm_analytics(request: Request, crm_slug: str, days: int = 30):
+    try:
+        account, subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+
+    normalized_days = max(1, min(int(days or 30), 365))
+    seller_id = account["seller_id"]
+    analytics = dict(await get_seller_crm_analytics(seller_id, normalized_days) or {})
+    analytics["average_response_label"] = _format_duration(analytics.get("average_response_seconds"))
+
+    funnel_max = max(
+        int(analytics.get("routed_requests") or 0),
+        int(analytics.get("viewed_requests") or 0),
+        int(analytics.get("offers_sent") or 0),
+        int(analytics.get("offers_selected") or 0),
+        1,
+    )
+    analytics["funnel"] = [
+        {"label": "Направлено", "value": int(analytics.get("routed_requests") or 0)},
+        {"label": "Переглянуто", "value": int(analytics.get("viewed_requests") or 0)},
+        {"label": "Пропозиції", "value": int(analytics.get("offers_sent") or 0)},
+        {"label": "Обрано", "value": int(analytics.get("offers_selected") or 0)},
+    ]
+    for step in analytics["funnel"]:
+        step["percent"] = max(4, round((step["value"] / funnel_max) * 100)) if step["value"] else 4
+
+    routed_requests = max(int(analytics.get("routed_requests") or 0), 1)
+    offers_sent = max(int(analytics.get("offers_sent") or 0), 1)
+    analytics["declined_percent"] = min(100, round((int(analytics.get("declined_requests") or 0) / routed_requests) * 100))
+    analytics["skipped_percent"] = min(100, round((int(analytics.get("skipped_requests") or 0) / routed_requests) * 100))
+    analytics["rejected_percent"] = min(100, round((int(analytics.get("offers_rejected") or 0) / offers_sent) * 100))
+
+    site = await get_site_by_seller(seller_id)
+    account_flags = dict(account)
+    has_website = bool(site or analytics.get("has_website") or account_flags.get("has_site") or account_flags.get("website"))
+    cars = await list_seller_crm_cars(seller_id, limit=1)
+    services = await list_seller_crm_services(seller_id, limit=1)
+
+    return templates.TemplateResponse(
+        "seller_crm/analytics.html",
+        _seller_crm_context(
+            request,
+            title="Аналітика та статистика — CRM продавця",
+            demo_mode=False,
+            current_page="analytics",
+            account=account,
+            subscription=subscription,
+            analytics=analytics,
+            days=normalized_days,
+            has_website=has_website,
+            has_cars=bool(cars),
+            has_services=bool(services),
         ),
     )
 
