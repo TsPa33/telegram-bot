@@ -56,7 +56,9 @@
                   {% if item.offers_count %}<span>· {{ item.offers_count }} проп.</span>{% endif %}
                 </div>
               </div>
-              <span class="badge">{{ item.status_label }}</span>
+              {% set status_text = (item.status_label or '')|lower %}
+              {% set status_class = 'status-new' if 'нова' in status_text else 'status-waiting' if 'очіку' in status_text else 'status-viewed' if 'перегля' in status_text else 'status-replied' if 'відпов' in status_text else 'status-rejected' if 'відхил' in status_text else 'status-success' if 'обра' in status_text else '' %}
+              <span class="badge {{ status_class }}">{{ item.status_label }}</span>
             </div>
             <p class="request-desc">{{ item.short_description }}</p>
             <div class="request-actions">
