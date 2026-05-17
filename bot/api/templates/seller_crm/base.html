@@ -4,6 +4,17 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}{{ title or "CRM продавця CarPot" }}{% endblock %}</title>
+    <script>
+        (function () {
+            try {
+                if (localStorage.getItem("carpot-crm-theme") === "light") {
+                    document.documentElement.classList.add("crm-theme-light");
+                }
+            } catch (error) {
+                // Default dark theme remains active when storage is unavailable.
+            }
+        })();
+    </script>
 
     <style>
         :root {
@@ -33,6 +44,23 @@
             overflow-x: hidden;
         }
 
+        html.crm-theme-light {
+            color-scheme: light;
+            --bg: #f4f8fb;
+            --panel: rgba(255,255,255,.86);
+            --panel2: rgba(255,255,255,.98);
+            --line: rgba(15,23,42,.12);
+            --text: #0f172a;
+            --muted: #526172;
+            --blue: #0284c7;
+            --green: #059669;
+            --red: #dc2626;
+            --yellow: #b45309;
+            --orange: #ea580c;
+            --cyan: #0891b2;
+            --shadow: 0 18px 48px rgba(15,23,42,.12);
+        }
+
         body {
             margin: 0;
             min-height: 100vh;
@@ -44,6 +72,13 @@
                 radial-gradient(circle at 86% 10%, rgba(52,245,166,.1), transparent 32rem),
                 linear-gradient(135deg, #06111f, #0b1628);
             color: var(--text);
+        }
+
+        html.crm-theme-light body {
+            background:
+                radial-gradient(circle at 14% 0%, rgba(2,132,199,.12), transparent 34rem),
+                radial-gradient(circle at 86% 10%, rgba(5,150,105,.09), transparent 32rem),
+                linear-gradient(135deg, #f8fbff, #eef5fb);
         }
 
         img, iframe, table, form, input, textarea, select {
@@ -359,6 +394,24 @@
             flex-wrap: wrap;
             justify-content: flex-end;
         }
+
+        .theme-toggle {
+            width: 38px;
+            min-width: 38px;
+            height: 38px;
+            min-height: 38px;
+            padding: 0;
+            border-radius: 13px;
+            border: 1px solid var(--line);
+            background: rgba(255,255,255,.06);
+            color: var(--text);
+            box-shadow: none;
+        }
+
+        .theme-toggle .theme-icon-light { display: inline; }
+        .theme-toggle .theme-icon-dark { display: none; }
+        html.crm-theme-light .theme-toggle .theme-icon-light { display: none; }
+        html.crm-theme-light .theme-toggle .theme-icon-dark { display: inline; }
 
         .pill {
             border: 1px solid var(--line);
@@ -1074,6 +1127,70 @@
             letter-spacing: .06em;
         }
 
+
+
+        html.crm-theme-light .side,
+        html.crm-theme-light .top {
+            background: rgba(255,255,255,.88);
+        }
+
+        html.crm-theme-light .brand,
+        html.crm-theme-light .sidebar-toggle,
+        html.crm-theme-light .drawer-close,
+        html.crm-theme-light .side-handle,
+        html.crm-theme-light .nav-accordion input:checked ~ .nav-title,
+        html.crm-theme-light .card h3,
+        html.crm-theme-light .top h1,
+        html.crm-theme-light .request-title,
+        html.crm-theme-light .activity-title,
+        html.crm-theme-light .form-section-title {
+            color: var(--text);
+        }
+
+        html.crm-theme-light .nav-title {
+            color: #334155;
+        }
+
+        html.crm-theme-light .ghost,
+        html.crm-theme-light .sidebar-toggle,
+        html.crm-theme-light .drawer-close {
+            background: rgba(15,23,42,.035);
+        }
+
+        html.crm-theme-light .nav-accordion,
+        html.crm-theme-light .request-card,
+        html.crm-theme-light .inventory-photo,
+        html.crm-theme-light .service-photo,
+        html.crm-theme-light .health-item {
+            background: rgba(255,255,255,.62);
+        }
+
+        html.crm-theme-light .request-desc,
+        html.crm-theme-light .inventory-desc,
+        html.crm-theme-light .service-desc {
+            color: #475569;
+        }
+
+        html.crm-theme-light .badge.status-new,
+        html.crm-theme-light .badge.status-success {
+            color: #047857;
+        }
+
+        html.crm-theme-light .badge.status-waiting {
+            color: #92400e;
+        }
+
+        html.crm-theme-light .badge.status-viewed {
+            color: #1d4ed8;
+        }
+
+        html.crm-theme-light .field input,
+        html.crm-theme-light .crm-site input,
+        html.crm-theme-light .crm-site textarea,
+        html.crm-theme-light .crm-site select {
+            background: rgba(255,255,255,.78);
+            color: var(--text);
+        }
         @media (max-width:1180px) {
             .quick-cards { grid-template-columns: repeat(3,minmax(0,1fr)); }
             .cards { grid-template-columns: repeat(3,minmax(0,1fr)); }
@@ -1435,6 +1552,10 @@
             </div>
 
             <div class="top-actions">
+                <button class="btn ghost theme-toggle" type="button" data-theme-toggle aria-label="Перемкнути денну або нічну тему" title="День / ніч">
+                    <span class="theme-icon-light" aria-hidden="true">☀️</span>
+                    <span class="theme-icon-dark" aria-hidden="true">🌙</span>
+                </button>
                 <label class="btn ghost mobile-nav-toggle" for="crm-menu">Меню</label>
                 {% block crm_top_actions %}
                 <div class="pill">{{ "Демо режим" if demo_mode else "Кабінет продавця" }}</div>
@@ -1450,6 +1571,37 @@
 
 <script>
 (function () {
+    var storageKey = "carpot-crm-theme";
+    var toggle = document.querySelector("[data-theme-toggle]");
+
+    function setTheme(theme) {
+        var light = theme === "light";
+        document.documentElement.classList.toggle("crm-theme-light", light);
+        document.body.classList.toggle("crm-theme-light", light);
+        if (toggle) {
+            toggle.setAttribute("aria-pressed", light ? "true" : "false");
+            toggle.setAttribute("title", light ? "Нічна тема" : "Денна тема");
+        }
+    }
+
+    try {
+        setTheme(localStorage.getItem(storageKey) || "dark");
+    } catch (error) {
+        setTheme("dark");
+    }
+
+    if (toggle) {
+        toggle.addEventListener("click", function () {
+            var nextTheme = document.documentElement.classList.contains("crm-theme-light") ? "dark" : "light";
+            setTheme(nextTheme);
+            try {
+                localStorage.setItem(storageKey, nextTheme);
+            } catch (error) {
+                // Theme still switches for this page even when storage is unavailable.
+            }
+        });
+    }
+
     function openSectionFromHash() {
         if (!location.hash) {
             return;
