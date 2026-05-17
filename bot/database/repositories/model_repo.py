@@ -44,6 +44,31 @@ async def get_models_by_brand(brand: str) -> list[str]:
     return [r["name"] for r in rows]
 
 
+async def get_models_with_brand_ids() -> list[dict]:
+    rows = await fetch("""
+        SELECT m.id, m.name, m.brand_id, b.name AS brand_name
+        FROM models m
+        JOIN brands b ON b.id = m.brand_id
+        ORDER BY b.name, m.name
+    """)
+    return [dict(r) for r in rows]
+
+
+async def get_existing_model_id_by_brand_model_ids(brand_id: int, model_id: int) -> int | None:
+    if not brand_id or not model_id:
+        return None
+
+    row = await fetchrow("""
+        SELECT m.id
+        FROM models m
+        JOIN brands b ON b.id = m.brand_id
+        WHERE b.id = $1
+          AND m.id = $2
+        LIMIT 1
+    """, brand_id, model_id)
+    return row["id"] if row else None
+
+
 async def get_models_by_brand_id(brand_id: int) -> list[dict]:
     if not brand_id:
         return []

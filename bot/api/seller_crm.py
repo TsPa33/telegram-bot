@@ -19,9 +19,17 @@ from bot.database.repositories.car_repo import (
     update_seller_car_description,
     update_seller_car_photo,
 )
-from bot.database.repositories.model_repo import get_brands_with_ids, get_model_id, get_models_by_brand_id
+from bot.database.repositories.model_repo import (
+    get_brands_with_ids,
+    get_existing_model_id_by_brand_model_ids,
+    get_model_id,
+    get_models_by_brand_id,
+    get_models_with_brand_ids,
+)
 from bot.database.repositories.seller_crm_repo import (
+    SellerCrmGarageFullError,
     create_crm_session,
+    create_seller_crm_car,
     delete_crm_session,
     get_crm_account_by_slug,
     get_crm_account_for_login,
@@ -46,6 +54,7 @@ from bot.database.repositories.seller_crm_repo import (
     list_seller_crm_services,
     list_seller_crm_services_inventory,
     list_seller_crm_sources,
+    seller_crm_car_supports_is_catalog,
     set_seller_crm_car_status,
     update_seller_crm_car,
 )
@@ -190,6 +199,67 @@ def _validate_car_form(description: str) -> str | None:
     if len((description or "").strip()) > 2000:
         return "Опис має бути до 2000 символів."
     return None
+
+
+def _parse_optional_int(value: str | None) -> int | None:
+    raw = (value or "").strip()
+    if not raw:
+        return None
+    try:
+        return int(raw)
+    except ValueError:
+        return None
+
+
+def _car_create_form_payload(
+    *,
+    brand: str = "",
+    model: str = "",
+    description: str = "",
+    is_catalog: bool = False,
+) -> dict[str, Any]:
+    payload = _car_form_payload(description=description, status="active", is_catalog=is_catalog)
+    payload.update({"brand": (brand or "").strip(), "model": (model or "").strip()})
+    return payload
+
+
+async def _render_car_create_form(
+    request: Request,
+    *,
+    account,
+    subscription,
+    crm_slug: str,
+    form: dict[str, Any] | None = None,
+    error: str | None = None,
+    status_code: int = 200,
+):
+    brands = await get_brands_with_ids()
+    models = await get_models_with_brand_ids()
+    return templates.TemplateResponse(
+        "seller_crm/car_form.html",
+        _seller_crm_context(
+            request,
+            title="Додати авто — CRM продавця CarPot",
+            demo_mode=False,
+            current_page="content_cars",
+            account=account,
+            subscription=subscription,
+            form_title="Додати авто",
+            create_mode=True,
+            car={"has_is_catalog": await seller_crm_car_supports_is_catalog()},
+            form=form or _car_create_form_payload(),
+            brands=brands,
+            models=models,
+            error=error,
+            action_url=f"/crm/seller/{crm_slug}/content/cars/create",
+            cancel_url=f"/crm/seller/{crm_slug}/content/cars",
+            has_website=False,
+            has_cars=True,
+            has_services=False,
+        ),
+        status_code=status_code,
+    )
+
 
 def _service_form_payload(
     *,
@@ -1386,6 +1456,108 @@ async def seller_crm_service_enable(request: Request, crm_slug: str, service_id:
 @router.post("/{crm_slug}/content/services/{service_id}/disable")
 async def seller_crm_service_disable(request: Request, crm_slug: str, service_id: int):
     return await _toggle_crm_service(request, crm_slug, service_id, False)
+
+
+@router.get("/{crm_slug}/content/cars/create")
+async def seller_crm_car_create_form(request: Request, crm_slug: str):
+    try:
+        account, subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+
+    return await _render_car_create_form(
+        request,
+        account=account,
+        subscription=subscription,
+        crm_slug=crm_slug,
+    )
+
+
+@router.post("/{crm_slug}/content/cars/create")
+async def seller_crm_car_create(
+    request: Request,
+    crm_slug: str,
+    brand: str = Form(""),
+    model: str = Form(""),
+    description: str = Form(""),
+    is_catalog: str | None = Form(None),
+):
+    try:
+        account, subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+
+    catalog_value = is_catalog in {"1", "true", "on", "yes"}
+    form = _car_create_form_payload(
+        brand=brand,
+        model=model,
+        description=description,
+        is_catalog=catalog_value,
+    )
+    error = _validate_car_form(description)
+    if error:
+        return await _render_car_create_form(
+            request,
+            account=account,
+            subscription=subscription,
+            crm_slug=crm_slug,
+            form=form,
+            error=error,
+            status_code=400,
+        )
+
+    brand_id = _parse_optional_int(brand)
+    model_id = _parse_optional_int(model)
+    existing_model_id = (
+        await get_existing_model_id_by_brand_model_ids(brand_id, model_id)
+        if brand_id and model_id
+        else None
+    )
+    if not existing_model_id:
+        return await _render_car_create_form(
+            request,
+            account=account,
+            subscription=subscription,
+            crm_slug=crm_slug,
+            form=form,
+            error="Марку або модель не знайдено. Додайте авто через Telegram-бот або зверніться в підтримку.",
+            status_code=400,
+        )
+
+    try:
+        created = await create_seller_crm_car(
+            seller_id=account["seller_id"],
+            model_id=existing_model_id,
+            description=description,
+            is_catalog=catalog_value,
+        )
+    except SellerCrmGarageFullError:
+        return await _render_car_create_form(
+            request,
+            account=account,
+            subscription=subscription,
+            crm_slug=crm_slug,
+            form=form,
+            error="Немає вільних місць у гаражі.",
+            status_code=400,
+        )
+
+    if not created:
+        return await _render_car_create_form(
+            request,
+            account=account,
+            subscription=subscription,
+            crm_slug=crm_slug,
+            form=form,
+            error="Не вдалося створити авто. Спробуйте ще раз або зверніться в підтримку.",
+            status_code=400,
+        )
+
+    return RedirectResponse(url=f"/crm/seller/{crm_slug}/content/cars", status_code=303)
 
 
 @router.get("/{crm_slug}/content/cars/{car_id}/edit")

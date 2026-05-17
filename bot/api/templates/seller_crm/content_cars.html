@@ -28,21 +28,21 @@
   <section class="workspace-hero" aria-labelledby="cars-title">
     <div>
       <h2 id="cars-title">Авто на розборі</h2>
-      <p class="section-note">Керуйте існуючими донорськими авто. Створення авто та зміна фото поки залишаються окремими етапами.</p>
+      <p class="section-note">Керуйте існуючими донорськими авто та безпечно додавайте нові авто без фото.</p>
     </div>
     <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content">← Мій контент</a>
   </section>
 
   <section class="card content-add-card" aria-labelledby="cars-add-actions">
     <h2 id="cars-add-actions">Швидко додати</h2>
-    <p class="section-note">Додавання зараз доступне через Telegram-бот. У CRM поки немає форми створення авто, послуг або товарів.</p>
+    <p class="section-note">Авто можна створити в CRM без фото. Фото можна буде додати окремо пізніше.</p>
     <div class="content-add-actions" aria-label="Швидкі дії додавання">
       <button class="btn" type="button" onclick="alert('Відкрийте Telegram-бот CarPot і скористайтесь меню продавця для додавання авто, послуг або товарів.')">Відкрити Telegram</button>
-      <button class="btn ghost" type="button" onclick="alert('Як додати авто: Telegram-бот CarPot → меню продавця → додати авто на розборі → опис і фото.')">＋ Додати авто</button>
+      <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content/cars/create">＋ Додати авто</a>
       <button class="btn ghost" type="button" onclick="alert('Як додати послугу: Telegram-бот CarPot → меню продавця → додати сервісну пропозицію.')">＋ Додати послугу</button>
       <button class="btn ghost" type="button" onclick="alert('Товари / запчастини: розділ буде додано окремо. Поки що не створюємо inventory editor у CRM.')">＋ Додати товар / запчастину</button>
     </div>
-    <p class="telegram-note">Безпечна дія: кнопки не створюють POST-запитів і не відкривають неіснуючих CRM-форм.</p>
+    <p class="telegram-note">Фото можна буде додати окремо. Поки авто буде створено без фото.</p>
   </section>
 
   <section class="card parts-placeholder" aria-labelledby="cars-parts-placeholder">

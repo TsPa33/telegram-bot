@@ -1609,6 +1609,81 @@ def _car_status_db_value(status: str, status_type: str | None):
     return "active" if active else "inactive"
 
 
+class SellerCrmGarageFullError(Exception):
+    """Raised when a seller has no free garage slots for a new CRM car."""
+
+
+async def seller_crm_car_supports_is_catalog() -> bool:
+    columns = await _get_seller_cars_columns()
+    return "is_catalog" in columns
+
+
+async def create_seller_crm_car(
+    seller_id: int,
+    model_id: int,
+    description: str | None,
+    is_catalog: bool = False,
+):
+    columns = await _get_seller_cars_columns()
+    insert_columns = ["seller_id", "model_id", "photo_id", "description"]
+    args = [seller_id, model_id, None, _clean_car_description(description)]
+    select_values = [f"${index}" for index in range(1, len(args) + 1)]
+
+    if "status" in columns:
+        args.append(_car_status_db_value("active", columns.get("status")))
+        insert_columns.append("status")
+        select_values.append(f"${len(args)}")
+
+    for counter_column in ("views", "phone_clicks", "site_clicks"):
+        if counter_column in columns:
+            args.append(0)
+            insert_columns.append(counter_column)
+            select_values.append(f"${len(args)}")
+
+    if "is_catalog" in columns:
+        args.append(bool(is_catalog))
+        insert_columns.append("is_catalog")
+        select_values.append(f"${len(args)}")
+
+    row = await fetchrow(
+        f"""
+        WITH lock AS (
+            SELECT pg_advisory_xact_lock($1::bigint)
+        ), garage AS (
+            SELECT COALESCE(SUM(ss.slots), 0)::int AS slots_total
+            FROM lock
+            LEFT JOIN seller_subscriptions ss
+              ON ss.seller_id = $1
+             AND ss.expires_at > NOW()
+        ), used AS (
+            SELECT COUNT(sc.*)::int AS slots_used
+            FROM lock
+            LEFT JOIN seller_cars sc ON sc.seller_id = $1
+        ), inserted AS (
+            INSERT INTO seller_cars ({', '.join(insert_columns)})
+            SELECT {', '.join(select_values)}
+            WHERE (SELECT slots_total FROM garage) > (SELECT slots_used FROM used)
+            RETURNING id
+        )
+        SELECT
+            (SELECT id FROM inserted) AS id,
+            (SELECT slots_total FROM garage) AS slots_total,
+            (SELECT slots_used FROM used) AS slots_used
+        """,
+        *args,
+    )
+    row_data = dict(row) if row else {}
+    if row_data.get("id"):
+        return row
+
+    slots_total = int(row_data.get("slots_total") or 0)
+    slots_used = int(row_data.get("slots_used") or 0)
+    if slots_total <= slots_used:
+        raise SellerCrmGarageFullError("No free garage slots")
+
+    return None
+
+
 def _is_car_active_status(value) -> bool:
     return _normalize_car_status_for_display(value) == "active"
 
