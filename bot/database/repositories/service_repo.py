@@ -1,4 +1,5 @@
 from bot.database.base import execute, fetch, fetchrow
+from bot.domain.statuses import get_service_display_status
 
 
 ALLOWED_UPDATE_FIELDS = {
@@ -430,9 +431,9 @@ def _is_service_active(row) -> bool:
     if not row:
         return False
     if "is_active" in row.keys():
-        return bool(row["is_active"])
+        return get_service_display_status(row["is_active"])["is_active"]
     if "status" in row.keys():
-        return str(row["status"] or "active").lower() in {"1", "active", "enabled", "published"}
+        return get_service_display_status(row["status"])["is_active"]
     return True
 
 

@@ -119,6 +119,82 @@ SERVICE_INACTIVE_VALUES = {
 }
 
 
+_CRM_LEAD_STATUS_META = {
+    CRM_LEAD_STATUS_NEW: {"label": "Нова", "css_class": "status-new", "priority": 10},
+    CRM_LEAD_STATUS_IN_WORK: {"label": "В роботі", "css_class": "status-viewed", "priority": 20},
+    CRM_LEAD_STATUS_REPLIED: {"label": "Відповіли", "css_class": "status-replied", "priority": 30},
+    CRM_LEAD_STATUS_SELECTED: {"label": "Обрано", "css_class": "status-success", "priority": 40},
+    CRM_LEAD_STATUS_DECLINED: {"label": "Відхилено", "css_class": "status-rejected", "priority": 50},
+    CRM_LEAD_STATUS_SKIPPED: {"label": "Пропущено", "css_class": "status-rejected", "priority": 60},
+}
+
+_CRM_OFFER_STATUS_META = {
+    CRM_OFFER_STATUS_ACTIVE: {"label": "Активна", "css_class": "status-waiting", "priority": 10},
+    BUYER_OFFER_STATUS_PENDING: {"label": "Активна", "css_class": "status-waiting", "priority": 10},
+    CRM_OFFER_STATUS_SELECTED: {"label": "Обрано", "css_class": "status-success", "priority": 20},
+    BUYER_OFFER_STATUS_ACCEPTED: {"label": "Обрано", "css_class": "status-success", "priority": 20},
+    CRM_OFFER_STATUS_REJECTED: {"label": "Не обрано", "css_class": "status-rejected", "priority": 30},
+    CRM_OFFER_STATUS_ALL: {"label": "Всі", "css_class": "", "priority": 40},
+}
+
+
+def get_crm_lead_status_meta(status: str) -> dict:
+    normalized = normalize_text_status(status, CRM_LEAD_STATUS_NEW)
+    return dict(_CRM_LEAD_STATUS_META.get(normalized, _CRM_LEAD_STATUS_META[CRM_LEAD_STATUS_NEW]))
+
+
+def get_crm_offer_status_meta(status: str) -> dict:
+    normalized = normalize_text_status(status, CRM_OFFER_STATUS_ACTIVE)
+    fallback = {"label": normalized or "—", "css_class": "", "priority": 99}
+    return dict(_CRM_OFFER_STATUS_META.get(normalized, fallback))
+
+
+def _get_display_status_meta(
+    value: object,
+    active_values: set[str],
+    inactive_values: set[str],
+    *,
+    active_label: str,
+    inactive_label: str,
+) -> dict:
+    normalized = normalize_text_status(value, "active")
+    if normalized in active_values:
+        status = "active"
+        is_active = True
+    elif normalized in inactive_values:
+        status = "inactive"
+        is_active = False
+    else:
+        status = normalized or "active"
+        is_active = status == "active"
+    return {
+        "status": status,
+        "label": active_label if is_active else inactive_label,
+        "css_class": "status-success" if is_active else "status-rejected",
+        "is_active": is_active,
+    }
+
+
+def get_car_display_status(value: object) -> dict:
+    return _get_display_status_meta(
+        value,
+        CAR_STATUS_ACTIVE_VALUES,
+        CAR_STATUS_INACTIVE_VALUES,
+        active_label="Активне",
+        inactive_label="Вимкнене",
+    )
+
+
+def get_service_display_status(value: object) -> dict:
+    return _get_display_status_meta(
+        value,
+        SERVICE_ACTIVE_VALUES,
+        SERVICE_INACTIVE_VALUES,
+        active_label="Активна",
+        inactive_label="Неактивна",
+    )
+
+
 def normalize_text_status(value: object, default: str = "") -> str:
     """Return a lowercase stripped text status, with safe bool/None handling."""
     if value is None:
