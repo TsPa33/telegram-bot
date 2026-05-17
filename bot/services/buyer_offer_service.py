@@ -1,6 +1,12 @@
 from dataclasses import dataclass
 from decimal import Decimal
 
+from bot.domain.statuses import (
+    BUYER_OFFER_STATUS_ACCEPTED,
+    BUYER_OFFER_STATUS_PENDING,
+    BUYER_OFFER_STATUS_REJECTED,
+    MARKETPLACE_REQUEST_STATUS_MATCHED,
+)
 from bot.database.repositories.buyer_offer_repo import (
     accept_buyer_offer,
     get_buyer_offer_detail,
@@ -56,7 +62,7 @@ def _format_price(price: Decimal | int | float | str | None) -> str:
 
 
 def build_offer_view_model(offer: dict, *, accepted_offer_id: int | None) -> dict:
-    is_accepted = offer.get("status") == "accepted" or offer.get("is_selected_match") or offer.get("id") == accepted_offer_id
+    is_accepted = offer.get("status") == BUYER_OFFER_STATUS_ACCEPTED or offer.get("is_selected_match") or offer.get("id") == accepted_offer_id
     contact_unlocked = bool(is_accepted)
     response_speed = offer.get("avg_response_seconds") or offer.get("last_response_seconds")
     normalized = dict(offer)
@@ -71,7 +77,7 @@ def build_offer_view_model(offer: dict, *, accepted_offer_id: int | None) -> dic
             "phone_visible": offer.get("seller_phone") if contact_unlocked else None,
             "contact_unlocked": contact_unlocked,
             "is_accepted": is_accepted,
-            "is_rejected": offer.get("status") == "rejected",
+            "is_rejected": offer.get("status") == BUYER_OFFER_STATUS_REJECTED,
             "response_speed_label": _format_response_speed(response_speed),
         }
     )
@@ -89,10 +95,10 @@ def build_request_view_model(request_row: dict, offers: list[dict]) -> dict:
     request_model.update(
         {
             "title": title,
-            "is_matched": request_row.get("marketplace_status") == "matched" or bool(accepted_offer),
+            "is_matched": request_row.get("marketplace_status") == MARKETPLACE_REQUEST_STATUS_MATCHED or bool(accepted_offer),
             "accepted_offer": accepted_offer,
             "offers": normalized_offers,
-            "pending_offers_count": len([offer for offer in normalized_offers if offer.get("status") == "pending"]),
+            "pending_offers_count": len([offer for offer in normalized_offers if offer.get("status") == BUYER_OFFER_STATUS_PENDING]),
         }
     )
     return request_model

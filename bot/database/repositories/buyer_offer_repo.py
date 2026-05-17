@@ -1,11 +1,16 @@
 import logging
 
 from bot.database.base import fetch, fetchrow, transaction
+from bot.domain.statuses import (
+    BUYER_OFFER_STATUSES,
+    MARKETPLACE_MATCH_STATUSES,
+    MARKETPLACE_REQUEST_STATUSES,
+)
 
 
-BUYER_REQUEST_STATUSES = {"pending", "active", "matched", "closed"}
-BUYER_REQUEST_OFFER_STATUSES = {"pending", "accepted", "rejected"}
-MATCH_STATUSES = {"matched", "contacted", "closed", "cancelled"}
+BUYER_REQUEST_STATUSES = MARKETPLACE_REQUEST_STATUSES
+BUYER_REQUEST_OFFER_STATUSES = BUYER_OFFER_STATUSES
+MATCH_STATUSES = MARKETPLACE_MATCH_STATUSES
 logger = logging.getLogger(__name__)
 
 

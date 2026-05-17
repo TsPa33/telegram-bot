@@ -3,6 +3,12 @@ from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from html import escape
 
+from bot.domain.statuses import (
+    BUYER_OFFER_STATUS_PENDING,
+    NOTIFICATION_STATUS_FAILED,
+    NOTIFICATION_STATUS_SENT,
+    SELLER_LEAD_ACTION_OFFERED,
+)
 from bot.database.repositories.seller_lead_repo import (
     create_seller_offer,
     ensure_buyer_offer_created_event,
@@ -139,8 +145,8 @@ async def _notify_buyer_about_offer(*, request_id: int, seller_id: int, offer: d
             offer_id,
             seller_id,
         )
-        await mark_marketplace_notification_event(event.get("id"), status="failed")
-        return "failed"
+        await mark_marketplace_notification_event(event.get("id"), status=NOTIFICATION_STATUS_FAILED)
+        return NOTIFICATION_STATUS_FAILED
 
     sent = await send_message_to_buyer(
         int(buyer_telegram_id),
@@ -149,23 +155,23 @@ async def _notify_buyer_about_offer(*, request_id: int, seller_id: int, offer: d
         reply_markup=buyer_offer_created_notification_kb(request_id),
     )
     if sent:
-        await mark_marketplace_notification_event(event.get("id"), status="sent")
+        await mark_marketplace_notification_event(event.get("id"), status=NOTIFICATION_STATUS_SENT)
         logger.info(
             "Buyer notified about CRM seller offer buyer_telegram_id=%s request_id=%s offer_id=%s",
             buyer_telegram_id,
             request_id,
             offer_id,
         )
-        return "sent"
+        return NOTIFICATION_STATUS_SENT
 
-    await mark_marketplace_notification_event(event.get("id"), status="failed")
+    await mark_marketplace_notification_event(event.get("id"), status=NOTIFICATION_STATUS_FAILED)
     logger.warning(
         "Telegram send failure CRM buyer offer notification buyer_telegram_id=%s request_id=%s offer_id=%s",
         buyer_telegram_id,
         request_id,
         offer_id,
     )
-    return "failed"
+    return NOTIFICATION_STATUS_FAILED
 
 
 async def submit_seller_offer(
@@ -202,14 +208,14 @@ async def submit_seller_offer(
         message=comment,
         price_offer=price_offer,
         availability_note="Готовий обговорити",
-        status="pending",
+        status=BUYER_OFFER_STATUS_PENDING,
     )
     offer_dict = dict(offer) if offer else None
 
     await mark_seller_lead_action(
         seller_id=seller_id,
         request_id=request_id,
-        action="offered",
+        action=SELLER_LEAD_ACTION_OFFERED,
         metadata={"source": source},
     )
     await touch_request_matched(request_id)
@@ -229,7 +235,7 @@ async def submit_seller_offer(
             offer_dict.get("id") if offer_dict else None,
             exc,
         )
-        notification_status = "failed"
+        notification_status = NOTIFICATION_STATUS_FAILED
 
     logger.info(
         "Seller offer submitted source=%s seller_id=%s request_id=%s offer_id=%s notification_status=%s",
