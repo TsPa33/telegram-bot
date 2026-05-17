@@ -4,6 +4,7 @@ import os
 import secrets
 import tempfile
 from datetime import datetime, timedelta
+from urllib.parse import urlencode
 from pathlib import Path
 from typing import Any
 
@@ -59,6 +60,7 @@ from bot.database.repositories.site_repo import (
 )
 from bot.services.domain_service import build_site_url
 from bot.services.seller_crm import SELLER_CRM_SESSION_DAYS, verify_crm_password
+from bot.services.seller_offer_service import submit_seller_offer_from_crm
 from bot.services.site_config import get_theme_presets, merge_with_default
 from bot.services.storage import upload_image
 
@@ -306,9 +308,21 @@ def _prepare_lead_detail(detail: dict[str, Any] | None) -> dict[str, Any] | None
         offer["status_label"] = offer_meta["label"]
         offer["status_class"] = offer_meta["class"]
         offer["price_label"] = _format_price(offer.get("price"))
+        offer["price_input"] = "" if offer.get("price") is None else str(offer.get("price"))
 
     marketplace["state_label"] = "Обрано покупцем" if marketplace.get("is_selected") else "Очікує рішення покупця"
     marketplace["state_class"] = "status-success" if marketplace.get("is_selected") else "status-waiting"
+
+    seller_status = seller_state.get("seller_status")
+    prepared["may_respond"] = not marketplace.get("selected_other_seller") and (
+        bool(offer) or seller_status not in {"declined", "skipped"}
+    )
+    if marketplace.get("selected_other_seller"):
+        prepared["response_block_reason"] = "Покупець уже обрав іншого продавця."
+    elif seller_status in {"declined", "skipped"} and not offer:
+        prepared["response_block_reason"] = "Цю заявку вже відхилено або пропущено."
+    else:
+        prepared["response_block_reason"] = None
 
     prepared["request"] = request_data
     prepared["seller_state"] = seller_state
@@ -592,7 +606,7 @@ async def seller_crm_marketplace_leads(request: Request, crm_slug: str, status: 
 
 
 @router.get("/{crm_slug}/leads/{request_id}")
-async def seller_crm_lead_detail(request: Request, crm_slug: str, request_id: str):
+async def seller_crm_lead_detail(request: Request, crm_slug: str, request_id: str, offer_status: str | None = None, error: str | None = None):
     try:
         account, subscription = await _authorized_account(request, crm_slug)
     except HTTPException as exc:
@@ -624,8 +638,62 @@ async def seller_crm_lead_detail(request: Request, crm_slug: str, request_id: st
             account=account,
             subscription=subscription,
             lead=lead_detail,
+            offer_status=offer_status,
+            error=error,
         ),
     )
+
+
+@router.post("/{crm_slug}/leads/{request_id}/offer")
+async def seller_crm_submit_offer(
+    request: Request,
+    crm_slug: str,
+    request_id: str,
+    price_text: str = Form(""),
+    message: str = Form(""),
+):
+    try:
+        account, _subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+
+    try:
+        parsed_request_id = int(request_id)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=404, detail="Lead not found")
+
+    redirect_base = f"/crm/seller/{crm_slug}/leads/{parsed_request_id}"
+    try:
+        result = await submit_seller_offer_from_crm(
+            seller_id=int(account["seller_id"]),
+            request_id=parsed_request_id,
+            price_text=price_text,
+            message=message,
+        )
+    except Exception:
+        logger.exception(
+            "CRM seller offer submit failed seller_id=%s request_id=%s",
+            account.get("seller_id"),
+            parsed_request_id,
+        )
+        query = urlencode({"error": "Не вдалося надіслати пропозицію. Спробуйте ще раз."})
+        return RedirectResponse(url=f"{redirect_base}?{query}", status_code=303)
+
+    if not result.get("ok"):
+        query = urlencode({"error": result.get("error") or "Перевірте дані пропозиції."})
+        return RedirectResponse(url=f"{redirect_base}?{query}", status_code=303)
+
+    notification_status = result.get("notification_status")
+    if notification_status == "already_recorded":
+        status = "updated"
+    elif notification_status == "sent":
+        status = "sent"
+    else:
+        status = "saved"
+    query = urlencode({"offer_status": status})
+    return RedirectResponse(url=f"{redirect_base}?{query}", status_code=303)
 
 
 @router.get("/{crm_slug}/offers")

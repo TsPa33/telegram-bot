@@ -813,6 +813,14 @@ async def list_seller_crm_marketplace_leads(
                 LIMIT 1
             ) selected_match ON TRUE
             LEFT JOIN LATERAL (
+                SELECT seller_id
+                FROM marketplace_matches mm
+                WHERE mm.request_id = br.id
+                  AND mm.status IN ('matched', 'contacted', 'closed')
+                ORDER BY mm.matched_at DESC, mm.id DESC
+                LIMIT 1
+            ) any_selected_match ON TRUE
+            LEFT JOIN LATERAL (
                 SELECT (ARRAY_AGG(sla.action ORDER BY sla.updated_at DESC, sla.id DESC))[1] AS latest_action,
                        MAX(sla.updated_at) AS latest_action_at,
                        BOOL_OR(sla.action = 'viewed') AS has_viewed,
@@ -1196,6 +1204,7 @@ async def get_seller_crm_lead_detail(seller_id: int, request_id: int):
                    selected_match.id AS selected_match_id,
                    selected_match.status AS selected_match_status,
                    selected_match.matched_at AS selected_at,
+                   any_selected_match.seller_id AS selected_seller_id,
                    actions.viewed_at,
                    actions.responded_at,
                    actions.declined_at,
@@ -1253,6 +1262,14 @@ async def get_seller_crm_lead_detail(seller_id: int, request_id: int):
                 ORDER BY mm.matched_at DESC, mm.id DESC
                 LIMIT 1
             ) selected_match ON TRUE
+            LEFT JOIN LATERAL (
+                SELECT seller_id
+                FROM marketplace_matches mm
+                WHERE mm.request_id = br.id
+                  AND mm.status IN ('matched', 'contacted', 'closed')
+                ORDER BY mm.matched_at DESC, mm.id DESC
+                LIMIT 1
+            ) any_selected_match ON TRUE
             LEFT JOIN LATERAL (
                 SELECT MAX(sla.updated_at) FILTER (WHERE sla.action = 'viewed') AS viewed_at,
                        MAX(sla.updated_at) FILTER (WHERE sla.action = 'offered') AS responded_at,
@@ -1390,6 +1407,8 @@ async def get_seller_crm_lead_detail(seller_id: int, request_id: int):
         "offer": offer,
         "marketplace": {
             "selected_seller": bool(lead_data.get("selected_match_id")),
+            "selected_seller_id": lead_data.get("selected_seller_id"),
+            "selected_other_seller": bool(lead_data.get("selected_seller_id")) and int(lead_data.get("selected_seller_id")) != int(seller_id),
             "selected_at": lead_data.get("selected_at"),
             "is_selected": bool(lead_data.get("selected_match_id")) or lead_data.get("offer_status") == "accepted",
             "status": lead_data.get("marketplace_status"),

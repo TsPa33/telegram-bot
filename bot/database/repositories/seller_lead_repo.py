@@ -463,3 +463,87 @@ async def mark_marketplace_notification_event(event_id: int | None, *, status: s
         event_id,
         status,
     )
+
+
+async def get_seller_offer_access_context(*, seller_id: int, request_id: int):
+    """Return seller-scoped request access context for creating/updating an offer."""
+    return await fetchrow(
+        """
+        SELECT br.id AS request_id,
+               seller_offer.id AS offer_id,
+               selected_match.seller_id AS selected_seller_id,
+               COALESCE(actions.has_viewed, FALSE) AS has_viewed,
+               COALESCE(actions.has_offered, FALSE) AS has_offered,
+               COALESCE(actions.has_declined, FALSE) AS has_declined,
+               COALESCE(actions.has_skipped, FALSE) AS has_skipped,
+               route_event.id AS route_event_id,
+               any_notification.id AS notification_event_id,
+               seller_match.id AS seller_match_id
+        FROM buyer_requests br
+        LEFT JOIN LATERAL (
+            SELECT id
+            FROM marketplace_notification_events mne
+            WHERE mne.request_id = br.id
+              AND mne.seller_id = $1
+              AND mne.event_type = 'buyer_request_created'
+            ORDER BY mne.created_at DESC, mne.id DESC
+            LIMIT 1
+        ) route_event ON TRUE
+        LEFT JOIN LATERAL (
+            SELECT id
+            FROM marketplace_notification_events mne
+            WHERE mne.request_id = br.id
+              AND mne.seller_id = $1
+            ORDER BY mne.created_at DESC, mne.id DESC
+            LIMIT 1
+        ) any_notification ON TRUE
+        LEFT JOIN LATERAL (
+            SELECT id
+            FROM buyer_request_offers bro
+            WHERE bro.request_id = br.id
+              AND bro.seller_id = $1
+            ORDER BY bro.updated_at DESC, bro.id DESC
+            LIMIT 1
+        ) seller_offer ON TRUE
+        LEFT JOIN LATERAL (
+            SELECT id, seller_id
+            FROM marketplace_matches mm
+            WHERE mm.request_id = br.id
+              AND mm.status IN ('matched', 'contacted', 'closed')
+            ORDER BY mm.matched_at DESC, mm.id DESC
+            LIMIT 1
+        ) selected_match ON TRUE
+        LEFT JOIN LATERAL (
+            SELECT id
+            FROM marketplace_matches mm
+            WHERE mm.request_id = br.id
+              AND mm.seller_id = $1
+            ORDER BY mm.matched_at DESC, mm.id DESC
+            LIMIT 1
+        ) seller_match ON TRUE
+        LEFT JOIN LATERAL (
+            SELECT BOOL_OR(sla.action = 'viewed') AS has_viewed,
+                   BOOL_OR(sla.action = 'offered') AS has_offered,
+                   BOOL_OR(sla.action = 'declined') AS has_declined,
+                   BOOL_OR(sla.action = 'skipped') AS has_skipped
+            FROM seller_lead_actions sla
+            WHERE sla.request_id = br.id
+              AND sla.seller_id = $1
+        ) actions ON TRUE
+        WHERE br.id = $2
+          AND br.entity_type = 'marketplace_request'
+          AND (
+              route_event.id IS NOT NULL
+              OR any_notification.id IS NOT NULL
+              OR COALESCE(actions.has_viewed, FALSE)
+              OR COALESCE(actions.has_offered, FALSE)
+              OR COALESCE(actions.has_declined, FALSE)
+              OR COALESCE(actions.has_skipped, FALSE)
+              OR seller_offer.id IS NOT NULL
+              OR seller_match.id IS NOT NULL
+          )
+        LIMIT 1
+        """,
+        seller_id,
+        request_id,
+    )
