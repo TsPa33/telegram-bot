@@ -1,0 +1,60 @@
+{% extends "seller_crm/base.html" %}
+{% block crm_kicker %}Контент продавця{% endblock %}
+{% block crm_heading %}{{ form_title }}{% endblock %}
+{% block content %}
+<style>
+  .service-form-wrap { display: grid; gap: 14px; min-width: 0; }
+  .service-form-card { max-width: 760px; width: 100%; min-width: 0; }
+  .service-form { display: grid; gap: 14px; min-width: 0; }
+  .form-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; min-width: 0; }
+  .form-field { display: grid; gap: 7px; min-width: 0; }
+  .form-field.full { grid-column: 1 / -1; }
+  .form-field label { color: var(--text); font-weight: 900; font-size: 13px; }
+  .form-field input, .form-field textarea { width: 100%; border: 1px solid var(--line); border-radius: 13px; background: rgba(255,255,255,.055); color: var(--text); padding: 11px 12px; font: inherit; outline: none; }
+  .form-field textarea { min-height: 132px; resize: vertical; line-height: 1.45; }
+  .field-help { color: var(--muted); font-size: 12px; line-height: 1.4; }
+  .form-actions { display: flex; gap: 9px; flex-wrap: wrap; align-items: center; min-width: 0; }
+  .form-error { border: 1px solid rgba(251,113,133,.28); background: rgba(251,113,133,.1); color: #fecdd3; border-radius: 14px; padding: 10px 12px; font-weight: 850; }
+  @media (max-width: 680px) { .form-grid { grid-template-columns: 1fr; } .form-actions { display: grid; grid-template-columns: 1fr; } .form-actions .btn { width: 100%; white-space: normal; } }
+</style>
+
+<div class="service-form-wrap">
+  <section class="workspace-hero" aria-labelledby="service-form-title">
+    <div>
+      <h2 id="service-form-title">{{ form_title }}</h2>
+      <p class="section-note">Заповніть основні дані послуги. Фото та галерея будуть додані окремим етапом.</p>
+    </div>
+    <a class="btn ghost" href="{{ cancel_url }}">← Скасувати</a>
+  </section>
+
+  <section class="card service-form-card">
+    {% if error %}<div class="form-error" role="alert">{{ error }}</div>{% endif %}
+    <form class="service-form" method="post" action="{{ action_url }}">
+      <div class="form-grid">
+        <div class="form-field">
+          <label for="title">Назва послуги *</label>
+          <input id="title" name="title" value="{{ form.title }}" required maxlength="160" autocomplete="off" placeholder="Наприклад: Ремонт АКПП">
+        </div>
+        <div class="form-field">
+          <label for="category">Категорія</label>
+          <input id="category" name="category" value="{{ form.category }}" maxlength="80" autocomplete="off" placeholder="СТО, евакуатор, шиномонтаж">
+        </div>
+        <div class="form-field full">
+          <label for="description">Опис</label>
+          <textarea id="description" name="description" maxlength="2000" placeholder="Що саме ви робите, умови, досвід, гарантії">{{ form.description }}</textarea>
+          <span class="field-help">До 2000 символів. Без медіа-завантажень у цій версії.</span>
+        </div>
+        <div class="form-field">
+          <label for="price">Ціна</label>
+          <input id="price" name="price" value="{{ form.price }}" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="Наприклад: 1500">
+          <span class="field-help">Необов’язково, лише ціле число у гривнях.</span>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn" type="submit">Зберегти</button>
+        <a class="btn ghost" href="{{ cancel_url }}">Скасувати</a>
+      </div>
+    </form>
+  </section>
+</div>
+{% endblock %}

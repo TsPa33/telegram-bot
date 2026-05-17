@@ -15,6 +15,8 @@
   .service-desc { margin: 0; color: var(--muted); line-height: 1.45; overflow-wrap: anywhere; }
   .service-meta, .service-badges, .service-actions, .content-add-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; min-width: 0; }
   .service-meta { color: var(--muted); font-size: 12px; font-weight: 850; }
+  .service-actions form { margin: 0; display: inline-flex; }
+  .service-actions form .btn { font: inherit; }
   .service-price { color: #bbf7d0; font-weight: 950; }
   .content-add-card { border-color: rgba(37,215,255,.22); background: linear-gradient(135deg, rgba(37,215,255,.08), rgba(52,245,166,.045)); }
   .content-add-card h2 { margin-bottom: 6px; }
@@ -22,28 +24,25 @@
   .parts-placeholder { border: 1px dashed rgba(251,191,36,.34); background: rgba(251,191,36,.08); color: #fde68a; }
   @media (max-width: 980px) { .services-summary { grid-template-columns: repeat(2,minmax(0,1fr)); } }
   @media (max-width: 720px) { .service-card { grid-template-columns: 1fr; } .service-photo { width: 100%; height: 170px; } .service-top { display: grid; } }
-  @media (max-width: 620px) { .services-summary { grid-template-columns: 1fr; } .service-actions, .content-add-actions { display: grid; grid-template-columns: 1fr; } .service-actions .btn, .content-add-actions .btn { width: 100%; white-space: normal; } }
+  @media (max-width: 620px) { .services-summary { grid-template-columns: 1fr; } .service-actions, .content-add-actions { display: grid; grid-template-columns: 1fr; } .service-actions .btn, .content-add-actions .btn, .service-actions form { width: 100%; white-space: normal; } }
 </style>
 
 <div class="services-workspace">
   <section class="workspace-hero" aria-labelledby="services-title">
     <div>
       <h2 id="services-title">Послуги</h2>
-      <p class="section-note">Read-first workspace для сервісних пропозицій продавця. Створення та редагування залишаються у Telegram-боті.</p>
+      <p class="section-note">Створюйте, редагуйте й керуйте активністю сервісних пропозицій напряму з CRM.</p>
     </div>
-    <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content">← Мій контент</a>
+    <div class="content-add-actions"><a class="btn" href="/crm/seller/{{ account.crm_slug }}/content/services/create">＋ Додати послугу</a><a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content">← Мій контент</a></div>
   </section>
 
   <section class="card content-add-card" aria-labelledby="services-add-actions">
     <h2 id="services-add-actions">Швидко додати</h2>
-    <p class="section-note">Додавання зараз доступне через Telegram-бот. У CRM поки немає форми створення авто, послуг або товарів.</p>
+    <p class="section-note">Створіть нову сервісну пропозицію без виходу в Telegram. Медіа-завантаження буде додано пізніше.</p>
     <div class="content-add-actions" aria-label="Швидкі дії додавання">
-      <button class="btn" type="button" onclick="alert('Відкрийте Telegram-бот CarPot і скористайтесь меню продавця для додавання авто, послуг або товарів.')">Відкрити Telegram</button>
-      <button class="btn ghost" type="button" onclick="alert('Як додати авто: Telegram-бот CarPot → меню продавця → додати авто на розборі → опис і фото.')">＋ Додати авто</button>
-      <button class="btn ghost" type="button" onclick="alert('Як додати послугу: Telegram-бот CarPot → меню продавця → додати сервісну пропозицію, ціну та опис.')">＋ Додати послугу</button>
-      <button class="btn ghost" type="button" onclick="alert('Товари / запчастини: розділ буде додано окремо. Поки що не створюємо inventory editor у CRM.')">＋ Додати товар / запчастину</button>
+      <a class="btn" href="/crm/seller/{{ account.crm_slug }}/content/services/create">＋ Додати послугу</a>
+      <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content/cars">Авто на розборі</a>
     </div>
-    <p class="telegram-note">Безпечна дія: кнопки не створюють POST-запитів і не відкривають неіснуючих CRM-форм.</p>
   </section>
 
   <section class="card parts-placeholder" aria-labelledby="services-parts-placeholder">
@@ -100,11 +99,14 @@
                   <span>{{ service.created_at.strftime("%d.%m.%Y") if service.created_at else "—" }}</span>
                 </div>
               </div>
-              {% if service.price is not none %}
-                <span class="badge status-viewed service-price">{{ service.price }} ₴</span>
-              {% else %}
-                <span class="badge status-waiting">Ціну не вказано</span>
-              {% endif %}
+              <div class="service-badges">
+                {% if service.is_active %}<span class="badge status-success">Активна</span>{% else %}<span class="badge status-rejected">Неактивна</span>{% endif %}
+                {% if service.price is not none %}
+                  <span class="badge status-viewed service-price">{{ service.price }} ₴</span>
+                {% else %}
+                  <span class="badge status-waiting">Ціну не вказано</span>
+                {% endif %}
+              </div>
             </div>
             <p class="service-desc">{{ (service.description[:180] ~ ('…' if service.description and service.description|length > 180 else '')) if service.description else 'Опис ще не додано.' }}</p>
             <div class="service-badges">
@@ -116,15 +118,21 @@
               {% if not service.has_photo %}<span class="badge status-waiting">Немає фото</span>{% endif %}
             </div>
             <div class="service-actions">
-              <span class="btn small ghost" aria-disabled="true">Детальніше</span>
-              <span class="btn small ghost" aria-disabled="true">Редагувати через Telegram</span>
+              <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/content/services/{{ service.service_id }}">Детальніше</a>
+              <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/content/services/{{ service.service_id }}/edit">Редагувати</a>
+              {% if service.is_active %}
+                <form method="post" action="/crm/seller/{{ account.crm_slug }}/content/services/{{ service.service_id }}/disable"><button class="btn small ghost" type="submit">Вимкнути</button></form>
+              {% else %}
+                <form method="post" action="/crm/seller/{{ account.crm_slug }}/content/services/{{ service.service_id }}/enable"><button class="btn small" type="submit">Увімкнути</button></form>
+              {% endif %}
             </div>
           </div>
         </article>
       {% else %}
         <div class="request-card">
-          <div class="request-title">Послуг ще немає. Додайте першу послугу через Telegram-бот.</div>
-          <p class="request-desc">Коли продавець додасть послугу через Telegram, вона з’явиться тут зі статистикою та індикаторами заповнення.</p>
+          <div class="request-title">Додайте першу послугу.</div>
+          <p class="request-desc">Створіть сервісну пропозицію в CRM — вона з’явиться тут зі статистикою та індикаторами заповнення.</p>
+          <div class="service-actions"><a class="btn" href="/crm/seller/{{ account.crm_slug }}/content/services/create">＋ Додати послугу</a></div>
         </div>
       {% endfor %}
     </div>
