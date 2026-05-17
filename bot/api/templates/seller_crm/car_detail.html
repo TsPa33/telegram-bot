@@ -1,0 +1,80 @@
+{% extends "seller_crm/base.html" %}
+{% block crm_kicker %}Контент продавця{% endblock %}
+{% block crm_heading %}{{ car.brand }} {{ car.model }}{% endblock %}
+{% block content %}
+<style>
+  .car-detail-wrap { display: grid; gap: 14px; min-width: 0; overflow: hidden; }
+  .detail-head { display: grid; grid-template-columns: minmax(0,1fr) minmax(220px,320px); gap: 14px; align-items: start; min-width: 0; }
+  .detail-title { margin: 0 0 7px; overflow-wrap: anywhere; }
+  .detail-meta, .detail-actions, .detail-badges { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; min-width: 0; }
+  .detail-meta { color: var(--muted); font-size: 13px; font-weight: 850; }
+  .detail-desc { color: var(--muted); line-height: 1.55; overflow-wrap: anywhere; white-space: pre-wrap; }
+  .photo-preview { width: 100%; min-height: 210px; border-radius: 18px; border: 1px solid var(--line); background: rgba(255,255,255,.045); overflow: hidden; display: grid; place-items: center; color: var(--muted); font-weight: 900; text-align: center; }
+  .photo-preview img { width: 100%; height: 100%; min-height: 210px; object-fit: cover; }
+  .stats-grid { grid-template-columns: repeat(4,minmax(0,1fr)); }
+  .notice { border: 1px solid rgba(52,245,166,.24); background: rgba(52,245,166,.1); color: #bbf7d0; border-radius: 14px; padding: 10px 12px; font-weight: 850; }
+  .notice.error { border-color: rgba(251,113,133,.28); background: rgba(251,113,133,.1); color: #fecdd3; }
+  .toggle-form { margin: 0; }
+  @media (max-width: 880px) { .detail-head { grid-template-columns: 1fr; } .stats-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+  @media (max-width: 620px) { .stats-grid { grid-template-columns: 1fr; } .detail-actions { display: grid; grid-template-columns: 1fr; } .detail-actions .btn, .detail-actions button { width: 100%; white-space: normal; } }
+</style>
+
+{% set status_messages = {"updated": "Авто оновлено.", "enabled": "Авто увімкнено.", "disabled": "Авто вимкнено."} %}
+{% set error_messages = {"status_not_supported": "Статус авто недоступний у поточній схемі."} %}
+
+<div class="car-detail-wrap">
+  {% if status and status_messages.get(status) %}<div class="notice" role="status">{{ status_messages.get(status) }}</div>{% endif %}
+  {% if error and error_messages.get(error) %}<div class="notice error" role="alert">{{ error_messages.get(error) }}</div>{% endif %}
+
+  <section class="card detail-head">
+    <div>
+      <h2 class="detail-title">{{ car.brand }} {{ car.model }}</h2>
+      <div class="detail-meta">
+        <span>ID {{ car.car_id }}</span>
+        <span>·</span>
+        <span>{{ car.created_at.strftime("%d.%m.%Y %H:%M") if car.created_at else "—" }}</span>
+        <span>·</span>
+        <span>{{ car.status_label }}</span>
+      </div>
+      <p class="detail-desc">{{ car.description or 'Опис ще не додано.' }}</p>
+      <div class="detail-actions">
+        <a class="btn" href="/crm/seller/{{ account.crm_slug }}/content/cars/{{ car.car_id }}/edit">Редагувати</a>
+        {% if car.is_active %}
+          <form class="toggle-form" method="post" action="/crm/seller/{{ account.crm_slug }}/content/cars/{{ car.car_id }}/disable"><button class="btn ghost" type="submit">Вимкнути</button></form>
+        {% else %}
+          <form class="toggle-form" method="post" action="/crm/seller/{{ account.crm_slug }}/content/cars/{{ car.car_id }}/enable"><button class="btn" type="submit">Увімкнути</button></form>
+        {% endif %}
+        <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content/cars">Назад до авто</a>
+      </div>
+    </div>
+    <div class="photo-preview" aria-label="Фото авто">
+      {% if car.photo_is_url %}
+        <img src="{{ car.photo_id }}" alt="{{ car.brand }} {{ car.model }}">
+      {% elif car.has_photo %}
+        Фото додано
+      {% else %}
+        Немає фото
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="grid stats-grid" aria-label="Статистика авто">
+    <article class="card"><h3>Перегляди</h3><div class="metric">{{ car.views or 0 }}</div></article>
+    <article class="card"><h3>Кліки телефону</h3><div class="metric">{{ car.phone_clicks or 0 }}</div></article>
+    <article class="card"><h3>Кліки сайту</h3><div class="metric">{{ car.site_clicks or 0 }}</div></article>
+    <article class="card"><h3>Заповненість</h3><div class="metric">{{ car.content_completeness or 0 }}%</div></article>
+  </section>
+
+  <section class="card">
+    <h2>Заповнення контенту</h2>
+    <div class="detail-badges">
+      <span class="badge status-success">Бренд</span>
+      <span class="badge status-success">Модель</span>
+      {% if car.has_description %}<span class="badge status-success">Опис</span>{% else %}<span class="badge status-waiting">Немає опису</span>{% endif %}
+      {% if car.has_photo %}<span class="badge status-success">Фото</span>{% else %}<span class="badge status-waiting">Немає фото</span>{% endif %}
+      {% if car.is_active %}<span class="badge status-success">Активне</span>{% else %}<span class="badge status-waiting">Вимкнене</span>{% endif %}
+      {% if car.has_is_catalog %}<span class="badge {% if car.is_catalog %}status-success{% else %}status-waiting{% endif %}">Каталог: {{ 'так' if car.is_catalog else 'ні' }}</span>{% endif %}
+    </div>
+  </section>
+</div>
+{% endblock %}

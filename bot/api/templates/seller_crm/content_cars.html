@@ -28,7 +28,7 @@
   <section class="workspace-hero" aria-labelledby="cars-title">
     <div>
       <h2 id="cars-title">Авто на розборі</h2>
-      <p class="section-note">Read-first workspace для донорських авто. Форми створення, редагування та фото залишаються у Telegram-боті.</p>
+      <p class="section-note">Керуйте існуючими донорськими авто. Створення авто та зміна фото поки залишаються окремими етапами.</p>
     </div>
     <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content">← Мій контент</a>
   </section>
@@ -114,8 +114,8 @@
               {% if not car.has_description %}<span class="badge status-waiting">Немає опису</span>{% endif %}
             </div>
             <div class="inventory-actions">
-              <span class="btn small ghost" aria-disabled="true">Детальніше</span>
-              <span class="btn small ghost" aria-disabled="true">Редагувати через Telegram</span>
+              <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/content/cars/{{ car.car_id }}">Детальніше</a>
+              <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/content/cars/{{ car.car_id }}/edit">Редагувати</a>
             </div>
           </div>
         </article>
