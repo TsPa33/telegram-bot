@@ -4,7 +4,7 @@ import os
 import secrets
 import tempfile
 from datetime import datetime, timedelta
-from urllib.parse import urlencode
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 from pathlib import Path
 from typing import Any
 
@@ -34,6 +34,7 @@ from bot.database.repositories.seller_crm_repo import (
     get_seller_crm_public_profile,
     get_seller_crm_marketplace_summary,
     get_seller_crm_settings_summary,
+    seller_has_crm_lead_access,
     list_seller_crm_cars,
     list_seller_crm_cars_inventory,
     list_seller_crm_marketplace_activity,
@@ -44,6 +45,11 @@ from bot.database.repositories.seller_crm_repo import (
     list_seller_crm_services,
     list_seller_crm_services_inventory,
     list_seller_crm_sources,
+)
+from bot.database.repositories.seller_lead_repo import (
+    cancel_seller_lead_notifications,
+    mark_seller_lead_action,
+    reopen_seller_lead_action,
 )
 from bot.database.repositories.service_repo import (
     create_service,
@@ -107,6 +113,36 @@ def _seller_crm_context(request: Request, **kwargs):
     context = {"request": request, "title": "CRM продавця"}
     context.update(kwargs)
     return context
+
+
+def _append_query(url: str, values: dict[str, str]) -> str:
+    parts = urlsplit(url)
+    query = dict(parse_qsl(parts.query, keep_blank_values=True))
+    query.update({key: value for key, value in values.items() if value})
+    return urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(query), parts.fragment))
+
+
+def _safe_crm_redirect_url(request: Request, crm_slug: str, fallback: str, next_url: str = "") -> str:
+    next_url = str(next_url or "") or request.headers.get("referer", "")
+    if next_url:
+        try:
+            parts = urlsplit(next_url)
+        except ValueError:
+            parts = None
+        if parts and not parts.scheme and not parts.netloc and parts.path.startswith(f"/crm/seller/{crm_slug}"):
+            return next_url
+        if parts and str(request.base_url).startswith(f"{parts.scheme}://{parts.netloc}") and parts.path.startswith(f"/crm/seller/{crm_slug}"):
+            return urlunsplit(("", "", parts.path, parts.query, parts.fragment))
+    return fallback
+
+
+def _lead_action_notice(action: str) -> str:
+    return {
+        "viewed": "Заявку позначено переглянутою.",
+        "declined": "Заявку відхилено локально для вашого CRM.",
+        "skipped": "Заявку пропущено локально для вашого CRM.",
+        "reopened": "Заявку повернуто в роботу.",
+    }.get(action, "Дію виконано.")
 
 
 def _is_expired(expires_at) -> bool:
@@ -280,6 +316,10 @@ def _prepare_marketplace_leads(rows) -> list[dict[str, Any]]:
             item["match_reasons_label"] = ", ".join(str(reason) for reason in match_reasons)
         else:
             item["match_reasons_label"] = None
+        status = item.get("seller_status")
+        item["can_mark_viewed"] = status == "new" and not item.get("has_viewed")
+        item["can_decline"] = status not in {"declined", "skipped", "selected"}
+        item["can_skip"] = status not in {"declined", "skipped", "selected"}
         prepared.append(item)
     return prepared
 
@@ -314,6 +354,10 @@ def _prepare_lead_detail(detail: dict[str, Any] | None) -> dict[str, Any] | None
     marketplace["state_class"] = "status-success" if marketplace.get("is_selected") else "status-waiting"
 
     seller_status = seller_state.get("seller_status")
+    prepared["can_mark_viewed"] = not seller_state.get("has_viewed")
+    prepared["can_decline"] = seller_status not in {"declined", "skipped", "selected"}
+    prepared["can_skip"] = seller_status not in {"declined", "skipped", "selected"}
+    prepared["can_reopen"] = seller_status in {"declined", "skipped"}
     prepared["may_respond"] = not marketplace.get("selected_other_seller") and (
         bool(offer) or seller_status not in {"declined", "skipped"}
     )
@@ -563,7 +607,13 @@ async def seller_crm_logout(request: Request):
 
 
 @router.get("/{crm_slug}/leads")
-async def seller_crm_marketplace_leads(request: Request, crm_slug: str, status: str = "new"):
+async def seller_crm_marketplace_leads(
+    request: Request,
+    crm_slug: str,
+    status: str = "new",
+    action_status: str | None = None,
+    action_error: str | None = None,
+):
     try:
         account, subscription = await _authorized_account(request, crm_slug)
     except HTTPException as exc:
@@ -601,12 +651,22 @@ async def seller_crm_marketplace_leads(request: Request, crm_slug: str, status: 
             lead_tabs=tabs,
             active_status=active_status,
             empty_message=active_tab["empty"],
+            action_status=action_status,
+            action_error=action_error,
         ),
     )
 
 
 @router.get("/{crm_slug}/leads/{request_id}")
-async def seller_crm_lead_detail(request: Request, crm_slug: str, request_id: str, offer_status: str | None = None, error: str | None = None):
+async def seller_crm_lead_detail(
+    request: Request,
+    crm_slug: str,
+    request_id: str,
+    offer_status: str | None = None,
+    error: str | None = None,
+    action_status: str | None = None,
+    action_error: str | None = None,
+):
     try:
         account, subscription = await _authorized_account(request, crm_slug)
     except HTTPException as exc:
@@ -640,8 +700,125 @@ async def seller_crm_lead_detail(request: Request, crm_slug: str, request_id: st
             lead=lead_detail,
             offer_status=offer_status,
             error=error,
+            action_status=action_status,
+            action_error=action_error,
         ),
     )
+
+
+async def _handle_seller_crm_lead_action(
+    request: Request,
+    crm_slug: str,
+    request_id: str,
+    action: str,
+    next_url: str = "",
+):
+    try:
+        account, _subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+
+    try:
+        parsed_request_id = int(request_id)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=404, detail="Lead not found")
+
+    fallback_url = f"/crm/seller/{crm_slug}/leads/{parsed_request_id}"
+    redirect_url = _safe_crm_redirect_url(request, crm_slug, fallback_url, next_url)
+    seller_id = int(account["seller_id"])
+
+    try:
+        has_access = await seller_has_crm_lead_access(seller_id, parsed_request_id)
+        if not has_access:
+            logger.warning(
+                "Blocked CRM seller lead action for inaccessible request seller_id=%s request_id=%s action=%s",
+                seller_id,
+                parsed_request_id,
+                action,
+            )
+            return RedirectResponse(
+                url=_append_query(redirect_url, {"action_error": "Заявку не знайдено або вона недоступна."}),
+                status_code=303,
+            )
+
+        if action == "reopened":
+            await reopen_seller_lead_action(seller_id=seller_id, request_id=parsed_request_id)
+        else:
+            repository_action = {"viewed": "viewed", "declined": "declined", "skipped": "skipped"}.get(action)
+            if not repository_action:
+                raise ValueError("Invalid CRM lead action")
+            await mark_seller_lead_action(
+                seller_id=seller_id,
+                request_id=parsed_request_id,
+                action=repository_action,
+                metadata={"source": "seller_crm"},
+            )
+            if repository_action == "declined":
+                await cancel_seller_lead_notifications(seller_id=seller_id, request_id=parsed_request_id)
+
+        logger.info(
+            "CRM seller lead action completed seller_id=%s request_id=%s action=%s",
+            seller_id,
+            parsed_request_id,
+            action,
+        )
+        return RedirectResponse(
+            url=_append_query(redirect_url, {"action_status": _lead_action_notice(action)}),
+            status_code=303,
+        )
+    except Exception:
+        logger.exception(
+            "CRM seller lead action failed seller_id=%s request_id=%s action=%s",
+            seller_id,
+            parsed_request_id,
+            action,
+        )
+        return RedirectResponse(
+            url=_append_query(redirect_url, {"action_error": "Не вдалося виконати дію. Спробуйте ще раз."}),
+            status_code=303,
+        )
+
+
+@router.post("/{crm_slug}/leads/{request_id}/view")
+async def seller_crm_mark_lead_viewed(
+    request: Request,
+    crm_slug: str,
+    request_id: str,
+    next_url: str = Form(""),
+):
+    return await _handle_seller_crm_lead_action(request, crm_slug, request_id, "viewed", next_url)
+
+
+@router.post("/{crm_slug}/leads/{request_id}/decline")
+async def seller_crm_decline_lead(
+    request: Request,
+    crm_slug: str,
+    request_id: str,
+    next_url: str = Form(""),
+):
+    return await _handle_seller_crm_lead_action(request, crm_slug, request_id, "declined", next_url)
+
+
+@router.post("/{crm_slug}/leads/{request_id}/skip")
+async def seller_crm_skip_lead(
+    request: Request,
+    crm_slug: str,
+    request_id: str,
+    next_url: str = Form(""),
+):
+    return await _handle_seller_crm_lead_action(request, crm_slug, request_id, "skipped", next_url)
+
+
+@router.post("/{crm_slug}/leads/{request_id}/reopen")
+async def seller_crm_reopen_lead(
+    request: Request,
+    crm_slug: str,
+    request_id: str,
+    next_url: str = Form(""),
+):
+    return await _handle_seller_crm_lead_action(request, crm_slug, request_id, "reopened", next_url)
 
 
 @router.post("/{crm_slug}/leads/{request_id}/offer")

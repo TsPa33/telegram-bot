@@ -854,6 +854,7 @@ async def list_seller_crm_marketplace_leads(
                    routed_match_score AS match_score,
                    routed_match_reasons AS match_reasons,
                    buyer_phone_visible,
+                   has_viewed, has_offered, has_declined, has_skipped,
                    GREATEST(
                        created_at,
                        COALESCE(offer_created_at, created_at),
@@ -881,7 +882,8 @@ async def list_seller_crm_marketplace_leads(
         )
         SELECT request_id, title, city, category, brand, model, description, urgency,
                marketplace_status, created_at, seller_status, offer_status, price_offer,
-               offer_message, match_score, match_reasons, buyer_phone_visible
+               offer_message, match_score, match_reasons, buyer_phone_visible,
+               has_viewed, has_offered, has_declined, has_skipped
         FROM classified
         ORDER BY sort_at DESC, request_id DESC
         LIMIT $3 OFFSET $4
@@ -891,6 +893,48 @@ async def list_seller_crm_marketplace_leads(
         normalized_limit,
         normalized_offset,
     )
+
+async def seller_has_crm_lead_access(seller_id: int, request_id: int) -> bool:
+    row = await fetchrow(
+        """
+        SELECT EXISTS (
+            SELECT 1
+            FROM buyer_requests br
+            WHERE br.id = $2
+              AND br.entity_type = 'marketplace_request'
+              AND (
+                  EXISTS (
+                      SELECT 1
+                      FROM marketplace_notification_events mne
+                      WHERE mne.request_id = br.id
+                        AND mne.seller_id = $1
+                        AND mne.event_type = 'buyer_request_created'
+                  )
+                  OR EXISTS (
+                      SELECT 1
+                      FROM seller_lead_actions sla
+                      WHERE sla.request_id = br.id
+                        AND sla.seller_id = $1
+                  )
+                  OR EXISTS (
+                      SELECT 1
+                      FROM buyer_request_offers bro
+                      WHERE bro.request_id = br.id
+                        AND bro.seller_id = $1
+                  )
+                  OR EXISTS (
+                      SELECT 1
+                      FROM marketplace_matches mm
+                      WHERE mm.request_id = br.id
+                        AND mm.seller_id = $1
+                  )
+              )
+        ) AS has_access
+        """,
+        seller_id,
+        request_id,
+    )
+    return bool(row and row["has_access"])
 
 
 async def list_seller_crm_offers(
@@ -1403,6 +1447,10 @@ async def get_seller_crm_lead_detail(seller_id: int, request_id: int):
             "responded_at": lead_data.get("responded_at"),
             "declined_at": lead_data.get("declined_at"),
             "skipped_at": lead_data.get("skipped_at"),
+            "has_viewed": bool(lead_data.get("has_viewed")),
+            "has_offered": bool(lead_data.get("has_offered")),
+            "has_declined": bool(lead_data.get("has_declined")),
+            "has_skipped": bool(lead_data.get("has_skipped")),
         },
         "offer": offer,
         "marketplace": {

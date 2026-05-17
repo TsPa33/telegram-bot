@@ -143,6 +143,18 @@
       letter-spacing: -.04em;
     }
 
+    .lead-crm-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      min-width: 0;
+    }
+
+    .lead-crm-actions form {
+      margin: 0;
+    }
+
     .offer-form {
       display: grid;
       gap: 10px;
@@ -256,7 +268,9 @@
       .status-grid { grid-template-columns: 1fr; }
       .card { padding: 14px; border-radius: 18px; }
       .lead-actions-mobile { display: grid; }
-      .lead-actions-mobile .btn { width: 100%; justify-content: center; }
+      .lead-actions-mobile .btn,
+      .lead-crm-actions .btn { width: 100%; justify-content: center; }
+      .lead-crm-actions form { flex: 1 1 100%; }
       .contact-row { display: grid; gap: 4px; }
     }
   </style>
@@ -265,7 +279,9 @@
     {% if offer_status %}
       <div class="notice">{{ "Пропозицію оновлено." if offer_status == "updated" else "Пропозицію надіслано покупцю." if offer_status == "sent" else "Пропозицію збережено. Якщо Telegram недоступний, покупець побачить її в заявці." }}</div>
     {% endif %}
+    {% if action_status %}<div class="notice">{{ action_status }}</div>{% endif %}
     {% if error %}<div class="notice error">{{ error }}</div>{% endif %}
+    {% if action_error %}<div class="notice error">{{ action_error }}</div>{% endif %}
     <nav class="lead-breadcrumbs" aria-label="Навігація">
       <a href="/crm/seller/{{ account.crm_slug }}">Робочий простір</a>
       <span>→</span>
@@ -287,6 +303,32 @@
           <div class="detail-chip"><span>Створено</span><b>{{ lead.request.created_at.strftime("%d.%m.%Y %H:%M") if lead.request.created_at else "—" }}</b></div>
           <div class="detail-chip"><span>Терміновість</span><b>{{ lead.request.urgency or "Звичайна" }}</b></div>
           <div class="detail-chip"><span>Категорія</span><b>{{ lead.request.category or "Не вказано" }}</b></div>
+        </div>
+        <div class="lead-crm-actions" aria-label="Дії із заявкою">
+          {% if lead.can_mark_viewed %}
+            <form method="post" action="/crm/seller/{{ account.crm_slug }}/leads/{{ lead.request.request_id }}/view">
+              <input type="hidden" name="next_url" value="{{ request.url.path }}">
+              <button class="btn small ghost" type="submit">Позначити переглянуто</button>
+            </form>
+          {% endif %}
+          {% if lead.can_decline %}
+            <form method="post" action="/crm/seller/{{ account.crm_slug }}/leads/{{ lead.request.request_id }}/decline">
+              <input type="hidden" name="next_url" value="{{ request.url.path }}">
+              <button class="btn small ghost" type="submit">Відхилити</button>
+            </form>
+          {% endif %}
+          {% if lead.can_skip %}
+            <form method="post" action="/crm/seller/{{ account.crm_slug }}/leads/{{ lead.request.request_id }}/skip">
+              <input type="hidden" name="next_url" value="{{ request.url.path }}">
+              <button class="btn small ghost" type="submit">Пропустити</button>
+            </form>
+          {% endif %}
+          {% if lead.can_reopen %}
+            <form method="post" action="/crm/seller/{{ account.crm_slug }}/leads/{{ lead.request.request_id }}/reopen">
+              <input type="hidden" name="next_url" value="{{ request.url.path }}">
+              <button class="btn small" type="submit">Повернути в роботу</button>
+            </form>
+          {% endif %}
         </div>
       </div>
       <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/leads">Назад до заявок</a>
