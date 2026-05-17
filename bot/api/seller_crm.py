@@ -106,6 +106,10 @@ from bot.domain.statuses import (
     SELLER_LEAD_ACTION_OFFERED,
     SELLER_LEAD_ACTION_SKIPPED,
     SELLER_LEAD_ACTION_VIEWED,
+    get_car_display_status,
+    get_crm_lead_status_meta,
+    get_crm_offer_status_meta,
+    get_service_display_status,
     is_car_active_status,
     normalize_text_status,
 )
@@ -447,26 +451,14 @@ def _format_price(value) -> str:
     return f"{amount:,.2f}".replace(",", " ")
 
 
-def _lead_status_meta(status: str | None) -> dict[str, str]:
-    mapping = {
-        CRM_LEAD_STATUS_SELECTED: {"label": "Обрано", "class": "status-success"},
-        CRM_LEAD_STATUS_DECLINED: {"label": "Відхилено", "class": "status-rejected"},
-        CRM_LEAD_STATUS_SKIPPED: {"label": "Пропущено", "class": "status-rejected"},
-        CRM_LEAD_STATUS_REPLIED: {"label": "Відповіли", "class": "status-replied"},
-        CRM_LEAD_STATUS_IN_WORK: {"label": "В роботі", "class": "status-viewed"},
-        CRM_LEAD_STATUS_NEW: {"label": "Нова", "class": "status-new"},
-    }
-    return mapping.get(status or CRM_LEAD_STATUS_NEW, mapping[CRM_LEAD_STATUS_NEW])
+def _lead_status_meta(status: str | None) -> dict[str, Any]:
+    meta = get_crm_lead_status_meta(status or CRM_LEAD_STATUS_NEW)
+    return {**meta, "class": meta["css_class"]}
 
 
-def _offer_status_meta(status: str | None) -> dict[str, str]:
-    mapping = {
-        BUYER_OFFER_STATUS_ACCEPTED: {"label": "selected", "class": "status-success"},
-        "selected": {"label": "selected", "class": "status-success"},
-        BUYER_OFFER_STATUS_REJECTED: {"label": "rejected", "class": "status-rejected"},
-        BUYER_OFFER_STATUS_PENDING: {"label": "pending", "class": "status-waiting"},
-    }
-    return mapping.get(status or "", {"label": status or "—", "class": ""})
+def _offer_status_meta(status: str | None) -> dict[str, Any]:
+    meta = get_crm_offer_status_meta(status or CRM_OFFER_STATUS_ACTIVE)
+    return {**meta, "class": meta["css_class"]}
 
 
 def _prepare_marketplace_leads(rows) -> list[dict[str, Any]]:
@@ -545,14 +537,20 @@ def _prepare_lead_detail(detail: dict[str, Any] | None) -> dict[str, Any] | None
     return prepared
 
 
-def _offer_workspace_status_meta(offer: dict[str, Any]) -> dict[str, str]:
+def _offer_workspace_status_meta(offer: dict[str, Any]) -> dict[str, Any]:
+    raw_status = offer.get("offer_status") or offer.get("status")
     if offer.get("is_selected"):
-        return {"label": "Обрано покупцем", "class": "status-success", "state": "selected"}
-    if offer.get("offer_status") == BUYER_OFFER_STATUS_REJECTED or offer.get("status") == BUYER_OFFER_STATUS_REJECTED:
-        return {"label": "Не обрано", "class": "status-rejected", "state": "rejected"}
-    if offer.get("offer_status") == BUYER_OFFER_STATUS_ACCEPTED or offer.get("status") == BUYER_OFFER_STATUS_ACCEPTED:
-        return {"label": "Обрано покупцем", "class": "status-success", "state": "selected"}
-    return {"label": "Очікує рішення", "class": "status-waiting", "state": "waiting"}
+        raw_status = CRM_OFFER_STATUS_SELECTED
+    elif raw_status == BUYER_OFFER_STATUS_ACCEPTED:
+        raw_status = CRM_OFFER_STATUS_SELECTED
+    elif raw_status == BUYER_OFFER_STATUS_REJECTED:
+        raw_status = CRM_OFFER_STATUS_REJECTED
+    else:
+        raw_status = CRM_OFFER_STATUS_ACTIVE
+
+    meta = get_crm_offer_status_meta(raw_status)
+    state = "selected" if raw_status == CRM_OFFER_STATUS_SELECTED else "rejected" if raw_status == CRM_OFFER_STATUS_REJECTED else "waiting"
+    return {**meta, "class": meta["css_class"], "state": state}
 
 
 def _prepare_offer_cards(rows) -> list[dict[str, Any]]:
@@ -833,6 +831,7 @@ async def seller_crm_marketplace_leads(
     tabs = [
         {
             **tab,
+            "meta": get_crm_lead_status_meta(tab["key"]),
             "active": tab["key"] == active_status,
             "href": f"/crm/seller/{crm_slug}/leads?status={tab['key']}",
         }
@@ -1098,6 +1097,7 @@ async def seller_crm_offers(request: Request, crm_slug: str, status: str = CRM_O
     tabs = [
         {
             **tab,
+            "meta": get_crm_offer_status_meta(tab["key"]),
             "active": tab["key"] == active_status,
             "href": f"/crm/seller/{crm_slug}/offers?status={tab['key']}",
         }
@@ -1223,13 +1223,17 @@ async def seller_crm_content_services(request: Request, crm_slug: str):
     for service in services:
         detail = await get_seller_service_detail(seller_id=seller_id, service_id=service["service_id"])
         if detail:
-            service["is_active"] = detail.get("is_active", True)
+            status_meta = get_service_display_status(detail.get("is_active", True))
             service["status_supported"] = detail.get("status_supported", False)
             service["content_completeness"] = detail.get("content_completeness", 0)
         else:
-            service["is_active"] = True
+            status_meta = get_service_display_status(True)
             service["status_supported"] = False
             service["content_completeness"] = 0
+        service["status_meta"] = status_meta
+        service["status_label"] = status_meta["label"]
+        service["status_class"] = status_meta["css_class"]
+        service["is_active"] = status_meta["is_active"]
         photo_id = service.get("photo_id") or ""
         service["photo_is_url"] = isinstance(photo_id, str) and photo_id.startswith(("http://", "https://"))
     totals = {
@@ -1844,7 +1848,11 @@ async def seller_crm_content_cars(request: Request, crm_slug: str):
     summary = dict(await get_seller_crm_content_summary(seller_id) or {})
     cars = [dict(car) for car in await list_seller_crm_cars_inventory(seller_id)]
     for car in cars:
-        car["status_label"] = CRM_OFFER_STATUS_ACTIVE if is_car_active_status(car.get("status") if car.get("status") is not None else CRM_OFFER_STATUS_ACTIVE) else "inactive"
+        status_meta = get_car_display_status(car.get("status"))
+        car["status_meta"] = status_meta
+        car["status_label"] = status_meta["label"]
+        car["status_class"] = status_meta["css_class"]
+        car["is_active"] = status_meta["is_active"]
         photo_id = car.get("photo_id") or ""
         car["photo_is_url"] = isinstance(photo_id, str) and photo_id.startswith(("http://", "https://"))
     totals = {

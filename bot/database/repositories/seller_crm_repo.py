@@ -3,6 +3,7 @@ import json
 import logging
 
 from bot.database.base import execute, fetch, fetchrow
+from bot.domain.statuses import get_car_display_status
 
 logger = logging.getLogger(__name__)
 
@@ -1591,12 +1592,7 @@ def _clean_car_description(value: str | None) -> str | None:
 
 
 def _normalize_car_status_for_display(value) -> str:
-    raw = str(value if value is not None else "active").strip().lower()
-    if raw in {"1", "active", "enabled", "published", "true"}:
-        return "active"
-    if raw in {"0", "inactive", "disabled", "archived", "false"}:
-        return "inactive"
-    return raw or "active"
+    return get_car_display_status(value)["status"]
 
 
 def _car_status_db_value(status: str, status_type: str | None):
@@ -1685,15 +1681,18 @@ async def create_seller_crm_car(
 
 
 def _is_car_active_status(value) -> bool:
-    return _normalize_car_status_for_display(value) == "active"
+    return get_car_display_status(value)["is_active"]
 
 
 def _prepare_seller_crm_car(row, *, has_is_catalog: bool) -> dict | None:
     if not row:
         return None
     car = dict(row)
-    car["status_label"] = _normalize_car_status_for_display(car.get("status"))
-    car["is_active"] = _is_car_active_status(car.get("status"))
+    status_meta = get_car_display_status(car.get("status"))
+    car["status_meta"] = status_meta
+    car["status_label"] = status_meta["label"]
+    car["status_class"] = status_meta["css_class"]
+    car["is_active"] = status_meta["is_active"]
     car["has_is_catalog"] = has_is_catalog
     car["is_catalog"] = bool(car.get("is_catalog")) if has_is_catalog else False
     car["has_photo"] = bool(car.get("has_photo"))
