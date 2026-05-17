@@ -504,10 +504,32 @@ async def get_seller_crm_analytics(seller_id: int, days: int = 30):
               AND bro.created_at >= bounds.since
               AND bro.created_at >= COALESCE(route_event.created_at, br.created_at)
         ), car_counts AS (
-            SELECT COUNT(*) FILTER (WHERE COALESCE(status, 1) = 1)::int AS active_cars,
-                   COALESCE(SUM(views) FILTER (WHERE COALESCE(status, 1) = 1), 0)::int AS car_views,
-                   COALESCE(SUM(phone_clicks) FILTER (WHERE COALESCE(status, 1) = 1), 0)::int AS car_phone_clicks,
-                   COALESCE(SUM(site_clicks) FILTER (WHERE COALESCE(status, 1) = 1), 0)::int AS car_site_clicks
+            SELECT 
+                COUNT(*) FILTER (
+                    WHERE COALESCE(status, 'active') = 'active'
+                )::int AS active_cars,
+                
+                COALESCE(
+                    SUM(views) FILTER (
+                        WHERE COALESCE(status, 'active') = 'active'
+                   ),
+                   0
+                )::int AS car_views,    
+                
+                COALESCE(
+                    SUM(phone_clicks) FILTER (
+                        WHERE COALESCE(status, 'active') = 'active'
+                   ),
+                   0
+                )::int AS car_phone_clicks,
+                
+                COALESCE(
+                    SUM(site_clicks) FILTER (
+                        WHERE COALESCE(status, 'active') = 'active'
+                    ),
+                    0
+                )::int AS car_site_clicks
+                
             FROM seller_cars
             WHERE seller_id = $1
         ), service_counts AS (
