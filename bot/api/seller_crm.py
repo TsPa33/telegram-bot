@@ -715,7 +715,7 @@ def _request_status_label(row) -> str:
     if offer_status == BUYER_OFFER_STATUS_ACCEPTED:
         return "Обрано покупцем"
     if offer_status == BUYER_OFFER_STATUS_PENDING:
-        return "Пропозиція надіслана"
+        return "Відповідь надіслана"
     if offer_status == BUYER_OFFER_STATUS_REJECTED:
         return "Не обрано"
     if action == SELLER_LEAD_ACTION_DECLINED:
@@ -723,27 +723,53 @@ def _request_status_label(row) -> str:
     if action == SELLER_LEAD_ACTION_SKIPPED:
         return "Пропущено"
     if action == SELLER_LEAD_ACTION_VIEWED:
-        return "Переглянуто"
-    return "Очікує відповіді"
+        return "Покупець очікує"
+    return "Нова · треба відповісти"
+
+
+def _request_operational_state(row) -> dict[str, str | bool]:
+    offer_status = row.get("offer_status")
+    action = row.get("seller_action")
+    if offer_status == BUYER_OFFER_STATUS_ACCEPTED:
+        return {
+            "class": "status-success",
+            "action": "Продовжити діалог",
+            "tone": "buyer-selected",
+            "needs_attention": True,
+        }
+    if offer_status == BUYER_OFFER_STATUS_PENDING:
+        return {
+            "class": "status-replied",
+            "action": "Відкрити діалог",
+            "tone": "active-dialog",
+            "needs_attention": False,
+        }
+    if action == SELLER_LEAD_ACTION_VIEWED:
+        return {
+            "class": "status-waiting",
+            "action": "Відповісти",
+            "tone": "buyer-waiting",
+            "needs_attention": True,
+        }
+    if action in {SELLER_LEAD_ACTION_DECLINED, SELLER_LEAD_ACTION_SKIPPED} or offer_status == BUYER_OFFER_STATUS_REJECTED:
+        return {
+            "class": "status-viewed",
+            "action": "Переглянути",
+            "tone": "secondary",
+            "needs_attention": False,
+        }
+    return {"class": "status-new", "action": "Відповісти", "tone": "new-lead", "needs_attention": True}
 
 
 def _activity_label(row) -> str:
     action = row.get("action")
-    status = row.get("status")
     labels = {
-        "buyer_request_created": "Нова заявка для вас",
-        "buyer_offer_created": "Пропозицію надіслано покупцю",
+        "buyer_request_created": "Нова заявка · покупець очікує",
+        "buyer_offer_created": "Відповідь надіслано покупцю",
         "buyer_offer_accepted": "Покупець обрав вашу пропозицію",
-        SELLER_LEAD_ACTION_VIEWED: "Заявку переглянуто",
-        SELLER_LEAD_ACTION_OFFERED: "Ви відповіли на заявку",
-        SELLER_LEAD_ACTION_DECLINED: "Заявку відхилено",
-        SELLER_LEAD_ACTION_SKIPPED: "Заявку пропущено",
+        SELLER_LEAD_ACTION_OFFERED: "Діалог продовжено",
     }
-    label = labels.get(action, "Оновлення заявки")
-    if row.get("source") == "notification" and status:
-        status_labels = {NOTIFICATION_STATUS_SENT: "сповіщення доставлено", NOTIFICATION_STATUS_PENDING: "сповіщення очікує", NOTIFICATION_STATUS_FAILED: "сповіщення не доставлено", NOTIFICATION_STATUS_CANCELLED: "сповіщення скасовано"}
-        label = f"{label} · {status_labels.get(status, status)}"
-    return label
+    return labels.get(action, "Важливе оновлення заявки")
 
 
 def _prepare_marketplace_requests(rows) -> list[dict[str, Any]]:
@@ -753,6 +779,11 @@ def _prepare_marketplace_requests(rows) -> list[dict[str, Any]]:
         item["title"] = _request_title(item)
         item["short_description"] = item.get("description") or item.get("message") or "Покупець не додав опис"
         item["status_label"] = _request_status_label(item)
+        operational_state = _request_operational_state(item)
+        item["status_class"] = operational_state["class"]
+        item["primary_action_label"] = operational_state["action"]
+        item["operational_tone"] = operational_state["tone"]
+        item["needs_attention"] = operational_state["needs_attention"]
         prepared.append(item)
     return prepared
 
@@ -799,6 +830,22 @@ def _prepare_marketplace_leads(rows) -> list[dict[str, Any]]:
         item["can_mark_viewed"] = status == "new" and not item.get("has_viewed")
         item["can_decline"] = status not in {CRM_LEAD_STATUS_DECLINED, CRM_LEAD_STATUS_SKIPPED, CRM_LEAD_STATUS_SELECTED}
         item["can_skip"] = status not in {CRM_LEAD_STATUS_DECLINED, CRM_LEAD_STATUS_SKIPPED, CRM_LEAD_STATUS_SELECTED}
+        if status in {CRM_LEAD_STATUS_NEW, CRM_LEAD_STATUS_IN_WORK}:
+            item["next_action_label"] = "Відповісти покупцю"
+            item["attention_label"] = "Потребує дії"
+            item["attention_class"] = "status-new" if status == CRM_LEAD_STATUS_NEW else "status-waiting"
+        elif status == CRM_LEAD_STATUS_REPLIED:
+            item["next_action_label"] = "Продовжити діалог"
+            item["attention_label"] = "Активний діалог"
+            item["attention_class"] = "status-replied"
+        elif status == CRM_LEAD_STATUS_SELECTED:
+            item["next_action_label"] = "Відкрити контакт"
+            item["attention_label"] = "Покупець обрав вас"
+            item["attention_class"] = "status-success"
+        else:
+            item["next_action_label"] = "Переглянути"
+            item["attention_label"] = "Другорядне"
+            item["attention_class"] = "status-viewed"
         prepared.append(item)
     return prepared
 
