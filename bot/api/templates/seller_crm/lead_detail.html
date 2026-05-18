@@ -270,6 +270,122 @@
       font-weight: 600;
     }
 
+
+
+    .ops-panel {
+      display: grid;
+      gap: 16px;
+      border-color: rgba(34,211,238,.2);
+      background: linear-gradient(135deg, rgba(34,211,238,.08), rgba(125,211,176,.035)), var(--panel);
+    }
+
+    .ops-head {
+      display: grid;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .ops-head h2 {
+      margin: 0;
+      font-size: clamp(22px, 3vw, 32px);
+      line-height: 1.12;
+      letter-spacing: -.04em;
+      overflow-wrap: anywhere;
+    }
+
+    .buyer-need {
+      display: grid;
+      gap: 8px;
+      padding: 14px;
+      border: 1px solid rgba(148,163,184,.14);
+      border-radius: 18px;
+      background: rgba(10,22,40,.28);
+    }
+
+    .buyer-need .detail-text { color: var(--text); }
+
+    .compact-facts {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .ops-status-row {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .ops-status-card {
+      min-width: 0;
+      border: 1px solid rgba(125,211,176,.2);
+      border-radius: 16px;
+      background: rgba(125,211,176,.055);
+      padding: 12px;
+    }
+
+    .ops-status-card strong {
+      display: block;
+      color: var(--text);
+      font-size: 15px;
+      line-height: 1.3;
+      overflow-wrap: anywhere;
+    }
+
+    .ops-status-card span {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .primary-dialog-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .secondary-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding-top: 2px;
+    }
+
+    .primary-dialog-actions form,
+    .secondary-actions form { margin: 0; }
+
+    .contact-card {
+      display: grid;
+      gap: 10px;
+    }
+
+    .secondary-details {
+      display: grid;
+      gap: 12px;
+    }
+
+    .secondary-details summary {
+      cursor: pointer;
+      color: var(--text);
+      font-weight: 800;
+      list-style: none;
+    }
+
+    .secondary-details summary::-webkit-details-marker { display: none; }
+
+    .secondary-details summary::after {
+      content: "Розгорнути";
+      float: right;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .secondary-details[open] summary::after { content: "Згорнути"; }
+
     .lead-actions-mobile {
       position: sticky;
       bottom: 10px;
@@ -281,12 +397,16 @@
       .lead-summary,
       .lead-layout { grid-template-columns: 1fr; }
       .lead-meta-grid,
-      .status-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .status-grid,
+      .compact-facts,
+      .ops-status-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
 
     @media (max-width: 560px) {
       .lead-meta-grid,
-      .status-grid { grid-template-columns: 1fr; }
+      .status-grid,
+      .compact-facts,
+      .ops-status-row { grid-template-columns: 1fr; }
       .card { padding: 14px; border-radius: 18px; }
       .lead-actions-mobile { display: grid; }
       .lead-actions-mobile .btn,
@@ -311,102 +431,90 @@
       <span>Заявка #{{ lead.request.request_id }}</span>
     </nav>
 
-    <section class="card lead-summary" aria-labelledby="summary-title">
-      <div class="lead-title-stack">
-        <div class="lead-tags">
-          <span class="badge {{ lead.seller_state.status_class }}">{{ lead.seller_state.status_label }}</span>
-          {% if lead.marketplace.is_selected %}<span class="badge status-success">Обрано покупцем</span>{% endif %}
-          {% if lead.request.match_score is not none %}<span class="badge">Релевантність {{ lead.request.match_score }}</span>{% endif %}
-        </div>
-        <h2 id="summary-title">{{ lead.request.title }}</h2>
-        <div class="lead-meta-grid">
-          <div class="detail-chip"><span>Місто</span><b>{{ lead.request.city or "Не вказано" }}</b></div>
-          <div class="detail-chip"><span>Створено</span><b>{{ lead.request.created_at.strftime("%d.%m.%Y %H:%M") if lead.request.created_at else "—" }}</b></div>
-          <div class="detail-chip"><span>Терміновість</span><b>{{ lead.request.urgency or "Звичайна" }}</b></div>
-          <div class="detail-chip"><span>Категорія</span><b>{{ lead.request.category or "Не вказано" }}</b></div>
-        </div>
-        <div class="lead-crm-actions" aria-label="Дії із заявкою">
-          {% if lead.can_mark_viewed %}
-            <form method="post" action="/crm/seller/{{ account.crm_slug }}/leads/{{ lead.request.request_id }}/view">
-              <input type="hidden" name="next_url" value="{{ request.url.path }}">
-              <button class="btn small ghost" type="submit">Позначити переглянуто</button>
-            </form>
-          {% endif %}
-          {% if lead.can_decline %}
-            <form method="post" action="/crm/seller/{{ account.crm_slug }}/leads/{{ lead.request.request_id }}/decline">
-              <input type="hidden" name="next_url" value="{{ request.url.path }}">
-              <button class="btn small ghost" type="submit">Відхилити</button>
-            </form>
-          {% endif %}
-          {% if lead.can_skip %}
-            <form method="post" action="/crm/seller/{{ account.crm_slug }}/leads/{{ lead.request.request_id }}/skip">
-              <input type="hidden" name="next_url" value="{{ request.url.path }}">
-              <button class="btn small ghost" type="submit">Пропустити</button>
-            </form>
-          {% endif %}
-          {% if lead.can_reopen %}
-            <form method="post" action="/crm/seller/{{ account.crm_slug }}/leads/{{ lead.request.request_id }}/reopen">
-              <input type="hidden" name="next_url" value="{{ request.url.path }}">
-              <button class="btn small" type="submit">Повернути в роботу</button>
-            </form>
-          {% endif %}
-        </div>
-      </div>
-      <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/leads">Назад до заявок</a>
-    </section>
-
     <div class="lead-layout">
       <div class="detail-stack">
-        <section class="card" aria-labelledby="request-details-title">
-          <h2 id="request-details-title" class="section-heading">Деталі заявки покупця</h2>
-          <p class="detail-text">{{ lead.request.description }}</p>
-          <div class="lead-meta-grid" style="margin-top:14px">
-            <div class="detail-chip"><span>Марка</span><b>{{ lead.request.brand or "—" }}</b></div>
-            <div class="detail-chip"><span>Модель</span><b>{{ lead.request.model or "—" }}</b></div>
-            <div class="detail-chip"><span>VIN</span><b>{{ lead.request.vin or "Не вказано" }}</b></div>
-            <div class="detail-chip"><span>Чому вам підходить</span><b>{{ lead.request.match_reasons_label or "Без додаткових даних" }}</b></div>
+        <section class="card ops-panel" aria-labelledby="summary-title">
+          <div class="ops-head">
+            <div class="lead-tags">
+              <span class="badge {{ lead.seller_state.status_class }}">{{ lead.seller_state.status_label }}</span>
+              {% if lead.offer %}<span class="badge {{ lead.offer.status_class }}">{{ lead.offer.status_label }}</span>{% endif %}
+              {% if lead.marketplace.is_selected %}<span class="badge status-success">Обрано покупцем</span>{% endif %}
+            </div>
+            <h2 id="summary-title">{{ lead.request.title }}</h2>
           </div>
 
-          <h3 style="margin-top:16px">Контакти покупця</h3>
-          {% if lead.request.buyer_contact %}
-            <ul class="contact-list">
-              {% if lead.request.buyer_contact.name %}<li class="contact-row"><span class="field-label">Ім’я</span><b class="field-value">{{ lead.request.buyer_contact.name }}</b></li>{% endif %}
-              {% if lead.request.buyer_contact.phone %}<li class="contact-row"><span class="field-label">Телефон</span><b class="field-value">{{ lead.request.buyer_contact.phone }}</b></li>{% endif %}
-              {% if lead.request.buyer_contact.telegram %}<li class="contact-row"><span class="field-label">Telegram</span><b class="field-value">{{ lead.request.buyer_contact.telegram }}</b></li>{% endif %}
-            </ul>
-          {% else %}
-            <div class="empty-state">Контакти покупця поки недоступні. Вони відкриваються після вибору покупця або прийнятої пропозиції.</div>
-          {% endif %}
+          <div class="buyer-need" aria-label="Що потрібно покупцю">
+            <span class="field-label">Потреба покупця</span>
+            <p class="detail-text">{{ lead.request.description }}</p>
+          </div>
+
+          <div class="compact-facts" aria-label="Ключові дані заявки">
+            <div class="detail-chip"><span>Місто</span><b>{{ lead.request.city or "Не вказано" }}</b></div>
+            <div class="detail-chip"><span>Терміновість</span><b>{{ lead.request.urgency or "Звичайна" }}</b></div>
+            <div class="detail-chip"><span>Категорія</span><b>{{ lead.request.category or "Не вказано" }}</b></div>
+            <div class="detail-chip"><span>Авто</span><b>{{ [lead.request.brand, lead.request.model]|select|join(' ') or "Не вказано" }}</b></div>
+          </div>
+
+          <div class="ops-status-row" aria-label="Операційний стан">
+            <div class="ops-status-card">
+              <strong>{{ lead.seller_state.status_label }}</strong>
+              <span>{{ "Очікує відповіді" if lead.may_respond and not lead.offer else "Відповідь надіслана" if lead.offer else lead.response_block_reason or "Стан роботи із заявкою" }}</span>
+            </div>
+            <div class="ops-status-card">
+              <strong>{{ lead.offer.status_label if lead.offer else "Пропозиції ще немає" }}</strong>
+              <span>{{ "Можна оновити відповідь" if lead.may_respond and lead.offer else "Натисніть основну дію, щоб відповісти" if lead.may_respond else "Діалог без активної форми відповіді" }}</span>
+            </div>
+            <div class="ops-status-card">
+              <strong>{{ lead.marketplace.state_label }}</strong>
+              <span>{{ "Контакти відкриті нижче" if lead.request.buyer_contact else "Контакти відкриються за правилами заявки" }}</span>
+            </div>
+          </div>
+
+          <div class="primary-dialog-actions" aria-label="Основна дія">
+            {% if lead.may_respond %}
+              <a class="btn" href="#reply-form">{{ "Оновити відповідь" if lead.offer else "Написати відповідь" }}</a>
+            {% elif lead.offer %}
+              <a class="btn" href="/crm/seller/{{ account.crm_slug }}/offers/{{ lead.offer.offer_id }}">Перейти до переписки</a>
+            {% elif lead.can_reopen %}
+              <form method="post" action="/crm/seller/{{ account.crm_slug }}/leads/{{ lead.request.request_id }}/reopen">
+                <input type="hidden" name="next_url" value="{{ request.url.path }}">
+                <button class="btn" type="submit">Повернути в роботу</button>
+              </form>
+            {% else %}
+              <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/leads">Назад до заявок</a>
+            {% endif %}
+            <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/leads">Назад до заявок</a>
+          </div>
+
+          <div class="secondary-actions" aria-label="Другорядні дії">
+            {% if lead.can_mark_viewed %}
+              <form method="post" action="/crm/seller/{{ account.crm_slug }}/leads/{{ lead.request.request_id }}/view">
+                <input type="hidden" name="next_url" value="{{ request.url.path }}">
+                <button class="btn small ghost" type="submit">Позначити переглянуто</button>
+              </form>
+            {% endif %}
+            {% if lead.can_decline %}
+              <form method="post" action="/crm/seller/{{ account.crm_slug }}/leads/{{ lead.request.request_id }}/decline">
+                <input type="hidden" name="next_url" value="{{ request.url.path }}">
+                <button class="btn small ghost" type="submit">Відхилити</button>
+              </form>
+            {% endif %}
+            {% if lead.can_skip %}
+              <form method="post" action="/crm/seller/{{ account.crm_slug }}/leads/{{ lead.request.request_id }}/skip">
+                <input type="hidden" name="next_url" value="{{ request.url.path }}">
+                <button class="btn small ghost" type="submit">Пропустити</button>
+              </form>
+            {% endif %}
+          </div>
         </section>
 
-        <section class="card" aria-labelledby="timeline-title">
-          <h2 id="timeline-title" class="section-heading">Активність</h2>
-          {% if lead.timeline %}
-            <ol class="timeline-list">
-              {% for event in lead.timeline %}
-                <li class="timeline-item">
-                  <span class="timeline-dot" aria-hidden="true"></span>
-                  <div class="timeline-body">
-                    <b>{{ event.label }}</b>
-                    <span>{{ event.created_at.strftime("%d.%m.%Y %H:%M") if event.created_at else "—" }}</span>
-                  </div>
-                </li>
-              {% endfor %}
-            </ol>
-          {% else %}
-            <div class="empty-state">Подій по цій заявці ще немає.</div>
-          {% endif %}
-        </section>
-      </div>
-
-      <aside class="detail-stack">
         <section class="card" aria-labelledby="offer-title">
-          <h2 id="offer-title" class="section-heading">Ваша пропозиція</h2>
+          <h2 id="offer-title" class="section-heading">Діалог і відповідь продавця</h2>
 
           {% if lead.selected_this_seller %}
             <div class="offer-state offer-state-success">
               <b>Покупець обрав вашу пропозицію</b>
-              <span>Заявка перейшла у вибрані, тому редагування відповіді більше недоступне.</span>
+              <span>Заявка перейшла у вибрані, тому редагування відповіді більше недоступне. Контакти покупця показані в єдиному блоці праворуч.</span>
             </div>
             {% if lead.offer %}
               <div class="offer-card">
@@ -418,18 +526,8 @@
                 <p class="detail-text">{{ lead.offer.comment or "Без коментаря" }}</p>
                 <span class="muted">Надіслано {{ lead.offer.created_at.strftime("%d.%m.%Y %H:%M") if lead.offer.created_at else "—" }}</span>
                 <div class="request-actions" style="margin-top:12px">
-                  <a class="btn small" href="/crm/seller/{{ account.crm_slug }}/offers/{{ lead.offer.offer_id }}">Відкрити пропозицію</a>
+                  <a class="btn small" href="/crm/seller/{{ account.crm_slug }}/offers/{{ lead.offer.offer_id }}">Перейти до переписки</a>
                 </div>
-              </div>
-            {% endif %}
-            {% if lead.request.buyer_contact %}
-              <div class="offer-contact">
-                <b>Контакти покупця</b>
-                <ul class="contact-list">
-                  {% if lead.request.buyer_contact.name %}<li class="contact-row"><span class="field-label">Імʼя</span><b class="field-value">{{ lead.request.buyer_contact.name }}</b></li>{% endif %}
-                  {% if lead.request.buyer_contact.phone %}<li class="contact-row"><span class="field-label">Телефон</span><b class="field-value">{{ lead.request.buyer_contact.phone }}</b></li>{% endif %}
-                  {% if lead.request.buyer_contact.telegram %}<li class="contact-row"><span class="field-label">Telegram</span><b class="field-value">{{ lead.request.buyer_contact.telegram }}</b></li>{% endif %}
-                </ul>
               </div>
             {% endif %}
           {% elif lead.selected_other_seller %}
@@ -452,22 +550,22 @@
                 <p class="detail-text">{{ lead.offer.comment or "Без коментаря" }}</p>
                 <span class="muted">Надіслано {{ lead.offer.created_at.strftime("%d.%m.%Y %H:%M") if lead.offer.created_at else "—" }}</span>
                 <div class="request-actions" style="margin-top:12px">
-                  <a class="btn small" href="/crm/seller/{{ account.crm_slug }}/offers/{{ lead.offer.offer_id }}">Відкрити пропозицію</a>
+                  <a class="btn small" href="/crm/seller/{{ account.crm_slug }}/offers/{{ lead.offer.offer_id }}">Перейти до переписки</a>
                 </div>
               </div>
             {% endif %}
 
             {% if lead.may_respond %}
-              <form class="offer-form" method="post" action="/crm/seller/{{ account.crm_slug }}/leads/{{ lead.request.request_id }}/offer">
+              <form id="reply-form" class="offer-form" method="post" action="/crm/seller/{{ account.crm_slug }}/leads/{{ lead.request.request_id }}/offer">
                 <label>
                   💰 Ціна або “договірна”
                   <input name="price_text" maxlength="80" inputmode="decimal" autocomplete="off" placeholder="500 або договірна" value="{{ lead.offer.price_input if lead.offer else '' }}">
                 </label>
                 <label>
-                  💬 Коментар
+                  💬 Повідомлення покупцю
                   <textarea name="message" maxlength="1000" required placeholder="Є в наявності, можна відправити сьогодні.">{{ lead.offer.comment if lead.offer else '' }}</textarea>
                 </label>
-                <button class="btn" type="submit">{{ "Оновити пропозицію" if lead.offer else "Надіслати пропозицію" }}</button>
+                <button class="btn" type="submit">{{ "Оновити відповідь" if lead.offer else "Надіслати відповідь" }}</button>
               </form>
             {% else %}
               <div class="empty-state">
@@ -478,18 +576,59 @@
           {% endif %}
         </section>
 
-        <section class="card" aria-labelledby="marketplace-title">
-          <h2 id="marketplace-title" class="section-heading">Стан заявки</h2>
-          <div class="status-grid">
-            <div class="detail-chip"><span>Вибір покупця</span><b><span class="badge {{ lead.marketplace.state_class }}">{{ lead.marketplace.state_label }}</span></b></div>
-            <div class="detail-chip"><span>Стан відповіді</span><b><span class="badge {{ lead.seller_state.status_class }}">{{ lead.seller_state.status_label }}</span></b></div>
-            <div class="detail-chip"><span>Переглянуто</span><b>{{ lead.seller_state.viewed_at.strftime("%d.%m %H:%M") if lead.seller_state.viewed_at else "—" }}</b></div>
-            <div class="detail-chip"><span>Відповідь</span><b>{{ lead.seller_state.responded_at.strftime("%d.%m %H:%M") if lead.seller_state.responded_at else "—" }}</b></div>
-            <div class="detail-chip"><span>Відхилено</span><b>{{ lead.seller_state.declined_at.strftime("%d.%m %H:%M") if lead.seller_state.declined_at else "—" }}</b></div>
-            <div class="detail-chip"><span>Пропущено</span><b>{{ lead.seller_state.skipped_at.strftime("%d.%m %H:%M") if lead.seller_state.skipped_at else "—" }}</b></div>
-            <div class="detail-chip"><span>Обрано</span><b>{{ lead.marketplace.selected_at.strftime("%d.%m.%Y %H:%M") if lead.marketplace.selected_at else "—" }}</b></div>
-            <div class="detail-chip"><span>Внутрішній стан</span><b>{{ lead.marketplace.status or "очікує" }}</b></div>
-          </div>
+        <section class="card" aria-labelledby="metadata-title">
+          <details class="secondary-details">
+            <summary id="metadata-title">Деталі, статуси й історія заявки</summary>
+            <div class="lead-meta-grid" style="margin-top:14px">
+              <div class="detail-chip"><span>Марка</span><b>{{ lead.request.brand or "—" }}</b></div>
+              <div class="detail-chip"><span>Модель</span><b>{{ lead.request.model or "—" }}</b></div>
+              <div class="detail-chip"><span>VIN</span><b>{{ lead.request.vin or "Не вказано" }}</b></div>
+              <div class="detail-chip"><span>Релевантність</span><b>{{ lead.request.match_score if lead.request.match_score is not none else "—" }}</b></div>
+              <div class="detail-chip"><span>Чому вам підходить</span><b>{{ lead.request.match_reasons_label or "Без додаткових даних" }}</b></div>
+              <div class="detail-chip"><span>Створено</span><b>{{ lead.request.created_at.strftime("%d.%m.%Y %H:%M") if lead.request.created_at else "—" }}</b></div>
+            </div>
+            <div class="status-grid" style="margin-top:12px">
+              <div class="detail-chip"><span>Вибір покупця</span><b><span class="badge {{ lead.marketplace.state_class }}">{{ lead.marketplace.state_label }}</span></b></div>
+              <div class="detail-chip"><span>Стан відповіді</span><b><span class="badge {{ lead.seller_state.status_class }}">{{ lead.seller_state.status_label }}</span></b></div>
+              <div class="detail-chip"><span>Переглянуто</span><b>{{ lead.seller_state.viewed_at.strftime("%d.%m %H:%M") if lead.seller_state.viewed_at else "—" }}</b></div>
+              <div class="detail-chip"><span>Відповідь</span><b>{{ lead.seller_state.responded_at.strftime("%d.%m %H:%M") if lead.seller_state.responded_at else "—" }}</b></div>
+              <div class="detail-chip"><span>Відхилено</span><b>{{ lead.seller_state.declined_at.strftime("%d.%m %H:%M") if lead.seller_state.declined_at else "—" }}</b></div>
+              <div class="detail-chip"><span>Пропущено</span><b>{{ lead.seller_state.skipped_at.strftime("%d.%m %H:%M") if lead.seller_state.skipped_at else "—" }}</b></div>
+              <div class="detail-chip"><span>Обрано</span><b>{{ lead.marketplace.selected_at.strftime("%d.%m.%Y %H:%M") if lead.marketplace.selected_at else "—" }}</b></div>
+              <div class="detail-chip"><span>Внутрішній стан</span><b>{{ lead.marketplace.status or "очікує" }}</b></div>
+            </div>
+            <h3 style="margin-top:16px">Активність</h3>
+            {% if lead.timeline %}
+              <ol class="timeline-list">
+                {% for event in lead.timeline %}
+                  <li class="timeline-item">
+                    <span class="timeline-dot" aria-hidden="true"></span>
+                    <div class="timeline-body">
+                      <b>{{ event.label }}</b>
+                      <span>{{ event.created_at.strftime("%d.%m.%Y %H:%M") if event.created_at else "—" }}</span>
+                    </div>
+                  </li>
+                {% endfor %}
+              </ol>
+            {% else %}
+              <div class="empty-state">Подій по цій заявці ще немає.</div>
+            {% endif %}
+          </details>
+        </section>
+      </div>
+
+      <aside class="detail-stack">
+        <section class="card contact-card" aria-labelledby="buyer-contact-title">
+          <h2 id="buyer-contact-title" class="section-heading">Контакт із покупцем</h2>
+          {% if lead.request.buyer_contact %}
+            <ul class="contact-list">
+              {% if lead.request.buyer_contact.name %}<li class="contact-row"><span class="field-label">Ім’я</span><b class="field-value">{{ lead.request.buyer_contact.name }}</b></li>{% endif %}
+              {% if lead.request.buyer_contact.phone %}<li class="contact-row"><span class="field-label">Телефон</span><b class="field-value">{{ lead.request.buyer_contact.phone }}</b></li>{% endif %}
+              {% if lead.request.buyer_contact.telegram %}<li class="contact-row"><span class="field-label">Telegram</span><b class="field-value">{{ lead.request.buyer_contact.telegram }}</b></li>{% endif %}
+            </ul>
+          {% else %}
+            <div class="empty-state">Контакти покупця поки недоступні. Вони відкриваються після вибору покупця або прийнятої пропозиції.</div>
+          {% endif %}
         </section>
       </aside>
     </div>
