@@ -36,6 +36,7 @@ from bot.database.repositories.seller_crm_repo import (
     get_crm_account_for_login,
     get_crm_session,
     set_crm_password_hash_if_empty,
+    set_crm_password_hash_for_verified_reset,
     get_seller_crm_dashboard,
     get_seller_crm_analytics,
     get_seller_crm_car_detail,
@@ -134,6 +135,7 @@ from bot.services.import_service import (
 from bot.services.seller_crm import (
     SELLER_CRM_SESSION_DAYS,
     hash_crm_password,
+    verify_crm_password_reset_token,
     validate_crm_password,
     validate_crm_slug,
     verify_crm_password,
@@ -1120,6 +1122,36 @@ def _render_setup_password(
     )
 
 
+def _render_reset_password(
+    request: Request,
+    *,
+    account: dict[str, Any] | None = None,
+    slug: str = "",
+    identifier: str = "",
+    token: str = "",
+    error: str | None = None,
+    message: str | None = None,
+    token_verified: bool = False,
+    status_code: int = 200,
+):
+    return templates.TemplateResponse(
+        "seller_crm/reset_password.html",
+        _seller_crm_context(
+            request,
+            title="Відновлення пароля CRM",
+            account=account,
+            slug=slug,
+            identifier=identifier,
+            login=_seller_crm_login_value(account),
+            token=token,
+            token_verified=token_verified,
+            error=error,
+            message=message,
+        ),
+        status_code=status_code,
+    )
+
+
 @router.get("/login")
 async def seller_crm_login_page(request: Request, slug: str | None = None):
     if slug:
@@ -1205,6 +1237,110 @@ async def seller_crm_setup_password(
 
     logger.info(
         "CRM_FIRST_PASSWORD_SET seller_id=%s account_id=%s slug=%s",
+        updated_account["seller_id"],
+        updated_account["id"],
+        updated_account["crm_slug"],
+    )
+    return RedirectResponse(url=f"/crm/seller/login?slug={updated_account['crm_slug']}", status_code=303)
+
+
+@router.get("/reset-password")
+async def seller_crm_reset_password_page(
+    request: Request,
+    slug: str | None = None,
+    token: str | None = None,
+):
+    account: dict[str, Any] | None = None
+    token_verified = False
+    error = None
+    normalized_slug = ""
+
+    if slug:
+        valid, normalized_slug = validate_crm_slug(slug)
+        if valid:
+            db_account = await get_crm_account_by_slug(normalized_slug)
+            if db_account and db_account["is_active"] and db_account["crm_enabled"]:
+                account = dict(db_account)
+                token_verified, error = verify_crm_password_reset_token(account, token) if token else (False, None)
+        else:
+            error = "Некоректна CRM адреса."
+
+    return _render_reset_password(
+        request,
+        account=account,
+        slug=normalized_slug or slug or "",
+        identifier=_seller_crm_login_value(account),
+        token=token or "",
+        token_verified=token_verified,
+        error=error,
+        status_code=400 if error and token else 200,
+    )
+
+
+@router.post("/reset-password")
+async def seller_crm_reset_password(
+    request: Request,
+    identifier: str = Form(""),
+    slug: str = Form(""),
+    token: str = Form(""),
+    password: str = Form(""),
+    password_confirm: str = Form(""),
+):
+    account = await get_crm_account_for_login(identifier or slug, slug or None)
+    generic_message = (
+        "Якщо CRM акаунт знайдено, відкрийте Telegram-бот CarPot з акаунта власника "
+        "та натисніть «Скинути пароль CRM», щоб отримати захищене посилання."
+    )
+
+    if not account or not account["is_active"] or not account["crm_enabled"]:
+        return _render_reset_password(
+            request,
+            slug=slug,
+            identifier=identifier,
+            message=generic_message,
+        )
+
+    account = dict(account)
+    token_valid, token_error = verify_crm_password_reset_token(account, token)
+    if not token_valid:
+        return _render_reset_password(
+            request,
+            account=account,
+            slug=account["crm_slug"],
+            identifier=identifier or _seller_crm_login_value(account),
+            message=generic_message if not token else None,
+            error=token_error if token else None,
+            status_code=400 if token else 200,
+        )
+
+    if password != password_confirm:
+        return _render_reset_password(
+            request,
+            account=account,
+            slug=account["crm_slug"],
+            identifier=identifier or _seller_crm_login_value(account),
+            token=token,
+            token_verified=True,
+            error="Паролі не співпадають.",
+            status_code=400,
+        )
+
+    password_valid, password_error = validate_crm_password(password)
+    if not password_valid:
+        return _render_reset_password(
+            request,
+            account=account,
+            slug=account["crm_slug"],
+            identifier=identifier or _seller_crm_login_value(account),
+            token=token,
+            token_verified=True,
+            error=password_error,
+            status_code=400,
+        )
+
+    updated_account = await set_crm_password_hash_for_verified_reset(account["id"], hash_crm_password(password))
+    logger.info(
+        "CRM_PASSWORD_RESET seller_id=%s account_id=%s slug=%s",
         updated_account["seller_id"],
         updated_account["id"],
         updated_account["crm_slug"],

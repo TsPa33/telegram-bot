@@ -11,6 +11,10 @@
     <label class="field">Логін<input name="identifier" value="{{ identifier or '' }}" placeholder="Telegram ID або username" required></label>
     <label class="field">Пароль<input name="password" type="password" minlength="8" required></label>
     <button class="btn" type="submit">🚀 Увійти в CRM</button>
+    <div class="auth-links">
+      <a href="/crm/seller/setup-password{% if slug %}?slug={{ slug }}{% endif %}">Створити пароль</a>
+      <a href="/crm/seller/reset-password{% if slug %}?slug={{ slug }}{% endif %}">Забули пароль?</a>
+    </div>
   </form>
 </div>
 {% endblock %}

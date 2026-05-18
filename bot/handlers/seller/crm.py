@@ -17,6 +17,7 @@ from bot.services.liqpay_service import LiqPayService
 from bot.services.seller_crm import (
     SELLER_CRM_MONTHLY_PRICE_UAH,
     SELLER_CRM_PRODUCT,
+    create_crm_password_reset_token,
     ensure_crm_credentials,
     hash_crm_password,
     validate_crm_password,
@@ -39,12 +40,19 @@ def _crm_setup_password_url(slug: str) -> str:
     return f"{_crm_url()}/crm/seller/setup-password?slug={slug}"
 
 
-def _landing_kb(account_slug: str, setup_required: bool = False):
+def _crm_reset_password_url(account) -> str:
+    token = create_crm_password_reset_token(dict(account))
+    return f"{_crm_url()}/crm/seller/reset-password?slug={account['crm_slug']}&token={token}"
+
+
+def _landing_kb(account, setup_required: bool = False):
+    account_slug = account["crm_slug"]
     kb = InlineKeyboardBuilder()
     if setup_required:
         kb.button(text="🔐 Створити пароль CRM", url=_crm_setup_password_url(account_slug))
     else:
         kb.button(text="🚀 Відкрити CRM", url=_crm_url(account_slug))
+        kb.button(text="🛟 Скинути пароль CRM", url=_crm_reset_password_url(account))
     kb.button(text="👀 Переглянути демо", url=f"{_crm_url()}/crm/seller/demo")
     kb.button(text="⬅️ Назад", callback_data="seller_crm:back")
     kb.adjust(1)
@@ -93,7 +101,7 @@ async def seller_crm_landing(message: Message):
     await message.answer(
         _landing_text(account["crm_slug"], _crm_login(_seller), setup_required),
         parse_mode="HTML",
-        reply_markup=_landing_kb(account["crm_slug"], setup_required),
+        reply_markup=_landing_kb(account, setup_required),
     )
 
 
@@ -164,7 +172,7 @@ async def seller_crm_setup(callback: CallbackQuery, state: FSMContext):
         await callback.message.answer(
             _landing_text(account["crm_slug"], _crm_login(seller), setup_required),
             parse_mode="HTML",
-            reply_markup=_landing_kb(account["crm_slug"], setup_required),
+            reply_markup=_landing_kb(account, setup_required),
         )
         await callback.answer()
         return
