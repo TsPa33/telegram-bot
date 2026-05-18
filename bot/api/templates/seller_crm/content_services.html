@@ -2,7 +2,7 @@
 {% import "seller_crm/components/badges.html" as badges %}
 {% import "seller_crm/components/cards.html" as cards %}
 {% import "seller_crm/components/layout.html" as layout %}
-{% block crm_kicker %}Контент продавця{% endblock %}
+{% block crm_kicker %}Каталог / Мої послуги{% endblock %}
 {% block crm_heading %}Послуги{% endblock %}
 {% block content %}
 <style>
@@ -24,7 +24,6 @@
   .content-add-card { border-color: rgba(56,189,248,.13); background: linear-gradient(135deg, rgba(56,189,248,.06), rgba(125,211,176,.035)); }
   .content-add-card h2 { margin-bottom: 6px; }
   .telegram-note { margin: 10px 0 0; color: var(--muted); line-height: 1.45; }
-  .parts-placeholder { border: 1px dashed rgba(251,191,36,.34); background: rgba(251,191,36,.08); color: #F3D899; }
   @media (max-width: 980px) { .services-summary { grid-template-columns: repeat(2,minmax(0,1fr)); } }
   @media (max-width: 720px) { .service-card { grid-template-columns: 1fr; } .service-photo { width: 100%; height: 170px; } .service-top { display: grid; } }
   @media (max-width: 620px) { .services-summary { grid-template-columns: 1fr; } .service-actions, .content-add-actions { display: grid; grid-template-columns: 1fr; } .service-actions .btn, .content-add-actions .btn, .service-actions form { width: 100%; white-space: normal; } }
@@ -34,23 +33,19 @@
   <section class="workspace-hero" aria-labelledby="services-title">
     <div>
       <h2 id="services-title">Послуги</h2>
-      <p class="section-note">Створюйте, редагуйте й керуйте активністю сервісних пропозицій напряму з кабінету.</p>
+      <p class="section-note">Окремий список сервісних пропозицій: ремонт, підбір, доставка та інші послуги.</p>
     </div>
-    <div class="content-add-actions"><a class="btn" href="/crm/seller/{{ account.crm_slug }}/content/services/create">＋ Додати послугу</a><a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content">← Мій контент</a></div>
+    <div class="content-add-actions"><a class="btn" href="/crm/seller/{{ account.crm_slug }}/content/services/create">＋ Додати послугу</a><a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content">← Каталог</a></div>
   </section>
 
   <section class="card content-add-card" aria-labelledby="services-add-actions">
-    <h2 id="services-add-actions">Швидко додати</h2>
-    <p class="section-note">Створіть нову сервісну пропозицію без виходу в Telegram. Медіа-завантаження буде додано пізніше.</p>
-    <div class="content-add-actions" aria-label="Швидкі дії додавання">
+    <h2 id="services-add-actions">Додати послугу</h2>
+    <p class="section-note">Створіть сервісну пропозицію в кабінеті. Авто та товари залишаються в окремих розділах каталогу.</p>
+    <div class="content-add-actions" aria-label="Швидкі дії для послуг">
       <a class="btn" href="/crm/seller/{{ account.crm_slug }}/content/services/create">＋ Додати послугу</a>
-      <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content/cars">Авто на розборі</a>
+      <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content/cars">Мої авто</a>
+      <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content/products">Мої товари</a>
     </div>
-  </section>
-
-  <section class="card parts-placeholder" aria-labelledby="services-parts-placeholder">
-    <h2 id="services-parts-placeholder">Товари / Запчастини</h2>
-    <p class="section-note">Розділ товарів/запчастин буде додано окремо.</p>
   </section>
 
   <section class="grid services-summary" aria-label="Підсумок послуг">

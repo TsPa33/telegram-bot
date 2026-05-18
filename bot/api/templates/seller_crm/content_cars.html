@@ -2,7 +2,7 @@
 {% import "seller_crm/components/badges.html" as badges %}
 {% import "seller_crm/components/cards.html" as cards %}
 {% import "seller_crm/components/layout.html" as layout %}
-{% block crm_kicker %}Інвентар продавця{% endblock %}
+{% block crm_kicker %}Каталог / Мої авто{% endblock %}
 {% block crm_heading %}Авто на розборі{% endblock %}
 {% block content %}
 <style>
@@ -22,7 +22,6 @@
   .content-add-card { border-color: rgba(56,189,248,.13); background: linear-gradient(135deg, rgba(56,189,248,.06), rgba(125,211,176,.035)); }
   .content-add-card h2 { margin-bottom: 6px; }
   .telegram-note { margin: 10px 0 0; color: var(--muted); line-height: 1.45; }
-  .parts-placeholder { border: 1px dashed rgba(251,191,36,.34); background: rgba(251,191,36,.08); color: #F3D899; }
   @media (max-width: 980px) { .garage-summary { grid-template-columns: repeat(2,minmax(0,1fr)); } }
   @media (max-width: 720px) { .inventory-card { grid-template-columns: 1fr; } .inventory-photo { width: 100%; height: 170px; } }
   @media (max-width: 620px) { .garage-summary { grid-template-columns: 1fr; } .inventory-actions, .content-add-actions { display: grid; grid-template-columns: 1fr; } .inventory-actions .btn, .content-add-actions .btn { width: 100%; white-space: normal; } }
@@ -32,26 +31,20 @@
   <section class="workspace-hero" aria-labelledby="cars-title">
     <div>
       <h2 id="cars-title">Авто на розборі</h2>
-      <p class="section-note">Керуйте існуючими донорськими авто та безпечно додавайте нові авто без фото.</p>
+      <p class="section-note">Окремий список авто на розборі: донори, опис, фото, перегляди та переходи покупців.</p>
     </div>
-    <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content">← Каталог</a>
+    <div class="content-add-actions"><a class="btn" href="/crm/seller/{{ account.crm_slug }}/content/cars/create">＋ Додати авто</a><a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content">← Каталог</a></div>
   </section>
 
   <section class="card content-add-card" aria-labelledby="cars-add-actions">
-    <h2 id="cars-add-actions">Швидко додати</h2>
-    <p class="section-note">Авто можна створити в кабінеті без фото. Фото можна буде додати окремо пізніше.</p>
-    <div class="content-add-actions" aria-label="Швидкі дії додавання">
-      <button class="btn" type="button" onclick="alert('Відкрийте Telegram-бот CarPot і скористайтесь меню продавця для додавання авто, послуг або товарів.')">Відкрити Telegram</button>
-      <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content/cars/create">＋ Додати авто</a>
-      <button class="btn ghost" type="button" onclick="alert('Як додати послугу: Telegram-бот CarPot → меню продавця → додати сервісну пропозицію.')">＋ Додати послугу</button>
-      <button class="btn ghost" type="button" onclick="alert('Товари та запчастини: розділ буде додано окремо. Поки що не створюємо редактор товарів у кабінеті.')">＋ Додати товар або запчастину</button>
+    <h2 id="cars-add-actions">Додати авто</h2>
+    <p class="section-note">Створіть авто в кабінеті, а фото та опис можна доповнити під час редагування.</p>
+    <div class="content-add-actions" aria-label="Швидкі дії для авто">
+      <a class="btn" href="/crm/seller/{{ account.crm_slug }}/content/cars/create">＋ Додати авто</a>
+      <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content/products">Мої товари</a>
+      <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content/services">Мої послуги</a>
     </div>
-    <p class="telegram-note">Фото можна буде додати окремо. Поки авто буде створено без фото.</p>
-  </section>
-
-  <section class="card parts-placeholder" aria-labelledby="cars-parts-placeholder">
-    <h2 id="cars-parts-placeholder">Товари та запчастини</h2>
-    <p class="section-note">Розділ товарів/запчастин буде додано окремо.</p>
+    <p class="telegram-note">Цей розділ показує тільки авто; товари й послуги винесені в окремі сторінки каталогу.</p>
   </section>
 
   <section class="grid garage-summary" aria-label="Підсумок гаража">
@@ -112,7 +105,7 @@
           </div>
         </article>
       {% else %}
-        {{ badges.empty_state("Авто на розборі ще немає", "Коли продавець додасть авто через Telegram-бот, воно з’явиться тут зі статистикою та індикаторами заповнення.") }}
+        {{ badges.empty_state("Авто на розборі ще немає", "Додайте перше авто — воно з’явиться тут зі статистикою та індикаторами заповнення.", "/crm/seller/" ~ account.crm_slug ~ "/content/cars/create", "＋ Додати авто") }}
       {% endfor %}
     </div>
   </section>

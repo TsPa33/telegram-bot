@@ -1843,12 +1843,10 @@ async def seller_crm_content(request: Request, crm_slug: str):
     has_services = int(summary.get("active_services") or 0) > 0
 
     priority_sections = [
-        {"key": "cars", "label": "Авто на розборі", "href": f"/crm/seller/{crm_slug}/content/cars"},
-        {"key": "services", "label": "Послуги", "href": f"/crm/seller/{crm_slug}/content/services"},
-        {"key": "parts", "label": "Товари / Запчастини", "href": f"/crm/seller/{crm_slug}/content/products"},
+        {"key": "cars", "label": "Мої авто", "href": f"/crm/seller/{crm_slug}/content/cars"},
+        {"key": "parts", "label": "Мої товари", "href": f"/crm/seller/{crm_slug}/content/products"},
+        {"key": "services", "label": "Мої послуги", "href": f"/crm/seller/{crm_slug}/content/services"},
     ]
-    if has_services and not has_cars:
-        priority_sections = [priority_sections[1], priority_sections[0], priority_sections[2]]
 
     return templates.TemplateResponse(
         "seller_crm/content.html",
