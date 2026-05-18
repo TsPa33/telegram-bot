@@ -919,11 +919,46 @@ def _prepare_lead_detail(detail: dict[str, Any] | None) -> dict[str, Any] | None
     else:
         prepared["response_block_reason"] = None
 
+    if selected_this_seller:
+        prepared["operational_status"] = {
+            "label": "Покупець обрав вашу пропозицію",
+            "description": "Контакти покупця відкриті в блоці праворуч. Далі працюйте з комунікацією та виконанням запиту.",
+            "class": "status-success",
+        }
+    elif selected_other_seller:
+        prepared["operational_status"] = {
+            "label": "Покупець обрав іншого продавця",
+            "description": "Форма відповіді закрита, але заявка лишається доступною для перегляду контексту.",
+            "class": "status-rejected",
+        }
+    elif offer:
+        prepared["operational_status"] = {
+            "label": "Відповідь надіслана покупцю",
+            "description": "Очікуйте рішення покупця або оновіть відповідь, якщо умови змінилися.",
+            "class": "status-replied",
+        }
+    elif prepared["may_respond"]:
+        prepared["operational_status"] = {
+            "label": "Покупець очікує відповідь",
+            "description": "Перевірте потребу покупця й надішліть ціну та короткий коментар.",
+            "class": seller_state.get("status_class") or "status-new",
+        }
+    else:
+        prepared["operational_status"] = {
+            "label": prepared["response_block_reason"] or seller_state.get("status_label") or "Стан заявки",
+            "description": "Деталі заявки доступні нижче без зміни бізнес-станів.",
+            "class": seller_state.get("status_class") or "status-viewed",
+        }
+
+    low_value_timeline_sources = {"notification"}
     prepared["request"] = request_data
     prepared["seller_state"] = seller_state
     prepared["offer"] = offer
     prepared["marketplace"] = marketplace
-    prepared["timeline"] = prepared.get("timeline") or []
+    prepared["timeline"] = [
+        event for event in (prepared.get("timeline") or [])
+        if event.get("source") not in low_value_timeline_sources
+    ]
     return prepared
 
 
@@ -969,6 +1004,7 @@ def _prepare_offer_detail(detail: dict[str, Any] | None) -> dict[str, Any] | Non
     request_data["title"] = request_data.get("title") or _request_title(request_data)
     request_data["description"] = request_data.get("description") or "Покупець не додав детальний опис."
     offer["price_label"] = _format_price(offer.get("price"))
+    offer["price_display"] = "Договірна" if offer.get("price") is None else f"₴ {offer['price_label']}"
 
     status_meta = _offer_workspace_status_meta({
         "status": offer.get("status"),
@@ -979,11 +1015,23 @@ def _prepare_offer_detail(detail: dict[str, Any] | None) -> dict[str, Any] | Non
     selection["state"] = status_meta["state"]
     selection["state_label"] = status_meta["label"]
     selection["state_class"] = status_meta["class"]
+    if status_meta["state"] == "selected":
+        selection["operational_label"] = "Пропозицію обрано покупцем"
+        selection["operational_hint"] = "Покупець підтвердив саме цю відповідь. Перейдіть до заявки, щоб працювати з контактом покупця."
+    elif status_meta["state"] == "rejected":
+        selection["operational_label"] = "Покупець обрав іншого продавця"
+        selection["operational_hint"] = "Ця пропозиція закрита для подальшого вибору, але контекст заявки доступний за посиланням."
+    else:
+        selection["operational_label"] = "Очікує рішення покупця"
+        selection["operational_hint"] = "Пропозицію надіслано. Якщо потрібно змінити відповідь — відкрийте пов’язану заявку."
 
     prepared["offer"] = offer
     prepared["request"] = request_data
     prepared["selection"] = selection
-    prepared["timeline"] = prepared.get("timeline") or []
+    prepared["timeline"] = [
+        event for event in (prepared.get("timeline") or [])
+        if event.get("source") != "notification"
+    ]
     return prepared
 
 
