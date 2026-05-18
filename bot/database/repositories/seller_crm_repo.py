@@ -1554,6 +1554,7 @@ async def list_seller_crm_marketplace_activity(seller_id: int, limit: int = 12):
             FROM marketplace_notification_events mne
             LEFT JOIN buyer_requests br ON br.id = mne.request_id
             WHERE mne.seller_id = $1
+              AND mne.event_type IN ('buyer_request_created', 'buyer_offer_created', 'buyer_offer_accepted')
             UNION ALL
             SELECT sla.updated_at AS created_at,
                    'seller_action' AS source,
@@ -1569,6 +1570,7 @@ async def list_seller_crm_marketplace_activity(seller_id: int, limit: int = 12):
             FROM seller_lead_actions sla
             LEFT JOIN buyer_requests br ON br.id = sla.request_id
             WHERE sla.seller_id = $1
+              AND sla.action IN ('offered')
         ) activity
         ORDER BY created_at DESC
         LIMIT $2

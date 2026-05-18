@@ -1,52 +1,48 @@
 {% extends "seller_crm/base.html" %}
-{% block crm_kicker %}Marketplace-first операційний простір продавця{% endblock %}
-{% block crm_heading %}Що потребує уваги зараз{% endblock %}
+{% block crm_kicker %}Операційний seller inbox{% endblock %}
+{% block crm_heading %}Що потребує відповіді зараз{% endblock %}
 {% block content %}
   {% if demo_mode %}<div class="demo-ribbon">Демо-панель тільки для перегляду</div>{% endif %}
 
-  <section class="workspace-hero" aria-labelledby="workspace-title">
+  <section class="workspace-hero command-hero" aria-labelledby="workspace-title">
     <div>
-      <h2 id="workspace-title">Робочий простір marketplace</h2>
-      <p class="section-note">Нові заявки, очікування відповіді та buyer activity — без зайвих блоків.</p>
+      <h2 id="workspace-title">Операційний inbox</h2>
+      <p class="section-note">Спочатку нові заявки, покупець очікує та активні діалоги. Аналітика й сайт нижче — без конкуренції за увагу.</p>
     </div>
-    <div class="pill">Telegram-connected</div>
+    <a class="btn small" href="/crm/seller/{{ account.crm_slug }}/leads">Відкрити всі заявки</a>
   </section>
 
-  {% macro metric_widget(icon, label, value, period, trend_key, delta_key='', anchor_id='') -%}
-    {% set trend_points = marketplace_summary[trend_key]|default([], true) if trend_key else [] %}
-    {% set delta_value = marketplace_summary[delta_key]|default('', true) if delta_key else '' %}
-    <a class="kpi-widget"{% if anchor_id %} id="{{ anchor_id }}"{% endif %} href="/crm/seller/{{ account.crm_slug }}/analytics">
-      <span class="kpi-icon" aria-hidden="true">{{ icon }}</span>
-      <span class="kpi-main">
-        <span class="metric">{{ value }}</span>
-        <span class="kpi-label">{{ label }}</span>
-      </span>
-      <span class="kpi-meta">
-        <span class="kpi-period">{{ period }}</span>
-        {% if delta_value %}<span class="kpi-delta">{{ delta_value }}</span>{% endif %}
-      </span>
-      <span class="kpi-spark" data-points="{{ trend_points|join(',') if trend_points else '' }}" aria-label="{{ label }} тренд">
-        <svg viewBox="0 0 92 26" role="img" focusable="false" aria-hidden="true">
-          <path class="spark-neutral" d="M8 14 H84" pathLength="1"></path>
-        </svg>
-      </span>
+  <section class="ops-strip" aria-label="Операційний стан">
+    <a class="ops-chip urgent" href="/crm/seller/{{ account.crm_slug }}/leads?status=new">
+      <span class="ops-number">{{ marketplace_summary.new_requests|default(0, true) }}</span>
+      <span>Нові за 24г</span>
     </a>
-  {%- endmacro %}
-
-  <section id="marketplace-analytics" class="grid kpi-cards" aria-label="Marketplace KPI">
-    {{ metric_widget('↗', 'Нові заявки', marketplace_summary.new_requests|default(0, true), '24г', 'new_requests_trend', 'new_requests_delta_label') }}
-    {{ metric_widget('⏱', 'Очікують відповіді', marketplace_summary.waiting_response|default(0, true), '7д', 'waiting_response_trend', 'waiting_response_delta_label') }}
-    {{ metric_widget('✓', 'Обрані покупцем', marketplace_summary.accepted_offers|default(0, true), '30д', 'accepted_offers_trend', 'accepted_offers_delta_label', 'offers') }}
-    {{ metric_widget('⚡', 'Середній час відповіді', marketplace_summary.avg_response_label|default('—', true), '30д', 'avg_response_trend', 'avg_response_delta_label') }}
+    <a class="ops-chip waiting" href="/crm/seller/{{ account.crm_slug }}/leads?status=in_work">
+      <span class="ops-number">{{ marketplace_summary.waiting_response|default(0, true) }}</span>
+      <span>Очікують відповіді</span>
+    </a>
+    <a class="ops-chip dialog" href="/crm/seller/{{ account.crm_slug }}/offers">
+      <span class="ops-number">{{ marketplace_summary.accepted_offers|default(0, true) }}</span>
+      <span>Обрані покупцем</span>
+    </a>
+    <a class="ops-chip calm" href="/crm/seller/{{ account.crm_slug }}/analytics">
+      <span class="ops-number">{{ marketplace_summary.avg_response_label|default('—', true) }}</span>
+      <span>Сер. час відповіді</span>
+    </a>
   </section>
 
-  <section class="grid dashboard-layout">
-    <article id="requests" class="card">
-      <h2>Останні marketplace заявки</h2>
-      <p class="section-note">Операційна черга заявок, пов’язаних із продавцем через routing, дії або пропозиції.</p>
+  <section class="grid dashboard-layout operational-layout">
+    <article id="requests" class="card primary-queue">
+      <div class="section-head-row">
+        <div>
+          <h2>Потрібна дія</h2>
+          <p class="section-note">Робоча черга: нові заявки, покупець очікує і діалоги, де важливо швидко продовжити контакт.</p>
+        </div>
+        <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/leads">Усі</a>
+      </div>
       <div class="request-list">
         {% for item in marketplace_requests %}
-          <div class="request-card">
+          <div class="request-card {% if item.needs_attention %}needs-attention{% endif %}">
             <div class="request-card-top">
               <div>
                 <div class="request-title">{{ item.title }}</div>
@@ -57,31 +53,29 @@
                   {% if item.offers_count %}<span>· {{ item.offers_count }} проп.</span>{% endif %}
                 </div>
               </div>
-              {% set status_text = (item.status_label or '')|lower %}
-              {% set status_class = 'status-new' if 'нова' in status_text else 'status-waiting' if 'очіку' in status_text else 'status-viewed' if 'перегля' in status_text else 'status-replied' if 'відпов' in status_text else 'status-rejected' if 'відхил' in status_text else 'status-success' if 'обра' in status_text else '' %}
-              <span class="badge {{ status_class }}">{{ item.status_label }}</span>
+              <span class="badge {{ item.status_class }}">{{ item.status_label }}</span>
             </div>
             <p class="request-desc">{{ item.short_description }}</p>
             <div class="request-actions">
-              <a class="btn small" href="/crm/seller/{{ account.crm_slug }}/leads">Відкрити</a>
-              <a class="btn small ghost" href="https://t.me/{{ account.username if account.username else '' }}" target="_blank" rel="noopener">Telegram</a>
+              <a class="btn small" href="/crm/seller/{{ account.crm_slug }}/leads/{{ item.id }}">{{ item.primary_action_label }}</a>
+              <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/leads">Черга</a>
             </div>
           </div>
         {% else %}
-          <div class="request-card">
-            <div class="request-title">Нових marketplace заявок поки немає</div>
-            <p class="request-desc">Коли buyer request буде направлено цьому продавцю або продавець відповість на заявку, вона з’явиться тут.</p>
+          <div class="request-card empty-operational">
+            <div class="request-title">Inbox чистий</div>
+            <p class="request-desc">Нові marketplace заявки та покупець очікує події з’являться тут першими.</p>
           </div>
         {% endfor %}
       </div>
     </article>
 
-    <aside id="activity" class="card" aria-label="Активність marketplace">
-      <h2>Активність</h2>
-      <p class="section-note">Події marketplace і дії продавця у компактній стрічці.</p>
+    <aside id="activity" class="card activity-focus" aria-label="Важлива активність marketplace">
+      <h2>Важлива активність</h2>
+      <p class="section-note">Показуємо тільки операційні події: нова заявка, відповідь, вибір покупця. Passive tracking приховано.</p>
       <div class="activity-list">
         {% for event in marketplace_activity %}
-          <div class="activity-item">
+          <div class="activity-item important-event">
             <div class="activity-title">{{ event.label }}</div>
             <div class="activity-meta">
               <span>{{ event.title }}</span>
@@ -90,22 +84,26 @@
             </div>
           </div>
         {% else %}
-          <p class="muted">Активності ще немає.</p>
+          <p class="muted">Важливих подій поки немає.</p>
         {% endfor %}
+      </div>
+      <div class="quick-actions-box">
+        <a class="btn small" href="/crm/seller/{{ account.crm_slug }}/leads?status=new">Нові заявки</a>
+        <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/offers">Діалоги</a>
       </div>
     </aside>
   </section>
 
-  <section id="website-analytics" class="grid two secondary-section">
+  <section id="website-analytics" class="grid two secondary-section secondary-muted">
     <a class="card" href="/crm/seller/{{ account.crm_slug }}/analytics#website-analytics" style="text-decoration:none;color:inherit">
-      <h2>Website/catalog analytics</h2>
-      <p class="section-note">Короткий зріз без домінування над marketplace workflow.</p>
+      <h2>Аналітика — другорядно</h2>
+      <p class="section-note">Короткий зріз без домінування над inbox workflow.</p>
       <p><b>{{ stats.visits_today or 0 }}</b> візитів сьогодні · <b>{{ stats.page_views_today or 0 }}</b> переглядів сторінок</p>
       <p><b>{{ stats.telegram_clicks_today or 0 }}</b> Telegram переходів · <b>{{ stats.cta_clicks_today or 0 }}</b> CTA кліків</p>
       {% for source in sources %}<p><span class="badge">{{ source.source }}</span> {{ source.visits }} візитів</p>{% else %}<p class="muted">Поки немає джерел трафіку</p>{% endfor %}
     </a>
     <article class="card">
-      <h2>Мій контент</h2>
+      <h2>Контент — підтримка продажів</h2>
       {% if has_services or not has_cars %}<p id="services"><b>{{ stats.services_count or 0 }}</b> послуг · <b>{{ stats.service_requests or 0 }}</b> заявок/кліків</p>{% endif %}
       <p id="parts-placeholder"><span class="badge">Placeholder</span> Товари / Запчастини — окремий workspace не впроваджується в Phase 1.</p>
       <p id="cars" class="{% if not has_cars %}muted{% endif %}"><b>{{ stats.active_listings or 0 }}</b> авто на розборі{% if not has_cars %} · garage де-емфазовано, бо авто ще не додані{% endif %}</p>
@@ -113,7 +111,7 @@
   </section>
 
   {% if has_website %}
-    <section class="secondary-section">
+    <section class="secondary-section secondary-muted">
       <h2 class="section-heading">Сайт — нижчий пріоритет</h2>
       <p class="section-note">Ключові входи нижче операційної панелі.</p>
       <div class="grid site-tools">
@@ -124,7 +122,7 @@
     </section>
   {% endif %}
 
-  <section id="account" class="card secondary-section">
+  <section id="account" class="card secondary-section secondary-muted">
     <h2>Профіль і тарифи</h2>
     <p id="public-card">Базовий CRM продавця: <b>безкоштовно</b>. <a href="/crm/seller/{{ account.crm_slug }}/settings">Налаштування та тарифи</a> доступні в окремому workspace.</p>
     <p id="packages"><span class="badge">Active packages</span> <a href="/crm/seller/{{ account.crm_slug }}/settings#packages">Переглянути пакети</a></p>
@@ -133,45 +131,4 @@
     <p>Адреса кабінету: <b>/crm/seller/{{ account.crm_slug }}</b> · <a href="/crm/seller/{{ account.crm_slug }}/settings">Налаштування</a></p>
     {% if not demo_mode %}<form method="post" action="/crm/seller/logout"><button class="btn" type="submit">Вийти</button></form>{% endif %}
   </section>
-  <script>
-    (() => {
-      const widgets = document.querySelectorAll('.kpi-spark[data-points]');
-      widgets.forEach((spark) => {
-        const raw = spark.dataset.points || '';
-        const points = raw
-          .split(',')
-          .map((item) => Number.parseFloat(item.trim()))
-          .filter((item) => Number.isFinite(item) && item >= 0);
-
-        if (points.length < 2 || Math.max(...points) === 0) return;
-
-        const svg = spark.querySelector('svg');
-        if (!svg) return;
-
-        const width = 92;
-        const height = 26;
-        const padX = 8;
-        const padY = 5;
-        const max = Math.max(...points);
-        const min = Math.min(...points);
-        const span = max - min || 1;
-        const step = (width - padX * 2) / Math.max(points.length - 1, 1);
-        const coords = points.map((value, index) => {
-          const x = padX + index * step;
-          const y = height - padY - ((value - min) / span) * (height - padY * 2);
-          return [x, y];
-        });
-        const line = coords.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
-        const area = `M${coords[0][0].toFixed(1)} ${height - padY} L${coords.map(([x, y]) => `${x.toFixed(1)} ${y.toFixed(1)}`).join(' L')} L${coords[coords.length - 1][0].toFixed(1)} ${height - padY} Z`;
-        const last = coords[coords.length - 1];
-
-        svg.innerHTML = `
-          <path class="spark-area" d="${area}"></path>
-          <polyline class="spark-line" points="${line}"></polyline>
-          <circle class="spark-dot" cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="2.2"></circle>
-        `;
-      });
-    })();
-  </script>
-
 {% endblock %}

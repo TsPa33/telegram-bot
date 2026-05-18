@@ -892,6 +892,79 @@
             align-items: start;
         }
 
+        .command-hero {
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--line-quiet);
+        }
+
+        .ops-strip {
+            display: grid;
+            grid-template-columns: repeat(4,minmax(0,1fr));
+            gap: 9px;
+            margin-bottom: 10px;
+        }
+
+        .ops-chip {
+            min-width: 0;
+            min-height: 58px;
+            display: grid;
+            grid-template-columns: auto minmax(0,1fr);
+            gap: 9px;
+            align-items: center;
+            padding: 9px 10px;
+            border: 1px solid var(--line-quiet);
+            border-radius: var(--radius-sm);
+            background: rgba(231,238,247,.028);
+            color: var(--secondary);
+            text-decoration: none;
+            font-size: 12px;
+            font-weight: 650;
+            box-shadow: none;
+        }
+
+        .ops-chip.urgent,
+        .ops-chip.waiting {
+            border-color: rgba(56,189,248,.2);
+            background: rgba(56,189,248,.06);
+            color: var(--text);
+        }
+
+        .ops-chip.dialog { border-color: rgba(125,211,176,.18); }
+
+        .ops-number {
+            font-size: 20px;
+            line-height: 1;
+            font-weight: 750;
+            letter-spacing: -.04em;
+            color: var(--text);
+        }
+
+        .section-head-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .primary-queue {
+            border-color: rgba(56,189,248,.18);
+        }
+
+        .activity-focus,
+        .secondary-muted {
+            opacity: .86;
+        }
+
+        .quick-actions-box {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 7px;
+            margin-top: 12px;
+            padding-top: 10px;
+            border-top: 1px solid var(--line-quiet);
+        }
+
         .request-list,
         .activity-list {
             display: grid;
@@ -906,6 +979,16 @@
             background: var(--surface);
             display: grid;
             gap: 6px;
+        }
+
+        .request-card.needs-attention {
+            border-color: rgba(56,189,248,.24);
+            background: linear-gradient(90deg, rgba(56,189,248,.07), rgba(231,238,247,.025) 42%);
+        }
+
+        .empty-operational {
+            border-style: dashed;
+            background: rgba(125,211,176,.035);
         }
 
         .request-card-top {
@@ -951,6 +1034,10 @@
             position: relative;
             border-left: 1px solid rgba(143,162,191,.2);
             padding: 0 0 8px 10px;
+        }
+
+        .activity-item.important-event {
+            border-left-color: rgba(56,189,248,.42);
         }
 
         .activity-item:last-child { padding-bottom: 0; }
@@ -1514,6 +1601,8 @@
 
             .dashboard-layout { grid-template-columns: 1fr; }
 
+            .ops-strip { grid-template-columns: repeat(2,minmax(0,1fr)); }
+
             .kpi-cards { grid-template-columns: repeat(2,minmax(0,1fr)); }
 
             .site-tools { grid-template-columns: 1fr; }
@@ -1621,6 +1710,8 @@
 
             .workspace-hero h2 { font-size: 16px; }
 
+            .ops-strip { grid-template-columns: 1fr; }
+
             .metric { font-size: 20px; }
 
             .request-actions {
@@ -1699,24 +1790,24 @@
             <section class="nav-accordion">
                 <input id="nav-workspace" name="crm-nav" type="radio" {% if current_page in ['dashboard', 'leads', 'offers'] %}checked{% endif %}>
                 <label class="nav-title" data-icon="▣" for="nav-workspace">
-                    <span>Робочий простір</span>
+                    <span>Операційний inbox</span>
                 </label>
                 <div class="nav-panel">
-                    <a class="{% if current_page == 'dashboard' %}active{% endif %}" href="/crm/seller/{{ account.crm_slug }}">Панель</a>
-                    <a class="{% if current_page == 'leads' %}active{% endif %}" href="/crm/seller/{{ account.crm_slug }}/leads">Заявки</a>
-                    <a class="{% if current_page == 'offers' %}active{% endif %}" href="/crm/seller/{{ account.crm_slug }}/offers">Пропозиції</a>
-                    <a href="/crm/seller/{{ account.crm_slug }}#activity" title="Майбутня сторінка: /activity">Активність</a>
+                    <a class="{% if current_page == 'dashboard' %}active{% endif %}" href="/crm/seller/{{ account.crm_slug }}">Сьогодні</a>
+                    <a class="{% if current_page == 'leads' %}active{% endif %}" href="/crm/seller/{{ account.crm_slug }}/leads">Заявки · відповісти</a>
+                    <a class="{% if current_page == 'offers' %}active{% endif %}" href="/crm/seller/{{ account.crm_slug }}/offers">Діалоги / пропозиції</a>
+                    <a href="/crm/seller/{{ account.crm_slug }}#activity">Важлива активність</a>
                 </div>
             </section>
 
             <section class="nav-accordion">
                 <input id="nav-analytics" name="crm-nav" type="radio" {% if current_page == 'analytics' %}checked{% endif %}>
                 <label class="nav-title" data-icon="↗" for="nav-analytics">
-                    <span>Аналітика та статистика</span>
+                    <span>Аналітика · secondary</span>
                 </label>
                 <div class="nav-panel">
-                    <a class="{% if current_page == 'analytics' %}active{% endif %}" href="/crm/seller/{{ account.crm_slug }}/analytics">Marketplace analytics</a>
-                    <a class="{% if current_page == 'analytics' %}active{% endif %}" href="/crm/seller/{{ account.crm_slug }}/analytics#website-analytics">Website/catalog analytics</a>
+                    <a class="deemphasized {% if current_page == 'analytics' %}active{% endif %}" href="/crm/seller/{{ account.crm_slug }}/analytics">Marketplace analytics</a>
+                    <a class="deemphasized {% if current_page == 'analytics' %}active{% endif %}" href="/crm/seller/{{ account.crm_slug }}/analytics#website-analytics">Website/catalog analytics</a>
                 </div>
             </section>
 
@@ -1768,7 +1859,7 @@
             <section class="nav-accordion">
                 <input id="nav-shop" name="crm-nav" type="radio" {% if current_page == 'settings' %}checked{% endif %}>
                 <label class="nav-title" data-icon="₴" for="nav-shop">
-                    <span>Магазин / Тарифи</span>
+                    <span>Налаштування · secondary</span>
                 </label>
                 <div class="nav-panel">
                     <a class="{% if current_page == 'settings' %}active{% endif %}" href="/crm/seller/{{ account.crm_slug }}/settings">Налаштування</a>

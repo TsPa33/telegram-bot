@@ -53,6 +53,20 @@
       gap: 8px;
     }
 
+    .lead-next-action {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      padding: 8px 9px;
+      border: 1px solid var(--line-quiet);
+      border-radius: var(--radius-sm);
+      background: rgba(56,189,248,.045);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 650;
+    }
+
     .lead-tags {
       display: flex;
       gap: 6px;
@@ -95,7 +109,7 @@
     <div class="workspace-hero">
       <div>
         <h2 id="leads-title">Marketplace заявки</h2>
-        <p class="section-note">Окрема черга заявок, які вже пов’язані з цим продавцем через routing, дії, пропозиції або вибір покупця.</p>
+        <p class="section-note">Inbox-черга для швидкої відповіді: що хоче покупець, який стан і яка наступна дія.</p>
       </div>
       <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}">На панель</a>
     </div>
@@ -126,8 +140,12 @@
           <p class="request-desc">{{ lead.short_description }}</p>
 
           <div class="lead-card-footer">
+            <div class="lead-next-action">
+              <span class="badge {{ lead.attention_class }}">{{ lead.attention_label }}</span>
+              <span>Наступна дія: {{ lead.next_action_label }}</span>
+            </div>
             <div class="lead-tags">
-              <span class="badge">Локально: {{ lead.status_label }}</span>
+              <span class="badge">Статус: {{ lead.status_label }}</span>
               {% if lead.offer_status %}<span class="badge status-replied">Offer: {{ lead.offer_status }}</span>{% endif %}
               {% if lead.price_offer %}<span class="badge">₴ {{ lead.price_offer }}</span>{% endif %}
               {% if lead.match_score is not none %}<span class="badge">Match {{ lead.match_score }}</span>{% endif %}
@@ -136,7 +154,7 @@
             {% if lead.offer_message %}<p class="request-desc">Ваша пропозиція: {{ lead.offer_message }}</p>{% endif %}
             {% if lead.match_reasons_label %}<p class="request-desc">Причини match: {{ lead.match_reasons_label }}</p>{% endif %}
             <div class="lead-inline-actions">
-              <a class="btn small" href="/crm/seller/{{ account.crm_slug }}/leads/{{ lead.request_id }}">Відкрити</a>
+              <a class="btn small" href="/crm/seller/{{ account.crm_slug }}/leads/{{ lead.request_id }}">{{ lead.next_action_label }}</a>
               {% if lead.can_mark_viewed %}
                 <form method="post" action="/crm/seller/{{ account.crm_slug }}/leads/{{ lead.request_id }}/view">
                   <input type="hidden" name="next_url" value="{{ request.url.path }}?status={{ active_status }}">
