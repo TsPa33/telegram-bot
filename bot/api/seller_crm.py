@@ -59,6 +59,15 @@ from bot.database.repositories.seller_crm_repo import (
     update_seller_crm_car,
     update_seller_crm_car_photo,
 )
+from bot.database.repositories.product_repo import (
+    create_product,
+    get_product_by_id,
+    get_seller_product_donor_cars,
+    get_seller_products,
+    set_product_status,
+    update_product,
+    update_product_photo,
+)
 from bot.database.repositories.seller_lead_repo import (
     cancel_seller_lead_notifications,
     mark_seller_lead_action,
@@ -222,6 +231,161 @@ def _validate_service_form(title: str, description: str, price: str) -> tuple[in
         return None, "Опис має бути до 2000 символів."
     return _parse_service_price(price)
 
+
+
+
+PRODUCT_STATUS_OPTIONS = [
+    ("active", "Активний"),
+    ("inactive", "Неактивний"),
+]
+PRODUCT_STOCK_STATUS_OPTIONS = [
+    ("available", "В наявності"),
+    ("low_stock", "Мало на складі"),
+    ("sold", "Продано"),
+    ("preorder", "Передзамовлення"),
+]
+PRODUCT_STATUS_LABELS = {
+    "active": "Активний",
+    "inactive": "Неактивний",
+    "archived": "Архів",
+}
+PRODUCT_STOCK_LABELS = {
+    "available": "В наявності",
+    "low_stock": "Мало на складі",
+    "sold": "Продано",
+    "preorder": "Передзамовлення",
+}
+PRODUCT_STATUS_CLASSES = {
+    "active": "status-success",
+    "inactive": "status-rejected",
+    "archived": "status-waiting",
+    "sold": "status-viewed",
+}
+PRODUCT_STOCK_CLASSES = {
+    "available": "status-success",
+    "low_stock": "status-waiting",
+    "sold": "status-viewed",
+    "preorder": "status-waiting",
+}
+
+
+def _parse_product_money(value: str | None) -> tuple[str | None, str | None]:
+    raw = (value or "").strip().replace(" ", "").replace(",", ".")
+    if not raw:
+        return None, None
+    try:
+        amount = float(raw)
+    except ValueError:
+        return None, "Ціна має бути числом."
+    if amount < 0:
+        return None, "Ціна не може бути від’ємною."
+    if amount > 100_000_000:
+        return None, "Ціна занадто велика."
+    return f"{amount:.2f}", None
+
+
+def _parse_product_quantity(value: str | None) -> tuple[int, str | None]:
+    raw = (value or "").strip()
+    if not raw:
+        return 1, None
+    if not raw.isdigit():
+        return 1, "Кількість має бути цілим числом."
+    quantity = int(raw)
+    if quantity < 0:
+        return 1, "Кількість не може бути від’ємною."
+    if quantity > 1_000_000:
+        return 1, "Кількість занадто велика."
+    return quantity, None
+
+
+def _product_form_payload(**values) -> dict[str, Any]:
+    defaults = {
+        "title": "",
+        "category": "",
+        "brand": "",
+        "model": "",
+        "oem_code": "",
+        "condition": "",
+        "description": "",
+        "price": "",
+        "quantity": "1",
+        "stock_status": "available",
+        "status": "active",
+        "donor_car_id": "",
+    }
+    defaults.update(values)
+    for key, value in list(defaults.items()):
+        if value is None:
+            defaults[key] = ""
+        elif isinstance(value, str):
+            defaults[key] = value.strip()
+    return defaults
+
+
+def _validate_product_form(title: str, category: str, description: str, price: str, quantity: str, stock_status: str, status: str) -> tuple[str | None, int, str | None]:
+    if not (title or "").strip():
+        return None, 1, "Назва товару обов’язкова."
+    if not (category or "").strip():
+        return None, 1, "Категорія обов’язкова."
+    if len((title or "").strip()) > 180:
+        return None, 1, "Назва має бути до 180 символів."
+    if len((category or "").strip()) > 120:
+        return None, 1, "Категорія має бути до 120 символів."
+    if len((description or "").strip()) > 3000:
+        return None, 1, "Опис має бути до 3000 символів."
+    if stock_status not in dict(PRODUCT_STOCK_STATUS_OPTIONS):
+        return None, 1, "Оберіть коректний складський статус."
+    if status not in dict(PRODUCT_STATUS_OPTIONS):
+        return None, 1, "Оберіть коректний статус товару."
+    parsed_price, price_error = _parse_product_money(price)
+    if price_error:
+        return None, 1, price_error
+    parsed_quantity, quantity_error = _parse_product_quantity(quantity)
+    if quantity_error:
+        return None, 1, quantity_error
+    return parsed_price, parsed_quantity, None
+
+
+def _prepare_product(product: Any) -> dict[str, Any]:
+    item = dict(product or {})
+    status = item.get("status") or "inactive"
+    stock_status = item.get("stock_status") or "available"
+    display_status = "sold" if stock_status == "sold" else status
+    item["display_status"] = display_status
+    item["status_label"] = PRODUCT_STOCK_LABELS.get("sold") if display_status == "sold" else PRODUCT_STATUS_LABELS.get(status, status)
+    item["status_class"] = PRODUCT_STATUS_CLASSES.get(display_status, "status-waiting")
+    item["stock_label"] = PRODUCT_STOCK_LABELS.get(stock_status, stock_status)
+    item["stock_class"] = PRODUCT_STOCK_CLASSES.get(stock_status, "status-waiting")
+    item["is_active"] = status == "active"
+    item["has_photo"] = bool(item.get("photo_url"))
+    item["photo_is_url"] = isinstance(item.get("photo_url"), str) and item["photo_url"].startswith(("http://", "https://"))
+    item["has_description"] = bool((item.get("description") or "").strip())
+    item["has_price"] = item.get("price") is not None
+    item["has_oem"] = bool((item.get("oem_code") or "").strip())
+    item["content_completeness"] = round(
+        100
+        * sum([True, bool(item.get("category")), item["has_description"], item["has_price"], item["has_photo"], item["has_oem"]])
+        / 6
+    )
+    return item
+
+
+def _product_form_from_record(product: Any) -> dict[str, Any]:
+    item = dict(product or {})
+    return _product_form_payload(
+        title=item.get("title"),
+        category=item.get("category"),
+        brand=item.get("brand"),
+        model=item.get("model"),
+        oem_code=item.get("oem_code"),
+        condition=item.get("condition"),
+        description=item.get("description"),
+        price="" if item.get("price") is None else str(item.get("price")),
+        quantity=str(item.get("quantity") if item.get("quantity") is not None else 1),
+        stock_status=item.get("stock_status") or "available",
+        status=item.get("status") or "active",
+        donor_car_id="" if item.get("donor_car_id") is None else str(item.get("donor_car_id")),
+    )
 
 
 def _car_form_payload(description: str = "", status: str = "active", is_catalog: bool = False) -> dict[str, Any]:
@@ -1185,7 +1349,7 @@ async def seller_crm_content(request: Request, crm_slug: str):
     priority_sections = [
         {"key": "cars", "label": "Авто на розборі", "href": f"/crm/seller/{crm_slug}/content/cars"},
         {"key": "services", "label": "Послуги", "href": f"/crm/seller/{crm_slug}/content/services"},
-        {"key": "parts", "label": "Товари / Запчастини", "href": f"/crm/seller/{crm_slug}/content"},
+        {"key": "parts", "label": "Товари / Запчастини", "href": f"/crm/seller/{crm_slug}/content/products"},
     ]
     if has_services and not has_cars:
         priority_sections = [priority_sections[1], priority_sections[0], priority_sections[2]]
@@ -1215,6 +1379,417 @@ async def seller_crm_content(request: Request, crm_slug: str):
 # /content/products/{product_id}/photo
 # /content/products/{product_id}/enable
 # /content/products/{product_id}/disable
+
+
+
+@router.get("/{crm_slug}/content/products")
+async def seller_crm_content_products(request: Request, crm_slug: str, status: str | None = None, error: str | None = None):
+    try:
+        account, subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+
+    seller_id = account["seller_id"]
+    products = [_prepare_product(product) for product in await get_seller_products(seller_id, limit=100)]
+    totals = {
+        "active": sum(1 for product in products if product.get("status") == "active"),
+        "inactive": sum(1 for product in products if product.get("status") == "inactive"),
+        "sold": sum(1 for product in products if product.get("stock_status") == "sold"),
+        "available": sum(1 for product in products if product.get("stock_status") == "available"),
+        "low_stock": sum(1 for product in products if product.get("stock_status") == "low_stock"),
+        "preorder": sum(1 for product in products if product.get("stock_status") == "preorder"),
+        "without_photo": sum(1 for product in products if not product.get("has_photo")),
+        "without_price": sum(1 for product in products if not product.get("has_price")),
+    }
+    summary = dict(await get_seller_crm_content_summary(seller_id) or {})
+    site = await get_site_by_seller(seller_id)
+    account_flags = dict(account)
+    has_website = bool(site or account_flags.get("has_site") or account_flags.get("website"))
+
+    return templates.TemplateResponse(
+        "seller_crm/content_products.html",
+        _seller_crm_context(
+            request,
+            title="Товари / Запчастини — CRM продавця CarPot",
+            demo_mode=False,
+            current_page="content_products",
+            account=account,
+            subscription=subscription,
+            products=products,
+            totals=totals,
+            status=status,
+            error=error,
+            has_website=has_website,
+            has_cars=int(summary.get("active_cars") or 0) > 0,
+            has_services=int(summary.get("active_services") or 0) > 0,
+        ),
+    )
+
+
+async def _render_product_form(
+    request: Request,
+    *,
+    account,
+    subscription,
+    crm_slug: str,
+    form_title: str,
+    action_url: str,
+    cancel_url: str,
+    product=None,
+    form: dict[str, Any] | None = None,
+    error: str | None = None,
+    status_code: int = 200,
+):
+    donor_cars = await get_seller_product_donor_cars(account["seller_id"])
+    return templates.TemplateResponse(
+        "seller_crm/product_form.html",
+        _seller_crm_context(
+            request,
+            title=f"{form_title} — CRM продавця CarPot",
+            demo_mode=False,
+            current_page="content_products",
+            account=account,
+            subscription=subscription,
+            form_title=form_title,
+            product=product,
+            form=form or _product_form_payload(),
+            donor_cars=donor_cars,
+            status_options=PRODUCT_STATUS_OPTIONS,
+            stock_status_options=PRODUCT_STOCK_STATUS_OPTIONS,
+            error=error,
+            action_url=action_url,
+            cancel_url=cancel_url,
+            has_website=False,
+            has_cars=bool(donor_cars),
+            has_services=False,
+        ),
+        status_code=status_code,
+    )
+
+
+@router.get("/{crm_slug}/content/products/create")
+async def seller_crm_product_create_form(request: Request, crm_slug: str):
+    try:
+        account, subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+
+    return await _render_product_form(
+        request,
+        account=account,
+        subscription=subscription,
+        crm_slug=crm_slug,
+        form_title="Додати товар",
+        action_url=f"/crm/seller/{crm_slug}/content/products/create",
+        cancel_url=f"/crm/seller/{crm_slug}/content/products",
+    )
+
+
+@router.post("/{crm_slug}/content/products/create")
+async def seller_crm_product_create(
+    request: Request,
+    crm_slug: str,
+    title: str = Form(""),
+    category: str = Form(""),
+    brand: str = Form(""),
+    model: str = Form(""),
+    oem_code: str = Form(""),
+    condition: str = Form(""),
+    description: str = Form(""),
+    price: str = Form(""),
+    quantity: str = Form("1"),
+    stock_status: str = Form("available"),
+    status: str = Form("active"),
+    donor_car_id: str = Form(""),
+):
+    try:
+        account, subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+
+    form = _product_form_payload(
+        title=title,
+        category=category,
+        brand=brand,
+        model=model,
+        oem_code=oem_code,
+        condition=condition,
+        description=description,
+        price=price,
+        quantity=quantity,
+        stock_status=stock_status,
+        status=status,
+        donor_car_id=donor_car_id,
+    )
+    parsed_price, parsed_quantity, validation_error = _validate_product_form(title, category, description, price, quantity, stock_status, status)
+    parsed_donor_car_id = _parse_optional_int(donor_car_id)
+    if donor_car_id.strip() and parsed_donor_car_id is None:
+        validation_error = "Оберіть коректне авто-донор."
+    if validation_error:
+        return await _render_product_form(
+            request,
+            account=account,
+            subscription=subscription,
+            crm_slug=crm_slug,
+            form_title="Додати товар",
+            action_url=f"/crm/seller/{crm_slug}/content/products/create",
+            cancel_url=f"/crm/seller/{crm_slug}/content/products",
+            form=form,
+            error=validation_error,
+            status_code=400,
+        )
+
+    created = await create_product(
+        seller_id=account["seller_id"],
+        title=title,
+        category=category,
+        donor_car_id=parsed_donor_car_id,
+        brand=brand,
+        model=model,
+        oem_code=oem_code,
+        condition=condition,
+        description=description,
+        price=parsed_price,
+        quantity=parsed_quantity,
+        stock_status=stock_status,
+        status=status,
+    )
+    if not created:
+        return await _render_product_form(
+            request,
+            account=account,
+            subscription=subscription,
+            crm_slug=crm_slug,
+            form_title="Додати товар",
+            action_url=f"/crm/seller/{crm_slug}/content/products/create",
+            cancel_url=f"/crm/seller/{crm_slug}/content/products",
+            form=form,
+            error="Не вдалося створити товар. Перевірте авто-донор і спробуйте ще раз.",
+            status_code=400,
+        )
+
+    return RedirectResponse(url=f"/crm/seller/{crm_slug}/content/products/{created['id']}?status=created", status_code=303)
+
+
+@router.get("/{crm_slug}/content/products/{product_id}/edit")
+async def seller_crm_product_edit_form(request: Request, crm_slug: str, product_id: int):
+    try:
+        account, subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+
+    product = await get_product_by_id(account["seller_id"], product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    return await _render_product_form(
+        request,
+        account=account,
+        subscription=subscription,
+        crm_slug=crm_slug,
+        form_title="Редагувати товар",
+        action_url=f"/crm/seller/{crm_slug}/content/products/{product_id}/edit",
+        cancel_url=f"/crm/seller/{crm_slug}/content/products/{product_id}",
+        product=_prepare_product(product),
+        form=_product_form_from_record(product),
+    )
+
+
+@router.post("/{crm_slug}/content/products/{product_id}/edit")
+async def seller_crm_product_edit(
+    request: Request,
+    crm_slug: str,
+    product_id: int,
+    title: str = Form(""),
+    category: str = Form(""),
+    brand: str = Form(""),
+    model: str = Form(""),
+    oem_code: str = Form(""),
+    condition: str = Form(""),
+    description: str = Form(""),
+    price: str = Form(""),
+    quantity: str = Form("1"),
+    stock_status: str = Form("available"),
+    status: str = Form("active"),
+    donor_car_id: str = Form(""),
+):
+    try:
+        account, subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+
+    product = await get_product_by_id(account["seller_id"], product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    form = _product_form_payload(
+        title=title,
+        category=category,
+        brand=brand,
+        model=model,
+        oem_code=oem_code,
+        condition=condition,
+        description=description,
+        price=price,
+        quantity=quantity,
+        stock_status=stock_status,
+        status=status,
+        donor_car_id=donor_car_id,
+    )
+    parsed_price, parsed_quantity, validation_error = _validate_product_form(title, category, description, price, quantity, stock_status, status)
+    parsed_donor_car_id = _parse_optional_int(donor_car_id)
+    if donor_car_id.strip() and parsed_donor_car_id is None:
+        validation_error = "Оберіть коректне авто-донор."
+    if validation_error:
+        return await _render_product_form(
+            request,
+            account=account,
+            subscription=subscription,
+            crm_slug=crm_slug,
+            form_title="Редагувати товар",
+            action_url=f"/crm/seller/{crm_slug}/content/products/{product_id}/edit",
+            cancel_url=f"/crm/seller/{crm_slug}/content/products/{product_id}",
+            product=_prepare_product(product),
+            form=form,
+            error=validation_error,
+            status_code=400,
+        )
+
+    saved = await update_product(
+        account["seller_id"],
+        product_id,
+        title=title,
+        category=category,
+        donor_car_id=parsed_donor_car_id,
+        brand=brand,
+        model=model,
+        oem_code=oem_code,
+        condition=condition,
+        description=description,
+        price=parsed_price,
+        quantity=parsed_quantity,
+        stock_status=stock_status,
+        status=status,
+    )
+    if not saved:
+        return await _render_product_form(
+            request,
+            account=account,
+            subscription=subscription,
+            crm_slug=crm_slug,
+            form_title="Редагувати товар",
+            action_url=f"/crm/seller/{crm_slug}/content/products/{product_id}/edit",
+            cancel_url=f"/crm/seller/{crm_slug}/content/products/{product_id}",
+            product=_prepare_product(product),
+            form=form,
+            error="Не вдалося зберегти товар. Перевірте авто-донор і спробуйте ще раз.",
+            status_code=400,
+        )
+
+    return RedirectResponse(url=f"/crm/seller/{crm_slug}/content/products/{product_id}?status=updated", status_code=303)
+
+
+@router.get("/{crm_slug}/content/products/{product_id}")
+async def seller_crm_product_detail(request: Request, crm_slug: str, product_id: int, status: str | None = None, error: str | None = None):
+    try:
+        account, subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+
+    product = await get_product_by_id(account["seller_id"], product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    prepared_product = _prepare_product(product)
+    return templates.TemplateResponse(
+        "seller_crm/product_detail.html",
+        _seller_crm_context(
+            request,
+            title=f"{prepared_product.get('title') or 'Товар'} — CRM продавця CarPot",
+            demo_mode=False,
+            current_page="content_products",
+            account=account,
+            subscription=subscription,
+            product=prepared_product,
+            status=status,
+            error=error,
+            has_website=False,
+            has_cars=bool(prepared_product.get("donor_car_id")),
+            has_services=False,
+        ),
+    )
+
+
+@router.post("/{crm_slug}/content/products/{product_id}/photo")
+async def seller_crm_product_photo_upload(
+    request: Request,
+    crm_slug: str,
+    product_id: int,
+    photo: UploadFile | None = File(None),
+):
+    detail_url = f"/crm/seller/{crm_slug}/content/products/{product_id}"
+    try:
+        account, _subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+
+    product = await get_product_by_id(account["seller_id"], product_id)
+    if not product:
+        return RedirectResponse(url=f"/crm/seller/{crm_slug}/content/products?error=product_not_found", status_code=303)
+
+    image_url, error_key = await _upload_validated_car_photo(photo)
+    if error_key or not image_url:
+        return RedirectResponse(url=f"{detail_url}?error={error_key or 'photo_upload_failed'}", status_code=303)
+
+    saved = await update_product_photo(account["seller_id"], product_id, image_url)
+    if not saved:
+        return RedirectResponse(url=f"{detail_url}?error=photo_save_failed", status_code=303)
+
+    return RedirectResponse(url=f"{detail_url}?status=photo_updated", status_code=303)
+
+
+async def _toggle_crm_product(request: Request, crm_slug: str, product_id: int, new_status: str):
+    try:
+        account, _subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+
+    product = await get_product_by_id(account["seller_id"], product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    toggled = await set_product_status(account["seller_id"], product_id, new_status)
+    query_key = "status" if toggled else "error"
+    query_value = "enabled" if new_status == "active" else "disabled"
+    if not toggled:
+        query_value = "status_not_supported"
+    return RedirectResponse(url=f"/crm/seller/{crm_slug}/content/products/{product_id}?{query_key}={query_value}", status_code=303)
+
+
+@router.post("/{crm_slug}/content/products/{product_id}/enable")
+async def seller_crm_product_enable(request: Request, crm_slug: str, product_id: int):
+    return await _toggle_crm_product(request, crm_slug, product_id, "active")
+
+
+@router.post("/{crm_slug}/content/products/{product_id}/disable")
+async def seller_crm_product_disable(request: Request, crm_slug: str, product_id: int):
+    return await _toggle_crm_product(request, crm_slug, product_id, "inactive")
 
 
 @router.get("/{crm_slug}/content/services")
