@@ -26,18 +26,18 @@
       border: 1px solid var(--line);
       border-radius: 999px;
       padding: 8px 12px;
-      background: rgba(255,255,255,.045);
+      background: var(--surface);
       color: var(--text);
       text-decoration: none;
       font-size: 13px;
-      font-weight: 900;
+      font-weight: 600;
       white-space: nowrap;
     }
 
     .offer-tab.active {
-      color: #03111d;
-      background: linear-gradient(135deg, var(--blue), var(--green));
-      border-color: transparent;
+      color: var(--text);
+      background: rgba(56,189,248,.10);
+      border-color: rgba(56,189,248,.14);
     }
 
     .offer-list {
@@ -52,7 +52,7 @@
       min-width: 0;
       border: 1px solid rgba(148,163,184,.14);
       border-radius: 18px;
-      background: rgba(255,255,255,.035);
+      background: var(--surface);
       padding: 14px;
     }
 
@@ -64,9 +64,9 @@
     }
 
     .offer-title {
-      color: #fff;
+      color: var(--text);
       font-size: 17px;
-      font-weight: 950;
+      font-weight: 600;
       letter-spacing: -.025em;
       overflow-wrap: anywhere;
     }
@@ -78,19 +78,19 @@
       gap: 8px;
       color: var(--muted);
       font-size: 12px;
-      font-weight: 800;
+      font-weight: 600;
     }
 
     .offer-price {
-      color: #fff;
+      color: var(--text);
       font-size: 21px;
-      font-weight: 950;
+      font-weight: 600;
       letter-spacing: -.03em;
     }
 
     .offer-comment {
       margin: 0;
-      color: #c7d2e1;
+      color: var(--secondary);
       line-height: 1.45;
       overflow-wrap: anywhere;
     }

@@ -16,11 +16,11 @@
       flex-wrap: wrap;
       color: var(--muted);
       font-size: 13px;
-      font-weight: 850;
+      font-weight: 600;
     }
 
     .offer-breadcrumbs a {
-      color: #dbeafe;
+      color: var(--secondary);
       text-decoration: none;
     }
 
@@ -46,15 +46,15 @@
     }
 
     .offer-price-xl {
-      color: #fff;
+      color: var(--text);
       font-size: clamp(26px, 5vw, 38px);
-      font-weight: 950;
-      letter-spacing: -.045em;
+      font-weight: 700;
+      letter-spacing: -.035em;
     }
 
     .detail-text {
       margin: 0;
-      color: #c7d2e1;
+      color: var(--secondary);
       line-height: 1.55;
       overflow-wrap: anywhere;
     }
@@ -69,7 +69,7 @@
       min-width: 0;
       border: 1px solid rgba(148,163,184,.14);
       border-radius: 14px;
-      background: rgba(255,255,255,.035);
+      background: var(--surface);
       padding: 10px;
     }
 
@@ -77,9 +77,9 @@
       display: block;
       color: var(--muted);
       font-size: 11px;
-      font-weight: 900;
+      font-weight: 700;
       letter-spacing: .05em;
-      text-transform: uppercase;
+      text-transform: none;
       margin-bottom: 4px;
     }
 
@@ -103,8 +103,8 @@
       height: 10px;
       border-radius: 999px;
       margin-top: 5px;
-      background: linear-gradient(135deg, var(--blue), var(--green));
-      box-shadow: 0 0 14px rgba(37,215,255,.22);
+      background: linear-gradient(135deg, rgba(56,189,248,.72), rgba(125,211,176,.62));
+      box-shadow: 0 8px 18px rgba(56,189,248,.08);
     }
 
     .timeline-body {
@@ -113,8 +113,8 @@
       min-width: 0;
     }
 
-    .timeline-body b { color: #fff; overflow-wrap: anywhere; }
-    .timeline-body span { color: var(--muted); font-size: 12px; font-weight: 800; }
+    .timeline-body b { color: var(--text); overflow-wrap: anywhere; }
+    .timeline-body span { color: var(--muted); font-size: 12px; font-weight: 600; }
 
     .offer-detail-actions {
       display: flex;

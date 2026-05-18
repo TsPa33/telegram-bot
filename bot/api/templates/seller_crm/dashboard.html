@@ -15,27 +15,23 @@
   <section id="marketplace-analytics" class="grid kpi-cards" aria-label="Marketplace KPI">
     <a class="card kpi-card" href="/crm/seller/{{ account.crm_slug }}/analytics">
       <div class="emoji">🔥</div>
-      <h3>Нові заявки</h3>
       <div class="metric">{{ marketplace_summary.new_requests or 0 }}</div>
-      <p class="muted">релевантні за останні 24 години</p>
+      <h3>Нові заявки</h3>
     </a>
     <a class="card kpi-card" href="/crm/seller/{{ account.crm_slug }}/analytics">
       <div class="emoji">⏳</div>
-      <h3>Очікують відповіді</h3>
       <div class="metric">{{ marketplace_summary.waiting_response or 0 }}</div>
-      <p class="muted">без пропозиції, відхилення або пропуску</p>
+      <h3>Очікують відповіді</h3>
     </a>
     <a class="card kpi-card" id="offers" href="/crm/seller/{{ account.crm_slug }}/analytics">
       <div class="emoji">✅</div>
-      <h3>Обрані покупцем</h3>
       <div class="metric">{{ marketplace_summary.accepted_offers or 0 }}</div>
-      <p class="muted">accepted offers продавця</p>
+      <h3>Обрані покупцем</h3>
     </a>
     <a class="card kpi-card" href="/crm/seller/{{ account.crm_slug }}/analytics">
       <div class="emoji">⚡</div>
-      <h3>Середній час відповіді</h3>
       <div class="metric">{{ marketplace_summary.avg_response_label or "—" }}</div>
-      <p class="muted">від заявки до seller offer</p>
+      <h3>Середній час відповіді</h3>
     </a>
   </section>
 

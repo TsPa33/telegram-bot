@@ -25,18 +25,18 @@
       border: 1px solid var(--line);
       border-radius: 999px;
       padding: 8px 12px;
-      background: rgba(255,255,255,.045);
+      background: var(--surface);
       color: var(--text);
       text-decoration: none;
       font-size: 13px;
-      font-weight: 900;
+      font-weight: 600;
       white-space: nowrap;
     }
 
     .lead-tab.active {
-      color: #03111d;
-      background: linear-gradient(135deg, var(--blue), var(--green));
-      border-color: transparent;
+      color: var(--text);
+      background: rgba(56,189,248,.10);
+      border-color: rgba(56,189,248,.14);
     }
 
     .lead-card-meta {
@@ -45,7 +45,7 @@
       flex-wrap: wrap;
       color: var(--muted);
       font-size: 12px;
-      font-weight: 800;
+      font-weight: 600;
     }
 
     .lead-card-footer {
@@ -78,7 +78,7 @@
     .notice.error {
       border-color: rgba(251,113,133,.35);
       background: rgba(251,113,133,.09);
-      color: #fecdd3;
+      color: #F5C7CF;
     }
 
     @media (max-width: 640px) {

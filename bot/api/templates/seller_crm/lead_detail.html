@@ -16,12 +16,12 @@
       flex-wrap: wrap;
       color: var(--muted);
       font-size: 13px;
-      font-weight: 850;
+      font-weight: 600;
       margin-bottom: 4px;
     }
 
     .lead-breadcrumbs a {
-      color: #dbeafe;
+      color: var(--secondary);
       text-decoration: none;
     }
 
@@ -40,9 +40,9 @@
 
     .lead-title-stack h2 {
       margin: 0;
-      font-size: clamp(22px, 4vw, 34px);
-      line-height: 1.05;
-      letter-spacing: -.045em;
+      font-size: clamp(20px, 3vw, 28px);
+      line-height: 1.16;
+      letter-spacing: -.035em;
       overflow-wrap: anywhere;
     }
 
@@ -63,7 +63,7 @@
       min-width: 0;
       border: 1px solid rgba(148,163,184,.14);
       border-radius: 14px;
-      background: rgba(255,255,255,.035);
+      background: var(--surface);
       padding: 10px;
     }
 
@@ -72,17 +72,17 @@
       display: block;
       color: var(--muted);
       font-size: 11px;
-      font-weight: 900;
+      font-weight: 700;
       letter-spacing: .05em;
-      text-transform: uppercase;
+      text-transform: none;
       margin-bottom: 4px;
     }
 
     .detail-chip b,
     .field-value {
-      color: #fff;
+      color: var(--text);
       font-size: 14px;
-      font-weight: 900;
+      font-weight: 700;
       overflow-wrap: anywhere;
     }
 
@@ -101,7 +101,7 @@
 
     .detail-text {
       margin: 0;
-      color: #dbeafe;
+      color: var(--secondary);
       line-height: 1.6;
       white-space: pre-wrap;
       overflow-wrap: anywhere;
@@ -132,14 +132,14 @@
       gap: 10px;
       border: 1px solid rgba(34,211,238,.18);
       border-radius: 16px;
-      background: linear-gradient(135deg, rgba(34,211,238,.09), rgba(52,245,166,.045));
+      background: linear-gradient(135deg, rgba(34,211,238,.09), rgba(125,211,176,.035));
       padding: 13px;
       min-width: 0;
     }
 
     .offer-price {
       font-size: 26px;
-      font-weight: 950;
+      font-weight: 700;
       letter-spacing: -.04em;
     }
 
@@ -165,9 +165,9 @@
     .offer-form label {
       display: grid;
       gap: 6px;
-      color: #dbeafe;
+      color: var(--secondary);
       font-size: 13px;
-      font-weight: 900;
+      font-weight: 700;
       min-width: 0;
     }
 
@@ -177,11 +177,11 @@
       min-width: 0;
       border: 1px solid rgba(148,163,184,.2);
       border-radius: 13px;
-      background: rgba(2,6,23,.42);
-      color: #fff;
+      background: rgba(10,22,40,.5);
+      color: var(--text);
       padding: 11px 12px;
       font: inherit;
-      font-weight: 750;
+      font-weight: 600;
       outline: none;
     }
 
@@ -193,14 +193,14 @@
 
     .offer-form input:focus,
     .offer-form textarea:focus {
-      border-color: rgba(37,215,255,.6);
-      box-shadow: 0 0 0 3px rgba(37,215,255,.1);
+      border-color: rgba(56,189,248,.28);
+      box-shadow: 0 0 0 3px rgba(56,189,248,.08);
     }
 
     .notice.error {
       border-color: rgba(251,113,133,.35);
       background: rgba(251,113,133,.09);
-      color: #fecdd3;
+      color: #F5C7CF;
     }
 
     .empty-state {
@@ -209,7 +209,7 @@
       padding: 14px;
       border: 1px dashed rgba(148,163,184,.24);
       border-radius: 16px;
-      background: rgba(255,255,255,.025);
+      background: rgba(231,238,247,.025);
       color: var(--muted);
     }
 
@@ -227,7 +227,7 @@
       margin-top: 5px;
       border-radius: 999px;
       background: var(--blue);
-      box-shadow: 0 0 16px rgba(37,215,255,.35);
+      box-shadow: 0 8px 18px rgba(56,189,248,.08);
     }
 
     .timeline-body {
@@ -238,7 +238,7 @@
 
     .timeline-body b {
       display: block;
-      color: #fff;
+      color: var(--text);
       font-size: 13px;
       line-height: 1.35;
     }
@@ -246,7 +246,7 @@
     .timeline-body span {
       color: var(--muted);
       font-size: 12px;
-      font-weight: 800;
+      font-weight: 600;
     }
 
     .lead-actions-mobile {
