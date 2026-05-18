@@ -138,6 +138,8 @@ from bot.services.storage import upload_image
 router = APIRouter(prefix="/crm/seller")
 templates = Jinja2Templates(directory="bot/api/templates")
 SELLER_CRM_COOKIE = "seller_crm_session"
+DEMO_CRM_SLUG = "demo"
+DEMO_SELLER_ID = 0
 logger = logging.getLogger(__name__)
 
 
@@ -183,9 +185,126 @@ MODULE_KEYS = [
 ]
 
 
+def _is_demo_crm_slug(crm_slug: str | None) -> bool:
+    return (crm_slug or "").strip().lower() == DEMO_CRM_SLUG
+
+
+def _is_demo_account(account: dict[str, Any] | None) -> bool:
+    return bool(account and _is_demo_crm_slug(str(account.get("crm_slug") or "")))
+
+
+def _demo_crm_account() -> dict[str, Any]:
+    return {
+        "seller_id": DEMO_SELLER_ID,
+        "crm_slug": DEMO_CRM_SLUG,
+        "shop_name": "Demo Auto Hub",
+        "name": "Demo Auto Hub",
+        "username": "CarPotbot",
+        "phone": "+380 67 000 00 00",
+        "city": "Київ",
+        "website": "https://demo.carpot.com.ua",
+        "has_site": True,
+        "crm_enabled": True,
+        "is_active": True,
+    }
+
+
+def _demo_subscription() -> dict[str, Any]:
+    return {"expires_at": datetime.utcnow() + timedelta(days=30), "demo": True}
+
+
+def _demo_content_summary() -> dict[str, Any]:
+    return {
+        "active_cars": 2,
+        "active_services": 3,
+        "products_total": 12,
+        "cars_without_photo": 0,
+        "cars_without_description": 0,
+        "garage_slots_total": 10,
+        "garage_slots_used": 2,
+        "garage_slots_free": 8,
+    }
+
+
+def _demo_settings_summary() -> dict[str, Any]:
+    return {
+        "crm_slug": DEMO_CRM_SLUG,
+        "crm_account_status": "active",
+        "crm_enabled": True,
+        "account_created_at": datetime.utcnow() - timedelta(days=45),
+        "seller": {
+            "shop_name": "Demo Auto Hub",
+            "name": "Demo Auto Hub",
+            "city": "Київ",
+            "website": "https://demo.carpot.com.ua",
+            "phone": "+380 67 000 00 00",
+            "username": "CarPotbot",
+        },
+        "active_paid_seller_subscriptions": [],
+        "garage_slots_available": True,
+        "active_garage_slots": 10,
+        "used_garage_slots": 2,
+        "free_garage_slots": 8,
+        "active_cars_count": 2,
+        "latest_payments": [],
+        "site": {"subdomain": "demo"},
+        "has_site": True,
+    }
+
+
+def _demo_public_profile() -> dict[str, Any]:
+    return {
+        "shop_name": "Demo Auto Hub",
+        "name": "Demo Auto Hub",
+        "phone": "+380 67 000 00 00",
+        "city": "Київ",
+        "description": "Демо-профіль CRM CarPot для перевірки робочого простору продавця.",
+        "photo_id": "",
+        "is_verified": True,
+        "active_cars_count": 2,
+        "active_services_count": 3,
+        "has_site": True,
+        "website": "https://demo.carpot.com.ua",
+        "response_activity": {"avg_response_seconds": 18 * 60},
+    }
+
+
+def _demo_analytics() -> dict[str, Any]:
+    return {
+        "visits_today": 186,
+        "leads_today": 14,
+        "telegram_clicks_today": 42,
+        "active_listings": 38,
+        "conversion": 7.5,
+        "routed_requests": 18,
+        "viewed_requests": 15,
+        "offers_sent": 9,
+        "offers_selected": 3,
+        "declined_requests": 2,
+        "skipped_requests": 1,
+        "offers_rejected": 4,
+        "average_response_seconds": 18 * 60,
+        "has_website": True,
+    }
+
+
+def _demo_site() -> dict[str, Any]:
+    return {
+        "seller_id": DEMO_SELLER_ID,
+        "subdomain": DEMO_CRM_SLUG,
+        "config_draft": {},
+        "config_live": {},
+    }
+
 def _seller_crm_context(request: Request, **kwargs):
     context = {"request": request, "title": "CRM продавця"}
     context.update(kwargs)
+    account = context.get("account")
+    if _is_demo_account(account):
+        context["demo_mode"] = True
+    context.setdefault("demo_mode", False)
+    if account and "crm_slug" not in context:
+        context["crm_slug"] = account.get("crm_slug")
     return context
 
 
@@ -508,6 +627,9 @@ async def _current_session(request: Request):
 
 
 async def _authorized_account(request: Request, crm_slug: str):
+    if _is_demo_crm_slug(crm_slug):
+        return _demo_crm_account(), _demo_subscription()
+
     account = await get_crm_account_by_slug(crm_slug)
     if not account:
         raise HTTPException(status_code=404, detail="CRM account not found")
@@ -903,8 +1025,8 @@ async def seller_crm_demo(request: Request):
             title="Демо CRM CarPot",
             demo_mode=True,
             current_page="dashboard",
-            account={"crm_slug": "demo", "shop_name": "Demo Auto Hub"},
-            subscription={"expires_at": datetime.utcnow() + timedelta(days=30)},
+            account=_demo_crm_account(),
+            subscription=_demo_subscription(),
             stats=demo_stats,
             marketplace_summary={"new_requests": 3, "waiting_response": 2, "accepted_offers": 1, "avg_response_label": "18 хв"},
             marketplace_requests=[],
@@ -1009,12 +1131,15 @@ async def seller_crm_marketplace_leads(
         for tab in LEAD_STATUS_TABS
     ]
     active_tab = next(tab for tab in tabs if tab["active"])
-    leads = _prepare_marketplace_leads(
-        await list_seller_crm_marketplace_leads(
-            account["seller_id"],
-            status=active_status,
+    if _is_demo_account(account):
+        leads = []
+    else:
+        leads = _prepare_marketplace_leads(
+            await list_seller_crm_marketplace_leads(
+                account["seller_id"],
+                status=active_status,
+            )
         )
-    )
 
     return templates.TemplateResponse(
         "seller_crm/leads.html",
@@ -1275,12 +1400,15 @@ async def seller_crm_offers(request: Request, crm_slug: str, status: str = CRM_O
         for tab in OFFER_STATUS_TABS
     ]
     active_tab = next(tab for tab in tabs if tab["active"])
-    offers = _prepare_offer_cards(
-        await list_seller_crm_offers(
-            account["seller_id"],
-            status=active_status,
+    if _is_demo_account(account):
+        offers = []
+    else:
+        offers = _prepare_offer_cards(
+            await list_seller_crm_offers(
+                account["seller_id"],
+                status=active_status,
+            )
         )
-    )
 
     return templates.TemplateResponse(
         "seller_crm/offers.html",
@@ -1346,8 +1474,12 @@ async def seller_crm_content(request: Request, crm_slug: str):
         raise
 
     seller_id = account["seller_id"]
-    summary = dict(await get_seller_crm_content_summary(seller_id) or {})
-    site = await get_site_by_seller(seller_id)
+    if _is_demo_account(account):
+        summary = _demo_content_summary()
+        site = {"subdomain": DEMO_CRM_SLUG}
+    else:
+        summary = dict(await get_seller_crm_content_summary(seller_id) or {})
+        site = await get_site_by_seller(seller_id)
     account_flags = dict(account)
     has_website = bool(site or account_flags.get("has_site") or account_flags.get("website"))
     has_cars = int(summary.get("active_cars") or 0) > 0
@@ -1400,8 +1532,12 @@ async def seller_crm_content_products(request: Request, crm_slug: str):
         raise
 
     seller_id = account["seller_id"]
-    summary = dict(await get_seller_crm_content_summary(seller_id) or {})
-    products = [dict(product) for product in await get_seller_products(seller_id, limit=100)]
+    if _is_demo_account(account):
+        summary = _demo_content_summary()
+        products = []
+    else:
+        summary = dict(await get_seller_crm_content_summary(seller_id) or {})
+        products = [dict(product) for product in await get_seller_products(seller_id, limit=100)]
     totals = {
         "active": sum(1 for product in products if product.get("status") == "active"),
         "quantity": sum(int(product.get("quantity") or 0) for product in products),
@@ -1539,10 +1675,14 @@ async def seller_crm_content_services(request: Request, crm_slug: str):
         raise
 
     seller_id = account["seller_id"]
-    summary = dict(await get_seller_crm_content_summary(seller_id) or {})
-    services = [dict(service) for service in await list_seller_crm_services_inventory(seller_id)]
+    if _is_demo_account(account):
+        summary = _demo_content_summary()
+        services = []
+    else:
+        summary = dict(await get_seller_crm_content_summary(seller_id) or {})
+        services = [dict(service) for service in await list_seller_crm_services_inventory(seller_id)]
     for service in services:
-        detail = await get_seller_service_detail(seller_id=seller_id, service_id=service["service_id"])
+        detail = None if _is_demo_account(account) else await get_seller_service_detail(seller_id=seller_id, service_id=service["service_id"])
         if detail:
             status_meta = get_service_display_status(detail.get("is_active", True))
             service["status_supported"] = detail.get("status_supported", False)
@@ -1565,7 +1705,7 @@ async def seller_crm_content_services(request: Request, crm_slug: str):
         "without_price": sum(1 for service in services if not service.get("has_price")),
         "without_photo": sum(1 for service in services if not service.get("has_photo")),
     }
-    site = await get_site_by_seller(seller_id)
+    site = _demo_site() if _is_demo_account(account) else await get_site_by_seller(seller_id)
     account_flags = dict(account)
     has_website = bool(site or account_flags.get("has_site") or account_flags.get("website"))
 
@@ -1875,8 +2015,12 @@ async def seller_crm_content_cars(request: Request, crm_slug: str):
         raise
 
     seller_id = account["seller_id"]
-    summary = dict(await get_seller_crm_content_summary(seller_id) or {})
-    cars = [dict(car) for car in await list_seller_crm_cars_inventory(seller_id)]
+    if _is_demo_account(account):
+        summary = _demo_content_summary()
+        cars = []
+    else:
+        summary = dict(await get_seller_crm_content_summary(seller_id) or {})
+        cars = [dict(car) for car in await list_seller_crm_cars_inventory(seller_id)]
     for car in cars:
         status_meta = get_car_display_status(car.get("status"))
         car["status_meta"] = status_meta
@@ -1890,7 +2034,7 @@ async def seller_crm_content_cars(request: Request, crm_slug: str):
         "phone_clicks": sum(int(car.get("phone_clicks") or 0) for car in cars),
         "site_clicks": sum(int(car.get("site_clicks") or 0) for car in cars),
     }
-    site = await get_site_by_seller(seller_id)
+    site = _demo_site() if _is_demo_account(account) else await get_site_by_seller(seller_id)
     account_flags = dict(account)
     has_website = bool(site or account_flags.get("has_site") or account_flags.get("website"))
 
@@ -2215,12 +2359,16 @@ async def seller_crm_settings(request: Request, crm_slug: str):
         raise
 
     seller_id = account["seller_id"]
-    settings_summary = await get_seller_crm_settings_summary(seller_id)
-    if not settings_summary:
-        raise HTTPException(status_code=404, detail="Seller settings not found")
+    if _is_demo_account(account):
+        settings_summary = _demo_settings_summary()
+        content_summary = _demo_content_summary()
+    else:
+        settings_summary = await get_seller_crm_settings_summary(seller_id)
+        if not settings_summary:
+            raise HTTPException(status_code=404, detail="Seller settings not found")
+        content_summary = dict(await get_seller_crm_content_summary(seller_id) or {})
 
     has_website = bool(settings_summary.get("site") or settings_summary.get("has_site"))
-    content_summary = dict(await get_seller_crm_content_summary(seller_id) or {})
 
     return templates.TemplateResponse(
         "seller_crm/settings.html",
@@ -2249,11 +2397,14 @@ async def seller_crm_profile(request: Request, crm_slug: str):
         raise
 
     seller_id = account["seller_id"]
-    profile = dict(await get_seller_crm_public_profile(seller_id) or {})
-    if not profile:
-        raise HTTPException(status_code=404, detail="Seller profile not found")
-
-    site = await get_site_by_seller(seller_id)
+    if _is_demo_account(account):
+        profile = _demo_public_profile()
+        site = {"subdomain": "demo"}
+    else:
+        profile = dict(await get_seller_crm_public_profile(seller_id) or {})
+        if not profile:
+            raise HTTPException(status_code=404, detail="Seller profile not found")
+        site = await get_site_by_seller(seller_id)
     public_site_url = build_site_url(site["subdomain"]) if site and site.get("subdomain") else None
     has_website = bool(public_site_url or profile.get("has_site") or profile.get("website"))
 
@@ -2315,16 +2466,27 @@ async def seller_crm_dashboard(request: Request, crm_slug: str):
 
     seller_id = account["seller_id"]
     account_flags = dict(account)
-    stats = await get_seller_crm_dashboard(seller_id)
-    marketplace_summary = dict(await get_seller_crm_marketplace_summary(seller_id) or {})
-    marketplace_summary["avg_response_label"] = _format_duration(marketplace_summary.get("avg_response_seconds"))
-    marketplace_requests = _prepare_marketplace_requests(await list_seller_crm_marketplace_requests(seller_id))
-    marketplace_activity = _prepare_activity(await list_seller_crm_marketplace_activity(seller_id))
-    leads = await list_seller_crm_leads(seller_id)
-    cars = await list_seller_crm_cars(seller_id)
-    services = await list_seller_crm_services(seller_id)
-    sources = await list_seller_crm_sources(seller_id)
-    site = await get_site_by_seller(seller_id)
+    if _is_demo_account(account):
+        stats = _demo_analytics()
+        marketplace_summary = {"new_requests": 3, "waiting_response": 2, "accepted_offers": 1, "avg_response_label": "18 хв"}
+        marketplace_requests = []
+        marketplace_activity = []
+        leads = []
+        cars = []
+        services = []
+        sources = [{"source": "telegram", "visits": 93}, {"source": "google", "visits": 71}, {"source": "direct", "visits": 22}]
+        site = _demo_site()
+    else:
+        stats = await get_seller_crm_dashboard(seller_id)
+        marketplace_summary = dict(await get_seller_crm_marketplace_summary(seller_id) or {})
+        marketplace_summary["avg_response_label"] = _format_duration(marketplace_summary.get("avg_response_seconds"))
+        marketplace_requests = _prepare_marketplace_requests(await list_seller_crm_marketplace_requests(seller_id))
+        marketplace_activity = _prepare_activity(await list_seller_crm_marketplace_activity(seller_id))
+        leads = await list_seller_crm_leads(seller_id)
+        cars = await list_seller_crm_cars(seller_id)
+        services = await list_seller_crm_services(seller_id)
+        sources = await list_seller_crm_sources(seller_id)
+        site = await get_site_by_seller(seller_id)
     has_website = bool(site or account_flags.get("has_site") or account_flags.get("website"))
     has_cars = bool(cars)
     has_services = bool(services)
@@ -2364,7 +2526,10 @@ async def seller_crm_analytics(request: Request, crm_slug: str, days: int = 30):
 
     normalized_days = max(1, min(int(days or 30), 365))
     seller_id = account["seller_id"]
-    analytics = dict(await get_seller_crm_analytics(seller_id, normalized_days) or {})
+    if _is_demo_account(account):
+        analytics = _demo_analytics()
+    else:
+        analytics = dict(await get_seller_crm_analytics(seller_id, normalized_days) or {})
     analytics["average_response_label"] = _format_duration(analytics.get("average_response_seconds"))
 
     funnel_max = max(
@@ -2389,11 +2554,16 @@ async def seller_crm_analytics(request: Request, crm_slug: str, days: int = 30):
     analytics["skipped_percent"] = min(100, round((int(analytics.get("skipped_requests") or 0) / routed_requests) * 100))
     analytics["rejected_percent"] = min(100, round((int(analytics.get("offers_rejected") or 0) / offers_sent) * 100))
 
-    site = await get_site_by_seller(seller_id)
+    if _is_demo_account(account):
+        site = _demo_site()
+        cars = []
+        services = []
+    else:
+        site = await get_site_by_seller(seller_id)
+        cars = await list_seller_crm_cars(seller_id, limit=1)
+        services = await list_seller_crm_services(seller_id, limit=1)
     account_flags = dict(account)
     has_website = bool(site or analytics.get("has_website") or account_flags.get("has_site") or account_flags.get("website"))
-    cars = await list_seller_crm_cars(seller_id, limit=1)
-    services = await list_seller_crm_services(seller_id, limit=1)
 
     return templates.TemplateResponse(
         "seller_crm/analytics.html",
@@ -2423,7 +2593,7 @@ async def seller_crm_website(request: Request, crm_slug: str, section: str = "we
         raise
 
     seller_id = account["seller_id"]
-    site = await get_site_by_seller(seller_id)
+    site = _demo_site() if _is_demo_account(account) else await get_site_by_seller(seller_id)
     if not site:
         return templates.TemplateResponse(
             "seller_crm/website.html",
@@ -2453,11 +2623,19 @@ async def seller_crm_website(request: Request, crm_slug: str, section: str = "we
         )
 
     config = _as_config(site)
-    services = [dict(row) for row in await get_services_by_seller(seller_id)]
-    cars = [dict(row) for row in await get_cars_by_seller(seller_id)]
-    brands = await get_brands_with_ids()
-    selected_brand = brands[0]["id"] if brands else None
-    models = await get_models_by_brand_id(selected_brand) if selected_brand else []
+    if _is_demo_account(account):
+        services = []
+        cars = []
+    else:
+        services = [dict(row) for row in await get_services_by_seller(seller_id)]
+        cars = [dict(row) for row in await get_cars_by_seller(seller_id)]
+    if _is_demo_account(account):
+        brands = []
+        models = []
+    else:
+        brands = await get_brands_with_ids()
+        selected_brand = brands[0]["id"] if brands else None
+        models = await get_models_by_brand_id(selected_brand) if selected_brand else []
     live_url = build_site_url(site["subdomain"])
     media = _collect_media(config, services, cars)
 
@@ -2716,7 +2894,7 @@ async def publish_site_route(request: Request, crm_slug: str):
 @router.get("/{crm_slug}/website/preview")
 async def preview_draft_site(request: Request, crm_slug: str):
     account, _ = await _authorized_account(request, crm_slug)
-    site = await get_site_by_seller(account["seller_id"])
+    site = _demo_site() if _is_demo_account(account) else await get_site_by_seller(account["seller_id"])
     if not site:
         return HTMLResponse(
             "<h1>Сайт ще не налаштовано</h1><p>Поверніться до CRM продавця та налаштуйте сайт.</p>",
@@ -2728,11 +2906,11 @@ async def preview_draft_site(request: Request, crm_slug: str):
         {
             "request": request,
             "subdomain": site["subdomain"],
-            "site_id": site["id"],
+            "site_id": site.get("id"),
             "config": config,
             "seller": account,
-            "cars": [dict(row) for row in await get_cars_by_seller(account["seller_id"])],
-            "services": [dict(row) for row in await get_services_by_seller(account["seller_id"])],
+            "cars": [] if _is_demo_account(account) else [dict(row) for row in await get_cars_by_seller(account["seller_id"])],
+            "services": [] if _is_demo_account(account) else [dict(row) for row in await get_services_by_seller(account["seller_id"])],
             "products": config.get("products", {}),
         },
     )
