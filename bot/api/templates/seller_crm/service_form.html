@@ -11,12 +11,12 @@
   .form-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; min-width: 0; }
   .form-field { display: grid; gap: 7px; min-width: 0; }
   .form-field.full { grid-column: 1 / -1; }
-  .form-field label { color: var(--text); font-weight: 900; font-size: 13px; }
-  .form-field input, .form-field textarea { width: 100%; border: 1px solid var(--line); border-radius: 13px; background: rgba(255,255,255,.055); color: var(--text); padding: 11px 12px; font: inherit; outline: none; }
+  .form-field label { color: var(--text); font-weight: 700; font-size: 13px; }
+  .form-field input, .form-field textarea { width: 100%; border: 1px solid var(--line); border-radius: 13px; background: var(--surface); color: var(--text); padding: 11px 12px; font: inherit; outline: none; }
   .form-field textarea { min-height: 132px; resize: vertical; line-height: 1.45; }
   .field-help { color: var(--muted); font-size: 12px; line-height: 1.4; }
   .form-actions { display: flex; gap: 9px; flex-wrap: wrap; align-items: center; min-width: 0; }
-  .form-error { border: 1px solid rgba(251,113,133,.28); background: rgba(251,113,133,.1); color: #fecdd3; border-radius: 14px; padding: 10px 12px; font-weight: 850; }
+  .form-error { border: 1px solid rgba(251,113,133,.28); background: rgba(251,113,133,.1); color: #F5C7CF; border-radius: 14px; padding: 10px 12px; font-weight: 600; }
   @media (max-width: 680px) { .form-grid { grid-template-columns: 1fr; } .form-actions { display: grid; grid-template-columns: 1fr; } .form-actions .btn { width: 100%; white-space: normal; } }
 </style>
 

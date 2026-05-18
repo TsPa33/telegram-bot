@@ -22,13 +22,13 @@
     width: 96px;
     height: 96px;
     border-radius: 22px;
-    border: 1px solid rgba(37,215,255,.2);
-    background: linear-gradient(135deg, rgba(37,215,255,.12), rgba(52,245,166,.08));
+    border: 1px solid rgba(56,189,248,.12);
+    background: linear-gradient(135deg, rgba(56,189,248,.08), rgba(125,211,176,.055));
     display: grid;
     place-items: center;
     overflow: hidden;
-    color: #c7f9ff;
-    font-weight: 950;
+    color: #B5E8F0;
+    font-weight: 700;
     text-align: center;
     font-size: 12px;
     line-height: 1.25;
@@ -79,7 +79,7 @@
     border: 1px solid rgba(148,163,184,.14);
     border-radius: 14px;
     padding: 10px 12px;
-    background: rgba(255,255,255,.035);
+    background: var(--surface);
     min-width: 0;
   }
 
@@ -91,17 +91,17 @@
   .profile-label {
     color: var(--muted);
     font-size: 12px;
-    font-weight: 850;
+    font-weight: 600;
   }
 
   .profile-value {
     margin-top: 3px;
-    color: #fff;
-    font-weight: 900;
+    color: var(--text);
+    font-weight: 700;
   }
 
   .warning-text {
-    color: #fde68a;
+    color: #F3D899;
   }
 
   .trust-grid {
@@ -112,7 +112,7 @@
     border: 1px solid rgba(148,163,184,.14);
     border-radius: 16px;
     padding: 13px;
-    background: rgba(255,255,255,.035);
+    background: var(--surface);
   }
 
   .trust-metric b {
@@ -124,7 +124,7 @@
   .progress-track {
     height: 10px;
     border-radius: 999px;
-    background: rgba(255,255,255,.08);
+    background: rgba(231,238,247,.06);
     overflow: hidden;
     margin: 8px 0 12px;
   }
@@ -132,7 +132,7 @@
   .progress-fill {
     height: 100%;
     border-radius: inherit;
-    background: linear-gradient(135deg, var(--blue), var(--green));
+    background: linear-gradient(135deg, rgba(56,189,248,.72), rgba(125,211,176,.62));
   }
 
   .check-item {
@@ -147,15 +147,15 @@
     place-items: center;
     border-radius: 999px;
     background: rgba(251,191,36,.12);
-    color: #fde68a;
+    color: #F3D899;
     border: 1px solid rgba(251,191,36,.25);
-    font-weight: 950;
+    font-weight: 700;
   }
 
   .check-item.done .check-icon {
-    background: rgba(52,245,166,.12);
-    color: #bbf7d0;
-    border-color: rgba(52,245,166,.25);
+    background: rgba(125,211,176,.08);
+    color: #BCEBD3;
+    border-color: rgba(125,211,176,.17);
   }
 
   .profile-actions {
