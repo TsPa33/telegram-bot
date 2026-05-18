@@ -8,10 +8,12 @@ from typing import Iterable
 from fastapi import UploadFile
 
 from bot.database.repositories.buyer_request_repo import create_marketplace_buyer_request_with_routing
+from bot.database.repositories.seller_crm_repo import get_seller_crm_marketplace_summary
 from bot.keyboards.seller_leads import seller_lead_notification_kb
 from bot.services.buyer_request_safety import inspect_buyer_request_safety
 from bot.services.marketplace_routing import build_buyer_request_routing_plan
 from bot.services.request_photo_pipeline import RequestPhotoValidationError, prepare_request_photo_assets
+from bot.services.seller_notification_ops import format_new_lead_notification, seller_crm_context_url
 from bot.services.telegram_sender import send_message_to_seller
 
 
@@ -130,26 +132,8 @@ def buyer_request_title(row: dict | None) -> str:
     return "Заявка CarPot"
 
 
-def _seller_notification_text(request_row: dict) -> str:
-    category = short_text(request_row.get("category"), 80) or "Заявка"
-    icon = CATEGORY_ICONS.get(category, "📋")
-    title = buyer_request_title(request_row)
-    city = short_text(request_row.get("city"), 120) or "—"
-    phone = short_text(request_row.get("buyer_phone"), 40) or "—"
-    description = short_text(request_row.get("description"), 900) or "Опис не вказано"
-
-    return "\n".join(
-        [
-            "📥 <b>Нова заявка</b>",
-            "",
-            f"{escape(icon)} <b>{escape(title)}</b>",
-            f"📍 {escape(city)}",
-            f"📞 {escape(phone)}",
-            "",
-            "Опис:",
-            escape(description),
-        ]
-    )
+def _seller_notification_text(request_row: dict, *, waiting_response: int | None = None) -> str:
+    return format_new_lead_notification(request_row, waiting_response=waiting_response)
 
 
 async def _notify_matched_sellers(request_row: dict | None, matches: list[dict]) -> int:
@@ -158,13 +142,27 @@ async def _notify_matched_sellers(request_row: dict | None, matches: list[dict])
 
     delivered = 0
     request_id = int(request_row["id"])
-    text = _seller_notification_text(request_row)
-    markup = seller_lead_notification_kb(request_id)
-
     for match in matches:
         telegram_id = match.get("telegram_id")
         if not telegram_id:
             continue
+        seller_id = match.get("seller_id")
+        waiting_response = None
+        try:
+            summary = await get_seller_crm_marketplace_summary(int(seller_id)) if seller_id else None
+            waiting_response = int(summary.get("waiting_response") or 0) if summary else None
+        except Exception as exc:
+            logger.warning("Unable to load seller waiting-response summary seller_id=%s: %s", seller_id, exc)
+
+        crm_url = None
+        try:
+            crm_url = await seller_crm_context_url(int(seller_id), f"/leads/{request_id}") if seller_id else None
+        except Exception as exc:
+            logger.warning("Unable to build seller CRM lead URL seller_id=%s request_id=%s: %s", seller_id, request_id, exc)
+
+        text = _seller_notification_text(request_row, waiting_response=waiting_response)
+        markup = seller_lead_notification_kb(request_id, crm_url=crm_url)
+
         try:
             message = await send_message_to_seller(
                 int(telegram_id),

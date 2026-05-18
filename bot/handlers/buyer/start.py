@@ -37,6 +37,7 @@ from bot.services.buyer_request_service import (
     BuyerRequestValidationError,
     submit_marketplace_buyer_request,
 )
+from bot.services.seller_notification_ops import format_accepted_offer_notification, seller_crm_context_url
 from bot.services.telegram_sender import send_message_to_seller
 
 from bot.keyboards.main_menu import main_menu_kb
@@ -1012,20 +1013,7 @@ def _selected_offer_request_title(offer) -> str:
 
 
 def _format_seller_offer_accepted_notification(offer) -> str:
-    lines = [
-        "✅ <b>Покупець обрав вашу пропозицію</b>",
-        "",
-        "Заявка:",
-        escape(_selected_offer_request_title(offer)),
-    ]
-    buyer_city = _clean_text(offer.get("buyer_city"))
-    if buyer_city:
-        lines.append(f"📍 {escape(buyer_city)}")
-    buyer_phone = _clean_text(offer.get("buyer_phone"))
-    if buyer_phone:
-        lines.append(f"📞 {escape(buyer_phone)}")
-    lines.extend(["", "Покупець може звʼязатися з вами напряму."])
-    return "\n".join(lines)
+    return format_accepted_offer_notification(dict(offer) if offer else {})
 
 
 async def _mark_notification_event_status(event_id: int | None, status: str) -> None:
@@ -1058,11 +1046,25 @@ async def _notify_seller_offer_selected(*, offer, notification_event: dict | Non
         await _mark_notification_event_status((notification_event or {}).get("id"), "failed")
         return
 
+    crm_url = None
+    offer_url = None
+    try:
+        crm_url = await seller_crm_context_url(seller_id, f"/leads/{request_id}")
+        offer_url = await seller_crm_context_url(seller_id, f"/offers/{offer_id}")
+    except Exception as exc:
+        logger.warning(
+            "Unable to build seller CRM accepted-offer URL seller_id=%s request_id=%s offer_id=%s: %s",
+            seller_id,
+            request_id,
+            offer_id,
+            exc,
+        )
+
     sent = await send_message_to_seller(
         int(seller_telegram_id),
         _format_seller_offer_accepted_notification(offer),
         parse_mode="HTML",
-        reply_markup=seller_offer_accepted_notification_kb(request_id),
+        reply_markup=seller_offer_accepted_notification_kb(request_id, crm_url=crm_url, offer_url=offer_url),
     )
     if sent:
         await _mark_notification_event_status((notification_event or {}).get("id"), "sent")
