@@ -34,28 +34,28 @@
       <h2 id="cars-title">Авто на розборі</h2>
       <p class="section-note">Керуйте існуючими донорськими авто та безпечно додавайте нові авто без фото.</p>
     </div>
-    <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content">← Мій контент</a>
+    <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content">← Каталог</a>
   </section>
 
   <section class="card content-add-card" aria-labelledby="cars-add-actions">
     <h2 id="cars-add-actions">Швидко додати</h2>
-    <p class="section-note">Авто можна створити в CRM без фото. Фото можна буде додати окремо пізніше.</p>
+    <p class="section-note">Авто можна створити в кабінеті без фото. Фото можна буде додати окремо пізніше.</p>
     <div class="content-add-actions" aria-label="Швидкі дії додавання">
       <button class="btn" type="button" onclick="alert('Відкрийте Telegram-бот CarPot і скористайтесь меню продавця для додавання авто, послуг або товарів.')">Відкрити Telegram</button>
       <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content/cars/create">＋ Додати авто</a>
       <button class="btn ghost" type="button" onclick="alert('Як додати послугу: Telegram-бот CarPot → меню продавця → додати сервісну пропозицію.')">＋ Додати послугу</button>
-      <button class="btn ghost" type="button" onclick="alert('Товари / запчастини: розділ буде додано окремо. Поки що не створюємо inventory editor у CRM.')">＋ Додати товар / запчастину</button>
+      <button class="btn ghost" type="button" onclick="alert('Товари та запчастини: розділ буде додано окремо. Поки що не створюємо редактор товарів у кабінеті.')">＋ Додати товар або запчастину</button>
     </div>
     <p class="telegram-note">Фото можна буде додати окремо. Поки авто буде створено без фото.</p>
   </section>
 
   <section class="card parts-placeholder" aria-labelledby="cars-parts-placeholder">
-    <h2 id="cars-parts-placeholder">Товари / Запчастини</h2>
+    <h2 id="cars-parts-placeholder">Товари та запчастини</h2>
     <p class="section-note">Розділ товарів/запчастин буде додано окремо.</p>
   </section>
 
   <section class="grid garage-summary" aria-label="Підсумок гаража">
-    {{ cards.metric_card("Активні авто", summary.active_cars or 0, "позицій у CRM") }}
+    {{ cards.metric_card("Активні авто", summary.active_cars or 0, "позицій у кабінеті") }}
     <article class="card">
       <h3>Гараж</h3>
       {% if summary.garage_slots_total %}

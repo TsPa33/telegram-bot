@@ -34,7 +34,7 @@
   <section class="workspace-hero" aria-labelledby="services-title">
     <div>
       <h2 id="services-title">Послуги</h2>
-      <p class="section-note">Створюйте, редагуйте й керуйте активністю сервісних пропозицій напряму з CRM.</p>
+      <p class="section-note">Створюйте, редагуйте й керуйте активністю сервісних пропозицій напряму з кабінету.</p>
     </div>
     <div class="content-add-actions"><a class="btn" href="/crm/seller/{{ account.crm_slug }}/content/services/create">＋ Додати послугу</a><a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content">← Мій контент</a></div>
   </section>
@@ -54,7 +54,7 @@
   </section>
 
   <section class="grid services-summary" aria-label="Підсумок послуг">
-    {{ cards.metric_card("Активні послуги", summary.active_services or services|length, "позицій у CRM") }}
+    {{ cards.metric_card("Активні послуги", summary.active_services or services|length, "позицій у кабінеті") }}
     {{ cards.metric_card("Перегляди", totals.views or 0, "по послугах") }}
     {{ cards.metric_card("Дзвінки / кліки", (totals.calls or 0) + (totals.clicks or 0), "дзвінки: " ~ (totals.calls or 0) ~ " · кліки: " ~ (totals.clicks or 0)) }}
     {{ cards.metric_card("Потрібно доповнити", (totals.without_description or 0) + (totals.without_price or 0) + (totals.without_photo or 0), "опис: " ~ (totals.without_description or 0) ~ " · ціна: " ~ (totals.without_price or 0) ~ " · фото: " ~ (totals.without_photo or 0)) }}
@@ -116,7 +116,7 @@
           </div>
         </article>
       {% else %}
-        {{ badges.empty_state("Додайте першу послугу.", "Створіть сервісну пропозицію в CRM — вона з’явиться тут зі статистикою та індикаторами заповнення.", "/crm/seller/" ~ account.crm_slug ~ "/content/services/create", "＋ Додати послугу") }}
+        {{ badges.empty_state("Додайте першу послугу.", "Створіть сервісну пропозицію в кабінеті — вона з’явиться тут зі статистикою та індикаторами заповнення.", "/crm/seller/" ~ account.crm_slug ~ "/content/services/create", "＋ Додати послугу") }}
       {% endfor %}
     </div>
   </section>

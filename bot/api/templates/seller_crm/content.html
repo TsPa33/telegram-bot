@@ -1,6 +1,6 @@
 {% extends "seller_crm/base.html" %}
-{% block crm_kicker %}Контент продавця{% endblock %}
-{% block crm_heading %}Мій контент{% endblock %}
+{% block crm_kicker %}Каталог продавця{% endblock %}
+{% block crm_heading %}Каталог{% endblock %}
 {% block content %}
 <style>
   .content-hub { display: grid; gap: 14px; min-width: 0; }
@@ -27,10 +27,10 @@
 <div class="content-hub">
   <section class="workspace-hero" aria-labelledby="content-title">
     <div>
-      <h2 id="content-title">Мій контент</h2>
-      <p class="section-note">Огляд того, що покупці бачать у marketplace та на сайті. Додавання й редагування залишаються у Telegram-боті.</p>
+      <h2 id="content-title">Каталог</h2>
+      <p class="section-note">Огляд того, що покупці бачать у маркетплейсі та на сайті. Додавання й редагування залишаються у Telegram-боті.</p>
     </div>
-    <div class="pill">Read-first</div>
+    <div class="pill">Огляд</div>
   </section>
 
   {% if not has_cars and not has_services %}
@@ -67,11 +67,11 @@
       {% else %}
         <a class="card content-card" href="{{ section.href }}">
           <div class="content-card-top">
-            <div class="content-card-title">Товари / Запчастини</div>
+            <div class="content-card-title">Товари та запчастини</div>
             <span class="badge">Скоро</span>
           </div>
           <p class="content-card-note">Розділ товарів/запчастин буде додано окремо.</p>
-          <span class="badge status-viewed">Плейсхолдер</span>
+          <span class="badge status-viewed">Скоро</span>
         </a>
       {% endif %}
     {% endfor %}
@@ -101,14 +101,14 @@
   <section class="card add-actions-card" aria-labelledby="content-add-actions">
     <div class="add-actions-title">
       <h2 id="content-add-actions">Швидко додати контент</h2>
-      <span class="badge status-viewed">Telegram-flow</span>
+      <span class="badge status-viewed">Telegram</span>
     </div>
-    <p class="section-note">Додавання зараз доступне через Telegram-бот. CRM не відкриває форми створення, тому кнопки нижче підказують безпечний шлях без нових маршрутів.</p>
+    <p class="section-note">Додавання зараз доступне через Telegram-бот. Кабінет не відкриває форми створення, тому кнопки нижче підказують безпечний шлях без нових маршрутів.</p>
     <div class="quick-actions" aria-label="Швидкі дії додавання контенту">
       <button class="btn" type="button" onclick="alert('Відкрийте Telegram-бот CarPot і скористайтесь меню продавця для додавання авто, послуг або товарів.')">Відкрити Telegram</button>
       <button class="btn ghost" type="button" onclick="alert('Як додати авто: відкрийте Telegram-бот CarPot → меню продавця → додайте авто на розборі з описом і фото.')">＋ Додати авто</button>
       <button class="btn ghost" type="button" onclick="alert('Як додати послугу: відкрийте Telegram-бот CarPot → меню продавця → додайте сервісну пропозицію, ціну та опис.')">＋ Додати послугу</button>
-      <button class="btn ghost" type="button" onclick="alert('Товари / запчастини: розділ буде додано окремо. Поки що додавання ведеться через Telegram-бот без CRM-форми.')">＋ Додати товар / запчастину</button>
+      <button class="btn ghost" type="button" onclick="alert('Товари та запчастини: розділ буде додано окремо. Поки що додавання ведеться через Telegram-бот.')">＋ Додати товар або запчастину</button>
       <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content/cars">Як додати авто</a>
       <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content/services">Як додати послугу</a>
     </div>
@@ -116,7 +116,7 @@
   </section>
 
   <section class="card parts-placeholder" aria-labelledby="parts-placeholder-title">
-    <h2 id="parts-placeholder-title">Товари / Запчастини</h2>
+    <h2 id="parts-placeholder-title">Товари та запчастини</h2>
     <p class="section-note">Розділ товарів/запчастин буде додано окремо.</p>
   </section>
 </div>

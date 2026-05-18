@@ -154,19 +154,19 @@ logger = logging.getLogger(__name__)
 
 LEAD_STATUS_TABS = [
     {"key": CRM_LEAD_STATUS_NEW, "label": "Нові", "empty": "Нових заявок поки немає."},
-    {"key": CRM_LEAD_STATUS_IN_WORK, "label": "В роботі", "empty": "Немає заявок у роботі."},
-    {"key": CRM_LEAD_STATUS_REPLIED, "label": "Відповіли", "empty": "Ви ще не надіслали пропозиції."},
-    {"key": CRM_LEAD_STATUS_SELECTED, "label": "Обрані", "empty": "Покупці ще не обрали ваші пропозиції."},
+    {"key": CRM_LEAD_STATUS_IN_WORK, "label": "Очікують відповіді", "empty": "Немає заявок, які очікують відповіді."},
+    {"key": CRM_LEAD_STATUS_REPLIED, "label": "Пропозицію надіслано", "empty": "Немає заявок із надісланою пропозицією."},
+    {"key": CRM_LEAD_STATUS_SELECTED, "label": "Обрані покупцем", "empty": "Покупці ще не обрали ваші пропозиції."},
     {"key": CRM_LEAD_STATUS_DECLINED, "label": "Відхилені", "empty": "Відхилених заявок немає."},
     {"key": CRM_LEAD_STATUS_SKIPPED, "label": "Пропущені", "empty": "Пропущених заявок немає."},
 ]
 ALLOWED_LEAD_STATUSES = CRM_LEAD_STATUSES
 
 OFFER_STATUS_TABS = [
-    {"key": CRM_OFFER_STATUS_ACTIVE, "label": "Активні", "empty": "Активних пропозицій поки немає."},
+    {"key": CRM_OFFER_STATUS_ACTIVE, "label": "Очікують вибору", "empty": "Немає пропозицій, які очікують вибору покупця."},
     {"key": CRM_OFFER_STATUS_SELECTED, "label": "Обрані покупцем", "empty": "Покупці ще не обрали ваші пропозиції."},
     {"key": CRM_OFFER_STATUS_REJECTED, "label": "Не обрані", "empty": "Немає відхилених пропозицій."},
-    {"key": CRM_OFFER_STATUS_ALL, "label": "Архів / всі", "empty": "Пропозицій ще немає."},
+    {"key": CRM_OFFER_STATUS_ALL, "label": "Усі пропозиції", "empty": "Надісланих пропозицій ще немає."},
 ]
 ALLOWED_OFFER_STATUSES = CRM_OFFER_STATUSES
 
@@ -267,7 +267,7 @@ def _demo_public_profile() -> dict[str, Any]:
         "name": "Demo Auto Hub",
         "phone": "+380 67 000 00 00",
         "city": "Київ",
-        "description": "Демо-профіль CRM CarPot для перевірки робочого простору продавця.",
+        "description": "Демо-профіль CarPot для перевірки робочого простору продавця.",
         "photo_id": "",
         "is_verified": True,
         "active_cars_count": 2,
@@ -306,7 +306,7 @@ def _demo_site() -> dict[str, Any]:
     }
 
 def _seller_crm_context(request: Request, **kwargs):
-    context = {"request": request, "title": "CRM продавця"}
+    context = {"request": request, "title": "Кабінет продавця"}
     context.update(kwargs)
     account = context.get("account")
     if _is_demo_account(account):
@@ -341,8 +341,8 @@ def _safe_crm_redirect_url(request: Request, crm_slug: str, fallback: str, next_
 def _lead_action_notice(action: str) -> str:
     return {
         SELLER_LEAD_ACTION_VIEWED: "Заявку позначено переглянутою.",
-        SELLER_LEAD_ACTION_DECLINED: "Заявку відхилено локально для вашого CRM.",
-        SELLER_LEAD_ACTION_SKIPPED: "Заявку пропущено локально для вашого CRM.",
+        SELLER_LEAD_ACTION_DECLINED: "Заявку відхилено для вашого робочого простору.",
+        SELLER_LEAD_ACTION_SKIPPED: "Заявку пропущено для вашого робочого простору.",
         "reopened": "Заявку повернуто в роботу.",
     }.get(action, "Дію виконано.")
 
@@ -580,7 +580,7 @@ async def _render_car_create_form(
         "seller_crm/car_form.html",
         _seller_crm_context(
             request,
-            title="Додати авто — CRM продавця CarPot",
+            title="Додати авто — кабінет продавця CarPot",
             demo_mode=False,
             current_page="content_cars",
             account=account,
@@ -638,13 +638,13 @@ def _setup_password_redirect(crm_slug: str):
 async def _current_session(request: Request):
     token = request.cookies.get(SELLER_CRM_COOKIE)
     if not token:
-        raise HTTPException(status_code=401, detail="Seller CRM session required")
+        raise HTTPException(status_code=401, detail="Потрібен вхід у кабінет продавця")
 
     session = await get_crm_session(token)
     if not session or _is_expired(session["expires_at"]):
-        raise HTTPException(status_code=401, detail="Seller CRM session expired")
+        raise HTTPException(status_code=401, detail="Сесія кабінету продавця завершилась")
     if not session["is_active"] or not session["crm_enabled"]:
-        raise HTTPException(status_code=403, detail="Seller CRM account disabled")
+        raise HTTPException(status_code=403, detail="Кабінет продавця вимкнено")
 
     return session, None
 
@@ -655,7 +655,7 @@ async def _authorized_account(request: Request, crm_slug: str):
 
     account = await get_crm_account_by_slug(crm_slug)
     if not account:
-        raise HTTPException(status_code=404, detail="CRM account not found")
+        raise HTTPException(status_code=404, detail="Акаунт кабінету не знайдено")
     if not account.get("password_hash"):
         _setup_password_redirect(account["crm_slug"])
 
@@ -706,7 +706,7 @@ def _format_duration(seconds: int | None) -> str:
 def _request_title(row) -> str:
     parts = [row.get("brand"), row.get("model")]
     title = " ".join(str(part).strip() for part in parts if part)
-    return title or row.get("category") or row.get("request_type") or "Marketplace заявка"
+    return title or row.get("category") or row.get("request_type") or "Заявка"
 
 
 def _request_status_label(row) -> str:
@@ -767,7 +767,7 @@ def _activity_label(row) -> str:
         "buyer_request_created": "Нова заявка · покупець очікує",
         "buyer_offer_created": "Відповідь надіслано покупцю",
         "buyer_offer_accepted": "Покупець обрав вашу пропозицію",
-        SELLER_LEAD_ACTION_OFFERED: "Діалог продовжено",
+        SELLER_LEAD_ACTION_OFFERED: "Пропозицію надіслано",
     }
     return labels.get(action, "Важливе оновлення заявки")
 
@@ -844,7 +844,7 @@ def _prepare_marketplace_leads(rows) -> list[dict[str, Any]]:
             item["attention_class"] = "status-success"
         else:
             item["next_action_label"] = "Переглянути"
-            item["attention_label"] = "Другорядне"
+            item["attention_label"] = "Без термінової дії"
             item["attention_class"] = "status-viewed"
         prepared.append(item)
     return prepared
@@ -1119,7 +1119,7 @@ async def seller_crm_demo(request: Request):
         "seller_crm/dashboard.html",
         _seller_crm_context(
             request,
-            title="Демо CRM CarPot",
+            title="Демо кабінет CarPot",
             demo_mode=True,
             current_page="dashboard",
             account=_demo_crm_account(),
@@ -1159,7 +1159,7 @@ def _render_setup_password(
         "seller_crm/setup_password.html",
         _seller_crm_context(
             request,
-            title="Створення пароля CRM",
+            title="Створення пароля кабінету",
             account=account,
             slug=slug,
             login=_seller_crm_login_value(account),
@@ -1185,7 +1185,7 @@ def _render_reset_password(
         "seller_crm/reset_password.html",
         _seller_crm_context(
             request,
-            title="Відновлення пароля CRM",
+            title="Відновлення пароля кабінету",
             account=account,
             slug=slug,
             identifier=identifier,
@@ -1221,13 +1221,13 @@ async def seller_crm_setup_password_page(request: Request, slug: str | None = No
         return _render_setup_password(
             request,
             slug=slug or "",
-            error="Некоректна CRM адреса.",
+            error="Некоректна адреса кабінету.",
             status_code=404,
         )
 
     account = await get_crm_account_by_slug(normalized_slug)
     if not account or not account["is_active"] or not account["crm_enabled"]:
-        raise HTTPException(status_code=404, detail="CRM account not found")
+        raise HTTPException(status_code=404, detail="Акаунт кабінету не знайдено")
 
     if account.get("password_hash"):
         return RedirectResponse(url=f"/crm/seller/login?slug={account['crm_slug']}", status_code=303)
@@ -1247,13 +1247,13 @@ async def seller_crm_setup_password(
         return _render_setup_password(
             request,
             slug=slug,
-            error="Некоректна CRM адреса.",
+            error="Некоректна адреса кабінету.",
             status_code=400,
         )
 
     account = await get_crm_account_by_slug(normalized_slug)
     if not account or not account["is_active"] or not account["crm_enabled"]:
-        raise HTTPException(status_code=404, detail="CRM account not found")
+        raise HTTPException(status_code=404, detail="Акаунт кабінету не знайдено")
 
     account = dict(account)
     if account.get("password_hash"):
@@ -1310,7 +1310,7 @@ async def seller_crm_reset_password_page(
                 account = dict(db_account)
                 token_verified, error = verify_crm_password_reset_token(account, token) if token else (False, None)
         else:
-            error = "Некоректна CRM адреса."
+            error = "Некоректна адреса кабінету."
 
     return _render_reset_password(
         request,
@@ -1335,8 +1335,8 @@ async def seller_crm_reset_password(
 ):
     account = await get_crm_account_for_login(identifier or slug, slug or None)
     generic_message = (
-        "Якщо CRM акаунт знайдено, відкрийте Telegram-бот CarPot з акаунта власника "
-        "та натисніть «Скинути пароль CRM», щоб отримати захищене посилання."
+        "Якщо акаунт кабінету знайдено, відкрийте Telegram-бот CarPot з акаунта власника "
+        "та натисніть «Скинути пароль кабінету», щоб отримати захищене посилання."
     )
 
     if not account or not account["is_active"] or not account["crm_enabled"]:
@@ -1493,7 +1493,7 @@ async def seller_crm_marketplace_leads(
         "seller_crm/leads.html",
         _seller_crm_context(
             request,
-            title="Marketplace заявки — CRM продавця CarPot",
+            title="Нові заявки — кабінет продавця CarPot",
             demo_mode=False,
             current_page="leads",
             account=account,
@@ -1528,7 +1528,7 @@ async def seller_crm_lead_detail(
     try:
         parsed_request_id = int(request_id)
     except (TypeError, ValueError) as exc:
-        raise HTTPException(status_code=404, detail="Lead not found") from exc
+        raise HTTPException(status_code=404, detail="Заявку не знайдено") from exc
 
     lead_detail = _prepare_lead_detail(
         await get_seller_crm_lead_detail(
@@ -1537,13 +1537,13 @@ async def seller_crm_lead_detail(
         )
     )
     if not lead_detail:
-        raise HTTPException(status_code=404, detail="Lead not found")
+        raise HTTPException(status_code=404, detail="Заявку не знайдено")
 
     return templates.TemplateResponse(
         "seller_crm/lead_detail.html",
         _seller_crm_context(
             request,
-            title=f"Заявка #{parsed_request_id} — CRM продавця CarPot",
+            title=f"Заявка #{parsed_request_id} — кабінет продавця CarPot",
             demo_mode=False,
             current_page="leads",
             account=account,
@@ -1574,7 +1574,7 @@ async def _handle_seller_crm_lead_action(
     try:
         parsed_request_id = int(request_id)
     except (TypeError, ValueError):
-        raise HTTPException(status_code=404, detail="Lead not found")
+        raise HTTPException(status_code=404, detail="Заявку не знайдено")
 
     fallback_url = f"/crm/seller/{crm_slug}/leads/{parsed_request_id}"
     redirect_url = _safe_crm_redirect_url(request, crm_slug, fallback_url, next_url)
@@ -1694,14 +1694,14 @@ async def seller_crm_submit_offer(
     try:
         parsed_request_id = int(request_id)
     except (TypeError, ValueError):
-        raise HTTPException(status_code=404, detail="Lead not found")
+        raise HTTPException(status_code=404, detail="Заявку не знайдено")
 
     redirect_base = f"/crm/seller/{crm_slug}/leads/{parsed_request_id}"
     lead_detail = _prepare_lead_detail(
         await get_seller_crm_lead_detail(int(account["seller_id"]), parsed_request_id)
     )
     if not lead_detail:
-        raise HTTPException(status_code=404, detail="Lead not found")
+        raise HTTPException(status_code=404, detail="Заявку не знайдено")
     if not lead_detail.get("may_respond"):
         query = urlencode({"error": lead_detail.get("response_block_reason") or "Відповідь із CRM зараз недоступна."})
         return RedirectResponse(url=f"{redirect_base}?{query}", status_code=303)
@@ -1771,7 +1771,7 @@ async def seller_crm_offers(request: Request, crm_slug: str, status: str = CRM_O
         "seller_crm/offers.html",
         _seller_crm_context(
             request,
-            title="Пропозиції — CRM продавця CarPot",
+            title="Діалоги — кабінет продавця CarPot",
             demo_mode=False,
             current_page="offers",
             account=account,
@@ -1796,7 +1796,7 @@ async def seller_crm_offer_detail(request: Request, crm_slug: str, offer_id: str
     try:
         parsed_offer_id = int(offer_id)
     except (TypeError, ValueError) as exc:
-        raise HTTPException(status_code=404, detail="Offer not found") from exc
+        raise HTTPException(status_code=404, detail="Пропозицію не знайдено") from exc
 
     offer_detail = _prepare_offer_detail(
         await get_seller_crm_offer_detail(
@@ -1805,13 +1805,13 @@ async def seller_crm_offer_detail(request: Request, crm_slug: str, offer_id: str
         )
     )
     if not offer_detail:
-        raise HTTPException(status_code=404, detail="Offer not found")
+        raise HTTPException(status_code=404, detail="Пропозицію не знайдено")
 
     return templates.TemplateResponse(
         "seller_crm/offer_detail.html",
         _seller_crm_context(
             request,
-            title=f"Пропозиція #{parsed_offer_id} — CRM продавця CarPot",
+            title=f"Пропозиція #{parsed_offer_id} — кабінет продавця CarPot",
             demo_mode=False,
             current_page="offers",
             account=account,
@@ -1854,7 +1854,7 @@ async def seller_crm_content(request: Request, crm_slug: str):
         "seller_crm/content.html",
         _seller_crm_context(
             request,
-            title="Мій контент — CRM продавця CarPot",
+            title="Каталог — кабінет продавця CarPot",
             demo_mode=False,
             current_page="content",
             account=account,
@@ -1906,7 +1906,7 @@ async def seller_crm_content_products(request: Request, crm_slug: str):
         "seller_crm/content_products.html",
         _seller_crm_context(
             request,
-            title="Товари / Запчастини — CRM продавця CarPot",
+            title="Товари та запчастини — кабінет продавця CarPot",
             demo_mode=False,
             current_page="content_products",
             account=account,
@@ -1934,7 +1934,7 @@ async def seller_crm_product_import_form(request: Request, crm_slug: str):
         "seller_crm/product_import.html",
         _seller_crm_context(
             request,
-            title="Імпорт товарів — CRM продавця CarPot",
+            title="Імпорт товарів — кабінет продавця CarPot",
             demo_mode=False,
             current_page="content_products",
             account=account,
@@ -1980,7 +1980,7 @@ async def seller_crm_product_import(
         "seller_crm/product_import.html",
         _seller_crm_context(
             request,
-            title="Результат імпорту товарів — CRM продавця CarPot",
+            title="Результат імпорту товарів — кабінет продавця CarPot",
             demo_mode=False,
             current_page="content_products",
             account=account,
@@ -2070,7 +2070,7 @@ async def seller_crm_content_services(request: Request, crm_slug: str):
         "seller_crm/content_services.html",
         _seller_crm_context(
             request,
-            title="Послуги — CRM продавця CarPot",
+            title="Послуги — кабінет продавця CarPot",
             demo_mode=False,
             current_page="content_services",
             account=account,
@@ -2098,7 +2098,7 @@ async def seller_crm_service_create_form(request: Request, crm_slug: str):
         "seller_crm/service_form.html",
         _seller_crm_context(
             request,
-            title="Додати послугу — CRM продавця CarPot",
+            title="Додати послугу — кабінет продавця CarPot",
             demo_mode=False,
             current_page="content_services",
             account=account,
@@ -2139,7 +2139,7 @@ async def seller_crm_service_create(
             "seller_crm/service_form.html",
             _seller_crm_context(
                 request,
-                title="Додати послугу — CRM продавця CarPot",
+                title="Додати послугу — кабінет продавця CarPot",
                 demo_mode=False,
                 current_page="content_services",
                 account=account,
@@ -2171,7 +2171,7 @@ async def seller_crm_service_create(
             "seller_crm/service_form.html",
             _seller_crm_context(
                 request,
-                title="Додати послугу — CRM продавця CarPot",
+                title="Додати послугу — кабінет продавця CarPot",
                 demo_mode=False,
                 current_page="content_services",
                 account=account,
@@ -2209,7 +2209,7 @@ async def seller_crm_service_edit_form(request: Request, crm_slug: str, service_
         "seller_crm/service_form.html",
         _seller_crm_context(
             request,
-            title="Редагувати послугу — CRM продавця CarPot",
+            title="Редагувати послугу — кабінет продавця CarPot",
             demo_mode=False,
             current_page="content_services",
             account=account,
@@ -2260,7 +2260,7 @@ async def seller_crm_service_edit(
             "seller_crm/service_form.html",
             _seller_crm_context(
                 request,
-                title="Редагувати послугу — CRM продавця CarPot",
+                title="Редагувати послугу — кабінет продавця CarPot",
                 demo_mode=False,
                 current_page="content_services",
                 account=account,
@@ -2309,7 +2309,7 @@ async def seller_crm_service_detail(request: Request, crm_slug: str, service_id:
         "seller_crm/service_detail.html",
         _seller_crm_context(
             request,
-            title=f"{service.get('title') or 'Послуга'} — CRM продавця CarPot",
+            title=f"{service.get('title') or 'Послуга'} — кабінет продавця CarPot",
             demo_mode=False,
             current_page="content_services",
             account=account,
@@ -2399,7 +2399,7 @@ async def seller_crm_content_cars(request: Request, crm_slug: str):
         "seller_crm/content_cars.html",
         _seller_crm_context(
             request,
-            title="Авто на розборі — CRM продавця CarPot",
+            title="Авто на розборі — кабінет продавця CarPot",
             demo_mode=False,
             current_page="content_cars",
             account=account,
@@ -2533,7 +2533,7 @@ async def seller_crm_car_edit_form(request: Request, crm_slug: str, car_id: int)
         "seller_crm/car_form.html",
         _seller_crm_context(
             request,
-            title="Редагувати авто — CRM продавця CarPot",
+            title="Редагувати авто — кабінет продавця CarPot",
             demo_mode=False,
             current_page="content_cars",
             account=account,
@@ -2583,7 +2583,7 @@ async def seller_crm_car_edit(
             "seller_crm/car_form.html",
             _seller_crm_context(
                 request,
-                title="Редагувати авто — CRM продавця CarPot",
+                title="Редагувати авто — кабінет продавця CarPot",
                 demo_mode=False,
                 current_page="content_cars",
                 account=account,
@@ -2631,7 +2631,7 @@ async def seller_crm_car_detail(request: Request, crm_slug: str, car_id: int, st
         "seller_crm/car_detail.html",
         _seller_crm_context(
             request,
-            title=f"{car.get('brand') or 'Авто'} {car.get('model') or ''} — CRM продавця CarPot",
+            title=f"{car.get('brand') or 'Авто'} {car.get('model') or ''} — кабінет продавця CarPot",
             demo_mode=False,
             current_page="content_cars",
             account=account,
@@ -2731,7 +2731,7 @@ async def seller_crm_settings(request: Request, crm_slug: str):
         "seller_crm/settings.html",
         _seller_crm_context(
             request,
-            title="Налаштування та тарифи — CRM продавця CarPot",
+            title="Налаштування та тарифи — кабінет продавця CarPot",
             demo_mode=False,
             current_page="settings",
             account=account,
@@ -2795,7 +2795,7 @@ async def seller_crm_profile(request: Request, crm_slug: str):
         "seller_crm/profile.html",
         _seller_crm_context(
             request,
-            title="Профіль продавця — CRM продавця CarPot",
+            title="Профіль продавця — кабінет CarPot",
             demo_mode=False,
             current_page="profile",
             account=account,
@@ -2852,7 +2852,7 @@ async def seller_crm_dashboard(request: Request, crm_slug: str):
         "seller_crm/dashboard.html",
         _seller_crm_context(
             request,
-            title="CRM продавця CarPot",
+            title="Кабінет продавця CarPot",
             demo_mode=False,
             current_page="dashboard",
             account=account,
@@ -2926,7 +2926,7 @@ async def seller_crm_analytics(request: Request, crm_slug: str, days: int = 30):
         "seller_crm/analytics.html",
         _seller_crm_context(
             request,
-            title="Аналітика та статистика — CRM продавця",
+            title="Аналітика та статистика — кабінет продавця",
             demo_mode=False,
             current_page="analytics",
             account=account,
@@ -2956,7 +2956,7 @@ async def seller_crm_website(request: Request, crm_slug: str, section: str = "we
             "seller_crm/website.html",
             _seller_crm_context(
                 request,
-                title="Сайт не налаштовано — CRM продавця",
+                title="Сайт не налаштовано — кабінет продавця",
                 current_page="website",
                 account=account,
                 subscription=subscription,
@@ -3000,7 +3000,7 @@ async def seller_crm_website(request: Request, crm_slug: str, section: str = "we
         "seller_crm/website.html",
         _seller_crm_context(
             request,
-            title="Керування сайтом — CRM продавця",
+            title="Керування сайтом — кабінет продавця",
             current_page="website",
             account=account,
             subscription=subscription,
@@ -3254,7 +3254,7 @@ async def preview_draft_site(request: Request, crm_slug: str):
     site = _demo_site() if _is_demo_account(account) else await get_site_by_seller(account["seller_id"])
     if not site:
         return HTMLResponse(
-            "<h1>Сайт ще не налаштовано</h1><p>Поверніться до CRM продавця та налаштуйте сайт.</p>",
+            "<h1>Сайт ще не налаштовано</h1><p>Поверніться до кабінету продавця та налаштуйте сайт.</p>",
             status_code=200,
         )
     config = _as_config(site)

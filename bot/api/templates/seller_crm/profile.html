@@ -1,8 +1,8 @@
 {% extends "seller_crm/base.html" %}
-{% block crm_kicker %}Публічна seller identity layer{% endblock %}
+{% block crm_kicker %}Публічна картка продавця{% endblock %}
 {% block crm_heading %}Профіль продавця{% endblock %}
 {% block crm_top_actions %}
-  <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}">Назад на панель</a>
+  <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}">На головну</a>
 {% endblock %}
 {% block content %}
 <style>
@@ -182,7 +182,7 @@
 <section class="workspace-hero" aria-labelledby="profile-title">
   <div>
     <h2 id="profile-title">Профіль продавця</h2>
-    <p class="section-note">Read-first workspace: як покупець бачить продавця, контакти, довіра та готовність публічної картки. Редагування поки залишається у Telegram.</p>
+    <p class="section-note">Огляд того, як покупець бачить продавця: контакти, довіра та готовність публічної картки. Редагування поки залишається у Telegram.</p>
   </div>
   <div class="pill">{{ completeness_percent }}% заповнено</div>
 </section>
@@ -213,9 +213,9 @@
         <div class="request-meta">
           <span>{{ profile.phone or "Телефон не вказано" }}</span>
           <span>·</span>
-          <span>{% if profile.username %}@{{ profile.username }}{% else %}Telegram username не вказано{% endif %}</span>
+          <span>{% if profile.username %}@{{ profile.username }}{% else %}Telegram не вказано{% endif %}</span>
           <span>·</span>
-          <span>{{ profile.website or public_site_url or "Website не вказано" }}</span>
+          <span>{{ profile.website or public_site_url or "Сайт не вказано" }}</span>
         </div>
       </div>
     </div>
@@ -228,10 +228,10 @@
         <div><div class="profile-label">Телефон</div><div class="profile-value {% if not profile.phone %}warning-text{% endif %}">{{ profile.phone or "Телефон не вказано" }}</div></div>
       </div>
       <div class="profile-row">
-        <div><div class="profile-label">Telegram</div><div class="profile-value {% if not profile.username %}warning-text{% endif %}">{% if profile.username %}@{{ profile.username }}{% else %}Telegram username не вказано{% endif %}</div></div>
+        <div><div class="profile-label">Telegram</div><div class="profile-value {% if not profile.username %}warning-text{% endif %}">{% if profile.username %}@{{ profile.username }}{% else %}Telegram не вказано{% endif %}</div></div>
       </div>
       <div class="profile-row">
-        <div><div class="profile-label">Website</div><div class="profile-value {% if not profile.website and not public_site_url %}warning-text{% endif %}">{{ profile.website or public_site_url or "Website не вказано" }}</div></div>
+        <div><div class="profile-label">Сайт</div><div class="profile-value {% if not profile.website and not public_site_url %}warning-text{% endif %}">{{ profile.website or public_site_url or "Сайт не вказано" }}</div></div>
       </div>
       <div class="profile-row">
         <div><div class="profile-label">Місто</div><div class="profile-value {% if not profile.city %}warning-text{% endif %}">{{ profile.city or "Місто не вказано" }}</div></div>
@@ -245,7 +245,7 @@
     <h2 id="trust-title">Довіра та активність</h2>
     <div class="grid trust-grid">
       <div class="trust-metric"><span class="muted">Верифікація</span><b>{{ "Так" if profile.is_verified else "Ні" }}</b></div>
-      <div class="trust-metric"><span class="muted">CRM активний</span><b>{{ "Так" if profile.crm_enabled else "Ні" }}</b></div>
+      <div class="trust-metric"><span class="muted">Кабінет активний</span><b>{{ "Так" if profile.crm_enabled else "Ні" }}</b></div>
       <div class="trust-metric"><span class="muted">Активні авто</span><b>{{ profile.active_cars_count or 0 }}</b></div>
       <div class="trust-metric"><span class="muted">Активні послуги</span><b>{{ profile.active_services_count or 0 }}</b></div>
       <div class="trust-metric"><span class="muted">Надіслані пропозиції</span><b>{{ profile.offers_sent_count or 0 }}</b></div>
@@ -255,7 +255,7 @@
   </article>
 
   <aside class="card" aria-labelledby="complete-title">
-    <h2 id="complete-title">Profile completeness</h2>
+    <h2 id="complete-title">Заповнення профілю</h2>
     <p class="section-note">{{ completed_count }} з {{ completeness_items|length }} пунктів готові.</p>
     <div class="progress-track" aria-hidden="true"><div class="progress-fill" style="width: {{ completeness_percent }}%"></div></div>
     <div class="checklist">
@@ -274,12 +274,12 @@
 
 <section class="card secondary-section" aria-labelledby="actions-title">
   <h2 id="actions-title">Дії</h2>
-  <p class="section-note">Без CRM edit forms у цій фазі. Для безпечного редагування відкрийте Telegram-профіль продавця або перевірте статус верифікації.</p>
+  <p class="section-note">У цій фазі редагування профілю залишається у Telegram. Тут показуємо готовність картки та безпечні дії.</p>
   <div class="profile-actions">
     <a class="btn" href="{% if profile.username %}https://t.me/{{ profile.username }}{% else %}https://t.me/{% endif %}" target="_blank" rel="noopener">Редагувати через Telegram</a>
     <a class="btn ghost" href="{% if profile.username %}https://t.me/{{ profile.username }}{% else %}https://t.me/{% endif %}" target="_blank" rel="noopener">{{ "Статус верифікації" if profile.is_verified else "Подати на верифікацію" }}</a>
     {% if public_site_url %}<a class="btn ghost" href="{{ public_site_url }}" target="_blank" rel="noopener">Відкрити сайт</a>{% endif %}
-    <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}">Назад на панель</a>
+    <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}">На головну</a>
   </div>
 </section>
 {% endblock %}

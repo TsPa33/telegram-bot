@@ -121,20 +121,20 @@ SERVICE_INACTIVE_VALUES = {
 
 _CRM_LEAD_STATUS_META = {
     CRM_LEAD_STATUS_NEW: {"label": "Нова", "css_class": "status-new", "priority": 10},
-    CRM_LEAD_STATUS_IN_WORK: {"label": "В роботі", "css_class": "status-viewed", "priority": 20},
-    CRM_LEAD_STATUS_REPLIED: {"label": "Відповіли", "css_class": "status-replied", "priority": 30},
-    CRM_LEAD_STATUS_SELECTED: {"label": "Обрано", "css_class": "status-success", "priority": 40},
+    CRM_LEAD_STATUS_IN_WORK: {"label": "Очікує відповіді", "css_class": "status-viewed", "priority": 20},
+    CRM_LEAD_STATUS_REPLIED: {"label": "Пропозицію надіслано", "css_class": "status-replied", "priority": 30},
+    CRM_LEAD_STATUS_SELECTED: {"label": "Обрано покупцем", "css_class": "status-success", "priority": 40},
     CRM_LEAD_STATUS_DECLINED: {"label": "Відхилено", "css_class": "status-rejected", "priority": 50},
     CRM_LEAD_STATUS_SKIPPED: {"label": "Пропущено", "css_class": "status-rejected", "priority": 60},
 }
 
 _CRM_OFFER_STATUS_META = {
-    CRM_OFFER_STATUS_ACTIVE: {"label": "Активна", "css_class": "status-waiting", "priority": 10},
-    BUYER_OFFER_STATUS_PENDING: {"label": "Активна", "css_class": "status-waiting", "priority": 10},
-    CRM_OFFER_STATUS_SELECTED: {"label": "Обрано", "css_class": "status-success", "priority": 20},
-    BUYER_OFFER_STATUS_ACCEPTED: {"label": "Обрано", "css_class": "status-success", "priority": 20},
+    CRM_OFFER_STATUS_ACTIVE: {"label": "Очікує вибору", "css_class": "status-waiting", "priority": 10},
+    BUYER_OFFER_STATUS_PENDING: {"label": "Очікує вибору", "css_class": "status-waiting", "priority": 10},
+    CRM_OFFER_STATUS_SELECTED: {"label": "Обрано покупцем", "css_class": "status-success", "priority": 20},
+    BUYER_OFFER_STATUS_ACCEPTED: {"label": "Обрано покупцем", "css_class": "status-success", "priority": 20},
     CRM_OFFER_STATUS_REJECTED: {"label": "Не обрано", "css_class": "status-rejected", "priority": 30},
-    CRM_OFFER_STATUS_ALL: {"label": "Всі", "css_class": "", "priority": 40},
+    CRM_OFFER_STATUS_ALL: {"label": "Усі", "css_class": "", "priority": 40},
 }
 
 
@@ -190,7 +190,7 @@ def get_service_display_status(value: object) -> dict:
         value,
         SERVICE_ACTIVE_VALUES,
         SERVICE_INACTIVE_VALUES,
-        active_label="Активна",
+        active_label="Очікує вибору",
         inactive_label="Неактивна",
     )
 

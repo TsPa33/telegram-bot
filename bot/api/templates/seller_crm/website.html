@@ -13,7 +13,7 @@
 {% set pricing = site_config['pricing'] if site_config is mapping and 'pricing' in site_config and site_config['pricing'] is mapping else {} %}
 {% set gallery_images = gallery_config['images'] if 'images' in gallery_config and gallery_config['images'] is iterable and gallery_config['images'] is not string else [] %}
 {% set price_items = pricing['items'] if 'items' in pricing and pricing['items'] is iterable and pricing['items'] is not string else [] %}
-{% block crm_kicker %}Єдина CRM: сайт, медіа, авто, послуги й публікація{% endblock %}
+{% block crm_kicker %}Мій сайт: медіа, авто, послуги й публікація{% endblock %}
 {% block crm_heading %}Керування сайтом продавця{% endblock %}
 {% block crm_top_actions %}{% if site_missing %}<div class="pill">Сайт не налаштовано</div>{% else %}<div class="top-actions"><a class="btn ghost" href="{{ live_url }}" target="_blank">Відкрити сайт</a><a class="btn" href="/crm/seller/{{ account.crm_slug }}/website/preview" target="_blank">Чернетка</a></div>{% endif %}{% endblock %}
 {% block content_class %}crm-site{% endblock %}
@@ -23,8 +23,8 @@
   {% if site_missing %}
     <article class="card">
       <h3>Сайт ще не налаштовано</h3>
-      <p class="muted">CRM продавця вже доступний безкоштовно. Розділ сайту зʼявиться після створення або підключення сайту продавця.</p>
-      <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}">Повернутися на панель</a>
+      <p class="muted">Кабінет продавця вже доступний безкоштовно. Розділ сайту зʼявиться після створення або підключення сайту продавця.</p>
+      <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}">На головну</a>
     </article>
   {% else %}
 
@@ -39,7 +39,7 @@
   <form id="website-texts-form" method="post" action="/crm/seller/{{ account.crm_slug }}/website/texts"></form>
 
   <details id="site-section" class="section-group" open>
-    <summary><h2 class="section-heading">1. Основне</h2><p class="section-intro">Базові назви, SEO та футер. Контакти й hero збережені в тому ж контракті, але винесені нижче за контекстом.</p></summary>
+    <summary><h2 class="section-heading">1. Основне</h2><p class="section-intro">Базові назви, SEO та футер. Контакти й перший екран налаштовуються нижче у відповідних розділах.</p></summary>
     <div class="grid two">
       <article id="website" class="card">
         <div class="card-headline"><h3>Основні налаштування</h3><p class="muted">Коротко опишіть сайт для відвідувачів і пошуку.</p></div>
@@ -47,22 +47,22 @@
           <label>Назва сайту<input form="website-texts-form" name="header_title" value="{{ header.get('title', '') }}"></label>
           <label>SEO заголовок<input form="website-texts-form" name="seo_title" value="{{ header.get('seo_title', '') }}"></label>
           <label class="wide">SEO опис<textarea form="website-texts-form" name="seo_description">{{ header.get('seo_description', '') }}</textarea></label>
-          <label>Заголовок заклику<input form="website-texts-form" name="cta_title" value="{{ cta.get('title', '') }}"></label>
-          <label>Текст заклику<textarea form="website-texts-form" name="cta_text">{{ cta.get('text', '') }}</textarea></label>
+          <label>Заголовок кнопки дії<input form="website-texts-form" name="cta_title" value="{{ cta.get('title', '') }}"></label>
+          <label>Текст кнопки дії<textarea form="website-texts-form" name="cta_text">{{ cta.get('text', '') }}</textarea></label>
           <label class="wide">Футер<textarea form="website-texts-form" name="footer_text">{{ footer.get('text', '') }}</textarea></label>
           <div class="wide action-row"><button class="btn" form="website-texts-form" type="submit">Зберегти основне</button></div>
         </div>
       </article>
 
       <article class="card preview-card">
-        <div class="card-headline"><h3>Перегляд чернетки</h3><p class="muted">Безпечний перегляд перед публікацією. На мобільному iframe приховано, щоб сторінка не розʼїжджалась.</p></div>
+        <div class="card-headline"><h3>Перегляд чернетки</h3><p class="muted">Безпечний перегляд перед публікацією. На мобільному перегляд приховано, щоб сторінка залишалася зручною.</p></div>
         <iframe src="/crm/seller/{{ account.crm_slug }}/website/preview" title="Перегляд чернетки"></iframe>
       </article>
     </div>
   </details>
 
   <details id="media-section" class="section-group">
-    <summary><h2 class="section-heading">2–3. Медіа</h2><p class="section-intro">Спочатку лого, потім hero / банери й галерея. Медіафайли не змішані з авто чи послугами.</p></summary>
+    <summary><h2 class="section-heading">2–3. Медіа</h2><p class="section-intro">Спочатку лого, потім перший екран і банери й галерея. Медіафайли не змішані з авто чи послугами.</p></summary>
     <div class="subgrid">
       <article id="logo" class="card">
         <div class="card-headline"><h3>2. Лого</h3><p class="muted">Знак бренду для шапки сайту.</p></div>
@@ -71,7 +71,7 @@
       </article>
 
       <article id="banners" class="card">
-        <div class="card-headline"><h3>3. Hero / Банери</h3><p class="muted">Перший екран і ротація банерів.</p></div>
+        <div class="card-headline"><h3>3. Перший екран і банери</h3><p class="muted">Перший екран і ротація банерів.</p></div>
         <div class="form-grid compact-block">
           <label class="wide">Заголовок першого екрана<input form="website-texts-form" name="hero_title" value="{{ hero.get('title', '') }}"></label>
           <label class="wide">Опис першого екрана<textarea form="website-texts-form" name="hero_subtitle">{{ hero.get('subtitle', '') }}</textarea></label>

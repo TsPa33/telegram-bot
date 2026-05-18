@@ -201,7 +201,7 @@ def _format_lead_card(lead: dict, *, detailed: bool = False) -> str:
         f"<b>{title}</b>",
         f"📍 {city}",
         f"📞 {escape(lead.get('buyer_phone') or '—')}",
-        f"🧩 {category} · {request_type}",
+        f"🧩 {category}",
         f"{urgency}",
     ]
 
@@ -262,7 +262,7 @@ async def _hydrate_lead_contacts(lead: dict) -> dict:
 async def _render_inbox(message_or_callback, telegram_id: int):
     seller, tags = await _seller_context(telegram_id)
     if not seller:
-        text = "📥 <b>Нові заявки</b>\n\nСпочатку створіть профіль продавця, щоб отримувати релевантні ліди."
+        text = "📥 <b>Нові заявки</b>\n\nСпочатку створіть профіль продавця, щоб отримувати релевантні заявки."
         markup = None
     else:
         leads = [dict(row) for row in await list_matching_seller_leads(seller["id"], limit=10)]
@@ -284,14 +284,14 @@ async def _render_inbox(message_or_callback, telegram_id: int):
         if leads:
             text = (
                 "📥 <b>Нові заявки</b>\n\n"
-                "Обирайте релевантний лід і швидко надсилайте пропозицію покупцю."
+                "Обирайте релевантну заявку і швидко надсилайте пропозицію покупцю."
             )
             markup = seller_leads_inbox_kb(leads)
         else:
             text = (
                 "📥 <b>Нові заявки</b>\n\n"
                 "Поки немає нових заявок під ваш регіон або спеціалізацію. "
-                "Ми покажемо їх тут, щойно зʼявляться релевантні ліди."
+                "Ми покажемо їх тут, щойно зʼявляться релевантні заявки."
             )
             markup = seller_leads_inbox_kb([])
 
@@ -349,7 +349,7 @@ async def seller_lead_skip(callback: CallbackQuery, state: FSMContext):
         await mark_seller_lead_action(seller_id=seller["id"], request_id=request_id, action="skipped")
         logger.info("Seller skipped buyer request lead seller_id=%s request_id=%s", seller["id"], request_id)
     await callback.message.edit_text(
-        "⏭ Заявку пропущено. Ми покажемо інші релевантні ліди.",
+        "⏭ Заявку пропущено. Ми покажемо інші релевантні заявки.",
         reply_markup=seller_lead_back_kb(),
     )
 
@@ -370,7 +370,7 @@ async def seller_lead_decline(callback: CallbackQuery, state: FSMContext):
         logger.info("Seller declined buyer request lead seller_id=%s request_id=%s", seller["id"], request_id)
 
     await callback.message.edit_text(
-        "❌ <b>Заявку відхилено.</b>\nВи більше не будете отримувати оновлення по цьому запиту.",
+        "❌ <b>Заявку відхилено.</b>\nВи більше не будете отримувати оновлення по цій заявці.",
         parse_mode="HTML",
         reply_markup=seller_lead_declined_kb(),
     )
@@ -503,6 +503,6 @@ async def seller_offer_message(message: Message, state: FSMContext):
     summary = ["✅ <b>Пропозицію надіслано</b>", "", f"💰 Ціна: {price or 'за домовленістю'}"]
     if availability:
         summary.append(f"🕒 Доступність: {escape(str(availability))}")
-    summary.extend(["", "Покупець зможе побачити вашу пропозицію у майбутньому кабінеті заявок."])
+    summary.extend(["", "Покупець отримає вашу пропозицію і побачить її у своїй заявці."])
 
     await message.answer("\n".join(summary), parse_mode="HTML", reply_markup=seller_lead_back_kb(request_id))
