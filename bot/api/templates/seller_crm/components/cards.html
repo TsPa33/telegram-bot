@@ -1,13 +1,13 @@
 {% macro metric_card(title, value, note="", icon="") -%}
-  <article class="card">
-    <h3>{% if icon %}<span aria-hidden="true">{{ icon }}</span> {% endif %}{{ title }}</h3>
+  <article class="card metric-card">
+    <h3>{% if icon %}<span class="emoji" aria-hidden="true">{{ icon }}</span> {% endif %}{{ title }}</h3>
     <div class="metric">{{ value }}</div>
     {% if note %}<p class="section-note">{{ note }}</p>{% endif %}
   </article>
 {%- endmacro %}
 
 {% macro action_card(title, text="", url=None, label="Відкрити") -%}
-  <article class="card">
+  <article class="card action-card">
     <h2>{{ title }}</h2>
     {% if text %}<p class="section-note">{{ text }}</p>{% endif %}
     {% if url %}<a class="btn ghost" href="{{ url }}">{{ label }}</a>{% endif %}
