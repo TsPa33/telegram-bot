@@ -9,6 +9,7 @@ from bot.domain.statuses import (
     NOTIFICATION_STATUS_SENT,
     SELLER_LEAD_ACTION_OFFERED,
 )
+from bot.database.base import fetchrow
 from bot.database.repositories.seller_lead_repo import (
     create_seller_offer,
     ensure_buyer_offer_created_event,
@@ -38,6 +39,37 @@ class SellerOfferResult:
             "error": self.error,
             "notification_status": self.notification_status,
         }
+
+
+async def _get_request_response_lock(*, request_id: int) -> dict:
+    row = await fetchrow(
+        """
+        SELECT br.marketplace_status,
+               COALESCE(accepted_offer.seller_id, selected_match.seller_id) AS selected_seller_id
+        FROM buyer_requests br
+        LEFT JOIN LATERAL (
+            SELECT seller_id
+            FROM buyer_request_offers bro
+            WHERE bro.request_id = br.id
+              AND bro.status = 'accepted'
+            ORDER BY bro.updated_at DESC, bro.id DESC
+            LIMIT 1
+        ) accepted_offer ON TRUE
+        LEFT JOIN LATERAL (
+            SELECT seller_id
+            FROM marketplace_matches mm
+            WHERE mm.request_id = br.id
+              AND mm.status IN ('matched', 'contacted', 'closed')
+            ORDER BY mm.matched_at DESC, mm.id DESC
+            LIMIT 1
+        ) selected_match ON TRUE
+        WHERE br.id = $1
+          AND br.entity_type = 'marketplace_request'
+        LIMIT 1
+        """,
+        request_id,
+    )
+    return dict(row) if row else {}
 
 
 def _lead_title(context: dict) -> str:
@@ -194,9 +226,14 @@ async def submit_seller_offer(
     if not access:
         return SellerOfferResult(ok=False, error="Заявка недоступна для цього продавця.").as_dict()
 
-    selected_seller_id = access.get("selected_seller_id")
-    if selected_seller_id and int(selected_seller_id) != int(seller_id):
+    response_lock = await _get_request_response_lock(request_id=request_id)
+    selected_seller_id = response_lock.get("selected_seller_id")
+    if selected_seller_id:
+        if int(selected_seller_id) == int(seller_id):
+            return SellerOfferResult(ok=False, error="Покупець уже обрав вашу пропозицію.").as_dict()
         return SellerOfferResult(ok=False, error="Покупець уже обрав іншого продавця.").as_dict()
+    if response_lock.get("marketplace_status") == "closed":
+        return SellerOfferResult(ok=False, error="Заявку закрито, відповідь більше недоступна.").as_dict()
 
     has_existing_offer = bool(access.get("offer_id"))
     if (access.get("has_declined") or access.get("has_skipped")) and not has_existing_offer:

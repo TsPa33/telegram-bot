@@ -774,6 +774,7 @@ async def list_seller_crm_marketplace_leads(
                    selected_match.id AS selected_match_id,
                    selected_match.status AS selected_match_status,
                    selected_match.matched_at AS selected_matched_at,
+                   accepted_offer.seller_id AS accepted_offer_seller_id,
                    actions.latest_action,
                    actions.latest_action_at,
                    COALESCE(actions.has_viewed, FALSE) AS has_viewed,
@@ -781,7 +782,7 @@ async def list_seller_crm_marketplace_leads(
                    COALESCE(actions.has_declined, FALSE) AS has_declined,
                    COALESCE(actions.has_skipped, FALSE) AS has_skipped,
                    CASE
-                       WHEN seller_offer.status = 'accepted' OR selected_match.id IS NOT NULL THEN br.buyer_phone
+                       WHEN seller_offer.status = 'accepted' OR selected_match.id IS NOT NULL OR accepted_offer.seller_id = $1 THEN br.buyer_phone
                        ELSE NULL
                    END AS buyer_phone_visible
             FROM buyer_requests br
@@ -815,6 +816,14 @@ async def list_seller_crm_marketplace_leads(
                 LIMIT 1
             ) selected_match ON TRUE
             LEFT JOIN LATERAL (
+                SELECT id, seller_id, updated_at
+                FROM buyer_request_offers bro
+                WHERE bro.request_id = br.id
+                  AND bro.status = 'accepted'
+                ORDER BY bro.updated_at DESC, bro.id DESC
+                LIMIT 1
+            ) accepted_offer ON TRUE
+            LEFT JOIN LATERAL (
                 SELECT seller_id
                 FROM marketplace_matches mm
                 WHERE mm.request_id = br.id
@@ -845,7 +854,7 @@ async def list_seller_crm_marketplace_leads(
                    COALESCE(vehicle_title, category, request_type, 'Marketplace заявка') AS title,
                    city, category, brand, model, description, urgency, marketplace_status, created_at,
                    CASE
-                       WHEN offer_status = 'accepted' OR selected_match_id IS NOT NULL THEN 'selected'
+                       WHEN offer_status = 'accepted' OR selected_match_id IS NOT NULL OR accepted_offer_seller_id = $1 THEN 'selected'
                        WHEN has_declined THEN 'declined'
                        WHEN has_skipped THEN 'skipped'
                        WHEN offer_status = 'pending' THEN 'replied'
@@ -1250,9 +1259,10 @@ async def get_seller_crm_lead_detail(seller_id: int, request_id: int):
                    selected_match.id AS selected_match_id,
                    selected_match.status AS selected_match_status,
                    selected_match.matched_at AS selected_at,
-                   any_selected_match.seller_id AS selected_seller_id,
-                   accepted_offer.seller_id AS accepted_seller_id,
-                   accepted_offer.updated_at AS accepted_at,
+                   accepted_offer.id AS accepted_offer_id,
+                   accepted_offer.seller_id AS accepted_offer_seller_id,
+                   accepted_offer.updated_at AS accepted_offer_updated_at,
+                   COALESCE(accepted_offer.seller_id, any_selected_match.seller_id) AS selected_seller_id,
                    actions.viewed_at,
                    actions.responded_at,
                    actions.declined_at,
@@ -1262,15 +1272,15 @@ async def get_seller_crm_lead_detail(seller_id: int, request_id: int):
                    COALESCE(actions.has_declined, FALSE) AS has_declined,
                    COALESCE(actions.has_skipped, FALSE) AS has_skipped,
                    CASE
-                       WHEN seller_offer.status = 'accepted' OR selected_match.id IS NOT NULL THEN br.buyer_name
+                       WHEN seller_offer.status = 'accepted' OR selected_match.id IS NOT NULL OR accepted_offer.seller_id = $1 THEN br.buyer_name
                        ELSE NULL
                    END AS buyer_name_visible,
                    CASE
-                       WHEN seller_offer.status = 'accepted' OR selected_match.id IS NOT NULL THEN br.buyer_phone
+                       WHEN seller_offer.status = 'accepted' OR selected_match.id IS NOT NULL OR accepted_offer.seller_id = $1 THEN br.buyer_phone
                        ELSE NULL
                    END AS buyer_phone_visible,
                    CASE
-                       WHEN seller_offer.status = 'accepted' OR selected_match.id IS NOT NULL THEN br.buyer_telegram
+                       WHEN seller_offer.status = 'accepted' OR selected_match.id IS NOT NULL OR accepted_offer.seller_id = $1 THEN br.buyer_telegram
                        ELSE NULL
                    END AS buyer_telegram_visible
             FROM buyer_requests br
@@ -1311,6 +1321,14 @@ async def get_seller_crm_lead_detail(seller_id: int, request_id: int):
                 ORDER BY mm.matched_at DESC, mm.id DESC
                 LIMIT 1
             ) selected_match ON TRUE
+            LEFT JOIN LATERAL (
+                SELECT id, seller_id, updated_at
+                FROM buyer_request_offers bro
+                WHERE bro.request_id = br.id
+                  AND bro.status = 'accepted'
+                ORDER BY bro.updated_at DESC, bro.id DESC
+                LIMIT 1
+            ) accepted_offer ON TRUE
             LEFT JOIN LATERAL (
                 SELECT seller_id
                 FROM marketplace_matches mm
@@ -1356,7 +1374,7 @@ async def get_seller_crm_lead_detail(seller_id: int, request_id: int):
         )
         SELECT *,
                CASE
-                   WHEN offer_status = 'accepted' OR selected_match_id IS NOT NULL THEN 'selected'
+                   WHEN offer_status = 'accepted' OR selected_match_id IS NOT NULL OR accepted_offer_seller_id = $1 THEN 'selected'
                    WHEN has_declined THEN 'declined'
                    WHEN has_skipped THEN 'skipped'
                    WHEN offer_status = 'pending' OR has_offered THEN 'replied'
@@ -1449,6 +1467,7 @@ async def get_seller_crm_lead_detail(seller_id: int, request_id: int):
             "city": lead_data.get("city"),
             "description": lead_data.get("description") or lead_data.get("message"),
             "urgency": lead_data.get("urgency"),
+            "marketplace_status": lead_data.get("marketplace_status"),
             "created_at": lead_data.get("created_at"),
             "buyer_contact": buyer_contact,
             "match_score": lead_data.get("match_score"),
@@ -1467,16 +1486,11 @@ async def get_seller_crm_lead_detail(seller_id: int, request_id: int):
         },
         "offer": offer,
         "marketplace": {
-            "selected_seller": bool(lead_data.get("selected_match_id")) or lead_data.get("offer_status") == "accepted",
-            "selected_seller_id": lead_data.get("selected_seller_id") or lead_data.get("accepted_seller_id"),
-            "accepted_seller_id": lead_data.get("accepted_seller_id"),
-            "selected_other_seller": (
-                bool(lead_data.get("selected_seller_id")) and int(lead_data.get("selected_seller_id")) != int(seller_id)
-            ) or (
-                bool(lead_data.get("accepted_seller_id")) and int(lead_data.get("accepted_seller_id")) != int(seller_id)
-            ),
-            "selected_at": lead_data.get("selected_at") or lead_data.get("accepted_at"),
-            "is_selected": bool(lead_data.get("selected_match_id")) or lead_data.get("offer_status") == "accepted",
+            "selected_seller": bool(lead_data.get("selected_match_id")) or lead_data.get("offer_status") == "accepted" or lead_data.get("accepted_offer_seller_id") == seller_id,
+            "selected_seller_id": lead_data.get("selected_seller_id"),
+            "selected_other_seller": bool(lead_data.get("selected_seller_id")) and int(lead_data.get("selected_seller_id")) != int(seller_id),
+            "selected_at": lead_data.get("selected_at") or lead_data.get("accepted_offer_updated_at"),
+            "is_selected": bool(lead_data.get("selected_match_id")) or lead_data.get("offer_status") == "accepted" or lead_data.get("accepted_offer_seller_id") == seller_id,
             "status": lead_data.get("marketplace_status"),
         },
         "timeline": [

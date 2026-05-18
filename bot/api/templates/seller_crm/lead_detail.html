@@ -143,6 +143,27 @@
       letter-spacing: -.04em;
     }
 
+    .offer-state,
+    .offer-contact {
+      display: grid;
+      gap: 10px;
+      border: 1px solid rgba(125,211,176,.22);
+      border-radius: 16px;
+      background: rgba(125,211,176,.055);
+      padding: 13px;
+      color: var(--secondary);
+    }
+
+    .offer-state b,
+    .offer-contact b {
+      color: var(--text);
+    }
+
+    .offer-state-success {
+      border-color: rgba(34,197,94,.34);
+      background: rgba(34,197,94,.08);
+    }
+
     .lead-crm-actions {
       display: flex;
       gap: 8px;
@@ -381,52 +402,79 @@
       <aside class="detail-stack">
         <section class="card" aria-labelledby="offer-title">
           <h2 id="offer-title" class="section-heading">Ваша пропозиція</h2>
+
           {% if lead.selected_this_seller %}
-            <div class="empty-state">
+            <div class="offer-state offer-state-success">
               <b>Покупець обрав вашу пропозицію</b>
-              <span>Заявка перейшла у виграний стан. Контакти покупця показані в блоці деталей, якщо вони доступні.</span>
+              <span>Заявка перейшла у вибрані, тому редагування відповіді більше недоступне.</span>
             </div>
-          {% endif %}
-
-          {% if lead.offer %}
-            <div class="offer-card">
-              <div class="lead-tags">
-                <span class="badge {{ lead.offer.status_class }}">{{ lead.offer.status_label }}</span>
-                <span class="badge">#{{ lead.offer.offer_id }}</span>
-              </div>
-              <div class="offer-price">{{ lead.offer.price_display }}</div>
-              <p class="detail-text">{{ lead.offer.comment or "Без коментаря" }}</p>
-              <span class="muted">Надіслано {{ lead.offer.created_at.strftime("%d.%m.%Y %H:%M") if lead.offer.created_at else "—" }}</span>
-              <div class="request-actions" style="margin-top:12px">
-                <a class="btn small" href="/crm/seller/{{ account.crm_slug }}/offers/{{ lead.offer.offer_id }}">Відкрити пропозицію</a>
-              </div>
-            </div>
-          {% endif %}
-
-          {% if lead.may_respond %}
-            <form class="offer-form" method="post" action="/crm/seller/{{ account.crm_slug }}/leads/{{ lead.request.request_id }}/offer">
-              <label>
-                💰 Ціна або “договірна”
-                <input name="price_text" maxlength="80" inputmode="decimal" autocomplete="off" placeholder="500 або договірна" value="{{ lead.offer.price_input if lead.offer else '' }}">
-              </label>
-              <label>
-                💬 Коментар до пропозиції
-                <textarea name="message" maxlength="1000" required placeholder="Є в наявності, можна відправити сьогодні.">{{ lead.offer.comment if lead.offer else '' }}</textarea>
-              </label>
-              <button class="btn" type="submit">{{ "Оновити пропозицію" if lead.offer else "Надіслати пропозицію" }}</button>
-            </form>
-          {% elif not lead.selected_this_seller %}
-            <div class="empty-state">
-              <b>{{ lead.response_block_reason or "Відповідь із CRM зараз недоступна." }}</b>
-              {% if lead.marketplace.selected_other_seller %}
-                <span>Покупець уже завершив вибір, тому форма відповіді прихована.</span>
-                <div class="request-actions">
-                  <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/leads">Перейти до заявок</a>
+            {% if lead.offer %}
+              <div class="offer-card">
+                <div class="lead-tags">
+                  <span class="badge {{ lead.offer.status_class }}">{{ lead.offer.status_label }}</span>
+                  <span class="badge">#{{ lead.offer.offer_id }}</span>
                 </div>
-              {% else %}
-                <span>Дія не змінює глобальну заявку покупця і не відкриває сторонні дані.</span>
-              {% endif %}
+                <div class="offer-price">₴ {{ lead.offer.price_label }}</div>
+                <p class="detail-text">{{ lead.offer.comment or "Без коментаря" }}</p>
+                <span class="muted">Надіслано {{ lead.offer.created_at.strftime("%d.%m.%Y %H:%M") if lead.offer.created_at else "—" }}</span>
+                <div class="request-actions" style="margin-top:12px">
+                  <a class="btn small" href="/crm/seller/{{ account.crm_slug }}/offers/{{ lead.offer.offer_id }}">Відкрити пропозицію</a>
+                </div>
+              </div>
+            {% endif %}
+            {% if lead.request.buyer_contact %}
+              <div class="offer-contact">
+                <b>Контакти покупця</b>
+                <ul class="contact-list">
+                  {% if lead.request.buyer_contact.name %}<li class="contact-row"><span class="field-label">Імʼя</span><b class="field-value">{{ lead.request.buyer_contact.name }}</b></li>{% endif %}
+                  {% if lead.request.buyer_contact.phone %}<li class="contact-row"><span class="field-label">Телефон</span><b class="field-value">{{ lead.request.buyer_contact.phone }}</b></li>{% endif %}
+                  {% if lead.request.buyer_contact.telegram %}<li class="contact-row"><span class="field-label">Telegram</span><b class="field-value">{{ lead.request.buyer_contact.telegram }}</b></li>{% endif %}
+                </ul>
+              </div>
+            {% endif %}
+          {% elif lead.selected_other_seller %}
+            <div class="empty-state">
+              <b>Покупець уже обрав іншого продавця</b>
+              <span>Форма відповіді закрита для цієї заявки.</span>
+              <div class="request-actions">
+                <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/leads">Назад</a>
+                <a class="btn small" href="/crm/seller/{{ account.crm_slug }}/leads">Перейти до заявок</a>
+              </div>
             </div>
+          {% else %}
+            {% if lead.offer %}
+              <div class="offer-card">
+                <div class="lead-tags">
+                  <span class="badge {{ lead.offer.status_class }}">{{ lead.offer.status_label }}</span>
+                  <span class="badge">#{{ lead.offer.offer_id }}</span>
+                </div>
+                <div class="offer-price">₴ {{ lead.offer.price_label }}</div>
+                <p class="detail-text">{{ lead.offer.comment or "Без коментаря" }}</p>
+                <span class="muted">Надіслано {{ lead.offer.created_at.strftime("%d.%m.%Y %H:%M") if lead.offer.created_at else "—" }}</span>
+                <div class="request-actions" style="margin-top:12px">
+                  <a class="btn small" href="/crm/seller/{{ account.crm_slug }}/offers/{{ lead.offer.offer_id }}">Відкрити пропозицію</a>
+                </div>
+              </div>
+            {% endif %}
+
+            {% if lead.may_respond %}
+              <form class="offer-form" method="post" action="/crm/seller/{{ account.crm_slug }}/leads/{{ lead.request.request_id }}/offer">
+                <label>
+                  💰 Ціна або “договірна”
+                  <input name="price_text" maxlength="80" inputmode="decimal" autocomplete="off" placeholder="500 або договірна" value="{{ lead.offer.price_input if lead.offer else '' }}">
+                </label>
+                <label>
+                  💬 Коментар
+                  <textarea name="message" maxlength="1000" required placeholder="Є в наявності, можна відправити сьогодні.">{{ lead.offer.comment if lead.offer else '' }}</textarea>
+                </label>
+                <button class="btn" type="submit">{{ "Оновити пропозицію" if lead.offer else "Надіслати пропозицію" }}</button>
+              </form>
+            {% else %}
+              <div class="empty-state">
+                <b>{{ lead.response_block_reason or "Відповідь із CRM зараз недоступна." }}</b>
+                <span>Дія не змінює глобальну заявку покупця і не відкриває сторонні дані.</span>
+              </div>
+            {% endif %}
           {% endif %}
         </section>
 

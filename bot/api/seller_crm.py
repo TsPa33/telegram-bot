@@ -823,22 +823,26 @@ def _prepare_lead_detail(detail: dict[str, Any] | None) -> dict[str, Any] | None
         marketplace["state_class"] = "status-waiting"
 
     seller_status = seller_state.get("seller_status")
-    interaction_blocked = selected_this_seller or selected_other_seller or request_closed
-    prepared["can_mark_viewed"] = not interaction_blocked and not seller_state.get("has_viewed")
-    prepared["can_decline"] = not interaction_blocked and seller_status not in {CRM_LEAD_STATUS_DECLINED, CRM_LEAD_STATUS_SKIPPED, CRM_LEAD_STATUS_SELECTED}
-    prepared["can_skip"] = not interaction_blocked and seller_status not in {CRM_LEAD_STATUS_DECLINED, CRM_LEAD_STATUS_SKIPPED, CRM_LEAD_STATUS_SELECTED}
-    prepared["can_reopen"] = not interaction_blocked and seller_status in {CRM_LEAD_STATUS_DECLINED, CRM_LEAD_STATUS_SKIPPED}
+    request_closed = request_data.get("marketplace_status") == "closed" or marketplace.get("status") == "closed"
+    selected_other_seller = bool(marketplace.get("selected_other_seller"))
+    selected_this_seller = bool(marketplace.get("is_selected")) and not selected_other_seller
+    blocked_by_seller_action = seller_status in {CRM_LEAD_STATUS_DECLINED, CRM_LEAD_STATUS_SKIPPED} and not offer
+
+    prepared["can_mark_viewed"] = not seller_state.get("has_viewed")
+    prepared["can_decline"] = seller_status not in {CRM_LEAD_STATUS_DECLINED, CRM_LEAD_STATUS_SKIPPED, CRM_LEAD_STATUS_SELECTED} and not selected_other_seller and not selected_this_seller
+    prepared["can_skip"] = seller_status not in {CRM_LEAD_STATUS_DECLINED, CRM_LEAD_STATUS_SKIPPED, CRM_LEAD_STATUS_SELECTED} and not selected_other_seller and not selected_this_seller
+    prepared["can_reopen"] = seller_status in {CRM_LEAD_STATUS_DECLINED, CRM_LEAD_STATUS_SKIPPED} and not selected_other_seller and not selected_this_seller and not request_closed
     prepared["selected_this_seller"] = selected_this_seller
-    prepared["may_respond"] = not interaction_blocked and (
-        bool(offer) or seller_status not in {CRM_LEAD_STATUS_DECLINED, CRM_LEAD_STATUS_SKIPPED}
-    )
+    prepared["selected_other_seller"] = selected_other_seller
+    prepared["has_existing_offer"] = bool(offer)
+    prepared["may_respond"] = not selected_other_seller and not selected_this_seller and not request_closed and not blocked_by_seller_action
     if selected_this_seller:
         prepared["response_block_reason"] = "Покупець обрав вашу пропозицію."
     elif selected_other_seller:
         prepared["response_block_reason"] = "Покупець уже обрав іншого продавця."
     elif request_closed:
-        prepared["response_block_reason"] = "Заявку вже закрито."
-    elif seller_status in {CRM_LEAD_STATUS_DECLINED, CRM_LEAD_STATUS_SKIPPED} and not offer:
+        prepared["response_block_reason"] = "Заявку закрито, відповідь більше недоступна."
+    elif blocked_by_seller_action:
         prepared["response_block_reason"] = "Цю заявку вже відхилено або пропущено."
     else:
         prepared["response_block_reason"] = None
