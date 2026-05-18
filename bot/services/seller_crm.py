@@ -1,7 +1,5 @@
 import os
 import re
-import secrets
-import string
 from typing import Any
 
 from passlib.context import CryptContext
@@ -9,7 +7,6 @@ from passlib.context import CryptContext
 from bot.database.repositories.seller_crm_repo import (
     ensure_free_crm_account,
     get_crm_account_by_seller,
-    set_crm_password_hash_if_empty,
 )
 
 SELLER_CRM_PRODUCT = "seller_crm"
@@ -62,15 +59,6 @@ def verify_crm_password(password: str, password_hash: str | None) -> bool:
     return pwd_context.verify(password, password_hash)
 
 
-def generate_crm_temp_password(length: int = 14) -> str:
-    alphabet = string.ascii_letters + string.digits
-    while True:
-        password = "".join(secrets.choice(alphabet) for _ in range(length))
-        valid, _ = validate_crm_password(password)
-        if valid:
-            return password
-
-
 def crm_slug_base_from_seller(seller: dict | None) -> str:
     seller = seller or {}
     for value in (seller.get("shop_name"), seller.get("username")):
@@ -81,12 +69,12 @@ def crm_slug_base_from_seller(seller: dict | None) -> str:
     return normalize_crm_slug(f"seller-{seller_id}") if seller_id else "seller"
 
 
-async def ensure_crm_credentials(seller: dict[str, Any]) -> tuple[dict[str, Any], str | None]:
-    """Ensure a seller has a CRM account and one-time initial credentials.
+async def ensure_crm_credentials(seller: dict[str, Any]) -> tuple[dict[str, Any], bool]:
+    """Ensure a seller has a CRM account without creating a password.
 
-    Returns the CRM account and a temporary password only when this call safely
-    creates the first password hash. Existing password hashes are never
-    overwritten, so repeated onboarding opens do not regenerate passwords.
+    First-password onboarding is completed by the seller in the web CRM setup
+    flow. This helper intentionally never generates or overwrites password
+    hashes; it only reports whether setup is still required.
     """
 
     account, _created = await ensure_free_crm_account(
@@ -95,16 +83,6 @@ async def ensure_crm_credentials(seller: dict[str, Any]) -> tuple[dict[str, Any]
         password_hash="",
     )
 
-    if account.get("password_hash"):
-        return dict(account), None
-
-    temporary_password = generate_crm_temp_password()
-    updated_account = await set_crm_password_hash_if_empty(
-        account["id"],
-        hash_crm_password(temporary_password),
-    )
-    if updated_account:
-        return dict(updated_account), temporary_password
-
     refreshed_account = await get_crm_account_by_seller(seller["id"])
-    return dict(refreshed_account or account), None
+    account = dict(refreshed_account or account)
+    return account, not bool(account.get("password_hash"))

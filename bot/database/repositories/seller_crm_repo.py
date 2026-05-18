@@ -301,7 +301,11 @@ async def upsert_crm_account(seller_id: int, crm_slug: str, password_hash: str):
         ON CONFLICT (seller_id)
         DO UPDATE SET
             crm_slug = EXCLUDED.crm_slug,
-            password_hash = EXCLUDED.password_hash,
+            password_hash = CASE
+                WHEN COALESCE(seller_crm_accounts.password_hash, '') = ''
+                THEN EXCLUDED.password_hash
+                ELSE seller_crm_accounts.password_hash
+            END,
             is_active = TRUE
         RETURNING *
         """,

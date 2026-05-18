@@ -35,9 +35,16 @@ def _crm_url(slug: str | None = None) -> str:
     return f"{base}/crm/seller/{slug}" if slug else base
 
 
-def _landing_kb(account_slug: str):
+def _crm_setup_password_url(slug: str) -> str:
+    return f"{_crm_url()}/crm/seller/setup-password?slug={slug}"
+
+
+def _landing_kb(account_slug: str, setup_required: bool = False):
     kb = InlineKeyboardBuilder()
-    kb.button(text="🚀 Відкрити CRM", url=_crm_url(account_slug))
+    if setup_required:
+        kb.button(text="🔐 Створити пароль CRM", url=_crm_setup_password_url(account_slug))
+    else:
+        kb.button(text="🚀 Відкрити CRM", url=_crm_url(account_slug))
     kb.button(text="👀 Переглянути демо", url=f"{_crm_url()}/crm/seller/demo")
     kb.button(text="⬅️ Назад", callback_data="seller_crm:back")
     kb.adjust(1)
@@ -48,14 +55,13 @@ def _crm_login(seller) -> str:
     return str(seller["telegram_id"])
 
 
-def _landing_text(account_slug: str, login: str, temporary_password: str | None = None) -> str:
-    if temporary_password:
+def _landing_text(account_slug: str, login: str, setup_required: bool = False) -> str:
+    if setup_required:
         return (
-            "🔐 <b>CRM доступ створено</b>\n\n"
+            "🔐 <b>CRM акаунт готовий до першого входу</b>\n\n"
             f"CRM:\n{_crm_url(account_slug)}\n\n"
             f"Логін:\n<code>{login}</code>\n\n"
-            f"Пароль:\n<code>{temporary_password}</code>\n\n"
-            "Рекомендуємо змінити пароль після входу."
+            "Щоб увійти, створіть пароль на захищеній сторінці першого налаштування."
         )
 
     return (
@@ -67,15 +73,15 @@ def _landing_text(account_slug: str, login: str, temporary_password: str | None 
 
 async def _ensure_seller_crm(telegram_id: int, username: str | None):
     seller = await get_or_create_seller(telegram_id, username)
-    account, temporary_password = await ensure_crm_credentials(dict(seller))
+    account, setup_required = await ensure_crm_credentials(dict(seller))
     logger.info("CRM_ACCESS_READY seller_id=%s slug=%s", seller["id"], account["crm_slug"])
-    return seller, account, temporary_password
+    return seller, account, setup_required
 
 
 @router.message(F.text == "🧾 Відкрити CRM")
 async def seller_crm_landing(message: Message):
     try:
-        _seller, account, temporary_password = await _ensure_seller_crm(
+        _seller, account, setup_required = await _ensure_seller_crm(
             message.from_user.id,
             message.from_user.username,
         )
@@ -85,9 +91,9 @@ async def seller_crm_landing(message: Message):
         return
 
     await message.answer(
-        _landing_text(account["crm_slug"], _crm_login(_seller), temporary_password),
+        _landing_text(account["crm_slug"], _crm_login(_seller), setup_required),
         parse_mode="HTML",
-        reply_markup=_landing_kb(account["crm_slug"]),
+        reply_markup=_landing_kb(account["crm_slug"], setup_required),
     )
 
 
@@ -154,13 +160,11 @@ async def seller_crm_setup(callback: CallbackQuery, state: FSMContext):
 
     existing = await get_crm_account_by_seller(seller["id"])
     if existing:
-        account, temporary_password = await ensure_crm_credentials(dict(seller))
-        kb = InlineKeyboardBuilder()
-        kb.button(text="🚀 Відкрити CRM", url=_crm_url(account["crm_slug"]))
+        account, setup_required = await ensure_crm_credentials(dict(seller))
         await callback.message.answer(
-            _landing_text(account["crm_slug"], _crm_login(seller), temporary_password),
+            _landing_text(account["crm_slug"], _crm_login(seller), setup_required),
             parse_mode="HTML",
-            reply_markup=kb.as_markup(),
+            reply_markup=_landing_kb(account["crm_slug"], setup_required),
         )
         await callback.answer()
         return

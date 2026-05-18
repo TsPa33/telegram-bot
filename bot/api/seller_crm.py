@@ -35,6 +35,7 @@ from bot.database.repositories.seller_crm_repo import (
     get_crm_account_by_slug,
     get_crm_account_for_login,
     get_crm_session,
+    set_crm_password_hash_if_empty,
     get_seller_crm_dashboard,
     get_seller_crm_analytics,
     get_seller_crm_car_detail,
@@ -130,7 +131,13 @@ from bot.services.import_service import (
     generate_product_import_xlsx_template,
     import_products_from_file,
 )
-from bot.services.seller_crm import SELLER_CRM_SESSION_DAYS, verify_crm_password
+from bot.services.seller_crm import (
+    SELLER_CRM_SESSION_DAYS,
+    hash_crm_password,
+    validate_crm_password,
+    validate_crm_slug,
+    verify_crm_password,
+)
 from bot.services.seller_offer_service import submit_seller_offer_from_crm
 from bot.services.site_config import get_theme_presets, merge_with_default
 from bot.services.storage import upload_image
@@ -619,6 +626,13 @@ def _login_redirect(crm_slug: str):
     )
 
 
+def _setup_password_redirect(crm_slug: str):
+    raise HTTPException(
+        status_code=303,
+        detail=f"/crm/seller/setup-password?slug={crm_slug}",
+    )
+
+
 async def _current_session(request: Request):
     token = request.cookies.get(SELLER_CRM_COOKIE)
     if not token:
@@ -640,6 +654,8 @@ async def _authorized_account(request: Request, crm_slug: str):
     account = await get_crm_account_by_slug(crm_slug)
     if not account:
         raise HTTPException(status_code=404, detail="CRM account not found")
+    if not account.get("password_hash"):
+        _setup_password_redirect(account["crm_slug"])
 
     try:
         session, subscription = await _current_session(request)
@@ -1074,12 +1090,126 @@ async def seller_crm_demo(request: Request):
     )
 
 
+def _seller_crm_login_value(account: dict[str, Any] | None) -> str:
+    if not account:
+        return ""
+    if account.get("telegram_id") is not None:
+        return str(account["telegram_id"])
+    return str(account.get("username") or account.get("crm_slug") or "")
+
+
+def _render_setup_password(
+    request: Request,
+    *,
+    account: dict[str, Any] | None = None,
+    slug: str = "",
+    error: str | None = None,
+    status_code: int = 200,
+):
+    return templates.TemplateResponse(
+        "seller_crm/setup_password.html",
+        _seller_crm_context(
+            request,
+            title="Створення пароля CRM",
+            account=account,
+            slug=slug,
+            login=_seller_crm_login_value(account),
+            error=error,
+        ),
+        status_code=status_code,
+    )
+
+
 @router.get("/login")
 async def seller_crm_login_page(request: Request, slug: str | None = None):
+    if slug:
+        valid, normalized_slug = validate_crm_slug(slug)
+        if valid:
+            account = await get_crm_account_by_slug(normalized_slug)
+            if account and account["is_active"] and account["crm_enabled"] and not account.get("password_hash"):
+                return RedirectResponse(url=f"/crm/seller/setup-password?slug={account['crm_slug']}", status_code=303)
+
     return templates.TemplateResponse(
         "seller_crm/login.html",
         _seller_crm_context(request, slug=slug),
     )
+
+
+@router.get("/setup-password")
+async def seller_crm_setup_password_page(request: Request, slug: str | None = None):
+    valid, normalized_slug = validate_crm_slug(slug)
+    if not valid:
+        return _render_setup_password(
+            request,
+            slug=slug or "",
+            error="Некоректна CRM адреса.",
+            status_code=404,
+        )
+
+    account = await get_crm_account_by_slug(normalized_slug)
+    if not account or not account["is_active"] or not account["crm_enabled"]:
+        raise HTTPException(status_code=404, detail="CRM account not found")
+
+    if account.get("password_hash"):
+        return RedirectResponse(url=f"/crm/seller/login?slug={account['crm_slug']}", status_code=303)
+
+    return _render_setup_password(request, account=dict(account), slug=account["crm_slug"])
+
+
+@router.post("/setup-password")
+async def seller_crm_setup_password(
+    request: Request,
+    slug: str = Form(...),
+    password: str = Form(...),
+    password_confirm: str = Form(...),
+):
+    valid, normalized_slug = validate_crm_slug(slug)
+    if not valid:
+        return _render_setup_password(
+            request,
+            slug=slug,
+            error="Некоректна CRM адреса.",
+            status_code=400,
+        )
+
+    account = await get_crm_account_by_slug(normalized_slug)
+    if not account or not account["is_active"] or not account["crm_enabled"]:
+        raise HTTPException(status_code=404, detail="CRM account not found")
+
+    account = dict(account)
+    if account.get("password_hash"):
+        return RedirectResponse(url=f"/crm/seller/login?slug={account['crm_slug']}", status_code=303)
+
+    if password != password_confirm:
+        return _render_setup_password(
+            request,
+            account=account,
+            slug=account["crm_slug"],
+            error="Паролі не співпадають.",
+            status_code=400,
+        )
+
+    password_valid, password_error = validate_crm_password(password)
+    if not password_valid:
+        return _render_setup_password(
+            request,
+            account=account,
+            slug=account["crm_slug"],
+            error=password_error,
+            status_code=400,
+        )
+
+    updated_account = await set_crm_password_hash_if_empty(account["id"], hash_crm_password(password))
+    if not updated_account:
+        return RedirectResponse(url=f"/crm/seller/login?slug={account['crm_slug']}", status_code=303)
+
+    logger.info(
+        "CRM_FIRST_PASSWORD_SET seller_id=%s account_id=%s slug=%s",
+        updated_account["seller_id"],
+        updated_account["id"],
+        updated_account["crm_slug"],
+    )
+    return RedirectResponse(url=f"/crm/seller/login?slug={updated_account['crm_slug']}", status_code=303)
 
 
 @router.post("/login")
@@ -1098,6 +1228,9 @@ async def seller_crm_login(
             _seller_crm_context(request, error=login_error, identifier=identifier, slug=slug),
             status_code=401,
         )
+
+    if not account.get("password_hash"):
+        return RedirectResponse(url=f"/crm/seller/setup-password?slug={account['crm_slug']}", status_code=303)
 
     if not verify_crm_password(password, account["password_hash"]):
         return templates.TemplateResponse(
