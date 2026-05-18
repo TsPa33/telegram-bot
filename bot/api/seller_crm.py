@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 
 from bot.database.repositories.car_repo import (
@@ -26,6 +26,7 @@ from bot.database.repositories.model_repo import (
     get_models_by_brand_id,
     get_models_with_brand_ids,
 )
+from bot.database.repositories.product_repo import get_seller_products
 from bot.database.repositories.seller_crm_repo import (
     SellerCrmGarageFullError,
     create_crm_session,
@@ -114,6 +115,12 @@ from bot.domain.statuses import (
     normalize_text_status,
 )
 from bot.services.domain_service import build_site_url
+from bot.services.import_service import (
+    PRODUCT_IMPORT_COLUMNS,
+    generate_product_import_csv_template,
+    generate_product_import_xlsx_template,
+    import_products_from_file,
+)
 from bot.services.seller_crm import SELLER_CRM_SESSION_DAYS, verify_crm_password
 from bot.services.seller_offer_service import submit_seller_offer_from_crm
 from bot.services.site_config import get_theme_presets, merge_with_default
@@ -1209,12 +1216,153 @@ async def seller_crm_content(request: Request, crm_slug: str):
 
 # Future products routes must keep this order:
 # /content/products
+# /content/products/import
+# /content/products/import/template
 # /content/products/create
 # /content/products/{product_id}/edit
 # /content/products/{product_id}
 # /content/products/{product_id}/photo
 # /content/products/{product_id}/enable
 # /content/products/{product_id}/disable
+
+
+@router.get("/{crm_slug}/content/products")
+async def seller_crm_content_products(request: Request, crm_slug: str):
+    try:
+        account, subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+
+    seller_id = account["seller_id"]
+    summary = dict(await get_seller_crm_content_summary(seller_id) or {})
+    products = [dict(product) for product in await get_seller_products(seller_id, limit=100)]
+    totals = {
+        "active": sum(1 for product in products if product.get("status") == "active"),
+        "quantity": sum(int(product.get("quantity") or 0) for product in products),
+        "without_price": sum(1 for product in products if product.get("price") is None),
+        "without_oem": sum(1 for product in products if not product.get("oem_code")),
+    }
+
+    return templates.TemplateResponse(
+        "seller_crm/content_products.html",
+        _seller_crm_context(
+            request,
+            title="Товари / Запчастини — CRM продавця CarPot",
+            demo_mode=False,
+            current_page="content_products",
+            account=account,
+            subscription=subscription,
+            summary=summary,
+            products=products,
+            totals=totals,
+            has_website=False,
+            has_cars=int(summary.get("active_cars") or 0) > 0,
+            has_services=int(summary.get("active_services") or 0) > 0,
+        ),
+    )
+
+
+@router.get("/{crm_slug}/content/products/import")
+async def seller_crm_product_import_form(request: Request, crm_slug: str):
+    try:
+        account, subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+
+    return templates.TemplateResponse(
+        "seller_crm/product_import.html",
+        _seller_crm_context(
+            request,
+            title="Імпорт товарів — CRM продавця CarPot",
+            demo_mode=False,
+            current_page="content_products",
+            account=account,
+            subscription=subscription,
+            import_columns=PRODUCT_IMPORT_COLUMNS,
+            result=None,
+            error=None,
+            has_website=False,
+            has_cars=False,
+            has_services=False,
+        ),
+    )
+
+
+@router.post("/{crm_slug}/content/products/import")
+async def seller_crm_product_import(
+    request: Request,
+    crm_slug: str,
+    import_file: UploadFile = File(...),
+):
+    try:
+        account, subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+
+    content = await import_file.read()
+    if not content:
+        result = None
+        error = "Оберіть CSV або XLSX файл для імпорту."
+        status_code = 400
+    else:
+        result = await import_products_from_file(
+            seller_id=account["seller_id"],
+            filename=import_file.filename or "",
+            content=content,
+        )
+        error = None
+        status_code = 400 if result.validation_errors else 200
+
+    return templates.TemplateResponse(
+        "seller_crm/product_import.html",
+        _seller_crm_context(
+            request,
+            title="Результат імпорту товарів — CRM продавця CarPot",
+            demo_mode=False,
+            current_page="content_products",
+            account=account,
+            subscription=subscription,
+            import_columns=PRODUCT_IMPORT_COLUMNS,
+            result=result,
+            error=error,
+            has_website=False,
+            has_cars=False,
+            has_services=False,
+        ),
+        status_code=status_code,
+    )
+
+
+@router.get("/{crm_slug}/content/products/import/template")
+async def seller_crm_product_import_template(request: Request, crm_slug: str, format: str = "csv"):
+    try:
+        await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+
+    normalized_format = (format or "csv").strip().lower()
+    if normalized_format == "xlsx":
+        body = generate_product_import_xlsx_template()
+        media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        filename = "carpot_products_import_template.xlsx"
+    else:
+        body = generate_product_import_csv_template()
+        media_type = "text/csv; charset=utf-8"
+        filename = "carpot_products_import_template.csv"
+
+    return Response(
+        content=body,
+        media_type=media_type,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.get("/{crm_slug}/content/services")
