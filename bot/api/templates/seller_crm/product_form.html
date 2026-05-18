@@ -1,0 +1,52 @@
+{% extends "seller_crm/base.html" %}
+{% import "seller_crm/components/forms.html" as forms %}
+{% import "seller_crm/components/layout.html" as layout %}
+{% block crm_kicker %}Контент продавця{% endblock %}
+{% block crm_heading %}{{ form_title }}{% endblock %}
+{% block content %}
+<style>
+  .product-form-wrap { display: grid; gap: 14px; min-width: 0; }
+  .form-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
+  .form-field.full { grid-column: 1 / -1; }
+  .form-field input, .form-field select, .form-field textarea { min-width: 0; }
+  .notice.error { border: 1px solid rgba(251,113,133,.28); background: rgba(251,113,133,.1); color: #fecdd3; border-radius: 14px; padding: 10px 12px; font-weight: 850; }
+  @media (max-width: 680px) { .form-grid { grid-template-columns: 1fr; } .form-actions, .form-actions .btn { display: grid; width: 100%; } }
+</style>
+<div class="product-form-wrap">
+  {% if error %}<div class="notice error" role="alert">{{ error }}</div>{% endif %}
+  <section class="card">
+    {{ layout.section_header(form_title) }}
+    <form method="post" action="{{ action_url }}" class="form-grid">
+      {{ forms.text_input("title", "Назва", form.title, "Наприклад: Фара ліва", True, 180) }}
+      {{ forms.text_input("category", "Категорія", form.category, "Оптика, двигун, кузов...", True, 120) }}
+      {{ forms.text_input("brand", "Бренд", form.brand, "Toyota") }}
+      {{ forms.text_input("model", "Модель", form.model, "Camry") }}
+      {{ forms.text_input("oem_code", "OEM код", form.oem_code, "81150-...", False, 120) }}
+      {{ forms.text_input("condition", "Стан", form.condition, "Б/в, новий, відновлений") }}
+      <div class="form-field">
+        <label for="price">Ціна</label>
+        <input id="price" name="price" value="{{ form.price if form.price is not none else '' }}" inputmode="decimal" autocomplete="off" placeholder="Наприклад: 1500 або 1500.50">
+        <span class="field-help">Необов’язково, гривні.</span>
+      </div>
+      <div class="form-field">
+        <label for="quantity">Кількість</label>
+        <input id="quantity" name="quantity" value="{{ form.quantity or '1' }}" inputmode="numeric" pattern="[0-9]*" autocomplete="off" required>
+      </div>
+      {{ forms.select_input("stock_status", "Статус складу", stock_status_options, form.stock_status, True) }}
+      {{ forms.select_input("status", "CRM статус", status_options, form.status, True) }}
+      <div class="form-field full">
+        <label for="donor_car_id">Авто-донор (необов’язково)</label>
+        <select id="donor_car_id" name="donor_car_id">
+          <option value="">Без прив’язки</option>
+          {% for car in donor_cars %}
+            <option value="{{ car.car_id }}"{% if form.donor_car_id|string == car.car_id|string %} selected{% endif %}>{{ car.brand }} {{ car.model }} · ID {{ car.car_id }}</option>
+          {% endfor %}
+        </select>
+        <span class="field-help">Доступні лише ваші авто, щоб зберегти ownership security.</span>
+      </div>
+      {{ forms.textarea_input("description", "Опис", form.description, "Сумісність, комплектація, дефекти, гарантія...", False, 3000, 6) }}
+      {{ forms.form_actions("Зберегти", cancel_url) }}
+    </form>
+  </section>
+</div>
+{% endblock %}
