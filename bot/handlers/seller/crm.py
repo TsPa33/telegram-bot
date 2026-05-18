@@ -8,7 +8,6 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from bot.config import LIQPAY_CALLBACK_URL, LIQPAY_PRIVATE_KEY, LIQPAY_PUBLIC_KEY, SELLER_CRM_BASE_URL
 from bot.database.repositories.seller_crm_repo import (
     enable_seller_crm,
-    ensure_free_crm_account,
     get_crm_account_by_seller,
     upsert_crm_account,
 )
@@ -18,8 +17,7 @@ from bot.services.liqpay_service import LiqPayService
 from bot.services.seller_crm import (
     SELLER_CRM_MONTHLY_PRICE_UAH,
     SELLER_CRM_PRODUCT,
-    crm_slug_base_from_seller,
-    generate_crm_temp_password,
+    ensure_crm_credentials,
     hash_crm_password,
     validate_crm_password,
     validate_crm_slug,
@@ -33,7 +31,7 @@ liqpay = LiqPayService(LIQPAY_PUBLIC_KEY, LIQPAY_PRIVATE_KEY)
 
 
 def _crm_url(slug: str | None = None) -> str:
-    base = (SELLER_CRM_BASE_URL or "https://crm.carpot.com.ua").rstrip("/")
+    base = (SELLER_CRM_BASE_URL or "https://carpot.com.ua").rstrip("/")
     return f"{base}/crm/seller/{slug}" if slug else base
 
 
@@ -46,34 +44,32 @@ def _landing_kb(account_slug: str):
     return kb.as_markup()
 
 
-def _landing_text(account_slug: str, temporary_password: str | None = None) -> str:
-    password_block = ""
+def _crm_login(seller) -> str:
+    return str(seller["telegram_id"])
+
+
+def _landing_text(account_slug: str, login: str, temporary_password: str | None = None) -> str:
     if temporary_password:
-        password_block = (
-            "\n\n<b>Тимчасовий пароль:</b>\n"
-            f"<code>{temporary_password}</code>\n"
-            "Збережіть його. Пароль зберігається тільки у вигляді хешу."
+        return (
+            "🔐 <b>CRM доступ створено</b>\n\n"
+            f"CRM:\n{_crm_url(account_slug)}\n\n"
+            f"Логін:\n<code>{login}</code>\n\n"
+            f"Пароль:\n<code>{temporary_password}</code>\n\n"
+            "Рекомендуємо змінити пароль після входу."
         )
 
     return (
-        "🧾 <b>CRM продавця CarPot</b>\n\n"
-        "Ваш безкоштовний кабінет продавця готовий. Тут можна керувати заявками, "
-        "авто, послугами, сайтом та базовою аналітикою.\n\n"
-        f"<b>CRM:</b> {_crm_url(account_slug)}"
-        f"{password_block}"
+        "🌐 <b>CRM готовий</b>\n\n"
+        f"URL:\n{_crm_url(account_slug)}\n\n"
+        f"Логін:\n<code>{login}</code>"
     )
 
 
 async def _ensure_seller_crm(telegram_id: int, username: str | None):
     seller = await get_or_create_seller(telegram_id, username)
-    temporary_password = generate_crm_temp_password()
-    account, created = await ensure_free_crm_account(
-        seller_id=seller["id"],
-        base_slug=crm_slug_base_from_seller(dict(seller)),
-        password_hash=hash_crm_password(temporary_password),
-    )
+    account, temporary_password = await ensure_crm_credentials(dict(seller))
     logger.info("CRM_ACCESS_READY seller_id=%s slug=%s", seller["id"], account["crm_slug"])
-    return seller, account, temporary_password if created else None
+    return seller, account, temporary_password
 
 
 @router.message(F.text == "🧾 Відкрити CRM")
@@ -89,7 +85,7 @@ async def seller_crm_landing(message: Message):
         return
 
     await message.answer(
-        _landing_text(account["crm_slug"], temporary_password),
+        _landing_text(account["crm_slug"], _crm_login(_seller), temporary_password),
         parse_mode="HTML",
         reply_markup=_landing_kb(account["crm_slug"]),
     )
@@ -158,12 +154,12 @@ async def seller_crm_setup(callback: CallbackQuery, state: FSMContext):
 
     existing = await get_crm_account_by_seller(seller["id"])
     if existing:
+        account, temporary_password = await ensure_crm_credentials(dict(seller))
         kb = InlineKeyboardBuilder()
-        kb.button(text="🚀 Відкрити CRM", url=_crm_url(existing["crm_slug"]))
+        kb.button(text="🚀 Відкрити CRM", url=_crm_url(account["crm_slug"]))
         await callback.message.answer(
-            "✅ CRM акаунт вже готовий\n\n"
-            f"🌐 CRM: {_crm_url(existing['crm_slug'])}\n"
-            f"👤 Логін: {seller['telegram_id']}",
+            _landing_text(account["crm_slug"], _crm_login(seller), temporary_password),
+            parse_mode="HTML",
             reply_markup=kb.as_markup(),
         )
         await callback.answer()
