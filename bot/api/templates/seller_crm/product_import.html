@@ -1,0 +1,106 @@
+{% extends "seller_crm/base.html" %}
+{% block crm_kicker %}Контент продавця{% endblock %}
+{% block crm_heading %}Імпорт товарів{% endblock %}
+{% block content %}
+<style>
+  .import-workspace { display: grid; gap: 14px; min-width: 0; }
+  .import-actions, .template-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; min-width: 0; }
+  .upload-card { border-color: rgba(37,215,255,.22); background: linear-gradient(135deg, rgba(37,215,255,.08), rgba(52,245,166,.045)); }
+  .upload-form { display: grid; gap: 12px; max-width: 720px; }
+  .file-input { width: 100%; border: 1px solid var(--line); border-radius: 14px; padding: 12px; background: rgba(255,255,255,.045); color: var(--text); }
+  .columns-list { display: flex; gap: 8px; flex-wrap: wrap; padding: 0; margin: 0; list-style: none; }
+  .columns-list li { border: 1px solid var(--line); border-radius: 999px; padding: 6px 10px; color: var(--muted); background: rgba(255,255,255,.035); font-size: 12px; font-weight: 850; }
+  .result-grid { grid-template-columns: repeat(3,minmax(0,1fr)); }
+  .result-card { border: 1px solid var(--line); border-radius: 16px; padding: 14px; background: rgba(255,255,255,.035); }
+  .result-number { display: block; margin-top: 6px; font-size: 28px; font-weight: 950; color: var(--text); }
+  .error-box { border: 1px solid rgba(251,113,133,.34); border-radius: 16px; padding: 12px; background: rgba(251,113,133,.08); color: #fecdd3; }
+  .errors-table-wrap { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .errors-table { width: 100%; min-width: 760px; border-collapse: collapse; }
+  .errors-table th, .errors-table td { border-bottom: 1px solid var(--line); padding: 10px; text-align: left; vertical-align: top; }
+  .errors-table th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+  .errors-table td { overflow-wrap: anywhere; }
+  @media (max-width: 780px) { .result-grid { grid-template-columns: 1fr; } .import-actions, .template-actions { display: grid; grid-template-columns: 1fr; } .import-actions .btn, .template-actions .btn { width: 100%; white-space: normal; } }
+</style>
+
+<div class="import-workspace">
+  <section class="workspace-hero" aria-labelledby="import-title">
+    <div>
+      <h2 id="import-title">Імпорт товарів / запчастин</h2>
+      <p class="section-note">Завантажте CSV або XLSX. Валідні рядки імпортуються, а помилки по окремих рядках показуються нижче.</p>
+    </div>
+    <div class="import-actions">
+      <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content/products">← До товарів</a>
+    </div>
+  </section>
+
+  <section class="card upload-card" aria-labelledby="upload-title">
+    <h2 id="upload-title">Файл імпорту</h2>
+    {% if error %}<div class="error-box">{{ error }}</div>{% endif %}
+    <form class="upload-form" method="post" action="/crm/seller/{{ account.crm_slug }}/content/products/import" enctype="multipart/form-data">
+      <label>
+        <span class="section-note">CSV або XLSX файл</span>
+        <input class="file-input" type="file" name="import_file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required>
+      </label>
+      <div class="import-actions">
+        <button class="btn" type="submit">Завантажити та імпортувати</button>
+        <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content/products/import/template?format=csv">Завантажити приклад шаблону</a>
+      </div>
+    </form>
+  </section>
+
+  <section class="card" aria-labelledby="template-title">
+    <h2 id="template-title">Формат шаблону</h2>
+    <p class="section-note">Колонки мають бути у першому рядку файлу. Порожні рядки пропускаються.</p>
+    <ul class="columns-list">
+      {% for column in import_columns %}<li>{{ column }}</li>{% endfor %}
+    </ul>
+    <div class="template-actions" style="margin-top:12px;">
+      <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content/products/import/template?format=csv">Завантажити приклад шаблону CSV</a>
+      <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content/products/import/template?format=xlsx">Завантажити приклад шаблону XLSX</a>
+    </div>
+  </section>
+
+  {% if result %}
+    <section class="card" aria-labelledby="result-title">
+      <h2 id="result-title">Результат імпорту</h2>
+      <div class="grid result-grid" aria-label="Підсумки імпорту">
+        <div class="result-card">Імпортовано<span class="result-number">{{ result.imported_count }}</span></div>
+        <div class="result-card">Пропущено<span class="result-number">{{ result.skipped_count }}</span></div>
+        <div class="result-card">Помилок у рядках<span class="result-number">{{ result.failed_count }}</span></div>
+      </div>
+      {% if result.validation_errors %}
+        <div class="error-box" style="margin-top:12px;">
+          {% for validation_error in result.validation_errors %}<div>{{ validation_error }}</div>{% endfor %}
+        </div>
+      {% endif %}
+    </section>
+
+    {% if result.failed_rows %}
+      <section class="card" aria-labelledby="failed-title">
+        <h2 id="failed-title">Рядки з помилками</h2>
+        <div class="errors-table-wrap">
+          <table class="errors-table">
+            <thead>
+              <tr><th>Рядок</th><th>Помилки валідації</th><th>Назва</th><th>OEM</th><th>Категорія</th><th>Ціна</th><th>Кількість</th><th>Склад</th></tr>
+            </thead>
+            <tbody>
+              {% for failed in result.failed_rows %}
+                <tr>
+                  <td>{{ failed.row_number }}</td>
+                  <td>{{ failed.errors|join('; ') }}</td>
+                  <td>{{ failed.values.title }}</td>
+                  <td>{{ failed.values.oem_code }}</td>
+                  <td>{{ failed.values.category }}</td>
+                  <td>{{ failed.values.price }}</td>
+                  <td>{{ failed.values.quantity }}</td>
+                  <td>{{ failed.values.stock_status }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    {% endif %}
+  {% endif %}
+</div>
+{% endblock %}

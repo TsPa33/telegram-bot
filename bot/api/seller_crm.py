@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 
 from bot.database.repositories.car_repo import (
@@ -26,6 +26,7 @@ from bot.database.repositories.model_repo import (
     get_models_by_brand_id,
     get_models_with_brand_ids,
 )
+from bot.database.repositories.product_repo import get_seller_products
 from bot.database.repositories.seller_crm_repo import (
     SellerCrmGarageFullError,
     create_crm_session,
@@ -123,6 +124,12 @@ from bot.domain.statuses import (
     normalize_text_status,
 )
 from bot.services.domain_service import build_site_url
+from bot.services.import_service import (
+    PRODUCT_IMPORT_COLUMNS,
+    generate_product_import_csv_template,
+    generate_product_import_xlsx_template,
+    import_products_from_file,
+)
 from bot.services.seller_crm import SELLER_CRM_SESSION_DAYS, verify_crm_password
 from bot.services.seller_offer_service import submit_seller_offer_from_crm
 from bot.services.site_config import get_theme_presets, merge_with_default
@@ -1373,6 +1380,8 @@ async def seller_crm_content(request: Request, crm_slug: str):
 
 # Future products routes must keep this order:
 # /content/products
+# /content/products/import
+# /content/products/import/template
 # /content/products/create
 # /content/products/{product_id}/edit
 # /content/products/{product_id}
@@ -1381,9 +1390,8 @@ async def seller_crm_content(request: Request, crm_slug: str):
 # /content/products/{product_id}/disable
 
 
-
 @router.get("/{crm_slug}/content/products")
-async def seller_crm_content_products(request: Request, crm_slug: str, status: str | None = None, error: str | None = None):
+async def seller_crm_content_products(request: Request, crm_slug: str):
     try:
         account, subscription = await _authorized_account(request, crm_slug)
     except HTTPException as exc:
@@ -1392,21 +1400,14 @@ async def seller_crm_content_products(request: Request, crm_slug: str, status: s
         raise
 
     seller_id = account["seller_id"]
-    products = [_prepare_product(product) for product in await get_seller_products(seller_id, limit=100)]
+    summary = dict(await get_seller_crm_content_summary(seller_id) or {})
+    products = [dict(product) for product in await get_seller_products(seller_id, limit=100)]
     totals = {
         "active": sum(1 for product in products if product.get("status") == "active"),
-        "inactive": sum(1 for product in products if product.get("status") == "inactive"),
-        "sold": sum(1 for product in products if product.get("stock_status") == "sold"),
-        "available": sum(1 for product in products if product.get("stock_status") == "available"),
-        "low_stock": sum(1 for product in products if product.get("stock_status") == "low_stock"),
-        "preorder": sum(1 for product in products if product.get("stock_status") == "preorder"),
-        "without_photo": sum(1 for product in products if not product.get("has_photo")),
-        "without_price": sum(1 for product in products if not product.get("has_price")),
+        "quantity": sum(int(product.get("quantity") or 0) for product in products),
+        "without_price": sum(1 for product in products if product.get("price") is None),
+        "without_oem": sum(1 for product in products if not product.get("oem_code")),
     }
-    summary = dict(await get_seller_crm_content_summary(seller_id) or {})
-    site = await get_site_by_seller(seller_id)
-    account_flags = dict(account)
-    has_website = bool(site or account_flags.get("has_site") or account_flags.get("website"))
 
     return templates.TemplateResponse(
         "seller_crm/content_products.html",
@@ -1417,379 +1418,115 @@ async def seller_crm_content_products(request: Request, crm_slug: str, status: s
             current_page="content_products",
             account=account,
             subscription=subscription,
+            summary=summary,
             products=products,
             totals=totals,
-            status=status,
-            error=error,
-            has_website=has_website,
+            has_website=False,
             has_cars=int(summary.get("active_cars") or 0) > 0,
             has_services=int(summary.get("active_services") or 0) > 0,
         ),
     )
 
 
-async def _render_product_form(
-    request: Request,
-    *,
-    account,
-    subscription,
-    crm_slug: str,
-    form_title: str,
-    action_url: str,
-    cancel_url: str,
-    product=None,
-    form: dict[str, Any] | None = None,
-    error: str | None = None,
-    status_code: int = 200,
-):
-    donor_cars = await get_seller_product_donor_cars(account["seller_id"])
+@router.get("/{crm_slug}/content/products/import")
+async def seller_crm_product_import_form(request: Request, crm_slug: str):
+    try:
+        account, subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+
     return templates.TemplateResponse(
-        "seller_crm/product_form.html",
+        "seller_crm/product_import.html",
         _seller_crm_context(
             request,
-            title=f"{form_title} — CRM продавця CarPot",
+            title="Імпорт товарів — CRM продавця CarPot",
             demo_mode=False,
             current_page="content_products",
             account=account,
             subscription=subscription,
-            form_title=form_title,
-            product=product,
-            form=form or _product_form_payload(),
-            donor_cars=donor_cars,
-            status_options=PRODUCT_STATUS_OPTIONS,
-            stock_status_options=PRODUCT_STOCK_STATUS_OPTIONS,
-            error=error,
-            action_url=action_url,
-            cancel_url=cancel_url,
+            import_columns=PRODUCT_IMPORT_COLUMNS,
+            result=None,
+            error=None,
             has_website=False,
-            has_cars=bool(donor_cars),
+            has_cars=False,
+            has_services=False,
+        ),
+    )
+
+
+@router.post("/{crm_slug}/content/products/import")
+async def seller_crm_product_import(
+    request: Request,
+    crm_slug: str,
+    import_file: UploadFile = File(...),
+):
+    try:
+        account, subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+
+    content = await import_file.read()
+    if not content:
+        result = None
+        error = "Оберіть CSV або XLSX файл для імпорту."
+        status_code = 400
+    else:
+        result = await import_products_from_file(
+            seller_id=account["seller_id"],
+            filename=import_file.filename or "",
+            content=content,
+        )
+        error = None
+        status_code = 400 if result.validation_errors else 200
+
+    return templates.TemplateResponse(
+        "seller_crm/product_import.html",
+        _seller_crm_context(
+            request,
+            title="Результат імпорту товарів — CRM продавця CarPot",
+            demo_mode=False,
+            current_page="content_products",
+            account=account,
+            subscription=subscription,
+            import_columns=PRODUCT_IMPORT_COLUMNS,
+            result=result,
+            error=error,
+            has_website=False,
+            has_cars=False,
             has_services=False,
         ),
         status_code=status_code,
     )
 
 
-@router.get("/{crm_slug}/content/products/create")
-async def seller_crm_product_create_form(request: Request, crm_slug: str):
+@router.get("/{crm_slug}/content/products/import/template")
+async def seller_crm_product_import_template(request: Request, crm_slug: str, format: str = "csv"):
     try:
-        account, subscription = await _authorized_account(request, crm_slug)
+        await _authorized_account(request, crm_slug)
     except HTTPException as exc:
         if exc.status_code == 303:
             return RedirectResponse(url=exc.detail, status_code=303)
         raise
 
-    return await _render_product_form(
-        request,
-        account=account,
-        subscription=subscription,
-        crm_slug=crm_slug,
-        form_title="Додати товар",
-        action_url=f"/crm/seller/{crm_slug}/content/products/create",
-        cancel_url=f"/crm/seller/{crm_slug}/content/products",
+    normalized_format = (format or "csv").strip().lower()
+    if normalized_format == "xlsx":
+        body = generate_product_import_xlsx_template()
+        media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        filename = "carpot_products_import_template.xlsx"
+    else:
+        body = generate_product_import_csv_template()
+        media_type = "text/csv; charset=utf-8"
+        filename = "carpot_products_import_template.csv"
+
+    return Response(
+        content=body,
+        media_type=media_type,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
-
-
-@router.post("/{crm_slug}/content/products/create")
-async def seller_crm_product_create(
-    request: Request,
-    crm_slug: str,
-    title: str = Form(""),
-    category: str = Form(""),
-    brand: str = Form(""),
-    model: str = Form(""),
-    oem_code: str = Form(""),
-    condition: str = Form(""),
-    description: str = Form(""),
-    price: str = Form(""),
-    quantity: str = Form("1"),
-    stock_status: str = Form("available"),
-    status: str = Form("active"),
-    donor_car_id: str = Form(""),
-):
-    try:
-        account, subscription = await _authorized_account(request, crm_slug)
-    except HTTPException as exc:
-        if exc.status_code == 303:
-            return RedirectResponse(url=exc.detail, status_code=303)
-        raise
-
-    form = _product_form_payload(
-        title=title,
-        category=category,
-        brand=brand,
-        model=model,
-        oem_code=oem_code,
-        condition=condition,
-        description=description,
-        price=price,
-        quantity=quantity,
-        stock_status=stock_status,
-        status=status,
-        donor_car_id=donor_car_id,
-    )
-    parsed_price, parsed_quantity, validation_error = _validate_product_form(title, category, description, price, quantity, stock_status, status)
-    parsed_donor_car_id = _parse_optional_int(donor_car_id)
-    if donor_car_id.strip() and parsed_donor_car_id is None:
-        validation_error = "Оберіть коректне авто-донор."
-    if validation_error:
-        return await _render_product_form(
-            request,
-            account=account,
-            subscription=subscription,
-            crm_slug=crm_slug,
-            form_title="Додати товар",
-            action_url=f"/crm/seller/{crm_slug}/content/products/create",
-            cancel_url=f"/crm/seller/{crm_slug}/content/products",
-            form=form,
-            error=validation_error,
-            status_code=400,
-        )
-
-    created = await create_product(
-        seller_id=account["seller_id"],
-        title=title,
-        category=category,
-        donor_car_id=parsed_donor_car_id,
-        brand=brand,
-        model=model,
-        oem_code=oem_code,
-        condition=condition,
-        description=description,
-        price=parsed_price,
-        quantity=parsed_quantity,
-        stock_status=stock_status,
-        status=status,
-    )
-    if not created:
-        return await _render_product_form(
-            request,
-            account=account,
-            subscription=subscription,
-            crm_slug=crm_slug,
-            form_title="Додати товар",
-            action_url=f"/crm/seller/{crm_slug}/content/products/create",
-            cancel_url=f"/crm/seller/{crm_slug}/content/products",
-            form=form,
-            error="Не вдалося створити товар. Перевірте авто-донор і спробуйте ще раз.",
-            status_code=400,
-        )
-
-    return RedirectResponse(url=f"/crm/seller/{crm_slug}/content/products/{created['id']}?status=created", status_code=303)
-
-
-@router.get("/{crm_slug}/content/products/{product_id}/edit")
-async def seller_crm_product_edit_form(request: Request, crm_slug: str, product_id: int):
-    try:
-        account, subscription = await _authorized_account(request, crm_slug)
-    except HTTPException as exc:
-        if exc.status_code == 303:
-            return RedirectResponse(url=exc.detail, status_code=303)
-        raise
-
-    product = await get_product_by_id(account["seller_id"], product_id)
-    if not product:
-        raise HTTPException(status_code=404, detail="Product not found")
-
-    return await _render_product_form(
-        request,
-        account=account,
-        subscription=subscription,
-        crm_slug=crm_slug,
-        form_title="Редагувати товар",
-        action_url=f"/crm/seller/{crm_slug}/content/products/{product_id}/edit",
-        cancel_url=f"/crm/seller/{crm_slug}/content/products/{product_id}",
-        product=_prepare_product(product),
-        form=_product_form_from_record(product),
-    )
-
-
-@router.post("/{crm_slug}/content/products/{product_id}/edit")
-async def seller_crm_product_edit(
-    request: Request,
-    crm_slug: str,
-    product_id: int,
-    title: str = Form(""),
-    category: str = Form(""),
-    brand: str = Form(""),
-    model: str = Form(""),
-    oem_code: str = Form(""),
-    condition: str = Form(""),
-    description: str = Form(""),
-    price: str = Form(""),
-    quantity: str = Form("1"),
-    stock_status: str = Form("available"),
-    status: str = Form("active"),
-    donor_car_id: str = Form(""),
-):
-    try:
-        account, subscription = await _authorized_account(request, crm_slug)
-    except HTTPException as exc:
-        if exc.status_code == 303:
-            return RedirectResponse(url=exc.detail, status_code=303)
-        raise
-
-    product = await get_product_by_id(account["seller_id"], product_id)
-    if not product:
-        raise HTTPException(status_code=404, detail="Product not found")
-
-    form = _product_form_payload(
-        title=title,
-        category=category,
-        brand=brand,
-        model=model,
-        oem_code=oem_code,
-        condition=condition,
-        description=description,
-        price=price,
-        quantity=quantity,
-        stock_status=stock_status,
-        status=status,
-        donor_car_id=donor_car_id,
-    )
-    parsed_price, parsed_quantity, validation_error = _validate_product_form(title, category, description, price, quantity, stock_status, status)
-    parsed_donor_car_id = _parse_optional_int(donor_car_id)
-    if donor_car_id.strip() and parsed_donor_car_id is None:
-        validation_error = "Оберіть коректне авто-донор."
-    if validation_error:
-        return await _render_product_form(
-            request,
-            account=account,
-            subscription=subscription,
-            crm_slug=crm_slug,
-            form_title="Редагувати товар",
-            action_url=f"/crm/seller/{crm_slug}/content/products/{product_id}/edit",
-            cancel_url=f"/crm/seller/{crm_slug}/content/products/{product_id}",
-            product=_prepare_product(product),
-            form=form,
-            error=validation_error,
-            status_code=400,
-        )
-
-    saved = await update_product(
-        account["seller_id"],
-        product_id,
-        title=title,
-        category=category,
-        donor_car_id=parsed_donor_car_id,
-        brand=brand,
-        model=model,
-        oem_code=oem_code,
-        condition=condition,
-        description=description,
-        price=parsed_price,
-        quantity=parsed_quantity,
-        stock_status=stock_status,
-        status=status,
-    )
-    if not saved:
-        return await _render_product_form(
-            request,
-            account=account,
-            subscription=subscription,
-            crm_slug=crm_slug,
-            form_title="Редагувати товар",
-            action_url=f"/crm/seller/{crm_slug}/content/products/{product_id}/edit",
-            cancel_url=f"/crm/seller/{crm_slug}/content/products/{product_id}",
-            product=_prepare_product(product),
-            form=form,
-            error="Не вдалося зберегти товар. Перевірте авто-донор і спробуйте ще раз.",
-            status_code=400,
-        )
-
-    return RedirectResponse(url=f"/crm/seller/{crm_slug}/content/products/{product_id}?status=updated", status_code=303)
-
-
-@router.get("/{crm_slug}/content/products/{product_id}")
-async def seller_crm_product_detail(request: Request, crm_slug: str, product_id: int, status: str | None = None, error: str | None = None):
-    try:
-        account, subscription = await _authorized_account(request, crm_slug)
-    except HTTPException as exc:
-        if exc.status_code == 303:
-            return RedirectResponse(url=exc.detail, status_code=303)
-        raise
-
-    product = await get_product_by_id(account["seller_id"], product_id)
-    if not product:
-        raise HTTPException(status_code=404, detail="Product not found")
-
-    prepared_product = _prepare_product(product)
-    return templates.TemplateResponse(
-        "seller_crm/product_detail.html",
-        _seller_crm_context(
-            request,
-            title=f"{prepared_product.get('title') or 'Товар'} — CRM продавця CarPot",
-            demo_mode=False,
-            current_page="content_products",
-            account=account,
-            subscription=subscription,
-            product=prepared_product,
-            status=status,
-            error=error,
-            has_website=False,
-            has_cars=bool(prepared_product.get("donor_car_id")),
-            has_services=False,
-        ),
-    )
-
-
-@router.post("/{crm_slug}/content/products/{product_id}/photo")
-async def seller_crm_product_photo_upload(
-    request: Request,
-    crm_slug: str,
-    product_id: int,
-    photo: UploadFile | None = File(None),
-):
-    detail_url = f"/crm/seller/{crm_slug}/content/products/{product_id}"
-    try:
-        account, _subscription = await _authorized_account(request, crm_slug)
-    except HTTPException as exc:
-        if exc.status_code == 303:
-            return RedirectResponse(url=exc.detail, status_code=303)
-        raise
-
-    product = await get_product_by_id(account["seller_id"], product_id)
-    if not product:
-        return RedirectResponse(url=f"/crm/seller/{crm_slug}/content/products?error=product_not_found", status_code=303)
-
-    image_url, error_key = await _upload_validated_car_photo(photo)
-    if error_key or not image_url:
-        return RedirectResponse(url=f"{detail_url}?error={error_key or 'photo_upload_failed'}", status_code=303)
-
-    saved = await update_product_photo(account["seller_id"], product_id, image_url)
-    if not saved:
-        return RedirectResponse(url=f"{detail_url}?error=photo_save_failed", status_code=303)
-
-    return RedirectResponse(url=f"{detail_url}?status=photo_updated", status_code=303)
-
-
-async def _toggle_crm_product(request: Request, crm_slug: str, product_id: int, new_status: str):
-    try:
-        account, _subscription = await _authorized_account(request, crm_slug)
-    except HTTPException as exc:
-        if exc.status_code == 303:
-            return RedirectResponse(url=exc.detail, status_code=303)
-        raise
-
-    product = await get_product_by_id(account["seller_id"], product_id)
-    if not product:
-        raise HTTPException(status_code=404, detail="Product not found")
-
-    toggled = await set_product_status(account["seller_id"], product_id, new_status)
-    query_key = "status" if toggled else "error"
-    query_value = "enabled" if new_status == "active" else "disabled"
-    if not toggled:
-        query_value = "status_not_supported"
-    return RedirectResponse(url=f"/crm/seller/{crm_slug}/content/products/{product_id}?{query_key}={query_value}", status_code=303)
-
-
-@router.post("/{crm_slug}/content/products/{product_id}/enable")
-async def seller_crm_product_enable(request: Request, crm_slug: str, product_id: int):
-    return await _toggle_crm_product(request, crm_slug, product_id, "active")
-
-
-@router.post("/{crm_slug}/content/products/{product_id}/disable")
-async def seller_crm_product_disable(request: Request, crm_slug: str, product_id: int):
-    return await _toggle_crm_product(request, crm_slug, product_id, "inactive")
 
 
 @router.get("/{crm_slug}/content/services")

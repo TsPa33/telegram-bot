@@ -176,6 +176,29 @@ async def get_product_by_id(seller_id: int, product_id: int):
     )
 
 
+async def get_product_by_title_oem(seller_id: int, title: str, oem_code: str | None):
+    clean_title = _clean_required(title, "title")
+    clean_oem_code = _clean_optional(oem_code)
+    if not clean_oem_code:
+        return None
+
+    return await fetchrow(
+        """
+        SELECT *
+        FROM seller_products
+        WHERE seller_id = $1
+          AND LOWER(title) = LOWER($2)
+          AND LOWER(oem_code) = LOWER($3)
+          AND status <> 'archived'
+        ORDER BY updated_at DESC, id DESC
+        LIMIT 1
+        """,
+        seller_id,
+        clean_title,
+        clean_oem_code,
+    )
+
+
 async def get_seller_products(
     seller_id: int,
     *,
