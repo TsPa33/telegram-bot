@@ -12,27 +12,32 @@
     <div class="pill">Telegram-connected</div>
   </section>
 
+  {% macro metric_widget(icon, label, value, period, trend_key, delta_key='', anchor_id='') -%}
+    {% set trend_points = marketplace_summary[trend_key]|default([], true) if trend_key else [] %}
+    {% set delta_value = marketplace_summary[delta_key]|default('', true) if delta_key else '' %}
+    <a class="kpi-widget"{% if anchor_id %} id="{{ anchor_id }}"{% endif %} href="/crm/seller/{{ account.crm_slug }}/analytics">
+      <span class="kpi-icon" aria-hidden="true">{{ icon }}</span>
+      <span class="kpi-main">
+        <span class="metric">{{ value }}</span>
+        <span class="kpi-label">{{ label }}</span>
+      </span>
+      <span class="kpi-meta">
+        <span class="kpi-period">{{ period }}</span>
+        {% if delta_value %}<span class="kpi-delta">{{ delta_value }}</span>{% endif %}
+      </span>
+      <span class="kpi-spark" data-points="{{ trend_points|join(',') if trend_points else '' }}" aria-label="{{ label }} тренд">
+        <svg viewBox="0 0 92 26" role="img" focusable="false" aria-hidden="true">
+          <path class="spark-neutral" d="M8 14 H84" pathLength="1"></path>
+        </svg>
+      </span>
+    </a>
+  {%- endmacro %}
+
   <section id="marketplace-analytics" class="grid kpi-cards" aria-label="Marketplace KPI">
-    <a class="card kpi-card" href="/crm/seller/{{ account.crm_slug }}/analytics">
-      <div class="emoji">🔥</div>
-      <div class="metric">{{ marketplace_summary.new_requests or 0 }}</div>
-      <h3>Нові заявки</h3>
-    </a>
-    <a class="card kpi-card" href="/crm/seller/{{ account.crm_slug }}/analytics">
-      <div class="emoji">⏳</div>
-      <div class="metric">{{ marketplace_summary.waiting_response or 0 }}</div>
-      <h3>Очікують відповіді</h3>
-    </a>
-    <a class="card kpi-card" id="offers" href="/crm/seller/{{ account.crm_slug }}/analytics">
-      <div class="emoji">✅</div>
-      <div class="metric">{{ marketplace_summary.accepted_offers or 0 }}</div>
-      <h3>Обрані покупцем</h3>
-    </a>
-    <a class="card kpi-card" href="/crm/seller/{{ account.crm_slug }}/analytics">
-      <div class="emoji">⚡</div>
-      <div class="metric">{{ marketplace_summary.avg_response_label or "—" }}</div>
-      <h3>Середній час відповіді</h3>
-    </a>
+    {{ metric_widget('↗', 'Нові заявки', marketplace_summary.new_requests|default(0, true), '24г', 'new_requests_trend', 'new_requests_delta_label') }}
+    {{ metric_widget('⏱', 'Очікують відповіді', marketplace_summary.waiting_response|default(0, true), '7д', 'waiting_response_trend', 'waiting_response_delta_label') }}
+    {{ metric_widget('✓', 'Обрані покупцем', marketplace_summary.accepted_offers|default(0, true), '30д', 'accepted_offers_trend', 'accepted_offers_delta_label', 'offers') }}
+    {{ metric_widget('⚡', 'Середній час відповіді', marketplace_summary.avg_response_label|default('—', true), '30д', 'avg_response_trend', 'avg_response_delta_label') }}
   </section>
 
   <section class="grid dashboard-layout">
@@ -128,4 +133,45 @@
     <p>Адреса кабінету: <b>/crm/seller/{{ account.crm_slug }}</b> · <a href="/crm/seller/{{ account.crm_slug }}/settings">Налаштування</a></p>
     {% if not demo_mode %}<form method="post" action="/crm/seller/logout"><button class="btn" type="submit">Вийти</button></form>{% endif %}
   </section>
+  <script>
+    (() => {
+      const widgets = document.querySelectorAll('.kpi-spark[data-points]');
+      widgets.forEach((spark) => {
+        const raw = spark.dataset.points || '';
+        const points = raw
+          .split(',')
+          .map((item) => Number.parseFloat(item.trim()))
+          .filter((item) => Number.isFinite(item) && item >= 0);
+
+        if (points.length < 2 || Math.max(...points) === 0) return;
+
+        const svg = spark.querySelector('svg');
+        if (!svg) return;
+
+        const width = 92;
+        const height = 26;
+        const padX = 8;
+        const padY = 5;
+        const max = Math.max(...points);
+        const min = Math.min(...points);
+        const span = max - min || 1;
+        const step = (width - padX * 2) / Math.max(points.length - 1, 1);
+        const coords = points.map((value, index) => {
+          const x = padX + index * step;
+          const y = height - padY - ((value - min) / span) * (height - padY * 2);
+          return [x, y];
+        });
+        const line = coords.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
+        const area = `M${coords[0][0].toFixed(1)} ${height - padY} L${coords.map(([x, y]) => `${x.toFixed(1)} ${y.toFixed(1)}`).join(' L')} L${coords[coords.length - 1][0].toFixed(1)} ${height - padY} Z`;
+        const last = coords[coords.length - 1];
+
+        svg.innerHTML = `
+          <path class="spark-area" d="${area}"></path>
+          <polyline class="spark-line" points="${line}"></polyline>
+          <circle class="spark-dot" cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="2.2"></circle>
+        `;
+      });
+    })();
+  </script>
+
 {% endblock %}
