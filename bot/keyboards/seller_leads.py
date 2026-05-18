@@ -22,14 +22,14 @@ def seller_leads_inbox_kb(leads) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
-def seller_lead_notification_kb(request_id: int) -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text="Відповісти", callback_data=f"seller_leads:offer:{request_id}")],
-            [InlineKeyboardButton(text="Відкрити заявку", callback_data=f"seller_leads:open:{request_id}")],
-            [InlineKeyboardButton(text="Відхилити заявку", callback_data=f"seller_leads:decline:{request_id}")],
-        ]
-    )
+def seller_lead_notification_kb(request_id: int, *, crm_url: str | None = None) -> InlineKeyboardMarkup:
+    rows = []
+    if crm_url:
+        rows.append([InlineKeyboardButton(text="Відкрити заявку", url=crm_url)])
+    else:
+        rows.append([InlineKeyboardButton(text="Відкрити заявку", callback_data=f"seller_leads:open:{request_id}")])
+    rows.append([InlineKeyboardButton(text="Відповісти", callback_data=f"seller_leads:offer:{request_id}")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 def seller_lead_actions_kb(request_id: int) -> InlineKeyboardMarkup:
@@ -68,15 +68,24 @@ def seller_offer_skip_step_kb(request_id: int) -> InlineKeyboardMarkup:
     )
 
 
-def seller_offer_accepted_notification_kb(request_id: int) -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text="📥 Відкрити заявку", callback_data=f"seller_leads:open:{request_id}")],
+def seller_offer_accepted_notification_kb(
+    request_id: int,
+    *,
+    crm_url: str | None = None,
+    offer_url: str | None = None,
+) -> InlineKeyboardMarkup:
+    rows = [[InlineKeyboardButton(text="Відкрити заявку", callback_data=f"seller_leads:open:{request_id}")]]
+    if offer_url:
+        rows.insert(0, [InlineKeyboardButton(text="Відкрити пропозицію", url=offer_url)])
+    elif crm_url:
+        rows.insert(0, [InlineKeyboardButton(text="Відкрити CRM", url=crm_url)])
+    else:
+        rows.append(
             [
                 InlineKeyboardButton(
-                    text="🧾 Відкрити кабінет",
+                    text="Відкрити CRM",
                     url=(os.getenv("SELLER_CRM_BASE_URL") or "https://crm.carpot.com.ua").rstrip("/"),
                 )
-            ],
-        ]
-    )
+            ]
+        )
+    return InlineKeyboardMarkup(inline_keyboard=rows)

@@ -13,6 +13,7 @@ from bot.database.repositories.buyer_offer_repo import (
     get_buyer_request_for_offer_view,
     list_buyer_offer_cards,
 )
+from bot.services.seller_notification_ops import format_accepted_offer_notification
 from bot.services.seller_trust import build_seller_trust_indicators
 
 
@@ -129,9 +130,17 @@ async def accept_offer_for_buyer(request_id: int, offer_id: int) -> BuyerOfferAc
 
 
 def build_seller_offer_accepted_notification(*, request_model: dict, offer: dict) -> dict:
-    title = request_model.get("title") or request_model.get("category") or "Заявка CarPot"
-    city = request_model.get("city") or "Україна"
-    text = f"🎉 Вашу пропозицію обрали\n\n{title}\n{city}\n\nПокупець обрав вашу пропозицію."
+    text = format_accepted_offer_notification(
+        {
+            **dict(offer or {}),
+            "request_description": request_model.get("description"),
+            "brand": request_model.get("brand"),
+            "model": request_model.get("model"),
+            "category": request_model.get("category") or request_model.get("request_type"),
+            "buyer_city": request_model.get("city"),
+            "buyer_phone": request_model.get("buyer_phone"),
+        }
+    )
     return {
         "event_type": "seller_offer_accepted",
         "seller_id": offer.get("seller_id"),

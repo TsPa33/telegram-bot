@@ -4,6 +4,7 @@ import re
 from urllib.parse import urlencode
 
 from aiogram import Bot
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from fastapi import APIRouter, FastAPI, HTTPException, Request, Form, File, UploadFile
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
@@ -48,6 +49,7 @@ from bot.services.demo_seed_service import get_demo_render_preset
 from bot.services.site_config import merge_with_default
 from bot.utils.subdomain import is_valid_subdomain
 from bot.services.domain_service import extract_subdomain_from_host
+from bot.services.seller_notification_ops import format_site_lead_notification, seller_crm_context_url
 from bot.services.telegram_sender import send_message_to_seller
 
 app = FastAPI()
@@ -1138,8 +1140,9 @@ async def _create_lead_for_subdomain(
     if not seller:
         raise HTTPException(status_code=404)
 
+    site_lead = None
     try:
-        await create_site_lead(
+        site_lead = await create_site_lead(
             seller_id=seller["id"],
             site_id=site.get("id"),
             subdomain=subdomain,
@@ -1155,17 +1158,28 @@ async def _create_lead_for_subdomain(
     except Exception:
         logger.exception("Failed to save site lead for subdomain %s", subdomain)
 
-    text = (
-        f"📩 Нова заявка з сайту\n\n"
-        f"👤 Ім'я: {name}\n"
-        f"📞 Телефон: {phone}\n"
-        f"💬 Повідомлення: {message or '-'}\n"
-        f"🌐 Сайт: {subdomain}"
+    text = format_site_lead_notification(name=name, phone=phone, message=message, subdomain=subdomain)
+    crm_url = None
+    try:
+        crm_url = await seller_crm_context_url(seller.get("id"), "/leads")
+    except Exception as exc:
+        logger.warning(
+            "Unable to build seller CRM URL for site lead seller_id=%s site_lead_id=%s: %s",
+            seller.get("id"),
+            site_lead.get("id") if site_lead else None,
+            exc,
+        )
+    reply_markup = (
+        InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="Відкрити CRM", url=crm_url)]])
+        if crm_url
+        else None
     )
 
     await send_message_to_seller(
         seller["telegram_id"],
-        text
+        text,
+        parse_mode="HTML",
+        reply_markup=reply_markup,
     )
 
     return {"status": "ok"}
