@@ -381,13 +381,20 @@
       <aside class="detail-stack">
         <section class="card" aria-labelledby="offer-title">
           <h2 id="offer-title" class="section-heading">Ваша пропозиція</h2>
+          {% if lead.selected_this_seller %}
+            <div class="empty-state">
+              <b>Покупець обрав вашу пропозицію</b>
+              <span>Заявка перейшла у виграний стан. Контакти покупця показані в блоці деталей, якщо вони доступні.</span>
+            </div>
+          {% endif %}
+
           {% if lead.offer %}
             <div class="offer-card">
               <div class="lead-tags">
                 <span class="badge {{ lead.offer.status_class }}">{{ lead.offer.status_label }}</span>
                 <span class="badge">#{{ lead.offer.offer_id }}</span>
               </div>
-              <div class="offer-price">₴ {{ lead.offer.price_label }}</div>
+              <div class="offer-price">{{ lead.offer.price_display }}</div>
               <p class="detail-text">{{ lead.offer.comment or "Без коментаря" }}</p>
               <span class="muted">Надіслано {{ lead.offer.created_at.strftime("%d.%m.%Y %H:%M") if lead.offer.created_at else "—" }}</span>
               <div class="request-actions" style="margin-top:12px">
@@ -399,7 +406,7 @@
           {% if lead.may_respond %}
             <form class="offer-form" method="post" action="/crm/seller/{{ account.crm_slug }}/leads/{{ lead.request.request_id }}/offer">
               <label>
-                💰 Ціна або "договірна"
+                💰 Ціна або “договірна”
                 <input name="price_text" maxlength="80" inputmode="decimal" autocomplete="off" placeholder="500 або договірна" value="{{ lead.offer.price_input if lead.offer else '' }}">
               </label>
               <label>
@@ -408,10 +415,17 @@
               </label>
               <button class="btn" type="submit">{{ "Оновити пропозицію" if lead.offer else "Надіслати пропозицію" }}</button>
             </form>
-          {% else %}
+          {% elif not lead.selected_this_seller %}
             <div class="empty-state">
               <b>{{ lead.response_block_reason or "Відповідь із CRM зараз недоступна." }}</b>
-              <span>Дія не змінює глобальну заявку покупця і не відкриває сторонні дані.</span>
+              {% if lead.marketplace.selected_other_seller %}
+                <span>Покупець уже завершив вибір, тому форма відповіді прихована.</span>
+                <div class="request-actions">
+                  <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/leads">Перейти до заявок</a>
+                </div>
+              {% else %}
+                <span>Дія не змінює глобальну заявку покупця і не відкриває сторонні дані.</span>
+              {% endif %}
             </div>
           {% endif %}
         </section>
