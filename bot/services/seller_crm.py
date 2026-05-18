@@ -1,5 +1,9 @@
+import base64
+import hashlib
+import hmac
 import os
 import re
+import time
 from typing import Any
 
 from passlib.context import CryptContext
@@ -14,6 +18,7 @@ SELLER_CRM_MONTHLY_PRICE_UAH = int(os.getenv("SELLER_CRM_MONTHLY_PRICE_UAH", "99
 SELLER_CRM_SUBSCRIPTION_DAYS = 30
 SELLER_CRM_PASSWORD_MIN_LENGTH = 8
 SELLER_CRM_SESSION_DAYS = 7
+SELLER_CRM_PASSWORD_RESET_TTL_SECONDS = 30 * 60
 SELLER_CRM_SLUG_RE = re.compile(r"^[a-z0-9](?:[a-z0-9-]{1,38}[a-z0-9])?$")
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -46,6 +51,59 @@ def validate_crm_password(password: str | None) -> tuple[bool, str]:
         return False, "Пароль занадто довгий для безпечного хешування"
     if password.isdigit() or password.isalpha():
         return False, "Додайте до пароля літери й цифри для кращого захисту"
+    return True, ""
+
+
+def _password_reset_secret() -> bytes:
+    secret = os.getenv("SELLER_CRM_PASSWORD_RESET_SECRET") or os.getenv("BOT_TOKEN") or os.getenv("SECRET_KEY")
+    if not secret:
+        secret = "carpot-seller-crm-password-reset"
+    return secret.encode("utf-8")
+
+
+def _sign_password_reset_payload(payload: str) -> str:
+    return hmac.new(_password_reset_secret(), payload.encode("utf-8"), hashlib.sha256).hexdigest()
+
+
+def create_crm_password_reset_token(account: dict[str, Any], ttl_seconds: int = SELLER_CRM_PASSWORD_RESET_TTL_SECONDS) -> str:
+    expires_at = int(time.time()) + ttl_seconds
+    password_fingerprint = hashlib.sha256(str(account.get("password_hash") or "").encode("utf-8")).hexdigest()
+    payload = f"{account['id']}:{account['seller_id']}:{expires_at}:{password_fingerprint}"
+    signature = _sign_password_reset_payload(payload)
+    token = f"{payload}:{signature}"
+    return base64.urlsafe_b64encode(token.encode("utf-8")).decode("ascii")
+
+
+def verify_crm_password_reset_token(account: dict[str, Any], token: str | None) -> tuple[bool, str]:
+    if not token:
+        return False, "Підтвердіть скидання пароля через Telegram-акаунт власника."
+
+    try:
+        decoded = base64.urlsafe_b64decode(token.encode("ascii")).decode("utf-8")
+        account_id, seller_id, expires_at, password_fingerprint, signature = decoded.rsplit(":", 4)
+    except Exception:
+        return False, "Посилання для скидання пароля некоректне або застаріле."
+
+    payload = f"{account_id}:{seller_id}:{expires_at}:{password_fingerprint}"
+    expected_signature = _sign_password_reset_payload(payload)
+    if not hmac.compare_digest(signature, expected_signature):
+        return False, "Посилання для скидання пароля некоректне або застаріле."
+
+    if str(account.get("id")) != account_id or str(account.get("seller_id")) != seller_id:
+        return False, "Посилання не належить цьому CRM акаунту."
+
+    try:
+        expires_at_timestamp = int(expires_at)
+    except ValueError:
+        return False, "Посилання для скидання пароля некоректне або застаріле."
+
+    if expires_at_timestamp < int(time.time()):
+        return False, "Термін дії посилання минув. Запитайте нове посилання у Telegram-боті."
+
+    current_fingerprint = hashlib.sha256(str(account.get("password_hash") or "").encode("utf-8")).hexdigest()
+    if not hmac.compare_digest(password_fingerprint, current_fingerprint):
+        return False, "Це посилання вже використане або пароль було змінено."
+
     return True, ""
 
 

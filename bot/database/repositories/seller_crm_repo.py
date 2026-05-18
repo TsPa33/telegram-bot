@@ -176,6 +176,19 @@ async def set_crm_password_hash_if_empty(account_id: int, password_hash: str):
     )
 
 
+async def set_crm_password_hash_for_verified_reset(account_id: int, password_hash: str):
+    return await fetchrow(
+        """
+        UPDATE seller_crm_accounts
+        SET password_hash = $2
+        WHERE id = $1
+        RETURNING *
+        """,
+        account_id,
+        password_hash,
+    )
+
+
 async def enable_seller_crm(seller_id: int) -> None:
     await execute("UPDATE sellers SET crm_enabled = TRUE WHERE id = $1", seller_id)
 
