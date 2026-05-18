@@ -33,7 +33,7 @@
         <input id="quantity" name="quantity" value="{{ form.quantity or '1' }}" inputmode="numeric" pattern="[0-9]*" autocomplete="off" required>
       </div>
       {{ forms.select_input("stock_status", "Статус складу", stock_status_options, form.stock_status, True) }}
-      {{ forms.select_input("status", "CRM статус", status_options, form.status, True) }}
+      {{ forms.select_input("status", "Статус у кабінеті", status_options, form.status, True) }}
       <div class="form-field full">
         <label for="donor_car_id">Авто-донор (необов’язково)</label>
         <select id="donor_car_id" name="donor_car_id">

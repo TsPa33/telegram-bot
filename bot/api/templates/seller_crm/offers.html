@@ -1,5 +1,5 @@
 {% extends "seller_crm/base.html" %}
-{% block crm_kicker %}Read-only offer workspace{% endblock %}
+{% block crm_kicker %}Діалоги та пропозиції{% endblock %}
 {% block crm_heading %}Пропозиції покупцям{% endblock %}
 {% block content %}
   <style>
@@ -116,10 +116,10 @@
   <section class="offers-toolbar" aria-labelledby="offers-title">
     <div class="workspace-hero">
       <div>
-        <h2 id="offers-title">Усі надіслані пропозиції</h2>
-        <p class="section-note">Read-only CRM перегляд пропозицій, які продавець вже надіслав покупцям через Telegram workflow.</p>
+        <h2 id="offers-title">Діалоги та пропозиції</h2>
+        <p class="section-note">Перегляд пропозицій, які ви вже надіслали покупцям. Тут видно стан діалогу та вибір покупця.</p>
       </div>
-      <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}">На панель</a>
+      <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}">На головну</a>
     </div>
 
     <nav class="offer-tabs" aria-label="Фільтр пропозицій">
@@ -150,11 +150,11 @@
           <p class="request-desc">{{ offer.request_description_short }}</p>
 
           <div class="lead-tags">
-            <span class="badge">Offer: {{ offer.offer_status or "pending" }}</span>
+            <span class="badge">Пропозиція: {{ offer.offer_status or "pending" }}</span>
             <span class="badge {% if offer.is_selected %}status-success{% else %}status-waiting{% endif %}">
               {% if offer.is_selected %}Покупець обрав{% else %}Очікує вибору{% endif %}
             </span>
-            {% if offer.request_marketplace_status %}<span class="badge">Request: {{ offer.request_marketplace_status }}</span>{% endif %}
+            {% if offer.request_marketplace_status %}<span class="badge">Заявка: {{ offer.request_marketplace_status }}</span>{% endif %}
           </div>
 
           <div class="offer-times">
@@ -171,9 +171,9 @@
       {% else %}
         <div class="empty-offers">
           <div class="request-title">{{ empty_message }}</div>
-          <p class="request-desc">Спробуйте інший таб або поверніться на панель. CRM тільки показує пропозиції — створення та відповіді залишаються в Telegram.</p>
+          <p class="request-desc">Спробуйте інший фільтр або поверніться на головну. Створення пропозицій доступне із заявки.</p>
           <div class="request-actions" style="justify-content:center;margin-top:12px">
-            <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}">На панель</a>
+            <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}">На головну</a>
           </div>
         </div>
       {% endfor %}

@@ -1,6 +1,6 @@
 {% extends "seller_crm/base.html" %}
-{% block crm_kicker %}Marketplace lead actions workspace{% endblock %}
-{% block crm_heading %}Заявки marketplace{% endblock %}
+{% block crm_kicker %}Нові заявки{% endblock %}
+{% block crm_heading %}Нові заявки{% endblock %}
 {% block content %}
   <style>
     .leads-toolbar {
@@ -108,10 +108,10 @@
   <section class="leads-toolbar" aria-labelledby="leads-title">
     <div class="workspace-hero">
       <div>
-        <h2 id="leads-title">Marketplace заявки</h2>
-        <p class="section-note">Inbox-черга для швидкої відповіді: що хоче покупець, який стан і яка наступна дія.</p>
+        <h2 id="leads-title">Нові заявки</h2>
+        <p class="section-note">Робоча черга для швидкої відповіді: що потрібно покупцю, який стан заявки і яка наступна дія.</p>
       </div>
-      <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}">На панель</a>
+      <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}">На головну</a>
     </div>
 
     <nav class="lead-tabs" aria-label="Фільтр заявок">
@@ -146,13 +146,13 @@
             </div>
             <div class="lead-tags">
               <span class="badge">Статус: {{ lead.status_label }}</span>
-              {% if lead.offer_status %}<span class="badge status-replied">Offer: {{ lead.offer_status }}</span>{% endif %}
+              {% if lead.offer_status %}<span class="badge status-replied">Пропозиція: {{ lead.offer_status }}</span>{% endif %}
               {% if lead.price_offer %}<span class="badge">₴ {{ lead.price_offer }}</span>{% endif %}
-              {% if lead.match_score is not none %}<span class="badge">Match {{ lead.match_score }}</span>{% endif %}
+              {% if lead.match_score is not none %}<span class="badge">Релевантність {{ lead.match_score }}</span>{% endif %}
               {% if lead.buyer_phone_visible %}<span class="badge status-success">Телефон доступний</span>{% endif %}
             </div>
             {% if lead.offer_message %}<p class="request-desc">Ваша пропозиція: {{ lead.offer_message }}</p>{% endif %}
-            {% if lead.match_reasons_label %}<p class="request-desc">Причини match: {{ lead.match_reasons_label }}</p>{% endif %}
+            {% if lead.match_reasons_label %}<p class="request-desc">Чому заявка вам підходить: {{ lead.match_reasons_label }}</p>{% endif %}
             <div class="lead-inline-actions">
               <a class="btn small" href="/crm/seller/{{ account.crm_slug }}/leads/{{ lead.request_id }}">{{ lead.next_action_label }}</a>
               {% if lead.can_mark_viewed %}
@@ -179,9 +179,9 @@
       {% else %}
         <div class="empty-leads">
           <div class="request-title">{{ empty_message }}</div>
-          <p class="request-desc">Спробуйте інший таб або поверніться на панель. Дії CRM змінюють лише ваш локальний стан заявки.</p>
+          <p class="request-desc">Спробуйте інший фільтр або поверніться на головну. Дії змінюють стан заявки у вашому робочому просторі.</p>
           <div class="request-actions" style="justify-content:center;margin-top:12px">
-            <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}">На панель</a>
+            <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}">На головну</a>
           </div>
         </div>
       {% endfor %}

@@ -1,5 +1,5 @@
 {% extends "seller_crm/base.html" %}
-{% block crm_kicker %}Read-only CRM analytics · {{ days }} днів{% endblock %}
+{% block crm_kicker %}Аналітика кабінету · {{ days }} днів{% endblock %}
 {% block crm_heading %}Аналітика та статистика{% endblock %}
 {% block content %}
 <style>
@@ -36,26 +36,26 @@
   <section class="workspace-hero" aria-labelledby="analytics-title">
     <div>
       <h2 id="analytics-title">Аналітика та статистика</h2>
-      <p class="section-note">Read-only зріз за {{ days }} днів для поточного продавця.</p>
+      <p class="section-note">Огляд за {{ days }} днів для поточного продавця.</p>
     </div>
-    <div class="pill">Без змін lifecycle</div>
+    <div class="pill">Без зміни процесів</div>
   </section>
 
-  <section class="grid analytics-kpis" aria-label="Marketplace performance">
+  <section class="grid analytics-kpis" aria-label="Заявки та пропозиції">
     <article class="card analytics-card">
       <h3>Направлено заявок</h3>
       <div class="metric">{{ analytics.routed_requests or 0 }}</div>
-      <p class="muted">routing</p>
+      <p class="muted">направлено</p>
     </article>
     <article class="card analytics-card">
       <h3>Переглянуто</h3>
-      <div class="metric">{{ analytics.viewed_requests or 0 }}</div>
-      <p class="muted">viewed</p>
+      <div class="metric">{{ analytics.переглянуто_requests or 0 }}</div>
+      <p class="muted">переглянуто</p>
     </article>
     <article class="card analytics-card">
       <h3>Пропозицій надіслано</h3>
       <div class="metric">{{ analytics.offers_sent or 0 }}</div>
-      <p class="muted">sent offers</p>
+      <p class="muted">надіслані пропозиції</p>
     </article>
     <article class="card analytics-card">
       <h3>Конверсія в обрані</h3>
@@ -68,13 +68,13 @@
     <article class="card analytics-card">
       <div class="analytics-section-title">
         <div>
-          <h2>Marketplace performance</h2>
+          <h2>Заявки та пропозиції</h2>
           <p class="section-note">Статуси заявок і пропозицій без зміни процесу.</p>
         </div>
         <span class="badge">{{ days }} днів</span>
       </div>
 
-      {% if analytics.routed_requests or analytics.offers_sent or analytics.viewed_requests %}
+      {% if analytics.routed_requests or analytics.offers_sent or analytics.переглянуто_requests %}
         <div class="progress-row">
           <div class="progress-label"><span>Відхилено</span><b>{{ analytics.declined_requests or 0 }}</b></div>
           <div class="progress-track"><div class="progress-fill" style="width: {{ analytics.declined_percent or 0 }}%"></div></div>
@@ -92,14 +92,14 @@
           <div class="progress-track"><div class="progress-fill" style="width: {{ analytics.rejected_percent or 0 }}%"></div></div>
         </div>
       {% else %}
-        <div class="empty-state">Marketplace даних поки немає. Коли покупецька заявка буде направлена продавцю або продавець надішле пропозицію, метрики з’являться тут.</div>
+        <div class="empty-state">Даних по заявках поки немає. Коли покупецька заявка буде направлена продавцю або продавець надішле пропозицію, метрики з’являться тут.</div>
       {% endif %}
     </article>
 
     <article class="card analytics-card">
-      <h2>Funnel</h2>
+      <h2>Воронка заявок</h2>
       <p class="section-note">Направлено → переглянуто → запропоновано → обрано.</p>
-      <div class="funnel" aria-label="Marketplace funnel">
+      <div class="funnel" aria-label="Воронка заявок">
         {% for step in analytics.funnel %}
           <div class="funnel-step">
             <div class="funnel-bar" style="width: {{ step.percent }}%"><span>{{ step.label }}</span><b>{{ step.value }}</b></div>
@@ -111,14 +111,14 @@
 
   <section class="grid analytics-split">
     <article class="card analytics-card">
-      <h2>Response performance</h2>
+      <h2>Швидкість відповіді</h2>
       <div class="metric">{{ analytics.average_response_label }}</div>
-      <p class="muted">середній час до seller offer</p>
+      <p class="muted">середній час до пропозиції</p>
       {% if not analytics.average_response_seconds %}<div class="empty-state stack-top">Ще немає достатньо відповідей для розрахунку часу.</div>{% endif %}
     </article>
 
     <article class="card analytics-card">
-      <h2>Catalog performance</h2>
+      <h2>Каталог</h2>
       {% if analytics.active_cars or analytics.services_count or analytics.car_views or analytics.service_views %}
         <p><b>{{ analytics.active_cars or 0 }}</b> активних авто · <b>{{ analytics.car_views or 0 }}</b> переглядів авто</p>
         <p><b>{{ analytics.car_phone_clicks or 0 }}</b> кліків телефону · <b>{{ analytics.car_site_clicks or 0 }}</b> переходів на сайт з авто</p>
@@ -130,10 +130,10 @@
   </section>
 
   {% if has_website %}
-    <section id="website-analytics" class="card analytics-card" aria-label="Website performance">
+    <section id="website-analytics" class="card analytics-card" aria-label="Сайт">
       <div class="analytics-section-title">
         <div>
-          <h2>Website performance</h2>
+          <h2>Сайт</h2>
           <p class="section-note">Тільки для продавців із сайтом.</p>
         </div>
         <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/website#site-section">Відкрити сайт</a>
@@ -142,12 +142,12 @@
         <div class="grid analytics-kpis stack-top">
           <article class="card analytics-card"><h3>Візити</h3><div class="metric">{{ analytics.visits or 0 }}</div></article>
           <article class="card analytics-card"><h3>Перегляди сторінок</h3><div class="metric">{{ analytics.page_views or 0 }}</div></article>
-          <article class="card analytics-card"><h3>Ліди</h3><div class="metric">{{ analytics.leads or 0 }}</div></article>
+          <article class="card analytics-card"><h3>Заявки</h3><div class="metric">{{ analytics.leads or 0 }}</div></article>
           <article class="card analytics-card"><h3>Конверсія</h3><div class="metric">{{ analytics.conversion_percent or 0 }}%</div></article>
         </div>
-        <p><b>{{ analytics.telegram_clicks or 0 }}</b> Telegram переходів · <b>{{ analytics.cta_clicks or 0 }}</b> CTA кліків</p>
+        <p><b>{{ analytics.telegram_clicks or 0 }}</b> Telegram переходів · <b>{{ analytics.cta_clicks or 0 }}</b> кліків кнопок дії</p>
       {% else %}
-        <div class="empty-state">Для сайту ще немає візитів, подій або лідів за обраний період.</div>
+        <div class="empty-state">Для сайту ще немає візитів, подій або заявок за обраний період.</div>
       {% endif %}
     </section>
   {% endif %}

@@ -1,13 +1,13 @@
 {% extends "seller_crm/base.html" %}
-{% block crm_kicker %}Операційний seller inbox{% endblock %}
-{% block crm_heading %}Що потребує відповіді зараз{% endblock %}
+{% block crm_kicker %}Робоча панель продавця{% endblock %}
+{% block crm_heading %}Що потребує уваги зараз{% endblock %}
 {% block content %}
   {% if demo_mode %}<div class="demo-ribbon">Демо-панель тільки для перегляду</div>{% endif %}
 
   <section class="workspace-hero command-hero" aria-labelledby="workspace-title">
     <div>
-      <h2 id="workspace-title">Операційний inbox</h2>
-      <p class="section-note">Спочатку нові заявки, покупець очікує та активні діалоги. Аналітика й сайт нижче — без конкуренції за увагу.</p>
+      <h2 id="workspace-title">Сьогодні</h2>
+      <p class="section-note">Спочатку нові заявки, очікування покупця та активні діалоги. Аналітика й сайт нижче — без конкуренції за увагу.</p>
     </div>
     <a class="btn small" href="/crm/seller/{{ account.crm_slug }}/leads">Відкрити всі заявки</a>
   </section>
@@ -15,7 +15,7 @@
   <section class="ops-strip" aria-label="Операційний стан">
     <a class="ops-chip urgent" href="/crm/seller/{{ account.crm_slug }}/leads?status=new">
       <span class="ops-number">{{ marketplace_summary.new_requests|default(0, true) }}</span>
-      <span>Нові за 24г</span>
+      <span>Нові за 24 год</span>
     </a>
     <a class="ops-chip waiting" href="/crm/seller/{{ account.crm_slug }}/leads?status=in_work">
       <span class="ops-number">{{ marketplace_summary.waiting_response|default(0, true) }}</span>
@@ -36,7 +36,7 @@
       <div class="section-head-row">
         <div>
           <h2>Потрібна дія</h2>
-          <p class="section-note">Робоча черга: нові заявки, покупець очікує і діалоги, де важливо швидко продовжити контакт.</p>
+          <p class="section-note">Робоча черга: нові заявки, покупці очікують відповіді та діалоги, де важливо швидко продовжити контакт.</p>
         </div>
         <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/leads">Усі</a>
       </div>
@@ -58,21 +58,21 @@
             <p class="request-desc">{{ item.short_description }}</p>
             <div class="request-actions">
               <a class="btn small" href="/crm/seller/{{ account.crm_slug }}/leads/{{ item.id }}">{{ item.primary_action_label }}</a>
-              <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/leads">Черга</a>
+              <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/leads">До заявок</a>
             </div>
           </div>
         {% else %}
           <div class="request-card empty-operational">
-            <div class="request-title">Inbox чистий</div>
-            <p class="request-desc">Нові marketplace заявки та покупець очікує події з’являться тут першими.</p>
+            <div class="request-title">Нових дій немає</div>
+            <p class="request-desc">Нові заявки та події, де покупець очікує відповіді, з’являться тут першими.</p>
           </div>
         {% endfor %}
       </div>
     </article>
 
-    <aside id="activity" class="card activity-focus" aria-label="Важлива активність marketplace">
+    <aside id="activity" class="card activity-focus" aria-label="Важливі події">
       <h2>Важлива активність</h2>
-      <p class="section-note">Показуємо тільки операційні події: нова заявка, відповідь, вибір покупця. Passive tracking приховано.</p>
+      <p class="section-note">Показуємо тільки робочі події: нова заявка, надіслана пропозиція, вибір покупця. Фонові технічні події приховано.</p>
       <div class="activity-list">
         {% for event in marketplace_activity %}
           <div class="activity-item important-event">
@@ -96,17 +96,17 @@
 
   <section id="website-analytics" class="grid two secondary-section secondary-muted">
     <a class="card" href="/crm/seller/{{ account.crm_slug }}/analytics#website-analytics" style="text-decoration:none;color:inherit">
-      <h2>Аналітика — другорядно</h2>
-      <p class="section-note">Короткий зріз без домінування над inbox workflow.</p>
+      <h2>Аналітика</h2>
+      <p class="section-note">Короткий зріз без відволікання від заявок і діалогів.</p>
       <p><b>{{ stats.visits_today or 0 }}</b> візитів сьогодні · <b>{{ stats.page_views_today or 0 }}</b> переглядів сторінок</p>
-      <p><b>{{ stats.telegram_clicks_today or 0 }}</b> Telegram переходів · <b>{{ stats.cta_clicks_today or 0 }}</b> CTA кліків</p>
+      <p><b>{{ stats.telegram_clicks_today or 0 }}</b> Telegram переходів · <b>{{ stats.cta_clicks_today or 0 }}</b> кнопки дії кліків</p>
       {% for source in sources %}<p><span class="badge">{{ source.source }}</span> {{ source.visits }} візитів</p>{% else %}<p class="muted">Поки немає джерел трафіку</p>{% endfor %}
     </a>
     <article class="card">
       <h2>Контент — підтримка продажів</h2>
       {% if has_services or not has_cars %}<p id="services"><b>{{ stats.services_count or 0 }}</b> послуг · <b>{{ stats.service_requests or 0 }}</b> заявок/кліків</p>{% endif %}
-      <p id="parts-placeholder"><span class="badge">Placeholder</span> Товари / Запчастини — окремий workspace не впроваджується в Phase 1.</p>
-      <p id="cars" class="{% if not has_cars %}muted{% endif %}"><b>{{ stats.active_listings or 0 }}</b> авто на розборі{% if not has_cars %} · garage де-емфазовано, бо авто ще не додані{% endif %}</p>
+      <p id="parts-placeholder"><span class="badge">Скоро</span> Товари та запчастини — окремий розділ буде доступний після запуску першої версії.</p>
+      <p id="cars" class="{% if not has_cars %}muted{% endif %}"><b>{{ stats.active_listings or 0 }}</b> авто на розборі{% if not has_cars %} · розділ авто менш важливий, поки авто ще не додані{% endif %}</p>
     </article>
   </section>
 
@@ -115,19 +115,19 @@
       <h2 class="section-heading">Сайт — нижчий пріоритет</h2>
       <p class="section-note">Ключові входи нижче операційної панелі.</p>
       <div class="grid site-tools">
-        <a class="card quick-card" href="/crm/seller/{{ account.crm_slug }}/website#site-section"><b>Hero / Контакти</b><span>Тексти, контакти, SEO та CTA</span></a>
-        <a class="card quick-card" href="/crm/seller/{{ account.crm_slug }}/website#media-section"><b>Logo / Banners</b><span>Медіа та перший екран</span></a>
-        <a class="card quick-card" href="/crm/seller/{{ account.crm_slug }}/website#theme"><b>Theme / Modules / Publication</b><span>Дизайн, блоки та публікація</span></a>
+        <a class="card quick-card" href="/crm/seller/{{ account.crm_slug }}/website#site-section"><b>Головний екран і контакти</b><span>Тексти, контакти, SEO та кнопки дії</span></a>
+        <a class="card quick-card" href="/crm/seller/{{ account.crm_slug }}/website#media-section"><b>Логотип і банери</b><span>Медіа та перший екран</span></a>
+        <a class="card quick-card" href="/crm/seller/{{ account.crm_slug }}/website#theme"><b>Тема, модулі та публікація</b><span>Дизайн, блоки та публікація</span></a>
       </div>
     </section>
   {% endif %}
 
   <section id="account" class="card secondary-section secondary-muted">
     <h2>Профіль і тарифи</h2>
-    <p id="public-card">Базовий CRM продавця: <b>безкоштовно</b>. <a href="/crm/seller/{{ account.crm_slug }}/settings">Налаштування та тарифи</a> доступні в окремому workspace.</p>
-    <p id="packages"><span class="badge">Active packages</span> <a href="/crm/seller/{{ account.crm_slug }}/settings#packages">Переглянути пакети</a></p>
-    <p id="garage-slots" class="{% if not has_cars %}muted{% endif %}"><a href="/crm/seller/{{ account.crm_slug }}/settings#garage">Garage slots</a>{% if not has_cars %}: де-емфазовано до появи авто{% endif %}</p>
-    <p id="payment-history" class="muted"><a href="/crm/seller/{{ account.crm_slug }}/settings#payments">Payment history</a></p>
+    <p id="public-card">Базовий кабінет продавця: <b>безкоштовно</b>. <a href="/crm/seller/{{ account.crm_slug }}/settings">Налаштування та тарифи</a> доступні в окремому розділі.</p>
+    <p id="packages"><span class="badge">Активні пакети</span> <a href="/crm/seller/{{ account.crm_slug }}/settings#packages">Переглянути пакети</a></p>
+    <p id="garage-slots" class="{% if not has_cars %}muted{% endif %}"><a href="/crm/seller/{{ account.crm_slug }}/settings#garage">Слоти авто</a>{% if not has_cars %}: де-емфазовано до появи авто{% endif %}</p>
+    <p id="payment-history" class="muted"><a href="/crm/seller/{{ account.crm_slug }}/settings#payments">Історія оплат</a></p>
     <p>Адреса кабінету: <b>/crm/seller/{{ account.crm_slug }}</b> · <a href="/crm/seller/{{ account.crm_slug }}/settings">Налаштування</a></p>
     {% if not demo_mode %}<form method="post" action="/crm/seller/logout"><button class="btn" type="submit">Вийти</button></form>{% endif %}
   </section>

@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{% block title %}{{ title or "CRM продавця CarPot" }}{% endblock %}</title>
+    <title>{% block title %}{{ title or "Робочий простір CarPot" }}{% endblock %}</title>
     <script>
         (function () {
             try {
@@ -1781,62 +1781,62 @@
         <a class="brand" href="/crm/seller/{{ account.crm_slug }}">
             <div class="mark">CP</div>
             <div>
-                <b>CarPot CRM</b>
+                <b>CarPot</b>
                 <span>{{ account.shop_name or account.name or account.crm_slug }}</span>
             </div>
         </a>
 
-        <nav class="nav" aria-label="CRM продавця">
+        <nav class="nav" aria-label="Кабінет продавця">
             <section class="nav-accordion">
                 <input id="nav-workspace" name="crm-nav" type="radio" {% if current_page in ['dashboard', 'leads', 'offers'] %}checked{% endif %}>
                 <label class="nav-title" data-icon="▣" for="nav-workspace">
-                    <span>Операційний inbox</span>
+                    <span>Сьогодні</span>
                 </label>
                 <div class="nav-panel">
                     <a class="{% if current_page == 'dashboard' %}active{% endif %}" href="/crm/seller/{{ account.crm_slug }}">Сьогодні</a>
-                    <a class="{% if current_page == 'leads' %}active{% endif %}" href="/crm/seller/{{ account.crm_slug }}/leads">Заявки · відповісти</a>
-                    <a class="{% if current_page == 'offers' %}active{% endif %}" href="/crm/seller/{{ account.crm_slug }}/offers">Діалоги / пропозиції</a>
-                    <a href="/crm/seller/{{ account.crm_slug }}#activity">Важлива активність</a>
+                    <a class="{% if current_page == 'leads' %}active{% endif %}" href="/crm/seller/{{ account.crm_slug }}/leads">Нові заявки</a>
+                    <a class="{% if current_page == 'offers' %}active{% endif %}" href="/crm/seller/{{ account.crm_slug }}/offers">Діалоги</a>
+                    <a href="/crm/seller/{{ account.crm_slug }}#activity">Події</a>
                 </div>
             </section>
 
             <section class="nav-accordion">
                 <input id="nav-analytics" name="crm-nav" type="radio" {% if current_page == 'analytics' %}checked{% endif %}>
                 <label class="nav-title" data-icon="↗" for="nav-analytics">
-                    <span>Аналітика · secondary</span>
+                    <span>Аналітика</span>
                 </label>
                 <div class="nav-panel">
-                    <a class="deemphasized {% if current_page == 'analytics' %}active{% endif %}" href="/crm/seller/{{ account.crm_slug }}/analytics">Marketplace analytics</a>
-                    <a class="deemphasized {% if current_page == 'analytics' %}active{% endif %}" href="/crm/seller/{{ account.crm_slug }}/analytics#website-analytics">Website/catalog analytics</a>
+                    <a class="deemphasized {% if current_page == 'analytics' %}active{% endif %}" href="/crm/seller/{{ account.crm_slug }}/analytics">Заявки та пропозиції</a>
+                    <a class="deemphasized {% if current_page == 'analytics' %}active{% endif %}" href="/crm/seller/{{ account.crm_slug }}/analytics#website-analytics">Сайт і каталог</a>
                 </div>
             </section>
 
             <section class="nav-accordion">
                 <input id="nav-content" name="crm-nav" type="radio" {% if current_page in ['content', 'content_cars', 'content_services'] or current_page[:7] == 'content' %}checked{% endif %}>
                 <label class="nav-title" data-icon="▤" for="nav-content">
-                    <span>Мій контент</span>
+                    <span>Каталог</span>
                 </label>
                 <div class="nav-panel">
-                    <a class="{% if current_page == 'content' %}active{% endif %}" href="/crm/seller/{{ account.crm_slug }}/content">Огляд контенту</a>
+                    <a class="{% if current_page == 'content' %}active{% endif %}" href="/crm/seller/{{ account.crm_slug }}/content">Огляд каталогу</a>
                     <a class="{% if current_page == 'content_services' %}active{% endif %}{% if not has_services %} deemphasized{% endif %}" href="/crm/seller/{{ account.crm_slug }}/content/services">
                         Послуги{% if not has_services %} · немає послуг{% endif %}
                     </a>
                     <a class="{% if current_page == 'content_cars' %}active{% endif %}{% if not has_cars %} deemphasized{% endif %}" href="/crm/seller/{{ account.crm_slug }}/content/cars">
                         Авто на розборі{% if not has_cars %} · немає авто{% endif %}
                     </a>
-                    <a class="placeholder" href="/crm/seller/{{ account.crm_slug }}/content/products" title="Workspace товарів / запчастин">Товари / Запчастини</a>
+                    <a class="placeholder" href="/crm/seller/{{ account.crm_slug }}/content/products" title="Розділ товарів та запчастин">Товари та запчастини</a>
                 </div>
             </section>
 
             <section class="nav-accordion">
                 <input id="nav-profile" name="crm-nav" type="radio" {% if current_page == 'profile' %}checked{% endif %}>
                 <label class="nav-title" data-icon="◉" for="nav-profile">
-                    <span>Профіль</span>
+                    <span>Бізнес</span>
                 </label>
                 <div class="nav-panel">
                     <a class="{% if current_page == 'profile' %}active{% endif %}" href="/crm/seller/{{ account.crm_slug }}/profile">Контакти</a>
-                    <a class="{% if current_page == 'profile' %}active{% endif %}" href="/crm/seller/{{ account.crm_slug }}/profile">Публічна картка</a>
-                    <a class="{% if current_page == 'profile' %}active{% endif %}" href="/crm/seller/{{ account.crm_slug }}/profile">Telegram/profile settings</a>
+                    <a class="{% if current_page == 'profile' %}active{% endif %}" href="/crm/seller/{{ account.crm_slug }}/profile">Картка продавця</a>
+                    <a class="{% if current_page == 'profile' %}active{% endif %}" href="/crm/seller/{{ account.crm_slug }}/profile">Telegram і контакти</a>
                 </div>
             </section>
 
@@ -1844,7 +1844,7 @@
             <section class="nav-accordion">
                 <input id="nav-website" name="crm-nav" type="radio" {% if current_page == 'website' %}checked{% endif %}>
                 <label class="nav-title" data-icon="◇" for="nav-website">
-                    <span>Сайт</span>
+                    <span>Мій сайт</span>
                 </label>
                 <div class="nav-panel">
                     <a class="{% if current_page == 'website' %}active{% endif %}" href="/crm/seller/{{ account.crm_slug }}/website#site-section">Основне</a>
@@ -1859,15 +1859,15 @@
             <section class="nav-accordion">
                 <input id="nav-shop" name="crm-nav" type="radio" {% if current_page == 'settings' %}checked{% endif %}>
                 <label class="nav-title" data-icon="₴" for="nav-shop">
-                    <span>Налаштування · secondary</span>
+                    <span>Налаштування</span>
                 </label>
                 <div class="nav-panel">
                     <a class="{% if current_page == 'settings' %}active{% endif %}" href="/crm/seller/{{ account.crm_slug }}/settings">Налаштування</a>
                     <a href="/crm/seller/{{ account.crm_slug }}/settings#packages">Активні пакети</a>
                     <a class="{% if not has_cars %}deemphasized{% endif %}" href="/crm/seller/{{ account.crm_slug }}/settings#garage">
-                        Garage slots{% if not has_cars %} · неактивно{% endif %}
+                        Слоти авто{% if not has_cars %} · неактивно{% endif %}
                     </a>
-                    <a href="/crm/seller/{{ account.crm_slug }}/settings#payments">Payment history</a>
+                    <a href="/crm/seller/{{ account.crm_slug }}/settings#payments">Історія оплат</a>
                 </div>
             </section>
         </nav>
@@ -1878,8 +1878,8 @@
     <main class="main">
         <header class="top">
             <div>
-                <p class="kicker">{% block crm_kicker %}CRM продавця для автобізнесу{% endblock %}</p>
-                <h1>{% block crm_heading %}CRM продавця CarPot{% endblock %}</h1>
+                <p class="kicker">{% block crm_kicker %}Робочий простір продавця{% endblock %}</p>
+                <h1>{% block crm_heading %}Робочий простір CarPot{% endblock %}</h1>
             </div>
 
             <div class="top-actions">

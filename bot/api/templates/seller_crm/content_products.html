@@ -2,7 +2,7 @@
 {% import "seller_crm/components/badges.html" as badges %}
 {% import "seller_crm/components/cards.html" as cards %}
 {% block crm_kicker %}Контент продавця{% endblock %}
-{% block crm_heading %}Товари / Запчастини{% endblock %}
+{% block crm_heading %}Товари та запчастини{% endblock %}
 {% block content %}
 <style>
   .products-workspace { display: grid; gap: 14px; min-width: 0; }
@@ -23,7 +23,7 @@
 <div class="products-workspace">
   <section class="workspace-hero" aria-labelledby="products-title">
     <div>
-      <h2 id="products-title">Товари / Запчастини</h2>
+      <h2 id="products-title">Товари та запчастини</h2>
       <p class="section-note">Переглядайте імпортовані товари та масово додавайте запчастини через CSV або XLSX.</p>
     </div>
     <div class="product-actions">
@@ -42,7 +42,7 @@
   </section>
 
   <section class="grid products-summary" aria-label="Підсумок товарів">
-    {{ cards.metric_card("Активні товари", totals.active or products|length, "позицій у CRM") }}
+    {{ cards.metric_card("Активні товари", totals.active or products|length, "позицій у кабінеті") }}
     {{ cards.metric_card("Залишок", totals.quantity or 0, "шт. у товарах") }}
     {{ cards.metric_card("Без ціни", totals.without_price or 0, "потрібно доповнити") }}
     {{ cards.metric_card("Без OEM", totals.without_oem or 0, "не впливає на імпорт") }}

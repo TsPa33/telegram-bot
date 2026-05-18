@@ -1,5 +1,5 @@
 {% extends "seller_crm/base.html" %}
-{% block crm_kicker %}Read-only offer detail{% endblock %}
+{% block crm_kicker %}Деталі пропозиції{% endblock %}
 {% block crm_heading %}Пропозиція #{{ offer_detail.offer.offer_id }}{% endblock %}
 {% block content %}
   <style>
@@ -133,10 +133,10 @@
   </style>
 
   <div class="offer-detail">
-    <nav class="offer-breadcrumbs" aria-label="Breadcrumb">
+    <nav class="offer-breadcrumbs" aria-label="Навігація">
       <a href="/crm/seller/{{ account.crm_slug }}">Робочий простір</a>
       <span>›</span>
-      <a href="/crm/seller/{{ account.crm_slug }}/offers">Пропозиції</a>
+      <a href="/crm/seller/{{ account.crm_slug }}/offers">Діалоги</a>
       <span>›</span>
       <span>Пропозиція #{{ offer_detail.offer.offer_id }}</span>
     </nav>
@@ -145,7 +145,7 @@
       <div class="offer-stack">
         <section class="card" aria-labelledby="offer-summary-title">
           <div class="offer-summary-head">
-            <h2 id="offer-summary-title" class="section-heading">Offer Summary</h2>
+            <h2 id="offer-summary-title" class="section-heading">Коротко про пропозицію</h2>
             <span class="badge {{ offer_detail.offer.status_class }}">{{ offer_detail.offer.status_label }}</span>
           </div>
           <div class="offer-price-xl">₴ {{ offer_detail.offer.price_label }}</div>
@@ -153,13 +153,13 @@
           <div class="detail-grid" style="margin-top:14px">
             <div class="detail-chip"><span>Надіслано</span><b>{{ offer_detail.offer.created_at.strftime("%d.%m.%Y %H:%M") if offer_detail.offer.created_at else "—" }}</b></div>
             <div class="detail-chip"><span>Оновлено</span><b>{{ offer_detail.offer.updated_at.strftime("%d.%m.%Y %H:%M") if offer_detail.offer.updated_at else "—" }}</b></div>
-            <div class="detail-chip"><span>Статус offer</span><b>{{ offer_detail.offer.status or "pending" }}</b></div>
+            <div class="detail-chip"><span>Стан пропозиції</span><b>{{ offer_detail.offer.status or "очікує" }}</b></div>
             <div class="detail-chip"><span>Номер</span><b>#{{ offer_detail.offer.offer_id }}</b></div>
           </div>
         </section>
 
         <section class="card" aria-labelledby="request-title">
-          <h2 id="request-title" class="section-heading">Related Request</h2>
+          <h2 id="request-title" class="section-heading">Пов’язана заявка</h2>
           <h3>{{ offer_detail.request.title }}</h3>
           <p class="detail-text">{{ offer_detail.request.description }}</p>
           <div class="detail-grid" style="margin-top:14px">
@@ -168,24 +168,24 @@
             <div class="detail-chip"><span>Марка / модель</span><b>{{ [offer_detail.request.brand, offer_detail.request.model]|select|join(' ') or "—" }}</b></div>
             <div class="detail-chip"><span>Терміновість</span><b>{{ offer_detail.request.urgency or "—" }}</b></div>
             <div class="detail-chip"><span>Створено</span><b>{{ offer_detail.request.created_at.strftime("%d.%m.%Y %H:%M") if offer_detail.request.created_at else "—" }}</b></div>
-            <div class="detail-chip"><span>Marketplace</span><b>{{ offer_detail.request.marketplace_status or "pending" }}</b></div>
+            <div class="detail-chip"><span>Стан заявки</span><b>{{ offer_detail.request.marketplace_status or "очікує" }}</b></div>
           </div>
         </section>
       </div>
 
       <aside class="offer-stack">
         <section class="card" aria-labelledby="selection-title">
-          <h2 id="selection-title" class="section-heading">Buyer Selection State</h2>
+          <h2 id="selection-title" class="section-heading">Вибір покупця</h2>
           <div class="detail-grid">
             <div class="detail-chip"><span>Стан</span><b><span class="badge {{ offer_detail.selection.state_class }}">{{ offer_detail.selection.state_label }}</span></b></div>
             <div class="detail-chip"><span>Обрано</span><b>{{ offer_detail.selection.selected_at.strftime("%d.%m.%Y %H:%M") if offer_detail.selection.selected_at else "—" }}</b></div>
-            <div class="detail-chip"><span>Match</span><b>{{ offer_detail.selection.match_status or "—" }}</b></div>
-            <div class="detail-chip"><span>Notification</span><b>{{ offer_detail.selection.notification_status or "—" }}</b></div>
+            <div class="detail-chip"><span>Підбір</span><b>{{ offer_detail.selection.match_status or "—" }}</b></div>
+            <div class="detail-chip"><span>Сповіщення</span><b>{{ offer_detail.selection.notification_status or "—" }}</b></div>
           </div>
         </section>
 
         <section class="card" aria-labelledby="timeline-title">
-          <h2 id="timeline-title" class="section-heading">Timeline</h2>
+          <h2 id="timeline-title" class="section-heading">Активність</h2>
           {% if offer_detail.timeline %}
             <ol class="timeline-list">
               {% for event in offer_detail.timeline %}
@@ -203,9 +203,9 @@
           {% endif %}
         </section>
 
-        <section class="card" aria-label="Links">
+        <section class="card" aria-label="Дії">
           <div class="offer-detail-actions">
-            <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/offers">Назад до пропозицій</a>
+            <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/offers">Назад до діалогів</a>
             <a class="btn small" href="/crm/seller/{{ account.crm_slug }}/leads/{{ offer_detail.request.request_id }}">Відкрити заявку</a>
           </div>
         </section>

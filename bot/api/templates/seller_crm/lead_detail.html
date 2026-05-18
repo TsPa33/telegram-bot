@@ -1,5 +1,5 @@
 {% extends "seller_crm/base.html" %}
-{% block crm_kicker %}Lead detail workspace{% endblock %}
+{% block crm_kicker %}Деталі заявки{% endblock %}
 {% block crm_heading %}Заявка #{{ lead.request.request_id }}{% endblock %}
 {% block content %}
   <style>
@@ -316,7 +316,7 @@
         <div class="lead-tags">
           <span class="badge {{ lead.seller_state.status_class }}">{{ lead.seller_state.status_label }}</span>
           {% if lead.marketplace.is_selected %}<span class="badge status-success">Обрано покупцем</span>{% endif %}
-          {% if lead.request.match_score is not none %}<span class="badge">Match {{ lead.request.match_score }}</span>{% endif %}
+          {% if lead.request.match_score is not none %}<span class="badge">Релевантність {{ lead.request.match_score }}</span>{% endif %}
         </div>
         <h2 id="summary-title">{{ lead.request.title }}</h2>
         <div class="lead-meta-grid">
@@ -364,7 +364,7 @@
             <div class="detail-chip"><span>Марка</span><b>{{ lead.request.brand or "—" }}</b></div>
             <div class="detail-chip"><span>Модель</span><b>{{ lead.request.model or "—" }}</b></div>
             <div class="detail-chip"><span>VIN</span><b>{{ lead.request.vin or "Не вказано" }}</b></div>
-            <div class="detail-chip"><span>Routing</span><b>{{ lead.request.match_reasons_label or "Без додаткових даних" }}</b></div>
+            <div class="detail-chip"><span>Чому вам підходить</span><b>{{ lead.request.match_reasons_label or "Без додаткових даних" }}</b></div>
           </div>
 
           <h3 style="margin-top:16px">Контакти покупця</h3>
@@ -375,7 +375,7 @@
               {% if lead.request.buyer_contact.telegram %}<li class="contact-row"><span class="field-label">Telegram</span><b class="field-value">{{ lead.request.buyer_contact.telegram }}</b></li>{% endif %}
             </ul>
           {% else %}
-            <div class="empty-state">Контакти покупця поки недоступні в CRM. Вони показуються лише після marketplace-вибору або прийнятої пропозиції.</div>
+            <div class="empty-state">Контакти покупця поки недоступні. Вони відкриваються після вибору покупця або прийнятої пропозиції.</div>
           {% endif %}
         </section>
 
@@ -471,15 +471,15 @@
               </form>
             {% else %}
               <div class="empty-state">
-                <b>{{ lead.response_block_reason or "Відповідь із CRM зараз недоступна." }}</b>
-                <span>Дія не змінює глобальну заявку покупця і не відкриває сторонні дані.</span>
+                <b>{{ lead.response_block_reason or "Відповідь зараз недоступна." }}</b>
+                <span>Стан заявки для покупця не змінюється, а контакти не відкриваються без вибору покупця.</span>
               </div>
             {% endif %}
           {% endif %}
         </section>
 
         <section class="card" aria-labelledby="marketplace-title">
-          <h2 id="marketplace-title" class="section-heading">Marketplace статус</h2>
+          <h2 id="marketplace-title" class="section-heading">Стан заявки</h2>
           <div class="status-grid">
             <div class="detail-chip"><span>Вибір покупця</span><b><span class="badge {{ lead.marketplace.state_class }}">{{ lead.marketplace.state_label }}</span></b></div>
             <div class="detail-chip"><span>Стан відповіді</span><b><span class="badge {{ lead.seller_state.status_class }}">{{ lead.seller_state.status_label }}</span></b></div>
@@ -488,7 +488,7 @@
             <div class="detail-chip"><span>Відхилено</span><b>{{ lead.seller_state.declined_at.strftime("%d.%m %H:%M") if lead.seller_state.declined_at else "—" }}</b></div>
             <div class="detail-chip"><span>Пропущено</span><b>{{ lead.seller_state.skipped_at.strftime("%d.%m %H:%M") if lead.seller_state.skipped_at else "—" }}</b></div>
             <div class="detail-chip"><span>Обрано</span><b>{{ lead.marketplace.selected_at.strftime("%d.%m.%Y %H:%M") if lead.marketplace.selected_at else "—" }}</b></div>
-            <div class="detail-chip"><span>Marketplace</span><b>{{ lead.marketplace.status or "pending" }}</b></div>
+            <div class="detail-chip"><span>Внутрішній стан</span><b>{{ lead.marketplace.status or "очікує" }}</b></div>
           </div>
         </section>
       </aside>
