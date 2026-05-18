@@ -1338,6 +1338,14 @@ async def get_seller_crm_lead_detail(seller_id: int, request_id: int):
                 LIMIT 1
             ) any_selected_match ON TRUE
             LEFT JOIN LATERAL (
+                SELECT seller_id, updated_at
+                FROM buyer_request_offers bro
+                WHERE bro.request_id = br.id
+                  AND bro.status = 'accepted'
+                ORDER BY bro.updated_at DESC, bro.id DESC
+                LIMIT 1
+            ) accepted_offer ON TRUE
+            LEFT JOIN LATERAL (
                 SELECT MAX(sla.updated_at) FILTER (WHERE sla.action = 'viewed') AS viewed_at,
                        MAX(sla.updated_at) FILTER (WHERE sla.action = 'offered') AS responded_at,
                        MAX(sla.updated_at) FILTER (WHERE sla.action = 'declined') AS declined_at,

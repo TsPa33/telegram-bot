@@ -802,10 +802,25 @@ def _prepare_lead_detail(detail: dict[str, Any] | None) -> dict[str, Any] | None
         offer["status_label"] = offer_meta["label"]
         offer["status_class"] = offer_meta["class"]
         offer["price_label"] = _format_price(offer.get("price"))
+        offer["price_display"] = "Договірна" if offer.get("price") is None else f"₴ {offer['price_label']}"
         offer["price_input"] = "" if offer.get("price") is None else str(offer.get("price"))
 
-    marketplace["state_label"] = "Обрано покупцем" if marketplace.get("is_selected") else "Очікує рішення покупця"
-    marketplace["state_class"] = "status-success" if marketplace.get("is_selected") else "status-waiting"
+    selected_this_seller = bool(marketplace.get("is_selected"))
+    selected_other_seller = bool(marketplace.get("selected_other_seller"))
+    request_closed = (marketplace.get("status") or "").lower() == "closed"
+
+    if selected_this_seller:
+        marketplace["state_label"] = "Покупець обрав вашу пропозицію"
+        marketplace["state_class"] = "status-success"
+    elif selected_other_seller:
+        marketplace["state_label"] = "Покупець обрав іншого продавця"
+        marketplace["state_class"] = "status-rejected"
+    elif request_closed:
+        marketplace["state_label"] = "Заявку закрито"
+        marketplace["state_class"] = "status-rejected"
+    else:
+        marketplace["state_label"] = "Очікує рішення покупця"
+        marketplace["state_class"] = "status-waiting"
 
     seller_status = seller_state.get("seller_status")
     request_closed = request_data.get("marketplace_status") == "closed" or marketplace.get("status") == "closed"
@@ -1359,6 +1374,15 @@ async def seller_crm_submit_offer(
         raise HTTPException(status_code=404, detail="Lead not found")
 
     redirect_base = f"/crm/seller/{crm_slug}/leads/{parsed_request_id}"
+    lead_detail = _prepare_lead_detail(
+        await get_seller_crm_lead_detail(int(account["seller_id"]), parsed_request_id)
+    )
+    if not lead_detail:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    if not lead_detail.get("may_respond"):
+        query = urlencode({"error": lead_detail.get("response_block_reason") or "Відповідь із CRM зараз недоступна."})
+        return RedirectResponse(url=f"{redirect_base}?{query}", status_code=303)
+
     try:
         result = await submit_seller_offer_from_crm(
             seller_id=int(account["seller_id"]),
