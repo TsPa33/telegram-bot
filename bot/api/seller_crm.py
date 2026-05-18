@@ -60,6 +60,15 @@ from bot.database.repositories.seller_crm_repo import (
     update_seller_crm_car,
     update_seller_crm_car_photo,
 )
+from bot.database.repositories.product_repo import (
+    create_product,
+    get_product_by_id,
+    get_seller_product_donor_cars,
+    get_seller_products,
+    set_product_status,
+    update_product,
+    update_product_photo,
+)
 from bot.database.repositories.seller_lead_repo import (
     cancel_seller_lead_notifications,
     mark_seller_lead_action,
@@ -229,6 +238,161 @@ def _validate_service_form(title: str, description: str, price: str) -> tuple[in
         return None, "Опис має бути до 2000 символів."
     return _parse_service_price(price)
 
+
+
+
+PRODUCT_STATUS_OPTIONS = [
+    ("active", "Активний"),
+    ("inactive", "Неактивний"),
+]
+PRODUCT_STOCK_STATUS_OPTIONS = [
+    ("available", "В наявності"),
+    ("low_stock", "Мало на складі"),
+    ("sold", "Продано"),
+    ("preorder", "Передзамовлення"),
+]
+PRODUCT_STATUS_LABELS = {
+    "active": "Активний",
+    "inactive": "Неактивний",
+    "archived": "Архів",
+}
+PRODUCT_STOCK_LABELS = {
+    "available": "В наявності",
+    "low_stock": "Мало на складі",
+    "sold": "Продано",
+    "preorder": "Передзамовлення",
+}
+PRODUCT_STATUS_CLASSES = {
+    "active": "status-success",
+    "inactive": "status-rejected",
+    "archived": "status-waiting",
+    "sold": "status-viewed",
+}
+PRODUCT_STOCK_CLASSES = {
+    "available": "status-success",
+    "low_stock": "status-waiting",
+    "sold": "status-viewed",
+    "preorder": "status-waiting",
+}
+
+
+def _parse_product_money(value: str | None) -> tuple[str | None, str | None]:
+    raw = (value or "").strip().replace(" ", "").replace(",", ".")
+    if not raw:
+        return None, None
+    try:
+        amount = float(raw)
+    except ValueError:
+        return None, "Ціна має бути числом."
+    if amount < 0:
+        return None, "Ціна не може бути від’ємною."
+    if amount > 100_000_000:
+        return None, "Ціна занадто велика."
+    return f"{amount:.2f}", None
+
+
+def _parse_product_quantity(value: str | None) -> tuple[int, str | None]:
+    raw = (value or "").strip()
+    if not raw:
+        return 1, None
+    if not raw.isdigit():
+        return 1, "Кількість має бути цілим числом."
+    quantity = int(raw)
+    if quantity < 0:
+        return 1, "Кількість не може бути від’ємною."
+    if quantity > 1_000_000:
+        return 1, "Кількість занадто велика."
+    return quantity, None
+
+
+def _product_form_payload(**values) -> dict[str, Any]:
+    defaults = {
+        "title": "",
+        "category": "",
+        "brand": "",
+        "model": "",
+        "oem_code": "",
+        "condition": "",
+        "description": "",
+        "price": "",
+        "quantity": "1",
+        "stock_status": "available",
+        "status": "active",
+        "donor_car_id": "",
+    }
+    defaults.update(values)
+    for key, value in list(defaults.items()):
+        if value is None:
+            defaults[key] = ""
+        elif isinstance(value, str):
+            defaults[key] = value.strip()
+    return defaults
+
+
+def _validate_product_form(title: str, category: str, description: str, price: str, quantity: str, stock_status: str, status: str) -> tuple[str | None, int, str | None]:
+    if not (title or "").strip():
+        return None, 1, "Назва товару обов’язкова."
+    if not (category or "").strip():
+        return None, 1, "Категорія обов’язкова."
+    if len((title or "").strip()) > 180:
+        return None, 1, "Назва має бути до 180 символів."
+    if len((category or "").strip()) > 120:
+        return None, 1, "Категорія має бути до 120 символів."
+    if len((description or "").strip()) > 3000:
+        return None, 1, "Опис має бути до 3000 символів."
+    if stock_status not in dict(PRODUCT_STOCK_STATUS_OPTIONS):
+        return None, 1, "Оберіть коректний складський статус."
+    if status not in dict(PRODUCT_STATUS_OPTIONS):
+        return None, 1, "Оберіть коректний статус товару."
+    parsed_price, price_error = _parse_product_money(price)
+    if price_error:
+        return None, 1, price_error
+    parsed_quantity, quantity_error = _parse_product_quantity(quantity)
+    if quantity_error:
+        return None, 1, quantity_error
+    return parsed_price, parsed_quantity, None
+
+
+def _prepare_product(product: Any) -> dict[str, Any]:
+    item = dict(product or {})
+    status = item.get("status") or "inactive"
+    stock_status = item.get("stock_status") or "available"
+    display_status = "sold" if stock_status == "sold" else status
+    item["display_status"] = display_status
+    item["status_label"] = PRODUCT_STOCK_LABELS.get("sold") if display_status == "sold" else PRODUCT_STATUS_LABELS.get(status, status)
+    item["status_class"] = PRODUCT_STATUS_CLASSES.get(display_status, "status-waiting")
+    item["stock_label"] = PRODUCT_STOCK_LABELS.get(stock_status, stock_status)
+    item["stock_class"] = PRODUCT_STOCK_CLASSES.get(stock_status, "status-waiting")
+    item["is_active"] = status == "active"
+    item["has_photo"] = bool(item.get("photo_url"))
+    item["photo_is_url"] = isinstance(item.get("photo_url"), str) and item["photo_url"].startswith(("http://", "https://"))
+    item["has_description"] = bool((item.get("description") or "").strip())
+    item["has_price"] = item.get("price") is not None
+    item["has_oem"] = bool((item.get("oem_code") or "").strip())
+    item["content_completeness"] = round(
+        100
+        * sum([True, bool(item.get("category")), item["has_description"], item["has_price"], item["has_photo"], item["has_oem"]])
+        / 6
+    )
+    return item
+
+
+def _product_form_from_record(product: Any) -> dict[str, Any]:
+    item = dict(product or {})
+    return _product_form_payload(
+        title=item.get("title"),
+        category=item.get("category"),
+        brand=item.get("brand"),
+        model=item.get("model"),
+        oem_code=item.get("oem_code"),
+        condition=item.get("condition"),
+        description=item.get("description"),
+        price="" if item.get("price") is None else str(item.get("price")),
+        quantity=str(item.get("quantity") if item.get("quantity") is not None else 1),
+        stock_status=item.get("stock_status") or "available",
+        status=item.get("status") or "active",
+        donor_car_id="" if item.get("donor_car_id") is None else str(item.get("donor_car_id")),
+    )
 
 
 def _car_form_payload(description: str = "", status: str = "active", is_catalog: bool = False) -> dict[str, Any]:
@@ -1192,7 +1356,7 @@ async def seller_crm_content(request: Request, crm_slug: str):
     priority_sections = [
         {"key": "cars", "label": "Авто на розборі", "href": f"/crm/seller/{crm_slug}/content/cars"},
         {"key": "services", "label": "Послуги", "href": f"/crm/seller/{crm_slug}/content/services"},
-        {"key": "parts", "label": "Товари / Запчастини", "href": f"/crm/seller/{crm_slug}/content"},
+        {"key": "parts", "label": "Товари / Запчастини", "href": f"/crm/seller/{crm_slug}/content/products"},
     ]
     if has_services and not has_cars:
         priority_sections = [priority_sections[1], priority_sections[0], priority_sections[2]]

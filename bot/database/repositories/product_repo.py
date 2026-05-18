@@ -159,10 +159,16 @@ async def update_product(seller_id: int, product_id: int, **fields):
 async def get_product_by_id(seller_id: int, product_id: int):
     return await fetchrow(
         """
-        SELECT *
-        FROM seller_products
-        WHERE id = $1
-          AND seller_id = $2
+        SELECT
+            sp.*,
+            b.name AS donor_brand,
+            m.name AS donor_model
+        FROM seller_products sp
+        LEFT JOIN seller_cars sc ON sc.id = sp.donor_car_id AND sc.seller_id = sp.seller_id
+        LEFT JOIN models m ON m.id = sc.model_id
+        LEFT JOIN brands b ON b.id = m.brand_id
+        WHERE sp.id = $1
+          AND sp.seller_id = $2
         LIMIT 1
         """,
         product_id,
@@ -213,19 +219,46 @@ async def get_seller_products(
     elif not include_archived:
         filters.append("status <> 'archived'")
 
+    prefixed_filters = [f"sp.{filter_sql}" for filter_sql in filters]
+
     args.extend([normalized_limit, normalized_offset])
     limit_arg = len(args) - 1
     offset_arg = len(args)
 
     return await fetch(
         f"""
-        SELECT *
-        FROM seller_products
-        WHERE {' AND '.join(filters)}
-        ORDER BY created_at DESC, id DESC
+        SELECT
+            sp.*,
+            b.name AS donor_brand,
+            m.name AS donor_model
+        FROM seller_products sp
+        LEFT JOIN seller_cars sc ON sc.id = sp.donor_car_id AND sc.seller_id = sp.seller_id
+        LEFT JOIN models m ON m.id = sc.model_id
+        LEFT JOIN brands b ON b.id = m.brand_id
+        WHERE {' AND '.join(prefixed_filters)}
+        ORDER BY sp.created_at DESC, sp.id DESC
         LIMIT ${limit_arg} OFFSET ${offset_arg}
         """,
         *args,
+    )
+
+
+async def get_seller_product_donor_cars(seller_id: int):
+    return await fetch(
+        """
+        SELECT
+            sc.id AS car_id,
+            b.name AS brand,
+            m.name AS model,
+            sc.created_at
+        FROM seller_cars sc
+        JOIN models m ON m.id = sc.model_id
+        JOIN brands b ON b.id = m.brand_id
+        WHERE sc.seller_id = $1
+        ORDER BY sc.created_at DESC, sc.id DESC
+        LIMIT 100
+        """,
+        seller_id,
     )
 
 
