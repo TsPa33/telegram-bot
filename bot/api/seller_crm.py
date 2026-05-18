@@ -612,6 +612,13 @@ def _is_expired(expires_at) -> bool:
     return expires_at <= datetime.utcnow()
 
 
+def _login_redirect(crm_slug: str):
+    raise HTTPException(
+        status_code=303,
+        detail=f"/crm/seller/login?slug={crm_slug}",
+    )
+
+
 async def _current_session(request: Request):
     token = request.cookies.get(SELLER_CRM_COOKIE)
     if not token:
@@ -638,14 +645,14 @@ async def _authorized_account(request: Request, crm_slug: str):
         session, subscription = await _current_session(request)
     except HTTPException as exc:
         if exc.status_code == 401:
-            raise HTTPException(
-                status_code=303,
-                detail=f"/crm/seller/login?slug={crm_slug}",
-            ) from exc
+            _login_redirect(crm_slug)
         raise
 
     if session["seller_id"] != account["seller_id"] or session["crm_slug"] != crm_slug:
-        raise HTTPException(status_code=403, detail="Forbidden")
+        token = request.cookies.get(SELLER_CRM_COOKIE)
+        if token:
+            await delete_crm_session(token)
+        _login_redirect(crm_slug)
 
     return account, subscription
 
