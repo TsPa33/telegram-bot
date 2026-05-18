@@ -18,7 +18,6 @@
   .add-actions-title { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
   .add-actions-title h2 { margin: 0; }
   .telegram-note { margin: 10px 0 0; color: var(--muted); line-height: 1.45; }
-  .parts-placeholder { border: 1px dashed rgba(251,191,36,.34); background: rgba(251,191,36,.08); color: #F3D899; }
   .content-empty { border: 1px dashed rgba(251,191,36,.32); background: rgba(251,191,36,.08); color: #F3D899; }
   @media (max-width: 980px) { .content-priority { grid-template-columns: 1fr; } }
   @media (max-width: 620px) { .quick-actions { display: grid; grid-template-columns: 1fr; } .quick-actions .btn { width: 100%; white-space: normal; } }
@@ -28,7 +27,7 @@
   <section class="workspace-hero" aria-labelledby="content-title">
     <div>
       <h2 id="content-title">Каталог</h2>
-      <p class="section-note">Огляд того, що покупці бачать у маркетплейсі та на сайті. Додавання й редагування залишаються у Telegram-боті.</p>
+      <p class="section-note">Три окремі полиці бізнесу: авто, товари / запчастини та послуги. Оберіть потрібний розділ або одразу додайте позицію.</p>
     </div>
     <div class="pill">Огляд</div>
   </section>
@@ -36,7 +35,7 @@
   {% if not has_cars and not has_services %}
     <section class="card content-empty">
       <h2>Почніть з першої позиції</h2>
-      <p class="section-note">Додайте перше авто або послугу, щоб покупці могли вас знаходити.</p>
+      <p class="section-note">Додайте перше авто, імпортуйте товари або створіть послугу — кожен тип має свій окремий розділ нижче.</p>
     </section>
   {% endif %}
 
@@ -45,10 +44,10 @@
       {% if section.key == 'cars' %}
         <a class="card content-card" href="{{ section.href }}">
           <div class="content-card-top">
-            <div class="content-card-title">Авто на розборі</div>
+            <div class="content-card-title">Мої авто</div>
             <span class="badge status-new">{{ summary.active_cars or 0 }}</span>
           </div>
-          <p class="content-card-note">Донорські авто та інвентар, який допомагає покупцям знайти потрібні запчастини.</p>
+          <p class="content-card-note">Авто на розборі й донорський інвентар для запитів покупців.</p>
           {% if summary.garage_slots_total %}
             <span class="badge">Вільно місць: {{ summary.garage_slots_free or 0 }}</span>
           {% else %}
@@ -58,20 +57,20 @@
       {% elif section.key == 'services' %}
         <a class="card content-card" href="{{ section.href }}">
           <div class="content-card-top">
-            <div class="content-card-title">Послуги</div>
+            <div class="content-card-title">Мої послуги</div>
             <span class="badge status-new">{{ summary.active_services or 0 }}</span>
           </div>
-          <p class="content-card-note">Сервісні пропозиції продавця: ремонт, підбір, доставка або інші послуги.</p>
+          <p class="content-card-note">Ремонт, підбір, доставка та інші сервісні пропозиції.</p>
           {% if not has_services %}<span class="badge status-waiting">Послуг ще немає</span>{% endif %}
         </a>
       {% else %}
         <a class="card content-card" href="{{ section.href }}">
           <div class="content-card-top">
-            <div class="content-card-title">Товари та запчастини</div>
-            <span class="badge">Скоро</span>
+            <div class="content-card-title">Мої товари / запчастини</div>
+            <span class="badge status-new">Імпорт</span>
           </div>
-          <p class="content-card-note">Розділ товарів/запчастин буде додано окремо.</p>
-          <span class="badge status-viewed">Скоро</span>
+          <p class="content-card-note">Запчастини, товари та залишки складу через CSV/XLSX імпорт.</p>
+          <span class="badge status-viewed">Перейти до товарів</span>
         </a>
       {% endif %}
     {% endfor %}
@@ -100,24 +99,19 @@
 
   <section class="card add-actions-card" aria-labelledby="content-add-actions">
     <div class="add-actions-title">
-      <h2 id="content-add-actions">Швидко додати контент</h2>
-      <span class="badge status-viewed">Telegram</span>
+      <h2 id="content-add-actions">Додати до каталогу</h2>
+      <span class="badge status-viewed">3 типи позицій</span>
     </div>
-    <p class="section-note">Додавання зараз доступне через Telegram-бот. Кабінет не відкриває форми створення, тому кнопки нижче підказують безпечний шлях без нових маршрутів.</p>
-    <div class="quick-actions" aria-label="Швидкі дії додавання контенту">
-      <button class="btn" type="button" onclick="alert('Відкрийте Telegram-бот CarPot і скористайтесь меню продавця для додавання авто, послуг або товарів.')">Відкрити Telegram</button>
-      <button class="btn ghost" type="button" onclick="alert('Як додати авто: відкрийте Telegram-бот CarPot → меню продавця → додайте авто на розборі з описом і фото.')">＋ Додати авто</button>
-      <button class="btn ghost" type="button" onclick="alert('Як додати послугу: відкрийте Telegram-бот CarPot → меню продавця → додайте сервісну пропозицію, ціну та опис.')">＋ Додати послугу</button>
-      <button class="btn ghost" type="button" onclick="alert('Товари та запчастини: розділ буде додано окремо. Поки що додавання ведеться через Telegram-бот.')">＋ Додати товар або запчастину</button>
-      <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content/cars">Як додати авто</a>
-      <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content/services">Як додати послугу</a>
+    <p class="section-note">Кожна дія веде у свій розділ, щоб авто, товари та послуги не змішувались в одну купу.</p>
+    <div class="quick-actions" aria-label="Швидкі дії додавання каталогу">
+      <a class="btn" href="/crm/seller/{{ account.crm_slug }}/content/cars/create">＋ Додати авто</a>
+      <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content/products/import">⬆ Додати товар / запчастину</a>
+      <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content/services/create">＋ Додати послугу</a>
+      <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content/cars">Переглянути авто</a>
+      <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content/products">Переглянути товари</a>
+      <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content/services">Переглянути послуги</a>
     </div>
-    <p class="telegram-note">Якщо у вас немає посилання на бот під рукою, відкрийте CarPot у Telegram і скористайтесь існуючим сценарієм продавця.</p>
-  </section>
-
-  <section class="card parts-placeholder" aria-labelledby="parts-placeholder-title">
-    <h2 id="parts-placeholder-title">Товари та запчастини</h2>
-    <p class="section-note">Розділ товарів/запчастин буде додано окремо.</p>
+    <p class="telegram-note">Telegram-сценарії залишаються доступними, але кабінет тепер чітко розділяє каталог за типами бізнес-активів.</p>
   </section>
 </div>
 {% endblock %}

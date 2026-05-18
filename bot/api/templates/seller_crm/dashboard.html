@@ -103,10 +103,11 @@
       {% for source in sources %}<p><span class="badge">{{ source.source }}</span> {{ source.visits }} візитів</p>{% else %}<p class="muted">Поки немає джерел трафіку</p>{% endfor %}
     </a>
     <article class="card">
-      <h2>Контент — підтримка продажів</h2>
-      {% if has_services or not has_cars %}<p id="services"><b>{{ stats.services_count or 0 }}</b> послуг · <b>{{ stats.service_requests or 0 }}</b> заявок/кліків</p>{% endif %}
-      <p id="parts-placeholder"><span class="badge">Скоро</span> Товари та запчастини — окремий розділ буде доступний після запуску першої версії.</p>
-      <p id="cars" class="{% if not has_cars %}muted{% endif %}"><b>{{ stats.active_listings or 0 }}</b> авто на розборі{% if not has_cars %} · розділ авто менш важливий, поки авто ще не додані{% endif %}</p>
+      <h2>Каталог</h2>
+      <p class="section-note">Авто, товари та послуги розділені, щоб швидко додати потрібний бізнес-актив.</p>
+      <p id="cars" class="{% if not has_cars %}muted{% endif %}"><a href="/crm/seller/{{ account.crm_slug }}/content/cars"><b>{{ stats.active_listings or 0 }}</b> авто</a>{% if not has_cars %} · додайте перше авто{% endif %}</p>
+      <p id="products"><a href="/crm/seller/{{ account.crm_slug }}/content/products">Товари / запчастини</a> · імпорт CSV/XLSX</p>
+      <p id="services"><a href="/crm/seller/{{ account.crm_slug }}/content/services"><b>{{ stats.services_count or 0 }}</b> послуг</a> · <b>{{ stats.service_requests or 0 }}</b> заявок/кліків</p>
     </article>
   </section>
 
