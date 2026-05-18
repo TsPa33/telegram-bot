@@ -3,28 +3,32 @@
 {% block crm_heading %}Аналітика та статистика{% endblock %}
 {% block content %}
 <style>
-  .analytics-page { display: grid; gap: 14px; min-width: 0; }
+  .analytics-page { display: grid; gap: 10px; min-width: 0; }
   .analytics-kpis { grid-template-columns: repeat(4,minmax(0,1fr)); }
-  .analytics-card { min-width: 0; overflow: hidden; }
-  .analytics-card .metric { overflow-wrap: anywhere; }
-  .analytics-card p { margin: 8px 0 0; }
-  .analytics-section-title { display: flex; gap: 10px; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; }
-  .progress-row { display: grid; gap: 7px; margin-top: 12px; }
-  .progress-label { display: flex; justify-content: space-between; gap: 10px; color: var(--secondary); font-weight: 600; font-size: 13px; }
-  .progress-track { width: 100%; height: 9px; border-radius: 999px; background: rgba(143,162,191,.12); overflow: hidden; }
+  .analytics-card { min-width: 0; overflow: hidden; box-shadow: none; }
+  .analytics-card .metric { overflow-wrap: anywhere; font-size: 20px; line-height: 1.05; }
+  .analytics-card p { margin: 5px 0 0; font-size: 13px; line-height: 1.35; }
+  .analytics-kpis .analytics-card { min-height: 62px; padding: 9px 10px; display: grid; align-content: center; gap: 2px; }
+  .analytics-kpis .analytics-card h3 { margin: 0; font-size: 11px; line-height: 1.15; color: var(--muted); }
+  .analytics-kpis .analytics-card p { margin: 0; font-size: 11px; color: var(--muted); }
+  .analytics-section-title { display: flex; gap: 8px; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; margin-bottom: 4px; }
+  .progress-row { display: grid; gap: 5px; margin-top: 9px; }
+  .progress-label { display: flex; justify-content: space-between; gap: 8px; color: var(--secondary); font-weight: 600; font-size: 12px; }
+  .progress-track { width: 100%; height: 6px; border-radius: 999px; background: rgba(143,162,191,.12); overflow: hidden; }
   .progress-fill { height: 100%; min-width: 4%; max-width: 100%; border-radius: inherit; background: linear-gradient(90deg, rgba(56,189,248,.46), rgba(125,211,176,.42)); }
-  .funnel { display: grid; gap: 10px; }
-  .funnel-step { border: 1px solid rgba(56,189,248,.12); border-radius: var(--radius); background: rgba(56,189,248,.032); padding: 10px; }
-  .funnel-bar { height: 32px; min-width: 48px; border-radius: 12px; background: linear-gradient(135deg, rgba(56,189,248,.24), rgba(125,211,176,.28)); display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 0 12px; color: var(--text); font-weight: 600; }
-  .empty-state { border: 1px dashed rgba(148,163,184,.26); border-radius: 16px; padding: 14px; color: var(--muted); background: rgba(231,238,247,.022); }
+  .funnel { display: grid; gap: 7px; }
+  .funnel-step { border: 1px solid rgba(56,189,248,.1); border-radius: var(--radius-sm); background: rgba(56,189,248,.026); padding: 7px; }
+  .funnel-bar { height: 24px; min-width: 44px; border-radius: 8px; background: linear-gradient(135deg, rgba(56,189,248,.2), rgba(125,211,176,.22)); display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 9px; color: var(--text); font-weight: 600; font-size: 12px; }
+  .empty-state { border: 1px dashed rgba(148,163,184,.24); border-radius: var(--radius-sm); padding: 10px; color: var(--muted); background: rgba(231,238,247,.022); }
   .analytics-split { grid-template-columns: minmax(0,1fr) minmax(0,1fr); }
   @media (max-width:980px) {
     .analytics-kpis { grid-template-columns: repeat(2,minmax(0,1fr)); }
     .analytics-split { grid-template-columns: 1fr; }
   }
   @media (max-width:620px) {
-    .analytics-kpis { grid-template-columns: 1fr; }
-    .funnel-bar { height: auto; min-height: 32px; flex-wrap: wrap; }
+    .analytics-kpis { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
+    .analytics-kpis .analytics-card { min-height: 58px; padding: 8px; }
+    .funnel-bar { height: auto; min-height: 24px; flex-wrap: wrap; }
   }
 </style>
 
@@ -32,7 +36,7 @@
   <section class="workspace-hero" aria-labelledby="analytics-title">
     <div>
       <h2 id="analytics-title">Аналітика та статистика</h2>
-      <p class="section-note">Окремий read-only зріз CRM за останні {{ days }} днів. Дані показані тільки для поточного продавця.</p>
+      <p class="section-note">Read-only зріз за {{ days }} днів для поточного продавця.</p>
     </div>
     <div class="pill">Без змін lifecycle</div>
   </section>
@@ -41,22 +45,22 @@
     <article class="card analytics-card">
       <h3>Направлено заявок</h3>
       <div class="metric">{{ analytics.routed_requests or 0 }}</div>
-      <p class="muted">marketplace routing до продавця</p>
+      <p class="muted">routing</p>
     </article>
     <article class="card analytics-card">
       <h3>Переглянуто</h3>
       <div class="metric">{{ analytics.viewed_requests or 0 }}</div>
-      <p class="muted">seller lead actions: viewed</p>
+      <p class="muted">viewed</p>
     </article>
     <article class="card analytics-card">
       <h3>Пропозицій надіслано</h3>
       <div class="metric">{{ analytics.offers_sent or 0 }}</div>
-      <p class="muted">існуючі buyer request offers</p>
+      <p class="muted">sent offers</p>
     </article>
     <article class="card analytics-card">
       <h3>Конверсія в обрані</h3>
       <div class="metric">{{ analytics.selected_conversion_percent or 0 }}%</div>
-      <p class="muted">accepted / sent offers</p>
+      <p class="muted">selected / sent</p>
     </article>
   </section>
 
@@ -65,7 +69,7 @@
       <div class="analytics-section-title">
         <div>
           <h2>Marketplace performance</h2>
-          <p class="section-note">Заявки, дії продавця і статус пропозицій без зміни marketplace процесу.</p>
+          <p class="section-note">Статуси заявок і пропозицій без зміни процесу.</p>
         </div>
         <span class="badge">{{ days }} днів</span>
       </div>
@@ -109,7 +113,7 @@
     <article class="card analytics-card">
       <h2>Response performance</h2>
       <div class="metric">{{ analytics.average_response_label }}</div>
-      <p class="muted">середній час від routing event або створення заявки до seller offer</p>
+      <p class="muted">середній час до seller offer</p>
       {% if not analytics.average_response_seconds %}<div class="empty-state stack-top">Ще немає достатньо відповідей для розрахунку часу.</div>{% endif %}
     </article>
 
@@ -130,7 +134,7 @@
       <div class="analytics-section-title">
         <div>
           <h2>Website performance</h2>
-          <p class="section-note">Показується тільки продавцям із сайтом.</p>
+          <p class="section-note">Тільки для продавців із сайтом.</p>
         </div>
         <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/website#site-section">Відкрити сайт</a>
       </div>

@@ -7,7 +7,7 @@
   <section class="workspace-hero" aria-labelledby="workspace-title">
     <div>
       <h2 id="workspace-title">Робочий простір marketplace</h2>
-      <p class="section-note">Спочатку показуємо нові заявки, стан відповідей і buyer activity. Сайт і візуальні налаштування винесені нижче.</p>
+      <p class="section-note">Нові заявки, очікування відповіді та buyer activity — без зайвих блоків.</p>
     </div>
     <div class="pill">Telegram-connected</div>
   </section>
@@ -35,10 +35,10 @@
     </a>
   </section>
 
-  <section class="grid dashboard-layout" style="margin-top:14px">
+  <section class="grid dashboard-layout">
     <article id="requests" class="card">
       <h2>Останні marketplace заявки</h2>
-      <p class="section-note">Dashboard preview без повного workspace: тільки компактна черга того, що вже пов’язано з продавцем через marketplace routing, дії або пропозиції.</p>
+      <p class="section-note">Операційна черга заявок, пов’язаних із продавцем через routing, дії або пропозиції.</p>
       <div class="request-list">
         {% for item in marketplace_requests %}
           <div class="request-card">
@@ -73,7 +73,7 @@
 
     <aside id="activity" class="card" aria-label="Активність marketplace">
       <h2>Активність</h2>
-      <p class="section-note">Коротка стрічка без raw JSON: сповіщення marketplace і дії продавця.</p>
+      <p class="section-note">Події marketplace і дії продавця у компактній стрічці.</p>
       <div class="activity-list">
         {% for event in marketplace_activity %}
           <div class="activity-item">
@@ -94,7 +94,7 @@
   <section id="website-analytics" class="grid two secondary-section">
     <a class="card" href="/crm/seller/{{ account.crm_slug }}/analytics#website-analytics" style="text-decoration:none;color:inherit">
       <h2>Website/catalog analytics</h2>
-      <p class="section-note">Другорядний блок: сайт лишається робочим, але не домінує над marketplace workflow.</p>
+      <p class="section-note">Короткий зріз без домінування над marketplace workflow.</p>
       <p><b>{{ stats.visits_today or 0 }}</b> візитів сьогодні · <b>{{ stats.page_views_today or 0 }}</b> переглядів сторінок</p>
       <p><b>{{ stats.telegram_clicks_today or 0 }}</b> Telegram переходів · <b>{{ stats.cta_clicks_today or 0 }}</b> CTA кліків</p>
       {% for source in sources %}<p><span class="badge">{{ source.source }}</span> {{ source.visits }} візитів</p>{% else %}<p class="muted">Поки немає джерел трафіку</p>{% endfor %}
@@ -110,7 +110,7 @@
   {% if has_website %}
     <section class="secondary-section">
       <h2 class="section-heading">Сайт — нижчий пріоритет</h2>
-      <p class="section-note">Website builder не змінено: ключові входи залишились, але перенесені нижче операційної панелі.</p>
+      <p class="section-note">Ключові входи нижче операційної панелі.</p>
       <div class="grid site-tools">
         <a class="card quick-card" href="/crm/seller/{{ account.crm_slug }}/website#site-section"><b>Hero / Контакти</b><span>Тексти, контакти, SEO та CTA</span></a>
         <a class="card quick-card" href="/crm/seller/{{ account.crm_slug }}/website#media-section"><b>Logo / Banners</b><span>Медіа та перший екран</span></a>
