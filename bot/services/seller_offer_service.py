@@ -191,7 +191,7 @@ async def _notify_buyer_about_offer(*, request_id: int, seller_id: int, offer: d
         int(buyer_telegram_id),
         notification_text,
         parse_mode="HTML",
-        reply_markup=buyer_offer_created_notification_kb(request_id),
+        reply_markup=buyer_offer_created_notification_kb(request_id, int(offer_id)),
     )
     if sent:
         thread_message = await create_lead_thread_message(
