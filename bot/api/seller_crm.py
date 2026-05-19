@@ -168,12 +168,12 @@ logger = logging.getLogger(__name__)
 
 
 LEAD_STATUS_TABS = [
-    {"key": CRM_LEAD_STATUS_NEW, "label": "Нові", "empty": "Нових заявок поки немає."},
-    {"key": CRM_LEAD_STATUS_IN_WORK, "label": "Очікують відповіді", "empty": "Немає заявок, які очікують відповіді."},
-    {"key": CRM_LEAD_STATUS_REPLIED, "label": "Пропозицію надіслано", "empty": "Немає заявок із надісланою пропозицією."},
-    {"key": CRM_LEAD_STATUS_SELECTED, "label": "Обрані покупцем", "empty": "Покупці ще не обрали ваші пропозиції."},
-    {"key": CRM_LEAD_STATUS_DECLINED, "label": "Відхилені", "empty": "Відхилених заявок немає."},
-    {"key": CRM_LEAD_STATUS_SKIPPED, "label": "Пропущені", "empty": "Пропущених заявок немає."},
+    {"key": CRM_LEAD_STATUS_NEW, "label": "Нова заявка", "empty": "Нових заявок поки немає."},
+    {"key": CRM_LEAD_STATUS_IN_WORK, "label": "Покупець очікує відповідь", "empty": "Немає заявок, які очікують відповіді."},
+    {"key": CRM_LEAD_STATUS_REPLIED, "label": "Відповідь надіслана", "empty": "Немає заявок із надісланою пропозицією."},
+    {"key": CRM_LEAD_STATUS_SELECTED, "label": "Покупець підтвердив", "empty": "Покупці ще не обрали ваші пропозиції."},
+    {"key": CRM_LEAD_STATUS_DECLINED, "label": "Покупець відхилив", "empty": "Відхилених заявок немає."},
+    {"key": CRM_LEAD_STATUS_SKIPPED, "label": "Заявку закрито", "empty": "Закритих заявок немає."},
     {"key": CRM_LEAD_STATUS_ARCHIVED, "label": "Архів", "empty": "Архів заявок порожній."},
 ]
 ALLOWED_LEAD_STATUSES = CRM_LEAD_STATUSES
@@ -793,6 +793,13 @@ def _prepare_marketplace_requests(rows) -> list[dict[str, Any]]:
     prepared = []
     for row in rows or []:
         item = dict(row)
+        if (
+            item.get("seller_status") == CRM_LEAD_STATUS_ARCHIVED
+            or item.get("offer_status") == BUYER_OFFER_STATUS_REJECTED
+            or (item.get("marketplace_status") or "").lower() == "closed"
+            or item.get("selected_other_seller")
+        ):
+            continue
         item["title"] = _request_title(item)
         item["short_description"] = item.get("description") or item.get("message") or "Покупець не додав опис"
         item["status_label"] = _request_status_label(item)
@@ -831,18 +838,19 @@ def _prepare_marketplace_leads(rows) -> list[dict[str, Any]]:
     prepared = []
     for row in rows or []:
         item = dict(row)
+        if (
+            item.get("seller_status") == CRM_LEAD_STATUS_ARCHIVED
+            or item.get("offer_status") == BUYER_OFFER_STATUS_REJECTED
+            or (item.get("marketplace_status") or "").lower() == "closed"
+            or item.get("selected_other_seller")
+        ):
+            continue
         item["title"] = item.get("title") or _request_title(item)
         item["short_description"] = item.get("description") or "Покупець не додав опис"
         status_meta = _lead_status_meta(item.get("seller_status"))
         item["status_label"] = status_meta["label"]
         item["status_class"] = status_meta["class"]
-        match_reasons = item.get("match_reasons")
-        if isinstance(match_reasons, str):
-            item["match_reasons_label"] = match_reasons
-        elif match_reasons:
-            item["match_reasons_label"] = ", ".join(str(reason) for reason in match_reasons)
-        else:
-            item["match_reasons_label"] = None
+        item["match_reasons_label"] = None
         status = item.get("seller_status")
         item["can_mark_viewed"] = status == "new" and not item.get("has_viewed")
         item["can_decline"] = status not in {CRM_LEAD_STATUS_DECLINED, CRM_LEAD_STATUS_SKIPPED, CRM_LEAD_STATUS_SELECTED}

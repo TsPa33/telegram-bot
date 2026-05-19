@@ -7,7 +7,7 @@
   <section class="workspace-hero command-hero" aria-labelledby="workspace-title">
     <div>
       <h2 id="workspace-title">Сьогодні</h2>
-      <p class="section-note">Спочатку нові заявки, очікування покупця та активні діалоги. Аналітика й сайт нижче — без конкуренції за увагу.</p>
+      <p class="section-note">Порядок роботи: 1) покупець очікує, 2) активні чати, 3) відповідь надіслана, 4) архів/історія.</p>
     </div>
     <a class="btn small" href="/crm/seller/{{ account.crm_slug }}/leads">Відкрити всі заявки</a>
   </section>
@@ -35,10 +35,10 @@
     <article id="requests" class="card primary-queue">
       <div class="section-head-row">
         <div>
-          <h2>Потрібна дія</h2>
-          <p class="section-note">Робоча черга: нові заявки, покупці очікують відповіді та діалоги, де важливо швидко продовжити контакт.</p>
+          <h2>Операційний inbox</h2>
+          <p class="section-note">Тільки активна черга. Закриті/архівні заявки винесені в історію.</p>
         </div>
-        <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/leads">Усі</a>
+        <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/leads?status=archived">Архів</a>
       </div>
       <div class="request-list">
         {% for item in marketplace_requests %}
@@ -56,10 +56,7 @@
               <span class="badge {{ item.status_class }}">{{ item.status_label }}</span>
             </div>
             <p class="request-desc">{{ item.short_description }}</p>
-            <div class="request-actions">
-              <a class="btn small" href="/crm/seller/{{ account.crm_slug }}/leads/{{ item.id }}">{{ item.primary_action_label }}</a>
-              <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/leads">До заявок</a>
-            </div>
+            <div class="request-actions"><a class="btn small" href="/crm/seller/{{ account.crm_slug }}/leads/{{ item.id }}">{{ item.primary_action_label }}</a></div>
           </div>
         {% else %}
           <div class="request-card empty-operational">
