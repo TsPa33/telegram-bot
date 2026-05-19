@@ -10,25 +10,22 @@ from bot.services.domain_service import build_site_url
 SITE_PACKAGES = {
     "standard": {
         "title": "Сайт Стандарт",
-        "emoji": "🧩",
         "price": 499,
-        "description": "Готовий шаблон: послуги, контакти, карта, кнопка дзвінка.",
-        "button_text": "💳 Замовити Стандарт",
+        "description": "Готовий шаблон:\n• послуги\n• контакти\n• карта\n• кнопка дзвінка\n• CRM система для управління",
+        "button_text": "Замовити сайт Стандарт",
         "payment_product": "site",
     },
     "plus": {
         "title": "Сайт Візитка Plus",
-        "emoji": "🚘",
         "price": 1499,
-        "description": "Шаблон + базовий дизайн + банер + наповнення до 5 послуг.",
-        "button_text": "💳 Замовити Plus",
+        "description": "Унікальний дизайн +:\n• банери\n• послуги\n• додаткові модулі\n• адаптація під ваш бізнес\n• CRM система для управління",
+        "button_text": "Замовити сайт Візитка Plus",
     },
     "premium": {
-        "title": "Преміум / Індивідуальний",
-        "emoji": "🏆",
+        "title": "Індивідуальний сайт",
         "price_from": 3999,
-        "description": "Індивідуальний стиль, каталог, банери, тексти, підготовка під рекламу.",
-        "button_text": "💳 Індивідуальне замовлення",
+        "description": "Індивідуальне рішення:\n• стиль і структура\n• каталог товарів\n• банери та галереї\n• тексти\n• підготовка під рекламу\n• CRM система для управління",
+        "button_text": "Замовити індивідуальний сайт",
     },
 }
 
@@ -110,11 +107,11 @@ def format_site_package_title(package_key: str) -> str:
 
 
 def format_site_packages_text() -> str:
-    sections = ["💳 <b>Пакети сайтів</b>\n\nОберіть формат:"]
+    sections = ["<b>Пакети сайтів</b>\n\nОберіть формат:"]
 
     for package in SITE_PACKAGES.values():
         sections.append(
-            f"{package['emoji']} <b>{package['title']}</b> — {format_site_package_price(package)}\n"
+            f"<b>{package['title']}</b> — {format_site_package_price(package)}\n"
             f"{package['description']}"
         )
 
