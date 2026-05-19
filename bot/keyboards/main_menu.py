@@ -39,7 +39,7 @@ async def main_menu_kb(user_id: int) -> InlineKeyboardMarkup:
 
     buttons.append([
         InlineKeyboardButton(
-            text="🌐 Приклади рішень",
+            text="🌐 Приклади сайтів",
             callback_data="demo:sites"
         )
     ])

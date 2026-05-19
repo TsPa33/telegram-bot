@@ -9,7 +9,7 @@ admin_kb = ReplyKeyboardMarkup(
 
         [KeyboardButton(text="📊 Перегляди")],
         [KeyboardButton(text="🧩 CRM")],
-        [KeyboardButton(text="🌐 Приклади рішень")],
+        [KeyboardButton(text="🌐 Приклади сайтів")],
 
         # 🔥 ОСНОВНЕ ДОДАННЯ
         [KeyboardButton(text="👥 Користувачі")],
