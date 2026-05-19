@@ -1,17 +1,19 @@
 {% extends "seller_crm/base.html" %}
-{% block crm_kicker %}Деталі заявки{% endblock %}
-{% block crm_heading %}Заявка #{{ lead.request.request_id }}{% endblock %}
+{% block crm_kicker %}Покупець очікує відповідь{% endblock %}
+{% block crm_heading %}{{ lead.request.title }}{% endblock %}
 {% block content %}
   <style>
-    .lead-page { display:grid; gap:12px; }
-    .lead-top { display:flex; justify-content:space-between; gap:10px; align-items:center; flex-wrap:wrap; }
-    .lead-path { color:var(--muted); font-size:12px; font-weight:700; text-align:right; }
+    .lead-page { display:grid; gap:10px; }
+    .lead-top { display:flex; justify-content:space-between; gap:8px; align-items:flex-start; flex-wrap:wrap; }
+    .lead-top-copy { display:grid; gap:2px; }
+    .lead-path { color:var(--muted); font-size:12px; font-weight:600; }
+    .lead-status { color:var(--secondary); font-size:12px; font-weight:700; }
     .lead-main { display:grid; gap:12px; }
     .lead-title { margin:0; font-size:clamp(24px,4vw,34px); line-height:1.1; }
     .buyer-need { display:grid; gap:6px; border:1px solid rgba(148,163,184,.16); border-radius:14px; padding:12px; background:var(--surface); }
     .section-label { color:var(--muted); font-size:12px; font-weight:700; margin:0; }
     .need-lines { margin:0; white-space:pre-wrap; line-height:1.5; }
-    .thread-list { display:grid; gap:8px; max-height:360px; overflow:auto; }
+    .thread-list { display:grid; gap:8px; max-height:300px; overflow:auto; }
     .thread-message { display:grid; gap:4px; width:min(90%,620px); padding:10px 12px; border:1px solid rgba(148,163,184,.16); border-radius:12px; background:var(--surface); }
     .thread-message.seller { margin-left:auto; border-color: rgba(34,211,238,.25); }
     .thread-message.buyer { margin-right:auto; border-color: rgba(125,211,176,.24); }
@@ -21,7 +23,7 @@
     .form-stack label { display:grid; gap:6px; font-size:13px; font-weight:700; color:var(--secondary); }
     .form-stack input, .form-stack textarea { width:100%; border:1px solid rgba(148,163,184,.22); border-radius:12px; background:var(--surface); color:var(--text); padding:10px 12px; font:inherit; }
     .form-stack textarea { min-height:100px; resize:vertical; }
-    .actions { display:grid; gap:8px; }
+    .actions { display:grid; gap:8px; margin-top:8px; }
     .actions-row { display:flex; gap:8px; flex-wrap:wrap; }
     .actions-row form { margin:0; }
     .details-group summary { cursor:pointer; font-weight:700; }
@@ -31,7 +33,6 @@
     .detail-chip b { font-size:13px; overflow-wrap:anywhere; }
     @media (max-width:640px){
       .lead-top { align-items:stretch; }
-      .lead-path { text-align:left; }
       .actions-row .btn { width:100%; justify-content:center; }
       .actions-row form { width:100%; }
       .detail-grid { grid-template-columns:1fr; }
@@ -48,14 +49,20 @@
 
     <div class="lead-top">
       <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/leads">Назад</a>
-      <div class="lead-path">{{ lead.operational_status.label }}</div>
+      <div class="lead-top-copy">
+        <div class="lead-path">Покупець очікує відповідь · #{{ lead.request.request_id }}</div>
+        <div class="lead-status">{{ lead.operational_status.label }}</div>
+      </div>
     </div>
 
     <section class="card lead-main">
       <h2 class="lead-title">{{ lead.request.title }}</h2>
       <div class="buyer-need">
         <p class="section-label">Потреба покупця:</p>
-        <p class="need-lines">{{ lead.request.description }}</p>
+        <p class="need-lines">Запит: {{ lead.request.title or "—" }}
+Авто: {{ [lead.request.brand, lead.request.model]|select|join(' ') or "Не вказано" }}
+Результат пошуку: {{ lead.request.title or "—" }}
+{{ lead.request.description or "Опис не додано" }}</p>
       </div>
     </section>
 
@@ -114,12 +121,6 @@
 
         <div class="actions">
           <div class="actions-row">
-            {% if lead.can_decline %}
-              <form method="post" action="/crm/seller/{{ account.crm_slug }}/leads/{{ lead.request.request_id }}/decline">
-                <input type="hidden" name="next_url" value="{{ request.url.path }}">
-                <button class="btn small ghost" type="submit">Відхилити</button>
-              </form>
-            {% endif %}
             {% if lead.can_archive %}
               <form method="post" action="/crm/seller/{{ account.crm_slug }}/leads/{{ lead.request.request_id }}/archive">
                 <input type="hidden" name="next_url" value="{{ request.url.path }}">
