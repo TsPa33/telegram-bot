@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 MIGRATIONS_DIR = Path(__file__).resolve().parent / "migrations"
 MIGRATION_LOCK_KEY = 2026052002
 BASELINE_CUTOFF = "20260515"
-BASELINE_CORE_TABLES = ("services", "sellers", "buyer_requests", "seller_lead_actions")
+BASELINE_CORE_TABLES = ("services", "sellers", "users", "seller_lead_actions")
 
 
 async def _core_tables_exist(conn) -> bool:
@@ -23,14 +23,6 @@ async def _core_tables_exist(conn) -> bool:
     )
     found = {row["table_name"] for row in rows}
     return all(name in found for name in BASELINE_CORE_TABLES)
-
-
-async def _core_tables_have_data(conn) -> bool:
-    for table_name in BASELINE_CORE_TABLES:
-        has_rows = await conn.fetchval(f"SELECT EXISTS (SELECT 1 FROM {table_name} LIMIT 1)")
-        if has_rows:
-            return True
-    return False
 
 
 def _is_historical_migration(filename: str) -> bool:
@@ -58,11 +50,9 @@ async def run_sql_migrations() -> list[str]:
             files = sorted(path.name for path in MIGRATIONS_DIR.glob("*.sql"))
             migration_count = await conn.fetchval("SELECT COUNT(*)::int FROM schema_migrations")
 
-            if (
-                migration_count == 0
-                and await _core_tables_exist(conn)
-                and await _core_tables_have_data(conn)
-            ):
+            core_tables_exist = await _core_tables_exist(conn)
+
+            if migration_count == 0 and core_tables_exist:
                 historical = [name for name in files if _is_historical_migration(name)]
                 if historical:
                     await conn.executemany(
@@ -81,13 +71,27 @@ async def run_sql_migrations() -> list[str]:
                     filename,
                 )
                 if exists:
+                    logger.info("DB migration decision filename=%s decision=skip reason=already_applied", filename)
                     continue
 
+                if core_tables_exist and _is_historical_migration(filename):
+                    await conn.execute(
+                        "INSERT INTO schema_migrations(filename) VALUES ($1) ON CONFLICT (filename) DO NOTHING",
+                        filename,
+                    )
+                    baselined.append(filename)
+                    logger.info(
+                        "DB migration decision filename=%s decision=baseline reason=historical_migration_on_existing_schema",
+                        filename,
+                    )
+                    continue
+
+                logger.info("DB migration decision filename=%s decision=execute reason=pending", filename)
                 sql = (MIGRATIONS_DIR / filename).read_text(encoding="utf-8")
                 async with conn.transaction():
                     await conn.execute(sql)
                     await conn.execute(
-                        "INSERT INTO schema_migrations(filename) VALUES ($1)",
+                        "INSERT INTO schema_migrations(filename) VALUES ($1) ON CONFLICT (filename) DO NOTHING",
                         filename,
                     )
                 applied.append(filename)
