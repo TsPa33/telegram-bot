@@ -82,6 +82,7 @@ from bot.database.repositories.product_repo import (
     update_product,
     update_product_photo,
 )
+from bot.database.migrations_runner import get_seller_lead_action_constraints
 from bot.database.repositories.seller_lead_repo import (
     cancel_seller_lead_notifications,
     mark_seller_lead_action,
@@ -1719,12 +1720,15 @@ async def _handle_seller_crm_lead_action(
             url=_append_query(redirect_url, {"action_status": _lead_action_notice(action)}),
             status_code=303,
         )
-    except Exception:
+    except Exception as exc:
+        constraints = await get_seller_lead_action_constraints()
         logger.exception(
-            "CRM seller lead action failed seller_id=%s request_id=%s action=%s",
+            "CRM seller lead action failed seller_id=%s request_id=%s action=%s db_constraints=%s exc=%s",
             seller_id,
             parsed_request_id,
             action,
+            constraints,
+            repr(exc),
         )
         return RedirectResponse(
             url=_append_query(redirect_url, {"action_error": "Не вдалося виконати дію. Спробуйте ще раз."}),

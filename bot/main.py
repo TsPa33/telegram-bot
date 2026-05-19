@@ -15,6 +15,7 @@ from bot.config import BOT_TOKEN
 from bot.database.pool import init_pool
 from bot.database import pool as pool_module
 from bot.database.models import create_tables
+from bot.database.migrations_runner import run_sql_migrations
 
 from bot.handlers.start import router as start_router
 from bot.handlers.seller import router as seller_router
@@ -63,6 +64,7 @@ async def run_bot():
 
     await init_pool()
     await create_tables()
+    await run_sql_migrations()
 
     lock_conn = await pool_module.pool.acquire()
     got_lock = await lock_conn.fetchval("SELECT pg_try_advisory_lock($1)", 2026051501)

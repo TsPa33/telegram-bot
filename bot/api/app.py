@@ -15,6 +15,9 @@ from bot.api.crm import router as crm_router
 from bot.api.seller_crm import router as seller_crm_router
 from bot.config import BOT_TOKEN
 
+from bot.database.pool import init_pool
+from bot.database.models import create_tables
+from bot.database.migrations_runner import run_sql_migrations
 from bot.database.repositories.site_repo import get_site_by_subdomain
 from bot.database.repositories.seller_repo import get_seller_by_id
 from bot.database.repositories.car_repo import get_cars_by_seller
@@ -58,6 +61,14 @@ router = APIRouter()
 templates = Jinja2Templates(directory="bot/api/templates")
 bot = Bot(token=BOT_TOKEN)
 logger = logging.getLogger(__name__)
+
+
+
+@app.on_event("startup")
+async def _startup_db():
+    await init_pool()
+    await create_tables()
+    await run_sql_migrations()
 
 MARKETING_TELEGRAM_BOT_URL = "https://t.me/CarPotbot"
 MARKETING_TELEGRAM_SUPPORT_URL = "https://t.me/CarPotbot"
