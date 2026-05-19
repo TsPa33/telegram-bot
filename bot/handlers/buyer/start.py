@@ -6,12 +6,18 @@ from datetime import date, datetime
 
 from aiogram import Router, types, F
 from aiogram.exceptions import TelegramBadRequest
-from aiogram.types import Message
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 
 from bot.database.base import execute, fetch, fetchrow
 from bot.database.repositories.buyer_offer_repo import accept_buyer_offer, list_buyer_offer_cards
+from bot.database.repositories.lead_thread_repo import (
+    LEAD_THREAD_SENDER_BUYER,
+    create_lead_thread_message,
+    get_seller_thread_notification_context,
+    get_thread_context_by_telegram_reply,
+)
 from bot.database.repositories.model_repo import get_brands_with_ids
 from bot.keyboards.brands import brand_kb
 from bot.keyboards.buyer_home import buyer_home_kb
@@ -823,9 +829,11 @@ def _format_offers(offers) -> str:
         if message:
             lines.extend(["", escape(message[:220])])
 
-        contact_lines = _format_seller_contacts(offer)
+        contact_lines = _format_seller_contacts(offer) if is_selected else []
         if contact_lines:
             lines.extend(["", *contact_lines])
+        elif not is_selected:
+            lines.extend(["", "🔒 Контакти відкриються після вибору пропозиції."])
 
         blocks.append("\n".join(lines))
     return "\n\n".join(blocks)
@@ -993,6 +1001,11 @@ async def _send_offer_contacts(callback: types.CallbackQuery, offer_id: int):
         await callback.answer("Відповідь не знайдено", show_alert=True)
         return
 
+    is_selected = offer.get("is_selected_match") or offer.get("status") == "accepted"
+    if not is_selected:
+        await callback.answer("Контакти відкриються після вибору пропозиції", show_alert=True)
+        return
+
     await callback.answer()
     contact_lines = [
         f"🏪 <b>{escape(_offer_seller_name(offer))}</b>",
@@ -1134,6 +1147,77 @@ async def _select_offer(callback: types.CallbackQuery, offer_id: int):
     )
     await _show_buyer_request_details(callback.message, callback.from_user, request_id, page=1)
 
+
+
+def _thread_title(context: dict) -> str:
+    return " ".join(part for part in [context.get("brand"), context.get("model")] if part) or context.get("category") or "заявка CarPot"
+
+
+async def _notify_seller_about_buyer_thread_message(context: dict, message_text: str) -> None:
+    seller_telegram_id = context.get("seller_telegram_id")
+    seller_id = context.get("seller_id")
+    lead_id = context.get("lead_id")
+    if not seller_telegram_id or not seller_id or not lead_id:
+        logger.info("Seller Telegram notification skipped for buyer thread message lead_id=%s seller_id=%s", lead_id, seller_id)
+        return
+
+    crm_url = None
+    try:
+        crm_url = await seller_crm_context_url(int(seller_id), f"/leads/{int(lead_id)}#thread")
+    except Exception as exc:
+        logger.warning("Unable to build CRM thread URL seller_id=%s lead_id=%s: %s", seller_id, lead_id, exc)
+
+    text = "\n".join([
+        "💬 <b>Нове повідомлення від покупця</b>",
+        f"Заявка: {escape(_thread_title(context))}",
+        "",
+        escape((message_text or "").strip()[:700]),
+        "",
+        "Відповідайте з CRM у блоці діалогу.",
+    ])
+    await send_message_to_seller(
+        int(seller_telegram_id),
+        text,
+        parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="Відкрити діалог", url=crm_url)]]) if crm_url else None,
+    )
+
+
+@router.message(F.reply_to_message, F.text)
+async def buyer_telegram_thread_reply(message: types.Message):
+    reply_to = message.reply_to_message
+    if not reply_to or not message.text:
+        return
+
+    context = await get_thread_context_by_telegram_reply(
+        telegram_chat_id=int(message.chat.id),
+        telegram_message_id=int(reply_to.message_id),
+    )
+    if not context:
+        return
+
+    saved = await create_lead_thread_message(
+        lead_id=int(context["lead_id"]),
+        proposal_id=context.get("proposal_id"),
+        sender_role=LEAD_THREAD_SENDER_BUYER,
+        sender_id=message.from_user.id if message.from_user else message.chat.id,
+        message_text=message.text,
+        telegram_chat_id=int(message.chat.id),
+        telegram_message_id=int(message.message_id),
+    )
+    if not saved:
+        await message.answer("Надішліть текст повідомлення, щоб продавець побачив його в CRM.")
+        return
+
+    notify_context = await get_seller_thread_notification_context(
+        lead_id=int(context["lead_id"]),
+        proposal_id=context.get("proposal_id"),
+        seller_id=context.get("seller_id"),
+    )
+    if notify_context:
+        await _notify_seller_about_buyer_thread_message(notify_context, message.text)
+
+    await message.answer("✅ Повідомлення передано продавцю. Відповідь прийде сюди в Telegram.")
 
 @router.callback_query(F.data.startswith("buyer_offer:contact:"))
 async def buyer_offer_contact(callback: types.CallbackQuery):
