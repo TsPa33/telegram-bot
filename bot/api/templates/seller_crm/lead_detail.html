@@ -7,10 +7,11 @@
     .lead-top { display:flex; justify-content:space-between; gap:8px; align-items:flex-start; flex-wrap:wrap; }
     .lead-top-copy { display:grid; gap:2px; }
     .lead-path { color:var(--muted); font-size:12px; font-weight:600; }
+    .lead-kicker { display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:700; color:var(--secondary); }
     .lead-status { color:var(--secondary); font-size:12px; font-weight:700; }
     .lead-main { display:grid; gap:12px; }
     .lead-title { margin:0; font-size:clamp(24px,4vw,34px); line-height:1.1; }
-    .buyer-need { display:grid; gap:6px; border:1px solid rgba(148,163,184,.16); border-radius:14px; padding:12px; background:var(--surface); }
+    .buyer-need { display:grid; gap:6px; border:1px solid rgba(148,163,184,.18); border-radius:14px; padding:12px; background:color-mix(in srgb, var(--surface) 92%, var(--bg)); }
     .section-label { color:var(--muted); font-size:12px; font-weight:700; margin:0; }
     .need-lines { margin:0; white-space:pre-wrap; line-height:1.5; }
     .thread-list { display:grid; gap:8px; max-height:300px; overflow:auto; }
@@ -26,16 +27,18 @@
     .actions { display:grid; gap:8px; margin-top:8px; }
     .actions-row { display:flex; gap:8px; flex-wrap:wrap; }
     .actions-row form { margin:0; }
-    .details-group summary { cursor:pointer; font-weight:700; }
-    .detail-grid { margin-top:10px; display:grid; gap:8px; grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .detail-grid { margin-top:2px; display:grid; gap:8px; grid-template-columns:repeat(2,minmax(0,1fr)); }
     .detail-chip { border:1px solid rgba(148,163,184,.16); border-radius:12px; padding:8px 10px; background:var(--surface); }
     .detail-chip span { display:block; color:var(--muted); font-size:11px; font-weight:700; }
     .detail-chip b { font-size:13px; overflow-wrap:anywhere; }
     @media (max-width:640px){
-      .lead-top { align-items:stretch; }
+      .lead-top { align-items:stretch; gap:6px; }
+      .lead-top-copy { order:-1; }
+      .lead-path { font-size:11px; }
       .actions-row .btn { width:100%; justify-content:center; }
       .actions-row form { width:100%; }
       .detail-grid { grid-template-columns:1fr; }
+      #reply-form { order:1; }
     }
   </style>
 
@@ -50,8 +53,8 @@
     <div class="lead-top">
       <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/leads">Назад</a>
       <div class="lead-top-copy">
-        <div class="lead-path">Покупець очікує відповідь · #{{ lead.request.request_id }}</div>
-        <div class="lead-status">{{ lead.operational_status.label }}</div>
+        <div class="lead-kicker">#{{ lead.request.request_id }} · {{ lead.operational_status.label }}</div>
+        <div class="lead-path">Заявка покупця</div>
       </div>
     </div>
 
@@ -59,10 +62,7 @@
       <h2 class="lead-title">{{ lead.request.title }}</h2>
       <div class="buyer-need">
         <p class="section-label">Потреба покупця:</p>
-        <p class="need-lines">Запит: {{ lead.request.title or "—" }}
-Авто: {{ [lead.request.brand, lead.request.model]|select|join(' ') or "Не вказано" }}
-Результат пошуку: {{ lead.request.title or "—" }}
-{{ lead.request.description or "Опис не додано" }}</p>
+        <p class="need-lines">{{ lead.request.description or lead.request.title or "Опис не додано" }}</p>
       </div>
     </section>
 
@@ -86,7 +86,7 @@
           <p><b>Відповідь надіслана покупцю</b></p>
         {% endif %}
 
-        <h3 class="section-heading" style="margin-top:6px">Діалог:</h3>
+        <h3 id="thread" class="section-heading" style="margin-top:6px">Діалог:</h3>
         {% if lead.thread_messages %}
           <div class="thread-list">
             {% for item in lead.thread_messages %}
@@ -133,20 +133,13 @@
     </section>
 
     <section class="card">
-      <details class="details-group">
-        <summary>Деталі заявки</summary>
-        <div class="detail-grid">
-          <div class="detail-chip"><span>Місто</span><b>{{ lead.request.city or "Не вказано" }}</b></div>
-          <div class="detail-chip"><span>Терміновість</span><b>{{ lead.request.urgency or "Звичайна" }}</b></div>
-          <div class="detail-chip"><span>Категорія</span><b>{{ lead.request.category or "Не вказано" }}</b></div>
-          <div class="detail-chip"><span>Авто</span><b>{{ [lead.request.brand, lead.request.model]|select|join(' ') or "Не вказано" }}</b></div>
-          <div class="detail-chip"><span>Марка</span><b>{{ lead.request.brand or "—" }}</b></div>
-          <div class="detail-chip"><span>Модель</span><b>{{ lead.request.model or "—" }}</b></div>
-          <div class="detail-chip"><span>VIN</span><b>{{ lead.request.vin or "Не вказано" }}</b></div>
-          <div class="detail-chip"><span>Релевантність</span><b>{{ lead.request.match_score if lead.request.match_score is not none else "—" }}</b></div>
-          <div class="detail-chip"><span>Причини збігу</span><b>{{ lead.request.match_reasons_label or "—" }}</b></div>
-        </div>
-      </details>
+      <h2 class="section-heading">Коротко по заявці</h2>
+      <div class="detail-grid">
+        <div class="detail-chip"><span>Авто</span><b>{{ [lead.request.brand, lead.request.model]|select|join(' ') or "Не вказано" }}</b></div>
+        <div class="detail-chip"><span>Місто</span><b>{{ lead.request.city or "Не вказано" }}</b></div>
+        <div class="detail-chip"><span>Терміновість</span><b>{{ lead.request.urgency or "Звичайна" }}</b></div>
+        {% if lead.request.vin %}<div class="detail-chip"><span>VIN</span><b>{{ lead.request.vin }}</b></div>{% endif %}
+      </div>
     </section>
   </div>
 {% endblock %}
