@@ -147,7 +147,7 @@ def demo_categories_kb(back_callback: str = "demo:back"):
         for group_key, group in DEMO_SITE_GROUPS.items()
     ]
 
-    buttons.append([InlineKeyboardButton(text="💳 Замовити сайт", callback_data="site:packages")])
+    buttons.append([InlineKeyboardButton(text="Замовити сайт", callback_data="site:packages")])
     buttons.append([InlineKeyboardButton(text="⬅️ Назад", callback_data=back_callback)])
 
     return InlineKeyboardMarkup(inline_keyboard=buttons)
@@ -165,7 +165,7 @@ def demo_group_kb(group_key: str):
         for demo in group["demos"]
     ]
 
-    buttons.append([InlineKeyboardButton(text="💳 Замовити сайт", callback_data="site:packages")])
+    buttons.append([InlineKeyboardButton(text="Замовити сайт", callback_data="site:packages")])
     buttons.append([InlineKeyboardButton(text="⬅️ Назад", callback_data="demo:sites")])
 
     return InlineKeyboardMarkup(inline_keyboard=buttons)
