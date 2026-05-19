@@ -138,18 +138,22 @@ async def _create_site_payment(message: Message, telegram_id: int, package_key: 
 async def show_packages(message: Message):
     kb = InlineKeyboardBuilder()
 
-    kb.button(text="🚗 1 авто — 99 грн", callback_data="package:1")
-    kb.button(text="🚗 5 авто — 199 грн", callback_data="package:5")
-    kb.button(text="🚗 10 авто — 299 грн", callback_data="package:10")
-    kb.button(text=f"🌐 {format_site_package_title('standard')}", callback_data="buy:site")
-    kb.button(text="💳 Пакети сайтів", callback_data="site:packages")
+    kb.button(text="A) 1 місце — 99 грн", callback_data="package:1")
+    kb.button(text="A) 5 місць — 199 грн", callback_data="package:5")
+    kb.button(text="A) 10 місць — 299 грн", callback_data="package:10")
+    kb.button(text="B) Пакети сайтів", callback_data="site:packages")
     kb.button(text="📊 Історія транзакцій", callback_data="seller:transactions")
 
     kb.adjust(1)
 
     await message.answer(
-        "💳 <b>Пакети послуг</b>\n\n"
-        "Оберіть:",
+        "💳 <b>Магазин / Тарифи</b>\n\n"
+        "<b>A. Місця для авто / товарів</b>\n"
+        "Оберіть 1, 5 або 10 місць.\n\n"
+        "<b>B. Сайт для бізнесу</b>\n"
+        "Відкрийте пакети сайтів та оберіть формат.\n\n"
+        "<b>C. Що входить</b>\n"
+        "сайт • CRM • заявки • Telegram-сповіщення • контакти • товари/послуги • адаптація під бізнес",
         parse_mode="HTML",
         reply_markup=kb.as_markup()
     )

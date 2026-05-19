@@ -107,15 +107,40 @@ def format_site_package_title(package_key: str) -> str:
 
 
 def format_site_packages_text() -> str:
-    sections = ["<b>Пакети сайтів</b>\n\nОберіть формат:"]
+    sections = [
+        "<b>Магазин / Тарифи</b>",
+        "",
+        "<b>A. Місця для авто / товарів</b>",
+        "• 1 місце",
+        "• 5 місць",
+        "• 10 місць",
+        "",
+        "<b>B. Сайт для бізнесу</b>",
+    ]
 
     for package in SITE_PACKAGES.values():
         sections.append(
-            f"<b>{package['title']}</b> — {format_site_package_price(package)}\n"
-            f"{package['description']}"
+            f"<b>{package['title']}</b> — {format_site_package_price(package)}\n{package['description']}"
         )
+        sections.append(f"👉 {package['button_text']}")
+        sections.append("")
 
-    return "\n\n".join(sections)
+    sections.extend(
+        [
+            "<b>C. Що входить</b>",
+            "• сайт",
+            "• CRM для управління",
+            "• заявки",
+            "• Telegram-сповіщення",
+            "• контакти",
+            "• товари / послуги",
+            "• адаптація під бізнес",
+            "",
+            "Після заявки: сайт + CRM + Telegram працюють разом в існуючому процесі без змін оплати.",
+        ]
+    )
+
+    return "\n".join(sections).strip()
 
 
 def get_demo_site_url(subdomain: str) -> str:
