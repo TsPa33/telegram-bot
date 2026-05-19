@@ -148,7 +148,6 @@
               <span class="badge">Статус: {{ lead.status_label }}</span>
               {% if lead.offer_status %}<span class="badge status-replied">Пропозиція: {{ lead.offer_status }}</span>{% endif %}
               {% if lead.price_offer %}<span class="badge">₴ {{ lead.price_offer }}</span>{% endif %}
-              {% if lead.match_score is not none %}<span class="badge">Релевантність {{ lead.match_score }}</span>{% endif %}
               {% if lead.buyer_phone_visible %}<span class="badge status-success">Телефон доступний</span>{% endif %}
             </div>
             {% if lead.offer_message %}<p class="request-desc">Ваша пропозиція: {{ lead.offer_message }}</p>{% endif %}
@@ -167,12 +166,7 @@
                   <button class="btn small ghost" type="submit">Відхилити</button>
                 </form>
               {% endif %}
-              {% if lead.can_skip %}
-                <form method="post" action="/crm/seller/{{ account.crm_slug }}/leads/{{ lead.request_id }}/skip">
-                  <input type="hidden" name="next_url" value="{{ request.url.path }}?status={{ active_status }}">
-                  <button class="btn small ghost" type="submit">Пропустити</button>
-                </form>
-              {% endif %}
+              {% if lead.can_skip %}{% endif %}
             </div>
           </div>
         </article>

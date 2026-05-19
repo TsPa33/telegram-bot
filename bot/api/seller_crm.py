@@ -12,6 +12,7 @@ from typing import Any
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from bot.database.repositories.car_repo import (
     create_seller_car,
@@ -154,6 +155,7 @@ from bot.services.seller_crm import (
 )
 from bot.services.seller_offer_service import submit_seller_offer_from_crm
 from bot.services.telegram_sender import send_message_to_buyer
+from bot.services.buyer_chat_presence import is_buyer_in_chat
 from bot.services.site_config import get_theme_presets, merge_with_default
 from bot.services.storage import upload_image
 
@@ -1839,16 +1841,7 @@ def _crm_thread_title(context: dict[str, Any]) -> str:
 
 
 def _format_seller_thread_reply(context: dict[str, Any], message_text: str) -> str:
-    seller_name = context.get("shop_name") or context.get("seller_name") or "Продавець CarPot"
-    return "\n".join([
-        "💬 <b>Відповідь від продавця</b>",
-        f"🏪 {escape(str(seller_name))}",
-        f"Заявка: {escape(_crm_thread_title(context))}",
-        "",
-        escape(message_text.strip()[:1200]),
-        "",
-        "Щоб відповісти продавцю, надішліть reply на це повідомлення.",
-    ])
+    return "\n".join([escape(message_text.strip()[:1200])])
 
 
 async def _handle_seller_thread_reply(
@@ -1888,11 +1881,18 @@ async def _handle_seller_thread_reply(
     if not context or not context.get("buyer_telegram_id"):
         return RedirectResponse(url=_append_query(redirect_url, {"thread_error": "У покупця немає Telegram для доставки відповіді."}), status_code=303)
 
-    sent = await send_message_to_buyer(
-        int(context["buyer_telegram_id"]),
-        _format_seller_thread_reply(context, cleaned),
-        parse_mode="HTML",
-    )
+    buyer_telegram_id = int(context["buyer_telegram_id"])
+    lead_title = _crm_thread_title(context)
+    notify_text = f"Нове повідомлення по заявці {lead_title}"
+    sent = None
+    if not is_buyer_in_chat(buyer_telegram_id=buyer_telegram_id, lead_id=parsed_request_id):
+        sent = await send_message_to_buyer(
+            buyer_telegram_id,
+            notify_text,
+            reply_markup=InlineKeyboardMarkup(
+                inline_keyboard=[[InlineKeyboardButton(text="Відкрити чат", callback_data=f"buyer_thread:open:{parsed_request_id}")]]
+            ),
+        )
     saved = await create_lead_thread_message(
         lead_id=parsed_request_id,
         proposal_id=parsed_offer_id or context.get("proposal_id"),
