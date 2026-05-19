@@ -1,66 +1,26 @@
 {% extends "seller_crm/base.html" %}
-{% block crm_kicker %}Обліковий запис, тарифи та безпечна історія оплат{% endblock %}
-{% block crm_heading %}Налаштування та тарифи{% endblock %}
+{% block crm_kicker %}Тарифи бізнесу, місця для авто/товарів і безпечна історія оплат{% endblock %}
+{% block crm_heading %}Тарифи{% endblock %}
 {% block content %}
   <section class="workspace-hero" aria-labelledby="settings-title">
     <div>
-      <h2 id="settings-title">Налаштування та тарифи</h2>
-      <p class="section-note">Огляд акаунта, слотів авто, активних пакетів, останніх оплат і статусу сайту без зміни платіжної логіки.</p>
+      <h2 id="settings-title">Тарифи бізнесу</h2>
+      <p class="section-note">Огляд доступних місць, сайт-пакетів, складу пакета та оплат без зміни платіжної логіки.</p>
     </div>
     <span class="pill">{{ "Кабінет активний" if settings.crm_account_status == "active" else "Кабінет неактивний" }}</span>
   </section>
 
   <nav class="section-nav" aria-label="Розділи налаштувань">
-    <a href="#account">Акаунт</a>
-    <a href="#packages">Пакети</a>
-    <a href="#garage">Слоти авто</a>
+    <a href="#slots">Місця / слоти</a>
+    <a href="#websites">Сайт для бізнесу</a>
+    <a href="#website-includes">Що входить у сайт</a>
     <a href="#payments">Оплати</a>
-    <a href="#telegram">Telegram</a>
   </nav>
 
-  <section id="account" class="grid two section-group" aria-labelledby="account-title">
+  <section id="slots" class="grid two secondary-section" aria-labelledby="slots-title">
     <article class="card">
-      <h2 id="account-title">Акаунт</h2>
-      <p class="section-note">Базова інформація кабінету продавця.</p>
-      <div class="cards-list">
-        <div class="mini-card">
-          <div class="mini-card-content">
-            <div class="mini-card-title"><b>Адреса кабінету</b><span class="badge">{{ settings.crm_slug or account.crm_slug }}</span></div>
-            <p class="muted">/crm/seller/{{ settings.crm_slug or account.crm_slug }}</p>
-          </div>
-        </div>
-        <div class="mini-card">
-          <div class="mini-card-content">
-            <div class="mini-card-title">
-              <b>Стан акаунта</b>
-              <span class="badge {{ 'status-success' if settings.crm_account_status == 'active' else 'status-rejected' }}">
-                {{ "Активний" if settings.crm_account_status == "active" else "Неактивний" }}
-              </span>
-            </div>
-            <p class="muted">Кабінет увімкнено: {{ "так" if settings.crm_enabled else "ні" }}</p>
-          </div>
-        </div>
-        <div class="mini-card">
-          <div class="mini-card-content">
-            <div class="mini-card-title"><b>Дата створення</b></div>
-            <p class="muted">{{ settings.account_created_at.strftime("%d.%m.%Y %H:%M") if settings.account_created_at else "—" }}</p>
-          </div>
-        </div>
-      </div>
-    </article>
-
-    <aside class="card" aria-labelledby="seller-title">
-      <h2 id="seller-title">Дані бізнесу</h2>
-      <p><b>{{ settings.seller.shop_name or settings.seller.name or account.shop_name or account.name or account.crm_slug }}</b></p>
-      <p class="muted">{{ settings.seller.city or "Місто не вказано" }}</p>
-      {% if settings.seller.website %}<p><a href="{{ settings.seller.website }}" target="_blank" rel="noopener">{{ settings.seller.website }}</a></p>{% endif %}
-    </aside>
-  </section>
-
-  <section id="packages" class="grid two secondary-section" aria-labelledby="packages-title">
-    <article class="card">
-      <h2 id="packages-title">Пакети та слоти авто</h2>
-      <p class="section-note">Поточний стан пакетів і місць для авто без зміни платіжної логіки.</p>
+      <h2 id="slots-title">Місця для авто / товарів</h2>
+      <p class="section-note">Доступні варіанти: 1 місце, 5 місць, 10 місць.</p>
       {% if settings.active_paid_seller_subscriptions %}
         <div class="cards-list">
           {% for package in settings.active_paid_seller_subscriptions %}
@@ -78,7 +38,7 @@
     </article>
 
     <article id="garage" class="card" aria-labelledby="garage-title">
-      <h2 id="garage-title">Слоти авто</h2>
+      <h2 id="garage-title">Місця / слоти</h2>
       {% if settings.garage_slots_available %}
         <div class="grid kpi-cards">
           <div>
@@ -98,6 +58,75 @@
         <div class="empty-state">Дані гаражних слотів недоступні. Активних авто: {{ settings.active_cars_count or settings.used_garage_slots or 0 }}.</div>
       {% endif %}
     </article>
+  </section>
+
+  <section id="websites" class="grid two secondary-section" aria-labelledby="websites-title">
+    <article class="card" aria-labelledby="website-standard-title">
+      <h2 id="websites-title">Сайт для бізнесу</h2>
+      <div class="cards-list">
+        <div class="mini-card">
+          <div class="mini-card-content">
+            <div class="mini-card-title"><b id="website-standard-title">Сайт Стандарт — 499 грн</b></div>
+            <p class="muted">Готовий шаблон:</p>
+            <ul>
+              <li>послуги</li>
+              <li>контакти</li>
+              <li>карта</li>
+              <li>кнопка дзвінка</li>
+              <li>CRM система для управління</li>
+            </ul>
+            <a class="btn small" href="#payments">Замовити сайт Стандарт</a>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <article class="card" aria-labelledby="website-plus-title">
+      <div class="cards-list">
+        <div class="mini-card">
+          <div class="mini-card-content">
+            <div class="mini-card-title"><b id="website-plus-title">Сайт Візитка Plus — 1499 грн</b></div>
+            <p class="muted">Унікальний дизайн +:</p>
+            <ul>
+              <li>банери</li>
+              <li>послуги</li>
+              <li>додаткові модулі</li>
+              <li>адаптація під ваш бізнес</li>
+              <li>CRM система для управління</li>
+            </ul>
+            <a class="btn small" href="#payments">Замовити сайт Візитка Plus</a>
+          </div>
+        </div>
+        <div class="mini-card">
+          <div class="mini-card-content">
+            <div class="mini-card-title"><b>Індивідуальний сайт — від 3999 грн</b></div>
+            <p class="muted">Індивідуальне рішення:</p>
+            <ul>
+              <li>стиль і структура</li>
+              <li>каталог товарів</li>
+              <li>банери та галереї</li>
+              <li>тексти</li>
+              <li>підготовка під рекламу</li>
+              <li>CRM система для управління</li>
+            </ul>
+            <a class="btn small" href="#payments">Замовити індивідуальний сайт</a>
+          </div>
+        </div>
+      </div>
+    </article>
+  </section>
+
+  <section id="website-includes" class="card secondary-section" aria-labelledby="website-includes-title">
+    <h2 id="website-includes-title">Що входить у сайт</h2>
+    <ul>
+      <li>сайт</li>
+      <li>CRM для управління</li>
+      <li>заявки</li>
+      <li>Telegram-сповіщення</li>
+      <li>контакти</li>
+      <li>товари / послуги</li>
+      <li>адаптація під бізнес</li>
+    </ul>
   </section>
 
   <section id="payments" class="card secondary-section" aria-labelledby="payments-title">
@@ -123,20 +152,4 @@
     {% endif %}
   </section>
 
-  {% if settings.site %}
-    <section id="website-status" class="card secondary-section" aria-labelledby="website-title">
-      <h2 id="website-title">Стан сайту</h2>
-      <p><span class="badge {{ 'status-success' if settings.site.status == 'active' else 'status-waiting' }}">{{ settings.site.status or "чернетка" }}</span></p>
-      <p class="muted">Піддомен: <b>{{ settings.site.subdomain or "—" }}</b></p>
-      {% if settings.custom_domain %}<p class="muted">Власний домен: <b>{{ settings.custom_domain }}</b></p>{% endif %}
-      <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/website">Керувати сайтом</a>
-    </section>
-  {% endif %}
-
-  <section id="telegram" class="card secondary-section" aria-labelledby="telegram-title">
-    <h2 id="telegram-title">Telegram</h2>
-    <p>Telegram ID: <b>{{ settings.seller.telegram_id or "—" }}</b></p>
-    <p>Username: <b>{% if settings.seller.username %}@{{ settings.seller.username }}{% else %}—{% endif %}</b></p>
-    <p class="section-note">Сповіщення та швидкі дії керуються через Telegram-бот.</p>
-  </section>
 {% endblock %}
