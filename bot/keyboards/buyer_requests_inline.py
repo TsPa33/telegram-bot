@@ -64,8 +64,8 @@ def buyer_offer_created_notification_kb(request_id: int) -> InlineKeyboardMarkup
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="📋 Переглянути заявку",
-                    callback_data=f"{BUYER_REQUESTS_NAMESPACE}:open:{request_id}:1",
+                    text="💬 Відкрити чат",
+                    callback_data=f"buyer_thread:open:{request_id}",
                 )
             ],
             [InlineKeyboardButton(text="🔎 Новий пошук", callback_data="buyer:find")],

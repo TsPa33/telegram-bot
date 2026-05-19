@@ -45,6 +45,7 @@ from bot.services.buyer_request_service import (
 )
 from bot.services.seller_notification_ops import format_accepted_offer_notification, seller_crm_context_url
 from bot.services.telegram_sender import send_message_to_seller
+from bot.services.buyer_chat_presence import set_active_buyer_chat
 
 from bot.keyboards.main_menu import main_menu_kb
 
@@ -445,7 +446,80 @@ async def buyer_find_handler(callback: types.CallbackQuery, state: FSMContext):
 @router.callback_query(F.data == "buyer:history")
 async def buyer_history_handler(callback: types.CallbackQuery):
     await callback.answer()
-    await callback.message.answer("Історія пошуку буде доступна незабаром.")
+    requests, _ = await _list_own_marketplace_requests(callback.from_user, page=1)
+    if not requests:
+        await callback.message.answer("🕘 Історія запитів порожня.")
+        return
+    lines = ["🕘 <b>Історія запитів</b>", ""]
+    for request in requests[:12]:
+        lines.append(
+            f"• <b>{escape(_request_title(request))}</b> — {escape(_status_label(request.get('marketplace_status') or request.get('status')))}"
+        )
+    await callback.message.answer("\n".join(lines), parse_mode="HTML")
+
+
+def _buyer_chat_list_kb(chats: list[dict]) -> InlineKeyboardMarkup:
+    rows = []
+    for chat in chats[:12]:
+        unread = int(chat.get("unread_count") or 0)
+        suffix = f" ({unread})" if unread > 0 else ""
+        rows.append([
+            InlineKeyboardButton(
+                text=f"💬 {str(chat.get('title') or 'Заявка')[:32]}{suffix}",
+                callback_data=f"buyer_thread:open:{chat['lead_id']}",
+            )
+        ])
+    rows.append([InlineKeyboardButton(text="🕘 Історія запитів", callback_data="buyer:history")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+async def _list_buyer_chats(user: types.User):
+    telegram_key = _buyer_telegram_key(user)
+    return await fetch(
+        """
+        SELECT br.id AS lead_id,
+               COALESCE(NULLIF(br.brand, ''), NULLIF(br.model, ''), 'Заявка CarPot') AS title,
+               COALESCE(last_msg.message_text, '') AS last_message,
+               COALESCE(unread.unread_count, 0)::int AS unread_count
+        FROM buyer_requests br
+        LEFT JOIN LATERAL (
+            SELECT message_text, created_at
+            FROM lead_thread_messages
+            WHERE lead_id = br.id
+            ORDER BY created_at DESC, id DESC
+            LIMIT 1
+        ) last_msg ON TRUE
+        LEFT JOIN LATERAL (
+            SELECT COUNT(*)::int AS unread_count
+            FROM lead_thread_messages
+            WHERE lead_id = br.id
+              AND sender_role = 'seller'
+              AND read_state = 'unread'
+        ) unread ON TRUE
+        WHERE br.entity_type = 'marketplace_request'
+          AND (br.telegram_id = $1 OR ($2::text IS NOT NULL AND br.buyer_telegram = $2))
+          AND last_msg.message_text IS NOT NULL
+        ORDER BY last_msg.created_at DESC NULLS LAST, br.created_at DESC
+        """,
+        user.id,
+        telegram_key,
+    )
+
+
+@router.callback_query(F.data == "buyer:messages")
+async def buyer_messages_entry(callback: types.CallbackQuery):
+    await callback.answer()
+    chats = await _list_buyer_chats(callback.from_user)
+    if not chats:
+        await callback.message.answer("💬 Мої повідомлення\n\nПоки що діалогів немає.", reply_markup=buyer_home_kb())
+        return
+    text = "💬 <b>Мої повідомлення</b>\n\n"
+    for item in chats[:12]:
+        preview = _clean_text(item.get("last_message"), "—")[:70]
+        unread = int(item.get("unread_count") or 0)
+        badge = f" 🔴 {unread}" if unread else ""
+        text += f"• <b>{escape(item.get('title') or 'Заявка')}</b>{badge}\n{escape(preview)}\n\n"
+    await callback.message.answer(text, parse_mode="HTML", reply_markup=_buyer_chat_list_kb(chats))
 
 
 @router.callback_query(F.data == "buyer_ai:details")
@@ -1218,6 +1292,39 @@ async def buyer_telegram_thread_reply(message: types.Message):
         await _notify_seller_about_buyer_thread_message(notify_context, message.text)
 
     await message.answer("✅ Повідомлення передано продавцю. Відповідь прийде сюди в Telegram.")
+
+
+@router.callback_query(F.data.startswith("buyer_thread:open:"))
+async def buyer_thread_open(callback: types.CallbackQuery):
+    lead_id = int((callback.data or "").split(":")[2])
+    request = await _get_own_marketplace_request(lead_id, callback.from_user)
+    if not request:
+        await callback.answer("Чат не знайдено", show_alert=True)
+        return
+    set_active_buyer_chat(buyer_telegram_id=int(callback.from_user.id), lead_id=lead_id)
+    await execute(
+        "UPDATE lead_thread_messages SET read_state='read' WHERE lead_id=$1 AND sender_role='seller'",
+        lead_id,
+    )
+    rows = await fetch(
+        """
+        SELECT sender_role, message_text, created_at
+        FROM lead_thread_messages
+        WHERE lead_id=$1
+        ORDER BY created_at ASC, id ASC
+        LIMIT 50
+        """,
+        lead_id,
+    )
+    lines = [f"💬 <b>{escape(_request_title(request))}</b>", ""]
+    for item in rows:
+        role = "Покупець" if item.get("sender_role") == "buyer" else "Продавець"
+        ts = item.get("created_at")
+        at = ts.strftime("%d.%m %H:%M") if ts else "—"
+        lines.extend([f"<b>{role}</b> · {at}", escape(_clean_text(item.get("message_text"))), ""])
+    lines.append("Щоб відповісти, просто надішліть повідомлення у цей чат reply на будь-яке повідомлення продавця.")
+    await callback.answer()
+    await callback.message.answer("\n".join(lines), parse_mode="HTML")
 
 @router.callback_query(F.data.startswith("buyer_offer:contact:"))
 async def buyer_offer_contact(callback: types.CallbackQuery):
