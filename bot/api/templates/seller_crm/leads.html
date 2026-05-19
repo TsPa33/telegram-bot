@@ -3,7 +3,7 @@
 {% block crm_heading %}Нові заявки{% endblock %}
 {% block content %}
   <style>
-    .leads-toolbar { display: grid; gap: 8px; margin-bottom: 10px; }
+    .leads-toolbar { display: grid; gap: 6px; margin-bottom: 8px; }
 
     .lead-tabs {
       display: flex;
@@ -24,7 +24,7 @@
       background: var(--surface);
       color: var(--text);
       text-decoration: none;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 600;
       white-space: nowrap;
     }
@@ -35,16 +35,16 @@
       border-color: rgba(56,189,248,.14);
     }
 
-    .lead-card-meta { display:flex; gap:6px; flex-wrap:wrap; color:var(--muted); font-size:11px; font-weight:600; }
+    .lead-card-meta { display:flex; gap:5px; flex-wrap:wrap; color:var(--muted); font-size:11px; font-weight:600; }
 
-    .lead-card-footer { display:grid; gap:6px; }
+    .lead-card-footer { display:grid; gap:5px; }
 
     .lead-next-action {
       display: flex;
       gap: 8px;
       align-items: center;
       flex-wrap: wrap;
-      padding: 6px 8px;
+      padding: 5px 7px;
       border: 1px solid var(--line-quiet);
       border-radius: var(--radius-sm);
       background: rgba(56,189,248,.045);
@@ -111,16 +111,15 @@
             <span class="badge {{ lead.status_class }}">{{ lead.status_label }}</span>
           </div>
 
-          <p class="request-desc">{{ lead.short_description }}</p>
+          <p class="request-desc">{{ lead.short_description|truncate(120, True, "…") }}</p>
 
           <div class="lead-card-footer">
             <div class="lead-next-action">
               <span class="badge {{ lead.attention_class }}">{{ lead.attention_label }}</span>
               <span>{{ lead.next_action_label }}</span>
             </div>
-            {% if lead.offer_message %}<p class="request-desc">Ваша пропозиція: {{ lead.offer_message }}</p>{% endif %}
             <div class="lead-inline-actions">
-              <a class="btn small" href="/crm/seller/{{ account.crm_slug }}/leads/{{ lead.request_id }}">{{ lead.next_action_label }}</a>
+              <a class="btn small" href="/crm/seller/{{ account.crm_slug }}/leads/{{ lead.request_id }}">{% if lead.operational_status and lead.operational_status.key == "waiting_seller" %}Відповісти{% elif lead.operational_status and lead.operational_status.key == "dialog_active" %}Відкрити чат{% elif lead.operational_status and lead.operational_status.key == "offer_sent" %}Очікує покупця{% else %}{{ lead.next_action_label }}{% endif %}</a>
             </div>
           </div>
         </article>

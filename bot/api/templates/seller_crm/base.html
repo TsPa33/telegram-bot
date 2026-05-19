@@ -230,7 +230,7 @@
         .nav-accordion {
             border: 1px solid rgba(148,163,184,.12);
             border-radius: var(--radius-sm);
-            background: rgba(231,238,247,.02);
+            background: var(--surface);
             overflow: hidden;
         }
 
@@ -691,7 +691,7 @@
             border: 1px solid rgba(251,113,133,.35);
             color: #F5C7CF;
             background: rgba(251,113,133,.09);
-            padding: 12px;
+            padding: 10px 12px;
             border-radius: var(--radius-sm);
         }
 
@@ -699,7 +699,7 @@
             border: 1px solid rgba(56,189,248,.28);
             color: #B5E8F0;
             background: rgba(56,189,248,.08);
-            padding: 12px;
+            padding: 10px 12px;
             border-radius: var(--radius-sm);
         }
 
@@ -727,10 +727,12 @@
         .workspace-hero {
             display: grid;
             grid-template-columns: minmax(0,1fr) auto;
-            gap: 10px;
+            gap: 8px;
             align-items: center;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
         }
+
+        .crm-compact-hero h2 { margin-bottom: 1px; }
 
         .workspace-hero h2 {
             margin: 0 0 4px;
@@ -975,10 +977,10 @@
             min-width: 0;
             border: 1px solid var(--line);
             border-radius: var(--radius-sm);
-            padding: 9px 10px;
+            padding: 8px 9px;
             background: var(--surface);
             display: grid;
-            gap: 6px;
+            gap: 5px;
         }
 
         .request-card.needs-attention {
@@ -1050,7 +1052,7 @@
         .secondary-section { margin-top: 14px; }
 
         .section-note {
-            margin: 0 0 8px;
+            margin: 0 0 6px;
             color: var(--muted);
             line-height: 1.35;
             font-size: 13px;
@@ -1633,7 +1635,7 @@
         }
 
         @media (max-width:720px) {
-            .content { padding: 12px 10px 24px; }
+            .content { padding: 10px 9px 20px; }
 
             .form-grid,
             .theme-grid,
@@ -1863,8 +1865,8 @@
     <main class="main">
         <header class="top">
             <div>
-                <p class="kicker">{% block crm_kicker %}Робочий простір продавця{% endblock %}</p>
-                <h1>{% block crm_heading %}Робочий простір CarPot{% endblock %}</h1>
+                <p class="kicker" style="opacity:.78;font-size:10px">{% block crm_kicker %}Робочий простір продавця{% endblock %}</p>
+                <h1 style="margin:0">{% block crm_heading %}Робочий простір CarPot{% endblock %}</h1>
             </div>
 
             <div class="top-actions">

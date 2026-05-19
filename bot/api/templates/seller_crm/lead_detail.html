@@ -3,15 +3,15 @@
 {% block crm_heading %}{{ lead.request.title }}{% endblock %}
 {% block content %}
   <style>
-    .lead-page { display:grid; gap:10px; }
+    .lead-page { display:grid; gap:8px; }
     .lead-top { display:flex; justify-content:space-between; gap:8px; align-items:flex-start; flex-wrap:wrap; }
     .lead-top-copy { display:grid; gap:2px; }
     .lead-path { color:var(--muted); font-size:12px; font-weight:600; }
     .lead-kicker { display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:700; color:var(--secondary); }
     .lead-status { color:var(--secondary); font-size:12px; font-weight:700; }
     .lead-main { display:grid; gap:12px; }
-    .lead-title { margin:0; font-size:clamp(24px,4vw,34px); line-height:1.1; }
-    .buyer-need { display:grid; gap:6px; border:1px solid rgba(148,163,184,.18); border-radius:14px; padding:12px; background:color-mix(in srgb, var(--surface) 92%, var(--bg)); }
+    .lead-title { margin:0; font-size:clamp(20px,3.4vw,28px); line-height:1.15; }
+    .buyer-need { display:grid; gap:5px; border:1px solid rgba(148,163,184,.18); border-radius:12px; padding:10px; background:var(--surface); }
     .section-label { color:var(--muted); font-size:12px; font-weight:700; margin:0; }
     .need-lines { margin:0; white-space:pre-wrap; line-height:1.5; }
     .thread-list { display:grid; gap:8px; max-height:300px; overflow:auto; }
@@ -24,7 +24,7 @@
     .form-stack label { display:grid; gap:6px; font-size:13px; font-weight:700; color:var(--secondary); }
     .form-stack input, .form-stack textarea { width:100%; border:1px solid rgba(148,163,184,.22); border-radius:12px; background:var(--surface); color:var(--text); padding:10px 12px; font:inherit; }
     .form-stack textarea { min-height:100px; resize:vertical; }
-    .actions { display:grid; gap:8px; margin-top:8px; }
+    .actions { display:grid; gap:6px; margin-top:6px; }
     .actions-row { display:flex; gap:8px; flex-wrap:wrap; }
     .actions-row form { margin:0; }
     .detail-grid { margin-top:2px; display:grid; gap:8px; grid-template-columns:repeat(2,minmax(0,1fr)); }
@@ -133,13 +133,15 @@
     </section>
 
     <section class="card">
-      <h2 class="section-heading">Коротко по заявці</h2>
-      <div class="detail-grid">
-        <div class="detail-chip"><span>Авто</span><b>{{ [lead.request.brand, lead.request.model]|select|join(' ') or "Не вказано" }}</b></div>
-        <div class="detail-chip"><span>Місто</span><b>{{ lead.request.city or "Не вказано" }}</b></div>
-        <div class="detail-chip"><span>Терміновість</span><b>{{ lead.request.urgency or "Звичайна" }}</b></div>
-        {% if lead.request.vin %}<div class="detail-chip"><span>VIN</span><b>{{ lead.request.vin }}</b></div>{% endif %}
-      </div>
+      <details>
+        <summary class="section-heading" style="cursor:pointer;list-style:none">Деталі заявки</summary>
+        <div class="detail-grid">
+          <div class="detail-chip"><span>Авто</span><b>{{ [lead.request.brand, lead.request.model]|select|join(' ') or "Не вказано" }}</b></div>
+          <div class="detail-chip"><span>Місто</span><b>{{ lead.request.city or "Не вказано" }}</b></div>
+          <div class="detail-chip"><span>Терміновість</span><b>{{ lead.request.urgency or "Звичайна" }}</b></div>
+          {% if lead.request.vin %}<div class="detail-chip"><span>VIN</span><b>{{ lead.request.vin }}</b></div>{% endif %}
+        </div>
+      </details>
     </section>
   </div>
 {% endblock %}
