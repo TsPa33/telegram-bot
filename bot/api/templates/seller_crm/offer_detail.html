@@ -133,6 +133,15 @@
       overflow-wrap: anywhere;
     }
 
+    .thread-list { display:grid; gap:8px; max-height:360px; overflow:auto; }
+    .thread-message { display:grid; gap:4px; width:min(86%, 620px); padding:10px 12px; border:1px solid rgba(148,163,184,.14); border-radius:14px; background:rgba(10,22,40,.34); }
+    .thread-message.seller { margin-left:auto; border-color:rgba(34,211,238,.2); background:rgba(34,211,238,.08); }
+    .thread-message.buyer { margin-right:auto; border-color:rgba(125,211,176,.22); background:rgba(125,211,176,.07); }
+    .thread-meta { display:flex; justify-content:space-between; gap:8px; color:var(--muted); font-size:11px; font-weight:700; }
+    .thread-text { margin:0; color:var(--text); line-height:1.45; white-space:pre-wrap; overflow-wrap:anywhere; }
+    .thread-reply-form { display:grid; gap:8px; margin-top:12px; }
+    .thread-reply-form textarea { width:100%; min-height:82px; resize:vertical; border:1px solid rgba(148,163,184,.2); border-radius:13px; background:rgba(10,22,40,.5); color:var(--text); padding:11px 12px; font:inherit; font-weight:600; }
+
     .timeline-list {
       list-style: none;
       padding: 0;
@@ -253,6 +262,30 @@
             <a class="btn" href="/crm/seller/{{ account.crm_slug }}/leads/{{ offer_detail.request.request_id }}">Відкрити заявку покупця</a>
             <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/offers">Назад до пропозицій</a>
           </div>
+        </section>
+
+        <section id="thread" class="card" aria-labelledby="thread-title">
+          <h2 id="thread-title" class="section-heading">Діалог</h2>
+          {% if offer_detail.thread_messages %}
+            <div class="thread-list" aria-label="Історія діалогу">
+              {% for item in offer_detail.thread_messages %}
+                <article class="thread-message {{ item.sender_role }}">
+                  <div class="thread-meta">
+                    <span>{{ item.sender_label }}</span>
+                    <span>{{ item.created_at.strftime("%d.%m %H:%M") if item.created_at else "—" }}</span>
+                  </div>
+                  <p class="thread-text">{{ item.message_text }}</p>
+                </article>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="empty-state">Діалог ще порожній.</div>
+          {% endif %}
+          <form class="thread-reply-form" method="post" action="/crm/seller/{{ account.crm_slug }}/offers/{{ offer_detail.offer.offer_id }}/thread">
+            <input type="hidden" name="request_id" value="{{ offer_detail.request.request_id }}">
+            <textarea name="message" maxlength="2000" required placeholder="Коротка відповідь покупцю — вона піде в Telegram."></textarea>
+            <button class="btn small" type="submit">Надіслати в Telegram</button>
+          </form>
         </section>
 
         <section class="card compact-request" aria-labelledby="request-title">

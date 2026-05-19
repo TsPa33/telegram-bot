@@ -10,6 +10,12 @@ from bot.domain.statuses import (
     SELLER_LEAD_ACTION_OFFERED,
 )
 from bot.database.base import fetchrow
+from bot.database.repositories.lead_thread_repo import (
+    LEAD_THREAD_READ_READ,
+    LEAD_THREAD_SENDER_SELLER,
+    attach_telegram_delivery_to_thread_message,
+    create_lead_thread_message,
+)
 from bot.database.repositories.seller_lead_repo import (
     create_seller_offer,
     ensure_buyer_offer_created_event,
@@ -180,13 +186,28 @@ async def _notify_buyer_about_offer(*, request_id: int, seller_id: int, offer: d
         await mark_marketplace_notification_event(event.get("id"), status=NOTIFICATION_STATUS_FAILED)
         return NOTIFICATION_STATUS_FAILED
 
+    notification_text = _format_buyer_offer_notification(context)
     sent = await send_message_to_buyer(
         int(buyer_telegram_id),
-        _format_buyer_offer_notification(context),
+        notification_text,
         parse_mode="HTML",
         reply_markup=buyer_offer_created_notification_kb(request_id),
     )
     if sent:
+        thread_message = await create_lead_thread_message(
+            lead_id=request_id,
+            proposal_id=int(offer_id),
+            sender_role=LEAD_THREAD_SENDER_SELLER,
+            sender_id=seller_id,
+            message_text=context.get("message") or notification_text,
+            read_state=LEAD_THREAD_READ_READ,
+        )
+        if thread_message:
+            await attach_telegram_delivery_to_thread_message(
+                message_id=int(thread_message["id"]),
+                telegram_chat_id=int(buyer_telegram_id),
+                telegram_message_id=int(sent.message_id),
+            )
         await mark_marketplace_notification_event(event.get("id"), status=NOTIFICATION_STATUS_SENT)
         logger.info(
             "Buyer notified about CRM seller offer buyer_telegram_id=%s request_id=%s offer_id=%s",

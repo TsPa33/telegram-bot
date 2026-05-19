@@ -4,12 +4,14 @@ SELLER_LEAD_ACTION_VIEWED = "viewed"
 SELLER_LEAD_ACTION_SKIPPED = "skipped"
 SELLER_LEAD_ACTION_OFFERED = "offered"
 SELLER_LEAD_ACTION_DECLINED = "declined"
+SELLER_LEAD_ACTION_ARCHIVED = "archived"
 
 SELLER_LEAD_ACTIONS = {
     "viewed",
     "skipped",
     "offered",
     "declined",
+    "archived",
 }
 
 BUYER_OFFER_STATUS_PENDING = "pending"
@@ -64,6 +66,7 @@ CRM_LEAD_STATUS_REPLIED = "replied"
 CRM_LEAD_STATUS_SELECTED = "selected"
 CRM_LEAD_STATUS_DECLINED = "declined"
 CRM_LEAD_STATUS_SKIPPED = "skipped"
+CRM_LEAD_STATUS_ARCHIVED = "archived"
 
 CRM_LEAD_STATUSES = {
     "new",
@@ -72,6 +75,7 @@ CRM_LEAD_STATUSES = {
     "selected",
     "declined",
     "skipped",
+    "archived",
 }
 
 CRM_OFFER_STATUS_ACTIVE = "active"
@@ -126,6 +130,7 @@ _CRM_LEAD_STATUS_META = {
     CRM_LEAD_STATUS_SELECTED: {"label": "Обрано покупцем", "css_class": "status-success", "priority": 40},
     CRM_LEAD_STATUS_DECLINED: {"label": "Відхилено", "css_class": "status-rejected", "priority": 50},
     CRM_LEAD_STATUS_SKIPPED: {"label": "Пропущено", "css_class": "status-rejected", "priority": 60},
+    CRM_LEAD_STATUS_ARCHIVED: {"label": "Архів", "css_class": "status-viewed", "priority": 70},
 }
 
 _CRM_OFFER_STATUS_META = {

@@ -6,6 +6,7 @@ import tempfile
 from datetime import datetime, timedelta
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 from pathlib import Path
+from html import escape
 from typing import Any
 
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
@@ -62,6 +63,15 @@ from bot.database.repositories.seller_crm_repo import (
     update_seller_crm_car,
     update_seller_crm_car_photo,
 )
+from bot.database.repositories.lead_thread_repo import (
+    LEAD_THREAD_READ_READ,
+    LEAD_THREAD_SENDER_SELLER,
+    attach_telegram_delivery_to_thread_message,
+    create_lead_thread_message,
+    get_buyer_thread_delivery_context,
+    list_lead_thread_messages,
+    mark_lead_thread_messages_read,
+)
 from bot.database.repositories.product_repo import (
     create_product,
     get_product_by_id,
@@ -101,6 +111,7 @@ from bot.domain.statuses import (
     CRM_LEAD_STATUS_REPLIED,
     CRM_LEAD_STATUS_SELECTED,
     CRM_LEAD_STATUS_SKIPPED,
+    CRM_LEAD_STATUS_ARCHIVED,
     CRM_LEAD_STATUSES,
     CRM_OFFER_STATUS_ACTIVE,
     CRM_OFFER_STATUS_ALL,
@@ -115,6 +126,7 @@ from bot.domain.statuses import (
     NOTIFICATION_STATUS_PENDING,
     NOTIFICATION_STATUS_SENT,
     SELLER_LEAD_ACTION_DECLINED,
+    SELLER_LEAD_ACTION_ARCHIVED,
     SELLER_LEAD_ACTION_OFFERED,
     SELLER_LEAD_ACTION_SKIPPED,
     SELLER_LEAD_ACTION_VIEWED,
@@ -141,6 +153,7 @@ from bot.services.seller_crm import (
     verify_crm_password,
 )
 from bot.services.seller_offer_service import submit_seller_offer_from_crm
+from bot.services.telegram_sender import send_message_to_buyer
 from bot.services.site_config import get_theme_presets, merge_with_default
 from bot.services.storage import upload_image
 
@@ -159,6 +172,7 @@ LEAD_STATUS_TABS = [
     {"key": CRM_LEAD_STATUS_SELECTED, "label": "Обрані покупцем", "empty": "Покупці ще не обрали ваші пропозиції."},
     {"key": CRM_LEAD_STATUS_DECLINED, "label": "Відхилені", "empty": "Відхилених заявок немає."},
     {"key": CRM_LEAD_STATUS_SKIPPED, "label": "Пропущені", "empty": "Пропущених заявок немає."},
+    {"key": CRM_LEAD_STATUS_ARCHIVED, "label": "Архів", "empty": "Архів заявок порожній."},
 ]
 ALLOWED_LEAD_STATUSES = CRM_LEAD_STATUSES
 
@@ -344,6 +358,7 @@ def _lead_action_notice(action: str) -> str:
         SELLER_LEAD_ACTION_DECLINED: "Заявку відхилено для вашого робочого простору.",
         SELLER_LEAD_ACTION_SKIPPED: "Заявку пропущено для вашого робочого простору.",
         "reopened": "Заявку повернуто в роботу.",
+        SELLER_LEAD_ACTION_ARCHIVED: "Заявку закрито й перенесено в архів.",
     }.get(action, "Дію виконано.")
 
 
@@ -858,6 +873,9 @@ def _prepare_lead_detail(detail: dict[str, Any] | None) -> dict[str, Any] | None
     seller_state = {**prepared.get("seller_state", {})}
     offer = prepared.get("offer")
     marketplace = {**prepared.get("marketplace", {})}
+    thread_messages = [dict(message) for message in prepared.get("thread_messages", [])]
+    prepared["thread_messages"] = thread_messages
+    prepared["has_thread"] = bool(thread_messages or offer or marketplace.get("is_selected"))
 
     request_data["title"] = request_data.get("title") or _request_title(request_data)
     request_data["description"] = request_data.get("description") or "Покупець не додав детальний опис."
@@ -908,6 +926,7 @@ def _prepare_lead_detail(detail: dict[str, Any] | None) -> dict[str, Any] | None
     prepared["selected_other_seller"] = selected_other_seller
     prepared["has_existing_offer"] = bool(offer)
     prepared["may_respond"] = not selected_other_seller and not selected_this_seller and not request_closed and not blocked_by_seller_action
+    prepared["can_archive"] = seller_status != "archived"
     if selected_this_seller:
         prepared["response_block_reason"] = "Покупець обрав вашу пропозицію."
     elif selected_other_seller:
@@ -999,6 +1018,7 @@ def _prepare_offer_detail(detail: dict[str, Any] | None) -> dict[str, Any] | Non
     prepared = {**detail}
     offer = {**prepared.get("offer", {})}
     request_data = {**prepared.get("request", {})}
+    prepared["thread_messages"] = [dict(message) for message in prepared.get("thread_messages", [])]
     selection = {**prepared.get("selection", {})}
 
     request_data["title"] = request_data.get("title") or _request_title(request_data)
@@ -1508,6 +1528,8 @@ async def seller_crm_marketplace_leads(
     status: str = "new",
     action_status: str | None = None,
     action_error: str | None = None,
+    thread_status: str | None = None,
+    thread_error: str | None = None,
 ):
     try:
         account, subscription = await _authorized_account(request, crm_slug)
@@ -1552,6 +1574,8 @@ async def seller_crm_marketplace_leads(
             empty_message=active_tab["empty"],
             action_status=action_status,
             action_error=action_error,
+            thread_status=thread_status,
+            thread_error=thread_error,
         ),
     )
 
@@ -1565,6 +1589,8 @@ async def seller_crm_lead_detail(
     error: str | None = None,
     action_status: str | None = None,
     action_error: str | None = None,
+    thread_status: str | None = None,
+    thread_error: str | None = None,
 ):
     try:
         account, subscription = await _authorized_account(request, crm_slug)
@@ -1578,12 +1604,21 @@ async def seller_crm_lead_detail(
     except (TypeError, ValueError) as exc:
         raise HTTPException(status_code=404, detail="Заявку не знайдено") from exc
 
-    lead_detail = _prepare_lead_detail(
-        await get_seller_crm_lead_detail(
-            account["seller_id"],
-            parsed_request_id,
-        )
+    raw_lead_detail = await get_seller_crm_lead_detail(
+        account["seller_id"],
+        parsed_request_id,
     )
+    if raw_lead_detail:
+        raw_lead_detail["thread_messages"] = await list_lead_thread_messages(
+            lead_id=parsed_request_id,
+            seller_id=int(account["seller_id"]),
+        )
+        await mark_lead_thread_messages_read(
+            lead_id=parsed_request_id,
+            reader_role="seller",
+            seller_id=int(account["seller_id"]),
+        )
+    lead_detail = _prepare_lead_detail(raw_lead_detail)
     if not lead_detail:
         raise HTTPException(status_code=404, detail="Заявку не знайдено")
 
@@ -1601,6 +1636,8 @@ async def seller_crm_lead_detail(
             error=error,
             action_status=action_status,
             action_error=action_error,
+            thread_status=thread_status,
+            thread_error=thread_error,
         ),
     )
 
@@ -1648,6 +1685,7 @@ async def _handle_seller_crm_lead_action(
             repository_action = {
                 SELLER_LEAD_ACTION_VIEWED: SELLER_LEAD_ACTION_VIEWED,
                 SELLER_LEAD_ACTION_DECLINED: SELLER_LEAD_ACTION_DECLINED,
+                SELLER_LEAD_ACTION_ARCHIVED: SELLER_LEAD_ACTION_ARCHIVED,
                 SELLER_LEAD_ACTION_SKIPPED: SELLER_LEAD_ACTION_SKIPPED,
             }.get(action)
             if not repository_action:
@@ -1724,6 +1762,16 @@ async def seller_crm_reopen_lead(
     return await _handle_seller_crm_lead_action(request, crm_slug, request_id, "reopened", next_url)
 
 
+
+@router.post("/{crm_slug}/leads/{request_id}/archive")
+async def seller_crm_archive_lead(
+    request: Request,
+    crm_slug: str,
+    request_id: str,
+    next_url: str = Form(""),
+):
+    return await _handle_seller_crm_lead_action(request, crm_slug, request_id, SELLER_LEAD_ACTION_ARCHIVED, next_url)
+
 @router.post("/{crm_slug}/leads/{request_id}/offer")
 async def seller_crm_submit_offer(
     request: Request,
@@ -1784,6 +1832,105 @@ async def seller_crm_submit_offer(
     query = urlencode({"offer_status": status})
     return RedirectResponse(url=f"{redirect_base}?{query}", status_code=303)
 
+
+
+def _crm_thread_title(context: dict[str, Any]) -> str:
+    return " ".join(str(part).strip() for part in [context.get("brand"), context.get("model")] if part) or context.get("category") or "заявка CarPot"
+
+
+def _format_seller_thread_reply(context: dict[str, Any], message_text: str) -> str:
+    seller_name = context.get("shop_name") or context.get("seller_name") or "Продавець CarPot"
+    return "\n".join([
+        "💬 <b>Відповідь від продавця</b>",
+        f"🏪 {escape(str(seller_name))}",
+        f"Заявка: {escape(_crm_thread_title(context))}",
+        "",
+        escape(message_text.strip()[:1200]),
+        "",
+        "Щоб відповісти продавцю, надішліть reply на це повідомлення.",
+    ])
+
+
+async def _handle_seller_thread_reply(
+    request: Request,
+    crm_slug: str,
+    request_id: str,
+    *,
+    offer_id: str | None = None,
+    message: str = "",
+):
+    try:
+        account, _subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+
+    try:
+        parsed_request_id = int(request_id)
+        parsed_offer_id = int(offer_id) if offer_id else None
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=404, detail="Діалог не знайдено") from exc
+
+    redirect_url = f"/crm/seller/{crm_slug}/leads/{parsed_request_id}#thread"
+    cleaned = (message or "").strip()
+    if not cleaned:
+        return RedirectResponse(url=_append_query(redirect_url, {"thread_error": "Додайте текст відповіді."}), status_code=303)
+
+    if not await seller_has_crm_lead_access(int(account["seller_id"]), parsed_request_id):
+        raise HTTPException(status_code=404, detail="Заявку не знайдено")
+
+    context = await get_buyer_thread_delivery_context(
+        lead_id=parsed_request_id,
+        seller_id=int(account["seller_id"]),
+        proposal_id=parsed_offer_id,
+    )
+    if not context or not context.get("buyer_telegram_id"):
+        return RedirectResponse(url=_append_query(redirect_url, {"thread_error": "У покупця немає Telegram для доставки відповіді."}), status_code=303)
+
+    sent = await send_message_to_buyer(
+        int(context["buyer_telegram_id"]),
+        _format_seller_thread_reply(context, cleaned),
+        parse_mode="HTML",
+    )
+    saved = await create_lead_thread_message(
+        lead_id=parsed_request_id,
+        proposal_id=parsed_offer_id or context.get("proposal_id"),
+        sender_role=LEAD_THREAD_SENDER_SELLER,
+        sender_id=int(account["seller_id"]),
+        message_text=cleaned,
+        read_state=LEAD_THREAD_READ_READ,
+    )
+    if sent and saved:
+        await attach_telegram_delivery_to_thread_message(
+            message_id=int(saved["id"]),
+            telegram_chat_id=int(context["buyer_telegram_id"]),
+            telegram_message_id=int(sent.message_id),
+        )
+        return RedirectResponse(url=_append_query(redirect_url, {"thread_status": "sent"}), status_code=303)
+
+    return RedirectResponse(url=_append_query(redirect_url, {"thread_error": "Повідомлення збережено, але Telegram не підтвердив доставку."}), status_code=303)
+
+
+@router.post("/{crm_slug}/leads/{request_id}/thread")
+async def seller_crm_lead_thread_reply(
+    request: Request,
+    crm_slug: str,
+    request_id: str,
+    message: str = Form(""),
+):
+    return await _handle_seller_thread_reply(request, crm_slug, request_id, message=message)
+
+
+@router.post("/{crm_slug}/offers/{offer_id}/thread")
+async def seller_crm_offer_thread_reply(
+    request: Request,
+    crm_slug: str,
+    offer_id: str,
+    request_id: str = Form(""),
+    message: str = Form(""),
+):
+    return await _handle_seller_thread_reply(request, crm_slug, request_id, offer_id=offer_id, message=message)
 
 @router.get("/{crm_slug}/offers")
 async def seller_crm_offers(request: Request, crm_slug: str, status: str = CRM_OFFER_STATUS_ACTIVE):
@@ -1846,12 +1993,22 @@ async def seller_crm_offer_detail(request: Request, crm_slug: str, offer_id: str
     except (TypeError, ValueError) as exc:
         raise HTTPException(status_code=404, detail="Пропозицію не знайдено") from exc
 
-    offer_detail = _prepare_offer_detail(
-        await get_seller_crm_offer_detail(
-            account["seller_id"],
-            parsed_offer_id,
-        )
+    raw_offer_detail = await get_seller_crm_offer_detail(
+        account["seller_id"],
+        parsed_offer_id,
     )
+    if raw_offer_detail:
+        raw_offer_detail["thread_messages"] = await list_lead_thread_messages(
+            lead_id=int(raw_offer_detail["request"]["request_id"]),
+            seller_id=int(account["seller_id"]),
+            proposal_id=parsed_offer_id,
+        )
+        await mark_lead_thread_messages_read(
+            lead_id=int(raw_offer_detail["request"]["request_id"]),
+            reader_role="seller",
+            seller_id=int(account["seller_id"]),
+        )
+    offer_detail = _prepare_offer_detail(raw_offer_detail)
     if not offer_detail:
         raise HTTPException(status_code=404, detail="Пропозицію не знайдено")
 

@@ -192,8 +192,33 @@
       min-width: 0;
     }
 
+    .thread-list {
+      display: grid;
+      gap: 8px;
+      max-height: 360px;
+      overflow: auto;
+      padding-right: 2px;
+    }
+
+    .thread-message {
+      display: grid;
+      gap: 4px;
+      width: min(86%, 620px);
+      padding: 10px 12px;
+      border: 1px solid rgba(148,163,184,.14);
+      border-radius: 14px;
+      background: rgba(10,22,40,.34);
+    }
+
+    .thread-message.seller { margin-left: auto; border-color: rgba(34,211,238,.2); background: rgba(34,211,238,.08); }
+    .thread-message.buyer { margin-right: auto; border-color: rgba(125,211,176,.22); background: rgba(125,211,176,.07); }
+    .thread-meta { display:flex; justify-content:space-between; gap:8px; color:var(--muted); font-size:11px; font-weight:700; }
+    .thread-text { margin:0; color:var(--text); line-height:1.45; white-space:pre-wrap; overflow-wrap:anywhere; }
+    .thread-reply-form { display:grid; gap:8px; margin-top:12px; }
+
     .offer-form input,
-    .offer-form textarea {
+    .offer-form textarea,
+    .thread-reply-form textarea {
       width: 100%;
       min-width: 0;
       border: 1px solid rgba(148,163,184,.2);
@@ -208,6 +233,12 @@
 
     .offer-form textarea {
       min-height: 118px;
+      resize: vertical;
+      line-height: 1.45;
+    }
+
+    .thread-reply-form textarea {
+      min-height: 82px;
       resize: vertical;
       line-height: 1.45;
     }
@@ -413,8 +444,10 @@
       <div class="notice">{{ "Пропозицію оновлено." if offer_status == "updated" else "Пропозицію надіслано покупцю." if offer_status == "sent" else "Пропозицію збережено. Якщо Telegram недоступний, покупець побачить її в заявці." }}</div>
     {% endif %}
     {% if action_status %}<div class="notice">{{ action_status }}</div>{% endif %}
+    {% if thread_status %}<div class="notice">Повідомлення надіслано покупцю в Telegram.</div>{% endif %}
     {% if error %}<div class="notice error">{{ error }}</div>{% endif %}
     {% if action_error %}<div class="notice error">{{ action_error }}</div>{% endif %}
+    {% if thread_error %}<div class="notice error">{{ thread_error }}</div>{% endif %}
     <nav class="lead-breadcrumbs" aria-label="Навігація">
       <a href="/crm/seller/{{ account.crm_slug }}">Робочий простір</a>
       <span>→</span>
@@ -454,7 +487,7 @@
             {% if lead.may_respond %}
               <a class="btn" href="#reply-form">{{ "Оновити відповідь покупцю" if lead.offer else "Відповісти покупцю" }}</a>
             {% elif lead.offer %}
-              <a class="btn" href="/crm/seller/{{ account.crm_slug }}/offers/{{ lead.offer.offer_id }}">Перейти до переписки</a>
+              <a class="btn" href="/crm/seller/{{ account.crm_slug }}/offers/{{ lead.offer.offer_id }}">Відкрити діалог</a>
             {% elif lead.can_reopen %}
               <form method="post" action="/crm/seller/{{ account.crm_slug }}/leads/{{ lead.request.request_id }}/reopen">
                 <input type="hidden" name="next_url" value="{{ request.url.path }}">
@@ -485,6 +518,12 @@
                 <button class="btn small ghost" type="submit">Пропустити</button>
               </form>
             {% endif %}
+            {% if lead.can_archive %}
+              <form method="post" action="/crm/seller/{{ account.crm_slug }}/leads/{{ lead.request.request_id }}/archive">
+                <input type="hidden" name="next_url" value="{{ request.url.path }}">
+                <button class="btn small ghost" type="submit">Закрити в архів</button>
+              </form>
+            {% endif %}
           </div>
         </section>
 
@@ -505,7 +544,7 @@
                 <p class="detail-text">{{ lead.offer.comment or "Без коментаря" }}</p>
                 <span class="muted">Надіслано {{ lead.offer.created_at.strftime("%d.%m.%Y %H:%M") if lead.offer.created_at else "—" }}</span>
                 <div class="request-actions" style="margin-top:12px">
-                  <a class="btn small" href="/crm/seller/{{ account.crm_slug }}/offers/{{ lead.offer.offer_id }}">Перейти до переписки</a>
+                  <a class="btn small" href="/crm/seller/{{ account.crm_slug }}/offers/{{ lead.offer.offer_id }}">Відкрити діалог</a>
                 </div>
               </div>
             {% endif %}
@@ -528,7 +567,7 @@
                 <p class="detail-text">{{ lead.offer.comment or "Без коментаря" }}</p>
                 <span class="muted">Надіслано {{ lead.offer.created_at.strftime("%d.%m.%Y %H:%M") if lead.offer.created_at else "—" }}</span>
                 <div class="request-actions" style="margin-top:12px">
-                  <a class="btn small" href="/crm/seller/{{ account.crm_slug }}/offers/{{ lead.offer.offer_id }}">Перейти до переписки</a>
+                  <a class="btn small" href="/crm/seller/{{ account.crm_slug }}/offers/{{ lead.offer.offer_id }}">Відкрити діалог</a>
                 </div>
               </div>
             {% endif %}
@@ -552,6 +591,30 @@
               </div>
             {% endif %}
           {% endif %}
+        </section>
+
+        <section id="thread" class="card" aria-labelledby="thread-title">
+          <h2 id="thread-title" class="section-heading">Діалог</h2>
+          <p class="section-note">Легка переписка: покупець відповідає в Telegram, продавець — з CRM.</p>
+          {% if lead.thread_messages %}
+            <div class="thread-list" aria-label="Історія діалогу">
+              {% for item in lead.thread_messages %}
+                <article class="thread-message {{ item.sender_role }}">
+                  <div class="thread-meta">
+                    <span>{{ item.sender_label }}</span>
+                    <span>{{ item.created_at.strftime("%d.%m %H:%M") if item.created_at else "—" }}</span>
+                  </div>
+                  <p class="thread-text">{{ item.message_text }}</p>
+                </article>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="empty-state">Діалог ще порожній. Після першої пропозиції покупець може відповісти на Telegram-повідомлення.</div>
+          {% endif %}
+          <form class="thread-reply-form" method="post" action="/crm/seller/{{ account.crm_slug }}/leads/{{ lead.request.request_id }}/thread">
+            <textarea name="message" maxlength="2000" required placeholder="Коротка відповідь покупцю — вона піде в Telegram."></textarea>
+            <button class="btn small" type="submit">Надіслати в Telegram</button>
+          </form>
         </section>
 
         <section class="card" aria-labelledby="metadata-title">

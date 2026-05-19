@@ -782,7 +782,7 @@ async def list_seller_crm_marketplace_leads(
     limit: int = 30,
     offset: int = 0,
 ):
-    allowed_statuses = {"new", "in_work", "replied", "selected", "declined", "skipped"}
+    allowed_statuses = {"new", "in_work", "replied", "selected", "declined", "skipped", "archived"}
     normalized_status = status if status in allowed_statuses else "new"
     normalized_limit = max(1, min(int(limit or 30), 50))
     normalized_offset = max(0, int(offset or 0))
@@ -812,6 +812,7 @@ async def list_seller_crm_marketplace_leads(
                    COALESCE(actions.has_offered, FALSE) AS has_offered,
                    COALESCE(actions.has_declined, FALSE) AS has_declined,
                    COALESCE(actions.has_skipped, FALSE) AS has_skipped,
+                   COALESCE(actions.has_archived, FALSE) AS has_archived,
                    CASE
                        WHEN seller_offer.status = 'accepted' OR selected_match.id IS NOT NULL OR accepted_offer.seller_id = $1 THEN br.buyer_phone
                        ELSE NULL
@@ -868,7 +869,8 @@ async def list_seller_crm_marketplace_leads(
                        BOOL_OR(sla.action = 'viewed') AS has_viewed,
                        BOOL_OR(sla.action = 'offered') AS has_offered,
                        BOOL_OR(sla.action = 'declined') AS has_declined,
-                       BOOL_OR(sla.action = 'skipped') AS has_skipped
+                       BOOL_OR(sla.action = 'skipped') AS has_skipped,
+                       BOOL_OR(sla.action = 'archived') AS has_archived
                 FROM seller_lead_actions sla
                 WHERE sla.request_id = br.id
                   AND sla.seller_id = $1
@@ -885,6 +887,7 @@ async def list_seller_crm_marketplace_leads(
                    COALESCE(vehicle_title, category, request_type, 'Marketplace заявка') AS title,
                    city, category, brand, model, description, urgency, marketplace_status, created_at,
                    CASE
+                       WHEN has_archived THEN 'archived'
                        WHEN offer_status = 'accepted' OR selected_match_id IS NOT NULL OR accepted_offer_seller_id = $1 THEN 'selected'
                        WHEN has_declined THEN 'declined'
                        WHEN has_skipped THEN 'skipped'
@@ -896,7 +899,7 @@ async def list_seller_crm_marketplace_leads(
                    routed_match_score AS match_score,
                    routed_match_reasons AS match_reasons,
                    buyer_phone_visible,
-                   has_viewed, has_offered, has_declined, has_skipped,
+                   has_viewed, has_offered, has_declined, has_skipped, has_archived,
                    GREATEST(
                        created_at,
                        COALESCE(offer_created_at, created_at),
@@ -911,21 +914,24 @@ async def list_seller_crm_marketplace_leads(
                     AND NOT has_offered
                     AND NOT has_declined
                     AND NOT has_skipped
+                    AND NOT has_archived
                 WHEN 'in_work' THEN has_viewed
                     AND offer_id IS NULL
                     AND NOT has_declined
                     AND NOT has_skipped
-                WHEN 'replied' THEN offer_status = 'pending'
-                WHEN 'selected' THEN offer_status = 'accepted' OR selected_match_id IS NOT NULL
-                WHEN 'declined' THEN has_declined
-                WHEN 'skipped' THEN has_skipped
+                    AND NOT has_archived
+                WHEN 'replied' THEN offer_status = 'pending' AND NOT has_archived
+                WHEN 'selected' THEN (offer_status = 'accepted' OR selected_match_id IS NOT NULL) AND NOT has_archived
+                WHEN 'declined' THEN has_declined AND NOT has_archived
+                WHEN 'skipped' THEN has_skipped AND NOT has_archived
+                WHEN 'archived' THEN has_archived
                 ELSE FALSE
             END
         )
         SELECT request_id, title, city, category, brand, model, description, urgency,
                marketplace_status, created_at, seller_status, offer_status, price_offer,
                offer_message, match_score, match_reasons, buyer_phone_visible,
-               has_viewed, has_offered, has_declined, has_skipped
+               has_viewed, has_offered, has_declined, has_skipped, has_archived
         FROM classified
         ORDER BY sort_at DESC, request_id DESC
         LIMIT $3 OFFSET $4
@@ -1302,6 +1308,7 @@ async def get_seller_crm_lead_detail(seller_id: int, request_id: int):
                    COALESCE(actions.has_offered, FALSE) AS has_offered,
                    COALESCE(actions.has_declined, FALSE) AS has_declined,
                    COALESCE(actions.has_skipped, FALSE) AS has_skipped,
+                   COALESCE(actions.has_archived, FALSE) AS has_archived,
                    CASE
                        WHEN seller_offer.status = 'accepted' OR selected_match.id IS NOT NULL OR accepted_offer.seller_id = $1 THEN br.buyer_name
                        ELSE NULL
@@ -1376,7 +1383,8 @@ async def get_seller_crm_lead_detail(seller_id: int, request_id: int):
                        BOOL_OR(sla.action = 'viewed') AS has_viewed,
                        BOOL_OR(sla.action = 'offered') AS has_offered,
                        BOOL_OR(sla.action = 'declined') AS has_declined,
-                       BOOL_OR(sla.action = 'skipped') AS has_skipped
+                       BOOL_OR(sla.action = 'skipped') AS has_skipped,
+                       BOOL_OR(sla.action = 'archived') AS has_archived
                 FROM seller_lead_actions sla
                 WHERE sla.request_id = br.id
                   AND sla.seller_id = $1
@@ -1390,6 +1398,7 @@ async def get_seller_crm_lead_detail(seller_id: int, request_id: int):
                   OR actions.has_offered
                   OR actions.has_declined
                   OR actions.has_skipped
+                  OR actions.has_archived
                   OR seller_offer.id IS NOT NULL
                   OR selected_match.id IS NOT NULL
               )
@@ -1397,6 +1406,7 @@ async def get_seller_crm_lead_detail(seller_id: int, request_id: int):
         )
         SELECT *,
                CASE
+                   WHEN has_archived THEN 'archived'
                    WHEN offer_status = 'accepted' OR selected_match_id IS NOT NULL OR accepted_offer_seller_id = $1 THEN 'selected'
                    WHEN has_declined THEN 'declined'
                    WHEN has_skipped THEN 'skipped'
