@@ -835,11 +835,12 @@ def _offer_status_meta(status: str | None) -> dict[str, Any]:
     return {**meta, "class": meta["css_class"]}
 
 
-def _prepare_marketplace_leads(rows) -> list[dict[str, Any]]:
+def _prepare_marketplace_leads(rows, *, active_status: str = CRM_LEAD_STATUS_NEW) -> list[dict[str, Any]]:
     prepared = []
+    archive_view = active_status == CRM_LEAD_STATUS_ARCHIVED
     for row in rows or []:
         item = dict(row)
-        if (
+        if not archive_view and (
             item.get("seller_status") == CRM_LEAD_STATUS_ARCHIVED
             or item.get("offer_status") == BUYER_OFFER_STATUS_REJECTED
             or (item.get("marketplace_status") or "").lower() == "closed"
@@ -1567,7 +1568,8 @@ async def seller_crm_marketplace_leads(
             await list_seller_crm_marketplace_leads(
                 account["seller_id"],
                 status=active_status,
-            )
+            ),
+            active_status=active_status,
         )
 
     return templates.TemplateResponse(
