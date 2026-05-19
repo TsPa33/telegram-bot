@@ -1171,6 +1171,37 @@ async def _notify_seller_offer_selected(*, offer, notification_event: dict | Non
         )
 
 
+
+
+async def _decline_offer(callback: types.CallbackQuery, offer_id: int):
+    offer = await _get_own_offer(offer_id, callback.from_user)
+    if not offer:
+        await callback.answer("Відповідь не знайдено", show_alert=True)
+        return
+
+    request_id = int(offer["request_id"])
+    is_selected = offer.get("is_selected_match") or offer.get("status") == "accepted"
+    if is_selected:
+        await callback.answer("Цю пропозицію вже підтверджено", show_alert=True)
+        return
+
+    if offer.get("status") == "rejected":
+        await callback.answer("Пропозицію вже відхилено")
+        return
+
+    await execute(
+        """
+        UPDATE buyer_request_offers
+        SET status='rejected', updated_at=NOW()
+        WHERE id=$1 AND request_id=$2 AND status='pending'
+        """,
+        offer_id,
+        request_id,
+    )
+
+    await callback.answer("Пропозицію відхилено")
+    await callback.message.answer("❌ Пропозицію відхилено. Заявка лишається активною, можна обрати іншого продавця.")
+    await _show_buyer_request_details(callback.message, callback.from_user, request_id, page=1)
 async def _select_offer(callback: types.CallbackQuery, offer_id: int):
     offer = await _get_own_offer(offer_id, callback.from_user)
     if not offer:
@@ -1336,6 +1367,12 @@ async def buyer_offer_contact(callback: types.CallbackQuery):
 async def buyer_offer_select(callback: types.CallbackQuery):
     parts = (callback.data or "").split(":")
     await _select_offer(callback, int(parts[2]))
+
+
+@router.callback_query(F.data.startswith("buyer_offer:decline:"))
+async def buyer_offer_decline(callback: types.CallbackQuery):
+    parts = (callback.data or "").split(":")
+    await _decline_offer(callback, int(parts[2]))
 
 
 @router.callback_query(F.data == "buyer_offer:back")
