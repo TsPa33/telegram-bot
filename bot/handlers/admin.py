@@ -483,7 +483,7 @@ async def reject_verification(callback: CallbackQuery):
 
 # ================= DEMO SITES =================
 
-@router.message(lambda m: m.text == "🌐 Демо сайти")
+@router.message(lambda m: m.text == "🌐 Приклади рішень")
 async def admin_demo_sites_menu(message: Message, state: FSMContext):
     await state.clear()
 
@@ -492,14 +492,14 @@ async def admin_demo_sites_menu(message: Message, state: FSMContext):
         return
 
     await message.answer(
-        "🌐 <b>Демо сайти</b>\n\n"
-        "Публічні категорії demo сайтів:",
+        "🌐 <b>Приклади рішень для автобізнесу</b>\n\n"
+        "Публічні категорії прикладів рішень:",
         parse_mode="HTML",
         reply_markup=demo_categories_kb(back_callback="admin:demo:menu"),
     )
 
     await message.answer(
-        "⚙️ Управління demo сайтами",
+        "⚙️ Управління прикладами рішень",
         reply_markup=admin_demo_menu_kb(),
     )
 
@@ -512,7 +512,7 @@ async def admin_demo_sites_menu_callback(callback: CallbackQuery, state: FSMCont
 
     await state.clear()
     await callback.message.edit_text(
-        "⚙️ Управління demo сайтами",
+        "⚙️ Управління прикладами рішень",
         reply_markup=admin_demo_menu_kb(),
     )
     await callback.answer()
@@ -619,7 +619,7 @@ async def admin_demo_list(callback: CallbackQuery):
     sites = await get_demo_sites()
     if not sites:
         await callback.message.edit_text(
-            "🌐 Демо сайти\n\nПоки немає демо сайтів.",
+            "🌐 Приклади рішень\n\nПоки немає прикладів рішень.",
             reply_markup=admin_demo_menu_kb(),
         )
         await callback.answer()

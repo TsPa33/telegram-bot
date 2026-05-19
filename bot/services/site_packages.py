@@ -33,54 +33,54 @@ SITE_PACKAGES = {
 }
 
 DEMO_SITE_GROUPS = {
-    "premium": {
-        "title": "Преміум індивідуальний",
-        "emoji": "🏆",
-        "description": "Преміум інтернет-магазин автозапчастин з каталогом та CRM заявками.",
+    "parts_store": {
+        "title": "Інтернет-магазин запчастин",
+        "emoji": "🌐",
+        "description": "Готове рішення для каталогу запчастин, заявок і CRM-обробки в Telegram.",
         "demos": [
             {
                 "subdomain": "demo-parts",
-                "title": "Premium Parts Store",
-                "button_text": "🏆 Premium Parts Store",
-                "description": "Преміум інтернет-магазин автозапчастин з каталогом та CRM заявками.",
+                "title": "Інтернет-магазин запчастин",
+                "button_text": "Інтернет-магазин запчастин",
+                "description": "Каталог, картки товарів, заявки із сайту прямо в Telegram та CRM.",
             },
         ],
     },
-    "business": {
-        "title": "Сайт-візитка автопослуг",
-        "emoji": "🚘",
-        "description": "Преміум сайт-візитка автоелектрика та діагностики.",
+    "service_business": {
+        "title": "Сайт-візитка автосервісу",
+        "emoji": "🌐",
+        "description": "Рішення для презентації послуг, контактів, форм заявок і комунікації з клієнтами.",
         "demos": [
             {
                 "subdomain": "demo-electric",
-                "title": "Auto Electric Premium",
-                "button_text": "🚘 Auto Electric Premium",
-                "description": "Преміум сайт-візитка автоелектрика та діагностики.",
+                "title": "Автоелектрик",
+                "button_text": "Автоелектрик",
+                "description": "Послуги автоелектрика, заявки, Telegram-зв'язок і CRM для роботи з клієнтами.",
             },
         ],
     },
-    "standard": {
-        "title": "Стандартні шаблони",
-        "emoji": "🧩",
-        "description": "Швидкий запуск стандартного сайту автопослуг.",
+    "autoservice": {
+        "title": "СТО",
+        "emoji": "🌐",
+        "description": "Сайт для СТО з переліком послуг, формами заявок, контактами та інтеграцією з CRM.",
         "demos": [
             {
                 "subdomain": "demo-sto",
-                "title": "CarPot AutoService",
-                "button_text": "🔧 Демо СТО",
-                "description": "Готовий сайт СТО з hero-блоком, 8 послугами, контактами, картою та заявками.",
+                "title": "СТО",
+                "button_text": "СТО",
+                "description": "Готовий сайт СТО з послугами, формами заявок і заявками в Telegram.",
             },
             {
                 "subdomain": "demo-tow",
-                "title": "CarPot Tow Service",
-                "button_text": "🚛 Демо евакуатора",
-                "description": "Демо служби евакуатора 24/7 з послугами, месенджерами, картою та callback-формою.",
+                "title": "Евакуатор",
+                "button_text": "Евакуатор",
+                "description": "Рішення для служби евакуатора з швидким зверненням клієнта і CRM-обробкою.",
             },
             {
                 "subdomain": "demo-shynomontag",
-                "title": "CarPot Tyre Service",
-                "button_text": "🛞 Демо шиномонтажу",
-                "description": "Повноцінний демо-сайт шиномонтажу із сезонними послугами, контактами і заявкою.",
+                "title": "Шиномонтаж",
+                "button_text": "Шиномонтаж",
+                "description": "Сайт шиномонтажу з сезонними послугами, акціями та заявками в Telegram.",
             },
         ],
     },
