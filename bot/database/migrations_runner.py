@@ -25,6 +25,14 @@ async def _core_tables_exist(conn) -> bool:
     return all(name in found for name in BASELINE_CORE_TABLES)
 
 
+async def _core_tables_have_data(conn) -> bool:
+    for table_name in BASELINE_CORE_TABLES:
+        has_rows = await conn.fetchval(f"SELECT EXISTS (SELECT 1 FROM {table_name} LIMIT 1)")
+        if has_rows:
+            return True
+    return False
+
+
 def _is_historical_migration(filename: str) -> bool:
     return filename[:8].isdigit() and filename[:8] <= BASELINE_CUTOFF
 
@@ -50,7 +58,11 @@ async def run_sql_migrations() -> list[str]:
             files = sorted(path.name for path in MIGRATIONS_DIR.glob("*.sql"))
             migration_count = await conn.fetchval("SELECT COUNT(*)::int FROM schema_migrations")
 
-            if migration_count == 0 and await _core_tables_exist(conn):
+            if (
+                migration_count == 0
+                and await _core_tables_exist(conn)
+                and await _core_tables_have_data(conn)
+            ):
                 historical = [name for name in files if _is_historical_migration(name)]
                 if historical:
                     await conn.executemany(
