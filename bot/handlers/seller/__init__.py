@@ -13,12 +13,21 @@ from .leads import router as leads_router
 router = Router()
 
 # Підключення всіх seller-роутерів
-router.include_router(add_car_router)
-router.include_router(cars_router)
-router.include_router(profile_router)
-router.include_router(verification_router)
-router.include_router(payment_router)
-router.include_router(crm_router)
-router.include_router(leads_router)
-router.include_router(services_router)
-router.include_router(site_router)
+# Захист від повторного attach при подвійних імпортах (seller vs seller.__init__)
+def _include_once(parent: Router, child: Router) -> None:
+    if getattr(child, "parent_router", None) is None:
+        parent.include_router(child)
+
+
+for _child in (
+    add_car_router,
+    cars_router,
+    profile_router,
+    verification_router,
+    payment_router,
+    crm_router,
+    leads_router,
+    services_router,
+    site_router,
+):
+    _include_once(router, _child)
