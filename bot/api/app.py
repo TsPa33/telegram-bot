@@ -67,11 +67,20 @@ logger = logging.getLogger(__name__)
 
 @app.on_event("startup")
 async def _startup_db():
+    logger.info("ENTER startup event")
     if os.getenv("RUN_DB_INIT_ON_API_STARTUP", "0") != "1":
+        logger.info("SKIP startup DB init")
         return
+    logger.info("BEFORE init_pool")
     await init_pool()
+    logger.info("AFTER init_pool")
+    logger.info("BEFORE create_tables")
     await create_tables()
+    logger.info("AFTER create_tables")
+    logger.info("BEFORE migrations")
     await run_sql_migrations()
+    logger.info("AFTER migrations")
+    logger.info("STARTUP COMPLETE")
 
 MARKETING_TELEGRAM_BOT_URL = "https://t.me/CarPotbot"
 MARKETING_TELEGRAM_SUPPORT_URL = "https://t.me/CarPotbot"
