@@ -3,7 +3,7 @@ import logging
 import traceback
 import os
 
-from aiogram import Bot, Dispatcher, Router, F
+from aiogram import Bot, Dispatcher, Router, F, BaseMiddleware
 from aiogram.types import CallbackQuery, ErrorEvent
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.fsm.storage.redis import RedisStorage
@@ -18,7 +18,7 @@ from bot.database.models import create_tables
 from bot.database.migrations_runner import run_sql_migrations
 
 from bot.handlers.start import router as start_router
-from bot.handlers.seller import router as seller_router
+from bot.handlers.seller.__init__ import router as seller_router
 from bot.handlers.buyer import router as buyer_router
 from bot.handlers.admin import router as admin_router
 from bot.handlers.support import router as support_router
@@ -35,6 +35,33 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 router = Router()
+
+
+class UpdateLoggingMiddleware(BaseMiddleware):
+    async def __call__(self, handler, event, data):
+        state = data.get("state")
+        current_state = None
+        if state is not None:
+            try:
+                current_state = await state.get_state()
+            except Exception:
+                current_state = "<state_error>"
+
+        if hasattr(event, "text"):
+            logger.info("INCOMING message user_id=%s chat_id=%s text=%r state=%s",
+                        getattr(getattr(event, "from_user", None), "id", None),
+                        getattr(getattr(event, "chat", None), "id", None),
+                        getattr(event, "text", None),
+                        current_state)
+        elif hasattr(event, "data"):
+            logger.info("INCOMING callback user_id=%s chat_id=%s data=%r state=%s",
+                        getattr(getattr(event, "from_user", None), "id", None),
+                        getattr(getattr(getattr(event, "message", None), "chat", None), "id", None),
+                        getattr(event, "data", None),
+                        current_state)
+
+        return await handler(event, data)
+
 
 
 @router.callback_query(F.data.startswith("debug:"))
@@ -79,6 +106,8 @@ async def run_bot():
     try:
         await bot.delete_webhook(drop_pending_updates=True)
 
+        dp.message.middleware(UpdateLoggingMiddleware())
+        dp.callback_query.middleware(UpdateLoggingMiddleware())
         dp.callback_query.middleware(CallbackAnswerMiddleware())
         dp.errors.register(global_error_handler)
 
