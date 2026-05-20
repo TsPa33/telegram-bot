@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import re
 from urllib.parse import urlencode
 
@@ -66,6 +67,8 @@ logger = logging.getLogger(__name__)
 
 @app.on_event("startup")
 async def _startup_db():
+    if os.getenv("RUN_DB_INIT_ON_API_STARTUP", "0") != "1":
+        return
     await init_pool()
     await create_tables()
     await run_sql_migrations()
