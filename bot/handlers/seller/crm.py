@@ -86,7 +86,7 @@ async def _ensure_seller_crm(telegram_id: int, username: str | None):
     return seller, account, setup_required
 
 
-@router.message(F.text == "🧾 Відкрити CRM")
+@router.message(F.text.in_(["🧾 Відкрити CRM", "📋 Відкрити CRM"]))
 async def seller_crm_landing(message: Message):
     try:
         _seller, account, setup_required = await _ensure_seller_crm(
@@ -103,6 +103,45 @@ async def seller_crm_landing(message: Message):
         parse_mode="HTML",
         reply_markup=_landing_kb(account, setup_required),
     )
+
+
+@router.callback_query(F.data.in_(["seller:crm", "seller_crm:open", "crm:open"]))
+async def seller_crm_open_callback(callback: CallbackQuery):
+    telegram_id = callback.from_user.id
+    callback_data = callback.data
+    logger.info("CRM_OPEN_CALLBACK_RECEIVED telegram_id=%s callback_data=%s", telegram_id, callback_data)
+
+    try:
+        seller, account, setup_required = await _ensure_seller_crm(
+            telegram_id,
+            callback.from_user.username,
+        )
+    except Exception:
+        logger.exception(
+            "CRM_OPEN_CALLBACK_FAILED telegram_id=%s callback_data=%s reason=provision_failed",
+            telegram_id,
+            callback_data,
+        )
+        await callback.message.answer("❌ Не вдалося підготувати CRM. Спробуйте ще раз або напишіть у підтримку.")
+        await callback.answer()
+        return
+
+    resolved_url = _crm_setup_password_url(account["crm_slug"]) if setup_required else _crm_url(account["crm_slug"])
+    logger.info(
+        "CRM_OPEN_CALLBACK_RESOLVED seller_id=%s telegram_id=%s callback_data=%s crm_url=%s setup_required=%s",
+        seller["id"],
+        telegram_id,
+        callback_data,
+        resolved_url,
+        setup_required,
+    )
+
+    await callback.message.answer(
+        _landing_text(account["crm_slug"], _crm_login(seller), setup_required),
+        parse_mode="HTML",
+        reply_markup=_landing_kb(account, setup_required),
+    )
+    await callback.answer()
 
 
 @router.callback_query(F.data == "seller_crm:back")
