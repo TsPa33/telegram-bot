@@ -14,7 +14,7 @@ def seller_main_kb(is_verified: bool = False):
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="📥 Нові заявки")],
-            [KeyboardButton(text="🧾 Відкрити CRM")],
+            [KeyboardButton(text="📋 Відкрити CRM")],
             [KeyboardButton(text="💳 Пакети послуг")],
             [KeyboardButton(text="💬 Підтримка")],
             [KeyboardButton(text="↩️ Головне меню")],

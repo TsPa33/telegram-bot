@@ -20,12 +20,12 @@ def _include_once(parent: Router, child: Router) -> None:
 
 
 for _child in (
+    crm_router,
     add_car_router,
     cars_router,
     profile_router,
     verification_router,
     payment_router,
-    crm_router,
     leads_router,
     services_router,
     site_router,
