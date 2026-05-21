@@ -5,17 +5,62 @@
   <section class="workspace-hero" aria-labelledby="settings-title">
     <div>
       <h2 id="settings-title">Тарифи бізнесу</h2>
-      <p class="section-note">Огляд доступних місць, сайт-пакетів, складу пакета та оплат без зміни платіжної логіки.</p>
+      <p class="section-note">Оберіть пакет <b>Сайт + CRM для автобізнесу</b>: заявки з сайту одразу потрапляють у CRM, а Telegram + сайт + заявки працюють в одному кабінеті.</p>
     </div>
     <span class="pill">{{ "Кабінет активний" if settings.crm_account_status == "active" else "Кабінет неактивний" }}</span>
   </section>
 
-  <nav class="section-nav" aria-label="Розділи налаштувань">
-    <a href="#slots">Місця / слоти</a>
+  <nav class="section-nav section-nav-light" aria-label="Розділи налаштувань">
     <a href="#websites">Сайт для бізнесу</a>
-    <a href="#website-includes">Що входить у сайт</a>
-    <a href="#payments">Оплати</a>
+    <a href="#slots">Слоти</a>
+    <a href="#payments">Історія оплат</a>
   </nav>
+
+  <section id="websites" class="card secondary-section" aria-labelledby="websites-title">
+    <h2 id="websites-title">Сайт для бізнесу</h2>
+    <p class="section-note">Підходить для авторозборок, автосервісів, шиномонтажу, евакуаторів.</p>
+
+    <div class="cards-list">
+      <article class="mini-card" aria-labelledby="website-standard-title">
+        <div class="mini-card-content">
+          <div class="mini-card-title"><b id="website-standard-title">Сайт Стандарт — 499 грн</b></div>
+          <p class="muted">Базовий запуск сайту:</p>
+          <ul>
+            <li>готовий шаблон сайту</li>
+            <li>послуги, контакти, карта, кнопка дзвінка</li>
+            <li>заявки з сайту одразу потрапляють у CRM</li>
+          </ul>
+          <a class="btn" href="/crm/seller/{{ account.crm_slug }}/profile#contacts-title">Замовити Стандарт</a>
+        </div>
+      </article>
+
+      <article class="mini-card" aria-labelledby="website-plus-title">
+        <div class="mini-card-content">
+          <div class="mini-card-title"><b id="website-plus-title">Сайт Візитка Plus — 1499 грн</b></div>
+          <p class="muted">Розширений комерційний пакет:</p>
+          <ul>
+            <li>унікальний дизайн і банери</li>
+            <li>додаткові модулі та адаптація під ваш бізнес</li>
+            <li>Telegram + сайт + заявки в одному кабінеті</li>
+          </ul>
+          <a class="btn" href="/crm/seller/{{ account.crm_slug }}/profile#contacts-title">Замовити Візитка Plus</a>
+        </div>
+      </article>
+
+      <article class="mini-card" aria-labelledby="website-custom-title">
+        <div class="mini-card-content">
+          <div class="mini-card-title"><b id="website-custom-title">Індивідуальний сайт — від 3999 грн</b></div>
+          <p class="muted">Під індивідуальні задачі:</p>
+          <ul>
+            <li>власний стиль, структура, каталог, контент</li>
+            <li>підготовка під рекламу та масштабування</li>
+            <li>CRM система для управління заявками</li>
+          </ul>
+          <a class="btn" href="/crm/seller/{{ account.crm_slug }}/profile#contacts-title">Обговорити індивідуальний сайт</a>
+        </div>
+      </article>
+    </div>
+  </section>
 
   <section id="slots" class="grid two secondary-section" aria-labelledby="slots-title">
     <article class="card">
@@ -58,75 +103,6 @@
         <div class="empty-state">Дані гаражних слотів недоступні. Активних авто: {{ settings.active_cars_count or settings.used_garage_slots or 0 }}.</div>
       {% endif %}
     </article>
-  </section>
-
-  <section id="websites" class="grid two secondary-section" aria-labelledby="websites-title">
-    <article class="card" aria-labelledby="website-standard-title">
-      <h2 id="websites-title">Сайт для бізнесу</h2>
-      <div class="cards-list">
-        <div class="mini-card">
-          <div class="mini-card-content">
-            <div class="mini-card-title"><b id="website-standard-title">Сайт Стандарт — 499 грн</b></div>
-            <p class="muted">Готовий шаблон:</p>
-            <ul>
-              <li>послуги</li>
-              <li>контакти</li>
-              <li>карта</li>
-              <li>кнопка дзвінка</li>
-              <li>CRM система для управління</li>
-            </ul>
-            <a class="btn small" href="#payments">Замовити сайт Стандарт</a>
-          </div>
-        </div>
-      </div>
-    </article>
-
-    <article class="card" aria-labelledby="website-plus-title">
-      <div class="cards-list">
-        <div class="mini-card">
-          <div class="mini-card-content">
-            <div class="mini-card-title"><b id="website-plus-title">Сайт Візитка Plus — 1499 грн</b></div>
-            <p class="muted">Унікальний дизайн +:</p>
-            <ul>
-              <li>банери</li>
-              <li>послуги</li>
-              <li>додаткові модулі</li>
-              <li>адаптація під ваш бізнес</li>
-              <li>CRM система для управління</li>
-            </ul>
-            <a class="btn small" href="#payments">Замовити сайт Візитка Plus</a>
-          </div>
-        </div>
-        <div class="mini-card">
-          <div class="mini-card-content">
-            <div class="mini-card-title"><b>Індивідуальний сайт — від 3999 грн</b></div>
-            <p class="muted">Індивідуальне рішення:</p>
-            <ul>
-              <li>стиль і структура</li>
-              <li>каталог товарів</li>
-              <li>банери та галереї</li>
-              <li>тексти</li>
-              <li>підготовка під рекламу</li>
-              <li>CRM система для управління</li>
-            </ul>
-            <a class="btn small" href="#payments">Замовити індивідуальний сайт</a>
-          </div>
-        </div>
-      </div>
-    </article>
-  </section>
-
-  <section id="website-includes" class="card secondary-section" aria-labelledby="website-includes-title">
-    <h2 id="website-includes-title">Що входить у сайт</h2>
-    <ul>
-      <li>сайт</li>
-      <li>CRM для управління</li>
-      <li>заявки</li>
-      <li>Telegram-сповіщення</li>
-      <li>контакти</li>
-      <li>товари / послуги</li>
-      <li>адаптація під бізнес</li>
-    </ul>
   </section>
 
   <section id="payments" class="card secondary-section" aria-labelledby="payments-title">
