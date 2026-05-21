@@ -227,7 +227,7 @@ async def admin_visits(message: Message, state: FSMContext):
 
 # ================= REQUESTS =================
 
-@router.message(lambda m: m.text and m.text.startswith("📋"))
+@router.message(lambda m: m.text and m.text.startswith("📋") and "Відкрити CRM" not in m.text)
 async def show_requests(message: types.Message, state: FSMContext):
     await state.clear()
 
