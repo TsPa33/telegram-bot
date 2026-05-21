@@ -113,7 +113,7 @@ async def liqpay_callback(request: Request):
             )
 
         # ===== САЙТ =====
-        if product == "site" and status == "success":
+        if product in {"site", "site_standard", "site_plus"} and status == "success":
 
             # 1. активуємо доступ
             await execute(
@@ -185,9 +185,15 @@ async def liqpay_callback(request: Request):
                         "щоб обрати адресу та пароль.\n\n"
                         f"Демо: {crm_base_url}/crm/seller/demo\n"
                     )
-                else:
+                elif product in {"site", "site_standard", "site_plus"}:
+                    package_titles = {
+                        "site_standard": "Сайт Стандарт — 499 грн",
+                        "site_plus": "Сайт Візитка Plus — 1499 грн",
+                        "site": "Сайт Стандарт — 499 грн",
+                    }
                     text = (
-                        f"🌐 Сайт створено автоматично\n\n"
+                        f"🌐 Оплата підтверджена: {package_titles.get(product, 'Пакет сайту')}\n\n"
+                        f"Сайт створено автоматично\n\n"
                         f"🔗 {build_site_url(subdomain)}\n\n"
                         f"Редагування: «Мій сайт» у боті\n"
                     )

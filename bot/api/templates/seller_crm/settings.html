@@ -30,7 +30,9 @@
             <li>послуги, контакти, карта, кнопка дзвінка</li>
             <li>заявки з сайту одразу потрапляють у CRM</li>
           </ul>
-          <a class="btn" href="#site-order-standard">Замовити Стандарт</a>
+          <form method="post" action="/crm/seller/{{ account.crm_slug }}/settings/site-package/standard">
+            <button class="btn" type="submit">Замовити Стандарт</button>
+          </form>
         </div>
       </article>
 
@@ -43,7 +45,9 @@
             <li>додаткові модулі та адаптація під ваш бізнес</li>
             <li>Telegram + сайт + заявки в одному кабінеті</li>
           </ul>
-          <a class="btn" href="#site-order-plus">Замовити Візитка Plus</a>
+          <form method="post" action="/crm/seller/{{ account.crm_slug }}/settings/site-package/plus">
+            <button class="btn" type="submit">Замовити Візитка Plus</button>
+          </form>
         </div>
       </article>
 
@@ -56,33 +60,7 @@
             <li>підготовка під рекламу та масштабування</li>
             <li>CRM система для управління заявками</li>
           </ul>
-          <a class="btn" href="#site-order-custom">Обговорити індивідуальний сайт</a>
-        </div>
-      </article>
-    </div>
-
-    <div class="cards-list" aria-label="Оформлення замовлення сайту">
-      <article id="site-order-standard" class="mini-card">
-        <div class="mini-card-content">
-          <div class="mini-card-title"><b>Ви обрали: Сайт Стандарт — 499 грн</b></div>
-          <p class="muted">Ми звʼяжемось для налаштування сайту.</p>
-          <a class="btn" href="/contacts">Написати у підтримку</a>
-        </div>
-      </article>
-
-      <article id="site-order-plus" class="mini-card">
-        <div class="mini-card-content">
-          <div class="mini-card-title"><b>Ви обрали: Сайт Візитка Plus — 1499 грн</b></div>
-          <p class="muted">Ми звʼяжемось для налаштування сайту.</p>
-          <a class="btn" href="/contacts">Написати у підтримку</a>
-        </div>
-      </article>
-
-      <article id="site-order-custom" class="mini-card">
-        <div class="mini-card-content">
-          <div class="mini-card-title"><b>Ви обрали: Індивідуальний сайт — від 3999 грн</b></div>
-          <p class="muted">Ми звʼяжемось для налаштування сайту.</p>
-          <a class="btn" href="/contacts">Написати у підтримку</a>
+          <a class="btn" href="/contacts">Обговорити індивідуальний сайт</a>
         </div>
       </article>
     </div>

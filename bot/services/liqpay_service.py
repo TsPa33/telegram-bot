@@ -15,6 +15,8 @@ logger.info("🔥 NEW LIQPAY SERVICE LOADED")
 # ===== DESCRIPTIONS =====
 DESCRIPTIONS = {
     "site": format_site_package_title("standard"),
+    "site_standard": format_site_package_title("standard"),
+    "site_plus": format_site_package_title("plus"),
     "garage_1": "1 місце в гаражі",
     "garage_5": "5 місць в гаражі",
     "garage_10": "10 місць в гаражі",
@@ -39,8 +41,10 @@ class LiqPayService:
         """
         Визначає правильний description для LiqPay
         """
-        if product == "site":
+        if product in {"site", "site_standard"}:
             return DESCRIPTIONS["site"]
+        if product == "site_plus":
+            return DESCRIPTIONS["site_plus"]
 
         if product == "seller_crm":
             return DESCRIPTIONS["seller_crm"]
