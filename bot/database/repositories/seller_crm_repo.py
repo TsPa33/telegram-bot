@@ -453,27 +453,33 @@ async def update_seller_crm_profile(
     seller_id: int,
     *,
     shop_name: str | None,
+    seller_name: str | None,
     phone: str | None,
     city: str | None,
     website: str | None,
     description: str | None,
+    photo_id: str | None = None,
 ) -> bool:
     row = await fetchrow(
         """
         UPDATE sellers
         SET shop_name = $1,
-            phone = $2,
-            city = $3,
-            website = $4,
-            description = $5
-        WHERE id = $6
+            name = $2,
+            phone = $3,
+            city = $4,
+            website = $5,
+            description = $6,
+            photo_id = COALESCE($7, photo_id)
+        WHERE id = $8
         RETURNING id
         """,
         shop_name,
+        seller_name,
         phone,
         city,
         website,
         description,
+        photo_id,
         seller_id,
     )
     return row is not None

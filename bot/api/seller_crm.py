@@ -3087,10 +3087,12 @@ async def seller_crm_profile_update(
     request: Request,
     crm_slug: str,
     shop_name: str = Form(""),
+    seller_name: str = Form(""),
     phone: str = Form(""),
     city: str = Form(""),
     website: str = Form(""),
     description: str = Form(""),
+    photo: UploadFile | None = File(None),
 ):
     try:
         account, _subscription = await _authorized_account(request, crm_slug)
@@ -3106,13 +3108,21 @@ async def seller_crm_profile_update(
     if clean_phone and not UA_PHONE_RE.match(clean_phone):
         return RedirectResponse(url=f"/crm/seller/{crm_slug}/profile?error=invalid_phone", status_code=303)
 
+    photo_url: str | None = None
+    if photo and photo.filename:
+        photo_url = await _upload_to_cloudinary(photo)
+        if not photo_url:
+            return RedirectResponse(url=f"/crm/seller/{crm_slug}/profile?error=photo_upload_failed", status_code=303)
+
     updated = await update_seller_crm_profile(
         int(account["seller_id"]),
         shop_name=_clean_optional(shop_name, max_len=120),
+        seller_name=_clean_optional(seller_name, max_len=120),
         phone=clean_phone,
         city=_clean_optional(city, max_len=120),
         website=_normalize_website(website),
         description=_clean_optional(description, max_len=1200),
+        photo_id=photo_url,
     )
     if not updated:
         return RedirectResponse(url=f"/crm/seller/{crm_slug}/profile?error=update_failed", status_code=303)
