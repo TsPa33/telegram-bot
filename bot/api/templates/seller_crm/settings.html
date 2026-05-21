@@ -30,7 +30,9 @@
             <li>послуги, контакти, карта, кнопка дзвінка</li>
             <li>заявки з сайту одразу потрапляють у CRM</li>
           </ul>
-          <a class="btn" href="/crm/seller/{{ account.crm_slug }}/profile#contacts-title">Замовити Стандарт</a>
+          <form method="post" action="/crm/seller/{{ account.crm_slug }}/settings/site-package/standard">
+            <button class="btn" type="submit">Замовити Стандарт</button>
+          </form>
         </div>
       </article>
 
@@ -43,7 +45,9 @@
             <li>додаткові модулі та адаптація під ваш бізнес</li>
             <li>Telegram + сайт + заявки в одному кабінеті</li>
           </ul>
-          <a class="btn" href="/crm/seller/{{ account.crm_slug }}/profile#contacts-title">Замовити Візитка Plus</a>
+          <form method="post" action="/crm/seller/{{ account.crm_slug }}/settings/site-package/plus">
+            <button class="btn" type="submit">Замовити Візитка Plus</button>
+          </form>
         </div>
       </article>
 
@@ -56,7 +60,7 @@
             <li>підготовка під рекламу та масштабування</li>
             <li>CRM система для управління заявками</li>
           </ul>
-          <a class="btn" href="/crm/seller/{{ account.crm_slug }}/profile#contacts-title">Обговорити індивідуальний сайт</a>
+          <a class="btn" href="/contacts">Обговорити індивідуальний сайт</a>
         </div>
       </article>
     </div>

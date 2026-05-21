@@ -159,6 +159,8 @@ from bot.services.telegram_sender import send_message_to_buyer
 from bot.services.buyer_chat_presence import is_buyer_in_chat
 from bot.services.site_config import get_theme_presets, merge_with_default
 from bot.services.storage import upload_image
+from bot.services.liqpay_service import LiqPayService
+from bot.config import LIQPAY_PUBLIC_KEY, LIQPAY_PRIVATE_KEY, LIQPAY_CALLBACK_URL
 
 router = APIRouter(prefix="/crm/seller")
 templates = Jinja2Templates(directory="bot/api/templates")
@@ -166,6 +168,7 @@ SELLER_CRM_COOKIE = "seller_crm_session"
 DEMO_CRM_SLUG = "demo"
 DEMO_SELLER_ID = 0
 logger = logging.getLogger(__name__)
+liqpay = LiqPayService(LIQPAY_PUBLIC_KEY, LIQPAY_PRIVATE_KEY)
 
 
 LEAD_STATUS_TABS = [
@@ -2959,6 +2962,33 @@ async def seller_crm_settings(request: Request, crm_slug: str):
             has_services=int(content_summary.get("active_services") or 0) > 0,
         ),
     )
+
+
+@router.post("/{crm_slug}/settings/site-package/{package_key}")
+async def seller_crm_site_package_checkout(request: Request, crm_slug: str, package_key: str):
+    try:
+        account, _subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+
+    package_map = {
+        "standard": {"amount": 499, "product": "site_standard"},
+        "plus": {"amount": 1499, "product": "site_plus"},
+    }
+
+    package = package_map.get(package_key)
+    if not package:
+        raise HTTPException(status_code=400, detail="Unknown site package")
+
+    payment = await liqpay.create_payment(
+        amount=package["amount"],
+        server_url=LIQPAY_CALLBACK_URL,
+        seller_id=account["seller_id"],
+        product=package["product"],
+    )
+    return RedirectResponse(url=payment["url"], status_code=303)
 
 
 @router.get("/{crm_slug}/profile")
