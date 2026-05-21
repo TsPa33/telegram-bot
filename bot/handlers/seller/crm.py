@@ -97,6 +97,7 @@ async def _send_crm_landing(message: Message):
         await message.answer("❌ Не вдалося підготувати CRM. Спробуйте ще раз або напишіть у підтримку.")
         return
 
+    logger.info("CRM_LANDING_SENT telegram_id=%s", message.from_user.id)
     await message.answer(
         _landing_text(account["crm_slug"], _crm_login(_seller), setup_required),
         parse_mode="HTML",
@@ -104,14 +105,19 @@ async def _send_crm_landing(message: Message):
     )
 
 
+
+
+async def _handle_crm_text_entry(message: Message):
+    logger.info("CRM_TEXT_HANDLER_TRIGGERED text=%r", message.text)
+    await _send_crm_landing(message)
 @router.message(F.text.in_(["🧾 Відкрити CRM", "📋 Відкрити CRM"]))
 async def seller_crm_landing(message: Message):
-    await _send_crm_landing(message)
+    await _handle_crm_text_entry(message)
 
 
 @router.message(F.text.contains("Відкрити CRM"))
 async def seller_crm_landing_contains(message: Message):
-    await _send_crm_landing(message)
+    await _handle_crm_text_entry(message)
 
 
 @router.callback_query(F.data.in_(["seller:crm", "seller_crm:open", "crm:open"]))

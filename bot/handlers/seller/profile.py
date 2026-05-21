@@ -201,6 +201,6 @@ async def handle_text(message: Message, state: FSMContext):
 
 @router.message(F.text.in_(["🧾 Відкрити CRM", "📋 Відкрити CRM"]))
 async def open_crm_quick_access(message: Message):
-    from bot.handlers.seller.crm import seller_crm_landing
+    from bot.handlers.seller.crm import _handle_crm_text_entry
 
-    await seller_crm_landing(message)
+    await _handle_crm_text_entry(message)
