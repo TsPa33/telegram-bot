@@ -86,8 +86,7 @@ async def _ensure_seller_crm(telegram_id: int, username: str | None):
     return seller, account, setup_required
 
 
-@router.message(F.text.in_(["🧾 Відкрити CRM", "📋 Відкрити CRM"]))
-async def seller_crm_landing(message: Message):
+async def _send_crm_landing(message: Message):
     try:
         _seller, account, setup_required = await _ensure_seller_crm(
             message.from_user.id,
@@ -103,6 +102,16 @@ async def seller_crm_landing(message: Message):
         parse_mode="HTML",
         reply_markup=_landing_kb(account, setup_required),
     )
+
+
+@router.message(F.text.in_(["🧾 Відкрити CRM", "📋 Відкрити CRM"]))
+async def seller_crm_landing(message: Message):
+    await _send_crm_landing(message)
+
+
+@router.message(F.text.contains("Відкрити CRM"))
+async def seller_crm_landing_contains(message: Message):
+    await _send_crm_landing(message)
 
 
 @router.callback_query(F.data.in_(["seller:crm", "seller_crm:open", "crm:open"]))

@@ -161,8 +161,8 @@ async def run_bot():
     try:
         await bot.delete_webhook(drop_pending_updates=True)
 
-        dp.message.middleware(UpdateLoggingMiddleware())
-        dp.callback_query.middleware(UpdateLoggingMiddleware())
+        dp.message.outer_middleware(UpdateLoggingMiddleware())
+        dp.callback_query.outer_middleware(UpdateLoggingMiddleware())
         dp.callback_query.middleware(CallbackAnswerMiddleware())
         dp.errors.register(global_error_handler)
 
