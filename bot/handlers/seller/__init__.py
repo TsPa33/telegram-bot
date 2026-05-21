@@ -1,3 +1,5 @@
+import logging
+
 from aiogram import Router
 
 from .cars import router as cars_router
@@ -10,24 +12,38 @@ from .services import router as services_router
 from .crm import router as crm_router
 from .leads import router as leads_router
 
+logger = logging.getLogger(__name__)
+
 router = Router()
+
+logger.info("CRM router loaded id=%s", id(crm_router))
 
 # Підключення всіх seller-роутерів
 # Захист від повторного attach при подвійних імпортах (seller vs seller.__init__)
-def _include_once(parent: Router, child: Router) -> None:
-    if getattr(child, "parent_router", None) is None:
+def _include_once(parent: Router, child: Router, name: str) -> None:
+    current_parent = getattr(child, "parent_router", None)
+    if current_parent is None:
+        if child is crm_router:
+            logger.info("Including crm_router into seller_router parent_id=%s child_id=%s", id(parent), id(child))
         parent.include_router(child)
+    else:
+        logger.info(
+            "Skip include for %s: already attached parent_id=%s child_id=%s",
+            name,
+            id(current_parent),
+            id(child),
+        )
 
 
-for _child in (
-    crm_router,
-    add_car_router,
-    cars_router,
-    profile_router,
-    verification_router,
-    payment_router,
-    leads_router,
-    services_router,
-    site_router,
+for _name, _child in (
+    ("crm_router", crm_router),
+    ("add_car_router", add_car_router),
+    ("cars_router", cars_router),
+    ("profile_router", profile_router),
+    ("verification_router", verification_router),
+    ("payment_router", payment_router),
+    ("leads_router", leads_router),
+    ("services_router", services_router),
+    ("site_router", site_router),
 ):
-    _include_once(router, _child)
+    _include_once(router, _child, _name)
