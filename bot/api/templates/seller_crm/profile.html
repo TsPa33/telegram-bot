@@ -5,7 +5,6 @@
   <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}">На головну</a>
 {% endblock %}
 {% block content %}
-{% set telegram_edit_url = "https://t.me/CarPotbot" %}
 <style>
   .profile-layout { grid-template-columns: minmax(0,1.12fr) minmax(0,.88fr); align-items: start; }
   .public-card-preview { display: grid; grid-template-columns: 96px minmax(0,1fr); gap: 14px; align-items: start; }
@@ -60,21 +59,23 @@
   <div class="pill">{{ completeness_percent }}% заповнено</div>
 </section>
 {% set status_messages = {"updated": "Профіль оновлено"} %}
-{% set error_messages = {"invalid_phone": "Некоректний телефон. Використайте формат +380XXXXXXXXX.", "update_failed": "Не вдалося зберегти зміни. Спробуйте ще раз.", "demo_readonly": "У демо-режимі редагування недоступне."} %}
+{% set error_messages = {"invalid_phone": "Некоректний телефон. Використайте формат +380XXXXXXXXX.", "update_failed": "Не вдалося зберегти зміни. Спробуйте ще раз.", "photo_upload_failed": "Не вдалося завантажити фото/логотип. Спробуйте ще раз.", "demo_readonly": "У демо-режимі редагування недоступне."} %}
 {% if status and status_messages.get(status) %}<div class="notice" role="status">{{ status_messages.get(status) }}</div>{% endif %}
 {% if error and error_messages.get(error) %}<div class="notice error" role="alert">{{ error_messages.get(error) }}</div>{% endif %}
 
 <section class="card secondary-section" aria-labelledby="profile-form-title">
-  <h2 id="profile-form-title">Дані профілю</h2>
-  <form class="crm-site" method="post" action="/crm/seller/{{ account.crm_slug }}/profile">
+  <h2 id="profile-form-title">Редагування профілю</h2>
+  <p class="section-note">Ці дані бачать покупці у вашій публічній картці та заявках.</p>
+  <form class="crm-site" method="post" action="/crm/seller/{{ account.crm_slug }}/profile" enctype="multipart/form-data">
     <div class="form-grid">
-      <label>Назва магазину / бізнесу<input type="text" name="shop_name" maxlength="120" value="{{ profile.shop_name or '' }}" placeholder="Наприклад, Auto Expert"></label>
+      <label>Назва бізнесу<input type="text" name="shop_name" maxlength="120" value="{{ profile.shop_name or '' }}" placeholder="Наприклад, Auto Expert"></label>
+      <label>Ім’я продавця<input type="text" name="seller_name" maxlength="120" value="{{ profile.name or '' }}" placeholder="Наприклад, Олександр"></label>
       <label>Телефон<input type="tel" name="phone" maxlength="20" value="{{ profile.phone or '' }}" placeholder="+380XXXXXXXXX"></label>
       <label>Місто<input type="text" name="city" maxlength="120" value="{{ profile.city or '' }}" placeholder="Вкажіть місто"></label>
       <label>Сайт<input type="text" name="website" maxlength="255" value="{{ profile.website or '' }}" placeholder="https://example.com"></label>
     </div>
     <label>Опис<textarea name="description" maxlength="1200" placeholder="Коротко опишіть ваші послуги">{{ profile.description or '' }}</textarea></label>
-    <p class="section-note stack-top">Фото редагується в Telegram: <a href="{{ telegram_edit_url }}" target="_blank" rel="noopener">відкрити бота</a>.</p>
+    <label>Фото / логотип<input type="file" name="photo" accept="image/png,image/jpeg,image/webp"></label>
     <div class="action-row stack-top"><button class="btn" type="submit">Зберегти зміни</button></div>
   </form>
 </section>
@@ -114,7 +115,7 @@
     <div class="progress-track" aria-hidden="true"><div class="progress-fill" style="width: {{ completeness_percent }}%"></div></div>
     <div class="checklist">
       {% for item in completeness_items %}
-        <div class="check-item {% if item.done %}done{% endif %}"><span class="check-icon">{{ "✓" if item.done else "!" }}</span><div><div class="profile-value">{{ item.label }}</div><div class="profile-label">{{ "Готово" if item.done else item.missing ~ ". Оновіть у CRM або Telegram" }}</div></div></div>
+        <div class="check-item {% if item.done %}done{% endif %}"><span class="check-icon">{{ "✓" if item.done else "!" }}</span><div><div class="profile-value">{{ item.label }}</div><div class="profile-label">{{ "Готово" if item.done else item.missing ~ ". Оновіть у CRM" }}</div></div></div>
       {% endfor %}
     </div>
   </aside>
@@ -135,10 +136,9 @@
 
 <section class="card secondary-section" aria-labelledby="actions-title">
   <h2 id="actions-title">Дії</h2>
-  <p class="section-note">Базові поля профілю редагуються в CRM. Для фото та верифікації використовуйте Telegram.</p>
+  <p class="section-note">Базові поля профілю, включно з фото/логотипом, редагуються в CRM.</p>
   <div class="profile-actions">
     <a class="btn" href="#profile-form-title">Редагувати профіль</a>
-    <a class="btn ghost" href="{{ telegram_edit_url }}" target="_blank" rel="noopener">{{ "Статус верифікації" if profile.is_verified else "Подати на верифікацію" }}</a>
     {% if public_site_url %}<a class="btn ghost" href="{{ public_site_url }}" target="_blank" rel="noopener">Відкрити сайт</a>{% endif %}
     <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}">На головну</a>
   </div>
