@@ -28,6 +28,7 @@ from bot.states.seller_states import SellerCrmStates
 logger = logging.getLogger(__name__)
 
 router = Router()
+logger.info("CRM router loaded id=%s", id(router))
 liqpay = LiqPayService(LIQPAY_PUBLIC_KEY, LIQPAY_PRIVATE_KEY)
 
 
@@ -301,3 +302,6 @@ async def seller_crm_password_entered(message: Message, state: FSMContext):
         parse_mode="HTML",
         reply_markup=kb.as_markup(),
     )
+
+
+logger.info("CRM handlers registered message=%s callback=%s", len(router.message.handlers), len(router.callback_query.handlers))
