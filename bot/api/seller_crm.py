@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import re
 import secrets
 import tempfile
 from datetime import datetime, timedelta
@@ -46,6 +47,7 @@ from bot.database.repositories.seller_crm_repo import (
     get_seller_crm_lead_detail,
     get_seller_crm_offer_detail,
     get_seller_crm_public_profile,
+    update_seller_crm_profile,
     get_seller_crm_marketplace_summary,
     get_seller_crm_settings_summary,
     seller_has_crm_lead_access,
@@ -197,6 +199,7 @@ CAR_PHOTO_SUFFIX_BY_MIME = {
     "image/png": ".png",
     "image/webp": ".webp",
 }
+UA_PHONE_RE = re.compile(r"^\+380\d{9}$")
 
 
 MODULE_KEYS = [
@@ -3037,6 +3040,8 @@ async def seller_crm_profile(request: Request, crm_slug: str):
     ]
     completed_count = sum(1 for item in completeness_items if item["done"])
     completeness_percent = round((completed_count / len(completeness_items)) * 100)
+    status = request.query_params.get("status")
+    error = request.query_params.get("error")
 
     return templates.TemplateResponse(
         "seller_crm/profile.html",
@@ -3055,8 +3060,63 @@ async def seller_crm_profile(request: Request, crm_slug: str):
             has_website=has_website,
             has_cars=int(profile.get("active_cars_count") or 0) > 0,
             has_services=int(profile.get("active_services_count") or 0) > 0,
+            status=status,
+            error=error,
         ),
     )
+
+
+def _clean_optional(value: str | None, *, max_len: int) -> str | None:
+    normalized = (value or "").strip()
+    if not normalized:
+        return None
+    return normalized[:max_len]
+
+
+def _normalize_website(value: str | None) -> str | None:
+    normalized = (value or "").strip()
+    if not normalized:
+        return None
+    if not normalized.startswith(("http://", "https://")):
+        normalized = f"https://{normalized}"
+    return normalized[:255]
+
+
+@router.post("/{crm_slug}/profile")
+async def seller_crm_profile_update(
+    request: Request,
+    crm_slug: str,
+    shop_name: str = Form(""),
+    phone: str = Form(""),
+    city: str = Form(""),
+    website: str = Form(""),
+    description: str = Form(""),
+):
+    try:
+        account, _subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+
+    if _is_demo_account(account):
+        return RedirectResponse(url=f"/crm/seller/{crm_slug}/profile?error=demo_readonly", status_code=303)
+
+    clean_phone = _clean_optional(phone, max_len=20)
+    if clean_phone and not UA_PHONE_RE.match(clean_phone):
+        return RedirectResponse(url=f"/crm/seller/{crm_slug}/profile?error=invalid_phone", status_code=303)
+
+    updated = await update_seller_crm_profile(
+        int(account["seller_id"]),
+        shop_name=_clean_optional(shop_name, max_len=120),
+        phone=clean_phone,
+        city=_clean_optional(city, max_len=120),
+        website=_normalize_website(website),
+        description=_clean_optional(description, max_len=1200),
+    )
+    if not updated:
+        return RedirectResponse(url=f"/crm/seller/{crm_slug}/profile?error=update_failed", status_code=303)
+    return RedirectResponse(url=f"/crm/seller/{crm_slug}/profile?status=updated", status_code=303)
 
 
 @router.get("/{crm_slug}")

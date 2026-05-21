@@ -35,6 +35,7 @@
   .check-icon { flex: 0 0 auto; width: 26px; height: 26px; display: grid; place-items: center; border-radius: 999px; background: #FEF3C7; color: #92400E; border: 1px solid #FCD34D; font-weight: 700; }
   .check-item.done .check-icon { background: #DCFCE7; color: #166534; border-color: #86EFAC; }
   .profile-actions, .action-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .notice.error { border-color: rgba(251,113,133,.28); background: rgba(251,113,133,.1); color: #F5C7CF; }
   .action-row .btn { min-height: 42px; }
   @media (max-width:980px) { .profile-layout, .trust-grid { grid-template-columns: 1fr; } }
   @media (max-width:620px) {
@@ -49,14 +50,33 @@
 <section class="workspace-hero" aria-labelledby="profile-title">
   <div>
     <h2 id="profile-title">Профіль продавця</h2>
-    <p class="section-note">Це публічна картка продавця. Покупці бачать ці дані. Редагування профілю зараз виконується через Telegram.</p>
+    <p class="section-note">Це публічна картка продавця. Покупці бачать ці дані. Базові поля можна редагувати прямо в CRM.</p>
     <div class="action-row">
-      <a class="btn" href="{{ telegram_edit_url }}" target="_blank" rel="noopener">Редагувати в Telegram</a>
+      <a class="btn" href="#profile-form-title">Редагувати профіль</a>
       {% if public_site_url %}<a class="btn ghost" href="{{ public_site_url }}" target="_blank" rel="noopener">Відкрити сайт</a>{% endif %}
       <a class="btn ghost" href="#contacts-title">Перейти до контактів</a>
     </div>
   </div>
   <div class="pill">{{ completeness_percent }}% заповнено</div>
+</section>
+{% set status_messages = {"updated": "Профіль оновлено"} %}
+{% set error_messages = {"invalid_phone": "Некоректний телефон. Використайте формат +380XXXXXXXXX.", "update_failed": "Не вдалося зберегти зміни. Спробуйте ще раз.", "demo_readonly": "У демо-режимі редагування недоступне."} %}
+{% if status and status_messages.get(status) %}<div class="notice" role="status">{{ status_messages.get(status) }}</div>{% endif %}
+{% if error and error_messages.get(error) %}<div class="notice error" role="alert">{{ error_messages.get(error) }}</div>{% endif %}
+
+<section class="card secondary-section" aria-labelledby="profile-form-title">
+  <h2 id="profile-form-title">Дані профілю</h2>
+  <form class="crm-site" method="post" action="/crm/seller/{{ account.crm_slug }}/profile">
+    <div class="form-grid">
+      <label>Назва магазину / бізнесу<input type="text" name="shop_name" maxlength="120" value="{{ profile.shop_name or '' }}" placeholder="Наприклад, Auto Expert"></label>
+      <label>Телефон<input type="tel" name="phone" maxlength="20" value="{{ profile.phone or '' }}" placeholder="+380XXXXXXXXX"></label>
+      <label>Місто<input type="text" name="city" maxlength="120" value="{{ profile.city or '' }}" placeholder="Вкажіть місто"></label>
+      <label>Сайт<input type="text" name="website" maxlength="255" value="{{ profile.website or '' }}" placeholder="https://example.com"></label>
+    </div>
+    <label>Опис<textarea name="description" maxlength="1200" placeholder="Коротко опишіть ваші послуги">{{ profile.description or '' }}</textarea></label>
+    <p class="section-note stack-top">Фото редагується в Telegram: <a href="{{ telegram_edit_url }}" target="_blank" rel="noopener">відкрити бота</a>.</p>
+    <div class="action-row stack-top"><button class="btn" type="submit">Зберегти зміни</button></div>
+  </form>
 </section>
 
 <section class="grid profile-layout">
@@ -83,7 +103,7 @@
       <div class="profile-row"><div><div class="profile-row-head"><div class="profile-label">Сайт</div><span class="status-chip {% if profile.website or public_site_url %}ready{% else %}neutral{% endif %}">{% if profile.website or public_site_url %}Готово{% else %}Опційно{% endif %}</span></div><div class="profile-value {% if not profile.website and not public_site_url %}warning-text{% endif %}">{{ profile.website or public_site_url or "Сайт не вказано" }}</div></div></div>
       <div class="profile-row"><div><div class="profile-row-head"><div class="profile-label">Telegram username</div><span class="status-chip {% if profile.username %}ready{% else %}neutral{% endif %}">{% if profile.username %}Готово{% else %}Опційно{% endif %}</span></div><div class="profile-value {% if not profile.username %}warning-text{% endif %}">{% if profile.username %}@{{ profile.username }}{% else %}Telegram не вказано{% endif %}</div></div></div>
     </div>
-    <p class="section-note stack-top">Немає телефону або міста? Натисніть «Редагувати в Telegram» і оновіть профіль через бота.</p>
+    <p class="section-note stack-top">Немає телефону або міста? Заповніть поля в секції «Дані профілю» та збережіть зміни.</p>
   </aside>
 </section>
 
@@ -94,7 +114,7 @@
     <div class="progress-track" aria-hidden="true"><div class="progress-fill" style="width: {{ completeness_percent }}%"></div></div>
     <div class="checklist">
       {% for item in completeness_items %}
-        <div class="check-item {% if item.done %}done{% endif %}"><span class="check-icon">{{ "✓" if item.done else "!" }}</span><div><div class="profile-value">{{ item.label }}</div><div class="profile-label">{{ "Готово" if item.done else item.missing ~ ". Оновіть через Telegram" }}</div></div></div>
+        <div class="check-item {% if item.done %}done{% endif %}"><span class="check-icon">{{ "✓" if item.done else "!" }}</span><div><div class="profile-value">{{ item.label }}</div><div class="profile-label">{{ "Готово" if item.done else item.missing ~ ". Оновіть у CRM або Telegram" }}</div></div></div>
       {% endfor %}
     </div>
   </aside>
@@ -115,9 +135,9 @@
 
 <section class="card secondary-section" aria-labelledby="actions-title">
   <h2 id="actions-title">Дії</h2>
-  <p class="section-note">У цій фазі редагування профілю залишається у Telegram. Тут показуємо готовність картки та безпечні дії.</p>
+  <p class="section-note">Базові поля профілю редагуються в CRM. Для фото та верифікації використовуйте Telegram.</p>
   <div class="profile-actions">
-    <a class="btn" href="{{ telegram_edit_url }}" target="_blank" rel="noopener">Редагувати в Telegram</a>
+    <a class="btn" href="#profile-form-title">Редагувати профіль</a>
     <a class="btn ghost" href="{{ telegram_edit_url }}" target="_blank" rel="noopener">{{ "Статус верифікації" if profile.is_verified else "Подати на верифікацію" }}</a>
     {% if public_site_url %}<a class="btn ghost" href="{{ public_site_url }}" target="_blank" rel="noopener">Відкрити сайт</a>{% endif %}
     <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}">На головну</a>
