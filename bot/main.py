@@ -7,9 +7,11 @@ from aiogram import Bot, Dispatcher, Router, F, BaseMiddleware
 from aiogram.types import CallbackQuery, ErrorEvent
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.fsm.storage.redis import RedisStorage
+from aiogram.fsm.storage.base import BaseStorage, StorageKey, StateType
 from aiogram.utils.callback_answer import CallbackAnswerMiddleware
 
 from redis.asyncio import from_url
+from redis.exceptions import RedisError
 
 from bot.config import BOT_TOKEN
 from bot.database.pool import init_pool
@@ -78,10 +80,56 @@ async def global_error_handler(event: ErrorEvent):
     )
 
 
+class RedisFallbackStorage(BaseStorage):
+    def __init__(self, primary: BaseStorage, fallback: BaseStorage):
+        self._primary = primary
+        self._fallback = fallback
+        self._degraded = False
+
+    async def _run_with_fallback(self, method_name: str, *args, **kwargs):
+        storage = self._fallback if self._degraded else self._primary
+        method = getattr(storage, method_name)
+        try:
+            return await method(*args, **kwargs)
+        except RedisError:
+            if not self._degraded:
+                logger.warning("Redis unavailable, falling back to MemoryStorage")
+                self._degraded = True
+                return await getattr(self._fallback, method_name)(*args, **kwargs)
+            raise
+
+    async def set_state(self, key: StorageKey, state: StateType = None) -> None:
+        await self._run_with_fallback("set_state", key, state)
+
+    async def get_state(self, key: StorageKey) -> str | None:
+        return await self._run_with_fallback("get_state", key)
+
+    async def set_data(self, key: StorageKey, data: dict) -> None:
+        await self._run_with_fallback("set_data", key, data)
+
+    async def get_data(self, key: StorageKey) -> dict:
+        return await self._run_with_fallback("get_data", key)
+
+    async def close(self) -> None:
+        await self._primary.close()
+        await self._fallback.close()
+
+
 async def get_storage():
     redis_url = os.getenv("REDIS_URL")
     if redis_url:
-        return RedisStorage(from_url(redis_url))
+        redis = from_url(
+            redis_url,
+            socket_connect_timeout=1,
+            socket_timeout=1,
+            retry_on_timeout=False,
+        )
+        try:
+            await redis.ping()
+            return RedisFallbackStorage(RedisStorage(redis), MemoryStorage())
+        except RedisError:
+            logger.warning("Redis unavailable, falling back to MemoryStorage")
+            await redis.aclose()
     return MemoryStorage()
 
 
