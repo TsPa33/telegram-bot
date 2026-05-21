@@ -449,6 +449,36 @@ async def get_seller_crm_public_profile(seller_id: int):
     )
 
 
+async def update_seller_crm_profile(
+    seller_id: int,
+    *,
+    shop_name: str | None,
+    phone: str | None,
+    city: str | None,
+    website: str | None,
+    description: str | None,
+) -> bool:
+    row = await fetchrow(
+        """
+        UPDATE sellers
+        SET shop_name = $1,
+            phone = $2,
+            city = $3,
+            website = $4,
+            description = $5
+        WHERE id = $6
+        RETURNING id
+        """,
+        shop_name,
+        phone,
+        city,
+        website,
+        description,
+        seller_id,
+    )
+    return row is not None
+
+
 async def get_seller_crm_dashboard(seller_id: int):
     return await fetchrow(
         """
