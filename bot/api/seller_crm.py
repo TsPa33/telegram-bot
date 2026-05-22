@@ -2175,19 +2175,23 @@ async def seller_crm_content(request: Request, crm_slug: str):
     seller_id = account["seller_id"]
     if _is_demo_account(account):
         summary = _demo_content_summary()
-        site = {"subdomain": DEMO_CRM_SLUG}
+        site = {"subdomain": DEMO_CRM_SLUG, "config_draft": {"modules": {"products": True}}, "config_live": {"modules": {"products": True}}}
     else:
         summary = dict(await get_seller_crm_content_summary(seller_id) or {})
         site = await get_site_by_seller(seller_id)
     account_flags = dict(account)
+    draft_config = merge_with_default((site or {}).get("config_draft") or {}) if site else {}
+    live_config = merge_with_default((site or {}).get("config_live") or {}) if site else {}
+    products_module_draft_enabled = bool(((draft_config.get("modules") or {}).get("products", False)))
+    products_module_live_enabled = bool(((live_config.get("modules") or {}).get("products", False)))
     has_website = bool(site or account_flags.get("has_site") or account_flags.get("website"))
     has_cars = int(summary.get("active_cars") or 0) > 0
     has_services = int(summary.get("active_services") or 0) > 0
 
     priority_sections = [
-        {"key": "cars", "label": "Мої авто", "href": f"/crm/seller/{crm_slug}/content/cars"},
-        {"key": "parts", "label": "Мої товари", "href": f"/crm/seller/{crm_slug}/content/products"},
-        {"key": "services", "label": "Мої послуги", "href": f"/crm/seller/{crm_slug}/content/services"},
+        {"key": "cars", "label": "Авто на розборі", "href": f"/crm/seller/{crm_slug}/content/cars"},
+        {"key": "products", "label": "Запчастини / товари", "href": f"/crm/seller/{crm_slug}/content/products"},
+        {"key": "services", "label": "Послуги", "href": f"/crm/seller/{crm_slug}/content/services"},
     ]
 
     return templates.TemplateResponse(
@@ -2204,6 +2208,8 @@ async def seller_crm_content(request: Request, crm_slug: str):
             has_website=has_website,
             has_cars=has_cars,
             has_services=has_services,
+            products_module_draft_enabled=products_module_draft_enabled,
+            products_module_live_enabled=products_module_live_enabled,
         ),
     )
 
@@ -3126,9 +3132,11 @@ async def seller_crm_car_parts(request: Request, crm_slug: str, car_id: int, sta
                 part["preview_photo"] = car.get("photo_id")
             grouped_parts[part.get("category")].append(part)
     site = await get_site_by_seller(seller_id)
-    site_config = _as_config(site) if site else {}
-    products_module_enabled = bool(((site_config.get("modules") or {}).get("products", False)))
-    show_products_module_notice = bool(stats["available"] > 0 and not products_module_enabled)
+    draft_config = merge_with_default((site or {}).get("config_draft") or {}) if site else {}
+    live_config = merge_with_default((site or {}).get("config_live") or {}) if site else {}
+    products_module_draft_enabled = bool(((draft_config.get("modules") or {}).get("products", False)))
+    products_module_live_enabled = bool(((live_config.get("modules") or {}).get("products", False)))
+    show_products_module_notice = bool(stats["available"] > 0 and (products_module_draft_enabled and not products_module_live_enabled or (not products_module_draft_enabled and not products_module_live_enabled)))
     return templates.TemplateResponse(
         "seller_crm/car_parts.html",
         _seller_crm_context(
@@ -3151,6 +3159,8 @@ async def seller_crm_car_parts(request: Request, crm_slug: str, car_id: int, sta
             q=query_text,
             created=created,
             show_products_module_notice=show_products_module_notice,
+            products_module_draft_enabled=products_module_draft_enabled,
+            products_module_live_enabled=products_module_live_enabled,
             has_website=False,
             has_cars=True,
             has_services=False,
@@ -3573,6 +3583,8 @@ async def seller_crm_dashboard(request: Request, crm_slug: str):
             has_website=has_website,
             has_cars=has_cars,
             has_services=has_services,
+            products_module_draft_enabled=products_module_draft_enabled,
+            products_module_live_enabled=products_module_live_enabled,
         ),
     )
 
