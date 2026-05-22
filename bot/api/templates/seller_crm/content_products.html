@@ -1,8 +1,8 @@
 {% extends "seller_crm/base.html" %}
 {% import "seller_crm/components/badges.html" as badges %}
 {% import "seller_crm/components/cards.html" as cards %}
-{% block crm_kicker %}Каталог / Мої товари{% endblock %}
-{% block crm_heading %}Товари та запчастини{% endblock %}
+{% block crm_kicker %}Каталог продавця{% endblock %}
+{% block crm_heading %}Запчастини / товари{% endblock %}
 {% block content %}
 <style>
   .products-workspace { display: grid; gap: 14px; min-width: 0; }
@@ -14,8 +14,6 @@
   .product-title { margin: 0; color: var(--text); font-size: 18px; line-height: 1.25; overflow-wrap: anywhere; }
   .product-meta { color: var(--muted); font-size: 12px; font-weight: 600; }
   .product-desc { margin: 0; color: var(--muted); line-height: 1.45; overflow-wrap: anywhere; }
-  .import-card { border-color: rgba(56,189,248,.13); background: linear-gradient(135deg, rgba(56,189,248,.06), rgba(125,211,176,.035)); }
-  .price-badge { color: #BCEBD3; font-weight: 700; }
   @media (max-width: 980px) { .products-summary { grid-template-columns: repeat(2,minmax(0,1fr)); } }
   @media (max-width: 680px) { .products-summary { grid-template-columns: 1fr; } .product-top { display: grid; } .product-actions { display: grid; grid-template-columns: 1fr; } .product-actions .btn { width: 100%; white-space: normal; } }
 </style>
@@ -23,21 +21,13 @@
 <div class="products-workspace">
   <section class="workspace-hero" aria-labelledby="products-title">
     <div>
-      <h2 id="products-title">Товари та запчастини</h2>
-      <p class="section-note">Окремий склад товарів і запчастин: імпорт, залишки, ціни, OEM та статуси.</p>
+      <h2 id="products-title">Запчастини / товари</h2>
+      <p class="section-note">Запчастини, товари та складські позиції.</p>
     </div>
     <div class="product-actions">
-      <a class="btn" href="/crm/seller/{{ account.crm_slug }}/content/products/import">⬆ Додати товар / запчастину</a>
+      <a class="btn" href="/crm/seller/{{ account.crm_slug }}/content/products/import">+ Додати товар</a>
+      <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content/products/import">⬆ Імпортувати CSV/XLSX</a>
       <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content">← Каталог</a>
-    </div>
-  </section>
-
-  <section class="card import-card" aria-labelledby="products-import-title">
-    <h2 id="products-import-title">Додати товари / запчастини</h2>
-    <p class="section-note">Завантажте файл з колонками title, category, brand, model, oem_code, condition, price, quantity, stock_status, description. Дублікати за title + oem_code пропускаються безпечно.</p>
-    <div class="product-actions">
-      <a class="btn" href="/crm/seller/{{ account.crm_slug }}/content/products/import">⬆ Імпортувати CSV/XLSX</a>
-      <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content/products/import/template?format=csv">Завантажити приклад шаблону</a>
     </div>
   </section>
 
@@ -65,19 +55,13 @@
             </div>
             <div class="product-badges">
               {% if product.status == 'active' %}{{ badges.status_badge("Активний", "status-success") }}{% else %}{{ badges.status_badge(product.status or "Неактивний", "status-waiting") }}{% endif %}
-              {% if product.price is not none %}{{ badges.status_badge(product.price ~ " ₴", "status-viewed price-badge") }}{% else %}{{ badges.status_badge("Без ціни", "status-waiting") }}{% endif %}
+              {% if product.price is not none %}{{ badges.status_badge(product.price ~ " ₴", "status-viewed") }}{% else %}{{ badges.status_badge("Без ціни", "status-waiting") }}{% endif %}
             </div>
           </div>
           <p class="product-desc">{{ (product.description[:180] ~ ('…' if product.description and product.description|length > 180 else '')) if product.description else 'Опис ще не додано.' }}</p>
-          <div class="product-badges">
-            {{ badges.status_badge("Кількість: " ~ (product.quantity or 0)) }}
-            {{ badges.status_badge("Склад: " ~ (product.stock_status or 'available')) }}
-            {% if product.oem_code %}{{ badges.status_badge("OEM: " ~ product.oem_code) }}{% else %}{{ badges.status_badge("Без OEM", "status-waiting") }}{% endif %}
-            {% if product.condition %}{{ badges.status_badge(product.condition) }}{% endif %}
-          </div>
         </article>
       {% else %}
-        {{ badges.empty_state("Товарів і запчастин ще немає", "Імпортуйте CSV або XLSX файл — товари з’являться тут окремо від авто та послуг.", "/crm/seller/" ~ account.crm_slug ~ "/content/products/import", "⬆ Додати товар / запчастину") }}
+        {{ badges.empty_state("Товарів і запчастин ще немає", "Додайте перший товар через імпорт.", "/crm/seller/" ~ account.crm_slug ~ "/content/products/import", "+ Додати товар") }}
       {% endfor %}
     </div>
   </section>

@@ -2,7 +2,7 @@
 {% import "seller_crm/components/badges.html" as badges %}
 {% import "seller_crm/components/cards.html" as cards %}
 {% import "seller_crm/components/layout.html" as layout %}
-{% block crm_kicker %}Каталог / Мої послуги{% endblock %}
+{% block crm_kicker %}Каталог продавця{% endblock %}
 {% block crm_heading %}Послуги{% endblock %}
 {% block content %}
 <style>
@@ -35,16 +35,17 @@
       <h2 id="services-title">Послуги</h2>
       <p class="section-note">Окремий список сервісних пропозицій: ремонт, підбір, доставка та інші послуги.</p>
     </div>
-    <div class="content-add-actions"><a class="btn" href="/crm/seller/{{ account.crm_slug }}/content/services/create">＋ Додати послугу</a><a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content">← Каталог</a></div>
+    <div class="content-add-actions"><a class="btn" href="/crm/seller/{{ account.crm_slug }}/content/services/create">+ Додати послугу</a><a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content">← Каталог</a></div>
   </section>
 
-  <section class="card content-add-card" aria-labelledby="services-add-actions">
+  <!-- removed duplicate quick block -->
+<section class="card" style="display:none" aria-hidden="true">
     <h2 id="services-add-actions">Додати послугу</h2>
     <p class="section-note">Створіть сервісну пропозицію в кабінеті. Авто та товари залишаються в окремих розділах каталогу.</p>
     <div class="content-add-actions" aria-label="Швидкі дії для послуг">
-      <a class="btn" href="/crm/seller/{{ account.crm_slug }}/content/services/create">＋ Додати послугу</a>
-      <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content/cars">Мої авто</a>
-      <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content/products">Мої товари</a>
+      <a class="btn" href="/crm/seller/{{ account.crm_slug }}/content/services/create">+ Додати послугу</a>
+      <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content/cars">Авто на розборі</a>
+      <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content/products">Запчастини / товари</a>
     </div>
   </section>
 
@@ -111,7 +112,7 @@
           </div>
         </article>
       {% else %}
-        {{ badges.empty_state("Додайте першу послугу.", "Створіть сервісну пропозицію в кабінеті — вона з’явиться тут зі статистикою та індикаторами заповнення.", "/crm/seller/" ~ account.crm_slug ~ "/content/services/create", "＋ Додати послугу") }}
+        {{ badges.empty_state("Додайте першу послугу.", "Створіть сервісну пропозицію в кабінеті — вона з’явиться тут зі статистикою та індикаторами заповнення.", "/crm/seller/" ~ account.crm_slug ~ "/content/services/create", "+ Додати послугу") }}
       {% endfor %}
     </div>
   </section>
