@@ -5,6 +5,7 @@ from aiogram import Router, F
 from aiogram.types import CallbackQuery, Message
 from aiogram.fsm.context import FSMContext
 
+from bot.states.seller_states import SellerPartStates
 from bot.database.repositories.seller_repo import get_seller_by_telegram_id
 from bot.database.repositories.part_repo import (
     get_car_part_categories,
