@@ -142,11 +142,11 @@
     <summary><h2 class="section-heading">7–8. Модулі</h2><p class="section-intro">Увімкніть потрібні блоки й застосуйте кольорову схему без зміни логіки сайту.</p></summary>
     <div class="subgrid">
       <article id="modules" class="card">
-        <div class="card-headline"><h3>7. Модулі сайту</h3><p class="muted">Показуйте лише готові розділи.</p></div>
+        <div class="card-headline"><h3>7. Модулі сайту</h3><p class="muted">Показуйте лише готові розділи. Після зміни модулів опублікуйте сайт, щоб зміни зʼявились для клієнтів.</p></div>
         <form method="post" action="/crm/seller/{{ account.crm_slug }}/website/modules" class="module-grid">
           {% for key, label in module_keys %}
           {% set module_enabled = modules_config[key] if key in modules_config else key in ['hero','services','cars','contacts','map','footer'] %}
-          <label><input type="checkbox" name="{{ key }}" {% if module_enabled %}checked{% endif %}> {{ label }}</label>
+          <label><input type="checkbox" name="{{ key }}" {% if module_enabled %}checked{% endif %}> {{ label }}{% if key == 'products' %}<div class="muted">Показувати на сайті товари, запчастини та позиції з каталогу, які мають статус ‘В наявності’.</div>{% endif %}</label>
           {% endfor %}
           <button class="btn wide">Зберегти модулі</button>
         </form>

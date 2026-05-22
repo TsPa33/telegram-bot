@@ -189,7 +189,7 @@
     overflow: hidden;
     padding: 72px 0;
     background:
-        radial-gradient(circle at 15% 10%, rgba(220, 38, 38, 0.20), transparent 30%),
+        radial-gradient(circle at 15% 10%, color-mix(in srgb, var(--primary) 20%, transparent), transparent 30%),
         radial-gradient(circle at 85% 20%, rgba(245, 158, 11, 0.12), transparent 28%),
         linear-gradient(135deg, #07090d 0%, #111827 48%, #090b10 100%);
     color: #f8fafc;
@@ -222,10 +222,10 @@
     width: max-content;
     margin-bottom: 10px;
     padding: 6px 10px;
-    border: 1px solid rgba(248, 113, 113, 0.45);
+    border: 1px solid color-mix(in srgb, var(--primary) 45%, transparent);
     border-radius: 999px;
-    background: rgba(127, 29, 29, 0.40);
-    color: #fecaca;
+    background: color-mix(in srgb, var(--primary-dark) 40%, transparent);
+    color: var(--text);
     font-size: 12px;
     font-weight: 800;
     letter-spacing: 0.12em;
@@ -252,11 +252,11 @@
 
 .cp-cart-open,
 .cp-floating-cart {
-    border: 1px solid rgba(248, 113, 113, 0.55);
-    background: linear-gradient(135deg, #dc2626, #991b1b);
+    border: 1px solid color-mix(in srgb, var(--primary) 55%, transparent);
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
     color: #ffffff;
     cursor: pointer;
-    box-shadow: 0 18px 45px rgba(220, 38, 38, 0.22);
+    box-shadow: 0 18px 45px color-mix(in srgb, var(--primary) 22%, transparent);
 }
 
 .cp-cart-open {
@@ -277,16 +277,16 @@
     place-items: center;
     border-radius: 999px;
     background: #ffffff;
-    color: #991b1b;
+    color: var(--primary-dark);
     font-size: 13px;
 }
 
 .cp-vin-card,
 .cp-trust-block {
     margin-bottom: 22px;
-    border: 1px solid rgba(248, 113, 113, 0.24);
+    border: 1px solid color-mix(in srgb, var(--primary) 24%, transparent);
     border-radius: 28px;
-    background: linear-gradient(135deg, rgba(15, 23, 42, 0.92), rgba(69, 10, 10, 0.58));
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.92), color-mix(in srgb, var(--primary-dark) 58%, transparent));
     box-shadow: 0 28px 90px rgba(0, 0, 0, 0.35);
 }
 
@@ -320,7 +320,7 @@
 
 .cp-vin-submit {
     grid-column: span 2;
-    background: linear-gradient(135deg, #ef4444, #991b1b);
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
 }
 
 .cp-delivery-strip {
@@ -359,7 +359,7 @@
 .cp-category-pill:hover,
 .cp-category-pill.active {
     border-color: rgba(248, 113, 113, 0.80);
-    background: rgba(220, 38, 38, 0.22);
+    background: color-mix(in srgb, var(--primary) 22%, transparent);
     color: #ffffff;
 }
 
@@ -384,7 +384,7 @@
 .cp-product-card:hover {
     transform: translateY(-5px);
     border-color: rgba(248, 113, 113, 0.62);
-    box-shadow: 0 28px 90px rgba(220, 38, 38, 0.22);
+    box-shadow: 0 28px 90px color-mix(in srgb, var(--primary) 22%, transparent);
 }
 
 .cp-product-card:hover .cp-product-media img,
@@ -412,7 +412,7 @@
     flex-direction: column;
     gap: 8px;
     background:
-        radial-gradient(circle at 50% 20%, rgba(239, 68, 68, 0.26), transparent 34%),
+        radial-gradient(circle at 50% 20%, color-mix(in srgb, var(--primary) 26%, transparent), transparent 34%),
         linear-gradient(135deg, rgba(127, 29, 29, 0.48), rgba(2, 6, 23, 0.94)),
         repeating-linear-gradient(-45deg, rgba(255,255,255,0.045) 0 8px, transparent 8px 16px);
     transition: transform 0.28s ease;
@@ -436,7 +436,7 @@
     left: 12px;
     top: 12px;
     background: rgba(2, 6, 23, 0.78);
-    color: #fecaca;
+    color: var(--text);
 }
 
 .cp-product-badge {
@@ -449,7 +449,7 @@
 
 .cp-badge-sale,
 .cp-badge-hot {
-    background: linear-gradient(135deg, #ef4444, #991b1b);
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
     color: #ffffff;
 }
 
@@ -565,8 +565,8 @@
 .cp-btn:hover { transform: translateY(-1px); }
 
 .cp-btn-buy {
-    background: linear-gradient(135deg, #ef4444, #991b1b);
-    box-shadow: 0 12px 28px rgba(239, 68, 68, 0.20);
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    box-shadow: 0 12px 28px color-mix(in srgb, var(--primary) 20%, transparent);
 }
 
 .cp-btn-order,
@@ -576,9 +576,9 @@
 }
 
 .cp-btn-message {
-    background: rgba(69, 10, 10, 0.52);
-    border: 1px solid rgba(248, 113, 113, 0.34);
-    color: #fecaca;
+    background: color-mix(in srgb, var(--primary-dark) 52%, transparent);
+    border: 1px solid color-mix(in srgb, var(--primary) 34%, transparent);
+    color: var(--text);
 }
 
 .cp-trust-block {
@@ -749,14 +749,14 @@ body.has-products-cart.theme-parts_dark_red [data-scroll-top] {
 .cp-cart-remove {
     border: 0;
     border-radius: 10px;
-    background: rgba(239, 68, 68, 0.16);
-    color: #fecaca;
+    background: color-mix(in srgb, var(--primary) 16%, transparent);
+    color: var(--text);
     padding: 8px 10px;
     cursor: pointer;
 }
 
 .cp-cart-form { display: grid; gap: 10px; }
-.cp-cart-submit { background: linear-gradient(135deg, #ef4444, #b91c1c); }
+.cp-cart-submit { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); }
 .cp-cart-note { margin: 0; color: #94a3b8; font-size: 12px; line-height: 1.45; }
 
 .cp-quick-layout {
@@ -820,7 +820,7 @@ body.has-products-cart.theme-parts_dark_red [data-scroll-top] {
     pointer-events: none;
     padding: 12px 16px;
     border-radius: 999px;
-    background: linear-gradient(135deg, #ef4444, #991b1b);
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
     color: #ffffff;
     font-weight: 800;
     box-shadow: 0 18px 44px rgba(0,0,0,0.35);

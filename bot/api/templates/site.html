@@ -25,7 +25,7 @@
     {% include "components/products.html" %}
 {% endif %}
 
-{% if seller_parts %}
+{% if modules.get('products', False) and seller_parts %}
     {% include "components/seller_parts.html" %}
 {% endif %}
 

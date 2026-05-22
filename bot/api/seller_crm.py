@@ -223,6 +223,7 @@ MODULE_KEYS = [
     ("hero", "Перший екран"),
     ("services", "Послуги"),
     ("cars", "Авто"),
+    ("products", "Товари / запчастини"),
     ("gallery", "Галерея"),
     ("works", "Наші роботи"),
     ("pricing", "Ціни"),
@@ -3123,6 +3124,10 @@ async def seller_crm_car_parts(request: Request, crm_slug: str, car_id: int, sta
             if not part.get("photo_id") and car.get("photo_id"):
                 part["preview_photo"] = car.get("photo_id")
             grouped_parts[part.get("category")].append(part)
+    site = await get_site_by_seller(seller_id)
+    site_config = _as_config(site) if site else {}
+    products_module_enabled = bool(((site_config.get("modules") or {}).get("products", False)))
+    show_products_module_notice = bool(stats["available"] > 0 and not products_module_enabled)
     return templates.TemplateResponse(
         "seller_crm/car_parts.html",
         _seller_crm_context(
@@ -3144,6 +3149,7 @@ async def seller_crm_car_parts(request: Request, crm_slug: str, car_id: int, sta
             selected_part_status=part_status,
             q=query_text,
             created=created,
+            show_products_module_notice=show_products_module_notice,
             has_website=False,
             has_cars=True,
             has_services=False,
