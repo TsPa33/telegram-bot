@@ -4,6 +4,7 @@ import os
 import re
 import secrets
 import tempfile
+from decimal import Decimal, InvalidOperation
 from datetime import datetime, timedelta
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 from pathlib import Path
@@ -30,6 +31,22 @@ from bot.database.repositories.model_repo import (
     get_models_with_brand_ids,
 )
 from bot.database.repositories.product_repo import get_seller_products
+from bot.database.repositories.part_repo import (
+    VALID_PART_STATUSES,
+    bulk_update_parts_status_by_category,
+    create_manual_part,
+    generate_parts_for_car,
+    get_car_part_categories,
+    get_part_by_id,
+    get_parts_by_car_id,
+    get_parts_by_car_id_filtered,
+    get_parts_counters_by_car_ids,
+    seller_owns_car,
+    update_part_fields,
+    update_generated_parts_status,
+    update_part_price,
+    update_part_status,
+)
 from bot.database.repositories.seller_crm_repo import (
     SellerCrmGarageFullError,
     create_crm_session,
@@ -426,6 +443,104 @@ PRODUCT_STOCK_CLASSES = {
     "sold": "status-viewed",
     "preorder": "status-waiting",
 }
+
+PART_CATEGORY_LABELS = {
+    "Body": "Кузов",
+    "Optics": "Оптика",
+    "Engine": "Двигун",
+    "Transmission": "КПП / трансмісія",
+    "Suspension": "Ходова",
+    "Brakes": "Гальма",
+    "Interior": "Салон",
+    "Electrical": "Електрика",
+    "Cooling / AC": "Охолодження / кондиціонер",
+    "Mirrors / Glass": "Дзеркала / скло",
+}
+PART_CATEGORY_OPTIONS = list(PART_CATEGORY_LABELS.items())
+ALLOWED_PART_CATEGORIES = set(PART_CATEGORY_LABELS)
+PART_STATUS_LABELS = {
+    "draft": "Чернетка",
+    "available": "В наявності",
+    "sold": "Продано",
+    "hidden": "Приховано",
+}
+PART_STATUS_CLASSES = {
+    "draft": "status-waiting",
+    "available": "status-success",
+    "sold": "status-viewed",
+    "hidden": "status-rejected",
+}
+
+
+def _normalize_part_name(value: str | None) -> str:
+    return " ".join((value or "").strip().split())
+
+
+def _normalize_part_search(value: str | None) -> str:
+    return " ".join((value or "").strip().lower().split())
+
+
+def _parse_part_price(value: str | None) -> tuple[Decimal | None, str | None]:
+    raw = (value or "").strip().lower().replace("грн", "").replace(" ", "").replace(",", ".")
+    if not raw:
+        return None, None
+    try:
+        amount = Decimal(raw)
+    except InvalidOperation:
+        return None, "Ціна має бути числом."
+    if amount < 0:
+        return None, "Ціна не може бути від’ємною."
+    if amount > Decimal("100000000"):
+        return None, "Ціна занадто велика."
+    return amount, None
+
+
+def _part_form_payload(**values) -> dict[str, Any]:
+    defaults = {
+        "name": "",
+        "category": "Body",
+        "status": "available",
+        "price": "",
+        "description": "",
+    }
+    defaults.update(values)
+    for key, value in list(defaults.items()):
+        if value is None:
+            defaults[key] = ""
+        elif isinstance(value, str):
+            defaults[key] = value.strip()
+    return defaults
+
+
+def _validate_part_form(name: str, category: str, status: str, price: str, description: str) -> tuple[str, Decimal | None, str | None]:
+    normalized_name = _normalize_part_name(name)
+    if not normalized_name:
+        return "", None, "Назва запчастини обов’язкова."
+    if len(normalized_name) > 200:
+        return "", None, "Назва має бути до 200 символів."
+    if category not in ALLOWED_PART_CATEGORIES:
+        return "", None, "Оберіть коректну категорію."
+    if status not in VALID_PART_STATUSES:
+        return "", None, "Оберіть коректний статус."
+    if len((description or "").strip()) > 1000:
+        return "", None, "Опис має бути до 1000 символів."
+    parsed_price, price_error = _parse_part_price(price)
+    if price_error:
+        return "", None, price_error
+    return normalized_name, parsed_price, None
+
+
+def _prepare_part(item: Any) -> dict[str, Any]:
+    part = dict(item or {})
+    status = part.get("status") or "draft"
+    category = part.get("category") or ""
+    description = (part.get("description") or "").strip()
+    part["status_label"] = PART_STATUS_LABELS.get(status, status)
+    part["status_class"] = PART_STATUS_CLASSES.get(status, "status-waiting")
+    part["category_label"] = PART_CATEGORY_LABELS.get(category, category)
+    part["description_preview"] = description[:180] + ("…" if len(description) > 180 else "") if description else ""
+    part["price_display"] = f"₴ {_format_price(part.get('price'))}" if part.get("price") is not None else "Ціна не вказана"
+    return part
 
 
 def _parse_product_money(value: str | None) -> tuple[str | None, str | None]:
@@ -2609,6 +2724,12 @@ async def seller_crm_content_cars(request: Request, crm_slug: str):
         car["is_active"] = status_meta["is_active"]
         photo_id = car.get("photo_id") or ""
         car["photo_is_url"] = isinstance(photo_id, str) and photo_id.startswith(("http://", "https://"))
+    if cars:
+        part_counters = await get_parts_counters_by_car_ids(seller_id, [int(car.get("car_id")) for car in cars])
+        for car in cars:
+            counts = part_counters.get(int(car.get("car_id")), {"total": 0, "available": 0})
+            car["parts_total"] = counts["total"]
+            car["parts_available"] = counts["available"]
     totals = {
         "views": sum(int(car.get("views") or 0) for car in cars),
         "phone_clicks": sum(int(car.get("phone_clicks") or 0) for car in cars),
@@ -2927,6 +3048,266 @@ async def seller_crm_car_enable(request: Request, crm_slug: str, car_id: int):
 @router.post("/{crm_slug}/content/cars/{car_id}/disable")
 async def seller_crm_car_disable(request: Request, crm_slug: str, car_id: int):
     return await _toggle_crm_car(request, crm_slug, car_id, "inactive")
+
+
+@router.post("/{crm_slug}/content/cars/{car_id}/generate-parts")
+async def seller_crm_generate_parts(request: Request, crm_slug: str, car_id: int, publish_now: str | None = Form(None)):
+    try:
+        account, _subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+
+    seller_id = account["seller_id"]
+    if not await seller_owns_car(seller_id, car_id):
+        return RedirectResponse(url=f"/crm/seller/{crm_slug}/content/cars?error=car_not_found", status_code=303)
+    try:
+        created_count = await generate_parts_for_car(seller_id, car_id)
+        if created_count and publish_now in {"1", "true", "on", "yes"}:
+            await update_generated_parts_status(seller_id, car_id, "available")
+        status = "parts_created" if created_count else "parts_exists"
+    except Exception:
+        logger.exception("Failed to generate parts for seller_id=%s car_id=%s", seller_id, car_id)
+        status = "parts_generate_failed"
+    created_param = created_count if status == "parts_created" else 0
+    return RedirectResponse(url=f"/crm/seller/{crm_slug}/content/cars/{car_id}/parts?status={status}&created={created_param}", status_code=303)
+
+
+@router.get("/{crm_slug}/content/cars/{car_id}/parts")
+async def seller_crm_car_parts(request: Request, crm_slug: str, car_id: int, status: str | None = None, error: str | None = None, q: str = "", part_status: str = "all", created: int = 0):
+    try:
+        account, subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+    seller_id = account["seller_id"]
+    car = await get_seller_crm_car_detail(seller_id, car_id)
+    if not car:
+        raise HTTPException(status_code=404, detail="Car not found")
+    if not await seller_owns_car(seller_id, car_id):
+        raise HTTPException(status_code=403, detail="Access denied")
+    query_text = _normalize_part_search(q)
+    normalized_status_filter = None if part_status == "all" else part_status
+    if normalized_status_filter and normalized_status_filter not in VALID_PART_STATUSES:
+        normalized_status_filter = None
+    parts = [_prepare_part(item) for item in await get_parts_by_car_id_filtered(seller_id, car_id, normalized_status_filter, query_text or None)]
+    category_rows = [dict(row) for row in await get_car_part_categories(car_id)]
+    categories = []
+    for row in category_rows:
+        category_key = row.get("category")
+        categories.append(
+            {"key": category_key, "label": PART_CATEGORY_LABELS.get(category_key, category_key), "total": row.get("total") or 0, "active": row.get("active") or 0}
+        )
+    stats = {
+        "total": len(parts),
+        "available": sum(1 for item in parts if item.get("status") == "available"),
+        "draft": sum(1 for item in parts if item.get("status") == "draft"),
+        "hidden": sum(1 for item in parts if item.get("status") == "hidden"),
+        "sold": sum(1 for item in parts if item.get("status") == "sold"),
+        "no_price": sum(1 for item in parts if item.get("price") is None),
+        "no_photo": sum(1 for item in parts if not item.get("photo_id")),
+        "no_description": sum(1 for item in parts if not (item.get("description") or "").strip()),
+    }
+    completeness_points = max(stats["total"] * 3, 1)
+    completed_points = (
+        (stats["total"] - stats["no_price"])
+        + (stats["total"] - stats["no_photo"])
+        + (stats["total"] - stats["no_description"])
+    )
+    stats["completion"] = int(round((completed_points / completeness_points) * 100))
+    grouped_parts = {category: [] for category, _ in PART_CATEGORY_OPTIONS}
+    for part in parts:
+        if part.get("category") in grouped_parts:
+            if not part.get("photo_id") and car.get("photo_id"):
+                part["preview_photo"] = car.get("photo_id")
+            grouped_parts[part.get("category")].append(part)
+    return templates.TemplateResponse(
+        "seller_crm/car_parts.html",
+        _seller_crm_context(
+            request,
+            title="Запчастини авто — кабінет продавця CarPot",
+            demo_mode=False,
+            current_page="content_cars",
+            account=account,
+            subscription=subscription,
+            car=car,
+            parts=parts,
+            grouped_parts=grouped_parts,
+            categories=categories,
+            stats=stats,
+            status=status,
+            error=error,
+            part_status_labels=PART_STATUS_LABELS,
+            category_options=PART_CATEGORY_OPTIONS,
+            selected_part_status=part_status,
+            q=query_text,
+            created=created,
+            has_website=False,
+            has_cars=True,
+            has_services=False,
+        ),
+    )
+
+
+@router.post("/{crm_slug}/content/parts/{part_id}/status")
+async def seller_crm_part_status_update(request: Request, crm_slug: str, part_id: int, status: str = Form("draft")):
+    try:
+        account, _subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+    part = await get_part_by_id(part_id)
+    if not part or part.get("seller_id") != account["seller_id"]:
+        raise HTTPException(status_code=403, detail="Access denied")
+    if status not in VALID_PART_STATUSES:
+        return RedirectResponse(url=f"/crm/seller/{crm_slug}/content/cars/{part['car_id']}/parts?error=invalid_status", status_code=303)
+    await update_part_status(part_id, account["seller_id"], status)
+    return RedirectResponse(url=f"/crm/seller/{crm_slug}/content/cars/{part['car_id']}/parts?status=part_status_updated", status_code=303)
+
+
+@router.post("/{crm_slug}/content/parts/{part_id}/price")
+async def seller_crm_part_price_update(
+    request: Request,
+    crm_slug: str,
+    part_id: int,
+    price: str = Form(""),
+):
+    try:
+        account, _subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+    part = await get_part_by_id(part_id)
+    if not part or part.get("seller_id") != account["seller_id"]:
+        raise HTTPException(status_code=403, detail="Access denied")
+    parsed_price, price_error = _parse_part_price(price)
+    if price_error:
+        return RedirectResponse(url=f"/crm/seller/{crm_slug}/content/cars/{part['car_id']}/parts?error=invalid_price", status_code=303)
+    updated = await update_part_price(part_id, account["seller_id"], parsed_price)
+    if not updated:
+        return RedirectResponse(url=f"/crm/seller/{crm_slug}/content/cars/{part['car_id']}/parts?error=part_not_updated", status_code=303)
+    return RedirectResponse(url=f"/crm/seller/{crm_slug}/content/cars/{part['car_id']}/parts?status=price_updated", status_code=303)
+
+
+@router.post("/{crm_slug}/content/cars/{car_id}/parts/bulk-status")
+async def seller_crm_parts_bulk_status(
+    request: Request,
+    crm_slug: str,
+    car_id: int,
+    category: str = Form(""),
+    status: str = Form("draft"),
+):
+    try:
+        account, _subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+    if not await seller_owns_car(account["seller_id"], car_id):
+        raise HTTPException(status_code=403, detail="Access denied")
+    if category not in ALLOWED_PART_CATEGORIES or status not in VALID_PART_STATUSES:
+        return RedirectResponse(url=f"/crm/seller/{crm_slug}/content/cars/{car_id}/parts?error=invalid_bulk_params", status_code=303)
+    await bulk_update_parts_status_by_category(account["seller_id"], car_id, category, status)
+    return RedirectResponse(url=f"/crm/seller/{crm_slug}/content/cars/{car_id}/parts?status=bulk_updated", status_code=303)
+
+
+@router.get("/{crm_slug}/content/cars/{car_id}/parts/new")
+async def seller_crm_part_create_form(request: Request, crm_slug: str, car_id: int):
+    try:
+        account, subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+    car = await get_seller_crm_car_detail(account["seller_id"], car_id)
+    if not car:
+        raise HTTPException(status_code=404, detail="Car not found")
+    return templates.TemplateResponse("seller_crm/car_part_form.html", _seller_crm_context(
+        request, title="Додати запчастину — кабінет продавця CarPot", current_page="content_cars", account=account, subscription=subscription,
+        form_title="Додати запчастину вручну", action_url=f"/crm/seller/{crm_slug}/content/cars/{car_id}/parts/new",
+        cancel_url=f"/crm/seller/{crm_slug}/content/cars/{car_id}/parts", car=car, form=_part_form_payload(),
+        category_options=PART_CATEGORY_OPTIONS, status_options=list(PART_STATUS_LABELS.items()), error=None))
+
+
+@router.post("/{crm_slug}/content/cars/{car_id}/parts/new")
+async def seller_crm_part_create(
+    request: Request, crm_slug: str, car_id: int, name: str = Form(""), category: str = Form("Body"), status: str = Form("available"),
+    price: str = Form(""), description: str = Form(""),
+):
+    try:
+        account, subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+    car = await get_seller_crm_car_detail(account["seller_id"], car_id)
+    if not car:
+        raise HTTPException(status_code=404, detail="Car not found")
+    normalized_name, parsed_price, validation_error = _validate_part_form(name, category, status, price, description)
+    form = _part_form_payload(name=name, category=category, status=status, price=price, description=description)
+    if validation_error:
+        return templates.TemplateResponse("seller_crm/car_part_form.html", _seller_crm_context(
+            request, title="Додати запчастину — кабінет продавця CarPot", current_page="content_cars", account=account, subscription=subscription,
+            form_title="Додати запчастину вручну", action_url=f"/crm/seller/{crm_slug}/content/cars/{car_id}/parts/new",
+            cancel_url=f"/crm/seller/{crm_slug}/content/cars/{car_id}/parts", car=car, form=form, category_options=PART_CATEGORY_OPTIONS,
+            status_options=list(PART_STATUS_LABELS.items()), error=validation_error), status_code=400)
+    created = await create_manual_part(account["seller_id"], car_id, category, normalized_name, status, parsed_price, (description or "").strip() or None)
+    if not created:
+        return RedirectResponse(url=f"/crm/seller/{crm_slug}/content/cars/{car_id}/parts?error=part_duplicate", status_code=303)
+    return RedirectResponse(url=f"/crm/seller/{crm_slug}/content/cars/{car_id}/parts?status=part_created", status_code=303)
+
+
+@router.get("/{crm_slug}/content/parts/{part_id}/edit")
+async def seller_crm_part_edit_form(request: Request, crm_slug: str, part_id: int):
+    try:
+        account, subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+    part = await get_part_by_id(part_id)
+    if not part or part.get("seller_id") != account["seller_id"]:
+        raise HTTPException(status_code=403, detail="Access denied")
+    car = await get_seller_crm_car_detail(account["seller_id"], part["car_id"])
+    return templates.TemplateResponse("seller_crm/car_part_form.html", _seller_crm_context(
+        request, title="Редагувати запчастину — кабінет продавця CarPot", current_page="content_cars", account=account, subscription=subscription,
+        form_title="Редагувати запчастину", action_url=f"/crm/seller/{crm_slug}/content/parts/{part_id}/edit",
+        cancel_url=f"/crm/seller/{crm_slug}/content/cars/{part['car_id']}/parts", car=car,
+        form=_part_form_payload(name=part.get("name"), category=part.get("category"), status=part.get("status"), price="" if part.get("price") is None else str(part.get("price")), description=part.get("description") or ""),
+        category_options=PART_CATEGORY_OPTIONS, status_options=list(PART_STATUS_LABELS.items()), error=None))
+
+
+@router.post("/{crm_slug}/content/parts/{part_id}/edit")
+async def seller_crm_part_edit(
+    request: Request, crm_slug: str, part_id: int, name: str = Form(""), category: str = Form("Body"), status: str = Form("available"),
+    price: str = Form(""), description: str = Form(""),
+):
+    try:
+        account, subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+    part = await get_part_by_id(part_id)
+    if not part or part.get("seller_id") != account["seller_id"]:
+        raise HTTPException(status_code=403, detail="Access denied")
+    car = await get_seller_crm_car_detail(account["seller_id"], part["car_id"])
+    normalized_name, parsed_price, validation_error = _validate_part_form(name, category, status, price, description)
+    form = _part_form_payload(name=name, category=category, status=status, price=price, description=description)
+    if validation_error:
+        return templates.TemplateResponse("seller_crm/car_part_form.html", _seller_crm_context(
+            request, title="Редагувати запчастину — кабінет продавця CarPot", current_page="content_cars", account=account, subscription=subscription,
+            form_title="Редагувати запчастину", action_url=f"/crm/seller/{crm_slug}/content/parts/{part_id}/edit",
+            cancel_url=f"/crm/seller/{crm_slug}/content/cars/{part['car_id']}/parts", car=car, form=form, category_options=PART_CATEGORY_OPTIONS,
+            status_options=list(PART_STATUS_LABELS.items()), error=validation_error), status_code=400)
+    updated = await update_part_fields(part_id, account["seller_id"], normalized_name, category, status, parsed_price, (description or "").strip() or None)
+    if not updated:
+        return RedirectResponse(url=f"/crm/seller/{crm_slug}/content/cars/{part['car_id']}/parts?error=part_update_conflict", status_code=303)
+    return RedirectResponse(url=f"/crm/seller/{crm_slug}/content/cars/{part['car_id']}/parts?status=part_updated", status_code=303)
 
 
 @router.get("/{crm_slug}/settings")

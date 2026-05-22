@@ -1,0 +1,21 @@
+{% extends "seller_crm/base.html" %}
+{% import "seller_crm/components/forms.html" as forms %}
+{% block crm_kicker %}Каталог / Запчастини{% endblock %}
+{% block crm_heading %}{{ form_title }}{% endblock %}
+{% block content %}
+<div style="display:grid;gap:14px;max-width:860px;">
+  <section class="card">
+    <h2 style="margin:0;">{{ form_title }}</h2>
+    <p class="section-note">{{ car.brand }} {{ car.model }} · ID {{ car.car_id }}</p>
+    {% if error %}<div style="margin:10px 0;padding:10px 12px;border-radius:12px;background:rgba(251,113,133,.1);border:1px solid rgba(251,113,133,.28);">{{ error }}</div>{% endif %}
+    <form method="post" action="{{ action_url }}" style="display:grid;gap:12px;">
+      {{ forms.text_input('name', 'Назва запчастини *', form.name, 'Наприклад: Фара ліва', True, 200) }}
+      <div class="form-field"><label for="category">Категорія *</label><select id="category" name="category" required>{% for value, label in category_options %}<option value="{{ value }}"{% if form.category == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+      <div class="form-field"><label for="status">Статус *</label><select id="status" name="status" required>{% for value, label in status_options %}<option value="{{ value }}"{% if form.status == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+      {{ forms.text_input('price', 'Ціна', form.price, 'Наприклад: 2500 або 2500 грн') }}
+      {{ forms.textarea_input('description', 'Опис', form.description, 'Стан, дефекти, сумісність...', False, 1000, 5) }}
+      {{ forms.form_actions('Зберегти', cancel_url) }}
+    </form>
+  </section>
+</div>
+{% endblock %}
