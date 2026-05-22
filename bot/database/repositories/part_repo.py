@@ -18,22 +18,38 @@ async def get_active_part_templates(vehicle_type: str = "passenger"):
     )
 
 
-async def generate_parts_for_car(seller_id: int, car_id: int, vehicle_type: str = "passenger") -> int:
+async def generate_parts_for_car(
+    seller_id: int,
+    car_id: int,
+    vehicle_type: str = "passenger",
+) -> int:
     created = await fetch(
         """
         INSERT INTO seller_parts (
-            seller_id, car_id, template_id, category, name, status, sort_order
+            seller_id,
+            car_id,
+            template_id,
+            category,
+            name,
+            status,
+            sort_order
         )
         SELECT
-            $1, $2, pt.id, pt.category, pt.name, 'draft', pt.sort_order
+            $1::BIGINT,
+            $2::BIGINT,
+            pt.id,
+            pt.category,
+            pt.name,
+            'draft',
+            pt.sort_order
         FROM part_templates pt
-        WHERE pt.vehicle_type = $3
+        WHERE pt.vehicle_type = $3::TEXT
           AND pt.is_active = TRUE
           AND EXISTS (
             SELECT 1
             FROM seller_cars sc
-            WHERE sc.id = $2
-              AND sc.seller_id = $1
+            WHERE sc.id = $2::BIGINT
+              AND sc.seller_id = $1::BIGINT
           )
         ON CONFLICT DO NOTHING
         RETURNING id
@@ -42,6 +58,7 @@ async def generate_parts_for_car(seller_id: int, car_id: int, vehicle_type: str 
         car_id,
         vehicle_type,
     )
+
     return len(created or [])
 
 
@@ -64,7 +81,17 @@ async def get_car_part_categories(car_id: int) -> list:
 async def get_parts_by_car_and_category(car_id: int, category: str) -> list:
     return await fetch(
         """
-        SELECT id, seller_id, car_id, category, name, status, price, photo_id, description, sort_order
+        SELECT
+            id,
+            seller_id,
+            car_id,
+            category,
+            name,
+            status,
+            price,
+            photo_id,
+            description,
+            sort_order
         FROM seller_parts
         WHERE car_id = $1
           AND category = $2
@@ -79,7 +106,9 @@ async def get_part_by_id(part_id: int) -> dict | None:
     row = await fetchrow(
         """
         SELECT
-            sp.*, m.name AS model, b.name AS brand
+            sp.*,
+            m.name AS model,
+            b.name AS brand
         FROM seller_parts sp
         JOIN seller_cars sc ON sc.id = sp.car_id
         JOIN models m ON m.id = sc.model_id
@@ -88,16 +117,19 @@ async def get_part_by_id(part_id: int) -> dict | None:
         """,
         part_id,
     )
+
     return dict(row) if row else None
 
 
 async def update_part_status(part_id: int, seller_id: int, status: str):
     if status not in VALID_PART_STATUSES:
         return False
+
     row = await fetchrow(
         """
         UPDATE seller_parts
-        SET status = $1, updated_at = NOW()
+        SET status = $1,
+            updated_at = NOW()
         WHERE id = $2
           AND seller_id = $3
         RETURNING id
@@ -106,6 +138,7 @@ async def update_part_status(part_id: int, seller_id: int, status: str):
         part_id,
         seller_id,
     )
+
     return bool(row)
 
 
@@ -113,7 +146,8 @@ async def update_part_price(part_id: int, seller_id: int, price: Decimal):
     row = await fetchrow(
         """
         UPDATE seller_parts
-        SET price = $1, updated_at = NOW()
+        SET price = $1,
+            updated_at = NOW()
         WHERE id = $2
           AND seller_id = $3
         RETURNING id
@@ -122,6 +156,7 @@ async def update_part_price(part_id: int, seller_id: int, price: Decimal):
         part_id,
         seller_id,
     )
+
     return bool(row)
 
 
@@ -129,7 +164,8 @@ async def update_part_description(part_id: int, seller_id: int, description: str
     row = await fetchrow(
         """
         UPDATE seller_parts
-        SET description = $1, updated_at = NOW()
+        SET description = $1,
+            updated_at = NOW()
         WHERE id = $2
           AND seller_id = $3
         RETURNING id
@@ -138,6 +174,7 @@ async def update_part_description(part_id: int, seller_id: int, description: str
         part_id,
         seller_id,
     )
+
     return bool(row)
 
 
@@ -145,7 +182,8 @@ async def update_part_photo(part_id: int, seller_id: int, photo_id: str):
     row = await fetchrow(
         """
         UPDATE seller_parts
-        SET photo_id = $1, updated_at = NOW()
+        SET photo_id = $1,
+            updated_at = NOW()
         WHERE id = $2
           AND seller_id = $3
         RETURNING id
@@ -154,19 +192,28 @@ async def update_part_photo(part_id: int, seller_id: int, photo_id: str):
         part_id,
         seller_id,
     )
+
     return bool(row)
 
 
-async def get_seller_parts(seller_id: int, status: str | None = None, limit: int = 100) -> list:
+async def get_seller_parts(
+    seller_id: int,
+    status: str | None = None,
+    limit: int = 100,
+) -> list:
     if status:
         return await fetch(
             """
-            SELECT sp.*, m.name AS model, b.name AS brand
+            SELECT
+                sp.*,
+                m.name AS model,
+                b.name AS brand
             FROM seller_parts sp
             JOIN seller_cars sc ON sc.id = sp.car_id
             JOIN models m ON m.id = sc.model_id
             JOIN brands b ON b.id = m.brand_id
-            WHERE sp.seller_id = $1 AND sp.status = $2
+            WHERE sp.seller_id = $1
+              AND sp.status = $2
             ORDER BY sp.created_at DESC
             LIMIT $3
             """,
@@ -174,9 +221,13 @@ async def get_seller_parts(seller_id: int, status: str | None = None, limit: int
             status,
             limit,
         )
+
     return await fetch(
         """
-        SELECT sp.*, m.name AS model, b.name AS brand
+        SELECT
+            sp.*,
+            m.name AS model,
+            b.name AS brand
         FROM seller_parts sp
         JOIN seller_cars sc ON sc.id = sp.car_id
         JOIN models m ON m.id = sc.model_id
@@ -193,15 +244,27 @@ async def get_seller_parts(seller_id: int, status: str | None = None, limit: int
 async def get_available_parts_for_site(seller_id: int) -> list:
     return await fetch(
         """
-        SELECT sp.id, sp.car_id, sp.category, sp.name, sp.price, sp.photo_id, sp.description,
-               m.name AS model, b.name AS brand
+        SELECT
+            sp.id,
+            sp.car_id,
+            sp.category,
+            sp.name,
+            sp.price,
+            sp.photo_id,
+            sp.description,
+            m.name AS model,
+            b.name AS brand
         FROM seller_parts sp
         JOIN seller_cars sc ON sc.id = sp.car_id
         JOIN models m ON m.id = sc.model_id
         JOIN brands b ON b.id = m.brand_id
         WHERE sp.seller_id = $1
           AND sp.status = 'available'
-        ORDER BY sc.id DESC, sp.category, sp.sort_order, sp.name
+        ORDER BY
+            sc.id DESC,
+            sp.category,
+            sp.sort_order,
+            sp.name
         LIMIT 500
         """,
         seller_id,
@@ -215,28 +278,60 @@ async def count_parts_by_car(car_id: int) -> dict:
             COUNT(*)::int AS total,
             COUNT(*) FILTER (WHERE status = 'available')::int AS available,
             COUNT(*) FILTER (WHERE price IS NULL)::int AS no_price,
-            COUNT(*) FILTER (WHERE photo_id IS NULL OR photo_id = '')::int AS no_photo
+            COUNT(*) FILTER (
+                WHERE photo_id IS NULL
+                   OR photo_id = ''
+            )::int AS no_photo
         FROM seller_parts
         WHERE car_id = $1
         """,
         car_id,
     )
-    return dict(row) if row else {"total": 0, "available": 0, "no_price": 0, "no_photo": 0}
+
+    return dict(row) if row else {
+        "total": 0,
+        "available": 0,
+        "no_price": 0,
+        "no_photo": 0,
+    }
 
 
 async def seller_owns_car(seller_id: int, car_id: int) -> bool:
-    row = await fetchrow("SELECT 1 FROM seller_cars WHERE id = $1 AND seller_id = $2", car_id, seller_id)
+    row = await fetchrow(
+        """
+        SELECT 1
+        FROM seller_cars
+        WHERE id = $1
+          AND seller_id = $2
+        """,
+        car_id,
+        seller_id,
+    )
+
     return bool(row)
 
 
 async def get_parts_by_car_id(seller_id: int, car_id: int) -> list:
     return await fetch(
         """
-        SELECT id, seller_id, car_id, category, name, status, price, photo_id, description, sort_order
+        SELECT
+            id,
+            seller_id,
+            car_id,
+            category,
+            name,
+            status,
+            price,
+            photo_id,
+            description,
+            sort_order
         FROM seller_parts
         WHERE seller_id = $1
           AND car_id = $2
-        ORDER BY category, sort_order, name
+        ORDER BY
+            category,
+            sort_order,
+            name
         LIMIT 500
         """,
         seller_id,
@@ -244,17 +339,33 @@ async def get_parts_by_car_id(seller_id: int, car_id: int) -> list:
     )
 
 
-async def get_parts_by_car_id_filtered(seller_id: int, car_id: int, status: str | None = None, q: str | None = None) -> list:
+async def get_parts_by_car_id_filtered(
+    seller_id: int,
+    car_id: int,
+    status: str | None = None,
+    q: str | None = None,
+) -> list:
     return await fetch(
         """
-        SELECT id, seller_id, car_id, category, name, status, price, photo_id, description, sort_order
+        SELECT
+            id,
+            seller_id,
+            car_id,
+            category,
+            name,
+            status,
+            price,
+            photo_id,
+            description,
+            sort_order
         FROM seller_parts
         WHERE seller_id = $1
           AND car_id = $2
-          AND ($3::text IS NULL OR status = $3)
+          AND ($3::TEXT IS NULL OR status = $3)
           AND (
-            $4::text IS NULL OR
-            regexp_replace(lower(name), '\\s+', ' ', 'g') LIKE '%' || regexp_replace(lower($4), '\\s+', ' ', 'g') || '%'
+                $4::TEXT IS NULL
+                OR regexp_replace(lower(name), '\\s+', ' ', 'g')
+                LIKE '%' || regexp_replace(lower($4), '\\s+', ' ', 'g') || '%'
           )
         ORDER BY
             category,
@@ -275,13 +386,19 @@ async def get_parts_by_car_id_filtered(seller_id: int, car_id: int, status: str 
     )
 
 
-async def update_generated_parts_status(seller_id: int, car_id: int, status: str) -> int:
+async def update_generated_parts_status(
+    seller_id: int,
+    car_id: int,
+    status: str,
+) -> int:
     if status not in VALID_PART_STATUSES:
         return 0
+
     rows = await fetch(
         """
         UPDATE seller_parts
-        SET status = $1, updated_at = NOW()
+        SET status = $1,
+            updated_at = NOW()
         WHERE seller_id = $2
           AND car_id = $3
           AND template_id IS NOT NULL
@@ -291,16 +408,24 @@ async def update_generated_parts_status(seller_id: int, car_id: int, status: str
         seller_id,
         car_id,
     )
+
     return len(rows)
 
 
-async def bulk_update_parts_status_by_category(seller_id: int, car_id: int, category: str, status: str) -> int:
+async def bulk_update_parts_status_by_category(
+    seller_id: int,
+    car_id: int,
+    category: str,
+    status: str,
+) -> int:
     if status not in VALID_PART_STATUSES:
         return 0
+
     rows = await fetch(
         """
         UPDATE seller_parts
-        SET status = $1, updated_at = NOW()
+        SET status = $1,
+            updated_at = NOW()
         WHERE seller_id = $2
           AND car_id = $3
           AND category = $4
@@ -311,12 +436,17 @@ async def bulk_update_parts_status_by_category(seller_id: int, car_id: int, cate
         car_id,
         category,
     )
+
     return len(rows)
 
 
-async def get_parts_counters_by_car_ids(seller_id: int, car_ids: list[int]) -> dict[int, dict]:
+async def get_parts_counters_by_car_ids(
+    seller_id: int,
+    car_ids: list[int],
+) -> dict[int, dict]:
     if not car_ids:
         return {}
+
     rows = await fetch(
         """
         SELECT
@@ -325,14 +455,18 @@ async def get_parts_counters_by_car_ids(seller_id: int, car_ids: list[int]) -> d
             COUNT(*) FILTER (WHERE status = 'available')::int AS available
         FROM seller_parts
         WHERE seller_id = $1
-          AND car_id = ANY($2::int[])
+          AND car_id = ANY($2::INT[])
         GROUP BY car_id
         """,
         seller_id,
         car_ids,
     )
+
     return {
-        int(row["car_id"]): {"total": int(row.get("total") or 0), "available": int(row.get("available") or 0)}
+        int(row["car_id"]): {
+            "total": int(row.get("total") or 0),
+            "available": int(row.get("available") or 0),
+        }
         for row in rows
     }
 
@@ -349,15 +483,31 @@ async def create_manual_part(
     row = await fetchrow(
         """
         INSERT INTO seller_parts (
-            seller_id, car_id, template_id, category, name, status, price, description, sort_order
+            seller_id,
+            car_id,
+            template_id,
+            category,
+            name,
+            status,
+            price,
+            description,
+            sort_order
         )
         SELECT
-            $1, $2, NULL, $3, $4, $5, $6, $7, 9999
+            $1::BIGINT,
+            $2::BIGINT,
+            NULL,
+            $3::TEXT,
+            $4::TEXT,
+            $5::TEXT,
+            $6,
+            $7,
+            9999
         WHERE EXISTS (
             SELECT 1
             FROM seller_cars
-            WHERE id = $2
-              AND seller_id = $1
+            WHERE id = $2::BIGINT
+              AND seller_id = $1::BIGINT
         )
         ON CONFLICT DO NOTHING
         RETURNING id, seller_id, car_id
@@ -370,6 +520,7 @@ async def create_manual_part(
         price,
         description,
     )
+
     return dict(row) if row else None
 
 
@@ -384,6 +535,7 @@ async def update_part_fields(
 ) -> bool:
     if status not in VALID_PART_STATUSES:
         return False
+
     row = await fetchrow(
         """
         UPDATE seller_parts
@@ -413,4 +565,5 @@ async def update_part_fields(
         part_id,
         seller_id,
     )
+
     return bool(row)
