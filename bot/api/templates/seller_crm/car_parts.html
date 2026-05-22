@@ -7,6 +7,12 @@
 <div class="cards-grid" style="display:grid;gap:14px;">
   {% if status == 'parts_created' %}<div class="notice" style="padding:10px 12px;border-radius:12px;background:rgba(52,211,153,.15);border:1px solid rgba(52,211,153,.28);">✅ Створено {{ created }} запчастин для авто.</div>{% endif %}
   {% if status == 'parts_exists' %}<div class="notice" style="padding:10px 12px;border-radius:12px;background:rgba(56,189,248,.12);border:1px solid rgba(56,189,248,.25);">ℹ️ Запчастини для цього авто вже створені.</div>{% endif %}
+  {% if show_products_module_notice %}
+  <div class="notice" style="padding:10px 12px;border-radius:12px;background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.35);display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
+    <span>Запчастини є в наявності, але модуль ‘Товари / запчастини’ вимкнений на сайті.</span>
+    <a class="btn small" href="/crm/seller/{{ account.crm_slug }}/website#modules">Увімкнути модуль</a>
+  </div>
+  {% endif %}
   <section class="card">
     <h2 style="margin:0;">Запчастини авто</h2>
     <p class="section-note">{{ car.brand }} {{ car.model }} · ID {{ car.car_id }}</p>

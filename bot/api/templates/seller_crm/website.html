@@ -18,7 +18,8 @@
 {% block crm_top_actions %}{% if site_missing %}<div class="pill">Сайт не налаштовано</div>{% else %}<div class="top-actions"><a class="btn ghost" href="{{ live_url }}" target="_blank">Відкрити сайт</a><a class="btn" href="/crm/seller/{{ account.crm_slug }}/website/preview" target="_blank">Чернетка</a></div>{% endif %}{% endblock %}
 {% block content_class %}crm-site{% endblock %}
 {% block content %}
-  {% if status %}<div class="notice">{{ "Опубліковано" if status == "published" else "Чернетку збережено" }}</div>{% endif %}
+  {% if status == "published" %}<div class="notice">Опубліковано</div>{% endif %}
+  {% if status == "saved" %}<div class="notice" style="background:rgba(245,158,11,.14);border:1px solid rgba(245,158,11,.35);font-weight:700;">⚠ Зміни збережені у чернетку.<br>Опублікуйте сайт для застосування змін.</div>{% endif %}
 
   {% if site_missing %}
     <article class="card">
@@ -142,14 +143,25 @@
     <summary><h2 class="section-heading">7–8. Модулі</h2><p class="section-intro">Увімкніть потрібні блоки й застосуйте кольорову схему без зміни логіки сайту.</p></summary>
     <div class="subgrid">
       <article id="modules" class="card">
-        <div class="card-headline"><h3>7. Модулі сайту</h3><p class="muted">Показуйте лише готові розділи.</p></div>
+        <div class="card-headline"><h3>7. Модулі сайту</h3><p class="muted">Показуйте лише готові розділи. Після зміни модулів опублікуйте сайт, щоб зміни зʼявились для клієнтів.</p></div>
+        {% if catalog_status %}
+        <div class="notice" style="margin-bottom:10px;">
+          <b>Каталог:</b><br>
+          {{ "✅ модуль увімкнений" if catalog_status.module_enabled else "⚠ модуль вимкнений" }}<br>
+          {{ "✅ " ~ catalog_status.available_total ~ " товарів доступно" if catalog_status.available_total else "⚠ немає товарів у статусі ‘В наявності’" }}<br>
+          {% if catalog_status.without_price %}⚠ {{ catalog_status.without_price }} без ціни{% else %}✅ усі активні товари з ціною{% endif %}
+        </div>
+        {% endif %}
         <form method="post" action="/crm/seller/{{ account.crm_slug }}/website/modules" class="module-grid">
           {% for key, label in module_keys %}
           {% set module_enabled = modules_config[key] if key in modules_config else key in ['hero','services','cars','contacts','map','footer'] %}
-          <label><input type="checkbox" name="{{ key }}" {% if module_enabled %}checked{% endif %}> {{ label }}</label>
+          <label><input type="checkbox" name="{{ key }}" {% if module_enabled %}checked{% endif %}> {{ label }}{% if key == 'products' %}<div class="muted">Показувати на сайті товари, запчастини та позиції з каталогу, які мають статус ‘В наявності’.</div>{% endif %}</label>
           {% endfor %}
           <button class="btn wide">Зберегти модулі</button>
         </form>
+        {% if catalog_status and catalog_status.module_enabled and not catalog_status.available_total %}
+        <p class="muted" style="margin-top:10px;">Модуль увімкнений, але на сайті немає товарів у статусі ‘В наявності’. Для показу каталогу переведіть товари/запчастини у статус ‘В наявності’.</p>
+        {% endif %}
       </article>
 
       <article id="theme" class="card">
