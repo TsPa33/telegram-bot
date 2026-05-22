@@ -1,4 +1,5 @@
 import json
+import re
 import logging
 import os
 import re
@@ -1105,6 +1106,58 @@ async def _render_site_by_subdomain(subdomain: str, request: Request):
 
     seller_parts = [dict(p) for p in await get_available_parts_for_site(seller_id)]
 
+    def _slugify(value: str) -> str:
+        base = re.sub(r"[^a-z0-9а-яіїєґ]+", "-", (value or "").strip().lower(), flags=re.IGNORECASE)
+        base = re.sub(r"-{2,}", "-", base).strip("-")
+        return base or "parts"
+
+    unified_items: list[dict] = []
+    category_counts: dict[str, int] = {}
+    normalized_categories: list[str] = []
+    for item in products.get("items", []) or []:
+        if not isinstance(item, dict):
+            continue
+        category = (item.get("category") or "Інше").strip()
+        normalized_categories.append(category)
+        category_counts[category] = category_counts.get(category, 0) + 1
+        unified_items.append({
+            **item,
+            "id": str(item.get("id") or f"product-{len(unified_items)+1}"),
+            "title": item.get("title") or item.get("name") or "Товар",
+            "price": item.get("price") or "Ціна за запитом",
+            "category": category,
+            "slug": item.get("slug") or _slugify(f"{item.get('title') or item.get('name') or 'item'}-{item.get('id') or len(unified_items)+1}"),
+            "source_type": "product",
+        })
+
+    for part in seller_parts:
+        category = (part.get("category_label") or part.get("category") or "Інше").strip()
+        normalized_categories.append(category)
+        category_counts[category] = category_counts.get(category, 0) + 1
+        title = (part.get("name") or "Запчастина").strip()
+        brand = (part.get("brand") or "").strip()
+        model = (part.get("model") or "").strip()
+        unified_items.append({
+            "id": f"part-{part.get('id')}",
+            "title": title,
+            "description": part.get("description") or "",
+            "category": category,
+            "brand": brand or "—",
+            "condition": "В наявності",
+            "price": part.get("price_display") or (f"{part.get('price')} ₴" if part.get("price") is not None else "Ціна за запитом"),
+            "sku": part.get("sku") or "",
+            "oem": part.get("oem_code") or "",
+            "stock": "В наявності",
+            "image": part.get("photo_url") or part.get("photo_id"),
+            "slug": _slugify(f"{title}-{part.get('id') or len(unified_items)+1}"),
+            "source_type": "part",
+        })
+
+    products["items"] = unified_items
+    products["categories"] = sorted(set([c for c in normalized_categories if c]))
+    products["total_available"] = len(unified_items)
+    products["category_counts"] = category_counts
+
     if demo_preset:
         demo_key = demo_preset["demo_type"]
         services = []
@@ -1133,6 +1186,7 @@ async def _render_site_by_subdomain(subdomain: str, request: Request):
             "services": services,
             "products": products,
             "seller_parts": seller_parts,
+            "catalog_has_items": bool(unified_items),
         },
     )
 

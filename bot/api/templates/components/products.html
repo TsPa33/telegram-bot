@@ -5,6 +5,7 @@
                 <span class="cp-eyebrow">Premium Parts</span>
                 <h2>{{ products.get('title') or 'Каталог автозапчастин' }}</h2>
                 <p>{{ products.get('subtitle') or 'Перевірені запчастини з розборки з підбором по VIN' }}</p>
+                <p class="cp-products-total">{{ products.get('total_available', products.get('items', [])|length) }} товарів у наявності</p>
             </div>
 
             <button type="button" class="cp-cart-open" data-cp-cart-open>
@@ -50,8 +51,21 @@
         </div>
         {% endif %}
 
-        <div class="cp-product-grid">
-            {% for product in products.get('items', []) %}
+        {% if categories %}
+        <div class="cp-category-links" aria-label="Навігація категоріями">
+            {% for category in categories %}
+            <a href="#products-cat-{{ loop.index }}" class="cp-category-link">
+                {{ category }}{% if products.get('category_counts', {}).get(category) %} · {{ products.get('category_counts', {}).get(category) }}{% endif %}
+            </a>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% for category in categories if categories %}
+        <section class="cp-category-section" id="products-cat-{{ loop.index }}">
+            <h3 class="cp-category-title">{{ category }}{% if products.get('category_counts', {}).get(category) %} <small>({{ products.get('category_counts', {}).get(category) }})</small>{% endif %}</h3>
+            <div class="cp-product-grid">
+            {% for product in products.get('items', []) if product.get('category') == category %}
             <article class="cp-product-card" data-cp-product-card data-cp-category-value="{{ product.get('category', '') }}">
                 <div class="cp-product-media">
                     {% if product.get('image') %}
@@ -111,7 +125,39 @@
                 </div>
             </article>
             {% endfor %}
+            </div>
+        </section>
+        {% endfor %}
+
+        {% if not categories %}
+        <div class="cp-product-grid">
+            {% for product in products.get('items', []) %}
+            <article class="cp-product-card" data-cp-product-card data-cp-category-value="{{ product.get('category', '') }}">
+                <div class="cp-product-media">
+                    {% if product.get('image') %}
+                    <img src="{{ product.get('image') }}" alt="{{ product.get('title', 'Автозапчастина') }}" loading="lazy">
+                    {% else %}
+                    <div class="cp-product-placeholder" aria-hidden="true">
+                        <span>{{ category_icons.get(product.get('category'), '⚙️') }}</span>
+                        <strong>{{ product.get('category') or 'Автодеталі' }}</strong>
+                        <small>{{ product.get('sku') or 'CARPOT PARTS' }}</small>
+                    </div>
+                    {% endif %}
+                    <span class="cp-product-category">{{ category_icons.get(product.get('category'), '🔧') }} {{ product.get('category') }}</span>
+                </div>
+                <div class="cp-product-body">
+                    {% if product.get('stock') %}<div class="cp-stock-row">● {{ product.get('stock') }}</div>{% endif %}
+                    <h3>{{ product.get('title') }}</h3>
+                    <strong class="cp-product-price">{{ product.get('price') }}</strong>
+                    <div class="cp-product-actions">
+                        <button type="button" class="cp-btn cp-btn-buy" data-cp-buy="{{ product.get('id') }}">Купити</button>
+                        <button type="button" class="cp-btn cp-btn-detail" data-cp-detail="{{ product.get('id') }}">Детальніше</button>
+                    </div>
+                </div>
+            </article>
+            {% endfor %}
         </div>
+        {% endif %}
 
         <div class="cp-trust-block">
             <div>
@@ -249,6 +295,13 @@
     font-size: 17px;
     line-height: 1.6;
 }
+.cp-products-total { margin-top: 10px; color: var(--text); font-weight: 700; }
+.cp-category-links { display:flex; flex-wrap:wrap; gap:8px; margin: 0 0 16px; }
+.cp-category-link { padding:8px 12px; border-radius:999px; border:1px solid var(--border); color:var(--text); text-decoration:none; background: color-mix(in srgb, var(--surface) 86%, transparent); }
+.cp-category-link:hover { border-color: var(--primary); color: var(--primary); }
+.cp-category-section { margin: 0 0 18px; scroll-margin-top: 90px; }
+.cp-category-title { margin: 0 0 10px; font-size: 20px; color: var(--text); }
+.cp-category-title small { color: var(--muted); font-size: 14px; }
 
 .cp-cart-open,
 .cp-floating-cart {
@@ -844,6 +897,8 @@ body.has-products-cart.theme-parts_dark_red [data-scroll-top] {
 @media (max-width: 640px) {
     .cp-products-section { padding: 48px 0; }
     .cp-products-head { flex-direction: column; }
+    .cp-category-links { gap:6px; }
+    .cp-category-link { width: auto; max-width: 100%; font-size: 13px; }
     .cp-cart-open { width: 100%; justify-content: center; }
     .cp-product-grid,
     .cp-vin-fields,

@@ -37,6 +37,7 @@ from bot.database.repositories.part_repo import (
     create_manual_part,
     generate_parts_for_car,
     get_car_part_categories,
+    get_available_parts_for_site,
     get_part_by_id,
     get_parts_by_car_id,
     get_parts_by_car_id_filtered,
@@ -3687,9 +3688,17 @@ async def seller_crm_website(request: Request, crm_slug: str, section: str = "we
     if _is_demo_account(account):
         services = []
         cars = []
+        available_products_count = 0
+        products_without_price_count = 0
+        available_parts_count = 0
     else:
         services = [dict(row) for row in await get_services_by_seller(seller_id)]
         cars = [dict(row) for row in await get_cars_by_seller(seller_id)]
+        seller_products = [dict(row) for row in await get_seller_products(seller_id, limit=500)]
+        available_products_count = sum(1 for item in seller_products if item.get("status") == "active" and item.get("stock_status") == "available")
+        products_without_price_count = sum(1 for item in seller_products if item.get("status") == "active" and item.get("stock_status") == "available" and item.get("price") is None)
+        available_parts = [dict(row) for row in await get_available_parts_for_site(seller_id)]
+        available_parts_count = len(available_parts)
     if _is_demo_account(account):
         brands = []
         models = []
@@ -3723,6 +3732,11 @@ async def seller_crm_website(request: Request, crm_slug: str, section: str = "we
             status=status,
             themes=get_theme_presets(),
             module_keys=MODULE_KEYS,
+            catalog_status={
+                "module_enabled": bool(((config.get("modules") or {}).get("products", False))),
+                "available_total": int(available_products_count + available_parts_count),
+                "without_price": int(products_without_price_count),
+            },
         ),
     )
 
