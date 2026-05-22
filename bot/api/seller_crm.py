@@ -3816,10 +3816,22 @@ async def update_theme(request: Request, crm_slug: str, theme: str = Form("defau
 async def update_modules(request: Request, crm_slug: str):
     account, _ = await _authorized_account(request, crm_slug)
     form = await request.form()
-    modules = {key: key in form for key, _ in MODULE_KEYS}
-    modules["products"] = "products" in form
-    await update_site_config_draft(account["seller_id"], {"modules": modules})
-    return _redirect(crm_slug, "modules")
+
+    site = await get_site_by_seller(account["seller_id"])
+    config_draft = site.get("config_draft") if site else {}
+    existing_config = merge_with_default(config_draft or {})
+
+    new_modules = {key: key in form for key, _ in MODULE_KEYS}
+    existing_config["modules"] = {
+        **(existing_config.get("modules") or {}),
+        **new_modules,
+    }
+
+    await update_site_config_draft(account["seller_id"], existing_config)
+    return RedirectResponse(
+        url=f"/crm/seller/{crm_slug}/website?status=saved#modules-section",
+        status_code=303,
+    )
 
 
 @router.post("/{crm_slug}/website/banners/add")
