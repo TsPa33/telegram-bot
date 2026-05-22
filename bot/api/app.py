@@ -24,6 +24,7 @@ from bot.database.repositories.seller_repo import get_seller_by_id
 from bot.database.repositories.car_repo import get_cars_by_seller
 from bot.database.repositories.service_repo import get_services_by_seller
 from bot.database.repositories.lead_repo import create_site_lead
+from bot.database.repositories.part_repo import get_available_parts_for_site
 from bot.services.buyer_request_service import (
     BuyerRequestInput,
     BuyerRequestValidationError,
@@ -940,6 +941,8 @@ async def _render_site_by_subdomain(subdomain: str, request: Request):
     config = merge_with_default(raw_config)
     demo_preset = get_demo_render_preset(subdomain)
 
+    seller_id = site["seller_id"]
+
     if demo_preset:
         config = merge_with_default(demo_preset["config"])
 
@@ -1012,14 +1015,13 @@ async def _render_site_by_subdomain(subdomain: str, request: Request):
 
         config["hero"]["banners"] = resolved
 
-    seller_id = site["seller_id"]
-
     # ================= SELLER =================
 
     seller = await get_seller_by_id(seller_id)
 
     cars = []
     services = []
+    seller_parts = []
 
     # ================= CARS =================
 
@@ -1101,6 +1103,8 @@ async def _render_site_by_subdomain(subdomain: str, request: Request):
                 modules,
             )
 
+    seller_parts = [dict(p) for p in await get_available_parts_for_site(seller_id)]
+
     if demo_preset:
         demo_key = demo_preset["demo_type"]
         services = []
@@ -1128,6 +1132,7 @@ async def _render_site_by_subdomain(subdomain: str, request: Request):
             "cars": cars,
             "services": services,
             "products": products,
+            "seller_parts": seller_parts,
         },
     )
 

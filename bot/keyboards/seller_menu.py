@@ -15,6 +15,7 @@ def seller_main_kb(is_verified: bool = False):
         keyboard=[
             [KeyboardButton(text="📥 Нові заявки")],
             [KeyboardButton(text="📋 Відкрити CRM")],
+            [KeyboardButton(text="🔧 My Parts")],
             [KeyboardButton(text="💳 Пакети послуг")],
             [KeyboardButton(text="💬 Підтримка")],
             [KeyboardButton(text="↩️ Головне меню")],
