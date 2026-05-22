@@ -133,7 +133,7 @@ async def get_subscription_history(seller_id: int):
 # ================= CAR =================
 
 async def add_seller_car(seller_id: int, model_id: int, photo_id: str, description: str):
-    await execute("""
+    return await fetchrow("""
         INSERT INTO seller_cars (
             seller_id,
             model_id,
@@ -145,6 +145,7 @@ async def add_seller_car(seller_id: int, model_id: int, photo_id: str, descripti
             site_clicks
         )
         VALUES ($1, $2, $3, $4, 'active', 0, 0, 0)
+    RETURNING id
     """, seller_id, model_id, photo_id, description)
 
 

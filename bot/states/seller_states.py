@@ -78,3 +78,9 @@ class SellerLeadOfferStates(StatesGroup):
     price = State()
     availability = State()
     message = State()
+
+
+class SellerPartStates(StatesGroup):
+    waiting_price = State()
+    waiting_photo = State()
+    waiting_description = State()

@@ -1,0 +1,14 @@
+<section class="content-section">
+  <h2>Available Parts</h2>
+  <div class="cards-grid">
+    {% for part in seller_parts %}
+      <article class="card">
+        <h3>{{ part.brand }} {{ part.model }} — {{ part.name }}</h3>
+        <p><strong>Category:</strong> {{ part.category }}</p>
+        <p><strong>Price:</strong> {{ part.price if part.price is not none else 'on request' }}</p>
+        {% if part.description %}<p>{{ part.description }}</p>{% endif %}
+        <button class="btn">Request / Call</button>
+      </article>
+    {% endfor %}
+  </div>
+</section>

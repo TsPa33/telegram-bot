@@ -1,3 +1,4 @@
+import logging
 from aiogram import Router, F
 from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
 from aiogram.fsm.context import FSMContext
@@ -28,8 +29,11 @@ from bot.utils.cache import (
 
 from bot.states.seller_states import SellerStates
 from .verification import check_verified
+from bot.database.repositories.part_repo import generate_parts_for_car
+from bot.keyboards.parts_inline import post_car_created_parts_kb
 
 router = Router()
+logger = logging.getLogger(__name__)
 
 # ===== BUTTONS =====
 
@@ -359,18 +363,26 @@ async def handle_description(message: Message, state: FSMContext):
         data["model"]
     )
 
-    await add_seller_car(
+    created_car = await add_seller_car(
         seller_id=seller["id"],
         model_id=model_id,
         photo_id=data.get("photo_id"),
         description=message.text
     )
+    car_id = created_car["id"]
+
+    try:
+        created_parts = await generate_parts_for_car(seller["id"], car_id)
+    except Exception:
+        created_parts = 0
+        logger.exception("Failed to generate parts for car_id=%s seller_id=%s", car_id, seller["id"])
 
     await message.answer(
-        "✅ Авто додано",
-        reply_markup=seller_menu_kb(
-            is_verified=seller.get("is_verified", False)
-        )
+        "✅ Vehicle added.\n"
+        f"🔧 {created_parts} typical parts were automatically generated for this vehicle.\n"
+        "They are currently hidden from the website.\n"
+        "To publish a part — open it and press ‘Available’.",
+        reply_markup=post_car_created_parts_kb(car_id)
     )
 
     await state.clear()

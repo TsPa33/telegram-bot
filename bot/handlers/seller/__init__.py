@@ -11,6 +11,7 @@ from .site import router as site_router
 from .services import router as services_router
 from .crm import router as crm_router
 from .leads import router as leads_router
+from .parts import router as parts_router
 
 logger = logging.getLogger(__name__)
 
@@ -45,5 +46,6 @@ for _name, _child in (
     ("leads_router", leads_router),
     ("services_router", services_router),
     ("site_router", site_router),
+    ("parts_router", parts_router),
 ):
     _include_once(router, _child, _name)
