@@ -273,6 +273,8 @@ async def search_available_parts_for_buyer(query: str, limit: int = 100) -> list
             s.phone,
             s.username,
             s.city,
+            s.website,
+            ss.subdomain AS site_subdomain,
             s.photo_id AS seller_photo_id,
             s.is_verified,
             sp.id AS part_id,
@@ -288,6 +290,7 @@ async def search_available_parts_for_buyer(query: str, limit: int = 100) -> list
         FROM seller_parts sp
         JOIN seller_cars sc ON sc.id = sp.car_id
         JOIN sellers s ON s.id = sp.seller_id
+        LEFT JOIN seller_sites ss ON ss.seller_id = s.id
         JOIN models m ON m.id = sc.model_id
         JOIN brands b ON b.id = m.brand_id
         WHERE sp.status = 'available'

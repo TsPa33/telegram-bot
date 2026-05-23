@@ -47,6 +47,7 @@ from bot.services.buyer_request_service import (
 from bot.services.seller_notification_ops import format_accepted_offer_notification, seller_crm_context_url
 from bot.services.telegram_sender import send_message_to_seller
 from bot.services.buyer_chat_presence import set_active_buyer_chat
+from bot.services.domain_service import build_site_url
 
 from bot.keyboards.main_menu import main_menu_kb
 
@@ -95,6 +96,19 @@ def _score_item(item:dict, query:str)->int:
         score+=10
     return score
 
+
+
+def _resolve_seller_site_url(item: dict) -> str | None:
+    website = str(item.get("website") or "").strip()
+    if website.startswith("https://") or website.startswith("http://"):
+        return website
+
+    subdomain = str(item.get("site_subdomain") or "").strip()
+    if subdomain:
+        return build_site_url(subdomain)
+
+    return None
+
 def _group_best_per_seller(rows:list[dict], query:str, item_type:str)->list[dict]:
     by={}
     for r in rows:
@@ -102,6 +116,7 @@ def _group_best_per_seller(rows:list[dict], query:str, item_type:str)->list[dict
         item['_type']=item_type
         item['id']=item.get('part_id') or item.get('car_id') or item.get('seller_id')
         item['score']=_score_item(item,query)
+        item['website_url']=_resolve_seller_site_url(item)
         sid=item.get('seller_id')
         if sid not in by:
             by[sid]=[]
@@ -760,13 +775,22 @@ async def handle_buyer_ai_search_query(message: Message, state: FSMContext):
     parts = await search_available_parts_for_buyer(raw_query, limit=100)
     part_items = _group_best_per_seller([dict(x) for x in parts], raw_query, "part")
 
-    items = part_items
-    if not items:
-        cars = await search_cars_for_buyer(raw_query, limit=100)
-        car_items = _group_best_per_seller([dict(x) for x in cars], raw_query, "car")
-        items = car_items
-        if items:
-            await message.answer("Запчастину не знайдено, але є авто на розборі.")
+    cars = await search_cars_for_buyer(raw_query, limit=100)
+    car_items = _group_best_per_seller([dict(x) for x in cars], raw_query, "car")
+
+    merged_by_seller = {item.get("seller_id"): item for item in part_items if item.get("seller_id") is not None}
+    for item in car_items:
+        seller_id = item.get("seller_id")
+        if seller_id is None:
+            continue
+        current = merged_by_seller.get(seller_id)
+        if current is None or int(item.get("score") or 0) > int(current.get("score") or 0):
+            merged_by_seller[seller_id] = item
+
+    items = sorted(merged_by_seller.values(), key=lambda x: int(x.get("score") or 0), reverse=True)
+
+    if not part_items and car_items:
+        await message.answer("Запчастину не знайдено, але є авто на розборі.")
 
     await state.clear()
     await state.update_data(buyer_search_items=_json_safe(items), buyer_search_page=1, buyer_search_query=_json_safe(raw_query), buyer_search_interpretation={})
