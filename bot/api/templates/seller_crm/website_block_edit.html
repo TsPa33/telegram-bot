@@ -13,10 +13,19 @@
   <nav class="editor-topnav action-row wrap">
     <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/website/editor">← Редагування сайту</a>
     <a class="btn ghost" href="{{ constructor_url }}" target="_blank" rel="noopener">Відкрити конструктор</a>
-    <a class="btn ghost" href="{{ preview_url }}" target="_blank" rel="noopener">Перегляд сайту</a>
+    <a class="btn ghost" href="{{ preview_url }}" target="_blank" rel="noopener">Переглянути сайт</a>
   </nav>
 
-  <div class="draft-badge stack-top">Редагування чернетки · Зміни стануть публічними лише після натискання «Опублікувати».</div>
+  <section class="workflow-box stack-top">
+    <h3>Як внести зміни</h3>
+    <ol>
+      <li>Змініть дані</li>
+      <li>Збережіть у чернетку</li>
+      <li>Перегляньте сайт</li>
+      <li>Опублікуйте</li>
+    </ol>
+    <p class="muted">Зміни спочатку зберігаються у чернетку. Клієнти побачать їх тільки після публікації.</p>
+  </section>
 
   <header class="stack-top">
     <h2>{{ block_name }}</h2>
@@ -67,12 +76,27 @@
     {% endif %}
 
     <div class="action-row wrap stack-top">
-      <button class="btn" type="submit">Зберегти</button>
-      <a class="btn" href="/crm/seller/{{ account.crm_slug }}/website#publish">Опублікувати</a>
+      <button class="btn" type="submit">Зберегти зміни</button>
+      <a class="btn ghost" href="{{ constructor_url }}" target="_blank" rel="noopener">Переглянути в конструкторі</a>
+      <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/website#publish">Опублікувати сайт</a>
       <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/website/editor">Скасувати</a>
     </div>
   </form>
 </article>
+
+<style>
+.workflow-box { background: var(--bg-soft, #f8fafc); border: 1px solid var(--border,#e2e8f0); border-radius: 12px; padding: 14px; }
+.workflow-box h3 { margin: 0 0 8px; }
+.workflow-box ol { margin: 0 0 8px 18px; }
+.banner-preview-wrap { position: relative; }
+.banner-placeholder { margin: 8px 0 0; font-size: 13px; }
+.banner-title { margin: 0 0 8px; }
+@media (max-width: 480px) {
+  .action-row.wrap { flex-direction: column; align-items: stretch; }
+  .action-row.wrap .btn { width: 100%; text-align: center; }
+  .banner-preview { max-width: 100%; }
+}
+</style>
 
 <script>
 (function () {
@@ -81,14 +105,23 @@
   const list = root.querySelector('[data-banner-list]');
   const template = document.getElementById('banner-card-template');
 
+  const syncBannerCardTitle = () => {
+    root.querySelectorAll('[data-banner-item]').forEach((item, index) => {
+      const title = item.querySelector('.banner-title');
+      if (title) title.textContent = `Банер ${index + 1}`;
+    });
+  };
+
   const syncBannerPreview = (item) => {
     const preview = item.querySelector('.banner-preview');
+    const placeholder = item.querySelector('.banner-placeholder');
     const image = item.querySelector('[data-banner-image]').value || '';
     const fit = item.querySelector('[data-banner-fit]').value || 'cover';
     const position = item.querySelector('[data-banner-position]').value || 'center';
     preview.style.backgroundImage = image ? `url('${image}')` : 'none';
     preview.style.backgroundSize = fit;
     preview.style.backgroundPosition = position;
+    if (placeholder) placeholder.hidden = Boolean(image);
   };
 
   root.addEventListener('input', (event) => {
@@ -103,15 +136,18 @@
     if (event.target.matches('[data-banner-remove]')) {
       const item = event.target.closest('[data-banner-item]');
       if (item) item.remove();
+      syncBannerCardTitle();
     }
     if (event.target.matches('[data-banner-add]') && list && template) {
       const node = template.content.firstElementChild.cloneNode(true);
       list.appendChild(node);
       syncBannerPreview(node);
+      syncBannerCardTitle();
     }
   });
 
   root.querySelectorAll('[data-banner-item]').forEach(syncBannerPreview);
+  syncBannerCardTitle();
 })();
 </script>
 {% endblock %}
