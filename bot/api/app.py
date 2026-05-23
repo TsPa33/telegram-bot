@@ -1178,12 +1178,14 @@ async def _render_site_by_subdomain(subdomain: str, request: Request):
     edit_mode_requested = str(request.query_params.get("edit") or "") in {"1", "true", "on", "yes"}
     is_owner_edit_mode = False
     owner_crm_url = None
+    owner_crm_slug = None
     if edit_mode_requested:
         token = request.cookies.get("seller_crm_session")
         if token:
             session = await get_crm_session(token)
             if session and session.get("seller_id") == seller.get("id") and session.get("is_active"):
                 is_owner_edit_mode = True
+                owner_crm_slug = session.get("crm_slug")
                 owner_crm_url = f"/crm/seller/{session.get('crm_slug')}/website/editor"
     return templates.TemplateResponse(
         "site.html",
@@ -1200,6 +1202,7 @@ async def _render_site_by_subdomain(subdomain: str, request: Request):
             "catalog_has_items": bool(unified_items),
             "is_owner_edit_mode": is_owner_edit_mode,
             "owner_crm_url": owner_crm_url,
+            "owner_crm_slug": owner_crm_slug,
         },
     )
 

@@ -4031,6 +4031,10 @@ async def toggle_website_block(request: Request, crm_slug: str, module_key: str)
     current_modules = (_as_config(site).get("modules") or {})
     next_value = not bool(current_modules.get(module_key, False))
     await update_current_site_draft(account["seller_id"], {"modules": {module_key: next_value}})
+    form = await request.form()
+    return_to = str(form.get("return_to") or "").strip()
+    if return_to.startswith("/site/") and "\n" not in return_to and "\r" not in return_to:
+        return RedirectResponse(url=return_to, status_code=303)
     return RedirectResponse(url=f"/crm/seller/{crm_slug}/website/editor?status=saved", status_code=303)
 
 
