@@ -185,18 +185,24 @@ async def create_seller_car(
 
 # ================= DELETE =================
 
-async def delete_seller_car(car_id: int, seller_id: int) -> bool:
+async def archive_seller_car(seller_id: int, car_id: int) -> bool:
     row = await fetchrow(
         """
-        DELETE FROM seller_cars
+        UPDATE seller_cars
+        SET status = 'deleted'
         WHERE id = $1
           AND seller_id = $2
+          AND COALESCE(status, 'active') <> 'deleted'
         RETURNING id
         """,
         car_id,
         seller_id,
     )
     return row is not None
+
+
+async def delete_seller_car(car_id: int, seller_id: int) -> bool:
+    return await archive_seller_car(seller_id=seller_id, car_id=car_id)
 
 
 # ================= UPDATE DESCRIPTION =================
