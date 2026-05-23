@@ -1654,6 +1654,21 @@ async def get_seller_crm_content_summary(seller_id: int):
                 COUNT(*) FILTER (WHERE COALESCE(NULLIF(BTRIM(description), ''), '') = '')::int AS services_without_description
             FROM services
             WHERE seller_id = $1
+        ), product_counts AS (
+            SELECT
+                COUNT(*) FILTER (WHERE status <> 'archived')::int AS manual_products_total,
+                COUNT(*) FILTER (
+                    WHERE status = 'active'
+                      AND stock_status = 'available'
+                )::int AS manual_products_available
+            FROM seller_products
+            WHERE seller_id = $1
+        ), part_counts AS (
+            SELECT
+                COUNT(*)::int AS seller_parts_total,
+                COUNT(*) FILTER (WHERE status = 'available')::int AS seller_parts_available
+            FROM seller_parts
+            WHERE seller_id = $1
         ), garage AS (
             SELECT COALESCE(SUM(slots), 0)::int AS garage_slots_total
             FROM seller_subscriptions
@@ -1666,11 +1681,15 @@ async def get_seller_crm_content_summary(seller_id: int):
             COALESCE(cc.cars_without_description, 0)::int AS cars_without_description,
             COALESCE(sc.active_services, 0)::int AS active_services,
             COALESCE(sc.services_without_description, 0)::int AS services_without_description,
+            (COALESCE(pc.manual_products_total, 0) + COALESCE(prc.seller_parts_total, 0))::int AS total_products,
+            (COALESCE(pc.manual_products_available, 0) + COALESCE(prc.seller_parts_available, 0))::int AS available_products,
             COALESCE(g.garage_slots_total, 0)::int AS garage_slots_total,
             COALESCE(cc.active_cars, 0)::int AS garage_slots_used,
             GREATEST(COALESCE(g.garage_slots_total, 0) - COALESCE(cc.active_cars, 0), 0)::int AS garage_slots_free
         FROM car_counts cc
         CROSS JOIN service_counts sc
+        CROSS JOIN product_counts pc
+        CROSS JOIN part_counts prc
         CROSS JOIN garage g
         """,
         seller_id,
