@@ -17,6 +17,7 @@ from fastapi.templating import Jinja2Templates
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from bot.database.repositories.car_repo import (
+    archive_seller_car,
     create_seller_car,
     delete_seller_car,
     get_cars_by_seller,
@@ -37,6 +38,7 @@ from bot.database.repositories.part_repo import (
     create_manual_part,
     generate_parts_for_car,
     get_car_part_categories,
+    hide_parts_by_car,
     get_available_parts_for_site,
     get_part_by_id,
     get_parts_by_car_id,
@@ -3121,6 +3123,27 @@ async def seller_crm_car_enable(request: Request, crm_slug: str, car_id: int):
 @router.post("/{crm_slug}/content/cars/{car_id}/disable")
 async def seller_crm_car_disable(request: Request, crm_slug: str, car_id: int):
     return await _toggle_crm_car(request, crm_slug, car_id, "inactive")
+
+
+@router.post("/{crm_slug}/content/cars/{car_id}/delete")
+async def seller_crm_car_delete(request: Request, crm_slug: str, car_id: int):
+    try:
+        account, _subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+
+    seller_id = account["seller_id"]
+    if not await seller_owns_car(seller_id, car_id):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    archived = await archive_seller_car(seller_id=seller_id, car_id=car_id)
+    if not archived:
+        return RedirectResponse(url=f"/crm/seller/{crm_slug}/content/cars?status=car_deleted", status_code=303)
+
+    await hide_parts_by_car(seller_id=seller_id, car_id=car_id)
+    return RedirectResponse(url=f"/crm/seller/{crm_slug}/content/cars?status=car_deleted", status_code=303)
 
 
 @router.post("/{crm_slug}/content/cars/{car_id}/generate-parts")
