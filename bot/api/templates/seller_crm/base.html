@@ -1201,16 +1201,16 @@
 
         .module-toggle-grid {
             display: grid;
-            grid-template-columns: repeat(3,minmax(0,1fr));
-            gap: 10px;
+            grid-template-columns: repeat(auto-fit,minmax(220px,1fr));
+            gap: 8px;
         }
 
         .module-toggle-item {
-            min-height: 48px;
+            min-height: 52px;
             display: flex;
-            align-items: flex-start;
-            gap: 10px;
-            padding: 10px 12px;
+            align-items: center;
+            gap: 9px;
+            padding: 10px 11px;
             border: 1px solid var(--line);
             border-radius: 12px;
             background: var(--surface);
@@ -1221,7 +1221,7 @@
         .module-toggle-input {
             width: 20px;
             height: 20px;
-            margin-top: 1px;
+            margin-top: 0;
             flex: 0 0 20px;
             accent-color: var(--blue);
         }

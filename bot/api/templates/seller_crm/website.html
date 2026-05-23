@@ -9,6 +9,7 @@
 {% set footer = site_config['footer'] if site_config is mapping and 'footer' in site_config and site_config['footer'] is mapping else {} %}
 {% set theme_config = site_config['theme'] if site_config is mapping and 'theme' in site_config and site_config['theme'] is mapping else {} %}
 {% set modules_config = site_config['modules'] if site_config is mapping and 'modules' in site_config and site_config['modules'] is mapping else {} %}
+{% set module_defaults = {'hero': True, 'services': True, 'cars': True, 'contacts': True, 'map': True, 'footer': True, 'products': False, 'gallery': False, 'works': False, 'pricing': False, 'cta': False, 'reviews': False} %}
 {% set gallery_config = site_config['gallery'] if site_config is mapping and 'gallery' in site_config and site_config['gallery'] is mapping else {} %}
 {% set pricing = site_config['pricing'] if site_config is mapping and 'pricing' in site_config and site_config['pricing'] is mapping else {} %}
 {% set gallery_images = gallery_config['images'] if 'images' in gallery_config and gallery_config['images'] is iterable and gallery_config['images'] is not string else [] %}
@@ -147,14 +148,16 @@
         {% if catalog_status %}
         <div class="notice" style="margin-bottom:10px;">
           <b>Каталог:</b><br>
-          {{ "✅ модуль увімкнений" if catalog_status.module_enabled else "⚠ модуль вимкнений" }}<br>
+          Чернетка: {{ "✅ увімкнено" if catalog_status.draft_enabled else "⚠ вимкнено" }}<br>
+          Публічний сайт: {{ "✅ увімкнено" if catalog_status.live_enabled else "⚠ вимкнено" }}<br>
+          {{ catalog_status.module_message }}<br>
           {{ "✅ " ~ catalog_status.available_total ~ " товарів доступно" if catalog_status.available_total else "⚠ немає товарів у статусі ‘В наявності’" }}<br>
           {% if catalog_status.without_price %}⚠ {{ catalog_status.without_price }} без ціни{% else %}✅ усі активні товари з ціною{% endif %}
         </div>
         {% endif %}
         <form method="post" action="/crm/seller/{{ account.crm_slug }}/website/modules" class="module-toggle-grid">
           {% for key, label in module_keys %}
-          {% set module_enabled = modules_config[key] if key in modules_config else key in ['hero','services','cars','contacts','map','footer'] %}
+          {% set module_enabled = modules_config[key] if key in modules_config else module_defaults.get(key, false) %}
           <label class="module-toggle-item">
             <input class="module-toggle-input" type="checkbox" name="{{ key }}" {% if module_enabled %}checked{% endif %}>
             <span>

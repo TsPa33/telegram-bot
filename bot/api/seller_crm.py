@@ -828,6 +828,11 @@ def _as_config(site) -> dict[str, Any]:
     return merge_with_default(raw if isinstance(raw, dict) else {})
 
 
+def _as_live_config(site) -> dict[str, Any]:
+    raw = site.get("config_live") if site else {}
+    return merge_with_default(raw if isinstance(raw, dict) else {})
+
+
 def _format_duration(seconds: int | None) -> str:
     if seconds is None:
         return "—"
@@ -3696,7 +3701,8 @@ async def seller_crm_website(request: Request, crm_slug: str, section: str = "we
             ),
         )
 
-    config = _as_config(site)
+    config_draft = _as_config(site)
+    config_live = _as_live_config(site)
     if _is_demo_account(account):
         services = []
         cars = []
@@ -3719,7 +3725,15 @@ async def seller_crm_website(request: Request, crm_slug: str, section: str = "we
         selected_brand = brands[0]["id"] if brands else None
         models = await get_models_by_brand_id(selected_brand) if selected_brand else []
     live_url = build_site_url(site["subdomain"])
-    media = _collect_media(config, services, cars)
+    media = _collect_media(config_draft, services, cars)
+    draft_products_enabled = bool(((config_draft.get("modules") or {}).get("products", False)))
+    live_products_enabled = bool(((config_live.get("modules") or {}).get("products", False)))
+    if live_products_enabled:
+        catalog_module_message = "Модуль ‘Товари / запчастини’ увімкнений на сайті."
+    elif draft_products_enabled:
+        catalog_module_message = "Модуль увімкнений у чернетці. Опублікуйте сайт."
+    else:
+        catalog_module_message = "Модуль вимкнений у чернетці."
 
     return templates.TemplateResponse(
         "seller_crm/website.html",
@@ -3733,7 +3747,9 @@ async def seller_crm_website(request: Request, crm_slug: str, section: str = "we
             has_website=True,
             has_cars=bool(cars),
             has_services=bool(services),
-            config=config,
+            config=config_draft,
+            config_draft=config_draft,
+            config_live=config_live,
             services=services,
             cars=cars,
             brands=brands,
@@ -3745,7 +3761,9 @@ async def seller_crm_website(request: Request, crm_slug: str, section: str = "we
             themes=get_theme_presets(),
             module_keys=MODULE_KEYS,
             catalog_status={
-                "module_enabled": bool(((config.get("modules") or {}).get("products", False))),
+                "draft_enabled": draft_products_enabled,
+                "live_enabled": live_products_enabled,
+                "module_message": catalog_module_message,
                 "available_total": int(available_products_count + available_parts_count),
                 "without_price": int(products_without_price_count),
             },
@@ -3818,6 +3836,8 @@ async def update_modules(request: Request, crm_slug: str):
     form = await request.form()
 
     site = await get_site_by_seller(account["seller_id"])
+    if not site:
+        return RedirectResponse(url=f"/crm/seller/{crm_slug}/website?status=error", status_code=303)
     config_draft = site.get("config_draft") if site else {}
     existing_config = merge_with_default(config_draft or {})
 
