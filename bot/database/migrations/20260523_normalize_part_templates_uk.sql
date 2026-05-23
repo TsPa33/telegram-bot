@@ -50,6 +50,16 @@ SET name = CASE name
     WHEN 'Driver seat' THEN 'Сидіння водія'
     WHEN 'Passenger seat' THEN 'Сидіння пасажира'
     WHEN 'Bumper reinforcement' THEN 'Підсилювач бампера'
+    WHEN 'Front panel' THEN 'Передня панель'
+    WHEN 'Radiator support' THEN 'Панель радіатора'
+    WHEN 'Brake booster' THEN 'Вакуумний підсилювач гальм'
+    WHEN 'Windshield' THEN 'Лобове скло'
+    WHEN 'Fuse box' THEN 'Блок запобіжників'
+    WHEN 'Axle shaft' THEN 'Піввісь'
+    WHEN 'Throttle body' THEN 'Дросельна заслінка'
+    WHEN 'ABS module' THEN 'Блок ABS'
+    WHEN 'Engine mount' THEN 'Подушка двигуна'
+    WHEN 'Gear shifter assembly' THEN 'Механізм перемикання передач'
     ELSE name
 END;
 
@@ -102,6 +112,16 @@ SET
         WHEN 'Driver seat' THEN 'Сидіння водія'
         WHEN 'Passenger seat' THEN 'Сидіння пасажира'
         WHEN 'Bumper reinforcement' THEN 'Підсилювач бампера'
+    WHEN 'Front panel' THEN 'Передня панель'
+    WHEN 'Radiator support' THEN 'Панель радіатора'
+    WHEN 'Brake booster' THEN 'Вакуумний підсилювач гальм'
+    WHEN 'Windshield' THEN 'Лобове скло'
+    WHEN 'Fuse box' THEN 'Блок запобіжників'
+    WHEN 'Axle shaft' THEN 'Піввісь'
+    WHEN 'Throttle body' THEN 'Дросельна заслінка'
+    WHEN 'ABS module' THEN 'Блок ABS'
+    WHEN 'Engine mount' THEN 'Подушка двигуна'
+    WHEN 'Gear shifter assembly' THEN 'Механізм перемикання передач'
         ELSE name
     END,
     description = CASE
@@ -111,5 +131,5 @@ SET
     updated_at = NOW()
 WHERE template_id IS NOT NULL
    OR name IN (
-        'Front bumper','Rear bumper','Front left door','Front right door','Rear left door','Rear right door','Hood','Trunk','Trunk lid','Fender','Front left fender','Front right fender','Headlight','Left headlight','Right headlight','Taillight','Left tail light','Right tail light','Engine','Complete engine','Transmission','Manual gearbox','Automatic gearbox','Turbocharger','Radiator','Main radiator','Mirror','Left mirror','Right mirror','Steering wheel','Dashboard','Seat','Driver seat','Passenger seat','Bumper reinforcement'
+        'Front bumper','Rear bumper','Front left door','Front right door','Rear left door','Rear right door','Hood','Trunk','Trunk lid','Fender','Front left fender','Front right fender','Headlight','Left headlight','Right headlight','Taillight','Left tail light','Right tail light','Engine','Complete engine','Transmission','Manual gearbox','Automatic gearbox','Turbocharger','Radiator','Main radiator','Mirror','Left mirror','Right mirror','Steering wheel','Dashboard','Seat','Driver seat','Passenger seat','Bumper reinforcement','Front panel','Radiator support','Brake booster','Windshield','Fuse box','Axle shaft','Throttle body','ABS module','Engine mount','Gear shifter assembly'
    );
