@@ -46,6 +46,7 @@ from bot.database.repositories.part_repo import (
     get_parts_by_car_id_filtered,
     get_parts_counters_by_car_ids,
     seller_owns_car,
+    normalize_part_category,
     update_part_fields,
     update_generated_parts_status,
     update_part_photo,
