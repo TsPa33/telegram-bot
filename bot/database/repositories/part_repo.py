@@ -64,6 +64,79 @@ DEFAULT_PART_NAME_UK_MAP = {
     "Driver seat": "Сидіння водія",
     "Passenger seat": "Сидіння пасажира",
     "Bumper reinforcement": "Підсилювач бампера",
+    "Front panel": "Передня панель",
+    "Radiator support": "Панель радіатора",
+    "Brake booster": "Вакуумний підсилювач гальм",
+    "Windshield": "Лобове скло",
+    "Fuse box": "Блок запобіжників",
+    "Axle shaft": "Піввісь",
+    "Throttle body": "Дросельна заслінка",
+    "ABS module": "Блок ABS",
+    "Engine mount": "Подушка двигуна",
+    "Gear shifter assembly": "Механізм перемикання передач",
+    "Hood lock": "Замок капота",
+    "Left side skirt": "Лівий поріг",
+    "Right side skirt": "Правий поріг",
+    "Roof": "Дах",
+    "Tailgate": "Кришка багажника",
+    "Left wheel arch liner": "Лівий підкрилок",
+    "Right wheel arch liner": "Правий підкрилок",
+    "Left fog light": "Ліва протитуманна фара",
+    "Right fog light": "Права протитуманна фара",
+    "Left turn signal": "Лівий поворотник",
+    "Right turn signal": "Правий поворотник",
+    "Left trunk light": "Лівий ліхтар кришки багажника",
+    "Right trunk light": "Правий ліхтар кришки багажника",
+    "Engine block": "Блок двигуна",
+    "Cylinder head": "Головка блоку циліндрів",
+    "Injector": "Форсунка",
+    "High-pressure fuel pump": "Паливний насос високого тиску",
+    "Starter": "Стартер",
+    "Alternator": "Генератор",
+    "Intake manifold": "Впускний колектор",
+    "Exhaust manifold": "Випускний колектор",
+    "EGR valve": "Клапан EGR",
+    "Flywheel": "Маховик",
+    "AC compressor": "Компресор кондиціонера",
+    "Clutch": "Зчеплення",
+    "Torque converter": "Гідротрансформатор",
+    "Left drive shaft": "Ліва піввісь",
+    "Right drive shaft": "Права піввісь",
+    "Driveshaft": "Карданний вал",
+    "Differential": "Диференціал",
+    "Front left shock absorber": "Передній лівий амортизатор",
+    "Front right shock absorber": "Передній правий амортизатор",
+    "Rear left shock absorber": "Задній лівий амортизатор",
+    "Rear right shock absorber": "Задній правий амортизатор",
+    "Front left control arm": "Передній лівий ричаг",
+    "Front right control arm": "Передній правий ричаг",
+    "Stabilizer bar": "Стабілізатор",
+    "Brake master cylinder": "Головний гальмівний циліндр",
+    "Front brake disc": "Передній гальмівний диск",
+    "Rear brake disc": "Задній гальмівний диск",
+    "Center console": "Центральна консоль",
+    "Climate control unit": "Блок клімат-контролю",
+    "Driver airbag": "Подушка безпеки водія",
+    "Glove box": "Бардачок",
+    "Instrument cluster": "Панель приладів",
+    "Seat belt": "Ремінь безпеки",
+    "AC condenser": "Радіатор кондиціонера",
+    "Coolant hose": "Патрубок охолодження",
+    "Expansion tank": "Розширювальний бачок",
+    "Intercooler": "Інтеркулер",
+    "Radiator fan": "Вентилятор радіатора",
+    "Thermostat": "Термостат",
+    "Rear window": "Заднє скло",
+    "Front left door glass": "Переднє ліве скло дверей",
+    "Front right door glass": "Переднє праве скло дверей",
+    "Rear left door glass": "Заднє ліве скло дверей",
+    "Rear right door glass": "Заднє праве скло дверей",
+    "Engine ECU": "Блок управління двигуном",
+    "ABS sensor": "Датчик ABS",
+    "Camshaft sensor": "Датчик розподільчого валу",
+    "Crankshaft sensor": "Датчик колінвала",
+    "Ignition switch": "Замок запалювання",
+    "Parking sensor": "Парктронік",
 }
 
 
@@ -73,6 +146,20 @@ def _to_uk_category(category: str | None) -> str:
 
 def _to_uk_part_name(name: str | None) -> str:
     return DEFAULT_PART_NAME_UK_MAP.get((name or "").strip(), (name or "").strip())
+
+
+PART_NAME_SEARCH_ALIASES = {
+    "лобове скло": ("windshield", "лобове", "скло"),
+    "блок запобіжників": ("fuse box", "fusebox", "запобіжник", "блок запобіжників"),
+    "піввісь": ("axle shaft", "drive shaft", "піввісь", "полуось"),
+    "дросельна заслінка": ("throttle", "throttle body", "дросель", "заслінка"),
+    "блок abs": ("abs module", "abs", "абс"),
+    "подушка двигуна": ("engine mount", "mount", "подушка двигуна"),
+    "механізм перемикання передач": ("gear shifter assembly", "gear shifter", "shifter", "куліса"),
+    "вакуумний підсилювач гальм": ("brake booster", "booster", "вакуумний підсилювач"),
+    "передня панель": ("front panel", "телевізор", "передня панель"),
+    "форсунка": ("injector", "форсунка"),
+}
 
 
 PART_CATEGORY_ALIASES = {
@@ -388,7 +475,16 @@ async def get_seller_parts(
 
 
 async def search_available_parts_for_buyer(query: str, limit: int = 100) -> list:
-    pattern = f"%{(query or '').strip()}%"
+    normalized_query = (query or "").strip().lower()
+    query_tokens = [normalized_query] if normalized_query else []
+    for canonical, aliases in PART_NAME_SEARCH_ALIASES.items():
+        if normalized_query == canonical or any(alias in normalized_query for alias in aliases):
+            query_tokens.append(canonical)
+            query_tokens.extend(aliases)
+    search_terms = list(dict.fromkeys([token.strip() for token in query_tokens if token.strip()]))
+    if not search_terms:
+        search_terms = [""]
+    patterns = [f"%{term}%" for term in search_terms]
     return await fetch(
         """
         SELECT
@@ -421,16 +517,16 @@ async def search_available_parts_for_buyer(query: str, limit: int = 100) -> list
         WHERE sp.status = 'available'
           AND sc.status::text IN ('active', '1', 'true', 'enabled', 'published')
           AND (
-                LOWER(COALESCE(sp.name, '')) LIKE LOWER($1)
-             OR LOWER(COALESCE(sp.category, '')) LIKE LOWER($1)
-             OR LOWER(COALESCE(sp.description, '')) LIKE LOWER($1)
-             OR LOWER(COALESCE(b.name, '')) LIKE LOWER($1)
-             OR LOWER(COALESCE(m.name, '')) LIKE LOWER($1)
+                LOWER(COALESCE(sp.name, '')) LIKE ANY($1::text[])
+             OR LOWER(COALESCE(sp.category, '')) LIKE ANY($1::text[])
+             OR LOWER(COALESCE(sp.description, '')) LIKE ANY($1::text[])
+             OR LOWER(COALESCE(b.name, '')) LIKE ANY($1::text[])
+             OR LOWER(COALESCE(m.name, '')) LIKE ANY($1::text[])
           )
         ORDER BY sp.updated_at DESC NULLS LAST, sp.id DESC
         LIMIT $2
         """,
-        pattern,
+        patterns,
         limit,
     )
 
