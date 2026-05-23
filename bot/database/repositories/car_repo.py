@@ -290,7 +290,7 @@ async def search_cars_for_buyer(query: str, limit: int = 100) -> list:
              OR LOWER(COALESCE(m.name, '')) LIKE LOWER($1)
              OR LOWER(COALESCE(sc.description, '')) LIKE LOWER($1)
           )
-        ORDER BY sc.updated_at DESC NULLS LAST, sc.id DESC
+        ORDER BY sc.created_at DESC NULLS LAST, sc.id DESC
         LIMIT $2
         """,
         pattern,
