@@ -42,7 +42,7 @@ async def generate_parts_for_car(
             pt.category,
             pt.name,
             CASE
-                WHEN COALESCE(NULLIF(TRIM(pt.description), ''), '') <> '' THEN pt.description
+                WHEN COALESCE(NULLIF(TRIM(sc.description), ''), '') <> '' THEN sc.description
                 WHEN COALESCE(NULLIF(TRIM(pt.name), ''), '') <> '' THEN
                     pt.name || ' для ' || b.name || ' ' || m.name || '.
 
