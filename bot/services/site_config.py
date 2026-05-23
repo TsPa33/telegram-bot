@@ -50,6 +50,8 @@ _DEFAULT_SITE_CONFIG: dict[str, Any] = {
 
     "services": {
         "enabled": True,
+        "title": "Послуги",
+        "intro": "",
         "mode": "live",
     },
 
@@ -90,7 +92,7 @@ _DEFAULT_SITE_CONFIG: dict[str, Any] = {
 
     "gallery": {
         "title": "Галерея",
-        "subtitle": "Атмосфера сервісу, обладнання та реальні робочі процеси.",
+        "items": [],
         "images": [],
     },
 
@@ -115,7 +117,8 @@ _DEFAULT_SITE_CONFIG: dict[str, Any] = {
     },
 
     "products": {
-        "title": "Каталог автозапчастин",
+        "title": "Запчастини / товари",
+        "intro": "",
         "subtitle": "Перевірені запчастини з розборки з підбором по VIN",
         "per_page": 12,
         "search_enabled": True,
@@ -141,7 +144,14 @@ _DEFAULT_SITE_CONFIG: dict[str, Any] = {
 
     "about": {
         "enabled": False,
+        "title": "Про нас",
         "text": "",
+    },
+
+    "cars": {
+        "title": "Авто на розборі",
+        "intro": "",
+        "per_page": 6,
     },
 
     "map": {
@@ -182,7 +192,8 @@ _DEFAULT_SITE_CONFIG: dict[str, Any] = {
 
     "footer": {
         "enabled": True,
-        "text": "",
+        "business_name": "",
+        "text": "Всі права захищені",
     },
 }
 
@@ -332,15 +343,33 @@ def _normalize_config(config: dict) -> dict:
 
     products = config.setdefault("products", {})
 
+    if not isinstance(config.get("about"), dict):
+        config["about"] = deepcopy(_DEFAULT_SITE_CONFIG["about"])
+    if not isinstance(config.get("cars"), dict):
+        config["cars"] = deepcopy(_DEFAULT_SITE_CONFIG["cars"])
+    if not isinstance(config.get("gallery"), dict):
+        config["gallery"] = deepcopy(_DEFAULT_SITE_CONFIG["gallery"])
+    if not isinstance(config.get("footer"), dict):
+        config["footer"] = deepcopy(_DEFAULT_SITE_CONFIG["footer"])
+
     if not isinstance(products.get("categories"), list):
         products["categories"] = []
 
     if not isinstance(products.get("items"), list):
         products["items"] = []
     per_page = products.get("per_page")
-    if not isinstance(per_page, int) or per_page <= 0:
+    if not isinstance(per_page, int):
         products["per_page"] = 12
+    else:
+        products["per_page"] = max(3, min(48, per_page))
     products["search_enabled"] = bool(products.get("search_enabled", True))
+
+    cars = config.setdefault("cars", {})
+    cars_per_page = cars.get("per_page")
+    if not isinstance(cars_per_page, int):
+        cars["per_page"] = 6
+    else:
+        cars["per_page"] = max(3, min(48, cars_per_page))
 
     layout = config.setdefault("layout", {})
     default_order = _DEFAULT_SITE_CONFIG["layout"]["order"]

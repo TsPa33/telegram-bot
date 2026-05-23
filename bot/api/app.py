@@ -53,6 +53,7 @@ from bot.database.repositories.analytics_repo import (
 
 from bot.services.demo_seed_service import get_demo_render_preset
 from bot.services.site_config import merge_with_default
+from bot.services.site_blocks import SITE_BLOCK_REGISTRY
 from bot.utils.subdomain import is_valid_subdomain
 from bot.services.domain_service import extract_subdomain_from_host
 from bot.services.seller_notification_ops import format_site_lead_notification, seller_crm_context_url
@@ -66,7 +67,7 @@ router = APIRouter()
 templates = Jinja2Templates(directory="bot/api/templates")
 bot = Bot(token=BOT_TOKEN)
 logger = logging.getLogger(__name__)
-INLINE_EDITABLE_BLOCKS = {"hero", "about", "cars", "products", "services", "contacts", "map", "footer"}
+INLINE_EDITABLE_BLOCKS = set(SITE_BLOCK_REGISTRY.keys())
 
 
 def _extract_inline_edit_patch(block_key: str, payload: dict) -> dict:
@@ -83,16 +84,24 @@ def _extract_inline_edit_patch(block_key: str, payload: dict) -> dict:
             "banner_position": str(payload.get("banner_position") or "").strip(),
         }}
     if block_key == "products":
+        per_page = max(3, min(48, int(payload.get("per_page") or 12)))
         return {"products": {
             "title": str(payload.get("title") or "").strip(),
-            "subtitle": str(payload.get("subtitle") or "").strip(),
-            "per_page": int(payload.get("per_page") or 12),
-            "search_enabled": bool(payload.get("search_enabled")),
+            "intro": str(payload.get("intro") or "").strip(),
+            "per_page": per_page,
+            "search_enabled": str(payload.get("search_enabled") or "").strip().lower() in {"1", "true", "yes", "on"},
         }}
+    if block_key == "about":
+        return {"about": {"title": str(payload.get("title") or "").strip(), "text": str(payload.get("text") or "").strip()}}
+    if block_key == "cars":
+        per_page = max(3, min(48, int(payload.get("per_page") or 6)))
+        return {"cars": {"title": str(payload.get("title") or "").strip(), "intro": str(payload.get("intro") or "").strip(), "per_page": per_page}}
+    if block_key == "gallery":
+        return {"gallery": {"title": str(payload.get("title") or "").strip(), "items": [i.strip() for i in str(payload.get("items") or "").splitlines() if i.strip()]}}
     if block_key == "services":
         return {"services": {
             "title": str(payload.get("title") or "").strip(),
-            "subtitle": str(payload.get("subtitle") or "").strip(),
+            "intro": str(payload.get("intro") or "").strip(),
         }}
     if block_key == "contacts":
         return {"contacts": {
@@ -1212,10 +1221,12 @@ async def _render_site_by_subdomain(subdomain: str, request: Request):
             "source_type": "part",
         })
 
-    products["items"] = unified_items
+    products["items"] = unified_items[: int(products.get("per_page") or 12)]
     products["categories"] = sorted(set([c for c in normalized_categories if c]))
     products["total_available"] = len(unified_items)
     products["category_counts"] = category_counts
+
+    cars = cars[: int((config.get("cars") or {}).get("per_page") or 6)]
 
     if demo_preset:
         demo_key = demo_preset["demo_type"]
@@ -1270,6 +1281,7 @@ async def _render_site_by_subdomain(subdomain: str, request: Request):
             "owner_crm_slug": owner_crm_slug,
             "crm_base_url": crm_base_url,
             "edit_token": edit_token if is_owner_edit_mode else "",
+            "block_registry": SITE_BLOCK_REGISTRY,
         },
     )
 
@@ -1307,7 +1319,7 @@ async def inline_edit_block(request: Request, block_key: str, subdomain: str | N
     token = token or str(payload.get("token") or "").strip()
     site = await _authorized_site_for_inline_edit(request, token=token, subdomain=subdomain)
     patch = _extract_inline_edit_patch(block_key, payload)
-    if block_key in {"hero", "products", "services", "contacts", "map", "footer"} and patch:
+    if patch:
         ok = await update_site_config_draft(int(site["seller_id"]), patch)
         if not ok:
             raise HTTPException(status_code=500, detail="Draft update failed")
