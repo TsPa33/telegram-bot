@@ -13,31 +13,54 @@
 {% set gallery = config.get('gallery', {}) %}
 {% set works = config.get('works', {}) %}
 {% set reviews = config.get('reviews', {}) %}
+{% set owner_crm_slug = owner_crm_slug or '' %}
+
+{% macro owner_block_controls(block_key) -%}
+{% if is_owner_edit_mode and owner_crm_slug %}
+<div class="cp-owner-block-controls" aria-label="Керування блоком {{ block_key }}">
+  <a href="/crm/seller/{{ owner_crm_slug }}/website/editor/{{ block_key }}">Редагувати</a>
+  <form method="post" action="/crm/seller/{{ owner_crm_slug }}/website/editor/toggle/{{ block_key }}">
+    <input type="hidden" name="return_to" value="/site/{{ subdomain }}?edit=1">
+    <button type="submit">Приховати</button>
+  </form>
+</div>
+{% endif %}
+{%- endmacro %}
 
 {% if is_owner_edit_mode %}
-<div style="position:sticky;top:0;z-index:2200;background:#0b1220;color:#e2e8f0;padding:10px 14px;border-bottom:1px solid #334155;display:flex;gap:10px;align-items:center;justify-content:space-between;">
+<div class="cp-owner-edit-toolbar">
   <b>Режим редагування</b>
-  <div style="display:flex;gap:8px;flex-wrap:wrap;">
-    <a href="{{ owner_crm_url }}" style="color:#93c5fd;">← Кабінет</a>
-    <a href="/site/{{ subdomain }}" style="color:#93c5fd;">Попередній перегляд</a>
-    <a href="{{ owner_crm_url|replace('/editor', '') }}" style="color:#93c5fd;">Опублікувати</a>
+  <div class="cp-owner-edit-actions">
+    <a href="/crm/seller/{{ owner_crm_slug }}">← Кабінет</a>
+    <a href="{{ owner_crm_url }}">Редагування сайту</a>
+    <a href="/site/{{ subdomain }}">Попередній перегляд</a>
+    <form method="post" action="/crm/seller/{{ owner_crm_slug }}/website/publish">
+      <button type="submit">Опублікувати</button>
+    </form>
   </div>
 </div>
 {% endif %}
 
 {% include "components/header.html" %}
 {% if modules.get('hero', True) %}
-{% include "components/hero.html" with context %}
+<section id="hero" data-block="hero" class="cp-owner-block-shell">
+  {{ owner_block_controls('hero') }}
+  {% include "components/hero.html" with context %}
+</section>
 {% endif %}
 
 <main>
 
 {% if modules.get('products', False) and products.get('items') %}
+    <section id="products-block" data-block="products" class="cp-owner-block-shell">{{ owner_block_controls('products') }}
     {% include "components/products.html" %}
+    </section>
 {% endif %}
 
 {% if modules.get('services', True) %}
+    <section id="services-block" data-block="services" class="cp-owner-block-shell">{{ owner_block_controls('services') }}
     {% include "components/services.html" %}
+    </section>
 {% endif %}
 
 {% if modules.get('pricing', False) and pricing.get('items') %}
@@ -61,21 +84,30 @@
 {% endif %}
 
 {% if modules.get('cars', True) %}
+    <section id="cars-block" data-block="cars" class="cp-owner-block-shell">{{ owner_block_controls('cars') }}
     {% include "components/cars.html" %}
+    </section>
 {% endif %}
 
 {% if modules.get('contacts', True) %}
+    <section id="contacts-block" data-block="contacts" class="cp-owner-block-shell">{{ owner_block_controls('contacts') }}
     {% include "components/contacts.html" %}
+    </section>
 {% endif %}
 
 {% if modules.get('map', True) and contacts.get('map_embed') %}
+    <section id="map-block" data-block="map" class="cp-owner-block-shell">{{ owner_block_controls('map') }}
     {% include "components/map.html" %}
+    </section>
 {% endif %}
 
 </main>
 
 {% if modules.get('footer', True) %}
-{% include "components/footer.html" %}
+<section id="footer" data-block="footer" class="cp-owner-block-shell">
+  {{ owner_block_controls('footer') }}
+  {% include "components/footer.html" %}
+</section>
 {% endif %}
 
 <button class="callback-uiverse-btn" type="button" data-callback-fab aria-label="Передзвоніть мені" aria-expanded="false">
@@ -106,6 +138,24 @@
 </button>
 
 <style>
+.cp-owner-edit-toolbar {
+    position: sticky; top: 0; z-index: 2200; background: #0b1220; color: #e2e8f0; padding: 10px 14px;
+    border-bottom: 1px solid #334155; display: flex; gap: 10px; align-items: center; justify-content: space-between;
+}
+.cp-owner-edit-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.cp-owner-edit-actions a, .cp-owner-edit-actions button {
+    color: #93c5fd; border: 1px solid #334155; background: transparent; border-radius: 8px; padding: 6px 10px; font-size: 13px; text-decoration: none;
+}
+.cp-owner-edit-actions form { margin: 0; }
+.cp-owner-block-shell { position: relative; }
+.cp-owner-block-controls {
+    position: absolute; top: 12px; right: 12px; z-index: 1200; display: inline-flex; gap: 6px; background: rgba(11, 18, 32, 0.9);
+    border: 1px solid #334155; border-radius: 999px; padding: 4px;
+}
+.cp-owner-block-controls a, .cp-owner-block-controls button {
+    border: 0; background: transparent; color: #e2e8f0; font-size: 12px; padding: 4px 8px; text-decoration: none; border-radius: 999px;
+}
+.cp-owner-block-controls button:hover, .cp-owner-block-controls a:hover { background: rgba(148, 163, 184, 0.2); }
 .callback-uiverse-btn,
 .scroll-top-btn {
     --fab-size: 60px;
