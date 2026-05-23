@@ -15,7 +15,7 @@ from fastapi.templating import Jinja2Templates
 from bot.api.liqpay_callback import router as liqpay_router
 from bot.api.crm import router as crm_router
 from bot.api.seller_crm import router as seller_crm_router
-from bot.config import BOT_TOKEN
+from bot.config import BOT_TOKEN, CRM_BASE_URL
 
 from bot.database.pool import init_pool
 from bot.database.models import create_tables
@@ -1180,6 +1180,7 @@ async def _render_site_by_subdomain(subdomain: str, request: Request):
     is_owner_edit_mode = False
     owner_crm_url = None
     owner_crm_slug = None
+    crm_base_url = (CRM_BASE_URL or "https://crm.carpot.com.ua").rstrip("/")
     if edit_mode_requested:
         edit_token = str(request.query_params.get("token") or "").strip()
         if verify_site_edit_token(
@@ -1192,7 +1193,7 @@ async def _render_site_by_subdomain(subdomain: str, request: Request):
             crm_account = await get_crm_account_by_seller(int(site.get("seller_id") or 0))
             owner_crm_slug = str((crm_account or {}).get("crm_slug") or "")
             if owner_crm_slug:
-                owner_crm_url = f"/crm/seller/{owner_crm_slug}/website/editor"
+                owner_crm_url = f"{crm_base_url}/crm/seller/{owner_crm_slug}/website/editor"
 
         token = request.cookies.get("seller_crm_session")
         if token and not is_owner_edit_mode:
@@ -1200,7 +1201,7 @@ async def _render_site_by_subdomain(subdomain: str, request: Request):
             if session and session.get("seller_id") == seller.get("id") and session.get("is_active"):
                 is_owner_edit_mode = True
                 owner_crm_slug = session.get("crm_slug")
-                owner_crm_url = f"/crm/seller/{session.get('crm_slug')}/website/editor"
+                owner_crm_url = f"{crm_base_url}/crm/seller/{session.get('crm_slug')}/website/editor"
     return templates.TemplateResponse(
         "site.html",
         {
@@ -1217,6 +1218,7 @@ async def _render_site_by_subdomain(subdomain: str, request: Request):
             "is_owner_edit_mode": is_owner_edit_mode,
             "owner_crm_url": owner_crm_url,
             "owner_crm_slug": owner_crm_slug,
+            "crm_base_url": crm_base_url,
         },
     )
 

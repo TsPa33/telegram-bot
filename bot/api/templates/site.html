@@ -14,15 +14,13 @@
 {% set works = config.get('works', {}) %}
 {% set reviews = config.get('reviews', {}) %}
 {% set owner_crm_slug = owner_crm_slug or '' %}
+{% set crm_base_url = (crm_base_url or 'https://crm.carpot.com.ua').rstrip('/') %}
 
 {% macro owner_block_controls(block_key) -%}
 {% if is_owner_edit_mode and owner_crm_slug %}
 <div class="cp-owner-block-controls" aria-label="Керування блоком {{ block_key }}">
-  <a href="/crm/seller/{{ owner_crm_slug }}/website/editor/{{ block_key }}">Редагувати</a>
-  <form method="post" action="/crm/seller/{{ owner_crm_slug }}/website/editor/toggle/{{ block_key }}">
-    <input type="hidden" name="return_to" value="/site/{{ subdomain }}?edit=1">
-    <button type="submit">Приховати</button>
-  </form>
+  <a href="{{ crm_base_url }}/crm/seller/{{ owner_crm_slug }}/website/editor/{{ block_key }}">Редагувати</a>
+  <a href="{{ crm_base_url }}/crm/seller/{{ owner_crm_slug }}/website/editor/{{ block_key }}">Приховати</a>
 </div>
 {% endif %}
 {%- endmacro %}
@@ -31,12 +29,10 @@
 <div class="cp-owner-edit-toolbar">
   <b>Режим редагування</b>
   <div class="cp-owner-edit-actions">
-    <a href="/crm/seller/{{ owner_crm_slug }}">← Кабінет</a>
+    <a href="{{ crm_base_url }}/crm/seller/{{ owner_crm_slug }}/website">← Кабінет</a>
     <a href="{{ owner_crm_url }}">Редагування сайту</a>
     <a href="/site/{{ subdomain }}">Попередній перегляд</a>
-    <form method="post" action="/crm/seller/{{ owner_crm_slug }}/website/publish">
-      <button type="submit">Опублікувати</button>
-    </form>
+    <a href="{{ crm_base_url }}/crm/seller/{{ owner_crm_slug }}/website">Опублікувати в кабінеті</a>
   </div>
 </div>
 {% endif %}

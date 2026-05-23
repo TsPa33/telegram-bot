@@ -24,5 +24,6 @@ LIQPAY_CALLBACK_URL = os.getenv("LIQPAY_CALLBACK_URL")
 
 # ================= SELLER CRM =================
 
-SELLER_CRM_BASE_URL = os.getenv("SELLER_CRM_BASE_URL", "https://crm.carpot.com.ua")
+CRM_BASE_URL = os.getenv("CRM_BASE_URL", os.getenv("SELLER_CRM_BASE_URL", "https://crm.carpot.com.ua"))
+SELLER_CRM_BASE_URL = CRM_BASE_URL
 SELLER_CRM_MONTHLY_PRICE_UAH = int(os.getenv("SELLER_CRM_MONTHLY_PRICE_UAH", "99"))
