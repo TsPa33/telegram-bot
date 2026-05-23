@@ -3384,7 +3384,7 @@ async def seller_crm_part_edit_form(request: Request, crm_slug: str, part_id: in
         cancel_url=f"/crm/seller/{crm_slug}/content/cars/{part['car_id']}/parts", car=car,
         form=_part_form_payload(name=part.get("name"), category=part.get("category"), status=part.get("status"), price="" if part.get("price") is None else str(part.get("price")), description=part.get("description") or ""),
         category_options=PART_CATEGORY_OPTIONS, status_options=list(PART_STATUS_LABELS.items()), error=None,
-        part=part, status_label=PART_STATUS_LABELS.get(part.get("status"), "Чернетка"), status_class=PART_STATUS_CLASS.get(part.get("status"), "status-waiting")))
+        part=part, status_label=PART_STATUS_LABELS.get(part.get("status"), "Чернетка"), status_class=PART_STATUS_CLASSES.get(part.get("status"), "status-waiting")))
 
 
 @router.post("/{crm_slug}/content/parts/{part_id}/edit")
@@ -3410,7 +3410,7 @@ async def seller_crm_part_edit(
             form_title="Редагувати запчастину", action_url=f"/crm/seller/{crm_slug}/content/parts/{part_id}/edit",
             cancel_url=f"/crm/seller/{crm_slug}/content/cars/{part['car_id']}/parts", car=car, form=form, category_options=PART_CATEGORY_OPTIONS,
             status_options=list(PART_STATUS_LABELS.items()), error=validation_error, part=part,
-            status_label=PART_STATUS_LABELS.get(form.get("status"), "Чернетка"), status_class=PART_STATUS_CLASS.get(form.get("status"), "status-waiting")), status_code=400)
+            status_label=PART_STATUS_LABELS.get(form.get("status"), "Чернетка"), status_class=PART_STATUS_CLASSES.get(form.get("status"), "status-waiting")), status_code=400)
     updated = await update_part_fields(part_id, account["seller_id"], normalized_name, category, status, parsed_price, (description or "").strip() or None)
     if not updated:
         return RedirectResponse(url=f"/crm/seller/{crm_slug}/content/cars/{part['car_id']}/parts?error=part_update_conflict", status_code=303)
