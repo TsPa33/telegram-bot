@@ -9,6 +9,8 @@
 {% set contacts = config.get('contacts', {}) %}
 {% set modules = config.get('modules', {}) %}
 {% set products = products or config.get('products', {}) %}
+{% set about = config.get('about', {}) %}
+{% set cars_cfg = config.get('cars', {}) %}
 {% set pricing = config.get('pricing', {}) %}
 {% set gallery = config.get('gallery', {}) %}
 {% set works = config.get('works', {}) %}
@@ -53,6 +55,12 @@
     </section>
 {% endif %}
 
+{% if modules.get('about', False) %}
+    <section id="about-block" data-block="about" data-editable-block="about" class="cp-owner-block-shell">{{ owner_block_controls('about') }}
+      {% if about.get('text') %}<section class="section"><div class="container"><h2>{{ about.get('title') or "Про нас" }}</h2><p>{{ about.get('text') }}</p></div></section>{% elif is_owner_edit_mode %}<section class="section"><div class="container"><p>Блок ‘Про нас’ ще не заповнений</p><button type="button" data-editor-action="edit" data-block-key="about">Редагувати блок</button></div></section>{% endif %}
+    </section>
+{% endif %}
+
 {% if modules.get('services', True) %}
     <section id="services-block" data-block="services" data-editable-block="services" class="cp-owner-block-shell">{{ owner_block_controls('services') }}
     {% include "components/services.html" %}
@@ -67,8 +75,8 @@
     {% include "components/works.html" %}
 {% endif %}
 
-{% if modules.get('gallery', False) and gallery.get('images') %}
-    {% include "components/gallery.html" %}
+{% if modules.get('gallery', False) %}
+    <section id="gallery-block" data-block="gallery" data-editable-block="gallery" class="cp-owner-block-shell">{{ owner_block_controls('gallery') }}{% if gallery.get('images') %}{% include "components/gallery.html" %}{% elif is_owner_edit_mode %}<section class="section"><div class="container"><p>Блок ‘Галерея’ ще не заповнений</p><button type="button" data-editor-action="edit" data-block-key="gallery">Редагувати блок</button></div></section>{% endif %}</section>
 {% endif %}
 
 {% if modules.get('cta', False) %}
@@ -632,19 +640,20 @@ body.has-products-cart.theme-parts_dark_red [data-scroll-top] {
 <script>
 document.addEventListener("DOMContentLoaded", () => {
  const token = new URLSearchParams(window.location.search).get("token") || {{ edit_token|tojson }};
- const blockNames = {hero:"Перший екран",about:"Про компанію",cars:"Авто на розборі",products:"Товари / запчастини",services:"Послуги",gallery:"Галерея",contacts:"Контакти",map:"Карта",footer:"Футер"};
+ const blockRegistry = {{ block_registry|tojson }};
+ const blockNames = Object.fromEntries(Object.entries(blockRegistry).map(([k,v])=>[k,v.label]));
  const blockStates = {{ (config.get('modules', {}))|tojson }};
  const panel = document.getElementById("cpInlinePanel"); const blocksPanel = document.getElementById("cpBlocksPanel"); const backdrop=document.getElementById("cpConstructorBackdrop");
  const form = document.getElementById("cpInlineForm"); const blockNameEl=document.getElementById("cpInlineBlockName"); const toast=document.getElementById("cpConstructorToast");
  let currentBlock = null;
- const schemas={hero:[{k:"title",l:"Головний заголовок"},{k:"subtitle",l:"Короткий опис",t:"textarea"},{k:"button_text",l:"Текст кнопки"},{k:"button_link",l:"Посилання кнопки"},{k:"banner_url",l:"Банер"}],products:[{k:"title",l:"Заголовок блоку"},{k:"subtitle",l:"Короткий опис",t:"textarea"},{k:"per_page",l:"Кількість товарів на сторінці",t:"number"},{k:"search_enabled",l:"Пошук по товарах",t:"select",o:[["true","Увімкнено"],["false","Вимкнено"]]}],services:[{k:"title",l:"Заголовок блоку"},{k:"subtitle",l:"Короткий опис",t:"textarea"}],contacts:[{k:"phone",l:"Телефон"},{k:"telegram",l:"Telegram"},{k:"viber",l:"Viber"},{k:"whatsapp",l:"WhatsApp"},{k:"address",l:"Адреса"}],map:[{k:"address_label",l:"Адреса"},{k:"map_embed",l:"Код карти",t:"textarea"}],footer:[{k:"business_name",l:"Назва компанії"},{k:"footer_text",l:"Текст футера",t:"textarea"}]};
+ const schemas={hero:[{k:"title",l:"Головний заголовок"},{k:"subtitle",l:"Короткий опис",t:"textarea"},{k:"primary_button_text",l:"Текст кнопки"},{k:"primary_button_url",l:"Посилання кнопки"}],about:[{k:"title",l:"Заголовок"},{k:"text",l:"Текст",t:"textarea"}],cars:[{k:"title",l:"Заголовок"},{k:"intro",l:"Опис",t:"textarea"},{k:"per_page",l:"Кількість авто",t:"number"}],products:[{k:"title",l:"Заголовок блоку"},{k:"intro",l:"Короткий опис",t:"textarea"},{k:"per_page",l:"Кількість товарів на сторінці",t:"number"},{k:"search_enabled",l:"Пошук по товарах",t:"select",o:[["true","Увімкнено"],["false","Вимкнено"]]}],services:[{k:"title",l:"Заголовок блоку"},{k:"intro",l:"Короткий опис",t:"textarea"}],gallery:[{k:"title",l:"Заголовок"},{k:"items",l:"Елементи (по одному на рядок)",t:"textarea"}],contacts:[{k:"phone",l:"Телефон"},{k:"telegram",l:"Telegram"},{k:"viber",l:"Viber"},{k:"whatsapp",l:"WhatsApp"},{k:"address",l:"Адреса"}],map:[{k:"address_label",l:"Адреса"},{k:"map_embed",l:"Код карти",t:"textarea"}],footer:[{k:"business_name",l:"Назва компанії"},{k:"footer_text",l:"Текст футера",t:"textarea"}]};
  const showToast=(m)=>{toast.textContent=m;toast.classList.add("show");setTimeout(()=>toast.classList.remove("show"),2200)};
  const closePanels=()=>{panel.classList.remove("open");blocksPanel.classList.remove("open");backdrop.classList.remove("open");};
  const openPanel=(el)=>{panel.classList.remove("open");blocksPanel.classList.remove("open");el.classList.add("open");backdrop.classList.add("open");};
  const currentData=(k)=>({{ config|tojson }}[k]||{});
  const renderField=(f,v)=>{if(f.t==="textarea")return `<div class="constructor-field"><label>${f.l}</label><textarea name="${f.k}">${v||""}</textarea></div>`; if(f.t==="select") return `<div class="constructor-field"><label>${f.l}</label><select name="${f.k}">${f.o.map(([ov,ol])=>`<option value="${ov}" ${String(v)===ov?"selected":""}>${ol}</option>`).join("")}</select></div>`; return `<div class="constructor-field"><label>${f.l}</label><input type="${f.t||"text"}" name="${f.k}" value="${v??""}"></div>`;};
- const openEditor=(blockKey)=>{currentBlock=blockKey;const schema=schemas[blockKey]||[];if(!schema.length)return; const data=currentData(blockKey); blockNameEl.textContent=blockNames[blockKey]||blockKey; form.innerHTML=schema.map(f=>renderField(f,data[f.k])).join(""); openPanel(panel);};
- const renderBlocks=()=>{const list=document.getElementById("cpBlocksList"); const keys=["hero","about","cars","products","services","gallery","contacts","map","footer"]; list.innerHTML=keys.map(k=>{const visible=Boolean(blockStates[k]); return `<div class="constructor-block-row"><div><strong>${blockNames[k]}</strong><div>${visible?"Показано":"Приховано"}</div></div><div class="constructor-block-row-actions"><button type="button" data-block-toggle="${k}" data-visible="${visible?"0":"1"}">${visible?"Приховати":"Показати"}</button><button type="button" data-block-edit="${k}">Редагувати</button></div></div>`}).join("");};
+ const openEditor=(blockKey)=>{currentBlock=blockKey;const schema=schemas[blockKey]||[{k:"title",l:"Заголовок"},{k:"intro",l:"Опис",t:"textarea"}]; const data=currentData(blockKey); blockNameEl.textContent=blockNames[blockKey]||blockKey; form.innerHTML=schema.map(f=>renderField(f,data[f.k])).join(""); openPanel(panel);};
+ const renderBlocks=()=>{const list=document.getElementById("cpBlocksList"); const keys=Object.keys(blockRegistry).filter(k=>["hero","about","cars","products","services","gallery","contacts","map","footer"].includes(k)); list.innerHTML=keys.map(k=>{const visible=Boolean(blockStates[k]); return `<div class="constructor-block-row"><div><strong>${blockNames[k]}</strong><div>${visible?"Показано":"Приховано"}</div></div><div class="constructor-block-row-actions"><button type="button" data-block-toggle="${k}" data-visible="${visible?"0":"1"}">${visible?"Приховати":"Показати"}</button><button type="button" data-block-edit="${k}">Редагувати</button></div></div>`}).join("");};
  document.querySelectorAll("[data-editor-action='edit']").forEach(btn=>btn.addEventListener("click",()=>openEditor(btn.dataset.blockKey)));
  document.querySelectorAll("[data-editor-action='hide']").forEach(btn=>btn.addEventListener("click",async()=>{const k=btn.dataset.blockKey; await fetch(`/site/{{ subdomain }}/edit/block/${k}/visibility`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token,visible:false})}); showToast("Зміни збережено в чернетку"); window.location.href=`${window.location.pathname}?edit=1&token=${encodeURIComponent(token)}`;}));
  document.querySelector("[data-constructor-action='blocks']")?.addEventListener("click",()=>{renderBlocks(); openPanel(blocksPanel);});
