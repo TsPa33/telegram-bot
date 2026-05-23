@@ -17,10 +17,10 @@
 {% set crm_base_url = (crm_base_url or 'https://crm.carpot.com.ua').rstrip('/') %}
 
 {% macro owner_block_controls(block_key) -%}
-{% if is_owner_edit_mode and owner_crm_slug %}
+{% if is_owner_edit_mode %}
 <div class="cp-owner-block-controls" aria-label="Керування блоком {{ block_key }}">
-  <a href="{{ crm_base_url }}/crm/seller/{{ owner_crm_slug }}/website/editor/{{ block_key }}">Редагувати блок</a>
-  <a href="{{ crm_base_url }}/crm/seller/{{ owner_crm_slug }}/website/editor/{{ block_key }}">Приховати</a>
+  <button type="button" data-editor-action="edit" data-block-key="{{ block_key }}">Редагувати блок</button>
+  <button type="button" data-editor-action="hide" data-block-key="{{ block_key }}">Приховати</button>
 </div>
 {% endif %}
 {%- endmacro %}
@@ -30,16 +30,15 @@
   <b>Конструктор сайту</b>
   <div class="cp-owner-edit-actions">
     <a href="{{ crm_base_url }}/crm/seller/{{ owner_crm_slug }}/website">← Кабінет</a>
-    <a href="{{ owner_crm_url }}">Редагування блоків</a>
     <a href="/site/{{ subdomain }}">Перегляд</a>
-    <a href="{{ crm_base_url }}/crm/seller/{{ owner_crm_slug }}/website">Опублікувати в кабінеті</a>
+    <button type="button" id="cpPublishBtn">Опублікувати</button>
   </div>
 </div>
 {% endif %}
 
 {% include "components/header.html" %}
 {% if modules.get('hero', True) %}
-<section id="hero" data-block="hero" class="cp-owner-block-shell">
+<section id="hero" data-block="hero" data-editable-block="hero" class="cp-owner-block-shell">
   {{ owner_block_controls('hero') }}
   {% include "components/hero.html" with context %}
 </section>
@@ -48,13 +47,13 @@
 <main>
 
 {% if modules.get('products', False) and products.get('items') %}
-    <section id="products-block" data-block="products" class="cp-owner-block-shell">{{ owner_block_controls('products') }}
+    <section id="products-block" data-block="products" data-editable-block="products" class="cp-owner-block-shell">{{ owner_block_controls('products') }}
     {% include "components/products.html" %}
     </section>
 {% endif %}
 
 {% if modules.get('services', True) %}
-    <section id="services-block" data-block="services" class="cp-owner-block-shell">{{ owner_block_controls('services') }}
+    <section id="services-block" data-block="services" data-editable-block="services" class="cp-owner-block-shell">{{ owner_block_controls('services') }}
     {% include "components/services.html" %}
     </section>
 {% endif %}
@@ -80,19 +79,19 @@
 {% endif %}
 
 {% if modules.get('cars', True) %}
-    <section id="cars-block" data-block="cars" class="cp-owner-block-shell">{{ owner_block_controls('cars') }}
+    <section id="cars-block" data-block="cars" data-editable-block="cars" class="cp-owner-block-shell">{{ owner_block_controls('cars') }}
     {% include "components/cars.html" %}
     </section>
 {% endif %}
 
 {% if modules.get('contacts', True) %}
-    <section id="contacts-block" data-block="contacts" class="cp-owner-block-shell">{{ owner_block_controls('contacts') }}
+    <section id="contacts-block" data-block="contacts" data-editable-block="contacts" class="cp-owner-block-shell">{{ owner_block_controls('contacts') }}
     {% include "components/contacts.html" %}
     </section>
 {% endif %}
 
 {% if modules.get('map', True) and contacts.get('map_embed') %}
-    <section id="map-block" data-block="map" class="cp-owner-block-shell">{{ owner_block_controls('map') }}
+    <section id="map-block" data-block="map" data-editable-block="map" class="cp-owner-block-shell">{{ owner_block_controls('map') }}
     {% include "components/map.html" %}
     </section>
 {% endif %}
@@ -100,10 +99,17 @@
 </main>
 
 {% if modules.get('footer', True) %}
-<section id="footer" data-block="footer" class="cp-owner-block-shell">
+<section id="footer" data-block="footer" data-editable-block="footer" class="cp-owner-block-shell">
   {{ owner_block_controls('footer') }}
   {% include "components/footer.html" %}
 </section>
+{% endif %}
+{% if is_owner_edit_mode %}
+<aside id="cpInlinePanel" style="display:none;">
+  <h3 id="cpInlineTitle">Редагування</h3>
+  <form id="cpInlineForm"></form>
+  <div><button type="button" id="cpInlineCancel">Скасувати</button><button type="button" id="cpInlineSave">Зберегти в чернетку</button></div>
+</aside>
 {% endif %}
 
 <button class="callback-uiverse-btn" type="button" data-callback-fab aria-label="Передзвоніть мені" aria-expanded="false">
@@ -153,6 +159,7 @@
 .cp-owner-block-controls {
     position: absolute; top: 12px; right: 12px; z-index: 1200; display: inline-flex; gap: 6px; background: rgba(11, 18, 32, 0.9);
     border: 1px solid #334155; border-radius: 999px; padding: 4px;
+    pointer-events: auto;
 }
 .cp-owner-block-controls a, .cp-owner-block-controls button {
     border: 0; background: transparent; color: #e2e8f0; font-size: 12px; padding: 4px 8px; text-decoration: none; border-radius: 999px;
@@ -566,6 +573,69 @@ body.has-products-cart.theme-parts_dark_red [data-scroll-top] {
     });
 }());
 </script>
+{% if is_owner_edit_mode %}
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+ const token = new URLSearchParams(window.location.search).get("token") || {{ edit_token|tojson }};
+ const crmSlug = {{ owner_crm_slug|tojson }};
+ const crmBaseUrl = {{ crm_base_url|tojson }};
+ const panel = document.getElementById("cpInlinePanel");
+ const form = document.getElementById("cpInlineForm");
+ const title = document.getElementById("cpInlineTitle");
+ let currentBlock = null;
+ console.info("[CarPot Constructor] initialized");
+ const schemas = {
+   hero:[["title","Головний заголовок"],["subtitle","Короткий опис"],["button_text","Текст кнопки"],["button_link","Посилання кнопки"],["banner_url","Банер URL"],["banner_fit","Як показувати банер"],["banner_position","Позиція"]],
+   products:[["title","Заголовок секції"],["subtitle","Опис"],["per_page","Товарів на сторінку"],["search_enabled","Пошук (true/false)"]],
+   services:[["title","Заголовок секції"],["subtitle","Опис"]],
+   contacts:[["phone","Телефон"],["telegram","Telegram"],["viber","Viber"],["whatsapp","WhatsApp"],["address","Адреса"]],
+   map:[["address_label","Адреса"],["map_embed","Map iframe/embed"]],
+   footer:[["footer_text","Текст футера"],["business_name","Назва бізнесу"]]
+ };
+ const openEditor = (blockKey) => {
+   currentBlock = blockKey;
+   console.info("[CarPot Constructor] action", "edit", blockKey);
+   const schema = schemas[blockKey] || [];
+   if (!panel || !form || schema.length === 0) {
+     if (crmSlug) window.location.href = `${crmBaseUrl}/crm/seller/${crmSlug}/website/editor/${blockKey}`;
+     return;
+   }
+   title.textContent = `Редагування: ${blockKey}`;
+   panel.style.display = "block";
+   form.innerHTML = schema.map(([k,l])=>`<label>${l}<input name="${k}"></label>`).join("");
+ };
+ document.querySelectorAll("[data-editor-action]").forEach((btn) => {
+   btn.addEventListener("click", async () => {
+     const action = btn.dataset.editorAction;
+     const blockKey = btn.dataset.blockKey;
+     console.info("[CarPot Constructor] action", action, blockKey);
+     if (!action || !blockKey) return;
+     if (action === "edit") return openEditor(blockKey);
+     if (action === "hide") {
+       const res = await fetch(`/site/{{ subdomain }}/edit/block/${blockKey}/visibility`, {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token,visible:false})});
+       if (res.ok) { window.location.href = `${window.location.pathname}?edit=1&token=${encodeURIComponent(token)}`; }
+     }
+   });
+ });
+ const cancelBtn = document.getElementById("cpInlineCancel");
+ const saveBtn = document.getElementById("cpInlineSave");
+ if (cancelBtn) cancelBtn.addEventListener("click", () => { panel.style.display = "none"; });
+ if (saveBtn) saveBtn.addEventListener("click", async () => {
+   if (!currentBlock) return;
+   const data = Object.fromEntries(new FormData(form).entries());
+   data.token = token;
+   const res = await fetch(`/site/{{ subdomain }}/edit/block/${currentBlock}`, {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)});
+   if (res.ok) window.location.href = `${window.location.pathname}?edit=1&token=${encodeURIComponent(token)}`;
+ });
+ const p = document.getElementById("cpPublishBtn");
+ if (p) p.addEventListener("click", async () => {
+   const r = await fetch("/edit/publish",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token})});
+   const d = await r.json();
+   alert(d.message || "Сайт опубліковано.");
+ });
+});
+</script>
+{% endif %}
 
 
 {% endblock %}

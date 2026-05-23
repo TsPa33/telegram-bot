@@ -20,7 +20,7 @@ from bot.config import BOT_TOKEN, CRM_BASE_URL
 from bot.database.pool import init_pool
 from bot.database.models import create_tables
 from bot.database.migrations_runner import run_sql_migrations
-from bot.database.repositories.site_repo import get_site_by_subdomain
+from bot.database.repositories.site_repo import get_site_by_subdomain, update_site_config_draft, publish_site
 from bot.database.repositories.seller_repo import get_seller_by_id
 from bot.database.repositories.car_repo import get_cars_by_seller
 from bot.database.repositories.service_repo import get_services_by_seller
@@ -66,6 +66,53 @@ router = APIRouter()
 templates = Jinja2Templates(directory="bot/api/templates")
 bot = Bot(token=BOT_TOKEN)
 logger = logging.getLogger(__name__)
+INLINE_EDITABLE_BLOCKS = {"hero", "about", "cars", "products", "services", "contacts", "map", "footer"}
+
+
+def _extract_inline_edit_patch(block_key: str, payload: dict) -> dict:
+    payload = payload or {}
+    if block_key == "hero":
+        return {"hero": {
+            "title": str(payload.get("title") or "").strip(),
+            "subtitle": str(payload.get("subtitle") or "").strip(),
+            "button_text": str(payload.get("button_text") or "").strip(),
+            "button_secondary_text": str(payload.get("button_secondary_text") or "").strip(),
+            "button_link": str(payload.get("button_link") or "").strip(),
+            "banner_url": str(payload.get("banner_url") or "").strip(),
+            "banner_fit": str(payload.get("banner_fit") or "").strip(),
+            "banner_position": str(payload.get("banner_position") or "").strip(),
+        }}
+    if block_key == "products":
+        return {"products": {
+            "title": str(payload.get("title") or "").strip(),
+            "subtitle": str(payload.get("subtitle") or "").strip(),
+            "per_page": int(payload.get("per_page") or 12),
+            "search_enabled": bool(payload.get("search_enabled")),
+        }}
+    if block_key == "services":
+        return {"services": {
+            "title": str(payload.get("title") or "").strip(),
+            "subtitle": str(payload.get("subtitle") or "").strip(),
+        }}
+    if block_key == "contacts":
+        return {"contacts": {
+            "phones": [str(payload.get("phone") or "").strip()] if str(payload.get("phone") or "").strip() else [],
+            "address": str(payload.get("address") or "").strip(),
+            "messengers": {
+                "telegram": str(payload.get("telegram") or "").strip(),
+                "viber": str(payload.get("viber") or "").strip(),
+                "whatsapp": str(payload.get("whatsapp") or "").strip(),
+            },
+        }}
+    if block_key == "map":
+        return {"contacts": {
+            "address": str(payload.get("address_label") or "").strip(),
+            "map_embed": str(payload.get("map_embed") or "").strip(),
+        }}
+    if block_key == "footer":
+        return {"footer": {"text": str(payload.get("footer_text") or "").strip()},
+                "header": {"title": str(payload.get("business_name") or "").strip()}}
+    return {}
 
 
 
@@ -933,7 +980,17 @@ async def _render_site_by_subdomain(subdomain: str, request: Request):
             detail="Site not found"
         )
 
-    raw_config = site.get("config_live") or {}
+    edit_mode_requested = str(request.query_params.get("edit") or "") in {"1", "true", "on", "yes"}
+    edit_token = str(request.query_params.get("token") or "").strip()
+    valid_owner_token = edit_mode_requested and verify_site_edit_token(
+        token=edit_token,
+        seller_id=int(site.get("seller_id") or 0),
+        site_id=int(site.get("id") or 0),
+        subdomain=subdomain,
+    )
+
+    raw_config = site.get("config_draft") if valid_owner_token else site.get("config_live")
+    raw_config = raw_config or {}
 
     if isinstance(raw_config, str):
         try:
@@ -1176,19 +1233,12 @@ async def _render_site_by_subdomain(subdomain: str, request: Request):
             )
             services.append(demo_service)
 
-    edit_mode_requested = str(request.query_params.get("edit") or "") in {"1", "true", "on", "yes"}
     is_owner_edit_mode = False
     owner_crm_url = None
     owner_crm_slug = None
     crm_base_url = (CRM_BASE_URL or "https://crm.carpot.com.ua").rstrip("/")
     if edit_mode_requested:
-        edit_token = str(request.query_params.get("token") or "").strip()
-        if verify_site_edit_token(
-            token=edit_token,
-            seller_id=int(site.get("seller_id") or 0),
-            site_id=int(site.get("id") or 0),
-            subdomain=subdomain,
-        ):
+        if valid_owner_token:
             is_owner_edit_mode = True
             crm_account = await get_crm_account_by_seller(int(site.get("seller_id") or 0))
             owner_crm_slug = str((crm_account or {}).get("crm_slug") or "")
@@ -1219,6 +1269,7 @@ async def _render_site_by_subdomain(subdomain: str, request: Request):
             "owner_crm_url": owner_crm_url,
             "owner_crm_slug": owner_crm_slug,
             "crm_base_url": crm_base_url,
+            "edit_token": edit_token if is_owner_edit_mode else "",
         },
     )
 
@@ -1229,6 +1280,64 @@ async def render_site(subdomain: str, request: Request):
     if not isinstance(render_context, HTMLResponse):
         return render_context
     return render_context
+
+
+async def _authorized_site_for_inline_edit(request: Request, token: str, subdomain: str | None = None):
+    current_subdomain = (subdomain or extract_subdomain_from_host(request.headers.get("host", "")) or "").strip().lower()
+    site = await get_site_by_subdomain(current_subdomain)
+    if not site:
+        raise HTTPException(status_code=404, detail="Site not found")
+    if not token or not verify_site_edit_token(token=token, seller_id=int(site.get("seller_id") or 0), site_id=int(site.get("id") or 0), subdomain=current_subdomain):
+        raise HTTPException(status_code=403, detail="Invalid edit token")
+    return site
+
+
+@router.post("/site/{subdomain}/edit/block/{block_key}")
+@router.post("/edit/block/{block_key}")
+async def inline_edit_block(request: Request, block_key: str, subdomain: str | None = None):
+    if block_key not in INLINE_EDITABLE_BLOCKS:
+        raise HTTPException(status_code=400, detail="Unsupported block")
+    token = str(request.query_params.get("token") or "").strip()
+    payload = {}
+    if request.headers.get("content-type", "").startswith("application/json"):
+        payload = await request.json()
+    else:
+        form = await request.form()
+        payload = dict(form)
+    token = token or str(payload.get("token") or "").strip()
+    site = await _authorized_site_for_inline_edit(request, token=token, subdomain=subdomain)
+    patch = _extract_inline_edit_patch(block_key, payload)
+    if block_key in {"hero", "products", "services", "contacts", "map", "footer"} and patch:
+        ok = await update_site_config_draft(int(site["seller_id"]), patch)
+        if not ok:
+            raise HTTPException(status_code=500, detail="Draft update failed")
+    return JSONResponse({"status": "ok", "block": block_key})
+
+
+@router.post("/site/{subdomain}/edit/block/{block_key}/visibility")
+@router.post("/edit/block/{block_key}/visibility")
+async def inline_edit_visibility(request: Request, block_key: str, subdomain: str | None = None):
+    if block_key not in INLINE_EDITABLE_BLOCKS:
+        raise HTTPException(status_code=400, detail="Unsupported block")
+    body = await request.json()
+    token = str(request.query_params.get("token") or body.get("token") or "").strip()
+    site = await _authorized_site_for_inline_edit(request, token=token, subdomain=subdomain)
+    visible = bool(body.get("visible"))
+    ok = await update_site_config_draft(int(site["seller_id"]), {"modules": {block_key: visible}})
+    if not ok:
+        raise HTTPException(status_code=500, detail="Draft update failed")
+    return JSONResponse({"status": "ok", "visible": visible})
+
+
+@router.post("/edit/publish")
+async def inline_publish(request: Request):
+    body = await request.json()
+    token = str(request.query_params.get("token") or body.get("token") or "").strip()
+    site = await _authorized_site_for_inline_edit(request, token=token)
+    ok = await publish_site(int(site["seller_id"]))
+    if not ok:
+        raise HTTPException(status_code=500, detail="Publish failed")
+    return JSONResponse({"status": "ok", "message": "Сайт опубліковано."})
 
 
 # ================= LEAD FORM =================
