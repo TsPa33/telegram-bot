@@ -19,8 +19,8 @@
 {% macro owner_block_controls(block_key) -%}
 {% if is_owner_edit_mode and owner_crm_slug %}
 <div class="cp-owner-block-controls" aria-label="Керування блоком {{ block_key }}">
-  <a href="{{ crm_base_url }}/crm/seller/{{ owner_crm_slug }}/website/editor/{{ block_key }}">Редагувати блок</a>
-  <a href="{{ crm_base_url }}/crm/seller/{{ owner_crm_slug }}/website/editor/{{ block_key }}">Приховати</a>
+  <button type="button" data-inline-edit="{{ block_key }}">Редагувати блок</button>
+  <button type="button" data-inline-visibility="{{ block_key }}">Приховати</button>
 </div>
 {% endif %}
 {%- endmacro %}
@@ -30,9 +30,9 @@
   <b>Конструктор сайту</b>
   <div class="cp-owner-edit-actions">
     <a href="{{ crm_base_url }}/crm/seller/{{ owner_crm_slug }}/website">← Кабінет</a>
-    <a href="{{ owner_crm_url }}">Редагування блоків</a>
     <a href="/site/{{ subdomain }}">Перегляд</a>
-    <a href="{{ crm_base_url }}/crm/seller/{{ owner_crm_slug }}/website">Опублікувати в кабінеті</a>
+    <button type="button" id="cpPublishBtn">Опублікувати</button>
+    <a href="/site/{{ subdomain }}">Перегляд</a>
   </div>
 </div>
 {% endif %}
@@ -104,6 +104,13 @@
   {{ owner_block_controls('footer') }}
   {% include "components/footer.html" %}
 </section>
+{% endif %}
+{% if is_owner_edit_mode %}
+<aside id="cpInlinePanel" style="display:none;">
+  <h3 id="cpInlineTitle">Редагування</h3>
+  <form id="cpInlineForm"></form>
+  <div><button type="button" id="cpInlineCancel">Скасувати</button><button type="button" id="cpInlineSave">Зберегти в чернетку</button></div>
+</aside>
 {% endif %}
 
 <button class="callback-uiverse-btn" type="button" data-callback-fab aria-label="Передзвоніть мені" aria-expanded="false">
@@ -566,6 +573,28 @@ body.has-products-cart.theme-parts_dark_red [data-scroll-top] {
     });
 }());
 </script>
+{% if is_owner_edit_mode %}
+<script>
+(function(){
+ const token = {{ edit_token|tojson }};
+ const panel = document.getElementById("cpInlinePanel"), form = document.getElementById("cpInlineForm");
+ let currentBlock = null;
+ const schemas = {
+   hero:[["title","Головний заголовок"],["subtitle","Короткий опис"],["button_text","Текст кнопки"],["button_link","Посилання кнопки"],["banner_url","Банер URL"],["banner_fit","Як показувати банер"],["banner_position","Позиція"]],
+   products:[["title","Заголовок секції"],["subtitle","Опис"],["per_page","Товарів на сторінку"],["search_enabled","Пошук (true/false)"]],
+   services:[["title","Заголовок секції"],["subtitle","Опис"]],
+   contacts:[["phone","Телефон"],["telegram","Telegram"],["viber","Viber"],["whatsapp","WhatsApp"],["address","Адреса"]],
+   map:[["address_label","Адреса"],["map_embed","Map iframe/embed"]],
+   footer:[["footer_text","Текст футера"],["business_name","Назва бізнесу"]]
+ };
+ document.querySelectorAll("[data-inline-edit]").forEach(btn=>btn.onclick=()=>{currentBlock=btn.dataset.inlineEdit;panel.style.display="block";form.innerHTML=(schemas[currentBlock]||[]).map(([k,l])=>`<label>${l}<input name="${k}"></label>`).join("");});
+ document.getElementById("cpInlineCancel").onclick=()=>panel.style.display="none";
+ document.getElementById("cpInlineSave").onclick=async()=>{const data=Object.fromEntries(new FormData(form).entries());data.token=token;await fetch(`/site/{{ subdomain }}/edit/block/${currentBlock}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)});location.reload();};
+ document.querySelectorAll("[data-inline-visibility]").forEach(btn=>btn.onclick=async()=>{await fetch(`/site/{{ subdomain }}/edit/block/${btn.dataset.inlineVisibility}/visibility`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token,visible:false})});location.reload();});
+ const p = document.getElementById("cpPublishBtn"); if(p){p.onclick=async()=>{const r=await fetch("/edit/publish",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token})});const d=await r.json();alert(d.message||"Сайт опубліковано.");};}
+})();
+</script>
+{% endif %}
 
 
 {% endblock %}
