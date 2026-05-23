@@ -57,7 +57,8 @@ from bot.utils.subdomain import is_valid_subdomain
 from bot.services.domain_service import extract_subdomain_from_host
 from bot.services.seller_notification_ops import format_site_lead_notification, seller_crm_context_url
 from bot.services.telegram_sender import send_message_to_seller
-from bot.database.repositories.seller_crm_repo import get_crm_session
+from bot.database.repositories.seller_crm_repo import get_crm_session, get_crm_account_by_seller
+from bot.services.seller_crm import verify_site_edit_token
 
 app = FastAPI()
 router = APIRouter()
@@ -1180,8 +1181,21 @@ async def _render_site_by_subdomain(subdomain: str, request: Request):
     owner_crm_url = None
     owner_crm_slug = None
     if edit_mode_requested:
+        edit_token = str(request.query_params.get("token") or "").strip()
+        if verify_site_edit_token(
+            token=edit_token,
+            seller_id=int(site.get("seller_id") or 0),
+            site_id=int(site.get("id") or 0),
+            subdomain=subdomain,
+        ):
+            is_owner_edit_mode = True
+            crm_account = await get_crm_account_by_seller(int(site.get("seller_id") or 0))
+            owner_crm_slug = str((crm_account or {}).get("crm_slug") or "")
+            if owner_crm_slug:
+                owner_crm_url = f"/crm/seller/{owner_crm_slug}/website/editor"
+
         token = request.cookies.get("seller_crm_session")
-        if token:
+        if token and not is_owner_edit_mode:
             session = await get_crm_session(token)
             if session and session.get("seller_id") == seller.get("id") and session.get("is_active"):
                 is_owner_edit_mode = True

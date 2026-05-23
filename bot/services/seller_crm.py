@@ -19,6 +19,7 @@ SELLER_CRM_SUBSCRIPTION_DAYS = 30
 SELLER_CRM_PASSWORD_MIN_LENGTH = 8
 SELLER_CRM_SESSION_DAYS = 7
 SELLER_CRM_PASSWORD_RESET_TTL_SECONDS = 30 * 60
+SELLER_SITE_EDIT_TOKEN_TTL_SECONDS = 30 * 60
 SELLER_CRM_SLUG_RE = re.compile(r"^[a-z0-9](?:[a-z0-9-]{1,38}[a-z0-9])?$")
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -61,8 +62,19 @@ def _password_reset_secret() -> bytes:
     return secret.encode("utf-8")
 
 
+def _site_edit_secret() -> bytes:
+    secret = os.getenv("SELLER_SITE_EDIT_SECRET") or os.getenv("SECRET_KEY") or os.getenv("BOT_TOKEN")
+    if not secret:
+        secret = "carpot-seller-site-edit"
+    return secret.encode("utf-8")
+
+
 def _sign_password_reset_payload(payload: str) -> str:
     return hmac.new(_password_reset_secret(), payload.encode("utf-8"), hashlib.sha256).hexdigest()
+
+
+def _sign_site_edit_payload(payload: str) -> str:
+    return hmac.new(_site_edit_secret(), payload.encode("utf-8"), hashlib.sha256).hexdigest()
 
 
 def create_crm_password_reset_token(account: dict[str, Any], ttl_seconds: int = SELLER_CRM_PASSWORD_RESET_TTL_SECONDS) -> str:
@@ -105,6 +117,50 @@ def verify_crm_password_reset_token(account: dict[str, Any], token: str | None) 
         return False, "Це посилання вже використане або пароль було змінено."
 
     return True, ""
+
+
+def create_site_edit_token(
+    seller_id: int,
+    site_id: int,
+    subdomain: str,
+    ttl_seconds: int = SELLER_SITE_EDIT_TOKEN_TTL_SECONDS,
+) -> str:
+    expires_at = int(time.time()) + ttl_seconds
+    payload = f"{seller_id}:{site_id}:{subdomain}:{expires_at}"
+    signature = _sign_site_edit_payload(payload)
+    token = f"{payload}:{signature}"
+    return base64.urlsafe_b64encode(token.encode("utf-8")).decode("ascii")
+
+
+def verify_site_edit_token(
+    token: str | None,
+    seller_id: int,
+    site_id: int,
+    subdomain: str,
+) -> bool:
+    if not token:
+        return False
+    try:
+        decoded = base64.urlsafe_b64decode(token.encode("ascii")).decode("utf-8")
+        token_seller_id, token_site_id, token_subdomain, expires_at, signature = decoded.rsplit(":", 4)
+    except Exception:
+        return False
+
+    payload = f"{token_seller_id}:{token_site_id}:{token_subdomain}:{expires_at}"
+    expected_signature = _sign_site_edit_payload(payload)
+    if not hmac.compare_digest(signature, expected_signature):
+        return False
+
+    if str(seller_id) != token_seller_id or str(site_id) != token_site_id:
+        return False
+    if (token_subdomain or "").strip().lower() != (subdomain or "").strip().lower():
+        return False
+
+    try:
+        expires_at_timestamp = int(expires_at)
+    except ValueError:
+        return False
+    return expires_at_timestamp >= int(time.time())
 
 
 def hash_crm_password(password: str) -> str:

@@ -173,6 +173,7 @@ from bot.services.import_service import (
 )
 from bot.services.seller_crm import (
     SELLER_CRM_SESSION_DAYS,
+    create_site_edit_token,
     hash_crm_password,
     verify_crm_password_reset_token,
     validate_crm_password,
@@ -212,7 +213,12 @@ def _build_public_site_urls(site: dict[str, Any] | None) -> tuple[str | None, st
         return None, None
 
     preview_url = f"{base_url}/"
-    constructor_url = f"{preview_url}?edit=1"
+    edit_token = create_site_edit_token(
+        seller_id=int(site.get("seller_id") or 0),
+        site_id=int(site.get("id") or 0),
+        subdomain=subdomain,
+    )
+    constructor_url = f"{preview_url}?edit=1&token={edit_token}"
     return preview_url, constructor_url
 
 LEAD_STATUS_TABS = [
