@@ -184,6 +184,7 @@ from bot.services.seller_offer_service import submit_seller_offer_from_crm
 from bot.services.telegram_sender import send_message_to_buyer
 from bot.services.buyer_chat_presence import is_buyer_in_chat
 from bot.services.site_config import get_theme_presets, merge_with_default
+from bot.services.site_blocks import SITE_BLOCK_REGISTRY
 from bot.services.storage import upload_image
 from bot.services.liqpay_service import LiqPayService
 from bot.config import LIQPAY_PUBLIC_KEY, LIQPAY_PRIVATE_KEY, LIQPAY_CALLBACK_URL
