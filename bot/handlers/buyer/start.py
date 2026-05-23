@@ -784,9 +784,13 @@ async def handle_buyer_ai_search_query(message: Message, state: FSMContext):
         try:
             await message.answer_photo(photo=photo, caption=text, parse_mode="HTML", reply_markup=kb)
             return
-        except TelegramBadRequest:
-            pass
-    await message.answer(text, parse_mode="HTML", reply_markup=kb)
+        except TelegramBadRequest as exc:
+            logger.warning("Buyer search photo card failed, fallback to text: %s", exc)
+    try:
+        await message.answer(text, parse_mode="HTML", reply_markup=kb)
+    except TelegramBadRequest as exc:
+        logger.warning("Buyer search text card failed, fallback to text-only: %s", exc)
+        await message.answer(text, parse_mode="HTML")
 
 
 
