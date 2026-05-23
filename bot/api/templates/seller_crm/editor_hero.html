@@ -3,55 +3,60 @@
 
 <div class="editor-grid two-col">
   <label>
-    Заголовок
+    Головний заголовок
     <input type="text" name="title" value="{{ hero.get('title', '') }}" maxlength="120">
   </label>
   <label>
-    Посилання кнопки
+    Куди веде кнопка
     <input type="url" name="button_link" value="{{ hero.get('button_link', '') }}" placeholder="https://...">
   </label>
 
   <label class="full">
-    Підзаголовок
+    Короткий опис під заголовком
     <textarea name="subtitle" rows="4">{{ hero.get('subtitle', '') }}</textarea>
   </label>
 
   <label>
-    Текст основної кнопки
+    Текст кнопки заявки
     <input type="text" name="button_text" value="{{ hero.get('button_text', '') }}" maxlength="60">
   </label>
   <label>
-    Текст додаткової кнопки
+    Додаткова кнопка
     <input type="text" name="button_secondary_text" value="{{ hero.get('button_secondary_text', '') }}" maxlength="60">
   </label>
 </div>
 
 <div class="editor-section stack-top">
-  <h3>Банери</h3>
+  <h3>Банери першого екрану</h3>
+  <p class="muted">Рекомендований розмір: 1600×700 або ширше. JPG/PNG/WebP.</p>
   <div class="banner-list" data-banner-list>
     {% for banner in banners %}
       {% set banner_obj = banner if banner is mapping else {'image': banner, 'fit': 'cover', 'position': 'center'} %}
       <div class="banner-card" data-banner-item>
-        <div class="banner-preview" style="background-image:url('{{ banner_obj.get('image', '') }}'); background-size: {{ banner_obj.get('fit', 'cover') }}; background-position: {{ banner_obj.get('position', 'center') }};"></div>
+        <h4 class="banner-title">Банер {{ loop.index }}</h4>
+        <div class="banner-preview-wrap">
+          <div class="banner-preview" style="background-image:url('{{ banner_obj.get('image', '') }}'); background-size: {{ banner_obj.get('fit', 'cover') }}; background-position: {{ banner_obj.get('position', 'center') }};"></div>
+          <p class="banner-placeholder muted" {% if banner_obj.get('image', '') %}hidden{% endif %}>Зображення ще не додано</p>
+        </div>
         <div class="editor-grid two-col compact">
-          <label class="full">URL / upload
+          <label class="full">Посилання на зображення
             <input type="url" name="banner_image" value="{{ banner_obj.get('image', '') }}" placeholder="https://res.cloudinary.com/..." data-banner-image>
           </label>
-          <label>Fit mode
+          <label>Як показувати банер
             <select name="banner_fit" data-banner-fit>
-              {% for fit in ['cover', 'contain', 'fill'] %}
-                <option value="{{ fit }}" {% if banner_obj.get('fit', 'cover') == fit %}selected{% endif %}>{{ fit }}</option>
-              {% endfor %}
+              <option value="cover" {% if banner_obj.get('fit', 'cover') == 'cover' %}selected{% endif %}>Заповнити блок</option>
+              <option value="contain" {% if banner_obj.get('fit', 'cover') == 'contain' %}selected{% endif %}>Показати повністю</option>
+              <option value="fill" {% if banner_obj.get('fit', 'cover') == 'fill' %}selected{% endif %}>Розтягнути</option>
             </select>
           </label>
-          <label>Position
+          <label>Позиція банера
             <select name="banner_position" data-banner-position>
-              {% for pos in ['center', 'top', 'bottom'] %}
-                <option value="{{ pos }}" {% if banner_obj.get('position', 'center') == pos %}selected{% endif %}>{{ pos }}</option>
-              {% endfor %}
+              <option value="center" {% if banner_obj.get('position', 'center') == 'center' %}selected{% endif %}>По центру</option>
+              <option value="top" {% if banner_obj.get('position', 'center') == 'top' %}selected{% endif %}>Зверху</option>
+              <option value="bottom" {% if banner_obj.get('position', 'center') == 'bottom' %}selected{% endif %}>Знизу</option>
             </select>
           </label>
-          <div class="banner-actions full"><button type="button" class="btn ghost" data-banner-remove>Видалити</button></div>
+          <div class="banner-actions full"><button type="button" class="btn ghost" data-banner-remove>Видалити банер</button></div>
         </div>
       </div>
     {% endfor %}
@@ -61,26 +66,30 @@
 
 <template id="banner-card-template">
   <div class="banner-card" data-banner-item>
-    <div class="banner-preview"></div>
+    <h4 class="banner-title">Банер</h4>
+    <div class="banner-preview-wrap">
+      <div class="banner-preview"></div>
+      <p class="banner-placeholder muted">Зображення ще не додано</p>
+    </div>
     <div class="editor-grid two-col compact">
-      <label class="full">URL / upload
+      <label class="full">Посилання на зображення
         <input type="url" name="banner_image" value="" placeholder="https://res.cloudinary.com/..." data-banner-image>
       </label>
-      <label>Fit mode
+      <label>Як показувати банер
         <select name="banner_fit" data-banner-fit>
-          <option value="cover" selected>cover</option>
-          <option value="contain">contain</option>
-          <option value="fill">fill</option>
+          <option value="cover" selected>Заповнити блок</option>
+          <option value="contain">Показати повністю</option>
+          <option value="fill">Розтягнути</option>
         </select>
       </label>
-      <label>Position
+      <label>Позиція банера
         <select name="banner_position" data-banner-position>
-          <option value="center" selected>center</option>
-          <option value="top">top</option>
-          <option value="bottom">bottom</option>
+          <option value="center" selected>По центру</option>
+          <option value="top">Зверху</option>
+          <option value="bottom">Знизу</option>
         </select>
       </label>
-      <div class="banner-actions full"><button type="button" class="btn ghost" data-banner-remove>Видалити</button></div>
+      <div class="banner-actions full"><button type="button" class="btn ghost" data-banner-remove>Видалити банер</button></div>
     </div>
   </div>
 </template>
