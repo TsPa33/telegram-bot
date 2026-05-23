@@ -13,6 +13,7 @@
   @media (max-width: 680px) { .form-grid { grid-template-columns: 1fr; } .form-actions, .form-actions .btn { display: grid; width: 100%; } }
 </style>
 <div class="product-form-wrap">
+  <div><a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content/products">← Назад до товарів</a></div>
   {% if error %}<div class="notice error" role="alert">{{ error }}</div>{% endif %}
   <section class="card">
     {{ layout.section_header(form_title) }}
