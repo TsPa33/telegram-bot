@@ -1,0 +1,15 @@
+{% extends "seller_crm/base.html" %}
+{% set site_config = config or {} %}
+{% set header = site_config.get('header', {}) %}
+{% set hero = site_config.get('hero', {}) %}
+{% set contacts = site_config.get('contacts', {}) %}
+{% set socials = contacts.get('socials', {}) %}
+{% set messengers = contacts.get('messengers', {}) %}
+{% block crm_kicker %}Налаштування сайту{% endblock %}
+{% block crm_heading %}Налаштування сайту{% endblock %}
+{% block content %}
+<article class="card"><h3>Тема / кольори</h3><form method="post" action="/crm/seller/{{ account.crm_slug }}/website/theme"><select name="theme">{% for key, theme in themes|dictsort %}<option value="{{ key }}">{{ theme.name }}</option>{% endfor %}</select><button class="btn">Зберегти</button></form></article>
+<article class="card stack-top"><h3>Логотип</h3><form method="post" enctype="multipart/form-data" action="/crm/seller/{{ account.crm_slug }}/website/logo"><input type="file" name="logo" accept="image/*"><button class="btn">Зберегти</button></form></article>
+<article class="card stack-top"><h3>SEO + Контакти + Банери</h3><p class="muted">Редагування цього блоку буде доступне наступним етапом.</p></article>
+<article class="card stack-top"><h3>Публікація</h3><form method="post" action="/crm/seller/{{ account.crm_slug }}/website/publish"><button class="btn">Опублікувати</button></form></article>
+{% endblock %}

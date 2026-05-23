@@ -57,6 +57,7 @@ from bot.utils.subdomain import is_valid_subdomain
 from bot.services.domain_service import extract_subdomain_from_host
 from bot.services.seller_notification_ops import format_site_lead_notification, seller_crm_context_url
 from bot.services.telegram_sender import send_message_to_seller
+from bot.database.repositories.seller_crm_repo import get_crm_session
 
 app = FastAPI()
 router = APIRouter()
@@ -1174,6 +1175,16 @@ async def _render_site_by_subdomain(subdomain: str, request: Request):
             )
             services.append(demo_service)
 
+    edit_mode_requested = str(request.query_params.get("edit") or "") in {"1", "true", "on", "yes"}
+    is_owner_edit_mode = False
+    owner_crm_url = None
+    if edit_mode_requested:
+        token = request.cookies.get("seller_crm_session")
+        if token:
+            session = await get_crm_session(token)
+            if session and session.get("seller_id") == seller.get("id") and session.get("is_active"):
+                is_owner_edit_mode = True
+                owner_crm_url = f"/crm/seller/{session.get('crm_slug')}/website/editor"
     return templates.TemplateResponse(
         "site.html",
         {
@@ -1187,13 +1198,18 @@ async def _render_site_by_subdomain(subdomain: str, request: Request):
             "products": products,
             "seller_parts": seller_parts,
             "catalog_has_items": bool(unified_items),
+            "is_owner_edit_mode": is_owner_edit_mode,
+            "owner_crm_url": owner_crm_url,
         },
     )
 
 
 @router.get("/site/{subdomain}", response_class=HTMLResponse)
 async def render_site(subdomain: str, request: Request):
-    return await _render_site_by_subdomain(subdomain, request)
+    render_context = await _render_site_by_subdomain(subdomain, request)
+    if not isinstance(render_context, HTMLResponse):
+        return render_context
+    return render_context
 
 
 # ================= LEAD FORM =================

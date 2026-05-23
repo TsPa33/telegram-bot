@@ -828,6 +828,23 @@ def _as_live_config(site) -> dict[str, Any]:
     return merge_with_default(raw if isinstance(raw, dict) else {})
 
 
+
+
+async def get_current_seller_site_or_404(seller_id: int) -> dict[str, Any]:
+    site = await get_site_by_seller(seller_id)
+    if not site:
+        raise HTTPException(status_code=404, detail="Сайт продавця не знайдено")
+    return site
+
+
+async def update_current_site_draft(seller_id: int, patch: dict[str, Any]) -> bool:
+    safe_patch = patch if isinstance(patch, dict) else {}
+    return await update_site_config_draft(seller_id, safe_patch)
+
+
+async def publish_current_site(seller_id: int) -> bool:
+    return await publish_site(seller_id)
+
 def _format_duration(seconds: int | None) -> str:
     if seconds is None:
         return "—"
@@ -2463,7 +2480,7 @@ async def seller_crm_content_services(request: Request, crm_slug: str):
         "without_price": sum(1 for service in services if not service.get("has_price")),
         "without_photo": sum(1 for service in services if not service.get("has_photo")),
     }
-    site = _demo_site() if _is_demo_account(account) else await get_site_by_seller(seller_id)
+    site = _demo_site() if _is_demo_account(account) else await get_current_seller_site_or_404(seller_id)
     account_flags = dict(account)
     has_website = bool(site or account_flags.get("has_site") or account_flags.get("website"))
 
@@ -2798,7 +2815,7 @@ async def seller_crm_content_cars(request: Request, crm_slug: str):
         "phone_clicks": sum(int(car.get("phone_clicks") or 0) for car in cars),
         "site_clicks": sum(int(car.get("site_clicks") or 0) for car in cars),
     }
-    site = _demo_site() if _is_demo_account(account) else await get_site_by_seller(seller_id)
+    site = _demo_site() if _is_demo_account(account) else await get_current_seller_site_or_404(seller_id)
     account_flags = dict(account)
     has_website = bool(site or account_flags.get("has_site") or account_flags.get("website"))
 
@@ -3787,7 +3804,7 @@ async def seller_crm_website(request: Request, crm_slug: str, section: str = "we
         raise
 
     seller_id = account["seller_id"]
-    site = _demo_site() if _is_demo_account(account) else await get_site_by_seller(seller_id)
+    site = _demo_site() if _is_demo_account(account) else await get_current_seller_site_or_404(seller_id)
     if not site:
         return templates.TemplateResponse(
             "seller_crm/website.html",
@@ -3886,6 +3903,59 @@ async def seller_crm_website(request: Request, crm_slug: str, section: str = "we
     )
 
 
+@router.get("/{crm_slug}/website/editor")
+async def seller_crm_website_editor(request: Request, crm_slug: str, status: str | None = None):
+    try:
+        account, subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+
+    seller_id = account["seller_id"]
+    site = _demo_site() if _is_demo_account(account) else await get_current_seller_site_or_404(seller_id)
+    config_draft = _as_config(site)
+    module_map = {
+        "hero": ("Перший екран", "Головний банер і ключове повідомлення."),
+        "about": ("Про компанію", "Коротко про вашу компанію та досвід."),
+        "cars": ("Авто на розборі", "Блок із авто, які ви зараз демонтуєте."),
+        "products": ("Товари / запчастини", "Показ каталогу товарів і запчастин."),
+        "services": ("Послуги", "Перелік послуг на вашому сайті."),
+        "gallery": ("Галерея", "Фото майстерні, процесів і результатів."),
+        "contacts": ("Контакти", "Телефони, месенджери та адреса."),
+        "map": ("Карта", "Відображення локації на карті."),
+        "footer": ("Футер", "Нижній блок із службовою інформацією."),
+    }
+    blocks = [{"key":k,"title":v[0],"description":v[1],"shown":bool((config_draft.get("modules") or {}).get(k, False))} for k,v in module_map.items()]
+    return templates.TemplateResponse("seller_crm/website_editor.html", _seller_crm_context(request, title="Редагування сайту — кабінет продавця", current_page="website_editor", account=account, subscription=subscription, site=site, blocks=blocks, status=status, has_website=True, has_cars=False, has_services=False))
+
+
+@router.get("/{crm_slug}/website/settings")
+async def seller_crm_website_settings(request: Request, crm_slug: str, status: str | None = None):
+    try:
+        account, subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+    seller_id = account["seller_id"]
+    site = _demo_site() if _is_demo_account(account) else await get_current_seller_site_or_404(seller_id)
+    return templates.TemplateResponse("seller_crm/website_settings.html", _seller_crm_context(request, title="Налаштування сайту — кабінет продавця", current_page="website_settings", account=account, subscription=subscription, site=site, config=_as_config(site), themes=get_theme_presets(), status=status, has_website=True, has_cars=False, has_services=False))
+
+
+@router.post("/{crm_slug}/website/editor/toggle/{module_key}")
+async def toggle_website_block(request: Request, crm_slug: str, module_key: str):
+    account, _ = await _authorized_account(request, crm_slug)
+    allowed_keys = {"hero", "about", "cars", "products", "services", "gallery", "contacts", "map", "footer"}
+    if module_key not in allowed_keys:
+        raise HTTPException(status_code=400, detail="Невідомий блок")
+    site = await get_current_seller_site_or_404(account["seller_id"])
+    current_modules = (_as_config(site).get("modules") or {})
+    next_value = not bool(current_modules.get(module_key, False))
+    await update_current_site_draft(account["seller_id"], {"modules": {module_key: next_value}})
+    return RedirectResponse(url=f"/crm/seller/{crm_slug}/website/editor?status=saved", status_code=303)
+
+
 @router.post("/{crm_slug}/website/texts")
 async def update_website_texts(
     request: Request,
@@ -3908,7 +3978,7 @@ async def update_website_texts(
     seo_description: str = Form(""),
 ):
     account, _ = await _authorized_account(request, crm_slug)
-    await update_site_config_draft(
+    await update_current_site_draft(
         account["seller_id"],
         {
             "header": {"title": header_title.strip(), "seo_title": seo_title.strip(), "seo_description": seo_description.strip()},
@@ -3932,7 +4002,7 @@ async def update_logo(request: Request, crm_slug: str, logo: UploadFile | None =
     account, _ = await _authorized_account(request, crm_slug)
     url = None if remove else await _upload_to_cloudinary(logo)
     if remove or url:
-        await update_site_config_draft(account["seller_id"], {"header": {"logo": url}})
+        await update_current_site_draft(account["seller_id"], {"header": {"logo": url}})
     return _redirect(crm_slug, "logo")
 
 
@@ -3941,7 +4011,7 @@ async def update_theme(request: Request, crm_slug: str, theme: str = Form("defau
     account, _ = await _authorized_account(request, crm_slug)
     presets = get_theme_presets()
     preset = presets.get(theme, presets["default"])
-    await update_site_config_draft(account["seller_id"], {"theme": {"scheme": preset["scheme"], "preset": theme, "accent": preset["accent"]}})
+    await update_current_site_draft(account["seller_id"], {"theme": {"scheme": preset["scheme"], "preset": theme, "accent": preset["accent"]}})
     return _redirect(crm_slug, "theme")
 
 
@@ -3962,7 +4032,7 @@ async def update_modules(request: Request, crm_slug: str):
         **new_modules,
     }
 
-    await update_site_config_draft(account["seller_id"], existing_config)
+    await update_current_site_draft(account["seller_id"], existing_config)
     return RedirectResponse(
         url=f"/crm/seller/{crm_slug}/website?status=saved#modules-section",
         status_code=303,
@@ -3984,7 +4054,7 @@ async def add_banner(request: Request, crm_slug: str, banner: UploadFile | None 
 @router.post("/{crm_slug}/website/banners/update")
 async def update_banners(request: Request, crm_slug: str, banners: str = Form("")):
     account, _ = await _authorized_account(request, crm_slug)
-    await update_site_config_draft(account["seller_id"], {"hero": {"banners": _split_lines(banners)}})
+    await update_current_site_draft(account["seller_id"], {"hero": {"banners": _split_lines(banners)}})
     return _redirect(crm_slug, "banners")
 
 
@@ -4011,7 +4081,7 @@ async def add_gallery_item(
 async def update_gallery(request: Request, crm_slug: str, images: str = Form("")):
     account, _ = await _authorized_account(request, crm_slug)
     items = [{"url": line} for line in _split_lines(images)]
-    await update_site_config_draft(account["seller_id"], {"gallery": {"images": items}})
+    await update_current_site_draft(account["seller_id"], {"gallery": {"images": items}})
     return _redirect(crm_slug, "gallery")
 
 
@@ -4033,7 +4103,7 @@ async def update_prices(request: Request, crm_slug: str, prices: str = Form(""))
     for line in _split_lines(prices):
         parts = [part.strip() for part in line.split("|")]
         items.append(_list_item(parts[0], parts[2] if len(parts) > 2 else "", price=parts[1] if len(parts) > 1 else ""))
-    await update_site_config_draft(account["seller_id"], {"pricing": {"items": items}})
+    await update_current_site_draft(account["seller_id"], {"pricing": {"items": items}})
     return _redirect(crm_slug, "prices")
 
 
@@ -4121,7 +4191,7 @@ async def delete_car_route(request: Request, crm_slug: str, car_id: int = Form(.
 @router.post("/{crm_slug}/website/publish")
 async def publish_site_route(request: Request, crm_slug: str):
     account, _ = await _authorized_account(request, crm_slug)
-    await publish_site(account["seller_id"])
+    await publish_current_site(account["seller_id"])
     return _redirect(crm_slug, "publish", "published")
 
 

@@ -14,6 +14,17 @@
 {% set works = config.get('works', {}) %}
 {% set reviews = config.get('reviews', {}) %}
 
+{% if is_owner_edit_mode %}
+<div style="position:sticky;top:0;z-index:2200;background:#0b1220;color:#e2e8f0;padding:10px 14px;border-bottom:1px solid #334155;display:flex;gap:10px;align-items:center;justify-content:space-between;">
+  <b>Режим редагування</b>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <a href="{{ owner_crm_url }}" style="color:#93c5fd;">← Кабінет</a>
+    <a href="/site/{{ subdomain }}" style="color:#93c5fd;">Попередній перегляд</a>
+    <a href="{{ owner_crm_url|replace('/editor', '') }}" style="color:#93c5fd;">Опублікувати</a>
+  </div>
+</div>
+{% endif %}
+
 {% include "components/header.html" %}
 {% if modules.get('hero', True) %}
 {% include "components/hero.html" with context %}
