@@ -184,6 +184,7 @@ from bot.services.seller_offer_service import submit_seller_offer_from_crm
 from bot.services.telegram_sender import send_message_to_buyer
 from bot.services.buyer_chat_presence import is_buyer_in_chat
 from bot.services.site_config import get_theme_presets, merge_with_default
+from bot.services.site_blocks import SITE_BLOCK_REGISTRY
 from bot.services.storage import upload_image
 from bot.services.liqpay_service import LiqPayService
 from bot.config import LIQPAY_PUBLIC_KEY, LIQPAY_PRIVATE_KEY, LIQPAY_CALLBACK_URL
@@ -265,16 +266,7 @@ MODULE_KEYS = [
     ("footer", "Футер"),
 ]
 
-WEBSITE_EDITABLE_BLOCKS: dict[str, dict[str, str]] = {
-    "hero": {"name": "Перший екран", "description": "Головний банер і ключове повідомлення."},
-    "about": {"name": "Про компанію", "description": "Коротко про вашу компанію та досвід."},
-    "cars": {"name": "Авто на розборі", "description": "Блок із авто, які ви зараз демонтуєте."},
-    "products": {"name": "Товари / запчастини", "description": "Показ каталогу товарів і запчастин."},
-    "services": {"name": "Послуги", "description": "Перелік послуг на вашому сайті."},
-    "contacts": {"name": "Контакти", "description": "Телефони, месенджери та адреса."},
-    "map": {"name": "Карта", "description": "Відображення локації на карті."},
-    "footer": {"name": "Футер", "description": "Нижній блок із службовою інформацією."},
-}
+WEBSITE_EDITABLE_BLOCKS: dict[str, dict[str, str]] = {k: {"name": v["label"], "description": "Блок сайту"} for k, v in SITE_BLOCK_REGISTRY.items()}
 
 
 def _is_demo_crm_slug(crm_slug: str | None) -> bool:
