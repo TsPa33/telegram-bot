@@ -76,7 +76,7 @@ def search_result_kb(item: dict[str, Any], item_type: str, page: int, total: int
     ]
     phone = _clean(item.get("phone"))
     if phone:
-        rows.append([InlineKeyboardButton(text="Подзвонити", url=f"tel:{phone}")])
+        rows.append([InlineKeyboardButton(text="Телефон у картці", callback_data="buyer_search:noop")])
 
     if total > 1:
         nav_row = []
