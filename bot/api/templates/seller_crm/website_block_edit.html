@@ -1,0 +1,55 @@
+{% extends "seller_crm/base.html" %}
+{% block crm_kicker %}Редагування сайту{% endblock %}
+{% block crm_heading %}Редагування блоку: {{ block_name }}{% endblock %}
+{% block content %}
+{% set modules = config.get('modules', {}) if config else {} %}
+{% set hero = config.get('hero', {}) if config else {} %}
+{% set about = config.get('about', {}) if config else {} %}
+{% set contacts = config.get('contacts', {}) if config else {} %}
+{% set messengers = contacts.get('messengers', {}) if contacts else {} %}
+{% set map_cfg = config.get('map', {}) if config else {} %}
+{% set footer = config.get('footer', {}) if config else {} %}
+{% set section = config.get(block_key, {}) if config else {} %}
+
+<article class="card">
+  <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/website/editor">← Редагування сайту</a>
+  <p class="muted stack-top">{{ block_description }}</p>
+
+  <form method="post" class="stack-top">
+    <label class="inline-check"><input type="checkbox" name="enabled" value="1" {% if modules.get(block_key, False) %}checked{% endif %}> Показувати блок на сайті</label>
+
+    {% if block_key == 'hero' %}
+      <label>Заголовок<input type="text" name="title" value="{{ hero.get('title', '') }}"></label>
+      <label>Підзаголовок<textarea name="subtitle" rows="3">{{ hero.get('subtitle', '') }}</textarea></label>
+      <label>Текст кнопки (основна)<input type="text" name="button_text" value="{{ hero.get('button_text', '') }}"></label>
+      <label>Текст кнопки (додаткова)<input type="text" name="button_secondary_text" value="{{ hero.get('button_secondary_text', '') }}"></label>
+      <label>Банери (URL, кожен з нового рядка)<textarea name="banners" rows="4">{{ (hero.get('banners', []) or []) | join('\n') }}</textarea></label>
+    {% elif block_key == 'about' %}
+      <label>Заголовок<input type="text" name="title" value="{{ about.get('title', '') }}"></label>
+      <label>Опис<textarea name="text" rows="5">{{ about.get('text', '') }}</textarea></label>
+    {% elif block_key in ['cars', 'products', 'services'] %}
+      <label>Заголовок секції<input type="text" name="title" value="{{ section.get('title', '') }}"></label>
+      <label>Короткий вступ<textarea name="subtitle" rows="4">{{ section.get('subtitle', '') }}</textarea></label>
+      <p class="muted">Дані каталогу редагуються у відповідному розділі Каталог.</p>
+    {% elif block_key == 'contacts' %}
+      <label>Телефон<input type="text" name="phone" value="{{ (contacts.get('phones', []) or []) | join(', ') }}"></label>
+      <label>Telegram<input type="text" name="telegram" value="{{ messengers.get('telegram', '') }}"></label>
+      <label>Viber<input type="text" name="viber" value="{{ messengers.get('viber', '') }}"></label>
+      <label>WhatsApp<input type="text" name="whatsapp" value="{{ messengers.get('whatsapp', '') }}"></label>
+      <label>Адреса<input type="text" name="address" value="{{ contacts.get('address', '') }}"></label>
+    {% elif block_key == 'map' %}
+      <label>Map iframe/embed<textarea name="map_embed" rows="5">{{ contacts.get('map_embed', '') }}</textarea></label>
+      <label>Підпис адреси<input type="text" name="address" value="{{ map_cfg.get('address', '') }}"></label>
+    {% elif block_key == 'footer' %}
+      <label>Короткий текст<textarea name="text" rows="3">{{ footer.get('text', '') }}</textarea></label>
+      <label>Copyright / назва бізнесу<input type="text" name="copyright" value="{{ footer.get('copyright', '') }}"></label>
+    {% endif %}
+
+    <div class="action-row stack-top">
+      <button class="btn" type="submit">Зберегти</button>
+      <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/website/editor">Скасувати</a>
+      <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/website#publish">Опублікувати сайт</a>
+    </div>
+  </form>
+</article>
+{% endblock %}
