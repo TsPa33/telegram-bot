@@ -6,6 +6,15 @@ from typing import Any
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 
+def _valid_website_url(item: dict[str, Any]) -> str | None:
+    url = _clean(item.get("website_url") or item.get("website"))
+    if url.startswith("https://"):
+        return url
+    if url.startswith("http://"):
+        return "https://" + url[len("http://"): ]
+    return None
+
+
 def _clean(value: Any, default: str = "") -> str:
     text = str(value or "").strip()
     return text or default
@@ -56,10 +65,6 @@ def format_search_card(item: dict[str, Any], item_type: str) -> str:
     return "\n".join(lines)
 
 
-def format_search_details(item: dict[str, Any], item_type: str) -> str:
-    return format_search_card(item, item_type)
-
-
 def _contact_button(item: dict[str, Any], text: str, fallback_callback: str) -> InlineKeyboardButton:
     username = _clean(item.get("telegram_username") or item.get("telegram") or item.get("username"))
     if username:
@@ -70,23 +75,27 @@ def _contact_button(item: dict[str, Any], text: str, fallback_callback: str) -> 
 def search_result_kb(item: dict[str, Any], item_type: str, page: int, total: int) -> InlineKeyboardMarkup:
     item_id = _clean(item.get("id") or item.get("part_id") or item.get("car_id"), "0")
     rows = [
-        [InlineKeyboardButton(text="Детальніше", callback_data=f"buyer_search:details:{item_type}:{item_id}")],
-        [_contact_button(item, "Запитати", f"buyer_search:ask:{item_type}:{item_id}")],
+        [_contact_button(item, "Зв'язатись з продавцем", f"buyer_search:ask:{item_type}:{item_id}")],
         [InlineKeyboardButton(text="Створити заявку", callback_data=f"buyer_search:create_request:{item_type}:{item_id}")],
     ]
-    phone = _clean(item.get("phone"))
-    if phone:
-        rows.append([InlineKeyboardButton(text="Телефон у картці", callback_data="buyer_search:noop")])
+
+    site_url = _valid_website_url(item)
+    if site_url:
+        rows.append([InlineKeyboardButton(text="Сайт продавця", url=site_url)])
 
     if total > 1:
         nav_row = []
         if page > 1:
             nav_row.append(InlineKeyboardButton(text="← Попередній", callback_data=f"buyer_search:prev:{page - 1}"))
-        nav_row.append(InlineKeyboardButton(text=f"{page} з {total}", callback_data="buyer_search:noop"))
+        nav_row.append(InlineKeyboardButton(text=f"{page}/{total}", callback_data="buyer_search:noop"))
         if page < total:
             nav_row.append(InlineKeyboardButton(text="Наступний →", callback_data=f"buyer_search:next:{page + 1}"))
         rows.append(nav_row)
     return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def format_search_details(item: dict[str, Any], item_type: str) -> str:
+    return format_search_card(item, item_type)
 
 
 def no_results_kb() -> InlineKeyboardMarkup:
