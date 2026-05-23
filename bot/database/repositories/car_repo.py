@@ -189,8 +189,7 @@ async def archive_seller_car(seller_id: int, car_id: int) -> bool:
     row = await fetchrow(
         """
         UPDATE seller_cars
-        SET status = 'deleted',
-            updated_at = NOW()
+        SET status = 'deleted'
         WHERE id = $1
           AND seller_id = $2
           AND COALESCE(status, 'active') <> 'deleted'
