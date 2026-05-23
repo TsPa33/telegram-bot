@@ -4,6 +4,63 @@ from bot.database.base import fetch, fetchrow
 
 VALID_PART_STATUSES = {"draft", "available", "sold", "hidden"}
 
+DEFAULT_CATEGORY_UK_MAP = {
+    "Body": "Кузов",
+    "Optics": "Оптика",
+    "Engine": "Двигун",
+    "Interior": "Салон",
+    "Suspension": "Підвіска",
+    "Electrical": "Електрика",
+    "Transmission": "Трансмісія",
+    "Cooling / AC": "Охолодження",
+}
+
+DEFAULT_PART_NAME_UK_MAP = {
+    "Front bumper": "Передній бампер",
+    "Rear bumper": "Задній бампер",
+    "Front left door": "Передні ліві двері",
+    "Front right door": "Передні праві двері",
+    "Rear left door": "Задні ліві двері",
+    "Rear right door": "Задні праві двері",
+    "Hood": "Капот",
+    "Trunk": "Кришка багажника",
+    "Trunk lid": "Кришка багажника",
+    "Fender": "Крило",
+    "Front left fender": "Переднє ліве крило",
+    "Front right fender": "Переднє праве крило",
+    "Headlight": "Фара",
+    "Left headlight": "Ліва фара",
+    "Right headlight": "Права фара",
+    "Taillight": "Задній ліхтар",
+    "Left tail light": "Лівий задній ліхтар",
+    "Right tail light": "Правий задній ліхтар",
+    "Engine": "Двигун",
+    "Complete engine": "Двигун у зборі",
+    "Transmission": "КПП",
+    "Manual gearbox": "МКПП",
+    "Automatic gearbox": "АКПП",
+    "Turbocharger": "Турбіна",
+    "Radiator": "Радіатор",
+    "Main radiator": "Основний радіатор",
+    "Mirror": "Дзеркало",
+    "Left mirror": "Ліве дзеркало",
+    "Right mirror": "Праве дзеркало",
+    "Steering wheel": "Кермо",
+    "Dashboard": "Торпедо",
+    "Seat": "Сидіння",
+    "Driver seat": "Сидіння водія",
+    "Passenger seat": "Сидіння пасажира",
+    "Bumper reinforcement": "Підсилювач бампера",
+}
+
+
+def _to_uk_category(category: str | None) -> str:
+    return DEFAULT_CATEGORY_UK_MAP.get((category or "").strip(), (category or "").strip())
+
+
+def _to_uk_part_name(name: str | None) -> str:
+    return DEFAULT_PART_NAME_UK_MAP.get((name or "").strip(), (name or "").strip())
+
 
 async def get_active_part_templates(vehicle_type: str = "passenger"):
     return await fetch(
@@ -23,6 +80,14 @@ async def generate_parts_for_car(
     car_id: int,
     vehicle_type: str = "passenger",
 ) -> int:
+    templates = await get_active_part_templates(vehicle_type)
+    if not templates:
+        return 0
+
+    for template in templates:
+        template["category"] = _to_uk_category(template.get("category"))
+        template["name"] = _to_uk_part_name(template.get("name"))
+
     created = await fetch(
         """
         INSERT INTO seller_parts (
@@ -38,49 +103,59 @@ async def generate_parts_for_car(
         SELECT
             $1::BIGINT,
             $2::BIGINT,
-            pt.id,
-            pt.category,
-            pt.name,
+            t.id,
+            t.category,
+            t.name,
             CASE
                 WHEN COALESCE(NULLIF(TRIM(sc.description), ''), '') <> '' THEN sc.description
-                WHEN COALESCE(NULLIF(TRIM(pt.name), ''), '') <> '' THEN
-                    pt.name || ' для ' || b.name || ' ' || m.name || '.
-
-Авто розбирається на запчастини.
-
-• оригінальні деталі
-• фото та стан уточнюйте
-• можливий підбір інших деталей
-
-Сумісність уточнюйте перед замовленням.'
+                WHEN COALESCE(NULLIF(TRIM(t.name), ''), '') <> '' THEN
+                    t.name || '. Запчастина з авто ' || b.name || ' ' || m.name || '. Уточнюйте стан, сумісність та комплектацію.'
                 ELSE
-                    'Запчастина для ' || b.name || ' ' || m.name || '.
-
-Авто розбирається на запчастини.
-
-• оригінальні деталі
-• фото та стан уточнюйте
-• можливий підбір інших деталей
-
-Сумісність уточнюйте перед замовленням.'
+                    'Запчастина з авто ' || b.name || ' ' || m.name || '. Уточнюйте стан, сумісність та комплектацію.'
             END,
             'draft',
-            pt.sort_order
-        FROM part_templates pt
+            t.sort_order
+        FROM jsonb_to_recordset($3::jsonb) AS t(id BIGINT, category TEXT, name TEXT, sort_order INT)
         JOIN seller_cars sc ON sc.id = $2::BIGINT AND sc.seller_id = $1::BIGINT
         JOIN models m ON m.id = sc.model_id
         JOIN brands b ON b.id = m.brand_id
-        WHERE pt.vehicle_type = $3::TEXT
-          AND pt.is_active = TRUE
         ON CONFLICT DO NOTHING
         RETURNING id
         """,
         seller_id,
         car_id,
-        vehicle_type,
+        templates,
     )
 
     return len(created or [])
+
+
+async def normalize_generated_parts_to_ukrainian() -> None:
+    for en_name, uk_name in DEFAULT_PART_NAME_UK_MAP.items():
+        await fetch(
+            """
+            UPDATE seller_parts
+            SET name = $1,
+                updated_at = NOW()
+            WHERE name = $2
+              AND (template_id IS NOT NULL OR description ILIKE '%Авто розбирається на запчастини%')
+            """,
+            uk_name,
+            en_name,
+        )
+
+    for en_category, uk_category in DEFAULT_CATEGORY_UK_MAP.items():
+        await fetch(
+            """
+            UPDATE seller_parts
+            SET category = $1,
+                updated_at = NOW()
+            WHERE category = $2
+              AND (template_id IS NOT NULL OR description ILIKE '%Авто розбирається на запчастини%')
+            """,
+            uk_category,
+            en_category,
+        )
 
 
 async def get_car_part_categories(car_id: int) -> list:
