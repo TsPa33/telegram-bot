@@ -1329,8 +1329,10 @@ def _collect_media(config: dict[str, Any], services, cars) -> list[dict[str, str
     logo = config.get("header", {}).get("logo")
     if logo:
         media.append({"type": "Лого", "url": logo, "title": "Лого у шапці"})
-    for url in config.get("hero", {}).get("banners", []):
-        media.append({"type": "Банер", "url": url, "title": "Банер першого екрана"})
+    for banner in config.get("hero", {}).get("banners", []):
+        url = banner.get("image") if isinstance(banner, dict) else banner
+        if url:
+            media.append({"type": "Банер", "url": url, "title": "Банер першого екрана"})
     for image in config.get("gallery", {}).get("images", []):
         url = image.get("url") if isinstance(image, dict) else image
         if url:
@@ -3963,6 +3965,7 @@ async def seller_crm_website_block_editor(request: Request, crm_slug: str, block
         raise HTTPException(status_code=400, detail="Невідомий блок")
     site = await get_current_seller_site_or_404(account["seller_id"])
     config_draft = _as_config(site)
+    preview_url, constructor_url = _build_public_site_urls(site)
     return templates.TemplateResponse(
         "seller_crm/website_block_edit.html",
         _seller_crm_context(
@@ -3976,6 +3979,8 @@ async def seller_crm_website_block_editor(request: Request, crm_slug: str, block
             block_name=WEBSITE_EDITABLE_BLOCKS[block_key]["name"],
             block_description=WEBSITE_EDITABLE_BLOCKS[block_key]["description"],
             config=config_draft,
+            preview_url=preview_url,
+            constructor_url=constructor_url,
             has_website=True,
             has_cars=False,
             has_services=False,
@@ -3998,12 +4003,28 @@ async def seller_crm_website_block_editor_save(
     patch: dict[str, Any] = {"modules": {block_key: bool(enabled)}}
 
     if block_key == "hero":
+        banner_images = form.getlist("banner_image")
+        banner_fits = form.getlist("banner_fit")
+        banner_positions = form.getlist("banner_position")
+        banners = []
+        for i, image in enumerate(banner_images):
+            image_value = str(image or "").strip()
+            if not image_value:
+                continue
+            fit_value = str(banner_fits[i] if i < len(banner_fits) else "cover").strip().lower()
+            if fit_value not in {"cover", "contain", "fill"}:
+                fit_value = "cover"
+            position_value = str(banner_positions[i] if i < len(banner_positions) else "center").strip().lower()
+            if position_value not in {"center", "top", "bottom"}:
+                position_value = "center"
+            banners.append({"image": image_value, "fit": fit_value, "position": position_value})
         patch["hero"] = {
             "title": str(form.get("title") or "").strip(),
             "subtitle": str(form.get("subtitle") or "").strip(),
             "button_text": str(form.get("button_text") or "").strip(),
             "button_secondary_text": str(form.get("button_secondary_text") or "").strip(),
-            "banners": _split_lines(str(form.get("banners") or "")),
+            "button_link": str(form.get("button_link") or "").strip(),
+            "banners": banners,
         }
     elif block_key == "about":
         patch["about"] = {"title": str(form.get("title") or "").strip(), "text": str(form.get("text") or "").strip()}
@@ -4030,6 +4051,11 @@ async def seller_crm_website_block_editor_save(
             "title": str(form.get("title") or "").strip(),
             "subtitle": str(form.get("subtitle") or "").strip(),
         }
+        if block_key == "products":
+            per_page_raw = str(form.get("per_page") or "").strip()
+            per_page = int(per_page_raw) if per_page_raw.isdigit() else 12
+            patch[block_key]["per_page"] = max(1, min(per_page, 120))
+            patch[block_key]["search_enabled"] = bool(form.get("search_enabled"))
 
     await update_current_site_draft(account["seller_id"], patch)
     return RedirectResponse(url=f"/crm/seller/{crm_slug}/website/editor?status=saved", status_code=303)

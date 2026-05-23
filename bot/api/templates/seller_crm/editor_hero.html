@@ -1,0 +1,86 @@
+{% set hero = config.get('hero', {}) if config else {} %}
+{% set banners = hero.get('banners', []) if hero else [] %}
+
+<div class="editor-grid two-col">
+  <label>
+    Заголовок
+    <input type="text" name="title" value="{{ hero.get('title', '') }}" maxlength="120">
+  </label>
+  <label>
+    Посилання кнопки
+    <input type="url" name="button_link" value="{{ hero.get('button_link', '') }}" placeholder="https://...">
+  </label>
+
+  <label class="full">
+    Підзаголовок
+    <textarea name="subtitle" rows="4">{{ hero.get('subtitle', '') }}</textarea>
+  </label>
+
+  <label>
+    Текст основної кнопки
+    <input type="text" name="button_text" value="{{ hero.get('button_text', '') }}" maxlength="60">
+  </label>
+  <label>
+    Текст додаткової кнопки
+    <input type="text" name="button_secondary_text" value="{{ hero.get('button_secondary_text', '') }}" maxlength="60">
+  </label>
+</div>
+
+<div class="editor-section stack-top">
+  <h3>Банери</h3>
+  <div class="banner-list" data-banner-list>
+    {% for banner in banners %}
+      {% set banner_obj = banner if banner is mapping else {'image': banner, 'fit': 'cover', 'position': 'center'} %}
+      <div class="banner-card" data-banner-item>
+        <div class="banner-preview" style="background-image:url('{{ banner_obj.get('image', '') }}'); background-size: {{ banner_obj.get('fit', 'cover') }}; background-position: {{ banner_obj.get('position', 'center') }};"></div>
+        <div class="editor-grid two-col compact">
+          <label class="full">URL / upload
+            <input type="url" name="banner_image" value="{{ banner_obj.get('image', '') }}" placeholder="https://res.cloudinary.com/..." data-banner-image>
+          </label>
+          <label>Fit mode
+            <select name="banner_fit" data-banner-fit>
+              {% for fit in ['cover', 'contain', 'fill'] %}
+                <option value="{{ fit }}" {% if banner_obj.get('fit', 'cover') == fit %}selected{% endif %}>{{ fit }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>Position
+            <select name="banner_position" data-banner-position>
+              {% for pos in ['center', 'top', 'bottom'] %}
+                <option value="{{ pos }}" {% if banner_obj.get('position', 'center') == pos %}selected{% endif %}>{{ pos }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <div class="banner-actions full"><button type="button" class="btn ghost" data-banner-remove>Видалити</button></div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+  <button type="button" class="btn ghost" data-banner-add>+ Додати банер</button>
+</div>
+
+<template id="banner-card-template">
+  <div class="banner-card" data-banner-item>
+    <div class="banner-preview"></div>
+    <div class="editor-grid two-col compact">
+      <label class="full">URL / upload
+        <input type="url" name="banner_image" value="" placeholder="https://res.cloudinary.com/..." data-banner-image>
+      </label>
+      <label>Fit mode
+        <select name="banner_fit" data-banner-fit>
+          <option value="cover" selected>cover</option>
+          <option value="contain">contain</option>
+          <option value="fill">fill</option>
+        </select>
+      </label>
+      <label>Position
+        <select name="banner_position" data-banner-position>
+          <option value="center" selected>center</option>
+          <option value="top">top</option>
+          <option value="bottom">bottom</option>
+        </select>
+      </label>
+      <div class="banner-actions full"><button type="button" class="btn ghost" data-banner-remove>Видалити</button></div>
+    </div>
+  </div>
+</template>
