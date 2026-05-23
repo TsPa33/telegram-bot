@@ -25,13 +25,13 @@
 
         <div class="form-field">
           <label for="price">Ціна</label>
-          <input id="price" name="price" value="{{ form.price if form.price is not none else '' }}" inputmode="decimal" autocomplete="off" placeholder="Наприклад: 1500 або 1500.50">
+          <input class="form-control" id="price" name="price" value="{{ form.price if form.price is not none else '' }}" inputmode="decimal" autocomplete="off" placeholder="Наприклад: 1500 або 1500.50">
           <span class="form-help">Необов’язково, гривні.</span>
         </div>
 
         <div class="form-field">
           <label for="quantity">Кількість</label>
-          <input id="quantity" name="quantity" value="{{ form.quantity or '1' }}" inputmode="numeric" pattern="[0-9]*" autocomplete="off" required>
+          <input class="form-control" id="quantity" name="quantity" value="{{ form.quantity or '1' }}" inputmode="numeric" pattern="[0-9]*" autocomplete="off" required>
         </div>
 
         {{ forms.select_input("stock_status", "Статус складу", stock_status_options, form.stock_status, True) }}
@@ -39,7 +39,7 @@
 
         <div class="form-field wide">
           <label for="donor_car_id">Авто-донор</label>
-          <select id="donor_car_id" name="donor_car_id">
+          <select class="form-control select" id="donor_car_id" name="donor_car_id">
             <option value="">Без прив’язки</option>
             {% for car in donor_cars %}
               <option value="{{ car.car_id }}"{% if form.donor_car_id|string == car.car_id|string %} selected{% endif %}>{{ car.brand }} {{ car.model }} · ID {{ car.car_id }}</option>
@@ -60,7 +60,7 @@
       </div>
 
       <div class="form-actions">
-        <button class="btn" type="submit">Зберегти</button>
+        <button class="btn secondary" type="submit">Зберегти</button>
         <a class="btn ghost" href="{{ cancel_url }}">Скасувати</a>
       </div>
     </form>

@@ -27,10 +27,10 @@
       <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content/cars/{{ car.car_id }}">← Назад до авто</a>
     </div>
 
-    <form method="get" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
-      <input name="q" value="{{ q }}" placeholder="Пошук: turbo" style="min-width:180px;">
-      <select name="part_status"><option value="all"{% if selected_part_status == 'all' %} selected{% endif %}>Усі статуси</option><option value="available"{% if selected_part_status == 'available' %} selected{% endif %}>В наявності</option><option value="draft"{% if selected_part_status == 'draft' %} selected{% endif %}>Чернетка</option><option value="sold"{% if selected_part_status == 'sold' %} selected{% endif %}>Продано</option><option value="hidden"{% if selected_part_status == 'hidden' %} selected{% endif %}>Приховано</option></select>
-      <button class="btn small ghost" type="submit">Фільтрувати</button>
+    <form method="get" class="filter-bar">
+      <input class="compact-input" name="q" value="{{ q }}" placeholder="Пошук: turbo">
+      <select class="compact-select" name="part_status"><option value="all"{% if selected_part_status == 'all' %} selected{% endif %}>Усі статуси</option><option value="available"{% if selected_part_status == 'available' %} selected{% endif %}>В наявності</option><option value="draft"{% if selected_part_status == 'draft' %} selected{% endif %}>Чернетка</option><option value="sold"{% if selected_part_status == 'sold' %} selected{% endif %}>Продано</option><option value="hidden"{% if selected_part_status == 'hidden' %} selected{% endif %}>Приховано</option></select>
+      <button class="btn small secondary" type="submit">Фільтрувати</button>
     </form>
   </section>
 
@@ -56,10 +56,19 @@
                 <div class="section-note">{{ part.category_label }} · {{ part.price_display }}</div>
                 {% if not part.photo_id and not part.preview_photo %}<div style="border:1px solid var(--line);border-radius:10px;padding:8px;max-width:220px;background:linear-gradient(135deg, rgba(148,163,184,.10), rgba(148,163,184,.03));"><strong>Запчастина</strong><div class="section-note">Фото буде додано</div></div>{% endif %}
                 {% if part.description_preview %}<p class="section-note" style="margin:0;">{{ part.description_preview }}</p>{% endif %}
-                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-                  <form method="post" action="/crm/seller/{{ account.crm_slug }}/content/parts/{{ part.id }}/status" style="display:flex;gap:6px;align-items:center;"><select name="status">{% for key, label_status in part_status_labels.items() %}<option value="{{ key }}"{% if key == part.status %} selected{% endif %}>{{ label_status }}</option>{% endfor %}</select><button class="btn small ghost" type="submit">Зберегти</button></form>
-                  <form method="post" action="/crm/seller/{{ account.crm_slug }}/content/parts/{{ part.id }}/price" style="display:flex;gap:6px;align-items:center;"><input name="price" value="{{ '' if part.price is none else part.price }}" placeholder="2500" style="width:90px;"><span class="section-note">₴</span><button class="btn small ghost" type="submit">Зберегти</button></form>
-                  <a class="btn small" href="/crm/seller/{{ account.crm_slug }}/content/parts/{{ part.id }}/edit">Редагувати</a>
+                <div class="inline-form" style="gap:6px;">
+                  <form method="post" action="/crm/seller/{{ account.crm_slug }}/content/parts/{{ part.id }}/status" class="inline-form-row">
+                    <select class="compact-select" name="status">{% for key, label_status in part_status_labels.items() %}<option value="{{ key }}"{% if key == part.status %} selected{% endif %}>{{ label_status }}</option>{% endfor %}</select>
+                    <button class="btn small secondary" type="submit">Зберегти</button>
+                  </form>
+                  <div class="inline-form-row">
+                    <form method="post" action="/crm/seller/{{ account.crm_slug }}/content/parts/{{ part.id }}/price" class="inline-form-row">
+                      <input class="price-input" name="price" value="{{ '' if part.price is none else part.price }}" placeholder="2500">
+                      <span class="section-note" style="margin:0;">₴</span>
+                      <button class="btn small secondary" type="submit">Зберегти ціну</button>
+                    </form>
+                    <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/content/parts/{{ part.id }}/edit">Редагувати</a>
+                  </div>
                 </div>
               </article>
             {% endfor %}

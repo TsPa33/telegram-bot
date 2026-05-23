@@ -34,20 +34,20 @@
       <div class="form-grid">
         <div class="form-field wide">
           <label for="description">Опис</label>
-          <textarea id="description" name="description" rows="5">{{ car.description or '' }}</textarea>
+          <textarea class="form-control" id="description" name="description" rows="5">{{ car.description or '' }}</textarea>
         </div>
 
         {% if car.status_supported %}
         <div class="form-field">
           <label for="status">Статус</label>
-          <select id="status" name="status"><option value="active" {% if car.is_active %}selected{% endif %}>Активне</option><option value="inactive" {% if not car.is_active %}selected{% endif %}>Неактивне</option></select>
+          <select class="form-control select" id="status" name="status"><option value="active" {% if car.is_active %}selected{% endif %}>Активне</option><option value="inactive" {% if not car.is_active %}selected{% endif %}>Неактивне</option></select>
         </div>
         {% endif %}
 
         {% if car.has_is_catalog %}
         <div class="form-field">
           <label for="is_catalog">Показувати в каталозі</label>
-          <select id="is_catalog" name="is_catalog">
+          <select class="form-control select" id="is_catalog" name="is_catalog">
             <option value="0" {% if not car.is_catalog %}selected{% endif %}>Ні</option>
             <option value="1" {% if car.is_catalog %}selected{% endif %}>Так</option>
           </select>
@@ -56,7 +56,7 @@
       </div>
 
       <div class="form-actions">
-        <button class="btn" type="submit">Зберегти зміни</button>
+        <button class="btn secondary" type="submit">Зберегти зміни</button>
       </div>
     </form>
 
@@ -69,7 +69,7 @@
         </div>
       </div>
       <div class="form-actions">
-        <button class="btn ghost" type="submit">Оновити фото</button>
+        <button class="btn small secondary" type="submit">Оновити фото</button>
       </div>
     </form>
   </section>
