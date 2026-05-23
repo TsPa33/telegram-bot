@@ -117,8 +117,26 @@ _DEFAULT_SITE_CONFIG: dict[str, Any] = {
     "products": {
         "title": "Каталог автозапчастин",
         "subtitle": "Перевірені запчастини з розборки з підбором по VIN",
+        "per_page": 12,
+        "search_enabled": True,
         "categories": [],
         "items": [],
+    },
+
+    "layout": {
+        "order": [
+            "hero",
+            "about",
+            "services",
+            "cars",
+            "products",
+            "gallery",
+            "works",
+            "contacts",
+            "map",
+            "reviews",
+            "footer",
+        ]
     },
 
     "about": {
@@ -267,8 +285,28 @@ def _normalize_config(config: dict) -> dict:
 
     # ===== HERO =====
 
-    if not isinstance(config.get("hero", {}).get("banners"), list):
-        config.setdefault("hero", {})["banners"] = []
+    hero = config.setdefault("hero", {})
+    banners = hero.get("banners")
+    if not isinstance(banners, list):
+        banners = []
+    normalized_banners = []
+    for banner in banners:
+        if isinstance(banner, str):
+            image = banner.strip()
+            if image:
+                normalized_banners.append({"image": image, "fit": "cover", "position": "center"})
+        elif isinstance(banner, dict):
+            image = str(banner.get("image") or banner.get("url") or "").strip()
+            if not image:
+                continue
+            fit = str(banner.get("fit") or "cover").strip().lower()
+            if fit not in {"cover", "contain", "fill"}:
+                fit = "cover"
+            position = str(banner.get("position") or "center").strip().lower()
+            if position not in {"center", "top", "bottom"}:
+                position = "center"
+            normalized_banners.append({"image": image, "fit": fit, "position": position})
+    hero["banners"] = normalized_banners
 
     # ===== PRICE =====
 
@@ -299,6 +337,24 @@ def _normalize_config(config: dict) -> dict:
 
     if not isinstance(products.get("items"), list):
         products["items"] = []
+    per_page = products.get("per_page")
+    if not isinstance(per_page, int) or per_page <= 0:
+        products["per_page"] = 12
+    products["search_enabled"] = bool(products.get("search_enabled", True))
+
+    layout = config.setdefault("layout", {})
+    default_order = _DEFAULT_SITE_CONFIG["layout"]["order"]
+    raw_order = layout.get("order")
+    if not isinstance(raw_order, list):
+        raw_order = []
+    normalized_order = []
+    for key in raw_order:
+        if isinstance(key, str) and key in default_order and key not in normalized_order:
+            normalized_order.append(key)
+    for key in default_order:
+        if key not in normalized_order:
+            normalized_order.append(key)
+    layout["order"] = normalized_order
 
     # ===== CONTACTS =====
 
