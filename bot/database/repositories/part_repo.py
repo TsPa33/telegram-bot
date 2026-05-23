@@ -3,6 +3,19 @@ from decimal import Decimal
 from bot.database.base import fetch, fetchrow
 
 VALID_PART_STATUSES = {"draft", "available", "sold", "hidden"}
+PART_CATEGORY_OPTIONS = [
+    ("body", "Кузов"),
+    ("optics", "Оптика"),
+    ("engine", "Двигун"),
+    ("transmission", "Трансмісія"),
+    ("suspension", "Підвіска"),
+    ("brakes", "Гальма"),
+    ("electric", "Електрика"),
+    ("interior", "Салон"),
+    ("cooling", "Охолодження"),
+    ("glass", "Дзеркала / скло"),
+    ("other", "Інше"),
+]
 
 DEFAULT_CATEGORY_UK_MAP = {
     "Body": "Кузов",
@@ -62,6 +75,43 @@ def _to_uk_part_name(name: str | None) -> str:
     return DEFAULT_PART_NAME_UK_MAP.get((name or "").strip(), (name or "").strip())
 
 
+PART_CATEGORY_ALIASES = {
+    "body": "body",
+    "кузов": "body",
+    "optics": "optics",
+    "оптика": "optics",
+    "engine": "engine",
+    "двигун": "engine",
+    "transmission": "transmission",
+    "кпп / трансмісія": "transmission",
+    "трансмісія": "transmission",
+    "suspension": "suspension",
+    "ходова": "suspension",
+    "підвіска": "suspension",
+    "brakes": "brakes",
+    "гальма": "brakes",
+    "electric": "electric",
+    "electrical": "electric",
+    "електрика": "electric",
+    "interior": "interior",
+    "салон": "interior",
+    "cooling / ac": "cooling",
+    "cooling": "cooling",
+    "охолодження / кондиціонер": "cooling",
+    "охолодження": "cooling",
+    "mirrors / glass": "glass",
+    "glass": "glass",
+    "дзеркала / скло": "glass",
+    "інше": "other",
+    "other": "other",
+}
+
+
+def normalize_part_category(category: str | None) -> str:
+    normalized = (category or "").strip().lower()
+    return PART_CATEGORY_ALIASES.get(normalized, "other")
+
+
 async def get_active_part_templates(vehicle_type: str = "passenger"):
     return await fetch(
         """
@@ -85,7 +135,7 @@ async def generate_parts_for_car(
         return 0
 
     for template in templates:
-        template["category"] = _to_uk_category(template.get("category"))
+        template["category"] = normalize_part_category(template.get("category"))
         template["name"] = _to_uk_part_name(template.get("name"))
 
     created = await fetch(
@@ -583,6 +633,8 @@ async def bulk_update_parts_status_by_category(
     if status not in VALID_PART_STATUSES:
         return 0
 
+    normalized_category = normalize_part_category(category)
+    category_aliases = [alias for alias, key in PART_CATEGORY_ALIASES.items() if key == normalized_category]
     rows = await fetch(
         """
         UPDATE seller_parts
@@ -590,13 +642,17 @@ async def bulk_update_parts_status_by_category(
             updated_at = NOW()
         WHERE seller_id = $2
           AND car_id = $3
-          AND category = $4
+          AND (
+              category = $4
+              OR LOWER(TRIM(category)) = ANY($5::TEXT[])
+          )
         RETURNING id
         """,
         status,
         seller_id,
         car_id,
-        category,
+        normalized_category,
+        category_aliases,
     )
 
     return len(rows)
@@ -642,6 +698,7 @@ async def create_manual_part(
     price=None,
     description: str | None = None,
 ) -> dict | None:
+    normalized_category = normalize_part_category(category)
     row = await fetchrow(
         """
         INSERT INTO seller_parts (
@@ -676,7 +733,7 @@ async def create_manual_part(
         """,
         seller_id,
         car_id,
-        category,
+        normalized_category,
         name,
         status,
         price,
@@ -698,6 +755,7 @@ async def update_part_fields(
     if status not in VALID_PART_STATUSES:
         return False
 
+    normalized_category = normalize_part_category(category)
     row = await fetchrow(
         """
         UPDATE seller_parts
@@ -720,7 +778,7 @@ async def update_part_fields(
         RETURNING id
         """,
         name,
-        category,
+        normalized_category,
         status,
         price,
         description,

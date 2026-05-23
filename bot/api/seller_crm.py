@@ -33,6 +33,7 @@ from bot.database.repositories.model_repo import (
 )
 from bot.database.repositories.product_repo import get_seller_products
 from bot.database.repositories.part_repo import (
+    PART_CATEGORY_OPTIONS,
     VALID_PART_STATUSES,
     bulk_update_parts_status_by_category,
     create_manual_part,
@@ -449,19 +450,7 @@ PRODUCT_STOCK_CLASSES = {
     "preorder": "status-waiting",
 }
 
-PART_CATEGORY_LABELS = {
-    "Body": "Кузов",
-    "Optics": "Оптика",
-    "Engine": "Двигун",
-    "Transmission": "КПП / трансмісія",
-    "Suspension": "Ходова",
-    "Brakes": "Гальма",
-    "Interior": "Салон",
-    "Electrical": "Електрика",
-    "Cooling / AC": "Охолодження / кондиціонер",
-    "Mirrors / Glass": "Дзеркала / скло",
-}
-PART_CATEGORY_OPTIONS = list(PART_CATEGORY_LABELS.items())
+PART_CATEGORY_LABELS = dict(PART_CATEGORY_OPTIONS)
 ALLOWED_PART_CATEGORIES = set(PART_CATEGORY_LABELS)
 PART_STATUS_LABELS = {
     "draft": "Чернетка",
@@ -503,7 +492,7 @@ def _parse_part_price(value: str | None) -> tuple[Decimal | None, str | None]:
 def _part_form_payload(**values) -> dict[str, Any]:
     defaults = {
         "name": "",
-        "category": "Body",
+        "category": "body",
         "status": "available",
         "price": "",
         "description": "",
@@ -523,7 +512,8 @@ def _validate_part_form(name: str, category: str, status: str, price: str, descr
         return "", None, "Назва запчастини обов’язкова."
     if len(normalized_name) > 200:
         return "", None, "Назва має бути до 200 символів."
-    if category not in ALLOWED_PART_CATEGORIES:
+    normalized_category = normalize_part_category(category)
+    if normalized_category not in ALLOWED_PART_CATEGORIES:
         return "", None, "Оберіть коректну категорію."
     if status not in VALID_PART_STATUSES:
         return "", None, "Оберіть коректний статус."
@@ -538,7 +528,8 @@ def _validate_part_form(name: str, category: str, status: str, price: str, descr
 def _prepare_part(item: Any) -> dict[str, Any]:
     part = dict(item or {})
     status = part.get("status") or "draft"
-    category = part.get("category") or ""
+    category = normalize_part_category(part.get("category"))
+    part["category"] = category
     description = (part.get("description") or "").strip()
     part["status_label"] = PART_STATUS_LABELS.get(status, status)
     part["status_class"] = PART_STATUS_CLASSES.get(status, "status-waiting")
@@ -3192,7 +3183,7 @@ async def seller_crm_car_parts(request: Request, crm_slug: str, car_id: int, sta
     category_rows = [dict(row) for row in await get_car_part_categories(car_id)]
     categories = []
     for row in category_rows:
-        category_key = row.get("category")
+        category_key = normalize_part_category(row.get("category"))
         categories.append(
             {"key": category_key, "label": PART_CATEGORY_LABELS.get(category_key, category_key), "total": row.get("total") or 0, "active": row.get("active") or 0}
         )
@@ -3215,10 +3206,15 @@ async def seller_crm_car_parts(request: Request, crm_slug: str, car_id: int, sta
     stats["completion"] = int(round((completed_points / completeness_points) * 100))
     grouped_parts = {category: [] for category, _ in PART_CATEGORY_OPTIONS}
     for part in parts:
-        if part.get("category") in grouped_parts:
-            if not part.get("photo_id") and car.get("photo_id"):
-                part["preview_photo"] = car.get("photo_id")
-            grouped_parts[part.get("category")].append(part)
+        category_key = normalize_part_category(part.get("category"))
+        if category_key not in grouped_parts:
+            category_key = "other"
+        if not part.get("photo_id") and car.get("photo_id"):
+            part["preview_photo"] = car.get("photo_id")
+        grouped_parts[category_key].append(part)
+    visible_count = sum(len(items) for items in grouped_parts.values())
+    if visible_count != len(parts):
+        logger.warning("Grouped parts count mismatch for seller_id=%s car_id=%s visible=%s total=%s", seller_id, car_id, visible_count, len(parts))
     site = await get_site_by_seller(seller_id)
     draft_config = merge_with_default((site or {}).get("config_draft") or {}) if site else {}
     live_config = merge_with_default((site or {}).get("config_live") or {}) if site else {}
@@ -3314,9 +3310,10 @@ async def seller_crm_parts_bulk_status(
         raise
     if not await seller_owns_car(account["seller_id"], car_id):
         raise HTTPException(status_code=403, detail="Access denied")
-    if category not in ALLOWED_PART_CATEGORIES or status not in VALID_PART_STATUSES:
+    normalized_category = normalize_part_category(category)
+    if normalized_category not in ALLOWED_PART_CATEGORIES or status not in VALID_PART_STATUSES:
         return RedirectResponse(url=f"/crm/seller/{crm_slug}/content/cars/{car_id}/parts?error=invalid_bulk_params", status_code=303)
-    await bulk_update_parts_status_by_category(account["seller_id"], car_id, category, status)
+    await bulk_update_parts_status_by_category(account["seller_id"], car_id, normalized_category, status)
     return RedirectResponse(url=f"/crm/seller/{crm_slug}/content/cars/{car_id}/parts?status=bulk_updated", status_code=303)
 
 
@@ -3340,7 +3337,7 @@ async def seller_crm_part_create_form(request: Request, crm_slug: str, car_id: i
 
 @router.post("/{crm_slug}/content/cars/{car_id}/parts/new")
 async def seller_crm_part_create(
-    request: Request, crm_slug: str, car_id: int, name: str = Form(""), category: str = Form("Body"), status: str = Form("available"),
+    request: Request, crm_slug: str, car_id: int, name: str = Form(""), category: str = Form("body"), status: str = Form("available"),
     price: str = Form(""), description: str = Form(""),
 ):
     try:
@@ -3360,7 +3357,8 @@ async def seller_crm_part_create(
             form_title="Додати запчастину вручну", action_url=f"/crm/seller/{crm_slug}/content/cars/{car_id}/parts/new",
             cancel_url=f"/crm/seller/{crm_slug}/content/cars/{car_id}/parts", car=car, form=form, category_options=PART_CATEGORY_OPTIONS,
             status_options=list(PART_STATUS_LABELS.items()), error=validation_error), status_code=400)
-    created = await create_manual_part(account["seller_id"], car_id, category, normalized_name, status, parsed_price, (description or "").strip() or None)
+    normalized_category = normalize_part_category(category)
+    created = await create_manual_part(account["seller_id"], car_id, normalized_category, normalized_name, status, parsed_price, (description or "").strip() or None)
     if not created:
         return RedirectResponse(url=f"/crm/seller/{crm_slug}/content/cars/{car_id}/parts?error=part_duplicate", status_code=303)
     return RedirectResponse(url=f"/crm/seller/{crm_slug}/content/cars/{car_id}/parts?status=part_created", status_code=303)
@@ -3389,7 +3387,7 @@ async def seller_crm_part_edit_form(request: Request, crm_slug: str, part_id: in
 
 @router.post("/{crm_slug}/content/parts/{part_id}/edit")
 async def seller_crm_part_edit(
-    request: Request, crm_slug: str, part_id: int, name: str = Form(""), category: str = Form("Body"), status: str = Form("available"),
+    request: Request, crm_slug: str, part_id: int, name: str = Form(""), category: str = Form("body"), status: str = Form("available"),
     price: str = Form(""), description: str = Form(""),
 ):
     try:
@@ -3411,7 +3409,8 @@ async def seller_crm_part_edit(
             cancel_url=f"/crm/seller/{crm_slug}/content/cars/{part['car_id']}/parts", car=car, form=form, category_options=PART_CATEGORY_OPTIONS,
             status_options=list(PART_STATUS_LABELS.items()), error=validation_error, part=part,
             status_label=PART_STATUS_LABELS.get(form.get("status"), "Чернетка"), status_class=PART_STATUS_CLASSES.get(form.get("status"), "status-waiting")), status_code=400)
-    updated = await update_part_fields(part_id, account["seller_id"], normalized_name, category, status, parsed_price, (description or "").strip() or None)
+    normalized_category = normalize_part_category(category)
+    updated = await update_part_fields(part_id, account["seller_id"], normalized_name, normalized_category, status, parsed_price, (description or "").strip() or None)
     if not updated:
         return RedirectResponse(url=f"/crm/seller/{crm_slug}/content/cars/{part['car_id']}/parts?error=part_update_conflict", status_code=303)
     return RedirectResponse(url=f"/crm/seller/{crm_slug}/content/cars/{part['car_id']}/parts?status=part_updated", status_code=303)
@@ -4148,3 +4147,4 @@ async def preview_draft_site(request: Request, crm_slug: str):
             "products": config.get("products", {}),
         },
     )
+    normalize_part_category,
