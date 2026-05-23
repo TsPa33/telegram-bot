@@ -147,6 +147,30 @@ WHERE sp.name = nm.old_name
   );
 
 UPDATE seller_parts sp
+SET name = 'Кришка багажника',
+    updated_at = NOW()
+WHERE sp.name = 'Tailgate'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM seller_parts sp2
+      WHERE sp2.car_id = sp.car_id
+        AND LOWER(sp2.name) = LOWER('Кришка багажника')
+        AND sp2.id <> sp.id
+  );
+
+UPDATE seller_parts sp
+SET status = 'hidden',
+    updated_at = NOW()
+WHERE sp.name = 'Tailgate'
+  AND EXISTS (
+      SELECT 1
+      FROM seller_parts sp2
+      WHERE sp2.car_id = sp.car_id
+        AND LOWER(sp2.name) = LOWER('Кришка багажника')
+        AND sp2.id <> sp.id
+  );
+
+UPDATE seller_parts sp
 SET description = sp.name || ' з авто. Уточнюйте стан, сумісність та комплектацію.',
     updated_at = NOW()
 WHERE COALESCE(NULLIF(TRIM(sp.description), ''), '') = ''
