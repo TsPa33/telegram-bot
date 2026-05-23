@@ -3,6 +3,17 @@
 {% block crm_heading %}Редагування сайту{% endblock %}
 {% block content %}
 {% if status == 'saved' %}<div class="notice">Зміни збережено у чернетку. Опублікуйте сайт, щоб вони зʼявились для клієнтів.</div>{% endif %}
+{% if constructor_url %}
+<div class="action-row" style="margin-bottom: 14px;">
+  <a class="btn" href="{{ constructor_url }}" target="_blank" rel="noopener">Перейти в конструктор сайту</a>
+  <a class="btn ghost" href="{{ preview_url }}" target="_blank" rel="noopener">Переглянути сайт</a>
+</div>
+{% else %}
+<div class="action-row" style="margin-bottom: 14px;">
+  <button class="btn" type="button" disabled>Сайт ще не створено</button>
+</div>
+{% endif %}
+
 {% for block in blocks %}
 <article class="card{% if not loop.first %} stack-top{% endif %}">
   <h3>{{ block.title }}</h3>

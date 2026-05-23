@@ -195,6 +195,25 @@ DEMO_SELLER_ID = 0
 logger = logging.getLogger(__name__)
 liqpay = LiqPayService(LIQPAY_PUBLIC_KEY, LIQPAY_PRIVATE_KEY)
 
+def _build_public_site_urls(site: dict[str, Any] | None) -> tuple[str | None, str | None]:
+    """Build preview and constructor URLs for seller public site."""
+    if not site:
+        return None, None
+
+    custom_domain = str(site.get("custom_domain") or "").strip().lower()
+    has_custom_domain = bool(site.get("has_custom_domain")) and bool(custom_domain)
+    subdomain = str(site.get("subdomain") or "").strip().lower()
+
+    if has_custom_domain:
+        base_url = f"https://{custom_domain}"
+    elif subdomain:
+        base_url = build_site_url(subdomain)
+    else:
+        return None, None
+
+    preview_url = f"{base_url}/"
+    constructor_url = f"{preview_url}?edit=1"
+    return preview_url, constructor_url
 
 LEAD_STATUS_TABS = [
     {"key": CRM_LEAD_STATUS_NEW, "label": "Нова заявка", "empty": "Нових заявок поки немає."},
@@ -3926,8 +3945,9 @@ async def seller_crm_website_editor(request: Request, crm_slug: str, status: str
     seller_id = account["seller_id"]
     site = _demo_site() if _is_demo_account(account) else await get_current_seller_site_or_404(seller_id)
     config_draft = _as_config(site)
+    preview_url, constructor_url = _build_public_site_urls(site)
     blocks = [{"key": k, "title": v["name"], "description": v["description"], "shown": bool((config_draft.get("modules") or {}).get(k, False))} for k, v in WEBSITE_EDITABLE_BLOCKS.items()]
-    return templates.TemplateResponse("seller_crm/website_editor.html", _seller_crm_context(request, title="Редагування сайту — кабінет продавця", current_page="website_editor", account=account, subscription=subscription, site=site, blocks=blocks, status=status, has_website=True, has_cars=False, has_services=False))
+    return templates.TemplateResponse("seller_crm/website_editor.html", _seller_crm_context(request, title="Редагування сайту — кабінет продавця", current_page="website_editor", account=account, subscription=subscription, site=site, blocks=blocks, status=status, has_website=True, has_cars=False, has_services=False, preview_url=preview_url, constructor_url=constructor_url))
 
 
 @router.get("/{crm_slug}/website/editor/{block_key}")
