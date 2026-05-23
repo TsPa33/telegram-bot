@@ -72,10 +72,28 @@ WITH name_map(en_name, uk_name) AS (
     ('Rear window','Заднє скло'),
     ('Windshield','Лобове скло')
 )
+DELETE FROM part_templates pt
+USING name_map nm
+WHERE pt.name = nm.en_name
+  AND EXISTS (
+      SELECT 1
+      FROM part_templates pt2
+      WHERE pt2.vehicle_type = pt.vehicle_type
+        AND pt2.category = pt.category
+        AND pt2.name = nm.uk_name
+  );
+
 UPDATE part_templates pt
 SET name = nm.uk_name
 FROM name_map nm
-WHERE pt.name = nm.en_name;
+WHERE pt.name = nm.en_name
+  AND NOT EXISTS (
+      SELECT 1
+      FROM part_templates pt2
+      WHERE pt2.vehicle_type = pt.vehicle_type
+        AND pt2.category = pt.category
+        AND pt2.name = nm.uk_name
+  );
 
 WITH name_map(en_name, uk_name) AS (
     VALUES
@@ -85,4 +103,20 @@ UPDATE seller_parts sp
 SET name = nm.uk_name,
     updated_at = NOW()
 FROM name_map nm
-WHERE sp.name = nm.en_name;
+WHERE sp.name = nm.en_name
+  AND NOT EXISTS (
+      SELECT 1
+      FROM seller_parts sp2
+      WHERE sp2.car_id = sp.car_id
+        AND sp2.name = nm.uk_name
+  );
+
+DELETE FROM seller_parts sp
+USING name_map nm
+WHERE sp.name = nm.en_name
+  AND EXISTS (
+      SELECT 1
+      FROM seller_parts sp2
+      WHERE sp2.car_id = sp.car_id
+        AND sp2.name = nm.uk_name
+  );
