@@ -4,29 +4,17 @@
 {% block crm_kicker %}Каталог продавця{% endblock %}
 {% block crm_heading %}Запчастини авто{% endblock %}
 {% block content %}
-<div class="cards-grid" style="display:grid;gap:14px;">
+<div class="cards-grid" style="display:grid;gap:12px;">
   {% if status == 'parts_created' %}<div class="notice" style="padding:10px 12px;border-radius:12px;background:rgba(52,211,153,.15);border:1px solid rgba(52,211,153,.28);">✅ Створено {{ created }} запчастин для авто.</div>{% endif %}
-  {% if status == 'parts_exists' %}<div class="notice" style="padding:10px 12px;border-radius:12px;background:rgba(56,189,248,.12);border:1px solid rgba(56,189,248,.25);">ℹ️ Запчастини для цього авто вже створені.</div>{% endif %}
-
-  {% if products_module_draft_enabled and not products_module_live_enabled %}
-    <div class="notice" style="padding:10px 12px;border-radius:12px;background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.35);">Модуль увімкнений у чернетці. Опублікуйте сайт.</div>
-  {% elif products_module_live_enabled %}
-    <div class="notice" style="padding:10px 12px;border-radius:12px;background:rgba(52,211,153,.15);border:1px solid rgba(52,211,153,.28);">Модуль увімкнений на сайті.</div>
-  {% else %}
-    <div class="notice" style="padding:10px 12px;border-radius:12px;background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.35);">Модуль вимкнений.</div>
-  {% endif %}
 
   <section class="card">
     <h2 style="margin:0;">Запчастини авто</h2>
     <p class="section-note">{{ car.brand }} {{ car.model }} · ID {{ car.car_id }}</p>
-    <p class="section-note">На сайт потрапляють тільки позиції зі статусом ‘В наявності’ і лише якщо модуль ‘Товари / запчастини’ увімкнений та сайт опублікований.</p>
-
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
       <a class="btn" href="/crm/seller/{{ account.crm_slug }}/content/cars/{{ car.car_id }}/parts/new">+ Додати запчастину</a>
       <form method="post" action="/crm/seller/{{ account.crm_slug }}/content/cars/{{ car.car_id }}/generate-parts" onsubmit="return confirm('Створити список запчастин для цього авто?');"><button class="btn ghost" type="submit">🔧 Створити стандартний список</button></form>
       <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content/cars/{{ car.car_id }}">← Назад до авто</a>
     </div>
-
     <form method="get" class="filter-bar">
       <input class="compact-input" name="q" value="{{ q }}" placeholder="Пошук: turbo">
       <select class="compact-select" name="part_status"><option value="all"{% if selected_part_status == 'all' %} selected{% endif %}>Усі статуси</option><option value="available"{% if selected_part_status == 'available' %} selected{% endif %}>В наявності</option><option value="draft"{% if selected_part_status == 'draft' %} selected{% endif %}>Чернетка</option><option value="sold"{% if selected_part_status == 'sold' %} selected{% endif %}>Продано</option><option value="hidden"{% if selected_part_status == 'hidden' %} selected{% endif %}>Приховано</option></select>
@@ -34,43 +22,47 @@
     </form>
   </section>
 
-  <section class="grid" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;">
-    {{ cards.metric_card('Всього запчастин', stats.total, '') }}{{ cards.metric_card('В наявності', stats.available, '') }}{{ cards.metric_card('Приховано', stats.hidden or 0, '') }}{{ cards.metric_card('Продано', stats.sold, '') }}{{ cards.metric_card('⚠ Без ціни', stats.no_price, '') }}{{ cards.metric_card('⚠ Без фото', stats.no_photo, '') }}{{ cards.metric_card('⚠ Без опису', stats.no_description, '') }}{{ cards.metric_card('Заповнення', stats.completion ~ '%', '') }}
+  <section class="grid" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;">
+    {{ cards.metric_card('Всього запчастин', stats.total, '') }}{{ cards.metric_card('В наявності', stats.available, '') }}{{ cards.metric_card('⚠ Без ціни', stats.no_price, '') }}{{ cards.metric_card('⚠ Без фото', stats.no_photo, '') }}
   </section>
-
-  {% if not parts %}<section class="card"><h3>Запчастини ще не створені</h3><p class="section-note">Скористайтесь діями зверху.</p></section>{% endif %}
 
   {% for category, label in category_options %}
     {% set items = grouped_parts.get(category, []) %}
     {% if items %}
-      {% set has_available = items|selectattr('status', 'equalto', 'available')|list|length > 0 %}
       <section class="card">
-        <details {% if has_available %}open{% endif %}>
+        <details>
           <summary style="cursor:pointer;display:flex;justify-content:space-between;gap:10px;align-items:center;"><strong>{{ label }}</strong><span class="section-note">{{ items|length }} шт.</span></summary>
-          <div style="display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin:8px 0;"><form method="post" action="/crm/seller/{{ account.crm_slug }}/content/cars/{{ car.car_id }}/parts/bulk-status"><input type="hidden" name="category" value="{{ category }}"><input type="hidden" name="status" value="available"><button class="btn small ghost" type="submit">Всі → В наявності</button></form><form method="post" action="/crm/seller/{{ account.crm_slug }}/content/cars/{{ car.car_id }}/parts/bulk-status"><input type="hidden" name="category" value="{{ category }}"><input type="hidden" name="status" value="draft"><button class="btn small ghost" type="submit">Всі → Чернетка</button></form></div>
-          <div style="display:grid;gap:10px;">
+          <div class="parts-list">
             {% for part in items %}
-              <article class="request-card" style="display:grid;gap:8px;">
-                <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;"><strong>{{ part.name }}</strong>{{ badges.status_badge(part.status_label, part.status_class) }}</div>
-                <div style="display:flex;gap:8px;flex-wrap:wrap;">{% if part.price is none %}{{ badges.status_badge('⚠ Без ціни', 'status-waiting') }}{% endif %}{% if not part.description %}{{ badges.status_badge('⚠ Без опису', 'status-waiting') }}{% endif %}{% if not part.photo_id and not part.preview_photo %}{{ badges.status_badge('⚠ Без фото', 'status-waiting') }}{% endif %}</div>
-                <div class="section-note">{{ part.category_label }} · {{ part.price_display }}</div>
-                {% if not part.photo_id and not part.preview_photo %}<div style="border:1px solid var(--line);border-radius:10px;padding:8px;max-width:220px;background:linear-gradient(135deg, rgba(148,163,184,.10), rgba(148,163,184,.03));"><strong>Запчастина</strong><div class="section-note">Фото буде додано</div></div>{% endif %}
-                {% if part.description_preview %}<p class="section-note" style="margin:0;">{{ part.description_preview }}</p>{% endif %}
-                <div class="inline-form" style="gap:6px;">
+            <article class="request-card part-item">
+              <div class="part-main">
+                <div>
+                  {% if part.photo_id or part.preview_photo %}
+                    <img src="{{ part.photo_id or part.preview_photo }}" alt="{{ part.name }}" class="part-photo">
+                  {% else %}
+                    <div class="part-placeholder"><div>{{ car.brand }} {{ car.model }}</div><div>{{ part.name }}</div><small>CarPot Inventory</small></div>
+                  {% endif %}
+                </div>
+                <div class="part-content">
+                  <strong>{{ part.name }}</strong>
+                  <div class="section-note">{{ part.category_label }} · {{ part.price_display }}</div>
+                  {% if part.description_preview %}<div class="section-note">{{ part.description_preview }}</div>{% endif %}
+                  <div style="display:flex;gap:6px;flex-wrap:wrap;">{% if part.price is none %}{{ badges.status_badge('⚠ Без ціни', 'status-waiting') }}{% endif %}{% if not part.description %}{{ badges.status_badge('⚠ Без опису', 'status-waiting') }}{% endif %}{% if not part.photo_id and not part.preview_photo %}{{ badges.status_badge('⚠ Без фото', 'status-waiting') }}{% endif %}</div>
+                </div>
+                <div class="part-actions">
+                  {{ badges.status_badge(part.status_label, part.status_class) }}
                   <form method="post" action="/crm/seller/{{ account.crm_slug }}/content/parts/{{ part.id }}/status" class="inline-form-row">
                     <select class="compact-select" name="status">{% for key, label_status in part_status_labels.items() %}<option value="{{ key }}"{% if key == part.status %} selected{% endif %}>{{ label_status }}</option>{% endfor %}</select>
-                    <button class="btn small secondary" type="submit">Зберегти</button>
+                    <button class="btn small secondary" type="submit">ОК</button>
                   </form>
-                  <div class="inline-form-row">
-                    <form method="post" action="/crm/seller/{{ account.crm_slug }}/content/parts/{{ part.id }}/price" class="inline-form-row">
-                      <input class="price-input" name="price" value="{{ '' if part.price is none else part.price }}" placeholder="2500">
-                      <span class="section-note" style="margin:0;">₴</span>
-                      <button class="btn small secondary" type="submit">Зберегти ціну</button>
-                    </form>
-                    <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/content/parts/{{ part.id }}/edit">Редагувати</a>
-                  </div>
+                  <form method="post" action="/crm/seller/{{ account.crm_slug }}/content/parts/{{ part.id }}/price" class="inline-form-row">
+                    <input class="price-input" name="price" value="{{ '' if part.price is none else part.price }}" placeholder="5000"><span class="section-note" style="margin:0;">₴</span>
+                    <button class="btn small secondary" type="submit">Оновити</button>
+                  </form>
+                  <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/content/parts/{{ part.id }}/edit">Редагувати</a>
                 </div>
-              </article>
+              </div>
+            </article>
             {% endfor %}
           </div>
         </details>
@@ -78,4 +70,6 @@
     {% endif %}
   {% endfor %}
 </div>
+<style>
+.parts-list{display:grid;gap:8px;margin-top:8px}.part-item{padding:10px}.part-main{display:grid;grid-template-columns:120px minmax(0,1fr) auto;gap:10px;align-items:start}.part-photo{width:120px;height:84px;object-fit:cover;border-radius:10px;border:1px solid var(--line)}.part-placeholder{width:120px;height:84px;border-radius:10px;border:1px solid var(--line);display:grid;place-content:center;text-align:center;padding:6px;background:linear-gradient(145deg,#0b1627,#111f34);font-size:11px;font-weight:600}.part-placeholder small{color:var(--muted);font-size:10px}.part-content strong{display:block;line-height:1.2;margin-bottom:2px}.part-actions{display:grid;gap:6px;justify-items:end}.part-actions form{display:flex;gap:6px;align-items:center}.price-input{max-width:90px}.part-content .section-note{margin:0 0 4px}@media(max-width:860px){.part-main{grid-template-columns:84px minmax(0,1fr)}.part-photo,.part-placeholder{width:84px;height:72px}.part-actions{grid-column:1/-1;justify-items:start}}</style>
 {% endblock %}

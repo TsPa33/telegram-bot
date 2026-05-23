@@ -1,0 +1,47 @@
+{% extends "seller_crm/base.html" %}
+{% import "seller_crm/components/forms.html" as forms %}
+{% import "seller_crm/components/badges.html" as badges %}
+{% block crm_kicker %}Каталог / Запчастини{% endblock %}
+{% block crm_heading %}Редагування запчастини{% endblock %}
+{% block content %}
+<div style="display:grid;gap:12px;">
+  <a class="btn ghost" href="{{ cancel_url }}" style="width:fit-content;">← Назад до запчастин</a>
+  <section class="card" style="padding:12px;">
+    <h2 style="margin:0;">{{ form.name or 'Запчастина' }}</h2>
+    <p class="section-note" style="margin:4px 0 0;">{{ car.brand }} {{ car.model }} · ID {{ part.id }}</p>
+    <div style="margin-top:6px;">{{ badges.status_badge(status_label, status_class) }}</div>
+  </section>
+
+  <div class="edit-grid">
+    <section class="card">
+      <h3 style="margin-top:0;">Фото</h3>
+      {% if part.photo_id %}
+        <img src="{{ part.photo_id }}" alt="{{ form.name }}" class="edit-photo">
+      {% else %}
+        <div class="edit-placeholder"><div>{{ car.brand }} {{ car.model }}</div><div>{{ form.name }}</div><small>CarPot Inventory</small></div>
+      {% endif %}
+      <form method="post" action="/crm/seller/{{ account.crm_slug }}/content/parts/{{ part.id }}/photo" enctype="multipart/form-data" style="display:grid;gap:8px;margin-top:10px;">
+        <input class="form-control" type="file" name="photo" accept="image/jpeg,image/png,image/webp" required>
+        <p class="section-note" style="margin:0;">JPG/PNG/WEBP до 5MB. Завантажте фото, щоб замінити або додати зображення.</p>
+        <button class="btn small secondary" type="submit">Завантажити фото</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <h3 style="margin-top:0;">Параметри</h3>
+      {% if error %}<div style="margin:8px 0;padding:10px 12px;border-radius:12px;background:rgba(251,113,133,.1);border:1px solid rgba(251,113,133,.28);">{{ error }}</div>{% endif %}
+      <form method="post" action="{{ action_url }}" style="display:grid;gap:10px;">
+        {{ forms.text_input('name', 'Назва запчастини *', form.name, 'Наприклад: Фара ліва', True, 200) }}
+        <div class="form-field"><label for="category">Категорія *</label><select id="category" name="category" required>{% for value, label in category_options %}<option value="{{ value }}"{% if form.category == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+        {{ forms.text_input('price', 'Ціна', form.price, 'Наприклад: 2500 або 2500 грн') }}
+        <div class="form-field"><label for="status">Статус *</label><select id="status" name="status" required>{% for value, label in status_options %}<option value="{{ value }}"{% if form.status == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+        {{ forms.textarea_input('description', 'Опис', form.description, 'Стан, дефекти, сумісність...', False, 1000, 6) }}
+        {% if part.quantity is defined %}{{ forms.text_input('quantity', 'Кількість', part.quantity, '', False, 20) }}{% endif %}
+        {% if part.oem_code is defined %}{{ forms.text_input('oem_code', 'OEM', part.oem_code, '', False, 120) }}{% endif %}
+        <div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn" type="submit">Зберегти</button><a class="btn ghost" href="{{ cancel_url }}">Скасувати</a></div>
+      </form>
+    </section>
+  </div>
+</div>
+<style>.edit-grid{display:grid;grid-template-columns:320px minmax(0,1fr);gap:12px}.edit-photo,.edit-placeholder{width:100%;height:220px;object-fit:cover;border-radius:10px;border:1px solid var(--line)}.edit-placeholder{display:grid;place-content:center;text-align:center;background:linear-gradient(145deg,#0b1627,#111f34);font-weight:600}.edit-placeholder small{font-size:11px;color:var(--muted)}@media(max-width:900px){.edit-grid{grid-template-columns:1fr}.edit-photo,.edit-placeholder{height:180px}}</style>
+{% endblock %}

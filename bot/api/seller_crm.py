@@ -45,6 +45,7 @@ from bot.database.repositories.part_repo import (
     seller_owns_car,
     update_part_fields,
     update_generated_parts_status,
+    update_part_photo,
     update_part_price,
     update_part_status,
 )
@@ -3307,7 +3308,7 @@ async def seller_crm_part_create_form(request: Request, crm_slug: str, car_id: i
     car = await get_seller_crm_car_detail(account["seller_id"], car_id)
     if not car:
         raise HTTPException(status_code=404, detail="Car not found")
-    return templates.TemplateResponse("seller_crm/car_part_form.html", _seller_crm_context(
+    return templates.TemplateResponse("seller_crm/part_edit.html", _seller_crm_context(
         request, title="Додати запчастину — кабінет продавця CarPot", current_page="content_cars", account=account, subscription=subscription,
         form_title="Додати запчастину вручну", action_url=f"/crm/seller/{crm_slug}/content/cars/{car_id}/parts/new",
         cancel_url=f"/crm/seller/{crm_slug}/content/cars/{car_id}/parts", car=car, form=_part_form_payload(),
@@ -3354,12 +3355,13 @@ async def seller_crm_part_edit_form(request: Request, crm_slug: str, part_id: in
     if not part or part.get("seller_id") != account["seller_id"]:
         raise HTTPException(status_code=403, detail="Access denied")
     car = await get_seller_crm_car_detail(account["seller_id"], part["car_id"])
-    return templates.TemplateResponse("seller_crm/car_part_form.html", _seller_crm_context(
+    return templates.TemplateResponse("seller_crm/part_edit.html", _seller_crm_context(
         request, title="Редагувати запчастину — кабінет продавця CarPot", current_page="content_cars", account=account, subscription=subscription,
         form_title="Редагувати запчастину", action_url=f"/crm/seller/{crm_slug}/content/parts/{part_id}/edit",
         cancel_url=f"/crm/seller/{crm_slug}/content/cars/{part['car_id']}/parts", car=car,
         form=_part_form_payload(name=part.get("name"), category=part.get("category"), status=part.get("status"), price="" if part.get("price") is None else str(part.get("price")), description=part.get("description") or ""),
-        category_options=PART_CATEGORY_OPTIONS, status_options=list(PART_STATUS_LABELS.items()), error=None))
+        category_options=PART_CATEGORY_OPTIONS, status_options=list(PART_STATUS_LABELS.items()), error=None,
+        part=part, status_label=PART_STATUS_LABELS.get(part.get("status"), "Чернетка"), status_class=PART_STATUS_CLASS.get(part.get("status"), "status-waiting")))
 
 
 @router.post("/{crm_slug}/content/parts/{part_id}/edit")
@@ -3380,16 +3382,47 @@ async def seller_crm_part_edit(
     normalized_name, parsed_price, validation_error = _validate_part_form(name, category, status, price, description)
     form = _part_form_payload(name=name, category=category, status=status, price=price, description=description)
     if validation_error:
-        return templates.TemplateResponse("seller_crm/car_part_form.html", _seller_crm_context(
+        return templates.TemplateResponse("seller_crm/part_edit.html", _seller_crm_context(
             request, title="Редагувати запчастину — кабінет продавця CarPot", current_page="content_cars", account=account, subscription=subscription,
             form_title="Редагувати запчастину", action_url=f"/crm/seller/{crm_slug}/content/parts/{part_id}/edit",
             cancel_url=f"/crm/seller/{crm_slug}/content/cars/{part['car_id']}/parts", car=car, form=form, category_options=PART_CATEGORY_OPTIONS,
-            status_options=list(PART_STATUS_LABELS.items()), error=validation_error), status_code=400)
+            status_options=list(PART_STATUS_LABELS.items()), error=validation_error, part=part,
+            status_label=PART_STATUS_LABELS.get(form.get("status"), "Чернетка"), status_class=PART_STATUS_CLASS.get(form.get("status"), "status-waiting")), status_code=400)
     updated = await update_part_fields(part_id, account["seller_id"], normalized_name, category, status, parsed_price, (description or "").strip() or None)
     if not updated:
         return RedirectResponse(url=f"/crm/seller/{crm_slug}/content/cars/{part['car_id']}/parts?error=part_update_conflict", status_code=303)
     return RedirectResponse(url=f"/crm/seller/{crm_slug}/content/cars/{part['car_id']}/parts?status=part_updated", status_code=303)
 
+
+
+
+@router.post("/{crm_slug}/content/parts/{part_id}/photo")
+async def seller_crm_part_photo_upload(
+    request: Request,
+    crm_slug: str,
+    part_id: int,
+    photo: UploadFile | None = File(None),
+):
+    try:
+        account, _subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+
+    part = await get_part_by_id(part_id)
+    if not part or part.get("seller_id") != account["seller_id"]:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    detail_url = f"/crm/seller/{crm_slug}/content/parts/{part_id}/edit"
+    image_url, error_key = await _upload_validated_car_photo(photo)
+    if error_key or not image_url:
+        return RedirectResponse(url=f"{detail_url}?error={error_key or 'photo_upload_failed'}", status_code=303)
+
+    saved = await update_part_photo(part_id, account["seller_id"], image_url)
+    if not saved:
+        return RedirectResponse(url=f"{detail_url}?error=photo_save_failed", status_code=303)
+    return RedirectResponse(url=f"{detail_url}?status=photo_updated", status_code=303)
 
 @router.get("/{crm_slug}/settings")
 async def seller_crm_settings(request: Request, crm_slug: str):
