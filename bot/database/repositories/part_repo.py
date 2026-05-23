@@ -317,6 +317,24 @@ async def count_parts_by_car(car_id: int) -> dict:
     }
 
 
+async def hide_parts_by_car(seller_id: int, car_id: int) -> int:
+    rows = await fetch(
+        """
+        UPDATE seller_parts
+        SET status = 'hidden',
+            updated_at = NOW()
+        WHERE seller_id = $1
+          AND car_id = $2
+          AND status <> 'hidden'
+        RETURNING id
+        """,
+        seller_id,
+        car_id,
+    )
+
+    return len(rows or [])
+
+
 async def seller_owns_car(seller_id: int, car_id: int) -> bool:
     row = await fetchrow(
         """
