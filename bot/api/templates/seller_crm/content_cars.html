@@ -10,8 +10,10 @@
   .garage-summary { grid-template-columns: repeat(4,minmax(0,1fr)); }
   .car-inventory-list { display: grid; gap: 12px; }
   .inventory-card { display: grid; grid-template-columns: 132px minmax(0,1fr); gap: 14px; align-items: start; }
-  .inventory-photo { width: 132px; height: 98px; border-radius: 16px; border: 1px solid var(--line); background: var(--surface); overflow: hidden; display: grid; place-items: center; color: var(--muted); font-weight: 700; font-size: 12px; text-align: center; }
+  .inventory-photo { width: 132px; height: 98px; border-radius: 16px; border: 1px solid var(--line); background: linear-gradient(135deg, rgba(148,163,184,.10), rgba(148,163,184,.03)); overflow: hidden; display: grid; place-items: center; color: var(--muted); font-weight: 700; font-size: 12px; text-align: center; }
   .inventory-photo img { width: 100%; height: 100%; object-fit: cover; }
+  .placeholder { display:grid; gap:4px; place-items:center; padding:8px; }
+  .placeholder strong { color: var(--text); }
   .inventory-body { min-width: 0; display: grid; gap: 9px; }
   .inventory-top { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; min-width: 0; }
   .inventory-title { margin: 0; color: var(--text); font-size: 18px; line-height: 1.25; overflow-wrap: anywhere; }
@@ -62,7 +64,7 @@
             {% elif car.has_photo %}
               Фото додано
             {% else %}
-              {{ badges.status_badge("Немає фото", "status-waiting") }}
+              <div class="placeholder"><strong>CarPot</strong><span>{{ car.brand }} {{ car.model }}</span><span>Фото буде додано</span></div>
             {% endif %}
           </div>
           <div class="inventory-body">
@@ -75,18 +77,16 @@
             </div>
             <p class="inventory-desc">{{ (car.description[:180] ~ ('…' if car.description and car.description|length > 180 else '')) if car.description else 'Опис ще не додано.' }}</p>
             <div class="inventory-badges">
-              {{ badges.status_badge((car.views or 0) ~ " переглядів") }}
-              {{ badges.status_badge((car.phone_clicks or 0) ~ " телефон") }}
-              {{ badges.status_badge((car.site_clicks or 0) ~ " сайт") }}
-              {{ badges.status_badge((car.parts_total or 0) ~ " запчастин") }}
+                            {{ badges.status_badge((car.parts_total or 0) ~ " запчастин") }}
               {{ badges.status_badge((car.parts_available or 0) ~ " активні", "status-success") }}
             </div>
             <div class="inventory-actions">
-              <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/content/cars/{{ car.car_id }}">Детальніше</a>
-              <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/content/cars/{{ car.car_id }}/edit">Редагувати</a>
+              <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/content/cars/{{ car.car_id }}">Керувати авто</a>
+              {% if (car.parts_total or 0) == 0 %}
               <form method="post" action="/crm/seller/{{ account.crm_slug }}/content/cars/{{ car.car_id }}/generate-parts" style="display:inline;" onsubmit="return confirm('Створити список запчастин для цього авто?');">
                 <button class="btn small" type="submit">🔧 Розібрати на запчастини</button>
               </form>
+              {% endif %}
               <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/content/cars/{{ car.car_id }}/parts">📦 Запчастини авто</a>
             </div>
           </div>

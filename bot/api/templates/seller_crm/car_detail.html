@@ -1,93 +1,60 @@
 {% extends "seller_crm/base.html" %}
 {% import "seller_crm/components/badges.html" as badges %}
-{% import "seller_crm/components/cards.html" as cards %}
-{% import "seller_crm/components/layout.html" as layout %}
 {% block crm_kicker %}Контент продавця{% endblock %}
-{% block crm_heading %}{{ car.brand }} {{ car.model }}{% endblock %}
+{% block crm_heading %}Керувати авто{% endblock %}
 {% block content %}
-<style>
-  .car-detail-wrap { display: grid; gap: 14px; min-width: 0; overflow: hidden; }
-  .detail-head { display: grid; grid-template-columns: minmax(0,1fr) minmax(220px,320px); gap: 14px; align-items: start; min-width: 0; }
-  .detail-title { margin: 0 0 7px; overflow-wrap: anywhere; }
-  .detail-meta, .detail-actions, .detail-badges { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; min-width: 0; }
-  .detail-meta { color: var(--muted); font-size: 13px; font-weight: 600; }
-  .detail-desc { color: var(--muted); line-height: 1.55; overflow-wrap: anywhere; white-space: pre-wrap; }
-  .photo-panel { display: grid; gap: 10px; min-width: 0; }
-  .photo-preview { width: 100%; min-height: 210px; border-radius: 18px; border: 1px solid var(--line); background: var(--surface); overflow: hidden; display: grid; place-items: center; color: var(--muted); font-weight: 700; text-align: center; }
-  .photo-preview img { width: 100%; height: 100%; min-height: 210px; object-fit: cover; }
-  .photo-upload { display: grid; gap: 9px; min-width: 0; }
-  .photo-upload input[type="file"] { width: 100%; max-width: 100%; min-width: 0; color: var(--muted); }
-  .photo-upload .field-help { color: var(--muted); font-size: 12px; line-height: 1.4; }
-  .stats-grid { grid-template-columns: repeat(4,minmax(0,1fr)); }
-  .notice { border: 1px solid rgba(125,211,176,.16); background: rgba(125,211,176,.07); color: #BCEBD3; border-radius: 14px; padding: 10px 12px; font-weight: 600; }
-  .notice.error { border-color: rgba(251,113,133,.28); background: rgba(251,113,133,.1); color: #F5C7CF; }
-  .toggle-form { margin: 0; }
-  @media (max-width: 880px) { .detail-head { grid-template-columns: 1fr; } .stats-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
-  @media (max-width: 620px) { .stats-grid { grid-template-columns: 1fr; } .detail-actions { display: grid; grid-template-columns: 1fr; } .detail-actions .btn, .detail-actions button, .photo-upload .btn { width: 100%; white-space: normal; } }
-</style>
-
-{% set status_messages = {"updated": "Авто оновлено.", "enabled": "Авто увімкнено.", "disabled": "Авто вимкнено.", "photo_updated": "Фото авто оновлено."} %}
-{% set error_messages = {"status_not_supported": "Статус авто недоступний у поточній схемі.", "empty_photo": "Оберіть непорожній файл фото.", "invalid_photo_type": "Підтримуються лише JPG, PNG або WebP.", "photo_too_large": "Фото завелике. Завантажте файл до 5 МБ.", "photo_upload_failed": "Не вдалося завантажити фото. Спробуйте ще раз.", "photo_save_failed": "Фото завантажено, але не вдалося зберегти його для авто."} %}
-
-<div class="car-detail-wrap">
-  {% if status and status_messages.get(status) %}<div class="notice" role="status">{{ status_messages.get(status) }}</div>{% endif %}
-  {% if error and error_messages.get(error) %}<div class="notice error" role="alert">{{ error_messages.get(error) }}</div>{% endif %}
-
-  <section class="card detail-head">
-    <div>
-      <h2 class="detail-title">{{ car.brand }} {{ car.model }}</h2>
-      <div class="detail-meta">
-        <span>ID {{ car.car_id }}</span>
-        <span>·</span>
-        <span>{{ car.created_at.strftime("%d.%m.%Y %H:%M") if car.created_at else "—" }}</span>
-        <span>·</span>
-        <span>{{ car.status_label }}</span>
-      </div>
-      <p class="detail-desc">{{ car.description or 'Опис ще не додано.' }}</p>
-      <div class="detail-actions">
-        <a class="btn" href="/crm/seller/{{ account.crm_slug }}/content/cars/{{ car.car_id }}/edit">Редагувати</a>
-        {% if car.is_active %}
-          <form class="toggle-form" method="post" action="/crm/seller/{{ account.crm_slug }}/content/cars/{{ car.car_id }}/disable"><button class="btn ghost" type="submit">Вимкнути</button></form>
-        {% else %}
-          <form class="toggle-form" method="post" action="/crm/seller/{{ account.crm_slug }}/content/cars/{{ car.car_id }}/enable"><button class="btn" type="submit">Увімкнути</button></form>
-        {% endif %}
-        <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content/cars">Назад до авто</a>
-      </div>
+<div class="cards-grid" style="display:grid;gap:14px;">
+  <section class="card">
+    <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center;">
+      <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content/cars">← Назад до авто</a>
+      {{ badges.status_badge(car.status_label, car.status_class or "status-new") }}
     </div>
-    <div class="photo-panel">
-      <div class="photo-preview" aria-label="Фото авто">
-        {% if car.photo_is_url %}
-          <img src="{{ car.photo_id }}" alt="{{ car.brand }} {{ car.model }}">
-        {% elif car.has_photo %}
-          Фото додано
-        {% else %}
-          Немає фото
-        {% endif %}
-      </div>
-      <form class="photo-upload" method="post" action="/crm/seller/{{ account.crm_slug }}/content/cars/{{ car.car_id }}/photo" enctype="multipart/form-data">
-        <label class="field-help" for="car-photo">JPG/PNG/WebP recommended · до 5 МБ</label>
-        <input id="car-photo" name="photo" type="file" accept="image/jpeg,image/png,image/webp" required>
-        <button class="btn" type="submit">Оновити фото</button>
-      </form>
-    </div>
-  </section>
-
-  <section class="grid stats-grid" aria-label="Статистика авто">
-    {{ cards.metric_card("Перегляди", car.views or 0) }}
-    {{ cards.metric_card("Кліки телефону", car.phone_clicks or 0) }}
-    {{ cards.metric_card("Кліки сайту", car.site_clicks or 0) }}
-    {{ cards.metric_card("Заповненість", (car.content_completeness or 0) ~ "%") }}
+    <h2 style="margin:.6rem 0 0;">{{ car.brand }} {{ car.model }}</h2>
   </section>
 
   <section class="card">
-    {{ layout.section_header("Заповнення контенту") }}
-    <div class="detail-badges">
-      {{ badges.health_badge("Бренд", "status-success") }}
-      {{ badges.health_badge("Модель", "status-success") }}
-      {% if car.has_description %}{{ badges.health_badge("Опис", "status-success") }}{% else %}{{ badges.health_badge("Немає опису") }}{% endif %}
-      {% if car.has_photo %}{{ badges.health_badge("Фото", "status-success") }}{% else %}{{ badges.health_badge("Немає фото") }}{% endif %}
-      {% if car.is_active %}{{ badges.status_badge("Активне", "status-success") }}{% else %}{{ badges.status_badge("Вимкнене", "status-waiting") }}{% endif %}
-      {% if car.has_is_catalog %}{{ badges.status_badge("Каталог: " ~ ("так" if car.is_catalog else "ні"), "status-success" if car.is_catalog else "status-waiting") }}{% endif %}
+    <h3>Коротка інформація</h3>
+    <table style="width:100%;border-collapse:collapse;">
+      <tr><td>Бренд</td><td><strong>{{ car.brand }}</strong></td></tr>
+      <tr><td>Модель</td><td><strong>{{ car.model }}</strong></td></tr>
+      <tr><td>Car ID</td><td>{{ car.car_id }}</td></tr>
+      <tr><td>Створено</td><td>{{ car.created_at.strftime("%d.%m.%Y %H:%M") if car.created_at else "—" }}</td></tr>
+      <tr><td>Статус</td><td>{{ car.status_label }}</td></tr>
+      <tr><td>Перегляди</td><td>{{ car.views or 0 }}</td></tr>
+      <tr><td>Кліки телефону</td><td>{{ car.phone_clicks or 0 }}</td></tr>
+      <tr><td>Кліки сайту</td><td>{{ car.site_clicks or 0 }}</td></tr>
+      <tr><td>Всього запчастин</td><td>{{ car.parts_total or 0 }}</td></tr>
+      <tr><td>В наявності</td><td>{{ car.parts_available or 0 }}</td></tr>
+    </table>
+  </section>
+
+  <section class="card">
+    <h3>Редагування</h3>
+    <form method="post" action="/crm/seller/{{ account.crm_slug }}/content/cars/{{ car.car_id }}/edit" style="display:grid;gap:10px;">
+      <label>Опис<textarea name="description" rows="5">{{ car.description or '' }}</textarea></label>
+      {% if car.status_supported %}
+      <label>Статус
+        <select name="status"><option value="active" {% if car.is_active %}selected{% endif %}>Активне</option><option value="inactive" {% if not car.is_active %}selected{% endif %}>Неактивне</option></select>
+      </label>
+      {% endif %}
+      {% if car.has_is_catalog %}
+      <label><input type="checkbox" name="is_catalog" value="1" {% if car.is_catalog %}checked{% endif %}> Показувати в каталозі</label>
+      {% endif %}
+      <button class="btn" type="submit">Зберегти зміни</button>
+    </form>
+    <form method="post" action="/crm/seller/{{ account.crm_slug }}/content/cars/{{ car.car_id }}/photo" enctype="multipart/form-data" style="display:grid;gap:8px;margin-top:10px;">
+      <label>Фото авто <input name="photo" type="file" accept="image/jpeg,image/png,image/webp" required></label>
+      <button class="btn ghost" type="submit">Оновити фото</button>
+    </form>
+  </section>
+
+  <section class="card">
+    <h3>Склад</h3>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      {% if (car.parts_total or 0) == 0 %}
+      <form method="post" action="/crm/seller/{{ account.crm_slug }}/content/cars/{{ car.car_id }}/generate-parts" onsubmit="return confirm('Створити список запчастин для цього авто?');"><button class="btn" type="submit">🔧 Розібрати на запчастини</button></form>
+      {% endif %}
+      <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content/cars/{{ car.car_id }}/parts">📦 Запчастини авто</a>
     </div>
   </section>
 </div>

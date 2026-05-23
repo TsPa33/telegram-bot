@@ -2272,6 +2272,61 @@ async def seller_crm_content_products(request: Request, crm_slug: str):
     )
 
 
+@router.get("/{crm_slug}/content/products/create")
+async def seller_crm_product_create_form(request: Request, crm_slug: str):
+    try:
+        account, subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+
+    donor_cars = [] if _is_demo_account(account) else [dict(car) for car in await get_seller_product_donor_cars(account["seller_id"])]
+    return templates.TemplateResponse(
+        "seller_crm/product_form.html",
+        _seller_crm_context(
+            request,
+            title="Додати товар — кабінет продавця CarPot",
+            demo_mode=False,
+            current_page="content_products",
+            account=account,
+            subscription=subscription,
+            form_title="Додати товар",
+            form=_product_form_payload(status="active", stock_status="available", quantity="1"),
+            error=None,
+            action_url=f"/crm/seller/{crm_slug}/content/products/create",
+            cancel_url=f"/crm/seller/{crm_slug}/content/products",
+            donor_cars=donor_cars,
+            stock_status_options=PRODUCT_STOCK_STATUS_OPTIONS,
+            status_options=PRODUCT_STATUS_OPTIONS,
+        ),
+    )
+
+
+@router.post("/{crm_slug}/content/products/create")
+async def seller_crm_product_create(
+    request: Request, crm_slug: str, title: str = Form(""), category: str = Form(""), brand: str = Form(""),
+    model: str = Form(""), oem_code: str = Form(""), condition: str = Form(""), description: str = Form(""),
+    price: str = Form(""), quantity: str = Form("1"), stock_status: str = Form("available"), status: str = Form("active"), donor_car_id: str = Form(""),
+):
+    try:
+        account, subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+    parsed_price, parsed_quantity, error = _validate_product_form(title, category, description, price, quantity, stock_status, status)
+    donor_cars = [] if _is_demo_account(account) else [dict(car) for car in await get_seller_product_donor_cars(account["seller_id"])]
+    donor_id = _parse_optional_int(donor_car_id)
+    form = _product_form_payload(title=title, category=category, brand=brand, model=model, oem_code=oem_code, condition=condition, description=description, price=price, quantity=quantity, stock_status=stock_status, status=status, donor_car_id=donor_car_id)
+    if error:
+        return templates.TemplateResponse("seller_crm/product_form.html", _seller_crm_context(request, title="Додати товар — кабінет продавця CarPot", demo_mode=False, current_page="content_products", account=account, subscription=subscription, form_title="Додати товар", form=form, error=error, action_url=f"/crm/seller/{crm_slug}/content/products/create", cancel_url=f"/crm/seller/{crm_slug}/content/products", donor_cars=donor_cars, stock_status_options=PRODUCT_STOCK_STATUS_OPTIONS, status_options=PRODUCT_STATUS_OPTIONS), status_code=400)
+    created = await create_product(seller_id=account["seller_id"], title=title, category=category, donor_car_id=donor_id, brand=brand, model=model, oem_code=oem_code, condition=condition, description=description, price=parsed_price, quantity=parsed_quantity, stock_status=stock_status, status=status)
+    if not created:
+        return templates.TemplateResponse("seller_crm/product_form.html", _seller_crm_context(request, title="Додати товар — кабінет продавця CarPot", demo_mode=False, current_page="content_products", account=account, subscription=subscription, form_title="Додати товар", form=form, error="Не вдалося створити товар. Перевірте поля.", action_url=f"/crm/seller/{crm_slug}/content/products/create", cancel_url=f"/crm/seller/{crm_slug}/content/products", donor_cars=donor_cars, stock_status_options=PRODUCT_STOCK_STATUS_OPTIONS, status_options=PRODUCT_STATUS_OPTIONS), status_code=400)
+    return RedirectResponse(url=f"/crm/seller/{crm_slug}/content/products", status_code=303)
+
+
 @router.get("/{crm_slug}/content/products/import")
 async def seller_crm_product_import_form(request: Request, crm_slug: str):
     try:
@@ -2983,6 +3038,10 @@ async def seller_crm_car_detail(request: Request, crm_slug: str, car_id: int, st
     car = await get_seller_crm_car_detail(account["seller_id"], car_id)
     if not car:
         raise HTTPException(status_code=404, detail="Car not found")
+    counters = await get_parts_counters_by_car_ids(account["seller_id"], [car_id])
+    counts = counters.get(car_id, {"total": 0, "available": 0})
+    car["parts_total"] = counts["total"]
+    car["parts_available"] = counts["available"]
 
     return templates.TemplateResponse(
         "seller_crm/car_detail.html",

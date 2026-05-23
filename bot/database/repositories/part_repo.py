@@ -31,6 +31,7 @@ async def generate_parts_for_car(
             template_id,
             category,
             name,
+            description,
             status,
             sort_order
         )
@@ -40,17 +41,20 @@ async def generate_parts_for_car(
             pt.id,
             pt.category,
             pt.name,
+            CASE
+                WHEN COALESCE(NULLIF(TRIM(pt.name), ''), '') <> '' THEN
+                    pt.name || ' з авто ' || b.name || ' ' || m.name || '. Наявність, стан та ціну уточнюйте у продавця.'
+                ELSE
+                    'Запчастина з авто ' || b.name || ' ' || m.name || '. Наявність, стан та ціну уточнюйте у продавця.'
+            END,
             'draft',
             pt.sort_order
         FROM part_templates pt
+        JOIN seller_cars sc ON sc.id = $2::BIGINT AND sc.seller_id = $1::BIGINT
+        JOIN models m ON m.id = sc.model_id
+        JOIN brands b ON b.id = m.brand_id
         WHERE pt.vehicle_type = $3::TEXT
           AND pt.is_active = TRUE
-          AND EXISTS (
-            SELECT 1
-            FROM seller_cars sc
-            WHERE sc.id = $2::BIGINT
-              AND sc.seller_id = $1::BIGINT
-          )
         ON CONFLICT DO NOTHING
         RETURNING id
         """,
