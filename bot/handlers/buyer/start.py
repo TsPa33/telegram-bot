@@ -36,7 +36,8 @@ from bot.keyboards.buyer_search_inline import (
 )
 from bot.states.buyer_states import Buyer, BuyerStates
 from bot.services.ai_request_interpreter import interpret_buyer_request
-from bot.services.marketplace_search import run_priority_marketplace_search
+from bot.database.repositories.part_repo import search_available_parts_for_buyer
+from bot.database.repositories.car_repo import search_cars_for_buyer
 from bot.keyboards.seller_leads import seller_offer_accepted_notification_kb
 from bot.services.buyer_request_service import (
     BuyerRequestInput,
@@ -51,6 +52,68 @@ from bot.keyboards.main_menu import main_menu_kb
 
 router = Router()
 logger = logging.getLogger(__name__)
+
+
+PART_ALIASES = {"фара":"headlight","фари":"headlight","оптика":"headlight","headlight":"headlight","двигун":"engine","мотор":"engine","engine":"engine","кпп":"transmission","коробка":"transmission","transmission":"transmission","двері":"door","дверь":"door","door":"door","бампер":"bumper","bumper":"bumper","капот":"hood","hood":"hood","крило":"fender","fender":"fender","дзеркало":"mirror","mirror":"mirror"}
+BRAND_ALIASES={"bmw":"bmw","бмв":"bmw","mercedes":"mercedes","мерседес":"mercedes","мерс":"mercedes","volkswagen":"volkswagen","vw":"volkswagen","фольксваген":"volkswagen","audi":"audi","ауді":"audi","jeep":"jeep","джип":"jeep"}
+
+def _normalize_query_text(raw:str)->str:
+    return " ".join(str(raw or "").lower().split())
+
+def _normalize_tokens(raw:str)->set[str]:
+    q=_normalize_query_text(raw)
+    tokens=set(q.split())
+    normalized=set()
+    for t in tokens:
+        normalized.add(BRAND_ALIASES.get(t, PART_ALIASES.get(t,t)))
+    return normalized
+
+def _score_item(item:dict, query:str)->int:
+    score=0
+    q=_normalize_query_text(query)
+    t=_normalize_tokens(query)
+    part_name=_normalize_query_text(item.get('part_name'))
+    category=_normalize_query_text(item.get('part_category'))
+    brand=_normalize_query_text(item.get('brand'))
+    model=_normalize_query_text(item.get('model'))
+    description=_normalize_query_text(item.get('part_description') or item.get('car_description'))
+    if part_name and part_name in q:
+        score+=100
+    if any(x in (part_name+" "+category) for x in t):
+        score+=80
+    if model and model in q:
+        score+=70
+    if brand and brand in q:
+        score+=50
+    if description and any(x in description for x in t):
+        score+=30
+    if item.get('part_price'):
+        score+=20
+    if item.get('part_photo_id') or item.get('car_photo_id') or item.get('seller_photo_id'):
+        score+=15
+    if item.get('is_verified'):
+        score+=10
+    return score
+
+def _group_best_per_seller(rows:list[dict], query:str, item_type:str)->list[dict]:
+    by={}
+    for r in rows:
+        item=dict(r)
+        item['_type']=item_type
+        item['id']=item.get('part_id') or item.get('car_id') or item.get('seller_id')
+        item['score']=_score_item(item,query)
+        sid=item.get('seller_id')
+        if sid not in by:
+            by[sid]=[]
+        by[sid].append(item)
+    result=[]
+    for sid,items in by.items():
+        items.sort(key=lambda x:x.get('score',0), reverse=True)
+        best=items[0]
+        best['additional_matches']=max(0,len(items)-1)
+        result.append(best)
+    result.sort(key=lambda x:x.get('score',0), reverse=True)
+    return result
 
 
 # ================= BUYER HOME =================
@@ -689,66 +752,41 @@ async def buyer_request_confirm(callback: types.CallbackQuery, state: FSMContext
 @router.message(BuyerStates.waiting_for_search_query, F.text)
 async def handle_buyer_ai_search_query(message: Message, state: FSMContext):
     raw_query = (message.text or "").strip()
-
-    if len(raw_query) < 3:
-        await message.answer(
-            "Опишіть запит трохи детальніше, наприклад: фара Audi A6 C7"
-        )
+    if len(raw_query) < 2:
+        await message.answer("Введіть бренд, модель або назву запчастини.")
         return
 
-    await message.answer("🔎 Шукаю в CarPot...")
+    await message.answer("Шукаю в CarPot...")
+    parts = await search_available_parts_for_buyer(raw_query, limit=100)
+    part_items = _group_best_per_seller([dict(x) for x in parts], raw_query, "part")
 
-    try:
-        interpretation = await interpret_buyer_request(raw_query)
-
-        search_query = _ai_search_query(interpretation, raw_query)
-
-        results = await run_priority_marketplace_search(
-            interpretation=interpretation,
-            raw_query=raw_query,
-            search_query=search_query,
-            limit=3,
-        )
-
-    except Exception as exc:
-        logger.exception("Telegram buyer AI search failed: %s", exc)
-        await state.clear()
-        await message.answer(
-            "⚠️ Не вдалося виконати пошук зараз. "
-            "Спробуйте ще раз або зверніться в підтримку.",
-            reply_markup=buyer_home_kb(),
-        )
-        return
-
-    items = _collect_search_items(results)
+    items = part_items
+    if not items:
+        cars = await search_cars_for_buyer(raw_query, limit=100)
+        car_items = _group_best_per_seller([dict(x) for x in cars], raw_query, "car")
+        items = car_items
+        if items:
+            await message.answer("Запчастину не знайдено, але є авто на розборі.")
 
     await state.clear()
-    await state.update_data(
-        **_search_session_payload(items, raw_query, interpretation)
-    )
+    await state.update_data(buyer_search_items=_json_safe(items), buyer_search_page=1, buyer_search_query=_json_safe(raw_query), buyer_search_interpretation={})
 
     if not items:
-        await message.answer(
-            "❌ Точного результату поки немає.\n\n"
-            "Створіть заявку — продавці отримають ваш запит і зможуть запропонувати варіанти.",
-            reply_markup=no_results_kb(),
-        )
+        await message.answer("За цим запитом нічого не знайдено. Спробуйте ввести бренд, модель або назву запчастини.", reply_markup=no_results_kb())
         return
 
     first_item = items[0]
     item_type = first_item.get("_type", "car")
-
-    await message.answer(
-        format_search_card(first_item, item_type),
-        parse_mode="HTML",
-        reply_markup=search_result_kb(
-            first_item,
-            item_type,
-            page=1,
-            total=len(items),
-        ),
-    )
-
+    photo = first_item.get("part_photo_id") or first_item.get("car_photo_id") or first_item.get("seller_photo_id")
+    text = format_search_card(first_item, item_type)
+    kb = search_result_kb(first_item, item_type, page=1, total=len(items))
+    if photo:
+        try:
+            await message.answer_photo(photo=photo, caption=text, parse_mode="HTML", reply_markup=kb)
+            return
+        except TelegramBadRequest:
+            pass
+    await message.answer(text, parse_mode="HTML", reply_markup=kb)
 
 
 

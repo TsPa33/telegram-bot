@@ -262,6 +262,51 @@ async def get_seller_parts(
     )
 
 
+async def search_available_parts_for_buyer(query: str, limit: int = 100) -> list:
+    pattern = f"%{(query or '').strip()}%"
+    return await fetch(
+        """
+        SELECT
+            s.id AS seller_id,
+            s.shop_name,
+            s.name,
+            s.phone,
+            s.username,
+            s.city,
+            s.photo_id AS seller_photo_id,
+            s.is_verified,
+            sp.id AS part_id,
+            sp.name AS part_name,
+            sp.category AS part_category,
+            sp.price AS part_price,
+            sp.photo_id AS part_photo_id,
+            sp.description AS part_description,
+            sc.id AS car_id,
+            b.name AS brand,
+            m.name AS model,
+            sc.photo_id AS car_photo_id
+        FROM seller_parts sp
+        JOIN seller_cars sc ON sc.id = sp.car_id
+        JOIN sellers s ON s.id = sp.seller_id
+        JOIN models m ON m.id = sc.model_id
+        JOIN brands b ON b.id = m.brand_id
+        WHERE sp.status = 'available'
+          AND sc.status::text IN ('active', '1', 'true', 'enabled', 'published')
+          AND (
+                LOWER(COALESCE(sp.name, '')) LIKE LOWER($1)
+             OR LOWER(COALESCE(sp.category, '')) LIKE LOWER($1)
+             OR LOWER(COALESCE(sp.description, '')) LIKE LOWER($1)
+             OR LOWER(COALESCE(b.name, '')) LIKE LOWER($1)
+             OR LOWER(COALESCE(m.name, '')) LIKE LOWER($1)
+          )
+        ORDER BY sp.updated_at DESC NULLS LAST, sp.id DESC
+        LIMIT $2
+        """,
+        pattern,
+        limit,
+    )
+
+
 async def get_available_parts_for_site(seller_id: int) -> list:
     return await fetch(
         """
