@@ -323,19 +323,18 @@ async def _show_buyer_search_page(callback: CallbackQuery, state: FSMContext, pa
     item_type = item.get("_type", "car")
     await state.update_data(buyer_search_page=safe_page)
 
+    text = format_search_card(item, item_type)
+    kb = search_result_kb(item, item_type, page=safe_page, total=total)
+    photo = item.get("part_photo_id") or item.get("car_photo_id") or item.get("seller_photo_id")
     try:
-        await callback.message.edit_text(
-            format_search_card(item, item_type),
-            parse_mode="HTML",
-            reply_markup=search_result_kb(item, item_type, page=safe_page, total=total),
-        )
+        if photo:
+            await callback.message.delete()
+            await callback.message.answer_photo(photo=photo, caption=text, parse_mode="HTML", reply_markup=kb)
+        else:
+            await callback.message.edit_text(text, parse_mode="HTML", reply_markup=kb)
     except Exception as exc:
         logger.warning("Unable to edit buyer search card page=%s: %s", safe_page, exc)
-        await callback.message.answer(
-            format_search_card(item, item_type),
-            parse_mode="HTML",
-            reply_markup=search_result_kb(item, item_type, page=safe_page, total=total),
-        )
+        await callback.message.answer(text, parse_mode="HTML", reply_markup=kb)
     await callback.answer()
 
 

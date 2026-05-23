@@ -252,3 +252,45 @@ async def update_car_field(car_id: int, seller_id: int, field: str, value) -> bo
         return await update_seller_car_photo(car_id, seller_id, value)
 
     return False
+
+
+async def search_cars_for_buyer(query: str, limit: int = 100) -> list:
+    pattern = f"%{(query or '').strip()}%"
+    return await fetch(
+        """
+        SELECT
+            s.id AS seller_id,
+            s.shop_name,
+            s.name,
+            s.phone,
+            s.username,
+            s.city,
+            s.photo_id AS seller_photo_id,
+            s.is_verified,
+            NULL::BIGINT AS part_id,
+            NULL::TEXT AS part_name,
+            NULL::TEXT AS part_category,
+            NULL::NUMERIC AS part_price,
+            NULL::TEXT AS part_photo_id,
+            NULL::TEXT AS part_description,
+            sc.id AS car_id,
+            b.name AS brand,
+            m.name AS model,
+            sc.photo_id AS car_photo_id,
+            sc.description AS car_description
+        FROM seller_cars sc
+        JOIN sellers s ON s.id = sc.seller_id
+        JOIN models m ON m.id = sc.model_id
+        JOIN brands b ON b.id = m.brand_id
+        WHERE sc.status::text IN ('active', '1', 'true', 'enabled', 'published')
+          AND (
+                LOWER(COALESCE(b.name, '')) LIKE LOWER($1)
+             OR LOWER(COALESCE(m.name, '')) LIKE LOWER($1)
+             OR LOWER(COALESCE(sc.description, '')) LIKE LOWER($1)
+          )
+        ORDER BY sc.updated_at DESC NULLS LAST, sc.id DESC
+        LIMIT $2
+        """,
+        pattern,
+        limit,
+    )
