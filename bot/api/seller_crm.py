@@ -240,6 +240,17 @@ MODULE_KEYS = [
     ("footer", "Футер"),
 ]
 
+WEBSITE_EDITABLE_BLOCKS: dict[str, dict[str, str]] = {
+    "hero": {"name": "Перший екран", "description": "Головний банер і ключове повідомлення."},
+    "about": {"name": "Про компанію", "description": "Коротко про вашу компанію та досвід."},
+    "cars": {"name": "Авто на розборі", "description": "Блок із авто, які ви зараз демонтуєте."},
+    "products": {"name": "Товари / запчастини", "description": "Показ каталогу товарів і запчастин."},
+    "services": {"name": "Послуги", "description": "Перелік послуг на вашому сайті."},
+    "contacts": {"name": "Контакти", "description": "Телефони, месенджери та адреса."},
+    "map": {"name": "Карта", "description": "Відображення локації на карті."},
+    "footer": {"name": "Футер", "description": "Нижній блок із службовою інформацією."},
+}
+
 
 def _is_demo_crm_slug(crm_slug: str | None) -> bool:
     return (crm_slug or "").strip().lower() == DEMO_CRM_SLUG
@@ -3915,20 +3926,87 @@ async def seller_crm_website_editor(request: Request, crm_slug: str, status: str
     seller_id = account["seller_id"]
     site = _demo_site() if _is_demo_account(account) else await get_current_seller_site_or_404(seller_id)
     config_draft = _as_config(site)
-    module_map = {
-        "hero": ("Перший екран", "Головний банер і ключове повідомлення."),
-        "about": ("Про компанію", "Коротко про вашу компанію та досвід."),
-        "cars": ("Авто на розборі", "Блок із авто, які ви зараз демонтуєте."),
-        "products": ("Товари / запчастини", "Показ каталогу товарів і запчастин."),
-        "services": ("Послуги", "Перелік послуг на вашому сайті."),
-        "gallery": ("Галерея", "Фото майстерні, процесів і результатів."),
-        "contacts": ("Контакти", "Телефони, месенджери та адреса."),
-        "map": ("Карта", "Відображення локації на карті."),
-        "footer": ("Футер", "Нижній блок із службовою інформацією."),
-    }
-    blocks = [{"key":k,"title":v[0],"description":v[1],"shown":bool((config_draft.get("modules") or {}).get(k, False))} for k,v in module_map.items()]
+    blocks = [{"key": k, "title": v["name"], "description": v["description"], "shown": bool((config_draft.get("modules") or {}).get(k, False))} for k, v in WEBSITE_EDITABLE_BLOCKS.items()]
     return templates.TemplateResponse("seller_crm/website_editor.html", _seller_crm_context(request, title="Редагування сайту — кабінет продавця", current_page="website_editor", account=account, subscription=subscription, site=site, blocks=blocks, status=status, has_website=True, has_cars=False, has_services=False))
 
+
+@router.get("/{crm_slug}/website/editor/{block_key}")
+async def seller_crm_website_block_editor(request: Request, crm_slug: str, block_key: str):
+    account, subscription = await _authorized_account(request, crm_slug)
+    if block_key not in WEBSITE_EDITABLE_BLOCKS:
+        raise HTTPException(status_code=400, detail="Невідомий блок")
+    site = await get_current_seller_site_or_404(account["seller_id"])
+    config_draft = _as_config(site)
+    return templates.TemplateResponse(
+        "seller_crm/website_block_edit.html",
+        _seller_crm_context(
+            request,
+            title=f"Редагування блоку: {WEBSITE_EDITABLE_BLOCKS[block_key]['name']} — кабінет продавця",
+            current_page="website_editor",
+            account=account,
+            subscription=subscription,
+            site=site,
+            block_key=block_key,
+            block_name=WEBSITE_EDITABLE_BLOCKS[block_key]["name"],
+            block_description=WEBSITE_EDITABLE_BLOCKS[block_key]["description"],
+            config=config_draft,
+            has_website=True,
+            has_cars=False,
+            has_services=False,
+        ),
+    )
+
+
+@router.post("/{crm_slug}/website/editor/{block_key}")
+async def seller_crm_website_block_editor_save(
+    request: Request,
+    crm_slug: str,
+    block_key: str,
+    enabled: str | None = Form(None),
+):
+    account, _ = await _authorized_account(request, crm_slug)
+    if block_key not in WEBSITE_EDITABLE_BLOCKS:
+        raise HTTPException(status_code=400, detail="Невідомий блок")
+
+    form = await request.form()
+    patch: dict[str, Any] = {"modules": {block_key: bool(enabled)}}
+
+    if block_key == "hero":
+        patch["hero"] = {
+            "title": str(form.get("title") or "").strip(),
+            "subtitle": str(form.get("subtitle") or "").strip(),
+            "button_text": str(form.get("button_text") or "").strip(),
+            "button_secondary_text": str(form.get("button_secondary_text") or "").strip(),
+            "banners": _split_lines(str(form.get("banners") or "")),
+        }
+    elif block_key == "about":
+        patch["about"] = {"title": str(form.get("title") or "").strip(), "text": str(form.get("text") or "").strip()}
+    elif block_key == "contacts":
+        patch["contacts"] = {
+            "phones": _split_lines(str(form.get("phone") or "")),
+            "address": str(form.get("address") or "").strip(),
+            "messengers": {
+                "telegram": str(form.get("telegram") or "").strip(),
+                "viber": str(form.get("viber") or "").strip(),
+                "whatsapp": str(form.get("whatsapp") or "").strip(),
+            },
+        }
+    elif block_key == "map":
+        patch["map"] = {"address": str(form.get("address") or "").strip()}
+        patch["contacts"] = {"map_embed": str(form.get("map_embed") or "").strip()}
+    elif block_key == "footer":
+        patch["footer"] = {
+            "text": str(form.get("text") or "").strip(),
+            "copyright": str(form.get("copyright") or "").strip(),
+        }
+    elif block_key in {"cars", "products", "services"}:
+        patch[block_key] = {
+            "title": str(form.get("title") or "").strip(),
+            "subtitle": str(form.get("subtitle") or "").strip(),
+        }
+
+    await update_current_site_draft(account["seller_id"], patch)
+    return RedirectResponse(url=f"/crm/seller/{crm_slug}/website/editor?status=saved", status_code=303)
 
 @router.get("/{crm_slug}/website/settings")
 async def seller_crm_website_settings(request: Request, crm_slug: str, status: str | None = None):

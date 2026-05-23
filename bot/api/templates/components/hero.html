@@ -17,10 +17,10 @@
                             href="#contacts"
                             onclick="if (window.openCallback) { openCallback('Записатися на діагностику'); return false; }"
                         >
-                            Записатися
+                            {{ hero.get('button_text') or 'Записатися' }}
                         </a>
                         <a class="electric-hero-btn electric-hero-btn-secondary" href="#services">
-                            Послуги
+                            {{ hero.get('button_secondary_text') or 'Послуги' }}
                         </a>
                     </div>
 
@@ -89,14 +89,14 @@
                 <div class="hero-actions">
                     {% set primary_phone = contacts.get('phones', [])[0] if contacts.get('phones') else '' %}
                     {% if primary_phone %}
-                        <a class="hero-btn hero-btn-primary" href="tel:{{ primary_phone }}">Подзвонити</a>
+                        <a class="hero-btn hero-btn-primary" href="tel:{{ primary_phone }}">{{ hero.get('button_text') or 'Подзвонити' }}</a>
                     {% endif %}
                     <a
                         class="hero-btn hero-btn-secondary"
                         href="#contacts"
                         onclick="if (window.openCallback) { openCallback('Заявка з головного банера'); return false; }"
                     >
-                        Залишити заявку
+                        {{ hero.get('button_secondary_text') or 'Залишити заявку' }}
                     </a>
                 </div>
             </div>

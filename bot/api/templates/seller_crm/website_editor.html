@@ -2,14 +2,14 @@
 {% block crm_kicker %}Редагування сайту{% endblock %}
 {% block crm_heading %}Редагування сайту{% endblock %}
 {% block content %}
-{% if status == 'saved' %}<div class="notice">Зміни збережено у чернетку.</div>{% endif %}
+{% if status == 'saved' %}<div class="notice">Зміни збережено у чернетку. Опублікуйте сайт, щоб вони зʼявились для клієнтів.</div>{% endif %}
 {% for block in blocks %}
 <article class="card{% if not loop.first %} stack-top{% endif %}">
   <h3>{{ block.title }}</h3>
   <p class="muted">{{ block.description }}</p>
   <p><b>Статус:</b> {{ 'Показується' if block.shown else 'Приховано' }}</p>
   <div class="action-row">
-    <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/website/settings">Редагувати</a>
+    <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/website/editor/{{ block.key }}">Редагувати</a>
     <form method="post" action="/crm/seller/{{ account.crm_slug }}/website/editor/toggle/{{ block.key }}">
       <button class="btn">{{ 'Приховати' if block.shown else 'Показувати' }} блок на сайті</button>
     </form>
