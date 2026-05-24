@@ -1036,9 +1036,9 @@ async def _render_site_by_subdomain(subdomain: str, request: Request):
 
     config = merge_with_default(raw_config)
     design = config.get("design") if isinstance(config.get("design"), dict) else {}
-    template_id = str(design.get("template_id") or "service").strip().lower()
-    if template_id not in {"service", "dismantler", "premium"}:
-        template_id = "service"
+    template_id = str(design.get("template_id") or "service_classic").strip().lower()
+    if template_id not in {"dismantler_classic", "dismantler_catalog", "dismantler_premium", "service_classic", "service_modern", "service_premium"}:
+        template_id = "service_classic"
     color_scheme = str(design.get("color_scheme") or "dark_blue").strip().lower()
     if color_scheme not in {"dark_blue", "dark_red", "graphite", "black_gold", "light_minimal"}:
         color_scheme = "dark_blue"

@@ -1,12 +1,9 @@
 {% extends "base.html" %}
 {% block title %}{{ config.get('header', {}).get('title') or subdomain }}{% endblock %}
 {% block content %}
-{% set design = config.get('design', {}) %}
-{% set template_id = design.get('template_id', 'service') %}
-{% if template_id == 'dismantler' %}
+{% set template_id = config.get('design', {}).get('template_id', 'service_classic') %}
+{% if template_id in ['dismantler_classic','dismantler_catalog','dismantler_premium'] %}
   {% include 'public_site/dismantler.html' %}
-{% elif template_id == 'premium' %}
-  {% include 'public_site/premium.html' %}
 {% else %}
   {% include 'public_site/service.html' %}
 {% endif %}

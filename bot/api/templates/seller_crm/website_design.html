@@ -4,9 +4,24 @@
 {% block content %}
 {% if status == 'saved' %}<div class="notice">Зміни збережено у чернетку.</div>{% endif %}
 <article class="card">
-  <h3>Шаблони</h3>
+  <h3>Авторозбірка / Запчастини {% if recommended_category == 'dismantler' %}<span class="badge badge-success">Рекомендовано</span>{% endif %}</h3>
   <div class="grid two-col">
-  {% for item in templates_list %}
+  {% for item in template_groups.dismantler %}
+    <div class="mini-card">
+      <h4>{{ item.label }}</h4><p class="muted">{{ item.description }}</p>
+      {% if design.template_id == item.id %}<p><b>Обрано</b></p>{% endif %}
+      <form method="post" action="/crm/seller/{{ account.crm_slug }}/website/design/template">
+        <input type="hidden" name="template_id" value="{{ item.id }}">
+        <button class="btn">Обрати шаблон</button>
+      </form>
+    </div>
+  {% endfor %}
+  </div>
+</article>
+<article class="card stack-top">
+  <h3>Автопослуги / Візитка {% if recommended_category == 'service' %}<span class="badge badge-success">Рекомендовано</span>{% endif %}</h3>
+  <div class="grid two-col">
+  {% for item in template_groups.service %}
     <div class="mini-card">
       <h4>{{ item.label }}</h4><p class="muted">{{ item.description }}</p>
       {% if design.template_id == item.id %}<p><b>Обрано</b></p>{% endif %}

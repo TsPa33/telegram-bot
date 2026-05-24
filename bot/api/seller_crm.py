@@ -227,9 +227,9 @@ def _build_public_site_urls(site: dict[str, Any] | None) -> tuple[str | None, st
 def _extract_design(config: dict[str, Any] | None) -> dict[str, str]:
     cfg = config or {}
     design = cfg.get("design") if isinstance(cfg.get("design"), dict) else {}
-    template_id = str(design.get("template_id") or "service").strip().lower()
-    if template_id not in {"service", "dismantler", "premium"}:
-        template_id = "service"
+    template_id = str(design.get("template_id") or "service_classic").strip().lower()
+    if template_id not in {"dismantler_classic", "dismantler_catalog", "dismantler_premium", "service_classic", "service_modern", "service_premium"}:
+        template_id = "service_classic"
     color_scheme = str(design.get("color_scheme") or "dark_blue").strip().lower()
     if color_scheme not in {"dark_blue", "dark_red", "graphite", "black_gold", "light_minimal"}:
         color_scheme = "dark_blue"
@@ -3985,21 +3985,31 @@ async def seller_crm_website_design(request: Request, crm_slug: str, status: str
     config_draft = _as_config(site)
     design = _extract_design(config_draft)
     live_url = build_site_url(site["subdomain"])
-    templates_list = [
-        {"id": "service", "label": "Автосервіс / Послуги", "description": "СТО, евакуатор, автоелектрик, шиномонтаж, ремонт."},
-        {"id": "dismantler", "label": "Авторазборка / Запчастини", "description": "Авторозборки, продавці запчастин."},
-        {"id": "premium", "label": "Premium Business", "description": "Premium services, large sellers, branded businesses."},
-    ]
+    has_parts = False if _is_demo_account(account) else bool(await get_available_parts_for_site(seller_id) or await get_seller_products(seller_id, limit=1) or await get_cars_by_seller(seller_id))
+    has_services_data = False if _is_demo_account(account) else bool(await get_services_by_seller(seller_id))
+    recommended_category = "dismantler" if has_parts else ("service" if has_services_data else "service")
+    template_groups = {
+        "dismantler": [
+            {"id": "dismantler_classic", "label": "Dismantler Classic", "description": "Hero, catalog, VIN, donor cars, contacts."},
+            {"id": "dismantler_catalog", "label": "Dismantler Catalog", "description": "Inventory-first catalog template."},
+            {"id": "dismantler_premium", "label": "Dismantler Premium", "description": "Premium dismantler presentation."},
+        ],
+        "service": [
+            {"id": "service_classic", "label": "Service Classic", "description": "Classic services landing page."},
+            {"id": "service_modern", "label": "Service Modern", "description": "Modern business-card style."},
+            {"id": "service_premium", "label": "Service Premium", "description": "Premium service positioning."},
+        ],
+    }
     schemes = ["dark_blue", "dark_red", "graphite", "black_gold", "light_minimal"]
-    return templates.TemplateResponse("seller_crm/website_design.html", _seller_crm_context(request, title="Дизайн сайту — кабінет продавця", current_page="website_design", account=account, subscription=subscription, site=site, design=design, templates_list=templates_list, schemes=schemes, live_url=live_url, status=status, has_website=True, has_cars=False, has_services=False))
+    return templates.TemplateResponse("seller_crm/website_design.html", _seller_crm_context(request, title="Дизайн сайту — кабінет продавця", current_page="website_design", account=account, subscription=subscription, site=site, design=design, template_groups=template_groups, recommended_category=recommended_category, schemes=schemes, live_url=live_url, status=status, has_website=True, has_cars=False, has_services=False))
 
 
 @router.post("/{crm_slug}/website/design/template")
 async def seller_crm_website_design_template(request: Request, crm_slug: str, template_id: str = Form("service")):
     account, _ = await _authorized_account(request, crm_slug)
     template_id = (template_id or "service").strip().lower()
-    if template_id not in {"service", "dismantler", "premium"}:
-        template_id = "service"
+    if template_id not in {"dismantler_classic", "dismantler_catalog", "dismantler_premium", "service_classic", "service_modern", "service_premium"}:
+        template_id = "service_classic"
     await update_current_site_draft(account["seller_id"], {"design": {"template_id": template_id}})
     return RedirectResponse(url=f"/crm/seller/{crm_slug}/website/design?status=saved", status_code=303)
 
