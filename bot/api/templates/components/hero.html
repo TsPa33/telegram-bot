@@ -91,19 +91,19 @@
                     <div class="hero-eyebrow">{{ hero.get('eyebrow') }}</div>
                 {% endif %}
 
-                <h1>{{ hero.get('title') or config.get('header', {}).get('title') or 'Автомобільні послуги поруч' }}</h1>
+                <h1 class="section-title">{{ hero.get('title') or config.get('header', {}).get('title') or 'Автомобільні послуги поруч' }}</h1>
 
                 {% if hero.get('subtitle') %}
-                    <p>{{ hero.get('subtitle') }}</p>
+                    <p class="section-description">{{ hero.get('subtitle') }}</p>
                 {% endif %}
 
                 <div class="hero-actions">
                     {% set primary_phone = contacts.get('phones', [])[0] if contacts.get('phones') else '' %}
                     {% if primary_phone %}
-                        <a class="hero-btn hero-btn-primary" href="tel:{{ primary_phone }}">{{ hero.get('button_text') or 'Подзвонити' }}</a>
+                        <a class="hero-btn hero-btn-primary site-button site-button--primary" href="tel:{{ primary_phone }}">{{ hero.get('button_text') or 'Подзвонити' }}</a>
                     {% endif %}
                     <a
-                        class="hero-btn hero-btn-secondary"
+                        class="hero-btn hero-btn-secondary site-button site-button--secondary"
                         href="#contacts"
                         onclick="if (window.openCallback) { openCallback('Заявка з головного банера'); return false; }"
                     >
