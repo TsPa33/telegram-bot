@@ -1,0 +1,47 @@
+{% extends "seller_crm/base.html" %}
+{% block crm_kicker %}Блоки сайту{% endblock %}
+{% block crm_heading %}Блоки сайту{% endblock %}
+{% block content %}
+{% if status == 'saved' %}<div class="notice">Зміни збережено у чернетку. Опублікуйте сайт, щоб клієнти побачили зміни.</div>{% endif %}
+{% if status == 'locked' %}<div class="notice">Цей блок захищений і завжди показується.</div>{% endif %}
+<article class="card">
+  <p class="muted">Увімкніть потрібні розділи та розташуйте їх у правильному порядку.</p>
+  <div class="action-row">
+    <a class="btn ghost" href="{{ preview_url }}" target="_blank" rel="noopener">Переглянути сайт</a>
+    <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/website#publish">Опублікувати зміни</a>
+  </div>
+</article>
+
+{% for block in blocks %}
+<article class="card stack-top">
+  <div class="action-row">
+    <div>
+      <h3>{{ block.title }}</h3>
+      <p class="muted">{{ block.description }}</p>
+      <p><b>Статус:</b> {{ 'Увімкнено' if block.shown else 'Вимкнено' }}{% if block.locked %} · Рекомендовано залишити увімкненим{% endif %}</p>
+    </div>
+    <div class="action-row wrap">
+      <form method="post" action="/crm/seller/{{ account.crm_slug }}/website/blocks/move">
+        <input type="hidden" name="section_id" value="{{ block.key }}">
+        <input type="hidden" name="direction" value="up">
+        <button class="btn ghost" type="submit">Вище</button>
+      </form>
+      <form method="post" action="/crm/seller/{{ account.crm_slug }}/website/blocks/move">
+        <input type="hidden" name="section_id" value="{{ block.key }}">
+        <input type="hidden" name="direction" value="down">
+        <button class="btn ghost" type="submit">Нижче</button>
+      </form>
+      {% if block.locked %}
+        <button class="btn ghost" type="button" disabled>{{ 'Увімкнено' if block.shown else 'Заблоковано' }}</button>
+      {% else %}
+      <form method="post" action="/crm/seller/{{ account.crm_slug }}/website/blocks/toggle">
+        <input type="hidden" name="section_id" value="{{ block.key }}">
+        <button class="btn" type="submit">{{ 'Вимкнути' if block.shown else 'Увімкнути' }}</button>
+      </form>
+      {% endif %}
+      <a class="btn ghost" href="{{ block.edit_url }}">Редагувати</a>
+    </div>
+  </div>
+</article>
+{% endfor %}
+{% endblock %}

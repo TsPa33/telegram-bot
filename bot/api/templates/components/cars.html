@@ -1,22 +1,23 @@
 {% set config = config if config is defined else {} %}
 {% set data = data if data is defined else {} %}
 {% set cars_config = config.get('cars', {}) %}
-{% set cars_list = data.get('cars', []) if data is mapping else [] %}
+{% set cars_list = data.get('cars_items', data.get('cars', [])) if data is mapping else [] %}
 <section id="cars" class="section">
     <div class="container">
 
-        <h2>Авто</h2>
+        <h2 class="section-title">Авто</h2>
 
-        <div class="cars-grid">
+        {% if cars_list %}
+        <div class="cars-grid site-grid">
 
             {% for c in cars_list %}
-            <div class="car-card">
+            <div class="car-card site-card">
 
                 <!-- IMAGE -->
                 <div class="car-image">
 
                     {% if c.photo_url %}
-                        <img
+                        <img class="site-image"
                             src="{{ c.photo_url }}"
                             alt="{{ c.title }}"
                         >
@@ -29,19 +30,19 @@
                 <!-- CONTENT -->
                 <div class="car-content">
 
-                    <h3 class="car-title">
+                    <h3 class="car-title section-subtitle">
                         {{ c.title or (c.brand ~ " " ~ c.model) }}
                     </h3>
 
                     {% if c.description %}
-                        <p class="car-desc">
+                        <p class="car-desc section-description">
                             {{ c.description }}
                         </p>
                     {% endif %}
 
                     <!-- CTA -->
                     <button
-                        class="contact-seller-btn"
+                        class="contact-seller-btn site-button site-button--primary"
                         onclick="openSellerContacts()"
                     >
                          Зв'язатись з продавцем
@@ -53,6 +54,15 @@
             {% endfor %}
 
         </div>
+        {% else %}
+        <div class="site-card car-card">
+            <div class="car-content">
+                <h3 class="section-subtitle">Авто в наявності скоро зʼявляться</h3>
+                <p class="section-description">Залиште запит, і ми допоможемо підібрати потрібний варіант.</p>
+                <a class="contact-seller-btn site-button site-button--primary" href="#contacts">Зв'язатись з продавцем</a>
+            </div>
+        </div>
+        {% endif %}
 
     </div>
 </section>
@@ -87,7 +97,7 @@
             {% for phone in phones %}
             <a
                 href="tel:{{ phone }}"
-                class="seller-contact-btn"
+                class="seller-contact-btn site-card site-button site-button--secondary"
             >
                 <img
                     src="https://cdn-icons-png.flaticon.com/512/724/724664.png"
@@ -106,7 +116,7 @@
             <a
                 href="https://t.me/{{ m.telegram }}"
                 target="_blank"
-                class="seller-contact-btn"
+                class="seller-contact-btn site-card site-button site-button--secondary"
             >
                 <img
                     src="https://cdn-icons-png.flaticon.com/512/2111/2111646.png"
@@ -121,7 +131,7 @@
             <a
                 href="https://wa.me/{{ m.whatsapp }}"
                 target="_blank"
-                class="seller-contact-btn"
+                class="seller-contact-btn site-card site-button site-button--secondary"
             >
                 <img
                     src="https://cdn-icons-png.flaticon.com/512/733/733585.png"
@@ -135,7 +145,7 @@
             {% if m.viber %}
             <a
                 href="viber://chat?number={{ m.viber }}"
-                class="seller-contact-btn"
+                class="seller-contact-btn site-card site-button site-button--secondary"
             >
                 <img
                     src="https://cdn-icons-png.flaticon.com/512/3670/3670059.png"
@@ -154,7 +164,7 @@
             <a
                 href="{{ s.instagram }}"
                 target="_blank"
-                class="seller-contact-btn"
+                class="seller-contact-btn site-card site-button site-button--secondary"
             >
                 <img
                     src="https://cdn-icons-png.flaticon.com/512/2111/2111463.png"
@@ -169,7 +179,7 @@
             <a
                 href="{{ s.facebook }}"
                 target="_blank"
-                class="seller-contact-btn"
+                class="seller-contact-btn site-card site-button site-button--secondary"
             >
                 <img
                     src="https://cdn-icons-png.flaticon.com/512/733/733547.png"

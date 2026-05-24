@@ -2,19 +2,24 @@
 {% set data = data if data is defined else {} %}
 {% set products_config = config.get('products', config.get('catalog', {})) %}
 {% set catalog = config.get('catalog', {}) %}
-{% set products_list = data.get('products', []) if data is mapping else [] %}
+{% set products_catalog = config.get('products_catalog', {}) %}
+{% set products_list = data.get('catalog_items', data.get('products', [])) if data is mapping else [] %}
 {% set parts_list = data.get('parts', []) if data is mapping else [] %}
 {% set catalog_items = products_list or parts_list or products_config.get('items', []) or catalog.get('items', []) %}
+{% set catalog_layout = (catalog.get('layout') or 'grid')|lower %}
+{% if catalog_layout not in ['grid', 'compact', 'featured'] %}{% set catalog_layout = 'grid' %}{% endif %}
+{% set display_items = catalog_items[:(catalog.get('per_page') or 6)] %}
 {% set categories = products_config.get('categories', catalog.get('categories', [])) %}
 {% set category_counts = products_config.get('category_counts', catalog.get('category_counts', {})) %}
-{% if catalog_items %}
-<section id="products" class="cp-products-section">
+{% set featured_categories = catalog.get('featured_categories') if catalog.get('featured_categories') is iterable and catalog.get('featured_categories') is not string else [] %}
+{% set cta_label = catalog.get('cta_label') or products_config.get('cta_label') or 'Детальніше' %}
+<section id="products" class="cp-products-section catalog--{{ catalog_layout }}">
     <div class="container cp-products-container">
         <div class="cp-products-head">
             <div>
                 <span class="cp-eyebrow">Premium Parts</span>
-                <h2>{{ products_config.get('title') or catalog.get('title') or 'Каталог автозапчастин' }}</h2>
-                <p>{{ products_config.get('subtitle') or catalog.get('subtitle') or 'Перевірені запчастини з розборки з підбором по VIN' }}</p>
+                <h2 class="section-title">{{ catalog.get('title') or products_config.get('title') or products_catalog.get('title') or 'Каталог' }}</h2>
+                <p class="section-description">{{ catalog.get('description') or catalog.get('subtitle') or products_config.get('description') or products_config.get('subtitle') or products_catalog.get('description') or products_catalog.get('subtitle') or 'Перегляньте доступні пропозиції та залиште запит.' }}</p>
                 <p class="cp-products-total">{{ products_config.get('total_available', catalog.get('total_available', catalog_items|length)) }} товарів у наявності</p>
             </div>
 
@@ -35,7 +40,16 @@
 
         
         {% set category_icons = {'Двигуни': '⚙️', 'КПП': '🔩', 'Оптика': '💡', 'Кузов': '🚘', 'Салон': '🪑', 'Ходова': '🛞'} %}
-        {% if categories %}
+
+
+        {% if featured_categories %}
+        <div class="cp-category-pills" aria-label="Категорії для акценту">
+            {% for featured in featured_categories %}
+            <span class="cp-category-pill">{{ featured }}</span>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% if categories and display_items %}
         <div class="cp-category-pills" aria-label="Категорії товарів">
             <button type="button" class="cp-category-pill active" data-cp-category="all">
                 <span>🏎️</span> Усі
@@ -48,7 +62,7 @@
         </div>
         {% endif %}
 
-        {% if categories %}
+        {% if categories and display_items %}
         <div class="cp-category-links" aria-label="Навігація категоріями">
             {% for category in categories %}
             <a href="#products-cat-{{ loop.index }}" class="cp-category-link">
@@ -58,15 +72,15 @@
         </div>
         {% endif %}
 
-        {% for category in categories if categories %}
+        {% for category in categories if categories and display_items %}
         <section class="cp-category-section" id="products-cat-{{ loop.index }}">
             <h3 class="cp-category-title">{{ category }}{% if category_counts.get(category) %} <small>({{ category_counts.get(category) }})</small>{% endif %}</h3>
             <div class="cp-product-grid">
-            {% for product in catalog_items if product.get('category') == category %}
-            <article class="cp-product-card" data-cp-product-card data-cp-category-value="{{ product.get('category', '') }}">
-                <div class="cp-product-media">
+            {% for product in display_items if product.get('category') == category %}
+            <article class="cp-product-card site-card" data-cp-product-card data-cp-category-value="{{ product.get('category', '') }}">
+                <div class="cp-product-media site-media">
                     {% if product.get('image') %}
-                    <img src="{{ product.get('image') }}" alt="{{ product.get('title', 'Автозапчастина') }}" loading="lazy">
+                    <img class="site-image" src="{{ product.get('image') }}" alt="{{ product.get('title', 'Автозапчастина') }}" loading="lazy">
                     {% else %}
                     <div class="cp-product-placeholder" aria-hidden="true">
                         <span>{{ category_icons.get(product.get('category'), '⚙️') }}</span>
@@ -74,7 +88,7 @@
                         <small>{{ product.get('sku') or 'CARPOT PARTS' }}</small>
                     </div>
                     {% endif %}
-                    <span class="cp-product-category">{{ category_icons.get(product.get('category'), '🔧') }} {{ product.get('category') }}</span>
+                    <span class="cp-product-category site-badge">{{ category_icons.get(product.get('category'), '🔧') }} {{ product.get('category') }}</span>
                     {% if product.get('badge') %}
                     <span class="cp-product-badge cp-badge-{{ product.get('badge')|lower }}">{{ product.get('badge') }}</span>
                     {% endif %}
@@ -114,10 +128,10 @@
                     </div>
 
                     <div class="cp-product-actions">
-                        <button type="button" class="cp-btn cp-btn-buy" data-cp-buy="{{ product.get('id') }}">Купити</button>
-                        <button type="button" class="cp-btn cp-btn-detail" data-cp-detail="{{ product.get('id') }}">Детальніше</button>
-                        <button type="button" class="cp-btn cp-btn-order" data-cp-order="{{ product.get('id') }}">Замовити</button>
-                        <button type="button" class="cp-btn cp-btn-message" data-cp-message>Написати</button>
+                        <button type="button" class="cp-btn cp-btn-buy site-button site-button--primary" data-cp-buy="{{ product.get('id') }}">Купити</button>
+                        <button type="button" class="cp-btn cp-btn-detail site-button site-button--secondary" data-cp-detail="{{ product.get('id') }}">{{ cta_label }}</button>
+                        <button type="button" class="cp-btn cp-btn-order site-button site-button--secondary" data-cp-order="{{ product.get('id') }}">Замовити</button>
+                        <button type="button" class="cp-btn cp-btn-message site-button site-button--secondary" data-cp-message>Написати</button>
                     </div>
                 </div>
             </article>
@@ -126,9 +140,9 @@
         </section>
         {% endfor %}
 
-        {% if not categories %}
+        {% if not categories and display_items %}
         <div class="cp-product-grid">
-            {% for product in catalog_items %}
+            {% for product in display_items %}
             <article class="cp-product-card" data-cp-product-card data-cp-category-value="{{ product.get('category', '') }}">
                 <div class="cp-product-media">
                     {% if product.get('image') %}
@@ -148,7 +162,7 @@
                     <strong class="cp-product-price">{{ product.get('price') }}</strong>
                     <div class="cp-product-actions">
                         <button type="button" class="cp-btn cp-btn-buy" data-cp-buy="{{ product.get('id') }}">Купити</button>
-                        <button type="button" class="cp-btn cp-btn-detail" data-cp-detail="{{ product.get('id') }}">Детальніше</button>
+                        <button type="button" class="cp-btn cp-btn-detail" data-cp-detail="{{ product.get('id') }}">{{ cta_label }}</button>
                     </div>
                 </div>
             </article>
@@ -1344,5 +1358,8 @@ body.has-products-cart.theme-parts_dark_red [data-scroll-top] {
 })();
 </script>
 
-{% endif %}
+        {% if not display_items %}
+        <div class="cp-gallery-empty">Поки що пропозиції не додані. Звʼяжіться з продавцем для уточнення наявності.</div>
+        {% endif %}
+
     .cp-product-media { min-height: 220px; }
