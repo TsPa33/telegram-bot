@@ -3729,6 +3729,14 @@ async def seller_crm_dashboard(request: Request, crm_slug: str):
     has_website = bool(site or account_flags.get("has_site") or account_flags.get("website"))
     has_cars = bool(cars)
     has_services = bool(services)
+    draft_config = merge_with_default((site or {}).get("config_draft") or {}) if site else {}
+    live_config = merge_with_default((site or {}).get("config_live") or {}) if site else {}
+    draft_modules = draft_config.get("modules") or {}
+    live_modules = live_config.get("modules") or {}
+    products_module_draft_enabled = bool(draft_modules.get("products"))
+    products_module_live_enabled = bool(live_modules.get("products"))
+    cars_module_draft_enabled = bool(draft_modules.get("cars"))
+    services_module_draft_enabled = bool(draft_modules.get("services"))
 
     return templates.TemplateResponse(
         "seller_crm/dashboard.html",
