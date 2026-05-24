@@ -2,7 +2,6 @@
 {% set hero = config.get('hero', {}) %}
 {% set contacts = config.get('contacts', {}) %}
 {% set footer = config.get('footer', {}) %}
-{% set modules = config.get('modules', {}) %}
 {% set gallery = config.get('gallery', {}) %}
 {% set services = config.get('services', {}) %}
 <header class="header">
@@ -54,7 +53,7 @@
             </li>
 
             <!-- PRODUCTS -->
-            {% if modules.get('products', False) and catalog_has_items %}
+            {% if data.has_catalog %}
             <li>
                 <a href="#products" class="nav-link">
                     Каталог
@@ -63,7 +62,7 @@
             {% endif %}
 
             <!-- SERVICES -->
-            {% if modules.get('services', True) and services %}
+            {% if data.has_services %}
             <li>
                 <a href="#services" class="nav-link">
                     Послуги
@@ -92,7 +91,7 @@
             {% endif %}
 
             <!-- CARS -->
-            {% if modules.get('cars', True) and cars %}
+            {% if data.has_cars %}
             <li>
                 <a href="#cars" class="nav-link">
                     Авто
@@ -101,18 +100,16 @@
             {% endif %}
 
             <!-- CONTACTS -->
-            {% if modules.get('contacts', True) %}
-                {% if phones or contacts.get('address') or telegram or viber or whatsapp or instagram or facebook %}
+            {% if phones or contacts.get('address') or telegram or viber or whatsapp or instagram or facebook %}
                 <li>
                     <a href="#contacts" class="nav-link">
                         Контакти
                     </a>
                 </li>
                 {% endif %}
-            {% endif %}
 
             <!-- MAP -->
-            {% if modules.get('map', True) and contacts.get('map_embed') %}
+            {% if contacts.get('map_embed') %}
             <li>
                 <a href="#map" class="nav-link">
                     Карта

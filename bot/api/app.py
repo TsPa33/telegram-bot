@@ -20,7 +20,7 @@ from bot.config import BOT_TOKEN, CRM_BASE_URL
 from bot.database.pool import init_pool
 from bot.database.models import create_tables
 from bot.database.migrations_runner import run_sql_migrations
-from bot.database.repositories.site_repo import get_site_by_subdomain, update_site_config_draft, publish_site
+from bot.database.repositories.site_repo import get_site_by_subdomain
 from bot.database.repositories.seller_repo import get_seller_by_id
 from bot.database.repositories.car_repo import get_cars_by_seller
 from bot.database.repositories.service_repo import get_services_by_seller
@@ -53,13 +53,10 @@ from bot.database.repositories.analytics_repo import (
 
 from bot.services.demo_seed_service import get_demo_render_preset
 from bot.services.site_config import merge_with_default
-from bot.services.site_blocks import SITE_BLOCK_REGISTRY
 from bot.utils.subdomain import is_valid_subdomain
 from bot.services.domain_service import extract_subdomain_from_host
 from bot.services.seller_notification_ops import format_site_lead_notification, seller_crm_context_url
 from bot.services.telegram_sender import send_message_to_seller
-from bot.database.repositories.seller_crm_repo import get_crm_session, get_crm_account_by_seller
-from bot.services.seller_crm import verify_site_edit_token
 
 app = FastAPI()
 router = APIRouter()
@@ -67,8 +64,6 @@ router = APIRouter()
 templates = Jinja2Templates(directory="bot/api/templates")
 bot = Bot(token=BOT_TOKEN)
 logger = logging.getLogger(__name__)
-INLINE_EDITABLE_BLOCKS = set(SITE_BLOCK_REGISTRY.keys())
-
 
 def _extract_inline_edit_patch(block_key: str, payload: dict) -> dict:
     payload = payload or {}
@@ -1016,16 +1011,7 @@ async def _render_site_by_subdomain(subdomain: str, request: Request):
             detail="Site not found"
         )
 
-    edit_mode_requested = str(request.query_params.get("edit") or "") in {"1", "true", "on", "yes"}
-    edit_token = str(request.query_params.get("token") or "").strip()
-    valid_owner_token = edit_mode_requested and verify_site_edit_token(
-        token=edit_token,
-        seller_id=int(site.get("seller_id") or 0),
-        site_id=int(site.get("id") or 0),
-        subdomain=subdomain,
-    )
-
-    raw_config = site.get("config_draft") if valid_owner_token else site.get("config_live")
+    raw_config = site.get("config_live")
     raw_config = raw_config or {}
 
     if isinstance(raw_config, str):
@@ -1279,25 +1265,6 @@ async def _render_site_by_subdomain(subdomain: str, request: Request):
             )
             services.append(demo_service)
 
-    is_owner_edit_mode = False
-    owner_crm_url = None
-    owner_crm_slug = None
-    crm_base_url = (CRM_BASE_URL or "https://crm.carpot.com.ua").rstrip("/")
-    if edit_mode_requested:
-        if valid_owner_token:
-            is_owner_edit_mode = True
-            crm_account = await get_crm_account_by_seller(int(site.get("seller_id") or 0))
-            owner_crm_slug = str((crm_account or {}).get("crm_slug") or "")
-            if owner_crm_slug:
-                owner_crm_url = f"{crm_base_url}/crm/seller/{owner_crm_slug}/website/editor"
-
-        token = request.cookies.get("seller_crm_session")
-        if token and not is_owner_edit_mode:
-            session = await get_crm_session(token)
-            if session and session.get("seller_id") == seller.get("id") and session.get("is_active"):
-                is_owner_edit_mode = True
-                owner_crm_slug = session.get("crm_slug")
-                owner_crm_url = f"{crm_base_url}/crm/seller/{session.get('crm_slug')}/website/editor"
     return templates.TemplateResponse(
         "site.html",
         {
@@ -1306,17 +1273,20 @@ async def _render_site_by_subdomain(subdomain: str, request: Request):
             "site_id": site.get("id"),
             "config": config,
             "seller": seller,
-            "cars": cars,
-            "services": services,
-            "products": products,
-            "seller_parts": seller_parts,
-            "catalog_has_items": bool(unified_items),
-            "is_owner_edit_mode": is_owner_edit_mode,
-            "owner_crm_url": owner_crm_url,
-            "owner_crm_slug": owner_crm_slug,
-            "crm_base_url": crm_base_url,
-            "edit_token": edit_token if is_owner_edit_mode else "",
-            "block_registry": SITE_BLOCK_REGISTRY,
+            "site": site,
+            "data": {
+                "seller": seller,
+                "cars": cars,
+                "parts": seller_parts,
+                "products": products.get("items", []),
+                "services": services,
+                "gallery_items": (config.get("gallery") or {}).get("items", []),
+                "contacts": config.get("contacts", {}),
+                "has_catalog": bool(unified_items),
+                "has_cars": bool(cars),
+                "has_services": bool(services),
+                "has_gallery": bool((config.get("gallery") or {}).get("items", [])),
+            },
             "site_color_scheme": color_scheme,
         },
     )
@@ -1328,140 +1298,6 @@ async def render_site(subdomain: str, request: Request):
     if not isinstance(render_context, HTMLResponse):
         return render_context
     return render_context
-
-
-async def _authorized_site_for_inline_edit(request: Request, token: str, subdomain: str | None = None):
-    current_subdomain = (subdomain or extract_subdomain_from_host(request.headers.get("host", "")) or "").strip().lower()
-    site = await get_site_by_subdomain(current_subdomain)
-    if not site:
-        raise HTTPException(status_code=404, detail="Site not found")
-    if not token or not verify_site_edit_token(token=token, seller_id=int(site.get("seller_id") or 0), site_id=int(site.get("id") or 0), subdomain=current_subdomain):
-        raise HTTPException(status_code=403, detail="Invalid edit token")
-    return site
-
-
-@router.post("/site/{subdomain}/edit/block/{block_key}")
-@router.post("/edit/block/{block_key}")
-async def inline_edit_block(request: Request, block_key: str, subdomain: str | None = None):
-    if block_key not in INLINE_EDITABLE_BLOCKS:
-        raise HTTPException(status_code=400, detail="Unsupported block")
-    token = str(request.query_params.get("token") or "").strip()
-    payload = {}
-    if request.headers.get("content-type", "").startswith("application/json"):
-        payload = await request.json()
-    else:
-        form = await request.form()
-        payload = dict(form)
-    token = token or str(payload.get("token") or "").strip()
-    site = await _authorized_site_for_inline_edit(request, token=token, subdomain=subdomain)
-    patch = _extract_inline_edit_patch(block_key, payload)
-    if patch:
-        ok = await update_site_config_draft(int(site["seller_id"]), patch)
-        if not ok:
-            raise HTTPException(status_code=500, detail="Draft update failed")
-    return JSONResponse({"status": "ok", "block": block_key})
-
-
-@router.post("/site/{subdomain}/edit/block/{block_key}/visibility")
-@router.post("/edit/block/{block_key}/visibility")
-async def inline_edit_visibility(request: Request, block_key: str, subdomain: str | None = None):
-    if block_key not in INLINE_EDITABLE_BLOCKS:
-        raise HTTPException(status_code=400, detail="Unsupported block")
-    body = await request.json()
-    token = str(request.query_params.get("token") or body.get("token") or "").strip()
-    site = await _authorized_site_for_inline_edit(request, token=token, subdomain=subdomain)
-    visible = bool(body.get("visible"))
-    ok = await update_site_config_draft(int(site["seller_id"]), {"modules": {block_key: visible}})
-    if not ok:
-        raise HTTPException(status_code=500, detail="Draft update failed")
-    return JSONResponse({"status": "ok", "visible": visible})
-
-
-@router.post("/edit/publish")
-async def inline_publish(request: Request):
-    body = await request.json()
-    token = str(request.query_params.get("token") or body.get("token") or "").strip()
-    site = await _authorized_site_for_inline_edit(request, token=token)
-    ok = await publish_site(int(site["seller_id"]))
-    if not ok:
-        raise HTTPException(status_code=500, detail="Publish failed")
-    return JSONResponse({"status": "ok", "message": "Сайт опубліковано."})
-
-
-@router.post("/edit/layout/reorder")
-async def inline_layout_reorder(request: Request):
-    body = await request.json()
-    token = str(request.query_params.get("token") or body.get("token") or "").strip()
-    site = await _authorized_site_for_inline_edit(request, token=token)
-    order = body.get("order")
-    if not isinstance(order, list):
-        raise HTTPException(status_code=400, detail="Invalid order")
-    allowed = set(SITE_BLOCK_REGISTRY.keys())
-    clean = []
-    for key in order:
-        if isinstance(key, str) and key in allowed and key not in clean:
-            clean.append(key)
-    for key in SITE_BLOCK_REGISTRY.keys():
-        if key not in clean:
-            clean.append(key)
-    ok = await update_site_config_draft(int(site["seller_id"]), {"layout": {"order": clean}})
-    if not ok:
-        raise HTTPException(status_code=500, detail="Draft update failed")
-    return JSONResponse({"status": "ok", "order": clean})
-
-
-@router.post("/edit/layout/insert")
-async def inline_layout_insert(request: Request):
-    body = await request.json()
-    token = str(request.query_params.get("token") or body.get("token") or "").strip()
-    site = await _authorized_site_for_inline_edit(request, token=token)
-    block_key = str(body.get("block_key") or "").strip()
-    if block_key not in SITE_BLOCK_REGISTRY:
-        raise HTTPException(status_code=400, detail="Invalid block key")
-    config = merge_with_default(site.get("config_draft") or {})
-    current_order = list(config.get("layout", {}).get("order") or [])
-    order = [k for k in current_order if isinstance(k, str) and k in SITE_BLOCK_REGISTRY and k != block_key]
-    insert_after = body.get("insert_after")
-    index = body.get("index")
-    if isinstance(index, int):
-        target_index = max(0, min(index, len(order)))
-    elif isinstance(insert_after, str) and insert_after in order:
-        target_index = order.index(insert_after) + 1
-    else:
-        target_index = len(order)
-    order.insert(target_index, block_key)
-    for key in SITE_BLOCK_REGISTRY.keys():
-        if key not in order:
-            order.append(key)
-    ok = await update_site_config_draft(int(site["seller_id"]), {"modules": {block_key: True}, "layout": {"order": order}})
-    if not ok:
-        raise HTTPException(status_code=500, detail="Draft update failed")
-    return JSONResponse({"status": "ok", "order": order, "block_key": block_key})
-
-
-@router.post("/edit/theme")
-async def inline_theme_update(request: Request):
-    body = await request.json()
-    token = str(request.query_params.get("token") or body.get("token") or "").strip()
-    site = await _authorized_site_for_inline_edit(request, token=token)
-    preset = str(body.get("preset") or "").strip()
-    theme_map = {
-        "dark_blue": {"scheme": "default", "accent": "#3b82f6"},
-        "dark_red": {"scheme": "parts_dark_red", "accent": "#ef4444"},
-        "graphite": {"scheme": "electric_premium_dark", "accent": "#64748b"},
-        "premium_black": {"scheme": "default", "accent": "#0f172a"},
-        "light_minimal": {"scheme": "light_blue", "accent": "#2563eb"},
-    }
-    selected = theme_map.get(preset)
-    if not selected:
-        raise HTTPException(status_code=400, detail="Invalid theme preset")
-    ok = await update_site_config_draft(
-        int(site["seller_id"]),
-        {"theme": {"preset": preset, "scheme": selected["scheme"], "accent": selected["accent"]}},
-    )
-    if not ok:
-        raise HTTPException(status_code=500, detail="Draft update failed")
-    return JSONResponse({"status": "ok", "theme": {"preset": preset, **selected}})
 
 
 # ================= LEAD FORM =================
