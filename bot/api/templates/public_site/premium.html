@@ -1,4 +1,10 @@
+{% set header = config.get('header', {}) %}
+{% set hero = config.get('hero', {}) %}
 {% set contacts = config.get('contacts', {}) %}
+{% set footer = config.get('footer', {}) %}
+{% set modules = config.get('modules', {}) %}
+{% set gallery = config.get('gallery', {}) %}
+{% set services = config.get('services', {}) %}
 {% include "components/header.html" %}
 {% include "components/hero.html" %}
 <section class="section"><div class="container"><h2>Чому обирають нас</h2><p class="muted">Якісний сервіс, прозорі умови, швидка комунікація.</p></div></section>
