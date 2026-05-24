@@ -4,7 +4,9 @@
 {% set footer = config.get('footer', {}) %}
 {% set modules = config.get('modules', {}) %}
 {% set gallery = config.get('gallery', {}) %}
-{% set services_cfg = config.get('services', {}) %}
+{% set data = data if data is defined else {} %}
+{% set services_config = config.get('services', {}) %}
+{% set services_list = data.get('services', []) if data is mapping else [] %}
 <section id="services" class="services-split">
 <div class="container split">
 
@@ -13,7 +15,7 @@
         <h2>Послуги</h2>
 
         <ul id="servicesList">
-        {% for s in services %}
+        {% for s in services_list %}
             {% set service_price = s.price if s.price is not none and not (s.price|string).startswith('http') else '' %}
             {% set service_price_label = s.price_label or (('від ' ~ service_price ~ ' грн') if service_price else '') %}
             <li
@@ -33,8 +35,8 @@
     <!-- RIGHT -->
     <div class="right">
 
-        {% if services and services[0] %}
-        {% set main = services[0] %}
+        {% if services_list and services_list[0] %}
+        {% set main = services_list[0] %}
         {% set main_price = main.price if main.price is not none and not (main.price|string).startswith('http') else '' %}
         {% set main_price_label = main.price_label or (('від ' ~ main_price ~ ' грн') if main_price else '') %}
 
