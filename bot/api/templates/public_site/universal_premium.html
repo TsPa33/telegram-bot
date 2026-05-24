@@ -1,6 +1,6 @@
 {% include "components/header.html" %}
 {% include "components/hero.html" %}
-<section class="section"><div class="container"><h2>Чому обирають нас</h2><p class="muted">Сильний сервіс, швидка комунікація, прозорі умови та гарантія якості.</p></div></section>
+<section class="section cp-premium-intro"><div class="container"><h2>Чому обирають нас</h2><p class="muted">Сильний сервіс, швидка комунікація, прозорі умови та гарантія якості.</p></div></section>
 {% if data.has_services %}{% include "components/services.html" %}{% endif %}
 {% if data.has_gallery %}{% include "components/gallery.html" %}{% endif %}
 {% if data.has_catalog %}{% include "components/products.html" %}{% endif %}
@@ -9,3 +9,22 @@
 {% if data.has_contacts %}{% include "components/contacts.html" %}{% endif %}
 {% if data.has_map %}{% include "components/map.html" %}{% endif %}
 {% include "components/footer.html" %}
+<style>
+.cp-premium-intro{
+    padding: clamp(44px, 7vw, 84px) 0;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--bg) 86%, transparent), color-mix(in srgb, var(--surface) 72%, transparent));
+    border-top: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+}
+.cp-premium-intro h2{
+    margin:0;
+    font-size: clamp(30px, 5vw, 52px);
+    letter-spacing: -0.04em;
+}
+.cp-premium-intro .muted{
+    margin-top: 14px;
+    max-width: 760px;
+    color: var(--muted);
+    font-size: clamp(16px, 2.2vw, 20px);
+}
+</style>
