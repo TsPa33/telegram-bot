@@ -37,6 +37,12 @@
         <h2 class="section-title">{{ services_config.get('title') or 'Послуги' }}</h2>
         {% if services_config.get('description') or services_config.get('intro') %}
         <p class="section-description">{{ services_config.get('description') or services_config.get('intro') }}</p>
+        {% else %}
+        <div class="site-empty">
+            <strong>Список послуг оновлюється</strong>
+            <p>Залиште заявку — ми підкажемо актуальні роботи та вартість.</p>
+            <a class="site-button site-button--primary" href="#contacts">Отримати консультацію</a>
+        </div>
         {% endif %}
 
         <ul id="servicesList" class="site-list">

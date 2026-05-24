@@ -25,7 +25,10 @@
                 {% endif %}
             {% endfor %}
             {% if not gallery_items %}
-                <div class="cp-gallery-empty">Галерея порожня</div>
+                <div class="cp-gallery-empty site-empty">
+                    <strong>Галерея наповнюється</strong>
+                    <p>Найближчим часом тут з’являться фото робіт, товарів і кейсів.</p>
+                </div>
             {% endif %}
         </div>
     </div>
@@ -108,6 +111,7 @@
 .cp-gallery-card:hover img { transform: scale(1.08); filter: saturate(1.12); }
 .cp-gallery-card:hover::after,
 .cp-gallery-card:hover span { opacity: 1; transform: translateY(0); }
+.cp-gallery-empty p{margin:8px 0 0;}
 
 @media (max-width: 900px) {
     .cp-gallery-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
