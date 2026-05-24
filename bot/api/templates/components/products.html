@@ -20,7 +20,12 @@
                 <span class="cp-eyebrow">Premium Parts</span>
                 <h2 class="section-title">{{ catalog.get('title') or products_config.get('title') or products_catalog.get('title') or 'Каталог' }}</h2>
                 <p class="section-description">{{ catalog.get('description') or catalog.get('subtitle') or products_config.get('description') or products_config.get('subtitle') or products_catalog.get('description') or products_catalog.get('subtitle') or 'Перегляньте доступні пропозиції та залиште запит.' }}</p>
-                <p class="cp-products-total">{{ products_config.get('total_available', catalog.get('total_available', catalog_items|length)) }} товарів у наявності</p>
+                {% set products_total = products_config.get('total_available', catalog.get('total_available', catalog_items|length)) %}
+                {% if catalog_items %}
+                <p class="cp-products-total">{{ products_total }} товарів у наявності</p>
+                {% else %}
+                <p class="cp-products-total">Актуальну наявність уточнюйте у продавця — підберемо під ваш запит.</p>
+                {% endif %}
             </div>
 
             <button type="button" class="cp-cart-open" data-cp-cart-open>

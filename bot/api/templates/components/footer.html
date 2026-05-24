@@ -11,8 +11,9 @@
   <div class="container footer-inner">
 
     <div class="footer-left">
-      <h3 class="section-subtitle">{{ config.get('header', {}).get('title') or "CARPOT" }}</h3>
+      <h3 class="section-subtitle">{{ footer.get('business_name') or config.get('header', {}).get('title') or "CARPOT" }}</h3>
       <p class="section-description">{{ footer.get('text') or "Всі права захищені" }}</p>
+      <p class="section-description">© {{ now.year if now is defined else 2026 }} · {{ footer.get('powered_by') or 'Працює на CarPot' }}</p>
     </div>
 
     <div class="footer-right">

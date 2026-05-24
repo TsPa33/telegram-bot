@@ -212,6 +212,14 @@
                 </div>
                 {% endif %}
 
+                {% if not phones and not contacts.get('address') and not contacts.get('hours') and not m.telegram and not m.whatsapp and not m.viber and not s.instagram and not s.facebook %}
+                <div class="site-empty">
+                    <strong>Контакти уточнюються</strong>
+                    <p>Натисніть кнопку нижче, щоб надіслати запит продавцю.</p>
+                    <a class="site-button site-button--primary" href="#vin-request">Надіслати запит</a>
+                </div>
+                {% endif %}
+
             </div>
 
         </div>

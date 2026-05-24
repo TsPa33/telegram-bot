@@ -159,9 +159,151 @@ THEME_PRESETS: dict[str, dict[str, str]] = {
     "electric_premium_dark": {"name": "Electric Premium", "scheme": "electric_premium_dark", "accent": "#2563eb"},
 }
 
+DEFAULT_LAUNCH_PRESET_ID = "automotive_universal"
+
+LAUNCH_PRESETS: dict[str, dict[str, Any]] = {
+    "automotive_universal": {
+        "modules": {
+            "hero": True,
+            "about": True,
+            "services": True,
+            "catalog": True,
+            "cars": True,
+            "gallery": True,
+            "vin": True,
+            "contacts": True,
+            "map": True,
+            "footer": True,
+        },
+        "hero": {
+            "title": "Автозапчастини та автопослуги в одному місці",
+            "subtitle": "Допоможемо швидко знайти потрібне рішення для вашого авто.",
+            "button_text": "Звʼязатися",
+            "button_secondary_text": "Переглянути пропозиції",
+            "trust_items": ["Швидкий звʼязок", "Підбір під авто", "Актуальна наявність"],
+        },
+        "about": {
+            "title": "Про нас",
+            "description": "Ми працюємо з автотоварами та послугами для автомобілів. На сайті ви можете переглянути пропозиції, залишити заявку або швидко звʼязатися з продавцем.",
+            "advantages": ["Швидкий звʼязок", "Зручний підбір", "Актуальні пропозиції"],
+        },
+        "services": {
+            "title": "Послуги",
+            "description": "Підберемо рішення під ваш запит та уточнимо наявність у зручному форматі.",
+            "items": [
+                {"title": "Підбір запчастин", "description": "Підбір за VIN, маркою або артикулом.", "label": "за запитом"},
+                {"title": "Двигуни та КПП", "description": "Допоможемо підібрати вузли та комплектуючі.", "label": "за запитом"},
+                {"title": "Кузовні деталі", "description": "Крила, бампери, двері та інші кузовні елементи.", "label": "за запитом"},
+                {"title": "Автооптика", "description": "Фари, ліхтарі, протитуманні блоки та супутні деталі.", "label": "за запитом"},
+                {"title": "Запчастини з розборки", "description": "Актуальні пропозиції по вживаних деталях.", "label": "за запитом"},
+                {"title": "Консультація по наявності", "description": "Швидко підкажемо, що доступно прямо зараз.", "label": "за запитом"},
+            ],
+        },
+        "catalog": {
+            "title": "Каталог пропозицій",
+            "description": "Перегляньте доступні товари або залиште запит на підбір.",
+            "layout": "grid",
+            "per_page": 6,
+            "cta_label": "Уточнити наявність",
+            "featured_categories": ["Двигун", "Кузов", "Оптика"],
+        },
+        "cars": {
+            "title": "Авто в наявності",
+            "description": "Список актуальних авто оновлюється. Залиште запит на потрібну модель.",
+            "layout": "grid",
+            "per_page": 6,
+            "cta_label": "Уточнити наявність",
+        },
+        "gallery": {
+            "title": "Галерея",
+            "description": "Приклади товарів і робіт, які можна замовити або уточнити.",
+            "layout": "masonry",
+            "images": [],
+            "items": [],
+        },
+        "vin": {
+            "title": "Не знаєте, яка деталь підходить?",
+            "description": "Надішліть VIN-код або опис авто — ми допоможемо з підбором.",
+            "button_label": "Надіслати запит",
+        },
+        "vin_request": {
+            "title": "Не знаєте, яка деталь підходить?",
+            "text": "Надішліть VIN-код або опис авто — ми допоможемо з підбором.",
+            "button_text": "Надіслати запит",
+        },
+        "footer": {
+            "business_name": "",
+            "text": "Підбір автотоварів та послуг для вашого авто.",
+            "powered_by": "Працює на CarPot",
+        },
+    },
+}
+
+_CRITICAL_STRING_FIELDS = {
+    ("hero", "title"), ("hero", "subtitle"), ("hero", "button_text"), ("hero", "button_secondary_text"),
+    ("about", "title"), ("about", "description"),
+    ("services", "title"), ("services", "description"),
+    ("catalog", "title"), ("catalog", "description"), ("catalog", "cta_label"),
+    ("cars", "title"), ("cars", "description"), ("cars", "cta_label"),
+    ("gallery", "title"), ("gallery", "description"),
+    ("vin", "title"), ("vin", "description"), ("vin", "button_label"),
+    ("vin_request", "title"), ("vin_request", "text"), ("vin_request", "button_text"),
+}
 
 def get_theme_presets() -> dict[str, dict[str, str]]:
     return deepcopy(THEME_PRESETS)
+
+
+def get_launch_preset(preset_id: str | None = None) -> dict[str, Any]:
+    key = str(preset_id or DEFAULT_LAUNCH_PRESET_ID).strip().lower()
+    preset = LAUNCH_PRESETS.get(key) or LAUNCH_PRESETS[DEFAULT_LAUNCH_PRESET_ID]
+    return deepcopy(preset)
+
+
+def _merge_launch_defaults(target: dict, defaults: dict, *, path: tuple[str, ...], initial_creation: bool) -> dict:
+    for key, default_value in defaults.items():
+        current_path = path + (key,)
+        if key not in target:
+            target[key] = deepcopy(default_value)
+            continue
+        current_value = target[key]
+        if isinstance(default_value, dict):
+            if not isinstance(current_value, dict):
+                target[key] = deepcopy(default_value)
+            else:
+                _merge_launch_defaults(current_value, default_value, path=current_path, initial_creation=initial_creation)
+            continue
+        if isinstance(default_value, str):
+            if isinstance(current_value, str):
+                if not current_value.strip() and current_path in _CRITICAL_STRING_FIELDS:
+                    target[key] = default_value
+            elif current_value is None:
+                target[key] = default_value
+            continue
+        if isinstance(default_value, list):
+            if current_value is None:
+                target[key] = deepcopy(default_value)
+            continue
+        if key == "modules" and isinstance(default_value, dict) and isinstance(current_value, dict) and initial_creation:
+            for mk, mv in default_value.items():
+                current_value.setdefault(mk, bool(mv))
+            continue
+        if current_value is None:
+            target[key] = deepcopy(default_value)
+    return target
+
+
+def apply_launch_defaults(config: dict, *, preset_id: str | None = None, initial_creation: bool = False) -> dict:
+    if not isinstance(config, dict):
+        return config
+    preset = get_launch_preset(preset_id)
+    merged = deepcopy(config)
+    if initial_creation:
+        merged_modules = merged.setdefault("modules", {})
+        if isinstance(merged_modules, dict):
+            for key, value in (preset.get("modules") or {}).items():
+                merged_modules.setdefault(key, bool(value))
+    return _merge_launch_defaults(merged, preset, path=tuple(), initial_creation=initial_creation)
 
 
 _DEFAULT_SITE_CONFIG: dict[str, Any] = {
@@ -602,5 +744,6 @@ def merge_with_default(config: dict) -> dict:
     )
 
     merged = _normalize_config(merged)
+    merged = apply_launch_defaults(merged, initial_creation=False)
 
     return merged
