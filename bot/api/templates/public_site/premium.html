@@ -1,0 +1,8 @@
+{% set contacts = config.get('contacts', {}) %}
+{% include "components/header.html" %}
+{% include "components/hero.html" %}
+<section class="section"><div class="container"><h2>Чому обирають нас</h2><p class="muted">Якісний сервіс, прозорі умови, швидка комунікація.</p></div></section>
+{% if services %}{% include "components/services.html" %}{% elif catalog_has_items %}{% include "components/products.html" %}{% endif %}
+{% if config.get('gallery', {}).get('items') %}{% include "components/gallery.html" %}{% endif %}
+{% if contacts.get('phone') or contacts.get('address') or contacts.get('telegram') %}{% include "components/contacts.html" %}{% endif %}
+{% include "components/footer.html" %}

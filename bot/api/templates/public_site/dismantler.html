@@ -1,0 +1,9 @@
+{% set contacts = config.get('contacts', {}) %}
+{% include "components/header.html" %}
+{% include "components/hero.html" %}
+{% if catalog_has_items %}{% include "components/products.html" %}{% endif %}
+{% if catalog_has_items or config.get('design', {}).get('template_id') == 'dismantler' %}{% include "components/vin_request.html" %}{% endif %}
+{% if cars %}{% include "components/cars.html" %}{% endif %}
+{% if contacts.get('phone') or contacts.get('address') or contacts.get('telegram') %}{% include "components/contacts.html" %}{% endif %}
+{% if contacts.get('map_embed') %}{% include "components/map.html" %}{% endif %}
+{% include "components/footer.html" %}

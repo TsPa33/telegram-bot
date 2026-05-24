@@ -1,0 +1,9 @@
+{% set modules = config.get('modules', {}) %}
+{% set contacts = config.get('contacts', {}) %}
+{% include "components/header.html" %}
+{% include "components/hero.html" %}
+{% if services %}{% include "components/services.html" %}{% endif %}
+{% if config.get('gallery', {}).get('items') %}{% include "components/gallery.html" %}{% endif %}
+{% if contacts.get('phone') or contacts.get('address') or contacts.get('telegram') %}{% include "components/contacts.html" %}{% endif %}
+{% if contacts.get('map_embed') %}{% include "components/map.html" %}{% endif %}
+{% include "components/footer.html" %}
