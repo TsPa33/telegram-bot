@@ -159,8 +159,7 @@ async def update_site_config(site_id: int, config: dict) -> bool:
         row = await conn.fetchrow(
             """
             UPDATE seller_sites
-            SET config_draft = $1::jsonb,
-                config_live = $1::jsonb
+            SET config_draft = $1::jsonb
             WHERE id = $2
             RETURNING id
             """,
@@ -220,8 +219,7 @@ async def update_product_image(site_id: int, seller_id: int, product_id: str, im
         row = await conn.fetchrow(
             """
             UPDATE seller_sites
-            SET config_draft = $1::jsonb,
-                config_live = $1::jsonb
+            SET config_draft = $1::jsonb
             WHERE id = $2
               AND seller_id = $3
             RETURNING id

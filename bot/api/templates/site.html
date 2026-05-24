@@ -53,21 +53,21 @@
 
 <main>
 
-{% if modules.get('products_catalog', modules.get('products', False)) and products.get('items') %}
-    <section id="products-block" data-block="products_catalog" data-editable-block="products_catalog" class="cp-owner-block-shell">{{ owner_block_controls('products_catalog') }}
+{% if modules.get('catalog', False) %}
+    <section id="products-block" data-block="catalog" data-editable-block="catalog" class="cp-owner-block-shell">{{ owner_block_controls('catalog') }}
     {% include "components/products.html" %}
     </section>
 {% endif %}
 
 {% if modules.get('vin_request', False) %}
     <section id="vin-request-block" data-block="vin_request" data-editable-block="vin_request" class="cp-owner-block-shell">{{ owner_block_controls('vin_request') }}
-      <section class="section"><div class="container"><h2>{{ vin_request.get('title') or 'Підбір по VIN' }}</h2><p>{{ vin_request.get('text') or '' }}</p></div></section>
+      {% include "components/vin_request.html" %}
     </section>
 {% endif %}
 
 {% if modules.get('about', False) %}
     <section id="about-block" data-block="about" data-editable-block="about" class="cp-owner-block-shell">{{ owner_block_controls('about') }}
-      {% if about.get('text') %}<section class="section"><div class="container"><h2>{{ about.get('title') or "Про нас" }}</h2><p>{{ about.get('text') }}</p></div></section>{% elif is_owner_edit_mode %}<section class="section"><div class="container"><p>Блок ‘Про нас’ ще не заповнений</p><button type="button" data-editor-action="edit" data-block-key="about">Редагувати блок</button></div></section>{% endif %}
+      {% if about.get('text') %}<section class="section"><div class="container"><h2>{{ about.get('title') or "Про нас" }}</h2><p>{{ about.get('text') }}</p></div></section>{% elif is_owner_edit_mode %}<section class="section"><div class="container"><p>+ Заповнити блок «Про нас»</p><button type="button" data-editor-action="edit" data-block-key="about">Редагувати</button></div></section>{% endif %}
     </section>
 {% endif %}
 
@@ -86,7 +86,7 @@
 {% endif %}
 
 {% if modules.get('gallery', False) %}
-    <section id="gallery-block" data-block="gallery" data-editable-block="gallery" class="cp-owner-block-shell">{{ owner_block_controls('gallery') }}{% if gallery.get('images') %}{% include "components/gallery.html" %}{% elif is_owner_edit_mode %}<section class="section"><div class="container"><p>Блок ‘Галерея’ ще не заповнений</p><button type="button" data-editor-action="edit" data-block-key="gallery">Редагувати блок</button></div></section>{% endif %}</section>
+    <section id="gallery-block" data-block="gallery" data-editable-block="gallery" class="cp-owner-block-shell">{{ owner_block_controls('gallery') }}{% include "components/gallery.html" %}</section>
 {% endif %}
 
 {% if modules.get('cta', False) %}
@@ -663,7 +663,7 @@ document.addEventListener("DOMContentLoaded", () => {
  const currentData=(k)=>({{ config|tojson }}[k]||{});
  const renderField=(f,v)=>{if(f.t==="textarea")return `<div class="constructor-field"><label>${f.l}</label><textarea name="${f.k}">${v||""}</textarea></div>`; if(f.t==="select") return `<div class="constructor-field"><label>${f.l}</label><select name="${f.k}">${f.o.map(([ov,ol])=>`<option value="${ov}" ${String(v)===ov?"selected":""}>${ol}</option>`).join("")}</select></div>`; return `<div class="constructor-field"><label>${f.l}</label><input type="${f.t||"text"}" name="${f.k}" value="${v??""}"></div>`;};
  const openEditor=(blockKey)=>{currentBlock=blockKey;const schema=schemas[blockKey]||[{k:"title",l:"Заголовок"},{k:"intro",l:"Опис",t:"textarea"}]; const data=currentData(blockKey); blockNameEl.textContent=blockNames[blockKey]||blockKey; form.innerHTML=schema.map(f=>renderField(f,data[f.k])).join(""); openPanel(panel);};
- const renderBlocks=()=>{const list=document.getElementById("cpBlocksList"); const keys=Object.keys(blockRegistry).filter(k=>["hero","about","cars","products","services","gallery","contacts","map","footer"].includes(k)); list.innerHTML=keys.map(k=>{const visible=Boolean(blockStates[k]); return `<div class="constructor-block-row"><div><strong>${blockNames[k]}</strong><div>${visible?"Показано":"Приховано"}</div></div><div class="constructor-block-row-actions"><button type="button" data-block-toggle="${k}" data-visible="${visible?"0":"1"}">${visible?"Приховати":"Показати"}</button><button type="button" data-block-edit="${k}">Редагувати</button></div></div>`}).join("");};
+ const renderBlocks=()=>{const list=document.getElementById("cpBlocksList"); const keys=Object.keys(blockRegistry).filter(k=>["hero","services","cars","catalog","vin_request","gallery","about","contacts","map","footer"].includes(k)); list.innerHTML=keys.map(k=>{const visible=Boolean(blockStates[k]); return `<div class="constructor-block-row"><div><strong>${blockNames[k]}</strong><div>${visible?"Показано":"Приховано"}</div></div><div class="constructor-block-row-actions"><button type="button" data-block-toggle="${k}" data-visible="${visible?"0":"1"}">${visible?"Приховати":"Показати"}</button><button type="button" data-block-edit="${k}">Редагувати</button></div></div>`}).join("");};
  document.querySelectorAll("[data-editor-action='edit']").forEach(btn=>btn.addEventListener("click",()=>openEditor(btn.dataset.blockKey)));
  document.querySelectorAll("[data-editor-action='hide']").forEach(btn=>btn.addEventListener("click",async()=>{const k=btn.dataset.blockKey; await fetch(`/site/{{ subdomain }}/edit/block/${k}/visibility`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token,visible:false})}); showToast("Зміни збережено в чернетку"); window.location.href=`${window.location.pathname}?edit=1&token=${encodeURIComponent(token)}`;}));
  document.querySelector("[data-constructor-action='blocks']")?.addEventListener("click",()=>{renderBlocks(); openPanel(blocksPanel);});

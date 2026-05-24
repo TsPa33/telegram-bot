@@ -61,8 +61,7 @@ _DEFAULT_SITE_CONFIG: dict[str, Any] = {
         "cars": True,
         "contacts": True,
         "map": True,
-        "products": False,
-        "products_catalog": False,
+        "catalog": False,
         "vin_request": False,
         "pricing": False,
         "gallery": False,
@@ -138,7 +137,7 @@ _DEFAULT_SITE_CONFIG: dict[str, Any] = {
     "layout": {
         "order": [
             "hero",
-            "products_catalog",
+            "catalog",
             "vin_request",
             "cars",
             "services",
@@ -281,6 +280,9 @@ def _normalize_config(config: dict) -> dict:
     default_modules = _DEFAULT_SITE_CONFIG["modules"]
 
     modules = config.get("modules")
+    if isinstance(modules, dict):
+        if "catalog" not in modules:
+            modules["catalog"] = bool(modules.get("products_catalog", modules.get("products", False)))
 
     if not isinstance(modules, dict):
 
@@ -393,7 +395,8 @@ def _normalize_config(config: dict) -> dict:
         raw_order = []
     normalized_order = []
     for key in raw_order:
-        key = "products_catalog" if key == "products" else key
+        if key in {"products", "products_catalog"}:
+            key = "catalog"
         if isinstance(key, str) and key in default_order and key not in normalized_order:
             normalized_order.append(key)
     for key in default_order:

@@ -67,10 +67,21 @@
         {% if banners %}
             <div class="hero-slider" id="heroSlider">
                 {% for banner in banners %}
+                    {% set banner_image = banner.get('image') if banner is mapping else banner %}
+                    {% set banner_fit = banner.get('fit', 'cover') if banner is mapping else 'cover' %}
+                    {% set banner_position = banner.get('position', 'center') if banner is mapping else 'center' %}
                     <div class="hero-slide{% if loop.first %} active{% endif %}">
-                        <img src="{{ banner }}" alt="banner {{ loop.index }}">
+                        {% if banner_image %}
+                        <img src="{{ banner_image }}" alt="banner {{ loop.index }}" style="object-fit: {{ banner_fit }}; object-position: {{ banner_position }};">
+                        {% endif %}
                     </div>
                 {% endfor %}
+            </div>
+        {% elif is_owner_edit_mode %}
+            <div class="hero-slider" id="heroSlider">
+                <div class="hero-slide active">
+                    <div class="cp-product-placeholder"><strong>+ Додати банер</strong></div>
+                </div>
             </div>
         {% endif %}
 

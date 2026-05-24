@@ -85,7 +85,7 @@ def _extract_inline_edit_patch(block_key: str, payload: dict) -> dict:
             "secondary_button_url": str(payload.get("secondary_button_url") or "").strip(),
             "banners": banners,
         }}
-    if block_key == "products_catalog":
+    if block_key == "catalog":
         per_page = max(3, min(48, int(payload.get("per_page") or 12)))
         return {"products_catalog": {
             "title": str(payload.get("title") or "").strip(),
@@ -105,7 +105,8 @@ def _extract_inline_edit_patch(block_key: str, payload: dict) -> dict:
         per_page = max(3, min(48, int(payload.get("per_page") or 6)))
         return {"cars": {"title": str(payload.get("title") or "").strip(), "intro": str(payload.get("intro") or "").strip(), "per_page": per_page}}
     if block_key == "gallery":
-        return {"gallery": {"title": str(payload.get("title") or "").strip(), "items": [i.strip() for i in str(payload.get("items") or "").splitlines() if i.strip()]}}
+        items = [i.strip() for i in str(payload.get("items") or "").splitlines() if i.strip()]
+        return {"gallery": {"title": str(payload.get("title") or "").strip(), "images": items}}
     if block_key == "services":
         return {"services": {
             "title": str(payload.get("title") or "").strip(),
