@@ -2,6 +2,34 @@
 {% block crm_kicker %}Дизайн сайту{% endblock %}
 {% block crm_heading %}Дизайн сайту{% endblock %}
 {% block content %}
+<style>
+.switch {
+    position: relative;
+    width: 76px;
+    height: 42px;
+    border-radius: 999px;
+    border: 0;
+    background: #e5e7eb;
+    cursor: pointer;
+    transition: background .2s ease, box-shadow .2s ease;
+}
+.switch::after {
+    content: "";
+    position: absolute;
+    top: 5px;
+    left: 5px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #ffffff;
+    box-shadow: 0 8px 18px rgba(15, 23, 42, .20);
+    transition: transform .2s ease;
+}
+.switch.is-active { background: #22c55e; }
+.switch.is-active::after { transform: translateX(34px); }
+.switch:hover { box-shadow: 0 0 0 4px rgba(34, 197, 94, .12); }
+.choice-row { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+</style>
 {% if status == 'saved' %}<div class="notice">Дизайн оновлено та застосовано одразу на сайті.</div>{% endif %}
 <div class="action-row">
   <a class="btn ghost" href="{{ live_url }}" target="_blank">Переглянути сайт</a>
@@ -18,11 +46,13 @@
         <span class="badge">Послуги</span><span class="badge">Запчастини</span><span class="badge">Авто на розборі</span><span class="badge">Галерея</span>
       </div>
       <div style="height:88px;border:1px dashed var(--line);border-radius:12px;display:grid;place-items:center;color:var(--muted);margin-bottom:10px;">Preview</div>
-      {% if design.template_id == item.id %}<p><b>Активний</b></p>{% endif %}
+      <div class="choice-row">
+      <div>{% if current_template_id == item.id %}<p><b>Активний</b></p>{% endif %}</div>
       <form method="post" action="/crm/seller/{{ account.crm_slug }}/website/design/template">
         <input type="hidden" name="template_id" value="{{ item.id }}">
-        <button class="btn" {% if design.template_id == item.id %}disabled{% endif %}>{% if design.template_id == item.id %}Активний{% else %}Увімкнути{% endif %}</button>
+        <button class="switch {% if current_template_id == item.id %}is-active{% endif %}" aria-label="Увімкнути {{ item.label }}"></button>
       </form>
+      </div>
     </div>
   {% endfor %}
   </div>
@@ -36,11 +66,13 @@
       <div style="display:flex;gap:8px;margin:8px 0;">
         {% for swatch in scheme.swatches %}<span style="display:inline-block;width:28px;height:28px;border-radius:999px;border:1px solid #ddd;background:{{ swatch }};"></span>{% endfor %}
       </div>
-      {% if design.color_scheme == scheme.id %}<p><b>Активний</b></p>{% endif %}
+      <div class="choice-row">
+      <div>{% if current_color_scheme == scheme.id %}<p><b>Активний</b></p>{% endif %}</div>
       <form method="post" action="/crm/seller/{{ account.crm_slug }}/website/design/color">
         <input type="hidden" name="color_scheme" value="{{ scheme.id }}">
-        <button class="btn ghost" {% if design.color_scheme == scheme.id %}disabled{% endif %}>{% if design.color_scheme == scheme.id %}Активний{% else %}Увімкнути{% endif %}</button>
+        <button class="switch {% if current_color_scheme == scheme.id %}is-active{% endif %}" aria-label="Увімкнути {{ scheme.label }}"></button>
       </form>
+      </div>
     </div>
   {% endfor %}
   </div>
