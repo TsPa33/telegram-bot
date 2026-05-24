@@ -1,0 +1,9 @@
+{% set about = config.get('about', {}) %}
+{% if about.get('title') or about.get('text') %}
+<section class="section" id="about">
+  <div class="container">
+    <h2>{{ about.get('title') or 'Про нас' }}</h2>
+    <p>{{ about.get('text') or '' }}</p>
+  </div>
+</section>
+{% endif %}
