@@ -38,19 +38,19 @@
 <article class="card">
   <h3>Шаблони сайту</h3>
   <div class="grid two-col">
-  {% for item in template_cards %}
+  {% for template in templates %}
     <div class="mini-card">
-      <h4>{{ item.label }}</h4>
-      <p class="muted">{{ item.description }}</p>
+      <h4>{{ template.label }}</h4>
+      <p class="muted">{{ template.description }}</p>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 10px;">
         <span class="badge">Послуги</span><span class="badge">Запчастини</span><span class="badge">Авто на розборі</span><span class="badge">Галерея</span>
       </div>
       <div style="height:88px;border:1px dashed var(--line);border-radius:12px;display:grid;place-items:center;color:var(--muted);margin-bottom:10px;">Preview</div>
       <div class="choice-row">
-      <div>{% if current_template_id == item.id %}<p><b>Активний</b></p>{% endif %}</div>
+      <div>{% if template.id == current_template_id %}<p><b>Активний</b></p>{% endif %}</div>
       <form method="post" action="/crm/seller/{{ account.crm_slug }}/website/design/template">
-        <input type="hidden" name="template_id" value="{{ item.id }}">
-        <button class="switch {% if current_template_id == item.id %}is-active{% endif %}" aria-label="Увімкнути {{ item.label }}"></button>
+        <input type="hidden" name="template_id" value="{{ template.id }}">
+        <button type="submit" class="switch {% if template.id == current_template_id %}is-active{% endif %}" aria-label="Увімкнути {{ template.label }}"></button>
       </form>
       </div>
     </div>
@@ -60,17 +60,17 @@
 <article class="card stack-top">
   <h3>Кольорова схема</h3>
   <div class="grid two-col">
-  {% for scheme in schemes %}
+  {% for scheme in color_schemes %}
     <div class="mini-card">
       <p><b>{{ scheme.label }}</b></p>
       <div style="display:flex;gap:8px;margin:8px 0;">
         {% for swatch in scheme.swatches %}<span style="display:inline-block;width:28px;height:28px;border-radius:999px;border:1px solid #ddd;background:{{ swatch }};"></span>{% endfor %}
       </div>
       <div class="choice-row">
-      <div>{% if current_color_scheme == scheme.id %}<p><b>Активний</b></p>{% endif %}</div>
+      <div>{% if scheme.id == current_color_scheme %}<p><b>Активний</b></p>{% endif %}</div>
       <form method="post" action="/crm/seller/{{ account.crm_slug }}/website/design/color">
         <input type="hidden" name="color_scheme" value="{{ scheme.id }}">
-        <button class="switch {% if current_color_scheme == scheme.id %}is-active{% endif %}" aria-label="Увімкнути {{ scheme.label }}"></button>
+        <button type="submit" class="switch {% if scheme.id == current_color_scheme %}is-active{% endif %}" aria-label="Увімкнути {{ scheme.label }}"></button>
       </form>
       </div>
     </div>
