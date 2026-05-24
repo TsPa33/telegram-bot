@@ -2,7 +2,7 @@
 {% set data = data if data is defined else {} %}
 {% set products_config = config.get('products', config.get('catalog', {})) %}
 {% set catalog = config.get('catalog', {}) %}
-{% set products_list = data.get('products', []) if data is mapping else [] %}
+{% set products_list = data.get('catalog_items', data.get('products', [])) if data is mapping else [] %}
 {% set parts_list = data.get('parts', []) if data is mapping else [] %}
 {% set catalog_items = products_list or parts_list or products_config.get('items', []) or catalog.get('items', []) %}
 {% set categories = products_config.get('categories', catalog.get('categories', [])) %}

@@ -1,12 +1,13 @@
 {% set config = config if config is defined else {} %}
 {% set data = data if data is defined else {} %}
 {% set cars_config = config.get('cars', {}) %}
-{% set cars_list = data.get('cars', []) if data is mapping else [] %}
+{% set cars_list = data.get('cars_items', data.get('cars', [])) if data is mapping else [] %}
 <section id="cars" class="section">
     <div class="container">
 
         <h2 class="section-title">Авто</h2>
 
+        {% if cars_list %}
         <div class="cars-grid site-grid">
 
             {% for c in cars_list %}
@@ -53,6 +54,15 @@
             {% endfor %}
 
         </div>
+        {% else %}
+        <div class="site-card car-card">
+            <div class="car-content">
+                <h3 class="section-subtitle">Авто в наявності скоро зʼявляться</h3>
+                <p class="section-description">Залиште запит, і ми допоможемо підібрати потрібний варіант.</p>
+                <a class="contact-seller-btn site-button site-button--primary" href="#contacts">Зв'язатись з продавцем</a>
+            </div>
+        </div>
+        {% endif %}
 
     </div>
 </section>
