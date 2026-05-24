@@ -4044,7 +4044,7 @@ async def seller_crm_website_design_template(request: Request, crm_slug: str, te
     template_id = normalize_template_id(template_id)
     patch = {"design": {"template_id": template_id}}
     await update_site_design_both(account["seller_id"], patch)
-    site_after = await get_current_seller_site(account["seller_id"])
+    site_after = await get_site_by_seller(account["seller_id"])
     config_live_after = _as_live_config(site_after)
     design_after = _extract_design(config_live_after)
     logger.info(
@@ -4066,7 +4066,7 @@ async def seller_crm_website_design_color(request: Request, crm_slug: str, color
     color_scheme = normalize_color_scheme(color_scheme)
     patch = {"design": {"color_scheme": color_scheme}}
     await update_site_design_both(account["seller_id"], patch)
-    site_after = await get_current_seller_site(account["seller_id"])
+    site_after = await get_site_by_seller(account["seller_id"])
     config_live_after = _as_live_config(site_after)
     design_after = _extract_design(config_live_after)
     logger.info(
