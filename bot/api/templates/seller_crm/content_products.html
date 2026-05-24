@@ -14,6 +14,9 @@
   .product-title { margin: 0; color: var(--text); font-size: 18px; line-height: 1.25; overflow-wrap: anywhere; }
   .product-meta { color: var(--muted); font-size: 12px; font-weight: 600; }
   .product-desc { margin: 0; color: var(--muted); line-height: 1.45; overflow-wrap: anywhere; }
+  .product-photo-box { position: relative; width:108px;height:86px;border:1px solid var(--line);border-radius:12px;display:grid;place-items:center;background:linear-gradient(135deg, rgba(148,163,184,.10), rgba(148,163,184,.03));text-align:center;padding:6px; overflow:hidden; }
+  .photo-edit-overlay { position:absolute; inset:0; background:rgba(15,23,42,.62); color:#fff; display:grid; place-items:center; opacity:0; transition:opacity .15s; }
+  .product-photo-box:hover .photo-edit-overlay { opacity:1; }
   @media (max-width: 980px) { .products-summary { grid-template-columns: repeat(2,minmax(0,1fr)); } }
   @media (max-width: 680px) { .products-summary { grid-template-columns: 1fr; } .product-top { display: grid; } .product-actions { display: grid; grid-template-columns: 1fr; } .product-actions .btn { width: 100%; white-space: normal; } }
 </style>
@@ -45,8 +48,11 @@
       {% for product in products %}
         <article class="request-card product-card" style="grid-template-columns:108px minmax(0,1fr);align-items:start;">
           
-          <div style="width:108px;height:86px;border:1px solid var(--line);border-radius:12px;display:grid;place-items:center;background:linear-gradient(135deg, rgba(148,163,184,.10), rgba(148,163,184,.03));text-align:center;padding:6px;">
+          <div class="product-photo-box">
             {% if product.photo_url and product.photo_url.startswith(('http://','https://')) %}<img src="{{ product.photo_url }}" alt="{{ product.title or 'Товар' }}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;">{% else %}<div><strong>Запчастина</strong><div>Фото буде додано</div></div>{% endif %}
+            <form class="photo-edit-overlay" method="post" enctype="multipart/form-data" action="/crm/seller/{{ account.crm_slug }}/content/products/{{ product.id }}/photo">
+              <label class="btn ghost" style="color:#fff;border-color:rgba(255,255,255,.5);">Замінити фото<input type="file" name="photo" accept="image/*" hidden onchange="this.form.submit()"></label>
+            </form>
           </div>
           <div>
           <div class="product-top">

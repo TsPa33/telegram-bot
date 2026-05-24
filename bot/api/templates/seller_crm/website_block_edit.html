@@ -55,6 +55,28 @@
         {% endif %}
       </div>
       <p class="muted">Дані каталогу редагуються у відповідному розділі Каталог.</p>
+    {% elif block_key == 'gallery' %}
+      {% set gallery = config.get('gallery', {}) if config else {} %}
+      {% set images = gallery.get('images', []) if gallery else [] %}
+      <div class="editor-section">
+        <h3>Візуальна галерея</h3>
+        <p class="muted">Сітка з hover-контролами, швидке додавання та сортування.</p>
+        <div class="banner-list gallery-grid" data-gallery-list>
+          {% for img in images %}
+            {% set img_obj = img if img is mapping else {'url': img, 'title': 'Галерея'} %}
+            <div class="banner-card gallery-item" data-gallery-item>
+              <div class="banner-preview" style="background-image:url('{{ img_obj.get('url', '') }}')"></div>
+              <label class="full">Посилання на фото<input type="url" name="gallery_image" value="{{ img_obj.get('url', '') }}" data-gallery-image></label>
+              <div class="banner-actions full">
+                <button type="button" class="btn ghost" data-gallery-up>↑</button>
+                <button type="button" class="btn ghost" data-gallery-down>↓</button>
+                <button type="button" class="btn ghost" data-gallery-remove>Видалити</button>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+        <button class="btn ghost" type="button" data-gallery-add>+ Додати фото</button>
+      </div>
     {% elif block_key == 'contacts' %}
       <div class="editor-grid two-col">
         <label>Телефон<textarea name="phone" rows="3">{{ (contacts.get('phones', []) or []) | join('\n') }}</textarea></label>
@@ -91,6 +113,11 @@
 .banner-preview-wrap { position: relative; }
 .banner-placeholder { margin: 8px 0 0; font-size: 13px; }
 .banner-title { margin: 0 0 8px; }
+.media-dropzone { border: 1px dashed var(--border,#cbd5e1); border-radius: 10px; padding: 8px; display: flex; gap: 8px; align-items: center; }
+.gallery-grid { display:grid; gap:12px; grid-template-columns: repeat(auto-fill,minmax(220px,1fr)); }
+.gallery-item { position:relative; }
+.gallery-item .banner-actions { opacity:0; transition:opacity .15s; }
+.gallery-item:hover .banner-actions { opacity:1; }
 @media (max-width: 480px) {
   .action-row.wrap { flex-direction: column; align-items: stretch; }
   .action-row.wrap .btn { width: 100%; text-align: center; }
@@ -144,6 +171,37 @@
       syncBannerPreview(node);
       syncBannerCardTitle();
     }
+    if (event.target.matches('[data-pick-image]')) {
+      const file = event.target.closest('[data-dropzone]')?.querySelector('[data-image-file]');
+      if (file) file.click();
+    }
+    if (event.target.matches('[data-gallery-remove]')) {
+      event.target.closest('[data-gallery-item]')?.remove();
+    }
+    if (event.target.matches('[data-gallery-up]') || event.target.matches('[data-gallery-down]')) {
+      const item = event.target.closest('[data-gallery-item]');
+      if (!item) return;
+      const sibling = event.target.matches('[data-gallery-up]') ? item.previousElementSibling : item.nextElementSibling;
+      if (sibling) item.parentElement.insertBefore(event.target.matches('[data-gallery-up]') ? item : sibling, event.target.matches('[data-gallery-up]') ? sibling : item);
+    }
+    if (event.target.matches('[data-gallery-add]')) {
+      const list = root.querySelector('[data-gallery-list]');
+      if (!list) return;
+      const card = document.createElement('div');
+      card.className = 'banner-card gallery-item';
+      card.setAttribute('data-gallery-item', '');
+      card.innerHTML = '<div class="banner-preview"></div><label class="full">Посилання на фото<input type="url" name="gallery_image" value="" data-gallery-image></label><div class="banner-actions full"><button type="button" class="btn ghost" data-gallery-up>↑</button><button type="button" class="btn ghost" data-gallery-down>↓</button><button type="button" class="btn ghost" data-gallery-remove>Видалити</button></div>';
+      list.appendChild(card);
+    }
+  });
+  root.addEventListener('change', async (event) => {
+    const fileInput = event.target.closest('[data-image-file]');
+    if (!fileInput || !fileInput.files?.[0]) return;
+    const item = event.target.closest('[data-banner-item]');
+    const urlInput = item?.querySelector('[data-banner-image]');
+    if (!urlInput) return;
+    urlInput.value = URL.createObjectURL(fileInput.files[0]);
+    syncBannerPreview(item);
   });
 
   root.querySelectorAll('[data-banner-item]').forEach(syncBannerPreview);

@@ -2470,6 +2470,30 @@ async def seller_crm_product_import_template(request: Request, crm_slug: str, fo
     )
 
 
+@router.post("/{crm_slug}/content/products/{product_id}/photo")
+async def seller_crm_product_photo_upload(
+    request: Request,
+    crm_slug: str,
+    product_id: int,
+    photo: UploadFile | None = File(None),
+):
+    try:
+        account, _ = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+
+    back_url = f"/crm/seller/{crm_slug}/content/products"
+    image_url, error_key = await _upload_validated_car_photo(photo)
+    if error_key or not image_url:
+        return RedirectResponse(url=f"{back_url}?error={error_key or 'photo_upload_failed'}", status_code=303)
+    saved = await update_product_photo(account["seller_id"], product_id, image_url)
+    if not saved:
+        return RedirectResponse(url=f"{back_url}?error=photo_save_failed", status_code=303)
+    return RedirectResponse(url=f"{back_url}?status=photo_updated", status_code=303)
+
+
 @router.get("/{crm_slug}/content/services")
 async def seller_crm_content_services(request: Request, crm_slug: str):
     try:
@@ -4056,6 +4080,9 @@ async def seller_crm_website_block_editor_save(
             per_page = int(per_page_raw) if per_page_raw.isdigit() else 12
             patch[block_key]["per_page"] = max(1, min(per_page, 120))
             patch[block_key]["search_enabled"] = bool(form.get("search_enabled"))
+    elif block_key == "gallery":
+        gallery_images = [str(item or "").strip() for item in form.getlist("gallery_image")]
+        patch["gallery"] = {"images": [{"url": img, "title": "Галерея"} for img in gallery_images if img]}
 
     await update_current_site_draft(account["seller_id"], patch)
     return RedirectResponse(url=f"/crm/seller/{crm_slug}/website/editor?status=saved", status_code=303)

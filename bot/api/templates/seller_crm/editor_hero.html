@@ -28,7 +28,7 @@
 
 <div class="editor-section stack-top">
   <h3>Банери першого екрану</h3>
-  <p class="muted">Рекомендований розмір: 1600×700 або ширше. JPG/PNG/WebP.</p>
+  <p class="muted">Рекомендований розмір: 1600×700 або ширше. JPG/PNG/WebP. Перетягніть файл або натисніть «+ Фото».</p>
   <div class="banner-list" data-banner-list>
     {% for banner in banners %}
       {% set banner_obj = banner if banner is mapping else {'image': banner, 'fit': 'cover', 'position': 'center'} %}
@@ -42,6 +42,11 @@
           <label class="full">Посилання на зображення
             <input type="url" name="banner_image" value="{{ banner_obj.get('image', '') }}" placeholder="https://res.cloudinary.com/..." data-banner-image>
           </label>
+          <div class="full media-dropzone" data-dropzone>
+            <button type="button" class="btn ghost" data-pick-image>+ Фото</button>
+            <span class="muted">drag image</span>
+            <input type="file" accept="image/*" hidden data-image-file>
+          </div>
           <label>Як показувати банер
             <select name="banner_fit" data-banner-fit>
               <option value="cover" {% if banner_obj.get('fit', 'cover') == 'cover' %}selected{% endif %}>Заповнити блок</option>
@@ -75,6 +80,11 @@
       <label class="full">Посилання на зображення
         <input type="url" name="banner_image" value="" placeholder="https://res.cloudinary.com/..." data-banner-image>
       </label>
+      <div class="full media-dropzone" data-dropzone>
+        <button type="button" class="btn ghost" data-pick-image>+ Фото</button>
+        <span class="muted">drag image</span>
+        <input type="file" accept="image/*" hidden data-image-file>
+      </div>
       <label>Як показувати банер
         <select name="banner_fit" data-banner-fit>
           <option value="cover" selected>Заповнити блок</option>
