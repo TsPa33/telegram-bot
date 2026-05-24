@@ -11,14 +11,14 @@
 
         <div class="cp-section-head">
             <span class="cp-section-kicker">Контакти</span>
-            <h2>Звʼяжіться з нами</h2>
-            <p>Оберіть зручний канал: дзвінок, месенджер або заявка на сайті.</p>
+            <h2 class="section-title">Звʼяжіться з нами</h2>
+            <p class="section-description">Оберіть зручний канал: дзвінок, месенджер або заявка на сайті.</p>
         </div>
 
         <div class="contacts-grid">
 
             <!-- LEFT -->
-            <div class="contact-card">
+            <div class="contact-card site-card">
 
                 <!-- PHONES -->
                 {% set phones = contacts.get('phones', []) %}
@@ -26,7 +26,7 @@
                 {% if phones %}
                     <div class="contact-group">
 
-                        <div class="group-title">
+                        <div class="group-title section-subtitle">
                             📞 Телефони
                         </div>
 
@@ -35,7 +35,7 @@
                             {% for phone in phones %}
                                 <a
                                     href="tel:{{ phone }}"
-                                    class="social-btn"
+                                    class="social-btn site-button site-button--secondary"
                                 >
                                     <img
                                         src="https://cdn-icons-png.flaticon.com/512/724/724664.png"
@@ -56,11 +56,11 @@
                 {% if contacts.get('address') %}
                     <div class="contact-group">
 
-                        <div class="group-title">
+                        <div class="group-title section-subtitle">
                             📍 Адреса
                         </div>
 
-                        <div class="social-btn">
+                        <div class="social-btn site-card">
 
                             <img
                                 src="https://cdn-icons-png.flaticon.com/512/684/684908.png"
@@ -80,11 +80,11 @@
                 {% if contacts.get('hours') %}
                     <div class="contact-group">
 
-                        <div class="group-title">
+                        <div class="group-title section-subtitle">
                             🕘 Графік роботи
                         </div>
 
-                        <div class="social-btn">
+                        <div class="social-btn site-card">
 
                             <img
                                 src="https://cdn-icons-png.flaticon.com/512/2088/2088617.png"
@@ -102,7 +102,7 @@
 
 
             <!-- RIGHT -->
-            <div class="contact-card">
+            <div class="contact-card site-card">
 
                 {% set m = contacts.get('messengers', {}) %}
                 {% set s = contacts.get('socials', {}) %}
@@ -111,7 +111,7 @@
                 {% if m.telegram or m.whatsapp or m.viber %}
                 <div class="contact-group">
 
-                    <div class="group-title">
+                    <div class="group-title section-subtitle">
                         💬 Месенджери
                     </div>
 
@@ -121,7 +121,7 @@
                         <a
                             href="{{ m.telegram if m.telegram.startswith('http') else 'https://t.me/' ~ m.telegram }}"
                             target="_blank"
-                            class="social-btn"
+                            class="social-btn site-button site-button--secondary"
                         >
                             <img
                                 src="https://cdn-icons-png.flaticon.com/512/2111/2111646.png"
@@ -136,7 +136,7 @@
                         <a
                             href="https://wa.me/{{ m.whatsapp }}"
                             target="_blank"
-                            class="social-btn"
+                            class="social-btn site-button site-button--secondary"
                         >
                             <img
                                 src="https://cdn-icons-png.flaticon.com/512/733/733585.png"
@@ -150,7 +150,7 @@
                         {% if m.viber %}
                         <a
                             href="viber://chat?number={{ m.viber }}"
-                            class="social-btn"
+                            class="social-btn site-button site-button--secondary"
                         >
                             <img
                                 src="https://cdn-icons-png.flaticon.com/512/3670/3670059.png"
@@ -171,7 +171,7 @@
                 {% if s.instagram or s.facebook %}
                 <div class="contact-group">
 
-                    <div class="group-title">
+                    <div class="group-title section-subtitle">
                         🌐 Соцмережі
                     </div>
 
@@ -181,7 +181,7 @@
                         <a
                             href="{{ s.instagram }}"
                             target="_blank"
-                            class="social-btn"
+                            class="social-btn site-button site-button--secondary"
                         >
                             <img
                                 src="https://cdn-icons-png.flaticon.com/512/2111/2111463.png"
@@ -196,7 +196,7 @@
                         <a
                             href="{{ s.facebook }}"
                             target="_blank"
-                            class="social-btn"
+                            class="social-btn site-button site-button--secondary"
                         >
                             <img
                                 src="https://cdn-icons-png.flaticon.com/512/733/733547.png"

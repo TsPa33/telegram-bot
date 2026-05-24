@@ -1,0 +1,25 @@
+{% set about = config.get('about', {}) %}
+{% set about_title = about.get('title') or 'Про нас' %}
+{% set about_description = about.get('description') or about.get('text') or 'Ми працюємо з автотоварами та послугами для автомобілів. На сайті ви можете переглянути пропозиції, залишити заявку або швидко звʼязатися з продавцем.' %}
+{% set about_image = about.get('image') or '' %}
+{% set about_advantages = about.get('advantages', []) if about.get('advantages') is iterable and about.get('advantages') is not string else [] %}
+<section class="section site-about" id="about">
+  <div class="container site-section__inner">
+    <h2 class="section-title">{{ about_title }}</h2>
+    <p class="section-description">{{ about_description }}</p>
+    {% if about_image %}
+      <div class="site-card site-about__image-wrap">
+        <img class="site-about__image" src="{{ about_image }}" alt="{{ about_title }}" loading="lazy">
+      </div>
+    {% endif %}
+    {% if about_advantages %}
+      <ul class="site-grid site-about__advantages">
+      {% for advantage in about_advantages %}
+        {% if advantage %}
+        <li class="site-card">{{ advantage }}</li>
+        {% endif %}
+      {% endfor %}
+      </ul>
+    {% endif %}
+  </div>
+</section>

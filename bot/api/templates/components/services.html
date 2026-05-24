@@ -12,14 +12,14 @@
 
     <!-- LEFT -->
     <div class="left">
-        <h2>Послуги</h2>
+        <h2 class="section-title">Послуги</h2>
 
-        <ul id="servicesList">
+        <ul id="servicesList" class="site-list">
         {% for s in services_list %}
             {% set service_price = s.price if s.price is not none and not (s.price|string).startswith('http') else '' %}
             {% set service_price_label = s.price_label or (('від ' ~ service_price ~ ' грн') if service_price else '') %}
             <li
-                class="service-item {% if loop.first %}active{% endif %}"
+                class="service-item site-card {% if loop.first %}active{% endif %}"
                 data-title="{{ s.title }}"
                 data-description="{{ s.description }}"
                 data-photo="{{ s.photo_url or '' }}"
@@ -46,12 +46,12 @@
             <img src="{{ main.photo_url }}" class="highlight-img" id="serviceImage">
             {% endif %}
 
-            <h3 id="serviceTitle">{{ main.title }}</h3>
-            <p id="serviceDescription">{{ main.description or '' }}</p>
+            <h3 id="serviceTitle" class="section-subtitle">{{ main.title }}</h3>
+            <p id="serviceDescription" class="section-description">{{ main.description or '' }}</p>
             <span class="service-price" id="servicePrice"{% if not main_price_label %} style="display:none;"{% endif %}>{{ main_price_label }}</span>
 
             <a
-                class="btn-primary"
+                class="btn-primary site-button site-button--primary"
                 data-analytics-event="service_order_click"
                 href="#contacts"
                 onclick="if (window.openCallback) { openCallback('Замовити'); return false; }"
