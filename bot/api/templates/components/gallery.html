@@ -6,18 +6,18 @@
     <div class="container">
         <div class="cp-section-head">
             <span class="cp-section-kicker">Фото</span>
-            <h2>{{ gallery.get('title') or 'Галерея' }}</h2>
-            {% if gallery.get('intro') %}<p>{{ gallery.get('intro') }}</p>{% endif %}
+            <h2 class="section-title">{{ gallery.get('title') or 'Галерея' }}</h2>
+            {% if gallery.get('intro') %}<p class="section-description">{{ gallery.get('intro') }}</p>{% endif %}
         </div>
 
-        <div class="cp-gallery-grid">
+        <div class="cp-gallery-grid site-grid">
             {% for image in gallery_items %}
                 {% set image_url = (image.get('url') or image.get('src') or image.get('image') or image.get('photo')) if image is mapping else image %}
                 {% set image_alt = (image.get('title') or image.get('alt')) if image is mapping else 'Галерея' %}
                 {% if image_url %}
-                <a class="cp-gallery-card" data-analytics-event="gallery_open" href="{{ image_url }}" target="_blank" aria-label="Відкрити фото">
-                    <img src="{{ image_url }}" alt="{{ image_alt or 'Галерея' }}" loading="lazy" onerror="this.closest('.cp-gallery-card').remove()">
-                    <span>{{ image_alt or "Переглянути" }}</span>
+                <a class="cp-gallery-card site-card site-media" data-analytics-event="gallery_open" href="{{ image_url }}" target="_blank" aria-label="Відкрити фото">
+                    <img class="site-image" src="{{ image_url }}" alt="{{ image_alt or 'Галерея' }}" loading="lazy" onerror="this.closest('.cp-gallery-card').remove()">
+                    <span class="site-badge">{{ image_alt or "Переглянути" }}</span>
                 </a>
                 {% endif %}
             {% endfor %}
