@@ -4069,6 +4069,8 @@ async def seller_crm_website_blocks(request: Request, crm_slug: str, status: str
             edit_url = f"/crm/seller/{crm_slug}/website/content/about"
         if key == "gallery":
             edit_url = f"/crm/seller/{crm_slug}/website/content/gallery"
+        if key == "vin":
+            edit_url = f"/crm/seller/{crm_slug}/website/content/vin"
         blocks.append({
             "key": key,
             "title": title,
@@ -4231,6 +4233,56 @@ async def seller_crm_website_gallery_save(
         },
     )
     return RedirectResponse(url=f"/crm/seller/{crm_slug}/website/content/gallery?status=saved", status_code=303)
+
+
+@router.get("/{crm_slug}/website/content/vin")
+async def seller_crm_website_vin(request: Request, crm_slug: str, status: str | None = None):
+    account, subscription = await _authorized_account(request, crm_slug)
+    site = _demo_site() if _is_demo_account(account) else await get_current_seller_site_or_404(account["seller_id"])
+    config_draft = _as_config(site)
+    preview_url, _ = _build_public_site_urls(site)
+    vin = config_draft.get("vin") if isinstance(config_draft.get("vin"), dict) else {}
+    vin_request = config_draft.get("vin_request") if isinstance(config_draft.get("vin_request"), dict) else {}
+    current = vin if vin else vin_request
+    return templates.TemplateResponse(
+        "seller_crm/website_vin.html",
+        _seller_crm_context(
+            request,
+            title="VIN-запит — кабінет продавця",
+            current_page="website_blocks",
+            account=account,
+            subscription=subscription,
+            site=site,
+            has_website=True,
+            has_cars=False,
+            has_services=False,
+            status=status,
+            preview_url=preview_url,
+            vin=current,
+        ),
+    )
+
+
+@router.post("/{crm_slug}/website/content/vin")
+async def seller_crm_website_vin_save(
+    request: Request,
+    crm_slug: str,
+    title: str = Form(""),
+    description: str = Form(""),
+    button_label: str = Form(""),
+):
+    account, _ = await _authorized_account(request, crm_slug)
+    await update_current_site_draft(
+        account["seller_id"],
+        {
+            "vin": {
+                "title": str(title or "").strip(),
+                "description": str(description or "").strip(),
+                "button_label": str(button_label or "").strip(),
+            }
+        },
+    )
+    return RedirectResponse(url=f"/crm/seller/{crm_slug}/website/content/vin?status=saved", status_code=303)
 
 
 @router.get("/{crm_slug}/website/editor/{block_key}")
