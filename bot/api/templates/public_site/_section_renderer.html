@@ -1,0 +1,41 @@
+{% set modules = config.get('modules', {}) if config else {} %}
+{% set sections_order = config.get('sections_order', []) if config else [] %}
+{% set rendered = namespace(keys=[]) %}
+
+{% for section in sections_order %}
+  {% if section not in rendered.keys and modules.get(section, False) %}
+  <div class="site-section site-section--{{ section }} template-section template-section--{{ template_variant|default('universal-sales') }}">
+  {% if section == 'hero' %}
+    {% include "components/hero.html" %}
+    {% set rendered.keys = rendered.keys + [section] %}
+  {% elif section == 'about' %}
+    {% include "components/about.html" %}
+    {% set rendered.keys = rendered.keys + [section] %}
+  {% elif section == 'services' %}
+    {% include "components/services.html" %}
+    {% set rendered.keys = rendered.keys + [section] %}
+  {% elif section == 'catalog' %}
+    {% include "components/products.html" %}
+    {% set rendered.keys = rendered.keys + [section] %}
+  {% elif section == 'cars' %}
+    {% include "components/cars.html" %}
+    {% set rendered.keys = rendered.keys + [section] %}
+  {% elif section == 'gallery' %}
+    {% include "components/gallery.html" %}
+    {% set rendered.keys = rendered.keys + [section] %}
+  {% elif section == 'vin' %}
+    {% include "components/vin_request.html" %}
+    {% set rendered.keys = rendered.keys + [section] %}
+  {% elif section == 'contacts' %}
+    {% include "components/contacts.html" %}
+    {% set rendered.keys = rendered.keys + [section] %}
+  {% elif section == 'map' %}
+    {% include "components/map.html" %}
+    {% set rendered.keys = rendered.keys + [section] %}
+  {% elif section == 'footer' %}
+    {% include "components/footer.html" %}
+    {% set rendered.keys = rendered.keys + [section] %}
+  {% endif %}
+  </div>
+  {% endif %}
+{% endfor %}

@@ -1,0 +1,42 @@
+{% extends "seller_crm/base.html" %}
+{% block crm_kicker %}Авто в наявності{% endblock %}
+{% block crm_heading %}Авто в наявності{% endblock %}
+{% block content %}
+{% if status == 'saved' %}<div class="notice">Зміни збережено у чернетку. Опублікуйте сайт, щоб клієнти побачили зміни.</div>{% endif %}
+<article class="card">
+  <p class="muted">Налаштуйте вигляд блоку авто без змін у реальних картках і наявності.</p>
+  <form method="post" action="/crm/seller/{{ account.crm_slug }}/website/content/cars" class="stack-top">
+    <label>Заголовок
+      <input type="text" name="title" value="{{ cars_title }}" placeholder="Авто в наявності">
+    </label>
+    <label>Опис
+      <textarea name="description" rows="4" placeholder="Перегляньте доступні авто та залиште запит.">{{ cars_description }}</textarea>
+    </label>
+    <div class="grid two-col">
+      <label>Макет
+        <select name="layout">
+          <option value="grid" {% if cars_layout == 'grid' %}selected{% endif %}>Сітка</option>
+          <option value="compact" {% if cars_layout == 'compact' %}selected{% endif %}>Компактний список</option>
+          <option value="featured" {% if cars_layout == 'featured' %}selected{% endif %}>Акцентні карточки</option>
+        </select>
+      </label>
+      <label>Кількість авто
+        <select name="per_page">
+          {% for value in [3, 6, 9, 12] %}
+          <option value="{{ value }}" {% if cars_per_page == value %}selected{% endif %}>{{ value }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="full">Текст кнопки
+        <input type="text" name="cta_label" value="{{ cars_cta_label }}" placeholder="Детальніше">
+      </label>
+    </div>
+    <div class="action-row wrap">
+      <button class="btn" type="submit">Зберегти</button>
+      <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/website/blocks">Назад до блоків</a>
+      <a class="btn ghost" href="{{ preview_url }}" target="_blank" rel="noopener">Попередній перегляд</a>
+      <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/website#publish">Опублікувати зміни</a>
+    </div>
+  </form>
+</article>
+{% endblock %}
