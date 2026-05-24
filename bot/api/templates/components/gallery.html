@@ -1,23 +1,26 @@
 {% set config = config if config is defined else {} %}
 {% set data = data if data is defined else {} %}
 {% set gallery = config.get('gallery', {}) %}
-{% set gallery_items = data.get('gallery_items', gallery.get('items', [])) if data is mapping else gallery.get('items', []) %}
-<section id="gallery" class="section cp-section cp-gallery-section">
+{% set gallery_layout = gallery.get('layout') or 'masonry' %}
+{% if gallery_layout not in ['masonry', 'grid', 'full_width_slider', 'split_showcase'] %}{% set gallery_layout = 'masonry' %}{% endif %}
+{% set gallery_items = data.get('gallery_items', gallery.get('images', gallery.get('items', []))) if data is mapping else gallery.get('images', gallery.get('items', [])) %}
+<section id="gallery" class="section cp-section cp-gallery-section gallery--{{ gallery_layout|replace('_','-') }}">
     <div class="container">
         <div class="cp-section-head">
             <span class="cp-section-kicker">Фото</span>
-            <h2>{{ gallery.get('title') or 'Галерея' }}</h2>
-            {% if gallery.get('intro') %}<p>{{ gallery.get('intro') }}</p>{% endif %}
+            <h2 class="section-title">{{ gallery.get('title') or 'Галерея' }}</h2>
+            {% set gallery_description = gallery.get('description') or gallery.get('intro') %}
+            {% if gallery_description %}<p class="section-description">{{ gallery_description }}</p>{% endif %}
         </div>
 
-        <div class="cp-gallery-grid">
+        <div class="cp-gallery-grid site-grid">
             {% for image in gallery_items %}
                 {% set image_url = (image.get('url') or image.get('src') or image.get('image') or image.get('photo')) if image is mapping else image %}
-                {% set image_alt = (image.get('title') or image.get('alt')) if image is mapping else 'Галерея' %}
+                {% set image_alt = (image.get('caption') or image.get('title') or image.get('alt')) if image is mapping else 'Галерея' %}
                 {% if image_url %}
-                <a class="cp-gallery-card" data-analytics-event="gallery_open" href="{{ image_url }}" target="_blank" aria-label="Відкрити фото">
-                    <img src="{{ image_url }}" alt="{{ image_alt or 'Галерея' }}" loading="lazy" onerror="this.closest('.cp-gallery-card').remove()">
-                    <span>{{ image_alt or "Переглянути" }}</span>
+                <a class="cp-gallery-card site-card site-media" data-analytics-event="gallery_open" href="{{ image_url }}" target="_blank" aria-label="Відкрити фото">
+                    <img class="site-image" src="{{ image_url }}" alt="{{ image_alt or 'Галерея' }}" loading="lazy" onerror="this.closest('.cp-gallery-card').remove()">
+                    <span class="site-badge">{{ image_alt or "Переглянути" }}</span>
                 </a>
                 {% endif %}
             {% endfor %}
@@ -42,6 +45,17 @@
     scroll-snap-type: x mandatory;
     padding-bottom: 4px;
 }
+.gallery--grid .cp-gallery-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.gallery--masonry .cp-gallery-card:nth-child(3n) { grid-row: span 2; }
+.gallery--full-width-slider .cp-gallery-grid {
+    display: flex;
+    overflow-x: auto;
+    gap: 14px;
+    scroll-snap-type: x mandatory;
+}
+.gallery--full-width-slider .cp-gallery-card { flex: 0 0 min(92vw, 920px); }
+.gallery--split-showcase .cp-gallery-grid { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); }
+.gallery--split-showcase .cp-gallery-card:first-child { grid-row: span 2; }
 
 .cp-gallery-card {
     position: relative;
