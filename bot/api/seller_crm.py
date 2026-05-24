@@ -198,7 +198,7 @@ logger = logging.getLogger(__name__)
 liqpay = LiqPayService(LIQPAY_PUBLIC_KEY, LIQPAY_PRIVATE_KEY)
 
 def _build_public_site_urls(site: dict[str, Any] | None) -> tuple[str | None, str | None]:
-    """Build preview and constructor URLs for seller public site."""
+    """Build preview and legacy constructor URLs for seller public site."""
     if not site:
         return None, None
 
@@ -222,6 +222,18 @@ def _build_public_site_urls(site: dict[str, Any] | None) -> tuple[str | None, st
     constructor_url = f"{preview_url}?edit=1&token={edit_token}"
     return preview_url, constructor_url
 
+
+
+def _extract_design(config: dict[str, Any] | None) -> dict[str, str]:
+    cfg = config or {}
+    design = cfg.get("design") if isinstance(cfg.get("design"), dict) else {}
+    template_id = str(design.get("template_id") or "service_classic").strip().lower()
+    if template_id not in {"dismantler_classic", "dismantler_catalog", "dismantler_premium", "service_classic", "service_modern", "service_premium"}:
+        template_id = "service_classic"
+    color_scheme = str(design.get("color_scheme") or "dark_blue").strip().lower()
+    if color_scheme not in {"dark_blue", "dark_red", "graphite", "black_gold", "light_minimal"}:
+        color_scheme = "dark_blue"
+    return {"template_id": template_id, "color_scheme": color_scheme}
 LEAD_STATUS_TABS = [
     {"key": CRM_LEAD_STATUS_NEW, "label": "Нова заявка", "empty": "Нових заявок поки немає."},
     {"key": CRM_LEAD_STATUS_IN_WORK, "label": "Покупець очікує відповідь", "empty": "Немає заявок, які очікують відповіді."},
@@ -3933,7 +3945,7 @@ async def seller_crm_website(request: Request, crm_slug: str, section: str = "we
         "seller_crm/website.html",
         _seller_crm_context(
             request,
-            title="Керування сайтом — кабінет продавця",
+            title="Мій сайт — кабінет продавця",
             current_page="website",
             account=account,
             subscription=subscription,
@@ -3963,6 +3975,53 @@ async def seller_crm_website(request: Request, crm_slug: str, section: str = "we
             },
         ),
     )
+
+
+@router.get("/{crm_slug}/website/design")
+async def seller_crm_website_design(request: Request, crm_slug: str, status: str | None = None):
+    account, subscription = await _authorized_account(request, crm_slug)
+    seller_id = account["seller_id"]
+    site = _demo_site() if _is_demo_account(account) else await get_current_seller_site_or_404(seller_id)
+    config_draft = _as_config(site)
+    design = _extract_design(config_draft)
+    live_url = build_site_url(site["subdomain"])
+    has_parts = False if _is_demo_account(account) else bool(await get_available_parts_for_site(seller_id) or await get_seller_products(seller_id, limit=1) or await get_cars_by_seller(seller_id))
+    has_services_data = False if _is_demo_account(account) else bool(await get_services_by_seller(seller_id))
+    recommended_category = "dismantler" if has_parts else ("service" if has_services_data else "service")
+    template_groups = {
+        "dismantler": [
+            {"id": "dismantler_classic", "label": "Dismantler Classic", "description": "Hero, catalog, VIN, donor cars, contacts."},
+            {"id": "dismantler_catalog", "label": "Dismantler Catalog", "description": "Inventory-first catalog template."},
+            {"id": "dismantler_premium", "label": "Dismantler Premium", "description": "Premium dismantler presentation."},
+        ],
+        "service": [
+            {"id": "service_classic", "label": "Service Classic", "description": "Classic services landing page."},
+            {"id": "service_modern", "label": "Service Modern", "description": "Modern business-card style."},
+            {"id": "service_premium", "label": "Service Premium", "description": "Premium service positioning."},
+        ],
+    }
+    schemes = ["dark_blue", "dark_red", "graphite", "black_gold", "light_minimal"]
+    return templates.TemplateResponse("seller_crm/website_design.html", _seller_crm_context(request, title="Дизайн сайту — кабінет продавця", current_page="website_design", account=account, subscription=subscription, site=site, design=design, template_groups=template_groups, recommended_category=recommended_category, schemes=schemes, live_url=live_url, status=status, has_website=True, has_cars=False, has_services=False))
+
+
+@router.post("/{crm_slug}/website/design/template")
+async def seller_crm_website_design_template(request: Request, crm_slug: str, template_id: str = Form("service")):
+    account, _ = await _authorized_account(request, crm_slug)
+    template_id = (template_id or "service").strip().lower()
+    if template_id not in {"dismantler_classic", "dismantler_catalog", "dismantler_premium", "service_classic", "service_modern", "service_premium"}:
+        template_id = "service_classic"
+    await update_current_site_draft(account["seller_id"], {"design": {"template_id": template_id}})
+    return RedirectResponse(url=f"/crm/seller/{crm_slug}/website/design?status=saved", status_code=303)
+
+
+@router.post("/{crm_slug}/website/design/color")
+async def seller_crm_website_design_color(request: Request, crm_slug: str, color_scheme: str = Form("dark_blue")):
+    account, _ = await _authorized_account(request, crm_slug)
+    color_scheme = (color_scheme or "dark_blue").strip().lower()
+    if color_scheme not in {"dark_blue", "dark_red", "graphite", "black_gold", "light_minimal"}:
+        color_scheme = "dark_blue"
+    await update_current_site_draft(account["seller_id"], {"design": {"color_scheme": color_scheme}})
+    return RedirectResponse(url=f"/crm/seller/{crm_slug}/website/design?status=saved", status_code=303)
 
 
 @router.get("/{crm_slug}/website/editor")

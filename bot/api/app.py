@@ -1035,6 +1035,14 @@ async def _render_site_by_subdomain(subdomain: str, request: Request):
             raw_config = {}
 
     config = merge_with_default(raw_config)
+    design = config.get("design") if isinstance(config.get("design"), dict) else {}
+    template_id = str(design.get("template_id") or "service_classic").strip().lower()
+    if template_id not in {"dismantler_classic", "dismantler_catalog", "dismantler_premium", "service_classic", "service_modern", "service_premium"}:
+        template_id = "service_classic"
+    color_scheme = str(design.get("color_scheme") or "dark_blue").strip().lower()
+    if color_scheme not in {"dark_blue", "dark_red", "graphite", "black_gold", "light_minimal"}:
+        color_scheme = "dark_blue"
+    config["design"] = {"template_id": template_id, "color_scheme": color_scheme}
     demo_preset = get_demo_render_preset(subdomain)
 
     seller_id = site["seller_id"]
@@ -1309,6 +1317,7 @@ async def _render_site_by_subdomain(subdomain: str, request: Request):
             "crm_base_url": crm_base_url,
             "edit_token": edit_token if is_owner_edit_mode else "",
             "block_registry": SITE_BLOCK_REGISTRY,
+            "site_color_scheme": color_scheme,
         },
     )
 
