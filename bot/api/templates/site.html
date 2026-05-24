@@ -8,7 +8,9 @@
 {% set hero = config.get('hero', {}) %}
 {% set contacts = config.get('contacts', {}) %}
 {% set modules = config.get('modules', {}) %}
-{% set products = products or config.get('products', {}) %}
+{% set products = products or config.get('products_catalog', config.get('products', {})) %}
+{% set vin_request = config.get('vin_request', {}) %}
+{% set layout_order = config.get('layout', {}).get('order', []) %}
 {% set about = config.get('about', {}) %}
 {% set cars_cfg = config.get('cars', {}) %}
 {% set pricing = config.get('pricing', {}) %}
@@ -21,6 +23,8 @@
 {% macro owner_block_controls(block_key) -%}
 {% if is_owner_edit_mode %}
 <div class="cp-owner-block-controls" aria-label="Керування блоком {{ block_key }}">
+  <button type="button" data-editor-action="move" data-direction="up" data-block-key="{{ block_key }}">↑</button>
+  <button type="button" data-editor-action="move" data-direction="down" data-block-key="{{ block_key }}">↓</button>
   <button type="button" data-editor-action="edit" data-block-key="{{ block_key }}">Редагувати блок</button>
   <button type="button" data-editor-action="hide" data-block-key="{{ block_key }}">Приховати</button>
 </div>
@@ -49,9 +53,15 @@
 
 <main>
 
-{% if modules.get('products', False) and products.get('items') %}
-    <section id="products-block" data-block="products" data-editable-block="products" class="cp-owner-block-shell">{{ owner_block_controls('products') }}
+{% if modules.get('products_catalog', modules.get('products', False)) and products.get('items') %}
+    <section id="products-block" data-block="products_catalog" data-editable-block="products_catalog" class="cp-owner-block-shell">{{ owner_block_controls('products_catalog') }}
     {% include "components/products.html" %}
+    </section>
+{% endif %}
+
+{% if modules.get('vin_request', False) %}
+    <section id="vin-request-block" data-block="vin_request" data-editable-block="vin_request" class="cp-owner-block-shell">{{ owner_block_controls('vin_request') }}
+      <section class="section"><div class="container"><h2>{{ vin_request.get('title') or 'Підбір по VIN' }}</h2><p>{{ vin_request.get('text') or '' }}</p></div></section>
     </section>
 {% endif %}
 
@@ -667,3 +677,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
 {% endblock %}
+{% if is_owner_edit_mode %}
+<script>
+(function(){
+const token = new URLSearchParams(window.location.search).get('token') || "{{ edit_token }}";
+const order = {{ layout_order|tojson }};
+async function reorder(blockKey, direction){
+ const idx = order.indexOf(blockKey); if(idx<0) return;
+ const swap = direction==='up'?idx-1:idx+1; if(swap<0||swap>=order.length) return;
+ [order[idx],order[swap]]=[order[swap],order[idx]];
+ await fetch('/edit/layout/reorder',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,order})});
+ window.location.href=`${window.location.pathname}?edit=1&token=${encodeURIComponent(token)}`;
+}
+document.querySelectorAll("[data-editor-action='move']").forEach(btn=>btn.addEventListener('click',()=>reorder(btn.dataset.blockKey,btn.dataset.direction)));
+})();
+</script>
+{% endif %}

@@ -62,6 +62,8 @@ _DEFAULT_SITE_CONFIG: dict[str, Any] = {
         "contacts": True,
         "map": True,
         "products": False,
+        "products_catalog": False,
+        "vin_request": False,
         "pricing": False,
         "gallery": False,
         "works": False,
@@ -90,11 +92,7 @@ _DEFAULT_SITE_CONFIG: dict[str, Any] = {
         "items": [],
     },
 
-    "gallery": {
-        "title": "Галерея",
-        "items": [],
-        "images": [],
-    },
+    "gallery": {"title": "Галерея", "intro": "", "items": [], "images": []},
 
     "works": {
         "title": "Наші роботи",
@@ -116,7 +114,7 @@ _DEFAULT_SITE_CONFIG: dict[str, Any] = {
         "items": [],
     },
 
-    "products": {
+    "products_catalog": {
         "title": "Запчастини / товари",
         "intro": "",
         "subtitle": "Перевірені запчастини з розборки з підбором по VIN",
@@ -125,19 +123,29 @@ _DEFAULT_SITE_CONFIG: dict[str, Any] = {
         "categories": [],
         "items": [],
     },
+    "vin_request": {
+        "title": "Підбір по VIN",
+        "text": "Залиште запит і ми підберемо потрібну деталь.",
+        "button_text": "Підібрати запчастину",
+        "fields": {
+            "vin_brand_model": "VIN / марка / модель",
+            "part_name": "Назва деталі",
+            "name": "Імʼя",
+            "phone": "Телефон",
+        },
+    },
 
     "layout": {
         "order": [
             "hero",
-            "about",
-            "services",
+            "products_catalog",
+            "vin_request",
             "cars",
-            "products",
+            "services",
             "gallery",
-            "works",
+            "about",
             "contacts",
             "map",
-            "reviews",
             "footer",
         ]
     },
@@ -341,7 +349,11 @@ def _normalize_config(config: dict) -> dict:
 
     # ===== PRODUCTS =====
 
-    products = config.setdefault("products", {})
+    products = config.get("products_catalog")
+    if not isinstance(products, dict) and isinstance(config.get("products"), dict):
+        products = deepcopy(config.get("products"))
+        config["products_catalog"] = products
+    products = config.setdefault("products_catalog", {})
 
     if not isinstance(config.get("about"), dict):
         config["about"] = deepcopy(_DEFAULT_SITE_CONFIG["about"])
@@ -371,6 +383,9 @@ def _normalize_config(config: dict) -> dict:
     else:
         cars["per_page"] = max(3, min(48, cars_per_page))
 
+    if not isinstance(config.get("vin_request"), dict):
+        config["vin_request"] = deepcopy(_DEFAULT_SITE_CONFIG["vin_request"])
+
     layout = config.setdefault("layout", {})
     default_order = _DEFAULT_SITE_CONFIG["layout"]["order"]
     raw_order = layout.get("order")
@@ -378,6 +393,7 @@ def _normalize_config(config: dict) -> dict:
         raw_order = []
     normalized_order = []
     for key in raw_order:
+        key = "products_catalog" if key == "products" else key
         if isinstance(key, str) and key in default_order and key not in normalized_order:
             normalized_order.append(key)
     for key in default_order:

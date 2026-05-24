@@ -73,23 +73,31 @@ INLINE_EDITABLE_BLOCKS = set(SITE_BLOCK_REGISTRY.keys())
 def _extract_inline_edit_patch(block_key: str, payload: dict) -> dict:
     payload = payload or {}
     if block_key == "hero":
+        banners = payload.get("banners")
+        if not isinstance(banners, list):
+            banners = []
         return {"hero": {
             "title": str(payload.get("title") or "").strip(),
             "subtitle": str(payload.get("subtitle") or "").strip(),
-            "button_text": str(payload.get("button_text") or "").strip(),
-            "button_secondary_text": str(payload.get("button_secondary_text") or "").strip(),
-            "button_link": str(payload.get("button_link") or "").strip(),
-            "banner_url": str(payload.get("banner_url") or "").strip(),
-            "banner_fit": str(payload.get("banner_fit") or "").strip(),
-            "banner_position": str(payload.get("banner_position") or "").strip(),
+            "primary_button_text": str(payload.get("primary_button_text") or "").strip(),
+            "primary_button_url": str(payload.get("primary_button_url") or "").strip(),
+            "secondary_button_text": str(payload.get("secondary_button_text") or "").strip(),
+            "secondary_button_url": str(payload.get("secondary_button_url") or "").strip(),
+            "banners": banners,
         }}
-    if block_key == "products":
+    if block_key == "products_catalog":
         per_page = max(3, min(48, int(payload.get("per_page") or 12)))
-        return {"products": {
+        return {"products_catalog": {
             "title": str(payload.get("title") or "").strip(),
             "intro": str(payload.get("intro") or "").strip(),
             "per_page": per_page,
             "search_enabled": str(payload.get("search_enabled") or "").strip().lower() in {"1", "true", "yes", "on"},
+        }}
+    if block_key == "vin_request":
+        return {"vin_request": {
+            "title": str(payload.get("title") or "").strip(),
+            "text": str(payload.get("text") or "").strip(),
+            "button_text": str(payload.get("button_text") or "").strip(),
         }}
     if block_key == "about":
         return {"about": {"title": str(payload.get("title") or "").strip(), "text": str(payload.get("text") or "").strip()}}
@@ -1350,6 +1358,28 @@ async def inline_publish(request: Request):
     if not ok:
         raise HTTPException(status_code=500, detail="Publish failed")
     return JSONResponse({"status": "ok", "message": "Сайт опубліковано."})
+
+
+@router.post("/edit/layout/reorder")
+async def inline_layout_reorder(request: Request):
+    body = await request.json()
+    token = str(request.query_params.get("token") or body.get("token") or "").strip()
+    site = await _authorized_site_for_inline_edit(request, token=token)
+    order = body.get("order")
+    if not isinstance(order, list):
+        raise HTTPException(status_code=400, detail="Invalid order")
+    allowed = set(SITE_BLOCK_REGISTRY.keys())
+    clean = []
+    for key in order:
+        if isinstance(key, str) and key in allowed and key not in clean:
+            clean.append(key)
+    for key in SITE_BLOCK_REGISTRY.keys():
+        if key not in clean:
+            clean.append(key)
+    ok = await update_site_config_draft(int(site["seller_id"]), {"layout": {"order": clean}})
+    if not ok:
+        raise HTTPException(status_code=500, detail="Draft update failed")
+    return JSONResponse({"status": "ok", "order": clean})
 
 
 # ================= LEAD FORM =================
