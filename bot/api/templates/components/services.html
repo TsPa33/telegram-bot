@@ -50,14 +50,14 @@
             {% set service_price = s.price if s.price is not none and not (s.price|string).startswith('http') else '' %}
             {% set service_price_label = s.price_label or (('від ' ~ service_price ~ ' грн') if service_price else '') %}
             <li
-                class="service-item site-card site-card--service site-card--interactive {% if loop.first %}active{% endif %}"
+                class="service-item service-card site-card site-card--service site-card--interactive {% if loop.first %}active{% endif %}"
                 data-title="{{ s.title }}"
                 data-description="{{ s.description }}"
                 data-photo="{{ s.photo_url or '' }}"
                 data-price="{{ service_price }}"
                 data-price-label="{{ service_price_label }}"
             >
-                <span>{{ s.title }}</span>
+                <span class="service-card__title">{{ s.title }}</span>
             </li>
         {% endfor %}
         </ul>
@@ -71,10 +71,10 @@
         {% set main_price = main.price if main.price is not none and not (main.price|string).startswith('http') else '' %}
         {% set main_price_label = main.price_label or (('від ' ~ main_price ~ ' грн') if main_price else '') %}
 
-        <div class="highlight site-card site-card--service" id="serviceDisplay">
+        <div class="highlight service-card__body site-card site-card--service" id="serviceDisplay">
 
             {% if main.photo_url %}
-            <img src="{{ main.photo_url }}" class="highlight-img" id="serviceImage">
+            <img src="{{ main.photo_url }}" class="highlight-img service-card__icon" id="serviceImage">
             {% endif %}
 
             <h3 id="serviceTitle" class="section-subtitle">{{ main.title }}</h3>
@@ -82,7 +82,7 @@
             <span class="service-price" id="servicePrice"{% if not main_price_label %} style="display:none;"{% endif %}>{{ main_price_label }}</span>
 
             <a
-                class="btn-primary site-button site-button--primary"
+                class="btn-primary service-card__actions site-button site-button--primary"
                 data-analytics-event="service_order_click"
                 href="#contacts"
                 onclick="if (window.openCallback) { openCallback('Замовити'); return false; }"
@@ -97,6 +97,16 @@
 
 </div>
 
+
+<style>
+.site-template--calm-marketplace .services-split{padding:56px 0;background:linear-gradient(180deg,color-mix(in srgb,var(--bg) 94%, transparent),color-mix(in srgb,var(--surface) 90%, transparent));color:var(--text);}
+.site-template--calm-marketplace .services-split .split{gap:20px;align-items:start;}
+.site-template--calm-marketplace .services-split .left .site-list{gap:8px;}
+.site-template--calm-marketplace .services-split .service-item{padding:12px 14px;border-radius:12px;background:var(--surface);border:1px solid color-mix(in srgb,var(--border) 84%, transparent);}
+.site-template--calm-marketplace .services-split .highlight{padding:20px;border-radius:14px;background:var(--surface);border:1px solid color-mix(in srgb,var(--border) 84%, transparent);box-shadow:0 12px 24px color-mix(in srgb,var(--shadow) 32%, transparent);}
+.site-template--calm-marketplace .services-split .highlight h3,.site-template--calm-marketplace .services-split .highlight p{color:var(--text);}
+.site-template--calm-marketplace .services-split .service-price{color:var(--primary);}
+</style>
 {% if config.get('theme', {}).get('scheme') == 'electric_premium_dark' %}
 <div class="container electric-service-extras">
     <div class="electric-problems-block">
@@ -117,7 +127,7 @@
             <p>Опишіть симптом — менеджер підкаже, з чого почати діагностику.</p>
         </div>
         <a
-            class="btn-primary site-button site-button--primary"
+            class="btn-primary service-card__actions site-button site-button--primary"
             href="#contacts"
             onclick="if (window.openCallback) { openCallback('Записатися на діагностику'); return false; }"
         >

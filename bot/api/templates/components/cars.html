@@ -16,10 +16,10 @@
         <div class="cars-grid site-grid">
 
             {% for c in cars_list %}
-            <div class="car-card site-card site-card--inventory">
+            <div class="car-card site-card site-card--inventory car-card">
 
                 <!-- IMAGE -->
-                <div class="car-image">
+                <div class="car-image car-card__media">
 
                     {% if c.photo_url %}
                         <img class="site-image"
@@ -33,21 +33,21 @@
                 </div>
 
                 <!-- CONTENT -->
-                <div class="car-content">
+                <div class="car-content car-card__body">
 
-                    <h3 class="car-title section-subtitle">
+                    <h3 class="car-title car-card__title section-subtitle">
                         {{ c.title or (c.brand ~ " " ~ c.model) }}
                     </h3>
 
                     {% if c.description %}
-                        <p class="car-desc section-description">
+                        <p class="car-desc car-card__meta section-description">
                             {{ c.description }}
                         </p>
                     {% endif %}
 
                     <!-- CTA -->
                     <button
-                        class="contact-seller-btn site-button site-button--primary"
+                        class="contact-seller-btn car-card__actions site-button site-button--primary"
                         onclick="openSellerContacts()"
                     >
                          {{ cars_cta_label }}
@@ -61,10 +61,10 @@
         </div>
         {% else %}
         <div class="site-card site-card--empty car-card site-empty">
-            <div class="car-content">
+            <div class="car-content car-card__body">
                 <h3 class="section-subtitle">Поки що авто не додані. Звʼяжіться з продавцем для уточнення наявності.</h3>
                 <p class="section-description">Залиште запит, і ми допоможемо підібрати потрібний варіант.</p>
-                <a class="contact-seller-btn site-button site-button--primary" href="#contacts">Зв'язатись з продавцем</a>
+                <a class="contact-seller-btn car-card__actions site-button site-button--primary" href="#contacts">Зв'язатись з продавцем</a>
             </div>
         </div>
         {% endif %}
@@ -309,6 +309,12 @@
 }
 
 
+
+.site-template--calm-marketplace .cars-grid{grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px;margin-top:16px;}
+.site-template--calm-marketplace .car-card{border:1px solid color-mix(in srgb,var(--border) 82%, transparent);background:var(--surface);box-shadow:0 10px 20px color-mix(in srgb,var(--shadow) 30%, transparent);}
+.site-template--calm-marketplace .car-card:hover{transform:translateY(-3px);box-shadow:0 14px 24px color-mix(in srgb,var(--shadow) 38%, transparent);}
+.site-template--calm-marketplace .car-content{padding:14px 14px 16px;}
+.site-template--calm-marketplace .contact-seller-btn{min-height:40px;padding:8px 12px;font-size:14px;}
 /* ===== MODAL ===== */
 
 .seller-modal {

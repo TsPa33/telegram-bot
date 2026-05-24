@@ -82,8 +82,8 @@
             <h3 class="cp-category-title">{{ category }}{% if category_counts.get(category) %} <small>({{ category_counts.get(category) }})</small>{% endif %}</h3>
             <div class="cp-product-grid">
             {% for product in display_items if product.get('category') == category %}
-            <article class="cp-product-card site-card site-card--inventory site-card--interactive" data-cp-product-card data-cp-category-value="{{ product.get('category', '') }}">
-                <div class="cp-product-media site-media">
+            <article class="cp-product-card product-card site-card site-card--inventory site-card--interactive" data-cp-product-card data-cp-category-value="{{ product.get('category', '') }}">
+                <div class="cp-product-media product-card__media site-media">
                     {% if product.get('image') %}
                     <img class="site-image" src="{{ product.get('image') }}" alt="{{ product.get('title', 'Автозапчастина') }}" loading="lazy">
                     {% else %}
@@ -99,13 +99,13 @@
                     {% endif %}
                 </div>
 
-                <div class="cp-product-body">
+                <div class="cp-product-body product-card__body">
                     {% if product.get('stock') %}
                     <div class="cp-stock-row">● {{ product.get('stock') }}</div>
                     {% endif %}
-                    <h3>{{ product.get('title') }}</h3>
+                    <h3 class="product-card__title">{{ product.get('title') }}</h3>
 
-                    <dl class="cp-product-meta">
+                    <dl class="cp-product-meta product-card__meta">
                         <div>
                             <dt>Бренд</dt>
                             <dd>{{ product.get('brand') or '—' }}</dd>
@@ -132,7 +132,7 @@
                         </div>
                     </div>
 
-                    <div class="cp-product-actions">
+                    <div class="cp-product-actions product-card__actions">
                         <button type="button" class="cp-btn cp-btn-buy site-button site-button--primary" data-cp-buy="{{ product.get('id') }}">Купити</button>
                         <button type="button" class="cp-btn cp-btn-detail site-button site-button--secondary" data-cp-detail="{{ product.get('id') }}">{{ cta_label }}</button>
                         <button type="button" class="cp-btn cp-btn-order site-button site-button--secondary" data-cp-order="{{ product.get('id') }}">Замовити</button>
@@ -148,8 +148,8 @@
         {% if not categories and display_items %}
         <div class="cp-product-grid">
             {% for product in display_items %}
-            <article class="cp-product-card site-card site-card--inventory site-card--interactive" data-cp-product-card data-cp-category-value="{{ product.get('category', '') }}">
-                <div class="cp-product-media">
+            <article class="cp-product-card product-card site-card site-card--inventory site-card--interactive" data-cp-product-card data-cp-category-value="{{ product.get('category', '') }}">
+                <div class="cp-product-media product-card__media">
                     {% if product.get('image') %}
                     <img src="{{ product.get('image') }}" alt="{{ product.get('title', 'Автозапчастина') }}" loading="lazy">
                     {% else %}
@@ -161,11 +161,11 @@
                     {% endif %}
                     <span class="cp-product-category">{{ category_icons.get(product.get('category'), '🔧') }} {{ product.get('category') }}</span>
                 </div>
-                <div class="cp-product-body">
+                <div class="cp-product-body product-card__body">
                     {% if product.get('stock') %}<div class="cp-stock-row">● {{ product.get('stock') }}</div>{% endif %}
-                    <h3>{{ product.get('title') }}</h3>
+                    <h3 class="product-card__title">{{ product.get('title') }}</h3>
                     <strong class="cp-product-price">{{ product.get('price') }}</strong>
-                    <div class="cp-product-actions">
+                    <div class="cp-product-actions product-card__actions">
                         <button type="button" class="cp-btn cp-btn-buy site-button site-button--primary" data-cp-buy="{{ product.get('id') }}">Купити</button>
                         <button type="button" class="cp-btn cp-btn-detail site-button site-button--secondary" data-cp-detail="{{ product.get('id') }}">{{ cta_label }}</button>
                     </div>
@@ -1371,3 +1371,23 @@ body.has-products-cart.theme-parts_dark_red [data-scroll-top] {
         {% endif %}
 
     .cp-product-media { min-height: 220px; }
+
+.site-template--calm-marketplace .cp-products-section{
+    background:linear-gradient(180deg,color-mix(in srgb,var(--bg) 96%, transparent) 0%,color-mix(in srgb,var(--surface) 92%, transparent) 100%);
+    color:var(--text);
+    padding:58px 0 66px;
+}
+.site-template--calm-marketplace .cp-products-section::before{opacity:.18;}
+.site-template--calm-marketplace .cp-products-container{max-width:1280px;}
+.site-template--calm-marketplace .cp-products-head{align-items:flex-start;gap:18px;}
+.site-template--calm-marketplace .cp-delivery-strip{background:color-mix(in srgb,var(--surface) 95%, transparent);border:1px solid color-mix(in srgb,var(--border) 80%, transparent);color:var(--muted);}
+.site-template--calm-marketplace .cp-product-grid{grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;}
+.site-template--calm-marketplace .cp-product-card{background:var(--surface);border:1px solid color-mix(in srgb,var(--border) 84%, transparent);box-shadow:0 10px 20px color-mix(in srgb,var(--shadow) 36%, transparent);}
+.site-template--calm-marketplace .cp-product-media{aspect-ratio:4/3;background:color-mix(in srgb,var(--surface-2) 88%, transparent);}
+.site-template--calm-marketplace .cp-product-category{background:rgba(15,23,42,.8);border:1px solid rgba(148,163,184,.28);}
+.site-template--calm-marketplace .cp-product-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+.site-template--calm-marketplace .cp-product-actions .site-button{min-height:40px;padding:8px 12px;}
+.site-template--calm-marketplace .cp-trust-block{background:var(--surface);border:1px solid color-mix(in srgb,var(--border) 80%, transparent);}
+.site-template--calm-marketplace .cp-cart-open{border:1px solid color-mix(in srgb,var(--border) 85%, transparent);background:var(--surface);color:var(--text);}
+.site-template--calm-marketplace .cp-category-pill{background:var(--surface);border-color:color-mix(in srgb,var(--border) 80%, transparent);color:var(--text);}
+

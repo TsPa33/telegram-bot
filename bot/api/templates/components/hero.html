@@ -61,16 +61,17 @@
                         <strong>Пошук причини, не заміна навмання</strong>
                     </div>
                 </div>
+                </div>
             </div>
         </div>
     {% else %}
         {% if banners %}
-            <div class="hero-slider" id="heroSlider">
+            <div class="hero-slider hero__visual" id="heroSlider">
                 {% for banner in banners %}
                     {% set banner_image = banner.get('image') if banner is mapping else banner %}
                     {% set banner_fit = banner.get('fit', 'cover') if banner is mapping else 'cover' %}
                     {% set banner_position = banner.get('position', 'center') if banner is mapping else 'center' %}
-                    <div class="hero-slide{% if loop.first %} active{% endif %}">
+                    <div class="hero-slide hero__media{% if loop.first %} active{% endif %}">
                         {% if banner_image %}
                         <img src="{{ banner_image }}" alt="banner {{ loop.index }}" style="object-fit: {{ banner_fit }}; object-position: {{ banner_position }};">
                         {% endif %}
@@ -78,32 +79,33 @@
                 {% endfor %}
             </div>
         {% elif is_owner_edit_mode %}
-            <div class="hero-slider" id="heroSlider">
-                <div class="hero-slide active">
-                    <div class="cp-product-placeholder"><strong>+ Додати банер</strong></div>
+            <div class="hero-slider hero__visual" id="heroSlider">
+                <div class="hero-slide hero__media active">
+                    <div class="cp-product-placeholder hero__panel"><strong>+ Додати банер</strong></div>
                 </div>
             </div>
         {% else %}
-            <div class="hero-slider" id="heroSlider">
-                <div class="hero-slide active">
-                    <div class="hero-fallback-visual"></div>
+            <div class="hero-slider hero__visual" id="heroSlider">
+                <div class="hero-slide hero__media active">
+                    <div class="hero-fallback-visual hero__panel"></div>
                 </div>
             </div>
         {% endif %}
 
         <div class="hero-overlay">
-            <div class="container hero-content">
+            <div class="container hero__inner">
+                <div class="hero-content hero__content">
                 {% if hero.get('eyebrow') %}
-                    <div class="hero-eyebrow">{{ hero.get('eyebrow') }}</div>
+                    <div class="hero-eyebrow hero__eyebrow">{{ hero.get('eyebrow') }}</div>
                 {% endif %}
 
-                <h1 class="section-title">{{ hero.get('title') or config.get('header', {}).get('title') or 'Автомобільні послуги поруч' }}</h1>
+                <h1 class="section-title hero__title">{{ hero.get('title') or config.get('header', {}).get('title') or 'Автомобільні послуги поруч' }}</h1>
 
                 {% if hero.get('subtitle') %}
-                    <p class="section-description">{{ hero.get('subtitle') }}</p>
+                    <p class="section-description hero__subtitle">{{ hero.get('subtitle') }}</p>
                 {% endif %}
 
-                <div class="hero-actions">
+                <div class="hero-actions hero__actions">
                     {% set primary_phone = contacts.get('phones', [])[0] if contacts.get('phones') else '' %}
                     {% if primary_phone %}
                         <a class="hero-btn hero-btn-primary site-button site-button--primary" href="tel:{{ primary_phone }}">{{ hero.get('button_text') or 'Подзвонити' }}</a>
@@ -120,12 +122,13 @@
                 </div>
                 {% set hero_trust = hero.get('trust_items', []) if hero.get('trust_items') is iterable and hero.get('trust_items') is not string else [] %}
                 {% if hero_trust %}
-                <div class="hero-trust-list">
+                <div class="hero-trust-list hero__trust">
                     {% for trust_item in hero_trust[:3] %}
                         <span class="site-badge">{{ trust_item }}</span>
                     {% endfor %}
                 </div>
                 {% endif %}
+                </div>
             </div>
         </div>
     {% endif %}
@@ -152,6 +155,104 @@
         radial-gradient(circle at 18% 22%, rgba(56, 189, 248, 0.30), transparent 40%),
         radial-gradient(circle at 82% 8%, rgba(220, 38, 38, 0.26), transparent 38%),
         linear-gradient(135deg, #0b1220 0%, #111827 100%);
+}
+
+
+.hero__inner { width: 100%; }
+.hero__content { max-width: var(--template-content-width, 920px); }
+.hero__actions { display:flex; flex-wrap:wrap; }
+.hero__trust { display:flex; flex-wrap:wrap; gap:10px; margin-top:20px; }
+.hero__panel { width:100%; height:100%; }
+
+/* ===== TEMPLATE HERO DIFFERENTIATION ===== */
+.site-template--brutal-metallic .hero {
+    background: linear-gradient(140deg, #05080f 0%, #0b1220 52%, #111827 100%);
+}
+.site-template--brutal-metallic .hero-overlay {
+    background:
+      linear-gradient(100deg, rgba(2,6,23,.92) 0%, rgba(2,6,23,.76) 48%, rgba(2,6,23,.38) 100%),
+      linear-gradient(180deg, rgba(2,6,23,.2) 0%, rgba(2,6,23,.72) 100%);
+}
+.site-template--brutal-metallic .hero__content {
+    padding: clamp(20px, 3vw, 32px);
+    border: var(--template-border-strength) solid color-mix(in srgb, var(--primary) 26%, var(--template-border-color));
+    border-radius: var(--template-radius-sm);
+    background: linear-gradient(160deg, rgba(15,23,42,.66), rgba(2,6,23,.58));
+    box-shadow: var(--template-shadow);
+}
+.site-template--brutal-metallic .hero::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image: linear-gradient(rgba(148,163,184,.08) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,.07) 1px, transparent 1px);
+    background-size: 44px 44px;
+    mask-image: linear-gradient(110deg, #000 0%, #000 58%, transparent 100%);
+}
+.site-template--brutal-metallic .hero__title { font-weight: 900; letter-spacing: -0.06em; }
+.site-template--brutal-metallic .hero__actions { gap: 10px; }
+
+.site-template--calm-marketplace .hero {
+    min-height: min(70vh, 620px);
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 46%, #0b1220 100%);
+}
+.site-template--calm-marketplace .hero__inner{display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,0.48fr);gap:18px;align-items:center;}
+.site-template--calm-marketplace .hero__content{max-width:760px;}
+.site-template--calm-marketplace .hero__content::after{content:"";display:block;margin-top:14px;height:1px;background:linear-gradient(90deg,color-mix(in srgb,var(--primary) 36%, transparent),transparent);}
+.site-template--calm-marketplace .hero__title{font-size:clamp(34px,4.8vw,62px);line-height:1.02;}
+.site-template--calm-marketplace .hero__subtitle{font-size:clamp(16px,1.8vw,20px);max-width:640px;}
+.site-template--calm-marketplace .hero-overlay {
+    background:
+      linear-gradient(98deg, rgba(15,23,42,.86) 0%, rgba(15,23,42,.62) 46%, rgba(15,23,42,.26) 100%),
+      linear-gradient(180deg, rgba(2,6,23,.16) 0%, rgba(2,6,23,.58) 100%);
+}
+.site-template--calm-marketplace .hero__content {
+    padding: clamp(18px, 2.6vw, 28px);
+    border: 1px solid color-mix(in srgb, var(--template-border-color) 78%, #fff 8%);
+    border-radius: var(--template-radius);
+    background: color-mix(in srgb, var(--surface) 24%, rgba(15,23,42,.58));
+}
+.site-template--calm-marketplace .hero__actions { gap: 12px; }
+.site-template--calm-marketplace .hero__trust{gap:8px;}
+.site-template--calm-marketplace .hero__trust .site-badge { background: color-mix(in srgb, var(--surface) 94%, transparent); color: var(--text); border-color:color-mix(in srgb,var(--border) 82%, transparent); }
+.site-template--calm-marketplace .hero__visual{position:relative;min-height:240px;border-radius:var(--template-radius-lg);overflow:hidden;border:1px solid color-mix(in srgb,var(--border) 70%, transparent);background:linear-gradient(150deg,#1f2937 0%,#334155 100%);}
+.site-template--calm-marketplace .hero__visual::after{content:"Каталог / OEM / VIN";position:absolute;right:12px;bottom:12px;padding:6px 10px;border-radius:10px;font-size:11px;letter-spacing:.08em;background:rgba(15,23,42,.68);color:#e2e8f0;border:1px solid rgba(148,163,184,.28);}
+
+.site-template--universal-sales .hero {
+    background: linear-gradient(140deg, #0b1220 0%, #1e293b 58%, #334155 100%);
+}
+.site-template--universal-sales .hero-overlay {
+    background:
+      linear-gradient(102deg, rgba(15,23,42,.82) 0%, rgba(15,23,42,.56) 46%, rgba(15,23,42,.2) 100%),
+      linear-gradient(180deg, rgba(2,6,23,.12) 0%, rgba(2,6,23,.5) 100%);
+}
+.site-template--universal-sales .hero__content {
+    padding: clamp(22px, 3.2vw, 36px);
+    border: 1px solid color-mix(in srgb, #fff 18%, var(--template-border-color));
+    border-radius: var(--template-radius-lg);
+    background: linear-gradient(150deg, rgba(15,23,42,.52), rgba(30,41,59,.44));
+    max-width: min(100%, 860px);
+}
+.site-template--universal-sales .hero__title { font-weight: 800; }
+.site-template--universal-sales .hero__actions { gap: 14px; }
+
+.site-template--brutal-metallic .hero-fallback-visual {
+    background:
+      linear-gradient(180deg, rgba(2,6,23,.54), rgba(2,6,23,.82)),
+      radial-gradient(circle at 15% 22%, rgba(100,116,139,.28), transparent 42%),
+      linear-gradient(145deg, #0b1220 0%, #111827 56%, #0f172a 100%);
+}
+.site-template--calm-marketplace .hero-fallback-visual {
+    background:
+      linear-gradient(180deg, rgba(2,6,23,.28), rgba(2,6,23,.58)),
+      radial-gradient(circle at 78% 18%, rgba(37,99,235,.2), transparent 40%),
+      linear-gradient(145deg, #1e293b 0%, #334155 48%, #1f2937 100%);
+}
+.site-template--universal-sales .hero-fallback-visual {
+    background:
+      linear-gradient(180deg, rgba(15,23,42,.2), rgba(15,23,42,.5)),
+      radial-gradient(circle at 24% 20%, rgba(148,163,184,.24), transparent 44%),
+      linear-gradient(145deg, #334155 0%, #475569 54%, #1e293b 100%);
 }
 
 /* ===== ELECTRIC PREMIUM HERO ===== */
@@ -607,9 +708,22 @@
     }
 
     .hero-actions,
+    .hero__actions,
     .hero-btn {
         width: 100%;
     }
+
+    .hero__actions .site-button {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .hero__content {
+        padding: 18px;
+    }
+
+    .site-template--calm-marketplace .hero__inner{grid-template-columns:1fr;}
+    .site-template--calm-marketplace .hero__visual{min-height:180px;}
 
     .electric-hero-shell {
         min-height: auto;
