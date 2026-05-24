@@ -65,6 +65,22 @@ templates = Jinja2Templates(directory="bot/api/templates")
 bot = Bot(token=BOT_TOKEN)
 logger = logging.getLogger(__name__)
 
+
+def normalize_template_id(value: str | None) -> str:
+    raw = str(value or "universal_classic").strip().lower()
+    legacy_map = {
+        "service_classic": "universal_classic",
+        "dismantler_classic": "universal_classic",
+        "service_modern": "universal_catalog",
+        "dismantler_catalog": "universal_catalog",
+        "service_premium": "universal_premium",
+        "dismantler_premium": "universal_premium",
+    }
+    raw = legacy_map.get(raw, raw)
+    if raw not in {"universal_classic", "universal_catalog", "universal_premium"}:
+        return "universal_classic"
+    return raw
+
 def _extract_inline_edit_patch(block_key: str, payload: dict) -> dict:
     payload = payload or {}
     if block_key == "hero":
@@ -1022,9 +1038,7 @@ async def _render_site_by_subdomain(subdomain: str, request: Request):
 
     config = merge_with_default(raw_config)
     design = config.get("design") if isinstance(config.get("design"), dict) else {}
-    template_id = str(design.get("template_id") or "service_classic").strip().lower()
-    if template_id not in {"dismantler_classic", "dismantler_catalog", "dismantler_premium", "service_classic", "service_modern", "service_premium"}:
-        template_id = "service_classic"
+    template_id = normalize_template_id(design.get("template_id"))
     color_scheme = str(design.get("color_scheme") or "dark_blue").strip().lower()
     if color_scheme not in {"dark_blue", "dark_red", "graphite", "black_gold", "light_minimal"}:
         color_scheme = "dark_blue"
