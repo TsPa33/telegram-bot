@@ -51,7 +51,7 @@
           <div class="product-photo-box">
             {% if product.photo_url and product.photo_url.startswith(('http://','https://')) %}<img src="{{ product.photo_url }}" alt="{{ product.title or 'Товар' }}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;">{% else %}<div><strong>Запчастина</strong><div>Фото буде додано</div></div>{% endif %}
             <form class="photo-edit-overlay" method="post" enctype="multipart/form-data" action="/crm/seller/{{ account.crm_slug }}/content/products/{{ product.id }}/photo">
-              <label class="btn ghost" style="color:#fff;border-color:rgba(255,255,255,.5);">Замінити фото<input type="file" name="photo" accept="image/*" hidden onchange="this.form.submit()"></label>
+              <label class="btn secondary">Замінити фото<input type="file" name="photo" accept="image/*" hidden onchange="this.form.submit()"></label>
             </form>
           </div>
           <div>

@@ -75,13 +75,13 @@
   </section>
 
 
-  <section class="card" style="border-color:#ef4444;">
+  <section class="card">
     <div class="card-headline">
       <h3 style="margin:0;color:#b91c1c;">Видалення авто</h3>
     </div>
     <p class="section-note" style="margin-top:8px;">Авто буде прибрано з каталогу. Пов’язані запчастини також не повинні показуватись покупцям.</p>
     <form method="post" action="/crm/seller/{{ account.crm_slug }}/content/cars/{{ car.car_id }}/delete" style="margin-top:12px;">
-      <button class="btn small" style="background:#dc2626;border-color:#dc2626;color:#fff;" type="submit" onclick="return confirm('Видалити це авто? Пов’язані запчастини також буде приховано.')">Видалити авто</button>
+      <button class="btn small danger" type="submit" onclick="return confirm('Видалити це авто? Пов’язані запчастини також буде приховано.')">Видалити авто</button>
     </form>
   </section>
 
