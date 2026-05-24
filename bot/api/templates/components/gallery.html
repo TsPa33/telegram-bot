@@ -19,6 +19,9 @@
                 </a>
                 {% endif %}
             {% endfor %}
+            {% if not gallery_images %}
+                <div class="cp-gallery-empty">+ Заповнити галерею</div>
+            {% endif %}
         </div>
     </div>
 </section>
