@@ -1,7 +1,7 @@
 import json
 
 from bot.database.base import fetch, fetchrow, execute, transaction
-from bot.services.site_config import merge_with_default
+from bot.services.site_config import apply_launch_defaults, merge_with_default
 from bot.services.domain_service import normalize_subdomain
 
 
@@ -9,6 +9,7 @@ from bot.services.domain_service import normalize_subdomain
 
 async def create_site(seller_id: int, subdomain: str, config: dict):
     config = merge_with_default(config or {})
+    config = apply_launch_defaults(config, initial_creation=True)
     subdomain = normalize_subdomain(subdomain)
 
     return await fetchrow(
