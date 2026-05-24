@@ -20,7 +20,12 @@
                 <span class="cp-eyebrow">Premium Parts</span>
                 <h2 class="section-title">{{ catalog.get('title') or products_config.get('title') or products_catalog.get('title') or 'Каталог' }}</h2>
                 <p class="section-description">{{ catalog.get('description') or catalog.get('subtitle') or products_config.get('description') or products_config.get('subtitle') or products_catalog.get('description') or products_catalog.get('subtitle') or 'Перегляньте доступні пропозиції та залиште запит.' }}</p>
-                <p class="cp-products-total">{{ products_config.get('total_available', catalog.get('total_available', catalog_items|length)) }} товарів у наявності</p>
+                {% set products_total = products_config.get('total_available', catalog.get('total_available', catalog_items|length)) %}
+                {% if catalog_items %}
+                <p class="cp-products-total">{{ products_total }} товарів у наявності</p>
+                {% else %}
+                <p class="cp-products-total">Актуальну наявність уточнюйте у продавця — підберемо під ваш запит.</p>
+                {% endif %}
             </div>
 
             <button type="button" class="cp-cart-open" data-cp-cart-open>
@@ -77,7 +82,7 @@
             <h3 class="cp-category-title">{{ category }}{% if category_counts.get(category) %} <small>({{ category_counts.get(category) }})</small>{% endif %}</h3>
             <div class="cp-product-grid">
             {% for product in display_items if product.get('category') == category %}
-            <article class="cp-product-card site-card" data-cp-product-card data-cp-category-value="{{ product.get('category', '') }}">
+            <article class="cp-product-card site-card site-card--inventory site-card--interactive" data-cp-product-card data-cp-category-value="{{ product.get('category', '') }}">
                 <div class="cp-product-media site-media">
                     {% if product.get('image') %}
                     <img class="site-image" src="{{ product.get('image') }}" alt="{{ product.get('title', 'Автозапчастина') }}" loading="lazy">
@@ -143,7 +148,7 @@
         {% if not categories and display_items %}
         <div class="cp-product-grid">
             {% for product in display_items %}
-            <article class="cp-product-card" data-cp-product-card data-cp-category-value="{{ product.get('category', '') }}">
+            <article class="cp-product-card site-card site-card--inventory site-card--interactive" data-cp-product-card data-cp-category-value="{{ product.get('category', '') }}">
                 <div class="cp-product-media">
                     {% if product.get('image') %}
                     <img src="{{ product.get('image') }}" alt="{{ product.get('title', 'Автозапчастина') }}" loading="lazy">
@@ -161,8 +166,8 @@
                     <h3>{{ product.get('title') }}</h3>
                     <strong class="cp-product-price">{{ product.get('price') }}</strong>
                     <div class="cp-product-actions">
-                        <button type="button" class="cp-btn cp-btn-buy" data-cp-buy="{{ product.get('id') }}">Купити</button>
-                        <button type="button" class="cp-btn cp-btn-detail" data-cp-detail="{{ product.get('id') }}">{{ cta_label }}</button>
+                        <button type="button" class="cp-btn cp-btn-buy site-button site-button--primary" data-cp-buy="{{ product.get('id') }}">Купити</button>
+                        <button type="button" class="cp-btn cp-btn-detail site-button site-button--secondary" data-cp-detail="{{ product.get('id') }}">{{ cta_label }}</button>
                     </div>
                 </div>
             </article>
@@ -208,7 +213,7 @@
             <form class="cp-cart-form" data-cp-cart-form>
                 <input type="text" name="name" placeholder="Ваше ім'я">
                 <input type="tel" name="phone" placeholder="Телефон" required>
-                <button type="submit" class="cp-btn cp-cart-submit">Оформити заявку</button>
+                <button type="submit" class="cp-btn cp-cart-submit site-button site-button--primary">Оформити заявку</button>
                 <p class="cp-cart-note">Менеджер підтвердить наявність, сумісність та доставку. Онлайн-оплати немає.</p>
             </form>
         </div>
@@ -228,9 +233,9 @@
                     <div class="cp-quick-delivery">Нова Пошта / самовивіз · відправка 1–2 дні · оплата при отриманні</div>
                     <strong class="cp-quick-price" data-cp-quick-price></strong>
                     <div class="cp-quick-actions">
-                        <button type="button" class="cp-btn cp-btn-buy" data-cp-quick-buy>Купити</button>
-                        <button type="button" class="cp-btn cp-btn-order" data-cp-quick-order>Замовити</button>
-                        <button type="button" class="cp-btn cp-btn-message" data-cp-message>Написати</button>
+                        <button type="button" class="cp-btn cp-btn-buy site-button site-button--primary" data-cp-quick-buy>Купити</button>
+                        <button type="button" class="cp-btn cp-btn-order site-button site-button--secondary" data-cp-quick-order>Замовити</button>
+                        <button type="button" class="cp-btn cp-btn-message site-button site-button--secondary" data-cp-message>Написати</button>
                     </div>
                 </div>
             </div>

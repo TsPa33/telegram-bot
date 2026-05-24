@@ -107,6 +107,8 @@
                     {% set primary_phone = contacts.get('phones', [])[0] if contacts.get('phones') else '' %}
                     {% if primary_phone %}
                         <a class="hero-btn hero-btn-primary site-button site-button--primary" href="tel:{{ primary_phone }}">{{ hero.get('button_text') or 'Подзвонити' }}</a>
+                    {% else %}
+                        <a class="hero-btn hero-btn-primary site-button site-button--primary" href="#contacts">{{ hero.get('button_text') or 'Звʼязатися' }}</a>
                     {% endif %}
                     <a
                         class="hero-btn hero-btn-secondary site-button site-button--secondary"
@@ -116,6 +118,14 @@
                         {{ hero.get('button_secondary_text') or 'Залишити заявку' }}
                     </a>
                 </div>
+                {% set hero_trust = hero.get('trust_items', []) if hero.get('trust_items') is iterable and hero.get('trust_items') is not string else [] %}
+                {% if hero_trust %}
+                <div class="hero-trust-list">
+                    {% for trust_item in hero_trust[:3] %}
+                        <span class="site-badge">{{ trust_item }}</span>
+                    {% endfor %}
+                </div>
+                {% endif %}
             </div>
         </div>
     {% endif %}

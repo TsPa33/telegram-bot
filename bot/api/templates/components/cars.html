@@ -16,7 +16,7 @@
         <div class="cars-grid site-grid">
 
             {% for c in cars_list %}
-            <div class="car-card site-card">
+            <div class="car-card site-card site-card--inventory">
 
                 <!-- IMAGE -->
                 <div class="car-image">
@@ -60,7 +60,7 @@
 
         </div>
         {% else %}
-        <div class="site-card car-card site-empty">
+        <div class="site-card site-card--empty car-card site-empty">
             <div class="car-content">
                 <h3 class="section-subtitle">Поки що авто не додані. Звʼяжіться з продавцем для уточнення наявності.</h3>
                 <p class="section-description">Залиште запит, і ми допоможемо підібрати потрібний варіант.</p>
@@ -305,27 +305,7 @@
 
 .contact-seller-btn {
     width: 100%;
-
     padding: 12px;
-
-    border: none;
-
-    border-radius: 12px;
-
-    background: var(--success);
-
-    color: white;
-
-    font-size: 14px;
-    font-weight: 600;
-
-    cursor: pointer;
-
-    transition: 0.2s;
-}
-
-.contact-seller-btn:hover {
-    background: var(--success-dark);
 }
 
 
