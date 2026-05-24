@@ -1036,33 +1036,36 @@ async def _render_site_by_subdomain(subdomain: str, request: Request):
     if demo_preset:
         config = merge_with_default(demo_preset["config"])
 
-    modules = config.setdefault("modules", {})
-    products = config.setdefault("products", {})
+    header = config.get("header") if isinstance(config.get("header"), dict) else {}
+    hero = config.get("hero") if isinstance(config.get("hero"), dict) else {}
+    contacts = config.get("contacts") if isinstance(config.get("contacts"), dict) else {}
+    gallery = config.get("gallery") if isinstance(config.get("gallery"), dict) else {}
+    services_cfg = config.get("services") if isinstance(config.get("services"), dict) else {}
+    cars_cfg = config.get("cars") if isinstance(config.get("cars"), dict) else {}
+    products = config.get("products") if isinstance(config.get("products"), dict) else {}
+    catalog = config.get("catalog") if isinstance(config.get("catalog"), dict) else {}
+    map_cfg = config.get("map") if isinstance(config.get("map"), dict) else {}
 
-    service_prices = (
-        config
-        .setdefault("services", {})
-        .setdefault("prices", {})
-    )
+    config["header"] = header
+    config["hero"] = hero
+    config["contacts"] = contacts
+    config["gallery"] = gallery
+    config["services"] = services_cfg
+    config["cars"] = cars_cfg
+    config["products"] = products
+    config["catalog"] = catalog
+    config["map"] = map_cfg
 
-    car_titles = (
-        config
-        .setdefault("cars", {})
-        .setdefault("titles", {})
-    )
-
-    car_prices = (
-        config
-        .setdefault("cars", {})
-        .setdefault("prices", {})
-    )
+    service_prices = services_cfg.get("prices") if isinstance(services_cfg.get("prices"), dict) else {}
+    car_titles = cars_cfg.get("titles") if isinstance(cars_cfg.get("titles"), dict) else {}
+    car_prices = cars_cfg.get("prices") if isinstance(cars_cfg.get("prices"), dict) else {}
 
     # ================= MEDIA =================
 
     # ===== LOGO =====
 
-    if config.get("header", {}).get("logo"):
-        logo = config["header"]["logo"]
+    if header.get("logo"):
+        logo = header.get("logo")
 
         if isinstance(logo, str) and logo.startswith(
             ("http://", "https://")
@@ -1071,20 +1074,20 @@ async def _render_site_by_subdomain(subdomain: str, request: Request):
 
         else:
             try:
-                config["header"]["logo"] = await tg_file_url(
+                header["logo"] = await tg_file_url(
                     bot,
                     logo
                 )
 
             except Exception:
-                config["header"]["logo"] = None
+                header["logo"] = None
 
     # ===== BANNERS =====
 
-    if config.get("hero", {}).get("banners"):
+    if isinstance(hero.get("banners"), list) and hero.get("banners"):
         resolved = []
 
-        for banner in config["hero"]["banners"]:
+        for banner in hero["banners"]:
 
             # external URL
             if (
@@ -1103,7 +1106,7 @@ async def _render_site_by_subdomain(subdomain: str, request: Request):
             except Exception:
                 continue
 
-        config["hero"]["banners"] = resolved
+        hero["banners"] = resolved
 
     # ================= SELLER =================
 
@@ -1115,82 +1118,78 @@ async def _render_site_by_subdomain(subdomain: str, request: Request):
 
     # ================= CARS =================
 
-    if modules.get("cars", True):
+    cars = await get_cars_by_seller(seller_id)
+    cars = [dict(c) for c in cars]
 
-        cars = await get_cars_by_seller(seller_id)
-        cars = [dict(c) for c in cars]
+    for car in cars:
 
-        for car in cars:
+        car_id = str(car.get("id"))
 
-            car_id = str(car.get("id"))
+        car["title"] = (
+            car_titles.get(car_id)
+            or f"{car.get('brand', '')} {car.get('model', '')}".strip()
+        )
 
-            car["title"] = (
-                car_titles.get(car_id)
-                or f"{car.get('brand', '')} {car.get('model', '')}".strip()
-            )
+        car["price"] = (
+            car_prices.get(car_id)
+            or ""
+        )
 
-            car["price"] = (
-                car_prices.get(car_id)
-                or ""
-            )
+        car["photo_url"] = None
 
-            car["photo_url"] = None
+        if car.get("photo_id"):
 
-            if car.get("photo_id"):
+            try:
+                car["photo_url"] = await tg_file_url(
+                    bot,
+                    car["photo_id"]
+                )
 
-                try:
-                    car["photo_url"] = await tg_file_url(
-                        bot,
-                        car["photo_id"]
-                    )
-
-                except Exception:
-                    car["photo_url"] = None
+            except Exception:
+                car["photo_url"] = None
 
     # ================= SERVICES =================
 
-    if modules.get("services", True):
+    services = await get_services_by_seller(seller_id)
+    services = [dict(s) for s in services]
 
-        services = await get_services_by_seller(seller_id)
-        services = [dict(s) for s in services]
+    for service in services:
 
-        for service in services:
+        service_id = str(service.get("id"))
 
-            service_id = str(service.get("id"))
+        service_price = service_prices.get(service_id)
 
-            service_price = service_prices.get(service_id)
+        if service_price is None or service_price == "":
+            service_price = service.get("price")
 
-            if service_price is None or service_price == "":
-                service_price = service.get("price")
+        if service_price is None or service_price == "":
+            service_price = service.get("website") or ""
 
-            if service_price is None or service_price == "":
-                service_price = service.get("website") or ""
+        service["price"] = service_price
 
-            service["price"] = service_price
+        service["photo_url"] = None
 
-            service["photo_url"] = None
+        if service.get("photo_id"):
+            photo_id = service["photo_id"]
 
-            if service.get("photo_id"):
-                photo_id = service["photo_id"]
+            if isinstance(photo_id, str) and photo_id.startswith(("http://", "https://")):
+                service["photo_url"] = photo_id
+            else:
+                try:
+                    service["photo_url"] = await tg_file_url(
+                        bot,
+                        photo_id
+                    )
 
-                if isinstance(photo_id, str) and photo_id.startswith(("http://", "https://")):
-                    service["photo_url"] = photo_id
-                else:
-                    try:
-                        service["photo_url"] = await tg_file_url(
-                            bot,
-                            photo_id
-                        )
+                except Exception:
+                    service["photo_url"] = None
 
-                    except Exception:
-                        service["photo_url"] = None
-
-        if not services:
-            logger.warning(
+    if not services:
+        logger.warning(
                 "SITE DEBUG empty services subdomain=%s seller_id=%s modules=%s",
                 subdomain,
                 seller_id,
-                modules,
+                {"legacy_modules_ignored": True},
             )
 
     seller_parts = [dict(p) for p in await get_available_parts_for_site(seller_id)]
@@ -1203,7 +1202,8 @@ async def _render_site_by_subdomain(subdomain: str, request: Request):
     unified_items: list[dict] = []
     category_counts: dict[str, int] = {}
     normalized_categories: list[str] = []
-    for item in products.get("items", []) or []:
+    product_items = products.get("items") if isinstance(products.get("items"), list) else []
+    for item in product_items:
         if not isinstance(item, dict):
             continue
         category = (item.get("category") or "Інше").strip()
@@ -1247,7 +1247,7 @@ async def _render_site_by_subdomain(subdomain: str, request: Request):
     products["total_available"] = len(unified_items)
     products["category_counts"] = category_counts
 
-    cars = cars[: int((config.get("cars") or {}).get("per_page") or 6)]
+    cars = cars[: int(cars_cfg.get("per_page") or 6)]
 
     if demo_preset:
         demo_key = demo_preset["demo_type"]
@@ -1280,14 +1280,14 @@ async def _render_site_by_subdomain(subdomain: str, request: Request):
                 "parts": seller_parts,
                 "products": products.get("items", []),
                 "services": services,
-                "gallery_items": (config.get("gallery") or {}).get("items", []),
-                "contacts": config.get("contacts", {}),
+                "gallery_items": gallery.get("items") if isinstance(gallery.get("items"), list) else [],
+                "contacts": contacts,
                 "has_catalog": bool(unified_items),
                 "has_cars": bool(cars),
                 "has_services": bool(services),
-                "has_gallery": bool((config.get("gallery") or {}).get("items", [])),
-                "has_contacts": bool((config.get("contacts") or {}).get("phones") or (config.get("contacts") or {}).get("address") or (config.get("contacts") or {}).get("telegram")),
-                "has_map": bool((config.get("contacts") or {}).get("map_embed")),
+                "has_gallery": bool(gallery.get("items") if isinstance(gallery.get("items"), list) else []),
+                "has_contacts": bool((contacts.get("phones") if isinstance(contacts.get("phones"), list) else []) or contacts.get("address") or contacts.get("telegram") or (contacts.get("messengers") if isinstance(contacts.get("messengers"), dict) else {}).get("telegram")),
+                "has_map": bool(map_cfg.get("embed") or contacts.get("map_embed")),
             },
             "site_color_scheme": color_scheme,
         },

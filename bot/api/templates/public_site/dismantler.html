@@ -6,6 +6,6 @@
 {% if data.has_catalog %}{% include "components/products.html" %}{% endif %}
 {% include "components/vin_request.html" %}
 {% if data.has_cars %}{% include "components/cars.html" %}{% endif %}
-{% if contacts.get('phones') or contacts.get('address') or contacts.get('telegram') %}{% include "components/contacts.html" %}{% endif %}
-{% if contacts.get('map_embed') %}{% include "components/map.html" %}{% endif %}
+{% if data.has_contacts %}{% include "components/contacts.html" %}{% endif %}
+{% if data.has_map %}{% include "components/map.html" %}{% endif %}
 {% include "components/footer.html" %}
