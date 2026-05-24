@@ -7,12 +7,37 @@
 {% set data = data if data is defined else {} %}
 {% set services_config = config.get('services', {}) %}
 {% set services_list = data.get('services', []) if data is mapping else [] %}
+{% set configured_items = services_config.get('items', []) if services_config.get('items') is iterable and services_config.get('items') is not string else [] %}
+{% if configured_items %}
+  {% set ns = namespace(items=[]) %}
+  {% for item in configured_items %}
+    {% if item is mapping %}
+      {% set title = (item.get('title') or item.get('name') or '').strip() %}
+      {% set description = (item.get('description') or item.get('text') or '').strip() %}
+      {% if title or description %}
+        {% set _ = ns.items.append({
+          'title': title,
+          'description': description,
+          'price': (item.get('price') or item.get('label') or '').strip(),
+          'photo_url': (item.get('image') or item.get('icon') or '').strip(),
+          'price_label': (item.get('price') or item.get('label') or '').strip()
+        }) %}
+      {% endif %}
+    {% endif %}
+  {% endfor %}
+  {% if ns.items %}
+    {% set services_list = ns.items %}
+  {% endif %}
+{% endif %}
 <section id="services" class="services-split">
 <div class="container split">
 
     <!-- LEFT -->
     <div class="left">
-        <h2 class="section-title">Послуги</h2>
+        <h2 class="section-title">{{ services_config.get('title') or 'Послуги' }}</h2>
+        {% if services_config.get('description') or services_config.get('intro') %}
+        <p class="section-description">{{ services_config.get('description') or services_config.get('intro') }}</p>
+        {% endif %}
 
         <ul id="servicesList" class="site-list">
         {% for s in services_list %}

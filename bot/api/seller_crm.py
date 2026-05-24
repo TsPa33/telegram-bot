@@ -4071,6 +4071,8 @@ async def seller_crm_website_blocks(request: Request, crm_slug: str, status: str
             edit_url = f"/crm/seller/{crm_slug}/website/content/gallery"
         if key == "vin":
             edit_url = f"/crm/seller/{crm_slug}/website/content/vin"
+        if key == "services":
+            edit_url = f"/crm/seller/{crm_slug}/website/content/services"
         blocks.append({
             "key": key,
             "title": title,
@@ -4283,6 +4285,86 @@ async def seller_crm_website_vin_save(
         },
     )
     return RedirectResponse(url=f"/crm/seller/{crm_slug}/website/content/vin?status=saved", status_code=303)
+
+
+@router.get("/{crm_slug}/website/content/services")
+async def seller_crm_website_services(request: Request, crm_slug: str, status: str | None = None):
+    account, subscription = await _authorized_account(request, crm_slug)
+    site = _demo_site() if _is_demo_account(account) else await get_current_seller_site_or_404(account["seller_id"])
+    config_draft = _as_config(site)
+    preview_url, _ = _build_public_site_urls(site)
+    services = config_draft.get("services") if isinstance(config_draft.get("services"), dict) else {}
+    items = services.get("items") if isinstance(services.get("items"), list) else []
+    rows: list[dict[str, str]] = []
+    for item in items[:6]:
+        if not isinstance(item, dict):
+            continue
+        rows.append(
+            {
+                "title": str(item.get("title") or item.get("name") or "").strip(),
+                "description": str(item.get("description") or item.get("text") or "").strip(),
+                "price": str(item.get("price") or item.get("label") or "").strip(),
+                "image": str(item.get("image") or item.get("icon") or "").strip(),
+            }
+        )
+    while len(rows) < 6:
+        rows.append({"title": "", "description": "", "price": "", "image": ""})
+    return templates.TemplateResponse(
+        "seller_crm/website_services.html",
+        _seller_crm_context(
+            request,
+            title="Послуги — кабінет продавця",
+            current_page="website_blocks",
+            account=account,
+            subscription=subscription,
+            site=site,
+            has_website=True,
+            has_cars=False,
+            has_services=False,
+            status=status,
+            preview_url=preview_url,
+            services=services,
+            service_rows=rows,
+        ),
+    )
+
+
+@router.post("/{crm_slug}/website/content/services")
+async def seller_crm_website_services_save(
+    request: Request,
+    crm_slug: str,
+    title: str = Form(""),
+    description: str = Form(""),
+):
+    account, _ = await _authorized_account(request, crm_slug)
+    form = await request.form()
+    items: list[dict[str, str]] = []
+    for i in range(1, 7):
+        item_title = str(form.get(f"service_title_{i}") or "").strip()
+        item_description = str(form.get(f"service_description_{i}") or "").strip()
+        item_price = str(form.get(f"service_price_{i}") or "").strip()
+        item_image = str(form.get(f"service_image_{i}") or "").strip()
+        if not item_title and not item_description:
+            continue
+        items.append(
+            {
+                "title": item_title,
+                "description": item_description,
+                "price": item_price,
+                "image": item_image,
+            }
+        )
+    await update_current_site_draft(
+        account["seller_id"],
+        {
+            "services": {
+                "title": str(title or "").strip(),
+                "description": str(description or "").strip(),
+                "items": items,
+            }
+        },
+    )
+    return RedirectResponse(url=f"/crm/seller/{crm_slug}/website/content/services?status=saved", status_code=303)
 
 
 @router.get("/{crm_slug}/website/editor/{block_key}")
