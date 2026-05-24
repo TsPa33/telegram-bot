@@ -26,7 +26,7 @@
             {% endfor %}
             {% if not gallery_items %}
                 {% for i in range(0, 4) %}
-                <div class="cp-gallery-card site-card cp-gallery-placeholder" aria-hidden="true">
+                <div class="cp-gallery-card site-card site-card--empty cp-gallery-placeholder" aria-hidden="true">
                     <span class="site-badge">Скоро тут</span>
                 </div>
                 {% endfor %}
@@ -45,8 +45,7 @@
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 18px;
-    overflow-x: auto;
-    scroll-snap-type: x mandatory;
+    overflow-x: hidden;
     padding-bottom: 4px;
 }
 .gallery--grid .cp-gallery-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
