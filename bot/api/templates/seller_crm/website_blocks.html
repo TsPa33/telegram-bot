@@ -2,13 +2,12 @@
 {% block crm_kicker %}Блоки сайту{% endblock %}
 {% block crm_heading %}Блоки сайту{% endblock %}
 {% block content %}
-{% if status == 'saved' %}<div class="notice">Зміни збережено у чернетку. Опублікуйте сайт, щоб клієнти побачили зміни.</div>{% endif %}
+{% if status == 'saved' %}<div class="notice">Зміни застосовано на сайті.</div>{% endif %}
 {% if status == 'locked' %}<div class="notice">Цей блок захищений і завжди показується.</div>{% endif %}
 <article class="card">
   <p class="muted">Увімкніть потрібні розділи та розташуйте їх у правильному порядку.</p>
   <div class="action-row">
     <a class="btn ghost" href="{{ preview_url }}" target="_blank" rel="noopener">Переглянути сайт</a>
-    <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/website#publish">Опублікувати зміни</a>
   </div>
 </article>
 

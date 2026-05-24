@@ -900,6 +900,11 @@ async def update_current_site_draft(seller_id: int, patch: dict[str, Any]) -> bo
     return await update_site_config_draft(seller_id, safe_patch)
 
 
+async def update_current_site_both(seller_id: int, patch: dict[str, Any]) -> bool:
+    safe_patch = patch if isinstance(patch, dict) else {}
+    return await update_site_design_both(seller_id, safe_patch)
+
+
 async def publish_current_site(seller_id: int) -> bool:
     return await publish_site(seller_id)
 
@@ -4021,6 +4026,8 @@ async def seller_crm_website_design(request: Request, crm_slug: str, status: str
         {"id": "black_gold", "label": "Чорний + золото", "swatches": ["#09090b", "#d4af37", "#f59e0b"]},
         {"id": "light_minimal", "label": "Світлий мінімалізм", "swatches": ["#f8fafc", "#2563eb", "#14b8a6"]},
     ]
+    for scheme in schemes:
+        scheme["normalized_id"] = normalize_color_scheme(scheme.get("id"))
     return templates.TemplateResponse("seller_crm/website_design.html", _seller_crm_context(request, title="Дизайн сайту — кабінет продавця", current_page="website_design", account=account, subscription=subscription, site=site, design=design, current_template_id=current_template_id, current_color_scheme=current_color_scheme, template_cards=template_cards, schemes=schemes, live_url=live_url, status=status, has_website=True, has_cars=False, has_services=False, has_catalog_or_cars=has_parts, has_services_data=has_services_data, has_hybrid_business=has_hybrid_business))
 
 
@@ -4056,10 +4063,10 @@ async def seller_crm_website_blocks(request: Request, crm_slug: str, status: str
 
     seller_id = account["seller_id"]
     site = _demo_site() if _is_demo_account(account) else await get_current_seller_site_or_404(seller_id)
-    config_draft = _as_config(site)
+    config_live = _as_live_config(site)
     preview_url, constructor_url = _build_public_site_urls(site)
-    modules = config_draft.get("modules", {}) if isinstance(config_draft.get("modules"), dict) else {}
-    order = normalize_sections_order(config_draft.get("sections_order"), template_id=((config_draft.get("design") or {}).get("template_id")))
+    modules = config_live.get("modules", {}) if isinstance(config_live.get("modules"), dict) else {}
+    order = normalize_sections_order(config_live.get("sections_order"), template_id=((config_live.get("design") or {}).get("template_id")))
     order_idx = {k: i for i, k in enumerate(order)}
     editor_alias = {"catalog": "products", "vin": "vin_request"}
     blocks = []
@@ -4081,7 +4088,7 @@ async def seller_crm_website_blocks(request: Request, crm_slug: str, status: str
             "key": key,
             "title": title,
             "description": description,
-            "shown": bool(modules.get(key, False)),
+            "shown": True if locked else bool(modules.get(key, False)),
             "locked": bool(locked),
             "position": order_idx.get(key, 999),
             "edit_key": editor_alias.get(key, key),
@@ -4685,7 +4692,7 @@ async def seller_crm_website_blocks_toggle(request: Request, crm_slug: str, sect
     config_draft = _as_config(site)
     current_modules = config_draft.get("modules", {}) if isinstance(config_draft.get("modules"), dict) else {}
     next_value = not bool(current_modules.get(section_id, False))
-    await update_current_site_draft(account["seller_id"], {"modules": {section_id: next_value}})
+    await update_current_site_both(account["seller_id"], {"modules": {section_id: next_value}})
     return RedirectResponse(url=f"/crm/seller/{crm_slug}/website/blocks?status=saved", status_code=303)
 
 
@@ -4705,8 +4712,8 @@ async def seller_crm_website_blocks_move(
     if section_id not in allowed:
         raise HTTPException(status_code=400, detail="Невідомий блок")
     site = await get_current_seller_site_or_404(account["seller_id"])
-    config_draft = _as_config(site)
-    order = normalize_sections_order(config_draft.get("sections_order"), template_id=((config_draft.get("design") or {}).get("template_id")))
+    config_live = _as_live_config(site)
+    order = normalize_sections_order(config_live.get("sections_order"), template_id=((config_live.get("design") or {}).get("template_id")))
     if section_id not in order:
         order.append(section_id)
     idx = order.index(section_id)
@@ -4716,7 +4723,7 @@ async def seller_crm_website_blocks_move(
     # keep footer last for safety
     if "footer" in order:
         order = [k for k in order if k != "footer"] + ["footer"]
-    await update_current_site_draft(account["seller_id"], {"sections_order": order, "layout": {"order": order}})
+    await update_current_site_both(account["seller_id"], {"sections_order": order, "layout": {"order": order}})
     return RedirectResponse(url=f"/crm/seller/{crm_slug}/website/blocks?status=saved", status_code=303)
 
 

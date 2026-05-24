@@ -67,10 +67,10 @@
         {% for swatch in scheme.swatches %}<span style="display:inline-block;width:28px;height:28px;border-radius:999px;border:1px solid #ddd;background:{{ swatch }};"></span>{% endfor %}
       </div>
       <div class="choice-row">
-      <div>{% if current_color_scheme == scheme.id %}<p><b>Активний</b></p>{% endif %}</div>
+      <div>{% if current_color_scheme == scheme.normalized_id %}<p><b>Активний</b></p>{% endif %}</div>
       <form method="post" action="/crm/seller/{{ account.crm_slug }}/website/design/color">
         <input type="hidden" name="color_scheme" value="{{ scheme.id }}">
-        <button class="switch {% if current_color_scheme == scheme.id %}is-active{% endif %}" aria-label="Увімкнути {{ scheme.label }}"></button>
+        <button class="switch {% if current_color_scheme == scheme.normalized_id %}is-active{% endif %}" aria-label="Увімкнути {{ scheme.label }}"></button>
       </form>
       </div>
     </div>

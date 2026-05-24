@@ -1094,20 +1094,25 @@ async def _render_site_by_subdomain(subdomain: str, request: Request):
         resolved = []
 
         for banner in hero["banners"]:
+            banner_image = banner.get("image") if isinstance(banner, dict) else banner
+            banner_fit = banner.get("fit", "cover") if isinstance(banner, dict) else "cover"
+            banner_position = banner.get("position", "center") if isinstance(banner, dict) else "center"
 
             # external URL
             if (
-                isinstance(banner, str)
-                and banner.startswith(("http://", "https://"))
+                isinstance(banner_image, str)
+                and banner_image.startswith(("http://", "https://"))
             ):
-                resolved.append(banner)
+                resolved.append({"image": banner_image, "fit": banner_fit, "position": banner_position})
                 continue
 
             # telegram file_id
             try:
-                resolved.append(
-                    await tg_file_url(bot, banner)
-                )
+                resolved.append({
+                    "image": await tg_file_url(bot, banner_image),
+                    "fit": banner_fit,
+                    "position": banner_position,
+                })
 
             except Exception:
                 continue
