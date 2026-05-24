@@ -4067,6 +4067,8 @@ async def seller_crm_website_blocks(request: Request, crm_slug: str, status: str
         edit_url = f"/crm/seller/{crm_slug}/website/editor/{editor_alias.get(key, key)}"
         if key == "catalog":
             edit_url = f"/crm/seller/{crm_slug}/website/content/catalog"
+        if key == "cars":
+            edit_url = f"/crm/seller/{crm_slug}/website/content/cars"
         if key == "about":
             edit_url = f"/crm/seller/{crm_slug}/website/content/about"
         if key == "gallery":
@@ -4456,6 +4458,83 @@ async def seller_crm_website_catalog_save(
         },
     )
     return RedirectResponse(url=f"/crm/seller/{crm_slug}/website/content/catalog?status=saved", status_code=303)
+
+
+@router.get("/{crm_slug}/website/content/cars")
+async def seller_crm_website_cars(request: Request, crm_slug: str, status: str | None = None):
+    account, subscription = await _authorized_account(request, crm_slug)
+    site = _demo_site() if _is_demo_account(account) else await get_current_seller_site_or_404(account["seller_id"])
+    config_draft = _as_config(site)
+    preview_url, _ = _build_public_site_urls(site)
+
+    cars = config_draft.get("cars") if isinstance(config_draft.get("cars"), dict) else {}
+    current_title = str(cars.get("title") or "").strip()
+    current_description = str(cars.get("description") or cars.get("subtitle") or cars.get("intro") or "").strip()
+    current_layout = str(cars.get("layout") or "grid").strip().lower()
+    if current_layout not in {"grid", "compact", "featured"}:
+        current_layout = "grid"
+    current_per_page = cars.get("per_page")
+    if current_per_page not in {3, 6, 9, 12}:
+        current_per_page = 6
+    current_cta_label = str(cars.get("cta_label") or "Детальніше").strip() or "Детальніше"
+
+    return templates.TemplateResponse(
+        "seller_crm/website_cars.html",
+        _seller_crm_context(
+            request,
+            title="Авто в наявності — кабінет продавця",
+            current_page="website_blocks",
+            account=account,
+            subscription=subscription,
+            site=site,
+            has_website=True,
+            has_cars=False,
+            has_services=False,
+            status=status,
+            preview_url=preview_url,
+            cars_title=current_title,
+            cars_description=current_description,
+            cars_layout=current_layout,
+            cars_per_page=current_per_page,
+            cars_cta_label=current_cta_label,
+        ),
+    )
+
+
+@router.post("/{crm_slug}/website/content/cars")
+async def seller_crm_website_cars_save(
+    request: Request,
+    crm_slug: str,
+    title: str = Form(""),
+    description: str = Form(""),
+    layout: str = Form("grid"),
+    per_page: str = Form("6"),
+    cta_label: str = Form(""),
+):
+    account, _ = await _authorized_account(request, crm_slug)
+    normalized_layout = str(layout or "grid").strip().lower()
+    if normalized_layout not in {"grid", "compact", "featured"}:
+        normalized_layout = "grid"
+    try:
+        normalized_per_page = int(str(per_page or "6").strip())
+    except ValueError:
+        normalized_per_page = 6
+    if normalized_per_page not in {3, 6, 9, 12}:
+        normalized_per_page = 6
+
+    await update_current_site_draft(
+        account["seller_id"],
+        {
+            "cars": {
+                "title": str(title or "").strip(),
+                "description": str(description or "").strip(),
+                "layout": normalized_layout,
+                "per_page": normalized_per_page,
+                "cta_label": str(cta_label or "").strip() or "Детальніше",
+            }
+        },
+    )
+    return RedirectResponse(url=f"/crm/seller/{crm_slug}/website/content/cars?status=saved", status_code=303)
 
 
 @router.get("/{crm_slug}/website/editor/{block_key}")
