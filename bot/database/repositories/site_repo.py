@@ -422,3 +422,47 @@ async def replace_site_config_draft(seller_id: int, config: dict) -> bool:
         json.dumps(normalized),
     )
     return row is not None
+
+
+async def update_site_design_both(seller_id: int, patch: dict) -> bool:
+    """Merge a design patch into both draft and live configs."""
+    incoming = patch if isinstance(patch, dict) else {}
+    async with transaction() as conn:
+        current = await conn.fetchrow(
+            """
+            SELECT config_draft, config_live
+            FROM seller_sites
+            WHERE seller_id = $1
+            FOR UPDATE
+            """,
+            seller_id,
+        )
+        if not current:
+            return False
+
+        def _merged(raw: dict | str | None) -> dict:
+            src = raw or {}
+            if isinstance(src, str):
+                try:
+                    src = json.loads(src)
+                except Exception:
+                    src = {}
+            base = merge_with_default(src if isinstance(src, dict) else {})
+            return merge_with_default(_deep_merge(base, incoming))
+
+        draft = _merged(current.get("config_draft"))
+        live = _merged(current.get("config_live"))
+
+        row = await conn.fetchrow(
+            """
+            UPDATE seller_sites
+            SET config_draft = $2::jsonb,
+                config_live = $3::jsonb
+            WHERE seller_id = $1
+            RETURNING id
+            """,
+            seller_id,
+            json.dumps(draft),
+            json.dumps(live),
+        )
+        return row is not None

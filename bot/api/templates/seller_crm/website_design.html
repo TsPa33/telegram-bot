@@ -2,32 +2,36 @@
 {% block crm_kicker %}Дизайн сайту{% endblock %}
 {% block crm_heading %}Дизайн сайту{% endblock %}
 {% block content %}
-{% if status == 'saved' %}<div class="notice">Зміни збережено у чернетку.</div>{% endif %}
+{% if status == 'saved' %}<div class="notice">Дизайн оновлено та застосовано одразу на сайті.</div>{% endif %}
+<div class="action-row">
+  <a class="btn ghost" href="{{ live_url }}" target="_blank">Переглянути сайт</a>
+  <a class="btn" href="{{ live_url }}" target="_blank">До мого сайту</a>
+</div>
 <article class="card">
-  <h3>Авторозбірка / Запчастини {% if recommended_category == 'dismantler' %}<span class="badge badge-success">Рекомендовано</span>{% endif %}</h3>
+  <h3>Авторозбірка / Запчастини {% if has_hybrid_business %}<span class="badge badge-success">Підходить для вашого бізнесу</span>{% elif has_catalog_or_cars %}<span class="badge badge-success">Рекомендовано</span>{% endif %}</h3>
   <div class="grid two-col">
   {% for item in template_groups.dismantler %}
     <div class="mini-card">
-      <h4>{{ item.label }}</h4><p class="muted">{{ item.description }}</p>
-      {% if design.template_id == item.id %}<p><b>Обрано</b></p>{% endif %}
+      <h4>{{ item.label }}</h4><p class="muted">{{ item.business_type }}</p><p class="muted">{{ item.description }}</p>
+      {% if design.template_id == item.id %}<p><b>Активний</b></p>{% endif %}
       <form method="post" action="/crm/seller/{{ account.crm_slug }}/website/design/template">
         <input type="hidden" name="template_id" value="{{ item.id }}">
-        <button class="btn">Обрати шаблон</button>
+        <button class="btn" {% if design.template_id == item.id %}disabled{% endif %}>{% if design.template_id == item.id %}Активний{% else %}Увімкнути{% endif %}</button>
       </form>
     </div>
   {% endfor %}
   </div>
 </article>
 <article class="card stack-top">
-  <h3>Автопослуги / Візитка {% if recommended_category == 'service' %}<span class="badge badge-success">Рекомендовано</span>{% endif %}</h3>
+  <h3>Автопослуги / Візитка {% if has_hybrid_business %}<span class="badge badge-success">Підходить для вашого бізнесу</span>{% elif has_services_data %}<span class="badge badge-success">Рекомендовано</span>{% endif %}</h3>
   <div class="grid two-col">
   {% for item in template_groups.service %}
     <div class="mini-card">
-      <h4>{{ item.label }}</h4><p class="muted">{{ item.description }}</p>
-      {% if design.template_id == item.id %}<p><b>Обрано</b></p>{% endif %}
+      <h4>{{ item.label }}</h4><p class="muted">{{ item.business_type }}</p><p class="muted">{{ item.description }}</p>
+      {% if design.template_id == item.id %}<p><b>Активний</b></p>{% endif %}
       <form method="post" action="/crm/seller/{{ account.crm_slug }}/website/design/template">
         <input type="hidden" name="template_id" value="{{ item.id }}">
-        <button class="btn">Обрати шаблон</button>
+        <button class="btn" {% if design.template_id == item.id %}disabled{% endif %}>{% if design.template_id == item.id %}Активний{% else %}Увімкнути{% endif %}</button>
       </form>
     </div>
   {% endfor %}
@@ -38,17 +42,17 @@
   <div class="grid two-col">
   {% for scheme in schemes %}
     <div class="mini-card">
-      <p><b>{{ scheme }}</b></p>
-      {% if design.color_scheme == scheme %}<p><b>Обрано</b></p>{% endif %}
+      <p><b>{{ scheme.label }}</b></p>
+      <div style="display:flex;gap:8px;margin:8px 0;">
+        {% for swatch in scheme.swatches %}<span style="display:inline-block;width:28px;height:28px;border-radius:999px;border:1px solid #ddd;background:{{ swatch }};"></span>{% endfor %}
+      </div>
+      {% if design.color_scheme == scheme.id %}<p><b>Активний</b></p>{% endif %}
       <form method="post" action="/crm/seller/{{ account.crm_slug }}/website/design/color">
-        <input type="hidden" name="color_scheme" value="{{ scheme }}">
-        <button class="btn ghost">Обрати колір</button>
+        <input type="hidden" name="color_scheme" value="{{ scheme.id }}">
+        <button class="btn ghost" {% if design.color_scheme == scheme.id %}disabled{% endif %}>{% if design.color_scheme == scheme.id %}Активний{% else %}Увімкнути{% endif %}</button>
       </form>
     </div>
   {% endfor %}
-  </div>
-  <div class="action-row"><a class="btn ghost" href="{{ live_url }}" target="_blank">Переглянути сайт</a>
-    <form method="post" action="/crm/seller/{{ account.crm_slug }}/website/publish"><button class="btn">Опублікувати зміни</button></form>
   </div>
 </article>
 {% endblock %}
