@@ -1,7 +1,16 @@
 {% extends "base.html" %}
-{% block title %}{{ config.get('header', {}).get('title') or subdomain }}{% endblock %}
+{% block title %}{{ (config.get('header', {}) or {}).get('title') or subdomain }}{% endblock %}
 {% block content %}
-{% set template_id = config.get('design', {}).get('template_id', 'service_classic') %}
+{% set header = config.get('header', {}) %}
+{% set hero = config.get('hero', {}) %}
+{% set contacts = config.get('contacts', {}) %}
+{% set footer = config.get('footer', {}) %}
+{% set gallery = config.get('gallery', {}) %}
+{% set vin_request = config.get('vin_request', {}) %}
+{% set catalog = config.get('catalog', {}) %}
+{% set services_config = config.get('services', {}) %}
+{% set design = config.get('design', {}) %}
+{% set template_id = design.get('template_id', 'service_classic') %}
 {% if template_id in ['dismantler_classic','dismantler_catalog','dismantler_premium'] %}
   {% include 'public_site/dismantler.html' %}
 {% else %}
