@@ -4065,6 +4065,8 @@ async def seller_crm_website_blocks(request: Request, crm_slug: str, status: str
     blocks = []
     for key, title, description, locked in WEBSITE_BLOCKS_CRM_ORDER:
         edit_url = f"/crm/seller/{crm_slug}/website/editor/{editor_alias.get(key, key)}"
+        if key == "catalog":
+            edit_url = f"/crm/seller/{crm_slug}/website/content/catalog"
         if key == "about":
             edit_url = f"/crm/seller/{crm_slug}/website/content/about"
         if key == "gallery":
@@ -4365,6 +4367,95 @@ async def seller_crm_website_services_save(
         },
     )
     return RedirectResponse(url=f"/crm/seller/{crm_slug}/website/content/services?status=saved", status_code=303)
+
+
+@router.get("/{crm_slug}/website/content/catalog")
+async def seller_crm_website_catalog(request: Request, crm_slug: str, status: str | None = None):
+    account, subscription = await _authorized_account(request, crm_slug)
+    site = _demo_site() if _is_demo_account(account) else await get_current_seller_site_or_404(account["seller_id"])
+    config_draft = _as_config(site)
+    preview_url, _ = _build_public_site_urls(site)
+
+    catalog = config_draft.get("catalog") if isinstance(config_draft.get("catalog"), dict) else {}
+    products = config_draft.get("products") if isinstance(config_draft.get("products"), dict) else {}
+    products_catalog = config_draft.get("products_catalog") if isinstance(config_draft.get("products_catalog"), dict) else {}
+
+    current_title = str(catalog.get("title") or products.get("title") or products_catalog.get("title") or "").strip()
+    current_description = str(catalog.get("description") or catalog.get("subtitle") or products.get("description") or products.get("subtitle") or products_catalog.get("description") or products_catalog.get("subtitle") or "").strip()
+    current_layout = str(catalog.get("layout") or "grid").strip().lower()
+    if current_layout not in {"grid", "compact", "featured"}:
+        current_layout = "grid"
+    current_per_page = catalog.get("per_page")
+    if current_per_page not in {3, 6, 9, 12}:
+        current_per_page = 6
+    current_cta_label = str(catalog.get("cta_label") or "Детальніше").strip() or "Детальніше"
+    featured_categories = catalog.get("featured_categories") if isinstance(catalog.get("featured_categories"), list) else []
+    featured_categories = [str(item).strip() for item in featured_categories if str(item or "").strip()]
+    featured_categories_text = ", ".join(featured_categories)
+
+    return templates.TemplateResponse(
+        "seller_crm/website_catalog.html",
+        _seller_crm_context(
+            request,
+            title="Каталог — кабінет продавця",
+            current_page="website_blocks",
+            account=account,
+            subscription=subscription,
+            site=site,
+            has_website=True,
+            has_cars=False,
+            has_services=False,
+            status=status,
+            preview_url=preview_url,
+            catalog_title=current_title,
+            catalog_description=current_description,
+            catalog_layout=current_layout,
+            catalog_per_page=current_per_page,
+            catalog_cta_label=current_cta_label,
+            catalog_featured_categories_text=featured_categories_text,
+        ),
+    )
+
+
+@router.post("/{crm_slug}/website/content/catalog")
+async def seller_crm_website_catalog_save(
+    request: Request,
+    crm_slug: str,
+    title: str = Form(""),
+    description: str = Form(""),
+    layout: str = Form("grid"),
+    per_page: str = Form("6"),
+    cta_label: str = Form(""),
+    featured_categories: str = Form(""),
+):
+    account, _ = await _authorized_account(request, crm_slug)
+    normalized_layout = str(layout or "grid").strip().lower()
+    if normalized_layout not in {"grid", "compact", "featured"}:
+        normalized_layout = "grid"
+    try:
+        normalized_per_page = int(str(per_page or "6").strip())
+    except ValueError:
+        normalized_per_page = 6
+    if normalized_per_page not in {3, 6, 9, 12}:
+        normalized_per_page = 6
+
+    featured_list = [part.strip() for part in str(featured_categories or "").split(",")]
+    featured_list = [part for part in featured_list if part]
+
+    await update_current_site_draft(
+        account["seller_id"],
+        {
+            "catalog": {
+                "title": str(title or "").strip(),
+                "description": str(description or "").strip(),
+                "layout": normalized_layout,
+                "per_page": normalized_per_page,
+                "cta_label": str(cta_label or "").strip() or "Детальніше",
+                "featured_categories": featured_list,
+            }
+        },
+    )
+    return RedirectResponse(url=f"/crm/seller/{crm_slug}/website/content/catalog?status=saved", status_code=303)
 
 
 @router.get("/{crm_slug}/website/editor/{block_key}")
