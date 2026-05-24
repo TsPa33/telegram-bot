@@ -1,10 +1,5 @@
-{% include "components/header.html" %}
-{% include "components/hero.html" %}
-{% if data.has_catalog %}{% include "components/products.html" %}{% endif %}
-{% if data.has_catalog or data.has_cars %}{% include "components/vin_request.html" %}{% endif %}
-{% if data.has_cars %}{% include "components/cars.html" %}{% endif %}
-{% if data.has_services %}{% include "components/services.html" %}{% endif %}
-{% if data.has_gallery %}{% include "components/gallery.html" %}{% endif %}
-{% if data.has_contacts %}{% include "components/contacts.html" %}{% endif %}
-{% if data.has_map %}{% include "components/map.html" %}{% endif %}
-{% include "components/footer.html" %}
+<div class="site-template site-template--calm-marketplace" data-template-id="universal_catalog">
+  {% set template_variant = "calm-marketplace" %}
+  {% include "components/header.html" %}
+  {% include "public_site/_section_renderer.html" %}
+</div>

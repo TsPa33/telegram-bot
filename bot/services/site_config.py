@@ -1,6 +1,147 @@
 from copy import deepcopy
 from typing import Any
 
+CANONICAL_TEMPLATE_IDS = (
+    "universal_classic",
+    "universal_catalog",
+    "universal_premium",
+)
+
+TEMPLATE_LEGACY_ALIASES: dict[str, str] = {
+    "service_classic": "universal_classic",
+    "dismantler_classic": "universal_classic",
+    "service_modern": "universal_catalog",
+    "dismantler_catalog": "universal_catalog",
+    "service_premium": "universal_premium",
+    "dismantler_premium": "universal_premium",
+}
+
+SITE_TEMPLATE_META: dict[str, dict[str, str]] = {
+    "universal_classic": {"label": "Universal Sales", "concept": "Universal Sales"},
+    "universal_catalog": {"label": "Calm Marketplace", "concept": "Calm Marketplace"},
+    "universal_premium": {"label": "Brutal Metallic", "concept": "Brutal Metallic"},
+}
+
+CANONICAL_COLOR_SCHEME_IDS = (
+    "graphite_red",
+    "steel_blue",
+    "black_gold",
+    "clean_navy",
+    "soft_green",
+)
+
+COLOR_SCHEME_LEGACY_ALIASES: dict[str, str] = {
+    "dark_red": "graphite_red",
+    "dark_blue": "steel_blue",
+    "graphite": "graphite_red",
+    "black_gold": "black_gold",
+    "light_minimal": "clean_navy",
+}
+
+SITE_COLOR_SCHEME_META: dict[str, dict[str, str]] = {
+    "graphite_red": {"label": "Graphite Red"},
+    "steel_blue": {"label": "Steel Blue"},
+    "black_gold": {"label": "Black Gold"},
+    "clean_navy": {"label": "Clean Navy"},
+    "soft_green": {"label": "Soft Green"},
+}
+
+CANONICAL_SECTION_IDS = (
+    "hero",
+    "about",
+    "services",
+    "catalog",
+    "cars",
+    "gallery",
+    "vin",
+    "contacts",
+    "map",
+    "footer",
+)
+
+SECTION_LEGACY_ALIASES: dict[str, str] = {
+    "products": "catalog",
+    "products_catalog": "catalog",
+    "vin_request": "vin",
+}
+
+SITE_SECTION_META: dict[str, dict[str, str]] = {
+    "hero": {"label": "Hero"},
+    "about": {"label": "About"},
+    "services": {"label": "Services"},
+    "catalog": {"label": "Catalog"},
+    "cars": {"label": "Cars"},
+    "gallery": {"label": "Gallery"},
+    "vin": {"label": "VIN"},
+    "contacts": {"label": "Contacts"},
+    "map": {"label": "Map"},
+    "footer": {"label": "Footer"},
+}
+
+TEMPLATE_DEFAULT_SECTIONS_ORDER: dict[str, list[str]] = {
+    "universal_premium": ["hero", "about", "catalog", "cars", "services", "gallery", "vin", "contacts", "map", "footer"],
+    "universal_catalog": ["hero", "catalog", "cars", "vin", "gallery", "about", "contacts", "map", "footer"],
+    "universal_classic": ["hero", "about", "services", "catalog", "cars", "gallery", "vin", "contacts", "map", "footer"],
+}
+
+
+def normalize_template_id(value: str | None) -> str:
+    raw = str(value or "").strip().lower()
+    mapped = TEMPLATE_LEGACY_ALIASES.get(raw, raw)
+    if mapped not in CANONICAL_TEMPLATE_IDS:
+        return "universal_classic"
+    return mapped
+
+
+def normalize_color_scheme(value: str | None) -> str:
+    raw = str(value or "").strip().lower()
+    mapped = COLOR_SCHEME_LEGACY_ALIASES.get(raw, raw)
+    if mapped not in CANONICAL_COLOR_SCHEME_IDS:
+        return "graphite_red"
+    return mapped
+
+
+def get_legacy_color_scheme_id(value: str | None) -> str:
+    canonical = normalize_color_scheme(value)
+    legacy_by_canonical = {
+        "graphite_red": "dark_red",
+        "steel_blue": "dark_blue",
+        "black_gold": "black_gold",
+        "clean_navy": "light_minimal",
+        "soft_green": "graphite",
+    }
+    return legacy_by_canonical.get(canonical, "dark_red")
+
+
+def normalize_section_id(value: str | None) -> str | None:
+    raw = str(value or "").strip().lower()
+    mapped = SECTION_LEGACY_ALIASES.get(raw, raw)
+    if mapped in CANONICAL_SECTION_IDS:
+        return mapped
+    return None
+
+
+def normalize_sections_order(value: list | None, template_id: str | None = None) -> list[str]:
+    canonical_template_id = normalize_template_id(template_id)
+    default_order = list(TEMPLATE_DEFAULT_SECTIONS_ORDER.get(canonical_template_id, TEMPLATE_DEFAULT_SECTIONS_ORDER["universal_classic"]))
+    raw_list = value if isinstance(value, list) else []
+    normalized: list[str] = []
+    for raw in raw_list:
+        section_id = normalize_section_id(raw if isinstance(raw, str) else None)
+        if section_id and section_id not in normalized:
+            normalized.append(section_id)
+
+    if not normalized:
+        return default_order
+
+    for section_id in default_order:
+        if section_id not in normalized:
+            normalized.append(section_id)
+
+    without_footer = [s for s in normalized if s != "footer"]
+    if "footer" in normalized:
+        without_footer.append("footer")
+    return without_footer
 
 THEME_PRESETS: dict[str, dict[str, str]] = {
     "default": {"name": "CarPot Default", "scheme": "default", "accent": "#2563eb"},
@@ -276,24 +417,39 @@ def _deep_merge_missing(target: dict, defaults: dict) -> dict:
 def _normalize_config(config: dict) -> dict:
 
     # ===== MODULES =====
-
-    default_modules = _DEFAULT_SITE_CONFIG["modules"]
-
     modules = config.get("modules")
-    if isinstance(modules, dict):
-        if "catalog" not in modules:
-            modules["catalog"] = bool(modules.get("products_catalog", modules.get("products", False)))
-
-    if not isinstance(modules, dict):
-
-        config["modules"] = deepcopy(default_modules)
-
-    else:
-
-        config["modules"] = {
-            key: bool(modules.get(key, default_enabled))
-            for key, default_enabled in default_modules.items()
-        }
+    incoming_modules = modules if isinstance(modules, dict) else {}
+    normalized_modules = deepcopy(incoming_modules)
+    canonical_module_defaults = {
+        "hero": True,
+        "about": False,
+        "services": True,
+        "catalog": False,
+        "cars": True,
+        "gallery": False,
+        "vin": False,
+        "contacts": True,
+        "map": True,
+        "footer": True,
+    }
+    if "catalog" not in normalized_modules:
+        if "catalog" in incoming_modules:
+            normalized_modules["catalog"] = bool(incoming_modules.get("catalog"))
+        elif "products" in incoming_modules:
+            normalized_modules["catalog"] = bool(incoming_modules.get("products"))
+        elif "products_catalog" in incoming_modules:
+            normalized_modules["catalog"] = bool(incoming_modules.get("products_catalog"))
+    if "vin" not in normalized_modules:
+        if "vin" in incoming_modules:
+            normalized_modules["vin"] = bool(incoming_modules.get("vin"))
+        elif "vin_request" in incoming_modules:
+            normalized_modules["vin"] = bool(incoming_modules.get("vin_request"))
+    for key, default_enabled in canonical_module_defaults.items():
+        if key not in normalized_modules:
+            normalized_modules[key] = bool(default_enabled)
+        else:
+            normalized_modules[key] = bool(normalized_modules.get(key))
+    config["modules"] = normalized_modules
 
     # ===== THEME =====
 
@@ -387,22 +543,24 @@ def _normalize_config(config: dict) -> dict:
 
     if not isinstance(config.get("vin_request"), dict):
         config["vin_request"] = deepcopy(_DEFAULT_SITE_CONFIG["vin_request"])
+    if not isinstance(config.get("vin"), dict):
+        config["vin"] = deepcopy(config.get("vin_request") or _DEFAULT_SITE_CONFIG["vin_request"])
+
+    design = config.get("design")
+    if not isinstance(design, dict):
+        design = {}
+    design["template_id"] = normalize_template_id(design.get("template_id"))
+    design["color_scheme"] = normalize_color_scheme(design.get("color_scheme"))
+    design["color_scheme_legacy"] = get_legacy_color_scheme_id(design.get("color_scheme"))
+    config["design"] = design
 
     layout = config.setdefault("layout", {})
-    default_order = _DEFAULT_SITE_CONFIG["layout"]["order"]
-    raw_order = layout.get("order")
-    if not isinstance(raw_order, list):
-        raw_order = []
-    normalized_order = []
-    for key in raw_order:
-        if key in {"products", "products_catalog"}:
-            key = "catalog"
-        if isinstance(key, str) and key in default_order and key not in normalized_order:
-            normalized_order.append(key)
-    for key in default_order:
-        if key not in normalized_order:
-            normalized_order.append(key)
-    layout["order"] = normalized_order
+    layout_order = layout.get("order")
+    sections_order_raw = config.get("sections_order")
+    source_order = sections_order_raw if isinstance(sections_order_raw, list) else layout_order
+    normalized_sections = normalize_sections_order(source_order, template_id=design.get("template_id"))
+    config["sections_order"] = normalized_sections
+    layout["order"] = normalized_sections
 
     # ===== CONTACTS =====
 
