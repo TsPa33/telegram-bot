@@ -1,3 +1,6 @@
+{% set config = config if config is defined else {} %}
+{% set data = data if data is defined else {} %}
+{% set modules = config.get('modules', {}) %}
 {% set header = config.get('header', {}) %}
 {% set hero = config.get('hero', {}) %}
 {% set contacts = config.get('contacts', {}) %}
@@ -71,23 +74,9 @@
             {% endif %}
 
             <!-- PRICING -->
-            {% if modules.get('pricing', False) and config.get('pricing', {}).get('items') %}
-            <li><a href="#pricing" class="nav-link">Ціни</a></li>
-            {% endif %}
-
-            <!-- WORKS -->
-            {% if modules.get('works', False) and config.get('works', {}).get('items') %}
-            <li><a href="#works" class="nav-link">Роботи</a></li>
-            {% endif %}
-
             <!-- GALLERY -->
-            {% if modules.get('gallery', False) and config.get('gallery', {}).get('images') %}
+            {% if data.has_gallery %}
             <li><a href="#gallery" class="nav-link">Галерея</a></li>
-            {% endif %}
-
-            <!-- REVIEWS -->
-            {% if modules.get('reviews', False) and config.get('reviews', {}).get('items') %}
-            <li><a href="#reviews" class="nav-link">Відгуки</a></li>
             {% endif %}
 
             <!-- CARS -->
@@ -100,22 +89,13 @@
             {% endif %}
 
             <!-- CONTACTS -->
-            {% if phones or contacts.get('address') or telegram or viber or whatsapp or instagram or facebook %}
+            {% if data.has_contacts %}
                 <li>
                     <a href="#contacts" class="nav-link">
                         Контакти
                     </a>
                 </li>
                 {% endif %}
-
-            <!-- MAP -->
-            {% if contacts.get('map_embed') %}
-            <li>
-                <a href="#map" class="nav-link">
-                    Карта
-                </a>
-            </li>
-            {% endif %}
 
             <!-- PHONES -->
             {% if phones %}

@@ -129,6 +129,7 @@ from bot.database.repositories.site_repo import (
     publish_site,
     replace_site_config_draft,
     update_site_config_draft,
+    update_site_design_both,
 )
 from bot.domain.statuses import (
     CAR_STATUS_INACTIVE_VALUES,
@@ -3987,21 +3988,27 @@ async def seller_crm_website_design(request: Request, crm_slug: str, status: str
     live_url = build_site_url(site["subdomain"])
     has_parts = False if _is_demo_account(account) else bool(await get_available_parts_for_site(seller_id) or await get_seller_products(seller_id, limit=1) or await get_cars_by_seller(seller_id))
     has_services_data = False if _is_demo_account(account) else bool(await get_services_by_seller(seller_id))
-    recommended_category = "dismantler" if has_parts else ("service" if has_services_data else "service")
+    has_hybrid_business = bool(has_parts and has_services_data)
     template_groups = {
         "dismantler": [
-            {"id": "dismantler_classic", "label": "Dismantler Classic", "description": "Hero, catalog, VIN, donor cars, contacts."},
-            {"id": "dismantler_catalog", "label": "Dismantler Catalog", "description": "Inventory-first catalog template."},
-            {"id": "dismantler_premium", "label": "Dismantler Premium", "description": "Premium dismantler presentation."},
+            {"id": "dismantler_classic", "label": "Класична авторозбірка", "business_type": "Авторозбірка / Запчастини", "description": "Фокус на каталозі, VIN-запиті та авто-донорах."},
+            {"id": "dismantler_catalog", "label": "Каталог запчастин", "business_type": "Авторозбірка / Запчастини", "description": "Каталог-орієнтований шаблон для великого асортименту."},
+            {"id": "dismantler_premium", "label": "Преміум авторозбірка", "business_type": "Авторозбірка / Запчастини", "description": "Преміальна подача запчастин, авто та контактів."},
         ],
         "service": [
-            {"id": "service_classic", "label": "Service Classic", "description": "Classic services landing page."},
-            {"id": "service_modern", "label": "Service Modern", "description": "Modern business-card style."},
-            {"id": "service_premium", "label": "Service Premium", "description": "Premium service positioning."},
+            {"id": "service_classic", "label": "Класичний сервіс", "business_type": "Автопослуги / Візитка", "description": "Класичний лендінг з акцентом на послуги."},
+            {"id": "service_modern", "label": "Сучасна візитка", "business_type": "Автопослуги / Візитка", "description": "Сучасний стиль для презентації сервісу."},
+            {"id": "service_premium", "label": "Преміум сервіс", "business_type": "Автопослуги / Візитка", "description": "Преміальна візитка для сервісних компаній."},
         ],
     }
-    schemes = ["dark_blue", "dark_red", "graphite", "black_gold", "light_minimal"]
-    return templates.TemplateResponse("seller_crm/website_design.html", _seller_crm_context(request, title="Дизайн сайту — кабінет продавця", current_page="website_design", account=account, subscription=subscription, site=site, design=design, template_groups=template_groups, recommended_category=recommended_category, schemes=schemes, live_url=live_url, status=status, has_website=True, has_cars=False, has_services=False))
+    schemes = [
+        {"id": "dark_blue", "label": "Темно-синій", "swatches": ["#0b1220", "#1d4ed8", "#38bdf8"]},
+        {"id": "dark_red", "label": "Темно-червоний", "swatches": ["#14090a", "#b91c1c", "#f87171"]},
+        {"id": "graphite", "label": "Графіт", "swatches": ["#111827", "#374151", "#9ca3af"]},
+        {"id": "black_gold", "label": "Чорний + золото", "swatches": ["#09090b", "#d4af37", "#f59e0b"]},
+        {"id": "light_minimal", "label": "Світлий мінімалізм", "swatches": ["#f8fafc", "#2563eb", "#14b8a6"]},
+    ]
+    return templates.TemplateResponse("seller_crm/website_design.html", _seller_crm_context(request, title="Дизайн сайту — кабінет продавця", current_page="website_design", account=account, subscription=subscription, site=site, design=design, template_groups=template_groups, schemes=schemes, live_url=live_url, status=status, has_website=True, has_cars=False, has_services=False, has_catalog_or_cars=has_parts, has_services_data=has_services_data, has_hybrid_business=has_hybrid_business))
 
 
 @router.post("/{crm_slug}/website/design/template")
@@ -4010,7 +4017,7 @@ async def seller_crm_website_design_template(request: Request, crm_slug: str, te
     template_id = (template_id or "service").strip().lower()
     if template_id not in {"dismantler_classic", "dismantler_catalog", "dismantler_premium", "service_classic", "service_modern", "service_premium"}:
         template_id = "service_classic"
-    await update_current_site_draft(account["seller_id"], {"design": {"template_id": template_id}})
+    await update_site_design_both(account["seller_id"], {"design": {"template_id": template_id}})
     return RedirectResponse(url=f"/crm/seller/{crm_slug}/website/design?status=saved", status_code=303)
 
 
@@ -4020,7 +4027,7 @@ async def seller_crm_website_design_color(request: Request, crm_slug: str, color
     color_scheme = (color_scheme or "dark_blue").strip().lower()
     if color_scheme not in {"dark_blue", "dark_red", "graphite", "black_gold", "light_minimal"}:
         color_scheme = "dark_blue"
-    await update_current_site_draft(account["seller_id"], {"design": {"color_scheme": color_scheme}})
+    await update_site_design_both(account["seller_id"], {"design": {"color_scheme": color_scheme}})
     return RedirectResponse(url=f"/crm/seller/{crm_slug}/website/design?status=saved", status_code=303)
 
 
