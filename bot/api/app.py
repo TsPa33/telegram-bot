@@ -1286,6 +1286,8 @@ async def _render_site_by_subdomain(subdomain: str, request: Request):
                 "has_cars": bool(cars),
                 "has_services": bool(services),
                 "has_gallery": bool((config.get("gallery") or {}).get("items", [])),
+                "has_contacts": bool((config.get("contacts") or {}).get("phones") or (config.get("contacts") or {}).get("address") or (config.get("contacts") or {}).get("telegram")),
+                "has_map": bool((config.get("contacts") or {}).get("map_embed")),
             },
             "site_color_scheme": color_scheme,
         },

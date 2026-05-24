@@ -225,12 +225,26 @@ def _build_public_site_urls(site: dict[str, Any] | None) -> tuple[str | None, st
 
 
 
+def _normalize_template_id(value: str | None) -> str:
+    template_id = str(value or "").strip().lower()
+    mapped = {
+        "dismantler_classic": "universal_classic",
+        "service_classic": "universal_classic",
+        "dismantler_catalog": "universal_catalog",
+        "service_modern": "universal_catalog",
+        "dismantler_premium": "universal_premium",
+        "service_premium": "universal_premium",
+        "universal_classic": "universal_classic",
+        "universal_catalog": "universal_catalog",
+        "universal_premium": "universal_premium",
+    }
+    return mapped.get(template_id, "universal_classic")
+
+
 def _extract_design(config: dict[str, Any] | None) -> dict[str, str]:
     cfg = config or {}
     design = cfg.get("design") if isinstance(cfg.get("design"), dict) else {}
-    template_id = str(design.get("template_id") or "service_classic").strip().lower()
-    if template_id not in {"dismantler_classic", "dismantler_catalog", "dismantler_premium", "service_classic", "service_modern", "service_premium"}:
-        template_id = "service_classic"
+    template_id = _normalize_template_id(design.get("template_id"))
     color_scheme = str(design.get("color_scheme") or "dark_blue").strip().lower()
     if color_scheme not in {"dark_blue", "dark_red", "graphite", "black_gold", "light_minimal"}:
         color_scheme = "dark_blue"
@@ -3989,18 +4003,11 @@ async def seller_crm_website_design(request: Request, crm_slug: str, status: str
     has_parts = False if _is_demo_account(account) else bool(await get_available_parts_for_site(seller_id) or await get_seller_products(seller_id, limit=1) or await get_cars_by_seller(seller_id))
     has_services_data = False if _is_demo_account(account) else bool(await get_services_by_seller(seller_id))
     has_hybrid_business = bool(has_parts and has_services_data)
-    template_groups = {
-        "dismantler": [
-            {"id": "dismantler_classic", "label": "Класична авторозбірка", "business_type": "Авторозбірка / Запчастини", "description": "Фокус на каталозі, VIN-запиті та авто-донорах."},
-            {"id": "dismantler_catalog", "label": "Каталог запчастин", "business_type": "Авторозбірка / Запчастини", "description": "Каталог-орієнтований шаблон для великого асортименту."},
-            {"id": "dismantler_premium", "label": "Преміум авторозбірка", "business_type": "Авторозбірка / Запчастини", "description": "Преміальна подача запчастин, авто та контактів."},
-        ],
-        "service": [
-            {"id": "service_classic", "label": "Класичний сервіс", "business_type": "Автопослуги / Візитка", "description": "Класичний лендінг з акцентом на послуги."},
-            {"id": "service_modern", "label": "Сучасна візитка", "business_type": "Автопослуги / Візитка", "description": "Сучасний стиль для презентації сервісу."},
-            {"id": "service_premium", "label": "Преміум сервіс", "business_type": "Автопослуги / Візитка", "description": "Преміальна візитка для сервісних компаній."},
-        ],
-    }
+    template_cards = [
+        {"id": "universal_classic", "label": "Classic", "description": "Чистий універсальний сайт для автопослуг, запчастин та авто на розборі."},
+        {"id": "universal_catalog", "label": "Catalog Pro", "description": "Шаблон з акцентом на каталог запчастин, товари та авто на розборі."},
+        {"id": "universal_premium", "label": "Premium", "description": "Преміальний шаблон з сильним першим екраном, довірою, галереєю, послугами та каталогом."},
+    ]
     schemes = [
         {"id": "dark_blue", "label": "Темно-синій", "swatches": ["#0b1220", "#1d4ed8", "#38bdf8"]},
         {"id": "dark_red", "label": "Темно-червоний", "swatches": ["#14090a", "#b91c1c", "#f87171"]},
@@ -4008,15 +4015,13 @@ async def seller_crm_website_design(request: Request, crm_slug: str, status: str
         {"id": "black_gold", "label": "Чорний + золото", "swatches": ["#09090b", "#d4af37", "#f59e0b"]},
         {"id": "light_minimal", "label": "Світлий мінімалізм", "swatches": ["#f8fafc", "#2563eb", "#14b8a6"]},
     ]
-    return templates.TemplateResponse("seller_crm/website_design.html", _seller_crm_context(request, title="Дизайн сайту — кабінет продавця", current_page="website_design", account=account, subscription=subscription, site=site, design=design, template_groups=template_groups, schemes=schemes, live_url=live_url, status=status, has_website=True, has_cars=False, has_services=False, has_catalog_or_cars=has_parts, has_services_data=has_services_data, has_hybrid_business=has_hybrid_business))
+    return templates.TemplateResponse("seller_crm/website_design.html", _seller_crm_context(request, title="Дизайн сайту — кабінет продавця", current_page="website_design", account=account, subscription=subscription, site=site, design=design, template_cards=template_cards, schemes=schemes, live_url=live_url, status=status, has_website=True, has_cars=False, has_services=False, has_catalog_or_cars=has_parts, has_services_data=has_services_data, has_hybrid_business=has_hybrid_business))
 
 
 @router.post("/{crm_slug}/website/design/template")
-async def seller_crm_website_design_template(request: Request, crm_slug: str, template_id: str = Form("service")):
+async def seller_crm_website_design_template(request: Request, crm_slug: str, template_id: str = Form("universal_classic")):
     account, _ = await _authorized_account(request, crm_slug)
-    template_id = (template_id or "service").strip().lower()
-    if template_id not in {"dismantler_classic", "dismantler_catalog", "dismantler_premium", "service_classic", "service_modern", "service_premium"}:
-        template_id = "service_classic"
+    template_id = _normalize_template_id(template_id)
     await update_site_design_both(account["seller_id"], {"design": {"template_id": template_id}})
     return RedirectResponse(url=f"/crm/seller/{crm_slug}/website/design?status=saved", status_code=303)
 

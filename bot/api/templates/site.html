@@ -10,10 +10,12 @@
 {% set catalog = config.get('catalog', {}) %}
 {% set services_config = config.get('services', {}) %}
 {% set design = config.get('design', {}) %}
-{% set template_id = design.get('template_id', 'service_classic') %}
-{% if template_id in ['dismantler_classic','dismantler_catalog','dismantler_premium'] %}
-  {% include 'public_site/dismantler.html' %}
+{% set template_id = design.get('template_id', 'universal_classic') %}
+{% if template_id == 'universal_catalog' %}
+  {% include 'public_site/universal_catalog.html' %}
+{% elif template_id == 'universal_premium' %}
+  {% include 'public_site/universal_premium.html' %}
 {% else %}
-  {% include 'public_site/service.html' %}
+  {% include 'public_site/universal_classic.html' %}
 {% endif %}
 {% endblock %}
