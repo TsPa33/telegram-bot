@@ -4020,11 +4020,11 @@ async def seller_crm_website_design(request: Request, crm_slug: str, status: str
         {"id": "universal_premium", "label": "Premium", "description": "Преміальний шаблон з сильним першим екраном, довірою, галереєю, послугами та каталогом."},
     ]
     schemes = [
-        {"id": "dark_blue", "label": "Темно-синій", "swatches": ["#0b1220", "#1d4ed8", "#38bdf8"]},
-        {"id": "dark_red", "label": "Темно-червоний", "swatches": ["#14090a", "#b91c1c", "#f87171"]},
-        {"id": "graphite", "label": "Графіт", "swatches": ["#111827", "#374151", "#9ca3af"]},
+        {"id": "graphite_red", "label": "Графіт + червоний", "swatches": ["#14090a", "#b91c1c", "#f87171"]},
+        {"id": "steel_blue", "label": "Сталевий синій", "swatches": ["#0b1220", "#1d4ed8", "#38bdf8"]},
         {"id": "black_gold", "label": "Чорний + золото", "swatches": ["#09090b", "#d4af37", "#f59e0b"]},
-        {"id": "light_minimal", "label": "Світлий мінімалізм", "swatches": ["#f8fafc", "#2563eb", "#14b8a6"]},
+        {"id": "clean_navy", "label": "Світлий navy", "swatches": ["#f8fafc", "#2563eb", "#14b8a6"]},
+        {"id": "soft_green", "label": "Мʼякий зелений", "swatches": ["#f0fdf4", "#22c55e", "#15803d"]},
     ]
     for scheme in schemes:
         scheme["normalized_id"] = normalize_color_scheme(scheme.get("id"))
