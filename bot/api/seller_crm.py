@@ -184,7 +184,7 @@ from bot.services.seller_crm import (
 from bot.services.seller_offer_service import submit_seller_offer_from_crm
 from bot.services.telegram_sender import send_message_to_buyer
 from bot.services.buyer_chat_presence import is_buyer_in_chat
-from bot.services.site_config import get_theme_presets, merge_with_default
+from bot.services.site_config import get_theme_presets, merge_with_default, normalize_color_scheme, normalize_template_id
 from bot.services.site_blocks import SITE_BLOCK_REGISTRY
 from bot.services.storage import upload_image
 from bot.services.liqpay_service import LiqPayService
@@ -225,37 +225,14 @@ def _build_public_site_urls(site: dict[str, Any] | None) -> tuple[str | None, st
 
 
 
-def _normalize_template_id(value: str | None) -> str:
-    template_id = str(value or "").strip().lower()
-    mapped = {
-        "dismantler_classic": "universal_classic",
-        "service_classic": "universal_classic",
-        "dismantler_catalog": "universal_catalog",
-        "service_modern": "universal_catalog",
-        "dismantler_premium": "universal_premium",
-        "service_premium": "universal_premium",
-        "universal_classic": "universal_classic",
-        "universal_catalog": "universal_catalog",
-        "universal_premium": "universal_premium",
-    }
-    return mapped.get(template_id, "universal_classic")
 
 
 def _extract_design(config: dict[str, Any] | None) -> dict[str, str]:
     cfg = config or {}
     design = cfg.get("design") if isinstance(cfg.get("design"), dict) else {}
-    template_id = _normalize_template_id(design.get("template_id"))
-    color_scheme = str(design.get("color_scheme") or "dark_blue").strip().lower()
-    if color_scheme not in {"dark_blue", "dark_red", "graphite", "black_gold", "light_minimal"}:
-        color_scheme = "dark_blue"
+    template_id = normalize_template_id(design.get("template_id"))
+    color_scheme = normalize_color_scheme(design.get("color_scheme"))
     return {"template_id": template_id, "color_scheme": color_scheme}
-
-
-def _normalize_color_scheme(value: str | None) -> str:
-    color_scheme = str(value or "dark_blue").strip().lower()
-    if color_scheme not in {"dark_blue", "dark_red", "graphite", "black_gold", "light_minimal"}:
-        return "dark_blue"
-    return color_scheme
 LEAD_STATUS_TABS = [
     {"key": CRM_LEAD_STATUS_NEW, "label": "Нова заявка", "empty": "Нових заявок поки немає."},
     {"key": CRM_LEAD_STATUS_IN_WORK, "label": "Покупець очікує відповідь", "empty": "Немає заявок, які очікують відповіді."},
@@ -4007,8 +3984,8 @@ async def seller_crm_website_design(request: Request, crm_slug: str, status: str
     config_draft = _as_config(site)
     config_live = _as_live_config(site)
     design = _extract_design(config_live or config_draft)
-    current_template_id = _normalize_template_id(design.get("template_id"))
-    current_color_scheme = _normalize_color_scheme(design.get("color_scheme"))
+    current_template_id = normalize_template_id(design.get("template_id"))
+    current_color_scheme = normalize_color_scheme(design.get("color_scheme"))
     live_url = build_site_url(site["subdomain"])
     has_parts = False if _is_demo_account(account) else bool(await get_available_parts_for_site(seller_id) or await get_seller_products(seller_id, limit=1) or await get_cars_by_seller(seller_id))
     has_services_data = False if _is_demo_account(account) else bool(await get_services_by_seller(seller_id))
@@ -4031,7 +4008,7 @@ async def seller_crm_website_design(request: Request, crm_slug: str, status: str
 @router.post("/{crm_slug}/website/design/template")
 async def seller_crm_website_design_template(request: Request, crm_slug: str, template_id: str = Form("universal_classic")):
     account, _ = await _authorized_account(request, crm_slug)
-    template_id = _normalize_template_id(template_id)
+    template_id = normalize_template_id(template_id)
     await update_site_design_both(account["seller_id"], {"design": {"template_id": template_id}})
     return RedirectResponse(url=f"/crm/seller/{crm_slug}/website/design?status=saved", status_code=303)
 
@@ -4039,7 +4016,7 @@ async def seller_crm_website_design_template(request: Request, crm_slug: str, te
 @router.post("/{crm_slug}/website/design/color")
 async def seller_crm_website_design_color(request: Request, crm_slug: str, color_scheme: str = Form("dark_blue")):
     account, _ = await _authorized_account(request, crm_slug)
-    color_scheme = _normalize_color_scheme(color_scheme)
+    color_scheme = normalize_color_scheme(color_scheme)
     await update_site_design_both(account["seller_id"], {"design": {"color_scheme": color_scheme}})
     return RedirectResponse(url=f"/crm/seller/{crm_slug}/website/design?status=saved", status_code=303)
 
