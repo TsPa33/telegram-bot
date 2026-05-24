@@ -878,11 +878,21 @@ def _redirect(crm_slug: str, section: str = "website", status: str = "saved"):
 
 def _as_config(site) -> dict[str, Any]:
     raw = site.get("config_draft") if site else {}
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw)
+        except Exception:
+            raw = {}
     return merge_with_default(raw if isinstance(raw, dict) else {})
 
 
 def _as_live_config(site) -> dict[str, Any]:
     raw = site.get("config_live") if site else {}
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw)
+        except Exception:
+            raw = {}
     return merge_with_default(raw if isinstance(raw, dict) else {})
 
 
