@@ -39,7 +39,7 @@
         <button class="btn" type="submit">{{ 'Вимкнути' if block.shown else 'Увімкнути' }}</button>
       </form>
       {% endif %}
-      <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/website/editor/{{ block.edit_key }}">Редагувати</a>
+      <a class="btn ghost" href="{{ block.edit_url }}">Редагувати</a>
     </div>
   </div>
 </article>

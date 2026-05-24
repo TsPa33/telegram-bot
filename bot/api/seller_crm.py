@@ -4064,6 +4064,9 @@ async def seller_crm_website_blocks(request: Request, crm_slug: str, status: str
     editor_alias = {"catalog": "products", "vin": "vin_request"}
     blocks = []
     for key, title, description, locked in WEBSITE_BLOCKS_CRM_ORDER:
+        edit_url = f"/crm/seller/{crm_slug}/website/editor/{editor_alias.get(key, key)}"
+        if key == "about":
+            edit_url = f"/crm/seller/{crm_slug}/website/content/about"
         blocks.append({
             "key": key,
             "title": title,
@@ -4072,9 +4075,78 @@ async def seller_crm_website_blocks(request: Request, crm_slug: str, status: str
             "locked": bool(locked),
             "position": order_idx.get(key, 999),
             "edit_key": editor_alias.get(key, key),
+            "edit_url": edit_url,
         })
     blocks.sort(key=lambda item: item["position"])
     return templates.TemplateResponse("seller_crm/website_blocks.html", _seller_crm_context(request, title="Блоки сайту — кабінет продавця", current_page="website_blocks", account=account, subscription=subscription, site=site, blocks=blocks, status=status, has_website=True, has_cars=False, has_services=False, preview_url=preview_url, constructor_url=constructor_url))
+
+
+@router.get("/{crm_slug}/website/content/about")
+async def seller_crm_website_about(request: Request, crm_slug: str, status: str | None = None):
+    account, subscription = await _authorized_account(request, crm_slug)
+    site = _demo_site() if _is_demo_account(account) else await get_current_seller_site_or_404(account["seller_id"])
+    config_draft = _as_config(site)
+    preview_url, _ = _build_public_site_urls(site)
+    about = config_draft.get("about") if isinstance(config_draft.get("about"), dict) else {}
+    advantages = about.get("advantages") if isinstance(about.get("advantages"), list) else []
+    advantages = [str(item).strip() for item in advantages if str(item or "").strip()][:3]
+    while len(advantages) < 3:
+        advantages.append("")
+    layout = str(about.get("layout") or "image_right").strip().lower()
+    if layout not in {"image_right", "image_left", "center", "wide"}:
+        layout = "image_right"
+    return templates.TemplateResponse(
+        "seller_crm/website_about.html",
+        _seller_crm_context(
+            request,
+            title="Про нас — кабінет продавця",
+            current_page="website_blocks",
+            account=account,
+            subscription=subscription,
+            site=site,
+            has_website=True,
+            has_cars=False,
+            has_services=False,
+            status=status,
+            preview_url=preview_url,
+            about=about,
+            about_layout=layout,
+            about_advantages=advantages,
+        ),
+    )
+
+
+@router.post("/{crm_slug}/website/content/about")
+async def seller_crm_website_about_save(
+    request: Request,
+    crm_slug: str,
+    title: str = Form(""),
+    description: str = Form(""),
+    image: str = Form(""),
+    layout: str = Form("image_right"),
+    advantage_1: str = Form(""),
+    advantage_2: str = Form(""),
+    advantage_3: str = Form(""),
+):
+    account, _ = await _authorized_account(request, crm_slug)
+    layout = str(layout or "image_right").strip().lower()
+    if layout not in {"image_right", "image_left", "center", "wide"}:
+        layout = "image_right"
+    advantages = [str(item).strip() for item in (advantage_1, advantage_2, advantage_3)]
+    advantages = [item for item in advantages if item]
+    await update_current_site_draft(
+        account["seller_id"],
+        {
+            "about": {
+                "layout": layout,
+                "title": str(title or "").strip(),
+                "description": str(description or "").strip(),
+                "image": str(image or "").strip(),
+                "advantages": advantages,
+            }
+        },
+    )
+    return RedirectResponse(url=f"/crm/seller/{crm_slug}/website/content/about?status=saved", status_code=303)
 
 
 @router.get("/{crm_slug}/website/editor/{block_key}")

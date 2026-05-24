@@ -3,7 +3,9 @@
 {% set about_description = about.get('description') or about.get('text') or 'Ми працюємо з автотоварами та послугами для автомобілів. На сайті ви можете переглянути пропозиції, залишити заявку або швидко звʼязатися з продавцем.' %}
 {% set about_image = about.get('image') or '' %}
 {% set about_advantages = about.get('advantages', []) if about.get('advantages') is iterable and about.get('advantages') is not string else [] %}
-<section class="section site-about" id="about">
+{% set about_layout = about.get('layout') or 'image_right' %}
+{% if about_layout not in ['image_right', 'image_left', 'center', 'wide'] %}{% set about_layout = 'image_right' %}{% endif %}
+<section class="section site-about about--{{ about_layout|replace('_', '-') }}" id="about">
   <div class="container site-section__inner">
     <h2 class="section-title">{{ about_title }}</h2>
     <p class="section-description">{{ about_description }}</p>

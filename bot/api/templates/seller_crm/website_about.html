@@ -1,0 +1,39 @@
+{% extends "seller_crm/base.html" %}
+{% block crm_kicker %}Про нас{% endblock %}
+{% block crm_heading %}Про нас{% endblock %}
+{% block content %}
+{% if status == 'saved' %}<div class="notice">Зміни збережено у чернетку. Опублікуйте сайт, щоб клієнти побачили зміни.</div>{% endif %}
+<article class="card">
+  <p class="muted">Коротко розкажіть клієнтам про ваш бізнес.</p>
+  <form method="post" action="/crm/seller/{{ account.crm_slug }}/website/content/about" class="stack-top">
+    <label>Заголовок
+      <input type="text" name="title" value="{{ about.get('title','') }}">
+    </label>
+    <label>Опис
+      <textarea name="description" rows="5">{{ about.get('description', about.get('text','')) }}</textarea>
+    </label>
+    <label>Фото блоку
+      <input type="url" name="image" value="{{ about.get('image','') }}" placeholder="https://...">
+    </label>
+    <label>Розташування
+      <select name="layout">
+        <option value="image_right" {% if about_layout == 'image_right' %}selected{% endif %}>Фото справа</option>
+        <option value="image_left" {% if about_layout == 'image_left' %}selected{% endif %}>Фото зліва</option>
+        <option value="center" {% if about_layout == 'center' %}selected{% endif %}>Текст по центру</option>
+        <option value="wide" {% if about_layout == 'wide' %}selected{% endif %}>Широкий блок</option>
+      </select>
+    </label>
+    <div class="grid two-col">
+      <label>Перевага 1<input type="text" name="advantage_1" value="{{ about_advantages[0] }}"></label>
+      <label>Перевага 2<input type="text" name="advantage_2" value="{{ about_advantages[1] }}"></label>
+      <label class="full">Перевага 3<input type="text" name="advantage_3" value="{{ about_advantages[2] }}"></label>
+    </div>
+    <div class="action-row wrap">
+      <button class="btn" type="submit">Зберегти</button>
+      <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/website/blocks">Назад до блоків</a>
+      <a class="btn ghost" href="{{ preview_url }}" target="_blank" rel="noopener">Попередній перегляд</a>
+      <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/website#publish">Опублікувати зміни</a>
+    </div>
+  </form>
+</article>
+{% endblock %}
