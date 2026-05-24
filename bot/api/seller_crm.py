@@ -4014,21 +4014,19 @@ async def seller_crm_website_design(request: Request, crm_slug: str, status: str
     has_parts = False if _is_demo_account(account) else bool(await get_available_parts_for_site(seller_id) or await get_seller_products(seller_id, limit=1) or await get_cars_by_seller(seller_id))
     has_services_data = False if _is_demo_account(account) else bool(await get_services_by_seller(seller_id))
     has_hybrid_business = bool(has_parts and has_services_data)
-    template_cards = [
+    templates_list = [
         {"id": "universal_classic", "label": "Classic", "description": "Чистий універсальний сайт для автопослуг, запчастин та авто на розборі."},
         {"id": "universal_catalog", "label": "Catalog Pro", "description": "Шаблон з акцентом на каталог запчастин, товари та авто на розборі."},
         {"id": "universal_premium", "label": "Premium", "description": "Преміальний шаблон з сильним першим екраном, довірою, галереєю, послугами та каталогом."},
     ]
-    schemes = [
+    color_schemes = [
         {"id": "graphite_red", "label": "Графіт + червоний", "swatches": ["#14090a", "#b91c1c", "#f87171"]},
         {"id": "steel_blue", "label": "Сталевий синій", "swatches": ["#0b1220", "#1d4ed8", "#38bdf8"]},
         {"id": "black_gold", "label": "Чорний + золото", "swatches": ["#09090b", "#d4af37", "#f59e0b"]},
         {"id": "clean_navy", "label": "Світлий navy", "swatches": ["#f8fafc", "#2563eb", "#14b8a6"]},
         {"id": "soft_green", "label": "Мʼякий зелений", "swatches": ["#f0fdf4", "#22c55e", "#15803d"]},
     ]
-    for scheme in schemes:
-        scheme["normalized_id"] = normalize_color_scheme(scheme.get("id"))
-    return templates.TemplateResponse("seller_crm/website_design.html", _seller_crm_context(request, title="Дизайн сайту — кабінет продавця", current_page="website_design", account=account, subscription=subscription, site=site, design=design, current_template_id=current_template_id, current_color_scheme=current_color_scheme, template_cards=template_cards, schemes=schemes, live_url=live_url, status=status, has_website=True, has_cars=False, has_services=False, has_catalog_or_cars=has_parts, has_services_data=has_services_data, has_hybrid_business=has_hybrid_business))
+    return templates.TemplateResponse("seller_crm/website_design.html", _seller_crm_context(request, title="Дизайн сайту — кабінет продавця", current_page="website_design", account=account, subscription=subscription, site=site, design=design, current_template_id=current_template_id, current_color_scheme=current_color_scheme, templates=templates_list, color_schemes=color_schemes, live_url=live_url, status=status, has_website=True, has_cars=False, has_services=False, has_catalog_or_cars=has_parts, has_services_data=has_services_data, has_hybrid_business=has_hybrid_business))
 
 
 @router.post("/{crm_slug}/website/design/template")
