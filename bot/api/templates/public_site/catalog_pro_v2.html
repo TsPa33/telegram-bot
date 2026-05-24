@@ -1,0 +1,333 @@
+<div class="site-template site-template--catalog-pro-v2" data-template-id="universal_catalog">
+  {% set config = config if config is defined else {} %}
+  {% set data = data if data is defined else {} %}
+  {% set header = config.get('header', {}) if config.get('header') is mapping else {} %}
+  {% set hero = config.get('hero', {}) if config.get('hero') is mapping else {} %}
+  {% set catalog = config.get('catalog', {}) if config.get('catalog') is mapping else {} %}
+  {% set products_config = config.get('products', {}) if config.get('products') is mapping else {} %}
+  {% set cars_config = config.get('cars', {}) if config.get('cars') is mapping else {} %}
+  {% set contacts = config.get('contacts', {}) if config.get('contacts') is mapping else {} %}
+  {% set footer = config.get('footer', {}) if config.get('footer') is mapping else {} %}
+  {% set modules = config.get('modules', {}) if config.get('modules') is mapping else {} %}
+
+  {% set catalog_items = data.get('catalog_items', data.get('products', [])) if data is mapping else [] %}
+  {% if not catalog_items %}{% set catalog_items = data.get('parts', []) if data is mapping else [] %}{% endif %}
+  {% if not catalog_items %}{% set catalog_items = products_config.get('items', []) or catalog.get('items', []) %}{% endif %}
+  {% set catalog_items = catalog_items[:(catalog.get('per_page') or 9)] %}
+
+  {% set cars_items = data.get('cars_items', data.get('cars', [])) if data is mapping else [] %}
+  {% if not cars_items %}{% set cars_items = cars_config.get('items', []) if cars_config.get('items') is iterable and cars_config.get('items') is not string else [] %}{% endif %}
+  {% set cars_items = cars_items[:(cars_config.get('per_page') or 4)] %}
+
+  {% set featured_categories = catalog.get('featured_categories') if catalog.get('featured_categories') is iterable and catalog.get('featured_categories') is not string else [] %}
+  {% if not featured_categories %}{% set featured_categories = ['Двигуни', 'КПП', 'Кузов', 'Оптика', 'Салон', 'Ходова'] %}{% endif %}
+  {% set category_subtitles = {
+    'Двигуни': 'Блоки, ГБЦ, навісне',
+    'КПП': 'МКПП/АКПП та комплектуючі',
+    'Кузов': 'Крила, двері, бампери',
+    'Оптика': 'Фари, ліхтарі, ПТФ',
+    'Салон': 'Сидіння, торпедо, пластик',
+    'Ходова': 'Ступиці, важелі, амортизатори'
+  } %}
+  {% set category_icons = {'Двигуни':'⚙️','КПП':'🔩','Кузов':'🚘','Оптика':'💡','Салон':'🪑','Ходова':'🛞'} %}
+  {% set trust_items = ['Самовивіз', 'Відправка по Україні', 'Оплата при отриманні', 'Підбір по VIN'] %}
+
+  {% set phones = contacts.get('phones', []) if contacts.get('phones') is iterable and contacts.get('phones') is not string else [] %}
+  {% set messengers = contacts.get('messengers', {}) if contacts.get('messengers') is mapping else {} %}
+  {% set socials = contacts.get('socials', {}) if contacts.get('socials') is mapping else {} %}
+  {% set primary_phone = phones[0] if phones else None %}
+
+  <header class="cpv2-header">
+    <div class="container cpv2-header__inner">
+      <a href="#hero" class="cpv2-brand">
+        <span class="cpv2-brand__mark">CP</span>
+        <span>{{ header.get('title') or footer.get('business_name') or 'CarPot Каталог' }}</span>
+      </a>
+      <nav class="cpv2-nav">
+        <a href="#categories">Категорії</a>
+        <a href="#products">Каталог</a>
+        <a href="#cars">Авто на розборці</a>
+        <a href="#contacts">Контакти</a>
+      </nav>
+      <a class="site-button site-button--primary" href="#vin-request">Підібрати деталь</a>
+    </div>
+  </header>
+
+  {% if modules.get('hero', True) %}
+  <section id="hero" class="cpv2-hero">
+    <div class="container cpv2-hero__grid">
+      <div class="cpv2-hero__content">
+        <p class="cpv2-eyebrow">Automotive ecommerce</p>
+        <h1>{{ hero.get('title') or 'Знайдіть автозапчастини швидко для вашої моделі' }}</h1>
+        <p class="cpv2-lead">{{ hero.get('subtitle') or hero.get('description') or 'Каталог запчастин, підбір по VIN та швидка комунікація з менеджером. Допомагаємо підібрати сумісні деталі без зайвих ризиків.' }}</p>
+        <div class="cpv2-hero__actions">
+          <a class="site-button site-button--primary" href="#products">Перейти в каталог</a>
+          <a class="site-button site-button--secondary" href="#contacts">Отримати консультацію</a>
+        </div>
+        <div class="cpv2-trust-strip" aria-label="Переваги">
+          {% for trust in trust_items %}<span>{{ trust }}</span>{% endfor %}
+        </div>
+      </div>
+      <aside class="cpv2-hero__visual" aria-label="Вітрина категорій">
+        <div class="cpv2-hero-panel">
+          <h3>Швидкий підбір</h3>
+          <div class="cpv2-hero-cards">
+            {% for category in featured_categories[:4] %}
+            <div class="cpv2-hero-card">
+              <span>{{ category_icons.get(category, '🔧') }}</span>
+              <strong>{{ category }}</strong>
+              <small>{{ category_subtitles.get(category, 'Підбір під авто') }}</small>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </aside>
+    </div>
+  </section>
+  {% endif %}
+
+  <section id="categories" class="cpv2-section">
+    <div class="container">
+      <div class="cpv2-section-head">
+        <h2>Популярні категорії</h2>
+        <a class="site-button site-button--ghost" href="#products">Дивитися каталог →</a>
+      </div>
+      <div class="cpv2-categories">
+        {% for category in featured_categories[:6] %}
+        <article class="cpv2-category-card">
+          <div class="cpv2-category-icon">{{ category_icons.get(category, '🔧') }}</div>
+          <h3>{{ category }}</h3>
+          <p>{{ category_subtitles.get(category, 'Запчастини під запит та в наявності') }}</p>
+          <a href="#products" class="cpv2-inline-link">Переглянути →</a>
+        </article>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  {% if modules.get('catalog', True) %}
+  <section id="products" class="cpv2-section cpv2-section--catalog">
+    <div class="container">
+      <div class="cpv2-section-head">
+        <h2>{{ catalog.get('title') or products_config.get('title') or 'Каталог запчастин' }}</h2>
+        <p>{{ catalog.get('description') or products_config.get('description') or 'Основні позиції для швидкого запиту. Фінальна сумісність і доступність підтверджуються менеджером.' }}</p>
+      </div>
+      <div class="cpv2-products-grid">
+        {% if catalog_items %}
+          {% for product in catalog_items %}
+          <article class="cpv2-product-card">
+            <div class="cpv2-product-card__media">
+              {% if product.get('image') %}
+              <img class="site-image" src="{{ product.get('image') }}" alt="{{ product.get('title', 'Автозапчастина') }}" loading="lazy">
+              {% else %}
+              <div class="cpv2-product-card__placeholder">
+                <span>{{ category_icons.get(product.get('category'), '⚙️') }}</span>
+                <small>{{ product.get('category') or 'Автодеталі' }}</small>
+              </div>
+              {% endif %}
+            </div>
+            <div class="cpv2-product-card__body">
+              <h3>{{ product.get('title') or 'Запчастина під замовлення' }}</h3>
+              <p>{{ product.get('description') or product.get('category') or 'Підбір і доступність уточнюються.' }}</p>
+              <div class="cpv2-product-card__meta">
+                <span>{{ product.get('category') or 'Категорія уточнюється' }}</span>
+                <strong>{{ product.get('price') or 'Ціну уточнюйте' }}</strong>
+              </div>
+              <a class="site-button site-button--outline" href="#contacts">Запитати наявність</a>
+            </div>
+          </article>
+          {% endfor %}
+        {% else %}
+          {% for category in featured_categories[:6] %}
+          <article class="cpv2-product-card cpv2-product-card--request">
+            <div class="cpv2-product-card__media">
+              <div class="cpv2-product-card__placeholder">
+                <span>{{ category_icons.get(category, '🔧') }}</span>
+                <small>{{ category }}</small>
+              </div>
+            </div>
+            <div class="cpv2-product-card__body">
+              <h3>{{ category }}</h3>
+              <p>Приклади категорій / доступність уточнюється.</p>
+              <div class="cpv2-product-card__meta">
+                <span>Формат: підбір під запит</span>
+                <strong>On-demand</strong>
+              </div>
+              <a class="site-button site-button--outline" href="#vin-request">Надіслати запит</a>
+            </div>
+          </article>
+          {% endfor %}
+        {% endif %}
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
+  {% if modules.get('cars', True) %}
+  <section id="cars" class="cpv2-section">
+    <div class="container">
+      <div class="cpv2-section-head">
+        <h2>{{ cars_config.get('title') or 'Авто на розборці' }}</h2>
+        <p>{{ cars_config.get('description') or 'Доступні авто як джерело оригінальних деталей. Уточнюйте наявність по моделі.' }}</p>
+      </div>
+      <div class="cpv2-cars-grid">
+        {% if cars_items %}
+          {% for car in cars_items %}
+          <article class="cpv2-car-card">
+            <h3>{{ car.get('title') or ((car.get('brand') or '') ~ ' ' ~ (car.get('model') or 'Авто')) }}</h3>
+            <p>{{ car.get('description') or 'Деталі з цієї моделі доступні після уточнення.' }}</p>
+            <a class="site-button site-button--secondary" href="#contacts">Запит по моделі</a>
+          </article>
+          {% endfor %}
+        {% else %}
+          <article class="cpv2-car-card cpv2-car-card--empty">
+            <h3>Потрібна конкретна модель авто?</h3>
+            <p>Надішліть заявку — перевіримо розборку, сумісність та доступні варіанти.</p>
+            <a class="site-button site-button--secondary" href="#vin-request">Запит по моделі</a>
+          </article>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
+  {% if modules.get('vin', True) %}
+  <section id="vin-request" class="cpv2-section">
+    <div class="container">
+      <div class="cpv2-vin">
+        <div>
+          <h2>Не знаєте, яка деталь підходить?</h2>
+          <p>Надішліть VIN, марку або модель — допоможемо з підбором та сумісністю.</p>
+        </div>
+        <form class="cpv2-vin-form" data-cp-vin-form>
+          <input type="text" name="vehicle" placeholder="VIN / марка / модель" required>
+          <input type="text" name="part" placeholder="Яка деталь потрібна" required>
+          <input type="tel" name="phone" placeholder="Телефон для відповіді" required>
+          <button type="submit" class="site-button site-button--primary">Надіслати запит</button>
+        </form>
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
+  <section class="cpv2-section cpv2-section--trust">
+    <div class="container">
+      <div class="cpv2-trust-row">
+        {% for trust in trust_items %}<span>{{ trust }}</span>{% endfor %}
+      </div>
+    </div>
+  </section>
+
+  {% if modules.get('contacts', True) %}
+  <section id="contacts" class="cpv2-section">
+    <div class="container">
+      <div class="cpv2-section-head">
+        <h2>Контакти</h2>
+        <p>Відповідаємо по телефону та в месенджерах. Також можна залишити VIN-запит.</p>
+      </div>
+      <div class="cpv2-contacts-grid">
+        <article class="cpv2-contact-card">
+          <h3>Зв'язок</h3>
+          {% if phones %}
+            {% for phone in phones %}
+            <a class="site-button site-button--secondary" href="tel:{{ phone }}">{{ phone }}</a>
+            {% endfor %}
+          {% elif primary_phone %}
+            <a class="site-button site-button--secondary" href="tel:{{ primary_phone }}">{{ primary_phone }}</a>
+          {% else %}
+            <p>Номери телефону уточнюються.</p>
+            <a class="site-button site-button--outline" href="#vin-request">Надіслати запит</a>
+          {% endif %}
+        </article>
+
+        <article class="cpv2-contact-card">
+          <h3>Месенджери</h3>
+          <div class="cpv2-contact-actions">
+            {% if messengers.get('telegram') %}
+            <a class="site-button site-button--secondary" target="_blank" href="{{ messengers.get('telegram') if messengers.get('telegram').startswith('http') else 'https://t.me/' ~ messengers.get('telegram') }}">Telegram</a>
+            {% endif %}
+            {% if messengers.get('whatsapp') %}
+            <a class="site-button site-button--secondary" target="_blank" href="https://wa.me/{{ messengers.get('whatsapp') }}">WhatsApp</a>
+            {% endif %}
+            {% if messengers.get('viber') %}
+            <a class="site-button site-button--secondary" href="viber://chat?number={{ messengers.get('viber') }}">Viber</a>
+            {% endif %}
+            {% if socials.get('instagram') %}
+            <a class="site-button site-button--secondary" target="_blank" href="{{ socials.get('instagram') }}">Instagram</a>
+            {% endif %}
+            {% if socials.get('facebook') %}
+            <a class="site-button site-button--secondary" target="_blank" href="{{ socials.get('facebook') }}">Facebook</a>
+            {% endif %}
+            {% if not messengers.get('telegram') and not messengers.get('whatsapp') and not messengers.get('viber') and not socials.get('instagram') and not socials.get('facebook') %}
+            <p>Месенджери не додані. Залиште заявку, і ми зв'яжемося з вами.</p>
+            <a class="site-button site-button--outline" href="#vin-request">Залишити заявку</a>
+            {% endif %}
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
+  <footer class="cpv2-footer">
+    <div class="container cpv2-footer__inner">
+      <div>
+        <strong>{{ footer.get('business_name') or header.get('title') or 'CarPot' }}</strong>
+        <p>{{ footer.get('text') or 'Автозапчастини та підбір під ваш запит.' }}</p>
+      </div>
+      <div class="cpv2-footer__links">
+        <a href="#hero">Головна</a>
+        <a href="#products">Каталог</a>
+        <a href="#contacts">Контакти</a>
+      </div>
+    </div>
+  </footer>
+</div>
+
+<style>
+.site-template--catalog-pro-v2{background:linear-gradient(180deg,#0b1220,#101a2f 30%,#0d1424);color:#e5e7eb}
+.site-template--catalog-pro-v2 .container{max-width:1180px}
+.site-template--catalog-pro-v2 .section-title{margin:0}
+.cpv2-header{position:sticky;top:0;z-index:50;border-bottom:1px solid #243041;background:rgba(11,18,32,.92);backdrop-filter:blur(8px)}
+.cpv2-header__inner{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 0;flex-wrap:wrap}
+.cpv2-brand{display:flex;gap:10px;align-items:center;color:#fff;text-decoration:none;font-weight:700}
+.cpv2-brand__mark{display:inline-flex;width:34px;height:34px;border-radius:10px;align-items:center;justify-content:center;background:linear-gradient(135deg,#334155,#0ea5e9);font-size:12px}
+.cpv2-nav{display:flex;gap:14px;flex-wrap:wrap}.cpv2-nav a{color:#cbd5e1;text-decoration:none;font-size:14px}
+.cpv2-section{padding:34px 0}.cpv2-section--catalog{padding-top:26px}
+.cpv2-hero{padding:38px 0 24px}.cpv2-hero__grid{display:grid;grid-template-columns:1.15fr .85fr;gap:20px;align-items:stretch}
+.cpv2-eyebrow{font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;color:#93c5fd;margin:0 0 6px}
+.cpv2-hero__content h1{margin:0 0 12px;font-size:clamp(2rem,4vw,3rem);line-height:1.04;color:#fff}
+.cpv2-lead{margin:0;color:#cbd5e1;max-width:62ch}
+.cpv2-hero__actions{display:flex;gap:10px;flex-wrap:wrap;margin:20px 0 14px}
+.cpv2-trust-strip,.cpv2-trust-row{display:flex;gap:8px;flex-wrap:wrap}.cpv2-trust-strip span,.cpv2-trust-row span{font-size:13px;padding:8px 12px;border-radius:999px;border:1px solid #34445d;background:#172235;color:#dbeafe}
+.cpv2-hero__visual{display:flex}.cpv2-hero-panel{width:100%;border-radius:18px;padding:18px;background:linear-gradient(165deg,#1e293b,#111827);border:1px solid #334155}.cpv2-hero-panel h3{margin:0 0 14px;color:#f8fafc}
+.cpv2-hero-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.cpv2-hero-card{border:1px solid #3a4a63;background:#0f172a;padding:12px;border-radius:12px;display:grid;gap:4px}
+.cpv2-hero-card span{font-size:18px}.cpv2-hero-card strong{color:#f8fafc}.cpv2-hero-card small{color:#9fb3ca}
+.cpv2-section-head{display:flex;align-items:end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}.cpv2-section-head h2{margin:0;color:#fff}.cpv2-section-head p{margin:0;color:#b8c6da;max-width:70ch}
+.cpv2-categories{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.cpv2-category-card{border:1px solid #2f4159;background:#f8fafc;color:#0f172a;border-radius:16px;padding:16px;display:grid;gap:8px}
+.cpv2-category-icon{width:44px;height:44px;border-radius:12px;background:linear-gradient(145deg,#dbeafe,#bfdbfe);display:flex;align-items:center;justify-content:center}
+.cpv2-category-card h3{margin:0}.cpv2-category-card p{margin:0;color:#334155;font-size:14px}.cpv2-inline-link{font-weight:600;text-decoration:none;color:#1d4ed8}
+.cpv2-products-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.cpv2-product-card{display:flex;flex-direction:column;border:1px solid #2c3f58;border-radius:16px;overflow:hidden;background:#ffffff;color:#0f172a}
+.cpv2-product-card__media{aspect-ratio:16/10;background:#dbe6f3;overflow:hidden}
+.cpv2-product-card__placeholder{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;background:linear-gradient(155deg,#dbeafe,#e2e8f0)}
+.cpv2-product-card__placeholder span{font-size:28px}.cpv2-product-card__placeholder small{font-weight:600;color:#334155}
+.cpv2-product-card__body{padding:14px;display:grid;gap:8px}.cpv2-product-card__body h3{margin:0}.cpv2-product-card__body p{margin:0;color:#334155;font-size:14px}
+.cpv2-product-card__meta{display:flex;justify-content:space-between;gap:8px;align-items:center}.cpv2-product-card__meta span{color:#475569;font-size:13px}.cpv2-product-card__meta strong{color:#0f172a}
+.cpv2-cars-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.cpv2-car-card{border:1px solid #2d3e56;background:#111c2f;color:#dbeafe;border-radius:16px;padding:16px;display:grid;gap:10px}.cpv2-car-card h3,.cpv2-car-card p{margin:0}
+.cpv2-vin{display:grid;grid-template-columns:1fr 1.2fr;gap:14px;align-items:center;border:1px solid #355073;border-radius:18px;background:linear-gradient(145deg,#13233c,#0b1730);padding:18px}
+.cpv2-vin h2,.cpv2-vin p{margin:0}.cpv2-vin p{color:#bfdbfe}
+.cpv2-vin-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.cpv2-vin-form input{border:1px solid #38506f;background:#f8fafc;color:#0f172a;border-radius:10px;padding:10px 12px}
+.cpv2-vin-form button{grid-column:span 2}
+.cpv2-section--trust{padding-top:22px}.cpv2-trust-row{justify-content:center}
+.cpv2-contacts-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.cpv2-contact-card{border:1px solid #2e425d;background:#101b2e;border-radius:16px;padding:16px;display:grid;gap:10px}.cpv2-contact-card h3,.cpv2-contact-card p{margin:0}
+.cpv2-contact-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.cpv2-footer{border-top:1px solid #2d4059;margin-top:18px;padding:18px 0 26px;background:#0a1424}
+.cpv2-footer__inner{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}
+.cpv2-footer__inner strong{color:#fff}.cpv2-footer__inner p{margin:6px 0 0;color:#94a3b8}
+.cpv2-footer__links{display:flex;gap:12px;flex-wrap:wrap}.cpv2-footer__links a{color:#cbd5e1;text-decoration:none}
+@media (max-width: 980px){.cpv2-hero__grid,.cpv2-categories,.cpv2-products-grid,.cpv2-cars-grid,.cpv2-contacts-grid,.cpv2-vin{grid-template-columns:1fr}.cpv2-vin-form{grid-template-columns:1fr}.cpv2-vin-form button{grid-column:auto}.cpv2-contact-actions{grid-template-columns:1fr}}
+</style>
