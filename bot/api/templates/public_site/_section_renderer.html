@@ -4,6 +4,7 @@
 
 {% for section in sections_order %}
   {% if section not in rendered.keys and modules.get(section, False) %}
+  <div class="site-section site-section--{{ section }} template-section template-section--{{ template_variant|default('universal-sales') }}">
   {% if section == 'hero' %}
     {% include "components/hero.html" %}
     {% set rendered.keys = rendered.keys + [section] %}
@@ -35,5 +36,6 @@
     {% include "components/footer.html" %}
     {% set rendered.keys = rendered.keys + [section] %}
   {% endif %}
+  </div>
   {% endif %}
 {% endfor %}
