@@ -1,16 +1,20 @@
 {% set config = config if config is defined else {} %}
-{% set vin_request = config.get('vin_request', {}) %}
+{% set vin = config.get('vin', {}) if config.get('vin') is mapping else {} %}
+{% set vin_request = config.get('vin_request', {}) if config.get('vin_request') is mapping else {} %}
+{% set vin_title = vin.get('title') or vin_request.get('title') or 'Не знаєте, яка деталь підходить?' %}
+{% set vin_description = vin.get('description') or vin_request.get('description') or vin_request.get('text') or 'Надішліть VIN-код або опис авто — ми допоможемо з підбором.' %}
+{% set vin_button = vin.get('button_label') or vin_request.get('button_label') or vin_request.get('button_text') or 'Надіслати запит' %}
 <section id="vin-request" class="section">
   <div class="container">
-    <h2>{{ vin_request.get('title') or 'Підбір по VIN' }}</h2>
-    <p>{{ vin_request.get('text') or 'Залиште запит і ми підберемо потрібну деталь.' }}</p>
+    <h2 class="section-title">{{ vin_title }}</h2>
+    <p class="section-description">{{ vin_description }}</p>
     <form class="cp-vin-card" data-cp-vin-form>
       <div class="cp-vin-fields">
         <input type="text" name="vehicle" placeholder="VIN / марка / модель" required>
         <input type="text" name="part" placeholder="Назва деталі" required>
         <input type="text" name="name" placeholder="Ваше ім'я">
         <input type="tel" name="phone" placeholder="Телефон для відповіді" required>
-        <button type="submit" class="cp-btn cp-vin-submit">{{ vin_request.get('button_text') or 'Підібрати запчастину' }}</button>
+        <button type="submit" class="cp-btn cp-vin-submit site-button site-button--primary">{{ vin_button }}</button>
       </div>
     </form>
   </div>

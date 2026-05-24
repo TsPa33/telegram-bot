@@ -83,6 +83,12 @@
                     <div class="cp-product-placeholder"><strong>+ Додати банер</strong></div>
                 </div>
             </div>
+        {% else %}
+            <div class="hero-slider" id="heroSlider">
+                <div class="hero-slide active">
+                    <div class="hero-fallback-visual"></div>
+                </div>
+            </div>
         {% endif %}
 
         <div class="hero-overlay">
@@ -91,19 +97,19 @@
                     <div class="hero-eyebrow">{{ hero.get('eyebrow') }}</div>
                 {% endif %}
 
-                <h1>{{ hero.get('title') or config.get('header', {}).get('title') or 'Автомобільні послуги поруч' }}</h1>
+                <h1 class="section-title">{{ hero.get('title') or config.get('header', {}).get('title') or 'Автомобільні послуги поруч' }}</h1>
 
                 {% if hero.get('subtitle') %}
-                    <p>{{ hero.get('subtitle') }}</p>
+                    <p class="section-description">{{ hero.get('subtitle') }}</p>
                 {% endif %}
 
                 <div class="hero-actions">
                     {% set primary_phone = contacts.get('phones', [])[0] if contacts.get('phones') else '' %}
                     {% if primary_phone %}
-                        <a class="hero-btn hero-btn-primary" href="tel:{{ primary_phone }}">{{ hero.get('button_text') or 'Подзвонити' }}</a>
+                        <a class="hero-btn hero-btn-primary site-button site-button--primary" href="tel:{{ primary_phone }}">{{ hero.get('button_text') or 'Подзвонити' }}</a>
                     {% endif %}
                     <a
-                        class="hero-btn hero-btn-secondary"
+                        class="hero-btn hero-btn-secondary site-button site-button--secondary"
                         href="#contacts"
                         onclick="if (window.openCallback) { openCallback('Заявка з головного банера'); return false; }"
                     >
@@ -124,6 +130,17 @@
     position: relative;
     overflow: hidden;
 
+}
+
+.hero-fallback-visual {
+    width: 100%;
+    height: 100%;
+    min-height: 520px;
+    background:
+        linear-gradient(rgba(5, 8, 22, 0.48), rgba(5, 8, 22, 0.72)),
+        radial-gradient(circle at 18% 22%, rgba(56, 189, 248, 0.30), transparent 40%),
+        radial-gradient(circle at 82% 8%, rgba(220, 38, 38, 0.26), transparent 38%),
+        linear-gradient(135deg, #0b1220 0%, #111827 100%);
 }
 
 /* ===== ELECTRIC PREMIUM HERO ===== */

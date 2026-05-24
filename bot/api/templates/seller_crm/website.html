@@ -1,7 +1,7 @@
 {% extends "seller_crm/base.html" %}
 {% set draft_modules = config_draft.get('modules', {}) if config_draft else {} %}
 {% set has_unpublished = config_draft != config_live %}
-{% set design = (config_draft or {}).get('design', {}) %}
+{% set design = (config_live or {}).get('design', {}) %}
 {% block crm_kicker %}Мій сайт{% endblock %}
 {% block crm_heading %}Мій сайт{% endblock %}
 {% block content %}
