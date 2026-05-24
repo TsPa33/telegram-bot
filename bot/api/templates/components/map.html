@@ -6,15 +6,15 @@
         <div class="cp-map-layout">
             <div class="cp-map-info">
                 <span class="cp-section-kicker">Локація</span>
-                <h2>Як нас знайти</h2>
-                {% if contacts.get('address') %}<p>{{ contacts.get('address') }}</p>{% endif %}
+                <h2 class="section-title">Як нас знайти</h2>
+                {% if contacts.get('address') %}<p class="section-description">{{ contacts.get('address') }}</p>{% endif %}
                 {% if contacts.get('hours') %}<div class="cp-map-meta"><span>Графік</span><strong>{{ contacts.get('hours') }}</strong></div>{% endif %}
                 {% set phones = contacts.get('phones') if contacts.get('phones') is sequence and contacts.get('phones') is not string else [] %}
                 {% if phones %}<div class="cp-map-meta"><span>Телефон</span><strong>{{ phones[0] }}</strong></div>{% endif %}
             </div>
 
-            <div class="cp-map-card">
-                <div class="map-wrapper">
+            <div class="cp-map-card site-card site-media">
+                <div class="map-wrapper site-media">
                     {{ map_config.get('embed') or contacts.get('map_embed', '') | safe }}
                 </div>
             </div>
