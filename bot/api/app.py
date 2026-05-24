@@ -76,6 +76,15 @@ def _extract_inline_edit_patch(block_key: str, payload: dict) -> dict:
         banners = payload.get("banners")
         if not isinstance(banners, list):
             banners = []
+            banner_image = str(payload.get("banner_image") or "").strip()
+            if banner_image:
+                banners.append(
+                    {
+                        "image": banner_image,
+                        "fit": str(payload.get("banner_fit") or "cover").strip() or "cover",
+                        "position": str(payload.get("banner_position") or "center").strip() or "center",
+                    }
+                )
         return {"hero": {
             "title": str(payload.get("title") or "").strip(),
             "subtitle": str(payload.get("subtitle") or "").strip(),
@@ -100,13 +109,22 @@ def _extract_inline_edit_patch(block_key: str, payload: dict) -> dict:
             "button_text": str(payload.get("button_text") or "").strip(),
         }}
     if block_key == "about":
-        return {"about": {"title": str(payload.get("title") or "").strip(), "text": str(payload.get("text") or "").strip()}}
+        return {"about": {"title": str(payload.get("title") or "").strip(), "text": str(payload.get("text") or "").strip(), "image": str(payload.get("image") or "").strip()}}
     if block_key == "cars":
         per_page = max(3, min(48, int(payload.get("per_page") or 6)))
         return {"cars": {"title": str(payload.get("title") or "").strip(), "intro": str(payload.get("intro") or "").strip(), "per_page": per_page}}
     if block_key == "gallery":
-        items = [i.strip() for i in str(payload.get("items") or "").splitlines() if i.strip()]
-        return {"gallery": {"title": str(payload.get("title") or "").strip(), "images": items}}
+        items = []
+        raw_items = str(payload.get("items") or "").splitlines()
+        for row in raw_items:
+            if not row.strip():
+                continue
+            parts = [p.strip() for p in row.split("|")]
+            image = parts[0] if parts else ""
+            if not image:
+                continue
+            items.append({"image": image, "title": parts[1] if len(parts) > 1 else "", "description": parts[2] if len(parts) > 2 else ""})
+        return {"gallery": {"title": str(payload.get("title") or "").strip(), "intro": str(payload.get("intro") or "").strip(), "items": items}}
     if block_key == "services":
         return {"services": {
             "title": str(payload.get("title") or "").strip(),
@@ -1381,6 +1399,35 @@ async def inline_layout_reorder(request: Request):
     if not ok:
         raise HTTPException(status_code=500, detail="Draft update failed")
     return JSONResponse({"status": "ok", "order": clean})
+
+
+@router.post("/edit/layout/insert")
+async def inline_layout_insert(request: Request):
+    body = await request.json()
+    token = str(request.query_params.get("token") or body.get("token") or "").strip()
+    site = await _authorized_site_for_inline_edit(request, token=token)
+    block_key = str(body.get("block_key") or "").strip()
+    if block_key not in SITE_BLOCK_REGISTRY:
+        raise HTTPException(status_code=400, detail="Invalid block key")
+    config = merge_with_default(site.get("config_draft") or {})
+    current_order = list(config.get("layout", {}).get("order") or [])
+    order = [k for k in current_order if isinstance(k, str) and k in SITE_BLOCK_REGISTRY and k != block_key]
+    insert_after = body.get("insert_after")
+    index = body.get("index")
+    if isinstance(index, int):
+        target_index = max(0, min(index, len(order)))
+    elif isinstance(insert_after, str) and insert_after in order:
+        target_index = order.index(insert_after) + 1
+    else:
+        target_index = len(order)
+    order.insert(target_index, block_key)
+    for key in SITE_BLOCK_REGISTRY.keys():
+        if key not in order:
+            order.append(key)
+    ok = await update_site_config_draft(int(site["seller_id"]), {"modules": {block_key: True}, "layout": {"order": order}})
+    if not ok:
+        raise HTTPException(status_code=500, detail="Draft update failed")
+    return JSONResponse({"status": "ok", "order": order, "block_key": block_key})
 
 
 @router.post("/edit/theme")

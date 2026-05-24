@@ -1,26 +1,26 @@
 {% set gallery = config.get('gallery', {}) %}
-{% set gallery_images = gallery.get('images', []) %}
+{% set gallery_images = gallery.get('items', gallery.get('images', [])) %}
 <section id="gallery" class="section cp-section cp-gallery-section">
     <div class="container">
         <div class="cp-section-head">
             <span class="cp-section-kicker">Фото</span>
             <h2>{{ gallery.get('title') or 'Галерея' }}</h2>
-            {% if gallery.get('subtitle') %}<p>{{ gallery.get('subtitle') }}</p>{% endif %}
+            {% if gallery.get('intro') %}<p>{{ gallery.get('intro') }}</p>{% endif %}
         </div>
 
         <div class="cp-gallery-grid">
             {% for image in gallery_images %}
                 {% set image_url = (image.get('url') or image.get('src') or image.get('image') or image.get('photo')) if image is mapping else image %}
-                {% set image_alt = image.get('alt') if image is mapping else 'Галерея' %}
+                {% set image_alt = (image.get('title') or image.get('alt')) if image is mapping else 'Галерея' %}
                 {% if image_url %}
                 <a class="cp-gallery-card" data-analytics-event="gallery_open" href="{{ image_url }}" target="_blank" aria-label="Відкрити фото">
                     <img src="{{ image_url }}" alt="{{ image_alt or 'Галерея' }}" loading="lazy" onerror="this.closest('.cp-gallery-card').remove()">
-                    <span>Переглянути</span>
+                    <span>{{ image_alt or "Переглянути" }}</span>
                 </a>
                 {% endif %}
             {% endfor %}
             {% if not gallery_images %}
-                <div class="cp-gallery-empty">+ Заповнити галерею</div>
+                <div class="cp-gallery-empty">{% if is_owner_edit_mode %}+ Додати фото{% else %}Галерея порожня{% endif %}</div>
             {% endif %}
         </div>
     </div>
