@@ -20,21 +20,16 @@
     .cpw-icon-btn,.cpw-cart{height:38px;border-radius:8px;border:1px solid rgba(255,255,255,.22);background:#1a2739;color:#e4ecfa;padding:0 10px;font-size:.86rem}
     .cpw-cta{height:38px;border:0;border-radius:8px;background:var(--cpw-accent);color:#1a1f26;font-weight:700;padding:0 14px;font-size:.9rem}
 
-    .cpw-hero{background:linear-gradient(180deg,var(--cpw-dark) 0%,var(--cpw-dark-soft) 100%);padding:26px 0 36px;min-height:calc(560px - var(--cpw-header-h))}
-    .cpw-hero__grid{display:grid;grid-template-columns:minmax(0,1.03fr) minmax(0,.97fr);gap:22px;align-items:stretch;min-height:560px}
-    .cpw-hero__content{padding:10px 0;display:flex;flex-direction:column;justify-content:center;min-width:0}
+    .cpw-hero{position:relative;min-height:calc(100vh - var(--cpw-header-h));max-height:calc(100vh - var(--cpw-header-h));display:flex;align-items:center;background-image:url("https://res.cloudinary.com/dyem6pgtd/image/upload/v1779621565/catalog-hero-warehouse-01.png_hjmyou.png");background-size:cover;background-position:center right;background-repeat:no-repeat;padding:0}
+    .cpw-hero::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(8,15,28,.94) 0%,rgba(8,15,28,.86) 28%,rgba(8,15,28,.58) 45%,rgba(8,15,28,.18) 68%,rgba(8,15,28,.08) 100%)}
+    .cpw-hero__grid{position:relative;z-index:1;display:block;width:100%}
+    .cpw-hero__content{padding:0;display:flex;flex-direction:column;justify-content:center;min-width:0;max-width:620px}
     .cpw-eyebrow{display:inline-flex;align-self:flex-start;border:1px solid rgba(255,255,255,.18);color:#b8cbe3;border-radius:999px;padding:6px 11px;font-size:.74rem;letter-spacing:.08em}
-    .cpw-title{font-size:clamp(2rem,4vw,3.15rem);line-height:1.05;color:#fff;margin:14px 0 12px;max-width:680px}
+    .cpw-title{font-size:clamp(2rem,4vw,3.15rem);line-height:1.05;color:#fff;margin:14px 0 12px;max-width:620px}
     .cpw-subtitle{color:#c8d7eb;max-width:560px;margin:0 0 22px;font-size:1.02rem}
     .cpw-hero__actions{display:flex;gap:10px;flex-wrap:wrap}
     .cpw-btn{display:inline-flex;align-items:center;justify-content:center;height:44px;padding:0 18px;border-radius:10px;text-decoration:none;font-weight:700;font-size:.94rem}
     .cpw-btn--primary{background:var(--cpw-accent);color:#1c2531}.cpw-btn--secondary{background:transparent;border:1px solid rgba(255,255,255,.3);color:#edf4ff}
-    .cpw-hero-visual{position:relative;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.18);min-height:560px;background:#223044}
-    .cpw-hero-visual img{width:100%;height:100%;min-height:508px;object-fit:contain;object-position:center;display:block}
-    .cpw-badge{position:absolute;top:16px;left:16px;background:rgba(8,16,28,.76);color:#dbeafe;border:1px solid rgba(148,163,184,.32);border-radius:999px;padding:7px 12px;font-size:.76rem;letter-spacing:.03em}
-    .cpw-hero-chip{position:absolute;right:16px;bottom:16px;background:rgba(7,12,22,.78);color:#e2e8f0;border:1px solid rgba(148,163,184,.3);border-radius:12px;padding:10px 12px;display:grid;gap:2px;backdrop-filter:blur(6px)}
-    .cpw-hero-chip strong{font-size:.78rem;letter-spacing:.08em;font-weight:700}
-    .cpw-hero-chip small{font-size:.72rem;color:#b8c5d9}
 
     .cpw-section{padding:36px 0}.cpw-section__head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}.cpw-section__head h2{margin:0;font-size:1.6rem}
     .cpw-categories{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
@@ -55,12 +50,12 @@
     @media (max-width:1140px){
       .cpw-header{height:auto}.cpw-header__inner{grid-template-columns:1fr auto;grid-template-areas:"logo actions" "nav nav";padding:10px 0;min-height:78px}
       .cpw-logo{grid-area:logo}.cpw-actions{grid-area:actions}.cpw-nav{grid-area:nav;justify-content:flex-start;padding-bottom:4px}
-      .cpw-hero__grid{grid-template-columns:1fr;min-height:auto}.cpw-hero-visual{min-height:420px;padding:18px}.cpw-hero-visual img{min-height:384px}.cpw-products{grid-template-columns:repeat(2,minmax(0,1fr))}
+      .cpw-hero{min-height:680px;max-height:none;background-position:center}.cpw-hero::before{background:linear-gradient(90deg,rgba(8,15,28,.94) 0%,rgba(8,15,28,.9) 38%,rgba(8,15,28,.74) 62%,rgba(8,15,28,.56) 100%)}.cpw-hero__grid{min-height:auto}.cpw-products{grid-template-columns:repeat(2,minmax(0,1fr))}
     }
     @media (max-width:760px){
       .cpw-container{width:min(var(--cpw-wrap),100% - 32px)}
       .cpw-hero{padding:22px 0 30px;min-height:0}.cpw-hero__content{padding-right:0}.cpw-subtitle{font-size:.95rem}
-      .cpw-categories,.cpw-products{grid-template-columns:1fr}.cpw-hero__actions{flex-direction:column}.cpw-btn{width:100%}.cpw-hero-chip{left:16px;right:16px;min-width:0}
+      .cpw-categories,.cpw-products{grid-template-columns:1fr}.cpw-hero__actions{flex-direction:column}.cpw-btn{width:100%}
       .cpw-actions{flex-wrap:wrap;justify-content:flex-end}
     }
   </style>
@@ -77,8 +72,7 @@
 
     <section class="cpw-hero">
       <div class="cpw-container cpw-hero__grid">
-        <div class="cpw-hero__content"><span class="cpw-eyebrow">AUTO PARTS CATALOG</span><h1 class="cpw-title">Автозапчастини для вашого авто</h1><p class="cpw-subtitle">Підбір деталей, авто на розборці та консультація по VIN.</p><div class="cpw-hero__actions"><a class="cpw-btn cpw-btn--primary" href="#">Перейти в каталог</a><a class="cpw-btn cpw-btn--secondary" href="#">Підібрати по VIN</a></div></div>
-        <div class="cpw-hero-visual"><img src="https://res.cloudinary.com/dyem6pgtd/image/upload/v1779621565/catalog-hero-warehouse-01.png_hjmyou.png" alt="Склад і полиці з автозапчастинами" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" /><div class="cpw-product-fallback" style="display:none;position:absolute;inset:26px;border-radius:18px">AUTOMOTIVE SHOWCASE</div><div class="cpw-badge">Підбір по VIN · Доставка по Україні</div><div class="cpw-hero-chip"><strong>OEM / USED PARTS</strong><small>VIN перевірка сумісності</small></div></div>
+        <div class="cpw-hero__content"><span class="cpw-eyebrow">AUTO PARTS CATALOG</span><h1 class="cpw-title">Автозапчастини для вашого авто</h1><p class="cpw-subtitle">Підбір деталей, авто на розборці та консультація по VIN.</p><div class="cpw-hero__actions"><a class="cpw-btn cpw-btn--primary" href="#">Перейти в каталог</a><a class="cpw-btn cpw-btn--secondary" href="#">Підібрати по VIN</a></div></div><div class="cpw-badge">Підбір по VIN · Доставка по Україні</div><div class="cpw-hero-chip"><strong>OEM / USED PARTS</strong><small>VIN перевірка сумісності</small></div></div>
       </div>
     </section>
 
