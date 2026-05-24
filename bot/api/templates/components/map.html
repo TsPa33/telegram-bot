@@ -9,7 +9,8 @@
                 <h2>Як нас знайти</h2>
                 {% if contacts.get('address') %}<p>{{ contacts.get('address') }}</p>{% endif %}
                 {% if contacts.get('hours') %}<div class="cp-map-meta"><span>Графік</span><strong>{{ contacts.get('hours') }}</strong></div>{% endif %}
-                {% if contacts.get('phones') %}<div class="cp-map-meta"><span>Телефон</span><strong>{{ contacts.get('phones')[0] }}</strong></div>{% endif %}
+                {% set phones = contacts.get('phones') if contacts.get('phones') is sequence and contacts.get('phones') is not string else [] %}
+                {% if phones %}<div class="cp-map-meta"><span>Телефон</span><strong>{{ phones[0] }}</strong></div>{% endif %}
             </div>
 
             <div class="cp-map-card">
