@@ -4067,6 +4067,8 @@ async def seller_crm_website_blocks(request: Request, crm_slug: str, status: str
         edit_url = f"/crm/seller/{crm_slug}/website/editor/{editor_alias.get(key, key)}"
         if key == "about":
             edit_url = f"/crm/seller/{crm_slug}/website/content/about"
+        if key == "gallery":
+            edit_url = f"/crm/seller/{crm_slug}/website/content/gallery"
         blocks.append({
             "key": key,
             "title": title,
@@ -4147,6 +4149,88 @@ async def seller_crm_website_about_save(
         },
     )
     return RedirectResponse(url=f"/crm/seller/{crm_slug}/website/content/about?status=saved", status_code=303)
+
+
+@router.get("/{crm_slug}/website/content/gallery")
+async def seller_crm_website_gallery(request: Request, crm_slug: str, status: str | None = None):
+    account, subscription = await _authorized_account(request, crm_slug)
+    site = _demo_site() if _is_demo_account(account) else await get_current_seller_site_or_404(account["seller_id"])
+    config_draft = _as_config(site)
+    preview_url, _ = _build_public_site_urls(site)
+    gallery = config_draft.get("gallery") if isinstance(config_draft.get("gallery"), dict) else {}
+    layout = str(gallery.get("layout") or "masonry").strip().lower()
+    if layout not in {"masonry", "grid", "full_width_slider", "split_showcase"}:
+        layout = "masonry"
+    images = gallery.get("images") if isinstance(gallery.get("images"), list) else []
+    rows: list[dict[str, str]] = []
+    for item in images[:6]:
+        if isinstance(item, str):
+            url = item.strip()
+            caption = ""
+        elif isinstance(item, dict):
+            url = str(item.get("url") or item.get("image") or item.get("src") or "").strip()
+            caption = str(item.get("caption") or item.get("title") or "").strip()
+        else:
+            url = ""
+            caption = ""
+        if not url:
+            continue
+        rows.append({"url": url, "caption": caption})
+    while len(rows) < 6:
+        rows.append({"url": "", "caption": ""})
+    return templates.TemplateResponse(
+        "seller_crm/website_gallery.html",
+        _seller_crm_context(
+            request,
+            title="Галерея — кабінет продавця",
+            current_page="website_blocks",
+            account=account,
+            subscription=subscription,
+            site=site,
+            has_website=True,
+            has_cars=False,
+            has_services=False,
+            status=status,
+            preview_url=preview_url,
+            gallery=gallery,
+            gallery_layout=layout,
+            gallery_rows=rows,
+        ),
+    )
+
+
+@router.post("/{crm_slug}/website/content/gallery")
+async def seller_crm_website_gallery_save(
+    request: Request,
+    crm_slug: str,
+    title: str = Form(""),
+    description: str = Form(""),
+    layout: str = Form("masonry"),
+):
+    account, _ = await _authorized_account(request, crm_slug)
+    layout = str(layout or "masonry").strip().lower()
+    if layout not in {"masonry", "grid", "full_width_slider", "split_showcase"}:
+        layout = "masonry"
+    form = await request.form()
+    images: list[dict[str, str]] = []
+    for i in range(1, 7):
+        url = str(form.get(f"image_url_{i}") or "").strip()
+        caption = str(form.get(f"image_caption_{i}") or "").strip()
+        if not url:
+            continue
+        images.append({"url": url, "caption": caption})
+    await update_current_site_draft(
+        account["seller_id"],
+        {
+            "gallery": {
+                "layout": layout,
+                "title": str(title or "").strip(),
+                "description": str(description or "").strip(),
+                "images": images,
+            }
+        },
+    )
+    return RedirectResponse(url=f"/crm/seller/{crm_slug}/website/content/gallery?status=saved", status_code=303)
 
 
 @router.get("/{crm_slug}/website/editor/{block_key}")
