@@ -1,3 +1,7 @@
+{% set config = config if config is defined else {} %}
+{% set data = data if data is defined else {} %}
+{% set cars_config = config.get('cars', {}) %}
+{% set cars_list = data.get('cars', []) if data is mapping else [] %}
 <section id="cars" class="section">
     <div class="container">
 
@@ -5,7 +9,7 @@
 
         <div class="cars-grid">
 
-            {% for c in cars %}
+            {% for c in cars_list %}
             <div class="car-card">
 
                 <!-- IMAGE -->

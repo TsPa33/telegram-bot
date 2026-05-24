@@ -1,5 +1,7 @@
+{% set config = config if config is defined else {} %}
+{% set data = data if data is defined else {} %}
 {% set gallery = config.get('gallery', {}) %}
-{% set gallery_images = gallery.get('items', gallery.get('images', [])) %}
+{% set gallery_items = data.get('gallery_items', gallery.get('items', [])) if data is mapping else gallery.get('items', []) %}
 <section id="gallery" class="section cp-section cp-gallery-section">
     <div class="container">
         <div class="cp-section-head">
@@ -9,7 +11,7 @@
         </div>
 
         <div class="cp-gallery-grid">
-            {% for image in gallery_images %}
+            {% for image in gallery_items %}
                 {% set image_url = (image.get('url') or image.get('src') or image.get('image') or image.get('photo')) if image is mapping else image %}
                 {% set image_alt = (image.get('title') or image.get('alt')) if image is mapping else 'Галерея' %}
                 {% if image_url %}
@@ -19,7 +21,7 @@
                 </a>
                 {% endif %}
             {% endfor %}
-            {% if not gallery_images %}
+            {% if not gallery_items %}
                 <div class="cp-gallery-empty">{% if is_owner_edit_mode %}+ Додати фото{% else %}Галерея порожня{% endif %}</div>
             {% endif %}
         </div>

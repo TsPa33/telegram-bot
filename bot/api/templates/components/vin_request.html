@@ -1,3 +1,5 @@
+{% set config = config if config is defined else {} %}
+{% set vin_request = config.get('vin_request', {}) %}
 <section id="vin-request" class="section">
   <div class="container">
     <h2>{{ vin_request.get('title') or 'Підбір по VIN' }}</h2>

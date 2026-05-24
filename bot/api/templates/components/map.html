@@ -1,10 +1,6 @@
-{% set header = config.get('header', {}) %}
-{% set hero = config.get('hero', {}) %}
+{% set config = config if config is defined else {} %}
 {% set contacts = config.get('contacts', {}) %}
-{% set footer = config.get('footer', {}) %}
-{% set modules = config.get('modules', {}) %}
-{% set gallery = config.get('gallery', {}) %}
-{% set services = config.get('services', {}) %}
+{% set map_config = config.get('map', {}) %}
 <section id="map" class="section cp-map-section">
     <div class="container">
         <div class="cp-map-layout">
@@ -18,7 +14,7 @@
 
             <div class="cp-map-card">
                 <div class="map-wrapper">
-                    {{ contacts.get('map_embed') | safe }}
+                    {{ map_config.get('embed') or contacts.get('map_embed', '') | safe }}
                 </div>
             </div>
         </div>
