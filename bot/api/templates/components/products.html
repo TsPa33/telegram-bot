@@ -2,7 +2,7 @@
 {% set data = data if data is defined else {} %}
 {% set products_config = config.get('products', config.get('catalog', {})) %}
 {% set catalog = config.get('catalog', {}) %}
-{% set products_list = data.get('products', []) if data is mapping else [] %}
+{% set products_list = data.get('catalog_items', data.get('products', [])) if data is mapping else [] %}
 {% set parts_list = data.get('parts', []) if data is mapping else [] %}
 {% set catalog_items = products_list or parts_list or products_config.get('items', []) or catalog.get('items', []) %}
 {% set categories = products_config.get('categories', catalog.get('categories', [])) %}
@@ -13,8 +13,8 @@
         <div class="cp-products-head">
             <div>
                 <span class="cp-eyebrow">Premium Parts</span>
-                <h2>{{ products_config.get('title') or catalog.get('title') or 'Каталог автозапчастин' }}</h2>
-                <p>{{ products_config.get('subtitle') or catalog.get('subtitle') or 'Перевірені запчастини з розборки з підбором по VIN' }}</p>
+                <h2 class="section-title">{{ products_config.get('title') or catalog.get('title') or 'Каталог автозапчастин' }}</h2>
+                <p class="section-description">{{ products_config.get('subtitle') or catalog.get('subtitle') or 'Перевірені запчастини з розборки з підбором по VIN' }}</p>
                 <p class="cp-products-total">{{ products_config.get('total_available', catalog.get('total_available', catalog_items|length)) }} товарів у наявності</p>
             </div>
 
@@ -63,10 +63,10 @@
             <h3 class="cp-category-title">{{ category }}{% if category_counts.get(category) %} <small>({{ category_counts.get(category) }})</small>{% endif %}</h3>
             <div class="cp-product-grid">
             {% for product in catalog_items if product.get('category') == category %}
-            <article class="cp-product-card" data-cp-product-card data-cp-category-value="{{ product.get('category', '') }}">
-                <div class="cp-product-media">
+            <article class="cp-product-card site-card" data-cp-product-card data-cp-category-value="{{ product.get('category', '') }}">
+                <div class="cp-product-media site-media">
                     {% if product.get('image') %}
-                    <img src="{{ product.get('image') }}" alt="{{ product.get('title', 'Автозапчастина') }}" loading="lazy">
+                    <img class="site-image" src="{{ product.get('image') }}" alt="{{ product.get('title', 'Автозапчастина') }}" loading="lazy">
                     {% else %}
                     <div class="cp-product-placeholder" aria-hidden="true">
                         <span>{{ category_icons.get(product.get('category'), '⚙️') }}</span>
@@ -74,7 +74,7 @@
                         <small>{{ product.get('sku') or 'CARPOT PARTS' }}</small>
                     </div>
                     {% endif %}
-                    <span class="cp-product-category">{{ category_icons.get(product.get('category'), '🔧') }} {{ product.get('category') }}</span>
+                    <span class="cp-product-category site-badge">{{ category_icons.get(product.get('category'), '🔧') }} {{ product.get('category') }}</span>
                     {% if product.get('badge') %}
                     <span class="cp-product-badge cp-badge-{{ product.get('badge')|lower }}">{{ product.get('badge') }}</span>
                     {% endif %}
@@ -114,10 +114,10 @@
                     </div>
 
                     <div class="cp-product-actions">
-                        <button type="button" class="cp-btn cp-btn-buy" data-cp-buy="{{ product.get('id') }}">Купити</button>
-                        <button type="button" class="cp-btn cp-btn-detail" data-cp-detail="{{ product.get('id') }}">Детальніше</button>
-                        <button type="button" class="cp-btn cp-btn-order" data-cp-order="{{ product.get('id') }}">Замовити</button>
-                        <button type="button" class="cp-btn cp-btn-message" data-cp-message>Написати</button>
+                        <button type="button" class="cp-btn cp-btn-buy site-button site-button--primary" data-cp-buy="{{ product.get('id') }}">Купити</button>
+                        <button type="button" class="cp-btn cp-btn-detail site-button site-button--secondary" data-cp-detail="{{ product.get('id') }}">Детальніше</button>
+                        <button type="button" class="cp-btn cp-btn-order site-button site-button--secondary" data-cp-order="{{ product.get('id') }}">Замовити</button>
+                        <button type="button" class="cp-btn cp-btn-message site-button site-button--secondary" data-cp-message>Написати</button>
                     </div>
                 </div>
             </article>

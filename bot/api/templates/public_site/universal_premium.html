@@ -1,14 +1,8 @@
+<div class="site-template site-template--brutal-metallic" data-template-id="universal_premium">
+{% set template_variant = "brutal-metallic" %}
 {% include "components/header.html" %}
-{% include "components/hero.html" %}
 <section class="section cp-premium-intro"><div class="container"><h2>Чому обирають нас</h2><p class="muted">Сильний сервіс, швидка комунікація, прозорі умови та гарантія якості.</p></div></section>
-{% if data.has_services %}{% include "components/services.html" %}{% endif %}
-{% if data.has_gallery %}{% include "components/gallery.html" %}{% endif %}
-{% if data.has_catalog %}{% include "components/products.html" %}{% endif %}
-{% if data.has_cars %}{% include "components/cars.html" %}{% endif %}
-{% if data.has_catalog or data.has_cars %}{% include "components/vin_request.html" %}{% endif %}
-{% if data.has_contacts %}{% include "components/contacts.html" %}{% endif %}
-{% if data.has_map %}{% include "components/map.html" %}{% endif %}
-{% include "components/footer.html" %}
+{% include "public_site/_section_renderer.html" %}
 <style>
 .cp-premium-intro{
     padding: clamp(44px, 7vw, 84px) 0;
@@ -28,3 +22,4 @@
     font-size: clamp(16px, 2.2vw, 20px);
 }
 </style>
+</div>

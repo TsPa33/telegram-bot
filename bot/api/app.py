@@ -52,7 +52,12 @@ from bot.database.repositories.analytics_repo import (
 )
 
 from bot.services.demo_seed_service import get_demo_render_preset
-from bot.services.site_config import merge_with_default
+from bot.services.site_config import (
+    get_legacy_color_scheme_id,
+    merge_with_default,
+    normalize_color_scheme,
+    normalize_template_id,
+)
 from bot.utils.subdomain import is_valid_subdomain
 from bot.services.domain_service import extract_subdomain_from_host
 from bot.services.seller_notification_ops import format_site_lead_notification, seller_crm_context_url
@@ -65,21 +70,6 @@ templates = Jinja2Templates(directory="bot/api/templates")
 bot = Bot(token=BOT_TOKEN)
 logger = logging.getLogger(__name__)
 
-
-def normalize_template_id(value: str | None) -> str:
-    raw = str(value or "universal_classic").strip().lower()
-    legacy_map = {
-        "service_classic": "universal_classic",
-        "dismantler_classic": "universal_classic",
-        "service_modern": "universal_catalog",
-        "dismantler_catalog": "universal_catalog",
-        "service_premium": "universal_premium",
-        "dismantler_premium": "universal_premium",
-    }
-    raw = legacy_map.get(raw, raw)
-    if raw not in {"universal_classic", "universal_catalog", "universal_premium"}:
-        return "universal_classic"
-    return raw
 
 def _extract_inline_edit_patch(block_key: str, payload: dict) -> dict:
     payload = payload or {}
@@ -1039,10 +1029,12 @@ async def _render_site_by_subdomain(subdomain: str, request: Request):
     config = merge_with_default(raw_config)
     design = config.get("design") if isinstance(config.get("design"), dict) else {}
     template_id = normalize_template_id(design.get("template_id"))
-    color_scheme = str(design.get("color_scheme") or "dark_blue").strip().lower()
-    if color_scheme not in {"dark_blue", "dark_red", "graphite", "black_gold", "light_minimal"}:
-        color_scheme = "dark_blue"
-    config["design"] = {"template_id": template_id, "color_scheme": color_scheme}
+    color_scheme = normalize_color_scheme(design.get("color_scheme"))
+    config["design"] = {
+        "template_id": template_id,
+        "color_scheme": color_scheme,
+        "color_scheme_legacy": get_legacy_color_scheme_id(color_scheme),
+    }
     demo_preset = get_demo_render_preset(subdomain)
 
     seller_id = site["seller_id"]
@@ -1213,6 +1205,41 @@ async def _render_site_by_subdomain(subdomain: str, request: Request):
         base = re.sub(r"-{2,}", "-", base).strip("-")
         return base or "parts"
 
+    def _normalize_catalog_item(item: dict, *, source: str, fallback_id: str, fallback_title: str, fallback_category: str) -> dict:
+        title = (item.get("title") or item.get("name") or fallback_title or "Товар").strip()
+        description = (item.get("description") or item.get("text") or "").strip()
+        price = item.get("price") or item.get("label") or "Ціна за запитом"
+        image = item.get("image") or item.get("photo_url") or item.get("photo") or item.get("src") or ""
+        category = (item.get("category") or fallback_category or "Інше").strip() or "Інше"
+        slug_seed = item.get("slug") or f"{title}-{fallback_id}"
+        return {
+            **item,
+            "id": str(item.get("id") or fallback_id),
+            "title": title,
+            "description": description,
+            "price": price,
+            "image": image,
+            "url": item.get("url") or item.get("href") or "",
+            "category": category,
+            "slug": item.get("slug") or _slugify(str(slug_seed)),
+            "source": source,
+            "source_type": item.get("source_type") or source,
+            "available": bool(item.get("available", True)),
+        }
+
+    def _normalize_car_item(item: dict) -> dict:
+        title = (item.get("title") or item.get("name") or f"{item.get('brand', '')} {item.get('model', '')}".strip() or "Авто").strip()
+        return {
+            **item,
+            "id": str(item.get("id") or ""),
+            "title": title,
+            "description": (item.get("description") or item.get("text") or "").strip(),
+            "price": item.get("price") or item.get("label") or "",
+            "image": item.get("image") or item.get("photo_url") or item.get("photo") or item.get("src") or "",
+            "url": item.get("url") or item.get("href") or "",
+            "available": bool(item.get("available", True)),
+        }
+
     unified_items: list[dict] = []
     category_counts: dict[str, int] = {}
     normalized_categories: list[str] = []
@@ -1223,15 +1250,13 @@ async def _render_site_by_subdomain(subdomain: str, request: Request):
         category = (item.get("category") or "Інше").strip()
         normalized_categories.append(category)
         category_counts[category] = category_counts.get(category, 0) + 1
-        unified_items.append({
-            **item,
-            "id": str(item.get("id") or f"product-{len(unified_items)+1}"),
-            "title": item.get("title") or item.get("name") or "Товар",
-            "price": item.get("price") or "Ціна за запитом",
-            "category": category,
-            "slug": item.get("slug") or _slugify(f"{item.get('title') or item.get('name') or 'item'}-{item.get('id') or len(unified_items)+1}"),
-            "source_type": "product",
-        })
+        unified_items.append(_normalize_catalog_item(
+            item,
+            source="config_product",
+            fallback_id=f"product-{len(unified_items)+1}",
+            fallback_title="Товар",
+            fallback_category=category,
+        ))
 
     for part in seller_parts:
         category = (part.get("category_label") or part.get("category") or "Інше").strip()
@@ -1240,28 +1265,30 @@ async def _render_site_by_subdomain(subdomain: str, request: Request):
         title = (part.get("name") or "Запчастина").strip()
         brand = (part.get("brand") or "").strip()
         model = (part.get("model") or "").strip()
-        unified_items.append({
-            "id": f"part-{part.get('id')}",
-            "title": title,
-            "description": part.get("description") or "",
-            "category": category,
-            "brand": brand or "—",
-            "condition": "В наявності",
-            "price": part.get("price_display") or (f"{part.get('price')} ₴" if part.get("price") is not None else "Ціна за запитом"),
-            "sku": part.get("sku") or "",
-            "oem": part.get("oem_code") or "",
-            "stock": "В наявності",
-            "image": part.get("photo_url") or part.get("photo_id"),
-            "slug": _slugify(f"{title}-{part.get('id') or len(unified_items)+1}"),
-            "source_type": "part",
-        })
+        unified_items.append(_normalize_catalog_item(
+            {
+                **part,
+                "description": part.get("description") or "",
+                "brand": brand or "—",
+                "condition": "В наявності",
+                "price": part.get("price_display") or (f"{part.get('price')} ₴" if part.get("price") is not None else "Ціна за запитом"),
+                "sku": part.get("sku") or "",
+                "oem": part.get("oem_code") or "",
+                "stock": "В наявності",
+                "image": part.get("photo_url") or part.get("photo_id"),
+            },
+            source="db_part",
+            fallback_id=f"part-{part.get('id')}",
+            fallback_title=title,
+            fallback_category=category,
+        ))
 
     products["items"] = unified_items[: int(products.get("per_page") or 12)]
     products["categories"] = sorted(set([c for c in normalized_categories if c]))
     products["total_available"] = len(unified_items)
     products["category_counts"] = category_counts
 
-    cars = cars[: int(cars_cfg.get("per_page") or 6)]
+    cars = [_normalize_car_item(car) for car in cars[: int(cars_cfg.get("per_page") or 6)]]
 
     if demo_preset:
         demo_key = demo_preset["demo_type"]
@@ -1291,8 +1318,10 @@ async def _render_site_by_subdomain(subdomain: str, request: Request):
             "data": {
                 "seller": seller,
                 "cars": cars,
+                "cars_items": cars,
                 "parts": seller_parts,
                 "products": products.get("items", []),
+                "catalog_items": products.get("items", []),
                 "services": services,
                 "gallery_items": gallery.get("items") if isinstance(gallery.get("items"), list) else [],
                 "contacts": contacts,
