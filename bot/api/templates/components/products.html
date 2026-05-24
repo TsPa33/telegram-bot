@@ -424,7 +424,7 @@
     flex-direction: column;
     min-height: 100%;
     border: 1px solid rgba(148, 163, 184, 0.20);
-    border-radius: 22px;
+    border-radius: 24px;
     background: linear-gradient(180deg, rgba(17, 24, 39, 0.96), rgba(3, 7, 18, 0.96));
     box-shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
     overflow: hidden;
@@ -442,7 +442,8 @@
 
 .cp-product-media {
     position: relative;
-    height: 170px;
+    aspect-ratio: 4 / 3;
+    min-height: 190px;
     background: #020617;
     overflow: hidden;
 }
@@ -477,7 +478,7 @@
     position: absolute;
     padding: 6px 9px;
     border-radius: 999px;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 900;
     backdrop-filter: blur(8px);
 }
@@ -597,19 +598,19 @@
 .cp-product-actions {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 8px;
+    gap: 10px;
     margin-top: 16px;
 }
 
 .cp-btn {
-    min-height: 42px;
+    min-height: 44px;
     padding: 10px 12px;
     border: 0;
     border-radius: 12px;
     color: #ffffff;
     font-weight: 800;
     cursor: pointer;
-    transition: 0.2s ease;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, filter 0.2s ease;
 }
 
 .cp-btn:hover { transform: translateY(-1px); }
@@ -624,6 +625,8 @@
     background: #1f2937;
     border: 1px solid rgba(148, 163, 184, 0.28);
 }
+.cp-btn-order:hover,
+.cp-btn-detail:hover { border-color: color-mix(in srgb, var(--primary) 54%, transparent); }
 
 .cp-btn-message {
     background: color-mix(in srgb, var(--primary-dark) 52%, transparent);
@@ -1342,3 +1345,4 @@ body.has-products-cart.theme-parts_dark_red [data-scroll-top] {
 </script>
 
 {% endif %}
+    .cp-product-media { min-height: 220px; }
