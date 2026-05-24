@@ -6,19 +6,19 @@
 {% set gallery = config.get('gallery', {}) %}
 {% set services = config.get('services', {}) %}
 
-<footer class="site-footer">
+<footer class="site-footer site-card">
 
   <div class="container footer-inner">
 
     <div class="footer-left">
-      <h3>{{ config.get('header', {}).get('title') or "CARPOT" }}</h3>
-      <p>{{ footer.get('text') or "Всі права захищені" }}</p>
+      <h3 class="section-subtitle">{{ config.get('header', {}).get('title') or "CARPOT" }}</h3>
+      <p class="section-description">{{ footer.get('text') or "Всі права захищені" }}</p>
     </div>
 
     <div class="footer-right">
-      <a href="#">Головна</a>
-      <a href="#services">Послуги</a>
-      <a href="#contacts">Контакти</a>
+      <a class="site-button site-button--secondary" href="#">Головна</a>
+      <a class="site-button site-button--secondary" href="#services">Послуги</a>
+      <a class="site-button site-button--secondary" href="#contacts">Контакти</a>
     </div>
 
   </div>
