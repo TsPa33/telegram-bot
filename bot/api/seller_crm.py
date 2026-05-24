@@ -4010,6 +4010,14 @@ async def seller_crm_website_design(request: Request, crm_slug: str, status: str
     design = _extract_design(config_live or config_draft)
     current_template_id = normalize_template_id(design.get("template_id"))
     current_color_scheme = normalize_color_scheme(design.get("color_scheme"))
+    logger.info(
+        "DESIGN_GET crm_slug=%s live_template_id=%s current_template_id=%s live_color_scheme=%s current_color_scheme=%s",
+        crm_slug,
+        (design or {}).get("template_id"),
+        current_template_id,
+        (design or {}).get("color_scheme"),
+        current_color_scheme,
+    )
     live_url = build_site_url(site["subdomain"])
     has_parts = False if _is_demo_account(account) else bool(await get_available_parts_for_site(seller_id) or await get_seller_products(seller_id, limit=1) or await get_cars_by_seller(seller_id))
     has_services_data = False if _is_demo_account(account) else bool(await get_services_by_seller(seller_id))
@@ -4032,16 +4040,44 @@ async def seller_crm_website_design(request: Request, crm_slug: str, status: str
 @router.post("/{crm_slug}/website/design/template")
 async def seller_crm_website_design_template(request: Request, crm_slug: str, template_id: str = Form("universal_classic")):
     account, _ = await _authorized_account(request, crm_slug)
+    raw_template_id = template_id
     template_id = normalize_template_id(template_id)
-    await update_site_design_both(account["seller_id"], {"design": {"template_id": template_id}})
+    patch = {"design": {"template_id": template_id}}
+    await update_site_design_both(account["seller_id"], patch)
+    site_after = await get_current_seller_site(account["seller_id"])
+    config_live_after = _as_live_config(site_after)
+    design_after = _extract_design(config_live_after)
+    logger.info(
+        "DESIGN_TEMPLATE_POST_HIT crm_slug=%s seller_id=%s raw_template_id=%s normalized_template_id=%s patch=%s live_template_id_after=%s",
+        crm_slug,
+        account["seller_id"],
+        raw_template_id,
+        template_id,
+        patch,
+        (design_after or {}).get("template_id"),
+    )
     return RedirectResponse(url=f"/crm/seller/{crm_slug}/website/design?status=saved", status_code=303)
 
 
 @router.post("/{crm_slug}/website/design/color")
 async def seller_crm_website_design_color(request: Request, crm_slug: str, color_scheme: str = Form("dark_blue")):
     account, _ = await _authorized_account(request, crm_slug)
+    raw_color_scheme = color_scheme
     color_scheme = normalize_color_scheme(color_scheme)
-    await update_site_design_both(account["seller_id"], {"design": {"color_scheme": color_scheme}})
+    patch = {"design": {"color_scheme": color_scheme}}
+    await update_site_design_both(account["seller_id"], patch)
+    site_after = await get_current_seller_site(account["seller_id"])
+    config_live_after = _as_live_config(site_after)
+    design_after = _extract_design(config_live_after)
+    logger.info(
+        "DESIGN_COLOR_POST_HIT crm_slug=%s seller_id=%s raw_color_scheme=%s normalized_color_scheme=%s patch=%s live_color_scheme_after=%s",
+        crm_slug,
+        account["seller_id"],
+        raw_color_scheme,
+        color_scheme,
+        patch,
+        (design_after or {}).get("color_scheme"),
+    )
     return RedirectResponse(url=f"/crm/seller/{crm_slug}/website/design?status=saved", status_code=303)
 
 
