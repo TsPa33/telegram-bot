@@ -6,87 +6,91 @@
   <title>CarPot Catalog Pro — Wireframe Preview</title>
   <style>
     :root{
-      --cpw-bg:#f3f5f8;
+      --cpw-bg:#f4f6f9;
       --cpw-surface:#ffffff;
-      --cpw-dark:#0f1724;
-      --cpw-dark-2:#1a2638;
-      --cpw-text:#0e1726;
-      --cpw-muted:#5d6b81;
-      --cpw-border:#d8deea;
+      --cpw-dark:#0f1722;
+      --cpw-dark-soft:#172233;
+      --cpw-text:#131c2b;
+      --cpw-muted:#5f6f85;
+      --cpw-border:#d7deea;
       --cpw-accent:#f2b705;
-      --cpw-accent-2:#0ea5a6;
-      --cpw-radius:16px;
-      --cpw-shadow:0 14px 28px rgba(15,23,36,.1);
+      --cpw-radius:12px;
+      --cpw-shadow:0 8px 20px rgba(18,28,43,.08);
       --cpw-wrap:1280px;
     }
     *{box-sizing:border-box}
-    body{margin:0;font-family:Inter,Segoe UI,Roboto,Arial,sans-serif;background:var(--cpw-bg);color:var(--cpw-text)}
+    body{margin:0;font-family:Inter,Segoe UI,Roboto,Arial,sans-serif;background:var(--cpw-bg);color:var(--cpw-text);overflow-x:hidden}
     img{max-width:100%;display:block}
-    .cpw-wrap{width:min(var(--cpw-wrap),calc(100% - 32px));margin-inline:auto}
+    .cpw-wrap{width:min(var(--cpw-wrap),calc(100% - 40px));margin-inline:auto}
 
-    .cpw-header{position:sticky;top:0;z-index:40;background:linear-gradient(180deg,#101a2b,#0f1724);border-bottom:1px solid rgba(255,255,255,.12)}
-    .cpw-header__inner{min-height:78px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
-    .cpw-logo{color:#fff;text-decoration:none;font-weight:800;letter-spacing:.02em;font-size:1.1rem}
-    .cpw-nav{display:flex;gap:18px;flex-wrap:wrap}
-    .cpw-nav a{color:#dbe5f5;text-decoration:none;font-size:.95rem}
-    .cpw-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-    .cpw-icon-btn,.cpw-cart{height:40px;min-width:40px;padding:0 12px;border-radius:999px;border:1px solid rgba(255,255,255,.2);background:#132136;color:#e7eefb}
-    .cpw-cta{height:40px;padding:0 16px;border:0;border-radius:999px;background:var(--cpw-accent);color:#1f2630;font-weight:700}
+    .cpw-header{position:sticky;top:0;z-index:50;background:var(--cpw-dark);border-bottom:1px solid rgba(255,255,255,.1)}
+    .cpw-header__inner{height:78px;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:18px}
+    .cpw-logo{color:#fff;text-decoration:none;font-weight:800;font-size:1.08rem;white-space:nowrap;line-height:1}
+    .cpw-nav{display:flex;justify-content:center;gap:20px;min-width:0}
+    .cpw-nav a{color:#d9e4f6;text-decoration:none;font-size:.94rem;white-space:nowrap}
+    .cpw-actions{display:flex;align-items:center;gap:8px}
+    .cpw-icon-btn,.cpw-cart{height:38px;border-radius:8px;border:1px solid rgba(255,255,255,.22);background:#1a2739;color:#e4ecfa;padding:0 10px;font-size:.86rem}
+    .cpw-cta{height:38px;border:0;border-radius:8px;background:var(--cpw-accent);color:#1a1f26;font-weight:700;padding:0 14px;font-size:.9rem}
 
-    .cpw-hero{background:linear-gradient(135deg,var(--cpw-dark) 0%,var(--cpw-dark-2) 60%,#121f30 100%);padding:56px 0}
-    .cpw-hero__grid{display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:stretch;min-height:580px}
-    .cpw-hero__content{display:flex;flex-direction:column;justify-content:center}
-    .cpw-eyebrow{display:inline-flex;align-self:flex-start;border:1px solid rgba(255,255,255,.22);color:#bcd0ea;border-radius:999px;padding:6px 12px;font-size:.76rem;letter-spacing:.08em}
-    .cpw-title{font-size:clamp(2rem,4vw,3.4rem);line-height:1.05;color:#fff;margin:16px 0 14px}
-    .cpw-subtitle{color:#c7d6eb;max-width:58ch;margin:0 0 24px}
+    .cpw-hero{background:linear-gradient(180deg,var(--cpw-dark) 0%,var(--cpw-dark-soft) 100%);padding:32px 0 40px}
+    .cpw-hero__grid{display:grid;grid-template-columns:minmax(0,1.03fr) minmax(0,.97fr);gap:22px;align-items:stretch;min-height:580px}
+    .cpw-hero__content{padding:16px 6px 16px 0;display:flex;flex-direction:column;justify-content:center;min-width:0}
+    .cpw-eyebrow{display:inline-flex;align-self:flex-start;border:1px solid rgba(255,255,255,.18);color:#b8cbe3;border-radius:999px;padding:6px 11px;font-size:.74rem;letter-spacing:.08em}
+    .cpw-title{font-size:clamp(2rem,4vw,3.25rem);line-height:1.05;color:#fff;margin:14px 0 12px;max-width:14ch}
+    .cpw-subtitle{color:#c8d7eb;max-width:56ch;margin:0 0 22px;font-size:1.02rem}
     .cpw-hero__actions{display:flex;gap:10px;flex-wrap:wrap}
-    .cpw-btn{display:inline-flex;align-items:center;justify-content:center;height:46px;padding:0 18px;border-radius:12px;text-decoration:none;font-weight:700}
-    .cpw-btn--primary{background:var(--cpw-accent);color:#1d2633}
-    .cpw-btn--secondary{background:transparent;border:1px solid rgba(255,255,255,.3);color:#ecf4ff}
+    .cpw-btn{display:inline-flex;align-items:center;justify-content:center;height:44px;padding:0 18px;border-radius:10px;text-decoration:none;font-weight:700;font-size:.94rem}
+    .cpw-btn--primary{background:var(--cpw-accent);color:#1c2531}
+    .cpw-btn--secondary{background:transparent;border:1px solid rgba(255,255,255,.3);color:#edf4ff}
 
-    .cpw-hero-visual{position:relative;border-radius:22px;overflow:hidden;border:1px solid rgba(255,255,255,.18);box-shadow:0 20px 40px rgba(0,0,0,.25)}
-    .cpw-hero-visual img{height:100%;min-height:560px;object-fit:cover;filter:saturate(1.02) contrast(1.02)}
-    .cpw-badge{position:absolute;top:14px;left:14px;background:rgba(15,23,36,.72);color:#e8f1ff;border:1px solid rgba(255,255,255,.2);border-radius:999px;padding:8px 12px;font-size:.82rem}
-    .cpw-float-card{position:absolute;right:14px;bottom:14px;background:rgba(255,255,255,.94);color:#162235;border-radius:14px;padding:12px 14px;box-shadow:0 12px 24px rgba(9,17,26,.22);min-width:190px}
-    .cpw-float-card strong{display:block;margin-bottom:4px}
-    .cpw-float-card small{color:#51617a}
+    .cpw-hero-visual{position:relative;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.18)}
+    .cpw-hero-visual img{width:100%;height:100%;min-height:580px;object-fit:cover}
+    .cpw-badge{position:absolute;top:12px;left:12px;background:rgba(12,20,33,.8);color:#e8f0fa;border:1px solid rgba(255,255,255,.22);border-radius:999px;padding:7px 11px;font-size:.78rem}
+    .cpw-float-card{position:absolute;right:12px;bottom:12px;background:rgba(255,255,255,.96);color:#182335;border-radius:10px;padding:11px 12px;min-width:210px}
+    .cpw-float-card strong{display:block;margin-bottom:4px;font-size:.95rem}
+    .cpw-float-card small{color:#4f5f78;font-size:.82rem}
 
-    .cpw-section{padding:46px 0}
-    .cpw-section__head{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:18px}
-    .cpw-section__head h2{margin:0;font-size:1.8rem}
+    .cpw-section{padding:36px 0}
+    .cpw-section__head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+    .cpw-section__head h2{margin:0;font-size:1.6rem}
 
-    .cpw-categories{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
-    .cpw-category-card{background:var(--cpw-surface);border:1px solid var(--cpw-border);border-radius:var(--cpw-radius);padding:18px;box-shadow:var(--cpw-shadow);display:grid;gap:10px}
-    .cpw-category-icon{width:52px;height:52px;border-radius:14px;background:linear-gradient(145deg,#eef4ff,#dce8ff);display:flex;align-items:center;justify-content:center;font-size:1.4rem}
-    .cpw-category-card h3{margin:0}
-    .cpw-category-card p{margin:0;color:var(--cpw-muted);font-size:.94rem;min-height:44px}
-    .cpw-link{display:inline-flex;gap:8px;align-items:center;color:#1f4f8d;font-weight:700;text-decoration:none}
+    .cpw-categories{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+    .cpw-category-card{position:relative;min-height:188px;border-radius:12px;overflow:hidden;display:flex;align-items:flex-end;color:#fff;text-decoration:none}
+    .cpw-category-card img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+    .cpw-category-card::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(8,13,22,.12) 0%,rgba(8,13,22,.75) 100%)}
+    .cpw-category-card__body{position:relative;padding:14px;display:grid;gap:6px}
+    .cpw-category-card h3{margin:0;font-size:1.05rem}
+    .cpw-category-card p{margin:0;color:#d7e2f2;font-size:.86rem;max-width:34ch}
+    .cpw-link{font-size:.83rem;font-weight:700;color:#f3b100}
 
-    .cpw-products{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
-    .cpw-product-card{background:var(--cpw-surface);border:1px solid var(--cpw-border);border-radius:var(--cpw-radius);overflow:hidden;box-shadow:var(--cpw-shadow)}
-    .cpw-product-media{aspect-ratio:4/3;overflow:hidden;background:linear-gradient(145deg,#eaf1fd,#d6e4f9)}
+    .cpw-products{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+    .cpw-product-card{background:var(--cpw-surface);border:1px solid var(--cpw-border);border-radius:12px;overflow:hidden;box-shadow:var(--cpw-shadow)}
+    .cpw-product-media{aspect-ratio:4/2.85;overflow:hidden;background:#e8eef7}
     .cpw-product-media img{width:100%;height:100%;object-fit:cover}
-    .cpw-product-body{padding:14px;display:grid;gap:8px}
-    .cpw-product-body h3{margin:0;font-size:1rem}
-    .cpw-spec{margin:0;color:var(--cpw-muted);font-size:.9rem}
-    .cpw-status{display:inline-flex;align-self:flex-start;padding:5px 10px;border-radius:999px;background:#ecf7f7;color:#0f6b6b;font-size:.76rem;font-weight:700}
+    .cpw-product-body{padding:12px;display:grid;gap:7px}
+    .cpw-product-body h3{margin:0;font-size:.98rem;line-height:1.25}
+    .cpw-spec{margin:0;color:var(--cpw-muted);font-size:.84rem}
+    .cpw-status{display:inline-flex;align-self:flex-start;padding:4px 9px;border-radius:999px;background:#edf5ff;color:#2f4f78;font-size:.72rem;font-weight:700}
     .cpw-meta{display:flex;align-items:center;justify-content:space-between;gap:8px}
-    .cpw-price{font-weight:800}
-    .cpw-small-btn{height:38px;border:1px solid #bccae1;background:#fff;border-radius:10px;padding:0 12px;font-weight:700;color:#1d2b3f}
+    .cpw-price{font-weight:800;font-size:.9rem}
+    .cpw-small-btn{height:34px;border:1px solid #c6d1e3;background:#fff;border-radius:8px;padding:0 11px;font-weight:700;color:#1e2d42;font-size:.82rem}
 
-    @media (max-width: 1100px){
+    @media (max-width: 1140px){
+      .cpw-header__inner{grid-template-columns:1fr auto;grid-template-areas:"logo actions" "nav nav";height:auto;padding:10px 0}
+      .cpw-logo{grid-area:logo}.cpw-actions{grid-area:actions}.cpw-nav{grid-area:nav;justify-content:flex-start;padding-bottom:4px;overflow:auto}
       .cpw-hero__grid{grid-template-columns:1fr;min-height:auto}
       .cpw-hero-visual img{min-height:420px}
       .cpw-products{grid-template-columns:repeat(2,minmax(0,1fr))}
     }
     @media (max-width: 760px){
       .cpw-wrap{width:min(var(--cpw-wrap),calc(100% - 20px))}
-      .cpw-header__inner{padding:10px 0}
-      .cpw-nav{width:100%;order:3;justify-content:space-between}
-      .cpw-hero{padding:34px 0}
+      .cpw-hero{padding:24px 0 30px}
+      .cpw-hero__content{padding-right:0}
+      .cpw-subtitle{font-size:.95rem}
       .cpw-categories,.cpw-products{grid-template-columns:1fr}
       .cpw-hero__actions{flex-direction:column}
       .cpw-btn{width:100%}
+      .cpw-float-card{left:10px;right:10px;min-width:0}
     }
   </style>
 </head>
@@ -102,8 +106,8 @@
           <a href="#">Контакти</a>
         </nav>
         <div class="cpw-actions">
-          <button class="cpw-icon-btn" aria-label="Пошук">⌕</button>
-          <button class="cpw-cart" aria-label="Кошик">🛒 0</button>
+          <button class="cpw-icon-btn" aria-label="Пошук">Пошук</button>
+          <button class="cpw-cart" aria-label="Кошик">Кошик 0</button>
           <button class="cpw-cta">Підібрати деталь</button>
         </div>
       </div>
@@ -121,11 +125,11 @@
           </div>
         </div>
         <div class="cpw-hero-visual">
-          <img src="https://images.unsplash.com/photo-1487754180451-c456f719a1fc?auto=format&fit=crop&w=1400&q=80" alt="Автомобільні деталі у майстерні" />
-          <div class="cpw-badge">Підбір по VIN • Доставка по Україні</div>
+          <img src="https://images.unsplash.com/photo-1632823471565-e70f0fe4b29e?auto=format&fit=crop&w=1600&q=80" alt="Склад і полиці з автозапчастинами" />
+          <div class="cpw-badge">Підбір по VIN · Доставка по Україні</div>
           <div class="cpw-float-card">
             <strong>Двигун 1.6 TDI</strong>
-            <small>Стан: перевірений • Ціна за запитом</small>
+            <small>Перевірка сумісності перед відправкою · Ціна за запитом</small>
           </div>
         </div>
       </div>
@@ -135,12 +139,12 @@
       <div class="cpw-wrap">
         <div class="cpw-section__head"><h2>Популярні категорії</h2></div>
         <div class="cpw-categories">
-          <article class="cpw-category-card"><div class="cpw-category-icon">⚙️</div><h3>Двигуни</h3><p>Блоки, ГБЦ та навісне обладнання.</p><a class="cpw-link" href="#">Переглянути →</a></article>
-          <article class="cpw-category-card"><div class="cpw-category-icon">🔩</div><h3>КПП</h3><p>Механічні та автоматичні коробки.</p><a class="cpw-link" href="#">Переглянути →</a></article>
-          <article class="cpw-category-card"><div class="cpw-category-icon">🚘</div><h3>Кузов</h3><p>Бампери, крила, капоти, двері.</p><a class="cpw-link" href="#">Переглянути →</a></article>
-          <article class="cpw-category-card"><div class="cpw-category-icon">💡</div><h3>Оптика</h3><p>Фари, ліхтарі та блоки освітлення.</p><a class="cpw-link" href="#">Переглянути →</a></article>
-          <article class="cpw-category-card"><div class="cpw-category-icon">🪑</div><h3>Салон</h3><p>Сидіння, торпедо та внутрішній пластик.</p><a class="cpw-link" href="#">Переглянути →</a></article>
-          <article class="cpw-category-card"><div class="cpw-category-icon">🛞</div><h3>Ходова</h3><p>Підвіска, ступиці та рульові вузли.</p><a class="cpw-link" href="#">Переглянути →</a></article>
+          <a class="cpw-category-card" href="#"><img src="https://images.unsplash.com/photo-1530046339160-ce3e530c7d2f?auto=format&fit=crop&w=1200&q=80" alt="Двигуни" /><div class="cpw-category-card__body"><h3>Двигуни</h3><p>Блоки, ГБЦ, форсунки, навісне обладнання.</p><span class="cpw-link">Переглянути</span></div></a>
+          <a class="cpw-category-card" href="#"><img src="https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?auto=format&fit=crop&w=1200&q=80" alt="КПП" /><div class="cpw-category-card__body"><h3>КПП</h3><p>Механічні та автоматичні коробки передач.</p><span class="cpw-link">Переглянути</span></div></a>
+          <a class="cpw-category-card" href="#"><img src="https://images.unsplash.com/photo-1625047509248-ec889cbff17f?auto=format&fit=crop&w=1200&q=80" alt="Кузов" /><div class="cpw-category-card__body"><h3>Кузов</h3><p>Бампери, крила, двері, капоти.</p><span class="cpw-link">Переглянути</span></div></a>
+          <a class="cpw-category-card" href="#"><img src="https://images.unsplash.com/photo-1486006920555-c77dcf18193c?auto=format&fit=crop&w=1200&q=80" alt="Оптика" /><div class="cpw-category-card__body"><h3>Оптика</h3><p>Фари, ліхтарі, модулі освітлення.</p><span class="cpw-link">Переглянути</span></div></a>
+          <a class="cpw-category-card" href="#"><img src="https://images.unsplash.com/photo-1517677208171-0bc6725a3e60?auto=format&fit=crop&w=1200&q=80" alt="Салон" /><div class="cpw-category-card__body"><h3>Салон</h3><p>Сидіння, карти дверей, елементи торпедо.</p><span class="cpw-link">Переглянути</span></div></a>
+          <a class="cpw-category-card" href="#"><img src="https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=1200&q=80" alt="Ходова" /><div class="cpw-category-card__body"><h3>Ходова</h3><p>Підвіска, ступиці, рульові вузли.</p><span class="cpw-link">Переглянути</span></div></a>
         </div>
       </div>
     </section>
@@ -149,14 +153,14 @@
       <div class="cpw-wrap">
         <div class="cpw-section__head"><h2>Рекомендовані запчастини</h2></div>
         <div class="cpw-products">
-          <article class="cpw-product-card"><div class="cpw-product-media"><img src="https://images.unsplash.com/photo-1615906655593-ad0386982a0f?auto=format&fit=crop&w=900&q=80" alt="Передній бампер" /></div><div class="cpw-product-body"><h3>Передній бампер</h3><p class="cpw-spec">Кузов • OEM сумісність</p><span class="cpw-status">Доступність уточнюється</span><div class="cpw-meta"><span class="cpw-price">Ціна за запитом</span><button class="cpw-small-btn">Уточнити</button></div></div></article>
-          <article class="cpw-product-card"><div class="cpw-product-media"><img src="https://images.unsplash.com/photo-1580273916550-e323be2ae537?auto=format&fit=crop&w=900&q=80" alt="LED фара" /></div><div class="cpw-product-body"><h3>LED фара</h3><p class="cpw-spec">Оптика • Ліва/права</p><span class="cpw-status">Доступність уточнюється</span><div class="cpw-meta"><span class="cpw-price">Ціна за запитом</span><button class="cpw-small-btn">Уточнити</button></div></div></article>
-          <article class="cpw-product-card"><div class="cpw-product-media"><img src="https://images.unsplash.com/photo-1565043666747-69f6646db940?auto=format&fit=crop&w=900&q=80" alt="Двигун 1.6 TDI" /></div><div class="cpw-product-body"><h3>Двигун 1.6 TDI</h3><p class="cpw-spec">Двигуни • У зборі</p><span class="cpw-status">Доступність уточнюється</span><div class="cpw-meta"><span class="cpw-price">Ціна за запитом</span><button class="cpw-small-btn">Уточнити</button></div></div></article>
-          <article class="cpw-product-card"><div class="cpw-product-media"><img src="https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?auto=format&fit=crop&w=900&q=80" alt="АКПП 8HP" /></div><div class="cpw-product-body"><h3>АКПП 8HP</h3><p class="cpw-spec">КПП • Автомат</p><span class="cpw-status">Доступність уточнюється</span><div class="cpw-meta"><span class="cpw-price">Ціна за запитом</span><button class="cpw-small-btn">Уточнити</button></div></div></article>
-          <article class="cpw-product-card"><div class="cpw-product-media"><img src="https://images.unsplash.com/photo-1517524008697-84bbe3c3fd98?auto=format&fit=crop&w=900&q=80" alt="Капот" /></div><div class="cpw-product-body"><h3>Капот</h3><p class="cpw-spec">Кузов • Під фарбування</p><span class="cpw-status">Доступність уточнюється</span><div class="cpw-meta"><span class="cpw-price">Ціна за запитом</span><button class="cpw-small-btn">Уточнити</button></div></div></article>
-          <article class="cpw-product-card"><div class="cpw-product-media"><img src="https://images.unsplash.com/photo-1542362567-b07e54358753?auto=format&fit=crop&w=900&q=80" alt="Двері передні" /></div><div class="cpw-product-body"><h3>Двері передні</h3><p class="cpw-spec">Кузов • Ліва/права</p><span class="cpw-status">Доступність уточнюється</span><div class="cpw-meta"><span class="cpw-price">Ціна за запитом</span><button class="cpw-small-btn">Уточнити</button></div></div></article>
-          <article class="cpw-product-card"><div class="cpw-product-media"><img src="https://images.unsplash.com/photo-1487730116645-74489c95b41b?auto=format&fit=crop&w=900&q=80" alt="Радіатор" /></div><div class="cpw-product-body"><h3>Радіатор</h3><p class="cpw-spec">Охолодження • Алюміній</p><span class="cpw-status">Доступність уточнюється</span><div class="cpw-meta"><span class="cpw-price">Ціна за запитом</span><button class="cpw-small-btn">Уточнити</button></div></div></article>
-          <article class="cpw-product-card"><div class="cpw-product-media"><img src="https://images.unsplash.com/photo-1613214150388-c0ec8f6d9f77?auto=format&fit=crop&w=900&q=80" alt="Турбіна" /></div><div class="cpw-product-body"><h3>Турбіна</h3><p class="cpw-spec">Двигуни • Турбонаддув</p><span class="cpw-status">Доступність уточнюється</span><div class="cpw-meta"><span class="cpw-price">Ціна за запитом</span><button class="cpw-small-btn">Уточнити</button></div></div></article>
+          <article class="cpw-product-card"><div class="cpw-product-media"><img src="https://images.unsplash.com/photo-1597764699512-8c3e0f6f9456?auto=format&fit=crop&w=900&q=80" alt="Передній бампер" /></div><div class="cpw-product-body"><h3>Передній бампер</h3><p class="cpw-spec">Кузов • OEM сумісність</p><span class="cpw-status">Доступність уточнюється</span><div class="cpw-meta"><span class="cpw-price">Ціна за запитом</span><button class="cpw-small-btn">Уточнити</button></div></div></article>
+          <article class="cpw-product-card"><div class="cpw-product-media"><img src="https://images.unsplash.com/photo-1487754180451-c456f719a1fc?auto=format&fit=crop&w=900&q=80" alt="LED фара" /></div><div class="cpw-product-body"><h3>LED фара</h3><p class="cpw-spec">Оптика • Ліва/права</p><span class="cpw-status">Доступність уточнюється</span><div class="cpw-meta"><span class="cpw-price">Ціна за запитом</span><button class="cpw-small-btn">Уточнити</button></div></div></article>
+          <article class="cpw-product-card"><div class="cpw-product-media"><img src="https://images.unsplash.com/photo-1530046339160-ce3e530c7d2f?auto=format&fit=crop&w=900&q=80" alt="Двигун 1.6 TDI" /></div><div class="cpw-product-body"><h3>Двигун 1.6 TDI</h3><p class="cpw-spec">Двигуни • У зборі</p><span class="cpw-status">Доступність уточнюється</span><div class="cpw-meta"><span class="cpw-price">Ціна за запитом</span><button class="cpw-small-btn">Уточнити</button></div></div></article>
+          <article class="cpw-product-card"><div class="cpw-product-media"><img src="https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?auto=format&fit=crop&w=900&q=80" alt="АКПП 8HP" /></div><div class="cpw-product-body"><h3>АКПП 8HP</h3><p class="cpw-spec">КПП • Автомат</p><span class="cpw-status">Доступність уточнюється</span><div class="cpw-meta"><span class="cpw-price">Ціна за запитом</span><button class="cpw-small-btn">Уточнити</button></div></div></article>
+          <article class="cpw-product-card"><div class="cpw-product-media"><img src="https://images.unsplash.com/photo-1625047509248-ec889cbff17f?auto=format&fit=crop&w=900&q=80" alt="Капот" /></div><div class="cpw-product-body"><h3>Капот</h3><p class="cpw-spec">Кузов • Під фарбування</p><span class="cpw-status">Доступність уточнюється</span><div class="cpw-meta"><span class="cpw-price">Ціна за запитом</span><button class="cpw-small-btn">Уточнити</button></div></div></article>
+          <article class="cpw-product-card"><div class="cpw-product-media"><img src="https://images.unsplash.com/photo-1517677208171-0bc6725a3e60?auto=format&fit=crop&w=900&q=80" alt="Двері передні" /></div><div class="cpw-product-body"><h3>Двері передні</h3><p class="cpw-spec">Кузов • Ліва/права</p><span class="cpw-status">Доступність уточнюється</span><div class="cpw-meta"><span class="cpw-price">Ціна за запитом</span><button class="cpw-small-btn">Уточнити</button></div></div></article>
+          <article class="cpw-product-card"><div class="cpw-product-media"><img src="https://images.unsplash.com/photo-1615906655593-ad0386982a0f?auto=format&fit=crop&w=900&q=80" alt="Радіатор" /></div><div class="cpw-product-body"><h3>Радіатор</h3><p class="cpw-spec">Охолодження • Алюміній</p><span class="cpw-status">Доступність уточнюється</span><div class="cpw-meta"><span class="cpw-price">Ціна за запитом</span><button class="cpw-small-btn">Уточнити</button></div></div></article>
+          <article class="cpw-product-card"><div class="cpw-product-media"><img src="https://images.unsplash.com/photo-1632823471565-e70f0fe4b29e?auto=format&fit=crop&w=900&q=80" alt="Турбіна" /></div><div class="cpw-product-body"><h3>Турбіна</h3><p class="cpw-spec">Двигуни • Турбонаддув</p><span class="cpw-status">Доступність уточнюється</span><div class="cpw-meta"><span class="cpw-price">Ціна за запитом</span><button class="cpw-small-btn">Уточнити</button></div></div></article>
         </div>
       </div>
     </section>
