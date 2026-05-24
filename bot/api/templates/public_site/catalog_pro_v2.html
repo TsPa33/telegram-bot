@@ -1,0 +1,141 @@
+<div class="site-template site-template--catalog-pro-v2" data-template-id="universal_catalog">
+  {% set config = config if config is defined else {} %}
+  {% set data = data if data is defined else {} %}
+  {% set header = config.get('header', {}) if config.get('header') is mapping else {} %}
+  {% set hero = config.get('hero', {}) if config.get('hero') is mapping else {} %}
+  {% set catalog = config.get('catalog', {}) if config.get('catalog') is mapping else {} %}
+  {% set products_config = config.get('products', {}) if config.get('products') is mapping else {} %}
+  {% set cars_config = config.get('cars', {}) if config.get('cars') is mapping else {} %}
+  {% set contacts = config.get('contacts', {}) if config.get('contacts') is mapping else {} %}
+  {% set footer = config.get('footer', {}) if config.get('footer') is mapping else {} %}
+  {% set modules = config.get('modules', {}) if config.get('modules') is mapping else {} %}
+
+  {% set catalog_items = data.get('catalog_items', data.get('products', [])) if data is mapping else [] %}
+  {% if not catalog_items %}{% set catalog_items = data.get('parts', []) if data is mapping else [] %}{% endif %}
+  {% if not catalog_items %}{% set catalog_items = products_config.get('items', []) or catalog.get('items', []) %}{% endif %}
+  {% set catalog_items = catalog_items[:(catalog.get('per_page') or 8)] %}
+  {% set cars_items = data.get('cars_items', data.get('cars', [])) if data is mapping else [] %}
+  {% set cars_items = cars_items[:(cars_config.get('per_page') or 4)] %}
+
+  {% set featured_categories = catalog.get('featured_categories') if catalog.get('featured_categories') is iterable and catalog.get('featured_categories') is not string else [] %}
+  {% if not featured_categories %}{% set featured_categories = ['Двигуни', 'КПП', 'Кузов', 'Оптика', 'Салон', 'Ходова'] %}{% endif %}
+  {% set trust_items = ['Самовивіз', 'Відправка по Україні', 'Оплата при отриманні', 'Підбір по VIN'] %}
+
+  <header class="cpv2-header">
+    <div class="container cpv2-header__inner">
+      <a href="#" class="cpv2-brand">{{ header.get('title') or footer.get('business_name') or 'CarPot' }}</a>
+      <nav class="cpv2-nav">
+        <a href="#categories">Категорії</a>
+        <a href="#products">Каталог</a>
+        <a href="#cars">Авто</a>
+        <a href="#contacts">Контакти</a>
+      </nav>
+      <a class="site-button site-button--primary" href="#vin-request">Підібрати деталь</a>
+    </div>
+  </header>
+
+  {% if modules.get('hero', True) %}
+  <section id="hero" class="cpv2-hero">
+    <div class="container cpv2-hero__grid">
+      <div class="cpv2-hero__content">
+        <span class="cpv2-eyebrow">Auto Parts Catalog</span>
+        <h1>{{ hero.get('title') or 'Знайдіть автозапчастини швидко та без ризику' }}</h1>
+        <p>{{ hero.get('subtitle') or hero.get('description') or 'Підбираємо деталі для більшості моделей авто. Допоможемо з сумісністю, VIN-перевіркою та доставкою по Україні.' }}</p>
+        <div class="cpv2-hero__actions">
+          <a class="site-button site-button--primary" href="#products">Перейти в каталог</a>
+          <a class="site-button site-button--secondary" href="#vin-request">Надіслати VIN запит</a>
+        </div>
+        <div class="cpv2-trust-strip">
+          {% for trust in trust_items %}<span>{{ trust }}</span>{% endfor %}
+        </div>
+      </div>
+      <div class="cpv2-hero__visual site-card">
+        <div class="cpv2-hero__media-title">Каталог деталей</div>
+        <div class="cpv2-hero__media-grid">
+          {% for c in featured_categories[:4] %}
+          <div class="cpv2-chip">{{ c }}</div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
+  <section id="categories" class="cpv2-section">
+    <div class="container">
+      <h2 class="section-title">Популярні категорії</h2>
+      <div class="cpv2-categories">
+        {% for cat in featured_categories %}
+        <article class="site-card cpv2-category-card"><h3>{{ cat }}</h3><p>Підбір під модель та рік авто.</p></article>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  {% if modules.get('catalog', True) %}
+  <section id="products" class="cpv2-section cpv2-section--catalog">
+    <div class="container">
+      <h2 class="section-title">Каталог / Рекомендовані позиції</h2>
+      <p class="section-description">{{ catalog.get('description') or 'Актуальність конкретних позицій уточнюється менеджером перед підтвердженням заявки.' }}</p>
+      <div class="cpv2-grid">
+        {% if catalog_items %}
+          {% for product in catalog_items %}
+          <article class="site-card cpv2-product">
+            <div class="cpv2-product__media">{% if product.get('image') %}<img class="site-image" src="{{ product.get('image') }}" alt="{{ product.get('title', 'Запчастина') }}">{% else %}<div class="cpv2-ph">{{ product.get('category') or 'Автодеталі' }}</div>{% endif %}</div>
+            <h3>{{ product.get('title') or 'Запчастина під замовлення' }}</h3>
+            <p>{{ product.get('description') or product.get('category') or 'Доступність уточнюється' }}</p>
+            <strong>{{ product.get('price') or 'Ціну уточнюйте' }}</strong>
+            <a href="#contacts" class="site-button site-button--outline">Запитати наявність</a>
+          </article>
+          {% endfor %}
+        {% else %}
+          {% for cat in featured_categories[:6] %}
+          <article class="site-card cpv2-product">
+            <div class="cpv2-product__media"><div class="cpv2-ph">{{ cat }}</div></div>
+            <h3>{{ cat }}</h3>
+            <p>Приклади категорій / доступність уточнюється.</p>
+            <strong>Підбір під запит</strong>
+            <a href="#vin-request" class="site-button site-button--outline">Залишити запит</a>
+          </article>
+          {% endfor %}
+        {% endif %}
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
+  {% if modules.get('cars', True) %}
+  <section id="cars" class="cpv2-section">
+    <div class="container">
+      <h2 class="section-title">Авто на розборці</h2>
+      <div class="cpv2-grid cpv2-grid--cars">
+      {% if cars_items %}
+        {% for car in cars_items %}
+          <article class="site-card cpv2-car"><h3>{{ car.title or (car.brand ~ ' ' ~ car.model) }}</h3><p>{{ car.description or 'Деталі з цього авто доступні за запитом.' }}</p><a href="#contacts" class="site-button site-button--secondary">Запит по моделі</a></article>
+        {% endfor %}
+      {% else %}
+        <article class="site-card cpv2-car cpv2-car--empty"><h3>Не знайшли потрібну модель?</h3><p>Надішліть запит по авто — перевіримо розборку та аналоги.</p><a href="#vin-request" class="site-button site-button--secondary">Запит по моделі</a></article>
+      {% endif %}
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
+  {% if modules.get('vin', True) %}{% include "components/vin_request.html" %}{% endif %}
+
+  <section class="cpv2-section">
+    <div class="container">
+      <div class="site-card cpv2-trust">
+        {% for trust in trust_items %}<span>{{ trust }}</span>{% endfor %}
+      </div>
+    </div>
+  </section>
+
+  {% if modules.get('contacts', True) %}{% include "components/contacts.html" %}{% endif %}
+  {% include "components/footer.html" %}
+</div>
+
+<style>
+.site-template--catalog-pro-v2{background:#0f172a;color:#e2e8f0}.cpv2-header{padding:14px 0;background:#111827;border-bottom:1px solid #334155;position:sticky;top:0;z-index:10}.cpv2-header__inner{display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap}.cpv2-brand{font-weight:800;color:#fff;text-decoration:none}.cpv2-nav{display:flex;gap:14px;flex-wrap:wrap}.cpv2-nav a{color:#cbd5e1;text-decoration:none}.cpv2-hero{padding:38px 0}.cpv2-hero__grid{display:grid;grid-template-columns:1.2fr .8fr;gap:22px}.cpv2-hero__content h1{font-size:clamp(1.9rem,4vw,2.7rem);margin:8px 0 12px}.cpv2-hero__actions{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}.cpv2-trust-strip{display:flex;gap:8px;flex-wrap:wrap}.cpv2-trust-strip span,.cpv2-trust span{background:#1e293b;border:1px solid #334155;padding:8px 12px;border-radius:999px}.cpv2-hero__visual{padding:18px;background:#1e293b}.cpv2-hero__media-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:14px}.cpv2-chip{background:#334155;padding:10px;border-radius:10px;text-align:center}.cpv2-section{padding:28px 0}.cpv2-categories,.cpv2-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.cpv2-category-card,.cpv2-product,.cpv2-car{padding:14px;background:#f8fafc;color:#0f172a}.cpv2-product__media{aspect-ratio:16/10;border-radius:12px;background:#e2e8f0;overflow:hidden;margin-bottom:10px}.cpv2-ph{height:100%;display:flex;align-items:center;justify-content:center;font-weight:700;color:#334155}.cpv2-product strong{display:block;margin:8px 0 12px}.cpv2-trust{display:flex;gap:10px;flex-wrap:wrap;padding:16px;background:#111827}.cpv2-eyebrow{color:#93c5fd;text-transform:uppercase;letter-spacing:.06em;font-size:.78rem}.cpv2-grid--cars{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media (max-width: 900px){.cpv2-hero__grid,.cpv2-categories,.cpv2-grid,.cpv2-grid--cars{grid-template-columns:1fr}}
+</style>
