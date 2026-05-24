@@ -52,7 +52,12 @@ from bot.database.repositories.analytics_repo import (
 )
 
 from bot.services.demo_seed_service import get_demo_render_preset
-from bot.services.site_config import merge_with_default
+from bot.services.site_config import (
+    get_legacy_color_scheme_id,
+    merge_with_default,
+    normalize_color_scheme,
+    normalize_template_id,
+)
 from bot.utils.subdomain import is_valid_subdomain
 from bot.services.domain_service import extract_subdomain_from_host
 from bot.services.seller_notification_ops import format_site_lead_notification, seller_crm_context_url
@@ -65,21 +70,6 @@ templates = Jinja2Templates(directory="bot/api/templates")
 bot = Bot(token=BOT_TOKEN)
 logger = logging.getLogger(__name__)
 
-
-def normalize_template_id(value: str | None) -> str:
-    raw = str(value or "universal_classic").strip().lower()
-    legacy_map = {
-        "service_classic": "universal_classic",
-        "dismantler_classic": "universal_classic",
-        "service_modern": "universal_catalog",
-        "dismantler_catalog": "universal_catalog",
-        "service_premium": "universal_premium",
-        "dismantler_premium": "universal_premium",
-    }
-    raw = legacy_map.get(raw, raw)
-    if raw not in {"universal_classic", "universal_catalog", "universal_premium"}:
-        return "universal_classic"
-    return raw
 
 def _extract_inline_edit_patch(block_key: str, payload: dict) -> dict:
     payload = payload or {}
@@ -1039,10 +1029,12 @@ async def _render_site_by_subdomain(subdomain: str, request: Request):
     config = merge_with_default(raw_config)
     design = config.get("design") if isinstance(config.get("design"), dict) else {}
     template_id = normalize_template_id(design.get("template_id"))
-    color_scheme = str(design.get("color_scheme") or "dark_blue").strip().lower()
-    if color_scheme not in {"dark_blue", "dark_red", "graphite", "black_gold", "light_minimal"}:
-        color_scheme = "dark_blue"
-    config["design"] = {"template_id": template_id, "color_scheme": color_scheme}
+    color_scheme = normalize_color_scheme(design.get("color_scheme"))
+    config["design"] = {
+        "template_id": template_id,
+        "color_scheme": color_scheme,
+        "color_scheme_legacy": get_legacy_color_scheme_id(color_scheme),
+    }
     demo_preset = get_demo_render_preset(subdomain)
 
     seller_id = site["seller_id"]
