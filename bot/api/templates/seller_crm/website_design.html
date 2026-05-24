@@ -47,10 +47,10 @@
       </div>
       <div style="height:88px;border:1px dashed var(--line);border-radius:12px;display:grid;place-items:center;color:var(--muted);margin-bottom:10px;">Preview</div>
       <div class="choice-row">
-      <div>{% if design.template_id == item.id %}<p><b>Активний</b></p>{% endif %}</div>
+      <div>{% if current_template_id == item.id %}<p><b>Активний</b></p>{% endif %}</div>
       <form method="post" action="/crm/seller/{{ account.crm_slug }}/website/design/template">
         <input type="hidden" name="template_id" value="{{ item.id }}">
-        <button class="switch {% if design.template_id == item.id %}is-active{% endif %}" aria-label="Увімкнути {{ item.label }}"></button>
+        <button class="switch {% if current_template_id == item.id %}is-active{% endif %}" aria-label="Увімкнути {{ item.label }}"></button>
       </form>
       </div>
     </div>
@@ -67,10 +67,10 @@
         {% for swatch in scheme.swatches %}<span style="display:inline-block;width:28px;height:28px;border-radius:999px;border:1px solid #ddd;background:{{ swatch }};"></span>{% endfor %}
       </div>
       <div class="choice-row">
-      <div>{% if design.color_scheme == scheme.id %}<p><b>Активний</b></p>{% endif %}</div>
+      <div>{% if current_color_scheme == scheme.id %}<p><b>Активний</b></p>{% endif %}</div>
       <form method="post" action="/crm/seller/{{ account.crm_slug }}/website/design/color">
         <input type="hidden" name="color_scheme" value="{{ scheme.id }}">
-        <button class="switch {% if design.color_scheme == scheme.id %}is-active{% endif %}" aria-label="Увімкнути {{ scheme.label }}"></button>
+        <button class="switch {% if current_color_scheme == scheme.id %}is-active{% endif %}" aria-label="Увімкнути {{ scheme.label }}"></button>
       </form>
       </div>
     </div>
