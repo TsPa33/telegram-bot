@@ -184,7 +184,13 @@ from bot.services.seller_crm import (
 from bot.services.seller_offer_service import submit_seller_offer_from_crm
 from bot.services.telegram_sender import send_message_to_buyer
 from bot.services.buyer_chat_presence import is_buyer_in_chat
-from bot.services.site_config import get_theme_presets, merge_with_default, normalize_color_scheme, normalize_template_id
+from bot.services.site_config import (
+    get_theme_presets,
+    merge_with_default,
+    normalize_color_scheme,
+    normalize_sections_order,
+    normalize_template_id,
+)
 from bot.services.site_blocks import SITE_BLOCK_REGISTRY
 from bot.services.storage import upload_image
 from bot.services.liqpay_service import LiqPayService
@@ -278,6 +284,19 @@ MODULE_KEYS = [
 ]
 
 WEBSITE_EDITABLE_BLOCKS: dict[str, dict[str, str]] = {k: {"name": v["label"], "description": "Блок сайту"} for k, v in SITE_BLOCK_REGISTRY.items()}
+
+WEBSITE_BLOCKS_CRM_ORDER = [
+    ("hero", "Головний екран", "Перший екран із ключовим повідомленням.", True),
+    ("about", "Про нас", "Коротко про компанію та переваги.", False),
+    ("services", "Послуги", "Основні послуги для клієнтів.", False),
+    ("catalog", "Каталог", "Товари та запчастини у наявності.", False),
+    ("cars", "Авто в наявності", "Авто в наявності або на розборі.", False),
+    ("gallery", "Галерея", "Фото робіт, товарів або прикладів.", False),
+    ("vin", "VIN-запит", "Форма для підбору по VIN.", False),
+    ("contacts", "Контакти", "Телефони, месенджери, адреса.", False),
+    ("map", "Карта", "Локація та маршрут до вас.", False),
+    ("footer", "Нижній блок", "Завершення сторінки з навігацією.", True),
+]
 
 
 def _is_demo_crm_slug(crm_slug: str | None) -> bool:
@@ -4023,6 +4042,11 @@ async def seller_crm_website_design_color(request: Request, crm_slug: str, color
 
 @router.get("/{crm_slug}/website/editor")
 async def seller_crm_website_editor(request: Request, crm_slug: str, status: str | None = None):
+    return RedirectResponse(url=f"/crm/seller/{crm_slug}/website/blocks" + (f"?status={status}" if status else ""), status_code=303)
+
+
+@router.get("/{crm_slug}/website/blocks")
+async def seller_crm_website_blocks(request: Request, crm_slug: str, status: str | None = None):
     try:
         account, subscription = await _authorized_account(request, crm_slug)
     except HTTPException as exc:
@@ -4034,8 +4058,23 @@ async def seller_crm_website_editor(request: Request, crm_slug: str, status: str
     site = _demo_site() if _is_demo_account(account) else await get_current_seller_site_or_404(seller_id)
     config_draft = _as_config(site)
     preview_url, constructor_url = _build_public_site_urls(site)
-    blocks = [{"key": k, "title": v["name"], "description": v["description"], "shown": bool((config_draft.get("modules") or {}).get(k, False))} for k, v in WEBSITE_EDITABLE_BLOCKS.items()]
-    return templates.TemplateResponse("seller_crm/website_editor.html", _seller_crm_context(request, title="Редагування сайту — кабінет продавця", current_page="website_editor", account=account, subscription=subscription, site=site, blocks=blocks, status=status, has_website=True, has_cars=False, has_services=False, preview_url=preview_url, constructor_url=constructor_url))
+    modules = config_draft.get("modules", {}) if isinstance(config_draft.get("modules"), dict) else {}
+    order = normalize_sections_order(config_draft.get("sections_order"), template_id=((config_draft.get("design") or {}).get("template_id")))
+    order_idx = {k: i for i, k in enumerate(order)}
+    editor_alias = {"catalog": "products", "vin": "vin_request"}
+    blocks = []
+    for key, title, description, locked in WEBSITE_BLOCKS_CRM_ORDER:
+        blocks.append({
+            "key": key,
+            "title": title,
+            "description": description,
+            "shown": bool(modules.get(key, False)),
+            "locked": bool(locked),
+            "position": order_idx.get(key, 999),
+            "edit_key": editor_alias.get(key, key),
+        })
+    blocks.sort(key=lambda item: item["position"])
+    return templates.TemplateResponse("seller_crm/website_blocks.html", _seller_crm_context(request, title="Блоки сайту — кабінет продавця", current_page="website_blocks", account=account, subscription=subscription, site=site, blocks=blocks, status=status, has_website=True, has_cars=False, has_services=False, preview_url=preview_url, constructor_url=constructor_url))
 
 
 @router.get("/{crm_slug}/website/editor/{block_key}")
@@ -4171,6 +4210,54 @@ async def toggle_website_block(request: Request, crm_slug: str, module_key: str)
     if return_to.startswith("/site/") and "\n" not in return_to and "\r" not in return_to:
         return RedirectResponse(url=return_to, status_code=303)
     return RedirectResponse(url=f"/crm/seller/{crm_slug}/website/editor?status=saved", status_code=303)
+
+
+@router.post("/{crm_slug}/website/blocks/toggle")
+async def seller_crm_website_blocks_toggle(request: Request, crm_slug: str, section_id: str = Form(...)):
+    account, _ = await _authorized_account(request, crm_slug)
+    section_id = str(section_id or "").strip().lower()
+    allowed = {item[0] for item in WEBSITE_BLOCKS_CRM_ORDER}
+    if section_id not in allowed:
+        raise HTTPException(status_code=400, detail="Невідомий блок")
+    if section_id in {"hero", "footer"}:
+        return RedirectResponse(url=f"/crm/seller/{crm_slug}/website/blocks?status=locked", status_code=303)
+    site = await get_current_seller_site_or_404(account["seller_id"])
+    config_draft = _as_config(site)
+    current_modules = config_draft.get("modules", {}) if isinstance(config_draft.get("modules"), dict) else {}
+    next_value = not bool(current_modules.get(section_id, False))
+    await update_current_site_draft(account["seller_id"], {"modules": {section_id: next_value}})
+    return RedirectResponse(url=f"/crm/seller/{crm_slug}/website/blocks?status=saved", status_code=303)
+
+
+@router.post("/{crm_slug}/website/blocks/move")
+async def seller_crm_website_blocks_move(
+    request: Request,
+    crm_slug: str,
+    section_id: str = Form(...),
+    direction: str = Form(...),
+):
+    account, _ = await _authorized_account(request, crm_slug)
+    section_id = str(section_id or "").strip().lower()
+    direction = str(direction or "").strip().lower()
+    if direction not in {"up", "down"}:
+        raise HTTPException(status_code=400, detail="Невірний напрям")
+    allowed = [item[0] for item in WEBSITE_BLOCKS_CRM_ORDER]
+    if section_id not in allowed:
+        raise HTTPException(status_code=400, detail="Невідомий блок")
+    site = await get_current_seller_site_or_404(account["seller_id"])
+    config_draft = _as_config(site)
+    order = normalize_sections_order(config_draft.get("sections_order"), template_id=((config_draft.get("design") or {}).get("template_id")))
+    if section_id not in order:
+        order.append(section_id)
+    idx = order.index(section_id)
+    swap_idx = idx - 1 if direction == "up" else idx + 1
+    if 0 <= swap_idx < len(order):
+        order[idx], order[swap_idx] = order[swap_idx], order[idx]
+    # keep footer last for safety
+    if "footer" in order:
+        order = [k for k in order if k != "footer"] + ["footer"]
+    await update_current_site_draft(account["seller_id"], {"sections_order": order, "layout": {"order": order}})
+    return RedirectResponse(url=f"/crm/seller/{crm_slug}/website/blocks?status=saved", status_code=303)
 
 
 @router.post("/{crm_slug}/website/texts")
