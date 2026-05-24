@@ -1383,6 +1383,31 @@ async def inline_layout_reorder(request: Request):
     return JSONResponse({"status": "ok", "order": clean})
 
 
+@router.post("/edit/theme")
+async def inline_theme_update(request: Request):
+    body = await request.json()
+    token = str(request.query_params.get("token") or body.get("token") or "").strip()
+    site = await _authorized_site_for_inline_edit(request, token=token)
+    preset = str(body.get("preset") or "").strip()
+    theme_map = {
+        "dark_blue": {"scheme": "default", "accent": "#3b82f6"},
+        "dark_red": {"scheme": "parts_dark_red", "accent": "#ef4444"},
+        "graphite": {"scheme": "electric_premium_dark", "accent": "#64748b"},
+        "premium_black": {"scheme": "default", "accent": "#0f172a"},
+        "light_minimal": {"scheme": "light_blue", "accent": "#2563eb"},
+    }
+    selected = theme_map.get(preset)
+    if not selected:
+        raise HTTPException(status_code=400, detail="Invalid theme preset")
+    ok = await update_site_config_draft(
+        int(site["seller_id"]),
+        {"theme": {"preset": preset, "scheme": selected["scheme"], "accent": selected["accent"]}},
+    )
+    if not ok:
+        raise HTTPException(status_code=500, detail="Draft update failed")
+    return JSONResponse({"status": "ok", "theme": {"preset": preset, **selected}})
+
+
 # ================= LEAD FORM =================
 
 async def _create_lead_for_subdomain(

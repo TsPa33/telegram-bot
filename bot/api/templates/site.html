@@ -36,8 +36,9 @@
   <b>Конструктор сайту</b>
   <div class="cp-owner-edit-actions">
     <a href="{{ crm_base_url }}/crm/seller/{{ owner_crm_slug }}/website">← Кабінет</a>
-    <a href="/site/{{ subdomain }}">Перегляд</a>
-    <button type="button" data-constructor-action="blocks">Блоки сайту</button>
+    <button type="button" data-constructor-action="blocks">Блоки</button>
+    <button type="button" data-constructor-action="theme">Тема</button>
+    <a href="/site/{{ subdomain }}">Попередній перегляд</a>
     <button type="button" id="cpPublishBtn">Опублікувати</button>
   </div>
 </div>
@@ -150,6 +151,13 @@
   </div>
   <div id="cpBlocksList" class="constructor-panel-body"></div>
 </aside>
+<aside id="cpThemePanel" class="constructor-panel" aria-hidden="true">
+  <div class="constructor-panel-header">
+    <div><h3>Тема сайту</h3><p>Застосовується лише до чернетки</p></div>
+    <button type="button" id="cpThemeClose" class="constructor-close" aria-label="Закрити">✕</button>
+  </div>
+  <div id="cpThemeList" class="constructor-panel-body"></div>
+</aside>
 <div id="cpConstructorToast" class="constructor-toast" role="status" aria-live="polite"></div>
 {% endif %}
 
@@ -197,6 +205,9 @@
 }
 .cp-owner-edit-actions form { margin: 0; }
 .cp-owner-block-shell { position: relative; }
+.cp-add-block-separator { display:flex; align-items:center; gap:10px; margin:10px 0; color:#94a3b8; font-size:14px; }
+.cp-add-block-separator::before,.cp-add-block-separator::after{content:"";flex:1;height:1px;background:#334155;}
+.cp-add-block-separator button{border:1px dashed #475569;border-radius:999px;background:#0f172a;color:#cbd5e1;padding:6px 14px;cursor:pointer;}
 .cp-owner-block-controls {
     position: absolute; top: 12px; right: 12px; z-index: 1200; display: inline-flex; gap: 6px; background: rgba(11, 18, 32, 0.9);
     border: 1px solid #334155; border-radius: 999px; padding: 4px;
@@ -653,24 +664,33 @@ document.addEventListener("DOMContentLoaded", () => {
  const blockRegistry = {{ block_registry|tojson }};
  const blockNames = Object.fromEntries(Object.entries(blockRegistry).map(([k,v])=>[k,v.label]));
  const blockStates = {{ (config.get('modules', {}))|tojson }};
- const panel = document.getElementById("cpInlinePanel"); const blocksPanel = document.getElementById("cpBlocksPanel"); const backdrop=document.getElementById("cpConstructorBackdrop");
+ const panel = document.getElementById("cpInlinePanel"); const blocksPanel = document.getElementById("cpBlocksPanel"); const themePanel=document.getElementById("cpThemePanel"); const backdrop=document.getElementById("cpConstructorBackdrop");
  const form = document.getElementById("cpInlineForm"); const blockNameEl=document.getElementById("cpInlineBlockName"); const toast=document.getElementById("cpConstructorToast");
  let currentBlock = null;
  const schemas={hero:[{k:"title",l:"Головний заголовок"},{k:"subtitle",l:"Короткий опис",t:"textarea"},{k:"primary_button_text",l:"Текст кнопки"},{k:"primary_button_url",l:"Посилання кнопки"}],about:[{k:"title",l:"Заголовок"},{k:"text",l:"Текст",t:"textarea"}],cars:[{k:"title",l:"Заголовок"},{k:"intro",l:"Опис",t:"textarea"},{k:"per_page",l:"Кількість авто",t:"number"}],products:[{k:"title",l:"Заголовок блоку"},{k:"intro",l:"Короткий опис",t:"textarea"},{k:"per_page",l:"Кількість товарів на сторінці",t:"number"},{k:"search_enabled",l:"Пошук по товарах",t:"select",o:[["true","Увімкнено"],["false","Вимкнено"]]}],services:[{k:"title",l:"Заголовок блоку"},{k:"intro",l:"Короткий опис",t:"textarea"}],gallery:[{k:"title",l:"Заголовок"},{k:"items",l:"Елементи (по одному на рядок)",t:"textarea"}],contacts:[{k:"phone",l:"Телефон"},{k:"telegram",l:"Telegram"},{k:"viber",l:"Viber"},{k:"whatsapp",l:"WhatsApp"},{k:"address",l:"Адреса"}],map:[{k:"address_label",l:"Адреса"},{k:"map_embed",l:"Код карти",t:"textarea"}],footer:[{k:"business_name",l:"Назва компанії"},{k:"footer_text",l:"Текст футера",t:"textarea"}]};
  const showToast=(m)=>{toast.textContent=m;toast.classList.add("show");setTimeout(()=>toast.classList.remove("show"),2200)};
- const closePanels=()=>{panel.classList.remove("open");blocksPanel.classList.remove("open");backdrop.classList.remove("open");};
- const openPanel=(el)=>{panel.classList.remove("open");blocksPanel.classList.remove("open");el.classList.add("open");backdrop.classList.add("open");};
+ const closePanels=()=>{panel.classList.remove("open");blocksPanel.classList.remove("open");themePanel.classList.remove("open");backdrop.classList.remove("open");};
+ const openPanel=(el)=>{panel.classList.remove("open");blocksPanel.classList.remove("open");themePanel.classList.remove("open");el.classList.add("open");backdrop.classList.add("open");};
  const currentData=(k)=>({{ config|tojson }}[k]||{});
  const renderField=(f,v)=>{if(f.t==="textarea")return `<div class="constructor-field"><label>${f.l}</label><textarea name="${f.k}">${v||""}</textarea></div>`; if(f.t==="select") return `<div class="constructor-field"><label>${f.l}</label><select name="${f.k}">${f.o.map(([ov,ol])=>`<option value="${ov}" ${String(v)===ov?"selected":""}>${ol}</option>`).join("")}</select></div>`; return `<div class="constructor-field"><label>${f.l}</label><input type="${f.t||"text"}" name="${f.k}" value="${v??""}"></div>`;};
  const openEditor=(blockKey)=>{currentBlock=blockKey;const schema=schemas[blockKey]||[{k:"title",l:"Заголовок"},{k:"intro",l:"Опис",t:"textarea"}]; const data=currentData(blockKey); blockNameEl.textContent=blockNames[blockKey]||blockKey; form.innerHTML=schema.map(f=>renderField(f,data[f.k])).join(""); openPanel(panel);};
  const renderBlocks=()=>{const list=document.getElementById("cpBlocksList"); const keys=Object.keys(blockRegistry).filter(k=>["hero","services","cars","catalog","vin_request","gallery","about","contacts","map","footer"].includes(k)); list.innerHTML=keys.map(k=>{const visible=Boolean(blockStates[k]); return `<div class="constructor-block-row"><div><strong>${blockNames[k]}</strong><div>${visible?"Показано":"Приховано"}</div></div><div class="constructor-block-row-actions"><button type="button" data-block-toggle="${k}" data-visible="${visible?"0":"1"}">${visible?"Приховати":"Показати"}</button><button type="button" data-block-edit="${k}">Редагувати</button></div></div>`}).join("");};
+ const renderThemes=()=>{document.getElementById("cpThemeList").innerHTML=[["dark_blue","Dark blue"],["dark_red","Dark red"],["graphite","Graphite"],["premium_black","Premium black"],["light_minimal","Light minimal"]].map(([k,l])=>`<button type="button" class="constructor-close" style="text-align:left" data-theme-preset="${k}">${l}</button>`).join("");};
+ const saveDraft = async (url, body)=>{const res=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...body,token})}); if(!res.ok) throw new Error("save failed"); showToast("Чернетку збережено"); return res.json();};
  document.querySelectorAll("[data-editor-action='edit']").forEach(btn=>btn.addEventListener("click",()=>openEditor(btn.dataset.blockKey)));
- document.querySelectorAll("[data-editor-action='hide']").forEach(btn=>btn.addEventListener("click",async()=>{const k=btn.dataset.blockKey; await fetch(`/site/{{ subdomain }}/edit/block/${k}/visibility`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token,visible:false})}); showToast("Зміни збережено в чернетку"); window.location.href=`${window.location.pathname}?edit=1&token=${encodeURIComponent(token)}`;}));
+ document.querySelectorAll("[data-editor-action='hide']").forEach(btn=>btn.addEventListener("click",async()=>{const k=btn.dataset.blockKey; await saveDraft(`/site/{{ subdomain }}/edit/block/${k}/visibility`,{visible:false}); window.location.reload();}));
  document.querySelector("[data-constructor-action='blocks']")?.addEventListener("click",()=>{renderBlocks(); openPanel(blocksPanel);});
+ document.querySelector("[data-constructor-action='theme']")?.addEventListener("click",()=>{renderThemes(); openPanel(themePanel);});
  document.getElementById("cpBlocksList")?.addEventListener("click", async (e)=>{const t=e.target.closest("button"); if(!t) return; if(t.dataset.blockEdit){openEditor(t.dataset.blockEdit); return;} if(t.dataset.blockToggle){const k=t.dataset.blockToggle; const visible=t.dataset.visible==="1"; const res=await fetch(`/site/{{ subdomain }}/edit/block/${k}/visibility`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token,visible})}); if(res.ok){showToast("Зміни збережено в чернетку"); window.location.href=`${window.location.pathname}?edit=1&token=${encodeURIComponent(token)}`;}}});
- document.getElementById("cpInlineCancel")?.addEventListener("click",closePanels); document.getElementById("cpInlineClose")?.addEventListener("click",closePanels); document.getElementById("cpBlocksClose")?.addEventListener("click",closePanels); backdrop?.addEventListener("click",closePanels);
- document.getElementById("cpInlineSave")?.addEventListener("click", async ()=>{if(!currentBlock) return;const data=Object.fromEntries(new FormData(form).entries()); data.token=token; const res=await fetch(`/site/{{ subdomain }}/edit/block/${currentBlock}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)}); if(res.ok){showToast("Зміни збережено в чернетку"); window.location.href=`${window.location.pathname}?edit=1&token=${encodeURIComponent(token)}`;}});
+ document.getElementById("cpThemeList")?.addEventListener("click", async (e)=>{const t=e.target.closest("[data-theme-preset]"); if(!t) return; await saveDraft("/edit/theme",{preset:t.dataset.themePreset}); window.location.reload();});
+ document.getElementById("cpInlineCancel")?.addEventListener("click",closePanels); document.getElementById("cpInlineClose")?.addEventListener("click",closePanels); document.getElementById("cpBlocksClose")?.addEventListener("click",closePanels); document.getElementById("cpThemeClose")?.addEventListener("click",closePanels); backdrop?.addEventListener("click",closePanels);
+ document.getElementById("cpInlineSave")?.addEventListener("click", async ()=>{if(!currentBlock) return;const data=Object.fromEntries(new FormData(form).entries()); await saveDraft(`/site/{{ subdomain }}/edit/block/${currentBlock}`,data); window.location.reload();});
  document.getElementById("cpPublishBtn")?.addEventListener("click", async ()=>{const r=await fetch('/edit/publish',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token})}); const d=await r.json(); alert(d.message||"Сайт опубліковано.");});
+
+ const addSeparators=()=>{const blocks=[...document.querySelectorAll(".cp-owner-block-shell")]; blocks.forEach((block)=>{const sep=document.createElement("div"); sep.className="cp-add-block-separator"; sep.innerHTML=`<button type="button" data-constructor-action="blocks">+ Додати блок</button>`; block.after(sep);}); document.querySelectorAll(".cp-add-block-separator [data-constructor-action='blocks']").forEach(b=>b.addEventListener("click",()=>{renderBlocks();openPanel(blocksPanel);}));};
+ const inlineMap=[["hero","h1","title"],["hero","p","subtitle"],["services","#serviceTitle","title"],["about","h2","title"],["about","p","text"]];
+ inlineMap.forEach(([block,sel,key])=>{const root=document.querySelector(`[data-block='${block}']`); const el=root?.querySelector(sel); if(!el) return; el.setAttribute("contenteditable","true"); el.dataset.inlineBlock=block; el.dataset.inlineKey=key; el.addEventListener("blur", async ()=>{await saveDraft(`/site/{{ subdomain }}/edit/block/${block}`,{[key]:el.textContent.trim()});});});
+ addSeparators();
 });
 </script>
 {% endif %}
