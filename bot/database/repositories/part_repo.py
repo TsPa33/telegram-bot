@@ -588,11 +588,14 @@ async def get_available_parts_for_site(seller_id: int) -> list:
     )
 
 
-async def get_available_parts_for_site_paginated(seller_id: int, *, limit: int = 100, offset: int = 0) -> list:
+async def get_available_parts_for_site_paginated(seller_id: int, *, limit: int = 100, offset: int = 0, filters: dict | None = None) -> list:
     normalized_limit = max(1, min(int(limit or 100), 300))
     normalized_offset = max(0, int(offset or 0))
+    args=[seller_id]
+    filters_sql=_part_filter_sql(filters,args)
+    args.extend([normalized_limit, normalized_offset])
     return await fetch(
-        """
+        f"""
         SELECT
             sp.id,
             sp.car_id,
@@ -609,12 +612,11 @@ async def get_available_parts_for_site_paginated(seller_id: int, *, limit: int =
         JOIN brands b ON b.id = m.brand_id
         WHERE sp.seller_id = $1
           AND sp.status = 'available'
+          {filters_sql}
         ORDER BY sc.id DESC, sp.sort_order, sp.name
-        LIMIT $2 OFFSET $3
+        LIMIT ${len(args)-1} OFFSET ${len(args)}
         """,
-        seller_id,
-        normalized_limit,
-        normalized_offset,
+        *args,
     )
 
 
@@ -659,16 +661,53 @@ async def search_available_parts_for_site(seller_id: int, query: str, limit: int
     )
 
 
-async def search_available_parts_for_site_paginated(seller_id: int, query: str, *, limit: int = 200, offset: int = 0) -> list:
+async def search_available_parts_for_site_paginated(seller_id: int, query: str, *, limit: int = 200, offset: int = 0, filters: dict | None = None) -> list:
     normalized_limit = max(1, min(int(limit or 200), 300))
     normalized_offset = max(0, int(offset or 0))
-    return await search_available_parts_for_site(seller_id, query, limit=(normalized_limit, normalized_offset))
-
-
-async def count_search_available_parts_for_site(seller_id: int, query: str) -> int:
     q = f"%{(query or '').strip().lower()}%"
+    args=[seller_id,q]
+    filters_sql=_part_filter_sql(filters,args)
+    args.extend([normalized_limit, normalized_offset])
+    return await fetch(
+        f"""
+        SELECT sp.id, sp.car_id, sp.category, sp.name, sp.price, sp.photo_id, sp.description, m.name AS model, b.name AS brand
+        FROM seller_parts sp
+        JOIN seller_cars sc ON sc.id = sp.car_id
+        JOIN models m ON m.id = sc.model_id
+        JOIN brands b ON b.id = m.brand_id
+        WHERE sp.seller_id = $1
+          AND sp.status = 'available'
+          AND (
+            LOWER(COALESCE(sp.name, '')) LIKE $2
+            OR LOWER(COALESCE(sp.category, '')) LIKE $2
+            OR LOWER(COALESCE(sp.description, '')) LIKE $2
+            OR LOWER(COALESCE(b.name, '')) LIKE $2
+            OR LOWER(COALESCE(m.name, '')) LIKE $2
+          ){filters_sql}
+        ORDER BY sc.id DESC, sp.sort_order, sp.name
+        LIMIT ${len(args)-1} OFFSET ${len(args)}
+        """,
+        *args,
+    )
+
+
+def _part_filter_sql(filters: dict | None, args: list) -> str:
+    filters = filters or {}
+    clauses = []
+    for key, col in [("category", "sp.category"), ("brand", "b.name"), ("model", "m.name"), ("condition", "sp.condition"), ("availability", "sp.status")]:
+        value = str(filters.get(key) or "").strip()
+        if value:
+            args.append(value)
+            clauses.append(f"LOWER(COALESCE({col}, '')) = LOWER(${len(args)})")
+    return (" AND " + " AND ".join(clauses)) if clauses else ""
+
+
+async def count_search_available_parts_for_site(seller_id: int, query: str, filters: dict | None = None) -> int:
+    q = f"%{(query or '').strip().lower()}%"
+    args = [seller_id, q]
+    filters_sql = _part_filter_sql(filters, args)
     row = await fetchrow(
-        """
+        f"""
         SELECT COUNT(*)::int AS total
         FROM seller_parts sp
         JOIN seller_cars sc ON sc.id = sp.car_id
@@ -682,23 +721,28 @@ async def count_search_available_parts_for_site(seller_id: int, query: str) -> i
             OR LOWER(COALESCE(sp.description, '')) LIKE $2
             OR LOWER(COALESCE(b.name, '')) LIKE $2
             OR LOWER(COALESCE(m.name, '')) LIKE $2
-          )
+          ){filters_sql}
         """,
-        seller_id,
-        q,
+        *args,
     )
     return int((row or {}).get("total") or 0)
 
 
-async def count_available_parts_for_site(seller_id: int) -> int:
+async def count_available_parts_for_site(seller_id: int, filters: dict | None = None) -> int:
+    args=[seller_id]
+    filters_sql=_part_filter_sql(filters,args)
     row = await fetchrow(
-        """
+        f"""
         SELECT COUNT(*)::int AS total
-        FROM seller_parts
+        FROM seller_parts sp
+        LEFT JOIN seller_cars sc ON sc.id = sp.car_id
+        LEFT JOIN models m ON m.id = sc.model_id
+        LEFT JOIN brands b ON b.id = m.brand_id
         WHERE seller_id = $1
           AND status = 'available'
+          {filters_sql}
         """,
-        seller_id,
+        *args,
     )
     return int((row or {}).get("total") or 0)
 

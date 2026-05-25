@@ -1625,6 +1625,14 @@ async def public_site_v2(subdomain: str, request: Request):
     seller_snapshot = dict(seller or {})
     seller_id = int(site["seller_id"])
     search_query = str(request.query_params.get("q") or "").strip()
+    active_filters = {
+        "category": str(request.query_params.get("category") or "").strip(),
+        "brand": str(request.query_params.get("brand") or "").strip(),
+        "model": str(request.query_params.get("model") or "").strip(),
+        "condition": str(request.query_params.get("condition") or "").strip(),
+        "availability": str(request.query_params.get("availability") or "").strip(),
+    }
+    filters_active = any(active_filters.values())
     page_size = 24
     try:
         current_page = max(1, int(request.query_params.get("page") or 1))
@@ -1636,11 +1644,11 @@ async def public_site_v2(subdomain: str, request: Request):
         seller_snapshot["services_count"] = len(services)
     else:
         if search_query:
-            products_total = await count_search_seller_products(seller_id, search_query)
-            parts_total = await count_search_available_parts_for_site(seller_id, search_query)
+            products_total = await count_search_seller_products(seller_id, search_query, active_filters)
+            parts_total = await count_search_available_parts_for_site(seller_id, search_query, active_filters)
         else:
-            products_total = await count_seller_products_for_site(seller_id)
-            parts_total = await count_available_parts_for_site(seller_id)
+            products_total = await count_seller_products_for_site(seller_id, active_filters)
+            parts_total = await count_available_parts_for_site(seller_id, active_filters)
         total_items = products_total + parts_total
         total_pages = max(1, (total_items + page_size - 1) // page_size)
         if current_page > total_pages:
@@ -1651,17 +1659,21 @@ async def public_site_v2(subdomain: str, request: Request):
         if offset < products_total:
             prod_limit = min(page_size, products_total - offset)
             if search_query:
-                products = [dict(row) for row in await search_seller_products_paginated(seller_id, search_query, limit=prod_limit, offset=offset)]
+                products = [dict(row) for row in await search_seller_products_paginated(seller_id, search_query, limit=prod_limit, offset=offset, filters=active_filters)]
             else:
                 products = [dict(row) for row in await get_seller_products(seller_id, limit=prod_limit, offset=offset)]
         remaining = page_size - len(products)
         if remaining > 0:
             part_offset = max(0, offset - products_total)
             if search_query:
-                parts = [dict(row) for row in await search_available_parts_for_site_paginated(seller_id, search_query, limit=remaining, offset=part_offset)]
+                parts = [dict(row) for row in await search_available_parts_for_site_paginated(seller_id, search_query, limit=remaining, offset=part_offset, filters=active_filters)]
             else:
-                parts = [dict(row) for row in await get_available_parts_for_site_paginated(seller_id, limit=remaining, offset=part_offset)]
+                parts = [dict(row) for row in await get_available_parts_for_site_paginated(seller_id, limit=remaining, offset=part_offset, filters=active_filters)]
         cars = [dict(row) for row in await get_cars_by_seller(seller_id)]
+        filter_categories = sorted({str((i.get("category") or "")).strip() for i in [*products, *parts] if str((i.get("category") or "")).strip()})
+        filter_brands = sorted({str((i.get("brand") or "")).strip() for i in [*products, *parts] if str((i.get("brand") or "")).strip()})
+        filter_models = sorted({str((i.get("model") or "")).strip() for i in [*products, *parts] if str((i.get("model") or "")).strip()})
+        filter_conditions = sorted({str((i.get("condition") or "")).strip() for i in products if str((i.get("condition") or "")).strip()})
         seller_snapshot["catalog_items"] = (
             [_normalize_catalog_item(item, "product") for item in products]
             + [_normalize_catalog_item(item, "part") for item in parts]
@@ -1672,6 +1684,9 @@ async def public_site_v2(subdomain: str, request: Request):
         seller_snapshot["current_search_query"] = search_query
         seller_snapshot["filtered_results_count"] = total_items
         seller_snapshot["search_active"] = bool(search_query)
+        seller_snapshot["active_filters"] = active_filters
+        seller_snapshot["filters_active"] = filters_active
+        seller_snapshot["filter_result_count"] = total_items
         seller_snapshot["current_page"] = current_page
         seller_snapshot["page_size"] = page_size
         seller_snapshot["total_items"] = total_items
@@ -1680,6 +1695,13 @@ async def public_site_v2(subdomain: str, request: Request):
         seller_snapshot["has_prev_page"] = current_page > 1
         seller_snapshot["next_page"] = current_page + 1 if current_page < total_pages else None
         seller_snapshot["prev_page"] = current_page - 1 if current_page > 1 else None
+        seller_snapshot["available_filter_options"] = {
+            "categories": filter_categories,
+            "brands": filter_brands,
+            "models": filter_models,
+            "conditions": filter_conditions,
+            "availability_options": ["available"],
+        }
     website_context = build_website_v2_context(dict(site), seller_snapshot)
     template_name = "public_site_v2/carpot_business.html" if site.get("site_type") == "carpot_business" else "public_site_v2/carpot_catalog.html"
     return templates.TemplateResponse(template_name, {"request": request, "website": site, "website_context": website_context})
