@@ -14,14 +14,46 @@
   {% set catalog_items = catalog_items[:(catalog.get('per_page') or 12)] %}
 
   {% set featured_categories = catalog.get('featured_categories') if catalog.get('featured_categories') is iterable and catalog.get('featured_categories') is not string else [] %}
-  {% if not featured_categories %}{% set featured_categories = ['Двигуни', 'Кузов', 'Оптика', 'Підвіска', 'Салон', 'Електрика'] %}{% endif %}
+  {% if not featured_categories %}{% set featured_categories = ['Двигуни', 'Кузов', 'Оптика', 'Підвіска', 'Салон', 'Турбіни'] %}{% endif %}
+
+  {% set category_descriptions = {
+    'Двигуни': 'Мотори, ГБЦ, навісне обладнання',
+    'Кузов': 'Двері, крила, бампери, навісні елементи',
+    'Оптика': 'Фари, ліхтарі, поворотники, LED модулі',
+    'Підвіска': 'Стійки, важелі, амортизатори, ступиці',
+    'Салон': 'Керма, сидіння, карти, пластик салону',
+    'Турбіни': 'Турбокомпресори та комплектуючі'
+  } %}
 
   {% set cloudinary = catalog.get('cloudinary_assets', {}) if catalog.get('cloudinary_assets') is mapping else {} %}
-  {% set hero_image = hero.get('image') or cloudinary.get('hero') or 'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto,w_1400/v1/samples/car' %}
+  {% set hero_image = hero.get('image') or cloudinary.get('hero') or 'https://res.cloudinary.com/dyem6pgtd/image/upload/v1779621565/catalog-hero-warehouse-01.png_hjmyou.png' %}
   {% set category_images = cloudinary.get('categories', {}) if cloudinary.get('categories') is mapping else {} %}
-  {% set fallback_part_image = cloudinary.get('fallback_part') or 'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto,w_800/v1/samples/ecommerce/shoes' %}
+  {% set default_category_images = {
+    'Двигуни':'https://res.cloudinary.com/dyem6pgtd/image/upload/v1779622104/category-engine-01.png_ccs0tw.png',
+    'Кузов':'https://res.cloudinary.com/dyem6pgtd/image/upload/v1779622101/category-bodyparts-01.png_tu4pum.png',
+    'Оптика':'https://res.cloudinary.com/dyem6pgtd/image/upload/v1779622105/category-headlights-01.png_uemvq6.png',
+    'Підвіска':'https://res.cloudinary.com/dyem6pgtd/image/upload/v1779622099/category-suspension-premium-01.png_gvvzto.png',
+    'Салон':'https://res.cloudinary.com/dyem6pgtd/image/upload/v1779621565/category-interior-01.png_po2zjo.png',
+    'Турбіни':'https://res.cloudinary.com/dyem6pgtd/image/upload/v1779622101/category-turbo-01.png_pgl3ka.png'
+  } %}
+  {% set fallback_part_image = cloudinary.get('fallback_part') or 'https://res.cloudinary.com/dyem6pgtd/image/upload/v1779621576/cooling-fan-premium-01.png_mainia.png' %}
 
-  {% set trust_items = ['Підбір по VIN', 'Відправка по Україні', 'Перевірка сумісності'] %}
+  {% set demo_products = [
+    {'title':'Вентилятор охолодження','category':'Охолодження','condition':'Вживаний / перевірений','availability':'В наявності','price':'Ціна за запитом','image':'https://res.cloudinary.com/dyem6pgtd/image/upload/v1779621576/cooling-fan-premium-01.png_mainia.png'},
+    {'title':'Гальмівний диск','category':'Гальмівна система','condition':'Новий','availability':'В наявності','price':'2 100 ₴','image':'https://res.cloudinary.com/dyem6pgtd/image/upload/v1779621576/performance-brake-disc-premium-01.png_u5ukzc.png'},
+    {'title':'Задній бампер','category':'Кузов','condition':'Вживаний','availability':'Під запит','price':'Ціна за запитом','image':'https://res.cloudinary.com/dyem6pgtd/image/upload/v1779621575/rear-bumper-premium-01.png_rnelli.png'},
+    {'title':'Бокове дзеркало','category':'Кузов','condition':'Вживаний','availability':'В наявності','price':'3 100 ₴','image':'https://res.cloudinary.com/dyem6pgtd/image/upload/v1779621574/side-mirror-premium-01.png_tfzitn.png'},
+    {'title':'Кермо','category':'Салон','condition':'Вживаний / оригінал','availability':'В наявності','price':'7 200 ₴','image':'https://res.cloudinary.com/dyem6pgtd/image/upload/v1779621572/steering-wheel-premium-01.png_iloavk.png'},
+    {'title':'Задній ліхтар','category':'Оптика','condition':'Вживаний','availability':'В наявності','price':'3 800 ₴','image':'https://res.cloudinary.com/dyem6pgtd/image/upload/v1779621572/rear-taillight-premium-01.png_czmvwd.png'},
+    {'title':'Решітка радіатора','category':'Кузов','condition':'Новий / aftermarket','availability':'В наявності','price':'2 900 ₴','image':'https://res.cloudinary.com/dyem6pgtd/image/upload/v1779621571/front-grille-premium-01.png_p54h2a.png'},
+    {'title':'Легкосплавний диск R18','category':'Диски','condition':'Вживаний','availability':'В наявності','price':'4 700 ₴','image':'https://res.cloudinary.com/dyem6pgtd/image/upload/v1779621571/alloy-wheel-premium-01.png_rr1uh9.png'},
+    {'title':'Переднє крило','category':'Кузов','condition':'Під фарбування','availability':'Під запит','price':'3 400 ₴','image':'https://res.cloudinary.com/dyem6pgtd/image/upload/v1779621570/front-fender-premium-01.png_ilyywu.png'},
+    {'title':'Акумулятор AGM 80Ah','category':'Електрика','condition':'Новий','availability':'В наявності','price':'5 400 ₴','image':'https://res.cloudinary.com/dyem6pgtd/image/upload/v1779621570/car-battery-premium-01.png_n60mbe.png'},
+    {'title':'Передні двері','category':'Кузов','condition':'Вживані','availability':'Під запит','price':'4 200 ₴','image':'https://res.cloudinary.com/dyem6pgtd/image/upload/v1779621566/front-door-premium-01.png_vuk2fm.png'},
+    {'title':'Вихлопна система','category':'Вихлоп','condition':'Новий / performance','availability':'В наявності','price':'9 800 ₴','image':'https://res.cloudinary.com/dyem6pgtd/image/upload/v1779621565/sport-exhaust-system-premium-01.png_lhk57x.png'}
+  ] %}
+
+  {% set trust_items = ['Підбір по VIN', 'Перевірка сумісності', 'Відправка по Україні'] %}
 
   <header class="cpv2-header">
     <div class="container cpv2-header__inner">
@@ -40,16 +72,41 @@
     <div class="container cpv2-hero__inner">
       <div class="cpv2-hero__content">
         <p class="cpv2-eyebrow">CarPot Catalog Pro</p>
-        <h1>{{ hero.get('title') or 'Каталог нових та вживаних автозапчастин' }}</h1>
-        <p>{{ hero.get('subtitle') or hero.get('description') or 'Підбір по категоріях, перевірка сумісності та запит ціни для конкретної деталі.' }}</p>
-        <a class="cpv2-btn cpv2-btn--dark" href="#products">Перейти в каталог</a>
+        <h1>{{ hero.get('title') or 'Автозапчастини та автопослуги в одному місці' }}</h1>
+        <p>{{ hero.get('subtitle') or hero.get('description') or 'Підбір деталей, авто на розборці та консультація по VIN.' }}</p>
+        <div class="cpv2-hero__actions">
+          <a class="cpv2-btn cpv2-btn--dark" href="#products">Перейти в каталог</a>
+          <a class="cpv2-btn cpv2-btn--light" href="#vin-request">Надіслати VIN запит</a>
+        </div>
       </div>
       <div class="cpv2-hero__media">
-        <img class="site-image" src="{{ hero_image }}" alt="CarPot" loading="lazy">
+        <img class="site-image" src="{{ hero_image }}" alt="CarPot каталог" loading="lazy">
       </div>
     </div>
   </section>
   {% endif %}
+
+  <section class="cpv2-categories" id="categories">
+    <div class="container">
+      <div class="cpv2-content__head">
+        <h2>Популярні категорії</h2>
+      </div>
+      <div class="cpv2-categories__grid">
+        {% for category in featured_categories[:6] %}
+        <article class="cpv2-category-card">
+          <div class="cpv2-category-card__media">
+            <img class="site-image" src="{{ category_images.get(category) or default_category_images.get(category) or fallback_part_image }}" alt="{{ category }}" loading="lazy">
+          </div>
+          <div class="cpv2-category-card__body">
+            <h3>{{ category }}</h3>
+            <p>{{ category_descriptions.get(category) or 'Позиції в наявності та під замовлення.' }}</p>
+            <a href="#products" class="cpv2-btn cpv2-btn--light">Переглянути</a>
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
 
   <section class="cpv2-shop" id="products">
     <div class="container cpv2-shop__layout">
@@ -57,62 +114,56 @@
         <h3>Фільтри</h3>
         <div class="cpv2-filter-group">
           <h4>Категорія</h4>
-          <ul>
-            {% for category in featured_categories %}<li><a href="#products">{{ category }}</a></li>{% endfor %}
-          </ul>
+          <ul>{% for category in featured_categories %}<li><a href="#products">{{ category }}</a></li>{% endfor %}</ul>
         </div>
-        <div class="cpv2-filter-group">
-          <h4>Стан</h4>
-          <ul><li><a href="#products">Нові</a></li><li><a href="#products">Вживані</a></li></ul>
-        </div>
-        <div class="cpv2-filter-group">
-          <h4>Наявність</h4>
-          <ul><li><a href="#products">В наявності</a></li><li><a href="#products">Під замовлення</a></li></ul>
-        </div>
-        <div class="cpv2-filter-group">
-          <h4>Ціна</h4>
-          <ul><li><a href="#products">До 5 000 ₴</a></li><li><a href="#products">5 000 - 15 000 ₴</a></li><li><a href="#products">15 000 ₴+</a></li></ul>
-        </div>
+        <div class="cpv2-filter-group"><h4>Стан</h4><ul><li><a href="#products">Нові</a></li><li><a href="#products">Вживані</a></li></ul></div>
+        <div class="cpv2-filter-group"><h4>Наявність</h4><ul><li><a href="#products">В наявності</a></li><li><a href="#products">Під запит</a></li></ul></div>
+        <div class="cpv2-filter-group"><h4>Ціна</h4><ul><li><a href="#products">До 5 000 ₴</a></li><li><a href="#products">5 000 - 15 000 ₴</a></li><li><a href="#products">15 000 ₴+</a></li></ul></div>
       </aside>
 
       <div class="cpv2-content">
         <div class="cpv2-content__head">
           <h2>{{ catalog.get('title') or products_config.get('title') or 'Каталог запчастин' }}</h2>
-          <p>{{ catalog.get('description') or products_config.get('description') or 'Оберіть позицію або надішліть VIN-запит для точного підбору.' }}</p>
+          <p>{{ catalog.get('description') or products_config.get('description') or 'Оберіть позицію в каталозі або залиште VIN-запит для точного підбору.' }}</p>
         </div>
 
         <div class="cpv2-grid">
           {% if catalog_items %}
             {% for product in catalog_items %}
             {% set p_category = product.get('category') or 'Категорія не вказана' %}
-            {% set p_status = product.get('status') or product.get('condition') or 'Стан уточнюється' %}
+            {% set p_condition = product.get('condition') or product.get('status') or 'Стан уточнюється' %}
+            {% set p_availability = product.get('availability') or 'Наявність уточнюється' %}
             {% set p_price = product.get('price') or 'Ціна за запитом' %}
             <article class="cpv2-card">
               <div class="cpv2-card__media">
-                <img class="site-image" src="{{ product.get('image') or category_images.get(p_category) or fallback_part_image }}" alt="{{ product.get('title') or 'Автозапчастина' }}" loading="lazy">
+                <img class="site-image" src="{{ product.get('image') or category_images.get(p_category) or default_category_images.get(p_category) or fallback_part_image }}" alt="{{ product.get('title') or 'Автозапчастина' }}" loading="lazy">
               </div>
               <div class="cpv2-card__body">
                 <h3>{{ product.get('title') or 'Запчастина під запит' }}</h3>
-                <p class="cpv2-card__meta">{{ p_category }} · {{ p_status }}</p>
+                <p class="cpv2-card__meta">{{ p_category }}</p>
+                <p class="cpv2-card__spec">Стан: {{ p_condition }}</p>
+                <p class="cpv2-card__spec">Наявність: {{ p_availability }}</p>
                 <div class="cpv2-card__bottom">
                   <strong>{{ p_price }}</strong>
-                  <a class="cpv2-btn cpv2-btn--light" href="#vin-request">Запит ціни</a>
+                  <a class="cpv2-btn cpv2-btn--light" href="#vin-request">Уточнити</a>
                 </div>
               </div>
             </article>
             {% endfor %}
           {% else %}
-            {% for category in featured_categories %}
+            {% for product in demo_products %}
             <article class="cpv2-card">
               <div class="cpv2-card__media">
-                <img class="site-image" src="{{ category_images.get(category) or fallback_part_image }}" alt="{{ category }}" loading="lazy">
+                <img class="site-image" src="{{ product.get('image') }}" alt="{{ product.get('title') }}" loading="lazy">
               </div>
               <div class="cpv2-card__body">
-                <h3>{{ category }}</h3>
-                <p class="cpv2-card__meta">Наявність уточнюється · Нові/вживані</p>
+                <h3>{{ product.get('title') }}</h3>
+                <p class="cpv2-card__meta">{{ product.get('category') }}</p>
+                <p class="cpv2-card__spec">Стан: {{ product.get('condition') }}</p>
+                <p class="cpv2-card__spec">Наявність: {{ product.get('availability') }}</p>
                 <div class="cpv2-card__bottom">
-                  <strong>Ціна за запитом</strong>
-                  <a class="cpv2-btn cpv2-btn--light" href="#vin-request">Запит ціни</a>
+                  <strong>{{ product.get('price') }}</strong>
+                  <a class="cpv2-btn cpv2-btn--light" href="#vin-request">Уточнити</a>
                 </div>
               </div>
             </article>
@@ -127,8 +178,8 @@
   <section id="vin-request" class="cpv2-vin">
     <div class="container cpv2-vin__inner">
       <div>
-        <h2>VIN запит та консультація по запчастинах</h2>
-        <p>Надішліть VIN, марку або модель авто. Менеджер перевірить сумісність та доступність.</p>
+        <h2>Не знаєте, яка деталь підходить?</h2>
+        <p>Надішліть VIN, марку або модель — допоможемо підібрати сумісну запчастину.</p>
       </div>
       <form class="cpv2-vin-form" data-cp-vin-form>
         <input type="text" name="vehicle" placeholder="VIN / марка / модель" required>
@@ -163,7 +214,12 @@
 .cpv2-eyebrow{font-size:.74rem;text-transform:uppercase;letter-spacing:.1em;color:#666;margin:0 0 12px}
 .cpv2-hero__content h1{margin:0 0 12px;font-size:clamp(2rem,4vw,3.2rem);line-height:1.02}
 .cpv2-hero__content p{margin:0 0 18px;color:#555;max-width:60ch}
-.cpv2-hero__media{border-radius:24px;overflow:hidden;background:#f3f3f3}
+.cpv2-hero__actions{display:flex;gap:10px;flex-wrap:wrap}
+.cpv2-hero__media{border-radius:24px;overflow:hidden;background:#f3f3f3}.cpv2-hero__media img{width:100%;height:100%;object-fit:cover}
+.cpv2-categories{padding:4px 0 14px}.cpv2-categories__grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
+.cpv2-category-card{background:#fff;border:1px solid #ececec;border-radius:20px;overflow:hidden}
+.cpv2-category-card__media{aspect-ratio:16/10;background:#f5f5f5}.cpv2-category-card__media img{width:100%;height:100%;object-fit:contain;padding:12px}
+.cpv2-category-card__body{padding:14px}.cpv2-category-card__body h3{margin:0 0 8px;font-size:1.04rem}.cpv2-category-card__body p{margin:0 0 12px;color:#666;font-size:.9rem}
 .cpv2-shop{padding:10px 0 40px}.cpv2-shop__layout{display:grid;grid-template-columns:280px 1fr;gap:28px}
 .cpv2-filters{border:1px solid #e8e8e8;border-radius:20px;padding:20px;position:sticky;top:90px;height:fit-content;background:#fff}
 .cpv2-filters h3{margin:0 0 12px}.cpv2-filter-group{border-top:1px solid #efefef;padding-top:12px;margin-top:12px}
@@ -171,14 +227,17 @@
 .cpv2-filter-group a{text-decoration:none;color:#4a4a4a;font-size:.9rem}
 .cpv2-content__head{margin-bottom:14px}.cpv2-content__head h2{margin:0 0 6px;font-size:2rem}.cpv2-content__head p{margin:0;color:#666}
 .cpv2-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
-.cpv2-card{background:#fff;border-radius:20px}.cpv2-card__media{aspect-ratio:1/1;border-radius:20px;overflow:hidden;background:#f2f2f2}
-.cpv2-card__body{padding:14px 2px 4px}.cpv2-card__body h3{margin:0 0 8px;font-size:1.05rem}.cpv2-card__meta{margin:0 0 12px;color:#666;font-size:.88rem}
-.cpv2-card__bottom{display:flex;align-items:center;justify-content:space-between;gap:8px}.cpv2-card__bottom strong{font-size:1.12rem}
+.cpv2-card{background:#fff;border-radius:20px;border:1px solid #ececec;overflow:hidden}
+.cpv2-card__media{aspect-ratio:1/1;border-radius:20px 20px 0 0;overflow:hidden;background:#f5f5f5}
+.cpv2-card__media img{width:100%;height:100%;object-fit:contain;padding:18px}
+.cpv2-card__body{padding:14px}.cpv2-card__body h3{margin:0 0 8px;font-size:1.05rem}.cpv2-card__meta{margin:0 0 6px;color:#444;font-size:.9rem;font-weight:600}
+.cpv2-card__spec{margin:0 0 6px;color:#666;font-size:.86rem}
+.cpv2-card__bottom{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:10px}.cpv2-card__bottom strong{font-size:1.12rem}
 .cpv2-vin{padding:36px 0}.cpv2-vin__inner{background:#f6f6f6;border-radius:24px;padding:26px;display:grid;grid-template-columns:1fr 1.1fr;gap:20px;align-items:center}
 .cpv2-vin__inner h2{margin:0 0 8px;font-size:2rem}.cpv2-vin__inner p{margin:0;color:#555}
 .cpv2-vin-form{display:grid;grid-template-columns:1fr 1fr;gap:10px}.cpv2-vin-form input{border:1px solid #ddd;border-radius:12px;padding:12px}.cpv2-vin-form button{grid-column:span 2}
 .cpv2-trust{padding:0 0 30px}.cpv2-trust__row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.cpv2-trust__row span{border:1px solid #e5e5e5;border-radius:14px;padding:14px;text-align:center;font-weight:600}
 .cpv2-footer{border-top:1px solid #ececec;padding:24px 0 34px}.cpv2-footer__inner{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}.cpv2-footer__inner p{margin:0;color:#666}
-@media (max-width:1024px){.cpv2-hero__inner,.cpv2-shop__layout,.cpv2-vin__inner{grid-template-columns:1fr}.cpv2-filters{position:relative;top:0}.cpv2-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media (max-width:720px){.cpv2-grid,.cpv2-trust__row,.cpv2-vin-form{grid-template-columns:1fr}.cpv2-vin-form button{grid-column:auto}}
+@media (max-width:1024px){.cpv2-hero__inner,.cpv2-shop__layout,.cpv2-vin__inner{grid-template-columns:1fr}.cpv2-filters{position:relative;top:0}.cpv2-grid,.cpv2-categories__grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:720px){.cpv2-grid,.cpv2-categories__grid,.cpv2-trust__row,.cpv2-vin-form{grid-template-columns:1fr}.cpv2-vin-form button{grid-column:auto}}
 </style>
