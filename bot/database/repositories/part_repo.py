@@ -738,8 +738,8 @@ async def count_available_parts_for_site(seller_id: int, filters: dict | None = 
         LEFT JOIN seller_cars sc ON sc.id = sp.car_id
         LEFT JOIN models m ON m.id = sc.model_id
         LEFT JOIN brands b ON b.id = m.brand_id
-        WHERE seller_id = $1
-          AND status = 'available'
+        WHERE sp.seller_id = $1
+          AND sp.status = 'available'
           {filters_sql}
         """,
         *args,
