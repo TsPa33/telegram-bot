@@ -1,0 +1,53 @@
+{% extends "seller_crm/base.html" %}
+{% block content %}
+<h1>Заявки сайту</h1>
+<p>{{ website.name }}</p>
+
+{% if leads %}
+<table>
+    <thead>
+        <tr>
+            <th>Дата</th>
+            <th>Тип</th>
+            <th>Ім'я</th>
+            <th>Телефон</th>
+            <th>VIN</th>
+            <th>Позиція</th>
+            <th>Повідомлення</th>
+            <th>Статус</th>
+            <th>Дія</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for lead in leads %}
+        <tr>
+            <td>{{ lead.created_at }}</td>
+            <td>{{ lead.lead_type }}</td>
+            <td>{{ lead.name or '-' }}</td>
+            <td>{{ lead.phone }}</td>
+            <td>{{ lead.vin or '-' }}</td>
+            <td>{{ lead.item_title or '-' }}</td>
+            <td>{{ lead.message or '-' }}</td>
+            <td>{{ lead.status }}</td>
+            <td>
+                <form method="post" action="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/leads/{{ lead.id }}/status" style="display:inline">
+                    <input type="hidden" name="status" value="viewed">
+                    <button type="submit">Позначити переглянуто</button>
+                </form>
+                <form method="post" action="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/leads/{{ lead.id }}/status" style="display:inline">
+                    <input type="hidden" name="status" value="processed">
+                    <button type="submit">Оброблено</button>
+                </form>
+                <form method="post" action="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/leads/{{ lead.id }}/status" style="display:inline">
+                    <input type="hidden" name="status" value="archived">
+                    <button type="submit">Архівувати</button>
+                </form>
+            </td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>Поки що немає заявок для цього сайту.</p>
+{% endif %}
+{% endblock %}
