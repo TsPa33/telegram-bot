@@ -11,8 +11,8 @@
         .carpot-v2-nav a{padding:9px 12px;border-radius:999px;border:1px solid transparent;color:#2c2c2c;font-size:14px}
         .carpot-v2-nav a:hover{background:#f2f2f2;border-color:#ececec}
         .carpot-v2-head-actions{display:flex;align-items:center;gap:10px;min-width:0}
-        .carpot-v2-search{width:320px;max-width:100%;border:1px solid #ddd;background:#f8f8f8;border-radius:999px;padding:11px 15px;font-size:14px}
-        .carpot-v2-btn{display:inline-flex;align-items:center;justify-content:center;padding:11px 18px;border-radius:999px;border:1px solid #111;font-weight:650;font-size:14px;transition:.16s ease}
+        .carpot-v2-search{width:320px;max-width:100%;border:1px solid #ddd;background:#f8f8f8;border-radius:999px;padding:11px 15px;font-size:16px;min-height:44px}
+        .carpot-v2-btn{display:inline-flex;align-items:center;justify-content:center;padding:11px 18px;border-radius:999px;border:1px solid #111;font-weight:650;font-size:14px;transition:.16s ease;min-height:44px}
         .carpot-v2-btn-black{background:#111;color:#fff}.carpot-v2-btn-black:hover{background:#202020}
         .carpot-v2-btn-light{background:#fff;color:#111}.carpot-v2-btn-light:hover{background:#f3f3f3}
 
@@ -59,7 +59,7 @@
         .carpot-v2-vin h2{font-size:34px;line-height:1.08;margin:0 0 10px}
         .carpot-v2-vin p{margin:0 0 14px;color:#ddd}
         .carpot-v2-formgrid{display:grid;gap:10px;grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:10px}
-        .carpot-v2-input,.carpot-v2-textarea{padding:12px;border-radius:10px;border:1px solid #ddd;background:#fff;color:#111;font-size:14px;width:100%}
+        .carpot-v2-input,.carpot-v2-textarea{padding:12px;border-radius:10px;border:1px solid #ddd;background:#fff;color:#111;font-size:16px;width:100%;min-height:44px}
         .carpot-v2-textarea{min-height:92px}
 
         .carpot-v2-contacts h2{font-size:30px;margin:0 0 10px}
@@ -73,23 +73,57 @@
         }
         @media (max-width:900px){
             .carpot-v2-header-top{display:grid;grid-template-columns:1fr;gap:10px}
-            .carpot-v2-head-actions{justify-content:space-between}
+            .carpot-v2-head-actions{justify-content:space-between;display:grid;grid-template-columns:1fr auto auto;gap:8px}
             .carpot-v2-search{flex:1;width:100%}
             .carpot-v2-hero,.carpot-v2-catalog{grid-template-columns:1fr}
             .carpot-v2-filter{position:static}
             .carpot-v2-formgrid{grid-template-columns:1fr 1fr}
         }
+        @media (max-width:768px){
+            .carpot-v2-main{padding:18px 0 34px}
+            .carpot-v2-catalog{gap:14px}
+            .carpot-v2-grid{grid-template-columns:1fr;gap:14px}
+            .carpot-v2-row{flex-wrap:wrap}
+            .carpot-v2-price{font-size:20px}
+        }
         @media (max-width:640px){
             .carpot-v2-filter-group{padding:10px}
             .carpot-v2-wrap{padding:0 14px}
             .carpot-v2-brand b{font-size:20px}
-            .carpot-v2-nav{overflow:auto;padding-bottom:4px;white-space:nowrap;flex-wrap:nowrap}
+            .carpot-v2-brand span{font-size:11px}
+            .carpot-v2-nav{overflow-x:auto;overflow-y:hidden;padding-bottom:4px;white-space:nowrap;flex-wrap:nowrap;gap:6px;-webkit-overflow-scrolling:touch}
             .carpot-v2-nav a{display:inline-flex}
+            .carpot-v2-head-actions{grid-template-columns:1fr;gap:8px}
+            .carpot-v2-head-actions .carpot-v2-btn{width:100%}
             .carpot-v2-hero-copy{padding:24px 20px}
             .carpot-v2-hero h1{font-size:32px}
             .carpot-v2-hero p{font-size:15px}
             .carpot-v2-strip,.carpot-v2-grid{grid-template-columns:1fr}
             .carpot-v2-vin h2{font-size:28px}
             .carpot-v2-formgrid{grid-template-columns:1fr}
+            .carpot-v2-filter form{gap:10px}
+            .carpot-v2-filter .carpot-v2-btn{width:100%}
+            .carpot-v2-card{padding:12px;gap:10px}
+        }
+        @media (max-width:430px){
+            .carpot-v2-wrap{padding:0 12px}
+            .carpot-v2-header-top{padding:12px 0}
+            .carpot-v2-nav a{padding:8px 10px;font-size:13px}
+            .carpot-v2-hero h1{font-size:29px}
+            .carpot-v2-hero-copy{padding:18px 16px}
+            .carpot-v2-strip-item{min-height:82px;padding:12px}
+            .carpot-v2-strip-item b{font-size:24px}
+            .carpot-v2-vin{padding:18px}
+            .carpot-v2-section h2{font-size:27px}
+        }
+        @media (max-width:375px){
+            .carpot-v2-btn{font-size:13px;padding:10px 14px}
+            .carpot-v2-cats{gap:8px}
+            .carpot-v2-chip{padding:9px 12px;font-size:12px}
+        }
+        @media (max-width:320px){
+            .carpot-v2-wrap{padding:0 10px}
+            .carpot-v2-brand b{font-size:18px}
+            .carpot-v2-search{padding:10px 12px}
         }
     
