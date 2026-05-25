@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CarPot Catalog Pro — Wireframe Preview</title>
   <style>
+    @import url("https://fonts.googleapis.com/css2?family=Jockey+One&display=swap");
     :root{--cpw-bg:#f4f6f9;--cpw-surface:#fff;--cpw-dark:#0f1722;--cpw-dark-soft:#172233;--cpw-text:#131c2b;--cpw-muted:#5f6f85;--cpw-border:#d7deea;--cpw-accent:#f2b705;--cpw-radius:12px;--cpw-shadow:0 8px 20px rgba(18,28,43,.08);--cpw-wrap:1280px;--cpw-header-h:78px}
     *{box-sizing:border-box} html,body{margin:0;overflow-x:hidden}
     body{font-family:Inter,Segoe UI,Roboto,Arial,sans-serif;background:var(--cpw-bg);color:var(--cpw-text)}
@@ -13,7 +14,7 @@
 
     .cpw-header{position:sticky;top:0;z-index:50;height:var(--cpw-header-h);background:var(--cpw-dark);border-bottom:1px solid rgba(255,255,255,.1)}
     .cpw-header__inner{height:100%;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:18px}
-    .cpw-logo{color:#fff;text-decoration:none;font-weight:800;font-size:1.08rem;white-space:nowrap;line-height:1.1}
+    .cpw-logo{color:#fff;text-decoration:none;font-family:"Jockey One",sans-serif;font-weight:400;font-size:1.28rem;letter-spacing:.02em;white-space:nowrap;line-height:1.1}
     .cpw-nav{display:flex;justify-content:center;gap:20px;min-width:0;overflow:auto}
     .cpw-nav a{color:#d9e4f6;text-decoration:none;font-size:.94rem;white-space:nowrap}
     .cpw-actions{display:flex;align-items:center;gap:8px}
@@ -30,7 +31,7 @@
     .cpw-hero__actions{display:flex;gap:10px;flex-wrap:wrap}
     .cpw-btn{display:inline-flex;align-items:center;justify-content:center;height:44px;padding:0 18px;border-radius:10px;text-decoration:none;font-weight:700;font-size:.94rem}
     .cpw-btn--primary{background:var(--cpw-accent);color:#1c2531}.cpw-btn--secondary{background:transparent;border:1px solid rgba(255,255,255,.3);color:#edf4ff}
-    .cpw-hero-meta{margin-top:14px;display:grid;gap:8px;justify-items:start;align-items:start;width:max-content;max-width:100%}
+    .cpw-hero-meta{margin-top:24px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;max-width:100%}
 
     .cpw-section{padding:36px 0}.cpw-section__head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}.cpw-section__head h2{margin:0;font-size:1.6rem}
     .cpw-categories{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
@@ -65,7 +66,7 @@
   <div class="cpw-page">
     <header class="cpw-header">
       <div class="cpw-container cpw-header__inner">
-        <a class="cpw-logo" href="#">CarPot Catalog</a>
+        <a class="cpw-logo" href="#">CarPot</a>
         <nav class="cpw-nav"><a href="#">Категорії</a><a href="#">Каталог</a><a href="#">Підбір</a><a href="#">Контакти</a></nav>
         <div class="cpw-actions"><button class="cpw-icon-btn" aria-label="Пошук">Пошук</button><button class="cpw-cart" aria-label="Кошик">Кошик 0</button><button class="cpw-cta">Підібрати деталь</button></div>
       </div>
