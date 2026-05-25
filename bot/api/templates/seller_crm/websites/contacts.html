@@ -1,1 +1,13 @@
-{% extends "seller_crm/base.html" %}{% block content %}<h1>contacts</h1><p>{{ website.name }} ({{ website.site_type }}) status={{ website.status }}</p><p><a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/design">Design</a> | <a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/content">Content</a> | <a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/contacts">Contacts</a> | <a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/publication">Publication</a></p>{% if 'contacts' == 'publication' %}<form method="post" action="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/publish"><button type="submit">Publish this website</button></form>{% endif %}{% endblock %}
+{% extends "seller_crm/base.html" %}
+{% block content %}
+<h1>Контакти сайту</h1>
+<p><b>{{ website.name }}</b> ({{ website.site_type }})</p>
+<p>За замовчуванням сайт використовує контакти з профілю продавця.</p>
+<p>Пізніше тут можна буде додати окремий номер для конкретного сайту.</p>
+<p>
+    <a href="/crm/seller/{{ account.crm_slug }}/profile#contacts-title">Перейти до контактів профілю</a>
+</p>
+<p>
+    <a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}">Назад до огляду</a>
+</p>
+{% endblock %}
