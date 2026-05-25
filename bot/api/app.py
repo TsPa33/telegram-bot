@@ -319,6 +319,75 @@ def _lead_text(value: str | None, max_len: int) -> str:
     return (value or "").strip()[:max_len]
 
 
+def _seo_text(value: str | None, fallback: str, max_len: int) -> str:
+    text = re.sub(r"\s+", " ", str(value or "").strip())
+    if not text:
+        text = fallback
+    return text[:max_len]
+
+
+def _build_site_seo(site: dict, website_context: dict, request: Request) -> dict:
+    seller_name = _seo_text(site.get("name"), site.get("subdomain") or "CarPot", 80)
+    title = _seo_text(
+        f"Автозапчастини та авто на розборі — {seller_name} | CarPot",
+        "Каталог запчастин | CarPot",
+        120,
+    )
+    description = _seo_text(
+        "Каталог автозапчастин, авто на розборі та VIN-підбір. Оригінальні деталі, швидкий пошук та заявки.",
+        "Каталог автозапчастин та авто на розборі.",
+        180,
+    )
+    base_url = str(request.url_for("public_site_v2", subdomain=site.get("subdomain")))
+    config = (website_context or {}).get("config") or {}
+    hero = config.get("hero") if isinstance(config.get("hero"), dict) else {}
+    banners = hero.get("banners") if isinstance(hero.get("banners"), list) else []
+    image = ""
+    if banners and isinstance(banners[0], dict):
+        image = str(banners[0].get("image") or "").strip()
+    return {
+        "title": title,
+        "description": description,
+        "canonical_url": base_url,
+        "robots": "index,follow",
+        "og_title": title,
+        "og_description": description,
+        "og_type": "website",
+        "og_url": base_url,
+        "og_image": image,
+    }
+
+
+def _build_product_seo(site: dict, detail_item: dict, request: Request) -> dict:
+    seller_name = _seo_text(site.get("name"), site.get("subdomain") or "CarPot", 80)
+    item_title = _seo_text(detail_item.get("title"), "Запчастина", 90)
+    title = _seo_text(f"{item_title} — {seller_name} | CarPot", "Запчастина | CarPot", 130)
+    meta_parts = [
+        item_title,
+        _seo_text(detail_item.get("brand"), "", 40),
+        _seo_text(detail_item.get("model"), "", 40),
+        _seo_text(detail_item.get("category"), "", 40),
+        _seo_text(detail_item.get("description"), "", 120),
+    ]
+    description = _seo_text(
+        ". ".join([p for p in meta_parts if p]),
+        "Автозапчастини в каталозі CarPot.",
+        180,
+    )
+    canonical_url = str(request.url_for("public_site_v2_product_detail", subdomain=site.get("subdomain"), item_id=detail_item.get("id")))
+    return {
+        "title": title,
+        "description": description,
+        "canonical_url": canonical_url,
+        "robots": "index,follow",
+        "og_title": title,
+        "og_description": description,
+        "og_type": "product",
+        "og_url": canonical_url,
+        "og_image": str(detail_item.get("image_url") or "").strip(),
+    }
+
+
 def _buyer_filter_context(results: dict | None = None, **overrides) -> dict:
     results = results or {}
     selected = {
@@ -1725,8 +1794,9 @@ async def public_site_v2(subdomain: str, request: Request):
         seller_snapshot["sort_active"] = current_sort != "newest"
         seller_snapshot["sorting_label"] = sorting_label_map.get(current_sort, "Новіші")
     website_context = build_website_v2_context(dict(site), seller_snapshot)
+    seo = _build_site_seo(dict(site), website_context, request)
     template_name = "public_site_v2/carpot_business.html" if site.get("site_type") == "carpot_business" else "public_site_v2/carpot_catalog.html"
-    return templates.TemplateResponse(template_name, {"request": request, "website": site, "website_context": website_context})
+    return templates.TemplateResponse(template_name, {"request": request, "website": site, "website_context": website_context, "seo": seo})
 
 
 @router.get("/w/{subdomain}/product/{item_id}", response_class=HTMLResponse)
@@ -1760,7 +1830,8 @@ async def public_site_v2_product_detail(subdomain: str, item_id: int, request: R
             related_items.append(item)
         if len(related_items) >= 4:
             break
-    return templates.TemplateResponse("public_site_v2/product_detail.html", {"request": request, "website": site, "detail_item": detail_item, "related_items": related_items})
+    seo = _build_product_seo(dict(site), detail_item, request)
+    return templates.TemplateResponse("public_site_v2/product_detail.html", {"request": request, "website": site, "detail_item": detail_item, "related_items": related_items, "seo": seo})
 
 
 @router.post("/w/{subdomain}/lead")

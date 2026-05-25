@@ -3,7 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{{ detail_item.title }} — {{ website.name or 'CarPot' }}</title>
+  <title>{{ seo.title if seo and seo.title else (detail_item.title ~ ' — ' ~ (website.name or 'CarPot')) }}</title>
+  <meta name="description" content="{{ seo.description if seo and seo.description else '' }}">
+  <meta name="robots" content="{{ seo.robots if seo and seo.robots else 'index,follow' }}">
+  <link rel="canonical" href="{{ seo.canonical_url if seo and seo.canonical_url else ('/w/' ~ website.subdomain ~ '/product/' ~ detail_item.id) }}">
+  <meta property="og:title" content="{{ seo.og_title if seo and seo.og_title else detail_item.title }}">
+  <meta property="og:description" content="{{ seo.og_description if seo and seo.og_description else '' }}">
+  <meta property="og:type" content="{{ seo.og_type if seo and seo.og_type else 'product' }}">
+  <meta property="og:url" content="{{ seo.og_url if seo and seo.og_url else ('/w/' ~ website.subdomain ~ '/product/' ~ detail_item.id) }}">
+  {% if seo and seo.og_image %}<meta property="og:image" content="{{ seo.og_image }}">{% endif %}
   <style>
     .carpot-v2{font-family:Inter,Arial,sans-serif;background:#fff;color:#111;max-width:100%;overflow-x:hidden}
     .carpot-v2 *{box-sizing:border-box}.carpot-v2 a{text-decoration:none;color:inherit}
