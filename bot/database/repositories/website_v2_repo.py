@@ -82,3 +82,54 @@ async def create_website_v2_lead(
         vin,
         item_title,
     )
+
+
+async def list_website_v2_leads(website_id: int, seller_id: int):
+    return await fetch(
+        """
+        SELECT *
+        FROM seller_website_v2_leads
+        WHERE website_id = $1
+          AND seller_id = $2
+        ORDER BY created_at DESC, id DESC
+        """,
+        website_id,
+        seller_id,
+    )
+
+
+async def get_website_v2_lead(lead_id: int, seller_id: int):
+    return await fetchrow(
+        """
+        SELECT *
+        FROM seller_website_v2_leads
+        WHERE id = $1
+          AND seller_id = $2
+        LIMIT 1
+        """,
+        lead_id,
+        seller_id,
+    )
+
+
+def _normalize_website_v2_lead_status(status: str) -> str:
+    value = (status or "").strip().lower()
+    if value not in {"new", "viewed", "processed", "archived"}:
+        raise ValueError("invalid website v2 lead status")
+    return value
+
+
+async def update_website_v2_lead_status(lead_id: int, seller_id: int, status: str):
+    normalized = _normalize_website_v2_lead_status(status)
+    return await fetchrow(
+        """
+        UPDATE seller_website_v2_leads
+        SET status = $3
+        WHERE id = $1
+          AND seller_id = $2
+        RETURNING *
+        """,
+        lead_id,
+        seller_id,
+        normalized,
+    )

@@ -170,8 +170,11 @@ from bot.services.domain_service import build_site_url, normalize_subdomain, val
 from bot.database.repositories.website_v2_repo import (
     create_website_v2,
     get_website_v2_by_id,
+    get_website_v2_lead,
+    list_website_v2_leads,
     list_websites_v2_by_seller,
     publish_website_v2,
+    update_website_v2_lead_status,
 )
 from bot.services.domain_service import validate_subdomain
 from bot.services.website_v2_config import normalize_website_v2_type
@@ -5144,6 +5147,34 @@ async def seller_crm_websites_publication(request: Request, crm_slug: str, websi
     website = await _get_v2_website_or_404(account, website_id)
     website_context = await _build_v2_context_payload(account, dict(website))
     return templates.TemplateResponse("seller_crm/websites/publication.html", _seller_crm_context(request, title="Публікація (V2)", current_page="websites_v2_publication", account=account, subscription=subscription, website=website, website_context=website_context, publish_error=request.query_params.get("error")))
+
+
+@router.get("/{crm_slug}/websites/{website_id}/leads")
+async def seller_crm_websites_leads(request: Request, crm_slug: str, website_id: int):
+    account, subscription = await _authorized_account(request, crm_slug)
+    website = await _get_v2_website_or_404(account, website_id)
+    leads = await list_website_v2_leads(int(website["id"]), int(account["seller_id"]))
+    return templates.TemplateResponse("seller_crm/websites/leads.html", _seller_crm_context(request, title="Заявки сайту (V2)", current_page="websites_v2_details", account=account, subscription=subscription, website=website, leads=leads))
+
+
+@router.post("/{crm_slug}/websites/{website_id}/leads/{lead_id}/status")
+async def seller_crm_websites_lead_status(
+    request: Request,
+    crm_slug: str,
+    website_id: int,
+    lead_id: int,
+    status: str = Form(...),
+):
+    account, _subscription = await _authorized_account(request, crm_slug)
+    website = await _get_v2_website_or_404(account, website_id)
+    lead = await get_website_v2_lead(lead_id, int(account["seller_id"]))
+    if not lead or int(lead["website_id"]) != int(website["id"]):
+        raise HTTPException(status_code=404)
+    try:
+        await update_website_v2_lead_status(lead_id, int(account["seller_id"]), status)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="invalid status")
+    return RedirectResponse(url=f"/crm/seller/{crm_slug}/websites/{website_id}/leads", status_code=303)
 
 
 @router.post("/{crm_slug}/websites/{website_id}/publish")
