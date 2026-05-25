@@ -59,6 +59,7 @@ from bot.services.site_config import (
     normalize_color_scheme,
     normalize_template_id,
 )
+from bot.services.website_v2_context import build_website_v2_context
 from bot.utils.subdomain import is_valid_subdomain
 from bot.services.domain_service import extract_subdomain_from_host
 from bot.services.seller_notification_ops import format_site_lead_notification, seller_crm_context_url
@@ -1537,8 +1538,10 @@ async def public_site_v2(subdomain: str, request: Request):
     site = await get_website_v2_by_subdomain(subdomain)
     if not site or site.get("status") != "published":
         raise HTTPException(status_code=404, detail="Website V2 not published")
+    seller = await get_seller_by_id(int(site["seller_id"]))
+    website_context = build_website_v2_context(dict(site), dict(seller or {}))
     template_name = "public_site_v2/carpot_business.html" if site.get("site_type") == "carpot_business" else "public_site_v2/carpot_catalog.html"
-    return templates.TemplateResponse(template_name, {"request": request, "website": site})
+    return templates.TemplateResponse(template_name, {"request": request, "website": site, "website_context": website_context})
 
 
 app.include_router(liqpay_router)
