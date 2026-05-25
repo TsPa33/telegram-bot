@@ -1,0 +1,39 @@
+/* Website V2 Product Detail (scoped) */
+.carpot-v2{font-family:Inter,Arial,sans-serif;background:#fff;color:#111;max-width:100%;overflow-x:hidden}
+.carpot-v2 *{box-sizing:border-box}
+.carpot-v2 a{text-decoration:none;color:inherit}
+
+.carpot-v2 .wrap{max-width:1180px;margin:0 auto;padding:20px 16px 40px}
+.carpot-v2 .top{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:16px}
+.carpot-v2 .btn{display:inline-flex;padding:10px 14px;border-radius:999px;border:1px solid #111;font-weight:650}
+.carpot-v2 .btn.black{background:#111;color:#fff}
+
+.carpot-v2 .layout{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+.carpot-v2 .media{border:1px solid #e7e7e7;border-radius:20px;background:#f4f4f4;overflow:hidden}
+.carpot-v2 .media img{width:100%;height:420px;object-fit:cover}
+.carpot-v2 .ph{height:420px;display:grid;place-items:center;color:#666}
+
+.carpot-v2 .meta{display:grid;gap:10px}
+.carpot-v2 .title{font-size:36px;line-height:1.08;margin:0}
+.carpot-v2 .small{color:#666;font-size:14px}
+.carpot-v2 .price{font-size:34px;font-weight:760;letter-spacing:-.02em}
+.carpot-v2 .badge{display:inline-flex;padding:6px 10px;border-radius:999px;border:1px solid #ddd;background:#f3f3f3;font-size:12px}
+.carpot-v2 .box{border:1px solid #e7e7e7;border-radius:16px;padding:14px;background:#fafafa}
+
+.carpot-v2 .related{margin-top:34px}
+.carpot-v2 .grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.carpot-v2 .card{border:1px solid #e7e7e7;border-radius:16px;padding:12px;display:grid;gap:9px}
+.carpot-v2 .card img,
+.carpot-v2 .card .phs{height:130px;width:100%;object-fit:cover;border-radius:12px;background:#efefef}
+
+@media (max-width:900px){
+  .carpot-v2 .layout{grid-template-columns:1fr}
+  .carpot-v2 .media img,
+  .carpot-v2 .ph{height:330px}
+  .carpot-v2 .grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+
+@media (max-width:640px){
+  .carpot-v2 .title{font-size:30px}
+  .carpot-v2 .grid{grid-template-columns:1fr}
+}
