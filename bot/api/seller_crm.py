@@ -175,6 +175,7 @@ from bot.database.repositories.website_v2_repo import (
     list_website_v2_leads,
     list_websites_v2_by_seller,
     publish_website_v2,
+    update_website_v2_draft,
     update_website_v2_lead_status,
 )
 from bot.services.domain_service import validate_subdomain
@@ -5152,7 +5153,41 @@ async def seller_crm_websites_content(request: Request, crm_slug: str, website_i
 async def seller_crm_websites_contacts(request: Request, crm_slug: str, website_id: int):
     account, subscription = await _authorized_account(request, crm_slug)
     website = await _get_v2_website_or_404(account, website_id)
-    return templates.TemplateResponse("seller_crm/websites/contacts.html", _seller_crm_context(request, title="Контакти (V2)", current_page="websites_v2_contacts", account=account, subscription=subscription, website=website))
+    website_context = await _build_v2_context_payload(account, dict(website))
+    profile_url = f"/crm/seller/{crm_slug}/profile#contacts-title"
+    return templates.TemplateResponse("seller_crm/websites/contacts.html", _seller_crm_context(request, title="Контакти (V2)", current_page="websites_v2_contacts", account=account, subscription=subscription, website=website, website_context=website_context, profile_url=profile_url, saved=request.query_params.get("saved")))
+
+
+@router.post("/{crm_slug}/websites/{website_id}/contacts")
+async def seller_crm_websites_contacts_save(
+    request: Request,
+    crm_slug: str,
+    website_id: int,
+    use_override: str = Form("0"),
+    phone: str = Form(""),
+    telegram: str = Form(""),
+    website_url: str = Form(""),
+    city: str = Form(""),
+    phones_text: str = Form(""),
+):
+    account, _subscription = await _authorized_account(request, crm_slug)
+    website = await _get_v2_website_or_404(account, website_id)
+    enable_override = str(use_override or "").strip().lower() in {"1", "true", "on", "yes"}
+    patch: dict = {}
+    if enable_override:
+        phones = [line.strip() for line in (phones_text or "").splitlines() if line.strip()]
+        contacts_payload = {
+            "phone": (phone or "").strip(),
+            "telegram": (telegram or "").strip(),
+            "website": (website_url or "").strip(),
+            "city": (city or "").strip(),
+            "phones": phones,
+        }
+        patch["contacts"] = {k: v for k, v in contacts_payload.items() if v}
+    else:
+        patch["contacts"] = {}
+    await update_website_v2_draft(int(website["id"]), patch)
+    return RedirectResponse(url=f"/crm/seller/{crm_slug}/websites/{website_id}/contacts?saved=1", status_code=303)
 
 
 @router.get("/{crm_slug}/websites/{website_id}/publication")
