@@ -52,3 +52,33 @@ async def publish_website_v2(website_id: int):
         "UPDATE seller_websites_v2 SET config_live=config_draft, status='published', published_at=NOW(), updated_at=NOW() WHERE id=$1",
         website_id,
     )
+
+
+async def create_website_v2_lead(
+    *,
+    website_id: int,
+    seller_id: int,
+    lead_type: str,
+    name: str | None,
+    phone: str,
+    message: str | None,
+    vin: str | None,
+    item_title: str | None,
+):
+    return await fetchrow(
+        """
+        INSERT INTO seller_website_v2_leads (
+            website_id, seller_id, lead_type, name, phone, message, vin, item_title, status
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'new')
+        RETURNING *
+        """,
+        website_id,
+        seller_id,
+        lead_type,
+        name,
+        phone,
+        message,
+        vin,
+        item_title,
+    )

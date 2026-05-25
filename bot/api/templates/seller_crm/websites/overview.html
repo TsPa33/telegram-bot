@@ -4,6 +4,7 @@
 <p>{{ website.name }} ({{ website_context.site_type }})</p>
 <p>Статус: {{ website_context.status }}</p>
 <p>URL: <a href="{{ website_context.public_url }}" target="_blank">{{ website_context.public_url }}</a></p>
+<p>Заявки з цього сайту будуть збережені в системі.</p>
 
 <h3>Чекліст готовності</h3>
 <p>{{ "Готово до публікації" if website_context.publish_ready else "Потрібно доповнити дані" }}</p>

@@ -22,6 +22,7 @@ from bot.database.models import create_tables
 from bot.database.migrations_runner import run_sql_migrations
 from bot.database.repositories.site_repo import get_site_by_subdomain
 from bot.database.repositories.website_v2_repo import get_website_v2_by_subdomain
+from bot.database.repositories.website_v2_repo import create_website_v2_lead
 from bot.database.repositories.seller_repo import get_seller_by_id
 from bot.database.repositories.car_repo import get_cars_by_seller
 from bot.database.repositories.service_repo import get_services_by_seller
@@ -269,6 +270,10 @@ def _normalize_service_item(item: dict) -> dict:
         "category": item.get("category") or "",
         "cta_label": "Замовити",
     }
+
+
+def _lead_text(value: str | None, max_len: int) -> str:
+    return (value or "").strip()[:max_len]
 
 
 def _buyer_filter_context(results: dict | None = None, **overrides) -> dict:
@@ -1600,6 +1605,48 @@ async def public_site_v2(subdomain: str, request: Request):
     website_context = build_website_v2_context(dict(site), seller_snapshot)
     template_name = "public_site_v2/carpot_business.html" if site.get("site_type") == "carpot_business" else "public_site_v2/carpot_catalog.html"
     return templates.TemplateResponse(template_name, {"request": request, "website": site, "website_context": website_context})
+
+
+@router.post("/w/{subdomain}/lead")
+async def create_site_v2_lead(
+    subdomain: str,
+    name: str = Form(""),
+    phone: str = Form(""),
+    message: str = Form(""),
+    vin: str = Form(""),
+    item_title: str = Form(""),
+    request_type: str = Form("contact"),
+):
+    website = await get_website_v2_by_subdomain(subdomain)
+    if not website or website.get("status") != "published":
+        return RedirectResponse(url=f"/w/{subdomain}?lead=error", status_code=303)
+    lead_type = request_type.strip().lower()
+    if lead_type not in {"catalog", "vin", "service", "contact"}:
+        lead_type = "contact"
+    normalized_phone = _lead_text(phone, 40)
+    normalized_name = _lead_text(name, 120) or None
+    normalized_message = _lead_text(message, 1000) or None
+    normalized_vin = _lead_text(vin, 120) or None
+    normalized_item = _lead_text(item_title, 240) or None
+    if not normalized_phone:
+        return RedirectResponse(url=f"/w/{subdomain}?lead=error", status_code=303)
+    if not (normalized_message or normalized_vin or normalized_item):
+        return RedirectResponse(url=f"/w/{subdomain}?lead=error", status_code=303)
+    try:
+        await create_website_v2_lead(
+            website_id=int(website["id"]),
+            seller_id=int(website["seller_id"]),
+            lead_type=lead_type,
+            name=normalized_name,
+            phone=normalized_phone,
+            message=normalized_message,
+            vin=normalized_vin,
+            item_title=normalized_item,
+        )
+    except Exception:
+        logger.exception("Failed to create v2 lead for %s", subdomain)
+        return RedirectResponse(url=f"/w/{subdomain}?lead=error", status_code=303)
+    return RedirectResponse(url=f"/w/{subdomain}?lead=success", status_code=303)
 
 
 app.include_router(liqpay_router)
