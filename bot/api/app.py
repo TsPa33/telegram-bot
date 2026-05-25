@@ -27,8 +27,8 @@ from bot.database.repositories.seller_repo import get_seller_by_id
 from bot.database.repositories.car_repo import get_cars_by_seller
 from bot.database.repositories.service_repo import get_services_by_seller
 from bot.database.repositories.lead_repo import create_site_lead
-from bot.database.repositories.part_repo import get_available_parts_for_site
-from bot.database.repositories.product_repo import get_seller_products
+from bot.database.repositories.part_repo import get_available_parts_for_site, get_part_by_id
+from bot.database.repositories.product_repo import get_seller_products, get_product_by_id
 from bot.services.buyer_request_service import (
     BuyerRequestInput,
     BuyerRequestValidationError,
@@ -269,6 +269,28 @@ def _normalize_service_item(item: dict) -> dict:
         "image_url": item.get("photo_url") or item.get("photo_id") or "",
         "category": item.get("category") or "",
         "cta_label": "Замовити",
+    }
+
+
+def _normalize_product_detail_item(item: dict, source_type: str, seller: dict) -> dict:
+    return {
+        "id": item.get("id"),
+        "source_type": source_type,
+        "title": item.get("title") or item.get("name") or "Запчастина",
+        "description": item.get("description") or "",
+        "category": item.get("category") or "Інше",
+        "price": item.get("price"),
+        "image_url": item.get("photo_url") or item.get("photo_id") or "",
+        "gallery": [img for img in [item.get("photo_url"), item.get("photo_id")] if img],
+        "condition": item.get("condition") or "",
+        "availability": "В наявності",
+        "brand": item.get("brand") or "",
+        "model": item.get("model") or "",
+        "seller_name": seller.get("shop_name") or seller.get("name") or "Продавець CarPot",
+        "seller_city": seller.get("city") or "",
+        "seller_phone": seller.get("phone") or "",
+        "created_at": item.get("created_at"),
+        "cta_label": "Уточнити наявність",
     }
 
 
@@ -1605,6 +1627,40 @@ async def public_site_v2(subdomain: str, request: Request):
     website_context = build_website_v2_context(dict(site), seller_snapshot)
     template_name = "public_site_v2/carpot_business.html" if site.get("site_type") == "carpot_business" else "public_site_v2/carpot_catalog.html"
     return templates.TemplateResponse(template_name, {"request": request, "website": site, "website_context": website_context})
+
+
+@router.get("/w/{subdomain}/product/{item_id}", response_class=HTMLResponse)
+async def public_site_v2_product_detail(subdomain: str, item_id: int, request: Request):
+    site = await get_website_v2_by_subdomain(subdomain)
+    if not site or site.get("status") != "published":
+        raise HTTPException(status_code=404, detail="Website V2 not published")
+    seller_id = int(site["seller_id"])
+    seller = dict(await get_seller_by_id(seller_id) or {})
+    product = await get_product_by_id(seller_id, item_id)
+    source_type = "product"
+    if product:
+        detail_item = _normalize_product_detail_item(dict(product), "product", seller)
+    else:
+        part = await get_part_by_id(item_id)
+        if not part or int(part.get("seller_id") or 0) != seller_id:
+            raise HTTPException(status_code=404, detail="Item not found")
+        source_type = "part"
+        detail_item = _normalize_product_detail_item(dict(part), "part", seller)
+
+    products = [dict(row) for row in await get_seller_products(seller_id, limit=40)]
+    parts = [dict(row) for row in await get_available_parts_for_site(seller_id)]
+    related_pool = ([_normalize_catalog_item(item, "product") for item in products] + [_normalize_catalog_item(item, "part") for item in parts])
+    related_items = []
+    for item in related_pool:
+        if int(item.get("id") or -1) == int(detail_item["id"]) and item.get("source_type") == source_type:
+            continue
+        same_category = item.get("category") and detail_item.get("category") and item.get("category") == detail_item.get("category")
+        same_brand = item.get("brand") and detail_item.get("brand") and item.get("brand") == detail_item.get("brand")
+        if same_category or same_brand:
+            related_items.append(item)
+        if len(related_items) >= 4:
+            break
+    return templates.TemplateResponse("public_site_v2/product_detail.html", {"request": request, "website": site, "detail_item": detail_item, "related_items": related_items})
 
 
 @router.post("/w/{subdomain}/lead")

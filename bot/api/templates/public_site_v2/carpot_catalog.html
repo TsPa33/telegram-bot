@@ -174,12 +174,12 @@
                 <div class="carpot-v2-grid">
                     {% for item in catalog_items %}
                         <article class="carpot-v2-card">
-                            {% if item.image_url %}<img class="carpot-v2-media" src="{{ item.image_url }}" alt="{{ item.title }}">{% else %}<div class="carpot-v2-media"></div>{% endif %}
-                            <h4 class="carpot-v2-title">{{ item.title }}</h4>
+                            {% if item.image_url %}<a href="/w/{{ website.subdomain }}/product/{{ item.id }}"><img class="carpot-v2-media" src="{{ item.image_url }}" alt="{{ item.title }}"></a>{% else %}<a href="/w/{{ website.subdomain }}/product/{{ item.id }}"><div class="carpot-v2-media"></div></a>{% endif %}
+                            <h4 class="carpot-v2-title"><a href="/w/{{ website.subdomain }}/product/{{ item.id }}">{{ item.title }}</a></h4>
                             <p class="carpot-v2-meta">{{ item.category }}{% if item.brand or item.model %} · {{ item.brand }} {{ item.model }}{% endif %}</p>
                             <p class="carpot-v2-desc">{{ item.description or "Опис буде оновлено продавцем." }}</p>
                             <div class="carpot-v2-row"><b class="carpot-v2-price">{% if item.price %}{{ item.price }} грн{% else %}Ціна за запитом{% endif %}</b><span class="carpot-v2-badge">{{ item.condition or 'Стан уточнюється' }}</span></div>
-                            <a class="carpot-v2-btn carpot-v2-btn-light" href="#vin-request" style="width:100%;min-height:42px">{{ item.cta_label or "Надіслати запит" }}</a>
+                            <a class="carpot-v2-btn carpot-v2-btn-light" href="/w/{{ website.subdomain }}/product/{{ item.id }}" style="width:100%;min-height:42px">{{ item.cta_label or "Надіслати запит" }}</a>
                         </article>
                     {% endfor %}
                 </div>
