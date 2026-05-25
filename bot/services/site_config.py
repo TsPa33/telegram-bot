@@ -5,6 +5,7 @@ CANONICAL_TEMPLATE_IDS = (
     "universal_classic",
     "universal_catalog",
     "universal_premium",
+    "universal_shopco_auto",
 )
 
 TEMPLATE_LEGACY_ALIASES: dict[str, str] = {
@@ -20,6 +21,7 @@ SITE_TEMPLATE_META: dict[str, dict[str, str]] = {
     "universal_classic": {"label": "Universal Sales", "concept": "Universal Sales"},
     "universal_catalog": {"label": "Calm Marketplace", "concept": "Calm Marketplace"},
     "universal_premium": {"label": "Brutal Metallic", "concept": "Brutal Metallic"},
+    "universal_shopco_auto": {"label": "Shopco Auto", "concept": "Shopco Auto"},
 }
 
 CANONICAL_COLOR_SCHEME_IDS = (
@@ -82,6 +84,7 @@ TEMPLATE_DEFAULT_SECTIONS_ORDER: dict[str, list[str]] = {
     "universal_premium": ["hero", "about", "catalog", "cars", "services", "gallery", "vin", "contacts", "map", "footer"],
     "universal_catalog": ["hero", "catalog", "cars", "vin", "gallery", "about", "contacts", "map", "footer"],
     "universal_classic": ["hero", "about", "services", "catalog", "cars", "gallery", "vin", "contacts", "map", "footer"],
+    "universal_shopco_auto": ["hero", "catalog", "cars", "vin", "services", "contacts", "map", "footer"],
 }
 
 
