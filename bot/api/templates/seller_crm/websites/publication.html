@@ -1,1 +1,24 @@
-{% extends "seller_crm/base.html" %}{% block content %}<h1>publication</h1><p>{{ website.name }} ({{ website.site_type }}) status={{ website.status }}</p><p><a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/design">Design</a> | <a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/content">Content</a> | <a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/contacts">Contacts</a> | <a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/publication">Publication</a></p>{% if 'publication' == 'publication' %}<form method="post" action="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/publish"><button type="submit">Publish this website</button></form>{% endif %}{% endblock %}
+{% extends "seller_crm/base.html" %}
+{% block content %}
+<h1>Публікація сайту</h1>
+<p>{{ website.name }} ({{ website_context.site_type }})</p>
+<p>Поточний статус: {{ website_context.status }}</p>
+<p>Готовність: {{ "Готово" if website_context.publish_ready else "Не готово" }}</p>
+
+{% if publish_error == 'validation' %}
+<p>Не вдалося опублікувати: заповніть обовʼязкові поля.</p>
+{% endif %}
+
+{% if website_context.missing_required_fields %}
+<h3>Що потрібно заповнити</h3>
+<ul>{% for item in website_context.missing_required_fields %}<li>{{ item }}</li>{% endfor %}</ul>
+{% endif %}
+
+{% if website_context.publish_ready %}
+<form method="post" action="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/publish">
+    <button type="submit">Опублікувати сайт</button>
+</form>
+{% else %}
+<p>Кнопка публікації стане доступною після виконання чекліста.</p>
+{% endif %}
+{% endblock %}
