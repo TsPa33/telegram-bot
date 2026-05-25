@@ -165,7 +165,16 @@ from bot.domain.statuses import (
     is_car_active_status,
     normalize_text_status,
 )
-from bot.services.domain_service import build_site_url
+from bot.services.domain_service import build_site_url, normalize_subdomain, validate_subdomain
+
+from bot.database.repositories.website_v2_repo import (
+    create_website_v2,
+    get_website_v2_by_id,
+    list_websites_v2_by_seller,
+    publish_website_v2,
+)
+from bot.services.domain_service import validate_subdomain
+from bot.services.website_v2_config import normalize_website_v2_type
 from bot.services.import_service import (
     PRODUCT_IMPORT_COLUMNS,
     generate_product_import_csv_template,
@@ -5033,3 +5042,88 @@ async def preview_draft_site(request: Request, crm_slug: str):
         },
     )
     normalize_part_category,
+
+
+@router.get("/{crm_slug}/websites")
+async def seller_crm_websites(request: Request, crm_slug: str):
+    account, subscription = await _authorized_account(request, crm_slug)
+    websites = await list_websites_v2_by_seller(account["seller_id"])
+    return templates.TemplateResponse("seller_crm/websites/index.html", _seller_crm_context(request, title="Керування сайтами", current_page="websites_v2", account=account, subscription=subscription, websites=websites))
+
+
+@router.get("/{crm_slug}/websites/create")
+async def seller_crm_websites_create(request: Request, crm_slug: str, error: str | None = None):
+    account, subscription = await _authorized_account(request, crm_slug)
+    return templates.TemplateResponse("seller_crm/websites/create.html", _seller_crm_context(request, title="Створення сайту", current_page="websites_v2", account=account, subscription=subscription, error=error))
+
+
+@router.post("/{crm_slug}/websites/create")
+async def seller_crm_websites_create_post(request: Request, crm_slug: str, site_type: str = Form(...), name: str = Form(...), subdomain: str = Form(...)):
+    account, _subscription = await _authorized_account(request, crm_slug)
+    try:
+        normalized_type = normalize_website_v2_type(site_type)
+    except ValueError:
+        return RedirectResponse(url=f"/crm/seller/{crm_slug}/websites/create?error=site_type", status_code=303)
+    if not name.strip():
+        return RedirectResponse(url=f"/crm/seller/{crm_slug}/websites/create?error=name", status_code=303)
+    normalized_subdomain = normalize_subdomain(subdomain)
+    if not validate_subdomain(normalized_subdomain):
+        return RedirectResponse(url=f"/crm/seller/{crm_slug}/websites/create?error=subdomain", status_code=303)
+    try:
+        website = await create_website_v2(account["seller_id"], normalized_type, name, normalized_subdomain)
+    except Exception:
+        return RedirectResponse(url=f"/crm/seller/{crm_slug}/websites/create?error=duplicate", status_code=303)
+    return RedirectResponse(url=f"/crm/seller/{crm_slug}/websites/{website['id']}?status=created", status_code=303)
+
+
+@router.get("/{crm_slug}/websites/{website_id}")
+async def seller_crm_websites_overview(request: Request, crm_slug: str, website_id: int):
+    account, subscription = await _authorized_account(request, crm_slug)
+    website = await get_website_v2_by_id(account["seller_id"], website_id)
+    if not website:
+        raise HTTPException(status_code=404)
+    return templates.TemplateResponse("seller_crm/websites/overview.html", _seller_crm_context(request, title="Огляд сайту", current_page="websites_v2", account=account, subscription=subscription, website=website))
+
+
+
+async def _get_v2_website_or_404(account: dict, website_id: int):
+    website = await get_website_v2_by_id(account["seller_id"], website_id)
+    if not website:
+        raise HTTPException(status_code=404)
+    return website
+
+
+@router.get("/{crm_slug}/websites/{website_id}/design")
+async def seller_crm_websites_design(request: Request, crm_slug: str, website_id: int):
+    account, subscription = await _authorized_account(request, crm_slug)
+    website = await _get_v2_website_or_404(account, website_id)
+    return templates.TemplateResponse("seller_crm/websites/design.html", _seller_crm_context(request, title="Дизайн (V2)", current_page="websites_v2", account=account, subscription=subscription, website=website))
+
+
+@router.get("/{crm_slug}/websites/{website_id}/content")
+async def seller_crm_websites_content(request: Request, crm_slug: str, website_id: int):
+    account, subscription = await _authorized_account(request, crm_slug)
+    website = await _get_v2_website_or_404(account, website_id)
+    return templates.TemplateResponse("seller_crm/websites/content.html", _seller_crm_context(request, title="Контент (V2)", current_page="websites_v2", account=account, subscription=subscription, website=website))
+
+
+@router.get("/{crm_slug}/websites/{website_id}/contacts")
+async def seller_crm_websites_contacts(request: Request, crm_slug: str, website_id: int):
+    account, subscription = await _authorized_account(request, crm_slug)
+    website = await _get_v2_website_or_404(account, website_id)
+    return templates.TemplateResponse("seller_crm/websites/contacts.html", _seller_crm_context(request, title="Контакти (V2)", current_page="websites_v2", account=account, subscription=subscription, website=website))
+
+
+@router.get("/{crm_slug}/websites/{website_id}/publication")
+async def seller_crm_websites_publication(request: Request, crm_slug: str, website_id: int):
+    account, subscription = await _authorized_account(request, crm_slug)
+    website = await _get_v2_website_or_404(account, website_id)
+    return templates.TemplateResponse("seller_crm/websites/publication.html", _seller_crm_context(request, title="Публікація (V2)", current_page="websites_v2", account=account, subscription=subscription, website=website))
+
+
+@router.post("/{crm_slug}/websites/{website_id}/publish")
+async def seller_crm_websites_publish(request: Request, crm_slug: str, website_id: int):
+    account, _subscription = await _authorized_account(request, crm_slug)
+    website = await _get_v2_website_or_404(account, website_id)
+    await publish_website_v2(int(website["id"]))
+    return RedirectResponse(url=f"/crm/seller/{crm_slug}/websites/{website_id}?status=published", status_code=303)
