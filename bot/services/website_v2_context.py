@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import Any
 
 
@@ -7,10 +8,34 @@ def build_website_v2_url(subdomain: str) -> str:
     return f"/w/{(subdomain or '').strip()}"
 
 
+def _as_dict(value: Any) -> dict:
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+        except Exception:
+            return {}
+        return parsed if isinstance(parsed, dict) else {}
+    return {}
+
+
 def get_website_v2_public_config(website: dict | Any) -> dict:
-    config_live = (website or {}).get("config_live") or {}
-    config_draft = (website or {}).get("config_draft") or {}
-    return config_live or config_draft or {}
+    row = website or {}
+    config_live = _as_dict(row.get("config_live"))
+    config_draft = _as_dict(row.get("config_draft"))
+    raw = config_live or config_draft
+    nested = _as_dict(raw.get("website_v2"))
+    base = nested or raw
+    return {
+        "hero": _as_dict(base.get("hero")),
+        "catalog": _as_dict(base.get("catalog") or base.get("products_catalog")),
+        "business": _as_dict(base.get("business") or base.get("services")),
+        "contacts": _as_dict(base.get("contacts")),
+        "map": _as_dict(base.get("map")),
+        "seo": _as_dict(base.get("seo")),
+        "publication": _as_dict(base.get("publication")),
+    }
 
 
 def _has_contact_method(seller: dict, config: dict) -> bool:
@@ -22,7 +47,7 @@ def _has_contact_method(seller: dict, config: dict) -> bool:
         seller.get("email"),
         seller.get("address"),
     ]
-    contacts = config.get("contacts") or {}
+    contacts = config.get("contacts") if isinstance(config.get("contacts"), dict) else {}
     config_contacts = [
         contacts.get("phone"),
         contacts.get("email"),
@@ -41,7 +66,8 @@ def build_catalog_website_context(website: dict, seller: dict) -> dict:
     cars_count = int(seller.get("cars_count") or len(raw_cars) or 0)
     products_count = int(seller.get("products_count") or len(raw_products) or 0)
     services_count = int(seller.get("services_count") or 0)
-    has_hero = bool((config.get("hero") or {}).get("title") or (config.get("hero") or {}).get("subtitle"))
+    hero = config.get("hero") if isinstance(config.get("hero"), dict) else {}
+    has_hero = bool(hero.get("title") or hero.get("subtitle"))
     has_contacts = _has_contact_method(seller, config)
     has_catalog_data = (cars_count + products_count) > 0
 
@@ -86,7 +112,8 @@ def build_business_website_context(website: dict, seller: dict) -> dict:
     services_count = int(seller.get("services_count") or len(raw_services) or 0)
     cars_count = int(seller.get("cars_count") or 0)
     products_count = int(seller.get("products_count") or 0)
-    has_hero = bool((config.get("hero") or {}).get("title") or (config.get("hero") or {}).get("subtitle"))
+    hero = config.get("hero") if isinstance(config.get("hero"), dict) else {}
+    has_hero = bool(hero.get("title") or hero.get("subtitle"))
     has_contacts = _has_contact_method(seller, config)
 
     missing: list[str] = []

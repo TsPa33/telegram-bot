@@ -1,7 +1,11 @@
 {% extends "seller_crm/base.html" %}
 {% block content %}
 <h1>Створення сайту</h1>
-{% if error %}<p>Помилка: {{ error }}</p>{% endif %}
+{% if error == "duplicate" %}
+<p>Такий субдомен вже зайнятий. Оберіть інший.</p>
+{% elif error %}
+<p>Помилка: {{ error }}</p>
+{% endif %}
 <form method="post">
     <label>Тип сайту</label>
     <select name="site_type" required>
