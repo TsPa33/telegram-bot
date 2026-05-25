@@ -27,6 +27,7 @@ from bot.database.repositories.car_repo import get_cars_by_seller
 from bot.database.repositories.service_repo import get_services_by_seller
 from bot.database.repositories.lead_repo import create_site_lead
 from bot.database.repositories.part_repo import get_available_parts_for_site
+from bot.database.repositories.product_repo import get_seller_products
 from bot.services.buyer_request_service import (
     BuyerRequestInput,
     BuyerRequestValidationError,
@@ -228,6 +229,46 @@ def _normalize_phone(value: str | None) -> str | None:
     if 9 <= len(digits) <= 15:
         return f"+{digits}"
     return value
+
+
+def _normalize_catalog_item(item: dict, source_type: str) -> dict:
+    return {
+        "title": item.get("title") or item.get("name") or "Позиція каталогу",
+        "description": item.get("description") or "",
+        "category": item.get("category") or "Інше",
+        "price": item.get("price"),
+        "image_url": item.get("photo_url") or item.get("photo_id") or "",
+        "condition": item.get("condition") or "",
+        "availability": "В наявності",
+        "brand": item.get("brand") or "",
+        "model": item.get("model") or "",
+        "source_type": source_type,
+        "cta_label": "Деталі",
+    }
+
+
+def _normalize_car_item(item: dict) -> dict:
+    return {
+        "title": f"{item.get('brand', '')} {item.get('model', '')}".strip() or "Авто на розборі",
+        "description": item.get("description") or "",
+        "brand": item.get("brand") or "",
+        "model": item.get("model") or "",
+        "year": item.get("year"),
+        "image_url": item.get("photo_url") or item.get("photo_id") or "",
+        "price": item.get("price"),
+        "cta_label": "Переглянути",
+    }
+
+
+def _normalize_service_item(item: dict) -> dict:
+    return {
+        "title": item.get("title") or "Послуга",
+        "description": item.get("description") or "",
+        "price": item.get("price"),
+        "image_url": item.get("photo_url") or item.get("photo_id") or "",
+        "category": item.get("category") or "",
+        "cta_label": "Замовити",
+    }
 
 
 def _buyer_filter_context(results: dict | None = None, **overrides) -> dict:
@@ -1539,7 +1580,24 @@ async def public_site_v2(subdomain: str, request: Request):
     if not site or site.get("status") != "published":
         raise HTTPException(status_code=404, detail="Website V2 not published")
     seller = await get_seller_by_id(int(site["seller_id"]))
-    website_context = build_website_v2_context(dict(site), dict(seller or {}))
+    seller_snapshot = dict(seller or {})
+    seller_id = int(site["seller_id"])
+    if site.get("site_type") == "carpot_business":
+        services = [dict(row) for row in await get_services_by_seller(seller_id)]
+        seller_snapshot["services_items"] = [_normalize_service_item(item) for item in services[:9]]
+        seller_snapshot["services_count"] = len(services)
+    else:
+        products = [dict(row) for row in await get_seller_products(seller_id, limit=12)]
+        parts = [dict(row) for row in await get_available_parts_for_site(seller_id)]
+        cars = [dict(row) for row in await get_cars_by_seller(seller_id)]
+        seller_snapshot["catalog_items"] = (
+            [_normalize_catalog_item(item, "product") for item in products]
+            + [_normalize_catalog_item(item, "part") for item in parts]
+        )[:12]
+        seller_snapshot["cars_items"] = [_normalize_car_item(item) for item in cars[:6]]
+        seller_snapshot["products_count"] = len(products) + len(parts)
+        seller_snapshot["cars_count"] = len(cars)
+    website_context = build_website_v2_context(dict(site), seller_snapshot)
     template_name = "public_site_v2/carpot_business.html" if site.get("site_type") == "carpot_business" else "public_site_v2/carpot_catalog.html"
     return templates.TemplateResponse(template_name, {"request": request, "website": site, "website_context": website_context})
 

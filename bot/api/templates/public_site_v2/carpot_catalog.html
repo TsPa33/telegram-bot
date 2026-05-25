@@ -10,6 +10,9 @@
     {% set primary_banner = banners[0] if banners else None %}
     {% set seller_name = website.name or website.subdomain or 'CarPot' %}
     {% set m = website_context.metrics if website_context and website_context.metrics else {} %}
+    {% set catalog_items = website_context.catalog_items if website_context and website_context.catalog_items else [] %}
+    {% set cars_items = website_context.cars_items if website_context and website_context.cars_items else [] %}
+    {% set categories = website_context.categories if website_context and website_context.categories else [] %}
     {% set cars_count = m.cars_count or 0 %}
     {% set products_count = m.products_count or 0 %}
     {% set has_contacts = m.has_contacts if m.has_contacts is defined else false %}
@@ -70,18 +73,18 @@
         <div class="carpot-v2-strip-item"><b>{{ products_count }}</b><span>Запчастини</span></div>
         <div class="carpot-v2-strip-item"><b>VIN</b><span>VIN-запити</span></div>
     </section>
-    <section class="carpot-v2-cats"><span class="carpot-v2-chip">Двигун</span><span class="carpot-v2-chip">КПП</span><span class="carpot-v2-chip">Кузов</span><span class="carpot-v2-chip">Оптика</span><span class="carpot-v2-chip">Ходова</span><span class="carpot-v2-chip">Електрика</span></section>
+    <section class="carpot-v2-cats">{% if categories %}{% for category in categories %}<span class="carpot-v2-chip">{{ category }}</span>{% endfor %}{% else %}<span class="carpot-v2-chip">Двигун</span><span class="carpot-v2-chip">КПП</span><span class="carpot-v2-chip">Кузов</span><span class="carpot-v2-chip">Оптика</span><span class="carpot-v2-chip">Ходова</span><span class="carpot-v2-chip">Електрика</span>{% endif %}</section>
     <section id="catalog" class="carpot-v2-catalog">
         <aside class="carpot-v2-filter"><h3>Фільтри</h3><p>Категорії</p><p>Марка</p><p>Модель</p><p>Стан</p><p>Наявність</p></aside>
         <div>
-            {% if products_count > 0 %}
-                <div class="carpot-v2-grid">{% for i in range(6) %}<article class="carpot-v2-card"><h4>Позиція каталогу</h4><p>Товар буде доступний після підключення даних вітрини.</p></article>{% endfor %}</div>
+            {% if catalog_items %}
+                <div class="carpot-v2-grid">{% for item in catalog_items %}<article class="carpot-v2-card">{% if item.image_url %}<img src="{{ item.image_url }}" alt="{{ item.title }}" style="width:100%;height:140px;object-fit:cover;border-radius:12px;margin-bottom:10px;">{% else %}<div style="height:140px;border-radius:12px;background:#efefef;margin-bottom:10px;"></div>{% endif %}<h4>{{ item.title }}</h4><p style="color:#666">{{ item.category }}{% if item.brand or item.model %} · {{ item.brand }} {{ item.model }}{% endif %}</p><p>{{ item.description or "Опис буде оновлено продавцем." }}</p><p><b>{% if item.price %}{{ item.price }} грн{% else %}Ціна за запитом{% endif %}</b></p></article>{% endfor %}</div>
             {% else %}
                 <div class="carpot-v2-empty">Каталог готується. Додайте авто або товари в CRM.</div>
             {% endif %}
         </div>
     </section>
-    {% if cars_count > 0 %}<section id="cars"><h2>Авто на розборі</h2><div class="carpot-v2-empty">Список авто буде доступний у наступній фазі підключення вітрини.</div></section>{% endif %}
+    {% if cars_items %}<section id="cars"><h2>Авто на розборі</h2><div class="carpot-v2-grid">{% for car in cars_items %}<article class="carpot-v2-card">{% if car.image_url %}<img src="{{ car.image_url }}" alt="{{ car.title }}" style="width:100%;height:140px;object-fit:cover;border-radius:12px;margin-bottom:10px;">{% else %}<div style="height:140px;border-radius:12px;background:#efefef;margin-bottom:10px;"></div>{% endif %}<h4>{{ car.title }}</h4><p>{{ car.description or "Авто на розборі доступне для запиту." }}</p><p><b>{% if car.price %}{{ car.price }} грн{% else %}Ціна за запитом{% endif %}</b></p></article>{% endfor %}</div></section>{% endif %}
     <section id="vin" class="carpot-v2-vin"><h2>Не знайшли потрібну деталь?</h2><p>Надішліть VIN або назву запчастини — продавець перевірить наявність.</p><a class="carpot-v2-btn carpot-v2-btn-light" href="#contacts">Надіслати запит</a></section>
     <section id="contacts" class="carpot-v2-contacts">
         <h2>Контакти</h2>

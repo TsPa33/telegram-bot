@@ -36,8 +36,10 @@ def _has_contact_method(seller: dict, config: dict) -> bool:
 
 def build_catalog_website_context(website: dict, seller: dict) -> dict:
     config = get_website_v2_public_config(website)
-    cars_count = int(seller.get("cars_count") or 0)
-    products_count = int(seller.get("products_count") or 0)
+    raw_cars = seller.get("cars_items") or []
+    raw_products = seller.get("catalog_items") or []
+    cars_count = int(seller.get("cars_count") or len(raw_cars) or 0)
+    products_count = int(seller.get("products_count") or len(raw_products) or 0)
     services_count = int(seller.get("services_count") or 0)
     has_hero = bool((config.get("hero") or {}).get("title") or (config.get("hero") or {}).get("subtitle"))
     has_contacts = _has_contact_method(seller, config)
@@ -68,6 +70,10 @@ def build_catalog_website_context(website: dict, seller: dict) -> dict:
             "has_catalog_data": has_catalog_data,
             "has_cars": cars_count > 0,
         },
+        "catalog_items": raw_products[:12],
+        "cars_items": raw_cars[:6],
+        "categories": categories,
+        "has_catalog_items": len(raw_products) > 0,
         "missing_required_fields": missing,
         "publish_ready": len(missing) == 0,
         "warnings": warnings,
@@ -76,7 +82,8 @@ def build_catalog_website_context(website: dict, seller: dict) -> dict:
 
 def build_business_website_context(website: dict, seller: dict) -> dict:
     config = get_website_v2_public_config(website)
-    services_count = int(seller.get("services_count") or 0)
+    raw_services = seller.get("services_items") or []
+    services_count = int(seller.get("services_count") or len(raw_services) or 0)
     cars_count = int(seller.get("cars_count") or 0)
     products_count = int(seller.get("products_count") or 0)
     has_hero = bool((config.get("hero") or {}).get("title") or (config.get("hero") or {}).get("subtitle"))
@@ -106,6 +113,7 @@ def build_business_website_context(website: dict, seller: dict) -> dict:
             "has_hero": has_hero,
             "has_services": services_count > 0,
         },
+        "services_items": raw_services[:9],
         "missing_required_fields": missing,
         "publish_ready": len(missing) == 0,
         "warnings": warnings,
@@ -130,4 +138,10 @@ def build_website_v2_context(website: dict, seller: dict) -> dict:
         "publish_ready": specialized["publish_ready"],
         "warnings": specialized["warnings"],
         "metrics": specialized["metrics"],
+        "catalog_items": specialized.get("catalog_items", []),
+        "cars_items": specialized.get("cars_items", []),
+        "categories": specialized.get("categories", []),
+        "has_catalog_items": specialized.get("has_catalog_items", False),
+        "services_items": specialized.get("services_items", []),
     }
+    categories = sorted({str((item or {}).get("category") or "").strip() for item in raw_products if str((item or {}).get("category") or "").strip()})
