@@ -165,7 +165,7 @@
         </div>
         <div class="carpot-v2-visual">
             {% if primary_banner and primary_banner.image %}
-                <img src="{{ primary_banner.image }}" alt="Банер сайту">
+                <img src="{{ primary_banner.image }}" alt="Банер сайту" width="1600" height="900" decoding="async">
             {% else %}
                 <div class="carpot-v2-composition">
                     <div class="carpot-v2-comp-card"><div class="carpot-v2-comp-media"></div><div class="carpot-v2-comp-line"></div><div class="carpot-v2-comp-line" style="width:74%"></div></div>
@@ -229,15 +229,15 @@
                             {% set item_link = item.detail_url if item.detail_url else ('/w/' ~ website.subdomain ~ '/product/' ~ item.id if item.id else '') %}
                             {% if item.image_url %}
                                 {% if item.id %}
-                                    <a href="{{ item_link }}"><img class="carpot-v2-media" src="{{ item.image_url }}" alt="{{ item.title }}"></a>
+                                    <a href="{{ item_link }}"><img class="carpot-v2-media" src="{{ item.image_url }}" alt="{{ item.title }}" loading="lazy" decoding="async" width="500" height="380"></a>
                                 {% else %}
-                                    <img class="carpot-v2-media" src="{{ item.image_url }}" alt="{{ item.title }}">
+                                    <img class="carpot-v2-media" src="{{ item.image_url }}" alt="{{ item.title }}" loading="lazy" decoding="async" width="500" height="380">
                                 {% endif %}
                             {% else %}
                                 {% if item.id %}
-                                    <a href="{{ item_link }}"><div class="carpot-v2-media"></div></a>
+                                    <a href="{{ item_link }}"><div class="carpot-v2-media" style="display:grid;place-items:center;color:#666;font-size:13px;">Фото уточнюється</div></a>
                                 {% else %}
-                                    <div class="carpot-v2-media"></div>
+                                    <div class="carpot-v2-media" style="display:grid;place-items:center;color:#666;font-size:13px;">Фото уточнюється</div>
                                 {% endif %}
                             {% endif %}
                             <h4 class="carpot-v2-title">
@@ -283,7 +283,7 @@
         <div class="carpot-v2-grid">
             {% for car in cars_items %}
                 <article class="carpot-v2-card">
-                    {% if car.image_url %}<img class="carpot-v2-media" src="{{ car.image_url }}" alt="{{ car.title }}">{% else %}<div class="carpot-v2-media"></div>{% endif %}
+                    {% if car.image_url %}<img class="carpot-v2-media" src="{{ car.image_url }}" alt="{{ car.title }}" loading="lazy" decoding="async" width="500" height="380">{% else %}<div class="carpot-v2-media" style="display:grid;place-items:center;color:#666;font-size:13px;">Фото уточнюється</div>{% endif %}
                     <h4 class="carpot-v2-title">{{ car.title }}</h4>
                     <p class="carpot-v2-desc">{{ car.description or "Авто на розборі доступне для запиту." }}</p>
                     <div class="carpot-v2-row"><b class="carpot-v2-price">{% if car.price %}{{ car.price }} грн{% else %}Ціна за запитом{% endif %}</b><span class="carpot-v2-badge">Деталі у продавця</span></div>

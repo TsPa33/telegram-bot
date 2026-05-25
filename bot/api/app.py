@@ -254,13 +254,14 @@ def _normalize_catalog_item(item: dict, source_type: str) -> dict:
     normalized_id = int(raw_id) if isinstance(raw_id, int) else _safe_int(raw_id)
     subdomain = (item.get("website_subdomain") or item.get("subdomain") or "").strip()
     detail_url = f"/w/{subdomain}/product/{normalized_id}" if subdomain and normalized_id else None
+    image_url = item.get("photo_url") or item.get("photo_id") or ""
     return {
         "id": normalized_id,
         "title": item.get("title") or item.get("name") or "Позиція каталогу",
         "description": item.get("description") or "",
         "category": item.get("category") or "Інше",
         "price": item.get("price"),
-        "image_url": item.get("photo_url") or item.get("photo_id") or "",
+        "image_url": optimize_cloudinary_url(image_url, "card"),
         "condition": item.get("condition") or "",
         "availability": "В наявності",
         "brand": item.get("brand") or "",
@@ -272,30 +273,33 @@ def _normalize_catalog_item(item: dict, source_type: str) -> dict:
 
 
 def _normalize_car_item(item: dict) -> dict:
+    image_url = item.get("photo_url") or item.get("photo_id") or ""
     return {
         "title": f"{item.get('brand', '')} {item.get('model', '')}".strip() or "Авто на розборі",
         "description": item.get("description") or "",
         "brand": item.get("brand") or "",
         "model": item.get("model") or "",
         "year": item.get("year"),
-        "image_url": item.get("photo_url") or item.get("photo_id") or "",
+        "image_url": optimize_cloudinary_url(image_url, "card"),
         "price": item.get("price"),
         "cta_label": "Переглянути",
     }
 
 
 def _normalize_service_item(item: dict) -> dict:
+    image_url = item.get("photo_url") or item.get("photo_id") or ""
     return {
         "title": item.get("title") or "Послуга",
         "description": item.get("description") or "",
         "price": item.get("price"),
-        "image_url": item.get("photo_url") or item.get("photo_id") or "",
+        "image_url": optimize_cloudinary_url(image_url, "card"),
         "category": item.get("category") or "",
         "cta_label": "Замовити",
     }
 
 
 def _normalize_product_detail_item(item: dict, source_type: str, seller: dict) -> dict:
+    image_url = item.get("photo_url") or item.get("photo_id") or ""
     return {
         "id": item.get("id"),
         "source_type": source_type,
@@ -303,8 +307,8 @@ def _normalize_product_detail_item(item: dict, source_type: str, seller: dict) -
         "description": item.get("description") or "",
         "category": item.get("category") or "Інше",
         "price": item.get("price"),
-        "image_url": item.get("photo_url") or item.get("photo_id") or "",
-        "gallery": [img for img in [item.get("photo_url"), item.get("photo_id")] if img],
+        "image_url": optimize_cloudinary_url(image_url, "detail"),
+        "gallery": [optimize_cloudinary_url(img, "card") for img in [item.get("photo_url"), item.get("photo_id")] if img],
         "condition": item.get("condition") or "",
         "availability": "В наявності",
         "brand": item.get("brand") or "",
@@ -319,6 +323,23 @@ def _normalize_product_detail_item(item: dict, source_type: str, seller: dict) -
 
 def _lead_text(value: str | None, max_len: int) -> str:
     return (value or "").strip()[:max_len]
+
+
+def optimize_cloudinary_url(url: str | None, preset: str) -> str:
+    raw = str(url or "").strip()
+    if not raw or "res.cloudinary.com" not in raw:
+        return raw
+    presets = {
+        "card": "f_auto,q_auto,w_500,h_380,c_fill",
+        "detail": "f_auto,q_auto,w_1200,h_900,c_fill",
+        "hero": "f_auto,q_auto,w_1600,c_limit",
+        "og": "f_auto,q_auto,w_1200,h_630,c_fill",
+    }
+    transform = presets.get(preset, presets["card"])
+    marker = "/upload/"
+    if marker not in raw or f"/upload/{transform}/" in raw:
+        return raw
+    return raw.replace(marker, f"/upload/{transform}/", 1)
 
 
 def _seo_text(value: str | None, fallback: str, max_len: int) -> str:
@@ -356,7 +377,7 @@ def _build_site_seo(site: dict, website_context: dict, request: Request) -> dict
         "og_description": description,
         "og_type": "website",
         "og_url": base_url,
-        "og_image": image,
+        "og_image": optimize_cloudinary_url(image, "og"),
     }
 
 
@@ -386,7 +407,7 @@ def _build_product_seo(site: dict, detail_item: dict, request: Request) -> dict:
         "og_description": description,
         "og_type": "product",
         "og_url": canonical_url,
-        "og_image": str(detail_item.get("image_url") or "").strip(),
+        "og_image": optimize_cloudinary_url(str(detail_item.get("image_url") or "").strip(), "og"),
     }
 
 
@@ -1916,6 +1937,12 @@ async def public_site_v2(subdomain: str, request: Request):
         seller_snapshot["sort_active"] = current_sort != "newest"
         seller_snapshot["sorting_label"] = sorting_label_map.get(current_sort, "Новіші")
     website_context = build_website_v2_context(dict(site), seller_snapshot)
+    cfg = website_context.get("config") if isinstance(website_context.get("config"), dict) else {}
+    hero_cfg = cfg.get("hero") if isinstance(cfg.get("hero"), dict) else {}
+    banners = hero_cfg.get("banners") if isinstance(hero_cfg.get("banners"), list) else []
+    for banner in banners:
+        if isinstance(banner, dict):
+            banner["image"] = optimize_cloudinary_url(banner.get("image"), "hero")
     seo = _build_site_seo(dict(site), website_context, request)
     schema_jsonld = json.dumps(_build_catalog_schema(dict(site), website_context, request), ensure_ascii=False)
     template_name = "public_site_v2/carpot_business.html" if site.get("site_type") == "carpot_business" else "public_site_v2/carpot_catalog.html"
