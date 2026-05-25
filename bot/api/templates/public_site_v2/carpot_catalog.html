@@ -53,6 +53,25 @@
             <button class="carpot-v2-btn carpot-v2-btn-black" type="submit">Пошук</button>
             <a class="carpot-v2-btn carpot-v2-btn-light" href="#vin-request">Надіслати запит</a>
         </form>
+        <details class="carpot-v2-mobile-menu">
+            <summary class="carpot-v2-mobile-toggle" aria-label="Меню">
+                <span></span><span></span><span></span>
+            </summary>
+            <div class="carpot-v2-mobile-panel">
+                <nav class="carpot-v2-mobile-nav">
+                    <a href="#catalog">Каталог</a>
+                    <a href="#cars">Авто на розборі</a>
+                    <a href="#vin-request">VIN-запит</a>
+                    <a href="#contacts">Контакти</a>
+                </nav>
+                <form class="carpot-v2-mobile-search-form" method="get" action="/w/{{ website.subdomain }}">
+                    <input type="hidden" name="sort" value="{{ current_sort }}">
+                    <input class="carpot-v2-search" name="q" value="{{ search_query }}" placeholder="Пошук запчастини, бренду або VIN" aria-label="Пошук">
+                    <button class="carpot-v2-btn carpot-v2-btn-black" type="submit">Пошук</button>
+                </form>
+                <a class="carpot-v2-btn carpot-v2-btn-light" href="#vin-request">Надіслати запит</a>
+            </div>
+        </details>
     </div>
 </header>
 
