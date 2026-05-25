@@ -22,11 +22,13 @@ from bot.database.models import create_tables
 from bot.database.migrations_runner import run_sql_migrations
 from bot.database.repositories.site_repo import get_site_by_subdomain
 from bot.database.repositories.website_v2_repo import get_website_v2_by_subdomain
+from bot.database.repositories.website_v2_repo import create_website_v2_lead
 from bot.database.repositories.seller_repo import get_seller_by_id
 from bot.database.repositories.car_repo import get_cars_by_seller
 from bot.database.repositories.service_repo import get_services_by_seller
 from bot.database.repositories.lead_repo import create_site_lead
-from bot.database.repositories.part_repo import get_available_parts_for_site
+from bot.database.repositories.part_repo import get_available_parts_for_site, get_part_by_id
+from bot.database.repositories.product_repo import get_seller_products, get_product_by_id
 from bot.services.buyer_request_service import (
     BuyerRequestInput,
     BuyerRequestValidationError,
@@ -59,6 +61,7 @@ from bot.services.site_config import (
     normalize_color_scheme,
     normalize_template_id,
 )
+from bot.services.website_v2_context import build_website_v2_context
 from bot.utils.subdomain import is_valid_subdomain
 from bot.services.domain_service import extract_subdomain_from_host
 from bot.services.seller_notification_ops import format_site_lead_notification, seller_crm_context_url
@@ -227,6 +230,72 @@ def _normalize_phone(value: str | None) -> str | None:
     if 9 <= len(digits) <= 15:
         return f"+{digits}"
     return value
+
+
+def _normalize_catalog_item(item: dict, source_type: str) -> dict:
+    return {
+        "title": item.get("title") or item.get("name") or "Позиція каталогу",
+        "description": item.get("description") or "",
+        "category": item.get("category") or "Інше",
+        "price": item.get("price"),
+        "image_url": item.get("photo_url") or item.get("photo_id") or "",
+        "condition": item.get("condition") or "",
+        "availability": "В наявності",
+        "brand": item.get("brand") or "",
+        "model": item.get("model") or "",
+        "source_type": source_type,
+        "cta_label": "Деталі",
+    }
+
+
+def _normalize_car_item(item: dict) -> dict:
+    return {
+        "title": f"{item.get('brand', '')} {item.get('model', '')}".strip() or "Авто на розборі",
+        "description": item.get("description") or "",
+        "brand": item.get("brand") or "",
+        "model": item.get("model") or "",
+        "year": item.get("year"),
+        "image_url": item.get("photo_url") or item.get("photo_id") or "",
+        "price": item.get("price"),
+        "cta_label": "Переглянути",
+    }
+
+
+def _normalize_service_item(item: dict) -> dict:
+    return {
+        "title": item.get("title") or "Послуга",
+        "description": item.get("description") or "",
+        "price": item.get("price"),
+        "image_url": item.get("photo_url") or item.get("photo_id") or "",
+        "category": item.get("category") or "",
+        "cta_label": "Замовити",
+    }
+
+
+def _normalize_product_detail_item(item: dict, source_type: str, seller: dict) -> dict:
+    return {
+        "id": item.get("id"),
+        "source_type": source_type,
+        "title": item.get("title") or item.get("name") or "Запчастина",
+        "description": item.get("description") or "",
+        "category": item.get("category") or "Інше",
+        "price": item.get("price"),
+        "image_url": item.get("photo_url") or item.get("photo_id") or "",
+        "gallery": [img for img in [item.get("photo_url"), item.get("photo_id")] if img],
+        "condition": item.get("condition") or "",
+        "availability": "В наявності",
+        "brand": item.get("brand") or "",
+        "model": item.get("model") or "",
+        "seller_name": seller.get("shop_name") or seller.get("name") or "Продавець CarPot",
+        "seller_city": seller.get("city") or "",
+        "seller_phone": seller.get("phone") or "",
+        "created_at": item.get("created_at"),
+        "cta_label": "Уточнити наявність",
+    }
+
+
+def _lead_text(value: str | None, max_len: int) -> str:
+    return (value or "").strip()[:max_len]
 
 
 def _buyer_filter_context(results: dict | None = None, **overrides) -> dict:
@@ -1537,8 +1606,103 @@ async def public_site_v2(subdomain: str, request: Request):
     site = await get_website_v2_by_subdomain(subdomain)
     if not site or site.get("status") != "published":
         raise HTTPException(status_code=404, detail="Website V2 not published")
+    seller = await get_seller_by_id(int(site["seller_id"]))
+    seller_snapshot = dict(seller or {})
+    seller_id = int(site["seller_id"])
+    if site.get("site_type") == "carpot_business":
+        services = [dict(row) for row in await get_services_by_seller(seller_id)]
+        seller_snapshot["services_items"] = [_normalize_service_item(item) for item in services[:9]]
+        seller_snapshot["services_count"] = len(services)
+    else:
+        products = [dict(row) for row in await get_seller_products(seller_id, limit=12)]
+        parts = [dict(row) for row in await get_available_parts_for_site(seller_id)]
+        cars = [dict(row) for row in await get_cars_by_seller(seller_id)]
+        seller_snapshot["catalog_items"] = (
+            [_normalize_catalog_item(item, "product") for item in products]
+            + [_normalize_catalog_item(item, "part") for item in parts]
+        )[:12]
+        seller_snapshot["cars_items"] = [_normalize_car_item(item) for item in cars[:6]]
+        seller_snapshot["products_count"] = len(products) + len(parts)
+        seller_snapshot["cars_count"] = len(cars)
+    website_context = build_website_v2_context(dict(site), seller_snapshot)
     template_name = "public_site_v2/carpot_business.html" if site.get("site_type") == "carpot_business" else "public_site_v2/carpot_catalog.html"
-    return templates.TemplateResponse(template_name, {"request": request, "website": site})
+    return templates.TemplateResponse(template_name, {"request": request, "website": site, "website_context": website_context})
+
+
+@router.get("/w/{subdomain}/product/{item_id}", response_class=HTMLResponse)
+async def public_site_v2_product_detail(subdomain: str, item_id: int, request: Request):
+    site = await get_website_v2_by_subdomain(subdomain)
+    if not site or site.get("status") != "published":
+        raise HTTPException(status_code=404, detail="Website V2 not published")
+    seller_id = int(site["seller_id"])
+    seller = dict(await get_seller_by_id(seller_id) or {})
+    product = await get_product_by_id(seller_id, item_id)
+    source_type = "product"
+    if product:
+        detail_item = _normalize_product_detail_item(dict(product), "product", seller)
+    else:
+        part = await get_part_by_id(item_id)
+        if not part or int(part.get("seller_id") or 0) != seller_id:
+            raise HTTPException(status_code=404, detail="Item not found")
+        source_type = "part"
+        detail_item = _normalize_product_detail_item(dict(part), "part", seller)
+
+    products = [dict(row) for row in await get_seller_products(seller_id, limit=40)]
+    parts = [dict(row) for row in await get_available_parts_for_site(seller_id)]
+    related_pool = ([_normalize_catalog_item(item, "product") for item in products] + [_normalize_catalog_item(item, "part") for item in parts])
+    related_items = []
+    for item in related_pool:
+        if int(item.get("id") or -1) == int(detail_item["id"]) and item.get("source_type") == source_type:
+            continue
+        same_category = item.get("category") and detail_item.get("category") and item.get("category") == detail_item.get("category")
+        same_brand = item.get("brand") and detail_item.get("brand") and item.get("brand") == detail_item.get("brand")
+        if same_category or same_brand:
+            related_items.append(item)
+        if len(related_items) >= 4:
+            break
+    return templates.TemplateResponse("public_site_v2/product_detail.html", {"request": request, "website": site, "detail_item": detail_item, "related_items": related_items})
+
+
+@router.post("/w/{subdomain}/lead")
+async def create_site_v2_lead(
+    subdomain: str,
+    name: str = Form(""),
+    phone: str = Form(""),
+    message: str = Form(""),
+    vin: str = Form(""),
+    item_title: str = Form(""),
+    request_type: str = Form("contact"),
+):
+    website = await get_website_v2_by_subdomain(subdomain)
+    if not website or website.get("status") != "published":
+        return RedirectResponse(url=f"/w/{subdomain}?lead=error", status_code=303)
+    lead_type = request_type.strip().lower()
+    if lead_type not in {"catalog", "vin", "service", "contact"}:
+        lead_type = "contact"
+    normalized_phone = _lead_text(phone, 40)
+    normalized_name = _lead_text(name, 120) or None
+    normalized_message = _lead_text(message, 1000) or None
+    normalized_vin = _lead_text(vin, 120) or None
+    normalized_item = _lead_text(item_title, 240) or None
+    if not normalized_phone:
+        return RedirectResponse(url=f"/w/{subdomain}?lead=error", status_code=303)
+    if not (normalized_message or normalized_vin or normalized_item):
+        return RedirectResponse(url=f"/w/{subdomain}?lead=error", status_code=303)
+    try:
+        await create_website_v2_lead(
+            website_id=int(website["id"]),
+            seller_id=int(website["seller_id"]),
+            lead_type=lead_type,
+            name=normalized_name,
+            phone=normalized_phone,
+            message=normalized_message,
+            vin=normalized_vin,
+            item_title=normalized_item,
+        )
+    except Exception:
+        logger.exception("Failed to create v2 lead for %s", subdomain)
+        return RedirectResponse(url=f"/w/{subdomain}?lead=error", status_code=303)
+    return RedirectResponse(url=f"/w/{subdomain}?lead=success", status_code=303)
 
 
 app.include_router(liqpay_router)
