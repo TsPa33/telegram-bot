@@ -9,7 +9,8 @@ from aiogram import Bot
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from fastapi import APIRouter, FastAPI, HTTPException, Request, Form, File, UploadFile
 from fastapi.encoders import jsonable_encoder
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, PlainTextResponse, Response
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from bot.api.liqpay_callback import router as liqpay_router
@@ -21,12 +22,31 @@ from bot.database.pool import init_pool
 from bot.database.models import create_tables
 from bot.database.migrations_runner import run_sql_migrations
 from bot.database.repositories.site_repo import get_site_by_subdomain
-from bot.database.repositories.website_v2_repo import get_website_v2_by_subdomain
+from bot.database.repositories.website_v2_repo import get_website_v2_by_subdomain, list_published_websites_v2
+from bot.database.repositories.website_v2_repo import create_website_v2_lead
 from bot.database.repositories.seller_repo import get_seller_by_id
 from bot.database.repositories.car_repo import get_cars_by_seller
 from bot.database.repositories.service_repo import get_services_by_seller
 from bot.database.repositories.lead_repo import create_site_lead
-from bot.database.repositories.part_repo import get_available_parts_for_site
+from bot.database.repositories.part_repo import (
+    count_available_parts_for_site,
+    count_search_available_parts_for_site,
+    get_available_parts_for_site,
+    get_available_parts_for_site_paginated,
+    get_part_by_id,
+    search_available_parts_for_site,
+    search_available_parts_for_site_paginated,
+    list_part_ids_for_sitemap,
+)
+from bot.database.repositories.product_repo import (
+    count_search_seller_products,
+    count_seller_products_for_site,
+    get_seller_products,
+    get_product_by_id,
+    search_seller_products,
+    search_seller_products_paginated,
+    list_product_ids_for_sitemap,
+)
 from bot.services.buyer_request_service import (
     BuyerRequestInput,
     BuyerRequestValidationError,
@@ -59,6 +79,7 @@ from bot.services.site_config import (
     normalize_color_scheme,
     normalize_template_id,
 )
+from bot.services.website_v2_context import build_website_v2_context
 from bot.utils.subdomain import is_valid_subdomain
 from bot.services.domain_service import extract_subdomain_from_host
 from bot.services.seller_notification_ops import format_site_lead_notification, seller_crm_context_url
@@ -70,6 +91,9 @@ router = APIRouter()
 templates = Jinja2Templates(directory="bot/api/templates")
 bot = Bot(token=BOT_TOKEN)
 logger = logging.getLogger(__name__)
+
+STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
 def _extract_inline_edit_patch(block_key: str, payload: dict) -> dict:
@@ -227,6 +251,288 @@ def _normalize_phone(value: str | None) -> str | None:
     if 9 <= len(digits) <= 15:
         return f"+{digits}"
     return value
+
+
+def _normalize_catalog_item(item: dict, source_type: str) -> dict:
+    raw_id = item.get("id")
+    normalized_id = int(raw_id) if isinstance(raw_id, int) else _safe_int(raw_id)
+    subdomain = (item.get("website_subdomain") or item.get("subdomain") or "").strip()
+    detail_url = f"/w/{subdomain}/product/{normalized_id}" if subdomain and normalized_id else None
+    image_url = item.get("photo_url") or item.get("photo_id") or ""
+    return {
+        "id": normalized_id,
+        "title": item.get("title") or item.get("name") or "Позиція каталогу",
+        "description": item.get("description") or "",
+        "category": item.get("category") or "Інше",
+        "price": item.get("price"),
+        "image_url": optimize_cloudinary_url(image_url, "card"),
+        "condition": item.get("condition") or "",
+        "availability": "В наявності",
+        "brand": item.get("brand") or "",
+        "model": item.get("model") or "",
+        "source_type": source_type,
+        "cta_label": "Деталі",
+        "detail_url": detail_url,
+    }
+
+
+def _normalize_car_item(item: dict) -> dict:
+    image_url = item.get("photo_url") or item.get("photo_id") or ""
+    return {
+        "title": f"{item.get('brand', '')} {item.get('model', '')}".strip() or "Авто на розборі",
+        "description": item.get("description") or "",
+        "brand": item.get("brand") or "",
+        "model": item.get("model") or "",
+        "year": item.get("year"),
+        "image_url": optimize_cloudinary_url(image_url, "card"),
+        "price": item.get("price"),
+        "cta_label": "Переглянути",
+    }
+
+
+def _normalize_service_item(item: dict) -> dict:
+    image_url = item.get("photo_url") or item.get("photo_id") or ""
+    return {
+        "title": item.get("title") or "Послуга",
+        "description": item.get("description") or "",
+        "price": item.get("price"),
+        "image_url": optimize_cloudinary_url(image_url, "card"),
+        "category": item.get("category") or "",
+        "cta_label": "Замовити",
+    }
+
+
+def _normalize_product_detail_item(item: dict, source_type: str, seller: dict) -> dict:
+    image_url = item.get("photo_url") or item.get("photo_id") or ""
+    return {
+        "id": item.get("id"),
+        "source_type": source_type,
+        "title": item.get("title") or item.get("name") or "Запчастина",
+        "description": item.get("description") or "",
+        "category": item.get("category") or "Інше",
+        "price": item.get("price"),
+        "image_url": optimize_cloudinary_url(image_url, "detail"),
+        "gallery": [optimize_cloudinary_url(img, "card") for img in [item.get("photo_url"), item.get("photo_id")] if img],
+        "condition": item.get("condition") or "",
+        "availability": "В наявності",
+        "brand": item.get("brand") or "",
+        "model": item.get("model") or "",
+        "seller_name": seller.get("shop_name") or seller.get("name") or "Продавець CarPot",
+        "seller_city": seller.get("city") or "",
+        "seller_phone": seller.get("phone") or "",
+        "created_at": item.get("created_at"),
+        "cta_label": "Уточнити наявність",
+    }
+
+
+def _lead_text(value: str | None, max_len: int) -> str:
+    return (value or "").strip()[:max_len]
+
+
+def optimize_cloudinary_url(url: str | None, preset: str) -> str:
+    raw = str(url or "").strip()
+    if not raw or "res.cloudinary.com" not in raw:
+        return raw
+    presets = {
+        "card": "f_auto,q_auto,w_500,h_380,c_fill",
+        "detail": "f_auto,q_auto,w_1200,h_900,c_fill",
+        "hero": "f_auto,q_auto,w_1600,c_limit",
+        "og": "f_auto,q_auto,w_1200,h_630,c_fill",
+    }
+    transform = presets.get(preset, presets["card"])
+    marker = "/upload/"
+    if marker not in raw or f"/upload/{transform}/" in raw:
+        return raw
+    return raw.replace(marker, f"/upload/{transform}/", 1)
+
+
+def _seo_text(value: str | None, fallback: str, max_len: int) -> str:
+    text = re.sub(r"\s+", " ", str(value or "").strip())
+    if not text:
+        text = fallback
+    return text[:max_len]
+
+
+def _build_site_seo(site: dict, website_context: dict, request: Request) -> dict:
+    seller_name = _seo_text(site.get("name"), site.get("subdomain") or "CarPot", 80)
+    title = _seo_text(
+        f"Автозапчастини та авто на розборі — {seller_name} | CarPot",
+        "Каталог запчастин | CarPot",
+        120,
+    )
+    description = _seo_text(
+        "Каталог автозапчастин, авто на розборі та VIN-підбір. Оригінальні деталі, швидкий пошук та заявки.",
+        "Каталог автозапчастин та авто на розборі.",
+        180,
+    )
+    base_url = str(request.url_for("public_site_v2", subdomain=site.get("subdomain")))
+    config = (website_context or {}).get("config") or {}
+    hero = config.get("hero") if isinstance(config.get("hero"), dict) else {}
+    banners = hero.get("banners") if isinstance(hero.get("banners"), list) else []
+    image = ""
+    if banners and isinstance(banners[0], dict):
+        image = str(banners[0].get("image") or "").strip()
+    return {
+        "title": title,
+        "description": description,
+        "canonical_url": base_url,
+        "robots": "index,follow",
+        "og_title": title,
+        "og_description": description,
+        "og_type": "website",
+        "og_url": base_url,
+        "og_image": optimize_cloudinary_url(image, "og"),
+    }
+
+
+def _build_product_seo(site: dict, detail_item: dict, request: Request) -> dict:
+    seller_name = _seo_text(site.get("name"), site.get("subdomain") or "CarPot", 80)
+    item_title = _seo_text(detail_item.get("title"), "Запчастина", 90)
+    title = _seo_text(f"{item_title} — {seller_name} | CarPot", "Запчастина | CarPot", 130)
+    meta_parts = [
+        item_title,
+        _seo_text(detail_item.get("brand"), "", 40),
+        _seo_text(detail_item.get("model"), "", 40),
+        _seo_text(detail_item.get("category"), "", 40),
+        _seo_text(detail_item.get("description"), "", 120),
+    ]
+    description = _seo_text(
+        ". ".join([p for p in meta_parts if p]),
+        "Автозапчастини в каталозі CarPot.",
+        180,
+    )
+    canonical_url = str(request.url_for("public_site_v2_product_detail", subdomain=site.get("subdomain"), item_id=detail_item.get("id")))
+    return {
+        "title": title,
+        "description": description,
+        "canonical_url": canonical_url,
+        "robots": "index,follow",
+        "og_title": title,
+        "og_description": description,
+        "og_type": "product",
+        "og_url": canonical_url,
+        "og_image": optimize_cloudinary_url(str(detail_item.get("image_url") or "").strip(), "og"),
+    }
+
+
+def _safe_float(value) -> float | None:
+    try:
+        if value is None:
+            return None
+        text = str(value).strip().replace(" ", "").replace(",", ".")
+        if not text:
+            return None
+        return float(text)
+    except (TypeError, ValueError):
+        return None
+
+
+def _build_catalog_schema(site: dict, website_context: dict, request: Request) -> list[dict]:
+    canonical_url = str(request.url_for("public_site_v2", subdomain=site.get("subdomain")))
+    seller_name = _seo_text(site.get("name"), site.get("subdomain") or "CarPot", 120)
+    seller = (website_context or {}).get("seller") or {}
+    contacts = (website_context or {}).get("website_contacts") or {}
+    phone = str(contacts.get("phone") or seller.get("phone") or "").strip()
+    city = str(seller.get("city") or "").strip()
+    logo = ""
+    config = (website_context or {}).get("config") or {}
+    hero = config.get("hero") if isinstance(config.get("hero"), dict) else {}
+    banners = hero.get("banners") if isinstance(hero.get("banners"), list) else []
+    if banners and isinstance(banners[0], dict):
+        logo = str(banners[0].get("image") or "").strip()
+
+    org: dict = {
+        "@context": "https://schema.org",
+        "@type": "LocalBusiness" if city else "Organization",
+        "name": seller_name,
+        "url": canonical_url,
+    }
+    if phone:
+        org["telephone"] = phone
+    if city:
+        org["address"] = {"@type": "PostalAddress", "addressLocality": city}
+    if logo:
+        org["logo"] = logo
+
+    website_schema = {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": seller_name,
+        "url": canonical_url,
+        "potentialAction": {
+            "@type": "SearchAction",
+            "target": f"{canonical_url}?q={{search_term_string}}",
+            "query-input": "required name=search_term_string",
+        },
+    }
+
+    schemas = [org, website_schema]
+    catalog_items = (website_context or {}).get("catalog_items") or []
+    if isinstance(catalog_items, list) and catalog_items:
+        item_list_elements = []
+        for idx, item in enumerate(catalog_items, start=1):
+            if not isinstance(item, dict):
+                continue
+            item_url = str(item.get("detail_url") or "").strip()
+            if not item_url and item.get("id"):
+                item_url = f"/w/{site.get('subdomain')}/product/{item.get('id')}"
+            if item_url and item_url.startswith("/"):
+                item_url = str(request.base_url).rstrip("/") + item_url
+            list_item = {
+                "@type": "ListItem",
+                "position": idx,
+                "url": item_url or canonical_url,
+                "name": _seo_text(item.get("title"), "Запчастина", 120),
+            }
+            image = str(item.get("image_url") or "").strip()
+            if image:
+                list_item["image"] = image
+            item_list_elements.append(list_item)
+        if item_list_elements:
+            schemas.append(
+                {
+                    "@context": "https://schema.org",
+                    "@type": "ItemList",
+                    "itemListElement": item_list_elements,
+                }
+            )
+    return schemas
+
+
+def _build_product_schema(site: dict, detail_item: dict, request: Request) -> list[dict]:
+    canonical_url = str(request.url_for("public_site_v2_product_detail", subdomain=site.get("subdomain"), item_id=detail_item.get("id")))
+    product = {
+        "@context": "https://schema.org",
+        "@type": "Product",
+        "name": _seo_text(detail_item.get("title"), "Запчастина", 120),
+        "description": _seo_text(detail_item.get("description"), "Автозапчастина з каталогу CarPot.", 300),
+        "category": _seo_text(detail_item.get("category"), "Автозапчастини", 80),
+        "url": canonical_url,
+    }
+    image = str(detail_item.get("image_url") or "").strip()
+    if image:
+        product["image"] = [image]
+    brand = str(detail_item.get("brand") or "").strip()
+    if brand:
+        product["brand"] = {"@type": "Brand", "name": brand}
+
+    offer = {"@type": "Offer", "priceCurrency": "UAH", "url": canonical_url}
+    price_value = _safe_float(detail_item.get("price"))
+    if price_value is not None:
+        offer["price"] = f"{price_value:.2f}"
+    offer["availability"] = "https://schema.org/InStock"
+    product["offers"] = offer
+
+    breadcrumb = {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+            {"@type": "ListItem", "position": 1, "name": "Головна", "item": str(request.url_for("public_site_v2", subdomain=site.get("subdomain")))},
+            {"@type": "ListItem", "position": 2, "name": "Каталог", "item": str(request.url_for("public_site_v2", subdomain=site.get("subdomain")))},
+            {"@type": "ListItem", "position": 3, "name": _seo_text(detail_item.get("title"), "Запчастина", 120), "item": canonical_url},
+        ],
+    }
+    return [product, breadcrumb]
 
 
 def _buyer_filter_context(results: dict | None = None, **overrides) -> dict:
@@ -1537,8 +1843,248 @@ async def public_site_v2(subdomain: str, request: Request):
     site = await get_website_v2_by_subdomain(subdomain)
     if not site or site.get("status") != "published":
         raise HTTPException(status_code=404, detail="Website V2 not published")
+    seller = await get_seller_by_id(int(site["seller_id"]))
+    seller_snapshot = dict(seller or {})
+    seller_id = int(site["seller_id"])
+    search_query = str(request.query_params.get("q") or "").strip()
+    active_filters = {
+        "category": str(request.query_params.get("category") or "").strip(),
+        "brand": str(request.query_params.get("brand") or "").strip(),
+        "model": str(request.query_params.get("model") or "").strip(),
+        "condition": str(request.query_params.get("condition") or "").strip(),
+        "availability": str(request.query_params.get("availability") or "").strip(),
+    }
+    allowed_sorts = {"newest", "oldest", "name_asc", "name_desc", "price_asc", "price_desc"}
+    current_sort = str(request.query_params.get("sort") or "newest").strip().lower()
+    if current_sort not in allowed_sorts:
+        current_sort = "newest"
+    sorting_label_map = {
+        "newest": "Новіші",
+        "oldest": "Старіші",
+        "name_asc": "Назва А–Я",
+        "name_desc": "Назва Я–А",
+        "price_asc": "Дешевші",
+        "price_desc": "Дорожчі",
+    }
+    filters_active = any(active_filters.values())
+    page_size = 24
+    try:
+        current_page = max(1, int(request.query_params.get("page") or 1))
+    except ValueError:
+        current_page = 1
+    if site.get("site_type") == "carpot_business":
+        services = [dict(row) for row in await get_services_by_seller(seller_id)]
+        seller_snapshot["services_items"] = [_normalize_service_item(item) for item in services[:9]]
+        seller_snapshot["services_count"] = len(services)
+    else:
+        if search_query:
+            products_total = await count_search_seller_products(seller_id, search_query, active_filters)
+            parts_total = await count_search_available_parts_for_site(seller_id, search_query, active_filters)
+        else:
+            products_total = await count_seller_products_for_site(seller_id, active_filters)
+            parts_total = await count_available_parts_for_site(seller_id, active_filters)
+        total_items = products_total + parts_total
+        total_pages = max(1, (total_items + page_size - 1) // page_size)
+        if current_page > total_pages:
+            current_page = total_pages
+        offset = (current_page - 1) * page_size
+        products: list[dict] = []
+        parts: list[dict] = []
+        if offset < products_total:
+            prod_limit = min(page_size, products_total - offset)
+            if search_query:
+                products = [dict(row) for row in await search_seller_products_paginated(seller_id, search_query, limit=prod_limit, offset=offset, filters=active_filters, sort=current_sort)]
+            else:
+                products = [dict(row) for row in await get_seller_products(seller_id, limit=prod_limit, offset=offset, sort=current_sort)]
+        remaining = page_size - len(products)
+        if remaining > 0:
+            part_offset = max(0, offset - products_total)
+            if search_query:
+                parts = [dict(row) for row in await search_available_parts_for_site_paginated(seller_id, search_query, limit=remaining, offset=part_offset, filters=active_filters, sort=current_sort)]
+            else:
+                parts = [dict(row) for row in await get_available_parts_for_site_paginated(seller_id, limit=remaining, offset=part_offset, filters=active_filters, sort=current_sort)]
+        cars = [dict(row) for row in await get_cars_by_seller(seller_id)]
+        filter_categories = sorted({str((i.get("category") or "")).strip() for i in [*products, *parts] if str((i.get("category") or "")).strip()})
+        filter_brands = sorted({str((i.get("brand") or "")).strip() for i in [*products, *parts] if str((i.get("brand") or "")).strip()})
+        filter_models = sorted({str((i.get("model") or "")).strip() for i in [*products, *parts] if str((i.get("model") or "")).strip()})
+        filter_conditions = sorted({str((i.get("condition") or "")).strip() for i in products if str((i.get("condition") or "")).strip()})
+        seller_snapshot["catalog_items"] = (
+            [_normalize_catalog_item({**item, "website_subdomain": subdomain}, "product") for item in products]
+            + [_normalize_catalog_item({**item, "website_subdomain": subdomain}, "part") for item in parts]
+        )[:12]
+        seller_snapshot["cars_items"] = [_normalize_car_item(item) for item in cars[:6]]
+        seller_snapshot["products_count"] = len(products) + len(parts)
+        seller_snapshot["cars_count"] = len(cars)
+        seller_snapshot["current_search_query"] = search_query
+        seller_snapshot["filtered_results_count"] = total_items
+        seller_snapshot["search_active"] = bool(search_query)
+        seller_snapshot["active_filters"] = active_filters
+        seller_snapshot["filters_active"] = filters_active
+        seller_snapshot["filter_result_count"] = total_items
+        seller_snapshot["current_page"] = current_page
+        seller_snapshot["page_size"] = page_size
+        seller_snapshot["total_items"] = total_items
+        seller_snapshot["total_pages"] = total_pages
+        seller_snapshot["has_next_page"] = current_page < total_pages
+        seller_snapshot["has_prev_page"] = current_page > 1
+        seller_snapshot["next_page"] = current_page + 1 if current_page < total_pages else None
+        seller_snapshot["prev_page"] = current_page - 1 if current_page > 1 else None
+        seller_snapshot["available_filter_options"] = {
+            "categories": filter_categories,
+            "brands": filter_brands,
+            "models": filter_models,
+            "conditions": filter_conditions,
+            "availability_options": ["available"],
+        }
+        seller_snapshot["current_sort"] = current_sort
+        seller_snapshot["sort_options"] = list(allowed_sorts)
+        seller_snapshot["sort_active"] = current_sort != "newest"
+        seller_snapshot["sorting_label"] = sorting_label_map.get(current_sort, "Новіші")
+    website_context = build_website_v2_context(dict(site), seller_snapshot)
+    cfg = website_context.get("config") if isinstance(website_context.get("config"), dict) else {}
+    hero_cfg = cfg.get("hero") if isinstance(cfg.get("hero"), dict) else {}
+    banners = hero_cfg.get("banners") if isinstance(hero_cfg.get("banners"), list) else []
+    for banner in banners:
+        if isinstance(banner, dict):
+            banner["image"] = optimize_cloudinary_url(banner.get("image"), "hero")
+    seo = _build_site_seo(dict(site), website_context, request)
+    schema_jsonld = json.dumps(_build_catalog_schema(dict(site), website_context, request), ensure_ascii=False)
     template_name = "public_site_v2/carpot_business.html" if site.get("site_type") == "carpot_business" else "public_site_v2/carpot_catalog.html"
-    return templates.TemplateResponse(template_name, {"request": request, "website": site})
+    return templates.TemplateResponse(template_name, {"request": request, "website": site, "website_context": website_context, "seo": seo, "schema_jsonld": schema_jsonld})
+
+
+@router.get("/w/{subdomain}/product/{item_id}", response_class=HTMLResponse)
+async def public_site_v2_product_detail(subdomain: str, item_id: int, request: Request):
+    site = await get_website_v2_by_subdomain(subdomain)
+    if not site or site.get("status") != "published":
+        raise HTTPException(status_code=404, detail="Website V2 not published")
+    seller_id = int(site["seller_id"])
+    seller = dict(await get_seller_by_id(seller_id) or {})
+    product = await get_product_by_id(seller_id, item_id)
+    source_type = "product"
+    if product:
+        detail_item = _normalize_product_detail_item(dict(product), "product", seller)
+    else:
+        part = await get_part_by_id(item_id)
+        if not part or int(part.get("seller_id") or 0) != seller_id:
+            raise HTTPException(status_code=404, detail="Item not found")
+        source_type = "part"
+        detail_item = _normalize_product_detail_item(dict(part), "part", seller)
+
+    products = [dict(row) for row in await get_seller_products(seller_id, limit=40)]
+    parts = [dict(row) for row in await get_available_parts_for_site(seller_id)]
+    related_pool = ([_normalize_catalog_item(item, "product") for item in products] + [_normalize_catalog_item(item, "part") for item in parts])
+    related_items = []
+    for item in related_pool:
+        if int(item.get("id") or -1) == int(detail_item["id"]) and item.get("source_type") == source_type:
+            continue
+        same_category = item.get("category") and detail_item.get("category") and item.get("category") == detail_item.get("category")
+        same_brand = item.get("brand") and detail_item.get("brand") and item.get("brand") == detail_item.get("brand")
+        if same_category or same_brand:
+            related_items.append(item)
+        if len(related_items) >= 4:
+            break
+    seo = _build_product_seo(dict(site), detail_item, request)
+    schema_jsonld = json.dumps(_build_product_schema(dict(site), detail_item, request), ensure_ascii=False)
+    return templates.TemplateResponse("public_site_v2/product_detail.html", {"request": request, "website": site, "detail_item": detail_item, "related_items": related_items, "seo": seo, "schema_jsonld": schema_jsonld})
+
+
+@router.post("/w/{subdomain}/lead")
+async def create_site_v2_lead(
+    subdomain: str,
+    name: str = Form(""),
+    phone: str = Form(""),
+    message: str = Form(""),
+    vin: str = Form(""),
+    item_title: str = Form(""),
+    request_type: str = Form("contact"),
+):
+    website = await get_website_v2_by_subdomain(subdomain)
+    if not website or website.get("status") != "published":
+        return RedirectResponse(url=f"/w/{subdomain}?lead=error", status_code=303)
+    lead_type = request_type.strip().lower()
+    if lead_type not in {"catalog", "vin", "service", "contact"}:
+        lead_type = "contact"
+    normalized_phone = _lead_text(phone, 40)
+    normalized_name = _lead_text(name, 120) or None
+    normalized_message = _lead_text(message, 1000) or None
+    normalized_vin = _lead_text(vin, 120) or None
+    normalized_item = _lead_text(item_title, 240) or None
+    if not normalized_phone:
+        return RedirectResponse(url=f"/w/{subdomain}?lead=error", status_code=303)
+    if not (normalized_message or normalized_vin or normalized_item):
+        return RedirectResponse(url=f"/w/{subdomain}?lead=error", status_code=303)
+    try:
+        await create_website_v2_lead(
+            website_id=int(website["id"]),
+            seller_id=int(website["seller_id"]),
+            lead_type=lead_type,
+            name=normalized_name,
+            phone=normalized_phone,
+            message=normalized_message,
+            vin=normalized_vin,
+            item_title=normalized_item,
+        )
+    except Exception:
+        logger.exception("Failed to create v2 lead for %s", subdomain)
+        return RedirectResponse(url=f"/w/{subdomain}?lead=error", status_code=303)
+    return RedirectResponse(url=f"/w/{subdomain}?lead=success", status_code=303)
+
+
+@router.get("/sitemap-v2.xml")
+async def sitemap_v2_xml(request: Request):
+    base_url = str(MARKETING_SITE_URL or "").strip() or "https://carpot.com.ua"
+    base_url = base_url.rstrip("/")
+    urls: list[tuple[str, str, str]] = []
+    websites = await list_published_websites_v2("carpot_catalog")
+    for website in websites:
+        subdomain = str(website.get("subdomain") or "").strip()
+        if not subdomain:
+            continue
+        urls.append((f"{base_url}/w/{subdomain}", "daily", "0.9"))
+        seller_id = int(website.get("seller_id") or 0)
+        if not seller_id:
+            continue
+        product_ids = await list_product_ids_for_sitemap(seller_id, limit=5000)
+        for row in product_ids:
+            item_id = int((row or {}).get("id") or 0)
+            if item_id > 0:
+                urls.append((f"{base_url}/w/{subdomain}/product/{item_id}", "daily", "0.7"))
+        part_ids = await list_part_ids_for_sitemap(seller_id, limit=5000)
+        for row in part_ids:
+            item_id = int((row or {}).get("id") or 0)
+            if item_id > 0:
+                urls.append((f"{base_url}/w/{subdomain}/product/{item_id}", "daily", "0.7"))
+
+    def _xml_escape(text: str) -> str:
+        return (
+            str(text or "")
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace('"', "&quot;")
+            .replace("'", "&apos;")
+        )
+
+    body = ['<?xml version="1.0" encoding="UTF-8"?>', '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
+    for loc, changefreq, priority in urls:
+        body.append("  <url>")
+        body.append(f"    <loc>{_xml_escape(loc)}</loc>")
+        body.append(f"    <changefreq>{_xml_escape(changefreq)}</changefreq>")
+        body.append(f"    <priority>{_xml_escape(priority)}</priority>")
+        body.append("  </url>")
+    body.append("</urlset>")
+    return Response(content="\n".join(body), media_type="application/xml; charset=utf-8")
+
+
+@router.get("/robots.txt", response_class=PlainTextResponse)
+async def robots_txt():
+    base_url = str(MARKETING_SITE_URL or "").strip() or "https://carpot.com.ua"
+    base_url = base_url.rstrip("/")
+    return PlainTextResponse(
+        f"User-agent: *\nAllow: /\n\nSitemap: {base_url}/sitemap-v2.xml\n",
+        media_type="text/plain; charset=utf-8",
+    )
 
 
 app.include_router(liqpay_router)
