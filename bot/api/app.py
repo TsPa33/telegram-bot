@@ -248,7 +248,12 @@ def _normalize_phone(value: str | None) -> str | None:
 
 
 def _normalize_catalog_item(item: dict, source_type: str) -> dict:
+    raw_id = item.get("id")
+    normalized_id = int(raw_id) if isinstance(raw_id, int) else _safe_int(raw_id)
+    subdomain = (item.get("website_subdomain") or item.get("subdomain") or "").strip()
+    detail_url = f"/w/{subdomain}/product/{normalized_id}" if subdomain and normalized_id else None
     return {
+        "id": normalized_id,
         "title": item.get("title") or item.get("name") or "Позиція каталогу",
         "description": item.get("description") or "",
         "category": item.get("category") or "Інше",
@@ -260,6 +265,7 @@ def _normalize_catalog_item(item: dict, source_type: str) -> dict:
         "model": item.get("model") or "",
         "source_type": source_type,
         "cta_label": "Деталі",
+        "detail_url": detail_url,
     }
 
 
@@ -1675,8 +1681,8 @@ async def public_site_v2(subdomain: str, request: Request):
         filter_models = sorted({str((i.get("model") or "")).strip() for i in [*products, *parts] if str((i.get("model") or "")).strip()})
         filter_conditions = sorted({str((i.get("condition") or "")).strip() for i in products if str((i.get("condition") or "")).strip()})
         seller_snapshot["catalog_items"] = (
-            [_normalize_catalog_item(item, "product") for item in products]
-            + [_normalize_catalog_item(item, "part") for item in parts]
+            [_normalize_catalog_item({**item, "website_subdomain": subdomain}, "product") for item in products]
+            + [_normalize_catalog_item({**item, "website_subdomain": subdomain}, "part") for item in parts]
         )[:12]
         seller_snapshot["cars_items"] = [_normalize_car_item(item) for item in cars[:6]]
         seller_snapshot["products_count"] = len(products) + len(parts)

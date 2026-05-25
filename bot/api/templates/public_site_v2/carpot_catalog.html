@@ -198,12 +198,35 @@
                 <div class="carpot-v2-grid">
                     {% for item in catalog_items %}
                         <article class="carpot-v2-card">
-                            {% if item.image_url %}<a href="/w/{{ website.subdomain }}/product/{{ item.id }}"><img class="carpot-v2-media" src="{{ item.image_url }}" alt="{{ item.title }}"></a>{% else %}<a href="/w/{{ website.subdomain }}/product/{{ item.id }}"><div class="carpot-v2-media"></div></a>{% endif %}
-                            <h4 class="carpot-v2-title"><a href="/w/{{ website.subdomain }}/product/{{ item.id }}">{{ item.title }}</a></h4>
+                            {% set item_link = item.detail_url if item.detail_url else ('/w/' ~ website.subdomain ~ '/product/' ~ item.id if item.id else '') %}
+                            {% if item.image_url %}
+                                {% if item.id %}
+                                    <a href="{{ item_link }}"><img class="carpot-v2-media" src="{{ item.image_url }}" alt="{{ item.title }}"></a>
+                                {% else %}
+                                    <img class="carpot-v2-media" src="{{ item.image_url }}" alt="{{ item.title }}">
+                                {% endif %}
+                            {% else %}
+                                {% if item.id %}
+                                    <a href="{{ item_link }}"><div class="carpot-v2-media"></div></a>
+                                {% else %}
+                                    <div class="carpot-v2-media"></div>
+                                {% endif %}
+                            {% endif %}
+                            <h4 class="carpot-v2-title">
+                                {% if item.id %}
+                                    <a href="{{ item_link }}">{{ item.title }}</a>
+                                {% else %}
+                                    {{ item.title }}
+                                {% endif %}
+                            </h4>
                             <p class="carpot-v2-meta">{{ item.category }}{% if item.brand or item.model %} · {{ item.brand }} {{ item.model }}{% endif %}</p>
                             <p class="carpot-v2-desc">{{ item.description or "Опис буде оновлено продавцем." }}</p>
                             <div class="carpot-v2-row"><b class="carpot-v2-price">{% if item.price %}{{ item.price }} грн{% else %}Ціна за запитом{% endif %}</b><span class="carpot-v2-badge">{{ item.condition or 'Стан уточнюється' }}</span></div>
-                            <a class="carpot-v2-btn carpot-v2-btn-light" href="/w/{{ website.subdomain }}/product/{{ item.id }}" style="width:100%;min-height:42px">{{ item.cta_label or "Надіслати запит" }}</a>
+                            {% if item.id %}
+                                <a class="carpot-v2-btn carpot-v2-btn-light" href="{{ item_link }}" style="width:100%;min-height:42px">{{ item.cta_label or "Надіслати запит" }}</a>
+                            {% else %}
+                                <span class="carpot-v2-btn carpot-v2-btn-light" style="width:100%;min-height:42px;display:flex;align-items:center;justify-content:center;opacity:.65;pointer-events:none">{{ item.cta_label or "Надіслати запит" }}</span>
+                            {% endif %}
                         </article>
                     {% endfor %}
                 </div>
