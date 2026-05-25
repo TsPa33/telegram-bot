@@ -1,0 +1,176 @@
+<div class="site-template site-template--shopco-auto" data-template-id="universal_shopco_auto">
+  {% set config = config if config is defined else {} %}
+  {% set data = data if data is defined else {} %}
+  {% set header = config.get('header', {}) if config.get('header') is mapping else {} %}
+  {% set hero = config.get('hero', {}) if config.get('hero') is mapping else {} %}
+  {% set catalog = config.get('catalog', {}) if config.get('catalog') is mapping else {} %}
+  {% set products = config.get('products', {}) if config.get('products') is mapping else {} %}
+  {% set services_cfg = config.get('services', {}) if config.get('services') is mapping else {} %}
+  {% set contacts = config.get('contacts', {}) if config.get('contacts') is mapping else {} %}
+  {% set footer = config.get('footer', {}) if config.get('footer') is mapping else {} %}
+  {% set modules = config.get('modules', {}) if config.get('modules') is mapping else {} %}
+  {% set hero_banners = hero.get('banners', []) if hero.get('banners') is iterable and hero.get('banners') is not string else [] %}
+  {% set messengers = contacts.get('messengers', {}) if contacts.get('messengers') is mapping else {} %}
+  {% set socials = contacts.get('socials', {}) if contacts.get('socials') is mapping else {} %}
+  {% set phones = contacts.get('phones', []) if contacts.get('phones') is iterable and contacts.get('phones') is not string else [] %}
+  {% set catalog_items = data.get('catalog_items', data.get('products', [])) if data is mapping else [] %}
+  {% set cars_items = data.get('cars_items', data.get('cars', [])) if data is mapping else [] %}
+  {% set services_items = data.get('services', []) if data is mapping else [] %}
+  {% set featured_categories = products.get('categories', catalog.get('featured_categories', [])) %}
+
+  <header class="spa-header">
+    <div class="container spa-header__inner">
+      <a href="#top" class="spa-brand">
+        {% if header.get('logo') %}<img src="{{ header.get('logo') }}" alt="Логотип">{% endif %}
+        <span>{{ seller.get('shop_name') if seller else (header.get('title') or 'CarPot') }}</span>
+      </a>
+      <nav class="spa-nav">
+        {% if data.has_catalog %}<a href="#products">Каталог</a>{% endif %}
+        {% if data.has_cars %}<a href="#cars">Авто на розборі</a>{% endif %}
+        {% if data.has_services %}<a href="#services">Послуги</a>{% endif %}
+        {% if data.has_contacts %}<a href="#contacts">Контакти</a>{% endif %}
+      </nav>
+      <a href="#vin-request" class="spa-btn spa-btn--dark">VIN запит</a>
+    </div>
+  </header>
+
+  {% if modules.get('hero', True) %}
+  <section class="spa-hero" id="top">
+    <div class="container spa-hero__grid">
+      <div>
+        <p class="spa-kicker">Автомобільний маркетплейс</p>
+        <h1>{{ hero.get('title') or 'Автозапчастини та автопослуги в одному місці' }}</h1>
+        <p class="spa-lead">{{ hero.get('subtitle') or 'Знайдіть потрібну деталь, авто на розборі або залиште VIN-запит для точного підбору.' }}</p>
+        <div class="spa-actions">
+          <a href="#products" class="spa-btn spa-btn--dark">До каталогу</a>
+          <a href="#vin-request" class="spa-btn spa-btn--light">Надіслати VIN</a>
+        </div>
+      </div>
+      <div class="spa-hero__media">
+        {% set first_banner = hero_banners[0] if hero_banners else {} %}
+        {% set hero_image = (first_banner.get('image') if first_banner is mapping else first_banner) or hero.get('image') %}
+        {% if hero_image %}<img class="site-image" src="{{ hero_image }}" alt="Головне фото" loading="lazy">{% else %}<div class="spa-placeholder">Додайте банер у CRM</div>{% endif %}
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
+  {% if data.has_catalog %}
+  <section class="spa-strip"><div class="container spa-strip__inner"><span>Підбір по VIN</span><span>Перевірка сумісності</span><span>Відправка по Україні</span></div></section>
+
+  <section class="spa-categories" id="categories">
+    <div class="container">
+      <h2>Популярні категорії</h2>
+      <div class="spa-categories__grid">
+        {% for category in featured_categories[:6] %}
+        <article class="spa-chip">{{ category }}</article>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <section class="spa-products" id="products">
+    <div class="container">
+      <div class="spa-head">
+        <h2>{{ catalog.get('title') or products.get('title') or 'Каталог запчастин' }}</h2>
+        <p>{{ catalog.get('description') or products.get('description') or 'Актуальні деталі в наявності та під замовлення.' }}</p>
+      </div>
+      <div class="spa-products__grid">
+        {% for product in catalog_items %}
+        <article class="spa-card">
+          <div class="spa-card__media">
+            {% if product.get('image') %}<img class="site-image" src="{{ product.get('image') }}" alt="{{ product.get('title') or 'Запчастина' }}" loading="lazy">{% else %}<div class="spa-placeholder">Фото уточнюється</div>{% endif %}
+          </div>
+          <div class="spa-card__body">
+            <h3>{{ product.get('title') or 'Запчастина' }}</h3>
+            <p>{{ product.get('category') or 'Категорія не вказана' }}</p>
+            <div class="spa-card__bottom">
+              <strong>{{ product.get('price') or 'Ціна за запитом' }}</strong>
+              <a href="#vin-request" class="spa-btn spa-btn--light">Уточнити</a>
+            </div>
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
+  {% if modules.get('cars', True) and data.has_cars %}
+  <section class="spa-cars" id="cars">
+    <div class="container">
+      <h2>{{ config.get('cars', {}).get('title') or 'Авто на розборі' }}</h2>
+      <div class="spa-cars__grid">
+        {% for car in cars_items %}
+        <article class="spa-car">
+          {% if car.get('image') %}<img class="site-image" src="{{ car.get('image') }}" alt="{{ car.get('title') or 'Авто' }}" loading="lazy">{% endif %}
+          <div>
+            <h3>{{ car.get('title') or 'Автомобіль' }}</h3>
+            <p>{{ car.get('price') or 'Ціна за запитом' }}</p>
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
+  {% if modules.get('vin', True) %}
+  <section id="vin-request" class="spa-vin">
+    <div class="container spa-vin__inner">
+      <div>
+        <h2>{{ config.get('vin', {}).get('title') or 'Потрібна допомога з підбором?' }}</h2>
+        <p>{{ config.get('vin', {}).get('description') or 'Надішліть VIN, марку, модель або назву деталі. Ми підберемо сумісний варіант.' }}</p>
+      </div>
+      {% include "components/vin_request.html" %}
+    </div>
+  </section>
+  {% endif %}
+
+  {% if modules.get('services', True) and data.has_services %}{% include "components/services.html" %}{% endif %}
+  {% if modules.get('contacts', True) and data.has_contacts %}{% include "components/contacts.html" %}{% endif %}
+  {% if modules.get('map', True) and data.has_map %}{% include "components/map.html" %}{% endif %}
+
+  <footer class="spa-footer" id="footer">
+    <div class="container spa-footer__inner">
+      <div>
+        <strong>{{ footer.get('business_name') or seller.get('shop_name') if seller else (header.get('title') or 'CarPot') }}</strong>
+        <p>{{ footer.get('text') or 'Підбір автозапчастин, авто на розборі та консультація по VIN.' }}</p>
+      </div>
+      <div class="spa-links">
+        {% if phones %}<a href="tel:{{ phones[0] }}">{{ phones[0] }}</a>{% endif %}
+        {% if messengers.get('telegram') %}<a href="{{ messengers.get('telegram') if messengers.get('telegram').startswith('http') else 'https://t.me/' ~ messengers.get('telegram') }}" target="_blank" rel="noopener">Telegram</a>{% endif %}
+        {% if messengers.get('viber') %}<a href="viber://chat?number={{ messengers.get('viber') }}">Viber</a>{% endif %}
+        {% if messengers.get('whatsapp') %}<a href="https://wa.me/{{ messengers.get('whatsapp') }}" target="_blank" rel="noopener">WhatsApp</a>{% endif %}
+        {% if socials.get('instagram') %}<a href="{{ socials.get('instagram') }}" target="_blank" rel="noopener">Instagram</a>{% endif %}
+      </div>
+    </div>
+  </footer>
+</div>
+
+<style>
+.site-template--shopco-auto{background:#fff;color:#111}
+.site-template--shopco-auto .container{max-width:1240px}
+.spa-header{position:sticky;top:0;background:#fff;border-bottom:1px solid #ececec;z-index:30}
+.spa-header__inner{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:16px 0;flex-wrap:wrap}
+.spa-brand{display:flex;gap:10px;align-items:center;color:#111;text-decoration:none;font-weight:800}.spa-brand img{width:38px;height:38px;object-fit:contain}
+.spa-nav{display:flex;gap:16px;flex-wrap:wrap}.spa-nav a{color:#333;text-decoration:none}
+.spa-btn{border-radius:999px;padding:10px 16px;text-decoration:none;border:1px solid #111;font-size:.92rem}
+.spa-btn--dark{background:#111;color:#fff}.spa-btn--light{background:#fff;color:#111;border-color:#ddd}
+.spa-hero{padding:28px 0}.spa-hero__grid{display:grid;grid-template-columns:1.1fr .9fr;gap:26px;align-items:center}
+.spa-kicker{font-size:.75rem;text-transform:uppercase;color:#666;letter-spacing:.1em}.spa-hero h1{font-size:clamp(2rem,4vw,3.4rem);line-height:1.02;margin:8px 0 12px}
+.spa-lead{color:#555;max-width:60ch}.spa-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+.spa-hero__media{background:#f4f4f4;border-radius:20px;overflow:hidden;min-height:320px;display:grid;place-items:center}
+.spa-hero__media img{width:100%;height:100%;object-fit:cover}.spa-placeholder{color:#666;padding:20px;text-align:center}
+.spa-strip{padding:0 0 14px}.spa-strip__inner{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.spa-strip__inner span{padding:12px;border:1px solid #e8e8e8;border-radius:12px;text-align:center;font-weight:600}
+.spa-categories h2,.spa-head h2,.spa-cars h2,.spa-vin h2{font-size:clamp(1.6rem,3vw,2.4rem);margin:0 0 8px}
+.spa-categories{padding:12px 0}.spa-categories__grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.spa-chip{padding:14px;border:1px solid #ededed;border-radius:14px;background:#fafafa}
+.spa-products{padding:14px 0 36px}.spa-head p{color:#666;margin:0 0 14px}.spa-products__grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.spa-card{border:1px solid #ececec;border-radius:18px;overflow:hidden;background:#fff}.spa-card__media{aspect-ratio:1/1;background:#f6f6f6}.spa-card__media img{width:100%;height:100%;object-fit:contain;padding:14px}
+.spa-card__body{padding:14px}.spa-card__body h3{margin:0 0 6px;font-size:1.04rem}.spa-card__body p{margin:0;color:#666}.spa-card__bottom{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:12px}
+.spa-cars{padding:4px 0 28px}.spa-cars__grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.spa-car{border:1px solid #ececec;border-radius:16px;overflow:hidden}.spa-car img{width:100%;aspect-ratio:16/10;object-fit:cover}.spa-car div{padding:12px}
+.spa-vin{padding:26px 0}.spa-vin__inner{background:#f7f7f7;border-radius:22px;padding:22px}
+.spa-footer{border-top:1px solid #ececec;padding:24px 0 34px}.spa-footer__inner{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}.spa-footer p{margin:6px 0 0;color:#666}.spa-links{display:flex;gap:12px;flex-wrap:wrap}.spa-links a{color:#333;text-decoration:none}
+@media (max-width:1024px){.spa-hero__grid,.spa-products__grid,.spa-categories__grid,.spa-cars__grid{grid-template-columns:repeat(2,minmax(0,1fr))}.spa-hero__grid{grid-template-columns:1fr}.spa-strip__inner{grid-template-columns:1fr}}
+@media (max-width:720px){.spa-products__grid,.spa-categories__grid,.spa-cars__grid{grid-template-columns:1fr}}
+</style>

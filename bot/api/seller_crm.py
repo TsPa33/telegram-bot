@@ -4036,6 +4036,7 @@ async def seller_crm_website_design(request: Request, crm_slug: str, status: str
         {"id": "universal_classic", "label": "Classic", "description": "Чистий універсальний сайт для автопослуг, запчастин та авто на розборі."},
         {"id": "universal_catalog", "label": "Catalog Pro", "description": "Шаблон з акцентом на каталог запчастин, товари та авто на розборі."},
         {"id": "universal_premium", "label": "Premium", "description": "Преміальний шаблон з сильним першим екраном, довірою, галереєю, послугами та каталогом."},
+        {"id": "universal_shopco_auto", "label": "Shopco Auto", "description": "Світлий e-commerce шаблон з акцентом на каталог запчастин, CTA та мобільний UX."},
     ]
     color_schemes = [
         {"id": "graphite_red", "label": "Графіт + червоний", "swatches": ["#14090a", "#b91c1c", "#f87171"]},
