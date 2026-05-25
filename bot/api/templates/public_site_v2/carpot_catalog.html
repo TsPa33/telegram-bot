@@ -12,6 +12,7 @@
     <meta property="og:type" content="{{ seo.og_type if seo and seo.og_type else 'website' }}">
     <meta property="og:url" content="{{ seo.og_url if seo and seo.og_url else ('/w/' ~ website.subdomain) }}">
     {% if seo and seo.og_image %}<meta property="og:image" content="{{ seo.og_image }}">{% endif %}
+    {% if schema_jsonld %}<script type="application/ld+json">{{ schema_jsonld | safe }}</script>{% endif %}
     {% set cfg = website_context.config if website_context and website_context.config else {} %}
     {% set hero = cfg.hero if cfg.hero else {} %}
     {% set banners = hero.banners if hero and hero.banners else [] %}

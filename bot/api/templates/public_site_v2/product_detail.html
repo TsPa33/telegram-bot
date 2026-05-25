@@ -12,6 +12,7 @@
   <meta property="og:type" content="{{ seo.og_type if seo and seo.og_type else 'product' }}">
   <meta property="og:url" content="{{ seo.og_url if seo and seo.og_url else ('/w/' ~ website.subdomain ~ '/product/' ~ detail_item.id) }}">
   {% if seo and seo.og_image %}<meta property="og:image" content="{{ seo.og_image }}">{% endif %}
+  {% if schema_jsonld %}<script type="application/ld+json">{{ schema_jsonld | safe }}</script>{% endif %}
   <style>
     .carpot-v2{font-family:Inter,Arial,sans-serif;background:#fff;color:#111;max-width:100%;overflow-x:hidden}
     .carpot-v2 *{box-sizing:border-box}.carpot-v2 a{text-decoration:none;color:inherit}

@@ -388,6 +388,126 @@ def _build_product_seo(site: dict, detail_item: dict, request: Request) -> dict:
     }
 
 
+def _safe_float(value) -> float | None:
+    try:
+        if value is None:
+            return None
+        text = str(value).strip().replace(" ", "").replace(",", ".")
+        if not text:
+            return None
+        return float(text)
+    except (TypeError, ValueError):
+        return None
+
+
+def _build_catalog_schema(site: dict, website_context: dict, request: Request) -> list[dict]:
+    canonical_url = str(request.url_for("public_site_v2", subdomain=site.get("subdomain")))
+    seller_name = _seo_text(site.get("name"), site.get("subdomain") or "CarPot", 120)
+    seller = (website_context or {}).get("seller") or {}
+    contacts = (website_context or {}).get("website_contacts") or {}
+    phone = str(contacts.get("phone") or seller.get("phone") or "").strip()
+    city = str(seller.get("city") or "").strip()
+    logo = ""
+    config = (website_context or {}).get("config") or {}
+    hero = config.get("hero") if isinstance(config.get("hero"), dict) else {}
+    banners = hero.get("banners") if isinstance(hero.get("banners"), list) else []
+    if banners and isinstance(banners[0], dict):
+        logo = str(banners[0].get("image") or "").strip()
+
+    org: dict = {
+        "@context": "https://schema.org",
+        "@type": "LocalBusiness" if city else "Organization",
+        "name": seller_name,
+        "url": canonical_url,
+    }
+    if phone:
+        org["telephone"] = phone
+    if city:
+        org["address"] = {"@type": "PostalAddress", "addressLocality": city}
+    if logo:
+        org["logo"] = logo
+
+    website_schema = {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": seller_name,
+        "url": canonical_url,
+        "potentialAction": {
+            "@type": "SearchAction",
+            "target": f"{canonical_url}?q={{search_term_string}}",
+            "query-input": "required name=search_term_string",
+        },
+    }
+
+    schemas = [org, website_schema]
+    catalog_items = (website_context or {}).get("catalog_items") or []
+    if isinstance(catalog_items, list) and catalog_items:
+        item_list_elements = []
+        for idx, item in enumerate(catalog_items, start=1):
+            if not isinstance(item, dict):
+                continue
+            item_url = str(item.get("detail_url") or "").strip()
+            if not item_url and item.get("id"):
+                item_url = f"/w/{site.get('subdomain')}/product/{item.get('id')}"
+            if item_url and item_url.startswith("/"):
+                item_url = str(request.base_url).rstrip("/") + item_url
+            list_item = {
+                "@type": "ListItem",
+                "position": idx,
+                "url": item_url or canonical_url,
+                "name": _seo_text(item.get("title"), "Запчастина", 120),
+            }
+            image = str(item.get("image_url") or "").strip()
+            if image:
+                list_item["image"] = image
+            item_list_elements.append(list_item)
+        if item_list_elements:
+            schemas.append(
+                {
+                    "@context": "https://schema.org",
+                    "@type": "ItemList",
+                    "itemListElement": item_list_elements,
+                }
+            )
+    return schemas
+
+
+def _build_product_schema(site: dict, detail_item: dict, request: Request) -> list[dict]:
+    canonical_url = str(request.url_for("public_site_v2_product_detail", subdomain=site.get("subdomain"), item_id=detail_item.get("id")))
+    product = {
+        "@context": "https://schema.org",
+        "@type": "Product",
+        "name": _seo_text(detail_item.get("title"), "Запчастина", 120),
+        "description": _seo_text(detail_item.get("description"), "Автозапчастина з каталогу CarPot.", 300),
+        "category": _seo_text(detail_item.get("category"), "Автозапчастини", 80),
+        "url": canonical_url,
+    }
+    image = str(detail_item.get("image_url") or "").strip()
+    if image:
+        product["image"] = [image]
+    brand = str(detail_item.get("brand") or "").strip()
+    if brand:
+        product["brand"] = {"@type": "Brand", "name": brand}
+
+    offer = {"@type": "Offer", "priceCurrency": "UAH", "url": canonical_url}
+    price_value = _safe_float(detail_item.get("price"))
+    if price_value is not None:
+        offer["price"] = f"{price_value:.2f}"
+    offer["availability"] = "https://schema.org/InStock"
+    product["offers"] = offer
+
+    breadcrumb = {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+            {"@type": "ListItem", "position": 1, "name": "Головна", "item": str(request.url_for("public_site_v2", subdomain=site.get("subdomain")))},
+            {"@type": "ListItem", "position": 2, "name": "Каталог", "item": str(request.url_for("public_site_v2", subdomain=site.get("subdomain")))},
+            {"@type": "ListItem", "position": 3, "name": _seo_text(detail_item.get("title"), "Запчастина", 120), "item": canonical_url},
+        ],
+    }
+    return [product, breadcrumb]
+
+
 def _buyer_filter_context(results: dict | None = None, **overrides) -> dict:
     results = results or {}
     selected = {
@@ -1795,8 +1915,9 @@ async def public_site_v2(subdomain: str, request: Request):
         seller_snapshot["sorting_label"] = sorting_label_map.get(current_sort, "Новіші")
     website_context = build_website_v2_context(dict(site), seller_snapshot)
     seo = _build_site_seo(dict(site), website_context, request)
+    schema_jsonld = json.dumps(_build_catalog_schema(dict(site), website_context, request), ensure_ascii=False)
     template_name = "public_site_v2/carpot_business.html" if site.get("site_type") == "carpot_business" else "public_site_v2/carpot_catalog.html"
-    return templates.TemplateResponse(template_name, {"request": request, "website": site, "website_context": website_context, "seo": seo})
+    return templates.TemplateResponse(template_name, {"request": request, "website": site, "website_context": website_context, "seo": seo, "schema_jsonld": schema_jsonld})
 
 
 @router.get("/w/{subdomain}/product/{item_id}", response_class=HTMLResponse)
@@ -1831,7 +1952,8 @@ async def public_site_v2_product_detail(subdomain: str, item_id: int, request: R
         if len(related_items) >= 4:
             break
     seo = _build_product_seo(dict(site), detail_item, request)
-    return templates.TemplateResponse("public_site_v2/product_detail.html", {"request": request, "website": site, "detail_item": detail_item, "related_items": related_items, "seo": seo})
+    schema_jsonld = json.dumps(_build_product_schema(dict(site), detail_item, request), ensure_ascii=False)
+    return templates.TemplateResponse("public_site_v2/product_detail.html", {"request": request, "website": site, "detail_item": detail_item, "related_items": related_items, "seo": seo, "schema_jsonld": schema_jsonld})
 
 
 @router.post("/w/{subdomain}/lead")
