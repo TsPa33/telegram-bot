@@ -21,6 +21,7 @@ from bot.database.pool import init_pool
 from bot.database.models import create_tables
 from bot.database.migrations_runner import run_sql_migrations
 from bot.database.repositories.site_repo import get_site_by_subdomain
+from bot.database.repositories.website_v2_repo import get_website_v2_by_subdomain
 from bot.database.repositories.seller_repo import get_seller_by_id
 from bot.database.repositories.car_repo import get_cars_by_seller
 from bot.database.repositories.service_repo import get_services_by_seller
@@ -1530,6 +1531,15 @@ async def analytics_event(request: Request):
 
 
 # ================= ROUTERS =================
+
+@router.get("/w/{subdomain}", response_class=HTMLResponse)
+async def public_site_v2(subdomain: str, request: Request):
+    site = await get_website_v2_by_subdomain(subdomain)
+    if not site or site.get("status") != "published":
+        raise HTTPException(status_code=404, detail="Website V2 not published")
+    template_name = "public_site_v2/carpot_business.html" if site.get("site_type") == "carpot_business" else "public_site_v2/carpot_catalog.html"
+    return templates.TemplateResponse(template_name, {"request": request, "website": site})
+
 
 app.include_router(liqpay_router)
 app.include_router(crm_router)
