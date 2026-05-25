@@ -9,7 +9,7 @@ from aiogram import Bot
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from fastapi import APIRouter, FastAPI, HTTPException, Request, Form, File, UploadFile
 from fastapi.encoders import jsonable_encoder
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, PlainTextResponse, Response
 from fastapi.templating import Jinja2Templates
 
 from bot.api.liqpay_callback import router as liqpay_router
@@ -21,7 +21,7 @@ from bot.database.pool import init_pool
 from bot.database.models import create_tables
 from bot.database.migrations_runner import run_sql_migrations
 from bot.database.repositories.site_repo import get_site_by_subdomain
-from bot.database.repositories.website_v2_repo import get_website_v2_by_subdomain
+from bot.database.repositories.website_v2_repo import get_website_v2_by_subdomain, list_published_websites_v2
 from bot.database.repositories.website_v2_repo import create_website_v2_lead
 from bot.database.repositories.seller_repo import get_seller_by_id
 from bot.database.repositories.car_repo import get_cars_by_seller
@@ -35,6 +35,7 @@ from bot.database.repositories.part_repo import (
     get_part_by_id,
     search_available_parts_for_site,
     search_available_parts_for_site_paginated,
+    list_part_ids_for_sitemap,
 )
 from bot.database.repositories.product_repo import (
     count_search_seller_products,
@@ -43,6 +44,7 @@ from bot.database.repositories.product_repo import (
     get_product_by_id,
     search_seller_products,
     search_seller_products_paginated,
+    list_product_ids_for_sitemap,
 )
 from bot.services.buyer_request_service import (
     BuyerRequestInput,
@@ -1996,6 +1998,62 @@ async def create_site_v2_lead(
         logger.exception("Failed to create v2 lead for %s", subdomain)
         return RedirectResponse(url=f"/w/{subdomain}?lead=error", status_code=303)
     return RedirectResponse(url=f"/w/{subdomain}?lead=success", status_code=303)
+
+
+@router.get("/sitemap-v2.xml")
+async def sitemap_v2_xml(request: Request):
+    base_url = str(MARKETING_SITE_URL or "").strip() or "https://carpot.com.ua"
+    base_url = base_url.rstrip("/")
+    urls: list[tuple[str, str, str]] = []
+    websites = await list_published_websites_v2("carpot_catalog")
+    for website in websites:
+        subdomain = str(website.get("subdomain") or "").strip()
+        if not subdomain:
+            continue
+        urls.append((f"{base_url}/w/{subdomain}", "daily", "0.9"))
+        seller_id = int(website.get("seller_id") or 0)
+        if not seller_id:
+            continue
+        product_ids = await list_product_ids_for_sitemap(seller_id, limit=5000)
+        for row in product_ids:
+            item_id = int((row or {}).get("id") or 0)
+            if item_id > 0:
+                urls.append((f"{base_url}/w/{subdomain}/product/{item_id}", "daily", "0.7"))
+        part_ids = await list_part_ids_for_sitemap(seller_id, limit=5000)
+        for row in part_ids:
+            item_id = int((row or {}).get("id") or 0)
+            if item_id > 0:
+                urls.append((f"{base_url}/w/{subdomain}/product/{item_id}", "daily", "0.7"))
+
+    def _xml_escape(text: str) -> str:
+        return (
+            str(text or "")
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace('"', "&quot;")
+            .replace("'", "&apos;")
+        )
+
+    body = ['<?xml version="1.0" encoding="UTF-8"?>', '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
+    for loc, changefreq, priority in urls:
+        body.append("  <url>")
+        body.append(f"    <loc>{_xml_escape(loc)}</loc>")
+        body.append(f"    <changefreq>{_xml_escape(changefreq)}</changefreq>")
+        body.append(f"    <priority>{_xml_escape(priority)}</priority>")
+        body.append("  </url>")
+    body.append("</urlset>")
+    return Response(content="\n".join(body), media_type="application/xml; charset=utf-8")
+
+
+@router.get("/robots.txt", response_class=PlainTextResponse)
+async def robots_txt():
+    base_url = str(MARKETING_SITE_URL or "").strip() or "https://carpot.com.ua"
+    base_url = base_url.rstrip("/")
+    return PlainTextResponse(
+        f"User-agent: *\nAllow: /\n\nSitemap: {base_url}/sitemap-v2.xml\n",
+        media_type="text/plain; charset=utf-8",
+    )
 
 
 app.include_router(liqpay_router)

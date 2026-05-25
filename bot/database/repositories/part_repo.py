@@ -760,6 +760,22 @@ async def count_available_parts_for_site(seller_id: int, filters: dict | None = 
     return int((row or {}).get("total") or 0)
 
 
+async def list_part_ids_for_sitemap(seller_id: int, limit: int = 5000):
+    normalized_limit = max(1, min(int(limit or 5000), 5000))
+    return await fetch(
+        """
+        SELECT sp.id
+        FROM seller_parts sp
+        WHERE sp.seller_id = $1
+          AND sp.status = 'available'
+        ORDER BY sp.created_at DESC, sp.id DESC
+        LIMIT $2
+        """,
+        seller_id,
+        normalized_limit,
+    )
+
+
 async def count_parts_by_car(car_id: int) -> dict:
     row = await fetchrow(
         """

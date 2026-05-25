@@ -35,6 +35,19 @@ async def get_website_v2_by_subdomain(subdomain: str):
     return await fetchrow("SELECT * FROM seller_websites_v2 WHERE lower(trim(subdomain))=lower(trim($1))", normalize_subdomain(subdomain))
 
 
+async def list_published_websites_v2(site_type: str = "carpot_catalog"):
+    return await fetch(
+        """
+        SELECT id, seller_id, subdomain, site_type, status, published_at, updated_at
+        FROM seller_websites_v2
+        WHERE status = 'published'
+          AND site_type = $1
+        ORDER BY published_at DESC NULLS LAST, id DESC
+        """,
+        site_type,
+    )
+
+
 async def update_website_v2_draft(website_id: int, patch: dict):
     row = await fetchrow("SELECT id, config_draft, site_type FROM seller_websites_v2 WHERE id=$1", website_id)
     if not row:
