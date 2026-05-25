@@ -5101,6 +5101,10 @@ async def _get_v2_website_or_404(account: dict, website_id: int):
 
 async def _build_v2_context_payload(account: dict, website: dict) -> dict:
     seller_id = int(account["seller_id"])
+    cars = await get_cars_by_seller(seller_id)
+    services = await get_services_by_seller(seller_id)
+    products = await get_seller_products(seller_id, limit=100)
+    parts = await get_available_parts_for_site(seller_id)
     seller_snapshot = {
         "seller_id": seller_id,
         "crm_slug": account["crm_slug"],
@@ -5112,9 +5116,9 @@ async def _build_v2_context_payload(account: dict, website: dict) -> dict:
         "telegram": account.get("telegram"),
         "viber": account.get("viber"),
         "whatsapp": account.get("whatsapp"),
-        "cars_count": len(await get_cars_by_seller(seller_id)),
-        "services_count": len(await get_services_by_seller(seller_id)),
-        "products_count": len(await get_seller_products(seller_id, limit=100)),
+        "cars_count": len(cars),
+        "services_count": len(services),
+        "products_count": len(products) + len(parts),
     }
     return build_website_v2_context(website, seller_snapshot)
 
