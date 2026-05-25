@@ -5141,6 +5141,53 @@ async def seller_crm_websites_design(request: Request, crm_slug: str, website_id
     return templates.TemplateResponse("seller_crm/websites/design.html", _seller_crm_context(request, title="Дизайн (V2)", current_page="websites_v2_design", account=account, subscription=subscription, website=website))
 
 
+@router.get("/{crm_slug}/websites/{website_id}/hero")
+async def seller_crm_websites_hero(request: Request, crm_slug: str, website_id: int):
+    account, subscription = await _authorized_account(request, crm_slug)
+    website = await _get_v2_website_or_404(account, website_id)
+    website_context = await _build_v2_context_payload(account, dict(website))
+    return templates.TemplateResponse(
+        "seller_crm/websites/hero.html",
+        _seller_crm_context(
+            request,
+            title="Hero (V2)",
+            current_page="websites_v2_design",
+            account=account,
+            subscription=subscription,
+            website=website,
+            website_context=website_context,
+            saved=request.query_params.get("saved"),
+        ),
+    )
+
+
+@router.post("/{crm_slug}/websites/{website_id}/hero")
+async def seller_crm_websites_hero_save(
+    request: Request,
+    crm_slug: str,
+    website_id: int,
+    title: str = Form(""),
+    subtitle: str = Form(""),
+    cta_text: str = Form(""),
+    image_url: str = Form(""),
+):
+    account, _subscription = await _authorized_account(request, crm_slug)
+    website = await _get_v2_website_or_404(account, website_id)
+    normalized_title = (title or "").strip()
+    normalized_subtitle = (subtitle or "").strip()
+    normalized_cta = (cta_text or "").strip()
+    normalized_image = (image_url or "").strip()
+    hero_payload = {
+        "title": normalized_title,
+        "subtitle": normalized_subtitle,
+        "cta_text": normalized_cta,
+        "image_url": normalized_image,
+        "banners": [{"image": normalized_image}] if normalized_image else [],
+    }
+    await update_website_v2_draft(int(website["id"]), {"hero": {k: v for k, v in hero_payload.items() if v or k == "banners"}})
+    return RedirectResponse(url=f"/crm/seller/{crm_slug}/websites/{website_id}/hero?saved=1", status_code=303)
+
+
 @router.get("/{crm_slug}/websites/{website_id}/content")
 async def seller_crm_websites_content(request: Request, crm_slug: str, website_id: int):
     account, subscription = await _authorized_account(request, crm_slug)
