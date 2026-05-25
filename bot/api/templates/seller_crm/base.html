@@ -2129,13 +2129,13 @@
             </section>
 
             <section class="nav-accordion">
-                <input id="nav-websites-v2" name="crm-nav" type="radio" {% if current_page == 'websites_v2' %}checked{% endif %}>
+                <input id="nav-websites-v2" name="crm-nav" type="radio" {% if current_page.startswith('websites_v2') %}checked{% endif %}>
                 <label class="nav-title" data-icon="◇" for="nav-websites-v2">
                     <span>Керування сайтами</span>
                 </label>
                 <div class="nav-panel">
-                    <a class="{% if current_page == 'websites_v2' %}active{% endif %}" href="/crm/seller/{{ account.crm_slug }}/websites">Мої сайти</a>
-                    <a class="{% if current_page == 'websites_v2' %}active{% endif %}" href="/crm/seller/{{ account.crm_slug }}/websites/create">Створити сайт</a>
+                    <a class="{% if current_page == 'websites_v2_index' or current_page == 'websites_v2_details' or current_page == 'websites_v2_design' or current_page == 'websites_v2_content' or current_page == 'websites_v2_contacts' or current_page == 'websites_v2_publication' %}active{% endif %}" href="/crm/seller/{{ account.crm_slug }}/websites">Мої сайти</a>
+                    <a class="{% if current_page == 'websites_v2_create' %}active{% endif %}" href="/crm/seller/{{ account.crm_slug }}/websites/create">Створити сайт</a>
                 </div>
             </section>
 
