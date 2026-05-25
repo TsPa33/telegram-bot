@@ -1,24 +1,80 @@
 {% extends "seller_crm/base.html" %}
 {% block content %}
 <h1>Публікація сайту</h1>
-<p>{{ website.name }} ({{ website_context.site_type }})</p>
-<p>Поточний статус: {{ website_context.status }}</p>
-<p>Готовність: {{ "Готово" if website_context.publish_ready else "Не готово" }}</p>
 
-{% if publish_error == 'validation' %}
-<p>Не вдалося опублікувати: заповніть обовʼязкові поля.</p>
-{% endif %}
+<div style="display:grid;gap:14px;max-width:900px;">
+    <div style="border:1px solid #dcdcdc;border-radius:12px;padding:14px;background:#fff;">
+        <p style="margin:0 0 6px;"><b>{{ website.name }}</b> ({{ website_context.site_type }})</p>
+        <p style="margin:0 0 6px;">Поточний статус: {{ website_context.status }}</p>
+        {% if website_context.publish_ready %}
+            <div style="margin-top:8px;padding:10px 12px;border-radius:10px;background:#f3f7f3;border:1px solid #d5e4d5;">🟢 Сайт готовий до публікації</div>
+        {% else %}
+            <div style="margin-top:8px;padding:10px 12px;border-radius:10px;background:#faf8f1;border:1px solid #eadfb3;">🟡 Потрібно завершити налаштування</div>
+        {% endif %}
+    </div>
 
-{% if website_context.missing_required_fields %}
-<h3>Що потрібно заповнити</h3>
-<ul>{% for item in website_context.missing_required_fields %}<li>{{ item }}</li>{% endfor %}</ul>
-{% endif %}
+    <div style="border:1px solid #dcdcdc;border-radius:12px;padding:14px;background:#fff;">
+        <p style="margin:0 0 8px;"><b>Публічне посилання:</b></p>
+        <div style="font-family:monospace;background:#f6f6f6;border:1px solid #e2e2e2;border-radius:8px;padding:10px 12px;display:inline-block;">/w/{{ website.subdomain }}</div>
+        <p style="margin:10px 0 0;color:#666;">
+            {% if website_context.site_type == 'carpot_catalog' %}
+                Після публікації сайт стане доступний клієнтам за публічним посиланням.
+            {% else %}
+                Після публікації клієнти зможуть залишати заявки через сайт.
+            {% endif %}
+        </p>
+    </div>
 
-{% if website_context.publish_ready %}
-<form method="post" action="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/publish">
-    <button type="submit">Опублікувати сайт</button>
-</form>
-{% else %}
-<p>Кнопка публікації стане доступною після виконання чекліста.</p>
-{% endif %}
+    {% if publish_error == 'validation' %}
+    <div style="padding:10px 12px;border:1px solid #e3c4c4;background:#fbf2f2;border-radius:10px;">Не вдалося опублікувати: заповніть обовʼязкові поля.</div>
+    {% endif %}
+
+    <div style="border:1px solid #dcdcdc;border-radius:12px;padding:14px;background:#fff;">
+        <h3 style="margin-top:0;">Чекліст готовності</h3>
+        {% if website_context.missing_required_fields %}
+            <div style="display:grid;gap:8px;">
+                {% for item in website_context.missing_required_fields %}
+                    <div style="display:flex;align-items:center;gap:8px;border:1px solid #ececec;background:#fafafa;padding:10px;border-radius:10px;">
+                        <span>[ ]</span>
+                        <span>{{ item }}</span>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div style="display:flex;align-items:center;gap:8px;border:1px solid #e7efe7;background:#f5faf5;padding:10px;border-radius:10px;">
+                <span>[✓]</span>
+                <span>Усі обовʼязкові поля заповнені.</span>
+            </div>
+        {% endif %}
+
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;">
+            {% set missing = website_context.missing_required_fields or [] %}
+            {% set missing_text = missing|join(' ')|lower %}
+            {% if 'контакт' in missing_text %}
+                <a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/contacts" style="padding:10px 12px;border:1px solid #111;border-radius:8px;text-decoration:none;color:#111;">Заповнити контакти</a>
+            {% endif %}
+
+            {% if website_context.site_type == 'carpot_catalog' and ('авто' in missing_text or 'товар' in missing_text or 'запчаст' in missing_text) %}
+                <a href="/crm/seller/{{ account.crm_slug }}/content/cars" style="padding:10px 12px;border:1px solid #111;border-radius:8px;text-decoration:none;color:#111;">Додати авто</a>
+                <a href="/crm/seller/{{ account.crm_slug }}/content/products" style="padding:10px 12px;border:1px solid #111;border-radius:8px;text-decoration:none;color:#111;">Додати товари</a>
+            {% endif %}
+
+            {% if website_context.site_type == 'carpot_business' and 'послуг' in missing_text %}
+                <a href="/crm/seller/{{ account.crm_slug }}/content/services" style="padding:10px 12px;border:1px solid #111;border-radius:8px;text-decoration:none;color:#111;">Додати послугу</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        {% if website_context.publish_ready %}
+            <form method="post" action="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/publish">
+                <button type="submit" style="padding:11px 14px;border-radius:8px;border:1px solid #111;background:#111;color:#fff;">Опублікувати сайт</button>
+            </form>
+        {% else %}
+            <button type="button" disabled style="padding:11px 14px;border-radius:8px;border:1px solid #bbb;background:#efefef;color:#777;">Сайт ще не готовий</button>
+        {% endif %}
+
+        <button type="button" disabled title="TODO: безпечний режим превʼю для власника" style="padding:11px 14px;border-radius:8px;border:1px solid #bbb;background:#f8f8f8;color:#777;">Preview draft (незабаром)</button>
+    </div>
+</div>
 {% endblock %}
