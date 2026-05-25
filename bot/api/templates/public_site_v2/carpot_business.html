@@ -1,1 +1,46 @@
-<!doctype html><html><body><h1>Business Website V2</h1><p>{{ website.name }} / {{ website.subdomain }}</p></body></html>
+<!doctype html>
+<html lang="uk">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ website.name or 'CarPot Послуги' }}</title>
+    {% set cfg = website_context.config if website_context and website_context.config else {} %}
+    {% set hero = cfg.hero if cfg.hero else {} %}
+    {% set seller_name = website.name or website.subdomain or 'CarPot' %}
+    {% set m = website_context.metrics if website_context and website_context.metrics else {} %}
+    {% set services_count = m.services_count or 0 %}
+    {% set has_contacts = m.has_contacts if m.has_contacts is defined else false %}
+    <style>
+        .carpot-v2{--bg:#fff;--text:#111;--muted:#666;--line:#e6e6e6;--soft:#f5f5f5;max-width:100%;overflow-x:hidden;background:#fff;color:#111;font-family:Inter,Arial,sans-serif}
+        .carpot-v2 *{box-sizing:border-box}.carpot-v2 a{text-decoration:none;color:inherit}.carpot-v2-wrap{max-width:1140px;margin:0 auto;padding:0 16px}
+        .carpot-v2-promo{background:#111;color:#fff;padding:10px 16px;text-align:center;font-size:14px}
+        .carpot-v2-header{padding:18px 0;border-bottom:1px solid var(--line);background:#fff;position:sticky;top:0;z-index:10}
+        .carpot-v2-headrow{display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between}
+        .carpot-v2-brand{font-size:24px;font-weight:800}.carpot-v2-nav{display:flex;gap:16px;flex-wrap:wrap}
+        .carpot-v2-btn{display:inline-block;padding:12px 20px;border-radius:999px;border:1px solid #111;font-weight:700}.carpot-v2-btn-black{background:#111;color:#fff}.carpot-v2-btn-light{background:#fff;color:#111}
+        .carpot-v2-hero{padding:44px 0}.carpot-v2-hero-box{background:#f3f3f3;border-radius:24px;padding:34px}.carpot-v2-hero h1{margin:0 0 14px;font-size:48px;line-height:1.1}.carpot-v2-hero p{margin:0 0 22px;color:#444;font-size:18px}
+        .carpot-v2-actions{display:flex;gap:12px;flex-wrap:wrap}.carpot-v2-trust{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:18px 0}
+        .carpot-v2-trust-item{border:1px solid var(--line);border-radius:18px;padding:16px;background:#fff;font-weight:600}
+        .carpot-v2-services{padding:20px 0}.carpot-v2-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+        .carpot-v2-card{border:1px solid var(--line);border-radius:18px;padding:18px;background:#fff}.carpot-v2-empty{border:1px dashed #bbb;background:#fafafa;border-radius:18px;padding:24px;color:#444}
+        .carpot-v2-cta{margin:24px 0;background:#111;color:#fff;padding:30px;border-radius:24px}.carpot-v2-about,.carpot-v2-contacts{padding:14px 0}
+        .carpot-v2-map{border:1px dashed #aaa;border-radius:16px;padding:20px;background:#fafafa;color:#555}.carpot-v2-footer{border-top:1px solid var(--line);margin-top:24px;padding:20px 0;color:#666}
+        @media (max-width:900px){.carpot-v2-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.carpot-v2-hero h1{font-size:36px}}
+        @media (max-width:640px){.carpot-v2-grid,.carpot-v2-trust{grid-template-columns:1fr}.carpot-v2-brand{font-size:20px}.carpot-v2-hero h1{font-size:30px}}
+    </style>
+</head>
+<body class="carpot-v2">
+<div class="carpot-v2-promo">Автопослуги, заявки та контакти в одному сайті</div>
+<header class="carpot-v2-header"><div class="carpot-v2-wrap carpot-v2-headrow"><div class="carpot-v2-brand">{{ seller_name }}</div><nav class="carpot-v2-nav"><a href="#services">Послуги</a><a href="#about">Про нас</a><a href="#contacts">Контакти</a><a href="#map">Карта</a></nav><a href="#contacts" class="carpot-v2-btn carpot-v2-btn-black">Замовити послугу</a></div></header>
+<main class="carpot-v2-wrap">
+    <section class="carpot-v2-hero"><div class="carpot-v2-hero-box"><h1>{{ hero.title or 'Автопослуги для вашого автомобіля' }}</h1><p>{{ hero.subtitle or 'Опис послуг, контакти, карта та швидка заявка для клієнтів.' }}</p><div class="carpot-v2-actions"><a class="carpot-v2-btn carpot-v2-btn-black" href="#services">Переглянути послуги</a><a class="carpot-v2-btn carpot-v2-btn-light" href="#contacts">Залишити заявку</a></div></div></section>
+    <section class="carpot-v2-trust"><div class="carpot-v2-trust-item">Швидкий звʼязок</div><div class="carpot-v2-trust-item">Зрозумілі послуги</div><div class="carpot-v2-trust-item">Контакти та карта</div></section>
+    <section id="services" class="carpot-v2-services"><h2>Послуги</h2>{% if services_count > 0 %}<div class="carpot-v2-grid">{% for i in range(6) %}<article class="carpot-v2-card"><h3>Послуга</h3><p>Картка послуги зʼявиться після підключення публічної вітрини.</p></article>{% endfor %}</div>{% else %}<div class="carpot-v2-empty">Додайте послуги в CRM, щоб вони зʼявились на сайті.</div>{% endif %}</section>
+    <section class="carpot-v2-cta"><h2>Потрібна консультація?</h2><a class="carpot-v2-btn carpot-v2-btn-light" href="#contacts">Звʼязатися</a></section>
+    <section id="about" class="carpot-v2-about"><h2>Про нас</h2><p>{{ seller.description or 'Ми надаємо автопослуги з акцентом на якість, прозору комунікацію та швидкий результат для клієнта.' }}</p></section>
+    <section id="contacts" class="carpot-v2-contacts"><h2>Контакти</h2>{% if has_contacts %}<p>{{ seller.phone or seller.email or seller.telegram or seller.viber or seller.whatsapp or seller.address }}</p>{% else %}<p>Контакти будуть доступні після заповнення CRM.</p>{% endif %}</section>
+    <section id="map" class="carpot-v2-map">Карта буде доступна після додавання адреси та інтеграції мапи.</section>
+</main>
+<footer class="carpot-v2-footer"><div class="carpot-v2-wrap">© {{ seller_name }} · CarPot Website V2</div></footer>
+</body>
+</html>
