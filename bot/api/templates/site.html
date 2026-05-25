@@ -10,14 +10,10 @@
 {% set catalog = config.get('catalog', {}) %}
 {% set services_config = config.get('services', {}) %}
 {% set design = config.get('design', {}) %}
-{% set template_id = design.get('template_id', 'universal_classic') %}
-{% if template_id == 'universal_catalog' %}
-  {% include 'public_site/universal_catalog.html' %}
-{% elif template_id == 'universal_premium' %}
-  {% include 'public_site/universal_premium.html' %}
-{% elif template_id == 'universal_shopco_auto' %}
-  {% include 'public_site/shopco_auto.html' %}
+{% set template_id = design.get('template_id', 'carpot_catalog') %}
+{% if template_id == 'carpot_business' %}
+  {% include 'public_site/carpot_business.html' %}
 {% else %}
-  {% include 'public_site/universal_classic.html' %}
+  {% include 'public_site/carpot_catalog.html' %}
 {% endif %}
 {% endblock %}
