@@ -588,7 +588,7 @@ async def get_available_parts_for_site(seller_id: int) -> list:
     )
 
 
-async def get_available_parts_for_site_paginated(seller_id: int, *, limit: int = 100, offset: int = 0, filters: dict | None = None) -> list:
+async def get_available_parts_for_site_paginated(seller_id: int, *, limit: int = 100, offset: int = 0, filters: dict | None = None, sort: str = "newest") -> list:
     normalized_limit = max(1, min(int(limit or 100), 300))
     normalized_offset = max(0, int(offset or 0))
     args=[seller_id]
@@ -613,7 +613,7 @@ async def get_available_parts_for_site_paginated(seller_id: int, *, limit: int =
         WHERE sp.seller_id = $1
           AND sp.status = 'available'
           {filters_sql}
-        ORDER BY sc.id DESC, sp.sort_order, sp.name
+        ORDER BY {_part_sort_sql(sort)}
         LIMIT ${len(args)-1} OFFSET ${len(args)}
         """,
         *args,
@@ -661,7 +661,7 @@ async def search_available_parts_for_site(seller_id: int, query: str, limit: int
     )
 
 
-async def search_available_parts_for_site_paginated(seller_id: int, query: str, *, limit: int = 200, offset: int = 0, filters: dict | None = None) -> list:
+async def search_available_parts_for_site_paginated(seller_id: int, query: str, *, limit: int = 200, offset: int = 0, filters: dict | None = None, sort: str = "newest") -> list:
     normalized_limit = max(1, min(int(limit or 200), 300))
     normalized_offset = max(0, int(offset or 0))
     q = f"%{(query or '').strip().lower()}%"
@@ -684,7 +684,7 @@ async def search_available_parts_for_site_paginated(seller_id: int, query: str, 
             OR LOWER(COALESCE(b.name, '')) LIKE $2
             OR LOWER(COALESCE(m.name, '')) LIKE $2
           ){filters_sql}
-        ORDER BY sc.id DESC, sp.sort_order, sp.name
+        ORDER BY {_part_sort_sql(sort)}
         LIMIT ${len(args)-1} OFFSET ${len(args)}
         """,
         *args,
@@ -700,6 +700,19 @@ def _part_filter_sql(filters: dict | None, args: list) -> str:
             args.append(value)
             clauses.append(f"LOWER(COALESCE({col}, '')) = LOWER(${len(args)})")
     return (" AND " + " AND ".join(clauses)) if clauses else ""
+
+
+def _part_sort_sql(sort: str | None) -> str:
+    normalized = (sort or "newest").strip().lower()
+    sort_map = {
+        "newest": "sp.created_at DESC, sp.id DESC",
+        "oldest": "sp.created_at ASC, sp.id ASC",
+        "name_asc": "LOWER(COALESCE(sp.name, '')) ASC, sp.id DESC",
+        "name_desc": "LOWER(COALESCE(sp.name, '')) DESC, sp.id DESC",
+        "price_asc": "sp.price ASC NULLS LAST, sp.id DESC",
+        "price_desc": "sp.price DESC NULLS LAST, sp.id DESC",
+    }
+    return sort_map.get(normalized, sort_map["newest"])
 
 
 async def count_search_available_parts_for_site(seller_id: int, query: str, filters: dict | None = None) -> int:

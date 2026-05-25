@@ -1638,6 +1638,18 @@ async def public_site_v2(subdomain: str, request: Request):
         "condition": str(request.query_params.get("condition") or "").strip(),
         "availability": str(request.query_params.get("availability") or "").strip(),
     }
+    allowed_sorts = {"newest", "oldest", "name_asc", "name_desc", "price_asc", "price_desc"}
+    current_sort = str(request.query_params.get("sort") or "newest").strip().lower()
+    if current_sort not in allowed_sorts:
+        current_sort = "newest"
+    sorting_label_map = {
+        "newest": "Новіші",
+        "oldest": "Старіші",
+        "name_asc": "Назва А–Я",
+        "name_desc": "Назва Я–А",
+        "price_asc": "Дешевші",
+        "price_desc": "Дорожчі",
+    }
     filters_active = any(active_filters.values())
     page_size = 24
     try:
@@ -1665,16 +1677,16 @@ async def public_site_v2(subdomain: str, request: Request):
         if offset < products_total:
             prod_limit = min(page_size, products_total - offset)
             if search_query:
-                products = [dict(row) for row in await search_seller_products_paginated(seller_id, search_query, limit=prod_limit, offset=offset, filters=active_filters)]
+                products = [dict(row) for row in await search_seller_products_paginated(seller_id, search_query, limit=prod_limit, offset=offset, filters=active_filters, sort=current_sort)]
             else:
-                products = [dict(row) for row in await get_seller_products(seller_id, limit=prod_limit, offset=offset)]
+                products = [dict(row) for row in await get_seller_products(seller_id, limit=prod_limit, offset=offset, sort=current_sort)]
         remaining = page_size - len(products)
         if remaining > 0:
             part_offset = max(0, offset - products_total)
             if search_query:
-                parts = [dict(row) for row in await search_available_parts_for_site_paginated(seller_id, search_query, limit=remaining, offset=part_offset, filters=active_filters)]
+                parts = [dict(row) for row in await search_available_parts_for_site_paginated(seller_id, search_query, limit=remaining, offset=part_offset, filters=active_filters, sort=current_sort)]
             else:
-                parts = [dict(row) for row in await get_available_parts_for_site_paginated(seller_id, limit=remaining, offset=part_offset, filters=active_filters)]
+                parts = [dict(row) for row in await get_available_parts_for_site_paginated(seller_id, limit=remaining, offset=part_offset, filters=active_filters, sort=current_sort)]
         cars = [dict(row) for row in await get_cars_by_seller(seller_id)]
         filter_categories = sorted({str((i.get("category") or "")).strip() for i in [*products, *parts] if str((i.get("category") or "")).strip()})
         filter_brands = sorted({str((i.get("brand") or "")).strip() for i in [*products, *parts] if str((i.get("brand") or "")).strip()})
@@ -1708,6 +1720,10 @@ async def public_site_v2(subdomain: str, request: Request):
             "conditions": filter_conditions,
             "availability_options": ["available"],
         }
+        seller_snapshot["current_sort"] = current_sort
+        seller_snapshot["sort_options"] = list(allowed_sorts)
+        seller_snapshot["sort_active"] = current_sort != "newest"
+        seller_snapshot["sorting_label"] = sorting_label_map.get(current_sort, "Новіші")
     website_context = build_website_v2_context(dict(site), seller_snapshot)
     template_name = "public_site_v2/carpot_business.html" if site.get("site_type") == "carpot_business" else "public_site_v2/carpot_catalog.html"
     return templates.TemplateResponse(template_name, {"request": request, "website": site, "website_context": website_context})

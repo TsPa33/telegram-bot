@@ -206,6 +206,7 @@ async def get_seller_products(
     include_archived: bool = False,
     limit: int = 50,
     offset: int = 0,
+    sort: str = "newest",
 ):
     normalized_limit = max(1, min(int(limit or 50), 100))
     normalized_offset = max(0, int(offset or 0))
@@ -236,7 +237,7 @@ async def get_seller_products(
         LEFT JOIN models m ON m.id = sc.model_id
         LEFT JOIN brands b ON b.id = m.brand_id
         WHERE {' AND '.join(prefixed_filters)}
-        ORDER BY sp.created_at DESC, sp.id DESC
+        ORDER BY {_product_sort_sql(sort)}
         LIMIT ${limit_arg} OFFSET ${offset_arg}
         """,
         *args,
@@ -291,7 +292,20 @@ def _product_filter_sql(filters: dict | None, args: list) -> str:
     return (" AND " + " AND ".join(clauses)) if clauses else ""
 
 
-async def search_seller_products_paginated(seller_id: int, query: str, *, limit: int = 100, offset: int = 0, filters: dict | None = None):
+def _product_sort_sql(sort: str | None) -> str:
+    normalized = (sort or "newest").strip().lower()
+    sort_map = {
+        "newest": "sp.created_at DESC, sp.id DESC",
+        "oldest": "sp.created_at ASC, sp.id ASC",
+        "name_asc": "LOWER(COALESCE(sp.title, '')) ASC, sp.id DESC",
+        "name_desc": "LOWER(COALESCE(sp.title, '')) DESC, sp.id DESC",
+        "price_asc": "sp.price ASC NULLS LAST, sp.id DESC",
+        "price_desc": "sp.price DESC NULLS LAST, sp.id DESC",
+    }
+    return sort_map.get(normalized, sort_map["newest"])
+
+
+async def search_seller_products_paginated(seller_id: int, query: str, *, limit: int = 100, offset: int = 0, filters: dict | None = None, sort: str = "newest"):
     normalized_limit = max(1, min(int(limit or 100), 200))
     normalized_offset = max(0, int(offset or 0))
     q = f"%{(query or '').strip().lower()}%"
@@ -313,7 +327,7 @@ async def search_seller_products_paginated(seller_id: int, query: str, *, limit:
             OR LOWER(COALESCE(sp.description, '')) LIKE $2 OR LOWER(COALESCE(b.name, '')) LIKE $2
             OR LOWER(COALESCE(m.name, '')) LIKE $2
           ){filters_sql}
-        ORDER BY sp.created_at DESC, sp.id DESC
+        ORDER BY {_product_sort_sql(sort)}
         LIMIT ${len(args)-1} OFFSET ${len(args)}
         """,
         *args,
