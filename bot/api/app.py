@@ -27,8 +27,23 @@ from bot.database.repositories.seller_repo import get_seller_by_id
 from bot.database.repositories.car_repo import get_cars_by_seller
 from bot.database.repositories.service_repo import get_services_by_seller
 from bot.database.repositories.lead_repo import create_site_lead
-from bot.database.repositories.part_repo import get_available_parts_for_site, get_part_by_id, search_available_parts_for_site
-from bot.database.repositories.product_repo import get_seller_products, get_product_by_id, search_seller_products
+from bot.database.repositories.part_repo import (
+    count_available_parts_for_site,
+    count_search_available_parts_for_site,
+    get_available_parts_for_site,
+    get_available_parts_for_site_paginated,
+    get_part_by_id,
+    search_available_parts_for_site,
+    search_available_parts_for_site_paginated,
+)
+from bot.database.repositories.product_repo import (
+    count_search_seller_products,
+    count_seller_products_for_site,
+    get_seller_products,
+    get_product_by_id,
+    search_seller_products,
+    search_seller_products_paginated,
+)
 from bot.services.buyer_request_service import (
     BuyerRequestInput,
     BuyerRequestValidationError,
@@ -1610,17 +1625,42 @@ async def public_site_v2(subdomain: str, request: Request):
     seller_snapshot = dict(seller or {})
     seller_id = int(site["seller_id"])
     search_query = str(request.query_params.get("q") or "").strip()
+    page_size = 24
+    try:
+        current_page = max(1, int(request.query_params.get("page") or 1))
+    except ValueError:
+        current_page = 1
     if site.get("site_type") == "carpot_business":
         services = [dict(row) for row in await get_services_by_seller(seller_id)]
         seller_snapshot["services_items"] = [_normalize_service_item(item) for item in services[:9]]
         seller_snapshot["services_count"] = len(services)
     else:
         if search_query:
-            products = [dict(row) for row in await search_seller_products(seller_id, search_query, limit=120)]
-            parts = [dict(row) for row in await search_available_parts_for_site(seller_id, search_query, limit=120)]
+            products_total = await count_search_seller_products(seller_id, search_query)
+            parts_total = await count_search_available_parts_for_site(seller_id, search_query)
         else:
-            products = [dict(row) for row in await get_seller_products(seller_id, limit=12)]
-            parts = [dict(row) for row in await get_available_parts_for_site(seller_id)]
+            products_total = await count_seller_products_for_site(seller_id)
+            parts_total = await count_available_parts_for_site(seller_id)
+        total_items = products_total + parts_total
+        total_pages = max(1, (total_items + page_size - 1) // page_size)
+        if current_page > total_pages:
+            current_page = total_pages
+        offset = (current_page - 1) * page_size
+        products: list[dict] = []
+        parts: list[dict] = []
+        if offset < products_total:
+            prod_limit = min(page_size, products_total - offset)
+            if search_query:
+                products = [dict(row) for row in await search_seller_products_paginated(seller_id, search_query, limit=prod_limit, offset=offset)]
+            else:
+                products = [dict(row) for row in await get_seller_products(seller_id, limit=prod_limit, offset=offset)]
+        remaining = page_size - len(products)
+        if remaining > 0:
+            part_offset = max(0, offset - products_total)
+            if search_query:
+                parts = [dict(row) for row in await search_available_parts_for_site_paginated(seller_id, search_query, limit=remaining, offset=part_offset)]
+            else:
+                parts = [dict(row) for row in await get_available_parts_for_site_paginated(seller_id, limit=remaining, offset=part_offset)]
         cars = [dict(row) for row in await get_cars_by_seller(seller_id)]
         seller_snapshot["catalog_items"] = (
             [_normalize_catalog_item(item, "product") for item in products]
@@ -1630,8 +1670,16 @@ async def public_site_v2(subdomain: str, request: Request):
         seller_snapshot["products_count"] = len(products) + len(parts)
         seller_snapshot["cars_count"] = len(cars)
         seller_snapshot["current_search_query"] = search_query
-        seller_snapshot["filtered_results_count"] = len(products) + len(parts)
+        seller_snapshot["filtered_results_count"] = total_items
         seller_snapshot["search_active"] = bool(search_query)
+        seller_snapshot["current_page"] = current_page
+        seller_snapshot["page_size"] = page_size
+        seller_snapshot["total_items"] = total_items
+        seller_snapshot["total_pages"] = total_pages
+        seller_snapshot["has_next_page"] = current_page < total_pages
+        seller_snapshot["has_prev_page"] = current_page > 1
+        seller_snapshot["next_page"] = current_page + 1 if current_page < total_pages else None
+        seller_snapshot["prev_page"] = current_page - 1 if current_page > 1 else None
     website_context = build_website_v2_context(dict(site), seller_snapshot)
     template_name = "public_site_v2/carpot_business.html" if site.get("site_type") == "carpot_business" else "public_site_v2/carpot_catalog.html"
     return templates.TemplateResponse(template_name, {"request": request, "website": site, "website_context": website_context})

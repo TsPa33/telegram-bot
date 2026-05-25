@@ -20,6 +20,9 @@
     {% set search_query = website_context.current_search_query if website_context and website_context.current_search_query else '' %}
     {% set search_active = website_context.search_active if website_context else false %}
     {% set filtered_results_count = website_context.filtered_results_count if website_context else 0 %}
+    {% set current_page = website_context.current_page if website_context else 1 %}
+    {% set total_pages = website_context.total_pages if website_context else 1 %}
+    {% set total_items = website_context.total_items if website_context else filtered_results_count %}
     <style>
         .carpot-v2{--bg:#fff;--text:#111;--muted:#676767;--line:#e7e7e7;--soft:#f6f6f6;--card:#fcfcfc;background:var(--bg);color:var(--text);font-family:Inter,Arial,sans-serif;max-width:100%;overflow-x:hidden}
         .carpot-v2 *{box-sizing:border-box}.carpot-v2 a{text-decoration:none;color:inherit}
@@ -174,7 +177,13 @@
     <section id="catalog" class="carpot-v2-catalog"><div style="grid-column:1/-1;display:flex;justify-content:space-between;align-items:end;gap:12px;"><h2 style="margin:0;font-size:34px;letter-spacing:-.02em;">Каталог запчастин</h2><p style="margin:0;color:#666;font-size:14px;">Переглядайте доступні позиції та залишайте запит.</p></div>
         <aside class="carpot-v2-filter"><h3>Фільтри</h3><div class="carpot-v2-filter-group"><b>Категорії</b><p>Двигун · КПП · Кузов</p></div><div class="carpot-v2-filter-group"><b>Стан</b><p>Нові · Б/в · Відновлені</p></div><div class="carpot-v2-filter-group"><b>Наявність</b><p>В наявності · Під замовлення</p></div><div class="carpot-v2-filter-group"><b>Марка</b><p>Оберіть бренд</p></div><div class="carpot-v2-filter-group"><b>Модель</b><p>Оберіть модель</p></div></aside>
         <div>
-            {% if search_active %}<p style="margin:0 0 10px;color:#555;">Результати пошуку: {{ filtered_results_count }}{% if not filtered_results_count %} · <a href="/w/{{ website.subdomain }}" style="text-decoration:underline;">Очистити пошук</a>{% endif %}</p>{% endif %}
+            <p style="margin:0 0 10px;color:#555;">
+                {% if search_active %}
+                    Знайдено {{ filtered_results_count }} результатів за запитом “{{ search_query }}”
+                {% else %}
+                    Показано {{ catalog_items|length }} з {{ total_items }} запчастин
+                {% endif %}
+            </p>
             {% if catalog_items %}
                 <div class="carpot-v2-grid">
                     {% for item in catalog_items %}
@@ -193,6 +202,19 @@
             {% endif %}
         </div>
     </section>
+    {% if total_pages > 1 %}
+    <section style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0 24px;">
+        {% if website_context.has_prev_page %}<a class="carpot-v2-btn carpot-v2-btn-light" href="/w/{{ website.subdomain }}?{% if search_query %}q={{ search_query | urlencode }}&{% endif %}page={{ website_context.prev_page }}">Попередня</a>{% endif %}
+        {% for p in range(1, total_pages + 1) %}
+            {% if p == current_page %}
+                <span class="carpot-v2-btn carpot-v2-btn-black">{{ p }}</span>
+            {% else %}
+                <a class="carpot-v2-btn carpot-v2-btn-light" href="/w/{{ website.subdomain }}?{% if search_query %}q={{ search_query | urlencode }}&{% endif %}page={{ p }}">{{ p }}</a>
+            {% endif %}
+        {% endfor %}
+        {% if website_context.has_next_page %}<a class="carpot-v2-btn carpot-v2-btn-light" href="/w/{{ website.subdomain }}?{% if search_query %}q={{ search_query | urlencode }}&{% endif %}page={{ website_context.next_page }}">Наступна</a>{% endif %}
+    </section>
+    {% endif %}
 
     {% if cars_items %}
     <section id="cars" class="carpot-v2-section">
