@@ -16,6 +16,7 @@
     {% set cars_count = m.cars_count or 0 %}
     {% set products_count = m.products_count or 0 %}
     {% set has_contacts = m.has_contacts if m.has_contacts is defined else false %}
+    {% set wc = website_context.website_contacts if website_context and website_context.website_contacts else {} %}
     <style>
         .carpot-v2{--bg:#fff;--text:#111;--muted:#666;--line:#e5e5e5;--soft:#f5f5f5;--dark:#111;max-width:100%;overflow-x:hidden;background:var(--bg);color:var(--text);font-family:Inter,Arial,sans-serif}
         .carpot-v2 *{box-sizing:border-box}.carpot-v2 a{text-decoration:none;color:inherit}
@@ -91,7 +92,7 @@
     <section id="contacts" class="carpot-v2-contacts">
         <h2>Контакти</h2>
         {% if has_contacts %}
-            <p>{{ seller.phone or seller.email or seller.telegram or seller.viber or seller.whatsapp or seller.address }}</p>
+            <p>{{ wc.phone or (wc.phones[0] if wc.phones else '') or wc.telegram or wc.viber or wc.whatsapp or wc.website or seller.phone or seller.telegram or seller.website }}</p>
         {% else %}
             <p>Контакти будуть доступні після заповнення CRM.</p>
         {% endif %}

@@ -59,6 +59,47 @@ def _has_contact_method(seller: dict, config: dict) -> bool:
     return any(str(v or "").strip() for v in [*seller_contacts, *config_contacts])
 
 
+def detect_website_v2_contacts(config: dict, seller: dict) -> dict:
+    contacts = config.get("contacts") if isinstance(config.get("contacts"), dict) else {}
+    messengers = contacts.get("messengers") if isinstance(contacts.get("messengers"), dict) else {}
+    phones_raw = contacts.get("phones")
+    phones = [str(value).strip() for value in phones_raw] if isinstance(phones_raw, list) else []
+    phone = str(contacts.get("phone") or "").strip()
+    telegram = str(contacts.get("telegram") or messengers.get("telegram") or "").strip()
+    viber = str(contacts.get("viber") or messengers.get("viber") or "").strip()
+    whatsapp = str(contacts.get("whatsapp") or messengers.get("whatsapp") or "").strip()
+    website = str(contacts.get("website") or "").strip()
+    has_website_contacts = any([phone, *phones, telegram, viber, whatsapp, website])
+    if has_website_contacts:
+        return {
+            "has_contacts": True,
+            "source": "website",
+            "phone": phone,
+            "phones": phones,
+            "telegram": telegram,
+            "viber": viber,
+            "whatsapp": whatsapp,
+            "website": website,
+        }
+
+    seller_phone = str(seller.get("phone") or seller.get("contact_phone") or "").strip()
+    seller_telegram = str(seller.get("telegram") or seller.get("username") or "").strip()
+    seller_viber = str(seller.get("viber") or "").strip()
+    seller_whatsapp = str(seller.get("whatsapp") or "").strip()
+    seller_website = str(seller.get("website") or "").strip()
+    has_seller_contacts = any([seller_phone, seller_telegram, seller_viber, seller_whatsapp, seller_website])
+    return {
+        "has_contacts": has_seller_contacts,
+        "source": "seller_profile" if has_seller_contacts else "none",
+        "phone": seller_phone,
+        "phones": [seller_phone] if seller_phone else [],
+        "telegram": seller_telegram,
+        "viber": seller_viber,
+        "whatsapp": seller_whatsapp,
+        "website": seller_website,
+    }
+
+
 def build_catalog_website_context(website: dict, seller: dict) -> dict:
     config = get_website_v2_public_config(website)
     raw_cars = seller.get("cars_items") or []
@@ -77,7 +118,8 @@ def build_catalog_website_context(website: dict, seller: dict) -> dict:
     services_count = int(seller.get("services_count") or 0)
     hero = config.get("hero") if isinstance(config.get("hero"), dict) else {}
     has_hero = bool(hero.get("title") or hero.get("subtitle"))
-    has_contacts = _has_contact_method(seller, config)
+    website_contacts = detect_website_v2_contacts(config, seller)
+    has_contacts = bool(website_contacts.get("has_contacts"))
     has_catalog_data = (cars_count + products_count) > 0
 
     missing: list[str] = []
@@ -109,6 +151,7 @@ def build_catalog_website_context(website: dict, seller: dict) -> dict:
         "cars_items": raw_cars[:6],
         "categories": categories,
         "has_catalog_items": len(raw_products) > 0,
+        "website_contacts": website_contacts,
         "missing_required_fields": missing,
         "publish_ready": len(missing) == 0,
         "warnings": warnings,
@@ -123,7 +166,8 @@ def build_business_website_context(website: dict, seller: dict) -> dict:
     products_count = int(seller.get("products_count") or 0)
     hero = config.get("hero") if isinstance(config.get("hero"), dict) else {}
     has_hero = bool(hero.get("title") or hero.get("subtitle"))
-    has_contacts = _has_contact_method(seller, config)
+    website_contacts = detect_website_v2_contacts(config, seller)
+    has_contacts = bool(website_contacts.get("has_contacts"))
 
     missing: list[str] = []
     if not str((website or {}).get("name") or "").strip():
@@ -150,6 +194,7 @@ def build_business_website_context(website: dict, seller: dict) -> dict:
             "has_services": services_count > 0,
         },
         "services_items": raw_services[:9],
+        "website_contacts": website_contacts,
         "missing_required_fields": missing,
         "publish_ready": len(missing) == 0,
         "warnings": warnings,
@@ -179,4 +224,5 @@ def build_website_v2_context(website: dict, seller: dict) -> dict:
         "categories": specialized.get("categories", []),
         "has_catalog_items": specialized.get("has_catalog_items", False),
         "services_items": specialized.get("services_items", []),
+        "website_contacts": specialized.get("website_contacts", {"has_contacts": False, "source": "none"}),
     }

@@ -23,6 +23,12 @@
                 Після публікації клієнти зможуть залишати заявки через сайт.
             {% endif %}
         </p>
+        {% set contact_source = website_context.website_contacts.source if website_context.website_contacts else 'none' %}
+        {% if contact_source == 'seller_profile' %}
+            <p style="margin:8px 0 0;color:#444;">Контакти взято з профілю продавця.</p>
+        {% elif contact_source == 'website' %}
+            <p style="margin:8px 0 0;color:#444;">Використовуються окремі контакти сайту.</p>
+        {% endif %}
     </div>
 
     {% if publish_error == 'validation' %}
