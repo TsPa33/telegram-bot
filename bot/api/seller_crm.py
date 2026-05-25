@@ -4033,10 +4033,8 @@ async def seller_crm_website_design(request: Request, crm_slug: str, status: str
     has_services_data = False if _is_demo_account(account) else bool(await get_services_by_seller(seller_id))
     has_hybrid_business = bool(has_parts and has_services_data)
     templates_list = [
-        {"id": "universal_classic", "label": "Classic", "description": "Чистий універсальний сайт для автопослуг, запчастин та авто на розборі."},
-        {"id": "universal_catalog", "label": "Catalog Pro", "description": "Шаблон з акцентом на каталог запчастин, товари та авто на розборі."},
-        {"id": "universal_premium", "label": "Premium", "description": "Преміальний шаблон з сильним першим екраном, довірою, галереєю, послугами та каталогом."},
-        {"id": "universal_shopco_auto", "label": "Shopco Auto", "description": "Світлий e-commerce шаблон з акцентом на каталог запчастин, CTA та мобільний UX."},
+        {"id": "carpot_catalog", "label": "CarPot Catalog", "description": "Для розборок, магазинів запчастин і продавців з каталогом."},
+        {"id": "carpot_business", "label": "CarPot Business", "description": "Для сервісів, майстерень, евакуаторів та бізнес-візиток."},
     ]
     color_schemes = [
         {"id": "graphite_red", "label": "Графіт + червоний", "swatches": ["#14090a", "#b91c1c", "#f87171"]},
@@ -4049,7 +4047,7 @@ async def seller_crm_website_design(request: Request, crm_slug: str, status: str
 
 
 @router.post("/{crm_slug}/website/design/template")
-async def seller_crm_website_design_template(request: Request, crm_slug: str, template_id: str = Form("universal_classic")):
+async def seller_crm_website_design_template(request: Request, crm_slug: str, template_id: str = Form("carpot_catalog")):
     account, _ = await _authorized_account(request, crm_slug)
     raw_template_id = template_id
     template_id = normalize_template_id(template_id)

@@ -2,26 +2,27 @@ from copy import deepcopy
 from typing import Any
 
 CANONICAL_TEMPLATE_IDS = (
-    "universal_classic",
-    "universal_catalog",
-    "universal_premium",
-    "universal_shopco_auto",
+    "carpot_catalog",
+    "carpot_business",
 )
 
 TEMPLATE_LEGACY_ALIASES: dict[str, str] = {
-    "service_classic": "universal_classic",
-    "dismantler_classic": "universal_classic",
-    "service_modern": "universal_catalog",
-    "dismantler_catalog": "universal_catalog",
-    "service_premium": "universal_premium",
-    "dismantler_premium": "universal_premium",
+    "universal_classic": "carpot_business",
+    "universal_premium": "carpot_business",
+    "universal_catalog": "carpot_catalog",
+    "universal_shopco_auto": "carpot_catalog",
+    "catalog_pro_v2": "carpot_catalog",
+    "service_classic": "carpot_business",
+    "dismantler_classic": "carpot_catalog",
+    "service_modern": "carpot_business",
+    "dismantler_catalog": "carpot_catalog",
+    "service_premium": "carpot_business",
+    "dismantler_premium": "carpot_catalog",
 }
 
 SITE_TEMPLATE_META: dict[str, dict[str, str]] = {
-    "universal_classic": {"label": "Universal Sales", "concept": "Universal Sales"},
-    "universal_catalog": {"label": "Calm Marketplace", "concept": "Calm Marketplace"},
-    "universal_premium": {"label": "Brutal Metallic", "concept": "Brutal Metallic"},
-    "universal_shopco_auto": {"label": "Shopco Auto", "concept": "Shopco Auto"},
+    "carpot_catalog": {"label": "CarPot Catalog", "concept": "CarPot Catalog"},
+    "carpot_business": {"label": "CarPot Business", "concept": "CarPot Business"},
 }
 
 CANONICAL_COLOR_SCHEME_IDS = (
@@ -81,18 +82,20 @@ SITE_SECTION_META: dict[str, dict[str, str]] = {
 }
 
 TEMPLATE_DEFAULT_SECTIONS_ORDER: dict[str, list[str]] = {
-    "universal_premium": ["hero", "about", "catalog", "cars", "services", "gallery", "vin", "contacts", "map", "footer"],
-    "universal_catalog": ["hero", "catalog", "cars", "vin", "gallery", "about", "contacts", "map", "footer"],
-    "universal_classic": ["hero", "about", "services", "catalog", "cars", "gallery", "vin", "contacts", "map", "footer"],
-    "universal_shopco_auto": ["hero", "catalog", "cars", "vin", "services", "contacts", "map", "footer"],
+    "carpot_catalog": ["hero", "catalog", "cars", "vin", "services", "about", "contacts", "map", "footer"],
+    "carpot_business": ["hero", "services", "about", "contacts", "catalog", "cars", "vin", "map", "footer"],
 }
 
 
 def normalize_template_id(value: str | None) -> str:
     raw = str(value or "").strip().lower()
     mapped = TEMPLATE_LEGACY_ALIASES.get(raw, raw)
+    if raw.startswith("service_"):
+        mapped = "carpot_business"
+    elif raw.startswith("dismantler_"):
+        mapped = "carpot_catalog"
     if mapped not in CANONICAL_TEMPLATE_IDS:
-        return "universal_classic"
+        return "carpot_catalog"
     return mapped
 
 
@@ -126,7 +129,7 @@ def normalize_section_id(value: str | None) -> str | None:
 
 def normalize_sections_order(value: list | None, template_id: str | None = None) -> list[str]:
     canonical_template_id = normalize_template_id(template_id)
-    default_order = list(TEMPLATE_DEFAULT_SECTIONS_ORDER.get(canonical_template_id, TEMPLATE_DEFAULT_SECTIONS_ORDER["universal_classic"]))
+    default_order = list(TEMPLATE_DEFAULT_SECTIONS_ORDER.get(canonical_template_id, TEMPLATE_DEFAULT_SECTIONS_ORDER["carpot_catalog"]))
     raw_list = value if isinstance(value, list) else []
     normalized: list[str] = []
     for raw in raw_list:
