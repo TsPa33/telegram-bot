@@ -63,6 +63,15 @@ def build_catalog_website_context(website: dict, seller: dict) -> dict:
     config = get_website_v2_public_config(website)
     raw_cars = seller.get("cars_items") or []
     raw_products = seller.get("catalog_items") or []
+    if not isinstance(raw_products, list):
+        raw_products = []
+    categories = sorted(
+        {
+            item.get("category", "").strip()
+            for item in raw_products
+            if isinstance(item, dict) and item.get("category")
+        }
+    )
     cars_count = int(seller.get("cars_count") or len(raw_cars) or 0)
     products_count = int(seller.get("products_count") or len(raw_products) or 0)
     services_count = int(seller.get("services_count") or 0)
@@ -171,4 +180,3 @@ def build_website_v2_context(website: dict, seller: dict) -> dict:
         "has_catalog_items": specialized.get("has_catalog_items", False),
         "services_items": specialized.get("services_items", []),
     }
-    categories = sorted({str((item or {}).get("category") or "").strip() for item in raw_products if str((item or {}).get("category") or "").strip()})
