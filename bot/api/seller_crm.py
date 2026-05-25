@@ -5048,13 +5048,13 @@ async def preview_draft_site(request: Request, crm_slug: str):
 async def seller_crm_websites(request: Request, crm_slug: str):
     account, subscription = await _authorized_account(request, crm_slug)
     websites = await list_websites_v2_by_seller(account["seller_id"])
-    return templates.TemplateResponse("seller_crm/websites/index.html", _seller_crm_context(request, title="Керування сайтами", current_page="websites_v2", account=account, subscription=subscription, websites=websites))
+    return templates.TemplateResponse("seller_crm/websites/index.html", _seller_crm_context(request, title="Керування сайтами", current_page="websites_v2_index", account=account, subscription=subscription, websites=websites))
 
 
 @router.get("/{crm_slug}/websites/create")
 async def seller_crm_websites_create(request: Request, crm_slug: str, error: str | None = None):
     account, subscription = await _authorized_account(request, crm_slug)
-    return templates.TemplateResponse("seller_crm/websites/create.html", _seller_crm_context(request, title="Створення сайту", current_page="websites_v2", account=account, subscription=subscription, error=error))
+    return templates.TemplateResponse("seller_crm/websites/create.html", _seller_crm_context(request, title="Створення сайту", current_page="websites_v2_create", account=account, subscription=subscription, error=error))
 
 
 @router.post("/{crm_slug}/websites/create")
@@ -5082,7 +5082,7 @@ async def seller_crm_websites_overview(request: Request, crm_slug: str, website_
     website = await get_website_v2_by_id(account["seller_id"], website_id)
     if not website:
         raise HTTPException(status_code=404)
-    return templates.TemplateResponse("seller_crm/websites/overview.html", _seller_crm_context(request, title="Огляд сайту", current_page="websites_v2", account=account, subscription=subscription, website=website))
+    return templates.TemplateResponse("seller_crm/websites/overview.html", _seller_crm_context(request, title="Огляд сайту", current_page="websites_v2_details", account=account, subscription=subscription, website=website))
 
 
 
@@ -5097,28 +5097,28 @@ async def _get_v2_website_or_404(account: dict, website_id: int):
 async def seller_crm_websites_design(request: Request, crm_slug: str, website_id: int):
     account, subscription = await _authorized_account(request, crm_slug)
     website = await _get_v2_website_or_404(account, website_id)
-    return templates.TemplateResponse("seller_crm/websites/design.html", _seller_crm_context(request, title="Дизайн (V2)", current_page="websites_v2", account=account, subscription=subscription, website=website))
+    return templates.TemplateResponse("seller_crm/websites/design.html", _seller_crm_context(request, title="Дизайн (V2)", current_page="websites_v2_design", account=account, subscription=subscription, website=website))
 
 
 @router.get("/{crm_slug}/websites/{website_id}/content")
 async def seller_crm_websites_content(request: Request, crm_slug: str, website_id: int):
     account, subscription = await _authorized_account(request, crm_slug)
     website = await _get_v2_website_or_404(account, website_id)
-    return templates.TemplateResponse("seller_crm/websites/content.html", _seller_crm_context(request, title="Контент (V2)", current_page="websites_v2", account=account, subscription=subscription, website=website))
+    return templates.TemplateResponse("seller_crm/websites/content.html", _seller_crm_context(request, title="Контент (V2)", current_page="websites_v2_content", account=account, subscription=subscription, website=website))
 
 
 @router.get("/{crm_slug}/websites/{website_id}/contacts")
 async def seller_crm_websites_contacts(request: Request, crm_slug: str, website_id: int):
     account, subscription = await _authorized_account(request, crm_slug)
     website = await _get_v2_website_or_404(account, website_id)
-    return templates.TemplateResponse("seller_crm/websites/contacts.html", _seller_crm_context(request, title="Контакти (V2)", current_page="websites_v2", account=account, subscription=subscription, website=website))
+    return templates.TemplateResponse("seller_crm/websites/contacts.html", _seller_crm_context(request, title="Контакти (V2)", current_page="websites_v2_contacts", account=account, subscription=subscription, website=website))
 
 
 @router.get("/{crm_slug}/websites/{website_id}/publication")
 async def seller_crm_websites_publication(request: Request, crm_slug: str, website_id: int):
     account, subscription = await _authorized_account(request, crm_slug)
     website = await _get_v2_website_or_404(account, website_id)
-    return templates.TemplateResponse("seller_crm/websites/publication.html", _seller_crm_context(request, title="Публікація (V2)", current_page="websites_v2", account=account, subscription=subscription, website=website))
+    return templates.TemplateResponse("seller_crm/websites/publication.html", _seller_crm_context(request, title="Публікація (V2)", current_page="websites_v2_publication", account=account, subscription=subscription, website=website))
 
 
 @router.post("/{crm_slug}/websites/{website_id}/publish")
