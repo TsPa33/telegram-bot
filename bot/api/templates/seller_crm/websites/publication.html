@@ -88,7 +88,13 @@
         cars_count={{ website_context.metrics.cars_count or 0 }},
         products_count={{ website_context.metrics.products_count or 0 }},
         has_contacts={{ website_context.metrics.has_contacts }},
-        publish_ready={{ website_context.publish_ready }}
+        publish_ready={{ website_context.publish_ready }},
+        contacts_source={{ website_context.website_contacts.source if website_context.website_contacts else "none" }},
+        contacts_phone={{ website_context.website_contacts.phone if website_context.website_contacts else "" }},
+        contacts_phones={{ website_context.website_contacts.phones if website_context.website_contacts else [] }},
+        contacts_has={{ website_context.website_contacts.has_contacts if website_context.website_contacts else false }},
+        seller_keys={{ website_context.website_contacts.debug.seller_keys if website_context.website_contacts and website_context.website_contacts.debug else [] }},
+        candidates={{ website_context.website_contacts.debug.seller_phone_candidates if website_context.website_contacts and website_context.website_contacts.debug else [] }}
     </div>
 </div>
 {% endblock %}

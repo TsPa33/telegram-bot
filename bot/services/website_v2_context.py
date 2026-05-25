@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any
+logger = logging.getLogger(__name__)
 
 
 def build_website_v2_url(subdomain: str) -> str:
@@ -82,13 +84,21 @@ def detect_website_v2_contacts(config: dict, seller: dict) -> dict:
             "website": website,
         }
 
-    seller_phone = str(seller.get("phone") or seller.get("contact_phone") or "").strip()
-    seller_telegram = str(seller.get("telegram") or seller.get("username") or "").strip()
+    seller_keys = sorted(list(seller.keys())) if isinstance(seller, dict) else []
+    seller_phone_candidates = [
+        seller.get("phone"),
+        seller.get("contact_phone"),
+        seller.get("phone_number"),
+        (seller.get("contacts") or {}).get("phone") if isinstance(seller.get("contacts"), dict) else None,
+    ]
+    seller_phone = str(next((v for v in seller_phone_candidates if str(v or "").strip()), "")).strip()
+    username = str(seller.get("username") or "").strip()
+    seller_telegram = str(seller.get("telegram") or (f"@{username}" if username else "")).strip()
     seller_viber = str(seller.get("viber") or "").strip()
     seller_whatsapp = str(seller.get("whatsapp") or "").strip()
     seller_website = str(seller.get("website") or "").strip()
     has_seller_contacts = any([seller_phone, seller_telegram, seller_viber, seller_whatsapp, seller_website])
-    return {
+    result = {
         "has_contacts": has_seller_contacts,
         "source": "seller_profile" if has_seller_contacts else "none",
         "phone": seller_phone,
@@ -97,7 +107,20 @@ def detect_website_v2_contacts(config: dict, seller: dict) -> dict:
         "viber": seller_viber,
         "whatsapp": seller_whatsapp,
         "website": seller_website,
+        "debug": {
+            "seller_keys": seller_keys,
+            "seller_phone_candidates": [str(v or "") for v in seller_phone_candidates if v is not None],
+        },
     }
+    logger.info(
+        "website_v2 contacts detection: source=%s has_contacts=%s seller_keys=%s phone_candidates=%s resolved_phone=%s",
+        result["source"],
+        result["has_contacts"],
+        seller_keys,
+        result["debug"]["seller_phone_candidates"],
+        result["phone"],
+    )
+    return result
 
 
 def build_catalog_website_context(website: dict, seller: dict) -> dict:

@@ -89,6 +89,7 @@ from bot.database.repositories.seller_crm_repo import (
     update_seller_crm_car,
     update_seller_crm_car_photo,
 )
+from bot.database.repositories.seller_repo import get_seller_by_id
 from bot.database.repositories.lead_thread_repo import (
     LEAD_THREAD_READ_READ,
     LEAD_THREAD_SENDER_SELLER,
@@ -5101,21 +5102,30 @@ async def _get_v2_website_or_404(account: dict, website_id: int):
 
 async def _build_v2_context_payload(account: dict, website: dict) -> dict:
     seller_id = int(account["seller_id"])
+    seller_row = dict(await get_seller_by_id(seller_id) or {})
     cars = await get_cars_by_seller(seller_id)
     services = await get_services_by_seller(seller_id)
     products = await get_seller_products(seller_id, limit=100)
     parts = await get_available_parts_for_site(seller_id)
     seller_snapshot = {
+        "id": seller_row.get("id", seller_id),
         "seller_id": seller_id,
         "crm_slug": account["crm_slug"],
-        "name": account.get("name"),
-        "shop_name": account.get("shop_name"),
-        "phone": account.get("phone"),
-        "email": account.get("email"),
-        "address": account.get("address"),
-        "telegram": account.get("telegram"),
-        "viber": account.get("viber"),
-        "whatsapp": account.get("whatsapp"),
+        "name": seller_row.get("name") or account.get("name"),
+        "shop_name": seller_row.get("shop_name") or account.get("shop_name"),
+        "phone": seller_row.get("phone") or account.get("phone"),
+        "contact_phone": seller_row.get("contact_phone") or account.get("contact_phone"),
+        "phone_number": seller_row.get("phone_number") or account.get("phone_number"),
+        "email": seller_row.get("email") or account.get("email"),
+        "address": seller_row.get("address") or account.get("address"),
+        "username": seller_row.get("username") or account.get("username"),
+        "telegram": seller_row.get("telegram") or account.get("telegram"),
+        "viber": seller_row.get("viber") or account.get("viber"),
+        "whatsapp": seller_row.get("whatsapp") or account.get("whatsapp"),
+        "website": seller_row.get("website") or account.get("website"),
+        "city": seller_row.get("city") or account.get("city"),
+        "description": seller_row.get("description") or account.get("description"),
+        "contacts": seller_row.get("contacts") or account.get("contacts"),
         "cars_count": len(cars),
         "services_count": len(services),
         "products_count": len(products) + len(parts),
