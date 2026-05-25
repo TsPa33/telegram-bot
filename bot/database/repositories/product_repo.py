@@ -243,6 +243,127 @@ async def get_seller_products(
     )
 
 
+async def search_seller_products(seller_id: int, query: str, limit: int = 100):
+    normalized_limit = max(1, min(int(limit or 100), 200))
+    normalized_offset = 0
+    if isinstance(limit, tuple):
+        normalized_limit, normalized_offset = limit
+    q = f"%{(query or '').strip().lower()}%"
+    return await fetch(
+        """
+        SELECT
+            sp.*,
+            b.name AS donor_brand,
+            m.name AS donor_model
+        FROM seller_products sp
+        LEFT JOIN seller_cars sc ON sc.id = sp.donor_car_id AND sc.seller_id = sp.seller_id
+        LEFT JOIN models m ON m.id = sc.model_id
+        LEFT JOIN brands b ON b.id = m.brand_id
+        WHERE sp.seller_id = $1
+          AND sp.status <> 'archived'
+          AND (
+            LOWER(COALESCE(sp.title, '')) LIKE $2
+            OR LOWER(COALESCE(sp.category, '')) LIKE $2
+            OR LOWER(COALESCE(sp.brand, '')) LIKE $2
+            OR LOWER(COALESCE(sp.model, '')) LIKE $2
+            OR LOWER(COALESCE(sp.description, '')) LIKE $2
+            OR LOWER(COALESCE(b.name, '')) LIKE $2
+            OR LOWER(COALESCE(m.name, '')) LIKE $2
+          )
+        ORDER BY sp.created_at DESC, sp.id DESC
+        LIMIT $3 OFFSET $4
+        """,
+        seller_id,
+        q,
+        normalized_limit,
+        normalized_offset,
+    )
+
+
+def _product_filter_sql(filters: dict | None, args: list) -> str:
+    filters = filters or {}
+    clauses = []
+    for key, col in [("category", "sp.category"), ("brand", "sp.brand"), ("model", "sp.model"), ("condition", "sp.condition"), ("availability", "sp.stock_status")]:
+        value = str(filters.get(key) or "").strip()
+        if value:
+            args.append(value)
+            clauses.append(f"LOWER(COALESCE({col}, '')) = LOWER(${len(args)})")
+    return (" AND " + " AND ".join(clauses)) if clauses else ""
+
+
+async def search_seller_products_paginated(seller_id: int, query: str, *, limit: int = 100, offset: int = 0, filters: dict | None = None):
+    normalized_limit = max(1, min(int(limit or 100), 200))
+    normalized_offset = max(0, int(offset or 0))
+    q = f"%{(query or '').strip().lower()}%"
+    args = [seller_id, q]
+    filters_sql = _product_filter_sql(filters, args)
+    args.extend([normalized_limit, normalized_offset])
+    return await fetch(
+        f"""
+        SELECT sp.*, b.name AS donor_brand, m.name AS donor_model
+        FROM seller_products sp
+        LEFT JOIN seller_cars sc ON sc.id = sp.donor_car_id AND sc.seller_id = sp.seller_id
+        LEFT JOIN models m ON m.id = sc.model_id
+        LEFT JOIN brands b ON b.id = m.brand_id
+        WHERE sp.seller_id = $1
+          AND sp.status <> 'archived'
+          AND (
+            LOWER(COALESCE(sp.title, '')) LIKE $2 OR LOWER(COALESCE(sp.category, '')) LIKE $2
+            OR LOWER(COALESCE(sp.brand, '')) LIKE $2 OR LOWER(COALESCE(sp.model, '')) LIKE $2
+            OR LOWER(COALESCE(sp.description, '')) LIKE $2 OR LOWER(COALESCE(b.name, '')) LIKE $2
+            OR LOWER(COALESCE(m.name, '')) LIKE $2
+          ){filters_sql}
+        ORDER BY sp.created_at DESC, sp.id DESC
+        LIMIT ${len(args)-1} OFFSET ${len(args)}
+        """,
+        *args,
+    )
+
+
+async def count_search_seller_products(seller_id: int, query: str, filters: dict | None = None) -> int:
+    q = f"%{(query or '').strip().lower()}%"
+    args = [seller_id, q]
+    filters_sql = _product_filter_sql(filters, args)
+    row = await fetchrow(
+        f"""
+        SELECT COUNT(*)::int AS total
+        FROM seller_products sp
+        LEFT JOIN seller_cars sc ON sc.id = sp.donor_car_id AND sc.seller_id = sp.seller_id
+        LEFT JOIN models m ON m.id = sc.model_id
+        LEFT JOIN brands b ON b.id = m.brand_id
+        WHERE sp.seller_id = $1
+          AND sp.status <> 'archived'
+          AND (
+            LOWER(COALESCE(sp.title, '')) LIKE $2
+            OR LOWER(COALESCE(sp.category, '')) LIKE $2
+            OR LOWER(COALESCE(sp.brand, '')) LIKE $2
+            OR LOWER(COALESCE(sp.model, '')) LIKE $2
+            OR LOWER(COALESCE(sp.description, '')) LIKE $2
+            OR LOWER(COALESCE(b.name, '')) LIKE $2
+            OR LOWER(COALESCE(m.name, '')) LIKE $2
+          ){filters_sql}
+        """,
+        *args,
+    )
+    return int((row or {}).get("total") or 0)
+
+
+async def count_seller_products_for_site(seller_id: int, filters: dict | None = None) -> int:
+    args=[seller_id]
+    filters_sql=_product_filter_sql(filters,args)
+    row = await fetchrow(
+        f"""
+        SELECT COUNT(*)::int AS total
+        FROM seller_products
+        WHERE seller_id = $1
+          AND status <> 'archived'
+          {filters_sql.replace('sp.', '')}
+        """,
+        *args,
+    )
+    return int((row or {}).get("total") or 0)
+
+
 async def get_seller_product_donor_cars(seller_id: int):
     return await fetch(
         """
