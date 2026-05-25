@@ -1,1 +1,232 @@
-<!doctype html><html><body><h1>Catalog Website V2</h1><p>{{ website.name }} / {{ website.subdomain }}</p></body></html>
+<!doctype html>
+<html lang="uk">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ website.name or 'CarPot Каталог' }}</title>
+    {% set cfg = website_context.config if website_context and website_context.config else {} %}
+    {% set hero = cfg.hero if cfg.hero else {} %}
+    {% set banners = hero.banners if hero and hero.banners else [] %}
+    {% set primary_banner = banners[0] if banners else None %}
+    {% set seller_name = website.name or website.subdomain or 'CarPot' %}
+    {% set m = website_context.metrics if website_context and website_context.metrics else {} %}
+    {% set catalog_items = website_context.catalog_items if website_context and website_context.catalog_items else [] %}
+    {% set cars_items = website_context.cars_items if website_context and website_context.cars_items else [] %}
+    {% set categories = website_context.categories if website_context and website_context.categories else [] %}
+    {% set cars_count = m.cars_count or 0 %}
+    {% set products_count = m.products_count or 0 %}
+    {% set has_contacts = m.has_contacts if m.has_contacts is defined else false %}
+    {% set wc = website_context.website_contacts if website_context and website_context.website_contacts else {} %}
+    <style>
+        .carpot-v2{--bg:#fff;--text:#111;--muted:#676767;--line:#e7e7e7;--soft:#f6f6f6;--card:#fcfcfc;background:var(--bg);color:var(--text);font-family:Inter,Arial,sans-serif;max-width:100%;overflow-x:hidden}
+        .carpot-v2 *{box-sizing:border-box}.carpot-v2 a{text-decoration:none;color:inherit}
+        .carpot-v2-wrap{max-width:1240px;margin:0 auto;padding:0 20px}
+        .carpot-v2-promo{background:#111;color:#fff;text-align:center;padding:10px 14px;font-size:13px;letter-spacing:.01em}
+
+        .carpot-v2-header{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.97);backdrop-filter:blur(6px);border-bottom:1px solid var(--line)}
+        .carpot-v2-header-top{display:flex;align-items:center;gap:20px;justify-content:space-between;padding:16px 0}
+        .carpot-v2-brand{display:grid;gap:2px;min-width:0}.carpot-v2-brand b{font-size:22px;line-height:1.1;letter-spacing:-.02em}
+        .carpot-v2-brand span{font-size:12px;color:var(--muted)}
+        .carpot-v2-nav{display:flex;gap:8px;flex-wrap:wrap}
+        .carpot-v2-nav a{padding:9px 12px;border-radius:999px;border:1px solid transparent;color:#2c2c2c;font-size:14px}
+        .carpot-v2-nav a:hover{background:#f2f2f2;border-color:#ececec}
+        .carpot-v2-head-actions{display:flex;align-items:center;gap:10px;min-width:0}
+        .carpot-v2-search{width:320px;max-width:100%;border:1px solid #ddd;background:#f8f8f8;border-radius:999px;padding:11px 15px;font-size:14px}
+        .carpot-v2-btn{display:inline-flex;align-items:center;justify-content:center;padding:11px 18px;border-radius:999px;border:1px solid #111;font-weight:650;font-size:14px;transition:.16s ease}
+        .carpot-v2-btn-black{background:#111;color:#fff}.carpot-v2-btn-black:hover{background:#202020}
+        .carpot-v2-btn-light{background:#fff;color:#111}.carpot-v2-btn-light:hover{background:#f3f3f3}
+
+        .carpot-v2-main{padding:28px 0 48px}
+        .carpot-v2-hero{display:grid;grid-template-columns:1.05fr .95fr;gap:20px;align-items:stretch}
+        .carpot-v2-hero-copy{border:1px solid var(--line);border-radius:26px;background:var(--soft);padding:34px 30px}
+        .carpot-v2-hero h1{font-size:48px;line-height:1.06;letter-spacing:-.025em;margin:0 0 14px}
+        .carpot-v2-hero p{font-size:18px;line-height:1.5;color:#414141;margin:0 0 24px;max-width:58ch}
+        .carpot-v2-actions{display:flex;flex-wrap:wrap;gap:10px}
+        .carpot-v2-visual{border:1px solid var(--line);border-radius:26px;background:#f3f3f3;overflow:hidden;min-height:360px;position:relative}
+        .carpot-v2-visual img{width:100%;height:100%;object-fit:cover}
+        .carpot-v2-composition{position:relative;height:100%;padding:24px;display:grid;grid-template-columns:1fr 1fr;gap:14px;align-content:center}
+        .carpot-v2-comp-card{border:1px solid #ddd;border-radius:18px;background:#fff;padding:14px;box-shadow:0 8px 22px rgba(0,0,0,.06)}
+        .carpot-v2-comp-media{height:96px;background:#f0f0f0;border-radius:12px;margin-bottom:10px}
+        .carpot-v2-comp-line{height:10px;background:#efefef;border-radius:8px;margin-bottom:8px}
+
+        .carpot-v2-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:20px 0 12px}
+        .carpot-v2-strip-item{min-height:94px;border:1px solid var(--line);border-radius:18px;background:#fff;padding:16px;display:grid;align-content:center}
+        .carpot-v2-strip-item b{font-size:30px;line-height:1;letter-spacing:-.02em;margin-bottom:8px}
+        .carpot-v2-strip-item span{font-size:14px;color:#555}
+
+        .carpot-v2-cats{display:flex;flex-wrap:wrap;gap:10px;margin:10px 0 26px}
+        .carpot-v2-chip{padding:10px 14px;border-radius:999px;background:#f5f5f5;border:1px solid #e8e8e8;font-size:13px;font-weight:650;color:#2f2f2f}
+
+        .carpot-v2-catalog{display:grid;grid-template-columns:260px 1fr;gap:16px;margin-bottom:28px}
+        .carpot-v2-filter{border:1px solid var(--line);border-radius:18px;background:var(--card);padding:16px;position:sticky;top:90px;height:fit-content}
+        .carpot-v2-filter h3{margin:0 0 12px;font-size:17px}
+        .carpot-v2-filter p{margin:8px 0;color:#5c5c5c;font-size:14px}
+        .carpot-v2-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+        .carpot-v2-card{border:1px solid var(--line);border-radius:20px;background:#fff;padding:12px;display:grid;gap:10px;transition:transform .15s ease, box-shadow .15s ease}
+        .carpot-v2-card:hover{transform:translateY(-2px);box-shadow:0 10px 22px rgba(0,0,0,.07)}
+        .carpot-v2-media{width:100%;height:170px;object-fit:cover;border-radius:14px;background:#efefef;border:1px solid #ececec}
+        .carpot-v2-title{font-size:17px;line-height:1.2;margin:0}
+        .carpot-v2-meta{color:#626262;font-size:13px;margin:0}
+        .carpot-v2-desc{color:#4b4b4b;font-size:14px;line-height:1.4;margin:0}
+        .carpot-v2-row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+        .carpot-v2-price{font-size:20px;font-weight:750;letter-spacing:-.01em}
+        .carpot-v2-badge{font-size:12px;padding:6px 9px;border-radius:999px;background:#f2f2f2;border:1px solid #e6e6e6;color:#4a4a4a}
+
+        .carpot-v2-section{margin:26px 0}.carpot-v2-section h2{font-size:32px;letter-spacing:-.02em;margin:0 0 12px}
+        .carpot-v2-empty{border:1px dashed #cfcfcf;background:#fafafa;border-radius:16px;padding:22px;color:#505050}
+
+        .carpot-v2-vin{margin:34px 0;border-radius:24px;background:#111;color:#fff;padding:26px;border:1px solid #1f1f1f}
+        .carpot-v2-vin h2{font-size:34px;line-height:1.08;margin:0 0 10px}
+        .carpot-v2-vin p{margin:0 0 14px;color:#ddd}
+        .carpot-v2-formgrid{display:grid;gap:10px;grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:10px}
+        .carpot-v2-input,.carpot-v2-textarea{padding:12px;border-radius:10px;border:1px solid #ddd;background:#fff;color:#111;font-size:14px;width:100%}
+        .carpot-v2-textarea{min-height:92px}
+
+        .carpot-v2-contacts h2{font-size:30px;margin:0 0 10px}
+        .carpot-v2-contact-box{border:1px solid var(--line);border-radius:16px;background:#fafafa;padding:16px}
+
+        .carpot-v2-footer{border-top:1px solid var(--line);padding:24px 0;color:#666;font-size:14px;margin-top:30px}
+
+        @media (max-width:1100px){
+            .carpot-v2-hero h1{font-size:40px}
+            .carpot-v2-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+        }
+        @media (max-width:900px){
+            .carpot-v2-header-top{display:grid;grid-template-columns:1fr;gap:10px}
+            .carpot-v2-head-actions{justify-content:space-between}
+            .carpot-v2-search{flex:1;width:100%}
+            .carpot-v2-hero,.carpot-v2-catalog{grid-template-columns:1fr}
+            .carpot-v2-filter{position:static}
+            .carpot-v2-formgrid{grid-template-columns:1fr 1fr}
+        }
+        @media (max-width:640px){
+            .carpot-v2-wrap{padding:0 14px}
+            .carpot-v2-brand b{font-size:20px}
+            .carpot-v2-nav{overflow:auto;padding-bottom:4px;white-space:nowrap;flex-wrap:nowrap}
+            .carpot-v2-nav a{display:inline-flex}
+            .carpot-v2-hero-copy{padding:24px 20px}
+            .carpot-v2-hero h1{font-size:32px}
+            .carpot-v2-hero p{font-size:15px}
+            .carpot-v2-strip,.carpot-v2-grid{grid-template-columns:1fr}
+            .carpot-v2-vin h2{font-size:28px}
+            .carpot-v2-formgrid{grid-template-columns:1fr}
+        }
+    </style>
+</head>
+<body class="carpot-v2">
+<div class="carpot-v2-promo">Підбір запчастин по VIN та авто на розборі</div>
+<header class="carpot-v2-header">
+    <div class="carpot-v2-wrap carpot-v2-header-top">
+        <div class="carpot-v2-brand">
+            <b>{{ seller_name }}</b>
+            <span>Каталог запчастин та авто на розборі</span>
+        </div>
+        <nav class="carpot-v2-nav"><a href="#catalog">Каталог</a><a href="#cars">Авто на розборі</a><a href="#vin-request">VIN-запит</a><a href="#contacts">Контакти</a></nav>
+        <div class="carpot-v2-head-actions">
+            <input class="carpot-v2-search" placeholder="Пошук запчастини, бренду або VIN" aria-label="Пошук">
+            <a class="carpot-v2-btn carpot-v2-btn-black" href="#vin-request">Надіслати запит</a>
+        </div>
+    </div>
+</header>
+
+<main class="carpot-v2-main carpot-v2-wrap">
+    {% set lead_status = request.query_params.get('lead') if request else '' %}
+    {% if lead_status == 'success' %}<div class="carpot-v2-empty">Заявку надіслано. Ми звʼяжемось з вами.</div>{% elif lead_status == 'error' %}<div class="carpot-v2-empty">Не вдалося надіслати заявку. Перевірте номер телефону та текст запиту.</div>{% endif %}
+
+    <section class="carpot-v2-hero">
+        <div class="carpot-v2-hero-copy">
+            <h1>{{ hero.title or 'Запчастини з авто на розборі' }}</h1>
+            <p>{{ hero.subtitle or 'Каталог запчастин, авто на розборі та VIN-підбір для швидкого пошуку потрібної деталі.' }}</p>
+            <div class="carpot-v2-actions">
+                <a class="carpot-v2-btn carpot-v2-btn-black" href="#catalog">Перейти в каталог</a>
+                <a class="carpot-v2-btn carpot-v2-btn-light" href="#vin-request">Надіслати VIN</a>
+            </div>
+        </div>
+        <div class="carpot-v2-visual">
+            {% if primary_banner and primary_banner.image %}
+                <img src="{{ primary_banner.image }}" alt="Банер сайту">
+            {% else %}
+                <div class="carpot-v2-composition">
+                    <div class="carpot-v2-comp-card"><div class="carpot-v2-comp-media"></div><div class="carpot-v2-comp-line"></div><div class="carpot-v2-comp-line" style="width:74%"></div></div>
+                    <div class="carpot-v2-comp-card"><div class="carpot-v2-comp-media"></div><div class="carpot-v2-comp-line"></div><div class="carpot-v2-comp-line" style="width:62%"></div></div>
+                    <div class="carpot-v2-comp-card"><div class="carpot-v2-comp-media"></div><div class="carpot-v2-comp-line"></div><div class="carpot-v2-comp-line" style="width:68%"></div></div>
+                    <div class="carpot-v2-comp-card"><div class="carpot-v2-comp-media"></div><div class="carpot-v2-comp-line"></div><div class="carpot-v2-comp-line" style="width:58%"></div></div>
+                </div>
+            {% endif %}
+        </div>
+    </section>
+
+    <section class="carpot-v2-strip">
+        <div class="carpot-v2-strip-item"><b>{{ cars_count }}</b><span>Авто на розборі</span></div>
+        <div class="carpot-v2-strip-item"><b>{{ products_count }}</b><span>Запчастини</span></div>
+        <div class="carpot-v2-strip-item"><b>VIN</b><span>VIN-запити</span></div>
+    </section>
+
+    <section class="carpot-v2-cats">
+        {% if categories %}{% for category in categories %}<span class="carpot-v2-chip">{{ category }}</span>{% endfor %}{% else %}<span class="carpot-v2-chip">Двигун</span><span class="carpot-v2-chip">КПП</span><span class="carpot-v2-chip">Кузов</span><span class="carpot-v2-chip">Оптика</span><span class="carpot-v2-chip">Ходова</span><span class="carpot-v2-chip">Електрика</span>{% endif %}
+    </section>
+
+    <section id="catalog" class="carpot-v2-catalog">
+        <aside class="carpot-v2-filter"><h3>Фільтри</h3><p>Категорії</p><p>Марка</p><p>Модель</p><p>Стан</p><p>Наявність</p></aside>
+        <div>
+            {% if catalog_items %}
+                <div class="carpot-v2-grid">
+                    {% for item in catalog_items %}
+                        <article class="carpot-v2-card">
+                            {% if item.image_url %}<img class="carpot-v2-media" src="{{ item.image_url }}" alt="{{ item.title }}">{% else %}<div class="carpot-v2-media"></div>{% endif %}
+                            <h4 class="carpot-v2-title">{{ item.title }}</h4>
+                            <p class="carpot-v2-meta">{{ item.category }}{% if item.brand or item.model %} · {{ item.brand }} {{ item.model }}{% endif %}</p>
+                            <p class="carpot-v2-desc">{{ item.description or "Опис буде оновлено продавцем." }}</p>
+                            <div class="carpot-v2-row"><b class="carpot-v2-price">{% if item.price %}{{ item.price }} грн{% else %}Ціна за запитом{% endif %}</b><span class="carpot-v2-badge">{{ item.condition or 'Стан уточнюється' }}</span></div>
+                            <a class="carpot-v2-btn carpot-v2-btn-light" href="#vin-request">{{ item.cta_label or "Надіслати запит" }}</a>
+                        </article>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="carpot-v2-empty">Каталог готується. Додайте авто або товари в CRM.</div>
+            {% endif %}
+        </div>
+    </section>
+
+    {% if cars_items %}
+    <section id="cars" class="carpot-v2-section">
+        <h2>Авто на розборі</h2>
+        <div class="carpot-v2-grid">
+            {% for car in cars_items %}
+                <article class="carpot-v2-card">
+                    {% if car.image_url %}<img class="carpot-v2-media" src="{{ car.image_url }}" alt="{{ car.title }}">{% else %}<div class="carpot-v2-media"></div>{% endif %}
+                    <h4 class="carpot-v2-title">{{ car.title }}</h4>
+                    <p class="carpot-v2-desc">{{ car.description or "Авто на розборі доступне для запиту." }}</p>
+                    <div class="carpot-v2-row"><b class="carpot-v2-price">{% if car.price %}{{ car.price }} грн{% else %}Ціна за запитом{% endif %}</b><span class="carpot-v2-badge">Деталі у продавця</span></div>
+                </article>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    <section id="vin-request" class="carpot-v2-vin">
+        <h2>Не знайшли потрібну деталь?</h2>
+        <p>Надішліть VIN або назву запчастини — продавець перевірить наявність.</p>
+        <form method="post" action="/w/{{ website.subdomain }}/lead">
+            <input type="hidden" name="request_type" value="vin">
+            <div class="carpot-v2-formgrid">
+                <input class="carpot-v2-input" name="name" placeholder="Ваше імʼя">
+                <input class="carpot-v2-input" name="phone" required placeholder="Телефон">
+                <input class="carpot-v2-input" name="vin" placeholder="VIN або назва деталі">
+            </div>
+            <textarea class="carpot-v2-textarea" name="message" placeholder="Додатковий коментар"></textarea>
+            <button class="carpot-v2-btn carpot-v2-btn-light" type="submit" style="margin-top:12px;">Надіслати запит</button>
+        </form>
+    </section>
+
+    <section id="contacts" class="carpot-v2-contacts">
+        <h2>Контакти</h2>
+        <div class="carpot-v2-contact-box">
+            {% if has_contacts %}<p>{{ wc.phone or (wc.phones[0] if wc.phones else '') or wc.telegram or wc.viber or wc.whatsapp or wc.website or seller.phone or seller.telegram or seller.website }}</p>{% else %}<p>Контакти будуть доступні після заповнення CRM.</p>{% endif %}
+        </div>
+    </section>
+</main>
+
+<footer class="carpot-v2-footer"><div class="carpot-v2-wrap">© {{ seller_name }} · CarPot Website V2</div></footer>
+</body>
+</html>
