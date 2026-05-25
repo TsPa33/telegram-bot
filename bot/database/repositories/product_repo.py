@@ -243,6 +243,39 @@ async def get_seller_products(
     )
 
 
+async def search_seller_products(seller_id: int, query: str, limit: int = 100):
+    normalized_limit = max(1, min(int(limit or 100), 200))
+    q = f"%{(query or '').strip().lower()}%"
+    return await fetch(
+        """
+        SELECT
+            sp.*,
+            b.name AS donor_brand,
+            m.name AS donor_model
+        FROM seller_products sp
+        LEFT JOIN seller_cars sc ON sc.id = sp.donor_car_id AND sc.seller_id = sp.seller_id
+        LEFT JOIN models m ON m.id = sc.model_id
+        LEFT JOIN brands b ON b.id = m.brand_id
+        WHERE sp.seller_id = $1
+          AND sp.status <> 'archived'
+          AND (
+            LOWER(COALESCE(sp.title, '')) LIKE $2
+            OR LOWER(COALESCE(sp.category, '')) LIKE $2
+            OR LOWER(COALESCE(sp.brand, '')) LIKE $2
+            OR LOWER(COALESCE(sp.model, '')) LIKE $2
+            OR LOWER(COALESCE(sp.description, '')) LIKE $2
+            OR LOWER(COALESCE(b.name, '')) LIKE $2
+            OR LOWER(COALESCE(m.name, '')) LIKE $2
+          )
+        ORDER BY sp.created_at DESC, sp.id DESC
+        LIMIT $3
+        """,
+        seller_id,
+        q,
+        normalized_limit,
+    )
+
+
 async def get_seller_product_donor_cars(seller_id: int):
     return await fetch(
         """

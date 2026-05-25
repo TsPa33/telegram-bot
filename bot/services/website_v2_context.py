@@ -174,6 +174,9 @@ def build_catalog_website_context(website: dict, seller: dict) -> dict:
         "cars_items": raw_cars[:6],
         "categories": categories,
         "has_catalog_items": len(raw_products) > 0,
+        "current_search_query": str(seller.get("current_search_query") or ""),
+        "filtered_results_count": int(seller.get("filtered_results_count") or len(raw_products) or 0),
+        "search_active": bool(seller.get("search_active")),
         "website_contacts": website_contacts,
         "missing_required_fields": missing,
         "publish_ready": len(missing) == 0,
@@ -248,4 +251,7 @@ def build_website_v2_context(website: dict, seller: dict) -> dict:
         "has_catalog_items": specialized.get("has_catalog_items", False),
         "services_items": specialized.get("services_items", []),
         "website_contacts": specialized.get("website_contacts", {"has_contacts": False, "source": "none"}),
+        "current_search_query": specialized.get("current_search_query", ""),
+        "filtered_results_count": specialized.get("filtered_results_count", 0),
+        "search_active": specialized.get("search_active", False),
     }

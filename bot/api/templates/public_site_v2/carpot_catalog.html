@@ -17,6 +17,9 @@
     {% set products_count = m.products_count or 0 %}
     {% set has_contacts = m.has_contacts if m.has_contacts is defined else false %}
     {% set wc = website_context.website_contacts if website_context and website_context.website_contacts else {} %}
+    {% set search_query = website_context.current_search_query if website_context and website_context.current_search_query else '' %}
+    {% set search_active = website_context.search_active if website_context else false %}
+    {% set filtered_results_count = website_context.filtered_results_count if website_context else 0 %}
     <style>
         .carpot-v2{--bg:#fff;--text:#111;--muted:#676767;--line:#e7e7e7;--soft:#f6f6f6;--card:#fcfcfc;background:var(--bg);color:var(--text);font-family:Inter,Arial,sans-serif;max-width:100%;overflow-x:hidden}
         .carpot-v2 *{box-sizing:border-box}.carpot-v2 a{text-decoration:none;color:inherit}
@@ -123,10 +126,11 @@
             <span>Каталог запчастин та авто на розборі</span>
         </div>
         <nav class="carpot-v2-nav"><a href="#catalog">Каталог</a><a href="#cars">Авто на розборі</a><a href="#vin-request">VIN-запит</a><a href="#contacts">Контакти</a></nav>
-        <div class="carpot-v2-head-actions">
-            <input class="carpot-v2-search" placeholder="Пошук запчастини, бренду або VIN" aria-label="Пошук">
-            <a class="carpot-v2-btn carpot-v2-btn-black" href="#vin-request">Надіслати запит</a>
-        </div>
+        <form class="carpot-v2-head-actions" method="get" action="/w/{{ website.subdomain }}">
+            <input class="carpot-v2-search" name="q" value="{{ search_query }}" placeholder="Пошук запчастини, бренду або VIN" aria-label="Пошук">
+            <button class="carpot-v2-btn carpot-v2-btn-black" type="submit">Пошук</button>
+            <a class="carpot-v2-btn carpot-v2-btn-light" href="#vin-request">Надіслати запит</a>
+        </form>
     </div>
 </header>
 
@@ -170,6 +174,7 @@
     <section id="catalog" class="carpot-v2-catalog"><div style="grid-column:1/-1;display:flex;justify-content:space-between;align-items:end;gap:12px;"><h2 style="margin:0;font-size:34px;letter-spacing:-.02em;">Каталог запчастин</h2><p style="margin:0;color:#666;font-size:14px;">Переглядайте доступні позиції та залишайте запит.</p></div>
         <aside class="carpot-v2-filter"><h3>Фільтри</h3><div class="carpot-v2-filter-group"><b>Категорії</b><p>Двигун · КПП · Кузов</p></div><div class="carpot-v2-filter-group"><b>Стан</b><p>Нові · Б/в · Відновлені</p></div><div class="carpot-v2-filter-group"><b>Наявність</b><p>В наявності · Під замовлення</p></div><div class="carpot-v2-filter-group"><b>Марка</b><p>Оберіть бренд</p></div><div class="carpot-v2-filter-group"><b>Модель</b><p>Оберіть модель</p></div></aside>
         <div>
+            {% if search_active %}<p style="margin:0 0 10px;color:#555;">Результати пошуку: {{ filtered_results_count }}{% if not filtered_results_count %} · <a href="/w/{{ website.subdomain }}" style="text-decoration:underline;">Очистити пошук</a>{% endif %}</p>{% endif %}
             {% if catalog_items %}
                 <div class="carpot-v2-grid">
                     {% for item in catalog_items %}
@@ -184,7 +189,7 @@
                     {% endfor %}
                 </div>
             {% else %}
-                <div class="carpot-v2-empty">Каталог готується. Додайте авто або товари в CRM.</div>
+                <div class="carpot-v2-empty">{% if search_active %}Нічого не знайдено.<br>Спробуйте інший запит.<br><a href="/w/{{ website.subdomain }}" style="text-decoration:underline;">Очистити пошук</a>{% else %}Каталог готується.<br>Додайте товари або авто в CRM.{% endif %}</div>
             {% endif %}
         </div>
     </section>

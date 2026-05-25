@@ -588,6 +588,43 @@ async def get_available_parts_for_site(seller_id: int) -> list:
     )
 
 
+async def search_available_parts_for_site(seller_id: int, query: str, limit: int = 200) -> list:
+    normalized_limit = max(1, min(int(limit or 200), 300))
+    q = f"%{(query or '').strip().lower()}%"
+    return await fetch(
+        """
+        SELECT
+            sp.id,
+            sp.car_id,
+            sp.category,
+            sp.name,
+            sp.price,
+            sp.photo_id,
+            sp.description,
+            m.name AS model,
+            b.name AS brand
+        FROM seller_parts sp
+        JOIN seller_cars sc ON sc.id = sp.car_id
+        JOIN models m ON m.id = sc.model_id
+        JOIN brands b ON b.id = m.brand_id
+        WHERE sp.seller_id = $1
+          AND sp.status = 'available'
+          AND (
+            LOWER(COALESCE(sp.name, '')) LIKE $2
+            OR LOWER(COALESCE(sp.category, '')) LIKE $2
+            OR LOWER(COALESCE(sp.description, '')) LIKE $2
+            OR LOWER(COALESCE(b.name, '')) LIKE $2
+            OR LOWER(COALESCE(m.name, '')) LIKE $2
+          )
+        ORDER BY sc.id DESC, sp.sort_order, sp.name
+        LIMIT $3
+        """,
+        seller_id,
+        q,
+        normalized_limit,
+    )
+
+
 async def count_parts_by_car(car_id: int) -> dict:
     row = await fetchrow(
         """

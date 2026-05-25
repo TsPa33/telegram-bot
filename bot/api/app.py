@@ -27,8 +27,8 @@ from bot.database.repositories.seller_repo import get_seller_by_id
 from bot.database.repositories.car_repo import get_cars_by_seller
 from bot.database.repositories.service_repo import get_services_by_seller
 from bot.database.repositories.lead_repo import create_site_lead
-from bot.database.repositories.part_repo import get_available_parts_for_site, get_part_by_id
-from bot.database.repositories.product_repo import get_seller_products, get_product_by_id
+from bot.database.repositories.part_repo import get_available_parts_for_site, get_part_by_id, search_available_parts_for_site
+from bot.database.repositories.product_repo import get_seller_products, get_product_by_id, search_seller_products
 from bot.services.buyer_request_service import (
     BuyerRequestInput,
     BuyerRequestValidationError,
@@ -1609,13 +1609,18 @@ async def public_site_v2(subdomain: str, request: Request):
     seller = await get_seller_by_id(int(site["seller_id"]))
     seller_snapshot = dict(seller or {})
     seller_id = int(site["seller_id"])
+    search_query = str(request.query_params.get("q") or "").strip()
     if site.get("site_type") == "carpot_business":
         services = [dict(row) for row in await get_services_by_seller(seller_id)]
         seller_snapshot["services_items"] = [_normalize_service_item(item) for item in services[:9]]
         seller_snapshot["services_count"] = len(services)
     else:
-        products = [dict(row) for row in await get_seller_products(seller_id, limit=12)]
-        parts = [dict(row) for row in await get_available_parts_for_site(seller_id)]
+        if search_query:
+            products = [dict(row) for row in await search_seller_products(seller_id, search_query, limit=120)]
+            parts = [dict(row) for row in await search_available_parts_for_site(seller_id, search_query, limit=120)]
+        else:
+            products = [dict(row) for row in await get_seller_products(seller_id, limit=12)]
+            parts = [dict(row) for row in await get_available_parts_for_site(seller_id)]
         cars = [dict(row) for row in await get_cars_by_seller(seller_id)]
         seller_snapshot["catalog_items"] = (
             [_normalize_catalog_item(item, "product") for item in products]
@@ -1624,6 +1629,9 @@ async def public_site_v2(subdomain: str, request: Request):
         seller_snapshot["cars_items"] = [_normalize_car_item(item) for item in cars[:6]]
         seller_snapshot["products_count"] = len(products) + len(parts)
         seller_snapshot["cars_count"] = len(cars)
+        seller_snapshot["current_search_query"] = search_query
+        seller_snapshot["filtered_results_count"] = len(products) + len(parts)
+        seller_snapshot["search_active"] = bool(search_query)
     website_context = build_website_v2_context(dict(site), seller_snapshot)
     template_name = "public_site_v2/carpot_business.html" if site.get("site_type") == "carpot_business" else "public_site_v2/carpot_catalog.html"
     return templates.TemplateResponse(template_name, {"request": request, "website": site, "website_context": website_context})
