@@ -16,7 +16,8 @@
     {% set cfg = website_context.config if website_context and website_context.config else {} %}
     {% set hero = cfg.hero if cfg.hero else {} %}
     {% set banners = hero.banners if hero and hero.banners else [] %}
-    {% set primary_banner = banners[0] if banners else None %}
+    {% set hero_image_url = hero.image_url if hero and hero.image_url else '' %}
+    {% set primary_banner = banners[0] if banners else ({'image': hero_image_url} if hero_image_url else None) %}
     {% set seller_name = website.name or website.subdomain or 'CarPot' %}
     {% set m = website_context.metrics if website_context and website_context.metrics else {} %}
     {% set catalog_items = website_context.catalog_items if website_context and website_context.catalog_items else [] %}
@@ -78,6 +79,19 @@
 <main class="carpot-v2-main carpot-v2-wrap">
     {% set lead_status = request.query_params.get('lead') if request else '' %}
     {% if lead_status == 'success' %}<div class="carpot-v2-empty">Заявку надіслано. Ми звʼяжемось з вами.</div>{% elif lead_status == 'error' %}<div class="carpot-v2-empty">Не вдалося надіслати заявку. Перевірте номер телефону та текст запиту.</div>{% endif %}
+    {% if lead_status in ['success', 'error'] %}
+    <script>
+      (function () {
+        try {
+          const url = new URL(window.location.href);
+          url.searchParams.delete('lead');
+          const q = url.searchParams.toString();
+          const next = url.pathname + (q ? ('?' + q) : '') + (url.hash || '');
+          window.history.replaceState({}, document.title, next);
+        } catch (e) {}
+      })();
+    </script>
+    {% endif %}
 
     <section class="carpot-v2-hero">
         <div class="carpot-v2-hero-copy">
