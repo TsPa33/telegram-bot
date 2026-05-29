@@ -5101,6 +5101,96 @@ async def _get_v2_website_or_404(account: dict, website_id: int):
     return website
 
 
+def _v2_config_dict(raw: Any) -> dict:
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw)
+        except Exception:
+            raw = {}
+    return raw if isinstance(raw, dict) else {}
+
+
+def _business_services_from_website(website: dict) -> list[dict]:
+    draft = _v2_config_dict((website or {}).get("config_draft"))
+    nested = draft.get("website_v2") if isinstance(draft.get("website_v2"), dict) else {}
+    business = nested.get("business") if isinstance(nested.get("business"), dict) else {}
+    services = business.get("services") if isinstance(business.get("services"), list) else []
+    if not services:
+        legacy_business = draft.get("business") if isinstance(draft.get("business"), dict) else {}
+        services = legacy_business.get("services") if isinstance(legacy_business.get("services"), list) else []
+    normalized: list[dict] = []
+    for index, item in enumerate(services):
+        if not isinstance(item, dict):
+            continue
+        try:
+            sort_order = int(item.get("sort_order") or index + 1)
+        except (TypeError, ValueError):
+            sort_order = index + 1
+        normalized.append(
+            {
+                "title": str(item.get("title") or "").strip(),
+                "description": str(item.get("description") or "").strip(),
+                "price": str(item.get("price") or "").strip(),
+                "image_url": str(item.get("image_url") or item.get("image") or "").strip(),
+                "sort_order": sort_order,
+            }
+        )
+    return sorted(normalized, key=lambda item: item.get("sort_order") or 0)
+
+
+def _business_service_sort_order(item: dict) -> int:
+    try:
+        return int(item.get("sort_order") or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _normalize_business_services_order(services: list[dict]) -> list[dict]:
+    ordered = sorted(services or [], key=_business_service_sort_order)
+    normalized: list[dict] = []
+    for index, item in enumerate(ordered, start=1):
+        cleaned = {
+            "title": str(item.get("title") or "").strip(),
+            "description": str(item.get("description") or "").strip(),
+            "price": str(item.get("price") or "").strip(),
+            "image_url": str(item.get("image_url") or "").strip(),
+            "sort_order": index,
+        }
+        if cleaned["title"] and cleaned["description"]:
+            normalized.append(cleaned)
+    return normalized
+
+
+def _business_service_from_form(title: str, description: str, price: str, image_url: str, sort_order: str) -> dict:
+    try:
+        order = int(str(sort_order or "").strip() or 0)
+    except ValueError:
+        order = 0
+    return {
+        "title": (title or "").strip(),
+        "description": (description or "").strip(),
+        "price": (price or "").strip(),
+        "image_url": (image_url or "").strip(),
+        "sort_order": order,
+    }
+
+
+async def _save_business_services(website_id: int, services: list[dict]):
+    return await update_website_v2_draft(
+        website_id,
+        {"website_v2": {"business": {"services": _normalize_business_services_order(services)}}},
+    )
+
+
+async def _publish_v2_if_ready(account: dict, crm_slug: str, website_id: int, updated_website: dict | None, redirect_path: str):
+    publish_candidate = dict(updated_website or await _get_v2_website_or_404(account, website_id))
+    website_context = await _build_v2_context_payload(account, publish_candidate, prefer_draft=True)
+    if not website_context.get("publish_ready"):
+        return RedirectResponse(url=f"{redirect_path}?saved=1&publish_error=validation", status_code=303)
+    await publish_website_v2(int(website_id))
+    return RedirectResponse(url=f"{redirect_path}?saved=1&published=1", status_code=303)
+
+
 async def _build_v2_context_payload(account: dict, website: dict, prefer_draft: bool = False) -> dict:
     seller_id = int(account["seller_id"])
     seller_row = dict(await get_seller_by_id(seller_id) or {})
@@ -5219,6 +5309,163 @@ async def seller_crm_websites_content(request: Request, crm_slug: str, website_i
     return templates.TemplateResponse("seller_crm/websites/content.html", _seller_crm_context(request, title="Контент (V2)", current_page="websites_v2_content", account=account, subscription=subscription, website=website, website_context=website_context))
 
 
+@router.get("/{crm_slug}/websites/{website_id}/services")
+async def seller_crm_websites_services(request: Request, crm_slug: str, website_id: int):
+    account, subscription = await _authorized_account(request, crm_slug)
+    website = await _get_v2_website_or_404(account, website_id)
+    website_context = await _build_v2_context_payload(account, dict(website), prefer_draft=True)
+    services = _business_services_from_website(dict(website))
+    return templates.TemplateResponse(
+        "seller_crm/websites/services.html",
+        _seller_crm_context(
+            request,
+            title="Послуги сайту (V2)",
+            current_page="websites_v2_services",
+            account=account,
+            subscription=subscription,
+            website=website,
+            website_context=website_context,
+            services=services,
+            saved=request.query_params.get("saved"),
+            published=request.query_params.get("published"),
+            publish_error=request.query_params.get("publish_error"),
+        ),
+    )
+
+
+@router.get("/{crm_slug}/websites/{website_id}/services/new")
+async def seller_crm_websites_service_new(request: Request, crm_slug: str, website_id: int):
+    account, subscription = await _authorized_account(request, crm_slug)
+    website = await _get_v2_website_or_404(account, website_id)
+    services = _business_services_from_website(dict(website))
+    return templates.TemplateResponse(
+        "seller_crm/websites/service_form.html",
+        _seller_crm_context(
+            request,
+            title="Додати послугу (V2)",
+            current_page="websites_v2_services",
+            account=account,
+            subscription=subscription,
+            website=website,
+            service={},
+            service_index=None,
+            next_sort_order=len(services) + 1,
+            form_action=f"/crm/seller/{crm_slug}/websites/{website_id}/services/new",
+        ),
+    )
+
+
+@router.post("/{crm_slug}/websites/{website_id}/services/new")
+async def seller_crm_websites_service_create(
+    request: Request,
+    crm_slug: str,
+    website_id: int,
+    title: str = Form(""),
+    description: str = Form(""),
+    price: str = Form(""),
+    image_url: str = Form(""),
+    sort_order: str = Form(""),
+    action: str = Form("save"),
+):
+    account, _subscription = await _authorized_account(request, crm_slug)
+    website = await _get_v2_website_or_404(account, website_id)
+    service = _business_service_from_form(title, description, price, image_url, sort_order)
+    if not service["title"] or not service["description"]:
+        return RedirectResponse(url=f"/crm/seller/{crm_slug}/websites/{website_id}/services/new?error=validation", status_code=303)
+    services = _business_services_from_website(dict(website))
+    services.append(service)
+    updated_website = await _save_business_services(int(website["id"]), services)
+    redirect_path = f"/crm/seller/{crm_slug}/websites/{website_id}/services"
+    if action == "save_publish":
+        return await _publish_v2_if_ready(account, crm_slug, website_id, dict(updated_website or {}), redirect_path)
+    return RedirectResponse(url=f"{redirect_path}?saved=1", status_code=303)
+
+
+@router.get("/{crm_slug}/websites/{website_id}/services/{service_index}/edit")
+async def seller_crm_websites_service_edit(request: Request, crm_slug: str, website_id: int, service_index: int):
+    account, subscription = await _authorized_account(request, crm_slug)
+    website = await _get_v2_website_or_404(account, website_id)
+    services = _business_services_from_website(dict(website))
+    if service_index < 0 or service_index >= len(services):
+        raise HTTPException(status_code=404)
+    return templates.TemplateResponse(
+        "seller_crm/websites/service_form.html",
+        _seller_crm_context(
+            request,
+            title="Редагувати послугу (V2)",
+            current_page="websites_v2_services",
+            account=account,
+            subscription=subscription,
+            website=website,
+            service=services[service_index],
+            service_index=service_index,
+            next_sort_order=services[service_index].get("sort_order") or service_index + 1,
+            form_action=f"/crm/seller/{crm_slug}/websites/{website_id}/services/{service_index}/edit",
+        ),
+    )
+
+
+@router.post("/{crm_slug}/websites/{website_id}/services/{service_index}/edit")
+async def seller_crm_websites_service_update(
+    request: Request,
+    crm_slug: str,
+    website_id: int,
+    service_index: int,
+    title: str = Form(""),
+    description: str = Form(""),
+    price: str = Form(""),
+    image_url: str = Form(""),
+    sort_order: str = Form(""),
+    action: str = Form("save"),
+):
+    account, _subscription = await _authorized_account(request, crm_slug)
+    website = await _get_v2_website_or_404(account, website_id)
+    services = _business_services_from_website(dict(website))
+    if service_index < 0 or service_index >= len(services):
+        raise HTTPException(status_code=404)
+    service = _business_service_from_form(title, description, price, image_url, sort_order)
+    if not service["title"] or not service["description"]:
+        return RedirectResponse(url=f"/crm/seller/{crm_slug}/websites/{website_id}/services/{service_index}/edit?error=validation", status_code=303)
+    services[service_index] = service
+    updated_website = await _save_business_services(int(website["id"]), services)
+    redirect_path = f"/crm/seller/{crm_slug}/websites/{website_id}/services"
+    if action == "save_publish":
+        return await _publish_v2_if_ready(account, crm_slug, website_id, dict(updated_website or {}), redirect_path)
+    return RedirectResponse(url=f"{redirect_path}?saved=1", status_code=303)
+
+
+@router.post("/{crm_slug}/websites/{website_id}/services/{service_index}/delete")
+async def seller_crm_websites_service_delete(request: Request, crm_slug: str, website_id: int, service_index: int):
+    account, _subscription = await _authorized_account(request, crm_slug)
+    website = await _get_v2_website_or_404(account, website_id)
+    services = _business_services_from_website(dict(website))
+    if service_index < 0 or service_index >= len(services):
+        raise HTTPException(status_code=404)
+    services.pop(service_index)
+    await _save_business_services(int(website["id"]), services)
+    return RedirectResponse(url=f"/crm/seller/{crm_slug}/websites/{website_id}/services?saved=1", status_code=303)
+
+
+@router.post("/{crm_slug}/websites/{website_id}/services/{service_index}/move")
+async def seller_crm_websites_service_move(
+    request: Request,
+    crm_slug: str,
+    website_id: int,
+    service_index: int,
+    direction: str = Form(""),
+):
+    account, _subscription = await _authorized_account(request, crm_slug)
+    website = await _get_v2_website_or_404(account, website_id)
+    services = _business_services_from_website(dict(website))
+    if service_index < 0 or service_index >= len(services):
+        raise HTTPException(status_code=404)
+    target = service_index - 1 if direction == "up" else service_index + 1
+    if 0 <= target < len(services):
+        services[service_index], services[target] = services[target], services[service_index]
+        await _save_business_services(int(website["id"]), services)
+    return RedirectResponse(url=f"/crm/seller/{crm_slug}/websites/{website_id}/services?saved=1", status_code=303)
+
+
 @router.get("/{crm_slug}/websites/{website_id}/contacts")
 async def seller_crm_websites_contacts(request: Request, crm_slug: str, website_id: int):
     account, subscription = await _authorized_account(request, crm_slug)
@@ -5264,7 +5511,7 @@ async def seller_crm_websites_contacts_save(
 async def seller_crm_websites_publication(request: Request, crm_slug: str, website_id: int):
     account, subscription = await _authorized_account(request, crm_slug)
     website = await _get_v2_website_or_404(account, website_id)
-    website_context = await _build_v2_context_payload(account, dict(website))
+    website_context = await _build_v2_context_payload(account, dict(website), prefer_draft=True)
     return templates.TemplateResponse("seller_crm/websites/publication.html", _seller_crm_context(request, title="Публікація (V2)", current_page="websites_v2_publication", account=account, subscription=subscription, website=website, website_context=website_context, publish_error=request.query_params.get("error")))
 
 
@@ -5300,7 +5547,7 @@ async def seller_crm_websites_lead_status(
 async def seller_crm_websites_publish(request: Request, crm_slug: str, website_id: int):
     account, _subscription = await _authorized_account(request, crm_slug)
     website = await _get_v2_website_or_404(account, website_id)
-    website_context = await _build_v2_context_payload(account, dict(website))
+    website_context = await _build_v2_context_payload(account, dict(website), prefer_draft=True)
     if not website_context.get("publish_ready"):
         return RedirectResponse(url=f"/crm/seller/{crm_slug}/websites/{website_id}/publication?error=validation", status_code=303)
     await publish_website_v2(int(website["id"]))

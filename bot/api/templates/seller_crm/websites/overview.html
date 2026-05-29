@@ -20,6 +20,7 @@
     <a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/hero">Hero</a> |
     <a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/design">Design</a> |
     <a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/content">Content</a> |
+    {% if website_context.site_type == 'carpot_business' %}<a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/services">Послуги</a> |{% endif %}
     <a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/contacts">Contacts</a> |
     <a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/publication">Publication</a> |
     <a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/leads">Заявки</a>

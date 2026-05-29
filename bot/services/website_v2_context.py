@@ -270,12 +270,17 @@ def _normalize_business_config_service(item: Any) -> dict:
     description = str(item.get("description") or item.get("text") or "").strip()
     if not (title or description):
         return {}
+    try:
+        sort_order = int(item.get("sort_order") or 0)
+    except (TypeError, ValueError):
+        sort_order = 0
     return {
         "title": title or "Послуга",
         "description": description,
         "category": str(item.get("category") or "Послуга").strip() or "Послуга",
-        "price": item.get("price"),
+        "price": str(item.get("price") or "").strip(),
         "image_url": str(item.get("image_url") or item.get("image") or "").strip(),
+        "sort_order": sort_order,
         "cta_label": str(item.get("cta_label") or "Залишити заявку").strip() or "Залишити заявку",
     }
 
@@ -290,10 +295,9 @@ def build_business_website_context(website: dict, seller: dict) -> dict:
         if normalized
     ]
     seller_services = seller.get("services_items") or []
-    raw_services = seller_services if seller_services else config_services
-    services_count = int(seller.get("services_count") or len(raw_services) or 0)
-    if services_count <= 0 and config_services:
-        services_count = len(config_services)
+    config_services = sorted(config_services, key=lambda item: int(item.get("sort_order") or 0))
+    raw_services = config_services if config_services else seller_services
+    services_count = len(raw_services)
     cars_count = int(seller.get("cars_count") or 0)
     products_count = int(seller.get("products_count") or 0)
     hero = config.get("hero") if isinstance(config.get("hero"), dict) else {}

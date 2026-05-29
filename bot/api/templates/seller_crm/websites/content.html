@@ -13,9 +13,9 @@
 <p>Послуги краще винести в окремий сайт-візитку.</p>
 {% endif %}
 {% else %}
-<p>Цей сайт використовує послуги з CRM.</p>
+<p>Цей сайт використовує окремий список послуг Website V2.</p>
 <ul>
-    <li><a href="/crm/seller/{{ account.crm_slug }}/content/services">Послуги</a></li>
+    <li><a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/services">Керувати послугами сайту</a></li>
 </ul>
 {% if website_context.metrics.cars_count > 0 or website_context.metrics.products_count > 0 %}
 <p>Каталог запчастин краще винести в окремий сайт-магазин.</p>
