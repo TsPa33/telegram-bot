@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ seo.title if seo and seo.title else (detail_item.title ~ ' — ' ~ (website.name or 'CarPot')) }}</title>
+  <meta name="description" content="{{ seo.description if seo and seo.description else '' }}">
+  <meta name="robots" content="{{ seo.robots if seo and seo.robots else 'index,follow' }}">
+  <link rel="canonical" href="{{ seo.canonical_url if seo and seo.canonical_url else ('/w/' ~ website.subdomain ~ '/product/' ~ detail_item.id) }}">
+  <meta property="og:title" content="{{ seo.og_title if seo and seo.og_title else detail_item.title }}">
+  <meta property="og:description" content="{{ seo.og_description if seo and seo.og_description else '' }}">
+  <meta property="og:type" content="{{ seo.og_type if seo and seo.og_type else 'product' }}">
+  <meta property="og:url" content="{{ seo.og_url if seo and seo.og_url else ('/w/' ~ website.subdomain ~ '/product/' ~ detail_item.id) }}">
+  {% if seo and seo.og_image %}<meta property="og:image" content="{{ seo.og_image }}">{% endif %}
+  {% if schema_jsonld %}<script type="application/ld+json">{{ schema_jsonld | safe }}</script>{% endif %}
+  <link rel="stylesheet" href="/static/css/carpot_product_v2.css">
+
+</head>
+<body class="carpot-v2">
+  <main class="wrap">
+    <div class="top"><a class="btn" href="/w/{{ website.subdomain }}">← До каталогу</a><a class="btn" href="/w/{{ website.subdomain }}#vin-request">Надіслати VIN</a></div>
+    <section class="layout">
+      <div class="media">{% if detail_item.image_url %}<img src="{{ detail_item.image_url }}" alt="{{ detail_item.title }}" width="1200" height="900" decoding="async">{% else %}<div class="ph">Фото уточнюється</div>{% endif %}</div>
+      {% if detail_item.gallery %}
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:10px;">
+        {% for g in detail_item.gallery %}
+          <div style="border:1px solid #e7e7e7;border-radius:10px;overflow:hidden;background:#f3f3f3;">
+            <img src="{{ g }}" alt="{{ detail_item.title }} thumbnail" loading="lazy" decoding="async" width="180" height="130" style="width:100%;height:88px;object-fit:cover;">
+          </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      <div class="meta">
+        <h1 class="title">{{ detail_item.title }}</h1>
+        <div class="small">{{ detail_item.category }}{% if detail_item.brand or detail_item.model %} · {{ detail_item.brand }} {{ detail_item.model }}{% endif %}</div>
+        <div><span class="badge">{{ detail_item.condition or 'Стан уточнюється' }}</span> <span class="badge">{{ detail_item.availability }}</span></div>
+        <p>{{ detail_item.description or 'Опис буде оновлено продавцем.' }}</p>
+        <div class="price">{% if detail_item.price %}{{ detail_item.price }} грн{% else %}Ціна за запитом{% endif %}</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap"><a class="btn black" href="/w/{{ website.subdomain }}#vin-request">Уточнити наявність</a><a class="btn" href="/w/{{ website.subdomain }}#vin-request">Надіслати VIN</a></div>
+        <div class="box"><b>{{ detail_item.seller_name }}</b><div class="small">{{ detail_item.seller_city or 'Місто уточнюється' }}</div><div class="small">{{ detail_item.seller_phone or 'Телефон уточнюється' }}</div></div>
+      </div>
+    </section>
+    <section class="related">
+      <h2>Схожі запчастини</h2>
+      {% if related_items %}<div class="grid">{% for item in related_items %}<a class="card" href="/w/{{ website.subdomain }}/product/{{ item.id }}">{% if item.image_url %}<img src="{{ item.image_url }}" alt="{{ item.title }}" loading="lazy" decoding="async" width="500" height="380">{% else %}<div class="phs" style="display:grid;place-items:center;color:#666;font-size:12px;">Фото уточнюється</div>{% endif %}<b>{{ item.title }}</b><div class="small">{{ item.category }}</div><div>{% if item.price %}{{ item.price }} грн{% else %}Ціна за запитом{% endif %}</div></a>{% endfor %}</div>{% else %}<div class="box">Схожі позиції зʼявляться пізніше.</div>{% endif %}
+    </section>
+  </main>
+</body>
+</html>
