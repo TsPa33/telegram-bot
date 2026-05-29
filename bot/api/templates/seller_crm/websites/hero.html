@@ -1,0 +1,46 @@
+{% extends "seller_crm/base.html" %}
+{% block content %}
+<h1>Hero секція сайту</h1>
+<p><b>{{ website.name }}</b> ({{ website.site_type }})</p>
+<p>Налаштуйте заголовок, короткий опис, кнопку та банер для першого екрану сайту.</p>
+{% if saved %}
+<div style="padding:10px 12px;border:1px solid #2e7d32;background:#e8f5e9;color:#1b5e20;border-radius:8px;margin:12px 0;">Hero оновлено.</div>
+{% endif %}
+
+{% set cfg = website_context.config if website_context and website_context.config else {} %}
+{% set hero = cfg.hero if cfg and cfg.hero else {} %}
+{% set banner = hero.image_url or (hero.banners[0].image if hero.banners and hero.banners[0] else '') %}
+
+<form method="post" action="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/hero" style="max-width:760px;display:grid;gap:10px;">
+    <label>Заголовок</label>
+    <input name="title" value="{{ hero.title or '' }}" placeholder="Запчастини з авто на розборі" style="width:100%;padding:10px;">
+
+    <label>Підзаголовок</label>
+    <textarea name="subtitle" placeholder="Короткий опис..." style="width:100%;padding:10px;min-height:90px;">{{ hero.subtitle or '' }}</textarea>
+
+    <label>Текст кнопки</label>
+    <input name="cta_text" value="{{ hero.cta_text or '' }}" placeholder="Надіслати запит" style="width:100%;padding:10px;">
+
+    <label>URL зображення банера</label>
+    <input name="image_url" value="{{ banner or '' }}" placeholder="https://..." style="width:100%;padding:10px;">
+
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
+        <button type="submit" style="padding:10px 14px;border:1px solid #111;background:#111;color:#fff;border-radius:8px;">Зберегти</button>
+        <a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}" style="padding:10px 14px;border:1px solid #111;border-radius:8px;text-decoration:none;color:#111;">Назад до огляду</a>
+    </div>
+</form>
+
+<section style="margin-top:18px;border:1px solid #ddd;border-radius:10px;padding:14px;max-width:760px;">
+    <h3 style="margin-top:0;">Попередній перегляд</h3>
+    <div style="background:#f6f6f6;border:1px solid #e5e5e5;border-radius:12px;padding:14px;">
+        <h2 style="margin:0 0 8px;">{{ hero.title or "Запчастини з авто на розборі" }}</h2>
+        <p style="margin:0 0 12px;color:#555;">{{ hero.subtitle or "Каталог запчастин, авто на розборі та VIN-підбір для швидкого пошуку потрібної деталі." }}</p>
+        <span style="display:inline-block;padding:10px 14px;border-radius:999px;background:#111;color:#fff;">{{ hero.cta_text or "Надіслати запит" }}</span>
+        {% if banner %}
+        <div style="margin-top:12px;">
+            <img src="{{ banner }}" alt="Hero preview" style="max-width:100%;border-radius:10px;border:1px solid #ddd;">
+        </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}
