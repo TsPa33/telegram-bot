@@ -263,10 +263,37 @@ def build_catalog_website_context(website: dict, seller: dict) -> dict:
     }
 
 
+def _normalize_business_config_service(item: Any) -> dict:
+    if not isinstance(item, dict):
+        return {}
+    title = str(item.get("title") or item.get("name") or "").strip()
+    description = str(item.get("description") or item.get("text") or "").strip()
+    if not (title or description):
+        return {}
+    return {
+        "title": title or "Послуга",
+        "description": description,
+        "category": str(item.get("category") or "Послуга").strip() or "Послуга",
+        "price": item.get("price"),
+        "image_url": str(item.get("image_url") or item.get("image") or "").strip(),
+        "cta_label": str(item.get("cta_label") or "Залишити заявку").strip() or "Залишити заявку",
+    }
+
+
 def build_business_website_context(website: dict, seller: dict) -> dict:
     config = get_website_v2_public_config(website)
-    raw_services = seller.get("services_items") or []
+    business_config = config.get("business") if isinstance(config.get("business"), dict) else {}
+    config_services_raw = business_config.get("services") if isinstance(business_config.get("services"), list) else []
+    config_services = [
+        normalized
+        for normalized in (_normalize_business_config_service(item) for item in config_services_raw)
+        if normalized
+    ]
+    seller_services = seller.get("services_items") or []
+    raw_services = seller_services if seller_services else config_services
     services_count = int(seller.get("services_count") or len(raw_services) or 0)
+    if services_count <= 0 and config_services:
+        services_count = len(config_services)
     cars_count = int(seller.get("cars_count") or 0)
     products_count = int(seller.get("products_count") or 0)
     hero = config.get("hero") if isinstance(config.get("hero"), dict) else {}
@@ -289,7 +316,7 @@ def build_business_website_context(website: dict, seller: dict) -> dict:
         warnings.append("Каталог запчастин краще винести в окремий сайт-магазин.")
 
     return {
-        "available_sections": ["hero", "services", "service_details", "contact_cta", "contacts", "map", "footer"],
+        "available_sections": ["hero", "services", "advantages", "contact_cta", "contacts", "map", "footer"],
         "metrics": {
             "services_count": services_count,
             "cars_count": cars_count,
