@@ -89,6 +89,7 @@ from bot.database.repositories.seller_crm_repo import (
     update_seller_crm_car,
     update_seller_crm_car_photo,
 )
+from bot.database.repositories.seller_repo import get_seller_by_id
 from bot.database.repositories.lead_thread_repo import (
     LEAD_THREAD_READ_READ,
     LEAD_THREAD_SENDER_SELLER,
@@ -170,11 +171,16 @@ from bot.services.domain_service import build_site_url, normalize_subdomain, val
 from bot.database.repositories.website_v2_repo import (
     create_website_v2,
     get_website_v2_by_id,
+    get_website_v2_lead,
+    list_website_v2_leads,
     list_websites_v2_by_seller,
     publish_website_v2,
+    update_website_v2_draft,
+    update_website_v2_lead_status,
 )
 from bot.services.domain_service import validate_subdomain
 from bot.services.website_v2_config import normalize_website_v2_type
+from bot.services.website_v2_context import build_website_v2_context
 from bot.services.import_service import (
     PRODUCT_IMPORT_COLUMNS,
     generate_product_import_csv_template,
@@ -5048,13 +5054,14 @@ async def preview_draft_site(request: Request, crm_slug: str):
 async def seller_crm_websites(request: Request, crm_slug: str):
     account, subscription = await _authorized_account(request, crm_slug)
     websites = await list_websites_v2_by_seller(account["seller_id"])
-    return templates.TemplateResponse("seller_crm/websites/index.html", _seller_crm_context(request, title="Керування сайтами", current_page="websites_v2", account=account, subscription=subscription, websites=websites))
+    website_contexts = [await _build_v2_context_payload(account, dict(website)) for website in websites]
+    return templates.TemplateResponse("seller_crm/websites/index.html", _seller_crm_context(request, title="Керування сайтами", current_page="websites_v2_index", account=account, subscription=subscription, websites=websites, website_contexts=website_contexts))
 
 
 @router.get("/{crm_slug}/websites/create")
 async def seller_crm_websites_create(request: Request, crm_slug: str, error: str | None = None):
     account, subscription = await _authorized_account(request, crm_slug)
-    return templates.TemplateResponse("seller_crm/websites/create.html", _seller_crm_context(request, title="Створення сайту", current_page="websites_v2", account=account, subscription=subscription, error=error))
+    return templates.TemplateResponse("seller_crm/websites/create.html", _seller_crm_context(request, title="Створення сайту", current_page="websites_v2_create", account=account, subscription=subscription, error=error))
 
 
 @router.post("/{crm_slug}/websites/create")
@@ -5082,7 +5089,8 @@ async def seller_crm_websites_overview(request: Request, crm_slug: str, website_
     website = await get_website_v2_by_id(account["seller_id"], website_id)
     if not website:
         raise HTTPException(status_code=404)
-    return templates.TemplateResponse("seller_crm/websites/overview.html", _seller_crm_context(request, title="Огляд сайту", current_page="websites_v2", account=account, subscription=subscription, website=website))
+    website_context = await _build_v2_context_payload(account, dict(website))
+    return templates.TemplateResponse("seller_crm/websites/overview.html", _seller_crm_context(request, title="Огляд сайту", current_page="websites_v2_details", account=account, subscription=subscription, website=website, website_context=website_context))
 
 
 
@@ -5093,37 +5101,207 @@ async def _get_v2_website_or_404(account: dict, website_id: int):
     return website
 
 
+async def _build_v2_context_payload(account: dict, website: dict, prefer_draft: bool = False) -> dict:
+    seller_id = int(account["seller_id"])
+    seller_row = dict(await get_seller_by_id(seller_id) or {})
+    cars = await get_cars_by_seller(seller_id)
+    services = await get_services_by_seller(seller_id)
+    products = await get_seller_products(seller_id, limit=100)
+    parts = await get_available_parts_for_site(seller_id)
+    seller_snapshot = {
+        "id": seller_row.get("id", seller_id),
+        "seller_id": seller_id,
+        "crm_slug": account["crm_slug"],
+        "name": seller_row.get("name") or account.get("name"),
+        "shop_name": seller_row.get("shop_name") or account.get("shop_name"),
+        "phone": seller_row.get("phone") or account.get("phone"),
+        "contact_phone": seller_row.get("contact_phone") or account.get("contact_phone"),
+        "phone_number": seller_row.get("phone_number") or account.get("phone_number"),
+        "email": seller_row.get("email") or account.get("email"),
+        "address": seller_row.get("address") or account.get("address"),
+        "username": seller_row.get("username") or account.get("username"),
+        "telegram": seller_row.get("telegram") or account.get("telegram"),
+        "viber": seller_row.get("viber") or account.get("viber"),
+        "whatsapp": seller_row.get("whatsapp") or account.get("whatsapp"),
+        "website": seller_row.get("website") or account.get("website"),
+        "city": seller_row.get("city") or account.get("city"),
+        "description": seller_row.get("description") or account.get("description"),
+        "contacts": seller_row.get("contacts") or account.get("contacts"),
+        "cars_count": len(cars),
+        "services_count": len(services),
+        "products_count": len(products) + len(parts),
+    }
+    context_website = dict(website)
+    if prefer_draft:
+        context_website["config_live"] = {}
+    return build_website_v2_context(context_website, seller_snapshot)
+
+
 @router.get("/{crm_slug}/websites/{website_id}/design")
 async def seller_crm_websites_design(request: Request, crm_slug: str, website_id: int):
     account, subscription = await _authorized_account(request, crm_slug)
     website = await _get_v2_website_or_404(account, website_id)
-    return templates.TemplateResponse("seller_crm/websites/design.html", _seller_crm_context(request, title="Дизайн (V2)", current_page="websites_v2", account=account, subscription=subscription, website=website))
+    return templates.TemplateResponse("seller_crm/websites/design.html", _seller_crm_context(request, title="Дизайн (V2)", current_page="websites_v2_design", account=account, subscription=subscription, website=website))
+
+
+@router.get("/{crm_slug}/websites/{website_id}/hero")
+async def seller_crm_websites_hero(request: Request, crm_slug: str, website_id: int):
+    account, subscription = await _authorized_account(request, crm_slug)
+    website = await _get_v2_website_or_404(account, website_id)
+    website_context = await _build_v2_context_payload(account, dict(website), prefer_draft=True)
+    return templates.TemplateResponse(
+        "seller_crm/websites/hero.html",
+        _seller_crm_context(
+            request,
+            title="Hero (V2)",
+            current_page="websites_v2_design",
+            account=account,
+            subscription=subscription,
+            website=website,
+            website_context=website_context,
+            saved=request.query_params.get("saved"),
+            published=request.query_params.get("published"),
+            publish_error=request.query_params.get("publish_error"),
+        ),
+    )
+
+
+@router.post("/{crm_slug}/websites/{website_id}/hero")
+async def seller_crm_websites_hero_save(
+    request: Request,
+    crm_slug: str,
+    website_id: int,
+    title: str = Form(""),
+    subtitle: str = Form(""),
+    cta_text: str = Form(""),
+    image_url: str = Form(""),
+    action: str = Form("save"),
+):
+    account, _subscription = await _authorized_account(request, crm_slug)
+    website = await _get_v2_website_or_404(account, website_id)
+    normalized_title = (title or "").strip()
+    normalized_subtitle = (subtitle or "").strip()
+    normalized_cta = (cta_text or "").strip()
+    normalized_image = (image_url or "").strip()
+    hero_payload = {
+        "title": normalized_title,
+        "subtitle": normalized_subtitle,
+        "cta_text": normalized_cta,
+        "image_url": normalized_image,
+        "banners": [{"image": normalized_image}] if normalized_image else [],
+    }
+    canonical_hero = {k: v for k, v in hero_payload.items() if v or k == "banners"}
+    logger.info(
+        "Website V2 hero save: website_id=%s path=config_draft.website_v2.hero title=%s image_url=%s",
+        website_id,
+        bool(normalized_title),
+        bool(normalized_image),
+    )
+    updated_website = await update_website_v2_draft(int(website["id"]), {"website_v2": {"hero": canonical_hero}})
+    if action == "save_publish":
+        publish_candidate = dict(updated_website or await _get_v2_website_or_404(account, website_id))
+        website_context = await _build_v2_context_payload(account, publish_candidate, prefer_draft=True)
+        if not website_context.get("publish_ready"):
+            return RedirectResponse(
+                url=f"/crm/seller/{crm_slug}/websites/{website_id}/hero?saved=1&publish_error=validation",
+                status_code=303,
+            )
+        await publish_website_v2(int(website["id"]))
+        return RedirectResponse(url=f"/crm/seller/{crm_slug}/websites/{website_id}/hero?saved=1&published=1", status_code=303)
+    return RedirectResponse(url=f"/crm/seller/{crm_slug}/websites/{website_id}/hero?saved=1", status_code=303)
 
 
 @router.get("/{crm_slug}/websites/{website_id}/content")
 async def seller_crm_websites_content(request: Request, crm_slug: str, website_id: int):
     account, subscription = await _authorized_account(request, crm_slug)
     website = await _get_v2_website_or_404(account, website_id)
-    return templates.TemplateResponse("seller_crm/websites/content.html", _seller_crm_context(request, title="Контент (V2)", current_page="websites_v2", account=account, subscription=subscription, website=website))
+    website_context = await _build_v2_context_payload(account, dict(website))
+    return templates.TemplateResponse("seller_crm/websites/content.html", _seller_crm_context(request, title="Контент (V2)", current_page="websites_v2_content", account=account, subscription=subscription, website=website, website_context=website_context))
 
 
 @router.get("/{crm_slug}/websites/{website_id}/contacts")
 async def seller_crm_websites_contacts(request: Request, crm_slug: str, website_id: int):
     account, subscription = await _authorized_account(request, crm_slug)
     website = await _get_v2_website_or_404(account, website_id)
-    return templates.TemplateResponse("seller_crm/websites/contacts.html", _seller_crm_context(request, title="Контакти (V2)", current_page="websites_v2", account=account, subscription=subscription, website=website))
+    website_context = await _build_v2_context_payload(account, dict(website))
+    profile_url = f"/crm/seller/{crm_slug}/profile#contacts-title"
+    return templates.TemplateResponse("seller_crm/websites/contacts.html", _seller_crm_context(request, title="Контакти (V2)", current_page="websites_v2_contacts", account=account, subscription=subscription, website=website, website_context=website_context, profile_url=profile_url, saved=request.query_params.get("saved")))
+
+
+@router.post("/{crm_slug}/websites/{website_id}/contacts")
+async def seller_crm_websites_contacts_save(
+    request: Request,
+    crm_slug: str,
+    website_id: int,
+    use_override: str = Form("0"),
+    phone: str = Form(""),
+    telegram: str = Form(""),
+    website_url: str = Form(""),
+    city: str = Form(""),
+    phones_text: str = Form(""),
+):
+    account, _subscription = await _authorized_account(request, crm_slug)
+    website = await _get_v2_website_or_404(account, website_id)
+    enable_override = str(use_override or "").strip().lower() in {"1", "true", "on", "yes"}
+    patch: dict = {}
+    if enable_override:
+        phones = [line.strip() for line in (phones_text or "").splitlines() if line.strip()]
+        contacts_payload = {
+            "phone": (phone or "").strip(),
+            "telegram": (telegram or "").strip(),
+            "website": (website_url or "").strip(),
+            "city": (city or "").strip(),
+            "phones": phones,
+        }
+        patch["contacts"] = {k: v for k, v in contacts_payload.items() if v}
+    else:
+        patch["contacts"] = {}
+    await update_website_v2_draft(int(website["id"]), patch)
+    return RedirectResponse(url=f"/crm/seller/{crm_slug}/websites/{website_id}/contacts?saved=1", status_code=303)
 
 
 @router.get("/{crm_slug}/websites/{website_id}/publication")
 async def seller_crm_websites_publication(request: Request, crm_slug: str, website_id: int):
     account, subscription = await _authorized_account(request, crm_slug)
     website = await _get_v2_website_or_404(account, website_id)
-    return templates.TemplateResponse("seller_crm/websites/publication.html", _seller_crm_context(request, title="Публікація (V2)", current_page="websites_v2", account=account, subscription=subscription, website=website))
+    website_context = await _build_v2_context_payload(account, dict(website))
+    return templates.TemplateResponse("seller_crm/websites/publication.html", _seller_crm_context(request, title="Публікація (V2)", current_page="websites_v2_publication", account=account, subscription=subscription, website=website, website_context=website_context, publish_error=request.query_params.get("error")))
+
+
+@router.get("/{crm_slug}/websites/{website_id}/leads")
+async def seller_crm_websites_leads(request: Request, crm_slug: str, website_id: int):
+    account, subscription = await _authorized_account(request, crm_slug)
+    website = await _get_v2_website_or_404(account, website_id)
+    leads = await list_website_v2_leads(int(website["id"]), int(account["seller_id"]))
+    return templates.TemplateResponse("seller_crm/websites/leads.html", _seller_crm_context(request, title="Заявки сайту (V2)", current_page="websites_v2_details", account=account, subscription=subscription, website=website, leads=leads))
+
+
+@router.post("/{crm_slug}/websites/{website_id}/leads/{lead_id}/status")
+async def seller_crm_websites_lead_status(
+    request: Request,
+    crm_slug: str,
+    website_id: int,
+    lead_id: int,
+    status: str = Form(...),
+):
+    account, _subscription = await _authorized_account(request, crm_slug)
+    website = await _get_v2_website_or_404(account, website_id)
+    lead = await get_website_v2_lead(lead_id, int(account["seller_id"]))
+    if not lead or int(lead["website_id"]) != int(website["id"]):
+        raise HTTPException(status_code=404)
+    try:
+        await update_website_v2_lead_status(lead_id, int(account["seller_id"]), status)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="invalid status")
+    return RedirectResponse(url=f"/crm/seller/{crm_slug}/websites/{website_id}/leads", status_code=303)
 
 
 @router.post("/{crm_slug}/websites/{website_id}/publish")
 async def seller_crm_websites_publish(request: Request, crm_slug: str, website_id: int):
     account, _subscription = await _authorized_account(request, crm_slug)
     website = await _get_v2_website_or_404(account, website_id)
+    website_context = await _build_v2_context_payload(account, dict(website))
+    if not website_context.get("publish_ready"):
+        return RedirectResponse(url=f"/crm/seller/{crm_slug}/websites/{website_id}/publication?error=validation", status_code=303)
     await publish_website_v2(int(website["id"]))
     return RedirectResponse(url=f"/crm/seller/{crm_slug}/websites/{website_id}?status=published", status_code=303)
