@@ -3,8 +3,13 @@
 <h1>Hero секція сайту</h1>
 <p><b>{{ website.name }}</b> ({{ website.site_type }})</p>
 <p>Налаштуйте заголовок, короткий опис, кнопку та банер для першого екрану сайту.</p>
-{% if saved %}
+{% if published %}
+<div style="padding:10px 12px;border:1px solid #2e7d32;background:#e8f5e9;color:#1b5e20;border-radius:8px;margin:12px 0;">Hero оновлено та сайт опубліковано.</div>
+{% elif saved %}
 <div style="padding:10px 12px;border:1px solid #2e7d32;background:#e8f5e9;color:#1b5e20;border-radius:8px;margin:12px 0;">Hero оновлено.</div>
+{% endif %}
+{% if publish_error == 'validation' %}
+<div style="padding:10px 12px;border:1px solid #c77700;background:#fff7e6;color:#7a4b00;border-radius:8px;margin:12px 0;">Hero збережено, але сайт ще не готовий до публікації. Перевірте сторінку публікації.</div>
 {% endif %}
 
 {% set cfg = website_context.config if website_context and website_context.config else {} %}
@@ -23,9 +28,11 @@
 
     <label>URL зображення банера</label>
     <input name="image_url" value="{{ banner or '' }}" placeholder="https://..." style="width:100%;padding:10px;">
+    <small style="color:#666;line-height:1.4;">Рекомендований розмір: 1600×900 або 1920×1080 (16:9)</small>
 
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
-        <button type="submit" style="padding:10px 14px;border:1px solid #111;background:#111;color:#fff;border-radius:8px;">Зберегти</button>
+        <button type="submit" name="action" value="save" style="padding:10px 14px;border:1px solid #111;background:#111;color:#fff;border-radius:8px;">Зберегти</button>
+        <button type="submit" name="action" value="save_publish" style="padding:10px 14px;border:1px solid #111;background:#fff;color:#111;border-radius:8px;">Зберегти та опублікувати</button>
         <a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}" style="padding:10px 14px;border:1px solid #111;border-radius:8px;text-decoration:none;color:#111;">Назад до огляду</a>
     </div>
 </form>

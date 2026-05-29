@@ -5101,7 +5101,7 @@ async def _get_v2_website_or_404(account: dict, website_id: int):
     return website
 
 
-async def _build_v2_context_payload(account: dict, website: dict) -> dict:
+async def _build_v2_context_payload(account: dict, website: dict, prefer_draft: bool = False) -> dict:
     seller_id = int(account["seller_id"])
     seller_row = dict(await get_seller_by_id(seller_id) or {})
     cars = await get_cars_by_seller(seller_id)
@@ -5131,7 +5131,10 @@ async def _build_v2_context_payload(account: dict, website: dict) -> dict:
         "services_count": len(services),
         "products_count": len(products) + len(parts),
     }
-    return build_website_v2_context(website, seller_snapshot)
+    context_website = dict(website)
+    if prefer_draft:
+        context_website["config_live"] = {}
+    return build_website_v2_context(context_website, seller_snapshot)
 
 
 @router.get("/{crm_slug}/websites/{website_id}/design")
@@ -5145,7 +5148,7 @@ async def seller_crm_websites_design(request: Request, crm_slug: str, website_id
 async def seller_crm_websites_hero(request: Request, crm_slug: str, website_id: int):
     account, subscription = await _authorized_account(request, crm_slug)
     website = await _get_v2_website_or_404(account, website_id)
-    website_context = await _build_v2_context_payload(account, dict(website))
+    website_context = await _build_v2_context_payload(account, dict(website), prefer_draft=True)
     return templates.TemplateResponse(
         "seller_crm/websites/hero.html",
         _seller_crm_context(
@@ -5157,6 +5160,8 @@ async def seller_crm_websites_hero(request: Request, crm_slug: str, website_id: 
             website=website,
             website_context=website_context,
             saved=request.query_params.get("saved"),
+            published=request.query_params.get("published"),
+            publish_error=request.query_params.get("publish_error"),
         ),
     )
 
@@ -5170,6 +5175,7 @@ async def seller_crm_websites_hero_save(
     subtitle: str = Form(""),
     cta_text: str = Form(""),
     image_url: str = Form(""),
+    action: str = Form("save"),
 ):
     account, _subscription = await _authorized_account(request, crm_slug)
     website = await _get_v2_website_or_404(account, website_id)
@@ -5191,7 +5197,17 @@ async def seller_crm_websites_hero_save(
         bool(normalized_title),
         bool(normalized_image),
     )
-    await update_website_v2_draft(int(website["id"]), {"website_v2": {"hero": canonical_hero}})
+    updated_website = await update_website_v2_draft(int(website["id"]), {"website_v2": {"hero": canonical_hero}})
+    if action == "save_publish":
+        publish_candidate = dict(updated_website or await _get_v2_website_or_404(account, website_id))
+        website_context = await _build_v2_context_payload(account, publish_candidate, prefer_draft=True)
+        if not website_context.get("publish_ready"):
+            return RedirectResponse(
+                url=f"/crm/seller/{crm_slug}/websites/{website_id}/hero?saved=1&publish_error=validation",
+                status_code=303,
+            )
+        await publish_website_v2(int(website["id"]))
+        return RedirectResponse(url=f"/crm/seller/{crm_slug}/websites/{website_id}/hero?saved=1&published=1", status_code=303)
     return RedirectResponse(url=f"/crm/seller/{crm_slug}/websites/{website_id}/hero?saved=1", status_code=303)
 
 
