@@ -93,16 +93,22 @@
     </script>
     {% endif %}
 
-    <section class="carpot-v2-hero">
-        <div class="carpot-v2-hero-copy">
+    {% set hero_products_stat = total_items if total_items else products_count %}
+    <section class="carpot-v2-hero-shell">
+        <div class="carpot-v2-hero-content">
             <h1>{{ hero.title or 'Запчастини з авто на розборі' }}</h1>
-            <p>{{ hero.subtitle or 'Каталог запчастин, авто на розборі та VIN-підбір для швидкого пошуку потрібної деталі.' }}</p>
-            <div class="carpot-v2-actions">
-                <a class="carpot-v2-btn carpot-v2-btn-black" href="#catalog">{{ hero.cta_text or hero.primary_cta or "Перейти в каталог" }}</a>
-                <a class="carpot-v2-btn carpot-v2-btn-light" href="#vin-request" style="width:100%;min-height:42px">Надіслати VIN</a>
+            <p>{{ hero.subtitle or 'Понад 500 запчастин в наявності. Пошук по VIN-коду, моделі або авто на розборі.' }}</p>
+            <div class="carpot-v2-actions carpot-v2-hero-actions">
+                <a class="carpot-v2-btn carpot-v2-btn-black" href="#catalog">{{ hero.cta_text or hero.primary_cta or "Знайти запчастину" }}</a>
+                <a class="carpot-v2-btn carpot-v2-btn-light" href="#vin-request">Надіслати VIN</a>
+            </div>
+            <div class="carpot-v2-hero-stats" aria-label="Статистика каталогу">
+                <div class="carpot-v2-hero-stat"><b>{{ hero_products_stat }}{% if hero_products_stat and hero_products_stat > 99 %}+{% endif %}</b><span>Запчастин</span></div>
+                <div class="carpot-v2-hero-stat"><b>{{ cars_count }}</b><span>Авто на розборі</span></div>
+                <div class="carpot-v2-hero-stat"><b>VIN</b><span>Підбір деталей</span></div>
             </div>
         </div>
-        <div class="carpot-v2-visual">
+        <div class="carpot-v2-hero-visual">
             {% if primary_banner and primary_banner.image %}
                 <img src="{{ primary_banner.image }}" alt="Банер сайту" width="1600" height="900" decoding="async">
             {% else %}
@@ -114,12 +120,6 @@
                 </div>
             {% endif %}
         </div>
-    </section>
-
-    <section class="carpot-v2-strip">
-        <div class="carpot-v2-strip-item"><b>{{ cars_count }}</b><span>Авто на розборі</span></div>
-        <div class="carpot-v2-strip-item"><b>{{ products_count }}</b><span>Запчастини</span></div>
-        <div class="carpot-v2-strip-item"><b>VIN</b><span>VIN-запити</span></div>
     </section>
 
     <section class="carpot-v2-cats">
