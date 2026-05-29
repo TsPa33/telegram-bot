@@ -98,8 +98,8 @@
             <h1>{{ hero.title or 'Запчастини з авто на розборі' }}</h1>
             <p>{{ hero.subtitle or 'Каталог запчастин, авто на розборі та VIN-підбір для швидкого пошуку потрібної деталі.' }}</p>
             <div class="carpot-v2-actions">
-                <a class="carpot-v2-btn carpot-v2-btn-black" href="#catalog">Перейти в каталог</a>
-                <a class="carpot-v2-btn carpot-v2-btn-light" href="#vin-request" style="width:100%;min-height:42px">{{ hero.cta_text or "Надіслати VIN" }}</a>
+                <a class="carpot-v2-btn carpot-v2-btn-black" href="#catalog">{{ hero.cta_text or hero.primary_cta or "Перейти в каталог" }}</a>
+                <a class="carpot-v2-btn carpot-v2-btn-light" href="#vin-request" style="width:100%;min-height:42px">Надіслати VIN</a>
             </div>
         </div>
         <div class="carpot-v2-visual">

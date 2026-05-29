@@ -22,6 +22,62 @@ def _as_dict(value: Any) -> dict:
     return {}
 
 
+def _merge_dicts(base: dict, override: dict) -> dict:
+    merged = dict(base or {})
+    for key, value in (override or {}).items():
+        if value not in (None, "", [], {}):
+            merged[key] = value
+    return merged
+
+
+def _has_meaningful_value(value: Any) -> bool:
+    if isinstance(value, dict):
+        return any(_has_meaningful_value(item) for item in value.values())
+    if isinstance(value, list):
+        return any(_has_meaningful_value(item) for item in value)
+    return value not in (None, "", [], {})
+
+
+def _canonicalize_hero_aliases(hero: dict) -> dict:
+    normalized = dict(hero or {})
+    banner_url = str(normalized.get("banner_url") or "").strip()
+    primary_cta = str(normalized.get("primary_cta") or "").strip()
+    if banner_url and not str(normalized.get("image_url") or "").strip():
+        normalized["image_url"] = banner_url
+    if primary_cta and not str(normalized.get("cta_text") or "").strip():
+        normalized["cta_text"] = primary_cta
+    return normalized
+
+
+def _normalize_hero_config(hero: dict, source_path: str) -> dict:
+    normalized = dict(hero or {})
+    banners = normalized.get("banners") if isinstance(normalized.get("banners"), list) else []
+    image_url = str(
+        normalized.get("image_url")
+        or normalized.get("banner_url")
+        or ""
+    ).strip()
+
+    resolved_banners = [banner for banner in banners if isinstance(banner, dict)]
+    if image_url and not any(str(banner.get("image") or "").strip() for banner in resolved_banners):
+        resolved_banners = [{"image": image_url}, *resolved_banners]
+    if image_url:
+        normalized["image_url"] = image_url
+    normalized["banners"] = resolved_banners
+
+    cta_text = str(normalized.get("cta_text") or normalized.get("primary_cta") or "").strip()
+    if cta_text:
+        normalized["cta_text"] = cta_text
+
+    logger.info(
+        "Website V2 hero context: source=%s image_resolved=%s cta_resolved=%s",
+        source_path,
+        bool(image_url or any(str(banner.get("image") or "").strip() for banner in resolved_banners)),
+        bool(cta_text),
+    )
+    return normalized
+
+
 def get_website_v2_public_config(website: dict | Any) -> dict:
     row = website or {}
     config_live = _as_dict(row.get("config_live"))
@@ -29,8 +85,14 @@ def get_website_v2_public_config(website: dict | Any) -> dict:
     raw = config_live or config_draft
     nested = _as_dict(raw.get("website_v2"))
     base = nested or raw
+    nested_hero = _canonicalize_hero_aliases(_as_dict(base.get("hero")))
+    top_level_hero = _canonicalize_hero_aliases(_as_dict(raw.get("hero")))
+    nested_has_content = _has_meaningful_value(nested_hero)
+    top_level_has_content = _has_meaningful_value(top_level_hero)
+    hero_source = "website_v2.hero" if nested_has_content else ("top_level.hero" if top_level_has_content else "none")
+    hero = _normalize_hero_config(_merge_dicts(top_level_hero, nested_hero), hero_source)
     return {
-        "hero": _as_dict(base.get("hero")),
+        "hero": hero,
         "catalog": _as_dict(base.get("catalog") or base.get("products_catalog")),
         "business": _as_dict(base.get("business") or base.get("services")),
         "contacts": _as_dict(base.get("contacts")),

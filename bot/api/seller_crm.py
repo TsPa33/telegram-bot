@@ -5184,7 +5184,14 @@ async def seller_crm_websites_hero_save(
         "image_url": normalized_image,
         "banners": [{"image": normalized_image}] if normalized_image else [],
     }
-    await update_website_v2_draft(int(website["id"]), {"hero": {k: v for k, v in hero_payload.items() if v or k == "banners"}})
+    canonical_hero = {k: v for k, v in hero_payload.items() if v or k == "banners"}
+    logger.info(
+        "Website V2 hero save: website_id=%s path=config_draft.website_v2.hero title=%s image_url=%s",
+        website_id,
+        bool(normalized_title),
+        bool(normalized_image),
+    )
+    await update_website_v2_draft(int(website["id"]), {"website_v2": {"hero": canonical_hero}})
     return RedirectResponse(url=f"/crm/seller/{crm_slug}/websites/{website_id}/hero?saved=1", status_code=303)
 
 
