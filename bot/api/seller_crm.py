@@ -12,7 +12,7 @@ from html import escape
 from typing import Any
 
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
@@ -2349,7 +2349,7 @@ async def seller_crm_content_products(request: Request, crm_slug: str):
         products = []
     else:
         summary = dict(await get_seller_crm_content_summary(seller_id) or {})
-        products = [dict(product) for product in await get_seller_products(seller_id, limit=100)]
+        products = [_prepare_product(product) for product in await get_seller_products(seller_id, limit=100)]
     totals = {
         "active": sum(1 for product in products if product.get("status") == "active"),
         "quantity": sum(int(product.get("quantity") or 0) for product in products),
@@ -2369,11 +2369,56 @@ async def seller_crm_content_products(request: Request, crm_slug: str):
             summary=summary,
             products=products,
             totals=totals,
+            saved=request.query_params.get("saved"),
+            error=request.query_params.get("error"),
             has_website=False,
             has_cars=int(summary.get("active_cars") or 0) > 0,
             has_services=int(summary.get("active_services") or 0) > 0,
         ),
     )
+
+
+@router.post("/{crm_slug}/content/products/{product_id}/quick")
+async def seller_crm_product_quick_update(
+    request: Request,
+    crm_slug: str,
+    product_id: int,
+    price: str = Form(""),
+    availability: str = Form("available"),
+):
+    try:
+        account, _subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+    product = await get_product_by_id(account["seller_id"], product_id)
+    if not product:
+        raise HTTPException(status_code=404)
+    parsed_price, price_error = _parse_product_money(price)
+    if price_error:
+        if request.headers.get("x-requested-with") == "fetch":
+            return JSONResponse({"ok": False, "error": price_error}, status_code=400)
+        return RedirectResponse(url=f"/crm/seller/{crm_slug}/content/products?error=invalid_price", status_code=303)
+    normalized_availability = (availability or "available").strip().lower()
+    if normalized_availability == "available":
+        fields = {"price": parsed_price, "status": "active", "stock_status": "available"}
+    elif normalized_availability == "sold":
+        fields = {"price": parsed_price, "status": "active", "stock_status": "sold"}
+    elif normalized_availability == "hidden":
+        fields = {"price": parsed_price, "status": "inactive"}
+    else:
+        if request.headers.get("x-requested-with") == "fetch":
+            return JSONResponse({"ok": False, "error": "invalid_availability"}, status_code=400)
+        return RedirectResponse(url=f"/crm/seller/{crm_slug}/content/products?error=invalid_status", status_code=303)
+    updated = await update_product(account["seller_id"], product_id, **fields)
+    if not updated:
+        if request.headers.get("x-requested-with") == "fetch":
+            return JSONResponse({"ok": False, "error": "not_updated"}, status_code=400)
+        return RedirectResponse(url=f"/crm/seller/{crm_slug}/content/products?error=not_updated", status_code=303)
+    if request.headers.get("x-requested-with") == "fetch":
+        return JSONResponse({"ok": True, "message": "Збережено"})
+    return RedirectResponse(url=f"/crm/seller/{crm_slug}/content/products?saved={product_id}", status_code=303)
 
 
 @router.get("/{crm_slug}/content/products/create")
@@ -3398,8 +3443,12 @@ async def seller_crm_part_status_update(request: Request, crm_slug: str, part_id
     if not part or part.get("seller_id") != account["seller_id"]:
         raise HTTPException(status_code=403, detail="Access denied")
     if status not in VALID_PART_STATUSES:
+        if request.headers.get("x-requested-with") == "fetch":
+            return JSONResponse({"ok": False, "error": "invalid_status"}, status_code=400)
         return RedirectResponse(url=f"/crm/seller/{crm_slug}/content/cars/{part['car_id']}/parts?error=invalid_status", status_code=303)
     await update_part_status(part_id, account["seller_id"], status)
+    if request.headers.get("x-requested-with") == "fetch":
+        return JSONResponse({"ok": True, "message": "Збережено"})
     return RedirectResponse(url=f"/crm/seller/{crm_slug}/content/cars/{part['car_id']}/parts?status=part_status_updated", status_code=303)
 
 
@@ -3421,10 +3470,16 @@ async def seller_crm_part_price_update(
         raise HTTPException(status_code=403, detail="Access denied")
     parsed_price, price_error = _parse_part_price(price)
     if price_error:
+        if request.headers.get("x-requested-with") == "fetch":
+            return JSONResponse({"ok": False, "error": price_error}, status_code=400)
         return RedirectResponse(url=f"/crm/seller/{crm_slug}/content/cars/{part['car_id']}/parts?error=invalid_price", status_code=303)
     updated = await update_part_price(part_id, account["seller_id"], parsed_price)
     if not updated:
+        if request.headers.get("x-requested-with") == "fetch":
+            return JSONResponse({"ok": False, "error": "not_updated"}, status_code=400)
         return RedirectResponse(url=f"/crm/seller/{crm_slug}/content/cars/{part['car_id']}/parts?error=part_not_updated", status_code=303)
+    if request.headers.get("x-requested-with") == "fetch":
+        return JSONResponse({"ok": True, "message": "Збережено"})
     return RedirectResponse(url=f"/crm/seller/{crm_slug}/content/cars/{part['car_id']}/parts?status=price_updated", status_code=303)
 
 
