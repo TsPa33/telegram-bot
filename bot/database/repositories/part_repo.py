@@ -867,45 +867,59 @@ async def get_parts_by_car_id_filtered(
     car_id: int,
     status: str | None = None,
     q: str | None = None,
+    category: str | None = None,
 ) -> list:
     return await fetch(
         """
         SELECT
-            id,
-            seller_id,
-            car_id,
-            category,
-            name,
-            status,
-            price,
-            photo_id,
-            description,
-            sort_order
+            seller_parts.id,
+            seller_parts.seller_id,
+            seller_parts.car_id,
+            seller_parts.category,
+            seller_parts.name,
+            seller_parts.status,
+            seller_parts.price,
+            seller_parts.photo_id,
+            seller_parts.description,
+            seller_parts.sort_order
         FROM seller_parts
-        WHERE seller_id = $1
-          AND car_id = $2
-          AND ($3::TEXT IS NULL OR status = $3)
+        JOIN seller_cars sc ON sc.id = seller_parts.car_id AND sc.seller_id = seller_parts.seller_id
+        LEFT JOIN models m ON m.id = sc.model_id
+        LEFT JOIN brands b ON b.id = m.brand_id
+        WHERE seller_parts.seller_id = $1
+          AND seller_parts.car_id = $2
+          AND ($3::TEXT IS NULL OR seller_parts.status = $3)
           AND (
                 $4::TEXT IS NULL
-                OR regexp_replace(lower(name), '\\s+', ' ', 'g')
+                OR regexp_replace(lower(COALESCE(seller_parts.name, '')), '\\s+', ' ', 'g')
+                LIKE '%' || regexp_replace(lower($4), '\\s+', ' ', 'g') || '%'
+                OR regexp_replace(lower(COALESCE(seller_parts.category, '')), '\\s+', ' ', 'g')
+                LIKE '%' || regexp_replace(lower($4), '\\s+', ' ', 'g') || '%'
+                OR regexp_replace(lower(COALESCE(seller_parts.description, '')), '\\s+', ' ', 'g')
+                LIKE '%' || regexp_replace(lower($4), '\\s+', ' ', 'g') || '%'
+                OR regexp_replace(lower(COALESCE(b.name, '')), '\\s+', ' ', 'g')
+                LIKE '%' || regexp_replace(lower($4), '\\s+', ' ', 'g') || '%'
+                OR regexp_replace(lower(COALESCE(m.name, '')), '\\s+', ' ', 'g')
                 LIKE '%' || regexp_replace(lower($4), '\\s+', ' ', 'g') || '%'
           )
+          AND ($5::TEXT IS NULL OR seller_parts.category = $5)
         ORDER BY
-            category,
-            CASE status
+            seller_parts.category,
+            CASE seller_parts.status
                 WHEN 'available' THEN 1
                 WHEN 'draft' THEN 2
                 WHEN 'hidden' THEN 3
                 WHEN 'sold' THEN 4
                 ELSE 5
             END,
-            name ASC
+            seller_parts.name ASC
         LIMIT 500
         """,
         seller_id,
         car_id,
         status,
         q,
+        category,
     )
 
 

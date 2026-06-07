@@ -15,10 +15,12 @@
       <form method="post" action="/crm/seller/{{ account.crm_slug }}/content/cars/{{ car.car_id }}/generate-parts" onsubmit="return confirm('Створити список запчастин для цього авто?');"><button class="btn ghost" type="submit">🔧 Створити стандартний список</button></form>
       <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content/cars/{{ car.car_id }}">← Назад до авто</a>
     </div>
-    <form method="get" class="filter-bar">
-      <input class="compact-input" name="q" value="{{ q }}" placeholder="Пошук: turbo">
+    <form method="get" class="filter-bar inventory-filter">
+      <input class="compact-input" name="search" value="{{ q }}" placeholder="Пошук: фара, Audi, A6">
       <select class="compact-select" name="part_status"><option value="all"{% if selected_part_status == 'all' %} selected{% endif %}>Усі статуси</option><option value="available"{% if selected_part_status == 'available' %} selected{% endif %}>В наявності</option><option value="draft"{% if selected_part_status == 'draft' %} selected{% endif %}>Чернетка</option><option value="sold"{% if selected_part_status == 'sold' %} selected{% endif %}>Продано</option><option value="hidden"{% if selected_part_status == 'hidden' %} selected{% endif %}>Приховано</option></select>
+      <select class="compact-select" name="category"><option value="all"{% if selected_category == 'all' %} selected{% endif %}>Усі категорії</option>{% for value, label in category_options %}<option value="{{ value }}"{% if selected_category == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
       <button class="btn small secondary" type="submit">Фільтрувати</button>
+      {% if q or selected_part_status != 'all' or selected_category != 'all' %}<a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/content/cars/{{ car.car_id }}/parts">Очистити фільтри</a>{% endif %}
     </form>
   </section>
 
@@ -55,10 +57,12 @@
                 <div class="part-actions">
                   {{ badges.status_badge(part.status_label, part.status_class) }}
                   <form method="post" action="/crm/seller/{{ account.crm_slug }}/content/parts/{{ part.id }}/status" class="inline-form-row quick-edit-form">
+                    <input type="hidden" name="return_to" value="{{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}">
                     <select class="compact-select" name="status"><option value="available"{% if part.status == 'available' %} selected{% endif %}>В наявності</option><option value="sold"{% if part.status == 'sold' %} selected{% endif %}>Продано</option><option value="hidden"{% if part.status == 'hidden' %} selected{% endif %}>Приховано</option><option value="draft"{% if part.status == 'draft' %} selected{% endif %}>Чернетка</option></select>
                     <button class="btn small secondary" type="submit">Зберегти</button><span class="quick-save-status" aria-live="polite"></span>
                   </form>
                   <form method="post" action="/crm/seller/{{ account.crm_slug }}/content/parts/{{ part.id }}/price" class="inline-form-row quick-edit-form">
+                    <input type="hidden" name="return_to" value="{{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}">
                     <input class="price-input" name="price" value="{{ '' if part.price is none else part.price }}" placeholder="5000"><span class="section-note" style="margin:0;">₴</span>
                     <button class="btn small secondary" type="submit">Зберегти</button><span class="quick-save-status" aria-live="polite"></span>
                   </form>
@@ -72,9 +76,16 @@
       </section>
     {% endif %}
   {% endfor %}
+  {% if not parts %}
+    <section class="card empty-filter-state">
+      <strong>Нічого не знайдено</strong>
+      <p class="section-note" style="margin:0;">Спробуйте інший запит або очистіть фільтри.</p>
+      <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/content/cars/{{ car.car_id }}/parts">Очистити фільтри</a>
+    </section>
+  {% endif %}
 </div>
 <style>
-.bulk-toolbar{position:sticky;top:8px;z-index:5;display:none;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 12px;border:1px solid var(--line);border-radius:14px;background:#fff;box-shadow:0 10px 24px rgba(15,23,42,.08)}.bulk-toolbar.active{display:flex}.parts-list{display:grid;gap:8px;margin-top:8px}.part-item{padding:10px}.part-main{display:grid;grid-template-columns:24px 120px minmax(0,1fr) auto;gap:10px;align-items:start}.part-bulk-check{display:grid;place-items:start;padding-top:4px}.part-photo{width:120px;height:84px;object-fit:cover;border-radius:10px;border:1px solid var(--line)}.part-placeholder{width:120px;height:84px;border-radius:10px;border:1px solid var(--line);display:grid;place-content:center;text-align:center;padding:6px;background:linear-gradient(145deg,#0b1627,#111f34);font-size:11px;font-weight:600}.part-placeholder small{color:var(--muted);font-size:10px}.part-content strong{display:block;line-height:1.2;margin-bottom:2px}.part-actions{display:grid;gap:6px;justify-items:end}.part-actions form{display:flex;gap:6px;align-items:center}.price-input{max-width:90px}.quick-save-status{font-size:13px;color:#16803a;font-weight:700;min-width:78px}.part-content .section-note{margin:0 0 4px}@media(max-width:860px){.part-main{grid-template-columns:24px 84px minmax(0,1fr)}.part-photo,.part-placeholder{width:84px;height:72px}.part-actions{grid-column:1/-1;justify-items:start}}</style>
+.inventory-filter{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.inventory-filter input,.inventory-filter select{min-height:40px}.empty-filter-state{display:grid;gap:10px;justify-items:start}.bulk-toolbar{position:sticky;top:8px;z-index:5;display:none;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 12px;border:1px solid var(--line);border-radius:14px;background:#fff;box-shadow:0 10px 24px rgba(15,23,42,.08)}.bulk-toolbar.active{display:flex}.parts-list{display:grid;gap:8px;margin-top:8px}.part-item{padding:10px}.part-main{display:grid;grid-template-columns:24px 120px minmax(0,1fr) auto;gap:10px;align-items:start}.part-bulk-check{display:grid;place-items:start;padding-top:4px}.part-photo{width:120px;height:84px;object-fit:cover;border-radius:10px;border:1px solid var(--line)}.part-placeholder{width:120px;height:84px;border-radius:10px;border:1px solid var(--line);display:grid;place-content:center;text-align:center;padding:6px;background:linear-gradient(145deg,#0b1627,#111f34);font-size:11px;font-weight:600}.part-placeholder small{color:var(--muted);font-size:10px}.part-content strong{display:block;line-height:1.2;margin-bottom:2px}.part-actions{display:grid;gap:6px;justify-items:end}.part-actions form{display:flex;gap:6px;align-items:center}.price-input{max-width:90px}.quick-save-status{font-size:13px;color:#16803a;font-weight:700;min-width:78px}.part-content .section-note{margin:0 0 4px}@media(max-width:860px){.inventory-filter{display:grid;grid-template-columns:1fr}.inventory-filter .btn{width:100%}.part-main{grid-template-columns:24px 84px minmax(0,1fr)}.part-photo,.part-placeholder{width:84px;height:72px}.part-actions{grid-column:1/-1;justify-items:start}}</style>
 <script>
 document.querySelectorAll('.quick-edit-form').forEach((form) => {
   form.addEventListener('submit', async (event) => {

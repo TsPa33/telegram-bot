@@ -25,8 +25,12 @@
   .bulk-toolbar{position:sticky;top:8px;z-index:5;display:none;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 12px;border:1px solid var(--line);border-radius:14px;background:#fff;box-shadow:0 10px 24px rgba(15,23,42,.08);}
   .bulk-toolbar.active{display:flex;}
   .bulk-toolbar .btn{min-height:38px;}
+  .inventory-filter{display:grid;grid-template-columns:minmax(220px,1.6fr) repeat(4,minmax(130px,1fr)) auto auto;gap:8px;align-items:end;}
+  .inventory-filter input,.inventory-filter select{min-height:40px;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:#fff;min-width:0;width:100%;}
+  .empty-filter-state{display:grid;gap:10px;justify-items:start;padding:18px;border:1px dashed var(--line);border-radius:14px;background:rgba(148,163,184,.08);}
+  @media (max-width: 1100px) { .inventory-filter{grid-template-columns:repeat(2,minmax(0,1fr));} }
   @media (max-width: 980px) { .products-summary { grid-template-columns: repeat(2,minmax(0,1fr)); } }
-  @media (max-width: 680px) { .products-summary { grid-template-columns: 1fr; } .product-top { display: grid; } .product-actions { display: grid; grid-template-columns: 1fr; } .product-actions .btn { width: 100%; white-space: normal; } .product-card{grid-template-columns:1fr !important;} .product-photo-box{width:100%;height:160px;} .quick-edit-row{display:grid;grid-template-columns:1fr;} .quick-price{max-width:none;width:100%;} }
+  @media (max-width: 680px) { .products-summary { grid-template-columns: 1fr; } .product-top { display: grid; } .product-actions { display: grid; grid-template-columns: 1fr; } .product-actions .btn { width: 100%; white-space: normal; } .product-card{grid-template-columns:1fr !important;} .product-photo-box{width:100%;height:160px;} .quick-edit-row{display:grid;grid-template-columns:1fr;} .quick-price{max-width:none;width:100%;} .inventory-filter{grid-template-columns:1fr;} }
 </style>
 
 <div class="products-workspace">
@@ -41,6 +45,42 @@
       <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content/products/import">⬆ Імпортувати CSV/XLSX</a>
       <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content">← Каталог</a>
     </div>
+  </section>
+
+  <section class="card" aria-label="Пошук і фільтри товарів">
+    <form method="get" class="inventory-filter">
+      <label>Пошук
+        <input name="search" value="{{ current_filters.search }}" placeholder="фара, Audi, A6, OEM">
+      </label>
+      <label>Статус
+        <select name="status">
+          <option value="all"{% if current_filters.status == 'all' %} selected{% endif %}>Усі</option>
+          <option value="available"{% if current_filters.status == 'available' %} selected{% endif %}>В наявності</option>
+          <option value="sold"{% if current_filters.status == 'sold' %} selected{% endif %}>Продано</option>
+          <option value="hidden"{% if current_filters.status == 'hidden' %} selected{% endif %}>Приховано</option>
+        </select>
+      </label>
+      <label>Категорія
+        <select name="category">
+          <option value="">Усі категорії</option>
+          {% for option in filter_options.categories %}<option value="{{ option }}"{% if current_filters.category == option %} selected{% endif %}>{{ option }}</option>{% endfor %}
+        </select>
+      </label>
+      <label>Бренд
+        <select name="brand">
+          <option value="">Усі бренди</option>
+          {% for option in filter_options.brands %}<option value="{{ option }}"{% if current_filters.brand == option %} selected{% endif %}>{{ option }}</option>{% endfor %}
+        </select>
+      </label>
+      <label>Модель
+        <select name="model">
+          <option value="">Усі моделі</option>
+          {% for option in filter_options.models %}<option value="{{ option }}"{% if current_filters.model == option %} selected{% endif %}>{{ option }}</option>{% endfor %}
+        </select>
+      </label>
+      <button class="btn small secondary" type="submit">Знайти</button>
+      {% if current_filters.search or current_filters.status != 'all' or current_filters.category or current_filters.brand or current_filters.model %}<a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/content/products">Очистити</a>{% endif %}
+    </form>
   </section>
 
   <div class="bulk-toolbar" data-bulk-endpoint="/crm/seller/{{ account.crm_slug }}/content/products/bulk">
@@ -93,6 +133,7 @@
           </div>
           <p class="product-desc">{{ (product.description[:180] ~ ('…' if product.description and product.description|length > 180 else '')) if product.description else 'Опис ще не додано.' }}</p>
           <form method="post" action="/crm/seller/{{ account.crm_slug }}/content/products/{{ product.id }}/quick" class="quick-edit-form quick-edit-row">
+            <input type="hidden" name="return_to" value="{{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}">
             <label>Ціна <input class="quick-price" name="price" value="{{ '' if product.price is none else product.price }}" placeholder="2500"></label>
             <label>Наявність <select name="availability"><option value="available"{% if product.status == 'active' and product.stock_status != 'sold' %} selected{% endif %}>В наявності</option><option value="sold"{% if product.status == 'active' and product.stock_status == 'sold' %} selected{% endif %}>Продано</option><option value="hidden"{% if product.status == 'inactive' %} selected{% endif %}>Приховано</option></select></label>
             <button class="btn small secondary" type="submit">Зберегти</button>
@@ -102,7 +143,15 @@
           </div>
         </article>
       {% else %}
-        {{ badges.empty_state("Товарів і запчастин ще немає", "Додайте перший товар через імпорт.", "/crm/seller/" ~ account.crm_slug ~ "/content/products/import", "+ Додати товар") }}
+        {% if current_filters.search or current_filters.status != 'all' or current_filters.category or current_filters.brand or current_filters.model %}
+          <div class="empty-filter-state">
+            <strong>Нічого не знайдено</strong>
+            <p class="section-note" style="margin:0;">Спробуйте інший запит або очистіть фільтри.</p>
+            <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/content/products">Очистити фільтри</a>
+          </div>
+        {% else %}
+          {{ badges.empty_state("Товарів і запчастин ще немає", "Додайте перший товар через імпорт.", "/crm/seller/" ~ account.crm_slug ~ "/content/products/import", "+ Додати товар") }}
+        {% endif %}
       {% endfor %}
     </div>
   </section>

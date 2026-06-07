@@ -199,6 +199,49 @@ async def get_product_by_title_oem(seller_id: int, title: str, oem_code: str | N
     )
 
 
+def _product_inventory_filters(
+    args: list,
+    *,
+    query: str | None = None,
+    inventory_status: str | None = None,
+    category: str | None = None,
+    brand: str | None = None,
+    model: str | None = None,
+) -> list[str]:
+    filters: list[str] = []
+    normalized_query = str(query or "").strip()
+    if normalized_query:
+        args.append(f"%{normalized_query}%")
+        idx = len(args)
+        filters.append(
+            "("
+            f"sp.title ILIKE ${idx} OR sp.category ILIKE ${idx} OR "
+            f"sp.brand ILIKE ${idx} OR sp.model ILIKE ${idx} OR "
+            f"sp.oem_code ILIKE ${idx} OR sp.description ILIKE ${idx} OR "
+            f"b.name ILIKE ${idx} OR m.name ILIKE ${idx}"
+            ")"
+        )
+    if category:
+        args.append(str(category).strip())
+        filters.append(f"sp.category = ${len(args)}")
+    if brand:
+        args.append(str(brand).strip())
+        filters.append(f"COALESCE(sp.brand, b.name, '') = ${len(args)}")
+    if model:
+        args.append(str(model).strip())
+        filters.append(f"COALESCE(sp.model, m.name, '') = ${len(args)}")
+    normalized_status = str(inventory_status or "").strip().lower()
+    if normalized_status == "available":
+        filters.append("sp.status = 'active'")
+        filters.append("sp.stock_status = 'available'")
+    elif normalized_status == "sold":
+        filters.append("sp.status = 'active'")
+        filters.append("sp.stock_status = 'sold'")
+    elif normalized_status == "hidden":
+        filters.append("sp.status = 'inactive'")
+    return filters
+
+
 async def get_seller_products(
     seller_id: int,
     *,
@@ -207,20 +250,27 @@ async def get_seller_products(
     limit: int = 50,
     offset: int = 0,
     sort: str = "newest",
+    query: str | None = None,
+    inventory_status: str | None = None,
+    category: str | None = None,
+    brand: str | None = None,
+    model: str | None = None,
 ):
-    normalized_limit = max(1, min(int(limit or 50), 100))
+    normalized_limit = max(1, min(int(limit or 50), 500))
     normalized_offset = max(0, int(offset or 0))
     args = [seller_id]
-    filters = ["seller_id = $1"]
+    filters = ["sp.seller_id = $1"]
 
     if status is not None:
         _validate_status(status)
         args.append(status)
-        filters.append(f"status = ${len(args)}")
+        filters.append(f"sp.status = ${len(args)}")
     elif not include_archived:
-        filters.append("status <> 'archived'")
+        filters.append("sp.status <> 'archived'")
 
-    prefixed_filters = [f"sp.{filter_sql}" for filter_sql in filters]
+    filters.extend(_product_inventory_filters(args, query=query, inventory_status=inventory_status, category=category, brand=brand, model=model))
+
+    prefixed_filters = filters
 
     args.extend([normalized_limit, normalized_offset])
     limit_arg = len(args) - 1
@@ -429,6 +479,29 @@ async def set_product_status(seller_id: int, product_id: int, status: str) -> bo
         seller_id,
     )
     return row is not None
+
+
+async def list_seller_product_filter_options(seller_id: int):
+    row = await fetchrow(
+        """
+        SELECT
+            COALESCE(array_remove(array_agg(DISTINCT NULLIF(trim(category), '')), NULL), ARRAY[]::TEXT[]) AS categories,
+            COALESCE(array_remove(array_agg(DISTINCT NULLIF(trim(COALESCE(brand, b.name)), '')), NULL), ARRAY[]::TEXT[]) AS brands,
+            COALESCE(array_remove(array_agg(DISTINCT NULLIF(trim(COALESCE(model, m.name)), '')), NULL), ARRAY[]::TEXT[]) AS models
+        FROM seller_products sp
+        LEFT JOIN seller_cars sc ON sc.id = sp.donor_car_id AND sc.seller_id = sp.seller_id
+        LEFT JOIN models m ON m.id = sc.model_id
+        LEFT JOIN brands b ON b.id = m.brand_id
+        WHERE sp.seller_id = $1
+          AND sp.status <> 'archived'
+        """,
+        seller_id,
+    )
+    return {
+        "categories": sorted(row.get("categories") or []) if row else [],
+        "brands": sorted(row.get("brands") or []) if row else [],
+        "models": sorted(row.get("models") or []) if row else [],
+    }
 
 
 async def bulk_update_products_inventory(seller_id: int, product_ids: list[int], *, status: str, stock_status: str | None = None) -> int:
