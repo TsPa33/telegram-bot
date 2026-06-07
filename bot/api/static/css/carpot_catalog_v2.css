@@ -1,0 +1,160 @@
+        .carpot-v2{--bg:#fff;--text:#111;--muted:#676767;--line:#e7e7e7;--soft:#f6f6f6;--card:#fcfcfc;background:var(--bg);color:var(--text);font-family:Inter,Arial,sans-serif;max-width:100%;overflow-x:hidden}
+        .carpot-v2 *{box-sizing:border-box}.carpot-v2 a{text-decoration:none;color:inherit}
+        .carpot-v2-wrap{max-width:1240px;margin:0 auto;padding:0 20px}
+        .carpot-v2-promo{background:#111;color:#fff;text-align:center;padding:10px 14px;font-size:13px;letter-spacing:.01em}
+
+        .carpot-v2-header{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.97);backdrop-filter:blur(6px);border-bottom:1px solid var(--line)}
+        .carpot-v2-header-top{display:flex;align-items:center;gap:20px;justify-content:space-between;padding:16px 0}
+        .carpot-v2-brand{display:grid;gap:2px;min-width:0}.carpot-v2-brand b{font-size:22px;line-height:1.1;letter-spacing:-.02em}
+        .carpot-v2-brand span{font-size:12px;color:var(--muted)}
+        .carpot-v2-nav{display:flex;gap:8px;flex-wrap:wrap}
+        .carpot-v2-nav a{padding:9px 12px;border-radius:999px;border:1px solid transparent;color:#2c2c2c;font-size:14px}
+        .carpot-v2-nav a:hover{background:#f2f2f2;border-color:#ececec}
+        .carpot-v2-head-actions{display:flex;align-items:center;gap:10px;min-width:0}
+        .carpot-v2-search{width:320px;max-width:100%;border:1px solid #ddd;background:#f8f8f8;border-radius:999px;padding:11px 15px;font-size:16px;min-height:44px}
+        .carpot-v2-btn{display:inline-flex;align-items:center;justify-content:center;padding:11px 18px;border-radius:999px;border:1px solid #111;font-weight:650;font-size:14px;transition:.16s ease;min-height:44px}
+        .carpot-v2-btn-black{background:#111;color:#fff}.carpot-v2-btn-black:hover{background:#202020}
+        .carpot-v2-btn-light{background:#fff;color:#111}.carpot-v2-btn-light:hover{background:#f3f3f3}
+        .carpot-v2-mobile-menu{display:none}
+        .carpot-v2-mobile-menu summary{list-style:none}
+        .carpot-v2-mobile-menu summary::-webkit-details-marker{display:none}
+
+        .carpot-v2-main{padding:28px 0 48px}
+        .carpot-v2-hero-shell{display:grid;grid-template-columns:minmax(0,1fr) minmax(360px,.9fr);gap:28px;align-items:center;border:1px solid var(--line);border-radius:30px;background:var(--soft);padding:32px;overflow:hidden}
+        .carpot-v2-hero-content{display:grid;align-content:center;gap:0;min-width:0}
+        .carpot-v2-hero-shell h1{font-size:52px;line-height:1.03;letter-spacing:-.035em;margin:0 0 16px;max-width:11ch}
+        .carpot-v2-hero-shell p{font-size:18px;line-height:1.55;color:#414141;margin:0 0 26px;max-width:58ch}
+        .carpot-v2-actions{display:flex;flex-wrap:wrap;gap:10px}
+        .carpot-v2-hero-actions{margin-bottom:30px}
+        .carpot-v2-hero-actions .carpot-v2-btn{min-height:52px;padding:13px 22px}
+        .carpot-v2-hero-actions .carpot-v2-btn-black{color:#fff;display:inline-flex;align-items:center;justify-content:center}
+        .carpot-v2-hero-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;max-width:620px}
+        .carpot-v2-hero-stat{border-left:1px solid #d8d8d8;padding:0 14px 0 18px;min-height:62px;display:grid;align-content:center}
+        .carpot-v2-hero-stat:first-child{border-left:0;padding-left:0}
+        .carpot-v2-hero-stat b{font-size:34px;line-height:1;letter-spacing:-.035em}
+        .carpot-v2-hero-stat span{font-size:13px;color:#555;margin-top:7px;font-weight:650}
+        .carpot-v2-hero-visual{border:1px solid #dedede;border-radius:24px;background:#f3f3f3;overflow:hidden;aspect-ratio:16/9;position:relative;box-shadow:0 18px 42px rgba(0,0,0,.08)}
+        .carpot-v2-hero-visual img{width:100%;height:100%;object-fit:cover;display:block}
+        .carpot-v2-composition{position:relative;height:100%;padding:24px;display:grid;grid-template-columns:1fr 1fr;gap:14px;align-content:center}
+        .carpot-v2-comp-card{border:1px solid #ddd;border-radius:18px;background:#fff;padding:14px;box-shadow:0 8px 22px rgba(0,0,0,.06)}
+        .carpot-v2-comp-media{height:96px;background:#f0f0f0;border-radius:12px;margin-bottom:10px}
+        .carpot-v2-comp-line{height:10px;background:#efefef;border-radius:8px;margin-bottom:8px}
+
+        .carpot-v2-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:20px 0 12px}
+        .carpot-v2-strip-item{min-height:94px;border:1px solid var(--line);border-radius:18px;background:#fff;padding:16px;display:grid;align-content:center}
+        .carpot-v2-strip-item b{font-size:30px;line-height:1;letter-spacing:-.02em;margin-bottom:8px}
+        .carpot-v2-strip-item span{font-size:14px;color:#555}
+
+         .carpot-v2-cats{display:flex;flex-wrap:wrap;gap:12px;margin:16px 0 34px}
+        .carpot-v2-chip{padding:11px 16px;border-radius:999px;background:#f3f3f3;border:1px solid #e5e5e5;font-size:13px;font-weight:650;color:#2f2f2f;transition:.15s ease}.carpot-v2-chip:hover{background:#111;color:#fff;border-color:#111}
+
+        .carpot-v2-catalog{display:grid;grid-template-columns:280px 1fr;gap:20px;margin:8px 0 34px}
+        .carpot-v2-filter{border:1px solid var(--line);border-radius:20px;background:var(--card);padding:16px;position:sticky;top:90px;height:fit-content;display:grid;gap:10px}
+        .carpot-v2-filter h3{margin:0;font-size:17px;letter-spacing:-.01em}
+        .carpot-v2-filter-group{border:1px solid #ececec;border-radius:12px;background:#fff;padding:11px 12px}.carpot-v2-filter-group b{font-size:13px}.carpot-v2-filter-group p{margin:6px 0 0;color:#6a6a6a;font-size:13px}
+        .carpot-v2-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+        .carpot-v2-card{border:1px solid var(--line);border-radius:22px;background:#fff;padding:14px;display:grid;gap:12px;grid-template-rows:auto auto auto 1fr auto auto;transition:transform .15s ease, box-shadow .15s ease;min-height:100%}
+        .carpot-v2-card:hover{transform:translateY(-3px);box-shadow:0 14px 28px rgba(0,0,0,.08)}
+        .carpot-v2-media{width:100%;height:200px;object-fit:cover;border-radius:16px;background:#efefef;border:1px solid #ececec}
+        .carpot-v2-title{font-size:18px;line-height:1.25;margin:0;letter-spacing:-.01em}
+        .carpot-v2-meta{color:#606060;font-size:12px;margin:0;font-weight:600;text-transform:uppercase;letter-spacing:.03em}
+        .carpot-v2-desc{color:#4b4b4b;font-size:14px;line-height:1.5;margin:0}
+        .carpot-v2-row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+        .carpot-v2-price{font-size:22px;font-weight:780;letter-spacing:-.02em}
+        .carpot-v2-badge{font-size:12px;padding:6px 10px;border-radius:999px;background:#f2f2f2;border:1px solid #e6e6e6;color:#4a4a4a;white-space:nowrap}
+
+        .carpot-v2-section{margin:26px 0}.carpot-v2-section h2{font-size:32px;letter-spacing:-.02em;margin:0 0 12px}
+        .carpot-v2-empty{border:1px dashed #cfcfcf;background:#fafafa;border-radius:18px;padding:32px 24px;color:#505050;text-align:center;max-width:720px;margin:0 auto}
+
+        .carpot-v2-vin{margin:34px 0;border-radius:24px;background:#111;color:#fff;padding:26px;border:1px solid #1f1f1f}
+        .carpot-v2-vin h2{font-size:34px;line-height:1.08;margin:0 0 10px}
+        .carpot-v2-vin p{margin:0 0 14px;color:#ddd}
+        .carpot-v2-formgrid{display:grid;gap:10px;grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:10px}
+        .carpot-v2-input,.carpot-v2-textarea{padding:12px;border-radius:10px;border:1px solid #ddd;background:#fff;color:#111;font-size:16px;width:100%;min-height:44px}
+        .carpot-v2-textarea{min-height:92px}
+
+        .carpot-v2-contacts h2{font-size:30px;margin:0 0 10px}
+        .carpot-v2-contact-box{border:1px solid var(--line);border-radius:16px;background:#fafafa;padding:16px}
+
+        .carpot-v2-footer{border-top:1px solid var(--line);padding:24px 0;color:#666;font-size:14px;margin-top:30px}
+
+        @media (max-width:1100px){
+            .carpot-v2-hero-shell h1{font-size:42px}
+            .carpot-v2-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+        }
+        @media (max-width:900px){
+            .carpot-v2-header-top{display:grid;grid-template-columns:1fr;gap:10px}
+            .carpot-v2-head-actions{justify-content:space-between;display:grid;grid-template-columns:1fr auto auto;gap:8px}
+            .carpot-v2-search{flex:1;width:100%}
+            .carpot-v2-hero-shell,.carpot-v2-catalog{grid-template-columns:1fr}
+            .carpot-v2-hero-visual{width:100%;max-width:720px;margin:0 auto}
+            .carpot-v2-filter{position:static}
+            .carpot-v2-formgrid{grid-template-columns:1fr 1fr}
+        }
+        @media (max-width:768px){
+            .carpot-v2-header-top{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0}
+            .carpot-v2-brand{flex:1}
+            .carpot-v2-brand span{display:none}
+            .carpot-v2-nav,.carpot-v2-head-actions{display:none}
+            .carpot-v2-mobile-menu{display:block;position:relative}
+            .carpot-v2-mobile-toggle{display:grid;gap:4px;padding:10px;border:1px solid #ddd;border-radius:12px;background:#fff;cursor:pointer}
+            .carpot-v2-mobile-toggle span{display:block;width:20px;height:2px;background:#222}
+            .carpot-v2-mobile-panel{position:absolute;right:0;top:48px;width:min(92vw,360px);background:#fff;border:1px solid #e6e6e6;border-radius:14px;padding:12px;display:grid;gap:10px;box-shadow:0 12px 24px rgba(0,0,0,.08);z-index:50}
+            .carpot-v2-mobile-nav{display:grid;gap:6px}
+            .carpot-v2-mobile-nav a{padding:10px 12px;border-radius:10px;border:1px solid #eee;background:#fafafa;font-size:14px}
+            .carpot-v2-mobile-search-form{display:grid;gap:8px}
+            .carpot-v2-mobile-search-form .carpot-v2-search{width:100%}
+            .carpot-v2-mobile-panel .carpot-v2-btn{width:100%}
+            .carpot-v2-main{padding:18px 0 34px}
+            .carpot-v2-catalog{gap:14px}
+            .carpot-v2-grid{grid-template-columns:1fr;gap:14px}
+            .carpot-v2-row{flex-wrap:wrap}
+            .carpot-v2-price{font-size:20px}
+        }
+        @media (max-width:640px){
+            .carpot-v2-filter-group{padding:10px}
+            .carpot-v2-wrap{padding:0 14px}
+            .carpot-v2-brand b{font-size:20px}
+            .carpot-v2-hero-shell{padding:24px 20px;gap:20px}
+            .carpot-v2-hero-shell h1{font-size:32px;max-width:none}
+            .carpot-v2-hero-shell p{font-size:15px;margin-bottom:20px}
+            .carpot-v2-hero-actions{display:grid;grid-template-columns:1fr;gap:10px;margin-bottom:22px}
+            .carpot-v2-hero-actions .carpot-v2-btn{width:100%;min-height:50px}
+            .carpot-v2-hero-stats{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+            .carpot-v2-hero-stat{border:1px solid #e1e1e1;border-radius:14px;background:#fff;padding:11px 10px;min-height:74px}
+            .carpot-v2-hero-stat:first-child{border-left:1px solid #e1e1e1;padding-left:10px}
+            .carpot-v2-hero-stat b{font-size:24px}
+            .carpot-v2-hero-stat span{font-size:11px;line-height:1.25}
+            .carpot-v2-strip,.carpot-v2-grid{grid-template-columns:1fr}
+            .carpot-v2-vin h2{font-size:28px}
+            .carpot-v2-formgrid{grid-template-columns:1fr}
+            .carpot-v2-filter form{gap:10px}
+            .carpot-v2-filter .carpot-v2-btn{width:100%}
+            .carpot-v2-card{padding:12px;gap:10px}
+        }
+        @media (max-width:430px){
+            .carpot-v2-wrap{padding:0 12px}
+            .carpot-v2-header-top{padding:12px 0}
+            .carpot-v2-nav a{padding:8px 10px;font-size:13px}
+            .carpot-v2-hero-shell h1{font-size:29px}
+            .carpot-v2-hero-shell{padding:18px 16px;border-radius:22px}
+            .carpot-v2-hero-visual{border-radius:18px}
+            .carpot-v2-hero-stats{grid-template-columns:1fr}
+            .carpot-v2-hero-stat,.carpot-v2-hero-stat:first-child{min-height:58px;grid-template-columns:auto 1fr;align-items:center;align-content:center;column-gap:10px}
+            .carpot-v2-hero-stat span{margin-top:0}
+            .carpot-v2-strip-item{min-height:82px;padding:12px}
+            .carpot-v2-strip-item b{font-size:24px}
+            .carpot-v2-vin{padding:18px}
+            .carpot-v2-section h2{font-size:27px}
+        }
+        @media (max-width:375px){
+            .carpot-v2-btn{font-size:13px;padding:10px 14px}
+            .carpot-v2-cats{gap:8px}
+            .carpot-v2-chip{padding:9px 12px;font-size:12px}
+        }
+        @media (max-width:320px){
+            .carpot-v2-wrap{padding:0 10px}
+            .carpot-v2-brand b{font-size:18px}
+            .carpot-v2-search{padding:10px 12px}
+        }
+    
