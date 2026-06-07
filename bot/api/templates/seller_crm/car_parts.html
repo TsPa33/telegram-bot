@@ -24,7 +24,7 @@
     </form>
   </section>
 
-  <div class="bulk-toolbar" data-bulk-endpoint="/crm/seller/{{ account.crm_slug }}/content/parts/bulk"><label style="display:flex;gap:6px;align-items:center;"><input type="checkbox" data-select-all> Select All</label><strong data-selected-count>Selected: 0</strong><button class="btn small secondary" type="button" data-bulk-action="available">В наявності</button><button class="btn small secondary" type="button" data-bulk-action="sold">Продано</button><button class="btn small secondary" type="button" data-bulk-action="hidden">Приховати</button><button class="btn small secondary" type="button" data-bulk-action="draft">Чернетка</button><button class="btn small ghost" type="button" data-bulk-action="delete">Видалити</button><button class="btn small ghost" type="button" data-bulk-clear>Скасувати вибір</button><span class="quick-save-status" data-bulk-status aria-live="polite"></span></div>
+  <div class="bulk-toolbar" data-bulk-endpoint="/crm/seller/{{ account.crm_slug }}/content/parts/bulk"><label style="display:flex;gap:6px;align-items:center;"><input type="checkbox" data-select-all> Обрати всі</label><strong data-selected-count>Обрано: 0</strong><button class="btn small secondary" type="button" data-bulk-action="available">В наявності</button><button class="btn small secondary" type="button" data-bulk-action="sold">Продано</button><button class="btn small secondary" type="button" data-bulk-action="hidden">Приховати</button><button class="btn small secondary" type="button" data-bulk-action="draft">Чернетка</button><button class="btn small ghost" type="button" data-bulk-action="delete">Видалити</button><button class="btn small ghost" type="button" data-bulk-clear>Скасувати вибір</button><span class="quick-save-status" data-bulk-status aria-live="polite"></span></div>
 
   <section class="grid" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;">
     {{ cards.metric_card('Всього запчастин', stats.total, '') }}{{ cards.metric_card('В наявності', stats.available, '') }}{{ cards.metric_card('⚠ Без ціни', stats.no_price, '') }}{{ cards.metric_card('⚠ Без фото', stats.no_photo, '') }}
@@ -110,7 +110,7 @@ function selectedBulkIds(){ return bulkChecks.filter((item) => item.checked).map
 function refreshBulkToolbar(){
   const count = selectedBulkIds().length;
   if (bulkToolbar) bulkToolbar.classList.toggle('active', count > 0);
-  if (bulkCount) bulkCount.textContent = `Selected: ${count}`;
+  if (bulkCount) bulkCount.textContent = `Обрано: ${count}`;
   if (bulkSelectAll) bulkSelectAll.checked = count > 0 && count === bulkChecks.length;
 }
 bulkChecks.forEach((item) => item.addEventListener('change', refreshBulkToolbar));

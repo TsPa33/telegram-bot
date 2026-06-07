@@ -1,31 +1,30 @@
 {% extends "seller_crm/base.html" %}
+{% block crm_kicker %}Website V2{% endblock %}
+{% block crm_heading %}{% if service_index is none %}Додати послугу{% else %}Редагувати послугу{% endif %}{% endblock %}
 {% block content %}
-<h1>{% if service_index is none %}Додати послугу{% else %}Редагувати послугу{% endif %}</h1>
-<p><b>{{ website.name }}</b> ({{ website.site_type }})</p>
-{% if request.query_params.get('error') == 'validation' %}
-<div style="padding:10px 12px;border:1px solid #c77700;background:#fff7e6;color:#7a4b00;border-radius:8px;margin:12px 0;">Заповніть назву та опис послуги.</div>
-{% endif %}
-<form method="post" action="{{ form_action }}" style="max-width:760px;display:grid;gap:10px;">
-    <label>Назва</label>
-    <input name="title" required value="{{ service.title or '' }}" placeholder="Діагностика автомобіля" style="width:100%;padding:10px;">
-
-    <label>Опис</label>
-    <textarea name="description" required placeholder="Коротко опишіть послугу..." style="width:100%;padding:10px;min-height:110px;">{{ service.description or '' }}</textarea>
-
-    <label>Ціна</label>
-    <input name="price" value="{{ service.price or '' }}" placeholder="від 500 грн" style="width:100%;padding:10px;">
-
-    <label>URL зображення</label>
-    <input name="image_url" value="{{ service.image_url or '' }}" placeholder="https://..." style="width:100%;padding:10px;">
-    <small style="color:#666;line-height:1.4;">Рекомендований розмір: 1200×800</small>
-
-    <label>Порядок</label>
-    <input name="sort_order" type="number" min="1" value="{{ service.sort_order or next_sort_order or 1 }}" style="width:100%;padding:10px;">
-
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
-        <button type="submit" name="action" value="save" style="padding:10px 14px;border:1px solid #111;background:#111;color:#fff;border-radius:8px;">Зберегти</button>
-        <button type="submit" name="action" value="save_publish" style="padding:10px 14px;border:1px solid #111;background:#fff;color:#111;border-radius:8px;">Зберегти та опублікувати</button>
-        <a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/services" style="padding:10px 14px;border:1px solid #111;border-radius:8px;text-decoration:none;color:#111;">Назад до послуг</a>
+<div class="crm-page">
+  <section class="crm-page-head">
+    <div>
+      <h1>{% if service_index is none %}Додати послугу{% else %}Редагувати послугу{% endif %}</h1>
+      <p class="section-note">{{ website.name }} · послуга буде показана на Business сайті.</p>
     </div>
-</form>
+    <div class="crm-action-row"><a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/services">Назад до послуг</a></div>
+  </section>
+
+  {% if request.query_params.get('error') == 'validation' %}<div class="crm-notice warning">Заповніть назву та опис послуги.</div>{% endif %}
+
+  <section class="card">
+    <form class="crm-form" method="post" action="{{ form_action }}">
+      <label>Назва<input name="title" required value="{{ service.title or '' }}" placeholder="Діагностика автомобіля"></label>
+      <label>Опис<textarea name="description" required placeholder="Коротко опишіть послугу...">{{ service.description or '' }}</textarea></label>
+      <label>Ціна<input name="price" value="{{ service.price or '' }}" placeholder="від 500 грн"></label>
+      <label>URL зображення<input name="image_url" value="{{ service.image_url or '' }}" placeholder="https://..."><span class="crm-help">Рекомендований розмір: 1200×800</span></label>
+      <label>Порядок<input name="sort_order" type="number" min="1" value="{{ service.sort_order or next_sort_order or 1 }}"></label>
+      <div class="crm-action-row">
+        <button class="btn" type="submit" name="action" value="save">Зберегти</button>
+        <button class="btn ghost" type="submit" name="action" value="save_publish">Зберегти та опублікувати</button>
+      </div>
+    </form>
+  </section>
+</div>
 {% endblock %}

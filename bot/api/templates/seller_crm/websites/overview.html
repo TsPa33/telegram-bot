@@ -1,29 +1,43 @@
 {% extends "seller_crm/base.html" %}
+{% block crm_kicker %}Website V2{% endblock %}
+{% block crm_heading %}Огляд сайту{% endblock %}
 {% block content %}
-<h1>Огляд сайту</h1>
-<p>{{ website.name }} ({{ website_context.site_type }})</p>
-<p>Статус: {{ website_context.status }}</p>
-<p>URL: <a href="{{ website_context.public_url }}" target="_blank">{{ website_context.public_url }}</a></p>
-<p>Заявки з цього сайту зберігаються в окремій скриньці.</p>
-<p><a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/leads" style="display:inline-block;padding:10px 14px;border:1px solid #111;background:#111;color:#fff;border-radius:8px;text-decoration:none;">Заявки сайту{% if lead_counts.new_leads_count %} · {{ lead_counts.new_leads_count }} нових{% endif %}</a></p>
+<div class="crm-page">
+  <section class="crm-page-head">
+    <div>
+      <h1>{{ website.name }}</h1>
+      <div class="crm-page-meta">
+        <span>{{ "Каталог запчастин" if website_context.site_type == 'carpot_catalog' else "Сайт послуг" }}</span><span>·</span>
+        <span class="badge {% if website_context.status == 'published' %}status-success{% else %}status-waiting{% endif %}">{{ website_context.status }}</span>
+      </div>
+      <p class="section-note">URL: <a href="{{ website_context.public_url }}" target="_blank" rel="noopener">{{ website_context.public_url }}</a></p>
+    </div>
+    <div class="crm-action-row">
+      <a class="btn" href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/leads">Заявки{% if lead_counts.new_leads_count %} · {{ lead_counts.new_leads_count }} нових{% endif %}</a>
+      <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/websites">Мої сайти</a>
+    </div>
+  </section>
 
-<h3>Чекліст готовності</h3>
-<p>{{ "Готово до публікації" if website_context.publish_ready else "Потрібно доповнити дані" }}</p>
-{% if website_context.missing_required_fields %}
-<ul>{% for item in website_context.missing_required_fields %}<li>{{ item }}</li>{% endfor %}</ul>
-{% endif %}
-{% if website_context.warnings %}
-<h4>Поради</h4>
-<ul>{% for warning in website_context.warnings %}<li>{{ warning }}</li>{% endfor %}</ul>
-{% endif %}
+  <section class="crm-card-grid">
+    <article class="card"><h2>Hero</h2><p class="section-note">Заголовок, опис, CTA та банер першого екрану.</p><a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/hero">Редагувати</a></article>
+    <article class="card"><h2>Контент</h2><p class="section-note">Каталог або послуги, які показуються на сайті.</p><a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/content">Відкрити</a></article>
+    {% if website_context.site_type == 'carpot_business' %}<article class="card"><h2>Послуги</h2><p class="section-note">Список послуг Business сайту.</p><a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/services">Керувати</a></article>{% endif %}
+    <article class="card"><h2>Контакти</h2><p class="section-note">Профіль продавця або окремі контакти сайту.</p><a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/contacts">Налаштувати</a></article>
+    <article class="card"><h2>Публікація</h2><p class="section-note">Чекліст готовності та запуск сайту.</p><a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/publication">Перевірити</a></article>
+  </section>
 
-<p>
-    <a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/hero">Hero</a> |
-    <a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/design">Design</a> |
-    <a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/content">Content</a> |
-    {% if website_context.site_type == 'carpot_business' %}<a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/services">Послуги</a> |{% endif %}
-    <a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/contacts">Contacts</a> |
-    <a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/publication">Publication</a> |
-    <a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/leads">Заявки</a>
-</p>
+  <section class="card">
+    <h2>Чекліст готовності</h2>
+    <p class="section-note">{{ "Готово до публікації" if website_context.publish_ready else "Потрібно доповнити дані" }}</p>
+    {% if website_context.missing_required_fields %}
+      <div class="crm-list">{% for item in website_context.missing_required_fields %}<div class="crm-list-item"><span>{{ item }}</span><span class="badge status-waiting">Потрібно</span></div>{% endfor %}</div>
+    {% else %}
+      <div class="crm-notice">Усі обовʼязкові поля заповнені.</div>
+    {% endif %}
+    {% if website_context.warnings %}
+      <h3 class="stack-top">Поради</h3>
+      <div class="crm-list">{% for warning in website_context.warnings %}<div class="crm-list-item"><span>{{ warning }}</span></div>{% endfor %}</div>
+    {% endif %}
+  </section>
+</div>
 {% endblock %}

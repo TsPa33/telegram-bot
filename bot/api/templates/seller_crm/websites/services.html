@@ -1,54 +1,46 @@
 {% extends "seller_crm/base.html" %}
+{% block crm_kicker %}Website V2{% endblock %}
+{% block crm_heading %}Послуги сайту{% endblock %}
 {% block content %}
-<h1>Послуги сайту</h1>
-<p><b>{{ website.name }}</b> ({{ website.site_type }})</p>
-<p>Керуйте послугами, які показуються на Business сайті. Дані зберігаються в чернетці сайту.</p>
+<div class="crm-page">
+  <section class="crm-page-head">
+    <div>
+      <h1>Послуги сайту</h1>
+      <p class="section-note">{{ website.name }} · керуйте послугами, які показуються на Business сайті.</p>
+    </div>
+    <div class="crm-action-row">
+      <a class="btn" href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/services/new">+ Додати послугу</a>
+      <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}">Назад до огляду</a>
+    </div>
+  </section>
 
-{% if published %}
-<div style="padding:10px 12px;border:1px solid #2e7d32;background:#e8f5e9;color:#1b5e20;border-radius:8px;margin:12px 0;">Послуги збережено та сайт опубліковано.</div>
-{% elif saved %}
-<div style="padding:10px 12px;border:1px solid #2e7d32;background:#e8f5e9;color:#1b5e20;border-radius:8px;margin:12px 0;">Послуги збережено.</div>
-{% endif %}
-{% if publish_error == 'validation' %}
-<div style="padding:10px 12px;border:1px solid #c77700;background:#fff7e6;color:#7a4b00;border-radius:8px;margin:12px 0;">Послуги збережено, але сайт ще не готовий до публікації. Перевірте контакти та інші вимоги.</div>
-{% endif %}
+  {% if published %}<div class="crm-notice">Послуги збережено та сайт опубліковано.</div>{% elif saved %}<div class="crm-notice">Послуги збережено.</div>{% endif %}
+  {% if publish_error == 'validation' %}<div class="crm-notice warning">Послуги збережено, але сайт ще не готовий до публікації. Перевірте контакти та інші вимоги.</div>{% endif %}
 
-<p style="display:flex;gap:8px;flex-wrap:wrap;">
-    <a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/services/new" style="padding:10px 14px;border:1px solid #111;background:#111;color:#fff;border-radius:8px;text-decoration:none;">+ Додати послугу</a>
-    <a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}" style="padding:10px 14px;border:1px solid #111;border-radius:8px;text-decoration:none;color:#111;">Назад до огляду</a>
-</p>
-
-{% if services %}
-<div style="display:grid;gap:10px;max-width:980px;">
-    {% for service in services %}
-    <article style="display:grid;grid-template-columns:88px 1fr auto;gap:12px;align-items:center;border:1px solid #ddd;border-radius:12px;padding:10px;background:#fff;">
-        {% if service.image_url %}
-        <img src="{{ service.image_url }}" alt="{{ service.title }}" style="width:88px;height:64px;object-fit:cover;border-radius:8px;border:1px solid #eee;">
-        {% else %}
-        <div style="width:88px;height:64px;border-radius:8px;background:#f1f1f1;border:1px solid #eee;"></div>
-        {% endif %}
-        <div style="min-width:0;">
-            <h3 style="margin:0 0 4px;">{{ service.title }}</h3>
-            <p style="margin:0;color:#666;">{{ service.price or 'Ціна за запитом' }}</p>
-            <p style="margin:4px 0 0;color:#777;font-size:13px;">Порядок: {{ service.sort_order }}</p>
-        </div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">
-            <a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/services/{{ loop.index0 }}/edit" style="padding:8px 10px;border:1px solid #111;border-radius:8px;text-decoration:none;color:#111;">Редагувати</a>
-            <form method="post" action="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/services/{{ loop.index0 }}/move" style="display:inline;"><input type="hidden" name="direction" value="up"><button type="submit" style="padding:8px 10px;border:1px solid #ddd;background:#fff;border-radius:8px;">Вгору</button></form>
-            <form method="post" action="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/services/{{ loop.index0 }}/move" style="display:inline;"><input type="hidden" name="direction" value="down"><button type="submit" style="padding:8px 10px;border:1px solid #ddd;background:#fff;border-radius:8px;">Вниз</button></form>
-            <form method="post" action="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/services/{{ loop.index0 }}/delete" style="display:inline;" onsubmit="return confirm('Видалити послугу?');"><button type="submit" style="padding:8px 10px;border:1px solid #b00020;background:#fff;color:#b00020;border-radius:8px;">Видалити</button></form>
-        </div>
-    </article>
-    {% endfor %}
+  {% if services %}
+    <section class="crm-list" aria-label="Послуги сайту">
+      {% for service in services %}
+        <article class="crm-list-item with-media">
+          {% if service.image_url %}<img class="crm-thumb" src="{{ service.image_url }}" alt="{{ service.title }}">{% else %}<div class="crm-thumb">Немає фото</div>{% endif %}
+          <div>
+            <h2 class="crm-list-title">{{ service.title }}</h2>
+            <div class="crm-page-meta"><span>{{ service.price or 'Ціна за запитом' }}</span><span>·</span><span>Порядок: {{ service.sort_order }}</span></div>
+          </div>
+          <div class="crm-action-row">
+            <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/services/{{ loop.index0 }}/edit">Редагувати</a>
+            <form method="post" action="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/services/{{ loop.index0 }}/move"><input type="hidden" name="direction" value="up"><button class="btn small ghost" type="submit">Вгору</button></form>
+            <form method="post" action="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/services/{{ loop.index0 }}/move"><input type="hidden" name="direction" value="down"><button class="btn small ghost" type="submit">Вниз</button></form>
+            <form method="post" action="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/services/{{ loop.index0 }}/delete" onsubmit="return confirm('Видалити послугу?');"><button class="btn small danger" type="submit">Видалити</button></form>
+          </div>
+        </article>
+      {% endfor %}
+    </section>
+  {% else %}
+    <div class="crm-empty">
+      <strong>Послуг ще немає.</strong>
+      <p class="section-note">Додайте першу послугу, щоб Business сайт можна було опублікувати.</p>
+      <a class="btn" href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/services/new">Додати послугу</a>
+    </div>
+  {% endif %}
 </div>
-{% else %}
-<div style="padding:18px;border:1px dashed #ccc;border-radius:12px;background:#fafafa;max-width:760px;">Послуг ще немає. Додайте першу послугу, щоб Business сайт можна було опублікувати.</div>
-{% endif %}
-
-<style>
-@media (max-width: 720px) {
-    article { grid-template-columns: 1fr !important; }
-    article img, article > div:first-child { width: 100% !important; height: 150px !important; }
-}
-</style>
 {% endblock %}

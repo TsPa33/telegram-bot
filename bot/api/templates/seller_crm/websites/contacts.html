@@ -1,53 +1,46 @@
 {% extends "seller_crm/base.html" %}
+{% block crm_kicker %}Website V2{% endblock %}
+{% block crm_heading %}Контакти сайту{% endblock %}
 {% block content %}
-<h1>Контакти сайту</h1>
-<p><b>{{ website.name }}</b> ({{ website.site_type }})</p>
 {% set wc = website_context.website_contacts if website_context and website_context.website_contacts else {} %}
 {% set using_override = wc.source == 'website' %}
-{% if saved %}
-<div style="padding:10px 12px;border:1px solid #2e7d32;background:#e8f5e9;color:#1b5e20;border-radius:8px;margin:12px 0;">Контакти оновлено.</div>
-{% endif %}
+{% set cfg = website.config_draft if website and website.config_draft else {} %}
+{% set contacts = cfg.contacts if cfg and cfg.contacts else {} %}
+<div class="crm-page">
+  <section class="crm-page-head">
+    <div>
+      <h1>Контакти сайту</h1>
+      <p class="section-note">{{ website.name }} · сайт автоматично використовує контакти профілю, якщо окремі контакти не увімкнені.</p>
+    </div>
+    <div class="crm-action-row"><a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}">Назад до огляду</a></div>
+  </section>
 
-<section style="border:1px solid #ddd;border-radius:10px;padding:14px;margin:14px 0;">
-    <h3 style="margin-top:0;">Поточне джерело контактів</h3>
-    {% if wc.source == "seller_profile" %}
-        <p>Зараз сайт використовує контакти з вашого профілю.</p>
-    {% elif wc.source == "website" %}
-        <p>Використовуються окремі контакти для цього сайту.</p>
-    {% else %}
-        <p>Контакти не знайдено. Додайте контакти у профіль або окремо для сайту.</p>
-    {% endif %}
-    <ul style="margin:8px 0 0 18px;">
-        <li>Телефон: {{ wc.phone or (wc.phones[0] if wc.phones else '—') }}</li>
-        <li>Telegram: {{ wc.telegram or account.username or '—' }}</li>
-        <li>Сайт: {{ wc.website or account.website or '—' }}</li>
-        <li>Місто: {{ account.city or '—' }}</li>
-    </ul>
-    <p style="margin:12px 0 0;">
-        <a href="{{ profile_url }}" style="padding:8px 12px;border:1px solid #111;border-radius:8px;text-decoration:none;color:#111;">Редагувати профіль</a>
-    </p>
-</section>
+  {% if saved %}<div class="crm-notice">Контакти оновлено.</div>{% endif %}
 
-<section style="border:1px solid #ddd;border-radius:10px;padding:14px;margin:14px 0;">
-    <h3 style="margin-top:0;">Окремі контакти сайту (необов’язково)</h3>
-    <form method="post" action="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/contacts">
-        <label style="display:flex;gap:8px;align-items:center;margin:10px 0;">
-            <input type="checkbox" name="use_override" value="1" {% if using_override %}checked{% endif %}>
-            <span>Використовувати окремі контакти для цього сайту</span>
-        </label>
-        {% set cfg = website.config_draft if website and website.config_draft else {} %}
-        {% set contacts = cfg.contacts if cfg and cfg.contacts else {} %}
-        <div style="display:grid;gap:10px;max-width:640px;">
-            <input name="phone" placeholder="Телефон" value="{{ contacts.phone if contacts else '' }}" style="width:100%;padding:10px;">
-            <input name="telegram" placeholder="Telegram / username" value="{{ contacts.telegram if contacts else '' }}" style="width:100%;padding:10px;">
-            <input name="website_url" placeholder="Вебсайт" value="{{ contacts.website if contacts else '' }}" style="width:100%;padding:10px;">
-            <input name="city" placeholder="Місто" value="{{ contacts.city if contacts else '' }}" style="width:100%;padding:10px;">
-            <textarea name="phones_text" placeholder="Додаткові телефони (кожен з нового рядка)" style="width:100%;padding:10px;min-height:90px;">{% if contacts and contacts.phones %}{{ contacts.phones|join('\n') }}{% endif %}</textarea>
-        </div>
-        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
-            <button type="submit" style="padding:10px 14px;border:1px solid #111;background:#111;color:#fff;border-radius:8px;">Зберегти</button>
-            <a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}" style="padding:10px 14px;border:1px solid #111;border-radius:8px;text-decoration:none;color:#111;">Назад до огляду</a>
-        </div>
+  <section class="card">
+    <h2>Поточне джерело контактів</h2>
+    {% if wc.source == "seller_profile" %}<p class="section-note">Зараз сайт використовує контакти з вашого профілю.</p>{% elif wc.source == "website" %}<p class="section-note">Використовуються окремі контакти для цього сайту.</p>{% else %}<p class="section-note">Контакти не знайдено. Додайте контакти у профіль або окремо для сайту.</p>{% endif %}
+    <div class="crm-card-grid">
+      <div class="request-card"><b>Телефон</b><span>{{ wc.phone or (wc.phones[0] if wc.phones else '—') }}</span></div>
+      <div class="request-card"><b>Telegram</b><span>{{ wc.telegram or account.username or '—' }}</span></div>
+      <div class="request-card"><b>Сайт</b><span>{{ wc.website or account.website or '—' }}</span></div>
+      <div class="request-card"><b>Місто</b><span>{{ wc.city or account.city or '—' }}</span></div>
+    </div>
+    <div class="crm-action-row stack-top"><a class="btn ghost" href="{{ profile_url }}">Редагувати профіль</a></div>
+  </section>
+
+  <section class="card">
+    <h2>Окремі контакти сайту</h2>
+    <p class="section-note">Необовʼязково. Якщо вимкнено — сайт бере контакти з профілю продавця.</p>
+    <form class="crm-form" method="post" action="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/contacts">
+      <label style="display:flex;gap:8px;align-items:center;"><input type="checkbox" name="use_override" value="1" {% if using_override %}checked{% endif %}><span>Використовувати окремі контакти для цього сайту</span></label>
+      <label>Телефон<input name="phone" placeholder="Телефон" value="{{ contacts.phone if contacts else '' }}"></label>
+      <label>Telegram<input name="telegram" placeholder="Telegram / username" value="{{ contacts.telegram if contacts else '' }}"></label>
+      <label>Вебсайт<input name="website_url" placeholder="https://example.com" value="{{ contacts.website if contacts else '' }}"></label>
+      <label>Місто<input name="city" placeholder="Місто" value="{{ contacts.city if contacts else '' }}"></label>
+      <label>Додаткові телефони<textarea name="phones_text" placeholder="Кожен телефон з нового рядка">{% if contacts and contacts.phones %}{{ contacts.phones|join('\n') }}{% endif %}</textarea></label>
+      <div class="crm-action-row"><button class="btn" type="submit">Зберегти</button></div>
     </form>
-</section>
+  </section>
+</div>
 {% endblock %}

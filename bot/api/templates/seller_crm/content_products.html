@@ -84,8 +84,8 @@
   </section>
 
   <div class="bulk-toolbar" data-bulk-endpoint="/crm/seller/{{ account.crm_slug }}/content/products/bulk">
-    <label style="display:flex;gap:6px;align-items:center;"><input type="checkbox" data-select-all> Select All</label>
-    <strong data-selected-count>Selected: 0</strong>
+    <label style="display:flex;gap:6px;align-items:center;"><input type="checkbox" data-select-all> Обрати всі</label>
+    <strong data-selected-count>Обрано: 0</strong>
     <button class="btn small secondary" type="button" data-bulk-action="available">В наявності</button>
     <button class="btn small secondary" type="button" data-bulk-action="sold">Продано</button>
     <button class="btn small secondary" type="button" data-bulk-action="hidden">Приховати</button>
@@ -106,7 +106,7 @@
 
   <section class="card">
     <h2>Список товарів</h2>
-    <p class="section-note">Прапорець зліва підготовлений для майбутніх bulk-дій.</p>
+    <p class="section-note">Обирайте позиції зліва для швидких масових дій.</p>
     <div class="product-list">
       {% for product in products %}
         <article class="request-card product-card" style="grid-template-columns:24px 108px minmax(0,1fr);align-items:start;">
@@ -180,7 +180,7 @@ function selectedBulkIds(){ return bulkChecks.filter((item) => item.checked).map
 function refreshBulkToolbar(){
   const count = selectedBulkIds().length;
   if (bulkToolbar) bulkToolbar.classList.toggle('active', count > 0);
-  if (bulkCount) bulkCount.textContent = `Selected: ${count}`;
+  if (bulkCount) bulkCount.textContent = `Обрано: ${count}`;
   if (bulkSelectAll) bulkSelectAll.checked = count > 0 && count === bulkChecks.length;
 }
 bulkChecks.forEach((item) => item.addEventListener('change', refreshBulkToolbar));

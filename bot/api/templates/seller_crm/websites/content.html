@@ -1,24 +1,33 @@
 {% extends "seller_crm/base.html" %}
+{% block crm_kicker %}Website V2{% endblock %}
+{% block crm_heading %}Контент сайту{% endblock %}
 {% block content %}
-<h1>Контент сайту</h1>
-<p>{{ website.name }} ({{ website_context.site_type }})</p>
+<div class="crm-page">
+  <section class="crm-page-head">
+    <div>
+      <h1>Контент сайту</h1>
+      <p class="section-note">{{ website.name }} · {{ "Каталог запчастин" if website_context.site_type == 'carpot_catalog' else "Сайт послуг" }}</p>
+    </div>
+    <div class="crm-action-row"><a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}">Назад до огляду</a></div>
+  </section>
 
-{% if website_context.site_type == 'carpot_catalog' %}
-<p>Цей сайт використовує авто та товари/запчастини з CRM Каталогу.</p>
-<ul>
-    <li><a href="/crm/seller/{{ account.crm_slug }}/content/cars">Авто на розборі</a></li>
-    <li><a href="/crm/seller/{{ account.crm_slug }}/content/products">Запчастини / товари</a></li>
-</ul>
-{% if website_context.metrics.services_count > 0 %}
-<p>Послуги краще винести в окремий сайт-візитку.</p>
-{% endif %}
-{% else %}
-<p>Цей сайт використовує окремий список послуг Website V2.</p>
-<ul>
-    <li><a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/services">Керувати послугами сайту</a></li>
-</ul>
-{% if website_context.metrics.cars_count > 0 or website_context.metrics.products_count > 0 %}
-<p>Каталог запчастин краще винести в окремий сайт-магазин.</p>
-{% endif %}
-{% endif %}
+  {% if website_context.site_type == 'carpot_catalog' %}
+    <section class="card">
+      <h2>Каталог запчастин</h2>
+      <p class="section-note">Цей сайт використовує авто та товари/запчастини з CRM Каталогу.</p>
+      <div class="crm-action-row">
+        <a class="btn" href="/crm/seller/{{ account.crm_slug }}/content/cars">Авто на розборі</a>
+        <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content/products">Запчастини / товари</a>
+      </div>
+      {% if website_context.metrics.services_count > 0 %}<p class="section-note stack-top">Послуги краще винести в окремий бізнес-сайт.</p>{% endif %}
+    </section>
+  {% else %}
+    <section class="card">
+      <h2>Послуги Business сайту</h2>
+      <p class="section-note">Цей сайт використовує окремий список послуг Website V2.</p>
+      <div class="crm-action-row"><a class="btn" href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/services">Керувати послугами сайту</a></div>
+      {% if website_context.metrics.cars_count > 0 or website_context.metrics.products_count > 0 %}<p class="section-note stack-top">Каталог запчастин краще винести в окремий сайт-магазин.</p>{% endif %}
+    </section>
+  {% endif %}
+</div>
 {% endblock %}
