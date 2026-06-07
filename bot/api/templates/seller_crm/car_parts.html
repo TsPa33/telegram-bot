@@ -9,7 +9,7 @@
 
   <section class="card">
     <h2 style="margin:0;">Запчастини авто</h2>
-    <p class="section-note">{{ car.brand }} {{ car.model }} · ID {{ car.car_id }}</p><p class="section-note">Ціну та наявність можна змінити прямо у списку. Прапорці підготовлені для майбутніх bulk-дій.</p>
+    <p class="section-note">{{ car.brand }} {{ car.model }} · ID {{ car.car_id }}</p><p class="section-note">Ціну та наявність можна змінити прямо у списку. Bulk-дії працюють для вибраних видимих запчастин.</p>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
       <a class="btn" href="/crm/seller/{{ account.crm_slug }}/content/cars/{{ car.car_id }}/parts/new">+ Додати запчастину</a>
       <form method="post" action="/crm/seller/{{ account.crm_slug }}/content/cars/{{ car.car_id }}/generate-parts" onsubmit="return confirm('Створити список запчастин для цього авто?');"><button class="btn ghost" type="submit">🔧 Створити стандартний список</button></form>
@@ -21,6 +21,8 @@
       <button class="btn small secondary" type="submit">Фільтрувати</button>
     </form>
   </section>
+
+  <div class="bulk-toolbar" data-bulk-endpoint="/crm/seller/{{ account.crm_slug }}/content/parts/bulk"><label style="display:flex;gap:6px;align-items:center;"><input type="checkbox" data-select-all> Select All</label><strong data-selected-count>Selected: 0</strong><button class="btn small secondary" type="button" data-bulk-action="available">В наявності</button><button class="btn small secondary" type="button" data-bulk-action="sold">Продано</button><button class="btn small secondary" type="button" data-bulk-action="hidden">Приховати</button><button class="btn small secondary" type="button" data-bulk-action="draft">Чернетка</button><button class="btn small ghost" type="button" data-bulk-action="delete">Видалити</button><button class="btn small ghost" type="button" data-bulk-clear>Скасувати вибір</button><span class="quick-save-status" data-bulk-status aria-live="polite"></span></div>
 
   <section class="grid" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;">
     {{ cards.metric_card('Всього запчастин', stats.total, '') }}{{ cards.metric_card('В наявності', stats.available, '') }}{{ cards.metric_card('⚠ Без ціни', stats.no_price, '') }}{{ cards.metric_card('⚠ Без фото', stats.no_photo, '') }}
@@ -36,7 +38,7 @@
             {% for part in items %}
             <article class="request-card part-item">
               <div class="part-main">
-                <label class="part-bulk-check" aria-label="Вибрати запчастину"><input type="checkbox" name="selected_part" value="{{ part.id }}"></label>
+                <label class="part-bulk-check" aria-label="Вибрати запчастину"><input class="bulk-select" type="checkbox" name="selected_part" value="{{ part.id }}"></label>
                 <div>
                   {% if part.photo_id or part.preview_photo %}
                     <img src="{{ part.photo_id or part.preview_photo }}" alt="{{ part.name }}" class="part-photo">
@@ -72,7 +74,7 @@
   {% endfor %}
 </div>
 <style>
-.parts-list{display:grid;gap:8px;margin-top:8px}.part-item{padding:10px}.part-main{display:grid;grid-template-columns:24px 120px minmax(0,1fr) auto;gap:10px;align-items:start}.part-bulk-check{display:grid;place-items:start;padding-top:4px}.part-photo{width:120px;height:84px;object-fit:cover;border-radius:10px;border:1px solid var(--line)}.part-placeholder{width:120px;height:84px;border-radius:10px;border:1px solid var(--line);display:grid;place-content:center;text-align:center;padding:6px;background:linear-gradient(145deg,#0b1627,#111f34);font-size:11px;font-weight:600}.part-placeholder small{color:var(--muted);font-size:10px}.part-content strong{display:block;line-height:1.2;margin-bottom:2px}.part-actions{display:grid;gap:6px;justify-items:end}.part-actions form{display:flex;gap:6px;align-items:center}.price-input{max-width:90px}.quick-save-status{font-size:13px;color:#16803a;font-weight:700;min-width:78px}.part-content .section-note{margin:0 0 4px}@media(max-width:860px){.part-main{grid-template-columns:24px 84px minmax(0,1fr)}.part-photo,.part-placeholder{width:84px;height:72px}.part-actions{grid-column:1/-1;justify-items:start}}</style>
+.bulk-toolbar{position:sticky;top:8px;z-index:5;display:none;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 12px;border:1px solid var(--line);border-radius:14px;background:#fff;box-shadow:0 10px 24px rgba(15,23,42,.08)}.bulk-toolbar.active{display:flex}.parts-list{display:grid;gap:8px;margin-top:8px}.part-item{padding:10px}.part-main{display:grid;grid-template-columns:24px 120px minmax(0,1fr) auto;gap:10px;align-items:start}.part-bulk-check{display:grid;place-items:start;padding-top:4px}.part-photo{width:120px;height:84px;object-fit:cover;border-radius:10px;border:1px solid var(--line)}.part-placeholder{width:120px;height:84px;border-radius:10px;border:1px solid var(--line);display:grid;place-content:center;text-align:center;padding:6px;background:linear-gradient(145deg,#0b1627,#111f34);font-size:11px;font-weight:600}.part-placeholder small{color:var(--muted);font-size:10px}.part-content strong{display:block;line-height:1.2;margin-bottom:2px}.part-actions{display:grid;gap:6px;justify-items:end}.part-actions form{display:flex;gap:6px;align-items:center}.price-input{max-width:90px}.quick-save-status{font-size:13px;color:#16803a;font-weight:700;min-width:78px}.part-content .section-note{margin:0 0 4px}@media(max-width:860px){.part-main{grid-template-columns:24px 84px minmax(0,1fr)}.part-photo,.part-placeholder{width:84px;height:72px}.part-actions{grid-column:1/-1;justify-items:start}}</style>
 <script>
 document.querySelectorAll('.quick-edit-form').forEach((form) => {
   form.addEventListener('submit', async (event) => {
@@ -88,5 +90,40 @@ document.querySelectorAll('.quick-edit-form').forEach((form) => {
     }
   });
 });
+const bulkToolbar = document.querySelector('.bulk-toolbar');
+const bulkChecks = Array.from(document.querySelectorAll('.bulk-select'));
+const bulkCount = document.querySelector('[data-selected-count]');
+const bulkSelectAll = document.querySelector('[data-select-all]');
+const bulkStatus = document.querySelector('[data-bulk-status]');
+function selectedBulkIds(){ return bulkChecks.filter((item) => item.checked).map((item) => item.value); }
+function refreshBulkToolbar(){
+  const count = selectedBulkIds().length;
+  if (bulkToolbar) bulkToolbar.classList.toggle('active', count > 0);
+  if (bulkCount) bulkCount.textContent = `Selected: ${count}`;
+  if (bulkSelectAll) bulkSelectAll.checked = count > 0 && count === bulkChecks.length;
+}
+bulkChecks.forEach((item) => item.addEventListener('change', refreshBulkToolbar));
+if (bulkSelectAll) bulkSelectAll.addEventListener('change', () => { bulkChecks.forEach((item) => { item.checked = bulkSelectAll.checked; }); refreshBulkToolbar(); });
+document.querySelectorAll('[data-bulk-clear]').forEach((btn) => btn.addEventListener('click', () => { bulkChecks.forEach((item) => { item.checked = false; }); refreshBulkToolbar(); }));
+document.querySelectorAll('[data-bulk-action]').forEach((btn) => btn.addEventListener('click', async () => {
+  const ids = selectedBulkIds();
+  const action = btn.dataset.bulkAction;
+  if (!ids.length) return;
+  if (action === 'delete' && !confirm(`Видалити ${ids.length} позицій?`)) return;
+  const formData = new FormData();
+  formData.append('action', action);
+  ids.forEach((id) => formData.append('selected_ids', id));
+  if (bulkStatus) { bulkStatus.textContent = 'Збереження…'; bulkStatus.style.color = '#16803a'; }
+  try {
+    const response = await fetch(bulkToolbar.dataset.bulkEndpoint, { method: 'POST', body: formData, headers: { 'X-Requested-With': 'fetch' } });
+    const data = await response.json();
+    if (!response.ok || !data.ok) throw new Error(data.error || 'bulk_failed');
+    if (bulkStatus) bulkStatus.textContent = `✓ ${data.message}`;
+    setTimeout(() => window.location.reload(), 700);
+  } catch (error) {
+    if (bulkStatus) { bulkStatus.textContent = 'Помилка'; bulkStatus.style.color = '#b91c1c'; }
+  }
+}));
+refreshBulkToolbar();
 </script>
 {% endblock %}

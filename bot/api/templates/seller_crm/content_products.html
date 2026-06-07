@@ -22,6 +22,9 @@
   .quick-price{max-width:120px;}
   .quick-save-status{font-size:13px;color:#16803a;font-weight:700;min-width:82px;}
   .bulk-check{display:grid;place-items:start;padding-top:4px;}
+  .bulk-toolbar{position:sticky;top:8px;z-index:5;display:none;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 12px;border:1px solid var(--line);border-radius:14px;background:#fff;box-shadow:0 10px 24px rgba(15,23,42,.08);}
+  .bulk-toolbar.active{display:flex;}
+  .bulk-toolbar .btn{min-height:38px;}
   @media (max-width: 980px) { .products-summary { grid-template-columns: repeat(2,minmax(0,1fr)); } }
   @media (max-width: 680px) { .products-summary { grid-template-columns: 1fr; } .product-top { display: grid; } .product-actions { display: grid; grid-template-columns: 1fr; } .product-actions .btn { width: 100%; white-space: normal; } .product-card{grid-template-columns:1fr !important;} .product-photo-box{width:100%;height:160px;} .quick-edit-row{display:grid;grid-template-columns:1fr;} .quick-price{max-width:none;width:100%;} }
 </style>
@@ -40,6 +43,17 @@
     </div>
   </section>
 
+  <div class="bulk-toolbar" data-bulk-endpoint="/crm/seller/{{ account.crm_slug }}/content/products/bulk">
+    <label style="display:flex;gap:6px;align-items:center;"><input type="checkbox" data-select-all> Select All</label>
+    <strong data-selected-count>Selected: 0</strong>
+    <button class="btn small secondary" type="button" data-bulk-action="available">В наявності</button>
+    <button class="btn small secondary" type="button" data-bulk-action="sold">Продано</button>
+    <button class="btn small secondary" type="button" data-bulk-action="hidden">Приховати</button>
+    <button class="btn small ghost" type="button" data-bulk-action="delete">Видалити</button>
+    <button class="btn small ghost" type="button" data-bulk-clear>Скасувати вибір</button>
+    <span class="quick-save-status" data-bulk-status aria-live="polite"></span>
+  </div>
+
   {% if saved %}<div class="notice" style="padding:10px 12px;border-radius:12px;background:rgba(52,211,153,.15);border:1px solid rgba(52,211,153,.28);">✓ Збережено</div>{% endif %}
   {% if error %}<div class="notice" style="padding:10px 12px;border-radius:12px;background:rgba(248,113,113,.14);border:1px solid rgba(248,113,113,.28);">Не вдалося зберегти. Перевірте значення.</div>{% endif %}
 
@@ -56,7 +70,7 @@
     <div class="product-list">
       {% for product in products %}
         <article class="request-card product-card" style="grid-template-columns:24px 108px minmax(0,1fr);align-items:start;">
-          <label class="bulk-check" aria-label="Вибрати товар"><input type="checkbox" name="selected_product" value="{{ product.id }}"></label>
+          <label class="bulk-check" aria-label="Вибрати товар"><input class="bulk-select" type="checkbox" name="selected_product" value="{{ product.id }}"></label>
           <div class="product-photo-box">
             {% if product.photo_url and product.photo_url.startswith(('http://','https://')) %}<img src="{{ product.photo_url }}" alt="{{ product.title or 'Товар' }}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;">{% else %}<div><strong>Запчастина</strong><div>Фото буде додано</div></div>{% endif %}
             <form class="photo-edit-overlay" method="post" enctype="multipart/form-data" action="/crm/seller/{{ account.crm_slug }}/content/products/{{ product.id }}/photo">
@@ -108,5 +122,40 @@ document.querySelectorAll('.quick-edit-form').forEach((form) => {
     }
   });
 });
+const bulkToolbar = document.querySelector('.bulk-toolbar');
+const bulkChecks = Array.from(document.querySelectorAll('.bulk-select'));
+const bulkCount = document.querySelector('[data-selected-count]');
+const bulkSelectAll = document.querySelector('[data-select-all]');
+const bulkStatus = document.querySelector('[data-bulk-status]');
+function selectedBulkIds(){ return bulkChecks.filter((item) => item.checked).map((item) => item.value); }
+function refreshBulkToolbar(){
+  const count = selectedBulkIds().length;
+  if (bulkToolbar) bulkToolbar.classList.toggle('active', count > 0);
+  if (bulkCount) bulkCount.textContent = `Selected: ${count}`;
+  if (bulkSelectAll) bulkSelectAll.checked = count > 0 && count === bulkChecks.length;
+}
+bulkChecks.forEach((item) => item.addEventListener('change', refreshBulkToolbar));
+if (bulkSelectAll) bulkSelectAll.addEventListener('change', () => { bulkChecks.forEach((item) => { item.checked = bulkSelectAll.checked; }); refreshBulkToolbar(); });
+document.querySelectorAll('[data-bulk-clear]').forEach((btn) => btn.addEventListener('click', () => { bulkChecks.forEach((item) => { item.checked = false; }); refreshBulkToolbar(); }));
+document.querySelectorAll('[data-bulk-action]').forEach((btn) => btn.addEventListener('click', async () => {
+  const ids = selectedBulkIds();
+  const action = btn.dataset.bulkAction;
+  if (!ids.length) return;
+  if (action === 'delete' && !confirm(`Видалити ${ids.length} позицій?`)) return;
+  const formData = new FormData();
+  formData.append('action', action);
+  ids.forEach((id) => formData.append('selected_ids', id));
+  if (bulkStatus) { bulkStatus.textContent = 'Збереження…'; bulkStatus.style.color = '#16803a'; }
+  try {
+    const response = await fetch(bulkToolbar.dataset.bulkEndpoint, { method: 'POST', body: formData, headers: { 'X-Requested-With': 'fetch' } });
+    const data = await response.json();
+    if (!response.ok || !data.ok) throw new Error(data.error || 'bulk_failed');
+    if (bulkStatus) bulkStatus.textContent = `✓ ${data.message}`;
+    setTimeout(() => window.location.reload(), 700);
+  } catch (error) {
+    if (bulkStatus) { bulkStatus.textContent = 'Помилка'; bulkStatus.style.color = '#b91c1c'; }
+  }
+}));
+refreshBulkToolbar();
 </script>
 {% endblock %}

@@ -431,6 +431,58 @@ async def set_product_status(seller_id: int, product_id: int, status: str) -> bo
     return row is not None
 
 
+async def bulk_update_products_inventory(seller_id: int, product_ids: list[int], *, status: str, stock_status: str | None = None) -> int:
+    _validate_status(status)
+    if stock_status is not None:
+        _validate_stock_status(stock_status)
+    ids = [int(item) for item in product_ids if str(item).strip()]
+    if not ids:
+        return 0
+    row = await fetchrow(
+        """
+        WITH updated AS (
+            UPDATE seller_products
+            SET status = $3,
+                stock_status = COALESCE($4, stock_status),
+                updated_at = NOW()
+            WHERE seller_id = $1
+              AND id = ANY($2::BIGINT[])
+              AND status <> 'archived'
+            RETURNING id
+        )
+        SELECT COUNT(*)::int AS updated_count FROM updated
+        """,
+        seller_id,
+        ids,
+        status,
+        stock_status,
+    )
+    return int(row.get("updated_count") or 0) if row else 0
+
+
+async def bulk_archive_products(seller_id: int, product_ids: list[int]) -> int:
+    ids = [int(item) for item in product_ids if str(item).strip()]
+    if not ids:
+        return 0
+    row = await fetchrow(
+        """
+        WITH updated AS (
+            UPDATE seller_products
+            SET status = 'archived',
+                updated_at = NOW()
+            WHERE seller_id = $1
+              AND id = ANY($2::BIGINT[])
+              AND status <> 'archived'
+            RETURNING id
+        )
+        SELECT COUNT(*)::int AS updated_count FROM updated
+        """,
+        seller_id,
+        ids,
+    )
+    return int(row.get("updated_count") or 0) if row else 0
+
+
 async def update_product_photo(
     seller_id: int,
     product_id: int,

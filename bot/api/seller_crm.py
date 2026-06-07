@@ -35,7 +35,9 @@ from bot.database.repositories.product_repo import get_seller_products
 from bot.database.repositories.part_repo import (
     PART_CATEGORY_OPTIONS,
     VALID_PART_STATUSES,
+    bulk_delete_parts_by_ids,
     bulk_update_parts_status_by_category,
+    bulk_update_parts_status_by_ids,
     create_manual_part,
     generate_parts_for_car,
     get_car_part_categories,
@@ -100,6 +102,8 @@ from bot.database.repositories.lead_thread_repo import (
     mark_lead_thread_messages_read,
 )
 from bot.database.repositories.product_repo import (
+    bulk_archive_products,
+    bulk_update_products_inventory,
     create_product,
     get_product_by_id,
     get_seller_product_donor_cars,
@@ -540,6 +544,27 @@ PART_STATUS_CLASSES = {
     "sold": "status-viewed",
     "hidden": "status-rejected",
 }
+
+
+def _parse_bulk_ids(values: list[str] | str | None) -> list[int]:
+    raw_values = values if isinstance(values, list) else [values] if values else []
+    ids: list[int] = []
+    seen: set[int] = set()
+    for value in raw_values:
+        for chunk in str(value or "").replace(",", " ").split():
+            try:
+                parsed = int(chunk)
+            except (TypeError, ValueError):
+                continue
+            if parsed > 0 and parsed not in seen:
+                seen.add(parsed)
+                ids.append(parsed)
+    return ids[:1000]
+
+
+def _bulk_message(action: str, count: int) -> str:
+    verb = "Видалено" if action == "delete" else "Оновлено"
+    return f"{verb} {count} позицій"
 
 
 def _normalize_part_name(value: str | None) -> str:
@@ -2378,6 +2403,36 @@ async def seller_crm_content_products(request: Request, crm_slug: str):
     )
 
 
+@router.post("/{crm_slug}/content/products/bulk")
+async def seller_crm_products_bulk_update(
+    request: Request,
+    crm_slug: str,
+    action: str = Form(""),
+    selected_ids: list[str] = Form(default=[]),
+):
+    try:
+        account, _subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+    ids = _parse_bulk_ids(selected_ids)
+    normalized_action = (action or "").strip().lower()
+    if not ids:
+        return JSONResponse({"ok": False, "error": "no_selection"}, status_code=400)
+    if normalized_action == "available":
+        count = await bulk_update_products_inventory(account["seller_id"], ids, status="active", stock_status="available")
+    elif normalized_action == "sold":
+        count = await bulk_update_products_inventory(account["seller_id"], ids, status="active", stock_status="sold")
+    elif normalized_action == "hidden":
+        count = await bulk_update_products_inventory(account["seller_id"], ids, status="inactive")
+    elif normalized_action == "delete":
+        count = await bulk_archive_products(account["seller_id"], ids)
+    else:
+        return JSONResponse({"ok": False, "error": "invalid_action"}, status_code=400)
+    return JSONResponse({"ok": True, "count": count, "message": _bulk_message(normalized_action, count)})
+
+
 @router.post("/{crm_slug}/content/products/{product_id}/quick")
 async def seller_crm_product_quick_update(
     request: Request,
@@ -3481,6 +3536,32 @@ async def seller_crm_part_price_update(
     if request.headers.get("x-requested-with") == "fetch":
         return JSONResponse({"ok": True, "message": "Збережено"})
     return RedirectResponse(url=f"/crm/seller/{crm_slug}/content/cars/{part['car_id']}/parts?status=price_updated", status_code=303)
+
+
+@router.post("/{crm_slug}/content/parts/bulk")
+async def seller_crm_parts_bulk_update(
+    request: Request,
+    crm_slug: str,
+    action: str = Form(""),
+    selected_ids: list[str] = Form(default=[]),
+):
+    try:
+        account, _subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+    ids = _parse_bulk_ids(selected_ids)
+    normalized_action = (action or "").strip().lower()
+    if not ids:
+        return JSONResponse({"ok": False, "error": "no_selection"}, status_code=400)
+    if normalized_action in VALID_PART_STATUSES:
+        count = await bulk_update_parts_status_by_ids(account["seller_id"], ids, normalized_action)
+    elif normalized_action == "delete":
+        count = await bulk_delete_parts_by_ids(account["seller_id"], ids)
+    else:
+        return JSONResponse({"ok": False, "error": "invalid_action"}, status_code=400)
+    return JSONResponse({"ok": True, "count": count, "message": _bulk_message(normalized_action, count)})
 
 
 @router.post("/{crm_slug}/content/cars/{car_id}/parts/bulk-status")

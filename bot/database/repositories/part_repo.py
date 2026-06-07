@@ -969,6 +969,51 @@ async def bulk_update_parts_status_by_category(
     return len(rows)
 
 
+async def bulk_update_parts_status_by_ids(seller_id: int, part_ids: list[int], status: str) -> int:
+    if status not in VALID_PART_STATUSES:
+        return 0
+    ids = [int(item) for item in part_ids if str(item).strip()]
+    if not ids:
+        return 0
+    row = await fetchrow(
+        """
+        WITH updated AS (
+            UPDATE seller_parts
+            SET status = $3,
+                updated_at = NOW()
+            WHERE seller_id = $1
+              AND id = ANY($2::BIGINT[])
+            RETURNING id
+        )
+        SELECT COUNT(*)::int AS updated_count FROM updated
+        """,
+        seller_id,
+        ids,
+        status,
+    )
+    return int(row.get("updated_count") or 0) if row else 0
+
+
+async def bulk_delete_parts_by_ids(seller_id: int, part_ids: list[int]) -> int:
+    ids = [int(item) for item in part_ids if str(item).strip()]
+    if not ids:
+        return 0
+    row = await fetchrow(
+        """
+        WITH deleted AS (
+            DELETE FROM seller_parts
+            WHERE seller_id = $1
+              AND id = ANY($2::BIGINT[])
+            RETURNING id
+        )
+        SELECT COUNT(*)::int AS deleted_count FROM deleted
+        """,
+        seller_id,
+        ids,
+    )
+    return int(row.get("deleted_count") or 0) if row else 0
+
+
 async def get_parts_counters_by_car_ids(
     seller_id: int,
     car_ids: list[int],
