@@ -35,6 +35,17 @@ def _phone_kb() -> ReplyKeyboardMarkup:
     )
 
 
+def _application_start_kb() -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="📝 Подати заявку продавця")],
+            [KeyboardButton(text="💬 Підтримка")],
+            [KeyboardButton(text="↩️ Головне меню")],
+        ],
+        resize_keyboard=True,
+    )
+
+
 def _direction_kb() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[[KeyboardButton(text=item)] for item in DIRECTIONS],
@@ -83,7 +94,10 @@ async def start_seller_onboarding(message: Message, state: FSMContext, *, edit: 
 async def show_pending_seller_status(message: Message) -> None:
     seller = await get_seller_by_telegram_id(message.from_user.id)
     if not seller:
-        await message.answer("Спочатку подайте заявку продавця.")
+        await message.answer(
+            "Спочатку подайте заявку продавця.",
+            reply_markup=_application_start_kb(),
+        )
         return
 
     if seller.get("is_verified"):
@@ -108,6 +122,24 @@ async def show_pending_seller_status(message: Message) -> None:
         parse_mode="HTML",
         reply_markup=seller_menu_kb(is_verified=False),
     )
+
+
+@router.message(F.text.in_(["📝 Подати заявку продавця", "🏪 Стати продавцем", "🏪 Режим продавця", "Стати продавцем", "Режим продавця"]))
+async def seller_onboarding_entry_message(message: Message, state: FSMContext):
+    seller = await get_seller_by_telegram_id(message.from_user.id)
+    if not seller:
+        await start_seller_onboarding(message, state)
+        return
+    if seller.get("is_verified"):
+        await message.answer(
+            "✅ Ви вже підтверджений продавець. Відкриваю меню продавця.",
+            reply_markup=seller_menu_kb(is_verified=True),
+        )
+        return
+    if not seller.get("shop_name") or not seller.get("phone"):
+        await start_seller_onboarding(message, state, edit=True)
+        return
+    await show_pending_seller_status(message)
 
 
 @router.message(F.text == "📌 Статус перевірки")
