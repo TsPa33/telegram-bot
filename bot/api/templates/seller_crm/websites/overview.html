@@ -1,1 +1,29 @@
-{% extends "seller_crm/base.html" %}{% block content %}<h1>overview</h1><p>{{ website.name }} ({{ website.site_type }}) status={{ website.status }}</p><p><a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/design">Design</a> | <a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/content">Content</a> | <a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/contacts">Contacts</a> | <a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/publication">Publication</a></p>{% if 'overview' == 'publication' %}<form method="post" action="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/publish"><button type="submit">Publish this website</button></form>{% endif %}{% endblock %}
+{% extends "seller_crm/base.html" %}
+{% block content %}
+<h1>Огляд сайту</h1>
+<p>{{ website.name }} ({{ website_context.site_type }})</p>
+<p>Статус: {{ website_context.status }}</p>
+<p>URL: <a href="{{ website_context.public_url }}" target="_blank">{{ website_context.public_url }}</a></p>
+<p>Заявки з цього сайту зберігаються в окремій скриньці.</p>
+<p><a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/leads" style="display:inline-block;padding:10px 14px;border:1px solid #111;background:#111;color:#fff;border-radius:8px;text-decoration:none;">Заявки сайту{% if lead_counts.new_leads_count %} · {{ lead_counts.new_leads_count }} нових{% endif %}</a></p>
+
+<h3>Чекліст готовності</h3>
+<p>{{ "Готово до публікації" if website_context.publish_ready else "Потрібно доповнити дані" }}</p>
+{% if website_context.missing_required_fields %}
+<ul>{% for item in website_context.missing_required_fields %}<li>{{ item }}</li>{% endfor %}</ul>
+{% endif %}
+{% if website_context.warnings %}
+<h4>Поради</h4>
+<ul>{% for warning in website_context.warnings %}<li>{{ warning }}</li>{% endfor %}</ul>
+{% endif %}
+
+<p>
+    <a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/hero">Hero</a> |
+    <a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/design">Design</a> |
+    <a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/content">Content</a> |
+    {% if website_context.site_type == 'carpot_business' %}<a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/services">Послуги</a> |{% endif %}
+    <a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/contacts">Contacts</a> |
+    <a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/publication">Publication</a> |
+    <a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/leads">Заявки</a>
+</p>
+{% endblock %}
