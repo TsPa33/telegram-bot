@@ -1,0 +1,44 @@
+{% extends "seller_crm/base.html" %}
+{% block crm_kicker %}Website V2{% endblock %}
+{% block crm_heading %}Заявки сайту{% endblock %}
+{% block content %}
+<div class="crm-page">
+  <section class="crm-page-head">
+    <div>
+      <h1>Заявки сайту</h1>
+      <p class="section-note">{{ website.name }} · {{ website.subdomain }}</p>
+      <div class="crm-page-meta"><span>Нові: <b>{{ lead_counts.new_leads_count or 0 }}</b></span><span>·</span><span>Усього: <b>{{ lead_counts.total_leads_count or (leads|length) }}</b></span></div>
+    </div>
+    <div class="crm-action-row"><a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}">Назад до сайту</a></div>
+  </section>
+
+  {% if leads %}
+    <section class="crm-list" aria-label="Заявки Website V2">
+      {% for lead in leads %}
+        <article class="crm-list-item">
+          <div>
+            <h2 class="crm-list-title">{{ lead.name or 'Клієнт із сайту' }}</h2>
+            <div class="crm-page-meta"><span>{{ lead.created_at }}</span><span>·</span><span>{{ website.name }}</span><span>·</span><span class="badge {% if lead.status == 'new' %}status-success{% elif lead.status == 'archived' %}status-waiting{% else %}status-viewed{% endif %}">{{ lead.status }}</span><span class="badge">{{ lead.lead_type }}</span></div>
+            <div class="crm-card-grid stack-top">
+              <div class="request-card"><b>Телефон</b><a href="tel:{{ lead.phone }}">{{ lead.phone }}</a></div>
+              <div class="request-card"><b>VIN</b><span>{{ lead.vin or '—' }}</span></div>
+              <div class="request-card"><b>Позиція</b><span>{{ lead.item_title or '—' }}</span></div>
+            </div>
+            {% if lead.message %}<p class="section-note stack-top"><b>Повідомлення:</b> {{ lead.message }}</p>{% endif %}
+          </div>
+          <div class="crm-action-row">
+            <form method="post" action="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/leads/{{ lead.id }}/status"><input type="hidden" name="status" value="viewed"><button class="btn small ghost" type="submit">Переглянуто</button></form>
+            <form method="post" action="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/leads/{{ lead.id }}/status"><input type="hidden" name="status" value="processed"><button class="btn small" type="submit">Оброблено</button></form>
+            <form method="post" action="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/leads/{{ lead.id }}/status"><input type="hidden" name="status" value="archived"><button class="btn small ghost" type="submit">Архівувати</button></form>
+          </div>
+        </article>
+      {% endfor %}
+    </section>
+  {% else %}
+    <div class="crm-empty">
+      <strong>Заявки ще не надходили.</strong>
+      <p class="section-note">Коли клієнт відправить VIN або форму послуги, заявка зʼявиться тут.</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}
