@@ -7,6 +7,7 @@ from aiogram.fsm.context import FSMContext
 
 from bot.states.seller_states import SellerPartStates
 from bot.database.repositories.seller_repo import get_seller_by_telegram_id
+from bot.services.seller_access import get_verified_seller_or_warn
 from bot.database.repositories.part_repo import (
     get_car_part_categories,
     get_parts_by_car_and_category,
@@ -278,6 +279,8 @@ async def part_desc_save(message: Message, state: FSMContext):
 
 @router.message(F.text == "🔧 My Parts")
 async def my_parts(message: Message):
+    if not await get_verified_seller_or_warn(message):
+        return
     seller = await get_seller_by_telegram_id(message.from_user.id)
     if not seller:
         await message.answer("❌ Seller profile not found")

@@ -1,0 +1,46 @@
+{% extends "seller_crm/base.html" %}
+{% block crm_kicker %}Website V2{% endblock %}
+{% block crm_heading %}Послуги сайту{% endblock %}
+{% block content %}
+<div class="crm-page">
+  <section class="crm-page-head">
+    <div>
+      <h1>Послуги сайту</h1>
+      <p class="section-note">{{ website.name }} · керуйте послугами, які показуються на Business сайті.</p>
+    </div>
+    <div class="crm-action-row">
+      <a class="btn" href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/services/new">+ Додати послугу</a>
+      <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}">Назад до огляду</a>
+    </div>
+  </section>
+
+  {% if published %}<div class="crm-notice">Послуги збережено та сайт опубліковано.</div>{% elif saved %}<div class="crm-notice">Послуги збережено.</div>{% endif %}
+  {% if publish_error == 'validation' %}<div class="crm-notice warning">Послуги збережено, але сайт ще не готовий до публікації. Перевірте контакти та інші вимоги.</div>{% endif %}
+
+  {% if services %}
+    <section class="crm-list" aria-label="Послуги сайту">
+      {% for service in services %}
+        <article class="crm-list-item with-media">
+          {% if service.image_url %}<img class="crm-thumb" src="{{ service.image_url }}" alt="{{ service.title }}">{% else %}<div class="crm-thumb">Немає фото</div>{% endif %}
+          <div>
+            <h2 class="crm-list-title">{{ service.title }}</h2>
+            <div class="crm-page-meta"><span>{{ service.price or 'Ціна за запитом' }}</span><span>·</span><span>Порядок: {{ service.sort_order }}</span></div>
+          </div>
+          <div class="crm-action-row">
+            <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/services/{{ loop.index0 }}/edit">Редагувати</a>
+            <form method="post" action="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/services/{{ loop.index0 }}/move"><input type="hidden" name="direction" value="up"><button class="btn small ghost" type="submit">Вгору</button></form>
+            <form method="post" action="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/services/{{ loop.index0 }}/move"><input type="hidden" name="direction" value="down"><button class="btn small ghost" type="submit">Вниз</button></form>
+            <form method="post" action="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/services/{{ loop.index0 }}/delete" onsubmit="return confirm('Видалити послугу?');"><button class="btn small danger" type="submit">Видалити</button></form>
+          </div>
+        </article>
+      {% endfor %}
+    </section>
+  {% else %}
+    <div class="crm-empty">
+      <strong>Послуг ще немає.</strong>
+      <p class="section-note">Додайте першу послугу, щоб Business сайт можна було опублікувати.</p>
+      <a class="btn" href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/services/new">Додати послугу</a>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

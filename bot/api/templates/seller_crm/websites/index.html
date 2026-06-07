@@ -1,1 +1,41 @@
-{% extends "seller_crm/base.html" %}{% block content %}<h1>Керування сайтами</h1><a href="/crm/seller/{{ account.crm_slug }}/websites/create">Create website</a>{% for w in websites %}<div><h3>{{ w.name }}</h3><p>Тип: {{ w.site_type }} | Статус: {{ w.status }} | URL: {{ w.subdomain }}.carpot.com.ua</p><a href="/crm/seller/{{ account.crm_slug }}/websites/{{ w.id }}">Manage</a> <a href="/w/{{ w.subdomain }}" target="_blank">Preview/Open</a></div>{% else %}<p>Ще немає сайтів V2.</p>{% endfor %}{% endblock %}
+{% extends "seller_crm/base.html" %}
+{% block crm_kicker %}Website V2{% endblock %}
+{% block crm_heading %}Мої сайти{% endblock %}
+{% block content %}
+<div class="crm-page">
+  <section class="crm-page-head">
+    <div>
+      <h1>Мої сайти</h1>
+      <p class="section-note">Керуйте каталогами, бізнес-сайтами та заявками з публічних сторінок.</p>
+    </div>
+    <div class="crm-action-row"><a class="btn" href="/crm/seller/{{ account.crm_slug }}/websites/create">Створити сайт</a></div>
+  </section>
+
+  <section class="crm-list" aria-label="Список сайтів">
+    {% for ctx in website_contexts %}
+      <article class="crm-list-item">
+        <div>
+          <h2 class="crm-list-title">{{ ctx.website.name }}</h2>
+          <div class="crm-page-meta">
+            <span>{{ "Каталог запчастин" if ctx.site_type == "carpot_catalog" else "Сайт послуг" }}</span><span>·</span>
+            <span class="badge {% if ctx.status == 'published' %}status-success{% else %}status-waiting{% endif %}">{{ ctx.status }}</span><span>·</span>
+            <span>{{ ctx.website.subdomain }}</span>
+          </div>
+          <p class="section-note">URL: <a href="{{ ctx.public_url }}" target="_blank" rel="noopener">{{ ctx.public_url }}</a></p>
+          <p class="section-note">Готовність: {{ "Готово" if ctx.publish_ready else "Потрібно доповнити" }} · Заявки: <b>{{ ctx.total_leads_count or 0 }}</b>{% if ctx.new_leads_count %} · <b>{{ ctx.new_leads_count }}</b> нових{% endif %}</p>
+        </div>
+        <div class="crm-action-row">
+          <a class="btn small" href="/crm/seller/{{ account.crm_slug }}/websites/{{ ctx.website.id }}">Керувати</a>
+          <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/websites/{{ ctx.website.id }}/leads">Заявки</a>
+        </div>
+      </article>
+    {% else %}
+      <div class="crm-empty">
+        <strong>У вас ще немає сайту.</strong>
+        <p class="section-note">Створіть перший Website V2 каталог або бізнес-сайт, щоб приймати заявки онлайн.</p>
+        <a class="btn" href="/crm/seller/{{ account.crm_slug }}/websites/create">Створити сайт</a>
+      </div>
+    {% endfor %}
+  </section>
+</div>
+{% endblock %}

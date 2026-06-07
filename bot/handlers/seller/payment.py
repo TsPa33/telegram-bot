@@ -16,6 +16,7 @@ from bot.services.site_packages import (
     notify_admins_about_site_package,
 )
 from bot.keyboards.admin_inline import site_packages_kb
+from bot.services.seller_access import get_verified_seller_or_warn
 from bot.config import (
     LIQPAY_PUBLIC_KEY,
     LIQPAY_PRIVATE_KEY,
@@ -132,10 +133,24 @@ async def _create_site_payment(message: Message, telegram_id: int, package_key: 
         await message.answer("⚠️ Помилка створення заявки на сайт")
 
 
+
+async def _callback_verified_or_warn(callback: CallbackQuery) -> bool:
+    seller = await get_seller_by_telegram_id(callback.from_user.id)
+    if seller and seller.get("is_verified"):
+        return True
+    await callback.message.answer(
+        "⏳ Профіль продавця ще не підтверджено. Пакети послуг стануть доступні після перевірки.",
+    )
+    await callback.answer()
+    return False
+
 # ================= MENU =================
 
 @router.message(F.text == "💳 Пакети послуг")
 async def show_packages(message: Message):
+    if not await get_verified_seller_or_warn(message):
+        return
+
     kb = InlineKeyboardBuilder()
 
     kb.button(text="A) 1 місце — 99 грн", callback_data="package:1")
@@ -163,6 +178,9 @@ async def show_packages(message: Message):
 
 @router.callback_query(F.data.startswith("package:"))
 async def buy_package_callback(callback: CallbackQuery):
+    if not await _callback_verified_or_warn(callback):
+        return
+
     package_key = callback.data.split(":")[1]
 
     if package_key not in PACKAGES:
@@ -180,6 +198,9 @@ async def buy_package_callback(callback: CallbackQuery):
 
 @router.callback_query(F.data == "buy:site")
 async def buy_site(callback: CallbackQuery):
+    if not await _callback_verified_or_warn(callback):
+        return
+
     await _create_site_payment(
         callback.message,
         callback.from_user.id,
@@ -191,6 +212,9 @@ async def buy_site(callback: CallbackQuery):
 
 @router.callback_query(F.data == "site:packages")
 async def site_packages(callback: CallbackQuery):
+    if not await _callback_verified_or_warn(callback):
+        return
+
     await callback.message.answer(
         format_site_packages_text(),
         parse_mode="HTML",
@@ -201,6 +225,9 @@ async def site_packages(callback: CallbackQuery):
 
 @router.callback_query(F.data.startswith("site:package:"))
 async def site_package_selected(callback: CallbackQuery):
+    if not await _callback_verified_or_warn(callback):
+        return
+
     package_key = callback.data.split(":")[-1]
 
     if package_key not in SITE_PACKAGES:
@@ -220,6 +247,9 @@ async def site_package_selected(callback: CallbackQuery):
 
 @router.callback_query(F.data == "seller:transactions")
 async def show_transactions(callback: CallbackQuery):
+    if not await _callback_verified_or_warn(callback):
+        return
+
     await callback.answer()
 
     transactions = await get_user_transactions(callback.from_user.id)
