@@ -1,1 +1,22 @@
-{% extends "seller_crm/base.html" %}{% block content %}<h1>Керування сайтами</h1><a href="/crm/seller/{{ account.crm_slug }}/websites/create">Create website</a>{% for w in websites %}<div><h3>{{ w.name }}</h3><p>Тип: {{ w.site_type }} | Статус: {{ w.status }} | URL: {{ w.subdomain }}.carpot.com.ua</p><a href="/crm/seller/{{ account.crm_slug }}/websites/{{ w.id }}">Manage</a> <a href="/w/{{ w.subdomain }}" target="_blank">Preview/Open</a></div>{% else %}<p>Ще немає сайтів V2.</p>{% endfor %}{% endblock %}
+{% extends "seller_crm/base.html" %}
+{% block content %}
+<h1>Керування сайтами</h1>
+<p><a href="/crm/seller/{{ account.crm_slug }}/websites/create">Створити сайт</a></p>
+
+{% for ctx in website_contexts %}
+<article>
+    <h3>{{ ctx.website.name }}</h3>
+    <p>
+        Тип: {{ "Каталог запчастин" if ctx.site_type == "carpot_catalog" else "Сайт послуг" }} |
+        Статус: {{ ctx.status }} |
+        Субдомен: {{ ctx.website.subdomain }}
+    </p>
+    <p>Публічний URL: <a href="{{ ctx.public_url }}" target="_blank">{{ ctx.public_url }}</a></p>
+    <p>Готовність до публікації: {{ "Готово" if ctx.publish_ready else "Потрібно доповнити" }}</p>
+    <p>Заявки: <b>{{ ctx.total_leads_count or 0 }}</b>{% if ctx.new_leads_count %} · <b>{{ ctx.new_leads_count }}</b> нових{% endif %}</p>
+    <p><a href="/crm/seller/{{ account.crm_slug }}/websites/{{ ctx.website.id }}">Керувати</a> · <a href="/crm/seller/{{ account.crm_slug }}/websites/{{ ctx.website.id }}/leads">Заявки сайту</a></p>
+</article>
+{% else %}
+<p>Ще немає сайтів V2.</p>
+{% endfor %}
+{% endblock %}
