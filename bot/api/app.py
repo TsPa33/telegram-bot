@@ -82,7 +82,7 @@ from bot.services.site_config import (
 from bot.services.website_v2_context import build_website_v2_context
 from bot.utils.subdomain import is_valid_subdomain
 from bot.services.domain_service import extract_subdomain_from_host
-from bot.services.seller_notification_ops import format_site_lead_notification, seller_crm_context_url
+from bot.services.seller_notification_ops import format_site_lead_notification, format_website_v2_lead_notification, seller_crm_context_url
 from bot.services.telegram_sender import send_message_to_seller
 
 app = FastAPI()
@@ -2015,7 +2015,7 @@ async def create_site_v2_lead(
     if not (normalized_message or normalized_vin or normalized_item):
         return RedirectResponse(url=f"/w/{subdomain}?lead=error", status_code=303)
     try:
-        await create_website_v2_lead(
+        lead = await create_website_v2_lead(
             website_id=int(website["id"]),
             seller_id=int(website["seller_id"]),
             lead_type=lead_type,
@@ -2028,6 +2028,52 @@ async def create_site_v2_lead(
     except Exception:
         logger.exception("Failed to create v2 lead for %s", subdomain)
         return RedirectResponse(url=f"/w/{subdomain}?lead=error", status_code=303)
+
+    lead_id = lead.get("id") if lead else None
+    website_id = int(website["id"])
+    seller_id = int(website["seller_id"])
+    logger.info(
+        "Website V2 lead created website_id=%s seller_id=%s request_type=%s lead_id=%s",
+        website_id,
+        seller_id,
+        lead_type,
+        lead_id,
+    )
+    try:
+        seller = dict(await get_seller_by_id(seller_id) or {})
+        telegram_id = seller.get("telegram_id")
+        if telegram_id:
+            crm_url = await seller_crm_context_url(seller_id, f"/websites/{website_id}/leads")
+            text = format_website_v2_lead_notification(
+                website_name=website.get("name") or subdomain,
+                lead_type=lead_type,
+                name=normalized_name,
+                phone=normalized_phone,
+                vin=normalized_vin,
+                message=normalized_message,
+                item_title=normalized_item,
+                crm_url=crm_url,
+            )
+            markup = None
+            if crm_url:
+                markup = InlineKeyboardMarkup(
+                    inline_keyboard=[[InlineKeyboardButton(text="Відкрити CRM", url=crm_url)]]
+                )
+            message_result = await send_message_to_seller(int(telegram_id), text, reply_markup=markup, parse_mode="HTML")
+            if message_result:
+                logger.info("Website V2 lead Telegram notification sent website_id=%s seller_id=%s lead_id=%s", website_id, seller_id, lead_id)
+            else:
+                logger.warning("Website V2 lead Telegram notification not delivered website_id=%s seller_id=%s lead_id=%s", website_id, seller_id, lead_id)
+        else:
+            logger.warning("Website V2 lead Telegram notification skipped: seller has no telegram_id website_id=%s seller_id=%s lead_id=%s", website_id, seller_id, lead_id)
+    except Exception as exc:
+        logger.warning(
+            "Website V2 lead Telegram notification failed website_id=%s seller_id=%s lead_id=%s: %s",
+            website_id,
+            seller_id,
+            lead_id,
+            exc,
+        )
     return RedirectResponse(url=f"/w/{subdomain}?lead=success", status_code=303)
 
 

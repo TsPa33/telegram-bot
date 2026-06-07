@@ -111,6 +111,38 @@ async def list_website_v2_leads(website_id: int, seller_id: int):
     )
 
 
+async def count_website_v2_leads_by_website(website_id: int, seller_id: int):
+    row = await fetchrow(
+        """
+        SELECT
+            COUNT(*)::int AS total_leads_count,
+            COUNT(*) FILTER (WHERE status = 'new')::int AS new_leads_count
+        FROM seller_website_v2_leads
+        WHERE website_id = $1
+          AND seller_id = $2
+        """,
+        website_id,
+        seller_id,
+    )
+    return dict(row) if row else {"total_leads_count": 0, "new_leads_count": 0}
+
+
+async def count_website_v2_leads_by_seller(seller_id: int):
+    rows = await fetch(
+        """
+        SELECT
+            website_id,
+            COUNT(*)::int AS total_leads_count,
+            COUNT(*) FILTER (WHERE status = 'new')::int AS new_leads_count
+        FROM seller_website_v2_leads
+        WHERE seller_id = $1
+        GROUP BY website_id
+        """,
+        seller_id,
+    )
+    return [dict(row) for row in rows]
+
+
 async def get_website_v2_lead(lead_id: int, seller_id: int):
     return await fetchrow(
         """

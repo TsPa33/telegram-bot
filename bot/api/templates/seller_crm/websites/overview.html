@@ -4,7 +4,8 @@
 <p>{{ website.name }} ({{ website_context.site_type }})</p>
 <p>Статус: {{ website_context.status }}</p>
 <p>URL: <a href="{{ website_context.public_url }}" target="_blank">{{ website_context.public_url }}</a></p>
-<p>Заявки з цього сайту будуть збережені в системі.</p>
+<p>Заявки з цього сайту зберігаються в окремій скриньці.</p>
+<p><a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/leads" style="display:inline-block;padding:10px 14px;border:1px solid #111;background:#111;color:#fff;border-radius:8px;text-decoration:none;">Заявки сайту{% if lead_counts.new_leads_count %} · {{ lead_counts.new_leads_count }} нових{% endif %}</a></p>
 
 <h3>Чекліст готовності</h3>
 <p>{{ "Готово до публікації" if website_context.publish_ready else "Потрібно доповнити дані" }}</p>

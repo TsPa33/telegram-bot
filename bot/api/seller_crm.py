@@ -169,6 +169,8 @@ from bot.domain.statuses import (
 from bot.services.domain_service import build_site_url, normalize_subdomain, validate_subdomain
 
 from bot.database.repositories.website_v2_repo import (
+    count_website_v2_leads_by_seller,
+    count_website_v2_leads_by_website,
     create_website_v2,
     get_website_v2_by_id,
     get_website_v2_lead,
@@ -5054,7 +5056,14 @@ async def preview_draft_site(request: Request, crm_slug: str):
 async def seller_crm_websites(request: Request, crm_slug: str):
     account, subscription = await _authorized_account(request, crm_slug)
     websites = await list_websites_v2_by_seller(account["seller_id"])
-    website_contexts = [await _build_v2_context_payload(account, dict(website)) for website in websites]
+    lead_counts = {int(row["website_id"]): row for row in await count_website_v2_leads_by_seller(int(account["seller_id"]))}
+    website_contexts = []
+    for website in websites:
+        ctx = await _build_v2_context_payload(account, dict(website))
+        counts = lead_counts.get(int(website["id"]), {})
+        ctx["new_leads_count"] = int(counts.get("new_leads_count") or 0)
+        ctx["total_leads_count"] = int(counts.get("total_leads_count") or 0)
+        website_contexts.append(ctx)
     return templates.TemplateResponse("seller_crm/websites/index.html", _seller_crm_context(request, title="Керування сайтами", current_page="websites_v2_index", account=account, subscription=subscription, websites=websites, website_contexts=website_contexts))
 
 
@@ -5090,7 +5099,8 @@ async def seller_crm_websites_overview(request: Request, crm_slug: str, website_
     if not website:
         raise HTTPException(status_code=404)
     website_context = await _build_v2_context_payload(account, dict(website))
-    return templates.TemplateResponse("seller_crm/websites/overview.html", _seller_crm_context(request, title="Огляд сайту", current_page="websites_v2_details", account=account, subscription=subscription, website=website, website_context=website_context))
+    lead_counts = await count_website_v2_leads_by_website(int(website["id"]), int(account["seller_id"]))
+    return templates.TemplateResponse("seller_crm/websites/overview.html", _seller_crm_context(request, title="Огляд сайту", current_page="websites_v2_details", account=account, subscription=subscription, website=website, website_context=website_context, lead_counts=lead_counts))
 
 
 
@@ -5520,7 +5530,8 @@ async def seller_crm_websites_leads(request: Request, crm_slug: str, website_id:
     account, subscription = await _authorized_account(request, crm_slug)
     website = await _get_v2_website_or_404(account, website_id)
     leads = await list_website_v2_leads(int(website["id"]), int(account["seller_id"]))
-    return templates.TemplateResponse("seller_crm/websites/leads.html", _seller_crm_context(request, title="Заявки сайту (V2)", current_page="websites_v2_details", account=account, subscription=subscription, website=website, leads=leads))
+    lead_counts = await count_website_v2_leads_by_website(int(website["id"]), int(account["seller_id"]))
+    return templates.TemplateResponse("seller_crm/websites/leads.html", _seller_crm_context(request, title="Заявки сайту (V2)", current_page="websites_v2_details", account=account, subscription=subscription, website=website, leads=leads, lead_counts=lead_counts))
 
 
 @router.post("/{crm_slug}/websites/{website_id}/leads/{lead_id}/status")
