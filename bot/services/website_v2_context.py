@@ -102,6 +102,80 @@ def get_website_v2_public_config(website: dict | Any) -> dict:
     }
 
 
+
+def _normalize_contact_phone_href(value: Any) -> str:
+    raw = str(value or "").strip()
+    if not raw:
+        return ""
+    has_plus = raw.startswith("+")
+    digits = "".join(ch for ch in raw if ch.isdigit())
+    if not digits:
+        return ""
+    if has_plus:
+        return f"+{digits}"
+    if len(digits) == 10 and digits.startswith("0"):
+        return f"+38{digits}"
+    if len(digits) == 12 and digits.startswith("380"):
+        return f"+{digits}"
+    if len(digits) >= 7:
+        return f"+{digits}"
+    return ""
+
+
+def _normalize_telegram_href(value: Any) -> tuple[str, str]:
+    raw = str(value or "").strip()
+    if not raw:
+        return "", ""
+    if raw.startswith("http://") or raw.startswith("https://"):
+        username = raw.rstrip("/").split("/")[-1].strip()
+        return raw, f"@{username.lstrip('@')}" if username else raw
+    username = raw.lstrip("@").strip().strip("/")
+    if not username:
+        return "", ""
+    return f"https://t.me/{username}", f"@{username}"
+
+
+def _normalize_external_url(value: Any) -> str:
+    raw = str(value or "").strip()
+    if not raw:
+        return ""
+    if raw.startswith("http://") or raw.startswith("https://"):
+        return raw
+    return f"https://{raw}"
+
+
+def _normalize_email_href(value: Any) -> str:
+    raw = str(value or "").strip()
+    if not raw or "@" not in raw:
+        return ""
+    return f"mailto:{raw}"
+
+
+def _build_contact_actions(contact: dict) -> dict:
+    primary_phone = str(contact.get("phone") or "").strip()
+    phones = [str(value or "").strip() for value in (contact.get("phones") or []) if str(value or "").strip()]
+    ordered_phones = []
+    for value in [primary_phone, *phones]:
+        if value and value not in ordered_phones:
+            ordered_phones.append(value)
+    phone_items = [
+        {"icon": "☎", "label": "Телефон", "value": value, "href": f"tel:{href}"}
+        for value in ordered_phones
+        for href in [_normalize_contact_phone_href(value)]
+        if href
+    ]
+    telegram_href, telegram_label = _normalize_telegram_href(contact.get("telegram"))
+    website_href = _normalize_external_url(contact.get("website"))
+    email_href = _normalize_email_href(contact.get("email"))
+    items = [*phone_items]
+    if telegram_href:
+        items.append({"icon": "✈", "label": "Telegram", "value": telegram_label, "href": telegram_href, "target": "_blank"})
+    if website_href:
+        items.append({"icon": "🌐", "label": "Сайт", "value": str(contact.get("website") or website_href).strip(), "href": website_href, "target": "_blank"})
+    if email_href:
+        items.append({"icon": "✉", "label": "Email", "value": str(contact.get("email") or "").strip(), "href": email_href})
+    return {"phones": phone_items, "telegram_href": telegram_href, "website_href": website_href, "email_href": email_href, "contact_items": items}
+
 def _has_contact_method(seller: dict, config: dict) -> bool:
     seller_contacts = [
         seller.get("phone"),
@@ -133,9 +207,11 @@ def detect_website_v2_contacts(config: dict, seller: dict) -> dict:
     viber = str(contacts.get("viber") or messengers.get("viber") or "").strip()
     whatsapp = str(contacts.get("whatsapp") or messengers.get("whatsapp") or "").strip()
     website = str(contacts.get("website") or "").strip()
-    has_website_contacts = any([phone, *phones, telegram, viber, whatsapp, website])
+    email = str(contacts.get("email") or "").strip()
+    city = str(contacts.get("city") or "").strip()
+    has_website_contacts = any([phone, *phones, telegram, viber, whatsapp, website, email])
     if has_website_contacts:
-        return {
+        result = {
             "has_contacts": True,
             "source": "website",
             "phone": phone,
@@ -144,7 +220,11 @@ def detect_website_v2_contacts(config: dict, seller: dict) -> dict:
             "viber": viber,
             "whatsapp": whatsapp,
             "website": website,
+            "email": email,
+            "city": city,
         }
+        result["actions"] = _build_contact_actions(result)
+        return result
 
     seller_keys = sorted(list(seller.keys())) if isinstance(seller, dict) else []
     seller_phone_candidates = [
@@ -159,7 +239,9 @@ def detect_website_v2_contacts(config: dict, seller: dict) -> dict:
     seller_viber = str(seller.get("viber") or "").strip()
     seller_whatsapp = str(seller.get("whatsapp") or "").strip()
     seller_website = str(seller.get("website") or "").strip()
-    has_seller_contacts = any([seller_phone, seller_telegram, seller_viber, seller_whatsapp, seller_website])
+    seller_email = str(seller.get("email") or "").strip()
+    seller_city = str(seller.get("city") or "").strip()
+    has_seller_contacts = any([seller_phone, seller_telegram, seller_viber, seller_whatsapp, seller_website, seller_email])
     result = {
         "has_contacts": has_seller_contacts,
         "source": "seller_profile" if has_seller_contacts else "none",
@@ -169,11 +251,14 @@ def detect_website_v2_contacts(config: dict, seller: dict) -> dict:
         "viber": seller_viber,
         "whatsapp": seller_whatsapp,
         "website": seller_website,
+        "email": seller_email,
+        "city": seller_city,
         "debug": {
             "seller_keys": seller_keys,
             "seller_phone_candidates": [str(v or "") for v in seller_phone_candidates if v is not None],
         },
     }
+    result["actions"] = _build_contact_actions(result)
     logger.info(
         "website_v2 contacts detection: source=%s has_contacts=%s seller_keys=%s phone_candidates=%s resolved_phone=%s",
         result["source"],

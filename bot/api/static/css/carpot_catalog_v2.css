@@ -75,6 +75,13 @@
 
         .carpot-v2-contacts h2{font-size:30px;margin:0 0 10px}
         .carpot-v2-contact-box{border:1px solid var(--line);border-radius:16px;background:#fafafa;padding:16px}
+        .carpot-v2-contact-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px}
+        .carpot-v2-contact-card{display:flex;align-items:center;gap:12px;min-height:56px;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:#fff;color:#111;overflow:hidden}
+        .carpot-v2-contact-card:hover{background:#f4f4f4}
+        .carpot-v2-contact-icon{display:inline-grid;place-items:center;flex:0 0 36px;width:36px;height:36px;border-radius:999px;background:#111;color:#fff;font-size:16px}
+        .carpot-v2-contact-card span:last-child{display:grid;gap:2px;min-width:0}
+        .carpot-v2-contact-card b{font-size:13px;color:#555}
+        .carpot-v2-contact-card small{font-size:15px;color:#111;white-space:normal;overflow-wrap:anywhere}
 
         .carpot-v2-footer{border-top:1px solid var(--line);padding:24px 0;color:#666;font-size:14px;margin-top:30px}
 

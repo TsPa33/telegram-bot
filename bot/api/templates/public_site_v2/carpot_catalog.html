@@ -18,6 +18,7 @@
     {% set banners = hero.banners if hero and hero.banners else [] %}
     {% set hero_image_url = hero.image_url if hero and hero.image_url else '' %}
     {% set primary_banner = banners[0] if banners else ({'image': hero_image_url} if hero_image_url else None) %}
+    {% set seller = website_context.seller if website_context and website_context.seller else {} %}
     {% set seller_name = website.name or website.subdomain or 'CarPot' %}
     {% set m = website_context.metrics if website_context and website_context.metrics else {} %}
     {% set catalog_items = website_context.catalog_items if website_context and website_context.catalog_items else [] %}
@@ -250,7 +251,26 @@
     <section id="contacts" class="carpot-v2-contacts">
         <h2>Контакти</h2>
         <div class="carpot-v2-contact-box">
-            {% if has_contacts %}<p>{{ wc.phone or (wc.phones[0] if wc.phones else '') or wc.telegram or wc.viber or wc.whatsapp or wc.website or seller.phone or seller.telegram or seller.website }}</p>{% else %}<p>Контакти будуть доступні після заповнення CRM.</p>{% endif %}
+            {% if has_contacts and wc.actions and wc.actions.contact_items %}
+                <div class="carpot-v2-contact-grid">
+                    {% for item in wc.actions.contact_items %}
+                    <a class="carpot-v2-contact-card" href="{{ item.href }}"{% if item.target %} target="{{ item.target }}" rel="noopener"{% endif %}>
+                        <span class="carpot-v2-contact-icon">{{ item.icon }}</span>
+                        <span><b>{{ item.label }}</b><small>{{ item.value }}</small></span>
+                    </a>
+                    {% endfor %}
+                    {% if wc.city or seller.city %}
+                    <div class="carpot-v2-contact-card">
+                        <span class="carpot-v2-contact-icon">⌖</span>
+                        <span><b>Місто</b><small>{{ wc.city or seller.city }}</small></span>
+                    </div>
+                    {% endif %}
+                </div>
+            {% elif has_contacts %}
+                <p>{{ wc.phone or (wc.phones[0] if wc.phones else '') or wc.telegram or wc.viber or wc.whatsapp or wc.website or seller.phone or seller.telegram or seller.website }}</p>
+            {% else %}
+                <p>Контакти будуть доступні після заповнення CRM.</p>
+            {% endif %}
         </div>
     </section>
 </main>
