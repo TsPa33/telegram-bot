@@ -38,6 +38,7 @@ from bot.database.repositories.part_repo import (
     bulk_delete_parts_by_ids,
     bulk_update_parts_status_by_category,
     bulk_update_parts_status_by_ids,
+    count_seller_part_inventory_statuses,
     create_manual_part,
     generate_parts_for_car,
     get_car_part_categories,
@@ -104,6 +105,7 @@ from bot.database.repositories.lead_thread_repo import (
 from bot.database.repositories.product_repo import (
     bulk_archive_products,
     bulk_update_products_inventory,
+    count_seller_product_inventory_statuses,
     create_product,
     get_product_by_id,
     get_seller_product_donor_cars,
@@ -176,11 +178,14 @@ from bot.services.domain_service import build_site_url, normalize_subdomain, val
 from bot.database.repositories.website_v2_repo import (
     count_website_v2_leads_by_seller,
     count_website_v2_leads_by_website,
+    count_website_v2_leads_summary,
     create_website_v2,
     get_website_v2_by_id,
     get_website_v2_lead,
+    list_recent_website_v2_leads_by_seller,
     list_website_v2_leads,
     list_websites_v2_by_seller,
+    list_websites_v2_dashboard,
     publish_website_v2,
     update_website_v2_draft,
     update_website_v2_lead_status,
@@ -410,7 +415,7 @@ def _demo_analytics() -> dict[str, Any]:
         "visits_today": 186,
         "leads_today": 14,
         "telegram_clicks_today": 42,
-        "active_listings": 38,
+        "active_listings": 6,
         "conversion": 7.5,
         "routed_requests": 18,
         "viewed_requests": 15,
@@ -421,6 +426,7 @@ def _demo_analytics() -> dict[str, Any]:
         "offers_rejected": 4,
         "average_response_seconds": 18 * 60,
         "has_website": True,
+        "services_count": 3,
     }
 
 
@@ -430,6 +436,67 @@ def _demo_site() -> dict[str, Any]:
         "subdomain": DEMO_CRM_SLUG,
         "config_draft": {},
         "config_live": {},
+    }
+
+
+def _website_v2_type_label(site_type: str | None) -> str:
+    return {"carpot_catalog": "Catalog", "carpot_business": "Business"}.get(str(site_type or ""), "Website")
+
+
+def _website_v2_status_label(status: str | None) -> str:
+    return {"draft": "Draft", "published": "Published", "suspended": "Suspended", "expired": "Expired"}.get(str(status or ""), "Draft")
+
+
+def _website_v2_status_class(status: str | None) -> str:
+    return {"published": "status-done", "draft": "status-waiting", "suspended": "status-error", "expired": "status-error"}.get(str(status or ""), "status-waiting")
+
+
+def _website_v2_lead_type_label(lead_type: str | None) -> str:
+    return {"vin": "VIN-запит", "service": "Послуга", "product": "Товар", "contact": "Контакт"}.get(str(lead_type or ""), "Заявка")
+
+
+def _website_v2_lead_status_label(status: str | None) -> str:
+    return {"new": "Нова", "viewed": "Переглянуто", "processed": "Оброблено", "archived": "Архів"}.get(str(status or ""), "Нова")
+
+
+def _prepare_dashboard_websites(rows) -> list[dict[str, Any]]:
+    websites: list[dict[str, Any]] = []
+    for row in rows or []:
+        item = dict(row)
+        subdomain = str(item.get("subdomain") or "").strip()
+        item["type_label"] = _website_v2_type_label(item.get("site_type"))
+        item["status_label"] = _website_v2_status_label(item.get("status"))
+        item["status_class"] = _website_v2_status_class(item.get("status"))
+        item["public_path"] = f"/w/{subdomain}" if subdomain else ""
+        item["new_leads_count"] = int(item.get("new_leads_count") or 0)
+        item["total_leads_count"] = int(item.get("total_leads_count") or 0)
+        websites.append(item)
+    return websites
+
+
+def _prepare_dashboard_website_leads(rows) -> list[dict[str, Any]]:
+    leads: list[dict[str, Any]] = []
+    for row in rows or []:
+        item = dict(row)
+        item["type_label"] = _website_v2_lead_type_label(item.get("lead_type"))
+        item["status_label"] = _website_v2_lead_status_label(item.get("status"))
+        item["status_class"] = _website_v2_status_class("published" if item.get("status") == "processed" else "draft") if item.get("status") != "new" else "status-new"
+        item["website_name"] = item.get("website_name") or item.get("website_subdomain") or "Сайт"
+        leads.append(item)
+    return leads
+
+
+def _combine_inventory_summary(product_counts: dict[str, Any] | None, part_counts: dict[str, Any] | None) -> dict[str, int]:
+    products = product_counts or {}
+    parts = part_counts or {}
+    return {
+        "products_total": int(products.get("total") or 0),
+        "parts_total": int(parts.get("total") or 0),
+        "total": int(products.get("total") or 0) + int(parts.get("total") or 0),
+        "available": int(products.get("available") or 0) + int(parts.get("available") or 0),
+        "sold": int(products.get("sold") or 0) + int(parts.get("sold") or 0),
+        "hidden": int(products.get("hidden") or 0) + int(parts.get("hidden") or 0),
+        "draft": int(parts.get("draft") or 0),
     }
 
 def _seller_crm_context(request: Request, **kwargs):
@@ -1435,7 +1502,7 @@ async def seller_crm_demo(request: Request):
         "visits_today": 186,
         "leads_today": 14,
         "telegram_clicks_today": 42,
-        "active_listings": 38,
+        "active_listings": 6,
         "conversion": 7.5,
         "new_leads": 6,
         "in_progress_leads": 5,
@@ -1452,6 +1519,16 @@ async def seller_crm_demo(request: Request):
         {"name": "Олександр", "phone": "+380••• •• 42", "status": "new", "source": "telegram", "message": "Цікавить BMW X5"},
         {"name": "Марина", "phone": "+380••• •• 18", "status": "in_progress", "source": "google", "message": "Запис на діагностику"},
         {"name": "СТО Партнер", "phone": "+380••• •• 77", "status": "done", "source": "site", "message": "Підбір запчастин"},
+    ]
+    dashboard_websites = [
+        {"id": 1, "name": "Demo Catalog", "site_type": "carpot_catalog", "type_label": "Catalog", "status": "published", "status_label": "Published", "status_class": "status-done", "subdomain": "demo", "public_path": "/w/demo", "new_leads_count": 2, "total_leads_count": 11},
+        {"id": 2, "name": "Demo Service", "site_type": "carpot_business", "type_label": "Business", "status": "draft", "status_label": "Draft", "status_class": "status-waiting", "subdomain": "demo-service", "public_path": "/w/demo-service", "new_leads_count": 0, "total_leads_count": 3},
+    ]
+    website_lead_summary = {"new_leads_count": 4, "total_leads_count": 14}
+    dashboard_metrics = {"parts_count": 532, "cars_count": 6, "sites_count": 2, "new_leads_count": 4, "total_leads_count": 14, "services_count": 3}
+    inventory_summary = {"total": 532, "products_total": 120, "parts_total": 412, "available": 450, "sold": 58, "hidden": 12, "draft": 12}
+    recent_website_leads = [
+        {"id": 1, "website_id": 1, "type_label": "VIN-запит", "name": "Олександр", "phone": "+380••• •• 42", "website_name": "Demo Catalog", "created_at": datetime.utcnow(), "status_label": "Нова", "status_class": "status-new"},
     ]
     return templates.TemplateResponse(
         "seller_crm/dashboard.html",
@@ -1473,6 +1550,11 @@ async def seller_crm_demo(request: Request):
             has_website=True,
             has_cars=False,
             has_services=True,
+            dashboard_metrics=dashboard_metrics,
+            dashboard_websites=dashboard_websites,
+            website_lead_summary=website_lead_summary,
+            recent_website_leads=recent_website_leads,
+            inventory_summary=inventory_summary,
         ),
     )
 
@@ -4003,20 +4085,41 @@ async def seller_crm_dashboard(request: Request, crm_slug: str):
         services = []
         sources = [{"source": "telegram", "visits": 93}, {"source": "google", "visits": 71}, {"source": "direct", "visits": 22}]
         site = _demo_site()
+        dashboard_websites = [
+            {"id": 1, "name": "Demo Catalog", "type_label": "Catalog", "status_label": "Published", "status_class": "status-done", "subdomain": "demo", "public_path": "/w/demo", "new_leads_count": 2, "total_leads_count": 11},
+        ]
+        website_lead_summary = {"new_leads_count": 4, "total_leads_count": 14}
+        recent_website_leads = []
+        inventory_summary = {"total": 532, "products_total": 120, "parts_total": 412, "available": 450, "sold": 58, "hidden": 12, "draft": 12}
     else:
-        stats = await get_seller_crm_dashboard(seller_id)
+        stats = dict(await get_seller_crm_dashboard(seller_id) or {})
         marketplace_summary = dict(await get_seller_crm_marketplace_summary(seller_id) or {})
         marketplace_summary["avg_response_label"] = _format_duration(marketplace_summary.get("avg_response_seconds"))
         marketplace_requests = _prepare_marketplace_requests(await list_seller_crm_marketplace_requests(seller_id))
         marketplace_activity = _prepare_activity(await list_seller_crm_marketplace_activity(seller_id))
-        leads = await list_seller_crm_leads(seller_id)
-        cars = await list_seller_crm_cars(seller_id)
-        services = await list_seller_crm_services(seller_id)
+        leads = []
+        cars = []
+        services = []
         sources = await list_seller_crm_sources(seller_id)
         site = await get_site_by_seller(seller_id)
-    has_website = bool(site or account_flags.get("has_site") or account_flags.get("website"))
-    has_cars = bool(cars)
-    has_services = bool(services)
+        dashboard_websites = _prepare_dashboard_websites(await list_websites_v2_dashboard(seller_id))
+        website_lead_summary = await count_website_v2_leads_summary(seller_id)
+        recent_website_leads = _prepare_dashboard_website_leads(await list_recent_website_v2_leads_by_seller(seller_id, limit=8))
+        inventory_summary = _combine_inventory_summary(
+            await count_seller_product_inventory_statuses(seller_id),
+            await count_seller_part_inventory_statuses(seller_id),
+        )
+    has_website = bool(dashboard_websites or site or account_flags.get("has_site") or account_flags.get("website"))
+    has_cars = int((stats or {}).get("active_listings") or 0) > 0
+    has_services = int((stats or {}).get("services_count") or 0) > 0
+    dashboard_metrics = {
+        "parts_count": int((inventory_summary or {}).get("total") or 0),
+        "cars_count": int((stats or {}).get("active_listings") or 0),
+        "sites_count": len(dashboard_websites or []),
+        "new_leads_count": int((website_lead_summary or {}).get("new_leads_count") or 0),
+        "total_leads_count": int((website_lead_summary or {}).get("total_leads_count") or 0),
+        "services_count": int((stats or {}).get("services_count") or 0),
+    }
     draft_config = merge_with_default((site or {}).get("config_draft") or {}) if site else {}
     live_config = merge_with_default((site or {}).get("config_live") or {}) if site else {}
     draft_modules = draft_config.get("modules") or {}
@@ -4048,6 +4151,13 @@ async def seller_crm_dashboard(request: Request, crm_slug: str):
             has_services=has_services,
             products_module_draft_enabled=products_module_draft_enabled,
             products_module_live_enabled=products_module_live_enabled,
+            cars_module_draft_enabled=cars_module_draft_enabled,
+            services_module_draft_enabled=services_module_draft_enabled,
+            dashboard_metrics=dashboard_metrics,
+            dashboard_websites=dashboard_websites,
+            website_lead_summary=website_lead_summary,
+            recent_website_leads=recent_website_leads,
+            inventory_summary=inventory_summary,
         ),
     )
 

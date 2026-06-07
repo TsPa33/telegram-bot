@@ -48,6 +48,71 @@ async def list_published_websites_v2(site_type: str = "carpot_catalog"):
     )
 
 
+async def list_websites_v2_dashboard(seller_id: int):
+    return await fetch(
+        """
+        SELECT
+            w.id,
+            w.seller_id,
+            w.site_type,
+            w.name,
+            w.subdomain,
+            w.status,
+            w.updated_at,
+            w.published_at,
+            COALESCE(l.total_leads_count, 0)::int AS total_leads_count,
+            COALESCE(l.new_leads_count, 0)::int AS new_leads_count
+        FROM seller_websites_v2 w
+        LEFT JOIN (
+            SELECT
+                website_id,
+                COUNT(*)::int AS total_leads_count,
+                COUNT(*) FILTER (WHERE status = 'new')::int AS new_leads_count
+            FROM seller_website_v2_leads
+            WHERE seller_id = $1
+            GROUP BY website_id
+        ) l ON l.website_id = w.id
+        WHERE w.seller_id = $1
+        ORDER BY w.updated_at DESC NULLS LAST, w.id DESC
+        """,
+        seller_id,
+    )
+
+
+async def count_website_v2_leads_summary(seller_id: int):
+    row = await fetchrow(
+        """
+        SELECT
+            COUNT(*)::int AS total_leads_count,
+            COUNT(*) FILTER (WHERE status = 'new')::int AS new_leads_count
+        FROM seller_website_v2_leads
+        WHERE seller_id = $1
+        """,
+        seller_id,
+    )
+    return dict(row) if row else {"total_leads_count": 0, "new_leads_count": 0}
+
+
+async def list_recent_website_v2_leads_by_seller(seller_id: int, limit: int = 8):
+    normalized_limit = max(1, min(int(limit or 8), 20))
+    return await fetch(
+        """
+        SELECT
+            l.*,
+            w.name AS website_name,
+            w.subdomain AS website_subdomain,
+            w.site_type AS website_site_type
+        FROM seller_website_v2_leads l
+        JOIN seller_websites_v2 w ON w.id = l.website_id AND w.seller_id = l.seller_id
+        WHERE l.seller_id = $1
+        ORDER BY l.created_at DESC, l.id DESC
+        LIMIT $2
+        """,
+        seller_id,
+        normalized_limit,
+    )
+
+
 async def update_website_v2_draft(website_id: int, patch: dict):
     row = await fetchrow("SELECT id, config_draft, site_type FROM seller_websites_v2 WHERE id=$1", website_id)
     if not row:

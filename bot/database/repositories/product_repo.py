@@ -481,6 +481,22 @@ async def set_product_status(seller_id: int, product_id: int, status: str) -> bo
     return row is not None
 
 
+async def count_seller_product_inventory_statuses(seller_id: int):
+    row = await fetchrow(
+        """
+        SELECT
+            COUNT(*) FILTER (WHERE status <> 'archived')::int AS total,
+            COUNT(*) FILTER (WHERE status = 'active' AND stock_status = 'available')::int AS available,
+            COUNT(*) FILTER (WHERE status = 'active' AND stock_status = 'sold')::int AS sold,
+            COUNT(*) FILTER (WHERE status = 'inactive')::int AS hidden
+        FROM seller_products
+        WHERE seller_id = $1
+        """,
+        seller_id,
+    )
+    return dict(row) if row else {"total": 0, "available": 0, "sold": 0, "hidden": 0}
+
+
 async def list_seller_product_filter_options(seller_id: int):
     row = await fetchrow(
         """
