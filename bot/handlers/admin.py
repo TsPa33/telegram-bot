@@ -4,6 +4,7 @@ from aiogram import Router, types, F
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, KeyboardButton, Message
 
+from bot.config import ADMIN_IDS
 from bot.services.roles import is_admin
 from bot.keyboards.admin_kb import admin_kb
 from bot.keyboards.seller_menu import site_menu_kb
@@ -49,6 +50,7 @@ from bot.database.repositories.user_repo import (
 from bot.database.repositories.seller_repo import (
     get_seller_by_id,
     create_demo_seller,
+    set_seller_verification_result,
 )
 
 from bot.database.repositories.site_repo import (
@@ -186,6 +188,47 @@ async def delete_user_handler(callback: CallbackQuery):
     await delete_user_full(user_id)
 
     await callback.message.edit_text(f"❌ Користувач {user_id} видалений")
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("admin:seller_verify:"))
+async def seller_onboarding_verification(callback: CallbackQuery):
+    if callback.from_user.id not in ADMIN_IDS:
+        await callback.answer("Немає доступу", show_alert=True)
+        return
+
+    _prefix, _entity, decision, seller_id_raw = callback.data.split(":", 3)
+    seller_id = int(seller_id_raw)
+    approved = decision == "ok"
+
+    seller = await set_seller_verification_result(seller_id, approved)
+    if not seller:
+        await callback.message.edit_text("Заявку продавця не знайдено.")
+        await callback.answer()
+        return
+
+    status_text = "схвалено" if approved else "відхилено"
+    await callback.message.edit_text(
+        "✅ Заявку продавця оброблено.\n\n"
+        f"Seller ID: {seller_id}\n"
+        f"Telegram ID: {seller['telegram_id']}\n"
+        f"Статус: {status_text}"
+    )
+
+    try:
+        if approved:
+            await callback.bot.send_message(
+                seller["telegram_id"],
+                "✅ Ваш профіль продавця підтверджено. Тепер доступна CRM.",
+            )
+        else:
+            await callback.bot.send_message(
+                seller["telegram_id"],
+                "Профіль продавця не підтверджено. Зверніться в підтримку.",
+            )
+    except Exception as exc:
+        print("SELLER_VERIFY_NOTIFY_ERROR", seller["telegram_id"], exc)
+
     await callback.answer()
 
 

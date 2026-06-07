@@ -7,6 +7,7 @@ from bot.services.verification_service import submit_verification
 from bot.keyboards.admin_inline import verification_request_kb
 from bot.config import ADMIN_IDS
 from bot.states.seller_states import SellerStates
+from bot.keyboards.seller_menu import seller_menu_kb
 
 router = Router()
 
@@ -16,7 +17,7 @@ router = Router()
 async def check_verified(message: Message, state: FSMContext):
     seller = await get_or_create_seller(
         message.from_user.id,
-        message.from_user.username
+        message.from_user.username,
     )
 
     if seller.get("is_verified"):
@@ -26,13 +27,15 @@ async def check_verified(message: Message, state: FSMContext):
 
     if not data.get("verification_warned"):
         await message.answer(
-            "🔐 <b>Акаунт не верифікований</b>\n\n"
-            "Щоб користуватись ботом — пройди верифікацію",
-            parse_mode="HTML"
+            "⏳ <b>Профіль продавця ще не підтверджено</b>\n\n"
+            "Заявку продавця прийнято. Після перевірки ви отримаєте доступ до CRM та інструментів продавця.",
+            parse_mode="HTML",
+            reply_markup=seller_menu_kb(is_verified=False),
         )
         await state.update_data(verification_warned=True)
 
     return False
+
 
 
 # ================= START =================

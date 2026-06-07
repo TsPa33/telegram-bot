@@ -14,6 +14,7 @@ from bot.database.repositories.seller_crm_repo import (
 from bot.database.repositories.seller_repo import get_or_create_seller, get_seller_by_telegram_id
 from bot.keyboards.seller_menu import seller_menu_kb
 from bot.services.liqpay_service import LiqPayService
+from bot.services.seller_access import get_verified_seller_or_warn
 from bot.services.seller_crm import (
     SELLER_CRM_MONTHLY_PRICE_UAH,
     SELLER_CRM_PRODUCT,
@@ -110,6 +111,8 @@ async def _send_crm_landing(message: Message):
 
 async def _handle_crm_text_entry(message: Message):
     logger.info("CRM_TEXT_HANDLER_TRIGGERED text=%r", message.text)
+    if not await get_verified_seller_or_warn(message):
+        return
     await _send_crm_landing(message)
 @router.message(F.text.in_(["🧾 Відкрити CRM", "📋 Відкрити CRM"]))
 async def seller_crm_landing(message: Message):
@@ -126,6 +129,15 @@ async def seller_crm_open_callback(callback: CallbackQuery):
     telegram_id = callback.from_user.id
     callback_data = callback.data
     logger.info("CRM_OPEN_CALLBACK_RECEIVED telegram_id=%s callback_data=%s", telegram_id, callback_data)
+
+    seller = await get_seller_by_telegram_id(telegram_id)
+    if not seller or not seller.get("is_verified"):
+        await callback.message.answer(
+            "⏳ Профіль продавця ще не підтверджено. CRM стане доступна після перевірки.",
+            reply_markup=seller_menu_kb(is_verified=False),
+        )
+        await callback.answer()
+        return
 
     try:
         seller, account, setup_required = await _ensure_seller_crm(
@@ -180,6 +192,9 @@ async def seller_crm_buy(callback: CallbackQuery):
             logger.warning("CRM_PAYMENT_SELLER_NOT_FOUND telegram_id=%s", callback.from_user.id)
             await callback.answer("Продавця не знайдено", show_alert=True)
             return
+        if not seller.get("is_verified"):
+            await callback.answer("CRM доступна після перевірки продавця", show_alert=True)
+            return
 
         logger.info("CRM_PAYMENT_SELLER_RESOLVED seller_id=%s", seller["id"])
 
@@ -217,6 +232,9 @@ async def seller_crm_setup(callback: CallbackQuery, state: FSMContext):
     seller = await get_seller_by_telegram_id(callback.from_user.id)
     if not seller:
         await callback.answer("Продавця не знайдено", show_alert=True)
+        return
+    if not seller.get("is_verified"):
+        await callback.answer("CRM доступна після перевірки продавця", show_alert=True)
         return
 
     await enable_seller_crm(seller["id"])

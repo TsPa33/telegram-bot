@@ -11,16 +11,26 @@ from bot.services.domain_service import build_site_url, normalize_subdomain
 # ================= MAIN =================
 
 def seller_main_kb(is_verified: bool = False):
+    if not is_verified:
+        return ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text="📌 Статус перевірки")],
+                [KeyboardButton(text="✏️ Редагувати дані")],
+                [KeyboardButton(text="💬 Підтримка")],
+                [KeyboardButton(text="↩️ Головне меню")],
+            ],
+            resize_keyboard=True,
+        )
+
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="📥 Нові заявки")],
             [KeyboardButton(text="📋 Відкрити CRM")],
-            [KeyboardButton(text="🔧 My Parts")],
             [KeyboardButton(text="💳 Пакети послуг")],
             [KeyboardButton(text="💬 Підтримка")],
             [KeyboardButton(text="↩️ Головне меню")],
         ],
-        resize_keyboard=True
+        resize_keyboard=True,
     )
 
 def seller_menu_kb(is_verified: bool = False):
