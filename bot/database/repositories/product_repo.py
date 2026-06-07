@@ -206,6 +206,7 @@ async def get_seller_products(
     include_archived: bool = False,
     limit: int = 50,
     offset: int = 0,
+    sort: str = "newest",
 ):
     normalized_limit = max(1, min(int(limit or 50), 100))
     normalized_offset = max(0, int(offset or 0))
@@ -236,10 +237,160 @@ async def get_seller_products(
         LEFT JOIN models m ON m.id = sc.model_id
         LEFT JOIN brands b ON b.id = m.brand_id
         WHERE {' AND '.join(prefixed_filters)}
-        ORDER BY sp.created_at DESC, sp.id DESC
+        ORDER BY {_product_sort_sql(sort)}
         LIMIT ${limit_arg} OFFSET ${offset_arg}
         """,
         *args,
+    )
+
+
+async def search_seller_products(seller_id: int, query: str, limit: int = 100):
+    normalized_limit = max(1, min(int(limit or 100), 200))
+    normalized_offset = 0
+    if isinstance(limit, tuple):
+        normalized_limit, normalized_offset = limit
+    q = f"%{(query or '').strip().lower()}%"
+    return await fetch(
+        """
+        SELECT
+            sp.*,
+            b.name AS donor_brand,
+            m.name AS donor_model
+        FROM seller_products sp
+        LEFT JOIN seller_cars sc ON sc.id = sp.donor_car_id AND sc.seller_id = sp.seller_id
+        LEFT JOIN models m ON m.id = sc.model_id
+        LEFT JOIN brands b ON b.id = m.brand_id
+        WHERE sp.seller_id = $1
+          AND sp.status <> 'archived'
+          AND (
+            LOWER(COALESCE(sp.title, '')) LIKE $2
+            OR LOWER(COALESCE(sp.category, '')) LIKE $2
+            OR LOWER(COALESCE(sp.brand, '')) LIKE $2
+            OR LOWER(COALESCE(sp.model, '')) LIKE $2
+            OR LOWER(COALESCE(sp.description, '')) LIKE $2
+            OR LOWER(COALESCE(b.name, '')) LIKE $2
+            OR LOWER(COALESCE(m.name, '')) LIKE $2
+          )
+        ORDER BY sp.created_at DESC, sp.id DESC
+        LIMIT $3 OFFSET $4
+        """,
+        seller_id,
+        q,
+        normalized_limit,
+        normalized_offset,
+    )
+
+
+def _product_filter_sql(filters: dict | None, args: list) -> str:
+    filters = filters or {}
+    clauses = []
+    for key, col in [("category", "sp.category"), ("brand", "sp.brand"), ("model", "sp.model"), ("condition", "sp.condition"), ("availability", "sp.stock_status")]:
+        value = str(filters.get(key) or "").strip()
+        if value:
+            args.append(value)
+            clauses.append(f"LOWER(COALESCE({col}, '')) = LOWER(${len(args)})")
+    return (" AND " + " AND ".join(clauses)) if clauses else ""
+
+
+def _product_sort_sql(sort: str | None) -> str:
+    normalized = (sort or "newest").strip().lower()
+    sort_map = {
+        "newest": "sp.created_at DESC, sp.id DESC",
+        "oldest": "sp.created_at ASC, sp.id ASC",
+        "name_asc": "LOWER(COALESCE(sp.title, '')) ASC, sp.id DESC",
+        "name_desc": "LOWER(COALESCE(sp.title, '')) DESC, sp.id DESC",
+        "price_asc": "sp.price ASC NULLS LAST, sp.id DESC",
+        "price_desc": "sp.price DESC NULLS LAST, sp.id DESC",
+    }
+    return sort_map.get(normalized, sort_map["newest"])
+
+
+async def search_seller_products_paginated(seller_id: int, query: str, *, limit: int = 100, offset: int = 0, filters: dict | None = None, sort: str = "newest"):
+    normalized_limit = max(1, min(int(limit or 100), 200))
+    normalized_offset = max(0, int(offset or 0))
+    q = f"%{(query or '').strip().lower()}%"
+    args = [seller_id, q]
+    filters_sql = _product_filter_sql(filters, args)
+    args.extend([normalized_limit, normalized_offset])
+    return await fetch(
+        f"""
+        SELECT sp.*, b.name AS donor_brand, m.name AS donor_model
+        FROM seller_products sp
+        LEFT JOIN seller_cars sc ON sc.id = sp.donor_car_id AND sc.seller_id = sp.seller_id
+        LEFT JOIN models m ON m.id = sc.model_id
+        LEFT JOIN brands b ON b.id = m.brand_id
+        WHERE sp.seller_id = $1
+          AND sp.status <> 'archived'
+          AND (
+            LOWER(COALESCE(sp.title, '')) LIKE $2 OR LOWER(COALESCE(sp.category, '')) LIKE $2
+            OR LOWER(COALESCE(sp.brand, '')) LIKE $2 OR LOWER(COALESCE(sp.model, '')) LIKE $2
+            OR LOWER(COALESCE(sp.description, '')) LIKE $2 OR LOWER(COALESCE(b.name, '')) LIKE $2
+            OR LOWER(COALESCE(m.name, '')) LIKE $2
+          ){filters_sql}
+        ORDER BY {_product_sort_sql(sort)}
+        LIMIT ${len(args)-1} OFFSET ${len(args)}
+        """,
+        *args,
+    )
+
+
+async def count_search_seller_products(seller_id: int, query: str, filters: dict | None = None) -> int:
+    q = f"%{(query or '').strip().lower()}%"
+    args = [seller_id, q]
+    filters_sql = _product_filter_sql(filters, args)
+    row = await fetchrow(
+        f"""
+        SELECT COUNT(*)::int AS total
+        FROM seller_products sp
+        LEFT JOIN seller_cars sc ON sc.id = sp.donor_car_id AND sc.seller_id = sp.seller_id
+        LEFT JOIN models m ON m.id = sc.model_id
+        LEFT JOIN brands b ON b.id = m.brand_id
+        WHERE sp.seller_id = $1
+          AND sp.status <> 'archived'
+          AND (
+            LOWER(COALESCE(sp.title, '')) LIKE $2
+            OR LOWER(COALESCE(sp.category, '')) LIKE $2
+            OR LOWER(COALESCE(sp.brand, '')) LIKE $2
+            OR LOWER(COALESCE(sp.model, '')) LIKE $2
+            OR LOWER(COALESCE(sp.description, '')) LIKE $2
+            OR LOWER(COALESCE(b.name, '')) LIKE $2
+            OR LOWER(COALESCE(m.name, '')) LIKE $2
+          ){filters_sql}
+        """,
+        *args,
+    )
+    return int((row or {}).get("total") or 0)
+
+
+async def count_seller_products_for_site(seller_id: int, filters: dict | None = None) -> int:
+    args=[seller_id]
+    filters_sql=_product_filter_sql(filters,args)
+    row = await fetchrow(
+        f"""
+        SELECT COUNT(*)::int AS total
+        FROM seller_products
+        WHERE seller_id = $1
+          AND status <> 'archived'
+          {filters_sql.replace('sp.', '')}
+        """,
+        *args,
+    )
+    return int((row or {}).get("total") or 0)
+
+
+async def list_product_ids_for_sitemap(seller_id: int, limit: int = 5000):
+    normalized_limit = max(1, min(int(limit or 5000), 5000))
+    return await fetch(
+        """
+        SELECT sp.id
+        FROM seller_products sp
+        WHERE sp.seller_id = $1
+          AND sp.status <> 'archived'
+        ORDER BY sp.created_at DESC, sp.id DESC
+        LIMIT $2
+        """,
+        seller_id,
+        normalized_limit,
     )
 
 
@@ -278,6 +429,58 @@ async def set_product_status(seller_id: int, product_id: int, status: str) -> bo
         seller_id,
     )
     return row is not None
+
+
+async def bulk_update_products_inventory(seller_id: int, product_ids: list[int], *, status: str, stock_status: str | None = None) -> int:
+    _validate_status(status)
+    if stock_status is not None:
+        _validate_stock_status(stock_status)
+    ids = [int(item) for item in product_ids if str(item).strip()]
+    if not ids:
+        return 0
+    row = await fetchrow(
+        """
+        WITH updated AS (
+            UPDATE seller_products
+            SET status = $3,
+                stock_status = COALESCE($4, stock_status),
+                updated_at = NOW()
+            WHERE seller_id = $1
+              AND id = ANY($2::BIGINT[])
+              AND status <> 'archived'
+            RETURNING id
+        )
+        SELECT COUNT(*)::int AS updated_count FROM updated
+        """,
+        seller_id,
+        ids,
+        status,
+        stock_status,
+    )
+    return int(row.get("updated_count") or 0) if row else 0
+
+
+async def bulk_archive_products(seller_id: int, product_ids: list[int]) -> int:
+    ids = [int(item) for item in product_ids if str(item).strip()]
+    if not ids:
+        return 0
+    row = await fetchrow(
+        """
+        WITH updated AS (
+            UPDATE seller_products
+            SET status = 'archived',
+                updated_at = NOW()
+            WHERE seller_id = $1
+              AND id = ANY($2::BIGINT[])
+              AND status <> 'archived'
+            RETURNING id
+        )
+        SELECT COUNT(*)::int AS updated_count FROM updated
+        """,
+        seller_id,
+        ids,
+    )
+    return int(row.get("updated_count") or 0) if row else 0
 
 
 async def update_product_photo(
