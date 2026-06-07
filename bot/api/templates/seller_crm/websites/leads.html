@@ -1,0 +1,52 @@
+{% extends "seller_crm/base.html" %}
+{% block content %}
+<h1>Заявки сайту</h1>
+<p><b>{{ website.name }}</b> · {{ website.subdomain }}</p>
+<p>
+    Нові: <b>{{ lead_counts.new_leads_count or 0 }}</b> ·
+    Усього: <b>{{ lead_counts.total_leads_count or (leads|length) }}</b> ·
+    <a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}">Назад до сайту</a>
+</p>
+
+{% if leads %}
+<div style="display:grid;gap:12px;">
+{% for lead in leads %}
+    <article style="border:1px solid #ddd;border-radius:12px;background:#fff;padding:14px;display:grid;gap:10px;">
+        <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-start;">
+            <div>
+                <h3 style="margin:0 0 4px;">{{ lead.name or 'Клієнт із сайту' }}</h3>
+                <p style="margin:0;color:#666;">{{ lead.created_at }} · Джерело: {{ website.name }}</p>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <span style="padding:5px 8px;border:1px solid #ddd;border-radius:999px;background:#fafafa;">{{ lead.lead_type }}</span>
+                <span style="padding:5px 8px;border:1px solid #ddd;border-radius:999px;background:{% if lead.status == 'new' %}#e8f5e9{% elif lead.status == 'archived' %}#f5f5f5{% else %}#eef4ff{% endif %};">{{ lead.status }}</span>
+            </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;">
+            <p style="margin:0;"><b>Телефон:</b> <a href="tel:{{ lead.phone }}">{{ lead.phone }}</a></p>
+            <p style="margin:0;"><b>VIN:</b> {{ lead.vin or '—' }}</p>
+            <p style="margin:0;"><b>Позиція:</b> {{ lead.item_title or '—' }}</p>
+            <p style="margin:0;"><b>Тип заявки:</b> {{ lead.lead_type }}</p>
+        </div>
+        {% if lead.message %}<p style="margin:0;"><b>Повідомлення:</b> {{ lead.message }}</p>{% endif %}
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <form method="post" action="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/leads/{{ lead.id }}/status" style="display:inline">
+                <input type="hidden" name="status" value="viewed">
+                <button type="submit" style="padding:8px 10px;border:1px solid #111;border-radius:8px;background:#fff;">Переглянуто</button>
+            </form>
+            <form method="post" action="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/leads/{{ lead.id }}/status" style="display:inline">
+                <input type="hidden" name="status" value="processed">
+                <button type="submit" style="padding:8px 10px;border:1px solid #111;border-radius:8px;background:#111;color:#fff;">Оброблено</button>
+            </form>
+            <form method="post" action="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/leads/{{ lead.id }}/status" style="display:inline">
+                <input type="hidden" name="status" value="archived">
+                <button type="submit" style="padding:8px 10px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#666;">Архівувати</button>
+            </form>
+        </div>
+    </article>
+{% endfor %}
+</div>
+{% else %}
+<div style="padding:18px;border:1px dashed #ccc;border-radius:12px;background:#fafafa;max-width:760px;">Поки що немає заявок для цього сайту. Коли клієнт відправить VIN або форму послуги, заявка зʼявиться тут.</div>
+{% endif %}
+{% endblock %}
