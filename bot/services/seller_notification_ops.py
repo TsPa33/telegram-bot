@@ -92,6 +92,42 @@ def format_site_lead_notification(*, name: str | None, phone: str | None, messag
     return "\n".join(lines)
 
 
+
+def format_website_v2_lead_notification(
+    *,
+    website_name: str | None,
+    lead_type: str | None,
+    name: str | None,
+    phone: str | None,
+    vin: str | None,
+    message: str | None,
+    item_title: str | None,
+    crm_url: str | None = None,
+) -> str:
+    type_labels = {
+        "vin": "VIN-запит",
+        "catalog": "Запит по каталогу",
+        "service": "Заявка на послугу",
+        "contact": "Контактна заявка",
+    }
+    normalized_type = str(lead_type or "contact").strip().lower()
+    title = _clean_text(website_name, 120) or "сайту"
+    lines = [f"<b>Нова заявка з сайту {escape(title)}</b>", ""]
+    lines.append(f"Тип: {escape(type_labels.get(normalized_type, 'Контактна заявка'))}")
+    if name:
+        lines.append(f"Імʼя: {escape(_clean_text(name, 80) or '—')}")
+    if phone:
+        lines.append(f"Телефон: {escape(_clean_text(phone, 40) or '—')}")
+    if vin:
+        lines.append(f"VIN: {escape(_clean_text(vin, 80) or '—')}")
+    if item_title:
+        lines.append(f"Позиція: {escape(_clean_text(item_title, 120) or '—')}")
+    if message:
+        lines.extend(["", f"Коментар: {escape(_clean_text(message, 220) or '—')}"])
+    if crm_url:
+        lines.extend(["", f'<a href="{escape(crm_url)}">Відкрити CRM</a>'])
+    return "\n".join(lines)
+
 def format_accepted_offer_notification(offer: dict) -> str:
     title = marketplace_lead_title(
         {
