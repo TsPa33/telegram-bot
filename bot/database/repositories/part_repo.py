@@ -949,6 +949,23 @@ async def update_generated_parts_status(
     return len(rows)
 
 
+async def count_seller_part_inventory_statuses(seller_id: int):
+    row = await fetchrow(
+        """
+        SELECT
+            COUNT(*)::int AS total,
+            COUNT(*) FILTER (WHERE status = 'available')::int AS available,
+            COUNT(*) FILTER (WHERE status = 'sold')::int AS sold,
+            COUNT(*) FILTER (WHERE status = 'hidden')::int AS hidden,
+            COUNT(*) FILTER (WHERE status = 'draft')::int AS draft
+        FROM seller_parts
+        WHERE seller_id = $1
+        """,
+        seller_id,
+    )
+    return dict(row) if row else {"total": 0, "available": 0, "sold": 0, "hidden": 0, "draft": 0}
+
+
 async def bulk_update_parts_status_by_category(
     seller_id: int,
     car_id: int,
