@@ -2327,8 +2327,8 @@
                 <div class="nav-panel">
                     <a class="{% if current_page == 'settings' %}active{% endif %}" href="/crm/seller/{{ account.crm_slug }}/settings">Тарифи</a>
                     <a class="sub" href="/crm/seller/{{ account.crm_slug }}/settings#payments">Оплати</a>
-                    <a class="sub {% if not has_cars %}deemphasized{% endif %}" href="/crm/seller/{{ account.crm_slug }}/settings#garage">
-                        Місця / слоти{% if not has_cars %} · неактивно{% endif %}
+                    <a class="sub {% if not has_cars %}deemphasized{% endif %}" href="/crm/seller/{{ account.crm_slug }}/settings#package-status">
+                        Місця для авто{% if not has_cars %} · неактивно{% endif %}
                     </a>
                     <a class="{% if current_page == 'analytics' %}active{% endif %}" href="/crm/seller/{{ account.crm_slug }}/analytics">Аналітика</a>
                 </div>

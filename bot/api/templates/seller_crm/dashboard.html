@@ -23,35 +23,91 @@
     .inventory-track{height:8px;background:rgba(148,163,184,.18);border-radius:999px;overflow:hidden;}
     .inventory-fill{height:100%;background:#111827;border-radius:999px;}
     .dashboard-empty{padding:14px;border:1px dashed var(--line);border-radius:14px;background:rgba(148,163,184,.08);}
-    @media(max-width:1100px){.control-kpis,.control-actions{grid-template-columns:repeat(3,minmax(0,1fr));}.control-grid{grid-template-columns:1fr;}}
-    @media(max-width:640px){.control-kpis,.control-actions{grid-template-columns:1fr 1fr;}.control-kpi strong{font-size:24px}.dashboard-row{grid-template-columns:1fr;}.dashboard-row-actions{justify-content:stretch}.dashboard-row-actions .btn{width:100%;}.lead-row{grid-template-columns:1fr}.control-action{min-height:44px;}}
+    .seller-start{display:grid;gap:14px;margin:0 0 16px;}
+    .seller-start-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;}
+    .seller-start-card{display:grid;gap:10px;align-content:start;min-height:190px;}
+    .seller-start-card h3{margin:0;color:var(--text);font-size:20px;}
+    .seller-start-card p{margin:0;color:var(--muted);line-height:1.5;}
+    .dashboard-package{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;}
+    .dashboard-package .status-cell{padding:12px;border:1px solid var(--line);border-radius:14px;background:rgba(248,250,252,.8);}
+    .dashboard-package strong{display:block;font-size:22px;color:var(--text);line-height:1;}
+    .dashboard-package span{display:block;margin-top:6px;color:var(--muted);font-weight:700;font-size:12px;}
+    @media(max-width:1100px){.control-kpis,.control-actions{grid-template-columns:repeat(3,minmax(0,1fr));}.control-grid{grid-template-columns:1fr;}.seller-start-grid{grid-template-columns:1fr;}}
+    @media(max-width:640px){.control-kpis,.control-actions,.dashboard-package{grid-template-columns:1fr 1fr;}.control-kpi strong{font-size:24px}.dashboard-row{grid-template-columns:1fr;}.dashboard-row-actions{justify-content:stretch}.dashboard-row-actions .btn{width:100%;}.lead-row{grid-template-columns:1fr}.control-action{min-height:44px;}}
     @media(max-width:360px){.control-kpis,.control-actions{grid-template-columns:1fr;}}
   </style>
 
-  <section class="workspace-hero command-hero" aria-labelledby="workspace-title">
-    <div>
-      <h2 id="workspace-title">Сьогодні</h2>
-      <p class="section-note">Порядок роботи: 1) покупець очікує, 2) активні чати, 3) відповідь надіслана, 4) архів/історія.</p>
+  <section class="seller-start" aria-labelledby="seller-start-title">
+    <article class="workspace-hero">
+      <div>
+        <h2 id="seller-start-title">Почніть роботу з CarPot</h2>
+        <p class="section-note">Оберіть формат роботи: продавайте запчастини через CarPot marketplace або створіть власний сайт для додаткових заявок.</p>
+      </div>
+      <a class="btn small" href="/crm/seller/{{ account.crm_slug }}/settings">Обрати формат</a>
+    </article>
+    <div class="seller-start-grid">
+      <article class="card seller-start-card">
+        <h3>🚗 Авторозборка</h3>
+        <p>Додавайте авто на розбір. CarPot автоматично створює 130+ запчастин та публікує їх у каталозі. Ви отримуєте заявки від покупців через CarPot.</p>
+        <a class="btn" href="/crm/seller/{{ account.crm_slug }}/settings#autorozborka">Обрати пакет</a>
+      </article>
+      <article class="card seller-start-card">
+        <h3>🌐 Власний сайт</h3>
+        <p>Створіть власний сайт з каталогом та VIN-заявками. Отримуйте заявки з CarPot та напряму через сайт.</p>
+        <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/websites/create">Створити сайт</a>
+      </article>
     </div>
-    <a class="btn small" href="/crm/seller/{{ account.crm_slug }}/leads">Відкрити всі заявки</a>
+    <article class="card" aria-labelledby="package-title">
+      <div class="section-head-row">
+        <div>
+          <h2 id="package-title">Ваш пакет</h2>
+          <p class="section-note">Поточний стан місць для авто на розборі.</p>
+        </div>
+        <span class="badge {{ 'status-success' if dashboard_package.active else 'status-waiting' }}">{{ 'Активний' if dashboard_package.active else 'Неактивний' }}</span>
+      </div>
+      {% if dashboard_package.active %}
+        <div class="dashboard-package">
+          <div class="status-cell"><strong>{{ dashboard_package.available }}</strong><span>Доступно авто</span></div>
+          <div class="status-cell"><strong>{{ dashboard_package.used }}</strong><span>Використано</span></div>
+          <div class="status-cell"><strong>{{ dashboard_package.free }}</strong><span>Залишилось</span></div>
+          <div class="status-cell"><strong>CRM</strong><span>Telegram + заявки</span></div>
+        </div>
+      {% else %}
+        <div class="dashboard-empty">
+          <strong>Пакет не активовано.</strong>
+          <p class="section-note">Для додавання авто оберіть пакет.</p>
+          <a class="btn small" href="/crm/seller/{{ account.crm_slug }}/settings#autorozborka">Переглянути пакети</a>
+        </div>
+      {% endif %}
+    </article>
   </section>
 
-  <section class="control-kpis" aria-label="Ключові показники продавця">
-    <a class="control-kpi" href="/crm/seller/{{ account.crm_slug }}/content/products"><strong>{{ dashboard_metrics.parts_count or 0 }}</strong><span>Запчастин</span></a>
-    <a class="control-kpi" href="/crm/seller/{{ account.crm_slug }}/content/cars"><strong>{{ dashboard_metrics.cars_count or 0 }}</strong><span>Авто на розборі</span></a>
-    <a class="control-kpi" href="/crm/seller/{{ account.crm_slug }}/websites"><strong>{{ dashboard_metrics.sites_count or 0 }}</strong><span>Сайти</span></a>
-    <a class="control-kpi" href="/crm/seller/{{ account.crm_slug }}/websites"><strong>{{ dashboard_metrics.new_leads_count or 0 }}</strong><span>Нові заявки</span></a>
-    <a class="control-kpi" href="/crm/seller/{{ account.crm_slug }}/websites"><strong>{{ dashboard_metrics.total_leads_count or 0 }}</strong><span>Всього заявок</span></a>
-    <a class="control-kpi" href="/crm/seller/{{ account.crm_slug }}/content/services"><strong>{{ dashboard_metrics.services_count or 0 }}</strong><span>Послуги</span></a>
-  </section>
-
-  <section class="control-actions" aria-label="Швидкі дії">
-    <a class="btn control-action" href="/crm/seller/{{ account.crm_slug }}/content/cars/create">Додати авто</a>
-    <a class="btn control-action ghost" href="/crm/seller/{{ account.crm_slug }}/content/products/create">Додати товар</a>
-    <a class="btn control-action ghost" href="/crm/seller/{{ account.crm_slug }}/websites">Відкрити заявки</a>
-    <a class="btn control-action ghost" href="/crm/seller/{{ account.crm_slug }}/websites">Мої сайти</a>
-    <a class="btn control-action ghost" href="/crm/seller/{{ account.crm_slug }}/websites/create">Створити сайт</a>
-    <a class="btn control-action ghost" href="/crm/seller/{{ account.crm_slug }}/content/products">Відкрити каталог</a>
+  <section class="card" aria-label="Останні заявки Website V2">
+    <div class="section-head-row">
+      <div>
+        <h2>Останні заявки з сайтів</h2>
+        <p class="section-note">Нові заявки з Website V2, найновіші першими.</p>
+      </div>
+      <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/websites">Усі заявки</a>
+    </div>
+    <div class="dashboard-table">
+      {% for lead in recent_website_leads %}
+        <div class="dashboard-row lead-row">
+          <div>
+            <div class="dashboard-row-title">{{ lead.type_label }} · {{ lead.name or 'Без імені' }}</div>
+            <div class="dashboard-row-meta">
+              <span>{{ lead.phone }}</span><span>·</span><span>{{ lead.website_name }}</span><span>·</span><span>{{ lead.created_at.strftime('%d.%m %H:%M') if lead.created_at else '—' }}</span><span>·</span><span>{{ lead.status_label }}</span>
+            </div>
+          </div>
+          <div class="dashboard-row-actions"><a class="btn small" href="/crm/seller/{{ account.crm_slug }}/websites/{{ lead.website_id }}/leads">Відкрити</a></div>
+        </div>
+      {% else %}
+        <div class="dashboard-empty">
+          <strong>Заявки ще не надходили</strong>
+          <p class="section-note">Коли покупець відправить VIN-запит або сервісну заявку, вона зʼявиться тут.</p>
+        </div>
+      {% endfor %}
+    </div>
   </section>
 
   <section class="control-grid" aria-label="Контрольний центр">
@@ -112,32 +168,30 @@
     </aside>
   </section>
 
-  <section class="card" aria-label="Останні заявки Website V2">
-    <div class="section-head-row">
-      <div>
-        <h2>Останні заявки з сайтів</h2>
-        <p class="section-note">Нові заявки з Website V2, найновіші першими.</p>
-      </div>
-      <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/websites">Усі заявки</a>
+  <section class="workspace-hero command-hero" aria-labelledby="workspace-title">
+    <div>
+      <h2 id="workspace-title">Сьогодні</h2>
+      <p class="section-note">Порядок роботи: 1) покупець очікує, 2) активні чати, 3) відповідь надіслана, 4) архів/історія.</p>
     </div>
-    <div class="dashboard-table">
-      {% for lead in recent_website_leads %}
-        <div class="dashboard-row lead-row">
-          <div>
-            <div class="dashboard-row-title">{{ lead.type_label }} · {{ lead.name or 'Без імені' }}</div>
-            <div class="dashboard-row-meta">
-              <span>{{ lead.phone }}</span><span>·</span><span>{{ lead.website_name }}</span><span>·</span><span>{{ lead.created_at.strftime('%d.%m %H:%M') if lead.created_at else '—' }}</span><span>·</span><span>{{ lead.status_label }}</span>
-            </div>
-          </div>
-          <div class="dashboard-row-actions"><a class="btn small" href="/crm/seller/{{ account.crm_slug }}/websites/{{ lead.website_id }}/leads">Відкрити</a></div>
-        </div>
-      {% else %}
-        <div class="dashboard-empty">
-          <strong>Заявки ще не надходили</strong>
-          <p class="section-note">Коли покупець відправить VIN-запит або сервісну заявку, вона зʼявиться тут.</p>
-        </div>
-      {% endfor %}
-    </div>
+    <a class="btn small" href="/crm/seller/{{ account.crm_slug }}/leads">Відкрити всі заявки</a>
+  </section>
+
+  <section class="control-kpis" aria-label="Ключові показники продавця">
+    <a class="control-kpi" href="/crm/seller/{{ account.crm_slug }}/content/products"><strong>{{ dashboard_metrics.parts_count or 0 }}</strong><span>Запчастин</span></a>
+    <a class="control-kpi" href="/crm/seller/{{ account.crm_slug }}/content/cars"><strong>{{ dashboard_metrics.cars_count or 0 }}</strong><span>Авто на розборі</span></a>
+    <a class="control-kpi" href="/crm/seller/{{ account.crm_slug }}/websites"><strong>{{ dashboard_metrics.sites_count or 0 }}</strong><span>Сайти</span></a>
+    <a class="control-kpi" href="/crm/seller/{{ account.crm_slug }}/websites"><strong>{{ dashboard_metrics.new_leads_count or 0 }}</strong><span>Нові заявки</span></a>
+    <a class="control-kpi" href="/crm/seller/{{ account.crm_slug }}/websites"><strong>{{ dashboard_metrics.total_leads_count or 0 }}</strong><span>Всього заявок</span></a>
+    <a class="control-kpi" href="/crm/seller/{{ account.crm_slug }}/content/services"><strong>{{ dashboard_metrics.services_count or 0 }}</strong><span>Послуги</span></a>
+  </section>
+
+  <section class="control-actions" aria-label="Швидкі дії">
+    <a class="btn control-action" href="/crm/seller/{{ account.crm_slug }}/content/cars/create">Додати авто</a>
+    <a class="btn control-action ghost" href="/crm/seller/{{ account.crm_slug }}/content/products/create">Додати товар</a>
+    <a class="btn control-action ghost" href="/crm/seller/{{ account.crm_slug }}/websites">Відкрити заявки</a>
+    <a class="btn control-action ghost" href="/crm/seller/{{ account.crm_slug }}/websites">Мої сайти</a>
+    <a class="btn control-action ghost" href="/crm/seller/{{ account.crm_slug }}/websites/create">Створити сайт</a>
+    <a class="btn control-action ghost" href="/crm/seller/{{ account.crm_slug }}/content/products">Відкрити каталог</a>
   </section>
 
   <section class="ops-strip" aria-label="Операційний стан">
@@ -252,7 +306,7 @@
     <h2>Профіль і тарифи</h2>
     <p id="public-card">Базовий кабінет продавця: <b>безкоштовно</b>. <a href="/crm/seller/{{ account.crm_slug }}/settings">Налаштування та тарифи</a> доступні в окремому розділі.</p>
     <p id="packages"><span class="badge">Активні пакети</span> <a href="/crm/seller/{{ account.crm_slug }}/settings#packages">Переглянути пакети</a></p>
-    <p id="garage-slots" class="{% if not has_cars %}muted{% endif %}"><a href="/crm/seller/{{ account.crm_slug }}/settings#garage">Слоти авто</a>{% if not has_cars %}: де-емфазовано до появи авто{% endif %}</p>
+    <p id="garage-slots" class="{% if not has_cars %}muted{% endif %}"><a href="/crm/seller/{{ account.crm_slug }}/settings#package-status">Авто на розборі</a>{% if not has_cars %}: оберіть пакет і додайте перше авто{% endif %}</p>
     <p id="payment-history" class="muted"><a href="/crm/seller/{{ account.crm_slug }}/settings#payments">Історія оплат</a></p>
     <p>Адреса кабінету: <b>/crm/seller/{{ account.crm_slug }}</b> · <a href="/crm/seller/{{ account.crm_slug }}/settings">Налаштування</a></p>
     {% if not demo_mode %}<form method="post" action="/crm/seller/logout"><button class="btn" type="submit">Вийти</button></form>{% endif %}

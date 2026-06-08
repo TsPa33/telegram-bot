@@ -7,6 +7,7 @@ from datetime import datetime
 import pytz
 
 from aiogram import Bot
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from bot.config import LIQPAY_PRIVATE_KEY, BOT_TOKEN
 from bot.database.base import execute, fetchrow
@@ -171,12 +172,26 @@ async def liqpay_callback(request: Request):
             kyiv_tz = pytz.timezone("Europe/Kyiv")
             now = datetime.now(kyiv_tz).strftime("%d.%m.%Y %H:%M")
 
+            reply_markup = None
             if status == "success":
                 if product == "garage":
-                    text = (
-                        f"✅ Оплата {amount} грн\n"
-                        f"Зараховано {slots_map.get(amount, 0)} місце(ць)\n"
+                    crm_account = await fetchrow(
+                        "SELECT crm_slug FROM seller_crm_accounts WHERE seller_id = $1 AND is_active = TRUE LIMIT 1",
+                        payment["seller_id"],
                     )
+                    add_car_url = None
+                    if crm_account and crm_account.get("crm_slug"):
+                        crm_base_url = (SELLER_CRM_BASE_URL or "https://crm.carpot.com.ua").rstrip("/")
+                        add_car_url = f"{crm_base_url}/crm/seller/{crm_account['crm_slug']}/content/cars/create"
+                    text = (
+                        "✅ Пакет активовано.\n\n"
+                        f"Доступно авто на розборі: {slots_map.get(amount, 0)}\n\n"
+                        "Тепер додайте авто на розбір — CarPot створить запчастини та почне приймати заявки.\n"
+                    )
+                    if add_car_url:
+                        reply_markup = InlineKeyboardMarkup(inline_keyboard=[[
+                            InlineKeyboardButton(text="➕ Додати авто", url=add_car_url)
+                        ]])
                 elif product == SELLER_CRM_PRODUCT:
                     crm_base_url = (SELLER_CRM_BASE_URL or "https://crm.carpot.com.ua").rstrip("/")
                     text = (
@@ -187,9 +202,9 @@ async def liqpay_callback(request: Request):
                     )
                 elif product in {"site", "site_standard", "site_plus"}:
                     package_titles = {
-                        "site_standard": "Сайт Стандарт — 499 грн",
-                        "site_plus": "Сайт Візитка Plus — 1499 грн",
-                        "site": "Сайт Стандарт — 499 грн",
+                        "site_standard": "Сайт для авторозборки — 499 грн / рік",
+                        "site_plus": "Сайт-візитка для послуг — 1499 грн",
+                        "site": "Сайт для авторозборки — 499 грн / рік",
                     }
                     text = (
                         f"🌐 Оплата підтверджена: {package_titles.get(product, 'Пакет сайту')}\n\n"
@@ -199,7 +214,7 @@ async def liqpay_callback(request: Request):
                     )
 
                 text += now
-                await bot.send_message(telegram_id, text)
+                await bot.send_message(telegram_id, text, reply_markup=reply_markup)
 
             else:
                 reason = payload.get("err_description")

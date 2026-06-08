@@ -29,9 +29,9 @@ liqpay = LiqPayService(LIQPAY_PUBLIC_KEY, LIQPAY_PRIVATE_KEY)
 
 
 PACKAGES = {
-    "1": {"slots": 1, "amount": 99},
-    "5": {"slots": 5, "amount": 199},
-    "10": {"slots": 10, "amount": 299},
+    "1": {"cars": 1, "amount": 99, "title": "1 авто", "subtitle": "Підійде для старту."},
+    "5": {"cars": 5, "amount": 199, "title": "5 авто", "subtitle": "Для активної розборки."},
+    "10": {"cars": 10, "amount": 299, "title": "10 авто", "subtitle": "Максимальний пакет."},
 }
 
 
@@ -62,8 +62,9 @@ async def _create_package_payment(message: Message, package_key: str, telegram_i
 
         await message.answer(
             f"💳 <b>Оплата</b>\n\n"
-            f"🔹 {package['slots']} авто — {package['amount']} грн\n\n"
-            f"Натисніть кнопку нижче для оплати:",
+            f"🔹 {package['title']} — {package['amount']} грн / місяць\n"
+            f"{package['subtitle']}\n\n"
+            "Після активації додайте авто на розбір — CarPot створить запчастини та почне приймати заявки.",
             parse_mode="HTML",
             reply_markup=kb.as_markup()
         )
@@ -153,22 +154,50 @@ async def show_packages(message: Message):
 
     kb = InlineKeyboardBuilder()
 
-    kb.button(text="A) 1 місце — 99 грн", callback_data="package:1")
-    kb.button(text="A) 5 місць — 199 грн", callback_data="package:5")
-    kb.button(text="A) 10 місць — 299 грн", callback_data="package:10")
-    kb.button(text="B) Пакети сайтів", callback_data="site:packages")
+    kb.button(text="🚗 1 авто — 99 грн / місяць", callback_data="package:1")
+    kb.button(text="🚗 5 авто — 199 грн / місяць", callback_data="package:5")
+    kb.button(text="🚗 10 авто — 299 грн / місяць", callback_data="package:10")
+    kb.button(text="🌐 Власний сайт", callback_data="site:packages")
     kb.button(text="📊 Історія транзакцій", callback_data="seller:transactions")
 
     kb.adjust(1)
 
+    text = """💳 <b>Пакети CarPot</b>
+
+Оберіть, як хочете отримувати заявки:
+
+<b>A. Авторозборка через CarPot marketplace</b>
+Додавайте авто на розбір. CarPot автоматично створює 130+ запчастин, публікує їх у каталозі та надсилає заявки в Telegram/CRM.
+
+<b>1 авто — 99 грн / місяць</b>
+Підійде для старту.
+✓ 1 авто на розборі
+✓ CRM
+✓ Каталог CarPot
+✓ Telegram сповіщення
+✓ VIN заявки
+
+<b>5 авто — 199 грн / місяць</b>
+Для активної розборки.
+✓ 5 авто на розборі
+✓ CRM
+✓ Каталог CarPot
+✓ Telegram сповіщення
+✓ VIN заявки
+
+<b>10 авто — 299 грн / місяць</b>
+Максимальний пакет.
+✓ 10 авто на розборі
+✓ CRM
+✓ Каталог CarPot
+✓ Telegram сповіщення
+✓ VIN заявки
+
+<b>B. Власний сайт</b>
+Створіть сайт з каталогом або послугами та отримуйте заявки напряму з сайту додатково до CarPot."""
+
     await message.answer(
-        "💳 <b>Магазин / Тарифи</b>\n\n"
-        "<b>A. Місця для авто / товарів</b>\n"
-        "Оберіть 1, 5 або 10 місць.\n\n"
-        "<b>B. Сайт для бізнесу</b>\n"
-        "Відкрийте пакети сайтів та оберіть формат.\n\n"
-        "<b>C. Що входить</b>\n"
-        "сайт • CRM • заявки • Telegram-сповіщення • контакти • товари/послуги • адаптація під бізнес",
+        text,
         parse_mode="HTML",
         reply_markup=kb.as_markup()
     )
@@ -268,7 +297,7 @@ async def show_transactions(callback: CallbackQuery):
         text += f"({status})\n"
 
         if t.get("product") == "garage":
-            text += f"Зараховано {t.get('slots', 0)} місце(ць)\n"
+            text += f"Зараховано авто на розборі: {t.get('slots', 0)}\n"
 
         elif t.get("product") == "site" and t["status"] == "success":
             text += "🌐 Сайт створено\n"

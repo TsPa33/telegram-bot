@@ -1527,6 +1527,7 @@ async def seller_crm_demo(request: Request):
     website_lead_summary = {"new_leads_count": 4, "total_leads_count": 14}
     dashboard_metrics = {"parts_count": 532, "cars_count": 6, "sites_count": 2, "new_leads_count": 4, "total_leads_count": 14, "services_count": 3}
     inventory_summary = {"total": 532, "products_total": 120, "parts_total": 412, "available": 450, "sold": 58, "hidden": 12, "draft": 12}
+    dashboard_package = {"active": True, "available": 10, "used": 2, "free": 8}
     recent_website_leads = [
         {"id": 1, "website_id": 1, "type_label": "VIN-запит", "name": "Олександр", "phone": "+380••• •• 42", "website_name": "Demo Catalog", "created_at": datetime.utcnow(), "status_label": "Нова", "status_class": "status-new"},
     ]
@@ -1555,6 +1556,7 @@ async def seller_crm_demo(request: Request):
             website_lead_summary=website_lead_summary,
             recent_website_leads=recent_website_leads,
             inventory_summary=inventory_summary,
+            dashboard_package=dashboard_package,
         ),
     )
 
@@ -3902,6 +3904,33 @@ async def seller_crm_settings(request: Request, crm_slug: str):
     )
 
 
+@router.post("/{crm_slug}/settings/garage-package/{package_key}")
+async def seller_crm_garage_package_checkout(request: Request, crm_slug: str, package_key: str):
+    try:
+        account, _subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+
+    package_map = {
+        "1": {"amount": 99},
+        "5": {"amount": 199},
+        "10": {"amount": 299},
+    }
+    package = package_map.get(package_key)
+    if not package:
+        raise HTTPException(status_code=400, detail="Unknown garage package")
+
+    payment = await liqpay.create_payment(
+        amount=package["amount"],
+        server_url=LIQPAY_CALLBACK_URL,
+        seller_id=account["seller_id"],
+        product="garage",
+    )
+    return RedirectResponse(url=payment["url"], status_code=303)
+
+
 @router.post("/{crm_slug}/settings/site-package/{package_key}")
 async def seller_crm_site_package_checkout(request: Request, crm_slug: str, package_key: str):
     try:
@@ -4091,6 +4120,7 @@ async def seller_crm_dashboard(request: Request, crm_slug: str):
         website_lead_summary = {"new_leads_count": 4, "total_leads_count": 14}
         recent_website_leads = []
         inventory_summary = {"total": 532, "products_total": 120, "parts_total": 412, "available": 450, "sold": 58, "hidden": 12, "draft": 12}
+        settings_summary = _demo_settings_summary()
     else:
         stats = dict(await get_seller_crm_dashboard(seller_id) or {})
         marketplace_summary = dict(await get_seller_crm_marketplace_summary(seller_id) or {})
@@ -4109,6 +4139,15 @@ async def seller_crm_dashboard(request: Request, crm_slug: str):
             await count_seller_product_inventory_statuses(seller_id),
             await count_seller_part_inventory_statuses(seller_id),
         )
+        settings_summary = await get_seller_crm_settings_summary(seller_id) or {}
+    dashboard_package = {
+        "active": bool((settings_summary or {}).get("garage_slots_available")),
+        "available": int((settings_summary or {}).get("active_garage_slots") or 0),
+        "used": int((settings_summary or {}).get("used_garage_slots") or 0),
+        "free": (settings_summary or {}).get("free_garage_slots"),
+    }
+    if dashboard_package["free"] is None and dashboard_package["active"]:
+        dashboard_package["free"] = max(dashboard_package["available"] - dashboard_package["used"], 0)
     has_website = bool(dashboard_websites or site or account_flags.get("has_site") or account_flags.get("website"))
     has_cars = int((stats or {}).get("active_listings") or 0) > 0
     has_services = int((stats or {}).get("services_count") or 0) > 0
@@ -4158,6 +4197,7 @@ async def seller_crm_dashboard(request: Request, crm_slug: str):
             website_lead_summary=website_lead_summary,
             recent_website_leads=recent_website_leads,
             inventory_summary=inventory_summary,
+            dashboard_package=dashboard_package,
         ),
     )
 

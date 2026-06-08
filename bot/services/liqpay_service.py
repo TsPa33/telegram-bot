@@ -17,9 +17,9 @@ DESCRIPTIONS = {
     "site": format_site_package_title("standard"),
     "site_standard": format_site_package_title("standard"),
     "site_plus": format_site_package_title("plus"),
-    "garage_1": "1 місце в гаражі",
-    "garage_5": "5 місць в гаражі",
-    "garage_10": "10 місць в гаражі",
+    "garage_1": "1 авто на розборі",
+    "garage_5": "5 авто на розборі",
+    "garage_10": "10 авто на розборі",
     "seller_crm": "Професійна CRM CarPot — 1 місяць",
 }
 
