@@ -1,7 +1,7 @@
 {% extends "seller_crm/base.html" %}
 {% import "seller_crm/components/forms.html" as forms %}
 {% import "seller_crm/components/layout.html" as layout %}
-{% block crm_kicker %}Контент продавця{% endblock %}
+{% block crm_kicker %}Каталог продавця{% endblock %}
 {% block crm_heading %}{{ form_title }}{% endblock %}
 {% block content %}
 <style>
@@ -27,7 +27,7 @@
 
 <div class="car-form-wrap">
   {% set cancel_action %}<a class="btn ghost" href="{{ cancel_url }}">← Скасувати</a>{% endset %}
-  {{ layout.page_header(form_title, "Створіть авто з існуючої марки та моделі. Фото можна буде додати окремо. Поки авто буде створено без фото." if create_mode else "Редагуйте лише опис, статус і показ у каталозі. Бренд, модель, фото та продавець не змінюються.", [cancel_action]) }}
+  {{ layout.page_header(form_title, "Оберіть марку й модель авто. Фото можна додати після створення." if create_mode else "Оновіть опис і показ авто в каталозі. Марка та модель залишаються без змін.", [cancel_action]) }}
 
   <section class="card car-form-card">
     {% if error %}<div class="form-error" role="alert">{{ error }}</div>{% endif %}

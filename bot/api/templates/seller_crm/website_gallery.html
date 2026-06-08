@@ -2,7 +2,7 @@
 {% block crm_kicker %}Галерея{% endblock %}
 {% block crm_heading %}Галерея{% endblock %}
 {% block content %}
-{% if status == 'saved' %}<div class="notice">Зміни збережено у чернетку. Опублікуйте сайт, щоб клієнти побачили зміни.</div>{% endif %}
+{% if status == 'saved' %}<div class="notice">Зміни збережено. Опублікуйте сайт, щоб клієнти їх побачили.</div>{% endif %}
 <article class="card">
   <p class="muted">Додайте фото товарів, робіт або прикладів вашої діяльності.</p>
   <form method="post" action="/crm/seller/{{ account.crm_slug }}/website/content/gallery" class="stack-top">

@@ -1,18 +1,32 @@
 {% extends "seller_crm/base.html" %}
-{% block crm_kicker %}Website V2{% endblock %}
+{% block crm_kicker %}Сайт{% endblock %}
 {% block crm_heading %}Створення сайту{% endblock %}
 {% block content %}
+<style>
+  .pricing-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;}
+  .package-card{display:grid;gap:12px;align-content:start;}
+  .package-price{font-size:28px;font-weight:900;color:var(--text);line-height:1.1;}
+  .package-price span{font-size:13px;color:var(--muted);font-weight:700;}
+  .package-list{display:grid;gap:7px;margin:0;padding:0;list-style:none;color:var(--secondary);}
+  @media(max-width:980px){.pricing-grid{grid-template-columns:1fr;}.package-card .btn{width:100%;}}
+</style>
 <div class="crm-page">
   <section class="crm-page-head">
     <div>
       <h1>Створення сайту</h1>
-      <p class="section-note">Оберіть тип сайту, назву та короткий субдомен для публічної адреси.</p>
+      {% if can_create_website %}
+        <p class="section-note">Оберіть тип сайту, назву та короткий субдомен для публічної адреси.</p>
+      {% else %}
+        <p class="section-note">{{ website_required_message }}</p>
+      {% endif %}
     </div>
     <div class="crm-action-row"><a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/websites">Назад до сайтів</a></div>
   </section>
 
-  {% if error == "duplicate" %}<div class="crm-notice warning">Такий субдомен вже зайнятий. Оберіть інший.</div>{% elif error %}<div class="crm-notice error">Помилка: {{ error }}</div>{% endif %}
+  {% if status == "custom_requested" %}<div class="crm-notice success">Заявку на індивідуальний сайт передано адміністраторам. Ми звʼяжемося з вами для обговорення проекту.</div>{% endif %}
+  {% if error == "duplicate" %}<div class="crm-notice warning">Такий субдомен вже зайнятий. Оберіть інший.</div>{% elif error == "website_package_required" %}<div class="crm-notice warning">{{ website_required_message }}</div>{% elif error %}<div class="crm-notice error">Помилка: {{ error }}</div>{% endif %}
 
+  {% if can_create_website %}
   <section class="card">
     <form class="crm-form" method="post">
       <label>Тип сайту
@@ -32,8 +46,68 @@
   </section>
 
   <section class="crm-card-grid">
-    <article class="card"><h2>Каталог запчастин</h2><p class="section-note">Показує авто на розборі та товари/запчастини з CRM Каталогу.</p></article>
+    <article class="card"><h2>Каталог запчастин</h2><p class="section-note">Показує авто на розборі, товари та запчастини з вашого каталогу.</p></article>
     <article class="card"><h2>Сайт послуг</h2><p class="section-note">Підходить для сервісів, евакуаторів, діагностики та інших послуг.</p></article>
   </section>
+  {% else %}
+  <section class="card">
+    <h2>Пакети сайту</h2>
+    <p class="section-note">{{ website_required_message }}</p>
+    <div class="pricing-grid">
+      <article class="mini-card package-card">
+        <div class="mini-card-content package-card">
+          <div class="mini-card-title"><b>Сайт для авторозборки</b></div>
+          <div class="package-price">499 грн <span>/ рік</span></div>
+          <ul class="package-list">
+            <li>✓ Власний сайт</li>
+            <li>✓ Каталог запчастин</li>
+            <li>✓ VIN заявки</li>
+            <li>✓ CRM</li>
+            <li>✓ Telegram сповіщення</li>
+          </ul>
+          <form method="post" action="/crm/seller/{{ account.crm_slug }}/settings/site-package/standard">
+            <button class="btn" type="submit">Сайт для авторозборки — 499 грн</button>
+          </form>
+        </div>
+      </article>
+      <article class="mini-card package-card">
+        <div class="mini-card-content package-card">
+          <div class="mini-card-title"><b>Сайт-візитка</b></div>
+          <div class="package-price">1499 грн</div>
+          <ul class="package-list">
+            <li>✓ Послуги</li>
+            <li>✓ Контакти</li>
+            <li>✓ Карта</li>
+            <li>✓ CRM</li>
+            <li>✓ Telegram повідомлення</li>
+          </ul>
+          <form method="post" action="/crm/seller/{{ account.crm_slug }}/settings/site-package/plus">
+            <button class="btn" type="submit">Сайт-візитка — 1499 грн</button>
+          </form>
+        </div>
+      </article>
+      <article class="mini-card package-card">
+        <div class="mini-card-content package-card">
+          <div class="mini-card-title"><b>Індивідуальний сайт</b></div>
+          <div class="package-price">від 4999 грн</div>
+          <ul class="package-list">
+            <li>✓ Індивідуальний дизайн</li>
+            <li>✓ Унікальна структура</li>
+            <li>✓ Додаткові модулі</li>
+            <li>✓ CRM інтеграція</li>
+            <li>✓ Telegram повідомлення</li>
+            <li>✓ Підготовка під рекламу</li>
+            <li>✓ SEO налаштування</li>
+            <li>✓ Каталог або послуги</li>
+            <li>✓ Будь-які додаткові блоки</li>
+          </ul>
+          <form method="post" action="/crm/seller/{{ account.crm_slug }}/settings/site-package/premium">
+            <button class="btn" type="submit">Обговорити проект</button>
+          </form>
+        </div>
+      </article>
+    </div>
+  </section>
+  {% endif %}
 </div>
 {% endblock %}
