@@ -2817,7 +2817,7 @@ async def seller_crm_content_services(request: Request, crm_slug: str):
         "without_price": sum(1 for service in services if not service.get("has_price")),
         "without_photo": sum(1 for service in services if not service.get("has_photo")),
     }
-    site = _demo_site() if _is_demo_account(account) else await get_current_seller_site_or_404(seller_id)
+    site = _demo_site() if _is_demo_account(account) else await get_site_by_seller(seller_id)
     account_flags = dict(account)
     has_website = bool(site or account_flags.get("has_site") or account_flags.get("website"))
 
@@ -3117,22 +3117,37 @@ async def seller_crm_service_disable(request: Request, crm_slug: str, service_id
 
 
 # Static route must be registered before dynamic {id} route.
-@router.get("/{crm_slug}/content/cars")
-async def seller_crm_content_cars(request: Request, crm_slug: str):
-    try:
-        account, subscription = await _authorized_account(request, crm_slug)
-    except HTTPException as exc:
-        if exc.status_code == 303:
-            return RedirectResponse(url=exc.detail, status_code=303)
-        raise
+def _has_free_garage_slot(summary: dict[str, Any]) -> bool:
+    return int(summary.get("garage_slots_total") or 0) > 0 and int(summary.get("garage_slots_free") or 0) > 0
 
+
+def _garage_package_notice(crm_slug: str, message: str | None = None) -> dict[str, str]:
+    return {
+        "title": "Потрібен активний пакет",
+        "message": message or "Щоб додати авто на розбір, активуйте пакет.",
+        "action_url": f"/crm/seller/{crm_slug}/settings#autorozborka",
+        "action_label": "Обрати пакет",
+    }
+
+
+async def _render_content_cars_page(
+    request: Request,
+    *,
+    crm_slug: str,
+    account,
+    subscription,
+    notice: dict[str, str] | None = None,
+    status_code: int = 200,
+):
     seller_id = account["seller_id"]
     if _is_demo_account(account):
         summary = _demo_content_summary()
         cars = []
+        site = _demo_site()
     else:
         summary = dict(await get_seller_crm_content_summary(seller_id) or {})
         cars = [dict(car) for car in await list_seller_crm_cars_inventory(seller_id)]
+        site = await get_site_by_seller(seller_id)
     for car in cars:
         status_meta = get_car_display_status(car.get("status"))
         car["status_meta"] = status_meta
@@ -3152,9 +3167,9 @@ async def seller_crm_content_cars(request: Request, crm_slug: str):
         "phone_clicks": sum(int(car.get("phone_clicks") or 0) for car in cars),
         "site_clicks": sum(int(car.get("site_clicks") or 0) for car in cars),
     }
-    site = _demo_site() if _is_demo_account(account) else await get_current_seller_site_or_404(seller_id)
     account_flags = dict(account)
     has_website = bool(site or account_flags.get("has_site") or account_flags.get("website"))
+    can_add_car = _is_demo_account(account) or _has_free_garage_slot(summary)
 
     return templates.TemplateResponse(
         "seller_crm/content_cars.html",
@@ -3171,7 +3186,27 @@ async def seller_crm_content_cars(request: Request, crm_slug: str):
             has_website=has_website,
             has_cars=bool(cars),
             has_services=int(summary.get("active_services") or 0) > 0,
+            can_add_car=can_add_car,
+            notice=notice,
         ),
+        status_code=status_code,
+    )
+
+
+@router.get("/{crm_slug}/content/cars")
+async def seller_crm_content_cars(request: Request, crm_slug: str):
+    try:
+        account, subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+
+    return await _render_content_cars_page(
+        request,
+        crm_slug=crm_slug,
+        account=account,
+        subscription=subscription,
     )
 
 
@@ -3183,6 +3218,19 @@ async def seller_crm_car_create_form(request: Request, crm_slug: str):
         if exc.status_code == 303:
             return RedirectResponse(url=exc.detail, status_code=303)
         raise
+
+    summary = _demo_content_summary() if _is_demo_account(account) else dict(await get_seller_crm_content_summary(account["seller_id"]) or {})
+    if not _is_demo_account(account) and not _has_free_garage_slot(summary):
+        message = "Щоб додати авто на розбір, активуйте пакет."
+        if int(summary.get("garage_slots_total") or 0) > 0:
+            message = "У поточному пакеті немає вільних місць для нового авто. Оберіть пакет із більшою кількістю авто."
+        return await _render_content_cars_page(
+            request,
+            crm_slug=crm_slug,
+            account=account,
+            subscription=subscription,
+            notice=_garage_package_notice(crm_slug, message),
+        )
 
     return await _render_car_create_form(
         request,
@@ -3207,6 +3255,19 @@ async def seller_crm_car_create(
         if exc.status_code == 303:
             return RedirectResponse(url=exc.detail, status_code=303)
         raise
+
+    summary = _demo_content_summary() if _is_demo_account(account) else dict(await get_seller_crm_content_summary(account["seller_id"]) or {})
+    if not _is_demo_account(account) and not _has_free_garage_slot(summary):
+        message = "Щоб додати авто на розбір, активуйте пакет."
+        if int(summary.get("garage_slots_total") or 0) > 0:
+            message = "У поточному пакеті немає вільних місць для нового авто. Оберіть пакет із більшою кількістю авто."
+        return await _render_content_cars_page(
+            request,
+            crm_slug=crm_slug,
+            account=account,
+            subscription=subscription,
+            notice=_garage_package_notice(crm_slug, message),
+        )
 
     catalog_value = is_catalog in {"1", "true", "on", "yes"}
     form = _car_create_form_payload(
@@ -3253,14 +3314,12 @@ async def seller_crm_car_create(
             is_catalog=catalog_value,
         )
     except SellerCrmGarageFullError:
-        return await _render_car_create_form(
+        return await _render_content_cars_page(
             request,
+            crm_slug=crm_slug,
             account=account,
             subscription=subscription,
-            crm_slug=crm_slug,
-            form=form,
-            error="Немає вільних місць у гаражі.",
-            status_code=400,
+            notice=_garage_package_notice(crm_slug),
         )
 
     if not created:
