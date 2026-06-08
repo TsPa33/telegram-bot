@@ -71,7 +71,7 @@
       </div>
       <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/websites/create">Створити сайт</a>
     </div>
-    <div class="grid two">
+    <div class="pricing-grid">
       <article class="mini-card package-card" aria-labelledby="website-standard-title">
         <div class="mini-card-content package-card">
           <div class="mini-card-title"><b id="website-standard-title">Сайт для авторозборки</b></div>
@@ -86,7 +86,7 @@
             <li>✓ Заявки з власного сайту</li>
           </ul>
           <form method="post" action="/crm/seller/{{ account.crm_slug }}/settings/site-package/standard">
-            <button class="btn" type="submit">Створити сайт</button>
+            <button class="btn" type="submit">Сайт для авторозборки — 499 грн</button>
           </form>
         </div>
       </article>
@@ -105,7 +105,28 @@
             <li>✓ CRM</li>
           </ul>
           <form method="post" action="/crm/seller/{{ account.crm_slug }}/settings/site-package/plus">
-            <button class="btn" type="submit">Створити сайт-візитку</button>
+            <button class="btn" type="submit">Сайт-візитка — 1499 грн</button>
+          </form>
+        </div>
+      </article>
+
+      <article class="mini-card package-card" aria-labelledby="website-premium-title">
+        <div class="mini-card-content package-card">
+          <div class="mini-card-title"><b id="website-premium-title">Індивідуальний сайт</b></div>
+          <div class="package-price">від 4999 грн</div>
+          <ul class="package-list">
+            <li>✓ Індивідуальний дизайн</li>
+            <li>✓ Унікальна структура</li>
+            <li>✓ Додаткові модулі</li>
+            <li>✓ CRM інтеграція</li>
+            <li>✓ Telegram повідомлення</li>
+            <li>✓ Підготовка під рекламу</li>
+            <li>✓ SEO налаштування</li>
+            <li>✓ Каталог або послуги</li>
+            <li>✓ Будь-які додаткові блоки</li>
+          </ul>
+          <form method="post" action="/crm/seller/{{ account.crm_slug }}/settings/site-package/premium">
+            <button class="btn" type="submit">Обговорити проект</button>
           </form>
         </div>
       </article>
