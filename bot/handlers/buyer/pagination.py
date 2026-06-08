@@ -17,6 +17,7 @@ from bot.database.repositories.buyer_repo import (
 )
 from bot.database.base import execute
 from bot.database.base import fetch
+from bot.database.repositories.seller_repo import get_seller_by_telegram_id
 
 from bot.utils.formatters import format_car_card
 from bot.keyboards.card_inline import build_card_keyboard, normalize_url
@@ -25,6 +26,7 @@ from bot.keyboards.buyer_home import buyer_home_kb
 from bot.keyboards.brands import brand_kb
 from bot.keyboards.models import model_kb_with_back
 from bot.keyboards.seller_menu import seller_main_kb
+from bot.handlers.seller.onboarding import start_seller_onboarding, show_pending_seller_status
 from bot.keyboards.buyer_reply import buyer_reply_kb
 from bot.keyboards.buyer_search_inline import (
     format_search_card,
@@ -281,13 +283,23 @@ async def go_seller(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     await state.clear()
 
+    seller = await get_seller_by_telegram_id(callback.from_user.id)
+    if not seller:
+        await start_seller_onboarding(callback.message, state)
+        return
+
     await callback.message.answer(
         "🔄 Перемикаю у режим продавця...",
         reply_markup=ReplyKeyboardRemove(),
     )
+
+    if not seller.get("is_verified"):
+        await show_pending_seller_status(callback.message)
+        return
+
     await callback.message.answer(
         "🏪 Режим продавця\nОберіть дію:",
-        reply_markup=seller_main_kb()
+        reply_markup=seller_main_kb(is_verified=True),
     )
 
 

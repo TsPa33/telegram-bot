@@ -1,112 +1,149 @@
 {% extends "seller_crm/base.html" %}
-{% block crm_kicker %}Тарифи бізнесу, місця для авто/товарів і безпечна історія оплат{% endblock %}
-{% block crm_heading %}Тарифи{% endblock %}
+{% block crm_kicker %}Тарифи, авто на розборі та оплати{% endblock %}
+{% block crm_heading %}Пакети CarPot{% endblock %}
 {% block content %}
+  <style>
+    .pricing-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;}
+    .package-card{display:grid;gap:12px;align-content:start;}
+    .package-price{font-size:28px;font-weight:900;color:var(--text);line-height:1.1;}
+    .package-price span{font-size:13px;color:var(--muted);font-weight:700;}
+    .package-list{display:grid;gap:7px;margin:0;padding:0;list-style:none;color:var(--secondary);}
+    .package-list li{display:flex;gap:8px;align-items:flex-start;}
+    .package-status{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:12px;}
+    .status-cell{padding:12px;border:1px solid var(--line);border-radius:14px;background:rgba(248,250,252,.8);}
+    .status-cell strong{display:block;font-size:24px;color:var(--text);line-height:1;}
+    .status-cell span{display:block;margin-top:6px;color:var(--muted);font-weight:700;font-size:12px;}
+    .monetization-note{display:grid;gap:8px;}
+    @media(max-width:980px){.pricing-grid{grid-template-columns:1fr}.package-status{grid-template-columns:repeat(2,minmax(0,1fr));}}
+    @media(max-width:520px){.package-status{grid-template-columns:1fr}.package-card .btn{width:100%;}}
+  </style>
+
   <section class="workspace-hero" aria-labelledby="settings-title">
     <div>
-      <h2 id="settings-title">Тарифи бізнесу</h2>
-      <p class="section-note">Оберіть пакет <b>Сайт + CRM для автобізнесу</b>: заявки з сайту одразу потрапляють у CRM, а Telegram + сайт + заявки працюють в одному кабінеті.</p>
+      <h2 id="settings-title">Оберіть формат роботи</h2>
+      <p class="section-note">CarPot має два канали продажів: маркетплейс заявок для авторозборок і власний сайт для додаткових лідів. Оплата та CRM залишаються в існуючому процесі.</p>
     </div>
     <span class="pill">{{ "Кабінет активний" if settings.crm_account_status == "active" else "Кабінет неактивний" }}</span>
   </section>
 
   <nav class="section-nav section-nav-light" aria-label="Розділи налаштувань">
-    <a href="#websites">Сайт для бізнесу</a>
-    <a href="#slots">Слоти</a>
+    <a href="#autorozborka">Авто на розборі</a>
+    <a href="#websites">Власний сайт</a>
+    <a href="#package-status">Ваш пакет</a>
     <a href="#payments">Історія оплат</a>
   </nav>
 
-  <section id="websites" class="card secondary-section" aria-labelledby="websites-title">
-    <h2 id="websites-title">Сайт для бізнесу</h2>
-    <p class="section-note">Підходить для авторозборок, автосервісів, шиномонтажу, евакуаторів.</p>
+  <section id="autorozborka" class="card secondary-section" aria-labelledby="autorozborka-title">
+    <div class="section-head-row">
+      <div>
+        <h2 id="autorozborka-title">Авторозборка через CarPot marketplace</h2>
+        <p class="section-note">Додавайте авто на розбір. CarPot автоматично створює 130+ запчастин, публікує їх у каталозі та надсилає заявки від покупців у CRM/Telegram.</p>
+      </div>
+    </div>
+    <div class="pricing-grid">
+      {% for key, cars, price, subtitle in [('1', 1, 99, 'Підійде для старту.'), ('5', 5, 199, 'Для активної розборки.'), ('10', 10, 299, 'Максимальний пакет.')] %}
+        <article class="mini-card package-card">
+          <div class="mini-card-content package-card">
+            <div class="mini-card-title"><b>{{ cars }} авто</b></div>
+            <div class="package-price">{{ price }} грн <span>/ місяць</span></div>
+            <p class="muted">{{ subtitle }}</p>
+            <ul class="package-list">
+              <li>✓ {{ cars }} авто на розборі</li>
+              <li>✓ CRM</li>
+              <li>✓ Каталог CarPot</li>
+              <li>✓ Telegram сповіщення</li>
+              <li>✓ VIN заявки</li>
+            </ul>
+            <form method="post" action="/crm/seller/{{ account.crm_slug }}/settings/garage-package/{{ key }}">
+              <button class="btn" type="submit">Обрати пакет</button>
+            </form>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  </section>
 
-    <div class="cards-list">
-      <article class="mini-card" aria-labelledby="website-standard-title">
-        <div class="mini-card-content">
-          <div class="mini-card-title"><b id="website-standard-title">Сайт Стандарт — 499 грн</b></div>
-          <p class="muted">Базовий запуск сайту:</p>
-          <ul>
-            <li>готовий шаблон сайту</li>
-            <li>послуги, контакти, карта, кнопка дзвінка</li>
-            <li>заявки з сайту одразу потрапляють у CRM</li>
+  <section id="websites" class="card secondary-section" aria-labelledby="websites-title">
+    <div class="section-head-row">
+      <div>
+        <h2 id="websites-title">Власний сайт</h2>
+        <p class="section-note">Сайт — це додатковий канал заявок поруч із CarPot. Клієнт може знайти вас у маркетплейсі або напряму через ваш сайт.</p>
+      </div>
+      <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/websites/create">Створити сайт</a>
+    </div>
+    <div class="grid two">
+      <article class="mini-card package-card" aria-labelledby="website-standard-title">
+        <div class="mini-card-content package-card">
+          <div class="mini-card-title"><b id="website-standard-title">Сайт для авторозборки</b></div>
+          <div class="package-price">499 грн <span>/ рік</span></div>
+          <ul class="package-list">
+            <li>✓ Власний сайт</li>
+            <li>✓ Каталог запчастин</li>
+            <li>✓ VIN заявки</li>
+            <li>✓ CRM</li>
+            <li>✓ Telegram сповіщення</li>
+            <li>✓ Заявки з CarPot</li>
+            <li>✓ Заявки з власного сайту</li>
           </ul>
           <form method="post" action="/crm/seller/{{ account.crm_slug }}/settings/site-package/standard">
-            <button class="btn" type="submit">Замовити Стандарт</button>
+            <button class="btn" type="submit">Створити сайт</button>
           </form>
         </div>
       </article>
 
-      <article class="mini-card" aria-labelledby="website-plus-title">
-        <div class="mini-card-content">
-          <div class="mini-card-title"><b id="website-plus-title">Сайт Візитка Plus — 1499 грн</b></div>
-          <p class="muted">Розширений комерційний пакет:</p>
-          <ul>
-            <li>унікальний дизайн і банери</li>
-            <li>додаткові модулі та адаптація під ваш бізнес</li>
-            <li>Telegram + сайт + заявки в одному кабінеті</li>
+      <article class="mini-card package-card" aria-labelledby="website-plus-title">
+        <div class="mini-card-content package-card">
+          <div class="mini-card-title"><b id="website-plus-title">Сайт-візитка для послуг</b></div>
+          <div class="package-price">1499 грн</div>
+          <ul class="package-list">
+            <li>✓ СТО</li>
+            <li>✓ Евакуатор</li>
+            <li>✓ Автоелектрик</li>
+            <li>✓ Шиномонтаж</li>
+            <li>✓ Контакти</li>
+            <li>✓ Карта</li>
+            <li>✓ CRM</li>
           </ul>
           <form method="post" action="/crm/seller/{{ account.crm_slug }}/settings/site-package/plus">
-            <button class="btn" type="submit">Замовити Візитка Plus</button>
+            <button class="btn" type="submit">Створити сайт-візитку</button>
           </form>
-        </div>
-      </article>
-
-      <article class="mini-card" aria-labelledby="website-custom-title">
-        <div class="mini-card-content">
-          <div class="mini-card-title"><b id="website-custom-title">Індивідуальний сайт — від 3999 грн</b></div>
-          <p class="muted">Під індивідуальні задачі:</p>
-          <ul>
-            <li>власний стиль, структура, каталог, контент</li>
-            <li>підготовка під рекламу та масштабування</li>
-            <li>CRM система для управління заявками</li>
-          </ul>
-          <a class="btn" href="/contacts">Обговорити індивідуальний сайт</a>
         </div>
       </article>
     </div>
   </section>
 
-  <section id="slots" class="grid two secondary-section" aria-labelledby="slots-title">
-    <article class="card">
-      <h2 id="slots-title">Місця для авто / товарів</h2>
-      <p class="section-note">Доступні варіанти: 1 місце, 5 місць, 10 місць.</p>
-      {% if settings.active_paid_seller_subscriptions %}
-        <div class="cards-list">
-          {% for package in settings.active_paid_seller_subscriptions %}
-            <div class="mini-card">
-              <div class="mini-card-content">
-                <div class="mini-card-title"><b>{{ package.slots }} слот(ів)</b><span class="badge status-success">Активний</span></div>
-                <p class="muted">до {{ package.expires_at.strftime("%d.%m.%Y") if package.expires_at else "—" }}</p>
-              </div>
+  <section id="package-status" class="card secondary-section" aria-labelledby="package-status-title">
+    <div class="section-head-row">
+      <div>
+        <h2 id="package-status-title">Ваш пакет</h2>
+        <p class="section-note">Показуємо тільки активні місця для авто на розборі та використання у CRM.</p>
+      </div>
+      <span class="badge {{ 'status-success' if settings.garage_slots_available else 'status-waiting' }}">{{ 'Активний' if settings.garage_slots_available else 'Неактивний' }}</span>
+    </div>
+    {% if settings.garage_slots_available %}
+      <div class="package-status">
+        <div class="status-cell"><strong>Активний</strong><span>Статус</span></div>
+        <div class="status-cell"><strong>{{ settings.active_garage_slots }}</strong><span>Доступно авто</span></div>
+        <div class="status-cell"><strong>{{ settings.used_garage_slots }}</strong><span>Використано</span></div>
+        <div class="status-cell"><strong>{{ settings.free_garage_slots }}</strong><span>Залишилось</span></div>
+      </div>
+      <div class="cards-list" style="margin-top:12px">
+        {% for package in settings.active_paid_seller_subscriptions %}
+          <div class="mini-card">
+            <div class="mini-card-content">
+              <div class="mini-card-title"><b>{{ package.slots }} авто на розборі</b><span class="badge status-success">Активний</span></div>
+              <p class="muted">Діє до {{ package.expires_at.strftime("%d.%m.%Y") if package.expires_at else "—" }}</p>
             </div>
-          {% endfor %}
-        </div>
-      {% else %}
-        <div class="empty-state">Активних платних пакетів немає.</div>
-      {% endif %}
-    </article>
-
-    <article id="garage" class="card" aria-labelledby="garage-title">
-      <h2 id="garage-title">Місця / слоти</h2>
-      {% if settings.garage_slots_available %}
-        <div class="grid kpi-cards">
-          <div>
-            <p class="muted">Усього слотів</p>
-            <div class="metric">{{ settings.active_garage_slots }}</div>
           </div>
-          <div>
-            <p class="muted">Використано</p>
-            <div class="metric">{{ settings.used_garage_slots }}</div>
-          </div>
-          <div>
-            <p class="muted">Вільно</p>
-            <div class="metric">{{ settings.free_garage_slots }}</div>
-          </div>
-        </div>
-      {% else %}
-        <div class="empty-state">Дані гаражних слотів недоступні. Активних авто: {{ settings.active_cars_count or settings.used_garage_slots or 0 }}.</div>
-      {% endif %}
-    </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state monetization-note">
+        <strong>Пакет не активовано.</strong>
+        <p class="section-note">Для додавання авто оберіть пакет. Після активації ви зможете додати авто на розбір і почати отримувати заявки.</p>
+        <a class="btn small" href="#autorozborka">Переглянути пакети</a>
+      </div>
+    {% endif %}
   </section>
 
   <section id="payments" class="card secondary-section" aria-labelledby="payments-title">

@@ -19,6 +19,13 @@ class SellerStates(StatesGroup):
     reg_link = State()
     reg_city = State()
 
+    # ================= SELLER ONBOARDING =================
+    onboarding_company = State()
+    onboarding_contact_name = State()
+    onboarding_phone = State()
+    onboarding_city = State()
+    onboarding_direction = State()
+
     # ================= PROFILE =================
     edit_profile = State()
 

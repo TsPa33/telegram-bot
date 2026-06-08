@@ -262,7 +262,13 @@ async def _hydrate_lead_contacts(lead: dict) -> dict:
 async def _render_inbox(message_or_callback, telegram_id: int):
     seller, tags = await _seller_context(telegram_id)
     if not seller:
-        text = "📥 <b>Нові заявки</b>\n\nСпочатку створіть профіль продавця, щоб отримувати релевантні заявки."
+        text = "📥 <b>Нові заявки</b>\n\nСпочатку подайте заявку продавця, щоб отримувати релевантні заявки."
+        markup = None
+    elif not seller.get("is_verified"):
+        text = (
+            "⏳ <b>Профіль продавця ще не підтверджено</b>\n\n"
+            "Нові заявки стануть доступні після перевірки профілю."
+        )
         markup = None
     else:
         leads = [dict(row) for row in await list_matching_seller_leads(seller["id"], limit=10)]

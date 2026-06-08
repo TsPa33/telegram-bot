@@ -54,7 +54,7 @@ async def my_cars(message: Message):
         "📋 Мій гараж\n\n"
         f"Всього місць: {garage_info.get('total', 0)}\n"
         f"Зайнято: {garage_info.get('used', 0)}\n"
-        f"Вільно: {garage_info.get('free', 0)}\n\n"
+        f"Залишилось авто: {garage_info.get('free', 0)}\n\n"
         "🚗 Твої авто:"
     )
 

@@ -1099,6 +1099,181 @@
 
         .stack-top { margin-top: 10px; }
 
+        .crm-page {
+            display: grid;
+            gap: 14px;
+            min-width: 0;
+        }
+
+        .crm-page-head {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: flex-start;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--line-quiet);
+        }
+
+        .crm-page-head h1,
+        .crm-page-head h2 {
+            margin: 0 0 6px;
+            font-size: clamp(22px, 2.4vw, 30px);
+            line-height: 1.08;
+            letter-spacing: -.04em;
+        }
+
+        .crm-page-meta,
+        .crm-muted-list {
+            display: flex;
+            gap: 7px;
+            flex-wrap: wrap;
+            align-items: center;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .crm-action-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .crm-card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 12px;
+        }
+
+        .crm-form {
+            display: grid;
+            gap: 12px;
+            max-width: 760px;
+        }
+
+        .crm-form-grid {
+            display: grid;
+            gap: 10px;
+            max-width: 760px;
+        }
+
+        .crm-form label,
+        .crm-field {
+            display: grid;
+            gap: 6px;
+            color: var(--secondary);
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .crm-form input,
+        .crm-form select,
+        .crm-form textarea,
+        .crm-input,
+        .crm-select,
+        .crm-textarea {
+            width: 100%;
+            min-height: 44px;
+            border: 1px solid var(--line);
+            border-radius: var(--radius-sm);
+            background: var(--surface);
+            color: var(--text);
+            padding: 10px 12px;
+            font: inherit;
+        }
+
+        .crm-form textarea,
+        .crm-textarea { min-height: 100px; resize: vertical; }
+
+        .crm-help {
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.35;
+        }
+
+        .crm-list {
+            display: grid;
+            gap: 10px;
+        }
+
+        .crm-list-item {
+            display: grid;
+            grid-template-columns: minmax(0,1fr) auto;
+            gap: 12px;
+            align-items: center;
+            border: 1px solid var(--line);
+            border-radius: var(--radius-sm);
+            background: var(--surface);
+            padding: 12px;
+            min-width: 0;
+        }
+
+        .crm-list-item.with-media { grid-template-columns: 92px minmax(0,1fr) auto; }
+
+        .crm-thumb {
+            width: 92px;
+            height: 68px;
+            border: 1px solid var(--line);
+            border-radius: var(--radius-sm);
+            background: rgba(148,163,184,.08);
+            object-fit: cover;
+            display: grid;
+            place-items: center;
+            color: var(--muted);
+            font-size: 12px;
+            text-align: center;
+        }
+
+        .crm-list-title {
+            margin: 0 0 4px;
+            font-weight: 800;
+            color: var(--text);
+            overflow-wrap: anywhere;
+        }
+
+        .crm-notice {
+            padding: 11px 13px;
+            border-radius: var(--radius-sm);
+            border: 1px solid rgba(125,211,176,.2);
+            background: rgba(125,211,176,.07);
+            color: #BCEBD3;
+            font-weight: 700;
+        }
+
+        .crm-notice.warning {
+            border-color: rgba(251,191,36,.28);
+            background: rgba(251,191,36,.12);
+            color: #F3D899;
+        }
+
+        .crm-notice.error {
+            border-color: rgba(251,113,133,.24);
+            background: rgba(251,113,133,.11);
+            color: #F5C7CF;
+        }
+
+        .crm-empty {
+            padding: 16px;
+            border: 1px dashed rgba(148,163,184,.3);
+            border-radius: var(--radius);
+            background: rgba(231,238,247,.025);
+            display: grid;
+            gap: 8px;
+            justify-items: start;
+        }
+
+        .crm-code {
+            display: inline-flex;
+            max-width: 100%;
+            overflow-wrap: anywhere;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            background: rgba(148,163,184,.1);
+            border: 1px solid var(--line);
+            border-radius: var(--radius-sm);
+            padding: 9px 11px;
+        }
+
+
         .crm-site input,
         .crm-site textarea,
         .crm-site select {
@@ -1789,6 +1964,11 @@
             .form-grid { grid-template-columns: 1fr; }
             .form-actions { display: grid; grid-template-columns: 1fr; }
             .form-actions .btn { width: 100%; }
+            .crm-page-head { display: grid; }
+            .crm-action-row, .crm-page-head .crm-action-row { display: grid; grid-template-columns: 1fr; width: 100%; }
+            .crm-action-row .btn, .crm-action-row form, .crm-action-row form .btn { width: 100%; }
+            .crm-list-item, .crm-list-item.with-media { grid-template-columns: 1fr; }
+            .crm-thumb { width: 100%; height: 148px; }
         }
 
         @media (max-width:1180px) {
@@ -2129,19 +2309,13 @@
             </section>
 
             <section class="nav-accordion">
-                <input id="nav-website" name="crm-nav" type="radio" {% if current_page in ['website','website_editor','website_blocks','website_settings','website_design'] %}checked{% endif %}>
-                <label class="nav-title" data-icon="◇" for="nav-website">
-                    <span>Сайт</span>
+                <input id="nav-websites-v2" name="crm-nav" type="radio" {% if current_page.startswith('websites_v2') %}checked{% endif %}>
+                <label class="nav-title" data-icon="◇" for="nav-websites-v2">
+                    <span>Керування сайтами</span>
                 </label>
                 <div class="nav-panel">
-                    <a class="{% if current_page == 'website' %}active{% endif %}" href="/crm/seller/{{ account.crm_slug }}/website">Мій сайт</a>
-                    <a class="{% if current_page == 'website_design' %}active{% endif %}" href="/crm/seller/{{ account.crm_slug }}/website/design">Дизайн сайту</a>
-                    <a class="{% if current_page == 'website_blocks' %}active{% endif %}" href="/crm/seller/{{ account.crm_slug }}/website/blocks">Блоки сайту</a>
-                    <a class="{% if current_page == 'website_editor' %}active{% endif %}" href="/crm/seller/{{ account.crm_slug }}/website/editor/hero">Контент сайту</a>
-                    <a class="" href="/crm/seller/{{ account.crm_slug }}/website/editor/contacts">Контакти</a>
-                    <a class="" href="/crm/seller/{{ account.crm_slug }}/website#publish">Публікація</a>
-                    <a class="{% if current_page == 'website_settings' %}active{% endif %}" href="/crm/seller/{{ account.crm_slug }}/website/settings">Налаштування сайту</a>
-                    <a class="{% if current_page == 'websites_v2' %}active{% endif %}" href="/crm/seller/{{ account.crm_slug }}/websites">Керування сайтами</a>
+                    <a class="{% if current_page == 'websites_v2_index' or current_page == 'websites_v2_details' %}active{% endif %}" href="/crm/seller/{{ account.crm_slug }}/websites">Мої сайти</a>
+                    <a class="{% if current_page == 'websites_v2_create' %}active{% endif %}" href="/crm/seller/{{ account.crm_slug }}/websites/create">Створити сайт</a>
                 </div>
             </section>
 
@@ -2153,8 +2327,8 @@
                 <div class="nav-panel">
                     <a class="{% if current_page == 'settings' %}active{% endif %}" href="/crm/seller/{{ account.crm_slug }}/settings">Тарифи</a>
                     <a class="sub" href="/crm/seller/{{ account.crm_slug }}/settings#payments">Оплати</a>
-                    <a class="sub {% if not has_cars %}deemphasized{% endif %}" href="/crm/seller/{{ account.crm_slug }}/settings#garage">
-                        Місця / слоти{% if not has_cars %} · неактивно{% endif %}
+                    <a class="sub {% if not has_cars %}deemphasized{% endif %}" href="/crm/seller/{{ account.crm_slug }}/settings#package-status">
+                        Місця для авто{% if not has_cars %} · неактивно{% endif %}
                     </a>
                     <a class="{% if current_page == 'analytics' %}active{% endif %}" href="/crm/seller/{{ account.crm_slug }}/analytics">Аналітика</a>
                 </div>

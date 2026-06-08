@@ -17,13 +17,14 @@ from bot.database.repositories.promo_repo import (
     activate_start_promo,
     get_promo_activation,
 )
-from bot.database.repositories.seller_repo import get_or_create_seller
+from bot.database.repositories.seller_repo import get_or_create_seller, get_seller_by_telegram_id
 from bot.database.repositories.user_repo import log_visit, create_user
 
 from bot.config import ADMIN_IDS
 from bot.keyboards.profile_inline import profile_edit_kb
 from bot.services.roles import is_admin
 from bot.services.site_packages import get_demo_group
+from bot.handlers.seller.onboarding import start_seller_onboarding, show_pending_seller_status
 
 router = Router()
 
@@ -233,30 +234,29 @@ async def enter_seller(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     await state.clear()
 
-    # 🔥 СТВОРЕННЯ USER
     await create_user(
         telegram_id=callback.from_user.id,
-        username=callback.from_user.username
+        username=callback.from_user.username,
     )
-
-    # ✅ LOG VISIT
     await log_visit(callback.from_user, role="seller")
 
-    seller = await get_or_create_seller(
-        callback.from_user.id,
-        callback.from_user.username
-    )
+    seller = await get_seller_by_telegram_id(callback.from_user.id)
+    if not seller:
+        await start_seller_onboarding(callback.message, state)
+        return
 
     await callback.message.answer(
         "🏪 Режим продавця\nОберіть дію:",
         reply_markup=ReplyKeyboardRemove(),
     )
 
+    if not seller.get("is_verified"):
+        await show_pending_seller_status(callback.message)
+        return
+
     await callback.message.answer(
         "Меню продавця:",
-        reply_markup=seller_menu_kb(
-            is_verified=seller.get("is_verified", False)
-        ),
+        reply_markup=seller_menu_kb(is_verified=True),
     )
 
 
@@ -269,26 +269,27 @@ async def open_seller(callback: CallbackQuery, state: FSMContext):
 
     await create_user(
         telegram_id=callback.from_user.id,
-        username=callback.from_user.username
+        username=callback.from_user.username,
     )
-
     await log_visit(callback.from_user, role="seller")
 
-    seller = await get_or_create_seller(
-        callback.from_user.id,
-        callback.from_user.username
-    )
+    seller = await get_seller_by_telegram_id(callback.from_user.id)
+    if not seller:
+        await start_seller_onboarding(callback.message, state)
+        return
 
     await callback.message.answer(
         "🏪 Режим продавця\nОберіть дію:",
         reply_markup=ReplyKeyboardRemove(),
     )
 
+    if not seller.get("is_verified"):
+        await show_pending_seller_status(callback.message)
+        return
+
     await callback.message.answer(
         "Меню продавця:",
-        reply_markup=seller_menu_kb(
-            is_verified=seller.get("is_verified", False)
-        ),
+        reply_markup=seller_menu_kb(is_verified=True),
     )
 
 

@@ -1,1 +1,46 @@
-{% extends "seller_crm/base.html" %}{% block content %}<h1>contacts</h1><p>{{ website.name }} ({{ website.site_type }}) status={{ website.status }}</p><p><a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/design">Design</a> | <a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/content">Content</a> | <a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/contacts">Contacts</a> | <a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/publication">Publication</a></p>{% if 'contacts' == 'publication' %}<form method="post" action="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/publish"><button type="submit">Publish this website</button></form>{% endif %}{% endblock %}
+{% extends "seller_crm/base.html" %}
+{% block crm_kicker %}Website V2{% endblock %}
+{% block crm_heading %}Контакти сайту{% endblock %}
+{% block content %}
+{% set wc = website_context.website_contacts if website_context and website_context.website_contacts else {} %}
+{% set using_override = wc.source == 'website' %}
+{% set cfg = website.config_draft if website and website.config_draft else {} %}
+{% set contacts = cfg.contacts if cfg and cfg.contacts else {} %}
+<div class="crm-page">
+  <section class="crm-page-head">
+    <div>
+      <h1>Контакти сайту</h1>
+      <p class="section-note">{{ website.name }} · сайт автоматично використовує контакти профілю, якщо окремі контакти не увімкнені.</p>
+    </div>
+    <div class="crm-action-row"><a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}">Назад до огляду</a></div>
+  </section>
+
+  {% if saved %}<div class="crm-notice">Контакти оновлено.</div>{% endif %}
+
+  <section class="card">
+    <h2>Поточне джерело контактів</h2>
+    {% if wc.source == "seller_profile" %}<p class="section-note">Зараз сайт використовує контакти з вашого профілю.</p>{% elif wc.source == "website" %}<p class="section-note">Використовуються окремі контакти для цього сайту.</p>{% else %}<p class="section-note">Контакти не знайдено. Додайте контакти у профіль або окремо для сайту.</p>{% endif %}
+    <div class="crm-card-grid">
+      <div class="request-card"><b>Телефон</b><span>{{ wc.phone or (wc.phones[0] if wc.phones else '—') }}</span></div>
+      <div class="request-card"><b>Telegram</b><span>{{ wc.telegram or account.username or '—' }}</span></div>
+      <div class="request-card"><b>Сайт</b><span>{{ wc.website or account.website or '—' }}</span></div>
+      <div class="request-card"><b>Місто</b><span>{{ wc.city or account.city or '—' }}</span></div>
+    </div>
+    <div class="crm-action-row stack-top"><a class="btn ghost" href="{{ profile_url }}">Редагувати профіль</a></div>
+  </section>
+
+  <section class="card">
+    <h2>Окремі контакти сайту</h2>
+    <p class="section-note">Необовʼязково. Якщо вимкнено — сайт бере контакти з профілю продавця.</p>
+    <form class="crm-form" method="post" action="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/contacts">
+      <label style="display:flex;gap:8px;align-items:center;"><input type="checkbox" name="use_override" value="1" {% if using_override %}checked{% endif %}><span>Використовувати окремі контакти для цього сайту</span></label>
+      <label>Телефон<input name="phone" placeholder="Телефон" value="{{ contacts.phone if contacts else '' }}"></label>
+      <label>Telegram<input name="telegram" placeholder="Telegram / username" value="{{ contacts.telegram if contacts else '' }}"></label>
+      <label>Вебсайт<input name="website_url" placeholder="https://example.com" value="{{ contacts.website if contacts else '' }}"></label>
+      <label>Місто<input name="city" placeholder="Місто" value="{{ contacts.city if contacts else '' }}"></label>
+      <label>Додаткові телефони<textarea name="phones_text" placeholder="Кожен телефон з нового рядка">{% if contacts and contacts.phones %}{{ contacts.phones|join('\n') }}{% endif %}</textarea></label>
+      <div class="crm-action-row"><button class="btn" type="submit">Зберегти</button></div>
+    </form>
+  </section>
+</div>
+{% endblock %}

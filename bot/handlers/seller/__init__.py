@@ -4,6 +4,7 @@ from aiogram import Router
 
 from .cars import router as cars_router
 from .verification import router as verification_router
+from .onboarding import router as onboarding_router
 from .payment import router as payment_router
 from .profile import router as profile_router
 from .add_car import router as add_car_router
@@ -37,6 +38,7 @@ def _include_once(parent: Router, child: Router, name: str) -> None:
 
 
 for _name, _child in (
+    ("onboarding_router", onboarding_router),
     ("crm_router", crm_router),
     ("add_car_router", add_car_router),
     ("cars_router", cars_router),

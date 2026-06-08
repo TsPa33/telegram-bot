@@ -40,6 +40,56 @@ async def get_seller_by_telegram_id(telegram_id: int):
     """, telegram_id)
 
 
+# ================= ONBOARDING / VERIFICATION =================
+
+async def create_or_update_pending_seller_profile(
+    telegram_id: int,
+    username: str | None,
+    shop_name: str,
+    contact_name: str,
+    phone: str,
+    city: str,
+    direction: str,
+):
+    """Create/update seller application without granting full seller/CRM access."""
+    return await fetchrow("""
+        INSERT INTO sellers (
+            telegram_id,
+            username,
+            shop_name,
+            name,
+            phone,
+            city,
+            specialization_tags,
+            is_verified,
+            crm_enabled
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, ARRAY[$7]::text[], FALSE, FALSE)
+        ON CONFLICT (telegram_id)
+        DO UPDATE SET
+            username = COALESCE(EXCLUDED.username, sellers.username),
+            shop_name = EXCLUDED.shop_name,
+            name = EXCLUDED.name,
+            phone = EXCLUDED.phone,
+            city = EXCLUDED.city,
+            specialization_tags = EXCLUDED.specialization_tags,
+            is_verified = CASE WHEN sellers.is_verified THEN sellers.is_verified ELSE FALSE END,
+            crm_enabled = CASE WHEN sellers.is_verified THEN sellers.crm_enabled ELSE FALSE END
+        RETURNING *
+    """, telegram_id, username, shop_name, contact_name, phone, city, direction)
+
+
+async def set_seller_verification_result(seller_id: int, approved: bool):
+    return await fetchrow("""
+        UPDATE sellers
+        SET is_verified = $2,
+            crm_enabled = $2
+        WHERE id = $1
+        RETURNING *
+    """, seller_id, approved)
+
+
+
 # ================= GET BY ID =================
 
 async def get_seller_by_id(seller_id: int):
