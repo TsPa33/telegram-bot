@@ -9,23 +9,24 @@ from bot.services.domain_service import build_site_url
 
 SITE_PACKAGES = {
     "standard": {
-        "title": "Сайт Стандарт",
+        "title": "Сайт для авторозборки",
         "price": 499,
-        "description": "Готовий шаблон:\n• послуги\n• контакти\n• карта\n• кнопка дзвінка\n• CRM система для управління",
-        "button_text": "Замовити сайт Стандарт",
+        "price_period": "рік",
+        "description": "Власний сайт для авторозборки з каталогом запчастин, VIN-заявками, CRM та Telegram-сповіщеннями. Заявки приходять і з CarPot, і напряму з вашого сайту.",
+        "button_text": "Створити сайт",
         "payment_product": "site",
     },
     "plus": {
-        "title": "Сайт Візитка Plus",
+        "title": "Сайт-візитка для послуг",
         "price": 1499,
-        "description": "Унікальний дизайн +:\n• банери\n• послуги\n• додаткові модулі\n• адаптація під ваш бізнес\n• CRM система для управління",
-        "button_text": "Замовити сайт Візитка Plus",
+        "description": "Сайт для СТО, евакуатора, автоелектрика, шиномонтажу чи іншого автофахівця: послуги, контакти, карта, форми заявок і CRM.",
+        "button_text": "Створити сайт-візитку",
     },
     "premium": {
         "title": "Індивідуальний сайт",
         "price_from": 3999,
-        "description": "Індивідуальне рішення:\n• стиль і структура\n• каталог товарів\n• банери та галереї\n• тексти\n• підготовка під рекламу\n• CRM система для управління",
-        "button_text": "Замовити індивідуальний сайт",
+        "description": "Індивідуальне рішення під складну структуру, власний стиль, каталог, рекламу та масштабування з CRM для заявок.",
+        "button_text": "Обговорити індивідуальний сайт",
     },
 }
 
@@ -98,6 +99,9 @@ def get_site_package_amount(package_key: str) -> int | None:
 def format_site_package_price(package: dict) -> str:
     if package.get("price_from"):
         return f"від {package['price_from']} грн"
+    period = package.get("price_period")
+    if period:
+        return f"{package['price']} грн / {period}"
     return f"{package['price']} грн"
 
 
@@ -108,39 +112,32 @@ def format_site_package_title(package_key: str) -> str:
 
 def format_site_packages_text() -> str:
     sections = [
-        "<b>Магазин / Тарифи</b>",
+        "<b>🌐 Власний сайт CarPot</b>",
         "",
-        "<b>A. Місця для авто / товарів</b>",
-        "• 1 місце",
-        "• 5 місць",
-        "• 10 місць",
+        "Сайт — це додатковий канал заявок поруч із маркетплейсом CarPot.",
+        "Клієнт може знайти вас у CarPot або напряму через ваш сайт.",
         "",
-        "<b>B. Сайт для бізнесу</b>",
+        "<b>Сайт для авторозборки — 499 грн / рік</b>",
+        "✓ Власний сайт",
+        "✓ Каталог запчастин",
+        "✓ VIN заявки",
+        "✓ CRM",
+        "✓ Telegram сповіщення",
+        "✓ Заявки з CarPot",
+        "✓ Заявки з власного сайту",
+        "👉 Створити сайт",
+        "",
+        "<b>Сайт-візитка для послуг — 1499 грн</b>",
+        "✓ СТО",
+        "✓ Евакуатор",
+        "✓ Автоелектрик",
+        "✓ Шиномонтаж",
+        "✓ Контакти",
+        "✓ Карта",
+        "✓ CRM",
+        "👉 Створити сайт-візитку",
     ]
-
-    for package in SITE_PACKAGES.values():
-        sections.append(
-            f"<b>{package['title']}</b> — {format_site_package_price(package)}\n{package['description']}"
-        )
-        sections.append(f"👉 {package['button_text']}")
-        sections.append("")
-
-    sections.extend(
-        [
-            "<b>C. Що входить</b>",
-            "• сайт",
-            "• CRM для управління",
-            "• заявки",
-            "• Telegram-сповіщення",
-            "• контакти",
-            "• товари / послуги",
-            "• адаптація під бізнес",
-            "",
-            "Після заявки: сайт + CRM + Telegram працюють разом в існуючому процесі без змін оплати.",
-        ]
-    )
-
-    return "\n".join(sections).strip()
+    return "\n".join(sections)
 
 
 def get_demo_site_url(subdomain: str) -> str:

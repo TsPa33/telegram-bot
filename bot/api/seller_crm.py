@@ -12,7 +12,7 @@ from html import escape
 from typing import Any
 
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
@@ -35,7 +35,10 @@ from bot.database.repositories.product_repo import get_seller_products
 from bot.database.repositories.part_repo import (
     PART_CATEGORY_OPTIONS,
     VALID_PART_STATUSES,
+    bulk_delete_parts_by_ids,
     bulk_update_parts_status_by_category,
+    bulk_update_parts_status_by_ids,
+    count_seller_part_inventory_statuses,
     create_manual_part,
     generate_parts_for_car,
     get_car_part_categories,
@@ -89,6 +92,7 @@ from bot.database.repositories.seller_crm_repo import (
     update_seller_crm_car,
     update_seller_crm_car_photo,
 )
+from bot.database.repositories.seller_repo import get_seller_by_id
 from bot.database.repositories.lead_thread_repo import (
     LEAD_THREAD_READ_READ,
     LEAD_THREAD_SENDER_SELLER,
@@ -99,10 +103,14 @@ from bot.database.repositories.lead_thread_repo import (
     mark_lead_thread_messages_read,
 )
 from bot.database.repositories.product_repo import (
+    bulk_archive_products,
+    bulk_update_products_inventory,
+    count_seller_product_inventory_statuses,
     create_product,
     get_product_by_id,
     get_seller_product_donor_cars,
     get_seller_products,
+    list_seller_product_filter_options,
     set_product_status,
     update_product,
     update_product_photo,
@@ -168,13 +176,23 @@ from bot.domain.statuses import (
 from bot.services.domain_service import build_site_url, normalize_subdomain, validate_subdomain
 
 from bot.database.repositories.website_v2_repo import (
+    count_website_v2_leads_by_seller,
+    count_website_v2_leads_by_website,
+    count_website_v2_leads_summary,
     create_website_v2,
     get_website_v2_by_id,
+    get_website_v2_lead,
+    list_recent_website_v2_leads_by_seller,
+    list_website_v2_leads,
     list_websites_v2_by_seller,
+    list_websites_v2_dashboard,
     publish_website_v2,
+    update_website_v2_draft,
+    update_website_v2_lead_status,
 )
 from bot.services.domain_service import validate_subdomain
 from bot.services.website_v2_config import normalize_website_v2_type
+from bot.services.website_v2_context import build_website_v2_context
 from bot.services.import_service import (
     PRODUCT_IMPORT_COLUMNS,
     generate_product_import_csv_template,
@@ -397,7 +415,7 @@ def _demo_analytics() -> dict[str, Any]:
         "visits_today": 186,
         "leads_today": 14,
         "telegram_clicks_today": 42,
-        "active_listings": 38,
+        "active_listings": 6,
         "conversion": 7.5,
         "routed_requests": 18,
         "viewed_requests": 15,
@@ -408,6 +426,7 @@ def _demo_analytics() -> dict[str, Any]:
         "offers_rejected": 4,
         "average_response_seconds": 18 * 60,
         "has_website": True,
+        "services_count": 3,
     }
 
 
@@ -417,6 +436,67 @@ def _demo_site() -> dict[str, Any]:
         "subdomain": DEMO_CRM_SLUG,
         "config_draft": {},
         "config_live": {},
+    }
+
+
+def _website_v2_type_label(site_type: str | None) -> str:
+    return {"carpot_catalog": "Catalog", "carpot_business": "Business"}.get(str(site_type or ""), "Website")
+
+
+def _website_v2_status_label(status: str | None) -> str:
+    return {"draft": "Draft", "published": "Published", "suspended": "Suspended", "expired": "Expired"}.get(str(status or ""), "Draft")
+
+
+def _website_v2_status_class(status: str | None) -> str:
+    return {"published": "status-done", "draft": "status-waiting", "suspended": "status-error", "expired": "status-error"}.get(str(status or ""), "status-waiting")
+
+
+def _website_v2_lead_type_label(lead_type: str | None) -> str:
+    return {"vin": "VIN-запит", "service": "Послуга", "product": "Товар", "contact": "Контакт"}.get(str(lead_type or ""), "Заявка")
+
+
+def _website_v2_lead_status_label(status: str | None) -> str:
+    return {"new": "Нова", "viewed": "Переглянуто", "processed": "Оброблено", "archived": "Архів"}.get(str(status or ""), "Нова")
+
+
+def _prepare_dashboard_websites(rows) -> list[dict[str, Any]]:
+    websites: list[dict[str, Any]] = []
+    for row in rows or []:
+        item = dict(row)
+        subdomain = str(item.get("subdomain") or "").strip()
+        item["type_label"] = _website_v2_type_label(item.get("site_type"))
+        item["status_label"] = _website_v2_status_label(item.get("status"))
+        item["status_class"] = _website_v2_status_class(item.get("status"))
+        item["public_path"] = f"/w/{subdomain}" if subdomain else ""
+        item["new_leads_count"] = int(item.get("new_leads_count") or 0)
+        item["total_leads_count"] = int(item.get("total_leads_count") or 0)
+        websites.append(item)
+    return websites
+
+
+def _prepare_dashboard_website_leads(rows) -> list[dict[str, Any]]:
+    leads: list[dict[str, Any]] = []
+    for row in rows or []:
+        item = dict(row)
+        item["type_label"] = _website_v2_lead_type_label(item.get("lead_type"))
+        item["status_label"] = _website_v2_lead_status_label(item.get("status"))
+        item["status_class"] = _website_v2_status_class("published" if item.get("status") == "processed" else "draft") if item.get("status") != "new" else "status-new"
+        item["website_name"] = item.get("website_name") or item.get("website_subdomain") or "Сайт"
+        leads.append(item)
+    return leads
+
+
+def _combine_inventory_summary(product_counts: dict[str, Any] | None, part_counts: dict[str, Any] | None) -> dict[str, int]:
+    products = product_counts or {}
+    parts = part_counts or {}
+    return {
+        "products_total": int(products.get("total") or 0),
+        "parts_total": int(parts.get("total") or 0),
+        "total": int(products.get("total") or 0) + int(parts.get("total") or 0),
+        "available": int(products.get("available") or 0) + int(parts.get("available") or 0),
+        "sold": int(products.get("sold") or 0) + int(parts.get("sold") or 0),
+        "hidden": int(products.get("hidden") or 0) + int(parts.get("hidden") or 0),
+        "draft": int(parts.get("draft") or 0),
     }
 
 def _seller_crm_context(request: Request, **kwargs):
@@ -532,6 +612,27 @@ PART_STATUS_CLASSES = {
     "sold": "status-viewed",
     "hidden": "status-rejected",
 }
+
+
+def _parse_bulk_ids(values: list[str] | str | None) -> list[int]:
+    raw_values = values if isinstance(values, list) else [values] if values else []
+    ids: list[int] = []
+    seen: set[int] = set()
+    for value in raw_values:
+        for chunk in str(value or "").replace(",", " ").split():
+            try:
+                parsed = int(chunk)
+            except (TypeError, ValueError):
+                continue
+            if parsed > 0 and parsed not in seen:
+                seen.add(parsed)
+                ids.append(parsed)
+    return ids[:1000]
+
+
+def _bulk_message(action: str, count: int) -> str:
+    verb = "Видалено" if action == "delete" else "Оновлено"
+    return f"{verb} {count} позицій"
 
 
 def _normalize_part_name(value: str | None) -> str:
@@ -1401,7 +1502,7 @@ async def seller_crm_demo(request: Request):
         "visits_today": 186,
         "leads_today": 14,
         "telegram_clicks_today": 42,
-        "active_listings": 38,
+        "active_listings": 6,
         "conversion": 7.5,
         "new_leads": 6,
         "in_progress_leads": 5,
@@ -1418,6 +1519,17 @@ async def seller_crm_demo(request: Request):
         {"name": "Олександр", "phone": "+380••• •• 42", "status": "new", "source": "telegram", "message": "Цікавить BMW X5"},
         {"name": "Марина", "phone": "+380••• •• 18", "status": "in_progress", "source": "google", "message": "Запис на діагностику"},
         {"name": "СТО Партнер", "phone": "+380••• •• 77", "status": "done", "source": "site", "message": "Підбір запчастин"},
+    ]
+    dashboard_websites = [
+        {"id": 1, "name": "Demo Catalog", "site_type": "carpot_catalog", "type_label": "Catalog", "status": "published", "status_label": "Published", "status_class": "status-done", "subdomain": "demo", "public_path": "/w/demo", "new_leads_count": 2, "total_leads_count": 11},
+        {"id": 2, "name": "Demo Service", "site_type": "carpot_business", "type_label": "Business", "status": "draft", "status_label": "Draft", "status_class": "status-waiting", "subdomain": "demo-service", "public_path": "/w/demo-service", "new_leads_count": 0, "total_leads_count": 3},
+    ]
+    website_lead_summary = {"new_leads_count": 4, "total_leads_count": 14}
+    dashboard_metrics = {"parts_count": 532, "cars_count": 6, "sites_count": 2, "new_leads_count": 4, "total_leads_count": 14, "services_count": 3}
+    inventory_summary = {"total": 532, "products_total": 120, "parts_total": 412, "available": 450, "sold": 58, "hidden": 12, "draft": 12}
+    dashboard_package = {"active": True, "available": 10, "used": 2, "free": 8}
+    recent_website_leads = [
+        {"id": 1, "website_id": 1, "type_label": "VIN-запит", "name": "Олександр", "phone": "+380••• •• 42", "website_name": "Demo Catalog", "created_at": datetime.utcnow(), "status_label": "Нова", "status_class": "status-new"},
     ]
     return templates.TemplateResponse(
         "seller_crm/dashboard.html",
@@ -1439,6 +1551,12 @@ async def seller_crm_demo(request: Request):
             has_website=True,
             has_cars=False,
             has_services=True,
+            dashboard_metrics=dashboard_metrics,
+            dashboard_websites=dashboard_websites,
+            website_lead_summary=website_lead_summary,
+            recent_website_leads=recent_website_leads,
+            inventory_summary=inventory_summary,
+            dashboard_package=dashboard_package,
         ),
     )
 
@@ -2327,7 +2445,15 @@ async def seller_crm_content(request: Request, crm_slug: str):
 
 
 @router.get("/{crm_slug}/content/products")
-async def seller_crm_content_products(request: Request, crm_slug: str):
+async def seller_crm_content_products(
+    request: Request,
+    crm_slug: str,
+    search: str = "",
+    status: str = "all",
+    category: str = "",
+    brand: str = "",
+    model: str = "",
+):
     try:
         account, subscription = await _authorized_account(request, crm_slug)
     except HTTPException as exc:
@@ -2336,12 +2462,30 @@ async def seller_crm_content_products(request: Request, crm_slug: str):
         raise
 
     seller_id = account["seller_id"]
+    normalized_status = status if status in {"all", "available", "sold", "hidden"} else "all"
+    normalized_search = (search or "").strip()
+    normalized_category = (category or "").strip()
+    normalized_brand = (brand or "").strip()
+    normalized_model = (model or "").strip()
     if _is_demo_account(account):
         summary = _demo_content_summary()
         products = []
+        filter_options = {"categories": [], "brands": [], "models": []}
     else:
         summary = dict(await get_seller_crm_content_summary(seller_id) or {})
-        products = [dict(product) for product in await get_seller_products(seller_id, limit=100)]
+        filter_options = await list_seller_product_filter_options(seller_id)
+        products = [
+            _prepare_product(product)
+            for product in await get_seller_products(
+                seller_id,
+                limit=500,
+                query=normalized_search,
+                inventory_status=None if normalized_status == "all" else normalized_status,
+                category=normalized_category or None,
+                brand=normalized_brand or None,
+                model=normalized_model or None,
+            )
+        ]
     totals = {
         "active": sum(1 for product in products if product.get("status") == "active"),
         "quantity": sum(int(product.get("quantity") or 0) for product in products),
@@ -2361,11 +2505,96 @@ async def seller_crm_content_products(request: Request, crm_slug: str):
             summary=summary,
             products=products,
             totals=totals,
+            filter_options=filter_options,
+            current_filters={
+                "search": normalized_search,
+                "status": normalized_status,
+                "category": normalized_category,
+                "brand": normalized_brand,
+                "model": normalized_model,
+            },
+            saved=request.query_params.get("saved"),
+            error=request.query_params.get("error"),
             has_website=False,
             has_cars=int(summary.get("active_cars") or 0) > 0,
             has_services=int(summary.get("active_services") or 0) > 0,
         ),
     )
+
+
+@router.post("/{crm_slug}/content/products/bulk")
+async def seller_crm_products_bulk_update(
+    request: Request,
+    crm_slug: str,
+    action: str = Form(""),
+    selected_ids: list[str] = Form(default=[]),
+):
+    try:
+        account, _subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+    ids = _parse_bulk_ids(selected_ids)
+    normalized_action = (action or "").strip().lower()
+    if not ids:
+        return JSONResponse({"ok": False, "error": "no_selection"}, status_code=400)
+    if normalized_action == "available":
+        count = await bulk_update_products_inventory(account["seller_id"], ids, status="active", stock_status="available")
+    elif normalized_action == "sold":
+        count = await bulk_update_products_inventory(account["seller_id"], ids, status="active", stock_status="sold")
+    elif normalized_action == "hidden":
+        count = await bulk_update_products_inventory(account["seller_id"], ids, status="inactive")
+    elif normalized_action == "delete":
+        count = await bulk_archive_products(account["seller_id"], ids)
+    else:
+        return JSONResponse({"ok": False, "error": "invalid_action"}, status_code=400)
+    return JSONResponse({"ok": True, "count": count, "message": _bulk_message(normalized_action, count)})
+
+
+@router.post("/{crm_slug}/content/products/{product_id}/quick")
+async def seller_crm_product_quick_update(
+    request: Request,
+    crm_slug: str,
+    product_id: int,
+    price: str = Form(""),
+    availability: str = Form("available"),
+    return_to: str = Form(""),
+):
+    try:
+        account, _subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+    product = await get_product_by_id(account["seller_id"], product_id)
+    if not product:
+        raise HTTPException(status_code=404)
+    return_url = return_to if return_to.startswith(f"/crm/seller/{crm_slug}/") else ""
+    parsed_price, price_error = _parse_product_money(price)
+    if price_error:
+        if request.headers.get("x-requested-with") == "fetch":
+            return JSONResponse({"ok": False, "error": price_error}, status_code=400)
+        return RedirectResponse(url=return_url or f"/crm/seller/{crm_slug}/content/products?error=invalid_price", status_code=303)
+    normalized_availability = (availability or "available").strip().lower()
+    if normalized_availability == "available":
+        fields = {"price": parsed_price, "status": "active", "stock_status": "available"}
+    elif normalized_availability == "sold":
+        fields = {"price": parsed_price, "status": "active", "stock_status": "sold"}
+    elif normalized_availability == "hidden":
+        fields = {"price": parsed_price, "status": "inactive"}
+    else:
+        if request.headers.get("x-requested-with") == "fetch":
+            return JSONResponse({"ok": False, "error": "invalid_availability"}, status_code=400)
+        return RedirectResponse(url=return_url or f"/crm/seller/{crm_slug}/content/products?error=invalid_status", status_code=303)
+    updated = await update_product(account["seller_id"], product_id, **fields)
+    if not updated:
+        if request.headers.get("x-requested-with") == "fetch":
+            return JSONResponse({"ok": False, "error": "not_updated"}, status_code=400)
+        return RedirectResponse(url=return_url or f"/crm/seller/{crm_slug}/content/products?error=not_updated", status_code=303)
+    if request.headers.get("x-requested-with") == "fetch":
+        return JSONResponse({"ok": True, "message": "Збережено"})
+    return RedirectResponse(url=return_url or f"/crm/seller/{crm_slug}/content/products?saved={product_id}", status_code=303)
 
 
 @router.get("/{crm_slug}/content/products/create")
@@ -3288,7 +3517,18 @@ async def seller_crm_generate_parts(request: Request, crm_slug: str, car_id: int
 
 
 @router.get("/{crm_slug}/content/cars/{car_id}/parts")
-async def seller_crm_car_parts(request: Request, crm_slug: str, car_id: int, status: str | None = None, error: str | None = None, q: str = "", part_status: str = "all", created: int = 0):
+async def seller_crm_car_parts(
+    request: Request,
+    crm_slug: str,
+    car_id: int,
+    status: str | None = None,
+    error: str | None = None,
+    q: str = "",
+    search: str = "",
+    part_status: str = "all",
+    category: str = "all",
+    created: int = 0,
+):
     try:
         account, subscription = await _authorized_account(request, crm_slug)
     except HTTPException as exc:
@@ -3301,11 +3541,25 @@ async def seller_crm_car_parts(request: Request, crm_slug: str, car_id: int, sta
         raise HTTPException(status_code=404, detail="Car not found")
     if not await seller_owns_car(seller_id, car_id):
         raise HTTPException(status_code=403, detail="Access denied")
-    query_text = _normalize_part_search(q)
+    query_text = _normalize_part_search(search or q)
     normalized_status_filter = None if part_status == "all" else part_status
+    normalized_category_filter = None if category == "all" else normalize_part_category(category)
     if normalized_status_filter and normalized_status_filter not in VALID_PART_STATUSES:
         normalized_status_filter = None
-    parts = [_prepare_part(item) for item in await get_parts_by_car_id_filtered(seller_id, car_id, normalized_status_filter, query_text or None)]
+        part_status = "all"
+    if normalized_category_filter and normalized_category_filter not in ALLOWED_PART_CATEGORIES:
+        normalized_category_filter = None
+        category = "all"
+    parts = [
+        _prepare_part(item)
+        for item in await get_parts_by_car_id_filtered(
+            seller_id,
+            car_id,
+            normalized_status_filter,
+            query_text or None,
+            normalized_category_filter,
+        )
+    ]
     category_rows = [dict(row) for row in await get_car_part_categories(car_id)]
     categories = []
     for row in category_rows:
@@ -3365,7 +3619,8 @@ async def seller_crm_car_parts(request: Request, crm_slug: str, car_id: int, sta
             error=error,
             part_status_labels=PART_STATUS_LABELS,
             category_options=PART_CATEGORY_OPTIONS,
-            selected_part_status=part_status,
+            selected_part_status=part_status if part_status in VALID_PART_STATUSES else "all",
+            selected_category=category if category in ALLOWED_PART_CATEGORIES else "all",
             q=query_text,
             created=created,
             show_products_module_notice=show_products_module_notice,
@@ -3379,7 +3634,7 @@ async def seller_crm_car_parts(request: Request, crm_slug: str, car_id: int, sta
 
 
 @router.post("/{crm_slug}/content/parts/{part_id}/status")
-async def seller_crm_part_status_update(request: Request, crm_slug: str, part_id: int, status: str = Form("draft")):
+async def seller_crm_part_status_update(request: Request, crm_slug: str, part_id: int, status: str = Form("draft"), return_to: str = Form("")):
     try:
         account, _subscription = await _authorized_account(request, crm_slug)
     except HTTPException as exc:
@@ -3389,10 +3644,15 @@ async def seller_crm_part_status_update(request: Request, crm_slug: str, part_id
     part = await get_part_by_id(part_id)
     if not part or part.get("seller_id") != account["seller_id"]:
         raise HTTPException(status_code=403, detail="Access denied")
+    return_url = return_to if return_to.startswith(f"/crm/seller/{crm_slug}/") else ""
     if status not in VALID_PART_STATUSES:
-        return RedirectResponse(url=f"/crm/seller/{crm_slug}/content/cars/{part['car_id']}/parts?error=invalid_status", status_code=303)
+        if request.headers.get("x-requested-with") == "fetch":
+            return JSONResponse({"ok": False, "error": "invalid_status"}, status_code=400)
+        return RedirectResponse(url=return_url or f"/crm/seller/{crm_slug}/content/cars/{part['car_id']}/parts?error=invalid_status", status_code=303)
     await update_part_status(part_id, account["seller_id"], status)
-    return RedirectResponse(url=f"/crm/seller/{crm_slug}/content/cars/{part['car_id']}/parts?status=part_status_updated", status_code=303)
+    if request.headers.get("x-requested-with") == "fetch":
+        return JSONResponse({"ok": True, "message": "Збережено"})
+    return RedirectResponse(url=return_url or f"/crm/seller/{crm_slug}/content/cars/{part['car_id']}/parts?status=part_status_updated", status_code=303)
 
 
 @router.post("/{crm_slug}/content/parts/{part_id}/price")
@@ -3401,6 +3661,7 @@ async def seller_crm_part_price_update(
     crm_slug: str,
     part_id: int,
     price: str = Form(""),
+    return_to: str = Form(""),
 ):
     try:
         account, _subscription = await _authorized_account(request, crm_slug)
@@ -3411,13 +3672,46 @@ async def seller_crm_part_price_update(
     part = await get_part_by_id(part_id)
     if not part or part.get("seller_id") != account["seller_id"]:
         raise HTTPException(status_code=403, detail="Access denied")
+    return_url = return_to if return_to.startswith(f"/crm/seller/{crm_slug}/") else ""
     parsed_price, price_error = _parse_part_price(price)
     if price_error:
-        return RedirectResponse(url=f"/crm/seller/{crm_slug}/content/cars/{part['car_id']}/parts?error=invalid_price", status_code=303)
+        if request.headers.get("x-requested-with") == "fetch":
+            return JSONResponse({"ok": False, "error": price_error}, status_code=400)
+        return RedirectResponse(url=return_url or f"/crm/seller/{crm_slug}/content/cars/{part['car_id']}/parts?error=invalid_price", status_code=303)
     updated = await update_part_price(part_id, account["seller_id"], parsed_price)
     if not updated:
-        return RedirectResponse(url=f"/crm/seller/{crm_slug}/content/cars/{part['car_id']}/parts?error=part_not_updated", status_code=303)
-    return RedirectResponse(url=f"/crm/seller/{crm_slug}/content/cars/{part['car_id']}/parts?status=price_updated", status_code=303)
+        if request.headers.get("x-requested-with") == "fetch":
+            return JSONResponse({"ok": False, "error": "not_updated"}, status_code=400)
+        return RedirectResponse(url=return_url or f"/crm/seller/{crm_slug}/content/cars/{part['car_id']}/parts?error=part_not_updated", status_code=303)
+    if request.headers.get("x-requested-with") == "fetch":
+        return JSONResponse({"ok": True, "message": "Збережено"})
+    return RedirectResponse(url=return_url or f"/crm/seller/{crm_slug}/content/cars/{part['car_id']}/parts?status=price_updated", status_code=303)
+
+
+@router.post("/{crm_slug}/content/parts/bulk")
+async def seller_crm_parts_bulk_update(
+    request: Request,
+    crm_slug: str,
+    action: str = Form(""),
+    selected_ids: list[str] = Form(default=[]),
+):
+    try:
+        account, _subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+    ids = _parse_bulk_ids(selected_ids)
+    normalized_action = (action or "").strip().lower()
+    if not ids:
+        return JSONResponse({"ok": False, "error": "no_selection"}, status_code=400)
+    if normalized_action in VALID_PART_STATUSES:
+        count = await bulk_update_parts_status_by_ids(account["seller_id"], ids, normalized_action)
+    elif normalized_action == "delete":
+        count = await bulk_delete_parts_by_ids(account["seller_id"], ids)
+    else:
+        return JSONResponse({"ok": False, "error": "invalid_action"}, status_code=400)
+    return JSONResponse({"ok": True, "count": count, "message": _bulk_message(normalized_action, count)})
 
 
 @router.post("/{crm_slug}/content/cars/{car_id}/parts/bulk-status")
@@ -3610,6 +3904,33 @@ async def seller_crm_settings(request: Request, crm_slug: str):
     )
 
 
+@router.post("/{crm_slug}/settings/garage-package/{package_key}")
+async def seller_crm_garage_package_checkout(request: Request, crm_slug: str, package_key: str):
+    try:
+        account, _subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+
+    package_map = {
+        "1": {"amount": 99},
+        "5": {"amount": 199},
+        "10": {"amount": 299},
+    }
+    package = package_map.get(package_key)
+    if not package:
+        raise HTTPException(status_code=400, detail="Unknown garage package")
+
+    payment = await liqpay.create_payment(
+        amount=package["amount"],
+        server_url=LIQPAY_CALLBACK_URL,
+        seller_id=account["seller_id"],
+        product="garage",
+    )
+    return RedirectResponse(url=payment["url"], status_code=303)
+
+
 @router.post("/{crm_slug}/settings/site-package/{package_key}")
 async def seller_crm_site_package_checkout(request: Request, crm_slug: str, package_key: str):
     try:
@@ -3793,20 +4114,51 @@ async def seller_crm_dashboard(request: Request, crm_slug: str):
         services = []
         sources = [{"source": "telegram", "visits": 93}, {"source": "google", "visits": 71}, {"source": "direct", "visits": 22}]
         site = _demo_site()
+        dashboard_websites = [
+            {"id": 1, "name": "Demo Catalog", "type_label": "Catalog", "status_label": "Published", "status_class": "status-done", "subdomain": "demo", "public_path": "/w/demo", "new_leads_count": 2, "total_leads_count": 11},
+        ]
+        website_lead_summary = {"new_leads_count": 4, "total_leads_count": 14}
+        recent_website_leads = []
+        inventory_summary = {"total": 532, "products_total": 120, "parts_total": 412, "available": 450, "sold": 58, "hidden": 12, "draft": 12}
+        settings_summary = _demo_settings_summary()
     else:
-        stats = await get_seller_crm_dashboard(seller_id)
+        stats = dict(await get_seller_crm_dashboard(seller_id) or {})
         marketplace_summary = dict(await get_seller_crm_marketplace_summary(seller_id) or {})
         marketplace_summary["avg_response_label"] = _format_duration(marketplace_summary.get("avg_response_seconds"))
         marketplace_requests = _prepare_marketplace_requests(await list_seller_crm_marketplace_requests(seller_id))
         marketplace_activity = _prepare_activity(await list_seller_crm_marketplace_activity(seller_id))
-        leads = await list_seller_crm_leads(seller_id)
-        cars = await list_seller_crm_cars(seller_id)
-        services = await list_seller_crm_services(seller_id)
+        leads = []
+        cars = []
+        services = []
         sources = await list_seller_crm_sources(seller_id)
         site = await get_site_by_seller(seller_id)
-    has_website = bool(site or account_flags.get("has_site") or account_flags.get("website"))
-    has_cars = bool(cars)
-    has_services = bool(services)
+        dashboard_websites = _prepare_dashboard_websites(await list_websites_v2_dashboard(seller_id))
+        website_lead_summary = await count_website_v2_leads_summary(seller_id)
+        recent_website_leads = _prepare_dashboard_website_leads(await list_recent_website_v2_leads_by_seller(seller_id, limit=8))
+        inventory_summary = _combine_inventory_summary(
+            await count_seller_product_inventory_statuses(seller_id),
+            await count_seller_part_inventory_statuses(seller_id),
+        )
+        settings_summary = await get_seller_crm_settings_summary(seller_id) or {}
+    dashboard_package = {
+        "active": bool((settings_summary or {}).get("garage_slots_available")),
+        "available": int((settings_summary or {}).get("active_garage_slots") or 0),
+        "used": int((settings_summary or {}).get("used_garage_slots") or 0),
+        "free": (settings_summary or {}).get("free_garage_slots"),
+    }
+    if dashboard_package["free"] is None and dashboard_package["active"]:
+        dashboard_package["free"] = max(dashboard_package["available"] - dashboard_package["used"], 0)
+    has_website = bool(dashboard_websites or site or account_flags.get("has_site") or account_flags.get("website"))
+    has_cars = int((stats or {}).get("active_listings") or 0) > 0
+    has_services = int((stats or {}).get("services_count") or 0) > 0
+    dashboard_metrics = {
+        "parts_count": int((inventory_summary or {}).get("total") or 0),
+        "cars_count": int((stats or {}).get("active_listings") or 0),
+        "sites_count": len(dashboard_websites or []),
+        "new_leads_count": int((website_lead_summary or {}).get("new_leads_count") or 0),
+        "total_leads_count": int((website_lead_summary or {}).get("total_leads_count") or 0),
+        "services_count": int((stats or {}).get("services_count") or 0),
+    }
     draft_config = merge_with_default((site or {}).get("config_draft") or {}) if site else {}
     live_config = merge_with_default((site or {}).get("config_live") or {}) if site else {}
     draft_modules = draft_config.get("modules") or {}
@@ -3838,6 +4190,14 @@ async def seller_crm_dashboard(request: Request, crm_slug: str):
             has_services=has_services,
             products_module_draft_enabled=products_module_draft_enabled,
             products_module_live_enabled=products_module_live_enabled,
+            cars_module_draft_enabled=cars_module_draft_enabled,
+            services_module_draft_enabled=services_module_draft_enabled,
+            dashboard_metrics=dashboard_metrics,
+            dashboard_websites=dashboard_websites,
+            website_lead_summary=website_lead_summary,
+            recent_website_leads=recent_website_leads,
+            inventory_summary=inventory_summary,
+            dashboard_package=dashboard_package,
         ),
     )
 
@@ -5048,13 +5408,21 @@ async def preview_draft_site(request: Request, crm_slug: str):
 async def seller_crm_websites(request: Request, crm_slug: str):
     account, subscription = await _authorized_account(request, crm_slug)
     websites = await list_websites_v2_by_seller(account["seller_id"])
-    return templates.TemplateResponse("seller_crm/websites/index.html", _seller_crm_context(request, title="Керування сайтами", current_page="websites_v2", account=account, subscription=subscription, websites=websites))
+    lead_counts = {int(row["website_id"]): row for row in await count_website_v2_leads_by_seller(int(account["seller_id"]))}
+    website_contexts = []
+    for website in websites:
+        ctx = await _build_v2_context_payload(account, dict(website))
+        counts = lead_counts.get(int(website["id"]), {})
+        ctx["new_leads_count"] = int(counts.get("new_leads_count") or 0)
+        ctx["total_leads_count"] = int(counts.get("total_leads_count") or 0)
+        website_contexts.append(ctx)
+    return templates.TemplateResponse("seller_crm/websites/index.html", _seller_crm_context(request, title="Керування сайтами", current_page="websites_v2_index", account=account, subscription=subscription, websites=websites, website_contexts=website_contexts))
 
 
 @router.get("/{crm_slug}/websites/create")
 async def seller_crm_websites_create(request: Request, crm_slug: str, error: str | None = None):
     account, subscription = await _authorized_account(request, crm_slug)
-    return templates.TemplateResponse("seller_crm/websites/create.html", _seller_crm_context(request, title="Створення сайту", current_page="websites_v2", account=account, subscription=subscription, error=error))
+    return templates.TemplateResponse("seller_crm/websites/create.html", _seller_crm_context(request, title="Створення сайту", current_page="websites_v2_create", account=account, subscription=subscription, error=error))
 
 
 @router.post("/{crm_slug}/websites/create")
@@ -5082,7 +5450,9 @@ async def seller_crm_websites_overview(request: Request, crm_slug: str, website_
     website = await get_website_v2_by_id(account["seller_id"], website_id)
     if not website:
         raise HTTPException(status_code=404)
-    return templates.TemplateResponse("seller_crm/websites/overview.html", _seller_crm_context(request, title="Огляд сайту", current_page="websites_v2", account=account, subscription=subscription, website=website))
+    website_context = await _build_v2_context_payload(account, dict(website))
+    lead_counts = await count_website_v2_leads_by_website(int(website["id"]), int(account["seller_id"]))
+    return templates.TemplateResponse("seller_crm/websites/overview.html", _seller_crm_context(request, title="Огляд сайту", current_page="websites_v2_details", account=account, subscription=subscription, website=website, website_context=website_context, lead_counts=lead_counts))
 
 
 
@@ -5093,37 +5463,455 @@ async def _get_v2_website_or_404(account: dict, website_id: int):
     return website
 
 
+def _v2_config_dict(raw: Any) -> dict:
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw)
+        except Exception:
+            raw = {}
+    return raw if isinstance(raw, dict) else {}
+
+
+def _business_services_from_website(website: dict) -> list[dict]:
+    draft = _v2_config_dict((website or {}).get("config_draft"))
+    nested = draft.get("website_v2") if isinstance(draft.get("website_v2"), dict) else {}
+    business = nested.get("business") if isinstance(nested.get("business"), dict) else {}
+    services = business.get("services") if isinstance(business.get("services"), list) else []
+    if not services:
+        legacy_business = draft.get("business") if isinstance(draft.get("business"), dict) else {}
+        services = legacy_business.get("services") if isinstance(legacy_business.get("services"), list) else []
+    normalized: list[dict] = []
+    for index, item in enumerate(services):
+        if not isinstance(item, dict):
+            continue
+        try:
+            sort_order = int(item.get("sort_order") or index + 1)
+        except (TypeError, ValueError):
+            sort_order = index + 1
+        normalized.append(
+            {
+                "title": str(item.get("title") or "").strip(),
+                "description": str(item.get("description") or "").strip(),
+                "price": str(item.get("price") or "").strip(),
+                "image_url": str(item.get("image_url") or item.get("image") or "").strip(),
+                "sort_order": sort_order,
+            }
+        )
+    return sorted(normalized, key=lambda item: item.get("sort_order") or 0)
+
+
+def _business_service_sort_order(item: dict) -> int:
+    try:
+        return int(item.get("sort_order") or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _normalize_business_services_order(services: list[dict]) -> list[dict]:
+    ordered = sorted(services or [], key=_business_service_sort_order)
+    normalized: list[dict] = []
+    for index, item in enumerate(ordered, start=1):
+        cleaned = {
+            "title": str(item.get("title") or "").strip(),
+            "description": str(item.get("description") or "").strip(),
+            "price": str(item.get("price") or "").strip(),
+            "image_url": str(item.get("image_url") or "").strip(),
+            "sort_order": index,
+        }
+        if cleaned["title"] and cleaned["description"]:
+            normalized.append(cleaned)
+    return normalized
+
+
+def _business_service_from_form(title: str, description: str, price: str, image_url: str, sort_order: str) -> dict:
+    try:
+        order = int(str(sort_order or "").strip() or 0)
+    except ValueError:
+        order = 0
+    return {
+        "title": (title or "").strip(),
+        "description": (description or "").strip(),
+        "price": (price or "").strip(),
+        "image_url": (image_url or "").strip(),
+        "sort_order": order,
+    }
+
+
+async def _save_business_services(website_id: int, services: list[dict]):
+    return await update_website_v2_draft(
+        website_id,
+        {"website_v2": {"business": {"services": _normalize_business_services_order(services)}}},
+    )
+
+
+async def _publish_v2_if_ready(account: dict, crm_slug: str, website_id: int, updated_website: dict | None, redirect_path: str):
+    publish_candidate = dict(updated_website or await _get_v2_website_or_404(account, website_id))
+    website_context = await _build_v2_context_payload(account, publish_candidate, prefer_draft=True)
+    if not website_context.get("publish_ready"):
+        return RedirectResponse(url=f"{redirect_path}?saved=1&publish_error=validation", status_code=303)
+    await publish_website_v2(int(website_id))
+    return RedirectResponse(url=f"{redirect_path}?saved=1&published=1", status_code=303)
+
+
+async def _build_v2_context_payload(account: dict, website: dict, prefer_draft: bool = False) -> dict:
+    seller_id = int(account["seller_id"])
+    seller_row = dict(await get_seller_by_id(seller_id) or {})
+    cars = await get_cars_by_seller(seller_id)
+    services = await get_services_by_seller(seller_id)
+    products = await get_seller_products(seller_id, limit=100)
+    parts = await get_available_parts_for_site(seller_id)
+    seller_snapshot = {
+        "id": seller_row.get("id", seller_id),
+        "seller_id": seller_id,
+        "crm_slug": account["crm_slug"],
+        "name": seller_row.get("name") or account.get("name"),
+        "shop_name": seller_row.get("shop_name") or account.get("shop_name"),
+        "phone": seller_row.get("phone") or account.get("phone"),
+        "contact_phone": seller_row.get("contact_phone") or account.get("contact_phone"),
+        "phone_number": seller_row.get("phone_number") or account.get("phone_number"),
+        "email": seller_row.get("email") or account.get("email"),
+        "address": seller_row.get("address") or account.get("address"),
+        "username": seller_row.get("username") or account.get("username"),
+        "telegram": seller_row.get("telegram") or account.get("telegram"),
+        "viber": seller_row.get("viber") or account.get("viber"),
+        "whatsapp": seller_row.get("whatsapp") or account.get("whatsapp"),
+        "website": seller_row.get("website") or account.get("website"),
+        "city": seller_row.get("city") or account.get("city"),
+        "description": seller_row.get("description") or account.get("description"),
+        "contacts": seller_row.get("contacts") or account.get("contacts"),
+        "cars_count": len(cars),
+        "services_count": len(services),
+        "products_count": len(products) + len(parts),
+    }
+    context_website = dict(website)
+    if prefer_draft:
+        context_website["config_live"] = {}
+    return build_website_v2_context(context_website, seller_snapshot)
+
+
 @router.get("/{crm_slug}/websites/{website_id}/design")
 async def seller_crm_websites_design(request: Request, crm_slug: str, website_id: int):
     account, subscription = await _authorized_account(request, crm_slug)
     website = await _get_v2_website_or_404(account, website_id)
-    return templates.TemplateResponse("seller_crm/websites/design.html", _seller_crm_context(request, title="Дизайн (V2)", current_page="websites_v2", account=account, subscription=subscription, website=website))
+    return templates.TemplateResponse("seller_crm/websites/design.html", _seller_crm_context(request, title="Дизайн (V2)", current_page="websites_v2_design", account=account, subscription=subscription, website=website))
+
+
+@router.get("/{crm_slug}/websites/{website_id}/hero")
+async def seller_crm_websites_hero(request: Request, crm_slug: str, website_id: int):
+    account, subscription = await _authorized_account(request, crm_slug)
+    website = await _get_v2_website_or_404(account, website_id)
+    website_context = await _build_v2_context_payload(account, dict(website), prefer_draft=True)
+    return templates.TemplateResponse(
+        "seller_crm/websites/hero.html",
+        _seller_crm_context(
+            request,
+            title="Hero (V2)",
+            current_page="websites_v2_design",
+            account=account,
+            subscription=subscription,
+            website=website,
+            website_context=website_context,
+            saved=request.query_params.get("saved"),
+            published=request.query_params.get("published"),
+            publish_error=request.query_params.get("publish_error"),
+        ),
+    )
+
+
+@router.post("/{crm_slug}/websites/{website_id}/hero")
+async def seller_crm_websites_hero_save(
+    request: Request,
+    crm_slug: str,
+    website_id: int,
+    title: str = Form(""),
+    subtitle: str = Form(""),
+    cta_text: str = Form(""),
+    image_url: str = Form(""),
+    action: str = Form("save"),
+):
+    account, _subscription = await _authorized_account(request, crm_slug)
+    website = await _get_v2_website_or_404(account, website_id)
+    normalized_title = (title or "").strip()
+    normalized_subtitle = (subtitle or "").strip()
+    normalized_cta = (cta_text or "").strip()
+    normalized_image = (image_url or "").strip()
+    hero_payload = {
+        "title": normalized_title,
+        "subtitle": normalized_subtitle,
+        "cta_text": normalized_cta,
+        "image_url": normalized_image,
+        "banners": [{"image": normalized_image}] if normalized_image else [],
+    }
+    canonical_hero = {k: v for k, v in hero_payload.items() if v or k == "banners"}
+    logger.info(
+        "Website V2 hero save: website_id=%s path=config_draft.website_v2.hero title=%s image_url=%s",
+        website_id,
+        bool(normalized_title),
+        bool(normalized_image),
+    )
+    updated_website = await update_website_v2_draft(int(website["id"]), {"website_v2": {"hero": canonical_hero}})
+    if action == "save_publish":
+        publish_candidate = dict(updated_website or await _get_v2_website_or_404(account, website_id))
+        website_context = await _build_v2_context_payload(account, publish_candidate, prefer_draft=True)
+        if not website_context.get("publish_ready"):
+            return RedirectResponse(
+                url=f"/crm/seller/{crm_slug}/websites/{website_id}/hero?saved=1&publish_error=validation",
+                status_code=303,
+            )
+        await publish_website_v2(int(website["id"]))
+        return RedirectResponse(url=f"/crm/seller/{crm_slug}/websites/{website_id}/hero?saved=1&published=1", status_code=303)
+    return RedirectResponse(url=f"/crm/seller/{crm_slug}/websites/{website_id}/hero?saved=1", status_code=303)
 
 
 @router.get("/{crm_slug}/websites/{website_id}/content")
 async def seller_crm_websites_content(request: Request, crm_slug: str, website_id: int):
     account, subscription = await _authorized_account(request, crm_slug)
     website = await _get_v2_website_or_404(account, website_id)
-    return templates.TemplateResponse("seller_crm/websites/content.html", _seller_crm_context(request, title="Контент (V2)", current_page="websites_v2", account=account, subscription=subscription, website=website))
+    website_context = await _build_v2_context_payload(account, dict(website))
+    return templates.TemplateResponse("seller_crm/websites/content.html", _seller_crm_context(request, title="Контент (V2)", current_page="websites_v2_content", account=account, subscription=subscription, website=website, website_context=website_context))
+
+
+@router.get("/{crm_slug}/websites/{website_id}/services")
+async def seller_crm_websites_services(request: Request, crm_slug: str, website_id: int):
+    account, subscription = await _authorized_account(request, crm_slug)
+    website = await _get_v2_website_or_404(account, website_id)
+    website_context = await _build_v2_context_payload(account, dict(website), prefer_draft=True)
+    services = _business_services_from_website(dict(website))
+    return templates.TemplateResponse(
+        "seller_crm/websites/services.html",
+        _seller_crm_context(
+            request,
+            title="Послуги сайту (V2)",
+            current_page="websites_v2_services",
+            account=account,
+            subscription=subscription,
+            website=website,
+            website_context=website_context,
+            services=services,
+            saved=request.query_params.get("saved"),
+            published=request.query_params.get("published"),
+            publish_error=request.query_params.get("publish_error"),
+        ),
+    )
+
+
+@router.get("/{crm_slug}/websites/{website_id}/services/new")
+async def seller_crm_websites_service_new(request: Request, crm_slug: str, website_id: int):
+    account, subscription = await _authorized_account(request, crm_slug)
+    website = await _get_v2_website_or_404(account, website_id)
+    services = _business_services_from_website(dict(website))
+    return templates.TemplateResponse(
+        "seller_crm/websites/service_form.html",
+        _seller_crm_context(
+            request,
+            title="Додати послугу (V2)",
+            current_page="websites_v2_services",
+            account=account,
+            subscription=subscription,
+            website=website,
+            service={},
+            service_index=None,
+            next_sort_order=len(services) + 1,
+            form_action=f"/crm/seller/{crm_slug}/websites/{website_id}/services/new",
+        ),
+    )
+
+
+@router.post("/{crm_slug}/websites/{website_id}/services/new")
+async def seller_crm_websites_service_create(
+    request: Request,
+    crm_slug: str,
+    website_id: int,
+    title: str = Form(""),
+    description: str = Form(""),
+    price: str = Form(""),
+    image_url: str = Form(""),
+    sort_order: str = Form(""),
+    action: str = Form("save"),
+):
+    account, _subscription = await _authorized_account(request, crm_slug)
+    website = await _get_v2_website_or_404(account, website_id)
+    service = _business_service_from_form(title, description, price, image_url, sort_order)
+    if not service["title"] or not service["description"]:
+        return RedirectResponse(url=f"/crm/seller/{crm_slug}/websites/{website_id}/services/new?error=validation", status_code=303)
+    services = _business_services_from_website(dict(website))
+    services.append(service)
+    updated_website = await _save_business_services(int(website["id"]), services)
+    redirect_path = f"/crm/seller/{crm_slug}/websites/{website_id}/services"
+    if action == "save_publish":
+        return await _publish_v2_if_ready(account, crm_slug, website_id, dict(updated_website or {}), redirect_path)
+    return RedirectResponse(url=f"{redirect_path}?saved=1", status_code=303)
+
+
+@router.get("/{crm_slug}/websites/{website_id}/services/{service_index}/edit")
+async def seller_crm_websites_service_edit(request: Request, crm_slug: str, website_id: int, service_index: int):
+    account, subscription = await _authorized_account(request, crm_slug)
+    website = await _get_v2_website_or_404(account, website_id)
+    services = _business_services_from_website(dict(website))
+    if service_index < 0 or service_index >= len(services):
+        raise HTTPException(status_code=404)
+    return templates.TemplateResponse(
+        "seller_crm/websites/service_form.html",
+        _seller_crm_context(
+            request,
+            title="Редагувати послугу (V2)",
+            current_page="websites_v2_services",
+            account=account,
+            subscription=subscription,
+            website=website,
+            service=services[service_index],
+            service_index=service_index,
+            next_sort_order=services[service_index].get("sort_order") or service_index + 1,
+            form_action=f"/crm/seller/{crm_slug}/websites/{website_id}/services/{service_index}/edit",
+        ),
+    )
+
+
+@router.post("/{crm_slug}/websites/{website_id}/services/{service_index}/edit")
+async def seller_crm_websites_service_update(
+    request: Request,
+    crm_slug: str,
+    website_id: int,
+    service_index: int,
+    title: str = Form(""),
+    description: str = Form(""),
+    price: str = Form(""),
+    image_url: str = Form(""),
+    sort_order: str = Form(""),
+    action: str = Form("save"),
+):
+    account, _subscription = await _authorized_account(request, crm_slug)
+    website = await _get_v2_website_or_404(account, website_id)
+    services = _business_services_from_website(dict(website))
+    if service_index < 0 or service_index >= len(services):
+        raise HTTPException(status_code=404)
+    service = _business_service_from_form(title, description, price, image_url, sort_order)
+    if not service["title"] or not service["description"]:
+        return RedirectResponse(url=f"/crm/seller/{crm_slug}/websites/{website_id}/services/{service_index}/edit?error=validation", status_code=303)
+    services[service_index] = service
+    updated_website = await _save_business_services(int(website["id"]), services)
+    redirect_path = f"/crm/seller/{crm_slug}/websites/{website_id}/services"
+    if action == "save_publish":
+        return await _publish_v2_if_ready(account, crm_slug, website_id, dict(updated_website or {}), redirect_path)
+    return RedirectResponse(url=f"{redirect_path}?saved=1", status_code=303)
+
+
+@router.post("/{crm_slug}/websites/{website_id}/services/{service_index}/delete")
+async def seller_crm_websites_service_delete(request: Request, crm_slug: str, website_id: int, service_index: int):
+    account, _subscription = await _authorized_account(request, crm_slug)
+    website = await _get_v2_website_or_404(account, website_id)
+    services = _business_services_from_website(dict(website))
+    if service_index < 0 or service_index >= len(services):
+        raise HTTPException(status_code=404)
+    services.pop(service_index)
+    await _save_business_services(int(website["id"]), services)
+    return RedirectResponse(url=f"/crm/seller/{crm_slug}/websites/{website_id}/services?saved=1", status_code=303)
+
+
+@router.post("/{crm_slug}/websites/{website_id}/services/{service_index}/move")
+async def seller_crm_websites_service_move(
+    request: Request,
+    crm_slug: str,
+    website_id: int,
+    service_index: int,
+    direction: str = Form(""),
+):
+    account, _subscription = await _authorized_account(request, crm_slug)
+    website = await _get_v2_website_or_404(account, website_id)
+    services = _business_services_from_website(dict(website))
+    if service_index < 0 or service_index >= len(services):
+        raise HTTPException(status_code=404)
+    target = service_index - 1 if direction == "up" else service_index + 1
+    if 0 <= target < len(services):
+        services[service_index], services[target] = services[target], services[service_index]
+        await _save_business_services(int(website["id"]), services)
+    return RedirectResponse(url=f"/crm/seller/{crm_slug}/websites/{website_id}/services?saved=1", status_code=303)
 
 
 @router.get("/{crm_slug}/websites/{website_id}/contacts")
 async def seller_crm_websites_contacts(request: Request, crm_slug: str, website_id: int):
     account, subscription = await _authorized_account(request, crm_slug)
     website = await _get_v2_website_or_404(account, website_id)
-    return templates.TemplateResponse("seller_crm/websites/contacts.html", _seller_crm_context(request, title="Контакти (V2)", current_page="websites_v2", account=account, subscription=subscription, website=website))
+    website_context = await _build_v2_context_payload(account, dict(website))
+    profile_url = f"/crm/seller/{crm_slug}/profile#contacts-title"
+    return templates.TemplateResponse("seller_crm/websites/contacts.html", _seller_crm_context(request, title="Контакти (V2)", current_page="websites_v2_contacts", account=account, subscription=subscription, website=website, website_context=website_context, profile_url=profile_url, saved=request.query_params.get("saved")))
+
+
+@router.post("/{crm_slug}/websites/{website_id}/contacts")
+async def seller_crm_websites_contacts_save(
+    request: Request,
+    crm_slug: str,
+    website_id: int,
+    use_override: str = Form("0"),
+    phone: str = Form(""),
+    telegram: str = Form(""),
+    website_url: str = Form(""),
+    city: str = Form(""),
+    phones_text: str = Form(""),
+):
+    account, _subscription = await _authorized_account(request, crm_slug)
+    website = await _get_v2_website_or_404(account, website_id)
+    enable_override = str(use_override or "").strip().lower() in {"1", "true", "on", "yes"}
+    patch: dict = {}
+    if enable_override:
+        phones = [line.strip() for line in (phones_text or "").splitlines() if line.strip()]
+        contacts_payload = {
+            "phone": (phone or "").strip(),
+            "telegram": (telegram or "").strip(),
+            "website": (website_url or "").strip(),
+            "city": (city or "").strip(),
+            "phones": phones,
+        }
+        patch["contacts"] = {k: v for k, v in contacts_payload.items() if v}
+    else:
+        patch["contacts"] = {}
+    await update_website_v2_draft(int(website["id"]), patch)
+    return RedirectResponse(url=f"/crm/seller/{crm_slug}/websites/{website_id}/contacts?saved=1", status_code=303)
 
 
 @router.get("/{crm_slug}/websites/{website_id}/publication")
 async def seller_crm_websites_publication(request: Request, crm_slug: str, website_id: int):
     account, subscription = await _authorized_account(request, crm_slug)
     website = await _get_v2_website_or_404(account, website_id)
-    return templates.TemplateResponse("seller_crm/websites/publication.html", _seller_crm_context(request, title="Публікація (V2)", current_page="websites_v2", account=account, subscription=subscription, website=website))
+    website_context = await _build_v2_context_payload(account, dict(website), prefer_draft=True)
+    return templates.TemplateResponse("seller_crm/websites/publication.html", _seller_crm_context(request, title="Публікація (V2)", current_page="websites_v2_publication", account=account, subscription=subscription, website=website, website_context=website_context, publish_error=request.query_params.get("error")))
+
+
+@router.get("/{crm_slug}/websites/{website_id}/leads")
+async def seller_crm_websites_leads(request: Request, crm_slug: str, website_id: int):
+    account, subscription = await _authorized_account(request, crm_slug)
+    website = await _get_v2_website_or_404(account, website_id)
+    leads = await list_website_v2_leads(int(website["id"]), int(account["seller_id"]))
+    lead_counts = await count_website_v2_leads_by_website(int(website["id"]), int(account["seller_id"]))
+    return templates.TemplateResponse("seller_crm/websites/leads.html", _seller_crm_context(request, title="Заявки сайту (V2)", current_page="websites_v2_details", account=account, subscription=subscription, website=website, leads=leads, lead_counts=lead_counts))
+
+
+@router.post("/{crm_slug}/websites/{website_id}/leads/{lead_id}/status")
+async def seller_crm_websites_lead_status(
+    request: Request,
+    crm_slug: str,
+    website_id: int,
+    lead_id: int,
+    status: str = Form(...),
+):
+    account, _subscription = await _authorized_account(request, crm_slug)
+    website = await _get_v2_website_or_404(account, website_id)
+    lead = await get_website_v2_lead(lead_id, int(account["seller_id"]))
+    if not lead or int(lead["website_id"]) != int(website["id"]):
+        raise HTTPException(status_code=404)
+    try:
+        await update_website_v2_lead_status(lead_id, int(account["seller_id"]), status)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="invalid status")
+    return RedirectResponse(url=f"/crm/seller/{crm_slug}/websites/{website_id}/leads", status_code=303)
 
 
 @router.post("/{crm_slug}/websites/{website_id}/publish")
 async def seller_crm_websites_publish(request: Request, crm_slug: str, website_id: int):
     account, _subscription = await _authorized_account(request, crm_slug)
     website = await _get_v2_website_or_404(account, website_id)
+    website_context = await _build_v2_context_payload(account, dict(website), prefer_draft=True)
+    if not website_context.get("publish_ready"):
+        return RedirectResponse(url=f"/crm/seller/{crm_slug}/websites/{website_id}/publication?error=validation", status_code=303)
     await publish_website_v2(int(website["id"]))
     return RedirectResponse(url=f"/crm/seller/{crm_slug}/websites/{website_id}?status=published", status_code=303)

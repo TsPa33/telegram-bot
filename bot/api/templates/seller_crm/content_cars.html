@@ -40,13 +40,13 @@
   <section class="grid garage-summary" aria-label="Підсумок гаража">
     {{ cards.metric_card("Активні авто", summary.active_cars or 0, "позицій у кабінеті") }}
     <article class="card">
-      <h3>Гараж</h3>
+      <h3>Пакет</h3>
       {% if summary.garage_slots_total %}
         <div class="metric">{{ summary.garage_slots_used or 0 }}/{{ summary.garage_slots_total or 0 }}</div>
         <p class="section-note">вільно {{ summary.garage_slots_free or 0 }} місць</p>
       {% else %}
         <div class="metric">{{ summary.active_cars or 0 }}</div>
-        <p class="section-note">Ліміти гаража будуть доступні окремо</p>
+        <p class="section-note">Ліміти авто на розборі будуть доступні після активації пакета</p>
       {% endif %}
     </article>
     {{ cards.metric_card("Перегляди", totals.views or 0, "по активних авто") }}

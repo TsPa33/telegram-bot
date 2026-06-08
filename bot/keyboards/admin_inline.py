@@ -67,6 +67,21 @@ def verification_request_kb(request_id: int):
     ])
 
 
+def seller_onboarding_review_kb(seller_id: int):
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(
+                text="✅ Схвалити продавця",
+                callback_data=f"admin:seller_verify:ok:{seller_id}",
+            ),
+            InlineKeyboardButton(
+                text="❌ Відхилити",
+                callback_data=f"admin:seller_verify:no:{seller_id}",
+            ),
+        ]
+    ])
+
+
 # ================= NEW: USERS =================
 
 def admin_users_kb(users):

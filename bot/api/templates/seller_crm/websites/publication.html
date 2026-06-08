@@ -1,1 +1,67 @@
-{% extends "seller_crm/base.html" %}{% block content %}<h1>publication</h1><p>{{ website.name }} ({{ website.site_type }}) status={{ website.status }}</p><p><a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/design">Design</a> | <a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/content">Content</a> | <a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/contacts">Contacts</a> | <a href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/publication">Publication</a></p>{% if 'publication' == 'publication' %}<form method="post" action="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/publish"><button type="submit">Publish this website</button></form>{% endif %}{% endblock %}
+{% extends "seller_crm/base.html" %}
+{% block crm_kicker %}Website V2{% endblock %}
+{% block crm_heading %}Публікація сайту{% endblock %}
+{% block content %}
+<div class="crm-page">
+  <section class="crm-page-head">
+    <div>
+      <h1>Публікація сайту</h1>
+      <p class="section-note">{{ website.name }} · перевірте готовність і опублікуйте сайт.</p>
+    </div>
+    <div class="crm-action-row"><a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}">Назад до огляду</a></div>
+  </section>
+
+  <section class="crm-card-grid">
+    <article class="card">
+      <h2>Статус</h2>
+      <p class="section-note">Поточний статус: <span class="badge {% if website_context.status == 'published' %}status-success{% else %}status-waiting{% endif %}">{{ website_context.status }}</span></p>
+      {% if website_context.publish_ready %}<div class="crm-notice">Сайт готовий до публікації.</div>{% else %}<div class="crm-notice warning">Потрібно завершити налаштування.</div>{% endif %}
+    </article>
+
+    <article class="card">
+      <h2>Публічне посилання</h2>
+      <div class="crm-code">/w/{{ website.subdomain }}</div>
+      <p class="section-note stack-top">{% if website_context.site_type == 'carpot_catalog' %}Після публікації каталог стане доступний клієнтам за цим посиланням.{% else %}Після публікації клієнти зможуть залишати заявки через сайт.{% endif %}</p>
+      {% set contact_source = website_context.website_contacts.source if website_context.website_contacts else 'none' %}
+      {% if contact_source == 'seller_profile' %}<p class="section-note">Контакти взято з профілю продавця.</p>{% elif contact_source == 'website' %}<p class="section-note">Використовуються окремі контакти сайту.</p>{% endif %}
+    </article>
+  </section>
+
+  {% if publish_error == 'validation' %}<div class="crm-notice error">Не вдалося опублікувати: заповніть обовʼязкові поля.</div>{% endif %}
+
+  <section class="card">
+    <h2>Чекліст готовності</h2>
+    {% if website_context.missing_required_fields %}
+      <div class="crm-list">
+        {% for item in website_context.missing_required_fields %}<div class="crm-list-item"><span>{{ item }}</span><span class="badge status-waiting">Потрібно</span></div>{% endfor %}
+      </div>
+    {% else %}
+      <div class="crm-notice">Усі обовʼязкові поля заповнені.</div>
+    {% endif %}
+
+    <div class="crm-action-row stack-top">
+      {% set missing = website_context.missing_required_fields or [] %}
+      {% set missing_text = missing|join(' ')|lower %}
+      {% if 'контакт' in missing_text %}<a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/contacts">Заповнити контакти</a>{% endif %}
+      {% if website_context.site_type == 'carpot_catalog' and ('авто' in missing_text or 'товар' in missing_text or 'запчаст' in missing_text) %}
+        <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content/cars">Додати авто</a>
+        <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content/products">Додати товари</a>
+      {% endif %}
+      {% if website_context.site_type == 'carpot_business' and 'послуг' in missing_text %}<a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/services">Додати послугу</a>{% endif %}
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Запуск</h2>
+    <p class="section-note">Публікація копіює поточну чернетку в live-версію сайту.</p>
+    <div class="crm-action-row">
+      {% if website_context.publish_ready %}
+        <form method="post" action="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/publish"><button class="btn" type="submit">Опублікувати сайт</button></form>
+      {% else %}
+        <button class="btn secondary" type="button" disabled>Сайт ще не готовий</button>
+      {% endif %}
+      <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}">Повернутися до налаштувань</a>
+    </div>
+  </section>
+</div>
+{% endblock %}

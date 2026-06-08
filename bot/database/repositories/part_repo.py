@@ -588,6 +588,194 @@ async def get_available_parts_for_site(seller_id: int) -> list:
     )
 
 
+async def get_available_parts_for_site_paginated(seller_id: int, *, limit: int = 100, offset: int = 0, filters: dict | None = None, sort: str = "newest") -> list:
+    normalized_limit = max(1, min(int(limit or 100), 300))
+    normalized_offset = max(0, int(offset or 0))
+    args=[seller_id]
+    filters_sql=_part_filter_sql(filters,args)
+    args.extend([normalized_limit, normalized_offset])
+    return await fetch(
+        f"""
+        SELECT
+            sp.id,
+            sp.car_id,
+            sp.category,
+            sp.name,
+            sp.price,
+            sp.photo_id,
+            sp.description,
+            m.name AS model,
+            b.name AS brand
+        FROM seller_parts sp
+        JOIN seller_cars sc ON sc.id = sp.car_id
+        JOIN models m ON m.id = sc.model_id
+        JOIN brands b ON b.id = m.brand_id
+        WHERE sp.seller_id = $1
+          AND sp.status = 'available'
+          {filters_sql}
+        ORDER BY {_part_sort_sql(sort)}
+        LIMIT ${len(args)-1} OFFSET ${len(args)}
+        """,
+        *args,
+    )
+
+
+async def search_available_parts_for_site(seller_id: int, query: str, limit: int = 200) -> list:
+    normalized_limit = max(1, min(int(limit or 200), 300))
+    normalized_offset = 0
+    if isinstance(limit, tuple):
+        normalized_limit, normalized_offset = limit
+    q = f"%{(query or '').strip().lower()}%"
+    return await fetch(
+        """
+        SELECT
+            sp.id,
+            sp.car_id,
+            sp.category,
+            sp.name,
+            sp.price,
+            sp.photo_id,
+            sp.description,
+            m.name AS model,
+            b.name AS brand
+        FROM seller_parts sp
+        JOIN seller_cars sc ON sc.id = sp.car_id
+        JOIN models m ON m.id = sc.model_id
+        JOIN brands b ON b.id = m.brand_id
+        WHERE sp.seller_id = $1
+          AND sp.status = 'available'
+          AND (
+            LOWER(COALESCE(sp.name, '')) LIKE $2
+            OR LOWER(COALESCE(sp.category, '')) LIKE $2
+            OR LOWER(COALESCE(sp.description, '')) LIKE $2
+            OR LOWER(COALESCE(b.name, '')) LIKE $2
+            OR LOWER(COALESCE(m.name, '')) LIKE $2
+          )
+        ORDER BY sc.id DESC, sp.sort_order, sp.name
+        LIMIT $3 OFFSET $4
+        """,
+        seller_id,
+        q,
+        normalized_limit,
+        normalized_offset,
+    )
+
+
+async def search_available_parts_for_site_paginated(seller_id: int, query: str, *, limit: int = 200, offset: int = 0, filters: dict | None = None, sort: str = "newest") -> list:
+    normalized_limit = max(1, min(int(limit or 200), 300))
+    normalized_offset = max(0, int(offset or 0))
+    q = f"%{(query or '').strip().lower()}%"
+    args=[seller_id,q]
+    filters_sql=_part_filter_sql(filters,args)
+    args.extend([normalized_limit, normalized_offset])
+    return await fetch(
+        f"""
+        SELECT sp.id, sp.car_id, sp.category, sp.name, sp.price, sp.photo_id, sp.description, m.name AS model, b.name AS brand
+        FROM seller_parts sp
+        JOIN seller_cars sc ON sc.id = sp.car_id
+        JOIN models m ON m.id = sc.model_id
+        JOIN brands b ON b.id = m.brand_id
+        WHERE sp.seller_id = $1
+          AND sp.status = 'available'
+          AND (
+            LOWER(COALESCE(sp.name, '')) LIKE $2
+            OR LOWER(COALESCE(sp.category, '')) LIKE $2
+            OR LOWER(COALESCE(sp.description, '')) LIKE $2
+            OR LOWER(COALESCE(b.name, '')) LIKE $2
+            OR LOWER(COALESCE(m.name, '')) LIKE $2
+          ){filters_sql}
+        ORDER BY {_part_sort_sql(sort)}
+        LIMIT ${len(args)-1} OFFSET ${len(args)}
+        """,
+        *args,
+    )
+
+
+def _part_filter_sql(filters: dict | None, args: list) -> str:
+    filters = filters or {}
+    clauses = []
+    for key, col in [("category", "sp.category"), ("brand", "b.name"), ("model", "m.name"), ("condition", "sp.condition"), ("availability", "sp.status")]:
+        value = str(filters.get(key) or "").strip()
+        if value:
+            args.append(value)
+            clauses.append(f"LOWER(COALESCE({col}, '')) = LOWER(${len(args)})")
+    return (" AND " + " AND ".join(clauses)) if clauses else ""
+
+
+def _part_sort_sql(sort: str | None) -> str:
+    normalized = (sort or "newest").strip().lower()
+    sort_map = {
+        "newest": "sp.created_at DESC, sp.id DESC",
+        "oldest": "sp.created_at ASC, sp.id ASC",
+        "name_asc": "LOWER(COALESCE(sp.name, '')) ASC, sp.id DESC",
+        "name_desc": "LOWER(COALESCE(sp.name, '')) DESC, sp.id DESC",
+        "price_asc": "sp.price ASC NULLS LAST, sp.id DESC",
+        "price_desc": "sp.price DESC NULLS LAST, sp.id DESC",
+    }
+    return sort_map.get(normalized, sort_map["newest"])
+
+
+async def count_search_available_parts_for_site(seller_id: int, query: str, filters: dict | None = None) -> int:
+    q = f"%{(query or '').strip().lower()}%"
+    args = [seller_id, q]
+    filters_sql = _part_filter_sql(filters, args)
+    row = await fetchrow(
+        f"""
+        SELECT COUNT(*)::int AS total
+        FROM seller_parts sp
+        JOIN seller_cars sc ON sc.id = sp.car_id
+        JOIN models m ON m.id = sc.model_id
+        JOIN brands b ON b.id = m.brand_id
+        WHERE sp.seller_id = $1
+          AND sp.status = 'available'
+          AND (
+            LOWER(COALESCE(sp.name, '')) LIKE $2
+            OR LOWER(COALESCE(sp.category, '')) LIKE $2
+            OR LOWER(COALESCE(sp.description, '')) LIKE $2
+            OR LOWER(COALESCE(b.name, '')) LIKE $2
+            OR LOWER(COALESCE(m.name, '')) LIKE $2
+          ){filters_sql}
+        """,
+        *args,
+    )
+    return int((row or {}).get("total") or 0)
+
+
+async def count_available_parts_for_site(seller_id: int, filters: dict | None = None) -> int:
+    args=[seller_id]
+    filters_sql=_part_filter_sql(filters,args)
+    row = await fetchrow(
+        f"""
+        SELECT COUNT(*)::int AS total
+        FROM seller_parts sp
+        LEFT JOIN seller_cars sc ON sc.id = sp.car_id
+        LEFT JOIN models m ON m.id = sc.model_id
+        LEFT JOIN brands b ON b.id = m.brand_id
+        WHERE sp.seller_id = $1
+          AND sp.status = 'available'
+          {filters_sql}
+        """,
+        *args,
+    )
+    return int((row or {}).get("total") or 0)
+
+
+async def list_part_ids_for_sitemap(seller_id: int, limit: int = 5000):
+    normalized_limit = max(1, min(int(limit or 5000), 5000))
+    return await fetch(
+        """
+        SELECT sp.id
+        FROM seller_parts sp
+        WHERE sp.seller_id = $1
+          AND sp.status = 'available'
+        ORDER BY sp.created_at DESC, sp.id DESC
+        LIMIT $2
+        """,
+        seller_id,
+        normalized_limit,
+    )
+
+
 async def count_parts_by_car(car_id: int) -> dict:
     row = await fetchrow(
         """
@@ -679,45 +867,59 @@ async def get_parts_by_car_id_filtered(
     car_id: int,
     status: str | None = None,
     q: str | None = None,
+    category: str | None = None,
 ) -> list:
     return await fetch(
         """
         SELECT
-            id,
-            seller_id,
-            car_id,
-            category,
-            name,
-            status,
-            price,
-            photo_id,
-            description,
-            sort_order
+            seller_parts.id,
+            seller_parts.seller_id,
+            seller_parts.car_id,
+            seller_parts.category,
+            seller_parts.name,
+            seller_parts.status,
+            seller_parts.price,
+            seller_parts.photo_id,
+            seller_parts.description,
+            seller_parts.sort_order
         FROM seller_parts
-        WHERE seller_id = $1
-          AND car_id = $2
-          AND ($3::TEXT IS NULL OR status = $3)
+        JOIN seller_cars sc ON sc.id = seller_parts.car_id AND sc.seller_id = seller_parts.seller_id
+        LEFT JOIN models m ON m.id = sc.model_id
+        LEFT JOIN brands b ON b.id = m.brand_id
+        WHERE seller_parts.seller_id = $1
+          AND seller_parts.car_id = $2
+          AND ($3::TEXT IS NULL OR seller_parts.status = $3)
           AND (
                 $4::TEXT IS NULL
-                OR regexp_replace(lower(name), '\\s+', ' ', 'g')
+                OR regexp_replace(lower(COALESCE(seller_parts.name, '')), '\\s+', ' ', 'g')
+                LIKE '%' || regexp_replace(lower($4), '\\s+', ' ', 'g') || '%'
+                OR regexp_replace(lower(COALESCE(seller_parts.category, '')), '\\s+', ' ', 'g')
+                LIKE '%' || regexp_replace(lower($4), '\\s+', ' ', 'g') || '%'
+                OR regexp_replace(lower(COALESCE(seller_parts.description, '')), '\\s+', ' ', 'g')
+                LIKE '%' || regexp_replace(lower($4), '\\s+', ' ', 'g') || '%'
+                OR regexp_replace(lower(COALESCE(b.name, '')), '\\s+', ' ', 'g')
+                LIKE '%' || regexp_replace(lower($4), '\\s+', ' ', 'g') || '%'
+                OR regexp_replace(lower(COALESCE(m.name, '')), '\\s+', ' ', 'g')
                 LIKE '%' || regexp_replace(lower($4), '\\s+', ' ', 'g') || '%'
           )
+          AND ($5::TEXT IS NULL OR seller_parts.category = $5)
         ORDER BY
-            category,
-            CASE status
+            seller_parts.category,
+            CASE seller_parts.status
                 WHEN 'available' THEN 1
                 WHEN 'draft' THEN 2
                 WHEN 'hidden' THEN 3
                 WHEN 'sold' THEN 4
                 ELSE 5
             END,
-            name ASC
+            seller_parts.name ASC
         LIMIT 500
         """,
         seller_id,
         car_id,
         status,
         q,
+        category,
     )
 
 
@@ -745,6 +947,23 @@ async def update_generated_parts_status(
     )
 
     return len(rows)
+
+
+async def count_seller_part_inventory_statuses(seller_id: int):
+    row = await fetchrow(
+        """
+        SELECT
+            COUNT(*)::int AS total,
+            COUNT(*) FILTER (WHERE status = 'available')::int AS available,
+            COUNT(*) FILTER (WHERE status = 'sold')::int AS sold,
+            COUNT(*) FILTER (WHERE status = 'hidden')::int AS hidden,
+            COUNT(*) FILTER (WHERE status = 'draft')::int AS draft
+        FROM seller_parts
+        WHERE seller_id = $1
+        """,
+        seller_id,
+    )
+    return dict(row) if row else {"total": 0, "available": 0, "sold": 0, "hidden": 0, "draft": 0}
 
 
 async def bulk_update_parts_status_by_category(
@@ -779,6 +998,51 @@ async def bulk_update_parts_status_by_category(
     )
 
     return len(rows)
+
+
+async def bulk_update_parts_status_by_ids(seller_id: int, part_ids: list[int], status: str) -> int:
+    if status not in VALID_PART_STATUSES:
+        return 0
+    ids = [int(item) for item in part_ids if str(item).strip()]
+    if not ids:
+        return 0
+    row = await fetchrow(
+        """
+        WITH updated AS (
+            UPDATE seller_parts
+            SET status = $3,
+                updated_at = NOW()
+            WHERE seller_id = $1
+              AND id = ANY($2::BIGINT[])
+            RETURNING id
+        )
+        SELECT COUNT(*)::int AS updated_count FROM updated
+        """,
+        seller_id,
+        ids,
+        status,
+    )
+    return int(row.get("updated_count") or 0) if row else 0
+
+
+async def bulk_delete_parts_by_ids(seller_id: int, part_ids: list[int]) -> int:
+    ids = [int(item) for item in part_ids if str(item).strip()]
+    if not ids:
+        return 0
+    row = await fetchrow(
+        """
+        WITH deleted AS (
+            DELETE FROM seller_parts
+            WHERE seller_id = $1
+              AND id = ANY($2::BIGINT[])
+            RETURNING id
+        )
+        SELECT COUNT(*)::int AS deleted_count FROM deleted
+        """,
+        seller_id,
+        ids,
+    )
+    return int(row.get("deleted_count") or 0) if row else 0
 
 
 async def get_parts_counters_by_car_ids(
