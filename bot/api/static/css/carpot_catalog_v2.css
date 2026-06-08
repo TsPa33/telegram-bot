@@ -84,6 +84,17 @@
         .carpot-v2-contact-card small{font-size:15px;color:#111;white-space:normal;overflow-wrap:anywhere}
 
         .carpot-v2-footer{border-top:1px solid var(--line);padding:24px 0;color:#666;font-size:14px;margin-top:30px}
+        .carpot-v2-filter-demo{display:grid;gap:12px;align-content:start}
+        .carpot-v2-filter-demo p{margin:0;color:#555;line-height:1.5;font-size:14px}
+        .carpot-v2-location-card{border:1px solid var(--line);border-radius:26px;background:linear-gradient(135deg,#111,#2d2d2d);color:#fff;padding:28px;display:grid;gap:10px;overflow:hidden}
+        .carpot-v2-location-card span{color:#cfcfcf;text-transform:uppercase;letter-spacing:.12em;font-size:12px;font-weight:800}
+        .carpot-v2-location-card h2{margin:0;font-size:30px;letter-spacing:-.025em}
+        .carpot-v2-location-card p{margin:0;color:#e6e6e6;max-width:640px;line-height:1.5}
+        .carpot-v2-map iframe{width:100%;min-height:320px;border:0;border-radius:22px;display:block}
+        .carpot-v2-map-placeholder{border:1px dashed #d8d8d8;border-radius:22px;background:#fafafa;min-height:220px;display:grid;place-items:center;padding:20px;text-align:center;color:#444}
+        .carpot-v2-backtop{position:fixed;right:18px;bottom:18px;z-index:60;display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:11px 16px;border-radius:999px;background:#111;color:#fff;border:1px solid rgba(255,255,255,.18);box-shadow:0 14px 34px rgba(0,0,0,.18);font-weight:800;font-size:13px}
+        .carpot-v2-backtop:hover{background:#2a2a2a}
+
 
         @media (max-width:1100px){
             .carpot-v2-hero-shell h1{font-size:42px}
@@ -138,6 +149,8 @@
             .carpot-v2-filter form{gap:10px}
             .carpot-v2-filter .carpot-v2-btn{width:100%}
             .carpot-v2-card{padding:12px;gap:10px}
+            .carpot-v2-location-card{padding:22px}
+            .carpot-v2-backtop{right:12px;bottom:12px}
         }
         @media (max-width:430px){
             .carpot-v2-wrap{padding:0 12px}
@@ -164,4 +177,4 @@
             .carpot-v2-brand b{font-size:18px}
             .carpot-v2-search{padding:10px 12px}
         }
-    
+
