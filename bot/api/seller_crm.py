@@ -93,6 +93,7 @@ from bot.database.repositories.seller_crm_repo import (
     update_seller_crm_car_photo,
 )
 from bot.database.repositories.seller_repo import get_seller_by_id
+from bot.database.repositories.support_repo import create_support_ticket
 from bot.database.repositories.lead_thread_repo import (
     LEAD_THREAD_READ_READ,
     LEAD_THREAD_SENDER_SELLER,
@@ -181,6 +182,7 @@ from bot.database.repositories.website_v2_repo import (
     count_website_v2_leads_summary,
     create_website_v2,
     get_website_v2_by_id,
+    seller_has_website_v2_creation_access,
     get_website_v2_lead,
     list_recent_website_v2_leads_by_seller,
     list_website_v2_leads,
@@ -209,7 +211,8 @@ from bot.services.seller_crm import (
     verify_crm_password,
 )
 from bot.services.seller_offer_service import submit_seller_offer_from_crm
-from bot.services.telegram_sender import send_message_to_buyer
+from bot.services.telegram_sender import bot as telegram_bot, send_message_to_buyer
+from bot.services.support_notifications import notify_support_admins
 from bot.services.buyer_chat_presence import is_buyer_in_chat
 from bot.services.site_config import (
     get_theme_presets,
@@ -3990,6 +3993,51 @@ async def seller_crm_garage_package_checkout(request: Request, crm_slug: str, pa
     return RedirectResponse(url=payment["url"], status_code=303)
 
 
+
+
+def _website_creation_required_message() -> str:
+    return "Для створення сайту необхідно активувати пакет сайту."
+
+
+async def _seller_has_website_creation_access(account: dict[str, Any]) -> bool:
+    if _is_demo_account(account):
+        return True
+    return await seller_has_website_v2_creation_access(int(account["seller_id"]))
+
+
+async def _create_custom_website_admin_request(account: dict[str, Any]) -> int | None:
+    seller = await get_seller_by_id(int(account["seller_id"]))
+    seller_data = dict(seller) if seller else {}
+    telegram_id = seller_data.get("telegram_id") or account.get("telegram_id")
+    seller_name = seller_data.get("shop_name") or seller_data.get("name") or account.get("shop_name") or account.get("name") or "—"
+    phone = seller_data.get("phone") or "—"
+    crm_slug = account.get("crm_slug") or seller_data.get("crm_slug") or "—"
+    username = seller_data.get("username") or account.get("username")
+    message = (
+        "Індивідуальний сайт — від 4999 грн\n\n"
+        f"seller id: {account['seller_id']}\n"
+        f"telegram id: {telegram_id or '—'}\n"
+        f"seller name: {seller_name}\n"
+        f"phone: {phone}\n"
+        f"crm slug: {crm_slug}"
+    )
+    ticket_id = None
+    if telegram_id:
+        ticket = await create_support_ticket(
+            int(telegram_id),
+            username,
+            seller_name,
+            message,
+            subject="Індивідуальний сайт",
+        )
+        ticket_id = int(ticket["id"]) if ticket else None
+    admin_text = "🌐 Нова заявка на індивідуальний сайт"
+    if ticket_id:
+        admin_text += f" #{ticket_id}"
+    admin_text += "\n\n" + message
+    await notify_support_admins(telegram_bot, admin_text)
+    return ticket_id
+
 @router.post("/{crm_slug}/settings/site-package/{package_key}")
 async def seller_crm_site_package_checkout(request: Request, crm_slug: str, package_key: str):
     try:
@@ -3998,6 +4046,10 @@ async def seller_crm_site_package_checkout(request: Request, crm_slug: str, pack
         if exc.status_code == 303:
             return RedirectResponse(url=exc.detail, status_code=303)
         raise
+
+    if package_key == "premium":
+        await _create_custom_website_admin_request(account)
+        return RedirectResponse(url=f"/crm/seller/{crm_slug}/websites/create?status=custom_requested", status_code=303)
 
     package_map = {
         "standard": {"amount": 499, "product": "site_standard"},
@@ -5479,14 +5531,30 @@ async def seller_crm_websites(request: Request, crm_slug: str):
 
 
 @router.get("/{crm_slug}/websites/create")
-async def seller_crm_websites_create(request: Request, crm_slug: str, error: str | None = None):
+async def seller_crm_websites_create(request: Request, crm_slug: str, error: str | None = None, status: str | None = None):
     account, subscription = await _authorized_account(request, crm_slug)
-    return templates.TemplateResponse("seller_crm/websites/create.html", _seller_crm_context(request, title="Створення сайту", current_page="websites_v2_create", account=account, subscription=subscription, error=error))
+    can_create_website = await _seller_has_website_creation_access(account)
+    return templates.TemplateResponse(
+        "seller_crm/websites/create.html",
+        _seller_crm_context(
+            request,
+            title="Створення сайту",
+            current_page="websites_v2_create",
+            account=account,
+            subscription=subscription,
+            error=error,
+            status=status,
+            can_create_website=can_create_website,
+            website_required_message=_website_creation_required_message(),
+        ),
+    )
 
 
 @router.post("/{crm_slug}/websites/create")
 async def seller_crm_websites_create_post(request: Request, crm_slug: str, site_type: str = Form(...), name: str = Form(...), subdomain: str = Form(...)):
     account, _subscription = await _authorized_account(request, crm_slug)
+    if not await _seller_has_website_creation_access(account):
+        return RedirectResponse(url=f"/crm/seller/{crm_slug}/websites/create?error=website_package_required", status_code=303)
     try:
         normalized_type = normalize_website_v2_type(site_type)
     except ValueError:
