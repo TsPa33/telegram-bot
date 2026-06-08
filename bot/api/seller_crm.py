@@ -5732,7 +5732,7 @@ async def seller_crm_websites_hero(request: Request, crm_slug: str, website_id: 
         "seller_crm/websites/hero.html",
         _seller_crm_context(
             request,
-            title="Hero (V2)",
+            title="Головний екран сайту",
             current_page="websites_v2_design",
             account=account,
             subscription=subscription,
@@ -5795,7 +5795,7 @@ async def seller_crm_websites_content(request: Request, crm_slug: str, website_i
     account, subscription = await _authorized_account(request, crm_slug)
     website = await _get_v2_website_or_404(account, website_id)
     website_context = await _build_v2_context_payload(account, dict(website))
-    return templates.TemplateResponse("seller_crm/websites/content.html", _seller_crm_context(request, title="Контент (V2)", current_page="websites_v2_content", account=account, subscription=subscription, website=website, website_context=website_context))
+    return templates.TemplateResponse("seller_crm/websites/content.html", _seller_crm_context(request, title="Наповнення сайту", current_page="websites_v2_content", account=account, subscription=subscription, website=website, website_context=website_context))
 
 
 @router.get("/{crm_slug}/websites/{website_id}/services")
@@ -6001,7 +6001,7 @@ async def seller_crm_websites_publication(request: Request, crm_slug: str, websi
     account, subscription = await _authorized_account(request, crm_slug)
     website = await _get_v2_website_or_404(account, website_id)
     website_context = await _build_v2_context_payload(account, dict(website), prefer_draft=True)
-    return templates.TemplateResponse("seller_crm/websites/publication.html", _seller_crm_context(request, title="Публікація (V2)", current_page="websites_v2_publication", account=account, subscription=subscription, website=website, website_context=website_context, publish_error=request.query_params.get("error")))
+    return templates.TemplateResponse("seller_crm/websites/publication.html", _seller_crm_context(request, title="Запуск сайту", current_page="websites_v2_publication", account=account, subscription=subscription, website=website, website_context=website_context, publish_error=request.query_params.get("error")))
 
 
 @router.get("/{crm_slug}/websites/{website_id}/leads")
