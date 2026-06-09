@@ -6,6 +6,30 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 
+DEMO_CATALOG_CATEGORIES = ["Оптика", "Двигун", "Кузов", "Салон", "Ходова", "Електрика"]
+DEMO_CATALOG_ITEMS = [
+    {"title": "LED фара Audi A6 C7", "category": "Оптика", "brand": "Audi", "model": "A6 C7", "description": "Оригінальна LED фара для швидкої заміни після перевірки сумісності.", "price": None, "condition": "В наявності", "cta_label": "Уточнити наявність"},
+    {"title": "Турбіна Volkswagen Passat B7", "category": "Двигун", "brand": "Volkswagen", "model": "Passat B7", "description": "Турбіна з авто на розборі, підбір за кодом двигуна або VIN.", "price": None, "condition": "Перевірено", "cta_label": "Надіслати запит"},
+    {"title": "Бампер BMW F10", "category": "Кузов", "brand": "BMW", "model": "5 F10", "description": "Передній бампер для BMW 5 серії. Стан і колір уточнюйте у продавця.", "price": None, "condition": "Під замовлення", "cta_label": "Запитати ціну"},
+    {"title": "Дзеркало Skoda Octavia A7", "category": "Кузов", "brand": "Skoda", "model": "Octavia A7", "description": "Бічне дзеркало в зборі. Допоможемо перевірити сумісність перед покупкою.", "price": None, "condition": "В наявності", "cta_label": "Уточнити деталі"},
+    {"title": "Генератор Mercedes W212", "category": "Електрика", "brand": "Mercedes", "model": "W212", "description": "Генератор з перевіркою перед відправкою. Підбір за VIN або номером деталі.", "price": None, "condition": "Перевірено", "cta_label": "Надіслати VIN"},
+    {"title": "Диск гальмівний Toyota Camry", "category": "Ходова", "brand": "Toyota", "model": "Camry", "description": "Гальмівний диск для заміни. Наявність комплекту уточнюється продавцем.", "price": None, "condition": "В наявності", "cta_label": "Залишити заявку"},
+]
+DEMO_CATALOG_CARS = [
+    {"title": "Audi A6 C7 2016", "description": "Донорське авто для підбору кузовних деталей, оптики та електрики.", "price": None},
+    {"title": "Volkswagen Passat B7 2014", "description": "Авто на розборі: двигун, ходова, салон та електроніка.", "price": None},
+    {"title": "BMW 5 F10 2013", "description": "Доступні кузовні елементи, салон, оптика та агрегати.", "price": None},
+]
+DEMO_BUSINESS_SERVICES = [
+    {"title": "Компʼютерна діагностика", "category": "Діагностика", "description": "Перевірка помилок, електронних систем та рекомендації щодо ремонту.", "price": "від 500 грн", "cta_label": "Записатися"},
+    {"title": "Ремонт ходової", "category": "Ремонт", "description": "Діагностика підвіски, заміна важелів, сайлентблоків, амортизаторів та супутніх деталей.", "price": "за запитом", "cta_label": "Отримати консультацію"},
+    {"title": "Автоелектрик", "category": "Електрика", "description": "Пошук несправностей, ремонт проводки, стартерів, генераторів та освітлення.", "price": "за запитом", "cta_label": "Описати проблему"},
+    {"title": "Ремонт двигуна", "category": "Двигун", "description": "Обслуговування, діагностика та ремонт двигуна після огляду автомобіля.", "price": "за запитом", "cta_label": "Залишити заявку"},
+    {"title": "Шиномонтаж", "category": "Колеса", "description": "Сезонна заміна шин, балансування та перевірка стану коліс.", "price": "від 300 грн", "cta_label": "Записатися"},
+    {"title": "Евакуатор", "category": "Допомога", "description": "Допомога з транспортуванням авто по місту та області.", "price": "за запитом", "cta_label": "Викликати"},
+]
+
+
 def build_website_v2_url(subdomain: str) -> str:
     return f"/w/{(subdomain or '').strip()}"
 
@@ -320,6 +344,9 @@ def build_catalog_website_context(website: dict, seller: dict) -> dict:
         "catalog_items": raw_products[:12],
         "cars_items": raw_cars[:6],
         "categories": categories,
+        "demo_catalog_items": DEMO_CATALOG_ITEMS,
+        "demo_cars_items": DEMO_CATALOG_CARS,
+        "demo_categories": DEMO_CATALOG_CATEGORIES,
         "has_catalog_items": len(raw_products) > 0,
         "current_search_query": str(seller.get("current_search_query") or ""),
         "filtered_results_count": int(seller.get("filtered_results_count") or len(raw_products) or 0),
@@ -415,6 +442,7 @@ def build_business_website_context(website: dict, seller: dict) -> dict:
             "has_services": services_count > 0,
         },
         "services_items": raw_services[:9],
+        "demo_services_items": DEMO_BUSINESS_SERVICES,
         "website_contacts": website_contacts,
         "missing_required_fields": missing,
         "publish_ready": len(missing) == 0,
@@ -445,6 +473,10 @@ def build_website_v2_context(website: dict, seller: dict) -> dict:
         "categories": specialized.get("categories", []),
         "has_catalog_items": specialized.get("has_catalog_items", False),
         "services_items": specialized.get("services_items", []),
+        "demo_catalog_items": specialized.get("demo_catalog_items", []),
+        "demo_cars_items": specialized.get("demo_cars_items", []),
+        "demo_categories": specialized.get("demo_categories", []),
+        "demo_services_items": specialized.get("demo_services_items", []),
         "website_contacts": specialized.get("website_contacts", {"has_contacts": False, "source": "none"}),
         "current_search_query": specialized.get("current_search_query", ""),
         "filtered_results_count": specialized.get("filtered_results_count", 0),

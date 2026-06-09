@@ -1,12 +1,12 @@
 {% extends "seller_crm/base.html" %}
-{% block crm_kicker %}Website V2{% endblock %}
+{% block crm_kicker %}Сайт{% endblock %}
 {% block crm_heading %}Послуги сайту{% endblock %}
 {% block content %}
 <div class="crm-page">
   <section class="crm-page-head">
     <div>
       <h1>Послуги сайту</h1>
-      <p class="section-note">{{ website.name }} · керуйте послугами, які показуються на Business сайті.</p>
+      <p class="section-note">{{ website.name }} · керуйте послугами, які показуються на сайт послугі.</p>
     </div>
     <div class="crm-action-row">
       <a class="btn" href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/services/new">+ Додати послугу</a>
@@ -24,7 +24,7 @@
           {% if service.image_url %}<img class="crm-thumb" src="{{ service.image_url }}" alt="{{ service.title }}">{% else %}<div class="crm-thumb">Немає фото</div>{% endif %}
           <div>
             <h2 class="crm-list-title">{{ service.title }}</h2>
-            <div class="crm-page-meta"><span>{{ service.price or 'Ціна за запитом' }}</span><span>·</span><span>Порядок: {{ service.sort_order }}</span></div>
+            <div class="crm-page-meta"><span>{{ service.price or 'Ціна за запитом' }}</span><span>·</span><span>Місце на сайті: {{ service.sort_order }}</span></div>
           </div>
           <div class="crm-action-row">
             <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/services/{{ loop.index0 }}/edit">Редагувати</a>
@@ -38,7 +38,7 @@
   {% else %}
     <div class="crm-empty">
       <strong>Послуг ще немає.</strong>
-      <p class="section-note">Додайте першу послугу, щоб Business сайт можна було опублікувати.</p>
+      <p class="section-note">Додайте першу послугу, щоб сайт послуг можна було опублікувати.</p>
       <a class="btn" href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/services/new">Додати послугу</a>
     </div>
   {% endif %}
