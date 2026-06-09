@@ -2,7 +2,7 @@
 {% block crm_kicker %}Авто в наявності{% endblock %}
 {% block crm_heading %}Авто в наявності{% endblock %}
 {% block content %}
-{% if status == 'saved' %}<div class="notice">Зміни збережено у чернетку. Опублікуйте сайт, щоб клієнти побачили зміни.</div>{% endif %}
+{% if status == 'saved' %}<div class="notice">Зміни збережено. Опублікуйте сайт, щоб клієнти їх побачили.</div>{% endif %}
 <article class="card">
   <p class="muted">Налаштуйте вигляд блоку авто без змін у реальних картках і наявності.</p>
   <form method="post" action="/crm/seller/{{ account.crm_slug }}/website/content/cars" class="stack-top">

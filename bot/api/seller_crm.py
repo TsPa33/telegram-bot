@@ -93,6 +93,7 @@ from bot.database.repositories.seller_crm_repo import (
     update_seller_crm_car_photo,
 )
 from bot.database.repositories.seller_repo import get_seller_by_id
+from bot.database.repositories.support_repo import create_support_ticket
 from bot.database.repositories.lead_thread_repo import (
     LEAD_THREAD_READ_READ,
     LEAD_THREAD_SENDER_SELLER,
@@ -181,6 +182,7 @@ from bot.database.repositories.website_v2_repo import (
     count_website_v2_leads_summary,
     create_website_v2,
     get_website_v2_by_id,
+    seller_has_website_v2_creation_access,
     get_website_v2_lead,
     list_recent_website_v2_leads_by_seller,
     list_website_v2_leads,
@@ -209,7 +211,8 @@ from bot.services.seller_crm import (
     verify_crm_password,
 )
 from bot.services.seller_offer_service import submit_seller_offer_from_crm
-from bot.services.telegram_sender import send_message_to_buyer
+from bot.services.telegram_sender import bot as telegram_bot, send_message_to_buyer
+from bot.services.support_notifications import notify_support_admins
 from bot.services.buyer_chat_presence import is_buyer_in_chat
 from bot.services.site_config import (
     get_theme_presets,
@@ -2817,7 +2820,7 @@ async def seller_crm_content_services(request: Request, crm_slug: str):
         "without_price": sum(1 for service in services if not service.get("has_price")),
         "without_photo": sum(1 for service in services if not service.get("has_photo")),
     }
-    site = _demo_site() if _is_demo_account(account) else await get_current_seller_site_or_404(seller_id)
+    site = _demo_site() if _is_demo_account(account) else await get_site_by_seller(seller_id)
     account_flags = dict(account)
     has_website = bool(site or account_flags.get("has_site") or account_flags.get("website"))
 
@@ -3117,22 +3120,37 @@ async def seller_crm_service_disable(request: Request, crm_slug: str, service_id
 
 
 # Static route must be registered before dynamic {id} route.
-@router.get("/{crm_slug}/content/cars")
-async def seller_crm_content_cars(request: Request, crm_slug: str):
-    try:
-        account, subscription = await _authorized_account(request, crm_slug)
-    except HTTPException as exc:
-        if exc.status_code == 303:
-            return RedirectResponse(url=exc.detail, status_code=303)
-        raise
+def _has_free_garage_slot(summary: dict[str, Any]) -> bool:
+    return int(summary.get("garage_slots_total") or 0) > 0 and int(summary.get("garage_slots_free") or 0) > 0
 
+
+def _garage_package_notice(crm_slug: str, message: str | None = None) -> dict[str, str]:
+    return {
+        "title": "Потрібен активний пакет",
+        "message": message or "Щоб додати авто на розбір, активуйте пакет.",
+        "action_url": f"/crm/seller/{crm_slug}/settings#autorozborka",
+        "action_label": "Обрати пакет",
+    }
+
+
+async def _render_content_cars_page(
+    request: Request,
+    *,
+    crm_slug: str,
+    account,
+    subscription,
+    notice: dict[str, str] | None = None,
+    status_code: int = 200,
+):
     seller_id = account["seller_id"]
     if _is_demo_account(account):
         summary = _demo_content_summary()
         cars = []
+        site = _demo_site()
     else:
         summary = dict(await get_seller_crm_content_summary(seller_id) or {})
         cars = [dict(car) for car in await list_seller_crm_cars_inventory(seller_id)]
+        site = await get_site_by_seller(seller_id)
     for car in cars:
         status_meta = get_car_display_status(car.get("status"))
         car["status_meta"] = status_meta
@@ -3152,9 +3170,9 @@ async def seller_crm_content_cars(request: Request, crm_slug: str):
         "phone_clicks": sum(int(car.get("phone_clicks") or 0) for car in cars),
         "site_clicks": sum(int(car.get("site_clicks") or 0) for car in cars),
     }
-    site = _demo_site() if _is_demo_account(account) else await get_current_seller_site_or_404(seller_id)
     account_flags = dict(account)
     has_website = bool(site or account_flags.get("has_site") or account_flags.get("website"))
+    can_add_car = _is_demo_account(account) or _has_free_garage_slot(summary)
 
     return templates.TemplateResponse(
         "seller_crm/content_cars.html",
@@ -3171,7 +3189,27 @@ async def seller_crm_content_cars(request: Request, crm_slug: str):
             has_website=has_website,
             has_cars=bool(cars),
             has_services=int(summary.get("active_services") or 0) > 0,
+            can_add_car=can_add_car,
+            notice=notice,
         ),
+        status_code=status_code,
+    )
+
+
+@router.get("/{crm_slug}/content/cars")
+async def seller_crm_content_cars(request: Request, crm_slug: str):
+    try:
+        account, subscription = await _authorized_account(request, crm_slug)
+    except HTTPException as exc:
+        if exc.status_code == 303:
+            return RedirectResponse(url=exc.detail, status_code=303)
+        raise
+
+    return await _render_content_cars_page(
+        request,
+        crm_slug=crm_slug,
+        account=account,
+        subscription=subscription,
     )
 
 
@@ -3183,6 +3221,19 @@ async def seller_crm_car_create_form(request: Request, crm_slug: str):
         if exc.status_code == 303:
             return RedirectResponse(url=exc.detail, status_code=303)
         raise
+
+    summary = _demo_content_summary() if _is_demo_account(account) else dict(await get_seller_crm_content_summary(account["seller_id"]) or {})
+    if not _is_demo_account(account) and not _has_free_garage_slot(summary):
+        message = "Щоб додати авто на розбір, активуйте пакет."
+        if int(summary.get("garage_slots_total") or 0) > 0:
+            message = "У поточному пакеті немає вільних місць для нового авто. Оберіть пакет із більшою кількістю авто."
+        return await _render_content_cars_page(
+            request,
+            crm_slug=crm_slug,
+            account=account,
+            subscription=subscription,
+            notice=_garage_package_notice(crm_slug, message),
+        )
 
     return await _render_car_create_form(
         request,
@@ -3207,6 +3258,19 @@ async def seller_crm_car_create(
         if exc.status_code == 303:
             return RedirectResponse(url=exc.detail, status_code=303)
         raise
+
+    summary = _demo_content_summary() if _is_demo_account(account) else dict(await get_seller_crm_content_summary(account["seller_id"]) or {})
+    if not _is_demo_account(account) and not _has_free_garage_slot(summary):
+        message = "Щоб додати авто на розбір, активуйте пакет."
+        if int(summary.get("garage_slots_total") or 0) > 0:
+            message = "У поточному пакеті немає вільних місць для нового авто. Оберіть пакет із більшою кількістю авто."
+        return await _render_content_cars_page(
+            request,
+            crm_slug=crm_slug,
+            account=account,
+            subscription=subscription,
+            notice=_garage_package_notice(crm_slug, message),
+        )
 
     catalog_value = is_catalog in {"1", "true", "on", "yes"}
     form = _car_create_form_payload(
@@ -3253,14 +3317,12 @@ async def seller_crm_car_create(
             is_catalog=catalog_value,
         )
     except SellerCrmGarageFullError:
-        return await _render_car_create_form(
+        return await _render_content_cars_page(
             request,
+            crm_slug=crm_slug,
             account=account,
             subscription=subscription,
-            crm_slug=crm_slug,
-            form=form,
-            error="Немає вільних місць у гаражі.",
-            status_code=400,
+            notice=_garage_package_notice(crm_slug),
         )
 
     if not created:
@@ -3931,6 +3993,51 @@ async def seller_crm_garage_package_checkout(request: Request, crm_slug: str, pa
     return RedirectResponse(url=payment["url"], status_code=303)
 
 
+
+
+def _website_creation_required_message() -> str:
+    return "Для створення сайту необхідно активувати пакет сайту."
+
+
+async def _seller_has_website_creation_access(account: dict[str, Any]) -> bool:
+    if _is_demo_account(account):
+        return True
+    return await seller_has_website_v2_creation_access(int(account["seller_id"]))
+
+
+async def _create_custom_website_admin_request(account: dict[str, Any]) -> int | None:
+    seller = await get_seller_by_id(int(account["seller_id"]))
+    seller_data = dict(seller) if seller else {}
+    telegram_id = seller_data.get("telegram_id") or account.get("telegram_id")
+    seller_name = seller_data.get("shop_name") or seller_data.get("name") or account.get("shop_name") or account.get("name") or "—"
+    phone = seller_data.get("phone") or "—"
+    crm_slug = account.get("crm_slug") or seller_data.get("crm_slug") or "—"
+    username = seller_data.get("username") or account.get("username")
+    message = (
+        "Індивідуальний сайт — від 4999 грн\n\n"
+        f"seller id: {account['seller_id']}\n"
+        f"telegram id: {telegram_id or '—'}\n"
+        f"seller name: {seller_name}\n"
+        f"phone: {phone}\n"
+        f"crm slug: {crm_slug}"
+    )
+    ticket_id = None
+    if telegram_id:
+        ticket = await create_support_ticket(
+            int(telegram_id),
+            username,
+            seller_name,
+            message,
+            subject="Індивідуальний сайт",
+        )
+        ticket_id = int(ticket["id"]) if ticket else None
+    admin_text = "🌐 Нова заявка на індивідуальний сайт"
+    if ticket_id:
+        admin_text += f" #{ticket_id}"
+    admin_text += "\n\n" + message
+    await notify_support_admins(telegram_bot, admin_text)
+    return ticket_id
+
 @router.post("/{crm_slug}/settings/site-package/{package_key}")
 async def seller_crm_site_package_checkout(request: Request, crm_slug: str, package_key: str):
     try:
@@ -3939,6 +4046,10 @@ async def seller_crm_site_package_checkout(request: Request, crm_slug: str, pack
         if exc.status_code == 303:
             return RedirectResponse(url=exc.detail, status_code=303)
         raise
+
+    if package_key == "premium":
+        await _create_custom_website_admin_request(account)
+        return RedirectResponse(url=f"/crm/seller/{crm_slug}/websites/create?status=custom_requested", status_code=303)
 
     package_map = {
         "standard": {"amount": 499, "product": "site_standard"},
@@ -5420,14 +5531,30 @@ async def seller_crm_websites(request: Request, crm_slug: str):
 
 
 @router.get("/{crm_slug}/websites/create")
-async def seller_crm_websites_create(request: Request, crm_slug: str, error: str | None = None):
+async def seller_crm_websites_create(request: Request, crm_slug: str, error: str | None = None, status: str | None = None):
     account, subscription = await _authorized_account(request, crm_slug)
-    return templates.TemplateResponse("seller_crm/websites/create.html", _seller_crm_context(request, title="Створення сайту", current_page="websites_v2_create", account=account, subscription=subscription, error=error))
+    can_create_website = await _seller_has_website_creation_access(account)
+    return templates.TemplateResponse(
+        "seller_crm/websites/create.html",
+        _seller_crm_context(
+            request,
+            title="Створення сайту",
+            current_page="websites_v2_create",
+            account=account,
+            subscription=subscription,
+            error=error,
+            status=status,
+            can_create_website=can_create_website,
+            website_required_message=_website_creation_required_message(),
+        ),
+    )
 
 
 @router.post("/{crm_slug}/websites/create")
 async def seller_crm_websites_create_post(request: Request, crm_slug: str, site_type: str = Form(...), name: str = Form(...), subdomain: str = Form(...)):
     account, _subscription = await _authorized_account(request, crm_slug)
+    if not await _seller_has_website_creation_access(account):
+        return RedirectResponse(url=f"/crm/seller/{crm_slug}/websites/create?error=website_package_required", status_code=303)
     try:
         normalized_type = normalize_website_v2_type(site_type)
     except ValueError:
@@ -5605,7 +5732,7 @@ async def seller_crm_websites_hero(request: Request, crm_slug: str, website_id: 
         "seller_crm/websites/hero.html",
         _seller_crm_context(
             request,
-            title="Hero (V2)",
+            title="Головний екран сайту",
             current_page="websites_v2_design",
             account=account,
             subscription=subscription,
@@ -5668,7 +5795,7 @@ async def seller_crm_websites_content(request: Request, crm_slug: str, website_i
     account, subscription = await _authorized_account(request, crm_slug)
     website = await _get_v2_website_or_404(account, website_id)
     website_context = await _build_v2_context_payload(account, dict(website))
-    return templates.TemplateResponse("seller_crm/websites/content.html", _seller_crm_context(request, title="Контент (V2)", current_page="websites_v2_content", account=account, subscription=subscription, website=website, website_context=website_context))
+    return templates.TemplateResponse("seller_crm/websites/content.html", _seller_crm_context(request, title="Наповнення сайту", current_page="websites_v2_content", account=account, subscription=subscription, website=website, website_context=website_context))
 
 
 @router.get("/{crm_slug}/websites/{website_id}/services")
@@ -5874,7 +6001,7 @@ async def seller_crm_websites_publication(request: Request, crm_slug: str, websi
     account, subscription = await _authorized_account(request, crm_slug)
     website = await _get_v2_website_or_404(account, website_id)
     website_context = await _build_v2_context_payload(account, dict(website), prefer_draft=True)
-    return templates.TemplateResponse("seller_crm/websites/publication.html", _seller_crm_context(request, title="Публікація (V2)", current_page="websites_v2_publication", account=account, subscription=subscription, website=website, website_context=website_context, publish_error=request.query_params.get("error")))
+    return templates.TemplateResponse("seller_crm/websites/publication.html", _seller_crm_context(request, title="Запуск сайту", current_page="websites_v2_publication", account=account, subscription=subscription, website=website, website_context=website_context, publish_error=request.query_params.get("error")))
 
 
 @router.get("/{crm_slug}/websites/{website_id}/leads")

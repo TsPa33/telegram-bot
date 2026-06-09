@@ -10,6 +10,6 @@
 {% block content %}
 <article class="card"><h3>Тема / кольори</h3><form method="post" action="/crm/seller/{{ account.crm_slug }}/website/theme"><select name="theme">{% for key, theme in themes|dictsort %}<option value="{{ key }}">{{ theme.name }}</option>{% endfor %}</select><button class="btn">Зберегти</button></form></article>
 <article class="card stack-top"><h3>Логотип</h3><form method="post" enctype="multipart/form-data" action="/crm/seller/{{ account.crm_slug }}/website/logo"><input type="file" name="logo" accept="image/*"><button class="btn">Зберегти</button></form></article>
-<article class="card stack-top"><h3>SEO + Контакти + Банери</h3><p class="muted">Редагування цього блоку буде доступне наступним етапом.</p></article>
-<article class="card stack-top"><h3>Публікація</h3><form method="post" action="/crm/seller/{{ account.crm_slug }}/website/publish"><button class="btn">Опублікувати</button></form></article>
+<article class="card stack-top"><h3>Пошук, контакти та банери</h3><p class="muted">Ці налаштування зʼявляться пізніше.</p></article>
+<article class="card stack-top"><h3>Запуск сайту</h3><form method="post" action="/crm/seller/{{ account.crm_slug }}/website/publish"><button class="btn">Запустити сайт</button></form></article>
 {% endblock %}

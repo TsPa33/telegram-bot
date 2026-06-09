@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" role="img" aria-label="LED headlight automotive part">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f8f8f8"/><stop offset="0.55" stop-color="#dedede"/><stop offset="1" stop-color="#bdbdbd"/></linearGradient>
+    <linearGradient id="lamp" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#111"/><stop offset="0.36" stop-color="#414141"/><stop offset="0.68" stop-color="#cfcfcf"/><stop offset="1" stop-color="#fff"/></linearGradient>
+    <filter id="shadow" x="-20%" y="-25%" width="140%" height="150%"><feDropShadow dx="0" dy="34" stdDeviation="28" flood-color="#000" flood-opacity=".28"/></filter>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="18" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect width="1600" height="1200" fill="url(#bg)"/>
+  <circle cx="1240" cy="190" r="360" fill="#fff" opacity=".36"/>
+  <circle cx="500" cy="750" r="470" fill="#111" opacity=".045"/>
+  <ellipse cx="840" cy="885" rx="520" ry="105" fill="#111" opacity=".16" filter="url(#glow)"/>
+  <g filter="url(#shadow)" transform="translate(230 390) rotate(-5 570 210)">
+    <path d="M90 290 C170 80 445 10 760 48 C1000 78 1168 173 1195 298 C1045 436 748 507 390 466 C240 448 133 386 90 290Z" fill="url(#lamp)"/>
+    <path d="M190 300 C270 170 470 125 720 145 C885 160 1015 212 1086 292 C960 366 700 410 438 383 C300 369 220 340 190 300Z" fill="#f8f8f8" opacity=".55"/>
+    <ellipse cx="380" cy="282" rx="110" ry="58" fill="#fff" opacity=".74"/>
+    <ellipse cx="660" cy="290" rx="145" ry="48" fill="#fff" opacity=".45"/>
+    <path d="M130 318 C350 395 810 414 1140 298" fill="none" stroke="#111" stroke-opacity=".24" stroke-width="18" stroke-linecap="round"/>
+    <path d="M1120 315 L1260 360 C1298 373 1300 424 1263 440 L1130 390Z" fill="#242424"/>
+  </g>
+  <path d="M180 1020 C480 900 960 900 1390 1020" fill="none" stroke="#fff" stroke-width="2" opacity=".4"/>
+</svg>

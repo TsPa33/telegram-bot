@@ -1,6 +1,6 @@
 {% extends "seller_crm/base.html" %}
-{% block crm_kicker %}Website V2{% endblock %}
-{% block crm_heading %}Hero секція{% endblock %}
+{% block crm_kicker %}Сайт{% endblock %}
+{% block crm_heading %}Головний екран сайту{% endblock %}
 {% block content %}
 {% set cfg = website_context.config if website_context and website_context.config else {} %}
 {% set hero = cfg.hero if cfg and cfg.hero else {} %}
@@ -8,24 +8,24 @@
 <div class="crm-page">
   <section class="crm-page-head">
     <div>
-      <h1>Hero секція</h1>
+      <h1>Головний екран сайту</h1>
       <p class="section-note">{{ website.name }} · налаштуйте заголовок, короткий опис, кнопку та банер першого екрану.</p>
     </div>
     <div class="crm-action-row"><a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}">Назад до огляду</a></div>
   </section>
 
-  {% if published %}<div class="crm-notice">Hero оновлено та сайт опубліковано.</div>{% elif saved %}<div class="crm-notice">Hero оновлено.</div>{% endif %}
-  {% if publish_error == 'validation' %}<div class="crm-notice warning">Hero збережено, але сайт ще не готовий до публікації. Перевірте сторінку публікації.</div>{% endif %}
+  {% if published %}<div class="crm-notice">Головний екран оновлено, сайт запущено.</div>{% elif saved %}<div class="crm-notice">Головний екран оновлено.</div>{% endif %}
+  {% if publish_error == 'validation' %}<div class="crm-notice warning">Головний екран збережено, але сайт ще не готовий до запуску. Перевірте сторінку запуску.</div>{% endif %}
 
   <section class="card">
     <form class="crm-form" method="post" action="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/hero">
       <label>Заголовок<input name="title" value="{{ hero.title or '' }}" placeholder="Запчастини з авто на розборі"></label>
       <label>Підзаголовок<textarea name="subtitle" placeholder="Короткий опис...">{{ hero.subtitle or '' }}</textarea></label>
       <label>Текст кнопки<input name="cta_text" value="{{ hero.cta_text or '' }}" placeholder="Надіслати запит"></label>
-      <label>URL зображення банера<input name="image_url" value="{{ banner or '' }}" placeholder="https://..."><span class="crm-help">Рекомендований розмір: 1600×900 або 1920×1080 (16:9)</span></label>
+      <label>Посилання на зображення банера<input name="image_url" value="{{ banner or '' }}" placeholder="https://..."><span class="crm-help">Рекомендований розмір: 1600×900 або 1920×1080 (16:9)</span></label>
       <div class="crm-action-row">
         <button class="btn" type="submit" name="action" value="save">Зберегти</button>
-        <button class="btn ghost" type="submit" name="action" value="save_publish">Зберегти та опублікувати</button>
+        <button class="btn ghost" type="submit" name="action" value="save_publish">Зберегти та запустити сайт</button>
       </div>
     </form>
   </section>
@@ -36,7 +36,7 @@
       <h2>{{ hero.title or "Запчастини з авто на розборі" }}</h2>
       <p class="section-note">{{ hero.subtitle or "Каталог запчастин, авто на розборі та VIN-підбір для швидкого пошуку потрібної деталі." }}</p>
       <span class="btn small">{{ hero.cta_text or "Надіслати запит" }}</span>
-      {% if banner %}<img src="{{ banner }}" alt="Hero preview" style="width:100%;max-width:680px;margin-top:12px;border-radius:var(--radius-sm);border:1px solid var(--line);">{% endif %}
+      {% if banner %}<img src="{{ banner }}" alt="Попередній перегляд головного екрану" style="width:100%;max-width:680px;margin-top:12px;border-radius:var(--radius-sm);border:1px solid var(--line);">{% endif %}
     </div>
   </section>
 </div>
