@@ -21,7 +21,7 @@
     <div class="top"><a class="btn" href="/w/{{ website.subdomain }}">← До каталогу</a><a class="btn" href="/w/{{ website.subdomain }}#vin-request">Надіслати VIN</a></div>
     <section class="layout">
       <div class="gallery-column">
-        <div class="media">{% if detail_item.image_url %}<img src="{{ detail_item.image_url }}" alt="{{ detail_item.title }}" width="1200" height="900" decoding="async">{% else %}<div class="ph">Фото уточнюється</div>{% endif %}</div>
+        <div class="media">{% if detail_item.image_url %}<img src="{{ detail_item.image_url }}" alt="{{ detail_item.title }}" width="1200" height="900" decoding="async">{% else %}<div class="ph part-placeholder"><small>Фото уточнюється</small></div>{% endif %}</div>
         {% if detail_item.gallery %}
         <div class="thumbs">
           {% for g in detail_item.gallery %}
@@ -42,7 +42,7 @@
     </section>
     <section class="related">
       <h2>Схожі запчастини</h2>
-      {% if related_items %}<div class="grid">{% for item in related_items %}<a class="card" href="/w/{{ website.subdomain }}/product/{{ item.id }}">{% if item.image_url %}<img src="{{ item.image_url }}" alt="{{ item.title }}" loading="lazy" decoding="async" width="500" height="380">{% else %}<div class="phs" style="display:grid;place-items:center;color:#666;font-size:12px;">Фото уточнюється</div>{% endif %}<b>{{ item.title }}</b><div class="small">{{ item.category }}</div><div>{% if item.price %}{{ item.price }} грн{% else %}Ціна за запитом{% endif %}</div></a>{% endfor %}</div>{% else %}<div class="box">Схожі позиції зʼявляться пізніше.</div>{% endif %}
+      {% if related_items %}<div class="grid">{% for item in related_items %}<a class="card" href="/w/{{ website.subdomain }}/product/{{ item.id }}">{% if item.image_url %}<img src="{{ item.image_url }}" alt="{{ item.title }}" loading="lazy" decoding="async" width="500" height="380">{% else %}<div class="phs part-placeholder"><small>Фото уточнюється</small></div>{% endif %}<b>{{ item.title }}</b><div class="small">{{ item.category }}</div><div>{% if item.price %}{{ item.price }} грн{% else %}Ціна за запитом{% endif %}</div></a>{% endfor %}</div>{% else %}<div class="box">Схожі позиції зʼявляться пізніше.</div>{% endif %}
     </section>
   </main>
 </body>

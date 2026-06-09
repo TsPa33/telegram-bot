@@ -184,9 +184,9 @@
                                 {% endif %}
                             {% else %}
                                 {% if item.id %}
-                                    <a href="{{ item_link }}"><div class="carpot-v2-media" style="display:grid;place-items:center;color:#666;font-size:13px;">Фото уточнюється</div></a>
+                                    <a href="{{ item_link }}"><div class="carpot-v2-media carpot-v2-part-placeholder"><small>Фото уточнюється</small></div></a>
                                 {% else %}
-                                    <div class="carpot-v2-media" style="display:grid;place-items:center;color:#666;font-size:13px;">{% if use_demo_catalog %}{{ item.category }}{% else %}Фото уточнюється{% endif %}</div>
+                                    <div class="carpot-v2-media carpot-v2-part-placeholder"><small>Фото уточнюється</small></div>
                                 {% endif %}
                             {% endif %}
                             <h4 class="carpot-v2-title">
@@ -234,7 +234,7 @@
         <div class="carpot-v2-grid">
             {% for car in display_cars_items %}
                 <article class="carpot-v2-card">
-                    {% if car.image_url %}<img class="carpot-v2-media" src="{{ car.image_url }}" alt="{{ car.title }}" loading="lazy" decoding="async" width="500" height="380">{% else %}<div class="carpot-v2-media" style="display:grid;place-items:center;color:#666;font-size:13px;">{% if use_demo_cars %}Авто на розборі{% else %}Фото уточнюється{% endif %}</div>{% endif %}
+                    {% if car.image_url %}<img class="carpot-v2-media" src="{{ car.image_url }}" alt="{{ car.title }}" loading="lazy" decoding="async" width="500" height="380">{% else %}<div class="carpot-v2-media carpot-v2-part-placeholder"><small>{% if use_demo_cars %}Авто на розборі{% else %}Фото уточнюється{% endif %}</small></div>{% endif %}
                     <h4 class="carpot-v2-title">{{ car.title }}</h4>
                     <p class="carpot-v2-desc">{{ car.description or "Авто на розборі доступне для запиту." }}</p>
                     <div class="carpot-v2-row"><b class="carpot-v2-price">{% if car.price %}{{ car.price }} грн{% else %}Ціна за запитом{% endif %}</b><span class="carpot-v2-badge">Деталі у продавця</span></div>
