@@ -46,6 +46,15 @@
     {% set display_categories = website_context.demo_categories if website_context and (not categories and use_demo_catalog) else categories %}
     {% set display_products_count = 500 if use_demo_catalog else products_count %}
     {% set display_cars_count = 25 if use_demo_cars else cars_count %}
+    {% set fallback_images = [
+        'https://res.cloudinary.com/dyem6pgtd/image/upload/v1779622099/category-suspension-premium-01.png_gvvzto.png',
+        'https://res.cloudinary.com/dyem6pgtd/image/upload/v1779622100/602d6c56-995f-4b2e-853d-32f7049773cf_txlfbc.png',
+        'https://res.cloudinary.com/dyem6pgtd/image/upload/v1781010199/rahul-bhogal-9mxviB2BBOE-unsplash_1_ejsj4h.jpg',
+        'https://res.cloudinary.com/dyem6pgtd/image/upload/v1781010200/sam-loyd-qy27JnsH9sU-unsplash_i87jp5.jpg',
+        'https://res.cloudinary.com/dyem6pgtd/image/upload/v1781010200/kofa-boyah-VXerPNbzF4s-unsplash_fhm3dr.jpg',
+        'https://res.cloudinary.com/dyem6pgtd/image/upload/v1781010200/igor-constantino-aXxu0nVMGmk-unsplash_npgcyk.jpg'
+    ] %}
+    {% set fallback_image_count = fallback_images|length %}
     <link rel="stylesheet" href="/static/css/carpot_catalog_v2.css">
 
 </head>
@@ -183,10 +192,12 @@
                                     <img class="carpot-v2-media" src="{{ item.image_url }}" alt="{{ item.title }}" loading="lazy" decoding="async" width="500" height="380">
                                 {% endif %}
                             {% else %}
+                                {% set fallback_seed = item.id if item.id else loop.index0 %}
+                                {% set fallback_image = fallback_images[(fallback_seed|int) % fallback_image_count] %}
                                 {% if item.id %}
-                                    <a href="{{ item_link }}"><div class="carpot-v2-media carpot-v2-part-placeholder"><small>Фото уточнюється</small></div></a>
+                                    <a class="carpot-v2-fallback-media" href="{{ item_link }}"><img class="carpot-v2-media" src="{{ fallback_image }}" alt="Фото відсутнє для {{ item.title }}" loading="lazy" decoding="async" width="500" height="380"><span>Фото відсутнє</span></a>
                                 {% else %}
-                                    <div class="carpot-v2-media carpot-v2-part-placeholder"><small>Фото уточнюється</small></div>
+                                    <div class="carpot-v2-fallback-media"><img class="carpot-v2-media" src="{{ fallback_image }}" alt="Фото відсутнє для {{ item.title }}" loading="lazy" decoding="async" width="500" height="380"><span>Фото відсутнє</span></div>
                                 {% endif %}
                             {% endif %}
                             <h4 class="carpot-v2-title">
@@ -234,7 +245,7 @@
         <div class="carpot-v2-grid">
             {% for car in display_cars_items %}
                 <article class="carpot-v2-card">
-                    {% if car.image_url %}<img class="carpot-v2-media" src="{{ car.image_url }}" alt="{{ car.title }}" loading="lazy" decoding="async" width="500" height="380">{% else %}<div class="carpot-v2-media carpot-v2-part-placeholder"><small>{% if use_demo_cars %}Авто на розборі{% else %}Фото уточнюється{% endif %}</small></div>{% endif %}
+                    {% if car.image_url %}<img class="carpot-v2-media" src="{{ car.image_url }}" alt="{{ car.title }}" loading="lazy" decoding="async" width="500" height="380">{% else %}{% set car_fallback_seed = car.id if car.id else loop.index0 %}{% set car_fallback_image = fallback_images[((car_fallback_seed|int) + 2) % fallback_image_count] %}<div class="carpot-v2-fallback-media"><img class="carpot-v2-media" src="{{ car_fallback_image }}" alt="Фото відсутнє для {{ car.title }}" loading="lazy" decoding="async" width="500" height="380"><span>Фото відсутнє</span></div>{% endif %}
                     <h4 class="carpot-v2-title">{{ car.title }}</h4>
                     <p class="carpot-v2-desc">{{ car.description or "Авто на розборі доступне для запиту." }}</p>
                     <div class="carpot-v2-row"><b class="carpot-v2-price">{% if car.price %}{{ car.price }} грн{% else %}Ціна за запитом{% endif %}</b><span class="carpot-v2-badge">Деталі у продавця</span></div>

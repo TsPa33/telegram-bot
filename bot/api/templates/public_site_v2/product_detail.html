@@ -13,6 +13,17 @@
   <meta property="og:url" content="{{ seo.og_url if seo and seo.og_url else ('/w/' ~ website.subdomain ~ '/product/' ~ detail_item.id) }}">
   {% if seo and seo.og_image %}<meta property="og:image" content="{{ seo.og_image }}">{% endif %}
   {% if schema_jsonld %}<script type="application/ld+json">{{ schema_jsonld | safe }}</script>{% endif %}
+  {% set fallback_images = [
+    'https://res.cloudinary.com/dyem6pgtd/image/upload/v1779622099/category-suspension-premium-01.png_gvvzto.png',
+    'https://res.cloudinary.com/dyem6pgtd/image/upload/v1779622100/602d6c56-995f-4b2e-853d-32f7049773cf_txlfbc.png',
+    'https://res.cloudinary.com/dyem6pgtd/image/upload/v1781010199/rahul-bhogal-9mxviB2BBOE-unsplash_1_ejsj4h.jpg',
+    'https://res.cloudinary.com/dyem6pgtd/image/upload/v1781010200/sam-loyd-qy27JnsH9sU-unsplash_i87jp5.jpg',
+    'https://res.cloudinary.com/dyem6pgtd/image/upload/v1781010200/kofa-boyah-VXerPNbzF4s-unsplash_fhm3dr.jpg',
+    'https://res.cloudinary.com/dyem6pgtd/image/upload/v1781010200/igor-constantino-aXxu0nVMGmk-unsplash_npgcyk.jpg'
+  ] %}
+  {% set fallback_image_count = fallback_images|length %}
+  {% set detail_fallback_seed = detail_item.id if detail_item.id else (detail_item.title|length) %}
+  {% set detail_fallback_image = fallback_images[(detail_fallback_seed|int) % fallback_image_count] %}
   <link rel="stylesheet" href="/static/css/carpot_product_v2.css">
 
 </head>
@@ -21,7 +32,7 @@
     <div class="top"><a class="btn" href="/w/{{ website.subdomain }}">← До каталогу</a><a class="btn" href="/w/{{ website.subdomain }}#vin-request">Надіслати VIN</a></div>
     <section class="layout">
       <div class="gallery-column">
-        <div class="media">{% if detail_item.image_url %}<img src="{{ detail_item.image_url }}" alt="{{ detail_item.title }}" width="1200" height="900" decoding="async">{% else %}<div class="ph part-placeholder"><small>Фото уточнюється</small></div>{% endif %}</div>
+        <div class="media{% if not detail_item.image_url %} fallback-media{% endif %}">{% if detail_item.image_url %}<img src="{{ detail_item.image_url }}" alt="{{ detail_item.title }}" width="1200" height="900" decoding="async">{% else %}<img src="{{ detail_fallback_image }}" alt="Фото відсутнє для {{ detail_item.title }}" width="1200" height="900" decoding="async"><span>Фото відсутнє</span>{% endif %}</div>
         {% if detail_item.gallery %}
         <div class="thumbs">
           {% for g in detail_item.gallery %}
@@ -42,7 +53,7 @@
     </section>
     <section class="related">
       <h2>Схожі запчастини</h2>
-      {% if related_items %}<div class="grid">{% for item in related_items %}<a class="card" href="/w/{{ website.subdomain }}/product/{{ item.id }}">{% if item.image_url %}<img src="{{ item.image_url }}" alt="{{ item.title }}" loading="lazy" decoding="async" width="500" height="380">{% else %}<div class="phs part-placeholder"><small>Фото уточнюється</small></div>{% endif %}<b>{{ item.title }}</b><div class="small">{{ item.category }}</div><div>{% if item.price %}{{ item.price }} грн{% else %}Ціна за запитом{% endif %}</div></a>{% endfor %}</div>{% else %}<div class="box">Схожі позиції зʼявляться пізніше.</div>{% endif %}
+      {% if related_items %}<div class="grid">{% for item in related_items %}<a class="card" href="/w/{{ website.subdomain }}/product/{{ item.id }}">{% if item.image_url %}<img src="{{ item.image_url }}" alt="{{ item.title }}" loading="lazy" decoding="async" width="500" height="380">{% else %}{% set related_fallback_seed = item.id if item.id else loop.index0 %}{% set related_fallback_image = fallback_images[((related_fallback_seed|int) + loop.index0) % fallback_image_count] %}<div class="phs fallback-media"><img src="{{ related_fallback_image }}" alt="Фото відсутнє для {{ item.title }}" loading="lazy" decoding="async" width="500" height="380"><span>Фото відсутнє</span></div>{% endif %}<b>{{ item.title }}</b><div class="small">{{ item.category }}</div><div>{% if item.price %}{{ item.price }} грн{% else %}Ціна за запитом{% endif %}</div></a>{% endfor %}</div>{% else %}<div class="box">Схожі позиції зʼявляться пізніше.</div>{% endif %}
     </section>
   </main>
 </body>
