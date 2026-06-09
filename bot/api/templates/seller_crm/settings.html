@@ -5,6 +5,12 @@
   <style>
     .pricing-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;}
     .package-card{display:grid;gap:12px;align-content:start;}
+    .website-pricing-grid{align-items:stretch;}
+    .website-package-card{height:100%;}
+    .website-package-card .mini-card-content{height:100%;display:grid;grid-template-rows:auto auto 1fr auto;align-content:stretch;}
+    .package-actions{display:grid;gap:8px;margin-top:auto;}
+    .package-actions form{display:grid;margin:0;}
+    .package-actions .btn{width:100%;white-space:normal;text-align:center;}
     .package-price{font-size:28px;font-weight:900;color:var(--text);line-height:1.1;}
     .package-price span{font-size:13px;color:var(--muted);font-weight:700;}
     .package-list{display:grid;gap:7px;margin:0;padding:0;list-style:none;color:var(--secondary);}
@@ -15,7 +21,7 @@
     .status-cell span{display:block;margin-top:6px;color:var(--muted);font-weight:700;font-size:12px;}
     .monetization-note{display:grid;gap:8px;}
     @media(max-width:980px){.pricing-grid{grid-template-columns:1fr}.package-status{grid-template-columns:repeat(2,minmax(0,1fr));}}
-    @media(max-width:520px){.package-status{grid-template-columns:1fr}.package-card .btn{width:100%;}}
+    @media(max-width:520px){.package-status{grid-template-columns:1fr}.package-card .btn{width:100%;}.package-actions{gap:10px;}}
   </style>
 
   <section class="workspace-hero" aria-labelledby="settings-title">
@@ -71,8 +77,8 @@
       </div>
       <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/websites/create">Створити сайт</a>
     </div>
-    <div class="pricing-grid">
-      <article class="mini-card package-card" aria-labelledby="website-standard-title">
+    <div class="pricing-grid website-pricing-grid">
+      <article class="mini-card package-card website-package-card" aria-labelledby="website-standard-title">
         <div class="mini-card-content package-card">
           <div class="mini-card-title"><b id="website-standard-title">Сайт для авторозборки</b></div>
           <div class="package-price">499 грн <span>/ рік</span></div>
@@ -85,13 +91,16 @@
             <li>✓ Заявки з CarPot</li>
             <li>✓ Заявки з власного сайту</li>
           </ul>
-          <form method="post" action="/crm/seller/{{ account.crm_slug }}/settings/site-package/standard">
-            <button class="btn" type="submit">Сайт для авторозборки — 499 грн</button>
-          </form>
+          <div class="package-actions">
+            <form method="post" action="/crm/seller/{{ account.crm_slug }}/settings/site-package/standard">
+              <button class="btn" type="submit">Сайт для авторозборки — 499 грн</button>
+            </form>
+            <a class="btn ghost" href="https://demo-catalog.carpot.com.ua" target="_blank" rel="noopener">Переглянути демо</a>
+          </div>
         </div>
       </article>
 
-      <article class="mini-card package-card" aria-labelledby="website-plus-title">
+      <article class="mini-card package-card website-package-card" aria-labelledby="website-plus-title">
         <div class="mini-card-content package-card">
           <div class="mini-card-title"><b id="website-plus-title">Сайт-візитка для послуг</b></div>
           <div class="package-price">1499 грн</div>
@@ -104,13 +113,16 @@
             <li>✓ Карта</li>
             <li>✓ CRM</li>
           </ul>
-          <form method="post" action="/crm/seller/{{ account.crm_slug }}/settings/site-package/plus">
-            <button class="btn" type="submit">Сайт-візитка — 1499 грн</button>
-          </form>
+          <div class="package-actions">
+            <form method="post" action="/crm/seller/{{ account.crm_slug }}/settings/site-package/plus">
+              <button class="btn" type="submit">Сайт-візитка — 1499 грн</button>
+            </form>
+            <a class="btn ghost" href="https://demo-service.carpot.com.ua" target="_blank" rel="noopener">Переглянути демо</a>
+          </div>
         </div>
       </article>
 
-      <article class="mini-card package-card" aria-labelledby="website-premium-title">
+      <article class="mini-card package-card website-package-card" aria-labelledby="website-premium-title">
         <div class="mini-card-content package-card">
           <div class="mini-card-title"><b id="website-premium-title">Індивідуальний сайт</b></div>
           <div class="package-price">від 4999 грн</div>
@@ -125,9 +137,12 @@
             <li>✓ Каталог або послуги</li>
             <li>✓ Будь-які додаткові блоки</li>
           </ul>
-          <form method="post" action="/crm/seller/{{ account.crm_slug }}/settings/site-package/premium">
-            <button class="btn" type="submit">Обговорити проект</button>
-          </form>
+          <div class="package-actions">
+            <form method="post" action="/crm/seller/{{ account.crm_slug }}/settings/site-package/premium">
+              <button class="btn" type="submit">Обговорити проект</button>
+            </form>
+            <a class="btn ghost" href="https://demo-premium-1.carpot.com.ua" target="_blank" rel="noopener">Переглянути приклади</a>
+          </div>
         </div>
       </article>
     </div>
