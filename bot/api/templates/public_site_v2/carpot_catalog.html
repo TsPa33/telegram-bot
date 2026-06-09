@@ -290,12 +290,12 @@
             <div class="carpot-v2-section-head"><h2>Як нас знайти</h2><p>{{ map_cfg.address or 'Локація продавця' }}</p></div>
             <div class="carpot-v2-map">{% if map_cfg.embed_url %}<iframe src="{{ map_cfg.embed_url }}" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>{% elif map_cfg.url %}<div class="carpot-v2-map-placeholder"><a class="carpot-v2-btn carpot-v2-btn-light" href="{{ map_cfg.url }}" target="_blank" rel="noopener">Відкрити карту</a></div>{% else %}<div class="carpot-v2-map-placeholder">{{ map_cfg.address }}</div>{% endif %}</div>
         {% else %}
-            <div class="carpot-v2-location-card"><span>Локація</span><h2>Ми працюємо у вашому місті</h2><p>Звʼяжіться з продавцем для уточнення адреси, наявності та доставки.</p><a class="carpot-v2-btn carpot-v2-btn-black" href="#contacts">Звʼязатися</a></div>
+            <div class="carpot-v2-location-card"><span>Локація та доставка</span><h2>Звʼяжіться з продавцем напряму</h2><p>Звʼяжіться з продавцем для уточнення адреси, наявності та доставки.</p>{% if has_contacts and wc.actions and wc.actions.contact_items %}<div class="carpot-v2-contact-grid">{% for item in wc.actions.contact_items[:3] %}<a class="carpot-v2-contact-card" href="{{ item.href }}"{% if item.target %} target="{{ item.target }}" rel="noopener"{% endif %}><span class="carpot-v2-contact-icon">{{ item.icon }}</span><span><b>{{ item.label }}</b><small>{{ item.value }}</small></span></a>{% endfor %}{% if wc.city or seller.city %}<div class="carpot-v2-contact-card"><span class="carpot-v2-contact-icon">⌖</span><span><b>Місто</b><small>{{ wc.city or seller.city }}</small></span></div>{% endif %}</div>{% else %}<a class="carpot-v2-btn carpot-v2-btn-light" href="#contacts">Звʼязатися</a>{% endif %}</div>
         {% endif %}
     </section>
 </main>
 
 <footer class="carpot-v2-footer"><div class="carpot-v2-wrap">© {{ seller_name }} · сайт на CarPot</div></footer>
-<a class="carpot-v2-backtop" href="#top" aria-label="Повернутися нагору">Наверх</a>
+<a class="carpot-v2-backtop" href="#top" aria-label="Повернутися нагору">↑</a>
 </body>
 </html>
