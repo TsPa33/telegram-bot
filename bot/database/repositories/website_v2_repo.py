@@ -27,6 +27,28 @@ async def list_websites_v2_by_seller(seller_id: int):
     return await fetch("SELECT * FROM seller_websites_v2 WHERE seller_id=$1 ORDER BY created_at DESC", seller_id)
 
 
+async def seller_has_website_v2_creation_access(seller_id: int) -> bool:
+    row = await fetchrow(
+        """
+        SELECT EXISTS (
+            SELECT 1
+            FROM payments p
+            WHERE p.seller_id = $1
+              AND p.status = 'success'
+              AND (
+                  COALESCE(p.product_type, p.product) = 'site_plus'
+                  OR (
+                      COALESCE(p.product_type, p.product) IN ('site', 'site_standard')
+                      AND p.created_at >= NOW() - INTERVAL '1 year'
+                  )
+              )
+        ) AS has_access
+        """,
+        seller_id,
+    )
+    return bool(row and row.get("has_access"))
+
+
 async def get_website_v2_by_id(seller_id: int, website_id: int):
     return await fetchrow("SELECT * FROM seller_websites_v2 WHERE id=$1 AND seller_id=$2", website_id, seller_id)
 

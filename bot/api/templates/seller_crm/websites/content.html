@@ -1,11 +1,11 @@
 {% extends "seller_crm/base.html" %}
-{% block crm_kicker %}Website V2{% endblock %}
-{% block crm_heading %}Контент сайту{% endblock %}
+{% block crm_kicker %}Сайт{% endblock %}
+{% block crm_heading %}Наповнення сайту{% endblock %}
 {% block content %}
 <div class="crm-page">
   <section class="crm-page-head">
     <div>
-      <h1>Контент сайту</h1>
+      <h1>Наповнення сайту</h1>
       <p class="section-note">{{ website.name }} · {{ "Каталог запчастин" if website_context.site_type == 'carpot_catalog' else "Сайт послуг" }}</p>
     </div>
     <div class="crm-action-row"><a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}">Назад до огляду</a></div>
@@ -14,7 +14,7 @@
   {% if website_context.site_type == 'carpot_catalog' %}
     <section class="card">
       <h2>Каталог запчастин</h2>
-      <p class="section-note">Цей сайт використовує авто та товари/запчастини з CRM Каталогу.</p>
+      <p class="section-note">На сайті показуються авто, товари та запчастини з вашого каталогу.</p>
       <div class="crm-action-row">
         <a class="btn" href="/crm/seller/{{ account.crm_slug }}/content/cars">Авто на розборі</a>
         <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content/products">Запчастини / товари</a>
@@ -23,8 +23,8 @@
     </section>
   {% else %}
     <section class="card">
-      <h2>Послуги Business сайту</h2>
-      <p class="section-note">Цей сайт використовує окремий список послуг Website V2.</p>
+      <h2>Послуги на сайті</h2>
+      <p class="section-note">На сайті показується окремий список послуг.</p>
       <div class="crm-action-row"><a class="btn" href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/services">Керувати послугами сайту</a></div>
       {% if website_context.metrics.cars_count > 0 or website_context.metrics.products_count > 0 %}<p class="section-note stack-top">Каталог запчастин краще винести в окремий сайт-магазин.</p>{% endif %}
     </section>

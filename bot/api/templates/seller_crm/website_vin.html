@@ -2,7 +2,7 @@
 {% block crm_kicker %}VIN-запит{% endblock %}
 {% block crm_heading %}VIN-запит{% endblock %}
 {% block content %}
-{% if status == 'saved' %}<div class="notice">Зміни збережено у чернетку. Опублікуйте сайт, щоб клієнти побачили зміни.</div>{% endif %}
+{% if status == 'saved' %}<div class="notice">Зміни збережено. Опублікуйте сайт, щоб клієнти їх побачили.</div>{% endif %}
 <article class="card">
   <p class="muted">Допоможіть клієнту швидко залишити запит на підбір запчастини.</p>
   <form method="post" action="/crm/seller/{{ account.crm_slug }}/website/content/vin" class="stack-top">
