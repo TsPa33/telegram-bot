@@ -2,7 +2,7 @@
 {% block crm_kicker %}Редагування сайту{% endblock %}
 {% block crm_heading %}Редагування сайту{% endblock %}
 {% block content %}
-{% if status == 'saved' %}<div class="notice">Зміни збережено у чернетку. Опублікуйте сайт, щоб клієнти побачили зміни.</div>{% endif %}
+{% if status == 'saved' %}<div class="notice">Зміни збережено. Опублікуйте сайт, щоб клієнти їх побачили.</div>{% endif %}
 {% if status == 'published' %}<div class="notice">Сайт опубліковано. Зміни вже доступні клієнтам.</div>{% endif %}
 <div class="action-row" style="margin-bottom: 14px;">
   <a class="btn ghost" href="{{ preview_url }}" target="_blank" rel="noopener">Переглянути сайт</a>

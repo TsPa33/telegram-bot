@@ -8,10 +8,16 @@
 .carpot-v2 .btn{display:inline-flex;padding:10px 14px;border-radius:999px;border:1px solid #111;font-weight:650;min-height:44px;align-items:center;justify-content:center}
 .carpot-v2 .btn.black{background:#111;color:#fff}
 
-.carpot-v2 .layout{display:grid;grid-template-columns:1fr 1fr;gap:22px}
-.carpot-v2 .media{border:1px solid #e7e7e7;border-radius:20px;background:#f4f4f4;overflow:hidden}
-.carpot-v2 .media img{width:100%;height:420px;object-fit:cover}
-.carpot-v2 .ph{height:420px;display:grid;place-items:center;color:#666}
+.carpot-v2 .layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:26px;align-items:start}
+.carpot-v2 .gallery-column{display:grid;gap:10px;min-width:0}
+.carpot-v2 .media{border:1px solid #e7e7e7;border-radius:22px;background:#f4f4f4;overflow:hidden;display:grid;place-items:center;max-height:520px}
+.carpot-v2 .media img{width:100%;height:min(52vh,520px);max-height:520px;object-fit:contain;background:#f7f7f7;display:block}
+.carpot-v2 .ph{width:100%;height:min(52vh,520px);max-height:520px;display:grid;place-items:center;color:#666}
+.carpot-v2 .part-placeholder{display:grid!important;place-items:center;text-align:center;gap:8px;color:#4d4d4d;background:radial-gradient(circle at 50% 38%,rgba(17,17,17,.08),transparent 0 42px),linear-gradient(135deg,#f6f6f6,#e9e9e9);position:relative;overflow:hidden}
+.carpot-v2 .part-placeholder:before{content:"";width:64px;height:38px;border:3px solid #c9c9c9;border-top-width:8px;border-radius:14px 14px 8px 8px;box-shadow:20px 22px 0 -13px #bdbdbd,-20px 22px 0 -13px #bdbdbd}
+.carpot-v2 .part-placeholder small{font-weight:800;font-size:12px;color:#666;text-transform:uppercase;letter-spacing:.08em}
+
+.carpot-v2 .thumbs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.carpot-v2 .thumb{border:1px solid #e7e7e7;border-radius:12px;overflow:hidden;background:#f3f3f3}.carpot-v2 .thumb img{width:100%;height:88px;object-fit:cover;display:block}
 
 .carpot-v2 .meta{display:grid;gap:10px}
 .carpot-v2 .title{font-size:36px;line-height:1.08;margin:0}
@@ -30,8 +36,9 @@
   .carpot-v2 .top{flex-wrap:wrap}
   .carpot-v2 .top .btn{flex:1 1 220px}
   .carpot-v2 .layout{grid-template-columns:1fr}
+  .carpot-v2 .media{max-height:430px}
   .carpot-v2 .media img,
-  .carpot-v2 .ph{height:330px}
+  .carpot-v2 .ph{height:min(48vh,430px);max-height:430px}
   .carpot-v2 .grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 
@@ -39,16 +46,20 @@
   .carpot-v2 .wrap{padding:14px 12px 34px}
   .carpot-v2 .top{gap:8px}
   .carpot-v2 .top .btn{width:100%}
+  .carpot-v2 .media{max-height:320px}
   .carpot-v2 .media img,
-  .carpot-v2 .ph{height:250px}
+  .carpot-v2 .ph{height:280px;max-height:320px}
   .carpot-v2 .price{font-size:30px}
   .carpot-v2 .title{font-size:30px}
   .carpot-v2 .grid{grid-template-columns:1fr}
+  .carpot-v2 .thumbs{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .carpot-v2 .thumb img{height:74px}
   .carpot-v2 .card{padding:10px}
 }
 
 @media (max-width:430px){
   .carpot-v2 .wrap{padding:12px 10px 28px}
+  .carpot-v2 .media img,.carpot-v2 .ph{height:240px}
   .carpot-v2 .title{font-size:27px}
   .carpot-v2 .meta{gap:8px}
   .carpot-v2 .price{font-size:28px}
