@@ -32,10 +32,18 @@
       <p class="section-note">Донорські авто, з яких можна створювати запчастини.</p>
     </div>
     <div class="cars-top-actions">
-      <a class="btn" href="/crm/seller/{{ account.crm_slug }}/content/cars/create">+ Додати авто</a>
+      {% if can_add_car %}
+        <a class="btn" href="/crm/seller/{{ account.crm_slug }}/content/cars/create">+ Додати авто</a>
+      {% else %}
+        <a class="btn" href="/crm/seller/{{ account.crm_slug }}/settings#autorozborka">Обрати пакет</a>
+      {% endif %}
       <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/content">← Каталог</a>
     </div>
   </section>
+
+  {% if notice %}
+    {{ badges.empty_state(notice.title, notice.message, notice.action_url, notice.action_label) }}
+  {% endif %}
 
   <section class="grid garage-summary" aria-label="Підсумок гаража">
     {{ cards.metric_card("Активні авто", summary.active_cars or 0, "позицій у кабінеті") }}
@@ -92,7 +100,11 @@
           </div>
         </article>
       {% else %}
-        {{ badges.empty_state("Авто на розборі ще немає", "Додайте перше авто, щоб почати вести розбір.", "/crm/seller/" ~ account.crm_slug ~ "/content/cars/create", "+ Додати авто") }}
+        {% if can_add_car %}
+          {{ badges.empty_state("Авто на розборі ще немає", "Додайте перше авто, щоб почати вести розбір.", "/crm/seller/" ~ account.crm_slug ~ "/content/cars/create", "+ Додати авто") }}
+        {% else %}
+          {{ badges.empty_state("Щоб додати авто на розбір, активуйте пакет.", "Після активації пакета ви зможете додати донорське авто та створити запчастини.", "/crm/seller/" ~ account.crm_slug ~ "/settings#autorozborka", "Обрати пакет") }}
+        {% endif %}
       {% endfor %}
     </div>
   </section>
