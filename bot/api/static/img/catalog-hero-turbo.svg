@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" role="img" aria-label="Turbocharger automotive part">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f7f7f7"/><stop offset=".52" stop-color="#d8d8d8"/><stop offset="1" stop-color="#b8b8b8"/></linearGradient>
+    <radialGradient id="metal" cx="45%" cy="36%" r="70%"><stop offset="0" stop-color="#fafafa"/><stop offset=".32" stop-color="#9a9a9a"/><stop offset=".7" stop-color="#4b4b4b"/><stop offset="1" stop-color="#1f1f1f"/></radialGradient>
+    <filter id="shadow" x="-25%" y="-25%" width="150%" height="150%"><feDropShadow dx="0" dy="32" stdDeviation="30" flood-color="#000" flood-opacity=".3"/></filter>
+  </defs>
+  <rect width="1600" height="1200" fill="url(#bg)"/>
+  <circle cx="1260" cy="240" r="380" fill="#fff" opacity=".28"/>
+  <ellipse cx="830" cy="905" rx="430" ry="92" fill="#111" opacity=".17"/>
+  <g filter="url(#shadow)" transform="translate(405 225) rotate(7 410 400)">
+    <circle cx="420" cy="430" r="265" fill="url(#metal)"/>
+    <circle cx="420" cy="430" r="142" fill="#efefef"/>
+    <circle cx="420" cy="430" r="66" fill="#242424"/>
+    <path d="M420 235 C520 292 560 346 558 430 C522 392 480 365 420 355Z" fill="#666"/>
+    <path d="M615 430 C558 530 504 570 420 568 C458 532 485 490 495 430Z" fill="#737373"/>
+    <path d="M420 625 C320 568 280 514 282 430 C318 468 360 495 420 505Z" fill="#5d5d5d"/>
+    <path d="M225 430 C282 330 336 290 420 292 C382 328 355 370 345 430Z" fill="#858585"/>
+    <path d="M650 410 L845 448 C918 462 954 535 918 600 C886 658 800 668 752 617 L620 478Z" fill="#424242"/>
+    <path d="M220 620 L118 735 C80 778 104 848 160 858 L340 890 C390 898 432 852 419 803 L373 635Z" fill="#565656"/>
+    <path d="M530 190 L715 95 C770 68 832 105 838 166 L854 324 L620 315Z" fill="#696969"/>
+  </g>
+  <path d="M210 1040 C470 930 1030 920 1390 1040" fill="none" stroke="#fff" stroke-width="2" opacity=".42"/>
+</svg>
