@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" role="img" aria-label="Brake disc and alloy wheel automotive part">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fbfbfb"/><stop offset=".56" stop-color="#dedede"/><stop offset="1" stop-color="#c2c2c2"/></linearGradient>
+    <radialGradient id="disc" cx="45%" cy="35%" r="70%"><stop offset="0" stop-color="#fff"/><stop offset=".2" stop-color="#cfcfcf"/><stop offset=".58" stop-color="#888"/><stop offset="1" stop-color="#262626"/></radialGradient>
+    <filter id="shadow" x="-25%" y="-25%" width="150%" height="150%"><feDropShadow dx="0" dy="36" stdDeviation="28" flood-color="#000" flood-opacity=".29"/></filter>
+  </defs>
+  <rect width="1600" height="1200" fill="url(#bg)"/>
+  <circle cx="380" cy="235" r="330" fill="#fff" opacity=".34"/>
+  <ellipse cx="835" cy="908" rx="470" ry="96" fill="#111" opacity=".16"/>
+  <g filter="url(#shadow)" transform="translate(445 205) rotate(-8 380 390)">
+    <circle cx="390" cy="410" r="330" fill="#202020"/>
+    <circle cx="390" cy="410" r="275" fill="url(#disc)"/>
+    <circle cx="390" cy="410" r="92" fill="#f7f7f7"/>
+    <circle cx="390" cy="410" r="42" fill="#343434"/>
+    <g stroke="#f6f6f6" stroke-width="34" stroke-linecap="round" opacity=".72">
+      <path d="M390 140 L390 288"/><path d="M390 532 L390 680"/><path d="M120 410 L268 410"/><path d="M512 410 L660 410"/>
+      <path d="M199 219 L303 323"/><path d="M477 497 L581 601"/><path d="M581 219 L477 323"/><path d="M303 497 L199 601"/>
+    </g>
+    <path d="M705 260 C795 285 850 370 836 468 C823 560 748 635 654 646 L605 520 C658 500 695 450 694 394 C693 345 670 304 632 278Z" fill="#4d4d4d"/>
+    <circle cx="390" cy="410" r="212" fill="none" stroke="#111" stroke-opacity=".22" stroke-width="12"/>
+  </g>
+  <path d="M170 1032 C498 920 1000 920 1418 1032" fill="none" stroke="#fff" stroke-width="2" opacity=".38"/>
+</svg>

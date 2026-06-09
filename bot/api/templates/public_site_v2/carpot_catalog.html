@@ -122,13 +122,11 @@
             {% if primary_banner and primary_banner.image %}
                 <img src="{{ primary_banner.image }}" alt="Банер сайту" width="1600" height="900" decoding="async">
             {% else %}
-                <div class="carpot-v2-auto-hero" aria-label="Демо-вітрина автозапчастин">
-                    <div class="carpot-v2-auto-orbit" aria-hidden="true"></div>
-                    <div class="carpot-v2-auto-object carpot-v2-object-headlight" aria-hidden="true"><i></i></div>
-                    <div class="carpot-v2-auto-object carpot-v2-object-turbo" aria-hidden="true"><i></i></div>
-                    <div class="carpot-v2-auto-object carpot-v2-object-disc" aria-hidden="true"><i></i></div>
-                    <div class="carpot-v2-auto-object carpot-v2-object-mirror" aria-hidden="true"><i></i></div>
-                    <div class="carpot-v2-inventory-badge"><span>VIN підбір</span><b>130+ деталей з кожного авто</b></div>
+                <div class="carpot-v2-hero-slideshow" aria-label="Демо-вітрина автозапчастин">
+                    <img class="carpot-v2-hero-slide" src="/static/img/catalog-hero-headlight.svg" alt="LED фара для авто" width="1600" height="1200" decoding="async">
+                    <img class="carpot-v2-hero-slide" src="/static/img/catalog-hero-turbo.svg" alt="Турбіна з авто на розборі" width="1600" height="1200" loading="lazy" decoding="async">
+                    <img class="carpot-v2-hero-slide" src="/static/img/catalog-hero-brake.svg" alt="Гальмівний диск і колісний вузол" width="1600" height="1200" loading="lazy" decoding="async">
+                    <div class="carpot-v2-hero-image-badge"><span>VIN підбір</span><b>130+ деталей з кожного авто</b></div>
                 </div>
             {% endif %}
         </div>
