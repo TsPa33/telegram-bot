@@ -25,7 +25,7 @@
         .carpot-v2-hero-shell h1{font-size:clamp(38px,4.4vw,60px);line-height:.98;letter-spacing:-.05em;margin:0 0 14px;max-width:12ch}
         .carpot-v2-hero-shell p{font-size:clamp(15px,1.25vw,18px);line-height:1.5;color:#414141;margin:0 0 22px;max-width:58ch}
         .carpot-v2-actions{display:flex;flex-wrap:wrap;gap:10px}
-        .carpot-v2-hero-actions{margin-bottom:22px}
+        .carpot-v2-hero-actions{margin-bottom:22px;animation:carpotHeroActionsIn .68s ease .1s both}
         .carpot-v2-hero-actions .carpot-v2-btn{min-height:48px;padding:12px 22px;font-size:15px}
         .carpot-v2-hero-actions .carpot-v2-btn-black{color:#fff;display:inline-flex;align-items:center;justify-content:center}
         .carpot-v2-hero-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;max-width:660px;animation:carpotHeroStatsIn .72s ease .18s both}
@@ -35,10 +35,19 @@
         .carpot-v2-hero-stat span{font-size:13px;color:#555;margin-top:7px;font-weight:650}
         .carpot-v2-hero-visual{border:1px solid rgba(222,222,222,.95);border-radius:26px;background:linear-gradient(145deg,#fff,#efefef);overflow:hidden;aspect-ratio:4/3;min-height:320px;max-height:420px;position:relative;z-index:1;box-shadow:0 22px 54px rgba(0,0,0,.14);animation:carpotHeroVisualIn .72s ease .08s both}
         .carpot-v2-hero-visual img{width:100%;height:100%;object-fit:cover;display:block;transform:scale(1.015)}
-        .carpot-v2-composition{position:relative;height:100%;padding:22px;display:grid;grid-template-columns:1fr 1fr;gap:12px;align-content:center;background:radial-gradient(circle at 20% 10%,#fff 0,#fff 22%,transparent 23%),linear-gradient(135deg,#f8f8f8,#e9e9e9)}
-        .carpot-v2-comp-card{border:1px solid #ddd;border-radius:22px;background:#fff;padding:16px;box-shadow:0 16px 36px rgba(0,0,0,.1);transition:transform .25s ease}.carpot-v2-comp-card:nth-child(2),.carpot-v2-comp-card:nth-child(3){transform:translateY(18px)}
-        .carpot-v2-comp-media{height:84px;background:linear-gradient(135deg,#ececec,#fafafa);border-radius:16px;margin-bottom:12px}
-        .carpot-v2-comp-line{height:10px;background:#efefef;border-radius:8px;margin-bottom:8px}
+        .carpot-v2-auto-hero{position:relative;height:100%;min-height:320px;padding:22px;background:radial-gradient(circle at 58% 42%,rgba(17,17,17,.08),transparent 0 132px),linear-gradient(135deg,#fbfbfb,#e9e9e9);overflow:hidden}
+        .carpot-v2-auto-hero:before{content:"";position:absolute;left:50%;top:50%;width:250px;height:250px;border:34px solid rgba(17,17,17,.08);border-radius:999px;transform:translate(-50%,-50%);box-shadow:inset 0 0 0 2px rgba(255,255,255,.75)}
+        .carpot-v2-auto-hero:after{content:"";position:absolute;right:24px;bottom:22px;width:180px;height:54px;border-radius:50%;background:rgba(17,17,17,.09);filter:blur(8px)}
+        .carpot-v2-auto-plate{position:absolute;left:24px;top:22px;z-index:2;display:grid;gap:4px;padding:12px 14px;border:1px solid rgba(17,17,17,.1);border-radius:18px;background:rgba(255,255,255,.86);box-shadow:0 14px 30px rgba(0,0,0,.08);backdrop-filter:blur(8px)}
+        .carpot-v2-auto-plate span{font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.1em;color:#666}.carpot-v2-auto-plate b{font-size:14px;letter-spacing:-.02em}
+        .carpot-v2-part-card{position:absolute;z-index:2;width:42%;min-width:150px;display:grid;gap:7px;padding:13px;border:1px solid rgba(17,17,17,.08);border-radius:22px;background:rgba(255,255,255,.94);box-shadow:0 18px 38px rgba(0,0,0,.12);backdrop-filter:blur(8px);transition:transform .24s ease,box-shadow .24s ease}
+        .carpot-v2-part-card:hover{transform:translateY(-4px);box-shadow:0 24px 48px rgba(0,0,0,.16)}
+        .carpot-v2-part-card small{font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;color:#737373}.carpot-v2-part-card b{font-size:15px;line-height:1.15;letter-spacing:-.025em}.carpot-v2-part-card span{font-size:12px;color:#555;font-weight:750}
+        .carpot-v2-part-visual{height:78px;border-radius:16px;background:linear-gradient(135deg,#f4f4f4,#e7e7e7);display:grid;place-items:center;position:relative;overflow:hidden}.carpot-v2-part-visual i{display:block;position:relative}
+        .carpot-v2-part-headlight{right:22px;top:24px}.carpot-v2-part-headlight .carpot-v2-part-visual i{width:88px;height:34px;border-radius:36px 12px 36px 12px;background:linear-gradient(90deg,#202020,#777);box-shadow:inset 16px 0 0 rgba(255,255,255,.55),0 0 28px rgba(255,255,255,.8)}
+        .carpot-v2-part-turbo{left:28px;bottom:28px}.carpot-v2-part-turbo .carpot-v2-part-visual i{width:62px;height:62px;border-radius:999px;border:12px solid #777;background:#f5f5f5;box-shadow:28px 5px 0 -12px #555}.carpot-v2-part-turbo .carpot-v2-part-visual i:after{content:"";position:absolute;inset:14px;border-radius:999px;background:#444}
+        .carpot-v2-part-wheel{right:30px;bottom:26px}.carpot-v2-part-wheel .carpot-v2-part-visual i{width:70px;height:70px;border-radius:999px;border:10px solid #2e2e2e;background:radial-gradient(circle,#f7f7f7 0 11px,#7a7a7a 12px 18px,#dadada 19px)}.carpot-v2-part-wheel .carpot-v2-part-visual i:after{content:"";position:absolute;left:50%;top:50%;width:84px;height:8px;background:rgba(255,255,255,.55);transform:translate(-50%,-50%) rotate(35deg)}
+        .carpot-v2-part-mirror{left:38%;top:37%;transform:translate(-50%,-50%)}.carpot-v2-part-mirror:hover{transform:translate(-50%,-54%)}.carpot-v2-part-mirror .carpot-v2-part-visual i{width:86px;height:44px;border-radius:12px 34px 30px 12px;background:linear-gradient(135deg,#2b2b2b,#8c8c8c)}.carpot-v2-part-mirror .carpot-v2-part-visual i:after{content:"";position:absolute;right:-16px;bottom:4px;width:26px;height:8px;border-radius:8px;background:#555;transform:rotate(22deg)}
 
         .carpot-v2-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:20px 0 12px}
         .carpot-v2-strip-item{min-height:94px;border:1px solid var(--line);border-radius:18px;background:#fff;padding:16px;display:grid;align-content:center}
@@ -103,8 +112,9 @@
 
         @keyframes carpotHeroIn{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
         @keyframes carpotHeroVisualIn{from{opacity:0;transform:translate(22px,18px) scale(.98)}to{opacity:1;transform:translate(0,0) scale(1)}}
+        @keyframes carpotHeroActionsIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
         @keyframes carpotHeroStatsIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
-        @media (prefers-reduced-motion:reduce){.carpot-v2-hero-content,.carpot-v2-hero-visual,.carpot-v2-hero-stats{animation:none}.carpot-v2-card,.carpot-v2-media,.carpot-v2-btn,.carpot-v2-nav a{transition:none}}
+        @media (prefers-reduced-motion:reduce){.carpot-v2-hero-content,.carpot-v2-hero-actions,.carpot-v2-hero-visual,.carpot-v2-hero-stats{animation:none}.carpot-v2-card,.carpot-v2-media,.carpot-v2-btn,.carpot-v2-nav a{transition:none}}
 
 
         @media (max-width:1100px){
@@ -116,7 +126,7 @@
             .carpot-v2-head-actions{justify-content:space-between;display:grid;grid-template-columns:1fr auto auto;gap:8px}
             .carpot-v2-search{flex:1;width:100%}
             .carpot-v2-hero-shell,.carpot-v2-catalog{grid-template-columns:1fr}.carpot-v2-hero-shell{min-height:auto}.carpot-v2-hero-visual{min-height:300px}
-            .carpot-v2-hero-visual{width:100%;max-width:720px;margin:0 auto}
+            .carpot-v2-hero-visual{width:100%;max-width:720px;margin:0 auto}.carpot-v2-part-card{width:38%}.carpot-v2-auto-plate{max-width:220px}
             .carpot-v2-filter{position:static}
             .carpot-v2-formgrid{grid-template-columns:1fr 1fr}
         }
@@ -145,6 +155,7 @@
             .carpot-v2-wrap{padding:0 14px}
             .carpot-v2-brand b{font-size:20px}
             .carpot-v2-hero-shell{padding:22px 18px;gap:18px;border-radius:24px}
+            .carpot-v2-auto-hero{min-height:300px;padding:16px}.carpot-v2-part-card{width:46%;min-width:128px;padding:10px;border-radius:18px}.carpot-v2-part-card b{font-size:13px}.carpot-v2-part-card span{font-size:11px}.carpot-v2-part-visual{height:58px}.carpot-v2-auto-plate{left:16px;top:14px;padding:10px;max-width:190px}.carpot-v2-auto-plate b{font-size:12px}
             .carpot-v2-hero-shell h1{font-size:32px;max-width:none}
             .carpot-v2-hero-shell p{font-size:15px;margin-bottom:20px}
             .carpot-v2-hero-actions{display:grid;grid-template-columns:1fr;gap:9px;margin-bottom:18px}
@@ -169,7 +180,8 @@
             .carpot-v2-nav a{padding:8px 10px;font-size:13px}
             .carpot-v2-hero-shell h1{font-size:29px}
             .carpot-v2-hero-shell{padding:22px 16px;border-radius:22px}
-            .carpot-v2-hero-visual{border-radius:18px;min-height:220px}
+            .carpot-v2-hero-visual{border-radius:18px;min-height:250px}
+            .carpot-v2-auto-hero{min-height:250px}.carpot-v2-part-card{width:48%;min-width:118px}.carpot-v2-part-mirror{display:none}.carpot-v2-part-visual{height:50px}.carpot-v2-auto-plate{display:none}
             .carpot-v2-hero-stats{grid-template-columns:1fr}
             .carpot-v2-hero-stat,.carpot-v2-hero-stat:first-child{min-height:58px;grid-template-columns:auto 1fr;align-items:center;align-content:center;column-gap:10px}
             .carpot-v2-hero-stat span{margin-top:0}

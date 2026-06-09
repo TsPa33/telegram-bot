@@ -19,7 +19,7 @@
     {% set hero_image_url = hero.image_url if hero and hero.image_url else '' %}
     {% set primary_banner = banners[0] if banners else ({'image': hero_image_url} if hero_image_url else None) %}
     {% set seller = website_context.seller if website_context and website_context.seller else {} %}
-    {% set seller_name = website.name or seller.shop_name or seller.name or website.subdomain or 'EuroParts Demo' %}
+    {% set seller_name = website.name or seller.shop_name or seller.name or website.subdomain or 'CarPot Demo Parts' %}
     {% set m = website_context.metrics if website_context and website_context.metrics else {} %}
     {% set catalog_items = website_context.catalog_items if website_context and website_context.catalog_items else [] %}
     {% set cars_items = website_context.cars_items if website_context and website_context.cars_items else [] %}
@@ -106,8 +106,8 @@
     {% set hero_products_stat = total_items if total_items else display_products_count %}
     <section class="carpot-v2-hero-shell">
         <div class="carpot-v2-hero-content">
-            <h1>{{ hero.title or 'Запчастини з авто на розборі' }}</h1>
-            <p>{{ hero.subtitle or 'Підбір деталей по VIN, марці авто або моделі.' }}</p>
+            <h1>{{ hero.title or 'Автозапчастини з авто на розборі' }}</h1>
+            <p>{{ hero.subtitle or 'Підбір деталей по VIN, марці авто або моделі. Надішліть заявку — продавець перевірить наявність.' }}</p>
             <div class="carpot-v2-actions carpot-v2-hero-actions">
                 <a class="carpot-v2-btn carpot-v2-btn-black" href="#catalog">{{ hero.cta_text or hero.primary_cta or "Знайти запчастину" }}</a>
                 <a class="carpot-v2-btn carpot-v2-btn-light" href="#vin-request">Надіслати VIN</a>
@@ -122,11 +122,24 @@
             {% if primary_banner and primary_banner.image %}
                 <img src="{{ primary_banner.image }}" alt="Банер сайту" width="1600" height="900" decoding="async">
             {% else %}
-                <div class="carpot-v2-composition">
-                    <div class="carpot-v2-comp-card"><div class="carpot-v2-comp-media"></div><div class="carpot-v2-comp-line"></div><div class="carpot-v2-comp-line" style="width:74%"></div></div>
-                    <div class="carpot-v2-comp-card"><div class="carpot-v2-comp-media"></div><div class="carpot-v2-comp-line"></div><div class="carpot-v2-comp-line" style="width:62%"></div></div>
-                    <div class="carpot-v2-comp-card"><div class="carpot-v2-comp-media"></div><div class="carpot-v2-comp-line"></div><div class="carpot-v2-comp-line" style="width:68%"></div></div>
-                    <div class="carpot-v2-comp-card"><div class="carpot-v2-comp-media"></div><div class="carpot-v2-comp-line"></div><div class="carpot-v2-comp-line" style="width:58%"></div></div>
+                <div class="carpot-v2-auto-hero" aria-label="Демо-вітрина автозапчастин">
+                    <div class="carpot-v2-auto-plate"><span>VIN підбір</span><b>130+ деталей з кожного авто</b></div>
+                    <article class="carpot-v2-part-card carpot-v2-part-headlight">
+                        <div class="carpot-v2-part-visual"><i></i></div>
+                        <small>Оптика</small><b>LED фара Audi A6 C7</b><span>В наявності</span>
+                    </article>
+                    <article class="carpot-v2-part-card carpot-v2-part-turbo">
+                        <div class="carpot-v2-part-visual"><i></i></div>
+                        <small>Двигун</small><b>Турбіна Passat B7</b><span>Перевірено</span>
+                    </article>
+                    <article class="carpot-v2-part-card carpot-v2-part-wheel">
+                        <div class="carpot-v2-part-visual"><i></i></div>
+                        <small>Ходова</small><b>Диск / гальма</b><span>Підбір по VIN</span>
+                    </article>
+                    <article class="carpot-v2-part-card carpot-v2-part-mirror">
+                        <div class="carpot-v2-part-visual"><i></i></div>
+                        <small>Кузов</small><b>Дзеркало / решітка</b><span>Ціна за запитом</span>
+                    </article>
                 </div>
             {% endif %}
         </div>
