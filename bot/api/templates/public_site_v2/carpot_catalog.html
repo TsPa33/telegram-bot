@@ -28,6 +28,9 @@
     {% set products_count = m.products_count or 0 %}
     {% set has_contacts = m.has_contacts if m.has_contacts is defined else false %}
     {% set wc = website_context.website_contacts if website_context and website_context.website_contacts else {} %}
+    {% set footer_phone = wc.phone or (wc.phones[0] if wc.phones else '') or seller.phone or '+38 (098) 000-00-00' %}
+    {% set footer_telegram = wc.telegram or seller.telegram or '@carpot_demo' %}
+    {% set footer_city = wc.city or seller.city or 'Ковель, Україна' %}
     {% set search_query = website_context.current_search_query if website_context and website_context.current_search_query else '' %}
     {% set search_active = website_context.search_active if website_context else false %}
     {% set filtered_results_count = website_context.filtered_results_count if website_context else 0 %}
@@ -255,9 +258,12 @@
     </section>
     {% endif %}
 
-    <section id="vin-request" class="carpot-v2-vin">
-        <h2>Не знайшли потрібну деталь?</h2>
-        <p>Надішліть VIN або назву запчастини — продавець перевірить наявність.</p>
+    <section id="vin-request" class="carpot-v2-lower-card carpot-v2-vin">
+        <div class="carpot-v2-lower-copy">
+            <span class="carpot-v2-lower-kicker">VIN-запит</span>
+            <h2>Не знайшли потрібну деталь?</h2>
+            <p>Надішліть VIN або назву запчастини — продавець перевірить наявність і звʼяжеться з вами.</p>
+        </div>
         <form method="post" action="/w/{{ website.subdomain }}/lead">
             <input type="hidden" name="request_type" value="vin">
             <div class="carpot-v2-formgrid">
@@ -266,7 +272,7 @@
                 <input class="carpot-v2-input" name="vin" placeholder="VIN або назва деталі">
             </div>
             <textarea class="carpot-v2-textarea" name="message" placeholder="Додатковий коментар"></textarea>
-            <button class="carpot-v2-btn carpot-v2-btn-light" type="submit" style="margin-top:12px;">Надіслати запит</button>
+            <button class="carpot-v2-btn carpot-v2-btn-light carpot-v2-lower-btn" type="submit">Надіслати запит</button>
         </form>
     </section>
 
@@ -298,15 +304,49 @@
 
     <section id="map" class="carpot-v2-section">
         {% if map_cfg and (map_cfg.embed_url or map_cfg.url or map_cfg.address) %}
-            <div class="carpot-v2-section-head"><h2>Як нас знайти</h2><p>{{ map_cfg.address or 'Локація продавця' }}</p></div>
-            <div class="carpot-v2-map">{% if map_cfg.embed_url %}<iframe src="{{ map_cfg.embed_url }}" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>{% elif map_cfg.url %}<div class="carpot-v2-map-placeholder"><a class="carpot-v2-btn carpot-v2-btn-light" href="{{ map_cfg.url }}" target="_blank" rel="noopener">Відкрити карту</a></div>{% else %}<div class="carpot-v2-map-placeholder">{{ map_cfg.address }}</div>{% endif %}</div>
+            <div class="carpot-v2-lower-card carpot-v2-location-card">
+                <div class="carpot-v2-lower-copy">
+                    <span class="carpot-v2-lower-kicker">Локація та доставка</span>
+                    <h2>Як нас знайти</h2>
+                    <p>{{ map_cfg.address or 'Звʼяжіться з продавцем для уточнення адреси, наявності та доставки.' }}</p>
+                </div>
+                <div class="carpot-v2-map">{% if map_cfg.embed_url %}<iframe src="{{ map_cfg.embed_url }}" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>{% elif map_cfg.url %}<div class="carpot-v2-map-placeholder"><a class="carpot-v2-btn carpot-v2-btn-light" href="{{ map_cfg.url }}" target="_blank" rel="noopener">Відкрити карту</a></div>{% else %}<div class="carpot-v2-map-placeholder">{{ map_cfg.address }}</div>{% endif %}</div>
+            </div>
         {% else %}
-            <div class="carpot-v2-location-card"><span>Локація та доставка</span><h2>Звʼяжіться з продавцем напряму</h2><p>Звʼяжіться з продавцем для уточнення адреси, наявності та доставки.</p>{% if has_contacts and wc.actions and wc.actions.contact_items %}<div class="carpot-v2-contact-grid">{% for item in wc.actions.contact_items[:3] %}<a class="carpot-v2-contact-card" href="{{ item.href }}"{% if item.target %} target="{{ item.target }}" rel="noopener"{% endif %}><span class="carpot-v2-contact-icon">{{ item.icon }}</span><span><b>{{ item.label }}</b><small>{{ item.value }}</small></span></a>{% endfor %}{% if wc.city or seller.city %}<div class="carpot-v2-contact-card"><span class="carpot-v2-contact-icon">⌖</span><span><b>Місто</b><small>{{ wc.city or seller.city }}</small></span></div>{% endif %}</div>{% else %}<a class="carpot-v2-btn carpot-v2-btn-light" href="#contacts">Звʼязатися</a>{% endif %}</div>
+            <div class="carpot-v2-lower-card carpot-v2-location-card">
+                <div class="carpot-v2-lower-copy">
+                    <span class="carpot-v2-lower-kicker">Локація та доставка</span>
+                    <h2>Звʼяжіться з продавцем напряму</h2>
+                    <p>Звʼяжіться з продавцем для уточнення адреси, наявності та доставки.</p>
+                </div>
+                {% if has_contacts and wc.actions and wc.actions.contact_items %}<div class="carpot-v2-contact-grid">{% for item in wc.actions.contact_items[:3] %}<a class="carpot-v2-contact-card" href="{{ item.href }}"{% if item.target %} target="{{ item.target }}" rel="noopener"{% endif %}><span class="carpot-v2-contact-icon">{{ item.icon }}</span><span><b>{{ item.label }}</b><small>{{ item.value }}</small></span></a>{% endfor %}{% if wc.city or seller.city %}<div class="carpot-v2-contact-card"><span class="carpot-v2-contact-icon">⌖</span><span><b>Місто</b><small>{{ wc.city or seller.city }}</small></span></div>{% endif %}</div>{% else %}<a class="carpot-v2-btn carpot-v2-btn-light carpot-v2-lower-btn" href="#contacts">Звʼязатися</a>{% endif %}
+            </div>
         {% endif %}
     </section>
 </main>
 
-<footer class="carpot-v2-footer"><div class="carpot-v2-wrap">© {{ seller_name }} · сайт на CarPot</div></footer>
+<footer class="carpot-v2-footer">
+    <div class="carpot-v2-wrap carpot-v2-footer-grid">
+        <div class="carpot-v2-footer-brand">
+            <b>{{ seller_name }}</b>
+            <p>Каталог запчастин та авто на розборі. Підбір деталей по VIN, марці авто або моделі.</p>
+            <span>Сайт створено на CarPot</span>
+        </div>
+        <nav class="carpot-v2-footer-nav" aria-label="Навігація сайту">
+            <b>Розділи</b>
+            <a href="#catalog">Каталог</a>
+            <a href="#cars">Авто на розборі</a>
+            <a href="#vin-request">VIN-запит</a>
+            <a href="#contacts">Контакти</a>
+        </nav>
+        <div class="carpot-v2-footer-contacts">
+            <b>Контакти</b>
+            {% if footer_phone %}<a href="tel:{{ footer_phone|replace(' ', '')|replace('(', '')|replace(')', '')|replace('-', '') }}">{{ footer_phone }}</a>{% endif %}
+            {% if footer_telegram %}<span>{{ footer_telegram }}</span>{% endif %}
+            {% if footer_city %}<span>{{ footer_city }}</span>{% endif %}
+        </div>
+    </div>
+</footer>
 <a class="carpot-v2-backtop" href="#top" aria-label="Повернутися нагору">↑</a>
 </body>
 </html>
