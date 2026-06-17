@@ -1,3 +1,5 @@
+import logging
+
 from aiogram import Router, F
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
@@ -27,6 +29,19 @@ from bot.services.site_packages import get_demo_group
 from bot.handlers.seller.onboarding import start_seller_onboarding, show_pending_seller_status
 
 router = Router()
+logger = logging.getLogger(__name__)
+
+
+async def _safe_main_menu(user_id: int) -> InlineKeyboardMarkup:
+    try:
+        return await main_menu_kb(user_id)
+    except Exception:
+        logger.exception("Failed to build main menu; returning degraded menu")
+        return InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🚗 Покупець", callback_data="role:buyer")],
+            [InlineKeyboardButton(text="🏪 Стати продавцем", callback_data="role:seller")],
+            [InlineKeyboardButton(text="🌐 Приклади сайтів", callback_data="demo:sites")],
+        ])
 
 
 def _start_payload(message: Message) -> str:
@@ -130,7 +145,7 @@ async def global_restart(message: Message, state: FSMContext):
 
     await message.answer(
         "🔁 Головне меню\n\nОбери дію:",
-        reply_markup=await main_menu_kb(message.from_user.id),
+        reply_markup=await _safe_main_menu(message.from_user.id),
     )
 
 
@@ -142,7 +157,7 @@ async def back_to_main_menu(message: Message, state: FSMContext):
 
     await message.answer(
         "🔁 Головне меню\n\nОбери дію:",
-        reply_markup=await main_menu_kb(message.from_user.id),
+        reply_markup=await _safe_main_menu(message.from_user.id),
     )
 
 
@@ -153,13 +168,19 @@ async def start(message: Message, state: FSMContext):
     await state.clear()
 
     # 🔥 СТВОРЕННЯ USER (КРИТИЧНО)
-    await create_user(
-        telegram_id=message.from_user.id,
-        username=message.from_user.username
-    )
+    try:
+        await create_user(
+            telegram_id=message.from_user.id,
+            username=message.from_user.username
+        )
+    except Exception:
+        logger.exception("Failed to create/update user on /start")
 
     # ✅ LOG VISIT
-    await log_visit(message.from_user, role="unknown")
+    try:
+        await log_visit(message.from_user, role="unknown")
+    except Exception:
+        logger.exception("Failed to log /start visit")
 
     payload = _start_payload(message)
     try:
@@ -174,31 +195,34 @@ async def start(message: Message, state: FSMContext):
         print("ERROR SAVE TELEGRAM ATTRIBUTION:", e)
 
     if payload.upper() == START_PROMO_CODE:
-        existing_activation = await get_promo_activation(
-            message.from_user.id,
-            START_PROMO_CODE,
-        )
-        activation = await activate_start_promo(
-            telegram_id=message.from_user.id,
-            username=message.from_user.username,
-        )
-
-        await message.answer(
-            _promo_activation_text(),
-            reply_markup=_promo_profile_kb(),
-        )
-
-        if not existing_activation:
-            await _notify_admins_about_start_promo(
-                message.bot,
-                message.from_user,
-                activation,
+        try:
+            existing_activation = await get_promo_activation(
+                message.from_user.id,
+                START_PROMO_CODE,
             )
-        return
+            activation = await activate_start_promo(
+                telegram_id=message.from_user.id,
+                username=message.from_user.username,
+            )
+        except Exception:
+            logger.exception("Failed to activate /start promo; showing main menu")
+        else:
+            await message.answer(
+                _promo_activation_text(),
+                reply_markup=_promo_profile_kb(),
+            )
+
+            if not existing_activation:
+                await _notify_admins_about_start_promo(
+                    message.bot,
+                    message.from_user,
+                    activation,
+                )
+            return
 
     await message.answer(
         "🔁 Головне меню\n\nОбери дію:",
-        reply_markup=await main_menu_kb(message.from_user.id),
+        reply_markup=await _safe_main_menu(message.from_user.id),
     )
 
 
@@ -381,6 +405,6 @@ async def demo_category(callback: CallbackQuery):
 async def demo_back(callback: CallbackQuery):
     await callback.message.edit_text(
         "🔁 Головне меню\n\nОбери дію:",
-        reply_markup=await main_menu_kb(callback.from_user.id),
+        reply_markup=await _safe_main_menu(callback.from_user.id),
     )
     await callback.answer()

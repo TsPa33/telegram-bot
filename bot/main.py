@@ -13,7 +13,7 @@ from aiogram.utils.callback_answer import CallbackAnswerMiddleware
 from redis.asyncio import from_url
 from redis.exceptions import RedisError
 
-from bot.config import BOT_TOKEN
+from bot.config import BOT_TOKEN, DATABASE_URL
 from bot.database.pool import init_pool
 from bot.database import pool as pool_module
 from bot.database.models import create_tables
@@ -134,12 +134,19 @@ async def get_storage():
 
 
 async def run_bot():
+    logger.info("BOT_TOKEN present: %s", "yes" if BOT_TOKEN else "no")
+    logger.info("DATABASE_URL present: %s", "yes" if DATABASE_URL else "no")
     if not BOT_TOKEN:
-        raise ValueError("BOT_TOKEN is not set")
+        logger.error("Bot cannot start: BOT_TOKEN is not set")
+        raise RuntimeError("BOT_TOKEN is not set")
 
-    await init_pool()
-    await create_tables()
-    await run_sql_migrations()
+    try:
+        await init_pool()
+        await create_tables()
+        await run_sql_migrations()
+    except Exception:
+        logger.critical("Fatal DB startup error; bot polling will not start", exc_info=True)
+        raise
 
     disable_polling_advisory_lock = os.getenv("DISABLE_POLLING_ADVISORY_LOCK") == "1"
     lock_conn = None
@@ -148,12 +155,16 @@ async def run_bot():
     if disable_polling_advisory_lock:
         logger.info("Polling advisory lock disabled by env")
     else:
-        lock_conn = await pool_module.pool.acquire()
-        got_lock = await lock_conn.fetchval("SELECT pg_try_advisory_lock($1)", 2026051501)
-        if not got_lock:
-            logger.warning("Telegram polling is already running in another process; skipping bot startup here")
-            await pool_module.pool.release(lock_conn)
-            return
+        try:
+            lock_conn = await pool_module.pool.acquire()
+            got_lock = await lock_conn.fetchval("SELECT pg_try_advisory_lock($1)", 2026051501)
+            if not got_lock:
+                logger.warning("Telegram polling is already running in another process; skipping bot startup here")
+                await pool_module.pool.release(lock_conn)
+                return
+        except Exception:
+            logger.critical("Could not acquire polling advisory lock; bot polling will not start", exc_info=True)
+            raise
 
     dp = Dispatcher(storage=await get_storage())
     bot = Bot(token=BOT_TOKEN)
@@ -175,7 +186,8 @@ async def run_bot():
         dp.include_router(buyer_router)
         dp.include_router(router)
 
-        logger.info("🚀 BOT STARTED")
+        logger.info("/start handler registered via start_router")
+        logger.info("Bot polling starting")
 
         await dp.start_polling(bot)
     finally:
@@ -190,16 +202,22 @@ async def run_bot():
 
 async def run_api():
     port = int(os.getenv("PORT", 8000))
+    logger.info("API started on port %s", port)
     config = uvicorn.Config(app=app, host="0.0.0.0", port=port)
     server = uvicorn.Server(config)
     await server.serve()
 
 
 async def main():
-    if os.getenv("RUN_API", "1") == "1":
-        await asyncio.gather(run_bot(), run_api())
-    else:
-        await run_bot()
+    logger.info("Startup mode RUN_API=%s", os.getenv("RUN_API", "1"))
+    try:
+        if os.getenv("RUN_API", "1") == "1":
+            await asyncio.gather(run_bot(), run_api())
+        else:
+            await run_bot()
+    except Exception:
+        logger.critical("Service startup failed; Railway process will exit", exc_info=True)
+        raise
 
 
 if __name__ == "__main__":
