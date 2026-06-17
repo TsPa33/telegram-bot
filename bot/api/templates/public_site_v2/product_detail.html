@@ -24,24 +24,51 @@
   {% set fallback_image_count = fallback_images|length %}
   {% set detail_fallback_seed = detail_item.id if detail_item.id else (detail_item.title|length) %}
   {% set detail_fallback_image = fallback_images[(detail_fallback_seed|int) % fallback_image_count] %}
+  {% set category_labels = {
+    'body': 'Кузов',
+    'engine': 'Двигун',
+    'gearbox': 'КПП',
+    'lighting': 'Оптика',
+    'suspension': 'Ходова',
+    'interior': 'Салон',
+    'electric': 'Електрика'
+  } %}
+  {% set category_key = (detail_item.category or '')|lower %}
+  {% set category_label = category_labels.get(category_key, detail_item.category or 'Інше') %}
   {% set product_images = ([detail_item.image_url] if detail_item.image_url else []) + (detail_item.gallery if detail_item.gallery else []) %}
-  {% set is_fallback_gallery = not product_images %}
-  {% if is_fallback_gallery %}{% set product_images = [detail_fallback_image] %}{% endif %}
+  {% set has_real_product_image = product_images|length > 0 %}
+  {% if not has_real_product_image %}{% set product_images = [detail_fallback_image] %}{% endif %}
+  {% set seller_display_name = 'CarPot' if detail_item.seller_name == 'CARPOT' else detail_item.seller_name %}
   {% set seller_phone = detail_item.seller_phone or 'Телефон уточнюється' %}
   {% set seller_city = detail_item.seller_city or 'Місто уточнюється' %}
   {% set seller_telegram = detail_item.seller_telegram or 'Telegram уточнюється' %}
   <link rel="stylesheet" href="/static/css/carpot_product_v2.css">
 
 </head>
-<body class="carpot-v2">
+<body class="carpot-v2" id="top">
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a class="brand" href="/w/{{ website.subdomain }}" aria-label="CarPot каталог">
+        <b>CarPot</b>
+        <span>{{ website.name or 'Каталог запчастин' }}</span>
+      </a>
+      <nav class="nav" aria-label="Навігація каталогу">
+        <a href="/w/{{ website.subdomain }}#catalog">Каталог</a>
+        <a href="/w/{{ website.subdomain }}#catalog">Фільтри / Підбір</a>
+        <a href="/w/{{ website.subdomain }}#vin-request">VIN запит</a>
+      </nav>
+      <a class="btn header-cta" href="/w/{{ website.subdomain }}#contacts">Консультація</a>
+    </div>
+  </header>
+
   <main class="wrap">
     <div class="top"><a class="btn" href="/w/{{ website.subdomain }}">← До каталогу</a><a class="btn" href="/w/{{ website.subdomain }}#vin-request">Надіслати VIN</a></div>
 
     <section class="product-layout">
       <div class="gallery-column" data-product-gallery>
-        <div class="media{% if is_fallback_gallery %} fallback-media{% endif %}">
+        <div class="media{% if not has_real_product_image %} fallback-media{% endif %}">
           <img id="product-main-image" src="{{ product_images[0] }}" alt="{{ detail_item.title }}" width="1200" height="900" decoding="async">
-          {% if is_fallback_gallery %}<span>Фото відсутнє</span>{% endif %}
+          {% if not has_real_product_image %}<span>Фото відсутнє</span>{% endif %}
         </div>
         <div class="thumbs" aria-label="Галерея товару">
           {% for image in product_images[:20] %}
@@ -54,7 +81,7 @@
 
       <aside class="product-panel">
         <div class="product-head">
-          <div class="small">{{ detail_item.category }}</div>
+          <div class="small">{{ category_label }}</div>
           <h1 class="title">{{ detail_item.title }}</h1>
           {% if detail_item.brand or detail_item.model %}
           <div class="vehicle-grid">
@@ -71,13 +98,13 @@
         </div>
 
         <div class="actions">
-          <button class="btn black" type="button">Додати в кошик</button>
-          <a class="btn" href="/w/{{ website.subdomain }}#vin-request">Уточнити наявність</a>
+          <a class="btn black" href="/w/{{ website.subdomain }}#vin-request">Уточнити наявність</a>
+          <a class="btn" href="/w/{{ website.subdomain }}#vin-request">Надіслати VIN</a>
         </div>
 
         <div class="seller-card">
           <span>Продавець</span>
-          <b>{{ detail_item.seller_name }}</b>
+          <b>{{ seller_display_name }}</b>
           <div class="seller-lines">
             <div><small>Телефон</small><strong>{{ seller_phone }}</strong></div>
             <div><small>Telegram</small><strong>{{ seller_telegram }}</strong></div>
@@ -113,7 +140,7 @@
               <span class="card-media fallback-media"><img src="{{ related_fallback_image }}" alt="Фото відсутнє для {{ item.title }}" loading="lazy" decoding="async" width="500" height="380"><span>Фото відсутнє</span></span>
             {% endif %}
             <b>{{ item.title }}</b>
-            <span class="small">{{ item.category }}</span>
+            <span class="small">{{ category_labels.get((item.category or '')|lower, item.category or 'Інше') }}</span>
             <span class="card-bottom"><strong>{% if item.price %}{{ item.price }} грн{% else %}Ціна за запитом{% endif %}</strong><small>{{ item.availability or 'В наявності' }}</small></span>
           </a>
         {% endfor %}
@@ -121,6 +148,27 @@
       {% else %}<div class="box">Схожі позиції зʼявляться пізніше.</div>{% endif %}
     </section>
   </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-grid">
+      <div class="footer-brand">
+        <b>CarPot</b>
+        <p>Каталог автозапчастин з авто на розборі. Надішліть VIN або запит — продавець уточнить наявність і умови доставки.</p>
+      </div>
+      <nav class="footer-nav" aria-label="Розділи сайту">
+        <b>Розділи</b>
+        <a href="/w/{{ website.subdomain }}#catalog">Каталог</a>
+        <a href="/w/{{ website.subdomain }}#vin-request">VIN запит</a>
+        <a href="/w/{{ website.subdomain }}#contacts">Контакти</a>
+      </nav>
+      <div class="footer-contacts">
+        <b>Контакти</b>
+        <span>{{ seller_phone }}</span>
+        <span>{{ seller_telegram }}</span>
+        <span>{{ seller_city }}</span>
+      </div>
+    </div>
+  </footer>
   <script>
     document.querySelectorAll('[data-product-gallery]').forEach((gallery) => {
       const mainImage = gallery.querySelector('#product-main-image');
