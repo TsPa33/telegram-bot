@@ -6,21 +6,21 @@
 {% block crm_heading %}Мій сайт{% endblock %}
 {% block content %}
 {% if status == 'published' %}<div class="notice">Сайт опубліковано.</div>{% endif %}
-{% if status == 'saved' %}<div class="notice">Зміни збережено у чернетку.</div>{% endif %}
+{% if status == 'saved' %}<div class="notice">Зміни збережено. Опублікуйте сайт, щоб клієнти їх побачили.</div>{% endif %}
 
 <article class="card">
   <h3>Статус сайту</h3>
-  <p><b>URL:</b> <a href="{{ live_url }}" target="_blank">{{ live_url }}</a></p>
-  <p><b>Шаблон:</b> {{ design.get('template_id','universal_classic') }}</p>
-  <p><b>Кольорова схема:</b> {{ design.get('color_scheme','dark_blue') }}</p>
-  <p><b>Статус:</b> {{ site.status or 'draft' }}</p>
-  <p><b>Subdomain:</b> {{ site.subdomain }}</p>
+  <p><b>Посилання:</b> <a href="{{ live_url }}" target="_blank">{{ live_url }}</a></p>
+  <p><b>Вигляд:</b> {{ design.get('template_id','universal_classic') }}</p>
+  <p><b>Кольори:</b> {{ design.get('color_scheme','dark_blue') }}</p>
+  <p><b>Стан:</b> {{ "Запущено" if site.status == "published" else "Не запущено" }}</p>
+  <p><b>Адреса CarPot:</b> {{ site.subdomain }}</p>
   <p><b>Домен:</b> {{ site.custom_domain or 'Не підключено' }}</p>
-  {% if has_unpublished %}<p class="muted"><b>Є неопубліковані зміни.</b></p>{% endif %}
+  {% if has_unpublished %}<p class="muted"><b>Є зміни, які ще не бачать клієнти.</b></p>{% endif %}
   <div class="action-row">
     <a class="btn ghost" href="{{ live_url }}" target="_blank">Переглянути сайт</a>
-    <a class="btn" href="/crm/seller/{{ account.crm_slug }}/website/design">Перейти до дизайну</a>
-    <form method="post" action="/crm/seller/{{ account.crm_slug }}/website/publish"><button class="btn">Опублікувати зміни</button></form>
+    <a class="btn" href="/crm/seller/{{ account.crm_slug }}/website/design">Налаштувати вигляд</a>
+    <form method="post" action="/crm/seller/{{ account.crm_slug }}/website/publish"><button class="btn">Показати зміни клієнтам</button></form>
   </div>
 </article>
 
