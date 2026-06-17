@@ -13,37 +13,173 @@
   <meta property="og:url" content="{{ seo.og_url if seo and seo.og_url else ('/w/' ~ website.subdomain ~ '/product/' ~ detail_item.id) }}">
   {% if seo and seo.og_image %}<meta property="og:image" content="{{ seo.og_image }}">{% endif %}
   {% if schema_jsonld %}<script type="application/ld+json">{{ schema_jsonld | safe }}</script>{% endif %}
+  {% set fallback_images = [
+    'https://res.cloudinary.com/dyem6pgtd/image/upload/v1779622099/category-suspension-premium-01.png_gvvzto.png',
+    'https://res.cloudinary.com/dyem6pgtd/image/upload/v1779622100/602d6c56-995f-4b2e-853d-32f7049773cf_txlfbc.png',
+    'https://res.cloudinary.com/dyem6pgtd/image/upload/v1781010199/rahul-bhogal-9mxviB2BBOE-unsplash_1_ejsj4h.jpg',
+    'https://res.cloudinary.com/dyem6pgtd/image/upload/v1781010200/sam-loyd-qy27JnsH9sU-unsplash_i87jp5.jpg',
+    'https://res.cloudinary.com/dyem6pgtd/image/upload/v1781010200/kofa-boyah-VXerPNbzF4s-unsplash_fhm3dr.jpg',
+    'https://res.cloudinary.com/dyem6pgtd/image/upload/v1781010200/igor-constantino-aXxu0nVMGmk-unsplash_npgcyk.jpg'
+  ] %}
+  {% set fallback_image_count = fallback_images|length %}
+  {% set detail_fallback_seed = detail_item.id if detail_item.id else (detail_item.title|length) %}
+  {% set detail_fallback_image = fallback_images[(detail_fallback_seed|int) % fallback_image_count] %}
+  {% set category_labels = {
+    'body': 'Кузов',
+    'engine': 'Двигун',
+    'gearbox': 'КПП',
+    'lighting': 'Оптика',
+    'suspension': 'Ходова',
+    'interior': 'Салон',
+    'electric': 'Електрика'
+  } %}
+  {% set category_key = (detail_item.category or '')|lower %}
+  {% set category_label = category_labels.get(category_key, detail_item.category or 'Інше') %}
+  {% set product_images = ([detail_item.image_url] if detail_item.image_url else []) + (detail_item.gallery if detail_item.gallery else []) %}
+  {% set has_real_product_image = product_images|length > 0 %}
+  {% if not has_real_product_image %}{% set product_images = [detail_fallback_image] %}{% endif %}
+  {% set seller_display_name = 'CarPot' if detail_item.seller_name == 'CARPOT' else detail_item.seller_name %}
+  {% set seller_phone = detail_item.seller_phone or 'Телефон уточнюється' %}
+  {% set seller_city = detail_item.seller_city or 'Місто уточнюється' %}
+  {% set seller_telegram = detail_item.seller_telegram or 'Telegram уточнюється' %}
   <link rel="stylesheet" href="/static/css/carpot_product_v2.css">
 
 </head>
-<body class="carpot-v2">
+<body class="carpot-v2" id="top">
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a class="brand" href="/w/{{ website.subdomain }}" aria-label="CarPot каталог"><b>CarPot</b></a>
+      <nav class="nav" aria-label="Навігація каталогу">
+        <a href="/w/{{ website.subdomain }}#catalog">Каталог</a>
+        <a href="/w/{{ website.subdomain }}#catalog">Фільтри / Підбір</a>
+        <a href="/w/{{ website.subdomain }}#vin-request">VIN запит</a>
+      </nav>
+      <a class="btn header-cta" href="/w/{{ website.subdomain }}#contacts">Консультація</a>
+    </div>
+  </header>
+
   <main class="wrap">
     <div class="top"><a class="btn" href="/w/{{ website.subdomain }}">← До каталогу</a><a class="btn" href="/w/{{ website.subdomain }}#vin-request">Надіслати VIN</a></div>
-    <section class="layout">
-      <div class="media">{% if detail_item.image_url %}<img src="{{ detail_item.image_url }}" alt="{{ detail_item.title }}" width="1200" height="900" decoding="async">{% else %}<div class="ph">Фото уточнюється</div>{% endif %}</div>
-      {% if detail_item.gallery %}
-      <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:10px;">
-        {% for g in detail_item.gallery %}
-          <div style="border:1px solid #e7e7e7;border-radius:10px;overflow:hidden;background:#f3f3f3;">
-            <img src="{{ g }}" alt="{{ detail_item.title }} thumbnail" loading="lazy" decoding="async" width="180" height="130" style="width:100%;height:88px;object-fit:cover;">
+
+    <section class="product-layout">
+      <div class="gallery-column" data-product-gallery>
+        <div class="media{% if not has_real_product_image %} fallback-media{% endif %}">
+          <img id="product-main-image" src="{{ product_images[0] }}" alt="{{ detail_item.title }}" width="1200" height="900" decoding="async">
+          {% if not has_real_product_image %}<span>Фото відсутнє</span>{% endif %}
+        </div>
+        <div class="thumbs" aria-label="Галерея товару">
+          {% for image in product_images[:20] %}
+            <button class="thumb{% if loop.first %} is-active{% endif %}" type="button" data-image="{{ image }}" aria-label="Показати фото {{ loop.index }}">
+              <img src="{{ image }}" alt="{{ detail_item.title }} — фото {{ loop.index }}" loading="lazy" decoding="async" width="180" height="130">
+            </button>
+          {% endfor %}
+        </div>
+      </div>
+
+      <aside class="product-panel">
+        <div class="product-head">
+          <div class="small">{{ category_label }}</div>
+          <h1 class="title">{{ detail_item.title }}</h1>
+          {% if detail_item.brand or detail_item.model %}
+          <div class="vehicle-grid">
+            {% if detail_item.brand %}<div><span>Марка</span><b>{{ detail_item.brand }}</b></div>{% endif %}
+            {% if detail_item.model %}<div><span>Модель</span><b>{{ detail_item.model }}</b></div>{% endif %}
           </div>
+          {% endif %}
+          <div class="badges"><span class="badge available">{{ detail_item.availability or 'В наявності' }}</span><span class="badge">{{ detail_item.condition or 'Стан уточнюється' }}</span></div>
+        </div>
+
+        <div class="price-box">
+          <span>Ціна</span>
+          <div class="price">{% if detail_item.price %}{{ detail_item.price }} грн{% else %}Ціна за запитом{% endif %}</div>
+        </div>
+
+        <div class="actions">
+          <a class="btn black" href="/w/{{ website.subdomain }}#vin-request">Уточнити наявність</a>
+          <a class="btn" href="/w/{{ website.subdomain }}#vin-request">Надіслати VIN</a>
+        </div>
+
+        <div class="seller-card">
+          <span>Продавець</span>
+          <b>{{ seller_display_name }}</b>
+          <div class="seller-lines">
+            <div><small>Телефон</small><strong>{{ seller_phone }}</strong></div>
+            <div><small>Telegram</small><strong>{{ seller_telegram }}</strong></div>
+            <div><small>Місто</small><strong>{{ seller_city }}</strong></div>
+          </div>
+        </div>
+
+        <div class="quick-info">
+          <div><b>Доставка</b><span>Уточнюється з продавцем перед відправкою.</span></div>
+          <div><b>Повернення</b><span>Умови повернення погоджуються під час замовлення.</span></div>
+          <div><b>Графік роботи</b><span>Продавець відповість у робочий час.</span></div>
+          <div><b>Контакти</b><span>Телефон, Telegram або VIN-запит.</span></div>
+        </div>
+      </aside>
+    </section>
+
+    <section class="description-card">
+      <h2>Опис товару</h2>
+      <p>{{ detail_item.description or 'Продавець ще не додав детальний опис. Надішліть запит, щоб уточнити стан, сумісність, наявність та умови доставки.' }}</p>
+    </section>
+
+    <section class="related">
+      <div class="section-head"><h2>Схожі запчастини</h2><a href="/w/{{ website.subdomain }}">До каталогу</a></div>
+      {% if related_items %}
+      <div class="grid">
+        {% for item in related_items %}
+          <a class="card" href="/w/{{ website.subdomain }}/product/{{ item.id }}">
+            {% if item.image_url %}
+              <span class="card-media"><img src="{{ item.image_url }}" alt="{{ item.title }}" loading="lazy" decoding="async" width="500" height="380"></span>
+            {% else %}
+              {% set related_fallback_seed = item.id if item.id else loop.index0 %}
+              {% set related_fallback_image = fallback_images[((related_fallback_seed|int) + loop.index0) % fallback_image_count] %}
+              <span class="card-media fallback-media"><img src="{{ related_fallback_image }}" alt="Фото відсутнє для {{ item.title }}" loading="lazy" decoding="async" width="500" height="380"><span>Фото відсутнє</span></span>
+            {% endif %}
+            <b>{{ item.title }}</b>
+            <span class="small">{{ category_labels.get((item.category or '')|lower, item.category or 'Інше') }}</span>
+            <span class="card-bottom"><strong>{% if item.price %}{{ item.price }} грн{% else %}Ціна за запитом{% endif %}</strong><small>{{ item.availability or 'В наявності' }}</small></span>
+          </a>
         {% endfor %}
       </div>
-      {% endif %}
-      <div class="meta">
-        <h1 class="title">{{ detail_item.title }}</h1>
-        <div class="small">{{ detail_item.category }}{% if detail_item.brand or detail_item.model %} · {{ detail_item.brand }} {{ detail_item.model }}{% endif %}</div>
-        <div><span class="badge">{{ detail_item.condition or 'Стан уточнюється' }}</span> <span class="badge">{{ detail_item.availability }}</span></div>
-        <p>{{ detail_item.description or 'Опис буде оновлено продавцем.' }}</p>
-        <div class="price">{% if detail_item.price %}{{ detail_item.price }} грн{% else %}Ціна за запитом{% endif %}</div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap"><a class="btn black" href="/w/{{ website.subdomain }}#vin-request">Уточнити наявність</a><a class="btn" href="/w/{{ website.subdomain }}#vin-request">Надіслати VIN</a></div>
-        <div class="box"><b>{{ detail_item.seller_name }}</b><div class="small">{{ detail_item.seller_city or 'Місто уточнюється' }}</div><div class="small">{{ detail_item.seller_phone or 'Телефон уточнюється' }}</div></div>
-      </div>
-    </section>
-    <section class="related">
-      <h2>Схожі запчастини</h2>
-      {% if related_items %}<div class="grid">{% for item in related_items %}<a class="card" href="/w/{{ website.subdomain }}/product/{{ item.id }}">{% if item.image_url %}<img src="{{ item.image_url }}" alt="{{ item.title }}" loading="lazy" decoding="async" width="500" height="380">{% else %}<div class="phs" style="display:grid;place-items:center;color:#666;font-size:12px;">Фото уточнюється</div>{% endif %}<b>{{ item.title }}</b><div class="small">{{ item.category }}</div><div>{% if item.price %}{{ item.price }} грн{% else %}Ціна за запитом{% endif %}</div></a>{% endfor %}</div>{% else %}<div class="box">Схожі позиції зʼявляться пізніше.</div>{% endif %}
+      {% else %}<div class="box">Схожі позиції зʼявляться пізніше.</div>{% endif %}
     </section>
   </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-grid">
+      <div class="footer-brand">
+        <b>CarPot</b>
+        <p>Каталог автозапчастин з авто на розборі. Надішліть VIN або запит — продавець уточнить наявність і умови доставки.</p>
+      </div>
+      <nav class="footer-nav" aria-label="Розділи сайту">
+        <b>Розділи</b>
+        <a href="/w/{{ website.subdomain }}#catalog">Каталог</a>
+        <a href="/w/{{ website.subdomain }}#vin-request">VIN запит</a>
+        <a href="/w/{{ website.subdomain }}#contacts">Контакти</a>
+      </nav>
+      <div class="footer-contacts">
+        <b>Контакти</b>
+        <span>{{ seller_phone }}</span>
+        <span>{{ seller_telegram }}</span>
+        <span>{{ seller_city }}</span>
+      </div>
+    </div>
+  </footer>
+  <script>
+    document.querySelectorAll('[data-product-gallery]').forEach((gallery) => {
+      const mainImage = gallery.querySelector('#product-main-image');
+      const thumbs = gallery.querySelectorAll('[data-image]');
+      thumbs.forEach((thumb) => {
+        thumb.addEventListener('click', () => {
+          const image = thumb.getAttribute('data-image');
+          if (!image || !mainImage) return;
+          mainImage.src = image;
+          thumbs.forEach((item) => item.classList.remove('is-active'));
+          thumb.classList.add('is-active');
+        });
+      });
+    });
+  </script>
 </body>
 </html>

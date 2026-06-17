@@ -1,31 +1,31 @@
 {% extends "seller_crm/base.html" %}
-{% block crm_kicker %}Website V2{% endblock %}
+{% block crm_kicker %}Сайт{% endblock %}
 {% block crm_heading %}Дизайн сайту{% endblock %}
 {% block content %}
 <div class="crm-page">
   <section class="crm-page-head">
     <div>
       <h1>Дизайн сайту</h1>
-      <p class="section-note">{{ website.name }} · основні візуальні налаштування Website V2.</p>
+      <p class="section-note">{{ website.name }} · основні візуальні налаштування Сайт.</p>
     </div>
     <div class="crm-action-row"><a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}">Назад до огляду</a></div>
   </section>
 
   <section class="crm-card-grid">
     <article class="card">
-      <h2>Hero та банер</h2>
-      <p class="section-note">Заголовок, CTA та головне зображення першого екрану.</p>
-      <a class="btn small" href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/hero">Редагувати Hero</a>
+      <h2>Головний екран і банер</h2>
+      <p class="section-note">Заголовок, кнопка дії та головне зображення сайту.</p>
+      <a class="btn small" href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/hero">Редагувати головний екран</a>
     </article>
     <article class="card">
-      <h2>Контент</h2>
-      <p class="section-note">Перевірте джерела контенту для каталогу або послуг.</p>
-      <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/content">Перейти до контенту</a>
+      <h2>Наповнення сайту</h2>
+      <p class="section-note">Перевірте, які товари, авто або послуги показуються клієнтам.</p>
+      <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/content">Перейти до наповнення</a>
     </article>
     <article class="card">
-      <h2>Публікація</h2>
-      <p class="section-note">Запустіть сайт після проходження чекліста готовності.</p>
-      <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/publication">Перевірити готовність</a>
+      <h2>Запуск сайту</h2>
+      <p class="section-note">Запустіть сайт, коли всі обовʼязкові дані заповнені.</p>
+      <a class="btn small ghost" href="/crm/seller/{{ account.crm_slug }}/websites/{{ website.id }}/publication">Перевірити перед запуском</a>
     </article>
   </section>
 </div>

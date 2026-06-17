@@ -1,6 +1,6 @@
 {% extends "seller_crm/base.html" %}
-{% block crm_kicker %}Публічна картка продавця{% endblock %}
-{% block crm_heading %}Профіль продавця{% endblock %}
+{% block crm_kicker %}Як вас бачать покупці продавця{% endblock %}
+{% block crm_heading %}Дані компанії{% endblock %}
 {% block crm_top_actions %}
   <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}">На головну</a>
 {% endblock %}
@@ -48,10 +48,10 @@
 
 <section class="workspace-hero" aria-labelledby="profile-title">
   <div>
-    <h2 id="profile-title">Профіль продавця</h2>
-    <p class="section-note">Це публічна картка продавця. Покупці бачать ці дані. Базові поля можна редагувати прямо в CRM.</p>
+    <h2 id="profile-title">Дані компанії</h2>
+    <p class="section-note">Інформація, яку бачать покупці у CarPot та на ваших сайтах.</p>
     <div class="action-row">
-      <a class="btn" href="#profile-form-title">Редагувати профіль</a>
+      <a class="btn" href="#profile-form-title">Редагувати дані</a>
       {% if public_site_url %}<a class="btn ghost" href="{{ public_site_url }}" target="_blank" rel="noopener">Відкрити сайт</a>{% endif %}
       <a class="btn ghost" href="#contacts-title">Перейти до контактів</a>
     </div>
@@ -64,8 +64,8 @@
 {% if error and error_messages.get(error) %}<div class="notice error" role="alert">{{ error_messages.get(error) }}</div>{% endif %}
 
 <section class="card secondary-section" aria-labelledby="profile-form-title">
-  <h2 id="profile-form-title">Редагування профілю</h2>
-  <p class="section-note">Ці дані бачать покупці у вашій публічній картці та заявках.</p>
+  <h2 id="profile-form-title">Дані компанії</h2>
+  <p class="section-note">Заповніть контакти, місто й короткий опис, щоб покупці швидше вам довіряли.</p>
   <form class="crm-site" method="post" action="/crm/seller/{{ account.crm_slug }}/profile" enctype="multipart/form-data">
     <div class="form-grid">
       <label>Назва бізнесу<input type="text" name="shop_name" maxlength="120" value="{{ profile.shop_name or '' }}" placeholder="Наприклад, Auto Expert"></label>
@@ -82,7 +82,7 @@
 
 <section class="grid profile-layout">
   <article class="card" aria-labelledby="public-card-title">
-    <h2 id="public-card-title">Публічна картка</h2>
+    <h2 id="public-card-title">Як вас бачать покупці</h2>
     <div class="public-card-preview">
       <div class="seller-photo" aria-label="Фото або логотип продавця">
         {% if profile.photo_is_url %}<img src="{{ profile.photo_id }}" alt="Фото {{ profile.shop_name or profile.name or 'продавця' }}">{% elif profile.photo_id %}Фото додано{% else %}Фото/логотип<br>не додано{% endif %}
@@ -97,7 +97,7 @@
   </article>
 
   <aside class="card" aria-labelledby="contacts-title">
-    <h2 id="contacts-title">Контакти та готовність</h2>
+    <h2 id="contacts-title">Що варто заповнити</h2>
     <div class="profile-list">
       <div class="profile-row"><div><div class="profile-row-head"><div class="profile-label">Телефон</div><span class="status-chip {% if profile.phone %}ready{% else %}attention{% endif %}">{% if profile.phone %}Готово{% else %}Потрібно{% endif %}</span></div><div class="profile-value {% if not profile.phone %}warning-text{% endif %}">{{ profile.phone or "Телефон не вказано" }}</div></div></div>
       <div class="profile-row"><div><div class="profile-row-head"><div class="profile-label">Місто</div><span class="status-chip {% if profile.city %}ready{% else %}attention{% endif %}">{% if profile.city %}Готово{% else %}Потрібно{% endif %}</span></div><div class="profile-value {% if not profile.city %}warning-text{% endif %}">{{ profile.city or "Місто не вказано" }}</div></div></div>
@@ -136,9 +136,9 @@
 
 <section class="card secondary-section" aria-labelledby="actions-title">
   <h2 id="actions-title">Дії</h2>
-  <p class="section-note">Базові поля профілю, включно з фото/логотипом, редагуються в CRM.</p>
+  <p class="section-note">Фото, контакти й опис можна змінити у блоці “Дані компанії”.</p>
   <div class="profile-actions">
-    <a class="btn" href="#profile-form-title">Редагувати профіль</a>
+    <a class="btn" href="#profile-form-title">Редагувати дані</a>
     {% if public_site_url %}<a class="btn ghost" href="{{ public_site_url }}" target="_blank" rel="noopener">Відкрити сайт</a>{% endif %}
     <a class="btn ghost" href="/crm/seller/{{ account.crm_slug }}">На головну</a>
   </div>
