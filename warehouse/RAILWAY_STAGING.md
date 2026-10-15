@@ -1,0 +1,224 @@
+# Railway staging preview — Warehouse only
+
+This guide prepares a **new, isolated Railway project** for visual testing on iPhone and desktop. Nothing in this change deploys to Railway, connects to a Railway account, changes the existing CarPot deployment, or uses its database or secrets.
+
+## Topology
+
+```text
+https://<generated-warehouse-web-domain>.up.railway.app
+          Railway TLS edge (HTTPS)
+                       |
+             warehouse-web :8080
+        production Vite dist served by Nginx
+                       |
+           /api/* and /health, private HTTP
+                       |
+             warehouse-api :8010
+          FastAPI, startup migrations
+                       |
+              private PostgreSQL
+                       |
+             warehouse-db :5432
+          volume /var/lib/postgresql/data
+```
+
+Only `warehouse-web` gets a public domain. **Neither API nor PostgreSQL gets a public domain, TCP proxy, or Public Access.** All three services must be in the same new project, `staging` environment, and region. Private Railway traffic is carried by Railway's WireGuard network; internal URLs deliberately use `http://`, while the browser uses HTTPS only.
+
+Both application services build from repository **`TsPa33/telegram-bot`**, branch **`feature/carpot-warehouse-mvp`**, Root Directory **`/warehouse`**. Root CarPot startup files, `render.yaml`, and dependency manifests are not build inputs. The local development Dockerfiles and Compose stay development-only; staging uses `deploy/railway/*.Dockerfile`.
+
+`deploy/railway/services.json` is a **reviewable Dashboard settings checklist**, not a Railway-importable schema or executable deployment script. Its values are reproduced below. Do not import the local check Compose file into Railway.
+
+Current Railway documentation deprecates `railway.json`/`railway.toml` for new services in favor of IaC. This preparation uses supported Dashboard service settings and `RAILWAY_DOCKERFILE_PATH`; it does not introduce legacy configuration or apply a project-wide IaC graph to an existing project.
+
+## 1. Make the feature branch available (when you choose to deploy)
+
+The prepared files are currently local changes. Review them, then run these yourself:
+
+```bash
+git switch feature/carpot-warehouse-mvp
+git status --short
+git add warehouse
+git diff --cached --stat
+git commit -m "Prepare isolated Warehouse Railway staging preview"
+git push -u origin feature/carpot-warehouse-mvp
+```
+
+No merge into `main` is needed. `.env`, local TLS test keys, photos, and dependency/build caches are ignored. Do not stage credentials. GitHub access for the Railway GitHub App must include this repository; no CarPot production token is needed.
+
+## 2. Create a NEW project and its private database
+
+1. In Railway, create an **empty project** named `carpot-warehouse-staging`. Create/select an environment named `staging`. Do not duplicate the existing CarPot project, services, shared variables, database, or volumes.
+2. Add an **empty service**, name it exactly `warehouse-db`, and select Docker image **`postgres:16-alpine`**. Keep its deployment staged/paused until its variables and volume are configured.
+3. Attach a **new persistent Railway Volume** at `/var/lib/postgresql/data` in this environment. Do not reuse an existing volume.
+4. Set these variables **before its first database initialization**:
+
+| Variable | Value |
+|---|---|
+| `POSTGRES_DB` | `warehouse_staging` |
+| `POSTGRES_USER` | `warehouse_staging` |
+| `POSTGRES_PASSWORD` | A new random secret, entered in Railway; never a CarPot password |
+| `PGDATA` | `/var/lib/postgresql/data/pgdata` |
+
+Generate a unique password locally with a password manager or `openssl rand -hex 32`; enter it only in the `warehouse-db` service's Variables panel. Do not put the value in a commit, command argument, build argument, frontend variable, or chat.
+
+Leave Start Command empty (use the official image's entrypoint). Use one replica. Leave HTTP healthcheck unset for PostgreSQL. Ensure **Networking has no Public Access/TCP proxy**. Deploy this service only after checking those settings.
+
+**Important:** PostgreSQL's `POSTGRES_DB` only creates that database on an empty volume. Changing the variable later does not rename/create a database on an initialized volume. If first initialization used another name, use an explicit PostgreSQL administration operation over Railway's private console to create `warehouse_staging`; do not point the API at `railway` or another application's database to bypass Warehouse's name guard. Do not delete a volume containing work.
+
+This deliberately uses a fresh official Postgres image rather than a template that might initialize its default database before you change the name. Enable volume backups if you intend to retain staging records between iterations. Never treat a staging volume as disposable after entering real test data.
+
+## 3. Create the two application services before releasing their builds
+
+Create two **empty** services named exactly `warehouse-api` and `warehouse-web`. Connect each to the feature branch with the settings below. Keep initial source/deployment changes staged or deployments paused until the Root Directory, branch, custom Dockerfile path, and variables are set. Do not accept a repository-root auto-detected bot start command.
+
+If your UI connects GitHub before showing Root Directory, leave deployments paused while configuring the service. Review the final deployment details to verify `/warehouse` and the expected Dockerfile before deploying it.
+
+| Setting | `warehouse-api` | `warehouse-web` |
+|---|---|---|
+| Source repo | `TsPa33/telegram-bot` | `TsPa33/telegram-bot` |
+| Branch | `feature/carpot-warehouse-mvp` | `feature/carpot-warehouse-mvp` |
+| Root Directory | `/warehouse` | `/warehouse` |
+| Builder | Dockerfile | Dockerfile |
+| `RAILWAY_DOCKERFILE_PATH` | `deploy/railway/backend.Dockerfile` | `deploy/railway/frontend.Dockerfile` |
+| Start Command | `python -m app.staging` | `/usr/local/bin/warehouse-frontend` |
+| `PORT` | `8010` | `8080` |
+| Healthcheck | `/health` | `/health` |
+| Healthcheck timeout | 180 seconds | 180 seconds |
+| Replicas | 1 | 1 |
+| Restart policy | On failure, max 5 retries | On failure, max 5 retries |
+| Public networking | **None** | One generated HTTPS domain, target port `8080` |
+| Volumes | None initially; optional photo volume below | None |
+
+Leaving Start Command empty also uses the same Docker CMD/ENTRYPOINT. Do not set a separate Build Command or Vite development/preview command. The frontend image runs `npm ci` + `npm run build`, then copies only `dist` to an Nginx runtime with no Node or Vite server.
+
+Generate a domain **only for `warehouse-web`**, targeting port `8080`. Reserve it before the API's first startup if the UI allows it, so both services can have the same exact public-origin setting. No custom CarPot DNS changes are needed.
+
+If your Railway UI offers domain generation only after a first deployment, temporarily set **both** application origins to `https://warehouse-bootstrap.invalid`. Deploy API then web with that exact placeholder; their Railway `/health` checks accept `healthcheck.railway.app`, but requests on an unconfigured public hostname are rejected. Generate the web domain, replace both origins with the real reference expressions below, and redeploy API then web **before creating an account or testing login**. Never disable secure cookies or host/origin checks to bootstrap a domain.
+
+### Frontend variables
+
+Use Railway variable reference expressions exactly as shown, with the service names above:
+
+| Variable | Value |
+|---|---|
+| `PORT` | `8080` |
+| `RAILWAY_DOCKERFILE_PATH` | `deploy/railway/frontend.Dockerfile` |
+| `WAREHOUSE_PUBLIC_ORIGIN` | `https://${{RAILWAY_PUBLIC_DOMAIN}}` |
+| `WAREHOUSE_BACKEND_ORIGIN` | `http://${{warehouse-api.RAILWAY_PRIVATE_DOMAIN}}:8010` |
+
+`RAILWAY_PUBLIC_DOMAIN` must be present after generating the domain. Use the canonical **full HTTPS origin without a trailing slash**. If you later choose a custom staging domain, set that exact origin in both services instead of the generated-domain expressions. Use a domain dedicated to Warehouse staging, not the main CarPot domain.
+
+Swagger `/docs` and `/openapi.json` remain on the private backend; they are not publicly proxied.
+
+No `VITE_API_URL` or CORS configuration is needed: browser fetches remain relative `/api/v1/...`. Do not set `WAREHOUSE_API_PROXY` in staging; that variable is only used by the local Vite dev server. The Nginx upstream is runtime-configured, resolves both A/AAAA records, and refreshes DNS after backend redeploys.
+
+### Backend variables
+
+| Variable | Value |
+|---|---|
+| `PORT` | `8010` |
+| `RAILWAY_DOCKERFILE_PATH` | `deploy/railway/backend.Dockerfile` |
+| `WAREHOUSE_ENV` | `staging` |
+| `WAREHOUSE_COOKIE_SECURE` | `true` |
+| `WAREHOUSE_REGISTRATION_ENABLED` | `false` |
+| `WAREHOUSE_PUBLIC_ORIGIN` | `https://${{warehouse-web.RAILWAY_PUBLIC_DOMAIN}}` |
+| `WAREHOUSE_DB_HOST` | `${{warehouse-db.RAILWAY_PRIVATE_DOMAIN}}` |
+| `WAREHOUSE_DB_PORT` | `5432` |
+| `WAREHOUSE_DB_NAME` | `${{warehouse-db.POSTGRES_DB}}` |
+| `WAREHOUSE_DB_USER` | `${{warehouse-db.POSTGRES_USER}}` |
+| `WAREHOUSE_DB_PASSWORD` | `${{warehouse-db.POSTGRES_PASSWORD}}` |
+| `WAREHOUSE_STARTUP_TIMEOUT` | `120` |
+| `WAREHOUSE_FORWARDED_ALLOW_IPS` | `fd00::/8,10.0.0.0/8` |
+
+Do not also set `WAREHOUSE_DATABASE_URL`: it takes precedence over component variables and could silently target the wrong database. Never bind the existing CarPot `DATABASE_URL`. Component variables construct a properly escaped SQLAlchemy URL, including passwords with reserved characters.
+
+Private proxy trust is restricted to the Railway private ranges above; do not replace it with `*`. Backend sockets support IPv4 and IPv6. If Railway assigns a different private range to your environment, confirm the **frontend private source range** and set that narrower range explicitly. Backend must remain private. Nginx overwrites X-Forwarded-* from Railway's documented `X-Real-IP`, canonical HTTPS scheme, and request host rather than trusting a caller-supplied XFF chain. This assumes frontend public requests enter through Railway's TLS edge; services in this separate private project are trusted infrastructure.
+
+### Optional persistent photos
+
+Initial staging can leave `WAREHOUSE_PHOTO_DIR` unset; the UI then honestly shows that photos are unavailable. Do **not** enable a path on ephemeral container storage.
+
+To test photos across redeploys:
+
+1. Add a dedicated API volume mounted at **`/data/photos`**.
+2. Set `WAREHOUSE_PHOTO_DIR=/data/photos` and `RAILWAY_RUN_UID=0` on **warehouse-api only**.
+3. The staging entrypoint changes only that mount root's ownership, then drops supplementary groups, gid and uid to the `warehouse` user (uid 1000) **before migrations and HTTP serving**. It never recursively chowns files or runs the API as root.
+4. Confirm a real photo persists after an API redeploy. Back up the volume if records matter.
+
+Railway mounts volumes as root. Omitting the bootstrap on a root-owned volume fails startup with a writable-directory error; do not work around this by leaving the running server privileged. Attached volumes can cause a short redeploy interruption because Railway does not mount the same volume on overlapping deployments. Database storage remains independent of the optional photo volume.
+
+## 4. Deploy and create YOUR account
+
+When you decide to deploy:
+
+1. Deploy `warehouse-db`; confirm initialization succeeds and the volume is attached.
+2. Confirm the frontend domain is reserved and both origin reference expressions resolve to the same domain.
+3. Deploy `warehouse-api`. Its startup validates configuration, drops bootstrap privileges if needed, waits for the private DB, takes a PostgreSQL advisory lock, runs `alembic upgrade head`, then serves HTTP. Do not add migrations to the Docker build or run a second unguarded migration command.
+4. Confirm API health and the message `Warehouse migrations complete`. It is still private.
+5. Deploy `warehouse-web`; its healthcheck traverses Nginx → API → DB and verifies the migration head. Only a healthy chain receives traffic.
+6. Create your **real** owner account using an interactive backend shell: select **this new project**, **staging**, service **warehouse-api**, then run `python -m app.create_owner`. With Railway CLI, use `railway link` to select those exact targets and `railway ssh --service warehouse-api` to open the shell. The command prompts for your real name/email and a non-echoed password twice; no inventory is created. It will not reset an existing account's password.
+7. Open the frontend HTTPS domain on iPhone and desktop, sign in, and enter only your own test records. Registration remains closed on the public staging URL.
+
+Do not use `railway run` to access the private DB from your laptop; it injects variables but does not put the laptop on Railway's private network. Do not expose PostgreSQL to make account creation work. Use the interactive shell in the API container. If CLI/project permissions do not allow that shell, stop at that prerequisite; an alternative is to deliberately enable registration briefly, register yourself through HTTPS, then disable it and redeploy the API. Do not ship a hardcoded/bootstrap password.
+
+## 5. Check the live preview after deployment (not yet performed)
+
+Expected URL pattern:
+
+```text
+https://<warehouse-web-service-slug>-<railway-generated-suffix>.up.railway.app
+```
+
+Railway chooses the exact generated hostname. The guide does not claim a domain has been created. Keep the same frontend service/domain across updates so sessions and bookmarks remain useful.
+
+Check on desktop and real iPhone Safari:
+
+- `/health` returns 200; an unauthenticated `/api/v1/auth/me` returns JSON 401, not SPA HTML.
+- Login, refresh, deep-link to `/inventory`, add a real donor, add a real part, receive/reserve/release stock, inspect audit, then logout.
+- Browser cookies show `warehouse_session`: **Secure, HttpOnly, SameSite=Strict, Path=/api/v1**, host-only; `warehouse_csrf`: **Secure, SameSite=Strict, Path=/**, readable by the same-origin client for `X-CSRF-Token`.
+- Mutations include the exact HTTPS `Origin` and CSRF token. Cross-origin or token-less mutations fail with 403. Do not add CORS wildcards or change SameSite to None.
+- No database host/credentials appear in frontend assets, page source, or browser request URLs. All API requests use the frontend domain.
+- After API redeploy, records and a still-valid login session survive; after logout, that session is revoked. A replaced API's IP is rediscovered at runtime by Nginx.
+
+The frontend sets HSTS, CSP, frame denial, nosniff, and noindex headers, and blocks indexing in `robots.txt`. CSP allows inline **styles** for React's chart widths, not inline scripts. Search-engine directives do not authenticate a site: login remains required for data, registration is closed, and the public login page is intentionally reachable. An additional Railway access gate is optional but would need separate testing with mobile sessions and healthchecks.
+
+## 6. Update after each iteration without touching CarPot
+
+Enable GitHub auto-deploy on the **feature branch only** after the initial configuration has been verified. Configure these Watch Paths (repository-relative, even with Root Directory set):
+
+- API: `/warehouse/backend/**`, `/warehouse/deploy/railway/backend.Dockerfile`, `/warehouse/.dockerignore`.
+- Web: `/warehouse/frontend/**`, `/warehouse/deploy/railway/frontend*`, `/warehouse/deploy/railway/nginx/**`, `/warehouse/.dockerignore`.
+
+Commit/push Warehouse changes to the feature branch. Confirm the intended service builds from the correct commit; deploy API first when the frontend depends on a new API contract. Redeploy both when a shared contract requires it. Existing CarPot remains on its existing configuration/branch; do not change it.
+
+Migrations must be backward-compatible while an older API instance may serve requests during a rollout. Use additive expand/contract changes. The startup lock prevents two migration processes from running at once; it cannot make destructive migrations compatible with old code. Back up staging before destructive changes. Never automatically downgrade or reseed the DB on restart or rollback. Rolling the image back does not roll the database back.
+
+Use one replica/one worker: the current auth throttle is per process, while sessions are persisted in PostgreSQL. A distributed limiter is needed before scaling. Railway deployment healthchecks gate releases; they are not continuous uptime monitoring. Optional photo volumes can introduce a short restart pause.
+
+## Local checks included with this preparation
+
+No Railway credentials are needed for these commands. They only create disposable local containers under a separate project name; they do not publish ports for PostgreSQL or call Railway.
+
+```bash
+cd warehouse
+python3 deploy/railway/check-config.py
+docker build -f deploy/railway/backend.Dockerfile -t carpot-warehouse-staging-backend .
+docker build -f deploy/railway/frontend.Dockerfile -t carpot-warehouse-staging-frontend .
+# If this cloud needs its existing trusted proxy/CA:
+# python3 scripts/build-cloud-images.py staging-backend
+# python3 scripts/build-cloud-images.py staging-frontend
+# Use an installed Chromium or install Playwright's supported Chromium first.
+WAREHOUSE_CHROMIUM_PATH=/usr/bin/chromium python3 deploy/railway/check-run.py
+```
+
+`check-run.py` runs the backend suite in the staging image, checks actual local HTTPS with a trusted test CA, secure cookies, CSRF/origin rejection, production asset/deep-link routing, closed signup, non-root serving, DB/session preservation on API replacement, and failure of frontend health when the API is down. Desktop and iPhone-sized Chromium workflows exercise production Nginx without Vite. Browser verification pins only the generated local test certificate's public key; it does not disable general TLS validation. These are responsive Chromium checks, **not a claim that physical iPhone Safari or Railway has been tested**.
+
+Synthetic fixtures are created only in `warehouse_staging_test` in the disposable local project. The runner removes that project's containers/volume and its temporary credentials/TLS keys at the end. Do not run a destructive test suite against the real `warehouse_staging` database. Local check screenshots live in ignored `deploy/railway/.check/`.
+
+## What is still external
+
+The code/images/configuration can be verified locally. Actual Railway build admission, GitHub App permission, project creation, volume provisioning, domain/TLS issuance, region-specific proxy ranges, private-network routing and iPhone Safari behavior must be confirmed after **you choose to deploy**. The feature branch must first be committed/pushed. No live preview URL exists yet; no existing CarPot service, production database, domain, or credentials has been accessed or changed.
+
+Official Railway references consulted: [Dockerfiles](https://docs.railway.com/builds/dockerfiles), [monorepo roots/watch paths](https://docs.railway.com/deployments/monorepo), [private networking](https://docs.railway.com/networking/private-networking/how-it-works), [edge headers/TLS](https://docs.railway.com/networking/public-networking/specs-and-limits), [healthchecks](https://docs.railway.com/deployments/healthchecks), [volumes](https://docs.railway.com/volumes), [current IaC status](https://docs.railway.com/infrastructure-as-code). The documentation was read from the official `railwayapp/docs` GitHub repository because the documentation website was unavailable from this cloud network.
+
+Executed checks and the exact file list: [deploy/railway/VALIDATION.md](deploy/railway/VALIDATION.md).

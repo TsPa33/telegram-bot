@@ -1,0 +1,67 @@
+name: carpot-warehouse
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: warehouse_dev
+      POSTGRES_USER: warehouse
+      POSTGRES_PASSWORD: ${WAREHOUSE_POSTGRES_PASSWORD:?Set a unique Warehouse password in .env}
+    ports: ["127.0.0.1:55433:5432"]
+    volumes: ["warehouse_db:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U warehouse -d warehouse_dev"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+  backend:
+    build: ./backend
+    environment:
+      WAREHOUSE_DATABASE_URL: postgresql+psycopg://warehouse:${WAREHOUSE_POSTGRES_PASSWORD}@db:5432/warehouse_dev
+      WAREHOUSE_COOKIE_SECURE: ${WAREHOUSE_COOKIE_SECURE:-false}
+      WAREHOUSE_PHOTO_DIR: /data/photos
+    ports: ["127.0.0.1:8010:8010"]
+    volumes: ["warehouse_photos:/data/photos"]
+    depends_on:
+      db: { condition: service_healthy }
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8010/health')",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  frontend:
+    build: ./frontend
+    environment:
+      WAREHOUSE_API_PROXY: http://backend:8010
+    ports: ["127.0.0.1:5173:5173"]
+    depends_on:
+      backend: { condition: service_healthy }
+  db_test:
+    image: postgres:16-alpine
+    profiles: ["test"]
+    environment:
+      POSTGRES_DB: warehouse_test
+      POSTGRES_USER: warehouse_test
+      POSTGRES_PASSWORD: ${WAREHOUSE_POSTGRES_PASSWORD:?Set a unique Warehouse password in .env}
+    tmpfs: ["/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U warehouse_test -d warehouse_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+  tests:
+    build: ./backend
+    profiles: ["test"]
+    environment:
+      WAREHOUSE_TEST_DATABASE_URL: postgresql+psycopg://warehouse_test:${WAREHOUSE_POSTGRES_PASSWORD}@db_test:5432/warehouse_test
+    command: ["python", "-m", "pytest", "-q"]
+    depends_on:
+      db_test: { condition: service_healthy }
+volumes:
+  warehouse_db:
+  warehouse_photos:

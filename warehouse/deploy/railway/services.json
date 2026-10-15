@@ -1,0 +1,79 @@
+{
+  "description": "Dashboard settings checklist, NOT an auto-imported Railway config file. Create a NEW project; never apply to CarPot.",
+  "project": "carpot-warehouse-staging",
+  "environment": "staging",
+  "services": {
+    "warehouse-web": {
+      "source": {
+        "repository": "TsPa33/telegram-bot",
+        "branch": "feature/carpot-warehouse-mvp",
+        "rootDirectory": "/warehouse"
+      },
+      "dockerfilePath": "deploy/railway/frontend.Dockerfile",
+      "startCommand": "/usr/local/bin/warehouse-frontend",
+      "healthcheckPath": "/health",
+      "healthcheckTimeout": 180,
+      "replicas": 1,
+      "publicDomain": true,
+      "targetPort": 8080,
+      "watchPaths": [
+        "/warehouse/frontend/**",
+        "/warehouse/deploy/railway/frontend*",
+        "/warehouse/deploy/railway/nginx/**",
+        "/warehouse/.dockerignore"
+      ],
+      "variables": {
+        "PORT": "8080",
+        "RAILWAY_DOCKERFILE_PATH": "deploy/railway/frontend.Dockerfile",
+        "WAREHOUSE_PUBLIC_ORIGIN": "https://${{RAILWAY_PUBLIC_DOMAIN}}",
+        "WAREHOUSE_BACKEND_ORIGIN": "http://${{warehouse-api.RAILWAY_PRIVATE_DOMAIN}}:8010"
+      }
+    },
+    "warehouse-api": {
+      "source": {
+        "repository": "TsPa33/telegram-bot",
+        "branch": "feature/carpot-warehouse-mvp",
+        "rootDirectory": "/warehouse"
+      },
+      "dockerfilePath": "deploy/railway/backend.Dockerfile",
+      "startCommand": "python -m app.staging",
+      "healthcheckPath": "/health",
+      "healthcheckTimeout": 180,
+      "replicas": 1,
+      "publicDomain": false,
+      "watchPaths": [
+        "/warehouse/backend/**",
+        "/warehouse/deploy/railway/backend.Dockerfile",
+        "/warehouse/.dockerignore"
+      ],
+      "variables": {
+        "PORT": "8010",
+        "RAILWAY_DOCKERFILE_PATH": "deploy/railway/backend.Dockerfile",
+        "WAREHOUSE_ENV": "staging",
+        "WAREHOUSE_COOKIE_SECURE": "true",
+        "WAREHOUSE_REGISTRATION_ENABLED": "false",
+        "WAREHOUSE_PUBLIC_ORIGIN": "https://${{warehouse-web.RAILWAY_PUBLIC_DOMAIN}}",
+        "WAREHOUSE_DB_HOST": "${{warehouse-db.RAILWAY_PRIVATE_DOMAIN}}",
+        "WAREHOUSE_DB_PORT": "5432",
+        "WAREHOUSE_DB_NAME": "${{warehouse-db.POSTGRES_DB}}",
+        "WAREHOUSE_DB_USER": "${{warehouse-db.POSTGRES_USER}}",
+        "WAREHOUSE_DB_PASSWORD": "${{warehouse-db.POSTGRES_PASSWORD}}",
+        "WAREHOUSE_STARTUP_TIMEOUT": "120",
+        "WAREHOUSE_FORWARDED_ALLOW_IPS": "fd00::/8,10.0.0.0/8"
+      }
+    },
+    "warehouse-db": {
+      "image": "postgres:16-alpine",
+      "publicDomain": false,
+      "tcpProxy": false,
+      "replicas": 1,
+      "volume": { "mountPath": "/var/lib/postgresql/data" },
+      "variables": {
+        "POSTGRES_DB": "warehouse_staging",
+        "POSTGRES_USER": "warehouse_staging",
+        "POSTGRES_PASSWORD": "GENERATE_A_NEW_SECRET_IN_RAILWAY_SETTINGS",
+        "PGDATA": "/var/lib/postgresql/data/pgdata"
+      }
+    }
+  }
+}

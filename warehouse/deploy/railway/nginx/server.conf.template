@@ -1,0 +1,68 @@
+# Railway overwrites X-Real-IP at its TLS edge. Do not propagate arbitrary XFF
+# chains from callers. The frontend must be exposed only through that edge.
+map $http_x_real_ip $warehouse_client_ip {
+    "" $remote_addr;
+    default $http_x_real_ip;
+}
+map $host $warehouse_host_allowed {
+    default 0;
+    ${WAREHOUSE_PUBLIC_HOST} 1;
+    healthcheck.railway.app 1;
+}
+server {
+    listen ${PORT};
+    listen [::]:${PORT} ipv6only=on;
+    server_name ${WAREHOUSE_PUBLIC_HOST};
+    if ($warehouse_host_allowed = 0) { return 421; }
+    root /usr/share/nginx/html;
+    index index.html;
+    client_max_body_size 6m;
+    client_body_timeout 30s;
+    resolver ${WAREHOUSE_DNS_RESOLVERS} valid=10s ipv6=on;
+    resolver_timeout 5s;
+    set $warehouse_backend "${WAREHOUSE_BACKEND_ORIGIN}";
+
+    add_header Strict-Transport-Security "max-age=31536000" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "same-origin" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+    add_header X-Robots-Tag "noindex, nofollow, noarchive" always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests" always;
+
+    proxy_http_version 1.1;
+    proxy_set_header Host $http_host;
+    proxy_set_header X-Forwarded-Host $http_host;
+    proxy_set_header X-Forwarded-Proto https;
+    proxy_set_header X-Forwarded-Port ${WAREHOUSE_PUBLIC_PORT};
+    proxy_set_header X-Forwarded-For $warehouse_client_ip;
+    proxy_set_header Forwarded "";
+    proxy_set_header Connection "";
+    proxy_connect_timeout 5s;
+    proxy_read_timeout 60s;
+    proxy_send_timeout 60s;
+    proxy_intercept_errors off;
+
+    location = /health {
+        proxy_read_timeout 5s;
+        proxy_pass $warehouse_backend$request_uri;
+    }
+    location = /api {
+        proxy_pass $warehouse_backend$request_uri;
+    }
+    location ^~ /api/ {
+        # Preserve /api/v1 and all error statuses; never return SPA HTML for API.
+        proxy_pass $warehouse_backend$request_uri;
+    }
+    location = /robots.txt {
+        return 200 "User-agent: *\nDisallow: /\n";
+    }
+    location /assets/ {
+        expires 1y;
+        try_files $uri =404;
+    }
+    location / {
+        expires -1;
+        try_files $uri $uri/ /index.html;
+    }
+}
