@@ -1,9 +1,7 @@
 FROM node:22-alpine AS build
 WORKDIR /build
 COPY frontend/package.json frontend/package-lock.json ./
-RUN --mount=type=secret,id=warehouse_ca,required=false \
-    if [ -f /run/secrets/warehouse_ca ]; then export NODE_EXTRA_CA_CERTS=/run/secrets/warehouse_ca; fi; \
-    npm ci
+RUN npm ci
 COPY frontend/index.html frontend/tsconfig.json frontend/vite.config.ts ./
 COPY frontend/src ./src
 RUN npm run build
