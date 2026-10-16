@@ -2,9 +2,7 @@ FROM python:3.11-slim
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1
 WORKDIR /app
 COPY backend/requirements.lock ./
-RUN --mount=type=secret,id=warehouse_ca,required=false \
-    if [ -f /run/secrets/warehouse_ca ]; then export PIP_CERT=/run/secrets/warehouse_ca; fi; \
-    pip install --require-hashes -r requirements.lock
+RUN pip install --require-hashes -r requirements.lock
 COPY backend/app ./app
 COPY backend/alembic ./alembic
 COPY backend/alembic.ini ./alembic.ini
