@@ -195,4 +195,4 @@ docker compose --profile test up --no-build --abort-on-container-exit --exit-cod
 
 ## Isolated Railway staging preview
 
-See [RAILWAY_STAGING.md](RAILWAY_STAGING.md) for the separate three-service Railway setup, production Nginx frontend, same-origin HTTPS API proxy, private PostgreSQL volume, secure sessions, migration startup, and exact feature-branch deployment steps. Staging uses `deploy/railway/*.Dockerfile`; the original Dockerfiles/Compose above remain local development defaults. No Railway deployment is performed by the preparation or local checks.
+See [RAILWAY_STAGING.md](RAILWAY_STAGING.md) for three Warehouse-only services in a new EMPTY `warehouse-staging` environment inside your existing paid Railway project, production Nginx frontend, same-origin HTTPS API proxy, private PostgreSQL volume, secure sessions, migration startup, and exact feature-branch deployment steps. Staging uses `deploy/railway/*.Dockerfile`; the original Dockerfiles/Compose above remain local development defaults. No Railway deployment is performed by the preparation or local checks.

@@ -358,6 +358,17 @@ def test_individual_tracking(logged):
     )
 
 
+def test_vehicle_ktype_is_optional_and_persisted(logged, vehicle_data):
+    response = logged.post("/api/v1/vehicles", json={**vehicle_data, "ktype": 16063})
+    assert response.status_code == 201
+    vehicle = response.json()
+    assert vehicle["ktype"] == 16063
+    assert logged.get(f"/api/v1/vehicles/{vehicle['id']}").json()["ktype"] == 16063
+    assert logged.get("/api/v1/parts").json()["total"] == 0
+    assert logged.post("/api/v1/vehicles", json={**vehicle_data, "ktype": 0}).status_code == 422
+    assert logged.post("/api/v1/vehicles", json={**vehicle_data, "ktype": True}).status_code == 422
+
+
 def test_migrations_roundtrip():
     alembic = [sys.executable, "-m", "alembic"]
     run([*alembic, "downgrade", "base"], check=True)

@@ -1,0 +1,3169 @@
+{
+  "success": true,
+  "data": {
+    "count": 632,
+    "ktype": 9743,
+    "results": [
+      {
+        "article_count": 4,
+        "name": "Accelerator Pedal Unit",
+        "pt_id": 3908
+      },
+      {
+        "article_count": 20,
+        "name": "Accessory Kit, brake caliper",
+        "pt_id": 2513
+      },
+      {
+        "article_count": 6,
+        "name": "Accessory Kit, brake shoes",
+        "pt_id": 1502
+      },
+      {
+        "article_count": 82,
+        "name": "Accessory Kit, disc brake pad",
+        "pt_id": 1164
+      },
+      {
+        "article_count": 40,
+        "name": "Accessory Kit, parking brake shoes",
+        "pt_id": 1337
+      },
+      {
+        "article_count": 3,
+        "name": "activator, windscreen adhesive",
+        "pt_id": 11835
+      },
+      {
+        "article_count": 1,
+        "name": "Actuator, air conditioning",
+        "pt_id": 1668
+      },
+      {
+        "article_count": 1,
+        "name": "Actuator, blending flap",
+        "pt_id": 2085
+      },
+      {
+        "article_count": 3,
+        "name": "Actuator, central locking system",
+        "pt_id": 791
+      },
+      {
+        "article_count": 2,
+        "name": "Actuator, fuel filler flap",
+        "pt_id": 60064
+      },
+      {
+        "article_count": 5,
+        "name": "Actuator, headlight levelling",
+        "pt_id": 700
+      },
+      {
+        "article_count": 3,
+        "name": "Actuator, throttle valve",
+        "pt_id": 1928
+      },
+      {
+        "article_count": 1,
+        "name": "Actuator, transfer case",
+        "pt_id": 9227
+      },
+      {
+        "article_count": 3,
+        "name": "Actuator, turbocharger",
+        "pt_id": 8459
+      },
+      {
+        "article_count": 1,
+        "name": "Adapter cable, car radio",
+        "pt_id": 60819
+      },
+      {
+        "article_count": 1,
+        "name": "Adapter frame, car radio",
+        "pt_id": 60820
+      },
+      {
+        "article_count": 7,
+        "name": "Adapter, wiper blade",
+        "pt_id": 2988
+      },
+      {
+        "article_count": 1,
+        "name": "Additive, soot/particulate filter regeneration",
+        "pt_id": 60576
+      },
+      {
+        "article_count": 1,
+        "name": "Adjuster Set, drum brake",
+        "pt_id": 8251
+      },
+      {
+        "article_count": 2,
+        "name": "Adjuster, braking system",
+        "pt_id": 1701
+      },
+      {
+        "article_count": 1,
+        "name": "Adjuster, drum brake",
+        "pt_id": 743
+      },
+      {
+        "article_count": 1,
+        "name": "Adjustment Tool Set, injector pump",
+        "pt_id": 4510
+      },
+      {
+        "article_count": 3,
+        "name": "Adjustment Tool Set, valve timing",
+        "pt_id": 4463
+      },
+      {
+        "article_count": 205,
+        "name": "Air Filter",
+        "pt_id": 8
+      },
+      {
+        "article_count": 1,
+        "name": "Air filter kit",
+        "pt_id": 8174
+      },
+      {
+        "article_count": 4,
+        "name": "Air Pressure Sensor, altitude adaption",
+        "pt_id": 3925
+      },
+      {
+        "article_count": 185,
+        "name": "Alternator",
+        "pt_id": 4
+      },
+      {
+        "article_count": 81,
+        "name": "Alternator Freewheel Clutch",
+        "pt_id": 1390
+      },
+      {
+        "article_count": 6,
+        "name": "Alternator Regulator",
+        "pt_id": 288
+      },
+      {
+        "article_count": 2,
+        "name": "Angled Ball Joint, steering push rod",
+        "pt_id": 2066
+      },
+      {
+        "article_count": 132,
+        "name": "Antifreeze",
+        "pt_id": 3356
+      },
+      {
+        "article_count": 2,
+        "name": "Armature, starter",
+        "pt_id": 2187
+      },
+      {
+        "article_count": 3,
+        "name": "Armrest",
+        "pt_id": 1343
+      },
+      {
+        "article_count": 1,
+        "name": "Assembly Paste, diesel injector/glow plug",
+        "pt_id": 60094
+      },
+      {
+        "article_count": 1,
+        "name": "Assortment, exhaust pressure sensor",
+        "pt_id": 5786
+      },
+      {
+        "article_count": 384,
+        "name": "Automatic Transmission Fluid",
+        "pt_id": 3069
+      },
+      {
+        "article_count": 2,
+        "name": "Auxiliary Water Pump (cooling water circuit)",
+        "pt_id": 1351
+      },
+      {
+        "article_count": 1,
+        "name": "Axle Beam",
+        "pt_id": 395
+      },
+      {
+        "article_count": 1,
+        "name": "Axle Bolt, drive shaft",
+        "pt_id": 2064
+      },
+      {
+        "article_count": 65,
+        "name": "Axle Gear Oil",
+        "pt_id": 3226
+      },
+      {
+        "article_count": 2,
+        "name": "Axle Mounting, front wheel",
+        "pt_id": 5472
+      },
+      {
+        "article_count": 3,
+        "name": "Axle Nut, drive shaft",
+        "pt_id": 1590
+      },
+      {
+        "article_count": 110,
+        "name": "Ball Joint",
+        "pt_id": 2462
+      },
+      {
+        "article_count": 6,
+        "name": "Ballast, gas discharge lamp",
+        "pt_id": 1431
+      },
+      {
+        "article_count": 1,
+        "name": "Bearing, compressor shaft",
+        "pt_id": 8915
+      },
+      {
+        "article_count": 1,
+        "name": "Bearing, differential shaft",
+        "pt_id": 3520
+      },
+      {
+        "article_count": 1,
+        "name": "Bearing, drive shaft",
+        "pt_id": 3521
+      },
+      {
+        "article_count": 2,
+        "name": "Bearing, propshaft centre bearing",
+        "pt_id": 2109
+      },
+      {
+        "article_count": 146,
+        "name": "Bellow Kit, drive shaft",
+        "pt_id": 194
+      },
+      {
+        "article_count": 31,
+        "name": "Bellow Kit, steering",
+        "pt_id": 195
+      },
+      {
+        "article_count": 10,
+        "name": "Bellow, brake caliper guide",
+        "pt_id": 399
+      },
+      {
+        "article_count": 41,
+        "name": "Bellow, drive shaft",
+        "pt_id": 193
+      },
+      {
+        "article_count": 11,
+        "name": "Bellow, steering",
+        "pt_id": 191
+      },
+      {
+        "article_count": 4,
+        "name": "Belt Pulley, alternator",
+        "pt_id": 1108
+      },
+      {
+        "article_count": 34,
+        "name": "Belt Pulley, crankshaft",
+        "pt_id": 3213
+      },
+      {
+        "article_count": 56,
+        "name": "Belt Tensioner, V-ribbed belt",
+        "pt_id": 541
+      },
+      {
+        "article_count": 7,
+        "name": "Bleeder Screw/Valve, brake caliper",
+        "pt_id": 5213
+      },
+      {
+        "article_count": 2,
+        "name": "Bleeder Screw/Valve, wheel brake cylinder",
+        "pt_id": 5214
+      },
+      {
+        "article_count": 2,
+        "name": "Bolt Set, crankshaft pulley",
+        "pt_id": 4252
+      },
+      {
+        "article_count": 1,
+        "name": "Bolt, brake disc",
+        "pt_id": 54
+      },
+      {
+        "article_count": 2,
+        "name": "Bolt, charger mounting",
+        "pt_id": 1635
+      },
+      {
+        "article_count": 1,
+        "name": "Bolt, exhaust manifold",
+        "pt_id": 3981
+      },
+      {
+        "article_count": 10,
+        "name": "Bonnet",
+        "pt_id": 531
+      },
+      {
+        "article_count": 3,
+        "name": "Bonnet Cable",
+        "pt_id": 1238
+      },
+      {
+        "article_count": 8,
+        "name": "Bonnet Lock",
+        "pt_id": 1365
+      },
+      {
+        "article_count": 1,
+        "name": "Boost Pressure Control Valve",
+        "pt_id": 761
+      },
+      {
+        "article_count": 11,
+        "name": "Boot Liner/cargo liner",
+        "pt_id": 2444
+      },
+      {
+        "article_count": 1,
+        "name": "Boot-/Cargo Area Bag",
+        "pt_id": 3642
+      },
+      {
+        "article_count": 2,
+        "name": "Boot-/Cargo Area Tray",
+        "pt_id": 4731
+      },
+      {
+        "article_count": 2,
+        "name": "Boot, propshaft",
+        "pt_id": 4336
+      },
+      {
+        "article_count": 9,
+        "name": "Bracket, brake caliper",
+        "pt_id": 1009
+      },
+      {
+        "article_count": 1,
+        "name": "Bracket, stabiliser mounting",
+        "pt_id": 2069
+      },
+      {
+        "article_count": 2,
+        "name": "Brake Booster",
+        "pt_id": 74
+      },
+      {
+        "article_count": 531,
+        "name": "Brake Caliper",
+        "pt_id": 78
+      },
+      {
+        "article_count": 593,
+        "name": "Brake Disc",
+        "pt_id": 82
+      },
+      {
+        "article_count": 240,
+        "name": "Brake Fluid",
+        "pt_id": 3357
+      },
+      {
+        "article_count": 122,
+        "name": "Brake Hose",
+        "pt_id": 83
+      },
+      {
+        "article_count": 13,
+        "name": "Brake Kit, disc brake",
+        "pt_id": 3405
+      },
+      {
+        "article_count": 22,
+        "name": "Brake Master Cylinder",
+        "pt_id": 258
+      },
+      {
+        "article_count": 705,
+        "name": "Brake Pad Set, disc brake",
+        "pt_id": 402
+      },
+      {
+        "article_count": 3,
+        "name": "Brake Service Paste",
+        "pt_id": 60663
+      },
+      {
+        "article_count": 34,
+        "name": "Brake Shoe Set",
+        "pt_id": 70
+      },
+      {
+        "article_count": 93,
+        "name": "Brake Shoe Set, parking brake",
+        "pt_id": 1419
+      },
+      {
+        "article_count": 2,
+        "name": "Buffer, engine mounting",
+        "pt_id": 271
+      },
+      {
+        "article_count": 1,
+        "name": "Bulb Socket, headlight",
+        "pt_id": 489
+      },
+      {
+        "article_count": 8,
+        "name": "Bulb, auxiliary stop light",
+        "pt_id": 2797
+      },
+      {
+        "article_count": 31,
+        "name": "Bulb, boot light",
+        "pt_id": 119
+      },
+      {
+        "article_count": 3,
+        "name": "Bulb, clearance/end outline marker light",
+        "pt_id": 1172
+      },
+      {
+        "article_count": 1,
+        "name": "Bulb, climate control",
+        "pt_id": 2999
+      },
+      {
+        "article_count": 7,
+        "name": "Bulb, cornering light",
+        "pt_id": 3680
+      },
+      {
+        "article_count": 2,
+        "name": "Bulb, daylight running/position light",
+        "pt_id": 60367
+      },
+      {
+        "article_count": 16,
+        "name": "Bulb, daytime running light",
+        "pt_id": 3853
+      },
+      {
+        "article_count": 174,
+        "name": "Bulb, direction indicator",
+        "pt_id": 105
+      },
+      {
+        "article_count": 1,
+        "name": "Bulb, direction indicator/end outline marker light",
+        "pt_id": 3193
+      },
+      {
+        "article_count": 4,
+        "name": "Bulb, door entry light",
+        "pt_id": 3005
+      },
+      {
+        "article_count": 11,
+        "name": "Bulb, door light",
+        "pt_id": 118
+      },
+      {
+        "article_count": 7,
+        "name": "Bulb, door open warning light",
+        "pt_id": 2991
+      },
+      {
+        "article_count": 12,
+        "name": "Bulb, engine bay light",
+        "pt_id": 120
+      },
+      {
+        "article_count": 169,
+        "name": "Bulb, front fog light",
+        "pt_id": 108
+      },
+      {
+        "article_count": 6,
+        "name": "Bulb, glove compartment light",
+        "pt_id": 3002
+      },
+      {
+        "article_count": 417,
+        "name": "Bulb, headlight",
+        "pt_id": 107
+      },
+      {
+        "article_count": 7,
+        "name": "Bulb, high beam/daytime running light",
+        "pt_id": 60366
+      },
+      {
+        "article_count": 1,
+        "name": "Bulb, instrument lighting",
+        "pt_id": 121
+      },
+      {
+        "article_count": 16,
+        "name": "Bulb, interior light",
+        "pt_id": 117
+      },
+      {
+        "article_count": 80,
+        "name": "Bulb, licence plate light",
+        "pt_id": 112
+      },
+      {
+        "article_count": 93,
+        "name": "Bulb, park/position light",
+        "pt_id": 1092
+      },
+      {
+        "article_count": 51,
+        "name": "Bulb, position/end outline marker light",
+        "pt_id": 2126
+      },
+      {
+        "article_count": 6,
+        "name": "Bulb, reading light",
+        "pt_id": 3004
+      },
+      {
+        "article_count": 40,
+        "name": "Bulb, rear fog light",
+        "pt_id": 113
+      },
+      {
+        "article_count": 4,
+        "name": "Bulb, rear fog/tail light",
+        "pt_id": 2992
+      },
+      {
+        "article_count": 90,
+        "name": "Bulb, reverse light",
+        "pt_id": 114
+      },
+      {
+        "article_count": 4,
+        "name": "Bulb, side marker light",
+        "pt_id": 60090
+      },
+      {
+        "article_count": 290,
+        "name": "Bulb, spotlight",
+        "pt_id": 106
+      },
+      {
+        "article_count": 84,
+        "name": "Bulb, stop light",
+        "pt_id": 111
+      },
+      {
+        "article_count": 49,
+        "name": "Bulb, stop/tail light",
+        "pt_id": 110
+      },
+      {
+        "article_count": 96,
+        "name": "Bulb, tail light",
+        "pt_id": 115
+      },
+      {
+        "article_count": 19,
+        "name": "Bumper",
+        "pt_id": 938
+      },
+      {
+        "article_count": 1,
+        "name": "Bumper Cover, trailer hitch",
+        "pt_id": 943
+      },
+      {
+        "article_count": 2,
+        "name": "Bush, shock absorber",
+        "pt_id": 3043
+      },
+      {
+        "article_count": 2,
+        "name": "Bush, starter shaft",
+        "pt_id": 1594
+      },
+      {
+        "article_count": 100,
+        "name": "Bushing, axle beam",
+        "pt_id": 1080
+      },
+      {
+        "article_count": 12,
+        "name": "Bushing, axle cross member",
+        "pt_id": 1614
+      },
+      {
+        "article_count": 4,
+        "name": "Bushing, stabiliser bar",
+        "pt_id": 331
+      },
+      {
+        "article_count": 111,
+        "name": "Cable Pull, parking brake",
+        "pt_id": 124
+      },
+      {
+        "article_count": 1,
+        "name": "Cable Repair Kit, coolant temperature sensor",
+        "pt_id": 7284
+      },
+      {
+        "article_count": 26,
+        "name": "Cable Repair Kit, glow plug",
+        "pt_id": 7292
+      },
+      {
+        "article_count": 9,
+        "name": "Cable Repair Kit, headlight",
+        "pt_id": 6347
+      },
+      {
+        "article_count": 1,
+        "name": "Cable Set, engine preheating system",
+        "pt_id": 3796
+      },
+      {
+        "article_count": 1,
+        "name": "Cable Set, interior heating fan, (engine preheating system)",
+        "pt_id": 3797
+      },
+      {
+        "article_count": 1,
+        "name": "Cable Set, park distance control",
+        "pt_id": 2413
+      },
+      {
+        "article_count": 12,
+        "name": "Camber Correction Screw",
+        "pt_id": 2967
+      },
+      {
+        "article_count": 11,
+        "name": "Camshaft",
+        "pt_id": 566
+      },
+      {
+        "article_count": 27,
+        "name": "Cap, coolant tank",
+        "pt_id": 56
+      },
+      {
+        "article_count": 15,
+        "name": "Cap, fuel tank",
+        "pt_id": 602
+      },
+      {
+        "article_count": 7,
+        "name": "Cap, oil filter housing",
+        "pt_id": 3323
+      },
+      {
+        "article_count": 3,
+        "name": "Cap, radiator",
+        "pt_id": 548
+      },
+      {
+        "article_count": 2,
+        "name": "Cap, wiper arm",
+        "pt_id": 842
+      },
+      {
+        "article_count": 1,
+        "name": "Car Key",
+        "pt_id": 9908
+      },
+      {
+        "article_count": 3,
+        "name": "Cargo Area Cover",
+        "pt_id": 1347
+      },
+      {
+        "article_count": 1,
+        "name": "Caster Shim, axle beam",
+        "pt_id": 5753
+      },
+      {
+        "article_count": 12,
+        "name": "Catalytic Converter",
+        "pt_id": 429
+      },
+      {
+        "article_count": 2,
+        "name": "Catalytic Converter Cleaning",
+        "pt_id": 6331
+      },
+      {
+        "article_count": 8,
+        "name": "Central Hydraulic Fluid",
+        "pt_id": 3353
+      },
+      {
+        "article_count": 9,
+        "name": "Central Slave Cylinder, clutch",
+        "pt_id": 47
+      },
+      {
+        "article_count": 2,
+        "name": "Centre Muffler",
+        "pt_id": 3436
+      },
+      {
+        "article_count": 1,
+        "name": "Centre Rod Assembly",
+        "pt_id": 285
+      },
+      {
+        "article_count": 38,
+        "name": "Charge Air Cooler",
+        "pt_id": 468
+      },
+      {
+        "article_count": 123,
+        "name": "Charge Air Hose",
+        "pt_id": 3314
+      },
+      {
+        "article_count": 54,
+        "name": "Charger, charging (supercharged/turbocharged)",
+        "pt_id": 2234
+      },
+      {
+        "article_count": 11,
+        "name": "Clamping Piece, exhaust system",
+        "pt_id": 1056
+      },
+      {
+        "article_count": 15,
+        "name": "Clip, trim/protection strip",
+        "pt_id": 3881
+      },
+      {
+        "article_count": 17,
+        "name": "Clock Spring, airbag",
+        "pt_id": 4826
+      },
+      {
+        "article_count": 1,
+        "name": "Clutch, radiator fan",
+        "pt_id": 509
+      },
+      {
+        "article_count": 4,
+        "name": "Coil, magnetic clutch (compressor)",
+        "pt_id": 2914
+      },
+      {
+        "article_count": 76,
+        "name": "Compressor, air conditioning",
+        "pt_id": 447
+      },
+      {
+        "article_count": 66,
+        "name": "Condenser, air conditioning",
+        "pt_id": 448
+      },
+      {
+        "article_count": 1,
+        "name": "Connecting Cable, injector",
+        "pt_id": 4900
+      },
+      {
+        "article_count": 1,
+        "name": "Connecting Cable, multimedia interface",
+        "pt_id": 60205
+      },
+      {
+        "article_count": 23,
+        "name": "Connecting Rod Bearing",
+        "pt_id": 582
+      },
+      {
+        "article_count": 6,
+        "name": "Connector, washer-fluid pipe",
+        "pt_id": 839
+      },
+      {
+        "article_count": 2,
+        "name": "Control Flap, air supply",
+        "pt_id": 937
+      },
+      {
+        "article_count": 1,
+        "name": "Control Unit, airbag",
+        "pt_id": 1384
+      },
+      {
+        "article_count": 15,
+        "name": "Control Unit, electric fan (engine cooling)",
+        "pt_id": 3545
+      },
+      {
+        "article_count": 2,
+        "name": "Control Unit, engine management",
+        "pt_id": 3956
+      },
+      {
+        "article_count": 7,
+        "name": "Control Unit, glow time",
+        "pt_id": 699
+      },
+      {
+        "article_count": 5,
+        "name": "Control Unit, heating/ventilation",
+        "pt_id": 1385
+      },
+      {
+        "article_count": 2,
+        "name": "Control Unit, lights",
+        "pt_id": 1387
+      },
+      {
+        "article_count": 3,
+        "name": "Control Valve, camshaft adjustment",
+        "pt_id": 3826
+      },
+      {
+        "article_count": 1,
+        "name": "Control, change-over flap (induction pipe)",
+        "pt_id": 3547
+      },
+      {
+        "article_count": 2,
+        "name": "Control, swirl flaps (induction pipe)",
+        "pt_id": 3548
+      },
+      {
+        "article_count": 6,
+        "name": "Control/Trailing Arm Kit, wheel suspension",
+        "pt_id": 2905
+      },
+      {
+        "article_count": 170,
+        "name": "Control/Trailing Arm, wheel suspension",
+        "pt_id": 273
+      },
+      {
+        "article_count": 2,
+        "name": "Coolant Flange",
+        "pt_id": 3219
+      },
+      {
+        "article_count": 2,
+        "name": "Core assembly, turbocharger",
+        "pt_id": 4973
+      },
+      {
+        "article_count": 26,
+        "name": "Cover, bumper",
+        "pt_id": 20
+      },
+      {
+        "article_count": 1,
+        "name": "Crankshaft",
+        "pt_id": 3702
+      },
+      {
+        "article_count": 68,
+        "name": "Crankshaft Bearing",
+        "pt_id": 574
+      },
+      {
+        "article_count": 17,
+        "name": "Crankshaft Bearing Set",
+        "pt_id": 5017
+      },
+      {
+        "article_count": 1,
+        "name": "Cross Member",
+        "pt_id": 754
+      },
+      {
+        "article_count": 1,
+        "name": "Cylinder Head Bolt",
+        "pt_id": 1533
+      },
+      {
+        "article_count": 17,
+        "name": "Cylinder Head Bolt Set",
+        "pt_id": 1217
+      },
+      {
+        "article_count": 1,
+        "name": "Dashboard",
+        "pt_id": 4220
+      },
+      {
+        "article_count": 53,
+        "name": "Deflection Pulley/Guide Pulley, timing belt",
+        "pt_id": 313
+      },
+      {
+        "article_count": 1,
+        "name": "Deflection Pulley/Guide Pulley, V-belt",
+        "pt_id": 1641
+      },
+      {
+        "article_count": 50,
+        "name": "Deflection/Guide Pulley, V-ribbed belt",
+        "pt_id": 312
+      },
+      {
+        "article_count": 16,
+        "name": "Direction Indicator",
+        "pt_id": 62
+      },
+      {
+        "article_count": 1,
+        "name": "Distributor Pipe, fuel",
+        "pt_id": 3964
+      },
+      {
+        "article_count": 3,
+        "name": "Door Check",
+        "pt_id": 3251
+      },
+      {
+        "article_count": 2,
+        "name": "Door Lock",
+        "pt_id": 1361
+      },
+      {
+        "article_count": 14,
+        "name": "Door Window",
+        "pt_id": 1193
+      },
+      {
+        "article_count": 1,
+        "name": "Drive plate, magnetic clutch (compressor)",
+        "pt_id": 4686
+      },
+      {
+        "article_count": 204,
+        "name": "Drive Shaft",
+        "pt_id": 13
+      },
+      {
+        "article_count": 27,
+        "name": "Dryer, air conditioning",
+        "pt_id": 851
+      },
+      {
+        "article_count": 32,
+        "name": "Dust Cover Kit, shock absorber",
+        "pt_id": 919
+      },
+      {
+        "article_count": 57,
+        "name": "EGR Valve",
+        "pt_id": 1145
+      },
+      {
+        "article_count": 8,
+        "name": "EGR Valve, exhaust control",
+        "pt_id": 1137
+      },
+      {
+        "article_count": 30,
+        "name": "Electric Kit, trailer hitch",
+        "pt_id": 179
+      },
+      {
+        "article_count": 4,
+        "name": "Electric Motor, interior blower",
+        "pt_id": 793
+      },
+      {
+        "article_count": 1,
+        "name": "Electric Motor, radiator fan",
+        "pt_id": 792
+      },
+      {
+        "article_count": 3,
+        "name": "Engine Compartment Noise Insulation",
+        "pt_id": 1353
+      },
+      {
+        "article_count": 4,
+        "name": "Engine Cover",
+        "pt_id": 4256
+      },
+      {
+        "article_count": 453,
+        "name": "Engine Oil",
+        "pt_id": 3224
+      },
+      {
+        "article_count": 5,
+        "name": "Engine Oil Additive",
+        "pt_id": 60113
+      },
+      {
+        "article_count": 1,
+        "name": "Equalising reservoir, hydraulic oil (power steering)",
+        "pt_id": 3145
+      },
+      {
+        "article_count": 11,
+        "name": "Evaporator, air conditioning",
+        "pt_id": 471
+      },
+      {
+        "article_count": 15,
+        "name": "Exhaust Pipe",
+        "pt_id": 17
+      },
+      {
+        "article_count": 27,
+        "name": "Exhaust System",
+        "pt_id": 26
+      },
+      {
+        "article_count": 4,
+        "name": "Exhaust Tip",
+        "pt_id": 181
+      },
+      {
+        "article_count": 16,
+        "name": "Exhaust Valve",
+        "pt_id": 1270
+      },
+      {
+        "article_count": 78,
+        "name": "Expansion Tank, coolant",
+        "pt_id": 397
+      },
+      {
+        "article_count": 26,
+        "name": "Expansion Valve, air conditioning",
+        "pt_id": 183
+      },
+      {
+        "article_count": 3,
+        "name": "Exterior Door Handle",
+        "pt_id": 1373
+      },
+      {
+        "article_count": 6,
+        "name": "Eyelid, front fog light",
+        "pt_id": 19
+      },
+      {
+        "article_count": 22,
+        "name": "Fan, engine cooling",
+        "pt_id": 508
+      },
+      {
+        "article_count": 1,
+        "name": "Fastening Bolt, control arm",
+        "pt_id": 3240
+      },
+      {
+        "article_count": 43,
+        "name": "Filter Set",
+        "pt_id": 4055
+      },
+      {
+        "article_count": 1,
+        "name": "Filter Set, cabin air",
+        "pt_id": 8175
+      },
+      {
+        "article_count": 337,
+        "name": "Filter, cabin air",
+        "pt_id": 424
+      },
+      {
+        "article_count": 10,
+        "name": "Finger Follower, engine timing",
+        "pt_id": 561
+      },
+      {
+        "article_count": 10,
+        "name": "Flap, tow hook",
+        "pt_id": 21
+      },
+      {
+        "article_count": 3,
+        "name": "Flaring, wing",
+        "pt_id": 450
+      },
+      {
+        "article_count": 2,
+        "name": "Flexible Pipe, exhaust system",
+        "pt_id": 3971
+      },
+      {
+        "article_count": 26,
+        "name": "Floor Mat Set",
+        "pt_id": 215
+      },
+      {
+        "article_count": 2,
+        "name": "Floor mats, rubber",
+        "pt_id": 10011
+      },
+      {
+        "article_count": 1,
+        "name": "Foot/Running Board",
+        "pt_id": 1510
+      },
+      {
+        "article_count": 5,
+        "name": "Freewheel Gear, starter",
+        "pt_id": 2182
+      },
+      {
+        "article_count": 16,
+        "name": "Front Fog Light",
+        "pt_id": 289
+      },
+      {
+        "article_count": 1,
+        "name": "Front Muffler",
+        "pt_id": 3435
+      },
+      {
+        "article_count": 7,
+        "name": "Fuel Additive",
+        "pt_id": 9797
+      },
+      {
+        "article_count": 12,
+        "name": "Fuel Feed Unit",
+        "pt_id": 1382
+      },
+      {
+        "article_count": 2,
+        "name": "Fuel Filler Cap Lock",
+        "pt_id": 1366
+      },
+      {
+        "article_count": 127,
+        "name": "Fuel Filter",
+        "pt_id": 9
+      },
+      {
+        "article_count": 1,
+        "name": "Fuel Filter Spanner",
+        "pt_id": 4506
+      },
+      {
+        "article_count": 9,
+        "name": "Fuel Hose",
+        "pt_id": 609
+      },
+      {
+        "article_count": 3,
+        "name": "Fuel Pump",
+        "pt_id": 458
+      },
+      {
+        "article_count": 2,
+        "name": "Full Gasket Kit, engine",
+        "pt_id": 560
+      },
+      {
+        "article_count": 35,
+        "name": "Fuse",
+        "pt_id": 60475
+      },
+      {
+        "article_count": 61,
+        "name": "Gas Spring, bonnet",
+        "pt_id": 514
+      },
+      {
+        "article_count": 90,
+        "name": "Gas Spring, boot/cargo area",
+        "pt_id": 219
+      },
+      {
+        "article_count": 9,
+        "name": "Gasket Kit, crankcase",
+        "pt_id": 150
+      },
+      {
+        "article_count": 15,
+        "name": "Gasket Kit, cylinder head",
+        "pt_id": 319
+      },
+      {
+        "article_count": 1,
+        "name": "Gasket Set, automatic transmission",
+        "pt_id": 625
+      },
+      {
+        "article_count": 1,
+        "name": "Gasket Set, charger",
+        "pt_id": 152
+      },
+      {
+        "article_count": 2,
+        "name": "Gasket Set, oil cooler",
+        "pt_id": 557
+      },
+      {
+        "article_count": 1,
+        "name": "Gasket Set, oil pump",
+        "pt_id": 60649
+      },
+      {
+        "article_count": 4,
+        "name": "Gasket, automatic transmission oil sump",
+        "pt_id": 3106
+      },
+      {
+        "article_count": 1,
+        "name": "Gasket, carburettor flange",
+        "pt_id": 205
+      },
+      {
+        "article_count": 3,
+        "name": "Gasket, charger",
+        "pt_id": 141
+      },
+      {
+        "article_count": 1,
+        "name": "Gasket, coolant flange",
+        "pt_id": 3248
+      },
+      {
+        "article_count": 4,
+        "name": "Gasket, coolant pipe",
+        "pt_id": 547
+      },
+      {
+        "article_count": 132,
+        "name": "Gasket, cylinder head",
+        "pt_id": 318
+      },
+      {
+        "article_count": 34,
+        "name": "Gasket, cylinder head cover",
+        "pt_id": 321
+      },
+      {
+        "article_count": 4,
+        "name": "Gasket, differential",
+        "pt_id": 628
+      },
+      {
+        "article_count": 10,
+        "name": "Gasket, exhaust manifold",
+        "pt_id": 27
+      },
+      {
+        "article_count": 19,
+        "name": "Gasket, exhaust pipe",
+        "pt_id": 138
+      },
+      {
+        "article_count": 1,
+        "name": "Gasket, fuel pump",
+        "pt_id": 143
+      },
+      {
+        "article_count": 1,
+        "name": "Gasket, heat exchanger",
+        "pt_id": 992
+      },
+      {
+        "article_count": 4,
+        "name": "Gasket, housing cover (crankcase)",
+        "pt_id": 3815
+      },
+      {
+        "article_count": 5,
+        "name": "Gasket, intake manifold",
+        "pt_id": 42
+      },
+      {
+        "article_count": 2,
+        "name": "Gasket, intake/exhaust manifold",
+        "pt_id": 40
+      },
+      {
+        "article_count": 3,
+        "name": "Gasket, manual transmission housing",
+        "pt_id": 3990
+      },
+      {
+        "article_count": 10,
+        "name": "Gasket, oil cooler",
+        "pt_id": 131
+      },
+      {
+        "article_count": 4,
+        "name": "Gasket, oil filter housing",
+        "pt_id": 591
+      },
+      {
+        "article_count": 1,
+        "name": "Gasket, oil inlet (charger)",
+        "pt_id": 3728
+      },
+      {
+        "article_count": 6,
+        "name": "Gasket, oil outlet (charger)",
+        "pt_id": 3729
+      },
+      {
+        "article_count": 7,
+        "name": "Gasket, oil pump",
+        "pt_id": 132
+      },
+      {
+        "article_count": 22,
+        "name": "Gasket, oil sump",
+        "pt_id": 455
+      },
+      {
+        "article_count": 2,
+        "name": "Gasket, steering gear",
+        "pt_id": 680
+      },
+      {
+        "article_count": 9,
+        "name": "Gasket, thermostat housing",
+        "pt_id": 317
+      },
+      {
+        "article_count": 4,
+        "name": "Gasket, timing case",
+        "pt_id": 568
+      },
+      {
+        "article_count": 4,
+        "name": "Gasket, timing case cover",
+        "pt_id": 569
+      },
+      {
+        "article_count": 4,
+        "name": "Gasket, vacuum pump",
+        "pt_id": 666
+      },
+      {
+        "article_count": 4,
+        "name": "Gasket, washer fluid pump/washer fluid reservoir",
+        "pt_id": 3108
+      },
+      {
+        "article_count": 8,
+        "name": "Gasket, water pump",
+        "pt_id": 314
+      },
+      {
+        "article_count": 6,
+        "name": "Gear Lever Knob",
+        "pt_id": 3707
+      },
+      {
+        "article_count": 80,
+        "name": "Glow Plug",
+        "pt_id": 243
+      },
+      {
+        "article_count": 1,
+        "name": "Glow Plug, auxiliary heater",
+        "pt_id": 2927
+      },
+      {
+        "article_count": 1,
+        "name": "Glow Plug, parking heater",
+        "pt_id": 2985
+      },
+      {
+        "article_count": 22,
+        "name": "Guide Bolt, brake caliper",
+        "pt_id": 2169
+      },
+      {
+        "article_count": 88,
+        "name": "Guide Sleeve Kit, brake caliper",
+        "pt_id": 1165
+      },
+      {
+        "article_count": 8,
+        "name": "Guide Sleeve, brake caliper",
+        "pt_id": 2170
+      },
+      {
+        "article_count": 44,
+        "name": "Headlight",
+        "pt_id": 259
+      },
+      {
+        "article_count": 1,
+        "name": "Headlight Module",
+        "pt_id": 8412
+      },
+      {
+        "article_count": 38,
+        "name": "Heat Exchanger, interior heating",
+        "pt_id": 467
+      },
+      {
+        "article_count": 9,
+        "name": "Heat Shield, injection system",
+        "pt_id": 3966
+      },
+      {
+        "article_count": 1,
+        "name": "Heating Element, engine preheater system",
+        "pt_id": 3795
+      },
+      {
+        "article_count": 7,
+        "name": "High Performance Brake Disc",
+        "pt_id": 3369
+      },
+      {
+        "article_count": 1,
+        "name": "High Performance Brake Hose Set",
+        "pt_id": 4208
+      },
+      {
+        "article_count": 7,
+        "name": "High Performance Brake Pad Set",
+        "pt_id": 3371
+      },
+      {
+        "article_count": 2,
+        "name": "High-pressure Pipe, injection system",
+        "pt_id": 3916
+      },
+      {
+        "article_count": 25,
+        "name": "High-pressure Pump",
+        "pt_id": 3918
+      },
+      {
+        "article_count": 3,
+        "name": "Hinge, fuel filler flap",
+        "pt_id": 3789
+      },
+      {
+        "article_count": 1,
+        "name": "Holder, air filter housing",
+        "pt_id": 3358
+      },
+      {
+        "article_count": 3,
+        "name": "Holder, carbon brushes",
+        "pt_id": 2181
+      },
+      {
+        "article_count": 1,
+        "name": "Holder, carbon brushes",
+        "pt_id": 2189
+      },
+      {
+        "article_count": 2,
+        "name": "Holder, engine mounting system",
+        "pt_id": 533
+      },
+      {
+        "article_count": 1,
+        "name": "Holder, fuel injector",
+        "pt_id": 60640
+      },
+      {
+        "article_count": 5,
+        "name": "Holder, injector",
+        "pt_id": 3914
+      },
+      {
+        "article_count": 1,
+        "name": "Holder, park distance control sensor",
+        "pt_id": 4844
+      },
+      {
+        "article_count": 1,
+        "name": "Holder, throttle control lever",
+        "pt_id": 1925
+      },
+      {
+        "article_count": 1,
+        "name": "Holding Bracket, brake hose",
+        "pt_id": 122
+      },
+      {
+        "article_count": 1,
+        "name": "Holding Tool, belt pulley",
+        "pt_id": 8532
+      },
+      {
+        "article_count": 2,
+        "name": "Hose Connector Set, pressure sensor (soot/part. filter)",
+        "pt_id": 5872
+      },
+      {
+        "article_count": 2,
+        "name": "Hose, air supply",
+        "pt_id": 3401
+      },
+      {
+        "article_count": 4,
+        "name": "Hose, crankcase ventilation",
+        "pt_id": 1600
+      },
+      {
+        "article_count": 14,
+        "name": "Hose, fuel overflow",
+        "pt_id": 3937
+      },
+      {
+        "article_count": 1,
+        "name": "Hose, transmission oil cooler",
+        "pt_id": 1778
+      },
+      {
+        "article_count": 1,
+        "name": "Hoseline Set, leakage fuel",
+        "pt_id": 8090
+      },
+      {
+        "article_count": 1,
+        "name": "Housing, air filter",
+        "pt_id": 8147
+      },
+      {
+        "article_count": 7,
+        "name": "Housing, car key",
+        "pt_id": 9909
+      },
+      {
+        "article_count": 2,
+        "name": "Housing, oil filter",
+        "pt_id": 590
+      },
+      {
+        "article_count": 3,
+        "name": "Hydraulic Filter Kit, automatic transmission",
+        "pt_id": 3843
+      },
+      {
+        "article_count": 1,
+        "name": "Hydraulic Filter, clutch",
+        "pt_id": 534
+      },
+      {
+        "article_count": 24,
+        "name": "Hydraulic Filter, multi-plate clutch (all-wheel drive)",
+        "pt_id": 5039
+      },
+      {
+        "article_count": 6,
+        "name": "Hydraulic Filter, steering",
+        "pt_id": 417
+      },
+      {
+        "article_count": 14,
+        "name": "Hydraulic Hose, steering",
+        "pt_id": 677
+      },
+      {
+        "article_count": 43,
+        "name": "Hydraulic Pump, steering",
+        "pt_id": 12
+      },
+      {
+        "article_count": 3,
+        "name": "Hydraulic Unit, braking system",
+        "pt_id": 415
+      },
+      {
+        "article_count": 2,
+        "name": "Ignition Coil",
+        "pt_id": 689
+      },
+      {
+        "article_count": 3,
+        "name": "Ignitor, gas discharge lamp",
+        "pt_id": 4135
+      },
+      {
+        "article_count": 1,
+        "name": "Impact Absorber, bumper",
+        "pt_id": 1087
+      },
+      {
+        "article_count": 3,
+        "name": "Impact Sockets Set, track widening",
+        "pt_id": 8453
+      },
+      {
+        "article_count": 2,
+        "name": "Indicator Set",
+        "pt_id": 3174
+      },
+      {
+        "article_count": 4,
+        "name": "Injection Pump",
+        "pt_id": 3904
+      },
+      {
+        "article_count": 5,
+        "name": "Injector",
+        "pt_id": 3905
+      },
+      {
+        "article_count": 27,
+        "name": "Injector Nozzle",
+        "pt_id": 3902
+      },
+      {
+        "article_count": 2,
+        "name": "Injector Nozzle, expansion valve",
+        "pt_id": 2408
+      },
+      {
+        "article_count": 108,
+        "name": "Inner Tie Rod",
+        "pt_id": 51
+      },
+      {
+        "article_count": 4,
+        "name": "Intake Hose, air filter",
+        "pt_id": 1591
+      },
+      {
+        "article_count": 3,
+        "name": "Intake Manifold Module",
+        "pt_id": 1415
+      },
+      {
+        "article_count": 18,
+        "name": "Intake Valve",
+        "pt_id": 1269
+      },
+      {
+        "article_count": 96,
+        "name": "Interior Blower",
+        "pt_id": 2669
+      },
+      {
+        "article_count": 4,
+        "name": "Interior Light",
+        "pt_id": 423
+      },
+      {
+        "article_count": 3,
+        "name": "Intermediate Bearing, drive shaft",
+        "pt_id": 3302
+      },
+      {
+        "article_count": 227,
+        "name": "Joint Kit, drive shaft",
+        "pt_id": 5
+      },
+      {
+        "article_count": 2,
+        "name": "Joint, drive shaft",
+        "pt_id": 236
+      },
+      {
+        "article_count": 42,
+        "name": "Joint, propshaft",
+        "pt_id": 1427
+      },
+      {
+        "article_count": 8,
+        "name": "Joint, steering shaft",
+        "pt_id": 676
+      },
+      {
+        "article_count": 2,
+        "name": "Knock Sensor",
+        "pt_id": 3921
+      },
+      {
+        "article_count": 1,
+        "name": "Lever, parking brake caliper",
+        "pt_id": 4292
+      },
+      {
+        "article_count": 2,
+        "name": "Licence Plate Holder",
+        "pt_id": 746
+      },
+      {
+        "article_count": 38,
+        "name": "Licence Plate Light",
+        "pt_id": 293
+      },
+      {
+        "article_count": 15,
+        "name": "Liner, wheelhouse",
+        "pt_id": 1560
+      },
+      {
+        "article_count": 217,
+        "name": "Link/Coupling Rod, stabiliser bar",
+        "pt_id": 3229
+      },
+      {
+        "article_count": 1,
+        "name": "Low Temperature Cooler, charge air cooler",
+        "pt_id": 4935
+      },
+      {
+        "article_count": 6,
+        "name": "Magnetic Clutch, air conditioning compressor",
+        "pt_id": 1236
+      },
+      {
+        "article_count": 1,
+        "name": "Manual Transmission",
+        "pt_id": 4301
+      },
+      {
+        "article_count": 28,
+        "name": "Manual Transmission Oil",
+        "pt_id": 3225
+      },
+      {
+        "article_count": 20,
+        "name": "Marten Protection",
+        "pt_id": 6161
+      },
+      {
+        "article_count": 73,
+        "name": "Mass Air Flow Sensor",
+        "pt_id": 3926
+      },
+      {
+        "article_count": 1,
+        "name": "Master Cylinder, clutch",
+        "pt_id": 234
+      },
+      {
+        "article_count": 55,
+        "name": "Mirror Glass, exterior mirror",
+        "pt_id": 1914
+      },
+      {
+        "article_count": 2,
+        "name": "Mirror Glass, exterior mirror",
+        "pt_id": 1915
+      },
+      {
+        "article_count": 25,
+        "name": "Mount, exhaust system",
+        "pt_id": 1059
+      },
+      {
+        "article_count": 3,
+        "name": "Mounting and Bolting Kit, control/trailing arm",
+        "pt_id": 1597
+      },
+      {
+        "article_count": 13,
+        "name": "Mounting Bracket, bumper",
+        "pt_id": 939
+      },
+      {
+        "article_count": 12,
+        "name": "Mounting Kit, charger",
+        "pt_id": 2420
+      },
+      {
+        "article_count": 1,
+        "name": "Mounting Kit, engine preheating system",
+        "pt_id": 3804
+      },
+      {
+        "article_count": 2,
+        "name": "Mounting Kit, exhaust system",
+        "pt_id": 1127
+      },
+      {
+        "article_count": 1,
+        "name": "Mounting Kit, park distance control sensor",
+        "pt_id": 4386
+      },
+      {
+        "article_count": 2,
+        "name": "Mounting Kit, soot/particulate filter",
+        "pt_id": 3250
+      },
+      {
+        "article_count": 1,
+        "name": "Mounting Set, suspension strut",
+        "pt_id": 4735
+      },
+      {
+        "article_count": 1,
+        "name": "Mounting Tools, timing belt",
+        "pt_id": 7048
+      },
+      {
+        "article_count": 13,
+        "name": "Mounting, automatic transmission",
+        "pt_id": 248
+      },
+      {
+        "article_count": 320,
+        "name": "Mounting, control/trailing arm",
+        "pt_id": 251
+      },
+      {
+        "article_count": 3,
+        "name": "Mounting, differential",
+        "pt_id": 4831
+      },
+      {
+        "article_count": 1,
+        "name": "Mounting, engine",
+        "pt_id": 3871
+      },
+      {
+        "article_count": 162,
+        "name": "Mounting, engine",
+        "pt_id": 247
+      },
+      {
+        "article_count": 13,
+        "name": "Mounting, manual transmission",
+        "pt_id": 249
+      },
+      {
+        "article_count": 1,
+        "name": "Mounting, manual transmission support",
+        "pt_id": 1616
+      },
+      {
+        "article_count": 5,
+        "name": "Mounting, shock absorber",
+        "pt_id": 950
+      },
+      {
+        "article_count": 33,
+        "name": "Mounting, stabiliser bar",
+        "pt_id": 1334
+      },
+      {
+        "article_count": 1,
+        "name": "Mounting, transfer case",
+        "pt_id": 1709
+      },
+      {
+        "article_count": 4,
+        "name": "Mounting, wheel bearing housing",
+        "pt_id": 3406
+      },
+      {
+        "article_count": 5,
+        "name": "Multifunctional Relay",
+        "pt_id": 4967
+      },
+      {
+        "article_count": 1,
+        "name": "NOx Sensor, NOx catalytic converter",
+        "pt_id": 4965
+      },
+      {
+        "article_count": 2,
+        "name": "Nozzle and Holder Assembly",
+        "pt_id": 3901
+      },
+      {
+        "article_count": 48,
+        "name": "Oil Cooler, engine oil",
+        "pt_id": 469
+      },
+      {
+        "article_count": 1,
+        "name": "Oil Cooler, manual transmission",
+        "pt_id": 4401
+      },
+      {
+        "article_count": 1,
+        "name": "Oil Dipstick",
+        "pt_id": 599
+      },
+      {
+        "article_count": 155,
+        "name": "Oil Filter",
+        "pt_id": 7
+      },
+      {
+        "article_count": 3,
+        "name": "Oil Filter, differential",
+        "pt_id": 3502
+      },
+      {
+        "article_count": 8,
+        "name": "Oil Line, charger",
+        "pt_id": 3739
+      },
+      {
+        "article_count": 21,
+        "name": "Oil Pressure Switch",
+        "pt_id": 805
+      },
+      {
+        "article_count": 7,
+        "name": "Oil Seal, automatic transmission",
+        "pt_id": 147
+      },
+      {
+        "article_count": 8,
+        "name": "Oil, automated manual transmission (AMT)",
+        "pt_id": 60269
+      },
+      {
+        "article_count": 9,
+        "name": "Oil, multi-plate clutch (all-wheel drive)",
+        "pt_id": 5685
+      },
+      {
+        "article_count": 56,
+        "name": "Oxygen Sensor",
+        "pt_id": 3922
+      },
+      {
+        "article_count": 16,
+        "name": "Parts Kit, automatic transmission oil change",
+        "pt_id": 4921
+      },
+      {
+        "article_count": 3,
+        "name": "Parts Kit, multi-plate clutch oil change (all-wheel drive)",
+        "pt_id": 60066
+      },
+      {
+        "article_count": 16,
+        "name": "Parts Set, maintenance service",
+        "pt_id": 4682
+      },
+      {
+        "article_count": 2,
+        "name": "Pedal Pad, brake pedal",
+        "pt_id": 1629
+      },
+      {
+        "article_count": 18,
+        "name": "Pedal Travel Sensor, brake pedal",
+        "pt_id": 2062
+      },
+      {
+        "article_count": 3,
+        "name": "Periphery Light, exterior mirror",
+        "pt_id": 4369
+      },
+      {
+        "article_count": 2,
+        "name": "Pinion, starter",
+        "pt_id": 1530
+      },
+      {
+        "article_count": 13,
+        "name": "Pipe Connector, exhaust system",
+        "pt_id": 1050
+      },
+      {
+        "article_count": 5,
+        "name": "Pipe, heat exchanger",
+        "pt_id": 994
+      },
+      {
+        "article_count": 8,
+        "name": "Piston",
+        "pt_id": 443
+      },
+      {
+        "article_count": 35,
+        "name": "Piston Ring Kit",
+        "pt_id": 444
+      },
+      {
+        "article_count": 36,
+        "name": "Piston, brake caliper",
+        "pt_id": 2248
+      },
+      {
+        "article_count": 86,
+        "name": "Power Steering Fluid",
+        "pt_id": 3354
+      },
+      {
+        "article_count": 9,
+        "name": "Pressure Control Valve, common rail system",
+        "pt_id": 3996
+      },
+      {
+        "article_count": 19,
+        "name": "Pressure Converter, exhaust control",
+        "pt_id": 1134
+      },
+      {
+        "article_count": 1,
+        "name": "Pressure Limiting Valve, common rail system",
+        "pt_id": 5656
+      },
+      {
+        "article_count": 2,
+        "name": "Pressure Sensor, brake master cylinder",
+        "pt_id": 8024
+      },
+      {
+        "article_count": 49,
+        "name": "Pressure Switch, air conditioning",
+        "pt_id": 1360
+      },
+      {
+        "article_count": 3,
+        "name": "primer",
+        "pt_id": 11836
+      },
+      {
+        "article_count": 29,
+        "name": "Propshaft, axle drive",
+        "pt_id": 3675
+      },
+      {
+        "article_count": 1,
+        "name": "Protective Cap, alternator",
+        "pt_id": 2268
+      },
+      {
+        "article_count": 12,
+        "name": "Protective Cap/Bellow, shock absorber",
+        "pt_id": 3365
+      },
+      {
+        "article_count": 1,
+        "name": "Puller, wheel hub",
+        "pt_id": 4566
+      },
+      {
+        "article_count": 1,
+        "name": "Pulley Kit, timing belt",
+        "pt_id": 3321
+      },
+      {
+        "article_count": 16,
+        "name": "Pump, multi-plate clutch (all-wheel drive)",
+        "pt_id": 9505
+      },
+      {
+        "article_count": 2,
+        "name": "Quarter Panel",
+        "pt_id": 901
+      },
+      {
+        "article_count": 3,
+        "name": "Rack, steering gear",
+        "pt_id": 4471
+      },
+      {
+        "article_count": 6,
+        "name": "Radiator Grille",
+        "pt_id": 472
+      },
+      {
+        "article_count": 23,
+        "name": "Radiator Hose",
+        "pt_id": 475
+      },
+      {
+        "article_count": 1,
+        "name": "Radiator Mounting",
+        "pt_id": 476
+      },
+      {
+        "article_count": 4,
+        "name": "Radiator Support",
+        "pt_id": 208
+      },
+      {
+        "article_count": 40,
+        "name": "Radiator, engine cooling",
+        "pt_id": 470
+      },
+      {
+        "article_count": 4,
+        "name": "Rear Fog Light",
+        "pt_id": 291
+      },
+      {
+        "article_count": 37,
+        "name": "Rear Muffler",
+        "pt_id": 3437
+      },
+      {
+        "article_count": 8,
+        "name": "Rear Window",
+        "pt_id": 1192
+      },
+      {
+        "article_count": 20,
+        "name": "Regulator, interior blower",
+        "pt_id": 4394
+      },
+      {
+        "article_count": 1,
+        "name": "Relay, air compressor (air suspension)",
+        "pt_id": 60060
+      },
+      {
+        "article_count": 4,
+        "name": "Relay, fuel pump",
+        "pt_id": 1111
+      },
+      {
+        "article_count": 11,
+        "name": "Relay, glow plug system",
+        "pt_id": 1750
+      },
+      {
+        "article_count": 1,
+        "name": "Relay, level control",
+        "pt_id": 5688
+      },
+      {
+        "article_count": 112,
+        "name": "Repair Kit, brake caliper",
+        "pt_id": 405
+      },
+      {
+        "article_count": 15,
+        "name": "Repair Kit, cable set",
+        "pt_id": 4321
+      },
+      {
+        "article_count": 6,
+        "name": "Repair Kit, common rail system",
+        "pt_id": 3932
+      },
+      {
+        "article_count": 4,
+        "name": "Repair Kit, control arm",
+        "pt_id": 772
+      },
+      {
+        "article_count": 7,
+        "name": "Repair Kit, expander",
+        "pt_id": 783
+      },
+      {
+        "article_count": 1,
+        "name": "Repair Kit, gear shift lever",
+        "pt_id": 1633
+      },
+      {
+        "article_count": 1,
+        "name": "Repair Kit, injection nozzle",
+        "pt_id": 3933
+      },
+      {
+        "article_count": 1,
+        "name": "Repair Kit, inner tie rod",
+        "pt_id": 1213
+      },
+      {
+        "article_count": 3,
+        "name": "Repair Kit, intake manifold module",
+        "pt_id": 9346
+      },
+      {
+        "article_count": 3,
+        "name": "Repair Kit, stabiliser bush",
+        "pt_id": 1097
+      },
+      {
+        "article_count": 2,
+        "name": "Repair Kit, stabiliser coupling rod",
+        "pt_id": 2067
+      },
+      {
+        "article_count": 28,
+        "name": "Repair Kit, suspension strut support mount",
+        "pt_id": 1632
+      },
+      {
+        "article_count": 2,
+        "name": "Repair Kit, tie rod",
+        "pt_id": 770
+      },
+      {
+        "article_count": 6,
+        "name": "Repair Kit, window regulator",
+        "pt_id": 6328
+      },
+      {
+        "article_count": 1,
+        "name": "Repair Mount, exhaust system",
+        "pt_id": 6244
+      },
+      {
+        "article_count": 1,
+        "name": "Repair set, multi-plate clutch pump (all-wheel drive)",
+        "pt_id": 60139
+      },
+      {
+        "article_count": 1,
+        "name": "Repair Set, pressure line (soot/particulate filter)",
+        "pt_id": 7273
+      },
+      {
+        "article_count": 2,
+        "name": "Repair Set, wash water line",
+        "pt_id": 61291
+      },
+      {
+        "article_count": 1,
+        "name": "Repair Sleeve, trans. output shaft (automatic transmission)",
+        "pt_id": 8264
+      },
+      {
+        "article_count": 37,
+        "name": "Resistor, interior blower",
+        "pt_id": 2975
+      },
+      {
+        "article_count": 3,
+        "name": "Retrofit Kit, blind spot assistant",
+        "pt_id": 9616
+      },
+      {
+        "article_count": 7,
+        "name": "Retrofit Kit, park distance control",
+        "pt_id": 60771
+      },
+      {
+        "article_count": 7,
+        "name": "Rocker Arm, engine timing",
+        "pt_id": 432
+      },
+      {
+        "article_count": 2,
+        "name": "Rod/Strut, wheel suspension",
+        "pt_id": 3230
+      },
+      {
+        "article_count": 1,
+        "name": "Roller Guide, sliding door",
+        "pt_id": 3846
+      },
+      {
+        "article_count": 3,
+        "name": "Rolling Bearing, suspension strut support mount",
+        "pt_id": 1626
+      },
+      {
+        "article_count": 25,
+        "name": "Roof Rack",
+        "pt_id": 127
+      },
+      {
+        "article_count": 1,
+        "name": "Rotor, brake disc",
+        "pt_id": 61449
+      },
+      {
+        "article_count": 2,
+        "name": "Rubber Buffer, muffler",
+        "pt_id": 252
+      },
+      {
+        "article_count": 17,
+        "name": "Rubber Buffer, suspension",
+        "pt_id": 1182
+      },
+      {
+        "article_count": 1,
+        "name": "Safety Belt",
+        "pt_id": 3695
+      },
+      {
+        "article_count": 1,
+        "name": "Screw Plug, crankcase",
+        "pt_id": 1800
+      },
+      {
+        "article_count": 33,
+        "name": "Screw Plug, oil sump",
+        "pt_id": 593
+      },
+      {
+        "article_count": 1,
+        "name": "Screw Set, brake disc",
+        "pt_id": 5314
+      },
+      {
+        "article_count": 2,
+        "name": "Screw, injection nozzle holder",
+        "pt_id": 5001
+      },
+      {
+        "article_count": 1,
+        "name": "Seal Cap, camshaft",
+        "pt_id": 4259
+      },
+      {
+        "article_count": 4,
+        "name": "Seal Kit, injector nozzle",
+        "pt_id": 3894
+      },
+      {
+        "article_count": 21,
+        "name": "Seal Ring, charge air hose",
+        "pt_id": 3980
+      },
+      {
+        "article_count": 3,
+        "name": "Seal Ring, charger",
+        "pt_id": 3743
+      },
+      {
+        "article_count": 1,
+        "name": "Seal Ring, cylinder head cover bolt",
+        "pt_id": 1102
+      },
+      {
+        "article_count": 1,
+        "name": "Seal Ring, exhaust pipe",
+        "pt_id": 204
+      },
+      {
+        "article_count": 16,
+        "name": "Seal Ring, injector",
+        "pt_id": 3891
+      },
+      {
+        "article_count": 4,
+        "name": "Seal Ring, injector shaft",
+        "pt_id": 4316
+      },
+      {
+        "article_count": 25,
+        "name": "Seal Ring, nozzle holder",
+        "pt_id": 4051
+      },
+      {
+        "article_count": 1,
+        "name": "Seal Ring, oil cooler (lubrication)",
+        "pt_id": 3305
+      },
+      {
+        "article_count": 30,
+        "name": "Seal Ring, oil drain plug",
+        "pt_id": 135
+      },
+      {
+        "article_count": 1,
+        "name": "Seal Ring, oil outlet (charger)",
+        "pt_id": 3730
+      },
+      {
+        "article_count": 28,
+        "name": "Seal Ring, valve stem",
+        "pt_id": 322
+      },
+      {
+        "article_count": 19,
+        "name": "Seal Set, valve stem",
+        "pt_id": 323
+      },
+      {
+        "article_count": 11,
+        "name": "Seal, brake caliper piston",
+        "pt_id": 1724
+      },
+      {
+        "article_count": 1,
+        "name": "Seal, camshaft adjustment",
+        "pt_id": 9888
+      },
+      {
+        "article_count": 4,
+        "name": "Seal, differential housing cover",
+        "pt_id": 9051
+      },
+      {
+        "article_count": 1,
+        "name": "Seal, fuel sender unit",
+        "pt_id": 148
+      },
+      {
+        "article_count": 8,
+        "name": "Seal, injector holder",
+        "pt_id": 3892
+      },
+      {
+        "article_count": 1,
+        "name": "Seal, oil cooler (automatic transmission)",
+        "pt_id": 60194
+      },
+      {
+        "article_count": 2,
+        "name": "Seal, oil dipstick",
+        "pt_id": 2700
+      },
+      {
+        "article_count": 3,
+        "name": "Seal, oil filter",
+        "pt_id": 133
+      },
+      {
+        "article_count": 1,
+        "name": "Seal, thermostat",
+        "pt_id": 139
+      },
+      {
+        "article_count": 1,
+        "name": "Seal, turbine inlet (charger)",
+        "pt_id": 3726
+      },
+      {
+        "article_count": 1,
+        "name": "Seal, turbine outlet",
+        "pt_id": 3727
+      },
+      {
+        "article_count": 1,
+        "name": "Sealing Cap, oil filler neck",
+        "pt_id": 597
+      },
+      {
+        "article_count": 5,
+        "name": "Sealing Cap, washer fluid reservoir",
+        "pt_id": 57
+      },
+      {
+        "article_count": 3,
+        "name": "Sealing Ring, refrigerant line",
+        "pt_id": 8276
+      },
+      {
+        "article_count": 1,
+        "name": "Seat Cover",
+        "pt_id": 60802
+      },
+      {
+        "article_count": 2,
+        "name": "Seat Frame Covering",
+        "pt_id": 5119
+      },
+      {
+        "article_count": 3,
+        "name": "Sender Unit, fuel tank",
+        "pt_id": 605
+      },
+      {
+        "article_count": 20,
+        "name": "Sensor Ring, ABS",
+        "pt_id": 2254
+      },
+      {
+        "article_count": 2,
+        "name": "Sensor Windscreen",
+        "pt_id": 19462
+      },
+      {
+        "article_count": 1,
+        "name": "Sensor, air quality",
+        "pt_id": 5750
+      },
+      {
+        "article_count": 21,
+        "name": "Sensor, boost pressure",
+        "pt_id": 3945
+      },
+      {
+        "article_count": 96,
+        "name": "Sensor, camshaft position",
+        "pt_id": 3946
+      },
+      {
+        "article_count": 18,
+        "name": "Sensor, coolant level",
+        "pt_id": 1288
+      },
+      {
+        "article_count": 2,
+        "name": "Sensor, coolant temperature",
+        "pt_id": 2055
+      },
+      {
+        "article_count": 2,
+        "name": "Sensor, coolant temperature",
+        "pt_id": 2394
+      },
+      {
+        "article_count": 58,
+        "name": "Sensor, coolant temperature",
+        "pt_id": 830
+      },
+      {
+        "article_count": 19,
+        "name": "Sensor, coolant temperature",
+        "pt_id": 3944
+      },
+      {
+        "article_count": 64,
+        "name": "Sensor, crankshaft pulse",
+        "pt_id": 833
+      },
+      {
+        "article_count": 22,
+        "name": "Sensor, engine oil level",
+        "pt_id": 1289
+      },
+      {
+        "article_count": 3,
+        "name": "Sensor, engine speed",
+        "pt_id": 1402
+      },
+      {
+        "article_count": 124,
+        "name": "Sensor, exhaust gas temperature",
+        "pt_id": 3938
+      },
+      {
+        "article_count": 128,
+        "name": "Sensor, exhaust pressure",
+        "pt_id": 4272
+      },
+      {
+        "article_count": 1,
+        "name": "Sensor, exterior temperature",
+        "pt_id": 1186
+      },
+      {
+        "article_count": 103,
+        "name": "Sensor, fuel pressure",
+        "pt_id": 3942
+      },
+      {
+        "article_count": 29,
+        "name": "Sensor, fuel temperature",
+        "pt_id": 3943
+      },
+      {
+        "article_count": 28,
+        "name": "Sensor, headlight levelling",
+        "pt_id": 7838
+      },
+      {
+        "article_count": 6,
+        "name": "Sensor, intake air temperature",
+        "pt_id": 3939
+      },
+      {
+        "article_count": 62,
+        "name": "Sensor, intake manifold pressure",
+        "pt_id": 3947
+      },
+      {
+        "article_count": 12,
+        "name": "Sensor, interior temperature",
+        "pt_id": 832
+      },
+      {
+        "article_count": 1,
+        "name": "Sensor, level control",
+        "pt_id": 9016
+      },
+      {
+        "article_count": 5,
+        "name": "Sensor, oil temperature",
+        "pt_id": 829
+      },
+      {
+        "article_count": 1,
+        "name": "Sensor, oil temperature",
+        "pt_id": 2201
+      },
+      {
+        "article_count": 176,
+        "name": "Sensor, park distance control",
+        "pt_id": 2412
+      },
+      {
+        "article_count": 4,
+        "name": "Sensor, speed",
+        "pt_id": 1189
+      },
+      {
+        "article_count": 1,
+        "name": "Sensor, suction pipe change-over flap",
+        "pt_id": 4143
+      },
+      {
+        "article_count": 300,
+        "name": "Sensor, wheel speed",
+        "pt_id": 412
+      },
+      {
+        "article_count": 3,
+        "name": "Series Resistor, blower",
+        "pt_id": 2391
+      },
+      {
+        "article_count": 1,
+        "name": "Series Resistor, electric motor (radiator fan)",
+        "pt_id": 4145
+      },
+      {
+        "article_count": 12,
+        "name": "Shaft Seal, automatic transmission",
+        "pt_id": 626
+      },
+      {
+        "article_count": 16,
+        "name": "Shaft Seal, camshaft",
+        "pt_id": 757
+      },
+      {
+        "article_count": 2,
+        "name": "Shaft Seal, compressor shaft",
+        "pt_id": 3809
+      },
+      {
+        "article_count": 42,
+        "name": "Shaft Seal, crankshaft",
+        "pt_id": 572
+      },
+      {
+        "article_count": 11,
+        "name": "Shaft Seal, differential",
+        "pt_id": 630
+      },
+      {
+        "article_count": 14,
+        "name": "Shaft Seal, drive shaft",
+        "pt_id": 3015
+      },
+      {
+        "article_count": 1,
+        "name": "Shaft Seal, power steering pump",
+        "pt_id": 3811
+      },
+      {
+        "article_count": 1,
+        "name": "Shaft Seal, steering gear",
+        "pt_id": 3424
+      },
+      {
+        "article_count": 1,
+        "name": "Shaft Seal, transfer case",
+        "pt_id": 633
+      },
+      {
+        "article_count": 125,
+        "name": "Shock Absorber",
+        "pt_id": 854
+      },
+      {
+        "article_count": 17,
+        "name": "Side Window",
+        "pt_id": 1194
+      },
+      {
+        "article_count": 14,
+        "name": "Signal Horn",
+        "pt_id": 297
+      },
+      {
+        "article_count": 10,
+        "name": "Silencer Insert, rear muffler",
+        "pt_id": 5461
+      },
+      {
+        "article_count": 24,
+        "name": "Sliding Shoe, window regulator",
+        "pt_id": 1703
+      },
+      {
+        "article_count": 96,
+        "name": "Snow Chain",
+        "pt_id": 5171
+      },
+      {
+        "article_count": 5,
+        "name": "Solenoid Switch, starter",
+        "pt_id": 682
+      },
+      {
+        "article_count": 6,
+        "name": "Soot/Particulate Filter Cleaning",
+        "pt_id": 5172
+      },
+      {
+        "article_count": 28,
+        "name": "Soot/Particulate Filter, exhaust system",
+        "pt_id": 1256
+      },
+      {
+        "article_count": 1,
+        "name": "Spacer Sleeve, suspension strut support mount",
+        "pt_id": 5004
+      },
+      {
+        "article_count": 23,
+        "name": "Spider Assembly, drive shaft",
+        "pt_id": 1147
+      },
+      {
+        "article_count": 38,
+        "name": "Splash Guard, brake disc",
+        "pt_id": 1330
+      },
+      {
+        "article_count": 4,
+        "name": "Spoiler",
+        "pt_id": 845
+      },
+      {
+        "article_count": 2,
+        "name": "Spring Mounting",
+        "pt_id": 1184
+      },
+      {
+        "article_count": 5,
+        "name": "Spring Seat",
+        "pt_id": 1300
+      },
+      {
+        "article_count": 5,
+        "name": "Spring, brake caliper",
+        "pt_id": 2296
+      },
+      {
+        "article_count": 1,
+        "name": "Spring, disc brake pad",
+        "pt_id": 256
+      },
+      {
+        "article_count": 186,
+        "name": "Starter",
+        "pt_id": 2
+      },
+      {
+        "article_count": 268,
+        "name": "Starter Battery",
+        "pt_id": 1
+      },
+      {
+        "article_count": 1,
+        "name": "Steering",
+        "pt_id": 3103
+      },
+      {
+        "article_count": 132,
+        "name": "Steering Gear",
+        "pt_id": 286
+      },
+      {
+        "article_count": 12,
+        "name": "Stop Light Switch",
+        "pt_id": 806
+      },
+      {
+        "article_count": 7,
+        "name": "Support Frame/Subframe",
+        "pt_id": 2980
+      },
+      {
+        "article_count": 5,
+        "name": "Support, bumper",
+        "pt_id": 1566
+      },
+      {
+        "article_count": 3,
+        "name": "Suspension Kit, springs/shock absorbers",
+        "pt_id": 190
+      },
+      {
+        "article_count": 1,
+        "name": "Suspension Set, springs",
+        "pt_id": 189
+      },
+      {
+        "article_count": 128,
+        "name": "Suspension Spring",
+        "pt_id": 188
+      },
+      {
+        "article_count": 5,
+        "name": "Suspension Strut",
+        "pt_id": 198
+      },
+      {
+        "article_count": 145,
+        "name": "Suspension Strut Support Mount",
+        "pt_id": 1180
+      },
+      {
+        "article_count": 9,
+        "name": "Suspension, propshaft",
+        "pt_id": 1420
+      },
+      {
+        "article_count": 1,
+        "name": "Swirl Flap Set, intake manifold",
+        "pt_id": 5882
+      },
+      {
+        "article_count": 30,
+        "name": "Switch, reverse light",
+        "pt_id": 807
+      },
+      {
+        "article_count": 1,
+        "name": "Switch, window regulator",
+        "pt_id": 1761
+      },
+      {
+        "article_count": 6,
+        "name": "Tail Light",
+        "pt_id": 290
+      },
+      {
+        "article_count": 8,
+        "name": "Tail Light Assembly",
+        "pt_id": 391
+      },
+      {
+        "article_count": 8,
+        "name": "Tailgate Lock",
+        "pt_id": 1362
+      },
+      {
+        "article_count": 62,
+        "name": "Tappet",
+        "pt_id": 1216
+      },
+      {
+        "article_count": 17,
+        "name": "Tensioner Lever, V-ribbed belt",
+        "pt_id": 540
+      },
+      {
+        "article_count": 66,
+        "name": "Tensioner Pulley, timing belt",
+        "pt_id": 308
+      },
+      {
+        "article_count": 47,
+        "name": "Tensioner Pulley, V-ribbed belt",
+        "pt_id": 310
+      },
+      {
+        "article_count": 1,
+        "name": "Tensioner, timing belt",
+        "pt_id": 545
+      },
+      {
+        "article_count": 4,
+        "name": "Thermostat Housing",
+        "pt_id": 1792
+      },
+      {
+        "article_count": 94,
+        "name": "Thermostat, coolant",
+        "pt_id": 316
+      },
+      {
+        "article_count": 1,
+        "name": "Threaded Sleeve, suspension strut",
+        "pt_id": 1613
+      },
+      {
+        "article_count": 40,
+        "name": "Throttle Body",
+        "pt_id": 158
+      },
+      {
+        "article_count": 4,
+        "name": "Tie Rod",
+        "pt_id": 284
+      },
+      {
+        "article_count": 194,
+        "name": "Tie Rod End",
+        "pt_id": 914
+      },
+      {
+        "article_count": 35,
+        "name": "Timing Belt",
+        "pt_id": 306
+      },
+      {
+        "article_count": 94,
+        "name": "Timing Belt Kit",
+        "pt_id": 307
+      },
+      {
+        "article_count": 2,
+        "name": "Torque Converter",
+        "pt_id": 3068
+      },
+      {
+        "article_count": 2,
+        "name": "Tow hook",
+        "pt_id": 60525
+      },
+      {
+        "article_count": 26,
+        "name": "Track Widening",
+        "pt_id": 3792
+      },
+      {
+        "article_count": 42,
+        "name": "Trailer Hitch",
+        "pt_id": 39
+      },
+      {
+        "article_count": 99,
+        "name": "Transfer Case Oil",
+        "pt_id": 3421
+      },
+      {
+        "article_count": 7,
+        "name": "Trim/Protection Strip, bumper",
+        "pt_id": 1002
+      },
+      {
+        "article_count": 3,
+        "name": "Trumpet Horn",
+        "pt_id": 196
+      },
+      {
+        "article_count": 2,
+        "name": "Tuning Module, engine performance increase",
+        "pt_id": 4995
+      },
+      {
+        "article_count": 337,
+        "name": "Tyre",
+        "pt_id": 4400
+      },
+      {
+        "article_count": 4,
+        "name": "Tyre-Pressure Monitoring System",
+        "pt_id": 4966
+      },
+      {
+        "article_count": 52,
+        "name": "V-ribbed Belt",
+        "pt_id": 305
+      },
+      {
+        "article_count": 30,
+        "name": "V-ribbed Belt Set",
+        "pt_id": 542
+      },
+      {
+        "article_count": 15,
+        "name": "Vacuum Pump, braking system",
+        "pt_id": 387
+      },
+      {
+        "article_count": 8,
+        "name": "Valve Guide",
+        "pt_id": 1644
+      },
+      {
+        "article_count": 2,
+        "name": "Valve keeper",
+        "pt_id": 1271
+      },
+      {
+        "article_count": 3,
+        "name": "Valve, air control (intake air)",
+        "pt_id": 1305
+      },
+      {
+        "article_count": 3,
+        "name": "Valve, exhaust gas recirculation",
+        "pt_id": 1129
+      },
+      {
+        "article_count": 1,
+        "name": "Valve, washer-fluid pipe",
+        "pt_id": 840
+      },
+      {
+        "article_count": 10,
+        "name": "Ventilation Grille, bumper",
+        "pt_id": 244
+      },
+      {
+        "article_count": 2,
+        "name": "Vibration Damper, V-ribbed belt",
+        "pt_id": 1637
+      },
+      {
+        "article_count": 2,
+        "name": "Warning Contact, brake pad wear",
+        "pt_id": 407
+      },
+      {
+        "article_count": 20,
+        "name": "Washer Fluid Jet, headlight cleaning",
+        "pt_id": 1280
+      },
+      {
+        "article_count": 6,
+        "name": "Washer Fluid Jet, window cleaning",
+        "pt_id": 303
+      },
+      {
+        "article_count": 5,
+        "name": "Washer Fluid Pump, headlight cleaning",
+        "pt_id": 795
+      },
+      {
+        "article_count": 63,
+        "name": "Washer Fluid Pump, window cleaning",
+        "pt_id": 794
+      },
+      {
+        "article_count": 4,
+        "name": "Washer-jet Pipe",
+        "pt_id": 171
+      },
+      {
+        "article_count": 64,
+        "name": "Water Pump & Timing Belt Kit",
+        "pt_id": 3096
+      },
+      {
+        "article_count": 1,
+        "name": "Water pump, cooling circuit electrical drive",
+        "pt_id": 60575
+      },
+      {
+        "article_count": 129,
+        "name": "Water Pump, engine cooling",
+        "pt_id": 1260
+      },
+      {
+        "article_count": 3,
+        "name": "Water Recirculation Pump, parking heater",
+        "pt_id": 999
+      },
+      {
+        "article_count": 8,
+        "name": "Water Tank, radiator",
+        "pt_id": 2322
+      },
+      {
+        "article_count": 12,
+        "name": "Wheel Bearing",
+        "pt_id": 655
+      },
+      {
+        "article_count": 240,
+        "name": "Wheel Bearing Kit",
+        "pt_id": 654
+      },
+      {
+        "article_count": 17,
+        "name": "Wheel Bolt",
+        "pt_id": 2070
+      },
+      {
+        "article_count": 59,
+        "name": "Wheel Hub",
+        "pt_id": 653
+      },
+      {
+        "article_count": 110,
+        "name": "Wheel Sensor, tyre-pressure monitoring system",
+        "pt_id": 2232
+      },
+      {
+        "article_count": 5,
+        "name": "Wheel Stud",
+        "pt_id": 657
+      },
+      {
+        "article_count": 1,
+        "name": "Wheel Suspension",
+        "pt_id": 3104
+      },
+      {
+        "article_count": 11,
+        "name": "Wind Deflector",
+        "pt_id": 5025
+      },
+      {
+        "article_count": 6,
+        "name": "Window Adhesive",
+        "pt_id": 60660
+      },
+      {
+        "article_count": 53,
+        "name": "Window Regulator",
+        "pt_id": 1561
+      },
+      {
+        "article_count": 40,
+        "name": "Windscreen",
+        "pt_id": 1191
+      },
+      {
+        "article_count": 5,
+        "name": "windscreen adhesive",
+        "pt_id": 11834
+      },
+      {
+        "article_count": 14,
+        "name": "Wing",
+        "pt_id": 449
+      },
+      {
+        "article_count": 13,
+        "name": "Wiper Arm Set, window cleaning",
+        "pt_id": 6545
+      },
+      {
+        "article_count": 36,
+        "name": "Wiper Arm, window cleaning",
+        "pt_id": 301
+      },
+      {
+        "article_count": 506,
+        "name": "Wiper Blade",
+        "pt_id": 298
+      },
+      {
+        "article_count": 10,
+        "name": "Wiper Linkage",
+        "pt_id": 300
+      },
+      {
+        "article_count": 21,
+        "name": "Wiper Motor",
+        "pt_id": 295
+      }
+    ]
+  }
+}

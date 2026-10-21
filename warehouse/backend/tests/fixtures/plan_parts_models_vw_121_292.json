@@ -1,0 +1,2053 @@
+{
+  "success": true,
+  "data": {
+    "count": 292,
+    "mfa_id": 121,
+    "results": [
+      {
+        "mfa_id": 121,
+        "ms_id": 45872,
+        "name": "1500",
+        "year_from": "1980-01",
+        "year_to": "1991-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 45873,
+        "name": "1500 Estate",
+        "year_from": "1980-01",
+        "year_to": "1991-11"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 507,
+        "name": "1500,1600 (31)",
+        "year_from": "1961-04",
+        "year_to": "1973-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 1620,
+        "name": "1500,1600 Hatchback (31)",
+        "year_from": "1965-08",
+        "year_to": "1975-03"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 1621,
+        "name": "1500,1600 Variant (36)",
+        "year_from": "1961-04",
+        "year_to": "1973-07"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 4644,
+        "name": "166",
+        "year_from": "1942-02",
+        "year_to": "1945-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 512,
+        "name": "181",
+        "year_from": "1969-09",
+        "year_to": "1983-11"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 1616,
+        "name": "411,412",
+        "year_from": "1968-07",
+        "year_to": "1975-03"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 405,
+        "name": "412 Variant",
+        "year_from": "1969-09",
+        "year_to": "1975-03"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 8636,
+        "name": "AMAROK (2HA, 2HB, S1B, S6B, S7A, S7B, AGD)",
+        "year_from": "2010-09",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 44048,
+        "name": "AMAROK (T1A, T1B)",
+        "year_from": "2022-09",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 14172,
+        "name": "AMAROK Platform/Chassis (S1B, S6B, S7B)",
+        "year_from": "2011-09",
+        "year_to": "2022-05"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 36973,
+        "name": "AMEO (631)",
+        "year_from": "2016-05",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 7946,
+        "name": "APOLLO Saloon",
+        "year_from": "1989-08",
+        "year_to": "1993-04"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 37842,
+        "name": "ARTEON (3H7, 3H8)",
+        "year_from": "2017-03",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 41006,
+        "name": "ARTEON SHOOTING BRAKE (3H9)",
+        "year_from": "2020-06",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 38193,
+        "name": "ATLAS (CA1, CA2, CA3)",
+        "year_from": "2016-12",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 40840,
+        "name": "ATLAS CROSS SPORT (CMC, CMD)",
+        "year_from": "2019-08",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 9710,
+        "name": "BEETLE (5C1, 5C2)",
+        "year_from": "2011-04",
+        "year_to": "2019-07"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 10735,
+        "name": "BEETLE Convertible (5C7, 5C8)",
+        "year_from": "2011-12",
+        "year_to": "2019-07"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 11598,
+        "name": "BORA (9M2)",
+        "year_from": "2005-01",
+        "year_to": "2014-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 3884,
+        "name": "BORA I (1J2)",
+        "year_from": "1998-10",
+        "year_to": "2013-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 4125,
+        "name": "BORA Variant (1J6)",
+        "year_from": "1999-05",
+        "year_to": "2005-05"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 9917,
+        "name": "BRASILIA",
+        "year_from": "1973-10",
+        "year_to": "1982-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 36198,
+        "name": "CADDY ALLTRACK IV Box Body/MPV (SAA)",
+        "year_from": "2015-05",
+        "year_to": "2020-09"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 36197,
+        "name": "CADDY ALLTRACK IV MPV (SAB)",
+        "year_from": "2015-05",
+        "year_to": "2020-09"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 38217,
+        "name": "CADDY Box Body/MPV (6K9, 9E7, 9E9)",
+        "year_from": "2002-09",
+        "year_to": "2009-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 42705,
+        "name": "CADDY CALIFORNIA V Camper (SBB, SBJ)",
+        "year_from": "2020-09",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 3943,
+        "name": "CADDY I (14)",
+        "year_from": "1979-08",
+        "year_to": "2008-11"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 4003,
+        "name": "CADDY II Box Body/MPV (9K9A)",
+        "year_from": "1995-11",
+        "year_to": "2004-01"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 5393,
+        "name": "CADDY II MPV (9K9B)",
+        "year_from": "1995-11",
+        "year_to": "2004-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 4004,
+        "name": "CADDY II Pickup (9U7)",
+        "year_from": "1996-06",
+        "year_to": "2000-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 5083,
+        "name": "CADDY III Box Body/MPV (2KA, 2KH, 2CA, 2CH)",
+        "year_from": "2004-03",
+        "year_to": "2016-03"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 5084,
+        "name": "CADDY III MPV (2KB, 2KJ, 2CB, 2CJ)",
+        "year_from": "2004-03",
+        "year_to": "2016-03"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 14303,
+        "name": "CADDY IV Box Body/MPV (SAA, SAH)",
+        "year_from": "2015-05",
+        "year_to": "2020-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 14302,
+        "name": "CADDY IV MPV (SAB, SAJ)",
+        "year_from": "2015-05",
+        "year_to": "2020-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 38216,
+        "name": "CADDY MPV (6K9, 9E7, 9E9)",
+        "year_from": "2002-09",
+        "year_to": "2009-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 41500,
+        "name": "CADDY V Box Body/MPV (SBA, SBH)",
+        "year_from": "2020-09",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 41499,
+        "name": "CADDY V MPV (SBB, SBJ)",
+        "year_from": "2020-09",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 42534,
+        "name": "CALIFORNIA T4 Camper (7DJ, 7DK, 70J)",
+        "year_from": "1990-09",
+        "year_to": "2004-08"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 42535,
+        "name": "CALIFORNIA T5 Camper (7EC, 7EF, 7EG, 7HF, 7HC)",
+        "year_from": "2003-04",
+        "year_to": "2016-04"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 42536,
+        "name": "CALIFORNIA T6 Camper (SGC, SGG, SHC)",
+        "year_from": "2015-04",
+        "year_to": "2024-08"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 90117,
+        "name": "CALIFORNIA T7 Camper (STC)",
+        "year_from": "2024-08",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 10200,
+        "name": "CC B7 (358)",
+        "year_from": "2011-11",
+        "year_to": "2017-10"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 10502,
+        "name": "CITI GOLF",
+        "year_from": "1984-01",
+        "year_to": "2010-07"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 3887,
+        "name": "CORRADO (53I)",
+        "year_from": "1987-08",
+        "year_to": "1995-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 5528,
+        "name": "CRAFTER 30-35 Bus (2E_)",
+        "year_from": "2006-04",
+        "year_to": "2016-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 5530,
+        "name": "CRAFTER 30-50 Platform/Chassis (2F_)",
+        "year_from": "2006-04",
+        "year_to": "2016-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 5529,
+        "name": "CRAFTER 30-50 Van (2E_)",
+        "year_from": "2006-04",
+        "year_to": "2016-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 37480,
+        "name": "CRAFTER Bus (SYI, SYJ)",
+        "year_from": "2016-09",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 37201,
+        "name": "CRAFTER Platform/Chassis (SZ_)",
+        "year_from": "2016-11",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 37200,
+        "name": "CRAFTER Van (SY_, SX_)",
+        "year_from": "2016-09",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 270,
+        "name": "DERBY (86)",
+        "year_from": "1977-02",
+        "year_to": "1981-09"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 275,
+        "name": "DERBY (86C, 80)",
+        "year_from": "1981-08",
+        "year_to": "1984-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 34729,
+        "name": "DERBY III Saloon (6K2)",
+        "year_from": "1994-09",
+        "year_to": "2009-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 5457,
+        "name": "EOS (1F7, 1F8)",
+        "year_from": "2006-03",
+        "year_to": "2015-08"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 90090,
+        "name": "FOX (16)",
+        "year_from": "1985-01",
+        "year_to": "1996-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 5417,
+        "name": "FOX Hatchback (5Z1, 5Z3, 5Z4)",
+        "year_from": "2003-08",
+        "year_to": "2015-10"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 13150,
+        "name": "FOX Hatchback (5Z5)",
+        "year_from": "2014-08",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 10554,
+        "name": "FOX Saloon",
+        "year_from": "1987-01",
+        "year_to": "1993-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 39073,
+        "name": "FOX Van (5Z1)",
+        "year_from": "2010-09",
+        "year_to": "2011-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 34118,
+        "name": "FOX Variant",
+        "year_from": "1986-09",
+        "year_to": "1990-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 36982,
+        "name": "FRIDOLIN Van (147)",
+        "year_from": "1964-01",
+        "year_to": "1974-07"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 44715,
+        "name": "GOL",
+        "year_from": "1988-01",
+        "year_to": "1988-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 7627,
+        "name": "GOL G1",
+        "year_from": "1980-05",
+        "year_to": "1997-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 7626,
+        "name": "GOL G2",
+        "year_from": "1994-06",
+        "year_to": "2005-06"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 13671,
+        "name": "GOL G3",
+        "year_from": "1998-09",
+        "year_to": "2006-09"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 13672,
+        "name": "GOL G4",
+        "year_from": "2005-05",
+        "year_to": "2014-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 9611,
+        "name": "GOL G5",
+        "year_from": "2008-06",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 13666,
+        "name": "GOL G6",
+        "year_from": "2012-08",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 38197,
+        "name": "GOL G7",
+        "year_from": "2016-01",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 39281,
+        "name": "GOL G8",
+        "year_from": "2018-02",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 13608,
+        "name": "GOLF ALLTRACK VII Variant (BA5, BV5)",
+        "year_from": "2014-12",
+        "year_to": "2020-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 41767,
+        "name": "GOLF ALLTRACK VIII (CG5)",
+        "year_from": "2020-11",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 41815,
+        "name": "GOLF Hatchback Van (1K1)",
+        "year_from": "2003-07",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 497,
+        "name": "GOLF I (17)",
+        "year_from": "1974-04",
+        "year_to": "1985-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 488,
+        "name": "GOLF I Cabriolet (155)",
+        "year_from": "1979-01",
+        "year_to": "1993-08"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 500,
+        "name": "GOLF II (19E, 1G1)",
+        "year_from": "1983-08",
+        "year_to": "1992-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 37151,
+        "name": "GOLF II Van (19E, 1G1)",
+        "year_from": "1983-08",
+        "year_to": "1991-07"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 505,
+        "name": "GOLF III (1H1)",
+        "year_from": "1989-10",
+        "year_to": "2000-11"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 493,
+        "name": "GOLF III Cabriolet (1E7)",
+        "year_from": "1993-07",
+        "year_to": "1998-05"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 37153,
+        "name": "GOLF III Van (1H1)",
+        "year_from": "1991-08",
+        "year_to": "1997-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 510,
+        "name": "GOLF III Variant (1H5)",
+        "year_from": "1993-07",
+        "year_to": "1999-04"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 1994,
+        "name": "GOLF IV (1J1)",
+        "year_from": "1997-08",
+        "year_to": "2008-04"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 38069,
+        "name": "GOLF IV (9B3)",
+        "year_from": "2006-03",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 1996,
+        "name": "GOLF IV Cabriolet (1E7)",
+        "year_from": "1998-06",
+        "year_to": "2002-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 37154,
+        "name": "GOLF IV Van (1J1)",
+        "year_from": "1997-10",
+        "year_to": "2004-05"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 1995,
+        "name": "GOLF IV Variant (1J5)",
+        "year_from": "1999-05",
+        "year_to": "2006-06"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 5379,
+        "name": "GOLF PLUS V (5M1, 521)",
+        "year_from": "2004-12",
+        "year_to": "2013-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 39069,
+        "name": "GOLF PLUS Van (521)",
+        "year_from": "2009-01",
+        "year_to": "2014-08"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 11878,
+        "name": "GOLF SPORTSVAN VII (AM1, AN1)",
+        "year_from": "2014-02",
+        "year_to": "2020-08"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 4991,
+        "name": "GOLF V (1K1)",
+        "year_from": "2003-10",
+        "year_to": "2010-07"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 6245,
+        "name": "GOLF V Variant (1K5)",
+        "year_from": "2007-01",
+        "year_to": "2009-07"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 39689,
+        "name": "GOLF Van III Variant (1H5)",
+        "year_from": "1991-08",
+        "year_to": "1999-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 39045,
+        "name": "GOLF VAN IV Variant (1J5)",
+        "year_from": "1999-05",
+        "year_to": "2006-06"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 39067,
+        "name": "GOLF VAN VI Variant (AJ5)",
+        "year_from": "2009-07",
+        "year_to": "2014-05"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 39079,
+        "name": "GOLF VAN VII Variant (BA5)",
+        "year_from": "2013-04",
+        "year_to": "2017-03"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 7873,
+        "name": "GOLF VI (5K1)",
+        "year_from": "2008-10",
+        "year_to": "2014-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 9158,
+        "name": "GOLF VI Convertible (517)",
+        "year_from": "2011-03",
+        "year_to": "2017-10"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 39065,
+        "name": "GOLF VI Van (5K1)",
+        "year_from": "2008-10",
+        "year_to": "2012-11"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 8442,
+        "name": "GOLF VI Variant (AJ5)",
+        "year_from": "2009-07",
+        "year_to": "2014-07"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 10585,
+        "name": "GOLF VII (5G1, BQ1, BE1, BE2)",
+        "year_from": "2012-08",
+        "year_to": "2021-10"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 39077,
+        "name": "GOLF VII Van (5G1)",
+        "year_from": "2012-08",
+        "year_to": "2017-03"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 11221,
+        "name": "GOLF VII Variant (BA5, BV5)",
+        "year_from": "2013-04",
+        "year_to": "2022-01"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 40179,
+        "name": "GOLF VIII (CD1, DA1)",
+        "year_from": "2019-07",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 41185,
+        "name": "GOLF VIII Variant (CG5, DB5)",
+        "year_from": "2020-08",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 40014,
+        "name": "GRAND CALIFORNIA Camper (SCB, SCC)",
+        "year_from": "2019-04",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 14140,
+        "name": "HORMIGA",
+        "year_from": "1974-09",
+        "year_to": "1979-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 42932,
+        "name": "ID. Buzz Bus (EBB, EBJ)",
+        "year_from": "2022-05",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 42933,
+        "name": "ID. Buzz Cargo (EBA)",
+        "year_from": "2022-04",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 41044,
+        "name": "ID.3 (E11, E12)",
+        "year_from": "2019-11",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 41351,
+        "name": "ID.4 (E21)",
+        "year_from": "2020-05",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 42571,
+        "name": "ID.5 (E39)",
+        "year_from": "2021-07",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 44750,
+        "name": "ID.7 (ED2)",
+        "year_from": "2023-06",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 45262,
+        "name": "ID.7 Tourer (ED5)",
+        "year_from": "2024-02",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 2,
+        "name": "ILTIS (183)",
+        "year_from": "1979-03",
+        "year_to": "1988-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 37129,
+        "name": "JETTA CITY Saloon",
+        "year_from": "2006-09",
+        "year_to": "2009-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 14621,
+        "name": "JETTA CITY Variant",
+        "year_from": "2006-09",
+        "year_to": "2009-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 7,
+        "name": "JETTA I (16)",
+        "year_from": "1978-08",
+        "year_to": "1987-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 3439,
+        "name": "JETTA II (19E, 1G2, 165)",
+        "year_from": "1983-08",
+        "year_to": "1992-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 5423,
+        "name": "JETTA III (1K2)",
+        "year_from": "2004-09",
+        "year_to": "2013-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 9118,
+        "name": "JETTA IV (162, 163, AV3, AV2)",
+        "year_from": "2008-01",
+        "year_to": "2019-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 39274,
+        "name": "JETTA VII Saloon (BU3, BU4)",
+        "year_from": "2017-12",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 22,
+        "name": "K 70 (48)",
+        "year_from": "1970-08",
+        "year_to": "1974-10"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 90,
+        "name": "KAEFER",
+        "year_from": "1947-12",
+        "year_to": "2003-08"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 1614,
+        "name": "KAEFER Convertible (15)",
+        "year_from": "1949-07",
+        "year_to": "1981-03"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 1615,
+        "name": "KARMANN GHIA Convertible (14, 34)",
+        "year_from": "1957-09",
+        "year_to": "1974-07"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 99,
+        "name": "KARMANN GHIA Coupe (14, 34)",
+        "year_from": "1955-08",
+        "year_to": "1976-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 11288,
+        "name": "KOMBI / MICROBUS / CARAVELLE T3 (25_)",
+        "year_from": "1979-06",
+        "year_to": "2003-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 11175,
+        "name": "KOMBI T2 Bus (22, 7X)",
+        "year_from": "1974-09",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 11943,
+        "name": "KOMBI T2 Platform/Chassis (26, 7X)",
+        "year_from": "1967-01",
+        "year_to": "2005-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 11176,
+        "name": "KOMBI T2 Van (21, 23, 7X)",
+        "year_from": "1967-01",
+        "year_to": "2013-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 36247,
+        "name": "LOAD UP! (121, 122, BL1, BL2)",
+        "year_from": "2014-12",
+        "year_to": "2020-08"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 6892,
+        "name": "LOGUS (5X1)",
+        "year_from": "1992-12",
+        "year_to": "1998-04"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 236,
+        "name": "LT 28-35 I Bus (281-363)",
+        "year_from": "1975-04",
+        "year_to": "1996-06"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 1637,
+        "name": "LT 28-35 I Platform/Chassis (281-363)",
+        "year_from": "1975-04",
+        "year_to": "1996-06"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 1636,
+        "name": "LT 28-35 I Van (281-363)",
+        "year_from": "1975-04",
+        "year_to": "1996-06"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 3378,
+        "name": "LT 28-35 II Bus (2DB, 2DE, 2DK)",
+        "year_from": "1996-04",
+        "year_to": "2006-07"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 3380,
+        "name": "LT 28-46 II Platform/Chassis (2DC, 2DF, 2DG, 2DL, 2DM)",
+        "year_from": "1996-04",
+        "year_to": "2006-07"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 3379,
+        "name": "LT 28-46 II Van (2DA, 2DD, 2DH)",
+        "year_from": "1996-04",
+        "year_to": "2006-07"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 4489,
+        "name": "LT 40-55 I Platform/Chassis (293-909)",
+        "year_from": "1975-04",
+        "year_to": "1996-06"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 4488,
+        "name": "LT 40-55 I Van (291-512)",
+        "year_from": "1975-04",
+        "year_to": "1996-06"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 3398,
+        "name": "LUPO I (6X1, 6E1)",
+        "year_from": "1998-09",
+        "year_to": "2005-07"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 9587,
+        "name": "LUPO II (5Z1)",
+        "year_from": "2003-10",
+        "year_to": "2009-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 4988,
+        "name": "MULTIVAN T5 (7HM, 7HN, 7HF, 7EF, 7EM, 7EN)",
+        "year_from": "2003-04",
+        "year_to": "2016-03"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 14349,
+        "name": "MULTIVAN T6 (SGF, SGM, SGN, SHM, SHN)",
+        "year_from": "2015-04",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 42517,
+        "name": "MULTIVAN T7 (STM, STN)",
+        "year_from": "2021-08",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 3402,
+        "name": "NEW BEETLE (9C1, 1C1)",
+        "year_from": "1998-01",
+        "year_to": "2012-07"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 4957,
+        "name": "NEW BEETLE Convertible (1Y7)",
+        "year_from": "2002-09",
+        "year_to": "2012-07"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 40993,
+        "name": "NIVUS (CH1)",
+        "year_from": "2020-06",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 6893,
+        "name": "PARATI I Variant",
+        "year_from": "1982-05",
+        "year_to": "1995-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 6108,
+        "name": "PARATI II Variant",
+        "year_from": "1995-05",
+        "year_to": "2005-08"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 6109,
+        "name": "PARATI III Variant (5X5)",
+        "year_from": "1999-05",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 9918,
+        "name": "PARATI IV Variant (5W5)",
+        "year_from": "2003-05",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 11084,
+        "name": "PASSAT ALLTRACK B7 (365)",
+        "year_from": "2012-01",
+        "year_to": "2014-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 14622,
+        "name": "PASSAT ALLTRACK B8 Variant (3G5, CB5)",
+        "year_from": "2015-05",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 403,
+        "name": "PASSAT B1 (32)",
+        "year_from": "1973-05",
+        "year_to": "1981-07"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 11601,
+        "name": "PASSAT B1 Saloon (32)",
+        "year_from": "1973-05",
+        "year_to": "1982-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 415,
+        "name": "PASSAT B1 Variant (33)",
+        "year_from": "1973-05",
+        "year_to": "1981-10"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 408,
+        "name": "PASSAT B2 (32B)",
+        "year_from": "1979-09",
+        "year_to": "1989-07"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 1447,
+        "name": "PASSAT B2 Saloon (32B)",
+        "year_from": "1982-05",
+        "year_to": "1989-06"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 419,
+        "name": "PASSAT B2 Variant (33B)",
+        "year_from": "1980-08",
+        "year_to": "1989-06"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 39690,
+        "name": "PASSAT B3/B4 (315, 3A5)",
+        "year_from": "1988-08",
+        "year_to": "1996-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 412,
+        "name": "PASSAT B3/B4 (3A2, 35I)",
+        "year_from": "1988-02",
+        "year_to": "1997-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 423,
+        "name": "PASSAT B3/B4 Variant (3A5, 35I)",
+        "year_from": "1988-02",
+        "year_to": "1997-06"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 1568,
+        "name": "PASSAT B5 (3B2)",
+        "year_from": "1996-08",
+        "year_to": "2001-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 1907,
+        "name": "PASSAT B5 Variant (3B5)",
+        "year_from": "1997-05",
+        "year_to": "2001-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 4736,
+        "name": "PASSAT B5.5 (3B3)",
+        "year_from": "2000-10",
+        "year_to": "2005-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 4737,
+        "name": "PASSAT B5.5 Variant (3B6)",
+        "year_from": "2000-09",
+        "year_to": "2005-08"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 5398,
+        "name": "PASSAT B6 (3C2)",
+        "year_from": "2005-03",
+        "year_to": "2011-04"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 5427,
+        "name": "PASSAT B6 Variant (3C5)",
+        "year_from": "2005-08",
+        "year_to": "2011-11"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 9003,
+        "name": "PASSAT B7 (362)",
+        "year_from": "2010-08",
+        "year_to": "2016-04"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 11165,
+        "name": "PASSAT B7 (A32, A33)",
+        "year_from": "2011-01",
+        "year_to": "2020-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 39030,
+        "name": "PASSAT B7 Estate Van (365)",
+        "year_from": "2010-08",
+        "year_to": "2014-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 9004,
+        "name": "PASSAT B7 Variant (365)",
+        "year_from": "2010-08",
+        "year_to": "2015-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 12917,
+        "name": "PASSAT B8 (3G2, CB2)",
+        "year_from": "2014-08",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 12918,
+        "name": "PASSAT B8 Variant (3G5, CB5)",
+        "year_from": "2014-08",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 45017,
+        "name": "PASSAT B9 Variant (CJ5)",
+        "year_from": "2023-10",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 7375,
+        "name": "PASSAT CC B6 (357)",
+        "year_from": "2008-02",
+        "year_to": "2012-06"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 4876,
+        "name": "PHAETON (3D1, 3D2, 3D3, 3D4, 3D6, 3D7, 3D8, 3D9)",
+        "year_from": "2002-04",
+        "year_to": "2016-03"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 6895,
+        "name": "POINTER",
+        "year_from": "1993-10",
+        "year_to": "2003-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 6897,
+        "name": "POINTER",
+        "year_from": "1998-08",
+        "year_to": "2005-08"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 6898,
+        "name": "POINTER",
+        "year_from": "2005-08",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 6899,
+        "name": "POINTER Pickup",
+        "year_from": "1993-10",
+        "year_to": "2010-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 6896,
+        "name": "POINTER Variant",
+        "year_from": "2002-06",
+        "year_to": "2006-03"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 4528,
+        "name": "POLO (6N2)",
+        "year_from": "1999-10",
+        "year_to": "2001-10"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 431,
+        "name": "POLO (86)",
+        "year_from": "1975-03",
+        "year_to": "1981-09"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 3885,
+        "name": "POLO CLASSIC (86C, 80)",
+        "year_from": "1985-01",
+        "year_to": "1994-09"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 440,
+        "name": "POLO Coupe (86C, 80)",
+        "year_from": "1981-10",
+        "year_to": "1994-09"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 4018,
+        "name": "POLO Hatchback Van (86CF)",
+        "year_from": "1992-08",
+        "year_to": "1994-07"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 436,
+        "name": "POLO II (86C, 80)",
+        "year_from": "1981-10",
+        "year_to": "1994-09"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 427,
+        "name": "POLO III (6N1)",
+        "year_from": "1994-10",
+        "year_to": "1999-10"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 1482,
+        "name": "POLO III CLASSIC (6V2)",
+        "year_from": "1995-01",
+        "year_to": "2009-11"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 4804,
+        "name": "POLO IV (9N_, 9A_)",
+        "year_from": "2001-10",
+        "year_to": "2014-10"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 5074,
+        "name": "POLO IV Saloon (9A4, 9A2, 9N2, 9A6)",
+        "year_from": "2002-09",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 11307,
+        "name": "POLO IV Saloon (9N2, 9N4)",
+        "year_from": "2002-09",
+        "year_to": "2010-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 44683,
+        "name": "POLO Liftback (CK4, CK5)",
+        "year_from": "2020-04",
+        "year_to": "2022-03"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 6901,
+        "name": "POLO PLAYA",
+        "year_from": "1995-01",
+        "year_to": "2009-11"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 8025,
+        "name": "POLO V (6R1, 6C1)",
+        "year_from": "2009-03",
+        "year_to": "2022-06"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 9746,
+        "name": "POLO V Saloon (602, 604, 612, 614)",
+        "year_from": "2009-05",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 38851,
+        "name": "POLO Van Estate Van (6V5)",
+        "year_from": "1995-12",
+        "year_to": "2001-09"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 4019,
+        "name": "POLO Van Hatchback Van (6N1)",
+        "year_from": "1994-09",
+        "year_to": "1999-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 36882,
+        "name": "POLO Van V (6R1, 6C1)",
+        "year_from": "2009-03",
+        "year_to": "2017-10"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 1993,
+        "name": "POLO Variant (6V5)",
+        "year_from": "1997-04",
+        "year_to": "2001-09"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 38138,
+        "name": "POLO VI (AW1, BZ1, AE1)",
+        "year_from": "2017-06",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 42809,
+        "name": "POLO VIVO Hatchback (6R1, 6RS, 6RT)",
+        "year_from": "2018-01",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 11409,
+        "name": "POLO VIVO Hatchback (6S1, 6S3)",
+        "year_from": "2010-02",
+        "year_to": "2019-03"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 90049,
+        "name": "POLO VIVO Hatchback Van (6S3)",
+        "year_from": "2015-10",
+        "year_to": "2019-03"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 11410,
+        "name": "POLO VIVO Saloon (6S2, 6S4)",
+        "year_from": "2010-02",
+        "year_to": "2019-04"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 6902,
+        "name": "QUANTUM Variant",
+        "year_from": "1985-04",
+        "year_to": "1994-08"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 6903,
+        "name": "QUANTUM Variant",
+        "year_from": "1990-08",
+        "year_to": "2005-07"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 9735,
+        "name": "ROUTAN",
+        "year_from": "2008-09",
+        "year_to": "2014-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 4636,
+        "name": "SANTANA",
+        "year_from": "1991-01",
+        "year_to": "2012-09"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 6368,
+        "name": "SANTANA",
+        "year_from": "1984-02",
+        "year_to": "1994-08"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 195,
+        "name": "SANTANA (32B)",
+        "year_from": "1981-08",
+        "year_to": "1985-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 6140,
+        "name": "SAVEIRO G1 (147)",
+        "year_from": "1982-07",
+        "year_to": "1997-11"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 6141,
+        "name": "SAVEIRO G2 (9U7)",
+        "year_from": "1996-01",
+        "year_to": "2003-09"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 13684,
+        "name": "SAVEIRO G3",
+        "year_from": "2000-02",
+        "year_to": "2010-07"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 6142,
+        "name": "SAVEIRO G4",
+        "year_from": "2005-02",
+        "year_to": "2009-08"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 9916,
+        "name": "SAVEIRO G5 (5U8, 5U9)",
+        "year_from": "2009-09",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 39566,
+        "name": "SAVEIRO G6 (5UA, 5UB, 5UC)",
+        "year_from": "2013-04",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 90193,
+        "name": "SAVEIRO G6 Pickup",
+        "year_from": "2014-03",
+        "year_to": "2016-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 39567,
+        "name": "SAVEIRO G7 (5UD, 5UE, 5UF)",
+        "year_from": "2016-01",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 90240,
+        "name": "SAVEIRO G8 (5UK)",
+        "year_from": "2023-08",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 210,
+        "name": "SCIROCCO (53)",
+        "year_from": "1974-02",
+        "year_to": "1980-07"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 214,
+        "name": "SCIROCCO (53B)",
+        "year_from": "1980-08",
+        "year_to": "1992-07"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 7584,
+        "name": "SCIROCCO III (137, 138)",
+        "year_from": "2008-05",
+        "year_to": "2018-01"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 39063,
+        "name": "SCIROCCO Van (137)",
+        "year_from": "2008-06",
+        "year_to": "2014-05"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 9973,
+        "name": "SENDA",
+        "year_from": "1983-09",
+        "year_to": "1997-11"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 1312,
+        "name": "SHARAN (7M8, 7M9, 7M6)",
+        "year_from": "1995-05",
+        "year_to": "2010-05"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 8630,
+        "name": "SHARAN (7N1, 7N2)",
+        "year_from": "2010-05",
+        "year_to": "2022-11"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 41677,
+        "name": "SHARAN VAN (7M_)",
+        "year_from": "1995-05",
+        "year_to": "2010-03"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 41676,
+        "name": "SHARAN VAN (7N1, 7N2)",
+        "year_from": "2010-05",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 11602,
+        "name": "SP-1 / SP-2",
+        "year_from": "1972-06",
+        "year_to": "1976-02"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 7531,
+        "name": "SPACEFOX / SPACE CROSS (5Z6, 5Z7, 5Z9)",
+        "year_from": "2006-03",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 39209,
+        "name": "T-CROSS (C11, D31)",
+        "year_from": "2018-12",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 38190,
+        "name": "T-ROC (A11, D11)",
+        "year_from": "2017-07",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 40210,
+        "name": "T-ROC Convertible (AC7, AC8)",
+        "year_from": "2019-12",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 42141,
+        "name": "TAIGO (CS1)",
+        "year_from": "2021-09",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 42480,
+        "name": "TAIGUN (CW1)",
+        "year_from": "2021-08",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 41959,
+        "name": "TAOS (CL1, CP1, CQ1)",
+        "year_from": "2020-07",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 337,
+        "name": "TARO",
+        "year_from": "1989-04",
+        "year_to": "1997-03"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 45883,
+        "name": "TAYRON (R41)",
+        "year_from": "2024-11",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 6397,
+        "name": "TIGUAN (5N_)",
+        "year_from": "2007-09",
+        "year_to": "2018-07"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 36223,
+        "name": "TIGUAN (AD1, AX1)",
+        "year_from": "2016-01",
+        "year_to": "2024-04"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 45054,
+        "name": "TIGUAN (CT1)",
+        "year_from": "2023-09",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 38132,
+        "name": "TIGUAN ALLSPACE (BW2, BJ2)",
+        "year_from": "2017-03",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 41816,
+        "name": "TIGUAN SUV Van (AD1)",
+        "year_from": "2015-07",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 41678,
+        "name": "TIGUAN VAN (5N_)",
+        "year_from": "2007-09",
+        "year_to": "2018-07"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 45523,
+        "name": "TL",
+        "year_from": "1970-08",
+        "year_to": "1975-10"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 4920,
+        "name": "TOUAREG (7LA, 7L6, 7L7)",
+        "year_from": "2002-10",
+        "year_to": "2013-01"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 8607,
+        "name": "TOUAREG (7P5, 7P6)",
+        "year_from": "2010-01",
+        "year_to": "2018-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 38671,
+        "name": "TOUAREG (CR7, RC8)",
+        "year_from": "2017-11",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 41680,
+        "name": "TOUAREG VAN (7P5)",
+        "year_from": "2010-01",
+        "year_to": "2018-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 4954,
+        "name": "TOURAN (1T1, 1T2)",
+        "year_from": "2003-02",
+        "year_to": "2011-01"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 10449,
+        "name": "TOURAN (1T3)",
+        "year_from": "2010-05",
+        "year_to": "2016-09"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 14158,
+        "name": "TOURAN (5T1)",
+        "year_from": "2015-05",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 41679,
+        "name": "TOURAN VAN (1T1, 1T2)",
+        "year_from": "2003-02",
+        "year_to": "2010-05"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 41554,
+        "name": "TOURAN VAN (1T3)",
+        "year_from": "2010-05",
+        "year_to": "2015-05"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 42376,
+        "name": "TOURAN VAN (5T1)",
+        "year_from": "2015-05",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 1598,
+        "name": "TRANSPORTER T1 Bus (22, 24, 25, 28)",
+        "year_from": "1950-01",
+        "year_to": "1968-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 1627,
+        "name": "TRANSPORTER T1 Platform/Chassis (26)",
+        "year_from": "1950-01",
+        "year_to": "1970-10"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 1626,
+        "name": "TRANSPORTER T1 Van (21, 23)",
+        "year_from": "1950-01",
+        "year_to": "1968-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 455,
+        "name": "TRANSPORTER T2 Bus (22, 23, 24)",
+        "year_from": "1967-08",
+        "year_to": "1979-09"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 3888,
+        "name": "TRANSPORTER T2 Platform/Chassis (21, 26)",
+        "year_from": "1968-08",
+        "year_to": "1979-07"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 1628,
+        "name": "TRANSPORTER T2 Van (21, 23)",
+        "year_from": "1968-08",
+        "year_to": "1979-07"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 3889,
+        "name": "TRANSPORTER T3 Bus (25_)",
+        "year_from": "1979-05",
+        "year_to": "2003-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 1630,
+        "name": "TRANSPORTER T3 Platform/Chassis (24_)",
+        "year_from": "1979-05",
+        "year_to": "1992-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 1629,
+        "name": "TRANSPORTER T3 Van (24_, 25_)",
+        "year_from": "1979-05",
+        "year_to": "1992-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 463,
+        "name": "TRANSPORTER T4 Bus (70B, 70C, 7DB, 7DK, 70J, 70K, 7DC, 7DJ)",
+        "year_from": "1990-09",
+        "year_to": "2004-10"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 1632,
+        "name": "TRANSPORTER T4 Platform/Chassis (70E, 70L, 70M, 7DE, 7DL, 7D",
+        "year_from": "1990-07",
+        "year_to": "2003-04"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 1631,
+        "name": "TRANSPORTER T4 Van (70A, 70H, 7DA, 7DH)",
+        "year_from": "1990-07",
+        "year_to": "2003-04"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 5005,
+        "name": "TRANSPORTER T5 Bus (7HB, 7HJ, 7EB, 7EJ)",
+        "year_from": "2003-04",
+        "year_to": "2016-03"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 5003,
+        "name": "TRANSPORTER T5 Platform/Chassis (7JD, 7JE, 7JL, 7JY, 7JZ, 7F",
+        "year_from": "2003-04",
+        "year_to": "2016-03"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 5004,
+        "name": "TRANSPORTER T5 Van (7HA, 7HH, 7EA, 7EH)",
+        "year_from": "2003-04",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 14350,
+        "name": "TRANSPORTER T6 / CARAVELLE T6 Bus (SGB, SGJ, SHB, SHJ)",
+        "year_from": "2015-04",
+        "year_to": "2024-08"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 14352,
+        "name": "TRANSPORTER T6 Platform/Chassis (SFD, SFE, SFL, SFZ, SJD, SJ",
+        "year_from": "2015-04",
+        "year_to": "2024-08"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 14351,
+        "name": "TRANSPORTER T6 Van (SGA, SGH, SHA, SHH)",
+        "year_from": "2015-04",
+        "year_to": "2024-08"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 90131,
+        "name": "TRANSPORTER T7 / CARAVELLE T7 Bus (TV_, TW_)",
+        "year_from": "2024-07",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 90137,
+        "name": "TRANSPORTER T7 Platform/Chassis (TX_, TY_)",
+        "year_from": "2024-07",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 90132,
+        "name": "TRANSPORTER T7 Van (TV_, TW_)",
+        "year_from": "2024-07",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 9734,
+        "name": "UP! (121, 122, BL1, BL2, BL3, 123)",
+        "year_from": "2011-08",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 14651,
+        "name": "VARIANT I Variant",
+        "year_from": "1969-11",
+        "year_to": "1981-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 36532,
+        "name": "VARIANT II",
+        "year_from": "1978-01",
+        "year_to": "1981-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 3886,
+        "name": "VENTO (1H2)",
+        "year_from": "1991-11",
+        "year_to": "2000-11"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 13100,
+        "name": "VENTO (602, 604)",
+        "year_from": "2010-01",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 38449,
+        "name": "VIRTUS Saloon (BZ2)",
+        "year_from": "2017-10",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 6904,
+        "name": "VOYAGE",
+        "year_from": "1981-06",
+        "year_to": "1995-12"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 6905,
+        "name": "VOYAGE",
+        "year_from": "1988-08",
+        "year_to": "1994-09"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 9621,
+        "name": "VOYAGE (5U4, 5U2, 5U6, 5UG)",
+        "year_from": "2008-02",
+        "year_to": null
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 6906,
+        "name": "VOYAGE (5X1)",
+        "year_from": "1994-10",
+        "year_to": "2002-07"
+      },
+      {
+        "mfa_id": 121,
+        "ms_id": 13215,
+        "name": "XL1 (6Z1)",
+        "year_from": "2014-02",
+        "year_to": null
+      }
+    ]
+  }
+}

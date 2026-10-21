@@ -7,6 +7,7 @@ from urllib.parse import urlsplit
 from fastapi import HTTPException
 from app.config import is_staging, public_origin, secure_cookies
 from app.api.routes import router
+from app.api.plan_parts import router as plan_parts_router
 from app.db import engine
 
 app = FastAPI(
@@ -15,6 +16,7 @@ app = FastAPI(
     description="Standalone tenant-isolated warehouse. All business endpoints require a session cookie; mutations also require X-CSRF-Token. Monetary values are UAH. No CarPot production integration.",
 )
 app.include_router(router)
+app.include_router(plan_parts_router)
 if is_staging():
     if not secure_cookies():
         raise RuntimeError("Staging requires secure cookies")

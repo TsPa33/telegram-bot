@@ -7,9 +7,9 @@ import {
   Empty,
   Modal,
   Pager,
-  RecordForm,
   type Field,
 } from "../components";
+import VehicleForm from "../VehicleForm";
 
 import {
   choices,
@@ -256,7 +256,7 @@ export default function Vehicles({ notify }: { notify: Notify }) {
           title={edit.id ? "Редагувати автомобіль" : "Новий автомобіль-донор"}
           onClose={() => setEdit(null)}
         >
-          <RecordForm
+          <VehicleForm
             initial={edit}
             fields={vehicleFields}
             onSave={async (d) => {
@@ -322,6 +322,7 @@ function VehicleDetail({
           ["Рік", v.year],
           ["Двигун", v.engine || "—"],
           ["VIN", v.vin || "Не вказано"],
+          ["K-Type", v.ktype ?? "Не вибрано"],
           [
             "Придбання",
             v.acquisition_cost ? money(v.acquisition_cost) : "Не вказано",

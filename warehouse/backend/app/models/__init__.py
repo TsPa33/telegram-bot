@@ -56,8 +56,10 @@ class Vehicle(Owned, Base):
         UniqueConstraint("account_id", "donor_id"),
         CheckConstraint("year BETWEEN 1886 AND 2100"),
         CheckConstraint("acquisition_cost IS NULL OR acquisition_cost >= 0"),
+        CheckConstraint("ktype IS NULL OR ktype > 0", name="ck_vehicle_ktype_positive"),
     )
     manufacturer: Mapped[str] = mapped_column(String(100))
+    ktype: Mapped[int | None] = mapped_column(Integer, nullable=True)
     model: Mapped[str] = mapped_column(String(100))
     generation: Mapped[str] = mapped_column(String(100), default="")
     year: Mapped[int] = mapped_column(Integer)

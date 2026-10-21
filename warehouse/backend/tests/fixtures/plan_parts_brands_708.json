@@ -1,0 +1,2840 @@
+{
+  "success": true,
+  "data": {
+    "count": 708,
+    "results": [
+      {
+        "brand": "212",
+        "mfa_id": 8232
+      },
+      {
+        "brand": "ABARTH",
+        "mfa_id": 3854
+      },
+      {
+        "brand": "AC",
+        "mfa_id": 609
+      },
+      {
+        "brand": "ACURA",
+        "mfa_id": 1505
+      },
+      {
+        "brand": "ACURA (GAC)",
+        "mfa_id": 4593
+      },
+      {
+        "brand": "ADDAX",
+        "mfa_id": 6883
+      },
+      {
+        "brand": "AEOLUS",
+        "mfa_id": 5487
+      },
+      {
+        "brand": "AGRALE",
+        "mfa_id": 128
+      },
+      {
+        "brand": "AITO",
+        "mfa_id": 6465
+      },
+      {
+        "brand": "AIWAYS",
+        "mfa_id": 5500
+      },
+      {
+        "brand": "AIXAM",
+        "mfa_id": 1480
+      },
+      {
+        "brand": "ALFA ROMEO",
+        "mfa_id": 2
+      },
+      {
+        "brand": "ALPHEON",
+        "mfa_id": 4414
+      },
+      {
+        "brand": "ALPINA",
+        "mfa_id": 866
+      },
+      {
+        "brand": "ALPINE",
+        "mfa_id": 810
+      },
+      {
+        "brand": "ALVIS",
+        "mfa_id": 4730
+      },
+      {
+        "brand": "AM GENERAL",
+        "mfa_id": 2775
+      },
+      {
+        "brand": "AMC",
+        "mfa_id": 2246
+      },
+      {
+        "brand": "ANADOL",
+        "mfa_id": 3526
+      },
+      {
+        "brand": "ANCHI",
+        "mfa_id": 2847
+      },
+      {
+        "brand": "ANDORIA",
+        "mfa_id": 3971
+      },
+      {
+        "brand": "ANFINI",
+        "mfa_id": 2848
+      },
+      {
+        "brand": "ANKAI",
+        "mfa_id": 5479
+      },
+      {
+        "brand": "APOLLO",
+        "mfa_id": 5136
+      },
+      {
+        "brand": "ARCFOX",
+        "mfa_id": 5891
+      },
+      {
+        "brand": "ARIEL",
+        "mfa_id": 4406
+      },
+      {
+        "brand": "ARMSTRONG SIDDELEY",
+        "mfa_id": 2526
+      },
+      {
+        "brand": "ARO",
+        "mfa_id": 1360
+      },
+      {
+        "brand": "ARROW MOBILITY",
+        "mfa_id": 8126
+      },
+      {
+        "brand": "ARTEGA",
+        "mfa_id": 3495
+      },
+      {
+        "brand": "ASHOK LEYLAND",
+        "mfa_id": 2241
+      },
+      {
+        "brand": "ASIA CAB",
+        "mfa_id": 6579
+      },
+      {
+        "brand": "ASIA MOTORS",
+        "mfa_id": 879
+      },
+      {
+        "brand": "ASKAM",
+        "mfa_id": 2242
+      },
+      {
+        "brand": "ASTON MARTIN",
+        "mfa_id": 881
+      },
+      {
+        "brand": "ASÜNA",
+        "mfa_id": 2706
+      },
+      {
+        "brand": "ATUL",
+        "mfa_id": 5414
+      },
+      {
+        "brand": "AUDI",
+        "mfa_id": 5
+      },
+      {
+        "brand": "AUDI (FAW)",
+        "mfa_id": 2858
+      },
+      {
+        "brand": "AUDI (SAIC)",
+        "mfa_id": 6400
+      },
+      {
+        "brand": "AUSTIN",
+        "mfa_id": 6
+      },
+      {
+        "brand": "AUSTIN-HEALEY",
+        "mfa_id": 1538
+      },
+      {
+        "brand": "AUTO UNION",
+        "mfa_id": 3
+      },
+      {
+        "brand": "AUTOAR",
+        "mfa_id": 4600
+      },
+      {
+        "brand": "AUTOBIANCHI",
+        "mfa_id": 799
+      },
+      {
+        "brand": "AUTORRAD",
+        "mfa_id": 5186
+      },
+      {
+        "brand": "AUTOZAM",
+        "mfa_id": 3842
+      },
+      {
+        "brand": "AUVERLAND",
+        "mfa_id": 2845
+      },
+      {
+        "brand": "AVANTI",
+        "mfa_id": 2707
+      },
+      {
+        "brand": "AVATR",
+        "mfa_id": 6622
+      },
+      {
+        "brand": "AVIA",
+        "mfa_id": 132
+      },
+      {
+        "brand": "B-ON",
+        "mfa_id": 6695
+      },
+      {
+        "brand": "BAC",
+        "mfa_id": 8047
+      },
+      {
+        "brand": "BAHMAN",
+        "mfa_id": 4626
+      },
+      {
+        "brand": "BAIC",
+        "mfa_id": 3773
+      },
+      {
+        "brand": "BAIC BJEV",
+        "mfa_id": 4418
+      },
+      {
+        "brand": "BAIC HUANSU",
+        "mfa_id": 4036
+      },
+      {
+        "brand": "BAIC RUILI",
+        "mfa_id": 5116
+      },
+      {
+        "brand": "BAIC RUIXIANG",
+        "mfa_id": 6302
+      },
+      {
+        "brand": "BAIC WEIWANG",
+        "mfa_id": 4266
+      },
+      {
+        "brand": "BAIC-ORV",
+        "mfa_id": 5671
+      },
+      {
+        "brand": "BAIZHI",
+        "mfa_id": 6381
+      },
+      {
+        "brand": "BAJAJ",
+        "mfa_id": 4552
+      },
+      {
+        "brand": "BAJAJ RE",
+        "mfa_id": 5747
+      },
+      {
+        "brand": "BAJAJ TEMPO",
+        "mfa_id": 2849
+      },
+      {
+        "brand": "BAK AUTOMOBILE",
+        "mfa_id": 6861
+      },
+      {
+        "brand": "BAOJUN (SGMW)",
+        "mfa_id": 3764
+      },
+      {
+        "brand": "BAOLONG",
+        "mfa_id": 2906
+      },
+      {
+        "brand": "BARKAS",
+        "mfa_id": 134
+      },
+      {
+        "brand": "BAW",
+        "mfa_id": 3071
+      },
+      {
+        "brand": "BAXY",
+        "mfa_id": 5415
+      },
+      {
+        "brand": "BEDFORD",
+        "mfa_id": 10
+      },
+      {
+        "brand": "BEIJING",
+        "mfa_id": 5670
+      },
+      {
+        "brand": "BELGEE",
+        "mfa_id": 8389
+      },
+      {
+        "brand": "BENTLEY",
+        "mfa_id": 815
+      },
+      {
+        "brand": "BERTONE",
+        "mfa_id": 1485
+      },
+      {
+        "brand": "BESTUNE",
+        "mfa_id": 5510
+      },
+      {
+        "brand": "BESTURN (FAW)",
+        "mfa_id": 3762
+      },
+      {
+        "brand": "BIO AUTO",
+        "mfa_id": 4645
+      },
+      {
+        "brand": "BISU",
+        "mfa_id": 4637
+      },
+      {
+        "brand": "BITTER",
+        "mfa_id": 1486
+      },
+      {
+        "brand": "BIZZARRINI",
+        "mfa_id": 5738
+      },
+      {
+        "brand": "BLUECAR",
+        "mfa_id": 4712
+      },
+      {
+        "brand": "BMC",
+        "mfa_id": 2243
+      },
+      {
+        "brand": "BMW",
+        "mfa_id": 16
+      },
+      {
+        "brand": "BMW (BRILLIANCE)",
+        "mfa_id": 3124
+      },
+      {
+        "brand": "BOGDAN",
+        "mfa_id": 4439
+      },
+      {
+        "brand": "BOLWELL",
+        "mfa_id": 5173
+      },
+      {
+        "brand": "BOND",
+        "mfa_id": 1537
+      },
+      {
+        "brand": "BORGWARD",
+        "mfa_id": 136
+      },
+      {
+        "brand": "BRABUS",
+        "mfa_id": 4161
+      },
+      {
+        "brand": "BREMACH",
+        "mfa_id": 2749
+      },
+      {
+        "brand": "BRICKLIN",
+        "mfa_id": 2708
+      },
+      {
+        "brand": "BRIGHTDROP",
+        "mfa_id": 6898
+      },
+      {
+        "brand": "BRILLIANCE",
+        "mfa_id": 3076
+      },
+      {
+        "brand": "BRILLIANCE XINRI",
+        "mfa_id": 6541
+      },
+      {
+        "brand": "BRISTOL",
+        "mfa_id": 1487
+      },
+      {
+        "brand": "BUFORI",
+        "mfa_id": 4162
+      },
+      {
+        "brand": "BUGATTI",
+        "mfa_id": 788
+      },
+      {
+        "brand": "BUICK",
+        "mfa_id": 816
+      },
+      {
+        "brand": "BUICK (SGM)",
+        "mfa_id": 3136
+      },
+      {
+        "brand": "BYD",
+        "mfa_id": 3122
+      },
+      {
+        "brand": "C.A.M",
+        "mfa_id": 3770
+      },
+      {
+        "brand": "CADILLAC",
+        "mfa_id": 819
+      },
+      {
+        "brand": "CADILLAC (SGM)",
+        "mfa_id": 3528
+      },
+      {
+        "brand": "CALLAWAY",
+        "mfa_id": 1488
+      },
+      {
+        "brand": "CARBODIES",
+        "mfa_id": 1489
+      },
+      {
+        "brand": "CARLARKY",
+        "mfa_id": 3194
+      },
+      {
+        "brand": "CASALINI",
+        "mfa_id": 2915
+      },
+      {
+        "brand": "CATERHAM",
+        "mfa_id": 1490
+      },
+      {
+        "brand": "CBT",
+        "mfa_id": 1049
+      },
+      {
+        "brand": "CENNTRO",
+        "mfa_id": 5769
+      },
+      {
+        "brand": "CHAMONIX",
+        "mfa_id": 3678
+      },
+      {
+        "brand": "CHANA",
+        "mfa_id": 4609
+      },
+      {
+        "brand": "CHANGAN",
+        "mfa_id": 2852
+      },
+      {
+        "brand": "CHANGFENG",
+        "mfa_id": 2889
+      },
+      {
+        "brand": "CHANGHE",
+        "mfa_id": 2853
+      },
+      {
+        "brand": "CHATENET",
+        "mfa_id": 2916
+      },
+      {
+        "brand": "CHECKER",
+        "mfa_id": 1491
+      },
+      {
+        "brand": "CHENGSHI",
+        "mfa_id": 7097
+      },
+      {
+        "brand": "CHERY",
+        "mfa_id": 2887
+      },
+      {
+        "brand": "CHEVOO",
+        "mfa_id": 8233
+      },
+      {
+        "brand": "CHEVROLET",
+        "mfa_id": 138
+      },
+      {
+        "brand": "CHEVROLET (SGM)",
+        "mfa_id": 3527
+      },
+      {
+        "brand": "CHEVROLET (SGMW)",
+        "mfa_id": 3651
+      },
+      {
+        "brand": "CHIREY",
+        "mfa_id": 8231
+      },
+      {
+        "brand": "CHRYSLER",
+        "mfa_id": 20
+      },
+      {
+        "brand": "CHRYSLER (BBDC)",
+        "mfa_id": 3646
+      },
+      {
+        "brand": "CHRYSLER (SOUEAST)",
+        "mfa_id": 5521
+      },
+      {
+        "brand": "CHTC AUTO",
+        "mfa_id": 4177
+      },
+      {
+        "brand": "CIIMO",
+        "mfa_id": 5596
+      },
+      {
+        "brand": "CITROËN",
+        "mfa_id": 21
+      },
+      {
+        "brand": "CITROËN (DF-PSA)",
+        "mfa_id": 2891
+      },
+      {
+        "brand": "CMC",
+        "mfa_id": 3772
+      },
+      {
+        "brand": "CNJ",
+        "mfa_id": 5338
+      },
+      {
+        "brand": "CODA",
+        "mfa_id": 3719
+      },
+      {
+        "brand": "COMARTH",
+        "mfa_id": 5482
+      },
+      {
+        "brand": "CORADIR",
+        "mfa_id": 7268
+      },
+      {
+        "brand": "COWIN",
+        "mfa_id": 4214
+      },
+      {
+        "brand": "CROSS LANDER",
+        "mfa_id": 8128
+      },
+      {
+        "brand": "CUPRA",
+        "mfa_id": 4896
+      },
+      {
+        "brand": "DACIA",
+        "mfa_id": 139
+      },
+      {
+        "brand": "DADI",
+        "mfa_id": 2901
+      },
+      {
+        "brand": "DAEWOO",
+        "mfa_id": 185
+      },
+      {
+        "brand": "DAF",
+        "mfa_id": 24
+      },
+      {
+        "brand": "DAIHATSU",
+        "mfa_id": 25
+      },
+      {
+        "brand": "DAIHATSU (FAW)",
+        "mfa_id": 3274
+      },
+      {
+        "brand": "DAIMLER",
+        "mfa_id": 26
+      },
+      {
+        "brand": "DALLAS",
+        "mfa_id": 1493
+      },
+      {
+        "brand": "DATSUN",
+        "mfa_id": 807
+      },
+      {
+        "brand": "DAYUN",
+        "mfa_id": 4267
+      },
+      {
+        "brand": "DE LA CHAPELLE",
+        "mfa_id": 4717
+      },
+      {
+        "brand": "DE LOREAN",
+        "mfa_id": 1494
+      },
+      {
+        "brand": "DE TOMASO",
+        "mfa_id": 1495
+      },
+      {
+        "brand": "DEARCC",
+        "mfa_id": 5140
+      },
+      {
+        "brand": "DEEPAL",
+        "mfa_id": 6587
+      },
+      {
+        "brand": "DENZA",
+        "mfa_id": 4089
+      },
+      {
+        "brand": "DERWAYS",
+        "mfa_id": 3069
+      },
+      {
+        "brand": "DESOTO",
+        "mfa_id": 2784
+      },
+      {
+        "brand": "DFSK",
+        "mfa_id": 4269
+      },
+      {
+        "brand": "DODGE",
+        "mfa_id": 29
+      },
+      {
+        "brand": "DODGE (SOUEAST)",
+        "mfa_id": 5507
+      },
+      {
+        "brand": "DONGBEN",
+        "mfa_id": 7738
+      },
+      {
+        "brand": "DONGFENG",
+        "mfa_id": 3659
+      },
+      {
+        "brand": "DONGFENG (DFAC)",
+        "mfa_id": 2854
+      },
+      {
+        "brand": "DONGFENG FENGDU",
+        "mfa_id": 4264
+      },
+      {
+        "brand": "DONGFENG FUKANG",
+        "mfa_id": 5767
+      },
+      {
+        "brand": "DONGFENG XIAOKANG",
+        "mfa_id": 3152
+      },
+      {
+        "brand": "DONKERVOORT",
+        "mfa_id": 4658
+      },
+      {
+        "brand": "DORCEN",
+        "mfa_id": 5141
+      },
+      {
+        "brand": "DR",
+        "mfa_id": 3497
+      },
+      {
+        "brand": "DS",
+        "mfa_id": 4468
+      },
+      {
+        "brand": "DS (CAPSA)",
+        "mfa_id": 3999
+      },
+      {
+        "brand": "DSK",
+        "mfa_id": 8300
+      },
+      {
+        "brand": "E.GO",
+        "mfa_id": 5705
+      },
+      {
+        "brand": "EAGLE",
+        "mfa_id": 824
+      },
+      {
+        "brand": "EBRO",
+        "mfa_id": 142
+      },
+      {
+        "brand": "EFFA",
+        "mfa_id": 3652
+      },
+      {
+        "brand": "EFFEDI",
+        "mfa_id": 3618
+      },
+      {
+        "brand": "ELARIS",
+        "mfa_id": 6177
+      },
+      {
+        "brand": "ELFIN",
+        "mfa_id": 8264
+      },
+      {
+        "brand": "EMC",
+        "mfa_id": 7024
+      },
+      {
+        "brand": "EMGRAND",
+        "mfa_id": 3332
+      },
+      {
+        "brand": "EMW",
+        "mfa_id": 6758
+      },
+      {
+        "brand": "ENGESA",
+        "mfa_id": 4541
+      },
+      {
+        "brand": "ENGLON",
+        "mfa_id": 3704
+      },
+      {
+        "brand": "ENOVATE",
+        "mfa_id": 5248
+      },
+      {
+        "brand": "ENRANGER",
+        "mfa_id": 4259
+      },
+      {
+        "brand": "ENVEMO",
+        "mfa_id": 1503
+      },
+      {
+        "brand": "EON MOTORS",
+        "mfa_id": 8322
+      },
+      {
+        "brand": "ESEMKA",
+        "mfa_id": 6140
+      },
+      {
+        "brand": "EUNOS",
+        "mfa_id": 2857
+      },
+      {
+        "brand": "EUROPESTAR",
+        "mfa_id": 3267
+      },
+      {
+        "brand": "EV HOUSE",
+        "mfa_id": 6288
+      },
+      {
+        "brand": "EVERUS",
+        "mfa_id": 5522
+      },
+      {
+        "brand": "EVO",
+        "mfa_id": 6862
+      },
+      {
+        "brand": "EVUM MOTORS",
+        "mfa_id": 6772
+      },
+      {
+        "brand": "EXCALIBUR",
+        "mfa_id": 2709
+      },
+      {
+        "brand": "EXEED (CHERY)",
+        "mfa_id": 5247
+      },
+      {
+        "brand": "eπ",
+        "mfa_id": 7789
+      },
+      {
+        "brand": "FAAM",
+        "mfa_id": 6016
+      },
+      {
+        "brand": "FAC",
+        "mfa_id": 5190
+      },
+      {
+        "brand": "FANGCHENGBAO",
+        "mfa_id": 7507
+      },
+      {
+        "brand": "FARGO",
+        "mfa_id": 6089
+      },
+      {
+        "brand": "FARIZON AUTO",
+        "mfa_id": 6000
+      },
+      {
+        "brand": "FAW",
+        "mfa_id": 3610
+      },
+      {
+        "brand": "FAW (HONGTA)",
+        "mfa_id": 5808
+      },
+      {
+        "brand": "FAW (JILIN)",
+        "mfa_id": 2909
+      },
+      {
+        "brand": "FAW (TIANJIN)",
+        "mfa_id": 2890
+      },
+      {
+        "brand": "FEIDI",
+        "mfa_id": 6276
+      },
+      {
+        "brand": "FENGON",
+        "mfa_id": 5486
+      },
+      {
+        "brand": "FENGSHEN",
+        "mfa_id": 2862
+      },
+      {
+        "brand": "FENGXING",
+        "mfa_id": 2863
+      },
+      {
+        "brand": "FERRARI",
+        "mfa_id": 700
+      },
+      {
+        "brand": "FEST",
+        "mfa_id": 7110
+      },
+      {
+        "brand": "FIAT",
+        "mfa_id": 35
+      },
+      {
+        "brand": "FIAT (GAC)",
+        "mfa_id": 3761
+      },
+      {
+        "brand": "FIAT (NANJING)",
+        "mfa_id": 3131
+      },
+      {
+        "brand": "FIREFLY",
+        "mfa_id": 8454
+      },
+      {
+        "brand": "FISKER",
+        "mfa_id": 3738
+      },
+      {
+        "brand": "FODAY",
+        "mfa_id": 3771
+      },
+      {
+        "brand": "FOMM",
+        "mfa_id": 6121
+      },
+      {
+        "brand": "FORCE",
+        "mfa_id": 2850
+      },
+      {
+        "brand": "FORD",
+        "mfa_id": 36
+      },
+      {
+        "brand": "FORD (CHANGAN)",
+        "mfa_id": 3125
+      },
+      {
+        "brand": "FORD (JMC)",
+        "mfa_id": 3656
+      },
+      {
+        "brand": "FORD AFRICA",
+        "mfa_id": 5998
+      },
+      {
+        "brand": "FORD ASIA & OCEANIA",
+        "mfa_id": 2864
+      },
+      {
+        "brand": "FORD AUSTRALIA",
+        "mfa_id": 1496
+      },
+      {
+        "brand": "FORD OTOSAN",
+        "mfa_id": 808
+      },
+      {
+        "brand": "FORD USA",
+        "mfa_id": 776
+      },
+      {
+        "brand": "FORLAND",
+        "mfa_id": 4189
+      },
+      {
+        "brand": "FORTHING",
+        "mfa_id": 6363
+      },
+      {
+        "brand": "FOTON",
+        "mfa_id": 2867
+      },
+      {
+        "brand": "FOTON GRATOUR",
+        "mfa_id": 5598
+      },
+      {
+        "brand": "FPV",
+        "mfa_id": 3297
+      },
+      {
+        "brand": "FQT MOTOR",
+        "mfa_id": 4257
+      },
+      {
+        "brand": "FREIGHTLINER",
+        "mfa_id": 147
+      },
+      {
+        "brand": "FSO",
+        "mfa_id": 775
+      },
+      {
+        "brand": "FUQI",
+        "mfa_id": 2875
+      },
+      {
+        "brand": "GAC",
+        "mfa_id": 3196
+      },
+      {
+        "brand": "GAC NE",
+        "mfa_id": 5745
+      },
+      {
+        "brand": "GALAXY",
+        "mfa_id": 6856
+      },
+      {
+        "brand": "GALLOPER",
+        "mfa_id": 5475
+      },
+      {
+        "brand": "GAZ",
+        "mfa_id": 148
+      },
+      {
+        "brand": "GEELY",
+        "mfa_id": 2590
+      },
+      {
+        "brand": "GENESIS",
+        "mfa_id": 4473
+      },
+      {
+        "brand": "GEO",
+        "mfa_id": 831
+      },
+      {
+        "brand": "GEOMETRY",
+        "mfa_id": 5244
+      },
+      {
+        "brand": "GERMAN E CARS",
+        "mfa_id": 4657
+      },
+      {
+        "brand": "GINETTA",
+        "mfa_id": 1498
+      },
+      {
+        "brand": "GIOTTI VICTORIA",
+        "mfa_id": 5209
+      },
+      {
+        "brand": "GLAS",
+        "mfa_id": 812
+      },
+      {
+        "brand": "GLEAGLE",
+        "mfa_id": 3697
+      },
+      {
+        "brand": "GMC",
+        "mfa_id": 39
+      },
+      {
+        "brand": "GME",
+        "mfa_id": 5208
+      },
+      {
+        "brand": "GOLDEN DRAGON",
+        "mfa_id": 3158
+      },
+      {
+        "brand": "GONOW",
+        "mfa_id": 2902
+      },
+      {
+        "brand": "GONOW (GAC)",
+        "mfa_id": 3997
+      },
+      {
+        "brand": "GOUPIL",
+        "mfa_id": 4752
+      },
+      {
+        "brand": "GREAT WALL",
+        "mfa_id": 2903
+      },
+      {
+        "brand": "GRECAV",
+        "mfa_id": 2926
+      },
+      {
+        "brand": "GROZ",
+        "mfa_id": 4640
+      },
+      {
+        "brand": "GUMPERT",
+        "mfa_id": 5135
+      },
+      {
+        "brand": "GURGEL",
+        "mfa_id": 2249
+      },
+      {
+        "brand": "HAFEI",
+        "mfa_id": 2866
+      },
+      {
+        "brand": "HAIMA (FAW)",
+        "mfa_id": 3036
+      },
+      {
+        "brand": "HAIMA (ZHENGZHOU)",
+        "mfa_id": 3913
+      },
+      {
+        "brand": "HANTENG",
+        "mfa_id": 4610
+      },
+      {
+        "brand": "HAVAL",
+        "mfa_id": 3968
+      },
+      {
+        "brand": "HAWTAI",
+        "mfa_id": 3562
+      },
+      {
+        "brand": "HDT",
+        "mfa_id": 6725
+      },
+      {
+        "brand": "HEIBAO",
+        "mfa_id": 4450
+      },
+      {
+        "brand": "HENGCHI",
+        "mfa_id": 8234
+      },
+      {
+        "brand": "HENGRUN AUTO",
+        "mfa_id": 6208
+      },
+      {
+        "brand": "HENGTONG",
+        "mfa_id": 4268
+      },
+      {
+        "brand": "HENREY AUTOMOBILE",
+        "mfa_id": 6162
+      },
+      {
+        "brand": "HIGER",
+        "mfa_id": 4176
+      },
+      {
+        "brand": "HILLMAN",
+        "mfa_id": 2794
+      },
+      {
+        "brand": "HINDUSTAN",
+        "mfa_id": 1499
+      },
+      {
+        "brand": "HIPHI",
+        "mfa_id": 5858
+      },
+      {
+        "brand": "HOBBYCAR",
+        "mfa_id": 1500
+      },
+      {
+        "brand": "HOLDEN",
+        "mfa_id": 801
+      },
+      {
+        "brand": "HONDA",
+        "mfa_id": 45
+      },
+      {
+        "brand": "HONDA (DONGFENG)",
+        "mfa_id": 3126
+      },
+      {
+        "brand": "HONDA (GAC)",
+        "mfa_id": 3129
+      },
+      {
+        "brand": "HONGQI",
+        "mfa_id": 2871
+      },
+      {
+        "brand": "HORKI (DYK)",
+        "mfa_id": 5109
+      },
+      {
+        "brand": "HSV",
+        "mfa_id": 3276
+      },
+      {
+        "brand": "HUAKAI AUTO",
+        "mfa_id": 6623
+      },
+      {
+        "brand": "HUALI",
+        "mfa_id": 2872
+      },
+      {
+        "brand": "HUANGHAI",
+        "mfa_id": 4258
+      },
+      {
+        "brand": "HUASONG",
+        "mfa_id": 4255
+      },
+      {
+        "brand": "HUAYANG",
+        "mfa_id": 4320
+      },
+      {
+        "brand": "HUAZI AUTO",
+        "mfa_id": 6697
+      },
+      {
+        "brand": "HUIZHONG",
+        "mfa_id": 3155
+      },
+      {
+        "brand": "HUMBER",
+        "mfa_id": 4729
+      },
+      {
+        "brand": "HUMMER",
+        "mfa_id": 1506
+      },
+      {
+        "brand": "HUNKT",
+        "mfa_id": 5511
+      },
+      {
+        "brand": "HYCAN",
+        "mfa_id": 5583
+      },
+      {
+        "brand": "HYPER",
+        "mfa_id": 6929
+      },
+      {
+        "brand": "HYUNDAI",
+        "mfa_id": 183
+      },
+      {
+        "brand": "HYUNDAI (BEIJING)",
+        "mfa_id": 3123
+      },
+      {
+        "brand": "HYUNDAI (HUATAI)",
+        "mfa_id": 3128
+      },
+      {
+        "brand": "i CAR",
+        "mfa_id": 7809
+      },
+      {
+        "brand": "ICKX",
+        "mfa_id": 6873
+      },
+      {
+        "brand": "ICML",
+        "mfa_id": 3507
+      },
+      {
+        "brand": "IES",
+        "mfa_id": 4536
+      },
+      {
+        "brand": "IKA",
+        "mfa_id": 4535
+      },
+      {
+        "brand": "IM MOTORS",
+        "mfa_id": 6514
+      },
+      {
+        "brand": "INDIGO",
+        "mfa_id": 1507
+      },
+      {
+        "brand": "INEOS",
+        "mfa_id": 6576
+      },
+      {
+        "brand": "INFINITI",
+        "mfa_id": 1526
+      },
+      {
+        "brand": "INFINITI (DFAC)",
+        "mfa_id": 4211
+      },
+      {
+        "brand": "INNOCENTI",
+        "mfa_id": 52
+      },
+      {
+        "brand": "INOKOM",
+        "mfa_id": 3677
+      },
+      {
+        "brand": "INTERNATIONAL",
+        "mfa_id": 2460
+      },
+      {
+        "brand": "IRAN KHODRO",
+        "mfa_id": 3084
+      },
+      {
+        "brand": "IRMSCHER",
+        "mfa_id": 1508
+      },
+      {
+        "brand": "ISDERA",
+        "mfa_id": 1509
+      },
+      {
+        "brand": "ISO",
+        "mfa_id": 5737
+      },
+      {
+        "brand": "ISORIVOLTA",
+        "mfa_id": 5736
+      },
+      {
+        "brand": "ISOTTA FRASCHINI",
+        "mfa_id": 2798
+      },
+      {
+        "brand": "ISUZU",
+        "mfa_id": 54
+      },
+      {
+        "brand": "ISUZU (JIANGXI)",
+        "mfa_id": 4393
+      },
+      {
+        "brand": "ISUZU (QINGLING)",
+        "mfa_id": 3139
+      },
+      {
+        "brand": "IVECO",
+        "mfa_id": 55
+      },
+      {
+        "brand": "IZH",
+        "mfa_id": 4683
+      },
+      {
+        "brand": "JAC",
+        "mfa_id": 2873
+      },
+      {
+        "brand": "JAC EV",
+        "mfa_id": 6903
+      },
+      {
+        "brand": "JAECOO",
+        "mfa_id": 8059
+      },
+      {
+        "brand": "JAGUAR",
+        "mfa_id": 56
+      },
+      {
+        "brand": "JAGUAR (CHERY)",
+        "mfa_id": 4614
+      },
+      {
+        "brand": "JDMC",
+        "mfa_id": 5599
+      },
+      {
+        "brand": "JEEP",
+        "mfa_id": 882
+      },
+      {
+        "brand": "JEEP (BJC)",
+        "mfa_id": 2851
+      },
+      {
+        "brand": "JEEP (GAC FCA)",
+        "mfa_id": 4454
+      },
+      {
+        "brand": "JENHOO-AUTO",
+        "mfa_id": 7096
+      },
+      {
+        "brand": "JENSEN",
+        "mfa_id": 1511
+      },
+      {
+        "brand": "JETOUR",
+        "mfa_id": 5119
+      },
+      {
+        "brand": "JETTA",
+        "mfa_id": 5398
+      },
+      {
+        "brand": "JIANGNAN",
+        "mfa_id": 2908
+      },
+      {
+        "brand": "JIDU",
+        "mfa_id": 6702
+      },
+      {
+        "brand": "JIEFANG (FAW)",
+        "mfa_id": 3849
+      },
+      {
+        "brand": "JINBEI",
+        "mfa_id": 2888
+      },
+      {
+        "brand": "JINCHENG",
+        "mfa_id": 4179
+      },
+      {
+        "brand": "JIYUE AUTO",
+        "mfa_id": 7090
+      },
+      {
+        "brand": "JMC",
+        "mfa_id": 3040
+      },
+      {
+        "brand": "JMEV",
+        "mfa_id": 5219
+      },
+      {
+        "brand": "JONWAY",
+        "mfa_id": 3993
+      },
+      {
+        "brand": "JOYFUN AUTO",
+        "mfa_id": 5699
+      },
+      {
+        "brand": "JOYLONG",
+        "mfa_id": 4180
+      },
+      {
+        "brand": "JPX",
+        "mfa_id": 8113
+      },
+      {
+        "brand": "JSA",
+        "mfa_id": 5417
+      },
+      {
+        "brand": "KAICENE",
+        "mfa_id": 6224
+      },
+      {
+        "brand": "KAMA",
+        "mfa_id": 4265
+      },
+      {
+        "brand": "KANDI",
+        "mfa_id": 4390
+      },
+      {
+        "brand": "KARMA",
+        "mfa_id": 5501
+      },
+      {
+        "brand": "KARRY",
+        "mfa_id": 3286
+      },
+      {
+        "brand": "KARSAN",
+        "mfa_id": 4445
+      },
+      {
+        "brand": "KAWEI AUTO",
+        "mfa_id": 4181
+      },
+      {
+        "brand": "KG MOBILITY",
+        "mfa_id": 7030
+      },
+      {
+        "brand": "KIA",
+        "mfa_id": 184
+      },
+      {
+        "brand": "KIA (DYK)",
+        "mfa_id": 3127
+      },
+      {
+        "brand": "KIM LONG",
+        "mfa_id": 8267
+      },
+      {
+        "brand": "KING LONG",
+        "mfa_id": 3805
+      },
+      {
+        "brand": "KISH KHODRO",
+        "mfa_id": 6025
+      },
+      {
+        "brand": "KOENIGSEGG",
+        "mfa_id": 4163
+      },
+      {
+        "brand": "KTM",
+        "mfa_id": 2760
+      },
+      {
+        "brand": "KYC",
+        "mfa_id": 6933
+      },
+      {
+        "brand": "LADA",
+        "mfa_id": 63
+      },
+      {
+        "brand": "LAFER",
+        "mfa_id": 8127
+      },
+      {
+        "brand": "LAFORZA",
+        "mfa_id": 2710
+      },
+      {
+        "brand": "LAMBORGHINI",
+        "mfa_id": 701
+      },
+      {
+        "brand": "LANCIA",
+        "mfa_id": 64
+      },
+      {
+        "brand": "LAND ROVER",
+        "mfa_id": 1820
+      },
+      {
+        "brand": "LAND ROVER (CHERY)",
+        "mfa_id": 4282
+      },
+      {
+        "brand": "LANDIAN",
+        "mfa_id": 7577
+      },
+      {
+        "brand": "LANDWIND (JMC)",
+        "mfa_id": 2589
+      },
+      {
+        "brand": "LDV",
+        "mfa_id": 1380
+      },
+      {
+        "brand": "LEAPMOTOR",
+        "mfa_id": 5201
+      },
+      {
+        "brand": "LEOPAARD",
+        "mfa_id": 5530
+      },
+      {
+        "brand": "LETIN",
+        "mfa_id": 5499
+      },
+      {
+        "brand": "LEVC",
+        "mfa_id": 5194
+      },
+      {
+        "brand": "LEXUS",
+        "mfa_id": 842
+      },
+      {
+        "brand": "LEYLAND-INNOCENTI",
+        "mfa_id": 2407
+      },
+      {
+        "brand": "LIFAN",
+        "mfa_id": 3086
+      },
+      {
+        "brand": "LIGIER",
+        "mfa_id": 1513
+      },
+      {
+        "brand": "LINCOLN",
+        "mfa_id": 1200
+      },
+      {
+        "brand": "LINCOLN (CHANGAN)",
+        "mfa_id": 5512
+      },
+      {
+        "brand": "LINGBOX",
+        "mfa_id": 5746
+      },
+      {
+        "brand": "LINGXI",
+        "mfa_id": 8263
+      },
+      {
+        "brand": "LINKTOUR",
+        "mfa_id": 5181
+      },
+      {
+        "brand": "LINXYS",
+        "mfa_id": 6928
+      },
+      {
+        "brand": "LITE (BJEV)",
+        "mfa_id": 5155
+      },
+      {
+        "brand": "LIVAN AUTO",
+        "mfa_id": 6739
+      },
+      {
+        "brand": "LIXIANG",
+        "mfa_id": 5246
+      },
+      {
+        "brand": "LLOYD",
+        "mfa_id": 4187
+      },
+      {
+        "brand": "LOBINI",
+        "mfa_id": 3679
+      },
+      {
+        "brand": "LOHIA",
+        "mfa_id": 5550
+      },
+      {
+        "brand": "LONSDALE",
+        "mfa_id": 6027
+      },
+      {
+        "brand": "LORDSTOWN",
+        "mfa_id": 6822
+      },
+      {
+        "brand": "LORINSER",
+        "mfa_id": 5672
+      },
+      {
+        "brand": "LOTUS",
+        "mfa_id": 802
+      },
+      {
+        "brand": "LOTUS (YOUNGMAN)",
+        "mfa_id": 3661
+      },
+      {
+        "brand": "LOVSON",
+        "mfa_id": 5422
+      },
+      {
+        "brand": "LTI",
+        "mfa_id": 3047
+      },
+      {
+        "brand": "LUAZ",
+        "mfa_id": 1515
+      },
+      {
+        "brand": "LUCID",
+        "mfa_id": 6519
+      },
+      {
+        "brand": "LUXEED",
+        "mfa_id": 7731
+      },
+      {
+        "brand": "LUXGEN",
+        "mfa_id": 3742
+      },
+      {
+        "brand": "LYNK & CO",
+        "mfa_id": 4612
+      },
+      {
+        "brand": "M-HERO",
+        "mfa_id": 7029
+      },
+      {
+        "brand": "MAHINDRA",
+        "mfa_id": 1280
+      },
+      {
+        "brand": "MAHINDRA RENAULT",
+        "mfa_id": 3554
+      },
+      {
+        "brand": "MAN",
+        "mfa_id": 69
+      },
+      {
+        "brand": "MAPLE",
+        "mfa_id": 5696
+      },
+      {
+        "brand": "MAPLE (SMA)",
+        "mfa_id": 2905
+      },
+      {
+        "brand": "MARCOS",
+        "mfa_id": 1516
+      },
+      {
+        "brand": "MARTIN MOTORS",
+        "mfa_id": 5170
+      },
+      {
+        "brand": "MARUTI",
+        "mfa_id": 908
+      },
+      {
+        "brand": "MARUTI SUZUKI",
+        "mfa_id": 3549
+      },
+      {
+        "brand": "MASERATI",
+        "mfa_id": 771
+      },
+      {
+        "brand": "MASTRETTA",
+        "mfa_id": 3794
+      },
+      {
+        "brand": "MAXUS",
+        "mfa_id": 3300
+      },
+      {
+        "brand": "MAYBACH",
+        "mfa_id": 2164
+      },
+      {
+        "brand": "MAZDA",
+        "mfa_id": 72
+      },
+      {
+        "brand": "MAZDA (CHANGAN)",
+        "mfa_id": 3532
+      },
+      {
+        "brand": "MAZDA (FAW)",
+        "mfa_id": 3138
+      },
+      {
+        "brand": "MCLAREN",
+        "mfa_id": 1518
+      },
+      {
+        "brand": "MEGA",
+        "mfa_id": 845
+      },
+      {
+        "brand": "MERCEDES-BENZ",
+        "mfa_id": 74
+      },
+      {
+        "brand": "MERCEDES-BENZ (BBDC)",
+        "mfa_id": 3645
+      },
+      {
+        "brand": "MERCEDES-BENZ (FJDA)",
+        "mfa_id": 3522
+      },
+      {
+        "brand": "MERCURY",
+        "mfa_id": 161
+      },
+      {
+        "brand": "MERKUR",
+        "mfa_id": 2711
+      },
+      {
+        "brand": "METROCAB",
+        "mfa_id": 1520
+      },
+      {
+        "brand": "MG",
+        "mfa_id": 75
+      },
+      {
+        "brand": "MG (NANJING)",
+        "mfa_id": 3133
+      },
+      {
+        "brand": "MG (SAIC)",
+        "mfa_id": 3838
+      },
+      {
+        "brand": "MIA ELECTRIC",
+        "mfa_id": 3961
+      },
+      {
+        "brand": "MICRO",
+        "mfa_id": 6545
+      },
+      {
+        "brand": "MICROCAR",
+        "mfa_id": 4219
+      },
+      {
+        "brand": "MIDDLEBRIDGE",
+        "mfa_id": 1521
+      },
+      {
+        "brand": "MINAN AUTO",
+        "mfa_id": 8235
+      },
+      {
+        "brand": "MINELLI",
+        "mfa_id": 1522
+      },
+      {
+        "brand": "MINI",
+        "mfa_id": 1523
+      },
+      {
+        "brand": "MINI (GB)",
+        "mfa_id": 6028
+      },
+      {
+        "brand": "MINICORD",
+        "mfa_id": 5257
+      },
+      {
+        "brand": "MITSUBISHI",
+        "mfa_id": 77
+      },
+      {
+        "brand": "MITSUBISHI (BJC)",
+        "mfa_id": 3650
+      },
+      {
+        "brand": "MITSUBISHI (GAC)",
+        "mfa_id": 3837
+      },
+      {
+        "brand": "MITSUBISHI (SOUEAST)",
+        "mfa_id": 3658
+      },
+      {
+        "brand": "MITSUOKA",
+        "mfa_id": 2904
+      },
+      {
+        "brand": "MIURA",
+        "mfa_id": 2254
+      },
+      {
+        "brand": "MOBILITY VENTURES",
+        "mfa_id": 4501
+      },
+      {
+        "brand": "MOBILIZE",
+        "mfa_id": 8369
+      },
+      {
+        "brand": "MODERN AUTO",
+        "mfa_id": 6378
+      },
+      {
+        "brand": "MORGAN",
+        "mfa_id": 803
+      },
+      {
+        "brand": "MORRIS",
+        "mfa_id": 78
+      },
+      {
+        "brand": "MOSKVICH",
+        "mfa_id": 813
+      },
+      {
+        "brand": "MOSLER",
+        "mfa_id": 6029
+      },
+      {
+        "brand": "MPM MOTORS",
+        "mfa_id": 5204
+      },
+      {
+        "brand": "MTX",
+        "mfa_id": 6030
+      },
+      {
+        "brand": "MULLEN",
+        "mfa_id": 8065
+      },
+      {
+        "brand": "MULTIX",
+        "mfa_id": 4605
+      },
+      {
+        "brand": "MWM",
+        "mfa_id": 670
+      },
+      {
+        "brand": "NAC IVECO (NAVECO)",
+        "mfa_id": 3132
+      },
+      {
+        "brand": "NAMMI",
+        "mfa_id": 7099
+      },
+      {
+        "brand": "NAZA",
+        "mfa_id": 3070
+      },
+      {
+        "brand": "NEOMOR",
+        "mfa_id": 7098
+      },
+      {
+        "brand": "NETA (HOZON)",
+        "mfa_id": 5156
+      },
+      {
+        "brand": "NEW BAOJUN",
+        "mfa_id": 5525
+      },
+      {
+        "brand": "NEW GONOW AUTO",
+        "mfa_id": 6543
+      },
+      {
+        "brand": "NEXTEM",
+        "mfa_id": 6773
+      },
+      {
+        "brand": "NIO",
+        "mfa_id": 4780
+      },
+      {
+        "brand": "NISSAN",
+        "mfa_id": 80
+      },
+      {
+        "brand": "NISSAN (DFAC)",
+        "mfa_id": 3141
+      },
+      {
+        "brand": "NISSAN (ZHENGZHOU)",
+        "mfa_id": 2910
+      },
+      {
+        "brand": "NOBLE",
+        "mfa_id": 3625
+      },
+      {
+        "brand": "NSU",
+        "mfa_id": 81
+      },
+      {
+        "brand": "OHM",
+        "mfa_id": 7289
+      },
+      {
+        "brand": "OLDSMOBILE",
+        "mfa_id": 1141
+      },
+      {
+        "brand": "OLTCIT",
+        "mfa_id": 1527
+      },
+      {
+        "brand": "OMODA",
+        "mfa_id": 7642
+      },
+      {
+        "brand": "ONVO",
+        "mfa_id": 8236
+      },
+      {
+        "brand": "OPEL",
+        "mfa_id": 84
+      },
+      {
+        "brand": "ORA",
+        "mfa_id": 5123
+      },
+      {
+        "brand": "OSCA",
+        "mfa_id": 1529
+      },
+      {
+        "brand": "OSHAN",
+        "mfa_id": 5115
+      },
+      {
+        "brand": "OULLIM",
+        "mfa_id": 5203
+      },
+      {
+        "brand": "PACKARD",
+        "mfa_id": 2806
+      },
+      {
+        "brand": "PAGANI",
+        "mfa_id": 4164
+      },
+      {
+        "brand": "PANOZ",
+        "mfa_id": 1530
+      },
+      {
+        "brand": "PANTHER",
+        "mfa_id": 1531
+      },
+      {
+        "brand": "PERODUA",
+        "mfa_id": 1533
+      },
+      {
+        "brand": "PEUGEOT",
+        "mfa_id": 88
+      },
+      {
+        "brand": "PEUGEOT (DF-PSA)",
+        "mfa_id": 3531
+      },
+      {
+        "brand": "PGO",
+        "mfa_id": 4659
+      },
+      {
+        "brand": "PIAGGIO",
+        "mfa_id": 181
+      },
+      {
+        "brand": "PININFARINA",
+        "mfa_id": 3046
+      },
+      {
+        "brand": "PLYMOUTH",
+        "mfa_id": 850
+      },
+      {
+        "brand": "POCCO",
+        "mfa_id": 6146
+      },
+      {
+        "brand": "POLARIS",
+        "mfa_id": 5152
+      },
+      {
+        "brand": "POLARSUN",
+        "mfa_id": 3154
+      },
+      {
+        "brand": "POLESTAR",
+        "mfa_id": 4817
+      },
+      {
+        "brand": "POLESTONES",
+        "mfa_id": 7023
+      },
+      {
+        "brand": "PONTIAC",
+        "mfa_id": 774
+      },
+      {
+        "brand": "PORSCHE",
+        "mfa_id": 92
+      },
+      {
+        "brand": "PREMIER",
+        "mfa_id": 851
+      },
+      {
+        "brand": "PROTON",
+        "mfa_id": 778
+      },
+      {
+        "brand": "PUCH",
+        "mfa_id": 1580
+      },
+      {
+        "brand": "PUMA",
+        "mfa_id": 880
+      },
+      {
+        "brand": "PYEONGHWA (PMC)",
+        "mfa_id": 3740
+      },
+      {
+        "brand": "QIANTU",
+        "mfa_id": 5138
+      },
+      {
+        "brand": "QIYUAN",
+        "mfa_id": 7094
+      },
+      {
+        "brand": "QOROS",
+        "mfa_id": 3839
+      },
+      {
+        "brand": "QVALE",
+        "mfa_id": 2712
+      },
+      {
+        "brand": "R AUTO",
+        "mfa_id": 6067
+      },
+      {
+        "brand": "RADAR",
+        "mfa_id": 6710
+      },
+      {
+        "brand": "RAM",
+        "mfa_id": 3689
+      },
+      {
+        "brand": "RAMBLER",
+        "mfa_id": 2808
+      },
+      {
+        "brand": "RANGER",
+        "mfa_id": 1534
+      },
+      {
+        "brand": "RASANDIK",
+        "mfa_id": 5426
+      },
+      {
+        "brand": "RAVON",
+        "mfa_id": 4660
+      },
+      {
+        "brand": "RAYTON FISSORE",
+        "mfa_id": 1536
+      },
+      {
+        "brand": "RCEV",
+        "mfa_id": 5766
+      },
+      {
+        "brand": "REACH",
+        "mfa_id": 7095
+      },
+      {
+        "brand": "RED STAR",
+        "mfa_id": 5124
+      },
+      {
+        "brand": "REFINE",
+        "mfa_id": 6057
+      },
+      {
+        "brand": "RELIANT",
+        "mfa_id": 773
+      },
+      {
+        "brand": "RELY",
+        "mfa_id": 3284
+      },
+      {
+        "brand": "RENAULT",
+        "mfa_id": 93
+      },
+      {
+        "brand": "RENAULT (DFAC)",
+        "mfa_id": 4538
+      },
+      {
+        "brand": "RENAULT TRUCKS",
+        "mfa_id": 694
+      },
+      {
+        "brand": "REVA",
+        "mfa_id": 3555
+      },
+      {
+        "brand": "RIICH",
+        "mfa_id": 3285
+      },
+      {
+        "brand": "RILEY",
+        "mfa_id": 1539
+      },
+      {
+        "brand": "RIVIAN",
+        "mfa_id": 6915
+      },
+      {
+        "brand": "ROEWE (SAIC)",
+        "mfa_id": 3202
+      },
+      {
+        "brand": "ROLLS-ROYCE",
+        "mfa_id": 705
+      },
+      {
+        "brand": "ROMANITAL",
+        "mfa_id": 4708
+      },
+      {
+        "brand": "ROVER",
+        "mfa_id": 95
+      },
+      {
+        "brand": "RUF",
+        "mfa_id": 4152
+      },
+      {
+        "brand": "S-HIACE",
+        "mfa_id": 8237
+      },
+      {
+        "brand": "SAAB",
+        "mfa_id": 99
+      },
+      {
+        "brand": "SAIPA",
+        "mfa_id": 4592
+      },
+      {
+        "brand": "SALEEN",
+        "mfa_id": 2713
+      },
+      {
+        "brand": "SAMSUNG",
+        "mfa_id": 4260
+      },
+      {
+        "brand": "SAN",
+        "mfa_id": 1544
+      },
+      {
+        "brand": "SANTA MATILDE",
+        "mfa_id": 8155
+      },
+      {
+        "brand": "SANTANA",
+        "mfa_id": 171
+      },
+      {
+        "brand": "SAO",
+        "mfa_id": 1545
+      },
+      {
+        "brand": "SATURN",
+        "mfa_id": 1497
+      },
+      {
+        "brand": "SCION",
+        "mfa_id": 2714
+      },
+      {
+        "brand": "SCOOBIC",
+        "mfa_id": 6696
+      },
+      {
+        "brand": "SCOOTERS INDIA",
+        "mfa_id": 5416
+      },
+      {
+        "brand": "SD",
+        "mfa_id": 5813
+      },
+      {
+        "brand": "SEAT",
+        "mfa_id": 104
+      },
+      {
+        "brand": "SEAZ",
+        "mfa_id": 4763
+      },
+      {
+        "brand": "SERES",
+        "mfa_id": 5590
+      },
+      {
+        "brand": "SEVIC",
+        "mfa_id": 6178
+      },
+      {
+        "brand": "SHELBY",
+        "mfa_id": 1547
+      },
+      {
+        "brand": "SHINERAY",
+        "mfa_id": 4661
+      },
+      {
+        "brand": "SHUANGHUAN",
+        "mfa_id": 3156
+      },
+      {
+        "brand": "SIAM",
+        "mfa_id": 4537
+      },
+      {
+        "brand": "SILENCE",
+        "mfa_id": 8327
+      },
+      {
+        "brand": "SINGER",
+        "mfa_id": 4731
+      },
+      {
+        "brand": "SINOGOLD",
+        "mfa_id": 5125
+      },
+      {
+        "brand": "SINOTRUK (CNHTC)",
+        "mfa_id": 3855
+      },
+      {
+        "brand": "SIPANI",
+        "mfa_id": 1548
+      },
+      {
+        "brand": "SITECH",
+        "mfa_id": 5139
+      },
+      {
+        "brand": "SKODA",
+        "mfa_id": 106
+      },
+      {
+        "brand": "SKODA (SVW)",
+        "mfa_id": 3530
+      },
+      {
+        "brand": "SKYWELL",
+        "mfa_id": 5890
+      },
+      {
+        "brand": "SKYWELL (KAIWO)",
+        "mfa_id": 5259
+      },
+      {
+        "brand": "SKYWORTH",
+        "mfa_id": 6176
+      },
+      {
+        "brand": "SMART",
+        "mfa_id": 1138
+      },
+      {
+        "brand": "SOL",
+        "mfa_id": 5595
+      },
+      {
+        "brand": "SOUEAST",
+        "mfa_id": 3657
+      },
+      {
+        "brand": "SOYAT",
+        "mfa_id": 3153
+      },
+      {
+        "brand": "SPANIA GTA",
+        "mfa_id": 5171
+      },
+      {
+        "brand": "SPECTRE",
+        "mfa_id": 1549
+      },
+      {
+        "brand": "SPERANZA",
+        "mfa_id": 4627
+      },
+      {
+        "brand": "SPORTEQUIPE",
+        "mfa_id": 6874
+      },
+      {
+        "brand": "SPYKER",
+        "mfa_id": 2755
+      },
+      {
+        "brand": "SRM (BRILLIANCE)",
+        "mfa_id": 5262
+      },
+      {
+        "brand": "SRT",
+        "mfa_id": 4010
+      },
+      {
+        "brand": "SSANGYONG",
+        "mfa_id": 175
+      },
+      {
+        "brand": "STANDARD AUTOMOBILE",
+        "mfa_id": 1550
+      },
+      {
+        "brand": "STANGUELLINI",
+        "mfa_id": 2810
+      },
+      {
+        "brand": "STELATO",
+        "mfa_id": 8238
+      },
+      {
+        "brand": "STERLING",
+        "mfa_id": 1540
+      },
+      {
+        "brand": "STEYR",
+        "mfa_id": 176
+      },
+      {
+        "brand": "STREETSCOOTER",
+        "mfa_id": 4015
+      },
+      {
+        "brand": "STUDEBAKER",
+        "mfa_id": 2715
+      },
+      {
+        "brand": "SUBARU",
+        "mfa_id": 107
+      },
+      {
+        "brand": "SUNBEAM",
+        "mfa_id": 2716
+      },
+      {
+        "brand": "SUZUKI",
+        "mfa_id": 109
+      },
+      {
+        "brand": "SUZUKI (CHANGAN)",
+        "mfa_id": 3143
+      },
+      {
+        "brand": "SUZUKI (CHANGHE)",
+        "mfa_id": 3199
+      },
+      {
+        "brand": "SWM MOTORS",
+        "mfa_id": 4611
+      },
+      {
+        "brand": "T-KING",
+        "mfa_id": 5999
+      },
+      {
+        "brand": "TAC",
+        "mfa_id": 3680
+      },
+      {
+        "brand": "TAGAZ",
+        "mfa_id": 4292
+      },
+      {
+        "brand": "TALBOT",
+        "mfa_id": 110
+      },
+      {
+        "brand": "TANK",
+        "mfa_id": 6233
+      },
+      {
+        "brand": "TATA",
+        "mfa_id": 178
+      },
+      {
+        "brand": "TAZZARI",
+        "mfa_id": 3443
+      },
+      {
+        "brand": "TD Cars",
+        "mfa_id": 6175
+      },
+      {
+        "brand": "TECHART",
+        "mfa_id": 5330
+      },
+      {
+        "brand": "TEJA",
+        "mfa_id": 5425
+      },
+      {
+        "brand": "TERACO",
+        "mfa_id": 8370
+      },
+      {
+        "brand": "TESLA",
+        "mfa_id": 3328
+      },
+      {
+        "brand": "THACO",
+        "mfa_id": 7025
+      },
+      {
+        "brand": "THAIRUNG",
+        "mfa_id": 4644
+      },
+      {
+        "brand": "THINK",
+        "mfa_id": 3514
+      },
+      {
+        "brand": "TIANMA",
+        "mfa_id": 3048
+      },
+      {
+        "brand": "TIANQI MEIYA",
+        "mfa_id": 3157
+      },
+      {
+        "brand": "TIMOR",
+        "mfa_id": 6119
+      },
+      {
+        "brand": "TOFAS",
+        "mfa_id": 1551
+      },
+      {
+        "brand": "TOGG",
+        "mfa_id": 5558
+      },
+      {
+        "brand": "TONGBAO",
+        "mfa_id": 4449
+      },
+      {
+        "brand": "TONGJIAFU",
+        "mfa_id": 4448
+      },
+      {
+        "brand": "TONGTIAN",
+        "mfa_id": 2913
+      },
+      {
+        "brand": "TOYOTA",
+        "mfa_id": 111
+      },
+      {
+        "brand": "TOYOTA (FAW)",
+        "mfa_id": 3137
+      },
+      {
+        "brand": "TOYOTA (GAC)",
+        "mfa_id": 3130
+      },
+      {
+        "brand": "TRABANT",
+        "mfa_id": 187
+      },
+      {
+        "brand": "TRAUM",
+        "mfa_id": 4798
+      },
+      {
+        "brand": "TRIUMPH",
+        "mfa_id": 112
+      },
+      {
+        "brand": "TROLLER",
+        "mfa_id": 3681
+      },
+      {
+        "brand": "TROPOS",
+        "mfa_id": 6439
+      },
+      {
+        "brand": "TVR",
+        "mfa_id": 861
+      },
+      {
+        "brand": "TVS",
+        "mfa_id": 4554
+      },
+      {
+        "brand": "UAZ",
+        "mfa_id": 1553
+      },
+      {
+        "brand": "UFO",
+        "mfa_id": 3159
+      },
+      {
+        "brand": "UMM",
+        "mfa_id": 1554
+      },
+      {
+        "brand": "UZ-DAEWOO",
+        "mfa_id": 4762
+      },
+      {
+        "brand": "VAM",
+        "mfa_id": 4310
+      },
+      {
+        "brand": "VAUXHALL",
+        "mfa_id": 117
+      },
+      {
+        "brand": "VECTOR",
+        "mfa_id": 1555
+      },
+      {
+        "brand": "VEM",
+        "mfa_id": 4646
+      },
+      {
+        "brand": "VENIRAUTO",
+        "mfa_id": 4636
+      },
+      {
+        "brand": "VENTURI",
+        "mfa_id": 1556
+      },
+      {
+        "brand": "VENUCIA",
+        "mfa_id": 3799
+      },
+      {
+        "brand": "VGV",
+        "mfa_id": 5506
+      },
+      {
+        "brand": "VIAUTO",
+        "mfa_id": 6768
+      },
+      {
+        "brand": "VICTORY",
+        "mfa_id": 4256
+      },
+      {
+        "brand": "VINFAST",
+        "mfa_id": 5118
+      },
+      {
+        "brand": "VM",
+        "mfa_id": 2144
+      },
+      {
+        "brand": "VOLT",
+        "mfa_id": 7274
+      },
+      {
+        "brand": "VOLVO",
+        "mfa_id": 120
+      },
+      {
+        "brand": "VOLVO (CHANGAN)",
+        "mfa_id": 3533
+      },
+      {
+        "brand": "VOLVO ASIA",
+        "mfa_id": 4167
+      },
+      {
+        "brand": "VORTEX",
+        "mfa_id": 5111
+      },
+      {
+        "brand": "VOYAH",
+        "mfa_id": 6223
+      },
+      {
+        "brand": "VPG",
+        "mfa_id": 3752
+      },
+      {
+        "brand": "VUHL",
+        "mfa_id": 4607
+      },
+      {
+        "brand": "VW",
+        "mfa_id": 121
+      },
+      {
+        "brand": "VW (ANHUI)",
+        "mfa_id": 8223
+      },
+      {
+        "brand": "VW (FAW)",
+        "mfa_id": 2859
+      },
+      {
+        "brand": "VW (SVW)",
+        "mfa_id": 3035
+      },
+      {
+        "brand": "WALLYS",
+        "mfa_id": 8166
+      },
+      {
+        "brand": "WANFENG",
+        "mfa_id": 3191
+      },
+      {
+        "brand": "WANXIANG AUTO",
+        "mfa_id": 6624
+      },
+      {
+        "brand": "WARTBURG",
+        "mfa_id": 186
+      },
+      {
+        "brand": "WELTMEISTER",
+        "mfa_id": 5114
+      },
+      {
+        "brand": "WESTFIELD",
+        "mfa_id": 907
+      },
+      {
+        "brand": "WEY",
+        "mfa_id": 4751
+      },
+      {
+        "brand": "WIESMANN",
+        "mfa_id": 1558
+      },
+      {
+        "brand": "WILLYS",
+        "mfa_id": 2815
+      },
+      {
+        "brand": "WINNERWAY",
+        "mfa_id": 8239
+      },
+      {
+        "brand": "WOLSELEY",
+        "mfa_id": 1541
+      },
+      {
+        "brand": "WORKHORSE",
+        "mfa_id": 3696
+      },
+      {
+        "brand": "WULING",
+        "mfa_id": 2874
+      },
+      {
+        "brand": "WULING (SGMW)",
+        "mfa_id": 3140
+      },
+      {
+        "brand": "XBUS",
+        "mfa_id": 6398
+      },
+      {
+        "brand": "XCITE",
+        "mfa_id": 8161
+      },
+      {
+        "brand": "XEV",
+        "mfa_id": 6588
+      },
+      {
+        "brand": "XIAOMI",
+        "mfa_id": 8048
+      },
+      {
+        "brand": "XINKAI",
+        "mfa_id": 3186
+      },
+      {
+        "brand": "XPENG",
+        "mfa_id": 5184
+      },
+      {
+        "brand": "YANGWANG",
+        "mfa_id": 7089
+      },
+      {
+        "brand": "YEMA",
+        "mfa_id": 4002
+      },
+      {
+        "brand": "YUANHANG",
+        "mfa_id": 7732
+      },
+      {
+        "brand": "YUDO",
+        "mfa_id": 4764
+      },
+      {
+        "brand": "YUEJIN",
+        "mfa_id": 3193
+      },
+      {
+        "brand": "YUGO",
+        "mfa_id": 2816
+      },
+      {
+        "brand": "YULON",
+        "mfa_id": 1559
+      },
+      {
+        "brand": "YULU",
+        "mfa_id": 5188
+      },
+      {
+        "brand": "ZACUA",
+        "mfa_id": 6207
+      },
+      {
+        "brand": "ZAMYAD",
+        "mfa_id": 4740
+      },
+      {
+        "brand": "ZANELLA",
+        "mfa_id": 4623
+      },
+      {
+        "brand": "ZAROOQ",
+        "mfa_id": 4788
+      },
+      {
+        "brand": "ZASTAVA",
+        "mfa_id": 124
+      },
+      {
+        "brand": "ZAZ",
+        "mfa_id": 1139
+      },
+      {
+        "brand": "ZD",
+        "mfa_id": 4599
+      },
+      {
+        "brand": "ZEDRIV",
+        "mfa_id": 5258
+      },
+      {
+        "brand": "ZEEKR",
+        "mfa_id": 6168
+      },
+      {
+        "brand": "ZENOS CARS",
+        "mfa_id": 4604
+      },
+      {
+        "brand": "ZENVO",
+        "mfa_id": 6043
+      },
+      {
+        "brand": "ZHONGHUA (BRILLIANCE)",
+        "mfa_id": 2736
+      },
+      {
+        "brand": "ZHONGXING (ZX AUTO)",
+        "mfa_id": 2911
+      },
+      {
+        "brand": "ZIL",
+        "mfa_id": 2932
+      },
+      {
+        "brand": "ZINORO",
+        "mfa_id": 4033
+      },
+      {
+        "brand": "ZOTYE",
+        "mfa_id": 3160
+      },
+      {
+        "brand": "ZUENDAPP",
+        "mfa_id": 678
+      }
+    ]
+  }
+}

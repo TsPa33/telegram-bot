@@ -37,6 +37,7 @@ class Registration(Credentials):
 
 
 class VehicleInput(Input):
+    ktype: Annotated[int, Field(gt=0, le=2147483647, strict=True)] | None = None
     manufacturer: Text100
     model: Text100
     generation: Annotated[str, Field(max_length=100)] = ""

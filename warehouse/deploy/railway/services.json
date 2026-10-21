@@ -1,7 +1,7 @@
 {
-  "description": "Dashboard settings checklist, NOT an auto-imported Railway config file. Create a NEW project; never apply to CarPot.",
-  "project": "carpot-warehouse-staging",
-  "environment": "staging",
+  "description": "Dashboard checklist only; target a NEW EMPTY warehouse-staging environment in the EXISTING paid Railway project. Never duplicate/sync production or change its resources.",
+  "project": "<select-your-existing-Railway-project>",
+  "environment": "warehouse-staging",
   "services": {
     "warehouse-web": {
       "source": {
@@ -26,7 +26,8 @@
         "PORT": "8080",
         "RAILWAY_DOCKERFILE_PATH": "deploy/railway/frontend.Dockerfile",
         "WAREHOUSE_PUBLIC_ORIGIN": "https://${{RAILWAY_PUBLIC_DOMAIN}}",
-        "WAREHOUSE_BACKEND_ORIGIN": "http://${{warehouse-api.RAILWAY_PRIVATE_DOMAIN}}:8010"
+        "WAREHOUSE_BACKEND_ORIGIN": "http://${{warehouse-api.RAILWAY_PRIVATE_DOMAIN}}:8010",
+        "RAILWAY_DEPLOYMENT_DRAINING_SECONDS": "30"
       }
     },
     "warehouse-api": {
@@ -59,7 +60,8 @@
         "WAREHOUSE_DB_USER": "${{warehouse-db.POSTGRES_USER}}",
         "WAREHOUSE_DB_PASSWORD": "${{warehouse-db.POSTGRES_PASSWORD}}",
         "WAREHOUSE_STARTUP_TIMEOUT": "120",
-        "WAREHOUSE_FORWARDED_ALLOW_IPS": "fd00::/8,10.0.0.0/8"
+        "WAREHOUSE_FORWARDED_ALLOW_IPS": "fd00::/8,10.0.0.0/8",
+        "RAILWAY_DEPLOYMENT_DRAINING_SECONDS": "30"
       }
     },
     "warehouse-db": {
@@ -67,13 +69,19 @@
       "publicDomain": false,
       "tcpProxy": false,
       "replicas": 1,
-      "volume": { "mountPath": "/var/lib/postgresql/data" },
+      "volume": {
+        "mountPath": "/var/lib/postgresql/data"
+      },
       "variables": {
         "POSTGRES_DB": "warehouse_staging",
         "POSTGRES_USER": "warehouse_staging",
         "POSTGRES_PASSWORD": "GENERATE_A_NEW_SECRET_IN_RAILWAY_SETTINGS",
-        "PGDATA": "/var/lib/postgresql/data/pgdata"
+        "PGDATA": "/var/lib/postgresql/data/pgdata",
+        "RAILWAY_DEPLOYMENT_DRAINING_SECONDS": "30"
       }
     }
-  }
+  },
+  "projectSelection": "EXISTING",
+  "environmentCreation": "EMPTY",
+  "productionChangesAllowed": false
 }
