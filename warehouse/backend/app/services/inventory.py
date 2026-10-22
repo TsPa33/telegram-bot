@@ -2,7 +2,7 @@ from decimal import Decimal
 from datetime import date, datetime
 from fastapi import HTTPException
 from sqlalchemy import select
-from app.models import Category, Operation, Part, Vehicle, Account
+from app.models import Category, Operation, Part, Vehicle, Account, VehicleChecklistItem
 
 
 def owned(db, model, id, account_id, *, lock=False, active=False):
@@ -33,7 +33,7 @@ def record(db, account_id, row, type, reason, before):
             actor_id=account_id,
             part_id=row.id if isinstance(row, Part) else None,
             vehicle_id=row.vehicle_id
-            if isinstance(row, Part)
+            if isinstance(row, (Part, VehicleChecklistItem))
             else row.id
             if isinstance(row, Vehicle)
             else None,

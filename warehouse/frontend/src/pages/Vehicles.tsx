@@ -10,6 +10,7 @@ import {
   type Field,
 } from "../components";
 import VehicleForm from "../VehicleForm";
+import VehicleChecklist from "../VehicleChecklist";
 
 import {
   choices,
@@ -353,6 +354,8 @@ function VehicleDetail({
           </span>
         </div>
       )}
+      <VehicleChecklist vehicle={v} />
+      <details><summary>Ручний список зі власних категорій</summary>
       <p className="notice">
         Стандартний чекліст — перелік можливих деталей, а не точний OEM-каталог.
         Усі нові позиції мають нульовий залишок. Повторне формування зберігає
@@ -375,9 +378,10 @@ function VehicleDetail({
             }
           }}
         >
-          Сформувати список запчастин
+          Сформувати ручний список запчастин
         </button>
       </div>
+      </details>
     </>
   );
 }

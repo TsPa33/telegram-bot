@@ -8,6 +8,7 @@ from fastapi import HTTPException
 from app.config import is_staging, public_origin, secure_cookies
 from app.api.routes import router
 from app.api.plan_parts import router as plan_parts_router
+from app.api.checklists import router as checklists_router
 from app.db import engine
 
 app = FastAPI(
@@ -17,6 +18,7 @@ app = FastAPI(
 )
 app.include_router(router)
 app.include_router(plan_parts_router)
+app.include_router(checklists_router)
 if is_staging():
     if not secure_cookies():
         raise RuntimeError("Staging requires secure cookies")

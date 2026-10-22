@@ -27,7 +27,7 @@ class Brand(BaseModel):
 
 
 class CatalogPartType(BaseModel):
-    """Offline contract validation only; no inventory or fetch side effects."""
+    """Provider catalogue type; article_count is never inventory quantity."""
     pt_id: int = Field(gt=0, strict=True)
     name: str = Field(min_length=1, max_length=200)
     article_count: int = Field(ge=0, strict=True)
@@ -157,6 +157,9 @@ class PlanPartsClient:
 
     def modifications(self, account_id: str, ms_id: int, gate: RequestGate = request_gate):
         return self._lookup(account_id, "modifications", {"ms_id": ms_id}, Modification, "ktype", gate)
+
+    def categories(self, account_id: str, ktype: int, gate: RequestGate = request_gate):
+        return self._lookup(account_id, "categories", {"ktype": ktype}, CatalogPartType, "pt_id", gate)
 
     def _lookup(self, account_id, resource, params, schema, identifier, gate, name_field=""):
         if os.getenv("PLAN_PARTS_ENABLED", "false").lower() != "true":

@@ -97,12 +97,14 @@ filtering; unknown ends do not impose an upper bound, and the UI labels them
 A null value's presence is confirmed; its complete business semantics are not
 established by an export alone.
 
-The categories export is validated offline against pt_id/name/article_count only;
-there is still NO categories fetch route, import or stock creation. article_count
-is never treated as quantity. catalog_url is not followed. Licensed reuse,
-translations and persistent production caching remain unverified. The test files
-are user-provided fixtures, not a seeded production/global catalogue. Do not enable
-live use until rights and a separately approved paid-test budget are confirmed.
+Categories are now fetched only by an explicit authenticated checklist action,
+using the confirmed `catalog/categories?ktype=...` contract. See
+[PLAN_PARTS_CHECKLIST.md](PLAN_PARTS_CHECKLIST.md) for endpoints, persistence,
+account isolation, migration and verification. `article_count` is never quantity;
+`catalog_url` is not followed. The API provides no hierarchy or Ukrainian names.
+Licensed storage/reuse remains unverified: keep live access disabled until rights
+and a separately approved paid-test budget are confirmed. Fixtures are user-provided
+test exports, not a seeded production/global catalogue.
 
 ## Offline checks
 

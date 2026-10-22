@@ -7,6 +7,7 @@ from sqlalchemy import (
     Date,
     DateTime,
     ForeignKey,
+    ForeignKeyConstraint,
     Integer,
     JSON,
     Numeric,
@@ -54,12 +55,15 @@ class Vehicle(Owned, Base):
     __tablename__ = "vehicles"
     __table_args__ = (
         UniqueConstraint("account_id", "donor_id"),
+        UniqueConstraint("id", "account_id", name="uq_vehicles_id_account"),
         CheckConstraint("year BETWEEN 1886 AND 2100"),
         CheckConstraint("acquisition_cost IS NULL OR acquisition_cost >= 0"),
         CheckConstraint("ktype IS NULL OR ktype > 0", name="ck_vehicle_ktype_positive"),
     )
     manufacturer: Mapped[str] = mapped_column(String(100))
     ktype: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    checklist_ktype: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    checklist_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     model: Mapped[str] = mapped_column(String(100))
     generation: Mapped[str] = mapped_column(String(100), default="")
     year: Mapped[int] = mapped_column(Integer)
@@ -89,6 +93,30 @@ class Category(Owned, Base):
     kind: Mapped[str] = mapped_column(String(20))
     source: Mapped[str] = mapped_column(String(100))
     external_key: Mapped[str] = mapped_column(String(200))
+
+
+class VehicleChecklistItem(Base):
+    """Potential type for one donor, never an inventory/quantity record."""
+    __tablename__ = "vehicle_checklist_items"
+    __table_args__ = (
+        ForeignKeyConstraint(["vehicle_id", "account_id"], ["vehicles.id", "vehicles.account_id"], name="fk_checklist_vehicle_account"),
+        UniqueConstraint("vehicle_id", "source", "ktype", "pt_id", name="uq_checklist_vehicle_type"),
+        CheckConstraint("ktype > 0 AND pt_id > 0 AND article_count >= 0", name="ck_checklist_provider_values"),
+        CheckConstraint("status IN ('unchecked','present','absent','damaged')", name="ck_checklist_status"),
+    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    account_id: Mapped[str] = mapped_column(ForeignKey("accounts.id"), index=True)
+    vehicle_id: Mapped[str] = mapped_column(String(36), index=True)
+    source: Mapped[str] = mapped_column(String(100), default="plan.parts")
+    ktype: Mapped[int] = mapped_column(Integer)
+    pt_id: Mapped[int] = mapped_column(Integer)
+    name_en: Mapped[str] = mapped_column(String(200))
+    name_uk: Mapped[str] = mapped_column(String(200), default="")
+    article_count: Mapped[int] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(String(20), default="unchecked")
+    notes: Mapped[str] = mapped_column(Text, default="")
+    last_synced_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
 class Part(Owned, Base):
