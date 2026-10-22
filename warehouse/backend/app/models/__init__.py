@@ -75,7 +75,7 @@ class Vehicle(Owned, Base):
     acquisition_cost: Mapped[Decimal | None] = mapped_column(
         Numeric(14, 2), nullable=True
     )
-    acquisition_date: Mapped[date] = mapped_column(Date)
+    acquisition_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     notes: Mapped[str] = mapped_column(Text, default="")
     status: Mapped[str] = mapped_column(String(30), default="dismantling")
 

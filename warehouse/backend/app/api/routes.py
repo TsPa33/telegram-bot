@@ -29,6 +29,7 @@ from app.schemas import (
     VehicleInput,
 )
 from app.services import auth
+from app.services.vehicle_catalog import local_catalog, automatic_donor_id
 from app.services.analytics import dashboard
 from app.services.inventory import (
     checklist,
@@ -194,9 +195,17 @@ def vehicles(
     )
 
 
+@router.get("/vehicle-catalog", tags=["Vehicles"])
+def vehicle_catalog(db: DB, who: Auth):
+    return local_catalog(db, who.user.id)
+
+
 @router.post("/vehicles", status_code=201, tags=["Vehicles"])
 def vehicle_create(data: VehicleInput, db: DB, who: Auth):
-    row = Vehicle(account_id=who.user.id, **data.model_dump())
+    values = data.model_dump()
+    if values["donor_id"] is None:
+        values["donor_id"] = automatic_donor_id(db, who.user.id)
+    row = Vehicle(account_id=who.user.id, **values)
     db.add(row)
     record(db, who.user.id, row, "vehicle_create", "Додано донора", {})
     db.commit()
@@ -212,7 +221,13 @@ def vehicle_get(id: str, db: DB, who: Auth):
 def vehicle_update(id: str, data: VehicleInput, db: DB, who: Auth):
     row = owned(db, Vehicle, id, who.user.id, lock=True, active=True)
     before = snapshot(row)
-    for k, v in data.model_dump().items():
+    changes = data.model_dump(exclude_unset=True)
+    if "donor_id" in changes and changes["donor_id"] is None:
+        raise HTTPException(422, "Внутрішній ID не може бути порожнім")
+    identifying = ("manufacturer", "model", "year", "engine", "generation", "fuel_type", "transmission")
+    if "ktype" not in changes and any(k in changes and changes[k] != getattr(row, k) for k in identifying):
+        changes["ktype"] = None
+    for k, v in changes.items():
         setattr(row, k, v)
     record(db, who.user.id, row, "vehicle_update", "Оновлено донора", before)
     db.commit()

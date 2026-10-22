@@ -46,9 +46,9 @@ class VehicleInput(Input):
     fuel_type: Annotated[str, Field(max_length=50)] = ""
     transmission: Annotated[str, Field(max_length=50)] = ""
     vin: Annotated[str, Field(pattern=r"^[A-HJ-NPR-Z0-9]{17}$")] | None = None
-    donor_id: Annotated[str, Field(min_length=1, max_length=80)]
+    donor_id: Annotated[str, Field(min_length=1, max_length=80)] | None = None
     acquisition_cost: Money | None = None
-    acquisition_date: date
+    acquisition_date: date | None = None
     notes: Annotated[str, Field(max_length=10000)] = ""
     status: Literal["planned", "dismantling", "completed"] = "dismantling"
 

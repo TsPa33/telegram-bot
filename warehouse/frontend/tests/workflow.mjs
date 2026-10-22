@@ -43,12 +43,12 @@ export async function workflow(page, viewport) {
     .getByRole("button", { name: "Додати автомобіль", exact: true })
     .click();
   const dialog = page.getByRole("dialog");
-  await dialog.getByLabel("Виробник").fill("E2E manufacturer");
-  await dialog.getByLabel("Модель", { exact: false }).fill("E2E model");
-  await dialog.getByLabel("Рік").fill("2020");
-  await dialog.getByLabel("Внутрішній ID донора").fill("E2E-DONOR");
-  await dialog.getByLabel("Дата придбання").fill("2026-01-01");
-  await dialog.getByRole("button", { name: "Зберегти", exact: true }).click();
+  await dialog.getByRole("combobox", {name: "Марка", exact: true}).fill("E2E manufacturer");
+  await dialog.getByRole("option", {name: "Використати «E2E manufacturer»", exact: true}).click();
+  await dialog.getByRole("combobox", {name: "Модель", exact: true}).fill("E2E model");
+  await dialog.getByRole("option", {name: "Використати «E2E model»", exact: true}).click();
+  await dialog.getByRole("combobox", {name: "Рік випуску", exact: true}).selectOption("2020");
+  await dialog.getByRole("button", {name: "Додати автомобіль", exact: true}).click();
   await expect(dialog).not.toBeVisible();
   await expect(
     page.getByRole("button", {
@@ -88,8 +88,9 @@ export async function workflow(page, viewport) {
   await page
     .getByRole("button", { name: "E2E manufacturer E2E model", exact: true })
     .click();
+  await page.getByText("Ручний список зі власних категорій", {exact: true}).click();
   await page
-    .getByRole("button", { name: "Сформувати список запчастин" })
+    .getByRole("button", { name: "Сформувати ручний список запчастин" })
     .click();
   await expect(page.locator(".toast")).toContainText("Додано позицій: 1");
   await page.getByRole("button", { name: "Закрити", exact: true }).click();

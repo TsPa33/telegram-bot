@@ -96,6 +96,7 @@ export function RecordForm({
           "subcategory_id",
           "serial_number",
           "acquisition_cost",
+          "acquisition_date",
           "unit_cost",
           "selling_price",
         ].includes(f.key)

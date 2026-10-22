@@ -26,7 +26,7 @@ health, manual-vehicle or security checks.
   that the reviewed integration commit is present on the remote feature branch.
 
 First rollout recommendation: provider disabled, backup existing staging data,
-deploy DB → API → web after approval, verify a84d2c19e705 and /health, then test
+deploy DB → API → web after approval, verify b72f03d8e196 and /health, then test
 manual vehicle creation. License review and separate approval for paid calls
 remain prerequisites for enabling Plan.Parts. No live service was changed.
 
@@ -111,7 +111,7 @@ Confirm a restore on an isolated disposable PostgreSQL before relying on it.
 to inspect. Verify in the dedicated Warehouse DB service that this is the new,
 empty `warehouse_staging` database, never a production database. Once approved,
 deploy the DB first and let `python -m app.staging` apply the full chain:
-eb8fddfe982f → f482ab1376c0 → c91e72b6a410 → a84d2c19e705. Never stamp an empty database.
+eb8fddfe982f → f482ab1376c0 → c91e72b6a410 → a84d2c19e705 → b72f03d8e196. Never stamp an empty database.
 Reserve the frontend HTTPS domain before API startup and set both public origins;
 if Railway cannot reserve it before a first deployment, use the explicit temporary
 origin procedure in RAILWAY_STAGING.md, then set the real domain before login.
@@ -125,9 +125,10 @@ python -m alembic heads
 ```
 
 The pre-integration image and DB should both report f482ab1376c0. In the new image,
-heads reports a84d2c19e705 even before upgrade; it describes packaged migrations,
+heads reports b72f03d8e196 even before upgrade; it describes packaged migrations,
 not the current DB revision. If c91e72b6a410 is already applied, startup applies
-only the new checklist revision. If a84d2c19e705 is applied, no migration repeats. Stop on any other unexpected revision or multiple
+the checklist and nullable-date revisions. If a84d2c19e705 is applied, only the
+nullable-date revision remains. At b72f03d8e196, no migration repeats. Stop on any other unexpected revision or multiple
 heads. Do not run `alembic stamp` to mask a mismatch.
 
 ## Approved rollout and postflight
@@ -136,7 +137,9 @@ heads. Do not run `alembic stamp` to mask a mismatch.
    configuration, obtains the existing PostgreSQL advisory lock, calls Alembic
    upgrade head, and only then binds its port. Do not run a separate racing
    pre-deploy migration or bypass startup with a direct uvicorn command.
-2. Expected target: a84d2c19e705. The new revision adds an empty, account-isolated
+2. Expected target: b72f03d8e196. This makes vehicles.acquisition_date nullable,
+   preserving known dates and all rows without backfill. See QUICK_VEHICLES.md.
+   The preceding checklist revision adds an empty, account-isolated
    vehicle_checklist_items table and nullable vehicle sync markers; no backfill.
    The preceding K-Type migration adds nullable vehicles.ktype plus a
    positive-value CHECK, no default/backfill. Existing donor rows remain unchanged
@@ -151,7 +154,7 @@ python -m alembic heads
 python -m alembic check
 ```
 
-Both revisions must be a84d2c19e705; check must find no schema drift.
+Both revisions must be b72f03d8e196; check must find no schema drift.
 4. Check the startup log contains "Warehouse migrations complete" and no
    migration/permission errors. Query API /health through the web origin after
    the matching frontend rollout. It compares DB revisions with packaged heads,
@@ -188,7 +191,7 @@ database or attempt to use production as a fallback.
   revision, but inspect it; never assume. Retrying the corrected startup is
   supported and does not overwrite donors.
 - **Migration succeeded, API bug:** disable Plan.Parts, prefer a forward fix
-  retaining a84d2c19e705 and its checklist/K-Type data. An old API image alone is NOT a
+  retaining b72f03d8e196 and its checklist/K-Type/unknown-date data. An old API image alone is NOT a
   complete rollback: old /health expects f482ab1376c0 and rejects the newer head.
 - **Full rollback approved:** stop Warehouse writes, preserve a new backup plus
   every non-null K-Type and all checklist items, translations and checks; select
@@ -199,7 +202,9 @@ database or attempt to use production as a fallback.
 python -m alembic downgrade f482ab1376c0
 ```
 
-  This DROPS the checklist table, sync markers and ktype, losing their values; execute only after separate approval.
+  The nullable-date downgrade refuses to proceed while unknown dates exist;
+  never fabricate dates to bypass it. Earlier downgrades DROP the checklist
+  table, sync markers and ktype, losing their values; execute only after separate approval.
   Then roll back only Warehouse API/web to the recorded commits, verify matching
   heads, /health, donor/stock counts and audit. Never downgrade base or edit audit.
 - **Restore needed:** restore the verified snapshot to an isolated replacement

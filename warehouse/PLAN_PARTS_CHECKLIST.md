@@ -56,7 +56,7 @@ vehicle_checklist_items, nullable vehicles.checklist_ktype/checklist_synced_at,
 3. Чинний staging entrypoint під advisory lock застосує upgrade head перед запуском API.
    Не підміняти його прямим uvicorn і не запускати паралельну pre-deploy міграцію.
 4. У Warehouse API: `python -m alembic current`, `python -m alembic heads`,
-   `python -m alembic check`. Очікуваний head: a84d2c19e705, без schema drift.
+   `python -m alembic check`. Очікуваний head: b72f03d8e196 (наступна nullable-date ревізія; QUICK_VEHICLES.md), без schema drift.
 5. HTTPS `/health` → 200. Перевірити login, ручне створення, старі авто й залишки
    при вимкненому провайдері. Після погодження ліцензії/токенів перевірити один
    явний import, unchecked, переклад/статус, повторне відкриття та незмінний склад.

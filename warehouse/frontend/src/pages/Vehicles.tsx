@@ -54,7 +54,7 @@ const vehicleFields: Field[] = [
     key: "acquisition_date",
     label: "Дата придбання",
     type: "date",
-    required: true,
+    required: false,
   },
   {
     key: "acquisition_cost",
@@ -74,6 +74,7 @@ export default function Vehicles({ notify }: { notify: Notify }) {
     [status, setStatus] = useState(""),
     [page, setPage] = useState(0),
     [edit, setEdit] = useState<Row | null>(null),
+    [created, setCreated] = useState<Row | null>(null),
     [detail, setDetail] = useState<Row | null>(null),
     [confirm, setConfirm] = useState<Row | null>(null);
   const { data, error, loading, reload } = useLoad(
@@ -99,6 +100,7 @@ export default function Vehicles({ notify }: { notify: Notify }) {
           Додати автомобіль
         </button>
       </Heading>
+      {created && <p role="status">Додано: {created.manufacturer} {created.model} · {created.year}. <button onClick={() => setDetail(created)}>Відкрити картку</button></p>}
       <div className="toolbar">
         <label className="search">
           <Search size={17} />
@@ -167,8 +169,8 @@ export default function Vehicles({ notify }: { notify: Notify }) {
                         <small>{v.transmission || "—"}</small>
                       </td>
                       <td>
-                        {v.acquisition_cost ? money(v.acquisition_cost) : "—"}
-                        <small>{v.acquisition_date}</small>
+                        {v.acquisition_cost != null ? money(v.acquisition_cost) : "—"}
+                        <small>{v.acquisition_date || "Дата придбання не вказана"}</small>
                       </td>
                       <td>
                         <Badge value={v.status} />
@@ -214,7 +216,7 @@ export default function Vehicles({ notify }: { notify: Notify }) {
                   </p>
                   <small>
                     {v.engine || "Двигун не вказаний"} ·{" "}
-                    {v.acquisition_cost
+                    {v.acquisition_cost != null
                       ? money(v.acquisition_cost)
                       : "Вартість не вказана"}
                   </small>
@@ -261,11 +263,13 @@ export default function Vehicles({ notify }: { notify: Notify }) {
             initial={edit}
             fields={vehicleFields}
             onSave={async (d) => {
-              await api(
+              const saved = await api(
                 "/vehicles" + (edit.id ? "/" + edit.id : ""),
                 edit.id ? "PUT" : "POST",
                 d,
               );
+              if (!edit.id) {setCreated(saved);setQ("");setStatus("");setPage(0);}
+              else if (created?.id === saved.id) setCreated(saved);
               setEdit(null);
               reload();
               notify("Дані автомобіля збережено");
@@ -280,6 +284,7 @@ export default function Vehicles({ notify }: { notify: Notify }) {
         >
           <VehicleDetail
             vehicle={detail}
+            onEdit={() => {setDetail(null);setEdit(detail);}}
             notify={notify}
             onInventory={() => navigate(`/inventory?vehicle_id=${detail.id}`)}
           />
@@ -303,10 +308,12 @@ export default function Vehicles({ notify }: { notify: Notify }) {
 }
 function VehicleDetail({
   vehicle: v,
+  onEdit,
   notify,
   onInventory,
 }: {
   vehicle: Row;
+  onEdit: () => void;
   notify: Notify;
   onInventory: () => void;
 }) {
@@ -318,6 +325,7 @@ function VehicleDetail({
   const [busy, setBusy] = useState(false);
   return (
     <>
+      {!v.archived && <button onClick={onEdit}>Редагувати / додаткові дані</button>}
       <dl className="details">
         {[
           ["Рік", v.year],
@@ -326,9 +334,9 @@ function VehicleDetail({
           ["K-Type", v.ktype ?? "Не вибрано"],
           [
             "Придбання",
-            v.acquisition_cost ? money(v.acquisition_cost) : "Не вказано",
+            v.acquisition_cost != null ? money(v.acquisition_cost) : "Не вказано",
           ],
-          ["Дата", v.acquisition_date],
+          ["Дата придбання", v.acquisition_date || "Не вказано"],
           ["Примітки", v.notes || "—"],
         ].map(([k, val]) => (
           <div key={k}>

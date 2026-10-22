@@ -16,6 +16,7 @@ try {
     await page.route('**/api/v1/**',async route=>{
       const req=route.request(),p=new URL(req.url()).pathname,reply=data=>route.fulfill({json:data});
       if(p.endsWith('/auth/me'))return reply({id:'account',name:'Тест',email:'test@example.test'});
+      if(p.endsWith('/vehicle-catalog'))return reply({complete:false,brands:[]});
       if(p.endsWith('/vehicles'))return reply({items:[vehicle],total:1});
       if(p.endsWith('/analytics'))return reply({positions:0,stock_units:0});
       if(p.endsWith('/plan-parts-checklist')&&req.method()==='GET')return reply({items,total:items.length,historical_total:0,ktype:9743,synced:!!items.length});
