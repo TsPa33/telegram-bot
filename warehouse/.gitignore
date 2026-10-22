@@ -10,3 +10,7 @@ frontend/test-results/
 frontend/playwright-report/
 *.tsbuildinfo
 deploy/railway/.check/
+backups/
+*.dump*
+*.backup
+*.pgdump

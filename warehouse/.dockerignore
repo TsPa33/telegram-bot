@@ -14,3 +14,7 @@
 **/*.tsbuildinfo
 uploads
 deploy/railway/.check
+backups
+**/*.dump*
+**/*.backup
+**/*.pgdump
