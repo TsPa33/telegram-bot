@@ -28,9 +28,9 @@ export async function workflow(page, viewport) {
     .getByRole("button", { name: "Створити обліковий запис", exact: true })
     .click();
   await expect(
-    page.getByRole("heading", { name: "Огляд складу", exact: true }),
+    page.getByRole("heading", { name: "Пошук запчастин", exact: true }),
   ).toBeVisible();
-  await expect(page.getByText("Історія почнеться з першої дії")).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Нічого не знайдено",exact:true})).toBeVisible();
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,
@@ -98,13 +98,17 @@ export async function workflow(page, viewport) {
   await expect(page.locator(".toast")).toContainText("Додано позицій: 1");
   await page.getByRole("button", { name: "Закрити", exact: true }).click();
   await nav("Склад");
+  await page.getByText("Додаткові фільтри",{exact:true}).click();
+  await page.getByRole("checkbox",{name:"Показати також без залишку",exact:true}).check();
   await page
     .getByRole("button", { name: "E2E checklist part", exact: true })
     .click();
+  await page.getByText("Докладніше",{exact:true}).click();
   await page.getByLabel("Кількість").fill("3");
   await page.getByLabel("Причина операції").fill("E2E test receipt");
   await page.getByRole("button", { name: "Провести операцію" }).click();
-  await expect(page.getByRole("dialog")).not.toBeVisible();
+  await expect(page.locator(".stock-summary")).toContainText("3");
+  await page.getByRole("button",{name:"Закрити",exact:true}).click();
   await nav("Журнал операцій");
   const value = await page
     .getByLabel("Запчастина для операції")

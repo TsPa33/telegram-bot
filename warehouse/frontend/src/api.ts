@@ -20,7 +20,7 @@ export async function api<T = Row>(
   method = "GET",
   body?: unknown,
 ): Promise<T> {
-  const headers: Record<string, string> = { "X-CSRF-Token": csrf() };
+  const headers: Record<string, string> = { "X-CSRF-Token": csrf(), "X-Warehouse-Client":"5" };
   if (body && !(body instanceof FormData))
     headers["Content-Type"] = "application/json";
   const response = await fetch("/api/v1" + path, {
@@ -61,12 +61,14 @@ export async function all(path: string): Promise<Row[]> {
     if (offset >= page.total || !page.items.length) return rows;
   }
 }
-export const money = (value: unknown) =>
-  new Intl.NumberFormat("uk-UA", {
-    style: "currency",
-    currency: "UAH",
-    maximumFractionDigits: 0,
-  }).format(Number(value || 0));
+// Keep stored decimal prices as strings; BigInt formats cents without a float round-trip.
+export const money = (value: unknown, currency = "UAH") => {
+  const text=String(value??'0'),match=/^(-?)(\d+)(?:\.(\d*))?$/.exec(text);
+  if(!match)return new Intl.NumberFormat('uk-UA',{style:'currency',currency,currencyDisplay:'code',minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(value||0));
+  const fraction=(match[3]||'').padEnd(2,'0');
+  const cents=BigInt(match[2])*100n+BigInt(fraction.slice(0,2))+(Number(fraction[2]||'0')>=5?1n:0n);
+  return `${match[1]}${new Intl.NumberFormat('uk-UA',{maximumFractionDigits:0}).format(cents/100n)},${String(cents%100n).padStart(2,'0')} ${currency}`;
+};
 export const when = (value: string) =>
   new Date(value).toLocaleString("uk-UA", {
     dateStyle: "short",

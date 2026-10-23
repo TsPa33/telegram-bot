@@ -6,7 +6,7 @@ import {
   Plus,
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { api, money } from "../api";
+import { api, money, type Row } from "../api";
 import { Empty } from "../components";
 
 import { Heading, Metrics, OperationTable, State, useLoad } from "../shared";
@@ -32,6 +32,7 @@ export default function Dashboard() {
       {d && (
         <>
           <Metrics d={d} />
+          <section className="panel padded"><h2>Вартість запасів за валютами</h2>{d.valuation_by_currency?.map((r:Row)=><p key={r.currency}>{money(r.value,r.currency)}</p>)}</section>
           <div className="dashboard-grid">
             <section className="panel">
               <div className="panel-title">

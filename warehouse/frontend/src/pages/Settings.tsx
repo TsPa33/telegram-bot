@@ -17,6 +17,7 @@ export default function Settings({ user }: { user: Row }) {
         <Link className="button" to="/catalog">Довідник запчастин</Link>
         <Link className="button" to="/archive">Архів</Link>
         <Link className="button" to="/operations">Журнал операцій</Link>
+        <Link className="button" to="/inventory/advanced">Розширений склад</Link>
         <Link className="button" to="/analytics">Аудит</Link>
         <a className="button" href="#catalog-import">Імпорт каталогу</a>
       </nav>

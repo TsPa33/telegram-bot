@@ -25,7 +25,7 @@ import {
   useLoad,
   type Notify,
 } from "../shared";
-function partFields(vehicles: Row[], categories: Row[]): Field[] {
+export function partFields(vehicles: Row[], categories: Row[]): Field[] {
   return [
     { key: "name", label: "Назва запчастини", required: true, wide: true },
     {
@@ -81,10 +81,11 @@ function partFields(vehicles: Row[], categories: Row[]): Field[] {
     },
     {
       key: "selling_price",
-      label: "Ціна продажу одиниці, ₴",
-      type: "number",
+      label: "Ціна продажу одиниці",
+      type: "text",
       min: 0,
     },
+    {key:"currency",label:"Валюта ціни",options:[option("UAH","UAH"),option("USD","USD")]},
     { key: "location", label: "Місце зберігання" },
     {
       key: "availability",
@@ -340,7 +341,7 @@ export default function Inventory({ notify }: { notify: Notify }) {
                       <td>
                         {p.selling_price === null
                           ? "—"
-                          : money(p.selling_price)}
+                          : money(p.selling_price,p.currency||"UAH")}
                       </td>
                       <td>
                         <Badge value={p.availability} />
@@ -412,7 +413,7 @@ export default function Inventory({ notify }: { notify: Notify }) {
                       <b>
                         {p.selling_price === null
                           ? "—"
-                          : money(p.selling_price)}
+                          : money(p.selling_price,p.currency||"UAH")}
                       </b>
                     </span>
                   </div>
@@ -543,6 +544,7 @@ export default function Inventory({ notify }: { notify: Notify }) {
 }
 export function StockForm({ part, onDone }: { part: Row; onDone: () => void }) {
   const [type, setType] = useState("receipt");
+  const [requestKey,setRequestKey]=useState(()=>crypto.randomUUID());
   return (
     <>
       <div className="stock-summary">
@@ -558,7 +560,7 @@ export function StockForm({ part, onDone }: { part: Row; onDone: () => void }) {
       </div>
       <label className="standalone-field">
         Тип операції
-        <select value={type} onChange={(e) => setType(e.target.value)}>
+        <select value={type} onChange={(e) => {setType(e.target.value);setRequestKey(crypto.randomUUID());}}>
           {choices([
             "receipt",
             "write_off",
@@ -595,21 +597,22 @@ export function StockForm({ part, onDone }: { part: Row; onDone: () => void }) {
               },
           {
             key: "reason",
-            label: "Причина операції",
-            required: true,
+            label: type === "sale" ? "Примітка (необов’язково)" : "Причина операції",
+            required: type !== "sale",
             wide: true,
           },
         ]}
         submit="Провести операцію"
         onSave={async (d) => {
-          await api(`/parts/${part.id}/operations`, "POST", { ...d, type });
-          onDone();
+          await api(`/parts/${part.id}/operations`, "POST", { ...d, type, request_key:requestKey });
+          await onDone();
+          setRequestKey(crypto.randomUUID());
         }}
       />
     </>
   );
 }
-function PartDetail({ part, onChanged }: { part: Row; onChanged: () => void }) {
+export function PartDetail({ part, onChanged }: { part: Row; onChanged: () => void }) {
   const photos = useLoad(
       () => api<Row[]>(`/parts/${part.id}/photos`),
       [part.id],
@@ -628,7 +631,7 @@ function PartDetail({ part, onChanged }: { part: Row; onChanged: () => void }) {
           ["Розміщення", part.location || "—"],
           [
             "Ціна",
-            part.selling_price === null ? "—" : money(part.selling_price),
+            part.selling_price === null ? "—" : money(part.selling_price,part.currency||"UAH"),
           ],
           ["Сумісність", part.compatibility_notes || "—"],
           ["Опис", part.description || "—"],

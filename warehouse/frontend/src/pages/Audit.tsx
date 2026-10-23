@@ -49,6 +49,7 @@ export default function Audit() {
       {summary.data && (
         <>
           <Metrics d={summary.data} />
+          <section className="panel padded"><h2>Вартість запасів за валютами</h2>{summary.data.valuation_by_currency?.map((r:Row)=><p key={r.currency}>{money(r.value,r.currency)}</p>)}</section>
           <div className="chart-grid">
             {[
               {

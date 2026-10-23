@@ -33,6 +33,7 @@ export function Modal({
   }, []);
   return (
     <dialog
+      aria-label={title}
       ref={ref}
       onCancel={onClose}
       onClick={(e) => {

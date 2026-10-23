@@ -33,14 +33,15 @@ import Auth from "./pages/Auth";
 import Catalog from "./pages/Catalog";
 import Dashboard from "./pages/Dashboard";
 import Inventory from "./pages/Inventory";
+import SalesWorkspace from "./SalesWorkspace";
 import Operations from "./pages/Operations";
 import Settings from "./pages/Settings";
 import Vehicles from "./pages/Vehicles";
 const nav = [
-  { to: "/search", label: "Пошук запчастин", icon: Search },
+  { to: "/", label: "Пошук запчастин", icon: Search },
   { to: "/vehicles", label: "Автомобілі", icon: CarFront },
   { to: "/inventory", label: "Склад", icon: Boxes },
-  { to: "/", label: "Статистика", icon: ChartNoAxesCombined },
+  { to: "/statistics", label: "Статистика", icon: ChartNoAxesCombined },
 ];
 const secondary = [
   {to:"/settings",label:"Налаштування"},
@@ -178,11 +179,13 @@ export default function App() {
         </header>
         <main>
           <Routes>
-            <Route path="/" element={<Dashboard />} />
+            <Route path="/" element={<SalesWorkspace accountId={user.id} quick notify={notify}/>} />
+            <Route path="/statistics" element={<Dashboard/>}/>
             <Route path="/vehicles" element={<Vehicles notify={notify} />} />
             <Route path="/catalog" element={<Catalog notify={notify} />} />
-            <Route path="/inventory" element={<Inventory notify={notify} />} />
-            <Route path="/search" element={<Inventory notify={notify} />} />
+            <Route path="/inventory" element={<SalesWorkspace accountId={user.id} notify={notify}/>} />
+            <Route path="/inventory/advanced" element={<Inventory notify={notify}/>} />
+            <Route path="/search" element={<SalesWorkspace accountId={user.id} quick notify={notify}/>} />
             <Route
               path="/operations"
               element={<Operations notify={notify} />}

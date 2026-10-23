@@ -60,7 +60,7 @@ try{
   assert.equal(vehicles.items.find(v=>v.id===bmw.id).engine,bmw.engine);
   const audit=await (await context.request.get(origin+`/api/v1/audit?vehicle_id=${volvo.id}&limit=200`)).json();assert(audit.items.some(r=>r.type==='sale'&&r.reason==='Earlier sale'));
   async function navigate(label){if(viewport.width<800)await page.getByRole('button',{name:'Відкрити меню',exact:true}).click();await page.locator('.sidebar').getByRole('link',{name:label,exact:true}).click();}
-  await navigate('Пошук запчастин');await expect(page.getByRole('heading',{name:'Запчастини та залишки',exact:true})).toBeVisible();assert(new URL(page.url()).pathname==='/search');
+  await navigate('Пошук запчастин');await expect(page.getByRole('heading',{name:'Пошук запчастин',exact:true})).toBeVisible();assert(new URL(page.url()).pathname==='/');
   await navigate('Налаштування');await expect(page.getByRole('navigation',{name:'Додаткові розділи'}).getByRole('link',{name:'Архів',exact:true})).toBeVisible();
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));assert.deepEqual(errors,[]);assert.deepEqual(paid,[]);
   await context.close();console.log(`PASS UX4 navigation, donor stock counts, engine/KPP edit, nested tree, receipt and old stock/sale preservation ${viewport.width}x${viewport.height}`);
