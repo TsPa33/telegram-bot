@@ -56,6 +56,8 @@ class Vehicle(Owned, Base):
     __tablename__ = "vehicles"
     __table_args__ = (
         UniqueConstraint("account_id", "donor_id"),
+        UniqueConstraint("account_id", "number", name="uq_vehicle_account_number"),
+        CheckConstraint("number > 0", name="ck_vehicle_number_positive"),
         UniqueConstraint("id", "account_id", name="uq_vehicles_id_account"),
         CheckConstraint("year BETWEEN 1886 AND 2100"),
         CheckConstraint("acquisition_cost IS NULL OR acquisition_cost >= 0"),
@@ -73,6 +75,7 @@ class Vehicle(Owned, Base):
     transmission: Mapped[str] = mapped_column(String(50), default="")
     vin: Mapped[str | None] = mapped_column(String(17), nullable=True)
     donor_id: Mapped[str] = mapped_column(String(80))
+    number: Mapped[int] = mapped_column(Integer)
     acquisition_cost: Mapped[Decimal | None] = mapped_column(
         Numeric(14, 2), nullable=True
     )

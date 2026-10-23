@@ -13,7 +13,7 @@ def test_authenticated_gate_is_read_only_and_identifies_contract(client,logged):
     r=logged.get(PATH)
     assert r.status_code==200
     assert r.json()=={'status':'ready','feature':'dismantling','contract_version':1,
-        'required_revision':'f06a41c9d2b7','database_revisions':['f06a41c9d2b7'],
+        'required_revision':'e17b6c04a932','database_revisions':['e17b6c04a932'],
         'catalog_source':'carpot.base.v1','catalog_items':33}
     with engine().connect() as db:
         assert db.execute(text('SELECT count(*) FROM operations')).scalar_one()==before

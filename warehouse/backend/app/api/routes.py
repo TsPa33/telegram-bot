@@ -13,7 +13,7 @@ from fastapi import (
     UploadFile,
 )
 from fastapi.responses import FileResponse
-from sqlalchemy import func, or_, select
+from sqlalchemy import String, cast, func, or_, select
 from sqlalchemy.orm import Session as DBSession
 from app.api.deps import Identity, identity
 from app.config import photo_dir, secure_cookies, registration_enabled
@@ -140,7 +140,8 @@ def listing(
     )
     if q:
         fields = (
-            [model.manufacturer, model.model, model.donor_id, model.vin]
+            [model.manufacturer, model.model, model.donor_id, model.vin,
+             cast(model.number, String)]
             if model is Vehicle
             else [
                 model.name,
@@ -205,7 +206,10 @@ def vehicle_create(data: VehicleInput, db: DB, who: Auth):
     values = data.model_dump()
     if values["donor_id"] is None:
         values["donor_id"] = automatic_donor_id(db, who.user.id)
-    row = Vehicle(account_id=who.user.id, **values)
+    # Serialize allocation even when callers supply their own donor_id.
+    db.scalar(select(Account).where(Account.id == who.user.id).with_for_update())
+    number = (db.scalar(select(func.max(Vehicle.number)).where(Vehicle.account_id == who.user.id)) or 0) + 1
+    row = Vehicle(account_id=who.user.id, number=number, **values)
     db.add(row)
     record(db, who.user.id, row, "vehicle_create", "Додано донора", {})
     db.commit()

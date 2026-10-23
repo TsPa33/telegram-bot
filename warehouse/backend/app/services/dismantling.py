@@ -76,11 +76,11 @@ def category_node(db, account_id, source, key, name, kind, parent_id=None):
     return node
 
 
-def receipt(db, row, data, account_id):
+def receipt(db, row, data, account_id, *, confirmed=False):
     # Durable workflow marker, independent of current stock, sale, archive or reload.
     if row.received_at is not None:
         return False
-    if not row.included or row.status != 'dismantled':
+    if not row.included or (not confirmed and row.status != 'dismantled'):
         raise HTTPException(409, 'Оприбутковувати можна лише включені та підтверджені демонтовані деталі.')
     # Same account lock as existing category import: no duplicated category tree.
     db.scalar(select(Account).where(Account.id == account_id).with_for_update())
@@ -202,7 +202,8 @@ def workspace(db,vehicle_id,account_id,*,offset=0,limit=100,visibility='all',**s
         DismantlingItem.name,DismantlingItem.position,DismantlingItem.id).offset(offset).limit(limit)))
     ids=[row.part_id for row in page if row.part_id]
     parts={p.id:p for p in db.scalars(select(Part).where(Part.account_id==account_id,Part.id.in_(ids)))} if ids else {}
-    return {'contract_version':2,'items':[{**snapshot(row),'stock':snapshot(parts[row.part_id]) if row.part_id in parts else None} for row in page],
+    add_ids=list(db.scalars(scope_query(vehicle_id,account_id).with_only_columns(DismantlingItem.id).where(DismantlingItem.included.is_(True),DismantlingItem.received_at.is_(None)).order_by(DismantlingItem.id).limit(10001)))
+    return {'add_count':len(add_ids),'add_token':selection_digest('add',add_ids),'contract_version':2,'items':[{**snapshot(row),'stock':snapshot(parts[row.part_id]) if row.part_id in parts else None} for row in page],
         'total':total,'offset':offset,'limit':limit,'hierarchy':hierarchy,'status':vehicle.status,'archived':vehicle.archived,
         'counts':dict(zip(['total','included','excluded','dismantled','received'],totals)),
         'scope_counts':{'mark':mark_count,'receipt':receipt_count},'scope_tokens':tokens}
@@ -236,3 +237,23 @@ def batch(db,vehicle_id,account_id,data):
     from types import SimpleNamespace
     action=SimpleNamespace(**{**data.model_dump(),'ids':[r.id for r in rows]})
     return actions(db,vehicle_id,account_id,action)
+
+
+def add_stock(db, vehicle_id, account_id, data):
+    """One explicit user confirmation is the receipt authority, never a GET/checkbox.
+
+    Lock ordering and durable received_at marker match the legacy workflow.
+    An exact selection digest rejects stale or partly changed confirmations.
+    """
+    owned(db, Vehicle, vehicle_id, account_id, lock=True, active=True)
+    stmt=scope_query(vehicle_id, account_id).where(
+        DismantlingItem.included.is_(True), DismantlingItem.received_at.is_(None))
+    rows=list(db.scalars(stmt.order_by(DismantlingItem.id).limit(10001).with_for_update()))
+    if len(rows)>10000:
+        raise HTTPException(422, 'Не більше 10 000 нових позицій за одне підтвердження')
+    if not rows:
+        return {'updated':0,'skipped':data.expected_count,'total':0}
+    if len(rows)!=data.expected_count or selection_digest('add',[r.id for r in rows])!=data.selection_token:
+        raise HTTPException(409,'Вибір змінився. Оновіть список і підтвердьте кількість знову.')
+    updated=sum(int(receipt(db,row,data,account_id,confirmed=True)) for row in rows)
+    return {'updated':updated,'skipped':len(rows)-updated,'total':len(rows)}
