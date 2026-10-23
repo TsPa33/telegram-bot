@@ -2,6 +2,7 @@ from datetime import date, datetime, timezone
 from decimal import Decimal
 from uuid import uuid4
 from sqlalchemy import (
+    true,
     Boolean,
     CheckConstraint,
     Date,
@@ -213,6 +214,7 @@ class DismantlingItem(Base):
     account_id: Mapped[str] = mapped_column(ForeignKey("accounts.id"), index=True)
     vehicle_id: Mapped[str] = mapped_column(String(36), index=True)
     source: Mapped[str] = mapped_column(String(100))
+    included: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true())
     catalog_key: Mapped[str] = mapped_column(String(100))
     category_key: Mapped[str] = mapped_column(String(100))
     category_name: Mapped[str] = mapped_column(String(100))
@@ -226,3 +228,33 @@ class DismantlingItem(Base):
     part_id: Mapped[str | None] = mapped_column(ForeignKey("parts.id"), nullable=True)
     received_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class DismantlingCatalogSource(Base):
+    __tablename__ = 'dismantling_catalog_sources'
+    __table_args__ = (UniqueConstraint('account_id', 'source', name='uq_dcatalog_source'),
+                     UniqueConstraint('id', 'account_id', name='uq_dcatalog_source_account'))
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    account_id: Mapped[str] = mapped_column(ForeignKey('accounts.id'), index=True)
+    source: Mapped[str] = mapped_column(String(100))
+    provenance: Mapped[str] = mapped_column(Text)
+    license_reference: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class DismantlingCatalogType(Base):
+    __tablename__ = 'dismantling_catalog_types'
+    __table_args__ = (
+        ForeignKeyConstraint(['source_id','account_id'], ['dismantling_catalog_sources.id','dismantling_catalog_sources.account_id'], name='fk_dcatalog_source_account'),
+        UniqueConstraint('source_id','catalog_key',name='uq_dcatalog_type_key'),
+    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    account_id: Mapped[str] = mapped_column(ForeignKey('accounts.id'), index=True)
+    source_id: Mapped[str] = mapped_column(String(36), index=True)
+    catalog_key: Mapped[str] = mapped_column(String(100))
+    category_key: Mapped[str] = mapped_column(String(100))
+    category_name: Mapped[str] = mapped_column(String(100))
+    subcategory_key: Mapped[str] = mapped_column(String(100))
+    subcategory_name: Mapped[str] = mapped_column(String(100))
+    name: Mapped[str] = mapped_column(String(200))
+    position: Mapped[str] = mapped_column(String(100), default='')

@@ -34,6 +34,12 @@ def begin(client,vehicle):
 
 
 def act(client,vehicle,ids,action,**extra):
+    # Existing workflow tests explicitly simulate the UI's confirmation step.
+    # Direct unconfirmed receipts are separately rejected in test_dismantling_v2.
+    if action=='receipt':
+        pending=[r['id'] for r in client.get(path(vehicle)).json().get('items',[])
+                 if r['id'] in ids and not r['received_at'] and r['status'] in ('unchecked','damaged')]
+        if pending:client.post(path(vehicle)+'/actions',json={'ids':pending,'action':'dismantled'})
     return client.post(path(vehicle)+'/actions',json={'ids':ids,'action':action,**extra})
 
 
@@ -93,6 +99,7 @@ def test_concurrent_start_and_receipt_once(logged,xc90):
             result=dismantling.start(db,xc90['id'],xc90['account_id']);db.commit();return result['created']
     with ThreadPoolExecutor(max_workers=2) as pool:assert sum(pool.map(start,range(2)))==33
     row=logged.get(path(xc90)).json()['items'][0]
+    act(logged,xc90,[row['id']],'dismantled')
     data=DismantlingAction(ids=[row['id']],action='receipt')
     def receipt(_):
         with Session(engine()) as db:
@@ -184,6 +191,7 @@ def test_migration_preserves_inventory_and_plan_parts(logged,xc90,part):
 def test_parallel_donors_share_category_tree_without_duplicates(logged,xc90):
     other=logged.post('/api/v1/vehicles',json={'manufacturer':'Volvo','model':'XC90','year':2011}).json()
     first=begin(logged,xc90)[0];second=begin(logged,other)[0]
+    act(logged,xc90,[first['id']],'dismantled');act(logged,other,[second['id']],'dismantled')
     def receive(pair):
         vehicle,row=pair
         with Session(engine()) as db:
