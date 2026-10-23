@@ -24,6 +24,7 @@ from app.schemas import (
     CategoryImport,
     Credentials,
     PartInput,
+    PriceInput,
     Registration,
     StockInput,
     VehicleInput,
@@ -149,7 +150,7 @@ def vehicle_view(db, row, account_id):
 
 
 def listing(
-    db, model, account_id, *, q="", archived=False, offset=0, limit=100, filters=()
+    db, model, account_id, *, q="", archived=False, offset=0, limit=100, filters=(), currency_aware=False
 ):
     stmt = select(model).where(
         model.account_id == account_id, model.archived == archived, *filters
@@ -189,6 +190,9 @@ def listing(
             item["stock_positions"] = vehicle_counts.get(row.id, 0)
         if isinstance(row, Part):
             item["available_quantity"] = row.available_quantity
+            if row.currency != "UAH" and not currency_aware:
+                item["selling_price"] = None
+                item["price_requires_currency_client"] = True
         items.append(item)
     return {"items": items, "total": total, "offset": offset, "limit": limit}
 
@@ -340,6 +344,7 @@ async def category_file(
 def parts(
     db: DB,
     who: Auth,
+    request: Request,
     q: str = "",
     archived: bool = False,
     vehicle_id: str | None = None,
@@ -348,6 +353,8 @@ def parts(
     condition: str | None = None,
     location: str | None = None,
     in_stock: bool = False,
+    manufacturer: str | None = Query(None,max_length=100),
+    model: str | None = Query(None,max_length=100),
     offset: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=200),
 ):
@@ -361,6 +368,11 @@ def parts(
     ]:
         if value is not None:
             filters.append(col == value)
+    if manufacturer is not None or model is not None:
+        donors=select(Vehicle.id).where(Vehicle.account_id==who.user.id)
+        if manufacturer is not None:donors=donors.where(func.lower(Vehicle.manufacturer)==manufacturer.lower())
+        if model is not None:donors=donors.where(func.lower(Vehicle.model)==model.lower())
+        filters.append(Part.vehicle_id.in_(donors))
     if in_stock:
         filters.append(Part.quantity > 0)
     return listing(
@@ -372,6 +384,7 @@ def parts(
         offset=offset,
         limit=limit,
         filters=filters,
+        currency_aware=request.headers.get("X-Warehouse-Client")=="5",
     )
 
 
@@ -386,9 +399,14 @@ def part_create(data: PartInput, db: DB, who: Auth):
 
 
 @router.get("/parts/{id}", tags=["Inventory"])
-def part_get(id: str, db: DB, who: Auth):
+def part_get(id: str, request: Request, db: DB, who: Auth):
     row = owned(db, Part, id, who.user.id)
-    return {**snapshot(row), "available_quantity": row.available_quantity}
+    result={**snapshot(row), "available_quantity": row.available_quantity}
+    # Previous UI labels every price UAH. Do not expose USD as a misleading
+    # hryvnia amount to that client; the exact stored value is never changed.
+    if row.currency!='UAH' and request.headers.get('X-Warehouse-Client')!='5':
+        result.update(selling_price=None,price_requires_currency_client=True)
+    return result
 
 
 @router.put("/parts/{id}", tags=["Inventory"])
@@ -400,7 +418,12 @@ def part_update(id: str, data: PartInput, db: DB, who: Auth):
             409, "Спочатку розділіть кількісну позицію на окремі одиниці"
         )
     before = snapshot(row)
-    for k, v in data.model_dump().items():
+    changes=data.model_dump()
+    if 'currency' not in data.model_fields_set:
+        changes.pop('currency')
+        if row.currency!='UAH' and changes['selling_price']!=row.selling_price:
+            raise HTTPException(409,'Підтвердіть валюту ціни в оновленій картці запчастини')
+    for k, v in changes.items():
         setattr(row, k, v)
     record(db, who.user.id, row, "part_update", "Оновлено картку запчастини", before)
     db.commit()
@@ -409,10 +432,47 @@ def part_update(id: str, data: PartInput, db: DB, who: Auth):
 
 @router.post("/parts/{id}/operations", tags=["Stock operations"])
 def stock_operation(id: str, data: StockInput, db: DB, who: Auth):
+    from app.models import StockRequest
+    from hashlib import sha256
+    if data.request_key:
+        # Account then Part, same lock order as donor receipts. Serializes keys
+        # across different parts too, avoiding duplicate-key races.
+        db.scalar(select(Account).where(Account.id==who.user.id).with_for_update())
     row = owned(db, Part, id, who.user.id, lock=True)
+    fingerprint=sha256(json.dumps({'part_id':id,**data.model_dump(exclude={'request_key'})},sort_keys=True).encode()).hexdigest()
+    if data.request_key:
+        prior=db.scalar(select(StockRequest).where(StockRequest.account_id==who.user.id,StockRequest.request_key==data.request_key))
+        if prior:
+            if prior.fingerprint!=fingerprint:raise HTTPException(409,'Цей запит уже використано для іншої операції')
+            return prior.response
     stock(db, row, data, who.user.id)
+    result={**snapshot(row), 'available_quantity':row.available_quantity}
+    if data.request_key:
+        db.add(StockRequest(account_id=who.user.id,part_id=id,request_key=data.request_key,fingerprint=fingerprint,response=result))
     db.commit()
-    return {**snapshot(row), "available_quantity": row.available_quantity}
+    return result
+
+
+@router.patch('/parts/{id}/price',tags=['Inventory'])
+def price_update(id: str,data: PriceInput,db: DB,who: Auth):
+    row=owned(db,Part,id,who.user.id,lock=True,active=True)
+    before=snapshot(row)
+    row.selling_price,row.currency=data.selling_price,data.currency
+    if snapshot(row)!=before:record(db,who.user.id,row,'part_update','Оновлено ціну та валюту',before)
+    db.commit()
+    return {**snapshot(row),'available_quantity':row.available_quantity}
+
+
+@router.get('/sales-workspace/readiness',tags=['Inventory'])
+def sales_readiness(db: DB,who: Auth):
+    from app.models import StockRequest
+    result=vehicle_view_readiness(db,who)
+    from sqlalchemy.exc import SQLAlchemyError
+    try:
+        db.execute(select(Part.currency).limit(0));db.execute(select(StockRequest).limit(0))
+    except SQLAlchemyError:raise HTTPException(503,'Sales workspace schema is not ready') from None
+    return {**result,'contract_version':5,'features':result['features']+['currency_prices','stock_request_replay','donor_part_search']}
+
 
 
 @router.post("/parts/bulk-actions", tags=["Inventory"])

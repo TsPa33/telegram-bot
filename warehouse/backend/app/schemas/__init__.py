@@ -86,6 +86,7 @@ class PartInput(Input):
     condition: Literal["used", "new", "damaged", "refurbished"] = "used"
     unit_cost: Money | None = None
     selling_price: Money | None = None
+    currency: Literal["UAH", "USD"] = "UAH"
     location: Annotated[str, Field(max_length=120)] = ""
     compatibility_notes: Annotated[str, Field(max_length=10000)] = ""
     description: Annotated[str, Field(max_length=10000)] = ""
@@ -107,10 +108,15 @@ class StockInput(Input):
     ]
     quantity: Annotated[int, Field(ge=0, le=1000000)] = 0
     location: Annotated[str, Field(max_length=120)] | None = None
-    reason: Annotated[str, Field(min_length=3, max_length=2000)]
+    reason: Annotated[str, Field(max_length=2000)] = ""
+    request_key: Annotated[str, Field(pattern=r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")] | None = None
 
     @model_validator(mode="after")
     def operation_valid(self):
+        if self.type == "sale" and not self.reason:
+            self.reason = "Продаж"
+        if self.type != "sale" and len(self.reason) < 3:
+            raise ValueError("Вкажіть причину операції (від 3 символів)")
         if (
             self.type in ("receipt", "write_off", "sale", "reserve", "release")
             and self.quantity == 0
@@ -126,3 +132,8 @@ class BulkInput(Input):
     action: Literal["archive", "restore", "transfer"]
     location: Annotated[str, Field(max_length=120)] | None = None
     reason: Annotated[str, Field(min_length=3, max_length=2000)]
+
+
+class PriceInput(Input):
+    selling_price: Money | None
+    currency: Literal['UAH','USD']

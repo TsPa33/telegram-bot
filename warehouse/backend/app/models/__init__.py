@@ -133,6 +133,7 @@ class Part(Owned, Base):
         ),
         CheckConstraint("NOT individually_tracked OR quantity <= 1"),
         CheckConstraint("selling_price IS NULL OR selling_price >= 0"),
+        CheckConstraint("currency IN ('UAH','USD')", name="ck_part_currency"),
         CheckConstraint("unit_cost IS NULL OR unit_cost >= 0"),
         CheckConstraint("availability IN ('unchecked','present','absent','damaged')"),
         CheckConstraint("condition IN ('used','new','damaged','refurbished')"),
@@ -157,6 +158,7 @@ class Part(Owned, Base):
     reserved_quantity: Mapped[int] = mapped_column(Integer, default=0)
     unit_cost: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
     selling_price: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
+    currency: Mapped[str] = mapped_column(String(3), default="UAH", server_default="UAH")
     location: Mapped[str] = mapped_column(String(120), default="")
     compatibility_notes: Mapped[str] = mapped_column(Text, default="")
     description: Mapped[str] = mapped_column(Text, default="")
@@ -261,3 +263,15 @@ class DismantlingCatalogType(Base):
     subcategory_name: Mapped[str] = mapped_column(String(100))
     name: Mapped[str] = mapped_column(String(200))
     position: Mapped[str] = mapped_column(String(100), default='')
+
+
+class StockRequest(Base):
+    """Replay protection only; Operation remains the single inventory ledger."""
+    __tablename__ = 'stock_requests'
+    __table_args__ = (UniqueConstraint('account_id','request_key',name='uq_stock_request_account_key'),)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    account_id: Mapped[str] = mapped_column(ForeignKey('accounts.id'), index=True)
+    part_id: Mapped[str] = mapped_column(ForeignKey('parts.id'))
+    request_key: Mapped[str] = mapped_column(String(36))
+    fingerprint: Mapped[str] = mapped_column(String(64))
+    response: Mapped[dict] = mapped_column(JSON)

@@ -79,7 +79,7 @@ def stock(db, row, data, account_id):
         raise HTTPException(409, "Недостатній залишок або некоректний резерв")
     if row.individually_tracked and row.quantity > 1:
         raise HTTPException(409, "Індивідуальна позиція може мати не більше 1 одиниці")
-    if data.type in ("receipt", "correction"):
+    if data.type in ("receipt", "correction", "sale", "write_off"):
         row.availability = "present" if row.quantity else "absent"
     record(db, account_id, row, data.type, data.reason, before)
     return row

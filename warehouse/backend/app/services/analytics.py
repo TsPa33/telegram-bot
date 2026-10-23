@@ -15,16 +15,16 @@ def dashboard(db, account_id, vehicle_id=None):
             expr(Part.quantity),
             expr(Part.quantity - Part.reserved_quantity),
             expr(Part.reserved_quantity),
-            expr(Part.quantity * Part.selling_price),
+            func.coalesce(func.sum(Part.quantity * Part.selling_price).filter(Part.currency=="UAH"),0),
             expr(Part.quantity * Part.unit_cost),
             func.coalesce(
                 func.sum((Part.selling_price - Part.unit_cost) * Part.quantity).filter(
-                    Part.unit_cost.is_not(None), Part.selling_price.is_not(None)
+                    Part.unit_cost.is_not(None), Part.selling_price.is_not(None), Part.currency=="UAH"
                 ),
                 0,
             ),
             func.count(Part.id).filter(
-                Part.unit_cost.is_not(None), Part.selling_price.is_not(None)
+                Part.unit_cost.is_not(None), Part.selling_price.is_not(None), Part.currency=="UAH"
             ),
         ).where(*filters)
     ).one()
@@ -50,7 +50,7 @@ def dashboard(db, account_id, vehicle_id=None):
         select(Vehicle.id, Vehicle.donor_id, expr(Part.quantity * Part.selling_price))
         .select_from(Part)
         .join(Vehicle, Part.vehicle_id == Vehicle.id)
-        .where(*filters)
+        .where(*filters,Part.currency=="UAH")
         .group_by(Vehicle.id)
     ).all()
     recent = list(
@@ -64,7 +64,9 @@ def dashboard(db, account_id, vehicle_id=None):
             .limit(8)
         )
     )
+    valuations=db.execute(select(Part.currency,func.coalesce(func.sum(Part.quantity*Part.selling_price),0)).where(*filters).group_by(Part.currency)).all()
     return dict(
+        valuation_by_currency=[{'currency':currency,'value':str(value)} for currency,value in valuations],
         vehicles=vcount,
         positions=totals[0],
         stock_units=totals[1],

@@ -122,6 +122,8 @@ def receipt(db, row, data, account_id, *, confirmed=False):
     if data.location:
         part.location = data.location
     if data.selling_price is not None:
+        if part.currency != 'UAH':
+            raise HTTPException(409,'Оновлюйте ціну цієї позиції разом із валютою у складі')
         part.selling_price = data.selling_price
     if snapshot(part) != part_before:
         record(db, account_id, part, 'part_update', 'Параметри підтвердженого надходження з розбору', part_before)

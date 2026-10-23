@@ -68,7 +68,7 @@ def readiness(db: DB, who: Auth):
     except SQLAlchemyError:
         raise HTTPException(503, 'Dismantling schema is not ready') from None
     return {'status':'ready', 'feature':'dismantling', 'contract_version':1,
-            'required_revision':'e17b6c04a932', 'database_revisions':sorted(versions),
+            'required_revision':'c24a9b71e603', 'database_revisions':sorted(versions),
             'catalog_source':dismantling.CATALOG['version'],
             'catalog_items':sum(len(sub['parts']) for category in dismantling.CATALOG['categories']
                                 for sub in category['subcategories'])}
@@ -182,7 +182,7 @@ def workspace_readiness(db: DB,who: Auth):
     try:
         db.execute(select(DismantlingCatalogSource).limit(0));db.execute(select(DismantlingCatalogType).limit(0))
     except SQLAlchemyError:raise HTTPException(503,'Local catalogue schema is not ready') from None
-    return {**result,'contract_version':2,'required_revision':'e17b6c04a932',
+    return {**result,'contract_version':2,'required_revision':'c24a9b71e603',
             'features':['persistent_plan','paginated_catalog','confirmed_receipt','account_catalog_import']}
 
 
