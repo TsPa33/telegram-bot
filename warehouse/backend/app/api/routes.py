@@ -27,6 +27,7 @@ from app.schemas import (
     Registration,
     StockInput,
     VehicleInput,
+    VehiclePowertrainInput,
 )
 from app.services import auth
 from app.services.vehicle_catalog import local_catalog, automatic_donor_id
@@ -132,6 +133,21 @@ def logout(response: Response, db: DB, who: Auth):
     )
 
 
+def vehicle_stock_counts(db, account_id, ids):
+    """One account-scoped aggregate for a whole page, never per-row queries.
+
+    A position counts when it is active and has physical quantity > 0, including
+    reserved units. A potential checklist/zero balance is not stock.
+    """
+    return dict(db.execute(select(Part.vehicle_id, func.count(Part.id)).where(
+        Part.account_id == account_id, Part.vehicle_id.in_(ids),
+        Part.archived.is_(False), Part.quantity > 0).group_by(Part.vehicle_id)).all()) if ids else {}
+
+
+def vehicle_view(db, row, account_id):
+    return {**snapshot(row), 'stock_positions':vehicle_stock_counts(db, account_id, [row.id]).get(row.id, 0)}
+
+
 def listing(
     db, model, account_id, *, q="", archived=False, offset=0, limit=100, filters=()
 ):
@@ -162,12 +178,15 @@ def listing(
             )
         )
     total = db.scalar(select(func.count()).select_from(stmt.subquery()))
-    rows = db.scalars(
+    rows = list(db.scalars(
         stmt.order_by(model.created_at.desc(), model.id).offset(offset).limit(limit)
-    )
+    ))
+    vehicle_counts = vehicle_stock_counts(db, account_id, [r.id for r in rows]) if model is Vehicle else {}
     items = []
     for row in rows:
         item = snapshot(row)
+        if model is Vehicle:
+            item["stock_positions"] = vehicle_counts.get(row.id, 0)
         if isinstance(row, Part):
             item["available_quantity"] = row.available_quantity
         items.append(item)
@@ -213,12 +232,12 @@ def vehicle_create(data: VehicleInput, db: DB, who: Auth):
     db.add(row)
     record(db, who.user.id, row, "vehicle_create", "Додано донора", {})
     db.commit()
-    return snapshot(row)
+    return vehicle_view(db, row, who.user.id)
 
 
 @router.get("/vehicles/{id}", tags=["Vehicles"])
 def vehicle_get(id: str, db: DB, who: Auth):
-    return snapshot(owned(db, Vehicle, id, who.user.id))
+    return vehicle_view(db, owned(db, Vehicle, id, who.user.id), who.user.id)
 
 
 @router.put("/vehicles/{id}", tags=["Vehicles"])
@@ -235,7 +254,30 @@ def vehicle_update(id: str, data: VehicleInput, db: DB, who: Auth):
         setattr(row, k, v)
     record(db, who.user.id, row, "vehicle_update", "Оновлено донора", before)
     db.commit()
-    return snapshot(row)
+    return vehicle_view(db, row, who.user.id)
+
+
+@router.patch("/vehicles/{id}/powertrain", tags=["Vehicles"])
+def vehicle_powertrain(id: str, data: VehiclePowertrainInput, db: DB, who: Auth):
+    row = owned(db, Vehicle, id, who.user.id, lock=True, active=True)
+    before = snapshot(row)
+    changes = data.model_dump(exclude_unset=True)
+    if "engine" in changes and changes["engine"] != row.engine:
+        row.ktype = None  # Prior provider checklist history remains intact.
+    for key, value in changes.items():
+        setattr(row, key, value)
+    if snapshot(row) != before:
+        record(db, who.user.id, row, "vehicle_update", "Оновлено двигун / КПП", before)
+    db.commit()
+    return vehicle_view(db, row, who.user.id)
+
+
+@router.get("/vehicle-view/readiness", tags=["Vehicles"])
+def vehicle_view_readiness(db: DB, who: Auth):
+    from app.api.dismantling import simple_readiness
+    result = simple_readiness(db, who)
+    return {**result, 'contract_version':4,
+            'features':result['features']+['vehicle_stock_counts','powertrain_edit']}
 
 
 @router.get("/vehicles/{id}/analytics", tags=["Analytics"])

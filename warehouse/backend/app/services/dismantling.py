@@ -203,7 +203,8 @@ def workspace(db,vehicle_id,account_id,*,offset=0,limit=100,visibility='all',**s
     ids=[row.part_id for row in page if row.part_id]
     parts={p.id:p for p in db.scalars(select(Part).where(Part.account_id==account_id,Part.id.in_(ids)))} if ids else {}
     add_ids=list(db.scalars(scope_query(vehicle_id,account_id).with_only_columns(DismantlingItem.id).where(DismantlingItem.included.is_(True),DismantlingItem.received_at.is_(None)).order_by(DismantlingItem.id).limit(10001)))
-    return {'add_count':len(add_ids),'add_token':selection_digest('add',add_ids),'contract_version':2,'items':[{**snapshot(row),'stock':snapshot(parts[row.part_id]) if row.part_id in parts else None} for row in page],
+    stock_positions=db.scalar(select(func.count(Part.id)).where(Part.account_id==account_id,Part.vehicle_id==vehicle_id,Part.archived.is_(False),Part.quantity>0))
+    return {'stock_positions':stock_positions,'add_count':len(add_ids),'add_token':selection_digest('add',add_ids),'contract_version':2,'items':[{**snapshot(row),'stock':snapshot(parts[row.part_id]) if row.part_id in parts else None} for row in page],
         'total':total,'offset':offset,'limit':limit,'hierarchy':hierarchy,'status':vehicle.status,'archived':vehicle.archived,
         'counts':dict(zip(['total','included','excluded','dismantled','received'],totals)),
         'scope_counts':{'mark':mark_count,'receipt':receipt_count},'scope_tokens':tokens}

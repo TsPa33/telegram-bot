@@ -53,6 +53,17 @@ class VehicleInput(Input):
     status: Literal["planned", "dismantling", "completed"] = "dismantling"
 
 
+class VehiclePowertrainInput(Input):
+    engine: Annotated[str, Field(max_length=100)] = ""
+    transmission: Annotated[str, Field(max_length=50)] = ""
+
+    @model_validator(mode='after')
+    def nonempty_patch(self):
+        if not self.model_fields_set:
+            raise ValueError('Вкажіть двигун або КПП')
+        return self
+
+
 class CategoryNode(Input):
     key: Annotated[str, Field(min_length=1, max_length=200)]
     parent_key: Annotated[str, Field(min_length=1, max_length=200)] | None = None
