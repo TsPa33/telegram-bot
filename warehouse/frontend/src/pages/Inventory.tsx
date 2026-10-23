@@ -34,7 +34,7 @@ function partFields(vehicles: Row[], categories: Row[]): Field[] {
       options: [
         option("", "Без донора"),
         ...vehicles.map((v) =>
-          option(v.id, `${v.donor_id} · ${v.manufacturer} ${v.model}`),
+          option(v.id, `№ ${v.number ?? "—"} · ${v.manufacturer} ${v.model}`),
         ),
       ],
     },
@@ -197,7 +197,7 @@ export default function Inventory({ notify }: { notify: Notify }) {
           <option value="">Усі донори</option>
           {vehicles.map((v) => (
             <option key={v.id} value={v.id}>
-              {v.donor_id} · {v.manufacturer} {v.model}
+              № {v.number ?? "—"} · {v.manufacturer} {v.model}
             </option>
           ))}
         </select>
@@ -325,7 +325,7 @@ export default function Inventory({ notify }: { notify: Notify }) {
                       </td>
                       <td>
                         {vehicles.find((v) => v.id === p.vehicle_id)
-                          ?.donor_id || "—"}
+                          ?.number ? `№ ${vehicles.find((v) => v.id === p.vehicle_id)?.number}` : "—"}
                         <small>{p.location || "Місце не вказане"}</small>
                       </td>
                       <td>
@@ -394,8 +394,7 @@ export default function Inventory({ notify }: { notify: Notify }) {
                     {labels[p.condition]}
                   </p>
                   <small>
-                    {vehicles.find((v) => v.id === p.vehicle_id)?.donor_id ||
-                      "Без донора"}{" "}
+                    {vehicles.find((v) => v.id === p.vehicle_id)?.number ? `№ ${vehicles.find((v) => v.id === p.vehicle_id)?.number}` : "Без донора"}{" "}
                     · {p.location || "Місце не вказане"}
                   </small>
                   <div className="card-balances">

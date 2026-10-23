@@ -1896,3 +1896,15 @@ footer {
  .dismantling-row { grid-template-columns: 44px minmax(0,1fr) 115px; }
  .dismantling-workspace dialog input, .dismantling-workspace dialog select { font-size: 16px; }
 }
+
+/* UX 3: one explicit receipt action, persistent plan checkboxes. */
+.simple-stock-action{position:sticky;top:0;z-index:2;background:var(--panel,#fff);display:flex;gap:12px;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid #dce3ea}
+.simple-stock-action small{display:block;margin-top:4px}.simple-stock-action .primary{flex-shrink:0}
+.simple-catalog-note{font-size:12px;color:#536174}.simple-search{display:block;margin:12px 0}.simple-search input{width:100%}
+.simple-category{border:1px solid #dce3ea;border-radius:8px;margin:8px 0;overflow:hidden}.simple-category-title,.simple-subcategory-title{display:flex;align-items:center;gap:8px;padding:8px 10px;background:#f5f7fa}
+.simple-category-title small,.simple-subcategory-title small{margin-left:auto}.simple-subcategory-title{background:transparent;font-size:13px;border-top:1px solid #e8edf2}
+.simple-warehouse input[type=checkbox]{width:20px;height:20px;flex-shrink:0;margin:0;accent-color:#176b58}
+.simple-category details>summary{padding:5px 10px;font-size:12px}.simple-part{display:flex;flex-direction:row;color:var(--black);align-items:center;gap:9px;min-height:40px;padding:5px 12px;margin:0;border-top:1px solid #eff2f6;font-size:14px}.simple-part span{flex:1}.simple-part small{font-size:11px;color:#176b58}.simple-part.excluded span{color:#7a8492;text-decoration:line-through}
+@media(max-width:600px){.simple-stock-action{align-items:stretch;flex-direction:column;gap:8px}.simple-stock-action .primary{width:100%;min-height:44px}.simple-part{flex-wrap:wrap}.simple-part small{margin-left:29px}.simple-category-title,.simple-subcategory-title{padding:7px}.simple-stock-action small{font-size:11px}}
+
+.simple-warehouse{margin-top:0}.simple-part span{min-width:0;overflow-wrap:anywhere}.simple-warehouse details.simple-category{margin:8px 0}.simple-category>summary.simple-category-title{padding:8px 10px;min-height:40px}.simple-category>summary.simple-category-title::after{content:"⌄";margin-left:4px}

@@ -58,7 +58,7 @@ export default function Archive({ notify }: { notify: Notify }) {
                       </td>
                       <td>
                         <code>
-                          {r.donor_id ||
+                          {(r.number ? `№ ${r.number}` : "") ||
                             r.external_key ||
                             r.oem_number ||
                             r.id.slice(0, 8)}

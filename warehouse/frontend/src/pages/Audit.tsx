@@ -150,7 +150,7 @@ export default function Audit() {
           {[...(lookups.data?.[0] || []), ...(lookups.data?.[1] || [])].map(
             (v: Row) => (
               <option value={v.id} key={v.id}>
-                {v.donor_id}
+                № {v.number ?? "—"}
                 {v.archived ? " (архів)" : ""}
               </option>
             ),

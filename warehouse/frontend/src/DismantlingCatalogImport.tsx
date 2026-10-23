@@ -6,7 +6,7 @@ export default function DismantlingCatalogImport({onImported}: {onImported: () =
   async function submit(dry: boolean) {
     if(!payload||!rights)return;setBusy(true);setError("");
     try {const result=await api(`/dismantling/catalog/import?dry_run=${dry}`,"POST",{...payload,rights_confirmed:rights});
-      if(dry)setPreview(result);else {setMessage(`Імпортовано: нових ${result.created}, оновлено ${result.updated}. Натисніть «Оновити список із довідника», щоб додати нові типи до цього донора.`);setPreview(null);onImported();}
+      if(dry)setPreview(result);else {setMessage(`Імпортовано: нових ${result.created}, оновлено ${result.updated}. Нові типи автоматично з’являться у списку цього автомобіля.`);setPreview(null);onImported();}
     } catch(e){setError((e as Error).message);}finally{setBusy(false);}
   }
   return <details className="dismantling-import"><summary>Розширити власний каталог</summary>

@@ -18,6 +18,7 @@ try {
       if(p.endsWith('/auth/me'))return reply({id:'account',name:'Тест',email:'test@example.test'});
       if(p.endsWith('/vehicle-catalog'))return reply({complete:false,brands:[]});
       if(p.endsWith('/vehicles'))return reply({items:[vehicle],total:1});
+      if(p.endsWith('/dismantling/prepare'))return reply({created:0});
       if(p.endsWith('/dismantling/workspace'))return reply({items:[],hierarchy:[],counts:{total:0,included:0,excluded:0,dismantled:0,received:0},scope_counts:{mark:0,receipt:0},status:'dismantling'});
       if(p.endsWith('/dismantling'))return reply({items:[],status:'dismantling',potential_positions:0,dismantled_positions:0,stock_positions:0,sold_units:0});
       if(p.endsWith('/analytics'))return reply({positions:0,stock_units:0});

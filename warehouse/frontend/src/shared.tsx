@@ -176,7 +176,7 @@ export function OperationTable({ rows }: { rows: Row[] }) {
                     .filter(Boolean)
                     .join(" ") ||
                   "—"}
-                <small>{r.after.donor_id || r.entity_id.slice(0, 8)}</small>
+                <small>{r.after.number ? `№ ${r.after.number}` : r.after.donor_id ? "Автомобіль" : r.entity_id.slice(0, 8)}</small>
               </td>
               <td>
                 {r.after.quantity !== undefined ? (

@@ -50,7 +50,6 @@ const vehicleFields: Field[] = [
     ),
   },
   { key: "vin", label: "VIN", hint: "17 символів, необов’язково" },
-  { key: "donor_id", label: "Внутрішній ID донора", required: true },
   {
     key: "acquisition_date",
     label: "Дата придбання",
@@ -119,7 +118,7 @@ export default function Vehicles({ notify }: { notify: Notify }) {
           <Search size={17} />
           <input
             aria-label="Пошук автомобілів"
-            placeholder="Виробник, модель, VIN або ID…"
+            placeholder="Виробник, модель, VIN або номер…"
             value={q}
             onChange={(e) => {
               setQ(e.target.value);
@@ -152,7 +151,7 @@ export default function Vehicles({ notify }: { notify: Notify }) {
                 <thead>
                   <tr>
                     <th>Автомобіль</th>
-                    <th>ID донора</th>
+                    <th>Номер авто</th>
                     <th>Двигун / КПП</th>
                     <th>Придбання</th>
                     <th>Статус</th>
@@ -174,7 +173,7 @@ export default function Vehicles({ notify }: { notify: Notify }) {
                         </small>
                       </td>
                       <td>
-                        <code>{v.donor_id}</code>
+                        <code>№ {v.number ?? "—"}</code>
                         <small>{v.vin || "Без VIN"}</small>
                       </td>
                       <td>
@@ -199,7 +198,7 @@ export default function Vehicles({ notify }: { notify: Notify }) {
                             Запчастини
                           </button>
                           <button
-                            aria-label={`Архівувати ${v.donor_id}`}
+                            aria-label={`Архівувати $№ {v.number ?? "—"}`}
                             className="icon-button"
                             onClick={() => setConfirm(v)}
                           >
@@ -225,7 +224,7 @@ export default function Vehicles({ notify }: { notify: Notify }) {
                     <Badge value={v.status} />
                   </div>
                   <p>
-                    {v.year} · {v.donor_id}
+                    {v.year} · № {v.number ?? "—"}
                   </p>
                   <small>
                     {v.engine || "Двигун не вказаний"} ·{" "}
@@ -241,7 +240,7 @@ export default function Vehicles({ notify }: { notify: Notify }) {
                       Запчастини
                     </button>
                     <button
-                      aria-label={`Архівувати ${v.donor_id}`}
+                      aria-label={`Архівувати $№ {v.number ?? "—"}`}
                       onClick={() => setConfirm(v)}
                     >
                       <ArchiveIcon size={16} />
@@ -351,7 +350,7 @@ function VehicleDetail({
       {!v.archived && <button onClick={onEdit}>Редагувати / додаткові дані</button>}
       <dl className="details">
         {[
-          ["Внутрішній ID", v.donor_id],
+          ["Номер автомобіля", `№ ${v.number ?? "—"}`],
           ["Рік", v.year],
           ["Двигун", v.engine || "—"],
           ["VIN", v.vin || "Не вказано"],
