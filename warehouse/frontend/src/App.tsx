@@ -34,6 +34,7 @@ import Catalog from "./pages/Catalog";
 import Dashboard from "./pages/Dashboard";
 import Inventory from "./pages/Inventory";
 import SalesWorkspace from "./SalesWorkspace";
+import InventoryWorkspace from "./InventoryWorkspace";
 import Operations from "./pages/Operations";
 import Settings from "./pages/Settings";
 import Vehicles from "./pages/Vehicles";
@@ -183,7 +184,7 @@ export default function App() {
             <Route path="/statistics" element={<Dashboard/>}/>
             <Route path="/vehicles" element={<Vehicles notify={notify} />} />
             <Route path="/catalog" element={<Catalog notify={notify} />} />
-            <Route path="/inventory" element={<SalesWorkspace accountId={user.id} notify={notify}/>} />
+            <Route path="/inventory" element={<InventoryWorkspace key={user.id} accountId={user.id} notify={notify}/>} />
             <Route path="/inventory/advanced" element={<Inventory notify={notify}/>} />
             <Route path="/search" element={<SalesWorkspace accountId={user.id} quick notify={notify}/>} />
             <Route
