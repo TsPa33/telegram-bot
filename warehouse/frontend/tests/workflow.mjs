@@ -98,8 +98,7 @@ export async function workflow(page, viewport) {
   await expect(page.locator(".toast")).toContainText("Додано позицій: 1");
   await page.getByRole("button", { name: "Закрити", exact: true }).click();
   await nav("Склад");
-  await page.getByText("Додаткові фільтри",{exact:true}).click();
-  await page.getByRole("checkbox",{name:"Показати також без залишку",exact:true}).check();
+  await page.getByRole("switch",{name:"Показати без залишку",exact:true}).check();
   await page
     .getByRole("button", { name: "E2E checklist part", exact: true })
     .click();

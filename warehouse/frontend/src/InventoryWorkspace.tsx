@@ -3,6 +3,7 @@ import {useSearchParams} from 'react-router-dom';
 import {all} from './api';
 import SalesWorkspace from './SalesWorkspace';
 import Dismantling from './Dismantling';
+import StockHistory from './StockHistory';
 import {Empty} from './components';
 import {State,useLoad,type Notify} from './shared';
 
@@ -14,6 +15,7 @@ function read(key:string):Preference {
 export default function InventoryWorkspace({accountId,notify}:{accountId:string;notify:Notify}) {
  const key='warehouse-inventory-view:'+accountId;
  const [preference,setPreference]=useState(()=>read(key));
+ const [history,setHistory]=useState(false);
  const [params,setParams]=useSearchParams(),donor=params.get('vehicle_id')||'';
  const {data:vehicles,error,loading,reload}=useLoad(()=>all('/vehicles'),[]);
  useEffect(()=>{window.addEventListener('warehouse:inventory-changed',reload);return()=>window.removeEventListener('warehouse:inventory-changed',reload);},[]);
@@ -43,6 +45,8 @@ export default function InventoryWorkspace({accountId,notify}:{accountId:string;
    <button aria-pressed={preference.mode==='donors'} onClick={()=>switchMode('donors')}>За автомобілями</button>
    <button aria-pressed={preference.mode==='general'} onClick={()=>switchMode('general')}>Загальний склад</button>
   </nav>
+  <nav className="stock-section-tabs" aria-label="Розділ складу"><button aria-pressed={!history} onClick={()=>setHistory(false)}>Запчастини</button><button aria-pressed={history} onClick={()=>setHistory(true)}>Історія операцій</button></nav>
+  {history?<StockHistory key={preference.mode==='donors'?donor:'all'} vehicleId={preference.mode==='donors'?donor:''}/>:<>
   {storageError&&<p role="status">{storageError}</p>}
   {preference.mode==='general'?<SalesWorkspace accountId={accountId} notify={notify}/>:<>
    <State error={error} loading={loading}/>
@@ -55,8 +59,9 @@ export default function InventoryWorkspace({accountId,notify}:{accountId:string;
     <div className="donor-stock-switch"><label>Автомобіль<select aria-label="Автомобіль складу" value={donor} onChange={e=>choose(e.target.value)}>{vehicles?.map(v=><option key={v.id} value={v.id}>{v.manufacturer} {v.model} · {v.year} · №{v.number}</option>)}</select></label><button onClick={()=>choose('')}>Усі автомобілі</button></div>
     <h1>{vehicle.manufacturer} {vehicle.model} · {vehicle.year} · №{vehicle.number}</h1>
     <SalesWorkspace key={vehicle.id} accountId={accountId} notify={notify} grouped/>
-    <details className="donor-potential" open={planOpen} onToggle={e=>setPlanOpen(e.currentTarget.open)}><summary>План розбору — потенційні деталі</summary><p>Це план, а не підтверджена наявність. Додавання на склад потребує окремого підтвердження.</p>{planOpen&&<Dismantling key={vehicle.id} vehicle={vehicle} onChange={()=>{reload();window.dispatchEvent(new Event('warehouse:inventory-changed'));}} onInventory={()=>setPlanOpen(false)}/>}</details>
+    <details className="donor-potential" open={planOpen} onToggle={e=>setPlanOpen(e.currentTarget.open)}><summary>Каталог деталей автомобіля</summary><p>Виберіть деталі, які є на автомобілі, та додайте їх до обліку. Каталог не підтверджує товарний залишок; додавання потребує вашого підтвердження.</p>{planOpen&&<Dismantling key={vehicle.id} vehicle={vehicle} onChange={()=>{reload();window.dispatchEvent(new Event('warehouse:inventory-changed'));}} onInventory={()=>setPlanOpen(false)}/>}</details>
    </>}
+  </>}
   </>}
  </>;
 }

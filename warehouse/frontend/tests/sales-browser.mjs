@@ -48,7 +48,7 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.equal((await (await context.request.get(origin+'/api/v1/parts/'+hood.id)).json()).quantity,0);
  const finalAudit=await (await context.request.get(origin+`/api/v1/audit?part_id=${hood.id}&type=sale`)).json();assert.equal(finalAudit.total,2);
  // Two deliberate identical receipts in the retained advanced card must get NEW keys.
- await page.goto(origin+`/inventory?vehicle_id=${volvo.id}`);await page.getByText('Додаткові фільтри',{exact:true}).click();await page.getByRole('checkbox',{name:'Показати також без залишку',exact:true}).check();await row('Капот').getByRole('button',{name:'Капот',exact:true}).click();
+ await page.goto(origin+`/inventory?vehicle_id=${volvo.id}`);await page.getByRole('switch',{name:'Показати без залишку',exact:true}).check();await row('Капот').getByRole('button',{name:'Капот',exact:true}).click();
  const card=page.getByRole('dialog',{name:'Капот',exact:true});await card.getByText('Докладніше',{exact:true}).click();
  for(const quantity of [1,2]){await card.getByLabel('Кількість').fill('1');await card.getByLabel('Причина операції').fill('Нове надходження');await card.getByRole('button',{name:'Провести операцію',exact:true}).click();await expect(card.locator('.stock-summary>span').filter({hasText:'Залишок'})).toContainText(String(quantity));}
  assert.equal((await (await context.request.get(origin+'/api/v1/parts/'+hood.id)).json()).quantity,2);
