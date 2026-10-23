@@ -1,5 +1,6 @@
 import { ShieldCheck, Upload } from "lucide-react";
 import { Link } from "react-router-dom";
+import DismantlingCatalogImport from "../DismantlingCatalogImport";
 import { api, type Row } from "../api";
 
 import { Heading, State, useLoad } from "../shared";
@@ -12,6 +13,14 @@ export default function Settings({ user }: { user: Row }) {
         title="Налаштування"
         description="Обліковий запис і можливості вашого незалежного складу."
       />
+      <nav className="settings-tools" aria-label="Додаткові розділи">
+        <Link className="button" to="/catalog">Довідник запчастин</Link>
+        <Link className="button" to="/archive">Архів</Link>
+        <Link className="button" to="/operations">Журнал операцій</Link>
+        <Link className="button" to="/analytics">Аудит</Link>
+        <a className="button" href="#catalog-import">Імпорт каталогу</a>
+      </nav>
+      <section className="panel padded" id="catalog-import"><DismantlingCatalogImport onImported={()=>{}}/></section>
       <State error={error} loading={loading} />
       <div className="two-column">
         <section className="panel padded">

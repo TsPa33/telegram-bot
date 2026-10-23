@@ -4,12 +4,14 @@ export async function workflow(page, viewport) {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   async function nav(label) {
+    const secondary={"Довідник запчастин":"Довідник запчастин","Журнал операцій":"Журнал операцій","Аудит":"Аудит","Архів":"Архів"};
+    if(secondary[label]){await nav('Налаштування');await page.getByRole('navigation',{name:'Додаткові розділи'}).getByRole('link',{name:secondary[label],exact:true}).click();return;}
     if (viewport.width < 800)
       await page
         .getByRole("button", { name: "Відкрити меню", exact: true })
         .click();
     await page
-      .getByRole("navigation")
+      .locator(".sidebar")
       .getByRole("link", { name: label, exact: true })
       .click();
   }
@@ -38,7 +40,7 @@ export async function workflow(page, viewport) {
     path: `test-results/${viewport.name}-dashboard.png`,
     fullPage: true,
   });
-  await nav("Донорські авто");
+  await nav("Автомобілі");
   await page
     .getByRole("button", { name: "Додати автомобіль", exact: true })
     .click();
@@ -56,7 +58,7 @@ export async function workflow(page, viewport) {
       exact: true,
     }),
   ).toBeVisible();
-  await nav("Каталог запчастин");
+  await nav("Довідник запчастин");
   await page
     .getByRole("button", { name: "Імпорт категорій", exact: true })
     .click();
@@ -84,17 +86,18 @@ export async function workflow(page, viewport) {
   ).toBeVisible();
   await page.getByRole("button", { name: "Підтвердити імпорт" }).click();
   await expect(page.getByRole("dialog")).not.toBeVisible();
-  await nav("Донорські авто");
+  await nav("Автомобілі");
   await page
     .getByRole("button", { name: "E2E manufacturer E2E model", exact: true })
     .click();
+  await page.locator("dialog[open]").getByText("Дані автомобіля",{exact:true}).click();
   await page.getByText("Ручний список зі власних категорій", {exact: true}).click();
   await page
     .getByRole("button", { name: "Сформувати ручний список запчастин" })
     .click();
   await expect(page.locator(".toast")).toContainText("Додано позицій: 1");
   await page.getByRole("button", { name: "Закрити", exact: true }).click();
-  await nav("Складські залишки");
+  await nav("Склад");
   await page
     .getByRole("button", { name: "E2E checklist part", exact: true })
     .click();
@@ -102,7 +105,7 @@ export async function workflow(page, viewport) {
   await page.getByLabel("Причина операції").fill("E2E test receipt");
   await page.getByRole("button", { name: "Провести операцію" }).click();
   await expect(page.getByRole("dialog")).not.toBeVisible();
-  await nav("Операції зі складом");
+  await nav("Журнал операцій");
   const value = await page
     .getByLabel("Запчастина для операції")
     .locator("option")
@@ -114,7 +117,7 @@ export async function workflow(page, viewport) {
   await page.getByLabel("Причина операції").fill("E2E test reservation");
   await page.getByRole("button", { name: "Провести операцію" }).click();
   await expect(page.locator(".toast")).toContainText("Операцію проведено");
-  await nav("Аналітика та аудит");
+  await nav("Аудит");
   await page
     .getByLabel("Тип операції", { exact: true })
     .selectOption("reserve");

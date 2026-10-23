@@ -1,27 +1,13 @@
-import { Archive as ArchiveIcon, Plus, Search } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, money, type Page, type Row } from "../api";
-import {
-  Badge,
-  Empty,
-  Modal,
-  Pager,
-  type Field,
-} from "../components";
+import { Empty, Modal, Pager, type Field } from "../components";
 import VehicleForm from "../VehicleForm";
 import VehicleChecklist from "../VehicleChecklist";
 import Dismantling from "../Dismantling";
-
-import {
-  choices,
-  Confirm,
-  Heading,
-  option,
-  State,
-  useLoad,
-  type Notify,
-} from "../shared";
+import PowertrainEditor from "../PowertrainEditor";
+import {choices, Confirm, Heading, option, State, useLoad, type Notify} from "../shared";
 const vehicleFields: Field[] = [
   { key: "manufacturer", label: "Виробник", required: true },
   { key: "model", label: "Модель", required: true },
@@ -42,13 +28,7 @@ const vehicleFields: Field[] = [
       option(x, x || "Не вказано"),
     ),
   },
-  {
-    key: "transmission",
-    label: "Коробка передач",
-    options: ["", "Механічна", "Автоматична", "Роботизована", "Варіатор"].map(
-      (x) => option(x, x || "Не вказано"),
-    ),
-  },
+  { key: "transmission", label: "КПП" },
   { key: "vin", label: "VIN", hint: "17 символів, необов’язково" },
   {
     key: "acquisition_date",
@@ -69,258 +49,47 @@ const vehicleFields: Field[] = [
   },
   { key: "notes", label: "Примітки", type: "textarea", wide: true },
 ];
-export default function Vehicles({ notify }: { notify: Notify }) {
-  const [q, setQ] = useState(""),
-    [status, setStatus] = useState(""),
-    [page, setPage] = useState(0),
-    [edit, setEdit] = useState<Row | null>(null),
-    [created, setCreated] = useState<Row | null>(null),
-    [detail, setDetail] = useState<Row | null>(null),
-    [confirm, setConfirm] = useState<Row | null>(null);
-  const { data, error, loading, reload } = useLoad(
-    () =>
-      api<Page>(
-        `/vehicles?q=${encodeURIComponent(q)}&status=${status}&limit=50&offset=${page * 50}`,
-      ),
-    [q, status, page],
-  );
-  const navigate = useNavigate();
-  const [params, setParams] = useSearchParams();
-  const donorId = params.get("donor");
-  function openDetail(row: Row) {setDetail(row);setParams({donor:row.id});}
-  function closeDetail() {setDetail(null);setParams({});}
-  useEffect(() => {
-    if (!donorId) {setDetail(null);return;}
-    if (detail?.id === donorId) return;
-    let active = true;
-    api(`/vehicles/${encodeURIComponent(donorId)}`).then(row => {if(active) setDetail(row);})
-      .catch(e => {if(active) notify((e as Error).message);});
-    return () => {active = false;};
-  }, [donorId]);
-  return (
-    <>
-      <Heading
-        eyebrow="ДОНОРСЬКИЙ ПАРК"
-        title="Автомобілі-донори"
-        description="Дані автомобілів, чеклісти демонтажу та оцінка запчастин."
-      >
-        <button
-          className="primary"
-          onClick={() => setEdit({ status: "dismantling" })}
-        >
-          <Plus size={17} />
-          Додати автомобіль
-        </button>
-      </Heading>
-      {created && <p role="status">Додано: {created.manufacturer} {created.model} · {created.year}. <button onClick={() => openDetail(created)}>Відкрити картку</button></p>}
-      <div className="toolbar">
-        <label className="search">
-          <Search size={17} />
-          <input
-            aria-label="Пошук автомобілів"
-            placeholder="Виробник, модель, VIN або номер…"
-            value={q}
-            onChange={(e) => {
-              setQ(e.target.value);
-              setPage(0);
-            }}
-          />
-        </label>
-        <select
-          aria-label="Статус автомобіля"
-          value={status}
-          onChange={(e) => {
-            setStatus(e.target.value);
-            setPage(0);
-          }}
-        >
-          <option value="">Усі статуси</option>
-          {choices(["planned", "dismantling", "completed"]).map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-      </div>
-      <State error={error} loading={loading} />
-      <section className="panel">
-        {data?.items.length ? (
-          <>
-            <div className="table-wrap desktop-table">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Автомобіль</th>
-                    <th>Номер авто</th>
-                    <th>Двигун / КПП</th>
-                    <th>Придбання</th>
-                    <th>Статус</th>
-                    <th>Дії</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.items.map((v) => (
-                    <tr key={v.id}>
-                      <td>
-                        <button
-                          className="text-button strong"
-                          onClick={() => openDetail(v)}
-                        >
-                          {v.manufacturer} {v.model}
-                        </button>
-                        <small>
-                          {v.year} · {v.generation || "Покоління не вказане"}
-                        </small>
-                      </td>
-                      <td>
-                        <code>№ {v.number ?? "—"}</code>
-                        <small>{v.vin || "Без VIN"}</small>
-                      </td>
-                      <td>
-                        {v.engine || "—"}
-                        <small>{v.transmission || "—"}</small>
-                      </td>
-                      <td>
-                        {v.acquisition_cost != null ? money(v.acquisition_cost) : "—"}
-                        <small>{v.acquisition_date || "Дата придбання не вказана"}</small>
-                      </td>
-                      <td>
-                        <Badge value={v.status} />
-                      </td>
-                      <td>
-                        <div className="row-actions">
-                          <button onClick={() => setEdit(v)}>Змінити</button>
-                          <button
-                            onClick={() =>
-                              navigate(`/inventory?vehicle_id=${v.id}`)
-                            }
-                          >
-                            Запчастини
-                          </button>
-                          <button
-                            aria-label={`Архівувати $№ {v.number ?? "—"}`}
-                            className="icon-button"
-                            onClick={() => setConfirm(v)}
-                          >
-                            <ArchiveIcon size={16} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="mobile-cards">
-              {data.items.map((v) => (
-                <article className="inventory-card" key={v.id}>
-                  <div>
-                    <button
-                      className="text-button strong"
-                      onClick={() => openDetail(v)}
-                    >
-                      {v.manufacturer} {v.model}
-                    </button>
-                    <Badge value={v.status} />
-                  </div>
-                  <p>
-                    {v.year} · № {v.number ?? "—"}
-                  </p>
-                  <small>
-                    {v.engine || "Двигун не вказаний"} ·{" "}
-                    {v.acquisition_cost != null
-                      ? money(v.acquisition_cost)
-                      : "Вартість не вказана"}
-                  </small>
-                  <div className="card-actions">
-                    <button onClick={() => setEdit(v)}>Змінити</button>
-                    <button
-                      onClick={() => navigate(`/inventory?vehicle_id=${v.id}`)}
-                    >
-                      Запчастини
-                    </button>
-                    <button
-                      aria-label={`Архівувати $№ {v.number ?? "—"}`}
-                      onClick={() => setConfirm(v)}
-                    >
-                      <ArchiveIcon size={16} />
-                    </button>
-                  </div>
-                </article>
-              ))}
-            </div>
-            <Pager total={data.total} page={page} setPage={setPage} />
-          </>
-        ) : (
-          !loading && (
-            <Empty
-              title={
-                q || status
-                  ? "Автомобілів за цими фільтрами немає"
-                  : "Додайте першого донора"
-              }
-            >
-              Збережіть дані автомобіля, щоб пов’язати з ним запчастини та
-              витрати.
-            </Empty>
-          )
-        )}
-      </section>
-      {edit && (
-        <Modal
-          title={edit.id ? "Редагувати автомобіль" : "Новий автомобіль-донор"}
-          onClose={() => setEdit(null)}
-        >
-          <VehicleForm
-            initial={edit}
-            fields={vehicleFields}
-            onSave={async (d) => {
-              const saved = await api(
-                "/vehicles" + (edit.id ? "/" + edit.id : ""),
-                edit.id ? "PUT" : "POST",
-                d,
-              );
-              if (!edit.id) {setCreated(saved);setQ("");setStatus("");setPage(0);}
-              else if (created?.id === saved.id) setCreated(saved);
-              setEdit(null);
-              reload();
-              notify("Дані автомобіля збережено");
-            }}
-          />
-        </Modal>
-      )}
-      {detail && (
-        <Modal
-          title={`${detail.manufacturer} ${detail.model} · ${detail.year}`}
-          onClose={closeDetail}
-        >
-          <VehicleDetail
-            vehicle={detail}
-            onEdit={async () => {
-              try {const row = await api(`/vehicles/${detail.id}`);closeDetail();setEdit(row);}
-              catch(e) {notify((e as Error).message);}
-            }}
-            onRefresh={reload}
-            notify={notify}
-            onInventory={() => navigate(`/inventory?vehicle_id=${detail.id}`)}
-          />
-        </Modal>
-      )}
-      {confirm && (
-        <Confirm
-          title="Архівувати автомобіль?"
-          text="Донор залишиться в історії. Його запчастини не архівуються автоматично."
-          onClose={() => setConfirm(null)}
-          onConfirm={async () => {
-            await api("/archive/vehicles/" + confirm.id, "POST");
-            setConfirm(null);
-            reload();
-            notify("Автомобіль переміщено в архів");
-          }}
-        />
-      )}
-    </>
-  );
+export default function Vehicles({notify}:{notify:Notify}) {
+  const [q,setQ]=useState(''),[page,setPage]=useState(0),[edit,setEdit]=useState<Row|null>(null),[created,setCreated]=useState<Row|null>(null),[detail,setDetail]=useState<Row|null>(null),[confirm,setConfirm]=useState<Row|null>(null),[showInfo,setShowInfo]=useState(false);
+  const {data,error,loading,reload}=useLoad(()=>api<Page>(`/vehicles?q=${encodeURIComponent(q)}&limit=50&offset=${page*50}`),[q,page]);
+  const navigate=useNavigate(),[params,setParams]=useSearchParams(),donorId=params.get('donor');
+  function openDetail(row:Row,info=false){setShowInfo(info);setDetail(row);setParams({donor:row.id});}
+  function closeDetail(){setDetail(null);setParams({});}
+  function saved(row:Row){setDetail(current=>current?.id===row.id?row:current);setCreated(current=>current?.id===row.id?row:current);reload();}
+  async function refresh(){reload();if(detail){try{setDetail(await api(`/vehicles/${detail.id}`));}catch(e){notify((e as Error).message);}}}
+  useEffect(()=>{
+    if(!donorId){setDetail(null);return;}if(detail?.id===donorId)return;
+    let active=true;api(`/vehicles/${encodeURIComponent(donorId)}`).then(row=>{if(active)setDetail(row);}).catch(e=>{if(active)notify(e.message);});
+    return ()=>{active=false;};
+  },[donorId]);
+  return <>
+    <Heading eyebrow="АВТОМОБІЛІ" title="Автомобілі" description="Відкрийте автомобіль, щоб вибрати запчастини або перейти до складу.">
+      <button className="primary" onClick={()=>setEdit({status:'dismantling'})}><Plus size={17}/>Додати автомобіль</button>
+    </Heading>
+    {created&&<p role="status">Додано: {created.manufacturer} {created.model} · {created.year}. <button onClick={()=>openDetail(created)}>Відкрити картку</button></p>}
+    <label className="search vehicle-search"><Search size={17}/><input aria-label="Пошук автомобілів" placeholder="Марка, модель або номер авто" value={q} onChange={e=>{setQ(e.target.value);setPage(0);}}/></label>
+    <State error={error} loading={loading}/>
+    <section className="vehicle-grid" aria-label="Список автомобілів">
+      {data?.items.map(v=><article className="vehicle-summary-card" key={v.id}>
+        <div className="vehicle-summary-head"><div><button className="text-button strong" onClick={()=>openDetail(v)}>{v.manufacturer} {v.model}</button><p>{v.year} · №{v.number??'—'}</p></div><span className="vehicle-stock-count">На складі <b>{v.stock_positions??'…'}</b></span></div>
+        <button className="primary vehicle-parts-action" aria-label={`Запчастини ${v.manufacturer} ${v.model}`} onClick={()=>openDetail(v)}>Запчастини</button>
+        <PowertrainEditor vehicle={v} onSaved={saved}/>
+        <button className="text-button vehicle-data-action" onClick={()=>openDetail(v,true)}>Дані автомобіля</button>
+      </article>)}
+      {!loading&&!data?.items.length&&<Empty title={q?'Автомобілів не знайдено':'Додайте перший автомобіль'}>Пов’яжіть запчастини з автомобілем, щоб швидко знаходити їх на складі.</Empty>}
+    </section>
+    {data&&<Pager total={data.total} page={page} setPage={setPage}/>}
+    {edit&&<Modal title={edit.id?'Редагувати автомобіль':'Новий автомобіль-донор'} onClose={()=>setEdit(null)}>
+      <VehicleForm initial={edit} fields={vehicleFields} onSave={async values=>{
+        const row=await api('/vehicles'+(edit.id?'/'+edit.id:''),edit.id?'PUT':'POST',values);
+        if(!edit.id){setCreated(row);setQ('');setPage(0);}saved(row);setEdit(null);notify('Дані автомобіля збережено');
+      }}/>
+    </Modal>}
+    {detail&&<Modal title={`${detail.manufacturer} ${detail.model} · ${detail.year} · №${detail.number??'—'}`} onClose={closeDetail}>
+      <VehicleDetail key={detail.id} vehicle={detail} showInfo={showInfo} onSaved={saved} onArchive={()=>{setConfirm(detail);}} onEdit={async()=>{try{const row=await api(`/vehicles/${detail.id}`);closeDetail();setEdit(row);}catch(e){notify((e as Error).message);}}} onRefresh={refresh} notify={notify} onInventory={()=>navigate(`/inventory?vehicle_id=${detail.id}`)}/>
+    </Modal>}
+    {confirm&&<Confirm title="Архівувати автомобіль?" text="Автомобіль залишиться в історії. Його запчастини залишаться на складі." onClose={()=>setConfirm(null)} onConfirm={async()=>{await api('/archive/vehicles/'+confirm.id,'POST');setConfirm(null);closeDetail();reload();notify('Автомобіль переміщено в архів');}}/>}
+  </>;
 }
 function VehicleDetail({
   vehicle: v,
@@ -328,8 +97,14 @@ function VehicleDetail({
   onRefresh,
   notify,
   onInventory,
+  onSaved,
+  onArchive,
+  showInfo,
 }: {
   vehicle: Row;
+  onSaved: (row:Row)=>void;
+  onArchive: ()=>void;
+  showInfo: boolean;
   onEdit: () => void;
   onRefresh: () => void;
   notify: Notify;
@@ -344,17 +119,17 @@ function VehicleDetail({
   const [busy, setBusy] = useState(false);
   return (
     <>
-      {v.engine && <p>{v.engine}</p>}
+      <PowertrainEditor vehicle={v} onSaved={onSaved}/>
       <Dismantling vehicle={v} onChange={() => {reloadAnalytics();onRefresh();}} onInventory={onInventory} />
-      <details><summary>Дані автомобіля та оцінка</summary>
-      {!v.archived && <button onClick={onEdit}>Редагувати / додаткові дані</button>}
+      <details className="vehicle-secondary" open={showInfo}><summary>Дані автомобіля</summary>
+      {!v.archived&&<div className="modal-actions"><button onClick={onEdit}>Редагувати дані</button><button onClick={onArchive}>Архівувати автомобіль</button></div>}
       <dl className="details">
         {[
           ["Номер автомобіля", `№ ${v.number ?? "—"}`],
           ["Рік", v.year],
-          ["Двигун", v.engine || "—"],
+          ["Двигун", v.engine || "Не вказано"],
+          ["КПП", v.transmission || "Не вказано"],
           ["VIN", v.vin || "Не вказано"],
-          ["K-Type", v.ktype ?? "Не вибрано"],
           [
             "Придбання",
             v.acquisition_cost != null ? money(v.acquisition_cost) : "Не вказано",
@@ -385,8 +160,7 @@ function VehicleDetail({
           </span>
         </div>
       )}
-      </details>
-      <details><summary>Додатковий каталог Plan.Parts</summary><VehicleChecklist vehicle={v} /></details>
+      <details><summary>Додатковий каталог</summary><VehicleChecklist vehicle={v} /></details>
       <details><summary>Ручний список зі власних категорій</summary>
       <p className="notice">
         Стандартний чекліст — перелік можливих деталей, а не точний OEM-каталог.
@@ -413,6 +187,7 @@ function VehicleDetail({
           Сформувати ручний список запчастин
         </button>
       </div>
+      </details>
       </details>
     </>
   );

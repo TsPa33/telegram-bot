@@ -43,15 +43,21 @@ try {
   const audit=(await (await context.request.get(origin+`/api/v1/audit?vehicle_id=${vehicle.id}&limit=200`)).json()).items;assert.equal(audit.filter(a=>a.type==='receipt').length,32);
   // Import 1001 synthetic own types, automatically extend same donor, paginate.
   const upload={source:'browser.owned',provenance:'Independent synthetic browser test; not fitment',license_reference:'Own test data, reusable',types:Array.from({length:1001},(_,i)=>({catalog_key:`browser-${i}`,category_key:'browser',category_name:'Browser tests',subcategory_key:'types',subcategory_name:'Owned types',name:`Owned test type ${String(i).padStart(4,'0')}`,position:''}))};
+  await page.goto(origin+'/settings');
   await page.getByText('Розширити власний каталог',{exact:true}).click();
   await page.getByLabel('JSON власного каталогу',{exact:true}).setInputFiles({name:'owned.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(upload))});
   await page.getByRole('checkbox',{name:/Маю права на збереження/}).check();await page.getByRole('button',{name:'Перевірити каталог',exact:true}).click();
   await expect(page.getByText('Нових: 1001. Оновлено: 0. Усього в джерелі: 1001.',{exact:true})).toBeVisible();
   await page.getByRole('button',{name:'Імпортувати до власного довідника',exact:true}).click();
+  await expect(page.getByRole('status').filter({hasText:'Імпортовано: нових 1001'})).toBeVisible();
+  await page.goto(origin+`/vehicles?donor=${vehicle.id}`);
   await expect(add()).toHaveText('Додати на склад (1001)');assert.equal((await view()).counts.total,1034);assert.equal((await parts()).total,32);
   await page.getByRole('searchbox',{name:'Пошук деталей',exact:true}).fill('Owned test type');
   await expect(page.getByText('Owned test type 0000',{exact:true})).toBeVisible();await page.getByRole('button',{name:'Наступні',exact:true}).click();
   await expect(page.getByText('Owned test type 0100',{exact:true})).toBeVisible();
+  assert(await page.locator('.simple-part').count()<=100);
+  await page.getByLabel('Категорія',{exact:true}).selectOption({label:'Browser tests'});
+  await expect(page.getByText('Owned test type 0000',{exact:true})).toBeVisible();
   const own=page.getByRole('checkbox',{name:'Вибрати категорію Browser tests',exact:true});await own.uncheck();await expect(add()).toBeDisabled();assert.equal((await parts()).total,32);
   await page.reload();await expect(own).not.toBeChecked();await own.check();await expect(add()).toHaveText('Додати на склад (1001)');
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));

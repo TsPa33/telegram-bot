@@ -32,7 +32,8 @@ try {
     });
     await page.goto(origin+'/vehicles');
     await page.getByRole('button',{name:'Volvo XC90',exact:true}).filter({visible:true}).click();
-    await page.getByText('Додатковий каталог Plan.Parts',{exact:true}).click();
+    await page.locator('dialog[open]').getByText('Дані автомобіля',{exact:true}).click();
+    await page.getByText('Додатковий каталог',{exact:true}).click();
     await expect(page.getByText('Пунктів: 0. Попередніх: 0.')).toBeVisible();assert.equal(posts,0);
     await page.getByRole('button',{name:'Завантажити чекліст за K-Type',exact:true}).click();
     await expect(page.getByText('Oil filter',{exact:true})).toBeVisible();assert.equal(posts,1);

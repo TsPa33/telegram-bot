@@ -10,6 +10,7 @@ import {
   LogOut,
   Menu,
   Settings2,
+  Search,
   ShieldCheck,
   Warehouse,
   X,
@@ -36,14 +37,17 @@ import Operations from "./pages/Operations";
 import Settings from "./pages/Settings";
 import Vehicles from "./pages/Vehicles";
 const nav = [
-  { to: "/", label: "Огляд", icon: LayoutDashboard },
-  { to: "/vehicles", label: "Донорські авто", icon: CarFront },
-  { to: "/catalog", label: "Каталог запчастин", icon: ClipboardList },
-  { to: "/inventory", label: "Складські залишки", icon: Boxes },
-  { to: "/operations", label: "Операції зі складом", icon: ArrowDownLeft },
-  { to: "/analytics", label: "Аналітика та аудит", icon: ChartNoAxesCombined },
-  { to: "/archive", label: "Архів", icon: ArchiveIcon },
-  { to: "/settings", label: "Налаштування", icon: Settings2 },
+  { to: "/search", label: "Пошук запчастин", icon: Search },
+  { to: "/vehicles", label: "Автомобілі", icon: CarFront },
+  { to: "/inventory", label: "Склад", icon: Boxes },
+  { to: "/", label: "Статистика", icon: ChartNoAxesCombined },
+];
+const secondary = [
+  {to:"/settings",label:"Налаштування"},
+  {to:"/catalog",label:"Довідник запчастин"},
+  {to:"/operations",label:"Журнал операцій"},
+  {to:"/analytics",label:"Аудит"},
+  {to:"/archive",label:"Архів"},
 ];
 
 type Notify = (text: string) => void;
@@ -88,7 +92,7 @@ export default function App() {
         }}
       />
     );
-  const current = nav.find((n) => n.to === location.pathname);
+  const current = [...nav,...secondary].find((n) => n.to === location.pathname);
   return (
     <div className="app">
       <aside className={menu ? "sidebar open" : "sidebar"}>
@@ -119,6 +123,7 @@ export default function App() {
             </NavLink>
           ))}
         </nav>
+        <NavLink className="settings-nav" to="/settings"><Settings2 size={18}/>Налаштування</NavLink>
         <div className="sidebar-foot">
           <div className="safe-dot" />
           Незалежний облік складу<small>CarPot Warehouse · MVP</small>
@@ -177,6 +182,7 @@ export default function App() {
             <Route path="/vehicles" element={<Vehicles notify={notify} />} />
             <Route path="/catalog" element={<Catalog notify={notify} />} />
             <Route path="/inventory" element={<Inventory notify={notify} />} />
+            <Route path="/search" element={<Inventory notify={notify} />} />
             <Route
               path="/operations"
               element={<Operations notify={notify} />}
