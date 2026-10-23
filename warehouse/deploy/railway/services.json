@@ -1,5 +1,5 @@
 {
-  "description": "Dashboard checklist only; target a NEW EMPTY warehouse-staging environment in the EXISTING paid Railway project. Never duplicate/sync production or change its resources.",
+  "description": "Dashboard checklist only; use the existing isolated warehouse-staging environment and postgres service in the EXISTING paid Railway project. Do not recreate or rename existing services. Never duplicate/sync production or change its resources.",
   "project": "<select-your-existing-Railway-project>",
   "environment": "warehouse-staging",
   "services": {
@@ -18,7 +18,8 @@
       "targetPort": 8080,
       "watchPaths": [
         "/warehouse/frontend/**",
-        "/warehouse/deploy/railway/frontend*",
+        "/warehouse/deploy/railway/frontend.Dockerfile",
+        "/warehouse/deploy/railway/frontend-start.sh",
         "/warehouse/deploy/railway/nginx/**",
         "/warehouse/.dockerignore"
       ],
@@ -54,17 +55,17 @@
         "WAREHOUSE_COOKIE_SECURE": "true",
         "WAREHOUSE_REGISTRATION_ENABLED": "false",
         "WAREHOUSE_PUBLIC_ORIGIN": "https://${{warehouse-web.RAILWAY_PUBLIC_DOMAIN}}",
-        "WAREHOUSE_DB_HOST": "${{warehouse-db.RAILWAY_PRIVATE_DOMAIN}}",
+        "WAREHOUSE_DB_HOST": "${{postgres.RAILWAY_PRIVATE_DOMAIN}}",
         "WAREHOUSE_DB_PORT": "5432",
-        "WAREHOUSE_DB_NAME": "${{warehouse-db.POSTGRES_DB}}",
-        "WAREHOUSE_DB_USER": "${{warehouse-db.POSTGRES_USER}}",
-        "WAREHOUSE_DB_PASSWORD": "${{warehouse-db.POSTGRES_PASSWORD}}",
+        "WAREHOUSE_DB_NAME": "${{postgres.POSTGRES_DB}}",
+        "WAREHOUSE_DB_USER": "${{postgres.POSTGRES_USER}}",
+        "WAREHOUSE_DB_PASSWORD": "${{postgres.POSTGRES_PASSWORD}}",
         "WAREHOUSE_STARTUP_TIMEOUT": "120",
         "WAREHOUSE_FORWARDED_ALLOW_IPS": "fd00::/8,10.0.0.0/8",
         "RAILWAY_DEPLOYMENT_DRAINING_SECONDS": "30"
       }
     },
-    "warehouse-db": {
+    "postgres": {
       "image": "postgres:16-alpine",
       "publicDomain": false,
       "tcpProxy": false,

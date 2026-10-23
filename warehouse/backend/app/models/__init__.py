@@ -195,3 +195,34 @@ class Photo(Base):
     part_id: Mapped[str] = mapped_column(ForeignKey("parts.id"), index=True)
     filename: Mapped[str] = mapped_column(String(80))
     media_type: Mapped[str] = mapped_column(String(30))
+
+
+class DismantlingItem(Base):
+    """Local workflow state; actual stock is exclusively Part + Operation."""
+    __tablename__ = "dismantling_items"
+    __table_args__ = (
+        ForeignKeyConstraint(["vehicle_id", "account_id"], ["vehicles.id", "vehicles.account_id"], name="fk_dismantling_vehicle_account"),
+        UniqueConstraint("vehicle_id", "source", "catalog_key", name="uq_dismantling_catalog_key"),
+        UniqueConstraint("part_id", name="uq_dismantling_part"),
+        CheckConstraint("status IN ('unchecked','dismantled','absent','damaged')", name="ck_dismantling_status"),
+        CheckConstraint("quantity > 0 AND quantity <= 1000000", name="ck_dismantling_quantity"),
+        CheckConstraint("condition IS NULL OR condition IN ('used','new','damaged','refurbished')", name="ck_dismantling_condition"),
+        CheckConstraint("(received_at IS NULL AND part_id IS NULL) OR (received_at IS NOT NULL AND part_id IS NOT NULL)", name="ck_dismantling_receipt_link"),
+    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    account_id: Mapped[str] = mapped_column(ForeignKey("accounts.id"), index=True)
+    vehicle_id: Mapped[str] = mapped_column(String(36), index=True)
+    source: Mapped[str] = mapped_column(String(100))
+    catalog_key: Mapped[str] = mapped_column(String(100))
+    category_key: Mapped[str] = mapped_column(String(100))
+    category_name: Mapped[str] = mapped_column(String(100))
+    subcategory_key: Mapped[str] = mapped_column(String(100))
+    subcategory_name: Mapped[str] = mapped_column(String(100))
+    name: Mapped[str] = mapped_column(String(200))
+    position: Mapped[str] = mapped_column(String(100), default="")
+    status: Mapped[str] = mapped_column(String(20), default="unchecked")
+    quantity: Mapped[int] = mapped_column(Integer, default=1)
+    condition: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    part_id: Mapped[str | None] = mapped_column(ForeignKey("parts.id"), nullable=True)
+    received_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)

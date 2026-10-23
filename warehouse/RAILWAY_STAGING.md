@@ -1,8 +1,14 @@
+> Current update policy: keep Warehouse Auto Deploy ON and publish backend and
+> frontend in separate GitHub pushes. Follow [STAGED_AUTO_DEPLOY.md](STAGED_AUTO_DEPLOY.md).
+> The existing `warehouse-staging` and `postgres` are reused: do not create a new
+> environment/database, reset POSTGRES_* variables, or replace its volume. The
+> initial-install sections below apply only when those resources do not yet exist.
+
 # Railway staging preview — Warehouse only
 
 This guide prepares a **new EMPTY environment named `warehouse-staging` inside your EXISTING paid Railway project** for visual testing on iPhone and desktop. Keep your current subscription and project. Nothing in this change deploys to Railway, connects to a Railway account, changes production CarPot, or reads its variables, databases, credentials or volumes.
 
-Create the environment with Railway's **Empty Environment** option. Never duplicate, clone, fork or sync production. Create only `warehouse-db`, `warehouse-api` and `warehouse-web` in `warehouse-staging`. No production service instance is required in this environment.
+Create the environment with Railway's **Empty Environment** option. Never duplicate, clone, fork or sync production. Create only `postgres`, `warehouse-api` and `warehouse-web` in `warehouse-staging`. No production service instance is required in this environment.
 
 For the current Plan.Parts integration, also follow [PLAN_PARTS_STAGING.md](PLAN_PARTS_STAGING.md): keep `PLAN_PARTS_ENABLED=false` for the first deployment, distinguish a fresh database from an existing Warehouse upgrade, verify revision `c91e72b6a410`, and use the documented backup/recovery procedure. The new integration and this revised guide must be reviewed and published on the feature branch before Railway can build them.
 
@@ -22,7 +28,7 @@ https://<generated-warehouse-web-domain>.up.railway.app
                        |
               private PostgreSQL
                        |
-             warehouse-db :5432
+             postgres :5432
           volume /var/lib/postgresql/data
 ```
 
@@ -53,7 +59,7 @@ No merge into `main` is needed. `.env`, local TLS test keys, photos, and depende
 
 1. Open your **existing paid Railway project** without changing its production configuration. In the environment selector choose **New Environment → Empty Environment**, name it exactly **`warehouse-staging`**, and select it. Do not choose Duplicate Environment and do not use Sync/Import from production in either direction.
 2. Confirm the environment selector reads `warehouse-staging` and its canvas contains **zero services**. If CarPot services appear, stop and verify the selected environment and creation mode; do not delete, move, pause or redeploy those services to "clean it up".
-3. Add an **empty service in `warehouse-staging` only**, name it exactly `warehouse-db`, and select Docker image **`postgres:16-alpine`**. Keep its deployment staged/paused until its variables and volume are configured. Do not use a project/environment duplication template.
+3. Add an **empty service in `warehouse-staging` only**, name it exactly `postgres`, and select Docker image **`postgres:16-alpine`**. Keep its deployment staged/paused until its variables and volume are configured. Do not use a project/environment duplication template.
 4. Attach a **new independent Railway Volume** at `/var/lib/postgresql/data` to this new database instance. Do not reuse, restore, clone or connect a production volume/database. Set the smallest supported size with adequate PostgreSQL/WAL headroom for your expected staging data; the smallest useful size depends on Railway's current volume controls.
 5. Set these variables **before its first database initialization**:
 
@@ -66,7 +72,7 @@ No merge into `main` is needed. `.env`, local TLS test keys, photos, and depende
 
 Use **service-local variables in `warehouse-staging`**. Do not modify production variables, project/workspace defaults, or existing shared variables. Do not bind `${{shared.*}}` values from CarPot. References below connect only the three Warehouse services within the selected environment. Leave production source branches, deployments, volumes, domains, limits and automation exactly as they are.
 
-Generate a unique password locally with a password manager or `openssl rand -hex 32`; enter it only in the `warehouse-db` service's Variables panel. Do not put the value in a commit, command argument, build argument, frontend variable, or chat.
+Generate a unique password locally with a password manager or `openssl rand -hex 32`; enter it only in the `postgres` service's Variables panel. Do not put the value in a commit, command argument, build argument, frontend variable, or chat.
 
 Leave Start Command empty (use the official image's entrypoint). Use one replica. Leave HTTP healthcheck unset for PostgreSQL. Ensure **Networking has no Public Access/TCP proxy**. Deploy this service only after checking those settings.
 
@@ -76,7 +82,7 @@ This deliberately uses a fresh official Postgres image rather than a template th
 
 ## 3. Create the two application services before releasing their builds
 
-While the selector still reads **`warehouse-staging`**, create two **empty** services named exactly `warehouse-api` and `warehouse-web`. The final canvas must contain exactly these two services plus `warehouse-db`, with no CarPot service instances. Connect each to the feature branch with the settings below. Keep initial source/deployment changes staged or deployments paused until the Root Directory, branch, custom Dockerfile path, and variables are set. Do not accept a repository-root auto-detected bot start command.
+While the selector still reads **`warehouse-staging`**, create two **empty** services named exactly `warehouse-api` and `warehouse-web`. The final canvas must contain exactly these two services plus `postgres`, with no CarPot service instances. Connect each to the feature branch with the settings below. Keep initial source/deployment changes staged or deployments paused until the Root Directory, branch, custom Dockerfile path, and variables are set. Do not accept a repository-root auto-detected bot start command.
 
 If your UI connects GitHub before showing Root Directory, leave deployments paused while configuring the service. Review the final deployment details to verify `/warehouse` and the expected Dockerfile before deploying it.
 
@@ -131,11 +137,11 @@ The Railway environment name is **`warehouse-staging`**. The application’s mod
 | `WAREHOUSE_COOKIE_SECURE` | `true` |
 | `WAREHOUSE_REGISTRATION_ENABLED` | `false` |
 | `WAREHOUSE_PUBLIC_ORIGIN` | `https://${{warehouse-web.RAILWAY_PUBLIC_DOMAIN}}` |
-| `WAREHOUSE_DB_HOST` | `${{warehouse-db.RAILWAY_PRIVATE_DOMAIN}}` |
+| `WAREHOUSE_DB_HOST` | `${{postgres.RAILWAY_PRIVATE_DOMAIN}}` |
 | `WAREHOUSE_DB_PORT` | `5432` |
-| `WAREHOUSE_DB_NAME` | `${{warehouse-db.POSTGRES_DB}}` |
-| `WAREHOUSE_DB_USER` | `${{warehouse-db.POSTGRES_USER}}` |
-| `WAREHOUSE_DB_PASSWORD` | `${{warehouse-db.POSTGRES_PASSWORD}}` |
+| `WAREHOUSE_DB_NAME` | `${{postgres.POSTGRES_DB}}` |
+| `WAREHOUSE_DB_USER` | `${{postgres.POSTGRES_USER}}` |
+| `WAREHOUSE_DB_PASSWORD` | `${{postgres.POSTGRES_PASSWORD}}` |
 | `WAREHOUSE_STARTUP_TIMEOUT` | `120` |
 | `WAREHOUSE_FORWARDED_ALLOW_IPS` | `fd00::/8,10.0.0.0/8` |
 
@@ -160,7 +166,7 @@ Railway mounts volumes as root. Omitting the bootstrap on a root-owned volume fa
 
 When you decide to deploy:
 
-1. Deploy `warehouse-db`; confirm initialization succeeds and the volume is attached.
+1. Deploy `postgres`; confirm initialization succeeds and the volume is attached.
 2. Confirm the frontend domain is reserved and both origin reference expressions resolve to the same domain.
 3. Deploy `warehouse-api`. Its startup validates configuration, drops bootstrap privileges if needed, waits for the private DB, takes a PostgreSQL advisory lock, runs `alembic upgrade head`, then serves HTTP. Do not add migrations to the Docker build or run a second unguarded migration command.
 4. Confirm API health and the message `Warehouse migrations complete`. It is still private.
@@ -193,12 +199,12 @@ The frontend sets HSTS, CSP, frame denial, nosniff, and noindex headers, and blo
 
 ## 6. Update after each iteration without touching CarPot
 
-For the lowest recurring cost, leave auto-deploy **off on the two new Warehouse services** and manually deploy a selected feature-branch commit when starting a testing session. If you prefer automatic updates while actively testing, enable auto-deploy on these two services only, on the **feature branch only**, after the initial configuration has been verified. Leave every production autodeploy/PR-environment setting unchanged. Configure these Watch Paths (repository-relative, even with Root Directory set):
+Keep Auto Deploy **ON** for the two Warehouse application services on the **feature branch only**. Publish backend first, wait for the authenticated Dismantling readiness gate, then publish frontend in a separate push. See STAGED_AUTO_DEPLOY.md; do not use Railway CLI or a manual Deploy/Redeploy action. Leave every production autodeploy/PR-environment setting unchanged. Configure these Watch Paths (repository-relative, even with Root Directory set):
 
 - API: `/warehouse/backend/**`, `/warehouse/deploy/railway/backend.Dockerfile`, `/warehouse/.dockerignore`.
-- Web: `/warehouse/frontend/**`, `/warehouse/deploy/railway/frontend*`, `/warehouse/deploy/railway/nginx/**`, `/warehouse/.dockerignore`.
+- Web: `/warehouse/frontend/**`, `/warehouse/deploy/railway/frontend.Dockerfile`, `/warehouse/deploy/railway/frontend-start.sh`, `/warehouse/deploy/railway/nginx/**`, `/warehouse/.dockerignore`.
 
-Commit/push Warehouse changes to the feature branch. Confirm the intended service builds from the correct commit; deploy API first when the frontend depends on a new API contract. Redeploy both when a shared contract requires it. Existing CarPot remains on its existing configuration/branch; do not change it.
+Use separate backend and frontend commits AND separate pushes, with the readiness gate between them. Pushing two commits together does not serialize Railway deployments. Shared .dockerignore changes trigger both services and require separate coordination. Existing CarPot remains on its existing configuration/branch; do not change it.
 
 Migrations must be backward-compatible while an older API instance may serve requests during a rollout. Use additive expand/contract changes. The startup lock prevents two migration processes from running at once; it cannot make destructive migrations compatible with old code. Back up staging before destructive changes. Never automatically downgrade or reseed the DB on restart or rollback. Rolling the image back does not roll the database back.
 
@@ -214,7 +220,7 @@ Recommended initial profile:
 |---|---|---|
 | `warehouse-web` | 1 Nginx replica, production static assets, generated Railway HTTPS domain | No Vite dev server, Node runtime, separate CDN, or purchased custom domain |
 | `warehouse-api` | 1 replica, 1 worker (already configured) | Avoids replica multiplication; retains the current single-process auth-throttle model |
-| `warehouse-db` | 1 private PostgreSQL instance, independent persistent volume | Small starting dataset; no public TCP proxy, replica, pooler, or production DB sharing |
+| `postgres` | 1 private PostgreSQL instance, independent persistent volume | Small starting dataset; no public TCP proxy, replica, pooler, or production DB sharing |
 | Photos | Disabled initially; no API volume | Avoids a second storage volume until photo testing is actually needed |
 | Extra services | None | No Redis, preview-per-PR environments, staging bot, monitoring service, or scheduler |
 | App updates | Manual Warehouse-only deploys by default; optional feature-branch watch paths | Lets the stack remain offline between testing sessions; never alters production automation |
@@ -222,7 +228,7 @@ Recommended initial profile:
 
 For a stable iPhone demo window, keep all three Warehouse services awake for the duration of that window. For the lowest idle compute cost, **stop all three Warehouse deployments outside testing hours while retaining their service configuration, database volume and domain**:
 
-1. Verify `warehouse-staging` and the selected service name before every operation. Stop/remove only the active **deployment instance** of `warehouse-web`, then `warehouse-api`, then `warehouse-db`. In Railway UIs where the action is called **Remove**, it means the deployment, not Delete Service or Delete Volume. Allow graceful shutdown; `RAILWAY_DEPLOYMENT_DRAINING_SECONDS=30` is recommended on these three Warehouse instances only.
+1. Verify `warehouse-staging` and the selected service name before every operation. Stop/remove only the active **deployment instance** of `warehouse-web`, then `warehouse-api`, then `postgres`. In Railway UIs where the action is called **Remove**, it means the deployment, not Delete Service or Delete Volume. Allow graceful shutdown; `RAILWAY_DEPLOYMENT_DRAINING_SECONDS=30` is recommended on these three Warehouse instances only.
 2. Verify the three Warehouse deployment instances are no longer active. Do not delete services, the environment, the database volume or its data. Pausing GitHub deployments by itself does not stop already-running containers and does not eliminate their compute usage.
 3. Before the next session, start/redeploy the existing DB instance **with its retained volume**, then API, then web. Wait for `/health`, then open the same HTTPS URL on your iPhone. Migrations rerun safely; existing records/accounts remain. The preview is deliberately unavailable while stopped.
 

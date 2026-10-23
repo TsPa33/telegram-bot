@@ -92,7 +92,7 @@ class PartInput(Input):
 
 class StockInput(Input):
     type: Literal[
-        "receipt", "write_off", "reserve", "release", "correction", "transfer"
+        "receipt", "write_off", "sale", "reserve", "release", "correction", "transfer"
     ]
     quantity: Annotated[int, Field(ge=0, le=1000000)] = 0
     location: Annotated[str, Field(max_length=120)] | None = None
@@ -101,7 +101,7 @@ class StockInput(Input):
     @model_validator(mode="after")
     def operation_valid(self):
         if (
-            self.type in ("receipt", "write_off", "reserve", "release")
+            self.type in ("receipt", "write_off", "sale", "reserve", "release")
             and self.quantity == 0
         ):
             raise ValueError("Кількість має бути більшою за нуль")

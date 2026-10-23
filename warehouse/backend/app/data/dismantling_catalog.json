@@ -1,0 +1,31 @@
+{
+  "version": "carpot.base.v1",
+  "provenance": "Independently authored generic Ukrainian checklist vocabulary; no supplier data, OEM claims or vehicle compatibility.",
+  "categories": [
+    {"key":"body","name":"Кузов","subcategories":[
+      {"key":"doors","name":"Двері","parts":[["door-front-left","Двері","Передні ліві"],["door-front-right","Двері","Передні праві"],["door-rear-left","Двері","Задні ліві"],["door-rear-right","Двері","Задні праві"]]},
+      {"key":"panels","name":"Панелі кузова","parts":[["hood","Капот","Передній"],["tailgate","Кришка багажника / двері багажного відділення","Задня"],["bumper-front","Бампер","Передній"],["bumper-rear","Бампер","Задній"]]},
+      {"key":"mirrors","name":"Дзеркала","parts":[["mirror-left","Зовнішнє дзеркало","Ліве"],["mirror-right","Зовнішнє дзеркало","Праве"]]}
+    ]},
+    {"key":"lighting","name":"Освітлення","subcategories":[
+      {"key":"front","name":"Переднє освітлення","parts":[["headlight-left","Фара","Ліва"],["headlight-right","Фара","Права"]]},
+      {"key":"rear","name":"Заднє освітлення","parts":[["taillight-left","Задній ліхтар","Лівий"],["taillight-right","Задній ліхтар","Правий"]]}
+    ]},
+    {"key":"powertrain","name":"Силовий агрегат","subcategories":[
+      {"key":"engine","name":"Двигун та навісне","parts":[["engine","Двигун у зборі",""],["starter","Стартер",""],["alternator","Генератор",""],["compressor","Компресор кондиціонера",""]]},
+      {"key":"transmission","name":"Трансмісія","parts":[["gearbox","Коробка передач",""],["drive-left","Привід колеса","Лівий"],["drive-right","Привід колеса","Правий"]]}
+    ]},
+    {"key":"chassis","name":"Ходова частина","subcategories":[
+      {"key":"suspension","name":"Підвіска","parts":[["strut-front-left","Стійка підвіски","Передня ліва"],["strut-front-right","Стійка підвіски","Передня права"]]},
+      {"key":"brakes","name":"Гальмівна система","parts":[["caliper-front-left","Гальмівний супорт","Передній лівий"],["caliper-front-right","Гальмівний супорт","Передній правий"]]},
+      {"key":"steering","name":"Кермове управління","parts":[["steering-rack","Кермова рейка",""]]}
+    ]},
+    {"key":"interior","name":"Салон","subcategories":[
+      {"key":"seats","name":"Сидіння","parts":[["seat-front-left","Сидіння","Переднє ліве"],["seat-front-right","Сидіння","Переднє праве"]]},
+      {"key":"controls","name":"Органи управління","parts":[["instrument-cluster","Панель приладів",""],["climate-control","Блок керування кліматом",""]]}
+    ]},
+    {"key":"cooling","name":"Охолодження","subcategories":[
+      {"key":"radiators","name":"Радіатори та вентилятори","parts":[["radiator","Радіатор охолодження",""],["cooling-fan","Вентилятор охолодження",""],["condenser","Конденсор кондиціонера",""]]}
+    ]}
+  ]
+}

@@ -56,7 +56,7 @@ ALTER vehicles.acquisition_date DROP NOT NULL. Наявні дати, автом
 
 Після окремого погодження rollout: перевірений backup Warehouse staging,
 контрольований API release через чинний `app.staging` (advisory lock + upgrade head),
-перевірка current/heads = b72f03d8e196, `alembic check`, HTTPS `/health`, потім web.
+перевірка current/heads = d53c9a27f608 (наступна ревізія розбору; DISMANTLING.md), `alembic check`, HTTPS `/health`, потім web.
 Не змінювати production. Не запускати міграції паралельно з entrypoint.
 
 При збоях перевага forward fix. Downgrade до a84d2c19e705 відмовляється виконуватися,

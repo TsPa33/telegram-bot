@@ -62,10 +62,12 @@ Commit/push `feature/carpot-warehouse-mvp`, then follow `RAILWAY_STAGING.md` whe
 
 ## Cost-plan revision: existing project, empty environment
 
-The current plan supersedes the original new-project recommendation: use only a **NEW EMPTY `warehouse-staging` environment inside the existing paid Railway project**, with exactly `warehouse-db`, `warehouse-api` and `warehouse-web`. Production must not be duplicated, synced, edited, restarted or otherwise redeployed. The settings manifest and read-only checker enforce the new target and keep `WAREHOUSE_ENV=staging` as the application mode.
+The current plan supersedes the original new-project recommendation: use only a **NEW EMPTY `warehouse-staging` environment inside the existing paid Railway project**, with exactly `postgres`, `warehouse-api` and `warehouse-web`. Production must not be duplicated, synced, edited, restarted or otherwise redeployed. The settings manifest and read-only checker enforce the new target and keep `WAREHOUSE_ENV=staging` as the application mode.
 
 This revision changes documentation and the local settings checklist/checker only. Runtime code, Dockerfiles, database migrations and frontend behavior are unchanged; the previously recorded build/browser/PostgreSQL results are historical evidence for that unchanged runtime. No Railway account, resource, billing limit or production variable was inspected or modified. No additional subscription or project is proposed. Actual usage remains billable under the existing workspace plan; quotas and remaining allowance are unverified.
 
 Cost guidance now favors single replicas, no initial photo volume, manual Warehouse-only deployments during test windows, private networking, and stopping Warehouse compute while retaining its database volume. It warns that sleeping is not guaranteed with private DB traffic and that shared hard spending limits can affect production.
 
 Revision checks passed: updated `check-config.py` invariants, shell syntax, Ruff F-check, `git diff --check`, and verification that every changed path is under `warehouse/`. No rebuild or application-suite rerun was needed for documentation/settings-checklist changes.
+
+Current GitHub-only staged rollout and readiness checks: ../../STAGED_AUTO_DEPLOY.md. Auto Deploy remains ON; this historical local validation does not verify live Railway settings.
