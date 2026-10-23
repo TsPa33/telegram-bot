@@ -129,6 +129,8 @@ export default function Audit() {
             "part_create",
             "part_update",
             "checklist_create",
+            "dismantling_plan",
+            "dismantling_catalog_import",
             "dismantling_start",
             "dismantling_status",
             "dismantling_receipt",

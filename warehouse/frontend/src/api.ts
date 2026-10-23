@@ -77,6 +77,8 @@ export const labels: Record<string, string> = {
   write_off: "Списання",
   sale: "Продаж",
   dismantled: "Демонтовано",
+  dismantling_plan: "План розбору",
+  dismantling_catalog_import: "Імпорт власного каталогу",
   dismantling_start: "Початок розбору",
   dismantling_status: "Перевірка демонтажу",
   dismantling_receipt: "Оприбуткування з розбору",

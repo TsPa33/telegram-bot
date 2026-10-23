@@ -1,108 +1,115 @@
-import { useState } from "react";
-import { api, labels, money, type Row } from "./api";
+import { useEffect, useState } from "react";
+import { api, labels, type Row } from "./api";
 import { Modal, RecordForm } from "./components";
-import { State, useLoad } from "./shared";
+import { Confirm, State, useLoad } from "./shared";
+import DismantlingCatalogImport from "./DismantlingCatalogImport";
 
-type Group = {name: string; items: Row[]};
-export default function Dismantling({vehicle, onChange, onInventory}: {vehicle: Row; onChange: () => void; onInventory: () => void}) {
-  const path = `/vehicles/${vehicle.id}/dismantling`;
-  const {data, error, loading, reload} = useLoad(() => api(path), [vehicle.id]);
-  const [query, setQuery] = useState(""), [selected, setSelected] = useState<string[]>([]);
-  const [busy, setBusy] = useState(false), [message, setMessage] = useState("");
-  const [receiving, setReceiving] = useState<Row[] | null>(null);
-  function done() {reload(); onChange();}
-  async function action(ids: string[], name: string) {
-    setBusy(true); setMessage("");
-    try {const r = await api(path+"/actions", "POST", {ids, action:name}); setMessage(`Оновлено: ${r.updated}. Без змін: ${r.skipped}. Залишки не змінено.`);setSelected([]);done();return true;}
-    catch(e) {setMessage((e as Error).message);return false;} finally {setBusy(false);}
+type Scope={source?:string;category_key?:string;subcategory_key?:string;q?:string};
+export default function Dismantling({vehicle,onChange,onInventory}:{vehicle:Row;onChange:()=>void;onInventory:()=>void}) {
+  const path=`/vehicles/${vehicle.id}/dismantling`;
+  const [query,setQuery]=useState(""),[active,setActive]=useState<Scope|null>(null),[offset,setOffset]=useState(0),[visibility,setVisibility]=useState("all");
+  const [optimistic,setOptimistic]=useState<Record<string,boolean>>({});
+  const [busy,setBusy]=useState(false),[message,setMessage]=useState("");
+  const [receiving,setReceiving]=useState<{ids?:string[];scope?:Scope;token?:string;count:number;title?:string}|null>(null);
+  const [confirming,setConfirming]=useState<{scope:Scope;token:string;count:number}|null>(null);
+  const scope:Scope={...active,q:query};
+  const params=new URLSearchParams({q:query,offset:String(offset),limit:"100",visibility,...active});
+  const {data,error,loading,reload}=useLoad(()=>api(`${path}/workspace?${params}`),[vehicle.id,query,active?.source,active?.category_key,offset,visibility]);
+  useEffect(()=>setOptimistic({}),[data]);
+  const canEdit=!!data&&!data.archived&&!vehicle.archived&&!busy&&!loading&&!error;
+  const rows:Row[]=data?.items||[], hierarchy:Row[]=data?.hierarchy||[];
+  const counts=data?.counts||{total:0,included:0,excluded:0,dismantled:0,received:0};
+  const candidates=data?.scope_counts||{mark:0,receipt:0};
+  const categoryMap=new Map<string,Row>();
+  for(const group of hierarchy){const key=group.source+':'+group.category_key;const entry=categoryMap.get(key)||{...group,total:0};entry.total+=group.total;categoryMap.set(key,entry);}
+  const categories=[...categoryMap.values()];
+  function done(){reload();onChange();}
+  async function mutate(url:string,body:Row) {
+    setBusy(true);setMessage("");
+    try {const result=await api(path+url,"POST",body);done();return result;}
+    catch(e){setMessage((e as Error).message);return null;}finally{setBusy(false);}
   }
-  const items: Row[] = data?.items || [];
-  const filtered = items.filter(row => `${row.category_name} ${row.subcategory_name} ${row.name} ${row.position}`.toLocaleLowerCase().includes(query.toLocaleLowerCase()));
-  const groups = new Map<string, Map<string, Group>>();
-  for(const item of filtered) {
-    if(!groups.has(item.category_key)) groups.set(item.category_key, new Map());
-    const sub = groups.get(item.category_key)!;
-    if(!sub.has(item.subcategory_key)) sub.set(item.subcategory_key, {name:item.subcategory_name, items:[]});
-    sub.get(item.subcategory_key)!.items.push(item);
+  async function plan(included:boolean,selection:Scope|{ids:string[]}) {
+    if('ids' in selection&&selection.ids.length===1)setOptimistic(values=>({...values,[selection.ids[0]]:included}));
+    const result=await mutate('/plan',{...selection,included});if(!result)setOptimistic({});if(result)setMessage(`План оновлено: ${result.updated}. Склад не змінено.`);
   }
-  const canEdit = data && !data.archived && !vehicle.archived;
-  const chosen = items.filter(item => selected.includes(item.id) && !item.received_at);
-  const title = (item: Row) => item.name+(item.position ? ` · ${item.position}` : "");
-  function toggle(ids: string[], checked: boolean) {setSelected(values => checked ? [...new Set([...values,...ids])] : values.filter(id => !ids.includes(id)));}
+  const title=(row:Row)=>row.name+(row.position?` · ${row.position}`:"");
+  function renderRow(row:Row) {
+    const eligible=row.included&&row.status==='dismantled'&&!row.received_at;
+    return <div className={`dismantling-row ${row.included?'':'excluded'}`} key={row.id}>
+      <label className="dismantling-plan-toggle"><input type="checkbox" aria-label={`Включити ${title(row)}`} checked={optimistic[row.id]??row.included} disabled={!canEdit} onChange={e=>plan(e.target.checked,{ids:[row.id]})}/></label>
+      <div className="dismantling-row-name"><strong>{title(row)}</strong>
+        {row.received_at&&<small>Оприбутковано: {row.quantity} · Залишок: {row.stock?.quantity??'див. склад'}</small>}
+        {!row.included&&<small>Виключено з плану</small>}
+      </div>
+      {row.received_at?<span className="dismantling-received">На складі / в історії</span>:<select aria-label={`Статус ${title(row)}`} value={row.status} disabled={!canEdit||!row.included}
+        onChange={async e=>{const r=await mutate('/actions',{ids:[row.id],action:e.target.value});if(r)setMessage('Статус збережено. Склад не змінено.');}}>
+        {['unchecked','dismantled','absent','damaged'].map(value=><option key={value} value={value}>{labels[value]}</option>)}
+      </select>}
+      {eligible&&<button className="dismantling-receive" disabled={!canEdit} aria-label={`Оприбуткувати ${title(row)}`} onClick={()=>setReceiving({ids:[row.id],count:1,title:title(row)})}>На склад</button>}
+    </div>;
+  }
+  const renderGroups=(items:Row[])=>[...new Map(items.map(r=>[r.source+':'+r.category_key+':'+r.subcategory_key,r])).values()].map(group=>{
+    const subset=items.filter(r=>r.source===group.source&&r.category_key===group.category_key&&r.subcategory_key===group.subcategory_key);
+    const selection={source:group.source,category_key:group.category_key,subcategory_key:group.subcategory_key};
+    const meta=hierarchy.find(g=>g.source===group.source&&g.category_key===group.category_key&&g.subcategory_key===group.subcategory_key);
+    return <section className="dismantling-subcategory" key={group.source+group.category_key+group.subcategory_key}>
+      <div className="dismantling-group-head"><h4>{query&&`${group.category_name} / `}{group.subcategory_name} <small>({meta?.total??subset.length})</small></h4>
+        <div><button disabled={!canEdit} onClick={()=>plan(false,selection)}>Виключити підкатегорію</button><button disabled={!canEdit} onClick={()=>plan(true,selection)}>Повернути підкатегорію</button></div></div>
+      {subset.map(renderRow)}
+    </section>;
+  });
   return <section className="dismantling-workspace" aria-label="Робочий екран розбору">
-    <h3>Розбір автомобіля</h3>
-    <State error={error} loading={loading} />
-    {error && <button onClick={reload}>Повторити читання розбору</button>}
-    {data && <>
-      <p>Статус: <strong>{labels[data.status]}</strong></p>
-      <div className="detail-stats" aria-label="Показники розбору">
-        <span>Потенційних позицій<strong>{data.potential_positions}</strong></span>
-        <span>Демонтованих позицій<strong>{data.dismantled_positions}</strong></span>
-        <span>Позицій на складі<strong>{data.stock_positions}</strong></span>
-        <span>Продано одиниць<strong>{data.sold_units}</strong></span>
+    <h3>План розбору</h3><State error={error} loading={loading}/>
+    {error&&<button onClick={reload}>Повторити читання</button>}
+    {data&&<>
+      <div className="dismantling-counts" aria-label="Показники розбору">
+        <span>Включено <b>{counts.included}</b></span><span>Виключено <b>{counts.excluded}</b></span>
+        <span>Демонтовано <b>{counts.dismantled}</b></span><span>Оприбутковано <b>{counts.received}</b></span>
       </div>
-      <small>Продажі — лише операції «Продаж». Списання не вважаються продажами.</small>
       <div className="modal-actions">
-        {canEdit && <button className="primary" disabled={busy} onClick={async () => {
-          setBusy(true);setMessage("");
-          try {const r = await api(path+"/start", "POST");setMessage(r.created ? `Створено потенційних позицій: ${r.created}.` : "Продовжуємо збережений розбір.");done();}
-          catch(e) {setMessage((e as Error).message);} finally {setBusy(false);}
-        }}>{items.length ? "Продовжити розбір" : "Почати розбір"}</button>}
-        <button onClick={onInventory}>Склад цього автомобіля</button>
+        {!vehicle.archived&&<button disabled={!canEdit} onClick={async()=>{
+          const r=await mutate('/start',{});if(r)setMessage(`Нових позицій: ${r.created}. Збережений вибір не змінено.`);
+        }}>{counts.total?'Оновити список із довідника':'Почати розбір'}</button>}
+        <button onClick={onInventory}>Склад автомобіля</button>
       </div>
-      {message && <p role="status">{message}</p>}
-      {!!items.length && <>
-        <p className="notice">Універсальний список: комплектацію не підтверджено. Лише явне оприбуткування змінює склад.</p>
-        <label className="standalone-field">Пошук деталей<input type="search" value={query} onChange={e => setQuery(e.target.value)} /></label>
-        {canEdit && chosen.length > 0 && <div className="dismantling-bulk">
-          <p>Вибрано позицій: {chosen.length}</p>
-          <div className="modal-actions">
-            <button disabled={busy || !chosen.length} onClick={() => action(chosen.map(i => i.id),"dismantled")}>Демонтовано вибрані</button>
-            <button disabled={busy || !chosen.length} onClick={() => action(chosen.map(i => i.id),"absent")}>Відсутні вибрані</button>
-            <button disabled={busy || !chosen.length} onClick={() => action(chosen.map(i => i.id),"damaged")}>Пошкоджені вибрані</button>
-            <button disabled={busy || !chosen.length} onClick={() => setReceiving(chosen)}>Оприбуткувати вибрані ({chosen.length})</button>
-          </div>
-        </div>}
-        {!filtered.length && <p>Деталей за цим пошуком немає.</p>}
-        {[...groups].map(([category, subs]) => <details key={category} open={query ? true : undefined}>
-          <summary>{[...subs.values()][0].items[0].category_name} · {[...subs.values()].reduce((n,s) => n+s.items.length,0)}</summary>
-          {[...subs].map(([key, sub]) => {
-            const available = sub.items.filter(i => !i.received_at).map(i => i.id);
-            return <section key={key} className="dismantling-subcategory">
-              <h4>{sub.name}</h4>
-              {canEdit && !!available.length && <label className="dismantling-select"><input type="checkbox" aria-label={`Вибрати підкатегорію ${sub.name}`} checked={available.every(id => selected.includes(id))} disabled={busy} onChange={e => toggle(available,e.target.checked)} /> Вибрати підкатегорію ({available.length})</label>}
-              {sub.items.map(item => <article className="dismantling-item" key={item.id}>
-                <div className="dismantling-item-title">
-                  {canEdit && !item.received_at && <input type="checkbox" aria-label={`Вибрати ${title(item)}`} disabled={busy} checked={selected.includes(item.id)} onChange={e => toggle([item.id],e.target.checked)} />}
-                  <strong>{title(item)}</strong>
-                </div>
-                <p>{labels[item.status]}{item.condition && ` · ${labels[item.condition]}`} · {item.received_at ? `Оприбутковано: ${item.quantity} од.` : "На склад не оприбутковано"}</p>
-                {item.stock && <p>Залишок: {item.stock.quantity} · Стан: {labels[item.stock.condition]} · Місце: {item.stock.location || "не вказано"} · Ціна: {item.stock.selling_price == null ? "не вказано" : money(item.stock.selling_price)}{item.stock.archived && " · Позицію архівовано"}</p>}
-                {canEdit && !item.received_at && <div className="modal-actions">
-                  <button disabled={busy} onClick={async () => {if(await action([item.id],"dismantled")) setReceiving([item]);}}>Демонтовано</button>
-                  <button disabled={busy} onClick={() => action([item.id],"absent")}>Відсутня</button>
-                  <button disabled={busy} onClick={() => action([item.id],"damaged")}>Пошкоджена</button>
-                  <button disabled={busy} onClick={() => action([item.id],"unchecked")}>Не перевірено</button>
-                  <button disabled={busy || item.status === "absent"} onClick={() => setReceiving([item])}>Оприбуткувати на склад</button>
-                </div>}
-              </article>)}
-            </section>;
-          })}
-        </details>)}
+      {message&&<p role="status">{message}</p>}
+      {counts.total>0&&<>
+        <small>Галочка — лише включення до плану. Наявність і залишок не підтверджені.</small>
+        <div className="dismantling-search"><label>Пошук деталей<input type="search" value={query} onChange={e=>{setQuery(e.target.value);setActive(null);setOffset(0);}}/></label>
+          <label>Показати<select aria-label="Показати план" value={visibility} onChange={e=>{setVisibility(e.target.value);setOffset(0);}}><option value="all">Усі</option><option value="included">Включені</option><option value="excluded">Виключені</option></select></label></div>
+        <div className="dismantling-toolbar">
+          <small>Область: {query?'поточний пошук':active?'відкрита категорія':'увесь донор'}. Лише включені деталі.</small>
+          <div className="modal-actions"><button disabled={!canEdit||!candidates.mark||candidates.mark>1000||visibility==='excluded'} onClick={()=>setConfirming({scope,token:data.scope_tokens.mark,count:candidates.mark})}>Демонтовано включені ({visibility==='excluded'?0:candidates.mark})</button>
+            <button className="primary" disabled={!canEdit||!candidates.receipt||candidates.receipt>1000||visibility==='excluded'} onClick={()=>setReceiving({scope,token:data.scope_tokens.receipt,count:candidates.receipt})}>Оприбуткувати вибрані ({visibility==='excluded'?0:candidates.receipt})</button></div>
+          {(candidates.mark>1000||candidates.receipt>1000)&&<small>Звузьте пошук або категорію: до 1000 позицій за операцію.</small>}
+        </div>
+        {query?renderGroups(rows):categories.map(category=>{
+          const selected=active?.source===category.source&&active?.category_key===category.category_key;
+          const selection={source:category.source,category_key:category.category_key};
+          return <details key={category.source+category.category_key} open={selected}>
+            <summary onClick={e=>{e.preventDefault();setActive(selected?null:selection);setOffset(0);}}>{category.category_name} <small>· {category.total}</small></summary>
+            {selected&&<><div className="dismantling-category-actions"><button disabled={!canEdit} onClick={()=>plan(false,selection)}>Виключити всю категорію</button><button disabled={!canEdit} onClick={()=>plan(true,selection)}>Повернути всю категорію</button></div>{renderGroups(rows)}</>}
+          </details>;
+        })}
+        {(query||active)&&<><p>Позицій за фільтром: {data.total}.</p>{(data.total>100||offset>0)&&<div className="modal-actions"><button disabled={!offset||loading} onClick={()=>setOffset(Math.max(0,offset-100))}>Попередні</button><button disabled={offset+100>=data.total||loading} onClick={()=>setOffset(offset+100)}>Наступні</button></div>}</>}
       </>}
+      {!vehicle.archived&&<DismantlingCatalogImport onImported={reload}/>}
     </>}
-    {receiving && <Modal title="Підтвердити оприбуткування" onClose={() => setReceiving(null)}>
-      <p>Позицій: {receiving.length}. Кількість нижче — для кожної позиції.</p>
-      <p>{receiving.length === 1 ? title(receiving[0]) : "Вибрані деталі будуть оприбутковані однією транзакцією."}</p>
-      <RecordForm submit="Оприбуткувати на склад" initial={{quantity:1,condition:""}} fields={[
-        {key:"quantity",label:"Кількість",type:"number",required:true,min:1,max:1000000,step:1},
-        {key:"condition",label:"Стан",options:[{value:"",label:"Типово: вживана; для пошкодженої — пошкоджена"},...["used","new","damaged","refurbished"].map(value => ({value,label:labels[value]}))]},
-        {key:"location",label:"Місце на складі"},
-        {key:"selling_price",label:"Ціна одиниці, ₴",type:"number",min:0},
-      ]} onSave={async values => {
-        const result = await api(path+"/actions", "POST", {...values,condition:values.condition || null,action:"receipt",ids:receiving.map(item => item.id)});
-        setReceiving(null);setSelected([]);setMessage(`Оприбутковано позицій: ${result.updated}. Уже оброблено: ${result.skipped}.`);done();
-      }} />
+    {confirming&&<Confirm title="Підтвердити демонтаж" text={`Позицій: ${confirming.count}. Підтверджуєте фактичний демонтаж усіх включених деталей у цій області? Склад поки не зміниться.`} onClose={()=>setConfirming(null)} onConfirm={async()=>{
+      const r=await api(path+'/batch','POST',{...confirming.scope,action:'dismantled',selection_token:confirming.token,expected_count:confirming.count});done();setConfirming(null);setMessage(`Демонтовано: ${r.updated}. Склад не змінено.`);
+    }}/>}
+    {receiving&&<Modal title="Підтвердити оприбуткування" onClose={()=>setReceiving(null)}>
+      <p>Позицій: {receiving.count}. Усі включені та підтверджені демонтованими.</p>{receiving.title&&<p>{receiving.title}</p>}
+      <RecordForm submit="Оприбуткувати на склад" initial={{quantity:1,condition:''}} fields={[
+        {key:'quantity',label:'Кількість для кожної позиції',type:'number',required:true,min:1,max:1000000,step:1},
+        {key:'condition',label:'Стан',options:[{value:'',label:'Зберегти стан / типово вживана'},...['used','new','damaged','refurbished'].map(value=>({value,label:labels[value]}))]},
+        {key:'location',label:'Місце на складі'},{key:'selling_price',label:'Ціна одиниці, ₴',type:'number',min:0},
+      ]} onSave={async values=>{
+        const url=receiving.ids?'/actions':'/batch';
+        const result=await api(path+url,'POST',{...values,condition:values.condition||null,action:'receipt',...(receiving.ids?{ids:receiving.ids}:{...receiving.scope,selection_token:receiving.token,expected_count:receiving.count})});
+        setReceiving(null);setMessage(`Оприбутковано: ${result.updated}. Уже оброблено: ${result.skipped}.`);done();
+      }}/>
     </Modal>}
   </section>;
 }
