@@ -1,6 +1,6 @@
 import { Archive as ArchiveIcon, Plus, Search } from "lucide-react";
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, money, type Page, type Row } from "../api";
 import {
   Badge,
@@ -11,6 +11,7 @@ import {
 } from "../components";
 import VehicleForm from "../VehicleForm";
 import VehicleChecklist from "../VehicleChecklist";
+import Dismantling from "../Dismantling";
 
 import {
   choices,
@@ -85,6 +86,18 @@ export default function Vehicles({ notify }: { notify: Notify }) {
     [q, status, page],
   );
   const navigate = useNavigate();
+  const [params, setParams] = useSearchParams();
+  const donorId = params.get("donor");
+  function openDetail(row: Row) {setDetail(row);setParams({donor:row.id});}
+  function closeDetail() {setDetail(null);setParams({});}
+  useEffect(() => {
+    if (!donorId) {setDetail(null);return;}
+    if (detail?.id === donorId) return;
+    let active = true;
+    api(`/vehicles/${encodeURIComponent(donorId)}`).then(row => {if(active) setDetail(row);})
+      .catch(e => {if(active) notify((e as Error).message);});
+    return () => {active = false;};
+  }, [donorId]);
   return (
     <>
       <Heading
@@ -100,7 +113,7 @@ export default function Vehicles({ notify }: { notify: Notify }) {
           Додати автомобіль
         </button>
       </Heading>
-      {created && <p role="status">Додано: {created.manufacturer} {created.model} · {created.year}. <button onClick={() => setDetail(created)}>Відкрити картку</button></p>}
+      {created && <p role="status">Додано: {created.manufacturer} {created.model} · {created.year}. <button onClick={() => openDetail(created)}>Відкрити картку</button></p>}
       <div className="toolbar">
         <label className="search">
           <Search size={17} />
@@ -152,7 +165,7 @@ export default function Vehicles({ notify }: { notify: Notify }) {
                       <td>
                         <button
                           className="text-button strong"
-                          onClick={() => setDetail(v)}
+                          onClick={() => openDetail(v)}
                         >
                           {v.manufacturer} {v.model}
                         </button>
@@ -205,7 +218,7 @@ export default function Vehicles({ notify }: { notify: Notify }) {
                   <div>
                     <button
                       className="text-button strong"
-                      onClick={() => setDetail(v)}
+                      onClick={() => openDetail(v)}
                     >
                       {v.manufacturer} {v.model}
                     </button>
@@ -279,12 +292,16 @@ export default function Vehicles({ notify }: { notify: Notify }) {
       )}
       {detail && (
         <Modal
-          title={`${detail.manufacturer} ${detail.model} · ${detail.donor_id}`}
-          onClose={() => setDetail(null)}
+          title={`${detail.manufacturer} ${detail.model} · ${detail.year}`}
+          onClose={closeDetail}
         >
           <VehicleDetail
             vehicle={detail}
-            onEdit={() => {setDetail(null);setEdit(detail);}}
+            onEdit={async () => {
+              try {const row = await api(`/vehicles/${detail.id}`);closeDetail();setEdit(row);}
+              catch(e) {notify((e as Error).message);}
+            }}
+            onRefresh={reload}
             notify={notify}
             onInventory={() => navigate(`/inventory?vehicle_id=${detail.id}`)}
           />
@@ -309,11 +326,13 @@ export default function Vehicles({ notify }: { notify: Notify }) {
 function VehicleDetail({
   vehicle: v,
   onEdit,
+  onRefresh,
   notify,
   onInventory,
 }: {
   vehicle: Row;
   onEdit: () => void;
+  onRefresh: () => void;
   notify: Notify;
   onInventory: () => void;
 }) {
@@ -321,13 +340,18 @@ function VehicleDetail({
     data: d,
     error,
     loading,
+    reload: reloadAnalytics,
   } = useLoad(() => api(`/vehicles/${v.id}/analytics`), [v.id]);
   const [busy, setBusy] = useState(false);
   return (
     <>
+      {v.engine && <p>{v.engine}</p>}
+      <Dismantling vehicle={v} onChange={() => {reloadAnalytics();onRefresh();}} onInventory={onInventory} />
+      <details><summary>Дані автомобіля та оцінка</summary>
       {!v.archived && <button onClick={onEdit}>Редагувати / додаткові дані</button>}
       <dl className="details">
         {[
+          ["Внутрішній ID", v.donor_id],
           ["Рік", v.year],
           ["Двигун", v.engine || "—"],
           ["VIN", v.vin || "Не вказано"],
@@ -362,7 +386,8 @@ function VehicleDetail({
           </span>
         </div>
       )}
-      <VehicleChecklist vehicle={v} />
+      </details>
+      <details><summary>Додатковий каталог Plan.Parts</summary><VehicleChecklist vehicle={v} /></details>
       <details><summary>Ручний список зі власних категорій</summary>
       <p className="notice">
         Стандартний чекліст — перелік можливих деталей, а не точний OEM-каталог.

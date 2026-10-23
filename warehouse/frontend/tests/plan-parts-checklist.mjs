@@ -18,6 +18,7 @@ try {
       if(p.endsWith('/auth/me'))return reply({id:'account',name:'Тест',email:'test@example.test'});
       if(p.endsWith('/vehicle-catalog'))return reply({complete:false,brands:[]});
       if(p.endsWith('/vehicles'))return reply({items:[vehicle],total:1});
+      if(p.endsWith('/dismantling'))return reply({items:[],status:'dismantling',potential_positions:0,dismantled_positions:0,stock_positions:0,sold_units:0});
       if(p.endsWith('/analytics'))return reply({positions:0,stock_units:0});
       if(p.endsWith('/plan-parts-checklist')&&req.method()==='GET')return reply({items,total:items.length,historical_total:0,ktype:9743,synced:!!items.length});
       if(p.endsWith('/plan-parts-checklist')&&req.method()==='POST'){
@@ -29,6 +30,7 @@ try {
     });
     await page.goto(origin+'/vehicles');
     await page.getByRole('button',{name:'Volvo XC90',exact:true}).filter({visible:true}).click();
+    await page.getByText('Додатковий каталог Plan.Parts',{exact:true}).click();
     await expect(page.getByText('Пунктів: 0. Попередніх: 0.')).toBeVisible();assert.equal(posts,0);
     await page.getByRole('button',{name:'Завантажити чекліст за K-Type',exact:true}).click();
     await expect(page.getByText('Oil filter',{exact:true})).toBeVisible();assert.equal(posts,1);

@@ -117,6 +117,7 @@ export default function Audit() {
           {choices([
             "receipt",
             "write_off",
+            "sale",
             "reserve",
             "release",
             "correction",
@@ -128,6 +129,9 @@ export default function Audit() {
             "part_create",
             "part_update",
             "checklist_create",
+            "dismantling_start",
+            "dismantling_status",
+            "dismantling_receipt",
             "category_import",
           ]).map((o) => (
             <option key={o.value} value={o.value}>

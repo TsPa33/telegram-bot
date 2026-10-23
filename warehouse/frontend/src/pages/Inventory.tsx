@@ -563,6 +563,7 @@ export function StockForm({ part, onDone }: { part: Row; onDone: () => void }) {
           {choices([
             "receipt",
             "write_off",
+            "sale",
             "reserve",
             "release",
             "correction",

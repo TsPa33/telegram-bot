@@ -1,0 +1,74 @@
+// Real local PostgreSQL + API + production frontend, no Plan.Parts requests.
+import { chromium, expect } from '@playwright/test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+if(process.env.WAREHOUSE_E2E!=='1')throw Error('Dedicated warehouse*_test DB required; set WAREHOUSE_E2E=1');
+const origin='http://127.0.0.1:5173';
+const browser=await chromium.launch({executablePath:process.env.WAREHOUSE_CHROMIUM_PATH||'/usr/bin/chromium',args:['--no-sandbox']});
+try {
+ await fs.mkdir('test-results',{recursive:true});
+ for(const viewport of [{width:1440,height:1000},{width:390,height:844}]) {
+  const context=await browser.newContext({viewport}),page=await context.newPage();
+  const errors=[],paid=[];
+  page.on('pageerror',e=>errors.push(e.message));
+  page.on('request',r=>{if(r.method()==='POST'&&(/\/plan-parts\//.test(r.url())||/plan-parts-checklist/.test(r.url())))paid.push(r.url());});
+  const registered=await context.request.post(origin+'/api/v1/auth/register',{data:{name:'Local dismantling test',email:`dismantling-${viewport.width}-${Date.now()}@example.test`,password:'offline-e2e-long-password'}});
+  assert(registered.ok());const session=await registered.json();
+  const headers={'X-CSRF-Token':session.csrf_token};
+  const created=await context.request.post(origin+'/api/v1/vehicles',{headers,data:{manufacturer:'Volvo',model:'XC90',year:2010,status:'planned'}});
+  assert(created.ok());const vehicle=await created.json();
+  assert.equal(vehicle.ktype,null);
+  const base=origin+`/api/v1/vehicles/${vehicle.id}/dismantling`;
+  const workflow=async()=>(await context.request.get(base)).json();
+  const parts=async()=>(await context.request.get(origin+`/api/v1/parts?vehicle_id=${vehicle.id}`)).json();
+  await page.goto(origin+`/vehicles?donor=${vehicle.id}`);
+  await page.getByRole('button',{name:'Почати розбір',exact:true}).click();
+  await expect(page.getByText('Створено потенційних позицій: 33.',{exact:true})).toBeVisible();
+  assert.equal((await parts()).total,0);
+  const search=page.getByRole('searchbox',{name:'Пошук деталей',exact:true});
+  await search.fill('Фара');
+  let headlight=page.locator('.dismantling-item').filter({hasText:'Фара · Ліва'});
+  await headlight.getByRole('button',{name:'Демонтовано',exact:true}).click();
+  let receipt=page.locator('dialog[open]').last();
+  await expect(receipt.getByLabel('Кількість',{exact:false})).toHaveValue('1');
+  assert.equal((await parts()).total,0); // status alone never receives stock
+  await receipt.getByLabel('Місце на складі',{exact:true}).fill('A-01');
+  await receipt.getByLabel('Ціна одиниці, ₴',{exact:true}).fill('900');
+  await receipt.getByRole('button',{name:'Оприбуткувати на склад',exact:true}).click();
+  await expect(page.getByText('Оприбутковано позицій: 1. Уже оброблено: 0.',{exact:true})).toBeVisible();
+  let actual=await parts();assert.equal(actual.total,1);assert.equal(actual.items[0].quantity,1);
+  const firstPart=actual.items[0];assert.equal(firstPart.location,'A-01');
+  let data=await workflow(), item=data.items.find(i=>i.part_id===firstPart.id);
+  const repeated=await context.request.post(base+'/actions',{headers,data:{ids:[item.id],action:'receipt',quantity:1}});
+  assert.equal((await repeated.json()).updated,0);assert.equal((await parts()).items[0].quantity,1);
+  const audit=(await (await context.request.get(origin+`/api/v1/audit?vehicle_id=${vehicle.id}`)).json()).items;
+  assert.equal(audit.filter(a=>a.type==='receipt').length,1);
+  await search.fill('дзеркало');
+  const subgroup=page.getByRole('checkbox',{name:'Вибрати підкатегорію Дзеркала',exact:true});
+  await subgroup.check();
+  await page.getByRole('button',{name:'Демонтовано вибрані',exact:true}).click();
+  await expect(page.getByText('Оновлено: 2. Без змін: 0. Залишки не змінено.',{exact:true})).toBeVisible();
+  assert.equal((await parts()).total,1);
+  await subgroup.check();
+  await page.getByRole('button',{name:'Оприбуткувати вибрані (2)',exact:true}).click();
+  receipt=page.locator('dialog[open]').last();
+  await expect(receipt.getByText('Позицій: 2. Кількість нижче — для кожної позиції.',{exact:true})).toBeVisible();
+  await receipt.getByRole('button',{name:'Оприбуткувати на склад',exact:true}).click();
+  await expect(page.getByText('Оприбутковано позицій: 2. Уже оброблено: 0.',{exact:true})).toBeVisible();
+  actual=await parts();assert.equal(actual.total,3);assert.equal(actual.items.reduce((n,p)=>n+p.quantity,0),3);
+  data=await workflow();const mirrorIds=data.items.filter(i=>i.subcategory_key==='mirrors').map(i=>i.id);
+  assert.equal((await (await context.request.post(base+'/actions',{headers,data:{ids:mirrorIds,action:'receipt'}})).json()).updated,0);
+  await page.reload();
+  await expect(page.getByRole('button',{name:'Продовжити розбір',exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Продовжити розбір',exact:true}).click();
+  await expect(page.getByText('Продовжуємо збережений розбір.',{exact:true})).toBeVisible();
+  await page.getByRole('searchbox',{name:'Пошук деталей',exact:true}).fill('Фара');
+  headlight=page.locator('.dismantling-item').filter({hasText:'Фара · Ліва'});
+  await expect(headlight).toContainText('Оприбутковано: 1 од.');await expect(headlight).toContainText('Залишок: 1');
+  assert.equal((await workflow()).received_positions,3);
+  assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+  await page.screenshot({path:`test-results/dismantling-${viewport.width}.png`,fullPage:true});
+  assert.deepEqual(errors,[]);assert.deepEqual(paid,[]);
+  await context.close();console.log(`PASS XC90 dismantling → receipt → audit → idempotence → bulk → reload ${viewport.width}x${viewport.height}`);
+ }
+}finally{await browser.close();}

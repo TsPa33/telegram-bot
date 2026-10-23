@@ -75,6 +75,11 @@ export const when = (value: string) =>
 export const labels: Record<string, string> = {
   receipt: "Надходження",
   write_off: "Списання",
+  sale: "Продаж",
+  dismantled: "Демонтовано",
+  dismantling_start: "Початок розбору",
+  dismantling_status: "Перевірка демонтажу",
+  dismantling_receipt: "Оприбуткування з розбору",
   reserve: "Резервування",
   release: "Зняття резерву",
   correction: "Коригування",

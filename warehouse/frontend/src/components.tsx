@@ -58,6 +58,7 @@ export type Field = {
   wide?: boolean;
   min?: number;
   max?: number;
+  step?: number;
   hint?: string;
 };
 export function RecordForm({
@@ -147,7 +148,7 @@ export function RecordForm({
                 maxLength={
                   f.type === "password" ? 128 : f.key === "vin" ? 17 : undefined
                 }
-                step={f.type === "number" ? "0.01" : undefined}
+                step={f.type === "number" ? f.step ?? "0.01" : undefined}
                 defaultValue={
                   f.type === "checkbox" ? undefined : (initial[f.key] ?? "")
                 }

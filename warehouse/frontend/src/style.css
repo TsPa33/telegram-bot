@@ -1855,3 +1855,14 @@ footer {
 .quick-vehicle input, .quick-vehicle select, .quick-vehicle button { min-height: 44px; }
 .quick-vehicle summary { min-height: 44px; padding: .7rem 0; font-size: 13px; cursor: pointer; }
 @media(max-width: 600px) { .quick-vehicle input, .quick-vehicle select { font-size: 16px; } }
+.dismantling-workspace { margin-top: 1.25rem; }
+.dismantling-workspace details { border-top: 1px solid var(--line); margin-top: .75rem; }
+.dismantling-workspace summary { cursor: pointer; padding: 1rem .25rem; font-size: 14px; font-weight: 600; min-height: 44px; }
+.dismantling-workspace input[type="checkbox"] { width: 20px; height: 20px; min-height: 20px; flex-shrink: 0; }
+.dismantling-select, .dismantling-item-title { display: flex; align-items: center; gap: .75rem; min-height: 44px; }
+.dismantling-item { padding: 1rem .25rem; border-top: 1px solid var(--line); }
+.dismantling-item p { margin: .6rem 0; }
+.dismantling-workspace button { min-height: 44px; }
+.dismantling-workspace .modal-actions { flex-wrap: wrap; justify-content: flex-start; }
+.dismantling-bulk { background: #f7f7f7; padding: .75rem; margin: .75rem 0; }
+@media(max-width: 600px) { .dismantling-workspace input[type="search"] { font-size: 16px; } }
