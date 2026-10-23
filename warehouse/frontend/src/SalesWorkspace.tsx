@@ -32,7 +32,7 @@ export default function SalesWorkspace({quick=false,notify,accountId,grouped=fal
  function updated(row:Row){setOverrides(values=>({...values,[row.id]:row}));setDetail(current=>current?.id===row.id?row:current);window.dispatchEvent(new Event('warehouse:inventory-changed'));}
  function openAction(part:Row,type:string){setAction({part,type,key:crypto.randomUUID()});}
  const priceLabel=(p:Row)=>p.selling_price==null?'Вказати ціну':money(p.selling_price,p.currency||'UAH');
- const actions=(p:Row)=><PartActions part={p} onSale={()=>openAction(p,'sale')} onAction={type=>openAction(p,type)} onDetail={()=>setDetail(p)} onEdit={()=>setEdit(p)} onArchive={()=>setArchive(p)} onHistory={()=>setHistory(p)}/>;
+ const actions=(p:Row)=><PartActions part={p} subdued={grouped} onSale={()=>openAction(p,'sale')} onAction={type=>openAction(p,type)} onDetail={()=>setDetail(p)} onEdit={()=>setEdit(p)} onArchive={()=>setArchive(p)} onHistory={()=>setHistory(p)}/>;
  return <>
   {!grouped&&<Heading eyebrow={quick?'ШВИДКИЙ ПОШУК':'СКЛАД'} title={quick?'Пошук запчастин':'Запчастини та залишки'} description={quick?'Виберіть автомобіль і введіть назву, OEM або артикул.':'Наявні запчастини, ціни та швидкий продаж.'}>
    {!quick&&<button onClick={()=>setEdit({condition:'used',currency:'UAH',vehicle_id:vehicle})}>Додати запчастину</button>}
@@ -92,22 +92,22 @@ function OperationDialog({action,onClose,onSaved}:{action:Action;onClose:()=>voi
 }
 
 function StockTree({rows,categories,render}:{rows:Row[];categories:Row[];render:(row:Row)=>import('react').ReactNode}) {
- const [expanded,setExpanded]=useState<Record<string,boolean>>({}),[limits,setLimits]=useState<Record<string,number>>({});
+ const [expanded,setExpanded]=useState<Record<string,boolean>>({}),[limits,setLimits]=useState<Record<string,number>>({}),[collapsedSubs,setCollapsedSubs]=useState<Record<string,boolean>>({});
  const names=new Map(categories.map(c=>[c.id,c.name]));
  const groups=new Map<string,Map<string,Row[]>>();
  for(const row of rows){const category=row.category_id||'',sub=row.subcategory_id||'';if(!groups.has(category))groups.set(category,new Map());const subs=groups.get(category)!;if(!subs.has(sub))subs.set(sub,[]);subs.get(sub)!.push(row);}
  return <div className="donor-stock-tree">{[...groups].map(([id,subs])=><details key={id} open={!!expanded[id]}>
   <summary onClick={e=>{e.preventDefault();setExpanded(old=>({...old,[id]:!old[id]}));}}><strong>{names.get(id)||'Без категорії'}</strong><small>{[...subs.values()].reduce((n,items)=>n+items.length,0)}</small></summary>
-  {expanded[id]&&[...subs].map(([sub,items])=>{const key=id+':'+sub;return <section className="donor-stock-subcategory" key={sub}><h3>{names.get(sub)||'Інші деталі'} <small>{items.length}</small></h3>{items.slice(0,limits[key]||50).map(row=><div key={row.id}>{render(row)}</div>)}{items.length>(limits[key]||50)&&<button onClick={()=>setLimits(old=>({...old,[key]:(old[key]||50)+50}))}>Ще 50 деталей</button>}</section>;})}
+  {expanded[id]&&[...subs].map(([sub,items])=>{const key=id+':'+sub;return <details className="donor-stock-subcategory" key={sub} open={!collapsedSubs[key]}><summary onClick={e=>{e.preventDefault();setCollapsedSubs(old=>({...old,[key]:!old[key]}));}}><h3>{names.get(sub)||'Інші деталі'}</h3><small>{items.length}</small></summary>{items.slice(0,limits[key]||50).map(row=><div key={row.id}>{render(row)}</div>)}{items.length>(limits[key]||50)&&<button onClick={()=>setLimits(old=>({...old,[key]:(old[key]||50)+50}))}>Ще 50 деталей</button>}</details>;})}
  </details>)}</div>;
 }
 
-function PartActions({part,onSale,onAction,onDetail,onEdit,onArchive,onHistory}:{part:Row;onSale:()=>void;onAction:(type:string)=>void;onDetail:()=>void;onEdit:()=>void;onArchive:()=>void;onHistory:()=>void}){
+function PartActions({part,subdued=false,onSale,onAction,onDetail,onEdit,onArchive,onHistory}:{part:Row;subdued?:boolean;onSale:()=>void;onAction:(type:string)=>void;onDetail:()=>void;onEdit:()=>void;onArchive:()=>void;onHistory:()=>void}){
  const id=useId(),ref=useRef<HTMLDivElement>(null),button=useRef<HTMLButtonElement>(null);
  useEffect(()=>{const follow=(e:Event)=>{const menu=ref.current;if(!menu?.matches(':popover-open')||(e.target instanceof Node&&menu.contains(e.target)))return;const rect=button.current!.getBoundingClientRect();if(rect.bottom<0||rect.top>innerHeight)menu.hidePopover();else position();};window.addEventListener('scroll',follow,true);window.addEventListener('resize',follow);return()=>{window.removeEventListener('scroll',follow,true);window.removeEventListener('resize',follow);};},[]);
  function position(){const rect=button.current!.getBoundingClientRect(),menu=ref.current!;const width=Math.min(220,innerWidth-24);menu.style.width=width+'px';menu.style.left=Math.max(12,Math.min(rect.right-width,innerWidth-width-12))+'px';const below=innerHeight-rect.bottom-12,above=rect.top-12;menu.style.maxHeight=Math.max(80,Math.max(below,above))+'px';menu.style.top=below>=Math.min(360,above)?rect.bottom+4+'px':'auto';menu.style.bottom=below>=Math.min(360,above)?'auto':innerHeight-rect.top+4+'px';}
  const run=(action:()=>void)=>{ref.current?.hidePopover();action();};
- return <div className="seller-actions"><button className="primary" disabled={part.available_quantity<1} onClick={onSale}>Продати</button><button ref={button} popoverTarget={id} onClick={position} aria-label={`Дії ${part.name}`}>⋯</button><div ref={ref} id={id} popover="auto" className="stock-actions-menu">
+ return <div className="seller-actions"><button className={subdued?'stock-row-sale':'primary'} disabled={part.available_quantity<1} onClick={onSale}>Продати</button><button ref={button} popoverTarget={id} onClick={position} aria-label={`Дії ${part.name}`}>⋯</button><div ref={ref} id={id} popover="auto" className="stock-actions-menu">
   {['write_off','transfer','reserve','release','receipt','correction'].map(type=><button key={type} onClick={()=>run(()=>onAction(type))}>{actionLabels[type]}</button>)}<button onClick={()=>run(onDetail)}>Відкрити картку</button><button onClick={()=>run(onEdit)}>Редагувати дані</button><button onClick={()=>run(onHistory)}>Історія</button><button onClick={()=>run(onArchive)}>Архівувати</button>
  </div></div>;
 }
