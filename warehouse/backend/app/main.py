@@ -3,9 +3,8 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from starlette.middleware.trustedhost import TrustedHostMiddleware
-from urllib.parse import urlsplit
 from fastapi import HTTPException
-from app.config import is_staging, public_origin, secure_cookies
+from app.config import allowed_hosts, is_staging, public_origin, secure_cookies
 from app.api.routes import router
 from app.api.plan_parts import router as plan_parts_router
 from app.api.checklists import router as checklists_router
@@ -24,10 +23,9 @@ app.include_router(dismantling_router)
 if is_staging():
     if not secure_cookies():
         raise RuntimeError("Staging requires secure cookies")
-    origin = public_origin()
     app.add_middleware(
         TrustedHostMiddleware,
-        allowed_hosts=[urlsplit(origin).hostname, "healthcheck.railway.app"],
+        allowed_hosts=allowed_hosts(),
     )
 
 

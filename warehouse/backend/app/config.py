@@ -1,4 +1,5 @@
 import os
+import re
 from functools import lru_cache
 from pathlib import Path
 from sqlalchemy.engine import make_url, URL
@@ -80,3 +81,19 @@ def registration_enabled():
         ).lower()
         == "true"
     )
+
+
+def allowed_hosts():
+    """Browser origin stays authoritative; optional extra exact ingress hosts."""
+    hosts = [urlsplit(public_origin()).hostname, "healthcheck.railway.app"]
+    extra = os.getenv("WAREHOUSE_ALLOWED_HOSTS", "")
+    if extra:
+        for value in extra.split(","):
+            host = value.strip()
+            if len(host) > 253 or not re.fullmatch(
+                r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*",
+                host,
+            ):
+                raise RuntimeError("WAREHOUSE_ALLOWED_HOSTS must contain comma-separated exact lowercase hostnames without scheme, port or wildcard")
+            hosts.append(host)
+    return list(dict.fromkeys(hosts))
