@@ -18,7 +18,7 @@ try {for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  const other=await post('/parts',{vehicle_id:bmw.id,name:'Капот BMW UX5',selling_price:'90.00'});await post(`/parts/${other.id}/operations`,{type:'receipt',quantity:1,reason:'Local stock'});
  for(let i=0;i<4;i++){const p=await post('/parts',{vehicle_id:volvo.id,name:`Капот підказка ${i}`});await post(`/parts/${p.id}/operations`,{type:'receipt',quantity:1,reason:'Local stock'});}
  await page.goto(origin+'/inventory');await page.getByRole('button',{name:'За автомобілями',exact:true}).click();await page.getByRole('button',{name:/Volvo XC90.*2010/}).click();
- await expect(page.getByRole('heading',{name:'Volvo XC90 · 2010 · №1',exact:true})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Volvo XC90 · 2010 · №1',exact:true})).toBeVisible();await page.getByRole('checkbox',{name:'Запам’ятати цей автомобіль',exact:true}).check();
  const tree=page.locator('.donor-stock-tree');await tree.locator('summary').filter({hasText:'Кузов UX5'}).click();await expect(tree.getByRole('heading',{name:/Панелі UX5/})).toBeVisible();
  const row=()=>tree.locator('.donor-part-row').filter({has:page.getByRole('button',{name:'Капот UX5',exact:true})});
  await expect(row()).toContainText('У наявності: 3');assert(await row().getByRole('button',{name:'Капот UX5',exact:true}).evaluate(el=>parseFloat(getComputedStyle(el).fontSize)>=14));await page.screenshot({path:`test-results/ux5-donor-${viewport.width}.png`,fullPage:true});

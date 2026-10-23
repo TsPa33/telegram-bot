@@ -20,8 +20,10 @@ export function Modal({
   title,
   onClose,
   children,
+  className,
 }: {
   title: string;
+  className?: string;
   onClose: () => void;
   children: ReactNode;
 }) {
@@ -33,6 +35,7 @@ export function Modal({
   }, []);
   return (
     <dialog
+      className={className}
       aria-label={title}
       ref={ref}
       onCancel={onClose}
