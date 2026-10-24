@@ -23,7 +23,7 @@ export default function Dashboard() {
           <CarFront size={17} />
           Додати донора
         </Link>
-        <Link className="button primary" to="/inventory">
+        <Link className="button secondary" to="/inventory">
           <Plus size={17} />
           Додати запчастину
         </Link>

@@ -498,6 +498,7 @@ export default function Inventory({ notify }: { notify: Notify }) {
       )}
       {confirm && (
         <Confirm
+          destructive
           title="Архівувати запчастину?"
           text="Історія та залишки будуть збережені. Позиції з активним резервом спершу потребують зняття резерву."
           onClose={() => setConfirm(null)}

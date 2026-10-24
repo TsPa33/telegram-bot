@@ -1,4 +1,4 @@
-import { Plus, Search } from "lucide-react";
+import { ArrowRight, Plus, Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, money, type Page, type Row } from "../api";
@@ -64,7 +64,7 @@ export default function Vehicles({notify}:{notify:Notify}) {
   },[donorId]);
   return <>
     <Heading eyebrow="АВТОМОБІЛІ" title="Автомобілі" description="Відкрийте автомобіль, щоб вибрати запчастини або перейти до складу.">
-      <button className="primary" onClick={()=>setEdit({status:'dismantling'})}><Plus size={17}/>Додати автомобіль</button>
+      <button className="secondary" onClick={()=>setEdit({status:'dismantling'})}><Plus size={17}/>Додати автомобіль</button>
     </Heading>
     {created&&<p role="status">Додано: {created.manufacturer} {created.model} · {created.year}. <button onClick={()=>openDetail(created)}>Відкрити картку</button></p>}
     <label className="search vehicle-search"><Search size={17}/><input aria-label="Пошук автомобілів" placeholder="Марка, модель або номер авто" value={q} onChange={e=>{setQ(e.target.value);setPage(0);}}/></label>
@@ -72,7 +72,7 @@ export default function Vehicles({notify}:{notify:Notify}) {
     <section className="vehicle-grid" aria-label="Список автомобілів">
       {data?.items.map(v=><article className="vehicle-summary-card" key={v.id}>
         <div className="vehicle-summary-head"><div><button className="text-button strong" onClick={()=>openDetail(v)}>{v.manufacturer} {v.model}</button><p>{v.year} · №{v.number??'—'}</p></div><span className="vehicle-stock-count">На складі <b>{v.stock_positions??'…'}</b></span></div>
-        <button className="primary vehicle-parts-action" aria-label={`Запчастини ${v.manufacturer} ${v.model}`} onClick={()=>openDetail(v)}>Запчастини</button>
+        <button className="secondary vehicle-parts-action" aria-label={`Запчастини ${v.manufacturer} ${v.model}`} onClick={()=>openDetail(v)}>Запчастини <ArrowRight size={15} aria-hidden="true"/></button>
         <PowertrainEditor vehicle={v} onSaved={saved}/>
         <button className="text-button vehicle-data-action" onClick={()=>openDetail(v,true)}>Дані автомобіля</button>
       </article>)}
@@ -88,7 +88,7 @@ export default function Vehicles({notify}:{notify:Notify}) {
     {detail&&<Modal title={`${detail.manufacturer} ${detail.model} · ${detail.year} · №${detail.number??'—'}`} onClose={closeDetail}>
       <VehicleDetail key={detail.id} vehicle={detail} showInfo={showInfo} onSaved={saved} onArchive={()=>{setConfirm(detail);}} onEdit={async()=>{try{const row=await api(`/vehicles/${detail.id}`);closeDetail();setEdit(row);}catch(e){notify((e as Error).message);}}} onRefresh={refresh} notify={notify} onInventory={()=>navigate(`/inventory?vehicle_id=${detail.id}`)}/>
     </Modal>}
-    {confirm&&<Confirm title="Архівувати автомобіль?" text="Автомобіль залишиться в історії. Його запчастини залишаться на складі." onClose={()=>setConfirm(null)} onConfirm={async()=>{await api('/archive/vehicles/'+confirm.id,'POST');setConfirm(null);closeDetail();reload();notify('Автомобіль переміщено в архів');}}/>}
+    {confirm&&<Confirm destructive title="Архівувати автомобіль?" text="Автомобіль залишиться в історії. Його запчастини залишаться на складі." onClose={()=>setConfirm(null)} onConfirm={async()=>{await api('/archive/vehicles/'+confirm.id,'POST');setConfirm(null);closeDetail();reload();notify('Автомобіль переміщено в архів');}}/>}
   </>;
 }
 function VehicleDetail({

@@ -117,11 +117,13 @@ export function Confirm({
   text,
   onClose,
   onConfirm,
+  destructive = false,
 }: {
   title: string;
   text: string;
   onClose: () => void;
   onConfirm: () => Promise<void>;
+  destructive?: boolean;
 }) {
   const [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
@@ -132,7 +134,7 @@ export function Confirm({
       <div className="modal-actions">
         <button onClick={onClose}>Скасувати</button>
         <button
-          className="primary"
+          className={destructive ? "destructive" : "primary"}
           disabled={busy}
           onClick={async () => {
             setBusy(true);

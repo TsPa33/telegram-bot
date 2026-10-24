@@ -35,7 +35,7 @@ export default function Catalog({ notify }: { notify: Notify }) {
         title="Каталог запчастин"
         description="Категорії, підкатегорії та стандартні деталі для чеклістів."
       >
-        <button className="primary" onClick={() => setImporting(true)}>
+        <button className="secondary" onClick={() => setImporting(true)}>
           <Upload size={17} />
           Імпорт категорій
         </button>
@@ -130,6 +130,7 @@ export default function Catalog({ notify }: { notify: Notify }) {
       )}
       {confirm && (
         <Confirm
+          destructive
           title="Архівувати категорію?"
           text="Категорія та її дочірні елементи не братимуть участі в нових чеклістах. Історичні посилання зберігаються."
           onClose={() => setConfirm(null)}

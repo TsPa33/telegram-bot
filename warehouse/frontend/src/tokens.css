@@ -1,0 +1,35 @@
+/* UX 5.3: shared primitives. Secondary text and solid accent meet WCAG AA. */
+:root {
+  --color-background: #f7f8fa;
+  --color-surface: #ffffff;
+  --color-subtle: #f0f2f5;
+  --color-text: #242b35;
+  --color-secondary: #606d7c;
+  --color-border: #e1e5ea;
+  --color-control-border: #8995a3;
+  --color-accent: #668b82;
+  --color-accent-strong: #42675e;
+  --color-accent-pressed: #36594f;
+  --color-accent-surface: #e8f2ef;
+  --color-danger: #a23535;
+  --color-danger-surface: #fff1f0;
+  --color-warning: #775315;
+  --color-warning-surface: #fff8e8;
+  --radius-control: 8px;
+  --radius-panel: 12px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --control-height: 40px;
+  --duration: 150ms;
+  --focus-ring: 0 0 0 3px #42675e30;
+  --shadow-overlay: 0 10px 32px #242b351a;
+  /* Aliases for existing layouts and charts. */
+  --line: var(--color-border);
+  --muted: var(--color-secondary);
+  --black: var(--color-text);
+  --green: var(--color-accent-strong);
+  --panel: var(--color-surface);
+}

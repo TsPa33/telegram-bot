@@ -1,0 +1,101 @@
+/* Shared visual roles; layout-specific geometry stays in style.css. */
+:root { color: var(--color-text); background: var(--color-background); }
+button,.button,input,select,textarea,summary,a,tr,.panel,.vehicle-summary-card,.donor-stock-card {
+  transition: background-color var(--duration) ease, color var(--duration) ease,
+    border-color var(--duration) ease, box-shadow var(--duration) ease;
+}
+button,.button { min-height:var(--control-height); padding:8px 12px; border-radius:var(--radius-control); }
+button,.button,.secondary {
+  color:var(--color-text); background:var(--color-surface); border-color:var(--color-border); box-shadow:none;
+}
+button:hover:not(:disabled),.button:hover { background:var(--color-accent-surface); border-color:var(--color-control-border); }
+button:active:not(:disabled),.button:active { background:var(--color-subtle); }
+.primary { transition-property:border-color,box-shadow; background:var(--color-accent-strong)!important; border-color:var(--color-accent-strong)!important; color:var(--color-surface)!important; }
+.primary:hover:not(:disabled),.primary:active:not(:disabled) { background:var(--color-accent-pressed)!important; border-color:var(--color-accent-pressed)!important; }
+.icon-button,button[popovertarget] { min-width:var(--control-height); min-height:var(--control-height); }
+.ghost,.text-button,.icon-button { background:transparent; border-color:transparent; }
+.ghost:hover:not(:disabled),.text-button:hover:not(:disabled),.icon-button:hover:not(:disabled) { background:var(--color-accent-surface); border-color:transparent; }
+button.destructive { color:var(--color-danger); border-color:var(--color-danger); background:var(--color-surface); }
+button.destructive:hover:not(:disabled),button.destructive:active:not(:disabled) { color:var(--color-danger); border-color:var(--color-danger); background:var(--color-danger-surface); }
+button:disabled,.button[aria-disabled=true],fieldset:disabled button {
+  opacity:1; color:var(--color-secondary)!important; background:var(--color-subtle)!important;
+  border-color:var(--color-border)!important; cursor:not-allowed; box-shadow:none;
+}
+:where(button,a,input,select,textarea,summary,[tabindex]):focus-visible {
+  outline:2px solid var(--color-accent-strong); outline-offset:3px; box-shadow:var(--focus-ring);
+}
+input,select,textarea { color:var(--color-text); border-color:var(--color-control-border); border-radius:var(--radius-control); background:var(--color-surface); }
+input::placeholder,textarea::placeholder { color:var(--color-secondary); opacity:1; }
+input:hover:not(:disabled),select:hover:not(:disabled),textarea:hover:not(:disabled) { border-color:var(--color-accent-strong); }
+input:focus,select:focus,textarea:focus { border-color:var(--color-accent-strong); box-shadow:var(--focus-ring); }
+input:disabled,select:disabled,textarea:disabled { background:var(--color-subtle); color:var(--color-secondary); cursor:not-allowed; opacity:1; }
+input[type=checkbox],.simple-warehouse input[type=checkbox] { accent-color:var(--color-accent-strong); }
+a:hover { color:var(--color-accent-strong); }
+a.button:hover { color:var(--color-text); }
+.sidebar nav a,.settings-nav { min-height:44px; font-size:12px; color:var(--color-secondary); }
+.sidebar nav a.active,.settings-nav.active { background:var(--color-accent-surface); color:var(--color-accent-strong); font-weight:700; }
+.sidebar nav a.active::after { background:var(--color-accent); }
+.panel,.vehicle-summary-card,.donor-stock-card,.stock-history-event { border-color:var(--color-border); border-radius:var(--radius-panel); box-shadow:none; }
+.vehicle-summary-card:hover,.donor-stock-card:hover,.order-summary:hover { border-color:var(--color-control-border); }
+.vehicle-summary-card:focus-within,.donor-stock-card:focus-within { border-color:var(--color-accent); }
+.vehicle-summary-card { padding:var(--space-4); }
+.vehicle-summary-head .strong { font-size:19px; letter-spacing:-.3px; }
+.vehicle-stock-count { background:var(--color-subtle); color:var(--color-secondary); border-radius:var(--radius-control); padding:6px 9px; }
+.vehicle-parts-action { width:auto; margin:10px 0; align-self:flex-start; background:var(--color-surface); color:var(--color-text); border:1px solid var(--color-border); }
+.vehicle-powertrain { gap:var(--space-2); }
+.vehicle-powertrain button { min-width:0; color:var(--color-text); background:var(--color-background); border:1px solid transparent; padding:8px 10px; }
+.vehicle-powertrain button:hover:not(:disabled) { border-color:var(--color-accent); background:var(--color-accent-surface); }
+.vehicle-powertrain small { color:var(--color-secondary); }
+.donor-stock-card .vehicle-powertrain { align-self:stretch; width:100%; margin:6px 0; }
+.donor-stock-card .vehicle-powertrain button { align-items:flex-start; text-align:left; white-space:normal; overflow-wrap:anywhere; }
+.donor-stock-card .vehicle-data-action { min-height:36px; margin:0; }
+.donor-stock-card>.donor-open-action { margin-top:8px; }
+.vehicle-data-action { color:var(--color-secondary); }
+nav.inventory-modes { background:var(--color-subtle); }
+nav.inventory-modes>button[aria-pressed=true] { color:var(--color-accent-strong); background:var(--color-surface); box-shadow:0 1px 3px #242b3514; }
+nav.inventory-modes>button:hover:not(:disabled) { background:var(--color-accent-surface); }
+nav.stock-section-tabs>button[aria-pressed=true] { color:var(--color-accent-strong); border-bottom-color:var(--color-accent-strong); }
+:is(.donor-stock-tree,.simple-warehouse) summary { border-radius:var(--radius-control); }
+.donor-stock-tree>details>summary,.simple-category>summary.simple-category-title { background:var(--color-subtle); color:var(--color-text); }
+.donor-stock-tree .donor-stock-subcategory>summary,.simple-subcategory>summary.simple-subcategory-title { background:var(--color-background); color:var(--color-text); }
+.donor-stock-tree summary:hover,.simple-warehouse summary:hover { background:var(--color-accent-surface); }
+.donor-stock-tree summary:active,.simple-warehouse summary:active { background:var(--color-accent-surface); }
+.donor-stock-tree details[open]>summary,.simple-category[open]>summary,.simple-subcategory[open]>summary { box-shadow:inset 3px 0 0 var(--color-accent); }
+.donor-stock-tree summary>small,.simple-warehouse summary>small { color:var(--color-secondary); background:transparent; }
+.donor-part-row:hover,tbody tr:hover,.inventory-card:hover { background:var(--color-background); }
+.donor-part-row:focus-within,tbody tr:focus-within { background:var(--color-accent-surface); }
+.seller-actions>button.stock-row-sale,.donor-part-row .seller-actions>button.stock-row-sale { color:var(--color-text); background:var(--color-surface); border:1px solid var(--color-control-border); }
+.seller-actions>button.stock-row-sale:hover:not(:disabled) { background:var(--color-accent-surface); }
+.seller-price { color:var(--color-text); }
+.stock-actions-menu,.vehicle-combobox ul,.seller-autocomplete ul { border-color:var(--color-border); background:var(--color-surface); box-shadow:var(--shadow-overlay); }
+.stock-actions-menu button:hover,.vehicle-combobox li:hover,.vehicle-combobox li[aria-selected=true],.seller-autocomplete [aria-selected=true] { background:var(--color-accent-surface); color:var(--color-text); }
+dialog { border-color:var(--color-border); border-radius:var(--radius-panel); box-shadow:var(--shadow-overlay); color:var(--color-text); background:var(--color-surface); }
+dialog::backdrop { background:#242b3559; }
+.modal-head { border-color:var(--color-border); }
+.stock-part-metrics,.order-line-editor,.order-buyer-selected { background:var(--color-background); border-color:var(--color-border); }
+.order-summary header>span { color:var(--color-accent-strong); }
+.badge.dismantling,.badge.present,.badge.completed { color:var(--color-accent-strong); background:var(--color-accent-surface); }
+.badge.damaged { color:var(--color-warning); background:var(--color-warning-surface); }
+.badge.absent { color:var(--color-danger); background:var(--color-danger-surface); }
+.available { color:var(--color-accent-strong)!important; }
+.safe-dot { background:var(--color-accent); }
+.error { color:var(--color-danger); background:var(--color-danger-surface); border-color:var(--color-danger); }
+.notice { color:var(--color-warning); background:var(--color-warning-surface); border-color:var(--color-border); }
+.toast { color:var(--color-text); background:var(--color-surface); border:1px solid var(--color-accent); box-shadow:var(--shadow-overlay); }
+.toast button { color:var(--color-secondary); background:transparent; }
+.loading { color:var(--color-secondary); }
+.loading>span { border-color:var(--color-border); border-top-color:var(--color-accent-strong); }
+.bars i { background:var(--color-accent-strong); }
+@media(max-width:800px) {
+  :root { --control-height:44px; }
+  button,.button,.icon-button,nav.inventory-modes>button,nav.stock-section-tabs>button,
+  .stock-part-dialog .stock-detail-actions button,.donor-stock-card>button,.vehicle-data-action { min-height:44px; }
+  input:not([type=checkbox]),select,textarea { font-size:16px; min-height:44px; }
+  .vehicle-summary-head { gap:8px; flex-wrap:wrap; }
+  .vehicle-powertrain button { min-height:56px; }
+  .donor-stock-grid { grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr)); }
+  .vehicle-parts-action { width:auto; }
+}
+@media(prefers-reduced-motion:reduce) {
+  *,*::before,*::after { animation:none!important; transition:none!important; scroll-behavior:auto!important; }
+}
