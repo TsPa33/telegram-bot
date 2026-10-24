@@ -1,6 +1,4 @@
-import {ArrowRight} from 'lucide-react';
-import {Link} from 'react-router-dom';
-import PowertrainEditor from './PowertrainEditor';
+import VehicleCard from './VehicleCard';
 import {useEffect,useState} from 'react';
 import {useSearchParams} from 'react-router-dom';
 import {all} from './api';
@@ -56,7 +54,7 @@ export default function InventoryWorkspace({accountId,notify}:{accountId:string;
    <State error={error} loading={loading}/>
    {error&&<button onClick={reload}>Спробувати знову</button>}
    {!vehicle&&<><h1>Склад за автомобілями</h1><section className="donor-stock-grid" aria-label="Автомобілі на складі">
-    {vehicles?.map(v=><article className="donor-stock-card" key={v.id}><strong>{v.manufacturer} {v.model}</strong><span>{v.year} · №{v.number}{v.archived?' · архів':''}</span>{v.stock_positions!=null&&<small>Облікованих запчастин: {v.stock_positions}</small>}<PowertrainEditor vehicle={v} onSaved={reload}/><Link className="text-button button vehicle-data-action" to={'/vehicles?donor='+v.id}>Дані автомобіля</Link><button className="secondary donor-open-action" aria-label={`Відкрити склад ${v.manufacturer} ${v.model} · ${v.year} · №${v.number}`} onClick={()=>choose(v.id)}>Відкрити склад <ArrowRight size={15} aria-hidden="true"/></button></article>)}
+    {vehicles?.map(v=><VehicleCard key={v.id} vehicle={v} context="inventory" onParts={()=>choose(v.id)} onSaved={reload}/>)}
     {!loading&&!error&&!vehicles?.length&&<Empty title="Автомобілів поки немає">Додайте автомобіль у розділі «Автомобілі».</Empty>}
    </section></>}
    {vehicle&&<>

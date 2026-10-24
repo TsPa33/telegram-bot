@@ -1,0 +1,48 @@
+/* UX 5.4: vehicle identity first, decorative body profile behind clear space. */
+.vehicle-grid,.donor-stock-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:var(--space-4); align-items:start; }
+.vehicle-card.vehicle-summary-card,.vehicle-card.donor-stock-card {
+ position:relative; isolation:isolate; display:flex; flex-direction:column; align-items:stretch;
+ padding:18px; gap:0; min-width:0; border:1px solid var(--color-border); border-radius:var(--radius-panel);
+ background:var(--color-surface); box-shadow:0 2px 5px #242b3503;
+ transition:border-color var(--duration) ease,box-shadow var(--duration) ease;
+}
+.vehicle-card:hover { border-color:var(--color-control-border); box-shadow:0 5px 15px #242b3508; }
+.vehicle-card:focus-within { border-color:var(--color-accent); }
+.vehicle-card-heading { display:flex; justify-content:space-between; align-items:flex-start; gap:14px; min-width:0; }
+.vehicle-card-identity { min-width:0; flex:1; }
+.vehicle-card .vehicle-card-name {
+ display:block; min-width:0; max-width:100%; padding:0; min-height:32px;
+ font-size:23px; font-weight:750; line-height:1.25; letter-spacing:-.5px;
+ color:var(--color-text); text-align:left; white-space:normal; overflow-wrap:anywhere;
+}
+.vehicle-card-identity p { margin:5px 0 0; font-size:12px; color:var(--color-secondary); }
+.vehicle-card .vehicle-stock-count { flex:none; min-width:76px; padding:7px 10px; text-align:right; font-size:11px; line-height:1.35; background:var(--color-background); }
+.vehicle-card .vehicle-stock-count b { font-size:28px; line-height:1.15; color:var(--color-text); font-variant-numeric:tabular-nums; }
+.vehicle-silhouette { pointer-events:none; user-select:none; height:88px; margin:0 -4px; color:var(--color-secondary); opacity:.15; }
+.vehicle-silhouette svg { display:block; width:100%; height:100%; }
+.vehicle-card .vehicle-powertrain.vehicle-powertrain-compact { display:flex; flex-wrap:wrap; width:100%; gap:4px 12px; margin:0 0 7px; align-self:auto; }
+.vehicle-card .vehicle-powertrain-compact>button {
+ flex:1 1 160px; display:flex; flex-direction:row; flex-wrap:wrap; align-items:center; justify-content:flex-start;
+ min-height:36px; min-width:0; padding:3px 0; gap:4px; background:transparent; border:1px solid transparent;
+ font-size:12px; font-weight:500; line-height:1.4; color:var(--color-secondary); text-align:left;
+}
+.vehicle-card .vehicle-powertrain-compact small { font-size:11px; font-weight:500; color:var(--color-secondary); }
+.vehicle-card .vehicle-powertrain-compact small::after { content:' ·'; }
+.vehicle-card .vehicle-powertrain-compact>button:hover:not(:disabled) { background:var(--color-accent-surface); border-color:transparent; }
+.vehicle-card-footer { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:auto; padding-top:8px; border-top:1px solid var(--color-border); }
+.vehicle-card-footer>.vehicle-data-action { margin:0; padding:6px 0; font-size:12px; font-weight:500; min-height:40px; white-space:normal; text-align:left; }
+.vehicle-card-footer>.vehicle-parts-action { flex:none; width:auto; margin:0; padding:8px 12px; min-height:40px; color:var(--color-accent-strong); background:var(--color-accent-surface); border-color:transparent; font-size:12px; }
+.vehicle-card-footer>.vehicle-parts-action:hover { background:var(--color-accent-surface); border-color:var(--color-accent); }
+.vehicle-card-footer>.vehicle-parts-action:active { border-color:var(--color-accent-strong); box-shadow:inset 0 1px 2px #242b3514; }
+@media(max-width:900px) { .vehicle-grid,.donor-stock-grid { grid-template-columns:1fr; } .vehicle-card .vehicle-card-name,.vehicle-card .vehicle-powertrain-compact>button,.vehicle-card-footer>.vehicle-data-action,.vehicle-card-footer>.vehicle-parts-action { min-height:44px; } }
+@media(max-width:600px) {
+ .vehicle-card.vehicle-summary-card,.vehicle-card.donor-stock-card { padding:14px; }
+ .vehicle-card-heading { gap:10px; }
+ .vehicle-card .vehicle-card-name { font-size:21px; min-height:44px; }
+ .vehicle-card .vehicle-stock-count { min-width:70px; }
+ .vehicle-silhouette { height:78px; }
+ .vehicle-card .vehicle-powertrain-compact>button { min-height:44px; flex:1 1 130px; }
+ .vehicle-card-footer { gap:8px; padding-top:6px; }
+ .vehicle-card-footer>.vehicle-data-action,.vehicle-card-footer>.vehicle-parts-action { min-height:44px; }
+}
+@media(prefers-reduced-motion:reduce) { .vehicle-card.vehicle-summary-card,.vehicle-card.donor-stock-card { transition:none; } }

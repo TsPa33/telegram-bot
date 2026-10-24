@@ -1,4 +1,4 @@
-import { ArrowRight, Plus, Search } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, money, type Page, type Row } from "../api";
@@ -7,6 +7,7 @@ import VehicleForm from "../VehicleForm";
 import VehicleChecklist from "../VehicleChecklist";
 import Dismantling from "../Dismantling";
 import PowertrainEditor from "../PowertrainEditor";
+import VehicleCard from "../VehicleCard";
 import {choices, Confirm, Heading, option, State, useLoad, type Notify} from "../shared";
 const vehicleFields: Field[] = [
   { key: "manufacturer", label: "Виробник", required: true },
@@ -53,15 +54,15 @@ export default function Vehicles({notify}:{notify:Notify}) {
   const [q,setQ]=useState(''),[page,setPage]=useState(0),[edit,setEdit]=useState<Row|null>(null),[created,setCreated]=useState<Row|null>(null),[detail,setDetail]=useState<Row|null>(null),[confirm,setConfirm]=useState<Row|null>(null),[showInfo,setShowInfo]=useState(false);
   const {data,error,loading,reload}=useLoad(()=>api<Page>(`/vehicles?q=${encodeURIComponent(q)}&limit=50&offset=${page*50}`),[q,page]);
   const navigate=useNavigate(),[params,setParams]=useSearchParams(),donorId=params.get('donor');
-  function openDetail(row:Row,info=false){setShowInfo(info);setDetail(row);setParams({donor:row.id});}
+  function openDetail(row:Row,info=false){setShowInfo(info);setDetail(row);setParams({donor:row.id,...(info?{info:'1'}:{})});}
   function closeDetail(){setDetail(null);setParams({});}
   function saved(row:Row){setDetail(current=>current?.id===row.id?row:current);setCreated(current=>current?.id===row.id?row:current);reload();}
   async function refresh(){reload();if(detail){try{setDetail(await api(`/vehicles/${detail.id}`));}catch(e){notify((e as Error).message);}}}
   useEffect(()=>{
-    if(!donorId){setDetail(null);return;}if(detail?.id===donorId)return;
+    if(!donorId){setDetail(null);return;}setShowInfo(params.get('info')==='1');if(detail?.id===donorId)return;
     let active=true;api(`/vehicles/${encodeURIComponent(donorId)}`).then(row=>{if(active)setDetail(row);}).catch(e=>{if(active)notify(e.message);});
     return ()=>{active=false;};
-  },[donorId]);
+  },[donorId,params.get('info')]);
   return <>
     <Heading eyebrow="АВТОМОБІЛІ" title="Автомобілі" description="Відкрийте автомобіль, щоб вибрати запчастини або перейти до складу.">
       <button className="secondary" onClick={()=>setEdit({status:'dismantling'})}><Plus size={17}/>Додати автомобіль</button>
@@ -70,12 +71,7 @@ export default function Vehicles({notify}:{notify:Notify}) {
     <label className="search vehicle-search"><Search size={17}/><input aria-label="Пошук автомобілів" placeholder="Марка, модель або номер авто" value={q} onChange={e=>{setQ(e.target.value);setPage(0);}}/></label>
     <State error={error} loading={loading}/>
     <section className="vehicle-grid" aria-label="Список автомобілів">
-      {data?.items.map(v=><article className="vehicle-summary-card" key={v.id}>
-        <div className="vehicle-summary-head"><div><button className="text-button strong" onClick={()=>openDetail(v)}>{v.manufacturer} {v.model}</button><p>{v.year} · №{v.number??'—'}</p></div><span className="vehicle-stock-count">На складі <b>{v.stock_positions??'…'}</b></span></div>
-        <button className="secondary vehicle-parts-action" aria-label={`Запчастини ${v.manufacturer} ${v.model}`} onClick={()=>openDetail(v)}>Запчастини <ArrowRight size={15} aria-hidden="true"/></button>
-        <PowertrainEditor vehicle={v} onSaved={saved}/>
-        <button className="text-button vehicle-data-action" onClick={()=>openDetail(v,true)}>Дані автомобіля</button>
-      </article>)}
+      {data?.items.map(v=><VehicleCard key={v.id} vehicle={v} context="vehicles" onParts={()=>openDetail(v)} onData={()=>openDetail(v,true)} onSaved={saved}/>)}
       {!loading&&!data?.items.length&&<Empty title={q?'Автомобілів не знайдено':'Додайте перший автомобіль'}>Пов’яжіть запчастини з автомобілем, щоб швидко знаходити їх на складі.</Empty>}
     </section>
     {data&&<Pager total={data.total} page={page} setPage={setPage}/>}

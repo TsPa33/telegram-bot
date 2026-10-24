@@ -5,6 +5,7 @@ import App from "./App";
 import "./tokens.css";
 import "./style.css";
 import "./design-system.css";
+import "./vehicle-cards.css";
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <BrowserRouter>

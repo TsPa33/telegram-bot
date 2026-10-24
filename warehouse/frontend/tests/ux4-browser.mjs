@@ -25,7 +25,7 @@ try{
   assert.equal(await page.locator('.sidebar nav a[href="/archive"]').count(),0);
   const card=page.locator('.vehicle-summary-card').filter({has:page.getByRole('button',{name:'Volvo XC90',exact:true})});
   await expect(card).toContainText('2010 · №1');await expect(card.locator('.vehicle-stock-count')).toContainText('1');
-  await expect(card.getByRole('button',{name:'Двигун Volvo XC90',exact:true})).toContainText('Вибрати двигун');
+  await expect(card.getByRole('button',{name:'Двигун Volvo XC90',exact:true})).toContainText('Не вказано');
   await card.getByRole('button',{name:'Двигун Volvo XC90',exact:true}).click();
   let dialog=page.locator('dialog[open]').last();await dialog.getByLabel('Двигун',{exact:true}).fill('2.4 D5 — значення власника');await dialog.getByRole('button',{name:'Зберегти',exact:true}).click();
   await expect(card.getByRole('button',{name:'Двигун Volvo XC90',exact:true})).toContainText('2.4 D5 — значення власника');
