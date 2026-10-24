@@ -9,17 +9,19 @@ from app.api.routes import router
 from app.api.plan_parts import router as plan_parts_router
 from app.api.checklists import router as checklists_router
 from app.api.dismantling import router as dismantling_router
+from app.api.orders import router as orders_router
 from app.db import engine
 
 app = FastAPI(
     title="CarPot Warehouse API",
     version="1.0.0",
-    description="Standalone tenant-isolated warehouse. All business endpoints require a session cookie; mutations also require X-CSRF-Token. Monetary values are UAH. No CarPot production integration.",
+    description="Standalone tenant-isolated warehouse. All business endpoints require a session cookie; mutations also require X-CSRF-Token. Monetary values use explicit UAH/USD currencies without automatic conversion. No CarPot production integration.",
 )
 app.include_router(router)
 app.include_router(plan_parts_router)
 app.include_router(checklists_router)
 app.include_router(dismantling_router)
+app.include_router(orders_router)
 if is_staging():
     if not secure_cookies():
         raise RuntimeError("Staging requires secure cookies")

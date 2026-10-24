@@ -126,6 +126,7 @@ class VehicleChecklistItem(Base):
 class Part(Owned, Base):
     __tablename__ = "parts"
     __table_args__ = (
+        UniqueConstraint("id", "account_id", name="uq_part_id_account"),
         UniqueConstraint("vehicle_id", "checklist_category_id"),
         UniqueConstraint("account_id", "serial_number"),
         CheckConstraint(
@@ -275,3 +276,6 @@ class StockRequest(Base):
     request_key: Mapped[str] = mapped_column(String(36))
     fingerprint: Mapped[str] = mapped_column(String(64))
     response: Mapped[dict] = mapped_column(JSON)
+
+
+from app.models.orders import Buyer, Order, OrderLine, OrderReservation, OrderEvent, OrderRequest  # noqa: E402,F401

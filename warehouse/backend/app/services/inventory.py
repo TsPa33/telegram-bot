@@ -1,7 +1,7 @@
 from decimal import Decimal
 from datetime import date, datetime
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import select, func
 from app.models import Category, Operation, Part, Vehicle, Account, VehicleChecklistItem, DismantlingItem
 
 
@@ -27,24 +27,15 @@ def snapshot(row):
 
 def record(db, account_id, row, type, reason, before):
     db.flush()
-    db.add(
-        Operation(
-            account_id=account_id,
-            actor_id=account_id,
-            part_id=row.id if isinstance(row, Part) else None,
-            vehicle_id=row.vehicle_id
-            if isinstance(row, (Part, VehicleChecklistItem, DismantlingItem))
-            else row.id
-            if isinstance(row, Vehicle)
-            else None,
-            entity_id=row.id,
-            entity_type=row.__tablename__,
-            type=type,
-            reason=reason,
-            before=before,
-            after=snapshot(row),
-        )
+    operation = Operation(
+        account_id=account_id, actor_id=account_id,
+        part_id=row.id if isinstance(row, Part) else None,
+        vehicle_id=row.vehicle_id if isinstance(row, (Part, VehicleChecklistItem, DismantlingItem)) else row.id if isinstance(row, Vehicle) else None,
+        entity_id=row.id, entity_type=row.__tablename__, type=type, reason=reason,
+        before=before, after=snapshot(row),
     )
+    db.add(operation)
+    return operation
 
 
 def validate_part_links(db, data, account_id):
@@ -58,7 +49,7 @@ def validate_part_links(db, data, account_id):
             raise HTTPException(422, "Підкатегорія не належить вибраній категорії")
 
 
-def stock(db, row, data, account_id):
+def stock(db, row, data, account_id, *, reservation_id=None, return_operation=False):
     if row.archived:
         raise HTTPException(409, "Спершу відновіть запчастину з архіву")
     before = snapshot(row)
@@ -70,6 +61,18 @@ def stock(db, row, data, account_id):
     elif data.type == "reserve":
         row.reserved_quantity += q
     elif data.type == "release":
+        # Part is already locked by every caller. Only the owning order service
+        # can release an assigned reservation; legacy/manual reserves stay usable.
+        from app.models import OrderReservation
+        protected=db.scalar(select(func.coalesce(func.sum(OrderReservation.quantity),0)).where(
+            OrderReservation.account_id==account_id,OrderReservation.part_id==row.id,OrderReservation.state=='active'))
+        allowance=row.reserved_quantity-protected
+        if reservation_id:
+            reservation=db.get(OrderReservation,reservation_id)
+            if not reservation or reservation.account_id!=account_id or reservation.part_id!=row.id or reservation.state!='active' or reservation.quantity!=q:
+                raise HTTPException(409,'Некоректний резерв замовлення')
+            allowance+=reservation.quantity
+        if q>allowance:raise HTTPException(409,'Цей резерв належить замовленню; зніміть його через замовлення')
         row.reserved_quantity -= q
     elif data.type == "correction":
         row.quantity = q
@@ -81,8 +84,8 @@ def stock(db, row, data, account_id):
         raise HTTPException(409, "Індивідуальна позиція може мати не більше 1 одиниці")
     if data.type in ("receipt", "correction", "sale", "write_off"):
         row.availability = "present" if row.quantity else "absent"
-    record(db, account_id, row, data.type, data.reason, before)
-    return row
+    operation=record(db, account_id, row, data.type, data.reason, before)
+    return operation if return_operation else row
 
 
 def import_categories(db, payload, account_id, *, dry_run=False):
