@@ -20,6 +20,7 @@ export default function Dismantling({vehicle,onChange,onInventory}:{vehicle:Row;
     api(path+'/prepare','POST',{}).then(()=>{if(active)setPrepared(true);}).catch(e=>{if(active)setInitialError(e.message);});
     return ()=>{active=false;};
   },[vehicle.id,attempt]);
+  const [expanded,setExpanded]=useState<Record<string,boolean>>({});
   const [categoryFilter,setCategoryFilter]=useState('');
   const selectedCategory=categoryFilter?JSON.parse(categoryFilter):null;
   const params=new URLSearchParams({q:query,offset:String(offset),limit:'100',...(selectedCategory?{source:selectedCategory[0],category_key:selectedCategory[1]}:{})});
@@ -53,17 +54,18 @@ export default function Dismantling({vehicle,onChange,onInventory}:{vehicle:Row;
         const categoryRows=rows.filter(r=>r.source===category.source&&r.category_key===category.category_key);
         const total=groups.reduce((n,g)=>n+g.total,0),included=groups.reduce((n,g)=>n+g.included,0);
         const selection={source:category.source,category_key:category.category_key};
-        return <details className="simple-category" key={category.source+':'+category.category_key} open>
-          <summary className="simple-category-title"><Selection label={`Вибрати категорію ${category.category_name}`} total={total} included={included} disabled={!canEdit} onChange={value=>plan(value,selection)}/><strong>{category.category_name}</strong><small>{included}/{total}</small></summary>
+        const categoryId=category.source+':'+category.category_key;
+        return <details className="simple-category" key={categoryId} open={!!query.trim()||!!expanded[categoryId]}>
+          <summary className="simple-category-title" onClick={e=>{if((e.target as HTMLElement).tagName==='INPUT')return;e.preventDefault();if(query.trim())return;setExpanded(old=>({...old,[categoryId]:!old[categoryId]}));}}><Selection label={`Вибрати категорію ${category.category_name}`} total={total} included={included} disabled={!canEdit} onChange={value=>plan(value,selection)}/><strong>{category.category_name}</strong><small>{included}/{total}</small></summary>
             {groups.filter(group=>rows.some(r=>r.source===group.source&&r.category_key===group.category_key&&r.subcategory_key===group.subcategory_key)).map(group=>{
               const items=categoryRows.filter(r=>r.subcategory_key===group.subcategory_key);
-              return <section className="simple-subcategory" key={group.subcategory_key}>
-                <div className="simple-subcategory-title"><Selection label={`Вибрати підкатегорію ${group.subcategory_name}`} total={group.total} included={group.included} disabled={!canEdit} onChange={value=>plan(value,{...selection,subcategory_key:group.subcategory_key})}/><strong>{group.subcategory_name}</strong><small>{group.included}/{group.total}</small></div>
+              return <details className="simple-subcategory" key={group.subcategory_key} open={!!query.trim()||!!expanded[categoryId+':'+group.subcategory_key]}>
+                <summary className="simple-subcategory-title" onClick={e=>{if((e.target as HTMLElement).tagName==='INPUT')return;e.preventDefault();if(query.trim())return;const key=categoryId+':'+group.subcategory_key;setExpanded(old=>({...old,[key]:!old[key]}));}}><Selection label={`Вибрати підкатегорію ${group.subcategory_name}`} total={group.total} included={group.included} disabled={!canEdit} onChange={value=>plan(value,{...selection,subcategory_key:group.subcategory_key})}/><strong>{group.subcategory_name}</strong><small>{group.included}/{group.total}</small></summary>
                 {items.map(row=><label className={`simple-part ${row.included?'':'excluded'}`} key={row.id}>
                   <input type="checkbox" aria-label={`Вибрати ${title(row)}`} checked={pendingRows[row.id]??row.included} disabled={!canEdit} onChange={e=>plan(e.target.checked,{ids:[row.id]})}/>
                   <span>{title(row)}</span>{row.received_at&&<small>Додано на склад{row.stock?` · залишок ${row.stock.quantity}`:''}</small>}
                 </label>)}
-              </section>;
+              </details>;
             })}
             {!categoryRows.length&&<button className="text-button" onClick={()=>{setCategoryFilter(JSON.stringify([category.source,category.category_key]));setOffset(0);setQuery('');}}>Показати деталі</button>}
         </details>;

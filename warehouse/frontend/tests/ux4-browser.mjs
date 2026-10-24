@@ -20,8 +20,8 @@ try{
   await post(`/parts/${old.id}/operations`,{type:'sale',quantity:1,reason:'Earlier sale'});
   const oldSnapshot=await (await context.request.get(origin+`/api/v1/parts/${old.id}`)).json();
   await page.goto(origin+'/vehicles');
-  await expect(page.locator('.sidebar nav a')).toHaveCount(4);
-  assert.deepEqual(await page.locator('.sidebar nav a').allTextContents(),['Пошук запчастин','Автомобілі','Склад','Статистика']);
+  await expect(page.locator('.sidebar nav a')).toHaveCount(5);
+  assert.deepEqual(await page.locator('.sidebar nav a').allTextContents(),['Пошук запчастин','Автомобілі','Склад','Замовлення','Статистика']);
   assert.equal(await page.locator('.sidebar nav a[href="/archive"]').count(),0);
   const card=page.locator('.vehicle-summary-card').filter({has:page.getByRole('button',{name:'Volvo XC90',exact:true})});
   await expect(card).toContainText('2010 · №1');await expect(card.locator('.vehicle-stock-count')).toContainText('1');
@@ -41,11 +41,12 @@ try{
   await expect(page.getByText('Розширити власний каталог',{exact:true})).toHaveCount(0);
   const visible=await page.locator('dialog[open]').innerText();for(const noise of [volvo.id,volvo.donor_id,'K-Type','API','carpot.base'])assert(!visible.includes(noise));
   const category=page.locator('.simple-category').first(),sub=category.locator('.simple-subcategory').first(),part=sub.locator('.simple-part').first();
-  const boxes=await Promise.all([category.locator('summary input').boundingBox(),sub.locator('.simple-subcategory-title input').boundingBox(),part.locator('input').boundingBox()]);
+  await category.locator(':scope>summary').click();await sub.locator(':scope>summary').click();
+  const boxes=await Promise.all([category.locator(':scope>summary input').boundingBox(),sub.locator('.simple-subcategory-title input').boundingBox(),part.locator('input').boundingBox()]);
   assert(boxes[1].x>boxes[0].x&&boxes[2].x>boxes[1].x,'Visually nested category / subcategory / part');
   assert((await category.boundingBox()).width>(await page.getByRole('region',{name:'Каталог запчастин автомобіля'}).boundingBox()).width*.9,'Category uses the available screen width');
   const check=part.locator('input');await check.uncheck();await expect(page.getByRole('button',{name:'Додати на склад (32)',exact:true})).toBeEnabled();
-  await page.reload();await expect(check).not.toBeChecked();await check.check();await expect(add).toBeEnabled();
+  await page.reload();await expect(category).toBeVisible();await category.locator(':scope>summary').click();await sub.locator(':scope>summary').click();await expect(check).not.toBeChecked();await check.check();await expect(add).toBeEnabled();
   await page.screenshot({path:`test-results/ux4-donor-${viewport.width}.png`,fullPage:true});
   await add.click();dialog=page.locator('dialog[open]').last();await dialog.getByRole('button',{name:'Підтвердити',exact:true}).click();
   await expect(page.getByRole('status').filter({hasText:'Додано 33 запчастин на склад'})).toBeVisible();

@@ -21,15 +21,17 @@ try {
   await expect(add()).toHaveText('Додати на склад (33)');assert.equal((await parts()).total,0);
   await expect(page.getByRole('button',{name:/Почати розбір|Продовжити розбір/})).toHaveCount(0);
   await expect(page.getByRole('region',{name:'Каталог запчастин автомобіля'}).getByRole('combobox')).toHaveCount(0);
+  await page.locator('.simple-category>summary').filter({hasText:'Освітлення'}).click();await page.locator('.simple-subcategory>summary').filter({hasText:'Переднє освітлення'}).click();
   await expect(page.getByRole('checkbox',{name:'Вибрати Фара · Ліва',exact:true})).toBeChecked();
   assert.equal((await view()).counts.included,33);
   const bodyText=await page.locator('body').innerText();assert(!bodyText.includes(vehicle.id));assert(!bodyText.includes(vehicle.donor_id));
   const body=page.getByRole('checkbox',{name:'Вибрати категорію Кузов',exact:true});await body.uncheck();
   await expect(add()).toHaveText('Додати на склад (23)');assert.equal((await parts()).total,0);
+  await page.locator('.simple-category>summary').filter({hasText:'Кузов'}).click();
   const doors=page.getByRole('checkbox',{name:'Вибрати підкатегорію Двері',exact:true});await doors.check();
   await expect(add()).toHaveText('Додати на склад (27)');await body.check();await expect(add()).toHaveText('Додати на склад (33)');
   const left=()=>page.getByRole('checkbox',{name:'Вибрати Фара · Ліва',exact:true});await left().uncheck();await expect(add()).toHaveText('Додати на склад (32)');
-  await page.reload();await expect(left()).not.toBeChecked();await expect(add()).toHaveText('Додати на склад (32)');
+  await page.reload();await expect(add()).toHaveText('Додати на склад (32)');await page.locator('.simple-category>summary').filter({hasText:'Освітлення'}).click();await page.locator('.simple-subcategory>summary').filter({hasText:'Переднє освітлення'}).click();await expect(left()).not.toBeChecked();await expect(add()).toHaveText('Додати на склад (32)');
   // Search never silently changes the scope of the main receipt button.
   await page.getByRole('searchbox',{name:'Пошук деталей',exact:true}).fill('дзеркало');await expect(add()).toHaveText('Додати на склад (32)');
   const confirmation=await view();await add().click();let dialog=page.locator('dialog[open]').last();
@@ -39,7 +41,7 @@ try {
   await expect(page.getByRole('status').filter({hasText:'Додано 32 запчастин на склад'})).toBeVisible();assert.equal((await parts()).total,32);
   assert((await parts()).items.every(p=>p.quantity===1));
   const retry=await context.request.post(base+'/add-stock',{headers,data:{expected_count:confirmation.add_count,selection_token:confirmation.add_token,quantity:1}});assert.equal((await retry.json()).updated,0);
-  await page.reload();await expect(add()).toBeDisabled();await expect(page.getByText('Додано на склад · залишок 1',{exact:true}).first()).toBeVisible();
+  await page.reload();await expect(add()).toBeDisabled();const receivedCategory=page.locator('.simple-category').first();await receivedCategory.locator(':scope>summary').click();await receivedCategory.locator('.simple-subcategory>summary').first().click();await expect(page.getByText('Додано на склад · залишок 1',{exact:true}).first()).toBeVisible();
   const audit=(await (await context.request.get(origin+`/api/v1/audit?vehicle_id=${vehicle.id}&limit=200`)).json()).items;assert.equal(audit.filter(a=>a.type==='receipt').length,32);
   // Import 1001 synthetic own types, automatically extend same donor, paginate.
   const upload={source:'browser.owned',provenance:'Independent synthetic browser test; not fitment',license_reference:'Own test data, reusable',types:Array.from({length:1001},(_,i)=>({catalog_key:`browser-${i}`,category_key:'browser',category_name:'Browser tests',subcategory_key:'types',subcategory_name:'Owned types',name:`Owned test type ${String(i).padStart(4,'0')}`,position:''}))};

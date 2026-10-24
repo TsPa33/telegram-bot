@@ -35,6 +35,7 @@ import Dashboard from "./pages/Dashboard";
 import Inventory from "./pages/Inventory";
 import SalesWorkspace from "./SalesWorkspace";
 import InventoryWorkspace from "./InventoryWorkspace";
+import Orders from "./Orders";
 import Operations from "./pages/Operations";
 import Settings from "./pages/Settings";
 import Vehicles from "./pages/Vehicles";
@@ -42,6 +43,7 @@ const nav = [
   { to: "/", label: "Пошук запчастин", icon: Search },
   { to: "/vehicles", label: "Автомобілі", icon: CarFront },
   { to: "/inventory", label: "Склад", icon: Boxes },
+  { to: "/orders", label: "Замовлення", icon: ClipboardList },
   { to: "/statistics", label: "Статистика", icon: ChartNoAxesCombined },
 ];
 const secondary = [
@@ -94,7 +96,7 @@ export default function App() {
         }}
       />
     );
-  const current = [...nav,...secondary].find((n) => n.to === location.pathname);
+  const current = [...nav,...secondary].find((n) => n.to === location.pathname || (n.to === "/orders" && location.pathname.startsWith("/orders/")));
   return (
     <div className="app">
       <aside className={menu ? "sidebar open" : "sidebar"}>
@@ -119,7 +121,7 @@ export default function App() {
         <div className="nav-label">УПРАВЛІННЯ</div>
         <nav>
           {nav.map((n) => (
-            <NavLink key={n.to} to={n.to} end>
+            <NavLink key={n.to} to={n.to} end={n.to!=="/orders"}>
               <n.icon size={18} />
               {n.label}
             </NavLink>
@@ -181,6 +183,8 @@ export default function App() {
         <main>
           <Routes>
             <Route path="/" element={<SalesWorkspace accountId={user.id} quick notify={notify}/>} />
+            <Route path="/orders" element={<Orders key={user.id} accountId={user.id} notify={notify}/>} />
+            <Route path="/orders/:id" element={<Orders key={user.id} accountId={user.id} notify={notify}/>} />
             <Route path="/statistics" element={<Dashboard/>}/>
             <Route path="/vehicles" element={<Vehicles notify={notify} />} />
             <Route path="/catalog" element={<Catalog notify={notify} />} />

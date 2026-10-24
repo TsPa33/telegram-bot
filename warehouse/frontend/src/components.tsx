@@ -193,6 +193,7 @@ export function Pager({
       <span>Усього записів: {total}</span>
       <div>
         <button
+          type="button"
           aria-label="Попередня сторінка"
           disabled={!page}
           onClick={() => setPage(page - 1)}
@@ -203,6 +204,7 @@ export function Pager({
           {page + 1} / {Math.max(1, Math.ceil(total / 50))}
         </span>
         <button
+          type="button"
           aria-label="Наступна сторінка"
           disabled={(page + 1) * 50 >= total}
           onClick={() => setPage(page + 1)}

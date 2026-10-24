@@ -19,7 +19,7 @@ try {for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  for(let i=0;i<4;i++){const p=await post('/parts',{vehicle_id:volvo.id,name:`Капот підказка ${i}`});await post(`/parts/${p.id}/operations`,{type:'receipt',quantity:1,reason:'Local stock'});}
  await page.goto(origin+'/inventory');await page.getByRole('button',{name:'За автомобілями',exact:true}).click();await page.getByRole('button',{name:/Volvo XC90.*2010/}).click();
  await expect(page.getByRole('heading',{name:'Volvo XC90 · 2010 · №1',exact:true})).toBeVisible();await page.getByRole('checkbox',{name:'Запам’ятати цей автомобіль',exact:true}).check();
- const tree=page.locator('.donor-stock-tree');await tree.locator('summary').filter({hasText:'Кузов UX5'}).click();await expect(tree.getByRole('heading',{name:/Панелі UX5/})).toBeVisible();
+ const tree=page.locator('.donor-stock-tree');await tree.locator('summary').filter({hasText:'Кузов UX5'}).click();await expect(tree.getByRole('heading',{name:/Панелі UX5/})).toBeVisible();await tree.locator('.donor-stock-subcategory>summary').filter({hasText:'Панелі UX5'}).click();
  const row=()=>tree.locator('.donor-part-row').filter({has:page.getByRole('button',{name:'Капот UX5',exact:true})});
  await expect(row()).toContainText('У наявності: 3');assert(await row().getByRole('button',{name:'Капот UX5',exact:true}).evaluate(el=>parseFloat(getComputedStyle(el).fontSize)>=14));await page.screenshot({path:`test-results/ux5-donor-${viewport.width}.png`,fullPage:true});
  const search=page.getByRole('searchbox',{name:'Пошук запчастин',exact:true});
@@ -30,7 +30,7 @@ try {for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  let general=page.locator(viewport.width>800?'.desktop-table tbody tr':'.seller-card').filter({has:page.getByRole('button',{name:'Капот UX5',exact:true})});await expect(general).toContainText('456,78');await expect(general).toContainText('USD');
  await general.getByRole('button',{name:'Ціна Капот UX5',exact:true}).click();modal=page.getByRole('dialog',{name:'Ціна запчастини',exact:true});await modal.getByLabel('Сума',{exact:true}).fill('567.89');await modal.getByRole('button',{name:'Зберегти',exact:true}).click();await expect(general).toContainText('567,89');
  await general.getByRole('button',{name:'Продати',exact:true}).click();modal=page.locator('dialog[open]').last();await modal.getByRole('button',{name:'Підтвердити',exact:true}).click();
- await page.getByRole('button',{name:'За автомобілями',exact:true}).click();await tree.locator('summary').filter({hasText:'Кузов UX5'}).click();await expect(row()).toContainText('У наявності: 1');
+ await page.getByRole('button',{name:'За автомобілями',exact:true}).click();await tree.locator('summary').filter({hasText:'Кузов UX5'}).click();await tree.locator('.donor-stock-subcategory>summary').filter({hasText:'Панелі UX5'}).click();await expect(row()).toContainText('У наявності: 1');
  await page.goto(origin+'/');await page.goto(origin+'/inventory');await expect(page.getByRole('button',{name:'За автомобілями',exact:true})).toHaveAttribute('aria-pressed','true');await expect(page.getByLabel('Автомобіль складу',{exact:true})).toHaveValue(volvo.id);
  await page.getByLabel('Автомобіль складу',{exact:true}).selectOption(bmw.id);await expect(page.getByRole('heading',{name:'BMW X3 · 2012 · №2',exact:true})).toBeVisible();
  await page.getByLabel('Автомобіль складу',{exact:true}).selectOption(volvo.id);
@@ -57,7 +57,7 @@ try {for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  });
  await page.goto(origin+'/inventory');await page.getByRole('button',{name:'За автомобілями',exact:true}).click();await page.getByRole('button',{name:/Volvo XC90.*2010/}).click();
  await expect(tree.locator('summary').filter({hasText:'Кузов UX5'})).toContainText('1001');await expect(tree.locator('.donor-part-row')).toHaveCount(0);
- await tree.locator('summary').filter({hasText:'Кузов UX5'}).click();await expect(tree.locator('.donor-part-row')).toHaveCount(50);await tree.getByRole('button',{name:'Ще 50 деталей',exact:true}).click();await expect(tree.locator('.donor-part-row')).toHaveCount(100);
+ await tree.locator('summary').filter({hasText:'Кузов UX5'}).click();await expect(tree.locator('.donor-part-row')).toHaveCount(0);await tree.locator('.donor-stock-subcategory>summary').filter({hasText:'Панелі UX5'}).click();await expect(tree.locator('.donor-part-row')).toHaveCount(50);await tree.getByRole('button',{name:'Ще 50 деталей',exact:true}).click();await expect(tree.locator('.donor-part-row')).toHaveCount(100);
  await page.unroute('**/api/v1/parts?*');
  // The preference belongs to the account, not the whole browser.
  await context.request.post(origin+'/api/v1/auth/logout',{headers});await page.goto(origin+'/');
