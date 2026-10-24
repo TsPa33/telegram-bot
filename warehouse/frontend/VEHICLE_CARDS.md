@@ -8,27 +8,13 @@ keyboard-accessible controls. Inventory’s data link opens the existing vehicle
 view with its data section expanded (`info=1`, frontend routing only). Missing engine/transmission values show “Не вказано”
 on compact cards; the existing editor remains available.
 
-## Artwork and fallback
+## Artwork and fallback (updated in UX 5.4.1)
 
-`VehicleSilhouette` contains two independently authored inline SVG drawings:
-**generic SUV** and **generic neutral car**. They are decorative body profiles,
-not verified drawings of a named model or generation. No model-specific images
-or brand emblems are bundled. No external art, fonts, paid APIs, image endpoints,
-network requests or additional dependencies are used for the silhouette.
-
-The normalized manufacturer/model lookup currently identifies only unambiguous
-SUV profiles: Volvo XC60, Volvo XC90, BMW X3. It does not infer engines, trim or
-parts compatibility. Other models use the neutral fallback, including Chevrolet
-Lacetti: its name alone does not identify sedan/hatchback/estate bodywork.
-Unknown and empty lookup keys also use that fallback.
-
-The inline fallback is synchronous: there is no image URL to fail or fetch,
-so lazy loading is unnecessary for these small SVG paths. The element is
-aria-hidden, unfocusable, pointer-events:none and has low opacity. Text and
-controls occupy separate space; the SVG cannot intercept clicks or cover them.
-Future exact-model artwork must have verified identity/generation and usage
-rights before adding a separately documented asset registry; do not relabel a
-generic drawing as model-accurate or use remote hotlinks.
+The original primitive inline SVGs have been replaced by VehicleImage and a
+reviewed, extensible manifest/resolver. Two detailed generated local WebP
+fallbacks (SUV and neutral car) are supplied; no exact model image is claimed.
+See [VEHICLE_IMAGES.md](VEHICLE_IMAGES.md) for selection, years/generations,
+licensing, all supported body types, native lazy loading and bounded failures.
 
 ## Layout and local checks
 

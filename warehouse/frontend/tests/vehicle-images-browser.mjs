@@ -1,0 +1,34 @@
+import {chromium,expect} from '@playwright/test';
+import assert from 'node:assert/strict';
+if(process.env.WAREHOUSE_E2E!=='1')throw Error('Disposable local test database required');
+const origin='http://127.0.0.1:5173';
+const browser=await chromium.launch({executablePath:process.env.WAREHOUSE_CHROMIUM_PATH||'/usr/bin/chromium',args:['--no-sandbox']});
+try{for(const viewport of [{width:1440,height:1000},{width:768,height:1024},{width:390,height:844}]){
+ const context=await browser.newContext({viewport,hasTouch:viewport.width<800}),page=await context.newPage(),errors=[],external=[];
+ page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(!r.url().startsWith(origin))external.push(r.url());});
+ const auth=await context.request.post(origin+'/api/v1/auth/register',{data:{name:'Vehicle images test',email:`images-${Date.now()}@example.test`,password:'local-vehicle-images-password'}});assert(auth.ok(),await auth.text());const headers={'X-CSRF-Token':(await auth.json()).csrf_token};
+ async function post(path,data){const r=await context.request.post(origin+'/api/v1'+path,{headers,data});assert(r.ok(),await r.text());return r.json();}
+ const inputs=[{manufacturer:'Volvo',model:'XC60',year:2018,generation:'II'},{manufacturer:'Volvo',model:'XC60',year:2016,generation:'I'},{manufacturer:'Volvo',model:'XC90',year:2010},{manufacturer:'Chevrolet',model:'Lacetti',year:2014},{manufacturer:'BMW',model:'X3',year:2016,generation:'F25'},{manufacturer:'Невідома марка',model:'Довга назва автомобіля невідомого покоління з-дуже-довгим-суцільним-позначенням',year:2001}];
+ const vehicles=[];for(const input of inputs)vehicles.push(await post('/vehicles',input));
+ const card=(year)=>page.locator('.vehicle-card').filter({has:page.getByRole('button',{name:'Запчастини Volvo XC60',exact:true})}).filter({hasText:String(year)});
+ let release;const gate=new Promise(resolve=>release=resolve);
+ await page.route('**/assets/generic-suv*.webp',async route=>{await gate;await route.continue();});await page.goto(origin+'/vehicles');await expect(page.locator('.vehicle-card')).toHaveCount(6);
+ const suv=card(2018),image=suv.locator('.vehicle-image');await expect(image).toHaveAttribute('data-image-state','loading');const before=await suv.boundingBox(),footerBefore=await suv.locator('.vehicle-card-footer').boundingBox();release();await expect(image).toHaveAttribute('data-image-state','loaded');assert(Math.abs((await suv.boundingBox()).height-before.height)<1);assert(Math.abs((await suv.locator('.vehicle-card-footer').boundingBox()).y-footerBefore.y)<1);await page.unroute('**/assets/generic-suv*.webp');
+ for(const item of await page.locator('.vehicle-card').all()){
+  const visual=item.locator('.vehicle-image');await expect(visual).toHaveAttribute('data-image-state','loaded');const img=visual.locator('img');assert(await img.evaluate(el=>el.complete&&el.naturalWidth>0));await expect(img).toHaveAttribute('loading','lazy');await expect(img).toHaveAttribute('decoding','async');assert((await img.getAttribute('src')).startsWith('/assets/'));assert(!(await img.getAttribute('src')).startsWith('data:'));assert(await img.evaluate(el=>getComputedStyle(el).filter.includes('grayscale')));assert(await item.evaluate(el=>el.scrollWidth<=el.clientWidth));
+ }
+ await expect(card(2018).locator('.vehicle-image')).toHaveAttribute('data-match','body');await expect(card(2016).locator('.vehicle-image')).toHaveAttribute('data-match','body');assert.equal(await card(2018).locator('img').getAttribute('src'),await card(2016).locator('img').getAttribute('src')); // Deliberately generic, never falsely exact.
+ const lacetti=page.locator('.vehicle-card').filter({has:page.getByRole('button',{name:'Chevrolet Lacetti',exact:true})});await expect(lacetti.locator('.vehicle-image')).toHaveAttribute('data-body-type','unknown');await expect(lacetti.locator('.vehicle-image')).toHaveAttribute('data-match','unknown');await page.evaluate(()=>scrollTo(0,0));assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.screenshot({path:`test-results/vehicle-images-${viewport.width}.png`,fullPage:true,animations:'disabled'});
+ // A missing/corrupt first asset falls through to a local universal photo.
+ await page.route('**/assets/generic-suv*.webp',route=>route.abort('failed'));await page.reload();await expect(card(2018).locator('.vehicle-image')).toHaveAttribute('data-match','unknown');await expect(card(2018).locator('.vehicle-image')).toHaveAttribute('data-image-state','loaded');await page.unroute('**/assets/generic-suv*.webp');
+ // All images missing: no broken img icon and no layout change or retry loop.
+ let failures=0;await page.route('**/assets/generic-*.webp',route=>{failures++;return route.abort('failed');});await page.reload();await expect(card(2018).locator('.vehicle-image')).toHaveAttribute('data-image-state','unavailable');await expect(card(2018).locator('img')).toHaveCount(0);await expect(card(2018)).toContainText('Зображення недоступне');assert(Math.abs((await card(2018).boundingBox()).height-before.height)<1);assert(failures<=16,'Fallback retries must remain bounded');await page.unroute('**/assets/generic-*.webp');
+ // 1000 cards: native lazy-loading and only shared, hashed local asset URLs.
+ let imageRequests=[];await page.route('**/api/v1/vehicles?*',async route=>{
+  const url=new URL(route.request().url());if(url.searchParams.get('archived')==='true')return route.fulfill({json:{items:[],total:0,offset:0,limit:200}});const offset=Number(url.searchParams.get('offset')||0),limit=Number(url.searchParams.get('limit')||50);
+  return route.fulfill({json:{items:Array.from({length:Math.max(0,Math.min(limit,1000-offset))},(_,i)=>({...vehicles[i%vehicles.length],id:'image-fixture-'+(offset+i),number:offset+i+1})),total:1000,offset,limit}});
+ });page.on('request',r=>{if(/\/assets\/generic-.*\.webp$/.test(r.url()))imageRequests.push(r.url());});await page.goto(origin+'/inventory');await page.getByRole('button',{name:'За автомобілями',exact:true}).click();await expect(page.locator('.vehicle-card')).toHaveCount(1000);assert(await page.locator('.vehicle-image img').evaluateAll(images=>images.every(im=>im.loading==='lazy')));assert(new Set(imageRequests).size<=4);assert(imageRequests.length<20,'Shared resources must not be fetched per card');assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+ // No data mutations for the stress fixture. Actual button workflows are covered
+ // by vehicle-cards-browser and the existing stock/order regression suites.
+ assert.deepEqual(errors,[]);assert.deepEqual(external,[]);await context.close();console.log(`PASS universal images, year-safe fallback, lazy/shared resources, loading layout, failures, 1000 cards ${viewport.width}x${viewport.height}`);
+}}finally{await browser.close();}
