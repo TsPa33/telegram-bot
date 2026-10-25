@@ -19,7 +19,11 @@ export function WorkshopGate({children}:{children:ReactNode}) {
  const {data,error,loading,reload}=useLoad(async()=>{
   const result=await api('/workshop/readiness');
   const features=['actual_quick_sale_price','ledger_sales_projection','notes_compare_and_set','inspection_patch'];
-  if(result?.status!=='ready'||result.contract_version!==7||!Array.isArray(result.database_revisions)||!result.database_revisions.includes('d86f21a90b34')||!Array.isArray(result.features)||!features.every(f=>result.features.includes(f)))throw Error('Backend майстерні ще не підтвердив готовність.');
+  // required_revision is the v7 minimum schema, not the installed Alembic head.
+  const revisions=result?.database_revisions;
+  const allowedHeads=['d86f21a90b34','a73e05b9c842'];
+  const singleKnownHead=Array.isArray(revisions)&&revisions.length===1&&allowedHeads.includes(revisions[0]);
+  if(result?.status!=='ready'||result.contract_version!==7||result.required_revision!=='d86f21a90b34'||!singleKnownHead||!Array.isArray(result.features)||!features.every(f=>result.features.includes(f)))throw Error('Backend майстерні ще не підтвердив готовність.');
   return result;
  },[]);
  if(loading||error||!data)return <section className="panel padded" aria-label="Оновлення майстерні"><p role="status">Оновлення майстерні. Нові дії стануть доступними після готовності сервера.</p>{error&&<p>Сервер ще не готовий або недоступний.</p>}<button disabled={loading} onClick={reload}>Перевірити готовність</button></section>;
