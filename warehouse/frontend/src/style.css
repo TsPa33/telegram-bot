@@ -2005,3 +2005,27 @@ dialog.stock-part-dialog{width:min(620px,calc(100vw - 24px));padding:18px;max-he
 .order-events li{padding:8px 0;border-bottom:1px solid var(--color-border)}
 .order-events span{display:block}
 @media(max-width:600px){.order-filters{align-items:stretch;flex-direction:column}.order-line-values{grid-template-columns:1fr 1fr}.order-line-values label:last-child{grid-column:2}.order-detail-lines article{grid-template-columns:1fr}.order-summary{padding:12px}.order-dialog .modal-actions{position:sticky;bottom:-1px;background:var(--color-surface);padding:12px 0;margin-bottom:0}.order-detail-heading h2{font-size:20px}}
+
+/* Keep all Workshop metadata in one grid cell, in normal document flow. */
+.donor-stock-tree .donor-part-row { row-gap: 6px; }
+.donor-stock-tree .donor-part-row > * { min-width: 0; }
+.donor-stock-tree .donor-part-row > .donor-part-metadata {
+ display: flex; flex-direction: column; gap: 4px;
+ line-height: 1.5; overflow-wrap: anywhere;
+}
+.donor-part-metadata > span { min-width: 0; }
+.seller-results td > .strong {
+ min-width: 0; max-width: 100%; white-space: normal;
+ overflow-wrap: anywhere; text-align: left; line-height: 1.4;
+}
+.seller-card > .strong, .seller-card > small, .seller-card > p {
+ min-width: 0; max-width: 100%; white-space: normal; overflow-wrap: anywhere;
+}
+/* Choose cards by available panel width, including enlarged content. */
+.seller-results { container-type: inline-size; }
+@container (max-width: 850px) {
+ .seller-results .desktop-table { display: none; }
+ .seller-results .mobile-cards { display: grid; gap: 12px; }
+}
+.donor-stock-heading { flex-wrap: wrap; gap: 8px; }
+.donor-stock-heading > button { max-width: 100%; white-space: normal; }
