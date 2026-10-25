@@ -17,6 +17,8 @@ app = FastAPI(
     version="1.0.0",
     description="Standalone tenant-isolated warehouse. All business endpoints require a session cookie; mutations also require X-CSRF-Token. Monetary values use explicit UAH/USD currencies without automatic conversion. No CarPot production integration.",
 )
+from app.api.smart_search import router as smart_search_router
+app.include_router(smart_search_router)
 app.include_router(router)
 app.include_router(plan_parts_router)
 app.include_router(checklists_router)

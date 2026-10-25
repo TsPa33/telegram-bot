@@ -279,3 +279,13 @@ class StockRequest(Base):
 
 
 from app.models.orders import Buyer, Order, OrderLine, OrderReservation, OrderEvent, OrderRequest  # noqa: E402,F401
+
+# Expression indexes match the Smart Search migration, so Alembic check remains
+# useful rather than hiding application-owned indexes from schema comparison.
+from sqlalchemy import Index, func, literal_column, text  # noqa: E402
+Index('ix_parts_smart_fts',func.to_tsvector(literal_column("'simple'::regconfig"),func.warehouse_search_text(Part.name)),postgresql_using='gin',postgresql_where=text('NOT archived'),_table=Part.__table__)
+Index('ix_parts_smart_trgm',func.warehouse_search_text(Part.name).label('smart_name'),postgresql_using='gin',postgresql_ops={'smart_name':'gin_trgm_ops'},postgresql_where=text('NOT archived'))
+Index('ix_parts_smart_oem_number',Part.account_id,func.warehouse_search_code(Part.oem_number),postgresql_where=text("NOT archived AND oem_number <> ''"))
+Index('ix_parts_smart_article_number',Part.account_id,func.warehouse_search_code(Part.article_number),postgresql_where=text("NOT archived AND article_number <> ''"))
+Index('ix_vehicle_smart_model',func.to_tsvector(literal_column("'simple'::regconfig"),func.warehouse_search_text(Vehicle.model)),postgresql_using='gin',_table=Vehicle.__table__)
+Index('ix_vehicle_smart_brand',Vehicle.account_id,func.warehouse_search_text(Vehicle.manufacturer))

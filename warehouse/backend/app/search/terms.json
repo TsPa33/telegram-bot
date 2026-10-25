@@ -1,0 +1,522 @@
+{
+  "version": "carpot.terms.1",
+  "terms": [
+    {
+      "id": "ecu",
+      "forms": [
+        "мозги",
+        "мізки",
+        "mozgi",
+        "mizki",
+        "ECU",
+        "ЕБУ",
+        "эбу"
+      ],
+      "targets": [
+        "ecu",
+        "ebu",
+        "blok & keruv",
+        "blok & uprav"
+      ],
+      "label": "блок керування"
+    },
+    {
+      "id": "engine",
+      "forms": [
+        "двигун",
+        "двигуна",
+        "двигуном",
+        "двигатель",
+        "двигателя",
+        "двигателю",
+        "мотор",
+        "мотора",
+        "мотору",
+        "engine",
+        "motor",
+        "dvigatel",
+        "dvyhun",
+        "матор"
+      ],
+      "targets": [
+        "dvyg",
+        "dvig",
+        "engine",
+        "motor"
+      ],
+      "label": "двигун"
+    },
+    {
+      "id": "lamp",
+      "forms": [
+        "стоп",
+        "стопак",
+        "стопар",
+        "ліхтар",
+        "фонарь",
+        "stop",
+        "stopak"
+      ],
+      "targets": [
+        "likhtar",
+        "fonar",
+        "tail & light",
+        "=stop",
+        "=stopak",
+        "=stopar"
+      ],
+      "label": "задній ліхтар",
+      "requires": "rear",
+      "ambiguous_forms": [
+        "стоп",
+        "стопак",
+        "стопар",
+        "stop",
+        "stopak"
+      ]
+    },
+    {
+      "id": "door",
+      "forms": [
+        "дверка",
+        "двері",
+        "дверь",
+        "двери",
+        "дверцята",
+        "dverka",
+        "dveri",
+        "door"
+      ],
+      "targets": [
+        "dver",
+        "door"
+      ],
+      "label": "двері"
+    },
+    {
+      "id": "radiator",
+      "forms": [
+        "радік",
+        "радик",
+        "radik",
+        "радіатор",
+        "радиатор",
+        "радіатора",
+        "radiator",
+        "radyator"
+      ],
+      "targets": [
+        "radiator",
+        "radyator"
+      ],
+      "label": "радіатор"
+    },
+    {
+      "id": "generator",
+      "forms": [
+        "геник",
+        "гена",
+        "генератор",
+        "генератора",
+        "gena",
+        "genik",
+        "generator",
+        "alternator"
+      ],
+      "targets": [
+        "generator",
+        "alternator"
+      ],
+      "label": "генератор"
+    },
+    {
+      "id": "starter",
+      "forms": [
+        "стартер",
+        "starter"
+      ],
+      "targets": [
+        "starter"
+      ],
+      "label": "стартер"
+    },
+    {
+      "id": "turbo",
+      "forms": [
+        "турбіна",
+        "турбина",
+        "турбіни",
+        "turbo",
+        "turbina",
+        "турбокомпресор"
+      ],
+      "targets": [
+        "turbokomp",
+        "turbocharg",
+        "turbina",
+        "turbyna",
+        "=turbo"
+      ],
+      "label": "турбокомпресор"
+    },
+    {
+      "id": "windscreen",
+      "forms": [
+        "лобове",
+        "лобовое",
+        "lobove",
+        "windshield",
+        "windscreen"
+      ],
+      "targets": [
+        "lobov & skl",
+        "lobov & stekl",
+        "windshield",
+        "windscreen"
+      ],
+      "label": "лобове скло"
+    },
+    {
+      "id": "steering",
+      "forms": [
+        "рульова",
+        "рулевая",
+        "кермова",
+        "кермовий",
+        "рульовий",
+        "rulova",
+        "steering"
+      ],
+      "targets": [
+        "kermov",
+        "rulov",
+        "rulev",
+        "steering"
+      ],
+      "label": "кермовий механізм"
+    },
+    {
+      "id": "rack",
+      "forms": [
+        "рейка",
+        "рейку",
+        "рейки",
+        "reika",
+        "rack"
+      ],
+      "targets": [
+        "reik",
+        "rack"
+      ],
+      "label": "кермова рейка"
+    },
+    {
+      "id": "gearbox",
+      "forms": [
+        "коробка",
+        "коробку",
+        "коробки",
+        "кпп",
+        "gearbox",
+        "transmission",
+        "korobka"
+      ],
+      "targets": [
+        "korobk",
+        "kpp",
+        "transmission",
+        "gearbox",
+        "akpp",
+        "mkpp"
+      ],
+      "label": "коробка передач"
+    },
+    {
+      "id": "auto",
+      "forms": [
+        "автомат",
+        "автоматична",
+        "автоматическая",
+        "акпп",
+        "АКП",
+        "automatic",
+        "avtomat",
+        "akpp"
+      ],
+      "targets": [
+        "avtomat",
+        "akpp",
+        "automatic"
+      ],
+      "label": "автоматична коробка",
+      "protected": true,
+      "implies": "gearbox"
+    },
+    {
+      "id": "manual",
+      "forms": [
+        "механіка",
+        "механика",
+        "механічна",
+        "механическая",
+        "мкпп",
+        "manual",
+        "mekhanika",
+        "mkpp"
+      ],
+      "targets": [
+        "mekhanich",
+        "mekhanychesk",
+        "mekhanika",
+        "mekhanyka",
+        "mkpp",
+        "manual"
+      ],
+      "label": "механічна коробка",
+      "protected": true,
+      "implies": "gearbox"
+    },
+    {
+      "id": "headlight",
+      "forms": [
+        "фара",
+        "фари",
+        "фары",
+        "фару",
+        "fara",
+        "headlight"
+      ],
+      "targets": [
+        "far",
+        "headlight"
+      ],
+      "label": "фара"
+    },
+    {
+      "id": "bumper",
+      "forms": [
+        "бампер",
+        "бампера",
+        "bamper",
+        "bumper"
+      ],
+      "targets": [
+        "bamper",
+        "bumper"
+      ],
+      "label": "бампер"
+    },
+    {
+      "id": "left",
+      "forms": [
+        "лівий",
+        "ліва",
+        "ліве",
+        "ліві",
+        "лівого",
+        "лівага",
+        "левый",
+        "левая",
+        "левое",
+        "левую",
+        "left",
+        "livyi",
+        "liviy",
+        "leva",
+        "lh"
+      ],
+      "targets": [
+        "liv",
+        "lev",
+        "left",
+        "lh"
+      ],
+      "label": "ліва сторона",
+      "protected": true
+    },
+    {
+      "id": "right",
+      "forms": [
+        "правий",
+        "права",
+        "праве",
+        "праві",
+        "правого",
+        "правый",
+        "правая",
+        "правое",
+        "правую",
+        "right",
+        "pravyi",
+        "praviy",
+        "prava",
+        "rh"
+      ],
+      "targets": [
+        "prav",
+        "right",
+        "rh"
+      ],
+      "label": "права сторона",
+      "protected": true
+    },
+    {
+      "id": "front",
+      "forms": [
+        "передній",
+        "передня",
+        "переднє",
+        "передні",
+        "переднього",
+        "передний",
+        "передняя",
+        "переднее",
+        "переднюю",
+        "front",
+        "perednia",
+        "peredniy"
+      ],
+      "targets": [
+        "pered",
+        "front"
+      ],
+      "label": "передня частина",
+      "protected": true
+    },
+    {
+      "id": "rear",
+      "forms": [
+        "задній",
+        "задня",
+        "заднє",
+        "задні",
+        "заднього",
+        "задний",
+        "задняя",
+        "заднее",
+        "заднюю",
+        "rear",
+        "zadniy",
+        "zadnia"
+      ],
+      "targets": [
+        "zad",
+        "rear",
+        "back"
+      ],
+      "label": "задня частина",
+      "protected": true
+    },
+    {
+      "id": "diesel",
+      "forms": [
+        "дизель",
+        "дизельний",
+        "дизельный",
+        "diesel",
+        "dyzel",
+        "dizel"
+      ],
+      "targets": [
+        "dyzel",
+        "dizel",
+        "diesel"
+      ],
+      "label": "дизель",
+      "protected": true
+    },
+    {
+      "id": "petrol",
+      "forms": [
+        "бензин",
+        "бензиновий",
+        "бензиновый",
+        "petrol",
+        "benzin",
+        "benzyn"
+      ],
+      "targets": [
+        "benz",
+        "petrol",
+        "gasoline"
+      ],
+      "label": "бензин",
+      "protected": true
+    }
+  ],
+  "brands": {
+    "volvo": [
+      "volvo",
+      "вольво"
+    ],
+    "bmw": [
+      "bmw",
+      "бмв"
+    ],
+    "chevrolet": [
+      "chevrolet",
+      "шевроле"
+    ],
+    "volkswagen": [
+      "volkswagen",
+      "vw",
+      "фольксваген"
+    ],
+    "audi": [
+      "audi",
+      "ауді",
+      "ауди"
+    ],
+    "skoda": [
+      "skoda",
+      "шкода"
+    ],
+    "mercedes": [
+      "mercedes",
+      "мерседес"
+    ]
+  },
+  "models": {
+    "xc60": [
+      "xc60",
+      "хс60",
+      "хc60",
+      "xс60",
+      "xs60"
+    ],
+    "xc90": [
+      "xc90",
+      "хс90",
+      "хc90",
+      "xс90",
+      "xs90"
+    ],
+    "x3": [
+      "x3",
+      "х3"
+    ],
+    "lacetti": [
+      "lacetti",
+      "лачетті",
+      "лачетти",
+      "lachetti",
+      "lacheti"
+    ]
+  },
+  "stopwords": [
+    "на",
+    "для",
+    "від",
+    "для",
+    "от",
+    "the",
+    "for",
+    "of",
+    "oem",
+    "артикул",
+    "запчастина",
+    "деталь",
+    "передач",
+    "передачи"
+  ]
+}
