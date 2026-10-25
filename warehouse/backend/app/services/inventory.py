@@ -25,14 +25,14 @@ def snapshot(row):
     return result
 
 
-def record(db, account_id, row, type, reason, before):
+def record(db, account_id, row, type, reason, before, *, after_extra=None):
     db.flush()
     operation = Operation(
         account_id=account_id, actor_id=account_id,
         part_id=row.id if isinstance(row, Part) else None,
         vehicle_id=row.vehicle_id if isinstance(row, (Part, VehicleChecklistItem, DismantlingItem)) else row.id if isinstance(row, Vehicle) else None,
         entity_id=row.id, entity_type=row.__tablename__, type=type, reason=reason,
-        before=before, after=snapshot(row),
+        before=before, after={**snapshot(row), **(after_extra or {})},
     )
     db.add(operation)
     return operation
@@ -49,7 +49,7 @@ def validate_part_links(db, data, account_id):
             raise HTTPException(422, "Підкатегорія не належить вибраній категорії")
 
 
-def stock(db, row, data, account_id, *, reservation_id=None, return_operation=False):
+def stock(db, row, data, account_id, *, reservation_id=None, return_operation=False, sale_context=None):
     if row.archived:
         raise HTTPException(409, "Спершу відновіть запчастину з архіву")
     before = snapshot(row)
@@ -84,7 +84,22 @@ def stock(db, row, data, account_id, *, reservation_id=None, return_operation=Fa
         raise HTTPException(409, "Індивідуальна позиція може мати не більше 1 одиниці")
     if data.type in ("receipt", "correction", "sale", "write_off"):
         row.availability = "present" if row.quantity else "absent"
-    operation=record(db, account_id, row, data.type, data.reason, before)
+    sale_snapshot = None
+    if data.type == "sale" and data.sale_price is not None:
+        donor = db.get(Vehicle, row.vehicle_id) if row.vehicle_id else None
+        actor = db.get(Account, account_id)
+        # Commercial snapshot lives in the existing immutable sale operation.
+        # Never infer actual proceeds from the mutable Part.selling_price.
+        sale_snapshot = {
+            "version": 1, "source": "quick", "quantity": q,
+            "unit_price": format(data.sale_price, '.2f'), "currency": data.sale_currency,
+            "total": format(data.sale_price * q, '.2f'),
+            "actor_name": actor.name if actor else None,
+            "donor": {k: getattr(donor, k) for k in ('manufacturer','model','year','number')} if donor else None,
+        }
+        sale_snapshot.update(sale_context or {})
+    operation=record(db, account_id, row, data.type, data.reason, before,
+        after_extra={"sale":sale_snapshot} if sale_snapshot else None)
     return operation if return_operation else row
 
 

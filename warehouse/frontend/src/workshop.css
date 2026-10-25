@@ -1,0 +1,13 @@
+.workshop-note { overflow-wrap: anywhere; white-space: pre-wrap; }
+.stock-part-dialog .stock-detail-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.stock-part-dialog .stock-part-metrics { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.stock-actions-menu details { border-block: 1px solid var(--border); margin-block: 4px; }
+.stock-actions-menu details p { padding: 8px; font-size: 12px; }
+.stock-actions-menu summary { padding: 12px 8px; cursor: pointer; }
+.workshop-advanced { margin-top: 16px; }
+.workshop-advanced summary { cursor: pointer; padding: 12px 0; }
+.sales-ledger { display: grid; gap: 12px; }
+.sales-ledger header { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+.sales-ledger article { min-width: 0; overflow-wrap: anywhere; }
+.sales-ledger p { margin-block: 8px; }
+@media(max-width:600px) { .stock-part-dialog .stock-detail-actions button { flex: 1 1 135px; min-height: 44px; } .sales-ledger time { font-size: 12px; } }

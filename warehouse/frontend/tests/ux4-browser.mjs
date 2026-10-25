@@ -20,8 +20,8 @@ try{
   await post(`/parts/${old.id}/operations`,{type:'sale',quantity:1,reason:'Earlier sale'});
   const oldSnapshot=await (await context.request.get(origin+`/api/v1/parts/${old.id}`)).json();
   await page.goto(origin+'/vehicles');
-  await expect(page.locator('.sidebar nav a')).toHaveCount(5);
-  assert.deepEqual(await page.locator('.sidebar nav a').allTextContents(),['Пошук запчастин','Автомобілі','Склад','Замовлення','Статистика']);
+  await expect(page.locator('.sidebar nav a')).toHaveCount(6);
+  assert.deepEqual(await page.locator('.sidebar nav a').allTextContents(),['Пошук запчастин','Автомобілі','Склад','Продажі','Замовлення','Статистика']);
   assert.equal(await page.locator('.sidebar nav a[href="/archive"]').count(),0);
   const card=page.locator('.vehicle-summary-card').filter({has:page.getByRole('button',{name:'Volvo XC90',exact:true})});
   await expect(card).toContainText('2010 · №1');await expect(card.locator('.vehicle-stock-count')).toContainText('1');

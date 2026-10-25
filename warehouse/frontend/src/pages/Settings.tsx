@@ -18,6 +18,7 @@ export default function Settings({ user }: { user: Row }) {
         <Link className="button" to="/archive">Архів</Link>
         <Link className="button" to="/operations">Журнал операцій</Link>
         <Link className="button" to="/inventory/advanced">Розширений склад</Link>
+        <p>Розширені операції доступні всім користувачам акаунта. Розмежування ролей ще не впроваджено.</p>
         <Link className="button" to="/analytics">Аудит</Link>
         <a className="button" href="#catalog-import">Імпорт каталогу</a>
       </nav>

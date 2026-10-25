@@ -16,7 +16,7 @@ export default function Archive({ notify }: { notify: Notify }) {
       <Heading
         eyebrow="ІСТОРИЧНІ ДАНІ"
         title="Архів"
-        description="Архівні записи збережені разом із залишками та зв’язками в історії."
+        description="Архівування — не продаж. Записи збережені разом із залишками та історією операцій."
       />
       <div className="tabs">
         {[

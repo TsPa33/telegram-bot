@@ -31,7 +31,8 @@ export default function StockHistory({partId='',vehicleId=''}:{partId?:string;ve
     {quantity!==null&&<p>Зміна кількості: {quantity>0?'+':''}{quantity} · Залишок після: {after.quantity}</p>}
     {reserved!==null&&reserved!==0&&<p>Зміна резерву: {reserved>0?'+':''}{reserved} · Резерв після: {after.reserved_quantity}</p>}
     {row.type==='transfer'&&<p>Місце: {before.location||'Не вказано'} → {after.location||'Не вказано'}</p>}
-    {row.type==='sale'&&<p>Ціна у картці на момент операції: {price==null?'Не зафіксовано':currency?money(price,currency):`${price} · валюту не зафіксовано`}</p>}
+    {row.type==='sale'&&after.sale&&<p>Фактична ціна продажу: {money(after.sale.unit_price,after.sale.currency)} · {after.sale.source==='order'?'Замовлення':'Швидкий продаж'}</p>}
+    {row.type==='sale'&&!after.sale&&<p>Фактична ціна не зафіксована в цій операції. Ціна у картці на момент операції: {price==null?'Не зафіксовано':currency?money(price,currency):`${price} · валюту не зафіксовано`}</p>}
     <small>Користувач: {me&&me.id===row.actor_id?me.name:'Не визначено'}</small>{row.reason&&<p>{row.reason}</p>}
    </article>;
   })}

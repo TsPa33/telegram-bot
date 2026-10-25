@@ -126,9 +126,13 @@ def replace_lines(db,order,data):
     return view(db,order)
 
 
-def move_stock(db,part,order,type,quantity,reservation=None):
-    operation=stock(db,part,StockInput(type=type,quantity=quantity,reason=f'Замовлення №{order.number}'),order.account_id,
-        reservation_id=reservation.id if reservation else None,return_operation=True)
+def move_stock(db,part,order,type,quantity,reservation=None,*,line=None):
+    operation=stock(db,part,StockInput(type=type,quantity=quantity,reason=f'Замовлення №{order.number}',
+        **({'sale_price':line.unit_price,'sale_currency':line.currency} if line else {})),order.account_id,
+        reservation_id=reservation.id if reservation else None,return_operation=True,
+        sale_context={'source':'order','order_id':order.id,'order_number':order.number,
+            'buyer_name':order.contact_name,'buyer_phone':order.contact_phone,
+            'donor':line.donor_snapshot} if line else None)
     db.flush();return operation.id
 
 
@@ -163,7 +167,7 @@ def action(db,order,kind):
                 reservation.release_operation_id=move_stock(db,part,order,'release',reservation.quantity,reservation)
                 consumed_operations.append(reservation.release_operation_id)
                 reservation.state='consumed';db.flush()
-            op=move_stock(db,part,order,'sale',line.quantity);line.sale_operation_id=op
+            op=move_stock(db,part,order,'sale',line.quantity,line=line);line.sale_operation_id=op
             if reservation:reservation.sale_operation_id=op
             operations.append(op)
         if consumed_operations:event(db,order,'reservation_released',{'operation_ids':consumed_operations,'reason':'consumed_by_sale'})

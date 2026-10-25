@@ -686,8 +686,7 @@ export function PartDetail({ part, onChanged }: { part: Row; onChanged: () => vo
         </p>
       )}
       {error && <div className="error">{error}</div>}
-      <h3 className="divider-title">Нова складська операція</h3>
-      <StockForm part={part} onDone={onChanged} />
+      <details className="workshop-advanced"><summary>Розширені складські операції</summary><p>Це не захищений адміністративний режим. Продаж у цій старій формі фіксує лише рух кількості, без фактичної ціни; для фінансового продажу використовуйте «Продати» у складі.</p><StockForm part={part} onDone={onChanged} /></details>
     </>
   );
 }

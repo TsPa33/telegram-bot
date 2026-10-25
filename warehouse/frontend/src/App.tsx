@@ -36,6 +36,7 @@ import Inventory from "./pages/Inventory";
 import SalesWorkspace from "./SalesWorkspace";
 import InventoryWorkspace from "./InventoryWorkspace";
 import Orders from "./Orders";
+import SalesLedger from "./SalesLedger";
 import Operations from "./pages/Operations";
 import Settings from "./pages/Settings";
 import Vehicles from "./pages/Vehicles";
@@ -43,6 +44,7 @@ const nav = [
   { to: "/", label: "Пошук запчастин", icon: Search },
   { to: "/vehicles", label: "Автомобілі", icon: CarFront },
   { to: "/inventory", label: "Склад", icon: Boxes },
+  { to: "/sales", label: "Продажі", icon: ArrowDownLeft },
   { to: "/orders", label: "Замовлення", icon: ClipboardList },
   { to: "/statistics", label: "Статистика", icon: ChartNoAxesCombined },
 ];
@@ -183,6 +185,7 @@ export default function App() {
         <main>
           <Routes>
             <Route path="/" element={<SalesWorkspace accountId={user.id} quick notify={notify}/>} />
+            <Route path="/sales" element={<SalesLedger/>}/>
             <Route path="/orders" element={<Orders key={user.id} accountId={user.id} notify={notify}/>} />
             <Route path="/orders/:id" element={<Orders key={user.id} accountId={user.id} notify={notify}/>} />
             <Route path="/statistics" element={<Dashboard/>}/>

@@ -111,8 +111,15 @@ class StockInput(Input):
     reason: Annotated[str, Field(max_length=2000)] = ""
     request_key: Annotated[str, Field(pattern=r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")] | None = None
 
+    sale_price: Money | None = None
+    sale_currency: Literal["UAH", "USD"] | None = None
+
     @model_validator(mode="after")
     def operation_valid(self):
+        if (self.sale_price is None) != (self.sale_currency is None):
+            raise ValueError("Вкажіть фактичну ціну та валюту разом")
+        if self.sale_price is not None and self.type != "sale":
+            raise ValueError("Ціна продажу дозволена лише для продажу")
         if self.type == "sale" and not self.reason:
             self.reason = "Продаж"
         if self.type != "sale" and len(self.reason) < 3:

@@ -103,6 +103,7 @@ export async function workflow(page, viewport) {
     .getByRole("button", { name: "E2E checklist part", exact: true })
     .click();
   await page.getByText("Докладніше",{exact:true}).click();
+  await page.locator("dialog[open]").getByText("Розширені складські операції",{exact:true}).click();
   await page.getByLabel("Кількість").fill("3");
   await page.getByLabel("Причина операції").fill("E2E test receipt");
   await page.getByRole("button", { name: "Провести операцію" }).click();

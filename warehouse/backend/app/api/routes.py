@@ -433,13 +433,19 @@ def part_update(id: str, data: PartInput, db: DB, who: Auth):
 @router.post("/parts/{id}/operations", tags=["Stock operations"])
 def stock_operation(id: str, data: StockInput, db: DB, who: Auth):
     from app.models import StockRequest
+    if data.sale_price is not None and not data.request_key:
+        raise HTTPException(422,"Фінансовий продаж потребує request_key")
     from hashlib import sha256
     if data.request_key:
         # Account then Part, same lock order as donor receipts. Serializes keys
         # across different parts too, avoiding duplicate-key races.
         db.scalar(select(Account).where(Account.id==who.user.id).with_for_update())
     row = owned(db, Part, id, who.user.id, lock=True)
-    fingerprint=sha256(json.dumps({'part_id':id,**data.model_dump(exclude={'request_key'})},sort_keys=True).encode()).hexdigest()
+    # Preserve pre-UX5.6 fingerprints exactly when financial fields are absent.
+    payload=data.model_dump(mode='json',exclude={'request_key','sale_price','sale_currency'})
+    if data.sale_price is not None:
+        payload.update(sale_price=format(data.sale_price,'.2f'),sale_currency=data.sale_currency)
+    fingerprint=sha256(json.dumps({'part_id':id,**payload},sort_keys=True).encode()).hexdigest()
     if data.request_key:
         prior=db.scalar(select(StockRequest).where(StockRequest.account_id==who.user.id,StockRequest.request_key==data.request_key))
         if prior:

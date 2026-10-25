@@ -1,0 +1,10 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import ts from 'typescript';
+const source=await readFile(new URL('../src/partImageResolver.ts',import.meta.url),'utf8');
+const js=ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}}).outputText;
+const {resolvePartImage,PART_IMAGE_TYPES}=await import('data:text/javascript;base64,'+Buffer.from(js).toString('base64'));
+test('part resources cover eight component types plus explicit unknown',()=>assert.equal(PART_IMAGE_TYPES.length,9));
+test('exact reviewed generic labels normalize without guessing OEM or fitment',()=>{assert.equal(resolvePartImage({name:' ФАРА '}).type,'headlight');assert.equal(resolvePartImage({name:'Custom',categoryName:'Двері'}).type,'door');assert.equal(resolvePartImage({name:'Volvo XC90 left module'}).type,'unknown');});
+test('all missing assets honestly use textual fallback without a network URL',()=>{for(const type of PART_IMAGE_TYPES)assert.equal(resolvePartImage({type}).asset,null);});
