@@ -1,0 +1,2 @@
+/* Search explanations use the existing calm palette and readable mobile text. */
+.seller-results .smart-match { display: block; font-size: 12px; line-height: 1.45; margin-block: 6px; color: var(--text-secondary, #606d7c); overflow-wrap: anywhere; }

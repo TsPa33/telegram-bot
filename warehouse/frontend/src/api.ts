@@ -19,6 +19,7 @@ export async function api<T = Row>(
   path: string,
   method = "GET",
   body?: unknown,
+  expectedStatus?: number,
 ): Promise<T> {
   const headers: Record<string, string> = { "X-CSRF-Token": csrf(), "X-Warehouse-Client":"5" };
   if (body && !(body instanceof FormData))
@@ -47,6 +48,8 @@ export async function api<T = Row>(
       window.dispatchEvent(new Event("warehouse:logout"));
     throw new ApiError(message, response.status);
   }
+  if (expectedStatus !== undefined && response.status !== expectedStatus)
+    throw new ApiError("Сервер не підтвердив готовність функції.", response.status);
   return response.status === 204 ? (undefined as T) : response.json();
 }
 export async function all(path: string): Promise<Row[]> {
