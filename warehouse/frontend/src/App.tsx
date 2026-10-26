@@ -13,6 +13,7 @@ import {
   Search,
   ShieldCheck,
   Warehouse,
+  Users,
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -43,6 +44,7 @@ import Operations from "./pages/Operations";
 import Settings from "./pages/Settings";
 import Vehicles from "./pages/Vehicles";
 const nav = [
+  { to: "/team", label: "Команда", icon: Users },
   { to: "/", label: "Пошук запчастин", icon: Search },
   { to: "/vehicles", label: "Автомобілі", icon: CarFront },
   { to: "/inventory", label: "Склад", icon: Boxes },
@@ -51,7 +53,6 @@ const nav = [
   { to: "/statistics", label: "Статистика", icon: ChartNoAxesCombined },
 ];
 const secondary = [
-  {to:"/team",label:"Команда"},
   {to:"/settings",label:"Налаштування"},
   {to:"/catalog",label:"Довідник запчастин"},
   {to:"/operations",label:"Журнал операцій"},

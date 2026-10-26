@@ -1,4 +1,6 @@
-import {Permit} from '../permissions';
+import StatisticsCharts from '../StatisticsCharts';
+import SalesTrend from '../SalesTrend';
+import {useCan,Permit} from '../permissions';
 import {
   ArrowUpRight,
   Boxes,
@@ -12,6 +14,7 @@ import { Empty } from "../components";
 
 import { Heading, Metrics, OperationTable, State, useLoad } from "../shared";
 export default function Dashboard() {
+  const can=useCan();
   const { data: d, error, loading } = useLoad(() => api("/dashboard"), []);
   return (
     <>
@@ -33,6 +36,8 @@ export default function Dashboard() {
       {d && (
         <>
           <Metrics d={d} />
+          <StatisticsCharts data={d}/>
+          {['analytics.view','analytics.financial','sales.view','sales.view_financials'].every(p=>can(p))&&<SalesTrend/>}
           <Permit permission="analytics.financial"><section className="panel padded"><h2>Вартість запасів за валютами</h2>{d.valuation_by_currency?.map((r:Row)=><p key={r.currency}>{money(r.value,r.currency)}</p>)}</section></Permit>
           <div className="dashboard-grid">
             <Permit permission="audit.view"><section className="panel">

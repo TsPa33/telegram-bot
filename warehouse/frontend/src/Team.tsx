@@ -1,5 +1,5 @@
 import {Link} from 'react-router-dom';
-import {useRef,useState} from 'react';
+import {useEffect,useRef,useState} from 'react';
 import {api,type Row} from './api';
 import {State,useLoad,type Notify} from './shared';
 import {Empty,Modal} from './components';
@@ -26,6 +26,13 @@ export default function Team({user,notify}:{user:Row;notify:Notify}){
   if(!isTeamReady(r))throw Error('Керування командою тимчасово недоступне. Спробуйте ще раз.');
   return r;
  },[]);
+ useEffect(()=>{
+  const refresh=()=>readiness.reload();
+  const timer=window.setInterval(refresh,30000);
+  window.addEventListener('focus',refresh);
+  return ()=>{window.clearInterval(timer);window.removeEventListener('focus',refresh);};
+ },[]);
+ const summary=useLoad(()=>api('/team/summary'),[]);
  const data=useLoad(()=>readiness.data&&!readiness.error?Promise.all([
   api('/team?offset='+page*50+'&limit=50'),api('/team/permissions'),
  ]):Promise.resolve(null),[readiness.data,readiness.error,page]);
@@ -48,16 +55,22 @@ export default function Team({user,notify}:{user:Row;notify:Notify}){
     await api('/team'+(edit.id?'/'+edit.id:''),edit.id?'PATCH':'POST',body);
     notify('Дані працівника збережено');
    }
-   setEdit(null);data.reload();
+   setEdit(null);data.reload();summary.reload();readiness.reload();
   }catch(e){setError((e as Error).message);data.reload();}
   finally{guard.current=false;setBusy(false);}
  }
- if(readiness.error||readiness.loading)return <section className="panel padded"><h1>Команда</h1><State error={readiness.error} loading={readiness.loading}/><button disabled={readiness.loading} onClick={readiness.reload}>Перевірити готовність команди</button></section>;
+ if(readiness.error||(!readiness.data&&readiness.loading))return <section className="panel padded"><h1>Команда</h1><State error={readiness.error} loading={readiness.loading}/><button disabled={readiness.loading} onClick={readiness.reload}>Перевірити готовність команди</button></section>;
  return <>
   <div className="page-heading"><div><h1>Команда</h1><p>{user.workspace_name} · особисті облікові записи працівників</p></div>
-   {can('team.manage_managers')&&readiness.data?.employee_creation_enabled&&<button disabled={!data.data||data.loading||!!data.error} onClick={()=>open({name:'',email:'',password:'',role:'MANAGER',permissions:['inventory.view','vehicles.view','catalog.view'].filter(p=>grantable.includes(p)),is_active:true})}>Створити співробітника</button>}
+   {can('team.manage_managers')&&readiness.data?.employee_creation_enabled&&<button disabled={!data.data||data.loading||!!data.error} onClick={()=>open({name:'',email:'',password:'',role:'MANAGER',permissions:['inventory.view','vehicles.view','catalog.view'].filter(p=>grantable.includes(p)),is_active:true})}>Додати працівника</button>}
   </div>
-  {!readiness.data?.employee_creation_enabled&&<p className="notice" role="status">Створення співробітників ще не ввімкнено. Наявними обліковими записами можна керувати відповідно до ваших прав.</p>}
+  {!readiness.data?.employee_creation_enabled&&<p className="notice" role="status">Створення співробітників ще не ввімкнено. Для додавання працівників директору потрібно погодити активацію модуля. Наявними обліковими записами можна керувати.</p>}
+  <button className="secondary" onClick={()=>{readiness.reload();summary.reload();data.reload();}}>Оновити команду та доступність створення</button>
+  <State error={summary.error} loading={summary.loading}/>
+  {summary.data&&!summary.error&&<section className="team-summary" aria-label="Підсумки команди">
+   {Object.entries({'Усього облікових записів':summary.data.total,'Активні':summary.data.active,'Заблоковані':summary.data.blocked,'Директори':summary.data.by_role.DIRECTOR,'Адміністратори':summary.data.by_role.ADMIN,'Менеджери':summary.data.by_role.MANAGER}).map(([label,value])=><div className="panel padded" key={label}><span>{label}</span><strong>{String(value)}</strong></div>)}
+   <small>{summary.data.scope==='workspace'?'Усі облікові записи робочого простору, включно з директором.':'Лише менеджери, доступні вам за правами.'}</small>
+  </section>}
   <section className="panel padded team-filters" aria-label="Фільтри команди">
    <label>Пошук на цій сторінці<input type="search" aria-label="Пошук працівників на сторінці" value={q} onChange={e=>setQ(e.target.value)} placeholder="Ім’я або email"/></label>
    <label>Роль<select aria-label="Роль у списку" value={role} onChange={e=>setRole(e.target.value)}><option value="">Усі ролі</option>{['DIRECTOR','ADMIN','MANAGER'].map(r=><option value={r} key={r}>{roleLabel(r)}</option>)}</select></label>
