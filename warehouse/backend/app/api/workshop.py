@@ -1,6 +1,6 @@
 from app.api.secure_route import SecureRoute
 """Workshop projections of the existing stock ledger. No second sales ledger."""
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Annotated, Literal
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import ConfigDict, Field
@@ -93,3 +93,20 @@ def sales(db: DB, who: Auth, q: str = Query('',max_length=200), vehicle_id: str 
             'buyer_name':financial.get('buyer_name'),'actor_name':financial.get('actor_name') or actors.get(op.actor_id),
             'note':op.reason,'created_at':op.created_at.isoformat()})
     return {'items':items,'total':total,'offset':offset,'limit':limit}
+
+
+@router.get('/sales/summary')
+def sales_summary(db: DB, who: Auth, date_from: date, date_to: date,
+                  interval: Literal['day','week','month']='day',
+                  tz: Literal['Europe/Kyiv','UTC']='Europe/Kyiv'):
+    from app.services.sales_analytics import summary
+    if date_from>date_to or (date_to-date_from).days>=366 or date_to==date.max or date_from.year<1900 or date_to.year>2100:
+        raise HTTPException(422,'Оберіть коректний період до 366 днів включно')
+    from sqlalchemy.exc import DBAPIError
+    try:
+        return summary(db,who.workspace_account_id,date_from,date_to,interval,tz)
+    except DBAPIError as exc:
+        if getattr(exc.orig,'sqlstate',None)=='57014':
+            db.rollback()
+            raise HTTPException(503,'Період потребує забагато часу. Скоротіть його та повторіть запит.') from exc
+        raise

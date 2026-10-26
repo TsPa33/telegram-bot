@@ -60,6 +60,7 @@ def route_permissions(method,path,body):
         if path=='/orders':return ['orders.create']
         if path.endswith('/{action}'):return ['orders.fulfill']+(['sales.create'] if body.get('_route_action')=='sell' else [])
         return ['orders.edit']
+    if path=='/sales/summary':return ['analytics.view','analytics.financial','sales.view','sales.view_financials']
     if path=='/sales':return ['sales.view']
     if path=='/dashboard':return ['analytics.view']
     if path=='/audit':return ['audit.view']
@@ -77,7 +78,7 @@ def check_fields(who,path,body):
 
 COST={'unit_cost','acquisition_cost','allocated_parts_cost','potential_gross_margin','margin_positions','vehicle_acquisition_cost'}
 FINANCE={'sale','unit_price','line_total','totals_by_currency','sale_price','sale_currency','price_recorded'}
-ANALYTICS={'valuation_by_currency','estimated_sales_value','by_vehicle'}
+ANALYTICS={'vehicle_valuation_by_currency','valuation_by_currency','estimated_sales_value','by_vehicle'}
 def redact(value,permissions,*,path='',nested=False):
     if isinstance(value,list):return [redact(v,permissions,path=path,nested=True) for v in value]
     if not isinstance(value,dict):return value

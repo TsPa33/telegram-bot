@@ -53,6 +53,22 @@ def listing(db:DB,who:Auth,offset:int=Query(0,ge=0),limit:int=Query(50,ge=1,le=1
     return {'items':[team.user_info(u) for u in db.scalars(stmt.order_by(Account.created_at,Account.id).offset(offset).limit(limit))],
         'total':db.scalar(select(func.count()).select_from(stmt.subquery())),'offset':offset,'limit':limit}
 
+@router.get('/team/summary')
+def summary(db:DB,who:Auth):
+    # Same visibility as the directory; aggregates never depend on pagination.
+    scope=(Account.workspace_account_id==who.workspace_account_id)|(Account.id==who.workspace_account_id)
+    stmt=select(Account.role,Account.is_active,func.count()).where(scope)
+    if who.user.role!='DIRECTOR':stmt=stmt.where(Account.role=='MANAGER')
+    rows=db.execute(stmt.group_by(Account.role,Account.is_active)).all()
+    roles={role:0 for role in ('DIRECTOR','ADMIN','MANAGER')}
+    active=blocked=0
+    for role,is_active,count in rows:
+        roles[role]+=count
+        if is_active:active+=count
+        else:blocked+=count
+    return {'total':active+blocked,'active':active,'blocked':blocked,'by_role':roles,
+            'scope':'workspace' if who.user.role=='DIRECTOR' else 'visible_managers'}
+
 @router.post('/team',status_code=201)
 def create(data:CreateEmployee,db:DB,who:Auth):
     team.require_creation_enabled()
