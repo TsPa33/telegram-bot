@@ -1,3 +1,4 @@
+import {Permit} from '../permissions';
 import {
   ArrowUpRight,
   Boxes,
@@ -32,24 +33,24 @@ export default function Dashboard() {
       {d && (
         <>
           <Metrics d={d} />
-          <section className="panel padded"><h2>Вартість запасів за валютами</h2>{d.valuation_by_currency?.map((r:Row)=><p key={r.currency}>{money(r.value,r.currency)}</p>)}</section>
+          <Permit permission="analytics.financial"><section className="panel padded"><h2>Вартість запасів за валютами</h2>{d.valuation_by_currency?.map((r:Row)=><p key={r.currency}>{money(r.value,r.currency)}</p>)}</section></Permit>
           <div className="dashboard-grid">
-            <section className="panel">
+            <Permit permission="audit.view"><section className="panel">
               <div className="panel-title">
                 <h2>Останні операції</h2>
                 <Link to="/analytics">
                   Усі операції <ArrowUpRight size={15} />
                 </Link>
               </div>
-              {d.recent_operations.length ? (
+              {d.recent_operations?.length ? (
                 <OperationTable rows={d.recent_operations} />
               ) : (
                 <Empty title="Історія почнеться з першої дії">
                   Додайте донора або запчастину — кожна зміна з’явиться тут.
                 </Empty>
               )}
-            </section>
-            <section className="panel">
+            </section></Permit>
+<Permit permission="analytics.financial">            <section className="panel">
               <div className="panel-title">
                 <h2>Фінансовий огляд</h2>
                 <span className="pill">UAH</span>
@@ -72,7 +73,7 @@ export default function Dashboard() {
                   Вартість донорів окремо, без подвійного віднімання.
                 </p>
               </div>
-            </section>
+            </section></Permit>
           </div>
           <div className="section-title">
             <h2>Розпочніть роботу зі складом</h2>

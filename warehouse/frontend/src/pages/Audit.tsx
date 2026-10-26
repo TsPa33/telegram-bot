@@ -1,3 +1,5 @@
+import {useSearchParams} from 'react-router-dom';
+import {useCan} from '../permissions';
 import { useEffect, useState } from "react";
 import { all, api, labels, money, type Page, type Row } from "../api";
 import { Empty, Pager } from "../components";
@@ -11,25 +13,27 @@ import {
   useLoad,
 } from "../shared";
 export default function Audit() {
+  const can=useCan(),[params]=useSearchParams();
   const [type, setType] = useState(""),
     [vehicle, setVehicle] = useState(""),
     [part, setPart] = useState(""),
-    [actor, setActor] = useState(""),
+    [actor, setActor] = useState(params.get("actor_id")||""),
     [from, setFrom] = useState(""),
     [to, setTo] = useState(""),
     [page, setPage] = useState(0);
   const lookups = useLoad(
     () =>
       Promise.all([
-        all("/vehicles"),
-        all("/vehicles?archived=true"),
-        all("/parts"),
-        all("/parts?archived=true"),
+        can("vehicles.view")?all("/vehicles"):Promise.resolve([]),
+        can("vehicles.view")?all("/vehicles?archived=true"):Promise.resolve([]),
+        can("inventory.view")?all("/parts"):Promise.resolve([]),
+        can("inventory.view")?all("/parts?archived=true"):Promise.resolve([]),
         api("/auth/me"),
+        can("team.view")?api("/team?limit=100").catch(()=>({items:[]})):Promise.resolve({items:[]}),
       ]),
     [],
   );
-  const summary = useLoad(() => api("/dashboard"), []);
+  const summary = useLoad(() => can("analytics.view")?api("/dashboard"):Promise.resolve(null), [can("analytics.view")]);
   const query = new URLSearchParams({ limit: "50", offset: String(page * 50) });
   if (type) query.set("type", type);
   if (vehicle) query.set("vehicle_id", vehicle);
@@ -49,7 +53,7 @@ export default function Audit() {
       {summary.data && (
         <>
           <Metrics d={summary.data} />
-          <section className="panel padded"><h2>Вартість запасів за валютами</h2>{summary.data.valuation_by_currency?.map((r:Row)=><p key={r.currency}>{money(r.value,r.currency)}</p>)}</section>
+          {can('analytics.financial')&&<section className="panel padded"><h2>Вартість запасів за валютами</h2>{summary.data.valuation_by_currency?.map((r:Row)=><p key={r.currency}>{money(r.value,r.currency)}</p>)}</section>}
           <div className="chart-grid">
             {[
               {
@@ -73,7 +77,7 @@ export default function Audit() {
                 key: "value",
                 currency: true,
               },
-            ].map((g) => (
+            ].filter(g=>!g.currency||can("analytics.financial")).map((g) => (
               <section className="panel padded" key={g.title}>
                 <h2>{g.title}</h2>
                 {g.data.length ? (
@@ -178,9 +182,8 @@ export default function Audit() {
           onChange={(e) => setActor(e.target.value)}
         >
           <option value="">Усі автори акаунта</option>
-          {lookups.data?.[4] && (
-            <option value={lookups.data[4].id}>{lookups.data[4].name}</option>
-          )}
+          {(lookups.data?.[5]?.items?.length?lookups.data[5].items:lookups.data?.[4]?[lookups.data[4]]:[]).map((u:Row)=><option key={u.id} value={u.id}>{u.name}</option>)}
+          {actor&&!(lookups.data?.[5]?.items||[lookups.data?.[4]]).some((u:Row)=>u?.id===actor)&&<option value={actor}>Обраний працівник</option>}
         </select>
         <label>
           Від

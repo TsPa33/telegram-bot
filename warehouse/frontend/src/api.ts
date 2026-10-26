@@ -31,6 +31,12 @@ export async function api<T = Row>(
     body:
       body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
   });
+  // An account switch in this browser must not deliver a previous user's data.
+  // Keep mutation results uncertain (not a definitive 4xx) so replay keys survive.
+  if(!path.startsWith('/auth/')&&csrf()!==headers['X-CSRF-Token']){
+    window.dispatchEvent(new Event('warehouse:permissions-changed'));
+    throw new Error('Сесію змінено. Оновіть доступ перед продовженням.');
+  }
   if (!response.ok) {
     let message = "Не вдалося виконати запит. Спробуйте ще раз.";
     try {
@@ -46,6 +52,7 @@ export async function api<T = Row>(
     }
     if (response.status === 401 && !path.startsWith("/auth/"))
       window.dispatchEvent(new Event("warehouse:logout"));
+    if(response.status===403&&!path.startsWith('/auth/'))window.dispatchEvent(new Event('warehouse:permissions-changed'));
     throw new ApiError(message, response.status);
   }
   if (expectedStatus !== undefined && response.status !== expectedStatus)
@@ -66,6 +73,7 @@ export async function all(path: string): Promise<Row[]> {
 }
 // Keep stored decimal prices as strings; BigInt formats cents without a float round-trip.
 export const money = (value: unknown, currency = "UAH") => {
+  if(value===undefined)return 'Доступ обмежено';
   const text=String(value??'0'),match=/^(-?)(\d+)(?:\.(\d*))?$/.exec(text);
   if(!match)return new Intl.NumberFormat('uk-UA',{style:'currency',currency,currencyDisplay:'code',minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(value||0));
   const fraction=(match[3]||'').padEnd(2,'0');
@@ -78,6 +86,7 @@ export const when = (value: string) =>
     timeStyle: "short",
   });
 export const labels: Record<string, string> = {
+  photo_create: "Додано фото",
   receipt: "Надходження",
   write_off: "Списання",
   sale: "Продаж",

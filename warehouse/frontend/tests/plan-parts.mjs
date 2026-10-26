@@ -21,7 +21,7 @@ try {
   await page.route('**/api/v1/**',async route=>{
    const req=route.request(),url=new URL(req.url()),p=url.pathname;
    requests.push(p);const reply=data=>route.fulfill({json:data});
-   if(p.endsWith('/auth/me'))return reply({id:'account',name:'Тест',email:'test@example.test'});
+   if(p.endsWith('/auth/me'))return reply({id:'account',name:'Тест',email:'test@example.test',role:'DIRECTOR',workspace_account_id:'account',workspace_name:'Тестовий склад',permissions:[],is_active:true,must_change_password:false});
    if(p.endsWith('/vehicle-catalog'))return reply({complete:false,brands:[{name:'Volkswagen',models:['Golf','Passat']},{name:'Volvo',models:['XC90']}]});
    if(p.endsWith('/brands/lookup'))return unavailable ? route.fulfill({status:503,json:{detail:'Plan.Parts вимкнено'}}) : reply(brands);
    if(p.endsWith('/models/lookup')){assert.equal(url.searchParams.get('mfa_id'),'121');return reply(models);}

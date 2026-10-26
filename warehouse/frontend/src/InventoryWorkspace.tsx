@@ -1,3 +1,4 @@
+import {useCan} from './permissions';
 import VehicleCard from './VehicleCard';
 import {useEffect,useState} from 'react';
 import {useSearchParams} from 'react-router-dom';
@@ -14,11 +15,12 @@ function read(key:string):Preference {
  catch{return {mode:'general',donor:'',remember:false};}
 }
 export default function InventoryWorkspace({accountId,notify}:{accountId:string;notify:Notify}) {
+ const can=useCan();
  const key='warehouse-inventory-view:'+accountId;
  const [preference,setPreference]=useState(()=>read(key));
  const [history,setHistory]=useState(false);
  const [params,setParams]=useSearchParams(),donor=params.get('vehicle_id')||'';
- const {data:vehicles,error,loading,reload}=useLoad(()=>Promise.all([all('/vehicles'),all('/vehicles?archived=true')]).then(groups=>groups.flat()),[]);
+ const {data:vehicles,error,loading,reload}=useLoad(()=>can('vehicles.view')?Promise.all([all('/vehicles'),all('/vehicles?archived=true')]).then(groups=>groups.flat()):Promise.resolve([]),[can('vehicles.view')]);
  useEffect(()=>{window.addEventListener('warehouse:inventory-changed',reload);return()=>window.removeEventListener('warehouse:inventory-changed',reload);},[]);
  const [restored,setRestored]=useState(false);
  const [storageError,setStorageError]=useState(''),[planOpen,setPlanOpen]=useState(false);
@@ -47,7 +49,7 @@ export default function InventoryWorkspace({accountId,notify}:{accountId:string;
    <button aria-pressed={preference.mode==='donors'} onClick={()=>switchMode('donors')}>За автомобілями</button>
    <button aria-pressed={preference.mode==='general'} onClick={()=>switchMode('general')}>Загальний склад</button>
   </nav>
-  <nav className="stock-section-tabs" aria-label="Розділ складу"><button aria-pressed={!history} onClick={()=>setHistory(false)}>Запчастини</button><button aria-pressed={history} onClick={()=>setHistory(true)}>Історія операцій</button></nav>
+  <nav className="stock-section-tabs" aria-label="Розділ складу"><button aria-pressed={!history} onClick={()=>setHistory(false)}>Запчастини</button>{can('audit.view')&&<button aria-pressed={history} onClick={()=>setHistory(true)}>Історія операцій</button>}</nav>
   {history?<StockHistory key={preference.mode==='donors'?donor:'all'} vehicleId={preference.mode==='donors'?donor:''}/>:<>
   {storageError&&<p role="status">{storageError}</p>}
   {preference.mode==='general'?<SalesWorkspace accountId={accountId} notify={notify}/>:<>
@@ -61,7 +63,7 @@ export default function InventoryWorkspace({accountId,notify}:{accountId:string;
     <header className="donor-stock-header"><h1>{vehicle.manufacturer} {vehicle.model} · {vehicle.year} · №{vehicle.number}</h1><button onClick={()=>choose('')}>Усі автомобілі</button></header>
     <div className="donor-stock-switch"><label>Автомобіль<select aria-label="Автомобіль складу" value={donor} onChange={e=>choose(e.target.value)}>{vehicles?.map(v=><option key={v.id} value={v.id}>{v.manufacturer} {v.model} · {v.year} · №{v.number}</option>)}</select></label><label className="check-inline donor-remember"><input type="checkbox" checked={preference.remember} onChange={e=>save({...preference,donor,remember:e.target.checked})}/>Запам’ятати цей автомобіль</label></div>
     <SalesWorkspace key={vehicle.id} accountId={accountId} notify={notify} grouped/>
-    <details className="donor-potential" open={planOpen} onToggle={e=>setPlanOpen(e.currentTarget.open)}><summary>Каталог деталей автомобіля</summary><p>Виберіть деталі, які є на автомобілі, та додайте їх до обліку. Каталог не підтверджує товарний залишок; додавання потребує вашого підтвердження.</p>{planOpen&&<Dismantling key={vehicle.id} vehicle={vehicle} onChange={()=>{reload();window.dispatchEvent(new Event('warehouse:inventory-changed'));}} onInventory={()=>setPlanOpen(false)}/>}</details>
+    {['dismantling.manage','vehicles.view','catalog.view'].every(can)&&<details className="donor-potential" open={planOpen} onToggle={e=>setPlanOpen(e.currentTarget.open)}><summary>Каталог деталей автомобіля</summary><p>Виберіть деталі, які є на автомобілі, та додайте їх до обліку. Каталог не підтверджує товарний залишок; додавання потребує вашого підтвердження.</p>{planOpen&&<Dismantling key={vehicle.id} vehicle={vehicle} onChange={()=>{reload();window.dispatchEvent(new Event('warehouse:inventory-changed'));}} onInventory={()=>setPlanOpen(false)}/>}</details>}
    </>}
   </>}
   </>}

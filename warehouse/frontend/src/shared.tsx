@@ -99,7 +99,7 @@ export function Metrics({ d }: { d: Row }) {
           icon: ChartNoAxesCombined,
           sub: "За вказаними цінами продажу",
         },
-      ].map((m) => (
+      ].filter(m=>m.value!=="Доступ обмежено").map((m) => (
         <article className="metric" key={m.label}>
           <div>
             <span>{m.label}</span>
@@ -202,7 +202,7 @@ export function OperationTable({ rows }: { rows: Row[] }) {
               </td>
               <td>
                 {r.reason}
-                <small>Автор: {r.actor_id.slice(0, 8)}</small>
+                <small>Автор: {r.actor_name||r.after?.actor_identity?.name||'Не визначено'}</small>
                 <details>
                   <summary>Деталі запису</summary>
                   <pre>

@@ -1,3 +1,4 @@
+import {useCan,roleLabel,ADVANCED_PERMISSIONS} from '../permissions';
 import { ShieldCheck, Upload } from "lucide-react";
 import { Link } from "react-router-dom";
 import DismantlingCatalogImport from "../DismantlingCatalogImport";
@@ -5,6 +6,7 @@ import { api, type Row } from "../api";
 
 import { Heading, State, useLoad } from "../shared";
 export default function Settings({ user }: { user: Row }) {
+  const can=useCan();
   const { data, error, loading } = useLoad(() => api("/settings"), []);
   return (
     <>
@@ -13,16 +15,17 @@ export default function Settings({ user }: { user: Row }) {
         title="Налаштування"
         description="Обліковий запис і можливості вашого незалежного складу."
       />
+      {can('team.view')&&<Link className="button" to="/team">Команда</Link>}
       <nav className="settings-tools" aria-label="Додаткові розділи">
-        <Link className="button" to="/catalog">Довідник запчастин</Link>
-        <Link className="button" to="/archive">Архів</Link>
-        <Link className="button" to="/operations">Журнал операцій</Link>
-        <Link className="button" to="/inventory/advanced">Розширений склад</Link>
-        <p>Розширені операції доступні всім користувачам акаунта. Розмежування ролей ще не впроваджено.</p>
-        <Link className="button" to="/analytics">Аудит</Link>
-        <a className="button" href="#catalog-import">Імпорт каталогу</a>
+        {can('catalog.view')&&<Link className="button" to="/catalog">Довідник запчастин</Link>}
+        {can('inventory.archive')&&can('inventory.view')&&<Link className="button" to="/archive">Архів</Link>}
+        {can('audit.view')&&<Link className="button" to={ADVANCED_PERMISSIONS.every(can)?'/operations':'/analytics'}>Журнал операцій</Link>}
+        {ADVANCED_PERMISSIONS.every(can)&&<Link className="button" to="/inventory/advanced">Розширений склад</Link>}
+        <p>Операції обмежені призначеними дозволами.</p>
+        {can('audit.view')&&<Link className="button" to="/analytics">Аудит</Link>}
+        {can('catalog.import')&&<a className="button" href="#catalog-import">Імпорт каталогу</a>}
       </nav>
-      <section className="panel padded" id="catalog-import"><DismantlingCatalogImport onImported={()=>{}}/></section>
+      {can('catalog.import')&&<section className="panel padded" id="catalog-import"><DismantlingCatalogImport onImported={()=>{}}/></section>}
       <State error={error} loading={loading} />
       <div className="two-column">
         <section className="panel padded">
@@ -38,7 +41,7 @@ export default function Settings({ user }: { user: Row }) {
             </div>
             <div>
               <dt>Роль</dt>
-              <dd>Власник</dd>
+              <dd>{roleLabel(user.role)}</dd>
             </div>
             <div>
               <dt>Валюта</dt>
@@ -70,10 +73,7 @@ export default function Settings({ user }: { user: Row }) {
               <dd>Незмінна, без видалення</dd>
             </div>
           </dl>
-          <Link className="button" to="/catalog">
-            <Upload size={16} />
-            Керувати каталогом
-          </Link>
+          {can('catalog.import')&&<Link className="button" to="/catalog"><Upload size={16}/>Керувати каталогом</Link>}
         </section>
       </div>
     </>

@@ -1,3 +1,4 @@
+import {Permit} from './permissions';
 import { useEffect, useRef, useState } from "react";
 import { api, type Row } from "./api";
 import { Confirm, State, useLoad } from "./shared";
@@ -43,7 +44,7 @@ export default function Dismantling({vehicle,onChange,onInventory}:{vehicle:Row;
     {data&&<>
       <div className="simple-stock-action">
         <div><strong>Запчастини автомобіля</strong><small>У довіднику: {data.counts.total} · На складі: {data.stock_positions??vehicle.stock_positions??'…'}</small><small>Вибрано: {data.counts.included} · <button className="text-button" onClick={onInventory}>Склад авто</button></small></div>
-        <button className="primary" disabled={!canEdit||!data.add_count||data.add_count>10000} onClick={()=>setConfirmation({count:data.add_count,token:data.add_token})}>Додати на склад{data.add_count?` (${data.add_count})`:''}</button>
+<Permit permission="inventory.create"><Permit permission="inventory.adjust_quantity">        <button className="primary" disabled={!canEdit||!data.add_count||data.add_count>10000} onClick={()=>setConfirmation({count:data.add_count,token:data.add_token})}>Додати на склад{data.add_count?` (${data.add_count})`:''}</button></Permit></Permit>
       </div>
       {data.add_count>10000&&<p role="alert">За одне підтвердження можна додати до 10 000 позицій. Тимчасово зніміть галочки з частини категорій.</p>}
       {message&&<p role="status">{message} <button onClick={onInventory}>Відкрити склад</button></p>}

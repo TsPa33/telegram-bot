@@ -11,6 +11,7 @@ export function useOrderRequests(accountId:string){
  useEffect(()=>{function read(){try{setPending(JSON.parse(sessionStorage.getItem(key)||'null'));}catch{setStorageError('Не вдалося прочитати непідтверджений запит.');}}read();window.addEventListener('warehouse:order-pending',read);return()=>window.removeEventListener('warehouse:order-pending',read);},[key]);
  async function send(command:Pending){
   if(guard.current||running.has(key))throw Error('Зачекайте завершення поточного запиту.');
+  const replaying=sessionStorage.getItem(key)!==null;
   guard.current=true;running.add(key);setBusy(true);
   try{
    sessionStorage.setItem(key,JSON.stringify(command));setPending(command);window.dispatchEvent(new Event('warehouse:order-pending'));
@@ -18,7 +19,9 @@ export function useOrderRequests(accountId:string){
    sessionStorage.removeItem(key);setPending(null);window.dispatchEvent(new Event('warehouse:order-pending'));
    window.dispatchEvent(new Event('warehouse:inventory-changed'));window.dispatchEvent(new Event('warehouse:orders-changed'));return result;
   }catch(e){
-   if(e instanceof ApiError&&[400,403,404,409,422].includes(e.status)){sessionStorage.removeItem(key);setPending(null);window.dispatchEvent(new Event('warehouse:order-pending'));}
+   // A revoked permission cannot tell us whether the earlier unknown request
+   // committed. Keep its exact key/body until an authorized replay is possible.
+   if(e instanceof ApiError&&[400,403,404,409,422].includes(e.status)&&!(replaying&&e.status===403)){sessionStorage.removeItem(key);setPending(null);window.dispatchEvent(new Event('warehouse:order-pending'));}
    throw e;
   }finally{guard.current=false;running.delete(key);setBusy(false);}
  }

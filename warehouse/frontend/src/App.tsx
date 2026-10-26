@@ -15,7 +15,7 @@ import {
   Warehouse,
   X,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Link,
   NavLink,
@@ -27,6 +27,8 @@ import {
 } from "react-router-dom";
 import { api, type Row } from "./api";
 
+import Team,{PasswordChange} from './Team';
+import {TeamIdentity,allowed,roleLabel,identityKey,ADVANCED_PERMISSIONS} from './permissions';
 import Archive from "./pages/Archive";
 import Audit from "./pages/Audit";
 import Auth from "./pages/Auth";
@@ -49,6 +51,7 @@ const nav = [
   { to: "/statistics", label: "Статистика", icon: ChartNoAxesCombined },
 ];
 const secondary = [
+  {to:"/team",label:"Команда"},
   {to:"/settings",label:"Налаштування"},
   {to:"/catalog",label:"Довідник запчастин"},
   {to:"/operations",label:"Журнал операцій"},
@@ -64,15 +67,56 @@ export default function App() {
     [toast, setToast] = useState("");
   const location = useLocation(),
     navigate = useNavigate();
+  const [accessUnverified,setAccessUnverified]=useState(false);
+  const currentUser=useRef<Row|null>(null),generation=useRef(0),inFlight=useRef(0);
+  const retryIdentity=useRef<(force?:boolean)=>void>(()=>{});
+  const changeUser=useCallback((next:Row|null)=>{
+    generation.current++;inFlight.current=0;currentUser.current=next;
+    setUser(next);setAccessUnverified(false);setToast('');
+  },[]);
   useEffect(() => {
-    api("/auth/me")
-      .then(setUser)
-      .catch(() => setUser(null))
-      .finally(() => setChecking(false));
-    const logout = () => setUser(null);
-    window.addEventListener("warehouse:logout", logout);
-    return () => window.removeEventListener("warehouse:logout", logout);
-  }, []);
+    let mounted=true;
+    async function refresh(force=false){
+      if(inFlight.current&&!force)return;
+      const ticket=++generation.current;inFlight.current=ticket;
+      // Preserve a failed form until rights are verified. Remounting on every
+      // unrelated 403 (e.g. CSRF) could repeatedly trigger mount-time requests.
+      // A changed identity key still discards every protected cache atomically.
+      try{
+        const next=await api('/auth/me');
+        if(mounted&&ticket===generation.current){
+          if(identityKey(next)!==identityKey(currentUser.current))setToast('');
+          currentUser.current=next;setUser(next);setAccessUnverified(false);if(force)setToast('Права доступу перевірено. Доступні дії оновлено.');
+        }
+      }catch(error){
+        if(mounted&&ticket===generation.current){
+          if((error as {status?:number}).status===401)changeUser(null);
+          else setAccessUnverified(true);
+        }
+      }finally{
+        if(inFlight.current===ticket)inFlight.current=0;
+        if(mounted)setChecking(false);
+      }
+    }
+    retryIdentity.current=refresh;
+    const focus=()=>{if(currentUser.current)void refresh();};
+    const permissions=()=>{if(currentUser.current)void refresh(true);};
+    const visible=()=>{if(document.visibilityState==='visible')focus();};
+    const logout=()=>changeUser(null);
+    void refresh();
+    window.addEventListener('focus',focus);
+    document.addEventListener('visibilitychange',visible);
+    window.addEventListener('warehouse:permissions-changed',permissions);
+    window.addEventListener('warehouse:logout',logout);
+    const timer=setInterval(focus,30000);
+    return ()=>{
+      mounted=false;generation.current++;clearInterval(timer);
+      window.removeEventListener('focus',focus);
+      document.removeEventListener('visibilitychange',visible);
+      window.removeEventListener('warehouse:permissions-changed',permissions);
+      window.removeEventListener('warehouse:logout',logout);
+    };
+  },[changeUser]);
   useEffect(() => setMenu(false), [location.pathname]);
   useEffect(() => {
     if (toast) {
@@ -93,14 +137,19 @@ export default function App() {
     return (
       <Auth
         onLogin={(u) => {
-          setUser(u);
+          changeUser(u);
           navigate("/");
         }}
       />
     );
+  if(user.must_change_password)return <PasswordChange user={user} onDone={()=>changeUser(null)}/>;
+  const can=(p:string)=>allowed(user,p);
+  const routePermission=(path:string)=>path==='/settings'?'':path==='/inventory/advanced'||path==='/operations'?'inventory.adjust_quantity':path.startsWith('/team')?'team.view':path.startsWith('/orders')?'orders.view':path==='/vehicles'?'vehicles.view':path==='/statistics'?'analytics.view':path==='/sales'?'sales.view':path==='/catalog'?'catalog.view':path==='/analytics'||path==='/operations'?'audit.view':path==='/archive'?'inventory.archive':'inventory.view';
+  const advanced=ADVANCED_PERMISSIONS;
+  const routeAllowed=(!routePermission(location.pathname)||can(routePermission(location.pathname)))&&(!['/inventory/advanced','/operations'].includes(location.pathname)||advanced.every(can))&&(location.pathname!=='/archive'||can('inventory.view'));
   const current = [...nav,...secondary].find((n) => n.to === location.pathname || (n.to === "/orders" && location.pathname.startsWith("/orders/")));
   return (
-    <div className="app">
+    <TeamIdentity.Provider value={user}><div className="app">
       <aside className={menu ? "sidebar open" : "sidebar"}>
         <Link to="/" className="brand">
           <span className="brand-icon">
@@ -115,14 +164,14 @@ export default function App() {
             {user.name.slice(0, 1).toUpperCase()}
           </span>
           <div>
-            <b>Мій склад</b>
+            <b>{user.workspace_name||'Мій склад'}</b>
             <small>Робочий простір</small>
           </div>
           <ShieldCheck size={16} />
         </div>
         <div className="nav-label">УПРАВЛІННЯ</div>
         <nav>
-          {nav.map((n) => (
+          {nav.filter(n=>can(routePermission(n.to))).map((n) => (
             <NavLink key={n.to} to={n.to} end={n.to!=="/orders"}>
               <n.icon size={18} />
               {n.label}
@@ -163,7 +212,7 @@ export default function App() {
             </span>
             <span>
               {user.name}
-              <small>Власник облікового запису</small>
+              <small>{roleLabel(user.role)} · {user.workspace_name||'Мій склад'}</small>
             </span>
             <button
               className="icon-button"
@@ -172,7 +221,7 @@ export default function App() {
               onClick={async () => {
                 try {
                   await api("/auth/logout", "POST");
-                  setUser(null);
+                  changeUser(null);
                 } catch (e) {
                   notify((e as Error).message);
                 }
@@ -182,8 +231,10 @@ export default function App() {
             </button>
           </div>
         </header>
-        <main>
-          <Routes>
+        <div className="team-identity-line" role="region" aria-label="Працівник і склад"><strong>{user.name}</strong><span>{roleLabel(user.role)} · {user.workspace_name||'Мій склад'}</span></div>
+        <main key={identityKey(user)}>
+          {accessUnverified?<section className="panel padded"><h1>Перевіряємо доступ</h1><p>Дані приховані, доки сервер не підтвердить ваші поточні права.</p><button onClick={()=>retryIdentity.current(true)}>Перевірити доступ</button></section>:!routeAllowed?<section className="panel padded"><h1>Доступ обмежено</h1><p>Зверніться до директора для надання дозволу.</p></section>:<Routes>
+            <Route path="/team" element={<Team user={user} notify={notify}/>}/>
             <Route path="/" element={<SalesWorkspace accountId={user.id} quick notify={notify}/>} />
             <Route path="/sales" element={<SalesLedger/>}/>
             <Route path="/orders" element={<Orders key={user.id} accountId={user.id} notify={notify}/>} />
@@ -202,7 +253,7 @@ export default function App() {
             <Route path="/archive" element={<Archive notify={notify} />} />
             <Route path="/settings" element={<Settings user={user} />} />
             <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+          </Routes>}
         </main>
         <footer>
           CarPot Warehouse <span>Ваші дані. Ваш склад. Повний контроль.</span>
@@ -219,6 +270,6 @@ export default function App() {
           </button>
         </div>
       )}
-    </div>
+    </div></TeamIdentity.Provider>
   );
 }

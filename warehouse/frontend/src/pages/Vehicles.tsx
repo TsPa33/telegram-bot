@@ -1,3 +1,4 @@
+import {Permit,useCan} from '../permissions';
 import { Plus, Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -51,6 +52,7 @@ const vehicleFields: Field[] = [
   { key: "notes", label: "Примітки", type: "textarea", wide: true },
 ];
 export default function Vehicles({notify}:{notify:Notify}) {
+  const can=useCan();
   const [q,setQ]=useState(''),[page,setPage]=useState(0),[edit,setEdit]=useState<Row|null>(null),[created,setCreated]=useState<Row|null>(null),[detail,setDetail]=useState<Row|null>(null),[confirm,setConfirm]=useState<Row|null>(null),[showInfo,setShowInfo]=useState(false);
   const {data,error,loading,reload}=useLoad(()=>api<Page>(`/vehicles?q=${encodeURIComponent(q)}&limit=50&offset=${page*50}`),[q,page]);
   const navigate=useNavigate(),[params,setParams]=useSearchParams(),donorId=params.get('donor');
@@ -65,7 +67,7 @@ export default function Vehicles({notify}:{notify:Notify}) {
   },[donorId,params.get('info')]);
   return <>
     <Heading eyebrow="АВТОМОБІЛІ" title="Автомобілі" description="Відкрийте автомобіль, щоб вибрати запчастини або перейти до складу.">
-      <button className="secondary" onClick={()=>setEdit({status:'dismantling'})}><Plus size={17}/>Додати автомобіль</button>
+      <Permit permission="vehicles.create"><button className="secondary" onClick={()=>setEdit({status:'dismantling'})}><Plus size={17}/>Додати автомобіль</button></Permit>
     </Heading>
     {created&&<p role="status">Додано: {created.manufacturer} {created.model} · {created.year}. <button onClick={()=>openDetail(created)}>Відкрити картку</button></p>}
     <label className="search vehicle-search"><Search size={17}/><input aria-label="Пошук автомобілів" placeholder="Марка, модель або номер авто" value={q} onChange={e=>{setQ(e.target.value);setPage(0);}}/></label>
@@ -76,7 +78,7 @@ export default function Vehicles({notify}:{notify:Notify}) {
     </section>
     {data&&<Pager total={data.total} page={page} setPage={setPage}/>}
     {edit&&<Modal title={edit.id?'Редагувати автомобіль':'Новий автомобіль-донор'} onClose={()=>setEdit(null)}>
-      <VehicleForm initial={edit} fields={vehicleFields} onSave={async values=>{
+      <VehicleForm initial={edit} fields={vehicleFields.filter(f=>f.key!=='acquisition_cost'||can('parts.view_cost'))} onSave={async values=>{
         const row=await api('/vehicles'+(edit.id?'/'+edit.id:''),edit.id?'PUT':'POST',values);
         if(!edit.id){setCreated(row);setQ('');setPage(0);}saved(row);setEdit(null);notify('Дані автомобіля збережено');
       }}/>
@@ -106,19 +108,22 @@ function VehicleDetail({
   notify: Notify;
   onInventory: () => void;
 }) {
+  const can=useCan();
+  const canCatalog=['dismantling.manage','vehicles.view','catalog.view'].every(can);
+  const canReceipt=canCatalog&&can('inventory.create')&&can('inventory.adjust_quantity');
   const {
     data: d,
     error,
     loading,
     reload: reloadAnalytics,
-  } = useLoad(() => api(`/vehicles/${v.id}/analytics`), [v.id]);
+  } = useLoad(() => can('analytics.view')?api(`/vehicles/${v.id}/analytics`):Promise.resolve(null), [v.id]);
   const [busy, setBusy] = useState(false);
   return (
     <>
       <PowertrainEditor vehicle={v} onSaved={onSaved}/>
-      <Dismantling vehicle={v} onChange={() => {reloadAnalytics();onRefresh();}} onInventory={onInventory} />
+      {canCatalog&&<Dismantling vehicle={v} onChange={() => {reloadAnalytics();onRefresh();}} onInventory={onInventory} />}
       <details className="vehicle-secondary" open={showInfo}><summary>Дані автомобіля</summary>
-      {!v.archived&&<div className="modal-actions"><button onClick={onEdit}>Редагувати дані</button><button onClick={onArchive}>Архівувати автомобіль</button></div>}
+      {!v.archived&&<div className="modal-actions"><Permit permission="vehicles.edit"><button onClick={onEdit}>Редагувати дані</button></Permit><Permit permission="inventory.archive"><button onClick={onArchive}>Архівувати автомобіль</button></Permit></div>}
       <dl className="details">
         {[
           ["Номер автомобіля", `№ ${v.number ?? "—"}`],
@@ -132,7 +137,7 @@ function VehicleDetail({
           ],
           ["Дата придбання", v.acquisition_date || "Не вказано"],
           ["Примітки", v.notes || "—"],
-        ].map(([k, val]) => (
+        ].filter(([k])=>k!=='Придбання'||can('parts.view_cost')).map(([k, val]) => (
           <div key={k}>
             <dt>{k}</dt>
             <dd>{val}</dd>
@@ -148,15 +153,15 @@ function VehicleDetail({
           <span>
             Одиниць<strong>{d.stock_units}</strong>
           </span>
-          <span>
+          {can('analytics.financial')&&<span>
             Оцінка продажу<strong>{money(d.estimated_sales_value)}</strong>
-          </span>
-          <span>
+          </span>}
+          {can('analytics.financial')&&can('parts.view_cost')&&<span>
             Потенційна маржа<strong>{money(d.potential_gross_margin)}</strong>
-          </span>
+          </span>}
         </div>
       )}
-      <details><summary>Додатковий каталог</summary><VehicleChecklist vehicle={v} /></details>
+      <details><summary>Додатковий каталог</summary>{canReceipt&&<VehicleChecklist vehicle={v} />}</details>
       <details><summary>Ручний список зі власних категорій</summary>
       <p className="notice">
         Стандартний чекліст — перелік можливих деталей, а не точний OEM-каталог.
@@ -166,7 +171,7 @@ function VehicleDetail({
       <div className="modal-actions">
         <button onClick={onInventory}>Відкрити запчастини</button>
         <button
-          disabled={busy}
+          disabled={busy||!canReceipt}
           className="primary"
           onClick={async () => {
             setBusy(true);

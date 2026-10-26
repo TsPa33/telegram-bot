@@ -1,10 +1,12 @@
+import {useCan} from './permissions';
 import {useEffect,useState} from 'react';
 import {all,api,labels,money,when,type Page,type Row} from './api';
 import {Pager,Empty} from './components';
 import {State,useLoad} from './shared';
 export default function StockHistory({partId='',vehicleId=''}:{partId?:string;vehicleId?:string}){
+ const can=useCan();
  const [type,setType]=useState(''),[vehicle,setVehicle]=useState(vehicleId),[part,setPart]=useState(partId),[from,setFrom]=useState(''),[to,setTo]=useState(''),[page,setPage]=useState(0);
- const lookups=useLoad(()=>Promise.all([all('/vehicles'),all('/vehicles?archived=true'),all('/parts'),all('/parts?archived=true'),api('/auth/me')]),[]);
+ const lookups=useLoad(()=>Promise.all([can('vehicles.view')?all('/vehicles'):Promise.resolve([]),can('vehicles.view')?all('/vehicles?archived=true'):Promise.resolve([]),can('inventory.view')?all('/parts'):Promise.resolve([]),can('inventory.view')?all('/parts?archived=true'):Promise.resolve([]),api('/auth/me')]),[]);
  const vehicles=[...(lookups.data?.[0] as Row[]||[]),...(lookups.data?.[1] as Row[]||[])],parts=[...(lookups.data?.[2] as Row[]||[]),...(lookups.data?.[3] as Row[]||[])],me=lookups.data?.[4] as Row|undefined;
  const query=new URLSearchParams({limit:'50',offset:String(page*50)});
  if(type)query.set('type',type);if(vehicle)query.set('vehicle_id',vehicle);if(part)query.set('part_id',part);
@@ -32,8 +34,9 @@ export default function StockHistory({partId='',vehicleId=''}:{partId?:string;ve
     {reserved!==null&&reserved!==0&&<p>Зміна резерву: {reserved>0?'+':''}{reserved} · Резерв після: {after.reserved_quantity}</p>}
     {row.type==='transfer'&&<p>Місце: {before.location||'Не вказано'} → {after.location||'Не вказано'}</p>}
     {row.type==='sale'&&after.sale&&<p>Фактична ціна продажу: {money(after.sale.unit_price,after.sale.currency)} · {after.sale.source==='order'?'Замовлення':'Швидкий продаж'}</p>}
-    {row.type==='sale'&&!after.sale&&<p>Фактична ціна не зафіксована в цій операції. Ціна у картці на момент операції: {price==null?'Не зафіксовано':currency?money(price,currency):`${price} · валюту не зафіксовано`}</p>}
-    <small>Користувач: {me&&me.id===row.actor_id?me.name:'Не визначено'}</small>{row.reason&&<p>{row.reason}</p>}
+    {row.type==='sale'&&!can('sales.view_financials')&&<p>Фінансові дані доступні лише з відповідним дозволом.</p>}
+    {row.type==='sale'&&can('sales.view_financials')&&!after.sale&&<p>Фактична ціна не зафіксована в цій операції. Ціна у картці на момент операції: {price==null?'Не зафіксовано':currency?money(price,currency):`${price} · валюту не зафіксовано`}</p>}
+    <small>Користувач: {row.actor_name||(me&&me.id===row.actor_id?me.name:'Не визначено')}</small>{row.reason&&<p>{row.reason}</p>}
    </article>;
   })}
   {current&&!loading&&!data.items.length&&<Empty title="Операцій не знайдено">Змініть фільтри або період.</Empty>}

@@ -1,3 +1,4 @@
+import {useCan} from '../permissions';
 import {
   Archive as ArchiveIcon,
   Plus,
@@ -614,6 +615,7 @@ export function StockForm({ part, onDone }: { part: Row; onDone: () => void }) {
   );
 }
 export function PartDetail({ part, onChanged }: { part: Row; onChanged: () => void }) {
+  const can=useCan();
   const photos = useLoad(
       () => api<Row[]>(`/parts/${part.id}/photos`),
       [part.id],
@@ -653,7 +655,7 @@ export function PartDetail({ part, onChanged }: { part: Row; onChanged: () => vo
           </a>
         ))}
       </div>
-      {settings.data?.photos_enabled ? (
+      {settings.data?.photos_enabled&&can('inventory.edit') ? (
         <label className="upload-inline">
           {busy ? "Завантаження…" : "Додати фото (JPEG, PNG, WebP до 5 МБ)"}
           <input
@@ -686,7 +688,7 @@ export function PartDetail({ part, onChanged }: { part: Row; onChanged: () => vo
         </p>
       )}
       {error && <div className="error">{error}</div>}
-      <details className="workshop-advanced"><summary>Розширені складські операції</summary><p>Це не захищений адміністративний режим. Продаж у цій старій формі фіксує лише рух кількості, без фактичної ціни; для фінансового продажу використовуйте «Продати» у складі.</p><StockForm part={part} onDone={onChanged} /></details>
+      {can('inventory.adjust_quantity')&&<details className="workshop-advanced"><summary>Розширені складські операції</summary><p>Це не захищений адміністративний режим. Продаж у цій старій формі фіксує лише рух кількості, без фактичної ціни; для фінансового продажу використовуйте «Продати» у складі.</p><StockForm part={part} onDone={onChanged} /></details>}
     </>
   );
 }

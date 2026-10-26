@@ -15,7 +15,7 @@ try {
     page.on('pageerror',e=>errors.push(e.message));
     await page.route('**/api/v1/**',async route=>{
       const req=route.request(),p=new URL(req.url()).pathname,reply=data=>route.fulfill({json:data});
-      if(p.endsWith('/auth/me'))return reply({id:'account',name:'Тест',email:'test@example.test'});
+      if(p.endsWith('/auth/me'))return reply({id:'account',name:'Тест',email:'test@example.test',role:'DIRECTOR',workspace_account_id:'account',workspace_name:'Тестовий склад',permissions:[],is_active:true,must_change_password:false});
       if(p.endsWith('/vehicle-catalog'))return reply({complete:false,brands:[]});
       if(p.endsWith('/vehicles'))return reply({items:[vehicle],total:1});
       if(p.endsWith('/dismantling/prepare'))return reply({created:0});

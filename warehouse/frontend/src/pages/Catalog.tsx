@@ -1,3 +1,4 @@
+import {Permit} from '../permissions';
 import {
   Archive as ArchiveIcon,
   ClipboardList,
@@ -35,10 +36,10 @@ export default function Catalog({ notify }: { notify: Notify }) {
         title="Каталог запчастин"
         description="Категорії, підкатегорії та стандартні деталі для чеклістів."
       >
-        <button className="secondary" onClick={() => setImporting(true)}>
+        <Permit permission="catalog.import"><button className="secondary" onClick={() => setImporting(true)}>
           <Upload size={17} />
           Імпорт категорій
-        </button>
+        </button></Permit>
       </Heading>
       <div className="notice">
         <ClipboardList size={20} />
@@ -92,13 +93,13 @@ export default function Catalog({ notify }: { notify: Notify }) {
                     </td>
                     <td>{c.source}</td>
                     <td>
-                      <button
+<Permit permission="inventory.archive">                      <button
                         aria-label={`Архівувати ${c.name}`}
                         className="icon-button"
                         onClick={() => setConfirm(c)}
                       >
                         <ArchiveIcon size={16} />
-                      </button>
+                      </button></Permit>
                     </td>
                   </tr>
                 ))}
