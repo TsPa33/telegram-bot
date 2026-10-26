@@ -24,10 +24,11 @@ def command(db, account_id, scope, data, execute):
     fingerprint=hashlib.sha256(json.dumps({'scope':scope,'data':data.model_dump(mode='json',exclude={'request_key'})},sort_keys=True).encode()).hexdigest()
     prior=db.scalar(select(OrderRequest).where(OrderRequest.account_id==account_id,OrderRequest.request_key==data.request_key))
     if prior:
+        if prior.actor_id!=db.info.get('actor_id',account_id):raise HTTPException(409,'Ключ належить іншому виконавцю')
         if prior.fingerprint!=fingerprint:raise HTTPException(409,'Ідемпотентний ключ уже використано для іншого запиту')
         return prior.response
     result=execute()
-    db.add(OrderRequest(account_id=account_id,request_key=data.request_key,fingerprint=fingerprint,response=result))
+    db.add(OrderRequest(account_id=account_id,actor_id=db.info.get("actor_id",account_id),request_key=data.request_key,fingerprint=fingerprint,response=result))
     db.commit()
     return result
 
@@ -65,7 +66,9 @@ def view(db,order):
 
 def event(db,order,type,data):
     order.updated_at=now()
-    db.add(OrderEvent(account_id=order.account_id,order_id=order.id,actor_id=order.account_id,type=type,data=data))
+    actor=db.get(Account,db.info.get('actor_id',order.account_id))
+    data={**data,'actor_identity':{'id':actor.id,'name':actor.name,'role':actor.role}}
+    db.add(OrderEvent(account_id=order.account_id,order_id=order.id,actor_id=db.info.get("actor_id",order.account_id),type=type,data=data))
 
 
 def status(db,order,value):

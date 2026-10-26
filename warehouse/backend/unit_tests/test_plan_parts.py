@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 
 from app.api.plan_parts import plan_parts_client, router
 from app.db import get_db
-from app.models import Session, now
+from app.models import Account, Session, now
 from app.services.auth import digest
 from app.services.plan_parts import MAX_RESPONSE_BYTES, PlanPartsClient, PlanPartsError, RequestGate
 
@@ -147,9 +147,13 @@ def test_router_registered_in_warehouse_without_database_or_network():
 def test_route_requires_session_csrf_and_uses_authenticated_account(path):
     app = FastAPI()
     app.include_router(router)
-    account = SimpleNamespace(id="account-a")
+    account = Account(id="account-a", role="DIRECTOR", workspace_account_id=None,
+                      permissions=[], is_active=True, must_change_password=False)
     session = SimpleNamespace(expires_at=now()+timedelta(hours=1), account_id=account.id, csrf_hash=digest("csrf"))
     class DB:
+        def __init__(self):
+            self.info = {}
+
         def get(self, model, key):
             return session if model is Session else account
     calls = []
@@ -171,4 +175,10 @@ def test_route_requires_session_csrf_and_uses_authenticated_account(path):
         assert client.post(path).status_code == 403
         assert calls == []
         assert client.post(path, headers={"X-CSRF-Token":"csrf"}).status_code == 200
+        assert calls == ["account-a"]
+        account.is_active = False
+        assert client.post(path, headers={"X-CSRF-Token":"csrf"}).status_code == 401
+        account.is_active = True
+        account.must_change_password = True
+        assert client.post(path, headers={"X-CSRF-Token":"csrf"}).status_code == 403
         assert calls == ["account-a"]

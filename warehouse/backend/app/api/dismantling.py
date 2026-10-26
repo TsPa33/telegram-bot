@@ -1,3 +1,4 @@
+from app.api.secure_route import SecureRoute
 from typing import Annotated, Literal
 from fastapi import APIRouter, Depends, Query
 from pydantic import Field, field_validator, model_validator
@@ -7,7 +8,7 @@ from app.db import get_db
 from app.schemas import Input, Money
 from app.services import dismantling
 
-router = APIRouter(tags=['Dismantling'])
+router = APIRouter(route_class=SecureRoute,tags=['Dismantling'])
 DB = Annotated[Session, Depends(get_db)]
 Auth = Annotated[Identity, Depends(identity)]
 
@@ -30,19 +31,19 @@ class DismantlingAction(Input):
 
 @router.get('/api/v1/vehicles/{id}/dismantling')
 def get_workflow(id: str, db: DB, who: Auth):
-    return dismantling.listing(db, id, who.user.id)
+    return dismantling.listing(db, id, who.workspace_account_id)
 
 
 @router.post('/api/v1/vehicles/{id}/dismantling/start')
 def start_workflow(id: str, db: DB, who: Auth):
-    result = dismantling.start(db, id, who.user.id)
+    result = dismantling.start(db, id, who.workspace_account_id)
     db.commit()
     return result
 
 
 @router.post('/api/v1/vehicles/{id}/dismantling/actions')
 def workflow_actions(id: str, data: DismantlingAction, db: DB, who: Auth):
-    result = dismantling.actions(db, id, who.user.id, data)
+    result = dismantling.actions(db, id, who.workspace_account_id, data)
     db.commit()
     return result
 
@@ -150,24 +151,24 @@ def workspace(id: str,db: DB,who: Auth,offset: int=Query(0,ge=0),limit: int=Quer
               q: str=Query('',max_length=200),source: str | None=Query(None,max_length=100),
               category_key: str | None=Query(None,max_length=100),subcategory_key: str | None=Query(None,max_length=100),
               visibility: Literal['all','included','excluded']='all'):
-    return dismantling.workspace(db,id,who.user.id,offset=offset,limit=limit,q=q,source=source,
+    return dismantling.workspace(db,id,who.workspace_account_id,offset=offset,limit=limit,q=q,source=source,
         category_key=category_key,subcategory_key=subcategory_key,visibility=visibility)
 
 
 @router.post('/api/v1/vehicles/{id}/dismantling/plan')
 def plan(id: str,data: PlanUpdate,db: DB,who: Auth):
-    result=dismantling.change_plan(db,id,who.user.id,data);db.commit();return result
+    result=dismantling.change_plan(db,id,who.workspace_account_id,data);db.commit();return result
 
 
 @router.post('/api/v1/vehicles/{id}/dismantling/batch')
 def batch(id: str,data: BatchAction,db: DB,who: Auth):
-    result=dismantling.batch(db,id,who.user.id,data);db.commit();return result
+    result=dismantling.batch(db,id,who.workspace_account_id,data);db.commit();return result
 
 
 @router.post('/api/v1/dismantling/catalog/import')
 def import_catalog(data: CatalogImport,db: DB,who: Auth,dry_run: bool=False):
     from app.services.dismantling_catalog import import_catalog as apply
-    result=apply(db,who.user.id,data,dry_run)
+    result=apply(db,who.workspace_account_id,data,dry_run)
     if not dry_run:db.commit()
     return result
 
@@ -201,15 +202,15 @@ def prepare(id: str,db: DB,who: Auth):
     # Explicit authenticated/CSRF-protected POST. GETs remain strictly read-only.
     from app.models import Vehicle
     from app.services.inventory import owned
-    vehicle=owned(db,Vehicle,id,who.user.id,lock=True)
-    result={'created':0} if vehicle.archived else dismantling.start(db,id,who.user.id)
+    vehicle=owned(db,Vehicle,id,who.workspace_account_id,lock=True)
+    result={'created':0} if vehicle.archived else dismantling.start(db,id,who.workspace_account_id)
     db.commit()
     return result
 
 
 @router.post('/api/v1/vehicles/{id}/dismantling/add-stock')
 def add_stock(id: str,data: AddStock,db: DB,who: Auth):
-    result=dismantling.add_stock(db,id,who.user.id,data)
+    result=dismantling.add_stock(db,id,who.workspace_account_id,data)
     db.commit()
     return result
 

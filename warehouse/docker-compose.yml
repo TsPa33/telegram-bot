@@ -56,6 +56,10 @@ services:
       retries: 20
   tests:
     build: ./backend
+    working_dir: /workspace/warehouse/backend
+    volumes:
+      - ./backend:/workspace/warehouse/backend:ro
+      - ./scripts:/workspace/warehouse/scripts:ro
     profiles: ["test"]
     environment:
       WAREHOUSE_TEST_DATABASE_URL: postgresql+psycopg://warehouse_test:${WAREHOUSE_POSTGRES_PASSWORD}@db_test:5432/warehouse_test

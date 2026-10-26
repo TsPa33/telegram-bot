@@ -34,6 +34,13 @@ class Account(Base):
     email: Mapped[str] = mapped_column(String(254), unique=True)
     name: Mapped[str] = mapped_column(String(120))
     password_hash: Mapped[str] = mapped_column(Text)
+    workspace_account_id: Mapped[str | None] = mapped_column(ForeignKey('accounts.id'), nullable=True, index=True)
+    role: Mapped[str] = mapped_column(String(20), default='DIRECTOR', server_default='DIRECTOR')
+    permissions: Mapped[list] = mapped_column(JSON, default=list, server_default='[]')
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true())
+    must_change_password: Mapped[bool] = mapped_column(Boolean, default=False, server_default='false')
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    __table_args__ = (CheckConstraint("(role='DIRECTOR' AND workspace_account_id IS NULL) OR (role IN ('ADMIN','MANAGER') AND workspace_account_id IS NOT NULL AND workspace_account_id<>id)", name='ck_account_workspace_role'),)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
@@ -273,6 +280,7 @@ class StockRequest(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
     account_id: Mapped[str] = mapped_column(ForeignKey('accounts.id'), index=True)
     part_id: Mapped[str] = mapped_column(ForeignKey('parts.id'))
+    actor_id: Mapped[str] = mapped_column(ForeignKey('accounts.id'))
     request_key: Mapped[str] = mapped_column(String(36))
     fingerprint: Mapped[str] = mapped_column(String(64))
     response: Mapped[dict] = mapped_column(JSON)
@@ -289,3 +297,14 @@ Index('ix_parts_smart_oem_number',Part.account_id,func.warehouse_search_code(Par
 Index('ix_parts_smart_article_number',Part.account_id,func.warehouse_search_code(Part.article_number),postgresql_where=text("NOT archived AND article_number <> ''"))
 Index('ix_vehicle_smart_model',func.to_tsvector(literal_column("'simple'::regconfig"),func.warehouse_search_text(Vehicle.model)),postgresql_using='gin',_table=Vehicle.__table__)
 Index('ix_vehicle_smart_brand',Vehicle.account_id,func.warehouse_search_text(Vehicle.manufacturer))
+
+
+class TeamEvent(Base):
+    __tablename__ = 'team_events'
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    workspace_account_id: Mapped[str] = mapped_column(ForeignKey('accounts.id'), index=True)
+    actor_id: Mapped[str] = mapped_column(ForeignKey('accounts.id'))
+    target_id: Mapped[str] = mapped_column(ForeignKey('accounts.id'))
+    type: Mapped[str] = mapped_column(String(40))
+    data: Mapped[dict] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)

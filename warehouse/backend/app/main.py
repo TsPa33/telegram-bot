@@ -19,6 +19,8 @@ app = FastAPI(
 )
 from app.api.smart_search import router as smart_search_router
 app.include_router(smart_search_router)
+from app.api.team import router as team_router
+app.include_router(team_router)
 app.include_router(router)
 app.include_router(plan_parts_router)
 app.include_router(checklists_router)
@@ -75,3 +77,15 @@ def health():
     except SQLAlchemyError:
         raise HTTPException(503, "Warehouse database is not ready") from None
     return {"status": "ok"}
+
+
+@app.exception_handler(SQLAlchemyError)
+async def database_not_ready(request: Request, exc: SQLAlchemyError):
+    return JSONResponse(status_code=503,content={'detail':'База даних тимчасово недоступна або потребує оновлення'})
+
+
+# Never reflect passwords or other submitted secrets in validation responses.
+from fastapi.exceptions import RequestValidationError
+@app.exception_handler(RequestValidationError)
+async def invalid_input(request: Request, exc: RequestValidationError):
+    return JSONResponse(status_code=422,content={'detail':[{'loc':list(e['loc']),'type':e['type'],'msg':e['msg']} for e in exc.errors()]})

@@ -113,6 +113,7 @@ class OrderRequest(Base):
     __table_args__ = (UniqueConstraint('account_id','request_key',name='uq_order_request_key'),)
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
     account_id: Mapped[str] = mapped_column(ForeignKey('accounts.id'), index=True)
+    actor_id: Mapped[str] = mapped_column(ForeignKey('accounts.id'))
     request_key: Mapped[str] = mapped_column(String(36))
     fingerprint: Mapped[str] = mapped_column(String(64))
     response: Mapped[dict] = mapped_column(JSON)

@@ -1,3 +1,4 @@
+from app.api.secure_route import SecureRoute
 import json
 import secrets
 from datetime import datetime
@@ -43,17 +44,21 @@ from app.services.inventory import (
     validate_part_links,
 )
 
-router = APIRouter(prefix="/api/v1")
+router = APIRouter(route_class=SecureRoute,prefix="/api/v1")
 DB = Annotated[DBSession, Depends(get_db)]
 Auth = Annotated[Identity, Depends(identity)]
 
 
 def user_info(user):
-    return {"id": user.id, "name": user.name, "email": user.email}
+    from app.services.team import user_info as info
+    return info(user)
 
 
 def session_response(db, response, user):
     token, csrf = auth.create_session(db, user)
+    from app.models import TeamEvent
+    if user.workspace_account_id or db.scalar(select(Account.id).where(Account.workspace_account_id==user.id).limit(1)):
+        db.add(TeamEvent(workspace_account_id=user.workspace_account_id or user.id,actor_id=user.id,target_id=user.id,type='session_started',data={}))
     db.commit()
     response.set_cookie(
         "warehouse_session",
@@ -210,7 +215,7 @@ def vehicles(
     return listing(
         db,
         Vehicle,
-        who.user.id,
+        who.workspace_account_id,
         q=q,
         archived=archived,
         offset=offset,
@@ -221,32 +226,32 @@ def vehicles(
 
 @router.get("/vehicle-catalog", tags=["Vehicles"])
 def vehicle_catalog(db: DB, who: Auth):
-    return local_catalog(db, who.user.id)
+    return local_catalog(db, who.workspace_account_id)
 
 
 @router.post("/vehicles", status_code=201, tags=["Vehicles"])
 def vehicle_create(data: VehicleInput, db: DB, who: Auth):
     values = data.model_dump()
     if values["donor_id"] is None:
-        values["donor_id"] = automatic_donor_id(db, who.user.id)
+        values["donor_id"] = automatic_donor_id(db, who.workspace_account_id)
     # Serialize allocation even when callers supply their own donor_id.
-    db.scalar(select(Account).where(Account.id == who.user.id).with_for_update())
-    number = (db.scalar(select(func.max(Vehicle.number)).where(Vehicle.account_id == who.user.id)) or 0) + 1
-    row = Vehicle(account_id=who.user.id, number=number, **values)
+    db.scalar(select(Account).where(Account.id == who.workspace_account_id).with_for_update())
+    number = (db.scalar(select(func.max(Vehicle.number)).where(Vehicle.account_id == who.workspace_account_id)) or 0) + 1
+    row = Vehicle(account_id=who.workspace_account_id, number=number, **values)
     db.add(row)
-    record(db, who.user.id, row, "vehicle_create", "Додано донора", {})
+    record(db, who.workspace_account_id, row, "vehicle_create", "Додано донора", {})
     db.commit()
-    return vehicle_view(db, row, who.user.id)
+    return vehicle_view(db, row, who.workspace_account_id)
 
 
 @router.get("/vehicles/{id}", tags=["Vehicles"])
 def vehicle_get(id: str, db: DB, who: Auth):
-    return vehicle_view(db, owned(db, Vehicle, id, who.user.id), who.user.id)
+    return vehicle_view(db, owned(db, Vehicle, id, who.workspace_account_id), who.workspace_account_id)
 
 
 @router.put("/vehicles/{id}", tags=["Vehicles"])
 def vehicle_update(id: str, data: VehicleInput, db: DB, who: Auth):
-    row = owned(db, Vehicle, id, who.user.id, lock=True, active=True)
+    row = owned(db, Vehicle, id, who.workspace_account_id, lock=True, active=True)
     before = snapshot(row)
     changes = data.model_dump(exclude_unset=True)
     if "donor_id" in changes and changes["donor_id"] is None:
@@ -256,14 +261,14 @@ def vehicle_update(id: str, data: VehicleInput, db: DB, who: Auth):
         changes["ktype"] = None
     for k, v in changes.items():
         setattr(row, k, v)
-    record(db, who.user.id, row, "vehicle_update", "Оновлено донора", before)
+    record(db, who.workspace_account_id, row, "vehicle_update", "Оновлено донора", before)
     db.commit()
-    return vehicle_view(db, row, who.user.id)
+    return vehicle_view(db, row, who.workspace_account_id)
 
 
 @router.patch("/vehicles/{id}/powertrain", tags=["Vehicles"])
 def vehicle_powertrain(id: str, data: VehiclePowertrainInput, db: DB, who: Auth):
-    row = owned(db, Vehicle, id, who.user.id, lock=True, active=True)
+    row = owned(db, Vehicle, id, who.workspace_account_id, lock=True, active=True)
     before = snapshot(row)
     changes = data.model_dump(exclude_unset=True)
     if "engine" in changes and changes["engine"] != row.engine:
@@ -271,9 +276,9 @@ def vehicle_powertrain(id: str, data: VehiclePowertrainInput, db: DB, who: Auth)
     for key, value in changes.items():
         setattr(row, key, value)
     if snapshot(row) != before:
-        record(db, who.user.id, row, "vehicle_update", "Оновлено двигун / КПП", before)
+        record(db, who.workspace_account_id, row, "vehicle_update", "Оновлено двигун / КПП", before)
     db.commit()
-    return vehicle_view(db, row, who.user.id)
+    return vehicle_view(db, row, who.workspace_account_id)
 
 
 @router.get("/vehicle-view/readiness", tags=["Vehicles"])
@@ -286,13 +291,13 @@ def vehicle_view_readiness(db: DB, who: Auth):
 
 @router.get("/vehicles/{id}/analytics", tags=["Analytics"])
 def vehicle_analytics(id: str, db: DB, who: Auth):
-    owned(db, Vehicle, id, who.user.id)
-    return dashboard(db, who.user.id, id)
+    owned(db, Vehicle, id, who.workspace_account_id)
+    return dashboard(db, who.workspace_account_id, id)
 
 
 @router.post("/vehicles/{id}/checklist", tags=["Checklists"])
 def generate_checklist(id: str, db: DB, who: Auth):
-    result = checklist(db, id, who.user.id)
+    result = checklist(db, id, who.workspace_account_id)
     db.commit()
     return result
 
@@ -307,13 +312,13 @@ def categories(
     limit: int = Query(200, ge=1, le=10000),
 ):
     return listing(
-        db, Category, who.user.id, q=q, archived=archived, offset=offset, limit=limit
+        db, Category, who.workspace_account_id, q=q, archived=archived, offset=offset, limit=limit
     )
 
 
 @router.post("/categories/import", tags=["Categories"])
 def category_import(data: CategoryImport, db: DB, who: Auth, dry_run: bool = False):
-    result = import_categories(db, data, who.user.id, dry_run=dry_run)
+    result = import_categories(db, data, who.workspace_account_id, dry_run=dry_run)
     if not dry_run:
         db.commit()
     return result
@@ -333,7 +338,7 @@ async def category_file(
         raise HTTPException(
             422, "Потрібен UTF-8 JSON із source та nodes; перевірте формат імпорту"
         ) from exc
-    result = import_categories(db, data, who.user.id, dry_run=dry_run)
+    result = import_categories(db, data, who.workspace_account_id, dry_run=dry_run)
     if not dry_run:
         db.commit()
     return result
@@ -369,7 +374,7 @@ def parts(
         if value is not None:
             filters.append(col == value)
     if manufacturer is not None or model is not None:
-        donors=select(Vehicle.id).where(Vehicle.account_id==who.user.id)
+        donors=select(Vehicle.id).where(Vehicle.account_id==who.workspace_account_id)
         if manufacturer is not None:donors=donors.where(func.lower(Vehicle.manufacturer)==manufacturer.lower())
         if model is not None:donors=donors.where(func.lower(Vehicle.model)==model.lower())
         filters.append(Part.vehicle_id.in_(donors))
@@ -378,7 +383,7 @@ def parts(
     return listing(
         db,
         Part,
-        who.user.id,
+        who.workspace_account_id,
         q=q,
         archived=archived,
         offset=offset,
@@ -390,17 +395,17 @@ def parts(
 
 @router.post("/parts", status_code=201, tags=["Inventory"])
 def part_create(data: PartInput, db: DB, who: Auth):
-    validate_part_links(db, data, who.user.id)
-    row = Part(account_id=who.user.id, **data.model_dump())
+    validate_part_links(db, data, who.workspace_account_id)
+    row = Part(account_id=who.workspace_account_id, **data.model_dump())
     db.add(row)
-    record(db, who.user.id, row, "part_create", "Додано позицію без залишку", {})
+    record(db, who.workspace_account_id, row, "part_create", "Додано позицію без залишку", {})
     db.commit()
     return {**snapshot(row), "available_quantity": row.available_quantity}
 
 
 @router.get("/parts/{id}", tags=["Inventory"])
 def part_get(id: str, request: Request, db: DB, who: Auth):
-    row = owned(db, Part, id, who.user.id)
+    row = owned(db, Part, id, who.workspace_account_id)
     result={**snapshot(row), "available_quantity": row.available_quantity}
     # Previous UI labels every price UAH. Do not expose USD as a misleading
     # hryvnia amount to that client; the exact stored value is never changed.
@@ -411,21 +416,31 @@ def part_get(id: str, request: Request, db: DB, who: Auth):
 
 @router.put("/parts/{id}", tags=["Inventory"])
 def part_update(id: str, data: PartInput, db: DB, who: Auth):
-    row = owned(db, Part, id, who.user.id, lock=True, active=True)
-    validate_part_links(db, data, who.user.id)
+    row = owned(db, Part, id, who.workspace_account_id, lock=True, active=True)
+    validate_part_links(db, data, who.workspace_account_id)
     if data.individually_tracked and row.quantity > 1:
         raise HTTPException(
             409, "Спочатку розділіть кількісну позицію на окремі одиниці"
         )
     before = snapshot(row)
     changes=data.model_dump()
+    if 'parts.view_cost' not in who.permissions:changes.pop('unit_cost',None)
+    if 'parts.change_price' not in who.permissions:
+        changes.pop('selling_price',None);changes.pop('currency',None)
+    if 'parts.notes' not in who.permissions:changes.pop('internal_notes',None)
+    if 'inventory.transfer' not in who.permissions:changes.pop('location',None)
+    if 'vehicles.view' not in who.permissions:changes.pop('vehicle_id',None)
+    if 'catalog.view' not in who.permissions:
+        changes.pop('category_id',None);changes.pop('subcategory_id',None)
+    if 'parts.inspect' not in who.permissions:
+        changes.pop('condition',None);changes.pop('availability',None)
     if 'currency' not in data.model_fields_set:
-        changes.pop('currency')
-        if row.currency!='UAH' and changes['selling_price']!=row.selling_price:
+        changes.pop('currency',None)
+        if row.currency!='UAH' and changes.get('selling_price',row.selling_price)!=row.selling_price:
             raise HTTPException(409,'Підтвердіть валюту ціни в оновленій картці запчастини')
     for k, v in changes.items():
         setattr(row, k, v)
-    record(db, who.user.id, row, "part_update", "Оновлено картку запчастини", before)
+    record(db, who.workspace_account_id, row, "part_update", "Оновлено картку запчастини", before)
     db.commit()
     return {**snapshot(row), "available_quantity": row.available_quantity}
 
@@ -433,38 +448,40 @@ def part_update(id: str, data: PartInput, db: DB, who: Auth):
 @router.post("/parts/{id}/operations", tags=["Stock operations"])
 def stock_operation(id: str, data: StockInput, db: DB, who: Auth):
     from app.models import StockRequest
+    if who.user.role!='DIRECTOR' and not data.request_key:raise HTTPException(422,'Операція працівника потребує request_key')
     if data.sale_price is not None and not data.request_key:
         raise HTTPException(422,"Фінансовий продаж потребує request_key")
     from hashlib import sha256
     if data.request_key:
         # Account then Part, same lock order as donor receipts. Serializes keys
         # across different parts too, avoiding duplicate-key races.
-        db.scalar(select(Account).where(Account.id==who.user.id).with_for_update())
-    row = owned(db, Part, id, who.user.id, lock=True)
+        db.scalar(select(Account).where(Account.id==who.workspace_account_id).with_for_update())
+    row = owned(db, Part, id, who.workspace_account_id, lock=True)
     # Preserve pre-UX5.6 fingerprints exactly when financial fields are absent.
     payload=data.model_dump(mode='json',exclude={'request_key','sale_price','sale_currency'})
     if data.sale_price is not None:
         payload.update(sale_price=format(data.sale_price,'.2f'),sale_currency=data.sale_currency)
     fingerprint=sha256(json.dumps({'part_id':id,**payload},sort_keys=True).encode()).hexdigest()
     if data.request_key:
-        prior=db.scalar(select(StockRequest).where(StockRequest.account_id==who.user.id,StockRequest.request_key==data.request_key))
+        prior=db.scalar(select(StockRequest).where(StockRequest.account_id==who.workspace_account_id,StockRequest.request_key==data.request_key))
         if prior:
+            if prior.actor_id!=who.actor_id:raise HTTPException(409,'Ключ належить іншому виконавцю')
             if prior.fingerprint!=fingerprint:raise HTTPException(409,'Цей запит уже використано для іншої операції')
             return prior.response
-    stock(db, row, data, who.user.id)
+    stock(db, row, data, who.workspace_account_id)
     result={**snapshot(row), 'available_quantity':row.available_quantity}
     if data.request_key:
-        db.add(StockRequest(account_id=who.user.id,part_id=id,request_key=data.request_key,fingerprint=fingerprint,response=result))
+        db.add(StockRequest(account_id=who.workspace_account_id,actor_id=who.actor_id,part_id=id,request_key=data.request_key,fingerprint=fingerprint,response=result))
     db.commit()
     return result
 
 
 @router.patch('/parts/{id}/price',tags=['Inventory'])
 def price_update(id: str,data: PriceInput,db: DB,who: Auth):
-    row=owned(db,Part,id,who.user.id,lock=True,active=True)
+    row=owned(db,Part,id,who.workspace_account_id,lock=True,active=True)
     before=snapshot(row)
     row.selling_price,row.currency=data.selling_price,data.currency
-    if snapshot(row)!=before:record(db,who.user.id,row,'part_update','Оновлено ціну та валюту',before)
+    if snapshot(row)!=before:record(db,who.workspace_account_id,row,'part_update','Оновлено ціну та валюту',before)
     db.commit()
     return {**snapshot(row),'available_quantity':row.available_quantity}
 
@@ -485,17 +502,17 @@ def sales_readiness(db: DB,who: Auth):
 def bulk(data: BulkInput, db: DB, who: Auth):
     from app.schemas import StockInput
 
-    rows = [owned(db, Part, id, who.user.id, lock=True) for id in sorted(set(data.ids))]
+    rows = [owned(db, Part, id, who.workspace_account_id, lock=True) for id in sorted(set(data.ids))]
     for row in rows:
         if data.action == "transfer":
             stock(
                 db,
                 row,
                 StockInput(type="transfer", location=data.location, reason=data.reason),
-                who.user.id,
+                who.workspace_account_id,
             )
         else:
-            archive_row(db, row, who.user.id, data.action == "archive", data.reason)
+            archive_row(db, row, who.workspace_account_id, data.action == "archive", data.reason)
     db.commit()
     return {"updated": len(rows)}
 
@@ -520,13 +537,13 @@ def archive(
         db,
         {"vehicles": Vehicle, "parts": Part, "categories": Category}[entity],
         id,
-        who.user.id,
+        who.workspace_account_id,
         lock=True,
     )
     archive_row(
         db,
         row,
-        who.user.id,
+        who.workspace_account_id,
         not restore,
         "Відновлено з архіву" if restore else "Архівовано",
     )
@@ -545,7 +562,7 @@ def archive_list(
     return listing(
         db,
         {"vehicles": Vehicle, "parts": Part, "categories": Category}[entity],
-        who.user.id,
+        who.workspace_account_id,
         archived=True,
         offset=offset,
         limit=limit,
@@ -554,7 +571,7 @@ def archive_list(
 
 @router.get("/dashboard", tags=["Analytics"])
 def dashboard_get(db: DB, who: Auth):
-    return dashboard(db, who.user.id)
+    return dashboard(db, who.workspace_account_id)
 
 
 @router.get("/audit", tags=["Audit"])
@@ -570,7 +587,7 @@ def audit(
     offset: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=200),
 ):
-    stmt = select(Operation).where(Operation.account_id == who.user.id)
+    stmt = select(Operation).where(Operation.account_id == who.workspace_account_id)
     for col, val in [
         (Operation.type, type),
         (Operation.vehicle_id, vehicle_id),
@@ -584,17 +601,10 @@ def audit(
     if date_to:
         stmt = stmt.where(Operation.created_at <= date_to)
     total = db.scalar(select(func.count()).select_from(stmt.subquery()))
-    return {
-        "items": [
-            snapshot(r)
-            for r in db.scalars(
-                stmt.order_by(Operation.created_at.desc(), Operation.id)
-                .offset(offset)
-                .limit(limit)
-            )
-        ],
-        "total": total,
-    }
+    rows=list(db.scalars(stmt.order_by(Operation.created_at.desc(),Operation.id).offset(offset).limit(limit)))
+    actors=dict(db.execute(select(Account.id,Account.name).where(Account.id.in_({r.actor_id for r in rows}),((Account.id==who.workspace_account_id)|(Account.workspace_account_id==who.workspace_account_id)))).all()) if rows else {}
+    return {'items':[{**snapshot(r),'actor_name':(r.after.get('actor_identity') or {}).get('name') or actors.get(r.actor_id)} for r in rows],'total':total}
+
 
 
 @router.get("/settings", tags=["Settings"])
@@ -609,11 +619,11 @@ def settings(who: Auth):
 
 @router.get("/parts/{id}/photos", tags=["Photos"])
 def photos(id: str, db: DB, who: Auth):
-    owned(db, Part, id, who.user.id)
+    owned(db, Part, id, who.workspace_account_id)
     return [
         {"id": p.id, "url": f"/api/v1/photos/{p.id}"}
         for p in db.scalars(
-            select(Photo).where(Photo.part_id == id, Photo.account_id == who.user.id)
+            select(Photo).where(Photo.part_id == id, Photo.account_id == who.workspace_account_id)
         )
     ]
 
@@ -623,7 +633,7 @@ async def photo_upload(id: str, db: DB, who: Auth, file: UploadFile = File(...))
     from io import BytesIO
     from PIL import Image, UnidentifiedImageError
 
-    owned(db, Part, id, who.user.id, active=True)
+    owned(db, Part, id, who.workspace_account_id, active=True)
     folder = photo_dir()
     if not folder:
         raise HTTPException(409, "Сховище фото не налаштоване")
@@ -656,11 +666,15 @@ async def photo_upload(id: str, db: DB, who: Auth, file: UploadFile = File(...))
     filename = secrets.token_hex(24) + ".jpg"
     path = folder / filename
     row = Photo(
-        account_id=who.user.id, part_id=id, filename=filename, media_type="image/jpeg"
+        account_id=who.workspace_account_id, part_id=id, filename=filename, media_type="image/jpeg"
     )
     try:
         path.write_bytes(output.getvalue())
         db.add(row)
+        parent=db.get(Part,id)
+        operation=record(db,who.workspace_account_id,row,'photo_create','Додано фото',{})
+        operation.part_id=id
+        operation.vehicle_id=parent.vehicle_id
         db.commit()
     except Exception:
         path.unlink(missing_ok=True)
@@ -674,7 +688,7 @@ def photo_get(id: str, db: DB, who: Auth):
     folder = photo_dir()
     if (
         not row
-        or row.account_id != who.user.id
+        or row.account_id != who.workspace_account_id
         or not folder
         or not (folder / row.filename).is_file()
     ):

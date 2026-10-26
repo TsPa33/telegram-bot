@@ -65,9 +65,10 @@ def test_one_workflow_not_blocked_but_duplicate_is():
 def test_routes_validate_selectors_and_filter_without_auto_selecting():
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
-    from types import SimpleNamespace
     from app.api.plan_parts import router, plan_parts_client
-    from app.api.deps import identity
+    from app.api.deps import Identity, identity
+    from app.models import Account
+    from app.permissions import PERMISSIONS
     app = FastAPI()
     app.include_router(router)
     calls = []
@@ -78,7 +79,12 @@ def test_routes_validate_selectors_and_filter_without_auto_selecting():
         def modifications(self, account, selector):
             calls.append((account, selector))
             return [Modification(ktype=i, modification="TDI",year_from=1997,year_to=2004) for i in (16063,16064)]
-    app.dependency_overrides[identity] = lambda: SimpleNamespace(user=SimpleNamespace(id="account-a"))
+    app.dependency_overrides[identity] = lambda: Identity(
+        user=Account(id="account-a", role="DIRECTOR", workspace_account_id=None,
+                     permissions=[], is_active=True, must_change_password=False),
+        session=None, workspace_account_id="account-a", actor_id="account-a",
+        permissions=frozenset(PERMISSIONS),
+    )
     app.dependency_overrides[plan_parts_client] = lambda: Client()
     with TestClient(app) as client:
         assert client.post("/api/v1/plan-parts/models/lookup?mfa_id=0").status_code == 422

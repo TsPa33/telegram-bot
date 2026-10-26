@@ -27,12 +27,13 @@ def snapshot(row):
 
 def record(db, account_id, row, type, reason, before, *, after_extra=None):
     db.flush()
+    actor=db.get(Account,db.info.get('actor_id',account_id))
     operation = Operation(
-        account_id=account_id, actor_id=account_id,
+        account_id=account_id, actor_id=db.info.get("actor_id",account_id),
         part_id=row.id if isinstance(row, Part) else None,
         vehicle_id=row.vehicle_id if isinstance(row, (Part, VehicleChecklistItem, DismantlingItem)) else row.id if isinstance(row, Vehicle) else None,
         entity_id=row.id, entity_type=row.__tablename__, type=type, reason=reason,
-        before=before, after={**snapshot(row), **(after_extra or {})},
+        before=before, after={**snapshot(row), **(after_extra or {}), 'actor_identity':{'id':actor.id,'name':actor.name,'role':actor.role} if actor else None},
     )
     db.add(operation)
     return operation
@@ -87,7 +88,7 @@ def stock(db, row, data, account_id, *, reservation_id=None, return_operation=Fa
     sale_snapshot = None
     if data.type == "sale" and data.sale_price is not None:
         donor = db.get(Vehicle, row.vehicle_id) if row.vehicle_id else None
-        actor = db.get(Account, account_id)
+        actor = db.get(Account, db.info.get("actor_id",account_id))
         # Commercial snapshot lives in the existing immutable sale operation.
         # Never infer actual proceeds from the mutable Part.selling_price.
         sale_snapshot = {

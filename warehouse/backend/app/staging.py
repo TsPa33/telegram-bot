@@ -32,6 +32,13 @@ def migration_heads():
     return frozenset(ScriptDirectory.from_config(alembic_config()).get_heads())
 
 
+def schema_supports(required, versions):
+    if frozenset(versions) != migration_heads():
+        return False
+    scripts=ScriptDirectory.from_config(alembic_config())
+    return all(required in {r.revision for r in scripts.iterate_revisions(head,'base')} for head in versions)
+
+
 def migrate(timeout=120):
     """One session lock covers the whole upgrade, across concurrent deploys.
 

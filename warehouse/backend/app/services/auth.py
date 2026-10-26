@@ -35,12 +35,14 @@ def throttle(key):
 
 
 def authenticate(db, email, password):
-    user = db.scalar(select(Account).where(Account.email == email))
+    # Serialize authentication/session creation with password reset and blocking.
+    # Otherwise a pre-reset password could create a session after revocation.
+    user = db.scalar(select(Account).where(Account.email == email).with_for_update())
     try:
         hasher.verify(user.password_hash if user else DUMMY_HASH, password)
     except (VerificationError, InvalidHashError):
         raise HTTPException(401, "Невірна пошта або пароль")
-    if not user:
+    if not user or not user.is_active:
         raise HTTPException(401, "Невірна пошта або пароль")
     if hasher.check_needs_rehash(user.password_hash):
         user.password_hash = hasher.hash(password)
@@ -48,6 +50,7 @@ def authenticate(db, email, password):
 
 
 def create_session(db, user):
+    user.last_login_at=now()
     token, csrf = secrets.token_urlsafe(48), secrets.token_urlsafe(32)
     session = Session(
         token_hash=digest(token),
