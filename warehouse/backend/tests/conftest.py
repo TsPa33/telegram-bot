@@ -30,6 +30,9 @@ def clean(migrated):
                 "TRUNCATE photos, operations, parts, categories, vehicles, sessions, accounts CASCADE"
             )
         )
+    with engine().begin() as conn:
+        conn.execute(text('TRUNCATE catalogue_sources, catalogue_entities, catalogue_state CASCADE'))
+        conn.execute(text('INSERT INTO catalogue_state (id,revision) VALUES (1,0)'))
     _attempts.clear()
 
 

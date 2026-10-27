@@ -28,6 +28,10 @@ def route_permissions(method,path,body):
     if (method,path) not in KNOWN_ROUTES:return ['__deny__']
     path=path.removeprefix('/api/v1');read=method=='GET'
     if path in ('/auth/me','/auth/logout','/auth/password') or path in {'/team/readiness','/smart-search/readiness','/workshop/readiness','/orders/readiness','/sales-workspace/readiness','/vehicle-view/readiness','/dismantling/readiness','/dismantling/workspace-readiness','/dismantling/simple-readiness'}:return []
+    if path=='/catalogue/capabilities' or path.startswith('/catalogue/admin/'):
+        return []  # Admin endpoints independently require the platform allowlist.
+    if path=='/catalogue' or path.startswith('/catalogue/'):
+        return ['catalog.view']
     if path.startswith('/team'):return ['team.view'] if read else ['team.manage_managers']
     if path in ('/parts','/inventory') and read:return ['inventory.view']
     if path=='/parts/bulk-actions':return ['inventory.transfer' if body.get('action')=='transfer' else 'inventory.archive']

@@ -51,7 +51,8 @@ Auth = Annotated[Identity, Depends(identity)]
 
 def user_info(user):
     from app.services.team import user_info as info
-    return info(user)
+    from app.services.catalogue_import import platform_admin
+    return {**info(user), 'catalogue_platform_admin': platform_admin(user)}
 
 
 def session_response(db, response, user):

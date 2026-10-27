@@ -18,6 +18,16 @@ def local_catalog(db, account_id):
         values = catalog.setdefault(row.manufacturer, [])
         if row.model not in values:
             values.append(row.model)
+    from app.models.catalogue import CatalogueEntity
+    global_entities = {e.id: e for e in db.scalars(select(CatalogueEntity).where(CatalogueEntity.kind.in_(['manufacturer','model'])))}
+    for row in global_entities.values():
+        if row.kind != 'model':
+            continue
+        brand = global_entities[row.parent_id].name
+        existing_brand = next((b for b in catalog if b.casefold() == brand.casefold()), brand)
+        values = catalog.setdefault(existing_brand, [])
+        if row.name.casefold() not in {v.casefold() for v in values}:
+            values.append(row.name)
     canonical = {brand.casefold(): brand for brand in catalog}
     for brand, model in db.execute(select(Vehicle.manufacturer, Vehicle.model).where(
             Vehicle.account_id == account_id).distinct()):

@@ -18,6 +18,10 @@ class Identity:
 
 async def permission_body(request:Request):
     # Only body parsing is async; blocking SQL/row locks run in the worker pool.
+    # Global catalogue policy never uses client-supplied field permissions.
+    # Binary uploads must not be decoded here, even with a misleading MIME.
+    if request.url.path.startswith('/api/v1/catalogue/'):
+        return {'_route_action': request.path_params.get('action')}
     body={}
     if request.headers.get('content-type','').startswith('application/json'):
         body=await request.json()
