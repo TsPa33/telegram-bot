@@ -308,3 +308,5 @@ class TeamEvent(Base):
     type: Mapped[str] = mapped_column(String(40))
     data: Mapped[dict] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+from app.models.aleto import AletoModel, AletoOffer, AletoPrice, AletoApplication, AletoTaxonomy  # noqa: E402,F401

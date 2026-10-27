@@ -35,6 +35,7 @@ KNOWN_ROUTES = frozenset({
     ('GET', '/api/v1/vehicle-view/readiness'),
     ('GET', '/api/v1/vehicles'),
     ('GET', '/api/v1/vehicles/{id}'),
+    ('GET', '/api/v1/vehicles/{id}/aleto-catalog'),
     ('GET', '/api/v1/vehicles/{id}/analytics'),
     ('GET', '/api/v1/vehicles/{id}/dismantling'),
     ('GET', '/api/v1/vehicles/{id}/dismantling/workspace'),

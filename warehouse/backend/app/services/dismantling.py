@@ -25,6 +25,8 @@ def start(db, vehicle_id, account_id):
                 types.append(dict(source=CATALOG['version'],catalog_key=key,category_key=category['key'],
                     category_name=category['name'],subcategory_key=sub['key'],subcategory_name=sub['name'],name=name,position=position))
     types.extend(imported_types(db,account_id))
+    from app.services.aleto_catalog import potential_types
+    types.extend(potential_types(db, vehicle, account_id))
     for item in types:
         if (item['source'],item['catalog_key']) not in existing:
             db.add(DismantlingItem(account_id=account_id,vehicle_id=vehicle_id,**item))
@@ -60,6 +62,13 @@ def listing(db, vehicle_id, account_id):
 
 
 def category_node(db, account_id, source, key, name, kind, parent_id=None):
+    if source == 'aleto.v1' and kind in ('category', 'subcategory'):
+        # Reuse the merged reference dictionary, preserving existing category IDs.
+        node_id = key.split(':')[-1]
+        node = owned(db, Category, node_id, account_id, active=True)
+        if node.kind != kind or node.parent_id != parent_id:
+            raise HTTPException(409, 'Ієрархію довідника Aleto змінено')
+        return node
     if len(key)>200:
         from hashlib import sha256
         key='key-sha256:'+sha256(key.encode()).hexdigest()

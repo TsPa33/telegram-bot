@@ -1,0 +1,53 @@
+{
+  "sha256": "c2cdde72685a6f41c70922e569fd8eae81e8bcbd292273fa411314dd920dccd3",
+  "counts": {
+    "models": {
+      "inserted": 3,
+      "updated": 0,
+      "skipped": 0
+    },
+    "categories": {
+      "inserted": 110,
+      "updated": 0,
+      "skipped": 1
+    },
+    "offers": {
+      "inserted": 7246,
+      "updated": 0,
+      "skipped": 0
+    },
+    "prices": {
+      "inserted": 7246,
+      "updated": 0,
+      "skipped": 0
+    },
+    "applications": {
+      "inserted": 10112,
+      "updated": 0,
+      "skipped": 0
+    },
+    "taxonomy": {
+      "inserted": 14400,
+      "updated": 0,
+      "skipped": 0
+    }
+  },
+  "input": {
+    "offers": 7246,
+    "applications": 10112,
+    "taxonomy": 14400
+  },
+  "models": {
+    "Volvo XC40": 1472,
+    "Volvo XC60": 4155,
+    "Volvo XC90": 4485
+  },
+  "pending_subcategories": {
+    "Комп": 139
+  },
+  "missing_uah_prices": 421,
+  "missing_oem": 131,
+  "year_compatibility": "unverified",
+  "mode": "dry-run",
+  "committed": false
+}

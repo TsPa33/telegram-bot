@@ -35,7 +35,9 @@ class ChangePassword(ResetPassword):
 def readiness(db:DB,who:Auth):
     from app.staging import migration_heads
     heads=frozenset(db.execute(text('SELECT version_num FROM alembic_version')).scalars())
-    if heads!=migration_heads() or REVISION not in heads:raise HTTPException(503,'Team schema is not ready')
+    # Alembic stores only the latest head, not every applied ancestor.
+    # The packaged head includes the team revision; verify its schema below.
+    if heads!=migration_heads():raise HTTPException(503,'Team schema is not ready')
     db.execute(select(StockRequest.actor_id).limit(0));db.execute(select(OrderRequest.actor_id).limit(0))
     if not db.scalar(text("SELECT EXISTS(SELECT 1 FROM pg_constraint WHERE conrelid='accounts'::regclass AND conname='ck_account_workspace_role' AND convalidated)")):raise HTTPException(503,'Team role constraints are not ready')
     if not db.scalar(text("SELECT EXISTS(SELECT 1 FROM pg_trigger WHERE tgrelid='team_events'::regclass AND tgname='immutable_team_events' AND tgenabled='O')")):raise HTTPException(503,'Team security audit is not immutable')

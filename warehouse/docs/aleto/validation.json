@@ -1,0 +1,33 @@
+{
+  "backend": {
+    "passed": 328,
+    "skipped": 1,
+    "failed": 0,
+    "new_aleto_tests": 28,
+    "skip_reason": "Opt-in 100k local benchmark",
+    "duration_seconds": 177.8
+  },
+  "alembic_check": "passed",
+  "frontend_build": "passed",
+  "browser_viewports": [
+    1440,
+    390
+  ],
+  "existing_plan_parts_browser": "passed",
+  "protected_original_tables_compared": 20,
+  "existing_rows_changed_by_import": 0,
+  "source_database_sha256": "c2cdde72685a6f41c70922e569fd8eae81e8bcbd292273fa411314dd920dccd3",
+  "production_accessed": false,
+  "deployment": false,
+  "bundled_catalogue": true,
+  "bundled_sha256": "c2cdde72685a6f41c70922e569fd8eae81e8bcbd292273fa411314dd920dccd3",
+  "staging_target_guard_tests": "passed locally; no Railway imports executed",
+  "warehouse_files": 33,
+  "railway_live_isolation_verified": false,
+  "push_status": "not attempted per user condition",
+  "declared_potential_autodeploy_services": [
+    "warehouse-api",
+    "warehouse-web"
+  ],
+  "other_connected_services": "unknown without Railway access"
+}

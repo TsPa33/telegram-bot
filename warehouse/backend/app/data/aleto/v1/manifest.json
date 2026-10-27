@@ -1,0 +1,21 @@
+{
+  "source": "Aleto staging package supplied by user",
+  "version": 1,
+  "file": "catalogue.sqlite3.gz",
+  "sha256": "c2cdde72685a6f41c70922e569fd8eae81e8bcbd292273fa411314dd920dccd3",
+  "compressed_sha256": "1b6eab050b283cdfa2f068a2e1f187fb525817e8cffed84a91a2b428b16e565a",
+  "uncompressed_bytes": 6709248,
+  "compressed_bytes": 1043707,
+  "counts": {
+    "offers": 7246,
+    "applications": 10112,
+    "taxonomy_paths": 14400
+  },
+  "models": {
+    "Volvo XC40": 1472,
+    "Volvo XC60": 4155,
+    "Volvo XC90": 4485
+  },
+  "year_compatibility": "unverified",
+  "missing_uah_prices": 421
+}

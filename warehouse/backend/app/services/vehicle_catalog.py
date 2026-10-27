@@ -13,6 +13,11 @@ NAMES = json.loads((Path(__file__).resolve().parents[1] / "data/vehicle_names.js
 def local_catalog(db, account_id):
     # No provider fixture, external request, K-Type or inferred production years.
     catalog = {brand: list(models) for brand, models in NAMES.items()}
+    from app.models.aleto import AletoModel
+    for row in db.scalars(select(AletoModel).where(AletoModel.account_id == account_id)):
+        values = catalog.setdefault(row.manufacturer, [])
+        if row.model not in values:
+            values.append(row.model)
     canonical = {brand.casefold(): brand for brand in catalog}
     for brand, model in db.execute(select(Vehicle.manufacturer, Vehicle.model).where(
             Vehicle.account_id == account_id).distinct()):

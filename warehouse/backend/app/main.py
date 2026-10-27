@@ -26,6 +26,8 @@ app.include_router(plan_parts_router)
 app.include_router(checklists_router)
 app.include_router(dismantling_router)
 app.include_router(orders_router)
+from app.api.aleto import router as aleto_router
+app.include_router(aleto_router)
 from app.api.workshop import router as workshop_router
 app.include_router(workshop_router)
 if is_staging():

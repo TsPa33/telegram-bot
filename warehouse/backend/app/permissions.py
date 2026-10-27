@@ -46,6 +46,7 @@ def route_permissions(method,path,body):
     if path.startswith('/plan-parts/'):return ['vehicles.create']
     if path.startswith('/dismantling/catalog/'):return ['catalog.import']
     if path=='/vehicle-catalog':return ['vehicles.view']
+    if path.endswith('/aleto-catalog'):return ['vehicles.view','catalog.view']
     if path.startswith('/vehicles'):
         if '/analytics' in path:return ['analytics.view']
         if '/dismantling' in path or '/checklist' in path or '/plan-parts-checklist' in path:

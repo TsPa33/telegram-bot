@@ -74,6 +74,7 @@ export default function VehicleForm({initial, fields, onSave}: {initial: Row; fi
           <button type="button" disabled={busy || !modelId || !/^\d{4}$/.test(year)} onClick={() => lookup("modifications",`?ms_id=${modelId}`)}>Завантажити модифікації / повторити</button>
         </div>}
       </details>
+      {!provider && brand.toLowerCase()==='volvo' && ['XC40','XC60','XC90'].includes(model.toUpperCase()) && <small>Довідник Aleto, якщо імпортований у ваш робочий простір, доступний у картці автомобіля. Сумісність за роком та комплектацією потребує перевірки.</small>}
       {!provider && <small>Локальний довідник неповний. Відсутню назву можна ввести й підтвердити у списку. Роки виробництва в ньому не вказані.</small>}
       {!provider && local.error && <small role="status">Довідник недоступний. Ручне введення працює. <button type="button" onClick={local.reload}>Повторити</button></small>}
       {busy && <p role="status">Завантаження Plan.Parts…</p>}

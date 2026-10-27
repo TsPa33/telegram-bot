@@ -5,6 +5,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, money, type Page, type Row } from "../api";
 import { Empty, Modal, Pager, type Field } from "../components";
 import VehicleForm from "../VehicleForm";
+import AletoCatalogue from "../AletoCatalogue";
 import VehicleChecklist from "../VehicleChecklist";
 import Dismantling from "../Dismantling";
 import PowertrainEditor from "../PowertrainEditor";
@@ -121,6 +122,7 @@ function VehicleDetail({
   return (
     <>
       <PowertrainEditor vehicle={v} onSaved={onSaved}/>
+      {can('catalog.view')&&can('vehicles.view')&&<AletoCatalogue key={v.id} vehicleId={v.id}/>}
       {canCatalog&&<Dismantling vehicle={v} onChange={() => {reloadAnalytics();onRefresh();}} onInventory={onInventory} />}
       <details className="vehicle-secondary" open={showInfo}><summary>Дані автомобіля</summary>
       {!v.archived&&<div className="modal-actions"><Permit permission="vehicles.edit"><button onClick={onEdit}>Редагувати дані</button></Permit><Permit permission="inventory.archive"><button onClick={onArchive}>Архівувати автомобіль</button></Permit></div>}
