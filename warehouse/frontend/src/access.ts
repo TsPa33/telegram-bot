@@ -5,7 +5,7 @@ export function allowed(user:Row|null,permission:string):boolean {
 export const roleLabel=(role:string)=>({DIRECTOR:'Директор',ADMIN:'Адміністратор',MANAGER:'Менеджер'}[role]||'Невідома роль');
 // Changes invalidate protected React screens and their cached server responses.
 export function identityKey(user:Row|null):string {
- return user?JSON.stringify([user.id,user.workspace_account_id,user.role,user.must_change_password,
+ return user?JSON.stringify([user.id,user.workspace_account_id,user.role,user.must_change_password,user.catalogue_platform_admin===true,
   Array.isArray(user.permissions)?[...new Set(user.permissions)].sort():[]]):'anonymous';
 }
 

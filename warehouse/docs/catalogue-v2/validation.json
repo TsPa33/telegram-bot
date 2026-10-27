@@ -1,0 +1,65 @@
+{
+  "base_commit": "9589e5e7bf4b7c694c885ddbdab62f18ea079715",
+  "backend_commit": "036fee4b83839051e0a2d52da88cb76089d2934c",
+  "migration": {
+    "revision": "021e8f6f220c",
+    "parent": "b8716962f6b8",
+    "heads": 1,
+    "alembic_check": "passed"
+  },
+  "backend_full": {
+    "passed": 353,
+    "skipped": 1,
+    "failed": 0,
+    "seconds": 266.05,
+    "skip": "Opt-in 100k benchmark"
+  },
+  "v2_cases_total": 26,
+  "final_control_regression": {
+    "passed": 25,
+    "deselected": 1,
+    "seconds": 11.68
+  },
+  "final_transport_cases": {
+    "passed": 2,
+    "deselected": 24,
+    "seconds": 1.31
+  },
+  "frontend_unit": {
+    "passed": 187
+  },
+  "browser": {
+    "catalogue_viewports": [
+      1440,
+      390
+    ],
+    "owner_only": "passed",
+    "ux581_viewports": [
+      1440,
+      768,
+      390
+    ],
+    "workshop_cases_per_viewport": 60,
+    "plan_parts": "desktop + iPhone passed"
+  },
+  "corpus_A": {
+    "offers": 7246,
+    "applications": 10112,
+    "paths": 14400
+  },
+  "synthetic_B": {
+    "offers": 7248,
+    "price_observations": 7249
+  },
+  "repeat_C": {
+    "inserted": 0,
+    "updated": 0
+  },
+  "startup_backfill": false,
+  "selling_price_algorithm": false,
+  "recommended_price": false,
+  "staging_import": false,
+  "production_changes": false,
+  "push": false,
+  "deployment": false
+}

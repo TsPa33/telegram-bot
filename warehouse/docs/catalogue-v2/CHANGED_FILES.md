@@ -1,0 +1,49 @@
+# Змінені файли Universal Catalogue v2
+
+База `9589e5e7bf4b7c694c885ddbdab62f18ea079715`. Усі 45 файли лише під `warehouse/`; gitignored screenshots/build outputs до комітів не входять.
+
+- `backend/alembic/versions/021e8f6f220c_global_catalogue_v2.py`
+- `backend/app/api/catalogue.py`
+- `backend/app/api/catalogue_limits.py`
+- `backend/app/api/deps.py`
+- `backend/app/api/routes.py`
+- `backend/app/main.py`
+- `backend/app/models/__init__.py`
+- `backend/app/models/catalogue.py`
+- `backend/app/permissions.py`
+- `backend/app/route_registry.py`
+- `backend/app/services/catalogue_format.py`
+- `backend/app/services/catalogue_import.py`
+- `backend/app/services/vehicle_catalog.py`
+- `backend/tests/conftest.py`
+- `backend/tests/test_catalogue_v2.py`
+- `backend/tests/test_dismantling_readiness.py`
+- `backend/tests/test_dismantling_v2.py`
+- `backend/tests/test_plan_parts_migration.py`
+- `backend/tests/test_quick_vehicle.py`
+- `backend/tests/test_smart_migration_permissions.py`
+- `backend/tests/test_staging.py`
+- `docs/catalogue-v2/CHANGED_FILES.md`
+- `docs/catalogue-v2/FORMAT.md`
+- `docs/catalogue-v2/README.md`
+- `docs/catalogue-v2/REPORT.md`
+- `docs/catalogue-v2/validation.json`
+- `examples/catalogue-v2/README.md`
+- `examples/catalogue-v2/bmw-audi.csv`
+- `examples/catalogue-v2/bmw-audi.zip`
+- `examples/catalogue-v2/manifest.example.json`
+- `examples/catalogue-v2/volvo-increment.csv`
+- `examples/catalogue-v2/volvo-initial.csv`
+- `frontend/src/App.tsx`
+- `frontend/src/GlobalCatalogue.tsx`
+- `frontend/src/WorkshopDialogs.tsx`
+- `frontend/src/access.ts`
+- `frontend/src/pages/Catalog.tsx`
+- `frontend/src/pages/CatalogueImport.tsx`
+- `frontend/src/smartSearch.ts`
+- `frontend/src/teamReadiness.ts`
+- `frontend/tests/catalogue-v2.mjs`
+- `frontend/tests/smart-search-unit.mjs`
+- `frontend/tests/team-unit.mjs`
+- `frontend/tests/workshop-gate-browser.mjs`
+- `frontend/tests/workshop-gate-unit.mjs`

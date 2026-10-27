@@ -6,7 +6,7 @@ const origin='http://127.0.0.1:5173',endpoint='**/api/v1/workshop/readiness';
 const features=['actual_quick_sale_price','ledger_sales_projection','notes_compare_and_set','inspection_patch'];
 const response=head=>({status:'ready',contract_version:7,required_revision:'d86f21a90b34',database_revisions:[head],features});
 const cases=[];
-for(const head of ['d86f21a90b34','a73e05b9c842','b94f62d18e07']){
+for(const head of ['d86f21a90b34','a73e05b9c842','b94f62d18e07','b8716962f6b8','021e8f6f220c']){
  cases.push([`ready ${head}`,{body:response(head)},true]);
  cases.push([`wrong contract ${head}`,{body:{...response(head),contract_version:8}},false]);
  cases.push([`wrong minimum ${head}`,{body:{...response(head),required_revision:head==='d86f21a90b34'?'unknown':head}},false]);

@@ -38,3 +38,9 @@ test('a superseded session response cannot leak data, log out the new user or di
   assert.deepEqual(events,['warehouse:permissions-changed']);
  }finally{Object.assign(globalThis,saved);}
 });
+
+for(const head of ['b8716962f6b8','021e8f6f220c']){
+ test('accept verified additive catalogue head '+head,()=>assert(isTeamReady({...valid,database_revisions:[head]})));
+ for(const patch of [{contract_version:8},{required_revision:head},{features:[]},{database_revisions:[head,TEAM_REVISION]}])test('keep team contract checks '+head+JSON.stringify(patch),()=>assert.equal(isTeamReady({...valid,database_revisions:[head],...patch}),false));
+}
+test('platform capability change invalidates protected caches',()=>assert.notEqual(identityKey(user),identityKey({...user,catalogue_platform_admin:true})));

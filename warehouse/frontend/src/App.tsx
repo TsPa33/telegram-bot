@@ -28,6 +28,7 @@ import {
 } from "react-router-dom";
 import { api, type Row } from "./api";
 
+import CatalogueImport from "./pages/CatalogueImport";
 import Team,{PasswordChange} from './Team';
 import {TeamIdentity,allowed,roleLabel,identityKey,ADVANCED_PERMISSIONS} from './permissions';
 import Archive from "./pages/Archive";
@@ -145,10 +146,10 @@ export default function App() {
     );
   if(user.must_change_password)return <PasswordChange user={user} onDone={()=>changeUser(null)}/>;
   const can=(p:string)=>allowed(user,p);
-  const routePermission=(path:string)=>path==='/settings'?'':path==='/inventory/advanced'||path==='/operations'?'inventory.adjust_quantity':path.startsWith('/team')?'team.view':path.startsWith('/orders')?'orders.view':path==='/vehicles'?'vehicles.view':path==='/statistics'?'analytics.view':path==='/sales'?'sales.view':path==='/catalog'?'catalog.view':path==='/analytics'||path==='/operations'?'audit.view':path==='/archive'?'inventory.archive':'inventory.view';
+  const routePermission=(path:string)=>path==='/administration/catalogue/import'?'':path==='/settings'?'':path==='/inventory/advanced'||path==='/operations'?'inventory.adjust_quantity':path.startsWith('/team')?'team.view':path.startsWith('/orders')?'orders.view':path==='/vehicles'?'vehicles.view':path==='/statistics'?'analytics.view':path==='/sales'?'sales.view':path==='/catalog'?'catalog.view':path==='/analytics'||path==='/operations'?'audit.view':path==='/archive'?'inventory.archive':'inventory.view';
   const advanced=ADVANCED_PERMISSIONS;
   const routeAllowed=(!routePermission(location.pathname)||can(routePermission(location.pathname)))&&(!['/inventory/advanced','/operations'].includes(location.pathname)||advanced.every(can))&&(location.pathname!=='/archive'||can('inventory.view'));
-  const current = [...nav,...secondary].find((n) => n.to === location.pathname || (n.to === "/orders" && location.pathname.startsWith("/orders/")));
+  const current = [...nav,...secondary,{to:"/administration/catalogue/import",label:"Імпорт глобального каталогу"}].find((n) => n.to === location.pathname || (n.to === "/orders" && location.pathname.startsWith("/orders/")));
   return (
     <TeamIdentity.Provider value={user}><div className="app">
       <aside className={menu ? "sidebar open" : "sidebar"}>
@@ -179,6 +180,7 @@ export default function App() {
             </NavLink>
           ))}
         </nav>
+        {user.catalogue_platform_admin===true&&<NavLink to="/administration/catalogue/import"><ShieldCheck size={18}/>Адміністрування → Каталог → Імпорт</NavLink>}
         <NavLink className="settings-nav" to="/settings"><Settings2 size={18}/>Налаштування</NavLink>
         <div className="sidebar-foot">
           <div className="safe-dot" />
@@ -235,6 +237,7 @@ export default function App() {
         <div className="team-identity-line" role="region" aria-label="Працівник і склад"><strong>{user.name}</strong><span>{roleLabel(user.role)} · {user.workspace_name||'Мій склад'}</span></div>
         <main key={identityKey(user)}>
           {accessUnverified?<section className="panel padded"><h1>Перевіряємо доступ</h1><p>Дані приховані, доки сервер не підтвердить ваші поточні права.</p><button onClick={()=>retryIdentity.current(true)}>Перевірити доступ</button></section>:!routeAllowed?<section className="panel padded"><h1>Доступ обмежено</h1><p>Зверніться до директора для надання дозволу.</p></section>:<Routes>
+            <Route path="/administration/catalogue/import" element={<CatalogueImport enabled={user.catalogue_platform_admin===true}/>}/>
             <Route path="/team" element={<Team user={user} notify={notify}/>}/>
             <Route path="/" element={<SalesWorkspace accountId={user.id} quick notify={notify}/>} />
             <Route path="/sales" element={<SalesLedger/>}/>

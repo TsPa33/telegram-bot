@@ -1,4 +1,5 @@
 import {Permit} from '../permissions';
+import GlobalCatalogue from '../GlobalCatalogue';
 import {
   Archive as ArchiveIcon,
   ClipboardList,
@@ -41,6 +42,7 @@ export default function Catalog({ notify }: { notify: Notify }) {
           Імпорт категорій
         </button></Permit>
       </Heading>
+      <GlobalCatalogue/>
       <div className="notice">
         <ClipboardList size={20} />
         <div>

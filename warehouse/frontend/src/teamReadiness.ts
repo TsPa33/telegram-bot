@@ -4,7 +4,7 @@ export function isTeamReady(value:unknown):boolean {
  if(!value||typeof value!=='object')return false;
  const r=value as Record<string,unknown>;
  return r.status==='ready'&&r.contract_version===9&&r.required_revision===TEAM_REVISION
-  &&Array.isArray(r.database_revisions)&&r.database_revisions.length===1&&r.database_revisions[0]===TEAM_REVISION
+  &&Array.isArray(r.database_revisions)&&r.database_revisions.length===1&&[TEAM_REVISION,'b8716962f6b8','021e8f6f220c'].includes(r.database_revisions[0] as string)
   &&Array.isArray(r.features)&&TEAM_FEATURES.every(f=>(r.features as unknown[]).includes(f))
   &&typeof r.employee_creation_enabled==='boolean';
 }
