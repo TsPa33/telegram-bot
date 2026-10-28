@@ -311,3 +311,4 @@ class TeamEvent(Base):
 
 from app.models.aleto import AletoModel, AletoOffer, AletoPrice, AletoApplication, AletoTaxonomy  # noqa: E402,F401
 from app.models.catalogue import CatalogueEntity, CatalogueAlias, CatalogueSource, CatalogueOffer, CataloguePrice, CatalogueApplication, CataloguePath, CatalogueState, CatalogueJob  # noqa: E402,F401
+from app.models.canonical import CanonicalType,CanonicalPlacement,CanonicalVariant,CanonicalAlias,CanonicalFitment,CanonicalRun,CanonicalState,CanonicalMapping  # noqa: E402,F401

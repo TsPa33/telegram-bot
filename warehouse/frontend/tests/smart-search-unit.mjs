@@ -22,7 +22,7 @@ test('optional expected HTTP status is strict; legacy success semantics unchange
  }finally{Object.assign(globalThis,saved);}
 });
 
-for (const head of [SMART_REVISION,'b94f62d18e07','b8716962f6b8','021e8f6f220c','41f9a2c87d10']) {
+for (const head of [SMART_REVISION,'b94f62d18e07','b8716962f6b8','021e8f6f220c','41f9a2c87d10','5c7d9e1a320f']) {
  const ready={...valid,database_revisions:[head]};
  for (const [name,patch] of Object.entries({status:{status:'starting'},contract:{contract_version:7},minimum:{required_revision:head===SMART_REVISION?'unknown':head},multiple:{database_revisions:[head,SMART_REVISION]},features:{features:[]}}))
   test(`compatible head ${head} still rejects ${name}`,()=>assert.equal(isSmartReady({...ready,...patch}),false));

@@ -21,7 +21,7 @@ export function WorkshopGate({children}:{children:ReactNode}) {
   const features=['actual_quick_sale_price','ledger_sales_projection','notes_compare_and_set','inspection_patch'];
   // required_revision is the v7 minimum schema, not the installed Alembic head.
   const revisions=result?.database_revisions;
-  const allowedHeads=['d86f21a90b34','a73e05b9c842','b94f62d18e07','b8716962f6b8','021e8f6f220c','41f9a2c87d10'];
+  const allowedHeads=['d86f21a90b34','a73e05b9c842','b94f62d18e07','b8716962f6b8','021e8f6f220c','41f9a2c87d10','5c7d9e1a320f'];
   const singleKnownHead=Array.isArray(revisions)&&revisions.length===1&&allowedHeads.includes(revisions[0]);
   if(result?.status!=='ready'||result.contract_version!==7||result.required_revision!=='d86f21a90b34'||!singleKnownHead||!Array.isArray(result.features)||!features.every(f=>result.features.includes(f)))throw Error('Backend майстерні ще не підтвердив готовність.');
   return result;

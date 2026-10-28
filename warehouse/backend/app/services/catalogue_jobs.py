@@ -116,7 +116,11 @@ def start_worker():
         worker_engine=create_engine(database_url(),poolclass=NullPool)
         try:
             while not stop.is_set():
-                try:worked=process_one(worker_engine)
+                try:
+                    worked=process_one(worker_engine)
+                    if not worked:
+                        from app.services.canonical_jobs import process_one as canonical_work
+                        worked=canonical_work(worker_engine)
                 except Exception:
                     log.exception('Catalogue worker unavailable');worked=False
                 if not worked:stop.wait(1)
