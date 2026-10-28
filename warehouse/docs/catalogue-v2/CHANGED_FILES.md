@@ -65,3 +65,12 @@
 Runtime: `backend/app/services/catalogue_import.py`, new `catalogue_jobs.py`, `backend/app/api/catalogue.py`, `backend/app/main.py`, `backend/app/models/catalogue.py`. Additive migration: `backend/alembic/versions/41f9a2c87d10_catalogue_operations.py`. Reproducible local performance script: `backend/scripts/benchmark_catalogue_jobs.py`.
 
 UI: `frontend/src/pages/CatalogueImport.tsx`; new-head compatibility in `teamReadiness.ts`, `smartSearch.ts`, `WorkshopDialogs.tsx`. Tests: new `backend/tests/test_catalogue_jobs.py`, updated catalogue helpers, six existing readiness/migration head expectations, backend fixture worker isolation, and frontend browser/readiness tests. Docs: README, CHANGED_FILES, TIMEOUT_FIX, timeout-benchmarks.json. All remain under Warehouse.
+
+## Local review UX fix after `069d518`
+
+- `frontend/src/pages/CatalogueImport.tsx`, `frontend/src/catalogueReview.ts`, `frontend/src/catalogue-import.css`, `frontend/src/App.tsx`
+- `frontend/tests/catalogue-review-unit.mjs`, `frontend/tests/catalogue-review-browser.mjs`, `frontend/tests/catalogue-v2.mjs`
+- `backend/app/api/catalogue.py`, `backend/app/services/catalogue_jobs.py`, `backend/tests/test_catalogue_jobs.py` (owner-only read-only submitted-decision metadata)
+- `docs/catalogue-v2/REVIEW_UX_FIX.md`, README, CHANGED_FILES
+
+No schema/planner/deduplication/stock/price/finance changes.

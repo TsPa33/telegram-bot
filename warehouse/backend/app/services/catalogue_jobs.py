@@ -46,9 +46,10 @@ def enqueue(db,job_id,kind,command,who):
     return operation
 
 
-def operation_summary(op):
+def operation_summary(op,include_command=False):
     return dict(id=op.id,kind=op.kind,status=op.status,progress=op.progress,error=op.error,
-                created_at=op.created_at,finished_at=op.finished_at)
+                created_at=op.created_at,finished_at=op.finished_at,
+                **({'submitted_resolutions':op.command.get('resolutions',{})} if include_command and op.kind=='preview' else {}))
 
 
 def authorize(db,op):

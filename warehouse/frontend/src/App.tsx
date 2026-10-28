@@ -237,7 +237,7 @@ export default function App() {
         <div className="team-identity-line" role="region" aria-label="Працівник і склад"><strong>{user.name}</strong><span>{roleLabel(user.role)} · {user.workspace_name||'Мій склад'}</span></div>
         <main key={identityKey(user)}>
           {accessUnverified?<section className="panel padded"><h1>Перевіряємо доступ</h1><p>Дані приховані, доки сервер не підтвердить ваші поточні права.</p><button onClick={()=>retryIdentity.current(true)}>Перевірити доступ</button></section>:!routeAllowed?<section className="panel padded"><h1>Доступ обмежено</h1><p>Зверніться до директора для надання дозволу.</p></section>:<Routes>
-            <Route path="/administration/catalogue/import" element={<CatalogueImport enabled={user.catalogue_platform_admin===true}/>}/>
+            <Route path="/administration/catalogue/import" element={<CatalogueImport enabled={user.catalogue_platform_admin===true} actorKey={JSON.stringify([user.id,user.workspace_account_id||user.id])}/>}/>
             <Route path="/team" element={<Team user={user} notify={notify}/>}/>
             <Route path="/" element={<SalesWorkspace accountId={user.id} quick notify={notify}/>} />
             <Route path="/sales" element={<SalesLedger/>}/>

@@ -1,0 +1,34 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import ts from 'typescript';
+const code=ts.transpileModule(await readFile(new URL('../src/catalogueReview.ts',import.meta.url),'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}}).outputText;
+const m=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
+const issues=Array.from({length:6},(_,i)=>({key:'key'+i,kind:'subcategory',name:'Початкова '+i,allowed_actions:['create_name','target','skip'],candidates:[]}));
+const decisions=Object.fromEntries(issues.map((r,i)=>[r.key,{action:'create_name',name:'Українська назва '+i}]));
+const old={id:'job-a',file_sha256:'a'.repeat(64),status:'review',resolutions:{},preview_token:'old',report:{issues,counts:{},unresolved_total:6,suggestion_total:9542},operation:{id:'old-op',kind:'preview',status:'done'}};
+const queued={...old,operation:{id:'new-op',kind:'preview',status:'queued',submitted_resolutions:decisions}};
+const done={...old,status:'ready',resolutions:decisions,preview_token:'new',report:{...old.report,issues:[],unresolved_total:0},operation:{...queued.operation,status:'done'}};
+function filled(){let s=m.openReview(structuredClone(old),null,'owner');for(const [key,v] of Object.entries(decisions))s=m.editDecision(s,key,v);return s;}
+function submitted(){return m.accepted(m.begin(filled(),'preview'),queued);}
+test('202 with old resolutions preserves six names and hides previous preview',()=>{const s=submitted();assert.deepEqual(s.draft,decisions);assert.deepEqual(s.checked,{});assert(!m.canApply(s));assert(!m.showReport(s));assert.equal(s.pending.operationId,'new-op');});
+test('later edits are not overwritten by terminal poll',()=>{let s=m.editDecision(submitted(),'key0',{action:'create_name',name:'Пізніше редагування'});assert.equal(s.pending.sent.key0.name,'Українська назва 0');s=m.reconcile(s,done);assert.equal(s.draft.key0.name,'Пізніше редагування');assert(!m.canApply(s));});
+test('terminal poll validates actual report and resolutions',()=>{const s=m.reconcile(submitted(),done);assert.deepEqual(s.checked,decisions);assert.equal(s.job.report.unresolved_total,0);assert.equal(s.rows.length,6);assert(m.canApply(s));});
+test('reload while running preserves draft and operation snapshot',()=>{const saved=JSON.parse(JSON.stringify(m.savedReview(submitted(),'owner')));const restored=m.openReview(queued,saved,'owner');assert.deepEqual(restored.draft,decisions);assert.equal(restored.pending.operationId,'new-op');assert(m.canApply(m.reconcile(restored,done)));});
+test('reload after completion reconciles against server data',()=>assert(m.canApply(m.openReview(done,m.savedReview(submitted(),'owner'),'owner'))));
+test('operation error preserves names and exact message',()=>{const s=m.reconcile(submitted(),{...queued,operation:{...queued.operation,status:'error',error:'Неоднозначна назва у рядку 3'}});assert.deepEqual(s.draft,decisions);assert.equal(s.error,'Неоднозначна назва у рядку 3');assert(!m.canApply(s));assert(!m.showReport(s));});
+test('HTTP 504 after acceptance recovers command status',()=>{const s=m.reconcile({...m.begin(filled(),'preview'),error:'HTTP 504'},queued);assert.equal(s.pending.operationId,'new-op');assert.deepEqual(s.draft,decisions);assert(m.canApply(m.reconcile(s,done)));});
+test('timeout without acceptance never promotes the old result',()=>{const s=m.reconcile({...m.begin(filled(),'preview'),error:'HTTP 504'},old);assert.deepEqual(s.draft,decisions);assert.equal(s.pending,null);assert.equal(s.error,'HTTP 504');assert(!m.canApply(s));});
+test('mismatched completed resolutions block apply',()=>{const s=m.reconcile(submitted(),{...done,resolutions:{}});assert.deepEqual(s.draft,decisions);assert.match(s.error,/іншими рішеннями/);assert(!m.canApply(s));});
+test('concurrent operation keeps local edits and blocks stale preview',()=>{const s=m.reconcile(submitted(),{...done,operation:{...done.operation,id:'other-op'}});assert.deepEqual(s.draft,decisions);assert(!m.canApply(s));});
+test('late result for another selected job is ignored',()=>{const s=submitted();assert.equal(m.reconcile(s,{...done,id:'other-job'}),s);assert.equal(m.accepted(s,{...queued,id:'other-job'}),s);});
+test('SHA change discards mismatched draft and blocks apply',()=>{const s=m.reconcile(submitted(),{...done,file_sha256:'b'.repeat(64),resolutions:{}});assert.deepEqual(s.draft,{});assert.match(s.error,/SHA/);assert(!m.canApply(s));});
+for(const [name,patch] of [['actor',{actor:'other'}],['job',{jobId:'other'}],['sha',{sha:'other'}],['malformed',{draft:{key0:{action:'execute'}}}]])test('restore rejects mismatched '+name,()=>assert.deepEqual(m.openReview(old,{...m.savedReview(filled(),'owner'),...patch},'owner').draft,{}));
+test('storage keys include authenticated owner identity',()=>{assert.notEqual(m.draftKey('owner',old),m.draftKey('other',old));assert.notEqual(m.lastKey('owner'),m.lastKey('other'));});
+test('server command can recover names when browser draft is absent',()=>{const s=m.openReview(queued,null,'owner');assert.deepEqual(s.draft,decisions);assert.equal(s.pending.operationId,'new-op');});
+test('failed server command restores names without claiming ready',()=>{const s=m.openReview({...queued,operation:{...queued.operation,status:'error',error:'Сесію відкликано'}},null,'owner');assert.deepEqual(s.draft,decisions);assert(!m.canApply(s));});
+test('repeat preview waits for its own completed operation',()=>{let s=m.begin(m.reconcile(submitted(),done),'preview');assert(!m.canApply(s));s=m.accepted(s,{...done,operation:{...queued.operation,id:'repeat'}});assert(!m.showReport(s));assert(m.canApply(m.reconcile(s,{...done,operation:{...done.operation,id:'repeat'}})));});
+test('9542 optional recommendations do not become mandatory',()=>{const s=m.reconcile(submitted(),done);assert.equal(s.rows.length,6);assert.equal(s.job.report.suggestion_total,9542);assert(m.canApply(s));});
+test('required decision values and canonical equality',()=>{assert(!m.complete({action:'create_name',name:'  '}));assert(!m.complete({action:'target'}));assert(m.complete({action:'skip'}));assert(m.equal({a:{action:'create_name',name:'Деталь'}},{a:{name:'Деталь',action:'create_name'}}));});
+test('clearing a required decision does not remove its row after reload',()=>{const edited=m.editDecision(m.reconcile(submitted(),done),'key0',undefined);const restored=m.openReview(done,m.savedReview(edited,'owner'),'owner');assert.equal(restored.rows.length,6);assert.equal(restored.draft.key0,undefined);assert(!m.canApply(restored));});
+test('legacy ready job restores all six server decisions without a browser draft',()=>{const restored=m.openReview(done,null,'owner');assert.deepEqual(restored.draft,decisions);assert.equal(restored.rows.length,6);assert(restored.rows.every(r=>r.sourceUnavailable));assert(m.canApply(restored));});

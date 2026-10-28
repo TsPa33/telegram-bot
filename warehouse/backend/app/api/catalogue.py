@@ -33,7 +33,7 @@ def summary(job,detail=False,operation=None):
     report=job.report if detail else {k:v for k,v in job.report.items() if k not in ('issues','suggestions')}
     return dict(id=job.id,filename=job.filename,file_sha256=job.file_sha256,payload_sha256=job.payload_sha256,
                 format=job.format,status=job.status,created_at=job.created_at,applied_at=job.applied_at,
-                operation=operation_summary(operation) if operation else None,
+                operation=operation_summary(operation,include_command=detail) if operation else None,
                 preview_token=job.preview_token,report=report,**({'resolutions':job.resolutions} if detail else {}))
 
 

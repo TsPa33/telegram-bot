@@ -192,3 +192,19 @@ def test_concurrent_http_submissions_enqueue_only_one_command(platform):
     with Session(engine()) as db:assert db.scalar(select(func.count()).select_from(Operation))==1
     process_one(engine())
     assert get(platform,job)['status']=='ready'
+
+
+def test_owner_detail_exposes_submitted_preview_decisions_without_mutation(platform):
+    job=upload(platform)
+    sent={'synthetic-pending-key':{'action':'create_name','name':'Перевірена українська назва'}}
+    queued=command(platform,job,resolutions=sent)
+    assert queued['resolutions']=={}
+    assert queued['operation']['submitted_resolutions']==sent
+    fetched=get(platform,job)
+    assert fetched['resolutions']=={} and fetched['status']=='uploaded'
+    assert fetched['operation']['status']=='queued'
+    assert fetched['operation']['submitted_resolutions']==sent
+    assert 'session_hash' not in fetched['operation']
+    history=platform.get('/api/v1/catalogue/admin/jobs').json()['items'][0]
+    assert 'submitted_resolutions' not in history['operation']
+    assert counts()['catalogue_offers']==0
