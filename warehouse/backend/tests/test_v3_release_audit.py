@@ -42,14 +42,14 @@ def test_batch_preserves_each_audit_and_avoids_per_row_flush(platform,vehicle,pa
         assert before==snapshot(db.get(Part,part['id']))
 
 
-def test_etag_bytes_compatible_with_original_encoder(platform,vehicle,part):
+def test_nonfinancial_etag_projection_has_stable_json_bytes(platform,vehicle,part):
     from app.models import Vehicle
     setup_vehicle(vehicle);save(platform,vehicle,preview(platform,vehicle))
     with Session(engine()) as db:
         v=db.get(Vehicle,vehicle['id']);rows=managed.rows_for(db,v)
         parts=list(db.scalars(select(Part).where(Part.account_id==v.account_id,Part.vehicle_id==v.id).order_by(Part.id)))
         ops=list(db.scalars(select(Operation.id).where(Operation.account_id==v.account_id,Operation.vehicle_id==v.id).order_by(Operation.id)))
-        original=digest(jsonable_encoder([v.id,v.account_id,basis(v),v.archived,v.dismantling_v3,[snapshot(r) for r in rows],[snapshot(p) for p in parts],ops]))
+        original=digest(jsonable_encoder([v.id,v.account_id,basis(v),v.archived,v.dismantling_v3,[snapshot(r) for r in rows],[{k:getattr(p,k) for k in managed.PART_STATE_FIELDS} for p in parts],ops]))
         assert managed.state(db,v,rows)==original
 
 
@@ -123,3 +123,28 @@ def test_upgrade_from_staging_revision_preserves_real_A_and_populated_business_d
         from pathlib import Path
         Path(destination).write_text(json.dumps(dict(dataset='real Volvo A; synthetic local stock/sale/reservation/legacy-exclusion fixtures, NOT a Railway DB copy',from_revision='41f9a2c87d10',to_revision='84d2c6fa190b',offers=counts[0],applications=counts[1],paths=counts[2],all_original_columns_and_tables_unchanged=True,legacy_plan_accessible=True,no_canonical_backfill=True,fk_validated=True),indent=2)+'\n')
     finally:subprocess.run([sys.executable,'-m','alembic','upgrade','head'],check=True,capture_output=True)
+
+
+def test_plan_etag_is_not_a_private_cost_guessing_oracle(platform,vehicle,part,monkeypatch):
+    """A read-only employee must not validate hidden cost guesses using public data."""
+    from test_team import employee,activate
+    from app.services.vehicle_configuration import BASIS
+    monkeypatch.setenv('WAREHOUSE_TEAM_CREATION_ENABLED','true')
+    _,data=employee(platform,['inventory.view','vehicles.view','catalog.view','audit.view']);c=activate(data)
+    try:
+        public_part=c.get('/api/v1/parts/'+part['id']).json()
+        assert 'unit_cost' not in public_part
+        public_vehicle=c.get('/api/v1/vehicles/'+vehicle['id']).json()
+        operations=c.get('/api/v1/audit',params={'vehicle_id':vehicle['id'],'limit':200}).json()['items']
+        ids=sorted(o['id'] for o in operations)
+        fields={col.name for col in Part.__table__.columns}
+        assert fields-set(public_part)=={'unit_cost'}
+        template={k:v for k,v in public_part.items() if k in fields}
+        observed=c.get(f"/api/v1/vehicles/{vehicle['id']}/dismantling-v3").json()['etag']
+        matched=[]
+        for amount in range(100):
+            guessed={**template,'unit_cost':format(amount,'.2f')}
+            candidate=digest([public_vehicle['id'],public_vehicle['account_id'],digest({k:public_vehicle[k] for k in BASIS}),public_vehicle['archived'],public_vehicle['dismantling_v3'],[],[guessed],ids])
+            if candidate==observed:matched.append(amount)
+        assert not matched,'A low-permission user could validate a hidden financial value'
+    finally:c.close()

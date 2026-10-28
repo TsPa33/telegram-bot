@@ -14,14 +14,16 @@ from app.services.canonical_rules import classify,placement,norm,sid
 from app.services.dismantling_preview import preview
 from app.schemas.dismantling_v3 import PlanPreview
 
-VERSION='carpot.managed-plan.2b.1'
+VERSION='carpot.managed-plan.2b.2'
+PART_STATE_FIELDS=('id','vehicle_id','checklist_category_id','quantity','reserved_quantity','archived')
 def rows_for(db,v):return list(db.scalars(select(DismantlingItem).where(DismantlingItem.account_id==v.account_id,DismantlingItem.vehicle_id==v.id).order_by(DismantlingItem.id)))
 def state(db,v,rows=None):
     rows=rows_for(db,v) if rows is None else rows
-    parts=list(db.scalars(select(Part).where(Part.account_id==v.account_id,Part.vehicle_id==v.id).order_by(Part.id)))
+    # Public etags must never be a guessing oracle for hidden prices/costs.
+    parts=[dict(row) for row in db.execute(select(*(getattr(Part,k) for k in PART_STATE_FIELDS)).where(Part.account_id==v.account_id,Part.vehicle_id==v.id).order_by(Part.id)).mappings()]
     ops=list(db.scalars(select(Operation.id).where(Operation.account_id==v.account_id,Operation.vehicle_id==v.id).order_by(Operation.id)))
     # JSON columns are already primitives; snapshot converts top-level dates/money.
-    return digest([v.id,v.account_id,basis(v),v.archived,v.dismantling_v3,[snapshot(r) for r in rows],[snapshot(p) for p in parts],ops])
+    return digest([v.id,v.account_id,basis(v),v.archived,v.dismantling_v3,[snapshot(r) for r in rows],parts,ops])
 def inspection(r):return r.plan_v3.get('inspection') or ('present' if r.received_at or r.status=='dismantled' else 'absent' if r.status=='absent' else 'unchecked')
 def protected(r):return bool(r.received_at or r.part_id)
 def listing(db,v):
