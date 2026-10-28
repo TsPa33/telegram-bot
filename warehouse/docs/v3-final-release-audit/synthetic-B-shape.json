@@ -1,0 +1,41 @@
+{
+  "synthetic": true,
+  "real_staging_B_tested": false,
+  "offers": 10222,
+  "applications": 14324,
+  "paths": 29922,
+  "preview_seconds": 13.167,
+  "publish_seconds": 24.232,
+  "repeat_preview_seconds": 13.607,
+  "repeat_publish_seconds": 21.023,
+  "peak_rss_mib": 479.5,
+  "report": {
+    "alias_revision_ids": [],
+    "snapshot_sha": "b9ffe376ef6bdb43e54ecf86d0cbae21693f06ae54847205b536f02442e204e5",
+    "rule_version": "carpot.canonical.rules.v1.5",
+    "rules_sha": "8c07ae1364e6e82f53ef9a76f983dbe2be1e6c58d0027b2e55621d0af3ca8332",
+    "input_records": 29955,
+    "base_positions": 33,
+    "source_offers": 10222,
+    "canonical_types": 23,
+    "variants": 80,
+    "placements": 34,
+    "confirmed_mappings": 23973,
+    "ambiguous_mappings": 0,
+    "unprocessed_records": 5982,
+    "mapped_offers": 8178,
+    "fully_mapped_offers": 8178,
+    "trusted_offer_fraction": 0.8000391312854628,
+    "issues_truncated": true,
+    "committed": true,
+    "fitment_inferred": false
+  },
+  "stored": {
+    "canonical_types": 23,
+    "canonical_placements": 34,
+    "canonical_variants": 80,
+    "canonical_mappings": 29955
+  },
+  "old_tables_unchanged": true,
+  "repeat_no_new_reference_records": true
+}

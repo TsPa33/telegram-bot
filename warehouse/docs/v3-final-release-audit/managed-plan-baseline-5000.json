@@ -1,0 +1,42 @@
+{
+  "synthetic": true,
+  "real_B_tested": false,
+  "fixture": "N distinct constructive slots, preverified synthetic canonical mapping; NOT a normalization/real fitment claim",
+  "cases": [
+    {
+      "positions": 5000,
+      "preview": {
+        "sql": 49,
+        "flushes": 0,
+        "seconds": 9.862,
+        "peak_rss_mib": 225.6
+      },
+      "save": {
+        "sql": 10055,
+        "flushes": 5002,
+        "seconds": 20.281,
+        "peak_rss_mib": 280.9
+      },
+      "repeat_preview": {
+        "sql": 49,
+        "flushes": 0,
+        "seconds": 41.148,
+        "peak_rss_mib": 414.0
+      },
+      "repeat_save": {
+        "sql": 10055,
+        "flushes": 5002,
+        "seconds": 50.513,
+        "peak_rss_mib": 453.9
+      },
+      "bulk_exclude": {
+        "sql": 2008,
+        "flushes": 1001,
+        "seconds": 4.322,
+        "peak_rss_mib": 453.9
+      },
+      "no_stock_created": true,
+      "repeat_no_duplicates": true
+    }
+  ]
+}

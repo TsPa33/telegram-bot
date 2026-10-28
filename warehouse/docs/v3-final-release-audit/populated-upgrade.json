@@ -1,0 +1,12 @@
+{
+  "dataset": "real Volvo A; synthetic local stock/sale/reservation/legacy-exclusion fixtures, NOT a Railway DB copy",
+  "from_revision": "41f9a2c87d10",
+  "to_revision": "84d2c6fa190b",
+  "offers": 7246,
+  "applications": 10112,
+  "paths": 14400,
+  "all_original_columns_and_tables_unchanged": true,
+  "legacy_plan_accessible": true,
+  "no_canonical_backfill": true,
+  "fk_validated": true
+}

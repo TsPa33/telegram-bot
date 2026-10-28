@@ -1,0 +1,63 @@
+{
+  "dataset": "real Volvo A; synthetic XC90 donor and unverified trial engine facts",
+  "real_B_tested": false,
+  "runs": [
+    {
+      "powertrain": "petrol",
+      "counts": {
+        "proposed": 168,
+        "existing": 0,
+        "new": 133,
+        "review": 0,
+        "skipped": 35,
+        "legacy_possible": 0,
+        "unverified": 168,
+        "with_stock_history": 0
+      },
+      "saved_total": 133,
+      "configuration_changes": {
+        "manufacturer": {
+          "previous": null,
+          "proposed": "Volvo"
+        },
+        "model": {
+          "previous": null,
+          "proposed": "XC90"
+        },
+        "year": {
+          "previous": null,
+          "proposed": 2020
+        },
+        "powertrain": {
+          "previous": null,
+          "proposed": "petrol"
+        },
+        "options_complete": {
+          "previous": null,
+          "proposed": false
+        }
+      }
+    },
+    {
+      "powertrain": "diesel",
+      "counts": {
+        "proposed": 168,
+        "existing": 133,
+        "new": 0,
+        "review": 0,
+        "skipped": 35,
+        "legacy_possible": 133,
+        "unverified": 168,
+        "with_stock_history": 0
+      },
+      "saved_total": 133,
+      "configuration_changes": {
+        "powertrain": {
+          "previous": "petrol",
+          "proposed": "diesel"
+        }
+      }
+    }
+  ],
+  "no_stock_created": true
+}
