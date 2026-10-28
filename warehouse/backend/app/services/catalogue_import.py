@@ -4,7 +4,7 @@ import hmac
 import os
 from uuid import uuid5, NAMESPACE_URL
 from fastapi import HTTPException
-from sqlalchemy import select, text
+from sqlalchemy import select, text, insert, tuple_
 from app.models import Account, Session as AuthSession, now
 from app.models.catalogue import (CatalogueEntity as Entity, CatalogueAlias as Alias, CatalogueSource as Source,
     CatalogueOffer as Offer, CataloguePrice as Price, CatalogueApplication as Application,
@@ -41,22 +41,62 @@ def normalized_details(details):
 
 
 class Planner:
-    def __init__(self,db,actor,resolutions):
+    def __init__(self,db,actor,resolutions,progress=None,write=True,rows=None):
         self.db,self.actor,self.resolutions=db,actor,resolutions
+        self.write=write
+        self.progress=progress or (lambda done,total,phase: None)
+        self.pending=defaultdict(list)
         self.entities={e.identity_key:e for e in db.scalars(select(Entity).order_by(Entity.id))}
         self.by_id={e.id:e for e in self.entities.values()}
         self.aliases={(a.kind,a.context_id,a.alias_key):a for a in db.scalars(select(Alias))}
         self.sources={s.name:s for s in db.scalars(select(Source))}
-        self.offers={(o.source_id,o.source_article):o for o in db.scalars(select(Offer))}
-        self.prices={(p.offer_id,p.observed_at):p for p in db.scalars(select(Price))}
-        self.applications=set(db.execute(select(Application.offer_id,Application.model_id)))
-        self.paths={p.id:p for p in db.scalars(select(Path))}
+        # Price history and paths can grow indefinitely. Load only offers
+        # referenced by this job; retain the full entity/alias index for manual
+        # merges against existing canonical targets. Never query per input row.
+        if rows is None:
+            offers=list(db.scalars(select(Offer)))
+        else:
+            keys=list({(self.sources[r['source']].id,r['source_article']) for r in rows if r['source'] in self.sources})
+            offers=[]
+            for start in range(0,len(keys),500):
+                offers.extend(db.scalars(select(Offer).where(tuple_(Offer.source_id,Offer.source_article).in_(keys[start:start+500]))))
+        self.offers={(o.source_id,o.source_article):o for o in offers}
+        ids=[o.id for o in offers];prices=[];applications=[];paths=[]
+        for start in range(0,len(ids),500):
+            batch=ids[start:start+500]
+            prices.extend(db.scalars(select(Price).where(Price.offer_id.in_(batch))))
+            applications.extend(db.execute(select(Application.offer_id,Application.model_id).where(Application.offer_id.in_(batch))))
+            paths.extend(db.scalars(select(Path).where(Path.offer_id.in_(batch))))
+        self.prices={(p.offer_id,p.observed_at):p for p in prices}
+        self.applications=set(applications)
+        self.paths={p.id:p for p in paths}
         self.existing_ids=set(self.by_id)
         self.candidate_index=defaultdict(list)
         for e in self.by_id.values():
             candidates=self.candidate_index[(e.kind,e.parent_id)]
             if len(candidates)<25:candidates.append(dict(id=e.id,name=e.name,details=e.details))
         self.suggestions={};self.cache={};self.issues={};self.counts={name:Counter() for name in COUNTERS};self.used=set();self.skipped=0;self.price_changes=[]
+
+    def stage(self,obj):
+        # Deterministic IDs allow FK-ordered batches without per-row round trips.
+        self.pending[type(obj)].append(obj)
+
+    def persist(self):
+        # Preview runs the identical planner but need not insert speculative rows
+        # merely to roll them back. The surrounding savepoint still expires any
+        # attached existing objects changed by planning. Apply checks all DB FKs.
+        if not self.write:return
+        groups=[(Source,self.pending[Source])]
+        groups += [(Entity,[e for e in self.pending[Entity] if e.kind==kind])
+                   for kind in ('manufacturer','category','model','subcategory','part_type')]
+        groups += [(cls,self.pending[cls]) for cls in (Offer,Price,Application,Path,Alias)]
+        with self.db.no_autoflush:
+            for cls,objects in groups:
+                for start in range(0,len(objects),500):
+                    values=[{k:v for k,v in obj.__dict__.items() if not k.startswith('_')}
+                            for obj in objects[start:start+500]]
+                    self.db.execute(insert(cls),values)
+        self.db.flush()
 
     def bump(self,name,action):self.counts[name][action]+=1
 
@@ -94,7 +134,7 @@ class Planner:
             if not alias:
                 alias=Alias(kind=kind,context_id=context,alias_key=alias_key,source_name=name,
                             target_id=chosen.id,verified_by=self.actor)
-                self.db.add(alias);self.aliases[(kind,context,alias_key)]=alias;self.bump('aliases','inserted')
+                self.stage(alias);self.aliases[(kind,context,alias_key)]=alias;self.bump('aliases','inserted')
             self.cache[key]=chosen;return chosen
         alias=self.aliases.get((kind,context,alias_key))
         if alias:
@@ -113,7 +153,7 @@ class Planner:
                 candidates=self.candidate_index.get((kind,parent.id if parent else None),[]))
             chosen=Entity(id=stable(key),kind=kind,parent_id=parent.id if parent else None,
                           parent_kind=parent.kind if parent else None,name=name,normalized_name=identity(name),identity_key=key,details=details)
-            self.db.add(chosen);self.db.flush()
+            self.stage(chosen)
             self.entities[key]=chosen;self.by_id[chosen.id]=chosen
             self.bump(kind+'s' if kind not in ('category','subcategory') else {'category':'categories','subcategory':'subcategories'}[kind],'inserted')
         self.cache[key]=chosen;return chosen
@@ -121,10 +161,11 @@ class Planner:
     def run(self,rows):
         groups=defaultdict(list)
         for row in rows:groups[(row['source'],row['source_article'])].append(row)
-        for (source,article),items in groups.items():
+        for index,((source,article),items) in enumerate(groups.items()):
+            if index%250==0:self.progress(index,len(groups),"planning")
             skey=digest(['source',source])
             if source not in self.sources:
-                self.sources[source]=Source(id=stable(skey),name=source);self.db.add(self.sources[source]);self.db.flush();self.bump('sources','inserted')
+                self.sources[source]=Source(id=stable(skey),name=source);self.stage(self.sources[source]);self.bump('sources','inserted')
             elif source not in self.cache:self.bump('sources','unchanged')
             self.cache[source]=True
             src=self.sources[source]
@@ -164,7 +205,7 @@ class Planner:
             if existing is None:
                 key=digest(['offer',src.id,article])
                 existing=Offer(id=stable(key),source_id=src.id,source_article=article,properties=incoming,observed_at=observed)
-                self.db.add(existing);self.db.flush();self.offers[(src.id,article)]=existing;self.bump('offers','inserted')
+                self.stage(existing);self.offers[(src.id,article)]=existing;self.bump('offers','inserted')
             else:
                 changed=False
                 if observed>existing.observed_at:existing.observed_at=observed;changed=True
@@ -176,7 +217,7 @@ class Planner:
                 else:
                     p=Price(id=stable(digest(['price',existing.id,date.isoformat()])),offer_id=existing.id,
                             observed_at=date,price_uah=uah,price_usd=usd,source_url=url)
-                    self.db.add(p);self.prices[(existing.id,date)]=p;self.bump('prices','inserted')
+                    self.stage(p);self.prices[(existing.id,date)]=p;self.bump('prices','inserted')
                     if len(self.price_changes)<50:
                         self.price_changes.append(dict(source=source,source_article=article,observed_at=date.isoformat(),
                             price_uah=str(uah) if uah is not None else None,price_usd=str(usd) if usd is not None else None,
@@ -190,7 +231,7 @@ class Planner:
                     continue
                 application=(existing.id,model.id)
                 if application not in self.applications:
-                    self.db.add(Application(offer_id=existing.id,model_id=model.id));self.db.flush()
+                    self.stage(Application(offer_id=existing.id,model_id=model.id))
                     self.applications.add(application);self.bump('applications','inserted')
                 elif application not in self.cache:self.bump('applications','unchanged')
                 self.cache[application]=True
@@ -209,13 +250,14 @@ class Planner:
                 if old is None:
                     old=Path(id=pid,offer_id=existing.id,model_id=model.id,part_type_id=part.id if part else None,
                              part_kind='part_type' if part else None,path_key=path_key,raw=raw)
-                    self.db.add(old);self.paths[pid]=old;self.bump('paths','inserted')
+                    self.stage(old);self.paths[pid]=old;self.bump('paths','inserted')
                 elif part is not None and old.part_type_id!=part.id:
                     # Explicitly resolved taxonomy may enrich a previously pending path.
                     old.part_type_id=part.id if part else None;old.part_kind='part_type' if part else None;self.bump('paths','updated')
                 elif pid not in self.cache:self.bump('paths','unchanged')
                 self.cache[pid]=True
-        self.db.flush()
+        self.progress(len(groups),len(groups),"writing" if self.write else "validating")
+        self.persist()
         unused=set(self.resolutions)-self.used
         if unused:raise ValueError('Resolution no longer matches the validated input; remove unused decisions')
         issues=list(self.issues.values())
@@ -236,11 +278,11 @@ def locked_job(db,id):
     return job,state
 
 
-def preview(db,id,actor,resolutions):
+def preview(db,id,actor,resolutions,progress=None):
     job,state=locked_job(db,id)
     if job.status=='applied':raise HTTPException(409,'Імпорт уже застосовано; створіть новий job')
     nested=db.begin_nested()
-    try:result=Planner(db,actor,resolutions).run(job.rows)
+    try:result=Planner(db,actor,resolutions,progress,write=False,rows=job.rows).run(job.rows)
     finally:nested.rollback()
     # Savepoint rollback expires only speculative global entities, not the job.
     job.resolutions=resolutions;job.report=result;job.catalogue_revision=state.revision
@@ -249,7 +291,7 @@ def preview(db,id,actor,resolutions):
     return job
 
 
-def apply(db,id,actor,token):
+def apply(db,id,actor,token,progress=None):
     job,state=locked_job(db,id)
     if job.status=='applied':
         if not hmac.compare_digest(job.preview_token or '',token):raise HTTPException(409,'Невірний preview token')
@@ -258,7 +300,7 @@ def apply(db,id,actor,token):
         raise HTTPException(409,'Потрібен новий preview: дані, рішення або каталог змінилися')
     expected=digest([job.payload_sha256,job.resolutions,state.revision,job.report])
     if not hmac.compare_digest(expected,token):raise HTTPException(409,'Preview не відповідає даним')
-    result=Planner(db,actor,job.resolutions).run(job.rows)
+    result=Planner(db,actor,job.resolutions,progress,rows=job.rows).run(job.rows)
     if result!=job.report or result['unresolved_total']:raise HTTPException(409,'План змінився; потрібен новий preview')
     if any(c['inserted'] or c['updated'] for c in result['counts'].values()):state.revision+=1
     job.status='applied';job.applied_at=now()

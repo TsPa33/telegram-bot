@@ -1,7 +1,7 @@
 """Global reference catalogue; no stock/finance ownership or cascade to v1."""
 from datetime import datetime
 from decimal import Decimal
-from sqlalchemy import String, Text, JSON, Integer, DateTime, Numeric, ForeignKey, ForeignKeyConstraint, UniqueConstraint, CheckConstraint
+from sqlalchemy import String, Text, JSON, Integer, DateTime, Numeric, ForeignKey, ForeignKeyConstraint, UniqueConstraint, CheckConstraint, Index, text
 from sqlalchemy.orm import Mapped, mapped_column
 from app.db import Base
 from app.models import uid, now
@@ -113,3 +113,22 @@ class CatalogueJob(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True),default=now)
     applied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True),nullable=True)
     __table_args__ = (CheckConstraint("status IN ('uploaded','review','ready','applied','failed')",name='ck_catalogue_job_status'),)
+
+
+class CatalogueOperation(Base):
+    """Durable command. Catalogue mutation and successful completion commit together."""
+    __tablename__ = 'catalogue_operations'
+    id: Mapped[str] = mapped_column(String(36),primary_key=True,default=uid)
+    job_id: Mapped[str] = mapped_column(ForeignKey('catalogue_jobs.id'),index=True)
+    actor_id: Mapped[str] = mapped_column(ForeignKey('accounts.id'))
+    session_hash: Mapped[str] = mapped_column(String(64))
+    kind: Mapped[str] = mapped_column(String(10))
+    status: Mapped[str] = mapped_column(String(10),default='queued')
+    command: Mapped[dict] = mapped_column(JSON)
+    progress: Mapped[dict] = mapped_column(JSON,default=dict)
+    error: Mapped[str | None] = mapped_column(Text,nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True),default=now)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True),nullable=True)
+    __table_args__ = (Index('uq_catalogue_active_operation','job_id',unique=True,postgresql_where=text("status IN ('queued','running')")),
+        CheckConstraint("kind IN ('preview','apply')",name='ck_catalogue_operation_kind'),
+        CheckConstraint("status IN ('queued','running','done','error')",name='ck_catalogue_operation_status'),)

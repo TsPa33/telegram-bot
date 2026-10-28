@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
@@ -12,7 +13,21 @@ from app.api.dismantling import router as dismantling_router
 from app.api.orders import router as orders_router
 from app.db import engine
 
+@asynccontextmanager
+async def lifespan(app):
+    from app.services.catalogue_jobs import start_worker
+    stop,thread=start_worker()
+    try:yield
+    finally:
+        stop.set()
+        # No unbounded shutdown wait. A killed transaction rolls back; the next
+        # process exposes an interrupted operation as an explicit retryable error.
+        if thread:
+            import asyncio
+            await asyncio.to_thread(thread.join,2)
+
 app = FastAPI(
+    lifespan=lifespan,
     title="CarPot Warehouse API",
     version="1.0.0",
     description="Standalone tenant-isolated warehouse. All business endpoints require a session cookie; mutations also require X-CSRF-Token. Monetary values use explicit UAH/USD currencies without automatic conversion. No CarPot production integration.",

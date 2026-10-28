@@ -59,3 +59,9 @@
 - `docs/catalogue-v2/CONVERSION.md` (новий)
 - `docs/catalogue-v2/FINAL_RELEASE_AUDIT.md` (новий)
 - `docs/catalogue-v2/CHANGED_FILES.md`
+
+## Local timeout fix after `760d5e2`
+
+Runtime: `backend/app/services/catalogue_import.py`, new `catalogue_jobs.py`, `backend/app/api/catalogue.py`, `backend/app/main.py`, `backend/app/models/catalogue.py`. Additive migration: `backend/alembic/versions/41f9a2c87d10_catalogue_operations.py`. Reproducible local performance script: `backend/scripts/benchmark_catalogue_jobs.py`.
+
+UI: `frontend/src/pages/CatalogueImport.tsx`; new-head compatibility in `teamReadiness.ts`, `smartSearch.ts`, `WorkshopDialogs.tsx`. Tests: new `backend/tests/test_catalogue_jobs.py`, updated catalogue helpers, six existing readiness/migration head expectations, backend fixture worker isolation, and frontend browser/readiness tests. Docs: README, CHANGED_FILES, TIMEOUT_FIX, timeout-benchmarks.json. All remain under Warehouse.

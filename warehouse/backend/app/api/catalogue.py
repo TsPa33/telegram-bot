@@ -13,10 +13,11 @@ from starlette.concurrency import run_in_threadpool
 from app.api.secure_route import SecureRoute
 from app.api.deps import identity,Identity
 from app.db import get_db
-from app.models.catalogue import CatalogueJob as Job,CatalogueEntity as Entity,CatalogueOffer as Offer,CatalogueSource as Source,CataloguePrice as Price,CataloguePath as Path
+from app.models.catalogue import CatalogueJob as Job,CatalogueEntity as Entity,CatalogueOffer as Offer,CatalogueSource as Source,CataloguePrice as Price,CataloguePath as Path,CatalogueOperation as Operation
 from app.services.catalogue_format import parse_upload,digest,MAX_UPLOAD
-from app.services.catalogue_import import require_admin,platform_admin,preview,apply
+from app.services.catalogue_import import require_admin,platform_admin
 from app.services.aleto_import import identity as normalize_name
+from app.services.catalogue_jobs import enqueue,operation_summary
 
 router=APIRouter(route_class=SecureRoute,prefix='/api/v1/catalogue',tags=['Universal Catalogue v2'])
 DB=Annotated[Session,Depends(get_db)]
@@ -28,10 +29,11 @@ def admin(db:DB,who:Auth):
 Admin=Annotated[object,Depends(admin)]
 
 
-def summary(job,detail=False):
+def summary(job,detail=False,operation=None):
     report=job.report if detail else {k:v for k,v in job.report.items() if k not in ('issues','suggestions')}
     return dict(id=job.id,filename=job.filename,file_sha256=job.file_sha256,payload_sha256=job.payload_sha256,
                 format=job.format,status=job.status,created_at=job.created_at,applied_at=job.applied_at,
+                operation=operation_summary(operation) if operation else None,
                 preview_token=job.preview_token,report=report,**({'resolutions':job.resolutions} if detail else {}))
 
 
@@ -72,15 +74,21 @@ async def upload(request:Request,db:DB,owner:Admin):
 
 @router.get('/admin/jobs')
 def history(db:DB,owner:Admin,offset:int=Query(0,ge=0),limit:int=Query(30,ge=1,le=100)):
-    return {'items':[summary(j) for j in db.scalars(select(Job).options(defer(Job.rows),defer(Job.resolutions)).order_by(Job.created_at.desc(),Job.id).offset(offset).limit(limit))],
+    jobs=list(db.scalars(select(Job).options(defer(Job.rows),defer(Job.resolutions)).order_by(Job.created_at.desc(),Job.id).offset(offset).limit(limit)))
+    operations={op.job_id:op for op in db.scalars(select(Operation).where(Operation.job_id.in_([j.id for j in jobs]))
+        .distinct(Operation.job_id).order_by(Operation.job_id,Operation.created_at.desc(),Operation.id.desc()))} if jobs else {}
+    return {'items':[summary(j,operation=operations.get(j.id)) for j in jobs],
             'total':db.scalar(select(func.count()).select_from(Job)),'offset':offset,'limit':limit}
 
 
 @router.get('/admin/jobs/{id}')
 def job(id:str,db:DB,owner:Admin):
+    # Read operation first: observing terminal status must also observe the
+    # job/catalogue commit. Reading job first can return a stale plan with done.
+    operation=db.scalar(select(Operation).where(Operation.job_id==id).order_by(Operation.created_at.desc(),Operation.id.desc()).limit(1))
     row=db.scalar(select(Job).where(Job.id==id).options(defer(Job.rows)))
     if not row:raise HTTPException(404,'Import job не знайдено')
-    return summary(row,True)
+    return summary(row,True,operation)
 
 
 class Resolution(BaseModel):
@@ -95,11 +103,13 @@ class PreviewInput(BaseModel):
     resolutions:dict[str,Resolution]=Field(default_factory=dict,max_length=10000)
 
 
-@router.post('/admin/jobs/{id}/preview')
-def preview_job(id:str,data:PreviewInput,db:DB,owner:Admin):
-    try:row=preview(db,id,owner.id,{k:v.model_dump(exclude_none=True) for k,v in data.resolutions.items()})
-    except ValueError as exc:raise HTTPException(422,str(exc)) from None
-    db.commit();return summary(row,True)
+@router.post('/admin/jobs/{id}/preview',status_code=202)
+def preview_job(id:str,data:PreviewInput,db:DB,owner:Admin,who:Auth):
+    operation=enqueue(db,id,'preview',{'resolutions':{k:v.model_dump(exclude_none=True) for k,v in data.resolutions.items()}},who)
+    db.commit()
+    db.refresh(operation) # Snapshot status before reading the corresponding job.
+    row=db.scalar(select(Job).where(Job.id==id).options(defer(Job.rows)))
+    return summary(row,True,operation)
 
 
 class ApplyInput(BaseModel):
@@ -108,12 +118,14 @@ class ApplyInput(BaseModel):
     confirm:bool=Field(strict=True)
 
 
-@router.post('/admin/jobs/{id}/apply')
-def apply_job(id:str,data:ApplyInput,db:DB,owner:Admin):
+@router.post('/admin/jobs/{id}/apply',status_code=202)
+def apply_job(id:str,data:ApplyInput,db:DB,owner:Admin,who:Auth):
     if data.confirm is not True:raise HTTPException(422,'Потрібне явне підтвердження')
-    try:row=apply(db,id,owner.id,data.preview_token)
-    except ValueError as exc:raise HTTPException(422,str(exc)) from None
-    db.commit();return summary(row,True)
+    operation=enqueue(db,id,'apply',{'preview_token':data.preview_token},who)
+    db.commit()
+    db.refresh(operation) # Snapshot status before reading the corresponding job.
+    row=db.scalar(select(Job).where(Job.id==id).options(defer(Job.rows)))
+    return summary(row,True,operation)
 
 
 @router.get('/admin/entities')

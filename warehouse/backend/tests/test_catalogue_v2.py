@@ -48,14 +48,25 @@ def upload(c,rows=None,raw=None,filename='test.csv',expected=201):
 
 def plan(c,job,resolutions=None,expected=200):
     r=c.post(f"/api/v1/catalogue/admin/jobs/{job['id']}/preview",json={'resolutions':resolutions or {}})
-    assert r.status_code==expected,r.text
-    return r.json()
+    return finish_operation(c,r,expected)
+
+
+def finish_operation(c,response,expected):
+    if response.status_code!=202:
+        assert response.status_code==expected,response.text
+        return response.json()
+    from app.services.catalogue_jobs import process_one
+    process_one(engine())
+    result=c.get('/api/v1/catalogue/admin/jobs/'+response.json()['id']).json()
+    op=result['operation']
+    status=op.get('progress',{}).get('http_status',500) if op['status']=='error' else 200
+    assert status==expected,result
+    return result
 
 
 def confirm(c,job,expected=200):
     r=c.post(f"/api/v1/catalogue/admin/jobs/{job['id']}/apply",json={'preview_token':job['preview_token'],'confirm':True})
-    assert r.status_code==expected,r.text
-    return r.json()
+    return finish_operation(c,r,expected)
 
 
 @pytest.fixture
@@ -190,7 +201,7 @@ def test_source_article_conflicts_and_immutable_observations(platform):
 def test_stale_preview_payload_tamper_restart_and_concurrency(platform):
     first=plan(platform,upload(platform));second=plan(platform,upload(platform,[row('second')]))
     confirm(platform,first)
-    assert platform.post(f"/api/v1/catalogue/admin/jobs/{second['id']}/apply",json={'preview_token':second['preview_token'],'confirm':True}).status_code==409
+    confirm(platform,second,expected=409)
     second=plan(platform,second)
     # A new process/session can apply the stored plan without browser data.
     with Session(engine()) as db:actor=db.get(Job,second['id']).actor_id
@@ -202,7 +213,7 @@ def test_stale_preview_payload_tamper_restart_and_concurrency(platform):
     third=plan(platform,upload(platform,[row('third')]))
     with Session(engine()) as db:
         job=db.get(Job,third['id']);changed=deepcopy(job.rows);changed[0]['oem']='tampered';job.rows=changed;db.commit()
-    assert platform.post(f"/api/v1/catalogue/admin/jobs/{third['id']}/apply",json={'preview_token':third['preview_token'],'confirm':True}).status_code==409
+    confirm(platform,third,expected=409)
 
 
 def test_upload_zip_checks_limits_csrf_and_failed_history(platform):

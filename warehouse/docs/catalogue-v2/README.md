@@ -1,5 +1,7 @@
 # Universal Catalogue v2 — Stage 1–2
 
+Оновлення після релізу `760d5e2`: [стійкі асинхронні операції та виправлення timeout](TIMEOUT_FIX.md). Нова поточна head — `41f9a2c87d10` після описаної нижче `021e8f6f220c`; preview/apply повертають HTTP 202, статус читається через GET job. Нижче збережено опис базового релізу.
+
 Backend та frontend локальні коміти слід розглядати як одну майбутню release-одиницю; окремого розгортання між ними не виконувалося.
 
 Локальна реалізація поверх `9589e5e7bf4b7c694c885ddbdab62f18ea079715`, гілка `feature/carpot-warehouse-mvp`. Усі зміни під `warehouse/`. Не виконувалися push, deployment, Railway Variables, staging/production import або операції з основним Telegram-ботом.

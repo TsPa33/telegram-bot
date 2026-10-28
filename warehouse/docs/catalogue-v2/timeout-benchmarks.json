@@ -1,0 +1,187 @@
+{
+  "synthetic": true,
+  "real_volvo_B_zip_tested": false,
+  "postgresql": "local PostgreSQL 16",
+  "baseline_profile_1000_unique_offers": {
+    "seconds": 3.825,
+    "sql": 5020,
+    "flush": 3009
+  },
+  "final_profile_same_input": {
+    "seconds": 0.623,
+    "sql": 9,
+    "flush": 1
+  },
+  "benchmarks": [
+    {
+      "synthetic": true,
+      "input_rows": 1000,
+      "input_offers": 342,
+      "input_applications": 479,
+      "timings": {
+        "preview": {
+          "seconds": 0.23,
+          "sql": 10,
+          "flush": 1
+        },
+        "repeat_preview": {
+          "seconds": 0.141,
+          "sql": 9,
+          "flush": 1
+        },
+        "apply": {
+          "seconds": 0.408,
+          "sql": 21,
+          "flush": 1
+        },
+        "repeat_apply": {
+          "seconds": 0.019,
+          "sql": 4,
+          "flush": 0
+        }
+      },
+      "stored": {
+        "catalogue_offers": 342,
+        "catalogue_applications": 479,
+        "catalogue_paths": 1000
+      },
+      "peak_rss_mib": 93.9
+    },
+    {
+      "synthetic": true,
+      "input_rows": 10000,
+      "input_offers": 3416,
+      "input_applications": 4787,
+      "timings": {
+        "preview": {
+          "seconds": 1.982,
+          "sql": 10,
+          "flush": 1
+        },
+        "repeat_preview": {
+          "seconds": 1.606,
+          "sql": 9,
+          "flush": 1
+        },
+        "apply": {
+          "seconds": 5.099,
+          "sql": 78,
+          "flush": 1
+        },
+        "repeat_apply": {
+          "seconds": 0.232,
+          "sql": 4,
+          "flush": 0
+        }
+      },
+      "stored": {
+        "catalogue_offers": 3416,
+        "catalogue_applications": 4787,
+        "catalogue_paths": 10000
+      },
+      "peak_rss_mib": 207.5
+    },
+    {
+      "synthetic": true,
+      "input_rows": 30000,
+      "input_offers": 10249,
+      "input_applications": 14361,
+      "timings": {
+        "preview": {
+          "seconds": 4.896,
+          "sql": 10,
+          "flush": 1
+        },
+        "repeat_preview": {
+          "seconds": 5.04,
+          "sql": 9,
+          "flush": 1
+        },
+        "apply": {
+          "seconds": 12.055,
+          "sql": 205,
+          "flush": 1
+        },
+        "repeat_apply": {
+          "seconds": 1.109,
+          "sql": 4,
+          "flush": 0
+        }
+      },
+      "stored": {
+        "catalogue_offers": 10249,
+        "catalogue_applications": 14361,
+        "catalogue_paths": 30000
+      },
+      "peak_rss_mib": 460.3
+    },
+    {
+      "synthetic": true,
+      "input_rows": 50000,
+      "input_offers": 17081,
+      "input_applications": 23936,
+      "timings": {
+        "preview": {
+          "seconds": 11.079,
+          "sql": 10,
+          "flush": 1
+        },
+        "repeat_preview": {
+          "seconds": 9.563,
+          "sql": 9,
+          "flush": 1
+        },
+        "apply": {
+          "seconds": 23.265,
+          "sql": 332,
+          "flush": 1
+        },
+        "repeat_apply": {
+          "seconds": 1.306,
+          "sql": 4,
+          "flush": 0
+        }
+      },
+      "stored": {
+        "catalogue_offers": 17081,
+        "catalogue_applications": 23936,
+        "catalogue_paths": 50000
+      },
+      "peak_rss_mib": 607.1
+    },
+    {
+      "synthetic": true,
+      "input_rows": 29922,
+      "input_offers": 10222,
+      "input_applications": 14324,
+      "timings": {
+        "preview": {
+          "seconds": 6.413,
+          "sql": 10,
+          "flush": 1
+        },
+        "repeat_preview": {
+          "seconds": 5.926,
+          "sql": 9,
+          "flush": 1
+        },
+        "apply": {
+          "seconds": 12.559,
+          "sql": 205,
+          "flush": 1
+        },
+        "repeat_apply": {
+          "seconds": 0.573,
+          "sql": 4,
+          "flush": 0
+        }
+      },
+      "stored": {
+        "catalogue_offers": 10222,
+        "catalogue_applications": 14324,
+        "catalogue_paths": 29922
+      },
+      "peak_rss_mib": 459.9
+    }
+  ]
+}

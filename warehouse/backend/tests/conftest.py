@@ -11,6 +11,7 @@ if not url or not url.rsplit("/", 1)[-1].endswith("_test"):
         "Set WAREHOUSE_TEST_DATABASE_URL to a dedicated warehouse*_test PostgreSQL database; tests erase it"
     )
 os.environ["WAREHOUSE_DATABASE_URL"] = url
+os.environ["WAREHOUSE_CATALOGUE_WORKER_ENABLED"] = "false"
 os.environ["WAREHOUSE_COOKIE_SECURE"] = "false"
 from app.main import app
 from app.db import engine

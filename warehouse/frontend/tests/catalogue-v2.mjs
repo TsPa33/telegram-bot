@@ -3,7 +3,8 @@ import {chromium,expect} from '@playwright/test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 if(process.env.WAREHOUSE_E2E!=='1')throw Error('Set WAREHOUSE_E2E=1; never use staging/production');
-const origin='http://127.0.0.1:18766';
+const origin=process.env.CATALOGUE_TEST_ORIGIN||'http://127.0.0.1:18766';
+if(new URL(origin).hostname!=='127.0.0.1')throw Error('Only loopback test origins allowed');
 const email=process.env.CATALOGUE_TEST_EMAIL,password=process.env.CATALOGUE_TEST_PASSWORD;
 if(!email||!password)throw Error('Set local test platform-owner credentials');
 const browser=await chromium.launch({executablePath:process.env.WAREHOUSE_CHROMIUM_PATH||'/usr/bin/chromium',args:['--no-sandbox']});
@@ -27,7 +28,7 @@ try{
   await expect(page.getByText(/Каталог не змінено\./)).toBeVisible();
   assert.equal((await(await context.request.get('/api/v1/catalogue')).json()).total,before);
   await page.reload();
-  await page.getByRole('button',{name:`${name} · ready`,exact:true}).click();
+  await page.getByRole('button',{name:`${name} · Готово`,exact:true}).click();
   const apply=page.getByRole('button',{name:'Застосувати імпорт',exact:true});await expect(apply).toBeDisabled();
   await page.getByRole('checkbox',{name:/Підтверджую застосування/}).check();
   await apply.click();await expect(page.getByText(/Дані застосовано\./)).toBeVisible();
