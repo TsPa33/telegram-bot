@@ -47,3 +47,15 @@
 - `frontend/tests/team-unit.mjs`
 - `frontend/tests/workshop-gate-browser.mjs`
 - `frontend/tests/workshop-gate-unit.mjs`
+
+## Окремий локальний release-audit commit
+
+- `backend/app/api/catalogue.py`
+- `backend/app/services/catalogue_format.py`
+- `backend/app/services/catalogue_import.py`
+- `backend/app/services/catalogue_convert.py` (новий)
+- `backend/tests/test_catalogue_release_audit.py` (новий)
+- `docs/catalogue-v2/FORMAT.md`
+- `docs/catalogue-v2/CONVERSION.md` (новий)
+- `docs/catalogue-v2/FINAL_RELEASE_AUDIT.md` (новий)
+- `docs/catalogue-v2/CHANGED_FILES.md`

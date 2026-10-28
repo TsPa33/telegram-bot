@@ -11,16 +11,19 @@ import tempfile
 import zipfile
 import zlib
 from pathlib import Path
+from typing import Annotated
 from decimal import Decimal
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
-from app.services.aleto_import import load_package, money, source_url, observation, DICTIONARY
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator, model_validator
+from app.services.aleto_import import load_package, money, source_url, observation, DICTIONARY, CATEGORY_ALIASES, CATEGORIES, identity
+
+VerbatimString = Annotated[str, StringConstraints(strip_whitespace=False)]
 
 MAX_UPLOAD = 16 * 1024 * 1024
 MAX_EXPANDED = 64 * 1024 * 1024
 MAX_ROWS = 50000
 MAX_RATIO = 100
 REQUIRED = {'schema_version','source','source_article','manufacturer','model','category','subcategory','part_name','source_url','observed_at'}
-OPTIONAL = {'generation','year_from','year_to','oem','condition','price_uah','price_usd','side','position'}
+OPTIONAL = {'generation','year_from','year_to','oem','condition','price_uah','price_usd','side','position','source_record'}
 
 
 def digest(value):
@@ -48,6 +51,20 @@ class ImportRow(BaseModel):
     price_usd: str | None = None
     source_url: str = Field(max_length=2000)
     observed_at: str
+    source_record: dict[VerbatimString,VerbatimString] = Field(default_factory=dict,max_length=128)
+
+    @field_validator('source_record',mode='before')
+    @classmethod
+    def provenance(cls,value):
+        if value in ('',None):return {}
+        if isinstance(value,str):
+            if len(value.encode())>16384:raise ValueError('Source record exceeds 16 KiB')
+            try:value=json.loads(value)
+            except (json.JSONDecodeError,RecursionError):raise ValueError('Invalid source_record JSON') from None
+        if not isinstance(value,dict) or any(not isinstance(k,str) or not isinstance(v,str) or len(k)>128 or len(v)>4096 for k,v in value.items()):
+            raise ValueError('Source record must preserve string fields only')
+        if len(json.dumps(value,ensure_ascii=False).encode())>16384:raise ValueError('Source record exceeds 16 KiB')
+        return value
 
     @field_validator('year_from','year_to',mode='before')
     @classmethod
@@ -79,12 +96,31 @@ class ImportRow(BaseModel):
         return self
 
 
+
+def legacy_provenance(row):
+    record=row.get('source_record') or {}
+    if row['source']!='aleto' or not record:return row
+    if 'article' in record and record['article'].strip()!=row['source_article']:
+        raise ValueError('Source record article mismatch')
+    category=record.get('category_source',record.get('category'))
+    subcategory=record.get('subcategory_raw',record.get('subcategory'))
+    if category is not None:
+        row['_raw_category']=category
+        known=CATEGORY_ALIASES.get(category,category)
+        if known not in CATEGORIES or identity(known)!=identity(row['category']):row['_review_category']=True
+    if subcategory is not None:
+        row['_raw_subcategory']=subcategory
+        known=DICTIONARY.get(subcategory)
+        if not known or identity(known)!=identity(row['subcategory']):row['_review_subcategory']=True
+    return row
+
+
 def parse_csv(raw):
     if len(raw)>MAX_EXPANDED:raise ValueError('CSV exceeds expanded size limit')
     try:
         content=raw.decode('utf-8-sig')
     except UnicodeError:raise ValueError('CSV must be UTF-8') from None
-    csv.field_size_limit(4096)
+    csv.field_size_limit(16384)
     reader=csv.DictReader(io.StringIO(content,newline=''),strict=True)
     columns=reader.fieldnames or []
     if len(set(columns))!=len(columns) or not REQUIRED<=set(columns) or set(columns)-REQUIRED-OPTIONAL:
@@ -94,7 +130,7 @@ def parse_csv(raw):
         for index,row in enumerate(reader,2):
             if index>MAX_ROWS+1:raise ValueError('Too many rows')
             if None in row or any(v is None for v in row.values()):raise ValueError(f'CSV row {index}: wrong field count')
-            try: rows.append(ImportRow.model_validate(row).model_dump())
+            try: rows.append(legacy_provenance(ImportRow.model_validate(row).model_dump()))
             except ValueError:raise ValueError(f'CSV row {index}: invalid field, price, date or URL') from None
     except csv.Error:raise ValueError('Malformed CSV') from None
     if not rows:raise ValueError('CSV is empty')
@@ -110,7 +146,7 @@ def parse_upload(raw, filename):
                 names=[e.filename for e in entries]
                 if len(entries)!=2 or len(set(names))!=2 or 'manifest.json' not in names:raise ValueError('ZIP must contain only manifest.json and one root CSV')
                 for e in entries:
-                    if '/' in e.filename or '\\' in e.filename or e.filename in ('.','..') or e.flag_bits&1 or stat.S_ISLNK(e.external_attr>>16):raise ValueError('Unsafe ZIP entry')
+                    if '/' in e.filename or '\\' in e.filename or ':' in e.filename or any(ord(c)<32 for c in e.filename) or len(e.filename)>200 or e.filename in ('.','..') or e.flag_bits&1 or stat.S_ISLNK(e.external_attr>>16):raise ValueError('Unsafe ZIP entry')
                     if e.file_size>MAX_EXPANDED or e.file_size>MAX_RATIO*max(e.compress_size,1):raise ValueError('ZIP size/ratio limit exceeded')
                 if sum(e.file_size for e in entries)>MAX_EXPANDED or archive.getinfo('manifest.json').file_size>16384:raise ValueError('Expanded ZIP exceeds limit')
                 manifest=json.loads(archive.read('manifest.json'))

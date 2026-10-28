@@ -62,6 +62,7 @@ async def upload(request:Request,db:DB,owner:Admin):
     filename=unquote(request.headers.get('X-Catalogue-Filename','catalogue'))
     if not filename or len(filename)>200 or any(ord(c)<32 for c in filename):raise HTTPException(422,'Некоректна назва файла')
     filename=filename.replace('\\','/').split('/')[-1]
+    if not filename:raise HTTPException(422,'Некоректна назва файла')
     data=bytearray()
     async for chunk in request.stream():
         if len(data)+len(chunk)>MAX_UPLOAD:raise HTTPException(413,'Файл перевищує 16 MiB')

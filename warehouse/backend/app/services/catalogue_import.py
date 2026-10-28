@@ -67,13 +67,13 @@ class Planner:
                                   allowed_actions=actions or ['target','create_name','skip'],rows=0,parent_id=parent)
         self.issues[key]['rows']+=1
 
-    def entity(self,kind,name,parent=None,details=None,review=False):
+    def entity(self,kind,name,parent=None,details=None,review=False,verified=False):
         details=details or {}
         context=parent.id if parent else ''
         alias_key=digest([identity(name),normalized_details(details)])
         key=digest([kind,context,alias_key])
-        if key in self.cache:return self.cache[key]
-        decision=self.resolutions.get(key)
+        if key in self.cache and (self.cache[key] is not None or not verified):return self.cache[key]
+        decision=None if verified else self.resolutions.get(key)
         if decision:
             self.used.add(key)
             if decision.get('action')=='skip':
@@ -85,9 +85,9 @@ class Planner:
                 chosen=target
             elif decision.get('action')=='create_name':
                 new=decision.get('name','').strip()
-                if not new or len(new)>1000 or any(ord(c)<32 for c in new) or identity(new) in AMBIGUOUS or new==name:
+                if not new or len(new)>1000 or any(ord(c)<32 for c in new) or identity(new) in AMBIGUOUS:
                     raise ValueError('Provide an explicit unambiguous verified name')
-                chosen=self.entity(kind,new,parent,details,False)
+                chosen=self.entity(kind,new,parent,details,False,verified=True)
             else:raise ValueError('Unsupported entity resolution')
             alias=self.aliases.get((kind,context,alias_key))
             if alias and alias.target_id!=chosen.id:raise ValueError('Verified alias already points to a different target')
@@ -194,7 +194,7 @@ class Planner:
                     self.applications.add(application);self.bump('applications','inserted')
                 elif application not in self.cache:self.bump('applications','unchanged')
                 self.cache[application]=True
-                category=self.entity('category',row['category'])
+                category=self.entity('category',row['category'],review=row.get('_review_category',False))
                 sub=self.entity('subcategory',row['subcategory'],category,review=row.get('_review_subcategory',False)) if category else None
                 traits={k:row[k] for k in ('oem','side','position')}
                 part=self.entity('part_type',row['part_name'],sub,traits) if sub else None
