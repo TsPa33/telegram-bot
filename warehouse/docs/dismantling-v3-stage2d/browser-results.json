@@ -1,0 +1,26 @@
+[
+  {
+    "width": 1440,
+    "synthetic": true,
+    "candidates": 228,
+    "created": 226,
+    "pending": 2,
+    "after_explicit_review": 227,
+    "old_ids_preserved": 33,
+    "current_stock_preserved": 29,
+    "receipt_history_preserved": 30,
+    "no_automatic_receipt": true
+  },
+  {
+    "width": 390,
+    "synthetic": true,
+    "candidates": 228,
+    "created": 226,
+    "pending": 2,
+    "after_explicit_review": 227,
+    "old_ids_preserved": 33,
+    "current_stock_preserved": 29,
+    "receipt_history_preserved": 30,
+    "no_automatic_receipt": true
+  }
+]

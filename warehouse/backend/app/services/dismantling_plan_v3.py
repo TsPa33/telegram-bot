@@ -44,7 +44,7 @@ def listing(db,v):
         items.append(dict(id=r.id,name=r.name,position=r.position,category=r.category_name,subcategory=r.subcategory_name,included=r.included,inspection=inspection(r),reason=r.plan_v3.get('reason','' if r.included else 'Збережене виключення legacy'),operational_state=operational,protected=protected(r),quantity=r.quantity,part_id=r.part_id,applicability=r.plan_v3.get('snapshot',{}).get('applicability_status','unknown'),canonical_part_type_id=r.plan_v3.get('canonical_part_type_id'),placement_id=r.plan_v3.get('placement_id'),reference_prices=r.plan_v3.get('snapshot',{}).get('reference_prices',[])))
     items.sort(key=lambda i:(i['category'],i['subcategory'],i['name'],i['position'],i['id']))
     canonical=db.get(CanonicalState,1);catalogue=db.get(CatalogueState,1);configuration_source=latest(db,v,v.account_id)
-    return dict(configuration_stale=bool(v.dismantling_v3) and (v.dismantling_v3.get('vehicle_basis')!=basis(v) or v.dismantling_v3.get('configuration_source_id')!=(configuration_source.get('id') if configuration_source else None)),catalogue_changed=bool(v.dismantling_v3) and (v.dismantling_v3.get('catalogue_snapshot')!=(canonical.snapshot_sha if canonical else None) or v.dismantling_v3.get('catalogue_revision')!=(catalogue.revision if catalogue else None)),items=items,total=len(items),active=bool(v.dismantling_v3),archived=v.archived,etag=state(db,v,rows),revision=v.dismantling_v3.get('revision',0),configuration=v.dismantling_v3.get('configuration'),catalogue_status=dict(published=bool(canonical and canonical.snapshot_sha),rules_current=bool(canonical and canonical.policy.get('rules_sha')==RULE_FINGERPRINT),fallback_used=not bool(canonical and canonical.snapshot_sha)),counts=dict(in_stock=sum(not p.archived and p.quantity>0 for p in parts.values()),unchecked=sum(i['inspection']=='unchecked' for i in items),dismantled=sum(i['operational_state']=='dismantled' for i in items),possible=sum(i['applicability'] in ('possible','unknown') for i in items),confirmed=sum(i['inspection']=='present' for i in items),excluded=sum(not i['included'] for i in items),received=sum(i['operational_state'] in ('received','sold') for i in items)))
+    return dict(configuration_stale=bool(v.dismantling_v3) and (v.dismantling_v3.get('vehicle_basis')!=basis(v) or v.dismantling_v3.get('configuration_source_id')!=(configuration_source.get('id') if configuration_source else None)),catalogue_changed=bool(v.dismantling_v3) and (v.dismantling_v3.get('catalogue_snapshot')!=(canonical.snapshot_sha if canonical else None) or v.dismantling_v3.get('catalogue_revision')!=(catalogue.revision if catalogue else None)),items=items,total=len(items),active=bool(v.dismantling_v3),archived=v.archived,etag=state(db,v,rows),revision=v.dismantling_v3.get('revision',0),configuration=v.dismantling_v3.get('configuration'),review_drafts=v.dismantling_v3.get('review_drafts',{}),pending_review=v.dismantling_v3.get('pending_review',[]),pending_count=len(v.dismantling_v3.get('pending_review',[])),catalogue_status=dict(published=bool(canonical and canonical.snapshot_sha),rules_current=bool(canonical and canonical.policy.get('rules_sha')==RULE_FINGERPRINT),fallback_used=not bool(canonical and canonical.snapshot_sha)),counts=dict(in_stock=sum(not p.archived and p.quantity>0 for p in parts.values()),unchecked=sum(i['inspection']=='unchecked' for i in items),dismantled=sum(i['operational_state']=='dismantled' for i in items),possible=sum(i['applicability'] in ('possible','unknown') for i in items),confirmed=sum(i['inspection']=='present' for i in items),excluded=sum(not i['included'] for i in items),received=sum(i['operational_state'] in ('received','sold') for i in items)))
 
 def axes_match(a,b):
     if a['details'].get('ordinal') and b['details'].get('ordinal') and a['details']['ordinal']!=b['details']['ordinal']:return False
@@ -152,27 +152,107 @@ def save(db,v,who,data):
     plan=make_preview(db,v,who,PlanPreview.model_validate(data.model_dump(exclude={'token','request_key','confirm'})))
     if data.token!=plan['token']:raise HTTPException(409,'Preview застарів; повторіть перевірку різниці')
     if plan['counts']['review']:raise HTTPException(409,'Спочатку вирішіть неоднозначні legacy-зіставлення')
+    return persist_plan(db,v,who,data,plan,sha)
+
+def partial_plan(plan,existing):
+    """Defer entire uncertain components; never manufacture skip decisions.
+
+    Graph edges: generic/refined overlaps and shared possible legacy rows.
+    Previously bound exact identities remain present; no deferred row is created.
+    Explicit reviewed distinct identities may coexist; target collisions never may.
+    """
+    proposals=plan['proposals'];by_id={p['id']:p for p in proposals};by_row={r.id:r for r in existing}
+    active={p['id'] for p in proposals if p['action']!='skip'}
+    links={pid:set() for pid in active};owners=defaultdict(list)
+    def accepted(p):
+        r=by_row.get(p['target_id'])
+        return p['manual'] or bool(r and r.plan_v3.get('placement_id')==p['id'] and r.plan_v3.get('mapping_reason'))
+    def edge(a,b):
+        if a in active and b in active and a!=b:links[a].add(b);links[b].add(a)
+    for p in proposals:
+        if p['id'] not in active:continue
+        for other in p['overlap_ids']:
+            q=by_id[other]
+            # Both physical identities explicitly reviewed; automatic generation
+            # never supplies either of these decisions/reasons.
+            if not (accepted(p) and accepted(q) and p['action']!='review' and q['action']!='review'):edge(p['id'],other)
+        for target in {c['id'] for c in p['candidates']}|({p['target_id']} if p['target_id'] else set()):owners[target].append(p)
+    for related in owners.values():
+        # Uncertain candidates can still refer to a row claimed by an exact link.
+        if any(p['action']=='review' for p in related) or len([p for p in related if p['target_id']])>1:
+            first=related[0]['id']
+            for p in related[1:]:edge(first,p['id'])
+    uncertain={p['id'] for p in proposals if p['action']=='review'}
+    for pid,neighbors in links.items():
+        if neighbors:uncertain.add(pid)  # Conservatively defer unresolved overlap groups, even if tagged new/link.
+    deferred=set();todo=list(uncertain)
+    while todo:
+        pid=todo.pop()
+        if pid in deferred:continue
+        deferred.add(pid);todo.extend(links.get(pid,()))
+    pending=[];safe=[]
+    for p in proposals:
+        item=p['item'];a=item.get('applicability',{})
+        variants=item.get('variants',[])
+        contrary=item['applicability_status']=='incompatible' or bool(a.get('conflicting_fields')) or bool(variants and all(v.get('applicability',{}).get('conflicting_fields') for v in variants))
+        reason=None
+        if p['id'] in deferred:reason=p.get('conflict') or ('Є кілька можливих збігів з існуючими деталями' if p['candidates'] else 'Позиції можуть означати одну фізичну деталь')
+        if p['action']=='new' and contrary:reason='Кандидат суперечить відомим характеристикам; потрібне уточнення комплектації'
+        if reason:
+            r=by_row.get(p['target_id'])
+            # Keep an established exact identity untouched; only unresolved
+            # additions belong in pending. Its historic decisions remain usable.
+            if p['action']=='link' and r:
+                safe.append(p)  # Proven unique identity: reuse only, never create another overlapping row.
+                continue
+            pending.append(dict(id=p['id'],name=item['name'],category=item['category'],subcategory=item['subcategory'],
+                installation_position=item['installation_position'],reason=reason,candidates=p['candidates'],overlap_ids=p['overlap_ids'],
+                needs='Уточніть комплектацію або перевірте фізичну тотожність та позицію; можна повернутися пізніше',status='pending_review'))
+            continue
+        safe.append(p)
+    return {**plan,'proposals':safe},pending
+
+
+def quick(db,v,who,data):
+    previous,sha=replay(db,v,who,data,'quick')
+    if previous is not None:return previous
+    if state(db,v)!=data.etag:raise HTTPException(409,'Автомобіль, план або склад змінився. Оновіть список і повторіть дію')
+    payload=PlanPreview.model_validate(data.model_dump(exclude={'etag','request_key','confirm','token'}))
+    plan=make_preview(db,v,who,payload)
+    if not plan['catalogue_status']['published']:raise HTTPException(409,'Конструктивний каталог ще не опубліковано власником платформи. План не створено; 33 базові позиції не є повним каталогом')
+    if not plan['proposals']:raise HTTPException(409,'У каталозі немає кандидатів для цього автомобіля. План не змінено')
+    if data.token is not None and data.token!=plan['token']:raise HTTPException(409,'Перевірка рішень застаріла; перечитайте актуальні відповідності')
+    selected,pending=partial_plan(plan,rows_for(db,v))
+    return persist_plan(db,v,who,data,selected,sha,partial=True,pending=pending)
+
+
+def persist_plan(db,v,who,data,plan,sha,*,partial=False,pending=None):
     previous_vehicle=snapshot(v);revision=v.dismantling_v3.get('revision',0)+1;existing={r.id:r for r in rows_for(db,v)};counts=Counter();changes=[]
     for proposal in plan['proposals']:
-        if proposal['action']=='skip':continue
+        if proposal['action'] not in ('new','link'):continue
         item=proposal['item'];target=proposal['target_id'];r=existing.get(target)
         if r is None:
             pos=item['installation_position'];position=' '.join({'front':'передня','rear':'задня','left':'ліва','right':'права'}.get(pos[k],'') for k in ('position','side')).strip()
             r=DismantlingItem(id=sid('donor-plan',v.account_id,v.id,item['id'],str(data.request_key)),account_id=v.account_id,vehicle_id=v.id,source='carpot.v3',catalog_key=sid('plan-source',v.id,item['id'],str(data.request_key)),name=item['name'],position=position,category_key=sid('category',item['category']),category_name=item['category'],subcategory_key=sid('subcategory',item['category'],item['subcategory']),subcategory_name=item['subcategory'],included=True,status='unchecked',quantity=1,plan_v3={})
             db.add(r);counts['created']+=1;before={}
         else:before=snapshot(r);counts['linked' if not r.plan_v3 else 'updated']+=1
-        r.plan_v3={**r.plan_v3,'placement_id':item['id'],'canonical_part_type_id':item['canonical_part_type_id'],'inspection':inspection(r),'reason':r.plan_v3.get('reason','' if r.included else 'Збережене виключення legacy'),'snapshot':item,'mapping_reason':proposal['reason'],'revision':revision}
+        r.plan_v3={**r.plan_v3,'placement_id':item['id'],'canonical_part_type_id':item['canonical_part_type_id'],'inspection':inspection(r),'reason':r.plan_v3.get('reason','' if r.included else 'Збережене виключення legacy'),'snapshot':item,'mapping_reason':proposal['reason'] if proposal['manual'] else r.plan_v3.get('mapping_reason',''),'mapping_decision':proposal['action'] if proposal['manual'] else r.plan_v3.get('mapping_decision'),'revision':revision}
         changes.append((r,before))
     skipped=dict(v.dismantling_v3.get('skipped',{}))
     for p in plan['proposals']:
         if p['action']=='skip':skipped[p['id']]=p['reason']
-        else:skipped.pop(p['id'],None)
-    v.dismantling_v3=dict(trial_input=plan['trial_input'],configuration_source_id=plan['configuration_source_id'],vehicle_basis=basis(v),catalogue_revision=plan['catalogue_revision'],skipped=skipped,version=VERSION,revision=revision,configuration=plan['configuration'],catalogue_snapshot=plan['catalogue_snapshot'],preview_token=plan['token'])
+        elif p['action'] in ('new','link'):skipped.pop(p['id'],None)
+    drafts={**v.dismantling_v3.get('review_drafts',{}),**{pid:r.model_dump() for pid,r in data.resolutions.items()}}
+    pending_ids={p['id'] for p in (pending or [])}
+    drafts={pid:r for pid,r in drafts.items() if pid in pending_ids}
+    v.dismantling_v3={**v.dismantling_v3,**dict(trial_input=plan['trial_input'],configuration_source_id=plan['configuration_source_id'],vehicle_basis=basis(v),catalogue_revision=plan['catalogue_revision'],skipped=skipped,version=VERSION,revision=revision,configuration=plan['configuration'],catalogue_snapshot=plan['catalogue_snapshot'],preview_token=plan['token']), 'pending_review':pending if partial else [],'review_drafts':drafts}
     db.flush() # One batch assigns defaults and validates rows before audit snapshots.
     with db.no_autoflush:
         for r,before in changes:record(db,v.account_id,r,'dismantling_v3_bind','Підтверджено зіставлення/оновлення довідника; рішення і склад не змінено',before,flush_before=False)
         record(db,v.account_id,v,'dismantling_v3_save','Явно збережено індивідуальний план без оприбуткування',previous_vehicle,flush_before=False)
-    return finish(db,v,who,data,sha,dict(saved=True,revision=revision,**counts))
+    result=dict(saved=True,revision=revision,**counts)
+    if partial:result.update(created=counts['created'],reused=counts['linked']+counts['updated'],pending=len(pending),candidates=plan['counts']['proposed'],received=0)
+    return finish(db,v,who,data,sha,result)
 
 def decide(db,v,who,data):
     previous,sha=replay(db,v,who,data,'decision')

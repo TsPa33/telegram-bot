@@ -1,0 +1,11 @@
+{
+  "synthetic": true,
+  "real_B_tested": false,
+  "candidates": 336,
+  "planner_new": 196,
+  "planner_review": 140,
+  "created": 196,
+  "pending": 140,
+  "repeat_created": 0,
+  "received": 0
+}

@@ -1,0 +1,12 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import ts from 'typescript';
+const code=ts.transpileModule(await readFile(new URL('../src/quickDismantling.ts',import.meta.url),'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}}).outputText;
+const m=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
+const scope={actor:'actor-a',workspace:'workspace-a',vehicle:'donor-a'},payload={facts:[],etag:'a'.repeat(64),confirm:true};
+test('uncertain command survives reload with exact payload and same request key',()=>{const command=m.makeQuick(scope,payload);assert.deepEqual(m.readQuick(JSON.stringify(command),scope),command);assert.equal(m.readQuick(JSON.stringify(command),scope).payload.request_key,command.payload.request_key);});
+test('actor, workspace and vehicle switches never restore another command',()=>{const raw=JSON.stringify(m.makeQuick(scope,payload));for(const key of Object.keys(scope)){const changed={...scope,[key]:'another'};assert.equal(m.readQuick(raw,changed),null);assert.notEqual(m.quickStorageKey(scope),m.quickStorageKey(changed));}});
+test('corrupt, oversized and unexpected impersonation fields are discarded',()=>{assert.equal(m.readQuick('{',scope),null);assert.equal(m.readQuick('x'.repeat(1024*1024+1),scope),null);for(const key of ['account_id','actor_id','vehicle_id'])assert.equal(m.readQuick(JSON.stringify(m.makeQuick(scope,{...payload,[key]:'foreign'})),scope),null);});
+test('new explicit intent gets a new key, no automatic reuse for changed parameters',()=>{const a=m.makeQuick(scope,payload),b=m.makeQuick(scope,{...payload,facts:[{field:'powertrain',value:'diesel'}]});assert.notEqual(a.payload.request_key,b.payload.request_key);});
+test('missing confirmation or malformed concurrency state is never restored',()=>{for(const patch of [{confirm:false},{etag:'not-a-token'},{facts:null}])assert.equal(m.readQuick(JSON.stringify(m.makeQuick(scope,{...payload,...patch})),scope),null);});

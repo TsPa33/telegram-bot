@@ -110,6 +110,7 @@ KNOWN_ROUTES = frozenset({
     ('GET','/api/v1/vehicles/{id}/dismantling-v3'),
     ('POST','/api/v1/vehicles/{id}/dismantling-v3/preview'),
     ('POST','/api/v1/vehicles/{id}/dismantling-v3/save'),
+    ('POST','/api/v1/vehicles/{id}/dismantling-v3/quick'),
     ('POST','/api/v1/vehicles/{id}/dismantling-v3/decisions'),
     ('GET','/api/v1/vehicles/{id}/configuration'),
     ('POST','/api/v1/vehicles/{id}/configuration/preview'),

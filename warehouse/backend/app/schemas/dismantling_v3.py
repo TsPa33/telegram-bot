@@ -34,3 +34,15 @@ class PlanDecision(Input):
         if self.action in ('exclude','absent','not_applicable') and len(self.reason.strip())<3:raise ValueError('Потрібна причина виключення')
         if self.action in ('receipt','dismantled') and not self.confirm:raise ValueError('Потрібне явне підтвердження дії')
         return self
+
+class PlanQuick(PlanPreview):
+    """Explicit atomic command; no separate preview required for automatic choices."""
+    request_key:UUID
+    etag:str=Field(pattern=r'^[a-f0-9]{64}$')
+    confirm:bool=Field(strict=True)
+    token:str|None=Field(default=None,pattern=r'^[a-f0-9]{64}$')
+    @model_validator(mode='after')
+    def reviewed(self):
+        if not self.confirm:raise ValueError('Потрібна явна дія створення або оновлення плану')
+        if self.resolutions and not self.token:raise ValueError('Ручні рішення потребують перевіреного preview')
+        return self

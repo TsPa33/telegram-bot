@@ -1,0 +1,24 @@
+# Stage 2D changed files
+
+- `warehouse/backend/app/api/dismantling_v3.py`
+- `warehouse/backend/app/route_registry.py`
+- `warehouse/backend/app/schemas/dismantling_v3.py`
+- `warehouse/backend/app/services/dismantling_plan_v3.py`
+- `warehouse/backend/scripts/seed_stage2d_browser.py`
+- `warehouse/backend/tests/test_stage2d.py`
+- `warehouse/docs/dismantling-v3-stage2d/CHANGED_FILES.md`
+- `warehouse/docs/dismantling-v3-stage2d/README.md`
+- `warehouse/docs/dismantling-v3-stage2d/browser-results.json`
+- `warehouse/docs/dismantling-v3-stage2d/screenshots/stage2d-cards-1440.png`
+- `warehouse/docs/dismantling-v3-stage2d/screenshots/stage2d-cards-390.png`
+- `warehouse/docs/dismantling-v3-stage2d/screenshots/stage2d-new-1440.png`
+- `warehouse/docs/dismantling-v3-stage2d/screenshots/stage2d-new-390.png`
+- `warehouse/docs/dismantling-v3-stage2d/screenshots/stage2d-ready-1440.png`
+- `warehouse/docs/dismantling-v3-stage2d/screenshots/stage2d-ready-390.png`
+- `warehouse/docs/dismantling-v3-stage2d/synthetic-336.json`
+- `warehouse/docs/dismantling-v3-stage2d/test-results.json`
+- `warehouse/frontend/src/ManagedDismantling.tsx`
+- `warehouse/frontend/src/managed-dismantling.css`
+- `warehouse/frontend/src/quickDismantling.ts`
+- `warehouse/frontend/tests/quick-dismantling-unit.mjs`
+- `warehouse/frontend/tests/stage2d-browser.mjs`

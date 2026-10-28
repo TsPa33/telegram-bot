@@ -1,0 +1,23 @@
+{
+  "backend": {
+    "passed": 494,
+    "skipped": 1,
+    "seconds": 521.14
+  },
+  "new_stage2d_backend_cases": 11,
+  "frontend_unit": {
+    "passed": 354
+  },
+  "frontend_build": "PASS",
+  "browser_widths": [
+    1440,
+    390
+  ],
+  "browser": "PASS - real local generator, replay/reload, optional review/stale recovery, engine update, historical stock",
+  "alembic_head": "84d2c6fa190b",
+  "new_migrations": false,
+  "real_B_tested": false,
+  "operational_canonical_publish": false,
+  "staging_operations": false,
+  "push": false
+}
