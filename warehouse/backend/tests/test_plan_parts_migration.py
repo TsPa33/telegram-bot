@@ -25,7 +25,7 @@ def test_existing_donor_survives_upgrade_via_staging_startup(vehicle):
         staging.migrate(timeout=10)  # Startup retry must be idempotent.
         with engine().connect() as conn:
             after = dict(conn.execute(text("SELECT * FROM vehicles WHERE id=:id"), {"id": vehicle["id"]}).mappings().one())
-            assert conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "76af12de4b90"
+            assert conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "84d2c6fa190b"
             assert conn.execute(text("SELECT count(*) FROM operations")).scalar_one() == audit_before
         assert after == before
         assert after["ktype"] is None

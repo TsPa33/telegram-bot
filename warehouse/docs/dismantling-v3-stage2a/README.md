@@ -106,3 +106,5 @@ DB-тести стирають лише окрему `warehouse*_test` БД. Bro
 - Chromium із production assets, реальними локальними auth/API: **1440px та 390px PASS**, дубльований click → один preview; немає інших POST, Vehicle не змінюється, помилки зберігають введення, reload не повторює операцію, JS errors і горизонтальний overflow відсутні.
 - Єдина Alembic-head `76af12de4b90`; `alembic check`: No new upgrade operations detected.
 - `git diff --check` без помилок. Зміни лише `/warehouse`; жодного нового BOT_TOKEN чи змін Telegram-бота.
+
+Продовження: [Stage 2B — керований план, ручні зіставлення та збереження рішень](../dismantling-v3-stage2b/README.md).

@@ -12,6 +12,7 @@ try{
   const response=await context.request.post('/api/v1/vehicles',{headers,data:{manufacturer:'Volvo',model:'XC90',year:2020,donor_id:'STAGE2A-'+width,acquisition_date:'2026-01-01',acquisition_cost:'10'}});assert.equal(response.status(),201);const vehicle=await response.json();
   const page=await context.newPage(),writes=[],errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(r.method()!=='GET'&&r.url().includes('/api/v1/'))writes.push(new URL(r.url()).pathname);});
   await page.goto(`/vehicles?donor=${vehicle.id}&info=1`);
+  await page.getByRole('button',{name:'Переглянути read-only preview',exact:true}).click();
   const section=page.getByRole('region',{name:'Попередній план розбору v3'});await expect(section).toBeVisible();
   await section.getByText('Уточнити параметри лише для preview',{exact:true}).click();
   await section.getByLabel('Силова установка',{exact:true}).selectOption('BEV');await section.getByLabel('Привід',{exact:true}).selectOption('AWD');await section.getByLabel('Точний код двигуна',{exact:true}).fill('TEST-ENGINE');
@@ -25,7 +26,7 @@ try{
   await section.getByRole('button',{name:'Сформувати попередній план',exact:true}).click();await expect(section.getByRole('alert')).toHaveText('Тестова точна помилка preview');await expect(section.getByLabel('Точний код двигуна',{exact:true})).toHaveValue('TEST-ENGINE');await expect(section.getByText(/Унікальних позицій:/)).toHaveCount(0);
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));assert.deepEqual(errors,[]);
   await page.screenshot({path:`/workspace/scratch/stage2a-browser-${width}.png`,fullPage:true});
-  await page.reload();await expect(section).toBeVisible();await expect(section.getByText(/Унікальних позицій:/)).toHaveCount(0);assert.equal(writes.filter(p=>p.endsWith('/dismantling-preview')).length,2);
+  await page.reload();await page.getByRole('button',{name:'Переглянути read-only preview',exact:true}).click();await expect(section).toBeVisible();await expect(section.getByText(/Унікальних позицій:/)).toHaveCount(0);assert.equal(writes.filter(p=>p.endsWith('/dismantling-preview')).length,2);
   await context.close();console.log(`PASS ${width}px real auth, preview, no writes, errors, reload, no overflow`);
  }
 }finally{await browser.close();}

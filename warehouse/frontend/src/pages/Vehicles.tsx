@@ -8,7 +8,7 @@ import VehicleForm from "../VehicleForm";
 import AletoCatalogue from "../AletoCatalogue";
 import VehicleChecklist from "../VehicleChecklist";
 import Dismantling from "../Dismantling";
-import DismantlingPreview from "../DismantlingPreview";
+import ManagedDismantling from "../ManagedDismantling";
 import PowertrainEditor from "../PowertrainEditor";
 import VehicleCard from "../VehicleCard";
 import {choices, Confirm, Heading, option, State, useLoad, type Notify} from "../shared";
@@ -125,8 +125,8 @@ function VehicleDetail({
     <>
       <PowertrainEditor vehicle={v} onSaved={onSaved}/>
       {can('catalog.view')&&can('vehicles.view')&&<AletoCatalogue key={v.id} vehicleId={v.id}/>}
-      {can('catalog.view')&&can('vehicles.view')&&<DismantlingPreview key={v.id} vehicle={v}/>}
-      {canCatalog&&(legacyVehicle===v.id?<Dismantling vehicle={v} onChange={() => {reloadAnalytics();onRefresh();}} onInventory={onInventory} />:<button className="secondary" onClick={()=>setLegacyVehicle(v.id)}>Відкрити робочий план розбору</button>)}
+      {legacyVehicle!==v.id&&can('catalog.view')&&can('vehicles.view')&&<ManagedDismantling key={v.id} vehicle={v} onSaved={onSaved}/>}
+      {canCatalog&&(legacyVehicle===v.id?<><button onClick={()=>setLegacyVehicle('')}>До керованого плану v3</button><Dismantling vehicle={v} onChange={() => {reloadAnalytics();onRefresh();}} onInventory={onInventory} /></>:!v.dismantling_v3?.revision&&<button className="secondary" onClick={()=>setLegacyVehicle(v.id)}>Відкрити робочий план розбору</button>)}
       <details className="vehicle-secondary" open={showInfo}><summary>Дані автомобіля</summary>
       {!v.archived&&<div className="modal-actions"><Permit permission="vehicles.edit"><button onClick={onEdit}>Редагувати дані</button></Permit><Permit permission="inventory.archive"><button onClick={onArchive}>Архівувати автомобіль</button></Permit></div>}
       <dl className="details">

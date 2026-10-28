@@ -379,7 +379,12 @@ def test_populated_upgrade_preserves_sessions_reserves_orders_and_failed_retry(l
     tables=['vehicles','parts','operations','sessions','buyers','orders','order_lines','order_reservations','order_events','stock_requests','order_requests']
     def snapshot_tables():
         with engine().connect() as db:
-            return {table:db.execute(text(f'SELECT row_to_json(t) FROM {table} t')).scalars().all() for table in tables}
+            rows={table:db.execute(text(f'SELECT row_to_json(t) FROM {table} t')).scalars().all() for table in tables}
+            # This roundtrip targets legacy business columns; the additive v3
+            # header does not exist at the deliberately downgraded revision.
+            for vehicle in rows['vehicles']:
+                assert vehicle.pop('dismantling_v3',{})=={}
+            return rows
     # Match by serialized immutable content rather than unspecified row ordering.
     def normalized(rows):return {t:sorted(json.dumps(r,sort_keys=True) for r in v) for t,v in rows.items()}
     before=snapshot_tables()

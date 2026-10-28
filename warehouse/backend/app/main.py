@@ -114,3 +114,6 @@ from fastapi.exceptions import RequestValidationError
 @app.exception_handler(RequestValidationError)
 async def invalid_input(request: Request, exc: RequestValidationError):
     return JSONResponse(status_code=422,content={'detail':[{'loc':list(e['loc']),'type':e['type'],'msg':e['msg']} for e in exc.errors()]})
+
+from app.api.dismantling_v3 import router as dismantling_v3_router
+app.include_router(dismantling_v3_router)

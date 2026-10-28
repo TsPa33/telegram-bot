@@ -3,6 +3,8 @@ from decimal import Decimal
 from uuid import uuid4
 from sqlalchemy import (
     true,
+    Index,
+    text,
     Boolean,
     CheckConstraint,
     Date,
@@ -60,6 +62,7 @@ class Owned:
 
 
 class Vehicle(Owned, Base):
+    dismantling_v3: Mapped[dict] = mapped_column(JSON,default=dict,server_default="{}")
     __tablename__ = "vehicles"
     __table_args__ = (
         UniqueConstraint("account_id", "donor_id"),
@@ -212,9 +215,11 @@ class Photo(Base):
 
 
 class DismantlingItem(Base):
+    plan_v3: Mapped[dict] = mapped_column(JSON,default=dict,server_default="{}")
     """Local workflow state; actual stock is exclusively Part + Operation."""
     __tablename__ = "dismantling_items"
     __table_args__ = (
+        Index('uq_dismantling_v3_placement','vehicle_id',text("(plan_v3 ->> 'placement_id')"),unique=True,postgresql_where=text("(plan_v3 ->> 'placement_id') IS NOT NULL")),
         ForeignKeyConstraint(["vehicle_id", "account_id"], ["vehicles.id", "vehicles.account_id"], name="fk_dismantling_vehicle_account"),
         UniqueConstraint("vehicle_id", "source", "catalog_key", name="uq_dismantling_catalog_key"),
         UniqueConstraint("part_id", name="uq_dismantling_part"),
@@ -313,3 +318,5 @@ from app.models.aleto import AletoModel, AletoOffer, AletoPrice, AletoApplicatio
 from app.models.catalogue import CatalogueEntity, CatalogueAlias, CatalogueSource, CatalogueOffer, CataloguePrice, CatalogueApplication, CataloguePath, CatalogueState, CatalogueJob  # noqa: E402,F401
 from app.models.canonical import CanonicalType,CanonicalPlacement,CanonicalVariant,CanonicalAlias,CanonicalFitment,CanonicalRun,CanonicalState,CanonicalMapping  # noqa: E402,F401
 from app.models.vehicle_configuration import VehicleConfiguration  # noqa: E402,F401
+
+from app.models.dismantling_request import DismantlingRequest  # noqa: E402,F401

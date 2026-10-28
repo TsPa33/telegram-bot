@@ -13,6 +13,8 @@ CATALOG = json.loads((Path(__file__).resolve().parents[1] / "data/dismantling_ca
 
 def start(db, vehicle_id, account_id):
     vehicle = owned(db, Vehicle, vehicle_id, account_id, lock=True, active=True)
+    if vehicle.dismantling_v3:
+        return {'created':0,'existing':db.scalar(select(func.count()).select_from(DismantlingItem).where(DismantlingItem.vehicle_id==vehicle_id,DismantlingItem.account_id==account_id)),'status':vehicle.status}
     existing = set(db.execute(select(DismantlingItem.source,DismantlingItem.catalog_key).where(
         DismantlingItem.vehicle_id == vehicle_id,DismantlingItem.account_id == account_id)).all())
     before = snapshot(vehicle)
@@ -89,6 +91,8 @@ def receipt(db, row, data, account_id, *, confirmed=False):
     # Durable workflow marker, independent of current stock, sale, archive or reload.
     if row.received_at is not None:
         return False
+    if row.plan_v3 and (row.plan_v3.get('inspection')!='present' or row.status!='dismantled'):
+        raise HTTPException(409,'План v3: потрібні окремі підтвердження наявності та демонтажу')
     if not row.included or (not confirmed and row.status != 'dismantled'):
         raise HTTPException(409, 'Оприбутковувати можна лише включені та підтверджені демонтовані деталі.')
     # Same account lock as existing category import: no duplicated category tree.
@@ -151,6 +155,7 @@ def actions(db, vehicle_id, account_id, data):
         .order_by(DismantlingItem.id).with_for_update()))
     if len(rows) != len(data.ids):
         raise HTTPException(404, 'Пункт розбору не знайдено')
+    if data.action!='receipt' and any(row.plan_v3 for row in rows):raise HTTPException(409,'Для рішень плану v3 використайте керований workflow')
     # Validate the entire batch before changing anything; transaction covers all rows.
     if data.action == 'dismantled' and any(not row.included for row in rows):
         raise HTTPException(409,'Спочатку поверніть деталь до плану розбору')
@@ -227,6 +232,7 @@ def change_plan(db,vehicle_id,account_id,data):
     if data.ids is not None:stmt=stmt.where(DismantlingItem.id.in_(data.ids))
     rows=list(db.scalars(stmt.order_by(DismantlingItem.id).with_for_update()))
     if data.ids is not None and len(rows)!=len(data.ids):raise HTTPException(404,'Пункт плану не знайдено')
+    if any(row.plan_v3 for row in rows):raise HTTPException(409,'Виключення v3 потребує окремої причини та перевірки історії')
     updated=0
     for row in rows:
         if row.included!=data.included:
