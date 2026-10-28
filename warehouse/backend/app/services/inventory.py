@@ -25,8 +25,9 @@ def snapshot(row):
     return result
 
 
-def record(db, account_id, row, type, reason, before, *, after_extra=None):
-    db.flush()
+def record(db, account_id, row, type, reason, before, *, after_extra=None, flush_before=True):
+    # Batch callers must flush assigned IDs/defaults before deferring audit inserts.
+    if flush_before:db.flush()
     actor=db.get(Account,db.info.get('actor_id',account_id))
     operation = Operation(
         account_id=account_id, actor_id=db.info.get("actor_id",account_id),
