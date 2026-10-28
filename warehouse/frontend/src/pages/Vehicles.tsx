@@ -8,6 +8,7 @@ import VehicleForm from "../VehicleForm";
 import AletoCatalogue from "../AletoCatalogue";
 import VehicleChecklist from "../VehicleChecklist";
 import Dismantling from "../Dismantling";
+import DismantlingPreview from "../DismantlingPreview";
 import PowertrainEditor from "../PowertrainEditor";
 import VehicleCard from "../VehicleCard";
 import {choices, Confirm, Heading, option, State, useLoad, type Notify} from "../shared";
@@ -119,11 +120,13 @@ function VehicleDetail({
     reload: reloadAnalytics,
   } = useLoad(() => can('analytics.view')?api(`/vehicles/${v.id}/analytics`):Promise.resolve(null), [v.id]);
   const [busy, setBusy] = useState(false);
+  const [legacyVehicle,setLegacyVehicle]=useState('');
   return (
     <>
       <PowertrainEditor vehicle={v} onSaved={onSaved}/>
       {can('catalog.view')&&can('vehicles.view')&&<AletoCatalogue key={v.id} vehicleId={v.id}/>}
-      {canCatalog&&<Dismantling vehicle={v} onChange={() => {reloadAnalytics();onRefresh();}} onInventory={onInventory} />}
+      {can('catalog.view')&&can('vehicles.view')&&<DismantlingPreview key={v.id} vehicle={v}/>}
+      {canCatalog&&(legacyVehicle===v.id?<Dismantling vehicle={v} onChange={() => {reloadAnalytics();onRefresh();}} onInventory={onInventory} />:<button className="secondary" onClick={()=>setLegacyVehicle(v.id)}>Відкрити робочий план розбору</button>)}
       <details className="vehicle-secondary" open={showInfo}><summary>Дані автомобіля</summary>
       {!v.archived&&<div className="modal-actions"><Permit permission="vehicles.edit"><button onClick={onEdit}>Редагувати дані</button></Permit><Permit permission="inventory.archive"><button onClick={onArchive}>Архівувати автомобіль</button></Permit></div>}
       <dl className="details">

@@ -19,3 +19,12 @@ def confirm_configuration(id:str,data:ConfigurationConfirm,db:DB,who:Auth):
     if not data.confirm:raise HTTPException(422,'Потрібне явне підтвердження конфігурації')
     v=owned(db,Vehicle,id,who.workspace_account_id,lock=True)
     return service.summary(service.confirm(db,v,who,data.preview_id,data.token))
+
+@router.post('/api/v1/vehicles/{id}/dismantling-preview')
+def dismantling_preview(id:str,data:ConfigurationPreview,db:DB,who:Auth):
+    from app.services.dismantling_preview import preview
+    v=owned(db,Vehicle,id,who.workspace_account_id)
+    # Trial values are never elevated to verified evidence by this endpoint.
+    facts=[{**f.model_dump(),'confidence':'reported'} for f in data.facts]
+    if any(f['field']=='options_complete' and f['value'] for f in facts):raise HTTPException(422,'Повнота комплектації потребує окремої підтвердженої конфігурації')
+    return preview(db,v,who.workspace_account_id,facts,data.selected)

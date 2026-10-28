@@ -129,6 +129,11 @@ class FitmentInput(Strict):
     engine:str=Field(default='',max_length=100)
     fuel_type:str=Field(default='',max_length=50)
     transmission:str=Field(default='',max_length=50)
+    engine_code:str=Field(default='',max_length=100)
+    powertrain:Literal['','petrol','diesel','HEV','PHEV','BEV']=''
+    drive:Literal['','FWD','RWD','AWD','4WD']=''
+    body_type:str=Field(default='',max_length=100)
+    options:list[str]=Field(default_factory=list,max_length=100)
     status:Literal['confirmed','incompatible']
     evidence:str=Field(min_length=5,max_length=2000)
     @model_validator(mode='after')

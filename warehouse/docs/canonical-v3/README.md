@@ -185,3 +185,5 @@ Before Stage 2:
 5. Keep stock receipt as the existing separate explicit action. Do not infer quantities, financial values or selling prices from source offers.
 
 For any future staging release, verify the existing backup/recovery procedure, resource headroom and schema revision first. Migration alone leaves canonical publication empty; no catalogue or donor plan is populated during startup. Publishing/curating the guide remains a separately authorized owner action.
+
+Продовження: [Stage 2A — configuration-aware read-only dismantling preview](../dismantling-v3-stage2a/README.md).

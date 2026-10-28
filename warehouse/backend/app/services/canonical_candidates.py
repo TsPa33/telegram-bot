@@ -17,13 +17,13 @@ from app.services.canonical_catalogue import global_inputs,source_record
 
 def legacy_inputs(db,workspace,query):
     result=[]
-    for item,src in db.execute(select(LocalType,LocalSource).join(LocalSource,LocalSource.id==LocalType.source_id).where(LocalType.account_id==workspace,LocalSource.account_id==workspace)):
+    for item,src in db.execute(select(LocalType,LocalSource).join(LocalSource,LocalSource.id==LocalType.source_id).where(LocalType.account_id==workspace,LocalSource.account_id==workspace).order_by(LocalType.id)):
         result.append(source_record(kind='local',key='local:'+src.id+':'+item.catalog_key,title=item.name,category=item.category_name,subcategory=item.subcategory_name,
             side='',position=item.position,oem=None,manufacturer='',model='',generation='',year_from=None,year_to=None,provider='local',article='',
             legacy_ref={'source':'local.'+src.id,'catalog_key':item.catalog_key}))
     root,sub=aliased(Category),aliased(Category)
     stmt=select(AletoTaxonomy,AletoOffer,AletoModel,root,sub).join(AletoOffer,(AletoOffer.id==AletoTaxonomy.offer_id)&(AletoOffer.account_id==workspace)).join(AletoModel,(AletoModel.id==AletoTaxonomy.model_id)&(AletoModel.account_id==workspace)).join(root,(root.id==AletoTaxonomy.category_id)&(root.account_id==workspace)).outerjoin(sub,(sub.id==AletoTaxonomy.subcategory_id)&(sub.account_id==workspace)).where(AletoTaxonomy.account_id==workspace,root.archived.is_(False))
-    for path,offer,model,c,s in db.execute(stmt):
+    for path,offer,model,c,s in db.execute(stmt.order_by(AletoTaxonomy.id)):
         if identity(model.manufacturer)!=identity(query['manufacturer']) or identity(model.model)!=identity(query['model']):continue
         if s and s.archived:continue
         result.append(source_record(kind='v1',key='v1:'+path.id,title=offer.title,oem=offer.oem,category=c.name,subcategory=s.name if s else path.raw_subcategory,
@@ -47,7 +47,7 @@ def compatibility(source,query,assertions,features=None):
         # Criteria that need facts absent from the vehicle cannot confirm fitment.
         if any(c.get(k) and not query.get(k) for k in ('generation','engine','fuel_type','transmission')):continue
         if query.get('year') is None and (c.get('year_from') is not None or c.get('year_to') is not None):continue
-        if any(query.get(k) and c.get(k)!=query[k] for k in ('powertrain','drive','body_type','engine_code','options')):continue
+        if any((query.get(k) or c.get(k)) and c.get(k)!=query.get(k) for k in ('powertrain','drive','body_type','engine_code','options')):continue
         matches.append(a)
     statuses={a.status for a in matches}
     if len(statuses)>1:return {'status':'unknown','reason':'Conflicting owner fitment evidence','evidence_ids':[a.id for a in matches]}
@@ -60,13 +60,13 @@ def compatibility(source,query,assertions,features=None):
     return {'status':'possible' if same_model else 'unknown','reason':'Source model grouping only; year, engine and equipment not verified' if same_model else 'No verified vehicle fitment evidence','evidence_ids':[]}
 
 
-def candidates(db,query,workspace=None,offset=0,limit=100,configuration=None):
+def candidates(db,query,workspace=None,offset=0,limit=100,configuration=None,include_rule_sources=False):
     state=db.get(State,1)
     if not state or not state.snapshot_sha:return {'items':[],'total':0,'unmapped':[],'unmapped_total':0,'published':False,'read_only':True}
     if state.policy.get('rules_sha')!=RULE_FINGERPRINT:raise HTTPException(409,'Версію правил змінено; власник має опублікувати нову нормалізацію')
     brand=aliased(Entity)
     models=list(db.scalars(select(Entity).join(brand,brand.id==Entity.parent_id).where(Entity.kind=='model',Entity.normalized_name==identity(query['model']),brand.normalized_name==identity(query['manufacturer']))))
-    sources=global_inputs(db,[m.id for m in models])
+    sources=global_inputs(db,None if include_rule_sources else [m.id for m in models])
     aliases=[dict(id=a.id,type_id=a.type_id,criteria=a.criteria,enabled=a.enabled) for a in db.scalars(select(Alias).where(Alias.id.in_(state.policy.get('alias_ids',[]))))]
     mapping={m.source_key:m for m in db.scalars(select(Mapping).where(Mapping.snapshot_sha==state.snapshot_sha))}
     types={t.id:t for t in db.scalars(select(Type))}
@@ -97,12 +97,18 @@ def candidates(db,query,workspace=None,offset=0,limit=100,configuration=None):
         if not outcome.get('type_id') or outcome['type_id'] not in types:
             unmapped.append({'source_key':source['key'],'reason':outcome.get('reason','Type not published')});continue
         p=placement(outcome);t=types[outcome['type_id']]
+        if include_rule_sources and source['kind']=='v2' and (identity(source['manufacturer'])!=identity(query['manufacturer']) or identity(source['model'])!=identity(query['model'])):
+            extra=variant(source,outcome,p)
+            if not any(all(identity(a.criteria.get(k,''))==identity(query[k]) for k in ('manufacturer','model')) for a in assertions[extra['id']]):continue
         group=groups.setdefault(p['id'],dict(canonical_type_id=t.id,name=t.name,category=t.category,subcategory=t.subcategory,
             placement=p,variants={},source_refs=[],qualities=set(),offer_keys=set(),observations={},compatibilities=[]))
         group['qualities'].add(outcome['quality']);group['source_refs'].append({'kind':source['kind'],'key':source['key'],'legacy_ref':source.get('legacy_ref'),
             'provider':source.get('provider'),'article':source.get('article'),'offer_id':source.get('offer_id'),'source_url':source.get('source_url')})
         if source['kind'] not in ('base','local'):
             v=variant(source,outcome,p);v['applicability']=assess(t.id,query,outcome['features'],(configuration or {}).get('values'),(configuration or {}).get('provenance'));v['compatibility']=compatibility(source,query,assertions[v['id']],outcome['features'])
+            if include_rule_sources:
+                v['_sources']=group['variants'].get(v['id'],{}).get('_sources',[])+[{'kind':source['kind'],'offer_id':source.get('offer_id')}]
+                v['candidate_rule_evidence']=[dict(id=a.id,status=a.status,criteria=a.criteria,explanation=a.evidence) for a in sorted(assertions[v['id']],key=lambda a:(a.created_at,a.id)) if all(identity(a.criteria.get(k,''))==identity(query[k]) for k in ('manufacturer','model'))]
             group['variants'][v['id']]=v;group['offer_keys'].add((source['provider'],source['article']))
             group['compatibilities'].append(v['compatibility'])
             for obs in observations.get((source['kind'],source.get('offer_id')),[]):group['observations'][(source['kind'],obs.id)]=obs

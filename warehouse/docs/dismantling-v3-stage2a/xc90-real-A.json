@@ -1,0 +1,3645 @@
+{
+  "dataset": "real Volvo A",
+  "real_B_tested": false,
+  "vehicle": "Volvo XC90 2020; unknown engine/equipment",
+  "total": 168,
+  "unique_type_count": 72,
+  "type_status_counts": {
+    "confirmed": 0,
+    "possible": 7,
+    "unknown": 65,
+    "incompatible": 0
+  },
+  "status_counts": {
+    "confirmed": 0,
+    "possible": 9,
+    "unknown": 159,
+    "incompatible": 0
+  },
+  "unmapped_paths": 11605,
+  "items": [
+    {
+      "id": "0c811606-c938-5eca-92ad-60ff1a599288",
+      "canonical_part_type_id": "2d2d4821-f8b0-5187-aba4-f45b106ad7f5",
+      "name": "Датчик частоти обертання колеса",
+      "installation_position": {
+        "id": "0c811606-c938-5eca-92ad-60ff1a599288",
+        "identity_key": "d40a736edca0eba7f98934053764159ee538ebf4dd960a82004fd712bad0b99f",
+        "type_id": "2d2d4821-f8b0-5187-aba4-f45b106ad7f5",
+        "side": "left",
+        "position": "rear",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 6,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "894bee30-4e41-5be0-868c-89496a07db9d",
+      "canonical_part_type_id": "2d2d4821-f8b0-5187-aba4-f45b106ad7f5",
+      "name": "Датчик частоти обертання колеса",
+      "installation_position": {
+        "id": "894bee30-4e41-5be0-868c-89496a07db9d",
+        "identity_key": "5abc5ffab6d7df1d5a0d6b951b7c549f2d29e296096ef9761d7b625553a076bf",
+        "type_id": "2d2d4821-f8b0-5187-aba4-f45b106ad7f5",
+        "side": "left",
+        "position": "front",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 7,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "9953d9c9-bfca-5860-a754-050bda7f3228",
+      "canonical_part_type_id": "2d2d4821-f8b0-5187-aba4-f45b106ad7f5",
+      "name": "Датчик частоти обертання колеса",
+      "installation_position": {
+        "id": "9953d9c9-bfca-5860-a754-050bda7f3228",
+        "identity_key": "09713ff1731e5abb9ed16130583e187cccac4e378434ad77344666d7eeb8cc9e",
+        "type_id": "2d2d4821-f8b0-5187-aba4-f45b106ad7f5",
+        "side": "right",
+        "position": "front",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 7,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "eb6a57a1-d36e-5dbb-9108-49b25350d08d",
+      "canonical_part_type_id": "2d2d4821-f8b0-5187-aba4-f45b106ad7f5",
+      "name": "Датчик частоти обертання колеса",
+      "installation_position": {
+        "id": "eb6a57a1-d36e-5dbb-9108-49b25350d08d",
+        "identity_key": "837c306f818d519f2b4f0cdb61b78f7bdad50bcb10d82dc5772a0b08b2d3c40c",
+        "type_id": "2d2d4821-f8b0-5187-aba4-f45b106ad7f5",
+        "side": "right",
+        "position": "rear",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 3,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "db9bf098-b85f-54ea-9fd2-c57e833b8c7f",
+      "canonical_part_type_id": "ee3d2689-23b9-5997-a085-5a6a04e6e48a",
+      "name": "Блок керування подушками безпеки",
+      "installation_position": {
+        "id": "db9bf098-b85f-54ea-9fd2-c57e833b8c7f",
+        "identity_key": "9534f3b582964cd53f6dbfd32be4142f9dc0adc33255cc6f77d320b8e98b4cc9",
+        "type_id": "ee3d2689-23b9-5997-a085-5a6a04e6e48a",
+        "side": "unknown",
+        "position": "unknown",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 9,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "4402a2a0-37fc-5a1f-8f56-e1c94d2543e4",
+      "canonical_part_type_id": "5f397a54-0962-5dd5-8c1a-a4214b223e94",
+      "name": "Датчик удару дверей",
+      "installation_position": {
+        "id": "4402a2a0-37fc-5a1f-8f56-e1c94d2543e4",
+        "identity_key": "7eb524099cf8f192bd1851a97e50dda6d70722a43929698123c557652a64f0db",
+        "type_id": "5f397a54-0962-5dd5-8c1a-a4214b223e94",
+        "side": "left",
+        "position": "unknown",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 3,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "921cad15-6489-5e27-8c4f-122cd3283a5d",
+      "canonical_part_type_id": "5f397a54-0962-5dd5-8c1a-a4214b223e94",
+      "name": "Датчик удару дверей",
+      "installation_position": {
+        "id": "921cad15-6489-5e27-8c4f-122cd3283a5d",
+        "identity_key": "0957fe9fffb8450cbd0409f1659de51d6b7822673b1b38a80b27cc9e941dcfd4",
+        "type_id": "5f397a54-0962-5dd5-8c1a-a4214b223e94",
+        "side": "right",
+        "position": "unknown",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 3,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "08436325-256c-5fe3-a44c-9fd6eeb17300",
+      "canonical_part_type_id": "699193dd-afc2-526a-ba80-d66e1bc6fb18",
+      "name": "Блок керування кузовом",
+      "installation_position": {
+        "id": "08436325-256c-5fe3-a44c-9fd6eeb17300",
+        "identity_key": "555d572f49283a0b9ce6b8dcf4f650e16d92aa6b015883f58427da35e807c122",
+        "type_id": "699193dd-afc2-526a-ba80-d66e1bc6fb18",
+        "side": "unknown",
+        "position": "unknown",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 6,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "71fddd42-09bc-5d77-ba5c-1d895883e218",
+      "canonical_part_type_id": "ff640d7a-4284-52ff-8635-d3a8f894b261",
+      "name": "Кнопка центрального замка",
+      "installation_position": {
+        "id": "71fddd42-09bc-5d77-ba5c-1d895883e218",
+        "identity_key": "b5c514f3bf4396950c394fa122e8e9696d01d4215f62282734f9c2378886d22e",
+        "type_id": "ff640d7a-4284-52ff-8635-d3a8f894b261",
+        "side": "left",
+        "position": "rear",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 1,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "85194e2a-f437-5548-aee7-949172ec3049",
+      "canonical_part_type_id": "ff640d7a-4284-52ff-8635-d3a8f894b261",
+      "name": "Кнопка центрального замка",
+      "installation_position": {
+        "id": "85194e2a-f437-5548-aee7-949172ec3049",
+        "identity_key": "5110bca721d42f958b4afdc8d48be01812e884407238821a1de8a05f9098d408",
+        "type_id": "ff640d7a-4284-52ff-8635-d3a8f894b261",
+        "side": "right",
+        "position": "rear",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 1,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "059887c1-6d83-5203-88f9-ecc8be08fd3a",
+      "canonical_part_type_id": "e3e6b0fd-0817-5343-aab4-b92d9c20612e",
+      "name": "Радар сліпих зон",
+      "installation_position": {
+        "id": "059887c1-6d83-5203-88f9-ecc8be08fd3a",
+        "identity_key": "6cd23b8cbaa4b27451d8a12c6cc85588b02330eca8e99536103669ae7269543b",
+        "type_id": "e3e6b0fd-0817-5343-aab4-b92d9c20612e",
+        "side": "left",
+        "position": "rear",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 4,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "8af4a5c8-0576-53ad-b2e2-191c5029e0e2",
+      "canonical_part_type_id": "e3e6b0fd-0817-5343-aab4-b92d9c20612e",
+      "name": "Радар сліпих зон",
+      "installation_position": {
+        "id": "8af4a5c8-0576-53ad-b2e2-191c5029e0e2",
+        "identity_key": "156806f92c29fef53102082aaff8cf0a309a3b3055b5d163a49bb961613f16db",
+        "type_id": "e3e6b0fd-0817-5343-aab4-b92d9c20612e",
+        "side": "right",
+        "position": "unknown",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 4,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "a3ede94d-e30a-5748-9e28-dd7e266b79fb",
+      "canonical_part_type_id": "e3e6b0fd-0817-5343-aab4-b92d9c20612e",
+      "name": "Радар сліпих зон",
+      "installation_position": {
+        "id": "a3ede94d-e30a-5748-9e28-dd7e266b79fb",
+        "identity_key": "aaad9275fe254ea8e7949a408972434aeaf7623521991100b6c32826b3f0c352",
+        "type_id": "e3e6b0fd-0817-5343-aab4-b92d9c20612e",
+        "side": "left",
+        "position": "unknown",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 2,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "c9d5b951-c129-5a6d-86aa-a0bb5c8f39aa",
+      "canonical_part_type_id": "e3e6b0fd-0817-5343-aab4-b92d9c20612e",
+      "name": "Радар сліпих зон",
+      "installation_position": {
+        "id": "c9d5b951-c129-5a6d-86aa-a0bb5c8f39aa",
+        "identity_key": "dd82e45365ec2491b03b9e6b4e45dfa42d9a46739a06623d895cc93f08cbf5c5",
+        "type_id": "e3e6b0fd-0817-5343-aab4-b92d9c20612e",
+        "side": "right",
+        "position": "rear",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 3,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "2bfacf46-f263-5bf4-9deb-06fa51d8e8b6",
+      "canonical_part_type_id": "623a1310-5e6d-5747-a909-15910bdda0b6",
+      "name": "Двері",
+      "installation_position": {
+        "id": "2bfacf46-f263-5bf4-9deb-06fa51d8e8b6",
+        "identity_key": "c0576c1eda30e6304a6cf2fa374704289f7fcc82fd270afe2dbd69a394ed0d90",
+        "type_id": "623a1310-5e6d-5747-a909-15910bdda0b6",
+        "side": "right",
+        "position": "rear",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 2,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "c029e364-b8ea-5c93-b7fd-034b986c80c9",
+      "canonical_part_type_id": "623a1310-5e6d-5747-a909-15910bdda0b6",
+      "name": "Двері",
+      "installation_position": {
+        "id": "c029e364-b8ea-5c93-b7fd-034b986c80c9",
+        "identity_key": "8b04705a8757c15102e8c1dbfb921b6ff6352f78c2e430ae8ddceb21a10ea96c",
+        "type_id": "623a1310-5e6d-5747-a909-15910bdda0b6",
+        "side": "left",
+        "position": "rear",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 2,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "cdb7b0aa-b8de-5edc-858c-e68f8c8f3573",
+      "canonical_part_type_id": "623a1310-5e6d-5747-a909-15910bdda0b6",
+      "name": "Двері",
+      "installation_position": {
+        "id": "cdb7b0aa-b8de-5edc-858c-e68f8c8f3573",
+        "identity_key": "e59b3375759171eff1899dd1015d5362bfdc16a23b036b4aca51e8f0abbb91f5",
+        "type_id": "623a1310-5e6d-5747-a909-15910bdda0b6",
+        "side": "right",
+        "position": "front",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 3,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "dbd7e799-1aa5-501d-8692-035a08bae6bf",
+      "canonical_part_type_id": "623a1310-5e6d-5747-a909-15910bdda0b6",
+      "name": "Двері",
+      "installation_position": {
+        "id": "dbd7e799-1aa5-501d-8692-035a08bae6bf",
+        "identity_key": "0b1958eea4cbeb0e74090221eae8e2b5c22835a958f44204ae3023c3bac448eb",
+        "type_id": "623a1310-5e6d-5747-a909-15910bdda0b6",
+        "side": "left",
+        "position": "front",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 4,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "8a905495-0b1a-545a-be3e-5199db7a7f00",
+      "canonical_part_type_id": "d4e9c8a3-6c24-5691-be4e-971a8378ccb0",
+      "name": "Замок дверей",
+      "installation_position": {
+        "id": "8a905495-0b1a-545a-be3e-5199db7a7f00",
+        "identity_key": "5b58716d4da149b4f4c393664b3ef1d72a5c2751eae7bee5503cdd94be2eed40",
+        "type_id": "d4e9c8a3-6c24-5691-be4e-971a8378ccb0",
+        "side": "left",
+        "position": "front",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 2,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "d4ddc663-ba8a-53c3-9eeb-f3b8264de9c1",
+      "canonical_part_type_id": "d4e9c8a3-6c24-5691-be4e-971a8378ccb0",
+      "name": "Замок дверей",
+      "installation_position": {
+        "id": "d4ddc663-ba8a-53c3-9eeb-f3b8264de9c1",
+        "identity_key": "ee0807270dc1c86dbdf1775834d864196cf442fc7e074e4c7d7c9baf7962b250",
+        "type_id": "d4e9c8a3-6c24-5691-be4e-971a8378ccb0",
+        "side": "left",
+        "position": "rear",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 2,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "d541a520-9144-5e54-8da5-b38197a2c9db",
+      "canonical_part_type_id": "d4e9c8a3-6c24-5691-be4e-971a8378ccb0",
+      "name": "Замок дверей",
+      "installation_position": {
+        "id": "d541a520-9144-5e54-8da5-b38197a2c9db",
+        "identity_key": "c0f69a037bead10eee3b0c1bb2dc92770ad40893de320c7ac934266868680162",
+        "type_id": "d4e9c8a3-6c24-5691-be4e-971a8378ccb0",
+        "side": "right",
+        "position": "front",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 5,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "ecb61662-be2f-5b62-adca-dc773dbe2a67",
+      "canonical_part_type_id": "d4e9c8a3-6c24-5691-be4e-971a8378ccb0",
+      "name": "Замок дверей",
+      "installation_position": {
+        "id": "ecb61662-be2f-5b62-adca-dc773dbe2a67",
+        "identity_key": "92a585cb944f8f9d9a68a8a3af31525693e6c617c5320bc1d5f4e5119628466f",
+        "type_id": "d4e9c8a3-6c24-5691-be4e-971a8378ccb0",
+        "side": "right",
+        "position": "rear",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 5,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "33248284-865d-5244-b6f2-03a1863475c2",
+      "canonical_part_type_id": "cf548e16-c151-5450-9d75-628f2cc721a7",
+      "name": "Петля дверей",
+      "installation_position": {
+        "id": "33248284-865d-5244-b6f2-03a1863475c2",
+        "identity_key": "7b84320f494ce27a98fbb6f801dbe735deb46cfe68755213cbd9985bd72b44a6",
+        "type_id": "cf548e16-c151-5450-9d75-628f2cc721a7",
+        "side": "left",
+        "position": "rear",
+        "details": {
+          "mount": [
+            "upper"
+          ]
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 2,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "40a1e4a7-7add-52d8-b89a-fa66dd78f5de",
+      "canonical_part_type_id": "cf548e16-c151-5450-9d75-628f2cc721a7",
+      "name": "Петля дверей",
+      "installation_position": {
+        "id": "40a1e4a7-7add-52d8-b89a-fa66dd78f5de",
+        "identity_key": "ca925832e164b8d1a1ff2848bf98f7c7b66d3dfe9bf289838b68cc70dc6cd9dc",
+        "type_id": "cf548e16-c151-5450-9d75-628f2cc721a7",
+        "side": "right",
+        "position": "front",
+        "details": {
+          "mount": [
+            "upper"
+          ]
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 1,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "52d4b3d2-3cb1-509a-9233-50d76bde69de",
+      "canonical_part_type_id": "cf548e16-c151-5450-9d75-628f2cc721a7",
+      "name": "Петля дверей",
+      "installation_position": {
+        "id": "52d4b3d2-3cb1-509a-9233-50d76bde69de",
+        "identity_key": "3284da4c6d60467d770845dc6878c78d0cef6503aa66ed2d966b3d8e0247d480",
+        "type_id": "cf548e16-c151-5450-9d75-628f2cc721a7",
+        "side": "left",
+        "position": "front",
+        "details": {
+          "mount": [
+            "lower"
+          ]
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 2,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "981dc96f-0718-5904-8669-6d3f4139f448",
+      "canonical_part_type_id": "cf548e16-c151-5450-9d75-628f2cc721a7",
+      "name": "Петля дверей",
+      "installation_position": {
+        "id": "981dc96f-0718-5904-8669-6d3f4139f448",
+        "identity_key": "5f06282a583f7e61e8660fedb30d73ce64d2867c2d6649cb87a55c4c4c984dbd",
+        "type_id": "cf548e16-c151-5450-9d75-628f2cc721a7",
+        "side": "left",
+        "position": "front",
+        "details": {
+          "mount": [
+            "upper"
+          ]
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 3,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "9b2867ab-aa80-5754-a899-43d446f3dcd4",
+      "canonical_part_type_id": "cf548e16-c151-5450-9d75-628f2cc721a7",
+      "name": "Петля дверей",
+      "installation_position": {
+        "id": "9b2867ab-aa80-5754-a899-43d446f3dcd4",
+        "identity_key": "f9f93437e377e0024c8a640930cd53ac7d699a94b6ca47dc9054bfef6370d962",
+        "type_id": "cf548e16-c151-5450-9d75-628f2cc721a7",
+        "side": "left",
+        "position": "rear",
+        "details": {
+          "mount": [
+            "lower"
+          ]
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 2,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "c3cc4787-46be-513b-82ff-2ef73b8dbf6e",
+      "canonical_part_type_id": "cf548e16-c151-5450-9d75-628f2cc721a7",
+      "name": "Петля дверей",
+      "installation_position": {
+        "id": "c3cc4787-46be-513b-82ff-2ef73b8dbf6e",
+        "identity_key": "89b3ef735ae8dbb26b4d93d138c2ba02bffa10f024a8fad6395a934317aecde6",
+        "type_id": "cf548e16-c151-5450-9d75-628f2cc721a7",
+        "side": "right",
+        "position": "front",
+        "details": {
+          "mount": [
+            "lower"
+          ]
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 2,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "e13e742a-11d2-5a44-a5b7-6321d18f6d8d",
+      "canonical_part_type_id": "cf548e16-c151-5450-9d75-628f2cc721a7",
+      "name": "Петля дверей",
+      "installation_position": {
+        "id": "e13e742a-11d2-5a44-a5b7-6321d18f6d8d",
+        "identity_key": "5a2f159dfb8fc77be92ff229bd4239e52a922c6322e85a62539b6e58d5f6cfe6",
+        "type_id": "cf548e16-c151-5450-9d75-628f2cc721a7",
+        "side": "right",
+        "position": "rear",
+        "details": {
+          "mount": [
+            "lower"
+          ]
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 2,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "eadf5ec5-14f0-5024-b768-0b84380c50cc",
+      "canonical_part_type_id": "cf548e16-c151-5450-9d75-628f2cc721a7",
+      "name": "Петля дверей",
+      "installation_position": {
+        "id": "eadf5ec5-14f0-5024-b768-0b84380c50cc",
+        "identity_key": "f3a6ee813a4f0156daa48e501d955595978f56c671c0bdf9f43cefcd79e57d4f",
+        "type_id": "cf548e16-c151-5450-9d75-628f2cc721a7",
+        "side": "right",
+        "position": "rear",
+        "details": {
+          "mount": [
+            "upper"
+          ]
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 2,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "04e48023-9800-571d-8456-6de29c499714",
+      "canonical_part_type_id": "b180122b-fa27-5450-9823-a66c8a8137c2",
+      "name": "Ручка дверей",
+      "installation_position": {
+        "id": "04e48023-9800-571d-8456-6de29c499714",
+        "identity_key": "b466e776f4c2ecff851c3b9fb99d4c0cc21bc3912c8dd12b4849d2cc9cb1a339",
+        "type_id": "b180122b-fa27-5450-9823-a66c8a8137c2",
+        "side": "right",
+        "position": "front",
+        "details": {
+          "mount": [
+            "outer"
+          ]
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 3,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "1bb47a58-ec51-5b8e-b69f-9c14b096cd86",
+      "canonical_part_type_id": "b180122b-fa27-5450-9823-a66c8a8137c2",
+      "name": "Ручка дверей",
+      "installation_position": {
+        "id": "1bb47a58-ec51-5b8e-b69f-9c14b096cd86",
+        "identity_key": "ba7410211de2f7e6121016a47ee50fb26edce04724fb63ebb4a2b5b96d63bc59",
+        "type_id": "b180122b-fa27-5450-9823-a66c8a8137c2",
+        "side": "right",
+        "position": "rear",
+        "details": {
+          "mount": [
+            "outer"
+          ]
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 6,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "21f4dfda-aabc-5c50-96db-6a9392803e32",
+      "canonical_part_type_id": "b180122b-fa27-5450-9823-a66c8a8137c2",
+      "name": "Ручка дверей",
+      "installation_position": {
+        "id": "21f4dfda-aabc-5c50-96db-6a9392803e32",
+        "identity_key": "eb84e9ae18f0935b674bef173fd32863b58f2741146a2875eeeb9f1fbc13ada0",
+        "type_id": "b180122b-fa27-5450-9823-a66c8a8137c2",
+        "side": "left",
+        "position": "rear",
+        "details": {
+          "mount": [
+            "outer"
+          ]
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 4,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "5879dcf8-a269-5173-b144-1fcd8d88df65",
+      "canonical_part_type_id": "b180122b-fa27-5450-9823-a66c8a8137c2",
+      "name": "Ручка дверей",
+      "installation_position": {
+        "id": "5879dcf8-a269-5173-b144-1fcd8d88df65",
+        "identity_key": "778f1b9825884857e829cb456949047092075de9913537a8ae56c35a5ea0af07",
+        "type_id": "b180122b-fa27-5450-9823-a66c8a8137c2",
+        "side": "left",
+        "position": "front",
+        "details": {
+          "mount": [
+            "outer"
+          ]
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 1,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "131e80fb-875a-5488-8a6f-0a2952b5eafc",
+      "canonical_part_type_id": "e6bd4c2e-f867-599b-9485-4f8718189ee7",
+      "name": "Зовнішнє дзеркало",
+      "installation_position": {
+        "id": "131e80fb-875a-5488-8a6f-0a2952b5eafc",
+        "identity_key": "733d89d4efde537cacfcbaa5e99cafa78ea418749bf28008417f3b3abfaf1cb4",
+        "type_id": "e6bd4c2e-f867-599b-9485-4f8718189ee7",
+        "side": "left",
+        "position": "unknown",
+        "details": {
+          "mount": [
+            "outer"
+          ]
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 0,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "181aa9a6-d2d3-5c9a-bb91-f4e5f9fb4a6a",
+      "canonical_part_type_id": "e6bd4c2e-f867-599b-9485-4f8718189ee7",
+      "name": "Зовнішнє дзеркало",
+      "installation_position": {
+        "id": "181aa9a6-d2d3-5c9a-bb91-f4e5f9fb4a6a",
+        "identity_key": "1f076d49070720fe9a6774564229bbed7c707ef9e083affb940415bf803bb46a",
+        "type_id": "e6bd4c2e-f867-599b-9485-4f8718189ee7",
+        "side": "right",
+        "position": "unknown",
+        "details": {
+          "mount": [
+            "outer"
+          ]
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 0,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "2aa3f8a9-d184-5ec0-83fb-370d2fc4e175",
+      "canonical_part_type_id": "508fd0a6-0a87-5b0d-a8a6-946e539b3d0c",
+      "name": "Бампер",
+      "installation_position": {
+        "id": "2aa3f8a9-d184-5ec0-83fb-370d2fc4e175",
+        "identity_key": "bc1bc238af6aabf3b6d9402eaef357dc97bd58170e03c81dbc3fbbeaa7c7961a",
+        "type_id": "508fd0a6-0a87-5b0d-a8a6-946e539b3d0c",
+        "side": "unknown",
+        "position": "front",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 1,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "e806ba03-f470-56d6-8217-d59efd381df3",
+      "canonical_part_type_id": "508fd0a6-0a87-5b0d-a8a6-946e539b3d0c",
+      "name": "Бампер",
+      "installation_position": {
+        "id": "e806ba03-f470-56d6-8217-d59efd381df3",
+        "identity_key": "f276038834a682e6a9c84e3e17e8797ab5d1cd41bacb4cca0efa74b957a8c193",
+        "type_id": "508fd0a6-0a87-5b0d-a8a6-946e539b3d0c",
+        "side": "unknown",
+        "position": "rear",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 0,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "d74b11b3-e79a-5fea-9fb9-d0769a7331b6",
+      "canonical_part_type_id": "f227cd57-ec41-5f06-948c-6d8b44935b87",
+      "name": "Капот",
+      "installation_position": {
+        "id": "d74b11b3-e79a-5fea-9fb9-d0769a7331b6",
+        "identity_key": "1913377a28330d6f5d5662c0893c46832be015964781c3e658794e7365e617a4",
+        "type_id": "f227cd57-ec41-5f06-948c-6d8b44935b87",
+        "side": "unknown",
+        "position": "unknown",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 5,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "ef4bc11b-54fc-5579-bf80-d73aa970573e",
+      "canonical_part_type_id": "f227cd57-ec41-5f06-948c-6d8b44935b87",
+      "name": "Капот",
+      "installation_position": {
+        "id": "ef4bc11b-54fc-5579-bf80-d73aa970573e",
+        "identity_key": "4387a3e5752d7437a2b86f3c18d702c3b363510a7751f1ccc17ead16aed7a712",
+        "type_id": "f227cd57-ec41-5f06-948c-6d8b44935b87",
+        "side": "unknown",
+        "position": "front",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 0,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "cf24e170-3d5b-5723-938e-0249b83b0a69",
+      "canonical_part_type_id": "a7c4c0ff-b62c-5044-9ab3-04f8cf1f2126",
+      "name": "Кришка багажника / двері багажного відділення",
+      "installation_position": {
+        "id": "cf24e170-3d5b-5723-938e-0249b83b0a69",
+        "identity_key": "12ee0c2ec21bb9af6662f03b7e015318ba353d60010b8812ca58091b4803a556",
+        "type_id": "a7c4c0ff-b62c-5044-9ab3-04f8cf1f2126",
+        "side": "unknown",
+        "position": "rear",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 0,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "7935f30f-166a-5a3a-a73e-aed5555d7c3a",
+      "canonical_part_type_id": "5a93bbc4-7d67-564a-95b8-dcfaa24b3355",
+      "name": "Задній ліхтар",
+      "installation_position": {
+        "id": "7935f30f-166a-5a3a-a73e-aed5555d7c3a",
+        "identity_key": "f7e14552e4d957d899f9d88798161d11db6530f202b38a1805873fc494a17558",
+        "type_id": "5a93bbc4-7d67-564a-95b8-dcfaa24b3355",
+        "side": "right",
+        "position": "rear",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "possible",
+      "relevant_offer_count": 0,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "8b23ab33-fb44-51b7-a662-9b9f026f0fb9",
+      "canonical_part_type_id": "5a93bbc4-7d67-564a-95b8-dcfaa24b3355",
+      "name": "Задній ліхтар",
+      "installation_position": {
+        "id": "8b23ab33-fb44-51b7-a662-9b9f026f0fb9",
+        "identity_key": "cd448b080d38adaf6239d0572c6cdb4b230f02fbbfde8d2823ce07e5d41f5f9f",
+        "type_id": "5a93bbc4-7d67-564a-95b8-dcfaa24b3355",
+        "side": "left",
+        "position": "rear",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "possible",
+      "relevant_offer_count": 0,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "5fccbd7e-b6d5-5dcc-907e-61a2751af5b1",
+      "canonical_part_type_id": "411e5b3f-83b4-5615-b098-2c21d499706f",
+      "name": "Протитуманна фара",
+      "installation_position": {
+        "id": "5fccbd7e-b6d5-5dcc-907e-61a2751af5b1",
+        "identity_key": "afad09ce194730eaac41728c9641557aadc2965d0d11f49eaba02b7908d1b500",
+        "type_id": "411e5b3f-83b4-5615-b098-2c21d499706f",
+        "side": "left",
+        "position": "front",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 6,
+      "price_label": "Ринковий орієнтир",
+      "reference_prices": [
+        {
+          "variant_id": "df9cce8f-8391-5843-89c2-51f3401ca4de",
+          "oem": "31395865",
+          "condition": "б/в",
+          "condition_details": [
+            "під полірування"
+          ],
+          "currency": "UAH",
+          "offer_count": 3,
+          "minimum": "3526.00",
+          "maximum": "3573.00",
+          "median": "3526.00",
+          "observed_at": "2026-10-27T19:14:27.284893+00:00",
+          "label": "Ринковий орієнтир",
+          "rule_version": "carpot.comparable-prices.1"
+        },
+        {
+          "variant_id": "df9cce8f-8391-5843-89c2-51f3401ca4de",
+          "oem": "31395865",
+          "condition": "б/в",
+          "condition_details": [
+            "під полірування"
+          ],
+          "currency": "USD",
+          "offer_count": 3,
+          "minimum": "76.00",
+          "maximum": "77.00",
+          "median": "76.00",
+          "observed_at": "2026-10-27T19:14:27.284893+00:00",
+          "label": "Ринковий орієнтир",
+          "rule_version": "carpot.comparable-prices.1"
+        }
+      ]
+    },
+    {
+      "id": "9c7df7f5-5bd8-5574-b64b-60ad2846e045",
+      "canonical_part_type_id": "411e5b3f-83b4-5615-b098-2c21d499706f",
+      "name": "Протитуманна фара",
+      "installation_position": {
+        "id": "9c7df7f5-5bd8-5574-b64b-60ad2846e045",
+        "identity_key": "6d3575366b1798a5e85e219e841e8f6e2aa5b67492c2f65b638b6850f39e4efd",
+        "type_id": "411e5b3f-83b4-5615-b098-2c21d499706f",
+        "side": "right",
+        "position": "front",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 9,
+      "price_label": "Ринковий орієнтир",
+      "reference_prices": [
+        {
+          "variant_id": "4e7b5248-7196-5eaf-9b3c-3f1d3a54435f",
+          "oem": "31395866",
+          "condition": "б/в",
+          "condition_details": [
+            "під полірування"
+          ],
+          "currency": "UAH",
+          "offer_count": 3,
+          "minimum": "3526.00",
+          "maximum": "3712.00",
+          "median": "3573.00",
+          "observed_at": "2026-10-27T19:14:27.285100+00:00",
+          "label": "Ринковий орієнтир",
+          "rule_version": "carpot.comparable-prices.1"
+        },
+        {
+          "variant_id": "4e7b5248-7196-5eaf-9b3c-3f1d3a54435f",
+          "oem": "31395866",
+          "condition": "б/в",
+          "condition_details": [
+            "під полірування"
+          ],
+          "currency": "USD",
+          "offer_count": 3,
+          "minimum": "76.00",
+          "maximum": "80.00",
+          "median": "77.00",
+          "observed_at": "2026-10-27T19:14:27.285100+00:00",
+          "label": "Ринковий орієнтир",
+          "rule_version": "carpot.comparable-prices.1"
+        }
+      ]
+    },
+    {
+      "id": "5a8e86f3-5606-5954-af57-94b4a4270097",
+      "canonical_part_type_id": "8a468ccb-47f6-536e-aca5-8fa8cc2d3ccd",
+      "name": "Фара",
+      "installation_position": {
+        "id": "5a8e86f3-5606-5954-af57-94b4a4270097",
+        "identity_key": "43f24b009a51831973b401e3822c9519150035dd394a7b61c819172d5aa235ae",
+        "type_id": "8a468ccb-47f6-536e-aca5-8fa8cc2d3ccd",
+        "side": "left",
+        "position": "front",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 6,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "d235ba9d-cb28-55ec-abc2-f54fc5083433",
+      "canonical_part_type_id": "8a468ccb-47f6-536e-aca5-8fa8cc2d3ccd",
+      "name": "Фара",
+      "installation_position": {
+        "id": "d235ba9d-cb28-55ec-abc2-f54fc5083433",
+        "identity_key": "17bf76f97c18d4640a83f590a18d2cc6e3cfc32e1d8fdeafa26185034629d3df",
+        "type_id": "8a468ccb-47f6-536e-aca5-8fa8cc2d3ccd",
+        "side": "right",
+        "position": "front",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 4,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "d2c05955-90dc-53e3-9497-aee7e42982ae",
+      "canonical_part_type_id": "fa88cde8-4771-58e5-8c99-450d37aa17b8",
+      "name": "Клапан системи охолодження",
+      "installation_position": {
+        "id": "d2c05955-90dc-53e3-9497-aee7e42982ae",
+        "identity_key": "488b9e2a5283117959153943ea3e5a717dcc053d581ca74f2ec995b616139ac2",
+        "type_id": "fa88cde8-4771-58e5-8c99-450d37aa17b8",
+        "side": "unknown",
+        "position": "unknown",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 5,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "4f168b85-4e66-503e-848f-fe28477b8879",
+      "canonical_part_type_id": "c51e41fc-ccff-52e8-86c2-c092828d72cb",
+      "name": "Насос охолоджувальної рідини",
+      "installation_position": {
+        "id": "4f168b85-4e66-503e-848f-fe28477b8879",
+        "identity_key": "fb35b4b89c6b56439e0011fd93d336939d0ec3170831c0c1dc94ed3f1a2ef256",
+        "type_id": "c51e41fc-ccff-52e8-86c2-c092828d72cb",
+        "side": "unknown",
+        "position": "unknown",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 9,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "010e2bc3-e3cd-5a78-8437-4cfafa3c6afd",
+      "canonical_part_type_id": "99ca3f41-4239-599e-9b60-0523c575d1b8",
+      "name": "Патрубок охолодження",
+      "installation_position": {
+        "id": "010e2bc3-e3cd-5a78-8437-4cfafa3c6afd",
+        "identity_key": "c269ff238e83f8e67dbab53a546277b90c3b62cf96c5b4f6a82a071452914218",
+        "type_id": "99ca3f41-4239-599e-9b60-0523c575d1b8",
+        "side": "unknown",
+        "position": "unknown",
+        "details": {
+          "mount": [
+            "upper"
+          ]
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 2,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "266062d0-6c08-5fe3-bb6f-dc7cf9c6ab25",
+      "canonical_part_type_id": "99ca3f41-4239-599e-9b60-0523c575d1b8",
+      "name": "Патрубок охолодження",
+      "installation_position": {
+        "id": "266062d0-6c08-5fe3-bb6f-dc7cf9c6ab25",
+        "identity_key": "3bc5ba115d57df55a98eefc9c5ddfcbcb3f0ed9627d624250a46c834ff64c812",
+        "type_id": "99ca3f41-4239-599e-9b60-0523c575d1b8",
+        "side": "unknown",
+        "position": "unknown",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 9,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "663e1816-88a1-569a-802e-5a865ab33d2b",
+      "canonical_part_type_id": "c0123a8c-94f8-56d3-bed0-9e3b811aeff8",
+      "name": "Вентилятор охолодження",
+      "installation_position": {
+        "id": "663e1816-88a1-569a-802e-5a865ab33d2b",
+        "identity_key": "b9a25cd81509b7981beb35ca4165c76e19a987482c2acecfca2e7dee37df6b05",
+        "type_id": "c0123a8c-94f8-56d3-bed0-9e3b811aeff8",
+        "side": "unknown",
+        "position": "unknown",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "possible",
+      "relevant_offer_count": 0,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "881bdbdb-6892-552f-a09f-563ad2843f74",
+      "canonical_part_type_id": "746e3182-7a06-566e-add5-1ed2b5077045",
+      "name": "Конденсор кондиціонера",
+      "installation_position": {
+        "id": "881bdbdb-6892-552f-a09f-563ad2843f74",
+        "identity_key": "a23f2d287fea72298a983d236dbacf4091f7fb2e86ea7848eaf22e27c1db025a",
+        "type_id": "746e3182-7a06-566e-add5-1ed2b5077045",
+        "side": "unknown",
+        "position": "unknown",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "possible",
+      "relevant_offer_count": 1,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "0c5d4fad-1634-5db3-b432-eb13d5b419a0",
+      "canonical_part_type_id": "3813285f-9f14-58b7-bd4d-5da77680272b",
+      "name": "Радіатор охолодження",
+      "installation_position": {
+        "id": "0c5d4fad-1634-5db3-b432-eb13d5b419a0",
+        "identity_key": "c5492ddafd020b168fcb7cbc6f75d5af79e24277770c2e7381ff564bc68b83e2",
+        "type_id": "3813285f-9f14-58b7-bd4d-5da77680272b",
+        "side": "unknown",
+        "position": "unknown",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "possible",
+      "relevant_offer_count": 6,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "9480cd79-5b1e-5d88-bcc5-a232260aa61d",
+      "canonical_part_type_id": "a851d37a-4b3b-538a-881a-8a712390baa7",
+      "name": "Корпус термостата",
+      "installation_position": {
+        "id": "9480cd79-5b1e-5d88-bcc5-a232260aa61d",
+        "identity_key": "e9906bd35a3142acd0a50038095f71d04bd44886c62c849bdd62aade258acbf8",
+        "type_id": "a851d37a-4b3b-538a-881a-8a712390baa7",
+        "side": "unknown",
+        "position": "unknown",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 3,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "4791c3a6-fb2f-523c-85cd-c096e8a18e7f",
+      "canonical_part_type_id": "75eb1f32-6b66-56f6-b5ab-20e3a4948aa9",
+      "name": "Високочастотний динамік дверей",
+      "installation_position": {
+        "id": "4791c3a6-fb2f-523c-85cd-c096e8a18e7f",
+        "identity_key": "faddacc2e480eaf8165e2c5816e81ca29f3284f6d15e31128a2bd394bc5a3a43",
+        "type_id": "75eb1f32-6b66-56f6-b5ab-20e3a4948aa9",
+        "side": "right",
+        "position": "front",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 10,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "652dc2dc-c8de-597c-99cf-362ff8e76d96",
+      "canonical_part_type_id": "75eb1f32-6b66-56f6-b5ab-20e3a4948aa9",
+      "name": "Високочастотний динамік дверей",
+      "installation_position": {
+        "id": "652dc2dc-c8de-597c-99cf-362ff8e76d96",
+        "identity_key": "f5229813f28a9e8be4c9c87476e1c1a730704f187044f0041e09cb609872477c",
+        "type_id": "75eb1f32-6b66-56f6-b5ab-20e3a4948aa9",
+        "side": "right",
+        "position": "rear",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 6,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "9c8cdc4f-b3f4-5431-a5ce-0c9d7dca1056",
+      "canonical_part_type_id": "75eb1f32-6b66-56f6-b5ab-20e3a4948aa9",
+      "name": "Високочастотний динамік дверей",
+      "installation_position": {
+        "id": "9c8cdc4f-b3f4-5431-a5ce-0c9d7dca1056",
+        "identity_key": "fd6e752e67680fe36f5fc777c5b6e241279c5f1ae8024e3addd1144af5feb0d5",
+        "type_id": "75eb1f32-6b66-56f6-b5ab-20e3a4948aa9",
+        "side": "left",
+        "position": "rear",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 6,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "bb0f97b3-2140-5702-9a5b-057db8af62b1",
+      "canonical_part_type_id": "75eb1f32-6b66-56f6-b5ab-20e3a4948aa9",
+      "name": "Високочастотний динамік дверей",
+      "installation_position": {
+        "id": "bb0f97b3-2140-5702-9a5b-057db8af62b1",
+        "identity_key": "f639b8483f02ebb1dca2be8f4bebef793fcdaea9bae4846f4c95d54f996a90e1",
+        "type_id": "75eb1f32-6b66-56f6-b5ab-20e3a4948aa9",
+        "side": "left",
+        "position": "front",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 12,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "178c75c5-e44c-5e5b-abce-84f6e0cfc148",
+      "canonical_part_type_id": "bc68ca5b-82dc-5d02-b84a-2e155d0a8748",
+      "name": "Динамік дверей",
+      "installation_position": {
+        "id": "178c75c5-e44c-5e5b-abce-84f6e0cfc148",
+        "identity_key": "a47006aab3bb8ad4cbfb4cb07454ea826ab3eebc45b65b97c8a055743c1383b2",
+        "type_id": "bc68ca5b-82dc-5d02-b84a-2e155d0a8748",
+        "side": "right",
+        "position": "rear",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 2,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "5eff8111-a676-5b34-8844-22e2827a0c75",
+      "canonical_part_type_id": "bc68ca5b-82dc-5d02-b84a-2e155d0a8748",
+      "name": "Динамік дверей",
+      "installation_position": {
+        "id": "5eff8111-a676-5b34-8844-22e2827a0c75",
+        "identity_key": "66978882f495cde603818d8ebbc3574f62f721cc4fc9e60453232400f6b32db7",
+        "type_id": "bc68ca5b-82dc-5d02-b84a-2e155d0a8748",
+        "side": "left",
+        "position": "rear",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 2,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "643859c4-da45-566c-a3eb-3003f75ad0a6",
+      "canonical_part_type_id": "bc68ca5b-82dc-5d02-b84a-2e155d0a8748",
+      "name": "Динамік дверей",
+      "installation_position": {
+        "id": "643859c4-da45-566c-a3eb-3003f75ad0a6",
+        "identity_key": "e222c77c45c7dafeed59707ead345941a0d1106b6bd6f48317c852119f181ebc",
+        "type_id": "bc68ca5b-82dc-5d02-b84a-2e155d0a8748",
+        "side": "right",
+        "position": "front",
+        "details": {
+          "mount": [
+            "upper"
+          ]
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 8,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "7ee13d6e-ea43-58c3-8a84-4177b9039ae0",
+      "canonical_part_type_id": "bc68ca5b-82dc-5d02-b84a-2e155d0a8748",
+      "name": "Динамік дверей",
+      "installation_position": {
+        "id": "7ee13d6e-ea43-58c3-8a84-4177b9039ae0",
+        "identity_key": "4c3a5cd7e7ed7679ac4788aa602748e6744a57f795271a57b084a590032e406a",
+        "type_id": "bc68ca5b-82dc-5d02-b84a-2e155d0a8748",
+        "side": "right",
+        "position": "rear",
+        "details": {
+          "mount": [
+            "lower"
+          ]
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 2,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "81f5d343-b613-5493-8809-e34e07a4e5df",
+      "canonical_part_type_id": "bc68ca5b-82dc-5d02-b84a-2e155d0a8748",
+      "name": "Динамік дверей",
+      "installation_position": {
+        "id": "81f5d343-b613-5493-8809-e34e07a4e5df",
+        "identity_key": "827334dc92a616d75c3b1ff05f217781a881dc7445ff90b2a2bf284409458382",
+        "type_id": "bc68ca5b-82dc-5d02-b84a-2e155d0a8748",
+        "side": "right",
+        "position": "front",
+        "details": {
+          "mount": [
+            "lower"
+          ]
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 8,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "9b1364c8-9002-5f5f-af59-d896a668e176",
+      "canonical_part_type_id": "bc68ca5b-82dc-5d02-b84a-2e155d0a8748",
+      "name": "Динамік дверей",
+      "installation_position": {
+        "id": "9b1364c8-9002-5f5f-af59-d896a668e176",
+        "identity_key": "a9abc4676bf6ca7c894c419e3769a27ba0c9658c27dbed8b7cd6f2d829407f32",
+        "type_id": "bc68ca5b-82dc-5d02-b84a-2e155d0a8748",
+        "side": "left",
+        "position": "front",
+        "details": {
+          "mount": [
+            "lower"
+          ]
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 8,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "cc2b7466-bc34-5057-989a-7150b70b62c2",
+      "canonical_part_type_id": "bc68ca5b-82dc-5d02-b84a-2e155d0a8748",
+      "name": "Динамік дверей",
+      "installation_position": {
+        "id": "cc2b7466-bc34-5057-989a-7150b70b62c2",
+        "identity_key": "83e826fea1dfb4def3f06297a098742f119f3771d6960932ea7a3d8112b667a5",
+        "type_id": "bc68ca5b-82dc-5d02-b84a-2e155d0a8748",
+        "side": "left",
+        "position": "front",
+        "details": {
+          "mount": [
+            "upper"
+          ]
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 10,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "dc5ae378-5c70-5178-8033-0eeb81492d48",
+      "canonical_part_type_id": "bc68ca5b-82dc-5d02-b84a-2e155d0a8748",
+      "name": "Динамік дверей",
+      "installation_position": {
+        "id": "dc5ae378-5c70-5178-8033-0eeb81492d48",
+        "identity_key": "b39d30e385b4c5c61948067022c918a4fc69db3556722d4c15d6afc7609f69f8",
+        "type_id": "bc68ca5b-82dc-5d02-b84a-2e155d0a8748",
+        "side": "left",
+        "position": "rear",
+        "details": {
+          "mount": [
+            "upper"
+          ]
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 1,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "dff14f00-b598-5d6c-9dbb-92ee3b555502",
+      "canonical_part_type_id": "bc68ca5b-82dc-5d02-b84a-2e155d0a8748",
+      "name": "Динамік дверей",
+      "installation_position": {
+        "id": "dff14f00-b598-5d6c-9dbb-92ee3b555502",
+        "identity_key": "33e3fa5165667a53209838363fb1354e54228c6010947955b819a4177de67bf4",
+        "type_id": "bc68ca5b-82dc-5d02-b84a-2e155d0a8748",
+        "side": "right",
+        "position": "rear",
+        "details": {
+          "mount": [
+            "upper"
+          ]
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 1,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "ebb4fed9-e892-578f-8eb6-f7e75874ccba",
+      "canonical_part_type_id": "bc68ca5b-82dc-5d02-b84a-2e155d0a8748",
+      "name": "Динамік дверей",
+      "installation_position": {
+        "id": "ebb4fed9-e892-578f-8eb6-f7e75874ccba",
+        "identity_key": "b2a683cc6c0da8256c7a5e36a10c4c12db9147e2e94a0a840c6e892785798b5d",
+        "type_id": "bc68ca5b-82dc-5d02-b84a-2e155d0a8748",
+        "side": "left",
+        "position": "rear",
+        "details": {
+          "mount": [
+            "lower"
+          ]
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 2,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "0c6f379b-f6e3-5701-86fb-b1dbee9bea8d",
+      "canonical_part_type_id": "9e986d9a-f8ff-5bad-b6d0-99689ee09d5f",
+      "name": "Підсилювач аудіо",
+      "installation_position": {
+        "id": "0c6f379b-f6e3-5701-86fb-b1dbee9bea8d",
+        "identity_key": "15c95fe3713ae82ed9a9f0543ce34017897a5f1b8cc6694fa251479490507d46",
+        "type_id": "9e986d9a-f8ff-5bad-b6d0-99689ee09d5f",
+        "side": "unknown",
+        "position": "unknown",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 14,
+      "price_label": "Ринковий орієнтир",
+      "reference_prices": [
+        {
+          "variant_id": "12a6bcf0-62fa-54b9-a692-d4d089df7296",
+          "oem": "36012657",
+          "condition": "б/в",
+          "condition_details": [],
+          "currency": "UAH",
+          "offer_count": 3,
+          "minimum": "17400.00",
+          "maximum": "17400.00",
+          "median": "17400.00",
+          "observed_at": "2026-10-27T19:17:42.722344+00:00",
+          "label": "Ринковий орієнтир",
+          "rule_version": "carpot.comparable-prices.1"
+        },
+        {
+          "variant_id": "12a6bcf0-62fa-54b9-a692-d4d089df7296",
+          "oem": "36012657",
+          "condition": "б/в",
+          "condition_details": [],
+          "currency": "USD",
+          "offer_count": 3,
+          "minimum": "375.00",
+          "maximum": "375.00",
+          "median": "375.00",
+          "observed_at": "2026-10-27T19:17:42.722344+00:00",
+          "label": "Ринковий орієнтир",
+          "rule_version": "carpot.comparable-prices.1"
+        }
+      ]
+    },
+    {
+      "id": "6c06b207-1203-5bb1-b3de-90c91993f6b5",
+      "canonical_part_type_id": "6a15cc3b-9af0-55ec-8e82-18c2ca66120e",
+      "name": "Вентилятор пічки",
+      "installation_position": {
+        "id": "6c06b207-1203-5bb1-b3de-90c91993f6b5",
+        "identity_key": "c89e52a086281830a469bf7b2621e958d04c8c49e956e3ccf0a5f3c250c8c055",
+        "type_id": "6a15cc3b-9af0-55ec-8e82-18c2ca66120e",
+        "side": "unknown",
+        "position": "unknown",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 7,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "d5c0e135-609c-5e8f-bf43-df8466a14f8d",
+      "canonical_part_type_id": "eb20cd5a-cafe-5d12-b387-6bc4ff962501",
+      "name": "Випарник кондиціонера",
+      "installation_position": {
+        "id": "d5c0e135-609c-5e8f-bf43-df8466a14f8d",
+        "identity_key": "d382eb1d110375db0ab90e4dfaaa239a2b0dfcfd57c1f3019140134e0b8986cf",
+        "type_id": "eb20cd5a-cafe-5d12-b387-6bc4ff962501",
+        "side": "unknown",
+        "position": "unknown",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 5,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "1faf3e53-4db6-593c-a4de-7d2041ce8b81",
+      "canonical_part_type_id": "f926dc1b-d746-5c54-9e05-03cc15e6f9fd",
+      "name": "Датчик температури повітря HVAC",
+      "installation_position": {
+        "id": "1faf3e53-4db6-593c-a4de-7d2041ce8b81",
+        "identity_key": "4c1a0fe988e668cf97b6912c0c6d8acf567d3c3990834ebe4243007bd8ee7513",
+        "type_id": "f926dc1b-d746-5c54-9e05-03cc15e6f9fd",
+        "side": "unknown",
+        "position": "unknown",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 11,
+      "price_label": "Ринковий орієнтир",
+      "reference_prices": [
+        {
+          "variant_id": "5600da39-b1c1-5860-a125-b20eafe96c10",
+          "oem": "31449158",
+          "condition": "б/в",
+          "condition_details": [],
+          "currency": "UAH",
+          "offer_count": 3,
+          "minimum": "696.00",
+          "maximum": "696.00",
+          "median": "696.00",
+          "observed_at": "2026-10-27T19:18:51.941955+00:00",
+          "label": "Ринковий орієнтир",
+          "rule_version": "carpot.comparable-prices.1"
+        },
+        {
+          "variant_id": "5600da39-b1c1-5860-a125-b20eafe96c10",
+          "oem": "31449158",
+          "condition": "б/в",
+          "condition_details": [],
+          "currency": "USD",
+          "offer_count": 3,
+          "minimum": "15.00",
+          "maximum": "15.00",
+          "median": "15.00",
+          "observed_at": "2026-10-27T19:18:51.941955+00:00",
+          "label": "Ринковий орієнтир",
+          "rule_version": "carpot.comparable-prices.1"
+        },
+        {
+          "variant_id": "7410d12b-b8d7-52a6-8f2e-51412454f556",
+          "oem": "31449158",
+          "condition": "б/в",
+          "condition_details": [],
+          "currency": "UAH",
+          "offer_count": 3,
+          "minimum": "696.00",
+          "maximum": "696.00",
+          "median": "696.00",
+          "observed_at": "2026-10-27T19:18:46.541538+00:00",
+          "label": "Ринковий орієнтир",
+          "rule_version": "carpot.comparable-prices.1"
+        },
+        {
+          "variant_id": "7410d12b-b8d7-52a6-8f2e-51412454f556",
+          "oem": "31449158",
+          "condition": "б/в",
+          "condition_details": [],
+          "currency": "USD",
+          "offer_count": 3,
+          "minimum": "15.00",
+          "maximum": "15.00",
+          "median": "15.00",
+          "observed_at": "2026-10-27T19:18:46.541538+00:00",
+          "label": "Ринковий орієнтир",
+          "rule_version": "carpot.comparable-prices.1"
+        }
+      ]
+    },
+    {
+      "id": "3140c2e7-50b0-5371-9e61-e3b56118aebf",
+      "canonical_part_type_id": "13b6af15-5bf6-5cce-a486-c50a1d5c6691",
+      "name": "Датчик температури повітря салону",
+      "installation_position": {
+        "id": "3140c2e7-50b0-5371-9e61-e3b56118aebf",
+        "identity_key": "37b28aa7d54c54e31f7b019519a7e3fb868cee4aaa0617c14bddb3f801954a3a",
+        "type_id": "13b6af15-5bf6-5cce-a486-c50a1d5c6691",
+        "side": "unknown",
+        "position": "unknown",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 8,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "08e6d548-8dad-52f2-aa92-1eb296e03066",
+      "canonical_part_type_id": "d0043d06-3b53-58c9-9d4a-dd798ff4b062",
+      "name": "Мікрофон салону",
+      "installation_position": {
+        "id": "08e6d548-8dad-52f2-aa92-1eb296e03066",
+        "identity_key": "653e1bfa09d3a9c5eb6f5c2db6e6a899874d5e4faedf54cf2dfcd26fb7e3daa8",
+        "type_id": "d0043d06-3b53-58c9-9d4a-dd798ff4b062",
+        "side": "unknown",
+        "position": "rear",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 1,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "0edaf84e-2eb8-5408-8471-366f11b1088a",
+      "canonical_part_type_id": "d0043d06-3b53-58c9-9d4a-dd798ff4b062",
+      "name": "Мікрофон салону",
+      "installation_position": {
+        "id": "0edaf84e-2eb8-5408-8471-366f11b1088a",
+        "identity_key": "2897439ad2afbd0544a757d5992c445a2619cd5db2c88d345e28c54867b85737",
+        "type_id": "d0043d06-3b53-58c9-9d4a-dd798ff4b062",
+        "side": "right",
+        "position": "rear",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 1,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "1bbe4f8d-a3f7-53d6-8d82-892f6e4a98b6",
+      "canonical_part_type_id": "d0043d06-3b53-58c9-9d4a-dd798ff4b062",
+      "name": "Мікрофон салону",
+      "installation_position": {
+        "id": "1bbe4f8d-a3f7-53d6-8d82-892f6e4a98b6",
+        "identity_key": "4af83dd8efa339896994d418a19e0959b421a0808425833a7dbb2ffc4a01571e",
+        "type_id": "d0043d06-3b53-58c9-9d4a-dd798ff4b062",
+        "side": "right",
+        "position": "front",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 11,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "5f06e8b0-b4de-5590-b1e8-ba4704d8ca2c",
+      "canonical_part_type_id": "d0043d06-3b53-58c9-9d4a-dd798ff4b062",
+      "name": "Мікрофон салону",
+      "installation_position": {
+        "id": "5f06e8b0-b4de-5590-b1e8-ba4704d8ca2c",
+        "identity_key": "5dbb164e03c121d69528327a3409c4421c8393cbdbd6c41d749ecc5749cfc47c",
+        "type_id": "d0043d06-3b53-58c9-9d4a-dd798ff4b062",
+        "side": "left",
+        "position": "front",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 11,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "fc30dce0-b67e-5af4-844b-174ffab8b13c",
+      "canonical_part_type_id": "d0043d06-3b53-58c9-9d4a-dd798ff4b062",
+      "name": "Мікрофон салону",
+      "installation_position": {
+        "id": "fc30dce0-b67e-5af4-844b-174ffab8b13c",
+        "identity_key": "f101282b3a6c0607feded0f30ee148b6741e84d83751b5ff00909e1c71083ff8",
+        "type_id": "d0043d06-3b53-58c9-9d4a-dd798ff4b062",
+        "side": "left",
+        "position": "rear",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 1,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "4a30d32e-eb73-5daf-89a9-b7c436dd2557",
+      "canonical_part_type_id": "9ba4f641-59b6-54aa-b45b-0bd6956c2f07",
+      "name": "Ручка стелі",
+      "installation_position": {
+        "id": "4a30d32e-eb73-5daf-89a9-b7c436dd2557",
+        "identity_key": "6ae902563ad67a2e311ba625b11d34543ed51a67bb58575f268ec8adf56a93aa",
+        "type_id": "9ba4f641-59b6-54aa-b45b-0bd6956c2f07",
+        "side": "right",
+        "position": "front",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 3,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "8b66ae10-24b1-5f61-9983-a4a223707daf",
+      "canonical_part_type_id": "9ba4f641-59b6-54aa-b45b-0bd6956c2f07",
+      "name": "Ручка стелі",
+      "installation_position": {
+        "id": "8b66ae10-24b1-5f61-9983-a4a223707daf",
+        "identity_key": "dbe44699eb892ae2f9915aa568362f22fcc0dae9855179c9d50c5b8475bbb3f5",
+        "type_id": "9ba4f641-59b6-54aa-b45b-0bd6956c2f07",
+        "side": "left",
+        "position": "front",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 3,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "c2303a01-e390-5ed5-935d-8fb2392e8c82",
+      "canonical_part_type_id": "9ba4f641-59b6-54aa-b45b-0bd6956c2f07",
+      "name": "Ручка стелі",
+      "installation_position": {
+        "id": "c2303a01-e390-5ed5-935d-8fb2392e8c82",
+        "identity_key": "ecee83335b705a20e97f20e666d8df079573e352fb56481ebd74e8d3f9445071",
+        "type_id": "9ba4f641-59b6-54aa-b45b-0bd6956c2f07",
+        "side": "right",
+        "position": "rear",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 5,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "eb0a3bbe-4577-5a77-be97-878c38fe1b63",
+      "canonical_part_type_id": "9ba4f641-59b6-54aa-b45b-0bd6956c2f07",
+      "name": "Ручка стелі",
+      "installation_position": {
+        "id": "eb0a3bbe-4577-5a77-be97-878c38fe1b63",
+        "identity_key": "ba4183ba06c2a6fa0fdd58744f32b1afb082807a924affad9a049faa449b0331",
+        "type_id": "9ba4f641-59b6-54aa-b45b-0bd6956c2f07",
+        "side": "left",
+        "position": "rear",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 6,
+      "price_label": "Ринковий орієнтир",
+      "reference_prices": [
+        {
+          "variant_id": "f9d6aa04-702a-5570-a4ff-03f86b35cd1c",
+          "oem": "39834463",
+          "condition": "б/в дефект",
+          "condition_details": [
+            "подряпини",
+            "чорна"
+          ],
+          "currency": "UAH",
+          "offer_count": 3,
+          "minimum": "232.00",
+          "maximum": "325.00",
+          "median": "325.00",
+          "observed_at": "2026-10-27T19:18:31.604656+00:00",
+          "label": "Ринковий орієнтир",
+          "rule_version": "carpot.comparable-prices.1"
+        },
+        {
+          "variant_id": "f9d6aa04-702a-5570-a4ff-03f86b35cd1c",
+          "oem": "39834463",
+          "condition": "б/в дефект",
+          "condition_details": [
+            "подряпини",
+            "чорна"
+          ],
+          "currency": "USD",
+          "offer_count": 3,
+          "minimum": "5.00",
+          "maximum": "7.00",
+          "median": "7.00",
+          "observed_at": "2026-10-27T19:18:31.604656+00:00",
+          "label": "Ринковий орієнтир",
+          "rule_version": "carpot.comparable-prices.1"
+        }
+      ]
+    },
+    {
+      "id": "0a01c8f4-5cd1-57da-8573-77939a694eae",
+      "canonical_part_type_id": "edb8ec06-341a-53c6-867c-1de8f9a7f589",
+      "name": "Блок керування кліматом",
+      "installation_position": {
+        "id": "0a01c8f4-5cd1-57da-8573-77939a694eae",
+        "identity_key": "1ff5efbc5098bbe4d4ad2f429bb88bd9e956c126665f84e9ba733a2191b070b0",
+        "type_id": "edb8ec06-341a-53c6-867c-1de8f9a7f589",
+        "side": "unknown",
+        "position": "unknown",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 0,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "7886a358-cee1-54e8-bfc5-cf60a4c7579f",
+      "canonical_part_type_id": "c0febda7-6e7c-5eb5-abb5-b576fe9b699f",
+      "name": "Панель приладів",
+      "installation_position": {
+        "id": "7886a358-cee1-54e8-bfc5-cf60a4c7579f",
+        "identity_key": "de39a966fc177897a1b7a43a0a561937573cd33fc1864bb9d427d312fe10e677",
+        "type_id": "c0febda7-6e7c-5eb5-abb5-b576fe9b699f",
+        "side": "unknown",
+        "position": "unknown",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "possible",
+      "relevant_offer_count": 0,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "1713d32c-714c-5a8f-a382-32cb29f37b1c",
+      "canonical_part_type_id": "a258add1-ac88-5338-b801-3a6f66a59fca",
+      "name": "Покриття підлоги",
+      "installation_position": {
+        "id": "1713d32c-714c-5a8f-a382-32cb29f37b1c",
+        "identity_key": "ee6c018a241e7769dec89d6e3dc572bd6473d51a04aa411b612fb83178c1dd5b",
+        "type_id": "a258add1-ac88-5338-b801-3a6f66a59fca",
+        "side": "left",
+        "position": "front",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 8,
+      "price_label": "Ринковий орієнтир",
+      "reference_prices": [
+        {
+          "variant_id": "188e90f0-88db-5e83-8b14-89254484f008",
+          "oem": "32216357",
+          "condition": "б/в дефект",
+          "condition_details": [
+            "чорне",
+            "під чищення"
+          ],
+          "currency": "UAH",
+          "offer_count": 3,
+          "minimum": "2877.00",
+          "maximum": "4176.00",
+          "median": "2877.00",
+          "observed_at": "2026-10-27T19:19:09.592115+00:00",
+          "label": "Ринковий орієнтир",
+          "rule_version": "carpot.comparable-prices.1"
+        },
+        {
+          "variant_id": "188e90f0-88db-5e83-8b14-89254484f008",
+          "oem": "32216357",
+          "condition": "б/в дефект",
+          "condition_details": [
+            "чорне",
+            "під чищення"
+          ],
+          "currency": "USD",
+          "offer_count": 3,
+          "minimum": "62.00",
+          "maximum": "90.00",
+          "median": "62.00",
+          "observed_at": "2026-10-27T19:19:09.592115+00:00",
+          "label": "Ринковий орієнтир",
+          "rule_version": "carpot.comparable-prices.1"
+        }
+      ]
+    },
+    {
+      "id": "89accb51-3b71-5708-8adc-d5f5e4ac0736",
+      "canonical_part_type_id": "a258add1-ac88-5338-b801-3a6f66a59fca",
+      "name": "Покриття підлоги",
+      "installation_position": {
+        "id": "89accb51-3b71-5708-8adc-d5f5e4ac0736",
+        "identity_key": "b9f6316e166a667eafeae93f1a230f97d8d78ad2ccffe515aa0b58eb51b8ea88",
+        "type_id": "a258add1-ac88-5338-b801-3a6f66a59fca",
+        "side": "right",
+        "position": "front",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 6,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "71eef811-64d5-50bc-89f9-641666f9834e",
+      "canonical_part_type_id": "fa07a976-0601-549c-8212-375c260db46d",
+      "name": "Сидіння",
+      "installation_position": {
+        "id": "71eef811-64d5-50bc-89f9-641666f9834e",
+        "identity_key": "67fce6e1c2c965a8d188c020450ccf06093a32a380d0b2d38ba44db16518ee16",
+        "type_id": "fa07a976-0601-549c-8212-375c260db46d",
+        "side": "left",
+        "position": "front",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 0,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "91a50400-d7d6-50a4-81a4-79f8ed69b833",
+      "canonical_part_type_id": "fa07a976-0601-549c-8212-375c260db46d",
+      "name": "Сидіння",
+      "installation_position": {
+        "id": "91a50400-d7d6-50a4-81a4-79f8ed69b833",
+        "identity_key": "4fbd38a05c0a19b2c7086e2b68c5e7964085017770feeb254084f90a6b5b4669",
+        "type_id": "fa07a976-0601-549c-8212-375c260db46d",
+        "side": "right",
+        "position": "front",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 0,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "bb1e8f9a-0485-5717-ae33-3eb4bdf6c003",
+      "canonical_part_type_id": "bbb5e967-8d75-549c-aeed-f161d66331bb",
+      "name": "Накладка центральної консолі",
+      "installation_position": {
+        "id": "bb1e8f9a-0485-5717-ae33-3eb4bdf6c003",
+        "identity_key": "9e28ee3f6dab3f7c254046a2e4c088d29a3c30035e8c496e4d4378f3eed03cbc",
+        "type_id": "bbb5e967-8d75-549c-aeed-f161d66331bb",
+        "side": "unknown",
+        "position": "unknown",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 6,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "de08f501-f67b-5e48-a99c-2ea103e558d8",
+      "canonical_part_type_id": "bbb5e967-8d75-549c-aeed-f161d66331bb",
+      "name": "Накладка центральної консолі",
+      "installation_position": {
+        "id": "de08f501-f67b-5e48-a99c-2ea103e558d8",
+        "identity_key": "79b0e775b594fca265f62aa666b899ee985c12525856df2341d6bbdc10929436",
+        "type_id": "bbb5e967-8d75-549c-aeed-f161d66331bb",
+        "side": "unknown",
+        "position": "rear",
+        "details": {
+          "mount": [
+            "lower"
+          ]
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 8,
+      "price_label": "Ринковий орієнтир",
+      "reference_prices": [
+        {
+          "variant_id": "0b67377c-3880-5cfa-948f-c35f1341a8b3",
+          "oem": "39827386",
+          "condition": "б/в дефект",
+          "condition_details": [
+            "подряпини",
+            "чорна"
+          ],
+          "currency": "UAH",
+          "offer_count": 7,
+          "minimum": "510.00",
+          "maximum": "557.00",
+          "median": "510.00",
+          "observed_at": "2026-10-27T19:19:40.969442+00:00",
+          "label": "Ринковий орієнтир",
+          "rule_version": "carpot.comparable-prices.1"
+        },
+        {
+          "variant_id": "0b67377c-3880-5cfa-948f-c35f1341a8b3",
+          "oem": "39827386",
+          "condition": "б/в дефект",
+          "condition_details": [
+            "подряпини",
+            "чорна"
+          ],
+          "currency": "USD",
+          "offer_count": 7,
+          "minimum": "11.00",
+          "maximum": "12.00",
+          "median": "11.00",
+          "observed_at": "2026-10-27T19:19:40.969442+00:00",
+          "label": "Ринковий орієнтир",
+          "rule_version": "carpot.comparable-prices.1"
+        }
+      ]
+    },
+    {
+      "id": "d184645f-0e7d-58df-931d-f41a08f69fbe",
+      "canonical_part_type_id": "6864e849-c4d6-5494-b5be-0334e5f03b43",
+      "name": "Генератор",
+      "installation_position": {
+        "id": "d184645f-0e7d-58df-931d-f41a08f69fbe",
+        "identity_key": "d4c99b9f8185a82549235adb482ce5b7af88c7e26f59927d5c484b66dd63bbf1",
+        "type_id": "6864e849-c4d6-5494-b5be-0334e5f03b43",
+        "side": "unknown",
+        "position": "unknown",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 11,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "651629f0-cb7f-53cc-9ca9-b276391549c8",
+      "canonical_part_type_id": "de520a01-5ca7-5af7-8764-de8b2efdadf3",
+      "name": "Двигун у зборі",
+      "installation_position": {
+        "id": "651629f0-cb7f-53cc-9ca9-b276391549c8",
+        "identity_key": "8fa14b9668694a179c88545ef30a5e6e972d237affa0ff568660d79321eb3801",
+        "type_id": "de520a01-5ca7-5af7-8764-de8b2efdadf3",
+        "side": "unknown",
+        "position": "unknown",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 0,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "38c1a691-7d44-5fe9-9348-df9258e7a007",
+      "canonical_part_type_id": "854e408f-d93f-57d1-8ba2-98b5af63f40a",
+      "name": "Компресор кондиціонера",
+      "installation_position": {
+        "id": "38c1a691-7d44-5fe9-9348-df9258e7a007",
+        "identity_key": "ed89ddbab13f9c4d7fe42a4870d6f17ca3880e51c77d107cec82813112e3a8f0",
+        "type_id": "854e408f-d93f-57d1-8ba2-98b5af63f40a",
+        "side": "unknown",
+        "position": "unknown",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 7,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "384e6502-9c20-53b3-ab6a-6875975d484a",
+      "canonical_part_type_id": "e0f9be06-1cd0-5766-99f4-677c0bbf57c7",
+      "name": "Стартер",
+      "installation_position": {
+        "id": "384e6502-9c20-53b3-ab6a-6875975d484a",
+        "identity_key": "c07678bda76358087d4954924a5b733f64d97e5e49ec31353cbbe0aa78b66aba",
+        "type_id": "e0f9be06-1cd0-5766-99f4-677c0bbf57c7",
+        "side": "unknown",
+        "position": "unknown",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 9,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "f08e8a46-1ea7-501e-b341-398abad8c490",
+      "canonical_part_type_id": "505bf79d-894b-54b2-a349-a01d5b255116",
+      "name": "Блок керування двигуном",
+      "installation_position": {
+        "id": "f08e8a46-1ea7-501e-b341-398abad8c490",
+        "identity_key": "0c66064efac58cdf3658ea8f2f7155bf799c983287d72616436019e82d2cf3d1",
+        "type_id": "505bf79d-894b-54b2-a349-a01d5b255116",
+        "side": "unknown",
+        "position": "unknown",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 11,
+      "price_label": "Ринковий орієнтир",
+      "reference_prices": [
+        {
+          "variant_id": "161ed151-3bd7-5c80-8cf3-9bd98cccbfd8",
+          "oem": "36012819",
+          "condition": "б/в",
+          "condition_details": [],
+          "currency": "UAH",
+          "offer_count": 3,
+          "minimum": "7888.00",
+          "maximum": "7888.00",
+          "median": "7888.00",
+          "observed_at": "2026-10-27T19:35:13.626154+00:00",
+          "label": "Ринковий орієнтир",
+          "rule_version": "carpot.comparable-prices.1"
+        },
+        {
+          "variant_id": "161ed151-3bd7-5c80-8cf3-9bd98cccbfd8",
+          "oem": "36012819",
+          "condition": "б/в",
+          "condition_details": [],
+          "currency": "USD",
+          "offer_count": 3,
+          "minimum": "170.00",
+          "maximum": "170.00",
+          "median": "170.00",
+          "observed_at": "2026-10-27T19:35:13.626154+00:00",
+          "label": "Ринковий орієнтир",
+          "rule_version": "carpot.comparable-prices.1"
+        }
+      ]
+    },
+    {
+      "id": "447f3c73-3642-58b3-ad4b-ac127327ff31",
+      "canonical_part_type_id": "c7dfb147-84ba-5b95-a781-9a25fbf99c35",
+      "name": "Кронштейн опори двигуна",
+      "installation_position": {
+        "id": "447f3c73-3642-58b3-ad4b-ac127327ff31",
+        "identity_key": "c66b971b0c8308b1aaef8e3ac87c58ceece5fbcd13f8dd0f33615c8c901f1ed7",
+        "type_id": "c7dfb147-84ba-5b95-a781-9a25fbf99c35",
+        "side": "left",
+        "position": "rear",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 3,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "766f6d6c-519d-52f4-8eb5-d4e05e58eda0",
+      "canonical_part_type_id": "c7dfb147-84ba-5b95-a781-9a25fbf99c35",
+      "name": "Кронштейн опори двигуна",
+      "installation_position": {
+        "id": "766f6d6c-519d-52f4-8eb5-d4e05e58eda0",
+        "identity_key": "8524ced028a7a47767d9c7a205cac7d6d180acf008c38626a845d6c7966d33e3",
+        "type_id": "c7dfb147-84ba-5b95-a781-9a25fbf99c35",
+        "side": "right",
+        "position": "unknown",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 5,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "b25c027a-7089-5325-9a10-7f436208fc11",
+      "canonical_part_type_id": "c7dfb147-84ba-5b95-a781-9a25fbf99c35",
+      "name": "Кронштейн опори двигуна",
+      "installation_position": {
+        "id": "b25c027a-7089-5325-9a10-7f436208fc11",
+        "identity_key": "574570cadcee165ab579f236ba78115eedd93ef2d7c7eaa56896ff3ca3b0abe6",
+        "type_id": "c7dfb147-84ba-5b95-a781-9a25fbf99c35",
+        "side": "right",
+        "position": "rear",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 3,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "224c84e3-3f45-5eea-9d5e-cda673ed0191",
+      "canonical_part_type_id": "57b97e13-96e8-59e5-b851-fa5f117c8933",
+      "name": "Опора двигуна",
+      "installation_position": {
+        "id": "224c84e3-3f45-5eea-9d5e-cda673ed0191",
+        "identity_key": "cb282968c4a80e96938cbca5c4b5e1868acd006c983ea8e4b1f9d5bd21066c5b",
+        "type_id": "57b97e13-96e8-59e5-b851-fa5f117c8933",
+        "side": "left",
+        "position": "unknown",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 14,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "504edb90-7797-5521-94af-7b3c6a821f40",
+      "canonical_part_type_id": "57b97e13-96e8-59e5-b851-fa5f117c8933",
+      "name": "Опора двигуна",
+      "installation_position": {
+        "id": "504edb90-7797-5521-94af-7b3c6a821f40",
+        "identity_key": "934697bfc5627b88d89d5a1991d4baeead6f3adbd6ed9cd30dccf2311532f0be",
+        "type_id": "57b97e13-96e8-59e5-b851-fa5f117c8933",
+        "side": "right",
+        "position": "unknown",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 13,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "b23f907e-c95b-59c8-8220-5ec27182c9b0",
+      "canonical_part_type_id": "57b97e13-96e8-59e5-b851-fa5f117c8933",
+      "name": "Опора двигуна",
+      "installation_position": {
+        "id": "b23f907e-c95b-59c8-8220-5ec27182c9b0",
+        "identity_key": "8a93e1ea9e31d0bdfa071624d19698abf8a393dc9319637bd6cf8620942cc846",
+        "type_id": "57b97e13-96e8-59e5-b851-fa5f117c8933",
+        "side": "right",
+        "position": "rear",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 7,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "b45ee12a-e10b-5f4a-b552-e5e70207ff0b",
+      "canonical_part_type_id": "57b97e13-96e8-59e5-b851-fa5f117c8933",
+      "name": "Опора двигуна",
+      "installation_position": {
+        "id": "b45ee12a-e10b-5f4a-b552-e5e70207ff0b",
+        "identity_key": "be40a90f3fb68521d756d293a80877a2332fa04fc1b8fe75f64ef07f2bc066c2",
+        "type_id": "57b97e13-96e8-59e5-b851-fa5f117c8933",
+        "side": "right",
+        "position": "unknown",
+        "details": {
+          "mount": [
+            "upper"
+          ]
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 9,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "eebbb1cb-c562-57d1-8dad-c4d2553a78bb",
+      "canonical_part_type_id": "57b97e13-96e8-59e5-b851-fa5f117c8933",
+      "name": "Опора двигуна",
+      "installation_position": {
+        "id": "eebbb1cb-c562-57d1-8dad-c4d2553a78bb",
+        "identity_key": "81324f9a441681f21c7c7f8ee4e866f35a7c4cd5eda42aabf5d992bca63c18ba",
+        "type_id": "57b97e13-96e8-59e5-b851-fa5f117c8933",
+        "side": "left",
+        "position": "rear",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 7,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "ad66bbb5-ecb2-5c04-9ee1-c4215c418dc0",
+      "canonical_part_type_id": "dc32924f-1daa-51a5-b11c-66fabbc57efa",
+      "name": "Кронштейн генератора",
+      "installation_position": {
+        "id": "ad66bbb5-ecb2-5c04-9ee1-c4215c418dc0",
+        "identity_key": "27c3e5688a17574ec9227b0569457de66e1d7a6f1609ad0778022e212bedf17a",
+        "type_id": "dc32924f-1daa-51a5-b11c-66fabbc57efa",
+        "side": "unknown",
+        "position": "unknown",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 6,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "c1e838a3-88ce-5b75-9733-ba9f85e7118a",
+      "canonical_part_type_id": "ed365075-5725-5316-9155-00f5245afe3f",
+      "name": "Датчик тиску пального",
+      "installation_position": {
+        "id": "c1e838a3-88ce-5b75-9733-ba9f85e7118a",
+        "identity_key": "7ee7c7c1dc5b5ad15d837031023f67f1c5938a407ff9b83f5bf8ddbc61184cab",
+        "type_id": "ed365075-5725-5316-9155-00f5245afe3f",
+        "side": "unknown",
+        "position": "unknown",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 2,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "dd74917c-8154-574d-a3b1-8cf1900c880f",
+      "canonical_part_type_id": "346c1708-4004-5d71-9ea8-2562c37523f4",
+      "name": "Паливна форсунка",
+      "installation_position": {
+        "id": "dd74917c-8154-574d-a3b1-8cf1900c880f",
+        "identity_key": "7822445e1b3bab639b0739e8ce8e0ace11af805e5436fc2e273f17e299a2d16c",
+        "type_id": "346c1708-4004-5d71-9ea8-2562c37523f4",
+        "side": "unknown",
+        "position": "unknown",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 17,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "dd577bb9-2768-5b37-bafd-b006863010ef",
+      "canonical_part_type_id": "8e0e517d-2d3c-59a4-b412-142652a5f819",
+      "name": "Паливний насос високого тиску",
+      "installation_position": {
+        "id": "dd577bb9-2768-5b37-bafd-b006863010ef",
+        "identity_key": "dcbea5a120a2b8ba1ec642f341f8e0abd28725c886ad91efa1ab351bbf64c6c9",
+        "type_id": "8e0e517d-2d3c-59a4-b412-142652a5f819",
+        "side": "unknown",
+        "position": "unknown",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 9,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "0961a4a4-f853-5903-86a6-eb743463c128",
+      "canonical_part_type_id": "f81cf43b-6beb-5387-974c-6550baa6ed1f",
+      "name": "Каталізатор",
+      "installation_position": {
+        "id": "0961a4a4-f853-5903-86a6-eb743463c128",
+        "identity_key": "afe38c011c64da985e39a248e937e621ebaa5afc3a98775b8c91573152f82951",
+        "type_id": "f81cf43b-6beb-5387-974c-6550baa6ed1f",
+        "side": "unknown",
+        "position": "unknown",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 21,
+      "price_label": "Ринковий орієнтир",
+      "reference_prices": [
+        {
+          "variant_id": "73d33f87-d654-5966-bcff-aeea965fbf4e",
+          "oem": "36013618",
+          "condition": "б/в",
+          "condition_details": [],
+          "currency": "UAH",
+          "offer_count": 5,
+          "minimum": "20880.00",
+          "maximum": "20880.00",
+          "median": "20880.00",
+          "observed_at": "2026-10-27T19:22:51.967240+00:00",
+          "label": "Ринковий орієнтир",
+          "rule_version": "carpot.comparable-prices.1"
+        },
+        {
+          "variant_id": "73d33f87-d654-5966-bcff-aeea965fbf4e",
+          "oem": "36013618",
+          "condition": "б/в",
+          "condition_details": [],
+          "currency": "USD",
+          "offer_count": 5,
+          "minimum": "450.00",
+          "maximum": "450.00",
+          "median": "450.00",
+          "observed_at": "2026-10-27T19:22:51.967240+00:00",
+          "label": "Ринковий орієнтир",
+          "rule_version": "carpot.comparable-prices.1"
+        }
+      ]
+    },
+    {
+      "id": "87eb41d5-337b-5cac-927c-777b656a801a",
+      "canonical_part_type_id": "1928a1e7-c1be-50c2-99d1-afc31b0e6ce0",
+      "name": "Кронштейн каталізатора",
+      "installation_position": {
+        "id": "87eb41d5-337b-5cac-927c-777b656a801a",
+        "identity_key": "9e8c0c51054d521b2be7b6cd2393606e94c42729b3042306ca55d3f6b277cf79",
+        "type_id": "1928a1e7-c1be-50c2-99d1-afc31b0e6ce0",
+        "side": "unknown",
+        "position": "unknown",
+        "details": {
+          "mount": [
+            "lower"
+          ]
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 2,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "ec7813d7-3bf3-5925-a022-5c86110b756d",
+      "canonical_part_type_id": "1928a1e7-c1be-50c2-99d1-afc31b0e6ce0",
+      "name": "Кронштейн каталізатора",
+      "installation_position": {
+        "id": "ec7813d7-3bf3-5925-a022-5c86110b756d",
+        "identity_key": "64500b13753d925a2021e056598c551c3381396a3cc317737c508739bf04765b",
+        "type_id": "1928a1e7-c1be-50c2-99d1-afc31b0e6ce0",
+        "side": "unknown",
+        "position": "unknown",
+        "details": {
+          "mount": [
+            "upper"
+          ]
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 3,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "f316a77e-7d71-5ee3-81ee-332f9a849517",
+      "canonical_part_type_id": "1928a1e7-c1be-50c2-99d1-afc31b0e6ce0",
+      "name": "Кронштейн каталізатора",
+      "installation_position": {
+        "id": "f316a77e-7d71-5ee3-81ee-332f9a849517",
+        "identity_key": "c0c36c8f363faa7fb910c53d18a0a1f7cb5007c606de89d66d745e7f307d75c7",
+        "type_id": "1928a1e7-c1be-50c2-99d1-afc31b0e6ce0",
+        "side": "unknown",
+        "position": "unknown",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 4,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "1bdc526c-57ce-5197-a365-8fdff0322a18",
+      "canonical_part_type_id": "0a50d6b9-765c-5228-a194-ad00abb1dca7",
+      "name": "Лямбда-зонд",
+      "installation_position": {
+        "id": "1bdc526c-57ce-5197-a365-8fdff0322a18",
+        "identity_key": "f1299a6e24bdfe258db1094d4ed9c3e4cfeac2962613a218a43a0276055a0baa",
+        "type_id": "0a50d6b9-765c-5228-a194-ad00abb1dca7",
+        "side": "unknown",
+        "position": "unknown",
+        "details": {
+          "mount": [],
+          "ordinal": [
+            "3"
+          ]
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 2,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "c67dfe5c-1367-506b-ae62-d1ed1079125e",
+      "canonical_part_type_id": "0a50d6b9-765c-5228-a194-ad00abb1dca7",
+      "name": "Лямбда-зонд",
+      "installation_position": {
+        "id": "c67dfe5c-1367-506b-ae62-d1ed1079125e",
+        "identity_key": "856109e8bfab17117305384027d811a0451368989eb1bbef4ff965fe5f933a91",
+        "type_id": "0a50d6b9-765c-5228-a194-ad00abb1dca7",
+        "side": "unknown",
+        "position": "unknown",
+        "details": {
+          "mount": [],
+          "ordinal": [
+            "2"
+          ]
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 12,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "d7c48c1a-db9f-56ee-b3ae-bea4da5bd89f",
+      "canonical_part_type_id": "0a50d6b9-765c-5228-a194-ad00abb1dca7",
+      "name": "Лямбда-зонд",
+      "installation_position": {
+        "id": "d7c48c1a-db9f-56ee-b3ae-bea4da5bd89f",
+        "identity_key": "14da51c798aee7b165c73d9f3819d724e81afe58d9027db7dd2ede4efde25cc6",
+        "type_id": "0a50d6b9-765c-5228-a194-ad00abb1dca7",
+        "side": "unknown",
+        "position": "unknown",
+        "details": {
+          "mount": [],
+          "ordinal": [
+            "1"
+          ]
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 11,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "5325c527-d903-5d86-a000-4e66486c9e99",
+      "canonical_part_type_id": "2621afa2-678a-5d35-a76d-716e9a1289d1",
+      "name": "Датчик тиску впускного колектора",
+      "installation_position": {
+        "id": "5325c527-d903-5d86-a000-4e66486c9e99",
+        "identity_key": "3dc1693071aacb1284984d0c4734f2c1ab56fe59d60fbff92cbb6f3879a61e7d",
+        "type_id": "2621afa2-678a-5d35-a76d-716e9a1289d1",
+        "side": "unknown",
+        "position": "unknown",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 3,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "6e5762d8-f3ef-50b0-9fdd-b50430bb2859",
+      "canonical_part_type_id": "4dc75bb2-9fa8-5639-b435-9d435e21d2e1",
+      "name": "Дросельна заслінка",
+      "installation_position": {
+        "id": "6e5762d8-f3ef-50b0-9fdd-b50430bb2859",
+        "identity_key": "5f7877b5b878966a75448fee8289f32419ea0b753f6364688703b282762b371c",
+        "type_id": "4dc75bb2-9fa8-5639-b435-9d435e21d2e1",
+        "side": "unknown",
+        "position": "unknown",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 5,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "4737d515-482e-5032-8ce0-f93b0da22a73",
+      "canonical_part_type_id": "9b0f4cfe-0d8e-54a6-bf54-6fbd1b66c3f4",
+      "name": "Котушка запалювання",
+      "installation_position": {
+        "id": "4737d515-482e-5032-8ce0-f93b0da22a73",
+        "identity_key": "13031a4620e188e7c4b3ec89eec48ae9c14a2e677d83b90f83b168707e18d5e4",
+        "type_id": "9b0f4cfe-0d8e-54a6-bf54-6fbd1b66c3f4",
+        "side": "unknown",
+        "position": "unknown",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 6,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "3ff56c01-e567-5220-8f60-b051caeef16b",
+      "canonical_part_type_id": "7f6dec9e-dfd9-59ee-a43c-045ce90102ad",
+      "name": "Коробка передач",
+      "installation_position": {
+        "id": "3ff56c01-e567-5220-8f60-b051caeef16b",
+        "identity_key": "052a71e47e9c3812ecbde8ee375470923b2ec29f8ccae499e26a5aecbc855cde",
+        "type_id": "7f6dec9e-dfd9-59ee-a43c-045ce90102ad",
+        "side": "unknown",
+        "position": "unknown",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 0,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "99dbc699-39cb-53ca-8759-720bb2467f31",
+      "canonical_part_type_id": "299c1db4-cd9d-57f0-8b51-7790cd10a73a",
+      "name": "Кронштейн карданного вала",
+      "installation_position": {
+        "id": "99dbc699-39cb-53ca-8759-720bb2467f31",
+        "identity_key": "333dbcf4c8c5b98f183d50270271e715950ac697b03e2c2ea0735bbcd45496bb",
+        "type_id": "299c1db4-cd9d-57f0-8b51-7790cd10a73a",
+        "side": "unknown",
+        "position": "rear",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 3,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "dca93485-16f7-5b87-9214-0f2842c713a0",
+      "canonical_part_type_id": "299c1db4-cd9d-57f0-8b51-7790cd10a73a",
+      "name": "Кронштейн карданного вала",
+      "installation_position": {
+        "id": "dca93485-16f7-5b87-9214-0f2842c713a0",
+        "identity_key": "0d3d2a905ede6e23396ab2147a5b2e7011702f146f275da53405401ff8ae16f5",
+        "type_id": "299c1db4-cd9d-57f0-8b51-7790cd10a73a",
+        "side": "unknown",
+        "position": "front",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 4,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "3e12f50e-ec28-5eb9-82fa-e13c8b5b7e22",
+      "canonical_part_type_id": "d321af3b-5dd1-5e2a-9cc2-97caae6d4c03",
+      "name": "Привід колеса",
+      "installation_position": {
+        "id": "3e12f50e-ec28-5eb9-82fa-e13c8b5b7e22",
+        "identity_key": "9af19546aba908f4bfd33ab5122fc31847a6582e7d5b5c1c7d76ba8af8f9c804",
+        "type_id": "d321af3b-5dd1-5e2a-9cc2-97caae6d4c03",
+        "side": "left",
+        "position": "front",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 5,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "6393c5ab-b5c2-5736-9379-51a591325be5",
+      "canonical_part_type_id": "d321af3b-5dd1-5e2a-9cc2-97caae6d4c03",
+      "name": "Привід колеса",
+      "installation_position": {
+        "id": "6393c5ab-b5c2-5736-9379-51a591325be5",
+        "identity_key": "c3eff38cc1b25ee08857d0875bd74505644215ffb19f33d91aa2df0c574b035d",
+        "type_id": "d321af3b-5dd1-5e2a-9cc2-97caae6d4c03",
+        "side": "left",
+        "position": "rear",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 6,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "84655a3d-0212-5b59-81a0-032bed98b03b",
+      "canonical_part_type_id": "d321af3b-5dd1-5e2a-9cc2-97caae6d4c03",
+      "name": "Привід колеса",
+      "installation_position": {
+        "id": "84655a3d-0212-5b59-81a0-032bed98b03b",
+        "identity_key": "393c3d4365874a22499330d10f33f15bbee1ce56ea896b47a9862b4ae07f6526",
+        "type_id": "d321af3b-5dd1-5e2a-9cc2-97caae6d4c03",
+        "side": "right",
+        "position": "rear",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 3,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "8e7526dc-6ea4-526d-8699-fae39422d62b",
+      "canonical_part_type_id": "d321af3b-5dd1-5e2a-9cc2-97caae6d4c03",
+      "name": "Привід колеса",
+      "installation_position": {
+        "id": "8e7526dc-6ea4-526d-8699-fae39422d62b",
+        "identity_key": "7f930ca7f618ae7b3489c41220585dd24a769c8c08077a77f27b26fae72a22c2",
+        "type_id": "d321af3b-5dd1-5e2a-9cc2-97caae6d4c03",
+        "side": "right",
+        "position": "front",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 4,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "b3255fae-71dc-5324-86cc-d3efe91523d0",
+      "canonical_part_type_id": "d321af3b-5dd1-5e2a-9cc2-97caae6d4c03",
+      "name": "Привід колеса",
+      "installation_position": {
+        "id": "b3255fae-71dc-5324-86cc-d3efe91523d0",
+        "identity_key": "4afcce958ce797188104dc0d260dd3e3e9743134519d6dfbb73012a0552de6d8",
+        "type_id": "d321af3b-5dd1-5e2a-9cc2-97caae6d4c03",
+        "side": "right",
+        "position": "unknown",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 0,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "d3a7a28d-babe-5a83-a81f-99a45369999a",
+      "canonical_part_type_id": "d321af3b-5dd1-5e2a-9cc2-97caae6d4c03",
+      "name": "Привід колеса",
+      "installation_position": {
+        "id": "d3a7a28d-babe-5a83-a81f-99a45369999a",
+        "identity_key": "7c7c38e03a10e1fe605e28ba308b2769f2657200d8c67acc0d0280121822613f",
+        "type_id": "d321af3b-5dd1-5e2a-9cc2-97caae6d4c03",
+        "side": "left",
+        "position": "unknown",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 0,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "b2e3daec-9cc8-59c1-b083-cc6566b794ae",
+      "canonical_part_type_id": "8e80a499-e043-5c12-bb55-6fcad5b64e8b",
+      "name": "Датчик тиску наддуву",
+      "installation_position": {
+        "id": "b2e3daec-9cc8-59c1-b083-cc6566b794ae",
+        "identity_key": "262333971e09fd369032fb98079e32b88c3095898f69c120cadcbf064e8a3ad5",
+        "type_id": "8e80a499-e043-5c12-bb55-6fcad5b64e8b",
+        "side": "unknown",
+        "position": "unknown",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 3,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "6ce3d75e-0079-5387-832c-9a6a938b0157",
+      "canonical_part_type_id": "60908111-9a79-5cf0-836a-8896b872fd48",
+      "name": "Гальмівний диск",
+      "installation_position": {
+        "id": "6ce3d75e-0079-5387-832c-9a6a938b0157",
+        "identity_key": "7649aa947e29b9898c95ff0d34c8156c927eb35517a9e338d7b993588460d015",
+        "type_id": "60908111-9a79-5cf0-836a-8896b872fd48",
+        "side": "right",
+        "position": "front",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 11,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "8a05ecb6-468c-556c-ac13-8faf5c5b4b6e",
+      "canonical_part_type_id": "60908111-9a79-5cf0-836a-8896b872fd48",
+      "name": "Гальмівний диск",
+      "installation_position": {
+        "id": "8a05ecb6-468c-556c-ac13-8faf5c5b4b6e",
+        "identity_key": "d9ef6d722979e34f477ce577ba7508993f69143390820b4b5e3fa64231b53cc2",
+        "type_id": "60908111-9a79-5cf0-836a-8896b872fd48",
+        "side": "right",
+        "position": "rear",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 9,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "be6d5b6b-04c1-518a-8160-4495bc0128ea",
+      "canonical_part_type_id": "60908111-9a79-5cf0-836a-8896b872fd48",
+      "name": "Гальмівний диск",
+      "installation_position": {
+        "id": "be6d5b6b-04c1-518a-8160-4495bc0128ea",
+        "identity_key": "e9b6e4594072ab4b38d9b83ff04844089d1c20d5154a1cbb2b2ed3457ec66035",
+        "type_id": "60908111-9a79-5cf0-836a-8896b872fd48",
+        "side": "left",
+        "position": "rear",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 10,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "ccd644a5-f3d7-550b-8425-9af1cf4ab7c4",
+      "canonical_part_type_id": "60908111-9a79-5cf0-836a-8896b872fd48",
+      "name": "Гальмівний диск",
+      "installation_position": {
+        "id": "ccd644a5-f3d7-550b-8425-9af1cf4ab7c4",
+        "identity_key": "04d90db52fdb62b36bc0d22cf775b38dc00cb1a994876f9f050947f87d876ffc",
+        "type_id": "60908111-9a79-5cf0-836a-8896b872fd48",
+        "side": "left",
+        "position": "front",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 17,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "7cef6561-9780-54ae-aa69-0865311391d3",
+      "canonical_part_type_id": "1ef56d3d-62a8-5a08-bbeb-83abd0456a4a",
+      "name": "Гальмівний супорт",
+      "installation_position": {
+        "id": "7cef6561-9780-54ae-aa69-0865311391d3",
+        "identity_key": "e034b6a77c4c5a63be2d9f7c8c1cfee0809d17e447376ff2d7f613d3459c16e7",
+        "type_id": "1ef56d3d-62a8-5a08-bbeb-83abd0456a4a",
+        "side": "left",
+        "position": "front",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "possible",
+      "relevant_offer_count": 3,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "b87247ad-2445-5e14-a2a2-a737afa623ab",
+      "canonical_part_type_id": "1ef56d3d-62a8-5a08-bbeb-83abd0456a4a",
+      "name": "Гальмівний супорт",
+      "installation_position": {
+        "id": "b87247ad-2445-5e14-a2a2-a737afa623ab",
+        "identity_key": "81ce025f0eee1bf68de183bcfbccda7a24f76003a4b9833e786328062db04b6b",
+        "type_id": "1ef56d3d-62a8-5a08-bbeb-83abd0456a4a",
+        "side": "right",
+        "position": "front",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "possible",
+      "relevant_offer_count": 3,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "0a9b67a3-fa2e-54cf-a08d-5011f85cec3d",
+      "canonical_part_type_id": "41ed6f0c-c3ed-581d-aff9-439ce49fc734",
+      "name": "Гальмівний шланг",
+      "installation_position": {
+        "id": "0a9b67a3-fa2e-54cf-a08d-5011f85cec3d",
+        "identity_key": "68da199f24101d8f890512bab21c48fe6ea49b62ccc5a9f6e886b7b1d16d6d26",
+        "type_id": "41ed6f0c-c3ed-581d-aff9-439ce49fc734",
+        "side": "right",
+        "position": "front",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 10,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "311d1fd9-f9c5-57a8-b5b0-4c89f33a918a",
+      "canonical_part_type_id": "41ed6f0c-c3ed-581d-aff9-439ce49fc734",
+      "name": "Гальмівний шланг",
+      "installation_position": {
+        "id": "311d1fd9-f9c5-57a8-b5b0-4c89f33a918a",
+        "identity_key": "2ef1cdb857683420e0937e705eafe266d599f8dc2c81821384cb9be4a7de997e",
+        "type_id": "41ed6f0c-c3ed-581d-aff9-439ce49fc734",
+        "side": "left",
+        "position": "rear",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 5,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "e8d5c12f-7879-5f5a-abcd-fbb98852e68c",
+      "canonical_part_type_id": "41ed6f0c-c3ed-581d-aff9-439ce49fc734",
+      "name": "Гальмівний шланг",
+      "installation_position": {
+        "id": "e8d5c12f-7879-5f5a-abcd-fbb98852e68c",
+        "identity_key": "115191ba92d505e46e5a559841d5bb0f39c494ba0665196310bc5844cf2d1110",
+        "type_id": "41ed6f0c-c3ed-581d-aff9-439ce49fc734",
+        "side": "left",
+        "position": "front",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 9,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "f422de60-ca75-511e-97ab-8637995929aa",
+      "canonical_part_type_id": "41ed6f0c-c3ed-581d-aff9-439ce49fc734",
+      "name": "Гальмівний шланг",
+      "installation_position": {
+        "id": "f422de60-ca75-511e-97ab-8637995929aa",
+        "identity_key": "19729fe41439639fec710d663b994ae359e54f06c45089138cbd003f32ae9d08",
+        "type_id": "41ed6f0c-c3ed-581d-aff9-439ce49fc734",
+        "side": "right",
+        "position": "rear",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 3,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "5bbde589-5f14-594e-a0f8-bb4e7938448a",
+      "canonical_part_type_id": "e79579f5-729d-5cef-863e-0fc8c0c81c1c",
+      "name": "Кермова рейка",
+      "installation_position": {
+        "id": "5bbde589-5f14-594e-a0f8-bb4e7938448a",
+        "identity_key": "2f694526787afa2ab3086ab23112d90577cf9c44c5a1028e13e5c858a8b64682",
+        "type_id": "e79579f5-729d-5cef-863e-0fc8c0c81c1c",
+        "side": "unknown",
+        "position": "unknown",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "possible",
+      "relevant_offer_count": 0,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "0eeceae7-970b-5885-ac61-d32e06135463",
+      "canonical_part_type_id": "164fd6df-f8ad-5057-bb68-914da190eba1",
+      "name": "Кермова тяга",
+      "installation_position": {
+        "id": "0eeceae7-970b-5885-ac61-d32e06135463",
+        "identity_key": "03fb98c277e9ce4f11617193c05a29301c704e29659dce9fba56046ab3f2b7f8",
+        "type_id": "164fd6df-f8ad-5057-bb68-914da190eba1",
+        "side": "right",
+        "position": "unknown",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 4,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "cb0ae57a-3474-537b-b609-1a73251f37a3",
+      "canonical_part_type_id": "164fd6df-f8ad-5057-bb68-914da190eba1",
+      "name": "Кермова тяга",
+      "installation_position": {
+        "id": "cb0ae57a-3474-537b-b609-1a73251f37a3",
+        "identity_key": "c6d43d9602bdb1a8d549713923fe15362a79a632137a371103117e671c8c300b",
+        "type_id": "164fd6df-f8ad-5057-bb68-914da190eba1",
+        "side": "left",
+        "position": "unknown",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 3,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "9c494785-1baa-5764-b53d-e83fe9e21b76",
+      "canonical_part_type_id": "299ea60c-3777-5d9a-b043-fff0bc488c7e",
+      "name": "Наконечник кермової тяги",
+      "installation_position": {
+        "id": "9c494785-1baa-5764-b53d-e83fe9e21b76",
+        "identity_key": "c256e91e714fc8b9efc73133d18f4e76187e12e8a94655b706336c2d3f99e3b4",
+        "type_id": "299ea60c-3777-5d9a-b043-fff0bc488c7e",
+        "side": "left",
+        "position": "unknown",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 6,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "b41481e3-3cd9-5b3c-aff9-48d6a91cd4b3",
+      "canonical_part_type_id": "299ea60c-3777-5d9a-b043-fff0bc488c7e",
+      "name": "Наконечник кермової тяги",
+      "installation_position": {
+        "id": "b41481e3-3cd9-5b3c-aff9-48d6a91cd4b3",
+        "identity_key": "c230cd0c4ce631469da6950a8de0f1f1fb742eefb0387419bcea4453021fb126",
+        "type_id": "299ea60c-3777-5d9a-b043-fff0bc488c7e",
+        "side": "right",
+        "position": "unknown",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 4,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "76ba59c7-d670-5d52-af79-9536cdae22ca",
+      "canonical_part_type_id": "2760d5ea-424a-5883-b55d-ab62ead56bc9",
+      "name": "Датчик тиску в шинах",
+      "installation_position": {
+        "id": "76ba59c7-d670-5d52-af79-9536cdae22ca",
+        "identity_key": "9c51ad241152f98cc034ddf390f68a37af39c4395edf5160662cd2533f1fe359",
+        "type_id": "2760d5ea-424a-5883-b55d-ab62ead56bc9",
+        "side": "unknown",
+        "position": "unknown",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 2,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "52e19fc7-1952-51b9-99b4-7cdbfe47e79d",
+      "canonical_part_type_id": "8b0ebf2f-6966-5077-be1e-fdb05f921f66",
+      "name": "Маточина колеса",
+      "installation_position": {
+        "id": "52e19fc7-1952-51b9-99b4-7cdbfe47e79d",
+        "identity_key": "67c8ab53265df08c23f6f5dad0d87c1eb819db7e3a0a86a4ea0dce743f1e42df",
+        "type_id": "8b0ebf2f-6966-5077-be1e-fdb05f921f66",
+        "side": "right",
+        "position": "front",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 3,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "81a9ae4f-ae3e-5bca-bbb2-721c1e4ed3cd",
+      "canonical_part_type_id": "8b0ebf2f-6966-5077-be1e-fdb05f921f66",
+      "name": "Маточина колеса",
+      "installation_position": {
+        "id": "81a9ae4f-ae3e-5bca-bbb2-721c1e4ed3cd",
+        "identity_key": "a7b38a0996818f2b080d61625c26ddd66f17e2d92ab1f47c9fffc47538715aa2",
+        "type_id": "8b0ebf2f-6966-5077-be1e-fdb05f921f66",
+        "side": "left",
+        "position": "front",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 6,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "840b9b37-61f7-525e-b5d0-cd23b5c57576",
+      "canonical_part_type_id": "8b0ebf2f-6966-5077-be1e-fdb05f921f66",
+      "name": "Маточина колеса",
+      "installation_position": {
+        "id": "840b9b37-61f7-525e-b5d0-cd23b5c57576",
+        "identity_key": "cbd5929bac486afdfc2467d655d716b3e5c424a2ff2c9e8baf9eaab355079aa9",
+        "type_id": "8b0ebf2f-6966-5077-be1e-fdb05f921f66",
+        "side": "left",
+        "position": "rear",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 4,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "e31a8510-be0a-5ddc-938a-f9a3c096362f",
+      "canonical_part_type_id": "8b0ebf2f-6966-5077-be1e-fdb05f921f66",
+      "name": "Маточина колеса",
+      "installation_position": {
+        "id": "e31a8510-be0a-5ddc-938a-f9a3c096362f",
+        "identity_key": "ce8de30607cdb1a462fead8bc15ba906c529447a9f1cc8592dd9b5592d84a600",
+        "type_id": "8b0ebf2f-6966-5077-be1e-fdb05f921f66",
+        "side": "right",
+        "position": "rear",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 4,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "240e8da5-3502-5447-be04-260b514d9a32",
+      "canonical_part_type_id": "6f292acf-369a-5416-921a-4f616d157edf",
+      "name": "Важіль підвіски",
+      "installation_position": {
+        "id": "240e8da5-3502-5447-be04-260b514d9a32",
+        "identity_key": "4c8219a250b4c126fbd71d6adf66ccd234251cf694c3a2dc09cbae38db15a65b",
+        "type_id": "6f292acf-369a-5416-921a-4f616d157edf",
+        "side": "right",
+        "position": "front",
+        "details": {
+          "mount": [
+            "upper"
+          ]
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 4,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "49b9ee9b-375c-50a2-9125-ab6e8556743f",
+      "canonical_part_type_id": "6f292acf-369a-5416-921a-4f616d157edf",
+      "name": "Важіль підвіски",
+      "installation_position": {
+        "id": "49b9ee9b-375c-50a2-9125-ab6e8556743f",
+        "identity_key": "76b1f50fe88be007ed4710948c76a6b94d01721ddb5e15f6d53dfb30b88a929c",
+        "type_id": "6f292acf-369a-5416-921a-4f616d157edf",
+        "side": "right",
+        "position": "rear",
+        "details": {
+          "mount": [
+            "lower"
+          ]
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 3,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "4b5732e8-014d-5b53-a6d1-8fe5d958baa6",
+      "canonical_part_type_id": "6f292acf-369a-5416-921a-4f616d157edf",
+      "name": "Важіль підвіски",
+      "installation_position": {
+        "id": "4b5732e8-014d-5b53-a6d1-8fe5d958baa6",
+        "identity_key": "99b642dd4f687123bd1c8a737dbf949cfbc4bdef90a70ae31e461509d3116b10",
+        "type_id": "6f292acf-369a-5416-921a-4f616d157edf",
+        "side": "right",
+        "position": "rear",
+        "details": {
+          "mount": [
+            "upper"
+          ]
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 5,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "6b2c2327-6efa-570e-865d-c43255943383",
+      "canonical_part_type_id": "6f292acf-369a-5416-921a-4f616d157edf",
+      "name": "Важіль підвіски",
+      "installation_position": {
+        "id": "6b2c2327-6efa-570e-865d-c43255943383",
+        "identity_key": "e8ae8e4466c76a8a956132f598341c0afc11f1ef9b2c33944a0876b6b97d9b1b",
+        "type_id": "6f292acf-369a-5416-921a-4f616d157edf",
+        "side": "right",
+        "position": "front",
+        "details": {
+          "mount": [
+            "lower"
+          ]
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 1,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "a490849b-867e-5216-80d5-aad64c42e4aa",
+      "canonical_part_type_id": "6f292acf-369a-5416-921a-4f616d157edf",
+      "name": "Важіль підвіски",
+      "installation_position": {
+        "id": "a490849b-867e-5216-80d5-aad64c42e4aa",
+        "identity_key": "7c43865c57ad7e42e2591d2be73d8a49d23f7c487398e460ad7f40f6167cdfa9",
+        "type_id": "6f292acf-369a-5416-921a-4f616d157edf",
+        "side": "left",
+        "position": "rear",
+        "details": {
+          "mount": [
+            "upper"
+          ]
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 4,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "b1b2a733-d679-5baa-9437-13611ff3ad95",
+      "canonical_part_type_id": "6f292acf-369a-5416-921a-4f616d157edf",
+      "name": "Важіль підвіски",
+      "installation_position": {
+        "id": "b1b2a733-d679-5baa-9437-13611ff3ad95",
+        "identity_key": "0fc6061383f257722afffb200aa6f405e2fdc0faba380cc32a1b074509221833",
+        "type_id": "6f292acf-369a-5416-921a-4f616d157edf",
+        "side": "left",
+        "position": "rear",
+        "details": {
+          "mount": [
+            "lower"
+          ]
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 5,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "cddb9aa7-678c-547e-b2da-62db4e1d59c5",
+      "canonical_part_type_id": "6f292acf-369a-5416-921a-4f616d157edf",
+      "name": "Важіль підвіски",
+      "installation_position": {
+        "id": "cddb9aa7-678c-547e-b2da-62db4e1d59c5",
+        "identity_key": "1696a7f8cab0d74576e8a50d0a59f324adf36cbc5e53939b773d334d16c6a4a4",
+        "type_id": "6f292acf-369a-5416-921a-4f616d157edf",
+        "side": "left",
+        "position": "front",
+        "details": {
+          "mount": [
+            "lower"
+          ]
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 2,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "d25b3989-1aef-54a4-9b0c-ab61a9850c95",
+      "canonical_part_type_id": "6f292acf-369a-5416-921a-4f616d157edf",
+      "name": "Важіль підвіски",
+      "installation_position": {
+        "id": "d25b3989-1aef-54a4-9b0c-ab61a9850c95",
+        "identity_key": "6a88a413408fa8037d62479d5319acfb7653e0e8d2ce49b40adae634b1ffab43",
+        "type_id": "6f292acf-369a-5416-921a-4f616d157edf",
+        "side": "left",
+        "position": "front",
+        "details": {
+          "mount": [
+            "upper"
+          ]
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 3,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "6bbe2335-a67f-51b2-9091-7cd9b6e7a8c6",
+      "canonical_part_type_id": "95cef07b-6663-5a60-8b34-d430d580bfa7",
+      "name": "Кронштейн ресори",
+      "installation_position": {
+        "id": "6bbe2335-a67f-51b2-9091-7cd9b6e7a8c6",
+        "identity_key": "605d0bc19877d9d29cace27ebe1220adb8af98ba43004f48614d75652a5dfafe",
+        "type_id": "95cef07b-6663-5a60-8b34-d430d580bfa7",
+        "side": "left",
+        "position": "unknown",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 6,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "a76a3fc1-85fd-5447-9805-0678afc3722a",
+      "canonical_part_type_id": "95cef07b-6663-5a60-8b34-d430d580bfa7",
+      "name": "Кронштейн ресори",
+      "installation_position": {
+        "id": "a76a3fc1-85fd-5447-9805-0678afc3722a",
+        "identity_key": "3dc8c70ddf8f0ae1077b02aef03ac3a813ce5e62f4b6c442019784a1bc4185a1",
+        "type_id": "95cef07b-6663-5a60-8b34-d430d580bfa7",
+        "side": "right",
+        "position": "unknown",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 6,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "77984412-c3ff-5014-820a-dec5dad11697",
+      "canonical_part_type_id": "8710d475-7207-548a-85b5-0e3e0b61d260",
+      "name": "Опора ресори",
+      "installation_position": {
+        "id": "77984412-c3ff-5014-820a-dec5dad11697",
+        "identity_key": "991cc2312b65f19d807bdb13458c322ba81fb4f345715340fe14d40456c35a0b",
+        "type_id": "8710d475-7207-548a-85b5-0e3e0b61d260",
+        "side": "right",
+        "position": "unknown",
+        "details": {
+          "mount": [
+            "upper"
+          ]
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 1,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "d49c82c7-6b67-5e40-b0e3-9fa8a3e3684b",
+      "canonical_part_type_id": "8710d475-7207-548a-85b5-0e3e0b61d260",
+      "name": "Опора ресори",
+      "installation_position": {
+        "id": "d49c82c7-6b67-5e40-b0e3-9fa8a3e3684b",
+        "identity_key": "faac4508723fbf41aabf07ef5919d3e3368e6cdcfd4a8a2baea28f3b0b159bcd",
+        "type_id": "8710d475-7207-548a-85b5-0e3e0b61d260",
+        "side": "left",
+        "position": "unknown",
+        "details": {
+          "mount": [
+            "lower"
+          ]
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 2,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "e06deb08-31d9-508f-b564-7bfe09b0b299",
+      "canonical_part_type_id": "8710d475-7207-548a-85b5-0e3e0b61d260",
+      "name": "Опора ресори",
+      "installation_position": {
+        "id": "e06deb08-31d9-508f-b564-7bfe09b0b299",
+        "identity_key": "b575cbc8327c83fa9fe23a4caa7267d941e4d23da5b7c0c8d278968551080664",
+        "type_id": "8710d475-7207-548a-85b5-0e3e0b61d260",
+        "side": "right",
+        "position": "unknown",
+        "details": {
+          "mount": [
+            "lower"
+          ]
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 2,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "f6a64422-a682-51df-8cb0-5152f3d57aca",
+      "canonical_part_type_id": "8710d475-7207-548a-85b5-0e3e0b61d260",
+      "name": "Опора ресори",
+      "installation_position": {
+        "id": "f6a64422-a682-51df-8cb0-5152f3d57aca",
+        "identity_key": "7a417b6c070598873f7bc0b6f46a51970f5068a8e46e8d9b767bcd5c6649e2f3",
+        "type_id": "8710d475-7207-548a-85b5-0e3e0b61d260",
+        "side": "left",
+        "position": "unknown",
+        "details": {
+          "mount": [
+            "upper"
+          ]
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 1,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "59f20b3f-3dd5-53d5-b2b9-eb71b804d9ed",
+      "canonical_part_type_id": "bd4fc47e-f001-581a-ad8f-dd3ee76c9e86",
+      "name": "Стійка підвіски",
+      "installation_position": {
+        "id": "59f20b3f-3dd5-53d5-b2b9-eb71b804d9ed",
+        "identity_key": "d474918bfb37e1857dab0d004d8b383d31cc36e6326e3c145fbf8a729b26782b",
+        "type_id": "bd4fc47e-f001-581a-ad8f-dd3ee76c9e86",
+        "side": "right",
+        "position": "front",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 0,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "80cfc98c-b9f4-5f7d-a371-60eb573d7f29",
+      "canonical_part_type_id": "bd4fc47e-f001-581a-ad8f-dd3ee76c9e86",
+      "name": "Стійка підвіски",
+      "installation_position": {
+        "id": "80cfc98c-b9f4-5f7d-a371-60eb573d7f29",
+        "identity_key": "b276c8bf41ca4db490912f9ab87ddf02931ea8ac4b24a61703d01f51a4f4aea3",
+        "type_id": "bd4fc47e-f001-581a-ad8f-dd3ee76c9e86",
+        "side": "left",
+        "position": "front",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 0,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "12fe1584-315c-5922-a079-c98b06895cc0",
+      "canonical_part_type_id": "5478d9d0-d8f5-54cf-89ca-c7b28e89e52d",
+      "name": "Стійка стабілізатора",
+      "installation_position": {
+        "id": "12fe1584-315c-5922-a079-c98b06895cc0",
+        "identity_key": "b95dba5f9d2b5c6cabeb358b8075b9efe8e64a2e010bc7f519a20d7384e6e283",
+        "type_id": "5478d9d0-d8f5-54cf-89ca-c7b28e89e52d",
+        "side": "right",
+        "position": "rear",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 4,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "1f656515-5972-55c5-8c98-0904a11d2595",
+      "canonical_part_type_id": "5478d9d0-d8f5-54cf-89ca-c7b28e89e52d",
+      "name": "Стійка стабілізатора",
+      "installation_position": {
+        "id": "1f656515-5972-55c5-8c98-0904a11d2595",
+        "identity_key": "46ddbb6e3e6992aaf5927d63a0f94c1ef415cf7a4f8aea6cc4c710b9ef96fba0",
+        "type_id": "5478d9d0-d8f5-54cf-89ca-c7b28e89e52d",
+        "side": "left",
+        "position": "front",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 6,
+      "price_label": "Ринковий орієнтир",
+      "reference_prices": [
+        {
+          "variant_id": "3d74a0b0-d713-5042-a1a1-c946bcabe924",
+          "oem": "31406873",
+          "condition": "новий аналог",
+          "condition_details": [],
+          "currency": "UAH",
+          "offer_count": 3,
+          "minimum": "603.00",
+          "maximum": "1021.00",
+          "median": "742.00",
+          "observed_at": "2026-10-27T19:15:25.240475+00:00",
+          "label": "Ринковий орієнтир",
+          "rule_version": "carpot.comparable-prices.1"
+        },
+        {
+          "variant_id": "3d74a0b0-d713-5042-a1a1-c946bcabe924",
+          "oem": "31406873",
+          "condition": "новий аналог",
+          "condition_details": [],
+          "currency": "USD",
+          "offer_count": 3,
+          "minimum": "13.00",
+          "maximum": "22.00",
+          "median": "16.00",
+          "observed_at": "2026-10-27T19:15:25.240475+00:00",
+          "label": "Ринковий орієнтир",
+          "rule_version": "carpot.comparable-prices.1"
+        }
+      ]
+    },
+    {
+      "id": "3995383b-c1e5-51e8-bb26-d09c7c18d8e2",
+      "canonical_part_type_id": "5478d9d0-d8f5-54cf-89ca-c7b28e89e52d",
+      "name": "Стійка стабілізатора",
+      "installation_position": {
+        "id": "3995383b-c1e5-51e8-bb26-d09c7c18d8e2",
+        "identity_key": "895c982da5e07f37bba616fe450c1392d70e1636215fb5e4b70e795e857964cb",
+        "type_id": "5478d9d0-d8f5-54cf-89ca-c7b28e89e52d",
+        "side": "right",
+        "position": "front",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 6,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    },
+    {
+      "id": "7631b0d7-170e-5c66-b99f-408080d9a298",
+      "canonical_part_type_id": "5478d9d0-d8f5-54cf-89ca-c7b28e89e52d",
+      "name": "Стійка стабілізатора",
+      "installation_position": {
+        "id": "7631b0d7-170e-5c66-b99f-408080d9a298",
+        "identity_key": "b1577e77e4233e6bb85b6dff01074420bc196b77bdd7b3a664dbe0367765f302",
+        "type_id": "5478d9d0-d8f5-54cf-89ca-c7b28e89e52d",
+        "side": "left",
+        "position": "rear",
+        "details": {
+          "mount": []
+        }
+      },
+      "applicability_status": "unknown",
+      "relevant_offer_count": 5,
+      "price_label": "Ціну не визначено",
+      "reference_prices": []
+    }
+  ]
+}
