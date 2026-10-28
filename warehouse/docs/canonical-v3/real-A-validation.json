@@ -1,0 +1,2027 @@
+{
+  "dataset": "bundled real Volvo A",
+  "real_staging_B_tested": false,
+  "report": {
+    "alias_revision_ids": [],
+    "snapshot_sha": "0ff9ac11f40be8a2b0c8927d02000c88ae1afe67b2b517ba645bf41479a78870",
+    "rule_version": "carpot.canonical.rules.v1",
+    "rules_sha": "754002e93037346aa30db93d7bb3062c362dd0d8ea46d03529088fca0ed01752",
+    "input_records": 14433,
+    "base_positions": 33,
+    "source_offers": 7246,
+    "canonical_types": 25,
+    "variants": 104,
+    "placements": 38,
+    "confirmed_mappings": 262,
+    "ambiguous_mappings": 0,
+    "unprocessed_records": 14171,
+    "mapped_offers": 105,
+    "fully_mapped_offers": 105,
+    "trusted_offer_fraction": 0.014490753519182997,
+    "issues": [
+      {
+        "source_key": "v2:000048a2-4af9-5c59-865d-c9d12e17ac42",
+        "source_sha": "630a4de3512b8835e4c2816ff5621ed599f78b6df20a93a057856d8c2af2d6c2",
+        "title": "Кронштейн каталізатора Volvo XC40 19-22",
+        "phrase": "кронштейн каталізатора",
+        "category": "Двигун",
+        "subcategory": "Система випуску відпрацьованих газів",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:001004da-1576-5e19-9ace-18aa414c673a",
+        "source_sha": "c0712122f0c93df25477727021bb6ee1aca48e31232803a2cc6cd7d386d3855e",
+        "title": "Ручка дверей зовнішня передня ліва Volvo XC40 19-26",
+        "phrase": "ручка дверей",
+        "category": "Двері",
+        "subcategory": "Передні ліві двері",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:0013156f-b7ce-5242-a002-9d05ca2f1539",
+        "source_sha": "761ff83625c4034197deab6342925e98b9503a2d6c432f24cf197602aa42a419",
+        "title": "Килимок салону задній лівий тканина Volvo XC60 19-22 чорна",
+        "phrase": "килимок салону тканина",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Покриття підлоги",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:00133e2a-fbac-5184-b90c-a0f9688f8495",
+        "source_sha": "f7583b21d602f4967e959803de0219f1b3660e7e7b5a0d441c424b1b31c83d93",
+        "title": "Накладка порога задня права внутрішня Volvo XC90 16-22 з підсвіткою, чорна, подряпини",
+        "phrase": "накладка порога з підсвіткою",
+        "category": "Кузов",
+        "subcategory": "Накладки порогів",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:001a1888-3976-57bd-a899-0cf8f296de7d",
+        "source_sha": "a224e0c6d3a3cd4323af69c0d3133c7088fb0168dc9c82f49682dc84608eb906",
+        "title": "Форсунка розпилювач Volvo XC60 18-26 T5, T6, T8",
+        "phrase": "форсунка розпилювач",
+        "category": "Двигун",
+        "subcategory": "Паливна система",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:001cd6c7-794d-53d8-a1e1-4697088e4372",
+        "source_sha": "9ca0a6c86dfb66b167ebdb0307ae18122ca3f075cba5d15f408b88a88b93725c",
+        "title": "Кронштейн заднего подрамника левый Volvo XC90 16-19",
+        "phrase": "кронштейн заднего подрамника",
+        "category": "Підвіска та кермове управління",
+        "subcategory": "Підрамник",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:001d65e6-ca71-5b24-884d-3397c9708c5b",
+        "source_sha": "1239708ac0249c104505e769b70b887429754955412d994122f646ba30a6e886",
+        "title": "Датчик вологості Volvo XC40 19-26",
+        "phrase": "датчик вологості",
+        "category": "Кузов",
+        "subcategory": "Лобове та заднє скло",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:0023354b-cfaf-5bc7-bd91-5eac0fbb2ffb",
+        "source_sha": "c884c73b459b8d6f941ff76ef524a7b0cfdace0bfb8572a32cd6255aa397c663",
+        "title": "Кронштейн компресора кондиціонера Volvo XC90 16-22 T5, T6",
+        "phrase": "кронштейн компресора кондиціонера",
+        "category": "Двигун",
+        "subcategory": "Система кондиціонування",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:002525fe-9196-5688-818c-bed19a94ed04",
+        "source_sha": "9ec6c1d01e4c587e2a1e19d7ef62e97d30d967daf8ded511c7d01054868a6eb4",
+        "title": "Олива трансмісійна Volvo, 1л, мінерал",
+        "phrase": "олива трансмісійна 1л мінерал",
+        "category": "Трансмісія",
+        "subcategory": "Коробка передач на запчастини",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:00253ebe-3b22-5ccb-a45b-bf5129f77dee",
+        "source_sha": "ae7cb586347e733082a5b5626339623ec50f39c3234b63cf5ef7ac95f9884dae",
+        "title": "MODULE VCM Volvo XC90 16-22",
+        "phrase": "module vcm",
+        "category": "Електрика",
+        "subcategory": "Комп",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:00275073-998b-5144-ae21-44bac940a4f3",
+        "source_sha": "5e8cea3be3b0c785b3bfba7a43fb99deea9aacdaedc04a6d7854bcbf69e4e762",
+        "title": "Дроссельная заслонка Volvo XC60 22-23 B6",
+        "phrase": "дроссельная заслонка",
+        "category": "Двигун",
+        "subcategory": "Система впуску",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:0028c37e-fe66-521e-868d-b9d77f5790c6",
+        "source_sha": "1c00a55bb7af6e78a60d7a4691e612ecb78f1fec6fa3a1c5b7a00af6141d77ec",
+        "title": "Датчик температури повітря у пічці Volvo XC60 18-26",
+        "phrase": "датчик температури повітря у пічці",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Підігрів та кондиціонування",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:002a67b9-f058-5f5d-8877-0b58217dc61d",
+        "source_sha": "105874a34eae17768b420313931cd6296e43774d0824316c7eb2452466285612",
+        "title": "Эмблема надпись AWD двери багажника Volvo XC90 16-26",
+        "phrase": "эмблема надпись awd двери багажника",
+        "category": "Кузов",
+        "subcategory": "Багажник",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:002aa0d7-0687-5a00-90c3-18c0c6c5fcc5",
+        "source_sha": "aedcd485dc0632165ad57b360bd36c73cb8b500062df359ba122c22f6da6054c",
+        "title": "Корпус антени плавець Polestar 2 21-25 подряпини",
+        "phrase": "корпус антени плавець polestar 2 21 25",
+        "category": "Кузов",
+        "subcategory": "Дах і люк",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:0030cd00-07ba-5a7b-9cf3-24c22353075d",
+        "source_sha": "99152e182eacf5e703acb6e68945ba21c6dd65c40dacd87fd931de536d83fd77",
+        "title": "Комплект ковриков салона резина Volvo XC90 16-22 Weather Tech, под 2 ряд,",
+        "phrase": "комплект ковриков салона резина weather tech под 2 ряд",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Покриття підлоги",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:0030fb6c-3f2d-5b96-9de1-b79e46740cdc",
+        "source_sha": "7e68f13d6bc89fe407618bfd4d834520c37c5f24e8ad7684776d907b200dbc75",
+        "title": "Сидіння заднє праве 2 ряд Volvo XC90 16-26 бежева шкіра, з підігрівом, під 3 ряди",
+        "phrase": "сидіння 2 ряд бежева шкіра з підігрівом під 3 ряди",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Сидіння",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:003251f2-2ee9-5ee5-af92-bedc119a49d7",
+        "source_sha": "3d4bc227d92289312062021464e5eec4aacf1f1ac7404b72d726bca2e018d5d1",
+        "title": "Клема АКБ мінусова Volvo XC60 18-26 із датчиком",
+        "phrase": "клема акб мінусова із датчиком",
+        "category": "Електрика",
+        "subcategory": "Акумулятор 12 В",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:003f46fb-9814-5094-9fc6-29213036fcb8",
+        "source_sha": "932dc2fae34fff0e564be6121348e201dc75d5156f0558f8759080b751ab6f70",
+        "title": "Проводка дверей задня ліва Volvo XC90 16-22 під keyless",
+        "phrase": "проводка дверей під keyless",
+        "category": "Двері",
+        "subcategory": "Задні ліві двері",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:003f6c18-873b-5686-a84c-c4772f807080",
+        "source_sha": "c93ccf03158337e535df22de07eb659d82e7eed1210eafa9ddb7aff6c1ae9ec3",
+        "title": "Монітор дисплей Навігація Volvo XC60 18-26",
+        "phrase": "монітор дисплей навігація",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Мультимедіа",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:004075d4-5b04-57c1-9cfa-d2877ea19b45",
+        "source_sha": "841942c18a19f61ae467a9027fedbcc3e07431a6b3a88c198b97cd945fe403a0",
+        "title": "Ключ Volvo XC90 16-26 keyless, 4 кнопки, подряпини",
+        "phrase": "ключ keyless 4 кнопки",
+        "category": "Електрика",
+        "subcategory": "Ключ",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:0042f1e8-861e-534f-b4a4-afa2265fb0b7",
+        "source_sha": "02c37c829d6d2c7064d32b4480607926dbb3a311e3bc6ab6bd7bce084f2b03a0",
+        "title": "Маточина задня права Volvo XC90 16-26 AWD іржава",
+        "phrase": "маточина awd",
+        "category": "Підвіска та кермове управління",
+        "subcategory": "Поворотний кулак, цапфа та маточина",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:0046204c-fbd0-573a-8e04-a9c1f3012b0d",
+        "source_sha": "0a5dc249532cd1a60e3fda751713f221e9437fc63f2d79671e79092ac827447f",
+        "title": "Кнопки керування на кермі праві Volvo XC40 19-26 чорні",
+        "phrase": "кнопки керування на кермі чорні",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Кермове колесо",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:0048adf9-6559-532f-8122-f39bd9d3068c",
+        "source_sha": "98bd803e3589d832ccbb7f49cd4767abb5e3301fa9e37ad293ff10e066fa6f1a",
+        "title": "Заглушка омывателя фар переднего бампера правая Volvo XC60 18-21",
+        "phrase": "заглушка омывателя фар переднего бампера",
+        "category": "Кузов",
+        "subcategory": "Передній бампер",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:004a5fee-e8e7-5a57-85da-e0034ae2c15d",
+        "source_sha": "411b4f3c386df27d9d0cf092eab7db15f67fdeec42b7f951fce37a18519448d4",
+        "title": "Шестерня проміжна АКПП Volvo XC90 16-22 TG-81FC AWD",
+        "phrase": "шестерня проміжна акпп tg 81fc awd",
+        "category": "Трансмісія",
+        "subcategory": "Коробка передач на запчастини",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:005062b3-0b2e-59c6-9621-476915208ae1",
+        "source_sha": "b0028951e868a431b78131c1077d62d8428a842f55d887608f5cf958935c4f28",
+        "title": "Дзеркало бічне праве у зборі Volvo XC90 16-24 15+4 пінів, поворотник, підігрів, автозатемнення, BSM, камера, сіре",
+        "phrase": "дзеркало бічне 15 4 пінів поворотник підігрів автозатемнення bsm камера сіре",
+        "category": "Двері",
+        "subcategory": "Передні праві двері",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:005a6aaf-06d0-5540-b7b0-b6a03e18e007",
+        "source_sha": "0c1a58c3bb70464bb89f0f8146e3dc5f1f152438f9245d14b59c8a1da0295370",
+        "title": "Блок зчитування sim карти Volvo XC90 16-25 зламане кріплення, зламаний тримач SIM картки",
+        "phrase": "блок зчитування sim карти зламане кріплення зламаний тримач sim картки",
+        "category": "Електрика",
+        "subcategory": "Комп",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:005bfaf1-d4d9-5d16-a50a-746d0c77ea25",
+        "source_sha": "8a3535f21968ce242ead967830fdb600e551e736580b7aa1307fac63e39da2d9",
+        "title": "Проводка на датчик колінчастого вала Volvo XC60 18-26",
+        "phrase": "проводка на датчик колінчастого вала",
+        "category": "Електрика",
+        "subcategory": "Електропроводка",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:005ef739-f757-5ec6-a388-378d571518c7",
+        "source_sha": "9a74954a0976727c3129ef7b66f00d221eef57870ad14ab30c6743e8df4e3bc4",
+        "title": "Коленвал Volvo V90 17-22 T5 2.0T стандарт К:53, 00 Ш:49, 99",
+        "phrase": "коленвал стандарт к 53 00 ш 49 99",
+        "category": "Двигун",
+        "subcategory": "Двигун на запчастини",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:00695304-94dc-5156-a934-1f8b9122b3c7",
+        "source_sha": "9179aea1b1329e472b4e0d8d07d8043bfbabb28881e20e4f2457b42ca04a3420",
+        "title": "Диск гальмівний передній правий Volvo XC60 18-26 345/30мм",
+        "phrase": "диск гальмівний 345 30мм",
+        "category": "Гальмівна система",
+        "subcategory": "Гальмівний диск",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:006c8c60-dd7a-55ac-8a12-a11600faa487",
+        "source_sha": "7082b59c67c187e5b9785ecd69928926bce213b468b4ba5a17ca0bc10108ad3a",
+        "title": "Підлокітник Volvo XC40 19-22 шкіра чорна з білим рядком",
+        "phrase": "підлокітник шкіра з білим рядком",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Центральна консоль",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:0072b0c6-9084-5e85-bc2f-8db021a2e152",
+        "source_sha": "a925f0a3299c7b2cabdee0254ff200dc28ac24f97dd0921abfb24eb652784f04",
+        "title": "Накладка порога передняя левая Volvo XC60 18-26 черная с хром вставкой, царапины, царапины на хроме",
+        "phrase": "накладка порога с хром вставкой на хроме",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Оздоблення стійок і прорізів",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:0072baee-7439-5ef5-83ed-a292a020427d",
+        "source_sha": "fcfca6cba5e0015a9f7ed65b007459d912c90925ef792f41e5610d34a35860ff",
+        "title": "Кронштейн заднего дифференциала редуктора Volvo XC40 19-26 T5, B5",
+        "phrase": "кронштейн заднего дифференциала редуктора",
+        "category": "Трансмісія",
+        "subcategory": "Задній міст",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:00769838-a507-51a1-b858-18aba3e05442",
+        "source_sha": "8c9cc9f1ec6ff93733f17a94bd0e8a7022bfbd4f4dd67349cc413e74ccb17c2a",
+        "title": "Динамік торпедний центральний Volvo XC60 20-26",
+        "phrase": "динамік торпедний центральний",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Акустика та аудіосистема",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:007c20ab-af78-5ef7-933a-d385d439934c",
+        "source_sha": "2cd403a65da1e17f6e592b8a10ee8e1a79f47bf24e2786dc0b8b7a464a2be257",
+        "title": "Динамік дверний передній правий Volvo XC40 19-26",
+        "phrase": "динамік дверний",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Акустика та аудіосистема",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:0080c4df-2f69-5f41-a6cf-0dd42e1063e3",
+        "source_sha": "985deb942e598842bc2a21e454f2ebd13352f0a3a4847bdac8ae73cb74361adb",
+        "title": "Проводка стартер-генератор Volvo XC90 16-22",
+        "phrase": "проводка стартер генератор",
+        "category": "Електрика",
+        "subcategory": "Електропроводка",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:008539af-03c9-5a22-9117-274d2f06ccb9",
+        "source_sha": "0ef540b9fcfce6e05df8961fc6eba618232d1379037d39d0d7bf8710b0aca309",
+        "title": "Ремінь безпеки водійський Volvo XC60 18-22 чорний, спрацьований, під чистку",
+        "phrase": "ремінь безпеки водійський спрацьований під чистку",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Безпека та подушки безпеки",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:0089bc08-8545-506f-8d3d-a07abbc0ba8a",
+        "source_sha": "4887c4d57c951726413a70da2fc38ae9f011fa347f61bd4b47881976ed737390",
+        "title": "Ручка стелі передня ліва Volvo XC60 18-26 чорна, подряпина",
+        "phrase": "ручка стелі",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Оздоблення даху",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:00905550-c421-5c3b-83f4-b2d18f77ce42",
+        "source_sha": "6b33c08fa3e38c1dbfd2cee299a4fa9758eab94785c4567a38e783b9b31ffdd5",
+        "title": "Ручка дверей зовнішня передня права Volvo XC60 18-26 keyless з підсвічуванням, подряпини",
+        "phrase": "ручка дверей keyless з підсвічуванням",
+        "category": "Двері",
+        "subcategory": "Передні праві двері",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:009f98bd-5b3d-5fa4-bc47-57af9aa7958e",
+        "source_sha": "4cd16db1d4045af6e0efa964a64e2b527e8efbf20db6a091ee59c80b86d8142d",
+        "title": "Решітка радіатора grill Volvo XC60 22-26 R-Design, з емблемою, під камеру, з ущільнювачем, подряпини, пісок",
+        "phrase": "решітка радіатора grill r design з емблемою під камеру з ущільнювачем",
+        "category": "Кузов",
+        "subcategory": "Решітка радіатора",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:00a1ca3e-a9bc-54ea-94d8-adfbddb3b291",
+        "source_sha": "8b4d81af92e61a4972f2f4f71a74a3d8186dfd421233ef399cd0e7ddf4852b1e",
+        "title": "Патрубок інтеркулера лівий другий Volvo XC90 16-26 T8 пластик",
+        "phrase": "патрубок інтеркулера другий пластик",
+        "category": "Двигун",
+        "subcategory": "Турбокомпресор",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:00a6599d-8379-5e1f-9ef3-8d7b6f238e46",
+        "source_sha": "68e0f1c11fb709f0431ca26701d9ddf24b2d5dd069d4da8b6bd4c7e907b62600",
+        "title": "Коленвал Volvo XC90 16-26 B4204T27 T6 2.0T К:52.99 Ш:49.99",
+        "phrase": "коленвал b4204t27 к 52 99 ш 49 99",
+        "category": "Двигун",
+        "subcategory": "Двигун на запчастини",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:00adbcf8-287c-527b-970b-3b9b7b094a0a",
+        "source_sha": "0f78ac6df6282f4aa693ef89d1b091c044c165a8a8ddfdfd1183d242221a2e66",
+        "title": "Дзеркало бічне праве у зборі Volvo XC90 16-24 15 пінів, поворотник, підігрів, автозатемніння, BSM, бежеве, подряпини",
+        "phrase": "дзеркало бічне 15 пінів поворотник підігрів автозатемніння bsm бежеве",
+        "category": "Двері",
+        "subcategory": "Передні праві двері",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:00b47ca4-1a2b-5692-8673-57ca14eb384c",
+        "source_sha": "8f63bd180e4038fdb11073663574cb460efd18efe026a298fbd06934123b1feb",
+        "title": "Замок двери задней левой Volvo XC60 18-19 с защитой детей",
+        "phrase": "замок двери задней левой с защитой детей",
+        "category": "Двері",
+        "subcategory": "Задні ліві двері",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:00b6aa8b-6556-5df8-8b06-b2e148d8fbd3",
+        "source_sha": "4b8531504256395f91b715cf93d9ddafb2f072d5e3f877ead3ab2b5c3e0a14b5",
+        "title": "Шланг гальмівний задній лівий Volvo XC90 16-26",
+        "phrase": "шланг гальмівний",
+        "category": "Гальмівна система",
+        "subcategory": "Гальмівний шланг",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:00b79336-a1f7-54ec-9966-81b66e471b49",
+        "source_sha": "d2dd6670e697a922a0d8adf1e73047c25d223fe74662f60334abcd0af18b4433",
+        "title": "Модуль srs airbag комп'ютер подушок безпеки Volvo XC90 16-25",
+        "phrase": "модуль srs airbag комп ютер подушок безпеки",
+        "category": "Електрика",
+        "subcategory": "Датчик подушки безпеки",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:00bc27cd-04eb-52cc-8a88-4b9f9da1cc41",
+        "source_sha": "82c038d3ac73a5abb87bc9de83ce43bb6d6504d3c30c8b4d90a2fed10f18f6a1",
+        "title": "Решетка переднего бампера правая Volvo XC60 22-26 T8 PHEV",
+        "phrase": "решетка переднего бампера phev",
+        "category": "Кузов",
+        "subcategory": "Передній бампер",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:00bdcce4-0b04-5689-8424-c81b9787dae7",
+        "source_sha": "95f174412c0dac3073d103b95b8a1bae438f386ab4e726971f53c72a83b62b41",
+        "title": "Решітка переднього бампера ліва Volvo XC60 22-23 B5, B6 чорна з хром, під парктронік",
+        "phrase": "решітка переднього бампера з хром під парктронік",
+        "category": "Кузов",
+        "subcategory": "Передній бампер",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:00c57860-7365-5986-bc5a-f7efa6f1cd20",
+        "source_sha": "35967174d9e8ae67c1a29342c6cebbc4efffe2f879e8bac940254a0d7ac02741",
+        "title": "Кронштейн усилителя переднего подрамника правый Volvo XC60 19-26",
+        "phrase": "кронштейн усилителя переднего подрамника",
+        "category": "Підвіска та кермове управління",
+        "subcategory": "Підрамник",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:00c9cd43-2475-5054-9ca3-fb678823cc02",
+        "source_sha": "c1b6c7ff641391d1659ceea8d9fdbb498e7306fc1bdfb3a9a7d6e7e39c7f0b4d",
+        "title": "Дзеркало бічне праве у зборі Volvo XC90 16-24 15+4 пінів, поворотник, підігрів, автозатемнення, BSM, камера, чорна, потрісканий поворотник",
+        "phrase": "дзеркало бічне 15 4 пінів поворотник підігрів автозатемнення bsm камера потрісканий поворотник",
+        "category": "Кузов",
+        "subcategory": "Бічне дзеркало",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:00cacde6-f3ce-557c-9944-86b6b1f6114b",
+        "source_sha": "ff680c9c521f97d76ae9dab9af6af569f5c05223bdc568964f82889cb00fc60a",
+        "title": "Накладка губи переднього бампера Volvo XC40 19-22 сіра",
+        "phrase": "накладка губи переднього бампера",
+        "category": "Кузов",
+        "subcategory": "Передній бампер",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:00cebd4d-8383-540b-96b0-8787b40c53d3",
+        "source_sha": "98e9af51fbe314b3fa4af12567edcfeee1ee75badb00979c067f972d02e7faf3",
+        "title": "Ущільнювач крила капот-крило лівий Volvo XC60 18-26 поролон",
+        "phrase": "ущільнювач крила капот крило поролон",
+        "category": "Кузов",
+        "subcategory": "Крила",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:00d32cb5-9d60-5175-9143-95585c9e84b5",
+        "source_sha": "489bbec60e6b4cc51b12cf19a1dcefb9fe67494eb5f4aa4e728502d91b6c2a23",
+        "title": "Накладка центральної стійки верхня ремінь ліва Volvo XC90 16-23 чорна, під хімчистку, потерта",
+        "phrase": "накладка центральної стійки ремінь під хімчистку",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Оздоблення стійок і прорізів",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:00e077ca-d5af-53e9-9c62-494b395ef114",
+        "source_sha": "2727539ad88621fc622fc4151f25a440b66a7a3149ef8e08c00f9db2c2b6feae",
+        "title": "Датчик нахилу кузова задній лівий Volvo XC40 19-26",
+        "phrase": "датчик нахилу кузова",
+        "category": "Електрика",
+        "subcategory": "Датчики",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:00e23cf2-52e6-56a1-9c55-ea9ce62711e9",
+        "source_sha": "69592d85209d54fd07a72c1d285402f1feb2000c706df30748fcb48ff07b1829",
+        "title": "Датчик ABS передній лівий Volvo V90 17-25",
+        "phrase": "датчик abs",
+        "category": "Гальмівна система",
+        "subcategory": "ABS",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:00eb7053-8545-53b4-97e4-6a443fd6c9a9",
+        "source_sha": "70b983f08b77f447c6724fcf5807bec06d5751aed247634971b85166f087f942",
+        "title": "Центральний ковпачок на диск Volvo XC60 18-26 65/58мм срібло, скол",
+        "phrase": "центральний ковпачок на диск 65 58мм срібло скол",
+        "category": "Колеса",
+        "subcategory": "Колісні диски",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:00f3f2f8-b804-558d-98fb-a6956077449c",
+        "source_sha": "051f94bd98600c49d0d335b9876bb09f1a4b8cea6b0d56424374792c53081604",
+        "title": "Кришка АКБ Volvo XC60 19-26 T5, T6, T8 надлом напрямної",
+        "phrase": "кришка акб надлом напрямної",
+        "category": "Електрика",
+        "subcategory": "Акумулятор 12 В",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:00f53588-c68f-53ee-a2c6-f7567b850fa9",
+        "source_sha": "7db3fbf97956835d2a0a82f91e31d8a65e726adacb66d78686d1152985f3c835",
+        "title": "Датчик відкривання багажника ногою Volvo XC60 22-26 в зборі",
+        "phrase": "датчик відкривання багажника ногою",
+        "category": "Електрика",
+        "subcategory": "Датчики",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:00f83928-3c09-57b5-a4d5-ffa0184755c5",
+        "source_sha": "ac5e51decd84912384f8d8e8995ca24e308f7a899f3a8504d19b6109fa9a7404",
+        "title": "Кожух ручки КПП Volvo XC90 16-22 шкіра чорна, хром",
+        "phrase": "кожух ручки кпп шкіра хром",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Перемикання передач",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:00fe0b38-44de-5d3b-965d-24b8706786dd",
+        "source_sha": "4235da72486f782b4d465063755d3e24e0453e01ab282a124d8e5116bf1ed7df",
+        "title": "Модуль srs airbag комп'ютер подушок безпеки Volvo XC90 16-25",
+        "phrase": "модуль srs airbag комп ютер подушок безпеки",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Безпека та подушки безпеки",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:00ff0c17-c4a8-5b12-afa3-af2b8580ffb7",
+        "source_sha": "7ff0d2088990d09de504cc27cfc32feed302fe10fe588a7161b4830475ad5fda",
+        "title": "Датчик тиску оливи Volvo V90 17-21 T5 2.0T",
+        "phrase": "датчик тиску оливи",
+        "category": "Двигун",
+        "subcategory": "Двигун на запчастини",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:01025470-377e-52a5-80c2-1df875385f84",
+        "source_sha": "f0af2f94cd8b3df2daef05de56c59be3c599cf203d29ecfacda77de89f0566a8",
+        "title": "Бризковик переднього бампера лівий Volvo XC90 16-23",
+        "phrase": "бризковик переднього бампера",
+        "category": "Кузов",
+        "subcategory": "Передній бампер",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:010261e3-36db-579e-bfba-c96e22d6ef70",
+        "source_sha": "af86ceb138dba86fe1819d01d500114c3fbf881acc6e34408dc834890d1cd354",
+        "title": "Кнопка відкривання дверей багажника салонна Volvo XC90 16-22 чорна з кнопкою відкриття лючка бензобака",
+        "phrase": "кнопка відкривання дверей багажника салонна з кнопкою відкриття лючка бензобака",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Передня панель",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:010433e8-7187-5ff4-a656-ba9b858b379d",
+        "source_sha": "210c059eeea416ae5ef9d672d5d7ad3fc6be68b415b5a48cc0876485efb0ce85",
+        "title": "Накладка двери нижняя передняя левая Volvo XC60 18-26 с хром молдингом, царапины",
+        "phrase": "накладка двери с хром молдингом",
+        "category": "Двері",
+        "subcategory": "Передні ліві двері",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:0106162d-4089-5e4e-9736-0c853f0357ae",
+        "source_sha": "66d5f7f368a96471c2690393c06182bcf2574259f318fbf5e1dee7542c8705a3",
+        "title": "Стекло панорамы заднее Volvo XC60 18-26 царапины",
+        "phrase": "стекло панорамы",
+        "category": "Кузов",
+        "subcategory": "Дах і люк",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:010bc66b-2f47-5805-9f0b-4434421b3fc7",
+        "source_sha": "4da9085dab6da8b58894ce0ee2f7b0fedb7668eae25a4f6880ce7632e894d1d9",
+        "title": "Ущільнювач дверей передніх лівих Volvo XC40 19-26",
+        "phrase": "ущільнювач дверей передніх лівих",
+        "category": "Двері",
+        "subcategory": "Передні ліві двері",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:0113a577-0a27-53e9-a685-9edf779fa7ad",
+        "source_sha": "1e3565e21671af871f68201dbda75d4c0ac4003af2dedfdfbd6e50e4bf0d0a5e",
+        "title": "Проводка обшивки двери карточки задней левой Volvo XC90 16-22 под подсветку",
+        "phrase": "проводка обшивки двери карточки задней левой под подсветку",
+        "category": "Двері",
+        "subcategory": "Задні ліві двері",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:0119fd5f-264c-564b-ae62-6ea4bb62538e",
+        "source_sha": "f6377575ffffd80492462944b9aaa6fa41c351796b43232f3f054c80c32f0ddb",
+        "title": "Провід паливної форсунки Volvo XC60 22-26 B5, B6",
+        "phrase": "провід паливної форсунки",
+        "category": "Двигун",
+        "subcategory": "Паливна система",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:011a3035-87fb-5ce1-9ed6-c8e0fbb79b5b",
+        "source_sha": "c4885e50939eebd96a182410f18dbaab511277152436d1d1c19bba5bee4233e9",
+        "title": "Рейка кермова Volvo XC60 18-26 електро, без тяг",
+        "phrase": "рейка кермова електро без тяг",
+        "category": "Підвіска та кермове управління",
+        "subcategory": "Кермова рейка",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:011ba895-57a3-5925-bac8-b183c8fcac23",
+        "source_sha": "d4bf283e1d4502d0585a9d0d9d9a23e96a01b797bb015b1e18505fa1f3d90ad9",
+        "title": "Кронштейн підлоги багажника передній правий Volvo XC90 16-22 під 5 місць",
+        "phrase": "кронштейн підлоги багажника під 5 місць",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Багажник",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:0123df73-8487-5308-89bd-7993a53592d4",
+        "source_sha": "d24086615944e52bac9de075c73bde8924e6b29756b5c2a6c08f2bb3cb2eca5e",
+        "title": "Патрубок интеркулера выпуск левый Volvo XC60 22-23 B6",
+        "phrase": "патрубок интеркулера выпуск",
+        "category": "Двигун",
+        "subcategory": "Турбокомпресор",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:01263802-5c13-57d3-bd9a-6fd38dff6e45",
+        "source_sha": "676d89efd2cb0272068171530aa430ed2d835a494b65c33f9fbcf3c90bf090e0",
+        "title": "Диск гальмівний передній правий Volvo XC90 16-26 345мм",
+        "phrase": "диск гальмівний 345мм",
+        "category": "Гальмівна система",
+        "subcategory": "Гальмівний диск",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:012e5794-13ae-5a07-89df-79de583852cd",
+        "source_sha": "5c52acdffe5faa14e6131815083072363ecc8700e59d536fd53e43c1a238e8e9",
+        "title": "Плафон освітлення передній Volvo XC60 18-23 під панораму, сірий",
+        "phrase": "плафон освітлення під панораму",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Оздоблення даху",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:012eeffa-f207-5c5d-827e-285386827cc4",
+        "source_sha": "980483bcdf29f829cc1d86c23d437d9514c2225e2238591016e1fe17c2a696b0",
+        "title": "Монітор дисплей навігація Volvo XC90 16-25 тип 1, потерт",
+        "phrase": "монітор дисплей навігація потерт",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Центральна консоль",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:013412bb-3d09-581a-9ea8-939f78d13bd5",
+        "source_sha": "90baaf332e1e497cee5cf7af7b709f035a344dc24eb6e45977de43a2466ac22c",
+        "title": "Датчик температури повітря у салоні Volvo XC60 18-26",
+        "phrase": "датчик температури повітря у салоні",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Підігрів та кондиціонування",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:0137ce12-7614-56a1-830e-2cd178ae1069",
+        "source_sha": "81187a0b56f909114395233dc59c6c1a9fe1a583023baa06742c277664bc68a6",
+        "title": "Головное устройство Volvo XC60 19-21",
+        "phrase": "головное устройство",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Мультимедіа",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:0137fb4f-0a34-5e47-a86e-80c9727a9904",
+        "source_sha": "954ed74f577acbab3612844d077869268f784765e2e5602eb20d9cf8eaee00c6",
+        "title": "Динамік твітер дверний передній лівий Volvo V90 17-25 8 Ohm",
+        "phrase": "динамік твітер дверний 8 ohm",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Акустика та аудіосистема",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:013f8037-d0fa-58bc-8f35-34581b634a15",
+        "source_sha": "af8a8465cd1db256c09a8d7312b338d04dd96c9d6bfc21f1016d23f4d94ce6a2",
+        "title": "Динамік твітер дверний задній лівий Volvo XC90 16-26 bowers & wilkins",
+        "phrase": "динамік твітер дверний bowers wilkins",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Акустика та аудіосистема",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:01459a76-57ce-5e37-85dc-18592d32f4eb",
+        "source_sha": "7212850ef3f13a7cdceb0df03fa57d03fa77e458ca62401ad944e986ec2d1871",
+        "title": "Головка блока циліндрів у зборі Volvo XC90 16-24 B4204T27 T6 2.0T",
+        "phrase": "головка блока циліндрів b4204t27",
+        "category": "Двигун",
+        "subcategory": "Двигун на запчастини",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:01468732-752b-5dfd-a4c1-b3f876ef170c",
+        "source_sha": "0f4062907b89ccc972392ef7ba75bbbd56b630f0e49ae3a5f8b85a989b9ae15e",
+        "title": "Молдинг дверь-стекло центральный задний левый Volvo XC90 16-22 хром, сломано крепление",
+        "phrase": "молдинг дверь стекло центральный хром сломано крепление",
+        "category": "Двері",
+        "subcategory": "Задні ліві двері",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:01481fe1-b8d2-5c01-8488-26c4ae007041",
+        "source_sha": "254826790a1d449047648b74785877fef64a2a85566008e42519946b70dd663e",
+        "title": "Датчик положення водійського сидіння Volvo XC60 18-26",
+        "phrase": "датчик положення водійського сидіння",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Сидіння",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:0149a9f2-4cf9-5594-85f1-250c153c04f1",
+        "source_sha": "dbc3d52de4e3f39a8ddb1649764fc79cfdce461b6e5c556777cd6c46e52bd43f",
+        "title": "Блок считывания sim карты Volvo XC90 16-25",
+        "phrase": "блок считывания sim карты",
+        "category": "Електрика",
+        "subcategory": "Блоки керування",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:014d48e1-2ad1-543a-934e-781095563315",
+        "source_sha": "918e853a670e9d08aa66d184fea107b52ee9309b6e45b50bc4770bb068ef2b7f",
+        "title": "Ключ Volvo XC40 19-26 keyless, 4 кнопки, червоний",
+        "phrase": "ключ keyless 4 кнопки",
+        "category": "Електрика",
+        "subcategory": "Ключ",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:014d4e57-38d6-592e-897f-9d0ee483583e",
+        "source_sha": "0996aef320a817411deb3a0006e7cd6aee3f3b46438e2e5580d60ad4e4f9bffc",
+        "title": "Маточина передня ліва Volvo XC60 18-26",
+        "phrase": "маточина",
+        "category": "Підвіска та кермове управління",
+        "subcategory": "Поворотний кулак, цапфа та маточина",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:015499a4-0279-5b7e-a240-af873de096c3",
+        "source_sha": "b2ec7609b6ff79ea37ae770425bfd270b780ec8d496068cb282f4c449bce93de",
+        "title": "Патрубок інтеркулера правий третій Volvo XC40 19-22 з резонатором",
+        "phrase": "патрубок інтеркулера третій з резонатором",
+        "category": "Двигун",
+        "subcategory": "Турбокомпресор",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:01556e07-de8d-5e3c-90b2-d9f507624bd0",
+        "source_sha": "4c4207b6bb39c47bbf14e4c311e0127f9da1088b4fb50ded428c7ccdcf5abc60",
+        "title": "Панорама в сборе Volvo XC60 18-26 черная шторка, царапины, шторка вылезла из паза",
+        "phrase": "панорама шторка шторка вылезла из паза",
+        "category": "Кузов",
+        "subcategory": "Дах і люк",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:015ec94e-e6a8-5f19-bb13-bc21370c7c47",
+        "source_sha": "143c133accabfad79b30b58a528aca7a6ee8bda034b78fdedf1215649e296ce0",
+        "title": "Защита двигателя Volvo XC60 20-26 метал",
+        "phrase": "защита двигателя метал",
+        "category": "Кузов",
+        "subcategory": "Захист",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:0161d6b9-cc5a-5b1a-9cca-7094f5889600",
+        "source_sha": "5409fef27e2126480cac2ebc942d65c57965c982468d1d4f1fa0d3990658aad4",
+        "title": "Пінопласт під інструмент Volvo XC90 16-23 надлом",
+        "phrase": "пінопласт під інструмент надлом",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Інструмент",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:01633eaf-114c-5c10-a92b-509ba502d1fd",
+        "source_sha": "2d687410cb84c8c0e2687c774dec42f35dfed3f1a51c06b5d63495e7b10c1037",
+        "title": "Бампер передний голый Volvo XC90 16-19 под омыватель фар и park assist, черный, нештатные отверстия",
+        "phrase": "бампер под омыватель фар и park assist нештатные отверстия",
+        "category": "Кузов",
+        "subcategory": "Передній бампер",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:0164d170-4eaa-5ee1-bef9-700938282d5c",
+        "source_sha": "ae54791198ffe87afc0cc2df5eb98ab99eef0c62694ad44580ea15813ed22b7c",
+        "title": "Датчик сліпих зон задній правий Volvo XC90 16-19",
+        "phrase": "датчик сліпих зон",
+        "category": "Електрика",
+        "subcategory": "Датчики",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:016b0376-8504-5c8a-adc8-210ac1079863",
+        "source_sha": "efe3005976de87688fa0a7498838e317002e21c8ff1fd82b28b9a9098a7f929a",
+        "title": "Фишка на проводку двери задняя правая Volvo XC90 16-22 9 пинов",
+        "phrase": "фишка на проводку двери 9 пинов",
+        "category": "Електрика",
+        "subcategory": "Електропроводка",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:016e5b0d-1079-5a4f-bd12-0192f596eec3",
+        "source_sha": "9b13341599560191a68a95746f4e7f3b311cfd4c152a8ac8295fe3bfa0aa97db",
+        "title": "Диск колесный R20 x 8J ET52.5 H2 Volvo XC60 18-21 тип 2, бордюрка",
+        "phrase": "диск колесный r20 x 8j et52 5 h2 бордюрка",
+        "category": "Колеса",
+        "subcategory": "Колісні диски",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:0171af67-1548-53ec-ab44-89cc9bfce6e7",
+        "source_sha": "9cb44953a8bd1a2e8803ec3c4a1801b5e1144aeb3044ced91382e850cf497ca9",
+        "title": "Метизи салону Volvo XC90 16-22 некомплект",
+        "phrase": "метизи салону некомплект",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Кріпильні елементи салону",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:017a01e7-af39-5a46-9bda-6078a2097f33",
+        "source_sha": "7636731c0e7c2d0ff8f9f9af0ccfa1d351e05851559b80d40212d6ac6a1be6ae",
+        "title": "Керування склопідйомником переднім лівим Volvo XC60 18-26 із захистом дітей, чорне",
+        "phrase": "керування склопідйомником переднім лівим із захистом дітей",
+        "category": "Двері",
+        "subcategory": "Передні ліві двері",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:017e0cfa-58ab-5d5c-b096-f2c8ac6c4ac7",
+        "source_sha": "e4d6675cf4fed385c384a7af388eae6787227a284680f53d10c185c9869fb132",
+        "title": "Привід піввісь задня права Volvo XC90 16-26 T5, T6, B5 AWD",
+        "phrase": "привід піввісь awd",
+        "category": "Трансмісія",
+        "subcategory": "Задній міст",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:018246c9-ad9b-5b04-bc53-36797e91823e",
+        "source_sha": "01e857e3f6da86821310e020d373e95e045777ec04d763ef74022822b3963179",
+        "title": "Покриття підлоги 2-го ряду сидінь Volvo XC90 16-22 заднє, чорне, під чищення",
+        "phrase": "покриття підлоги 2 го ряду сидінь",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Покриття підлоги",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:01863897-7886-5bff-abd6-76d26d34a9df",
+        "source_sha": "c760b8243d8705c705da96106ac0f9ce22a6340d5c54b0725da3664dcb41ef2c",
+        "title": "Заглушка птф ліва Volvo XC40 19-22 структура momentum",
+        "phrase": "заглушка птф структура momentum",
+        "category": "Кузов",
+        "subcategory": "Передній бампер",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:018bcdb0-5e7c-5f7f-96f6-25c7d9fb953d",
+        "source_sha": "bf06afc3acab1268e09c8e26d8f43931a2d323a7671f8c92f034cc9c89083743",
+        "title": "Топливный насос высокого давления ТНВД Volvo XC90 16-26 T5, T6, T8",
+        "phrase": "топливный насос высокого давления тнвд",
+        "category": "Двигун",
+        "subcategory": "Паливна система",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:018e4eff-e4e6-5528-b58d-6cd9fb3f304b",
+        "source_sha": "8dde4d2fcb12b58687d66a0b84bbba1c5ab9d32ea68ba5771dfd1721d35c35ff",
+        "title": "Модуль srs airbag комп'ютер подушок безпеки Volvo XC90 16-25",
+        "phrase": "модуль srs airbag комп ютер подушок безпеки",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Безпека та подушки безпеки",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:019671f3-a99d-5f8c-8ddd-b81d2e4d2520",
+        "source_sha": "a9fa30bcc134b7e7bcf4709d9e6ab226944b1282dd9eae85be8f58805a018fdd",
+        "title": "Динамік твітер дверний задній правий Volvo XC90 16-26 bowers & wilkins",
+        "phrase": "динамік твітер дверний bowers wilkins",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Акустика та аудіосистема",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:01a3b5a4-a214-5d58-be8d-a50981e56730",
+        "source_sha": "e9ce17b7c45f5b7d2fd0bd2f9d080741c5c1ffd3c002a610464a749dd9426d43",
+        "title": "Водительский ремень безопасности с пиропатроном Volvo XC60 18-22 черный, обрезаный ремень",
+        "phrase": "водительский ремень безопасности с пиропатроном обрезаный ремень",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Безпека та подушки безпеки",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:01a79bf1-62c2-5146-a873-b1cf77763b66",
+        "source_sha": "0f72d1b0c572e831b9471886dc77bcaded500fd128c99b04e8b9b6e19a5fb8ef",
+        "title": "Динамік твітер дверний передній правий Volvo XC90 16-21",
+        "phrase": "динамік твітер дверний",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Акустика та аудіосистема",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:01ac69fa-7559-5603-a0e0-b8803d2f545d",
+        "source_sha": "75a84bca737a7b2c1a9ff9474f06b8905c222f829ffc530922c4e811205a921b",
+        "title": "Педаль гальма Volvo XC60 18-21 T5, T6 з піропатроном, датчиком та кронштейном",
+        "phrase": "педаль гальма з піропатроном датчиком та кронштейном",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Педалі",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:01b0da93-7d82-535f-960e-fe5f8566bcf5",
+        "source_sha": "7de40e77f5864a821f107b0322df7e8033968043999c12fc724236ff4288fe67",
+        "title": "Накладка дверей внутрішня задня задня ліва Volvo XC90 25-26 тип 2 чорна",
+        "phrase": "накладка дверей",
+        "category": "Двері",
+        "subcategory": "Задні ліві двері",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:01b13f36-c370-5649-bd0d-c1230ad4e213",
+        "source_sha": "2f77443a125a43bd86cd2c17a17286e06543ef7b787d947c95831768add3d756",
+        "title": "Диск колесный R20 x 8J ET52.5 H2 Volvo XC60 18-21 тип 2, бордюрка",
+        "phrase": "диск колесный r20 x 8j et52 5 h2 бордюрка",
+        "category": "Колеса",
+        "subcategory": "Колісні диски",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:01b3272c-0199-5d87-8b48-a0367af315ea",
+        "source_sha": "3bcefab794d5f593ddc0ff13ff0353f5eaf0005024d7702f4ace3fb234a65ea8",
+        "title": "Диск гальмівний передній правий Volvo XC90 16-26 366мм",
+        "phrase": "диск гальмівний 366мм",
+        "category": "Гальмівна система",
+        "subcategory": "Гальмівний диск",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:01b8b750-907e-5a71-acc9-a4ae34f2827f",
+        "source_sha": "5d4eacd0da47b71f40f060cb243ebabfb453061a9a17d8a67deea47b62ddd2bf",
+        "title": "Охолоджувач системи кондиціювання задній у зборі Polestar 2 21-25",
+        "phrase": "охолоджувач системи кондиціювання polestar 2 21 25",
+        "category": "Двигун",
+        "subcategory": "Система кондиціонування",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:01b96201-f72c-57b3-a801-e3700149ba17",
+        "source_sha": "95d2f889174468be3025c104c5a2c0367f126f8ac9e4f6847c31c100348b1fe1",
+        "title": "Диффузор кожух радиатора в сборе Volvo XC60 18-25 T6",
+        "phrase": "диффузор кожух радиатора",
+        "category": "Двигун",
+        "subcategory": "Система охолодження",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:01bc3ce8-ae6f-53de-a5b4-f826d26c080b",
+        "source_sha": "55502556bd88730baa99de2a861668422e38bc8bc9b27af2cf1dfcbc39e05cf2",
+        "title": "АКПП в сборе Volvo XC90 16-22 TG-81SC AWD T6 123к",
+        "phrase": "акпп tg 81sc awd 123к",
+        "category": "Трансмісія",
+        "subcategory": "Коробка передач",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:01c20e1c-d57b-525b-b185-e73cd50f1bcd",
+        "source_sha": "4c55030d9f0abd1186a96a4eb6e5c39fa47e4167c2550d46dda35339051c5181",
+        "title": "Усилитель аудио Volvo XC90 16-19",
+        "phrase": "усилитель аудио",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Акустика та аудіосистема",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:01c3d33e-3178-5425-8470-2393ce4e50e7",
+        "source_sha": "95223e0d8870901aa6c22c032153db4366312b2563ecea14d39d6be5b1b93885",
+        "title": "Дверь в сборе задняя левая Volvo XC90 16-26 keyless, тонировка, белый 707, тычки, маркировка на стекле",
+        "phrase": "дверь keyless тонировка тычки маркировка на стекле",
+        "category": "Двері",
+        "subcategory": "Задні ліві двері",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:01c7a4a0-c8a8-5d11-8db5-1e7df437e40b",
+        "source_sha": "6b627a9f24112f31842fef2ef0f2e64833c698948f7b5e609fbb512f78b21e89",
+        "title": "Ключ Volvo XC60 18-26 keyless, 4 кнопки, чорний, потертий",
+        "phrase": "ключ keyless 4 кнопки",
+        "category": "Електрика",
+        "subcategory": "Ключ",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:01c82f70-e9e6-5dbb-b36b-c02184322b1f",
+        "source_sha": "274130ae984c4fc2f8e567d7d1fd84e9b40316123486345e4e3e779f5a6a1612",
+        "title": "Пінопласт під інструмент Volvo XC60 18-26 T5, T6, B5, B6 під запаску без компресора",
+        "phrase": "пінопласт під інструмент під запаску без компресора",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Інструмент",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:01db2f21-8cd8-57c9-8d30-d7f200f68cda",
+        "source_sha": "f4ecf11efded09ed3226cb344065a9cbba879c1af0fdda5fbb36d2a32ad15ed7",
+        "title": "Ремінь безпеки 2 ряд центральний Volvo XC90 16-26 сірий",
+        "phrase": "ремінь безпеки 2 ряд центральний",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Ремінь безпеки",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:01defc59-6611-5218-8e4d-6c7a62d47325",
+        "source_sha": "85fbaecf8965ddd8595f6021ee52ce94c380092d0d13b18aef51206b3e34426a",
+        "title": "Кронштейн півосі передній правий Volvo XC40 19-26",
+        "phrase": "кронштейн півосі",
+        "category": "Трансмісія",
+        "subcategory": "Передній міст",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:01df981b-d82d-5d2a-ba96-3e135aafbd22",
+        "source_sha": "3b81f9149e8dc45cb2aeb89bb92f666368970ef8da1bd4ce560558c650a5330e",
+        "title": "Мотор склопідйомника задній лівий Volvo V90 17-25",
+        "phrase": "мотор склопідйомника",
+        "category": "Двері",
+        "subcategory": "Задні ліві двері",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:01ede6bb-67f1-5a62-af31-2061b79a9c35",
+        "source_sha": "aeb0270e52edac286c7b3b2d6396cd05d6a6a80c99c87d5e73f3f3c8f3e1f1e0",
+        "title": "Скоба замка капота правая Volvo XC60 18-26 ржавчина",
+        "phrase": "скоба замка капота ржавчина",
+        "category": "Кузов",
+        "subcategory": "Капот",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:01eec47f-04bd-5122-b807-e4c37845cb01",
+        "source_sha": "3d120af8bb8637005459aba6b38fb9ff72d349e984b6add9f21be50c85b82666",
+        "title": "Глушник задня частина з бочкою Volvo XC40 19-20 T5 AWD у зборі, під 2 вихлопи",
+        "phrase": "глушник частина з бочкою awd під 2 вихлопи",
+        "category": "Двигун",
+        "subcategory": "Система випуску відпрацьованих газів",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:01ef8231-e2b4-58c0-9c15-937ff8f455b5",
+        "source_sha": "63e53394e30bcdbced77607074e70b9253531104971c3a415971c65b601495fb",
+        "title": "Тяга стабілізатора задня ліва Volvo XC60 18-26",
+        "phrase": "тяга стабілізатора",
+        "category": "Підвіска та кермове управління",
+        "subcategory": "Стабілізатор",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:01f0f0e7-73b8-5e2d-bc5b-5e55d1019bd4",
+        "source_sha": "d9f8f2f33dc1efed34711f5e082aa495aba15ed927c47305a9c2cf0fc6476f58",
+        "title": "Рулевой наконечник левый Volvo XC90 16-26",
+        "phrase": "рулевой наконечник",
+        "category": "Підвіска та кермове управління",
+        "subcategory": "Кермова рейка",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:01f13069-29df-50d7-95d9-99fb100bf2e5",
+        "source_sha": "8d09d92f430966cfc3e279f050f9c541ecb14da75389fbdf4c2ec39420e3c909",
+        "title": "Торпедо передня панель без AIRBAG Volvo XC90 16 під проекцію, чорна, відламане кріплення",
+        "phrase": "торпедо панель без airbag 16 під проекцію відламане кріплення",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Передня панель",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:01f153d8-4ecb-5697-bd87-e4e8812831de",
+        "source_sha": "edf7861d9c938b3dfb94e7127c27eee5548e4887372f648d7cc4cc4eed209464",
+        "title": "BCM BODY CONTROL MODULE Volvo XC40 19-21",
+        "phrase": "bcm body control module",
+        "category": "Електрика",
+        "subcategory": "Комп",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:01f227b8-427b-5708-8ab4-2164c696afe1",
+        "source_sha": "b65fea9928ec76084ab56762b944cc8daf053b7243c44dc7679f40f292729c5c",
+        "title": "Накладка задньої стійки ліва задня нижня Volvo XC90 16-26 під ремінь, чорна, подряпина",
+        "phrase": "накладка задньої стійки під ремінь",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Оздоблення стійок і прорізів",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:01f4ddc3-c80e-5de7-9c79-b251d97c76ab",
+        "source_sha": "ad3095a7d8389a90918d0e1dcd22dcfc5fdccdf0f7eb038254f91a6926c39308",
+        "title": "Модуль srs airbag комп'ютер подушок безпеки Volvo XC60 18-24 під перешив, зламане кріплення",
+        "phrase": "модуль srs airbag комп ютер подушок безпеки під перешив зламане кріплення",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Безпека та подушки безпеки",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:01f5ea93-b325-5860-8318-4122ebb5d472",
+        "source_sha": "e41b84455f7b035e2e6b3063dda741d703720a2b1fd763df9316959e7360f178",
+        "title": "Кронштейн заднього диференціала редуктора Volvo XC60 18-25 T5, T6",
+        "phrase": "кронштейн заднього диференціала редуктора",
+        "category": "Трансмісія",
+        "subcategory": "Задній міст",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:0208cb67-f2b3-596e-9217-a2b59c9145b7",
+        "source_sha": "976b780969b73228a652bbd345bc1a487880df2ed77aa7de56c5e2d680d0a3c1",
+        "title": "Шифтер КПП з ручкою Volvo XC90 25-26 скляна ручка",
+        "phrase": "шифтер кпп з ручкою скляна ручка",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Перемикання передач",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:020c6233-6018-526f-8bc6-49d98a43115a",
+        "source_sha": "c437bfb2dd3b2d5674dcceaa50b9f44e6556ef95aed9557468c8960cb3485122",
+        "title": "Передний редуктор раздатка Volvo XC90 16-17 T5, T6 76к",
+        "phrase": "редуктор раздатка 76к",
+        "category": "Трансмісія",
+        "subcategory": "Передній міст",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:02125ff3-017a-50c7-bb6d-1c2d5d065d2f",
+        "source_sha": "3efde5affc064ed48cf0e61863aca3fe4816a7932b7c8d5e082e9df8ce99b5e5",
+        "title": "Шифтер КПП Volvo V90 17-21 T5, T6",
+        "phrase": "шифтер кпп",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Перемикання передач",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:0213b22d-f9e9-5284-984a-fe1f5c72a500",
+        "source_sha": "7a6332d62f5de866a2a53414d2efe27e398fef9586fe03df5615231fd6d2c922",
+        "title": "Насос охолодження інвертора Volvo XC90 16-19 T8",
+        "phrase": "насос охолодження інвертора",
+        "category": "Електрика",
+        "subcategory": "Електрообладнання електромобіля",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:021bfe66-36d3-523a-ae76-88fcf7efc0b7",
+        "source_sha": "1e551633e8adc3a2a8e0580386ce7ff4393beff14f4c2f1b62a63d1589b0ebc6",
+        "title": "Блок управления двери багажника Volvo XC90 16-25",
+        "phrase": "блок управления двери багажника",
+        "category": "Електрика",
+        "subcategory": "Блоки керування",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:02274553-0bc6-5b9a-bd57-aa55a18ed8f6",
+        "source_sha": "bdf510cf1dd3544793c3e9aca8c03ef74221446117290ab8304306a4484282dc",
+        "title": "АКПП у зборі Volvo XC90 16-22 TG-81FC AWD T6 100к",
+        "phrase": "акпп tg 81fc awd 100к",
+        "category": "Трансмісія",
+        "subcategory": "Коробка передач",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:022810f5-3e4c-53fc-9cc1-0df1b95c787c",
+        "source_sha": "1448f97089d892d80691ef8d9ffa83e01c16590e3833b6bfa00235dfa44b8091",
+        "title": "Кронштейн заднього підрамника правий Volvo XC60 18-19",
+        "phrase": "кронштейн заднього підрамника",
+        "category": "Підвіска та кермове управління",
+        "subcategory": "Підрамник",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:0228383a-a7d6-501d-9af0-b7079e7cd0e9",
+        "source_sha": "37e40a3dd5e6545e862b87247bba92d8582b97ac804bc95e2199e54f3bdb5578",
+        "title": "Монітор дисплей навігація Volvo XC90 16-25 тип 1, потерт",
+        "phrase": "монітор дисплей навігація потерт",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Центральна консоль",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:022c7e8f-d796-5b86-9661-7416bed7b3ba",
+        "source_sha": "2f94f10cf04b926023f4c2ae703fee7e87ea9770de763961e55df35d1ddf5074",
+        "title": "Сітка органайзер багажника Volvo XC90 16-25 чорна",
+        "phrase": "сітка органайзер багажника",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Багажник",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:02374491-0b92-51fa-aa34-177da0160e13",
+        "source_sha": "123a445ef4f09c2273ed8d89209b344fe90da48fdc5713ffd491b59e21a14ba5",
+        "title": "Патрубок системы охлаждения Volvo XC60 22-26 B6",
+        "phrase": "патрубок системы охлаждения",
+        "category": "Двигун",
+        "subcategory": "Система охолодження",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:02549bfb-da36-5695-96d5-673c96fb9149",
+        "source_sha": "927fa583459bc3dee157b28c5c4e4aad80898daf020b75b63d361d1e0fbe3807",
+        "title": "Губа переднего бампера Volvo XC90 20-25 под тип 1",
+        "phrase": "губа переднего бампера под",
+        "category": "Кузов",
+        "subcategory": "Передній бампер",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:025aef97-e29b-54c3-bb2f-c8a9385fe391",
+        "source_sha": "21d24c4283bd97229f4051626c1337bf8373f07cfa119498595f2b80cc65f6f1",
+        "title": "Торпедо передня панель з AIRBAG Volvo XC90 17-25 тип 1, чорна, з простою проекцією, тичка",
+        "phrase": "торпедо панель з airbag з простою проекцією тичка",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Передня панель",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:025b116a-20bd-567b-a079-fd7f9fbad5a4",
+        "source_sha": "9fabcf481f6e19e082e84a45eaa3c5135616038ddb49b23ed38f73276c9c162a",
+        "title": "Кватирка глухе скло задня права Volvo XC90 16-26 тонування, подряпини на хромі",
+        "phrase": "кватирка глухе скло тонування на хромі",
+        "category": "Кузов",
+        "subcategory": "Бічна кватирка",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:026679db-80ee-556c-91ce-b8b21c3a829e",
+        "source_sha": "a1d5649a3e8794696b72c5a209aaf339183bfe167187a19e63cc6a1520f3a3a2",
+        "title": "Балансир заднего редуктора Volvo XC60 18-26",
+        "phrase": "балансир заднего редуктора",
+        "category": "Трансмісія",
+        "subcategory": "Задній міст",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:026fd524-4eee-5b76-9cad-d5f271798e25",
+        "source_sha": "61044cc219d63d3fea35bb27efcb31aeead39c688996fb408ba5bddac7101db9",
+        "title": "Диск колісний R19х8J ET42.5 Volvo XC90 16-24 тип2 бордюрка",
+        "phrase": "диск колісний r19х8j et42 5 тип2 бордюрка",
+        "category": "Колеса",
+        "subcategory": "Колісні диски",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:027367bb-05c9-54fd-a28f-39d5f10ca53e",
+        "source_sha": "a2f74b1a40498c88bd56413935250691fc682fcfc48e28d50a2bc061ab46aebe",
+        "title": "Пружина задня права Volvo XC40 19-26",
+        "phrase": "пружина",
+        "category": "Підвіска та кермове управління",
+        "subcategory": "Стійка амортизатора",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:027c68c7-5bf4-56c4-9402-4b2fd916f8af",
+        "source_sha": "f60970f2df7d97ff84f32b193541250324cc566dac5ec6981189c4546963350f",
+        "title": "Супорт задній лівий у зборі Volvo XC90 16-26 електро",
+        "phrase": "супорт електро",
+        "category": "Гальмівна система",
+        "subcategory": "Супорт",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:02879a94-c6cd-56dd-8f6a-2b9aa999c852",
+        "source_sha": "99cf7583abc531c517432510676e69658481732b58a1559f53244d6027ea9ac5",
+        "title": "Проводка двери задней левой Volvo XC60 18-26 под keyless, надлом крепления фишки",
+        "phrase": "проводка двери задней левой под keyless надлом крепления фишки",
+        "category": "Двері",
+        "subcategory": "Задні ліві двері",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:028bd45d-4b60-5373-9d29-c5385672ad0f",
+        "source_sha": "ff98a4c928746901d3a7de8844c2e8ddb7a8b4fe50203b7acd00f71ae78b26ec",
+        "title": "Двері у зборі задні праві Volvo XC90 16-26 keyless, тонування, чорний 717, вм'ятина",
+        "phrase": "двері keyless тонування вм ятина",
+        "category": "Двері",
+        "subcategory": "Задні праві двері",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:028e0493-623d-5d51-b179-87ad40abf427",
+        "source_sha": "94008841bb697a643133e494df6e0d4a19f0920594179d43913258d125a7b1fd",
+        "title": "Фішка на модуль srs airbag комп'ютер подушок безпеки Volvo XC60 18-26 мала",
+        "phrase": "фішка на модуль srs airbag комп ютер подушок безпеки мала",
+        "category": "Електрика",
+        "subcategory": "Датчик подушки безпеки",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:0290cd70-4b1e-57c3-b2b5-ee5106b6e561",
+        "source_sha": "8a72732a64498ee7bf213c9396c159f17e90a28ae529f86613eabf0ab61cbac2",
+        "title": "Блок управления водительским сидением Volvo XC60 18-26",
+        "phrase": "блок управления водительским сидением",
+        "category": "Електрика",
+        "subcategory": "Комп",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:029f8105-b1e4-5835-849e-2de0cb21880a",
+        "source_sha": "e247a49622a7f107e983c66ba39338dc4d71aafb1ec795d9b3ee0c29e24220f7",
+        "title": "Електродвигун передній Polestar 2 21-25 26к",
+        "phrase": "електродвигун polestar 2 21 25 26к",
+        "category": "Двигун",
+        "subcategory": "Двигун у зборі",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:02a74384-be44-547f-abf8-36f3aae35e6f",
+        "source_sha": "773df0cf8becd7786c2e2f1c7b1e95136cec8aea81250c20d6272184a8af3f38",
+        "title": "Накладка дзеркала внутрішньосалонного Volvo XC90 16-22 чорна, під камеру, 2 частини",
+        "phrase": "накладка дзеркала внутрішньосалонного під камеру 2 частини",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Внутрішньосалонне дзеркало",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:02af50e6-df38-594f-9a56-4b46156c535b",
+        "source_sha": "faa02a87bb0e5045cefb82320828dc3c03e36b1a90f3822eecac508f155d595f",
+        "title": "Кронштейн карданного валу Volvo V90 17-25 передній",
+        "phrase": "кронштейн карданного валу",
+        "category": "Трансмісія",
+        "subcategory": "Карданний вал",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:02b0ff8d-1e9b-5e89-864a-22cca62ff55d",
+        "source_sha": "0204c2d9f1fcb3f58fdf8ec3a00581d283b963965ada4ff2d1ff0ec918cfb61f",
+        "title": "Напрямна шторки багажника ліва Volvo XC60 18-26 чорна",
+        "phrase": "напрямна шторки багажника",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Багажник",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:02b18e97-5860-542c-b659-691cb3f37515",
+        "source_sha": "20f00a6d3c6c7b774538181c8c9a19fc0b7c13668d8365d9cb12e1109e2a2a4c",
+        "title": "Метизы подкапотного пространства Volvo XC60 18-26 некомплект",
+        "phrase": "метизы подкапотного пространства некомплект",
+        "category": "Кузов",
+        "subcategory": "Капот",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:02b37b35-64dd-57c2-b07a-16ffe83a62a1",
+        "source_sha": "eb4e433f15dde97f48b580747e80c1b45cd3bfe6f5942d77ff03fd1c707a7ebf",
+        "title": "Перемикачі підкермові гітара у зборі Volvo XC90 16-24 без підігріву керма",
+        "phrase": "перемикачі підкермові гітара без підігріву керма",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Кермове колесо",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:02b45715-f323-5af6-bad9-a2619b4d385d",
+        "source_sha": "994fc8da2977ad9ebba913963b0ba53076c647d4f6559a98abfab122c1dc41e1",
+        "title": "Насос паливний бензонасос Volvo XC60 22-26 B5, B6",
+        "phrase": "насос паливний бензонасос",
+        "category": "Двигун",
+        "subcategory": "Паливна система",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:02bb7772-1299-5636-a823-98eb8a5b0c8f",
+        "source_sha": "dae518cf11cf087c7c79f109eab1e701cccdf814998a43da2526dd579d792ad5",
+        "title": "Динамік задній лівий Volvo XC90 16-19",
+        "phrase": "динамік",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Акустика та аудіосистема",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:02c34aea-b907-524a-b59e-950fdce2d345",
+        "source_sha": "eb8ad68113d94b8914d5782ae6004623104d94b14758642772addc4cf951b98b",
+        "title": "Antenna Amplifier Volvo XC90 16-22",
+        "phrase": "antenna amplifier",
+        "category": "Електрика",
+        "subcategory": "Блоки керування",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:02cd44e2-aa05-56d4-8dd1-b5632aa3851c",
+        "source_sha": "77417567c5c7dbc1b238add4a3851f9f96a12ad4d15e948b0e9138e121548a3e",
+        "title": "Клапан соленоїд на ресивер турбіни Volvo XC40 19-26",
+        "phrase": "клапан соленоїд на ресивер турбіни",
+        "category": "Двигун",
+        "subcategory": "Турбокомпресор",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:02d5ac1e-d724-5f23-86d7-b5397b975b23",
+        "source_sha": "3eaba9b97f21de75dbc0c712e52150935df4df4aaecc1014efc9c651e064d1d8",
+        "title": "Кріплення запасного колеса Volvo XC40 19-26",
+        "phrase": "кріплення запасного колеса",
+        "category": "Колеса",
+        "subcategory": "Запасне колесо",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:02dbc602-5952-56a9-90be-b60fcec8ef8c",
+        "source_sha": "2ee81200c1330a812b2535cdde29cff34531b16a56105dce271afc10c5c147cd",
+        "title": "Поддон решетки дворников центральный Volvo XC90 16-22 металл",
+        "phrase": "поддон решетки дворников центральный металл",
+        "category": "Кузов",
+        "subcategory": "Омивач і склоочисник",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:02dd960c-b157-52ef-8a50-5184121a692a",
+        "source_sha": "cd109514fca8d41048eeac3b99f2bf9452fdcb3a489c87836b6a8051b6168018",
+        "title": "Обшивка арки ліва Volvo XC40 19-26 чорна",
+        "phrase": "обшивка арки",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Багажник",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:02e41cca-fc44-5408-8906-782f43e6b3f3",
+        "source_sha": "472bc30259809c641986fa7335108303e33d5a15d70227f3c020e61bd6c1a6c0",
+        "title": "Повітропровід від фільтра Volvo XC90 16-22 T6 під supercharger",
+        "phrase": "повітропровід від фільтра під supercharger",
+        "category": "Двигун",
+        "subcategory": "Система впуску",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:02ecf5dd-c1fd-5277-9a51-fa68c57a0fd9",
+        "source_sha": "641b4b6f6b58546773687ac350e6bc4e19ca59c12d770629542453e1c708a03b",
+        "title": "Накладка двери боковая передняя левая Volvo XC60 18-26 черный глянец, царапины",
+        "phrase": "накладка двери боковая глянец",
+        "category": "Двері",
+        "subcategory": "Передні ліві двері",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:02ee72d5-4837-5dbc-876b-61ba53df4f6c",
+        "source_sha": "53d1106cfb37e9b92c975cc0ad2a6f6d02386fc6a48fe43c840954dbda3ea2a3",
+        "title": "Монітор дисплей Навігація Volvo XC60 18-26",
+        "phrase": "монітор дисплей навігація",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Центральна консоль",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:02ef0372-33fc-5f45-ba87-77216bbc2862",
+        "source_sha": "319f3945394f50351e0c41423122cb0ce018daa0ac15a397bf7d18f1e28ce5e2",
+        "title": "Кронштейн насадки глушника правий Volvo XC90 16-21",
+        "phrase": "кронштейн насадки глушника",
+        "category": "Двигун",
+        "subcategory": "Система випуску відпрацьованих газів",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:02f4e81c-d0fd-5f6f-9dcd-135b42dcf7ed",
+        "source_sha": "ace68ea5a13c31280b26e03f289a3778dae8967408a35de37135dc9adeb21e20",
+        "title": "Монітор дисплей Навігація Volvo XC60 18-26",
+        "phrase": "монітор дисплей навігація",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Мультимедіа",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:02f78027-8441-598b-852f-40ad455ec9c8",
+        "source_sha": "3e047318d1ba396737dc4151b77741d8d677c485b41f080a9c3bdeb78d4366fd",
+        "title": "Кнопки керування пневмо-підвіскою Volvo XC60 18-26 під фаркоп",
+        "phrase": "кнопки керування пневмо підвіскою під фаркоп",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Багажник",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:02f7b4e9-544c-5ee1-8c5e-9743c2e6e35a",
+        "source_sha": "38ffe000ef6698145110e01997a46f2982651c90af459c1681ce1e8838b5919b",
+        "title": "Лонжерон зі стаканом лівий Volvo XC60 18-26 графіт, відпиляний",
+        "phrase": "лонжерон зі стаканом графіт відпиляний",
+        "category": "Кузов",
+        "subcategory": "Панелі кузова",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:02fc417f-9c13-52db-b00a-24cba1f92586",
+        "source_sha": "ad94911c9f5a94251d695ddd880aca302d1b76b203990bd52c5d74a59f7049c6",
+        "title": "Подушка двигателя задняя левая Volvo XC90 16-26",
+        "phrase": "подушка двигателя",
+        "category": "Двигун",
+        "subcategory": "Кріплення двигуна та КПП",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:02fe96f0-1bf8-5ec0-acdc-eaf9fab032e6",
+        "source_sha": "d2d43990c0300a1d1fb32446a8c489eed3e5f139ec8574c9706381d711111863",
+        "title": "Підсилювач аудіо Volvo XC60 18-22",
+        "phrase": "підсилювач аудіо",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Акустика та аудіосистема",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:0304a4dd-166f-54b1-b8d5-0d89585cbcc4",
+        "source_sha": "50536898e34ca853a6aa693d0258405316ef1921a49aa60c44dc86e621352906",
+        "title": "Патрубок від інтеркулера Volvo XC60 22-26 B5 на резонатор",
+        "phrase": "патрубок від інтеркулера на резонатор",
+        "category": "Двигун",
+        "subcategory": "Турбокомпресор",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:0305897d-be6a-5373-9f4c-0d5a127e5c9e",
+        "source_sha": "dc982e9ed46ff043aae23ff4b4b980c0448aab55779ea07be370191c104b39e0",
+        "title": "Гачок кріплення водійського козирка Volvo XC60 18-26 чорний, тички",
+        "phrase": "гачок кріплення водійського козирка тички",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Оздоблення даху",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:03104725-caa3-5fa5-95ff-2865bae4fec5",
+        "source_sha": "ce6c6fe7944ba256d26c6b5b562a15bcfe08ebb9eca31d6803d65ad4f5751031",
+        "title": "Рулевой наконечник правый Volvo XC60 18-26",
+        "phrase": "рулевой наконечник",
+        "category": "Підвіска та кермове управління",
+        "subcategory": "Кермова рейка",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:0310c99f-a1ce-5e83-8ce5-23895bbe606c",
+        "source_sha": "0f3ce80b058380f0147ba59ba0edaf1c6b5cf338ccaae38f54ea89fbe49fd9d7",
+        "title": "Накладка дверей бічна передня права Volvo XC90 16-26",
+        "phrase": "накладка дверей бічна",
+        "category": "Двері",
+        "subcategory": "Передні праві двері",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:03110bf4-5001-547d-96d6-b4645248ec3e",
+        "source_sha": "4a0a88bf7c1761fd6a0e4dc4fa0a595c7af76c85cda6a135de5d2ee3b4c7aeff",
+        "title": "Кронштейн амортизатора капота правий Volvo XC60 18-25",
+        "phrase": "кронштейн амортизатора капота",
+        "category": "Кузов",
+        "subcategory": "Капот",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:0315989e-5486-5fc3-983b-b297e6690afd",
+        "source_sha": "1afccbc7bd4b49559e3c73321ea4083e409db4e71b84ce0bd7dac8778a02305c",
+        "title": "Стоп сигнал Volvo XC40 19-26",
+        "phrase": "стоп сигнал",
+        "category": "Кузов",
+        "subcategory": "Задня оптика",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:031a2c7e-aa8e-54da-8497-7207cfc912e8",
+        "source_sha": "e0ba6441b8effd26fd9446320e52950a23e2feb6cf0be5aefb82c770078bdb11",
+        "title": "Датчик нахилу кузова передній лівий Volvo XC40 19-26",
+        "phrase": "датчик нахилу кузова",
+        "category": "Електрика",
+        "subcategory": "Датчики",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:03262327-bb96-5ad4-85ea-8f9d4715ab16",
+        "source_sha": "da13fdb87c90925de9ff572d58a79516c6054b81ddefa7643024adf197392130",
+        "title": "Панорама в сборе Volvo XC90 16-26 черная шторка",
+        "phrase": "панорама шторка",
+        "category": "Кузов",
+        "subcategory": "Дах і люк",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:03337992-dd54-5300-86ca-821810de642d",
+        "source_sha": "ba1dc439e2561a63a6bbd47d614a41f0a523f227797724971948b9c6d03833d8",
+        "title": "Кронштейн ABS АБС Volvo XC60 18-25",
+        "phrase": "кронштейн abs абс",
+        "category": "Гальмівна система",
+        "subcategory": "ABS",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:0336e6d5-0985-5e57-b496-48479f8bf385",
+        "source_sha": "f7642ffcd72c10b5a670400127c9fb8cf84d295faafba5f3d3695a439f381e98",
+        "title": "Кронштейн глушника задній лівий Volvo V90 17-25",
+        "phrase": "кронштейн глушника",
+        "category": "Двигун",
+        "subcategory": "Система випуску відпрацьованих газів",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:033a692e-b6af-5e7c-a619-652558311ce2",
+        "source_sha": "c3cb4f85e07bd82eceb1c994e8c1de53bedf20be20ead24e04eebfaa9fdc743a",
+        "title": "Дефлектор повітропроводу центральної консолі Polestar 2 21-25 чорний, з хром накладками, зламані кріплення",
+        "phrase": "дефлектор повітропроводу центральної консолі polestar 2 21 25 з хром накладками зламані кріплення",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Центральна консоль",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:033ca6ff-2719-5965-b55d-b7062f364e19",
+        "source_sha": "e0d576269b34cc3ca0842ed2abc1f8c6a6894095d18d80a9148dc5b9a52b7c97",
+        "title": "Щиток приладів Volvo XC40 19-26 зі склом, 64к, подряпини",
+        "phrase": "щиток приладів зі склом 64к",
+        "category": "Електрика",
+        "subcategory": "Панель приладів",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:033fe119-bc80-5eab-8ffd-9c29c341a11f",
+        "source_sha": "0bce600c0626f1a18c4cdf826a415be0c38581b0644f31e174107694c3967e5c",
+        "title": "Блок запобіжників підкапотний Volvo XC90 16-17 T5, T6 у зборі з корпусом та кришкою",
+        "phrase": "блок запобіжників підкапотний з корпусом та кришкою",
+        "category": "Електрика",
+        "subcategory": "Блок запобіжників",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:03402768-2f22-5883-85ed-394f850e6b7b",
+        "source_sha": "81b4534e4f9c5dcf7ac5412a544ab614b7de1eda2602e8f223c165ca50215982",
+        "title": "Моторчик регулювання підйому пасажирського сидіння Volvo XC90 16-26 під пам'ять",
+        "phrase": "моторчик регулювання підйому пасажирського сидіння під пам ять",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Сидіння",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:03421f79-cefd-5d3e-b22d-cc85725025f2",
+        "source_sha": "3f9970452abc337fae2d5ad6faadc16b0e5f690fd2d3959c6aa82dbd57271467",
+        "title": "Козырек правый Volvo XC90 16-26 серый с подсветкой, без крючка, под химчистку",
+        "phrase": "козырек с подсветкой без крючка",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Оздоблення даху",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:0344049c-0fc7-5ec4-aec6-6dec4a72ed79",
+        "source_sha": "4ec69bfaaa4a869b7c7c00b4a78225fdb7853cf31bd95fa2c12bc549a4eb53e2",
+        "title": "Заглушка ковпачок колісного болта Volvo XC90 16-25 хром",
+        "phrase": "заглушка ковпачок колісного болта хром",
+        "category": "Колеса",
+        "subcategory": "Гайки та болти",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:0349736a-96c9-5a02-8e45-a147026a71d8",
+        "source_sha": "fddbffc36fbff0a5a6cd27ed4d9ef31ab508490a24062626cdcaa00992b72f4c",
+        "title": "Шланг тормозной задний правый Volvo XC60 18-26",
+        "phrase": "шланг тормозной",
+        "category": "Гальмівна система",
+        "subcategory": "Гальмівний шланг",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:03499fcb-1a62-52b9-9aeb-390110ac281a",
+        "source_sha": "ba8b1ac73af550b4bb7d8cca80c992dba0c1e314d06444e902d9c9494b1585da",
+        "title": "Ліхтар зовнішній у крилі лівий Volvo XC60 18-26",
+        "phrase": "ліхтар у крилі",
+        "category": "Кузов",
+        "subcategory": "Задня оптика",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:034c31e0-54ec-5553-a4b7-0d2245f2c75d",
+        "source_sha": "dd88da9212c2b8d91903d526c1bd0bec7712272ac51d53f5e63dee34c0ca5016",
+        "title": "Шторка багажника Volvo XC60 18-26 чорна",
+        "phrase": "шторка багажника",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Багажник",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:034d0681-6a15-5ebf-b4cf-e117011b2b54",
+        "source_sha": "6a1bf99bdfbcb8b9b607a56a5448fae60f7017563c4f543156bd5f013d6597f2",
+        "title": "Коврик салона передний правый ткань Volvo XC60 19-22 черная, надрыв",
+        "phrase": "коврик салона ткань надрыв",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Покриття підлоги",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:03541fb8-cc85-51c1-87a8-5183d31c6bdc",
+        "source_sha": "45093f3474f52a3c51192affab84c37e0cce73e40940e2cd78c1d503d3ef75ab",
+        "title": "Динамік дверний передній правий нижній Volvo XC60 18-26 Bowers & Wilkins",
+        "phrase": "динамік дверний bowers wilkins",
+        "category": "Двері",
+        "subcategory": "Передні праві двері",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:035d6182-89cc-5afa-8bb8-4001b075e675",
+        "source_sha": "a15b0d2455f73704528b3bc289376aca7b6dd0fa72390c9bd5138f1329fee235",
+        "title": "Обшивка дверей картка задня ліва Volvo XC40 19-26 чорна, підлокітник шкіра чорна, з ручкою, подряпини",
+        "phrase": "обшивка дверей картка підлокітник шкіра з ручкою",
+        "category": "Двері",
+        "subcategory": "Задні ліві двері",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:036179bc-f9cb-52a9-8104-7bbed86e877d",
+        "source_sha": "9a8e0f309efff3e7cfc8094d3ad29c2ba40254c3143460950b2c6137a85e0261",
+        "title": "Ковпачок центральний на диск Volvo XC60 18-26 65/58 чорний",
+        "phrase": "ковпачок центральний на диск 65 58",
+        "category": "Колеса",
+        "subcategory": "Колісні диски",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:03643e9d-761d-538a-8ebb-188c8c32097e",
+        "source_sha": "a5c803049f48b5b89a3db49f7b076b22df774057c881261269fe4dcad47ddeba",
+        "title": "Бампер передний голый Volvo XC60 18-21 под park assist и омыватели фар, черный, без заглушек, вмятины, царапины, трещины, надломы, песок",
+        "phrase": "бампер под park assist и омыватели фар без заглушек трещины надломы",
+        "category": "Кузов",
+        "subcategory": "Передній бампер",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:03655676-40e7-5865-85cd-9372ef852719",
+        "source_sha": "88b731aca08078ca449407e3e42975a0c509868d5ae5f7035af06d323c2b6eaf",
+        "title": "Динамік дверний передній правий Volvo XC40 19-26 Harman Kardon",
+        "phrase": "динамік дверний harman kardon",
+        "category": "Двері",
+        "subcategory": "Передні праві двері",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:036974ff-93f1-5175-8601-7e418a0683ae",
+        "source_sha": "01aa8275a308574e6fa4f309243f336dcbbebc28cacee6687c6ea0465f9c1f1e",
+        "title": "Модуль srs airbag комп'ютер подушок безпеки Volvo XC90 16-25",
+        "phrase": "модуль srs airbag комп ютер подушок безпеки",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Безпека та подушки безпеки",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:036a94d5-24b3-5d0f-9da2-c6fd52ea3372",
+        "source_sha": "1234c6a618196d9dc461f491207987e4894b875304b6615f930e8e1160c4ee9d",
+        "title": "Тяга стабілізатора задня права Volvo XC40 19-26",
+        "phrase": "тяга стабілізатора",
+        "category": "Підвіска та кермове управління",
+        "subcategory": "Стабілізатор",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:037760fe-3d59-506e-89a3-050aadc10554",
+        "source_sha": "85552196af4bf381f8ba768532ba2234622e3a8412f097b317a422bd463d7cbb",
+        "title": "CD-changer Volvo V90 17-22",
+        "phrase": "cd changer",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Мультимедіа",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:037da295-a883-56d3-9d33-f432c69ddf7a",
+        "source_sha": "de504723c0e66aa49c7be1387d35881a81a70da7eeaea0ab9f8c8b04994e01ad",
+        "title": "Фишка на блок ABS АБС Volvo XC90 16-22",
+        "phrase": "фишка на блок abs абс",
+        "category": "Гальмівна система",
+        "subcategory": "ABS",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:03831a45-8526-5b70-82be-4ba85e5a6bff",
+        "source_sha": "12862ef8efcb7c46fdecbb61b75837add1a67fc63c4681c776e600cf2b1cafb4",
+        "title": "Лямбда-зонд перший Volvo V90 18-21 T5, T6 код: CC02",
+        "phrase": "лямбда зонд перший",
+        "category": "Двигун",
+        "subcategory": "Система випуску відпрацьованих газів",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:03869712-b0c1-5ce3-a761-fea4d29ecf5a",
+        "source_sha": "f83eac6374dc9addf0c647dcf7ebcb50ac310acfb440fee3b66ea24ca6656b07",
+        "title": "Кожух гальмівного диска передній лівий Volvo V90 17-24 T5, T6 під R16, R17",
+        "phrase": "кожух гальмівного диска під r16 r17",
+        "category": "Гальмівна система",
+        "subcategory": "Гальмівний диск",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:0390b116-f79b-5a08-9709-3fca6d2c611b",
+        "source_sha": "bb22d3892f8aabfb964c491506ad1236e06038745a0818d35e209de58265f1d0",
+        "title": "Накладка порога задня ліва внутрішня Volvo XC90 16-22 чорна з хром вставкою, подряпини",
+        "phrase": "накладка порога з хром вставкою",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Оздоблення стійок і прорізів",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      },
+      {
+        "source_key": "v2:03936dff-0320-57a1-afdd-64c44bbef3b1",
+        "source_sha": "e684260778dacdbaa7823e08b9dd0cd5a08a282dbd3ad18fc2ca8f397b6f9860",
+        "title": "Керування клімат-контролем 2 ряду сидінь Volvo XC60 18-26 під підігрів сидінь",
+        "phrase": "керування клімат контролем 2 ряду сидінь під підігрів сидінь",
+        "category": "Інтер’єр / салон",
+        "subcategory": "Підігрів та кондиціонування",
+        "reason": "No unique exact functional rule",
+        "quality": "unprocessed"
+      }
+    ],
+    "issues_truncated": true,
+    "committed": true,
+    "fitment_inferred": false
+  }
+}
