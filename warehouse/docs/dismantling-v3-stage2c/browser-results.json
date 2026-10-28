@@ -1,0 +1,18 @@
+[
+  {
+    "width": 1440,
+    "positions": 227,
+    "old_history_preserved": 30,
+    "stock_and_prices_unchanged": true,
+    "no_automatic_receipt": true,
+    "no_overflow": true
+  },
+  {
+    "width": 390,
+    "positions": 227,
+    "old_history_preserved": 30,
+    "stock_and_prices_unchanged": true,
+    "no_automatic_receipt": true,
+    "no_overflow": true
+  }
+]

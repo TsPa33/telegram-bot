@@ -1,0 +1,34 @@
+{
+  "backend_full": {
+    "passed": 480,
+    "skipped": 1,
+    "seconds": 616.91,
+    "scope": "Before final localized camera/group normalization guards"
+  },
+  "backend_final_targeted": {
+    "passed": 60,
+    "seconds": 144.77,
+    "scope": "After guards; Stage2C/canonical v3/v1.5; overlaps full suite"
+  },
+  "frontend_unit": {
+    "passed": 349
+  },
+  "frontend_build": "PASS",
+  "browser_widths": [
+    1440,
+    390
+  ],
+  "browser_scenarios": [
+    "real local owner group preview/approval and explicit canonical publication",
+    "unified XC60 plan/update/replay/exclusion/restore",
+    "read-only preview/errors/reload",
+    "explicit receipt quantity confirmation and protected stock",
+    "synthetic asynchronous owner faults and revision retry"
+  ],
+  "real_A_tested": true,
+  "real_B_tested": false,
+  "staging_mutated": false,
+  "push_performed": false,
+  "alembic_head": "84d2c6fa190b",
+  "new_migrations": false
+}

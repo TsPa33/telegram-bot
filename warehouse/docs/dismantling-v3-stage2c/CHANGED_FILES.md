@@ -1,0 +1,37 @@
+# Stage 2C changed files
+
+- `warehouse/backend/app/api/canonical.py`
+- `warehouse/backend/app/data/canonical_universal_v2c.json`
+- `warehouse/backend/app/route_registry.py`
+- `warehouse/backend/app/services/canonical_applicability.py`
+- `warehouse/backend/app/services/canonical_catalogue.py`
+- `warehouse/backend/app/services/canonical_diagnostics.py`
+- `warehouse/backend/app/services/canonical_review.py`
+- `warehouse/backend/app/services/canonical_rules.py`
+- `warehouse/backend/app/services/dismantling_plan_v3.py`
+- `warehouse/backend/app/services/dismantling_preview.py`
+- `warehouse/backend/scripts/diagnose_canonical.py`
+- `warehouse/backend/scripts/seed_stage2c_browser.py`
+- `warehouse/backend/tests/test_canonical_v3.py`
+- `warehouse/backend/tests/test_dismantling_plan_v3.py`
+- `warehouse/backend/tests/test_stage2c.py`
+- `warehouse/docs/dismantling-v3-stage2c/CHANGED_FILES.md`
+- `warehouse/docs/dismantling-v3-stage2c/README.md`
+- `warehouse/docs/dismantling-v3-stage2c/browser-results.json`
+- `warehouse/docs/dismantling-v3-stage2c/real-A-validation.json`
+- `warehouse/docs/dismantling-v3-stage2c/screenshots/stage2c-cards-1440.png`
+- `warehouse/docs/dismantling-v3-stage2c/screenshots/stage2c-cards-390.png`
+- `warehouse/docs/dismantling-v3-stage2c/screenshots/stage2c-owner-preview-1440.png`
+- `warehouse/docs/dismantling-v3-stage2c/screenshots/stage2c-plan-1440.png`
+- `warehouse/docs/dismantling-v3-stage2c/screenshots/stage2c-plan-390.png`
+- `warehouse/docs/dismantling-v3-stage2c/screenshots/stage2c-unpublished-1440.png`
+- `warehouse/docs/dismantling-v3-stage2c/test-results.json`
+- `warehouse/frontend/src/CanonicalCatalogueAdmin.tsx`
+- `warehouse/frontend/src/ManagedDismantling.tsx`
+- `warehouse/frontend/src/managed-dismantling.css`
+- `warehouse/frontend/src/pages/CatalogueImport.tsx`
+- `warehouse/frontend/src/pages/Vehicles.tsx`
+- `warehouse/frontend/tests/dismantling-preview-browser.mjs`
+- `warehouse/frontend/tests/managed-dismantling-browser.mjs`
+- `warehouse/frontend/tests/stage2c-browser.mjs`
+- `warehouse/frontend/tests/stage2c-owner-fault-browser.mjs`

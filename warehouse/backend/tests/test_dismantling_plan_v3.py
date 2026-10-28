@@ -1,3 +1,4 @@
+from app.services.canonical_catalogue import constructive_inputs
 import json,os
 import pytest
 from uuid import uuid4
@@ -104,7 +105,7 @@ def test_catalogue_update_is_explicit_and_preserves_decisions(platform,vehicle):
     p=preview(platform,vehicle);assert p['counts']['review']==0
     assert p['differences']
     assert save(platform,vehicle,p).status_code==200
-    assert get(platform,vehicle)['total']==33 and not next(i for i in get(platform,vehicle)['items'] if i['id']==rid)['included']
+    assert get(platform,vehicle)['total']==33+len(constructive_inputs()) and not next(i for i in get(platform,vehicle)['items'] if i['id']==rid)['included']
 
 
 def test_ambiguous_legacy_requires_manual_one_to_one(platform,vehicle):
@@ -130,7 +131,7 @@ def test_explicit_refinement_reuses_bound_item_and_preserves_decision(platform,v
     resolutions={original['placement_id']:{'action':'skip','reason':'Refined existing generic position'},new['id']:{'action':'link','item_id':original['id'],'reason':'Inspected same physical left exterior mirror'}}
     p=preview(platform,vehicle,resolutions=resolutions);assert not p['counts']['review']
     assert save(platform,vehicle,p,resolutions=resolutions).status_code==200
-    current=get(platform,vehicle);assert current['total']==33
+    current=get(platform,vehicle);assert current['total']==33+len(constructive_inputs())
     refined=next(i for i in current['items'] if i['id']==original['id']);assert not refined['included'] and refined['placement_id']==new['id']
     assert preview(platform,vehicle)['counts']['review']==0
 
@@ -250,7 +251,7 @@ def test_explicit_new_position_after_refinement_does_not_reuse_legacy_key(platfo
     resolutions={original['placement_id']:{'action':'new','reason':'Explicitly inspected a distinct second constructive position'}}
     p=preview(platform,vehicle,resolutions=resolutions);assert not p['counts']['review']
     r=save(platform,vehicle,p,resolutions=resolutions);assert r.status_code==200,r.text
-    assert get(platform,vehicle)['total']==34
+    assert get(platform,vehicle)['total']==34+len(constructive_inputs())
 
 
 def test_catalogue_busy_returns_controlled_conflict_without_wait_or_write(platform,vehicle):

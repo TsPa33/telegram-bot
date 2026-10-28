@@ -1,3 +1,4 @@
+import CanonicalCatalogueAdmin from '../CanonicalCatalogueAdmin';
 import {useEffect,useRef,useState} from 'react';
 import {api,ApiError,csrf,type Row} from '../api';
 import {Heading,State,useLoad} from '../shared';
@@ -32,7 +33,7 @@ function DecisionTable({rows,state,onChange}:{rows:Row[];state:Review;onChange:(
 }
 export default function CatalogueImport({enabled,actorKey}:{enabled:boolean;actorKey:string}){
  if(!enabled)return <section className="panel padded"><h1>Доступ обмежено</h1><p>Глобальний імпорт доступний тільки власнику платформи з серверного allowlist.</p></section>;
- return <ImportWorkspace key={actorKey} actorKey={actorKey}/>;
+ return <><CanonicalCatalogueAdmin key={actorKey+':canonical'} actorKey={actorKey}/><ImportWorkspace key={actorKey} actorKey={actorKey}/></>;
 }
 function ImportWorkspace({actorKey}:{actorKey:string}){
  const history=useLoad(()=>api('/catalogue/admin/jobs'),[]);

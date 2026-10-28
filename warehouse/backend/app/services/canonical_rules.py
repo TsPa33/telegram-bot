@@ -108,6 +108,10 @@ for rule in RULES['types']:
 def classify(source,aliases=()):
     parsed=surface(source)
     evidence={'normalization':parsed,'rule_version':RULES['version'],'source':source}
+    # These are internally constructed templates, never uploaded market rows.
+    template=UNIVERSAL_TYPES.get(source.get('constructive_type_id'))
+    if source.get('kind')=='base' and template and source.get('provider')==UNIVERSAL['version'] and source.get('title')==template['name'] and source.get('category')==template['category']:
+        return dict(quality='verified_rule',type_id=source['constructive_type_id'],installation={'side':'unknown','position':'unknown','mount':[]},features={},evidence={**evidence,'constructive_template':template['provenance'],'not_fitment':True})
     candidate=[]
     # New owner aliases are exact full-phrase/context or exact immutable source.
     for alias in aliases:
@@ -167,5 +171,16 @@ def variant(source,result,place):
 
 # Pin executable normalization as well as vocabulary; old publications are never
 # silently reinterpreted after a parser/Unicode change.
+# Universal templates extend constructive functions without changing existing IDs.
+UNIVERSAL=json.loads((DATA/'canonical_universal_v2c.json').read_text())
+UNIVERSAL_TYPES={}
+for rule in UNIVERSAL['types']:
+    record=type_record(rule['name'],rule['category'],rule['subcategory'],rule['provenance'])
+    UNIVERSAL_TYPES[record['id']]=rule
+    if record['id'] not in TYPES:
+        TYPES[record['id']]=record
+        # Only a complete Ukrainian technical name in its explicit category context.
+        LEX.setdefault(surface({'title':rule['name']})['phrase'],[]).append({**rule,'aliases':[rule['name']],'categories':[rule['category']],'subcategories':[rule['subcategory']],'type_id':record['id']})
+
 from hashlib import sha256
-RULE_FINGERPRINT=digest([RULES,sha256(Path(__file__).read_bytes()).hexdigest(),sha256((Path(__file__).parent/'canonical_terms.py').read_bytes()).hexdigest(),unicodedata.unidata_version])
+RULE_FINGERPRINT=digest([RULES,UNIVERSAL,sha256(Path(__file__).read_bytes()).hexdigest(),sha256((Path(__file__).parent/'canonical_terms.py').read_bytes()).hexdigest(),unicodedata.unidata_version])

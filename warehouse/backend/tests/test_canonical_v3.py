@@ -280,7 +280,7 @@ def test_full_real_A_normalization_report_preserves_source_tables(platform,tmp_p
     with Session(engine()) as db:before=fingerprints(db)
     report=build(platform)['report']
     assert report['source_offers']==7246
-    assert report['confirmed_mappings']+report['ambiguous_mappings']+report['unprocessed_records']==14400+33
+    assert report['confirmed_mappings']+report['ambiguous_mappings']+report['unprocessed_records']==14400+33+report['constructive_positions']
     assert report['mapped_offers']<=7246 and 0<=report['trusted_offer_fraction']<=1
     for model in ('XC40','XC60','XC90'):
         result=get(platform,model=model);assert result['published'] and result['total']>=33
@@ -307,7 +307,7 @@ def test_conflicting_verified_context_aliases_are_queued_not_guessed(platform):
         r=platform.post(PREFIX+'/aliases',json={'type_id':tid,'phrase':'насос','category':'Двигун','subcategory':'Насоси','manufacturer':brand,'evidence':'Test exact scoped alias'});assert r.status_code==201,r.text
     report=build(platform)['report'];assert report['ambiguous_mappings']==1
     assert platform.get(PREFIX+'/aliases').json()['total']==2
-    assert not any(r['name'].startswith('Насос') for r in get(platform)['items'])
+    assert not any(ref['kind']=='v2' for r in get(platform)['items'] for ref in r['source_refs'])  # Universal templates do not approve this ambiguous source.
 
 
 def test_mount_axes_are_distinct_even_with_same_oem(platform):

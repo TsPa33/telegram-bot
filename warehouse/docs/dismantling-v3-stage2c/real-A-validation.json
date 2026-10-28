@@ -1,0 +1,91 @@
+{
+  "real_A": true,
+  "real_B_tested": false,
+  "before": {
+    "catalogue_v2": {
+      "offers": 7246,
+      "paths": 14400,
+      "models": 3
+    },
+    "canonical": {
+      "published": false,
+      "snapshot_sha": null,
+      "rules_current": false,
+      "published_rule_version": null,
+      "published_universal_version": null,
+      "executable_rule_version": "carpot.canonical.rules.v1.5",
+      "executable_universal_version": "carpot.universal.constructive.2c.1",
+      "mapped_offers": 0,
+      "types": 0,
+      "placements": 0,
+      "unprocessed_records": 0,
+      "review_records": 0,
+      "stored_types": 0,
+      "stored_placements": 0
+    },
+    "latest_run_id": null,
+    "read_only": true,
+    "vehicle": {
+      "id": "38569537-67a6-426e-9c24-98f3aa005f25",
+      "candidates": 33,
+      "fallback_used": true,
+      "published": false,
+      "status": "unpublished"
+    }
+  },
+  "normalization": {
+    "alias_revision_ids": [],
+    "snapshot_sha": "f07bc7d508aa4ef4db0a38fd00f8816682f97e39ca77c2dab123bc26aa9f6485",
+    "rule_version": "carpot.canonical.rules.v1.5",
+    "universal_version": "carpot.universal.constructive.2c.1",
+    "rules_sha": "f047ad733cbafc7e8f6a7b0934d82b6e56c52f8b5cea7ad1fe3458e5a2e8f632",
+    "input_records": 14627,
+    "base_positions": 33,
+    "constructive_positions": 194,
+    "source_offers": 7246,
+    "canonical_types": 216,
+    "variants": 1444,
+    "placements": 348,
+    "confirmed_mappings": 3022,
+    "ambiguous_mappings": 155,
+    "unprocessed_records": 11450,
+    "mapped_offers": 1128,
+    "fully_mapped_offers": 1128,
+    "trusted_offer_fraction": 0.15567209494893736,
+    "issues_truncated": true,
+    "committed": true,
+    "fitment_inferred": false
+  },
+  "after": {
+    "catalogue_v2": {
+      "offers": 7246,
+      "paths": 14400,
+      "models": 3
+    },
+    "canonical": {
+      "published": true,
+      "snapshot_sha": "f07bc7d508aa4ef4db0a38fd00f8816682f97e39ca77c2dab123bc26aa9f6485",
+      "rules_current": true,
+      "published_rule_version": "carpot.canonical.rules.v1.5",
+      "published_universal_version": "carpot.universal.constructive.2c.1",
+      "executable_rule_version": "carpot.canonical.rules.v1.5",
+      "executable_universal_version": "carpot.universal.constructive.2c.1",
+      "mapped_offers": 1128,
+      "types": 216,
+      "placements": 348,
+      "unprocessed_records": 11450,
+      "review_records": 155,
+      "stored_types": 216,
+      "stored_placements": 348
+    },
+    "latest_run_id": "cc47fd4e-3f83-497d-a57f-c189449e0dad",
+    "read_only": true,
+    "vehicle": {
+      "id": "38569537-67a6-426e-9c24-98f3aa005f25",
+      "candidates": 341,
+      "fallback_used": false,
+      "published": true,
+      "status": "published"
+    }
+  }
+}

@@ -5,7 +5,7 @@ from sqlalchemy.dialects.postgresql import insert
 from fastapi import HTTPException
 from app.models.canonical import CanonicalType as Type,CanonicalAlias as Alias,CanonicalRun as Run
 from app.services.canonical_catalogue import analyze,global_inputs,latest_aliases
-from app.services.canonical_rules import TYPES,LEX,RULES,norm,classify,conditions_match,placement
+from app.services.canonical_rules import TYPES,LEX,RULES,UNIVERSAL,norm,classify,conditions_match,placement
 from app.services.catalogue_format import digest
 from app.services.catalogue_import import LOCK
 from app.services.canonical_terms import alias_series
@@ -45,7 +45,7 @@ def groups(db,offset=0,limit=50):
 
 def effective_conditions(draft):
     result={**draft.get('conditions',{}),'no_conflicts':True}
-    rule=next((r for r in RULES['types'] if any(tid==draft['type_id'] for tid,t in TYPES.items() if t['name']==r['name'] and t['category']==r['category'] and t['subcategory']==r['subcategory'])),None)
+    rule=next((r for r in RULES['types']+UNIVERSAL['types'] if any(tid==draft['type_id'] for tid,t in TYPES.items() if t['name']==r['name'] and t['category']==r['category'] and t['subcategory']==r['subcategory'])),None)
     if rule:
         for flag in ('require_side','require_position'):
             if rule.get(flag):result[flag.removeprefix('require_')+'_known']=True
@@ -67,6 +67,7 @@ def rule_preview(db,draft):
     criteria['conditions']=conditions
     matched=[];exceptions=[];conflicts=[];samples=[];seen=set();will_link=0;unchanged=0
     for source in global_inputs(db):
+        if source['kind']=='base' and source.get('constructive_type_id'):continue  # Market rules cannot redefine versioned constructive templates.
         current=classify(source,aliases);parsed=current['evidence']['normalization']
         if parsed['phrase']!=criteria['phrase'] or any(criteria[k] and criteria[k]!=norm(source.get(k,'')) for k in ('category','subcategory','manufacturer','model')):continue
         example={k:source.get(k) for k in ('key','sha','title','manufacturer','model','oem')}

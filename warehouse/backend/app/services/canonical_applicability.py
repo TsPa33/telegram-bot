@@ -1,7 +1,9 @@
 """Future generator conditions, deliberately separate from fitment confirmation."""
-from app.services.canonical_rules import RULES,TYPES
+from app.services.canonical_rules import RULES,TYPES,UNIVERSAL_TYPES
 GROUPS={'A':'Загальна конструктивна функція','B':'Залежить від силової установки','C':'Залежить від трансмісії, приводу чи кузова','D':'Залежить від заводських опцій','E':'Недостатньо підтверджених даних'}
 POLICIES={tid:r.get('applicability',{'groups':['E'],'required_fields':[]}) for r in RULES['types'] for tid,t in TYPES.items() if (r['name'],r['category'],r['subcategory'])==(t['name'],t['category'],t['subcategory'])}
+
+POLICIES.update({tid:r.get('applicability',{'groups':['E'],'required_fields':[]}) for tid,r in UNIVERSAL_TYPES.items()})
 
 def assess(type_id,query,features=None,configuration=None,provenance=None):
     policy=POLICIES.get(type_id,{'groups':['E'],'required_fields':[]});features=features or {}
@@ -16,6 +18,7 @@ def assess(type_id,query,features=None,configuration=None,provenance=None):
     if missing:groups.add('E')
     conflicts=[]
     if known.get('powertrain') and policy.get('powertrains') and known['powertrain'] not in policy['powertrains']:conflicts.append('powertrain')
+    if known.get('drive') and policy.get('drives') and known['drive'] not in policy['drives']:conflicts.append('drive')
     for field,labels in [('fuel_type','fuel_labels'),('powertrain','powertrain_labels'),('drive','drive_labels'),('engine_code','engine_codes')]:
         if known.get(field) and features.get(labels) and known[field] not in features[labels]:conflicts.append(field)
     if features.get('option_labels'):

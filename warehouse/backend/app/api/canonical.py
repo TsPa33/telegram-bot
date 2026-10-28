@@ -152,11 +152,11 @@ def fitment(data:FitmentInput,db:DB,owner:Admin):
 
 @router.get('/api/v1/catalogue/canonical/candidates')
 def by_model(db:DB,who:Auth,manufacturer:str=Query(min_length=1,max_length=100),model:str=Query(min_length=1,max_length=100),
-    generation:str=Query('',max_length=100),year:int|None=Query(None,ge=1886,le=2100),engine:str=Query('',max_length=100),fuel_type:str=Query('',max_length=50),transmission:str=Query('',max_length=50),offset:int=Query(0,ge=0),limit:int=Query(100,ge=1,le=200)):
+    generation:str=Query('',max_length=100),year:int|None=Query(None,ge=1886,le=2100),engine:str=Query('',max_length=100),fuel_type:str=Query('',max_length=50),transmission:str=Query('',max_length=50),offset:int=Query(0,ge=0),limit:int=Query(500,ge=1,le=500)):
     return candidates(db,dict(manufacturer=manufacturer,model=model,generation=generation,year=year,engine=engine,fuel_type=fuel_type,transmission=transmission),offset=offset,limit=limit)
 
 @router.get('/api/v1/vehicles/{id}/dismantling/candidates')
-def by_vehicle(id:str,db:DB,who:Auth,offset:int=Query(0,ge=0),limit:int=Query(100,ge=1,le=200)):
+def by_vehicle(id:str,db:DB,who:Auth,offset:int=Query(0,ge=0),limit:int=Query(500,ge=1,le=500)):
     vehicle=owned(db,Vehicle,id,who.workspace_account_id)
     query={k:getattr(vehicle,k) for k in ('manufacturer','model','generation','year','engine','fuel_type','transmission')}
     from app.services.vehicle_configuration import latest
@@ -189,3 +189,14 @@ def preview_rule(data:GroupRuleInput,db:DB,owner:Admin,who:Auth):
 def approve_group(data:GroupApprovalInput,db:DB,owner:Admin,who:Auth):
     if not data.confirm:raise HTTPException(422,'Потрібне явне підтвердження групового правила')
     run=enqueue(db,who,'publish',data.preview_id,data.token,request={'kind':'rule-approve-request','confirm':True});db.commit();return summary(run)
+
+@router.get('/api/v1/catalogue/admin/canonical/diagnostics')
+def diagnose(db:DB,owner:Admin,who:Auth,vehicle_id:str|None=Query(None,max_length=36)):
+    from app.services.canonical_diagnostics import diagnostics
+    vehicle=owned(db,Vehicle,vehicle_id,who.workspace_account_id) if vehicle_id else None
+    return diagnostics(db,vehicle)
+
+@router.get('/api/v1/catalogue/admin/canonical/types')
+def available_types(db:DB,owner:Admin):
+    rows={**TYPES,**{t.id:{k:getattr(t,k) for k in ('id','name','category','subcategory')} for t in db.scalars(select(Type))}}
+    return {'items':sorted([dict(id=r['id'],name=r['name'],category=r['category'],subcategory=r['subcategory']) for r in rows.values()],key=lambda r:(r['category'],r['name']))}

@@ -8,7 +8,7 @@ from app.models.catalogue import CataloguePath as Path,CatalogueOffer as Offer,C
 from app.models.canonical import CanonicalType as Type,CanonicalPlacement as Placement,CanonicalVariant as Variant,CanonicalAlias as Alias,CanonicalMapping as Mapping,CanonicalState as State,CanonicalRun as Run
 from app.services.catalogue_import import LOCK
 from app.services.catalogue_format import digest
-from app.services.canonical_rules import BASE,RULES,RULE_FINGERPRINT,TYPES,classify,placement,variant,sid,norm
+from app.services.canonical_rules import BASE,RULES,RULE_FINGERPRINT,TYPES,classify,placement,variant,sid,norm,UNIVERSAL,UNIVERSAL_TYPES
 
 
 def source_record(**row):return {**row,'sha':digest(row)}
@@ -20,11 +20,20 @@ def base_inputs():
         for c in BASE['categories'] for s in c['subcategories'] for key,name,position in s['parts']]
 
 
+def constructive_inputs():
+    # Original 33 sources/keys are immutable. Avoid adding a broad duplicate of
+    # any function already represented by that baseline.
+    represented={classify(source).get('type_id') for source in base_inputs()}
+    return [source_record(key='base:'+UNIVERSAL['version']+':'+tid,kind='base',constructive_type_id=tid,
+        title=r['name'],category=r['category'],subcategory=r['subcategory'],side='',position='',manufacturer='',model='',generation='',oem=None,article='',provider=UNIVERSAL['version'],year_from=None,year_to=None)
+        for tid,r in UNIVERSAL_TYPES.items() if tid not in represented]
+
+
 def global_inputs(db,model_ids=None):
     model,brand=aliased(Entity),aliased(Entity)
     stmt=select(Path,Offer,model,brand,Source).join(Offer,Offer.id==Path.offer_id).join(model,model.id==Path.model_id).join(brand,brand.id==model.parent_id).join(Source,Source.id==Offer.source_id).order_by(Path.id)
     if model_ids is not None:stmt=stmt.where(Path.model_id.in_(model_ids))
-    result=base_inputs()
+    result=base_inputs()+constructive_inputs()
     for path,offer,m,b,provider in db.execute(stmt):
         r=path.raw;p=offer.properties
         result.append(source_record(key='v2:'+path.id,kind='v2',path_id=path.id,offer_id=offer.id,model_id=m.id,
@@ -65,7 +74,7 @@ def analyze(db):
         mappings.append(record)
     mapped=sum(any(values) for values in offer_results.values());total=len(offer_results)
     used_types={m['type_id'] for m in mappings if m['type_id']}
-    report=dict(alias_revision_ids=[a['id'] for a in aliases],snapshot_sha=sha,rule_version=RULES['version'],rules_sha=RULE_FINGERPRINT,input_records=len(sources),base_positions=len(base_inputs()),
+    report=dict(alias_revision_ids=[a['id'] for a in aliases],snapshot_sha=sha,rule_version=RULES['version'],universal_version=UNIVERSAL['version'],rules_sha=RULE_FINGERPRINT,input_records=len(sources),base_positions=len(base_inputs()),constructive_positions=len(constructive_inputs()),
         source_offers=total,canonical_types=len(used_types),variants=len(variants),placements=len(placements),
         confirmed_mappings=counts['verified_rule']+counts['verified_owner'],ambiguous_mappings=counts['review'],
         unprocessed_records=counts['unprocessed'],mapped_offers=mapped,fully_mapped_offers=sum(all(v) for v in offer_results.values()),

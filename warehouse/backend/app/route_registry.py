@@ -94,6 +94,8 @@ KNOWN_ROUTES = frozenset({
     ('POST', '/api/v1/catalogue/admin/canonical/runs'),
     ('GET', '/api/v1/catalogue/admin/canonical/runs/{id}'),
     ('GET', '/api/v1/catalogue/admin/canonical/review'),
+    ('GET', '/api/v1/catalogue/admin/canonical/diagnostics'),
+    ('GET', '/api/v1/catalogue/admin/canonical/types'),
     ('POST', '/api/v1/catalogue/admin/canonical/types'),
     ('POST', '/api/v1/catalogue/admin/canonical/aliases'),
     ('POST', '/api/v1/catalogue/admin/canonical/fitments'),
