@@ -10,7 +10,9 @@ from app.models import Vehicle
 from app.models.canonical import CanonicalType as Type,CanonicalAlias as Alias,CanonicalFitment as Fitment,CanonicalMapping as Mapping,CanonicalState as State,CanonicalRun as Run
 from app.services.catalogue_import import LOCK
 from app.services.catalogue_format import digest
-from app.services.canonical_rules import type_record,norm,sid
+from app.services.canonical_rules import type_record,norm,sid,TYPES,LEX,surface
+from app.services.canonical_terms import alias_series
+from app.schemas.canonical import SourceConditions,GroupRuleInput,GroupApprovalInput
 from app.services.canonical_catalogue import global_inputs
 from app.services.canonical_candidates import candidates
 from app.services.canonical_jobs import enqueue,summary
@@ -59,7 +61,11 @@ class TypeInput(Strict):
 @router.post('/api/v1/catalogue/admin/canonical/types',status_code=201)
 def create_type(data:TypeInput,db:DB,owner:Admin):
     admin_lock(db)
-    row=type_record(data.name,data.category,data.subcategory,{'actor_id':owner.id,'evidence':data.evidence})
+    from app.models.catalogue import CatalogueEntity
+    brands={'volvo','bmw','audi'}|{norm(n) for n in db.scalars(select(CatalogueEntity.name).where(CatalogueEntity.kind=='manufacturer'))}
+    if any(brand and (' '+brand+' ') in (' '+norm(data.name)+' ') for brand in brands):raise HTTPException(422,'Марка не є частиною канонічної функції; використайте варіант або застосовність')
+    known={r['type_id'] for r in LEX.get(surface({'title':data.name})['phrase'],[])}
+    row=TYPES[next(iter(known))] if len(known)==1 else type_record(data.name,data.category,data.subcategory,{'actor_id':owner.id,'evidence':data.evidence})
     db.execute(insert(Type).values(**row).on_conflict_do_nothing(index_elements=['id']));db.commit();return {'id':row['id']}
 
 class Installation(Strict):
@@ -81,6 +87,7 @@ class AliasInput(Strict):
     manufacturer:str=Field(default='',max_length=100)
     model:str=Field(default='',max_length=100)
     installation:Installation|None=None
+    conditions:SourceConditions|None=None
     enabled:bool=Field(default=True,strict=True)
     expected_revision:int=Field(default=0,ge=0)
     evidence:str=Field(min_length=5,max_length=2000)
@@ -98,7 +105,9 @@ def approve(data:AliasInput,db:DB,owner:Admin):
     if data.type_id and not db.get(Type,data.type_id):raise HTTPException(404,'Канонічний тип не знайдено')
     if data.source_key and not any(r['key']==data.source_key and r['sha']==data.source_sha for r in global_inputs(db)):raise HTTPException(409,'Джерело змінилося або не належить глобальному каталогу')
     match={k:getattr(data,k) for k in ('source_key','source_sha')} if data.source_key else {k:norm(getattr(data,k)) for k in ('phrase','category','subcategory','manufacturer','model')}
-    key=digest(match)
+    conditions=data.conditions.model_dump(exclude_none=True) if data.conditions else {}
+    if conditions:match['conditions']=conditions
+    key=alias_series(match)
     previous=db.scalar(select(Alias).where(Alias.series_key==key).order_by(Alias.revision.desc()).limit(1))
     if (previous.revision if previous else 0)!=data.expected_revision:raise HTTPException(409,'Рішення змінено; перечитайте актуальну revision')
     criteria={**match,**({'installation':data.installation.model_dump()} if data.installation else {})}
@@ -145,7 +154,13 @@ def by_model(db:DB,who:Auth,manufacturer:str=Query(min_length=1,max_length=100),
 def by_vehicle(id:str,db:DB,who:Auth,offset:int=Query(0,ge=0),limit:int=Query(100,ge=1,le=200)):
     vehicle=owned(db,Vehicle,id,who.workspace_account_id)
     query={k:getattr(vehicle,k) for k in ('manufacturer','model','generation','year','engine','fuel_type','transmission')}
-    return candidates(db,query,who.workspace_account_id,offset,limit)
+    from app.services.vehicle_configuration import latest
+    config=latest(db,vehicle,who.workspace_account_id)
+    if config and config['status']=='confirmed':
+        query.update({k:v for k,v in config['values'].items() if v is not None and k not in ('vin','engine_label','options_complete')})
+        if config['values'].get('engine_code'):query['engine']=config['values']['engine_code']
+    else:config=None
+    return candidates(db,query,who.workspace_account_id,offset,limit,configuration=config)
 
 @router.get('/api/v1/catalogue/canonical/sources')
 def sources(db:DB,who:Auth,placement_id:str=Query(max_length=36),offset:int=Query(0,ge=0),limit:int=Query(50,ge=1,le=200)):
@@ -153,3 +168,19 @@ def sources(db:DB,who:Auth,placement_id:str=Query(max_length=36),offset:int=Quer
     stmt=select(Mapping).where(Mapping.snapshot_sha==sha,Mapping.placement_id==placement_id)
     return {'snapshot_sha':sha,'items':[dict(source_key=r.source_key,source_sha=r.source_sha,quality=r.quality,published_evidence=r.evidence) for r in db.scalars(stmt.order_by(Mapping.source_key).offset(offset).limit(limit))],
         'total':db.scalar(select(func.count()).select_from(stmt.subquery()))}
+
+
+@router.get('/api/v1/catalogue/admin/canonical/groups')
+def unresolved_groups(db:DB,owner:Admin,offset:int=Query(0,ge=0),limit:int=Query(50,ge=1,le=200)):
+    from app.services.canonical_review import groups
+    return groups(db,offset,limit)
+
+@router.post('/api/v1/catalogue/admin/canonical/rules/preview',status_code=202)
+def preview_rule(data:GroupRuleInput,db:DB,owner:Admin,who:Auth):
+    draft=data.model_dump();draft['conditions']=data.conditions.model_dump(exclude_none=True)
+    run=enqueue(db,who,'preview',request={'kind':'rule-preview-request','draft':draft});db.commit();return summary(run)
+
+@router.post('/api/v1/catalogue/admin/canonical/rules/approve',status_code=202)
+def approve_group(data:GroupApprovalInput,db:DB,owner:Admin,who:Auth):
+    if not data.confirm:raise HTTPException(422,'Потрібне явне підтвердження групового правила')
+    run=enqueue(db,who,'publish',data.preview_id,data.token,request={'kind':'rule-approve-request','confirm':True});db.commit();return summary(run)

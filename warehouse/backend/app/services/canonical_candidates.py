@@ -1,5 +1,6 @@
 """Read-only candidates; no DismantlingItem/Part creation, exclusion or pricing."""
 from collections import defaultdict
+from app.services.canonical_applicability import assess
 from decimal import Decimal
 from fastapi import HTTPException
 from sqlalchemy import select
@@ -46,6 +47,7 @@ def compatibility(source,query,assertions,features=None):
         # Criteria that need facts absent from the vehicle cannot confirm fitment.
         if any(c.get(k) and not query.get(k) for k in ('generation','engine','fuel_type','transmission')):continue
         if query.get('year') is None and (c.get('year_from') is not None or c.get('year_to') is not None):continue
+        if any(query.get(k) and c.get(k)!=query[k] for k in ('powertrain','drive','body_type','engine_code','options')):continue
         matches.append(a)
     statuses={a.status for a in matches}
     if len(statuses)>1:return {'status':'unknown','reason':'Conflicting owner fitment evidence','evidence_ids':[a.id for a in matches]}
@@ -58,7 +60,7 @@ def compatibility(source,query,assertions,features=None):
     return {'status':'possible' if same_model else 'unknown','reason':'Source model grouping only; year, engine and equipment not verified' if same_model else 'No verified vehicle fitment evidence','evidence_ids':[]}
 
 
-def candidates(db,query,workspace=None,offset=0,limit=100):
+def candidates(db,query,workspace=None,offset=0,limit=100,configuration=None):
     state=db.get(State,1)
     if not state or not state.snapshot_sha:return {'items':[],'total':0,'unmapped':[],'unmapped_total':0,'published':False,'read_only':True}
     if state.policy.get('rules_sha')!=RULE_FINGERPRINT:raise HTTPException(409,'Версію правил змінено; власник має опублікувати нову нормалізацію')
@@ -100,7 +102,7 @@ def candidates(db,query,workspace=None,offset=0,limit=100):
         group['qualities'].add(outcome['quality']);group['source_refs'].append({'kind':source['kind'],'key':source['key'],'legacy_ref':source.get('legacy_ref'),
             'provider':source.get('provider'),'article':source.get('article'),'offer_id':source.get('offer_id'),'source_url':source.get('source_url')})
         if source['kind'] not in ('base','local'):
-            v=variant(source,outcome,p);v['compatibility']=compatibility(source,query,assertions[v['id']],outcome['features'])
+            v=variant(source,outcome,p);v['applicability']=assess(t.id,query,outcome['features'],(configuration or {}).get('values'),(configuration or {}).get('provenance'));v['compatibility']=compatibility(source,query,assertions[v['id']],outcome['features'])
             group['variants'][v['id']]=v;group['offer_keys'].add((source['provider'],source['article']))
             group['compatibilities'].append(v['compatibility'])
             for obs in observations.get((source['kind'],source.get('offer_id')),[]):group['observations'][(source['kind'],obs.id)]=obs
@@ -116,7 +118,7 @@ def candidates(db,query,workspace=None,offset=0,limit=100):
         if statuses=={'incompatible'}:status='incompatible'
         result.append({**{k:v for k,v in group.items() if k not in ('observations','offer_keys','qualities','variants','source_refs')},
             'variants':list(group['variants'].values()),'offer_count':len(group['offer_keys']),'quality':sorted(group['qualities']),
-            'compatibility':status,'compatibility_scope':'at_least_one_variant','fitment_note':'Variant-level evidence applies only to the stated criteria; no equipment inference',
+            'applicability':assess(group['canonical_type_id'],query,configuration=(configuration or {}).get('values'),provenance=(configuration or {}).get('provenance')),'compatibility':status,'compatibility_scope':'at_least_one_variant','fitment_note':'Variant-level evidence applies only to the stated criteria; no equipment inference',
             'reference_prices':prices,'source_refs':group['source_refs'][:50],'source_ref_count':len(group['source_refs']),
             'source_refs_truncated':len(group['source_refs'])>50,'selling_price':None})
     result.sort(key=lambda r:(r['category'],r['subcategory'],r['name'],r['placement']['id']))

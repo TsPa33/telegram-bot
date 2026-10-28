@@ -47,6 +47,8 @@ from app.api.catalogue import router as catalogue_router
 app.include_router(catalogue_router)
 from app.api.canonical import router as canonical_router
 app.include_router(canonical_router)
+from app.api.vehicle_configuration import router as configuration_router
+app.include_router(configuration_router)
 from app.api.catalogue_limits import CatalogueJsonLimit
 app.add_middleware(CatalogueJsonLimit)
 from app.api.workshop import router as workshop_router

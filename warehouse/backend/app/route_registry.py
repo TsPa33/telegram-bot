@@ -101,4 +101,10 @@ KNOWN_ROUTES = frozenset({
     ('GET', '/api/v1/catalogue/canonical/sources'),
     ('GET', '/api/v1/vehicles/{id}/dismantling/candidates'),
     ('GET', '/api/v1/catalogue/admin/canonical/aliases'),
+    ('GET','/api/v1/catalogue/admin/canonical/groups'),
+    ('POST','/api/v1/catalogue/admin/canonical/rules/preview'),
+    ('POST','/api/v1/catalogue/admin/canonical/rules/approve'),
+    ('GET','/api/v1/vehicles/{id}/configuration'),
+    ('POST','/api/v1/vehicles/{id}/configuration/preview'),
+    ('POST','/api/v1/vehicles/{id}/configuration/confirm'),
 })

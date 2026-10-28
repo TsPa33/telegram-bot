@@ -1,0 +1,406 @@
+{
+  "scope": "offline package paths only; full v2 publication measured separately",
+  "rule_version": "carpot.canonical.rules.v1.5",
+  "rules_sha": "8c07ae1364e6e82f53ef9a76f983dbe2be1e6c58d0027b2e55621d0af3ca8332",
+  "source_offers": 7246,
+  "mapped_offers": 1128,
+  "coverage_percent": 15.567209494893735,
+  "market_type_count": 64,
+  "quality": {
+    "unprocessed": 11585,
+    "verified_rule": 2795,
+    "review": 20
+  },
+  "unresolved_groups": [
+    {
+      "category": "Інтер’єр / салон",
+      "subcategory": "Мультимедіа",
+      "phrase": "монітор дисплей навігація",
+      "reason": "No unique exact functional rule",
+      "paths": 91,
+      "offers": 27,
+      "examples": [
+        "Монітор дисплей навігація Volvo XC90 16-25 тип 1, потерт",
+        "Монітор дисплей навігація Volvo XC90 16-25 тип 1, потерт, подряпини",
+        "Монітор дисплей навігація Volvo XC60 18-26 подряпини"
+      ]
+    },
+    {
+      "category": "Інтер’єр / салон",
+      "subcategory": "Центральна консоль",
+      "phrase": "монітор дисплей навігація",
+      "reason": "No unique exact functional rule",
+      "paths": 77,
+      "offers": 26,
+      "examples": [
+        "Монітор дисплей навігація Volvo XC90 16-25 тип 1, потерт",
+        "Монітор дисплей навігація Volvo XC90 16-25 тип 1, потерт, подряпини",
+        "Монітор дисплей навігація Volvo XC60 18-26 подряпини"
+      ]
+    },
+    {
+      "category": "Електрика",
+      "subcategory": "Ключ",
+      "phrase": "ключ 4 кнопки",
+      "reason": "No unique exact functional rule",
+      "paths": 54,
+      "offers": 14,
+      "examples": [
+        "Ключ Volvo XC90 16-26 keyless, 4 кнопки, потертий",
+        "Ключ Volvo V90 17-24 Keyless, 4 кнопки, чорний, подряпини",
+        "Ключ Volvo XC90 16-26 keyless, 4 кнопки, потерт"
+      ]
+    },
+    {
+      "category": "Інтер’єр / салон",
+      "subcategory": "Мультимедіа",
+      "phrase": "пристрій головний",
+      "reason": "No unique exact functional rule",
+      "paths": 48,
+      "offers": 20,
+      "examples": [
+        "Пристрій головний Volvo XC40 19-22",
+        "Пристрій головний Volvo XC60 22-24",
+        "Пристрій головний Volvo XC90 16-18"
+      ]
+    },
+    {
+      "category": "Інтер’єр / салон",
+      "subcategory": "Оздоблення стійок і прорізів",
+      "phrase": "накладка порога",
+      "reason": "No unique exact functional rule",
+      "paths": 39,
+      "offers": 27,
+      "examples": [
+        "Накладка порога внутрішня передня ліва Volvo XC40 19-26 чорна, подряпини",
+        "Накладка порога внутрішня передня права Volvo XC40 19-26 чорна, подряпини",
+        "Накладка порога задня ліва Volvo XC40 19-26 чорна, подряпини"
+      ]
+    },
+    {
+      "category": "Інтер’єр / салон",
+      "subcategory": "Оздоблення даху",
+      "phrase": "козирок без гачка",
+      "reason": "No unique exact functional rule",
+      "paths": 37,
+      "offers": 19,
+      "examples": [
+        "Козирок правий Volvo XC60 18-26 чорний, без гачка, з підсвічуванням, під чищення, подряпини",
+        "Козирок лівий Volvo XC60 18-26 чорний, без гачка, з підсвічуванням, під чищення, подряпини",
+        "Козирок лівий Volvo XC40 19-26 чорний, без гачка, з підсвічуванням"
+      ]
+    },
+    {
+      "category": "Підвіска та кермове управління",
+      "subcategory": "Поворотний кулак, цапфа та маточина",
+      "phrase": "цапфа",
+      "reason": "No unique exact functional rule",
+      "paths": 35,
+      "offers": 12,
+      "examples": [
+        "Цапфа задня ліва Volvo XC40 19-26 AWD",
+        "Цапфа задня права Volvo XC40 19-26 AWD",
+        "Цапфа передня права Volvo XC40 19-26"
+      ]
+    },
+    {
+      "category": "Гальмівна система",
+      "subcategory": "Стоянкове гальмо",
+      "phrase": "мотор супорта",
+      "reason": "No unique exact functional rule",
+      "paths": 34,
+      "offers": 8,
+      "examples": [
+        "Мотор супорта задній правий Volvo XC90 16-25",
+        "Мотор супорта задній лівий Volvo C40 22-24",
+        "Мотор супорта задній правий Volvo C40 22-24"
+      ]
+    },
+    {
+      "category": "Двигун",
+      "subcategory": "Турбокомпресор",
+      "phrase": "патрубок інтеркулера",
+      "reason": "No unique exact functional rule",
+      "paths": 33,
+      "offers": 21,
+      "examples": [
+        "Патрубок інтеркулера лівий третій Volvo XC40 19-22",
+        "Патрубок інтеркулера лівий перший Volvo XC40 19-22",
+        "Патрубок інтеркулера правий перший Volvo XC40 19-22"
+      ]
+    },
+    {
+      "category": "Інтер’єр / салон",
+      "subcategory": "Оздоблення стійок і прорізів",
+      "phrase": "накладка стійки",
+      "reason": "No unique exact functional rule",
+      "paths": 31,
+      "offers": 30,
+      "examples": [
+        "Накладка задньої стійки нижня права Volvo XC40 19-26 чорна, подряпини",
+        "Накладка передньої стійки верхня ліва Volvo XC60 18-26 сіра",
+        "Накладка передньої стійки верхня права Volvo XC60 18-26 сіра"
+      ]
+    },
+    {
+      "category": "Гальмівна система",
+      "subcategory": "Супорт",
+      "phrase": "супорт під",
+      "reason": "No unique exact functional rule",
+      "paths": 28,
+      "offers": 12,
+      "examples": [
+        "Супорт у зборі передній лівий Volvo V90 17-21 T5, T6 під 345/30мм",
+        "Супорт у зборі передній правий Volvo V90 17-21 T5, T6 під 345/30мм",
+        "Супорт у зборі передній лівий Volvo XC60 18-21 під 345/30мм"
+      ]
+    },
+    {
+      "category": "Інтер’єр / салон",
+      "subcategory": "Оздоблення даху",
+      "phrase": "плафон освітлення",
+      "reason": "No unique exact functional rule",
+      "paths": 27,
+      "offers": 17,
+      "examples": [
+        "Плафон освітлення лівий Volvo XC90 16-22 сірий",
+        "Плафон освітлення правий Volvo XC90 16-22 сірий",
+        "Плафон освітлення задній лівий Volvo XC60 18-25 сірий"
+      ]
+    },
+    {
+      "category": "Інтер’єр / салон",
+      "subcategory": "Оздоблення стійок і прорізів",
+      "phrase": "накладка центральної стійки ремінь",
+      "reason": "No unique exact functional rule",
+      "paths": 27,
+      "offers": 22,
+      "examples": [
+        "Накладка центральної стійки верхня ремінь ліва Volvo XC40 19-26 чорна, подряпини",
+        "Накладка центральної стійки верхня ремінь права Volvo XC40 19-26 чорна, подряпини",
+        "Накладка центральної стійки верхня ремінь ліва Volvo XC60 18-26 чорна"
+      ]
+    },
+    {
+      "category": "Колеса",
+      "subcategory": "Гайки та болти",
+      "phrase": "болт колісний d19 m14x1 5",
+      "reason": "No unique exact functional rule",
+      "paths": 25,
+      "offers": 7,
+      "examples": [
+        "Болт колісний d19 M14x1.5 Volvo XC90 16-25",
+        "Болт колісний d19 M14x1.5 Volvo XC60 18-26",
+        "Болт колісний d19 M14x1.5 Volvo XC40 19-26"
+      ]
+    },
+    {
+      "category": "Інтер’єр / салон",
+      "subcategory": "Безпека та подушки безпеки",
+      "phrase": "подушка безпеки airbag у кермо водійська",
+      "reason": "No unique exact functional rule",
+      "paths": 24,
+      "offers": 22,
+      "examples": [
+        "Подушка безпеки airbag у кермо водійська Volvo XC40 19-24 чорна, подряпина",
+        "Подушка безпеки airbag у кермо водійська Volvo XC60 18-26 чорна",
+        "Подушка безпеки airbag у кермо водійська Volvo XC60 18-26 сіра"
+      ]
+    },
+    {
+      "category": "Електрика",
+      "subcategory": "Антена",
+      "phrase": "антена плавець",
+      "reason": "No unique exact functional rule",
+      "paths": 24,
+      "offers": 8,
+      "examples": [
+        "Антена плавець Volvo XC90 16-22 у зборі",
+        "Антена плавець Volvo XC90 16-22",
+        "Антена плавець Volvo XC60 18-24"
+      ]
+    },
+    {
+      "category": "Інтер’єр / салон",
+      "subcategory": "Кермове колесо",
+      "phrase": "подушка безпеки airbag у кермо водійська",
+      "reason": "No unique exact functional rule",
+      "paths": 23,
+      "offers": 22,
+      "examples": [
+        "Подушка безпеки airbag у кермо водійська Volvo XC40 19-24 чорна, подряпина",
+        "Подушка безпеки airbag у кермо водійська Volvo XC60 18-26 чорна",
+        "Подушка безпеки airbag у кермо водійська Volvo XC60 18-26 сіра"
+      ]
+    },
+    {
+      "category": "Кузов",
+      "subcategory": "Ущільнювач прорізу",
+      "phrase": "ущільнювач дверного отвору",
+      "reason": "No unique exact functional rule",
+      "paths": 23,
+      "offers": 16,
+      "examples": [
+        "Ущільнювач дверного отвору задній лівий Volvo XC40 20-26",
+        "Ущільнювач дверного отвору задній правий Volvo XC40 20-26",
+        "Ущільнювач дверного отвору передній лівий Volvo XC40 20-26"
+      ]
+    },
+    {
+      "category": "Інтер’єр / салон",
+      "subcategory": "Інструмент",
+      "phrase": "ключ балонний гайковий",
+      "reason": "No unique exact functional rule",
+      "paths": 22,
+      "offers": 6,
+      "examples": [
+        "Ключ балонний гайковий Volvo XC90 16-26",
+        "Ключ балонний гайковий Volvo XC60 18-26",
+        "Ключ балонний гайковий Volvo V90 17-25"
+      ]
+    },
+    {
+      "category": "Інтер’єр / салон",
+      "subcategory": "Багажник",
+      "phrase": "вставка накладки отвору багажника хром",
+      "reason": "No unique exact functional rule",
+      "paths": 22,
+      "offers": 10,
+      "examples": [
+        "Вставка накладки отвору багажника ліва Volvo XC60 18-26 хром, потертий, подряпини",
+        "Вставка накладки отвору багажника права Volvo XC60 18-26 хром, потерта, подряпини",
+        "Вставка накладки отвору багажника ліва Volvo XC60 18-26 хром, потерт"
+      ]
+    },
+    {
+      "category": "Двері",
+      "subcategory": "Передні ліві двері",
+      "phrase": "керування склопідйомником переднім лівим",
+      "reason": "No unique exact functional rule",
+      "paths": 22,
+      "offers": 8,
+      "examples": [
+        "Керування склопідйомником переднім лівим Volvo XC60 18-26 чорне",
+        "Керування склопідйомником переднім лівим Volvo XC60 18-26 із захистом дітей, чорне",
+        "Керування склопідйомником переднім лівим Volvo XC60 18-26 із захистом дітей"
+      ]
+    },
+    {
+      "category": "Двигун",
+      "subcategory": "Двигун на запчастини",
+      "phrase": "ролик натягувач приводного ременя",
+      "reason": "No unique exact functional rule",
+      "paths": 22,
+      "offers": 7,
+      "examples": [
+        "Ролик натягувач приводного ременя Volvo XC40 19-22",
+        "Ролик натягувач приводного ременя Volvo XC60 18-21 T5",
+        "Ролик натягувач приводного ременя Volvo XC60 22-26 B6"
+      ]
+    },
+    {
+      "category": "Двигун",
+      "subcategory": "Турбокомпресор",
+      "phrase": "ресивер вакуумний турбіни",
+      "reason": "No unique exact functional rule",
+      "paths": 22,
+      "offers": 6,
+      "examples": [
+        "Ресивер вакуумний турбіни Volvo V90 17-21 T5, T6",
+        "Ресивер вакуумний турбіни Volvo XC90 16-26 T5, T6, T8",
+        "Ресивер вакуумний турбіни Volvo XC60 18-26 T5, T6, T8"
+      ]
+    },
+    {
+      "category": "Інтер’єр / салон",
+      "subcategory": "Оздоблення даху",
+      "phrase": "заглушка обшивки потолка",
+      "reason": "No unique exact functional rule",
+      "paths": 20,
+      "offers": 4,
+      "examples": [
+        "Заглушка обшивки потолка задняя левая Volvo XC60 18-26 черная",
+        "Заглушка обшивки потолка задняя правая Volvo XC60 18-26 черная",
+        "Заглушка обшивки потолка задняя левая Volvo XC60 18-26 серая"
+      ]
+    },
+    {
+      "category": "Гальмівна система",
+      "subcategory": "ABS",
+      "phrase": "датчик abs polestar 2 21 25",
+      "reason": "No unique exact functional rule",
+      "paths": 20,
+      "offers": 5,
+      "examples": [
+        "Датчик ABS передній правий Polestar 2 21-25",
+        "Датчик ABS задній правий Polestar 2 21-25",
+        "Датчик ABS передній лівий Polestar 2 21-25"
+      ]
+    },
+    {
+      "category": "Двигун",
+      "subcategory": "Паливна система",
+      "phrase": "провід паливної форсунки",
+      "reason": "No unique exact functional rule",
+      "paths": 20,
+      "offers": 4,
+      "examples": [
+        "Провід паливної форсунки Volvo XC60 18-26 T5, T6, T8",
+        "Провід паливної форсунки Volvo XC40 19-23",
+        "Провід паливної форсунки Volvo XC60 22-26 B5, B6"
+      ]
+    },
+    {
+      "category": "Інтер’єр / салон",
+      "subcategory": "Кермове колесо",
+      "phrase": "кнопки керування на кермі",
+      "reason": "No unique exact functional rule",
+      "paths": 19,
+      "offers": 9,
+      "examples": [
+        "Кнопки керування на кермі Volvo XC90 16-26",
+        "Кнопки керування на кермі Volvo V90 17-24",
+        "Кнопки керування на кермі Volvo V90 17-24 подряпини"
+      ]
+    },
+    {
+      "category": "Двигун",
+      "subcategory": "Система випуску відпрацьованих газів",
+      "phrase": "захист випускного колектора",
+      "reason": "No unique exact functional rule",
+      "paths": 19,
+      "offers": 5,
+      "examples": [
+        "Захист випускного колектора Volvo V90 17-21 T5, T6",
+        "Захист випускного колектора Volvo XC60 18-26 T5, T6, T8",
+        "Захист випускного колектора Volvo XC40 19-22"
+      ]
+    },
+    {
+      "category": "Кузов",
+      "subcategory": "Ущільнювач прорізу",
+      "phrase": "ущільнювач дверей",
+      "reason": "No unique exact functional rule",
+      "paths": 19,
+      "offers": 19,
+      "examples": [
+        "Ущільнювач дверей задніх лівих Volvo XC40 19-26",
+        "Ущільнювач дверей передніх лівих Volvo XC40 19-26",
+        "Ущільнювач дверей передніх правих Volvo XC40 19-26"
+      ]
+    },
+    {
+      "category": "Інтер’єр / салон",
+      "subcategory": "Інструмент",
+      "phrase": "гак буксирувальний",
+      "reason": "No unique exact functional rule",
+      "paths": 18,
+      "offers": 5,
+      "examples": [
+        "Гак буксирувальний Volvo XC90 16-26",
+        "Гак буксирувальний Volvo XC60 18-26",
+        "Гак буксирувальний Volvo XC40 19-26 іржавий"
+      ]
+    }
+  ]
+}

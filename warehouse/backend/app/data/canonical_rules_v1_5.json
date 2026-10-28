@@ -1,0 +1,1970 @@
+{
+  "version": "carpot.canonical.rules.v1.5",
+  "provenance": "Exact curated UA/RU automotive function vocabulary anchored to the existing independently authored base checklist. Unknown residuals/context/placement conflicts require owner review; no fuzzy or OEM-only matching.",
+  "types": [
+    {
+      "name": "Двері",
+      "category": "Кузов",
+      "subcategory": "Двері",
+      "aliases": [
+        "Двері",
+        "дверь",
+        "двери"
+      ],
+      "categories": [
+        "Кузов",
+        "Двері"
+      ],
+      "require_side": true,
+      "require_position": true,
+      "applicability": {
+        "groups": [
+          "C"
+        ],
+        "required_fields": [
+          "body_type",
+          "drive",
+          "transmission"
+        ]
+      }
+    },
+    {
+      "name": "Капот",
+      "category": "Кузов",
+      "subcategory": "Панелі кузова",
+      "aliases": [
+        "Капот",
+        "капот"
+      ],
+      "categories": [
+        "Кузов",
+        "Двері"
+      ],
+      "applicability": {
+        "groups": [
+          "C"
+        ],
+        "required_fields": [
+          "body_type",
+          "drive",
+          "transmission"
+        ]
+      }
+    },
+    {
+      "name": "Кришка багажника / двері багажного відділення",
+      "category": "Кузов",
+      "subcategory": "Панелі кузова",
+      "aliases": [
+        "Кришка багажника / двері багажного відділення",
+        "кришка багажника",
+        "крышка багажника",
+        "дверь багажника"
+      ],
+      "categories": [
+        "Кузов",
+        "Двері"
+      ],
+      "applicability": {
+        "groups": [
+          "C"
+        ],
+        "required_fields": [
+          "body_type",
+          "drive",
+          "transmission"
+        ]
+      }
+    },
+    {
+      "name": "Бампер",
+      "category": "Кузов",
+      "subcategory": "Панелі кузова",
+      "aliases": [
+        "Бампер",
+        "бампер"
+      ],
+      "categories": [
+        "Кузов",
+        "Двері"
+      ],
+      "require_position": true,
+      "applicability": {
+        "groups": [
+          "C"
+        ],
+        "required_fields": [
+          "body_type",
+          "drive",
+          "transmission"
+        ]
+      }
+    },
+    {
+      "name": "Зовнішнє дзеркало",
+      "category": "Кузов",
+      "subcategory": "Дзеркала",
+      "aliases": [
+        "Зовнішнє дзеркало",
+        "зеркало наружное",
+        "наружное зеркало",
+        "дзеркало зовнішнє"
+      ],
+      "categories": [
+        "Кузов",
+        "Двері"
+      ],
+      "require_side": true,
+      "require_mount": "outer",
+      "applicability": {
+        "groups": [
+          "C"
+        ],
+        "required_fields": [
+          "body_type",
+          "drive",
+          "transmission"
+        ]
+      }
+    },
+    {
+      "name": "Фара",
+      "category": "Освітлення",
+      "subcategory": "Переднє освітлення",
+      "aliases": [
+        "Фара",
+        "фара"
+      ],
+      "categories": [
+        "Освітлення",
+        "Електрика",
+        "Кузов",
+        "Оптика"
+      ],
+      "require_side": true,
+      "default_position": "front",
+      "forbidden_position": "rear",
+      "applicability": {
+        "groups": [
+          "A",
+          "D"
+        ],
+        "required_fields": [
+          "options"
+        ]
+      }
+    },
+    {
+      "name": "Задній ліхтар",
+      "category": "Освітлення",
+      "subcategory": "Заднє освітлення",
+      "aliases": [
+        "Задній ліхтар",
+        "задний фонарь",
+        "ліхтар задній",
+        "фонарь задний"
+      ],
+      "categories": [
+        "Освітлення",
+        "Електрика",
+        "Кузов",
+        "Оптика"
+      ],
+      "require_side": true,
+      "require_rear_word": true,
+      "applicability": {
+        "groups": [
+          "A"
+        ],
+        "required_fields": []
+      }
+    },
+    {
+      "name": "Двигун у зборі",
+      "category": "Силовий агрегат",
+      "subcategory": "Двигун та навісне",
+      "aliases": [
+        "Двигун у зборі",
+        "двигатель в сборе"
+      ],
+      "categories": [
+        "Силовий агрегат",
+        "Двигун",
+        "Електрика",
+        "Трансмісія"
+      ],
+      "require_assembly": "complete",
+      "applicability": {
+        "groups": [
+          "B"
+        ],
+        "required_fields": [
+          "powertrain",
+          "engine_code"
+        ],
+        "powertrains": [
+          "petrol",
+          "diesel",
+          "HEV",
+          "PHEV"
+        ]
+      }
+    },
+    {
+      "name": "Стартер",
+      "category": "Силовий агрегат",
+      "subcategory": "Двигун та навісне",
+      "aliases": [
+        "Стартер",
+        "стартер"
+      ],
+      "categories": [
+        "Силовий агрегат",
+        "Двигун",
+        "Електрика",
+        "Трансмісія"
+      ],
+      "applicability": {
+        "groups": [
+          "B"
+        ],
+        "required_fields": [
+          "powertrain",
+          "engine_code"
+        ],
+        "powertrains": [
+          "petrol",
+          "diesel",
+          "HEV",
+          "PHEV"
+        ]
+      }
+    },
+    {
+      "name": "Генератор",
+      "category": "Силовий агрегат",
+      "subcategory": "Двигун та навісне",
+      "aliases": [
+        "Генератор",
+        "генератор",
+        "alternator"
+      ],
+      "categories": [
+        "Силовий агрегат",
+        "Двигун",
+        "Електрика",
+        "Трансмісія"
+      ],
+      "applicability": {
+        "groups": [
+          "B"
+        ],
+        "required_fields": [
+          "powertrain",
+          "engine_code"
+        ],
+        "powertrains": [
+          "petrol",
+          "diesel",
+          "HEV",
+          "PHEV"
+        ]
+      }
+    },
+    {
+      "name": "Компресор кондиціонера",
+      "category": "Силовий агрегат",
+      "subcategory": "Двигун та навісне",
+      "aliases": [
+        "Компресор кондиціонера",
+        "компрессор кондиционера"
+      ],
+      "categories": [
+        "Силовий агрегат",
+        "Двигун",
+        "Електрика",
+        "Трансмісія"
+      ],
+      "applicability": {
+        "groups": [
+          "B",
+          "D"
+        ],
+        "required_fields": [
+          "powertrain",
+          "options"
+        ]
+      }
+    },
+    {
+      "name": "Коробка передач",
+      "category": "Силовий агрегат",
+      "subcategory": "Трансмісія",
+      "aliases": [
+        "Коробка передач",
+        "коробка передач",
+        "кпп"
+      ],
+      "categories": [
+        "Силовий агрегат",
+        "Двигун",
+        "Електрика",
+        "Трансмісія"
+      ],
+      "applicability": {
+        "groups": [
+          "C"
+        ],
+        "required_fields": [
+          "body_type",
+          "drive",
+          "transmission"
+        ]
+      }
+    },
+    {
+      "name": "Привід колеса",
+      "category": "Силовий агрегат",
+      "subcategory": "Трансмісія",
+      "aliases": [
+        "Привід колеса",
+        "привод колеса",
+        "полуось",
+        "піввісь",
+        "привід піввісь"
+      ],
+      "categories": [
+        "Силовий агрегат",
+        "Двигун",
+        "Електрика",
+        "Трансмісія"
+      ],
+      "require_side": true,
+      "applicability": {
+        "groups": [
+          "C"
+        ],
+        "required_fields": [
+          "body_type",
+          "drive",
+          "transmission"
+        ]
+      }
+    },
+    {
+      "name": "Стійка підвіски",
+      "category": "Ходова частина",
+      "subcategory": "Підвіска",
+      "aliases": [
+        "Стійка підвіски",
+        "стойка подвески"
+      ],
+      "categories": [
+        "Ходова частина",
+        "Гальмівна система",
+        "Підвіска та кермове управління"
+      ],
+      "require_side": true,
+      "require_position": true,
+      "applicability": {
+        "groups": [
+          "C"
+        ],
+        "required_fields": [
+          "body_type",
+          "drive",
+          "transmission"
+        ]
+      }
+    },
+    {
+      "name": "Гальмівний супорт",
+      "category": "Ходова частина",
+      "subcategory": "Гальмівна система",
+      "aliases": [
+        "Гальмівний супорт",
+        "тормозной суппорт",
+        "супорт тормозной",
+        "суппорт тормозной",
+        "супорт",
+        "суппорт"
+      ],
+      "categories": [
+        "Ходова частина",
+        "Гальмівна система",
+        "Підвіска та кермове управління"
+      ],
+      "require_side": true,
+      "require_position": true,
+      "applicability": {
+        "groups": [
+          "A"
+        ],
+        "required_fields": []
+      },
+      "subcategories": [
+        "Супорт",
+        "Гальмівна система"
+      ]
+    },
+    {
+      "name": "Кермова рейка",
+      "category": "Ходова частина",
+      "subcategory": "Кермове управління",
+      "aliases": [
+        "Кермова рейка",
+        "рулевая рейка"
+      ],
+      "categories": [
+        "Ходова частина",
+        "Гальмівна система",
+        "Підвіска та кермове управління"
+      ],
+      "applicability": {
+        "groups": [
+          "A"
+        ],
+        "required_fields": []
+      }
+    },
+    {
+      "name": "Сидіння",
+      "category": "Салон",
+      "subcategory": "Сидіння",
+      "aliases": [
+        "Сидіння",
+        "сиденье",
+        "сидение"
+      ],
+      "categories": [
+        "Салон",
+        "Інтер’єр / салон",
+        "Електрика"
+      ],
+      "require_side": true,
+      "require_position": true,
+      "applicability": {
+        "groups": [
+          "C"
+        ],
+        "required_fields": [
+          "body_type",
+          "drive",
+          "transmission"
+        ]
+      }
+    },
+    {
+      "name": "Панель приладів",
+      "category": "Салон",
+      "subcategory": "Органи управління",
+      "aliases": [
+        "Панель приладів",
+        "панель приборов",
+        "щиток приборов"
+      ],
+      "categories": [
+        "Салон",
+        "Інтер’єр / салон",
+        "Електрика"
+      ],
+      "applicability": {
+        "groups": [
+          "A"
+        ],
+        "required_fields": []
+      }
+    },
+    {
+      "name": "Блок керування кліматом",
+      "category": "Салон",
+      "subcategory": "Органи управління",
+      "aliases": [
+        "Блок керування кліматом",
+        "блок управления климатом"
+      ],
+      "categories": [
+        "Салон",
+        "Інтер’єр / салон",
+        "Електрика"
+      ],
+      "applicability": {
+        "groups": [
+          "A",
+          "D"
+        ],
+        "required_fields": [
+          "options"
+        ]
+      }
+    },
+    {
+      "name": "Радіатор охолодження",
+      "category": "Охолодження",
+      "subcategory": "Радіатори та вентилятори",
+      "aliases": [
+        "Радіатор охолодження",
+        "радиатор охлаждения",
+        "радіатор водяного охолодження"
+      ],
+      "categories": [
+        "Охолодження",
+        "Двигун",
+        "Кузов"
+      ],
+      "applicability": {
+        "groups": [
+          "A"
+        ],
+        "required_fields": []
+      }
+    },
+    {
+      "name": "Вентилятор охолодження",
+      "category": "Охолодження",
+      "subcategory": "Радіатори та вентилятори",
+      "aliases": [
+        "Вентилятор охолодження",
+        "вентилятор охлаждения"
+      ],
+      "categories": [
+        "Охолодження",
+        "Двигун",
+        "Кузов"
+      ],
+      "applicability": {
+        "groups": [
+          "A"
+        ],
+        "required_fields": []
+      }
+    },
+    {
+      "name": "Конденсор кондиціонера",
+      "category": "Охолодження",
+      "subcategory": "Радіатори та вентилятори",
+      "aliases": [
+        "Конденсор кондиціонера",
+        "конденсор кондиционера",
+        "радиатор кондиционера",
+        "радіатор кондиціонера конденсер"
+      ],
+      "categories": [
+        "Охолодження",
+        "Двигун",
+        "Кузов"
+      ],
+      "applicability": {
+        "groups": [
+          "A"
+        ],
+        "required_fields": []
+      }
+    },
+    {
+      "name": "Протитуманна фара",
+      "category": "Освітлення",
+      "subcategory": "Переднє освітлення",
+      "aliases": [
+        "протитуманна фара",
+        "фара протитуманна",
+        "фара протитуманна птф",
+        "противотуманная фара",
+        "противотуманная фара птф",
+        "фара противотуманная",
+        "птф"
+      ],
+      "categories": [
+        "Освітлення",
+        "Електрика",
+        "Кузов",
+        "Оптика"
+      ],
+      "require_side": true,
+      "default_position": "front",
+      "forbidden_position": "rear",
+      "applicability": {
+        "groups": [
+          "A",
+          "D"
+        ],
+        "required_fields": [
+          "options"
+        ]
+      }
+    },
+    {
+      "name": "Кронштейн генератора",
+      "category": "Силовий агрегат",
+      "subcategory": "Кріплення навісного обладнання",
+      "aliases": [
+        "Кронштейн генератора"
+      ],
+      "categories": [
+        "Двигун",
+        "Електрика",
+        "Силовий агрегат"
+      ],
+      "applicability": {
+        "groups": [
+          "B"
+        ],
+        "required_fields": [
+          "powertrain",
+          "engine_code"
+        ],
+        "powertrains": [
+          "petrol",
+          "diesel",
+          "HEV",
+          "PHEV"
+        ]
+      }
+    },
+    {
+      "name": "Проводка стартера-генератора",
+      "category": "Електрика",
+      "subcategory": "Проводка",
+      "aliases": [
+        "Проводка стартера-генератора",
+        "Проводка стартера-генератор"
+      ],
+      "categories": [
+        "Електрика",
+        "Двигун",
+        "Силовий агрегат"
+      ],
+      "applicability": {
+        "groups": [
+          "B"
+        ],
+        "required_fields": [
+          "powertrain",
+          "engine_code"
+        ],
+        "powertrains": [
+          "petrol",
+          "diesel",
+          "HEV",
+          "PHEV"
+        ]
+      }
+    },
+    {
+      "name": "Датчик частоти обертання колеса",
+      "category": "Гальмівна система",
+      "subcategory": "ABS",
+      "aliases": [
+        "Датчик частоти обертання колеса",
+        "датчик ABS",
+        "датчик абс",
+        "датчик скорости колеса",
+        "датчик швидкості колеса"
+      ],
+      "categories": [
+        "Гальмівна система",
+        "Електрика"
+      ],
+      "applicability": {
+        "groups": [
+          "A",
+          "D"
+        ],
+        "required_fields": [
+          "options"
+        ]
+      },
+      "require_side": true,
+      "require_position": true
+    },
+    {
+      "name": "Опора двигуна",
+      "category": "Силовий агрегат",
+      "subcategory": "Кріплення двигуна",
+      "aliases": [
+        "Опора двигуна",
+        "подушка двигуна",
+        "подушка двигателя",
+        "опора двигателя"
+      ],
+      "categories": [
+        "Двигун",
+        "Силовий агрегат"
+      ],
+      "applicability": {
+        "groups": [
+          "B",
+          "C"
+        ],
+        "required_fields": [
+          "powertrain",
+          "engine_code"
+        ]
+      }
+    },
+    {
+      "name": "Стійка стабілізатора",
+      "category": "Ходова частина",
+      "subcategory": "Підвіска",
+      "aliases": [
+        "Стійка стабілізатора",
+        "тяга стабілізатора",
+        "тяга стабилизатора",
+        "стойка стабилизатора"
+      ],
+      "categories": [
+        "Підвіска та кермове управління",
+        "Ходова частина"
+      ],
+      "applicability": {
+        "groups": [
+          "A",
+          "C"
+        ],
+        "required_fields": [
+          "drive"
+        ]
+      },
+      "require_side": true,
+      "require_position": true
+    },
+    {
+      "name": "Гальмівний диск",
+      "category": "Ходова частина",
+      "subcategory": "Гальмівна система",
+      "aliases": [
+        "Гальмівний диск",
+        "диск гальмівний",
+        "диск тормозной",
+        "тормозной диск"
+      ],
+      "categories": [
+        "Гальмівна система"
+      ],
+      "applicability": {
+        "groups": [
+          "A",
+          "C"
+        ],
+        "required_fields": [
+          "drive"
+        ]
+      },
+      "require_position": true
+    },
+    {
+      "name": "Гальмівний шланг",
+      "category": "Ходова частина",
+      "subcategory": "Гальмівна система",
+      "aliases": [
+        "Гальмівний шланг",
+        "шланг гальмівний",
+        "шланг тормозной",
+        "тормозной шланг"
+      ],
+      "categories": [
+        "Гальмівна система"
+      ],
+      "applicability": {
+        "groups": [
+          "A",
+          "C"
+        ],
+        "required_fields": [
+          "drive"
+        ]
+      },
+      "require_side": true,
+      "require_position": true
+    },
+    {
+      "name": "Маточина колеса",
+      "category": "Ходова частина",
+      "subcategory": "Маточини",
+      "aliases": [
+        "Маточина колеса",
+        "маточина",
+        "ступица",
+        "ступица колеса"
+      ],
+      "categories": [
+        "Підвіска та кермове управління",
+        "Ходова частина"
+      ],
+      "applicability": {
+        "groups": [
+          "A",
+          "C"
+        ],
+        "required_fields": [
+          "drive"
+        ]
+      },
+      "require_side": true,
+      "require_position": true
+    },
+    {
+      "name": "Поворотний кулак",
+      "category": "Ходова частина",
+      "subcategory": "Кермове управління",
+      "aliases": [
+        "Поворотний кулак",
+        "поворотный кулак"
+      ],
+      "categories": [
+        "Підвіска та кермове управління",
+        "Ходова частина"
+      ],
+      "applicability": {
+        "groups": [
+          "C"
+        ],
+        "required_fields": [
+          "drive"
+        ]
+      },
+      "require_side": true,
+      "require_position": true
+    },
+    {
+      "name": "Важіль підвіски",
+      "category": "Ходова частина",
+      "subcategory": "Підвіска",
+      "aliases": [
+        "Важіль підвіски",
+        "важіль",
+        "рычаг",
+        "рычаг подвески"
+      ],
+      "categories": [
+        "Підвіска та кермове управління",
+        "Ходова частина"
+      ],
+      "applicability": {
+        "groups": [
+          "C"
+        ],
+        "required_fields": [
+          "drive"
+        ]
+      },
+      "require_side": true,
+      "require_position": true,
+      "subcategories": [
+        "Передній важіль",
+        "Задній важіль",
+        "Підвіска"
+      ]
+    },
+    {
+      "name": "Кермова тяга",
+      "category": "Ходова частина",
+      "subcategory": "Кермове управління",
+      "aliases": [
+        "Кермова тяга",
+        "тяга кермова",
+        "рулевая тяга"
+      ],
+      "categories": [
+        "Підвіска та кермове управління",
+        "Ходова частина"
+      ],
+      "applicability": {
+        "groups": [
+          "C"
+        ],
+        "required_fields": [
+          "drive"
+        ]
+      },
+      "require_side": true
+    },
+    {
+      "name": "Наконечник кермової тяги",
+      "category": "Ходова частина",
+      "subcategory": "Кермове управління",
+      "aliases": [
+        "Наконечник кермової тяги",
+        "наконечник кермовий",
+        "рулевой наконечник"
+      ],
+      "categories": [
+        "Підвіска та кермове управління",
+        "Ходова частина"
+      ],
+      "applicability": {
+        "groups": [
+          "C"
+        ],
+        "required_fields": [
+          "drive"
+        ]
+      },
+      "require_side": true
+    },
+    {
+      "name": "Паливна форсунка",
+      "category": "Силовий агрегат",
+      "subcategory": "Паливна система",
+      "aliases": [
+        "Паливна форсунка",
+        "форсунка паливна",
+        "топливная форсунка",
+        "форсунка розпилювач",
+        "форсунка распылитель",
+        "форсунка"
+      ],
+      "categories": [
+        "Двигун",
+        "Силовий агрегат"
+      ],
+      "applicability": {
+        "groups": [
+          "B"
+        ],
+        "required_fields": [
+          "powertrain",
+          "fuel_type",
+          "engine_code"
+        ]
+      },
+      "subcategories": [
+        "Паливна система",
+        "Форсунки",
+        "Топливная система"
+      ]
+    },
+    {
+      "name": "Форсунка омивача",
+      "category": "Кузов",
+      "subcategory": "Омивач і склоочисник",
+      "aliases": [
+        "Форсунка омивача",
+        "форсунка омывателя"
+      ],
+      "categories": [
+        "Кузов",
+        "Електрика"
+      ],
+      "applicability": {
+        "groups": [
+          "A",
+          "D"
+        ],
+        "required_fields": [
+          "options"
+        ]
+      }
+    },
+    {
+      "name": "Паливний насос високого тиску",
+      "category": "Силовий агрегат",
+      "subcategory": "Паливна система",
+      "aliases": [
+        "Паливний насос високого тиску",
+        "насос паливний високого тиску тнвд",
+        "насос топливный высокого давления тнвд",
+        "тнвд"
+      ],
+      "categories": [
+        "Двигун",
+        "Силовий агрегат"
+      ],
+      "applicability": {
+        "groups": [
+          "B"
+        ],
+        "required_fields": [
+          "powertrain",
+          "fuel_type",
+          "engine_code"
+        ]
+      }
+    },
+    {
+      "name": "Насос подачі пального низького тиску",
+      "category": "Силовий агрегат",
+      "subcategory": "Паливна система",
+      "aliases": [
+        "Насос подачі пального низького тиску",
+        "насос паливний низького тиску",
+        "топливный насос низкого давления"
+      ],
+      "categories": [
+        "Двигун",
+        "Силовий агрегат"
+      ],
+      "applicability": {
+        "groups": [
+          "B"
+        ],
+        "required_fields": [
+          "powertrain",
+          "fuel_type"
+        ]
+      }
+    },
+    {
+      "name": "Датчик тиску пального",
+      "category": "Силовий агрегат",
+      "subcategory": "Паливна система",
+      "aliases": [
+        "Датчик тиску пального",
+        "датчик давления топлива",
+        "датчик тиску паливної рампи",
+        "датчик давления топливной рампы"
+      ],
+      "categories": [
+        "Двигун",
+        "Силовий агрегат"
+      ],
+      "applicability": {
+        "groups": [
+          "B"
+        ],
+        "required_fields": [
+          "fuel_type",
+          "engine_code"
+        ]
+      }
+    },
+    {
+      "name": "Датчик тиску в шинах",
+      "category": "Ходова частина",
+      "subcategory": "Колеса",
+      "aliases": [
+        "Датчик тиску в шинах",
+        "датчик давления в шинах",
+        "датчик тиску колеса",
+        "датчик tpms"
+      ],
+      "categories": [
+        "Колеса",
+        "Електрика"
+      ],
+      "applicability": {
+        "groups": [
+          "D"
+        ],
+        "required_fields": [
+          "options"
+        ]
+      }
+    },
+    {
+      "name": "Датчик тиску впускного колектора",
+      "category": "Силовий агрегат",
+      "subcategory": "Система впуску",
+      "aliases": [
+        "Датчик тиску впускного колектора",
+        "map sensor",
+        "датчик давления впускного коллектора"
+      ],
+      "categories": [
+        "Двигун",
+        "Силовий агрегат"
+      ],
+      "applicability": {
+        "groups": [
+          "B"
+        ],
+        "required_fields": [
+          "powertrain",
+          "engine_code"
+        ]
+      }
+    },
+    {
+      "name": "Датчик тиску наддуву",
+      "category": "Силовий агрегат",
+      "subcategory": "Турбокомпресор",
+      "aliases": [
+        "Датчик тиску наддуву",
+        "датчик давления наддува",
+        "датчик тиску наддуву на турбіну"
+      ],
+      "categories": [
+        "Двигун",
+        "Силовий агрегат"
+      ],
+      "applicability": {
+        "groups": [
+          "B",
+          "D"
+        ],
+        "required_fields": [
+          "engine_code",
+          "options"
+        ]
+      }
+    },
+    {
+      "name": "Витратомір повітря",
+      "category": "Силовий агрегат",
+      "subcategory": "Система впуску",
+      "aliases": [
+        "Витратомір повітря",
+        "расходомер воздуха",
+        "maf sensor"
+      ],
+      "categories": [
+        "Двигун",
+        "Силовий агрегат"
+      ],
+      "applicability": {
+        "groups": [
+          "B"
+        ],
+        "required_fields": [
+          "engine_code"
+        ]
+      }
+    },
+    {
+      "name": "Дросельна заслінка",
+      "category": "Силовий агрегат",
+      "subcategory": "Система впуску",
+      "aliases": [
+        "Дросельна заслінка",
+        "заслінка дросельна",
+        "дроссельная заслонка"
+      ],
+      "categories": [
+        "Двигун",
+        "Силовий агрегат"
+      ],
+      "applicability": {
+        "groups": [
+          "B"
+        ],
+        "required_fields": [
+          "engine_code"
+        ]
+      }
+    },
+    {
+      "name": "Лямбда-зонд",
+      "category": "Силовий агрегат",
+      "subcategory": "Система випуску",
+      "aliases": [
+        "Лямбда-зонд",
+        "лямбда зонд",
+        "кисневий датчик",
+        "датчик кислорода"
+      ],
+      "categories": [
+        "Двигун",
+        "Силовий агрегат"
+      ],
+      "applicability": {
+        "groups": [
+          "B"
+        ],
+        "required_fields": [
+          "powertrain",
+          "fuel_type",
+          "engine_code"
+        ]
+      }
+    },
+    {
+      "name": "Каталізатор",
+      "category": "Силовий агрегат",
+      "subcategory": "Система випуску",
+      "aliases": [
+        "Каталізатор",
+        "катализатор"
+      ],
+      "categories": [
+        "Двигун",
+        "Силовий агрегат"
+      ],
+      "applicability": {
+        "groups": [
+          "B"
+        ],
+        "required_fields": [
+          "powertrain",
+          "fuel_type",
+          "engine_code"
+        ]
+      }
+    },
+    {
+      "name": "Сажевий фільтр",
+      "category": "Силовий агрегат",
+      "subcategory": "Система випуску",
+      "aliases": [
+        "Сажевий фільтр",
+        "сажевый фильтр",
+        "фільтр dpf"
+      ],
+      "categories": [
+        "Двигун",
+        "Силовий агрегат"
+      ],
+      "applicability": {
+        "groups": [
+          "B"
+        ],
+        "required_fields": [
+          "powertrain",
+          "fuel_type",
+          "engine_code"
+        ]
+      }
+    },
+    {
+      "name": "Котушка запалювання",
+      "category": "Силовий агрегат",
+      "subcategory": "Система запалювання",
+      "aliases": [
+        "Котушка запалювання",
+        "катушка зажигания"
+      ],
+      "categories": [
+        "Двигун",
+        "Силовий агрегат"
+      ],
+      "applicability": {
+        "groups": [
+          "B"
+        ],
+        "required_fields": [
+          "powertrain",
+          "fuel_type",
+          "engine_code"
+        ]
+      }
+    },
+    {
+      "name": "Насос охолоджувальної рідини",
+      "category": "Охолодження",
+      "subcategory": "Насоси",
+      "aliases": [
+        "Насос охолоджувальної рідини",
+        "помпа водяна",
+        "помпа водяная",
+        "водяний насос",
+        "водяной насос"
+      ],
+      "categories": [
+        "Двигун",
+        "Силовий агрегат",
+        "Охолодження"
+      ],
+      "applicability": {
+        "groups": [
+          "B"
+        ],
+        "required_fields": [
+          "powertrain",
+          "engine_code"
+        ]
+      }
+    },
+    {
+      "name": "Корпус термостата",
+      "category": "Охолодження",
+      "subcategory": "Термостат",
+      "aliases": [
+        "Корпус термостата",
+        "корпус термостата"
+      ],
+      "categories": [
+        "Двигун",
+        "Силовий агрегат",
+        "Охолодження"
+      ],
+      "applicability": {
+        "groups": [
+          "B"
+        ],
+        "required_fields": [
+          "powertrain",
+          "engine_code"
+        ]
+      }
+    },
+    {
+      "name": "Патрубок охолодження",
+      "category": "Охолодження",
+      "subcategory": "Патрубки",
+      "aliases": [
+        "Патрубок охолодження",
+        "патрубок системы охлаждения",
+        "патрубок системи охолодження"
+      ],
+      "categories": [
+        "Двигун",
+        "Силовий агрегат",
+        "Охолодження"
+      ],
+      "applicability": {
+        "groups": [
+          "B"
+        ],
+        "required_fields": [
+          "powertrain",
+          "engine_code"
+        ]
+      }
+    },
+    {
+      "name": "Клапан системи охолодження",
+      "category": "Охолодження",
+      "subcategory": "Клапани",
+      "aliases": [
+        "Клапан системи охолодження",
+        "клапан системы охлаждения"
+      ],
+      "categories": [
+        "Двигун",
+        "Силовий агрегат",
+        "Охолодження"
+      ],
+      "applicability": {
+        "groups": [
+          "B"
+        ],
+        "required_fields": [
+          "powertrain",
+          "engine_code"
+        ]
+      }
+    },
+    {
+      "name": "Кришка розширювального бачка охолодження",
+      "category": "Охолодження",
+      "subcategory": "Бачки",
+      "aliases": [
+        "Кришка розширювального бачка охолодження",
+        "крышка расширительного бачка охлаждения"
+      ],
+      "categories": [
+        "Двигун",
+        "Силовий агрегат",
+        "Охолодження"
+      ],
+      "applicability": {
+        "groups": [
+          "B"
+        ],
+        "required_fields": [
+          "powertrain"
+        ]
+      }
+    },
+    {
+      "name": "Блок керування двигуном",
+      "category": "Силовий агрегат",
+      "subcategory": "Електроніка",
+      "aliases": [
+        "Блок керування двигуном",
+        "блок управління двигуном",
+        "блок управления двигателем",
+        "блок ecu комп ютер двигуна",
+        "ecu двигуна"
+      ],
+      "categories": [
+        "Двигун",
+        "Силовий агрегат",
+        "Електрика"
+      ],
+      "applicability": {
+        "groups": [
+          "B",
+          "D"
+        ],
+        "required_fields": [
+          "powertrain",
+          "engine_code",
+          "options"
+        ]
+      }
+    },
+    {
+      "name": "Блок керування трансмісією",
+      "category": "Силовий агрегат",
+      "subcategory": "Електроніка",
+      "aliases": [
+        "Блок керування трансмісією",
+        "блок управління коробкою передач",
+        "блок управления коробкой передач",
+        "блок tcm"
+      ],
+      "categories": [
+        "Трансмісія",
+        "Двигун",
+        "Силовий агрегат",
+        "Електрика"
+      ],
+      "applicability": {
+        "groups": [
+          "C"
+        ],
+        "required_fields": [
+          "transmission"
+        ]
+      }
+    },
+    {
+      "name": "Блок керування кузовом",
+      "category": "Електрика",
+      "subcategory": "Блоки керування",
+      "aliases": [
+        "Блок керування кузовом",
+        "bcm body control module",
+        "блок bcm"
+      ],
+      "categories": [
+        "Електрика"
+      ],
+      "applicability": {
+        "groups": [
+          "C",
+          "D"
+        ],
+        "required_fields": [
+          "body_type",
+          "options"
+        ]
+      }
+    },
+    {
+      "name": "Блок керування подушками безпеки",
+      "category": "Електрика",
+      "subcategory": "Безпека",
+      "aliases": [
+        "Блок керування подушками безпеки",
+        "модуль srs airbag комп ютер подушок безпеки",
+        "блок управления подушками безопасности"
+      ],
+      "categories": [
+        "Електрика",
+        "Інтер’єр / салон",
+        "Салон"
+      ],
+      "applicability": {
+        "groups": [
+          "D"
+        ],
+        "required_fields": [
+          "options"
+        ]
+      }
+    },
+    {
+      "name": "Датчик удару дверей",
+      "category": "Електрика",
+      "subcategory": "Безпека",
+      "aliases": [
+        "Датчик удару дверей",
+        "датчик подушки безпеки двері",
+        "датчик удара двери"
+      ],
+      "categories": [
+        "Електрика",
+        "Двері",
+        "Кузов"
+      ],
+      "applicability": {
+        "groups": [
+          "C",
+          "D"
+        ],
+        "required_fields": [
+          "body_type",
+          "options"
+        ]
+      }
+    },
+    {
+      "name": "Радар сліпих зон",
+      "category": "Електрика",
+      "subcategory": "Системи допомоги водію",
+      "aliases": [
+        "Радар сліпих зон",
+        "датчик сліпих зон",
+        "датчик слепых зон"
+      ],
+      "categories": [
+        "Електрика"
+      ],
+      "applicability": {
+        "groups": [
+          "D"
+        ],
+        "required_fields": [
+          "options"
+        ]
+      },
+      "require_side": true
+    },
+    {
+      "name": "Динамік дверей",
+      "category": "Салон",
+      "subcategory": "Аудіосистема",
+      "aliases": [
+        "Динамік дверей",
+        "динамік дверний",
+        "динамик дверной"
+      ],
+      "categories": [
+        "Інтер’єр / салон",
+        "Салон",
+        "Двері",
+        "Кузов"
+      ],
+      "applicability": {
+        "groups": [
+          "C",
+          "D"
+        ],
+        "required_fields": [
+          "body_type",
+          "options"
+        ]
+      },
+      "require_side": true,
+      "require_position": true
+    },
+    {
+      "name": "Високочастотний динамік дверей",
+      "category": "Салон",
+      "subcategory": "Аудіосистема",
+      "aliases": [
+        "Високочастотний динамік дверей",
+        "динамік твітер дверний",
+        "динамик твитер дверной"
+      ],
+      "categories": [
+        "Інтер’єр / салон",
+        "Салон",
+        "Двері",
+        "Кузов"
+      ],
+      "applicability": {
+        "groups": [
+          "C",
+          "D"
+        ],
+        "required_fields": [
+          "body_type",
+          "options"
+        ]
+      },
+      "require_side": true
+    },
+    {
+      "name": "Підсилювач аудіо",
+      "category": "Салон",
+      "subcategory": "Аудіосистема",
+      "aliases": [
+        "Підсилювач аудіо",
+        "усилитель аудио"
+      ],
+      "categories": [
+        "Інтер’єр / салон",
+        "Салон",
+        "Електрика"
+      ],
+      "applicability": {
+        "groups": [
+          "D"
+        ],
+        "required_fields": [
+          "options"
+        ]
+      }
+    },
+    {
+      "name": "Мікрофон салону",
+      "category": "Салон",
+      "subcategory": "Мультимедіа",
+      "aliases": [
+        "Мікрофон салону",
+        "мікрофон у стелі",
+        "микрофон в потолке"
+      ],
+      "categories": [
+        "Інтер’єр / салон",
+        "Салон",
+        "Електрика"
+      ],
+      "applicability": {
+        "groups": [
+          "D"
+        ],
+        "required_fields": [
+          "options"
+        ]
+      }
+    },
+    {
+      "name": "Датчик температури повітря салону",
+      "category": "Салон",
+      "subcategory": "Кліматична система",
+      "aliases": [
+        "Датчик температури повітря салону",
+        "датчик температури повітря у салоні",
+        "датчик температуры воздуха в салоне"
+      ],
+      "categories": [
+        "Інтер’єр / салон",
+        "Салон",
+        "Електрика"
+      ],
+      "applicability": {
+        "groups": [
+          "D"
+        ],
+        "required_fields": [
+          "options"
+        ]
+      }
+    },
+    {
+      "name": "Датчик температури повітря HVAC",
+      "category": "Салон",
+      "subcategory": "Кліматична система",
+      "aliases": [
+        "Датчик температури повітря HVAC",
+        "датчик температури повітря у пічці",
+        "датчик температуры воздуха в печке"
+      ],
+      "categories": [
+        "Інтер’єр / салон",
+        "Салон",
+        "Електрика"
+      ],
+      "applicability": {
+        "groups": [
+          "D"
+        ],
+        "required_fields": [
+          "options"
+        ]
+      }
+    },
+    {
+      "name": "Вентилятор пічки",
+      "category": "Салон",
+      "subcategory": "Кліматична система",
+      "aliases": [
+        "Вентилятор пічки",
+        "мотор вентилятор пічки",
+        "мотор вентилятор печки"
+      ],
+      "categories": [
+        "Інтер’єр / салон",
+        "Салон",
+        "Електрика"
+      ],
+      "applicability": {
+        "groups": [
+          "D"
+        ],
+        "required_fields": [
+          "options"
+        ]
+      }
+    },
+    {
+      "name": "Випарник кондиціонера",
+      "category": "Салон",
+      "subcategory": "Кліматична система",
+      "aliases": [
+        "Випарник кондиціонера",
+        "випарник пічки",
+        "испаритель печки"
+      ],
+      "categories": [
+        "Інтер’єр / салон",
+        "Салон"
+      ],
+      "applicability": {
+        "groups": [
+          "D"
+        ],
+        "required_fields": [
+          "options"
+        ]
+      }
+    },
+    {
+      "name": "Ручка стелі",
+      "category": "Салон",
+      "subcategory": "Оздоблення даху",
+      "aliases": [
+        "Ручка стелі",
+        "ручка потолка"
+      ],
+      "categories": [
+        "Інтер’єр / салон",
+        "Салон"
+      ],
+      "applicability": {
+        "groups": [
+          "C"
+        ],
+        "required_fields": [
+          "body_type"
+        ]
+      },
+      "require_side": true,
+      "require_position": true
+    },
+    {
+      "name": "Покриття підлоги",
+      "category": "Салон",
+      "subcategory": "Покриття підлоги",
+      "aliases": [
+        "Покриття підлоги",
+        "покрытие пола"
+      ],
+      "categories": [
+        "Інтер’єр / салон",
+        "Салон"
+      ],
+      "applicability": {
+        "groups": [
+          "C"
+        ],
+        "required_fields": [
+          "body_type"
+        ]
+      }
+    },
+    {
+      "name": "Накладка центральної консолі",
+      "category": "Салон",
+      "subcategory": "Центральна консоль",
+      "aliases": [
+        "Накладка центральної консолі",
+        "накладка центральной консоли"
+      ],
+      "categories": [
+        "Інтер’єр / салон",
+        "Салон"
+      ],
+      "applicability": {
+        "groups": [
+          "C",
+          "D"
+        ],
+        "required_fields": [
+          "body_type",
+          "options"
+        ]
+      }
+    },
+    {
+      "name": "Замок дверей",
+      "category": "Кузов",
+      "subcategory": "Двері",
+      "aliases": [
+        "Замок дверей",
+        "замок двери",
+        "замок дверей"
+      ],
+      "categories": [
+        "Двері",
+        "Кузов"
+      ],
+      "applicability": {
+        "groups": [
+          "C",
+          "D"
+        ],
+        "required_fields": [
+          "body_type",
+          "options"
+        ]
+      },
+      "require_side": true,
+      "require_position": true
+    },
+    {
+      "name": "Петля дверей",
+      "category": "Кузов",
+      "subcategory": "Двері",
+      "aliases": [
+        "Петля дверей",
+        "петля двери"
+      ],
+      "categories": [
+        "Двері",
+        "Кузов"
+      ],
+      "applicability": {
+        "groups": [
+          "C"
+        ],
+        "required_fields": [
+          "body_type"
+        ]
+      },
+      "require_side": true,
+      "require_position": true
+    },
+    {
+      "name": "Ручка дверей",
+      "category": "Кузов",
+      "subcategory": "Двері",
+      "aliases": [
+        "Ручка дверей",
+        "ручка двери"
+      ],
+      "categories": [
+        "Двері",
+        "Кузов"
+      ],
+      "applicability": {
+        "groups": [
+          "C",
+          "D"
+        ],
+        "required_fields": [
+          "body_type",
+          "options"
+        ]
+      },
+      "require_side": true,
+      "require_position": true
+    },
+    {
+      "name": "Кнопка центрального замка",
+      "category": "Електрика",
+      "subcategory": "Керування дверима",
+      "aliases": [
+        "Кнопка центрального замка",
+        "кнопка центрального замка"
+      ],
+      "categories": [
+        "Електрика",
+        "Інтер’єр / салон",
+        "Салон"
+      ],
+      "applicability": {
+        "groups": [
+          "C"
+        ],
+        "required_fields": [
+          "body_type"
+        ]
+      }
+    },
+    {
+      "name": "Кронштейн опори двигуна",
+      "category": "Силовий агрегат",
+      "subcategory": "Кріплення двигуна",
+      "aliases": [
+        "Кронштейн опори двигуна",
+        "кронштейн подушки двигуна",
+        "кронштейн подушки двигателя"
+      ],
+      "categories": [
+        "Двигун",
+        "Силовий агрегат"
+      ],
+      "applicability": {
+        "groups": [
+          "B",
+          "C"
+        ],
+        "required_fields": [
+          "powertrain",
+          "engine_code"
+        ]
+      }
+    },
+    {
+      "name": "Кронштейн ресори",
+      "category": "Ходова частина",
+      "subcategory": "Підвіска",
+      "aliases": [
+        "Кронштейн ресори",
+        "кронштейн рессоры"
+      ],
+      "categories": [
+        "Підвіска та кермове управління",
+        "Ходова частина"
+      ],
+      "applicability": {
+        "groups": [
+          "C"
+        ],
+        "required_fields": [
+          "drive",
+          "body_type"
+        ]
+      }
+    },
+    {
+      "name": "Опора ресори",
+      "category": "Ходова частина",
+      "subcategory": "Підвіска",
+      "aliases": [
+        "Опора ресори",
+        "опора рессоры"
+      ],
+      "categories": [
+        "Підвіска та кермове управління",
+        "Ходова частина"
+      ],
+      "applicability": {
+        "groups": [
+          "C"
+        ],
+        "required_fields": [
+          "drive",
+          "body_type"
+        ]
+      }
+    },
+    {
+      "name": "Кронштейн каталізатора",
+      "category": "Силовий агрегат",
+      "subcategory": "Система випуску",
+      "aliases": [
+        "Кронштейн каталізатора",
+        "кронштейн катализатора"
+      ],
+      "categories": [
+        "Двигун",
+        "Силовий агрегат"
+      ],
+      "applicability": {
+        "groups": [
+          "B"
+        ],
+        "required_fields": [
+          "engine_code"
+        ]
+      }
+    },
+    {
+      "name": "Кронштейн карданного вала",
+      "category": "Силовий агрегат",
+      "subcategory": "Трансмісія",
+      "aliases": [
+        "Кронштейн карданного вала",
+        "кронштейн карданного валу",
+        "кронштейн карданного вала"
+      ],
+      "categories": [
+        "Трансмісія"
+      ],
+      "applicability": {
+        "groups": [
+          "C"
+        ],
+        "required_fields": [
+          "drive",
+          "transmission"
+        ]
+      }
+    }
+  ]
+}

@@ -8,7 +8,8 @@ from app.services.catalogue_format import digest
 from app.services.aleto_import import CATEGORY_ALIASES
 DATA=Path(__file__).resolve().parents[1]/'data'
 BASE=json.loads((DATA/'dismantling_catalog.json').read_text())
-RULES=json.loads((DATA/'canonical_rules_v1.json').read_text())
+RULES=json.loads((DATA/'canonical_rules_v1_5.json').read_text())
+from app.services.canonical_terms import extract_terms,conditions_match,DIRECTION_FORMS,COSMETIC_FORMS
 
 def norm(s):return ' '.join(re.sub(r'[^\w]+',' ',unicodedata.normalize('NFKC',s or '').casefold()).split())
 def sid(*values):return str(uuid5(NAMESPACE_URL,'carpot.canonical.v3:'+digest(values)))
@@ -27,6 +28,8 @@ DIRECTIONS={
  'outer':{'зовнішній','зовнішня','зовнішнє','наружный','наружная','наружное','outer'},
 }
 COSMETIC=set('чорний чорна чорне черный черная черное білий біла біле белый белая белое червоний червона красный красная сірий сіра серый серая синій синя синий синяя бежевий бежевый срібний серебристый used бу'.split())
+for key,forms in DIRECTION_FORMS.items():DIRECTIONS[key].update(forms)
+COSMETIC.update(COSMETIC_FORMS)
 COSMETIC.update('подряпини подряпина царапины царапина пісок песок сколи сколы відколи вмятины іржавий іржава ржавый ржавая потерта потертий потертый потёртый потертость павутинка павутина'.split())
 TECH=set('full адаптив led ксенон xenon галоген halogen адаптивна адаптивний адаптивная adaptive'.split())
 
@@ -72,11 +75,13 @@ def surface(source):
         if re.search(pattern,text):removed.append({field:value});text=re.sub(pattern,' ',text)
     for model in title_models:text=re.sub(r'(?<!\w)'+re.escape(model)+r'(?!\w)',' ',text)
     text=re.sub(r'\b(?:18[89]\d|19\d\d|20\d\d|2100)\b',' ',text)
+    text=extract_terms(text,features)
     text=norm(text)
     tokens=text.split();found={k for k,words in DIRECTIONS.items() if words.intersection(tokens)}
     for field in ('side','position'):
         found.update(k for k,words in DIRECTIONS.items() if words.intersection(norm(source.get(field,'')).split()))
     conflicts=[]
+    if len(features.get('ordinal_labels',[]))>1:conflicts.append('multiple installation ordinals')
     for a,b in [('left','right'),('front','rear'),('upper','lower'),('inner','outer')]:
         if a in found and b in found:conflicts.append(a+'/'+b)
     direction_words=set().union(*DIRECTIONS.values())
@@ -109,7 +114,7 @@ def classify(source,aliases=()):
         c=alias['criteria']
         match=(c.get('source_key')==source['key'] and c.get('source_sha')==source['sha']) if c.get('source_key') else (
             norm(c.get('phrase',''))==parsed['phrase'] and all(not c.get(k) or norm(c[k])==norm(source.get(k,'')) for k in ('category','subcategory','manufacturer','model')))
-        if match:candidate.append(alias)
+        if match and conditions_match(c.get('conditions'),source,parsed):candidate.append(alias)
     if any(a['criteria'].get('source_key') for a in candidate):candidate=[a for a in candidate if a['criteria'].get('source_key')]
     if candidate:evidence['alias_ids']=[a['id'] for a in candidate]
     if any(not a.get('enabled',True) for a in candidate):return dict(quality='review',reason='Owner requested review',evidence=evidence)
@@ -118,26 +123,37 @@ def classify(source,aliases=()):
     if candidate:
         chosen=sorted(candidate,key=lambda a:a['id'])[0];c=chosen['criteria'];override=c.get('installation')
         if parsed['conflicts'] and not override:return dict(quality='review',reason='Conflicting installation facts',evidence=evidence)
-        installation=override or {k:parsed[k] for k in ('side','position','mount')}
+        installation=override or installation_for(parsed)
         evidence['alias_ids']=[a['id'] for a in candidate]
         return dict(quality='verified_owner',type_id=chosen['type_id'],installation=installation,features={**parsed['features'],'owner_reviewed_descriptor':parsed['phrase']},evidence=evidence)
     if not parsed['phrase']:return dict(quality='unprocessed',reason='No functional name',evidence=evidence)
-    rules=LEX.get(parsed['phrase'],[])
-    if len(rules)!=1:return dict(quality='review' if rules else 'unprocessed',reason='No unique exact functional rule',evidence=evidence)
-    rule=rules[0];category=CATEGORY_ALIASES.get(source.get('category',''),source.get('category',''))
-    if norm(category) not in {norm(c) for c in rule['categories']}:
-        return dict(quality='review',reason='Function/context disagreement',evidence=evidence)
+    lexical=LEX.get(parsed['phrase'],[])
+    category=CATEGORY_ALIASES.get(source.get('category',''),source.get('category',''))
+    rules=[r for r in lexical if norm(category) in {norm(c) for c in r['categories']} and
+        (not r.get('subcategories') or norm(source.get('subcategory','')) in {norm(x) for x in r['subcategories']} or
+         (r['name']=='Паливна форсунка' and parsed['features'].get('fuel_labels')))]
+    if len(rules)!=1:return dict(quality='review' if lexical else 'unprocessed',reason='Function/context disagreement' if lexical and not rules else 'No unique exact functional rule',evidence=evidence)
+    rule=rules[0]
     position=parsed['position']
     if parsed['conflicts'] or (rule.get('require_assembly') and rule['require_assembly'] not in parsed['features'].get('assembly',[])) or (rule.get('require_mount') and rule['require_mount'] not in parsed['mount']) or (rule.get('require_side') and parsed['side']=='unknown') or (
         rule.get('require_position') and position=='unknown') or (rule.get('require_rear_word') and position!='rear') or (
         rule.get('forbidden_position')==position):
         return dict(quality='review',reason='Installation is missing or contradictory',evidence=evidence)
     position=rule.get('default_position','unknown') if position=='unknown' else position
-    return dict(quality='verified_rule',type_id=rule['type_id'],installation={'side':parsed['side'],'position':position,'mount':parsed['mount']},features=parsed['features'],evidence=evidence)
+    return dict(quality='verified_rule',type_id=rule['type_id'],installation=installation_for(parsed,position),features=parsed['features'],evidence=evidence)
+
+
+def installation_for(parsed,position=None):
+    value={k:parsed[k] for k in ('side','position','mount')}
+    if position is not None:value['position']=position
+    if parsed['features'].get('ordinal_labels'):value['ordinal']=parsed['features']['ordinal_labels']
+    return value
 
 
 def placement(result):
-    p=result['installation'];details={'mount':sorted(p.get('mount',[]))};key=digest([result['type_id'],p['side'],p['position'],details])
+    p=result['installation'];details={'mount':sorted(set(p.get('mount',[])))}
+    if p.get('ordinal'):details['ordinal']=sorted(set(p['ordinal']))
+    key=digest([result['type_id'],p['side'],p['position'],details])
     return dict(id=sid('placement',key),identity_key=key,type_id=result['type_id'],side=p['side'],position=p['position'],details=details)
 
 
@@ -152,4 +168,4 @@ def variant(source,result,place):
 # Pin executable normalization as well as vocabulary; old publications are never
 # silently reinterpreted after a parser/Unicode change.
 from hashlib import sha256
-RULE_FINGERPRINT=digest([RULES,sha256(Path(__file__).read_bytes()).hexdigest(),unicodedata.unidata_version])
+RULE_FINGERPRINT=digest([RULES,sha256(Path(__file__).read_bytes()).hexdigest(),sha256((Path(__file__).parent/'canonical_terms.py').read_bytes()).hexdigest(),unicodedata.unidata_version])

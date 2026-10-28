@@ -39,7 +39,7 @@ test('a superseded session response cannot leak data, log out the new user or di
  }finally{Object.assign(globalThis,saved);}
 });
 
-for(const head of ['b8716962f6b8','021e8f6f220c','41f9a2c87d10','5c7d9e1a320f']){
+for(const head of ['b8716962f6b8','021e8f6f220c','41f9a2c87d10','5c7d9e1a320f','76af12de4b90']){
  test('accept verified additive catalogue head '+head,()=>assert(isTeamReady({...valid,database_revisions:[head]})));
  for(const patch of [{contract_version:8},{required_revision:head},{features:[]},{database_revisions:[head,TEAM_REVISION]}])test('keep team contract checks '+head+JSON.stringify(patch),()=>assert.equal(isTeamReady({...valid,database_revisions:[head],...patch}),false));
 }

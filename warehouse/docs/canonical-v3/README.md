@@ -1,5 +1,7 @@
 # Dismantling Catalogue v3 — Stage 1
 
+Актуальне розширення: [Stage 1.5 — перевірене покриття, групове погодження та VIN-ready контракт](stage-1.5/README.md). Нижче збережено історичний звіт Stage 1.
+
 Local implementation after `133e9b90ef734b46faa2121b711dc8ac32aec9bb`, branch `feature/carpot-warehouse-mvp`. All changes are under Warehouse. No push, deployment, staging normalization/publication, production operation or merge was performed.
 
 The v2 `part_type` is a source title grouping, not a constructive type. V3 adds a separate immutable reference layer. The old generator is deliberately not switched: existing donor plans continue using their old source/key references. This stage exposes a read-only canonical candidate service for the next generator, and never creates `Part` or `DismantlingItem`.
