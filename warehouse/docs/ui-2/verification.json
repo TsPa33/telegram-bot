@@ -1,0 +1,15 @@
+{
+  "base_sha": "9f65de2ad39a86095ec3ceb85ae71e3f5a00d1b8",
+  "frontend_build": "PASS",
+  "frontend_unit_tests": 416,
+  "browser_viewports": 9,
+  "route_checks": 81,
+  "browser": "PASS",
+  "native_touch": "Chromium CDP touch event sequence; physical Safari not tested",
+  "backend_changed": false,
+  "design_tokens_changed": false,
+  "routes_permissions_changed": false,
+  "domain_data_changed": false,
+  "push": false,
+  "deployment": false
+}

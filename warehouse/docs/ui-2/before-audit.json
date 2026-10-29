@@ -1,0 +1,248 @@
+[
+  {
+    "width": 1440,
+    "height": 600,
+    "sidebar": {
+      "tag": "ASIDE",
+      "class": "sidebar",
+      "height": 600,
+      "scrollHeight": 740,
+      "overflowY": "auto",
+      "minHeight": "0px",
+      "position": "fixed",
+      "flexShrink": "1"
+    },
+    "children": [
+      {
+        "tag": "A",
+        "class": "brand",
+        "height": 43,
+        "scrollHeight": 43,
+        "overflowY": "visible",
+        "minHeight": "auto",
+        "position": "static",
+        "flexShrink": "1"
+      },
+      {
+        "tag": "DIV",
+        "class": "workspace",
+        "height": 56,
+        "scrollHeight": 56,
+        "overflowY": "visible",
+        "minHeight": "auto",
+        "position": "static",
+        "flexShrink": "1"
+      },
+      {
+        "tag": "DIV",
+        "class": "nav-label",
+        "height": 10,
+        "scrollHeight": 10,
+        "overflowY": "visible",
+        "minHeight": "auto",
+        "position": "static",
+        "flexShrink": "1"
+      },
+      {
+        "tag": "NAV",
+        "class": "",
+        "height": 338,
+        "scrollHeight": 338,
+        "overflowY": "visible",
+        "minHeight": "auto",
+        "position": "static",
+        "flexShrink": "1"
+      },
+      {
+        "tag": "A",
+        "class": "",
+        "height": 44,
+        "scrollHeight": 44,
+        "overflowY": "visible",
+        "minHeight": "44px",
+        "position": "static",
+        "flexShrink": "1"
+      },
+      {
+        "tag": "A",
+        "class": "settings-nav",
+        "height": 44,
+        "scrollHeight": 44,
+        "overflowY": "visible",
+        "minHeight": "44px",
+        "position": "static",
+        "flexShrink": "1"
+      },
+      {
+        "tag": "DIV",
+        "class": "sidebar-foot",
+        "height": 59,
+        "scrollHeight": 59,
+        "overflowY": "visible",
+        "minHeight": "auto",
+        "position": "static",
+        "flexShrink": "1"
+      }
+    ],
+    "main": {
+      "tag": "DIV",
+      "class": "main",
+      "height": 5873,
+      "scrollHeight": 5873,
+      "overflowY": "visible",
+      "minHeight": "600px",
+      "position": "static",
+      "flexShrink": "1"
+    },
+    "content": {
+      "tag": "MAIN",
+      "class": "",
+      "height": 5742,
+      "scrollHeight": 5742,
+      "overflowY": "visible",
+      "minHeight": "auto",
+      "position": "static",
+      "flexShrink": "1"
+    },
+    "root": {
+      "height": 600,
+      "scrollHeight": 5873
+    },
+    "scrollables": [
+      {
+        "tag": "ASIDE",
+        "class": "sidebar",
+        "height": 600,
+        "scrollHeight": 740,
+        "overflowY": "auto",
+        "minHeight": "0px",
+        "position": "fixed",
+        "flexShrink": "1"
+      }
+    ],
+    "background_after_wheel": 300
+  },
+  {
+    "width": 375,
+    "height": 480,
+    "sidebar": {
+      "tag": "ASIDE",
+      "class": "sidebar open",
+      "height": 480,
+      "scrollHeight": 738,
+      "overflowY": "auto",
+      "minHeight": "0px",
+      "position": "fixed",
+      "flexShrink": "1"
+    },
+    "children": [
+      {
+        "tag": "A",
+        "class": "brand",
+        "height": 43,
+        "scrollHeight": 43,
+        "overflowY": "visible",
+        "minHeight": "auto",
+        "position": "static",
+        "flexShrink": "1"
+      },
+      {
+        "tag": "DIV",
+        "class": "workspace",
+        "height": 56,
+        "scrollHeight": 56,
+        "overflowY": "visible",
+        "minHeight": "auto",
+        "position": "static",
+        "flexShrink": "1"
+      },
+      {
+        "tag": "DIV",
+        "class": "nav-label",
+        "height": 10,
+        "scrollHeight": 10,
+        "overflowY": "visible",
+        "minHeight": "auto",
+        "position": "static",
+        "flexShrink": "1"
+      },
+      {
+        "tag": "NAV",
+        "class": "",
+        "height": 338,
+        "scrollHeight": 338,
+        "overflowY": "visible",
+        "minHeight": "auto",
+        "position": "static",
+        "flexShrink": "1"
+      },
+      {
+        "tag": "A",
+        "class": "",
+        "height": 44,
+        "scrollHeight": 44,
+        "overflowY": "visible",
+        "minHeight": "44px",
+        "position": "static",
+        "flexShrink": "1"
+      },
+      {
+        "tag": "A",
+        "class": "settings-nav",
+        "height": 44,
+        "scrollHeight": 44,
+        "overflowY": "visible",
+        "minHeight": "44px",
+        "position": "static",
+        "flexShrink": "1"
+      },
+      {
+        "tag": "DIV",
+        "class": "sidebar-foot",
+        "height": 59,
+        "scrollHeight": 59,
+        "overflowY": "visible",
+        "minHeight": "auto",
+        "position": "static",
+        "flexShrink": "1"
+      }
+    ],
+    "main": {
+      "tag": "DIV",
+      "class": "main",
+      "height": 12792,
+      "scrollHeight": 12792,
+      "overflowY": "visible",
+      "minHeight": "480px",
+      "position": "static",
+      "flexShrink": "1"
+    },
+    "content": {
+      "tag": "MAIN",
+      "class": "",
+      "height": 12649,
+      "scrollHeight": 12649,
+      "overflowY": "visible",
+      "minHeight": "auto",
+      "position": "static",
+      "flexShrink": "1"
+    },
+    "root": {
+      "height": 480,
+      "scrollHeight": 12792
+    },
+    "scrollables": [
+      {
+        "tag": "ASIDE",
+        "class": "sidebar open",
+        "height": 480,
+        "scrollHeight": 738,
+        "overflowY": "auto",
+        "minHeight": "0px",
+        "position": "fixed",
+        "flexShrink": "1"
+      }
+    ],
+    "background_after_wheel": 0
+  }
+]

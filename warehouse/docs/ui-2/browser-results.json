@@ -1,0 +1,191 @@
+[
+  {
+    "width": 1440,
+    "height": 900,
+    "routes": 9,
+    "metrics": {
+      "rootOverflow": "hidden",
+      "rootHeight": 900,
+      "rootScrollHeight": 900,
+      "menuHeight": 688,
+      "menuScrollHeight": 688,
+      "scrollbarWidth": "thin",
+      "overscroll": "contain"
+    },
+    "all_menu_items_keyboard_accessible": true,
+    "native_touch_tested": false,
+    "background_locked": false,
+    "scroll_restored": true,
+    "resize_cleanup": true,
+    "stock_plan_prices_unchanged": true,
+    "js_errors": []
+  },
+  {
+    "width": 1280,
+    "height": 720,
+    "routes": 9,
+    "metrics": {
+      "rootOverflow": "hidden",
+      "rootHeight": 720,
+      "rootScrollHeight": 720,
+      "menuHeight": 508,
+      "menuScrollHeight": 536,
+      "scrollbarWidth": "thin",
+      "overscroll": "contain"
+    },
+    "all_menu_items_keyboard_accessible": true,
+    "native_touch_tested": false,
+    "background_locked": false,
+    "scroll_restored": true,
+    "resize_cleanup": true,
+    "stock_plan_prices_unchanged": true,
+    "js_errors": []
+  },
+  {
+    "width": 768,
+    "height": 768,
+    "routes": 9,
+    "metrics": {
+      "rootOverflow": "hidden",
+      "rootHeight": 768,
+      "rootScrollHeight": 768,
+      "menuHeight": 558,
+      "menuScrollHeight": 558,
+      "scrollbarWidth": "thin",
+      "overscroll": "contain"
+    },
+    "all_menu_items_keyboard_accessible": true,
+    "native_touch_tested": false,
+    "background_locked": true,
+    "scroll_restored": true,
+    "resize_cleanup": true,
+    "stock_plan_prices_unchanged": true,
+    "js_errors": []
+  },
+  {
+    "width": 390,
+    "height": 844,
+    "routes": 9,
+    "metrics": {
+      "rootOverflow": "hidden",
+      "rootHeight": 844,
+      "rootScrollHeight": 844,
+      "menuHeight": 634,
+      "menuScrollHeight": 634,
+      "scrollbarWidth": "thin",
+      "overscroll": "contain"
+    },
+    "all_menu_items_keyboard_accessible": true,
+    "native_touch_tested": false,
+    "background_locked": true,
+    "scroll_restored": true,
+    "resize_cleanup": true,
+    "stock_plan_prices_unchanged": true,
+    "js_errors": []
+  },
+  {
+    "width": 375,
+    "height": 812,
+    "routes": 9,
+    "metrics": {
+      "rootOverflow": "hidden",
+      "rootHeight": 812,
+      "rootScrollHeight": 812,
+      "menuHeight": 602,
+      "menuScrollHeight": 602,
+      "scrollbarWidth": "thin",
+      "overscroll": "contain"
+    },
+    "all_menu_items_keyboard_accessible": true,
+    "native_touch_tested": false,
+    "background_locked": true,
+    "scroll_restored": true,
+    "resize_cleanup": true,
+    "stock_plan_prices_unchanged": true,
+    "js_errors": []
+  },
+  {
+    "width": 1440,
+    "height": 600,
+    "routes": 9,
+    "metrics": {
+      "rootOverflow": "hidden",
+      "rootHeight": 600,
+      "rootScrollHeight": 600,
+      "menuHeight": 388,
+      "menuScrollHeight": 536,
+      "scrollbarWidth": "thin",
+      "overscroll": "contain"
+    },
+    "all_menu_items_keyboard_accessible": true,
+    "native_touch_tested": false,
+    "background_locked": false,
+    "scroll_restored": true,
+    "resize_cleanup": true,
+    "stock_plan_prices_unchanged": true,
+    "js_errors": []
+  },
+  {
+    "width": 1440,
+    "height": 320,
+    "routes": 9,
+    "metrics": {
+      "rootOverflow": "hidden",
+      "rootHeight": 320,
+      "rootScrollHeight": 320,
+      "menuHeight": 169,
+      "menuScrollHeight": 526,
+      "scrollbarWidth": "thin",
+      "overscroll": "contain"
+    },
+    "all_menu_items_keyboard_accessible": true,
+    "native_touch_tested": false,
+    "background_locked": false,
+    "scroll_restored": true,
+    "resize_cleanup": true,
+    "stock_plan_prices_unchanged": true,
+    "js_errors": []
+  },
+  {
+    "width": 375,
+    "height": 480,
+    "routes": 9,
+    "metrics": {
+      "rootOverflow": "hidden",
+      "rootHeight": 480,
+      "rootScrollHeight": 480,
+      "menuHeight": 329,
+      "menuScrollHeight": 526,
+      "scrollbarWidth": "thin",
+      "overscroll": "contain"
+    },
+    "all_menu_items_keyboard_accessible": true,
+    "native_touch_tested": true,
+    "background_locked": true,
+    "scroll_restored": true,
+    "resize_cleanup": true,
+    "stock_plan_prices_unchanged": true,
+    "js_errors": []
+  },
+  {
+    "width": 375,
+    "height": 240,
+    "routes": 9,
+    "metrics": {
+      "rootOverflow": "auto",
+      "rootHeight": 240,
+      "rootScrollHeight": 677,
+      "menuHeight": 526,
+      "menuScrollHeight": 526,
+      "scrollbarWidth": "thin",
+      "overscroll": "contain"
+    },
+    "all_menu_items_keyboard_accessible": true,
+    "native_touch_tested": false,
+    "background_locked": true,
+    "scroll_restored": true,
+    "resize_cleanup": true,
+    "stock_plan_prices_unchanged": true,
+    "js_errors": []
+  }
+]

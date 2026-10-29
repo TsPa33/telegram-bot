@@ -17,6 +17,7 @@ import {
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import {useSidebarScroll} from "./useSidebarScroll";
 import {
   Link,
   NavLink,
@@ -69,6 +70,7 @@ export default function App() {
     [toast, setToast] = useState("");
   const location = useLocation(),
     navigate = useNavigate();
+  const sidebarScroll=useSidebarScroll(menu,setMenu,location.pathname,!!user&&!checking);
   const [accessUnverified,setAccessUnverified]=useState(false);
   const currentUser=useRef<Row|null>(null),generation=useRef(0),inFlight=useRef(0);
   const retryIdentity=useRef<(force?:boolean)=>void>(()=>{});
@@ -152,7 +154,7 @@ export default function App() {
   const current = [...nav,...secondary,{to:"/administration/catalogue/import",label:"Імпорт глобального каталогу"}].find((n) => n.to === location.pathname || (n.to === "/orders" && location.pathname.startsWith("/orders/")));
   return (
     <TeamIdentity.Provider value={user}><div className="app">
-      <aside className={menu ? "sidebar open" : "sidebar"}>
+      <aside ref={sidebarScroll.sidebar} id="warehouse-sidebar" className={sidebarScroll.mobileOpen ? "sidebar open" : "sidebar"} aria-label="Навігація Warehouse" role={sidebarScroll.mobileOpen?"dialog":undefined} aria-modal={sidebarScroll.mobileOpen?true:undefined} inert={sidebarScroll.mobile&&!sidebarScroll.mobileOpen}>
         <Link to="/" className="brand">
           <span className="brand-icon">
             <Warehouse size={23} />
@@ -161,6 +163,7 @@ export default function App() {
             CarPot<strong>WAREHOUSE</strong>
           </span>
         </Link>
+        {sidebarScroll.mobileOpen&&<button className="sidebar-close icon-button" aria-label="Закрити меню" onClick={()=>setMenu(false)}><X size={20}/></button>}
         <div className="workspace">
           <span className="workspace-letter">
             {user.name.slice(0, 1).toUpperCase()}
@@ -171,7 +174,7 @@ export default function App() {
           </div>
           <ShieldCheck size={16} />
         </div>
-        <div className="nav-label">УПРАВЛІННЯ</div>
+        <div className="sidebar-scroll" ref={sidebarScroll.scroll}><div className="nav-label">УПРАВЛІННЯ</div>
         <nav>
           {nav.filter(n=>can(routePermission(n.to))).map((n) => (
             <NavLink key={n.to} to={n.to} end={n.to!=="/orders"}>
@@ -186,19 +189,25 @@ export default function App() {
           <div className="safe-dot" />
           Незалежний облік складу<small>CarPot Warehouse · MVP</small>
         </div>
+        </div>
       </aside>
-      {menu && (
+      {sidebarScroll.mobileOpen && (
         <button
           aria-label="Закрити меню"
+          aria-hidden="true"
+          tabIndex={-1}
           className="shade"
           onClick={() => setMenu(false)}
         />
       )}
-      <div className="main">
+      <div className="main" inert={sidebarScroll.mobileOpen}>
         <header className="topbar">
           <div>
             <button
+              ref={sidebarScroll.trigger}
               aria-label="Відкрити меню"
+              aria-controls="warehouse-sidebar"
+              aria-expanded={sidebarScroll.mobileOpen}
               className="mobile-menu icon-button"
               onClick={() => setMenu(!menu)}
             >

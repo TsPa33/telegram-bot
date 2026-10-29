@@ -102,7 +102,7 @@ dialog::backdrop { background:var(--color-overlay); }
 }
 
 /* Shared authorized shell. No route-dependent theme or navigation behavior. */
-.sidebar { overflow-y:auto;background:var(--color-sidebar);color:var(--color-sidebar-text);border-color:var(--color-sidebar-border); }
+.sidebar { overflow:hidden;background:var(--color-sidebar);color:var(--color-sidebar-text);border-color:var(--color-sidebar-border); }
 .sidebar .brand,.sidebar a { color:var(--color-sidebar-text); }
 .sidebar .brand-icon { background:var(--color-sidebar-active);color:var(--color-surface); }
 .sidebar :is(.brand strong,.nav-label,.workspace small,.workspace>svg,.sidebar-foot) { color:var(--color-sidebar-secondary); }
@@ -121,3 +121,23 @@ dialog::backdrop { background:var(--color-overlay); }
 .tabs button.active,.tabs button[aria-selected=true] { color:var(--color-accent-strong);border-bottom-color:var(--color-accent-strong); }
 /* The mobile menu backdrop is a button for dismissal, not a secondary control. */
 .app .shade,.app .shade:hover,.app .shade:active { background:var(--color-overlay);border:0;box-shadow:none; }
+
+/* UI-2: only navigation scrolls. The document remains the main content scroller. */
+.sidebar>.brand,.sidebar>.workspace { flex:0 0 auto; }
+.sidebar-scroll { display:flex;flex-direction:column;flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;overscroll-behavior-y:contain;touch-action:pan-y;scrollbar-width:thin;scrollbar-color:var(--color-sidebar-border) transparent; }
+.sidebar-scroll nav,.sidebar-scroll>a { flex-shrink:0; }
+.sidebar-scroll::-webkit-scrollbar { width:6px; }
+.sidebar-scroll::-webkit-scrollbar-track { background:transparent; }
+.sidebar-scroll::-webkit-scrollbar-thumb { background:var(--color-sidebar-border);border-radius:8px; }
+.sidebar-scroll:hover,.sidebar-scroll:focus-within { scrollbar-color:var(--color-sidebar-secondary) transparent; }
+.sidebar-scroll:hover::-webkit-scrollbar-thumb,.sidebar-scroll:focus-within::-webkit-scrollbar-thumb { background:var(--color-sidebar-secondary); }
+.sidebar-scroll>a { display:flex;align-items:center;gap:11px;min-height:44px;padding:12px;border-radius:var(--radius-control);font-size:12px;color:var(--color-sidebar-text); }
+.sidebar-scroll>a:hover,.sidebar-scroll>a.active { background:var(--color-sidebar-active);color:var(--color-surface); }
+.sidebar-scroll>.sidebar-foot { flex:0 0 auto;margin-top:auto; }
+.app .shade { touch-action:none; }
+@media(max-height:480px){.sidebar{padding-top:14px;padding-bottom:12px}.sidebar>.workspace{margin-top:12px;margin-bottom:12px}.sidebar-scroll>.sidebar-foot{padding-top:12px}}
+/* Very short landscape windows must prioritize access over a fixed identity. */
+@media(max-height:280px){.sidebar{overflow-y:auto;scrollbar-width:thin}.sidebar-scroll{flex:none;overflow:visible}}
+
+.sidebar .sidebar-close { position:absolute;right:6px;top:22px;color:var(--color-sidebar-text); }
+@media(max-height:480px){.sidebar .sidebar-close{top:6px}}
