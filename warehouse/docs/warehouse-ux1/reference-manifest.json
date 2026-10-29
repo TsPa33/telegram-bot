@@ -1,0 +1,42 @@
+[
+  {
+    "file": "00_full_reference.png",
+    "sha256": "88c9d76d9d60f1a24e7cf56c44f8ced13499112b5a19949887c584aa381fb577"
+  },
+  {
+    "file": "01_vehicle_header.png",
+    "sha256": "65a908e4b79a96840600bdddfa4d9dbcdfaac5ad4c721a29a003a2d90e883fed"
+  },
+  {
+    "file": "02_stats_cards.png",
+    "sha256": "2a8d585c91da08cb00322b25817d7e8e7fb4d89f0c64b3963443ed10ebbfd94c"
+  },
+  {
+    "file": "03_search_and_filters.png",
+    "sha256": "0e96498a6d92402321166c09ec1cf7583f58dde1cf0cf782dcd6842858a2af47"
+  },
+  {
+    "file": "04_compact_parts_table.png",
+    "sha256": "2ae19bce60dbf51204fe189e32ab32289b7fa8be14e732d6273ef7657a83a22e"
+  },
+  {
+    "file": "05_part_detail_drawer.png",
+    "sha256": "d199ff6623b4e15812c92d783c7b3cab8d0ee166b615ec3ab84ca8efcef84922"
+  },
+  {
+    "file": "06_mobile_cards.png",
+    "sha256": "64c278d4eeb1be11e93e24ac9121e24fe92e15fc6c4de09da50a5fdf5cdf2f20"
+  },
+  {
+    "file": "07_single_part_card.png",
+    "sha256": "dc39c278886d01f0bd07b9f11550b982802f11920f7909b54d3ffb8a8425f86e"
+  },
+  {
+    "file": "08_price_sources_detail.png",
+    "sha256": "c9242d7d19d760c14efd76b73de87839383c70ea6ea2c0e68fc17a7ba10ae0e4"
+  },
+  {
+    "file": "09_bulk_price_form.png",
+    "sha256": "d20a5c59fc77ae8f9bde5e96e0a70fda623735046989e2776e5071f158fa92fd"
+  }
+]

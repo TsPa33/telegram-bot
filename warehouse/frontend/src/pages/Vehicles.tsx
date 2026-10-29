@@ -1,8 +1,8 @@
 import {Permit,useCan} from '../permissions';
-import { Plus, Search } from "lucide-react";
+import { ArrowLeft, CarFront, Pencil, Plus, Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { api, money, type Page, type Row } from "../api";
+import { api, labels, money, when, type Page, type Row } from "../api";
 import { Empty, Modal, Pager, type Field } from "../components";
 import VehicleForm from "../VehicleForm";
 import AletoCatalogue from "../AletoCatalogue";
@@ -11,6 +11,7 @@ import Dismantling from "../Dismantling";
 import ManagedDismantling from "../ManagedDismantling";
 import PowertrainEditor from "../PowertrainEditor";
 import VehicleCard from "../VehicleCard";
+import "../warehouse-ux1.css";
 import {choices, Confirm, Heading, option, State, useLoad, type Notify} from "../shared";
 const vehicleFields: Field[] = [
   { key: "manufacturer", label: "Виробник", required: true },
@@ -68,7 +69,7 @@ export default function Vehicles({notify}:{notify:Notify}) {
     return ()=>{active=false;};
   },[donorId,params.get('info')]);
   return <>
-    <Heading eyebrow="АВТОМОБІЛІ" title="Автомобілі" description="Відкрийте автомобіль, щоб вибрати запчастини або перейти до складу.">
+    {!detail&&<><Heading eyebrow="АВТОМОБІЛІ" title="Автомобілі" description="Відкрийте автомобіль, щоб вибрати запчастини або перейти до складу.">
       <Permit permission="vehicles.create"><button className="secondary" onClick={()=>setEdit({status:'dismantling'})}><Plus size={17}/>Додати автомобіль</button></Permit>
     </Heading>
     {created&&<p role="status">Додано: {created.manufacturer} {created.model} · {created.year}. <button onClick={()=>openDetail(created)}>Відкрити картку</button></p>}
@@ -78,16 +79,16 @@ export default function Vehicles({notify}:{notify:Notify}) {
       {data?.items.map(v=><VehicleCard key={v.id} vehicle={v} context="vehicles" onParts={()=>openDetail(v)} onData={()=>openDetail(v,true)} onSaved={saved}/>)}
       {!loading&&!data?.items.length&&<Empty title={q?'Автомобілів не знайдено':'Додайте перший автомобіль'}>Пов’яжіть запчастини з автомобілем, щоб швидко знаходити їх на складі.</Empty>}
     </section>
-    {data&&<Pager total={data.total} page={page} setPage={setPage}/>}
+    {data&&<Pager total={data.total} page={page} setPage={setPage}/>}</>}
     {edit&&<Modal title={edit.id?'Редагувати автомобіль':'Новий автомобіль-донор'} onClose={()=>setEdit(null)}>
       <VehicleForm initial={edit} fields={vehicleFields.filter(f=>f.key!=='acquisition_cost'||can('parts.view_cost'))} onSave={async values=>{
         const row=await api('/vehicles'+(edit.id?'/'+edit.id:''),edit.id?'PUT':'POST',values);
         if(!edit.id){setCreated(row);setQ('');setPage(0);}saved(row);setEdit(null);notify('Дані автомобіля збережено');
       }}/>
     </Modal>}
-    {detail&&<Modal title={`${detail.manufacturer} ${detail.model} · ${detail.year} · №${detail.number??'—'}`} onClose={closeDetail}>
+    {detail&&<section className="ux1-workspace" aria-label="Автомобіль і запчастини"><button className="ux1-back" onClick={closeDetail}><ArrowLeft size={16}/>Автомобілі</button>
       <VehicleDetail key={detail.id} vehicle={detail} showInfo={showInfo} onSaved={saved} onArchive={()=>{setConfirm(detail);}} onEdit={async()=>{try{const row=await api(`/vehicles/${detail.id}`);closeDetail();setEdit(row);}catch(e){notify((e as Error).message);}}} onRefresh={refresh} notify={notify} onInventory={()=>navigate(`/inventory?vehicle_id=${detail.id}`)}/>
-    </Modal>}
+    </section>}
     {confirm&&<Confirm destructive title="Архівувати автомобіль?" text="Автомобіль залишиться в історії. Його запчастини залишаться на складі." onClose={()=>setConfirm(null)} onConfirm={async()=>{await api('/archive/vehicles/'+confirm.id,'POST');setConfirm(null);closeDetail();reload();notify('Автомобіль переміщено в архів');}}/>}
   </>;
 }
@@ -121,13 +122,21 @@ function VehicleDetail({
   } = useLoad(() => can('analytics.view')?api(`/vehicles/${v.id}/analytics`):Promise.resolve(null), [v.id]);
   const [busy, setBusy] = useState(false);
   const [legacyVehicle,setLegacyVehicle]=useState('');
+  const [tab,setTab]=useState(showInfo?'info':'parts');
+  useEffect(()=>setTab(showInfo?'info':'parts'),[showInfo]);
+  const history=useLoad(()=>tab==='history'&&can('audit.view')?api(`/audit?vehicle_id=${v.id}&limit=50`):Promise.resolve(null),[v.id,tab]);
   return (
     <>
+      <header className="ux1-vehicle-header"><div className="ux1-vehicle-placeholder" role="img" aria-label="Фото автомобіля відсутнє"><CarFront size={44} strokeWidth={1.2}/><span>Фото відсутнє</span></div><div className="ux1-vehicle-identity"><h1>{v.manufacturer} {v.model} · {v.year} · №{v.number??'—'}</h1><div className="ux1-vehicle-tags">{[v.fuel_type,v.engine,v.transmission,v.dismantling_v3?.configuration?.values?.drive].filter(Boolean).map((value,index)=><span key={index}>{value}</span>)}{!v.engine&&!v.fuel_type&&<span>Двигун не уточнено</span>}</div>{v.vin&&<small>VIN: {v.vin}</small>}</div>{!v.archived&&<Permit permission="vehicles.edit"><button className="secondary" onClick={onEdit}><Pencil size={14}/>Редагувати авто</button></Permit>}</header>
+      <nav className="ux1-tabs" aria-label="Розділи автомобіля">{[['parts','Запчастини'],['info','Загальна інформація'],...(can('audit.view')?[['history','Історія операцій']]:[])].map(([key,label])=><button key={key} aria-current={tab===key?'page':undefined} onClick={()=>setTab(key)}>{label}</button>)}</nav>
+      <div hidden={tab!=='parts'}>
       {legacyVehicle!==v.id&&can('catalog.view')&&can('vehicles.view')&&<ManagedDismantling key={v.id} vehicle={v} onSaved={onSaved}/>}
       <details className="vehicle-secondary"><summary>Попередній довідник та джерела</summary>{can('catalog.view')&&can('vehicles.view')&&<AletoCatalogue key={v.id} vehicleId={v.id}/>}
       {canCatalog&&(legacyVehicle===v.id?<><button onClick={()=>setLegacyVehicle('')}>До основного списку деталей</button><Dismantling vehicle={v} onChange={() => {reloadAnalytics();onRefresh();}} onInventory={onInventory} /></>:!v.dismantling_v3?.revision&&<button className="secondary" onClick={()=>setLegacyVehicle(v.id)}>Відкрити попередній план</button>)}
       </details>
-      <details className="vehicle-secondary" open={showInfo}><summary>Дані автомобіля</summary>
+      </div>
+      {tab==='history'&&<section className="ux1-history" aria-label="Історія автомобіля"><State error={history.error} loading={history.loading}/>{history.data?.items.map((r:Row)=><article key={r.id}><strong>{labels[r.type]||'Складська операція'}</strong><span>{when(r.created_at)}</span><p>{r.reason}</p></article>)}{history.data?.items.length===0&&<p>Операцій ще немає.</p>}{history.data?.total>50&&<p>Показано останні 50 операцій.</p>}</section>}
+      <div hidden={tab!=='info'}><details className="vehicle-secondary" open><summary>Дані автомобіля</summary>
       {!v.archived&&<div className="modal-actions"><Permit permission="vehicles.edit"><button onClick={onEdit}>Редагувати дані</button></Permit><Permit permission="inventory.archive"><button onClick={onArchive}>Архівувати автомобіль</button></Permit></div>}
       <dl className="details">
         {[
@@ -194,7 +203,7 @@ function VehicleDetail({
         </button>
       </div>
       </details>
-      </details>
+      </details></div>
     </>
   );
 }

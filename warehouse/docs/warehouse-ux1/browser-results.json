@@ -1,0 +1,40 @@
+[
+  {
+    "width": 1440,
+    "synthetic": true,
+    "total": 227,
+    "stats_filter": true,
+    "category_collapse": true,
+    "search_oem": true,
+    "category_subcategory_status": true,
+    "prices_original_currency": true,
+    "no_provider_or_technical_fields": true,
+    "manual_conflict_preserves_draft": true,
+    "manual_save_restore": true,
+    "existing_detail_opens": true,
+    "stock_and_reserves_unchanged": true,
+    "no_catalogue_or_bulk_writes": true,
+    "theme_scoped": true,
+    "horizontal_overflow": false,
+    "page_errors": []
+  },
+  {
+    "width": 390,
+    "synthetic": true,
+    "total": 227,
+    "stats_filter": true,
+    "category_collapse": true,
+    "search_oem": true,
+    "category_subcategory_status": true,
+    "prices_original_currency": true,
+    "no_provider_or_technical_fields": true,
+    "manual_conflict_preserves_draft": true,
+    "manual_save_restore": true,
+    "existing_detail_opens": true,
+    "stock_and_reserves_unchanged": true,
+    "no_catalogue_or_bulk_writes": true,
+    "theme_scoped": true,
+    "horizontal_overflow": false,
+    "page_errors": []
+  }
+]

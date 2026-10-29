@@ -1,0 +1,17 @@
+{
+  "base_sha": "03d202664713c18f303547adebaed50e204bf6fc",
+  "frontend_build": "PASS",
+  "frontend_units_passed": 403,
+  "browser_widths": [
+    1440,
+    390
+  ],
+  "browser": "PASS",
+  "backend_changed": false,
+  "backend_regression_repeated": false,
+  "migrations_added": false,
+  "synthetic_local_fixture": true,
+  "staging_or_production_writes": false,
+  "push": false,
+  "deployment": false
+}
