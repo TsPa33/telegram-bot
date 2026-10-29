@@ -1,5 +1,5 @@
-import {useCan,Permit} from './permissions';
-import {useEffect,useId,useRef,useState} from 'react';
+import {useCan,Permit,TeamIdentity} from './permissions';
+import {useContext,useEffect,useId,useRef,useState} from 'react';
 import {all,api,ApiError,labels,money,physicalLocation,type Page,type Row} from './api';
 import {Modal,Pager,RecordForm,Empty} from './components';
 import {Confirm,Heading,State,useLoad,type Notify} from './shared';
@@ -7,6 +7,8 @@ import {partFields,PartDetail} from './pages/Inventory';
 import {useSearchParams} from 'react-router-dom';
 import StockHistory from './StockHistory';
 import {NotesDialog,InspectionDialog,WorkshopGate} from './WorkshopDialogs';
+import {useMarketPrices,MarketPriceCard,SellerPriceEditor} from './MarketPricing';
+import BulkPricing from './BulkPricing';
 import './workshop.css';
 import './smart-search.css';
 import {isSmartReady} from './smartSearch';
@@ -21,7 +23,7 @@ export default function SalesWorkspace(props:WorkspaceProps) {
  return <WorkshopGate><SalesWorkspaceContent {...props}/></WorkshopGate>;
 }
 function SalesWorkspaceContent({quick=false,notify,accountId,grouped=false}:{quick?:boolean;notify:Notify;accountId:string;grouped?:boolean}) {
- const can=useCan();
+ const can=useCan(),pricingIdentity=useContext(TeamIdentity);const canBulkPrice=pricingIdentity?.role==='DIRECTOR'&&can('parts.change_price');
  const navigate=useNavigate(),[orderPart,setOrderPart]=useState<Row|null>(null);
  const [params,setParams]=useSearchParams(),vehicle=params.get('vehicle_id')||'';
  const [smart,setSmart]=useState(false);
@@ -55,6 +57,8 @@ function SalesWorkspaceContent({quick=false,notify,accountId,grouped=false}:{qui
  const vehicleLabel=(id:string)=>{const v=vehicles.find(v=>v.id===id)||rows.find(p=>p.vehicle_id===id)?.donor;return v?`${v.manufacturer} ${v.model} · ${v.year} · №${v.number}${v.archived?' · архів':''}`:id?'Автомобіль донора':'Без автомобіля';};
  function updated(row:Row){setOverrides(values=>({...values,[row.id]:row}));setDetail(current=>current?.id===row.id?row:current);window.dispatchEvent(new Event('warehouse:inventory-changed'));}
  function openAction(part:Row,type:string){setAction({part,type,key:crypto.randomUUID()});}
+ const [pricingSelected,setPricingSelected]=useState<string[]>([]);
+ const market=useMarketPrices(quick?[]:rows.map(p=>p.id));
  const priceLabel=(p:Row)=>p.selling_price==null?'Вказати ціну':money(p.selling_price,p.currency||'UAH');
  const actions=(p:Row)=><PartActions part={p} subdued={grouped} onSale={()=>openAction(p,'sale')} onPrice={()=>setPrice(p)} onNotes={()=>setNotes(p)} onInspection={()=>setInspection(p)} onAction={type=>openAction(p,type)} onDetail={()=>setDetail(p)} onEdit={()=>setEdit(p)} onArchive={()=>setArchive(p)} onHistory={()=>setHistory(p)}/>;
  return <>
@@ -81,10 +85,12 @@ function SalesWorkspaceContent({quick=false,notify,accountId,grouped=false}:{qui
   <State error={error||lookups.error} loading={waiting||lookups.loading}/>
   {error&&smart&&<button type="button" className="secondary" onClick={reload}>Повторити пошук</button>}
   {current&&(data as Row)?.clarification&&<p role="status">{(data as Row).clarification}</p>}
+  {!quick&&<BulkPricing scopeId={vehicle?'vehicle:'+vehicle:'inventory'} selectionQuery={query.toString()} selectedIds={pricingSelected} categories={categories}/>}
+  {market.error&&<p role="alert">{market.error}</p>}
   <section className="panel seller-results" aria-label="Результати пошуку">
-   {grouped&&<StockTree searching={!!term.trim()} rows={rows} categories={categories} render={p=><article className="donor-part-row"><button className="text-button strong" onClick={()=>setDetail(p)}>{p.name}</button><small className="donor-part-metadata"><span>{labels[p.condition]} · У наявності: {p.assortment_enabled===false?0:p.available_quantity} · {physicalLocation(p)}</span>{p.internal_notes&&<span className="workshop-note">{p.internal_notes}</span>}{p.assortment_enabled===false&&<span>Виключено з асортименту</span>}{p.availability==='unchecked'&&<span>{p.inventory_origin==='virtual_donor'?'Віртуальний облік':'Потребує перевірки'}</span>}</small><button className="seller-price" disabled={!can('parts.change_price')} aria-label={`Ціна ${p.name}`} onClick={()=>setPrice(p)}>{priceLabel(p)}</button>{actions(p)}</article>}/>}
-   {!!rows.length&&!grouped&&<><table className="desktop-table"><thead><tr><th>Запчастина</th><th>Автомобіль</th><th>У наявності</th><th>Ціна / валюта</th><th>Дія</th></tr></thead><tbody>{rows.map(p=><tr key={p.id}><td><button className="text-button strong" onClick={()=>setDetail(p)}>{p.name}</button>{smart&&p.match_explanation&&<small className="smart-match">{p.match_explanation}</small>}<small>{labels[p.condition]}{p.internal_notes?` · ${p.internal_notes}`:''}{p.availability==='unchecked'?' · Потребує перевірки':''}{p.location?` · ${p.location}`:''}</small></td><td>{vehicleLabel(p.vehicle_id)}</td><td><b>{p.available_quantity}</b>{p.available_quantity===0&&p.quantity>0&&<small>У резерві</small>}</td><td><button className="seller-price" disabled={!can('parts.change_price')} aria-label={`Ціна ${p.name}`} onClick={()=>setPrice(p)}>{priceLabel(p)}</button></td><td>{actions(p)}</td></tr>)}</tbody></table>
-    <div className="mobile-cards">{rows.map(p=><article className="inventory-card seller-card" key={p.id}><button className="text-button strong" onClick={()=>setDetail(p)}>{p.name}</button><small>{vehicleLabel(p.vehicle_id)}</small>{smart&&p.match_explanation&&<small className="smart-match">{p.match_explanation}</small>}<div className="seller-card-line"><b>У наявності: {p.assortment_enabled===false?0:p.available_quantity}</b><button className="seller-price" disabled={!can('parts.change_price')} aria-label={`Ціна ${p.name}`} onClick={()=>setPrice(p)}>{priceLabel(p)}</button></div><p>{labels[p.condition]} · {physicalLocation(p)}</p>{p.internal_notes&&<small className="workshop-note">{p.internal_notes}</small>}{p.availability==='unchecked'&&<small>Потребує перевірки</small>}{actions(p)}</article>)}</div><Pager total={data?.total||0} page={page} setPage={setPage}/></>}
+   {grouped&&<StockTree searching={!!term.trim()} rows={rows} categories={categories} render={p=><article className="donor-part-row">{!quick&&canBulkPrice&&<label className="pricing-check"><input type="checkbox" aria-label={`Вибрати для цін ${p.id}`} checked={pricingSelected.includes(p.id)} onChange={e=>setPricingSelected(old=>e.target.checked?[...old,p.id]:old.filter(id=>id!==p.id))}/>Для масових цін</label>}<button className="text-button strong" onClick={()=>setDetail(p)}>{p.name}</button><small className="donor-part-metadata"><span>{labels[p.condition]} · У наявності: {p.assortment_enabled===false?0:p.available_quantity} · {physicalLocation(p)}</span>{p.internal_notes&&<span className="workshop-note">{p.internal_notes}</span>}{p.assortment_enabled===false&&<span>Виключено з асортименту</span>}{p.availability==='unchecked'&&<span>{p.inventory_origin==='virtual_donor'?'Віртуальний облік':'Потребує перевірки'}</span>}</small><MarketPriceCard part={p} guidance={market.rows[p.id]} onSaved={updated}/>{actions(p)}</article>}/>}
+   {!!rows.length&&!grouped&&<><table className="desktop-table"><thead><tr><th>Запчастина</th><th>Автомобіль</th><th>У наявності</th><th>Ціна / валюта</th><th>Дія</th></tr></thead><tbody>{rows.map(p=><tr key={p.id}><td>{!quick&&canBulkPrice&&<label className="pricing-check"><input type="checkbox" aria-label={`Вибрати для цін ${p.id}`} checked={pricingSelected.includes(p.id)} onChange={e=>setPricingSelected(old=>e.target.checked?[...old,p.id]:old.filter(id=>id!==p.id))}/>Для цін</label>}<button className="text-button strong" onClick={()=>setDetail(p)}>{p.name}</button>{smart&&p.match_explanation&&<small className="smart-match">{p.match_explanation}</small>}<small>{labels[p.condition]}{p.internal_notes?` · ${p.internal_notes}`:''}{p.availability==='unchecked'?' · Потребує перевірки':''}{p.location?` · ${p.location}`:''}</small></td><td>{vehicleLabel(p.vehicle_id)}</td><td><b>{p.available_quantity}</b>{p.available_quantity===0&&p.quantity>0&&<small>У резерві</small>}</td><td>{!quick?<MarketPriceCard part={p} guidance={market.rows[p.id]} onSaved={updated}/>:<button className="seller-price" disabled={!can('parts.change_price')} onClick={()=>setPrice(p)}>{priceLabel(p)}</button>}</td><td>{actions(p)}</td></tr>)}</tbody></table>
+    <div className="mobile-cards">{rows.map(p=><article className="inventory-card seller-card" key={p.id}><button className="text-button strong" onClick={()=>setDetail(p)}>{p.name}</button><small>{vehicleLabel(p.vehicle_id)}</small>{smart&&p.match_explanation&&<small className="smart-match">{p.match_explanation}</small>}<div className="seller-card-line"><b>У наявності: {p.assortment_enabled===false?0:p.available_quantity}</b><button className="seller-price" disabled={!can('parts.change_price')} aria-label={`Ціна ${p.name}`} onClick={()=>setPrice(p)}>{priceLabel(p)}</button></div><p>{labels[p.condition]} · {physicalLocation(p)}</p>{p.internal_notes&&<small className="workshop-note">{p.internal_notes}</small>}{p.availability==='unchecked'&&<small>Потребує перевірки</small>}{!quick&&<><label className="pricing-check"><input type="checkbox" aria-label={`Вибрати для цін ${p.id}`} checked={pricingSelected.includes(p.id)} disabled={!canBulkPrice} onChange={e=>setPricingSelected(old=>e.target.checked?[...old,p.id]:old.filter(id=>id!==p.id))}/>Для масових цін</label><MarketPriceCard part={p} guidance={market.rows[p.id]} onSaved={updated}/></>}{actions(p)}</article>)}</div><Pager total={data?.total||0} page={page} setPage={setPage}/></>}
    {!waiting&&!error&&(!smart||smartReady)&&!(data as Row)?.clarification&&!rows.length&&<Empty title="Нічого не знайдено">Змініть назву або автомобіль.</Empty>}
   </section>
   {orderPart&&<OrderComposer accountId={accountId} initialPart={orderPart} onClose={()=>setOrderPart(null)} onCreated={order=>{setOrderPart(null);setDetail(null);notify(order.reservation_warning||'Замовлення збережено');navigate('/orders/'+order.id);}}/>}
@@ -98,11 +104,7 @@ function SalesWorkspaceContent({quick=false,notify,accountId,grouped=false}:{qui
   {archive&&<Confirm destructive title="Архівувати запчастину?" text="Архівування — не продаж. Історія й залишки зберігаються; позиція буде доступна в архіві." onClose={()=>setArchive(null)} onConfirm={async()=>{await api('/archive/parts/'+archive.id,'POST');if(detail?.id===archive.id)setDetail(null);setArchive(null);window.dispatchEvent(new Event('warehouse:inventory-changed'));}}/>}
  </>;
 }
-function PriceDialog({part,onClose,onSaved}:{part:Row;onClose:()=>void;onSaved:(row:Row)=>void}){
- const [amount,setAmount]=useState(part.selling_price??''),[currency,setCurrency]=useState(part.currency||'UAH'),[busy,setBusy]=useState(false),[error,setError]=useState('');
- return <Modal title="Ціна запчастини" onClose={onClose}><form onSubmit={async e=>{e.preventDefault();if(busy)return;setBusy(true);setError('');try{const normalized=String(amount).replace(',','.');if(normalized&&!/^\d{1,12}(\.\d{1,2})?$/.test(normalized))throw Error('Вкажіть суму з точністю до двох знаків');onSaved(await api('/parts/'+part.id+'/price','PATCH',{selling_price:normalized||null,currency}));}catch(e){setError((e as Error).message);}finally{setBusy(false);}}}>
-  <label>Сума<input aria-label="Сума" inputMode="decimal" value={amount} onChange={e=>setAmount(e.target.value)}/></label><label>Валюта<select aria-label="Валюта" value={currency} onChange={e=>setCurrency(e.target.value)}><option>UAH</option><option>USD</option></select></label>{error&&<p role="alert" className="error">{error}</p>}<div className="modal-actions"><button type="submit" className="primary" disabled={busy}>Зберегти</button></div></form></Modal>;
-}
+function PriceDialog({part,onClose,onSaved}:{part:Row;onClose:()=>void;onSaved:(row:Row)=>void}){return <Modal title="Ціна запчастини" onClose={onClose}><SellerPriceEditor part={part} initialOpen onSaved={onSaved}/></Modal>;}
 function OperationDialog({action,onClose,onSaved}:{action:Action;onClose:()=>void;onSaved:(row:Row)=>void}){
  const {part,type}=action,[quantity,setQuantity]=useState('1'),[location,setLocation]=useState(part.location||''),[reason,setReason]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState('');
  // Persist unresolved requests across modal/page reload. Retries must keep the

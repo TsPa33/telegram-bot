@@ -31,3 +31,4 @@ for (const head of [SMART_REVISION,'b94f62d18e07','b8716962f6b8','021e8f6f220c',
 }
 
 test('virtual inventory head preserves smart search capabilities',()=>assert(isSmartReady({...valid,database_revisions:['95c3e7b12a04']})));
+test('seller pricing head preserves smart search capabilities',()=>assert(isSmartReady({...valid,database_revisions:['a6d94c72e310']})));

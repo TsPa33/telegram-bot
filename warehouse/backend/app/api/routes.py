@@ -480,12 +480,11 @@ def stock_operation(id: str, data: StockInput, db: DB, who: Auth):
 
 @router.patch('/parts/{id}/price',tags=['Inventory'])
 def price_update(id: str,data: PriceInput,db: DB,who: Auth):
-    row=owned(db,Part,id,who.workspace_account_id,lock=True,active=True)
-    before=snapshot(row)
-    row.selling_price,row.currency=data.selling_price,data.currency
-    if snapshot(row)!=before:record(db,who.workspace_account_id,row,'part_update','Оновлено ціну та валюту',before)
-    db.commit()
-    return {**snapshot(row),'available_quantity':row.available_quantity}
+    from app.services import pricing
+    from app.services.virtual_inventory import lock_workspace
+    lock_workspace(db,who.workspace_account_id)
+    row=owned(db,Part,id,who.workspace_account_id,lock=True)
+    result=pricing.manual(db,row,who,data);db.commit();return result
 
 
 @router.get('/sales-workspace/readiness',tags=['Inventory'])

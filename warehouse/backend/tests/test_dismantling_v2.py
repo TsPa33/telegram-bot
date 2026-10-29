@@ -157,7 +157,7 @@ def test_v2_readiness_and_migration_keep_existing_receipts_planparts_and_sales(l
         assert logged.get('/api/v1/dismantling/workspace-readiness').status_code==503
         run([sys.executable,'-m','alembic','upgrade','head'],check=True)
         result=logged.get('/api/v1/dismantling/workspace-readiness').json()
-        assert result['contract_version']==2 and result['database_revisions']==['95c3e7b12a04']
+        assert result['contract_version']==2 and result['database_revisions']==['a6d94c72e310']
         assert logged.get('/api/v1/dismantling/readiness').json()['contract_version']==1
         restored=next(r for r in view(logged,donor)['items'] if r['id']==row['id'])
         assert restored['included'] and restored['received_at'] and restored['quantity']==2

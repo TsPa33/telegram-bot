@@ -332,3 +332,9 @@ from app.models.canonical import CanonicalType,CanonicalPlacement,CanonicalVaria
 from app.models.vehicle_configuration import VehicleConfiguration  # noqa: E402,F401
 
 from app.models.dismantling_request import DismantlingRequest  # noqa: E402,F401
+from app.models.pricing import PriceDecision  # noqa: E402,F401
+
+# Exact opaque OEM lookup preserves punctuation/suffixes; no fuzzy code matching.
+from sqlalchemy import literal_column
+Index('ix_catalogue_price_oem',func.upper(func.regexp_replace(func.normalize(CatalogueOffer.properties.op('->>')('oem'),literal_column('NFKC')),r'\s+','','g')),_table=CatalogueOffer.__table__)
+Index('ix_aleto_price_oem',AletoOffer.account_id,func.upper(func.regexp_replace(func.normalize(AletoOffer.oem,literal_column('NFKC')),r'\s+','','g')))

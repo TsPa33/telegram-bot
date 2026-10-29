@@ -1,0 +1,26 @@
+{
+  "local_only": true,
+  "base_sha": "13fe560c4cc9fa4435a83d8c064c4bca6dedaabd",
+  "backend_full": {
+    "passed": 546,
+    "skipped": 1,
+    "seconds": 621.18
+  },
+  "backend_after_final_provenance_fix": {
+    "passed": 33,
+    "seconds": 121.09,
+    "includes": "stale equipment evidence and whitespace-only OEM regressions"
+  },
+  "frontend_units": {
+    "passed": 395,
+    "failed": 0
+  },
+  "frontend_build": "passed",
+  "alembic_check": "No new upgrade operations detected",
+  "head": "a6d94c72e310",
+  "browser": "1440px and 390px passed; see browser-results.json",
+  "real_Volvo_B_tested": false,
+  "push": false,
+  "deployment": false,
+  "staging_writes": false
+}

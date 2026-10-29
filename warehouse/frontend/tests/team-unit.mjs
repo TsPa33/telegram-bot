@@ -46,3 +46,4 @@ for(const head of ['b8716962f6b8','021e8f6f220c','41f9a2c87d10','5c7d9e1a320f','
 test('platform capability change invalidates protected caches',()=>assert.notEqual(identityKey(user),identityKey({...user,catalogue_platform_admin:true})));
 
 test('virtual inventory head preserves team capabilities',()=>assert(isTeamReady({...valid,database_revisions:['95c3e7b12a04']})));
+test('seller pricing head preserves team capabilities',()=>assert(isTeamReady({...valid,database_revisions:['a6d94c72e310']})));

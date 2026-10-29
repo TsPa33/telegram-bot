@@ -117,3 +117,6 @@ async def invalid_input(request: Request, exc: RequestValidationError):
 
 from app.api.dismantling_v3 import router as dismantling_v3_router
 app.include_router(dismantling_v3_router)
+
+from app.api.pricing import router as pricing_router
+app.include_router(pricing_router)

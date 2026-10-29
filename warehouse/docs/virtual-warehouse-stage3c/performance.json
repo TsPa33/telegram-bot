@@ -1,0 +1,10 @@
+{
+  "synthetic": true,
+  "real_Volvo_B_tested": false,
+  "offers": 10003,
+  "parts": 300,
+  "one_queries": 34,
+  "batch_queries": 34,
+  "one_seconds": 3.082,
+  "batch_seconds": 2.496
+}

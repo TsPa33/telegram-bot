@@ -1,0 +1,51 @@
+{
+  "database": "warehouse_catalogue_v2_test",
+  "read_only": true,
+  "dataset": "Imported Volvo A IDs only; excludes two synthetic test.csv offers",
+  "imported_bundle_sha_verified": true,
+  "as_of": "2026-10-29T18:16:43.940830+00:00",
+  "policy_days": 90,
+  "observed_date_is_not_publication_date": true,
+  "offers": 7246,
+  "original_import_paths": 14400,
+  "matching_import_paths": 14400,
+  "later_fixture_paths_excluded": 1,
+  "source_paths": 14401,
+  "unknown_condition_offers": 2318,
+  "canonical_tables_present": false,
+  "published_snapshot": null,
+  "active_canonical_guidance_coverage": null,
+  "offline_unpublished_rule_diagnostic": {
+    "not_published": true,
+    "not_Part_price_recommendations": true,
+    "rules_sha": "f047ad733cbafc7e8f6a7b0934d82b6e56c52f8b5cea7ad1fe3458e5a2e8f632",
+    "recognized_offers": 1128,
+    "unrecognized_offers": 6118,
+    "potential_placements": 163,
+    "placements_with_any_valid_quote": 160,
+    "source_group_buckets": {
+      "source_group_1to2": 150,
+      "source_group_3plus": 7,
+      "functional_prices_only": 3,
+      "no_valid_price": 3
+    },
+    "source_cohorts": {
+      "1to2": 1372,
+      "3plus": 18
+    },
+    "model_placement_counts": {
+      "XC60": 152,
+      "XC40": 103,
+      "XC90": 149
+    },
+    "exclusion_counts": {
+      "unknown_oem_or_condition": 284,
+      "missing_price": 91
+    },
+    "path_quality_counts": {
+      "unprocessed": 11450,
+      "verified_rule": 2795,
+      "review": 155
+    }
+  }
+}

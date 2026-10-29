@@ -1,0 +1,36 @@
+[
+  {
+    "width": 1440,
+    "synthetic": true,
+    "real_Volvo_B_tested": false,
+    "positions": 227,
+    "market_A_median": "150",
+    "manual_saved_cleared": true,
+    "conflict_preserved_input": true,
+    "bulk_discount_rounding": "140.00",
+    "preview_without_write": true,
+    "confirmation_required": true,
+    "lost_response_replay": true,
+    "stock_unchanged": true,
+    "no_stock_operations": true,
+    "overflow": false,
+    "page_errors": []
+  },
+  {
+    "width": 390,
+    "synthetic": true,
+    "real_Volvo_B_tested": false,
+    "positions": 227,
+    "market_A_median": "150",
+    "manual_saved_cleared": true,
+    "conflict_preserved_input": true,
+    "bulk_discount_rounding": "140.00",
+    "preview_without_write": true,
+    "confirmation_required": true,
+    "lost_response_replay": false,
+    "stock_unchanged": true,
+    "no_stock_operations": true,
+    "overflow": false,
+    "page_errors": []
+  }
+]

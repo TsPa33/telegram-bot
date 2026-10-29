@@ -8,7 +8,7 @@ const gate=source.slice(source.indexOf('export function WorkshopGate('));
 assert(gate.startsWith('export function WorkshopGate('));
 const js=ts.transpileModule(gate.replace('export function','function'),{compilerOptions:{target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.React}}).outputText;
 const features=['actual_quick_sale_price','ledger_sales_projection','notes_compare_and_set','inspection_patch'];
-const heads=['d86f21a90b34','a73e05b9c842','b94f62d18e07','b8716962f6b8','021e8f6f220c','41f9a2c87d10','5c7d9e1a320f','76af12de4b90','84d2c6fa190b','95c3e7b12a04'];
+const heads=['d86f21a90b34','a73e05b9c842','b94f62d18e07','b8716962f6b8','021e8f6f220c','41f9a2c87d10','5c7d9e1a320f','76af12de4b90','84d2c6fa190b','95c3e7b12a04','a6d94c72e310'];
 const ready=head=>({status:'ready',contract_version:7,required_revision:'d86f21a90b34',database_revisions:[head],features:[...features]});
 async function validate(value,failure){
  let loader;

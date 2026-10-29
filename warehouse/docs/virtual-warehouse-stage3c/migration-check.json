@@ -1,0 +1,12 @@
+{
+  "local_synthetic": true,
+  "from_revision": "95c3e7b12a04",
+  "to_revision": "a6d94c72e310",
+  "repeated_upgrade": true,
+  "preserved_existing_tables": 44,
+  "all_existing_row_hashes_unchanged": true,
+  "quantity": 5,
+  "reserved_quantity": 2,
+  "selling_price": "123.00",
+  "alembic_check": "passed"
+}

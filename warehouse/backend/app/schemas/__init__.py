@@ -1,3 +1,4 @@
+from uuid import UUID
 from datetime import date
 from decimal import Decimal
 from typing import Annotated, Literal
@@ -144,5 +145,7 @@ class BulkInput(Input):
 
 
 class PriceInput(Input):
+    expected_token: str | None = Field(default=None,pattern=r'^[a-f0-9]{64}$')
+    request_key: UUID | None = None
     selling_price: Money | None
     currency: Literal['UAH','USD']
