@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { all, api, labels, money, type Page, type Row } from "../api";
+import { all, api, labels, money, physicalLocation, type Page, type Row } from "../api";
 import {
   Badge,
   Empty,
@@ -70,7 +70,7 @@ export function partFields(vehicles: Row[], categories: Row[]): Field[] {
     {
       key: "condition",
       label: "Стан",
-      options: choices(["used", "new", "damaged", "refurbished"]),
+      options: choices(["unknown", "used", "new", "damaged", "refurbished"]),
     },
     { key: "oem_number", label: "OEM-номер" },
     { key: "article_number", label: "Артикул" },
@@ -238,7 +238,7 @@ export default function Inventory({ notify }: { notify: Notify }) {
           onChange={(e) => setCondition(e.target.value)}
         >
           <option value="">Будь-який стан</option>
-          {choices(["used", "new", "damaged", "refurbished"]).map((o) => (
+          {choices(["unknown", "used", "new", "damaged", "refurbished"]).map((o) => (
             <option key={o.value} value={o.value}>
               {o.label}
             </option>
@@ -631,7 +631,7 @@ export function PartDetail({ part, onChanged }: { part: Row; onChanged: () => vo
           ["Артикул", part.article_number || "—"],
           ["Стан", labels[part.condition]],
           ["Серійний №", part.serial_number || "—"],
-          ["Розміщення", part.location || "—"],
+          ["Розміщення", physicalLocation(part)],
           [
             "Ціна",
             part.selling_price === null ? "—" : money(part.selling_price,part.currency||"UAH"),

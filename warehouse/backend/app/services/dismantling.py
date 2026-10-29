@@ -63,7 +63,7 @@ def listing(db, vehicle_id, account_id):
             'sold_units': sold}
 
 
-def category_node(db, account_id, source, key, name, kind, parent_id=None):
+def category_node(db, account_id, source, key, name, kind, parent_id=None, *, reason="Категорія локального розбору при явному оприбуткуванні"):
     if source == 'aleto.v1' and kind in ('category', 'subcategory'):
         # Reuse the merged reference dictionary, preserving existing category IDs.
         node_id = key.split(':')[-1]
@@ -83,11 +83,15 @@ def category_node(db, account_id, source, key, name, kind, parent_id=None):
     node = Category(account_id=account_id, source=source, external_key=key, name=name,
                     kind=kind, parent_id=parent_id)
     db.add(node)
-    record(db, account_id, node, 'category_import', 'Категорія локального розбору при явному оприбуткуванні', {})
+    record(db, account_id, node, 'category_import', reason, {})
     return node
 
 
 def receipt(db, row, data, account_id, *, confirmed=False):
+    if row.part_id:
+        linked = owned(db, Part, row.part_id, account_id)
+        if linked.inventory_origin == 'virtual_donor':
+            raise HTTPException(409, 'Віртуальна позиція вже врахована; змініть місце зберігання без повторного надходження')
     # Durable workflow marker, independent of current stock, sale, archive or reload.
     if row.received_at is not None:
         return False

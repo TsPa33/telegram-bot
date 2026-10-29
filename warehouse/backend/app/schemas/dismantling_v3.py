@@ -78,3 +78,13 @@ class BulkCommand(BulkSelection):
         if self.action!='receipt' and self.lines:raise ValueError('Параметри надходження дозволені лише для receipt')
         if len({r.id for r in self.lines})!=len(self.lines) or not {r.id for r in self.lines}<=set(self.ids):raise ValueError('Кожен рядок надходження має належати вибраним ID та бути унікальним')
         return self
+
+class VirtualAvailability(Input):
+    ids:list[str]=Field(min_length=1,max_length=1000)
+    enabled:bool=Field(strict=True)
+    etag:str=Field(pattern=r'^[a-f0-9]{64}$')
+    request_key:UUID
+    @model_validator(mode='after')
+    def unique(self):
+        if len(self.ids)!=len(set(self.ids)):raise ValueError('Duplicate IDs')
+        return self

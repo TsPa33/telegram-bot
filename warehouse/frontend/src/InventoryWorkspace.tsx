@@ -4,7 +4,7 @@ import {useEffect,useState} from 'react';
 import {useSearchParams} from 'react-router-dom';
 import {all} from './api';
 import SalesWorkspace from './SalesWorkspace';
-import Dismantling from './Dismantling';
+import ManagedDismantling from './ManagedDismantling';
 import StockHistory from './StockHistory';
 import {Empty} from './components';
 import {State,useLoad,type Notify} from './shared';
@@ -63,7 +63,7 @@ export default function InventoryWorkspace({accountId,notify}:{accountId:string;
     <header className="donor-stock-header"><h1>{vehicle.manufacturer} {vehicle.model} · {vehicle.year} · №{vehicle.number}</h1><button onClick={()=>choose('')}>Усі автомобілі</button></header>
     <div className="donor-stock-switch"><label>Автомобіль<select aria-label="Автомобіль складу" value={donor} onChange={e=>choose(e.target.value)}>{vehicles?.map(v=><option key={v.id} value={v.id}>{v.manufacturer} {v.model} · {v.year} · №{v.number}</option>)}</select></label><label className="check-inline donor-remember"><input type="checkbox" checked={preference.remember} onChange={e=>save({...preference,donor,remember:e.target.checked})}/>Запам’ятати цей автомобіль</label></div>
     <SalesWorkspace key={vehicle.id} accountId={accountId} notify={notify} grouped/>
-    {['dismantling.manage','vehicles.view','catalog.view'].every(can)&&<details className="donor-potential" open={planOpen} onToggle={e=>setPlanOpen(e.currentTarget.open)}><summary>Каталог деталей автомобіля</summary><p>Виберіть деталі, які є на автомобілі, та додайте їх до обліку. Каталог не підтверджує товарний залишок; додавання потребує вашого підтвердження.</p>{planOpen&&<Dismantling key={vehicle.id} vehicle={vehicle} onChange={()=>{reload();window.dispatchEvent(new Event('warehouse:inventory-changed'));}} onInventory={()=>setPlanOpen(false)}/>}</details>}
+    {['dismantling.manage','vehicles.view','catalog.view'].every(can)&&<details className="donor-potential" open={planOpen} onToggle={e=>setPlanOpen(e.currentTarget.open)}><summary>Каталог деталей автомобіля</summary><p>Віртуальні деталі можуть залишатися на автомобілі. Нові позиції додаються лише за вашою явною дією.</p>{planOpen&&<ManagedDismantling key={vehicle.id} vehicle={vehicle} onSaved={()=>{reload();window.dispatchEvent(new Event('warehouse:inventory-changed'));}}/>}</details>}
    </>}
   </>}
   </>}

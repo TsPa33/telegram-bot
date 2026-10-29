@@ -79,16 +79,16 @@ def status_for(variant,assessment,config):
     if assessment['missing_or_unverified'] or 'E' in assessment['groups']:return 'unknown','Недостатньо підтверджених даних; позицію не виключено'
     return 'possible','Конструктивна функція/джерельна модель є кандидатом; точний fitment не підтверджено'
 
-def preview(db,vehicle,workspace,facts=(),selected=None,now=None):
+def preview(db,vehicle,workspace,facts=(),selected=None,now=None,*,universal_base=False):
     config=configuration(db,vehicle,workspace,list(facts),selected or {})
     values=config['values'];query={k:values.get(k) or '' for k in ('manufacturer','model','generation','fuel_type','transmission','powertrain','drive','body_type','engine_code','options')}
     query['year']=values.get('year');query['engine']=values.get('engine_code') or values.get('engine_label') or ''
     page=candidates(db,query,workspace,0,1000000,configuration=config,include_rule_sources=True)
     rows=page['items'];unmapped=page['unmapped_total'];snapshot=page.get('snapshot_sha');published=page['published']
     if not published:
-        from app.services.canonical_catalogue import base_inputs
+        from app.services.canonical_catalogue import base_inputs,constructive_inputs
         from app.services.canonical_rules import classify,placement,TYPES
-        for source in base_inputs():
+        for source in base_inputs()+(constructive_inputs() if universal_base else []):
             outcome=classify(source)
             if not outcome.get('type_id'):continue
             t=TYPES[outcome['type_id']]

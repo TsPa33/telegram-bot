@@ -1,0 +1,37 @@
+{
+  "status": "PASS",
+  "backend_full": {
+    "passed": 514,
+    "skipped": 1,
+    "seconds": 547.47,
+    "skip": "Unrelated opt-in 100k search benchmark"
+  },
+  "backend_final_targeted": {
+    "passed": 13,
+    "seconds": 12.79,
+    "note": "Includes the additional existing-position configuration warning regression"
+  },
+  "frontend_unit": {
+    "passed": 379
+  },
+  "production_build": "PASS",
+  "browser": {
+    "widths": [
+      1440,
+      390
+    ],
+    "passed": true,
+    "synthetic": true,
+    "real_Volvo_B_tested": false,
+    "activation_parts_each": 226,
+    "pending_each": 2,
+    "repeat_activation": 0,
+    "category_subcategory_and_bulk_availability": true,
+    "desktop_response_loss_reload_replay": true,
+    "iphone_price_error_preserves_input": true
+  },
+  "alembic_head": "95c3e7b12a04",
+  "alembic_check": "PASS",
+  "staging_or_production_mutations": false,
+  "push_or_deployment_performed": false
+}

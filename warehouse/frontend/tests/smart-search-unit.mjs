@@ -29,3 +29,5 @@ for (const head of [SMART_REVISION,'b94f62d18e07','b8716962f6b8','021e8f6f220c',
  for (const feature of SMART_FEATURES)
   test(`compatible head ${head} requires ${feature}`,()=>assert.equal(isSmartReady({...ready,features:SMART_FEATURES.filter(f=>f!==feature)}),false));
 }
+
+test('virtual inventory head preserves smart search capabilities',()=>assert(isSmartReady({...valid,database_revisions:['95c3e7b12a04']})));

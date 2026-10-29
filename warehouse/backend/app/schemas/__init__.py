@@ -83,7 +83,7 @@ class PartInput(Input):
     vehicle_id: str | None = None
     oem_number: Annotated[str, Field(max_length=150)] = ""
     article_number: Annotated[str, Field(max_length=150)] = ""
-    condition: Literal["used", "new", "damaged", "refurbished"] = "used"
+    condition: Literal["unknown", "used", "new", "damaged", "refurbished"] = "used"
     unit_cost: Money | None = None
     selling_price: Money | None = None
     currency: Literal["UAH", "USD"] = "UAH"
@@ -106,6 +106,7 @@ class StockInput(Input):
     type: Literal[
         "receipt", "write_off", "sale", "reserve", "release", "correction", "transfer"
     ]
+    physical_location_kind: Literal["unknown","on_vehicle","on_shelf"] | None = None
     quantity: Annotated[int, Field(ge=0, le=1000000)] = 0
     location: Annotated[str, Field(max_length=120)] | None = None
     reason: Annotated[str, Field(max_length=2000)] = ""
@@ -116,6 +117,7 @@ class StockInput(Input):
 
     @model_validator(mode="after")
     def operation_valid(self):
+        if self.physical_location_kind is not None and self.type!="transfer":raise ValueError("Physical location applies only to transfer")
         if (self.sale_price is None) != (self.sale_currency is None):
             raise ValueError("Вкажіть фактичну ціну та валюту разом")
         if self.sale_price is not None and self.type != "sale":

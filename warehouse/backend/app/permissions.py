@@ -2,7 +2,7 @@
 from fastapi import HTTPException
 from app.route_registry import KNOWN_ROUTES
 GROUPS={
- 'Склад':{'inventory.view':'Перегляд складу','inventory.create':'Додавання деталей','inventory.edit':'Редагування деталей','inventory.archive':'Архівування та відновлення','inventory.adjust_quantity':'Коригування кількості','inventory.write_off':'Списання','inventory.transfer':'Переміщення','inventory.reserve':'Ручне резервування','parts.notes':'Внутрішні нотатки','parts.inspect':'Стан і перевірка','parts.change_price':'Зміна ціни'},
+ 'Склад':{'inventory.view':'Перегляд складу','inventory.activate_virtual':'Віртуальний розбір','inventory.create':'Додавання деталей','inventory.edit':'Редагування деталей','inventory.archive':'Архівування та відновлення','inventory.adjust_quantity':'Коригування кількості','inventory.write_off':'Списання','inventory.transfer':'Переміщення','inventory.reserve':'Ручне резервування','parts.notes':'Внутрішні нотатки','parts.inspect':'Стан і перевірка','parts.change_price':'Зміна ціни'},
  'Фінанси':{'parts.view_cost':'Собівартість і витрати','sales.view_financials':'Фінансові дані продажів та замовлень'},
  'Продажі':{'sales.view':'Перегляд продажів','sales.create':'Проведення продажів'},
  'Замовлення':{'orders.view':'Перегляд замовлень і покупців','orders.create':'Створення замовлень','orders.edit':'Редагування замовлень','orders.fulfill':'Резервування та виконання замовлень'},
@@ -57,6 +57,9 @@ def route_permissions(method,path,body):
     if '/dismantling-v3/' in path and path.endswith('/decisions'):
         return ['dismantling.manage','inventory.create','inventory.adjust_quantity'] if body.get('action')=='receipt' else ['dismantling.manage']
     if path.endswith('/dismantling-preview'):return ['vehicles.view','catalog.view']
+    if path.endswith('/virtual-dismantling/activate'):return ['vehicles.view','catalog.view','dismantling.manage','inventory.create','inventory.activate_virtual']
+    if path.endswith('/virtual-dismantling/availability'):return ['vehicles.view','inventory.view','inventory.edit','dismantling.manage']
+    if path.endswith('/virtual-dismantling'):return ['vehicles.view','inventory.view','catalog.view']
     if path.startswith('/vehicles'):
         if '/analytics' in path:return ['analytics.view']
         if '/dismantling' in path or '/checklist' in path or '/plan-parts-checklist' in path:

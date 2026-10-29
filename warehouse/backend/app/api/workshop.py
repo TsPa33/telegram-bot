@@ -20,7 +20,7 @@ class NotesInput(Input):
     expected_notes: Annotated[str, Field(max_length=10000)]
 
 class InspectionInput(Input):
-    condition: Literal['used','new','damaged','refurbished'] | None = None
+    condition: Literal['unknown','used','new','damaged','refurbished'] | None = None
     availability: Literal['unchecked','present','absent','damaged'] | None = None
 
 @router.patch('/parts/{id}/notes')

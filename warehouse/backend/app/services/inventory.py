@@ -6,6 +6,9 @@ from app.models import Category, Operation, Part, Vehicle, Account, VehicleCheck
 
 
 def owned(db, model, id, account_id, *, lock=False, active=False):
+    if lock and model is Vehicle:
+        # Donor writers take the workspace lock before vehicle/part locks.
+        db.scalar(select(Account).where(Account.id==account_id).with_for_update(key_share=True))
     stmt = select(model).where(model.id == id, model.account_id == account_id)
     if lock:
         stmt = stmt.with_for_update()
@@ -54,9 +57,16 @@ def validate_part_links(db, data, account_id):
 def stock(db, row, data, account_id, *, reservation_id=None, return_operation=False, sale_context=None):
     if row.archived:
         raise HTTPException(409, "Спершу відновіть запчастину з архіву")
+    if data.type not in ('receipt','write_off','sale','reserve','release','correction','transfer','virtual_activation'):
+        raise HTTPException(422, 'Невідома складська операція')
+    if data.type in ('sale','reserve') and not row.assortment_enabled:
+        raise HTTPException(409, 'Деталь виключено з асортименту')
+    if data.type == 'virtual_activation':
+        if row.inventory_origin!='virtual_donor' or row.activation_operation_id or row.quantity or data.quantity!=1:
+            raise HTTPException(409, 'Повторна віртуальна активація заборонена')
     before = snapshot(row)
     q = data.quantity
-    if data.type == "receipt":
+    if data.type in ("receipt", "virtual_activation"):
         row.quantity += q
     elif data.type in ("write_off", "sale"):
         row.quantity -= q
@@ -80,6 +90,7 @@ def stock(db, row, data, account_id, *, reservation_id=None, return_operation=Fa
         row.quantity = q
     elif data.type == "transfer":
         row.location = data.location
+        if getattr(data,"physical_location_kind",None) is not None:row.physical_location_kind=data.physical_location_kind
     if row.quantity < 0 or not 0 <= row.reserved_quantity <= row.quantity:
         raise HTTPException(409, "Недостатній залишок або некоректний резерв")
     if row.individually_tracked and row.quantity > 1:

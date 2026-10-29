@@ -44,3 +44,5 @@ for(const head of ['b8716962f6b8','021e8f6f220c','41f9a2c87d10','5c7d9e1a320f','
  for(const patch of [{contract_version:8},{required_revision:head},{features:[]},{database_revisions:[head,TEAM_REVISION]}])test('keep team contract checks '+head+JSON.stringify(patch),()=>assert.equal(isTeamReady({...valid,database_revisions:[head],...patch}),false));
 }
 test('platform capability change invalidates protected caches',()=>assert.notEqual(identityKey(user),identityKey({...user,catalogue_platform_admin:true})));
+
+test('virtual inventory head preserves team capabilities',()=>assert(isTeamReady({...valid,database_revisions:['95c3e7b12a04']})));

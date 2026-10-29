@@ -39,7 +39,7 @@ def search(db,account_id,*,q='',vehicle_id=None,manufacturer=None,model=None,in_
         # as donor/model/year words. Protected directions retain their meaning.
         if q.strip() and len(q.split())==1 and not any(g[3] for g in basic.groups):
             exact=select(Part.id).where(Part.account_id==account_id,not_(Part.archived))
-            if in_stock:exact=exact.where(Part.quantity-Part.reserved_quantity>0)
+            if in_stock:exact=exact.where(Part.quantity-Part.reserved_quantity>0,Part.assortment_enabled.is_(True))
             if vehicle_id:exact=exact.where(Part.vehicle_id==vehicle_id)
             if manufacturer is not None or model is not None:
                 vehicle_scope=select(Vehicle.id).where(Vehicle.account_id==account_id)
@@ -51,7 +51,7 @@ def search(db,account_id,*,q='',vehicle_id=None,manufacturer=None,model=None,in_
         if plan.clarify:return {'items':[],'total':0,'offset':offset,'limit':limit,'clarification':plan.clarify}
         name=func.warehouse_search_text(Part.name)
         scope=select(Part).where(Part.account_id==account_id,not_(Part.archived))
-        if in_stock:scope=scope.where(Part.quantity-Part.reserved_quantity>0)
+        if in_stock:scope=scope.where(Part.quantity-Part.reserved_quantity>0,Part.assortment_enabled.is_(True))
         if vehicle_id:scope=scope.where(Part.vehicle_id==vehicle_id)
         donors=select(Vehicle.id).where(Vehicle.account_id==account_id)
         car_constraints=[]

@@ -384,6 +384,11 @@ def test_populated_upgrade_preserves_sessions_reserves_orders_and_failed_retry(l
             # header does not exist at the deliberately downgraded revision.
             for vehicle in rows['vehicles']:
                 assert vehicle.pop('dismantling_v3',{})=={}
+            # Stage3B defaults are absent on the deliberately old schema.
+            # Validate every new default before comparing every legacy column.
+            defaults={'assortment_enabled':True,'inventory_origin':'legacy','quantity_basis':'legacy','physical_location_kind':'unknown','canonical_placement_id':None,'activation_operation_id':None}
+            for part in rows['parts']:
+                for field,value in defaults.items():assert part.pop(field,value)==value
             return rows
     # Match by serialized immutable content rather than unspecified row ordering.
     def normalized(rows):return {t:sorted(json.dumps(r,sort_keys=True) for r in v) for t,v in rows.items()}

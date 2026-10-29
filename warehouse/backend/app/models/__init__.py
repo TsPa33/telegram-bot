@@ -134,6 +134,13 @@ class VehicleChecklistItem(Base):
 
 
 class Part(Owned, Base):
+    assortment_enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true())
+    inventory_origin: Mapped[str] = mapped_column(String(20), default='legacy', server_default='legacy')
+    quantity_basis: Mapped[str] = mapped_column(String(20), default='legacy', server_default='legacy')
+    physical_location_kind: Mapped[str] = mapped_column(String(20), default='unknown', server_default='unknown')
+    canonical_placement_id: Mapped[str | None] = mapped_column(ForeignKey('canonical_placements.id'), nullable=True)
+    activation_operation_id: Mapped[str | None] = mapped_column(ForeignKey('operations.id', use_alter=True, name='fk_part_activation_operation'), nullable=True, unique=True)
+
     __tablename__ = "parts"
     __table_args__ = (
         UniqueConstraint("id", "account_id", name="uq_part_id_account"),
@@ -147,7 +154,11 @@ class Part(Owned, Base):
         CheckConstraint("currency IN ('UAH','USD')", name="ck_part_currency"),
         CheckConstraint("unit_cost IS NULL OR unit_cost >= 0"),
         CheckConstraint("availability IN ('unchecked','present','absent','damaged')"),
-        CheckConstraint("condition IN ('used','new','damaged','refurbished')"),
+        CheckConstraint("condition IN ('unknown','used','new','damaged','refurbished')", name='ck_part_condition'),
+        CheckConstraint("inventory_origin IN ('legacy','manual','virtual_donor')", name='ck_part_origin'),
+        CheckConstraint("quantity_basis IN ('legacy','assumed','verified')", name='ck_part_basis'),
+        CheckConstraint("physical_location_kind IN ('unknown','on_vehicle','on_shelf')", name='ck_part_location_kind'),
+        Index('uq_part_canonical_donor','account_id','vehicle_id','canonical_placement_id',unique=True,postgresql_where=text('canonical_placement_id IS NOT NULL')),
     )
     name: Mapped[str] = mapped_column(String(200))
     category_id: Mapped[str | None] = mapped_column(
@@ -226,7 +237,8 @@ class DismantlingItem(Base):
         CheckConstraint("status IN ('unchecked','dismantled','absent','damaged')", name="ck_dismantling_status"),
         CheckConstraint("quantity > 0 AND quantity <= 1000000", name="ck_dismantling_quantity"),
         CheckConstraint("condition IS NULL OR condition IN ('used','new','damaged','refurbished')", name="ck_dismantling_condition"),
-        CheckConstraint("(received_at IS NULL AND part_id IS NULL) OR (received_at IS NOT NULL AND part_id IS NOT NULL)", name="ck_dismantling_receipt_link"),
+        CheckConstraint("received_at IS NULL OR part_id IS NOT NULL", name="ck_dismantling_receipt_link"),
+        ForeignKeyConstraint(['part_id','account_id'], ['parts.id','parts.account_id'], name='fk_dismantling_part_account'),
     )
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
     account_id: Mapped[str] = mapped_column(ForeignKey("accounts.id"), index=True)

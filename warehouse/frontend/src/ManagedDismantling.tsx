@@ -1,3 +1,4 @@
+import VirtualDismantling from './VirtualDismantling';
 import {useContext,useEffect,useRef,useState} from 'react';
 import {api,ApiError,type Row} from './api';
 import {useCan,TeamIdentity} from './permissions';
@@ -10,7 +11,7 @@ const fields:[string,string,string[]?][]=[['powertrain','Силова устан
 const names:Record<string,string>={petrol:'Бензин',diesel:'Дизель',electric:'Електро',other:'Інше'};
 const directions:Record<string,string>={left:'Ліва',right:'Права',front:'Передня',rear:'Задня',unknown:'Невідомо'};
 function format(value:unknown){if(value==null||value==='')return 'невідомо';if(Array.isArray(value))return value.length?value.join(', '):'невідомо';if(typeof value==='boolean')return value?'підтверджено':'не підтверджено';return names[String(value)]??String(value);}
-export default function ManagedDismantling({vehicle,onSaved}:{vehicle:Row;onSaved:(row:Row)=>void}){
+export function LegacyManagedDismantling({vehicle,onSaved}:{vehicle:Row;onSaved:(row:Row)=>void}){
  const path=`/vehicles/${vehicle.id}/dismantling-v3`,can=useCan();
  const identity=useContext(TeamIdentity);
  const scope={actor:String(identity?.id||''),workspace:String(identity?.workspace_account_id||identity?.id||''),vehicle:String(vehicle.id)};
@@ -92,3 +93,5 @@ export default function ManagedDismantling({vehicle,onSaved}:{vehicle:Row;onSave
   </>}
  </section>;
 }
+
+export default function ManagedDismantling(props:{vehicle:Row;onSaved:(row:Row)=>void}){return <VirtualDismantling {...props}/>;}

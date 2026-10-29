@@ -47,3 +47,25 @@ def bulk_command(id:str,data:BulkCommand,db:DB,who:Auth):
     from app.services.dismantling_bulk import execute
     v=owned(db,Vehicle,id,who.workspace_account_id,lock=True,active=True)
     result=execute(db,v,who,data);db.commit();return result
+
+from app.services import virtual_inventory as virtual
+from app.schemas.dismantling_v3 import VirtualAvailability
+
+@router.get('/api/v1/vehicles/{id}/virtual-dismantling')
+def virtual_read(id:str,db:DB,who:Auth):
+    return virtual.listing(db,owned(db,Vehicle,id,who.workspace_account_id))
+
+@router.post('/api/v1/vehicles/{id}/virtual-dismantling/activate')
+def virtual_activate(id:str,data:PlanQuick,db:DB,who:Auth):
+    virtual.lock_workspace(db,who.workspace_account_id)
+    v=owned(db,Vehicle,id,who.workspace_account_id,lock=True,active=True)
+    old,_=service.replay(db,v,who,data,'virtual_activation')
+    if old is not None:return old
+    if not db.scalar(text('SELECT pg_try_advisory_xact_lock(:key)'),{'key':LOCK}):raise HTTPException(409,'Каталог оновлюється; повторіть після завершення')
+    result=virtual.activate(db,v,who,data);db.commit();return result
+
+@router.post('/api/v1/vehicles/{id}/virtual-dismantling/availability')
+def virtual_availability(id:str,data:VirtualAvailability,db:DB,who:Auth):
+    virtual.lock_workspace(db,who.workspace_account_id)
+    v=owned(db,Vehicle,id,who.workspace_account_id,lock=True,active=True)
+    result=virtual.availability(db,v,who,data);db.commit();return result

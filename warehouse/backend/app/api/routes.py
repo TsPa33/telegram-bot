@@ -148,7 +148,7 @@ def vehicle_stock_counts(db, account_id, ids):
     """
     return dict(db.execute(select(Part.vehicle_id, func.count(Part.id)).where(
         Part.account_id == account_id, Part.vehicle_id.in_(ids),
-        Part.archived.is_(False), Part.quantity > 0).group_by(Part.vehicle_id)).all()) if ids else {}
+        Part.archived.is_(False), Part.assortment_enabled.is_(True), Part.quantity > 0).group_by(Part.vehicle_id)).all()) if ids else {}
 
 
 def vehicle_view(db, row, account_id):
@@ -380,7 +380,7 @@ def parts(
         if model is not None:donors=donors.where(func.lower(Vehicle.model)==model.lower())
         filters.append(Part.vehicle_id.in_(donors))
     if in_stock:
-        filters.append(Part.quantity > 0)
+        filters.extend([Part.quantity > 0, Part.assortment_enabled.is_(True)])
     return listing(
         db,
         Part,
@@ -460,6 +460,7 @@ def stock_operation(id: str, data: StockInput, db: DB, who: Auth):
     row = owned(db, Part, id, who.workspace_account_id, lock=True)
     # Preserve pre-UX5.6 fingerprints exactly when financial fields are absent.
     payload=data.model_dump(mode='json',exclude={'request_key','sale_price','sale_currency'})
+    if data.physical_location_kind is None:payload.pop('physical_location_kind',None)
     if data.sale_price is not None:
         payload.update(sale_price=format(data.sale_price,'.2f'),sale_currency=data.sale_currency)
     fingerprint=sha256(json.dumps({'part_id':id,**payload},sort_keys=True).encode()).hexdigest()

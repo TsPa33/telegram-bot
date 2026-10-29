@@ -112,6 +112,7 @@ export const labels: Record<string, string> = {
   present: "Наявна",
   absent: "Відсутня",
   damaged: "Пошкоджена",
+  unknown: "Не уточнено",
   used: "Вживана",
   new: "Нова",
   refurbished: "Відновлена",
@@ -122,3 +123,5 @@ export const labels: Record<string, string> = {
   subcategory: "Підкатегорія",
   part: "Запчастина",
 };
+
+export function physicalLocation(part:Row):string{const kind=part.physical_location_kind==='on_vehicle'?'На автомобілі':part.physical_location_kind==='on_shelf'?'На полиці':'';return [kind,part.location].filter(Boolean).join(' · ')||'Місце не вказано';}

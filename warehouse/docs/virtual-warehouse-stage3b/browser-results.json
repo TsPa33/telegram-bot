@@ -1,0 +1,26 @@
+[
+  {
+    "width": 1440,
+    "synthetic": true,
+    "real_B_tested": false,
+    "created": 226,
+    "pending": 2,
+    "repeat_created": 0,
+    "bulk_excluded_restored": 226,
+    "price_preserved": "123.45",
+    "historical_unchanged": true,
+    "no_receipt": true
+  },
+  {
+    "width": 390,
+    "synthetic": true,
+    "real_B_tested": false,
+    "created": 226,
+    "pending": 2,
+    "repeat_created": 0,
+    "bulk_excluded_restored": 226,
+    "price_preserved": "123.45",
+    "historical_unchanged": true,
+    "no_receipt": true
+  }
+]

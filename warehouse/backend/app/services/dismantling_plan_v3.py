@@ -50,7 +50,7 @@ def listing(db,v):
 def axes_match(a,b):
     if a['details'].get('ordinal') and b['details'].get('ordinal') and a['details']['ordinal']!=b['details']['ordinal']:return False
     return all(a[k]=='unknown' or b[k]=='unknown' or a[k]==b[k] for k in ('side','position')) and (not a['details']['mount'] or not b['details']['mount'] or a['details']['mount']==b['details']['mount'])
-def make_preview(db,v,who,data):
+def make_preview(db,v,who,data,*,virtual_base=False):
     source=latest(db,v,v.account_id);source_id=source.get('id') if source else None
     prior=v.dismantling_v3.get('trial_input',{}) if not data.reset_trial and v.dismantling_v3.get('vehicle_basis')==basis(v) and v.dismantling_v3.get('configuration_source_id')==source_id else {}
     incoming=[{**f.model_dump(),'confidence':'reported'} for f in data.facts]
@@ -62,7 +62,9 @@ def make_preview(db,v,who,data):
     if len(facts)>200:raise HTTPException(422,'Забагато пробних фактів; скиньте попередні уточнення')
     if any(f['field']=='options_complete' and f['value'] for f in facts):raise HTTPException(422,'Потрібна окрема підтверджена конфігурація')
     trial_input=dict(facts=facts,selected=selected)
-    generated=jsonable_encoder(preview(db,v,v.account_id,facts,selected));existing=rows_for(db,v)
+    canonical=db.get(CanonicalState,1)
+    options={'universal_base':True} if virtual_base and not (canonical and canonical.snapshot_sha) else {}
+    generated=jsonable_encoder(preview(db,v,v.account_id,facts,selected,**options));existing=rows_for(db,v)
     legacy={};unclassified=[]
     for r in existing:
         if r.plan_v3.get('placement_id'):continue
