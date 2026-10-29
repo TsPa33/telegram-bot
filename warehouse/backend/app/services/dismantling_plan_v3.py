@@ -27,6 +27,7 @@ def state(db,v,rows=None):
 def inspection(r):return r.plan_v3.get('inspection') or ('present' if r.received_at or r.status=='dismantled' else 'absent' if r.status=='absent' else 'unchecked')
 def protected(r):return bool(r.received_at or r.part_id)
 def listing(db,v):
+    from app.services.dismantling_bulk import eligibility
     rows=rows_for(db,v);parts={p.id:p for p in db.scalars(select(Part).where(Part.account_id==v.account_id,Part.vehicle_id==v.id))}
     sales=defaultdict(int);other_decreases=set()
     for op in db.scalars(select(Operation).where(Operation.account_id==v.account_id,Operation.vehicle_id==v.id,Operation.type.in_(['sale','write_off','correction']))):
@@ -41,7 +42,7 @@ def listing(db,v):
     for r in rows:
         p=parts.get(r.part_id)
         operational='sold' if p and p.quantity==0 and sales[p.id]>=r.quantity and p.id not in other_decreases else 'received' if r.received_at else 'dismantled' if r.status=='dismantled' else 'not_dismantled'
-        items.append(dict(id=r.id,name=r.name,position=r.position,category=r.category_name,subcategory=r.subcategory_name,included=r.included,inspection=inspection(r),reason=r.plan_v3.get('reason','' if r.included else 'Збережене виключення legacy'),operational_state=operational,protected=protected(r),quantity=r.quantity,part_id=r.part_id,applicability=r.plan_v3.get('snapshot',{}).get('applicability_status','unknown'),canonical_part_type_id=r.plan_v3.get('canonical_part_type_id'),placement_id=r.plan_v3.get('placement_id'),reference_prices=r.plan_v3.get('snapshot',{}).get('reference_prices',[])))
+        items.append(dict(id=r.id,name=r.name,position=r.position,category=r.category_name,subcategory=r.subcategory_name,included=r.included,inspection=inspection(r),reason=r.plan_v3.get('reason','' if r.included else 'Збережене виключення legacy'),operational_state=operational,protected=protected(r),part_archived=bool(p and p.archived),selectable=not v.archived and not protected(r) and bool(r.plan_v3.get('placement_id')),eligibility=eligibility(r,archived=v.archived or bool(p and p.archived)),confirmation_source=r.plan_v3.get('inspection_source') or ('historical_workflow' if inspection(r)=='present' else None),quantity=r.quantity,part_id=r.part_id,applicability=r.plan_v3.get('snapshot',{}).get('applicability_status','unknown'),canonical_part_type_id=r.plan_v3.get('canonical_part_type_id'),placement_id=r.plan_v3.get('placement_id'),reference_prices=r.plan_v3.get('snapshot',{}).get('reference_prices',[])))
     items.sort(key=lambda i:(i['category'],i['subcategory'],i['name'],i['position'],i['id']))
     canonical=db.get(CanonicalState,1);catalogue=db.get(CatalogueState,1);configuration_source=latest(db,v,v.account_id)
     return dict(configuration_stale=bool(v.dismantling_v3) and (v.dismantling_v3.get('vehicle_basis')!=basis(v) or v.dismantling_v3.get('configuration_source_id')!=(configuration_source.get('id') if configuration_source else None)),catalogue_changed=bool(v.dismantling_v3) and (v.dismantling_v3.get('catalogue_snapshot')!=(canonical.snapshot_sha if canonical else None) or v.dismantling_v3.get('catalogue_revision')!=(catalogue.revision if catalogue else None)),items=items,total=len(items),active=bool(v.dismantling_v3),archived=v.archived,etag=state(db,v,rows),revision=v.dismantling_v3.get('revision',0),configuration=v.dismantling_v3.get('configuration'),review_drafts=v.dismantling_v3.get('review_drafts',{}),pending_review=v.dismantling_v3.get('pending_review',[]),pending_count=len(v.dismantling_v3.get('pending_review',[])),catalogue_status=dict(published=bool(canonical and canonical.snapshot_sha),rules_current=bool(canonical and canonical.policy.get('rules_sha')==RULE_FINGERPRINT),fallback_used=not bool(canonical and canonical.snapshot_sha)),counts=dict(in_stock=sum(not p.archived and p.quantity>0 for p in parts.values()),unchecked=sum(i['inspection']=='unchecked' for i in items),dismantled=sum(i['operational_state']=='dismantled' for i in items),possible=sum(i['applicability'] in ('possible','unknown') for i in items),confirmed=sum(i['inspection']=='present' for i in items),excluded=sum(not i['included'] for i in items),received=sum(i['operational_state'] in ('received','sold') for i in items)))
@@ -264,6 +265,11 @@ def decide(db,v,who,data):
     if any(not r.plan_v3 for r in targets):raise HTTPException(409,'Спочатку зіставте legacy-позицію через preview')
     if data.action!='receipt' and any(protected(r) for r in targets):raise HTTPException(409,'Позиція має складську історію; змінюйте її через складський workflow')
     if data.action in ('dismantled','receipt') and any(not r.included or inspection(r)!='present' or (data.action=='receipt' and r.status!='dismantled') for r in targets):raise HTTPException(409,'Спочатку підтвердіть наявність, потім демонтаж; лише тоді можливе оприбуткування')
+    updated=apply_decisions(db,v,targets,data)
+    return finish(db,v,who,data,sha,dict(updated=updated,total=len(targets)))
+
+
+def apply_decisions(db,v,targets,data):
     updated=0;changes=[]
     for r in targets:
         before=snapshot(r)
@@ -276,7 +282,7 @@ def decide(db,v,who,data):
         elif data.action=='restore':
             r.included=True;meta['inspection']='unchecked' if inspection(r) in ('absent','not_applicable') else inspection(r);meta['reason']=''
         else:
-            meta['inspection']=data.action;r.included=data.action not in ('absent','not_applicable');meta['reason']=data.reason
+            meta['inspection']=data.action;meta['inspection_source']='user_decision';r.included=data.action not in ('absent','not_applicable');meta['reason']=data.reason
             if data.action!='present':r.status='unchecked'
         r.plan_v3=meta
         if before!=snapshot(r):changes.append((r,before));updated+=1
@@ -284,4 +290,4 @@ def decide(db,v,who,data):
         db.flush()
         with db.no_autoflush:
             for r,before in changes:record(db,v.account_id,r,'dismantling_v3_decision',data.reason or 'Явне рішення перевірки/демонтажу; без зміни залишку',before,flush_before=False)
-    return finish(db,v,who,data,sha,dict(updated=updated,total=len(targets)))
+    return updated

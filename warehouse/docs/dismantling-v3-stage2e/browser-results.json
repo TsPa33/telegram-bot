@@ -1,0 +1,50 @@
+[
+  {
+    "width": 1440,
+    "synthetic": true,
+    "selection": 1105,
+    "selection_batches": [
+      1000,
+      105
+    ],
+    "category": 1105,
+    "subcategory": 700,
+    "filtered": 11,
+    "received_parts": 2,
+    "quantities": [
+      2,
+      4
+    ],
+    "repeat_receipt_updated": 0,
+    "manual_counter": {
+      "initial_unchecked": 196,
+      "confirmed_after_user_action": 194,
+      "unchecked_after_reload": 2
+    },
+    "old_history_preserved": true
+  },
+  {
+    "width": 390,
+    "synthetic": true,
+    "selection": 1105,
+    "selection_batches": [
+      1000,
+      105
+    ],
+    "category": 1105,
+    "subcategory": 700,
+    "filtered": 11,
+    "received_parts": 2,
+    "quantities": [
+      2,
+      4
+    ],
+    "repeat_receipt_updated": 0,
+    "manual_counter": {
+      "initial_unchecked": 196,
+      "confirmed_after_user_action": 194,
+      "unchecked_after_reload": 2
+    },
+    "old_history_preserved": true
+  }
+]

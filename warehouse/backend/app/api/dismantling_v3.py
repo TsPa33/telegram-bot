@@ -1,11 +1,11 @@
-from fastapi import APIRouter,HTTPException
+from fastapi import APIRouter,HTTPException,Query
 from sqlalchemy import text
 from app.api.catalogue import DB,Auth
 from app.api.secure_route import SecureRoute
 from app.models import Vehicle
 from app.services.inventory import owned
 from app.services import dismantling_plan_v3 as service
-from app.schemas.dismantling_v3 import PlanPreview,PlanSave,PlanDecision,PlanQuick
+from app.schemas.dismantling_v3 import PlanPreview,PlanSave,PlanDecision,PlanQuick,BulkSelection,BulkCommand
 from app.services.catalogue_import import LOCK
 router=APIRouter(route_class=SecureRoute,tags=['Managed dismantling plan v3'])
 @router.get('/api/v1/vehicles/{id}/dismantling-v3')
@@ -31,3 +31,19 @@ def quick(id:str,data:PlanQuick,db:DB,who:Auth):
     if cached is not None:return cached
     if not db.scalar(text('SELECT pg_try_advisory_xact_lock(:key)'),{'key':LOCK}):raise HTTPException(409,'Каталог оновлюється; повторіть формування після завершення операції')
     result=service.quick(db,v,who,data);db.commit();return result
+
+@router.get('/api/v1/vehicles/{id}/dismantling-v3/selection')
+def selection(id:str,db:DB,who:Auth,q:str=Query('',max_length=200),category:str=Query('',max_length=100),subcategory:str=Query('',max_length=100),status:str=Query('all',max_length=50),offset:int=Query(0,ge=0),limit:int=Query(1000,ge=1,le=1000)):
+    from app.services.dismantling_bulk import select_ids
+    return select_ids(db,owned(db,Vehicle,id,who.workspace_account_id),q=q,category=category,subcategory=subcategory,status=status,offset=offset,limit=limit)
+
+@router.post('/api/v1/vehicles/{id}/dismantling-v3/bulk/preview')
+def bulk_preview(id:str,data:BulkSelection,db:DB,who:Auth):
+    from app.services.dismantling_bulk import preview
+    return preview(db,owned(db,Vehicle,id,who.workspace_account_id),data.ids,data.action)
+
+@router.post('/api/v1/vehicles/{id}/dismantling-v3/bulk')
+def bulk_command(id:str,data:BulkCommand,db:DB,who:Auth):
+    from app.services.dismantling_bulk import execute
+    v=owned(db,Vehicle,id,who.workspace_account_id,lock=True,active=True)
+    result=execute(db,v,who,data);db.commit();return result

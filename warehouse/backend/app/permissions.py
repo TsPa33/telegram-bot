@@ -51,6 +51,8 @@ def route_permissions(method,path,body):
     if path.startswith('/dismantling/catalog/'):return ['catalog.import']
     if path=='/vehicle-catalog':return ['vehicles.view']
     if path.endswith('/aleto-catalog'):return ['vehicles.view','catalog.view']
+    if path.endswith('/dismantling-v3/bulk'):return ['vehicles.view','catalog.view','dismantling.manage']+(['inventory.create','inventory.adjust_quantity'] if body.get('action')=='receipt' else [])
+    if path.endswith('/dismantling-v3/bulk/preview'):return ['vehicles.view','catalog.view']
     if path.endswith('/dismantling-v3/preview'):return ['vehicles.view','catalog.view']
     if '/dismantling-v3/' in path and path.endswith('/decisions'):
         return ['dismantling.manage','inventory.create','inventory.adjust_quantity'] if body.get('action')=='receipt' else ['dismantling.manage']
@@ -77,6 +79,12 @@ def route_permissions(method,path,body):
     return ['__deny__']
 
 def check_fields(who,path,body):
+    if path.endswith('/dismantling-v3/bulk'):
+        for line in body.get('lines',[]) if isinstance(body.get('lines',[]),list) else []:
+            if not isinstance(line,dict):continue
+            if line.get('selling_price') is not None:require_permission(who,'parts.change_price')
+            if line.get('condition') is not None:require_permission(who,'parts.inspect')
+            if line.get('location'):require_permission(who,'inventory.transfer')
     # Full replacement forms must not reset protected values via omitted defaults.
     if path in ('/api/v1/parts','/api/v1/parts/{id}'):
         if 'unit_cost' in body:require_permission(who,'parts.view_cost')

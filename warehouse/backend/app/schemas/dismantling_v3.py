@@ -46,3 +46,35 @@ class PlanQuick(PlanPreview):
         if not self.confirm:raise ValueError('Потрібна явна дія створення або оновлення плану')
         if self.resolutions and not self.token:raise ValueError('Ручні рішення потребують перевіреного preview')
         return self
+
+class BulkSelection(Input):
+    ids:list[str]=Field(min_length=1,max_length=1000)
+    action:Literal['present','absent','not_applicable','unchecked','exclude','restore','dismantled','receipt']
+    @model_validator(mode='after')
+    def unique(self):
+        if len(set(self.ids))!=len(self.ids):raise ValueError('Duplicate item IDs')
+        return self
+
+from app.schemas import Money
+class ReceiptLine(Input):
+    id:str=Field(min_length=1,max_length=36)
+    quantity:int=Field(ge=1,le=1000000,strict=True)
+    condition:Literal['used','new','damaged','refurbished']|None=None
+    location:str=Field(default='',max_length=120)
+    selling_price:Money|None=None
+
+class BulkCommand(BulkSelection):
+    request_key:UUID
+    etag:str=Field(pattern=r'^[a-f0-9]{64}$')
+    reason:str=Field(default='',max_length=1000)
+    confirm:bool=Field(default=False,strict=True)
+    preview_token:str|None=Field(default=None,pattern=r'^[a-f0-9]{64}$')
+    lines:list[ReceiptLine]=Field(default_factory=list,max_length=1000)
+    @model_validator(mode='after')
+    def valid_command(self):
+        if self.action in ('absent','exclude','not_applicable') and len(self.reason.strip())<3:raise ValueError('Потрібна причина рішення')
+        if self.action in ('receipt','dismantled') and not self.confirm:raise ValueError('Потрібна явна дія підтвердження')
+        if self.action=='receipt' and not self.preview_token:raise ValueError('Потрібна перевірка придатності оприбуткування')
+        if self.action!='receipt' and self.lines:raise ValueError('Параметри надходження дозволені лише для receipt')
+        if len({r.id for r in self.lines})!=len(self.lines) or not {r.id for r in self.lines}<=set(self.ids):raise ValueError('Кожен рядок надходження має належати вибраним ID та бути унікальним')
+        return self
