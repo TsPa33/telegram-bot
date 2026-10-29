@@ -70,14 +70,15 @@ nav.stock-section-tabs>button[aria-pressed=true] { color:var(--color-accent-stro
 .stock-actions-menu,.vehicle-combobox ul,.seller-autocomplete ul { border-color:var(--color-border); background:var(--color-surface); box-shadow:var(--shadow-overlay); }
 .stock-actions-menu button:hover,.vehicle-combobox li:hover,.vehicle-combobox li[aria-selected=true],.seller-autocomplete [aria-selected=true] { background:var(--color-accent-surface); color:var(--color-text); }
 dialog { border-color:var(--color-border); border-radius:var(--radius-panel); box-shadow:var(--shadow-overlay); color:var(--color-text); background:var(--color-surface); }
-dialog::backdrop { background:#242b3559; }
+dialog::backdrop { background:var(--color-overlay); }
 .modal-head { border-color:var(--color-border); }
 .stock-part-metrics,.order-line-editor,.order-buyer-selected { background:var(--color-background); border-color:var(--color-border); }
 .order-summary header>span { color:var(--color-accent-strong); }
-.badge.dismantling,.badge.present,.badge.completed { color:var(--color-accent-strong); background:var(--color-accent-surface); }
+.badge.dismantling { color:var(--color-info); background:var(--color-info-surface); }
+.badge.present,.badge.completed { color:var(--color-success); background:var(--color-success-surface); }
 .badge.damaged { color:var(--color-warning); background:var(--color-warning-surface); }
 .badge.absent { color:var(--color-danger); background:var(--color-danger-surface); }
-.available { color:var(--color-accent-strong)!important; }
+.available { color:var(--color-success)!important; }
 .safe-dot { background:var(--color-accent); }
 .error { color:var(--color-danger); background:var(--color-danger-surface); border-color:var(--color-danger); }
 .notice { color:var(--color-warning); background:var(--color-warning-surface); border-color:var(--color-border); }
@@ -99,3 +100,24 @@ dialog::backdrop { background:#242b3559; }
 @media(prefers-reduced-motion:reduce) {
   *,*::before,*::after { animation:none!important; transition:none!important; scroll-behavior:auto!important; }
 }
+
+/* Shared authorized shell. No route-dependent theme or navigation behavior. */
+.sidebar { overflow-y:auto;background:var(--color-sidebar);color:var(--color-sidebar-text);border-color:var(--color-sidebar-border); }
+.sidebar .brand,.sidebar a { color:var(--color-sidebar-text); }
+.sidebar .brand-icon { background:var(--color-sidebar-active);color:var(--color-surface); }
+.sidebar :is(.brand strong,.nav-label,.workspace small,.workspace>svg,.sidebar-foot) { color:var(--color-sidebar-secondary); }
+.sidebar .workspace,.sidebar .sidebar-foot { border-color:var(--color-sidebar-border); }
+.sidebar .workspace-letter { background:var(--color-sidebar-active);border-color:var(--color-sidebar-border);color:var(--color-sidebar-text); }
+.sidebar nav a,.sidebar>a:not(.brand) { color:var(--color-sidebar-text);display:flex;align-items:center;gap:11px;min-height:44px;padding:12px;border-radius:var(--radius-control);font-size:12px; }
+.sidebar nav a:hover,.sidebar>a:not(.brand):hover { color:var(--color-surface);background:var(--color-sidebar-active); }
+.sidebar nav a.active,.sidebar>a.active { color:var(--color-surface);background:var(--color-sidebar-active);font-weight:700; }
+.sidebar nav a.active::after { background:var(--color-accent); }
+.sidebar a:focus-visible { outline-color:var(--color-sidebar-text); }
+.topbar { background:var(--color-surface);border-color:var(--color-border);color:var(--color-text); }
+.topbar .breadcrumb,.topbar .user { font-size:12px; }
+.topbar .user small { color:var(--color-secondary);font-size:11px; }
+:where(.table-wrap) th { color:var(--color-secondary);background:var(--color-subtle);font-size:11px; }
+:where(.table-wrap) td,:where(.table-wrap) th { border-color:var(--color-border); }
+.tabs button.active,.tabs button[aria-selected=true] { color:var(--color-accent-strong);border-bottom-color:var(--color-accent-strong); }
+/* The mobile menu backdrop is a button for dismissal, not a secondary control. */
+.app .shade,.app .shade:hover,.app .shade:active { background:var(--color-overlay);border:0;box-shadow:none; }

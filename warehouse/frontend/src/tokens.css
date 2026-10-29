@@ -1,20 +1,43 @@
-/* UX 5.3: shared primitives. Secondary text and solid accent meet WCAG AA. */
+/* UI-1: single Warehouse palette. Layouts consume these semantic roles. */
 :root {
   --color-background: #f7f8fa;
   --color-surface: #ffffff;
-  --color-subtle: #f0f2f5;
-  --color-text: #242b35;
-  --color-secondary: #606d7c;
-  --color-border: #e1e5ea;
+  --color-subtle: #f3f5f8;
+  --color-text: #172235;
+  --color-secondary: #66758c;
+  --color-border: #dee5ef;
   --color-control-border: #8995a3;
-  --color-accent: #668b82;
-  --color-accent-strong: #42675e;
-  --color-accent-pressed: #36594f;
-  --color-accent-surface: #e8f2ef;
+  --color-accent: #2563eb;
+  --color-accent-strong: #2563eb;
+  --color-accent-pressed: #1d4ed8;
+  --color-accent-surface: #eff4ff;
   --color-danger: #a23535;
   --color-danger-surface: #fff1f0;
   --color-warning: #775315;
   --color-warning-surface: #fff8e8;
+  --color-success: #166534;
+  --color-success-surface: #e4f8ea;
+  --color-info: #1d4ed8;
+  --color-info-surface: #dbeafe;
+  --color-sidebar: #151d28;
+  --color-sidebar-text: #dce3ed;
+  --color-sidebar-secondary: #aab7ca;
+  --color-sidebar-border: #344052;
+  --color-sidebar-active: #27374e;
+  --color-placeholder: #9aa7ba;
+  --color-placeholder-strong: #8795ac;
+  --color-warning-soft: #fff6dc;
+  --color-warning-strong: #946000;
+  --color-danger-soft: #ffeded;
+  --color-danger-strong: #c82d37;
+  --color-accent-soft: #edf3ff;
+  --color-accent-hover-surface: #f5f8ff;
+  --color-control-surface: #f5f7fa;
+  --color-muted-border: #eef1f6;
+  --color-group: #f0f3f8;
+  --color-group-count: #e1e7f0;
+  --color-overlay: #17223559;
+  --color-shadow: #17223515;
   --radius-control: 8px;
   --radius-panel: 12px;
   --space-1: 4px;
@@ -24,9 +47,13 @@
   --space-5: 24px;
   --control-height: 40px;
   --duration: 150ms;
-  --focus-ring: 0 0 0 3px #42675e30;
-  --shadow-overlay: 0 10px 32px #242b351a;
+  --focus-ring: 0 0 0 3px #2563eb30;
+  --shadow-overlay: 0 10px 32px #1722351a;
   /* Aliases for existing layouts and charts. */
+  --border: var(--color-border);
+  --surface: var(--color-surface);
+  --surface-muted: var(--color-subtle);
+  --text-secondary: var(--color-secondary);
   --line: var(--color-border);
   --muted: var(--color-secondary);
   --black: var(--color-text);

@@ -1,0 +1,236 @@
+[
+  {
+    "width": 1440,
+    "pages": [
+      {
+        "route": "/",
+        "sidebar": "rgb(21, 29, 40)",
+        "topbar": "rgb(255, 255, 255)",
+        "text": "rgb(23, 34, 53)",
+        "background": "rgba(0, 0, 0, 0)",
+        "overflow": false
+      },
+      {
+        "route": "/vehicles",
+        "sidebar": "rgb(21, 29, 40)",
+        "topbar": "rgb(255, 255, 255)",
+        "text": "rgb(23, 34, 53)",
+        "background": "rgba(0, 0, 0, 0)",
+        "overflow": false
+      },
+      {
+        "route": "/inventory",
+        "sidebar": "rgb(21, 29, 40)",
+        "topbar": "rgb(255, 255, 255)",
+        "text": "rgb(23, 34, 53)",
+        "background": "rgba(0, 0, 0, 0)",
+        "overflow": false
+      },
+      {
+        "route": "/sales",
+        "sidebar": "rgb(21, 29, 40)",
+        "topbar": "rgb(255, 255, 255)",
+        "text": "rgb(23, 34, 53)",
+        "background": "rgba(0, 0, 0, 0)",
+        "overflow": false
+      },
+      {
+        "route": "/orders",
+        "sidebar": "rgb(21, 29, 40)",
+        "topbar": "rgb(255, 255, 255)",
+        "text": "rgb(23, 34, 53)",
+        "background": "rgba(0, 0, 0, 0)",
+        "overflow": false
+      },
+      {
+        "route": "/statistics",
+        "sidebar": "rgb(21, 29, 40)",
+        "topbar": "rgb(255, 255, 255)",
+        "text": "rgb(23, 34, 53)",
+        "background": "rgba(0, 0, 0, 0)",
+        "overflow": false
+      },
+      {
+        "route": "/team",
+        "sidebar": "rgb(21, 29, 40)",
+        "topbar": "rgb(255, 255, 255)",
+        "text": "rgb(23, 34, 53)",
+        "background": "rgba(0, 0, 0, 0)",
+        "overflow": false
+      },
+      {
+        "route": "/settings",
+        "sidebar": "rgb(21, 29, 40)",
+        "topbar": "rgb(255, 255, 255)",
+        "text": "rgb(23, 34, 53)",
+        "background": "rgba(0, 0, 0, 0)",
+        "overflow": false
+      },
+      {
+        "route": "/administration/catalogue/import",
+        "sidebar": "rgb(21, 29, 40)",
+        "topbar": "rgb(255, 255, 255)",
+        "text": "rgb(23, 34, 53)",
+        "background": "rgba(0, 0, 0, 0)",
+        "overflow": false
+      },
+      {
+        "route": "/catalog",
+        "sidebar": "rgb(21, 29, 40)",
+        "topbar": "rgb(255, 255, 255)",
+        "text": "rgb(23, 34, 53)",
+        "background": "rgba(0, 0, 0, 0)",
+        "overflow": false
+      },
+      {
+        "route": "/analytics",
+        "sidebar": "rgb(21, 29, 40)",
+        "topbar": "rgb(255, 255, 255)",
+        "text": "rgb(23, 34, 53)",
+        "background": "rgba(0, 0, 0, 0)",
+        "overflow": false
+      },
+      {
+        "route": "/archive",
+        "sidebar": "rgb(21, 29, 40)",
+        "topbar": "rgb(255, 255, 255)",
+        "text": "rgb(23, 34, 53)",
+        "background": "rgba(0, 0, 0, 0)",
+        "overflow": false
+      },
+      {
+        "route": "/inventory/advanced",
+        "sidebar": "rgb(21, 29, 40)",
+        "topbar": "rgb(255, 255, 255)",
+        "text": "rgb(23, 34, 53)",
+        "background": "rgba(0, 0, 0, 0)",
+        "overflow": false
+      }
+    ],
+    "vehicle_order_forms_open_close": true,
+    "employee_creation_gate_preserved": true,
+    "mobile_navigation": false,
+    "ux1_filters_collapse_prices": true,
+    "no_provider_names_in_prices": true,
+    "stock_plan_prices_unchanged": true,
+    "no_mutations": true,
+    "page_errors": []
+  },
+  {
+    "width": 390,
+    "pages": [
+      {
+        "route": "/",
+        "sidebar": "rgb(21, 29, 40)",
+        "topbar": "rgb(255, 255, 255)",
+        "text": "rgb(23, 34, 53)",
+        "background": "rgba(0, 0, 0, 0)",
+        "overflow": false
+      },
+      {
+        "route": "/vehicles",
+        "sidebar": "rgb(21, 29, 40)",
+        "topbar": "rgb(255, 255, 255)",
+        "text": "rgb(23, 34, 53)",
+        "background": "rgba(0, 0, 0, 0)",
+        "overflow": false
+      },
+      {
+        "route": "/inventory",
+        "sidebar": "rgb(21, 29, 40)",
+        "topbar": "rgb(255, 255, 255)",
+        "text": "rgb(23, 34, 53)",
+        "background": "rgba(0, 0, 0, 0)",
+        "overflow": false
+      },
+      {
+        "route": "/sales",
+        "sidebar": "rgb(21, 29, 40)",
+        "topbar": "rgb(255, 255, 255)",
+        "text": "rgb(23, 34, 53)",
+        "background": "rgba(0, 0, 0, 0)",
+        "overflow": false
+      },
+      {
+        "route": "/orders",
+        "sidebar": "rgb(21, 29, 40)",
+        "topbar": "rgb(255, 255, 255)",
+        "text": "rgb(23, 34, 53)",
+        "background": "rgba(0, 0, 0, 0)",
+        "overflow": false
+      },
+      {
+        "route": "/statistics",
+        "sidebar": "rgb(21, 29, 40)",
+        "topbar": "rgb(255, 255, 255)",
+        "text": "rgb(23, 34, 53)",
+        "background": "rgba(0, 0, 0, 0)",
+        "overflow": false
+      },
+      {
+        "route": "/team",
+        "sidebar": "rgb(21, 29, 40)",
+        "topbar": "rgb(255, 255, 255)",
+        "text": "rgb(23, 34, 53)",
+        "background": "rgba(0, 0, 0, 0)",
+        "overflow": false
+      },
+      {
+        "route": "/settings",
+        "sidebar": "rgb(21, 29, 40)",
+        "topbar": "rgb(255, 255, 255)",
+        "text": "rgb(23, 34, 53)",
+        "background": "rgba(0, 0, 0, 0)",
+        "overflow": false
+      },
+      {
+        "route": "/administration/catalogue/import",
+        "sidebar": "rgb(21, 29, 40)",
+        "topbar": "rgb(255, 255, 255)",
+        "text": "rgb(23, 34, 53)",
+        "background": "rgba(0, 0, 0, 0)",
+        "overflow": false
+      },
+      {
+        "route": "/catalog",
+        "sidebar": "rgb(21, 29, 40)",
+        "topbar": "rgb(255, 255, 255)",
+        "text": "rgb(23, 34, 53)",
+        "background": "rgba(0, 0, 0, 0)",
+        "overflow": false
+      },
+      {
+        "route": "/analytics",
+        "sidebar": "rgb(21, 29, 40)",
+        "topbar": "rgb(255, 255, 255)",
+        "text": "rgb(23, 34, 53)",
+        "background": "rgba(0, 0, 0, 0)",
+        "overflow": false
+      },
+      {
+        "route": "/archive",
+        "sidebar": "rgb(21, 29, 40)",
+        "topbar": "rgb(255, 255, 255)",
+        "text": "rgb(23, 34, 53)",
+        "background": "rgba(0, 0, 0, 0)",
+        "overflow": false
+      },
+      {
+        "route": "/inventory/advanced",
+        "sidebar": "rgb(21, 29, 40)",
+        "topbar": "rgb(255, 255, 255)",
+        "text": "rgb(23, 34, 53)",
+        "background": "rgba(0, 0, 0, 0)",
+        "overflow": false
+      }
+    ],
+    "vehicle_order_forms_open_close": true,
+    "employee_creation_gate_preserved": true,
+    "mobile_navigation": true,
+    "ux1_filters_collapse_prices": true,
+    "no_provider_names_in_prices": true,
+    "stock_plan_prices_unchanged": true,
+    "no_mutations": true,
+    "page_errors": []
+  }
+]

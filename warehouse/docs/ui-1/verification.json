@@ -1,0 +1,26 @@
+{
+  "base_sha": "8ae56ad180a2e4fe5647b9955139b4011493698e",
+  "build": "PASS",
+  "frontend_unit_tests_passed": 411,
+  "browser": "PASS",
+  "routes_per_width": 13,
+  "viewports": [
+    {
+      "width": 1440,
+      "height": 1000
+    },
+    {
+      "width": 390,
+      "height": 844
+    }
+  ],
+  "ux1_visual_regression": "PASS",
+  "backend_changed": false,
+  "database_schema_changed": false,
+  "business_data_mutations": false,
+  "backend_regression_run": false,
+  "employee_creation_form": "UNVERIFIED: existing local feature gate disabled; gate preserved",
+  "local_synthetic_fixture_only": true,
+  "push": false,
+  "deployment": false
+}
