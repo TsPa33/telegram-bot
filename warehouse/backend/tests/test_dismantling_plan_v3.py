@@ -305,7 +305,7 @@ def test_scoped_catalogue_appears_in_v3_only_for_matching_volvo_model(platform,v
     with Session(engine()) as db:
         v=db.get(Vehicle,vehicle['id'])
         v.model='XC90';v.generation='I';db.commit()
-    assert not any(i['name']=='Тестова окрема деталь Volvo' for i in preview(platform,vehicle)['proposals'])
+    assert not any(p['item']['name']=='Тестова окрема деталь Volvo' for p in preview(platform,vehicle)['proposals'])
     with Session(engine()) as db:
         v=db.get(Vehicle,vehicle['id']);v.model='XC60';v.generation='';db.commit()
     first=preview(platform,vehicle)
