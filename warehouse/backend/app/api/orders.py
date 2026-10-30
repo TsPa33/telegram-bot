@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy import String, cast, func, or_, select, text
 from sqlalchemy.exc import SQLAlchemyError
 from app.api.routes import DB, Auth
-from app.models import Account,Buyer, Order, OrderEvent, OrderLine, OrderRequest, OrderReservation
+from app.models import Account,Buyer, Order, OrderEvent, OrderLine, OrderRequest, OrderReservation,Part
 from app.schemas.orders import BuyerInput, CreateOrder, UpdateOrder, LinesInput, OrderAction, OrderStatus, normalize_phone
 from app.services import orders as service
 from app.services.inventory import owned, snapshot
@@ -77,7 +77,15 @@ def order_list(db:DB,who:Auth,q:str=Query('',max_length=100),phone:str=Query('',
 
 
 @router.get('/orders/{id}')
-def order_get(id:str,db:DB,who:Auth):return service.view(db,owned(db,Order,id,who.workspace_account_id))
+def order_get(id:str,db:DB,who:Auth):
+    result=service.view(db,owned(db,Order,id,who.workspace_account_id))
+    # Live advisory inventory only on an authorized read, never in replay snapshots.
+    if 'inventory.view' in who.permissions:
+        parts={p.id:p for p in db.scalars(select(Part).where(Part.account_id==who.workspace_account_id,Part.id.in_([line['part_id'] for line in result['lines']])))}
+        for line in result['lines']:
+            p=parts.get(line['part_id'])
+            if p:line['current_part']={'oem_number':p.oem_number,'available_quantity':p.quantity-p.reserved_quantity}
+    return result
 
 
 @router.patch('/orders/{id}')

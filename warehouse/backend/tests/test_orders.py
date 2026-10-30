@@ -317,3 +317,64 @@ def test_draft_with_archived_part_can_still_be_cancelled(setup):
     c,b,p=setup;order=create(c,b,[line(p)])
     assert c.post('/api/v1/archive/parts/'+p['id']).status_code==200
     assert action(c,order,'cancel').json()['status']=='cancelled'
+
+
+def test_cross_donor_prices_actor_and_full_mid_operation_rollback(setup,vehicle,monkeypatch):
+    from app.services import orders as domain
+    from fastapi import HTTPException
+    c,b,p=setup
+    second_vehicle=c.post('/api/v1/vehicles',json={'manufacturer':'Volvo','model':'XC90','year':2018}).json()
+    second=stocked(c,second_vehicle,quantity=3,name='R4 second donor',oem_number='R4-OEM')
+    before=[state(c,x) for x in (p,second)]
+    order=create(c,b,[line(p,2,unit_price='12.34'),line(second,unit_price='0',currency='USD')])
+    url='/api/v1/orders/'+order['id']
+    detail=c.get(url).json()
+    assert len({x['donor_snapshot']['id'] for x in detail['lines']})==2
+    assert next(x for x in detail['lines'] if x['part_id']==second['id'])['current_part']=={'oem_number':'R4-OEM','available_quantity':3}
+    assert [state(c,x) for x in (p,second)]==before
+    c.patch('/api/v1/parts/'+p['id']+'/price',json={'selling_price':'987.65','currency':'USD'})
+    original=domain.stock;calls=[]
+    def fail_second(*args,**kwargs):
+        calls.append(args[1].id)
+        if len(calls)==2:raise HTTPException(409,'R4 simulated failure after first write')
+        return original(*args,**kwargs)
+    body=key()
+    with monkeypatch.context() as patch:
+        patch.setattr(domain,'stock',fail_second)
+        assert action(c,order,'sell',body).status_code==409
+    assert len(calls)==2
+    assert [state(c,x)['quantity'] for x in (p,second)]==[3,3]
+    assert c.get(url).json()['sold_at'] is None
+    assert c.get('/api/v1/audit',params={'type':'sale'}).json()['total']==0
+    sold=action(c,order,'sell',body)
+    assert sold.status_code==200,sold.text
+    assert sold.json()['totals_by_currency']=={'UAH':'24.68','USD':'0.00'}
+    assert action(c,order,'sell',body).json()==sold.json()
+    assert action(c,order,'sell').status_code==409
+    assert c.put(url+'/lines',json={**key(),'lines':[line(p)]}).status_code==409
+    events=c.get(url+'/events').json()['items']
+    created=next(e for e in events if e['type']=='created')
+    confirmed=next(e for e in events if e['type']=='sale_confirmed')
+    assert created['actor_id']==confirmed['actor_id']==c.get('/api/v1/auth/me').json()['id']
+    assert c.get('/api/v1/audit',params={'type':'sale'}).json()['total']==2
+
+
+def test_current_inventory_is_permission_scoped_and_actor_is_not_assignable(setup):
+    from sqlalchemy.orm import Session
+    from app.models import Account
+    from app.services.auth import hasher
+    c,b,p=setup;order=create(c,b,[line(p)])
+    owner=c.get('/api/v1/auth/me').json()['id']
+    with Session(engine()) as db:
+        reader=Account(email='r4-contact-reader@example.test',name='R4 contact reader',password_hash=hasher.hash('local-reader-password'),role='MANAGER',workspace_account_id=owner,permissions=['orders.view'])
+        db.add(reader);db.commit()
+    with TestClient(app) as reader:
+        r=reader.post('/api/v1/auth/login',json={'email':'r4-contact-reader@example.test','password':'local-reader-password'});reader.headers['X-CSRF-Token']=r.json()['csrf_token']
+        row=reader.get('/api/v1/orders/'+order['id']).json()
+        assert 'current_part' not in row['lines'][0] and 'unit_price' not in row['lines'][0]
+        assert action(reader,order,'sell').status_code==403
+        assert reader.put('/api/v1/orders/'+order['id']+'/lines',json={**key(),'lines':[line(p)]}).status_code==403
+    for extra in ({'actor_id':'other-actor'},{'manager_id':'other-actor'}):
+        r=c.post('/api/v1/orders',json={**key(),'buyer_id':b['id'],'lines':[line(p)],**extra})
+        assert r.status_code==422,r.text
+    assert c.post('/api/v1/orders',json={**key(),'buyer_id':b['id'],'lines':[{'part_id':p['id'],'quantity':1,'currency':'UAH'}]}).status_code==422
