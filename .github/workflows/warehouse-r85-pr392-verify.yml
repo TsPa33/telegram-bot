@@ -52,6 +52,13 @@ jobs:
       - name: Run model-scope and managed plan tests
         working-directory: warehouse/backend
         run: python -m pytest -q tests/test_dismantling_v2.py tests/test_dismantling_plan_v3.py tests/test_dismantling_preview.py
+      - name: Recheck historical migration and data-preservation regressions
+        working-directory: warehouse/backend
+        run: >-
+          python -m pytest -q
+          tests/test_stage3b.py::test_populated_upgrade_and_guarded_downgrade
+          tests/test_staging.py::test_staging_public_host_and_authenticated_sales_readiness
+          tests/test_team.py::test_populated_upgrade_preserves_sessions_reserves_orders_and_failed_retry
       - name: Run full backend regression
         working-directory: warehouse/backend
         run: python -m pytest -q
