@@ -7,7 +7,7 @@ branch_labels=None
 depends_on=None
 
 def upgrade():
-    op.add_column('dismantling_catalog_types',sa.Column('applicability',sa.JSON(),nullable=True))
+    op.add_column('dismantling_catalog_types',sa.Column('applicability',sa.JSON(none_as_null=True),nullable=True))
 
 def downgrade():
     bind=op.get_bind()
