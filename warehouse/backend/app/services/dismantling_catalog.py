@@ -4,7 +4,7 @@ from sqlalchemy import select
 from app.models import Account, DismantlingCatalogSource as Source, DismantlingCatalogType as Type
 from app.services.inventory import record, snapshot
 
-FIELDS=('catalog_key','category_key','category_name','subcategory_key','subcategory_name','name','position')
+FIELDS=('catalog_key','category_key','category_name','subcategory_key','subcategory_name','name','position','applicability')
 
 
 def import_catalog(db, account_id, data, dry_run=False):
