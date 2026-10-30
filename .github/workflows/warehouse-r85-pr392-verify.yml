@@ -1,8 +1,5 @@
 name: "PR392 isolated PostgreSQL verification"
 on:
-  push:
-    branches:
-      - feature/warehouse-filedbtree-model-scope
   pull_request:
     branches:
       - feature/carpot-warehouse-mvp
@@ -10,6 +7,10 @@ on:
 
 permissions:
   contents: read
+
+concurrency:
+  group: pr392-verification
+  cancel-in-progress: true
 
 jobs:
   backend-isolated-postgres:
