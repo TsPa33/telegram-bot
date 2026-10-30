@@ -95,7 +95,7 @@ def test_downgrade_refuses_to_fabricate_unknown_dates(logged):
     assert result.returncode!=0 and 'unknown acquisition dates' in result.stderr
     assert logged.get('/api/v1/vehicles/'+row['id']).json()['acquisition_date'] is None
     with engine().connect() as db:
-        assert db.execute(text('SELECT version_num FROM alembic_version')).scalar_one()=='e4b93a2d715c'
+        assert db.execute(text('SELECT version_num FROM alembic_version')).scalar_one()=='f5c84d31a620'
 
 
 def test_quick_create_still_checks_auth_csrf_and_validation(logged):
