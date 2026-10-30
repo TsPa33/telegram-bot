@@ -123,3 +123,6 @@ app.include_router(pricing_router)
 
 from app.api.sales_center import router as sales_center_router
 app.include_router(sales_center_router)
+
+from app.api.import_jobs import router as import_jobs_router
+app.include_router(import_jobs_router)

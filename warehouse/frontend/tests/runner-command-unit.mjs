@@ -1,0 +1,11 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {readFile} from 'node:fs/promises';import ts from 'typescript';
+const source=await readFile(new URL('../src/runnerCommand.ts',import.meta.url),'utf8');const {validRunnerCommand,runnerRejectionIsFinal}=await import('data:text/javascript;base64,'+Buffer.from(ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}}).outputText).toString('base64'));
+const id='11111111-1111-4111-a111-111111111111',body={request_key:id,catalogue_job_id:id,job_type:'file_validation'},create={path:'/admin/import-jobs',body};
+test('saved create contains only known analysis context',()=>assert(validRunnerCommand(create)));
+test('saved preview uses the same durable input and explicit supported type',()=>assert(validRunnerCommand({...create,body:{...body,job_type:'catalogue_preview'}})));
+test('cancel and retry restore only exact job commands',()=>{for(const action of ['cancel','retry'])assert(validRunnerCommand({path:'/admin/import-jobs/'+id+'/'+action,body:{request_key:id}}));});
+test('arbitrary URLs code publication and unknown types never recover as executable commands',()=>{for(const path of ['https://aleto.ua/search/','/pricing/previews/x/apply','/admin/import-jobs/'+id+'/apply'])assert(!validRunnerCommand({path,body}));for(const extra of [{url:'http://localhost/'},{code:'print(1)'},{job_type:'scrape'}])assert(!validRunnerCommand({...create,body:{...body,...extra}}));});
+test('malformed or incomplete saved commands are rejected',()=>{for(const value of [null,{}, {path:create.path,body:{}},{...create,body:{...body,request_key:'-'.repeat(36)}}])assert(!validRunnerCommand(value));});
+test('transient conflict and quota during uncertain replay retain original key',()=>{for(const code of [409,429]){assert(!runnerRejectionIsFinal(code,true));assert(runnerRejectionIsFinal(code,false));}});
+test('network server and revoked-session errors never discard uncertain command',()=>{for(const code of [0,401,403,500,503,504])assert(!runnerRejectionIsFinal(code,true));});
+test('definitive validation errors permit correction without blind resend',()=>{for(const code of [400,404,422])assert(runnerRejectionIsFinal(code,false));});

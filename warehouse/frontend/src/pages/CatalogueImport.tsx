@@ -1,3 +1,4 @@
+import ImportRunnerPanel from '../ImportRunnerPanel';
 import ParserAdminCenter from '../ParserAdminCenter';
 import {Pager} from '../components';
 import CanonicalCatalogueAdmin from '../CanonicalCatalogueAdmin';
@@ -35,7 +36,7 @@ function DecisionTable({rows,state,onChange}:{rows:Row[];state:Review;onChange:(
 }
 export default function CatalogueImport({enabled,actorKey}:{enabled:boolean;actorKey:string}){
  if(!enabled)return <section className="panel padded"><h1>Доступ обмежено</h1><p>Глобальний імпорт доступний тільки власнику платформи з серверного allowlist.</p></section>;
- return <ParserAdminCenter key={actorKey}><section id="pa-file-import" aria-label="Імпорт ринкових пропозицій"><ImportWorkspace key={actorKey} actorKey={actorKey}/></section><CanonicalCatalogueAdmin key={actorKey+':canonical'} actorKey={actorKey}/></ParserAdminCenter>;
+ return <ParserAdminCenter key={actorKey}><ImportRunnerPanel actorKey={actorKey}/><section id="pa-file-import" aria-label="Імпорт ринкових пропозицій"><ImportWorkspace key={actorKey} actorKey={actorKey}/></section><CanonicalCatalogueAdmin key={actorKey+':canonical'} actorKey={actorKey}/></ParserAdminCenter>;
 }
 function ImportWorkspace({actorKey}:{actorKey:string}){
  const [historyPage,setHistoryPage]=useState(0);
@@ -64,6 +65,7 @@ function ImportWorkspace({actorKey}:{actorKey:string}){
   try{const id=sessionStorage.getItem(lastKey(actorKey));if(id)void load(id);}catch{setStorageError('Сховище чернеток недоступне. Не оновлюйте сторінку з незбереженими полями.');}
   return ()=>{mounted.current=false;generation.current++;};
  },[actorKey]);
+ useEffect(()=>{const open=(e:Event)=>{const id=(e as CustomEvent).detail?.id;if(typeof id==='string'&&id.length<=36&&!sending.current&&!ref.current.pending&&!active(ref.current.job))void load(id);};window.addEventListener('warehouse:catalogue-job-open',open);return()=>window.removeEventListener('warehouse:catalogue-job-open',open);},[actorKey]);
  const awaiting=!!state.pending||active(state.job);
  useEffect(()=>{
   if(!state.job||!awaiting||busy)return;

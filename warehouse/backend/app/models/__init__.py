@@ -340,3 +340,5 @@ from app.models.pricing import PriceDecision  # noqa: E402,F401
 from sqlalchemy import literal_column
 Index('ix_catalogue_price_oem',func.upper(func.regexp_replace(func.normalize(CatalogueOffer.properties.op('->>')('oem'),literal_column('NFKC')),r'\s+','','g')),_table=CatalogueOffer.__table__)
 Index('ix_aleto_price_oem',AletoOffer.account_id,func.upper(func.regexp_replace(func.normalize(AletoOffer.oem,literal_column('NFKC')),r'\s+','','g')))
+
+from app.models.import_runner import ImportJob,ImportJobEvent  # noqa: E402,F401

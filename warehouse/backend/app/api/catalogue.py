@@ -4,10 +4,11 @@ import json
 from typing import Annotated,Literal
 from urllib.parse import unquote
 import sqlite3
+from types import SimpleNamespace
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import select,func,and_
+from sqlalchemy import select,func,and_,or_,text
 from sqlalchemy.orm import Session,defer
 from starlette.concurrency import run_in_threadpool
 from app.api.secure_route import SecureRoute
@@ -18,6 +19,7 @@ from app.services.catalogue_format import parse_upload,digest,MAX_UPLOAD
 from app.services.catalogue_import import require_admin,platform_admin
 from app.services.aleto_import import identity as normalize_name
 from app.services.catalogue_jobs import enqueue,operation_summary
+from app.models import ImportJob
 
 router=APIRouter(route_class=SecureRoute,prefix='/api/v1/catalogue',tags=['Universal Catalogue v2'])
 DB=Annotated[Session,Depends(get_db)]
@@ -29,11 +31,33 @@ def admin(db:DB,who:Auth):
 Admin=Annotated[object,Depends(admin)]
 
 
+def runner_operations(db,jobs,account):
+    by_id={j.id:j for j in jobs if j.status in ('ready','review') and j.preview_token}
+    if not by_id:return {}
+    db.execute(text("SET LOCAL statement_timeout='5000ms'"))
+    source_id=ImportJob.parameters['catalogue_job_id'].as_string()
+    tokens=or_(*[(source_id==j.id)&(ImportJob.result_summary['preview_token'].as_string()==j.preview_token) for j in by_id.values()])
+    stmt=select(ImportJob.id,ImportJob.parameters['catalogue_job_id'].as_string().label('upload_id'),ImportJob.result_summary['preview_token'].as_string().label('token'),ImportJob.created_at,ImportJob.finished_at,ImportJob.progress_current,ImportJob.progress_total).where(ImportJob.account_id==account,ImportJob.status=='completed',ImportJob.job_type=='catalogue_preview',tokens).distinct(source_id).order_by(source_id,ImportJob.finished_at.desc(),ImportJob.id)
+    result={}
+    for r in db.execute(stmt).mappings():
+        source=by_id[r['upload_id']]
+        if source.id in result or source.status not in ('ready','review') or source.preview_token!=r['token']:continue
+        result[source.id]=SimpleNamespace(id=r['id'],kind='preview',status='done',created_at=r['created_at'],finished_at=r['finished_at'],error=None,progress={'phase':'complete','done':r['progress_current'],'total':r['progress_total']},command={},origin='import_runner')
+    return result
+
+
+def effective_operation(old,new):
+    if not new or old and (old.status in ('queued','running') or old.created_at>=new.finished_at):return old
+    return new
+
+
 def summary(job,detail=False,operation=None):
     report=job.report if detail else {k:v for k,v in job.report.items() if k not in ('issues','suggestions')}
+    op=operation_summary(operation,include_command=detail) if operation else None
+    if op and hasattr(operation,'origin'):op['origin']=operation.origin
     return dict(id=job.id,filename=job.filename,file_sha256=job.file_sha256,payload_sha256=job.payload_sha256,
                 format=job.format,status=job.status,created_at=job.created_at,applied_at=job.applied_at,
-                operation=operation_summary(operation,include_command=detail) if operation else None,
+                operation=op,
                 preview_token=job.preview_token,report=report,**({'resolutions':job.resolutions} if detail else {}))
 
 
@@ -77,7 +101,8 @@ def history(db:DB,owner:Admin,offset:int=Query(0,ge=0),limit:int=Query(30,ge=1,l
     jobs=list(db.scalars(select(Job).options(defer(Job.rows),defer(Job.resolutions)).order_by(Job.created_at.desc(),Job.id).offset(offset).limit(limit)))
     operations={op.job_id:op for op in db.scalars(select(Operation).where(Operation.job_id.in_([j.id for j in jobs]))
         .distinct(Operation.job_id).order_by(Operation.job_id,Operation.created_at.desc(),Operation.id.desc()))} if jobs else {}
-    return {'items':[summary(j,operation=operations.get(j.id)) for j in jobs],
+    runners=runner_operations(db,jobs,owner.id)
+    return {'items':[summary(j,operation=effective_operation(operations.get(j.id),runners.get(j.id))) for j in jobs],
             'total':db.scalar(select(func.count()).select_from(Job)),'offset':offset,'limit':limit}
 
 
@@ -88,7 +113,9 @@ def job(id:str,db:DB,owner:Admin):
     operation=db.scalar(select(Operation).where(Operation.job_id==id).order_by(Operation.created_at.desc(),Operation.id.desc()).limit(1))
     row=db.scalar(select(Job).where(Job.id==id).options(defer(Job.rows)))
     if not row:raise HTTPException(404,'Import job не знайдено')
-    return summary(row,True,operation)
+    runner=runner_operations(db,[row],owner.id).get(row.id)
+    if runner:runner.command={'resolutions':row.resolutions}
+    return summary(row,True,effective_operation(operation,runner))
 
 
 class Resolution(BaseModel):
@@ -178,7 +205,7 @@ def read_catalogue(db:DB,who:Auth,model_id:str|None=Query(None,max_length=36),ca
 def admin_overview(db:DB,owner:Admin):
     from app.services.parser_admin import overview
     from sqlalchemy.exc import DBAPIError
-    try:return overview(db)
+    try:return overview(db,owner.id)
     except DBAPIError:
         db.rollback()
         raise HTTPException(503,'Показники каталогу тимчасово недоступні. Спробуйте пізніше.') from None

@@ -3,6 +3,7 @@ from sqlalchemy import select,func,text
 from sqlalchemy.orm import defer
 from app.models.catalogue import CatalogueSource, CatalogueOffer, CatalogueJob, CatalogueOperation, CataloguePrice
 from app.models.canonical import CanonicalRun
+from app.models import ImportJob
 
 SOURCES=[
     dict(id='aleto',name='Aleto',file_import=True,approved_api=False,approved_web_collection=False,runner_connected=False,status='not_connected'),
@@ -11,7 +12,7 @@ SOURCES=[
 ]
 
 
-def overview(db):
+def overview(db,account_id=None):
     db.execute(text("SELECT set_config('statement_timeout','5000',true)"))
     sources=list(db.execute(select(CatalogueSource.id,CatalogueSource.name).order_by(CatalogueSource.name).limit(100)).mappings())
     latest=db.scalar(select(CatalogueJob).where(CatalogueJob.status=='applied').options(defer(CatalogueJob.rows),defer(CatalogueJob.resolutions)).order_by(CatalogueJob.applied_at.desc(),CatalogueJob.id).limit(1))
@@ -25,9 +26,13 @@ def overview(db):
         progress=op['progress'] or {};planning=progress.get('phase')=='planning'
         tasks.append(dict(id=op['id'],kind='import_'+op['kind'],status=op['status'],created_at=op['created_at'],filename=op['filename'],error=op['error'],processed=progress.get('done') if planning else None,total=progress.get('total') if planning and progress.get('total',0)>0 else None,unit='offer_groups' if planning else None,phase=progress.get('phase'),valid_records=None))
     if run:tasks.append(dict(id=run['id'],kind='canonical_'+run['mode'],status=run['status'],created_at=run['created_at'],filename=None,error=run['error'],processed=None,total=None,unit=None,phase=None,valid_records=None))
-    return dict(source_count=db.scalar(select(func.count()).select_from(CatalogueSource)),sources=[dict(r) for r in sources],capabilities=SOURCES,
+    if account_id:
+        current=db.execute(select(ImportJob.id,ImportJob.job_type,ImportJob.status,ImportJob.created_at,ImportJob.phase,ImportJob.progress_current,ImportJob.progress_total,ImportJob.error_message,CatalogueJob.filename).outerjoin(CatalogueJob,CatalogueJob.id==ImportJob.parameters['catalogue_job_id'].as_string()).where(ImportJob.account_id==account_id,ImportJob.status.in_(['queued','running'])).order_by(ImportJob.created_at.desc(),ImportJob.id).limit(1)).mappings().first()
+        if current:tasks.append(dict(id=current['id'],kind='runner_'+current['job_type'],status=current['status'],created_at=current['created_at'],filename=current['filename'],error=current['error_message'],processed=current['progress_current'] if current['phase'] in ('rows','planning','validating') else None,total=current['progress_total'] if current['progress_total'] and current['progress_total']>0 else None,unit='rows' if current['phase']=='rows' else 'offer_groups',phase=current['phase'],valid_records=None))
+    runner_count=db.scalar(select(func.count()).select_from(ImportJob).where(ImportJob.account_id==account_id,ImportJob.status.in_(['queued','running']))) if account_id else 0
+    return dict(safe_job_types=['file_validation','catalogue_preview'],source_count=db.scalar(select(func.count()).select_from(CatalogueSource)),sources=[dict(r) for r in sources],capabilities=SOURCES,
         last_import=dict(id=latest.id,filename=latest.filename,applied_at=latest.applied_at) if latest else None,
-        new_price_observations_last_import=prices,active_operations=op_count+run_count,
+        new_price_observations_last_import=prices,active_operations=op_count+run_count+runner_count,
         current_task=max(tasks,key=lambda t:t['created_at']) if tasks else None,
         catalogue=dict(with_prices=db.scalar(select(func.count()).select_from(CatalogueOffer).join(CataloguePrice,(CataloguePrice.offer_id==CatalogueOffer.id)&(CataloguePrice.observed_at==CatalogueOffer.observed_at)).where(CataloguePrice.price_uah.is_not(None)|CataloguePrice.price_usd.is_not(None))),offers=db.scalar(select(func.count()).select_from(CatalogueOffer)),with_oem=db.scalar(select(func.count()).select_from(CatalogueOffer).where(func.length(func.trim(CatalogueOffer.properties['oem'].as_string()))>0))),
         collection_history_available=False,online_collection_enabled=False)

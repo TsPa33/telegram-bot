@@ -1,0 +1,25 @@
+{
+  "description": "Preparation checklist only. No Railway service is created by this file.",
+  "project": "selfless-caring",
+  "environment": "warehouse-staging",
+  "suggestedServiceName": "warehouse-import-worker",
+  "repository": "TsPa33/telegram-bot",
+  "branch": "feature/carpot-warehouse-mvp",
+  "rootDirectory": "/warehouse",
+  "dockerfilePath": "deploy/railway/import-worker.Dockerfile",
+  "startCommand": "python -m app.import_worker",
+  "replicasInitially": 1,
+  "publicDomain": false,
+  "healthcheckPath": null,
+  "volumeRequired": false,
+  "watchPatterns": ["/warehouse/backend/**", "/warehouse/deploy/railway/import-worker.Dockerfile", "/warehouse/.dockerignore"],
+  "runtimeBindingsToReview": [
+    "WAREHOUSE_ENV=staging",
+    "WAREHOUSE_DATABASE_URL OR complete WAREHOUSE_DB_* tuple: same isolated Warehouse staging database as API; never generic CarPot DATABASE_URL",
+    "WAREHOUSE_CATALOG_PLATFORM_ADMIN_IDS: same server allowlist as API"
+  ],
+  "migrationOwner": "API only, existing serialized startup migration path",
+  "workerStartup": "Waits up to 120 seconds for packaged Alembic head; never invokes migration",
+  "onlineCollection": false,
+  "productionChangesAllowed": false
+}

@@ -1,0 +1,43 @@
+# R8.2 changed files
+
+All changes are within `/warehouse`. Includes runtime, additive migration, targeted compatibility tests, browser fixtures, deployment preparation and documentation.
+
+- `warehouse/backend/alembic/versions/c8f21d6e903a_import_runner.py`
+- `warehouse/backend/app/api/catalogue.py`
+- `warehouse/backend/app/api/import_jobs.py`
+- `warehouse/backend/app/import_worker.py`
+- `warehouse/backend/app/main.py`
+- `warehouse/backend/app/models/__init__.py`
+- `warehouse/backend/app/models/import_runner.py`
+- `warehouse/backend/app/permissions.py`
+- `warehouse/backend/app/route_registry.py`
+- `warehouse/backend/app/services/import_runner.py`
+- `warehouse/backend/app/services/parser_admin.py`
+- `warehouse/backend/tests/test_dismantling_readiness.py`
+- `warehouse/backend/tests/test_dismantling_v2.py`
+- `warehouse/backend/tests/test_import_runner.py`
+- `warehouse/backend/tests/test_plan_parts_migration.py`
+- `warehouse/backend/tests/test_quick_vehicle.py`
+- `warehouse/backend/tests/test_smart_migration_permissions.py`
+- `warehouse/backend/tests/test_stage3b.py`
+- `warehouse/backend/tests/test_staging.py`
+- `warehouse/backend/tests/test_v3_release_audit.py`
+- `warehouse/deploy/railway/import-worker-service.json`
+- `warehouse/deploy/railway/import-worker.Dockerfile`
+- `warehouse/docs/r8-cloud-runner/README.md`
+- `warehouse/docs/r8-cloud-runner/changed-files.md`
+- `warehouse/docs/r8-cloud-runner/desktop.png`
+- `warehouse/docs/r8-cloud-runner/mobile.png`
+- `warehouse/frontend/src/ImportRunnerPanel.tsx`
+- `warehouse/frontend/src/ParserAdminCenter.tsx`
+- `warehouse/frontend/src/WorkshopDialogs.tsx`
+- `warehouse/frontend/src/pages/CatalogueImport.tsx`
+- `warehouse/frontend/src/parser-admin.css`
+- `warehouse/frontend/src/runnerCommand.ts`
+- `warehouse/frontend/src/runnerRequests.ts`
+- `warehouse/frontend/src/smartSearch.ts`
+- `warehouse/frontend/src/teamReadiness.ts`
+- `warehouse/frontend/tests/r81-browser.mjs`
+- `warehouse/frontend/tests/r82-browser.mjs`
+- `warehouse/frontend/tests/runner-command-unit.mjs`
+- `warehouse/frontend/tests/seed-r82.py`

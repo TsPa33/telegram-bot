@@ -121,7 +121,7 @@ def test_upgrade_from_staging_revision_preserves_real_A_and_populated_business_d
         assert get(platform,vehicle)['total']==33
         destination=os.environ.get('WAREHOUSE_RELEASE_MIGRATION_REPORT',str(tmp_path/'populated-upgrade.json'))
         from pathlib import Path
-        Path(destination).write_text(json.dumps(dict(dataset='real Volvo A; synthetic local stock/sale/reservation/legacy-exclusion fixtures, NOT a Railway DB copy',from_revision='41f9a2c87d10',to_revision='b7e14d90c2f6',offers=counts[0],applications=counts[1],paths=counts[2],all_original_columns_and_tables_unchanged=True,legacy_plan_accessible=True,no_canonical_backfill=True,fk_validated=True),indent=2)+'\n')
+        Path(destination).write_text(json.dumps(dict(dataset='real Volvo A; synthetic local stock/sale/reservation/legacy-exclusion fixtures, NOT a Railway DB copy',from_revision='41f9a2c87d10',to_revision='c8f21d6e903a',offers=counts[0],applications=counts[1],paths=counts[2],all_original_columns_and_tables_unchanged=True,legacy_plan_accessible=True,no_canonical_backfill=True,fk_validated=True),indent=2)+'\n')
     finally:subprocess.run([sys.executable,'-m','alembic','upgrade','head'],check=True,capture_output=True)
 
 

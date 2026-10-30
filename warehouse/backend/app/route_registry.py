@@ -136,3 +136,5 @@ KNOWN_ROUTES = frozenset({
     ('GET','/api/v1/parts/{id}/price-context'),
     ('GET','/api/v1/pricing/selection'),
 })
+
+KNOWN_ROUTES = KNOWN_ROUTES.union({('POST','/api/v1/admin/import-jobs'),('GET','/api/v1/admin/import-jobs'),('GET','/api/v1/admin/import-jobs/inputs'),('GET','/api/v1/admin/import-jobs/{id}'),('GET','/api/v1/admin/import-jobs/{id}/events'),('POST','/api/v1/admin/import-jobs/{id}/{action}')})
