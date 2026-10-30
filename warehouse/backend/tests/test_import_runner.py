@@ -209,7 +209,7 @@ def test_additive_upgrade_preserves_populated_old_tables(platform,vehicle):
     assert platform.post('/api/v1/parts/'+part['id']+'/operations',json={'type':'sale','quantity':1,'sale_price':'55.00','sale_currency':'USD','request_key':key()}).status_code==200
     from test_catalogue_v2 import plan,confirm
     old_upload=upload(platform);confirm(platform,plan(platform,old_upload))
-    scripts=ScriptDirectory.from_config(Config('alembic.ini'));assert scripts.get_heads()==['e4b93a2d715c'] and scripts.get_revision('c8f21d6e903a').down_revision=='b7e14d90c2f6'
+    scripts=ScriptDirectory.from_config(Config('alembic.ini'));assert scripts.get_heads()==['f5c84d31a620'] and scripts.get_revision('c8f21d6e903a').down_revision=='b7e14d90c2f6'
     def alembic(*args):return subprocess.run([sys.executable,'-m','alembic',*args],capture_output=True,text=True,env=os.environ.copy())
     assert alembic('downgrade','b7e14d90c2f6').returncode==0
     assert not schema_ready(engine())
