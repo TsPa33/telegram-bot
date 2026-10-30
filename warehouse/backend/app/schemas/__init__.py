@@ -55,6 +55,7 @@ class VehicleInput(Input):
 
 
 class VehiclePowertrainInput(Input):
+    fuel_type: Annotated[str, Field(max_length=50)] = ""
     engine: Annotated[str, Field(max_length=100)] = ""
     transmission: Annotated[str, Field(max_length=50)] = ""
 
@@ -82,6 +83,8 @@ class PartInput(Input):
     category_id: str | None = None
     subcategory_id: str | None = None
     vehicle_id: str | None = None
+    color_name: Annotated[str, Field(max_length=80)] | None = None
+    paint_code: Annotated[str, Field(max_length=40)] | None = None
     oem_number: Annotated[str, Field(max_length=150)] = ""
     article_number: Annotated[str, Field(max_length=150)] = ""
     condition: Literal["unknown", "used", "new", "damaged", "refurbished"] = "used"
@@ -95,6 +98,13 @@ class PartInput(Input):
     availability: Literal["unchecked", "present", "absent", "damaged"] = "unchecked"
     individually_tracked: bool = False
     serial_number: Annotated[str, Field(min_length=1, max_length=120)] | None = None
+
+    @field_validator('color_name','paint_code')
+    @classmethod
+    def optional_color_text(cls,value):
+        if value is not None and any(ord(c)<32 for c in value):
+            raise ValueError('Керувальні символи у кольорі не дозволені')
+        return value or None
 
     @model_validator(mode="after")
     def serial_required(self):
@@ -149,3 +159,22 @@ class PriceInput(Input):
     request_key: UUID | None = None
     selling_price: Money | None
     currency: Literal['UAH','USD']
+
+
+class PartCharacteristicsInput(Input):
+    # Exact expected values prevent overwriting another editor. Retrying a value
+    # already present is a no-op; no duplicate audit or stock operation is created.
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=False)
+    values: dict[Literal['oem_number','color_name','paint_code'], str | None]
+    expected: dict[Literal['oem_number','color_name','paint_code'], str | None]
+
+    @model_validator(mode='after')
+    def validate_fields(self):
+        if not self.values or self.values.keys()!=self.expected.keys():
+            raise ValueError('Передайте однакові непорожні поля values та expected')
+        for group in (self.values,self.expected):
+            for key,value in group.items():
+                if value is not None and (len(value)>{'oem_number':150,'color_name':80,'paint_code':40}[key] or any(ord(c)<32 for c in value)):
+                    raise ValueError('Некоректна довжина або керувальні символи у характеристиці')
+        self.values={key:((value or '').strip() or ('' if key=='oem_number' else None)) for key,value in self.values.items()}
+        return self

@@ -1,0 +1,4 @@
+{
+  "late_get_cannot_overwrite_saved_oem": true,
+  "read_only_card_menu_and_server_permission": true
+}

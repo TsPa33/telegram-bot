@@ -1,0 +1,20 @@
+{
+  "database": "warehouse_r1_test",
+  "synthetic": true,
+  "oem_saved": true,
+  "metadata_refreshes_read_only_guidance": true,
+  "color_paint_saved": true,
+  "cas_error_preserves_draft": true,
+  "double_submit_single_request": true,
+  "repeated_menu_edit_reopens": true,
+  "lost_response_retry_no_duplicate_audit": true,
+  "donor_powertrain_inline": true,
+  "powertrain_double_submit_guard": true,
+  "one_modal": true,
+  "reload_preserves_values": true,
+  "all_original_stock_price_reserve_fields_unchanged": true,
+  "other_parts_and_sales_unchanged": true,
+  "catalogue_unchanged": true,
+  "old_audit_rows_unchanged": true,
+  "js_errors": []
+}

@@ -53,6 +53,7 @@ KNOWN_ROUTES = frozenset({
     ('PATCH', '/api/v1/orders/{id}'),
     ('PATCH', '/api/v1/parts/{id}/inspection'),
     ('PATCH', '/api/v1/parts/{id}/notes'),
+    ('PATCH', '/api/v1/parts/{id}/characteristics'),
     ('PATCH', '/api/v1/parts/{id}/price'),
     ('PATCH', '/api/v1/team/{id}'),
     ('PATCH', '/api/v1/vehicles/{id}/plan-parts-checklist/{item_id}'),

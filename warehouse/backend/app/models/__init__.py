@@ -173,6 +173,8 @@ class Part(Owned, Base):
     checklist_category_id: Mapped[str | None] = mapped_column(
         ForeignKey("categories.id"), nullable=True
     )
+    color_name: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    paint_code: Mapped[str | None] = mapped_column(String(40), nullable=True)
     oem_number: Mapped[str] = mapped_column(String(150), default="")
     article_number: Mapped[str] = mapped_column(String(150), default="")
     condition: Mapped[str] = mapped_column(String(30), default="used")

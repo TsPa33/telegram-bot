@@ -30,8 +30,11 @@ export function Modal({
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const d = ref.current!;
+    const launcher = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     d.showModal();
-    return () => d.close();
+    return () => { d.close(); requestAnimationFrame(() => {
+      if (!document.querySelector('dialog[open]') && launcher?.isConnected) launcher.focus();
+    }); };
   }, []);
   return (
     <dialog
@@ -76,10 +79,13 @@ export function RecordForm({
   onSave: (data: Row) => Promise<void>;
   submit?: string;
 }) {
+  const submitting = useRef(false);
   const [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
   async function save(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (submitting.current) return;
+    submitting.current = true;
     setBusy(true);
     setError("");
     const form = new FormData(e.currentTarget);
@@ -113,6 +119,7 @@ export function RecordForm({
     } catch (e) {
       setError((e as Error).message);
     } finally {
+      submitting.current = false;
       setBusy(false);
     }
   }

@@ -25,6 +25,7 @@ from app.schemas import (
     CategoryImport,
     Credentials,
     PartInput,
+    PartCharacteristicsInput,
     PriceInput,
     Registration,
     StockInput,
@@ -272,7 +273,7 @@ def vehicle_powertrain(id: str, data: VehiclePowertrainInput, db: DB, who: Auth)
     row = owned(db, Vehicle, id, who.workspace_account_id, lock=True, active=True)
     before = snapshot(row)
     changes = data.model_dump(exclude_unset=True)
-    if "engine" in changes and changes["engine"] != row.engine:
+    if any(k in changes and changes[k]!=getattr(row,k) for k in ("engine","fuel_type")):
         row.ktype = None  # Prior provider checklist history remains intact.
     for key, value in changes.items():
         setattr(row, key, value)
@@ -425,6 +426,9 @@ def part_update(id: str, data: PartInput, db: DB, who: Auth):
         )
     before = snapshot(row)
     changes=data.model_dump()
+    # Old full-form clients must retain newly introduced optional characteristics.
+    for field in ("color_name","paint_code"):
+        if field not in data.model_fields_set:changes.pop(field,None)
     if 'parts.view_cost' not in who.permissions:changes.pop('unit_cost',None)
     if 'parts.change_price' not in who.permissions:
         changes.pop('selling_price',None);changes.pop('currency',None)
@@ -444,6 +448,20 @@ def part_update(id: str, data: PartInput, db: DB, who: Auth):
     record(db, who.workspace_account_id, row, "part_update", "Оновлено картку запчастини", before)
     db.commit()
     return {**snapshot(row), "available_quantity": row.available_quantity}
+
+
+@router.patch('/parts/{id}/characteristics', tags=['Inventory'])
+def part_characteristics(id: str, data: PartCharacteristicsInput, db: DB, who: Auth):
+    row=owned(db,Part,id,who.workspace_account_id,lock=True,active=True)
+    before=snapshot(row)
+    if all(getattr(row,k)==v for k,v in data.values.items()):
+        return {**before,'available_quantity':row.available_quantity}
+    if any(getattr(row,k)!=v for k,v in data.expected.items()):
+        raise HTTPException(409,'Характеристики вже змінено. Перечитайте картку та порівняйте значення.')
+    for key,value in data.values.items():setattr(row,key,value)
+    record(db,who.workspace_account_id,row,'part_update','Оновлено OEM / колір деталі',before)
+    db.commit()
+    return {**snapshot(row),'available_quantity':row.available_quantity}
 
 
 @router.post("/parts/{id}/operations", tags=["Stock operations"])

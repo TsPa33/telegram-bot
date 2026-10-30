@@ -1,0 +1,41 @@
+{
+  "base_sha": "d0cb4c06da29e68f49da02c8046a52d38fc054c7",
+  "scope": "local synthetic only",
+  "browser_database": "warehouse_r1_test",
+  "backend_test_database": "warehouse_r1_unit_test",
+  "migration": {
+    "down_revision": "a6d94c72e310",
+    "single_head": "b7e14d90c2f6",
+    "populated_upgrade": "PASS",
+    "repeated_upgrade": "PASS",
+    "backfill": false
+  },
+  "frontend_build": "PASS",
+  "frontend_unit_tests": {
+    "passed": 442,
+    "failed": 0
+  },
+  "backend_targeted_tests": {
+    "passed": 37,
+    "failed": 0,
+    "r1_subset": 8
+  },
+  "r1_browser_widths": [
+    1440,
+    1280,
+    900,
+    768,
+    390,
+    375
+  ],
+  "r1_browser": "PASS",
+  "isolated_metadata_write_browser": "PASS",
+  "states_permissions_browser": "PASS",
+  "ui3_ui4_ui5_regression": "PASS at seven widths each",
+  "stock_reserves_selling_prices_sales_unchanged": true,
+  "previous_audit_rows_unchanged": true,
+  "catalogue_unchanged": true,
+  "staging_tested": false,
+  "push": false,
+  "deployment": false
+}

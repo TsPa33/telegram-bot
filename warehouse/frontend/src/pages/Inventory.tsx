@@ -1,3 +1,4 @@
+import PartCard from '../PartCard';
 import StockBulkDialog from '../StockBulkDialog';
 import {useCan} from '../permissions';
 import {
@@ -487,9 +488,10 @@ export default function Inventory({ notify }: { notify: Notify }) {
         </Modal>
       )}
       {detail && (
-        <Modal title={detail.name} onClose={() => setDetail(null)}>
+        <Modal className="r1-part-dialog" title={detail.name} onClose={() => setDetail(null)}>
           <PartDetail
             part={detail}
+            onSaved={row=>{setDetail(row);refresh();}}
             onChanged={() => {
               setDetail(null);
               refresh();
@@ -585,7 +587,10 @@ export function StockForm({ part, onDone }: { part: Row; onDone: () => void }) {
     </>
   );
 }
-export function PartDetail({ part, onChanged }: { part: Row; onChanged: () => void }) {
+export function PartDetail({part,onChanged,onSaved,actions,initialEdit,editVersion}:{part:Row;onChanged:()=>void;onSaved?:(row:Row)=>void;actions?:import('react').ReactNode;initialEdit?:'oem'|'color';editVersion?:number}){
+ return <PartCard part={part} onSaved={onSaved} actions={actions} initialEdit={initialEdit} editVersion={editVersion} tools={<PartLegacyTools part={part} onChanged={onChanged}/>}/>;
+}
+function PartLegacyTools({ part, onChanged }: { part: Row; onChanged: () => void }) {
   const can=useCan();
   const photos = useLoad(
       () => api<Row[]>(`/parts/${part.id}/photos`),

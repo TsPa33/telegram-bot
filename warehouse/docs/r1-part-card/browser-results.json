@@ -1,0 +1,74 @@
+[
+  {
+    "width": 1440,
+    "card": true,
+    "menu_bounds": true,
+    "arrow_keyboard_and_escape": true,
+    "focus_return": true,
+    "single_modal": true,
+    "market_levels_preserved": true,
+    "no_overflow": true,
+    "no_domain_writes": true,
+    "js_errors": []
+  },
+  {
+    "width": 1280,
+    "card": true,
+    "menu_bounds": true,
+    "arrow_keyboard_and_escape": true,
+    "focus_return": true,
+    "single_modal": true,
+    "market_levels_preserved": true,
+    "no_overflow": true,
+    "no_domain_writes": true,
+    "js_errors": []
+  },
+  {
+    "width": 900,
+    "card": true,
+    "menu_bounds": true,
+    "arrow_keyboard_and_escape": true,
+    "focus_return": true,
+    "single_modal": true,
+    "market_levels_preserved": true,
+    "no_overflow": true,
+    "no_domain_writes": true,
+    "js_errors": []
+  },
+  {
+    "width": 768,
+    "card": true,
+    "menu_bounds": true,
+    "arrow_keyboard_and_escape": true,
+    "focus_return": true,
+    "single_modal": true,
+    "market_levels_preserved": true,
+    "no_overflow": true,
+    "no_domain_writes": true,
+    "js_errors": []
+  },
+  {
+    "width": 390,
+    "card": true,
+    "menu_bounds": true,
+    "arrow_keyboard_and_escape": true,
+    "focus_return": true,
+    "single_modal": true,
+    "market_levels_preserved": true,
+    "no_overflow": true,
+    "no_domain_writes": true,
+    "js_errors": []
+  },
+  {
+    "width": 375,
+    "card": true,
+    "menu_bounds": true,
+    "arrow_keyboard_and_escape": true,
+    "focus_return": true,
+    "single_modal": true,
+    "market_levels_preserved": true,
+    "no_overflow": true,
+    "no_domain_writes": true,
+    "js_errors": []
+  }
+]
