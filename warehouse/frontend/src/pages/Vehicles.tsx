@@ -132,7 +132,7 @@ function VehicleDetail({
       <nav className="ux1-tabs" aria-label="Розділи автомобіля">{[['parts','Запчастини'],['info','Загальна інформація'],...(can('audit.view')?[['history','Історія операцій']]:[])].map(([key,label])=><button key={key} aria-current={tab===key?'page':undefined} onClick={()=>setTab(key)}>{label}</button>)}</nav>
       <div hidden={tab!=='parts'}>
       {legacyVehicle!==v.id&&can('catalog.view')&&can('vehicles.view')&&<ManagedDismantling key={v.id} vehicle={v} onSaved={onSaved}/>}
-      <details className="vehicle-secondary"><summary>Попередній довідник та джерела</summary>{can('catalog.view')&&can('vehicles.view')&&<AletoCatalogue key={v.id} vehicleId={v.id}/>}
+      <details className="vehicle-secondary"><summary>Попередній довідник та джерела</summary>{can('catalog.view')&&can('vehicles.view')&&<AletoCatalogue key={v.id} vehicleId={v.id}/>}{canCatalog&&<DismantlingCatalogImport onImported={()=>{onRefresh();}}/>}
       {canCatalog&&(legacyVehicle===v.id?<><button onClick={()=>setLegacyVehicle('')}>До основного списку деталей</button><Dismantling vehicle={v} onChange={() => {reloadAnalytics();onRefresh();}} onInventory={onInventory} /></>:!v.dismantling_v3?.revision&&<button className="secondary" onClick={()=>setLegacyVehicle(v.id)}>Відкрити попередній план</button>)}
       </details>
       </div>
