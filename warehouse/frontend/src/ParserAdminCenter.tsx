@@ -4,7 +4,7 @@ import {State,useLoad} from './shared';
 import './parser-admin.css';
 const noData='Немає даних';
 const labels:Record<string,string>={names:'Назви',oem:'OEM',prices:'Ціни',categories:'Категорії'};
-const taskNames:Record<string,string>={runner_file_validation:'Аналіз збережених даних',runner_catalogue_preview:'Серверний catalogue preview',import_preview:'Preview імпорту файлу',import_apply:'Застосування імпорту файлу',canonical_preview:'Перевірка нормалізації',canonical_publish:'Публікація конструктивного каталогу'};
+const taskNames:Record<string,string>={runner_file_validation:'Аналіз збережених даних',runner_aleto_offline:'Тестовий offline-парсер Aleto',runner_catalogue_preview:'Серверний catalogue preview',import_preview:'Preview імпорту файлу',import_apply:'Застосування імпорту файлу',canonical_preview:'Перевірка нормалізації',canonical_publish:'Публікація конструктивного каталогу'};
 export default function ParserAdminCenter({children}:{children:ReactNode}){
  const overview=useLoad(()=>api('/catalogue/admin/overview'),[]),d=overview.error?null:overview.data;
  const [source,setSource]=useState('aleto'),[brand,setBrand]=useState(''),[model,setModel]=useState(''),[from,setFrom]=useState(''),[to,setTo]=useState(''),[collect,setCollect]=useState(['names','oem','prices','categories']),[validation,setValidation]=useState<Row|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false);

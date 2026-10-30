@@ -1,0 +1,17 @@
+{
+  "version": "r83-synthetic-v1",
+  "synthetic": true,
+  "model": "XC40",
+  "pages": [
+    {
+      "url": "https://aleto.ua/car/volvo-xc40-2019-2023/",
+      "observed_at": "2026-01-15T12:00:00+00:00",
+      "html": "<html><body><div class=\"detail-item\"><div class=\"detail-item-title\"><a href=\"/ua/part/synthetic-SYN-XC40-01/\"><span itemprop=\"name\">Синтетична фара ліва</span></a></div><div class=\"detail-item-chars\"><small>Арт. <b>SYN-XC40-01</b></small><small>Ориг. номер <b>SYN-OEM-01</b></small></div><div class=\"detail-item-labels\">Б/В — синтетичний fixture</div><span class=\"detail-item-uprice\">2 400,50 грн</span><span class=\"detail-item-price\">60.25 USD</span><script>item_category2: 'Кузов', item_category3: 'Оптика'</script></div><a rel=\"next\" href=\"?PAGEN_1=2\">2</a></body></html>"
+    },
+    {
+      "url": "https://aleto.ua/car/volvo-xc40-2019-2023/?PAGEN_1=2",
+      "observed_at": "2026-01-15T12:00:00+00:00",
+      "html": "<html><body><div class=\"detail-item\"><div class=\"detail-item-title\"><a href=\"/ua/part/synthetic-SYN-XC40-01/\"><span itemprop=\"name\">Синтетична фара ліва</span></a></div><div class=\"detail-item-chars\"><small>Арт. <b>SYN-XC40-01</b></small><small>Ориг. номер <b>SYN-OEM-01</b></small></div><div class=\"detail-item-labels\">Б/В — синтетичний fixture</div><span class=\"detail-item-uprice\">2 400,50 грн</span><span class=\"detail-item-price\">60.25 USD</span><script>item_category2: 'Кузов', item_category3: 'Оптика'</script></div><div class=\"detail-item\"><div class=\"detail-item-title\"><a href=\"/ua/part/synthetic-SYN-XC40-02/\"><span itemprop=\"name\">Синтетична фара права</span></a></div><div class=\"detail-item-chars\"><small>Арт. <b>SYN-XC40-02</b></small><small>Ориг. номер <b></b></small></div><div class=\"detail-item-labels\">Б/В — синтетичний fixture</div><span class=\"detail-item-uprice\">2 800 грн</span><span class=\"detail-item-price\">70 USD</span><script>item_category2: 'Кузов', item_category3: 'Оптика'</script></div></body></html>"
+    }
+  ]
+}

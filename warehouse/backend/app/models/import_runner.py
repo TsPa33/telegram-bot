@@ -1,6 +1,6 @@
 """Durable, tenant-owned analysis jobs. No stock/catalogue write relationships."""
 from datetime import datetime
-from sqlalchemy import String,Text,Integer,DateTime,JSON,ForeignKey,UniqueConstraint,CheckConstraint,Index,text
+from sqlalchemy import String,Text,Integer,DateTime,JSON,ForeignKey,UniqueConstraint,CheckConstraint,Index,text,LargeBinary
 from sqlalchemy.orm import Mapped,mapped_column
 from app.db import Base
 from app.models import uid,now
@@ -33,7 +33,7 @@ class ImportJob(Base):
     context_hash:Mapped[str]=mapped_column(String(64))
     __table_args__=(UniqueConstraint('account_id','idempotency_key',name='uq_import_runner_request'),
         Index('uq_import_runner_active','account_id','context_hash',unique=True,postgresql_where=text("status IN ('queued','running')")),
-        CheckConstraint("source='file' AND job_type IN ('file_validation','catalogue_preview')",name='ck_import_runner_type'),
+        CheckConstraint("(source='file' AND job_type IN ('file_validation','catalogue_preview')) OR (source='aleto_fixture' AND job_type='aleto_offline')",name='ck_import_runner_type'),
         CheckConstraint("status <> 'running' OR (lease_owner IS NOT NULL AND lease_until IS NOT NULL)",name='ck_import_runner_lease'),
         CheckConstraint("status IN ('queued','running','completed','failed','cancelled')",name='ck_import_runner_status'),
         CheckConstraint('attempt_count BETWEEN 0 AND 3 AND retry_count BETWEEN 0 AND 3 AND event_count>=0 AND progress_current>=0 AND (progress_total IS NULL OR progress_total>=progress_current)',name='ck_import_runner_bounds'))
@@ -49,3 +49,16 @@ class ImportJobEvent(Base):
     details:Mapped[dict]=mapped_column('metadata',JSON,default=dict)
     request_key:Mapped[str|None]=mapped_column(String(36),nullable=True)
     __table_args__=(UniqueConstraint('job_id','sequence',name='uq_import_runner_event'),UniqueConstraint('job_id','request_key',name='uq_import_runner_command'))
+
+
+class ImportJobArtifact(Base):
+    """Only bounded (<=1 MiB) offline results. Not a general large-file store."""
+    __tablename__='import_job_artifacts'
+    id:Mapped[str]=mapped_column(String(36),primary_key=True,default=uid)
+    job_id:Mapped[str]=mapped_column(ForeignKey('import_jobs.id'),unique=True)
+    content:Mapped[bytes]=mapped_column(LargeBinary)
+    sha256:Mapped[str]=mapped_column(String(64))
+    size_bytes:Mapped[int]=mapped_column(Integer)
+    created_at:Mapped[datetime]=mapped_column(DateTime(timezone=True),default=now)
+    catalogue_job_id:Mapped[str|None]=mapped_column(ForeignKey('catalogue_jobs.id'),nullable=True)
+    __table_args__=(CheckConstraint('size_bytes BETWEEN 1 AND 1048576 AND octet_length(content)=size_bytes',name='ck_runner_artifact_size'),)
