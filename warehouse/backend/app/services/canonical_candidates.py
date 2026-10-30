@@ -18,6 +18,9 @@ from app.services.canonical_catalogue import global_inputs,source_record
 def legacy_inputs(db,workspace,query):
     result=[]
     for item,src in db.execute(select(LocalType,LocalSource).join(LocalSource,LocalSource.id==LocalType.source_id).where(LocalType.account_id==workspace,LocalSource.account_id==workspace).order_by(LocalType.id)):
+        # Scoped FileDbTree rows are handled as conservative model-specific plan candidates.
+        # Do not also classify them as unscoped canonical aliases/legacy market sources.
+        if item.applicability is not None:continue
         result.append(source_record(kind='local',key='local:'+src.id+':'+item.catalog_key,title=item.name,category=item.category_name,subcategory=item.subcategory_name,
             side='',position=item.position,oem=None,manufacturer='',model='',generation='',year_from=None,year_to=None,provider='local',article='',
             legacy_ref={'source':'local.'+src.id,'catalog_key':item.catalog_key}))
