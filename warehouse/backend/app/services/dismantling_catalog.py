@@ -63,6 +63,24 @@ def _matches_scope(applicability, vehicle):
     return False
 
 
+def scoped_types(db,account_id,vehicle):
+    """Explicit model associations only; never infer generation or confirmed fitment."""
+    rows=db.execute(select(Type,Source).join(Source,Type.source_id==Source.id).where(
+        Type.account_id==account_id,Source.account_id==account_id,
+        Type.applicability.is_not(None)).order_by(Source.id,Type.catalog_key))
+    for row,source in rows:
+        if _matches_scope(row.applicability,vehicle):
+            yield row,source
+
+
+def scoped_catalogue_digest(db,account_id,vehicle):
+    from app.services.catalogue_format import digest
+    rows=[[source.id,row.catalog_key,row.category_key,row.category_name,
+           row.subcategory_key,row.subcategory_name,row.name,row.position,row.applicability]
+          for row,source in scoped_types(db,account_id,vehicle)]
+    return digest(rows) if rows else None
+
+
 def imported_types(db,account_id,vehicle=None):
     for row,source in db.execute(select(Type,Source).join(Source,Type.source_id==Source.id).where(
         Type.account_id==account_id,Source.account_id==account_id)):
