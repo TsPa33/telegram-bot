@@ -1,0 +1,31 @@
+{
+  "base_sha": "80adb5af3fcc80e472d65bf02ca6c8681277cb68",
+  "scope": "local synthetic only",
+  "database": "warehouse_ui5_test",
+  "fixture_sales_operations": 126,
+  "build": "PASS",
+  "frontend_unit_tests": {
+    "passed": 442,
+    "failed": 0
+  },
+  "browser_widths": [
+    1440,
+    1280,
+    1000,
+    900,
+    768,
+    390,
+    375
+  ],
+  "ui5_browser": "PASS",
+  "state_permissions": "PASS",
+  "ui3_regression": "PASS",
+  "ui4_regression": "PASS",
+  "existing_backend_changed": false,
+  "migration_files_changed": false,
+  "domain_writes_during_browser_qa": false,
+  "new_fixture_database_only": true,
+  "staging_qa": "NOT RUN",
+  "push": false,
+  "deployment": false
+}

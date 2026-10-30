@@ -1,0 +1,12 @@
+{
+  "stale_result_ignored": true,
+  "error_hides_stale_totals": true,
+  "timeout_retry_preserves_query": true,
+  "invalid_period_recovery": true,
+  "drawer_focus_restored": true,
+  "read_only_financial_redaction": true,
+  "sales_permission_required": true,
+  "workspace_isolation": true,
+  "mocked_only_delay_error_timeout": true,
+  "js_errors": []
+}
