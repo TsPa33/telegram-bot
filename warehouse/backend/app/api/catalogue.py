@@ -1,7 +1,7 @@
 """Authenticated shared reading and independently gated platform administration."""
 import hashlib
 import json
-from typing import Annotated
+from typing import Annotated,Literal
 from urllib.parse import unquote
 import sqlite3
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -172,3 +172,33 @@ def read_catalogue(db:DB,who:Auth,model_id:str|None=Query(None,max_length=36),ca
     return {'items':[dict(**{**o.properties,'id':o.id,'source':s.name,'source_article':o.source_article,
                           'price_uah':str(p.price_uah) if p.price_uah is not None else None,'price_usd':str(p.price_usd) if p.price_usd is not None else None,'observed_at':p.observed_at,'source_url':p.source_url}) for o,s,p in rows],
             'total':total,'offset':offset,'limit':limit,'year_compatibility':'unverified','price_label':'Ринкова пропозиція джерела — не ваша ціна продажу'}
+
+
+@router.get('/admin/overview')
+def admin_overview(db:DB,owner:Admin):
+    from app.services.parser_admin import overview
+    from sqlalchemy.exc import DBAPIError
+    try:return overview(db)
+    except DBAPIError:
+        db.rollback()
+        raise HTTPException(503,'Показники каталогу тимчасово недоступні. Спробуйте пізніше.') from None
+
+
+class ParserParameters(BaseModel):
+    model_config=ConfigDict(extra='forbid',str_strip_whitespace=True)
+    source:Literal['aleto','avtopro','file']
+    manufacturer:str=Field(default='',max_length=100)
+    model:str=Field(default='',max_length=100)
+    year_from:int|None=Field(default=None,ge=1886,le=2100,strict=True)
+    year_to:int|None=Field(default=None,ge=1886,le=2100,strict=True)
+    collect:list[Literal['names','oem','prices','categories']]=Field(min_length=1,max_length=4)
+
+
+@router.post('/admin/parser/validate')
+def validate_parser_parameters(data:ParserParameters,db:DB,owner:Admin):
+    from app.services.auth import throttle
+    throttle(('parser-parameters',owner.id))
+    if data.source!='file' and (not data.manufacturer or not data.model):raise HTTPException(422,'Вкажіть марку та модель')
+    if data.year_from and data.year_to and data.year_from>data.year_to:raise HTTPException(422,'Початковий рік не може перевищувати кінцевий')
+    if len(set(data.collect))!=len(data.collect):raise HTTPException(422,'Параметри збору не повинні повторюватися')
+    return dict(valid=True,runnable=False,parameters=data.model_dump(),message='Параметри перевірено. Сумісність із джерелом не підтверджена; онлайн-збір не підключено. Для дозволеного експорту використайте імпорт файлу.')
