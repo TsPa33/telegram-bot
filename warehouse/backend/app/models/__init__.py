@@ -291,7 +291,7 @@ class DismantlingCatalogType(Base):
     name: Mapped[str] = mapped_column(String(200))
     position: Mapped[str] = mapped_column(String(100), default='')
     # NULL preserves legacy account-wide imports; an explicit nonempty list is model-scoped.
-    applicability: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    applicability: Mapped[list | None] = mapped_column(JSON(none_as_null=True), nullable=True)
 
 
 class StockRequest(Base):
