@@ -289,3 +289,60 @@ def test_incomplete_legacy_sale_history_does_not_claim_sold(platform,vehicle):
         db.commit()
     current=next(i for i in get(platform,vehicle)['items'] if i['id']==rid)
     assert current['operational_state']=='received' and current['protected']
+
+
+def test_scoped_catalogue_appears_in_v3_only_for_matching_volvo_model(platform,vehicle):
+    setup_vehicle(vehicle)
+    payload={'source':'filedbtree.fixture','provenance':'Own isolated test catalogue',
+             'license_reference':'Internal test fixtures only','rights_confirmed':True,
+             'types':[dict(catalog_key='xc60-extra',category_key='test',category_name='Тест',
+                           subcategory_key='test',subcategory_name='Перевірка',
+                           name='Тестова окрема деталь Volvo',position='',
+                           applicability=[{'manufacturer':'Volvo','model':'XC60','generation':''}])]}
+    endpoint='/api/v1/dismantling/catalog/import'
+    assert platform.post(endpoint+'?dry_run=true',json=payload).json()['created']==1
+    assert platform.post(endpoint,json=payload).status_code==200
+    with Session(engine()) as db:
+        v=db.get(Vehicle,vehicle['id'])
+        v.model='XC90';v.generation='I';db.commit()
+    assert not any(i['name']=='Тестова окрема деталь Volvo' for i in preview(platform,vehicle)['proposals'])
+    with Session(engine()) as db:
+        v=db.get(Vehicle,vehicle['id']);v.model='XC60';v.generation='';db.commit()
+    first=preview(platform,vehicle)
+    items=[p for p in first['proposals'] if p['item']['name']=='Тестова окрема деталь Volvo']
+    assert len(items)==1
+    assert items[0]['item']['applicability_status']=='unknown'
+    assert items[0]['item']['relevant_offer_count']==0
+    assert items[0]['item']['reference_prices']==[]
+    assert platform.get('/api/v1/parts').json()['total']==0
+    result=save(platform,vehicle,first)
+    assert result.status_code==200,result.text
+    assert len([i for i in get(platform,vehicle)['items'] if i['name']=='Тестова окрема деталь Volvo'])==1
+    assert platform.post(endpoint,json=payload).json()['created']==0
+    again=preview(platform,vehicle)
+    assert len([p for p in again['proposals'] if p['item']['name']=='Тестова окрема деталь Volvo'])==1
+    assert platform.get('/api/v1/parts').json()['total']==0
+
+
+def test_scoped_catalogue_reimport_marks_existing_v3_catalogue_changed(platform,vehicle):
+    setup_vehicle(vehicle)
+    path='/api/v1/dismantling/catalog/import'
+    payload={'source':'filedbtree.change','provenance':'Own synthetic test',
+             'license_reference':'Local fixtures only','rights_confirmed':True,
+             'types':[dict(catalog_key='item-a',category_key='test',category_name='Тест',
+                           subcategory_key='cat',subcategory_name='Перевірка',
+                           name='Елемент A',position='',
+                           applicability=[{'manufacturer':'Volvo','model':'XC40','generation':''}])]}
+    assert platform.post(path,json=payload).status_code==200
+    initial=preview(platform,vehicle)
+    assert save(platform,vehicle,initial).status_code==200
+    assert get(platform,vehicle)['catalogue_changed'] is False
+    payload['types'].append({**payload['types'][0],'catalog_key':'item-b','name':'Елемент B'})
+    assert platform.post(path+'?dry_run=true',json=payload).json()['created']==1
+    assert platform.post(path,json=payload).status_code==200
+    assert get(platform,vehicle)['catalogue_changed'] is True
+    update=preview(platform,vehicle)
+    assert any(p['item']['name']=='Елемент B' for p in update['proposals'])
+    assert save(platform,vehicle,update).status_code==200
+    assert get(platform,vehicle)['catalogue_changed'] is False
+    assert platform.get('/api/v1/parts').json()['total']==0
