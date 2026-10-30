@@ -1,3 +1,4 @@
+import StockBulkDialog from '../StockBulkDialog';
 import {useCan} from '../permissions';
 import {
   Archive as ArchiveIcon,
@@ -510,37 +511,7 @@ export default function Inventory({ notify }: { notify: Notify }) {
           }}
         />
       )}
-      {bulk && (
-        <Modal
-          title={`Масова операція · ${selected.length} позицій`}
-          onClose={() => setBulk(false)}
-        >
-          <RecordForm
-            fields={[
-              {
-                key: "action",
-                label: "Операція",
-                options: [
-                  option("transfer", "Перемістити"),
-                  option("archive", "Архівувати"),
-                ],
-              },
-              {
-                key: "location",
-                label: "Нове місце зберігання",
-                hint: "Обов’язково для переміщення",
-              },
-              { key: "reason", label: "Причина", required: true, wide: true },
-            ]}
-            onSave={async (d) => {
-              await api("/parts/bulk-actions", "POST", { ...d, ids: selected });
-              setBulk(false);
-              refresh();
-              notify("Масову операцію проведено");
-            }}
-          />
-        </Modal>
-      )}
+      {bulk&&<StockBulkDialog ids={selected} onClose={()=>setBulk(false)} onSaved={()=>{setBulk(false);refresh();notify('Масову операцію проведено');}}/>}
     </>
   );
 }

@@ -1,0 +1,19 @@
+{
+  "synthetic_database": "warehouse_ui3_test",
+  "created_id": "142b7509-e6de-464a-8ec6-beac2d65a67d",
+  "created_quantity": 0,
+  "receipt": 3,
+  "sale": 1,
+  "remaining_quantity": 2,
+  "selling_price_preserved": "33.00",
+  "manual_cas_409": true,
+  "notes_and_inspection": true,
+  "no_stacked_dialogs": true,
+  "bulk_transfer_2_without_quantity_change": true,
+  "bulk_pricing_preview_confirm_loss_reload": true,
+  "one_price_audit_per_target": true,
+  "archive_preserves_history": true,
+  "untouched_fixture_parts": true,
+  "backend_algorithms_unchanged": true,
+  "js_errors": []
+}

@@ -52,7 +52,7 @@ export default function InventoryWorkspace({accountId,notify}:{accountId:string;
   <nav className="stock-section-tabs" aria-label="Розділ складу"><button aria-pressed={!history} onClick={()=>setHistory(false)}>Запчастини</button>{can('audit.view')&&<button aria-pressed={history} onClick={()=>setHistory(true)}>Історія операцій</button>}</nav>
   {history?<StockHistory key={preference.mode==='donors'?donor:'all'} vehicleId={preference.mode==='donors'?donor:''}/>:<>
   {storageError&&<p role="status">{storageError}</p>}
-  {preference.mode==='general'?<SalesWorkspace accountId={accountId} notify={notify}/>:<>
+  {preference.mode==='general'?<><State error={error} loading={loading}/><SalesWorkspace accountId={accountId} notify={notify} inventoryVehicles={vehicles||null}/></>:<>
    <State error={error} loading={loading}/>
    {error&&<button onClick={reload}>Спробувати знову</button>}
    {!vehicle&&<><h1>Склад за автомобілями</h1><section className="donor-stock-grid" aria-label="Автомобілі на складі">
@@ -60,9 +60,9 @@ export default function InventoryWorkspace({accountId,notify}:{accountId:string;
     {!loading&&!error&&!vehicles?.length&&<Empty title="Автомобілів поки немає">Додайте автомобіль у розділі «Автомобілі».</Empty>}
    </section></>}
    {vehicle&&<>
-    <header className="donor-stock-header"><h1>{vehicle.manufacturer} {vehicle.model} · {vehicle.year} · №{vehicle.number}</h1><button onClick={()=>choose('')}>Усі автомобілі</button></header>
+    <header className="donor-stock-header"><h2>{vehicle.manufacturer} {vehicle.model} · {vehicle.year} · №{vehicle.number}</h2><button onClick={()=>choose('')}>Усі автомобілі</button></header>
     <div className="donor-stock-switch"><label>Автомобіль<select aria-label="Автомобіль складу" value={donor} onChange={e=>choose(e.target.value)}>{vehicles?.map(v=><option key={v.id} value={v.id}>{v.manufacturer} {v.model} · {v.year} · №{v.number}</option>)}</select></label><label className="check-inline donor-remember"><input type="checkbox" checked={preference.remember} onChange={e=>save({...preference,donor,remember:e.target.checked})}/>Запам’ятати цей автомобіль</label></div>
-    <SalesWorkspace key={vehicle.id} accountId={accountId} notify={notify} grouped/>
+    <SalesWorkspace key={vehicle.id} accountId={accountId} notify={notify} grouped inventoryVehicles={vehicles||[]}/>
     {['dismantling.manage','vehicles.view','catalog.view'].every(can)&&<details className="donor-potential" open={planOpen} onToggle={e=>setPlanOpen(e.currentTarget.open)}><summary>Каталог деталей автомобіля</summary><p>Віртуальні деталі можуть залишатися на автомобілі. Нові позиції додаються лише за вашою явною дією.</p>{planOpen&&<ManagedDismantling key={vehicle.id} vehicle={vehicle} onSaved={()=>{reload();window.dispatchEvent(new Event('warehouse:inventory-changed'));}}/>}</details>}
    </>}
   </>}

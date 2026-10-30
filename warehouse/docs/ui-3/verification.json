@@ -1,0 +1,24 @@
+{
+  "scope": "local synthetic only",
+  "build": "PASS",
+  "frontend_unit_tests": {
+    "passed": 424,
+    "failed": 0
+  },
+  "browser_widths": [
+    1440,
+    1280,
+    1000,
+    900,
+    768,
+    390,
+    375
+  ],
+  "browser": "PASS",
+  "write_workflows": "PASS: dedicated warehouse_ui3_test only",
+  "backend_changed": false,
+  "migrations_changed": false,
+  "staging_tested": false,
+  "push": false,
+  "deployment": false
+}
