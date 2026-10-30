@@ -40,7 +40,32 @@ def import_catalog(db, account_id, data, dry_run=False):
     return result
 
 
-def imported_types(db,account_id):
+def _matches_scope(applicability, vehicle):
+    if applicability is None:
+        # Old imported catalogues intentionally remain account-wide.
+        return True
+    def clean(value):
+        return ' '.join((value or '').split()).casefold()
+    brand=clean(vehicle.manufacturer)
+    model=clean(vehicle.model)
+    generation=clean(vehicle.generation)
+    for entry in applicability:
+        target_brand=clean(entry['manufacturer'])
+        target_model=clean(entry['model'])
+        target_generation=clean(entry.get('generation'))
+        if brand!=target_brand:
+            continue
+        # Vehicle models can be saved as 'XC90' + generation 'II', or 'XC90 II'.
+        if model==target_model and (not target_generation or generation==target_generation):
+            return True
+        if target_generation and model==target_model+' '+target_generation and generation in ('',target_generation):
+            return True
+    return False
+
+
+def imported_types(db,account_id,vehicle=None):
     for row,source in db.execute(select(Type,Source).join(Source,Type.source_id==Source.id).where(
         Type.account_id==account_id,Source.account_id==account_id)):
-        yield {'source':'local.'+source.id,**{key:getattr(row,key) for key in FIELDS}}
+        if vehicle is not None and not _matches_scope(row.applicability,vehicle):
+            continue
+        yield {'source':'local.'+source.id,**{key:getattr(row,key) for key in FIELDS if key!='applicability'}}
