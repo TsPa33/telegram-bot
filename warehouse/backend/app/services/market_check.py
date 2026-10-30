@@ -33,7 +33,7 @@ def check(db,who,id):
     if any(not source_url(e['url']) for e in rows):
         g={**g,'level':'D','label':'Ціну не визначено','cohorts':[],'examples':[],'historical_examples':[],'offer_count':0,'example_count':0,'reasons':{**g.get('reasons',{}),'unverified_source_url':1}}
     checked=utcnow().isoformat()
-    return dict(mode='imported_catalogue',status='completed' if offers else 'no_matches',fresh_data_fetched=False,live_refresh_available=False,
+    return dict(result_source='imported' if offers else 'unavailable',mode='imported_catalogue',status='completed' if offers else 'no_matches',fresh_data_fetched=False,live_refresh_available=False,
         checked_at=checked,observed_at=max((e['observed_at'] for e in offers.values()),default=None),cached=False,
         context_token=digest([who.workspace_account_id,snapshot(part),snapshot(vehicle) if vehicle else None,g]),
         part_revision=revisions(db,[part])[id],guidance=g,offers=list(offers.values()),

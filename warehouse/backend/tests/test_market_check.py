@@ -27,6 +27,7 @@ def test_projection_dual_currency_and_replay_no_writes(platform,vehicle,monkeypa
     r=check(platform,p);assert r.status_code==200,r.text
     data=r.json();assert data['mode']=='imported_catalogue' and not data['fresh_data_fetched'] and not data['cached']
     assert not data['live_refresh_available'] and data['source_status']=='source_unavailable'
+    assert data['result_source']=='imported'
     assert data['offer_count']==3 and len(data['offers'])==6
     assert data['guidance']['level']=='A' and len(data['guidance']['cohorts'])==2
     assert data['observed_at']!=data['checked_at'] and data['external_url']=='https://aleto.ua/'
@@ -78,4 +79,5 @@ def test_non_aleto_links_never_become_aleto_recommendation(platform,vehicle,monk
     p=setup(platform,vehicle,[item(0)])
     monkeypatch.setattr(market_check,'guidance',lambda *a,**k:{p:dict(level='A',cohorts=[dict(examples=[dict(source='untrusted',article='x',currency='UAH',amount='100',observed_at=utcnow().isoformat(),url='https://other.test/')])],examples=[],offer_count=1,reasons={})})
     r=check(platform,p);assert r.status_code==200,r.text
-    data=r.json();assert data['status']=='no_matches' and not data['offers'] and data['guidance']['level']=='D' and not data['guidance']['cohorts']
+    data=r.json();assert data['result_source']=='unavailable'
+    assert data['status']=='no_matches' and not data['offers'] and data['guidance']['level']=='D' and not data['guidance']['cohorts']
