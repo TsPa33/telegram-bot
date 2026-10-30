@@ -67,9 +67,10 @@ def scoped_types(db,account_id,vehicle):
     """Explicit model associations only; never infer generation or confirmed fitment."""
     rows=db.execute(select(Type,Source).join(Source,Type.source_id==Source.id).where(
         Type.account_id==account_id,Source.account_id==account_id,
-        Type.applicability.is_not(None)).order_by(Source.id,Type.catalog_key))
+        ).order_by(Source.id,Type.catalog_key))
     for row,source in rows:
-        if _matches_scope(row.applicability,vehicle):
+        # SQLAlchemy JSON can store JSON null rather than SQL NULL; both mean legacy-wide.
+        if row.applicability is not None and _matches_scope(row.applicability,vehicle):
             yield row,source
 
 
