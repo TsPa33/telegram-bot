@@ -120,3 +120,6 @@ app.include_router(dismantling_v3_router)
 
 from app.api.pricing import router as pricing_router
 app.include_router(pricing_router)
+
+from app.api.sales_center import router as sales_center_router
+app.include_router(sales_center_router)

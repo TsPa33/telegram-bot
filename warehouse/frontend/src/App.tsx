@@ -41,7 +41,7 @@ import Inventory from "./pages/Inventory";
 import SalesWorkspace from "./SalesWorkspace";
 import InventoryWorkspace from "./InventoryWorkspace";
 import Orders from "./Orders";
-import SalesLedger from "./SalesLedger";
+import SalesCenter from "./SalesCenter";
 import Operations from "./pages/Operations";
 import Settings from "./pages/Settings";
 import Vehicles from "./pages/Vehicles";
@@ -51,7 +51,6 @@ const nav = [
   { to: "/vehicles", label: "Автомобілі", icon: CarFront },
   { to: "/inventory", label: "Склад", icon: Boxes },
   { to: "/sales", label: "Продажі", icon: ArrowDownLeft },
-  { to: "/orders", label: "Замовлення", icon: ClipboardList },
   { to: "/statistics", label: "Статистика", icon: ChartNoAxesCombined },
 ];
 const secondary = [
@@ -150,8 +149,8 @@ export default function App() {
   const can=(p:string)=>allowed(user,p);
   const routePermission=(path:string)=>path==='/administration/catalogue/import'?'':path==='/settings'?'':path==='/inventory/advanced'||path==='/operations'?'inventory.adjust_quantity':path.startsWith('/team')?'team.view':path.startsWith('/orders')?'orders.view':path==='/vehicles'?'vehicles.view':path==='/statistics'?'analytics.view':path==='/sales'?'sales.view':path==='/catalog'?'catalog.view':path==='/analytics'||path==='/operations'?'audit.view':path==='/archive'?'inventory.archive':'inventory.view';
   const advanced=ADVANCED_PERMISSIONS;
-  const routeAllowed=(!routePermission(location.pathname)||can(routePermission(location.pathname)))&&(!['/inventory/advanced','/operations'].includes(location.pathname)||advanced.every(can))&&(location.pathname!=='/archive'||can('inventory.view'));
-  const current = [...nav,...secondary,{to:"/administration/catalogue/import",label:"Імпорт глобального каталогу"}].find((n) => n.to === location.pathname || (n.to === "/orders" && location.pathname.startsWith("/orders/")));
+  const routeAllowed=(location.pathname==='/sales'?(can('sales.view')||can('orders.view')):!routePermission(location.pathname)||can(routePermission(location.pathname)))&&(!['/inventory/advanced','/operations'].includes(location.pathname)||advanced.every(can))&&(location.pathname!=='/archive'||can('inventory.view'));
+  const current = [...nav,...secondary,{to:"/administration/catalogue/import",label:"Імпорт глобального каталогу"}].find((n) => n.to === location.pathname) || (location.pathname.startsWith("/orders")?nav.find(n=>n.to==="/sales"):undefined);
   return (
     <TeamIdentity.Provider value={user}><div className="app">
       <aside ref={sidebarScroll.sidebar} id="warehouse-sidebar" className={sidebarScroll.mobileOpen ? "sidebar open" : "sidebar"} aria-label="Навігація Warehouse" role={sidebarScroll.mobileOpen?"dialog":undefined} aria-modal={sidebarScroll.mobileOpen?true:undefined} inert={sidebarScroll.mobile&&!sidebarScroll.mobileOpen}>
@@ -176,8 +175,8 @@ export default function App() {
         </div>
         <div className="sidebar-scroll" ref={sidebarScroll.scroll}><div className="nav-label">УПРАВЛІННЯ</div>
         <nav>
-          {nav.filter(n=>can(routePermission(n.to))).map((n) => (
-            <NavLink key={n.to} to={n.to} end={n.to!=="/orders"}>
+          {nav.filter(n=>n.to==='/sales'?(can('sales.view')||can('orders.view')):can(routePermission(n.to))).map((n) => (
+            <NavLink key={n.to} to={n.to} end={n.to!=="/orders"} className={({isActive})=>isActive||(n.to==="/sales"&&location.pathname.startsWith("/orders"))?"active":undefined}>
               <n.icon size={18} />
               {n.label}
             </NavLink>
@@ -249,7 +248,7 @@ export default function App() {
             <Route path="/administration/catalogue/import" element={<CatalogueImport enabled={user.catalogue_platform_admin===true} actorKey={JSON.stringify([user.id,user.workspace_account_id||user.id])}/>}/>
             <Route path="/team" element={<Team user={user} notify={notify}/>}/>
             <Route path="/" element={<SalesWorkspace accountId={user.id} quick notify={notify}/>} />
-            <Route path="/sales" element={<SalesLedger/>}/>
+            <Route path="/sales" element={<SalesCenter accountId={user.id} notify={notify}/>}/>
             <Route path="/orders" element={<Orders key={user.id} accountId={user.id} notify={notify}/>} />
             <Route path="/orders/:id" element={<Orders key={user.id} accountId={user.id} notify={notify}/>} />
             <Route path="/statistics" element={<Dashboard/>}/>

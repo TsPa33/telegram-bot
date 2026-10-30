@@ -78,6 +78,8 @@ def route_permissions(method,path,body):
         if path.endswith('/{action}'):return ['orders.fulfill']+(['sales.create'] if body.get('_route_action')=='sell' else [])
         return ['orders.edit']
     if path=='/sales/summary':return ['analytics.view','analytics.financial','sales.view','sales.view_financials']
+    if path in ('/sales-center','/sales-center/managers'):
+        return []  # Read routes independently allow either sales.view or orders.view.
     if path=='/sales':return ['sales.view']
     if path=='/dashboard':return ['analytics.view']
     if path=='/audit':return ['audit.view']

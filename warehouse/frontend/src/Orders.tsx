@@ -1,6 +1,6 @@
 import {Permit,useCan} from './permissions';
 import {useEffect,useRef,useState} from 'react';
-import {Link,useNavigate,useParams} from 'react-router-dom';
+import {Link,useNavigate,useParams,Navigate} from 'react-router-dom';
 import {all,api,money,when,type Row,type Page} from './api';
 import {Empty,Modal,Pager} from './components';
 import {Confirm,State,useLoad,type Notify} from './shared';
@@ -20,6 +20,7 @@ export default function Orders({accountId,notify}:{accountId:string;notify:Notif
  const gate=useLoad(()=>api('/orders/readiness'),[]);
  const params=new URLSearchParams({q:term,limit:'50',offset:String(page*50),...(status?{status}:{})});
  const list=useLoad(()=>id?Promise.resolve(null):api<Page>('/orders?'+params),[id,params.toString()]);
+ if(!id)return <Navigate to="/sales?tab=orders" replace/>;
  return <>
   <div className="page-heading"><div><h1>Замовлення</h1><p>Покупці, погоджені ціни та доставка.</p></div><Permit permission="orders.create"><button className="secondary" disabled={!can('inventory.view')||gate.data?.contract_version!==6||!!requests.pending} onClick={()=>setCreate(true)}>Нове замовлення</button></Permit></div>
   <State loading={gate.loading} error={gate.error||requests.storageError||error}/>{gate.error&&<button onClick={gate.reload}>Перевірити API знову</button>}

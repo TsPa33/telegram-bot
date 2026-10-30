@@ -10,7 +10,7 @@ AGGREGATE = text('''
 WITH scoped AS (
  SELECT id, account_id, created_at, before::jsonb AS b, after::jsonb AS a
  FROM operations
- WHERE account_id=:account_id AND type='sale'
+ WHERE account_id=:account_id AND type='sale' AND (CAST(:manager_id AS varchar) IS NULL OR actor_id=:manager_id)
    AND created_at>=:start AND created_at<:end
 ), projected AS (
  SELECT o.id, date_trunc(:interval, o.created_at AT TIME ZONE :tz)::date AS bucket,
@@ -63,13 +63,13 @@ def next_bucket(day: date, interval: str) -> date:
     return day+timedelta(days=7 if interval == 'week' else 1)
 
 
-def summary(db, account_id, date_from, date_to, interval, tz):
+def summary(db, account_id, date_from, date_to, interval, tz, *, manager_id=None):
     zone=ZoneInfo(tz)
     start=datetime.combine(date_from,time.min,zone).astimezone(timezone.utc)
     end=datetime.combine(date_to+timedelta(days=1),time.min,zone).astimezone(timezone.utc)
     # Bound expensive historical projections. Transaction-local, never global config.
     db.execute(text("SELECT set_config('statement_timeout','5000',true)"))
-    rows=db.execute(AGGREGATE,{'account_id':account_id,'start':start,'end':end,'interval':interval,'tz':tz}).mappings().all()
+    rows=db.execute(AGGREGATE,{'account_id':account_id,'start':start,'end':end,'interval':interval,'tz':tz,'manager_id':manager_id}).mappings().all()
     periods={}
     day=bucket_start(date_from,interval)
     while day<=date_to:

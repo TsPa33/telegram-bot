@@ -63,48 +63,21 @@ def sales(db: DB, who: Auth, q: str = Query('',max_length=200), vehicle_id: str 
     if q.strip():scope=scope.where(or_(*[func.lower(Operation.after[k].as_string()).contains(q.strip().lower(),autoescape=True) for k in ('name','oem_number','article_number')]))
     total=db.scalar(select(func.count()).select_from(scope.subquery()))
     ops=list(db.scalars(scope.order_by(Operation.created_at.desc(),Operation.id).offset(offset).limit(limit)))
-    ids=[op.id for op in ops]
-    linked={line.sale_operation_id:(line,order) for line,order in db.execute(select(OrderLine,Order).join(Order,Order.id==OrderLine.order_id).where(OrderLine.account_id==who.workspace_account_id,Order.account_id==who.workspace_account_id,OrderLine.sale_operation_id.in_(ids)))} if ids else {}
-    events={}
-    if linked:
-        for e in db.scalars(select(OrderEvent).where(OrderEvent.account_id==who.workspace_account_id,OrderEvent.order_id.in_([o.id for _,o in linked.values()]),OrderEvent.type=='sale_confirmed')):
-            events[e.order_id]=e.data
-    actor_ids={op.actor_id for op in ops}
-    actors={a.id:a.name for a in db.scalars(select(Account).where(Account.id.in_(actor_ids),or_(Account.id==who.workspace_account_id,Account.workspace_account_id==who.workspace_account_id)))}
-    donor_ids={op.vehicle_id for op in ops if op.vehicle_id}
-    donors={v.id:snapshot(v) for v in db.scalars(select(Vehicle).where(Vehicle.id.in_(donor_ids),Vehicle.account_id==who.workspace_account_id))}
-    items=[]
-    for op in ops:
-        financial=op.after.get('sale') or {};link=linked.get(op.id)
-        # Historical order prices are recorded independently of current Part prices.
-        if not financial and link:
-            line,order=link;event=events.get(order.id,{})
-            sold=next((x for x in event.get('lines',[]) if x.get('sale_operation_id')==op.id),None)
-            if sold:
-                financial={'unit_price':sold['unit_price'],'currency':sold['currency'],
-                    'total':sold['line_total'],'donor':sold.get('donor_snapshot'),
-                    'buyer_name':event.get('contact_name'),'buyer_phone':event.get('contact_phone')}
-        quantity=op.before.get('quantity',0)-op.after.get('quantity',0)
-        items.append({'id':op.id,'part_id':op.part_id,'name':op.after.get('name'),'vehicle_id':op.vehicle_id,
-            'donor':financial.get('donor') or donors.get(op.vehicle_id),'donor_is_current':not bool(financial.get('donor')),
-            'quantity':quantity,'unit_price':financial.get('unit_price'),'currency':financial.get('currency'),
-            'total':financial.get('total'),'price_recorded':financial.get('unit_price') is not None,
-            'source':'order' if link else 'quick','order_id':link[1].id if link else None,
-            'buyer_name':financial.get('buyer_name'),'actor_name':financial.get('actor_name') or actors.get(op.actor_id),
-            'note':op.reason,'created_at':op.created_at.isoformat()})
+    from app.services.sales_projection import project_sales
+    items=project_sales(db,who,ops)
     return {'items':items,'total':total,'offset':offset,'limit':limit}
 
 
 @router.get('/sales/summary')
 def sales_summary(db: DB, who: Auth, date_from: date, date_to: date,
                   interval: Literal['day','week','month']='day',
-                  tz: Literal['Europe/Kyiv','UTC']='Europe/Kyiv'):
+                  tz: Literal['Europe/Kyiv','UTC']='Europe/Kyiv', manager_id: str|None=Query(None,max_length=36)):
     from app.services.sales_analytics import summary
     if date_from>date_to or (date_to-date_from).days>=366 or date_to==date.max or date_from.year<1900 or date_to.year>2100:
         raise HTTPException(422,'Оберіть коректний період до 366 днів включно')
     from sqlalchemy.exc import DBAPIError
     try:
-        return summary(db,who.workspace_account_id,date_from,date_to,interval,tz)
+        return summary(db,who.workspace_account_id,date_from,date_to,interval,tz,manager_id=manager_id)
     except DBAPIError as exc:
         if getattr(exc.orig,'sqlstate',None)=='57014':
             db.rollback()

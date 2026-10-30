@@ -4,16 +4,18 @@ import {State,useLoad} from './shared';
 import {Bars} from './StatisticsCharts';
 import {calendarToday,periodLabel,recentPeriod,validPeriod} from './salesChart';
 
-export default function SalesTrend(){
+export default function SalesTrend({managers=[]}:{managers?:Row[]}){
+ const [manager,setManager]=useState('');
  const [range,setRange]=useState(()=>recentPeriod(30));
  const [draft,setDraft]=useState(range),[interval,setInterval]=useState('day'),[tz,setTz]=useState('Europe/Kyiv');
  const [validation,setValidation]=useState('');
- const data=useLoad(()=>api('/sales/summary?'+new URLSearchParams({date_from:range.from,date_to:range.to,interval,tz})),[range.from,range.to,interval,tz]);
+ const data=useLoad(()=>api('/sales/summary?'+new URLSearchParams({date_from:range.from,date_to:range.to,interval,tz,...(manager?{manager_id:manager}:{})})),[range.from,range.to,interval,tz,manager]);
  const d=data.data;
  const currencies:string[]=d?.totals_by_currency?.map((r:Row)=>r.currency)||[];
  function preset(days:number){const r=recentPeriod(days,calendarToday(new Date(),tz));setDraft(r);setRange(r);setValidation('');}
  return <section className="panel padded sales-trend" aria-label="Динаміка продажів"><h2>Динаміка продажів</h2>
   <p>Фактично проведені продажі за датою складської операції. Це суми продажів, не прибуток. Повернення та сторнування поки не підтримуються.</p>
+  {!!managers.length&&<label>Менеджер<select aria-label="Менеджер аналітики" value={manager} onChange={e=>setManager(e.target.value)}><option value="">Усі менеджери</option>{managers.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</select></label>}
   <form className="sales-trend-filters" onSubmit={e=>{e.preventDefault();if(!validPeriod(draft.from,draft.to)){setValidation('Оберіть коректний період до 366 днів включно (1900–2100).');return;}setValidation('');setRange({...draft});}}>
    <label>Від<input type="date" aria-label="Продажі від" required min="1900-01-01" max="2100-12-31" value={draft.from} onChange={e=>setDraft({...draft,from:e.target.value})}/></label>
    <label>До<input type="date" aria-label="Продажі до" required min="1900-01-01" max="2100-12-31" value={draft.to} onChange={e=>setDraft({...draft,to:e.target.value})}/></label>
