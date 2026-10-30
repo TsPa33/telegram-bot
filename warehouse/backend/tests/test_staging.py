@@ -49,7 +49,7 @@ with TestClient(app, base_url=origin) as c:
     r = c.get(path)
     assert r.status_code == 200, r.text
     assert r.json()['contract_version'] == 5
-    assert r.json()['database_revisions'] == ['e4b93a2d715c']
+    assert r.json()['database_revisions'] == ['f5c84d31a620']
     assert c.get(path, headers={'Host': 'untrusted.example.test'}).status_code == 400
     assert c.post('/api/v1/auth/logout', headers={'Origin': 'https://untrusted.example.test'}).status_code == 403
     assert c.post('/api/v1/auth/logout', headers={'X-CSRF-Token': 'invalid'}).status_code == 403
