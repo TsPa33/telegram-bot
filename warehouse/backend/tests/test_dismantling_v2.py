@@ -259,3 +259,24 @@ def test_legacy_import_is_unscoped_and_reimport_idempotent(logged):
     vehicle=logged.post('/api/v1/vehicles',json={'manufacturer':'BMW','model':'3','year':2014}).json()
     assert logged.post(base(vehicle)+'/start').status_code==200
     assert any(r['catalog_key']=='test-0' for r in view(logged,vehicle)['items'])
+
+
+def test_catalogue_import_preview_reports_unchanged_and_noop_does_not_audit(logged):
+    path='/api/v1/dismantling/catalog/import'
+    data=catalog(2)
+    first=logged.post(path+'?dry_run=true',json=data).json()
+    assert {k:first[k] for k in ('created','updated','unchanged')}=={
+        'created':2,'updated':0,'unchanged':0}
+    assert logged.post(path,json=data).json()['created']==2
+    with engine().connect() as db:
+        n=db.scalar(text("SELECT count(*) FROM operations WHERE type='dismantling_catalog_import'"))
+    repeat=logged.post(path+'?dry_run=true',json=data).json()
+    assert {k:repeat[k] for k in ('created','updated','unchanged')}=={
+        'created':0,'updated':0,'unchanged':2}
+    assert logged.post(path,json=data).json()['unchanged']==2
+    with engine().connect() as db:
+        assert db.scalar(text("SELECT count(*) FROM operations WHERE type='dismantling_catalog_import'"))==n
+    data['types'][0]['name']='Changed test part'
+    preview=logged.post(path+'?dry_run=true',json=data).json()
+    assert (preview['created'],preview['updated'],preview['unchanged'])==(0,1,1)
+    assert logged.post(path,json=data).json()['updated']==1
