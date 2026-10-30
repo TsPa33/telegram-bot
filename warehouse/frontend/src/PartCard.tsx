@@ -8,6 +8,7 @@ import {inventoryStockKind} from './inventoryPresentation';
 import PowertrainEditor from './PowertrainEditor';
 import PartCharacteristicsEditor from './PartCharacteristicsEditor';
 import './part-card-r1.css';
+import MarketCheck from './MarketCheck';
 export default function PartCard({part,onSaved,tools,actions,initialEdit,editVersion}:{part:Row;onSaved?:(row:Row)=>void;tools?:ReactNode;actions?:ReactNode;initialEdit?:'oem'|'color';editVersion?:number}){
  const localSaved=useRef(false);useEffect(()=>{localSaved.current=false;},[part.id]);
  const can=useCan(),[row,setRow]=useState(part),[editing,setEditing]=useState<'oem'|'color'|null>(initialEdit||null),[donorOverride,setDonor]=useState<Row|null>(null);
@@ -21,7 +22,7 @@ export default function PartCard({part,onSaved,tools,actions,initialEdit,editVer
  {actions&&<div className="r1-card-actions">{actions}</div>}
  <section className="r1-characteristics" aria-label="Характеристики деталі"><div className="r1-section-heading"><h3>Характеристики</h3>{enabled&&<div><button onClick={()=>setEditing(editing==='oem'?null:'oem')}>Змінити OEM / код</button><button onClick={()=>setEditing(editing==='color'?null:'color')}>Колір деталі</button></div>}</div><dl>{[['OEM / код',row.oem_number],['Колір',row.color_name],['Код фарби',row.paint_code],['Стан',labels[row.condition]],['Перевірка наявності',labels[row.availability]],['Розташування',row.location||physicalLocation(row)]].map(([key,value])=><div key={key}><dt>{key}</dt><dd>{value||'Не вказано'}</dd></div>)}</dl>{editing&&enabled&&<PartCharacteristicsEditor key={editing} part={row} kind={editing} onSaved={saved} onClose={()=>setEditing(null)}/>}</section>
  <section className="r1-donor-data" aria-label="Двигун та КПП донора"><h3>Двигун та КПП донора</h3>{vehicle?<PowertrainEditor vehicle={vehicle} compact inline onSaved={v=>{setDonor(v);pricesChanged();}}/>:<p>Не вказано</p>}<small>Характеристики автомобіля, не підтвердження сумісності деталі. Оновлення переліку можливих деталей — окрема дія.</small></section>
- <section className="r1-card-prices" aria-label="Ціни деталі"><h3>Ціни</h3>{market.error?<p role="alert">{market.error}</p>:can('catalog.view')?<PriceSummary g={market.rows[row.id]} showRelated/>:<p>Ринкові дані недоступні</p>}<div className="r1-own-price"><span>Моя ціна</span><SellerPriceEditor part={row} onSaved={saved}/></div></section>
+ <section className="r1-card-prices" aria-label="Ціни деталі"><h3>Ціни</h3>{market.error?<p role="alert">{market.error}</p>:can('catalog.view')?<PriceSummary g={market.rows[row.id]} showRelated/>:<p>Ринкові дані недоступні</p>}<MarketCheck part={row} vehicle={vehicle}/><div className="r1-own-price"><span>Моя ціна</span><SellerPriceEditor part={row} onSaved={saved}/></div></section>
  {row.internal_notes&&<section><h3>Примітки</h3><p className="r1-note">{row.internal_notes}</p></section>}{tools&&<details className="r1-secondary"><summary>Додаткова інформація та інструменти</summary>{row.article_number&&<p>Внутрішній артикул: {row.article_number}</p>}{can('parts.view_cost')&&row.unit_cost!=null&&<p>Собівартість: {row.unit_cost}</p>}{tools}</details>}
  </section>;
 }

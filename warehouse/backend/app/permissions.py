@@ -6,7 +6,7 @@ GROUPS={
  'Фінанси':{'parts.view_cost':'Собівартість і витрати','sales.view_financials':'Фінансові дані продажів та замовлень'},
  'Продажі':{'sales.view':'Перегляд продажів','sales.create':'Проведення продажів'},
  'Замовлення':{'orders.view':'Перегляд замовлень і покупців','orders.create':'Створення замовлень','orders.edit':'Редагування замовлень','orders.fulfill':'Резервування та виконання замовлень'},
- 'Автомобілі':{'vehicles.view':'Перегляд автомобілів','vehicles.create':'Додавання автомобілів','vehicles.edit':'Редагування автомобілів','dismantling.manage':'План розбору','catalog.view':'Перегляд довідника','catalog.import':'Імпорт каталогу'},
+ 'Автомобілі':{'vehicles.view':'Перегляд автомобілів','vehicles.create':'Додавання автомобілів','vehicles.edit':'Редагування автомобілів','dismantling.manage':'План розбору','catalog.view':'Перегляд довідника','catalog.import':'Імпорт каталогу','market.check':'Ручна перевірка ринкових даних'},
  'Аналітика':{'analytics.view':'Статистика залишків','analytics.financial':'Фінансова аналітика','audit.view':'Історія операцій'},
  'Команда':{'team.view':'Перегляд команди','team.manage_managers':'Керування менеджерами'},
  'Налаштування':{'settings.manage':'Налаштування складу'},
@@ -36,6 +36,7 @@ def route_permissions(method,path,body):
     if path in ('/parts','/inventory') and read:return ['inventory.view']
     if path=='/parts/bulk-actions':return ['inventory.transfer' if body.get('action')=='transfer' else 'inventory.archive']
     if path=='/parts' and method=='POST':return ['inventory.create']
+    if path.endswith('/market-refresh'):return ['inventory.view','catalog.view','market.check']
     if path.endswith('/price-guidance') or path=='/pricing/guidance':return ['inventory.view','catalog.view']
     if path.startswith('/pricing/'):return ['inventory.view','catalog.view','parts.change_price']
     if path.endswith('/parts-valuation'):return ['vehicles.view','inventory.view','catalog.view','analytics.view','analytics.financial']

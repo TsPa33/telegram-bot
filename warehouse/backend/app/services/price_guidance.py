@@ -152,7 +152,7 @@ def relevance(part,ctx,source):
     if part.condition=='unknown' or condition=='unknown' or part.condition!=condition:differences.append('Стан не збігається або невідомий')
     return sorted(set(differences)),None
 
-def guidance(db,parts,account,now=None):
+def guidance(db,parts,account,now=None,*,include_historical=False):
     now=now or utcnow();state=db.get(CanonicalState,1);revision=db.get(CatalogueState,1)
     base=dict(policy=VERSION,age_days=AGE_DAYS,catalogue_revision=revision.revision if revision else None,snapshot=state.snapshot_sha if state else None)
     empty={p.id:dict(part_id=p.id,level='D',label='Ціну не визначено',cohorts=[],examples=[],offer_count=0,reasons={},seller_price=str(p.selling_price) if p.selling_price is not None else None,seller_currency=p.currency,**base) for p in parts}
@@ -177,7 +177,7 @@ def guidance(db,parts,account,now=None):
         projection_key=digest([ctx['type_id'],{k:pl.get(k) for k in ('side','position','details')},ctx['values'],ctx['provenance'],part.name,part.oem_number,part.condition,part.compatibility_notes,part.description])
         if projection_key in projections:
             empty[part.id].update({k:v for k,v in projections[projection_key].items() if k not in ('part_id','seller_price','seller_currency')});continue
-        groups=defaultdict(dict);examples={};reasons=Counter();seen={};relevance_cache={}
+        groups=defaultdict(dict);examples={};reasons=Counter();seen={};relevance_cache={};historical={}
         for src in by_type[contexts[part.id]['type_id']]:
             if src['stale']:reasons['stale_source_mapping']+=1;continue
             if src['offer_date']>now:reasons['future_source_observation']+=1;continue
@@ -187,7 +187,15 @@ def guidance(db,parts,account,now=None):
             if reason:reasons[reason]+=1;continue
             price=(p2 if src['kind']=='v2' else p1).get(src['offer_id'])
             if not price:reasons['missing_or_future_observation']+=1;continue
-            if price.observed_at<now-timedelta(days=AGE_DAYS):reasons['stale_observation']+=1;continue
+            if price.observed_at<now-timedelta(days=AGE_DAYS):
+                reasons['stale_observation']+=1
+                if include_historical:
+                    url=safe_url(price.source_url)
+                    for currency,amount in [('UAH',price.price_uah),('USD',price.price_usd)]:
+                        if url and amount is not None and amount.is_finite() and amount>0:
+                            ident=(identity(src['provider']),src['article'],currency)
+                            historical[ident]=dict(source=src['provider'],article=src['article'],amount=str(amount),currency=currency,url=url,observed_at=price.observed_at.isoformat(),differences=differences,status='historical_not_recommendation')
+                continue
             if price.observed_at!=src['offer_date']:differences.append('Стан не прив’язаний до дати ціни')
             if not any(v is not None and v.is_finite() and v>0 for v in (price.price_uah,price.price_usd)):reasons['missing_price']+=1;continue
             if truncated:differences.append('Джерельну вибірку обмежено; точний орієнтир недоступний')
@@ -217,6 +225,7 @@ def guidance(db,parts,account,now=None):
         if not contexts[part.id]['type_id']:reasons['missing_constructive_identity']+=1
         elif not by_type[contexts[part.id]['type_id']]:reasons['no_verified_source_mapping']+=1
         row=empty[part.id];row.update(cohorts=cohorts,examples=sorted(examples.values(),key=lambda e:(e['source'],e['article'],e['currency']))[:10],example_count=len(examples),example_evidence_hash=digest(sorted(examples.values(),key=lambda e:(e['source'],e['article'],e['currency']))),offer_count=len({(e['entry']['source'],e['entry']['article']) for e in seen.values()}),reasons=dict(reasons),truncated=truncated)
+        if include_historical:row['historical_examples']=sorted(historical.values(),key=lambda e:(e['observed_at'],e['source'],e['article'],e['currency']),reverse=True)[:10]
         row['level']='A' if any(c['level']=='A' for c in cohorts) else 'B' if cohorts else 'C' if examples else 'D'
         row['label']={'A':'Ринковий орієнтир','B':'Мало даних','C':'Приклади схожих запчастин','D':'Ціну не визначено'}[row['level']]
         projections[projection_key]=row

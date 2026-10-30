@@ -8,6 +8,7 @@ from app.services.virtual_inventory import lock_workspace
 from app.services.catalogue_import import LOCK
 from app.services import pricing
 from app.services.price_guidance import parts_for,guidance
+from app.schemas import Input
 from app.schemas.pricing import PriceBatch,PricePreview,PriceApply
 router=APIRouter(route_class=SecureRoute,prefix='/api/v1',tags=['Market and seller prices'])
 
@@ -69,3 +70,14 @@ def selection(db:DB,who:Auth,vehicle_id:str|None=None,q:str=Query('',max_length=
     if q:stmt=stmt.where(or_(*[column.ilike('%'+q.replace('%',r'\%').replace('_',r'\_')+'%') for column in (Part.name,Part.oem_number,Part.article_number,Part.location,Part.serial_number)]))
     ids=list(db.scalars(stmt.order_by(Part.id).limit(1001)))
     return dict(ids=ids[:1000],truncated=len(ids)>1000,limit=1000)
+
+
+@router.post('/parts/{id}/market-refresh')
+def market_refresh(id:str,data:Input,db:DB,who:Auth):
+    # Local catalogue projection only. No network, writes, queue or price mutation.
+    from app.services.market_check import check
+    from sqlalchemy.exc import DBAPIError
+    try:return check(db,who,id)
+    except DBAPIError:
+        db.rollback()
+        raise HTTPException(503,'Локальна перевірка каталогу недоступна або перевищила час очікування. Спробуйте пізніше.') from None

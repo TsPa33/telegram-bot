@@ -1,0 +1,15 @@
+import {useContext,useEffect,useRef,useState} from 'react';
+import {api,type Row} from './api';
+import {useCan,TeamIdentity} from './permissions';
+import {Link} from 'react-router-dom';
+import {PriceSummary} from './CompactParts';
+import './market-check.css';
+const date=(v:string|null)=>v?new Date(v).toLocaleString('uk-UA',{timeZone:'Europe/Kyiv'}):'Не зафіксовано';
+export default function MarketCheck({part,vehicle}:{part:Row;vehicle?:Row|null}){
+ const identity=useContext(TeamIdentity),can=useCan(),[result,setResult]=useState<Row|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),guard=useRef(false),seq=useRef(0);
+ const context=JSON.stringify([part,vehicle]);
+ useEffect(()=>{seq.current++;setResult(null);setError('');setBusy(false);guard.current=false;return()=>{seq.current++;};},[context]);
+ async function run(){if(guard.current)return;guard.current=true;setBusy(true);setError('');const n=seq.current;try{const r=await api('/parts/'+part.id+'/market-refresh','POST',{});if(seq.current===n)setResult(r);}catch(e){if(seq.current===n)setError((e as Error).message);}finally{if(seq.current===n){guard.current=false;setBusy(false);}}}
+ if(!can('inventory.view')||!can('catalog.view'))return null;
+ return <section className="r5-market" aria-label="Перевірка ринкових даних"><p>Дані з імпортованого каталогу. Перевірка не отримує свіжі ціни із сайту й не змінює мою ціну.</p>{can('market.check')?<button disabled={busy} onClick={run}>{busy?'Перевіряємо каталог…':'Уточнити актуальну ціну'}</button>:<small>Для ручної перевірки потрібен окремий дозвіл директора.</small>}{busy&&<p role="status">Перевіряємо збережені пропозиції…</p>}{error&&<p role="alert">{error}</p>}{result&&<div role="status"><p>{result.source_reason}</p><small>Перевірено локальну копію: {date(result.checked_at)}. Останнє спостереження серед показаних: {date(result.observed_at)}.</small><PriceSummary g={result.guidance} showRelated/>{result.guidance.level!=='A'&&<p>Недостатньо даних для рекомендації.</p>}<p>Різних пропозицій: {result.offer_count}. Валюти не підсумовуються.</p>{result.status==='no_matches'&&<p>У дозволеній вибірці пропозицій не знайдено.</p>}{result.offers.map((e:Row)=><article key={[e.source,e.article,e.currency].join(':')}><strong>{e.amount} {e.currency}</strong><small>Джерело: {e.source} · Спостереження: {date(e.observed_at)}</small>{e.status==='historical_not_recommendation'&&<small>Історичні дані — виключено з рекомендації.</small>}{e.differences?.length>0&&<small>Відповідність потребує перевірки.</small>}<a href={e.url} target="_blank" rel="noopener noreferrer">Переглянути оголошення</a></article>)}<p>Пошуковий запит: <span className="r5-query">{result.search_text}</span></p><a href={result.external_url} target="_blank" rel="noopener noreferrer">Відкрити Aleto для ручного пошуку</a><small>Вставте запит у пошук сайту. Доступність автоматичного пошукового URL не підтверджена.</small>{identity?.catalogue_platform_admin===true&&<Link to="/administration/catalogue/import">Перейти до ручного імпорту дозволеного експорту</Link>}</div>}</section>;
+}

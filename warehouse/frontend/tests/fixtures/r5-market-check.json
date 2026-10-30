@@ -1,0 +1,11 @@
+{
+  "mode":"imported_catalogue","status":"completed","fresh_data_fetched":false,"live_refresh_available":false,"cached":false,
+  "checked_at":"2026-10-30T07:00:00+00:00","observed_at":"2026-06-27T12:00:00+00:00","offer_count":1,
+  "source_status":"source_unavailable","source_reason":"Дозвіл на програмне отримання свіжих даних не підтверджено. Перевірено лише імпортований каталог.",
+  "external_url":"https://aleto.ua/","search_text":"OEM-SYNTHETIC Volvo XC40 Фара",
+  "guidance":{"level":"D","label":"Ціну не визначено","cohorts":[],"examples":[],"offer_count":0,"reasons":{}},
+  "offers":[
+    {"source":"aleto","article":"synthetic-only","amount":"1200.00","currency":"UAH","url":"https://aleto.ua/ua/detail/synthetic-fixture-not-real/","observed_at":"2026-06-27T12:00:00+00:00","status":"historical_not_recommendation","differences":["Синтетичний приклад для UI"]},
+    {"source":"aleto","article":"synthetic-only","amount":"30.00","currency":"USD","url":"https://aleto.ua/ua/detail/synthetic-fixture-not-real/","observed_at":"2026-06-27T12:00:00+00:00","status":"historical_not_recommendation","differences":["Синтетичний приклад для UI"]}
+  ]
+}
