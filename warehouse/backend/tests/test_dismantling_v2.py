@@ -224,3 +224,38 @@ def test_replayed_bulk_receipt_cannot_receive_new_candidates_with_same_count(log
     post(logged,donor,'/actions',{'ids':[second['id']],'action':'dismantled'})
     assert post(logged,donor,'/batch',request).status_code==409
     assert logged.get('/api/v1/parts').json()['total']==1
+
+
+def test_model_scoped_catalogue_preserves_legacy_and_excludes_other_models(logged):
+    path='/api/v1/dismantling/catalog/import'
+    payload=catalog(2)
+    payload['source']='filedbtree.test'
+    payload['types'][0]['applicability']=[
+        {'manufacturer':'Volvo','model':'XC60','generation':''}]
+    payload['types'][1]['applicability']=[
+        {'manufacturer':'Volvo','model':'XC90','generation':'II'}]
+    assert logged.post(path+'?dry_run=true',json=payload).json()['created']==2
+    assert logged.post(path,json=payload).status_code==200
+    checks=[('XC60','',{'test-0'}),('XC90','II',{'test-1'}),
+            ('XC90 II','',{'test-1'}),('XC90','I',set()),('BMW 3','',set())]
+    for model,generation,expected in checks:
+        vehicle=logged.post('/api/v1/vehicles',json={
+            'manufacturer':'Volvo' if model!='BMW 3' else 'BMW',
+            'model':model,'generation':generation,'year':2015}).json()
+        assert logged.post(base(vehicle)+'/start').status_code==200
+        rows=view(logged,vehicle)['items']
+        actual={r['catalog_key'] for r in rows if r['source'].startswith('local.')}
+        assert actual==expected
+        assert logged.get('/api/v1/parts').json()['total']==0
+    invalid={**payload,'types':[{**payload['types'][0],'applicability':[]}]}
+    assert logged.post(path+'?dry_run=true',json=invalid).status_code==422
+
+
+def test_legacy_import_is_unscoped_and_reimport_idempotent(logged):
+    payload=catalog(1)
+    path='/api/v1/dismantling/catalog/import'
+    assert logged.post(path,json=payload).json()['created']==1
+    assert logged.post(path,json=payload).json()['created']==0
+    vehicle=logged.post('/api/v1/vehicles',json={'manufacturer':'BMW','model':'3','year':2014}).json()
+    assert logged.post(base(vehicle)+'/start').status_code==200
+    assert any(r['catalog_key']=='test-0' for r in view(logged,vehicle)['items'])
