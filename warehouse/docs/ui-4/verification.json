@@ -1,0 +1,27 @@
+{
+  "base_sha": "ae9fb1b7d4626b8494e92a39e963e75835b7ed5c",
+  "scope": "local synthetic warehouse_ui3_test only",
+  "build": "PASS",
+  "frontend_unit_tests": {
+    "passed": 428,
+    "failed": 0
+  },
+  "browser_widths": [
+    1440,
+    1280,
+    1000,
+    900,
+    768,
+    390,
+    375
+  ],
+  "ui4_browser": "PASS",
+  "ui3_ux1_regression": "PASS",
+  "states_permissions": "PASS",
+  "backend_changed": false,
+  "migrations_changed": false,
+  "domain_mutations_during_qa": false,
+  "staging_qa": "NOT RUN",
+  "push": false,
+  "deployment": false
+}

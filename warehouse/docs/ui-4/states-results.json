@@ -1,0 +1,13 @@
+{
+  "stale_response_ignored": true,
+  "error_and_draft": true,
+  "read_timeout_retry": true,
+  "keyboard_suggestion_and_single_modal": true,
+  "pointer_suggestion_without_form_submit": true,
+  "smart_readiness_fail_closed": true,
+  "similar_price_not_recommendation": true,
+  "photo_render_and_failure_fallback": true,
+  "server_rbac_and_workspace_isolation": true,
+  "mock_responses_only_for_errors_delays_and_photo": true,
+  "js_errors": []
+}
