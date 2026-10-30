@@ -206,7 +206,7 @@ def test_failed_upgrade_is_transactional_and_retryable(search_data,failure):
     assert alembic('downgrade','d86f21a90b34').returncode==0
     # Compare every column that exists at the intentionally old revision.
     # Stage3B metadata is additive and absent until the final upgrade.
-    new_fields={'assortment_enabled','inventory_origin','quantity_basis','physical_location_kind','canonical_placement_id','activation_operation_id'}
+    new_fields={'assortment_enabled','inventory_origin','quantity_basis','physical_location_kind','canonical_placement_id','activation_operation_id','color_name','paint_code'}
     before=[{k:v for k,v in row.items() if k not in new_fields} for row in before]
     blocker=None
     try:
