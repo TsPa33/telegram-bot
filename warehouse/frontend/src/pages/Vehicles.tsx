@@ -6,6 +6,7 @@ import { api, labels, money, when, type Page, type Row } from "../api";
 import { Empty, Modal, Pager, type Field } from "../components";
 import VehicleForm from "../VehicleForm";
 import AletoCatalogue from "../AletoCatalogue";
+import DismantlingCatalogImport from "../DismantlingCatalogImport";
 import VehicleChecklist from "../VehicleChecklist";
 import Dismantling from "../Dismantling";
 import ManagedDismantling from "../ManagedDismantling";
