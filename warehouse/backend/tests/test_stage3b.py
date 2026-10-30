@@ -196,7 +196,7 @@ def test_populated_upgrade_and_guarded_downgrade(client,vehicle,part,monkeypatch
     r=alembic('downgrade','84d2c6fa190b');assert r.returncode!=0 and 'downgrade forbidden' in r.stderr
     with Session(engine()) as db:
         assert all_tables(db)==state
-        assert db.scalar(text('SELECT version_num FROM alembic_version'))=='e4b93a2d715c'
+        assert db.scalar(text('SELECT version_num FROM alembic_version'))=='f5c84d31a620'
 
 
 def test_legacy_receipts_sale_archive_exclusions_preserved_on_explicit_transition(client,vehicle,monkeypatch):
