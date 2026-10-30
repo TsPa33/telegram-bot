@@ -252,7 +252,7 @@ def persist_plan(db,v,who,data,plan,sha,*,partial=False,pending=None):
     drafts={**v.dismantling_v3.get('review_drafts',{}),**{pid:r.model_dump() for pid,r in data.resolutions.items()}}
     pending_ids={p['id'] for p in (pending or [])}
     drafts={pid:r for pid,r in drafts.items() if pid in pending_ids}
-    v.dismantling_v3={**v.dismantling_v3,**dict(trial_input=plan['trial_input'],configuration_source_id=plan['configuration_source_id'],vehicle_basis=basis(v),catalogue_revision=plan['catalogue_revision'],skipped=skipped,version=VERSION,revision=revision,configuration=plan['configuration'],catalogue_snapshot=plan['catalogue_snapshot'],preview_token=plan['token']), 'pending_review':pending if partial else [],'review_drafts':drafts}
+    v.dismantling_v3={**v.dismantling_v3,**dict(trial_input=plan['trial_input'],configuration_source_id=plan['configuration_source_id'],vehicle_basis=basis(v),catalogue_revision=plan['catalogue_revision'],skipped=skipped,version=VERSION,revision=revision,configuration=plan['configuration'],catalogue_snapshot=plan['catalogue_snapshot'],local_catalogue_sha=plan['local_catalogue_sha'],preview_token=plan['token']), 'pending_review':pending if partial else [],'review_drafts':drafts}
     db.flush() # One batch assigns defaults and validates rows before audit snapshots.
     with db.no_autoflush:
         for r,before in changes:record(db,v.account_id,r,'dismantling_v3_bind','Підтверджено зіставлення/оновлення довідника; рішення і склад не змінено',before,flush_before=False)
