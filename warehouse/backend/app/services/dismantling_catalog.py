@@ -23,8 +23,15 @@ def import_catalog(db, account_id, data, dry_run=False):
             if key in names and names[key]!=name:raise HTTPException(422,'Суперечливі назви ієрархії для однакового ключа')
             names[key]=name
     created=sum(row.catalog_key not in existing for row in data.types)
-    result={'created':created,'updated':len(data.types)-created,'total':len(combined),'dry_run':dry_run}
-    if dry_run:return result
+    updated=sum(row.catalog_key in existing and any(
+        getattr(existing[row.catalog_key],key)!=value
+        for key,value in row.model_dump().items()) for row in data.types)
+    unchanged=len(data.types)-created-updated
+    source_changed=source is not None and (
+        source.provenance!=data.provenance or source.license_reference!=data.license_reference)
+    result={'created':created,'updated':updated,'unchanged':unchanged,
+            'total':len(combined),'dry_run':dry_run}
+    if dry_run or (not created and not updated and not source_changed):return result
     before=snapshot(source) if source else {}
     if source is None:
         source=Source(account_id=account_id,source=data.source,provenance=data.provenance,license_reference=data.license_reference)
@@ -34,7 +41,7 @@ def import_catalog(db, account_id, data, dry_run=False):
         row=existing.get(item.catalog_key)
         if row is None:
             row=Type(account_id=account_id,source_id=source.id,**item.model_dump());db.add(row)
-        else:
+        elif any(getattr(row,key)!=value for key,value in item.model_dump().items()):
             for key,value in item.model_dump().items():setattr(row,key,value)
     record(db,account_id,source,'dismantling_catalog_import',f'Права підтверджено користувачем; нових {created}, оновлено {result["updated"]}; без зміни донорів/складу',before)
     return result
