@@ -1,13 +1,13 @@
 import {chromium,expect as baseExpect} from '@playwright/test';
 import assert from 'node:assert/strict';import fs from 'node:fs';import {execFile} from 'node:child_process';import {promisify} from 'node:util';
-const expect=baseExpect.configure({timeout:30000}),origin='http://127.0.0.1:5211',root='/api/v1/admin/import-jobs';
+const expect=baseExpect.configure({timeout:30000}),origin=process.env.WAREHOUSE_R83_ORIGIN||'http://127.0.0.1:5211',root='/api/v1/admin/import-jobs';
 if(process.env.WAREHOUSE_E2E!=='1')throw Error('Explicit synthetic local QA only');
-const f=JSON.parse(fs.readFileSync('/tmp/r83-fixture.json'));assert(f.synthetic&&/^warehouse_r83(?:_[a-z0-9]+)*_test$/.test(f.database));
+const f=JSON.parse(fs.readFileSync(process.env.WAREHOUSE_R83_FIXTURE||'/tmp/r83-fixture.json'));assert(f.synthetic&&new URL(origin).hostname==='127.0.0.1'&&/^warehouse_r8[34](?:_[a-z0-9]+)*_test$/.test(f.database));
 const run=promisify(execFile),out='/workspace/scratch/r83';fs.mkdirSync(out,{recursive:true});
 async function worker(){await run('/workspace/.venvs/warehouse/bin/python',['-m','app.import_worker','--once'],{cwd:'/workspace/telegram-bot/warehouse/backend',timeout:30000,env:{...process.env,WAREHOUSE_DATABASE_URL:'postgresql+psycopg://postgres@127.0.0.1:5432/'+f.database,WAREHOUSE_CATALOG_PLATFORM_ADMIN_IDS:f.owner_id,WAREHOUSE_ENV:'local',WAREHOUSE_CATALOGUE_WORKER_ENABLED:'false'}});}
 const b=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox']}),results=[];
 try {
- const login=await b.newContext({baseURL:origin});const r=await login.request.post('/api/v1/auth/login',{data:{email:'r83-owner@example.test',password:'local-r83-owner-password'}});assert.equal(r.status(),200);const auth=await r.json();assert.equal(auth.user.id,f.owner_id);const state=await login.storageState();await login.close();
+ const login=await b.newContext({baseURL:origin});const r=await login.request.post('/api/v1/auth/login',{data:{email:process.env.WAREHOUSE_R83_OWNER_EMAIL||'r83-owner@example.test',password:process.env.WAREHOUSE_R83_OWNER_PASSWORD||'local-r83-owner-password'}});assert.equal(r.status(),200);const auth=await r.json();assert.equal(auth.user.id,f.owner_id);const state=await login.storageState();await login.close();
  for(const width of [1440,1280,1000,900,768,390,375]){
   const c=await b.newContext({baseURL:origin,storageState:state,viewport:{width,height:width<1000?844:1000}});let p=await c.newPage();const errors=[],posts=[],external=[];
   function observe(page){page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(r.method()==='POST')posts.push(new URL(r.url()).pathname);if(!r.url().startsWith(origin)&&!r.url().startsWith('data:'))external.push(r.url());});}observe(p);
@@ -22,5 +22,5 @@ try {
   await panel.scrollIntoViewIfNeeded();assert(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await p.screenshot({path:`${out}/adapter-${width}.png`,fullPage:true});assert.deepEqual(errors,[]);assert.deepEqual(external,[]);assert(!posts.some(path=>path.endsWith('/apply')||path.includes('/parts/')||path.includes('/orders')||path.includes('/canonical/')));
   assert.equal((await(await c.request.get('/api/v1/catalogue')).json()).total,0);results.push({width,offline:true,queued_reload:true,real_separate_worker:true,browser_closed:width===1440,cancel_retry:width===390,durable_result:true,explicit_import_preparation:true,no_apply:true,no_external_requests:true,no_js_errors:true,no_overflow:true});console.log('PASS '+width);await c.close();
  }
- const reader=await b.newContext({baseURL:origin});assert.equal((await reader.request.post('/api/v1/auth/login',{data:{email:'r83-reader@example.test',password:'local-r83-reader-password'}})).status(),200);assert.equal((await reader.request.get(root)).status(),403);await reader.close();fs.writeFileSync(out+'/results.json',JSON.stringify(results,null,2));
+ const reader=await b.newContext({baseURL:origin});assert.equal((await reader.request.post('/api/v1/auth/login',{data:{email:process.env.WAREHOUSE_R83_READER_EMAIL||'r83-reader@example.test',password:process.env.WAREHOUSE_R83_READER_PASSWORD||'local-r83-reader-password'}})).status(),200);assert.equal((await reader.request.get(root)).status(),403);await reader.close();fs.writeFileSync(out+'/results.json',JSON.stringify(results,null,2));
 }finally{await b.close();}

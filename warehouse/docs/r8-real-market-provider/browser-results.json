@@ -1,0 +1,93 @@
+[
+  {
+    "width": 1440,
+    "live_disabled": true,
+    "fixture_only": true,
+    "real_worker": true,
+    "cancel_retry": false,
+    "closed_browser": true,
+    "no_external_observed_at": true,
+    "no_external_requests": true,
+    "no_apply_or_finance": true,
+    "no_js_errors": true,
+    "no_overflow": true
+  },
+  {
+    "width": 1280,
+    "live_disabled": true,
+    "fixture_only": true,
+    "real_worker": false,
+    "cancel_retry": false,
+    "closed_browser": false,
+    "no_external_observed_at": true,
+    "no_external_requests": true,
+    "no_apply_or_finance": true,
+    "no_js_errors": true,
+    "no_overflow": true
+  },
+  {
+    "width": 1000,
+    "live_disabled": true,
+    "fixture_only": true,
+    "real_worker": false,
+    "cancel_retry": false,
+    "closed_browser": false,
+    "no_external_observed_at": true,
+    "no_external_requests": true,
+    "no_apply_or_finance": true,
+    "no_js_errors": true,
+    "no_overflow": true
+  },
+  {
+    "width": 900,
+    "live_disabled": true,
+    "fixture_only": true,
+    "real_worker": false,
+    "cancel_retry": false,
+    "closed_browser": false,
+    "no_external_observed_at": true,
+    "no_external_requests": true,
+    "no_apply_or_finance": true,
+    "no_js_errors": true,
+    "no_overflow": true
+  },
+  {
+    "width": 768,
+    "live_disabled": true,
+    "fixture_only": true,
+    "real_worker": false,
+    "cancel_retry": false,
+    "closed_browser": false,
+    "no_external_observed_at": true,
+    "no_external_requests": true,
+    "no_apply_or_finance": true,
+    "no_js_errors": true,
+    "no_overflow": true
+  },
+  {
+    "width": 390,
+    "live_disabled": true,
+    "fixture_only": true,
+    "real_worker": true,
+    "cancel_retry": true,
+    "closed_browser": true,
+    "no_external_observed_at": true,
+    "no_external_requests": true,
+    "no_apply_or_finance": true,
+    "no_js_errors": true,
+    "no_overflow": true
+  },
+  {
+    "width": 375,
+    "live_disabled": true,
+    "fixture_only": true,
+    "real_worker": true,
+    "cancel_retry": false,
+    "closed_browser": true,
+    "no_external_observed_at": true,
+    "no_external_requests": true,
+    "no_apply_or_finance": true,
+    "no_js_errors": true,
+    "no_overflow": true
+  }
+]

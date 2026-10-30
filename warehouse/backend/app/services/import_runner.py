@@ -10,6 +10,7 @@ from app.models import Account,ImportJob as Job,ImportJobEvent as Event,now
 from app.models.catalogue import CatalogueJob as Upload
 from app.models.import_runner import ImportJobArtifact
 from app.services import aleto_adapter as adapter
+from app.services import partline_provider as partline
 from app.services.catalogue_format import digest,ImportRow,MAX_ROWS
 from app.services.catalogue_import import platform_admin,LOCK,preview,locked_job
 
@@ -35,13 +36,19 @@ def owned(db,id,account,lock=False):
 
 def enqueue(db,who,data):
     if not db.scalar(text('SELECT pg_try_advisory_xact_lock(:k)'),{'k':lock_key(who.workspace_account_id)}):raise HTTPException(409,'Запит уже приймається; повторіть із тим самим ключем')
-    offline=data.job_type=='aleto_offline'
-    fp=digest([data.job_type,data.manufacturer,data.model] if offline else [data.job_type,data.catalogue_job_id])
+    offline=data.job_type=='aleto_offline';partline_test=data.job_type=='partline_fixture'
+    fp=digest([data.job_type,data.article,data.manufacturer or ''] if partline_test else [data.job_type,data.manufacturer,data.model] if offline else [data.job_type,data.catalogue_job_id])
     old=db.scalar(select(Job).where(Job.account_id==who.workspace_account_id,Job.idempotency_key==data.request_key))
     if old:
         if old.fingerprint!=fp:raise HTTPException(409,'Ключ уже використано з іншими параметрами')
         return old
-    if offline:
+    if partline_test:
+        if not db.scalar(text('SELECT pg_try_advisory_xact_lock(:k)'),{'k':partline.PROVIDER_SLOT+1}):raise HTTPException(409,'Інший тест PartLine приймається; повторіть із тим самим ключем')
+        _,checksum=partline.fixture_bytes()
+        params=dict(article=data.article,manufacturer=data.manufacturer or '',mode='fixture',fixture_version=partline.VERSION,fixture_sha256=checksum)
+        if db.scalar(select(func.count()).select_from(Job).where(Job.source=='partline_fixture',Job.account_id==who.workspace_account_id,Job.created_at>clock(db)-timedelta(hours=1)))>=5:raise HTTPException(429,'Ліміт п’ять тестів PartLine на годину')
+        if db.scalar(select(func.count()).select_from(Job).where(Job.source=='partline_fixture',Job.created_at>clock(db)-timedelta(hours=1)))>=20:raise HTTPException(429,'Глобальний ліміт тестів PartLine на годину')
+    elif offline:
         if data.manufacturer!='Volvo' or data.model not in adapter.ROOTS:raise HTTPException(422,'Непідтримувана марка або модель')
         _,checksum=adapter.fixture(data.model)
         params=dict(manufacturer='Volvo',model=data.model,fixture_version=adapter.VERSION,fixture_sha256=checksum)
@@ -54,7 +61,7 @@ def enqueue(db,who,data):
     if db.scalar(select(Job.id).where(Job.account_id==who.workspace_account_id,Job.context_hash==ctx,Job.status.in_(ACTIVE))):raise HTTPException(409,'Цей контекст уже в черзі; відкрийте історію')
     if db.scalar(select(func.count()).select_from(Job).where(Job.account_id==who.workspace_account_id,Job.status.in_(ACTIVE)))>=2:raise HTTPException(429,'Можна мати до двох активних задач')
     if db.scalar(select(func.count()).select_from(Job).where(Job.account_id==who.workspace_account_id,Job.created_at>clock(db)-timedelta(minutes=15)))>=20:raise HTTPException(429,'Ліміт 20 нових задач за 15 хвилин')
-    j=Job(account_id=who.workspace_account_id,created_by=who.actor_id,source='aleto_fixture' if offline else 'file',job_type=data.job_type,parameters=params,status='queued',created_at=clock(db),idempotency_key=data.request_key,fingerprint=fp,context_hash=ctx,event_count=0)
+    j=Job(account_id=who.workspace_account_id,created_by=who.actor_id,source='partline_fixture' if partline_test else 'aleto_fixture' if offline else 'file',job_type=data.job_type,parameters=params,status='queued',created_at=clock(db),idempotency_key=data.request_key,fingerprint=fp,context_hash=ctx,event_count=0)
     db.add(j);db.flush();event(db,j,'queued','Завдання збережено в черзі',{'actor_id':who.actor_id});return j
 
 def command(db,j,action,key):
@@ -84,7 +91,7 @@ def recover(db):
         event(db,j,'recovered','Прострочений lease відновлено',{'status':j.status})
 
 def claim(db,conn,lease_seconds=LEASE_SECONDS):
-    for j in db.scalars(select(Job).where(Job.status=='queued',Job.attempt_count<3,((Job.source=='file')&Job.job_type.in_(['file_validation','catalogue_preview']))|((Job.source=='aleto_fixture')&(Job.job_type=='aleto_offline'))).order_by(Job.created_at,Job.id).limit(20).with_for_update(skip_locked=True)):
+    for j in db.scalars(select(Job).where(Job.status=='queued',Job.attempt_count<3,((Job.source=='file')&Job.job_type.in_(['file_validation','catalogue_preview']))|((Job.source=='aleto_fixture')&(Job.job_type=='aleto_offline'))|((Job.source=='partline_fixture')&(Job.job_type=='partline_fixture'))).order_by(Job.created_at,Job.id).limit(20).with_for_update(skip_locked=True)):
         if not conn.scalar(text('SELECT pg_try_advisory_lock(:k)'),{'k':lock_key(j.id)}):continue
         j.status='running';j.attempt_count+=1;j.started_at=clock(db);j.finished_at=None;j.lease_owner=str(uuid4());j.lease_until=clock(db)+timedelta(seconds=lease_seconds);j.phase='starting';j.progress_current=0;j.progress_total=None;j.error_code=None;j.error_message=None
         event(db,j,'running','Worker отримав задачу',{'attempt':j.attempt_count});return j.id,j.lease_owner
@@ -131,6 +138,13 @@ def analyze(rows,progress):
     return dict(input_rows=len(rows),unique_offers=len(offers),with_oem=sum(o['oem'] for o in offers.values()),with_prices=sum(o['uah'] or o['usd'] for o in offers.values()),priced_uah=sum(o['uah'] for o in offers.values()),priced_usd=sum(o['usd'] for o in offers.values()),exact_duplicate_rows=duplicates,error_count=errors,issues=issues,issues_truncated=errors>10,committed=False,validation_scope='persisted_normalized_rows_not_original_bytes')
 
 def execute_payload(db,j,progress):
+    if j.source=='partline_fixture' and j.job_type=='partline_fixture':
+        if j.parameters.get('mode')!='fixture' or j.parameters.get('fixture_version')!=partline.VERSION:raise partline.ProviderError('PARTLINE_ACCESS_UNVERIFIED')
+        if not db.scalar(text('SELECT pg_try_advisory_xact_lock(:k)'),{'k':partline.PROVIDER_SLOT}):raise partline.ProviderError('PARTLINE_BUSY')
+        result,raw=partline.run_fixture(j.parameters['article'],j.parameters.get('manufacturer',''),j.parameters['fixture_sha256'],progress)
+        artifact=ImportJobArtifact(job_id=j.id,content=raw,sha256=adapter.sha(raw),size_bytes=len(raw),created_at=clock(db))
+        db.add(artifact);db.flush()
+        return dict(**result,artifact_id=artifact.id,artifact_sha256=artifact.sha256,artifact_bytes=artifact.size_bytes)
     if j.source=='aleto_fixture' and j.job_type=='aleto_offline':
         if j.parameters.get('manufacturer')!='Volvo' or j.parameters.get('fixture_version')!=adapter.VERSION:raise InputUnavailable()
         result,raw=adapter.run_fixture(j.parameters['model'],j.parameters['fixture_sha256'],progress)
@@ -197,6 +211,9 @@ def process_one(engine,stop=None):
                             if j.error_code=='FIXTURE_CHANGED':j.error_message='Версія fixture змінилася після постановки в чергу. Створіть нову задачу.'
                             if j.error_code=='ARTIFACT_STORAGE_LIMIT':j.error_message='Результат перевищує 1 MiB. Для великих результатів потрібне стійке файлове сховище.'
                             if j.error_code=='FIXTURE_UNAVAILABLE':j.error_message='Пакет offline-fixture недоступний worker. Перевірте версію образу; результат не збережено.'
+                        if isinstance(exc,partline.ProviderError):
+                            j.error_code=exc.code if exc.code in partline.MESSAGES else 'PARTLINE_REJECTED'
+                            j.error_message=partline.MESSAGES[j.error_code]
                         if isinstance(exc,InputUnavailable):j.error_message='Збережений upload недоступний або змінився. Завантажте файл повторно та створіть нову задачу.'
                         if isinstance(exc,BudgetExpired):j.error_message='Перевірка перевищила ліміт часу. Дані не застосовано.'
                         event(db,j,'requeued' if interrupted else 'failed',j.error_message,{'code':j.error_code});db.commit()

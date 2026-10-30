@@ -35,7 +35,7 @@ def test_extension_permissions_and_failed_transaction(database_create):
             assert (result.returncode==0)==database_create,result.stderr
             if not database_create:assert 'permission denied' in result.stderr
             with local_admin.connect() as db:
-                assert db.scalar(text('SELECT version_num FROM alembic_version'))==('d3a82f1c904b' if database_create else 'd86f21a90b34')
+                assert db.scalar(text('SELECT version_num FROM alembic_version'))==('e4b93a2d715c' if database_create else 'd86f21a90b34')
                 assert db.scalar(text("SELECT EXISTS(SELECT 1 FROM pg_extension WHERE extname='pg_trgm')"))==database_create
                 assert db.scalar(text("SELECT count(*) FROM pg_indexes WHERE indexname LIKE 'ix_%smart_%'"))==(6 if database_create else 0)
             if not database_create:

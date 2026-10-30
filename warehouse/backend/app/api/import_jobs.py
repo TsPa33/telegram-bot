@@ -19,13 +19,19 @@ class Command(BaseModel):
     request_key:str=Field(pattern=r'^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$')
 class Create(Command):
     catalogue_job_id:str|None=Field(default=None,min_length=1,max_length=36)
-    job_type:Literal['file_validation','catalogue_preview','aleto_offline']
-    manufacturer:Literal['Volvo']|None=None
+    job_type:Literal['file_validation','catalogue_preview','aleto_offline','partline_fixture']
+    manufacturer:str|None=Field(default=None,max_length=100)
+    article:str|None=Field(default=None,min_length=1,max_length=100)
     model:Literal['XC40','XC60','XC90']|None=None
 
     @model_validator(mode='after')
     def context(self):
-        if self.job_type=='aleto_offline':
+        if self.job_type=='partline_fixture':
+            if self.catalogue_job_id is not None or self.model is not None:raise ValueError('PartLine accepts one article and optional manufacturer only')
+            self.article=runner.partline.query_text(self.article)
+            self.manufacturer=runner.partline.query_text(self.manufacturer,True)
+        elif self.article is not None:raise ValueError('Article only belongs to PartLine fixture context')
+        elif self.job_type=='aleto_offline':
             if self.catalogue_job_id is not None or self.manufacturer!='Volvo' or not self.model:raise ValueError('Offline requires Volvo/model only')
         elif not self.catalogue_job_id or self.manufacturer is not None or self.model is not None:raise ValueError('File jobs require only a saved upload')
         return self
@@ -48,6 +54,9 @@ def inputs(db:DB,who:Auth,owner:Admin):
     rows=db.execute(select(Upload.id,Upload.filename,Upload.status,Upload.created_at).where(Upload.actor_id==who.actor_id,Upload.status!='failed').order_by(Upload.created_at.desc(),Upload.id).limit(100)).mappings()
     return dict(items=[dict(r) for r in rows],limit=100)
 
+@router.get('/partline')
+def partline_status(db:DB,who:Auth,owner:Admin):return runner.partline.capabilities()
+
 @router.get('/{id}')
 def get(id:str,db:DB,who:Auth,owner:Admin):
     j=runner.owned(db,id,who.workspace_account_id)
@@ -57,6 +66,9 @@ def get(id:str,db:DB,who:Auth,owner:Admin):
     if j.job_type=='aleto_offline':
         params=db.execute(select(Job.parameters['manufacturer'].as_string(),Job.parameters['model'].as_string(),Job.parameters['fixture_version'].as_string()).where(Job.id==j.id)).one()
         data['parameters']=dict(manufacturer=params[0],model=params[1],fixture_version=params[2])
+    if j.job_type=='partline_fixture':
+        params=db.execute(select(Job.parameters['article'].as_string(),Job.parameters['manufacturer'].as_string(),Job.parameters['mode'].as_string()).where(Job.id==j.id)).one()
+        data['parameters']=dict(article=params[0],manufacturer=params[1],mode=params[2])
     return data
 
 @router.get('/{id}/events')
@@ -66,7 +78,7 @@ def events(id:str,db:DB,who:Auth,owner:Admin,offset:int=Query(0,ge=0,le=100000),
     return dict(items=[dict(id=e.id,sequence=e.sequence,event_type=e.event_type,message=e.message,created_at=e.created_at,metadata=e.details) for e in db.scalars(stmt.order_by(Event.sequence).offset(offset).limit(limit))],total=db.scalar(select(func.count()).select_from(stmt.subquery())),offset=offset,limit=limit)
 
 def artifact_for(db,j):
-    if j.status!='completed' or j.job_type!='aleto_offline':raise HTTPException(409,'Результат offline-задачі ще недоступний')
+    if j.status!='completed' or j.job_type not in ('aleto_offline','partline_fixture'):raise HTTPException(409,'Результат offline-задачі ще недоступний')
     artifact=db.scalar(select(Artifact).where(Artifact.job_id==j.id))
     if not artifact or runner.adapter.sha(artifact.content)!=artifact.sha256 or artifact.sha256!=j.result_summary.get('artifact_sha256'):raise HTTPException(409,'Контрольна сума результату не збігається')
     return artifact
@@ -75,12 +87,14 @@ def artifact_for(db,j):
 def result(id:str,db:DB,who:Auth,owner:Admin):
     j=runner.owned(db,id,who.workspace_account_id)
     a=artifact_for(db,j)
-    return Response(content=a.content,media_type='application/json',headers={'Content-Disposition':'attachment; filename="offline-aleto-result.json"','X-Content-SHA256':a.sha256,'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'})
+    filename='partline-SYNTHETIC-result.json' if j.job_type=='partline_fixture' else 'offline-aleto-result.json'
+    return Response(content=a.content,media_type='application/json',headers={'Content-Disposition':f'attachment; filename="{filename}"','X-Content-SHA256':a.sha256,'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'})
 
 @router.post('/{id}/result/import')
 def prepare_import(id:str,data:Command,db:DB,who:Auth,owner:Admin):
     submit_lock(db,who.workspace_account_id)
     j=runner.owned(db,id,who.workspace_account_id,True)
+    if j.job_type!='aleto_offline':raise HTTPException(409,'Ціни нових деталей PartLine не передаються в імпорт б/у каталогу')
     a=artifact_for(db,j)
     if a.catalogue_job_id:
         existing=db.get(Upload,a.catalogue_job_id)

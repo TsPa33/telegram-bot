@@ -33,7 +33,7 @@ class ImportJob(Base):
     context_hash:Mapped[str]=mapped_column(String(64))
     __table_args__=(UniqueConstraint('account_id','idempotency_key',name='uq_import_runner_request'),
         Index('uq_import_runner_active','account_id','context_hash',unique=True,postgresql_where=text("status IN ('queued','running')")),
-        CheckConstraint("(source='file' AND job_type IN ('file_validation','catalogue_preview')) OR (source='aleto_fixture' AND job_type='aleto_offline')",name='ck_import_runner_type'),
+        CheckConstraint("(source='file' AND job_type IN ('file_validation','catalogue_preview')) OR (source='aleto_fixture' AND job_type='aleto_offline') OR (source='partline_fixture' AND job_type='partline_fixture')",name='ck_import_runner_type'),
         CheckConstraint("status <> 'running' OR (lease_owner IS NOT NULL AND lease_until IS NOT NULL)",name='ck_import_runner_lease'),
         CheckConstraint("status IN ('queued','running','completed','failed','cancelled')",name='ck_import_runner_status'),
         CheckConstraint('attempt_count BETWEEN 0 AND 3 AND retry_count BETWEEN 0 AND 3 AND event_count>=0 AND progress_current>=0 AND (progress_total IS NULL OR progress_total>=progress_current)',name='ck_import_runner_bounds'))

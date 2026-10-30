@@ -1,0 +1,36 @@
+# R8.4 changed files
+
+- `warehouse/backend/alembic/versions/e4b93a2d715c_partline_fixture_preparation.py`
+- `warehouse/backend/app/api/import_jobs.py`
+- `warehouse/backend/app/models/import_runner.py`
+- `warehouse/backend/app/route_registry.py`
+- `warehouse/backend/app/services/import_runner.py`
+- `warehouse/backend/app/services/parser_admin.py`
+- `warehouse/backend/app/services/partline_fixtures/prices.xml`
+- `warehouse/backend/app/services/partline_provider.py`
+- `warehouse/backend/tests/test_dismantling_readiness.py`
+- `warehouse/backend/tests/test_dismantling_v2.py`
+- `warehouse/backend/tests/test_import_runner.py`
+- `warehouse/backend/tests/test_partline_provider.py`
+- `warehouse/backend/tests/test_plan_parts_migration.py`
+- `warehouse/backend/tests/test_quick_vehicle.py`
+- `warehouse/backend/tests/test_smart_migration_permissions.py`
+- `warehouse/backend/tests/test_stage3b.py`
+- `warehouse/backend/tests/test_staging.py`
+- `warehouse/backend/tests/test_v3_release_audit.py`
+- `warehouse/docs/r8-real-market-provider/README.md`
+- `warehouse/docs/r8-real-market-provider/browser-results.json`
+- `warehouse/docs/r8-real-market-provider/changed-files.md`
+- `warehouse/docs/r8-real-market-provider/desktop.png`
+- `warehouse/docs/r8-real-market-provider/mobile.png`
+- `warehouse/frontend/src/ImportRunnerPanel.tsx`
+- `warehouse/frontend/src/ParserAdminCenter.tsx`
+- `warehouse/frontend/src/PartlineControls.tsx`
+- `warehouse/frontend/src/WorkshopDialogs.tsx`
+- `warehouse/frontend/src/runnerCommand.ts`
+- `warehouse/frontend/src/smartSearch.ts`
+- `warehouse/frontend/src/teamReadiness.ts`
+- `warehouse/frontend/tests/partline-unit.mjs`
+- `warehouse/frontend/tests/r83-browser.mjs`
+- `warehouse/frontend/tests/r84-browser.mjs`
+- `warehouse/frontend/tests/seed-r84.py`

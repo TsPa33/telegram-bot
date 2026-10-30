@@ -128,10 +128,13 @@ def test_permissions_validation_and_cross_account(platform,monkeypatch):
         assert other.post(ROOT,json=dict(catalogue_job_id=source['id'],job_type='file_validation',request_key=key())).status_code==404
     platform.headers.pop('X-CSRF-Token');assert cmd(platform,j,'cancel').status_code==403
 
-@pytest.mark.parametrize('job_type',['file_validation','catalogue_preview','aleto_offline'])
+@pytest.mark.parametrize('job_type',['file_validation','catalogue_preview','aleto_offline','partline_fixture'])
 def test_real_process_death_recovery(platform,job_type):
     import os,subprocess,sys,select
-    if job_type=='aleto_offline':
+    if job_type=='partline_fixture':
+        from test_partline_provider import create as partline
+        j=partline(platform)
+    elif job_type=='aleto_offline':
         from test_aleto_adapter import create as offline
         j=offline(platform)
     else:
@@ -206,7 +209,7 @@ def test_additive_upgrade_preserves_populated_old_tables(platform,vehicle):
     assert platform.post('/api/v1/parts/'+part['id']+'/operations',json={'type':'sale','quantity':1,'sale_price':'55.00','sale_currency':'USD','request_key':key()}).status_code==200
     from test_catalogue_v2 import plan,confirm
     old_upload=upload(platform);confirm(platform,plan(platform,old_upload))
-    scripts=ScriptDirectory.from_config(Config('alembic.ini'));assert scripts.get_heads()==['d3a82f1c904b'] and scripts.get_revision('c8f21d6e903a').down_revision=='b7e14d90c2f6'
+    scripts=ScriptDirectory.from_config(Config('alembic.ini'));assert scripts.get_heads()==['e4b93a2d715c'] and scripts.get_revision('c8f21d6e903a').down_revision=='b7e14d90c2f6'
     def alembic(*args):return subprocess.run([sys.executable,'-m','alembic',*args],capture_output=True,text=True,env=os.environ.copy())
     assert alembic('downgrade','b7e14d90c2f6').returncode==0
     assert not schema_ready(engine())

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Synthetic CarPot test envelope. NOT a verified PartLine response schema. -->
+<carpot-partline-fixture version="carpot-partline-fixture-v1" synthetic="true">
+  <offer><article>SYN-PL-001</article><manufacturer>Synthetic Brand</manufacturer><name>Синтетичний новий фільтр</name><price>1200.50</price><currency>UAH</currency><quantity>3</quantity><availability>in_stock</availability></offer>
+  <offer><article>SYN-PL-001</article><manufacturer>Synthetic Brand</manufacturer><name>Синтетичний новий фільтр</name><price>1200.50</price><currency>UAH</currency><quantity>3</quantity><availability>in_stock</availability></offer>
+  <offer><article>SYN-PL-001</article><manufacturer>Synthetic Brand</manufacturer><name>Синтетичний новий фільтр</name><price>30.25</price><currency>USD</currency><quantity></quantity><availability>unknown</availability></offer>
+</carpot-partline-fixture>
