@@ -93,6 +93,24 @@ def preview(db,vehicle,workspace,facts=(),selected=None,now=None,*,universal_bas
             if not outcome.get('type_id'):continue
             t=TYPES[outcome['type_id']]
             rows.append(dict(canonical_type_id=t['id'],name=t['name'],category=t['category'],subcategory=t['subcategory'],placement=placement(outcome),variants=[],source_refs=[{'kind':'base','key':source['key']}],source_ref_count=1,offer_count=0,applicability=assess(t['id'],query,configuration=values,provenance=config['provenance'])))
+    # Model-scoped account catalogue is a separate candidate source.  It is not
+    # published canonical evidence, fitment verification, or an inventory receipt.
+    # Distinct stable identities keep unknown names from being guessed as OEMs.
+    from app.services.dismantling_catalog import scoped_types
+    from app.services.canonical_rules import sid
+    for local,src in scoped_types(db,workspace,vehicle):
+        type_id=sid('local-scoped-type',src.id,local.catalog_key)
+        placement_id=sid('local-scoped-placement',src.id,local.catalog_key)
+        install=dict(id=placement_id,type_id=type_id,side='unknown',position='unknown',
+                     details={'mount':[]},identity_key=placement_id)
+        rows.append(dict(canonical_type_id=type_id,name=local.name,
+                         category=local.category_name,subcategory=local.subcategory_name,
+                         placement=install,variants=[],
+                         source_refs=[dict(kind='local',key='local:'+src.id+':'+local.catalog_key,
+                                           legacy_ref={'source':'local.'+src.id,'catalog_key':local.catalog_key})],
+                         source_ref_count=1,offer_count=0,
+                         applicability=assess(type_id,query,configuration=values,
+                                              provenance=config['provenance'])))
     prices_by_variant=defaultdict(list)
     for summary in price_summaries(db,[v for g in rows for v in g['variants']],now or utcnow()):prices_by_variant[summary['variant_id']].append(summary)
     evidence_ids={e for g in rows for v in g['variants'] for e in v.get('compatibility',{}).get('evidence_ids',[])}
