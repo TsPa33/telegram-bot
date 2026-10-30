@@ -116,6 +116,12 @@ class BatchAction(Scope):
     selling_price: Money | None = None
 
 
+class ApplicableModel(Input):
+    manufacturer: Annotated[str, Field(min_length=1,max_length=100)]
+    model: Annotated[str, Field(min_length=1,max_length=100)]
+    generation: Annotated[str, Field(max_length=100)] = ''
+
+
 class CatalogTypeInput(Input):
     catalog_key: Annotated[str,Field(pattern=r'^[a-z0-9][a-z0-9._-]{0,99}$')]
     category_key: Annotated[str,Field(pattern=r'^[a-z0-9][a-z0-9._-]{0,99}$')]
