@@ -1,5 +1,5 @@
 import {Permit,useCan} from '../permissions';
-import { ArrowLeft, CarFront, Pencil, Plus, Search, LayoutGrid, List, ClipboardCheck, History, Package, Wrench, Info, Images, Coins } from "lucide-react";
+import { ArrowLeft, CarFront, Pencil, Plus, Search, LayoutGrid, List, ClipboardCheck, History, Package, Wrench, Cog, Info, Images, Coins } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, labels, money, when, type Page, type Row } from "../api";
@@ -10,12 +10,10 @@ import DismantlingCatalogImport from "../DismantlingCatalogImport";
 import VehicleChecklist from "../VehicleChecklist";
 import Dismantling from "../Dismantling";
 import ManagedDismantling from "../ManagedDismantling";
-import PowertrainEditor from "../PowertrainEditor";
 import VehicleCard from "../VehicleCard";
 import "../warehouse-ux1.css";
 import "../vehicles-r114.css";
 import "../vehicles-r1144.css";
-import VehicleImage from "../VehicleImage";
 import VehicleDonorPhotos from "../VehicleDonorPhotos";
 import VehicleIdentityForm from "../VehicleIdentityForm";
 import VehicleSpecificationsForm from "../VehicleSpecificationsForm";
@@ -194,7 +192,7 @@ function VehicleDetail({
        </details>
       </div>
       {tab==='photos'&&<VehicleDonorPhotos vehicle={v} mode="gallery" revision={photoRevision} onChanged={()=>setPhotoRevision(i=>i+1)}/>}
-      {tab==='finance'&&can('parts.view_cost')&&<VehicleFinance vehicle={v} analytics={d} onSaved={onSaved}/>}
+      {tab==='finance'&&can('parts.view_cost')&&<VehicleFinance vehicle={v} analytics={d??null} onSaved={onSaved}/>}
 
     </>
   );
