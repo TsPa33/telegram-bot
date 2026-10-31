@@ -3,6 +3,7 @@ import { api, type Row } from "./api";
 import { RecordForm, type Field } from "./components";
 import { useLoad } from "./shared";
 import SearchSelect from "./SearchSelect";
+import VehicleDirectoryPicker from './VehicleDirectoryPicker';
 
 type Brand = {brand: string; mfa_id: number};
 type Model = {ms_id: number; name: string; year_from: number | null; year_to: number | null};
@@ -18,7 +19,16 @@ export default function VehicleForm({initial, fields, onSave}: {initial: Row; fi
   const [busy, setBusy] = useState(false), [saving, setSaving] = useState(false), [error, setError] = useState("");
   const generation = useRef(0);
   const local = useLoad(() => api<Local>("/vehicle-catalog"), []);
-  function resetModel() {generation.current++; setModel(""); setModelId(""); setYear(""); setEngine(""); setKtype(""); setMods([]);}
+  const directoryBrands = useLoad(() => api<string[]>('/vehicle-directory/brands'), []);
+  const [directoryModels,setDirectoryModels]=useState<string[]>([]);
+  const [selectedDirectory,setSelectedDirectory]=useState<Row|null>(null);
+  useEffect(()=>{if(!brand||provider){setDirectoryModels([]);return;}let active=true;
+   api<string[]>('/vehicle-directory/models?brand='+encodeURIComponent(brand)).then(rows=>{if(active)setDirectoryModels(rows)}).catch(()=>{if(active)setDirectoryModels([])});
+   return()=>{active=false};
+  },[brand,provider]);
+  const brandOptions=[...new Set([...(local.data?.brands||[]).map(b=>b.name),...(directoryBrands.data||[])])].sort((a,b)=>a.localeCompare(b,'uk'));
+  const modelOptions=[...new Set([...(local.data?.brands.find(b=>b.name===brand)?.models||[]),...directoryModels])].sort((a,b)=>a.localeCompare(b,'uk'));
+  function resetModel() {generation.current++; setModel(""); setModelId(""); setYear(""); setEngine(""); setKtype(""); setMods([]);setSelectedDirectory(null);}
   async function lookup(resource: string, query = "") {
     const requestGeneration = generation.current;
     setBusy(true); setError("");
@@ -38,7 +48,14 @@ export default function VehicleForm({initial, fields, onSave}: {initial: Row; fi
   const matches = mods.filter(m => year && m.year_from !== null && m.year_from <= Number(year) && (m.year_to === null || m.year_to >= Number(year)));
   const selected = matches.find(m => String(m.ktype) === ktype);
   const valid = brand && model && /^\d{4}$/.test(year) && Number(year) >= 1886 && Number(year) <= 2100 && (!provider || ((!chosenModel?.year_from || Number(year) >= chosenModel.year_from) && (!chosenModel?.year_to || Number(year) <= chosenModel.year_to)));
-  const primary = {manufacturer:brand, model, year:Number(year), engine,
+  const primary = {manufacturer:brand, model, year:Number(year),
+    engine: selectedDirectory?([selectedDirectory.displacement_l,selectedDirectory.fuel_type].filter(Boolean).join(' ')||engine):engine,
+    ...(selectedDirectory?{
+      engine_displacement_l:selectedDirectory.displacement_l?Number(selectedDirectory.displacement_l):null,
+      fuel_type:selectedDirectory.fuel_type||'',
+      engine_code:selectedDirectory.engine_codes?.length===1?selectedDirectory.engine_codes[0]:null,
+      drive_type:selectedDirectory.drive_type||null,
+    }:{}),
     ktype: provider ? selected?.ktype ?? null : ["manufacturer", "model", "year", "engine"].every(k => String(initial[k] ?? "") === String(({manufacturer:brand,model,year,engine} as Row)[k] ?? "")) ? initial.ktype ?? null : null};
   return <>
     <form className="quick-vehicle" onSubmit={async e => {
@@ -48,12 +65,12 @@ export default function VehicleForm({initial, fields, onSave}: {initial: Row; fi
     }}>
       <div className="form-grid">
         <SearchSelect label="Марка" required value={provider ? brandId : brand} disabled={busy || saving} manual={!provider}
-          options={provider ? brands.map(b => ({value:String(b.mfa_id),label:b.brand})) : (local.data?.brands || []).map(b => ({value:b.name,label:b.name}))}
+          options={provider ? brands.map(b => ({value:String(b.mfa_id),label:b.brand})) : brandOptions.map(name=>({value:name,label:name}))}
           onChange={value => {resetModel();setModels([]);setBrandId(provider ? value : "");setBrand(provider ? brands.find(b => String(b.mfa_id) === value)?.brand || "" : value);}} />
         <SearchSelect key={`model-${brand}`} label="Модель" required value={provider ? modelId : model} disabled={!brand || busy || saving} manual={!provider}
-          options={provider ? models.filter(m => m.name).map(m => ({value:String(m.ms_id),label:m.name})) : (local.data?.brands.find(b => b.name === brand)?.models || []).map(name => ({value:name,label:name}))}
-          onChange={value => {generation.current++;setModelId(provider ? value : "");setModel(provider ? models.find(m => String(m.ms_id) === value)?.name || "" : value);setYear("");setEngine("");setKtype("");setMods([]);}} />
-        <label>Рік випуску *<select aria-label="Рік випуску" required value={year} disabled={!model || busy || saving} onChange={e => {setYear(e.target.value);setKtype("");setEngine("");}}>
+          options={provider ? models.filter(m => m.name).map(m => ({value:String(m.ms_id),label:m.name})) : modelOptions.map(name=>({value:name,label:name}))}
+          onChange={value => {generation.current++;setModelId(provider ? value : "");setModel(provider ? models.find(m => String(m.ms_id) === value)?.name || "" : value);setYear("");setEngine("");setKtype("");setMods([]);setSelectedDirectory(null);}} />
+        <label>Рік випуску *<select aria-label="Рік випуску" required value={year} disabled={!model || busy || saving} onChange={e => {setYear(e.target.value);setKtype("");setEngine("");setSelectedDirectory(null);}}>
           <option value="">Оберіть…</option>
           {year && !years.includes(Number(year)) && <option value={year}>{year}</option>}
           {years.map(y => <option key={y} value={y}>{y}</option>)}
@@ -63,6 +80,7 @@ export default function VehicleForm({initial, fields, onSave}: {initial: Row; fi
           options={matches.map(m => ({value:String(m.ktype),label:`${m.modification} · ${m.displacement_cc ?? "—"} см³ · ${m.power_kw ?? "—"} кВт / ${m.power_ps ?? "—"} к.с. · ${m.year_from ?? "?"}–${m.year_to ?? "кінець не вказано"} · K-Type ${m.ktype}`}))}
           onChange={value => {setKtype(provider ? value : "");setEngine(provider ? matches.find(m => String(m.ktype) === value)?.modification || "" : value);}} />
       </div>
+      {!provider&&directoryBrands.data&&directoryBrands.data.length>0&&<VehicleDirectoryPicker brand={brand} model={model} year={year} onPick={setSelectedDirectory}/>}
       {(year === "custom" || (year && !years.includes(Number(year)))) && <label>Уточнити рік<input aria-label="Уточнити рік" type="number" min={1886} max={2100} value={year === "custom" ? "" : year} onChange={e => setYear(e.target.value)} /></label>}
       {provider && chosenModel && <small>Каталог: {chosenModel.year_from ?? "початок невідомий"}–{chosenModel.year_to ?? "кінець невідомий"}. Для року поза діапазоном скористайтеся локальним додаванням.</small>}
       <details className="vehicle-provider"><summary>Точний підбір Plan.Parts</summary>
@@ -75,7 +93,7 @@ export default function VehicleForm({initial, fields, onSave}: {initial: Row; fi
         </div>}
       </details>
       {!provider && brand.toLowerCase()==='volvo' && ['XC40','XC60','XC90'].includes(model.toUpperCase()) && <small>Довідник Aleto, якщо імпортований у ваш робочий простір, доступний у картці автомобіля. Сумісність за роком та комплектацією потребує перевірки.</small>}
-      {!provider && <small>Локальний довідник неповний. Відсутню назву можна ввести й підтвердити у списку. Роки виробництва в ньому не вказані.</small>}
+      {!provider && <small>Довідник модифікацій — підказка, а не підтвердження сумісності деталей. Якщо конкретного авто немає, використайте ручне введення.</small>}
       {!provider && local.error && <small role="status">Довідник недоступний. Ручне введення працює. <button type="button" onClick={local.reload}>Повторити</button></small>}
       {busy && <p role="status">Завантаження Plan.Parts…</p>}
       {error && <p role="alert" className="error">{error}</p>}
