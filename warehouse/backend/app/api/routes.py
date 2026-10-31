@@ -257,7 +257,7 @@ def directory_brands(db: DB,who: Auth):
 def directory_models(db: DB,who: Auth,brand: str=Query(...,min_length=1,max_length=120)):
     from app.models.vehicle_directory import VehicleDirectoryVariant
     return db.scalars(select(VehicleDirectoryVariant.model).where(
-        VehicleDirectoryVariant.brand==brand).distinct().order_by(VehicleDirectoryVariant.model)).all()
+        func.lower(VehicleDirectoryVariant.brand)==brand.lower()).distinct().order_by(VehicleDirectoryVariant.model)).all()
 
 
 @router.get("/vehicle-directory/variants", tags=["Vehicle directory"])
@@ -268,7 +268,7 @@ def directory_variants(
     year: int|None=Query(None,ge=1886,le=2100),
 ):
     from app.models.vehicle_directory import VehicleDirectoryVariant
-    stmt=select(VehicleDirectoryVariant).where(VehicleDirectoryVariant.brand==brand,VehicleDirectoryVariant.model==model)
+    stmt=select(VehicleDirectoryVariant).where(func.lower(VehicleDirectoryVariant.brand)==brand.lower(),VehicleDirectoryVariant.model==model)
     if year is not None:
         stmt=stmt.where(VehicleDirectoryVariant.year_from<=year).where(
             (VehicleDirectoryVariant.year_to>=year)|(VehicleDirectoryVariant.year_to.is_(None)))
