@@ -22,6 +22,7 @@ def test_catalogue_audit_never_updates_or_creates_db_rows():
     assert 'p.vin' not in code.lower()
     assert 'selling_price' not in code
 
-def test_main_api_runs_auditor_only_after_staging_migrate():
+def test_normal_startup_no_longer_runs_one_shot_auditor():
     code=STARTUP.read_text()
-    assert code.index('migrate(timeout)')<code.index('audit_catalogue_readonly_once()')
+    assert 'audit_catalogue_readonly_once' not in code
+    assert 'migrate(timeout)' in code
