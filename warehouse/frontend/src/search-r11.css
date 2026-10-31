@@ -166,3 +166,52 @@
  .ui11-category-grid.expanded .ui11-category-tile{width:100%}
  .ui11-preview-topline{padding-right:40px}
 }
+
+
+/* R11.2 — Approved compact search layout and actionable preview.
+   Strictly scoped to search; backend, stock operations and catalog remain unchanged. */
+.ui4-search-page .ui4-heading{align-items:center;gap:14px;margin:0 0 9px}
+.ui4-search-page .ui4-heading h1{font-size:25px}
+.ui4-search-page .ui4-controls{padding:10px 12px;margin-bottom:8px}
+.ui4-search-page .ui4-search .seller-autocomplete input,
+.ui4-search-page .ui4-search>button{height:43px;min-height:43px}
+.ui4-search-page .ui4-filters{gap:7px;margin-top:8px}
+.ui4-search-page .ui4-filters select{height:35px;min-height:35px}
+.ui11-categories{margin:8px 0}
+.ui11-category-heading{margin-bottom:6px}
+.ui11-category-grid .ui11-category-tile{flex-basis:135px;min-height:43px;padding:7px 9px}
+.ui4-search-page .ui4-count{margin:7px 0}
+.ui11-results-layout{grid-template-columns:minmax(0,1fr) minmax(320px,350px);gap:12px}
+.ui4-results .ui11-results-list .ui3-part{min-height:76px}
+.ui4-results .ui11-results-list .ui3-table-head,
+.ui4-results .ui11-results-list .ui3-part{grid-template-columns:minmax(140px,1.65fr) minmax(75px,.8fr) minmax(78px,.8fr) minmax(105px,1fr) minmax(94px,.8fr) minmax(105px,105px);gap:5px;padding:9px}
+.ui11-result-wrap{cursor:pointer}
+.ui11-result-wrap.selected .ui3-part{background:#eaf7f1;box-shadow:inset 3px 0 #087254}
+.ui11-result-wrap:focus-visible{outline:2px solid #087254;outline-offset:-2px}
+.ui4-results .ui11-results-list .ui3-actions .seller-actions{gap:5px}
+.ui4-results .ui11-results-list .ui3-actions .stock-row-sale{min-width:74px;max-width:100%;font-size:11px;white-space:nowrap;padding:6px 8px}
+.ui11-preview{max-height:calc(100vh - 108px);overflow-y:auto;scrollbar-width:thin}
+.ui11-preview-navigation button{min-width:34px;width:34px;height:34px}
+.ui11-preview-navigation button:focus-visible,.ui11-upload-photo:focus-within{outline:2px solid #075544;outline-offset:2px}
+.ui11-preview-buttons{grid-template-columns:minmax(0,1fr) minmax(96px,.65fr)}
+.ui11-preview-buttons>button{min-width:0;white-space:normal;overflow-wrap:anywhere;padding:9px 8px}
+.ui11-data-actions{gap:8px}
+.ui11-photo-actions{justify-content:flex-start}
+@media(max-width:1430px){
+ .ui11-results-layout{grid-template-columns:minmax(0,1fr)}
+ .ui11-preview{max-height:none;overflow:visible}
+ .ui4-results .ui11-results-list .ui3-table-head,
+ .ui4-results .ui11-results-list .ui3-part{grid-template-columns:minmax(145px,1.65fr) minmax(75px,.8fr) minmax(80px,.8fr) minmax(110px,1fr) minmax(95px,.8fr) 108px}
+}
+@media(max-width:1000px){
+ .ui4-results .ui11-results-list .ui3-part{grid-template-columns:minmax(0,1fr) 32px}
+ .ui11-category-grid .ui11-category-tile{flex:0 0 125px;min-height:44px}
+ .ui11-preview-buttons{display:grid;grid-template-columns:minmax(0,1fr) minmax(95px,.75fr)}
+}
+@media(max-width:600px){
+ .ui4-search-page .ui4-heading{align-items:flex-start}
+ .ui4-search-page .ui4-controls{padding:9px}
+ .ui11-category-grid .ui11-category-tile{flex-basis:110px}
+ .ui11-preview-buttons{grid-template-columns:1fr 1fr}
+ .ui11-preview{max-height:none}
+}
