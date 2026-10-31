@@ -48,7 +48,7 @@ export default function Team({user,notify}:{user:Row;notify:Notify}){
  function exportVisible(){
   const headers=['Ім’я','Email','Роль','Статус','Останній вхід'];
   const cells=visible.map(u=>[u.name,u.email,roleLabel(u.role),u.is_active?'Активний':'Заблокований',u.last_login_at||'']);
-  const csv='\uFEFF'+[headers,...cells].map(row=>row.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\\r\\n');
+  const csv='\uFEFF'+[headers,...cells].map(row=>row.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\r\n');
   const blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob);
   const a=document.createElement('a');a.href=url;a.download='carpot-team-current-page.csv';a.click();URL.revokeObjectURL(url);
  }
