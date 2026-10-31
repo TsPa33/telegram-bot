@@ -1,5 +1,5 @@
 import {useEffect,useRef,useState} from 'react';
-import {Package,MapPin,FileSearch,ShoppingCart,ExternalLink,X,ChevronLeft,ChevronRight,Camera,Pencil,Save} from 'lucide-react';
+import {Package,MapPin,FileSearch,ShoppingCart,ExternalLink,X,ChevronLeft,ChevronRight,Camera,Pencil} from 'lucide-react';
 import {api,money,labels,type Row} from './api';
 import {useCan} from './permissions';
 import SearchPartPhoto from './SearchPartPhoto';
