@@ -46,12 +46,33 @@ class VehicleInput(Input):
     engine: Annotated[str, Field(max_length=100)] = ""
     fuel_type: Annotated[str, Field(max_length=50)] = ""
     transmission: Annotated[str, Field(max_length=50)] = ""
+    engine_displacement_l: Annotated[Decimal, Field(gt=0, le=12, max_digits=3, decimal_places=1)] | None = None
+    engine_variant: Annotated[str, Field(max_length=50)] | None = None
+    engine_code: Annotated[str, Field(max_length=80)] | None = None
+    drive_type: Literal["", "FWD", "RWD", "AWD", "4WD"] | None = None
     vin: Annotated[str, Field(pattern=r"^[A-HJ-NPR-Z0-9]{17}$")] | None = None
     donor_id: Annotated[str, Field(min_length=1, max_length=80)] | None = None
     acquisition_cost: Money | None = None
     acquisition_date: date | None = None
     notes: Annotated[str, Field(max_length=10000)] = ""
     status: Literal["planned", "dismantling", "completed"] = "dismantling"
+
+
+class VehicleSpecificationsInput(Input):
+    """Partial patch for verified or owner-reported donor facts; never infer fitment."""
+    engine_displacement_l: Annotated[Decimal, Field(gt=0, le=12, max_digits=3, decimal_places=1)] | None = None
+    engine_variant: Annotated[str, Field(max_length=50)] | None = None
+    engine_code: Annotated[str, Field(max_length=80)] | None = None
+    drive_type: Literal["", "FWD", "RWD", "AWD", "4WD"] | None = None
+    fuel_type: Annotated[str, Field(max_length=50)] | None = None
+    transmission: Annotated[str, Field(max_length=50)] | None = None
+    engine: Annotated[str, Field(max_length=100)] | None = None
+
+    @model_validator(mode="after")
+    def has_changes(self):
+        if not self.model_fields_set:
+            raise ValueError("Укажіть характеристику для зміни")
+        return self
 
 
 class VehiclePowertrainInput(Input):

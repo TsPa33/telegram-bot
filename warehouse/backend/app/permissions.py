@@ -50,6 +50,7 @@ def route_permissions(method,path,body):
             return [{'sale':'sales.create','write_off':'inventory.write_off','transfer':'inventory.transfer','reserve':'inventory.reserve','release':'inventory.reserve','receipt':'inventory.adjust_quantity','correction':'inventory.adjust_quantity'}.get(body.get('type'),'__deny__')]
         return ['inventory.edit']
     if path.startswith('/photos/'):return ['inventory.view']
+    if path.startswith('/vehicle-photos/'):return ['vehicles.view']
     if path.startswith('/archive'):return ['inventory.view','inventory.archive']
     if path.startswith('/smart-search/'):return ['inventory.view']
     if path.startswith('/plan-parts/'):return ['vehicles.create']
