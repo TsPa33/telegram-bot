@@ -57,6 +57,11 @@ def audited():
     manifest = json.loads((DATA / "aleto_subcategories_uk.json").read_text(encoding="utf-8"))
     rules = json.loads((DATA / "canonical_rules_v1_5.json").read_text(encoding="utf-8"))
     universal = json.loads((DATA / "canonical_universal_v2c.json").read_text(encoding="utf-8"))
+    proposals = json.loads((DATA / "catalogue_ua_proposals_v1.json").read_text(encoding="utf-8"))
+    # Explicit, full-name mapping. Proposals never modify source IDs or fitment.
+    ukrainian = {norm(r["source"]):r["target"] for r in proposals["translation_proposals"]}
+    hierarchy = {norm(r["source"]):r["target"] for r in proposals["hierarchy_review"]}
+
     canonical_names = {norm(v["name"]): v["name"] for v in universal["types"]}
     # A source alias alone is never proof of category, placement, OEM, or fitment.
     aliases = defaultdict(set)
@@ -105,6 +110,13 @@ def audited():
             for r in rows:
                 mapping.append(dict(s="categories",i=r["id"],w=account_tag(r["account_id"]),k=r["kind"],p=r["parent_name"] or "",
                                    o=r["name"],pid=r["parent_id"] or "",u=0,src=r["source"],a=bool(r["archived"])))
+            reference_rows=query("category_stock_refs","""SELECT cat_id,sum(n) AS n FROM (
+                 SELECT category_id AS cat_id,count(*) AS n FROM parts WHERE category_id IS NOT NULL AND NOT archived GROUP BY category_id
+                 UNION ALL SELECT subcategory_id,count(*) FROM parts WHERE subcategory_id IS NOT NULL AND NOT archived GROUP BY subcategory_id
+                 UNION ALL SELECT checklist_category_id,count(*) FROM parts WHERE checklist_category_id IS NOT NULL AND NOT archived GROUP BY checklist_category_id
+               ) x GROUP BY cat_id""")
+            stock_links={r["cat_id"]:int(r["n"]) for r in reference_rows}
+            child_links=Counter(r["pid"] for r in mapping if r["s"]=="categories" and r["pid"])
             parts=query("parts_distinct","""SELECT p.account_id,p.name,p.category_id,p.subcategory_id,
                    count(*) n, sum(CASE WHEN p.archived THEN 0 ELSE 1 END) active,
                    min(c.name) category_name,min(sc.name) subcategory_name
@@ -189,9 +201,15 @@ def audited():
                     target=None;status="manual_review";reason="Unresolved source abbreviation"
                 elif target and norm(target)!=norm(source):
                     status="dictionary";reason="Explicit Aleto dictionary"
+                elif kind=="category" and norm(source) in hierarchy and norm(hierarchy[norm(source)])!=norm(source):
+                    target=hierarchy[norm(source)]
+                    status="review_hierarchy";reason="Explicit proposed hierarchy requires approval"
+                elif norm(source) in ukrainian and norm(ukrainian[norm(source)])!=norm(source):
+                    target=ukrainian[norm(source)]
+                    status="translation_proposal";reason="Exact curated UA translation requires approval"
                 elif kind=="category" and source in CANONICAL_CATEGORY_CANDIDATES and norm(CANONICAL_CATEGORY_CANDIDATES[source])!=norm(source):
                     target=CANONICAL_CATEGORY_CANDIDATES[source]
-                    status="review_hierarchy";reason="Category tree differs between providers"
+                    status="review_hierarchy";reason="Existing category hierarchy candidate needs approval"
                 elif norm(source) in canonical_names and kind in ("part","part_type"):
                     target=canonical_names[norm(source)]
                     status="exact_name";reason="Exact canonical name; fitment and context unverified"
@@ -211,13 +229,44 @@ def audited():
                     # Exact duplicate candidates only: same workspace + level + actual parent ID
                     # + original normalized name. Blank/unreviewed target names are never keys.
                     seen[(row["w"],row["k"],row["pid"],norm(row["o"]))].append(row)
-            duplicate_groups=[{
-               "workspace":k[0],"kind":k[1],"parent":values[0]["p"],"target":values[0]["o"],
-               "count":len(values),"source_names":sorted(set(v["o"] for v in values)),
-               "ids":[v["i"] for v in values]
-            } for k,values in seen.items() if len(values)>1]
+            duplicate_groups=[]
+            duplicate_risk=Counter()
+            for key,values in seen.items():
+                if len(values)<2:
+                    continue
+                refs=[{"id":r["i"],"source":r["src"],"archived":r["a"],
+                       "linked_stock":int(stock_links.get(r["i"],0)),
+                       "child_nodes":int(child_links.get(r["i"],0))} for r in values]
+                linked=sum(x["linked_stock"] for x in refs)
+                children=sum(x["child_nodes"] for x in refs)
+                src_count=len({x["source"] for x in refs})
+                # No category ID may be auto-merged, even when unreferenced:
+                # import external keys, audit history or future references can still differ.
+                if linked:
+                    risk="linked_stock"
+                elif children:
+                    risk="has_children"
+                elif src_count>1:
+                    risk="cross_source"
+                else:
+                    risk="unreferenced_candidate"
+                duplicate_risk[risk]+=1
+                duplicate_groups.append({
+                    "workspace":key[0],"kind":key[1],"parent":values[0]["p"],
+                    "parent_id":key[2], "target":values[0]["o"],
+                    "count":len(values),"risk":risk,
+                    "linked_stock":linked,"child_nodes":children,
+                    "sources":sorted(set(x["source"] for x in refs)),
+                    "members":refs, "action":"review_only_no_merge"
+                })
+            duplicate_groups.sort(key=lambda g:(
+                {"linked_stock":0,"has_children":1,"cross_source":2,"unreferenced_candidate":3}[g["risk"]],
+                -g["linked_stock"],-g["child_nodes"],-g["count"],g["workspace"],g["kind"],g["target"]))
             stats["same_parent_exact_name_groups"]=duplicate_groups[:250]
             stats["same_parent_exact_name_total"]=len(duplicate_groups)
+            stats["duplicate_risk"]=dict(duplicate_risk)
+            stats["duplicate_total_members"]=sum(g["count"] for g in duplicate_groups)
+            stats["duplicate_review_all"]=duplicate_groups
             stats["name_mapping_status"]=dict(group_counts)
             stats["rows_by_source"]=dict(type_counts)
             stats["mapping_total"]=len(mapping)
@@ -228,7 +277,7 @@ def audited():
 
     # Railway drops bursts >500 log lines/s. The authenticated download endpoint
     # delivers the *complete* dataset; startup prints only safe aggregates.
-    short={k:v for k,v in stats.items() if k!="same_parent_exact_name_groups"}
+    short={k:v for k,v in stats.items() if k not in ("same_parent_exact_name_groups","duplicate_review_all")}
     LOG.warning("%s_SUMMARY %s",TAG,json.dumps(short,ensure_ascii=False,separators=(",",":"),default=str))
     for i,group in enumerate(stats["same_parent_exact_name_groups"][:12]):
         LOG.warning("%s_DUP %d %s",TAG,i,json.dumps(group,ensure_ascii=False,separators=(",",":"),default=str))

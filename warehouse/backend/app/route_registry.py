@@ -7,6 +7,7 @@ KNOWN_ROUTES = frozenset({
     ('GET', '/api/v1/catalogue/admin/jobs'),
     ('GET', '/api/v1/catalogue/admin/overview'),
     ('GET', '/api/v1/catalogue/admin/audit/catalogue-mapping.csv'),
+    ('GET', '/api/v1/catalogue/admin/audit/duplicate-review.csv'),
     ('GET', '/api/v1/catalogue/admin/audit/summary'),
     ('POST', '/api/v1/catalogue/admin/parser/validate'),
     ('POST', '/api/v1/catalogue/admin/jobs'),

@@ -1,0 +1,447 @@
+{
+  "version": "carpot.catalogue.ua.proposals.v1",
+  "scope": "staging, advisory, no database mutation",
+  "policy": "Exact full-name matches only; proposals are NOT owner approved, no ID merges or OEM/fitment claims.",
+  "hierarchy_review": [
+    {
+      "source": "Двигатель",
+      "target": "Силовий агрегат",
+      "approval": "manual",
+      "reason": "Different catalogue hierarchy; not guaranteed same function"
+    },
+    {
+      "source": "Двигун",
+      "target": "Силовий агрегат",
+      "approval": "manual",
+      "reason": "Different catalogue hierarchy; not guaranteed same function"
+    },
+    {
+      "source": "Интерьер / салон",
+      "target": "Салон",
+      "approval": "manual",
+      "reason": "Different catalogue hierarchy; not guaranteed same function"
+    },
+    {
+      "source": "Інтер’єр / салон",
+      "target": "Салон",
+      "approval": "manual",
+      "reason": "Different catalogue hierarchy; not guaranteed same function"
+    },
+    {
+      "source": "Салон",
+      "target": "Салон",
+      "approval": "manual",
+      "reason": "Different catalogue hierarchy; not guaranteed same function"
+    },
+    {
+      "source": "Колёса / шины",
+      "target": "Ходова частина / Колеса та шини",
+      "approval": "manual",
+      "reason": "Different catalogue hierarchy; not guaranteed same function"
+    },
+    {
+      "source": "Колеса та шини",
+      "target": "Ходова частина / Колеса та шини",
+      "approval": "manual",
+      "reason": "Different catalogue hierarchy; not guaranteed same function"
+    },
+    {
+      "source": "Трансмиссия",
+      "target": "Силовий агрегат / Трансмісія",
+      "approval": "manual",
+      "reason": "Different catalogue hierarchy; not guaranteed same function"
+    },
+    {
+      "source": "Трансмісія",
+      "target": "Силовий агрегат / Трансмісія",
+      "approval": "manual",
+      "reason": "Different catalogue hierarchy; not guaranteed same function"
+    },
+    {
+      "source": "Подвеска и рулевое",
+      "target": "Ходова частина",
+      "approval": "manual",
+      "reason": "Different catalogue hierarchy; not guaranteed same function"
+    },
+    {
+      "source": "Підвіска та кермове управління",
+      "target": "Ходова частина",
+      "approval": "manual",
+      "reason": "Different catalogue hierarchy; not guaranteed same function"
+    },
+    {
+      "source": "Тормозная система",
+      "target": "Гальмівна система",
+      "approval": "manual",
+      "reason": "Different catalogue hierarchy; not guaranteed same function"
+    },
+    {
+      "source": "Оливи та рідини",
+      "target": "Витратні матеріали / Оливи та рідини",
+      "approval": "manual",
+      "reason": "Different catalogue hierarchy; not guaranteed same function"
+    },
+    {
+      "source": "Двері",
+      "target": "Кузов / Двері",
+      "approval": "manual",
+      "reason": "Different catalogue hierarchy; not guaranteed same function"
+    },
+    {
+      "source": "Колеса",
+      "target": "Ходова частина / Колеса",
+      "approval": "manual",
+      "reason": "Different catalogue hierarchy; not guaranteed same function"
+    }
+  ],
+  "translation_proposals": [
+    {
+      "source": "Внутренняя отделка",
+      "target": "Оздоблення салону",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Дополнительные удобства",
+      "target": "Додаткове обладнання",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Оборудование для перевозки",
+      "target": "Обладнання для перевезення",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Подвеска / амортизация",
+      "target": "Підвіска / амортизація",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Подвеска оси / система подвески / колеса",
+      "target": "Підвіска осі / колеса",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Привод колеса",
+      "target": "Привід колеса",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Прицепное оборудование / комплектующие",
+      "target": "Причіпне обладнання / комплектувальні",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Ременный привод",
+      "target": "Ремінний привід",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Рулевое управления",
+      "target": "Кермове управління",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Система выпуска",
+      "target": "Випускна система",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Система сцепления / навесные части",
+      "target": "Система зчеплення / навісне обладнання",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Электрика",
+      "target": "Електрика",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Освещение",
+      "target": "Освітлення",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Безопасность",
+      "target": "Безпека",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Двери",
+      "target": "Двері",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Передний бампер",
+      "target": "Передній бампер",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Бампер передний",
+      "target": "Передній бампер",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Бампер задний",
+      "target": "Задній бампер",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Задний бампер",
+      "target": "Задній бампер",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Водяной насос",
+      "target": "Насос охолоджувальної рідини",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Водяний насос",
+      "target": "Насос охолоджувальної рідини",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Дополнительный водяной насос",
+      "target": "Додатковий насос охолоджувальної рідини",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Двигатель стеклоочистителя",
+      "target": "Електродвигун склоочисника",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Резиновый коврик с защитными бортами",
+      "target": "Гумовий килимок із захисними бортами",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Монтажный комплект, компрессор",
+      "target": "Монтажний комплект компресора",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Монтажный инструмент, сайлентблок",
+      "target": "Монтажний інструмент для сайлентблока",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Расширение, крыло",
+      "target": "Розширювач крила",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Пылезащитный комплект, амортизатор",
+      "target": "Пилозахисний комплект амортизатора",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Комплект поршневых колец",
+      "target": "Комплект поршневих кілець",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Прокладка, выпускной коллектор",
+      "target": "Прокладка випускного колектора",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Прокладка, крышка головки цилиндра",
+      "target": "Прокладка кришки головки блока циліндрів",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Уплотняющее кольцо, распределительный вал",
+      "target": "Ущільнювальне кільце розподільного вала",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Прицепное оборудование",
+      "target": "Причіпне обладнання",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Болт для крепления колеса",
+      "target": "Болт кріплення колеса",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Болт крепления колеса",
+      "target": "Болт кріплення колеса",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Компенсационный бак, охлаждающая жидкость",
+      "target": "Розширювальний бачок охолоджувальної рідини",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Крышка, радиатор",
+      "target": "Кришка радіатора",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Крышка, резервуар охлаждающей жидкости",
+      "target": "Кришка бачка охолоджувальної рідини",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "масляный радиатор, двигательное масло",
+      "target": "Оливний радіатор двигуна",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Крышка, топливной бак",
+      "target": "Кришка паливного бака",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Втулка, рычаг колесной подвески",
+      "target": "Втулка важеля підвіски",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Гильза, подвески поперечного рычага",
+      "target": "Гільза поперечного важеля підвіски",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Ремкомплект, поворотный кулак",
+      "target": "Ремкомплект поворотного кулака",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Ремкомплект, подвеска колеса",
+      "target": "Ремкомплект підвіски колеса",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Головка цилиндра",
+      "target": "Головка блока циліндрів",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Поворотный кулак",
+      "target": "Поворотний кулак",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Подшипник ступицы колеса",
+      "target": "Підшипник маточини колеса",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Тормозной диск",
+      "target": "Гальмівний диск",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Тормозная колодка",
+      "target": "Гальмівна колодка",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Тормозной суппорт",
+      "target": "Гальмівний супорт",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Подушка безопасности",
+      "target": "Подушка безпеки",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Рулевая рейка",
+      "target": "Кермова рейка",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Рычаг подвески",
+      "target": "Важіль підвіски",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Зеркало заднего вида",
+      "target": "Дзеркало заднього виду",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Стеклоподъемник",
+      "target": "Склопідіймач",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Радиатор охлаждения",
+      "target": "Радіатор охолодження",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Генератор",
+      "target": "Генератор",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    },
+    {
+      "source": "Стартер",
+      "target": "Стартер",
+      "approval": "manual",
+      "reason": "Language normalization; parent, placement, model and OEM stay unchanged"
+    }
+  ]
+}

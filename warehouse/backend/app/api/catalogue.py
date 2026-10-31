@@ -82,6 +82,45 @@ def catalogue_mapping_csv(db:DB,owner:Admin):
                              'Cache-Control':'no-store',
                              'X-Content-Type-Options':'nosniff'})
 
+@router.get('/admin/audit/duplicate-review.csv')
+def catalogue_duplicate_review_csv(db:DB,owner:Admin):
+    """Platform-owner review queue: exact duplicate names, with live reference exposure.
+
+    This is a report only. No category/part IDs are changed or merged.
+    """
+    import csv
+    import io
+    from fastapi import Response
+    from app.catalogue_audit_once import audited
+
+    stats,_rows=audited()
+    if stats['errors']:
+        raise HTTPException(503,'Аудит не завершено: перевірка частини таблиць не вдалася')
+    def cell(value):
+        value=str(value if value is not None else '')
+        # Protect spreadsheet clients from user- and supplier-controlled CSV formulas.
+        if value.lstrip().startswith(('=', '+', '-', '@')):
+            return "'" + value
+        return value
+    stream=io.StringIO(newline='')
+    writer=csv.writer(stream)
+    writer.writerow(['group_no','workspace_hash','kind','parent_name','parent_id',
+                     'duplicate_name','group_size','risk','group_linked_stock','group_child_nodes',
+                     'member_id','member_origin','member_archived','member_linked_stock',
+                     'member_child_nodes','recommended_action','approval'])
+    for number,group in enumerate(stats['duplicate_review_all'],1):
+        for member in group['members']:
+            writer.writerow([cell(v) for v in (
+                number,group['workspace'],group['kind'],group['parent'],group['parent_id'],
+                group['target'],group['count'],group['risk'],group['linked_stock'],
+                group['child_nodes'],member['id'],member['source'],member['archived'],
+                member['linked_stock'],member['child_nodes'],group['action'],'pending'
+            )])
+    return Response(content='\ufeff'+stream.getvalue(),media_type='text/csv; charset=utf-8',
+                    headers={'Content-Disposition':'attachment; filename="CarPot_staging_duplicate_review.csv"',
+                             'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'})
+
+
 @router.get('/admin/audit/summary')
 def catalogue_mapping_summary(db:DB,owner:Admin):
     """Private platform-owner-only, aggregated metadata; no prices, VIN or user details."""
