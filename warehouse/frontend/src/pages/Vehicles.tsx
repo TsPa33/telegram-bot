@@ -3,7 +3,7 @@ import { ArrowLeft, CarFront, Pencil, Plus, Search, LayoutGrid, List, ClipboardC
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, labels, money, when, type Page, type Row } from "../api";
-import { Empty, Modal, Pager, type Field } from "../components";
+import { Empty, Modal, Pager, RecordForm, type Field } from "../components";
 import VehicleForm from "../VehicleForm";
 import AletoCatalogue from "../AletoCatalogue";
 import DismantlingCatalogImport from "../DismantlingCatalogImport";
@@ -89,13 +89,16 @@ export default function Vehicles({notify}:{notify:Notify}) {
     </section>:<section className="r114-table-wrap" aria-label="Таблиця автомобілів"><table><thead><tr><th>Автомобіль</th><th>Рік / №</th><th>Статус</th><th>Позицій</th><th>Дії</th></tr></thead><tbody>{items.map(v=><tr key={v.id}><td><strong>{v.manufacturer} {v.model}</strong><small>{v.vin?'VIN: '+v.vin:'VIN не вказано'}</small></td><td>{v.year} · №{v.number??'—'}</td><td>{labels[v.status]||'Не уточнено'}</td><td>{v.stock_positions??'—'}</td><td><button onClick={()=>openDetail(v,true)}>Картка авто</button><button onClick={()=>openDetail(v)}>Розбір</button></td></tr>)}</tbody></table>{!loading&&!items.length&&<p>Автомобілів не знайдено.</p>}</section>})()}
     {data&&<Pager total={data.total} page={page} setPage={setPage}/>}</>}
     {edit&&<Modal title={edit.id?'Редагувати автомобіль':'Новий автомобіль-донор'} onClose={()=>setEdit(null)}>
-      <VehicleForm initial={edit} fields={vehicleFields.filter(f=>f.key!=='acquisition_cost'||can('parts.view_cost'))} onSave={async values=>{
+      {edit.id?<RecordForm initial={edit} fields={vehicleFields.filter(f=>f.key!=='acquisition_cost'||can('parts.view_cost'))} submit="Зберегти зміни" onSave={async values=>{
+        const row=await api('/vehicles/'+edit.id,'PUT',values);
+        saved(row);setEdit(null);notify('Дані автомобіля збережено');
+      }}/>:<VehicleForm initial={edit} fields={vehicleFields.filter(f=>f.key!=='acquisition_cost'||can('parts.view_cost'))} onSave={async values=>{
         const row=await api('/vehicles'+(edit.id?'/'+edit.id:''),edit.id?'PUT':'POST',values);
         if(!edit.id){setCreated(row);setQ('');setPage(0);}saved(row);setEdit(null);notify('Дані автомобіля збережено');
-      }}/>
+      }}/>} 
     </Modal>}
     {detail&&<section className="ux1-workspace" aria-label="Автомобіль і запчастини"><button className="ux1-back" onClick={closeDetail}><ArrowLeft size={16}/>Автомобілі</button>
-      <VehicleDetail key={detail.id} vehicle={detail} showInfo={showInfo} onSaved={saved} onArchive={()=>{setConfirm(detail);}} onEdit={async()=>{try{const row=await api(`/vehicles/${detail.id}`);closeDetail();setEdit(row);}catch(e){notify((e as Error).message);}}} onRefresh={refresh} notify={notify} onInventory={()=>navigate(`/inventory?vehicle_id=${detail.id}`)}/>
+      <VehicleDetail key={detail.id} vehicle={detail} showInfo={showInfo} onSaved={saved} onArchive={()=>{setConfirm(detail);}} onEdit={async()=>{try{const row=await api(`/vehicles/${detail.id}`);setEdit(row);}catch(e){notify((e as Error).message);}}} onRefresh={refresh} notify={notify} onInventory={()=>navigate(`/inventory?vehicle_id=${detail.id}`)}/>
     </section>}
     {confirm&&<Confirm destructive title="Архівувати автомобіль?" text="Автомобіль залишиться в історії. Його запчастини залишаться на складі." onClose={()=>setConfirm(null)} onConfirm={async()=>{await api('/archive/vehicles/'+confirm.id,'POST');setConfirm(null);closeDetail();reload();notify('Автомобіль переміщено в архів');}}/>}
   </>;
@@ -135,7 +138,7 @@ function VehicleDetail({
   const history=useLoad(()=>tab==='history'&&can('audit.view')?api(`/audit?vehicle_id=${v.id}&limit=50`):Promise.resolve(null),[v.id,tab]);
   return (
     <>
-      <header className="ux1-vehicle-header r114-detail-header"><div className="r114-detail-image"><VehicleImage vehicle={v}/><small>Ілюстративне зображення, не фото цього донора</small></div><div className="ux1-vehicle-identity"><h1>{v.manufacturer} {v.model} · {v.year} · №{v.number??'—'}</h1><div className="ux1-vehicle-tags">{[v.fuel_type,v.engine,v.transmission,v.dismantling_v3?.configuration?.values?.drive].filter(Boolean).map((value,index)=><span key={index}>{value}</span>)}{!v.engine&&!v.fuel_type&&<span>Двигун не уточнено</span>}</div>{v.vin&&<small>VIN: {v.vin}</small>}</div>{!v.archived&&<Permit permission="vehicles.edit"><button className="secondary" onClick={onEdit}><Pencil size={14}/>Редагувати авто</button></Permit>}</header>
+      <header className="ux1-vehicle-header r114-detail-header r1142-detail-header"><div className="r114-detail-image"><VehicleImage vehicle={v}/><small>Ілюстративне зображення, не фото цього донора</small></div><div className="ux1-vehicle-identity"><h1>{v.manufacturer} {v.model} · {v.year} · №{v.number??'—'}</h1><div className="r1142-spec-grid">{([['Двигун',v.engine],['Паливо',v.fuel_type],['КПП',v.transmission]] as [string,string|undefined][]).map(([label,value])=><button type="button" className="r1142-spec" key={label} disabled={v.archived||!can('vehicles.edit')} onClick={onEdit}><span>{label}</span><strong>{value||'+ Додати'}</strong><Pencil size={13}/></button>)}</div>{v.vin&&<small>VIN: {v.vin}</small>}</div>{!v.archived&&<Permit permission="vehicles.edit"><button className="secondary" onClick={onEdit}><Pencil size={14}/>Редагувати авто</button></Permit>}</header>
       <div className="r114-vehicle-actions"><button type="button" onClick={onInventory}><Package size={15}/> Відкрити склад запчастин</button><button type="button" onClick={()=>setTab("info")}><Info size={15}/> Картка авто</button>{can("audit.view")&&<button type="button" onClick={()=>setTab("history")}><History size={15}/> Історія операцій</button>}</div>
       <nav className="ux1-tabs" aria-label="Розділи автомобіля">{[['parts','Розбір і запчастини'],['info','Картка автомобіля'],...(can('audit.view')?[['history','Історія операцій']]:[])].map(([key,label])=><button key={key} aria-current={tab===key?'page':undefined} onClick={()=>setTab(key)}>{label}</button>)}</nav>
       <div hidden={tab!=='parts'}>
@@ -145,9 +148,9 @@ function VehicleDetail({
       </details>
       </div>
       {tab==='history'&&<section className="ux1-history" aria-label="Історія автомобіля"><State error={history.error} loading={history.loading}/>{history.data?.items.map((r:Row)=><article key={r.id}><strong>{labels[r.type]||'Складська операція'}</strong><span>{when(r.created_at)}</span><p>{r.reason}</p></article>)}{history.data?.items.length===0&&<p>Операцій ще немає.</p>}{history.data?.total>50&&<p>Показано останні 50 операцій.</p>}</section>}
-      <div hidden={tab!=='info'}><details className="vehicle-secondary" open><summary>Дані автомобіля</summary>
+      <div hidden={tab!=='info'}><section className="r1142-info-panel"><header className="r1142-info-heading"><div><h2>Дані автомобіля</h2><small>Основні характеристики автомобіля-донора</small></div></header>
       {!v.archived&&<div className="modal-actions"><Permit permission="vehicles.edit"><button onClick={onEdit}>Редагувати дані</button></Permit><Permit permission="inventory.archive"><button onClick={onArchive}>Архівувати автомобіль</button></Permit></div>}
-      <dl className="details">
+      <dl className="details r1142-details">
         {[
           ["Номер автомобіля", `№ ${v.number ?? "—"}`],
           ["Марка",v.manufacturer],["Модель",v.model],["Покоління",v.generation||"Не вказано"],["Статус",labels[v.status]||"Не уточнено"],
@@ -164,7 +167,7 @@ function VehicleDetail({
         ].filter(([k])=>k!=='Придбання'||can('parts.view_cost')).map(([k, val]) => (
           <div key={k}>
             <dt>{k}</dt>
-            <dd>{val}</dd>
+            <dd>{val}</dd>{!v.archived&&can("vehicles.edit")&&<button type="button" className="r1142-field-edit" aria-label={"Редагувати: "+k} onClick={onEdit}><Pencil size={13}/></button>}
           </div>
         ))}
       </dl>
@@ -213,7 +216,7 @@ function VehicleDetail({
         </button>
       </div>
       </details>
-      </details></div>
+      </section></div>
     </>
   );
 }
