@@ -116,6 +116,12 @@ class BatchAction(Scope):
     selling_price: Money | None = None
 
 
+class ApplicableModel(Input):
+    manufacturer: Annotated[str, Field(min_length=1,max_length=100)]
+    model: Annotated[str, Field(min_length=1,max_length=100)]
+    generation: Annotated[str, Field(max_length=100)] = ''
+
+
 class CatalogTypeInput(Input):
     catalog_key: Annotated[str,Field(pattern=r'^[a-z0-9][a-z0-9._-]{0,99}$')]
     category_key: Annotated[str,Field(pattern=r'^[a-z0-9][a-z0-9._-]{0,99}$')]
@@ -124,6 +130,18 @@ class CatalogTypeInput(Input):
     subcategory_name: Annotated[str,Field(min_length=1,max_length=100)]
     name: Annotated[str,Field(min_length=1,max_length=200)]
     position: Annotated[str,Field(max_length=100)] = ''
+    # Absent means legacy account-wide catalogue. Empty list is rejected.
+    applicability: Annotated[list[ApplicableModel] | None, Field(max_length=20)] = None
+
+    @model_validator(mode='after')
+    def scope_valid(self):
+        if self.applicability is not None:
+            if not self.applicability:
+                raise ValueError('Перелік моделей не може бути порожнім')
+            keys=[(r.manufacturer.casefold(),r.model.casefold(),r.generation.casefold()) for r in self.applicability]
+            if len(keys)!=len(set(keys)):
+                raise ValueError('Моделі в типі запчастини не повинні повторюватися')
+        return self
 
     @model_validator(mode='after')
     def stock_label_fits(self):

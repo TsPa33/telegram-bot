@@ -157,7 +157,7 @@ def test_v2_readiness_and_migration_keep_existing_receipts_planparts_and_sales(l
         assert logged.get('/api/v1/dismantling/workspace-readiness').status_code==503
         run([sys.executable,'-m','alembic','upgrade','head'],check=True)
         result=logged.get('/api/v1/dismantling/workspace-readiness').json()
-        assert result['contract_version']==2 and result['database_revisions']==['e4b93a2d715c']
+        assert result['contract_version']==2 and result['database_revisions']==sorted(__import__('app.staging',fromlist=['migration_heads']).migration_heads())
         assert logged.get('/api/v1/dismantling/readiness').json()['contract_version']==1
         restored=next(r for r in view(logged,donor)['items'] if r['id']==row['id'])
         assert restored['included'] and restored['received_at'] and restored['quantity']==2
@@ -224,3 +224,59 @@ def test_replayed_bulk_receipt_cannot_receive_new_candidates_with_same_count(log
     post(logged,donor,'/actions',{'ids':[second['id']],'action':'dismantled'})
     assert post(logged,donor,'/batch',request).status_code==409
     assert logged.get('/api/v1/parts').json()['total']==1
+
+
+def test_model_scoped_catalogue_preserves_legacy_and_excludes_other_models(logged):
+    path='/api/v1/dismantling/catalog/import'
+    payload=catalog(2)
+    payload['source']='filedbtree.test'
+    payload['types'][0]['applicability']=[
+        {'manufacturer':'Volvo','model':'XC60','generation':''}]
+    payload['types'][1]['applicability']=[
+        {'manufacturer':'Volvo','model':'XC90','generation':'II'}]
+    assert logged.post(path+'?dry_run=true',json=payload).json()['created']==2
+    assert logged.post(path,json=payload).status_code==200
+    checks=[('XC60','',{'test-0'}),('XC90','II',{'test-1'}),
+            ('XC90 II','',{'test-1'}),('XC90','I',set()),('BMW 3','',set())]
+    for model,generation,expected in checks:
+        vehicle=logged.post('/api/v1/vehicles',json={
+            'manufacturer':'Volvo' if model!='BMW 3' else 'BMW',
+            'model':model,'generation':generation,'year':2015}).json()
+        assert logged.post(base(vehicle)+'/start').status_code==200
+        rows=view(logged,vehicle)['items']
+        actual={r['catalog_key'] for r in rows if r['source'].startswith('local.')}
+        assert actual==expected
+        assert logged.get('/api/v1/parts').json()['total']==0
+    invalid={**payload,'types':[{**payload['types'][0],'applicability':[]}]}
+    assert logged.post(path+'?dry_run=true',json=invalid).status_code==422
+
+
+def test_legacy_import_is_unscoped_and_reimport_idempotent(logged):
+    payload=catalog(1)
+    path='/api/v1/dismantling/catalog/import'
+    assert logged.post(path,json=payload).json()['created']==1
+    assert logged.post(path,json=payload).json()['created']==0
+    vehicle=logged.post('/api/v1/vehicles',json={'manufacturer':'BMW','model':'3','year':2014}).json()
+    assert logged.post(base(vehicle)+'/start').status_code==200
+    assert any(r['catalog_key']=='test-0' for r in view(logged,vehicle)['items'])
+
+
+def test_catalogue_import_preview_reports_unchanged_and_noop_does_not_audit(logged):
+    path='/api/v1/dismantling/catalog/import'
+    data=catalog(2)
+    first=logged.post(path+'?dry_run=true',json=data).json()
+    assert {k:first[k] for k in ('created','updated','unchanged')}=={
+        'created':2,'updated':0,'unchanged':0}
+    assert logged.post(path,json=data).json()['created']==2
+    with engine().connect() as db:
+        n=db.scalar(text("SELECT count(*) FROM operations WHERE type='dismantling_catalog_import'"))
+    repeat=logged.post(path+'?dry_run=true',json=data).json()
+    assert {k:repeat[k] for k in ('created','updated','unchanged')}=={
+        'created':0,'updated':0,'unchanged':2}
+    assert logged.post(path,json=data).json()['unchanged']==2
+    with engine().connect() as db:
+        assert db.scalar(text("SELECT count(*) FROM operations WHERE type='dismantling_catalog_import'"))==n
+    data['types'][0]['name']='Changed test part'
+    preview=logged.post(path+'?dry_run=true',json=data).json()
+    assert (preview['created'],preview['updated'],preview['unchanged'])==(0,1,1)
+    assert logged.post(path,json=data).json()['updated']==1

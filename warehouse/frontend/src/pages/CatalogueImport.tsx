@@ -1,4 +1,5 @@
 import ImportRunnerPanel from '../ImportRunnerPanel';
+import DismantlingCatalogImport from '../DismantlingCatalogImport';
 import ParserAdminCenter from '../ParserAdminCenter';
 import {Pager} from '../components';
 import CanonicalCatalogueAdmin from '../CanonicalCatalogueAdmin';
@@ -36,7 +37,7 @@ function DecisionTable({rows,state,onChange}:{rows:Row[];state:Review;onChange:(
 }
 export default function CatalogueImport({enabled,actorKey}:{enabled:boolean;actorKey:string}){
  if(!enabled)return <section className="panel padded"><h1>Доступ обмежено</h1><p>Глобальний імпорт доступний тільки власнику платформи з серверного allowlist.</p></section>;
- return <ParserAdminCenter key={actorKey}><ImportRunnerPanel actorKey={actorKey}/><section id="pa-file-import" aria-label="Імпорт ринкових пропозицій"><ImportWorkspace key={actorKey} actorKey={actorKey}/></section><CanonicalCatalogueAdmin key={actorKey+':canonical'} actorKey={actorKey}/></ParserAdminCenter>;
+ return <ParserAdminCenter key={actorKey}><ImportRunnerPanel actorKey={actorKey}/><section className="panel padded" aria-label="Імпорт конструктивного довідника FileDbTree"><h2>Імпорт конструктивних типів запчастин</h2><p>Окремий JSON-довідник без ринкових цін. Перевірка та імпорт виконуються у власний довідник робочого простору; не в глобальний каталог. Прив’язки до моделей визначають потенційні типи для v3, а не точну сумісність.</p><DismantlingCatalogImport defaultOpen onImported={()=>window.dispatchEvent(new Event('warehouse:catalogue-admin-changed'))}/></section><section id="pa-file-import" aria-label="Імпорт ринкових пропозицій"><ImportWorkspace key={actorKey} actorKey={actorKey}/></section><CanonicalCatalogueAdmin key={actorKey+':canonical'} actorKey={actorKey}/></ParserAdminCenter>;
 }
 function ImportWorkspace({actorKey}:{actorKey:string}){
  const [historyPage,setHistoryPage]=useState(0);

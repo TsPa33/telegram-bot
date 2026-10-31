@@ -26,7 +26,7 @@ def start(db, vehicle_id, account_id):
             for key,name,position in sub['parts']:
                 types.append(dict(source=CATALOG['version'],catalog_key=key,category_key=category['key'],
                     category_name=category['name'],subcategory_key=sub['key'],subcategory_name=sub['name'],name=name,position=position))
-    types.extend(imported_types(db,account_id))
+    types.extend(imported_types(db,account_id,vehicle))
     from app.services.aleto_catalog import potential_types
     types.extend(potential_types(db, vehicle, account_id))
     for item in types:

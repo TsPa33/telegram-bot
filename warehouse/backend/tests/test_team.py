@@ -386,7 +386,7 @@ def test_populated_upgrade_preserves_sessions_reserves_orders_and_failed_retry(l
                 assert vehicle.pop('dismantling_v3',{})=={}
             # Stage3B defaults are absent on the deliberately old schema.
             # Validate every new default before comparing every legacy column.
-            defaults={'assortment_enabled':True,'inventory_origin':'legacy','quantity_basis':'legacy','physical_location_kind':'unknown','canonical_placement_id':None,'activation_operation_id':None}
+            defaults={'assortment_enabled':True,'inventory_origin':'legacy','quantity_basis':'legacy','physical_location_kind':'unknown','canonical_placement_id':None,'activation_operation_id':None,'color_name':None,'paint_code':None}
             for part in rows['parts']:
                 for field,value in defaults.items():assert part.pop(field,value)==value
             return rows
