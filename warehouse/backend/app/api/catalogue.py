@@ -61,6 +61,37 @@ def summary(job,detail=False,operation=None):
                 preview_token=job.preview_token,report=report,**({'resolutions':job.resolutions} if detail else {}))
 
 
+@router.get('/admin/audit/catalogue-mapping.csv')
+def catalogue_mapping_csv(db:DB,owner:Admin):
+    """Private platform-owner-only staging export. Every query runs in READ ONLY."""
+    import csv
+    import io
+    from fastapi import Response
+    from app.catalogue_audit_once import audited
+    stats,rows=audited()
+    if stats['errors']:
+        raise HTTPException(503,'Аудит не завершено: перевірка частини таблиць не вдалася')
+    stream=io.StringIO(newline='')
+    writer=csv.writer(stream)
+    writer.writerow(['source','source_id','workspace_hash','kind','parent','current_name',
+                     'recommended_name','mapping_status','row_count','origin','archived'])
+    for row in rows:
+        writer.writerow([row.get(k,'') for k in ('s','i','w','k','p','o','n','t','u','src','a')])
+    return Response(content='\ufeff'+stream.getvalue(),media_type='text/csv; charset=utf-8',
+                    headers={'Content-Disposition':'attachment; filename="CarPot_catalogue_mapping_staging_2026-11-01.csv"',
+                             'Cache-Control':'no-store',
+                             'X-Content-Type-Options':'nosniff'})
+
+@router.get('/admin/audit/summary')
+def catalogue_mapping_summary(db:DB,owner:Admin):
+    """Private platform-owner-only, aggregated metadata; no prices, VIN or user details."""
+    from app.catalogue_audit_once import audited
+    stats,_rows=audited()
+    if stats['errors']:
+        raise HTTPException(503,'Аудит не завершено')
+    return stats
+
+
 @router.get('/capabilities')
 def capabilities(who:Auth):
     return {'platform_admin':platform_admin(who.user)}

@@ -200,12 +200,17 @@ def audited():
     finally:
         engine.dispose()
 
-    LOG.warning("%s_BEGIN mapping=%s",TAG,len(mapping))
-    LOG.warning("%s_SUMMARY %s",TAG,json.dumps(stats,ensure_ascii=False,separators=(",",":"),default=str))
-    for i in range(0,len(mapping),15):
-        LOG.warning("%s_ROWS %d %s",TAG,i//15,json.dumps(mapping[i:i+15],ensure_ascii=False,separators=(",",":"),default=str))
-    LOG.warning("%s_END chunks=%d total=%d",TAG,(len(mapping)+14)//15,len(mapping))
-    return stats
+    # Railway drops bursts >500 log lines/s. The authenticated download endpoint
+    # delivers the *complete* dataset; startup prints only safe aggregates.
+    short={k:v for k,v in stats.items() if k!="same_parent_category_duplicate_groups"}
+    LOG.warning("%s_SUMMARY %s",TAG,json.dumps(short,ensure_ascii=False,separators=(",",":"),default=str))
+    for i,group in enumerate(stats["same_parent_category_duplicate_groups"][:12]):
+        LOG.warning("%s_DUP %d %s",TAG,i,json.dumps(group,ensure_ascii=False,separators=(",",":"),default=str))
+    examples=[r for r in mapping if r["t"] in ("dictionary","review_hierarchy","manual_review","language_review","review_context")]
+    for i in range(0,min(len(examples),60),10):
+        LOG.warning("%s_SAMPLE %d %s",TAG,i//10,json.dumps(examples[i:i+10],ensure_ascii=False,separators=(",",":"),default=str))
+    LOG.warning("%s_END mapping=%d review=%d errors=%d",TAG,len(mapping),len(examples),len(errors))
+    return stats,mapping
 
 def run():
     try:
