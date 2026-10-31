@@ -18,7 +18,7 @@ LOG = logging.getLogger("warehouse.catalogue.audit")
 TAG = "CAT_AUDIT_20261101"
 DATA = Path(__file__).resolve().parent / "data"
 
-RUSSIAN = re.compile(r"[ыъёэЫЪЁЭ]|\b(?:передний|передняя|задний|задняя|левый|правая|правый|левая|двигатель|дверь|двери|крыло|крылья|подвеска|рулевое|тормозной|стекло|крыша|коробка|оборудование|отделка|безопасность|внутренняя|сборе|запчасти|топливная|колеса|жидкости|брызговик|предохранителей|электрика|трансмиссия|освещение)\b", re.I)
+RUSSIAN = re.compile(r"[ыъёэЫЪЁЭ]|\b(?:передний|передняя|задний|задняя|левый|правая|правый|левая|двигатель|дверь|двери|крыло|крылья|подвеска|рулевое|тормозной|стекло|крыша|коробка|оборудование|отделка|безопасность|внутренняя|сборе|запчасти|топливная|жидкости|брызговик|предохранителей|электрика|трансмиссия|освещение)\b", re.I)
 CANONICAL_CATEGORY_CANDIDATES = {
     "Двигун": "Силовий агрегат",
     "Двері": "Кузов / Двері",
@@ -27,6 +27,19 @@ CANONICAL_CATEGORY_CANDIDATES = {
     "Трансмісія": "Силовий агрегат / Трансмісія",
     "Колеса": "Ходова частина / Колеса",
     "Оливи та рідини": "Витратні матеріали (окремий перегляд)",
+    "Внутренняя отделка": "Оздоблення салону",
+    "Дополнительные удобства": "Додаткове обладнання",
+    "Колёса / шины": "Колеса та шини",
+    "Оборудование для перевозки": "Обладнання для перевезення",
+    "Подвеска / амортизация": "Підвіска / амортизація",
+    "Подвеска оси / система подвески / колеса": "Підвіска та колеса",
+    "Привод колеса": "Привід колеса",
+    "Прицепное оборудование / комплектующие": "Причіпне обладнання та комплектувальні",
+    "Ременный привод": "Ремінний привід",
+    "Рулевое управления": "Кермове управління",
+    "Система выпуска": "Система випуску відпрацьованих газів",
+    "Система сцепления / навесные части": "Система зчеплення та навісні вузли",
+    "Электрика": "Електрика",
     "Тормозная система": "Гальмівна система",
     "Подвеска и рулевое": "Ходова частина",
     "Двигатель": "Силовий агрегат",
@@ -77,6 +90,9 @@ def audited():
               SELECT 'canonical_types',count(*) FROM canonical_types UNION ALL
               SELECT 'canonical_mappings',count(*) FROM canonical_mappings UNION ALL
               SELECT 'catalogue_entities',count(*) FROM catalogue_entities UNION ALL
+              SELECT 'catalogue_applications',count(*) FROM catalogue_applications UNION ALL
+              SELECT 'catalogue_paths',count(*) FROM catalogue_paths UNION ALL
+              SELECT 'canonical_variants',count(*) FROM canonical_variants UNION ALL
               SELECT 'catalogue_aliases',count(*) FROM catalogue_aliases UNION ALL
               SELECT 'aleto_taxonomy',count(*) FROM aleto_taxonomy UNION ALL
               SELECT 'aleto_applications',count(*) FROM aleto_applications UNION ALL
@@ -88,7 +104,7 @@ def audited():
               FROM categories c LEFT JOIN categories p ON p.id=c.parent_id ORDER BY c.account_id,c.kind,c.parent_id,c.name,c.id""")
             for r in rows:
                 mapping.append(dict(s="categories",i=r["id"],w=account_tag(r["account_id"]),k=r["kind"],p=r["parent_name"] or "",
-                                   o=r["name"],u=0,src=r["source"],a=bool(r["archived"])))
+                                   o=r["name"],pid=r["parent_id"] or "",u=0,src=r["source"],a=bool(r["archived"])))
             parts=query("parts_distinct","""SELECT p.account_id,p.name,p.category_id,p.subcategory_id,
                    count(*) n, sum(CASE WHEN p.archived THEN 0 ELSE 1 END) active,
                    min(c.name) category_name,min(sc.name) subcategory_name
@@ -137,6 +153,14 @@ def audited():
                   FROM aleto_models m JOIN aleto_applications a ON a.model_id=m.id AND a.account_id=m.account_id
                   GROUP BY manufacturer,model ORDER BY manufacturer,model""")
             stats["aleto_model_links"]=sources
+            v2=query("global_v2_application_count","""SELECT count(*) n,count(DISTINCT model_id) models FROM catalogue_applications""")
+            stats["global_model_applications"]=v2[0] if v2 else {}
+            gmodels=query("global_v2_models_top","""SELECT brand.name manufacturer,model.name model,count(*) application_count
+                FROM catalogue_applications a
+                JOIN catalogue_entities model ON model.id=a.model_id
+                JOIN catalogue_entities brand ON brand.id=model.parent_id
+                GROUP BY brand.name,model.name ORDER BY count(*) DESC LIMIT 20""")
+            stats["global_top_models"]=gmodels
             fit=query("fitment_status","""SELECT status,count(*) n FROM canonical_fitments GROUP BY status""")
             stats["fitment_records"]={r["status"]:r["n"] for r in fit}
             checks=query("category_integrity","""SELECT
@@ -165,7 +189,7 @@ def audited():
                     target=None;status="manual_review";reason="Unresolved source abbreviation"
                 elif target and norm(target)!=norm(source):
                     status="dictionary";reason="Explicit Aleto dictionary"
-                elif kind=="category" and source in CANONICAL_CATEGORY_CANDIDATES:
+                elif kind=="category" and source in CANONICAL_CATEGORY_CANDIDATES and norm(CANONICAL_CATEGORY_CANDIDATES[source])!=norm(source):
                     target=CANONICAL_CATEGORY_CANDIDATES[source]
                     status="review_hierarchy";reason="Category tree differs between providers"
                 elif norm(source) in canonical_names and kind in ("part","part_type"):
@@ -184,14 +208,16 @@ def audited():
                 group_counts[status]+=1
                 type_counts[row["s"]]+=1
                 if row["s"]=="categories":
-                    seen[(row["w"],row["k"],norm(row["p"]),norm(row["n"]))].append(row)
+                    # Exact duplicate candidates only: same workspace + level + actual parent ID
+                    # + original normalized name. Blank/unreviewed target names are never keys.
+                    seen[(row["w"],row["k"],row["pid"],norm(row["o"]))].append(row)
             duplicate_groups=[{
-               "workspace":k[0],"kind":k[1],"parent":values[0]["p"],"target":values[0]["n"],
+               "workspace":k[0],"kind":k[1],"parent":values[0]["p"],"target":values[0]["o"],
                "count":len(values),"source_names":sorted(set(v["o"] for v in values)),
                "ids":[v["i"] for v in values]
             } for k,values in seen.items() if len(values)>1]
-            stats["same_parent_category_duplicate_groups"]=duplicate_groups[:250]
-            stats["same_parent_category_duplicate_total"]=len(duplicate_groups)
+            stats["same_parent_exact_name_groups"]=duplicate_groups[:250]
+            stats["same_parent_exact_name_total"]=len(duplicate_groups)
             stats["name_mapping_status"]=dict(group_counts)
             stats["rows_by_source"]=dict(type_counts)
             stats["mapping_total"]=len(mapping)
@@ -202,9 +228,9 @@ def audited():
 
     # Railway drops bursts >500 log lines/s. The authenticated download endpoint
     # delivers the *complete* dataset; startup prints only safe aggregates.
-    short={k:v for k,v in stats.items() if k!="same_parent_category_duplicate_groups"}
+    short={k:v for k,v in stats.items() if k!="same_parent_exact_name_groups"}
     LOG.warning("%s_SUMMARY %s",TAG,json.dumps(short,ensure_ascii=False,separators=(",",":"),default=str))
-    for i,group in enumerate(stats["same_parent_category_duplicate_groups"][:12]):
+    for i,group in enumerate(stats["same_parent_exact_name_groups"][:12]):
         LOG.warning("%s_DUP %d %s",TAG,i,json.dumps(group,ensure_ascii=False,separators=(",",":"),default=str))
     examples=[r for r in mapping if r["t"] in ("dictionary","review_hierarchy","manual_review","language_review","review_context")]
     for i in range(0,min(len(examples),60),10):
