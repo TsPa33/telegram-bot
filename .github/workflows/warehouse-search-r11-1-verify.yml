@@ -1,0 +1,28 @@
+name: R11.1 Search quick edit CI
+on:
+  push:
+    branches: [feature/warehouse-search-r11-1-quick-edit]
+permissions:
+  contents: read
+concurrency:
+  group: warehouse-r11-1-quick-edit
+  cancel-in-progress: true
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: warehouse/frontend/package-lock.json
+      - name: Install
+        working-directory: warehouse/frontend
+        run: npm ci
+      - name: Build
+        working-directory: warehouse/frontend
+        run: npm run build
+      - name: All frontend unit tests
+        working-directory: warehouse/frontend
+        run: node --test tests/*-unit.mjs
