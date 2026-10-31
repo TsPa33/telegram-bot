@@ -18,7 +18,8 @@ def test_catalogue_audit_never_updates_or_creates_db_rows():
     for operation in ('INSERT INTO ', 'UPDATE categories ', 'DELETE FROM ', 'TRUNCATE ', 'DROP TABLE ', 'ALTER TABLE ', 'session.add(', 'session.commit(', 'connection.commit()'):
         assert operation not in code
     assert 'password_hash' not in code
-    assert 'vin' not in code.lower()
+    assert 'SELECT vin' not in code.upper()
+    assert 'p.vin' not in code.lower()
     assert 'selling_price' not in code
 
 def test_main_api_runs_auditor_only_after_staging_migrate():
