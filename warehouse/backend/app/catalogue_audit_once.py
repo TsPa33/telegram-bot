@@ -63,7 +63,8 @@ def audited():
             connection.exec_driver_sql("SET LOCAL statement_timeout='25000ms'")
             def query(label,sql):
                 try:
-                    rows=[dict(r) for r in connection.execute(text(sql)).mappings().all()]
+                    with connection.begin_nested():  # SAVEPOINT: recover one bad read without aborting all reads.
+                        rows=[dict(r) for r in connection.execute(text(sql)).mappings().all()]
                     counts[label]=len(rows)
                     return rows
                 except Exception as exc:
