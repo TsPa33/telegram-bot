@@ -1,8 +1,8 @@
 import {useEffect,useRef,useState} from 'react';
-import {Package,MapPin,FileSearch,ShoppingCart,ExternalLink,X,ChevronLeft,ChevronRight,Camera,Pencil} from 'lucide-react';
+import {Package,MapPin,FileSearch,ShoppingCart,ExternalLink,X,ChevronLeft,ChevronRight,Camera,Pencil,ImagePlus} from 'lucide-react';
 import {api,money,labels,type Row} from './api';
 import {useCan} from './permissions';
-import SearchPartPhoto from './SearchPartPhoto';
+
 import {categoryLabelUk} from './PartsQuickCategories';
 import {SellerPriceEditor} from './MarketPricing';
 import PartCharacteristicsEditor from './PartCharacteristicsEditor';
@@ -19,8 +19,10 @@ export default function SearchPartPreview({part,vehicle,category,subcategory,can
  const [editingOem,setEditingOem]=useState(false);
  const [photoEnabled,setPhotoEnabled]=useState<boolean|null>(null);
  const [photoBusy,setPhotoBusy]=useState(false),[photoError,setPhotoError]=useState('');
+ const [photos,setPhotos]=useState<Row[]>([]),[activePhoto,setActivePhoto]=useState(0),[photoLoading,setPhotoLoading]=useState(false);
  const photoGuard=useRef(false);
- useEffect(()=>{setEditingOem(false);setPhotoError('');},[part?.id]);
+ useEffect(()=>{setEditingOem(false);setPhotoError('');setActivePhoto(0);},[part?.id]);
+ useEffect(()=>{if(!part?.id){setPhotos([]);return;}let active=true;setPhotoLoading(true);setPhotos([]);api<Row[]>('/parts/'+part.id+'/photos').then(rows=>{if(active){setPhotos(rows);setActivePhoto(0);}}).catch(()=>{if(active)setPhotos([]);}).finally(()=>{if(active)setPhotoLoading(false);});return()=>{active=false;};},[part?.id,photoRevision]);
  useEffect(()=>{let active=true;api<Row>('/settings').then(r=>{if(active)setPhotoEnabled(r.photos_enabled===true);}).catch(()=>{if(active)setPhotoEnabled(false);});return()=>{active=false;};},[]);
  async function upload(file:File){
   if(!part||photoGuard.current)return;
@@ -48,9 +50,13 @@ export default function SearchPartPreview({part,vehicle,category,subcategory,can
     <h2>{part.name}</h2>
     <p>{category?categoryLabelUk(category.name):'Без категорії'} › {subcategory?categoryLabelUk(subcategory.name):'Інші деталі'}</p>
    </div>
-   <div className="ui11-preview-image"><SearchPartPhoto key={part.id+':'+photoRevision} id={part.id} name={part.name}/></div>
+   <div className="ui11-preview-image ui12-photo-stage">
+    {photos[activePhoto]?.url?<img src={photos[activePhoto].url} alt={part.name+' — фото '+(activePhoto+1)} loading="lazy"/>:<div className="ui12-photo-placeholder"><Package size={38}/><span>{photoLoading?'Завантаження фото…':'Фото ще немає'}</span></div>}
+    {photos.length>1&&<><button type="button" className="ui12-photo-arrow prev" aria-label="Попереднє фото" onClick={()=>setActivePhoto(i=>(i+photos.length-1)%photos.length)}><ChevronLeft size={18}/></button><button type="button" className="ui12-photo-arrow next" aria-label="Наступне фото" onClick={()=>setActivePhoto(i=>(i+1)%photos.length)}><ChevronRight size={18}/></button><span className="ui12-photo-counter">{activePhoto+1} / {photos.length}</span></>}
+   </div>
+   {photos.length>0&&<div className="ui12-photo-thumbs" aria-label="Фотографії запчастини">{photos.map((photo,i)=><button type="button" key={photo.id||i} className={i===activePhoto?'active':''} aria-label={'Фото '+(i+1)} aria-pressed={i===activePhoto} onClick={()=>setActivePhoto(i)}><img src={photo.url} alt="" loading="lazy"/></button>)}</div>}
    {can('inventory.edit')&&!part.archived&&<div className="ui11-photo-actions">
-    {photoEnabled===true?<label className="ui11-upload-photo"><Camera size={15}/>{photoBusy?'Завантаження…':'Додати фото'}
+    {photoEnabled===true?<label className="ui11-upload-photo"><ImagePlus size={15}/>{photoBusy?'Завантаження…':'Додати фото'}
      <input type="file" aria-label="Додати фото запчастини" accept="image/jpeg,image/png,image/webp" disabled={photoBusy}
       onChange={e=>{const f=e.target.files?.[0];if(f)void upload(f);e.currentTarget.value='';}}/>
     </label>:<span className="ui11-photo-disabled" title="Фото потребують постійного сховища на сервері"><Camera size={14}/> {photoEnabled===null?'Перевірка сховища…':'Сховище фото не підключене'}</span>}
@@ -66,11 +72,12 @@ export default function SearchPartPreview({part,vehicle,category,subcategory,can
    </dl>
    {can('inventory.edit')&&!part.archived&&<div className="ui11-data-actions">
     <button type="button" className="secondary" onClick={()=>setEditingOem(v=>!v)}><Pencil size={14}/> {editingOem?'Згорнути OEM':'Змінити OEM'}</button>
-    <button type="button" className="secondary" onClick={onEdit}><Pencil size={14}/> Редагувати дані</button>
+    <button type="button" className="secondary" onClick={onEdit}><Pencil size={14}/> Стан, артикул, локація</button>
    </div>}
    {editingOem&&can('inventory.edit')&&'color_name' in part&&<div className="ui11-oem-editor">
     <PartCharacteristicsEditor key={part.id} part={part} kind="oem" onSaved={row=>{setEditingOem(false);onSaved(row);}} onClose={()=>setEditingOem(false)}/>
    </div>}
+   {can('inventory.edit')&&!part.archived&&<button type="button" className="ui12-quick-edit" onClick={onEdit}><Pencil size={14}/> Редагувати картку та облікові дані</button>}
    <div className="ui11-preview-price"><span>Моя ціна</span>
     {can('parts.change_price')&&!part.archived
      ?<SellerPriceEditor key={part.id} part={part} onSaved={onSaved}/>
