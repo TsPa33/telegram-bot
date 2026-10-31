@@ -5,8 +5,6 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, all, labels, money, when, type Row } from "../api";
 import { Empty, Modal, Pager, RecordForm, type Field } from "../components";
 import VehicleForm from "../VehicleForm";
-import VehicleDirectoryImport from "../VehicleDirectoryImport";
-import "../vehicle-directory-r12.css";
 import AletoCatalogue from "../AletoCatalogue";
 import DismantlingCatalogImport from "../DismantlingCatalogImport";
 import VehicleChecklist from "../VehicleChecklist";
@@ -98,7 +96,6 @@ export default function Vehicles({notify}:{notify:Notify}) {
     {!detail&&<><Heading eyebrow="АВТОМОБІЛІ" title="Автомобілі" description="Керуйте автомобілями-донорами, їхніми характеристиками та процесом розбору.">
       <Permit permission="vehicles.create"><button className="secondary" onClick={()=>setEdit({status:'dismantling'})}><Plus size={17}/>Додати автомобіль</button></Permit>
     </Heading>
-    {can("catalog.import")&&<VehicleDirectoryImport onImported={reload}/>}
     {created&&<p role="status">Додано: {created.manufacturer} {created.model} · {created.year}. <button onClick={()=>openDetail(created)}>Відкрити картку</button></p>}
     <div className="r114-toolbar r1146-toolbar">
      <label className="search vehicle-search"><Search size={17}/><input aria-label="Пошук автомобілів" placeholder="Марка, модель, номер або VIN" value={q} onChange={e=>{setQ(e.target.value);setPage(0);}}/></label>

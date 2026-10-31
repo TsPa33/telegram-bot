@@ -283,9 +283,9 @@ def directory_variants(
 
 @router.post("/vehicle-directory/import", tags=["Vehicle directory"])
 async def directory_import(db: DB,who: Auth,file:UploadFile=File(...),dry_run:bool=True):
-    from app.permissions import require_director
+    from app.services.catalogue_import import require_admin
     from app.services.vehicle_directory import apply_payload,MAX_UPLOAD
-    require_director(who)
+    require_admin(db,who)
     raw=await file.read(MAX_UPLOAD+1)
     if len(raw)>MAX_UPLOAD:raise HTTPException(413,"Файл перевищує 16 МБ")
     return apply_payload(db,raw,file.filename or "carpot-vehicles.txt",who.workspace_account_id,dry_run)

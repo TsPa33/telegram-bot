@@ -4,7 +4,9 @@ import ParserAdminCenter from '../ParserAdminCenter';
 import {Pager} from '../components';
 import CanonicalCatalogueAdmin from '../CanonicalCatalogueAdmin';
 import {useEffect,useRef,useState} from 'react';
-import {Boxes,Tags,Workflow,Database} from 'lucide-react';
+import {Boxes,Tags,Workflow,Database,CarFront} from 'lucide-react';
+import VehicleDirectoryImport from '../VehicleDirectoryImport';
+import '../vehicle-directory-r12.css';
 import '../catalogue-admin-r9.css';
 import {api,ApiError,csrf,when,type Row} from '../api';
 import {State,useLoad} from '../shared';
@@ -37,10 +39,11 @@ function DecisionRow({row,value,checked,sent,onChange}:{row:Row;value?:Decision;
 function DecisionTable({rows,state,onChange}:{rows:Row[];state:Review;onChange:(row:Row,v?:Decision)=>void}){
  return <table className="catalogue-decisions"><thead><tr><th>Початкова назва</th><th>Український відповідник</th><th>Тип рішення</th><th>Статус</th></tr></thead><tbody>{rows.map(r=><DecisionRow key={r.key} row={r} value={state.draft[r.key]} checked={showReport(state)?state.checked[r.key]:undefined} sent={state.pending?.sent[r.key]} onChange={v=>onChange(r,v)}/>)}</tbody></table>;
 }
-type AdminTab='parts'|'offers'|'runner'|'global';
-const adminTabIcons={parts:Boxes,offers:Tags,runner:Workflow,global:Database};
+type AdminTab='parts'|'vehicles'|'offers'|'runner'|'global';
+const adminTabIcons={parts:Boxes,vehicles:CarFront,offers:Tags,runner:Workflow,global:Database};
 const adminTabs: {id:AdminTab;label:string;hint:string}[]=[
  {id:'parts',label:'Довідник запчастин',hint:'Типи деталей і моделі'},
+ {id:'vehicles',label:'Довідник автомобілів',hint:'Марки, моделі, двигуни'},
  {id:'offers',label:'Ринкові ціни',hint:'Файли пропозицій'},
  {id:'runner',label:'Задачі парсера',hint:'Запуски й результати'},
  {id:'global',label:'Глобальний каталог',hint:'Перевірка та публікація'}
@@ -60,6 +63,11 @@ export default function CatalogueImport({enabled,actorKey}:{enabled:boolean;acto
     <DismantlingCatalogImport onImported={()=>window.dispatchEvent(new Event('warehouse:catalogue-admin-changed'))}/>
    </section>
   </div>
+  {tab==='vehicles'&&<section className="panel padded catalogue-tab-content" aria-label="Довідник автомобілів">
+   <h2>Довідник автомобілів</h2>
+   <p className="catalogue-tab-subtitle">Приватне завантаження автомобільного каталогу з попередньою перевіркою. Дані вже створених донорів та склад не змінюються.</p>
+   <VehicleDirectoryImport/>
+  </section>}
   {tab==='offers'&&<section id="pa-file-import" className="catalogue-tab-content" aria-label="Ринкові пропозиції"><ImportWorkspace key={actorKey} actorKey={actorKey}/></section>}
   {tab==='runner'&&<div className="catalogue-tab-content"><ImportRunnerPanel actorKey={actorKey}/></div>}
   {tab==='global'&&<div className="catalogue-tab-content"><CanonicalCatalogueAdmin key={actorKey+':canonical'} actorKey={actorKey}/></div>}
