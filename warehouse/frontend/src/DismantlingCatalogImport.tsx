@@ -1,24 +1,69 @@
-import { useState } from "react";
-import { api, type Row } from "./api";
-export default function DismantlingCatalogImport({onImported,defaultOpen=false}: {onImported: () => void; defaultOpen?: boolean}) {
-  const [payload,setPayload]=useState<Row|null>(null),[rights,setRights]=useState(false),[preview,setPreview]=useState<Row|null>(null);
-  const [error,setError]=useState(""),[busy,setBusy]=useState(false),[message,setMessage]=useState("");
-  async function submit(dry: boolean) {
-    if(!payload||!rights)return;setBusy(true);setError("");
-    try {const result=await api(`/dismantling/catalog/import?dry_run=${dry}`,"POST",{...payload,rights_confirmed:rights});
-      if(dry)setPreview(result);else {setMessage(`Імпортовано: нових ${result.created}, змінено ${result.updated}, без змін ${result.unchanged ?? 0}. Нові типи доступні у preview відповідних Volvo. Існуючі плани v3 не змінюються автоматично — відкрий автомобіль та онови план після перевірки.`);setPreview(null);onImported();}
-    } catch(e){setError((e as Error).message);}finally{setBusy(false);}
-  }
-  return <details className="dismantling-import" open={defaultOpen}><summary>Завантажити JSON-довідник запчастин</summary>
-    <p>Базовий список містить 33 потенційні типи, не повну комплектацію XC90. Власний JSON може містити до 10 000 типів із категоріями та необов’язковими прив’язками до моделей (applicability). Без прив’язок старі типи доступні для всіх марок. Імпорт не створює залишків, не змінює існуючих донорів і не оновлює автоматично сучасний v3-план.</p>
-    <label>JSON власного каталогу<input type="file" accept="application/json,.json" disabled={busy} onChange={async e=>{
-      setPreview(null);setPayload(null);setError("");setMessage("");setRights(false);
-      try {const file=e.target.files?.[0];if(!file)return;if(file.size>5*1024*1024)throw Error("Файл завеликий (до 5 МБ)");const parsed=JSON.parse(await file.text());if(!parsed||Array.isArray(parsed)||typeof parsed!=='object')throw Error('JSON object required');setPayload(parsed);}catch{setError("Не вдалося прочитати JSON каталогу (до 5 МБ).");}
-    }}/></label>
-    <label className="dismantling-select"><input type="checkbox" checked={rights} disabled={busy} onChange={e=>{setRights(e.target.checked);setPreview(null);}}/> Маю права на збереження й використання цих даних; джерело та ліцензію вказано у файлі.</label>
-    <div className="modal-actions"><button disabled={busy||!payload||!rights} onClick={()=>submit(true)}>Перевірити каталог</button>
-      {preview&&<button disabled={busy} onClick={()=>submit(false)}>Імпортувати до власного довідника</button>}</div>
-    {preview&&<p>Нових: {preview.created}. Змінено: {preview.updated}. Без змін: {preview.unchanged ?? 0}. Усього в джерелі: {preview.total}.</p>}
-    {message&&<p role="status">{message}</p>}{error&&<p role="alert" className="error">{error}</p>}
-  </details>;
+import {useState} from "react";
+import {api,type Row} from "./api";
+
+type ImportPreview={created:number;updated:number;total:number;dry_run?:boolean};
+export default function DismantlingCatalogImport({onImported}: {onImported:()=>void}) {
+ const [payload,setPayload]=useState<Row|null>(null);
+ const [filename,setFilename]=useState('');
+ const [rights,setRights]=useState(false);
+ const [preview,setPreview]=useState<ImportPreview|null>(null);
+ const [error,setError]=useState(''),[busy,setBusy]=useState(false),[message,setMessage]=useState('');
+ const [confirmed,setConfirmed]=useState(false);
+ const count=Array.isArray(payload?.types)?payload.types.length:0;
+ const modelLinks=Array.isArray(payload?.types)?payload.types.reduce((n:number,t:Row)=>n+(Array.isArray(t.applicability)?t.applicability.length:0),0):0;
+ async function readFile(file?:File){
+  setPayload(null);setFilename('');setPreview(null);setConfirmed(false);setError('');setMessage('');
+  if(!file)return;
+  try{
+   if(file.size>5*1024*1024)throw Error('Файл завеликий: максимум 5 МБ.');
+   const result=JSON.parse(await file.text());
+   if(!result||Array.isArray(result)||typeof result!=='object'||!Array.isArray(result.types)||!result.types.length)throw Error('Невірний JSON. Потрібен файл із переліком types.');
+   setPayload(result);setFilename(file.name);
+  }catch(e){setError(e instanceof Error?e.message:'Не вдалося прочитати файл.');}
+ }
+ async function submit(dry:boolean){
+  if(!payload||!rights||busy||(!dry&&(!preview||!confirmed)))return;
+  setBusy(true);setError('');setMessage('');
+  try{
+   const result=await api('/dismantling/catalog/import?dry_run='+dry,'POST',{...payload,rights_confirmed:true}) as ImportPreview;
+   if(dry){setPreview(result);setConfirmed(false);}
+   else{
+    setMessage(`Готово: додано ${result.created}, оновлено ${result.updated}. Для вже створеного автомобіля перевірте оновлення плану розбору.`);
+    setPreview(null);setConfirmed(false);onImported();
+   }
+  }catch(e){setError(e instanceof Error?e.message:'Не вдалося виконати імпорт.');}
+  finally{setBusy(false);}
+ }
+ return <div className="catalogue-own-import">
+  <div className="catalogue-own-form">
+   <label htmlFor="catalogue-own-file">Файл довідника (.json)</label>
+   <input id="catalogue-own-file" type="file" accept=".json,application/json" disabled={busy} onChange={e=>void readFile(e.target.files?.[0])}/>
+   {filename&&<div className="catalogue-own-file-summary" role="status">
+    <strong>{filename}</strong>
+    <span>{count.toLocaleString('uk-UA')} типів деталей · {modelLinks.toLocaleString('uk-UA')} прив’язок до моделей</span>
+   </div>}
+   <label className="catalogue-own-rights"><input type="checkbox" checked={rights} disabled={busy} onChange={e=>{setRights(e.target.checked);setPreview(null);setConfirmed(false);}}/>
+    <span>Підтверджую право використовувати ці дані.</span>
+   </label>
+   <button type="button" className="primary" disabled={busy||!payload||!rights} onClick={()=>void submit(true)}>
+    {busy?'Перевіряємо…':'Перевірити файл'}
+   </button>
+  </div>
+  {preview&&<section className="catalogue-own-preview" aria-label="Результат перевірки" role="status">
+   <h3>Результат перевірки</h3>
+   <div className="catalogue-own-stats"><span><strong>{preview.created}</strong>Нових</span><span><strong>{preview.updated}</strong>Оновляться</span><span><strong>{preview.total}</strong>Усього в джерелі</span></div>
+   <p>Перевірка завершена. Складські залишки, продажі й ціни не змінюються.</p>
+   <label className="catalogue-own-rights"><input type="checkbox" checked={confirmed} onChange={e=>setConfirmed(e.target.checked)}/>
+    <span>Перевірив результат і підтверджую оновлення довідника.</span>
+   </label>
+   <button type="button" className="primary" disabled={busy||!confirmed} onClick={()=>void submit(false)}>Додати до каталогу</button>
+  </section>}
+  {message&&<p className="catalogue-own-success" role="status">{message}</p>}
+  {error&&<p role="alert" className="error">{error}</p>}
+  <details className="catalogue-own-help">
+   <summary>Формат файлу й особливості імпорту</summary>
+   <p>Підтримується JSON із типами деталей та необов’язковими прив’язками до моделей. Максимальний розмір — 5 МБ. Без прив’язок типи будуть доступні для всіх марок.</p>
+   <p>Імпорт не створює залишків та не змінює існуючі складські позиції. Для застосування оновлень до вже створеного плану скористайтеся оновленням списку автомобіля.</p>
+  </details>
+ </div>;
 }
