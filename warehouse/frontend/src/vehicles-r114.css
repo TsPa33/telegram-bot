@@ -61,3 +61,33 @@
 @media(max-width:1300px){.r1141-card-top{grid-template-columns:135px minmax(0,1fr)}.r1141-car-photo{min-height:125px}.r1141-car-bottom{flex-wrap:wrap}}
 @media(max-width:900px){.r114-grid{grid-template-columns:1fr}.r1141-card-top{grid-template-columns:160px minmax(0,1fr)}}
 @media(max-width:600px){.r1141-card-top{grid-template-columns:1fr}.r1141-car-photo{height:130px}.r1141-car-bottom{align-items:stretch}.r1141-car-actions{width:100%}.r1141-car-actions button{flex:1}}
+
+/* R11.4.2 — premium vehicle identity, actions, and editable detail fields. */
+.r1142-detail-header{display:grid;grid-template-columns:minmax(170px,245px) minmax(0,1fr) auto;gap:22px;align-items:center;padding:18px 20px}
+.r1142-detail-header .r114-detail-image{width:100%;flex:none;grid-row:span 1}
+.r1142-detail-header .r114-detail-image .vehicle-image{height:132px;background:#f3f7f5;border-radius:11px}
+.r1142-detail-header .ux1-vehicle-identity{min-width:0}
+.r1142-detail-header .ux1-vehicle-identity h1{font-size:25px;letter-spacing:-.5px}
+.r1142-spec-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}
+.r1142-spec{display:grid;grid-template-columns:minmax(0,1fr) 14px;align-items:center;gap:3px 8px;min-width:0;text-align:left;border:1px solid var(--color-border);border-radius:10px;background:#fbfdfc;min-height:62px;padding:9px 11px}
+.r1142-spec>span{grid-column:1/-1;font-size:11px;color:var(--color-secondary)}
+.r1142-spec strong{font-size:12px;color:var(--color-accent-strong);overflow-wrap:anywhere}
+.r1142-spec svg{color:var(--color-secondary)}
+.r1142-spec:hover:not(:disabled){border-color:#55a38b;background:#f3faf6}
+.r1142-spec:disabled{opacity:.65;cursor:default}
+.r1142-info-panel{margin-top:12px;border:1px solid var(--color-border);border-radius:12px;background:var(--color-surface);padding:18px}
+.r1142-info-heading{display:flex;align-items:center;justify-content:space-between;margin-bottom:13px}
+.r1142-info-heading h2{font-size:18px;margin:0 0 3px}
+.r1142-info-heading small{color:var(--color-secondary);font-size:11px}
+.r1142-info-panel .modal-actions{margin:0 0 16px;gap:8px;justify-content:flex-end}
+.r1142-info-panel .modal-actions button{min-height:34px;font-size:12px}
+.r1142-info-panel .r1142-details{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 12px}
+.r1142-info-panel .r1142-details>div{display:grid;grid-template-columns:minmax(100px,.72fr) minmax(100px,1fr) 28px;align-items:center;gap:8px;margin:0;border:1px solid #e5ece8;border-radius:8px;min-height:44px;padding:5px 7px;background:#fbfdfc}
+.r1142-info-panel .r1142-details dt{font-size:11px;color:var(--color-secondary);margin:0}
+.r1142-info-panel .r1142-details dd{font-size:12px;color:var(--color-text);font-weight:650;margin:0;min-width:0;overflow-wrap:anywhere}
+.r1142-field-edit{display:grid;place-items:center;min-width:27px;width:27px;height:27px;border:1px solid var(--color-border);background:white;border-radius:6px;padding:3px;color:var(--color-secondary)}
+.r1142-field-edit:hover{border-color:#087254;color:#087254}
+.r1142-info-panel>details{margin-top:15px}
+@media(max-width:1200px){.r1142-detail-header{grid-template-columns:170px minmax(0,1fr)}.r1142-detail-header>button{grid-column:2}.r1142-spec-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:800px){.r1142-detail-header{grid-template-columns:1fr}.r1142-detail-header .r114-detail-image{max-width:320px}.r1142-detail-header>button{grid-column:1}.r1142-info-panel .r1142-details{grid-template-columns:1fr}}
+@media(max-width:530px){.r1142-spec-grid{grid-template-columns:1fr}.r1142-info-panel{padding:12px}.r1142-info-panel .r1142-details>div{grid-template-columns:minmax(92px,.8fr) minmax(0,1fr) 28px}}
