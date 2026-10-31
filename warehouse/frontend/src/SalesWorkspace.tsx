@@ -18,6 +18,9 @@ import {useNavigate} from 'react-router-dom';
 
 import InventoryFilters from './InventoryFilters';
 import {InventoryPartRow,InventoryTableHead} from './InventoryPartsList';
+import InventoryInsights,{InventorySummary} from './InventoryInsights';
+import {Layers,MapPin,ClipboardCheck,LayoutList,Plus,Boxes} from 'lucide-react';
+import './inventory-r115.css';
 import StockBulkDialog from './StockBulkDialog';
 import {inventoryMatches,activeInventoryIds} from './inventoryPresentation';
 import {SelectionCheck} from './DismantlingBulk';
@@ -31,11 +34,11 @@ import './parts-search-ui4.css';
 import './search-r11.css';
 type Action={part:Row;type:string;key:string};
 const actionLabels:Record<string,string>={sale:'Продати',write_off:'Списати',transfer:'Перемістити',reserve:'Зарезервувати',release:'Зняти резерв',receipt:'Додати кількість',correction:'Змінити кількість'};
-type WorkspaceProps={quick?:boolean;notify:Notify;accountId:string;grouped?:boolean;inventoryVehicles?:Row[]|null};
+type WorkspaceProps={quick?:boolean;notify:Notify;accountId:string;grouped?:boolean;inventoryVehicles?:Row[]|null;onHistory?:()=>void};
 export default function SalesWorkspace(props:WorkspaceProps) {
  return <WorkshopGate><SalesWorkspaceContent {...props}/></WorkshopGate>;
 }
-function SalesWorkspaceContent({quick=false,notify,accountId,grouped=false,inventoryVehicles}:{quick?:boolean;notify:Notify;accountId:string;grouped?:boolean;inventoryVehicles?:Row[]|null}) {
+function SalesWorkspaceContent({quick=false,notify,accountId,grouped=false,inventoryVehicles,onHistory}:{quick?:boolean;notify:Notify;accountId:string;grouped?:boolean;inventoryVehicles?:Row[]|null;onHistory?:()=>void}) {
  const can=useCan(),pricingIdentity=useContext(TeamIdentity);const canBulkPrice=pricingIdentity?.role==='DIRECTOR'&&can('parts.change_price');
  const navigate=useNavigate(),[orderPart,setOrderPart]=useState<Row|null>(null);
  const [params,setParams]=useSearchParams(),vehicle=params.get('vehicle_id')||'';
@@ -50,6 +53,9 @@ function SalesWorkspaceContent({quick=false,notify,accountId,grouped=false,inven
  const [brand,setBrand]=useState(''),[model,setModel]=useState(''),[q,setQ]=useState(''),[term,setTerm]=useState(''),[page,setPage]=useState(0),[showZero,setShowZero]=useState(false);
  const [category,setCategory]=useState(''),[sub,setSub]=useState(''),[condition,setCondition]=useState(''),[ownPrice,setOwnPrice]=useState(''),[inventoryState,setInventoryState]=useState('stock'),[stockBulk,setStockBulk]=useState(false);
  const [previewId,setPreviewId]=useState('');
+ const [inventorySection,setInventorySection]=useState<'parts'|'groups'|'categories'|'locations'|'inspection'>('parts');
+ const [locationFilter,setLocationFilter]=useState('');
+ const [tablePage,setTablePage]=useState(0),[tableSort,setTableSort]=useState('name'),[descending,setDescending]=useState(false);
  const [photoRevisions,setPhotoRevisions]=useState<Record<string,number>>({});
  const [detail,setDetail]=useState<Row|null>(null),[detailEdit,setDetailEdit]=useState<'oem'|'color'|undefined>(),[detailEditVersion,setDetailEditVersion]=useState(0),[edit,setEdit]=useState<Row|null>(null),[price,setPrice]=useState<Row|null>(null),[action,setAction]=useState<Action|null>(null),[archive,setArchive]=useState<Row|null>(null),[history,setHistory]=useState<Row|null>(null);
  const [notes,setNotes]=useState<Row|null>(null),[inspection,setInspection]=useState<Row|null>(null);
@@ -66,8 +72,22 @@ function SalesWorkspaceContent({quick=false,notify,accountId,grouped=false,inven
  useEffect(()=>{const changed=()=>{reload();lookups.reload();};window.addEventListener('warehouse:inventory-changed',changed);return()=>window.removeEventListener('warehouse:inventory-changed',changed);},[]);
  const current=!error&&!loading&&(!smart||smartReady)&&data?.query_key===searchKey&&q===term;
  const waiting=loading||q!==term||(!current&&!error&&(!smart||smartReady));
- const rows=current?data!.items.map(p=>overrides[p.id]||p).filter(p=>!p.archived&&(showZero||(smart?p.available_quantity>0:p.quantity>0))).filter(p=>quick||inventoryMatches(p,{sub,price:ownPrice,state:inventoryState})):[],suggestions=rows.slice(0,5),optionsOpen=quick&&focused&&!!q&&!waiting&&!error;
+ const unlocatedRows=current?data!.items.map(p=>overrides[p.id]||p).filter(p=>!p.archived&&(showZero||(smart?p.available_quantity>0:p.quantity>0))).filter(p=>quick||inventoryMatches(p,{sub,price:ownPrice,state:inventoryState})):[];
+ const rows=!quick&&locationFilter?unlocatedRows.filter(p=>String(p.location||'').trim()===locationFilter):unlocatedRows;
+ const suggestions=rows.slice(0,5),optionsOpen=quick&&focused&&!!q&&!waiting&&!error;
  useEffect(()=>{setSuggestion(-1);setOverrides({});},[data]);
+ const sortedInventoryRows=!quick?[...rows].sort((a,b)=>{
+  let result=0;
+  if(tableSort==='quantity')result=Number(a.quantity||0)-Number(b.quantity||0);
+  else if(tableSort==='price')result=Number(a.selling_price||0)-Number(b.selling_price||0);
+  else if(tableSort==='location')result=String(a.location||'').localeCompare(String(b.location||''),'uk');
+  else result=String(a.name||'').localeCompare(String(b.name||''),'uk');
+  return descending?-result:result;
+ }):[];
+ const inventoryPageRows=sortedInventoryRows.slice(tablePage*50,(tablePage+1)*50);
+ const inspectionRows=sortedInventoryRows.filter(p=>p.quantity_basis==='assumed'||p.availability==='unchecked');
+ const inspectionPageRows=inspectionRows.slice(tablePage*50,(tablePage+1)*50);
+ function sortInventory(key:string){if(tableSort===key)setDescending(v=>!v);else{setTableSort(key);setDescending(false);}setTablePage(0);}
  const brands=[...new Set(vehicles.map(v=>v.manufacturer))].sort((a,b)=>a.localeCompare(b,'uk'));
  const models=[...new Set(vehicles.filter(v=>!brand||v.manufacturer===brand).map(v=>v.model))].sort((a,b)=>a.localeCompare(b,'uk'));
  const previewPart=quick?(rows.find(p=>p.id===previewId)||rows[0]||null):null;
