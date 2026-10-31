@@ -152,7 +152,18 @@ export default function Team({user,notify}:{user:Row;notify:Notify}){
     <label>Роль<select aria-label="Роль" value={edit.role} onChange={e=>setEdit({...edit,role:e.target.value,permissions:e.target.value==='MANAGER'?edit.permissions.filter((p:string)=>p!=='team.manage_managers'):edit.permissions})}><option value="MANAGER">Менеджер</option>{user.role==='DIRECTOR'&&<option value="ADMIN">Адміністратор</option>}</select></label>
     {edit.id&&<label className="check-inline"><input type="checkbox" checked={edit.is_active} onChange={e=>setEdit({...edit,is_active:e.target.checked})}/>Доступ активний</label>}
     {edit.id&&edit.original_active&&!edit.is_active&&<p className="notice">Збереження заблокує вхід і завершить усі сесії цього працівника. Історія залишиться.</p>}
-    <div className="permission-groups">{Object.entries(groups).map(([group,permissions])=><fieldset key={group}><legend>{group}</legend>{descriptions[group]&&<p className="muted">{descriptions[group]}</p>}{Object.entries(permissions as Record<string,string>).map(([key,label])=><label className="check-inline" key={key}><input type="checkbox" disabled={(!grantable.includes(key)&&!edit.permissions.includes(key))||(edit.role==='MANAGER'&&key==='team.manage_managers')} checked={edit.permissions.includes(key)} onChange={e=>setEdit({...edit,permissions:e.target.checked?[...edit.permissions,key]:edit.permissions.filter((p:string)=>p!==key)})}/>{label}</label>)}</fieldset>)}</div>
+    <div className="team-permissions-header"><strong>Доступ до модулів</strong><span>{edit.permissions.length} дозволів призначено</span></div>
+    <p className="team-permissions-hint">Відкрийте потрібний модуль для точних налаштувань. Зміни застосовуються лише після збереження.</p>
+    <div className="team-permission-grid">{Object.entries(groups).map(([group,permissions])=>{
+     const items=Object.entries(permissions as Record<string,string>);
+     const selected=items.filter(([key])=>edit.permissions.includes(key)).length;
+     return <details className="team-permission-section" key={group}>
+      <summary><span className="team-permission-group-name">{group}<small>{selected} із {items.length} дозволів</small></span><span className="team-permission-meter"><span style={{width:(items.length?selected/items.length*100:0)+'%'}}/></span><span className="team-permission-chevron" aria-hidden="true">⌄</span></summary>
+      <div className="team-permission-body">{descriptions[group]&&<p>{descriptions[group]}</p>}
+       {items.map(([key,label])=><label className="team-permission-option" key={key}><input type="checkbox" disabled={!grantable.includes(key)||(edit.role==='MANAGER'&&key==='team.manage_managers')} checked={edit.permissions.includes(key)} onChange={e=>setEdit({...edit,permissions:e.target.checked?[...edit.permissions,key]:edit.permissions.filter((p:string)=>p!==key)})}/><span>{label}</span></label>)}
+      </div>
+     </details>;
+    })}</div>
    </>}
    {(!edit.id||edit.reset)&&<><label>Тимчасовий пароль<input type="password" autoComplete="new-password" required minLength={12} maxLength={128} value={edit.password} onChange={e=>setEdit({...edit,password:e.target.value})}/></label><p>Передайте пароль працівнику особисто захищеним каналом. При першому вході він зобов’язаний змінити пароль. Старий пароль не розкривається.</p></>}
    {activationBlocked&&<p role="alert">Для активації відкличте права, які ви не можете делегувати, або зверніться до директора.</p>}
