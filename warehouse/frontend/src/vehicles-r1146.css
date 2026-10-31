@@ -70,3 +70,16 @@
  .r1146-card-footer .r1141-car-actions button{flex:1}
 }
 @media(max-width:390px){.r1146-engine-row,.r1146-drive-row{grid-template-columns:1fr}}
+
+/* Search/filter controls belong to the vehicles listing only. */
+.r1146-toolbar{display:grid;grid-template-columns:minmax(230px,1.9fr) repeat(4,minmax(118px,.9fr)) auto;gap:8px;align-items:center;margin:12px 0}
+.r1146-toolbar .vehicle-search{min-width:0;width:100%;margin:0;max-width:none;flex:none}
+.r1146-toolbar>select{width:100%;min-width:0;height:44px;margin:0;border:1px solid #d7e4dd;background:#fff;border-radius:9px;padding:0 10px;font-size:12px;color:#254639}
+.r1146-toolbar>select:focus-visible{outline:2px solid #087759;outline-offset:2px}
+.r1146-toolbar .r114-view-toggle{margin:0;white-space:nowrap}
+.r1146-result-meta{display:flex;justify-content:space-between;align-items:center;gap:9px;margin:0 0 11px;font-size:11px;color:#5d776b}
+.r1146-result-meta strong{color:#214f3f}
+.r1146-result-meta button{border:0;background:transparent;color:#006e55;font-size:11px;font-weight:650;text-decoration:underline;padding:3px 6px}
+@media(max-width:1500px){.r1146-toolbar{grid-template-columns:minmax(230px,2fr) repeat(2,minmax(130px,1fr)) auto}.r1146-toolbar>select:nth-of-type(3),.r1146-toolbar>select:nth-of-type(4){grid-row:2}.r1146-toolbar .r114-view-toggle{grid-column:-2;grid-row:2}}
+@media(max-width:920px){.r1146-toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}.r1146-toolbar .vehicle-search{grid-column:1/-1}.r1146-toolbar>select:nth-of-type(3),.r1146-toolbar>select:nth-of-type(4){grid-row:auto}.r1146-toolbar .r114-view-toggle{grid-column:1/-1;grid-row:auto;width:max-content}}
+@media(max-width:530px){.r1146-toolbar{grid-template-columns:1fr 1fr;gap:6px}.r1146-toolbar>select{font-size:11px}.r1146-result-meta{align-items:start}}
