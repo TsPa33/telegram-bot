@@ -3,6 +3,7 @@ import {Link} from 'react-router-dom';
 import type {Row} from './api';
 import PowertrainEditor from './PowertrainEditor';
 import VehicleImage from './VehicleImage';
+import VehicleQuickPowertrain from './VehicleQuickPowertrain';
 
 type Props={vehicle:Row;context:'vehicles'|'inventory';onParts:()=>void;onData?:()=>void;onSaved:(row:Row)=>void};
 export default function VehicleCard({vehicle:v,context,onParts,onData,onSaved}:Props) {
@@ -11,9 +12,10 @@ export default function VehicleCard({vehicle:v,context,onParts,onData,onSaved}:P
   <div className="r1141-card-top"><div className="r1141-car-photo"><VehicleImage vehicle={v}/><span>Довідкова ілюстрація</span></div>
    <div className="r1141-car-main"><div className="r1141-car-title"><button type="button" className="text-button vehicle-card-name" onClick={onData||onParts}>{name}</button><span className="r1141-status">{v.archived?'Архів':v.status==='completed'?'Розбір завершено':v.status==='planned'?'Заплановано':'На розборі'}</span></div>
     <p>{v.year} · Донор №{v.number??'—'}</p>
-    <div className="r1141-specs"><span>Двигун: {v.engine||'Не вказано'}</span><span>КПП: {v.transmission||'Не вказано'}</span><span>VIN: {v.vin||'Не вказано'}</span></div>
+    {v.vin&&<small className="r1143-vin">VIN: {v.vin}</small>}
    </div>
   </div>
+  <VehicleQuickPowertrain vehicle={v} onSaved={onSaved}/>
   <div className="r1141-car-bottom"><div className="r1141-stock"><CarFront size={17}/><strong>{v.stock_positions??'—'}</strong><span>позицій на складі</span></div>
    <div className="r1141-car-actions"><button type="button" className="secondary" onClick={onData||onParts}><ClipboardList size={15}/> Картка авто</button><button type="button" className="primary" onClick={onParts}>Розбір <ArrowRight size={15}/></button></div>
   </div>
