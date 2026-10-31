@@ -134,20 +134,23 @@ def analyze_payload(raw,filename):
     if not by_id:raise HTTPException(422,'Не знайдено модифікацій автомобілів')
     return sha, list(by_id.values())
 
-def apply_payload(db,raw,filename,dry_run=True):
+def apply_payload(db,raw,filename,account_id,dry_run=True):
     sha,rows=analyze_payload(raw,filename)
+    for r in rows:
+        r['id']=hashlib.sha256((account_id+':'+r['id']).encode('utf-8')).hexdigest()
+        r['account_id']=account_id
     ids=[r['id'] for r in rows]
     existing=set()
     # One batched query per 1000 keys, avoiding PostgreSQL parameter count limits.
     for n in range(0,len(ids),1000):
-        existing.update(db.scalars(select(VehicleDirectoryVariant.id).where(VehicleDirectoryVariant.id.in_(ids[n:n+1000]))))
+        existing.update(db.scalars(select(VehicleDirectoryVariant.id).where(VehicleDirectoryVariant.account_id==account_id,VehicleDirectoryVariant.id.in_(ids[n:n+1000]))))
     fresh=[r for r in rows if r['id'] not in existing]
     result={'sha256':sha,'file':filename[:200],'source_rows':len(rows),'existing':len(rows)-len(fresh),
             'new':len(fresh),'dry_run':dry_run,'no_donor_changes':True}
     if dry_run:return result
     # Serialize importers in a global transaction and re-check after lock.
     db.execute(text('SELECT pg_advisory_xact_lock(6751982026)'))
-    already=db.get(VehicleDirectoryImport,sha)
+    already=db.get(VehicleDirectoryImport,(sha,account_id))
     if already:
         return {**result,'new':0,'existing':len(rows),'already_imported':True}
     inserted=0
@@ -155,7 +158,7 @@ def apply_payload(db,raw,filename,dry_run=True):
         payload=[dict(r,source_sha=sha) for r in rows[n:n+400]]
         stmt=pg_insert(VehicleDirectoryVariant).values(payload).on_conflict_do_nothing(index_elements=['id'])
         inserted+=db.execute(stmt).rowcount
-    db.add(VehicleDirectoryImport(source_sha=sha,filename=filename[:200],record_count=len(rows),
+    db.add(VehicleDirectoryImport(account_id=account_id,source_sha=sha,filename=filename[:200],record_count=len(rows),
                                   inserted_count=inserted,imported_at=datetime.now(timezone.utc)))
     db.commit()
     return {**result,'new':inserted,'existing':len(rows)-inserted,'dry_run':False}
