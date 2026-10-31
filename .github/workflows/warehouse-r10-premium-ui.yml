@@ -1,0 +1,30 @@
+name: R10 Premium Warehouse UI
+on:
+  push:
+    branches:
+      - feature/warehouse-premium-emerald-r10
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: r10-premium-ui
+  cancel-in-progress: true
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: warehouse/frontend/package-lock.json
+      - name: Install dependencies
+        working-directory: warehouse/frontend
+        run: npm ci
+      - name: TypeScript and Vite production build
+        working-directory: warehouse/frontend
+        run: npm run build
+      - name: Unit regression and color contrast checks
+        working-directory: warehouse/frontend
+        run: node --test tests/*-unit.mjs
