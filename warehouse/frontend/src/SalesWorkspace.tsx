@@ -104,7 +104,22 @@ function SalesWorkspaceContent({quick=false,notify,accountId,grouped=false,inven
   {!quick&&<section className="ui3-results" aria-label="Список складу"><StockTree compact searching={!!term.trim()} rows={rows} categories={categories} tableHead={<InventoryTableHead/>} groupActions={canSelect?(items,label)=><span onClick={e=>e.stopPropagation()}><SelectionCheck ids={items.map(p=>p.id)} selected={new Set(pricingSelected)} label={`Вибрати групу ${label}`} disabled={false} onToggle={checked=>select(items.map(p=>p.id),checked)}/></span>:undefined} render={p=><InventoryPartRow part={p} categories={categories} vehicle={vehicles.find(v=>v.id===p.vehicle_id)} market={market.rows[p.id]} marketError={market.error} selected={pricingSelected.includes(p.id)} canSelect={canSelect} onSelect={checked=>select([p.id],checked)} onOpen={()=>openDetail(p)} onSaved={updated} actions={actions(p)}/>}/>{!waiting&&!error&&!rows.length&&<Empty title="Нічого не знайдено">Змініть фільтри або автомобіль.</Empty>}</section>}
   {quick&&<section className="ui4-results" aria-label="Результати пошуку">
    <p className="ui4-count" role="status">{waiting?'Пошук…':error?'Результати недоступні':`Знайдено ${data?.total||0} результатів`}</p>
-   {!!rows.length&&<><InventoryTableHead/>{rows.map(p=><InventoryPartRow key={p.id} part={p} categories={categories} vehicle={vehicles.find(v=>v.id===p.vehicle_id)||p.donor} market={market.rows[p.id]} marketError={market.error} selected={false} canSelect={false} onSelect={()=>{}} onOpen={()=>openDetail(p)} onSaved={updated} actions={actions(p)} photo={<SearchPartPhoto id={p.id} name={p.name}/>} extra={<><small>{labels[p.condition]}</small>{smart&&p.match_explanation&&<small className="smart-match">{p.match_explanation}</small>}</>}/>)}<Pager total={data?.total||0} page={page} setPage={setPage}/></>}
+   {!!rows.length&&<div className="ui11-results-layout">
+    <div className="ui11-results-list"><InventoryTableHead/>{rows.map(p=><div key={p.id} className={'ui11-result-wrap'+(previewPart?.id===p.id?' selected':'')}>
+     <InventoryPartRow part={p} categories={categories} vehicle={vehicles.find(v=>v.id===p.vehicle_id)||p.donor} market={market.rows[p.id]} marketError={market.error} selected={false} canSelect={false} onSelect={()=>{}} onOpen={()=>openDetail(p)} onSaved={updated} actions={actions(p)} photo={<SearchPartPhoto id={p.id} name={p.name}/>} extra={<>
+      {(p.oem_number||p.article_number)&&<small className="ui11-codes">{p.oem_number&&`OEM: ${p.oem_number}`}{p.oem_number&&p.article_number?' · ':''}{p.article_number&&`Артикул: ${p.article_number}`}</small>}
+      <small>{labels[p.condition]||'Стан не уточнено'}</small>
+      {smart&&p.match_explanation&&<small className="smart-match">{p.match_explanation}</small>}
+      <button type="button" className="ui11-quick-view" aria-pressed={previewPart?.id===p.id} onClick={()=>setPreviewId(p.id)}>Швидкий перегляд</button>
+     </>}/></div>)}
+     <Pager total={data?.total||0} page={page} setPage={setPage}/>
+    </div>
+    <SearchPartPreview part={previewPart} vehicle={previewVehicle}
+      category={categories.find(c=>c.id===previewPart?.category_id)}
+      subcategory={categories.find(c=>c.id===previewPart?.subcategory_id)}
+      canSell={can('sales.create')} onOpen={()=>{if(previewPart)openDetail(previewPart);}}
+      onSell={()=>{if(previewPart)openAction(previewPart,'sale');}}/>
+   </div>}
    {!waiting&&!error&&(!smart||smartReady)&&!(data as Row)?.clarification&&!rows.length&&<Empty title="Нічого не знайдено">Змініть назву або автомобіль.</Empty>}
   </section>}
   {stockBulk&&<StockBulkDialog ids={pricingSelected} onClose={()=>setStockBulk(false)} onSaved={()=>{setStockBulk(false);setPricingSelected([]);window.dispatchEvent(new Event('warehouse:inventory-changed'));notify('Масову операцію проведено');}}/>}
