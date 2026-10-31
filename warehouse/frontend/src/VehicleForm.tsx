@@ -26,7 +26,8 @@ export default function VehicleForm({initial, fields, onSave}: {initial: Row; fi
    api<string[]>('/vehicle-directory/models?brand='+encodeURIComponent(brand)).then(rows=>{if(active)setDirectoryModels(rows)}).catch(()=>{if(active)setDirectoryModels([])});
    return()=>{active=false};
   },[brand,provider]);
-  const brandOptions=[...new Set([...(local.data?.brands||[]).map(b=>b.name),...(directoryBrands.data||[])])].sort((a,b)=>a.localeCompare(b,'uk'));
+  const brandCandidates=[...(local.data?.brands||[]).map(b=>b.name),...(directoryBrands.data||[])];
+  const brandOptions=[...new Map(brandCandidates.map(name=>[name.toLocaleLowerCase('uk'),name]).reverse()).values()].sort((a,b)=>a.localeCompare(b,'uk'));
   const modelOptions=[...new Set([...(local.data?.brands.find(b=>b.name===brand)?.models||[]),...directoryModels])].sort((a,b)=>a.localeCompare(b,'uk'));
   function resetModel() {generation.current++; setModel(""); setModelId(""); setYear(""); setEngine(""); setKtype(""); setMods([]);setSelectedDirectory(null);}
   async function lookup(resource: string, query = "") {
