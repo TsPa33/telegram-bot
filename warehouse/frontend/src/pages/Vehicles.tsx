@@ -2,7 +2,7 @@ import {Permit,useCan} from '../permissions';
 import { ArrowLeft, CarFront, Pencil, Plus, Search, LayoutGrid, List, ClipboardCheck, History, Package, Wrench, Cog, Info, Images, Coins } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { api, labels, money, when, type Page, type Row } from "../api";
+import { api, all, labels, money, when, type Row } from "../api";
 import { Empty, Modal, Pager, RecordForm, type Field } from "../components";
 import VehicleForm from "../VehicleForm";
 import AletoCatalogue from "../AletoCatalogue";
@@ -14,6 +14,7 @@ import VehicleCard from "../VehicleCard";
 import "../warehouse-ux1.css";
 import "../vehicles-r114.css";
 import "../vehicles-r1144.css";
+import "../vehicles-r1146.css";
 import VehicleDonorPhotos from "../VehicleDonorPhotos";
 import VehicleIdentityForm from "../VehicleIdentityForm";
 import VehicleSpecificationsForm from "../VehicleSpecificationsForm";
@@ -62,8 +63,25 @@ const vehicleFields: Field[] = [
 ];
 export default function Vehicles({notify}:{notify:Notify}) {
   const can=useCan();
-  const [view,setView]=useState<'cards'|'table'>('cards'),[statusFilter,setStatusFilter]=useState(''),[q,setQ]=useState(''),[page,setPage]=useState(0),[edit,setEdit]=useState<Row|null>(null),[created,setCreated]=useState<Row|null>(null),[detail,setDetail]=useState<Row|null>(null),[confirm,setConfirm]=useState<Row|null>(null),[showInfo,setShowInfo]=useState(false);
-  const {data,error,loading,reload}=useLoad(()=>api<Page>(`/vehicles?q=${encodeURIComponent(q)}&limit=50&offset=${page*50}`),[q,page]);
+  const [view,setView]=useState<'cards'|'table'>('cards'),[statusFilter,setStatusFilter]=useState(''),[brandFilter,setBrandFilter]=useState(''),[modelFilter,setModelFilter]=useState(''),[yearFilter,setYearFilter]=useState(''),[q,setQ]=useState(''),[page,setPage]=useState(0),[edit,setEdit]=useState<Row|null>(null),[created,setCreated]=useState<Row|null>(null),[detail,setDetail]=useState<Row|null>(null),[confirm,setConfirm]=useState<Row|null>(null),[showInfo,setShowInfo]=useState(false);
+  // The workshop currently holds tens of donors. Fetch all account-scoped pages so every
+  // filter works on the entire dataset (not merely one displayed page).
+  const {data,error,loading,reload}=useLoad(()=>all('/vehicles'),[]);
+  const vehicles:Row[]=data||[];
+  const unique=(values:string[])=>[...new Set(values.filter(Boolean))].sort((a,b)=>a.localeCompare(b,'uk'));
+  const brands=unique(vehicles.map(v=>String(v.manufacturer||'')));
+  const models=unique(vehicles.filter(v=>!brandFilter||v.manufacturer===brandFilter).map(v=>String(v.model||'')));
+  const years=unique(vehicles.filter(v=>(!brandFilter||v.manufacturer===brandFilter)&&(!modelFilter||v.model===modelFilter)).map(v=>String(v.year||''))).sort((a,b)=>Number(b)-Number(a));
+  const query=q.trim().toLocaleLowerCase('uk');
+  const filtered=vehicles.filter(v=>{
+   if(statusFilter&&v.status!==statusFilter)return false;
+   if(brandFilter&&v.manufacturer!==brandFilter)return false;
+   if(modelFilter&&v.model!==modelFilter)return false;
+   if(yearFilter&&String(v.year)!==yearFilter)return false;
+   if(!query)return true;
+   return [v.manufacturer,v.model,v.year,v.number,v.donor_id,v.vin].some(value=>String(value??'').toLocaleLowerCase('uk').includes(query));
+  });
+  const visible=filtered.slice(page*50,(page+1)*50);
   const navigate=useNavigate(),[params,setParams]=useSearchParams(),donorId=params.get('donor');
   function openDetail(row:Row,info=false){setShowInfo(info);setDetail(row);setParams({donor:row.id,...(info?{info:'1'}:{})});}
   function closeDetail(){setDetail(null);setParams({});}
@@ -79,25 +97,33 @@ export default function Vehicles({notify}:{notify:Notify}) {
       <Permit permission="vehicles.create"><button className="secondary" onClick={()=>setEdit({status:'dismantling'})}><Plus size={17}/>Додати автомобіль</button></Permit>
     </Heading>
     {created&&<p role="status">Додано: {created.manufacturer} {created.model} · {created.year}. <button onClick={()=>openDetail(created)}>Відкрити картку</button></p>}
-    <div className="r114-toolbar">
-      <label className="search vehicle-search"><Search size={17}/><input aria-label="Пошук автомобілів" placeholder="Марка, модель, номер або VIN" value={q} onChange={e=>{setQ(e.target.value);setPage(0);}}/></label>
-      <select aria-label="Фільтр статусу автомобіля" value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}><option value="">Усі статуси</option><option value="planned">Заплановано</option><option value="dismantling">На розборі</option><option value="completed">Завершено</option></select>
-      <div className="r114-view-toggle" role="group" aria-label="Режим відображення"><button type="button" aria-pressed={view==='cards'} onClick={()=>setView('cards')}><LayoutGrid size={15}/> Плитка</button><button type="button" aria-pressed={view==='table'} onClick={()=>setView('table')}><List size={15}/> Таблиця</button></div>
+    <div className="r114-toolbar r1146-toolbar">
+     <label className="search vehicle-search"><Search size={17}/><input aria-label="Пошук автомобілів" placeholder="Марка, модель, номер або VIN" value={q} onChange={e=>{setQ(e.target.value);setPage(0);}}/></label>
+     <select aria-label="Фільтр статусу автомобіля" value={statusFilter} onChange={e=>{setStatusFilter(e.target.value);setPage(0);}}><option value="">Усі статуси</option><option value="planned">Заплановано</option><option value="dismantling">На розборі</option><option value="completed">Завершено</option></select>
+     <select aria-label="Фільтр марки" value={brandFilter} onChange={e=>{setBrandFilter(e.target.value);setModelFilter('');setYearFilter('');setPage(0)}}><option value="">Усі марки</option>{brands.map(v=><option key={v} value={v}>{v}</option>)}</select>
+     <select aria-label="Фільтр моделі" value={modelFilter} onChange={e=>{setModelFilter(e.target.value);setYearFilter('');setPage(0)}}><option value="">Усі моделі</option>{models.map(v=><option key={v} value={v}>{v}</option>)}</select>
+     <select aria-label="Фільтр року" value={yearFilter} onChange={e=>{setYearFilter(e.target.value);setPage(0)}}><option value="">Усі роки</option>{years.map(v=><option key={v} value={v}>{v}</option>)}</select>
+     <div className="r114-view-toggle" role="group" aria-label="Режим відображення"><button type="button" aria-pressed={view==='cards'} onClick={()=>setView('cards')}><LayoutGrid size={15}/> Плитка</button><button type="button" aria-pressed={view==='table'} onClick={()=>setView('table')}><List size={15}/> Таблиця</button></div>
     </div>
     <State error={error} loading={loading}/>
-    {data&&<div className="r114-summary" aria-label="Автомобілі на поточній сторінці"><div><CarFront size={18}/><span><strong>{data.total}</strong><small>Усього автомобілів</small></span></div><div><Wrench size={18}/><span><strong>{data.items.filter(v=>v.status==='dismantling').length}</strong><small>На розборі (ця сторінка)</small></span></div><div><Package size={18}/><span><strong>{data.items.reduce((n,v)=>n+(Number(v.stock_positions)||0),0).toLocaleString('uk-UA')}</strong><small>Позицій на складі (ця сторінка)</small></span></div><div><ClipboardCheck size={18}/><span><strong>{data.items.filter(v=>v.status==='completed').length}</strong><small>Завершено (ця сторінка)</small></span></div></div>}
-    {(()=>{const items=(data?.items||[]).filter(v=>!statusFilter||v.status===statusFilter);return view==='cards'?<section className="vehicle-grid r114-grid" aria-label="Список автомобілів">
-      {items.map(v=><VehicleCard key={v.id} vehicle={v} context="vehicles" onParts={()=>openDetail(v)} onData={()=>openDetail(v,true)} onSaved={saved}/>)}
-      {!loading&&!items.length&&<Empty title={q||statusFilter?'Автомобілів не знайдено':'Додайте перший автомобіль'}>Змініть пошук або фільтр.</Empty>}
-    </section>:<section className="r114-table-wrap" aria-label="Таблиця автомобілів"><table><thead><tr><th>Автомобіль</th><th>Рік / №</th><th>Статус</th><th>Позицій</th><th>Дії</th></tr></thead><tbody>{items.map(v=><tr key={v.id}><td><strong>{v.manufacturer} {v.model}</strong><small>{v.vin?'VIN: '+v.vin:'VIN не вказано'}</small></td><td>{v.year} · №{v.number??'—'}</td><td>{labels[v.status]||'Не уточнено'}</td><td>{v.stock_positions??'—'}</td><td><button onClick={()=>openDetail(v,true)}>Картка авто</button><button onClick={()=>openDetail(v)}>Розбір</button></td></tr>)}</tbody></table>{!loading&&!items.length&&<p>Автомобілів не знайдено.</p>}</section>})()}
-    {data&&<Pager total={data.total} page={page} setPage={setPage}/>}</>}
+    {data&&<div className="r114-summary" aria-label="Показники автомобілів"><div><CarFront size={18}/><span><strong>{vehicles.length}</strong><small>Усього автомобілів</small></span></div><div><Wrench size={18}/><span><strong>{vehicles.filter(v=>v.status==='dismantling').length}</strong><small>На розборі</small></span></div><div><Package size={18}/><span><strong>{vehicles.reduce((n,v)=>n+(Number(v.stock_positions)||0),0).toLocaleString('uk-UA')}</strong><small>Позицій на складі</small></span></div><div><ClipboardCheck size={18}/><span><strong>{vehicles.filter(v=>v.status==='completed').length}</strong><small>Завершено</small></span></div></div>}
+    {data&&<div className="r1146-result-meta"><span>Знайдено: <strong>{filtered.length}</strong> автомобілів</span>{(q||statusFilter||brandFilter||modelFilter||yearFilter)&&<button type="button" onClick={()=>{setQ('');setStatusFilter('');setBrandFilter('');setModelFilter('');setYearFilter('');setPage(0)}}>Скинути фільтри</button>}</div>}
+    {view==='cards'?<section className="vehicle-grid r114-grid" aria-label="Список автомобілів">
+     {visible.map(v=><VehicleCard key={v.id} vehicle={v} context="vehicles" onParts={()=>openDetail(v)} onData={()=>openDetail(v,true)} onSaved={saved}/>)}
+     {!loading&&!visible.length&&<Empty title={q||statusFilter||brandFilter||modelFilter||yearFilter?'Автомобілів не знайдено':'Додайте перший автомобіль'}>Змініть фільтри або створіть автомобіль.</Empty>}
+    </section>:<section className="r114-table-wrap" aria-label="Таблиця автомобілів">
+     <table><thead><tr><th>Автомобіль</th><th>Рік / №</th><th>Двигун / паливо</th><th>КПП</th><th>Статус</th><th>Позицій</th><th>Дії</th></tr></thead>
+      <tbody>{visible.map(v=><tr key={v.id}><td><strong>{v.manufacturer} {v.model}</strong><small>{v.vin?'VIN: '+v.vin:'VIN не вказано'}</small></td><td>{v.year} · №{v.number??'—'}</td><td>{[v.engine_displacement_l?v.engine_displacement_l+' л':null,v.fuel_type,v.engine_variant].filter(Boolean).join(' · ')||v.engine||'Не вказано'}</td><td>{v.transmission||'Не вказано'}{v.drive_type?' · '+v.drive_type:''}</td><td>{labels[v.status]||'Не уточнено'}</td><td>{v.stock_positions??'—'}</td><td><button onClick={()=>openDetail(v,true)}>Картка авто</button><button onClick={()=>openDetail(v)}>Розбір</button></td></tr>)}</tbody>
+     </table>{!loading&&!visible.length&&<p>Автомобілів не знайдено.</p>}
+    </section>}
+    {filtered.length>50&&<Pager total={filtered.length} page={page} setPage={setPage}/>}</>}
     {edit&&<Modal title={edit.id?'Редагувати автомобіль':'Новий автомобіль-донор'} onClose={()=>setEdit(null)}>
       {edit.id?<RecordForm initial={edit} fields={vehicleFields.filter(f=>f.key!=='acquisition_cost'||can('parts.view_cost'))} submit="Зберегти зміни" onSave={async values=>{
         const row=await api('/vehicles/'+edit.id,'PUT',values);
         saved(row);setEdit(null);notify('Дані автомобіля збережено');
       }}/>:<VehicleForm initial={edit} fields={vehicleFields.filter(f=>f.key!=='acquisition_cost'||can('parts.view_cost'))} onSave={async values=>{
         const row=await api('/vehicles'+(edit.id?'/'+edit.id:''),edit.id?'PUT':'POST',values);
-        if(!edit.id){setCreated(row);setQ('');setPage(0);}saved(row);setEdit(null);notify('Дані автомобіля збережено');
+        if(!edit.id){setCreated(row);setQ('');setStatusFilter('');setBrandFilter('');setModelFilter('');setYearFilter('');setPage(0);}saved(row);setEdit(null);notify('Дані автомобіля збережено');
       }}/>} 
     </Modal>}
     {detail&&<section className="ux1-workspace" aria-label="Автомобіль і запчастини"><button className="ux1-back" onClick={closeDetail}><ArrowLeft size={16}/>Автомобілі</button>

@@ -1,0 +1,85 @@
+/* R11.4.6 — full vehicle LIST, not the separate donor profile. */
+.r114-grid{gap:13px;align-items:start}
+.r114-grid .r1146-card{display:flex;flex-direction:column;gap:0;min-width:0;padding:14px 16px 12px;min-height:0;border:1px solid #dbe8e1;border-radius:12px;background:#fff;box-shadow:0 3px 10px #10332b06}
+.r114-grid .r1146-card:hover{border-color:#9ac6b1;box-shadow:0 5px 17px #10332b0c}
+.r1146-card-intro{display:grid;grid-template-columns:minmax(120px,25%) minmax(0,1fr);gap:16px;align-items:start;min-width:0}
+.r1146-card-photo{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:0;min-height:133px;overflow:hidden}
+.r1146-card-photo .vehicle-image-shell{width:100%;max-width:190px}
+.r1146-card-photo .vehicle-image{height:103px;min-height:0;margin:0}
+.r1146-card-photo .vehicle-image img{opacity:1;filter:none;mask-image:none;-webkit-mask-image:none}
+.r1146-card-photo>small{font-size:9px;line-height:1.3;color:#687d74;text-align:center}
+.r1146-card-summary{display:grid;gap:15px;min-width:0}
+.r1146-card-heading{display:flex;align-items:start;justify-content:space-between;gap:8px;min-width:0}
+.r1146-card-heading>div{min-width:0}
+.r1146-card-heading .vehicle-card-name{font-size:20px;line-height:1.18;min-height:0;font-weight:750;letter-spacing:-.45px}
+.r1146-card-heading p{margin:5px 0 0;color:#63776e;font-size:11px}
+.r1146-card-heading .r1141-status{white-space:nowrap;flex:none;font-size:10px;padding:5px 8px}
+.r1146-spec-editor{min-width:0;display:grid;gap:8px}
+.r1146-spec-row{display:grid;gap:7px;min-width:0}
+.r1146-engine-row{grid-template-columns:repeat(3,minmax(0,1fr))}
+.r1146-drive-row{grid-template-columns:minmax(0,1fr) minmax(0,.85fr)}
+.r1146-spec{display:grid;gap:5px;min-width:0}
+.r1146-spec-label{display:inline-flex;align-items:center;gap:5px;min-width:0;font-size:10px;font-weight:650;color:#516c60}
+.r1146-spec-label svg{flex:none;color:#0a7359}
+.r1146-spec select{width:100%;min-width:0;height:36px;min-height:36px;padding:6px 24px 6px 9px;border:1px solid #d8e5dd;border-radius:7px;background-color:#fafcfb;color:#1c3930;font-size:11px;font-weight:650;text-overflow:ellipsis;cursor:pointer}
+.r1146-spec select:disabled{cursor:default;opacity:.72}
+.r1146-spec select:focus-visible,.r1146-custom input:focus-visible{outline:2px solid #0a775c;outline-offset:2px}
+.r1146-legacy{display:flex;justify-content:space-between;align-items:center;gap:9px;min-width:0;padding:8px 9px;background:#eff8f2;border:1px solid #d4e9db;border-radius:7px;color:#446354;font-size:10px;line-height:1.35}
+.r1146-legacy span{min-width:0;overflow-wrap:anywhere}
+.r1146-legacy button{flex:none;white-space:nowrap;padding:5px 7px;min-height:28px;border-radius:6px;color:#00644b;background:#fff;border:1px solid #b6d8c3;font-size:10px;font-weight:650}
+.r1146-custom{display:flex;align-items:end;gap:6px;flex-wrap:wrap;border:1px solid #c6e0d2;border-radius:8px;padding:8px;background:#f5faf7}
+.r1146-custom label{display:grid;gap:5px;flex:1 1 140px;min-width:0;font-size:11px}
+.r1146-custom input{min-width:0;width:100%;height:35px;padding:7px 9px;border:1px solid #d8e5dd;border-radius:7px;font-size:12px}
+.r1146-custom button{font-size:11px;padding:7px 8px;min-height:35px}
+.r1146-error{display:flex;gap:5px;align-items:center;color:#a82e2e;font-size:11px;margin:0}
+.r1146-feedback{color:#087350;font-size:10px}
+.r1146-card-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0;border-top:1px solid #e5eee8;padding-top:11px;margin-top:12px}
+.r1146-card-footer .r1141-stock{gap:6px;min-width:0}
+.r1146-card-footer .r1141-stock strong{font-size:20px;line-height:1.2}
+.r1146-card-footer .r1141-stock span{font-size:10px;line-height:1.2;color:#516c60}
+.r1146-card-footer .r1141-car-actions{flex:none;gap:7px}
+.r1146-card-footer .r1141-car-actions button{min-height:36px;font-size:11px;border-radius:8px;padding:8px 10px;white-space:nowrap}
+.r1146-card-footer .r1141-car-actions .primary{background:#00654c;border-color:#00654c}
+.r1146-card-footer .r1141-car-actions .secondary{background:#fff}
+@media(max-width:1560px) and (min-width:1051px){
+ .r1146-card-intro{grid-template-columns:minmax(0,1fr);gap:8px}
+ .r1146-card-photo{align-items:flex-end;position:absolute;right:16px;top:12px;max-width:138px;min-height:70px;opacity:.96}
+ .r1146-card-photo .vehicle-image{height:70px}
+ .r1146-card-summary{padding-top:3px}
+ .r1146-card-heading{padding-right:135px;min-height:79px;flex-wrap:wrap}
+ .r1146-card-heading .r1141-status{align-self:start}
+ .r1146-card-heading .vehicle-card-name{font-size:19px}
+ .r1146-spec-editor{margin-top:2px}
+}
+@media(max-width:1180px){
+ .r114-grid{grid-template-columns:1fr}
+ .r1146-card-intro{grid-template-columns:160px minmax(0,1fr);gap:16px}
+ .r1146-card-photo{position:static;align-items:center;opacity:1;max-width:none;min-height:120px}
+ .r1146-card-photo .vehicle-image{height:100px}
+ .r1146-card-heading{padding-right:0;min-height:0}
+}
+@media(max-width:640px){
+ .r114-grid .r1146-card{padding:12px}
+ .r1146-card-intro{grid-template-columns:1fr}
+ .r1146-card-photo{order:2;min-height:75px}
+ .r1146-card-photo .vehicle-image{height:79px}
+ .r1146-card-summary{order:1}
+ .r1146-engine-row{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .r1146-card-footer{flex-wrap:wrap}
+ .r1146-card-footer .r1141-car-actions{width:100%;flex:1}
+ .r1146-card-footer .r1141-car-actions button{flex:1}
+}
+@media(max-width:390px){.r1146-engine-row,.r1146-drive-row{grid-template-columns:1fr}}
+
+/* Search/filter controls belong to the vehicles listing only. */
+.r1146-toolbar{display:grid;grid-template-columns:minmax(230px,1.9fr) repeat(4,minmax(118px,.9fr)) auto;gap:8px;align-items:center;margin:12px 0}
+.r1146-toolbar .vehicle-search{min-width:0;width:100%;margin:0;max-width:none;flex:none}
+.r1146-toolbar>select{width:100%;min-width:0;height:44px;margin:0;border:1px solid #d7e4dd;background:#fff;border-radius:9px;padding:0 10px;font-size:12px;color:#254639}
+.r1146-toolbar>select:focus-visible{outline:2px solid #087759;outline-offset:2px}
+.r1146-toolbar .r114-view-toggle{margin:0;white-space:nowrap}
+.r1146-result-meta{display:flex;justify-content:space-between;align-items:center;gap:9px;margin:0 0 11px;font-size:11px;color:#5d776b}
+.r1146-result-meta strong{color:#214f3f}
+.r1146-result-meta button{border:0;background:transparent;color:#006e55;font-size:11px;font-weight:650;text-decoration:underline;padding:3px 6px}
+@media(max-width:1500px){.r1146-toolbar{grid-template-columns:minmax(230px,2fr) repeat(2,minmax(130px,1fr)) auto}.r1146-toolbar>select:nth-of-type(3),.r1146-toolbar>select:nth-of-type(4){grid-row:2}.r1146-toolbar .r114-view-toggle{grid-column:-2;grid-row:2}}
+@media(max-width:920px){.r1146-toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}.r1146-toolbar .vehicle-search{grid-column:1/-1}.r1146-toolbar>select:nth-of-type(3),.r1146-toolbar>select:nth-of-type(4){grid-row:auto}.r1146-toolbar .r114-view-toggle{grid-column:1/-1;grid-row:auto;width:max-content}}
+@media(max-width:530px){.r1146-toolbar{grid-template-columns:1fr 1fr;gap:6px}.r1146-toolbar>select{font-size:11px}.r1146-result-meta{align-items:start}}

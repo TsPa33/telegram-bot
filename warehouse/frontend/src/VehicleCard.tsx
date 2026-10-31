@@ -1,4 +1,4 @@
-import {ArrowRight, CarFront, ClipboardList} from 'lucide-react';
+import {ArrowRight, CarFront, ClipboardList, Package} from 'lucide-react';
 import {Link} from 'react-router-dom';
 import type {Row} from './api';
 import PowertrainEditor from './PowertrainEditor';
@@ -8,16 +8,20 @@ import VehicleQuickPowertrain from './VehicleQuickPowertrain';
 type Props={vehicle:Row;context:'vehicles'|'inventory';onParts:()=>void;onData?:()=>void;onSaved:(row:Row)=>void};
 export default function VehicleCard({vehicle:v,context,onParts,onData,onSaved}:Props) {
  const name=`${v.manufacturer} ${v.model}`;
- if(context==='vehicles')return <article className="vehicle-card vehicle-summary-card r1141-card">
-  <div className="r1141-card-top"><div className="r1141-car-photo"><VehicleImage vehicle={v}/><span>Довідкова ілюстрація</span></div>
-   <div className="r1141-car-main"><div className="r1141-car-title"><button type="button" className="text-button vehicle-card-name" onClick={onData||onParts}>{name}</button><span className="r1141-status">{v.archived?'Архів':v.status==='completed'?'Розбір завершено':v.status==='planned'?'Заплановано':'На розборі'}</span></div>
-    <p>{v.year} · Донор №{v.number??'—'}</p>
-    {v.vin&&<small className="r1143-vin">VIN: {v.vin}</small>}
+ if(context==='vehicles')return <article className="vehicle-card vehicle-summary-card r1141-card r1146-card">
+  <div className="r1146-card-intro">
+   <div className="r1146-card-photo"><VehicleImage vehicle={v}/><small>Довідкова ілюстрація</small></div>
+   <div className="r1146-card-summary">
+    <div className="r1146-card-heading">
+     <div><button type="button" className="text-button vehicle-card-name" onClick={onData||onParts}>{name}</button><p>{v.year} · Донор №{v.number??'—'}</p></div>
+     <span className="r1141-status">{v.archived?'Архів':v.status==='completed'?'Завершено':v.status==='planned'?'Заплановано':'На розборі'}</span>
+    </div>
+    <VehicleQuickPowertrain vehicle={v} onSaved={onSaved}/>
    </div>
   </div>
-  <VehicleQuickPowertrain vehicle={v} onSaved={onSaved}/>
-  <div className="r1141-car-bottom"><div className="r1141-stock"><CarFront size={17}/><strong>{v.stock_positions??'—'}</strong><span>позицій на складі</span></div>
-   <div className="r1141-car-actions"><button type="button" className="secondary" onClick={onData||onParts}><ClipboardList size={15}/> Картка авто</button><button type="button" className="primary" onClick={onParts}>Розбір <ArrowRight size={15}/></button></div>
+  <div className="r1146-card-footer">
+   <div className="r1141-stock"><Package size={18} aria-hidden="true"/><strong>{v.stock_positions??'—'}</strong><span>позицій на складі</span></div>
+   <div className="r1141-car-actions"><button type="button" className="secondary" onClick={onData||onParts}><ClipboardList size={15}/> Картка авто</button><button type="button" className="primary" onClick={onParts}>Розбір <ArrowRight size={16}/></button></div>
   </div>
  </article>;
  return <article className="vehicle-card donor-stock-card">
