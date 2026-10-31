@@ -5,14 +5,22 @@ export default function SearchSelect({label, value, options, disabled = false, m
   label: string; value: string; options: Option[]; disabled?: boolean;
   manual?: boolean; required?: boolean; onChange: (value: string) => void;
 }) {
-  const id = useId(), input = useRef<HTMLInputElement>(null), typing = useRef(false);
+  const id = useId(), input = useRef<HTMLInputElement>(null), list = useRef<HTMLUListElement>(null), typing = useRef(false);
   const selected = options.find(o => o.value === value)?.label || value;
   const [query, setQuery] = useState(selected), [open, setOpen] = useState(false), [active, setActive] = useState(-1);
   useEffect(() => {if(typing.current) {typing.current=false;return;} setQuery(selected); setOpen(false); setActive(-1);}, [selected]);
-  const filtered = options.filter(o => o.label.toLocaleLowerCase().includes(query.toLocaleLowerCase())).slice(0, 60);
+  // Never truncate search results: the imported vehicle directory contains 200+ brands.
+  // The list itself is scrollable and keyboard-navigation keeps the active item visible.
+  const filtered = options.filter(o => o.label.toLocaleLowerCase().includes(query.toLocaleLowerCase()));
   const rows = manual && query.trim() && !options.some(o => o.label.toLocaleLowerCase() === query.trim().toLocaleLowerCase())
     ? [...filtered, {value: query.trim(), label: `Використати «${query.trim()}»`}]: filtered;
   const index = Math.max(0, Math.min(active, Math.max(0, rows.length - 1)));
+  useEffect(() => {
+    if (!open || active < 0) return;
+    const item = list.current?.querySelector<HTMLElement>('[id="' + id + '-' + index + '"]');
+    item?.scrollIntoView({block:'nearest'});
+  }, [open, active, index, id]);
+  const showCount = filtered.length > 60;
   function choose(option: Option) {onChange(option.value); setQuery(option.label.startsWith("Використати «") ? option.value : option.label); setOpen(false);}
   return <div className="vehicle-combobox" onBlur={e => {if (!e.currentTarget.contains(e.relatedTarget)) setOpen(false);}}>
     <label htmlFor={id}>{label}{required ? " *" : ""}</label>
@@ -26,7 +34,8 @@ export default function SearchSelect({label, value, options, disabled = false, m
         if(e.key === "Escape") {e.preventDefault(); e.stopPropagation(); setOpen(false);}
         if(e.key === "Enter" && open) {e.preventDefault(); if(rows[index]) choose(rows[index]);}
       }} />
-    {open && <ul id={`${id}-list`} role="listbox" aria-label={label}>
+    {open && <ul ref={list} id={`${id}-list`} role="listbox" aria-label={label}>
+      {showCount && <li role="presentation" className="vehicle-combobox-hint">Усього {filtered.length} варіантів. Прокрутіть список або введіть назву.</li>}
       {rows.map((option, n) => <li role="option" id={`${id}-${n}`} key={option.value} aria-selected={n === index}
         onMouseDown={e => e.preventDefault()} onClick={() => {choose(option); input.current?.focus();}}>{option.label}</li>)}
       {!rows.length && <li role="presentation">Немає варіантів</li>}
