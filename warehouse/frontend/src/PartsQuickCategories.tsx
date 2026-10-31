@@ -40,7 +40,7 @@ export default function PartsQuickCategories({categories,selected,onSelect,smart
   <div className="ui11-category-heading"><span>Швидкий вибір категорії</span>
    {smart&&<small>Категорії доступні у звичайному пошуку</small>}
   </div>
-  <div className="ui11-category-grid">
+  <div className={'ui11-category-grid'+(expanded?' expanded':'')}>
    <button type="button" aria-pressed={!selected} className={'ui11-category-tile'+(!selected?' selected':'')} onClick={()=>onSelect('')}>
     <Boxes size={22} strokeWidth={1.7} aria-hidden="true"/><span>Усі категорії</span>
    </button>
