@@ -1,0 +1,14 @@
+/* R12 directory import and optional modification picker; no effect on donor list or inventory. */
+.r12-import{background:#fff;border:1px solid #dce8e1;border-radius:11px;padding:10px 14px;margin:10px 0 13px;max-width:780px}
+.r12-import>summary{display:flex;align-items:center;gap:7px;cursor:pointer;font-weight:650;font-size:12px;color:#075e48}
+.r12-import>p{color:#50695e;font-size:12px;line-height:1.55}
+.r12-import label{display:grid;gap:7px;font-size:12px;font-weight:600}
+.r12-import input[type=file]{padding:11px;border:1px dashed #a7c8b8;background:#f8fbf8;border-radius:9px;width:100%;max-width:100%;font-size:12px}
+.r12-import .modal-actions{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+.r12-import .modal-actions button{min-height:38px;padding:8px 12px;font-size:12px}
+.r12-import [role=status]{display:flex;align-items:center;gap:7px;color:#075e48;font-size:11px}
+.r12-import [role=alert]{display:flex;align-items:center;gap:7px;color:#b13232;font-size:11px}
+.r12-picker{grid-column:1/-1;border:1px solid #dae8e0;background:#f8fbf9;border-radius:9px;padding:11px}
+.r12-picker .vehicle-combobox{width:100%}
+.r12-picker small{display:block;font-size:11px;color:#566e63;margin-top:7px;line-height:1.4}
+.r12-picker .r12-variant-note{color:#08664b}
