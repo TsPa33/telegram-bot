@@ -182,7 +182,7 @@ export default function App() {
             </NavLink>
           ))}
         </nav>
-        {user.catalogue_platform_admin===true&&<NavLink to="/administration/catalogue/import"><ShieldCheck size={18}/>Адміністрування → Каталог → Імпорт</NavLink>}
+        {user.catalogue_platform_admin===true&&<NavLink to="/administration/catalogue/import"><ShieldCheck size={18}/>Адміністрування → Каталог</NavLink>}
         <NavLink className="settings-nav" to="/settings"><Settings2 size={18}/>Налаштування</NavLink>
         <div className="sidebar-foot">
           <div className="safe-dot" />
