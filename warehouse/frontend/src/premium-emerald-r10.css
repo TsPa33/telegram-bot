@@ -84,3 +84,18 @@ input[type=checkbox]{accent-color:#075544}
 .catalogue-admin-tabs button.catalogue-tab-current{min-height:130px}
 .catalogue-admin-tabs button{min-height:130px}
 @media(max-width:600px){.catalogue-admin-tabs button,.catalogue-admin-tabs button.catalogue-tab-current{min-height:110px}.catalogue-admin-tabs button>svg{padding:5px}}
+
+/* File import: the UI reports actual request states, never an invented percentage. */
+.catalogue-own-import{max-width:none}
+.catalogue-own-steps{list-style:none;margin:0 0 24px;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;max-width:860px}
+.catalogue-own-steps li{display:flex;align-items:center;gap:10px;padding:11px 12px;border:1px solid var(--color-border);border-radius:10px;background:#f8faf9;color:var(--color-secondary);font-size:12px;font-weight:650}
+.catalogue-own-steps li>span{display:grid;place-items:center;flex:none;border:1px solid var(--color-border);background:#fff;color:var(--color-secondary);border-radius:50%;width:26px;height:26px;font-weight:800}
+.catalogue-own-steps li.complete{border-color:#b6d8c8;background:#edf8f1;color:#075544}
+.catalogue-own-steps li.complete>span{border-color:#075544;background:#075544;color:white}
+.catalogue-own-steps li.current{border-color:#075544;box-shadow:0 0 0 2px #07554415;background:#f4fbf7;color:#075544}
+.catalogue-own-steps li.current>span{border-color:#075544;color:#075544}
+.catalogue-own-processing{display:flex;align-items:center;gap:15px;padding:17px;margin:16px 0;background:#eef7f1;border:1px solid #b9d9ca;border-radius:11px;max-width:650px}
+.catalogue-own-processing strong{font-size:13px}
+.catalogue-own-processing p{margin:4px 0;color:var(--color-secondary);font-size:12px}
+.catalogue-own-processing progress{width:100%;height:7px;accent-color:var(--color-accent)}
+@media(max-width:600px){.catalogue-own-steps{gap:5px}.catalogue-own-steps li{padding:8px 6px;gap:5px;font-size:10px}.catalogue-own-steps li>span{width:22px;height:22px}.catalogue-own-processing{align-items:flex-start;padding:12px}}
