@@ -6,6 +6,7 @@ import "./tokens.css";
 import "./style.css";
 import "./design-system.css";
 import "./vehicle-cards.css";
+import "./premium-emerald-r10.css";
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <BrowserRouter>
