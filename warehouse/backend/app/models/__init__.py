@@ -366,3 +366,5 @@ Index('ix_catalogue_price_oem',func.upper(func.regexp_replace(func.normalize(Cat
 Index('ix_aleto_price_oem',AletoOffer.account_id,func.upper(func.regexp_replace(func.normalize(AletoOffer.oem,literal_column('NFKC')),r'\s+','','g')))
 
 from app.models.import_runner import ImportJob,ImportJobEvent,ImportJobArtifact  # noqa: E402,F401
+
+from app.models.vehicle_directory import VehicleDirectoryVariant, VehicleDirectoryImport  # noqa: E402,F401
