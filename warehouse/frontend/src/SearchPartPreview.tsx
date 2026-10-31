@@ -1,14 +1,14 @@
-import {Package,MapPin,FileSearch,ShoppingCart,ExternalLink} from 'lucide-react';
+import {Package,MapPin,FileSearch,ShoppingCart,ExternalLink,X} from 'lucide-react';
 import {money,labels,type Row} from './api';
 import SearchPartPhoto from './SearchPartPhoto';
 import {categoryLabelUk} from './PartsQuickCategories';
 
-export default function SearchPartPreview({part,vehicle,category,subcategory,canSell,onOpen,onSell}:{
- part:Row|null;vehicle?:Row;category?:Row;subcategory?:Row;canSell:boolean;onOpen:()=>void;onSell:()=>void
+export default function SearchPartPreview({part,vehicle,category,subcategory,canSell,onOpen,onSell,open,onClose}:{
+ part:Row|null;vehicle?:Row;category?:Row;subcategory?:Row;canSell:boolean;onOpen:()=>void;onSell:()=>void;open:boolean;onClose:()=>void
 }){
- return <aside className="ui11-preview" aria-label="Швидкий перегляд запчастини">
+ return <aside id="search-part-preview" className={'ui11-preview'+(open?' open':'')} aria-label="Швидкий перегляд запчастини">
   {!part?<div className="ui11-preview-empty"><Package size={32} strokeWidth={1.2}/><strong>Оберіть запчастину</strong><p>Інформація про деталь з’явиться тут.</p></div>:<>
-   <div className="ui11-preview-heading"><div><span className="ui11-eyebrow">Швидкий перегляд</span><h2>{part.name}</h2><p>{category?categoryLabelUk(category.name):'Без категорії'} › {subcategory?categoryLabelUk(subcategory.name):'Інші деталі'}</p></div></div>
+   <div className="ui11-preview-heading"><button type="button" className="ui11-preview-close" aria-label="Закрити швидкий перегляд" onClick={onClose}><X size={18}/></button><div><span className="ui11-eyebrow">Швидкий перегляд</span><h2>{part.name}</h2><p>{category?categoryLabelUk(category.name):'Без категорії'} › {subcategory?categoryLabelUk(subcategory.name):'Інші деталі'}</p></div></div>
    <div className="ui11-preview-image"><SearchPartPhoto key={part.id} id={part.id} name={part.name}/></div>
    <dl className="ui11-preview-facts">
     <div><dt>Автомобіль</dt><dd>{vehicle?`${vehicle.manufacturer} ${vehicle.model} · ${vehicle.year}`:'Не вказано'}</dd></div>
