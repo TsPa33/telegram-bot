@@ -232,6 +232,65 @@ def vehicle_catalog(db: DB, who: Auth):
     return local_catalog(db, who.workspace_account_id)
 
 
+
+@router.get("/vehicle-directory/stats", tags=["Vehicle directory"])
+def directory_stats(db: DB,who: Auth):
+    from app.models.vehicle_directory import VehicleDirectoryVariant, VehicleDirectoryImport
+    return {
+        "variants": db.scalar(select(func.count()).select_from(VehicleDirectoryVariant).where(VehicleDirectoryVariant.account_id==who.workspace_account_id)) or 0,
+        "brands": db.scalar(select(func.count(func.distinct(VehicleDirectoryVariant.brand))).where(VehicleDirectoryVariant.account_id==who.workspace_account_id)) or 0,
+        "models": db.scalar(select(func.count()).select_from(
+            select(VehicleDirectoryVariant.brand,VehicleDirectoryVariant.model).where(VehicleDirectoryVariant.account_id==who.workspace_account_id).distinct().subquery())) or 0,
+        "imports": db.scalar(select(func.count()).select_from(VehicleDirectoryImport).where(VehicleDirectoryImport.account_id==who.workspace_account_id)) or 0,
+        "source": "FileDbBMG / manual upload",
+        "verified_current": False,
+    }
+
+
+@router.get("/vehicle-directory/brands", tags=["Vehicle directory"])
+def directory_brands(db: DB,who: Auth):
+    from app.models.vehicle_directory import VehicleDirectoryVariant
+    return db.scalars(select(VehicleDirectoryVariant.brand).where(VehicleDirectoryVariant.account_id==who.workspace_account_id).distinct().order_by(VehicleDirectoryVariant.brand)).all()
+
+
+@router.get("/vehicle-directory/models", tags=["Vehicle directory"])
+def directory_models(db: DB,who: Auth,brand: str=Query(...,min_length=1,max_length=120)):
+    from app.models.vehicle_directory import VehicleDirectoryVariant
+    return db.scalars(select(VehicleDirectoryVariant.model).where(
+        VehicleDirectoryVariant.account_id==who.workspace_account_id,func.lower(VehicleDirectoryVariant.brand)==brand.lower()).distinct().order_by(VehicleDirectoryVariant.model)).all()
+
+
+@router.get("/vehicle-directory/variants", tags=["Vehicle directory"])
+def directory_variants(
+    db: DB,who: Auth,
+    brand: str=Query(...,min_length=1,max_length=120),
+    model: str=Query(...,min_length=1,max_length=200),
+    year: int|None=Query(None,ge=1886,le=2100),
+):
+    from app.models.vehicle_directory import VehicleDirectoryVariant
+    stmt=select(VehicleDirectoryVariant).where(VehicleDirectoryVariant.account_id==who.workspace_account_id,func.lower(VehicleDirectoryVariant.brand)==brand.lower(),VehicleDirectoryVariant.model==model)
+    if year is not None:
+        stmt=stmt.where(VehicleDirectoryVariant.year_from<=year).where(
+            (VehicleDirectoryVariant.year_to>=year)|(VehicleDirectoryVariant.year_to.is_(None)))
+    rows=db.scalars(stmt.order_by(VehicleDirectoryVariant.year_from.desc(),VehicleDirectoryVariant.modification).limit(200)).all()
+    return [{"id":r.id,"modification":r.modification,"year_from":r.year_from,"year_to":r.year_to,
+             "year_verified":year is not None and r.year_to is not None and r.year_from is not None and r.year_from<=year<=r.year_to,
+             "displacement_l":str(r.displacement_l) if r.displacement_l is not None else None,
+             "fuel_type":r.fuel_type,"power_kw":r.power_kw,"power_ps":r.power_ps,
+             "drive_type":r.drive_type,"body":r.body,"engine_codes":r.engine_codes,
+             "kba_numbers":r.kba_numbers} for r in rows]
+
+
+@router.post("/vehicle-directory/import", tags=["Vehicle directory"])
+async def directory_import(db: DB,who: Auth,file:UploadFile=File(...),dry_run:bool=True):
+    from app.permissions import require_director
+    from app.services.vehicle_directory import apply_payload,MAX_UPLOAD
+    require_director(who)
+    raw=await file.read(MAX_UPLOAD+1)
+    if len(raw)>MAX_UPLOAD:raise HTTPException(413,"Файл перевищує 16 МБ")
+    return apply_payload(db,raw,file.filename or "carpot-vehicles.txt",who.workspace_account_id,dry_run)
+
+
 @router.post("/vehicles", status_code=201, tags=["Vehicles"])
 def vehicle_create(data: VehicleInput, db: DB, who: Auth):
     values = data.model_dump()
