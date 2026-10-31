@@ -24,7 +24,7 @@ jobs:
         working-directory: warehouse/frontend
         run: npm run build
       - name: Build Railway API container with secure photo entrypoint
-        run: docker build -t warehouse-r11-api -f deploy/railway/backend.Dockerfile warehouse
+        run: docker build -t warehouse-r11-api -f warehouse/deploy/railway/backend.Dockerfile warehouse
       - name: Verify unprivileged API photo mount write
         run: |
           docker volume create warehouse-r11-test
