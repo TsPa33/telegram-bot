@@ -124,10 +124,6 @@ def main():
         raise RuntimeError("Invalid staging PORT or startup timeout")
     drop_volume_bootstrap_privileges()
     migrate(timeout)
-    # One-time R13 reference audit, deployed only to Warehouse staging.
-    # Deletes itself in the next commit; read-only transaction and bounded logs.
-    from app.catalogue_audit_once import run as r13_readonly_review_snapshot
-    r13_readonly_review_snapshot()
     # Dual-stack works in both new IPv4/IPv6 Railway environments and legacy
     # IPv6-only private networks; also accepts IPv4 deployment health checks.
     listener = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
