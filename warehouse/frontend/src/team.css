@@ -55,3 +55,46 @@
 .team-event-list time{white-space:nowrap;color:var(--color-secondary)}
 @media(max-width:1350px){.team-action-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.team-insights{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:760px){.team-action-grid,.team-insights{grid-template-columns:1fr}.team-insight-panel{min-height:unset}.team-action-grid>button{min-height:70px}}
+
+/* R11.3.1 — approved premium team dashboard density and directory. */
+.team-summary{grid-template-columns:repeat(6,minmax(0,1fr));gap:9px;margin:12px 0 16px}
+.team-summary>.panel{min-width:0;padding:15px 16px;border-radius:12px;box-shadow:0 3px 14px #123b2a08}
+.team-summary span{display:block;font-size:11px;line-height:1.4}
+.team-summary strong{font-size:25px;line-height:1.2;margin-top:7px}
+.team-summary>small{grid-column:1/-1;font-size:11px}
+.team-dashboard-actions{margin:12px 0}
+.team-action-grid{gap:8px}
+.team-action-grid>button{min-height:76px;padding:12px;gap:10px}
+.team-action-grid>button strong{font-size:12px}
+.team-insights{margin:12px 0 14px;gap:10px}
+.team-insight-panel{min-height:226px;padding:15px}
+.team-insight-panel header h2{font-size:13px;margin-bottom:10px}
+.team-bars{height:125px}
+.team-filters{padding:12px 16px;margin-bottom:12px;gap:9px}
+.team-filters label{font-size:12px}
+.team-filters input,.team-filters select{min-height:40px}
+.team-directory{min-width:0;overflow:hidden;border-radius:12px;margin-bottom:10px}
+.team-directory-title{display:flex;align-items:center;justify-content:space-between;padding:15px 17px;gap:12px}
+.team-directory-title h2{font-size:16px;margin:0}
+.team-directory-title span{font-size:11px;color:var(--color-secondary)}
+.team-directory-scroll{width:100%;overflow-x:auto}
+.team-directory table{width:100%;border-collapse:collapse;text-align:left}
+.team-directory th{font-size:11px;color:var(--color-secondary);font-weight:700;background:#f5f8f6;white-space:nowrap}
+.team-directory td,.team-directory th{padding:12px 13px;border-top:1px solid var(--color-border)}
+.team-directory td{font-size:12px;vertical-align:middle}
+.team-person{display:flex;align-items:center;gap:10px;min-width:170px}
+.team-person-avatar{flex:none;display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:#084e3f;color:white;font-weight:750}
+.team-person strong,.team-person small{display:block;overflow-wrap:anywhere}
+.team-person small{font-size:11px;color:var(--color-secondary);margin-top:3px}
+.team-role-pill,.team-grants{display:inline-flex;padding:5px 9px;border-radius:7px;background:#eef4f1;white-space:nowrap;font-size:11px}
+.team-role-pill.role-director{background:#fff2d5;color:#805a06}
+.team-role-pill.role-admin{background:#e4f1fe;color:#205c91}
+.team-status.is-active{background:#e3f7ec;color:#066744}
+.team-status.is-blocked{background:#feeaea;color:#a42929}
+.team-row-actions{display:flex;align-items:center;justify-content:flex-end;gap:6px;flex-wrap:wrap}
+.team-row-actions a,.team-row-actions button{display:inline-flex;padding:7px 9px;border:1px solid var(--color-border);border-radius:7px;background:#fff;font-size:11px;color:var(--color-text);text-decoration:none;white-space:nowrap}
+.team-row-actions button:hover:not(:disabled),.team-row-actions a:hover{border-color:#087254;color:#075544}
+.team-row-actions button:disabled{opacity:.4}
+@media(max-width:1550px){.team-summary{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:1100px){.team-insights{grid-template-columns:repeat(2,minmax(0,1fr))}.team-action-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:680px){.team-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.team-insights,.team-action-grid{grid-template-columns:1fr}.team-directory td,.team-directory th{padding:9px}}
