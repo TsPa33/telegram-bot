@@ -91,3 +91,29 @@
 @media(max-width:1200px){.r1142-detail-header{grid-template-columns:170px minmax(0,1fr)}.r1142-detail-header>button{grid-column:2}.r1142-spec-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:800px){.r1142-detail-header{grid-template-columns:1fr}.r1142-detail-header .r114-detail-image{max-width:320px}.r1142-detail-header>button{grid-column:1}.r1142-info-panel .r1142-details{grid-template-columns:1fr}}
 @media(max-width:530px){.r1142-spec-grid{grid-template-columns:1fr}.r1142-info-panel{padding:12px}.r1142-info-panel .r1142-details>div{grid-template-columns:minmax(92px,.8fr) minmax(0,1fr) 28px}}
+
+/* R11.4.3 — compact donor card with in-place editable drivetrain selectors. */
+.r114-grid .r1141-card{gap:9px;padding:14px 15px}
+.r114-grid .r1141-card-top{grid-template-columns:minmax(0,1fr) 152px;gap:9px;min-height:95px}
+.r114-grid .r1141-car-main{grid-row:1;grid-column:1}
+.r114-grid .r1141-car-photo{grid-row:1;grid-column:2;min-height:96px;height:103px;background:transparent}
+.r114-grid .r1141-car-photo .vehicle-image{height:84px}
+.r114-grid .r1141-car-photo>span{font-size:8px;background:transparent}
+.r1143-vin{font-size:10px;color:var(--color-secondary);overflow-wrap:anywhere}
+.r1143-powertrain{min-width:0}
+.r1143-powertrain-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+.r1143-powertrain-field{display:grid;grid-template-columns:72px minmax(0,1fr);align-items:center;gap:8px;min-width:0;margin:0}
+.r1143-field-name{display:inline-flex;align-items:center;gap:6px;color:var(--color-secondary);font-size:11px}
+.r1143-field-name svg{color:#086a50;flex:none}
+.r1143-powertrain-field select{display:block;width:100%;min-width:0;min-height:36px;height:36px;border:1px solid var(--color-border);border-radius:7px;background:var(--color-surface);color:var(--color-text);font-size:12px;padding:0 8px;cursor:pointer}
+.r1143-powertrain-field select:focus-visible{outline:2px solid #078260;outline-offset:1px}
+.r1143-powertrain-field select:disabled{opacity:.65;cursor:not-allowed}
+.r1143-powertrain-field>small{grid-column:2;color:var(--color-secondary);font-size:10px}
+.r1143-custom{display:flex;align-items:end;gap:7px;padding:9px;background:#f4f9f6;border:1px solid #c7e2d6;border-radius:8px;margin-top:8px}
+.r1143-custom label{flex:1;min-width:0;margin:0;font-size:11px}
+.r1143-custom input{width:100%;min-height:34px;margin-top:4px}
+.r1143-custom button{min-height:34px;padding:5px 9px;font-size:11px}
+.r1143-error{font-size:11px;color:#a52d2d;margin:5px 0}
+.r114-grid .r1141-car-bottom{padding-top:9px}
+@media(max-width:1300px){.r1143-powertrain-field{grid-template-columns:1fr;gap:3px}.r1143-powertrain-fields{gap:8px}.r114-grid .r1141-card-top{grid-template-columns:minmax(0,1fr) 125px}}
+@media(max-width:700px){.r1143-powertrain-field{grid-template-columns:1fr}.r114-grid .r1141-card-top{grid-template-columns:minmax(0,1fr) 115px}}
