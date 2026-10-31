@@ -1,4 +1,4 @@
-import {useMemo} from 'react';
+import {useMemo,type CSSProperties} from 'react';
 import {Boxes,CheckCircle2,BookmarkCheck,Tag,MapPin,Layers,Plus,ClipboardCheck,History,Archive as ArchiveIcon} from 'lucide-react';
 import type {Row} from './api';
 
@@ -39,7 +39,7 @@ export default function InventoryInsights({rows,categories,busy,onCategory,onLoc
  const total=rows.length;
  return <aside className="r115-rail" aria-label="Огляд поточного складського відбору">
   <section className="r115-rail-card"><h3>Залишки за відбором</h3>
-   <div className="r115-donut" style={{'--share':(total?Math.round(100*available/total):0)+'%'} as React.CSSProperties}><div><strong>{busy?'—':format(total)}</strong><small>позицій</small></div></div>
+   <div className="r115-donut" style={{'--share':(total?Math.round(100*available/total):0)+'%'} as CSSProperties}><div><strong>{busy?'—':format(total)}</strong><small>позицій</small></div></div>
    <div className="r115-donut-legend"><span><i className="r115-dot green"/>Є вільний залишок</span><strong>{busy?'—':format(available)}</strong><span><i className="r115-dot grey"/>Без вільного залишку</span><strong>{busy?'—':format(total-available)}</strong></div>
    <p className="r115-hint">Кількість позицій, не одиниць. Резерв може бути частковим.</p>
   </section>
@@ -49,7 +49,7 @@ export default function InventoryInsights({rows,categories,busy,onCategory,onLoc
   </section>
   <section className="r115-rail-card"><h3><MapPin size={17}/> Локації</h3>
    {topLocations.map(x=><button className="r115-location" type="button" key={x.location} onClick={()=>onLocation(x.location)}><span>{x.label}</span><strong>{x.count}</strong></button>)}
-   {!busy&&!topLocations.length&&<p className="r115-hint">Локаціїв не знайдено</p>}
+   {!busy&&!topLocations.length&&<p className="r115-hint">Локацій не знайдено</p>}
   </section>
   <section className="r115-rail-card"><h3>Швидкі дії</h3><div className="r115-action-grid">
    {canAdd&&<button type="button" onClick={onAdd}><Plus size={18}/>Додати запчастину</button>}
