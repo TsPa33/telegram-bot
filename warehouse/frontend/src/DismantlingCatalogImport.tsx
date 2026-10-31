@@ -11,6 +11,7 @@ export default function DismantlingCatalogImport({onImported}: {onImported:()=>v
  const [confirmed,setConfirmed]=useState(false);
  const count=Array.isArray(payload?.types)?payload.types.length:0;
  const modelLinks=Array.isArray(payload?.types)?payload.types.reduce((n:number,t:Row)=>n+(Array.isArray(t.applicability)?t.applicability.length:0),0):0;
+ const stage=message?3:preview?2:payload?1:0;
  async function readFile(file?:File){
   setPayload(null);setFilename('');setPreview(null);setConfirmed(false);setError('');setMessage('');
   if(!file)return;
@@ -35,6 +36,9 @@ export default function DismantlingCatalogImport({onImported}: {onImported:()=>v
   finally{setBusy(false);}
  }
  return <div className="catalogue-own-import">
+  <ol className="catalogue-own-steps" aria-label="Етапи імпорту">
+   {['Вибір файлу','Перевірка','Підтвердження'].map((name,i)=><li key={name} className={stage>=i+1?'complete':stage===i?'current':''} aria-current={stage===i?'step':undefined}><span>{i+1}</span>{name}</li>)}
+  </ol>
   <div className="catalogue-own-form">
    <label htmlFor="catalogue-own-file">Файл довідника (.json)</label>
    <input id="catalogue-own-file" type="file" accept=".json,application/json" disabled={busy} onChange={e=>void readFile(e.target.files?.[0])}/>
@@ -49,6 +53,7 @@ export default function DismantlingCatalogImport({onImported}: {onImported:()=>v
     {busy?'Перевіряємо…':'Перевірити файл'}
    </button>
   </div>
+  {busy&&<div className="catalogue-own-processing" role="status" aria-live="polite"><span className="catalogue-formation-spinner" aria-hidden="true"/><div><strong>Опрацьовуємо файл…</strong><p>Очікуємо підтвердження сервера. Не закривайте сторінку до завершення операції.</p><progress aria-label="Операція триває; точний час невідомий"/></div></div>}
   {preview&&<section className="catalogue-own-preview" aria-label="Результат перевірки" role="status">
    <h3>Результат перевірки</h3>
    <div className="catalogue-own-stats"><span><strong>{preview.created}</strong>Нових</span><span><strong>{preview.updated}</strong>Оновляться</span><span><strong>{preview.total}</strong>Усього в джерелі</span></div>
