@@ -83,6 +83,10 @@ class Vehicle(Owned, Base):
     engine: Mapped[str] = mapped_column(String(100), default="")
     fuel_type: Mapped[str] = mapped_column(String(50), default="")
     transmission: Mapped[str] = mapped_column(String(50), default="")
+    engine_displacement_l: Mapped[Decimal | None] = mapped_column(Numeric(3, 1), nullable=True)
+    engine_variant: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    engine_code: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    drive_type: Mapped[str | None] = mapped_column(String(30), nullable=True)
     vin: Mapped[str | None] = mapped_column(String(17), nullable=True)
     donor_id: Mapped[str] = mapped_column(String(80))
     number: Mapped[int] = mapped_column(Integer)
@@ -225,6 +229,24 @@ class Photo(Base):
     part_id: Mapped[str] = mapped_column(ForeignKey("parts.id"), index=True)
     filename: Mapped[str] = mapped_column(String(80))
     media_type: Mapped[str] = mapped_column(String(30))
+
+
+
+class VehiclePhoto(Base):
+    """Workspace-scoped reference to one persisted donor photo."""
+    __tablename__ = "vehicle_photos"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["vehicle_id", "account_id"], ["vehicles.id", "vehicles.account_id"],
+            name="fk_vehicle_photo_owner"
+        ),
+    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    account_id: Mapped[str] = mapped_column(ForeignKey("accounts.id"), index=True)
+    vehicle_id: Mapped[str] = mapped_column(String(36), index=True)
+    filename: Mapped[str] = mapped_column(String(80))
+    media_type: Mapped[str] = mapped_column(String(30))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
 class DismantlingItem(Base):
