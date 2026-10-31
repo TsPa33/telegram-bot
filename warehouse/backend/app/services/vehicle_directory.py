@@ -107,7 +107,7 @@ def validated(row):
     if end is not None and (start is None or not start<=end<=2100):raise HTTPException(422,'Некоректний кінцевий рік')
     displacement=row.get('displacement_l')
     if displacement is not None:
-        displacement=Decimal(str(displacement))
+        displacement=Decimal(str(displacement)).quantize(Decimal('0.1'))
         if not 0<displacement<=12:displacement=None  # Electric displacement 0 means N/A.
     codes=list(dict.fromkeys(trim(v,80) for v in (row.get('engine_codes') or []) if v))[:20]
     kba=list(dict.fromkeys(trim(v,60) for v in (row.get('kba_numbers') or []) if v))[:20]

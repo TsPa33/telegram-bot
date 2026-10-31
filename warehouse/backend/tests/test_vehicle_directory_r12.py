@@ -54,3 +54,10 @@ def test_directory_routes_require_permissions():
     for method,path,permission in paths:
         assert (method,path) in KNOWN_ROUTES
         assert permission in route_permissions(method,path,{})
+
+def test_integer_and_decimal_displacement_have_same_reference_identity():
+    from app.services.vehicle_directory import validated
+    r=list(parse_legacy(SAMPLE))[0]
+    a=validated(dict(r,displacement_l='2'))
+    b=validated(dict(r,displacement_l='2.0'))
+    assert a['id']==b['id']
