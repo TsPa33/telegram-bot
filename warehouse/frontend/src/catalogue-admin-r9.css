@@ -1,5 +1,5 @@
 /* CarPot R9: compact user-first catalogue administration. */
-.catalogue-admin-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:0 0 18px}
+.catalogue-admin-tabs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:0 0 18px}
 .catalogue-admin-tabs button{display:flex;flex-direction:column;align-items:flex-start;text-align:left;justify-content:center;gap:4px;border:1px solid var(--color-border);border-radius:9px;min-width:0;padding:13px 14px;background:var(--color-surface);white-space:normal;box-shadow:none}
 .catalogue-admin-tabs button strong{font-size:13px;font-weight:750;line-height:1.25;color:var(--color-text)}
 .catalogue-admin-tabs button span{font-size:11px;font-weight:450;line-height:1.35;color:var(--color-secondary)}
