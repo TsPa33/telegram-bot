@@ -77,3 +77,10 @@ input[type=checkbox]{accent-color:#075544}
 @media(max-width:1080px){.catalogue-admin-tabs{grid-template-columns:repeat(2,minmax(0,1fr))}.parser-admin .pa-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.app .main{background:var(--color-background)}.catalogue-admin-tabs{gap:9px}.catalogue-admin-tabs button{padding:12px;min-height:88px}.catalogue-admin-tabs button strong{font-size:12px}.catalogue-admin-tabs button span{font-size:10px}.parser-admin .pa-kpis article{padding:13px;min-height:108px}.parser-admin .pa-kpis article strong{font-size:20px}.parser-admin .pa-heading h1{font-size:23px}.catalogue-tab-content>.panel,.catalogue-tab-content>.canonical-admin{padding:16px}.main .panel{max-width:100%}}
 @media(prefers-reduced-motion:reduce){.catalogue-admin-tabs button:hover{transform:none}}
+
+/* Section icons remain understated; keyboard/tab navigation is unchanged. */
+.catalogue-admin-tabs button>svg{color:#11624f;margin-bottom:1px;background:#e9f4ef;padding:7px;box-sizing:content-box;border-radius:10px}
+.catalogue-admin-tabs button.catalogue-tab-current>svg{background:#ffffff19;color:#f3fff9}
+.catalogue-admin-tabs button.catalogue-tab-current{min-height:130px}
+.catalogue-admin-tabs button{min-height:130px}
+@media(max-width:600px){.catalogue-admin-tabs button,.catalogue-admin-tabs button.catalogue-tab-current{min-height:110px}.catalogue-admin-tabs button>svg{padding:5px}}
