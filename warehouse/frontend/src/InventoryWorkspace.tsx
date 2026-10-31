@@ -6,6 +6,8 @@ import {all} from './api';
 import SalesWorkspace from './SalesWorkspace';
 import ManagedDismantling from './ManagedDismantling';
 import StockHistory from './StockHistory';
+import {History,Boxes,CarFront} from 'lucide-react';
+import './inventory-r115.css';
 import {Empty} from './components';
 import {State,useLoad,type Notify} from './shared';
 
@@ -38,21 +40,22 @@ export default function InventoryWorkspace({accountId,notify}:{accountId:string;
  },[vehicles,donor,preference.mode]);
  function choose(id:string){setHistory(false);setPlanOpen(false);save({mode:'donors',donor:id,remember:!!id&&preference.remember});setParams(id?{vehicle_id:id}:{});}
  function switchMode(mode:Preference['mode']){
-  if(mode===preference.mode)return;
+  if(mode===preference.mode){setHistory(false);return;}
   setHistory(false);setPlanOpen(false);
   save({...preference,mode});
   setParams(mode==='donors'&&preference.remember&&vehicles?.some(v=>v.id===preference.donor)?{vehicle_id:preference.donor}:{});
  }
  const vehicle=vehicles?.find(v=>v.id===donor);
  return <>
-  <nav className="inventory-modes" aria-label="Режим складу">
-   <button aria-pressed={preference.mode==='donors'} onClick={()=>switchMode('donors')}>За автомобілями</button>
-   <button aria-pressed={preference.mode==='general'} onClick={()=>switchMode('general')}>Загальний склад</button>
+  <header className="r115-page-heading"><div><h1>Склад</h1><p>Облік запчастин, залишків, локацій та складських операцій.</p></div></header>
+  <nav className="inventory-modes r115-inventory-modes" aria-label="Режим складу">
+   <button type="button" aria-pressed={!history&&preference.mode==='general'} onClick={()=>switchMode('general')}><Boxes size={16}/> Загальний склад</button>
+   <button type="button" aria-pressed={!history&&preference.mode==='donors'} onClick={()=>switchMode('donors')}><CarFront size={16}/> За автомобілями</button>
+   {can('audit.view')&&<button type="button" aria-pressed={history} onClick={()=>setHistory(true)}><History size={16}/> Історія операцій</button>}
   </nav>
-  <nav className="stock-section-tabs" aria-label="Розділ складу"><button aria-pressed={!history} onClick={()=>setHistory(false)}>Запчастини</button>{can('audit.view')&&<button aria-pressed={history} onClick={()=>setHistory(true)}>Історія операцій</button>}</nav>
   {history?<StockHistory key={preference.mode==='donors'?donor:'all'} vehicleId={preference.mode==='donors'?donor:''}/>:<>
   {storageError&&<p role="status">{storageError}</p>}
-  {preference.mode==='general'?<><State error={error} loading={loading}/><SalesWorkspace accountId={accountId} notify={notify} inventoryVehicles={vehicles||null}/></>:<>
+  {preference.mode==='general'?<><State error={error} loading={loading}/><SalesWorkspace accountId={accountId} notify={notify} inventoryVehicles={vehicles||null} onHistory={()=>setHistory(true)}/></>:<>
    <State error={error} loading={loading}/>
    {error&&<button onClick={reload}>Спробувати знову</button>}
    {!vehicle&&<><h1>Склад за автомобілями</h1><section className="donor-stock-grid" aria-label="Автомобілі на складі">
@@ -62,7 +65,7 @@ export default function InventoryWorkspace({accountId,notify}:{accountId:string;
    {vehicle&&<>
     <header className="donor-stock-header"><h2>{vehicle.manufacturer} {vehicle.model} · {vehicle.year} · №{vehicle.number}</h2><button onClick={()=>choose('')}>Усі автомобілі</button></header>
     <div className="donor-stock-switch"><label>Автомобіль<select aria-label="Автомобіль складу" value={donor} onChange={e=>choose(e.target.value)}>{vehicles?.map(v=><option key={v.id} value={v.id}>{v.manufacturer} {v.model} · {v.year} · №{v.number}</option>)}</select></label><label className="check-inline donor-remember"><input type="checkbox" checked={preference.remember} onChange={e=>save({...preference,donor,remember:e.target.checked})}/>Запам’ятати цей автомобіль</label></div>
-    <SalesWorkspace key={vehicle.id} accountId={accountId} notify={notify} grouped inventoryVehicles={vehicles||[]}/>
+    <SalesWorkspace key={vehicle.id} accountId={accountId} notify={notify} grouped inventoryVehicles={vehicles||[]} onHistory={()=>setHistory(true)}/>
     {['dismantling.manage','vehicles.view','catalog.view'].every(can)&&<details className="donor-potential" open={planOpen} onToggle={e=>setPlanOpen(e.currentTarget.open)}><summary>Каталог деталей автомобіля</summary><p>Віртуальні деталі можуть залишатися на автомобілі. Нові позиції додаються лише за вашою явною дією.</p>{planOpen&&<ManagedDismantling key={vehicle.id} vehicle={vehicle} onSaved={()=>{reload();window.dispatchEvent(new Event('warehouse:inventory-changed'));}}/>}</details>}
    </>}
   </>}
