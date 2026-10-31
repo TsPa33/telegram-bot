@@ -1,4 +1,5 @@
 import {Link} from 'react-router-dom';
+import {Users,UserPlus,ShieldCheck,LockKeyhole,Activity,Download,BarChart3} from 'lucide-react';
 import {useEffect,useRef,useState} from 'react';
 import {api,type Row} from './api';
 import {State,useLoad,type Notify} from './shared';
@@ -36,6 +37,21 @@ export default function Team({user,notify}:{user:Row;notify:Notify}){
  const data=useLoad(()=>readiness.data&&!readiness.error?Promise.all([
   api('/team?offset='+page*50+'&limit=50'),api('/team/permissions'),
  ]):Promise.resolve(null),[readiness.data,readiness.error,page]);
+ const teamEvents=useLoad(()=>user.role==='DIRECTOR'?api('/team/events?offset=0&limit=100'):Promise.resolve(null),[user.role]);
+ const recentEvents:Row[]=teamEvents.data?.items||[];
+ const dailyActivity=Array.from({length:7},(_,i)=>{
+  const date=new Date();date.setHours(0,0,0,0);date.setDate(date.getDate()-(6-i));
+  const key=date.toLocaleDateString('en-CA');
+  return {label:date.toLocaleDateString('uk-UA',{day:'2-digit',month:'2-digit'}),value:recentEvents.filter((ev:Row)=>ev.created_at&&new Date(ev.created_at).toLocaleDateString('en-CA')===key).length};
+ });
+ const peak=Math.max(1,...dailyActivity.map(d=>d.value));
+ function exportVisible(){
+  const headers=['Ім’я','Email','Роль','Статус','Останній вхід'];
+  const cells=visible.map(u=>[u.name,u.email,roleLabel(u.role),u.is_active?'Активний':'Заблокований',u.last_login_at||'']);
+  const csv='\uFEFF'+[headers,...cells].map(row=>row.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\r\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download='carpot-team-current-page.csv';a.click();URL.revokeObjectURL(url);
+ }
  const groups=data.data?.[1]?.groups||{},grantable:string[]=data.data?.[1]?.grantable||[];
  const members:Row[]=data.data?.[0]?.items||[];
  const visible=members.filter(u=>(!role||u.role===role)&&(!status||(status==='active')===u.is_active)&&`${u.name} ${u.email}`.toLocaleLowerCase('uk-UA').includes(q.trim().toLocaleLowerCase('uk-UA')));
@@ -71,13 +87,46 @@ export default function Team({user,notify}:{user:Row;notify:Notify}){
    {Object.entries({'Усього облікових записів':summary.data.total,'Активні':summary.data.active,'Заблоковані':summary.data.blocked,'Директори':summary.data.by_role.DIRECTOR,'Адміністратори':summary.data.by_role.ADMIN,'Менеджери':summary.data.by_role.MANAGER}).map(([label,value])=><div className="panel padded" key={label}><span>{label}</span><strong>{String(value)}</strong></div>)}
    <small>{summary.data.scope==='workspace'?'Усі облікові записи робочого простору, включно з директором.':'Лише менеджери, доступні вам за правами.'}</small>
   </section>}
+  <section className="team-dashboard-actions" aria-label="Дії з командою">
+   <h2>Дії з командою</h2>
+   <div className="team-action-grid">
+    <button type="button" disabled={!can('team.manage_managers')||!readiness.data?.employee_creation_enabled||!data.data} onClick={()=>open({name:'',email:'',password:'',role:'MANAGER',permissions:['inventory.view','vehicles.view','catalog.view'].filter(p=>grantable.includes(p)),is_active:true})}><UserPlus size={20}/><span><strong>Додати працівника</strong><small>Особистий обліковий запис</small></span></button>
+    <button type="button" disabled={!can('team.manage_managers')||!members.some(manageable)} onClick={()=>{document.getElementById('team-members')?.scrollIntoView({behavior:'smooth',block:'start'});}}><ShieldCheck size={20}/><span><strong>Ролі та допуски</strong><small>Редагування прав працівника</small></span></button>
+    <button type="button" disabled={!can('team.manage_managers')||!members.some(manageable)} onClick={()=>{setStatus('active');document.getElementById('team-members')?.scrollIntoView({behavior:'smooth',block:'start'});}}><LockKeyhole size={20}/><span><strong>Керування доступом</strong><small>Блокування через картку працівника</small></span></button>
+    <button type="button" disabled={!data.data||!visible.length} onClick={exportVisible}><Download size={20}/><span><strong>Експорт CSV</strong><small>Працівники поточної сторінки</small></span></button>
+   </div>
+  </section>
+  <section className="team-insights" aria-label="Аналітика команди">
+   <div className="panel padded team-insight-panel">
+    <header><h2><Activity size={18}/> Зміни в команді за 7 днів</h2></header>
+    {user.role==='DIRECTOR'?<>
+     <div className="team-bars" role="img" aria-label={'Кількість подій керування командою за 7 днів: '+dailyActivity.map(d=>d.label+': '+d.value).join(', ')}>
+      {dailyActivity.map(d=><div className="team-bar-column" key={d.label}><span className="team-bar-value">{d.value}</span><div className="team-bar-track"><div style={{height:(d.value/peak*100)+'%'}}/></div><small>{d.label}</small></div>)}
+     </div>
+     <small className="muted">Лише події керування командою. Останні {recentEvents.length} доступних записів; не загальна активність складу.</small>
+     {teamEvents.error&&<p role="alert">{teamEvents.error}</p>}
+    </>:<p className="muted">Журнал змін команди доступний директору.</p>}
+   </div>
+   <div className="panel padded team-insight-panel">
+    <header><h2><Users size={18}/> Працівники за ролями</h2></header>
+    {summary.data&&<div className="team-role-list">{(['DIRECTOR','ADMIN','MANAGER'] as const).map(roleName=>{
+     const n=summary.data.by_role[roleName]||0,total=Math.max(1,summary.data.total||0);
+     return <div key={roleName}><div className="team-role-label"><span>{roleLabel(roleName)}</span><strong>{n}</strong></div><div className="team-role-track"><div style={{width:(n/total*100)+'%'}}/></div></div>;
+    })}</div>}
+    <small className="muted">Фактичні облікові записи у доступній області перегляду.</small>
+   </div>
+   <div className="panel padded team-insight-panel">
+    <header><h2><BarChart3 size={18}/> Останні зміни доступів</h2></header>
+    {user.role==='DIRECTOR'?<div className="team-event-list">{recentEvents.slice(0,5).map(ev=><div key={ev.id}><span>{({employee_created:'Створення працівника',employee_updated:'Зміна ролі або доступів',access_reset:'Скидання доступу',password_changed:'Зміна пароля'} as Record<string,string>)[ev.type]||'Подія команди'}</span><time>{new Date(ev.created_at).toLocaleString('uk-UA',{dateStyle:'short',timeStyle:'short'})}</time></div>)}{!recentEvents.length&&<p className="muted">Подій поки немає.</p>}</div>:<p className="muted">Історія доступна директору.</p>}
+   </div>
+  </section>
   <section className="panel padded team-filters" aria-label="Фільтри команди">
    <label>Пошук на цій сторінці<input type="search" aria-label="Пошук працівників на сторінці" value={q} onChange={e=>setQ(e.target.value)} placeholder="Ім’я або email"/></label>
    <label>Роль<select aria-label="Роль у списку" value={role} onChange={e=>setRole(e.target.value)}><option value="">Усі ролі</option>{['DIRECTOR','ADMIN','MANAGER'].map(r=><option value={r} key={r}>{roleLabel(r)}</option>)}</select></label>
    <label>Статус<select aria-label="Статус працівника" value={status} onChange={e=>setStatus(e.target.value)}><option value="">Усі</option><option value="active">Активні</option><option value="blocked">Заблоковані</option></select></label>
   </section>
   <State error={data.error} loading={data.loading}/>{data.error&&<button onClick={data.reload}>Оновити команду</button>}
-  <div className="team-list">{visible.map(u=><article className="panel padded" key={u.id}>
+  <div id="team-members" className="team-list">{visible.map(u=><article className="panel padded" key={u.id}>
    <header><h2>{u.name}</h2><span className="team-status">{u.is_active?'Активний':'Заблокований'}</span></header><p>{u.email}</p>
    <p>{roleLabel(u.role)} · Дозволів: {u.permissions.length}{u.must_change_password?' · Потрібна зміна пароля':''}</p>
    <small>Створено: {new Date(u.created_at).toLocaleDateString('uk-UA')} · Останній вхід: {u.last_login_at?new Date(u.last_login_at).toLocaleString('uk-UA'):'Не зафіксовано'}</small>
