@@ -2,11 +2,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readdir,readFile} from 'node:fs/promises';
+import {existsSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {resolve} from 'node:path';
 
-const root=fileURLToPath(new URL('../../',import.meta.url));
-const migrations=resolve(root,'backend/alembic/versions');
+const frontend=fileURLToPath(new URL('../',import.meta.url));
+const buildMigrations=resolve(frontend,'backend/alembic/versions');
+// Local checkout has /warehouse/backend; Docker build stages migrations under /build/backend.
+const migrations=existsSync(buildMigrations)?buildMigrations:resolve(frontend,'../backend/alembic/versions');
 const names=(await readdir(migrations)).filter(n=>n.endsWith('.py')&&!n.startsWith('__'));
 const parsed=await Promise.all(names.map(async name=>{
   const body=await readFile(resolve(migrations,name),'utf8');
@@ -27,7 +30,7 @@ const checks=[
 ];
 for(const [file,regex] of checks){
  test('frontend readiness includes current packaged DB head: '+file,async()=>{
-  const source=await readFile(resolve(root,'frontend/src',file),'utf8');
+  const source=await readFile(resolve(frontend,'src',file),'utf8');
   const match=source.match(regex);
   assert(match,'readiness whitelist not found in '+file);
   assert(match[1].includes("'"+head+"'"),file+' rejects deployed Alembic head '+head);
