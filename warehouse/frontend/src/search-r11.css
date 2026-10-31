@@ -280,3 +280,48 @@
  .ui4-search-page .ui11-category-grid,
  .ui4-search-page .ui11-category-grid.expanded{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
+
+/* R11.2.2 — independent preview scrolling for long result lists.
+   Keep the selected part anchored, its header/navigation and sale actions reachable.
+   Native mouse wheel / trackpad / touch scrolling; no JS wheel interception. */
+@media(min-width:1431px){
+ .ui4-search-page .ui11-results-layout{align-items:start}
+ .ui4-search-page .ui11-preview{
+  position:sticky;
+  top:12px;
+  height:auto;
+  max-height:calc(100dvh - 24px);
+  min-height:0;
+  overflow-x:hidden;
+  overflow-y:auto;
+  overscroll-behavior-y:contain;
+  scrollbar-width:thin;
+  scrollbar-color:#b9cec3 transparent;
+ }
+ .ui4-search-page .ui11-preview-heading{
+  position:sticky;
+  top:-17px;
+  z-index:2;
+  background:#fff;
+  padding:8px 0 12px;
+  border-bottom:1px solid #edf2ef;
+ }
+ .ui4-search-page .ui11-preview-buttons{
+  position:sticky;
+  bottom:-17px;
+  z-index:2;
+  background:#fff;
+  padding:10px 0 8px;
+  border-top:1px solid #e6efe9;
+  box-shadow:0 -5px 14px #fffdf5;
+ }
+}
+@media(max-width:1430px){
+ /* The preview is stacked above results here; keep the document scroll
+    instead of introducing a second constrained scroll area on narrow devices. */
+ .ui4-search-page .ui11-preview.open{
+  position:static;
+  max-height:none;
+  overflow:visible;
+ }
+}
