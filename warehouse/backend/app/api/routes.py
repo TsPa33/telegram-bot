@@ -237,11 +237,11 @@ def vehicle_catalog(db: DB, who: Auth):
 def directory_stats(db: DB,who: Auth):
     from app.models.vehicle_directory import VehicleDirectoryVariant, VehicleDirectoryImport
     return {
-        "variants": db.scalar(select(func.count()).select_from(VehicleDirectoryVariant)) or 0,
-        "brands": db.scalar(select(func.count(func.distinct(VehicleDirectoryVariant.brand)))) or 0,
+        "variants": db.scalar(select(func.count()).select_from(VehicleDirectoryVariant).where(VehicleDirectoryVariant.account_id==who.workspace_account_id)) or 0,
+        "brands": db.scalar(select(func.count(func.distinct(VehicleDirectoryVariant.brand))).where(VehicleDirectoryVariant.account_id==who.workspace_account_id)) or 0,
         "models": db.scalar(select(func.count()).select_from(
-            select(VehicleDirectoryVariant.brand,VehicleDirectoryVariant.model).distinct().subquery())) or 0,
-        "imports": db.scalar(select(func.count()).select_from(VehicleDirectoryImport)) or 0,
+            select(VehicleDirectoryVariant.brand,VehicleDirectoryVariant.model).where(VehicleDirectoryVariant.account_id==who.workspace_account_id).distinct().subquery())) or 0,
+        "imports": db.scalar(select(func.count()).select_from(VehicleDirectoryImport).where(VehicleDirectoryImport.account_id==who.workspace_account_id)) or 0,
         "source": "FileDbBMG / manual upload",
         "verified_current": False,
     }
@@ -250,14 +250,14 @@ def directory_stats(db: DB,who: Auth):
 @router.get("/vehicle-directory/brands", tags=["Vehicle directory"])
 def directory_brands(db: DB,who: Auth):
     from app.models.vehicle_directory import VehicleDirectoryVariant
-    return db.scalars(select(VehicleDirectoryVariant.brand).distinct().order_by(VehicleDirectoryVariant.brand)).all()
+    return db.scalars(select(VehicleDirectoryVariant.brand).where(VehicleDirectoryVariant.account_id==who.workspace_account_id).distinct().order_by(VehicleDirectoryVariant.brand)).all()
 
 
 @router.get("/vehicle-directory/models", tags=["Vehicle directory"])
 def directory_models(db: DB,who: Auth,brand: str=Query(...,min_length=1,max_length=120)):
     from app.models.vehicle_directory import VehicleDirectoryVariant
     return db.scalars(select(VehicleDirectoryVariant.model).where(
-        func.lower(VehicleDirectoryVariant.brand)==brand.lower()).distinct().order_by(VehicleDirectoryVariant.model)).all()
+        VehicleDirectoryVariant.account_id==who.workspace_account_id,func.lower(VehicleDirectoryVariant.brand)==brand.lower()).distinct().order_by(VehicleDirectoryVariant.model)).all()
 
 
 @router.get("/vehicle-directory/variants", tags=["Vehicle directory"])
@@ -268,7 +268,7 @@ def directory_variants(
     year: int|None=Query(None,ge=1886,le=2100),
 ):
     from app.models.vehicle_directory import VehicleDirectoryVariant
-    stmt=select(VehicleDirectoryVariant).where(func.lower(VehicleDirectoryVariant.brand)==brand.lower(),VehicleDirectoryVariant.model==model)
+    stmt=select(VehicleDirectoryVariant).where(VehicleDirectoryVariant.account_id==who.workspace_account_id,func.lower(VehicleDirectoryVariant.brand)==brand.lower(),VehicleDirectoryVariant.model==model)
     if year is not None:
         stmt=stmt.where(VehicleDirectoryVariant.year_from<=year).where(
             (VehicleDirectoryVariant.year_to>=year)|(VehicleDirectoryVariant.year_to.is_(None)))
@@ -288,7 +288,7 @@ async def directory_import(db: DB,who: Auth,file:UploadFile=File(...),dry_run:bo
     require_director(who)
     raw=await file.read(MAX_UPLOAD+1)
     if len(raw)>MAX_UPLOAD:raise HTTPException(413,"Файл перевищує 16 МБ")
-    return apply_payload(db,raw,file.filename or "carpot-vehicles.txt",dry_run)
+    return apply_payload(db,raw,file.filename or "carpot-vehicles.txt",who.workspace_account_id,dry_run)
 
 
 @router.post("/vehicles", status_code=201, tags=["Vehicles"])
