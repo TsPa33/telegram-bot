@@ -254,7 +254,7 @@ def directory_brands(db: DB,who: Auth):
 
 
 @router.get("/vehicle-directory/models", tags=["Vehicle directory"])
-def directory_models(brand: str=Query(...,min_length=1,max_length=120),db: DB=None,who: Auth=None):
+def directory_models(db: DB,who: Auth,brand: str=Query(...,min_length=1,max_length=120)):
     from app.models.vehicle_directory import VehicleDirectoryVariant
     return db.scalars(select(VehicleDirectoryVariant.model).where(
         VehicleDirectoryVariant.brand==brand).distinct().order_by(VehicleDirectoryVariant.model)).all()
@@ -262,10 +262,10 @@ def directory_models(brand: str=Query(...,min_length=1,max_length=120),db: DB=No
 
 @router.get("/vehicle-directory/variants", tags=["Vehicle directory"])
 def directory_variants(
+    db: DB,who: Auth,
     brand: str=Query(...,min_length=1,max_length=120),
     model: str=Query(...,min_length=1,max_length=200),
     year: int|None=Query(None,ge=1886,le=2100),
-    db: DB=None,who: Auth=None,
 ):
     from app.models.vehicle_directory import VehicleDirectoryVariant
     stmt=select(VehicleDirectoryVariant).where(VehicleDirectoryVariant.brand==brand,VehicleDirectoryVariant.model==model)
