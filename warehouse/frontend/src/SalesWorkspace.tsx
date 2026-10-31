@@ -109,7 +109,7 @@ function SalesWorkspaceContent({quick=false,notify,accountId,grouped=false,inven
  const categorySummary=[...categoryCounts].sort((a,b)=>b[1]-a[1]);
  const locationSummary=[...locationCounts].sort((a,b)=>b[1]-a[1]);
  const content=<>
-  {!quick&&<header className="r115-heading"><div><h1>Склад запчастин</h1><p>Облік, наявність і керування запчастинами з розбору.</p></div><div className="r115-top-actions">{can('inventory.create')&&<button className="primary" onClick={()=>setEdit({condition:'used',currency:'UAH',vehicle_id:vehicle})}><Plus size={16}/> Додати запчастину</button>}<BulkPricing compact scopeId={vehicle?'vehicle:'+vehicle:'inventory'} selectionQuery={query.toString()} filteredIds={activeInventoryIds(rows)} selectedIds={pricingSelected} categories={categories}/></div></header>}
+  {!quick&&<header className="r115-heading"><div><h2>Запчастини на складі</h2><p>Поточний відбір позицій і робочі операції.</p></div><div className="r115-top-actions">{can('inventory.create')&&<button className="primary" onClick={()=>setEdit({condition:'used',currency:'UAH',vehicle_id:vehicle})}><Plus size={16}/> Додати запчастину</button>}<BulkPricing compact scopeId={vehicle?'vehicle:'+vehicle:'inventory'} selectionQuery={query.toString()} filteredIds={activeInventoryIds(rows)} selectedIds={pricingSelected} categories={categories}/></div></header>}
   {!quick&&<nav className="r115-sections" aria-label="Перегляд складу">{([
    ['parts','Запчастини',LayoutList],['groups','Вузли та агрегати',Boxes],['categories','Категорії',Layers],
    ['locations','Локації',MapPin],['inspection','Інвентаризація',ClipboardCheck]
