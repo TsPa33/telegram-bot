@@ -73,7 +73,7 @@ function SalesWorkspaceContent({quick=false,notify,accountId,grouped=false,inven
  const current=!error&&!loading&&(!smart||smartReady)&&data?.query_key===searchKey&&q===term;
  const waiting=loading||q!==term||(!current&&!error&&(!smart||smartReady));
  const unlocatedRows=current?data!.items.map(p=>overrides[p.id]||p).filter(p=>!p.archived&&(showZero||(smart?p.available_quantity>0:p.quantity>0))).filter(p=>quick||inventoryMatches(p,{sub,price:ownPrice,state:inventoryState})):[];
- const rows=!quick&&locationFilter?unlocatedRows.filter(p=>String(p.location||'').trim()===locationFilter):unlocatedRows;
+ const rows=!quick&&locationFilter?unlocatedRows.filter(p=>locationFilter==='__none__'?!String(p.location||'').trim():String(p.location||'').trim()===locationFilter):unlocatedRows;
  const suggestions=rows.slice(0,5),optionsOpen=quick&&focused&&!!q&&!waiting&&!error;
  useEffect(()=>{setSuggestion(-1);setOverrides({});},[data]);
  const sortedInventoryRows=!quick?[...rows].sort((a,b)=>{
@@ -103,12 +103,22 @@ function SalesWorkspaceContent({quick=false,notify,accountId,grouped=false,inven
  const canSelect=canBulkPrice||can('inventory.transfer')||can('inventory.archive');
  const select=(ids:string[],checked:boolean)=>setPricingSelected(old=>checked?[...new Set([...old,...ids])]:old.filter(id=>!ids.includes(id)));
  const actions=(p:Row)=><PartActionMenu part={p} onSale={()=>openAction(p,'sale')} onPrice={()=>{setDetail(null);setPrice(p);}} onNotes={()=>{setDetail(null);setNotes(p);}} onInspection={()=>{setDetail(null);setInspection(p);}} onAction={type=>openAction(p,type)} onDetail={()=>openDetail(p)} onOem={()=>openDetail(p,'oem')} onColor={()=>openDetail(p,'color')} onEdit={()=>{setDetail(null);setEdit(p);}} onArchive={()=>{setDetail(null);setArchive(p);}} onHistory={()=>{setDetail(null);setHistory(p);}} compact={!quick}/>;
+ const renderInventoryPart=(p:Row,inspect=false)=><InventoryPartRow dashboard part={p} categories={categories} vehicle={vehicles.find(v=>v.id===p.vehicle_id)} market={market.rows[p.id]} marketError={market.error} selected={pricingSelected.includes(p.id)} canSelect={canSelect} onSelect={checked=>select([p.id],checked)} onOpen={()=>openDetail(p)} onSaved={updated} actions={<>{inspect&&can('parts.inspect')&&<button type="button" className="r115-inspect-button" onClick={()=>setInspection(p)}>Перевірити</button>}{actions(p)}</>} photo={<SearchPartPhoto id={p.id} name={p.name} revision={photoRevisions[p.id]||0}/>}/>;
+ const categoryCounts=new Map<string,number>(),locationCounts=new Map<string,number>();
+ for(const p of rows){const categoryId=String(p.category_id||'');categoryCounts.set(categoryId,(categoryCounts.get(categoryId)||0)+1);const loc=String(p.location||'').trim();locationCounts.set(loc,(locationCounts.get(loc)||0)+1);}
+ const categorySummary=[...categoryCounts].sort((a,b)=>b[1]-a[1]);
+ const locationSummary=[...locationCounts].sort((a,b)=>b[1]-a[1]);
  const content=<>
+  {!quick&&<header className="r115-heading"><div><h1>Склад запчастин</h1><p>Облік, наявність і керування запчастинами з розбору.</p></div><div className="r115-top-actions">{can('inventory.create')&&<button className="primary" onClick={()=>setEdit({condition:'used',currency:'UAH',vehicle_id:vehicle})}><Plus size={16}/> Додати запчастину</button>}<BulkPricing compact scopeId={vehicle?'vehicle:'+vehicle:'inventory'} selectionQuery={query.toString()} filteredIds={activeInventoryIds(rows)} selectedIds={pricingSelected} categories={categories}/></div></header>}
+  {!quick&&<nav className="r115-sections" aria-label="Перегляд складу">{([
+   ['parts','Запчастини',LayoutList],['groups','Вузли та агрегати',Boxes],['categories','Категорії',Layers],
+   ['locations','Локації',MapPin],['inspection','Інвентаризація',ClipboardCheck]
+  ] as const).map(([key,label,Icon])=><button type="button" key={key} aria-pressed={inventorySection===key} onClick={()=>{setInventorySection(key);setTablePage(0)}}><Icon size={17}/>{label}</button>)}{onHistory&&can('audit.view')&&<button type="button" onClick={onHistory}>Історія операцій</button>}</nav>}
+  {!quick&&<InventorySummary rows={rows} busy={waiting||lookups.loading}/>}
 
-  {!quick&&<header className="ui3-toolbar"><h1>Склад запчастин</h1>{can('inventory.create')&&<button className="secondary" onClick={()=>setEdit({condition:'used',currency:'UAH',vehicle_id:vehicle})}>Додати запчастину</button>}<BulkPricing compact scopeId={vehicle?'vehicle:'+vehicle:'inventory'} selectionQuery={query.toString()} filteredIds={activeInventoryIds(rows)} selectedIds={pricingSelected} categories={categories}/></header>}
   {!!pendingRequests.length&&<div className="notice" role="status">Є операції без підтвердженого результату. {pendingRequests.map(p=><button key={p.partId+p.type} onClick={async()=>{try{setAction({part:await api('/parts/'+p.partId),type:p.type,key:p.body.request_key});}catch(e){setPendingError((e as Error).message);}}}>Перевірити: {actionLabels[p.type]||'операцію'}</button>)}</div>}
   {pendingError&&<p role="alert" className="error">{pendingError}</p>}
-  {!quick&&<InventoryFilters q={q} vehicle={vehicle} category={category} sub={sub} condition={condition} state={inventoryState} price={ownPrice} brand={brand} model={model} vehicles={vehicles} categories={categories} brands={brands} models={models} onChange={(key,value)=>{setPage(0);if(key==='q')setQ(value);if(key==='vehicle')setParams(value?{vehicle_id:value}:{});if(key==='category'){setCategory(value);setSub('');}if(key==='sub')setSub(value);if(key==='condition')setCondition(value);if(key==='state'){setInventoryState(value);setShowZero(value!=='stock');}if(key==='price')setOwnPrice(value);if(key==='brand'){setBrand(value);setModel('');setParams({});}if(key==='model'){setModel(value);setParams({});}}}/>}
+  {!quick&&<InventoryFilters q={q} vehicle={vehicle} category={category} sub={sub} condition={condition} state={inventoryState} price={ownPrice} brand={brand} model={model} vehicles={vehicles} categories={categories} brands={brands} models={models} onChange={(key,value)=>{setPage(0);setTablePage(0);if(key==='q')setQ(value);if(key==='vehicle')setParams(value?{vehicle_id:value}:{});if(key==='category'){setCategory(value);setSub('');}if(key==='sub')setSub(value);if(key==='condition')setCondition(value);if(key==='state'){setInventoryState(value);setShowZero(value!=='stock');}if(key==='price')setOwnPrice(value);if(key==='brand'){setBrand(value);setModel('');setParams({});}if(key==='model'){setModel(value);setParams({});}}}/>}
   {quick&&<PartsSearchControls smart={smart} ready={smartReady} brand={brand} model={model} vehicle={vehicle} condition={condition} stock={!showZero} vehicles={vehicles} brands={brands} models={models} onMode={value=>{setSmart(value);if(value)setCategory('');setPage(0);setSuggestion(-1);}} onSearch={()=>{setTerm(q);setPage(0);setFocused(false);setSuggestion(-1);}} onChange={(key,value)=>{setPage(0);if(key==='brand'){setBrand(value);setModel('');setParams({});}if(key==='model'){setModel(value);setParams({});}if(key==='vehicle'){const donor=vehicles.find(v=>v.id===value);if(donor){setBrand(donor.manufacturer);setModel(donor.model);}setParams(value?{vehicle_id:value}:{});}if(key==='condition')setCondition(value);if(key==='stock')setShowZero(value!=='true');if(key==='reset'){setBrand('');setModel('');setCondition('');setCategory('');setShowZero(false);setParams({});}}}>
    <div className="seller-autocomplete"><label>Назва, OEM або артикул<input type={quick&&smart?'search':undefined} maxLength={smart?160:undefined} role={quick?'combobox':'searchbox'} aria-label="Пошук запчастин" aria-expanded={quick?optionsOpen:undefined} aria-autocomplete={quick?'list':undefined} aria-controls={quick?'part-suggestions':undefined} aria-activedescendant={suggestion>=0?`suggestion-${suggestion}`:undefined} placeholder="Назва, OEM або артикул" value={q} onFocus={()=>setFocused(true)} onBlur={()=>setFocused(false)} onChange={e=>setQ(e.target.value)} onKeyDown={e=>{
     if(e.key==='Escape'){setFocused(false);setSuggestion(-1);}if(e.key==='ArrowDown'&&suggestions.length){e.preventDefault();setFocused(true);setSuggestion(i=>(i+1)%suggestions.length);}if(e.key==='ArrowUp'&&suggestions.length){e.preventDefault();setSuggestion(i=>(i+suggestions.length-1)%suggestions.length);}if(e.key==='Enter'&&optionsOpen&&suggestion>=0){e.preventDefault();openDetail(suggestions[suggestion]);setFocused(false);}
@@ -122,9 +132,51 @@ function SalesWorkspaceContent({quick=false,notify,accountId,grouped=false,inven
   {error&&!quick&&<button className="secondary" onClick={reload}>Повторити завантаження</button>}
   {error&&quick&&<button type="button" className="secondary" onClick={reload}>Повторити пошук</button>}
   {current&&(data as Row)?.clarification&&<p role="status">{(data as Row).clarification}</p>}
+  {!quick&&locationFilter&&<div className="r115-filter-pill">Локація: <strong>{locationFilter==='__none__'?'Не вказано':locationFilter}</strong><button type="button" onClick={()=>{setLocationFilter('');setTablePage(0);}}>Скинути</button></div>}
   {!quick&&<div className="ui3-selection"><span role="status">{waiting||lookups.loading?'Завантаження…':`Знайдено: ${rows.length}`}{pricingSelected.length>0?` · Вибрано: ${pricingSelected.length}`:''}</span>{canSelect&&<><button onClick={()=>select(rows.map(p=>p.id),true)}>Вибрати за фільтром</button><button disabled={!pricingSelected.length} onClick={()=>setPricingSelected([])}>Зняти вибір</button></>}{(can('inventory.transfer')||can('inventory.archive'))&&<button disabled={!pricingSelected.length||pricingSelected.length>100} onClick={()=>setStockBulk(true)}>Масові дії</button>}{pricingSelected.length>100&&<small>Складські операції — до 100 деталей. Звузьте вибір.</small>}{can('inventory.archive')&&<button onClick={()=>navigate('/archive')}>Архів</button>}</div>}
   {market.error&&<p role="alert">{market.error}</p>}
-  {!quick&&<section className="ui3-results" aria-label="Список складу"><StockTree compact searching={!!term.trim()} rows={rows} categories={categories} tableHead={<InventoryTableHead/>} groupActions={canSelect?(items,label)=><span onClick={e=>e.stopPropagation()}><SelectionCheck ids={items.map(p=>p.id)} selected={new Set(pricingSelected)} label={`Вибрати групу ${label}`} disabled={false} onToggle={checked=>select(items.map(p=>p.id),checked)}/></span>:undefined} render={p=><InventoryPartRow part={p} categories={categories} vehicle={vehicles.find(v=>v.id===p.vehicle_id)} market={market.rows[p.id]} marketError={market.error} selected={pricingSelected.includes(p.id)} canSelect={canSelect} onSelect={checked=>select([p.id],checked)} onOpen={()=>openDetail(p)} onSaved={updated} actions={actions(p)}/>}/>{!waiting&&!error&&!rows.length&&<Empty title="Нічого не знайдено">Змініть фільтри або автомобіль.</Empty>}</section>}
+  {!quick&&<div className="r115-results-layout">
+    <div className="r115-content" aria-live="polite">
+      {inventorySection==='parts'&&<section className="r115-inventory-table" aria-label="Таблиця складських запчастин">
+        <InventoryTableHead dashboard sort={tableSort} onSort={sortInventory}/>
+        {inventoryPageRows.map(p=><div key={p.id}>{renderInventoryPart(p)}</div>)}
+        {!waiting&&!error&&!rows.length&&<Empty title="Нічого не знайдено">Змініть фільтри або автомобіль.</Empty>}
+        {rows.length>0&&<Pager total={rows.length} page={tablePage} setPage={setTablePage}/>}
+      </section>}
+      {inventorySection==='groups'&&<section className="r115-grouped ui3-results" aria-label="Запчастини за групами">
+        <StockTree compact searching={!!term.trim()} rows={sortedInventoryRows} categories={categories} tableHead={<InventoryTableHead dashboard/>}
+        groupActions={canSelect?(items,label)=><span onClick={e=>e.stopPropagation()}><SelectionCheck ids={items.map(p=>p.id)} selected={new Set(pricingSelected)} label={`Вибрати групу ${label}`} disabled={false} onToggle={checked=>select(items.map(p=>p.id),checked)}/></span>:undefined}
+        render={p=>renderInventoryPart(p)}/>
+        {!waiting&&!error&&!rows.length&&<Empty title="Немає груп у відборі">Скиньте фільтри або виберіть інший автомобіль.</Empty>}
+      </section>}
+      {inventorySection==='categories'&&<section className="r115-directory" aria-label="Категорії складу">
+        <h2>Категорії запчастин</h2><p>Показники обчислені за поточним відбором. Виберіть категорію для перегляду деталей.</p>
+        {categorySummary.map(([id,count])=><button type="button" key={id} onClick={()=>{setCategory(id);setSub('');setInventorySection('parts');setTablePage(0);}}><Layers size={18}/><span>{categories.find(v=>v.id===id)?.name||'Без категорії'}</span><strong>{count.toLocaleString('uk-UA')}</strong></button>)}
+        {!waiting&&!categorySummary.length&&<Empty title="Категорій немає">Змініть фільтри.</Empty>}
+      </section>}
+      {inventorySection==='locations'&&<section className="r115-directory" aria-label="Локації зберігання">
+        <h2>Локації складу</h2><p>Фактично зазначені місця зберігання. Виберіть локацію, щоб відфільтрувати запчастини.</p>
+        {locationSummary.map(([name,count])=><button type="button" key={name} onClick={()=>{setLocationFilter(name||'__none__');setInventorySection('parts');setTablePage(0);}}><MapPin size={18}/><span>{name||'Не вказано'}</span><strong>{count.toLocaleString('uk-UA')}</strong></button>)}
+        {!waiting&&!locationSummary.length&&<Empty title="Локацій немає">Змініть фільтри.</Empty>}
+      </section>}
+      {inventorySection==='inspection'&&<section className="r115-inventory-table" aria-label="Перевірка залишків">
+        <div className="r115-inspection-title"><h2>Потребують перевірки</h2><p>Позиції з неперевіреною наявністю або припущеною кількістю. Перевірка не змінює залишки автоматично.</p></div>
+        <InventoryTableHead dashboard sort={tableSort} onSort={sortInventory}/>
+        {inspectionPageRows.map(p=><div key={p.id}>{renderInventoryPart(p,true)}</div>)}
+        {!waiting&&!inspectionRows.length&&<Empty title="Неперевірених позицій у відборі немає">Усі знайдені деталі мають зазначений статус перевірки.</Empty>}
+        {inspectionRows.length>0&&<Pager total={inspectionRows.length} page={tablePage} setPage={setTablePage}/>}
+      </section>}
+    </div>
+    <InventoryInsights rows={rows} categories={categories} busy={waiting||lookups.loading}
+      onCategory={id=>{setCategory(id);setSub('');setInventorySection('parts');setTablePage(0);}}
+      onLocation={loc=>{setLocationFilter(loc||'__none__');setInventorySection('parts');setTablePage(0);}}
+      onAdd={()=>setEdit({condition:'used',currency:'UAH',vehicle_id:vehicle})}
+      onAudit={()=>onHistory?.()}
+      onArchive={()=>navigate('/archive')}
+      onInspect={()=>{setInventorySection('inspection');setTablePage(0);}}
+      canAdd={can('inventory.create')} canAudit={!!onHistory&&can('audit.view')}
+      canArchive={can('inventory.archive')} canInspect={can('parts.inspect')}/>
+   </div>}
   {quick&&<section className="ui4-results" aria-label="Результати пошуку">
    <p className="ui4-count" role="status">{waiting?'Пошук…':error?'Результати недоступні':`Знайдено ${data?.total||0} результатів`}</p>
    {!!rows.length&&<div className="ui11-results-layout">
