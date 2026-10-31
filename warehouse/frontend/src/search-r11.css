@@ -92,3 +92,77 @@
  .ui11-preview-close{display:flex}
  .ui11-preview-heading h2{padding-right:40px}
 }
+
+/* R11.1 — Compact search + quick edit polish; no changes outside the search route. */
+.ui4-search-page .ui4-heading{margin:0 0 10px}
+.ui4-search-page .ui4-heading h1{font-size:25px;line-height:1.2}
+.ui4-search-page .ui4-heading p{margin-top:3px}
+.ui4-search-page .ui4-controls{padding:12px 14px;border-radius:12px;margin-bottom:10px;box-shadow:0 5px 19px #17372b08}
+.ui4-search-page .ui4-search .seller-autocomplete input{height:45px;min-height:45px}
+.ui4-search-page .ui4-search>button{height:45px;min-height:45px}
+.ui4-search-page .ui4-filters{margin-top:9px;gap:8px}
+.ui4-search-page .ui4-filters select{min-height:36px;height:36px}
+.ui4-search-page .ui4-filters .ui4-stock{min-height:36px}
+.ui4-search-page .ui4-filters .ui4-reset{min-height:24px}
+.ui11-categories{margin:10px 0}
+.ui11-category-heading{margin:0 0 7px}
+.ui11-category-grid{display:flex;flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x proximity;padding:2px 1px 5px;gap:7px;scrollbar-width:thin}
+.ui11-category-grid .ui11-category-tile{min-width:0;min-height:48px;flex:0 0 151px;display:flex;flex-direction:row;align-items:center;justify-content:flex-start;gap:9px;padding:8px 11px;border-radius:9px;scroll-snap-align:start}
+.ui11-category-grid .ui11-category-tile svg{height:17px;width:17px;flex:0 0 17px}
+.ui11-category-grid .ui11-category-tile span{text-align:left;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ui11-category-grid.expanded{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));overflow:visible}
+.ui11-category-grid.expanded .ui11-category-tile{width:100%;min-width:0;max-width:none}
+.ui4-search-page .ui4-count{margin:10px 0}
+.ui4-results .ui11-results-list .ui3-table-head,
+.ui4-results .ui11-results-list .ui3-part{grid-template-columns:minmax(155px,1.55fr) minmax(80px,.83fr) minmax(86px,.8fr) minmax(120px,1.1fr) minmax(96px,.84fr) minmax(104px,104px);gap:7px}
+.ui4-results .ui11-results-list .ui3-actions{min-width:104px}
+.ui4-results .ui11-results-list .ui3-actions .seller-actions{display:flex;flex-wrap:nowrap;justify-content:flex-end;align-items:center;gap:6px}
+.ui4-results .ui11-results-list .ui3-actions .stock-row-sale{box-sizing:border-box;min-width:70px;max-width:none;width:auto;flex:0 0 auto;min-height:37px;padding:6px 9px;line-height:1.15;white-space:nowrap;font-size:11px}
+.ui4-results .ui11-results-list .ui3-actions .seller-actions>button:last-of-type{min-width:28px;flex:0 0 28px;padding:3px}
+.ui11-result-wrap{cursor:default}
+.ui11-result-wrap:hover .ui3-part{background:#f8fcf9}
+.ui11-preview-topline{display:flex;justify-content:space-between;align-items:center;gap:8px;padding-right:0}
+.ui11-preview-navigation{display:flex;gap:4px;align-items:center}
+.ui11-preview-navigation button{padding:0;display:grid;place-items:center;min-width:28px;width:28px;height:28px;border-radius:7px;border:1px solid #d5e2db;background:#f8faf9;color:#195846}
+.ui11-preview-navigation button:disabled{opacity:.3;cursor:not-allowed}
+.ui11-preview-navigation span{font-size:10px;font-weight:700;color:#667c72;white-space:nowrap}
+.ui11-photo-actions{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;margin:9px 0;gap:6px}
+.ui11-upload-photo{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:8px 12px;min-height:38px;border:1px dashed #a4c4b5;border-radius:8px;color:#075544;background:#f5faf7;font-size:11px;font-weight:700;cursor:pointer}
+.ui11-upload-photo:hover{border-color:#075544;background:#eaf5ee}
+.ui11-upload-photo input{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden}
+.ui11-photo-disabled{display:flex;align-items:center;gap:6px;color:#667e72;font-size:10px}
+.ui11-inline-error{font-size:11px;color:#9c3232;width:100%;text-align:center}
+.ui11-data-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:10px 0 5px}
+.ui11-data-actions button{display:flex;justify-content:center;align-items:center;gap:4px;padding:5px 7px;font-size:11px;min-width:0;min-height:37px}
+.ui11-oem-editor{margin:10px 0;border:1px solid #dce8df;border-radius:9px;padding:9px;background:#f9fcfa}
+.ui11-oem-editor input{max-width:100%;min-width:0}
+.ui11-oem-editor button{white-space:normal}
+.ui11-preview-price .seller-pricing{min-width:0}
+.ui11-preview-price .seller-pricing>.text-button{font-size:20px;font-weight:800;line-height:1.4;text-align:left;color:#113e2f;padding:0;white-space:normal;overflow-wrap:anywhere}
+.ui11-preview-price .seller-pricing form{margin-top:10px;padding:10px;border:1px solid #dce8df;border-radius:9px;background:#f9fcfa}
+.ui11-preview-price .seller-pricing form label{font-size:11px}
+.ui11-preview-price .seller-pricing form input,
+.ui11-preview-price .seller-pricing form select{font-size:14px;max-width:100%;min-width:0}
+.ui11-preview-price .seller-pricing .pricing-actions{display:flex;flex-direction:column;gap:6px}
+.ui11-preview-price .seller-pricing .pricing-actions button{font-size:11px;padding:8px 9px;min-height:38px;white-space:normal}
+@media(max-width:1430px){
+ .ui4-results .ui11-results-list .ui3-table-head,
+ .ui4-results .ui11-results-list .ui3-part{grid-template-columns:minmax(155px,1.55fr) minmax(80px,.83fr) minmax(86px,.8fr) minmax(125px,1.1fr) minmax(96px,.84fr) minmax(104px,104px)}
+ .ui11-preview-topline{padding-right:40px}
+}
+@media(max-width:1000px){
+ .ui11-category-grid{display:flex;overflow-x:auto;gap:6px}
+ .ui11-category-grid .ui11-category-tile{flex:0 0 141px;min-height:45px}
+ .ui11-category-grid.expanded{grid-template-columns:repeat(3,minmax(0,1fr));overflow:visible}
+ .ui11-category-grid.expanded .ui11-category-tile{flex:auto}
+ .ui4-results .ui11-results-list .ui3-part{grid-template-columns:minmax(0,1fr) 32px}
+ .ui4-results .ui11-results-list .ui3-actions{min-width:0;grid-column:1/-1}
+ .ui4-results .ui11-results-list .ui3-actions .stock-row-sale{min-height:42px;min-width:102px;font-size:12px}
+}
+@media(max-width:600px){
+ .ui4-search-page .ui4-heading h1{font-size:22px}
+ .ui4-search-page .ui4-controls{padding:10px}
+ .ui11-category-grid.expanded{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .ui11-category-grid.expanded .ui11-category-tile{width:100%}
+ .ui11-preview-topline{padding-right:40px}
+}
