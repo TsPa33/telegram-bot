@@ -17,7 +17,7 @@ export default function VehicleDirectoryPicker({brand,model,year,onPick}:{brand:
  return <div className="r12-picker">
   <SearchSelect label="Модифікація двигуна (необов'язково)" value={selected} disabled={!brand||!model||!year||busy} options={list.map(x=>({
    value:x.id,label:`${x.modification} · ${x.displacement_l||'—'} л · ${x.fuel_type||'паливо ?'} · ${x.power_ps||'—'} к.с.${x.year_verified?'':' · рік не підтверджено'}`
-  }))} onChange={id=>{setSelected(id);const choice=list.find(x=>x.id===id);onPick(choice||null)}}/>
+  }))} onChange={id=>{setSelected(id);const choice=list.find(x=>x.id===id);onPick(choice ? (choice as unknown as Row) : null)}}/>
   {busy&&<small role="status">Пошук модифікацій…</small>}
   {!busy&&!error&&!list.length&&<small>У довіднику немає підтвердженої модифікації для цього вибору. Можна додати авто вручну.</small>}
   {chosen&&<small className="r12-variant-note">{chosen.year_verified?'Запис довідника відповідає зазначеному діапазону років.':'Кінець виробництва в джерелі не вказаний. Уточніть комплектацію донора.'} Код двигуна: {chosen.engine_codes.length===1?chosen.engine_codes[0]:'потребує перевірки'}.</small>}
