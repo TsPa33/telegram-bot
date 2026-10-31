@@ -4,6 +4,10 @@ COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 COPY frontend/index.html frontend/tsconfig.json frontend/vite.config.ts ./
 COPY frontend/src ./src
+# Verify every deployed Alembic head is accepted by the frontend readiness gates.
+# Tests and migration sources stay in the builder stage, never the public nginx image.
+COPY frontend/tests ./tests
+COPY backend/alembic/versions ./backend/alembic/versions
 RUN npm run build
 
 FROM nginx:1.28-alpine
