@@ -56,7 +56,7 @@ export default function VehicleQuickPowertrain({vehicle,onSaved}:{vehicle:Row;on
       const choice=e.target.value;
       if(choice==='__custom__'){setCustom(field);setCustomValue(value);return}
       setCustom(null);
-      void save({[field]:field==='engine_displacement_l'?(choice?Number(choice):null):choice||null});
+      void save({[field]:field==='engine_displacement_l'?(choice?Number(choice):null):((field==='fuel_type'||field==='transmission')?choice:(choice||null))});
      }}>
     <option value="">Не вказано</option>
     {current.map(x=><option value={x.value} key={x.value}>{x.label}</option>)}
