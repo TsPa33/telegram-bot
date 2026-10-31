@@ -57,7 +57,7 @@ export default function VehicleForm({initial, fields, onSave}: {initial: Row; fi
       engine_code:selectedDirectory.engine_codes?.length===1?selectedDirectory.engine_codes[0]:null,
       drive_type:selectedDirectory.drive_type||null,
     }:{}),
-    ktype: provider ? selected?.ktype ?? null : ["manufacturer", "model", "year", "engine"].every(k => String(initial[k] ?? "") === String(({manufacturer:brand,model,year,engine} as Row)[k] ?? "")) ? initial.ktype ?? null : null};
+    ktype: provider ? selected?.ktype ?? null : selectedDirectory ? null : ["manufacturer", "model", "year", "engine"].every(k => String(initial[k] ?? "") === String(({manufacturer:brand,model,year,engine} as Row)[k] ?? "")) ? initial.ktype ?? null : null};
   return <>
     <form className="quick-vehicle" onSubmit={async e => {
       e.preventDefault(); if(!valid || busy || saving) return;
