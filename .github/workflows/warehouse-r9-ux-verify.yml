@@ -1,0 +1,27 @@
+name: R9 Catalogue UX verification
+on:
+  push:
+    branches:
+      - feature/warehouse-ux-catalogue-r9
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: warehouse/frontend/package-lock.json
+      - name: Install dependencies
+        working-directory: warehouse/frontend
+        run: npm ci
+      - name: TypeScript and production build
+        working-directory: warehouse/frontend
+        run: npm run build
+      - name: Frontend unit tests
+        working-directory: warehouse/frontend
+        run: node --test tests/*-unit.mjs
