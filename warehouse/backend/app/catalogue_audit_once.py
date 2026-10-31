@@ -51,7 +51,7 @@ def norm(s):
 def account_tag(raw):
     return hashlib.sha256(str(raw).encode("utf-8")).hexdigest()[:10]
 
-def audited():
+def audited(*, log_report=True):
     if os.getenv("WAREHOUSE_ENV") != "staging":
         raise RuntimeError("Read-only audit is staging-only")
     manifest = json.loads((DATA / "aleto_subcategories_uk.json").read_text(encoding="utf-8"))
@@ -275,16 +275,17 @@ def audited():
     finally:
         engine.dispose()
 
-    # Railway drops bursts >500 log lines/s. The authenticated download endpoint
-    # delivers the *complete* dataset; startup prints only safe aggregates.
-    short={k:v for k,v in stats.items() if k not in ("same_parent_exact_name_groups","duplicate_review_all")}
-    LOG.warning("%s_SUMMARY %s",TAG,json.dumps(short,ensure_ascii=False,separators=(",",":"),default=str))
-    for i,group in enumerate(stats["same_parent_exact_name_groups"][:12]):
-        LOG.warning("%s_DUP %d %s",TAG,i,json.dumps(group,ensure_ascii=False,separators=(",",":"),default=str))
-    examples=[r for r in mapping if r["t"] in ("dictionary","review_hierarchy","manual_review","language_review","review_context")]
-    for i in range(0,min(len(examples),60),10):
-        LOG.warning("%s_SAMPLE %d %s",TAG,i//10,json.dumps(examples[i:i+10],ensure_ascii=False,separators=(",",":"),default=str))
-    LOG.warning("%s_END mapping=%d review=%d errors=%d",TAG,len(mapping),len(examples),len(errors))
+    if log_report:
+        # Railway drops bursts >500 log lines/s. The authenticated download endpoint
+        # delivers the *complete* dataset; startup prints only safe aggregates.
+        short={k:v for k,v in stats.items() if k not in ("same_parent_exact_name_groups","duplicate_review_all")}
+        LOG.warning("%s_SUMMARY %s",TAG,json.dumps(short,ensure_ascii=False,separators=(",",":"),default=str))
+        for i,group in enumerate(stats["same_parent_exact_name_groups"][:12]):
+            LOG.warning("%s_DUP %d %s",TAG,i,json.dumps(group,ensure_ascii=False,separators=(",",":"),default=str))
+        examples=[r for r in mapping if r["t"] in ("dictionary","review_hierarchy","manual_review","language_review","review_context")]
+        for i in range(0,min(len(examples),60),10):
+            LOG.warning("%s_SAMPLE %d %s",TAG,i//10,json.dumps(examples[i:i+10],ensure_ascii=False,separators=(",",":"),default=str))
+        LOG.warning("%s_END mapping=%d review=%d errors=%d",TAG,len(mapping),len(examples),len(errors))
     return stats,mapping
 
 def run():
