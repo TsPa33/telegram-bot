@@ -110,7 +110,7 @@ export default function Team({user,notify}:{user:Row;notify:Notify}){
    <div className="panel padded team-insight-panel">
     <header><h2><Users size={18}/> Працівники за ролями</h2></header>
     {summary.data&&<div className="team-role-list">{(['DIRECTOR','ADMIN','MANAGER'] as const).map(roleName=>{
-     const n=summary.data.by_role[roleName]||0,total=Math.max(1,summary.data.total||0);
+     const n=summary.data?.by_role?.[roleName]||0,total=Math.max(1,summary.data?.total||0);
      return <div key={roleName}><div className="team-role-label"><span>{roleLabel(roleName)}</span><strong>{n}</strong></div><div className="team-role-track"><div style={{width:(n/total*100)+'%'}}/></div></div>;
     })}</div>}
     <small className="muted">Фактичні облікові записи у доступній області перегляду.</small>
