@@ -4,6 +4,7 @@ import ParserAdminCenter from '../ParserAdminCenter';
 import {Pager} from '../components';
 import CanonicalCatalogueAdmin from '../CanonicalCatalogueAdmin';
 import {useEffect,useRef,useState} from 'react';
+import '../catalogue-admin-r9.css';
 import {api,ApiError,csrf,when,type Row} from '../api';
 import {State,useLoad} from '../shared';
 import {accepted,active,begin,canApply,complete,dirty,draftKey,editDecision,emptyReview,equal,lastKey,openReview,reconcile,savedReview,showReport,type Decision,type Review} from '../catalogueReview';
@@ -35,9 +36,32 @@ function DecisionRow({row,value,checked,sent,onChange}:{row:Row;value?:Decision;
 function DecisionTable({rows,state,onChange}:{rows:Row[];state:Review;onChange:(row:Row,v?:Decision)=>void}){
  return <table className="catalogue-decisions"><thead><tr><th>Початкова назва</th><th>Український відповідник</th><th>Тип рішення</th><th>Статус</th></tr></thead><tbody>{rows.map(r=><DecisionRow key={r.key} row={r} value={state.draft[r.key]} checked={showReport(state)?state.checked[r.key]:undefined} sent={state.pending?.sent[r.key]} onChange={v=>onChange(r,v)}/>)}</tbody></table>;
 }
+type AdminTab='parts'|'offers'|'runner'|'global';
+const adminTabs: {id:AdminTab;label:string;hint:string}[]=[
+ {id:'parts',label:'Довідник запчастин',hint:'Типи деталей і моделі'},
+ {id:'offers',label:'Ринкові ціни',hint:'Файли пропозицій'},
+ {id:'runner',label:'Задачі парсера',hint:'Запуски й результати'},
+ {id:'global',label:'Глобальний каталог',hint:'Перевірка та публікація'}
+];
 export default function CatalogueImport({enabled,actorKey}:{enabled:boolean;actorKey:string}){
- if(!enabled)return <section className="panel padded"><h1>Доступ обмежено</h1><p>Глобальний імпорт доступний тільки власнику платформи з серверного allowlist.</p></section>;
- return <ParserAdminCenter key={actorKey}><ImportRunnerPanel actorKey={actorKey}/><section className="panel padded" aria-label="Імпорт конструктивного довідника FileDbTree"><h2>Імпорт конструктивних типів запчастин</h2><p>Окремий JSON-довідник без ринкових цін. Перевірка та імпорт виконуються у власний довідник робочого простору; не в глобальний каталог. Прив’язки до моделей визначають потенційні типи для v3, а не точну сумісність.</p><DismantlingCatalogImport defaultOpen onImported={()=>window.dispatchEvent(new Event('warehouse:catalogue-admin-changed'))}/></section><section id="pa-file-import" aria-label="Імпорт ринкових пропозицій"><ImportWorkspace key={actorKey} actorKey={actorKey}/></section><CanonicalCatalogueAdmin key={actorKey+':canonical'} actorKey={actorKey}/></ParserAdminCenter>;
+ const [tab,setTab]=useState<AdminTab>('parts');
+ if(!enabled)return <section className="panel padded"><h1>Доступ обмежено</h1><p>Керування каталогом доступне адміністратору платформи.</p></section>;
+ return <ParserAdminCenter key={actorKey}>
+  <nav className="catalogue-admin-tabs" aria-label="Розділи каталогу">
+   {adminTabs.map(t=><button key={t.id} type="button" aria-current={tab===t.id?'page':undefined}
+    className={tab===t.id?'catalogue-tab-current':''} onClick={()=>setTab(t.id)}>
+    <strong>{t.label}</strong><span>{t.hint}</span></button>)}
+  </nav>
+  <div className="catalogue-tab-content" hidden={tab!=='parts'}>
+   <section className="panel padded catalogue-local-import" aria-label="Довідник запчастин">
+    <h2>Довідник запчастин</h2><p className="catalogue-tab-subtitle">Додайте типи деталей та їх прив’язки до автомобілів.</p>
+    <DismantlingCatalogImport onImported={()=>window.dispatchEvent(new Event('warehouse:catalogue-admin-changed'))}/>
+   </section>
+  </div>
+  {tab==='offers'&&<section id="pa-file-import" className="catalogue-tab-content" aria-label="Ринкові пропозиції"><ImportWorkspace key={actorKey} actorKey={actorKey}/></section>}
+  {tab==='runner'&&<div className="catalogue-tab-content"><ImportRunnerPanel actorKey={actorKey}/></div>}
+  {tab==='global'&&<div className="catalogue-tab-content"><CanonicalCatalogueAdmin key={actorKey+':canonical'} actorKey={actorKey}/></div>}
+ </ParserAdminCenter>;
 }
 function ImportWorkspace({actorKey}:{actorKey:string}){
  const [historyPage,setHistoryPage]=useState(0);
