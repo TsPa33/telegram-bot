@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, type Row } from "./api";
 import { RecordForm, type Field } from "./components";
 import { useLoad } from "./shared";
