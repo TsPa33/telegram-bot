@@ -1,5 +1,5 @@
 import {Permit,useCan} from '../permissions';
-import { ArrowLeft, CarFront, Pencil, Plus, Search } from "lucide-react";
+import { ArrowLeft, CarFront, Pencil, Plus, Search, LayoutGrid, List, ClipboardCheck, History, Package, Wrench, Info } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, labels, money, when, type Page, type Row } from "../api";
@@ -13,6 +13,8 @@ import ManagedDismantling from "../ManagedDismantling";
 import PowertrainEditor from "../PowertrainEditor";
 import VehicleCard from "../VehicleCard";
 import "../warehouse-ux1.css";
+import "../vehicles-r114.css";
+import VehicleImage from "../VehicleImage";
 import {choices, Confirm, Heading, option, State, useLoad, type Notify} from "../shared";
 const vehicleFields: Field[] = [
   { key: "manufacturer", label: "Виробник", required: true },
@@ -57,7 +59,7 @@ const vehicleFields: Field[] = [
 ];
 export default function Vehicles({notify}:{notify:Notify}) {
   const can=useCan();
-  const [q,setQ]=useState(''),[page,setPage]=useState(0),[edit,setEdit]=useState<Row|null>(null),[created,setCreated]=useState<Row|null>(null),[detail,setDetail]=useState<Row|null>(null),[confirm,setConfirm]=useState<Row|null>(null),[showInfo,setShowInfo]=useState(false);
+  const [view,setView]=useState<'cards'|'table'>('cards'),[statusFilter,setStatusFilter]=useState(''),[q,setQ]=useState(''),[page,setPage]=useState(0),[edit,setEdit]=useState<Row|null>(null),[created,setCreated]=useState<Row|null>(null),[detail,setDetail]=useState<Row|null>(null),[confirm,setConfirm]=useState<Row|null>(null),[showInfo,setShowInfo]=useState(false);
   const {data,error,loading,reload}=useLoad(()=>api<Page>(`/vehicles?q=${encodeURIComponent(q)}&limit=50&offset=${page*50}`),[q,page]);
   const navigate=useNavigate(),[params,setParams]=useSearchParams(),donorId=params.get('donor');
   function openDetail(row:Row,info=false){setShowInfo(info);setDetail(row);setParams({donor:row.id,...(info?{info:'1'}:{})});}
@@ -70,16 +72,21 @@ export default function Vehicles({notify}:{notify:Notify}) {
     return ()=>{active=false;};
   },[donorId,params.get('info')]);
   return <>
-    {!detail&&<><Heading eyebrow="АВТОМОБІЛІ" title="Автомобілі" description="Відкрийте автомобіль, щоб вибрати запчастини або перейти до складу.">
+    {!detail&&<><Heading eyebrow="АВТОМОБІЛІ" title="Автомобілі" description="Керуйте автомобілями-донорами, їхніми характеристиками та процесом розбору.">
       <Permit permission="vehicles.create"><button className="secondary" onClick={()=>setEdit({status:'dismantling'})}><Plus size={17}/>Додати автомобіль</button></Permit>
     </Heading>
     {created&&<p role="status">Додано: {created.manufacturer} {created.model} · {created.year}. <button onClick={()=>openDetail(created)}>Відкрити картку</button></p>}
-    <label className="search vehicle-search"><Search size={17}/><input aria-label="Пошук автомобілів" placeholder="Марка, модель або номер авто" value={q} onChange={e=>{setQ(e.target.value);setPage(0);}}/></label>
+    <div className="r114-toolbar">
+      <label className="search vehicle-search"><Search size={17}/><input aria-label="Пошук автомобілів" placeholder="Марка, модель, номер або VIN" value={q} onChange={e=>{setQ(e.target.value);setPage(0);}}/></label>
+      <select aria-label="Фільтр статусу автомобіля" value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}><option value="">Усі статуси</option><option value="planned">Заплановано</option><option value="dismantling">На розборі</option><option value="completed">Завершено</option></select>
+      <div className="r114-view-toggle" role="group" aria-label="Режим відображення"><button type="button" aria-pressed={view==='cards'} onClick={()=>setView('cards')}><LayoutGrid size={15}/> Плитка</button><button type="button" aria-pressed={view==='table'} onClick={()=>setView('table')}><List size={15}/> Таблиця</button></div>
+    </div>
     <State error={error} loading={loading}/>
-    <section className="vehicle-grid" aria-label="Список автомобілів">
-      {data?.items.map(v=><VehicleCard key={v.id} vehicle={v} context="vehicles" onParts={()=>openDetail(v)} onData={()=>openDetail(v,true)} onSaved={saved}/>)}
-      {!loading&&!data?.items.length&&<Empty title={q?'Автомобілів не знайдено':'Додайте перший автомобіль'}>Пов’яжіть запчастини з автомобілем, щоб швидко знаходити їх на складі.</Empty>}
-    </section>
+    {data&&<div className="r114-summary" aria-label="Автомобілі на поточній сторінці"><div><CarFront size={18}/><span><strong>{data.total}</strong><small>Усього автомобілів</small></span></div><div><Wrench size={18}/><span><strong>{data.items.filter(v=>v.status==='dismantling').length}</strong><small>На розборі (ця сторінка)</small></span></div><div><Package size={18}/><span><strong>{data.items.reduce((n,v)=>n+(Number(v.stock_positions)||0),0).toLocaleString('uk-UA')}</strong><small>Позицій на складі (ця сторінка)</small></span></div><div><ClipboardCheck size={18}/><span><strong>{data.items.filter(v=>v.status==='completed').length}</strong><small>Завершено (ця сторінка)</small></span></div></div>}
+    {(()=>{const items=(data?.items||[]).filter(v=>!statusFilter||v.status===statusFilter);return view==='cards'?<section className="vehicle-grid r114-grid" aria-label="Список автомобілів">
+      {items.map(v=><VehicleCard key={v.id} vehicle={v} context="vehicles" onParts={()=>openDetail(v)} onData={()=>openDetail(v,true)} onSaved={saved}/>)}
+      {!loading&&!items.length&&<Empty title={q||statusFilter?'Автомобілів не знайдено':'Додайте перший автомобіль'}>Змініть пошук або фільтр.</Empty>}
+    </section>:<section className="r114-table-wrap" aria-label="Таблиця автомобілів"><table><thead><tr><th>Автомобіль</th><th>Рік / №</th><th>Статус</th><th>Позицій</th><th>Дії</th></tr></thead><tbody>{items.map(v=><tr key={v.id}><td><strong>{v.manufacturer} {v.model}</strong><small>{v.vin?'VIN: '+v.vin:'VIN не вказано'}</small></td><td>{v.year} · №{v.number??'—'}</td><td>{labels[v.status]||'Не уточнено'}</td><td>{v.stock_positions??'—'}</td><td><button onClick={()=>openDetail(v,true)}>Картка авто</button><button onClick={()=>openDetail(v)}>Розбір</button></td></tr>)}</tbody></table>{!loading&&!items.length&&<p>Автомобілів не знайдено.</p>}</section>})()}
     {data&&<Pager total={data.total} page={page} setPage={setPage}/>}</>}
     {edit&&<Modal title={edit.id?'Редагувати автомобіль':'Новий автомобіль-донор'} onClose={()=>setEdit(null)}>
       <VehicleForm initial={edit} fields={vehicleFields.filter(f=>f.key!=='acquisition_cost'||can('parts.view_cost'))} onSave={async values=>{
@@ -128,8 +135,9 @@ function VehicleDetail({
   const history=useLoad(()=>tab==='history'&&can('audit.view')?api(`/audit?vehicle_id=${v.id}&limit=50`):Promise.resolve(null),[v.id,tab]);
   return (
     <>
-      <header className="ux1-vehicle-header"><div className="ux1-vehicle-placeholder" role="img" aria-label="Фото автомобіля відсутнє"><CarFront size={44} strokeWidth={1.2}/><span>Фото відсутнє</span></div><div className="ux1-vehicle-identity"><h1>{v.manufacturer} {v.model} · {v.year} · №{v.number??'—'}</h1><div className="ux1-vehicle-tags">{[v.fuel_type,v.engine,v.transmission,v.dismantling_v3?.configuration?.values?.drive].filter(Boolean).map((value,index)=><span key={index}>{value}</span>)}{!v.engine&&!v.fuel_type&&<span>Двигун не уточнено</span>}</div>{v.vin&&<small>VIN: {v.vin}</small>}</div>{!v.archived&&<Permit permission="vehicles.edit"><button className="secondary" onClick={onEdit}><Pencil size={14}/>Редагувати авто</button></Permit>}</header>
-      <nav className="ux1-tabs" aria-label="Розділи автомобіля">{[['parts','Запчастини'],['info','Загальна інформація'],...(can('audit.view')?[['history','Історія операцій']]:[])].map(([key,label])=><button key={key} aria-current={tab===key?'page':undefined} onClick={()=>setTab(key)}>{label}</button>)}</nav>
+      <header className="ux1-vehicle-header r114-detail-header"><div className="r114-detail-image"><VehicleImage vehicle={v}/><small>Ілюстративне зображення, не фото цього донора</small></div><div className="ux1-vehicle-identity"><h1>{v.manufacturer} {v.model} · {v.year} · №{v.number??'—'}</h1><div className="ux1-vehicle-tags">{[v.fuel_type,v.engine,v.transmission,v.dismantling_v3?.configuration?.values?.drive].filter(Boolean).map((value,index)=><span key={index}>{value}</span>)}{!v.engine&&!v.fuel_type&&<span>Двигун не уточнено</span>}</div>{v.vin&&<small>VIN: {v.vin}</small>}</div>{!v.archived&&<Permit permission="vehicles.edit"><button className="secondary" onClick={onEdit}><Pencil size={14}/>Редагувати авто</button></Permit>}</header>
+      <div className="r114-vehicle-actions"><button type="button" onClick={onInventory}><Package size={15}/> Відкрити склад запчастин</button><button type="button" onClick={()=>setTab("info")}><Info size={15}/> Картка авто</button>{can("audit.view")&&<button type="button" onClick={()=>setTab("history")}><History size={15}/> Історія операцій</button>}</div>
+      <nav className="ux1-tabs" aria-label="Розділи автомобіля">{[['parts','Розбір і запчастини'],['info','Картка автомобіля'],...(can('audit.view')?[['history','Історія операцій']]:[])].map(([key,label])=><button key={key} aria-current={tab===key?'page':undefined} onClick={()=>setTab(key)}>{label}</button>)}</nav>
       <div hidden={tab!=='parts'}>
       {legacyVehicle!==v.id&&can('catalog.view')&&can('vehicles.view')&&<ManagedDismantling key={v.id} vehicle={v} onSaved={onSaved}/>}
       <details className="vehicle-secondary"><summary>Попередній довідник та джерела</summary>{can('catalog.view')&&can('vehicles.view')&&<AletoCatalogue key={v.id} vehicleId={v.id}/>}{canCatalog&&<DismantlingCatalogImport onImported={()=>{onRefresh();}}/>}
@@ -142,8 +150,9 @@ function VehicleDetail({
       <dl className="details">
         {[
           ["Номер автомобіля", `№ ${v.number ?? "—"}`],
+          ["Марка",v.manufacturer],["Модель",v.model],["Покоління",v.generation||"Не вказано"],["Статус",labels[v.status]||"Не уточнено"],
           ["Рік", v.year],
-          ["Двигун", v.engine || "Не вказано"],
+          ["Двигун", v.engine || "Не вказано"],["Паливо",v.fuel_type||"Не вказано"],
           ["КПП", v.transmission || "Не вказано"],
           ["VIN", v.vin || "Не вказано"],
           [
