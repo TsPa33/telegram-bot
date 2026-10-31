@@ -1,5 +1,5 @@
 import {Permit,useCan} from '../permissions';
-import { ArrowLeft, CarFront, Pencil, Plus, Search, LayoutGrid, List, ClipboardCheck, History, Package, Wrench, Info } from "lucide-react";
+import { ArrowLeft, CarFront, Pencil, Plus, Search, LayoutGrid, List, ClipboardCheck, History, Package, Wrench, Info, Images, Coins } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, labels, money, when, type Page, type Row } from "../api";
@@ -14,7 +14,12 @@ import PowertrainEditor from "../PowertrainEditor";
 import VehicleCard from "../VehicleCard";
 import "../warehouse-ux1.css";
 import "../vehicles-r114.css";
+import "../vehicles-r1144.css";
 import VehicleImage from "../VehicleImage";
+import VehicleDonorPhotos from "../VehicleDonorPhotos";
+import VehicleIdentityForm from "../VehicleIdentityForm";
+import VehicleSpecificationsForm from "../VehicleSpecificationsForm";
+import VehicleFinance from "../VehicleFinance";
 import {choices, Confirm, Heading, option, State, useLoad, type Notify} from "../shared";
 const vehicleFields: Field[] = [
   { key: "manufacturer", label: "Виробник", required: true },
@@ -132,15 +137,38 @@ function VehicleDetail({
     reload: reloadAnalytics,
   } = useLoad(() => can('analytics.view')?api(`/vehicles/${v.id}/analytics`):Promise.resolve(null), [v.id]);
   const [busy, setBusy] = useState(false);
+  const [photoRevision,setPhotoRevision]=useState(0);
   const [legacyVehicle,setLegacyVehicle]=useState('');
   const [tab,setTab]=useState(showInfo?'info':'parts');
   useEffect(()=>setTab(showInfo?'info':'parts'),[showInfo]);
   const history=useLoad(()=>tab==='history'&&can('audit.view')?api(`/audit?vehicle_id=${v.id}&limit=50`):Promise.resolve(null),[v.id,tab]);
   return (
     <>
-      <header className="ux1-vehicle-header r114-detail-header r1142-detail-header"><div className="r114-detail-image"><VehicleImage vehicle={v}/><small>Ілюстративне зображення, не фото цього донора</small></div><div className="ux1-vehicle-identity"><h1>{v.manufacturer} {v.model} · {v.year} · №{v.number??'—'}</h1><div className="r1142-spec-grid">{([['Двигун',v.engine],['Паливо',v.fuel_type],['КПП',v.transmission]] as [string,string|undefined][]).map(([label,value])=><button type="button" className="r1142-spec" key={label} disabled={v.archived||!can('vehicles.edit')} onClick={onEdit}><span>{label}</span><strong>{value||'+ Додати'}</strong><Pencil size={13}/></button>)}</div>{v.vin&&<small>VIN: {v.vin}</small>}</div>{!v.archived&&<Permit permission="vehicles.edit"><button className="secondary" onClick={onEdit}><Pencil size={14}/>Редагувати авто</button></Permit>}</header>
-      <div className="r114-vehicle-actions"><button type="button" onClick={onInventory}><Package size={15}/> Відкрити склад запчастин</button><button type="button" onClick={()=>setTab("info")}><Info size={15}/> Картка авто</button>{can("audit.view")&&<button type="button" onClick={()=>setTab("history")}><History size={15}/> Історія операцій</button>}</div>
-      <nav className="ux1-tabs" aria-label="Розділи автомобіля">{[['parts','Розбір і запчастини'],['info','Картка автомобіля'],...(can('audit.view')?[['history','Історія операцій']]:[])].map(([key,label])=><button key={key} aria-current={tab===key?'page':undefined} onClick={()=>setTab(key)}>{label}</button>)}</nav>
+      <header className="r1144-donor-header">
+       <VehicleDonorPhotos vehicle={v} mode="hero" revision={photoRevision} onChanged={()=>setPhotoRevision(i=>i+1)}/>
+       <div className="r1144-donor-main">
+        <div className="r1144-donor-title"><h1>{v.manufacturer} {v.model} · {v.year} · №{v.number??'—'}</h1><span className="r1144-status">{labels[v.status]||'Не уточнено'}</span></div>
+        <div className="r1144-donor-spec-line">
+         <span><Wrench size={16}/>{[v.fuel_type,v.engine_displacement_l?v.engine_displacement_l+' л':null,v.engine_variant||v.engine].filter(Boolean).join(' · ')||'Двигун не уточнено'}</span>
+         <span><Cog size={16}/>{[v.transmission,v.drive_type].filter(Boolean).join(' · ')||'КПП не уточнено'}</span>
+         <span><ClipboardCheck size={16}/> VIN: {v.vin||'Не вказано'}</span>
+        </div>
+        <div className="r1144-donor-actions">
+         <button type="button" className="primary" onClick={onInventory}><Package size={16}/> Склад запчастин</button>
+         <button type="button" onClick={()=>setTab('info')}><Info size={15}/> Картка авто</button>
+         <button type="button" onClick={()=>setTab('photos')}><Images size={15}/> Фото</button>
+         {can('parts.view_cost')&&<button type="button" onClick={()=>setTab('finance')}><Coins size={15}/> Фінанси</button>}
+         {!v.archived&&<Permit permission="vehicles.edit"><button type="button" onClick={onEdit}><Pencil size={15}/> Редагувати авто</button></Permit>}
+        </div>
+       </div>
+      </header>
+      <nav className="r1144-tabs" aria-label="Розділи автомобіля">
+       {[
+        ['info','Основне'],['parts','Розбір і запчастини'],['photos','Фото'],
+        ...(can('parts.view_cost')?[['finance','Фінанси']]:[]),
+        ...(can('audit.view')?[['history','Історія операцій']]:[])
+       ].map(([key,label])=><button type="button" key={key} className={tab===key?'active':''} aria-current={tab===key?'page':undefined} onClick={()=>setTab(key)}>{label}</button>)}
+      </nav>
       <div hidden={tab!=='parts'}>
       {legacyVehicle!==v.id&&can('catalog.view')&&can('vehicles.view')&&<ManagedDismantling key={v.id} vehicle={v} onSaved={onSaved}/>}
       <details className="vehicle-secondary"><summary>Попередній довідник та джерела</summary>{can('catalog.view')&&can('vehicles.view')&&<AletoCatalogue key={v.id} vehicleId={v.id}/>}{canCatalog&&<DismantlingCatalogImport onImported={()=>{onRefresh();}}/>}
@@ -148,75 +176,26 @@ function VehicleDetail({
       </details>
       </div>
       {tab==='history'&&<section className="ux1-history" aria-label="Історія автомобіля"><State error={history.error} loading={history.loading}/>{history.data?.items.map((r:Row)=><article key={r.id}><strong>{labels[r.type]||'Складська операція'}</strong><span>{when(r.created_at)}</span><p>{r.reason}</p></article>)}{history.data?.items.length===0&&<p>Операцій ще немає.</p>}{history.data?.total>50&&<p>Показано останні 50 операцій.</p>}</section>}
-      <div hidden={tab!=='info'}><section className="r1142-info-panel"><header className="r1142-info-heading"><div><h2>Дані автомобіля</h2><small>Основні характеристики автомобіля-донора</small></div></header>
-      {!v.archived&&<div className="modal-actions"><Permit permission="vehicles.edit"><button onClick={onEdit}>Редагувати дані</button></Permit><Permit permission="inventory.archive"><button onClick={onArchive}>Архівувати автомобіль</button></Permit></div>}
-      <dl className="details r1142-details">
-        {[
-          ["Номер автомобіля", `№ ${v.number ?? "—"}`],
-          ["Марка",v.manufacturer],["Модель",v.model],["Покоління",v.generation||"Не вказано"],["Статус",labels[v.status]||"Не уточнено"],
-          ["Рік", v.year],
-          ["Двигун", v.engine || "Не вказано"],["Паливо",v.fuel_type||"Не вказано"],
-          ["КПП", v.transmission || "Не вказано"],
-          ["VIN", v.vin || "Не вказано"],
-          [
-            "Придбання",
-            v.acquisition_cost != null ? money(v.acquisition_cost) : "Не вказано",
-          ],
-          ["Дата придбання", v.acquisition_date || "Не вказано"],
-          ["Примітки", v.notes || "—"],
-        ].filter(([k])=>k!=='Придбання'||can('parts.view_cost')).map(([k, val]) => (
-          <div key={k}>
-            <dt>{k}</dt>
-            <dd>{val}</dd>{!v.archived&&can("vehicles.edit")&&<button type="button" className="r1142-field-edit" aria-label={"Редагувати: "+k} onClick={onEdit}><Pencil size={13}/></button>}
-          </div>
-        ))}
-      </dl>
-      <State error={error} loading={loading} />
-      {d && (
-        <div className="detail-stats">
-          <span>
-            Позицій<strong>{d.positions}</strong>
-          </span>
-          <span>
-            Одиниць<strong>{d.stock_units}</strong>
-          </span>
-          {can('analytics.financial')&&<span>
-            Оцінка продажу<strong>{money(d.estimated_sales_value)}</strong>
-          </span>}
-          {can('analytics.financial')&&can('parts.view_cost')&&<span>
-            Потенційна маржа<strong>{money(d.potential_gross_margin)}</strong>
-          </span>}
-        </div>
-      )}
-      <details><summary>Додатковий каталог</summary>{canReceipt&&<VehicleChecklist vehicle={v} />}</details>
-      <details><summary>Ручний список зі власних категорій</summary>
-      <p className="notice">
-        Стандартний чекліст — перелік можливих деталей, а не точний OEM-каталог.
-        Усі нові позиції мають нульовий залишок. Повторне формування зберігає
-        вашу роботу.
-      </p>
-      <div className="modal-actions">
-        <button onClick={onInventory}>Відкрити запчастини</button>
-        <button
-          disabled={busy||!canReceipt}
-          className="primary"
-          onClick={async () => {
-            setBusy(true);
-            try {
-              const r = await api(`/vehicles/${v.id}/checklist`, "POST");
-              notify(`Додано позицій: ${r.created}. Уже існує: ${r.existing}`);
-            } catch (e) {
-              notify((e as Error).message);
-            } finally {
-              setBusy(false);
-            }
-          }}
-        >
-          Сформувати ручний список запчастин
-        </button>
+      <div hidden={tab!=='info'}>
+       <div className="r1144-profile-grid">
+        <VehicleIdentityForm vehicle={v} onSaved={onSaved} onArchive={onArchive}/>
+        <VehicleSpecificationsForm vehicle={v} onSaved={onSaved}/>
+       </div>
+       <div className="r1144-donor-meta">
+        <div><small>Придбання</small><strong>{v.acquisition_date||'Не вказано'}</strong></div>
+        {can('parts.view_cost')&&<div><small>Вартість придбання</small><strong>{v.acquisition_cost==null?'Не вказано':money(v.acquisition_cost)}</strong></div>}
+        <div><small>Позицій на складі</small><strong>{d?.positions??v.stock_positions??'—'}</strong></div>
+        <div><small>Дані двигуна</small><strong>{v.engine_code||'Код не вказано'}</strong></div>
+       </div>
+       <details className="r1144-advanced"><summary>Додаткові інструменти каталогу та чекліста</summary>
+        {canReceipt&&<VehicleChecklist vehicle={v}/>}
+        <p className="notice">Стандартний чекліст містить можливі запчастини, а не підтверджений OEM-каталог. Нові позиції створюються з нульовим залишком.</p>
+        <button type="button" disabled={busy||!canReceipt} onClick={async()=>{setBusy(true);try{const r=await api(`/vehicles/${v.id}/checklist`,'POST');notify(`Додано: ${r.created}. Уже існує: ${r.existing}`);}catch(e){notify((e as Error).message)}finally{setBusy(false)}}}>Сформувати ручний список запчастин</button>
+       </details>
       </div>
-      </details>
-      </section></div>
+      {tab==='photos'&&<VehicleDonorPhotos vehicle={v} mode="gallery" revision={photoRevision} onChanged={()=>setPhotoRevision(i=>i+1)}/>}
+      {tab==='finance'&&can('parts.view_cost')&&<VehicleFinance vehicle={v} analytics={d} onSaved={onSaved}/>}
+
     </>
   );
 }
