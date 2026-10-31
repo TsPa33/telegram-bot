@@ -1,5 +1,6 @@
 import {Permit} from '../permissions';
 import GlobalCatalogue from '../GlobalCatalogue';
+import {catalogueLabelUk,categoryOptionLabel} from '../catalogueLabels';
 import {
   Archive as ArchiveIcon,
   ClipboardList,
@@ -27,9 +28,14 @@ export default function Catalog({ notify }: { notify: Notify }) {
       ? path(byId.get(row.parent_id)!) + " / " + row.name
       : row.name;
   }
+  function displayPath(row:Row):string{
+    return row.parent_id&&byId.has(row.parent_id)
+      ?displayPath(byId.get(row.parent_id)! )+' / '+catalogueLabelUk(row.name)
+      :catalogueLabelUk(row.name);
+  }
   const filtered = rows
-    ?.filter((r) => path(r).toLowerCase().includes(q.toLowerCase()))
-    .sort((a, b) => path(a).localeCompare(path(b), "uk"));
+    ?.filter((r) => (path(r)+' / '+displayPath(r)).toLocaleLowerCase('uk').includes(q.toLocaleLowerCase('uk')))
+    .sort((a, b) => displayPath(a).localeCompare(displayPath(b), "uk"));
   return (
     <>
       <Heading
@@ -84,8 +90,9 @@ export default function Catalog({ notify }: { notify: Notify }) {
                 {filtered.map((c) => (
                   <tr key={c.id}>
                     <td>
-                      <b>{c.name}</b>
-                      <small>{path(c)}</small>
+                      <b>{categoryOptionLabel(c,rows||[])}</b>
+                      <small>{displayPath(c)}</small>
+                      {catalogueLabelUk(c.name)!==c.name&&<small>Оригінал: {c.name}</small>}
                     </td>
                     <td>
                       <span className="pill">{labels[c.kind]}</span>
