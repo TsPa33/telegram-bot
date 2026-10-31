@@ -55,7 +55,9 @@ def dashboard(db, account_id, vehicle_id=None):
     ).all()
     vehicle_values = db.execute(
         select(Vehicle.id, Vehicle.manufacturer, Vehicle.model, Vehicle.year, Vehicle.number,
-               Part.currency, expr(Part.quantity * Part.selling_price))
+               Part.currency, expr(Part.quantity * Part.selling_price),
+               func.count(Part.id).filter(Part.selling_price.is_not(None), Part.quantity > 0),
+               func.count(Part.id).filter(Part.selling_price.is_(None), Part.quantity > 0))
         .select_from(Part).join(Vehicle, Part.vehicle_id == Vehicle.id)
         .where(*filters).group_by(Vehicle.id, Part.currency)
         .order_by(Vehicle.manufacturer, Vehicle.model, Vehicle.id, Part.currency)
@@ -89,8 +91,9 @@ def dashboard(db, account_id, vehicle_id=None):
         ],
         by_condition=[{"name": n, "quantity": q} for n, q in conditions],
         vehicle_valuation_by_currency=[
-            {'id':i,'name':f'{brand} {model} · {year} · №{number}', 'currency':currency,'value':str(value)}
-            for i,brand,model,year,number,currency,value in vehicle_values
+            {'id':i,'name':f'{brand} {model} · {year} · №{number}', 'currency':currency,
+             'value':str(value),'priced_positions':int(priced),'unpriced_positions':int(unpriced)}
+            for i,brand,model,year,number,currency,value,priced,unpriced in vehicle_values
         ],
         by_vehicle=[{"id": i, "name": n, "value": v} for i, n, v in vehicles],
         recent_operations=[snapshot(r) for r in recent],
