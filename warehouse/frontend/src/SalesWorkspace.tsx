@@ -50,6 +50,7 @@ function SalesWorkspaceContent({quick=false,notify,accountId,grouped=false,inven
  const [brand,setBrand]=useState(''),[model,setModel]=useState(''),[q,setQ]=useState(''),[term,setTerm]=useState(''),[page,setPage]=useState(0),[showZero,setShowZero]=useState(false);
  const [category,setCategory]=useState(''),[sub,setSub]=useState(''),[condition,setCondition]=useState(''),[ownPrice,setOwnPrice]=useState(''),[inventoryState,setInventoryState]=useState('stock'),[stockBulk,setStockBulk]=useState(false);
  const [previewId,setPreviewId]=useState('');
+ const [photoRevisions,setPhotoRevisions]=useState<Record<string,number>>({});
  const [detail,setDetail]=useState<Row|null>(null),[detailEdit,setDetailEdit]=useState<'oem'|'color'|undefined>(),[detailEditVersion,setDetailEditVersion]=useState(0),[edit,setEdit]=useState<Row|null>(null),[price,setPrice]=useState<Row|null>(null),[action,setAction]=useState<Action|null>(null),[archive,setArchive]=useState<Row|null>(null),[history,setHistory]=useState<Row|null>(null);
  const [notes,setNotes]=useState<Row|null>(null),[inspection,setInspection]=useState<Row|null>(null);
  const [overrides,setOverrides]=useState<Record<string,Row>>({});
@@ -71,6 +72,8 @@ function SalesWorkspaceContent({quick=false,notify,accountId,grouped=false,inven
  const models=[...new Set(vehicles.filter(v=>!brand||v.manufacturer===brand).map(v=>v.model))].sort((a,b)=>a.localeCompare(b,'uk'));
  const previewPart=quick?(rows.find(p=>p.id===previewId)||rows[0]||null):null;
  const previewVehicle=previewPart?vehicles.find(v=>v.id===previewPart.vehicle_id)||previewPart.donor:undefined;
+ const previewIndex=previewPart?rows.findIndex(p=>p.id===previewPart.id):-1;
+ function selectPreview(id:string,scroll=false){setPreviewId(id);if(scroll&&window.matchMedia('(max-width: 1430px)').matches)requestAnimationFrame(()=>document.getElementById('search-part-preview')?.scrollIntoView({behavior:'smooth',block:'start'}));}
  function updated(row:Row){setOverrides(values=>({...values,[row.id]:row}));setDetail(current=>current?.id===row.id?row:current);window.dispatchEvent(new Event('warehouse:inventory-changed'));}
  function openDetail(row:Row,edit?:'oem'|'color'){setDetailEdit(edit);setDetailEditVersion(v=>v+1);setDetail(row);}
  function openAction(part:Row,type:string){setDetail(null);setAction({part,type,key:crypto.randomUUID()});}
@@ -109,14 +112,21 @@ function SalesWorkspaceContent({quick=false,notify,accountId,grouped=false,inven
       category={categories.find(c=>c.id===previewPart?.category_id)}
       subcategory={categories.find(c=>c.id===previewPart?.subcategory_id)}
       canSell={can('sales.create')} open={!!previewId} onClose={()=>setPreviewId('')}
+      position={previewIndex+1} total={rows.length}
+      onPrevious={()=>{if(previewIndex>0)selectPreview(rows[previewIndex-1].id);}}
+      onNext={()=>{if(previewIndex>=0&&previewIndex<rows.length-1)selectPreview(rows[previewIndex+1].id);}}
       onOpen={()=>{if(previewPart)openDetail(previewPart);}}
+      onEdit={()=>{if(previewPart){setDetail(null);setEdit(previewPart);}}}
+      onSaved={updated}
+      photoRevision={photoRevisions[previewPart?.id||'']||0}
+      onPhotoSaved={id=>setPhotoRevisions(old=>({...old,[id]:(old[id]||0)+1}))}
       onSell={()=>{if(previewPart)openAction(previewPart,'sale');}}/>
-    <div className="ui11-results-list"><InventoryTableHead/>{rows.map(p=><div key={p.id} className={'ui11-result-wrap'+(previewPart?.id===p.id?' selected':'')}>
-     <InventoryPartRow part={p} categories={categories} vehicle={vehicles.find(v=>v.id===p.vehicle_id)||p.donor} market={market.rows[p.id]} marketError={market.error} selected={false} canSelect={false} onSelect={()=>{}} onOpen={()=>openDetail(p)} onSaved={updated} actions={actions(p)} photo={<SearchPartPhoto id={p.id} name={p.name}/>} extra={<>
+    <div className="ui11-results-list"><InventoryTableHead/>{rows.map(p=><div key={p.id} className={'ui11-result-wrap'+(previewPart?.id===p.id?' selected':'')} onClick={e=>{if(e.target instanceof Element&&!e.target.closest('button,a,input,label,select,textarea,[role=button]'))selectPreview(p.id);}}>
+     <InventoryPartRow part={p} categories={categories} vehicle={vehicles.find(v=>v.id===p.vehicle_id)||p.donor} market={market.rows[p.id]} marketError={market.error} selected={false} canSelect={false} onSelect={()=>{}} onOpen={()=>{selectPreview(p.id);openDetail(p);}} onSaved={updated} actions={actions(p)} photo={<SearchPartPhoto id={p.id} name={p.name} revision={photoRevisions[p.id]||0}/>} extra={<>
       {(p.oem_number||p.article_number)&&<small className="ui11-codes">{p.oem_number&&`OEM: ${p.oem_number}`}{p.oem_number&&p.article_number?' · ':''}{p.article_number&&`Артикул: ${p.article_number}`}</small>}
       <small>{labels[p.condition]||'Стан не уточнено'}</small>
       {smart&&p.match_explanation&&<small className="smart-match">{p.match_explanation}</small>}
-      <button type="button" className="ui11-quick-view" aria-pressed={previewPart?.id===p.id} onClick={()=>{setPreviewId(p.id);if(window.matchMedia('(max-width: 1430px)').matches)requestAnimationFrame(()=>document.getElementById('search-part-preview')?.scrollIntoView({behavior:'smooth',block:'start'}));}}>Швидкий перегляд</button>
+      <button type="button" className="ui11-quick-view" aria-pressed={previewPart?.id===p.id} onClick={()=>selectPreview(p.id,true)}>Швидкий перегляд</button>
      </>}/></div>)}
      <Pager total={data?.total||0} page={page} setPage={setPage}/>
     </div>
