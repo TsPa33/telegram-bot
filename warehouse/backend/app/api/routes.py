@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session as DBSession
 from app.api.deps import Identity, identity
 from app.config import photo_dir, secure_cookies, registration_enabled
 from app.db import get_db
-from app.models import Account, Category, Operation, Part, Photo, Vehicle
+from app.models import Account, Category, Operation, Part, Photo, Vehicle, VehiclePhoto
 from app.schemas import (
     BulkInput,
     CategoryImport,
@@ -31,6 +31,7 @@ from app.schemas import (
     StockInput,
     VehicleInput,
     VehiclePowertrainInput,
+    VehicleSpecificationsInput,
 )
 from app.services import auth
 from app.services.vehicle_catalog import local_catalog, automatic_donor_id
@@ -279,6 +280,24 @@ def vehicle_powertrain(id: str, data: VehiclePowertrainInput, db: DB, who: Auth)
         setattr(row, key, value)
     if snapshot(row) != before:
         record(db, who.workspace_account_id, row, "vehicle_update", "Оновлено двигун / КПП", before)
+    db.commit()
+    return vehicle_view(db, row, who.workspace_account_id)
+
+
+@router.patch("/vehicles/{id}/specifications", tags=["Vehicles"])
+def vehicle_specifications(id: str, data: VehicleSpecificationsInput, db: DB, who: Auth):
+    """Update only supplied donor facts; never guess a trim from model or VIN."""
+    row = owned(db, Vehicle, id, who.workspace_account_id, lock=True, active=True)
+    before = snapshot(row)
+    changes = data.model_dump(exclude_unset=True)
+    if any(key in changes and changes[key] != getattr(row, key) for key in (
+        "engine", "fuel_type", "engine_displacement_l", "engine_variant", "engine_code"
+    )):
+        row.ktype = None  # Prevent stale Plan.Parts fitment claims.
+    for key, value in changes.items():
+        setattr(row, key, value)
+    if snapshot(row) != before:
+        record(db, who.workspace_account_id, row, "vehicle_update", "Оновлено характеристики донора", before)
     db.commit()
     return vehicle_view(db, row, who.workspace_account_id)
 
@@ -634,6 +653,100 @@ def settings(who: Auth):
         "currency": "UAH",
         "catalog_source_required": True,
     }
+
+
+
+@router.get("/vehicles/{id}/photos", tags=["Vehicle photos"])
+def vehicle_photos(id: str, db: DB, who: Auth):
+    owned(db, Vehicle, id, who.workspace_account_id)
+    return [
+        {"id": item.id, "url": f"/api/v1/vehicle-photos/{item.id}", "created_at": item.created_at.isoformat()}
+        for item in db.scalars(select(VehiclePhoto).where(
+            VehiclePhoto.vehicle_id == id, VehiclePhoto.account_id == who.workspace_account_id
+        ).order_by(VehiclePhoto.created_at.desc(), VehiclePhoto.id.desc()))
+    ]
+
+
+@router.post("/vehicles/{id}/photos", status_code=201, tags=["Vehicle photos"])
+async def vehicle_photo_upload(id: str, db: DB, who: Auth, file: UploadFile = File(...)):
+    from io import BytesIO
+    from PIL import Image, UnidentifiedImageError, ImageOps
+
+    vehicle = owned(db, Vehicle, id, who.workspace_account_id, active=True, lock=True)
+    folder = photo_dir()
+    if folder is None:
+        raise HTTPException(409, "Сховище фотографій не підключене")
+    count = db.scalar(select(func.count(VehiclePhoto.id)).where(
+        VehiclePhoto.vehicle_id == id, VehiclePhoto.account_id == who.workspace_account_id
+    )) or 0
+    if count >= 12:
+        raise HTTPException(409, "Максимум 12 фотографій автомобіля")
+    raw = await file.read(5 * 1024 * 1024 + 1)
+    if len(raw) > 5 * 1024 * 1024:
+        raise HTTPException(413, "Максимум 5 МБ")
+    if not raw:
+        raise HTTPException(422, "Порожній файл")
+    try:
+        with Image.open(BytesIO(raw)) as image:
+            if image.format not in ("JPEG", "PNG", "WEBP") or image.width * image.height > 25000000:
+                raise ValueError("Unsupported photo")
+            image.verify()
+        with Image.open(BytesIO(raw)) as image:
+            image = ImageOps.exif_transpose(image).convert("RGB")
+            image.thumbnail((2200, 2200))
+            out = BytesIO()
+            image.save(out, format="JPEG", quality=86, optimize=True)
+    except (ValueError, OSError, UnidentifiedImageError, Image.DecompressionBombError) as exc:
+        raise HTTPException(422, "Оберіть справжній JPEG, PNG або WebP до 25 Мп") from exc
+    folder.mkdir(parents=True, exist_ok=True)
+    filename = "vehicle-" + secrets.token_hex(24) + ".jpg"
+    path = folder / filename
+    photo = VehiclePhoto(
+        account_id=who.workspace_account_id, vehicle_id=id,
+        filename=filename, media_type="image/jpeg"
+    )
+    try:
+        path.write_bytes(out.getvalue())
+        db.add(photo)
+        db.flush()
+        operation = record(db, who.workspace_account_id, vehicle, "vehicle_photo_add", "Додано фото донора", {})
+        operation.vehicle_id = id
+        db.commit()
+    except Exception:
+        path.unlink(missing_ok=True)
+        raise
+    return {"id": photo.id, "url": f"/api/v1/vehicle-photos/{photo.id}"}
+
+
+@router.get("/vehicle-photos/{photo_id}", tags=["Vehicle photos"])
+def vehicle_photo_get(photo_id: str, db: DB, who: Auth):
+    photo = db.get(VehiclePhoto, photo_id)
+    folder = photo_dir()
+    if not photo or photo.account_id != who.workspace_account_id or folder is None:
+        raise HTTPException(404, "Фото не знайдено")
+    owned(db, Vehicle, photo.vehicle_id, who.workspace_account_id)
+    file_path = folder / photo.filename
+    if not file_path.is_file():
+        raise HTTPException(404, "Фото не знайдено")
+    return FileResponse(file_path, media_type="image/jpeg", headers={
+        "Cache-Control": "private, no-store",
+        "X-Content-Type-Options": "nosniff"
+    })
+
+
+@router.delete("/vehicles/{id}/photos/{photo_id}", status_code=204, tags=["Vehicle photos"])
+def vehicle_photo_delete(id: str, photo_id: str, db: DB, who: Auth):
+    vehicle = owned(db, Vehicle, id, who.workspace_account_id, active=True, lock=True)
+    photo = db.get(VehiclePhoto, photo_id)
+    if not photo or photo.vehicle_id != id or photo.account_id != who.workspace_account_id:
+        raise HTTPException(404, "Фото не знайдено")
+    file_path = photo_dir() / photo.filename if photo_dir() is not None else None
+    db.delete(photo)
+    record(db, who.workspace_account_id, vehicle, "vehicle_photo_delete", "Видалено фото донора", {"photo_id": photo_id})
+    db.commit()
+    if file_path is not None:
+        file_path.unlink(missing_ok=True)
+    return Response(status_code=204)
 
 
 @router.get("/parts/{id}/photos", tags=["Photos"])
