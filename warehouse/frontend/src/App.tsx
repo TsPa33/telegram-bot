@@ -150,7 +150,7 @@ export default function App() {
   const routePermission=(path:string)=>path==='/administration/catalogue/import'?'':path==='/settings'?'':path==='/inventory/advanced'||path==='/operations'?'inventory.adjust_quantity':path.startsWith('/team')?'team.view':path.startsWith('/orders')?'orders.view':path==='/vehicles'?'vehicles.view':path==='/statistics'?'analytics.view':path==='/sales'?'sales.view':path==='/catalog'?'catalog.view':path==='/analytics'||path==='/operations'?'audit.view':path==='/archive'?'inventory.archive':'inventory.view';
   const advanced=ADVANCED_PERMISSIONS;
   const routeAllowed=(location.pathname==='/sales'?(can('sales.view')||can('orders.view')):!routePermission(location.pathname)||can(routePermission(location.pathname)))&&(!['/inventory/advanced','/operations'].includes(location.pathname)||advanced.every(can))&&(location.pathname!=='/archive'||can('inventory.view'));
-  const current = [...nav,...secondary,{to:"/administration/catalogue/import",label:"Імпорт глобального каталогу"}].find((n) => n.to === location.pathname) || (location.pathname.startsWith("/orders")?nav.find(n=>n.to==="/sales"):undefined);
+  const current = [...nav,...secondary,{to:"/administration/catalogue/import",label:"Каталог запчастин"}].find((n) => n.to === location.pathname) || (location.pathname.startsWith("/orders")?nav.find(n=>n.to==="/sales"):undefined);
   return (
     <TeamIdentity.Provider value={user}><div className="app">
       <aside ref={sidebarScroll.sidebar} id="warehouse-sidebar" className={sidebarScroll.mobileOpen ? "sidebar open" : "sidebar"} aria-label="Навігація Warehouse" role={sidebarScroll.mobileOpen?"dialog":undefined} aria-modal={sidebarScroll.mobileOpen?true:undefined} inert={sidebarScroll.mobile&&!sidebarScroll.mobileOpen}>
@@ -182,7 +182,7 @@ export default function App() {
             </NavLink>
           ))}
         </nav>
-        {user.catalogue_platform_admin===true&&<NavLink to="/administration/catalogue/import"><ShieldCheck size={18}/>Адміністрування → Каталог → Імпорт</NavLink>}
+        {user.catalogue_platform_admin===true&&<NavLink to="/administration/catalogue/import"><ShieldCheck size={18}/>Адміністрування → Каталог</NavLink>}
         <NavLink className="settings-nav" to="/settings"><Settings2 size={18}/>Налаштування</NavLink>
         <div className="sidebar-foot">
           <div className="safe-dot" />

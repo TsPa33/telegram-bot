@@ -4,6 +4,7 @@ import ParserAdminCenter from '../ParserAdminCenter';
 import {Pager} from '../components';
 import CanonicalCatalogueAdmin from '../CanonicalCatalogueAdmin';
 import {useEffect,useRef,useState} from 'react';
+import {Boxes,Tags,Workflow,Database} from 'lucide-react';
 import '../catalogue-admin-r9.css';
 import {api,ApiError,csrf,when,type Row} from '../api';
 import {State,useLoad} from '../shared';
@@ -37,6 +38,7 @@ function DecisionTable({rows,state,onChange}:{rows:Row[];state:Review;onChange:(
  return <table className="catalogue-decisions"><thead><tr><th>Початкова назва</th><th>Український відповідник</th><th>Тип рішення</th><th>Статус</th></tr></thead><tbody>{rows.map(r=><DecisionRow key={r.key} row={r} value={state.draft[r.key]} checked={showReport(state)?state.checked[r.key]:undefined} sent={state.pending?.sent[r.key]} onChange={v=>onChange(r,v)}/>)}</tbody></table>;
 }
 type AdminTab='parts'|'offers'|'runner'|'global';
+const adminTabIcons={parts:Boxes,offers:Tags,runner:Workflow,global:Database};
 const adminTabs: {id:AdminTab;label:string;hint:string}[]=[
  {id:'parts',label:'Довідник запчастин',hint:'Типи деталей і моделі'},
  {id:'offers',label:'Ринкові ціни',hint:'Файли пропозицій'},
@@ -48,9 +50,9 @@ export default function CatalogueImport({enabled,actorKey}:{enabled:boolean;acto
  if(!enabled)return <section className="panel padded"><h1>Доступ обмежено</h1><p>Керування каталогом доступне адміністратору платформи.</p></section>;
  return <ParserAdminCenter key={actorKey}>
   <nav className="catalogue-admin-tabs" aria-label="Розділи каталогу">
-   {adminTabs.map(t=><button key={t.id} type="button" aria-current={tab===t.id?'page':undefined}
+   {adminTabs.map(t=>{const Icon=adminTabIcons[t.id];return <button key={t.id} type="button" aria-current={tab===t.id?'page':undefined}
     className={tab===t.id?'catalogue-tab-current':''} onClick={()=>setTab(t.id)}>
-    <strong>{t.label}</strong><span>{t.hint}</span></button>)}
+    <Icon size={21} aria-hidden="true"/><strong>{t.label}</strong><span>{t.hint}</span></button>;})}
   </nav>
   <div className="catalogue-tab-content" hidden={tab!=='parts'}>
    <section className="panel padded catalogue-local-import" aria-label="Довідник запчастин">
