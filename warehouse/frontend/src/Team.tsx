@@ -126,14 +126,23 @@ export default function Team({user,notify}:{user:Row;notify:Notify}){
    <label>Статус<select aria-label="Статус працівника" value={status} onChange={e=>setStatus(e.target.value)}><option value="">Усі</option><option value="active">Активні</option><option value="blocked">Заблоковані</option></select></label>
   </section>
   <State error={data.error} loading={data.loading}/>{data.error&&<button onClick={data.reload}>Оновити команду</button>}
-  <div id="team-members" className="team-list">{visible.map(u=><article className="panel padded" key={u.id}>
-   <header><h2>{u.name}</h2><span className="team-status">{u.is_active?'Активний':'Заблокований'}</span></header><p>{u.email}</p>
-   <p>{roleLabel(u.role)} · Дозволів: {u.permissions.length}{u.must_change_password?' · Потрібна зміна пароля':''}</p>
-   <small>Створено: {new Date(u.created_at).toLocaleDateString('uk-UA')} · Останній вхід: {u.last_login_at?new Date(u.last_login_at).toLocaleString('uk-UA'):'Не зафіксовано'}</small>
-   {can('audit.view')&&<Link to={'/analytics?actor_id='+encodeURIComponent(u.id)}>Історія операцій: {u.name}</Link>}
-   {manageable(u)&&<><div className="modal-actions"><button onClick={()=>open(u)}>Права та доступ: {u.name}</button><button disabled={!resettable(u)} onClick={()=>{open(u);setEdit({...u,reset:true,password:''});}}>Скинути доступ: {u.name}</button></div>
-    {!resettable(u)&&<small>Скинути доступ працівнику з ширшими правами може директор.</small>}</>}
-  </article>)}</div>
+  <section id="team-members" className="team-directory panel" aria-label="Працівники команди">
+   <div className="team-directory-title"><h2>Працівники команди</h2><span>{data.data?.[0]?.total||0} облікових записів</span></div>
+   <div className="team-directory-scroll"><table><thead><tr><th>Працівник</th><th>Роль</th><th>Статус</th><th>Останній вхід</th><th>Допуски</th><th>Дії</th></tr></thead>
+    <tbody>{visible.map(u=><tr key={u.id}>
+     <td><div className="team-person"><span className="team-person-avatar">{(u.name||'?').trim().slice(0,1).toUpperCase()}</span><div><strong>{u.name}</strong><small>{u.email}</small></div></div></td>
+     <td><span className={'team-role-pill role-'+String(u.role).toLowerCase()}>{roleLabel(u.role)}</span></td>
+     <td><span className={'team-status '+(u.is_active?'is-active':'is-blocked')}>{u.is_active?'Активний':'Заблокований'}</span></td>
+     <td><time>{u.last_login_at?new Date(u.last_login_at).toLocaleString('uk-UA',{dateStyle:'short',timeStyle:'short'}):'Не зафіксовано'}</time></td>
+     <td><span className="team-grants">{u.permissions.length} дозволів</span></td>
+     <td><div className="team-row-actions">
+      {can('audit.view')&&<Link to={'/analytics?actor_id='+encodeURIComponent(u.id)}>Активність</Link>}
+      {manageable(u)&&<><button type="button" onClick={()=>open(u)}>Керувати</button><button type="button" disabled={!resettable(u)} onClick={()=>{open(u);setEdit({...u,reset:true,password:''});}}>Скинути доступ</button></>}
+      {!manageable(u)&&!can('audit.view')&&<span className="muted">—</span>}
+     </div></td>
+    </tr>)}</tbody>
+   </table></div>
+  </section>
   {data.data&&!data.loading&&!data.error&&!visible.length&&<Empty title={members.length?'Працівників не знайдено':'Співробітників ще немає'}>{members.length?'Змініть фільтри на цій сторінці.':'Після створення тут з’являться особисті облікові записи команди.'}</Empty>}
   <div className="pager"><span>Сторінка {page+1} · Усього: {data.data?.[0]?.total||0}</span><button disabled={!page||data.loading} onClick={()=>setPage(page-1)}>Попередні працівники</button><button disabled={data.loading||(page+1)*50>=(data.data?.[0]?.total||0)} onClick={()=>setPage(page+1)}>Наступні працівники</button></div>
   {edit&&<Modal className="team-edit-dialog" title={edit.reset?'Скидання доступу':edit.id?'Права працівника':'Новий співробітник'} onClose={()=>{if(!busy)setEdit(null);}}><form onSubmit={save}>
