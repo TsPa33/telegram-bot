@@ -79,3 +79,16 @@
 @media(max-width:1000px){.ui4-search-page .ui4-heading{gap:12px}.ui4-search-page .ui4-heading h1{font-size:25px}.ui4-search-page .ui4-controls{padding:13px}.ui4-search-page .ui4-filters{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.ui4-search-page .ui4-filters:not(.expanded){display:none}.ui4-search-page .ui4-filters .ui4-stock{align-self:center}.ui11-category-grid{display:flex;overflow-x:auto;gap:8px;scroll-snap-type:x proximity;padding:2px 1px 10px}.ui11-category-tile{flex:0 0 112px;min-height:78px;scroll-snap-align:start}.ui4-results .ui11-results-list .ui3-table-head{display:none}.ui4-results .ui11-results-list .ui3-part{grid-template-columns:minmax(0,1fr) 32px;gap:9px;min-height:90px}.ui4-results .ui11-results-list .ui3-identity{grid-column:1/-1}.ui4-results .ui11-results-list .ui3-donor,.ui4-results .ui11-results-list .ui3-stock{margin-left:58px}.ui4-results .ui11-results-list .ui3-actions{grid-column:1/-1;grid-row:auto}.ui4-results .ui11-results-list .ui3-part .ux1-part-name{font-size:14px}.ui11-preview-facts{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.ui4-search-page .ui4-heading{margin-top:5px}.ui4-search-page .ui4-heading h1{font-size:24px}.ui4-search-page .ui4-heading p{font-size:12px}.ui4-search-page .ui4-search{gap:7px}.ui4-search-page .ui4-search>button{min-width:74px;padding-inline:11px}.ui4-search-page .ui4-search .seller-autocomplete input{font-size:16px;min-height:48px;height:48px}.ui11-category-heading{flex-direction:column;align-items:flex-start;gap:3px}.ui11-category-tile{flex-basis:100px;min-height:76px}.ui11-category-tile span{font-size:10px}.ui11-results-list{border-radius:10px}.ui4-results .ui11-results-list .ui3-part{padding:12px}.ui11-preview{padding:13px}.ui11-preview-facts{grid-template-columns:1fr}.ui11-preview-buttons{display:grid}}
 @media(prefers-reduced-motion:reduce){.ui11-category-tile{transition:none}.ui11-category-tile:hover{box-shadow:none}}
+
+/* Explicit grid areas keep a selected detail discoverable on small screens. */
+.ui11-results-list{grid-column:1;grid-row:1}
+.ui11-preview{grid-column:2;grid-row:1}
+.ui11-preview-heading{position:relative}
+.ui11-preview-close{display:none;position:absolute;right:-5px;top:-5px;width:36px;height:36px;align-items:center;justify-content:center;color:#45665a;background:#eff6f1;border:1px solid #d8e7de;border-radius:8px}
+@media(max-width:1430px){
+ .ui11-results-list{grid-column:1;grid-row:2}
+ .ui11-preview{grid-column:1;grid-row:1;display:none}
+ .ui11-preview.open{display:block}
+ .ui11-preview-close{display:flex}
+ .ui11-preview-heading h2{padding-right:40px}
+}
