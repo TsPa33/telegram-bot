@@ -1,0 +1,52 @@
+/* R14 — owner-only, read-only catalogue terminology and duplicate review */
+.r14-review{display:grid;gap:15px;min-width:0}
+.r14-intro{display:flex;justify-content:space-between;align-items:start;gap:14px;padding:20px;background:#fff;border:1px solid #d9e6dd;border-radius:13px}
+.r14-intro h2{font-size:18px;color:#18362a;margin:0 0 7px}
+.r14-intro p{font-size:12px;color:#71877b;margin:0;line-height:1.55}
+.r14-readonly{display:inline-flex;align-items:center;gap:7px;white-space:nowrap;font-size:11px;color:#096e53;background:#eaf5ee;padding:8px 12px;border-radius:18px;font-weight:700}
+.r14-review-tabs{display:flex;flex-wrap:wrap;gap:8px}
+.r14-review-tabs button{border:1px solid #d6e5db;background:#fff;border-radius:9px;padding:10px 14px;color:#486658;font-size:12px}
+.r14-review-tabs button[aria-pressed=true]{border-color:#0c765b;color:#07583f;background:#eaf6ef;font-weight:750}
+.r14-toolbar{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px;background:#fff;padding:14px;border:1px solid #e0eae2;border-radius:11px}
+.r14-toolbar label{font-size:11px;font-weight:650;color:#506c5d;min-width:175px;display:grid;gap:5px;flex:1}
+.r14-toolbar .r14-grow{flex:2}
+.r14-toolbar form{display:flex;align-items:end;gap:8px;flex:2 1 300px;min-width:0}
+.r14-toolbar form label{flex:1}
+.r14-toolbar input,.r14-toolbar select{min-height:39px;margin:0;width:100%;font-size:12px;min-width:0}
+.r14-toolbar button{min-height:39px;font-size:11px;display:inline-flex;align-items:center;gap:5px}
+.r14-overview{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.r14-overview span{background:#fff;border:1px solid #dbe8df;border-radius:10px;padding:13px 16px;display:grid;gap:5px}
+.r14-overview strong{color:#15553b;font-size:23px;line-height:1.1;font-variant-numeric:tabular-nums}
+.r14-overview small{font-size:10px;color:#79877f;line-height:1.3}
+.r14-explanation{display:flex;align-items:start;gap:7px;font-size:11px;line-height:1.6;color:#668074;margin:0}
+.r14-explanation svg{flex:none;margin-top:1px}
+.r14-groups{display:grid;gap:8px}
+.r14-group{border:1px solid #dbe6dd;background:#fff;border-radius:10px;min-width:0}
+.r14-group summary{display:flex;gap:12px;align-items:center;cursor:pointer;padding:14px;list-style:none}
+.r14-group summary::-webkit-details-marker{display:none}
+.r14-group summary::before{content:'▸';font-size:15px;color:#668f78}
+.r14-group[open] summary::before{content:'▾'}
+.r14-group-number{font-size:11px;color:#7d8f82}
+.r14-group-title{display:grid;gap:4px;min-width:130px;flex:1}
+.r14-group-title strong{color:#193b2b;font-size:12px;line-height:1.4}
+.r14-group-title small{font-size:10px;color:#73867a;line-height:1.4;overflow-wrap:anywhere}
+.r14-group-figures{font-size:11px;color:#355a45;font-variant-numeric:tabular-nums;white-space:nowrap}
+.r14-risk{font-size:10px;color:#93621d;background:#fff5df;padding:6px 9px;border-radius:20px;white-space:nowrap}
+.r14-group-context{font-size:11px;color:#728578;margin:0 14px 12px}
+.r14-group .table-wrap{margin:0 13px 13px;max-width:calc(100% - 26px);overflow-x:auto}
+.r14-group table,.r14-proposals table{font-size:11px}
+.r14-group th,.r14-proposals th{text-transform:none;white-space:nowrap}
+.r14-group td code{font-size:10px}
+.r14-proposals{overflow-x:auto;background:#fff;border:1px solid #dbe8df;border-radius:12px}
+.r14-proposals table{width:100%}
+.r14-proposals td{line-height:1.5}
+.r14-proposals strong{color:#175e43}
+.r14-pending{color:#8e6816;background:#fff5de;font-size:10px;border-radius:12px;padding:5px 8px;white-space:nowrap}
+.r14-downloads{display:flex;flex-wrap:wrap;gap:9px}
+.r14-downloads a{display:inline-flex;align-items:center;gap:7px;background:#fff;border:1px solid #ceded2;padding:9px 13px;font-size:11px;color:#0c664b;border-radius:8px;text-decoration:none;font-weight:700}
+.r14-downloads a:hover{background:#eef7f0}
+.r14-pagination{display:flex;justify-content:center;gap:15px;align-items:center;color:#687e70;font-size:11px}
+.r14-pagination button{padding:8px 12px;min-height:35px;font-size:11px}
+.r14-empty{font-size:12px;color:#6d8577;padding:15px;background:#fff;border:1px solid #dce8df;border-radius:10px}
+@media(max-width:900px){.r14-group summary{flex-wrap:wrap}.r14-risk{margin-left:25px}.r14-group-figures{white-space:normal}}
+@media(max-width:590px){.r14-intro{flex-wrap:wrap}.r14-overview{grid-template-columns:1fr 1fr}.r14-toolbar{display:grid;grid-template-columns:1fr}.r14-toolbar form{width:100%;flex-wrap:wrap}.r14-toolbar form label{min-width:100%}.r14-group-number{display:none}.r14-risk{margin-left:0}}
