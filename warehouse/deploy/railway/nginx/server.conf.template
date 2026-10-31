@@ -50,6 +50,12 @@ server {
     location = /api {
         proxy_pass $warehouse_backend$request_uri;
     }
+    # Only catalogue upload may exceed the normal 6 MB API body ceiling.
+    location = /api/v1/vehicle-directory/import {
+        client_max_body_size 17m;
+        proxy_read_timeout 120s;
+        proxy_pass $warehouse_backend$request_uri;
+    }
     location ^~ /api/ {
         # Preserve /api/v1 and all error statuses; never return SPA HTML for API.
         proxy_pass $warehouse_backend$request_uri;
