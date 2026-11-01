@@ -306,6 +306,49 @@ def vehicle_create(data: VehicleInput, db: DB, who: Auth):
     return vehicle_view(db, row, who.workspace_account_id)
 
 
+
+@router.get("/vehicles/vin/decode", tags=["Vehicles"])
+def vehicle_vin_decode(who: Auth, vin: str = Query(min_length=17, max_length=17)):
+    """Authenticated, read-only VIN lookup. Uncertain fields require user confirmation."""
+    import re
+    from urllib.request import Request, urlopen
+    from urllib.error import URLError, HTTPError
+    value = vin.strip().upper()
+    if not re.fullmatch(r"[A-HJ-NPR-Z0-9]{17}", value):
+        raise HTTPException(422, "VIN має складатися з 17 символів без I, O, Q")
+    url = "https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVinValues/" + value + "?format=json"
+    try:
+        with urlopen(Request(url, headers={"User-Agent":"CarPotWarehouse/1.0","Accept":"application/json"}), timeout=7) as response:
+            payload = json.loads(response.read(160000))
+        item = payload["Results"][0]
+        if not isinstance(item, dict):
+            raise ValueError("Invalid response")
+    except (HTTPError, URLError, TimeoutError, OSError, ValueError, KeyError, IndexError, TypeError):
+        raise HTTPException(503, "VIN-сервіс недоступний. Спробуйте пізніше або додайте авто вручну")
+    def field(key):
+        found = str(item.get(key) or "").strip()
+        return "" if found.lower() in ("not applicable", "null", "none", "0") else found
+    year = field("ModelYear")
+    year_number = int(year) if year.isdigit() and 1886 <= int(year) <= 2100 else None
+    fuel = field("FuelTypePrimary")
+    transmission = field("TransmissionStyle")
+    speeds = field("TransmissionSpeeds")
+    result = {
+        "manufacturer":field("Make"), "model":field("Model"), "year":year_number,
+        "engine":field("EngineModel"), "engine_displacement_l":field("DisplacementL"),
+        "fuel_type":("Дизель" if "diesel" in fuel.lower() else "Бензин" if "gasoline" in fuel.lower() else ""),
+        "transmission":(transmission + (" · " + speeds + " передач" if speeds else "")).strip(" ·"),
+        "drive_type":field("DriveType"), "body_class":field("BodyClass"),
+        "trim":field("Trim"), "plant_country":field("PlantCountry"),
+        "engine_cylinders":field("EngineCylinders"), "engine_power_kw":field("EngineKW"),
+        "vin":value,
+    }
+    return {"vin":value,"source":"NHTSA vPIC","vehicle":result,
+            "available_fields":[key for key,val in result.items() if val and key!="vin"],
+            "requires_review":True,
+            "message":"Перевірте визначені параметри перед створенням. Відсутні поля заповніть вручну."}
+
+
 @router.get("/vehicles/{id}", tags=["Vehicles"])
 def vehicle_get(id: str, db: DB, who: Auth):
     return vehicle_view(db, owned(db, Vehicle, id, who.workspace_account_id), who.workspace_account_id)
