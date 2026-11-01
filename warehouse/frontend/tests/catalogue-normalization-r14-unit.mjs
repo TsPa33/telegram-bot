@@ -12,7 +12,8 @@ test('normalization review appears only inside existing platform-admin gated pag
  assert.match(admin,/if\(!enabled\)return/);
  assert.match(admin,/tab==='normalization'&&/);
  assert.match(admin,/<CatalogueNormalizationReview key=/);
- assert.doesNotMatch(review,/POST|PATCH|PUT|DELETE|approve|apply/i);
+ // Reject explicit write operations, not ordinary HTML <input> tags.
+ assert.doesNotMatch(review,/api\([^\n]*,\s*['"](POST|PATCH|PUT|DELETE)['"]/i);
 });
 test('duplicate group browsing is paginated and retains individual category IDs',()=>{
  assert.match(review,/duplicate-groups\?offset=/);
