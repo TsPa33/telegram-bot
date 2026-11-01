@@ -50,3 +50,23 @@ def merge_verified(existing,incoming):
             continue
         merged[key]=value
     return merged,conflicts
+
+def validate_consistency(vehicle):
+    """Report suspicious cross-field values; never infer or overwrite engine data."""
+    issues={}
+    engine=clean(vehicle.get("engine"))
+    size=vehicle.get("engine_displacement_l")
+    if engine and size not in ("",None):
+        match=re.search(r"(?<!\\d)(\\d{1,2}\\.\\d)\\s*[lл](?![a-z])",engine,re.I)
+        if match:
+            try:
+                stated=float(size)
+                described=float(match.group(1))
+                if abs(stated-described)>0.25:
+                    issues["engine_displacement_l"]=(
+                        f"Опис двигуна містить {described:g} л, але поле об’єму — {stated:g} л. "
+                        "Перевірте модифікацію за VIN перед створенням авто."
+                    )
+            except (ValueError,TypeError):
+                pass
+    return issues

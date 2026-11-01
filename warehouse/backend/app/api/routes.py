@@ -346,7 +346,7 @@ def vehicle_vin_decode(who: Auth, vin: str = Query(min_length=17, max_length=17)
         "engine_cylinders":field("EngineCylinders"), "engine_power_kw":field("EngineKW"),
         "vin":value,
     }
-    from app.services.vin_normalize import merge_verified, normalize
+    from app.services.vin_normalize import merge_verified, normalize, validate_consistency
     result = normalize(result)
     conflicts = {}
     provider_name = "NHTSA vPIC"
@@ -372,7 +372,7 @@ def vehicle_vin_decode(who: Auth, vin: str = Query(min_length=17, max_length=17)
                 provider_name += " + FreeVINDecoder"
         except (OSError, ValueError, TypeError):
             provider_note += " Дані FreeVINDecoder недоступні."
-    return {"vin":value,"source":provider_name,"vehicle":result,"conflicts":conflicts,
+    return {"vin":value,"source":provider_name,"vehicle":result,"conflicts":conflicts,"consistency_issues":validate_consistency(result),
             "available_fields":[key for key,val in result.items() if val and key!="vin"],
             "requires_review":True,
             "message":("NHTSA не визначив модель: модельний рік приховано як ненадійний. Уточніть автомобіль в іншому VIN-декодері." if not result["model"] else "Перевірте визначені параметри перед створенням. Відсутні поля заповніть вручну.") + provider_note}
