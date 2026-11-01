@@ -17,14 +17,14 @@ export function catalogueLabelUk(name:string):string{
  const original=String(name||'');
  return establishedCategoryLabels[key(original)]||original;
 }
-export type CategoryDisplayRow={id:string;name:string;kind?:string;parent_id?:string|null;source?:string};
+export type CategoryDisplayRow={id?:string;name?:string;kind?:string;parent_id?:string|null;source?:string};
 /** Ambiguous identical labels must remain distinguishable in selectors:
  * never deduplicate by text, since different IDs can have inventory references.
  */
 export function categoryOptionLabel(row:CategoryDisplayRow,rows:CategoryDisplayRow[]):string{
- const displayed=catalogueLabelUk(row.name);
+ const displayed=catalogueLabelUk(row.name||'');
  const dup=rows.some(other=>other.id!==row.id&&other.kind===row.kind
   &&(other.parent_id||'')===(row.parent_id||'')
-  &&key(catalogueLabelUk(other.name))===key(displayed));
+  &&key(catalogueLabelUk(other.name||''))===key(displayed));
  return dup?displayed+' · '+(row.source||'джерело не вказано')+' · #'+String(row.id).slice(0,8):displayed;
 }
