@@ -1,3 +1,4 @@
+import {useState} from 'react';
 import {Boxes,CarFront,Lightbulb,Zap,Cog,Armchair,Layers3,ChevronDown,ShieldCheck,Disc3,LockKeyhole,Settings2,PlugZap,Fan,SlidersHorizontal,Wrench,Fuel,Gauge,CircleDot,Snowflake,Link2,CircleGauge,Droplets,Package,KeyRound,ClipboardList,Car,Truck,Wind} from 'lucide-react';
 import type {Row} from './api';
 import {catalogueLabelUk as categoryLabelUk,categoryOptionLabel} from './catalogueLabels';
