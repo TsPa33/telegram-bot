@@ -325,3 +325,32 @@
   overflow:visible;
  }
 }
+
+/* Category readability: show complete Ukrainian names instead of ellipsis.
+   Applies to collapsed and expanded quick-select; no change to category IDs. */
+.ui4-search-page .ui11-category-grid,
+.ui4-search-page .ui11-category-grid.expanded{
+ grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));
+ gap:8px;
+}
+.ui4-search-page .ui11-category-grid .ui11-category-tile,
+.ui4-search-page .ui11-category-grid.expanded .ui11-category-tile{
+ min-height:60px;
+ height:auto;
+ align-items:center;
+}
+.ui4-search-page .ui11-category-grid .ui11-category-tile span,
+.ui4-search-page .ui11-category-grid.expanded .ui11-category-tile span{
+ white-space:normal;
+ overflow:visible;
+ text-overflow:clip;
+ overflow-wrap:break-word;
+ line-height:1.35;
+ font-size:12px;
+}
+@media(max-width:600px){
+ .ui4-search-page .ui11-category-grid,
+ .ui4-search-page .ui11-category-grid.expanded{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .ui4-search-page .ui11-category-grid .ui11-category-tile,
+ .ui4-search-page .ui11-category-grid.expanded .ui11-category-tile{min-height:68px}
+}
