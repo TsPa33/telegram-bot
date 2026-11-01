@@ -5,6 +5,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, all, labels, money, when, type Row } from "../api";
 import { Empty, Modal, Pager, RecordForm, type Field } from "../components";
 import VehicleForm from "../VehicleForm";
+import VehicleVinQuickAdd from "../VehicleVinQuickAdd";
 import AletoCatalogue from "../AletoCatalogue";
 import DismantlingCatalogImport from "../DismantlingCatalogImport";
 import VehicleChecklist from "../VehicleChecklist";
@@ -92,9 +93,10 @@ export default function Vehicles({notify}:{notify:Notify}) {
     let active=true;api(`/vehicles/${encodeURIComponent(donorId)}`).then(row=>{if(active)setDetail(row);}).catch(e=>{if(active)notify(e.message);});
     return ()=>{active=false;};
   },[donorId,params.get('info')]);
+  if(params.get('add')==='vin'&&!detail)return <VehicleVinQuickAdd onBack={()=>setParams({})} onCreated={row=>{setCreated(row);reload();setParams({donor:row.id});notify('Автомобіль створено. Розбір можна почати з його картки.');}}/>;
   return <>
     {!detail&&<><Heading eyebrow="АВТОМОБІЛІ" title="Автомобілі" description="Керуйте автомобілями-донорами, їхніми характеристиками та процесом розбору.">
-      <Permit permission="vehicles.create"><button className="secondary" onClick={()=>setEdit({status:'dismantling'})}><Plus size={17}/>Додати автомобіль</button></Permit>
+      <Permit permission="vehicles.create"><div style={{display:'flex',gap:8,flexWrap:'wrap'}}><button className="secondary" onClick={()=>setEdit({status:'dismantling'})}><Plus size={17}/>Додати автомобіль</button><button type="button" onClick={()=>setParams({add:'vin'})}><CarFront size={17}/>Швидко додати за VIN</button></div></Permit>
     </Heading>
     {created&&<p role="status">Додано: {created.manufacturer} {created.model} · {created.year}. <button onClick={()=>openDetail(created)}>Відкрити картку</button></p>}
     <div className="r114-toolbar r1146-toolbar">
