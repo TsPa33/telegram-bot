@@ -59,7 +59,7 @@ def test_csv_export_safely_escapes_spreadsheet_formulas():
     cases = {
         '=HYPERLINK("https://example.test", "click")': "'=HYPERLINK(\"https://example.test\", \"click\")",
         ' +SUM(1,2)': "' +SUM(1,2)",
-        '\\t@SUM(1,2)': "'\\t@SUM(1,2)",
+        '\t@SUM(1,2)': "'\t@SUM(1,2)",
         '-3+5': "'-3+5",
         'Фара права': 'Фара права',
         '123456': '123456',
