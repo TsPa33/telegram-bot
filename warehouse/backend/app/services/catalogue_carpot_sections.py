@@ -103,6 +103,8 @@ def propose_subcategory(section: str | None, category: str, subcategory: str, pa
     index=SECTIONS.index(section)
     for source,value in (("subcategory",subcategory),("part_name",part_name),("category",category)):
         if not value:continue
+        if _BROAD.search(value):
+            return {"subcategory":None,"status":"review_required","reason":"mixed_systems","evidence":source}
         matches={label for label,pattern in _SUB_PATTERNS[index] if pattern.search(value)}
         if len(matches)==1:
             return {"subcategory":next(iter(matches)),"status":"suggested","reason":"rule_match","evidence":source}
