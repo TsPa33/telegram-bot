@@ -1,5 +1,5 @@
 import {useState} from 'react';
-import {Boxes,CarFront,Lightbulb,Zap,Cog,Armchair,Layers3,ChevronDown,ShieldCheck,Disc3,LockKeyhole,Settings2,PlugZap,Fan,SlidersHorizontal,Wrench,Fuel,Gauge,CircleDot,Snowflake,Link2,CircleGauge,Droplets,Package,KeyRound,ClipboardList,Car,Truck,Wind} from 'lucide-react';
+import {Boxes,CarFront,Lightbulb,Zap,Cog,Armchair,Layers3,ShieldCheck,Disc3,LockKeyhole,Settings2,PlugZap,Fan,SlidersHorizontal,Wrench,Fuel,Gauge,CircleDot,Snowflake,Link2,CircleGauge,Droplets,Package,KeyRound,ClipboardList,Car,Truck,Wind} from 'lucide-react';
 import type {Row} from './api';
 import {catalogueLabelUk as categoryLabelUk,categoryOptionLabel} from './catalogueLabels';
 export {categoryLabelUk};
@@ -61,45 +61,72 @@ export function groupQuickCategoryRoots(categories:Row[]):Group[]{
  }
  return [...grouped.values()].sort((a,b)=>a.label.localeCompare(b.label,'uk'));
 }
-
+const sections=[
+ {name:'Двигун та його системи',icon:Cog,terms:/двиг|мотор|силовий агрегат|запал|зажиган|палив|топлив|подачі палива|суміш|смес|охолод|охлаж|ремінн|ремен|випуск|выпуск|впуск/},
+ {name:'Трансмісія та привід',icon:Settings2,terms:/трансміс|трансмис|коробка|передач|зчеплен|сцеплен|привід|привод/},
+ {name:'Підвіска та ходова частина',icon:Car,terms:/підвіск|подвес|ходов|амортиз|колеса|колёс|шин/},
+ {name:'Кермове управління',icon:Gauge,terms:/кермов|рулев/},
+ {name:'Гальмівна система',icon:Disc3,terms:/гальм|тормозн/},
+ {name:'Кузов та зовнішні деталі',icon:CarFront,terms:/кузов|двер|капот|крыл|крил|замк|замок|дзеркал|зеркал/},
+ {name:'Салон та інтер’єр',icon:Armchair,terms:/салон|інтер|интер|оздоблен|отделк|сидін|сиден/},
+ {name:'Електрика та електроніка',icon:Zap,terms:/електр|электр|провод|датчик|електрон|стартер|генератор/},
+ {name:'Освітлення',icon:Lightbulb,terms:/освіт|освещ|свет|фар|оптик/},
+ {name:'Кліматична система',icon:Fan,terms:/кондиціон|кондиционер|опален|отоплен|вентиляц|клімат/},
+ {name:'Системи безпеки',icon:ShieldCheck,terms:/безпек|безопас|подушк/},
+ {name:'Обладнання та витратні матеріали',icon:Wrench,terms:/обладнан|оборудован|комплект|сервіс|уход|догляд|обслугов|замін|деталі для|причіп|прицеп|замк|замок/}
+] as const;
+function sectionFor(label:string){
+ const n=normalizeLabel(label);
+ // These require a specific section instead of a broad match (e.g. cooling).
+ if(/система очищення фар|очистки фар/.test(n))return 8;
+ if(/замк|замок/.test(n))return 5;
+ if(/кондиціон|кондиционер|опален|отоплен|вентиляц/.test(n))return 9;
+ if(/кермов|рулев/.test(n))return 3;
+ if(/підвіск.*кермов|подвес.*рулев/.test(n))return 2;
+ const i=sections.findIndex(s=>s.terms.test(n));
+ return i<0?11:i;
+}
 export default function PartsQuickCategories({categories,selected,onSelect,smart}:{
  categories:Row[];selected:string;onSelect:(id:string)=>void;smart:boolean
 }){
- const [expanded,setExpanded]=useState(false);
+ const [activeSection,setActiveSection]=useState<number|null>(null);
  const [openGroup,setOpenGroup]=useState<string|null>(null);
  const groups=groupQuickCategoryRoots(categories);
- const preferred=/кузов|оптик|освіт|електр|охолод|двигун|салон|інтер|підвіск/i;
- const ordered=[...groups.filter(g=>preferred.test(g.label)),...groups.filter(g=>!preferred.test(g.label))];
- const first=ordered.slice(0,7);
- const visible=expanded?ordered:[...first,...ordered.filter(g=>g.members.some(c=>c.id===selected)&&!first.includes(g))];
+ const sectionGroups=activeSection===null?[]:groups.filter(g=>sectionFor(g.label)===activeSection);
  const allRoots=groups.flatMap(g=>g.members);
  return <section className="ui11-categories" aria-label="Швидкий вибір категорії">
   <div className="ui11-category-heading"><span>Швидкий вибір категорії</span>
-   {smart&&<small>Категорії доступні у звичайному пошуку</small>}
+   {smart&&<small>Оберіть систему автомобіля, а потім потрібну групу деталей</small>}
   </div>
-  <div className={'ui11-category-grid'+(expanded?' expanded':'')}>
-   <button type="button" aria-pressed={!selected} className={'ui11-category-tile'+(!selected?' selected':'')} onClick={()=>{setOpenGroup(null);onSelect('');}}>
+  <div className="ui11-category-grid expanded">
+   <button type="button" aria-pressed={!selected&&activeSection===null} className={'ui11-category-tile'+(!selected&&activeSection===null?' selected':'')} onClick={()=>{setActiveSection(null);setOpenGroup(null);onSelect('');}}>
     <Boxes size={22} strokeWidth={1.7} aria-hidden="true"/><span>Усі категорії</span>
    </button>
-   {visible.map(g=>{const Icon=categoryIcon(g.label);const active=g.members.some(c=>c.id===selected);return <button type="button" key={normalizeLabel(g.label)} aria-pressed={active} aria-expanded={g.members.length>1?openGroup===normalizeLabel(g.label):undefined}
-    title={g.members.length>1?g.label+' — '+g.members.length+' джерела':g.label}
-    className={'ui11-category-tile'+(active?' selected':'')} onClick={()=>{
-      if(g.members.length===1){setOpenGroup(null);onSelect(g.members[0].id);}
-      else setOpenGroup(prev=>prev===normalizeLabel(g.label)?null:normalizeLabel(g.label));
-    }}>
-    <Icon size={22} strokeWidth={1.7} aria-hidden="true"/><span>{g.label}{g.members.length>1?' ('+g.members.length+')':''}</span>
-   </button>;})}
-   {ordered.length>7&&<button type="button" className="ui11-category-tile ui11-category-more" aria-expanded={expanded} onClick={()=>setExpanded(v=>!v)}>
-    <ChevronDown size={22} className={expanded?'up':''} aria-hidden="true"/><span>{expanded?'Менше категорій':`Ще ${ordered.length-7}`}</span>
-   </button>}
+   {sections.map((section,i)=>{const Icon=section.icon;
+    return <button type="button" key={section.name} className={'ui11-category-tile'+(activeSection===i?' selected':'')} aria-pressed={activeSection===i} aria-expanded={activeSection===i}
+    onClick={()=>{setActiveSection(i===activeSection?null:i);setOpenGroup(null);}}>
+      <Icon size={22} strokeWidth={1.7} aria-hidden="true"/><span>{section.name}</span>
+    </button>;
+   })}
   </div>
+  {activeSection!==null&&<div className="ui11-section-children" aria-label={'Підгрупи: '+sections[activeSection].name}>
+   <div className="ui11-category-heading"><span>{sections[activeSection].name} — підгрупи</span>
+    <button type="button" className="secondary" onClick={()=>{setActiveSection(null);setOpenGroup(null);}}>До основних розділів</button>
+   </div>
+   <div className="ui11-category-grid expanded">
+    {sectionGroups.map(g=>{const Icon=categoryIcon(g.label);const active=g.members.some(c=>c.id===selected);return <button type="button" key={normalizeLabel(g.label)} aria-pressed={active} aria-expanded={g.members.length>1?openGroup===normalizeLabel(g.label):undefined}
+      className={'ui11-category-tile'+(active?' selected':'')} onClick={()=>{
+       if(g.members.length===1){onSelect(g.members[0].id);setOpenGroup(null);}
+       else setOpenGroup(prev=>prev===normalizeLabel(g.label)?null:normalizeLabel(g.label));
+      }}><Icon size={22} strokeWidth={1.7} aria-hidden="true"/><span>{g.label}</span></button>})}
+   </div>
+   {sectionGroups.length===0&&<p>Підгрупи цього розділу поки відсутні в каталозі.</p>}
+  </div>}
   {openGroup&&(()=>{const group=groups.find(g=>normalizeLabel(g.label)===openGroup);
    return group?<div className="ui11-category-sources" aria-label={'Варіанти '+group.label}>
-    <p>Оберіть джерело «{group.label}». Кожен варіант зберігає власні складські зв’язки.</p>
+    <p>Оберіть джерело «{group.label}». Старі ID збережено, щоб не втратити складські позиції.</p>
     {group.members.map(c=><button type="button" key={c.id} className={selected===c.id?'selected':'secondary'}
-       aria-pressed={selected===c.id} onClick={()=>{onSelect(c.id);setOpenGroup(null);}}>
-       {categoryOptionLabel(c,allRoots)}
-    </button>)}
+       aria-pressed={selected===c.id} onClick={()=>{onSelect(c.id);setOpenGroup(null);}}>{categoryOptionLabel(c,allRoots)}</button>)}
    </div>:null;
   })()}
   {selected&&<button type="button" className="ui11-clear-category" onClick={()=>{setOpenGroup(null);onSelect('');}}>Скинути категорію</button>}
