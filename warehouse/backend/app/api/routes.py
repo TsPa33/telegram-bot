@@ -330,7 +330,9 @@ def vehicle_vin_decode(who: Auth, vin: str = Query(min_length=17, max_length=17)
         return "" if found.lower() in ("not applicable", "null", "none", "0") else found
     year = field("ModelYear")
     # Unknown European model years must not be inferred from the VIN cycle.
-    year_number = int(year) if year.isdigit() and 1886 <= int(year) <= 2100 and field("Model") and not field("ErrorCode").startswith(("5", "6", "7")) else None\n    if not field("Model"):\n        year_number = None
+    year_number = int(year) if year.isdigit() and 1886 <= int(year) <= 2100 and field("Model") and not field("ErrorCode").startswith(("5", "6", "7")) else None
+    if not field("Model"):
+        year_number = None
     fuel = field("FuelTypePrimary")
     transmission = field("TransmissionStyle")
     speeds = field("TransmissionSpeeds")
