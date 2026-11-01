@@ -2,7 +2,7 @@
 from collections import Counter, defaultdict
 from app.services.catalogue_language_gate import needs_ukrainian_review
 from app.services.catalogue_uk_suggestions import ukrainian_name_proposal
-from app.services.catalogue_carpot_sections import propose_section
+from app.services.catalogue_carpot_sections import propose_section, propose_subcategory
 import hmac
 import os
 from uuid import uuid5, NAMESPACE_URL
@@ -235,7 +235,8 @@ class Planner:
             for row in items:
                 suggestion=propose_section(row['category'],row['subcategory'],row['part_name'])
                 suggestion_key=digest([row['category'],row['subcategory'],row['part_name']])
-                self.section_suggestions[suggestion_key]={**suggestion,'source_category':row['category'],'source_subcategory':row['subcategory'],'source_part_name':row['part_name']}
+                subsection=propose_subcategory(suggestion['section'],row['category'],row['subcategory'],row['part_name'])
+                self.section_suggestions[suggestion_key]={**suggestion,'subcategory_preview':subsection,'source_category':row['category'],'source_subcategory':row['subcategory'],'source_part_name':row['part_name']}
                 manufacturer=self.entity('manufacturer',row['manufacturer'])
                 model=self.entity('model',row['model'],manufacturer,{'generation':row['generation']}) if manufacturer else None
                 if not model:
