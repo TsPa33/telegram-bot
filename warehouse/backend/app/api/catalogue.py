@@ -61,6 +61,14 @@ def summary(job,detail=False,operation=None):
                 preview_token=job.preview_token,report=report,**({'resolutions':job.resolutions} if detail else {}))
 
 
+def csv_safe_cell(value):
+    """Prevent spreadsheet formula execution in owner-only catalogue CSV exports."""
+    value = str(value if value is not None else '')
+    if value.lstrip().startswith(('=', '+', '-', '@')):
+        return "'" + value
+    return value
+
+
 @router.get('/admin/audit/catalogue-mapping.csv')
 def catalogue_mapping_csv(db:DB,owner:Admin):
     """Private platform-owner-only staging export. Every query runs in READ ONLY."""
@@ -76,7 +84,7 @@ def catalogue_mapping_csv(db:DB,owner:Admin):
     writer.writerow(['source','source_id','workspace_hash','kind','parent','current_name',
                      'recommended_name','mapping_status','row_count','origin','archived'])
     for row in rows:
-        writer.writerow([row.get(k,'') for k in ('s','i','w','k','p','o','n','t','u','src','a')])
+        writer.writerow([csv_safe_cell(row.get(k,'')) for k in ('s','i','w','k','p','o','n','t','u','src','a')])
     return Response(content='\ufeff'+stream.getvalue(),media_type='text/csv; charset=utf-8',
                     headers={'Content-Disposition':'attachment; filename="CarPot_catalogue_mapping_staging_2026-11-01.csv"',
                              'Cache-Control':'no-store',
@@ -96,12 +104,6 @@ def catalogue_duplicate_review_csv(db:DB,owner:Admin):
     stats,_rows=audited(log_report=False)
     if stats['errors']:
         raise HTTPException(503,'Аудит не завершено: перевірка частини таблиць не вдалася')
-    def cell(value):
-        value=str(value if value is not None else '')
-        # Protect spreadsheet clients from user- and supplier-controlled CSV formulas.
-        if value.lstrip().startswith(('=', '+', '-', '@')):
-            return "'" + value
-        return value
     stream=io.StringIO(newline='')
     writer=csv.writer(stream)
     writer.writerow(['group_no','workspace_hash','kind','parent_name','parent_id',
@@ -110,7 +112,7 @@ def catalogue_duplicate_review_csv(db:DB,owner:Admin):
                      'member_child_nodes','recommended_action','approval'])
     for number,group in enumerate(stats['duplicate_review_all'],1):
         for member in group['members']:
-            writer.writerow([cell(v) for v in (
+            writer.writerow([csv_safe_cell(v) for v in (
                 number,group['workspace'],group['kind'],group['parent'],group['parent_id'],
                 group['target'],group['count'],group['risk'],group['linked_stock'],
                 group['child_nodes'],member['id'],member['source'],member['archived'],
