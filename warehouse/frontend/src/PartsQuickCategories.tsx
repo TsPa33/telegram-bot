@@ -1,4 +1,4 @@
-import {Boxes,CarFront,Lightbulb,Zap,Cog,Armchair,Layers3,ChevronDown,ShieldCheck,Disc3,LockKeyhole,Settings2,Unplug,PlugZap,Fan,SlidersHorizontal,Wrench,Fuel,Gauge,CircleDot,Snowflake,Link2,CircleGauge,PanelsTopLeft,Package,Heater,Workflow,KeyRound,ClipboardList,Car,BatteryCharging,Cable,Construction,ShowerHead,Combine,Thermometer,Disc} from 'lucide-react';
+import {Boxes,CarFront,Lightbulb,Zap,Cog,Armchair,Layers3,ChevronDown,ShieldCheck,Disc3,LockKeyhole,Settings2,Unplug,PlugZap,Fan,SlidersHorizontal,Wrench,Fuel,Gauge,CircleDot,Snowflake,Link2,CircleGauge,PanelsTopLeft,Package,Heater,Workflow,KeyRound,ClipboardList,Car,BatteryCharging,Cable,Construction,Truck,ShowerHead,Combine,Thermometer,Disc} from 'lucide-react';
 import type {Row} from './api';
 import {catalogueLabelUk as categoryLabelUk,categoryOptionLabel} from './catalogueLabels';
 export {categoryLabelUk};
