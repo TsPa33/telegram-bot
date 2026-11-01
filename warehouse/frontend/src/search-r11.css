@@ -354,3 +354,48 @@
  .ui4-search-page .ui11-category-grid .ui11-category-tile,
  .ui4-search-page .ui11-category-grid.expanded .ui11-category-tile{min-height:68px}
 }
+
+/* Approved CarPot category design: compact, complete labels, per-category icons. */
+.ui4-search-page .ui11-category-grid,
+.ui4-search-page .ui11-category-grid.expanded{
+ grid-template-columns:repeat(auto-fit,minmax(min(100%,205px),1fr));
+ gap:10px;
+}
+.ui4-search-page .ui11-category-grid .ui11-category-tile,
+.ui4-search-page .ui11-category-grid.expanded .ui11-category-tile{
+ display:flex;
+ flex-direction:row;
+ justify-content:flex-start;
+ align-items:center;
+ gap:12px;
+ text-align:left;
+ min-height:76px;
+ height:auto;
+ padding:12px 14px;
+ border-radius:12px;
+}
+.ui4-search-page .ui11-category-grid .ui11-category-tile svg{
+ flex:0 0 24px;
+ width:24px;
+ height:24px;
+ color:#116c42;
+}
+.ui4-search-page .ui11-category-grid .ui11-category-tile span,
+.ui4-search-page .ui11-category-grid.expanded .ui11-category-tile span{
+ flex:1;
+ min-width:0;
+ white-space:normal;
+ overflow:visible;
+ overflow-wrap:break-word;
+ text-overflow:clip;
+ line-height:1.3;
+ font-size:13px;
+ font-weight:650;
+}
+@media(max-width:700px){
+ .ui4-search-page .ui11-category-grid,
+ .ui4-search-page .ui11-category-grid.expanded{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+ .ui4-search-page .ui11-category-grid .ui11-category-tile,
+ .ui4-search-page .ui11-category-grid.expanded .ui11-category-tile{min-height:70px;padding:9px;gap:8px}
+ .ui4-search-page .ui11-category-grid .ui11-category-tile span{font-size:12px}
+}
