@@ -1,6 +1,7 @@
 """One transactional planner for persisted preview and explicit global apply."""
 from collections import Counter, defaultdict
 from app.services.catalogue_language_gate import needs_ukrainian_review
+from app.services.catalogue_uk_suggestions import ukrainian_name_proposal
 import hmac
 import os
 from uuid import uuid5, NAMESPACE_URL
@@ -148,6 +149,11 @@ class Planner:
         elif review or identity(name) in AMBIGUOUS or (kind in ('category','subcategory','part_type') and (needs_ukrainian_review(name) or any(existing.kind==kind and (existing.parent_id or '')==context and identity(existing.name)==identity(name) for existing in self.by_id.values()))):
             reason=('Російськомовна або змішана назва: виберіть український канонічний запис чи створіть перевірену українську назву' if needs_ukrainian_review(name) else 'Можливий дублікат або неоднозначна назва: перевірте наявні типи, оберіть target чи створіть перевірений запис')
             self.issue(key,kind,name,reason,parent.id if parent else None)
+            if kind in ('category','subcategory','part_type'):
+                proposal=ukrainian_name_proposal(name)
+                if proposal and proposal != name:
+                    self.issues[key]['suggested_uk_name']=proposal
+                    self.issues[key]['suggestion_status']='requires_admin_approval'
             self.cache[key]=None;return None
         else:
             self.suggestions[key]=dict(key=key,kind=kind,name=name,reason='Новий запис; за потреби підтвердьте об’єднання з наявним',
