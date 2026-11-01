@@ -145,8 +145,8 @@ class Planner:
         chosen=self.entities.get(key)
         if chosen:
             self.bump(kind+'s' if kind not in ('category','subcategory') else {'category':'categories','subcategory':'subcategories'}[kind],'unchanged')
-        elif review or identity(name) in AMBIGUOUS or (kind in ('category','subcategory','part_type') and needs_ukrainian_review(name)):
-            reason=('Російськомовна або змішана назва: виберіть український канонічний запис чи створіть перевірену українську назву' if needs_ukrainian_review(name) else 'Потрібна перевірена відповідність або явне пропускання')
+        elif review or identity(name) in AMBIGUOUS or (kind in ('category','subcategory','part_type') and (needs_ukrainian_review(name) or any(existing.kind==kind and (existing.parent_id or '')==context and identity(existing.name)==identity(name) for existing in self.by_id.values()))):
+            reason=('Російськомовна або змішана назва: виберіть український канонічний запис чи створіть перевірену українську назву' if needs_ukrainian_review(name) else 'Можливий дублікат або неоднозначна назва: перевірте наявні типи, оберіть target чи створіть перевірений запис')
             self.issue(key,kind,name,reason,parent.id if parent else None)
             self.cache[key]=None;return None
         else:
