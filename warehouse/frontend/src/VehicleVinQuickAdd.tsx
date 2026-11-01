@@ -35,8 +35,20 @@ export default function VehicleVinQuickAdd({onBack,onCreated}:{onBack:()=>void;o
   if(draft.engine)values.engine=String(draft.engine);
   if(draft.fuel_type)values.fuel_type=String(draft.fuel_type);
   if(draft.transmission)values.transmission=String(draft.transmission);
-  if(draft.drive_type)values.drive_type=String(draft.drive_type);
-  if(draft.engine_displacement_l&&Number(draft.engine_displacement_l)>0)values.engine_displacement_l=Number(draft.engine_displacement_l);
+  if(draft.drive_type){
+   const selected=String(draft.drive_type).toUpperCase();
+   const code=selected.match(/\\b(FWD|RWD|AWD|4WD)\\b/)?.[1];
+   if(code)values.drive_type=code;
+   else {setError('Не вдалося визначити код приводу. Уточніть привід (FWD, RWD, AWD або 4WD).');setSaving(false);return;}
+  }
+  if(draft.engine_displacement_l){
+   const displacement=Number(draft.engine_displacement_l);
+   if(!Number.isFinite(displacement)||displacement<=0||displacement>12){setError('Об’єм двигуна має бути в межах 0–12 л.');setSaving(false);return;}
+   values.engine_displacement_l=Math.round(displacement*10)/10;
+  }
+  if(String(values.engine||'').length>100||String(values.transmission||'').length>50){
+   setError('Опис двигуна або КПП занадто довгий. Скоротіть текст перед створенням.');setSaving(false);return;
+  }
   try{onCreated(await api('/vehicles','POST',values));}
   catch(e){setError((e as Error).message);}
   finally{setSaving(false);}
