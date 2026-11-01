@@ -8,7 +8,7 @@ COPY frontend/src ./src
 # Tests and migration sources stay in the builder stage, never the public nginx image.
 COPY frontend/tests ./tests
 COPY backend/alembic/versions ./backend/alembic/versions
-RUN npm run build > /tmp/warehouse-build.log 2>&1 || (tail -n 100 /tmp/warehouse-build.log && exit 1)
+RUN npm run build > /tmp/warehouse-build.log 2>&1 || ((grep -n -A 24 -B 6 '^not ok' /tmp/warehouse-build.log || tail -n 100 /tmp/warehouse-build.log) && exit 1)
 RUN tail -n 12 /tmp/warehouse-build.log
 
 FROM nginx:1.28-alpine
