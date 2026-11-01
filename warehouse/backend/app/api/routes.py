@@ -329,7 +329,7 @@ def vehicle_vin_decode(who: Auth, vin: str = Query(min_length=17, max_length=17)
         found = str(item.get(key) or "").strip()
         return "" if found.lower() in ("not applicable", "null", "none", "0") else found
     year = field("ModelYear")
-    year_number = int(year) if year.isdigit() and 1886 <= int(year) <= 2100 else None
+    # vPIC often guesses a 30-year cycle for European VINs when model details are absent.\n    # Never present such a guessed year as verified vehicle identity.\n    year_number = int(year) if year.isdigit() and 1886 <= int(year) <= 2100 and field("Model") and not field("ErrorCode").startswith(("5", "6", "7")) else None\n    if not field("Model"):\n        year_number = None
     fuel = field("FuelTypePrimary")
     transmission = field("TransmissionStyle")
     speeds = field("TransmissionSpeeds")
@@ -346,7 +346,7 @@ def vehicle_vin_decode(who: Auth, vin: str = Query(min_length=17, max_length=17)
     return {"vin":value,"source":"NHTSA vPIC","vehicle":result,
             "available_fields":[key for key,val in result.items() if val and key!="vin"],
             "requires_review":True,
-            "message":"Перевірте визначені параметри перед створенням. Відсутні поля заповніть вручну."}
+            "message":("NHTSA не визначив модель: модельний рік приховано як ненадійний. Уточніть автомобіль в іншому VIN-декодері." if not field("Model") else "Перевірте визначені параметри перед створенням. Відсутні поля заповніть вручну.")}
 
 
 @router.get("/vehicles/{id}", tags=["Vehicles"])
