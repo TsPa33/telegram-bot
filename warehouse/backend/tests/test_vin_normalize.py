@@ -1,0 +1,21 @@
+from app.services.vin_normalize import ukrainian, merge_verified, normalize
+
+def test_ukrainian_descriptors():
+    assert ukrainian("drive_type", "Front-wheel drive") == "Передній (FWD)"
+    assert ukrainian("drive_type", "4WD") == "Повний (4WD)"
+    assert ukrainian("body_class", "Wagon") == "Універсал"
+    assert ukrainian("body_class", "Pickup") == "Пікап"
+    assert ukrainian("transmission", "6-Speed Automatic") == "6-ступенева автоматична"
+    assert ukrainian("transmission", "6MT") == "6-ступенева механічна"
+    assert ukrainian("fuel_type", "Diesel") == "Дизель"
+
+def test_never_replace_conflicting_vin_facts():
+    result, conflicts=merge_verified(
+        {"manufacturer":"Ford","model":"F-150","engine":"5.0L V6","year":2013,"transmission":""},
+        {"model":"F-150","engine":"3.5L V6","transmission":"6-Speed Automatic","year":2013})
+    assert result["engine"]=="5.0L V6"
+    assert result["transmission"]=="6-ступенева автоматична"
+    assert conflicts["engine"]["secondary"]=="3.5L V6"
+
+def test_technical_codes_preserved():
+    assert normalize({"engine":"D4204T14","trim":"Inscription"})=={"engine":"D4204T14","trim":"Inscription"}
