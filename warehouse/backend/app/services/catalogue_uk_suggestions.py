@@ -3,8 +3,6 @@
 Suggestions never modify input, source provenance, stock or canonical entities.
 Only approved explicit resolutions can create or link a Ukrainian name.
 """
-from app.services.catalogue_language_gate import needs_ukrainian_review
-
 EXACT_UA = {
  'рулевое управление':'Кермове управління',
  'рулевое управления':'Кермове управління',
