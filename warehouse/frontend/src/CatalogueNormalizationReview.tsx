@@ -35,12 +35,12 @@ export default function CatalogueNormalizationReview(){
  const pageSize=15;
  const groups=useLoad<GroupResponse>(
   ()=>view==='duplicates'
-   ? api('/catalogue/admin/audit/duplicate-groups?offset='+page*pageSize+'&limit='+pageSize+'&risk='+risk+'&q='+encodeURIComponent(q))
+   ? api<GroupResponse>('/catalogue/admin/audit/duplicate-groups?offset='+page*pageSize+'&limit='+pageSize+'&risk='+risk+'&q='+encodeURIComponent(q))
    : Promise.resolve({items:[],total:0,risk_counts:{},base_groups:0}),
   [view,page,risk,q]);
  const proposals=useLoad<ProposalResponse>(
   ()=>view==='proposals'
-   ?api('/catalogue/admin/audit/name-proposals')
+   ?api<ProposalResponse>('/catalogue/admin/audit/name-proposals')
    :Promise.resolve({total:0,items:[],status:'',version:''}),
   [view]);
  const list=(proposals.data?.items||[]).filter(p=>
