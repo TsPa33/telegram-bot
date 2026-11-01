@@ -343,10 +343,22 @@ def vehicle_vin_decode(who: Auth, vin: str = Query(min_length=17, max_length=17)
         "engine_cylinders":field("EngineCylinders"), "engine_power_kw":field("EngineKW"),
         "vin":value,
     }
-    return {"vin":value,"source":"NHTSA vPIC","vehicle":result,
+    provider_name = "NHTSA vPIC"
+    provider_note = ""
+    if not (result["model"] and result["year"] and result["engine"] and result["transmission"]):
+        from app.services.vin_europe import europe_vin
+        try:
+            enriched = europe_vin(value)
+            if enriched:
+                # Prefer a more complete European lookup over partially decoded US-market data.
+                result.update({k:v for k,v in enriched.items() if v is not None and v != ""})
+                provider_name = "NHTSA vPIC + Vincario"
+        except (OSError, ValueError, KeyError, TypeError):
+            provider_note = " Європейський декодер тимчасово недоступний."
+    return {"vin":value,"source":provider_name,"vehicle":result,
             "available_fields":[key for key,val in result.items() if val and key!="vin"],
             "requires_review":True,
-            "message":("NHTSA не визначив модель: модельний рік приховано як ненадійний. Уточніть автомобіль в іншому VIN-декодері." if not field("Model") else "Перевірте визначені параметри перед створенням. Відсутні поля заповніть вручну.")}
+            "message":("NHTSA не визначив модель: модельний рік приховано як ненадійний. Уточніть автомобіль в іншому VIN-декодері." if not result["model"] else "Перевірте визначені параметри перед створенням. Відсутні поля заповніть вручну.") + provider_note}
 
 
 @router.get("/vehicles/{id}", tags=["Vehicles"])
