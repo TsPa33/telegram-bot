@@ -329,7 +329,8 @@ def vehicle_vin_decode(who: Auth, vin: str = Query(min_length=17, max_length=17)
         found = str(item.get(key) or "").strip()
         return "" if found.lower() in ("not applicable", "null", "none", "0") else found
     year = field("ModelYear")
-    # vPIC often guesses a 30-year cycle for European VINs when model details are absent.\n    # Never present such a guessed year as verified vehicle identity.\n    year_number = int(year) if year.isdigit() and 1886 <= int(year) <= 2100 and field("Model") and not field("ErrorCode").startswith(("5", "6", "7")) else None\n    if not field("Model"):\n        year_number = None
+    # Unknown European model years must not be inferred from the VIN cycle.
+    year_number = int(year) if year.isdigit() and 1886 <= int(year) <= 2100 and field("Model") and not field("ErrorCode").startswith(("5", "6", "7")) else None\n    if not field("Model"):\n        year_number = None
     fuel = field("FuelTypePrimary")
     transmission = field("TransmissionStyle")
     speeds = field("TransmissionSpeeds")
@@ -355,6 +356,15 @@ def vehicle_vin_decode(who: Auth, vin: str = Query(min_length=17, max_length=17)
                 provider_name = "NHTSA vPIC + Vincario"
         except (OSError, ValueError, KeyError, TypeError):
             provider_note = " Європейський декодер тимчасово недоступний."
+    if not (result["model"] and result["year"] and result["engine"] and result["transmission"]):
+        from app.services.vin_freevindecoder import decode_page
+        try:
+            page = decode_page(value)
+            if page:
+                result.update({k:v for k,v in page.items() if v is not None and v != ""})
+                provider_name += " + FreeVINDecoder"
+        except (OSError, ValueError, TypeError):
+            provider_note += " Дані FreeVINDecoder недоступні."
     return {"vin":value,"source":provider_name,"vehicle":result,
             "available_fields":[key for key,val in result.items() if val and key!="vin"],
             "requires_review":True,
