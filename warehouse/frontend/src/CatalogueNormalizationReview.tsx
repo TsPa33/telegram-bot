@@ -8,6 +8,8 @@ type Member={id:string;source:string;archived:boolean;linked_stock:number;child_
 type Duplicate={workspace:string;kind:string;parent:string;parent_id:string;target:string;count:number;risk:string;linked_stock:number;child_nodes:number;sources:string[];members:Member[];action:string};
 type GroupResponse={total:number;items:Duplicate[];risk_counts:Record<string,number>;base_groups:number};
 type Proposal={type:'translation'|'hierarchy';source:string;target:string;approval:string;reason:string};
+type CarpotMapping={source:string;source_id:string;kind:string;parent:string;original_name:string;recommended_name:string;section:{section:string|null;status:string;reason:string};subcategory:{subcategory:string|null;status:string}};
+type CarpotMappingResponse={total:number;matched_total:number;unmatched_total:number;section_counts:Record<string,number>;items:CarpotMapping[]};
 type ProposalResponse={total:number;status:string;items:Proposal[];version:string};
 const riskLabels:Record<string,string>={linked_stock:'Є складські зв’язки',has_children:'Є дочірні вузли',cross_source:'Різні джерела',unreferenced_candidate:'Без прямих посилань'};
 const categoryKinds:Record<string,string>={category:'Категорія',subcategory:'Підкатегорія',part:'Тип деталі'};
@@ -29,7 +31,7 @@ function Group({group,index}:{group:Duplicate;index:number}){
 }
 
 export default function CatalogueNormalizationReview(){
- const [view,setView]=useState<'duplicates'|'proposals'>('duplicates');
+ const [view,setView]=useState<'duplicates'|'proposals'|'carpot'>('duplicates');
  const [draft,setDraft]=useState(''),[q,setQ]=useState(''),[risk,setRisk]=useState(''),[page,setPage]=useState(0);
  const [proposalType,setProposalType]=useState('all'),[proposalSearch,setProposalSearch]=useState('');
  const pageSize=15;
@@ -43,6 +45,11 @@ export default function CatalogueNormalizationReview(){
    ?api<ProposalResponse>('/catalogue/admin/audit/name-proposals')
    :Promise.resolve({total:0,items:[],status:'',version:''}),
   [view]);
+ const [mappingPage,setMappingPage]=useState(0),[mappingSearch,setMappingSearch]=useState(''),[mappingStatus,setMappingStatus]=useState('all');
+ const mapping=useLoad<CarpotMappingResponse>(()=>view==='carpot'
+  ?api<CarpotMappingResponse>('/catalogue/admin/audit/carpot-section-mapping?offset='+mappingPage*50+'&limit=50&status='+mappingStatus+'&q='+encodeURIComponent(mappingSearch))
+  :Promise.resolve({total:0,matched_total:0,unmatched_total:0,section_counts:{},items:[]}),
+  [view,mappingPage,mappingSearch,mappingStatus]);
  const list=(proposals.data?.items||[]).filter(p=>
   (proposalType==='all'||p.type===proposalType)&&
   (p.source+' '+p.target).toLocaleLowerCase('uk').includes(proposalSearch.trim().toLocaleLowerCase('uk')));
@@ -55,8 +62,14 @@ export default function CatalogueNormalizationReview(){
   <div className="r14-review-tabs" role="group" aria-label="Вид перевірки">
    <button type="button" aria-pressed={view==='duplicates'} onClick={()=>setView('duplicates')}>Дублікати й залежності</button>
    <button type="button" aria-pressed={view==='proposals'} onClick={()=>setView('proposals')}>Українські назви</button>
+   <button type="button" aria-pressed={view==='carpot'} onClick={()=>setView('carpot')}>Структура CarPot</button>
   </div>
-  {view==='duplicates'?<>
+  {view==='carpot'?<>
+   <p className="r14-explanation">Власні 12 розділів CarPot. Відповідності є рекомендаціями; застосування до БД відсутнє.</p>
+   <div className="r14-toolbar"><label>Фільтр<select value={mappingStatus} onChange={e=>{setMappingStatus(e.target.value);setMappingPage(0);}}><option value="all">Усі</option><option value="suggested">Розділ запропоновано</option><option value="review_required">Потрібна перевірка</option></select></label><label className="r14-grow">Назва<input value={mappingSearch} maxLength={100} onChange={e=>{setMappingSearch(e.target.value);setMappingPage(0);}} placeholder="Пошук старої категорії"/></label><button type="button" className="secondary" onClick={mapping.reload} disabled={mapping.loading}><RefreshCw size={15}/>Оновити</button></div>
+   <State error={mapping.error} loading={mapping.loading}/>
+   {mapping.data&&!mapping.loading&&!mapping.error&&<><div className="r14-overview"><span><strong>{n(mapping.data.total)}</strong><small>Вузлів у вибірці</small></span><span><strong>{n(mapping.data.matched_total)}</strong><small>Є пропозиція</small></span><span><strong>{n(mapping.data.unmatched_total)}</strong><small>На перевірку</small></span></div><div className="table-wrap"><table><thead><tr><th>Історична назва</th><th>Рекомендований розділ</th><th>Підкатегорія</th><th>Рішення</th></tr></thead><tbody>{mapping.data.items.map((item,i)=><tr key={item.source+':'+item.source_id+':'+i}><td>{item.original_name}<small> · {item.kind}</small></td><td>{item.section.section||'Не визначено'}</td><td>{item.subcategory.subcategory||'Не визначено'}</td><td>{item.section.status==='suggested'?'Пропозиція':'Перевірити вручну'}</td></tr>)}</tbody></table></div><div className="r14-pagination"><button type="button" disabled={mappingPage===0} onClick={()=>setMappingPage(p=>p-1)}>Попередня</button><span>Сторінка {mappingPage+1}</span><button type="button" disabled={(mappingPage+1)*50>=mapping.data.total} onClick={()=>setMappingPage(p=>p+1)}>Наступна</button></div></>}
+  </>:view==='duplicates'?<>
    <div className="r14-toolbar">
     <form onSubmit={event=>{event.preventDefault();setQ(draft.trim());setPage(0);}}>
      <label>Пошук назви / батьківського вузла<input value={draft} maxLength={100} placeholder="Наприклад, фара" onChange={e=>setDraft(e.target.value)}/></label>
