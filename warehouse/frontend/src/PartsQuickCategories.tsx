@@ -1,39 +1,50 @@
-import {Boxes,CarFront,Lightbulb,Zap,Cog,Armchair,Layers3,ChevronDown,ShieldCheck,Disc3,LockKeyhole,Settings2,Unplug,PlugZap,Fan,SlidersHorizontal,Wrench,Fuel,Gauge,CircleDot,Snowflake,Link2,CircleGauge,Droplets,PanelsTopLeft,Package,Heater,Workflow} from 'lucide-react';
-import {Boxes,CarFront,Lightbulb,Zap,Wind,Cog,Armchair,Layers3,ChevronDown,ShieldCheck,Disc3,KeyRound,LockKeyhole,Settings2,Unplug,PlugZap,Fan,SlidersHorizontal, Wrench, Fuel, Gauge, CircleDot, Snowflake, Link2, CircleGauge, Cable, Droplets, PanelsTopLeft, CircleParking, Package, Truck, Heater, CableCar, CircleHelp, Shield, Workflow} from 'lucide-react';
+import {Boxes,CarFront,Lightbulb,Zap,Cog,Armchair,Layers3,ChevronDown,ShieldCheck,Disc3,LockKeyhole,Settings2,Unplug,PlugZap,Fan,SlidersHorizontal,Wrench,Fuel,Gauge,CircleDot,Snowflake,Link2,CircleGauge,PanelsTopLeft,Package,Heater,Workflow,KeyRound,ClipboardList,Car,BatteryCharging,Cable,Construction,ShowerHead,Combine,Thermometer,Disc} from 'lucide-react';
 import type {Row} from './api';
 import {catalogueLabelUk as categoryLabelUk,categoryOptionLabel} from './catalogueLabels';
 export {categoryLabelUk};
 
 function categoryIcon(name:string) {
  const label=name.toLocaleLowerCase('uk');
- // Specific systems precede broad keywords to avoid generic repeated icons.
- if(/очищення скла|склоочис|двірник/.test(label))return PanelsTopLeft;
- if(/подачі палива|паливн/.test(label))return Fuel;
- if(/гальм/.test(label))return Disc3;
- if(/зчеплен|сцеплен/.test(label))return CircleDot;
- if(/кермов|рулев/.test(label))return Gauge;
+ // Prioritize precise terms; generic icon only for genuinely unknown categories.
+ if(/очищення фар|очистки фар/.test(label))return ShowerHead;
+ if(/очищення скла|очистки окон|очистки скла|склоочис/.test(label))return PanelsTopLeft;
+ if(/подач[іи] палива|топлив|паливн/.test(label))return Fuel;
+ if(/підготовка .*суміш|подготовка .*смес/.test(label))return Combine;
+ if(/гальм|тормозн/.test(label))return Disc3;
+ if(/зчеплен|сцеплен/.test(label))return Disc;
+ if(/головна передача|главная передача/.test(label))return CircleGauge;
+ if(/коробка передач/.test(label))return Settings2;
+ if(/кермов.*керуван|рулевое управл/.test(label))return Gauge;
+ if(/кермов|рулев/.test(label))return CircleGauge;
+ if(/підвіска та колеса/.test(label))return Car;
  if(/підвіск|амортиз|подвес/.test(label))return SlidersHorizontal;
  if(/ремінн|ремен/.test(label))return Workflow;
- if(/привід кол|привод кол|передач|трансміс|трансмис/.test(label))return Settings2;
- if(/колеса|шини|колёс/.test(label))return CircleGauge;
+ if(/привід кол|привод кол/.test(label))return Cable;
+ if(/колеса|шини|колёс/.test(label))return CircleDot;
  if(/причіп|прицеп/.test(label))return Link2;
- if(/запалюван|зажиган/.test(label))return PlugZap;
+ if(/запалюван|зажиган|свічк|свеч/.test(label))return PlugZap;
  if(/електр|электр/.test(label))return Zap;
  if(/опалення|отопление|вентиляц/.test(label))return Heater;
  if(/кондиціон|кондиционер/.test(label))return Snowflake;
+ if(/система охолодж|система охлажд/.test(label))return Thermometer;
  if(/охолод|охлаж/.test(label))return Fan;
  if(/випускн|выхлоп|выпуск/.test(label))return Unplug;
  if(/освіт|свет|фар|оптик/.test(label))return Lightbulb;
  if(/безпек|безопас/.test(label))return ShieldCheck;
- if(/замк|замок/.test(label))return LockKeyhole;
- if(/комплект|обладнан|оборудован/.test(label))return Package;
- if(/обслугов|ремонт|деталі для то/.test(label))return Wrench;
- if(/суміш|смес/.test(label))return Droplets;
- if(/головна передача/.test(label))return Cog;
- if(/кузов|двер|капот/.test(label))return CarFront;
+ if(/замки/.test(label))return LockKeyhole;
+ if(/замок/.test(label))return KeyRound;
+ if(/комплектуюч/.test(label))return Cog;
+ if(/додаткове обладнан/.test(label))return Package;
+ if(/перевезенн|перевозк/.test(label))return Truck;
+ if(/обладнан|оборудован/.test(label))return Construction;
+ if(/техобслугов|догляд|уход/.test(label))return ClipboardList;
+ if(/сервіс|ремонт|деталі для/.test(label))return Wrench;
+ if(/силовий агрегат/.test(label))return BatteryCharging;
+ if(/двигун|двигател|мотор/.test(label))return Cog;
+ if(/кузов|капот/.test(label))return CarFront;
  if(/салон|інтер|интер|оздоблен|отделк/.test(label))return Armchair;
- if(/силовий агрегат|двиг|мотор/.test(label))return Cog;
- if(/ходов/.test(label))return CircleGauge;
+ if(/ходов/.test(label))return Car;
+ if(/запалюван/.test(label))return PlugZap;
  return Layers3;
 }
 
