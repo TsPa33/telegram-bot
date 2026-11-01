@@ -50,3 +50,32 @@ def test_auditor_only_selects_and_normalization_never_merges():
     assert "def catalogue_duplicate_groups(" in cat
     assert "def catalogue_name_proposals(" in cat
     assert "return {k:v for k,v in stats.items() if k!='duplicate_review_all'}" in cat
+
+
+def test_csv_export_safely_escapes_spreadsheet_formulas():
+    import csv
+    import io
+    from app.api.catalogue import csv_safe_cell
+    cases = {
+        '=HYPERLINK("https://example.test", "click")': "'=HYPERLINK(\"https://example.test\", \"click\")",
+        ' +SUM(1,2)': "' +SUM(1,2)",
+        '\t@SUM(1,2)': "'\t@SUM(1,2)",
+        '-3+5': "'-3+5",
+        'Фара права': 'Фара права',
+        '123456': '123456',
+        None: '',
+    }
+    for original, expected in cases.items():
+        assert csv_safe_cell(original) == expected
+    for original, expected in cases.items():
+        out = io.StringIO(newline='')
+        csv.writer(out).writerow([csv_safe_cell(original)])
+        assert next(csv.reader(io.StringIO(out.getvalue())))[0] == expected
+
+
+def test_both_review_exports_use_csv_sanitization():
+    source = (Path(__file__).resolve().parents[1] / 'app' / 'api' / 'catalogue.py').read_text()
+    mapping = source.split("@router.get('/admin/audit/catalogue-mapping.csv')", 1)[1].split("@router.get('/admin/audit/duplicate-review.csv')", 1)[0]
+    duplicates = source.split("@router.get('/admin/audit/duplicate-review.csv')", 1)[1].split("@router.get('/admin/audit/duplicate-groups')", 1)[0]
+    assert 'writer.writerow([csv_safe_cell(row.get(k' in mapping
+    assert 'writer.writerow([csv_safe_cell(v)' in duplicates
