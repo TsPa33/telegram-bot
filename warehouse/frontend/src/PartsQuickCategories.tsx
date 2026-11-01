@@ -1,5 +1,5 @@
 import {useState} from 'react';
-import {Boxes,CarFront,Lightbulb,Zap,Cog,Armchair,Layers3,ChevronDown,ShieldCheck,Disc3,LockKeyhole,Settings2,PlugZap,Fan,SlidersHorizontal,Wrench,Fuel,Gauge,CircleDot,Snowflake,Link2,CircleGauge,Droplets,Package,KeyRound,ClipboardList,Car,Truck,Wind} from 'lucide-react';
+import {Boxes,CarFront,Lightbulb,Zap,Cog,Armchair,Layers3,ShieldCheck,Disc3,LockKeyhole,Settings2,PlugZap,Fan,SlidersHorizontal,Wrench,Fuel,Gauge,CircleDot,Snowflake,Link2,CircleGauge,Droplets,Package,KeyRound,ClipboardList,Car,Truck,Wind} from 'lucide-react';
 import type {Row} from './api';
 import {catalogueLabelUk as categoryLabelUk,categoryOptionLabel} from './catalogueLabels';
 export {categoryLabelUk};
@@ -102,7 +102,7 @@ export default function PartsQuickCategories({categories,selected,onSelect,smart
    <button type="button" aria-pressed={!selected&&activeSection===null} className={'ui11-category-tile'+(!selected&&activeSection===null?' selected':'')} onClick={()=>{setActiveSection(null);setOpenGroup(null);onSelect('');}}>
     <Boxes size={22} strokeWidth={1.7} aria-hidden="true"/><span>Усі категорії</span>
    </button>
-   {sections.map((section,i)=>{const Icon=section.icon;const total=groups.filter(g=>sectionFor(g.label)===i).length;
+   {sections.map((section,i)=>{const Icon=section.icon;
     return <button type="button" key={section.name} className={'ui11-category-tile'+(activeSection===i?' selected':'')} aria-pressed={activeSection===i} aria-expanded={activeSection===i}
     onClick={()=>{setActiveSection(i===activeSection?null:i);setOpenGroup(null);}}>
       <Icon size={22} strokeWidth={1.7} aria-hidden="true"/><span>{section.name}</span>
