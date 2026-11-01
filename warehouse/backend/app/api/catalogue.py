@@ -82,6 +82,45 @@ def catalogue_mapping_csv(db:DB,owner:Admin):
                              'Cache-Control':'no-store',
                              'X-Content-Type-Options':'nosniff'})
 
+@router.get('/admin/audit/carpot-section-mapping')
+def carpot_section_mapping(
+    db:DB, owner:Admin,
+    offset:int=Query(default=0,ge=0,le=50000),
+    limit:int=Query(default=100,ge=1,le=500),
+    q:str=Query(default='',max_length=100),
+    status:Literal['all','suggested','review_required']='all',
+):
+    """Read-only owner audit of historical root labels against CarPot taxonomy.
+
+    Never merges IDs; classifications are advisory and require review before writes.
+    """
+    from app.catalogue_audit_once import audited
+    from app.services.catalogue_carpot_sections import propose_section,propose_subcategory
+    stats,rows=audited(log_report=False)
+    if stats['errors']:
+        raise HTTPException(503,'Не всі read-only перевірки завершилися успішно')
+    mapped=[]
+    for row in rows:
+        kind=str(row.get('k') or '')
+        if kind not in ('category','subcategory'):
+            continue
+        old=str(row.get('o') or '')
+        recommendation=str(row.get('n') or old)
+        section=propose_section(recommendation,'','') if kind=='category' else propose_section('',recommendation,'')
+        subsection=propose_subcategory(section['section'],old,recommendation,'')
+        item={'source':row.get('s'),'source_id':row.get('i'),'kind':kind,
+              'parent':row.get('p'),'original_name':old,'recommended_name':recommendation,
+              'section':section,'subcategory':subsection,
+              'approval':'pending','legacy_id_preserved':True}
+        if status!='all' and section['status']!=status:
+            continue
+        if q.strip() and q.casefold() not in (old+' '+recommendation).casefold():
+            continue
+        mapped.append(item)
+    return {'total':len(mapped),'items':mapped[offset:offset+limit],
+            'read_only':True,'taxonomy_sections':12,'unmatched_total':sum(x['section']['status']=='review_required' for x in mapped)}
+
+
 @router.get('/admin/audit/duplicate-review.csv')
 def catalogue_duplicate_review_csv(db:DB,owner:Admin):
     """Platform-owner review queue: exact duplicate names, with live reference exposure.
