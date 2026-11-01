@@ -1,6 +1,8 @@
 """One transactional planner for persisted preview and explicit global apply."""
 from collections import Counter, defaultdict
 from app.services.catalogue_language_gate import needs_ukrainian_review
+from app.services.catalogue_uk_suggestions import ukrainian_name_proposal
+from app.services.catalogue_carpot_sections import propose_section
 import hmac
 import os
 from uuid import uuid5, NAMESPACE_URL
@@ -76,7 +78,7 @@ class Planner:
         for e in self.by_id.values():
             candidates=self.candidate_index[(e.kind,e.parent_id)]
             if len(candidates)<25:candidates.append(dict(id=e.id,name=e.name,details=e.details))
-        self.suggestions={};self.cache={};self.issues={};self.counts={name:Counter() for name in COUNTERS};self.used=set();self.skipped=0;self.price_changes=[]
+        self.suggestions={};self.cache={};self.issues={};self.counts={name:Counter() for name in COUNTERS};self.used=set();self.skipped=0;self.price_changes=[];self.section_suggestions={}
 
     def stage(self,obj):
         # Deterministic IDs allow FK-ordered batches without per-row round trips.
@@ -145,9 +147,14 @@ class Planner:
         chosen=self.entities.get(key)
         if chosen:
             self.bump(kind+'s' if kind not in ('category','subcategory') else {'category':'categories','subcategory':'subcategories'}[kind],'unchanged')
-        elif review or identity(name) in AMBIGUOUS or (kind in ('category','subcategory','part_type') and (needs_ukrainian_review(name) or any(existing.kind==kind and (existing.parent_id or '')==context and identity(existing.name)==identity(name) for existing in self.by_id.values()))):
+        elif review or identity(name) in AMBIGUOUS or (kind in ('category','subcategory','part_type') and (needs_ukrainian_review(name) or (ukrainian_name_proposal(name) is not None and ukrainian_name_proposal(name) != name) or any(existing.kind==kind and (existing.parent_id or '')==context and identity(existing.name)==identity(name) for existing in self.by_id.values()))):
             reason=('Російськомовна або змішана назва: виберіть український канонічний запис чи створіть перевірену українську назву' if needs_ukrainian_review(name) else 'Можливий дублікат або неоднозначна назва: перевірте наявні типи, оберіть target чи створіть перевірений запис')
             self.issue(key,kind,name,reason,parent.id if parent else None)
+            if kind in ('category','subcategory','part_type'):
+                proposal=ukrainian_name_proposal(name)
+                if proposal and proposal != name:
+                    self.issues[key]['suggested_uk_name']=proposal
+                    self.issues[key]['suggestion_status']='requires_admin_approval'
             self.cache[key]=None;return None
         else:
             self.suggestions[key]=dict(key=key,kind=kind,name=name,reason='Новий запис; за потреби підтвердьте об’єднання з наявним',
@@ -226,6 +233,9 @@ class Planner:
                             previous_uah=str(previous.price_uah) if previous and previous.price_uah is not None else None,
                             previous_usd=str(previous.price_usd) if previous and previous.price_usd is not None else None))
             for row in items:
+                suggestion=propose_section(row['category'],row['subcategory'],row['part_name'])
+                suggestion_key=digest([row['category'],row['subcategory'],row['part_name']])
+                self.section_suggestions[suggestion_key]={**suggestion,'source_category':row['category'],'source_subcategory':row['subcategory'],'source_part_name':row['part_name']}
                 manufacturer=self.entity('manufacturer',row['manufacturer'])
                 model=self.entity('model',row['model'],manufacturer,{'generation':row['generation']}) if manufacturer else None
                 if not model:
@@ -264,7 +274,7 @@ class Planner:
         if unused:raise ValueError('Resolution no longer matches the validated input; remove unused decisions')
         issues=list(self.issues.values())
         suggestions=sorted(self.suggestions.values(),key=lambda s: ['manufacturer','model','category','subcategory','part_type'].index(s['kind']))
-        return dict(price_changes=self.price_changes,suggestions=suggestions[:200],suggestion_total=len(suggestions),counts={k:{a:c[a] for a in ('inserted','updated','unchanged')} for k,c in self.counts.items()},
+        return dict(carpot_section_preview=list(self.section_suggestions.values())[:200],carpot_section_total=len(self.section_suggestions),price_changes=self.price_changes,suggestions=suggestions[:200],suggestion_total=len(suggestions),counts={k:{a:c[a] for a in ('inserted','updated','unchanged')} for k,c in self.counts.items()},
                     issues=issues[:200],unresolved_total=len(issues),issues_truncated=len(issues)>200,
                     skipped_rows=self.skipped,input_rows=len(rows),year_compatibility='unverified',mode='preview',committed=False)
 
