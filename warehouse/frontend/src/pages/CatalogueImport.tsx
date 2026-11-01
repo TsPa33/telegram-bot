@@ -3,8 +3,9 @@ import DismantlingCatalogImport from '../DismantlingCatalogImport';
 import ParserAdminCenter from '../ParserAdminCenter';
 import {Pager} from '../components';
 import CanonicalCatalogueAdmin from '../CanonicalCatalogueAdmin';
+import CatalogueNormalizationReview from '../CatalogueNormalizationReview';
 import {useEffect,useRef,useState} from 'react';
-import {Boxes,Tags,Workflow,Database,CarFront} from 'lucide-react';
+import {Boxes,Tags,Workflow,Database,CarFront,Languages} from 'lucide-react';
 import VehicleDirectoryImport from '../VehicleDirectoryImport';
 import '../vehicle-directory-r12.css';
 import '../catalogue-admin-r9.css';
@@ -39,14 +40,15 @@ function DecisionRow({row,value,checked,sent,onChange}:{row:Row;value?:Decision;
 function DecisionTable({rows,state,onChange}:{rows:Row[];state:Review;onChange:(row:Row,v?:Decision)=>void}){
  return <table className="catalogue-decisions"><thead><tr><th>Початкова назва</th><th>Український відповідник</th><th>Тип рішення</th><th>Статус</th></tr></thead><tbody>{rows.map(r=><DecisionRow key={r.key} row={r} value={state.draft[r.key]} checked={showReport(state)?state.checked[r.key]:undefined} sent={state.pending?.sent[r.key]} onChange={v=>onChange(r,v)}/>)}</tbody></table>;
 }
-type AdminTab='parts'|'vehicles'|'offers'|'runner'|'global';
-const adminTabIcons={parts:Boxes,vehicles:CarFront,offers:Tags,runner:Workflow,global:Database};
+type AdminTab='parts'|'vehicles'|'offers'|'runner'|'global'|'normalization';
+const adminTabIcons={parts:Boxes,vehicles:CarFront,offers:Tags,runner:Workflow,global:Database,normalization:Languages};
 const adminTabs: {id:AdminTab;label:string;hint:string}[]=[
  {id:'parts',label:'Довідник запчастин',hint:'Типи деталей і моделі'},
  {id:'vehicles',label:'Довідник автомобілів',hint:'Марки, моделі, двигуни'},
  {id:'offers',label:'Ринкові ціни',hint:'Файли пропозицій'},
  {id:'runner',label:'Задачі парсера',hint:'Запуски й результати'},
- {id:'global',label:'Глобальний каталог',hint:'Перевірка та публікація'}
+ {id:'global',label:'Глобальний каталог',hint:'Перевірка та публікація'},
+ {id:'normalization',label:'Нормалізація',hint:'Дублікати та українські назви'}
 ];
 export default function CatalogueImport({enabled,actorKey}:{enabled:boolean;actorKey:string}){
  const [tab,setTab]=useState<AdminTab>('parts');
@@ -71,6 +73,7 @@ export default function CatalogueImport({enabled,actorKey}:{enabled:boolean;acto
   {tab==='offers'&&<section id="pa-file-import" className="catalogue-tab-content" aria-label="Ринкові пропозиції"><ImportWorkspace key={actorKey} actorKey={actorKey}/></section>}
   {tab==='runner'&&<div className="catalogue-tab-content"><ImportRunnerPanel actorKey={actorKey}/></div>}
   {tab==='global'&&<div className="catalogue-tab-content"><CanonicalCatalogueAdmin key={actorKey+':canonical'} actorKey={actorKey}/></div>}
+  {tab==='normalization'&&<div className="catalogue-tab-content"><CatalogueNormalizationReview key={actorKey+':normalization'}/></div>}
  </ParserAdminCenter>;
 }
 function ImportWorkspace({actorKey}:{actorKey:string}){

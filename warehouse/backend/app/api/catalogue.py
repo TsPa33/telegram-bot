@@ -68,7 +68,7 @@ def catalogue_mapping_csv(db:DB,owner:Admin):
     import io
     from fastapi import Response
     from app.catalogue_audit_once import audited
-    stats,rows=audited()
+    stats,rows=audited(log_report=False)
     if stats['errors']:
         raise HTTPException(503,'Аудит не завершено: перевірка частини таблиць не вдалася')
     stream=io.StringIO(newline='')
@@ -93,7 +93,7 @@ def catalogue_duplicate_review_csv(db:DB,owner:Admin):
     from fastapi import Response
     from app.catalogue_audit_once import audited
 
-    stats,_rows=audited()
+    stats,_rows=audited(log_report=False)
     if stats['errors']:
         raise HTTPException(503,'Аудит не завершено: перевірка частини таблиць не вдалася')
     def cell(value):
@@ -121,14 +121,55 @@ def catalogue_duplicate_review_csv(db:DB,owner:Admin):
                              'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'})
 
 
+@router.get('/admin/audit/duplicate-groups')
+def catalogue_duplicate_groups(
+    db:DB, owner:Admin,
+    offset:int=Query(default=0,ge=0,le=50000),
+    limit:int=Query(default=20,ge=1,le=50),
+    risk:str=Query(default='',pattern=r'^(|linked_stock|has_children|cross_source|unreferenced_candidate)$'),
+    q:str=Query(default='',max_length=100),
+):
+    """Paginate every exact-name candidate; each member retains its original ID."""
+    from app.catalogue_audit_once import audited
+    stats,_=audited(log_report=False)
+    if stats['errors']:
+        raise HTTPException(503,'Не всі read-only перевірки завершилися успішно')
+    groups=stats['duplicate_review_all']
+    if risk:
+        groups=[g for g in groups if g['risk']==risk]
+    if q.strip():
+        needle=q.strip().casefold()
+        groups=[g for g in groups if needle in g['target'].casefold() or needle in g['parent'].casefold()]
+    return {
+        'total':len(groups),
+        'items':groups[offset:offset+limit],
+        'risk_counts':stats['duplicate_risk'],
+        'base_groups':stats['same_parent_exact_name_total'],
+    }
+
+
+@router.get('/admin/audit/name-proposals')
+def catalogue_name_proposals(db:DB,owner:Admin):
+    """Read-only review proposals, not owner approvals or migration instructions."""
+    from app.catalogue_audit_once import DATA
+    proposals=json.loads((DATA/'catalogue_ua_proposals_v1.json').read_text(encoding='utf-8'))
+    rows=[
+        {'type':section,'source':r['source'],'target':r['target'],
+         'approval':'pending','reason':r['reason']}
+        for section,key in (('translation','translation_proposals'),('hierarchy','hierarchy_review'))
+        for r in proposals[key]
+    ]
+    return {'version':proposals['version'],'status':'pending_manual_review','items':rows,'total':len(rows)}
+
+
 @router.get('/admin/audit/summary')
 def catalogue_mapping_summary(db:DB,owner:Admin):
     """Private platform-owner-only, aggregated metadata; no prices, VIN or user details."""
     from app.catalogue_audit_once import audited
-    stats,_rows=audited()
+    stats,_rows=audited(log_report=False)
     if stats['errors']:
         raise HTTPException(503,'Аудит не завершено')
-    return stats
+    return {k:v for k,v in stats.items() if k!='duplicate_review_all'}
 
 
 @router.get('/capabilities')
