@@ -117,8 +117,18 @@ def carpot_section_mapping(
         if q.strip() and q.casefold() not in (old+' '+recommendation).casefold():
             continue
         mapped.append(item)
+    from collections import Counter
+    section_counts=Counter(x['section']['section'] for x in mapped if x['section']['section'])
+    status_counts=Counter(x['section']['status'] for x in mapped)
+    subcategory_counts=Counter(x['subcategory']['status'] for x in mapped)
     return {'total':len(mapped),'items':mapped[offset:offset+limit],
-            'read_only':True,'taxonomy_sections':12,'unmatched_total':sum(x['section']['status']=='review_required' for x in mapped)}
+            'read_only':True,'taxonomy_sections':12,
+            'section_counts':dict(sorted(section_counts.items())),
+            'status_counts':dict(status_counts),
+            'subcategory_status_counts':dict(subcategory_counts),
+            'unmatched_total':status_counts['review_required'],
+            'matched_total':status_counts['suggested'],
+            'approval_policy':'owner_review_required_before_changes'}
 
 
 @router.get('/admin/audit/duplicate-review.csv')
