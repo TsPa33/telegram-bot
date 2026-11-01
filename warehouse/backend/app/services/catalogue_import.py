@@ -1,5 +1,6 @@
 """One transactional planner for persisted preview and explicit global apply."""
 from collections import Counter, defaultdict
+from app.services.catalogue_language_gate import needs_ukrainian_review
 import hmac
 import os
 from uuid import uuid5, NAMESPACE_URL
@@ -125,7 +126,7 @@ class Planner:
                 chosen=target
             elif decision.get('action')=='create_name':
                 new=decision.get('name','').strip()
-                if not new or len(new)>1000 or any(ord(c)<32 for c in new) or identity(new) in AMBIGUOUS:
+                if not new or len(new)>1000 or any(ord(c)<32 for c in new) or identity(new) in AMBIGUOUS or (kind in ('category','subcategory','part_type') and needs_ukrainian_review(new)):
                     raise ValueError('Provide an explicit unambiguous verified name')
                 chosen=self.entity(kind,new,parent,details,False,verified=True)
             else:raise ValueError('Unsupported entity resolution')
@@ -144,8 +145,9 @@ class Planner:
         chosen=self.entities.get(key)
         if chosen:
             self.bump(kind+'s' if kind not in ('category','subcategory') else {'category':'categories','subcategory':'subcategories'}[kind],'unchanged')
-        elif review or identity(name) in AMBIGUOUS:
-            self.issue(key,kind,name,'Потрібна перевірена відповідність або явне пропускання',parent.id if parent else None)
+        elif review or identity(name) in AMBIGUOUS or (kind in ('category','subcategory','part_type') and needs_ukrainian_review(name)):
+            reason=('Російськомовна або змішана назва: виберіть український канонічний запис чи створіть перевірену українську назву' if needs_ukrainian_review(name) else 'Потрібна перевірена відповідність або явне пропускання')
+            self.issue(key,kind,name,reason,parent.id if parent else None)
             self.cache[key]=None;return None
         else:
             self.suggestions[key]=dict(key=key,kind=kind,name=name,reason='Новий запис; за потреби підтвердьте об’єднання з наявним',
