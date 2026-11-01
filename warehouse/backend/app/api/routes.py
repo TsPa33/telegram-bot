@@ -444,9 +444,15 @@ def parts(
     limit: int = Query(100, ge=1, le=200),
 ):
     filters = []
+    # Compatible with legacy single category_id; grouped catalogue tiles send
+    # a comma-separated collection of legacy IDs. No changes to stock FKs.
+    if category_id is not None:
+        category_ids = list(dict.fromkeys(v.strip() for v in category_id.split(",") if v.strip()))
+        if not category_ids or len(category_ids) > 50 or any(len(v) > 80 for v in category_ids):
+            raise HTTPException(422, "Invalid category_id selection")
+        filters.append(Part.category_id.in_(category_ids))
     for col, value in [
         (Part.vehicle_id, vehicle_id),
-        (Part.category_id, category_id),
         (Part.availability, availability),
         (Part.condition, condition),
         (Part.location, location),

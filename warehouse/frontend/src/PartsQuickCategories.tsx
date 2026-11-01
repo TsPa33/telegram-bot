@@ -1,7 +1,7 @@
 import {useState} from 'react';
 import {Boxes,CarFront,Lightbulb,Zap,Cog,Armchair,Layers3,ShieldCheck,Disc3,LockKeyhole,Settings2,PlugZap,Fan,SlidersHorizontal,Wrench,Fuel,Gauge,CircleDot,Snowflake,Link2,CircleGauge,Droplets,Package,KeyRound,ClipboardList,Car,Truck,Wind} from 'lucide-react';
 import type {Row} from './api';
-import {catalogueLabelUk as categoryLabelUk,categoryOptionLabel} from './catalogueLabels';
+import {catalogueLabelUk as categoryLabelUk} from './catalogueLabels';
 export {categoryLabelUk};
 
 function categoryIcon(name:string) {
@@ -90,45 +90,34 @@ export default function PartsQuickCategories({categories,selected,onSelect,smart
  categories:Row[];selected:string;onSelect:(id:string)=>void;smart:boolean
 }){
  const [activeSection,setActiveSection]=useState<number|null>(null);
- const [openGroup,setOpenGroup]=useState<string|null>(null);
  const groups=groupQuickCategoryRoots(categories);
  const sectionGroups=activeSection===null?[]:groups.filter(g=>sectionFor(g.label)===activeSection);
- const allRoots=groups.flatMap(g=>g.members);
  return <section className="ui11-categories" aria-label="Швидкий вибір категорії">
   <div className="ui11-category-heading"><span>Швидкий вибір категорії</span>
    {smart&&<small>Оберіть систему автомобіля, а потім потрібну групу деталей</small>}
   </div>
   <div className="ui11-category-grid expanded">
-   <button type="button" aria-pressed={!selected&&activeSection===null} className={'ui11-category-tile'+(!selected&&activeSection===null?' selected':'')} onClick={()=>{setActiveSection(null);setOpenGroup(null);onSelect('');}}>
+   <button type="button" aria-pressed={!selected&&activeSection===null} className={'ui11-category-tile'+(!selected&&activeSection===null?' selected':'')} onClick={()=>{setActiveSection(null);onSelect('');}}>
     <Boxes size={22} strokeWidth={1.7} aria-hidden="true"/><span>Усі категорії</span>
    </button>
    {sections.map((section,i)=>{const Icon=section.icon;
     return <button type="button" key={section.name} className={'ui11-category-tile'+(activeSection===i?' selected':'')} aria-pressed={activeSection===i} aria-expanded={activeSection===i}
-    onClick={()=>{setActiveSection(i===activeSection?null:i);setOpenGroup(null);}}>
+    onClick={()=>{setActiveSection(i===activeSection?null:i);}}>
       <Icon size={22} strokeWidth={1.7} aria-hidden="true"/><span>{section.name}</span>
     </button>;
    })}
   </div>
   {activeSection!==null&&<div className="ui11-section-children" aria-label={'Підгрупи: '+sections[activeSection].name}>
    <div className="ui11-category-heading"><span>{sections[activeSection].name} — підгрупи</span>
-    <button type="button" className="secondary" onClick={()=>{setActiveSection(null);setOpenGroup(null);}}>До основних розділів</button>
+    <button type="button" className="secondary" onClick={()=>{setActiveSection(null);}}>До основних розділів</button>
    </div>
    <div className="ui11-category-grid expanded">
-    {sectionGroups.map(g=>{const Icon=categoryIcon(g.label);const active=g.members.some(c=>c.id===selected);return <button type="button" key={normalizeLabel(g.label)} aria-pressed={active} aria-expanded={g.members.length>1?openGroup===normalizeLabel(g.label):undefined}
-      className={'ui11-category-tile'+(active?' selected':'')} onClick={()=>{
-       if(g.members.length===1){onSelect(g.members[0].id);setOpenGroup(null);}
-       else setOpenGroup(prev=>prev===normalizeLabel(g.label)?null:normalizeLabel(g.label));
-      }}><Icon size={22} strokeWidth={1.7} aria-hidden="true"/><span>{g.label}</span></button>})}
+    {sectionGroups.map(g=>{const Icon=categoryIcon(g.label);const ids=g.members.map(c=>c.id);const active=selected.split(',').some(id=>ids.includes(id));return <button type="button" key={normalizeLabel(g.label)} aria-pressed={active}
+      className={'ui11-category-tile'+(active?' selected':'')} onClick={()=>onSelect(ids.join(','))}>
+      <Icon size={22} strokeWidth={1.7} aria-hidden="true"/><span>{g.label}</span></button>})}
    </div>
    {sectionGroups.length===0&&<p>Підгрупи цього розділу поки відсутні в каталозі.</p>}
   </div>}
-  {openGroup&&(()=>{const group=groups.find(g=>normalizeLabel(g.label)===openGroup);
-   return group?<div className="ui11-category-sources" aria-label={'Варіанти '+group.label}>
-    <p>Оберіть джерело «{group.label}». Старі ID збережено, щоб не втратити складські позиції.</p>
-    {group.members.map(c=><button type="button" key={c.id} className={selected===c.id?'selected':'secondary'}
-       aria-pressed={selected===c.id} onClick={()=>{onSelect(c.id);setOpenGroup(null);}}>{categoryOptionLabel(c,allRoots)}</button>)}
-   </div>:null;
-  })()}
-  {selected&&<button type="button" className="ui11-clear-category" onClick={()=>{setOpenGroup(null);onSelect('');}}>Скинути категорію</button>}
+  {selected&&<button type="button" className="ui11-clear-category" onClick={()=>{onSelect('');}}>Скинути категорію</button>}
  </section>;
 }
