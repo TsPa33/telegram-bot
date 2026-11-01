@@ -346,6 +346,9 @@ def vehicle_vin_decode(who: Auth, vin: str = Query(min_length=17, max_length=17)
         "engine_cylinders":field("EngineCylinders"), "engine_power_kw":field("EngineKW"),
         "vin":value,
     }
+    from app.services.vin_normalize import merge_verified, normalize
+    result = normalize(result)
+    conflicts = {}
     provider_name = "NHTSA vPIC"
     provider_note = ""
     if not (result["model"] and result["year"] and result["engine"] and result["transmission"]):
@@ -354,7 +357,8 @@ def vehicle_vin_decode(who: Auth, vin: str = Query(min_length=17, max_length=17)
             enriched = europe_vin(value)
             if enriched:
                 # Prefer a more complete European lookup over partially decoded US-market data.
-                result.update({k:v for k,v in enriched.items() if v is not None and v != ""})
+                result, new_conflicts = merge_verified(result, enriched)
+                conflicts.update(new_conflicts)
                 provider_name = "NHTSA vPIC + Vincario"
         except (OSError, ValueError, KeyError, TypeError):
             provider_note = " Європейський декодер тимчасово недоступний."
@@ -363,11 +367,12 @@ def vehicle_vin_decode(who: Auth, vin: str = Query(min_length=17, max_length=17)
         try:
             page = decode_page(value)
             if page:
-                result.update({k:v for k,v in page.items() if v is not None and v != ""})
+                result, new_conflicts = merge_verified(result, page)
+                conflicts.update(new_conflicts)
                 provider_name += " + FreeVINDecoder"
         except (OSError, ValueError, TypeError):
             provider_note += " Дані FreeVINDecoder недоступні."
-    return {"vin":value,"source":provider_name,"vehicle":result,
+    return {"vin":value,"source":provider_name,"vehicle":result,"conflicts":conflicts,
             "available_fields":[key for key,val in result.items() if val and key!="vin"],
             "requires_review":True,
             "message":("NHTSA не визначив модель: модельний рік приховано як ненадійний. Уточніть автомобіль в іншому VIN-декодері." if not result["model"] else "Перевірте визначені параметри перед створенням. Відсутні поля заповніть вручну.") + provider_note}

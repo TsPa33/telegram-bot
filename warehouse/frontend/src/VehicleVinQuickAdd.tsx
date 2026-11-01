@@ -3,7 +3,7 @@ import {ArrowLeft, Search, CarFront, ShieldAlert} from 'lucide-react';
 import {api, type Row} from './api';
 import {Permit} from './permissions';
 
-type Result={vin:string;source:string;vehicle:Row;available_fields:string[];requires_review:boolean;message:string};
+type Result={vin:string;source:string;vehicle:Row;available_fields:string[];requires_review:boolean;message:string;conflicts?:Record<string,{primary:string;secondary:string}>};
 const fields:[string,string][]=[
  ['manufacturer','Марка'],['model','Модель'],['year','Модельний рік'],
  ['engine','Модель двигуна'],['engine_displacement_l','Об’єм двигуна, л'],
@@ -50,6 +50,7 @@ export default function VehicleVinQuickAdd({onBack,onCreated}:{onBack:()=>void;o
   </label><div style={{alignSelf:'end'}}><button type="button" disabled={!valid||loading} onClick={decode}><Search size={16}/> {loading?'Перевірка…':'Розшифрувати VIN'}</button></div></div>
   {error&&<p role="alert">{error}</p>}
   {result&&<><p role="status"><ShieldAlert size={15}/> {result.message} Джерело: {result.source}. Дані можуть бути неповними для європейських VIN.</p>
+   {result.conflicts&&Object.keys(result.conflicts).length>0&&<p role="alert">Джерела VIN повернули суперечливі характеристики: {Object.entries(result.conflicts).map(([key,values])=>`${fields.find(f=>f[0]===key)?.[1]||key}: ${values.primary} / ${values.secondary}`).join("; ")}. Перевірте ці поля вручну перед створенням.</p>}
    <h2><CarFront size={19}/> Картка характеристик</h2>
    <div className="form-grid">{fields.map(([key,label])=><label key={key}>{label}
     <input value={String(draft[key]??'')} onChange={e=>setDraft(p=>({...p,[key]:e.target.value}))} aria-label={label}/>
