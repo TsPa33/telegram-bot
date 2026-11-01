@@ -27,8 +27,9 @@ test('unapproved Ukrainian terms are never silently displayed as approved catego
  assert.match(labels,/establishedCategoryLabels/);
  assert.match(labels,/dup\?displayed/);
  assert.match(quick,/groupQuickCategoryRoots\(categories\)/);
- assert.match(quick,/group\.members\.map\(c=>/);
- assert.match(quick,/categoryOptionLabel\(c,allRoots\)/);
+ assert.match(quick,/g\.members\.map\(c=>c\.id\)/);
+ assert.match(quick,/onSelect\(ids\.join\(','\)\)/);
+ assert.doesNotMatch(quick,/setOpenGroup|categoryOptionLabel\(c,allRoots\)/);
  assert.match(filters,/categoryOptionLabel\(c,categories\)/);
  assert.match(catalog,/categoryOptionLabel\(c,rows\|\|\[\]\)/);
 });
