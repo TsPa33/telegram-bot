@@ -45,7 +45,17 @@ class Article(BaseModel):
     art_id: int = Field(gt=0, strict=True)
     article_nr: str = Field(min_length=1, max_length=200)
     brand: str = Field(min_length=1, max_length=200)
-    part_name: str = Field(min_length=1, max_length=400)
+    # The provider can return null or omit part_name for valid articles.
+    # Preserve the article and mark its name unknown instead of rejecting
+    # the entire paid 200 response. Never fabricate a supplier part name.
+    part_name: str = Field(default="", max_length=400)
+
+    @field_validator("part_name", mode="before")
+    @classmethod
+    def normalize_optional_name(cls, value):
+        if value is None:
+            return ""
+        return value
     img_url: str | None = None
 
 
