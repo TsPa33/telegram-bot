@@ -4,7 +4,7 @@ import {api,ApiError,type Row} from './api';
 import {ukrainianPartName} from './planPartsUkrainian';
 import PlanPartsBatch from './PlanPartsBatch';
 import {sections as corporateSections} from './PartsQuickCategories';
-import {Boxes, CircleHelp, CheckCircle2, LoaderCircle} from 'lucide-react';
+import {Boxes, CheckCircle2, LoaderCircle} from 'lucide-react';
 import './plan-parts-workspace.css';
 
 type Match={ktype:number;modification:string;year_from?:number;year_to?:number;power_kw?:number;power_ps?:number};
@@ -381,12 +381,11 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
       </div>}
       {classMessage&&<p role="status">{classMessage}</p>}
      </div>}
-     {categories.length>0&&<section className="cp-plan-corporate" aria-label="Корпоративний категоризатор CarPot">
-      <div className="cp-plan-heading"><h4>Категорії CarPot</h4><small>Оберіть систему автомобіля</small></div>
+     {categories.length>0&&<section className="cp-plan-corporate" aria-label="Швидкий вибір категорії">
+      <h4>Швидкий вибір категорії</h4>
       <div className="cp-plan-corporate-tiles">
-       <button type="button" aria-pressed={onlyCategory==='all'} className={'cp-plan-corporate-tile'+(onlyCategory==='all'?' selected':'')} onClick={()=>setOnlyCategory('all')}><Boxes size={21}/><span>Усі категорії</span></button>
-       {corporateSections.map(section=>{const Icon=section.icon;const count=categories.filter(c=>sectionOf(c)===section.name).length;return <button type="button" key={section.name} aria-pressed={onlyCategory===section.name} className={'cp-plan-corporate-tile'+(onlyCategory===section.name?' selected':'')} onClick={()=>setOnlyCategory(section.name)}><Icon size={21}/><span>{section.name}</span><small>{count}</small></button>})}
-       {categories.some(c=>sectionOf(c)==='Потребують уточнення')&&<button type="button" aria-pressed={onlyCategory==='Потребують уточнення'} className={'cp-plan-corporate-tile'+(onlyCategory==='Потребують уточнення'?' selected':'')} onClick={()=>setOnlyCategory('Потребують уточнення')}><CircleHelp size={21}/><span>Потребують уточнення</span><small>{categories.filter(c=>sectionOf(c)==='Потребують уточнення').length}</small></button>}
+       <button type="button" aria-pressed={onlyCategory==='all'} className={'cp-plan-corporate-tile'+(onlyCategory==='all'?' selected':'')} onClick={()=>setOnlyCategory('all')}><Boxes size={22} strokeWidth={1.7} aria-hidden="true"/><span>Усі категорії</span></button>
+       {corporateSections.map(section=>{const Icon=section.icon;return <button type="button" key={section.name} aria-pressed={onlyCategory===section.name} className={'cp-plan-corporate-tile'+(onlyCategory===section.name?' selected':'')} onClick={()=>setOnlyCategory(section.name)}><Icon size={22} strokeWidth={1.7} aria-hidden="true"/><span>{section.name}</span></button>})}
       </div>
      </section>}
      <div className="cp-plan-filters">
