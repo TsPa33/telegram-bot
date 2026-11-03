@@ -1,6 +1,7 @@
 import {useEffect,useRef,useState} from 'react';
 import {api,ApiError,type Row} from './api';
 import {ukrainianPartName,translatedCategoryCount} from './planPartsUkrainian';
+import PlanPartsBatch from './PlanPartsBatch';
 
 type Match={ktype:number;modification:string;year_from?:number;year_to?:number;power_kw?:number;power_ps?:number};
 type Category={pt_id:number;name:string;article_count:number};
@@ -101,11 +102,11 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
     <small>Це орієнтовна верхня межа за поточним тарифом для окремих запитів. Нульові або неуспішні відповіді можуть не тарифікуватися. Баланс plan.parts тут не перевіряється. Розрахунок не витрачає токенів.</small>
     <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',margin:'12px 0'}}>
      {selectedTypes.length===1&&<button type="button" disabled={paidDisabled} onClick={()=>getArticles(selectedTypes[0])}>Отримати артикули вибраного типу</button>}
-     {selectedTypes.length>1&&<strong>Обрано {selectedTypes.length} типів — пакетне завантаження ще не активоване</strong>}
+     {selectedTypes.length>1&&<strong>Обрано {selectedTypes.length} типів — запуск нижче</strong>}
      {selectedTypes.length===0&&<strong>Оберіть хоча б один тип запчастин</strong>}
     </div>
     <p style={{margin:'8px 0'}}>Після отримання артикули з’являться під списком. Повторні однакові запити протягом 30 хвилин використовують тимчасовий кеш Backend без нових звернень до plan.parts, доки сервер не перезапущено.</p>
-    <p style={{margin:'8px 0 0'}}>Масове завантаження кількох типів наразі не запускається. Потрібен керований імпорт із контролем залишку та відновленням після збоїв.</p>
+    <PlanPartsBatch vehicleId={String(vehicle.id)} ktype={picked} selected={selectedCategories} disabled={busy||savedKtype!==picked} />
    </div>
    <p style={{margin:'8px 0'}}>Українські назви зі словника: <strong>{translatedCategoryCount(categories.map(c=>c.name))}</strong> із {categories.length}. Неперекладені терміни залишені оригінальними для точності.</p>
    <div style={{maxHeight:310,overflowY:'auto',border:'1px solid #dae5e0',borderRadius:9}}>
