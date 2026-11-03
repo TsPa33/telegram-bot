@@ -197,13 +197,13 @@
   box-shadow:none;
 }
 .cp-plan button.cp-plan-corporate-tile:focus-visible{outline:2px solid #087455;outline-offset:2px}
-@media(max-width:1260px){
+@media(max-width:1050px){
   .cp-plan .cp-plan-corporate-tiles{grid-template-columns:repeat(4,minmax(0,1fr))}
 }
-@media(max-width:940px){
+@media(max-width:760px){
   .cp-plan .cp-plan-corporate-tiles{grid-template-columns:repeat(3,minmax(0,1fr))}
 }
-@media(max-width:660px){
+@media(max-width:560px){
   .cp-plan .cp-plan-corporate-tiles{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
   .cp-plan button.cp-plan-corporate-tile:not(.secondary):not(.cp-plan-text-button):not(:disabled){min-height:78px;padding:11px 13px;gap:9px}
 }
