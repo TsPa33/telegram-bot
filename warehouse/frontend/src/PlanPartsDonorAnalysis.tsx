@@ -35,7 +35,7 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
  const [translationStatus,setTranslationStatus]=useState('');
  const [translationLoading,setTranslationLoading]=useState(false);
  const [addingType,setAddingType]=useState<number|null>(null);
- type StoredPart={id:string;pt_id:number|null;name:string;quantity:number;archived:boolean};
+ type StoredPart={id:string;pt_id:number|null;name:string;quantity:number;archived:boolean;article_number?:string};
  const [stockParts,setStockParts]=useState<StoredPart[]>([]);
  const [duplicateStockNames,setDuplicateStockNames]=useState<{name:string;count:number}[]>([]);
  const [stockStatusLoading,setStockStatusLoading]=useState(false);
@@ -69,6 +69,9 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
  const translationBusy=useRef(false);
 
  const [articles,setArticles]=useState<Article[]>([]);
+ const [articleConfirm,setArticleConfirm]=useState<number|null>(null);
+ const [articleAssigning,setArticleAssigning]=useState<number|null>(null);
+ const [articleNotice,setArticleNotice]=useState('');
  const [activeCategory,setActiveCategory]=useState<number>(0);
  const [phase,setPhase]=useState<'initial'|'matching'|'categories'|'articles'>('initial');
  const [busy,setBusy]=useState(false),[error,setError]=useState('');
@@ -132,21 +135,45 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
  }
  function discover(){void run(async()=>{
   const result=await api<{matches:Match[]}>('/plan-parts/vehicle-matches/lookup?vehicle_id='+donorId,'POST');
-  setMatches(result.matches);setPhase('matching');setArticles([]);
+  setMatches(result.matches);setPhase('matching');setArticles([]);setArticleConfirm(null);
   if(!result.matches.length)setError('Точних кандидатів за маркою, моделлю та роком немає. Уточніть автомобіль.');
  });}
  function selectKtype(ktype:number){
-  setPicked(ktype);setCategories([]);setArticles([]);setActiveCategory(0);setSelectedTypes([]);
+  setPicked(ktype);setCategories([]);setArticles([]);setArticleConfirm(null);setActiveCategory(0);setSelectedTypes([]);
  }
  function getCategories(){if(!picked)return;void run(async()=>{
   const result=await api<{categories:Category[];from_saved?:boolean}>('/plan-parts/categories/lookup?vehicle_id='+donorId+'&ktype='+picked,'POST');
   setCategories(result.categories);setCatalogueSaved(Boolean(result.from_saved));setSelectedTypes([]);setArticles([]);setActiveCategory(0);setPhase('categories');
   try{sessionStorage.setItem(categoryScope,JSON.stringify({until:Date.now()+30*60*1000,categories:result.categories}));}catch{/* optional */}
  });}
- function getArticles(ptId:number){void run(async()=>{
+ function getArticles(ptId:number){setArticleConfirm(null);void run(async()=>{
   const result=await api<{articles:Article[]}>('/plan-parts/articles/lookup?vehicle_id='+donorId+'&ktype='+picked+'&pt_id='+ptId,'POST');
   setArticles(result.articles);setActiveCategory(ptId);setPhase('articles');setShowAll(false);
+  setArticleNotice('Отримано '+result.articles.length+' пропозицій. Оберіть артикул для складської запчастини.');
  });}
+ async function openArticles(ptId:number){
+  if(activeCategory===ptId&&phase==='articles'){document.getElementById('cp-plan-articles')?.scrollIntoView({block:'nearest',behavior:'smooth'});return;}
+  if(busy||secondsLeft>0)return;
+  setArticleNotice('Перевіряємо раніше отримані артикули без витрачання токенів…');
+  try{
+   const r=await api<{articles:Article[]}>('/plan-parts/articles/recover?vehicle_id='+donorId+'&ktype='+picked+'&pt_id='+ptId,'POST');
+   setArticles(r.articles);setActiveCategory(ptId);setPhase('articles');setShowAll(false);
+   setArticleNotice('Артикули відновлено безкоштовно з кешу.');
+  }catch{setArticleNotice('');setArticleConfirm(ptId);}
+ }
+ async function assignArticle(art:Article){
+  const c=categories.find(c=>c.pt_id===activeCategory);
+  const stock=c?alreadyStored(c):undefined;
+  if(!stock||stock.quantity<1)return;
+  setArticleAssigning(art.art_id);setArticleNotice('');
+  try{
+   await api('/plan-parts/donor-parts/article/select?vehicle_id='+donorId,'POST',
+    {ktype:picked,pt_id:activeCategory,art_id:art.art_id,part_id:stock.id});
+   await refreshStockStatus();
+   setArticleNotice('Артикул '+art.article_nr+' записано в картку запчастини.');
+  }catch(e){setArticleNotice('Не вдалося записати артикул: '+(e as Error).message);}
+  finally{setArticleAssigning(null);}
+ }
  function saveModification(){if(!picked)return;void run(async()=>{
    await api('/plan-parts/vehicle-modification/select?vehicle_id='+donorId,'POST',{ktype:picked});
    setSavedKtype(picked);
@@ -322,7 +349,6 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
  const selected=categories.find(c=>c.pt_id===activeCategory);
  const selectedCategories=categories.filter(c=>selectedTypes.includes(c.pt_id));
  const estimatedTokens=selectedCategories.length*2;
- const selectedOffers=selectedCategories.reduce((n,c)=>n+c.article_count,0);
  return <section aria-label="Розбір автомобіля та запчастини" className="cp-plan">
   <div className="cp-plan-layout">
    <div className="cp-plan-main">
@@ -368,6 +394,11 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
       
       <select aria-label="Статус" value={stockFilter} onChange={e=>setStockFilter(e.target.value)}><option value="all">Усі статуси</option><option value="new">Не на складі</option><option value="stored">Вже на складі</option></select>
      </div>
+     {categories.length>0&&<div className="cp-plan-article-tools">
+      <div><strong>Отримання артикулів Plan.Parts</strong><small>1 тип — до 2 токенів. {selectedTypes.length} вибраних типів — до {estimatedTokens} токенів. Додавання на склад токенів не витрачає.</small></div>
+      <button type="button" className="secondary" disabled={!selectedTypes.length} aria-expanded={showArticleTools} onClick={()=>setShowArticleTools(v=>!v)}>{showArticleTools?'Згорнути пакетний запит':'Отримати артикули вибраних · до '+estimatedTokens+' токенів'}</button>
+      {showArticleTools&&<div className="cp-plan-article-tools-expanded"><PlanPartsBatch key={picked} vehicleId={String(vehicle.id)} ktype={picked} selected={selectedCategories} disabled={busy||savedKtype!==picked} translatedNames={machineNames}/></div>}
+     </div>}
      {categories.length>0?<><div className="cp-plan-select-actions"><button type="button" className="secondary" onClick={()=>setSelectedTypes(categories.map(c=>c.pt_id))}>Вибрати всі</button><button type="button" className="secondary" onClick={()=>setSelectedTypes([])}>Зняти вибір</button><small>Вибрано: {selectedTypes.length}</small></div>
       {stockStatusError&&<p role="alert" className="cp-plan-error">{stockStatusError}</p>}
       {duplicateStockNames.length>0&&<p role="alert" className="cp-plan-error">У складі виявлено дублікати: {duplicateStockNames.map(d=>d.name+' ('+d.count+')').join(', ')}. Автоматичне видалення вимкнено.</p>}
@@ -389,7 +420,7 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
           <span className="cp-plan-part-tag">{sectionOf(c)}</span>
           <span className={stored?'cp-plan-status is-stored':'cp-plan-status'}>{stored?'На складі · '+stored.quantity+' шт.':'Нове'}</span>
           <button type="button" className={stored?'secondary':'cp-plan-add'} disabled={addingType!==null||batchBusy||stockStatusLoading||Boolean(stockStatusError)||savedKtype!==picked||Boolean(stored)} onClick={()=>void addSelectedType(c)}>{stored?'Вже на складі':addingType===c.pt_id?'Додаємо…':'Додати на склад'}</button>
-          <button type="button" className="secondary" disabled={paidDisabled} onClick={()=>getArticles(c.pt_id)}>Артикули</button>
+          {stored?.article_number?<span className="cp-plan-known-article" title="Артикул записаний у картку складу">{stored.article_number}</span>:<button type="button" className="secondary" disabled={paidDisabled||batchBusy} onClick={()=>void openArticles(c.pt_id)}>Артикули · 2 токени</button>}
          </div>})}
         </section>;
        })}
@@ -398,14 +429,15 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
      </>:<div className="cp-plan-empty">Оберіть модифікацію та завантажте каталог, щоб побачити перелік запчастин.</div>}
      {addMessage&&<p role="status" aria-live="polite">{addMessage}</p>}
     </div>
-    {phase==='articles'&&<div className="cp-plan-panel">
+    {phase==='articles'&&<div className="cp-plan-panel" id="cp-plan-articles">
      <h3>Артикули: {selected?localizedName(selected.name):'Запчастина'} ({articles.length})</h3>
-     <div className="cp-plan-article-scroll"><table><thead><tr><th>Деталь</th><th>Виробник</th><th>Артикул</th></tr></thead><tbody>{articles.slice(0,showAll?articles.length:80).map(a=><tr key={a.art_id}><td>{a.part_name?localizedName(a.part_name):(selected?localizedName(selected.name):'Деталь')}</td><td>{a.brand}</td><td>{a.article_nr}</td></tr>)}</tbody></table></div>
+     <p className="cp-plan-summary-note">Пропозиції aftermarket різних виробників. Виберіть номер після перевірки відповідності фізичній деталі; це не підтверджений OEM.</p>
+     {articleNotice&&<p role="status">{articleNotice}</p>}
+     <div className="cp-plan-article-scroll"><table><thead><tr><th>Деталь</th><th>Виробник</th><th>Артикул</th><th>Дія</th></tr></thead><tbody>{articles.slice(0,showAll?articles.length:80).map(a=><tr key={a.art_id}><td>{a.part_name?localizedName(a.part_name):(selected?localizedName(selected.name):'Деталь')}</td><td>{a.brand}</td><td><strong>{a.article_nr}</strong></td><td>{selected&&alreadyStored(selected)?.article_number===a.article_nr?<span className="cp-plan-known-article"><CheckCircle2 size={13}/> Записано</span>:<button type="button" className="secondary" disabled={!selected||!alreadyStored(selected)||articleAssigning!==null} onClick={()=>void assignArticle(a)}>{articleAssigning===a.art_id?'Зберігаємо…':'Записати в картку'}</button>}</td></tr>)}</tbody></table></div>
+     {selected&&!alreadyStored(selected)&&<small>Щоб записати артикул, спочатку додайте запчастину на склад. Отримані артикули доступні для перегляду, поки вони залишаються в кеші.</small>}
      {!showAll&&articles.length>80&&<button type="button" className="secondary" onClick={()=>setShowAll(true)}>Показати решту артикулів</button>}
     </div>}
     {categories.length>0&&<div className="cp-plan-panel cp-plan-maintenance">
-     <button type="button" className="secondary" aria-expanded={showArticleTools} onClick={()=>setShowArticleTools(v=>!v)}>Масове отримання артикулів {showArticleTools?'▴':'▾'}</button>
-     {showArticleTools&&<div><p>Вибрано {selectedTypes.length} типів · {selectedOffers.toLocaleString('uk-UA')} пропозицій · орієнтовно до {estimatedTokens} токенів. Запити виконуються тільки після вашої дії.</p><PlanPartsBatch key={picked} vehicleId={String(vehicle.id)} ktype={picked} selected={selectedCategories} disabled={busy||savedKtype!==picked} translatedNames={machineNames}/></div>}
      <button type="button" className="secondary" aria-expanded={showMaintenance} onClick={()=>setShowMaintenance(v=>!v)}>Сервісні операції {showMaintenance?'▴':'▾'}</button>
      {showMaintenance&&<div className="cp-plan-tools">
       <button type="button" className="secondary" disabled={translationLoading} onClick={()=>void translateAllCategories()}>{translationLoading?'Перекладаємо…':'Оновити українські назви'}</button>{translationStatus&&<p role="status">{translationStatus}</p>}
@@ -431,6 +463,11 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
      <p>Опрацьовано <strong>{batchProgress} із {batchTotal}</strong> · {batchGroup}</p>
      <small>Сторінка працює. Додаємо невеликими групами, кожна з перевіркою результату.</small>
      <button type="button" className="secondary" disabled={stopBatch.current} onClick={()=>{stopBatch.current=true;}}>Зупинити після поточної групи</button>
+    </div>}
+    {articleConfirm!==null&&<div role="alertdialog" aria-label="Підтвердження платного запиту артикулів" className="cp-plan-confirm cp-plan-article-confirm">
+     <strong>Отримати артикули · до 2 токенів?</strong>
+     <p>{localizedName(categories.find(c=>c.pt_id===articleConfirm)?.name||'Запчастина')}. Безкоштовний кеш недоступний. Запит може витратити 2 токени Plan.Parts; номер не буде автоматично записаний у склад.</p>
+     <div><button type="button" disabled={paidDisabled} onClick={()=>getArticles(articleConfirm)}>Підтвердити платний запит</button><button type="button" className="secondary" onClick={()=>setArticleConfirm(null)}>Скасувати</button></div>
     </div>}
     {confirmBatch&&<div role="alertdialog" aria-label="Підтвердження додавання на склад" className="cp-plan-confirm">
      <strong>Додати {chosenNew} вибраних типів на склад?</strong>
