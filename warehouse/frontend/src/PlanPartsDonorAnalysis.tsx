@@ -26,6 +26,7 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
  const [savedKtype,setSavedKtype]=useState<number>(Number(vehicle.ktype)||0);
  const [selectedTypes,setSelectedTypes]=useState<number[]>([]);
  const [categories,setCategories]=useState<Category[]>([]);
+ const [catalogueSaved,setCatalogueSaved]=useState(false);
  const [machineNames,setMachineNames]=useState<Record<string,string>>({});
  const [translationStatus,setTranslationStatus]=useState('');
  const [translationLoading,setTranslationLoading]=useState(false);
@@ -88,6 +89,7 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
   const restore=(items:Category[])=>{
    if(!active)return;
    setCategories(items);
+   setCatalogueSaved(true);
    setSelectedTypes([]);
    setPhase('categories');
   };
@@ -133,8 +135,8 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
   setPicked(ktype);setCategories([]);setArticles([]);setActiveCategory(0);setSelectedTypes([]);
  }
  function getCategories(){if(!picked)return;void run(async()=>{
-  const result=await api<{categories:Category[]}>('/plan-parts/categories/lookup?vehicle_id='+donorId+'&ktype='+picked,'POST');
-  setCategories(result.categories);setSelectedTypes([]);setArticles([]);setActiveCategory(0);setPhase('categories');
+  const result=await api<{categories:Category[];from_saved?:boolean}>('/plan-parts/categories/lookup?vehicle_id='+donorId+'&ktype='+picked,'POST');
+  setCategories(result.categories);setCatalogueSaved(Boolean(result.from_saved));setSelectedTypes([]);setArticles([]);setActiveCategory(0);setPhase('categories');
   try{sessionStorage.setItem(categoryScope,JSON.stringify({until:Date.now()+30*60*1000,categories:result.categories}));}catch{/* optional */}
  });}
  function getArticles(ptId:number){void run(async()=>{
@@ -323,10 +325,10 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
       <div><small>Автомобіль</small><strong>{vehicle.manufacturer} {vehicle.model} · {vehicle.year}</strong></div>
       <div><small>Модифікація</small><strong>{matches.find(m=>m.ktype===picked)?.modification||'K-Type '+(picked||'не визначено')}</strong></div>
      </div>
-     <div className="cp-plan-metrics"><span>{categories.length.toLocaleString('uk-UA')} типів</span><span>{categories.reduce((sum,c)=>sum+c.article_count,0).toLocaleString('uk-UA')} артикулів</span>{categories.length>0&&<span className="cp-plan-good">Каталог завантажено</span>}</div>
+     <div className="cp-plan-metrics"><span>{categories.length.toLocaleString('uk-UA')} типів</span><span>{categories.reduce((sum,c)=>sum+c.article_count,0).toLocaleString('uk-UA')} артикулів</span>{categories.length>0&&<span className="cp-plan-good">{catalogueSaved?'Збережений каталог':'Каталог завантажено'}</span>}</div>
      <div className="cp-plan-lookup">
       <button type="button" disabled={paidDisabled} onClick={discover}>{busy?'Завантаження…':'Знайти модифікацію'}</button>
-      {picked>0&&<button type="button" className="secondary" disabled={paidDisabled} onClick={getCategories}>{categories.length?'Оновити каталог':'Завантажити каталог'}</button>}
+      {picked>0&&<button type="button" className="secondary" disabled={paidDisabled} onClick={getCategories}>{categories.length?'Повторно відкрити список':'Отримати список запчастин'}</button>}
       <button type="button" className="secondary cp-plan-text-button" onClick={()=>setShowTechnical(v=>!v)} aria-expanded={showTechnical}>Технічні деталі {showTechnical?'▴':'▾'}</button>
      </div>
      {matches.length>0&&<div className="cp-plan-match"><label htmlFor="cp-plan-modification">Оберіть модифікацію</label><select id="cp-plan-modification" disabled={busy} value={picked} onChange={e=>selectKtype(Number(e.target.value))}><option value={0}>Оберіть модифікацію</option>{matches.map(m=><option key={m.ktype} value={m.ktype}>{m.modification} · {m.year_from??'—'}–{m.year_to??'дотепер'} · {m.power_kw??'—'} кВт · K-Type {m.ktype}</option>)}</select>{picked>0&&savedKtype!==picked&&<button type="button" disabled={busy} onClick={saveModification}>Підтвердити модифікацію</button>}</div>}
