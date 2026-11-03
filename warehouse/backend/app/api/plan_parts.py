@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 from app.models import Part
+from app.services import checklists
 from app.services.plan_parts_classification import classify, match_existing_category
 from app.db import get_db
 from app.models import Vehicle
@@ -16,7 +17,7 @@ from app.schemas import StockInput
 from app.services.parts_translation import translate_names, TranslationError
 
 from app.api.deps import Identity, identity
-from app.services.plan_parts import Brand, ModelOption, Modification, PlanPartsClient, PlanPartsError, modifications_for_year
+from app.services.plan_parts import Brand, ModelOption, Modification, CatalogPartType, PlanPartsClient, PlanPartsError, modifications_for_year
 
 router = APIRouter(route_class=SecureRoute,prefix="/api/v1/plan-parts", tags=["Plan.Parts"])
 
@@ -133,14 +134,25 @@ def vehicle_categories(
     vehicle_id: str = Query(min_length=1, max_length=80),
     ktype: int = Query(gt=0),
 ):
-    _owned_paid_vehicle(who, db, vehicle_id)
+    donor = _owned_paid_vehicle(who, db, vehicle_id)
+    if donor.ktype != ktype:
+        raise HTTPException(409, "Спочатку закріпіть вибраний K-Type за автомобілем")
+    existing = checklists.stored_categories(db, vehicle_id, who.workspace_account_id, ktype)
+    if existing:
+        rows = [CatalogPartType(pt_id=x.pt_id, name=x.name_en, article_count=x.article_count) for x in existing]
+        return {"ktype": ktype, "categories": [row.model_dump() for row in rows],
+                "category_count": len(rows), "article_records": sum(row.article_count for row in rows),
+                "from_saved": True, "message": "Збережений каталог автомобіля, без списання токенів."}
     try:
         rows = client.categories(who.workspace_account_id, ktype)
     except PlanPartsError as exc:
         _handle_provider(exc)
+    # Persist a donor-owned potential-parts checklist; never create physical stock.
+    checklists.generate(db, vehicle_id, who.workspace_account_id, client, preloaded_rows=rows)
+    db.commit()
     return {"ktype": ktype, "categories": [row.model_dump() for row in rows],
             "category_count": len(rows), "article_records": sum(row.article_count for row in rows),
-            "message": "Це артикули aftermarket, а не фізичні запчастини автомобіля."}
+            "from_saved": False, "message": "Це артикули aftermarket, а не фізичні запчастини автомобіля."}
 
 
 @router.post("/categories/recover")
@@ -155,6 +167,11 @@ def recover_vehicle_categories(
     donor = _owned_paid_vehicle(who, db, vehicle_id)
     if donor.ktype != ktype:
         raise HTTPException(409, "Модифікація автомобіля змінилася")
+    stored = checklists.stored_categories(db, vehicle_id, who.workspace_account_id, ktype)
+    if stored or (donor.checklist_ktype == ktype and donor.checklist_synced_at is not None):
+        rows = [CatalogPartType(pt_id=x.pt_id, name=x.name_en, article_count=x.article_count) for x in stored]
+        return {"ktype": ktype, "categories": [row.model_dump() for row in rows],
+                "from_saved": True, "category_count": len(rows)}
     try:
         rows = client.recover_categories(who.workspace_account_id, ktype)
     except PlanPartsError as exc:
@@ -313,10 +330,14 @@ def add_selected_donor_part(
     donor = owned(db, Vehicle, vehicle_id, who.workspace_account_id, lock=True, active=True)
     if donor.ktype != data.ktype:
         raise HTTPException(409, "Вибрана модифікація автомобіля змінилася")
-    try:
-        types = client.recover_categories(who.workspace_account_id, data.ktype)
-    except PlanPartsError as exc:
-        _handle_provider(exc)
+    stored = checklists.stored_categories(db, vehicle_id, who.workspace_account_id, data.ktype)
+    if stored:
+        types = [CatalogPartType(pt_id=x.pt_id, name=x.name_en, article_count=x.article_count) for x in stored]
+    else:
+        try:
+            types = client.recover_categories(who.workspace_account_id, data.ktype)
+        except PlanPartsError as exc:
+            _handle_provider(exc)
     if not any(cat.pt_id == data.pt_id for cat in types):
         raise HTTPException(422, "Вибраного типу немає в перевіреному каталозі цієї модифікації")
     # Classify the *verified* generic supplier type, not a user-submitted
