@@ -154,6 +154,22 @@ export default function PlanPartsBatch({
     '. Категорію залишено заблокованою, новий платний запит не виконувався.');
   }finally{locked.current=false;setRunning(false);}
  }
+ async function openCompletedType(ptId:number){
+  if(data[String(ptId)]){setPreviewId(ptId);return;}
+  if(locked.current||running)return;
+  locked.current=true;setMessage('Відновлюємо артикули з серверного кешу без платного запиту…');
+  try{
+   const result=await api<{articles:Article[]}>(
+    '/plan-parts/articles/recover?vehicle_id='+encodeURIComponent(vehicleId)+
+    '&ktype='+ktype+'&pt_id='+ptId,'POST');
+   setData(previous=>({...previous,[String(ptId)]:result.articles}));
+   setPreviewId(ptId);
+   setMessage('Завантажені раніше артикули відновлено без нового запиту до plan.parts.');
+  }catch(err){
+   setMessage('Кеш артикулів уже недоступний: '+(err as Error).message+
+    '. Нового платного запиту не виконано. Статистика попереднього завантаження збережена.');
+  }finally{locked.current=false;}
+ }
  const rows=previewId===null?[]:data[String(previewId)]||[];
  const thisSession=Object.keys(data).length;
  return <section aria-label="Пакетне завантаження plan.parts" style={{border:'1px solid #b8dacd',borderRadius:10,padding:14,margin:'12px 0',background:'#f7fbf9'}}>
@@ -206,16 +222,16 @@ export default function PlanPartsBatch({
    {expanded&&<div style={{maxHeight:300,overflowY:'auto',marginTop:8}}>
     {completedSelected.map(c=><div key={c.pt_id} style={{padding:8,borderBottom:'1px solid #dfe9e4'}}>
      <strong>{ukrainianPartName(c.name).uk}</strong> · {completed[String(c.pt_id)].count} артикулів · {completed[String(c.pt_id)].names} назв
-     {data[String(c.pt_id)]&&<button type="button" className="secondary" onClick={()=>setPreviewId(c.pt_id)}>Переглянути артикули</button>}
+     <button type="button" className="secondary" disabled={running} onClick={()=>void openCompletedType(c.pt_id)}>{data[String(c.pt_id)]?'Переглянути артикули':'Відновити артикули з кешу · 0 токенів'}</button>
     </div>)}
    </div>}
   </div>}
   {previewId!==null&&<div style={{marginTop:12}}>
-   <strong>Артикули вибраного типу: {rows.length}</strong>
+   <strong>Артикули вибраного типу: {rows.length}</strong><p><small>Якщо назва артикула відсутня, показано українську назву його категорії з plan.parts — це не підтверджена назва конкретного товару.</small></p>
    <div style={{maxHeight:260,overflow:'auto'}}><table><thead><tr><th>Назва</th><th>Бренд</th><th>Артикул</th></tr></thead><tbody>
-    {rows.map(a=><tr key={a.art_id}><td>{a.part_name?ukrainianPartName(a.part_name).uk:'Назва не вказана постачальником'}</td><td>{a.brand}</td><td>{a.article_nr}</td></tr>)}
+    {rows.map(a=><tr key={a.art_id}><td>{a.part_name?ukrainianPartName(a.part_name).uk:(selected.find(c=>c.pt_id===previewId)?ukrainianPartName(selected.find(c=>c.pt_id===previewId)!.name).uk:'Назва категорії не визначена')}</td><td>{a.brand}</td><td>{a.article_nr}</td></tr>)}
    </tbody></table></div>
   </div>}
-  <small>Тимчасовий серверний кеш діє до 30 хвилин і зникає після перезапуску. У браузері зберігається тільки короткий контрольний список завершених типів. Якщо Backend перезапуститься, не можна гарантувати безкоштовне відновлення всіх артикулів. Для постійного комерційного каталогу потрібне ліцензійне погодження.</small>
+  <small>Тимчасовий серверний кеш діє до 30 хвилин і зникає після перезапуску. Для завершених типів доступна окрема безоплатна спроба відновлення артикулів. У браузері зберігається тільки короткий контрольний список завершених типів. Якщо Backend перезапуститься, не можна гарантувати безкоштовне відновлення всіх артикулів. Для постійного комерційного каталогу потрібне ліцензійне погодження.</small>
  </section>;
 }
