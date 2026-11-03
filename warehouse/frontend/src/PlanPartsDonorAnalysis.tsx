@@ -339,6 +339,14 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
     </div>
     <div className="cp-plan-panel">
      <div className="cp-plan-heading"><h3>2. Підібрані запчастини</h3>{categories.length>0&&<small>{filteredCategories.length} із {categories.length}</small>}</div>
+     {categories.length>0&&<div className="cp-plan-classify">
+      <div><strong>Категорії складу</strong><small>Для раніше доданих запчастин можна зіставити системи CarPot без зміни залишків і цін.</small></div>
+      <button type="button" className="secondary" disabled={classLoading||savedKtype!==picked} onClick={()=>void previewStockClassification()}>{classLoading?'Перевірка…':'Перевірити відповідність'}</button>
+      {classificationPreview&&<div className="cp-plan-classify-results"><span>Вже розподілені: {classificationPreview.already_categorized}</span><span>Можна розподілити: {classificationPreview.can_apply}</span><span>Потребують перевірки: {classificationPreview.needs_review}</span>
+       {classificationPreview.can_apply>0&&<button type="button" disabled={classLoading} onClick={()=>void applyStockClassification()}>Застосувати перевірені ({classificationPreview.can_apply})</button>}
+      </div>}
+      {classMessage&&<p role="status">{classMessage}</p>}
+     </div>}
      <div className="cp-plan-filters">
       <input aria-label="Пошук запчастин" placeholder="Пошук запчастини або типу…" value={partQuery} onChange={e=>setPartQuery(e.target.value)}/>
       <select aria-label="Категорія" value={onlyCategory} onChange={e=>setOnlyCategory(e.target.value)}><option value="all">Усі категорії</option>{[...new Set(categories.map(sectionOf))].sort((a,b)=>a.localeCompare(b,"uk")).map(group=><option key={group} value={group}>{group}</option>)}</select>
