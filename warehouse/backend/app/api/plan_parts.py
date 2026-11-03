@@ -277,12 +277,19 @@ def donor_part_stock_status(
         Part.vehicle_id == donor.id,
         Part.compatibility_notes.like(prefix + "%"),
     ).order_by(Part.created_at)))
+    grouped = {}
+    for p in existing:
+        if p.archived:
+            continue
+        grouped.setdefault(" ".join(p.name.strip().casefold().split()), []).append(p)
+    duplicates = [{"name": rows[0].name, "count": len(rows), "part_ids": [p.id for p in rows]}
+                  for rows in grouped.values() if len(rows) > 1]
     return {"parts": [
         {"id": p.id, "pt_id": int(p.compatibility_notes[len(prefix):])
          if p.compatibility_notes[len(prefix):].isdigit() else None,
          "name": p.name, "quantity": p.quantity, "archived": p.archived}
         for p in existing
-    ]}
+    ], "duplicate_names": duplicates}
 
 
 @router.post("/donor-parts/add")
