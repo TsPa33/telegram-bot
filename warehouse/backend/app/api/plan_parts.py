@@ -523,3 +523,47 @@ def donor_classification_apply(
     return {"updated_count": len(updated), "part_ids": updated,
             "needs_review": sum(r["action"] == "needs_review" for r in plan),
             "message": "Категорії оновлено; складські залишки та ціни не змінено"}
+
+class AddSelectedDonorPartBatch(BaseModel):
+    """One explicit user action, at most 40 source types per API request."""
+    items: list[AddSelectedDonorPart] = Field(min_length=1, max_length=40)
+
+
+@router.post("/donor-parts/add-batch")
+def add_selected_donor_parts_batch(
+    data: AddSelectedDonorPartBatch,
+    who: Annotated[Identity, Depends(identity)],
+    client: Annotated[PlanPartsClient, Depends(plan_parts_client)],
+    db: Annotated[Session, Depends(get_db)],
+    vehicle_id: str = Query(min_length=1, max_length=80),
+):
+    """Add selected types using existing audited receipt/idempotency implementation.
+
+    No paid lookup is triggered. Per-item outcomes make interrupted batches
+    resumable and prevent invisible partial-success reports.
+    """
+    if len({item.pt_id for item in data.items}) != len(data.items):
+        raise HTTPException(422, "Повторювані типи в одному запиті")
+    if len({item.ktype for item in data.items}) != 1:
+        raise HTTPException(422, "Типи належать різним модифікаціям автомобіля")
+    results = []
+    for item in data.items:
+        try:
+            result = add_selected_donor_part(item, who, client, db, vehicle_id)
+            results.append({"pt_id": item.pt_id, "ok": True, **result})
+        except HTTPException as exc:
+            db.rollback()
+            results.append({"pt_id": item.pt_id, "ok": False,
+                            "error": str(exc.detail), "status": exc.status_code})
+            # If cache/identity/permissions are invalid for one item they are
+            # invalid for remaining requests. Avoid unneeded retries.
+            if exc.status_code in (401, 403, 409, 429, 502, 503):
+                break
+        except Exception:
+            db.rollback()
+            # Unknown commit outcome: abort, never automatically retry.
+            results.append({"pt_id": item.pt_id, "ok": False,
+                            "error": "Результат запису невідомий. Оновіть статус складу перед повтором."})
+            break
+    return {"results": results, "completed": sum(bool(r["ok"]) for r in results),
+            "attempted": len(results), "requested": len(data.items)}
