@@ -9,6 +9,7 @@ type Category={pt_id:number;name:string;article_count:number};
 type Article={art_id:number;article_nr:string;brand:string;part_name:string};
 
 export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;onSaved:(row:Row)=>void}){
+ const donorId=encodeURIComponent(String(vehicle.id));
  const [matches,setMatches]=useState<Match[]>([]);
  const [picked,setPicked]=useState<number>(Number(vehicle.ktype)||0);
  const [savedKtype,setSavedKtype]=useState<number>(Number(vehicle.ktype)||0);
@@ -65,7 +66,7 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
    return ()=>window.clearInterval(interval);
  },[cooldownUntil]);
  const paidDisabled=busy||secondsLeft>0;
- const donorId=encodeURIComponent(String(vehicle.id));
+
  const teamIdentity=useContext(TeamIdentity);
  const categoryScope='plan-parts-categories-v1:'+String(teamIdentity?.id||'unknown')+':'+String(vehicle.id)+':'+picked;
  // Short-lived category metadata in this browser only; full paid article data
