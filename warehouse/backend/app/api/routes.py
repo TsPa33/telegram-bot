@@ -153,8 +153,22 @@ def vehicle_stock_counts(db, account_id, ids):
         Part.archived.is_(False), Part.assortment_enabled.is_(True), Part.quantity > 0).group_by(Part.vehicle_id)).all()) if ids else {}
 
 
+def vehicle_registered_part_counts(db, account_id, ids):
+    """Part cards associated with each donor, including zero-quantity candidates.
+
+    This is NOT physical stock. A zero-quantity candidate is registered but
+    must not increase stock_positions, stock_units or financial values.
+    """
+    return dict(db.execute(select(Part.vehicle_id, func.count(Part.id)).where(
+        Part.account_id == account_id, Part.vehicle_id.in_(ids),
+        Part.archived.is_(False), Part.assortment_enabled.is_(True)
+    ).group_by(Part.vehicle_id)).all()) if ids else {}
+
+
 def vehicle_view(db, row, account_id):
-    return {**snapshot(row), 'stock_positions':vehicle_stock_counts(db, account_id, [row.id]).get(row.id, 0)}
+    return {**snapshot(row),
+            'stock_positions':vehicle_stock_counts(db, account_id, [row.id]).get(row.id, 0),
+            'registered_parts':vehicle_registered_part_counts(db, account_id, [row.id]).get(row.id, 0)}
 
 
 def listing(
@@ -191,11 +205,13 @@ def listing(
         stmt.order_by(model.created_at.desc(), model.id).offset(offset).limit(limit)
     ))
     vehicle_counts = vehicle_stock_counts(db, account_id, [r.id for r in rows]) if model is Vehicle else {}
+    registered_counts = vehicle_registered_part_counts(db, account_id, [r.id for r in rows]) if model is Vehicle else {}
     items = []
     for row in rows:
         item = snapshot(row)
         if model is Vehicle:
             item["stock_positions"] = vehicle_counts.get(row.id, 0)
+            item["registered_parts"] = registered_counts.get(row.id, 0)
         if isinstance(row, Part):
             item["available_quantity"] = row.available_quantity
             if row.currency != "UAH" and not currency_aware:
