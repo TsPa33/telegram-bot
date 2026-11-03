@@ -4,10 +4,11 @@ from app.api.secure_route import SecureRoute
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from app.db import get_db
 from app.models import Vehicle
-from app.services.inventory import owned
+from app.services.inventory import owned, record, snapshot
 
 from app.api.deps import Identity, identity
 from app.services.plan_parts import Brand, ModelOption, Modification, PlanPartsClient, PlanPartsError, modifications_for_year
@@ -154,3 +155,31 @@ def vehicle_articles(
     return {"ktype": ktype, "pt_id": pt_id, "articles": [row.model_dump() for row in rows],
             "total": len(rows), "unique_names": len({row.part_name.casefold() for row in rows}),
             "message": "Кількість різних назв є орієнтиром, не гарантованим переліком деталей для розбору."}
+
+
+class ChooseKtype(BaseModel):
+    ktype: int = Field(strict=True, gt=0, le=2147483647)
+
+
+@router.post("/vehicle-modification/select")
+def select_vehicle_modification(
+    data: ChooseKtype,
+    who: Annotated[Identity, Depends(identity)],
+    db: Annotated[Session, Depends(get_db)],
+    vehicle_id: str = Query(min_length=1, max_length=80),
+):
+    """Explicit owner selection of provider K-Type scoped to one donor.
+
+    Source is user-selected rather than independently VIN-verified.
+    This endpoint cannot spend tokens or modify stock/finance/other donors.
+    """
+    if who.user.role != "DIRECTOR" or who.user.id != who.workspace_account_id:
+        raise HTTPException(403, "Вибір модифікації доступний лише власнику")
+    donor = owned(db, Vehicle, vehicle_id, who.workspace_account_id, lock=True, active=True)
+    if donor.ktype != data.ktype:
+        before = snapshot(donor)
+        donor.ktype = data.ktype
+        record(db, who.workspace_account_id, donor, "vehicle_update",
+               "Власник вручну вибрав модифікацію K-Type з plan.parts; сумісність VIN не перевірена", before)
+        db.commit()
+    return {"vehicle_id": donor.id, "ktype": donor.ktype, "verified_by_vin": False}
