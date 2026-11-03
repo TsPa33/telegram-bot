@@ -19,6 +19,9 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
  const [showArticleTools,setShowArticleTools]=useState(false);
  const [showMaintenance,setShowMaintenance]=useState(false);
  const [batchBusy,setBatchBusy]=useState(false);
+ const [confirmBatch,setConfirmBatch]=useState(false);
+ const [batchProgress,setBatchProgress]=useState(0);
+ const stopBatch=useRef(false);
  const [picked,setPicked]=useState<number>(Number(vehicle.ktype)||0);
  const [savedKtype,setSavedKtype]=useState<number>(Number(vehicle.ktype)||0);
  const [selectedTypes,setSelectedTypes]=useState<number[]>([]);
@@ -85,7 +88,7 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
   const restore=(items:Category[])=>{
    if(!active)return;
    setCategories(items);
-   setSelectedTypes(items.map(c=>c.pt_id));
+   setSelectedTypes([]);
    setPhase('categories');
   };
   try{
@@ -104,7 +107,7 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
   void api<{categories:Category[]}>('/plan-parts/categories/recover?vehicle_id='+donorId+'&ktype='+picked,'POST')
    .then(result=>{
     restore(result.categories);
-    try{sessionStorage.setItem(categoryScope,JSON.stringify({until:Date.now()+30*60*1000,categories:result.categories,selectedTypes:result.categories.map(c=>c.pt_id)}));}catch{}
+    try{sessionStorage.setItem(categoryScope,JSON.stringify({until:Date.now()+30*60*1000,categories:result.categories,selectedTypes:[]}));}catch{}
    }).catch(()=>{/* User can explicitly refresh with the paid lookup button */});
   return ()=>{active=false;};
  },[categoryScope,donorId,picked]);
@@ -131,7 +134,7 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
  }
  function getCategories(){if(!picked)return;void run(async()=>{
   const result=await api<{categories:Category[]}>('/plan-parts/categories/lookup?vehicle_id='+donorId+'&ktype='+picked,'POST');
-  setCategories(result.categories);setSelectedTypes(result.categories.map(c=>c.pt_id));setArticles([]);setActiveCategory(0);setPhase('categories');
+  setCategories(result.categories);setSelectedTypes([]);setArticles([]);setActiveCategory(0);setPhase('categories');
   try{sessionStorage.setItem(categoryScope,JSON.stringify({until:Date.now()+30*60*1000,categories:result.categories}));}catch{/* optional */}
  });}
  function getArticles(ptId:number){void run(async()=>{
@@ -250,22 +253,36 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
  // eslint-disable-next-line react-hooks/exhaustive-deps
  },[articles]);
  async function addSelectedToStock(){
-  if(addLock.current||!picked||picked!==savedKtype||stockStatusError||stockStatusLoading)return;
+  if(addLock.current||batchBusy||!picked||picked!==savedKtype||stockStatusError||stockStatusLoading)return;
   const pending=categories.filter(c=>selectedTypes.includes(c.pt_id)&&!alreadyStored(c));
+  setConfirmBatch(false);
   if(!pending.length){setAddMessage('Нових вибраних запчастин немає.');return;}
-  addLock.current=true;setBatchBusy(true);setAddMessage('Додаємо вибрані запчастини…');
-  let added=0;let failed=0;
+  addLock.current=true;stopBatch.current=false;setBatchBusy(true);setBatchProgress(0);
+  let done=0;
   try{
-   for(const c of pending){
-    const name=localizedName(c.name).trim();
-    if(!/[А-Яа-яІіЇїЄєҐґ]/.test(name)){failed++;continue;}
-    try{const r=await api<{received:boolean}>('/plan-parts/donor-parts/add?vehicle_id='+donorId,'POST',{ktype:picked,pt_id:c.pt_id,ukrainian_name:name});if(r.received)added++;}
-    catch{failed++;}
+   for(let offset=0;offset<pending.length;offset+=30){
+    if(stopBatch.current)break;
+    const subset=pending.slice(offset,offset+30);
+    const valid=subset.filter(c=>/[А-Яа-яІіЇїЄєҐґ]/.test(localizedName(c.name)));
+    if(valid.length!==subset.length)throw Error('Деякі назви не перекладено. Повторіть переклад і звірте склад.');
+    const response=await api<{results:{pt_id:number;ok:boolean;error?:string}[];attempted:number}>(
+     '/plan-parts/donor-parts/add-batch?vehicle_id='+donorId,'POST',
+     {items:valid.map(c=>({ktype:picked,pt_id:c.pt_id,ukrainian_name:localizedName(c.name)}))});
+    done+=response.results.filter(r=>r.ok).length;
+    setBatchProgress(done);
+    if(response.results.some(r=>!r.ok)||response.attempted<valid.length){
+     throw Error((response.results.find(r=>!r.ok)?.error||'Операцію перервано')+'. Оновіть статус складу перед повтором.');
+    }
    }
-   await refreshStockStatus();onSaved(await api('/vehicles/'+donorId));
-   setAddMessage('Додано на склад: '+added+'. Не вдалося додати: '+failed+'.');
-  }catch(e){setAddMessage('Помилка оновлення складу: '+(e as Error).message);}
-  finally{addLock.current=false;setBatchBusy(false);}
+   setSelectedTypes([]);
+   setAddMessage('Опрацьовано: '+done+' типів.'+(stopBatch.current?' Завантаження зупинено.':''));
+  }catch(e){
+   setAddMessage('Опрацьовано: '+done+'. '+(e as Error).message);
+  }finally{
+   try{await refreshStockStatus();onSaved(await api('/vehicles/'+donorId));}
+   catch(e){setAddMessage(v=>v+' Не вдалося перевірити залишки: '+(e as Error).message);}
+   addLock.current=false;setBatchBusy(false);
+  }
  }
  const filteredCategories=categories.filter(c=>{
   const name=localizedName(c.name).toLocaleLowerCase('uk-UA');
@@ -281,14 +298,6 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
  const estimatedTokens=selectedCategories.length*2;
  const selectedOffers=selectedCategories.reduce((n,c)=>n+c.article_count,0);
  return <section aria-label="Розбір автомобіля та запчастини" className="cp-plan">
-  <div className="cp-plan-mode">
-   <h3>Режим розбору</h3>
-   <div className="cp-plan-mode-options">
-    <div className="cp-plan-mode-card"><span className="cp-plan-mode-icon">◇</span><span><strong>Базовий CarPot</strong><small>Базові запчастини без токенів</small></span><span className="cp-plan-radio">○</span></div>
-    <div className="cp-plan-mode-card is-active"><span className="cp-plan-mode-icon">▱</span><span><strong>Професійний каталог plan.parts</strong><small>Підбір за точною модифікацією</small></span><span className="cp-plan-connected">API</span><span className="cp-plan-radio">◉</span></div>
-   </div>
-   <div className="cp-plan-hint">Професійний каталог використовує Plan.Parts. Базовий розбір CarPot доступний в основному процесі створення запчастин автомобіля.</div>
-  </div>
   <div className="cp-plan-layout">
    <div className="cp-plan-main">
     <div className="cp-plan-panel">
@@ -360,7 +369,14 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
      <div><span>Вже на складі</span><strong>{categories.filter(c=>Boolean(alreadyStored(c))).length}</strong></div>
      <div><span>Режим</span><strong>plan.parts API</strong></div>
     </div>
-    <button type="button" className="cp-plan-bulk" disabled={!chosenNew||batchBusy||addingType!==null||savedKtype!==picked||stockStatusLoading||Boolean(stockStatusError)} onClick={()=>void addSelectedToStock()}>{batchBusy?'Додаємо…':'＋ Додати вибрані на склад'}</button>
+    {batchBusy&&<div role="status" className="cp-plan-batch-status">Опрацьовано: {batchProgress} <button type="button" className="secondary" onClick={()=>{stopBatch.current=true;}}>Зупинити після поточної групи</button></div>}
+    {confirmBatch&&<div role="alertdialog" aria-label="Підтвердження додавання на склад" className="cp-plan-confirm">
+     <strong>Додати {chosenNew} вибраних типів на склад?</strong>
+     <p>Кожна нова запчастина матиме залишок 1 шт. Повторні записи не створюються. Токени plan.parts не витрачаються.</p>
+     <button type="button" onClick={()=>void addSelectedToStock()}>Підтвердити</button>
+     <button type="button" className="secondary" onClick={()=>setConfirmBatch(false)}>Скасувати</button>
+    </div>}
+    <button type="button" className="cp-plan-bulk" disabled={!chosenNew||batchBusy||addingType!==null||savedKtype!==picked||stockStatusLoading||Boolean(stockStatusError)} onClick={()=>setConfirmBatch(true)}>{batchBusy?'Додаємо…':'＋ Додати вибрані на склад'}</button>
     <a className="cp-plan-stock-link" href="/inventory">Відкрити склад</a>
     <p className="cp-plan-summary-note">Запчастини додаються з кількістю 1. Повторне оприбуткування вже наявних позицій заблоковано.</p>
    </aside>
