@@ -8,8 +8,7 @@ COPY frontend/src ./src
 # Tests and migration sources stay in the builder stage, never the public nginx image.
 COPY frontend/tests ./tests
 COPY backend/alembic/versions ./backend/alembic/versions
-RUN if ! npm run build > /tmp/warehouse-build.log 2>&1; then tail -n 130 /tmp/warehouse-build.log; exit 1; fi
-RUN tail -n 12 /tmp/warehouse-build.log
+RUN npm run build
 
 FROM nginx:1.28-alpine
 COPY --from=build /build/dist /usr/share/nginx/html
