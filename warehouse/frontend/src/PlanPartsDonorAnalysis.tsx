@@ -1,4 +1,5 @@
-import {useEffect,useRef,useState} from 'react';
+import {useContext,useEffect,useRef,useState} from 'react';
+import {TeamIdentity} from './permissions';
 import {api,ApiError,type Row} from './api';
 import {ukrainianPartName,translatedCategoryCount} from './planPartsUkrainian';
 import PlanPartsBatch from './PlanPartsBatch';
@@ -28,7 +29,8 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
  },[cooldownUntil]);
  const paidDisabled=busy||secondsLeft>0;
  const donorId=encodeURIComponent(String(vehicle.id));
- const categoryScope='plan-parts-categories-v1:'+String(vehicle.id)+':'+picked;
+ const teamIdentity=useContext(TeamIdentity);
+ const categoryScope='plan-parts-categories-v1:'+String(teamIdentity?.id||'unknown')+':'+String(vehicle.id)+':'+picked;
  // Short-lived category metadata in this browser only; full paid article data
  // stays in the backend's bounded in-memory cache.
  useEffect(()=>{
