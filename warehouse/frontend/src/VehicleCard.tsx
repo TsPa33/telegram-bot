@@ -20,14 +20,14 @@ export default function VehicleCard({vehicle:v,context,onParts,onData,onSaved}:P
    </div>
   </div>
   <div className="r1146-card-footer">
-   <div className="r1141-stock"><Package size={18} aria-hidden="true"/><strong>{v.stock_positions??'—'}</strong><span>позицій на складі</span></div>
+   <div className="r1141-stock"><Package size={18} aria-hidden="true"/><strong>{v.registered_parts??'—'}</strong><span>запчастин у картці</span><span style={{marginLeft:8,color:"var(--muted,#60746c)"}}>· На складі: <b>{v.stock_positions??'—'}</b></span></div>
    <div className="r1141-car-actions"><button type="button" className="secondary" onClick={onData||onParts}><ClipboardList size={15}/> Картка авто</button><button type="button" className="primary" onClick={onParts}>Розбір <ArrowRight size={16}/></button></div>
   </div>
  </article>;
  return <article className="vehicle-card donor-stock-card">
   <div className="vehicle-card-heading">
    <div className="vehicle-card-identity"><button className="text-button strong vehicle-card-name" onClick={onParts}>{name}</button><p>{v.year} · №{v.number??'—'}{v.archived?' · архів':''}</p></div>
-   <span className="vehicle-stock-count">На складі <b>{v.stock_positions??'…'}</b></span>
+   <span className="vehicle-stock-count">Запчастин <b>{v.registered_parts??'…'}</b> · На складі <b>{v.stock_positions??'…'}</b></span>
   </div>
   <VehicleImage vehicle={v}/>
   <PowertrainEditor compact vehicle={v} onSaved={onSaved}/>

@@ -114,8 +114,8 @@ export default function Vehicles({notify}:{notify:Notify}) {
      {visible.map(v=><VehicleCard key={v.id} vehicle={v} context="vehicles" onParts={()=>openDetail(v)} onData={()=>openDetail(v,true)} onSaved={saved}/>)}
      {!loading&&!visible.length&&<Empty title={q||statusFilter||brandFilter||modelFilter||yearFilter?'Автомобілів не знайдено':'Додайте перший автомобіль'}>Змініть фільтри або створіть автомобіль.</Empty>}
     </section>:<section className="r114-table-wrap" aria-label="Таблиця автомобілів">
-     <table><thead><tr><th>Автомобіль</th><th>Рік / №</th><th>Двигун / паливо</th><th>КПП</th><th>Статус</th><th>Позицій</th><th>Дії</th></tr></thead>
-      <tbody>{visible.map(v=><tr key={v.id}><td><strong>{v.manufacturer} {v.model}</strong><small>{v.vin?'VIN: '+v.vin:'VIN не вказано'}</small></td><td>{v.year} · №{v.number??'—'}</td><td>{[v.engine_displacement_l?v.engine_displacement_l+' л':null,v.fuel_type,v.engine_variant].filter(Boolean).join(' · ')||v.engine||'Не вказано'}</td><td>{v.transmission||'Не вказано'}{v.drive_type?' · '+v.drive_type:''}</td><td>{labels[v.status]||'Не уточнено'}</td><td>{v.stock_positions??'—'}</td><td><button onClick={()=>openDetail(v,true)}>Картка авто</button><button onClick={()=>openDetail(v)}>Розбір</button></td></tr>)}</tbody>
+     <table><thead><tr><th>Автомобіль</th><th>Рік / №</th><th>Двигун / паливо</th><th>КПП</th><th>Статус</th><th>Запчастин / на складі</th><th>Дії</th></tr></thead>
+      <tbody>{visible.map(v=><tr key={v.id}><td><strong>{v.manufacturer} {v.model}</strong><small>{v.vin?'VIN: '+v.vin:'VIN не вказано'}</small></td><td>{v.year} · №{v.number??'—'}</td><td>{[v.engine_displacement_l?v.engine_displacement_l+' л':null,v.fuel_type,v.engine_variant].filter(Boolean).join(' · ')||v.engine||'Не вказано'}</td><td>{v.transmission||'Не вказано'}{v.drive_type?' · '+v.drive_type:''}</td><td>{labels[v.status]||'Не уточнено'}</td><td>{v.registered_parts??'—'} / {v.stock_positions??'—'}</td><td><button onClick={()=>openDetail(v,true)}>Картка авто</button><button onClick={()=>openDetail(v)}>Розбір</button></td></tr>)}</tbody>
      </table>{!loading&&!visible.length&&<p>Автомобілів не знайдено.</p>}
     </section>}
     {filtered.length>50&&<Pager total={filtered.length} page={page} setPage={setPage}/>}</>}
@@ -210,7 +210,7 @@ function VehicleDetail({
        <div className="r1144-donor-meta">
         <div><small>Придбання</small><strong>{v.acquisition_date||'Не вказано'}</strong></div>
         {can('parts.view_cost')&&<div><small>Вартість придбання</small><strong>{v.acquisition_cost==null?'Не вказано':money(v.acquisition_cost)}</strong></div>}
-        <div><small>Позицій на складі</small><strong>{d?.positions??v.stock_positions??'—'}</strong></div>
+        <div><small>Запчастин у картці</small><strong>{v.registered_parts??'—'}</strong><small>На складі: {v.stock_positions??'—'}</small></div>
         <div><small>Дані двигуна</small><strong>{v.engine_code||'Код не вказано'}</strong></div>
        </div>
        <details className="r1144-advanced"><summary>Додаткові інструменти каталогу та чекліста</summary>
