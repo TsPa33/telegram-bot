@@ -221,7 +221,7 @@ class PlanPartsClient:
                         raw.extend(chunk)
                         if len(raw) > MAX_RESPONSE_BYTES:
                             raise PlanPartsError(502, "Відповідь Plan.Parts завелика")
-            data = provider_results(json.loads(raw), params)
+            data = provider_results(json.loads(raw), {} if resource == 'ktype' else params)
             if schema is ModelOption:
                 rows = []
                 for item in data:
