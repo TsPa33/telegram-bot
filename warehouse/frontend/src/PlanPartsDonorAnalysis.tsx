@@ -437,7 +437,7 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
       {duplicateStockNames.length>0&&<p role="alert" className="cp-plan-error">У складі виявлено дублікати: {duplicateStockNames.map(d=>d.name+' ('+d.count+')').join(', ')}. Автоматичне видалення вимкнено.</p>}
       <div className="cp-plan-list">
        {visibleGroups.map(([group,groupParts])=>{
-        const pending=groupParts.filter(c=>!alreadyStored(c));
+        const pending=filteredCategories.filter(c=>sectionOfCached(c)===group&&!alreadyStored(c));
         const groupSelected=pending.filter(c=>selectedSet.has(c.pt_id));
         return <section key={group} className="cp-plan-group">
          <div className="cp-plan-group-heading">
