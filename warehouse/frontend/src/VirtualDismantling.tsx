@@ -12,11 +12,13 @@ import './managed-dismantling.css';
 import {CompactParts,PartsFilters,PriceStatistics} from './CompactParts';
 import {matchesPart} from './partsPresentation';
 import './warehouse-ux1.css';
+import './dismantling-redesign.css';
 export default function VirtualDismantling({vehicle,onSaved}:{vehicle:Row;onSaved:(row:Row)=>void}){
  const can=useCan(),identity=useContext(TeamIdentity),path=`/vehicles/${vehicle.id}/virtual-dismantling`;
  const key='warehouse.virtual.1:'+JSON.stringify([identity?.id,identity?.workspace_account_id||identity?.id,vehicle.id]);
  const [plan,setPlan]=useState<Row|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[pending,setPending]=useState<Row|null>(null),[outcome,setOutcome]=useState<Row|null>(null);
  const [formation,setFormation]=useState<'create'|'update'|null>(null);
+ const [source,setSource]=useState<'base'|'professional'>(identity?.role==='DIRECTOR'&&Number(vehicle.ktype)>0?'professional':'base');
  const [coverage,setCoverage]=useState<Row|null>(null),[coverageLoading,setCoverageLoading]=useState(false);
  const [q,setQ]=useState(''),[category,setCategory]=useState(''),[sub,setSub]=useState(''),[selected,setSelected]=useState<string[]>([]),[limit,setLimit]=useState(60),[powertrain,setPowertrain]=useState('');
  const [priceFilter,setPriceFilter]=useState(''),[stateFilter,setStateFilter]=useState(''),[stockRows,setStockRows]=useState<Record<string,Row>>({}),[stockError,setStockError]=useState('');
@@ -39,18 +41,10 @@ export default function VirtualDismantling({vehicle,onSaved}:{vehicle:Row;onSave
   }catch(e){
    setError('Не вдалося перевірити майбутній список деталей: '+(e as Error).message);coverageRequest.current=false;setCoverageLoading(false);return;
   }
-  try{
-   // Paid supplier lookup is optional and owner-only; it never creates parts.
-   // A donor without an exact K-Type uses the existing CarPot catalogue at zero provider cost.
-   if(identity?.role==='DIRECTOR'&&vehicle.ktype){
-    try{
-     const details=await api<Row>('/plan-parts/coverage/lookup?vehicle_id='+encodeURIComponent(String(vehicle.id)),'POST');
-     setCoverage({...initial,external:details});
-    }catch(e){
-     setCoverage({...initial,external_error:(e as Error).message});
-    }
-   }else setCoverage(initial);
-  }finally{coverageRequest.current=false;setCoverageLoading(false);}
+  // Basic dismantling uses only CarPot and never spends supplier tokens.
+  setCoverage(initial);
+  coverageRequest.current=false;
+  setCoverageLoading(false);
  }
  function confirmCoverage(){
   if(!plan||!coverage||coverage.etag!==plan.etag||locked)return;
@@ -73,6 +67,20 @@ export default function VirtualDismantling({vehicle,onSaved}:{vehicle:Row;onSave
  return <section className="managed-v3 virtual-dismantling ux1-dismantling" aria-label="Віртуальний розбір">
 
   {error&&!detail&&<p role="alert" className="error">{error}</p>}
+  <div className="cp-mode-panel">
+   <div className="cp-section-label"><h3>Режим розбору</h3><span>Оберіть джерело запчастин</span></div>
+   <div className="cp-mode-options" role="group" aria-label="Джерело запчастин">
+    <button type="button" aria-pressed={source==='base'} className={'cp-mode-option '+(source==='base'?'is-selected':'')} onClick={()=>setSource('base')}>
+     <span className="cp-mode-symbol">▣</span><span><strong>Базовий CarPot</strong><small>Основні запчастини · без токенів</small></span><span className="cp-radio" aria-hidden="true"/>
+    </button>
+    {identity?.role==='DIRECTOR'&&<button type="button" aria-pressed={source==='professional'} className={'cp-mode-option '+(source==='professional'?'is-selected':'')} onClick={()=>setSource('professional')}>
+     <span className="cp-mode-symbol">▤</span><span><strong>Професійний каталог plan.parts</strong><small>Детальний вибір за модифікацією</small></span><span className="cp-radio" aria-hidden="true"/>
+    </button>}
+   </div>
+   <small className="cp-source-help">{source==='base'?'Безкоштовний базовий розбір; сумісність деталей потребує перевірки.':'Використовуємо збережені дані каталогу. Артикули отримуються лише за окремим запитом.'}</small>
+  </div>
+  {source==='professional'&&identity?.role==='DIRECTOR'&&<PlanPartsDonorAnalysis key={String(vehicle.id)} vehicle={vehicle} onSaved={onSaved}/>}
+  {source==='base'&&<>
   {pending&&<div role="status"><p>Результат попереднього запиту потребує перевірки. Повторення не створить дублікатів.</p><button disabled={busy} onClick={()=>work(()=>command(pending.kind,pending.payload,pending))}>Перевірити збережений запит</button></div>}
   {!coverage&&!formation&&<><p>{plan.virtual_mode?'Оновлення списку почнеться з перевірки кількості можливих деталей.':'Спочатку перевіримо кількість кандидатів у каталозі. Позиції з’являться лише після окремого підтвердження.'}</p>
   {items.length>0&&<p>Наявні ціни, продажі, резерви та виключення збережуться.</p>}
@@ -80,20 +88,16 @@ export default function VirtualDismantling({vehicle,onSaved}:{vehicle:Row;onSave
   {coverageLoading&&<div className="catalogue-formation" role="status" aria-live="polite"><span className="catalogue-formation-spinner" aria-hidden="true"/><div><strong>Аналізуємо кількість запчастин</strong><p>Складські позиції не створюються.</p></div></div>}
   {coverage&&<section className="catalogue-formation" aria-label="Попередній аналіз запчастин" role="status">
    <div style={{width:'100%'}}>
-    <h3>Результат попереднього аналізу</h3>
+    <h3>Базовий розбір CarPot</h3>
     <p>Категорій у майбутньому плані: <strong>{coverage.local_categories}</strong> · Потенційних позицій: <strong>{coverage.local_candidates}</strong> · Потребують перевірки: <strong>{coverage.pending}</strong>.</p>
     {coverage.prospective?.limited&&<p role="status">Оцінка базується на неповному конструктивному довіднику. Це не повний OEM-каталог конкретного VIN.</p>}
-    {coverage.external?.available&&<p>У каталозі для обраної модифікації: <strong>{coverage.external.categories}</strong> категорій і <strong>{Number(coverage.external.article_records).toLocaleString('uk-UA')}</strong> артикулів різних виробників.</p>}
-    {coverage.external?.available===false&&<p>{coverage.external.reason}</p>}
-    {coverage.external_error&&<p role="status">Зовнішній каталог недоступний: {coverage.external_error}. Локальний аналіз залишається доступним.</p>}
-    <p>Кількість артикулів не дорівнює кількості фізичних деталей. Після підтвердження буде створено <strong>поточний план CarPot</strong>; перелік артикулів зовнішнього каталогу не імпортується автоматично.</p>
+    <p>Це базовий конструктивний перелік можливих деталей. Перед обліком перевіряйте фізичну наявність.</p>
     {coverage.etag!==plan.etag&&<p role="alert">Дані автомобіля змінилися. Повторіть аналіз перед підтвердженням.</p>}
     <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
      <button disabled={locked||!activate||coverage.etag!==plan.etag} onClick={confirmCoverage}>{plan.virtual_mode?'Підтвердити оновлення':'Підтвердити створення списку'}</button>
      <button className="secondary" disabled={locked} onClick={()=>setCoverage(null)}>Скасувати</button>
     </div>
     <small>Тестовий режим. Оплати, внутрішні бали й списання з користувачів вимкнені.</small>
-    {identity?.role==='DIRECTOR'&&<PlanPartsDonorAnalysis vehicle={vehicle} onSaved={onSaved}/>}
    </div>
   </section>}
   {formation&&<div className="catalogue-formation" role="status" aria-live="polite"><span className="catalogue-formation-spinner" aria-hidden="true"/><div><strong>{formation==='create'?'Формуємо запчастини автомобіля':'Оновлюємо перелік запчастин'}</strong><p>Обробляємо дані каталогу. Кількість позицій з’явиться після відповіді сервера.</p></div></div>}
@@ -114,5 +118,6 @@ export default function VirtualDismantling({vehicle,onSaved}:{vehicle:Row;onSave
   {shown.length>limit&&<button className="secondary" onClick={()=>setLimit(n=>n+60)}>Показати ще 60</button>}
   <Link to="/inventory">Відкрити звичайний склад</Link>
   {detail&&<Modal className="r1-part-dialog" title={detail.name} onClose={()=>setDetail(null)}>{error&&<p role="alert" className="error">{error}</p>}<PartDetail part={detail} onSaved={row=>{setDetail(row);load();}} onChanged={()=>{api('/parts/'+detail.id).then(setDetail);load();}}/><details className="r1-secondary"><summary>Стан та складські операції</summary>{can('parts.inspect')&&<form onSubmit={e=>{e.preventDefault();updateDetail(()=>api('/parts/'+detail.id+'/inspection','PATCH',{condition}));}}><label>Фізичний стан деталі<select aria-label="Фізичний стан деталі" value={condition} onChange={e=>setCondition(e.target.value)}>{['unknown','used','new','damaged','refurbished'].map(v=><option value={v} key={v}>{labels[v]}</option>)}</select></label><button disabled={busy}>Зберегти стан</button></form>}{can('inventory.adjust_quantity')&&<form onSubmit={e=>{e.preventDefault();updateDetail(()=>api('/parts/'+detail.id+'/operations','POST',{type:'correction',quantity:Number(quantity),reason:'Явне уточнення облікової кількості власником',request_key:crypto.randomUUID()}));}}><label>Облікова кількість<input type="number" min={detail.reserved_quantity} step="1" value={quantity} onChange={e=>setQuantity(e.target.value)}/></label><button disabled={busy}>Уточнити кількість</button></form>}{can('inventory.transfer')&&<form onSubmit={e=>{e.preventDefault();updateDetail(()=>api('/parts/'+detail.id+'/operations','POST',{type:'transfer',quantity:0,location,physical_location_kind:'on_shelf',reason:'Переміщення всього лота на полицю без зміни залишку',request_key:crypto.randomUUID()}));}}><label>Місце на полиці<input value={location} required maxLength={120} onChange={e=>setLocation(e.target.value)}/></label><button disabled={busy}>Перемістити на полицю</button></form>}</details></Modal>}
+ </>}
  </section>;
 }
