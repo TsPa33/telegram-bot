@@ -75,7 +75,7 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
    {picked>0&&<button type="button" disabled={paidDisabled} className="secondary" onClick={getCategories}>Категорії та кількість (1 токен)</button>}
   </div>
   {busy&&<p role="status">Отримуємо дані plan.parts…</p>}
-  {secondsLeft>0&&<p role="status" aria-live="polite">Повторні платні запити будуть доступні через <strong>{secondsLeft} с</strong>. Збережений K-Type та вже отримані результати залишаються доступними.</p>
+  {secondsLeft>0&&<p role="status" aria-live="polite">Повторні платні запити будуть доступні через <strong>{secondsLeft} с</strong>. Збережений K-Type та вже отримані результати залишаються доступними.</p>}
   {error&&<p role="alert" className="error">{error}</p>}
   {matches.length>0&&<div style={{marginTop:12}}>
    <label>Оберіть точну модифікацію автомобіля
