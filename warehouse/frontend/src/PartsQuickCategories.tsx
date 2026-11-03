@@ -61,7 +61,7 @@ export function groupQuickCategoryRoots(categories:Row[]):Group[]{
  }
  return [...grouped.values()].sort((a,b)=>a.label.localeCompare(b.label,'uk'));
 }
-const sections=[
+export const sections=[
  {name:'Двигун та його системи',icon:Cog,terms:/двиг|мотор|силовий агрегат|запал|зажиган|палив|топлив|подачі палива|суміш|смес|охолод|охлаж|ремінн|ремен|випуск|выпуск|впуск/},
  {name:'Трансмісія та привід',icon:Settings2,terms:/трансміс|трансмис|коробка|передач|зчеплен|сцеплен|привід|привод/},
  {name:'Підвіска та ходова частина',icon:Car,terms:/підвіск|подвес|ходов|амортиз|колеса|колёс|шин/},
