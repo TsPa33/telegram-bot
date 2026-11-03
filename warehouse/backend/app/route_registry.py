@@ -102,6 +102,7 @@ KNOWN_ROUTES = frozenset({
     ('POST', '/api/v1/plan-parts/vehicle-modification/select'),
     ('POST', '/api/v1/plan-parts/categories/lookup'),
     ('POST', '/api/v1/plan-parts/donor-parts/add'),
+    ('POST', '/api/v1/plan-parts/donor-parts/add-batch'),
     ('GET', '/api/v1/plan-parts/donor-parts/status'),
     ('GET', '/api/v1/plan-parts/donor-parts/classification/preview'),
     ('POST', '/api/v1/plan-parts/donor-parts/classification/apply'),
