@@ -41,6 +41,12 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
   // eslint-disable-next-line react-hooks/exhaustive-deps
  },[donorId,picked,savedKtype]);
  const [addMessage,setAddMessage]=useState('');
+ type ClassRow={part_id:string;name:string;kind:string;section:string|null;mapping:string;action:string};
+ type ClassPreview={rows:ClassRow[];total:number;can_apply:number;needs_review:number;already_categorized:number};
+ const [classificationPreview,setClassificationPreview]=useState<ClassPreview|null>(null);
+ const [classLoading,setClassLoading]=useState(false);
+ const [classMessage,setClassMessage]=useState('');
+
  const addLock=useRef(false);
 
  const translationBusy=useRef(false);
@@ -172,6 +178,27 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
   }catch(err){setAddMessage('Не вдалося оприбуткувати раніше додані: '+(err as Error).message);}
   finally{addLock.current=false;setAddingType(null);}
  }
+ async function previewStockClassification(){
+  if(!picked||savedKtype!==picked)return;
+  setClassLoading(true);setClassMessage('');
+  try{
+   const result=await api<ClassPreview>('/plan-parts/donor-parts/classification/preview?vehicle_id='+donorId+'&ktype='+picked);
+   setClassificationPreview(result);
+  }catch(e){setClassMessage('Не вдалося перевірити категорії: '+(e as Error).message);}
+  finally{setClassLoading(false);}
+ }
+ async function applyStockClassification(){
+  if(!picked||savedKtype!==picked||!classificationPreview?.can_apply)return;
+  setClassLoading(true);
+  try{
+   const result=await api<{updated_count:number;needs_review:number}>(
+    '/plan-parts/donor-parts/classification/apply?vehicle_id='+donorId+'&ktype='+picked,'POST');
+   setClassMessage('Категорії призначено для '+result.updated_count+' позицій. Ще потребують перевірки: '+result.needs_review+'. Залишки, ціни й фізичне розміщення не змінено.');
+   await previewStockClassification();
+   onSaved(await api('/vehicles/'+donorId));
+  }catch(e){setClassMessage('Не вдалося оновити категорії: '+(e as Error).message);}
+  finally{setClassLoading(false);}
+ }
  function localizedName(name:string){
   const reviewed=ukrainianPartName(name);
   return reviewed.translated?reviewed.uk:(machineNames[name]||reviewed.uk);
@@ -265,6 +292,19 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
    </div>
    <p style={{margin:'8px 0'}}>Українські назви: <strong>{categories.filter(c=>ukrainianPartName(c.name).translated||Boolean(machineNames[c.name])).length}</strong> із {categories.length}. Машинний переклад застосовується для назв, відсутніх у словнику. <button type="button" className="secondary" disabled={translationLoading} onClick={()=>void translateAllCategories()}>{translationLoading?'Перекладаємо…':'Повторити переклад відсутніх назв'}</button>{translationStatus&&<small style={{display:'block'}} role="status">{translationStatus}</small>}</p>
    {addMessage&&<p role="status" aria-live="polite">{addMessage}</p>}
+   <section aria-label="Категоризація доданих запчастин" style={{border:'1px solid var(--border,#dbe5df)',padding:12,borderRadius:8,margin:'10px 0'}}>
+    <strong>Категорії складських запчастин</strong>
+    <p><small>CarPot сам визначає систему автомобіля для нових запчастин. Для раніше доданих можна перевірити відповідності, не змінюючи залишки й ціни. Інструменти та витратні матеріали позначаються окремо.</small></p>
+    <button type="button" className="secondary" disabled={classLoading||savedKtype!==picked} onClick={()=>void previewStockClassification()}>{classLoading?'Перевіряємо…':'Перевірити категорії вже доданих'}</button>
+    {classificationPreview&&<div style={{marginTop:8}}>
+     <p>Усього: <b>{classificationPreview.total}</b> · Можна класифікувати: <b>{classificationPreview.can_apply}</b> · Потребують перевірки: <b>{classificationPreview.needs_review}</b> · Вже класифіковані: <b>{classificationPreview.already_categorized}</b></p>
+     {classificationPreview.rows.filter(r=>r.action==='needs_review').length>0&&<details><summary>Показати непідібрані категорії</summary>
+      <ul>{classificationPreview.rows.filter(r=>r.action==='needs_review').map(r=><li key={r.part_id}>{r.name} — {r.section||'Систему не визначено'} ({r.kind==='tool'?'інструмент':r.kind==='consumable'?'витратний матеріал':r.kind==='kit'?'комплект':'деталь'})</li>)}</ul>
+     </details>}
+     <button type="button" disabled={classLoading||classificationPreview.can_apply===0} onClick={()=>void applyStockClassification()}>Застосувати перевірені категорії ({classificationPreview.can_apply})</button>
+    </div>}
+    {classMessage&&<p role="status">{classMessage}</p>}
+   </section>
    {stockStatusError&&<p role="alert">{stockStatusError} Нових надходжень до перевірки не виконуйте.</p>}
    {duplicateStockNames.length>0&&<p role="alert">У цього автомобіля вже є {duplicateStockNames.length} однакових назв серед запчастин plan.parts. Записи не видаляємо автоматично, щоб не втратити залишки й історію: {duplicateStockNames.map(d=>d.name+' ('+d.count+')').join('; ')}.</p>}
    {stockStatusLoading&&<small role="status">Звіряємо зі складом…</small>}
