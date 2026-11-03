@@ -6,6 +6,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
+from sqlalchemy import select
+from app.models import Part
 from app.db import get_db
 from app.models import Vehicle
 from app.services.inventory import owned, record, snapshot
@@ -244,3 +246,70 @@ def translate_catalogue_names(
     except TranslationError as exc:
         raise HTTPException(exc.code, str(exc)) from None
 
+
+
+class AddSelectedDonorPart(BaseModel):
+    ktype: int = Field(strict=True, gt=0)
+    pt_id: int = Field(strict=True, gt=0)
+    ukrainian_name: str = Field(min_length=2, max_length=200)
+
+
+@router.post("/donor-parts/add")
+def add_selected_donor_part(
+    data: AddSelectedDonorPart,
+    who: Annotated[Identity, Depends(identity)],
+    client: Annotated[PlanPartsClient, Depends(plan_parts_client)],
+    db: Annotated[Session, Depends(get_db)],
+    vehicle_id: str = Query(min_length=1, max_length=80),
+):
+    """Explicitly add one *manual* zero-quantity donor position, never a vendor offer.
+
+    A server-side, cache-only check verifies pt_id membership in the selected
+    K-Type catalogue. No paid API calls, stock receipts or catalogue mutations.
+    Replays for the same donor/pt_id are idempotent; prevent concurrent inserts
+    by serializing on the donor row.
+    """
+    if who.user.role != "DIRECTOR" or who.user.id != who.workspace_account_id:
+        raise HTTPException(403, "Додавання з зовнішнього каталогу поки доступне лише власнику")
+    donor = owned(db, Vehicle, vehicle_id, who.workspace_account_id, lock=True, active=True)
+    if donor.ktype != data.ktype:
+        raise HTTPException(409, "Вибрана модифікація автомобіля змінилася")
+    try:
+        types = client.recover_categories(who.workspace_account_id, data.ktype)
+    except PlanPartsError as exc:
+        _handle_provider(exc)
+    if not any(cat.pt_id == data.pt_id for cat in types):
+        raise HTTPException(422, "Вибраного типу немає в перевіреному каталозі цієї модифікації")
+    # Reference ID is part of CarPot's internal provenance, not an article copy.
+    marker = f"plan.parts:ktype={data.ktype};pt_id={data.pt_id}"
+    previous = db.scalar(select(Part).where(
+        Part.account_id == who.workspace_account_id,
+        Part.vehicle_id == donor.id,
+        Part.compatibility_notes == marker,
+    ).order_by(Part.created_at))
+    if previous is not None:
+        return {"created": False, "part_id": previous.id, "name": previous.name,
+                "quantity": previous.quantity, "archived": previous.archived,
+                "message": "Цю запчастину вже додано до автомобіля"}
+    name = data.ukrainian_name.strip()
+    if not any(ch in "іїєґІЇЄҐ" or "\u0400" <= ch <= "\u04ff" for ch in name):
+        raise HTTPException(422, "Вкажіть українську назву деталі")
+    part = Part(
+        account_id=who.workspace_account_id,
+        vehicle_id=donor.id,
+        name=name,
+        inventory_origin="manual",
+        quantity_basis="assumed",
+        physical_location_kind="on_vehicle",
+        availability="unchecked",
+        condition="unknown",
+        quantity=0,
+        compatibility_notes=marker,
+        description="Потенційний тип запчастини; відповідність конкретному VIN і наявність не перевірені.",
+    )
+    db.add(part)
+    record(db, who.workspace_account_id, part, "part_create",
+           "Додано вибраний конструктивний тип із довідника plan.parts без оприбуткування", {})
+    db.commit()
+    return {"created": True, "part_id": part.id, "name": name, "quantity": 0,
+            "message": "Запчастину додано до автомобіля без складського залишку"}

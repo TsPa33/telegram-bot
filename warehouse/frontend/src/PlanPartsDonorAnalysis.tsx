@@ -17,6 +17,11 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
  const [machineNames,setMachineNames]=useState<Record<string,string>>({});
  const [translationStatus,setTranslationStatus]=useState('');
  const [translationLoading,setTranslationLoading]=useState(false);
+ const [addingType,setAddingType]=useState<number|null>(null);
+ const [addedTypes,setAddedTypes]=useState<Record<number,string>>({});
+ const [addMessage,setAddMessage]=useState('');
+ const addLock=useRef(false);
+
  const translationBusy=useRef(false);
 
  const [articles,setArticles]=useState<Article[]>([]);
@@ -112,6 +117,25 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
   }catch{/* Browser storage is optional */}
  },[selectedTypes,categoryScope,picked,categories.length]);
 
+ async function addSelectedType(category:Category){
+  if(addLock.current||savedKtype!==picked||!picked)return;
+  const name=localizedName(category.name).trim();
+  if(!/[А-Яа-яІіЇїЄєҐґ]/.test(name)){
+   setAddMessage('Спочатку перекладіть назву українською або уточніть її у словнику.');
+   return;
+  }
+  addLock.current=true;setAddingType(category.pt_id);setAddMessage('');
+  try{
+   const result=await api<{created:boolean;part_id:string;name:string}>(
+    '/plan-parts/donor-parts/add?vehicle_id='+donorId,'POST',
+    {ktype:picked,pt_id:category.pt_id,ukrainian_name:name});
+   setAddedTypes(old=>({...old,[category.pt_id]:result.part_id}));
+   setAddMessage(result.created
+    ? '«'+result.name+'» додано до запчастин автомобіля. Залишок: 0; фізичну наявність ще не підтверджено.'
+    : 'Ця запчастина вже є в картці автомобіля. Нову копію не створено.');
+  }catch(err){setAddMessage('Не вдалося додати: '+(err as Error).message);}
+  finally{addLock.current=false;setAddingType(null);}
+ }
  function localizedName(name:string){
   const reviewed=ukrainianPartName(name);
   return reviewed.translated?reviewed.uk:(machineNames[name]||reviewed.uk);
@@ -180,7 +204,7 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
   </div>}
   {categories.length>0&&<div style={{marginTop:14}}>
    <p>Категорій: <strong>{categories.length}</strong> · Артикулів aftermarket: <strong>{categories.reduce((n,c)=>n+c.article_count,0).toLocaleString('uk-UA')}</strong></p>
-   <p>Перелік типів запчастин із plan.parts (не кількість окремих деталей на донорі):</p>
+   <p>Перелік типів запчастин із plan.parts. «Додати до автомобіля» створює одну позицію зі залишком 0; артикули завантажувати не потрібно. Ця дія не редагує глобальний довідник CarPot.</p>
    <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center',margin:'10px 0'}}>
     <button type="button" disabled={busy||selectedTypes.length===categories.length} className="secondary" onClick={()=>setSelectedTypes(categories.map(c=>c.pt_id))}>Вибрати всі ({categories.length})</button>
     <button type="button" disabled={busy||selectedTypes.length===0} className="secondary" onClick={()=>setSelectedTypes([])}>Зняти вибір</button>
@@ -200,10 +224,14 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
     <PlanPartsBatch key={picked} vehicleId={String(vehicle.id)} ktype={picked} selected={selectedCategories} disabled={busy||savedKtype!==picked} translatedNames={machineNames} />
    </div>
    <p style={{margin:'8px 0'}}>Українські назви: <strong>{categories.filter(c=>ukrainianPartName(c.name).translated||Boolean(machineNames[c.name])).length}</strong> із {categories.length}. Машинний переклад застосовується для назв, відсутніх у словнику. <button type="button" className="secondary" disabled={translationLoading} onClick={()=>void translateAllCategories()}>{translationLoading?'Перекладаємо…':'Повторити переклад відсутніх назв'}</button>{translationStatus&&<small style={{display:'block'}} role="status">{translationStatus}</small>}</p>
+   {addMessage&&<p role="status" aria-live="polite">{addMessage}</p>}
    <div style={{maxHeight:310,overflowY:'auto',border:'1px solid #dae5e0',borderRadius:9}}>
     {categories.map(c=><div key={c.pt_id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:8,padding:'9px 12px',borderBottom:'1px solid #e7efeb'}}>
      <label style={{display:'flex',gap:8,alignItems:'center',flex:1}}><input type="checkbox" disabled={busy} checked={selectedTypes.includes(c.pt_id)} onChange={e=>setSelectedTypes(old=>e.target.checked?[...old,c.pt_id]:old.filter(id=>id!==c.pt_id))}/><span><strong>{localizedName(c.name)}</strong>{(ukrainianPartName(c.name).translated||Boolean(machineNames[c.name]))&&<small style={{display:'block',color:'#61746c'}}>Оригінал: {c.name}</small>}{!ukrainianPartName(c.name).translated&&!machineNames[c.name]&&<small style={{display:'block',color:'#9a611c'}}>Потрібен перевірений український відповідник</small>}<small style={{display:'block'}}>{c.article_count.toLocaleString('uk-UA')} артикулів</small></span></label>
-     <button type="button" disabled={paidDisabled} className="secondary" onClick={()=>getArticles(c.pt_id)}>Артикули (до 2 токенів)</button>
+     <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
+      <button type="button" disabled={addingType!==null||savedKtype!==picked||Boolean(addedTypes[c.pt_id])} className="secondary" onClick={()=>void addSelectedType(c)}>{addedTypes[c.pt_id]?'Додано':addingType===c.pt_id?'Додаємо…':'Додати до автомобіля'}</button>
+      <button type="button" disabled={paidDisabled} className="secondary" onClick={()=>getArticles(c.pt_id)}>Артикули (до 2 токенів)</button>
+     </div>
     </div>)}
    </div>
   </div>}
