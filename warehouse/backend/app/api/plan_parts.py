@@ -174,7 +174,7 @@ def vehicle_articles(
     except PlanPartsError as exc:
         _handle_provider(exc)
     return {"ktype": ktype, "pt_id": pt_id, "articles": [row.model_dump() for row in rows],
-            "total": len(rows), "unique_names": len({row.part_name.casefold() for row in rows}),
+            "total": len(rows), "unique_names": len({row.part_name.casefold() for row in rows if row.part_name}),
             "message": "Кількість різних назв є орієнтиром, не гарантованим переліком деталей для розбору."}
 
 
