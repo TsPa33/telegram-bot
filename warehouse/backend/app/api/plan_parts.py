@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.models import Vehicle
 from app.services.inventory import owned, record, snapshot
+from app.services.parts_translation import translate_names, TranslationError
 
 from app.api.deps import Identity, identity
 from app.services.plan_parts import Brand, ModelOption, Modification, PlanPartsClient, PlanPartsError, modifications_for_year
@@ -224,3 +225,22 @@ def select_vehicle_modification(
                "Власник вручну вибрав модифікацію K-Type з plan.parts; сумісність VIN не перевірена", before)
         db.commit()
     return {"vehicle_id": donor.id, "ktype": donor.ktype, "verified_by_vin": False}
+
+
+class TranslationRequest(BaseModel):
+    names: list[str] = Field(min_length=1, max_length=400)
+
+
+@router.post("/translations/lookup")
+def translate_catalogue_names(
+    data: TranslationRequest,
+    who: Annotated[Identity, Depends(identity)],
+):
+    """Translate generic part-name strings, not scoped to any car, without plan.parts charges."""
+    if who.user.role != "DIRECTOR" or who.user.id != who.workspace_account_id:
+        raise HTTPException(403, "Машинний переклад каталогу доступний лише власнику")
+    try:
+        return translate_names(data.names)
+    except TranslationError as exc:
+        raise HTTPException(exc.code, str(exc)) from None
+
