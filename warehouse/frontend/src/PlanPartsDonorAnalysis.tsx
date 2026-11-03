@@ -18,7 +18,27 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
  const [translationStatus,setTranslationStatus]=useState('');
  const [translationLoading,setTranslationLoading]=useState(false);
  const [addingType,setAddingType]=useState<number|null>(null);
- const [addedTypes,setAddedTypes]=useState<Record<number,string>>({});
+ type StoredPart={id:string;pt_id:number|null;name:string;quantity:number;archived:boolean};
+ const [stockParts,setStockParts]=useState<StoredPart[]>([]);
+ const [stockStatusLoading,setStockStatusLoading]=useState(false);
+ const [stockStatusError,setStockStatusError]=useState('');
+ const nameKey=(s:string)=>s.trim().toLocaleLowerCase('uk-UA').replace(/\\s+/g,' ');
+ const alreadyStored=(c:Category)=>stockParts.find(p=>!p.archived&&(p.pt_id===c.pt_id||nameKey(p.name)===nameKey(localizedName(c.name))));
+ async function refreshStockStatus(){
+  if(!picked||savedKtype!==picked)return;
+  setStockStatusLoading(true);
+  try{
+   const r=await api<{parts:StoredPart[]}>('/plan-parts/donor-parts/status?vehicle_id='+donorId+'&ktype='+picked);
+   setStockParts(r.parts);setStockStatusError('');
+  }catch(e){setStockStatusError('Не вдалося перевірити фактичний статус складу: '+(e as Error).message);}
+  finally{setStockStatusLoading(false);}
+ }
+ useEffect(()=>{
+  if(!picked||savedKtype!==picked){setStockParts([]);return;}
+  void refreshStockStatus();
+  // Reload only when donor/confirmed modification changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+ },[donorId,picked,savedKtype]);
  const [addMessage,setAddMessage]=useState('');
  const addLock=useRef(false);
 
@@ -129,7 +149,7 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
    const result=await api<{created:boolean;received:boolean;part_id:string;name:string;quantity:number}>(
     '/plan-parts/donor-parts/add?vehicle_id='+donorId,'POST',
     {ktype:picked,pt_id:category.pt_id,ukrainian_name:name});
-   setAddedTypes(old=>({...old,[category.pt_id]:result.part_id}));
+   await refreshStockStatus();
    onSaved(await api('/vehicles/'+donorId));
    setAddMessage(result.received
     ? '«'+result.name+'» додано на склад. Залишок: '+result.quantity+'.'
@@ -147,6 +167,7 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
     ? 'Оприбутковано раніше вибраних запчастин: '+r.received_count+'. Залишок кожної: 1.'
     : 'Усі раніше додані запчастини вже враховані на складі.');
    onSaved(await api('/vehicles/'+donorId));
+   await refreshStockStatus();
   }catch(err){setAddMessage('Не вдалося оприбуткувати раніше додані: '+(err as Error).message);}
   finally{addLock.current=false;setAddingType(null);}
  }
@@ -243,11 +264,14 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
    </div>
    <p style={{margin:'8px 0'}}>Українські назви: <strong>{categories.filter(c=>ukrainianPartName(c.name).translated||Boolean(machineNames[c.name])).length}</strong> із {categories.length}. Машинний переклад застосовується для назв, відсутніх у словнику. <button type="button" className="secondary" disabled={translationLoading} onClick={()=>void translateAllCategories()}>{translationLoading?'Перекладаємо…':'Повторити переклад відсутніх назв'}</button>{translationStatus&&<small style={{display:'block'}} role="status">{translationStatus}</small>}</p>
    {addMessage&&<p role="status" aria-live="polite">{addMessage}</p>}
+   {stockStatusError&&<p role="alert">{stockStatusError} Нових надходжень до перевірки не виконуйте.</p>}
+   {stockStatusLoading&&<small role="status">Звіряємо зі складом…</small>}
+   <button type="button" className="secondary" disabled={stockStatusLoading} onClick={()=>void refreshStockStatus()}>Оновити статус складу</button>
    <div style={{maxHeight:310,overflowY:'auto',border:'1px solid #dae5e0',borderRadius:9}}>
     {categories.map(c=><div key={c.pt_id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:8,padding:'9px 12px',borderBottom:'1px solid #e7efeb'}}>
      <label style={{display:'flex',gap:8,alignItems:'center',flex:1}}><input type="checkbox" disabled={busy} checked={selectedTypes.includes(c.pt_id)} onChange={e=>setSelectedTypes(old=>e.target.checked?[...old,c.pt_id]:old.filter(id=>id!==c.pt_id))}/><span><strong>{localizedName(c.name)}</strong>{(ukrainianPartName(c.name).translated||Boolean(machineNames[c.name]))&&<small style={{display:'block',color:'#61746c'}}>Оригінал: {c.name}</small>}{!ukrainianPartName(c.name).translated&&!machineNames[c.name]&&<small style={{display:'block',color:'#9a611c'}}>Потрібен перевірений український відповідник</small>}<small style={{display:'block'}}>{c.article_count.toLocaleString('uk-UA')} артикулів</small></span></label>
      <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
-      <button type="button" disabled={addingType!==null||savedKtype!==picked||Boolean(addedTypes[c.pt_id])} className="secondary" onClick={()=>void addSelectedType(c)}>{addedTypes[c.pt_id]?'Додано':addingType===c.pt_id?'Додаємо…' :'Додати на склад'}</button>
+      <button type="button" disabled={addingType!==null||stockStatusLoading||Boolean(stockStatusError)||savedKtype!==picked||Boolean(alreadyStored(c))} className="secondary" onClick={()=>void addSelectedType(c)}>{alreadyStored(c)?'На складі · '+alreadyStored(c)?.quantity+' шт.':addingType===c.pt_id?'Додаємо…':'Додати на склад'}</button>
       <button type="button" disabled={paidDisabled} className="secondary" onClick={()=>getArticles(c.pt_id)}>Артикули (до 2 токенів)</button>
      </div>
     </div>)}
