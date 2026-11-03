@@ -118,10 +118,10 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
   </div>}
   {phase==='articles'&&<section style={{marginTop:12}}>
    <h4>{selected?ukrainianPartName(selected.name).uk:'Обрана категорія'} · {articles.length.toLocaleString('uk-UA')} артикулів</h4>
-   <p>Унікальних назв: <strong>{new Set(articles.map(a=>a.part_name.toLocaleLowerCase('uk-UA'))).size}</strong>. Аналоги різних виробників не можна автоматично додавати як окремі фізичні деталі.</p>
+   <p>Унікальних назв: <strong>{new Set(articles.map(a=>a.part_name.toLocaleLowerCase('uk-UA')).filter(Boolean)).size}</strong>. Аналоги різних виробників не можна автоматично додавати як окремі фізичні деталі.</p>
    <div style={{maxHeight:350,overflowY:'auto'}}>
     <table><thead><tr><th>Деталь</th><th>Виробник</th><th>Артикул</th></tr></thead>
-     <tbody>{articles.slice(0,showAll?articles.length:80).map(a=><tr key={a.art_id}><td>{ukrainianPartName(a.part_name).uk}{ukrainianPartName(a.part_name).translated&&<small style={{display:'block',color:'#61746c'}}>Оригінал: {a.part_name}</small>}</td><td>{a.brand}</td><td>{a.article_nr}</td></tr>)}</tbody>
+     <tbody>{articles.slice(0,showAll?articles.length:80).map(a=><tr key={a.art_id}><td>{a.part_name?ukrainianPartName(a.part_name).uk:'Назва не вказана постачальником'}{ukrainianPartName(a.part_name).translated&&<small style={{display:'block',color:'#61746c'}}>Оригінал: {a.part_name}</small>}</td><td>{a.brand}</td><td>{a.article_nr}</td></tr>)}</tbody>
     </table>
    </div>
    {!showAll&&articles.length>80&&<button type="button" className="secondary" onClick={()=>setShowAll(true)}>Показати всі {articles.length.toLocaleString('uk-UA')} артикулів без нового запиту</button>}
