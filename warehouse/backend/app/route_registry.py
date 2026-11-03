@@ -103,6 +103,8 @@ KNOWN_ROUTES = frozenset({
     ('POST', '/api/v1/plan-parts/categories/lookup'),
     ('POST', '/api/v1/plan-parts/donor-parts/add'),
     ('GET', '/api/v1/plan-parts/donor-parts/status'),
+    ('GET', '/api/v1/plan-parts/donor-parts/classification/preview'),
+    ('POST', '/api/v1/plan-parts/donor-parts/classification/apply'),
     ('POST', '/api/v1/plan-parts/donor-parts/receive-pending'),
     ('POST', '/api/v1/plan-parts/categories/recover'),
     ('POST', '/api/v1/plan-parts/translations/lookup'),

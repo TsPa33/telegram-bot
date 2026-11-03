@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 from app.models import Part
+from app.services.plan_parts_classification import classify, match_existing_category
 from app.db import get_db
 from app.models import Vehicle
 from app.services.inventory import owned, record, snapshot, stock
@@ -318,6 +319,12 @@ def add_selected_donor_part(
         _handle_provider(exc)
     if not any(cat.pt_id == data.pt_id for cat in types):
         raise HTTPException(422, "Вибраного типу немає в перевіреному каталозі цієї модифікації")
+    # Classify the *verified* generic supplier type, not a user-submitted
+    # category ID. Match only preexisting CarPot categories of this workspace.
+    verified_type = next(cat for cat in types if cat.pt_id == data.pt_id)
+    classification = match_existing_category(
+        db, who.workspace_account_id,
+        classify(getattr(verified_type, 'name', ''), data.ukrainian_name), data.ukrainian_name)
     # Reference ID is part of CarPot's internal provenance, not an article copy.
     marker = f"plan.parts:ktype={data.ktype};pt_id={data.pt_id}"
     previous = db.scalar(select(Part).where(
@@ -364,6 +371,8 @@ def add_selected_donor_part(
         account_id=who.workspace_account_id,
         vehicle_id=donor.id,
         name=name,
+        category_id=classification["category_id"],
+        subcategory_id=classification["subcategory_id"],
         inventory_origin="manual",
         quantity_basis="assumed",
         physical_location_kind="on_vehicle",
@@ -385,6 +394,7 @@ def add_selected_donor_part(
     db.commit()
     return {"created": True, "received": True, "part_id": part.id,
             "name": name, "quantity": part.quantity,
+            "classification": {k: classification[k] for k in ("kind", "section", "mapping")},
             "message": "Запчастину додано на склад: 1 одиниця"}
 
 
@@ -422,3 +432,94 @@ def receive_previously_added_parts(
     db.commit()
     return {"received_count": len(pending),
             "message": "Раніше додані позиції оприбутковано без повторного створення"}
+
+
+def _owner_plan_parts_donor(who, db, vehicle_id: str, ktype: int, *, lock=False):
+    if who.user.role != "DIRECTOR" or who.user.id != who.workspace_account_id:
+        raise HTTPException(403, "Класифікація зовнішніх даних доступна лише власнику")
+    donor = owned(db, Vehicle, vehicle_id, who.workspace_account_id, lock=lock, active=True)
+    if donor.ktype != ktype:
+        raise HTTPException(409, "Вибрана модифікація автомобіля змінилася")
+    return donor
+
+
+def _legacy_classification_plan(db, who, donor, ktype):
+    """Analyze existing parts, no mutation or external API calls."""
+    prefix = f"plan.parts:ktype={ktype};pt_id="
+    parts = list(db.scalars(select(Part).where(
+        Part.account_id == who.workspace_account_id,
+        Part.vehicle_id == donor.id,
+        Part.archived.is_(False),
+        Part.compatibility_notes.like(prefix + "%"),
+    ).order_by(Part.created_at)))
+    rows = []
+    for part in parts:
+        # A historical stock card has only the confirmed saved Ukrainian name;
+        # classify conservatively rather than reconstructing a vanished API body.
+        proposal = match_existing_category(db, who.workspace_account_id,
+                                           classify("", part.name), part.name)
+        if part.category_id is not None:
+            action = "already_categorized"
+        elif proposal["category_id"] is None:
+            action = "needs_review"
+        else:
+            action = "can_apply"
+        rows.append({
+            "part_id": part.id, "name": part.name,
+            "kind": proposal["kind"], "section": proposal["section"],
+            "mapping": proposal["mapping"], "action": action,
+            "category_id": proposal["category_id"],
+            "subcategory_id": proposal["subcategory_id"]
+        })
+    return rows
+
+
+@router.get("/donor-parts/classification/preview")
+def donor_classification_preview(
+    who: Annotated[Identity, Depends(identity)],
+    db: Annotated[Session, Depends(get_db)],
+    vehicle_id: str = Query(min_length=1, max_length=80),
+    ktype: int = Query(gt=0),
+):
+    donor = _owner_plan_parts_donor(who, db, vehicle_id, ktype)
+    rows = _legacy_classification_plan(db, who, donor, ktype)
+    return {
+        "rows": rows, "total": len(rows),
+        "can_apply": sum(r["action"] == "can_apply" for r in rows),
+        "needs_review": sum(r["action"] == "needs_review" for r in rows),
+        "already_categorized": sum(r["action"] == "already_categorized" for r in rows),
+        "no_stock_changes": True,
+    }
+
+
+@router.post("/donor-parts/classification/apply")
+def donor_classification_apply(
+    who: Annotated[Identity, Depends(identity)],
+    db: Annotated[Session, Depends(get_db)],
+    vehicle_id: str = Query(min_length=1, max_length=80),
+    ktype: int = Query(gt=0),
+):
+    """Owner-confirmed metadata-only repair of previously uncategorized parts.
+
+    No inserts, deletes, sales, receipts or changes to quantities and prices.
+    Existing category choices are never overwritten.
+    """
+    donor = _owner_plan_parts_donor(who, db, vehicle_id, ktype, lock=True)
+    plan = _legacy_classification_plan(db, who, donor, ktype)
+    updated = []
+    for row in plan:
+        if row["action"] != "can_apply":
+            continue
+        part = owned(db, Part, row["part_id"], who.workspace_account_id, lock=True)
+        if part.vehicle_id != donor.id or part.category_id is not None:
+            continue
+        before = snapshot(part)
+        part.category_id = row["category_id"]
+        part.subcategory_id = row["subcategory_id"]
+        record(db, who.workspace_account_id, part, "part_update",
+               "Уточнено категорію запчастини plan.parts без зміни залишків", before)
+        updated.append(part.id)
+    db.commit()
+    return {"updated_count": len(updated), "part_ids": updated,
+            "needs_review": sum(r["action"] == "needs_review" for r in plan),
+            "message": "Категорії оновлено; складські залишки та ціни не змінено"}
