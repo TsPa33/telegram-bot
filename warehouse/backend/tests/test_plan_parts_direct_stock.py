@@ -53,5 +53,20 @@ def test_selected_part_creates_one_stock_unit_and_does_not_duplicate(logged, veh
         assert recovered.json()["created"] is False
         assert recovered.json()["received"] is True
         assert recovered.json()["quantity"]==1
+        reset_again=logged.post(
+            "/api/v1/parts/"+first.json()["part_id"]+"/operations",
+            json={"type":"correction","quantity":0,"reason":"Test historical zero quantity"},
+        )
+        assert reset_again.status_code==200,reset_again.text
+        migrate=logged.post(
+            "/api/v1/plan-parts/donor-parts/receive-pending?vehicle_id="+vehicle["id"]+"&ktype=131094",
+        )
+        assert migrate.status_code==200,migrate.text
+        assert migrate.json()["received_count"]==1
+        migrate_again=logged.post(
+            "/api/v1/plan-parts/donor-parts/receive-pending?vehicle_id="+vehicle["id"]+"&ktype=131094",
+        )
+        assert migrate_again.status_code==200,migrate_again.text
+        assert migrate_again.json()["received_count"]==0
     finally:
         app.dependency_overrides.pop(plan_parts_client,None)
