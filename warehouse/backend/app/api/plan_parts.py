@@ -85,3 +85,72 @@ def vehicle_coverage_lookup(
         "article_records": total,
         "note": "Артикули різних виробників не дорівнюють кількості окремих деталей автомобіля.",
     }
+
+
+def _owned_paid_vehicle(who, db, vehicle_id):
+    """Only workspace director may spend the provider's tokens during MVP."""
+    if who.user.role != "DIRECTOR" or who.user.id != who.workspace_account_id:
+        raise HTTPException(403, "Платні запити plan.parts доступні лише власнику")
+    donor = owned(db, Vehicle, vehicle_id, who.workspace_account_id)
+    if donor.archived:
+        raise HTTPException(409, "Автомобіль в архіві")
+    return donor
+
+
+def _handle_provider(exc):
+    raise HTTPException(exc.status, str(exc),
+                        headers={"Retry-After": "60"} if exc.status == 429 else None) from None
+
+
+@router.post("/vehicle-matches/lookup")
+def vehicle_matches(
+    who: Annotated[Identity, Depends(identity)],
+    client: Annotated[PlanPartsClient, Depends(plan_parts_client)],
+    db: Annotated[Session, Depends(get_db)],
+    vehicle_id: str = Query(min_length=1, max_length=80),
+):
+    donor = _owned_paid_vehicle(who, db, vehicle_id)
+    try:
+        rows = client.vehicle_matches(who.workspace_account_id, donor.manufacturer, donor.model, donor.year)
+    except PlanPartsError as exc:
+        _handle_provider(exc)
+    return {"vehicle": f"{donor.manufacturer} {donor.model} {donor.year}",
+            "matches": [row.model_dump() for row in rows], "exact_fitment": False,
+            "message": "Виберіть модифікацію вручну. Рік та модель не підтверджують сумісність конкретного VIN."}
+
+
+@router.post("/categories/lookup")
+def vehicle_categories(
+    who: Annotated[Identity, Depends(identity)],
+    client: Annotated[PlanPartsClient, Depends(plan_parts_client)],
+    db: Annotated[Session, Depends(get_db)],
+    vehicle_id: str = Query(min_length=1, max_length=80),
+    ktype: int = Query(gt=0),
+):
+    _owned_paid_vehicle(who, db, vehicle_id)
+    try:
+        rows = client.categories(who.workspace_account_id, ktype)
+    except PlanPartsError as exc:
+        _handle_provider(exc)
+    return {"ktype": ktype, "categories": [row.model_dump() for row in rows],
+            "category_count": len(rows), "article_records": sum(row.article_count for row in rows),
+            "message": "Це артикули aftermarket, а не фізичні запчастини автомобіля."}
+
+
+@router.post("/articles/lookup")
+def vehicle_articles(
+    who: Annotated[Identity, Depends(identity)],
+    client: Annotated[PlanPartsClient, Depends(plan_parts_client)],
+    db: Annotated[Session, Depends(get_db)],
+    vehicle_id: str = Query(min_length=1, max_length=80),
+    ktype: int = Query(gt=0),
+    pt_id: int = Query(gt=0),
+):
+    _owned_paid_vehicle(who, db, vehicle_id)
+    try:
+        rows = client.articles(who.workspace_account_id, ktype, pt_id)
+    except PlanPartsError as exc:
+        _handle_provider(exc)
+    return {"ktype": ktype, "pt_id": pt_id, "articles": [row.model_dump() for row in rows],
+            "total": len(rows), "unique_names": len({row.part_name.casefold() for row in rows}),
+            "message": "Кількість різних назв є орієнтиром, не гарантованим переліком деталей для розбору."}
