@@ -324,7 +324,7 @@ def add_selected_donor_part(
     verified_type = next(cat for cat in types if cat.pt_id == data.pt_id)
     classification = match_existing_category(
         db, who.workspace_account_id,
-        classify(verified_type.name, data.ukrainian_name), data.ukrainian_name)
+        classify(getattr(verified_type, 'name', ''), data.ukrainian_name), data.ukrainian_name)
     # Reference ID is part of CarPot's internal provenance, not an article copy.
     marker = f"plan.parts:ktype={data.ktype};pt_id={data.pt_id}"
     previous = db.scalar(select(Part).where(
