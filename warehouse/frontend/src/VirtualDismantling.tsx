@@ -93,7 +93,7 @@ export default function VirtualDismantling({vehicle,onSaved}:{vehicle:Row;onSave
      <button className="secondary" disabled={locked} onClick={()=>setCoverage(null)}>Скасувати</button>
     </div>
     <small>Тестовий режим. Оплати, внутрішні бали й списання з користувачів вимкнені.</small>
-    {identity?.role==='DIRECTOR'&&<PlanPartsDonorAnalysis vehicle={vehicle}/>}
+    {identity?.role==='DIRECTOR'&&<PlanPartsDonorAnalysis vehicle={vehicle} onSaved={onSaved}/>}
    </div>
   </section>}
   {formation&&<div className="catalogue-formation" role="status" aria-live="polite"><span className="catalogue-formation-spinner" aria-hidden="true"/><div><strong>{formation==='create'?'Формуємо запчастини автомобіля':'Оновлюємо перелік запчастин'}</strong><p>Обробляємо дані каталогу. Кількість позицій з’явиться після відповіді сервера.</p></div></div>}
