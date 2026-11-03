@@ -305,9 +305,60 @@ def donor_part_stock_status(
     return {"parts": [
         {"id": p.id, "pt_id": int(p.compatibility_notes[len(prefix):])
          if p.compatibility_notes[len(prefix):].isdigit() else None,
-         "name": p.name, "quantity": p.quantity, "archived": p.archived}
+         "name": p.name, "quantity": p.quantity, "archived": p.archived,
+         "article_number": p.article_number}
         for p in existing
     ], "duplicate_names": duplicates}
+
+
+class ConfirmDonorArticle(BaseModel):
+    ktype: int = Field(strict=True, gt=0)
+    pt_id: int = Field(strict=True, gt=0)
+    art_id: int = Field(strict=True, gt=0)
+    part_id: str = Field(min_length=1, max_length=36)
+
+
+@router.post("/donor-parts/article/select")
+def select_donor_part_article(
+    data: ConfirmDonorArticle,
+    who: Annotated[Identity, Depends(identity)],
+    client: Annotated[PlanPartsClient, Depends(plan_parts_client)],
+    db: Annotated[Session, Depends(get_db)],
+    vehicle_id: str = Query(min_length=1, max_length=80),
+):
+    """Owner-confirmed aftermarket reference for an existing stock card.
+
+    Read ONLY the already-paid provider cache. Never call paid endpoints here.
+    Do not assign a supplier offer automatically or claim verified OEM fitment.
+    """
+    if who.user.role != "DIRECTOR" or who.user.id != who.workspace_account_id:
+        raise HTTPException(403, "Призначати артикул може лише власник")
+    donor = owned(db, Vehicle, vehicle_id, who.workspace_account_id, lock=True, active=True)
+    if donor.ktype != data.ktype:
+        raise HTTPException(409, "Модифікація автомобіля змінилася")
+    part = owned(db, Part, data.part_id, who.workspace_account_id, lock=True, active=True)
+    if part.vehicle_id != donor.id or not part.compatibility_notes.startswith(
+            f"plan.parts:ktype={data.ktype};pt_id="):
+        raise HTTPException(422, "Запчастина не належить цьому донору та каталогу")
+    if part.quantity < 1:
+        raise HTTPException(409, "Спочатку додайте запчастину на склад")
+    try:
+        rows = client.recover_articles(who.workspace_account_id, data.ktype, data.pt_id)
+    except PlanPartsError as exc:
+        _handle_provider(exc)
+    offer = next((x for x in rows if x.art_id == data.art_id), None)
+    if offer is None:
+        raise HTTPException(422, "Артикулу немає в підтвердженій відповіді Plan.Parts")
+    if len(offer.article_nr) > 150:
+        raise HTTPException(422, "Артикул перевищує ліміт картки складу")
+    if part.article_number == offer.article_nr:
+        return {"part_id": part.id, "article_number": part.article_number, "changed": False}
+    before = snapshot(part)
+    part.article_number = offer.article_nr
+    record(db, who.workspace_account_id, part, "part_update",
+           f"Власник вибрав aftermarket-артикул із Plan.Parts: тип {data.pt_id}, артикул {data.art_id}; VIN/OEM не підтверджено", before)
+    db.commit()
+    return {"part_id": part.id, "article_number": part.article_number, "changed": True}
 
 
 @router.post("/donor-parts/add")
