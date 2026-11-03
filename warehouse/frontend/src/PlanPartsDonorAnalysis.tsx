@@ -3,6 +3,8 @@ import {TeamIdentity} from './permissions';
 import {api,ApiError,type Row} from './api';
 import {ukrainianPartName} from './planPartsUkrainian';
 import PlanPartsBatch from './PlanPartsBatch';
+import {sections as corporateSections} from './PartsQuickCategories';
+import {Boxes, CircleHelp, CheckCircle2, LoaderCircle} from 'lucide-react';
 import './plan-parts-workspace.css';
 
 type Match={ktype:number;modification:string;year_from?:number;year_to?:number;power_kw?:number;power_ps?:number};
@@ -21,6 +23,8 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
  const [batchBusy,setBatchBusy]=useState(false);
  const [confirmBatch,setConfirmBatch]=useState(false);
  const [batchProgress,setBatchProgress]=useState(0);
+ const [batchTotal,setBatchTotal]=useState(0);
+ const [batchGroup,setBatchGroup]=useState('');
  const stopBatch=useRef(false);
  const [picked,setPicked]=useState<number>(Number(vehicle.ktype)||0);
  const [savedKtype,setSavedKtype]=useState<number>(Number(vehicle.ktype)||0);
@@ -259,12 +263,13 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
   const pending=categories.filter(c=>selectedTypes.includes(c.pt_id)&&!alreadyStored(c));
   setConfirmBatch(false);
   if(!pending.length){setAddMessage('Нових вибраних запчастин немає.');return;}
-  addLock.current=true;stopBatch.current=false;setBatchBusy(true);setBatchProgress(0);
+  addLock.current=true;stopBatch.current=false;setBatchBusy(true);setBatchProgress(0);setBatchTotal(pending.length);setBatchGroup('Підготовка запчастин');
   let done=0;
   try{
-   for(let offset=0;offset<pending.length;offset+=30){
+   for(let offset=0;offset<pending.length;offset+=20){
     if(stopBatch.current)break;
-    const subset=pending.slice(offset,offset+30);
+    const subset=pending.slice(offset,offset+20);
+    setBatchGroup('Оприбуткування · група '+(Math.floor(offset/20)+1)+' із '+Math.ceil(pending.length/20));
     const valid=subset.filter(c=>/[А-Яа-яІіЇїЄєҐґ]/.test(localizedName(c.name)));
     if(valid.length!==subset.length)throw Error('Деякі назви не перекладено. Повторіть переклад і звірте склад.');
     const response=await api<{results:{pt_id:number;ok:boolean;error?:string}[];attempted:number}>(
@@ -290,18 +295,21 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
  // the backend against the workspace taxonomy; ambiguous names stay "Інші".
  const sectionOf=(c:Category)=>{
   const raw=(c.name+' '+localizedName(c.name)).toLocaleLowerCase('uk-UA');
-  if(/tool|puller|інструмент|знімач|fluid|антифриз|паста для|олива|lubricant/.test(raw))return 'Обладнання та матеріали';
+  if(/tool|puller|інструмент|знімач|fluid|антифриз|паста для|олива|lubricant/.test(raw))return 'Обладнання та витратні матеріали';
   if(/brake|гальм|супорт|колодк/.test(raw))return 'Гальмівна система';
-  if(/steering|кермов|рульов/.test(raw))return 'Кермове керування';
-  if(/suspension|shock absorber|strut|стабілізатор|підвіск|амортиз/.test(raw))return 'Підвіска і ходова';
+  if(/steering|кермов|рульов/.test(raw))return 'Кермове управління';
+  if(/suspension|shock absorber|strut|стабілізатор|підвіск|амортиз|кульов.{0,5}опор/.test(raw))return 'Підвіска та ходова частина';
   if(/headlight|bulb|tail light|direction indicator|lamp|фар|ламп|ліхтар|освітл/.test(raw))return 'Освітлення';
   if(/air conditioning|heater|клімат|кондиціон|обігрів|пічк/.test(raw))return 'Кліматична система';
   if(/transmission|gearbox|drive shaft|differential|трансміс|шрус|диференціал|коробк.{0,9}передач/.test(raw))return 'Трансмісія та привід';
-  if(/fuel|engine|filter|coolant|crankshaft|camshaft|turbo|двигун|палив|фільтр|охолодж|турбін/.test(raw))return 'Двигун і системи';
-  if(/window|mirror|door|bumper|wing|fender|body panel|кузов|дзеркал|двер|капот|бампер/.test(raw))return 'Кузов і зовнішні деталі';
+  if(/airbag|seat belt|подушк.{0,10}безпек|ремен.{0,10}безпек/.test(raw))return 'Системи безпеки';
+  if(/seat|dashboard|interior|килимок|салон|сидін|панель приладів/.test(raw))return 'Салон та інтер’єр';
+  if(/window|mirror|door|bumper|wing|fender|body panel|кузов|дзеркал|двер|капот|бампер/.test(raw))return 'Кузов та зовнішні деталі';
   if(/sensor|alternator|wiring|relay|starter|battery|датчик|генератор|реле|акумулятор|стартер/.test(raw))return 'Електрика та електроніка';
-  return 'Інші деталі';
+  if(/fuel|engine|filter|coolant|crankshaft|camshaft|turbo|двигун|палив|фільтр|охолодж|турбін/.test(raw))return 'Двигун та його системи';
+  return 'Потребують уточнення';
  };
+
  const filteredCategories=categories.filter(c=>{
   const name=localizedName(c.name).toLocaleLowerCase('uk-UA');
   const search=partQuery.trim().toLocaleLowerCase('uk-UA');
@@ -347,9 +355,17 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
       </div>}
       {classMessage&&<p role="status">{classMessage}</p>}
      </div>}
+     {categories.length>0&&<section className="cp-plan-corporate" aria-label="Корпоративний категоризатор CarPot">
+      <div className="cp-plan-heading"><h4>Категорії CarPot</h4><small>Оберіть систему автомобіля</small></div>
+      <div className="cp-plan-corporate-tiles">
+       <button type="button" aria-pressed={onlyCategory==='all'} className={'cp-plan-corporate-tile'+(onlyCategory==='all'?' selected':'')} onClick={()=>setOnlyCategory('all')}><Boxes size={21}/><span>Усі категорії</span></button>
+       {corporateSections.map(section=>{const Icon=section.icon;const count=categories.filter(c=>sectionOf(c)===section.name).length;return <button type="button" key={section.name} aria-pressed={onlyCategory===section.name} className={'cp-plan-corporate-tile'+(onlyCategory===section.name?' selected':'')} onClick={()=>setOnlyCategory(section.name)}><Icon size={21}/><span>{section.name}</span><small>{count}</small></button>})}
+       {categories.some(c=>sectionOf(c)==='Потребують уточнення')&&<button type="button" aria-pressed={onlyCategory==='Потребують уточнення'} className={'cp-plan-corporate-tile'+(onlyCategory==='Потребують уточнення'?' selected':'')} onClick={()=>setOnlyCategory('Потребують уточнення')}><CircleHelp size={21}/><span>Потребують уточнення</span><small>{categories.filter(c=>sectionOf(c)==='Потребують уточнення').length}</small></button>}
+      </div>
+     </section>}
      <div className="cp-plan-filters">
       <input aria-label="Пошук запчастин" placeholder="Пошук запчастини або типу…" value={partQuery} onChange={e=>setPartQuery(e.target.value)}/>
-      <select aria-label="Категорія" value={onlyCategory} onChange={e=>setOnlyCategory(e.target.value)}><option value="all">Усі категорії</option>{[...new Set(categories.map(sectionOf))].sort((a,b)=>a.localeCompare(b,"uk")).map(group=><option key={group} value={group}>{group}</option>)}</select>
+      
       <select aria-label="Статус" value={stockFilter} onChange={e=>setStockFilter(e.target.value)}><option value="all">Усі статуси</option><option value="new">Не на складі</option><option value="stored">Вже на складі</option></select>
      </div>
      {categories.length>0?<><div className="cp-plan-select-actions"><button type="button" className="secondary" onClick={()=>setSelectedTypes(categories.map(c=>c.pt_id))}>Вибрати всі</button><button type="button" className="secondary" onClick={()=>setSelectedTypes([])}>Зняти вибір</button><small>Вибрано: {selectedTypes.length}</small></div>
@@ -409,7 +425,13 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
      <div><span>Вже на складі</span><strong>{categories.filter(c=>Boolean(alreadyStored(c))).length}</strong></div>
      <div><span>Режим</span><strong>plan.parts API</strong></div>
     </div>
-    {batchBusy&&<div role="status" className="cp-plan-batch-status">Опрацьовано: {batchProgress} <button type="button" className="secondary" onClick={()=>{stopBatch.current=true;}}>Зупинити після поточної групи</button></div>}
+    {batchBusy&&<div role="status" aria-live="polite" className="cp-plan-batch-status">
+     <div className="cp-plan-batch-heading"><LoaderCircle className="cp-plan-spinner" size={18}/><strong>Додаємо запчастини на склад</strong><b>{Math.round(batchProgress/Math.max(1,batchTotal)*100)}%</b></div>
+     <div className="cp-plan-progress-track" role="progressbar" aria-label="Прогрес оприбуткування" aria-valuemin={0} aria-valuemax={batchTotal} aria-valuenow={batchProgress}><div className="cp-plan-progress-fill" style={{width:Math.min(100,batchProgress/Math.max(1,batchTotal)*100)+'%'}}/></div>
+     <p>Опрацьовано <strong>{batchProgress} із {batchTotal}</strong> · {batchGroup}</p>
+     <small>Сторінка працює. Додаємо невеликими групами, кожна з перевіркою результату.</small>
+     <button type="button" className="secondary" disabled={stopBatch.current} onClick={()=>{stopBatch.current=true;}}>Зупинити після поточної групи</button>
+    </div>}
     {confirmBatch&&<div role="alertdialog" aria-label="Підтвердження додавання на склад" className="cp-plan-confirm">
      <strong>Додати {chosenNew} вибраних типів на склад?</strong>
      <p>Кожна нова запчастина матиме залишок 1 шт. Повторні записи не створюються. Токени plan.parts не витрачаються.</p>
