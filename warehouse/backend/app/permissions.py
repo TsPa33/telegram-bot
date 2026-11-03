@@ -57,6 +57,8 @@ def route_permissions(method,path,body):
     if path=='/plan-parts/vehicle-modification/select':return ['vehicles.view','vehicles.edit','dismantling.manage']
     if path=='/plan-parts/donor-parts/add':return ['vehicles.view','inventory.create','dismantling.manage']
     if path=='/plan-parts/donor-parts/status':return ['vehicles.view','inventory.view']
+    if path=='/plan-parts/donor-parts/classification/preview':return ['vehicles.view','inventory.view']
+    if path=='/plan-parts/donor-parts/classification/apply':return ['vehicles.view','inventory.adjust_quantity','dismantling.manage']
     if path=='/plan-parts/donor-parts/receive-pending':return ['vehicles.view','inventory.create','inventory.adjust_quantity','dismantling.manage']
     if path.startswith('/plan-parts/'):return ['vehicles.create']
     if path.startswith('/dismantling/catalog/'):return ['catalog.import']
