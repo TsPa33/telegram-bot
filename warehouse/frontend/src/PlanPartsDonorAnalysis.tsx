@@ -20,6 +20,7 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
  const [addingType,setAddingType]=useState<number|null>(null);
  type StoredPart={id:string;pt_id:number|null;name:string;quantity:number;archived:boolean};
  const [stockParts,setStockParts]=useState<StoredPart[]>([]);
+ const [duplicateStockNames,setDuplicateStockNames]=useState<{name:string;count:number}[]>([]);
  const [stockStatusLoading,setStockStatusLoading]=useState(false);
  const [stockStatusError,setStockStatusError]=useState('');
  const nameKey=(s:string)=>s.trim().toLocaleLowerCase('uk-UA').replace(/\s+/g,' ');
@@ -28,13 +29,13 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
   if(!picked||savedKtype!==picked)return;
   setStockStatusLoading(true);
   try{
-   const r=await api<{parts:StoredPart[]}>('/plan-parts/donor-parts/status?vehicle_id='+donorId+'&ktype='+picked);
-   setStockParts(r.parts);setStockStatusError('');
+   const r=await api<{parts:StoredPart[];duplicate_names:{name:string;count:number}[]}>('/plan-parts/donor-parts/status?vehicle_id='+donorId+'&ktype='+picked);
+   setStockParts(r.parts);setDuplicateStockNames(r.duplicate_names||[]);setStockStatusError('');
   }catch(e){setStockStatusError('Не вдалося перевірити фактичний статус складу: '+(e as Error).message);}
   finally{setStockStatusLoading(false);}
  }
  useEffect(()=>{
-  if(!picked||savedKtype!==picked){setStockParts([]);return;}
+  if(!picked||savedKtype!==picked){setStockParts([]);setDuplicateStockNames([]);return;}
   void refreshStockStatus();
   // Reload only when donor/confirmed modification changes.
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -265,6 +266,7 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
    <p style={{margin:'8px 0'}}>Українські назви: <strong>{categories.filter(c=>ukrainianPartName(c.name).translated||Boolean(machineNames[c.name])).length}</strong> із {categories.length}. Машинний переклад застосовується для назв, відсутніх у словнику. <button type="button" className="secondary" disabled={translationLoading} onClick={()=>void translateAllCategories()}>{translationLoading?'Перекладаємо…':'Повторити переклад відсутніх назв'}</button>{translationStatus&&<small style={{display:'block'}} role="status">{translationStatus}</small>}</p>
    {addMessage&&<p role="status" aria-live="polite">{addMessage}</p>}
    {stockStatusError&&<p role="alert">{stockStatusError} Нових надходжень до перевірки не виконуйте.</p>}
+   {duplicateStockNames.length>0&&<p role="alert">У цього автомобіля вже є {duplicateStockNames.length} однакових назв серед запчастин plan.parts. Записи не видаляємо автоматично, щоб не втратити залишки й історію: {duplicateStockNames.map(d=>d.name+' ('+d.count+')').join('; ')}.</p>}
    {stockStatusLoading&&<small role="status">Звіряємо зі складом…</small>}
    <button type="button" className="secondary" disabled={stockStatusLoading} onClick={()=>void refreshStockStatus()}>Оновити статус складу</button>
    <div style={{maxHeight:310,overflowY:'auto',border:'1px solid #dae5e0',borderRadius:9}}>
