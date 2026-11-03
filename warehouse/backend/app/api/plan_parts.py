@@ -334,3 +334,39 @@ def add_selected_donor_part(
     return {"created": True, "received": True, "part_id": part.id,
             "name": name, "quantity": part.quantity,
             "message": "Запчастину додано на склад: 1 одиниця"}
+
+
+@router.post("/donor-parts/receive-pending")
+def receive_previously_added_parts(
+    who: Annotated[Identity, Depends(identity)],
+    db: Annotated[Session, Depends(get_db)],
+    vehicle_id: str = Query(min_length=1, max_length=80),
+    ktype: int = Query(gt=0),
+):
+    """One-time audited stock receipt for legacy zero-balance plan.parts selections.
+
+    Only already selected, existing positions for this exact donor/K-Type can be
+    received. Other donor parts and manually recorded zero quantities are never
+    modified. On repeated calls the response is a harmless no-op.
+    """
+    if who.user.role != "DIRECTOR" or who.user.id != who.workspace_account_id:
+        raise HTTPException(403, "Оприбуткування зовнішнього каталогу доступне лише власнику")
+    donor = owned(db, Vehicle, vehicle_id, who.workspace_account_id, lock=True, active=True)
+    if donor.ktype != ktype:
+        raise HTTPException(409, "Вибрана модифікація автомобіля змінилася")
+    marker = f"plan.parts:ktype={ktype};pt_id="
+    pending = list(db.scalars(select(Part).where(
+        Part.account_id == who.workspace_account_id,
+        Part.vehicle_id == donor.id,
+        Part.archived.is_(False),
+        Part.quantity == 0,
+        Part.compatibility_notes.like(marker + "%"),
+    ).with_for_update()))
+    for part in pending:
+        stock(db, part, StockInput(
+            type="receipt", quantity=1,
+            reason="Разове оприбуткування раніше вибраної запчастини plan.parts",
+        ), who.workspace_account_id)
+    db.commit()
+    return {"received_count": len(pending),
+            "message": "Раніше додані позиції оприбутковано без повторного створення"}
