@@ -106,7 +106,7 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
      {selectedTypes.length===0&&<strong>Оберіть хоча б один тип запчастин</strong>}
     </div>
     <p style={{margin:'8px 0'}}>Після отримання артикули з’являться під списком. Повторні однакові запити протягом 30 хвилин використовують тимчасовий кеш Backend без нових звернень до plan.parts, доки сервер не перезапущено.</p>
-    <PlanPartsBatch vehicleId={String(vehicle.id)} ktype={picked} selected={selectedCategories} disabled={busy||savedKtype!==picked} />
+    <PlanPartsBatch key={picked} vehicleId={String(vehicle.id)} ktype={picked} selected={selectedCategories} disabled={busy||savedKtype!==picked} />
    </div>
    <p style={{margin:'8px 0'}}>Українські назви зі словника: <strong>{translatedCategoryCount(categories.map(c=>c.name))}</strong> із {categories.length}. Неперекладені терміни залишені оригінальними для точності.</p>
    <div style={{maxHeight:310,overflowY:'auto',border:'1px solid #dae5e0',borderRadius:9}}>
