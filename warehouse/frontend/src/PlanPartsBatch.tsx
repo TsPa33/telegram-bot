@@ -98,7 +98,7 @@ export default function PlanPartsBatch({
     const articles=response.articles;
     done[String(cat.pt_id)]={
      count:articles.length,
-     names:new Set(articles.map(a=>a.part_name.trim().toLocaleLowerCase('uk-UA'))).size,
+     names:new Set(articles.map(a=>a.part_name.trim().toLocaleLowerCase('uk-UA')).filter(Boolean)).size,
      finishedAt:Date.now()
     };
     setData(previous=>({...previous,[String(cat.pt_id)]:articles}));
@@ -213,7 +213,7 @@ export default function PlanPartsBatch({
   {previewId!==null&&<div style={{marginTop:12}}>
    <strong>Артикули вибраного типу: {rows.length}</strong>
    <div style={{maxHeight:260,overflow:'auto'}}><table><thead><tr><th>Назва</th><th>Бренд</th><th>Артикул</th></tr></thead><tbody>
-    {rows.map(a=><tr key={a.art_id}><td>{ukrainianPartName(a.part_name).uk}</td><td>{a.brand}</td><td>{a.article_nr}</td></tr>)}
+    {rows.map(a=><tr key={a.art_id}><td>{a.part_name?ukrainianPartName(a.part_name).uk:'Назва не вказана постачальником'}</td><td>{a.brand}</td><td>{a.article_nr}</td></tr>)}
    </tbody></table></div>
   </div>}
   <small>Тимчасовий серверний кеш діє до 30 хвилин і зникає після перезапуску. У браузері зберігається тільки короткий контрольний список завершених типів. Якщо Backend перезапуститься, не можна гарантувати безкоштовне відновлення всіх артикулів. Для постійного комерційного каталогу потрібне ліцензійне погодження.</small>
