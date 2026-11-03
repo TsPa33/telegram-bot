@@ -76,6 +76,12 @@ def classify(name_en: str, name_uk: str = "") -> dict:
     uk = (name_uk or "").strip()
     source = en or uk
     kind = "tool" if TOOL.search(source) else "consumable" if CONSUMABLE.search(source) else "kit" if KIT.search(source) else "part"
+    # Workshop tools and service fluids must never silently appear as physical
+    # dismantling components of the donor. Put them in the service/equipment
+    # section if one exists; never assert that the car contains them.
+    if kind in ("tool", "consumable"):
+        return {"kind": kind, "section": "Обладнання та витратні матеріали",
+                "confidence": "rule", "reason": "non_donor_goods"}
     # No verified parts classification may be inferred from vague descriptions.
     for regex, section in _OVERRIDES:
         if regex.search(source):
