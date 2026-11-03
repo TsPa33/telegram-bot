@@ -1,6 +1,7 @@
 """Explicit, bounded Plan.Parts requests. No cache, retries or background sync."""
 
 import json
+import logging
 from copy import deepcopy
 from collections import OrderedDict
 import os
@@ -14,6 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 
 BASE_URL = "https://cdn.plan.parts/api"
 MAX_RESPONSE_BYTES = 2 * 1024 * 1024
+logger = logging.getLogger(__name__)
 
 
 class PlanPartsError(Exception):
@@ -70,7 +72,7 @@ def provider_results(payload, selectors):
         envelope = payload["data"]
         payload = envelope.get("results")
         count = envelope.get("count")
-        if not isinstance(payload, list) or (count is not None and (type(count) is not int or count != len(payload))):
+        if not isinstance(payload, list) or (count is not None and (type(count) is not int or count < len(payload))):
             raise ValueError("Invalid or incomplete result count")
         for selector, expected in selectors.items():
             if selector in envelope and (type(envelope[selector]) is not type(expected) or envelope[selector] != expected):
@@ -186,8 +188,10 @@ request_gate = RequestGate()
 # Cache expires after 30 minutes and disappears on API restarts.
 CACHE_TTL_SECONDS = 1800
 CACHE_MAX_KEYS = 64
+RAW_CACHE_MAX_KEYS = 12
 _cache_lock = Lock()
 _result_cache = OrderedDict()
+_raw_response_cache = OrderedDict()
 
 
 class PlanPartsClient:
@@ -214,11 +218,16 @@ class PlanPartsClient:
         return self._lookup(account_id, "ktype", {"brand": brand, "model": model, "year": year},
                             VehicleMatch, "ktype", gate, path="/v1/aftermarket/ktype")
 
+    def recover_articles(self, account_id: str, ktype: int, pt_id: int):
+        """Revalidate cached paid response, never issue a paid request."""
+        return self._lookup(account_id, "articles", {"ktype": ktype, "pt_id": pt_id},
+                            Article, "art_id", request_gate, cache_only=True)
+
     def articles(self, account_id: str, ktype: int, pt_id: int, gate: RequestGate = request_gate):
         return self._lookup(account_id, "articles", {"ktype": ktype, "pt_id": pt_id},
                             Article, "art_id", gate)
 
-    def _lookup(self, account_id, resource, params, schema, identifier, gate, name_field="", path=None):
+    def _lookup(self, account_id, resource, params, schema, identifier, gate, name_field="", path=None, cache_only=False):
         # Cache only completed, validated responses, isolated by workspace,
         # provider resource, query and configured schema. A single lock prevents
         # concurrent identical paid requests from double-charging the same user.
@@ -235,42 +244,60 @@ class PlanPartsClient:
             for expired_key, (expires, _) in list(_result_cache.items()):
                 if expires <= now:
                     del _result_cache[expired_key]
+            for expired_key, (expires, _) in list(_raw_response_cache.items()):
+                if expires <= now:
+                    del _raw_response_cache[expired_key]
             existing = _result_cache.get(cache_key)
             if existing:
                 _result_cache.move_to_end(cache_key)
                 return deepcopy(existing[1])
-            result = self._uncached_lookup(account_id, resource, params, schema, identifier, gate, name_field, path)
+            raw_record = _raw_response_cache.get(cache_key)
+            if raw_record:
+                _raw_response_cache.move_to_end(cache_key)
+                cached_raw = raw_record[1]
+            elif cache_only:
+                raise PlanPartsError(409, "Термін тимчасового кешу минув; платний запит не виконувався")
+            else:
+                cached_raw = None
+            result = self._uncached_lookup(account_id, resource, params, schema, identifier, gate, name_field, path,
+                                           raw_bytes=cached_raw, raw_cache_key=cache_key)
             if len(result) <= 10000:
                 _result_cache[cache_key] = (monotonic() + CACHE_TTL_SECONDS, deepcopy(result))
                 while len(_result_cache) > CACHE_MAX_KEYS:
                     _result_cache.popitem(last=False)
             return result
 
-    def _uncached_lookup(self, account_id, resource, params, schema, identifier, gate, name_field="", path=None):
+    def _uncached_lookup(self, account_id, resource, params, schema, identifier, gate, name_field="", path=None, raw_bytes=None, raw_cache_key=None):
         if os.getenv("PLAN_PARTS_ENABLED", "false").lower() != "true":
             raise PlanPartsError(503, "Інтеграцію Plan.Parts не ввімкнено")
         key = os.getenv("PLAN_PARTS_API_KEY", "").strip()
         if not key or any(ord(c) < 33 or ord(c) > 126 for c in key):
             raise PlanPartsError(503, "API-ключ Plan.Parts не налаштовано")
-        gate.acquire(account_id, resource + str(sorted(params.items())) if params else resource)
         try:
-            with httpx.Client(
-                transport=self._transport,
-                timeout=httpx.Timeout(10, connect=5),
-                follow_redirects=False,
-                headers={"Authorization": f"Bearer {key}", "Accept": "application/json"},
-            ) as client:
-                with client.stream("GET", BASE_URL + (path or "/v1/aftermarket/catalog/" + resource), params=params) as response:
-                    if response.status_code == 429:
-                        raise PlanPartsError(429, "Ліміт запитів постачальника Plan.Parts", 30)
-                    if response.status_code != 200:
-                        raise PlanPartsError(502, "Plan.Parts відхилив запит")
-                    raw = bytearray()
-                    for chunk in response.iter_bytes():
-                        raw.extend(chunk)
-                        if len(raw) > MAX_RESPONSE_BYTES:
-                            raise PlanPartsError(502, "Відповідь Plan.Parts завелика")
-            data = provider_results(json.loads(raw), {} if resource == 'ktype' else params)
+            if raw_bytes is None:
+                gate.acquire(account_id, resource + str(sorted(params.items())) if params else resource)
+                with httpx.Client(
+                    transport=self._transport,
+                    timeout=httpx.Timeout(10, connect=5),
+                    follow_redirects=False,
+                    headers={"Authorization": f"Bearer {key}", "Accept": "application/json"},
+                ) as client:
+                    with client.stream("GET", BASE_URL + (path or "/v1/aftermarket/catalog/" + resource), params=params) as response:
+                        if response.status_code == 429:
+                            raise PlanPartsError(429, "Ліміт запитів постачальника Plan.Parts", 30)
+                        if response.status_code != 200:
+                            raise PlanPartsError(502, "Plan.Parts відхилив запит")
+                        raw = bytearray()
+                        for chunk in response.iter_bytes():
+                            raw.extend(chunk)
+                            if len(raw) > MAX_RESPONSE_BYTES:
+                                raise PlanPartsError(502, "Відповідь Plan.Parts завелика")
+                raw_bytes = bytes(raw)
+                if raw_cache_key is not None:
+                    _raw_response_cache[raw_cache_key] = (monotonic() + CACHE_TTL_SECONDS, raw_bytes)
+                    while len(_raw_response_cache) > RAW_CACHE_MAX_KEYS:
+                        _raw_response_cache.popitem(last=False)
+            data = provider_results(json.loads(raw_bytes), {} if resource == 'ktype' else params)
             if schema is ModelOption:
                 rows = []
                 for item in data:
@@ -292,5 +319,7 @@ class PlanPartsClient:
             raise PlanPartsError(504, "Перевищено час очікування Plan.Parts") from None
         except httpx.HTTPError:
             raise PlanPartsError(502, "Plan.Parts тимчасово недоступний") from None
-        except (ValueError, ValidationError):
-            raise PlanPartsError(502, "Непідтримуваний формат відповіді Plan.Parts") from None
+        except (ValueError, ValidationError) as exc:
+            field_paths = [str(e.get("loc","")) for e in exc.errors()[:8]] if isinstance(exc, ValidationError) else [type(exc).__name__]
+            logger.warning("plan_parts_schema_mismatch resource=%s paths=%s", resource, field_paths)
+            raise PlanPartsError(502, "Непідтримуваний формат відповіді Plan.Parts; оплачена відповідь тимчасово доступна для безкоштовної повторної перевірки") from None
