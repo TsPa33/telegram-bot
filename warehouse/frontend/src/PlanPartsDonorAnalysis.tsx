@@ -46,6 +46,10 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
    const entry=JSON.parse(sessionStorage.getItem(categoryScope)||'null');
    if(entry?.until>Date.now()&&Array.isArray(entry.categories)){
     restore(entry.categories as Category[]);
+    if(Array.isArray(entry.selectedTypes)){
+     const valid=new Set((entry.categories as Category[]).map(c=>c.pt_id));
+     setSelectedTypes(entry.selectedTypes.filter((id:unknown)=>typeof id==='number'&&valid.has(id)));
+    }
     return ()=>{active=false;};
    }
   }catch{/* Browser storage is optional */}
@@ -54,7 +58,7 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
   void api<{categories:Category[]}>('/plan-parts/categories/recover?vehicle_id='+donorId+'&ktype='+picked,'POST')
    .then(result=>{
     restore(result.categories);
-    try{sessionStorage.setItem(categoryScope,JSON.stringify({until:Date.now()+30*60*1000,categories:result.categories}));}catch{}
+    try{sessionStorage.setItem(categoryScope,JSON.stringify({until:Date.now()+30*60*1000,categories:result.categories,selectedTypes:result.categories.map(c=>c.pt_id)}));}catch{}
    }).catch(()=>{/* User can explicitly refresh with the paid lookup button */});
   return ()=>{active=false;};
  },[categoryScope,donorId,picked]);
@@ -93,6 +97,15 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
    setSavedKtype(picked);
    onSaved(await api('/vehicles/'+donorId));
   });}
+ useEffect(()=>{
+  if(!picked||categories.length===0)return;
+  try{
+   const entry=JSON.parse(sessionStorage.getItem(categoryScope)||'null');
+   if(entry?.until>Date.now()&&Array.isArray(entry.categories)){
+    sessionStorage.setItem(categoryScope,JSON.stringify({...entry,selectedTypes}));
+   }
+  }catch{/* Browser storage is optional */}
+ },[selectedTypes,categoryScope,picked,categories.length]);
  const selected=categories.find(c=>c.pt_id===activeCategory);
  const selectedCategories=categories.filter(c=>selectedTypes.includes(c.pt_id));
  const estimatedTokens=selectedCategories.length*2;
