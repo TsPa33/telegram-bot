@@ -21,6 +21,7 @@ export default function PlanPartsBatch({
  const [completed,setCompleted]=useState<Record<string,Summary>>({});
  const [uncertain,setUncertain]=useState<number[]>([]);
  const [data,setData]=useState<Record<string,Article[]>>({});
+ const [translatedArticles,setTranslatedArticles]=useState<Record<string,string>>({});
  const articleCacheKey=scope+':temporary-articles';
  const [previewId,setPreviewId]=useState<number|null>(null);
  const [expanded,setExpanded]=useState(false);
@@ -202,9 +203,28 @@ export default function PlanPartsBatch({
  }
  function localName(name:string){
   const reviewed=ukrainianPartName(name);
-  return reviewed.translated?reviewed.uk:(translatedNames[name]||reviewed.uk);
+  return reviewed.translated?reviewed.uk:(translatedNames[name]||translatedArticles[name]||reviewed.uk);
  }
   const rows=previewId===null?[]:data[String(previewId)]||[];
+ useEffect(()=>{
+  const names=Array.from(new Set(rows.map(a=>a.part_name).filter(Boolean)))
+   .filter(name=>!ukrainianPartName(name).translated&&!translatedNames[name]);
+  if(!names.length)return;
+  let active=true;
+  void (async()=>{
+   for(let index=0;index<names.length;index+=200){
+    if(!active)return;
+    try{
+     const result=await api<{translations:Record<string,string>}>('/plan-parts/translations/lookup','POST',{names:names.slice(index,index+200)});
+     if(active)setTranslatedArticles(prev=>({...prev,...result.translations}));
+    }catch{return;}
+   }
+  })();
+  return ()=>{active=false;};
+ // Trigger when a different saved category list is displayed, not translations.
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ },[previewId,data]);
+
  const thisSession=Object.keys(data).length;
  return <section aria-label="Пакетне завантаження plan.parts" style={{border:'1px solid #b8dacd',borderRadius:10,padding:14,margin:'12px 0',background:'#f7fbf9'}}>
   <h4 style={{margin:'0 0 8px'}}>Завантажити вибрані типи одним запуском</h4>
