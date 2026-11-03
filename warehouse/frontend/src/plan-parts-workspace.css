@@ -115,3 +115,39 @@
 .cp-plan-classify-results{display:flex;gap:12px;align-items:center;flex-wrap:wrap;flex:1 1 100%;padding-top:8px;border-top:1px solid #dfeae3;font-size:11px;color:#3f6654}
 .cp-plan-classify-results button{margin-left:auto}
 .cp-plan-classify p{flex:1 1 100%;margin:0;font-size:12px;color:#205b42}
+
+/* Corporate category switcher: reuses the canonical CarPot section names and icons. */
+.cp-plan-corporate{margin:12px 0 16px}
+.cp-plan-corporate h4{margin:0;font-size:14px;color:#143d30}
+.cp-plan-corporate-tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-top:10px}
+.cp-plan .cp-plan-corporate-tile{display:flex;align-items:center;justify-content:flex-start;text-align:left;gap:10px;padding:11px 12px;min-height:64px;border:1px solid #d6e5dc;border-radius:11px;background:#fff;color:#375c4b;font-size:12px}
+.cp-plan .cp-plan-corporate-tile svg{flex:0 0 auto;color:#007459}
+.cp-plan .cp-plan-corporate-tile span{flex:1;font-size:12px;font-weight:650;line-height:1.35}
+.cp-plan .cp-plan-corporate-tile small{font-size:11px;opacity:.76}
+.cp-plan .cp-plan-corporate-tile.selected{border-color:#08765d;background:#eef8f2;color:#06553e;box-shadow:inset 0 0 0 1px #08765d}
+.cp-plan .cp-plan-corporate-tile:focus-visible{outline:2px solid #08765d;outline-offset:2px}
+.cp-plan-filters{grid-template-columns:minmax(190px,2fr) minmax(135px,1fr)}
+.cp-plan-batch-status{display:grid;gap:10px;margin:12px 0;padding:15px;border:1px solid #b8dcca;border-radius:11px;background:#f1faf4}
+.cp-plan-batch-heading{display:flex;gap:10px;align-items:center;color:#0e5c42}
+.cp-plan-batch-heading b{margin-left:auto;font-size:19px;font-variant-numeric:tabular-nums}
+.cp-plan-spinner{animation:cp-spin 1.1s linear infinite}
+.cp-plan-progress-track{height:12px;width:100%;overflow:hidden;background:#dcece2;border-radius:999px}
+.cp-plan-progress-fill{height:100%;border-radius:999px;background:repeating-linear-gradient(-45deg,#087b5c 0 12px,#169673 12px 24px);background-size:34px 34px;animation:cp-progress-stripe .9s linear infinite;transition:width .45s ease}
+.cp-plan-batch-status p{margin:0;font-size:13px;color:#2b5944}
+.cp-plan-batch-status small{color:#4a7963}
+.cp-plan-article-tools{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin:13px 0;padding:12px;background:#f4f9f6;border:1px solid #d8e8de;border-radius:10px}
+.cp-plan-article-tools strong{display:block;font-size:13px;color:#154832}
+.cp-plan-article-tools small{display:block;font-size:11px;margin-top:4px;color:#537364;line-height:1.45}
+.cp-plan-article-tools-expanded{flex:1 1 100%;min-width:0}
+.cp-plan-known-article{display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:6px 9px;font-weight:700;font-size:11px;color:#0b654a;background:#e0f4e7;border:1px solid #b8e2ca;border-radius:8px;overflow-wrap:anywhere}
+.cp-plan-article-confirm{border-color:#d8bc77;background:#fffaf0}
+.cp-plan-article-confirm>div{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.cp-plan-part{grid-template-columns:minmax(155px,2.6fr) minmax(95px,1fr) minmax(98px,1fr) minmax(105px,1fr) minmax(120px,1fr)}
+.cp-plan-part .cp-plan-known-article{max-width:100%}
+@keyframes cp-spin{to{transform:rotate(360deg)}}
+@keyframes cp-progress-stripe{to{background-position:34px 0}}
+@media(prefers-reduced-motion:reduce){.cp-plan-spinner,.cp-plan-progress-fill{animation:none}.cp-plan-progress-fill{transition:none}}
+@media(max-width:1480px){.cp-plan-corporate-tiles{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:1100px){.cp-plan-corporate-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){.cp-plan-corporate-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.cp-plan-part{grid-template-columns:minmax(0,1fr) auto auto}.cp-plan-filters{grid-template-columns:1fr}.cp-plan-filters>input{grid-column:auto}}
+@media(max-width:440px){.cp-plan-corporate-tiles{grid-template-columns:1fr 1fr;gap:6px}.cp-plan .cp-plan-corporate-tile{min-height:55px;padding:8px;font-size:11px}.cp-plan .cp-plan-corporate-tile span{font-size:11px}.cp-plan .cp-plan-corporate-tile svg{width:17px;height:17px}.cp-plan-part{grid-template-columns:minmax(0,1fr) auto}.cp-plan-known-article{grid-column:1/-1}}
