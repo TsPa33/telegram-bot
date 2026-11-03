@@ -23,6 +23,7 @@ export default function PlanPartsBatch({
  const [previewId,setPreviewId]=useState<number|null>(null);
  const [expanded,setExpanded]=useState(false);
  const [confirmation,setConfirmation]=useState(false);
+ const [retryApproval,setRetryApproval]=useState<number|null>(null);
  const [running,setRunning]=useState(false);
  const [message,setMessage]=useState('');
  const [tokenLimit,setTokenLimit]=useState('');
@@ -163,7 +164,18 @@ export default function PlanPartsBatch({
    {selectedUncertain.map(c=><div key={c.pt_id} style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',margin:'6px 0'}}>
     <span>{ukrainianPartName(c.name).uk}</span>
     <button type="button" className="secondary" disabled={running} onClick={()=>void recoverFromCache(c.pt_id)}>Спробувати відновити з кешу · 0 токенів</button>
+    <button type="button" className="secondary" disabled={running} onClick={()=>setRetryApproval(c.pt_id)}>Дозволити новий запит (може коштувати 2 токени)</button>
    </div>)}
+  </div>}
+  {retryApproval!==null&&<div role="alertdialog" aria-label="Підтвердження повторної оплати" style={{border:'1px solid #d8b17b',padding:12,borderRadius:8,margin:'10px 0'}}>
+    <strong>Попередній платний запит міг бути оплачений</strong>
+    <p>Продовження може витратити ще до 2 токенів на той самий тип. Кнопка нижче лише повертає його до черги, новий запит вимагатиме окремого підтвердження завантаження.</p>
+    <button type="button" disabled={running} onClick={()=>{
+     checkpoint(completed,uncertain.filter(id=>id!==retryApproval));
+     setRetryApproval(null);
+     setMessage('Тип розблоковано. Перед новим платним запитом перевірте розрахунок і підтвердіть завантаження.');
+    }}>Розблокувати для нового запиту</button>
+    <button type="button" className="secondary" onClick={()=>setRetryApproval(null)}>Скасувати</button>
   </div>}
   <label style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
    Ліміт токенів для цього запуску
