@@ -6,7 +6,7 @@ from app.models import Vehicle, VehicleChecklistItem, now
 from app.services.inventory import owned, record, snapshot
 
 
-def generate(db, vehicle_id, account_id, client, *, refresh=False):
+def generate(db, vehicle_id, account_id, client, *, refresh=False, preloaded_rows=None):
     # Same lock as vehicle editing: concurrent first imports cannot pay twice,
     # or attach an in-flight result to a subsequently changed K-Type.
     vehicle = owned(db, Vehicle, vehicle_id, account_id, lock=True, active=True)
@@ -20,7 +20,7 @@ def generate(db, vehicle_id, account_id, client, *, refresh=False):
     ))}
     if not refresh and (existing or (vehicle.checklist_ktype == vehicle.ktype and vehicle.checklist_synced_at)):
         return {"created": 0, "updated": 0, "existing": len(existing), "total": len(existing), "provider_requested": False}
-    rows = client.categories(account_id, vehicle.ktype)
+    rows = preloaded_rows if preloaded_rows is not None else client.categories(account_id, vehicle.ktype)
     before = snapshot(vehicle)
     synced = now()
     created = updated = 0
@@ -75,3 +75,17 @@ def update(db, vehicle_id, item_id, account_id, changes):
         setattr(row, key, value)
     record(db, account_id, row, "checklist_update", "Оновлено перевірку потенційної деталі; залишки не змінено", before)
     return snapshot(row)
+
+
+def stored_categories(db, vehicle_id, account_id, ktype):
+    """Durable owner-scoped donor checklist, not stock and not a global supplier catalogue."""
+    vehicle = owned(db, Vehicle, vehicle_id, account_id)
+    if vehicle.ktype != ktype:
+        raise HTTPException(409, "Модифікація автомобіля змінилася")
+    items = list(db.scalars(select(VehicleChecklistItem).where(
+        VehicleChecklistItem.account_id == account_id,
+        VehicleChecklistItem.vehicle_id == vehicle.id,
+        VehicleChecklistItem.source == "plan.parts",
+        VehicleChecklistItem.ktype == ktype,
+    ).order_by(VehicleChecklistItem.pt_id)))
+    return items
