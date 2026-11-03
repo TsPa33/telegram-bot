@@ -1,7 +1,7 @@
 import {useContext,useEffect,useRef,useState} from 'react';
 import {TeamIdentity} from './permissions';
 import {api,ApiError,type Row} from './api';
-import {ukrainianPartName,translatedCategoryCount} from './planPartsUkrainian';
+import {ukrainianPartName} from './planPartsUkrainian';
 import PlanPartsBatch from './PlanPartsBatch';
 
 type Match={ktype:number;modification:string;year_from?:number;year_to?:number;power_kw?:number;power_ps?:number};
@@ -14,6 +14,11 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
  const [savedKtype,setSavedKtype]=useState<number>(Number(vehicle.ktype)||0);
  const [selectedTypes,setSelectedTypes]=useState<number[]>([]);
  const [categories,setCategories]=useState<Category[]>([]);
+ const [machineNames,setMachineNames]=useState<Record<string,string>>({});
+ const [translationStatus,setTranslationStatus]=useState('');
+ const [translationLoading,setTranslationLoading]=useState(false);
+ const translationBusy=useRef(false);
+
  const [articles,setArticles]=useState<Article[]>([]);
  const [activeCategory,setActiveCategory]=useState<number>(0);
  const [phase,setPhase]=useState<'initial'|'matching'|'categories'|'articles'>('initial');
@@ -106,6 +111,48 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
    }
   }catch{/* Browser storage is optional */}
  },[selectedTypes,categoryScope,picked,categories.length]);
+
+ function localizedName(name:string){
+  const reviewed=ukrainianPartName(name);
+  return reviewed.translated?reviewed.uk:(machineNames[name]||reviewed.uk);
+ }
+ async function translateAllCategories(){
+  if(translationBusy.current||!categories.length)return;
+  const missing=Array.from(new Set(categories.map(c=>c.name)))
+   .filter(name=>!ukrainianPartName(name).translated&&!machineNames[name]);
+  if(!missing.length){setTranslationStatus('Усі назви перекладено.');return;}
+  translationBusy.current=true;setTranslationLoading(true);setTranslationStatus('Перекладаємо назви деталей українською…');
+  try{
+   const result=await api<{configured:boolean;translations:Record<string,string>;untranslated:string[]}>(
+    '/plan-parts/translations/lookup','POST',{names:missing});
+   setMachineNames(old=>({...old,...result.translations}));
+   if(!result.configured){
+    setTranslationStatus('Для перекладу решти назв необхідно налаштувати WAREHOUSE_DEEPL_API_KEY у staging. Словник уже доступний.');
+   }else{
+    setTranslationStatus('Автоматичний переклад завершено. Технічні назви можна уточнювати вручну.');
+   }
+  }catch(e){setTranslationStatus('Сервіс перекладу недоступний: '+(e as Error).message);}
+  finally{translationBusy.current=false;setTranslationLoading(false);}
+ }
+ useEffect(()=>{
+  if(!categories.length)return;
+  // Translate unknown generic names for every model; same English name is shared.
+  void translateAllCategories();
+ // A new category set, not translation state, triggers the request.
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ },[categories]);
+ useEffect(()=>{
+  const missing=Array.from(new Set(articles.map(a=>a.part_name).filter(Boolean)))
+   .filter(name=>!ukrainianPartName(name).translated&&!machineNames[name]);
+  if(!missing.length)return;
+  let active=true;
+  void api<{translations:Record<string,string>}>('/plan-parts/translations/lookup','POST',{names:missing.slice(0,400)})
+   .then(result=>{if(active)setMachineNames(old=>({...old,...result.translations}));})
+   .catch(()=>{/* Do not block supplier articles when translation provider is down */});
+  return ()=>{active=false;};
+ // Only an incoming new set of articles triggers the translation.
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ },[articles]);
  const selected=categories.find(c=>c.pt_id===activeCategory);
  const selectedCategories=categories.filter(c=>selectedTypes.includes(c.pt_id));
  const estimatedTokens=selectedCategories.length*2;
@@ -150,22 +197,22 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
      {selectedTypes.length===0&&<strong>Оберіть хоча б один тип запчастин</strong>}
     </div>
     <p style={{margin:'8px 0'}}>Після отримання артикули з’являться під списком. Повторні однакові запити протягом 30 хвилин використовують тимчасовий кеш Backend без нових звернень до plan.parts, доки сервер не перезапущено.</p>
-    <PlanPartsBatch key={picked} vehicleId={String(vehicle.id)} ktype={picked} selected={selectedCategories} disabled={busy||savedKtype!==picked} />
+    <PlanPartsBatch key={picked} vehicleId={String(vehicle.id)} ktype={picked} selected={selectedCategories} disabled={busy||savedKtype!==picked} translatedNames={machineNames} />
    </div>
-   <p style={{margin:'8px 0'}}>Українські назви зі словника: <strong>{translatedCategoryCount(categories.map(c=>c.name))}</strong> із {categories.length}. Неперекладені терміни залишені оригінальними для точності.</p>
+   <p style={{margin:'8px 0'}}>Українські назви: <strong>{categories.filter(c=>ukrainianPartName(c.name).translated||Boolean(machineNames[c.name])).length}</strong> із {categories.length}. Машинний переклад застосовується для назв, відсутніх у словнику. <button type="button" className="secondary" disabled={translationLoading} onClick={()=>void translateAllCategories()}>{translationLoading?'Перекладаємо…':'Повторити переклад відсутніх назв'}</button>{translationStatus&&<small style={{display:'block'}} role="status">{translationStatus}</small>}</p>
    <div style={{maxHeight:310,overflowY:'auto',border:'1px solid #dae5e0',borderRadius:9}}>
     {categories.map(c=><div key={c.pt_id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:8,padding:'9px 12px',borderBottom:'1px solid #e7efeb'}}>
-     <label style={{display:'flex',gap:8,alignItems:'center',flex:1}}><input type="checkbox" disabled={busy} checked={selectedTypes.includes(c.pt_id)} onChange={e=>setSelectedTypes(old=>e.target.checked?[...old,c.pt_id]:old.filter(id=>id!==c.pt_id))}/><span><strong>{ukrainianPartName(c.name).uk}</strong>{ukrainianPartName(c.name).translated&&<small style={{display:'block',color:'#61746c'}}>Оригінал: {c.name}</small>}{!ukrainianPartName(c.name).translated&&<small style={{display:'block',color:'#9a611c'}}>Потрібен перевірений український відповідник</small>}<small style={{display:'block'}}>{c.article_count.toLocaleString('uk-UA')} артикулів</small></span></label>
+     <label style={{display:'flex',gap:8,alignItems:'center',flex:1}}><input type="checkbox" disabled={busy} checked={selectedTypes.includes(c.pt_id)} onChange={e=>setSelectedTypes(old=>e.target.checked?[...old,c.pt_id]:old.filter(id=>id!==c.pt_id))}/><span><strong>{localizedName(c.name)}</strong>{(ukrainianPartName(c.name).translated||Boolean(machineNames[c.name]))&&<small style={{display:'block',color:'#61746c'}}>Оригінал: {c.name}</small>}{!ukrainianPartName(c.name).translated&&!machineNames[c.name]&&<small style={{display:'block',color:'#9a611c'}}>Потрібен перевірений український відповідник</small>}<small style={{display:'block'}}>{c.article_count.toLocaleString('uk-UA')} артикулів</small></span></label>
      <button type="button" disabled={paidDisabled} className="secondary" onClick={()=>getArticles(c.pt_id)}>Артикули (до 2 токенів)</button>
     </div>)}
    </div>
   </div>}
   {phase==='articles'&&<section style={{marginTop:12}}>
-   <h4>{selected?ukrainianPartName(selected.name).uk:'Обрана категорія'} · {articles.length.toLocaleString('uk-UA')} артикулів</h4>
+   <h4>{selected?localizedName(selected.name):'Обрана категорія'} · {articles.length.toLocaleString('uk-UA')} артикулів</h4>
    <p>Унікальних назв: <strong>{new Set(articles.map(a=>a.part_name.toLocaleLowerCase('uk-UA')).filter(Boolean)).size}</strong>. Якщо назва артикула відсутня, показано назву типу з plan.parts. Аналоги різних виробників не можна автоматично додавати як окремі фізичні деталі.</p>
    <div style={{maxHeight:350,overflowY:'auto'}}>
     <table><thead><tr><th>Деталь</th><th>Виробник</th><th>Артикул</th></tr></thead>
-     <tbody>{articles.slice(0,showAll?articles.length:80).map(a=><tr key={a.art_id}><td>{a.part_name?ukrainianPartName(a.part_name).uk:(selected?ukrainianPartName(selected.name).uk:'Назва категорії не визначена')}{ukrainianPartName(a.part_name).translated&&<small style={{display:'block',color:'#61746c'}}>Оригінал: {a.part_name}</small>}</td><td>{a.brand}</td><td>{a.article_nr}</td></tr>)}</tbody>
+     <tbody>{articles.slice(0,showAll?articles.length:80).map(a=><tr key={a.art_id}><td>{a.part_name?localizedName(a.part_name):(selected?localizedName(selected.name):'Назва категорії не визначена')}{ukrainianPartName(a.part_name).translated&&<small style={{display:'block',color:'#61746c'}}>Оригінал: {a.part_name}</small>}</td><td>{a.brand}</td><td>{a.article_nr}</td></tr>)}</tbody>
     </table>
    </div>
    {!showAll&&articles.length>80&&<button type="button" className="secondary" onClick={()=>setShowAll(true)}>Показати всі {articles.length.toLocaleString('uk-UA')} артикулів без нового запиту</button>}
