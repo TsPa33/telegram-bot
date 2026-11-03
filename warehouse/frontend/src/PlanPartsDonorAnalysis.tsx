@@ -86,7 +86,7 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
   const restore=(items:Category[])=>{
    if(!active)return;
    setCategories(items);
-   setSelectedTypes(items.map(c=>c.pt_id));
+   setSelectedTypes([]);
    setPhase('categories');
   };
   try{
@@ -105,7 +105,7 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
   void api<{categories:Category[]}>('/plan-parts/categories/recover?vehicle_id='+donorId+'&ktype='+picked,'POST')
    .then(result=>{
     restore(result.categories);
-    try{sessionStorage.setItem(categoryScope,JSON.stringify({until:Date.now()+30*60*1000,categories:result.categories,selectedTypes:result.categories.map(c=>c.pt_id)}));}catch{}
+    try{sessionStorage.setItem(categoryScope,JSON.stringify({until:Date.now()+30*60*1000,categories:result.categories,selectedTypes:[]}));}catch{}
    }).catch(()=>{/* User can explicitly refresh with the paid lookup button */});
   return ()=>{active=false;};
  },[categoryScope,donorId,picked]);
@@ -132,7 +132,7 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
  }
  function getCategories(){if(!picked)return;void run(async()=>{
   const result=await api<{categories:Category[]}>('/plan-parts/categories/lookup?vehicle_id='+donorId+'&ktype='+picked,'POST');
-  setCategories(result.categories);setSelectedTypes(result.categories.map(c=>c.pt_id));setArticles([]);setActiveCategory(0);setPhase('categories');
+  setCategories(result.categories);setSelectedTypes([]);setArticles([]);setActiveCategory(0);setPhase('categories');
   try{sessionStorage.setItem(categoryScope,JSON.stringify({until:Date.now()+30*60*1000,categories:result.categories}));}catch{/* optional */}
  });}
  function getArticles(ptId:number){void run(async()=>{
@@ -305,5 +305,111 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
  const selectedCategories=categories.filter(c=>selectedTypes.includes(c.pt_id));
  const estimatedTokens=selectedCategories.length*2;
  const selectedOffers=selectedCategories.reduce((n,c)=>n+c.article_count,0);
- return __REPLACE_JSX__;
+ return <section aria-label="Професійний каталог запчастин" className="cp-professional">
+  <div className="cp-provider-card">
+   <div className="cp-provider-brand"><span className="cp-provider-icon">▤</span><div><strong>Професійний каталог plan.parts</strong><small>{vehicle.manufacturer} {vehicle.model} · {vehicle.year}{picked?' · Модифікація K-Type '+picked:''}</small></div></div>
+   <div className="cp-provider-metrics">
+    <div><small>Типів запчастин</small><strong>{categories.length||'—'}</strong></div>
+    <div><small>Пропозицій aftermarket</small><strong>{categories.length?categories.reduce((n,c)=>n+c.article_count,0).toLocaleString('uk-UA'):'—'}</strong></div>
+    <span className="cp-pill cp-pill-green">{categories.length?'Каталог готовий':'Дані каталогу'}</span>
+   </div>
+  </div>
+  <div className="cp-provider-manage">
+   {picked>0&&<span>Обрана модифікація: <strong>{matches.find(m=>m.ktype===picked)?.modification||'K-Type '+picked}</strong></span>}
+   <div className="cp-provider-actions">
+    <button type="button" className="secondary" disabled={paidDisabled} onClick={discover}>Знайти модифікацію · 1 токен</button>
+    {picked>0&&<button type="button" className="secondary" disabled={paidDisabled} onClick={getCategories}>{categories.length?'Оновити перелік · 1 токен':'Отримати типи запчастин · 1 токен'}</button>}
+   </div>
+  </div>
+  {matches.length>0&&<div className="cp-modification-choice"><label>Точна модифікація
+   <select value={picked} disabled={busy} onChange={e=>selectKtype(Number(e.target.value))}>
+    <option value={0}>Оберіть модифікацію</option>
+    {matches.map(m=><option key={m.ktype} value={m.ktype}>{m.modification} · {m.year_from??'—'}–{m.year_to??'дотепер'} · {m.power_kw??'—'} кВт · K-Type {m.ktype}</option>)}
+   </select></label>
+   {picked>0&&<button type="button" disabled={busy||savedKtype===picked} onClick={saveModification}>{savedKtype===picked?'Модифікацію збережено':'Підтвердити модифікацію'}</button>}
+  </div>}
+  {busy&&<p role="status" className="cp-inline-info">Отримуємо дані каталогу…</p>}
+  {secondsLeft>0&&<p role="status" className="cp-inline-info">Доступ до нових платних запитів через {secondsLeft} с. Збережені дані доступні.</p>}
+  {error&&<p role="alert" className="error">{error}</p>}
+  {!categories.length&&<div className="cp-empty"><strong>Каталог готовий до підключення</strong><p>Оберіть модифікацію та отримайте типи запчастин. Якщо вони вже були отримані, CarPot відновить їх із доступного кешу без повторної оплати.</p></div>}
+  {categories.length>0&&<div className="cp-catalogue-panel">
+   <header className="cp-catalogue-top">
+    <div><h3>Вибір типів запчастин</h3><small>Оберіть потрібні деталі — CarPot додасть їх на склад одним запуском.</small></div>
+    <div className="cp-top-actions">
+     <span className="cp-pill cp-pill-green">Вибрано: {selectedTypes.length}</span>
+     <button type="button" className="secondary" disabled={translationLoading} onClick={()=>void translateAllCategories()}>{translationLoading?'Перекладаємо…':'Оновити переклад'}</button>
+     <button type="button" disabled={!canBulkAdd||selectedToAdd.length===0} onClick={()=>setConfirmBulk(true)}>＋ Додати вибрані на склад</button>
+    </div>
+   </header>
+   <div className="cp-catalogue-toolbar">
+    <input aria-label="Пошук запчастин" placeholder="Пошук запчастини за назвою…" value={search} onChange={e=>{setSearch(e.target.value);setVisibleLimit(70);}}/>
+    <select aria-label="Категорія запчастин" value={sectionFilter} onChange={e=>{setSectionFilter(e.target.value);setVisibleLimit(70);}}>
+     <option value="all">Усі категорії</option>
+     {[...new Set(categories.map(sectionOf))].sort((a,b)=>a.localeCompare(b,'uk')).map(section=><option key={section} value={section}>{section}</option>)}
+    </select>
+    <select aria-label="Статус запчастин" value={stockFilter} onChange={e=>{setStockFilter(e.target.value as 'all'|'new'|'added');setVisibleLimit(70);}}>
+     <option value="all">Усі статуси</option><option value="new">Ще не додані</option><option value="added">На складі</option>
+    </select>
+   </div>
+   <div className="cp-catalogue-selection">
+    <label><input aria-label="Вибрати всі знайдені типи" type="checkbox" disabled={bulkBusy||busy||filteredCategories.length===0} checked={filteredCategories.length>0&&filteredCategories.every(c=>selectedTypes.includes(c.pt_id))} onChange={e=>setSelectedTypes(old=>e.target.checked?[...new Set([...old,...filteredCategories.map(c=>c.pt_id)])]:old.filter(id=>!filteredCategories.some(c=>c.pt_id===id)))}/><strong>Знайдено {filteredCategories.length} типів</strong></label>
+    <span>На складі: <strong>{addedCount}</strong> · До додавання: <strong>{selectedToAdd.length}</strong></span>
+    <button type="button" className="secondary" disabled={selectedTypes.length===0||bulkBusy} onClick={()=>setSelectedTypes([])}>Зняти вибір</button>
+    <button type="button" className="secondary" disabled={bulkBusy||filteredCategories.length===0} onClick={()=>setSelectedTypes([...new Set([...selectedTypes,...filteredCategories.map(c=>c.pt_id)])])}>Вибрати знайдені</button>
+   </div>
+   {stockStatusError&&<p role="alert" className="error">{stockStatusError} Додавання тимчасово заблоковано.</p>}
+   {duplicateStockNames.length>0&&<p role="alert" className="cp-inline-info">Є {duplicateStockNames.length} груп однакових назв серед раніше доданих позицій. Історію та залишки не змінено.</p>}
+   {addMessage&&<p role="status" className="cp-inline-info">{addMessage}</p>}
+   {bulkNotice&&<p role="status" className="cp-inline-info">{bulkNotice}</p>}
+   {translationStatus&&<p role="status" className="cp-inline-info">{translationStatus}</p>}
+   {bulkBusy&&<div role="status" className="cp-bulk-progress"><span>Додано або звірено: {bulkDone} із {selectedToAdd.length}</span><button type="button" className="secondary" onClick={()=>{bulkAbort.current=true;}}>Зупинити після поточної групи</button></div>}
+   {confirmBulk&&<div role="alertdialog" aria-label="Підтвердження додавання запчастин" className="cp-confirm">
+    <strong>Додати {selectedToAdd.length} вибраних типів на склад?</strong>
+    <p>Для кожного нового типу буде створено позицію з кількістю 1 шт. Повторні позиції не створюються. Запит не використовує токени plan.parts.</p>
+    <div><button type="button" onClick={()=>void addSelectedBatch()}>Підтвердити додавання</button><button type="button" className="secondary" onClick={()=>setConfirmBulk(false)}>Скасувати</button></div>
+   </div>}
+   <div className="cp-catalogue-table" role="region" aria-label="Список типів запчастин">
+    {filteredCategories.slice(0,visibleLimit).map(c=>{const stored=alreadyStored(c);return <div className="cp-part-row" key={c.pt_id}>
+     <input type="checkbox" aria-label={'Вибрати '+localizedName(c.name)} disabled={busy||bulkBusy} checked={selectedTypes.includes(c.pt_id)} onChange={e=>setSelectedTypes(old=>e.target.checked?[...new Set([...old,c.pt_id])]:old.filter(id=>id!==c.pt_id))}/>
+     <div className="cp-part-title"><strong>{localizedName(c.name)}</strong><small>{c.name}</small></div>
+     <div className="cp-part-type">{sectionOf(c)}</div>
+     <div className="cp-part-offers">{c.article_count.toLocaleString('uk-UA')} артикулів</div>
+     <div className="cp-part-state">{stored?<span className="cp-pill cp-pill-green">На складі · {stored.quantity} шт.</span>:<span className="cp-pill">Не додано</span>}</div>
+     <div className="cp-part-actions">
+      <button type="button" className={stored?'secondary':'cp-small-add'} disabled={Boolean(stored)||!canBulkAdd} onClick={()=>void addSelectedType(c)}>{stored?'Додано':addingType===c.pt_id?'Додаємо…':'Додати'}</button>
+      <button type="button" className="secondary" disabled={paidDisabled||bulkBusy} onClick={()=>getArticles(c.pt_id)}>Артикули</button>
+     </div>
+    </div>})}
+    {filteredCategories.length===0&&<div className="cp-empty">За вибраними фільтрами нічого не знайдено.</div>}
+   </div>
+   {filteredCategories.length>visibleLimit&&<button type="button" className="secondary cp-more" onClick={()=>setVisibleLimit(v=>v+70)}>Показати ще ({Math.min(visibleLimit,filteredCategories.length)} із {filteredCategories.length})</button>}
+   <footer className="cp-catalogue-footer">
+    <div><strong>На складі з цього джерела: {stockParts.filter(p=>!p.archived&&p.quantity>0).length}</strong><span>Перекладено: {categories.filter(c=>ukrainianPartName(c.name).translated||Boolean(machineNames[c.name])).length}/{categories.length}</span></div>
+    <a href="/inventory" className="cp-warehouse-link">Відкрити склад</a>
+   </footer>
+   {phase==='articles'&&<section className="cp-articles-panel">
+    <div className="cp-section-label"><h3>{selected?localizedName(selected.name):'Артикули'} · {articles.length}</h3><button type="button" className="secondary" onClick={()=>setPhase('categories')}>Згорнути</button></div>
+    <p>Артикули різних виробників — не окремі фізичні запчастини. Повторний запит не потрібен для відображення цього списку.</p>
+    <div className="cp-articles-scroll"><table><thead><tr><th>Назва</th><th>Виробник</th><th>Артикул</th></tr></thead><tbody>
+    {articles.slice(0,showAll?articles.length:80).map(a=><tr key={a.art_id}><td>{a.part_name?localizedName(a.part_name):(selected?localizedName(selected.name):'Назву не визначено')}</td><td>{a.brand}</td><td>{a.article_nr}</td></tr>)}
+    </tbody></table></div>
+    {!showAll&&articles.length>80&&<button type="button" className="secondary" onClick={()=>setShowAll(true)}>Показати всі {articles.length} без нового запиту</button>}
+   </section>}
+  </div>}
+  <details className="cp-admin-details">
+   <summary>Додаткові інструменти каталогу</summary>
+   <div className="cp-admin-inner">
+    <div className="cp-tool-card"><strong>Оновити статус складу</strong><p>Зіставити вибрані типи з фактично доданими позиціями автомобіля.</p><button type="button" className="secondary" disabled={stockStatusLoading} onClick={()=>void refreshStockStatus()}>{stockStatusLoading?'Звіряємо…':'Оновити статус'}</button></div>
+    <div className="cp-tool-card"><strong>Категоризація вже доданих</strong><p>Призначення перевірених категорій без зміни залишків, цін або історії операцій.</p>
+     <button type="button" className="secondary" disabled={classLoading||savedKtype!==picked} onClick={()=>void previewStockClassification()}>Перевірити категорії</button>
+     {classificationPreview&&<div><p>Можна класифікувати: {classificationPreview.can_apply} · Потребують перевірки: {classificationPreview.needs_review}</p><button type="button" disabled={classLoading||classificationPreview.can_apply===0} onClick={()=>void applyStockClassification()}>Застосувати перевірені ({classificationPreview.can_apply})</button></div>}
+     {classMessage&&<p role="status">{classMessage}</p>}
+    </div>
+    <div className="cp-tool-card"><strong>Раніше додані з нульовим залишком</strong><p>Разова операція для записів попередньої версії.</p><button type="button" className="secondary" disabled={addingType!==null||savedKtype!==picked} onClick={()=>void receivePreviousSelections()}>Оприбуткувати попередні</button></div>
+    {categories.length>0&&<div className="cp-tool-card cp-tool-full"><strong>Пакетне отримання aftermarket-артикулів</strong><p>Не потрібне для звичайного додавання запчастин. Окремі платні запити виконуються лише після підтвердження.</p>
+     <PlanPartsBatch key={picked} vehicleId={String(vehicle.id)} ktype={picked} selected={selectedCategories} disabled={busy||savedKtype!==picked} translatedNames={machineNames}/>
+    </div>}
+   </div>
+  </details>
+ </section>;
 }
