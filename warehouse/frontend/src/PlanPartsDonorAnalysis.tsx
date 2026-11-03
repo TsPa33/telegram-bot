@@ -28,6 +28,34 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
  },[cooldownUntil]);
  const paidDisabled=busy||secondsLeft>0;
  const donorId=encodeURIComponent(String(vehicle.id));
+ const categoryScope='plan-parts-categories-v1:'+String(vehicle.id)+':'+picked;
+ // Short-lived category metadata in this browser only; full paid article data
+ // stays in the backend's bounded in-memory cache.
+ useEffect(()=>{
+  if(!picked)return;
+  let active=true;
+  const restore=(items:Category[])=>{
+   if(!active)return;
+   setCategories(items);
+   setSelectedTypes(items.map(c=>c.pt_id));
+   setPhase('categories');
+  };
+  try{
+   const entry=JSON.parse(sessionStorage.getItem(categoryScope)||'null');
+   if(entry?.until>Date.now()&&Array.isArray(entry.categories)){
+    restore(entry.categories as Category[]);
+    return ()=>{active=false;};
+   }
+  }catch{/* Browser storage is optional */}
+  // This endpoint is strictly cache-only. An empty/expired cache must not
+  // silently trigger another paid request.
+  void api<{categories:Category[]}>('/plan-parts/categories/recover?vehicle_id='+donorId+'&ktype='+picked,'POST')
+   .then(result=>{
+    restore(result.categories);
+    try{sessionStorage.setItem(categoryScope,JSON.stringify({until:Date.now()+30*60*1000,categories:result.categories}));}catch{}
+   }).catch(()=>{/* User can explicitly refresh with the paid lookup button */});
+  return ()=>{active=false;};
+ },[categoryScope,donorId,picked]);
  async function run(fn:()=>Promise<void>){
   if(gate.current)return;
   gate.current=true;setBusy(true);setError('');
@@ -52,6 +80,7 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
  function getCategories(){if(!picked)return;void run(async()=>{
   const result=await api<{categories:Category[]}>('/plan-parts/categories/lookup?vehicle_id='+donorId+'&ktype='+picked,'POST');
   setCategories(result.categories);setSelectedTypes(result.categories.map(c=>c.pt_id));setArticles([]);setActiveCategory(0);setPhase('categories');
+  try{sessionStorage.setItem(categoryScope,JSON.stringify({until:Date.now()+30*60*1000,categories:result.categories}));}catch{/* optional */}
  });}
  function getArticles(ptId:number){void run(async()=>{
   const result=await api<{articles:Article[]}>('/plan-parts/articles/lookup?vehicle_id='+donorId+'&ktype='+picked+'&pt_id='+ptId,'POST');
@@ -118,10 +147,10 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
   </div>}
   {phase==='articles'&&<section style={{marginTop:12}}>
    <h4>{selected?ukrainianPartName(selected.name).uk:'Обрана категорія'} · {articles.length.toLocaleString('uk-UA')} артикулів</h4>
-   <p>Унікальних назв: <strong>{new Set(articles.map(a=>a.part_name.toLocaleLowerCase('uk-UA')).filter(Boolean)).size}</strong>. Аналоги різних виробників не можна автоматично додавати як окремі фізичні деталі.</p>
+   <p>Унікальних назв: <strong>{new Set(articles.map(a=>a.part_name.toLocaleLowerCase('uk-UA')).filter(Boolean)).size}</strong>. Якщо назва артикула відсутня, показано назву типу з plan.parts. Аналоги різних виробників не можна автоматично додавати як окремі фізичні деталі.</p>
    <div style={{maxHeight:350,overflowY:'auto'}}>
     <table><thead><tr><th>Деталь</th><th>Виробник</th><th>Артикул</th></tr></thead>
-     <tbody>{articles.slice(0,showAll?articles.length:80).map(a=><tr key={a.art_id}><td>{a.part_name?ukrainianPartName(a.part_name).uk:'Назва не вказана постачальником'}{ukrainianPartName(a.part_name).translated&&<small style={{display:'block',color:'#61746c'}}>Оригінал: {a.part_name}</small>}</td><td>{a.brand}</td><td>{a.article_nr}</td></tr>)}</tbody>
+     <tbody>{articles.slice(0,showAll?articles.length:80).map(a=><tr key={a.art_id}><td>{a.part_name?ukrainianPartName(a.part_name).uk:(selected?ukrainianPartName(selected.name).uk:'Назва категорії не визначена')}{ukrainianPartName(a.part_name).translated&&<small style={{display:'block',color:'#61746c'}}>Оригінал: {a.part_name}</small>}</td><td>{a.brand}</td><td>{a.article_nr}</td></tr>)}</tbody>
     </table>
    </div>
    {!showAll&&articles.length>80&&<button type="button" className="secondary" onClick={()=>setShowAll(true)}>Показати всі {articles.length.toLocaleString('uk-UA')} артикулів без нового запиту</button>}
