@@ -29,7 +29,7 @@ def brands(
         return client.brands(who.workspace_account_id)
     except PlanPartsError as exc:
         raise HTTPException(
-            exc.status, str(exc), headers={"Retry-After": "60"} if exc.status == 429 else None
+            exc.status, str(exc), headers={"Retry-After": str(exc.retry_after or 30)} if exc.status == 429 else None
         ) from None
 
 
@@ -40,7 +40,7 @@ def models(who: Annotated[Identity, Depends(identity)],
     try:
         return client.models(who.workspace_account_id, mfa_id)
     except PlanPartsError as exc:
-        raise HTTPException(exc.status, str(exc), headers={"Retry-After": "60"} if exc.status == 429 else None) from None
+        raise HTTPException(exc.status, str(exc), headers={"Retry-After": str(exc.retry_after or 30)} if exc.status == 429 else None) from None
 
 
 @router.post("/modifications/lookup", response_model=list[Modification])
@@ -50,7 +50,7 @@ def modifications(who: Annotated[Identity, Depends(identity)],
     try:
         return modifications_for_year(client.modifications(who.workspace_account_id, ms_id), year)
     except PlanPartsError as exc:
-        raise HTTPException(exc.status, str(exc), headers={"Retry-After": "60"} if exc.status == 429 else None) from None
+        raise HTTPException(exc.status, str(exc), headers={"Retry-After": str(exc.retry_after or 30)} if exc.status == 429 else None) from None
 
 
 @router.post("/coverage/lookup")
@@ -76,7 +76,7 @@ def vehicle_coverage_lookup(
     try:
         rows = client.categories(who.workspace_account_id, int(donor.ktype))
     except PlanPartsError as exc:
-        raise HTTPException(exc.status, str(exc), headers={"Retry-After": "60"} if exc.status == 429 else None) from None
+        raise HTTPException(exc.status, str(exc), headers={"Retry-After": str(exc.retry_after or 30)} if exc.status == 429 else None) from None
     # Article counts are aftermarket article records, not unique physical parts,
     # and must not be used as the quantity of stock to create.
     total = sum(row.article_count for row in rows)
@@ -100,7 +100,7 @@ def _owned_paid_vehicle(who, db, vehicle_id):
 
 def _handle_provider(exc):
     raise HTTPException(exc.status, str(exc),
-                        headers={"Retry-After": "60"} if exc.status == 429 else None) from None
+                        headers={"Retry-After": str(exc.retry_after or 30)} if exc.status == 429 else None) from None
 
 
 @router.post("/vehicle-matches/lookup")
