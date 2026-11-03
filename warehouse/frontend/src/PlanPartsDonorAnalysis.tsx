@@ -11,6 +11,15 @@ type Article={art_id:number;article_nr:string;brand:string;part_name:string};
 export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;onSaved:(row:Row)=>void}){
  const donorId=encodeURIComponent(String(vehicle.id));
  const [matches,setMatches]=useState<Match[]>([]);
+ const [search,setSearch]=useState('');
+ const [stockFilter,setStockFilter]=useState<'all'|'new'|'added'>('all');
+ const [sectionFilter,setSectionFilter]=useState('all');
+ const [visibleLimit,setVisibleLimit]=useState(70);
+ const [confirmBulk,setConfirmBulk]=useState(false);
+ const [bulkBusy,setBulkBusy]=useState(false);
+ const [bulkDone,setBulkDone]=useState(0);
+ const [bulkNotice,setBulkNotice]=useState('');
+ const bulkAbort=useRef(false);
  const [picked,setPicked]=useState<number>(Number(vehicle.ktype)||0);
  const [savedKtype,setSavedKtype]=useState<number>(Number(vehicle.ktype)||0);
  const [selectedTypes,setSelectedTypes]=useState<number[]>([]);
@@ -241,95 +250,60 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
  // Only an incoming new set of articles triggers the translation.
  // eslint-disable-next-line react-hooks/exhaustive-deps
  },[articles]);
+ const sectionOf=(c:Category)=>{
+  const n=(localizedName(c.name)+' '+c.name).toLocaleLowerCase('uk-UA');
+  if(/brake|гальм|супорт|колодк/.test(n))return 'Гальмівна система';
+  if(/steering|кермов|рульов/.test(n))return 'Кермове керування';
+  if(/suspension|strut|shock absorber|підвіск|амортиз|стабілізатор/.test(n))return 'Підвіска і ходова';
+  if(/air conditioning|клімат|кондиціон|обігрів/.test(n))return 'Кліматична система';
+  if(/bulb|light|indicator|фар|ламп|ліхтар|освітл/.test(n))return 'Освітлення';
+  if(/fuel|engine|filter|coolant|crankshaft|двигун|палив|фільтр|охолодж/.test(n))return 'Двигун і системи';
+  if(/tool|інструмент|знімач|fluid|олива|паста/.test(n))return 'Обладнання та матеріали';
+  if(/transmission|shaft|gearbox|диференціал|трансміс|привідн/.test(n))return 'Трансмісія';
+  return 'Інші деталі';
+ };
+ const filteredCategories=categories.filter(c=>{
+  if(search.trim()&&!((localizedName(c.name)+' '+c.name).toLocaleLowerCase('uk-UA').includes(search.trim().toLocaleLowerCase('uk-UA'))))return false;
+  if(sectionFilter!=='all'&&sectionOf(c)!==sectionFilter)return false;
+  if(stockFilter==='added'&&!alreadyStored(c))return false;
+  if(stockFilter==='new'&&alreadyStored(c))return false;
+  return true;
+ });
+ const addedCount=categories.filter(c=>Boolean(alreadyStored(c))).length;
+ const selectedToAdd=categories.filter(c=>selectedTypes.includes(c.pt_id)&&!alreadyStored(c));
+ const canBulkAdd=savedKtype===picked&&picked>0&&!bulkBusy&&!busy&&!stockStatusLoading&&!stockStatusError&&addingType===null;
+ async function addSelectedBatch(){
+  if(!canBulkAdd||!selectedToAdd.length)return;
+  setConfirmBulk(false);setBulkBusy(true);bulkAbort.current=false;setBulkDone(0);setBulkNotice('');
+  let done=0;
+  const queue=selectedToAdd.filter(c=>/[А-Яа-яІіЇїЄєҐґ]/.test(localizedName(c.name)));
+  const untranslated=selectedToAdd.length-queue.length;
+  try{
+   for(let i=0;i<queue.length;i+=30){
+    if(bulkAbort.current)break;
+    const chunk=queue.slice(i,i+30);
+    const reply=await api<{results:{pt_id:number;ok:boolean;error?:string}[];attempted:number}>(
+     '/plan-parts/donor-parts/add-batch?vehicle_id='+donorId,'POST',
+     {items:chunk.map(c=>({ktype:picked,pt_id:c.pt_id,ukrainian_name:localizedName(c.name)}))});
+    done+=reply.results.filter(r=>r.ok).length;
+    setBulkDone(done);
+    if(reply.results.some(r=>!r.ok)||reply.attempted<chunk.length){
+     const problem=reply.results.find(r=>!r.ok)?.error||'Пакет перервано';
+     throw Error(problem+' Перевірте склад перед повтором.');
+    }
+   }
+   setSelectedTypes([]);
+   setBulkNotice('Опрацьовано '+done+' вибраних типів.'+(untranslated?' Неперекладених залишено: '+untranslated+'.':'')+(bulkAbort.current?' Виконання зупинено.':''));
+  }catch(e){
+   setBulkNotice('Успішно опрацьовано: '+done+'. '+(e as Error).message);
+  }finally{
+   try{await refreshStockStatus();onSaved(await api('/vehicles/'+donorId));}catch(e){setBulkNotice(v=>v+' Перевірка актуального стану не вдалася: '+(e as Error).message);}
+   setBulkBusy(false);
+  }
+ }
  const selected=categories.find(c=>c.pt_id===activeCategory);
  const selectedCategories=categories.filter(c=>selectedTypes.includes(c.pt_id));
  const estimatedTokens=selectedCategories.length*2;
  const selectedOffers=selectedCategories.reduce((n,c)=>n+c.article_count,0);
- return <section aria-label="Каталог plan.parts для автомобіля" className="catalogue-formation" style={{display:'block',marginTop:12}}>
-  <h3>Професійний каталог запчастин · plan.parts</h3>
-  <p>Прямий пошук модифікації та реальних артикулів. Дані доступні лише власнику в тестовому режимі.</p>
-  <p><strong>{vehicle.manufacturer} {vehicle.model} · {vehicle.year}</strong>{picked?<> · K-Type <strong>{picked}</strong></>:null}</p>
-  <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-   <button type="button" disabled={paidDisabled} onClick={discover}>{busy&&phase==='initial'?'Шукаємо…':'Знайти модифікації (1 токен)'}</button>
-   {picked>0&&<button type="button" disabled={paidDisabled} className="secondary" onClick={getCategories}>Категорії та кількість (1 токен)</button>}
-  </div>
-  {busy&&<p role="status">Отримуємо дані plan.parts…</p>}
-  {secondsLeft>0&&<p role="status" aria-live="polite">Повторні платні запити будуть доступні через <strong>{secondsLeft} с</strong>. Збережений K-Type та вже отримані результати залишаються доступними.</p>}
-  {error&&<p role="alert" className="error">{error}</p>}
-  {matches.length>0&&<div style={{marginTop:12}}>
-   <label>Оберіть точну модифікацію автомобіля
-    <select disabled={busy} value={picked} onChange={e=>selectKtype(Number(e.target.value))}>
-     <option value={0}>Не вибрано</option>
-     {matches.map(m=><option key={m.ktype} value={m.ktype}>{m.modification} · {m.year_from??'—'}–{m.year_to??'дотепер'} · {m.power_kw??'—'} кВт · K-Type {m.ktype}</option>)}
-    </select>
-   </label>
-   <small>Рік та модель не гарантують точну комплектацію. Зіставте двигун, потужність і КПП до вибору.</small>
-   {picked>0&&<div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap',marginTop:8}}><button type="button" className="secondary" disabled={busy||savedKtype===picked} onClick={saveModification}>{savedKtype===picked?'Модифікацію збережено':'Закріпити K-Type за автомобілем'}</button><small>{savedKtype===picked?'K-Type записаний у картку цього автомобіля.':'Вибір тимчасовий, доки не закріплений за автомобілем.'}</small></div>}
-  </div>}
-  {categories.length>0&&<div style={{marginTop:14}}>
-   <p>Категорій: <strong>{categories.length}</strong> · Артикулів aftermarket: <strong>{categories.reduce((n,c)=>n+c.article_count,0).toLocaleString('uk-UA')}</strong></p>
-   <p>Перелік типів запчастин із plan.parts. «Додати на склад» одним натисканням створює запчастину і оприбутковує 1 одиницю для вибраного автомобіля. Раніше додані позиції з нульовим залишком також оприбутковуються без дублювання. Артикули завантажувати не потрібно.</p>
-    <button type="button" className="secondary" disabled={addingType!==null||savedKtype!==picked} onClick={()=>void receivePreviousSelections()}>
-     {addingType===-1?'Оприбутковуємо…':'Оприбуткувати раніше додані з нульовим залишком'}
-    </button>
-    <small style={{display:'block',margin:'6px 0'}}>Разова дія для запчастин, доданих старою версією CarPot. Нові запчастини одразу потрапляють на склад.</small>
-   <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center',margin:'10px 0'}}>
-    <button type="button" disabled={busy||selectedTypes.length===categories.length} className="secondary" onClick={()=>setSelectedTypes(categories.map(c=>c.pt_id))}>Вибрати всі ({categories.length})</button>
-    <button type="button" disabled={busy||selectedTypes.length===0} className="secondary" onClick={()=>setSelectedTypes([])}>Зняти вибір</button>
-    <span>Вибрано: <strong>{selectedTypes.length}</strong> із {categories.length}</span>
-   </div>
-   <div style={{padding:14,background:'#edf6f2',border:'1px solid #b8dacd',borderRadius:10,marginBottom:10}}>
-    <strong>Розрахунок повного завантаження артикулів</strong>
-    <p style={{margin:'8px 0'}}>Типів деталей: <strong>{selectedTypes.length}</strong> · Пропозицій aftermarket у вибраних типах: <strong>{selectedOffers.toLocaleString('uk-UA')}</strong></p>
-    <p style={{margin:'8px 0'}}>Запитів: <strong>{selectedTypes.length}</strong> × 2 токени = <strong>{estimatedTokens.toLocaleString('uk-UA')} токенів</strong></p>
-    <small>Це орієнтовна верхня межа за поточним тарифом для окремих запитів. Нульові або неуспішні відповіді можуть не тарифікуватися. Баланс plan.parts тут не перевіряється. Розрахунок не витрачає токенів.</small>
-    <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',margin:'12px 0'}}>
-     {selectedTypes.length===1&&<button type="button" disabled={paidDisabled} onClick={()=>getArticles(selectedTypes[0])}>Отримати артикули вибраного типу</button>}
-     {selectedTypes.length>1&&<strong>Обрано {selectedTypes.length} типів — запуск нижче</strong>}
-     {selectedTypes.length===0&&<strong>Оберіть хоча б один тип запчастин</strong>}
-    </div>
-    <p style={{margin:'8px 0'}}>Після отримання артикули з’являться під списком. Повторні однакові запити протягом 30 хвилин використовують тимчасовий кеш Backend без нових звернень до plan.parts, доки сервер не перезапущено.</p>
-    <PlanPartsBatch key={picked} vehicleId={String(vehicle.id)} ktype={picked} selected={selectedCategories} disabled={busy||savedKtype!==picked} translatedNames={machineNames} />
-   </div>
-   <p style={{margin:'8px 0'}}>Українські назви: <strong>{categories.filter(c=>ukrainianPartName(c.name).translated||Boolean(machineNames[c.name])).length}</strong> із {categories.length}. Машинний переклад застосовується для назв, відсутніх у словнику. <button type="button" className="secondary" disabled={translationLoading} onClick={()=>void translateAllCategories()}>{translationLoading?'Перекладаємо…':'Повторити переклад відсутніх назв'}</button>{translationStatus&&<small style={{display:'block'}} role="status">{translationStatus}</small>}</p>
-   {addMessage&&<p role="status" aria-live="polite">{addMessage}</p>}
-   <section aria-label="Категоризація доданих запчастин" style={{border:'1px solid var(--border,#dbe5df)',padding:12,borderRadius:8,margin:'10px 0'}}>
-    <strong>Категорії складських запчастин</strong>
-    <p><small>CarPot сам визначає систему автомобіля для нових запчастин. Для раніше доданих можна перевірити відповідності, не змінюючи залишки й ціни. Інструменти та витратні матеріали позначаються окремо.</small></p>
-    <button type="button" className="secondary" disabled={classLoading||savedKtype!==picked} onClick={()=>void previewStockClassification()}>{classLoading?'Перевіряємо…':'Перевірити категорії вже доданих'}</button>
-    {classificationPreview&&<div style={{marginTop:8}}>
-     <p>Усього: <b>{classificationPreview.total}</b> · Можна класифікувати: <b>{classificationPreview.can_apply}</b> · Потребують перевірки: <b>{classificationPreview.needs_review}</b> · Вже класифіковані: <b>{classificationPreview.already_categorized}</b></p>
-     {classificationPreview.rows.filter(r=>r.action==='needs_review').length>0&&<details><summary>Показати непідібрані категорії</summary>
-      <ul>{classificationPreview.rows.filter(r=>r.action==='needs_review').map(r=><li key={r.part_id}>{r.name} — {r.section||'Систему не визначено'} ({r.kind==='tool'?'інструмент':r.kind==='consumable'?'витратний матеріал':r.kind==='kit'?'комплект':'деталь'})</li>)}</ul>
-     </details>}
-     <button type="button" disabled={classLoading||classificationPreview.can_apply===0} onClick={()=>void applyStockClassification()}>Застосувати перевірені категорії ({classificationPreview.can_apply})</button>
-    </div>}
-    {classMessage&&<p role="status">{classMessage}</p>}
-   </section>
-   {stockStatusError&&<p role="alert">{stockStatusError} Нових надходжень до перевірки не виконуйте.</p>}
-   {duplicateStockNames.length>0&&<p role="alert">У цього автомобіля вже є {duplicateStockNames.length} однакових назв серед запчастин plan.parts. Записи не видаляємо автоматично, щоб не втратити залишки й історію: {duplicateStockNames.map(d=>d.name+' ('+d.count+')').join('; ')}.</p>}
-   {stockStatusLoading&&<small role="status">Звіряємо зі складом…</small>}
-   <button type="button" className="secondary" disabled={stockStatusLoading} onClick={()=>void refreshStockStatus()}>Оновити статус складу</button>
-   <div style={{maxHeight:310,overflowY:'auto',border:'1px solid #dae5e0',borderRadius:9}}>
-    {categories.map(c=><div key={c.pt_id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:8,padding:'9px 12px',borderBottom:'1px solid #e7efeb'}}>
-     <label style={{display:'flex',gap:8,alignItems:'center',flex:1}}><input type="checkbox" disabled={busy} checked={selectedTypes.includes(c.pt_id)} onChange={e=>setSelectedTypes(old=>e.target.checked?[...old,c.pt_id]:old.filter(id=>id!==c.pt_id))}/><span><strong>{localizedName(c.name)}</strong>{(ukrainianPartName(c.name).translated||Boolean(machineNames[c.name]))&&<small style={{display:'block',color:'#61746c'}}>Оригінал: {c.name}</small>}{!ukrainianPartName(c.name).translated&&!machineNames[c.name]&&<small style={{display:'block',color:'#9a611c'}}>Потрібен перевірений український відповідник</small>}<small style={{display:'block'}}>{c.article_count.toLocaleString('uk-UA')} артикулів</small></span></label>
-     <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
-      <button type="button" disabled={addingType!==null||stockStatusLoading||Boolean(stockStatusError)||savedKtype!==picked||Boolean(alreadyStored(c))} className="secondary" onClick={()=>void addSelectedType(c)}>{alreadyStored(c)?'На складі · '+alreadyStored(c)?.quantity+' шт.':addingType===c.pt_id?'Додаємо…':'Додати на склад'}</button>
-      <button type="button" disabled={paidDisabled} className="secondary" onClick={()=>getArticles(c.pt_id)}>Артикули (до 2 токенів)</button>
-     </div>
-    </div>)}
-   </div>
-  </div>}
-  {phase==='articles'&&<section style={{marginTop:12}}>
-   <h4>{selected?localizedName(selected.name):'Обрана категорія'} · {articles.length.toLocaleString('uk-UA')} артикулів</h4>
-   <p>Унікальних назв: <strong>{new Set(articles.map(a=>a.part_name.toLocaleLowerCase('uk-UA')).filter(Boolean)).size}</strong>. Якщо назва артикула відсутня, показано назву типу з plan.parts. Аналоги різних виробників не можна автоматично додавати як окремі фізичні деталі.</p>
-   <div style={{maxHeight:350,overflowY:'auto'}}>
-    <table><thead><tr><th>Деталь</th><th>Виробник</th><th>Артикул</th></tr></thead>
-     <tbody>{articles.slice(0,showAll?articles.length:80).map(a=><tr key={a.art_id}><td>{a.part_name?localizedName(a.part_name):(selected?localizedName(selected.name):'Назва категорії не визначена')}{ukrainianPartName(a.part_name).translated&&<small style={{display:'block',color:'#61746c'}}>Оригінал: {a.part_name}</small>}</td><td>{a.brand}</td><td>{a.article_nr}</td></tr>)}</tbody>
-    </table>
-   </div>
-   {!showAll&&articles.length>80&&<button type="button" className="secondary" onClick={()=>setShowAll(true)}>Показати всі {articles.length.toLocaleString('uk-UA')} артикулів без нового запиту</button>}
-  </section>}
-  <small>Відомості постачальника показуються для аналізу; автоматичне перенесення у склад не увімкнене без перевірки ліцензії й зіставлення фізичних деталей. Платіжна модель CarPot вимкнена.</small>
- </section>;
+ return __REPLACE_JSX__;
 }
