@@ -99,13 +99,19 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
     <p style={{margin:'8px 0'}}>Типів деталей: <strong>{selectedTypes.length}</strong> · Пропозицій aftermarket у вибраних типах: <strong>{selectedOffers.toLocaleString('uk-UA')}</strong></p>
     <p style={{margin:'8px 0'}}>Запитів: <strong>{selectedTypes.length}</strong> × 2 токени = <strong>{estimatedTokens.toLocaleString('uk-UA')} токенів</strong></p>
     <small>Це орієнтовна верхня межа за поточним тарифом для окремих запитів. Нульові або неуспішні відповіді можуть не тарифікуватися. Баланс plan.parts тут не перевіряється. Розрахунок не витрачає токенів.</small>
-    <p style={{margin:'8px 0 0'}}>Пакетне завантаження не запускається: перед виконанням потрібен окремий керований імпорт із контролем залишку, відновленням після збоїв та перевіркою прав на збереження даних.</p>
+    <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',margin:'12px 0'}}>
+     {selectedTypes.length===1&&<button type="button" disabled={paidDisabled} onClick={()=>getArticles(selectedTypes[0])}>Отримати артикули вибраного типу</button>}
+     {selectedTypes.length>1&&<strong>Обрано {selectedTypes.length} типів — пакетне завантаження ще не активоване</strong>}
+     {selectedTypes.length===0&&<strong>Оберіть хоча б один тип запчастин</strong>}
+    </div>
+    <p style={{margin:'8px 0'}}>Після отримання артикули з’являться під списком. Повторні однакові запити протягом 30 хвилин використовують тимчасовий кеш Backend без нових звернень до plan.parts, доки сервер не перезапущено.</p>
+    <p style={{margin:'8px 0 0'}}>Масове завантаження кількох типів наразі не запускається. Потрібен керований імпорт із контролем залишку та відновленням після збоїв.</p>
    </div>
    <p style={{margin:'8px 0'}}>Українські назви зі словника: <strong>{translatedCategoryCount(categories.map(c=>c.name))}</strong> із {categories.length}. Неперекладені терміни залишені оригінальними для точності.</p>
    <div style={{maxHeight:310,overflowY:'auto',border:'1px solid #dae5e0',borderRadius:9}}>
     {categories.map(c=><div key={c.pt_id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:8,padding:'9px 12px',borderBottom:'1px solid #e7efeb'}}>
      <label style={{display:'flex',gap:8,alignItems:'center',flex:1}}><input type="checkbox" disabled={busy} checked={selectedTypes.includes(c.pt_id)} onChange={e=>setSelectedTypes(old=>e.target.checked?[...old,c.pt_id]:old.filter(id=>id!==c.pt_id))}/><span><strong>{ukrainianPartName(c.name).uk}</strong>{ukrainianPartName(c.name).translated&&<small style={{display:'block',color:'#61746c'}}>Оригінал: {c.name}</small>}{!ukrainianPartName(c.name).translated&&<small style={{display:'block',color:'#9a611c'}}>Потрібен перевірений український відповідник</small>}<small style={{display:'block'}}>{c.article_count.toLocaleString('uk-UA')} артикулів</small></span></label>
-     <button type="button" disabled={paidDisabled} className="secondary" onClick={()=>getArticles(c.pt_id)}>Артикули (2 токени)</button>
+     <button type="button" disabled={paidDisabled} className="secondary" onClick={()=>getArticles(c.pt_id)}>Артикули (до 2 токенів)</button>
     </div>)}
    </div>
   </div>}
