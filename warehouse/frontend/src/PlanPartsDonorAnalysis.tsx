@@ -141,6 +141,18 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
  // A new category set, not translation state, triggers the request.
  // eslint-disable-next-line react-hooks/exhaustive-deps
  },[categories]);
+ useEffect(()=>{
+  const missing=Array.from(new Set(articles.map(a=>a.part_name).filter(Boolean)))
+   .filter(name=>!ukrainianPartName(name).translated&&!machineNames[name]);
+  if(!missing.length)return;
+  let active=true;
+  void api<{translations:Record<string,string>}>('/plan-parts/translations/lookup','POST',{names:missing.slice(0,400)})
+   .then(result=>{if(active)setMachineNames(old=>({...old,...result.translations}));})
+   .catch(()=>{/* Do not block supplier articles when translation provider is down */});
+  return ()=>{active=false;};
+ // Only an incoming new set of articles triggers the translation.
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ },[articles]);
  const selected=categories.find(c=>c.pt_id===activeCategory);
  const selectedCategories=categories.filter(c=>selectedTypes.includes(c.pt_id));
  const estimatedTokens=selectedCategories.length*2;
