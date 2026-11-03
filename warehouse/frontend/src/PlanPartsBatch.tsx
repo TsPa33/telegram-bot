@@ -64,6 +64,24 @@ export default function PlanPartsBatch({
  const maxSpend=nextCount*2;
 
  function handleStop(){stop.current=true;setMessage('Зупиняємо після поточного запиту. Уже отримані результати залишаються доступними.');}
+ async function fetchArticleCategory(ptId:number){
+  const path='/plan-parts/articles/lookup?vehicle_id='+encodeURIComponent(vehicleId)+
+   '&ktype='+ktype+'&pt_id='+ptId;
+  // 429 is a definite refusal, so waiting then retrying cannot double-charge
+  // that rejected call. Other errors remain quarantined and never auto-replayed.
+  for(let attempt=0;attempt<4;attempt++){
+   if(stop.current)throw new Error('Завантаження зупинено користувачем');
+   try{return await api<{articles:Article[]}>(path,'POST');}
+   catch(err){
+    if(!(err instanceof ApiError)||err.status!==429||attempt===3)throw err;
+    const reported=Number((err.message.match(/через\\s+(\\d+)\\s*с/)||[])[1]);
+    const seconds=Number.isFinite(reported)&&reported>0?Math.min(120,reported):30;
+    setMessage('Досягнуто обмеження запитів. Автоматично продовжимо після '+seconds+' с; раніше завантажені типи не повторюємо.');
+    await new Promise<void>(resolve=>window.setTimeout(resolve,(seconds+1)*1000));
+   }
+  }
+  throw new Error('Не вдалося завершити платний запит');
+ }
  async function begin(){
   if(locked.current||!confirmation||!validBudget||nextCount<1||disabled)return;
   locked.current=true;stop.current=false;setRunning(true);setConfirmation(false);
@@ -74,9 +92,7 @@ export default function PlanPartsBatch({
   for(const cat of queue){
    if(stop.current)break;
    try{
-    const response=await api<{articles:Article[]}>(
-     '/plan-parts/articles/lookup?vehicle_id='+encodeURIComponent(vehicleId)+
-     '&ktype='+ktype+'&pt_id='+cat.pt_id,'POST');
+    const response=await fetchArticleCategory(cat.pt_id);
     // A successful provider response has been validated by the backend.
     const articles=response.articles;
     done[String(cat.pt_id)]={
