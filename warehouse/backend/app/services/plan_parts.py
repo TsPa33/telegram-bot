@@ -70,7 +70,7 @@ def provider_results(payload, selectors):
         if not isinstance(payload, list) or (count is not None and (type(count) is not int or count != len(payload))):
             raise ValueError("Invalid or incomplete result count")
         for selector, expected in selectors.items():
-            if type(envelope.get(selector)) is not int or envelope[selector] != expected:
+            if selector in envelope and (type(envelope[selector]) is not type(expected) or envelope[selector] != expected):
                 raise ValueError("Response selector does not match request")
         if "limit" in envelope and (type(envelope["limit"]) is not int
                 or envelope["limit"] < 1 or len(payload) > envelope["limit"]):
