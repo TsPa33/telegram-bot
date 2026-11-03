@@ -33,6 +33,32 @@ class CatalogPartType(BaseModel):
     article_count: int = Field(ge=0, strict=True)
 
 
+
+class Article(BaseModel):
+    """Aftermarket article offer, NOT a unique part on a donor vehicle."""
+    model_config = ConfigDict(extra="ignore", str_strip_whitespace=True)
+    art_id: int = Field(gt=0, strict=True)
+    article_nr: str = Field(min_length=1, max_length=200)
+    brand: str = Field(min_length=1, max_length=200)
+    part_name: str = Field(min_length=1, max_length=400)
+    img_url: str | None = None
+
+
+class VehicleMatch(BaseModel):
+    model_config = ConfigDict(extra="ignore", str_strip_whitespace=True)
+    ktype: int = Field(gt=0, strict=True)
+    brand: str | None = None
+    modification: str = Field(min_length=1, max_length=200)
+    year_from: int | None = None
+    year_to: int | None = None
+    power_kw: float | None = None
+    power_ps: float | None = None
+
+    @field_validator("year_from", "year_to", mode="before")
+    @classmethod
+    def normalize_year(cls, value):
+        return production_year(value)
+
 def provider_results(payload, selectors):
     """Validate the observed envelope and reject partial/mismatched responses."""
     if isinstance(payload, dict):
@@ -41,10 +67,10 @@ def provider_results(payload, selectors):
         envelope = payload["data"]
         payload = envelope.get("results")
         count = envelope.get("count")
-        if not isinstance(payload, list) or type(count) is not int or count != len(payload):
+        if not isinstance(payload, list) or (count is not None and (type(count) is not int or count != len(payload))):
             raise ValueError("Invalid or incomplete result count")
         for selector, expected in selectors.items():
-            if type(envelope.get(selector)) is not int or envelope[selector] != expected:
+            if selector in envelope and (type(envelope[selector]) is not type(expected) or envelope[selector] != expected):
                 raise ValueError("Response selector does not match request")
         if "limit" in envelope and (type(envelope["limit"]) is not int
                 or envelope["limit"] < 1 or len(payload) > envelope["limit"]):
@@ -161,7 +187,17 @@ class PlanPartsClient:
     def categories(self, account_id: str, ktype: int, gate: RequestGate = request_gate):
         return self._lookup(account_id, "categories", {"ktype": ktype}, CatalogPartType, "pt_id", gate)
 
-    def _lookup(self, account_id, resource, params, schema, identifier, gate, name_field=""):
+    def vehicle_matches(self, account_id: str, brand: str, model: str, year: int, gate: RequestGate = request_gate):
+        if not brand.strip() or not model.strip() or not 1886 <= year <= 2100:
+            raise PlanPartsError(422, "Уточніть марку, модель і рік автомобіля")
+        return self._lookup(account_id, "ktype", {"brand": brand, "model": model, "year": year},
+                            VehicleMatch, "ktype", gate, path="/v1/aftermarket/ktype")
+
+    def articles(self, account_id: str, ktype: int, pt_id: int, gate: RequestGate = request_gate):
+        return self._lookup(account_id, "articles", {"ktype": ktype, "pt_id": pt_id},
+                            Article, "art_id", gate)
+
+    def _lookup(self, account_id, resource, params, schema, identifier, gate, name_field="", path=None):
         if os.getenv("PLAN_PARTS_ENABLED", "false").lower() != "true":
             raise PlanPartsError(503, "Інтеграцію Plan.Parts не ввімкнено")
         key = os.getenv("PLAN_PARTS_API_KEY", "").strip()
@@ -175,7 +211,7 @@ class PlanPartsClient:
                 follow_redirects=False,
                 headers={"Authorization": f"Bearer {key}", "Accept": "application/json"},
             ) as client:
-                with client.stream("GET", BASE_URL + "/v1/aftermarket/catalog/" + resource, params=params) as response:
+                with client.stream("GET", BASE_URL + (path or "/v1/aftermarket/catalog/" + resource), params=params) as response:
                     if response.status_code == 429:
                         raise PlanPartsError(429, "Ліміт запитів постачальника Plan.Parts")
                     if response.status_code != 200:
@@ -185,7 +221,7 @@ class PlanPartsClient:
                         raw.extend(chunk)
                         if len(raw) > MAX_RESPONSE_BYTES:
                             raise PlanPartsError(502, "Відповідь Plan.Parts завелика")
-            data = provider_results(json.loads(raw), params)
+            data = provider_results(json.loads(raw), {} if resource == 'ktype' else params)
             if schema is ModelOption:
                 rows = []
                 for item in data:
