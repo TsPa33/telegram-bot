@@ -1,4 +1,4 @@
-import {useContext,useEffect,useRef,useState} from 'react';
+import {useContext,useEffect,useMemo,useRef,useState} from 'react';
 import {TeamIdentity} from './permissions';
 import {api,ApiError,type Row} from './api';
 import {ukrainianPartName} from './planPartsUkrainian';
@@ -17,6 +17,7 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
  const [partQuery,setPartQuery]=useState('');
  const [stockFilter,setStockFilter]=useState('all');
  const [onlyCategory,setOnlyCategory]=useState('all');
+ const [visibleLimit,setVisibleLimit]=useState(60);
  const [showTechnical,setShowTechnical]=useState(false);
  const [showArticleTools,setShowArticleTools]=useState(false);
  const [showMaintenance,setShowMaintenance]=useState(false);
@@ -41,7 +42,16 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
  const [stockStatusLoading,setStockStatusLoading]=useState(false);
  const [stockStatusError,setStockStatusError]=useState('');
  const nameKey=(s:string)=>s.trim().toLocaleLowerCase('uk-UA').replace(/\s+/g,' ');
- const alreadyStored=(c:Category)=>stockParts.find(p=>!p.archived&&(p.pt_id===c.pt_id||nameKey(p.name)===nameKey(localizedName(c.name))));
+ // Index actual stock once. A linear scan for every displayed row was expensive.
+ const storedIndex=useMemo(()=>{
+  const byType=new Map<number,StoredPart>(),byName=new Map<string,StoredPart>();
+  for(const part of stockParts){if(part.archived)continue;
+   if(part.pt_id!==null&&!byType.has(part.pt_id))byType.set(part.pt_id,part);
+   const key=nameKey(part.name);if(!byName.has(key))byName.set(key,part);
+  }
+  return {byType,byName};
+ },[stockParts]);
+ const alreadyStored=(c:Category)=>storedIndex.byType.get(c.pt_id)||storedIndex.byName.get(nameKey(localizedName(c.name)));
  async function refreshStockStatus(){
   if(!picked||savedKtype!==picked)return;
   setStockStatusLoading(true);
@@ -337,18 +347,42 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
   return 'Потребують уточнення';
  };
 
- const filteredCategories=categories.filter(c=>{
-  const name=localizedName(c.name).toLocaleLowerCase('uk-UA');
-  const search=partQuery.trim().toLocaleLowerCase('uk-UA');
-  const stored=alreadyStored(c);
-  return (!search||name.includes(search)||c.name.toLocaleLowerCase().includes(search)||String(c.pt_id).includes(search))
-   &&(stockFilter==='all'||(stockFilter==='stored'?Boolean(stored):!stored))
-   &&(onlyCategory==='all'||sectionOf(c)===onlyCategory);
- });
- const chosenNew=categories.filter(c=>selectedTypes.includes(c.pt_id)&&!alreadyStored(c)).length;
- const selected=categories.find(c=>c.pt_id===activeCategory);
- const selectedCategories=categories.filter(c=>selectedTypes.includes(c.pt_id));
+ const selectedSet=useMemo(()=>new Set(selectedTypes),[selectedTypes]);
+ // These labels and sections are invariant while selecting/checking boxes.
+ const preparedCategories=useMemo(()=>categories.map(c=>({
+  category:c,
+  localized:localizedName(c.name),
+  section:sectionOf(c)
+ // Intentionally recompute only after catalogue or translations change.
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ })),[categories,machineNames]);
+ const sectionIndex=useMemo(()=>new Map(preparedCategories.map(x=>[x.category.pt_id,x.section])),[preparedCategories]);
+ const sectionOfCached=(c:Category)=>sectionIndex.get(c.pt_id)||'Потребують уточнення';
+ const filteredCategories=useMemo(()=>{
+  const query=partQuery.trim().toLocaleLowerCase('uk-UA');
+  return preparedCategories.filter(x=>{
+   const stored=storedIndex.byType.get(x.category.pt_id)||storedIndex.byName.get(nameKey(x.localized));
+   return (!query||x.localized.toLocaleLowerCase('uk-UA').includes(query)||x.category.name.toLocaleLowerCase().includes(query)||String(x.category.pt_id).includes(query))
+    &&(stockFilter==='all'||(stockFilter==='stored'?Boolean(stored):!stored))
+    &&(onlyCategory==='all'||x.section===onlyCategory);
+  }).map(x=>x.category);
+ },[preparedCategories,partQuery,stockFilter,onlyCategory,storedIndex]);
+ const chosenNew=useMemo(()=>categories.filter(c=>selectedSet.has(c.pt_id)&&!alreadyStored(c)).length,[categories,selectedSet,storedIndex,machineNames]);
+ const selected=useMemo(()=>categories.find(c=>c.pt_id===activeCategory),[categories,activeCategory]);
+ const selectedCategories=useMemo(()=>categories.filter(c=>selectedSet.has(c.pt_id)),[categories,selectedSet]);
  const estimatedTokens=selectedCategories.length*2;
+ const visibleCategories=filteredCategories.slice(0,visibleLimit);
+ const visibleGroups=useMemo(()=>{
+  const groups=new Map<string,Category[]>();
+  for(const c of visibleCategories){
+   const key=sectionOfCached(c);
+   const existing=groups.get(key);
+   if(existing)existing.push(c);else groups.set(key,[c]);
+  }
+  return [...groups.entries()].sort((a,b)=>a[0].localeCompare(b[0],'uk'));
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ },[filteredCategories,visibleLimit,sectionIndex]);
+ useEffect(()=>{setVisibleLimit(60)},[onlyCategory,partQuery,stockFilter,picked]);
  return <section aria-label="Розбір автомобіля та запчастини" className="cp-plan">
   <div className="cp-plan-layout">
    <div className="cp-plan-main">
@@ -402,10 +436,9 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
       {stockStatusError&&<p role="alert" className="cp-plan-error">{stockStatusError}</p>}
       {duplicateStockNames.length>0&&<p role="alert" className="cp-plan-error">У складі виявлено дублікати: {duplicateStockNames.map(d=>d.name+' ('+d.count+')').join(', ')}. Автоматичне видалення вимкнено.</p>}
       <div className="cp-plan-list">
-       {[...new Set(filteredCategories.map(sectionOf))].sort((a,b)=>a.localeCompare(b,'uk')).map(group=>{
-        const groupParts=filteredCategories.filter(c=>sectionOf(c)===group);
+       {visibleGroups.map(([group,groupParts])=>{
         const pending=groupParts.filter(c=>!alreadyStored(c));
-        const groupSelected=pending.filter(c=>selectedTypes.includes(c.pt_id));
+        const groupSelected=pending.filter(c=>selectedSet.has(c.pt_id));
         return <section key={group} className="cp-plan-group">
          <div className="cp-plan-group-heading">
           <div><strong>{group}</strong><small>{groupParts.length} типів · доступні до додавання: {pending.length}</small></div>
@@ -415,8 +448,8 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
           }}>{pending.length&&groupSelected.length===pending.length?'Зняти вибір категорії':'Вибрати всю категорію'}</button>
          </div>
          {groupParts.map(c=>{const stored=alreadyStored(c);const localized=localizedName(c.name);return <div key={c.pt_id} className="cp-plan-part">
-          <label className="cp-plan-part-name"><input type="checkbox" checked={selectedTypes.includes(c.pt_id)} onChange={e=>setSelectedTypes(old=>e.target.checked?[...new Set([...old,c.pt_id])]:old.filter(id=>id!==c.pt_id))}/><span><strong>{localized}</strong><small>{c.name!==localized?c.name:'Тип '+c.pt_id}</small></span></label>
-          <span className="cp-plan-part-tag">{sectionOf(c)}</span>
+          <label className="cp-plan-part-name"><input type="checkbox" checked={selectedSet.has(c.pt_id)} onChange={e=>setSelectedTypes(old=>e.target.checked?[...new Set([...old,c.pt_id])]:old.filter(id=>id!==c.pt_id))}/><span><strong>{localized}</strong><small>{c.name!==localized?c.name:'Тип '+c.pt_id}</small></span></label>
+          <span className="cp-plan-part-tag">{sectionOfCached(c)}</span>
           <span className={stored?'cp-plan-status is-stored':'cp-plan-status'}>{stored?'На складі · '+stored.quantity+' шт.':'Нове'}</span>
           <button type="button" className={stored?'secondary':'cp-plan-add'} disabled={addingType!==null||batchBusy||stockStatusLoading||Boolean(stockStatusError)||savedKtype!==picked||Boolean(stored)} onClick={()=>void addSelectedType(c)}>{stored?'Вже на складі':addingType===c.pt_id?'Додаємо…':'Додати на склад'}</button>
           {stored?.article_number?<span className="cp-plan-known-article" title="Артикул записаний у картку складу">{stored.article_number}</span>:<button type="button" className="secondary" disabled={paidDisabled||batchBusy} onClick={()=>void openArticles(c.pt_id)}>Артикули · 2 токени</button>}
@@ -425,6 +458,7 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
        })}
        {filteredCategories.length===0&&<p className="cp-plan-empty">За заданими фільтрами запчастин не знайдено.</p>}
       </div>
+      {filteredCategories.length>visibleLimit&&<div className="cp-plan-load-more"><span>Показано {Math.min(visibleLimit,filteredCategories.length)} із {filteredCategories.length} типів. Вибір усієї категорії діє на повний перелік.</span><button type="button" className="secondary" onClick={()=>setVisibleLimit(v=>v+60)}>Показати ще 60</button></div>}
      </>:<div className="cp-plan-empty">Оберіть модифікацію та завантажте каталог, щоб побачити перелік запчастин.</div>}
      {addMessage&&<p role="status" aria-live="polite">{addMessage}</p>}
     </div>
