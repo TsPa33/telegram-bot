@@ -24,7 +24,8 @@ def test_universal_classifier_favors_explicit_subsystem_and_service_goods():
 
 
 def test_ambiguous_or_missing_categories_never_become_fake_ids(logged):
-    account_id = next(iter(engine().connect().execute(text("SELECT id FROM accounts"))))[0]
+    with engine().connect() as conn:
+        account_id = conn.execute(text("SELECT id FROM accounts LIMIT 1")).scalar_one()
     with Session(engine()) as db:
         suggestion = match_existing_category(db, account_id, classify("Brake Caliper"), "Гальмівний супорт")
         assert suggestion["category_id"] is None
