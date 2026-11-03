@@ -15,9 +15,10 @@ MAX_RESPONSE_BYTES = 2 * 1024 * 1024
 
 
 class PlanPartsError(Exception):
-    def __init__(self, status: int, message: str):
+    def __init__(self, status: int, message: str, retry_after: int | None = None):
         super().__init__(message)
         self.status = status
+        self.retry_after = retry_after
 
 
 class Brand(BaseModel):
@@ -152,17 +153,27 @@ class RequestGate:
         self.recent = []
 
     def acquire(self, account_id: str, operation: str = "brands"):
+        # Short, explicit cooldown for each paid lookup and per-account rate
+        # window. Retain protection against duplicate paid requests and bursts.
         with self.lock:
             now = self.clock()
             self.accounts = {k: v for k, v in self.accounts.items() if v > now}
-            self.recent = [(a, t) for a, t in self.recent if t > now - 60]
+            self.recent = [(a, t) for a, t in self.recent if t > now - 30]
             key = (account_id, operation)
-            if (self.accounts.get(key, 0) > now or len(self.recent) >= 60
-                    or sum(a == account_id for a, _ in self.recent) >= 10):
-                raise PlanPartsError(429, "Ліміт запитів Plan.Parts. Спробуйте пізніше")
+            repeated = self.accounts.get(key, 0) > now
+            recent_by_account = sum(a == account_id for a, _ in self.recent)
+            if repeated or len(self.recent) >= 60 or recent_by_account >= 10:
+                if repeated:
+                    remaining = max(1, int(self.accounts[key] - now + 0.999))
+                else:
+                    relevant = self.recent if len(self.recent) >= 60 else [
+                        (a, t) for a, t in self.recent if a == account_id
+                    ]
+                    remaining = max(1, int(30 - (now - min(t for _, t in relevant)) + 0.999))
+                raise PlanPartsError(429, "Ліміт запитів CarPot. Повторіть через " + str(remaining) + " с", remaining)
             if len(self.accounts) >= 10000:
-                raise PlanPartsError(429, "Ліміт запитів Plan.Parts")
-            self.accounts[key] = now + 60
+                raise PlanPartsError(429, "Ліміт запитів CarPot", 30)
+            self.accounts[key] = now + 30
             self.recent.append((account_id, now))
 
 
@@ -213,7 +224,7 @@ class PlanPartsClient:
             ) as client:
                 with client.stream("GET", BASE_URL + (path or "/v1/aftermarket/catalog/" + resource), params=params) as response:
                     if response.status_code == 429:
-                        raise PlanPartsError(429, "Ліміт запитів постачальника Plan.Parts")
+                        raise PlanPartsError(429, "Ліміт запитів постачальника Plan.Parts", 30)
                     if response.status_code != 200:
                         raise PlanPartsError(502, "Plan.Parts відхилив запит")
                     raw = bytearray()
