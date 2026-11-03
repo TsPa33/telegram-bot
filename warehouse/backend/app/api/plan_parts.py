@@ -138,7 +138,7 @@ def vehicle_categories(
     if donor.ktype != ktype:
         raise HTTPException(409, "Спочатку закріпіть вибраний K-Type за автомобілем")
     existing = checklists.stored_categories(db, vehicle_id, who.workspace_account_id, ktype)
-    if existing:
+    if existing or (donor.checklist_ktype == ktype and donor.checklist_synced_at is not None):
         rows = [CatalogPartType(pt_id=x.pt_id, name=x.name_en, article_count=x.article_count) for x in existing]
         return {"ktype": ktype, "categories": [row.model_dump() for row in rows],
                 "category_count": len(rows), "article_records": sum(row.article_count for row in rows),
