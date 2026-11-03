@@ -131,12 +131,40 @@ export default function PlanPartsBatch({
   }
   locked.current=false;setRunning(false);
  }
+ async function recoverFromCache(ptId:number){
+  if(locked.current||running)return;
+  locked.current=true;setRunning(true);setMessage('Перевіряємо тимчасовий кеш без платного запиту…');
+  try{
+   const response=await api<{articles:Article[]}>(
+    '/plan-parts/articles/recover?vehicle_id='+encodeURIComponent(vehicleId)+
+    '&ktype='+ktype+'&pt_id='+ptId,'POST');
+   const articles=response.articles;
+   const next={...completed,[String(ptId)]:{
+    count:articles.length,
+    names:new Set(articles.map(a=>a.part_name.trim().toLocaleLowerCase('uk-UA'))).size,
+    finishedAt:Date.now()
+   }};
+   const rest=uncertain.filter(id=>id!==ptId);
+   setData(old=>({...old,[String(ptId)]:articles}));
+   checkpoint(next,rest);
+   setMessage('Дані відновлено з кешу без нового запиту до plan.parts.');
+  }catch(err){
+   setMessage('Відновлення без оплати не вдалося: '+(err as Error).message+
+    '. Категорію залишено заблокованою, новий платний запит не виконувався.');
+  }finally{locked.current=false;setRunning(false);}
+ }
  const rows=previewId===null?[]:data[String(previewId)]||[];
  const thisSession=Object.keys(data).length;
  return <section aria-label="Пакетне завантаження plan.parts" style={{border:'1px solid #b8dacd',borderRadius:10,padding:14,margin:'12px 0',background:'#f7fbf9'}}>
   <h4 style={{margin:'0 0 8px'}}>Завантажити вибрані типи одним запуском</h4>
   <p>Вибрано: <strong>{selected.length}</strong> · Уже оброблено: <strong>{completedSelected.length}</strong> · Залишилось: <strong>{pending.length}</strong> · Максимально за нові запити: <strong>{requiredTokens} токенів</strong>.</p>
-  {selectedUncertain.length>0&&<p role="alert">Неоднозначних або перерваних запитів: {selectedUncertain.length}. Їх автоматично не повторюємо, щоб уникнути повторної оплати.</p>}
+  {selectedUncertain.length>0&&<div role="alert">
+   <p>Неоднозначних або перерваних запитів: {selectedUncertain.length}. Платний повтор заблоковано.</p>
+   {selectedUncertain.map(c=><div key={c.pt_id} style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',margin:'6px 0'}}>
+    <span>{ukrainianPartName(c.name).uk}</span>
+    <button type="button" className="secondary" disabled={running} onClick={()=>void recoverFromCache(c.pt_id)}>Спробувати відновити з кешу · 0 токенів</button>
+   </div>)}
+  </div>}
   <label style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
    Ліміт токенів для цього запуску
    <input type="number" min="2" max="2000" step="2" placeholder={String(requiredTokens)} value={tokenLimit} disabled={running} onChange={e=>{setTokenLimit(e.target.value);setConfirmation(false);}} style={{maxWidth:125}}/>

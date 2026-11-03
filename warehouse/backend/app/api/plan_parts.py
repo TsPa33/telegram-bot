@@ -138,6 +138,27 @@ def vehicle_categories(
             "message": "Це артикули aftermarket, а не фізичні запчастини автомобіля."}
 
 
+@router.post("/articles/recover")
+def recover_vehicle_articles(
+    who: Annotated[Identity, Depends(identity)],
+    client: Annotated[PlanPartsClient, Depends(plan_parts_client)],
+    db: Annotated[Session, Depends(get_db)],
+    vehicle_id: str = Query(min_length=1, max_length=80),
+    ktype: int = Query(gt=0),
+    pt_id: int = Query(gt=0),
+):
+    """Attempt recovery exclusively from previously received in-memory 2xx bytes."""
+    donor = _owned_paid_vehicle(who, db, vehicle_id)
+    if donor.ktype != ktype:
+        raise HTTPException(409, "Модифікація автомобіля змінилася")
+    try:
+        rows = client.recover_articles(who.workspace_account_id, ktype, pt_id)
+    except PlanPartsError as exc:
+        _handle_provider(exc)
+    return {"ktype": ktype, "pt_id": pt_id, "articles": [row.model_dump() for row in rows],
+            "total": len(rows), "from_cache": True}
+
+
 @router.post("/articles/lookup")
 def vehicle_articles(
     who: Annotated[Identity, Depends(identity)],
