@@ -22,7 +22,7 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
  const [stockParts,setStockParts]=useState<StoredPart[]>([]);
  const [stockStatusLoading,setStockStatusLoading]=useState(false);
  const [stockStatusError,setStockStatusError]=useState('');
- const nameKey=(s:string)=>s.trim().toLocaleLowerCase('uk-UA').replace(/\\s+/g,' ');
+ const nameKey=(s:string)=>s.trim().toLocaleLowerCase('uk-UA').replace(/\s+/g,' ');
  const alreadyStored=(c:Category)=>stockParts.find(p=>!p.archived&&(p.pt_id===c.pt_id||nameKey(p.name)===nameKey(localizedName(c.name))));
  async function refreshStockStatus(){
   if(!picked||savedKtype!==picked)return;
