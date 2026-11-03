@@ -47,7 +47,7 @@ export default function PlanPartsBatch({
   }catch{setCompleted({});setUncertain([]);}
   try{
    const cached=JSON.parse(sessionStorage.getItem(articleCacheKey)||'null') as {until:number;data:Record<string,Article[]>}|null;
-   if(cached?.until>Date.now()&&cached.data&&typeof cached.data==='object'){
+   if(cached !== null && cached.until>Date.now() && cached.data && typeof cached.data==='object'){
     setData(cached.data);
    }else{
     sessionStorage.removeItem(articleCacheKey);
@@ -62,7 +62,7 @@ export default function PlanPartsBatch({
   // again. Never use persistent localStorage, IndexedDB, or database writes.
   try{
    const previous=JSON.parse(sessionStorage.getItem(articleCacheKey)||'null') as {until:number;data:Record<string,Article[]>}|null;
-   const entries=previous?.until>Date.now()?previous.data||{}:{};
+   const entries=previous !== null && previous.until>Date.now() ? previous.data||{} : {};
    const next={...entries,[String(ptId)]:articles};
    const serialized=JSON.stringify({until:Date.now()+CHECKPOINT_TTL,data:next});
    if(serialized.length<=BROWSER_ARTICLE_CACHE_LIMIT){
