@@ -30,7 +30,13 @@ export default function VirtualDismantling({vehicle,onSaved}:{vehicle:Row;onSave
  async function analyzeCoverage(){
   if(!plan||running.current||coverageLoading||coverage)return;
   setCoverageLoading(true);setError('');
-  const initial={etag:plan.etag,local_candidates:(plan.items||[]).length,local_categories:new Set((plan.items||[]).map((i:Row)=>i.category).filter(Boolean)).size,pending:plan.pending_count||0};
+  let initial:Row={etag:plan.etag,local_candidates:(plan.items||[]).length,local_categories:new Set((plan.items||[]).map((i:Row)=>i.category).filter(Boolean)).size,pending:plan.pending_count||0};
+  try{
+   const prospective=await api<Row>('/vehicles/'+encodeURIComponent(String(vehicle.id))+'/virtual-dismantling/coverage-preview','POST');
+   initial={...initial,etag:prospective.etag,local_candidates:prospective.candidates,local_categories:prospective.categories,pending:prospective.review,prospective};
+  }catch(e){
+   setError('Не вдалося перевірити майбутній список деталей: '+(e as Error).message);setCoverageLoading(false);return;
+  }
   try{
    // Paid supplier lookup is optional and owner-only; it never creates parts.
    // A donor without an exact K-Type uses the existing CarPot catalogue at zero provider cost.
@@ -73,7 +79,8 @@ export default function VirtualDismantling({vehicle,onSaved}:{vehicle:Row;onSave
   {coverage&&<section className="catalogue-formation" aria-label="Попередній аналіз запчастин" role="status">
    <div style={{width:'100%'}}>
     <h3>Результат попереднього аналізу</h3>
-    <p>Категорій у поточному плані: <strong>{coverage.local_categories}</strong> · Потенційних позицій: <strong>{coverage.local_candidates}</strong> · Потребують перевірки: <strong>{coverage.pending}</strong>.</p>
+    <p>Категорій у майбутньому плані: <strong>{coverage.local_categories}</strong> · Потенційних позицій: <strong>{coverage.local_candidates}</strong> · Потребують перевірки: <strong>{coverage.pending}</strong>.</p>
+    {coverage.prospective?.limited&&<p role="status">Оцінка базується на неповному конструктивному довіднику. Це не повний OEM-каталог конкретного VIN.</p>}
     {coverage.external?.available&&<p>У каталозі для обраної модифікації: <strong>{coverage.external.categories}</strong> категорій і <strong>{Number(coverage.external.article_records).toLocaleString('uk-UA')}</strong> артикулів різних виробників.</p>}
     {coverage.external?.available===false&&<p>{coverage.external.reason}</p>}
     {coverage.external_error&&<p role="status">Зовнішній каталог недоступний: {coverage.external_error}. Локальний аналіз залишається доступним.</p>}
