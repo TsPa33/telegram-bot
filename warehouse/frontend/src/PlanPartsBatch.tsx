@@ -8,6 +8,7 @@ type Article={art_id:number;article_nr:string;brand:string;part_name:string};
 type Summary={count:number;names:number;finishedAt:number};
 type Checkpoint={scope:string;until:number;completed:Record<string,Summary>;uncertain:number[]};
 const CHECKPOINT_TTL=30*60*1000;
+const BROWSER_ARTICLE_CACHE_LIMIT=1200000; // Session-only, bounded, never durable storage.
 const API_PACE_MS=3400; // Keep comfortably below the current 10 requests / 30 seconds local budget.
 
 export default function PlanPartsBatch({
@@ -20,6 +21,7 @@ export default function PlanPartsBatch({
  const [completed,setCompleted]=useState<Record<string,Summary>>({});
  const [uncertain,setUncertain]=useState<number[]>([]);
  const [data,setData]=useState<Record<string,Article[]>>({});
+ const articleCacheKey=scope+':temporary-articles';
  const [previewId,setPreviewId]=useState<number|null>(null);
  const [expanded,setExpanded]=useState(false);
  const [confirmation,setConfirmation]=useState(false);
@@ -43,9 +45,34 @@ export default function PlanPartsBatch({
     setCompleted({});setUncertain([]);
    }
   }catch{setCompleted({});setUncertain([]);}
-  setData({});setPreviewId(null);setConfirmation(false);setMessage('');
- },[scope]);
+  try{
+   const cached=JSON.parse(sessionStorage.getItem(articleCacheKey)||'null') as {until:number;data:Record<string,Article[]>}|null;
+   if(cached?.until>Date.now()&&cached.data&&typeof cached.data==='object'){
+    setData(cached.data);
+   }else{
+    sessionStorage.removeItem(articleCacheKey);
+    setData({});
+   }
+  }catch{setData({});}
+  setPreviewId(null);setConfirmation(false);setMessage('');
+ },[scope,articleCacheKey]);
 
+ function rememberArticles(ptId:number,articles:Article[]){
+  // Rehydrate the currently open browser session without paying the supplier
+  // again. Never use persistent localStorage, IndexedDB, or database writes.
+  try{
+   const previous=JSON.parse(sessionStorage.getItem(articleCacheKey)||'null') as {until:number;data:Record<string,Article[]>}|null;
+   const entries=previous?.until>Date.now()?previous.data||{}:{};
+   const next={...entries,[String(ptId)]:articles};
+   const serialized=JSON.stringify({until:Date.now()+CHECKPOINT_TTL,data:next});
+   if(serialized.length<=BROWSER_ARTICLE_CACHE_LIMIT){
+    sessionStorage.setItem(articleCacheKey,serialized);
+   }else{
+    // Do not evict previously cached categories just to fit an oversized one.
+    setMessage('Артикули доступні зараз, але обсяг перевищує ліміт тимчасової пам’яті браузера. Відновлення після оновлення сторінки не гарантовано.');
+   }
+  }catch{/* Optional cache; never impact the paid response itself */}
+ }
  function checkpoint(next:Record<string,Summary>,ambiguous:number[]){
   setCompleted(next);setUncertain(ambiguous);
   try{
@@ -102,6 +129,7 @@ export default function PlanPartsBatch({
      finishedAt:Date.now()
     };
     setData(previous=>({...previous,[String(cat.pt_id)]:articles}));
+    rememberArticles(cat.pt_id,articles);
     finished++;
     setDoneCount(finished);
     checkpoint({...done},[...ambiguous]);
@@ -147,6 +175,7 @@ export default function PlanPartsBatch({
    }};
    const rest=uncertain.filter(id=>id!==ptId);
    setData(old=>({...old,[String(ptId)]:articles}));
+   rememberArticles(ptId,articles);
    checkpoint(next,rest);
    setMessage('Дані відновлено з кешу без нового запиту до plan.parts.');
   }catch(err){
@@ -163,6 +192,7 @@ export default function PlanPartsBatch({
     '/plan-parts/articles/recover?vehicle_id='+encodeURIComponent(vehicleId)+
     '&ktype='+ktype+'&pt_id='+ptId,'POST');
    setData(previous=>({...previous,[String(ptId)]:result.articles}));
+   rememberArticles(ptId,result.articles);
    setPreviewId(ptId);
    setMessage('Завантажені раніше артикули відновлено без нового запиту до plan.parts.');
   }catch(err){
@@ -232,6 +262,6 @@ export default function PlanPartsBatch({
     {rows.map(a=><tr key={a.art_id}><td>{a.part_name?ukrainianPartName(a.part_name).uk:(selected.find(c=>c.pt_id===previewId)?ukrainianPartName(selected.find(c=>c.pt_id===previewId)!.name).uk:'Назва категорії не визначена')}</td><td>{a.brand}</td><td>{a.article_nr}</td></tr>)}
    </tbody></table></div>
   </div>}
-  <small>Тимчасовий серверний кеш діє до 30 хвилин і зникає після перезапуску. Для завершених типів доступна окрема безоплатна спроба відновлення артикулів. У браузері зберігається тільки короткий контрольний список завершених типів. Якщо Backend перезапуститься, не можна гарантувати безкоштовне відновлення всіх артикулів. Для постійного комерційного каталогу потрібне ліцензійне погодження.</small>
+  <small>Тимчасовий серверний кеш діє до 30 хвилин і зникає після перезапуску. Для завершених типів доступна окрема безоплатна спроба відновлення артикулів. У межах поточної браузерної сесії також тимчасово зберігаються невеликі отримані списки артикулів (до 30 хвилин та обмеженого обсягу). Якщо Backend перезапуститься, не можна гарантувати безкоштовне відновлення всіх артикулів. Для постійного комерційного каталогу потрібне ліцензійне погодження.</small>
  </section>;
 }
