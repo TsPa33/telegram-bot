@@ -284,13 +284,29 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
    addLock.current=false;setBatchBusy(false);
   }
  }
+ // Presentation-only categorization. Actual saved categories are resolved on
+ // the backend against the workspace taxonomy; ambiguous names stay "Інші".
+ const sectionOf=(c:Category)=>{
+  const raw=(c.name+' '+localizedName(c.name)).toLocaleLowerCase('uk-UA');
+  if(/tool|puller|інструмент|знімач|fluid|антифриз|паста для|олива|lubricant/.test(raw))return 'Обладнання та матеріали';
+  if(/brake|гальм|супорт|колодк/.test(raw))return 'Гальмівна система';
+  if(/steering|кермов|рульов/.test(raw))return 'Кермове керування';
+  if(/suspension|shock absorber|strut|стабілізатор|підвіск|амортиз/.test(raw))return 'Підвіска і ходова';
+  if(/headlight|bulb|tail light|direction indicator|lamp|фар|ламп|ліхтар|освітл/.test(raw))return 'Освітлення';
+  if(/air conditioning|heater|клімат|кондиціон|обігрів|пічк/.test(raw))return 'Кліматична система';
+  if(/transmission|gearbox|drive shaft|differential|трансміс|шрус|диференціал|коробк.{0,9}передач/.test(raw))return 'Трансмісія та привід';
+  if(/fuel|engine|filter|coolant|crankshaft|camshaft|turbo|двигун|палив|фільтр|охолодж|турбін/.test(raw))return 'Двигун і системи';
+  if(/window|mirror|door|bumper|wing|fender|body panel|кузов|дзеркал|двер|капот|бампер/.test(raw))return 'Кузов і зовнішні деталі';
+  if(/sensor|alternator|wiring|relay|starter|battery|датчик|генератор|реле|акумулятор|стартер/.test(raw))return 'Електрика та електроніка';
+  return 'Інші деталі';
+ };
  const filteredCategories=categories.filter(c=>{
   const name=localizedName(c.name).toLocaleLowerCase('uk-UA');
   const search=partQuery.trim().toLocaleLowerCase('uk-UA');
   const stored=alreadyStored(c);
   return (!search||name.includes(search)||c.name.toLocaleLowerCase().includes(search)||String(c.pt_id).includes(search))
    &&(stockFilter==='all'||(stockFilter==='stored'?Boolean(stored):!stored))
-   &&(onlyCategory==='all'||String(c.pt_id)===onlyCategory);
+   &&(onlyCategory==='all'||sectionOf(c)===onlyCategory);
  });
  const chosenNew=categories.filter(c=>selectedTypes.includes(c.pt_id)&&!alreadyStored(c)).length;
  const selected=categories.find(c=>c.pt_id===activeCategory);
@@ -323,7 +339,7 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
      <div className="cp-plan-heading"><h3>2. Підібрані запчастини</h3>{categories.length>0&&<small>{filteredCategories.length} із {categories.length}</small>}</div>
      <div className="cp-plan-filters">
       <input aria-label="Пошук запчастин" placeholder="Пошук запчастини або типу…" value={partQuery} onChange={e=>setPartQuery(e.target.value)}/>
-      <select aria-label="Категорія" value={onlyCategory} onChange={e=>setOnlyCategory(e.target.value)}><option value="all">Усі категорії</option>{categories.map(c=><option key={c.pt_id} value={String(c.pt_id)}>{localizedName(c.name)}</option>)}</select>
+      <select aria-label="Категорія" value={onlyCategory} onChange={e=>setOnlyCategory(e.target.value)}><option value="all">Усі категорії</option>{[...new Set(categories.map(sectionOf))].sort((a,b)=>a.localeCompare(b,"uk")).map(group=><option key={group} value={group}>{group}</option>)}</select>
       <select aria-label="Статус" value={stockFilter} onChange={e=>setStockFilter(e.target.value)}><option value="all">Усі статуси</option><option value="new">Не на складі</option><option value="stored">Вже на складі</option></select>
      </div>
      {categories.length>0?<><div className="cp-plan-select-actions"><button type="button" className="secondary" onClick={()=>setSelectedTypes(categories.map(c=>c.pt_id))}>Вибрати всі</button><button type="button" className="secondary" onClick={()=>setSelectedTypes([])}>Зняти вибір</button><small>Вибрано: {selectedTypes.length}</small></div>
@@ -332,7 +348,7 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
       <div className="cp-plan-list">
        {filteredCategories.map(c=>{const stored=alreadyStored(c);const localized=localizedName(c.name);return <div key={c.pt_id} className="cp-plan-part">
         <label className="cp-plan-part-name"><input type="checkbox" checked={selectedTypes.includes(c.pt_id)} onChange={e=>setSelectedTypes(old=>e.target.checked?[...old,c.pt_id]:old.filter(id=>id!==c.pt_id))}/><span><strong>{localized}</strong><small>{c.name!==localized?c.name:'Тип '+c.pt_id}</small></span></label>
-        <span className="cp-plan-part-tag">Запчастини</span>
+        <span className="cp-plan-part-tag">{sectionOf(c)}</span>
         <span className={stored?'cp-plan-status is-stored':'cp-plan-status'}>{stored?'На складі · '+stored.quantity+' шт.':'Нове'}</span>
         <button type="button" className={stored?'secondary':'cp-plan-add'} disabled={addingType!==null||batchBusy||stockStatusLoading||Boolean(stockStatusError)||savedKtype!==picked||Boolean(stored)} onClick={()=>void addSelectedType(c)}>{stored?'Вже на складі':addingType===c.pt_id?'Додаємо…':'Додати на склад'}</button>
         <button type="button" className="secondary" disabled={paidDisabled} onClick={()=>getArticles(c.pt_id)}>Артикули</button>
