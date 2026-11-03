@@ -1,5 +1,5 @@
-import {useRef,useState} from 'react';
-import {api,type Row} from './api';
+import {useEffect,useRef,useState} from 'react';
+import {api,ApiError,type Row} from './api';
 import {ukrainianPartName,translatedCategoryCount} from './planPartsUkrainian';
 
 type Match={ktype:number;modification:string;year_from?:number;year_to?:number;power_kw?:number;power_ps?:number};
@@ -17,11 +17,27 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
  const [phase,setPhase]=useState<'initial'|'matching'|'categories'|'articles'>('initial');
  const [busy,setBusy]=useState(false),[error,setError]=useState('');
  const gate=useRef(false),[showAll,setShowAll]=useState(false);
+ const [cooldownUntil,setCooldownUntil]=useState(0),[secondsLeft,setSecondsLeft]=useState(0);
+ useEffect(()=>{
+   if(!cooldownUntil){setSecondsLeft(0);return;}
+   const tick=()=>setSecondsLeft(Math.max(0,Math.ceil((cooldownUntil-Date.now())/1000)));
+   tick();
+   const interval=window.setInterval(tick,1000);
+   return ()=>window.clearInterval(interval);
+ },[cooldownUntil]);
+ const paidDisabled=busy||secondsLeft>0;
  const donorId=encodeURIComponent(String(vehicle.id));
  async function run(fn:()=>Promise<void>){
   if(gate.current)return;
   gate.current=true;setBusy(true);setError('');
-  try{await fn();}catch(e){setError((e as Error).message);}
+  try{await fn();}catch(e){
+   if(e instanceof ApiError&&e.status===429){
+    const reported=Number((e.message.match(/через\\s+(\\d+)\\s*с/)||[])[1]);
+    const wait=Number.isFinite(reported)&&reported>0?Math.min(300,reported):30;
+    setCooldownUntil(Date.now()+wait*1000);
+   }
+   setError((e as Error).message);
+  }
   finally{gate.current=false;setBusy(false);}
  }
  function discover(){void run(async()=>{
@@ -54,10 +70,11 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
   <p>Прямий пошук модифікації та реальних артикулів. Дані доступні лише власнику в тестовому режимі.</p>
   <p><strong>{vehicle.manufacturer} {vehicle.model} · {vehicle.year}</strong>{picked?<> · K-Type <strong>{picked}</strong></>:null}</p>
   <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-   <button type="button" disabled={busy} onClick={discover}>{busy&&phase==='initial'?'Шукаємо…':'Знайти модифікації (1 токен)'}</button>
-   {picked>0&&<button type="button" disabled={busy} className="secondary" onClick={getCategories}>Категорії та кількість (1 токен)</button>}
+   <button type="button" disabled={paidDisabled} onClick={discover}>{busy&&phase==='initial'?'Шукаємо…':'Знайти модифікації (1 токен)'}</button>
+   {picked>0&&<button type="button" disabled={paidDisabled} className="secondary" onClick={getCategories}>Категорії та кількість (1 токен)</button>}
   </div>
   {busy&&<p role="status">Отримуємо дані plan.parts…</p>}
+  {secondsLeft>0&&<p role="status" aria-live="polite">Повторні платні запити будуть доступні через <strong>{secondsLeft} с</strong>. Збережений K-Type та вже отримані результати залишаються доступними.</p>
   {error&&<p role="alert" className="error">{error}</p>}
   {matches.length>0&&<div style={{marginTop:12}}>
    <label>Оберіть точну модифікацію автомобіля
@@ -88,7 +105,7 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
    <div style={{maxHeight:310,overflowY:'auto',border:'1px solid #dae5e0',borderRadius:9}}>
     {categories.map(c=><div key={c.pt_id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:8,padding:'9px 12px',borderBottom:'1px solid #e7efeb'}}>
      <label style={{display:'flex',gap:8,alignItems:'center',flex:1}}><input type="checkbox" disabled={busy} checked={selectedTypes.includes(c.pt_id)} onChange={e=>setSelectedTypes(old=>e.target.checked?[...old,c.pt_id]:old.filter(id=>id!==c.pt_id))}/><span><strong>{ukrainianPartName(c.name).uk}</strong>{ukrainianPartName(c.name).translated&&<small style={{display:'block',color:'#61746c'}}>Оригінал: {c.name}</small>}{!ukrainianPartName(c.name).translated&&<small style={{display:'block',color:'#9a611c'}}>Потрібен перевірений український відповідник</small>}<small style={{display:'block'}}>{c.article_count.toLocaleString('uk-UA')} артикулів</small></span></label>
-     <button type="button" disabled={busy} className="secondary" onClick={()=>getArticles(c.pt_id)}>Артикули (2 токени)</button>
+     <button type="button" disabled={paidDisabled} className="secondary" onClick={()=>getArticles(c.pt_id)}>Артикули (2 токени)</button>
     </div>)}
    </div>
   </div>}
