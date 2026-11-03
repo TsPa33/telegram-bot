@@ -20,7 +20,7 @@ export default function VirtualDismantling({vehicle,onSaved}:{vehicle:Row;onSave
  const [q,setQ]=useState(''),[category,setCategory]=useState(''),[sub,setSub]=useState(''),[selected,setSelected]=useState<string[]>([]),[limit,setLimit]=useState(60),[powertrain,setPowertrain]=useState('');
  const [priceFilter,setPriceFilter]=useState(''),[stateFilter,setStateFilter]=useState(''),[stockRows,setStockRows]=useState<Record<string,Row>>({}),[stockError,setStockError]=useState('');
  const [detail,setDetail]=useState<Row|null>(null),[quantity,setQuantity]=useState('1'),[location,setLocation]=useState(''),[condition,setCondition]=useState('unknown');
- const running=useRef(false),epoch=useRef(0);
+ const running=useRef(false),coverageRequest=useRef(false),epoch=useRef(0);
  const editable=can('dismantling.manage')&&can('inventory.edit')&&!vehicle.archived;
  const activate=can('dismantling.manage')&&!vehicle.archived&&can('inventory.activate_virtual')&&can('inventory.create');
  async function load(){const e=epoch.current;const r=await api(path);if(e===epoch.current)setPlan(r);return r;}
@@ -28,14 +28,15 @@ export default function VirtualDismantling({vehicle,onSaved}:{vehicle:Row;onSave
  async function work(fn:()=>Promise<void>){if(running.current)return;running.current=true;setBusy(true);setError('');try{await fn();}catch(e){setError(e instanceof TypeError?'З’єднання перервано. Збережений запит можна безпечно повторити.':(e as Error).message);}finally{running.current=false;setBusy(false);}}
  async function command(kind:string,payload:Row,existing?:Row){const generation=epoch.current;const request=existing||{scope:key,kind,payload:{...payload,request_key:crypto.randomUUID()}};setPending(request);try{sessionStorage.setItem(key,JSON.stringify(request));}catch{setPending(null);throw Error('Не вдалося зберегти захищений запит у браузері. Звільніть сховище або скористайтесь іншим браузером; дані не змінено.');}try{const r=await api(path+'/'+request.kind,'POST',request.payload);sessionStorage.removeItem(key);if(generation!==epoch.current)return;setOutcome(r);setPending(null);await load();if(request.kind==='activate'&&generation===epoch.current)onSaved(await api('/vehicles/'+vehicle.id));}catch(e){if(e instanceof ApiError&&e.status<500){sessionStorage.removeItem(key);if(generation===epoch.current){setPending(null);await load();}}throw e;}}
  async function analyzeCoverage(){
-  if(!plan||running.current||coverageLoading||coverage)return;
+  if(!plan||running.current||coverageRequest.current||coverage)return;
+  coverageRequest.current=true;
   setCoverageLoading(true);setError('');
   let initial:Row={etag:plan.etag,local_candidates:(plan.items||[]).length,local_categories:new Set((plan.items||[]).map((i:Row)=>i.category).filter(Boolean)).size,pending:plan.pending_count||0};
   try{
    const prospective=await api<Row>('/vehicles/'+encodeURIComponent(String(vehicle.id))+'/virtual-dismantling/coverage-preview','POST');
    initial={...initial,etag:prospective.etag,local_candidates:prospective.candidates,local_categories:prospective.categories,pending:prospective.review,prospective};
   }catch(e){
-   setError('Не вдалося перевірити майбутній список деталей: '+(e as Error).message);setCoverageLoading(false);return;
+   setError('Не вдалося перевірити майбутній список деталей: '+(e as Error).message);coverageRequest.current=false;setCoverageLoading(false);return;
   }
   try{
    // Paid supplier lookup is optional and owner-only; it never creates parts.
@@ -48,7 +49,7 @@ export default function VirtualDismantling({vehicle,onSaved}:{vehicle:Row;onSave
      setCoverage({...initial,external_error:(e as Error).message});
     }
    }else setCoverage(initial);
-  }finally{setCoverageLoading(false);}
+  }finally{coverageRequest.current=false;setCoverageLoading(false);}
  }
  function confirmCoverage(){
   if(!plan||!coverage||coverage.etag!==plan.etag||locked)return;
