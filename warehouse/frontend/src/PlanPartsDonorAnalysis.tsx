@@ -5,9 +5,11 @@ type Match={ktype:number;modification:string;year_from?:number;year_to?:number;p
 type Category={pt_id:number;name:string;article_count:number};
 type Article={art_id:number;article_nr:string;brand:string;part_name:string};
 
-export default function PlanPartsDonorAnalysis({vehicle}:{vehicle:Row}){
+export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;onSaved:(row:Row)=>void}){
  const [matches,setMatches]=useState<Match[]>([]);
  const [picked,setPicked]=useState<number>(Number(vehicle.ktype)||0);
+ const [savedKtype,setSavedKtype]=useState<number>(Number(vehicle.ktype)||0);
+ const [selectedTypes,setSelectedTypes]=useState<number[]>([]);
  const [categories,setCategories]=useState<Category[]>([]);
  const [articles,setArticles]=useState<Article[]>([]);
  const [activeCategory,setActiveCategory]=useState<number>(0);
@@ -27,17 +29,25 @@ export default function PlanPartsDonorAnalysis({vehicle}:{vehicle:Row}){
   if(!result.matches.length)setError('Точних кандидатів за маркою, моделлю та роком немає. Уточніть автомобіль.');
  });}
  function selectKtype(ktype:number){
-  setPicked(ktype);setCategories([]);setArticles([]);setActiveCategory(0);
+  setPicked(ktype);setCategories([]);setArticles([]);setActiveCategory(0);setSelectedTypes([]);
  }
  function getCategories(){if(!picked)return;void run(async()=>{
   const result=await api<{categories:Category[]}>('/plan-parts/categories/lookup?vehicle_id='+donorId+'&ktype='+picked,'POST');
-  setCategories(result.categories);setArticles([]);setActiveCategory(0);setPhase('categories');
+  setCategories(result.categories);setSelectedTypes(result.categories.map(c=>c.pt_id));setArticles([]);setActiveCategory(0);setPhase('categories');
  });}
  function getArticles(ptId:number){void run(async()=>{
   const result=await api<{articles:Article[]}>('/plan-parts/articles/lookup?vehicle_id='+donorId+'&ktype='+picked+'&pt_id='+ptId,'POST');
   setArticles(result.articles);setActiveCategory(ptId);setPhase('articles');setShowAll(false);
  });}
+ function saveModification(){if(!picked)return;void run(async()=>{
+   await api('/plan-parts/vehicle-modification/select?vehicle_id='+donorId,'POST',{ktype:picked});
+   setSavedKtype(picked);
+   onSaved(await api('/vehicles/'+donorId));
+  });}
  const selected=categories.find(c=>c.pt_id===activeCategory);
+ const selectedCategories=categories.filter(c=>selectedTypes.includes(c.pt_id));
+ const estimatedTokens=selectedCategories.length*2;
+ const selectedOffers=selectedCategories.reduce((n,c)=>n+c.article_count,0);
  return <section aria-label="Каталог plan.parts для автомобіля" className="catalogue-formation" style={{display:'block',marginTop:12}}>
   <h3>Професійний каталог запчастин · plan.parts</h3>
   <p>Прямий пошук модифікації та реальних артикулів. Дані доступні лише власнику в тестовому режимі.</p>
@@ -56,13 +66,26 @@ export default function PlanPartsDonorAnalysis({vehicle}:{vehicle:Row}){
     </select>
    </label>
    <small>Рік та модель не гарантують точну комплектацію. Зіставте двигун, потужність і КПП до вибору.</small>
+   {picked>0&&<div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap',marginTop:8}}><button type="button" className="secondary" disabled={busy||savedKtype===picked} onClick={saveModification}>{savedKtype===picked?'Модифікацію збережено':'Закріпити K-Type за автомобілем'}</button><small>{savedKtype===picked?'K-Type записаний у картку цього автомобіля.':'Вибір тимчасовий, доки не закріплений за автомобілем.'}</small></div>}
   </div>}
   {categories.length>0&&<div style={{marginTop:14}}>
    <p>Категорій: <strong>{categories.length}</strong> · Артикулів aftermarket: <strong>{categories.reduce((n,c)=>n+c.article_count,0).toLocaleString('uk-UA')}</strong></p>
-   <p>Перелік категорій із plan.parts (не кількість окремих деталей на донорі):</p>
+   <p>Перелік типів запчастин із plan.parts (не кількість окремих деталей на донорі):</p>
+   <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center',margin:'10px 0'}}>
+    <button type="button" disabled={busy||selectedTypes.length===categories.length} className="secondary" onClick={()=>setSelectedTypes(categories.map(c=>c.pt_id))}>Вибрати всі ({categories.length})</button>
+    <button type="button" disabled={busy||selectedTypes.length===0} className="secondary" onClick={()=>setSelectedTypes([])}>Зняти вибір</button>
+    <span>Вибрано: <strong>{selectedTypes.length}</strong> із {categories.length}</span>
+   </div>
+   <div style={{padding:14,background:'#edf6f2',border:'1px solid #b8dacd',borderRadius:10,marginBottom:10}}>
+    <strong>Розрахунок повного завантаження артикулів</strong>
+    <p style={{margin:'8px 0'}}>Типів деталей: <strong>{selectedTypes.length}</strong> · Пропозицій aftermarket у вибраних типах: <strong>{selectedOffers.toLocaleString('uk-UA')}</strong></p>
+    <p style={{margin:'8px 0'}}>Запитів: <strong>{selectedTypes.length}</strong> × 2 токени = <strong>{estimatedTokens.toLocaleString('uk-UA')} токенів</strong></p>
+    <small>Це орієнтовна верхня межа за поточним тарифом для окремих запитів. Нульові або неуспішні відповіді можуть не тарифікуватися. Баланс plan.parts тут не перевіряється. Розрахунок не витрачає токенів.</small>
+    <p style={{margin:'8px 0 0'}}>Пакетне завантаження не запускається: перед виконанням потрібен окремий керований імпорт із контролем залишку, відновленням після збоїв та перевіркою прав на збереження даних.</p>
+   </div>
    <div style={{maxHeight:310,overflowY:'auto',border:'1px solid #dae5e0',borderRadius:9}}>
     {categories.map(c=><div key={c.pt_id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:8,padding:'9px 12px',borderBottom:'1px solid #e7efeb'}}>
-     <span>{c.name} · <strong>{c.article_count.toLocaleString('uk-UA')}</strong> артикулів</span>
+     <label style={{display:'flex',gap:8,alignItems:'center',flex:1}}><input type="checkbox" disabled={busy} checked={selectedTypes.includes(c.pt_id)} onChange={e=>setSelectedTypes(old=>e.target.checked?[...old,c.pt_id]:old.filter(id=>id!==c.pt_id))}/><span>{c.name} · <strong>{c.article_count.toLocaleString('uk-UA')}</strong> артикулів</span></label>
      <button type="button" disabled={busy} className="secondary" onClick={()=>getArticles(c.pt_id)}>Артикули (2 токени)</button>
     </div>)}
    </div>
