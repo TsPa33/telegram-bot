@@ -105,6 +105,10 @@ export default function PlanPartsBatch({
     setDoneCount(finished);
     checkpoint({...done},[...ambiguous]);
    }catch(err){
+    if(stop.current){
+     setMessage('Зупинено користувачем. Уже підтверджені типи збережено у прогресі цієї сесії.');
+     break;
+    }
     if(err instanceof ApiError&&err.status===429){
      const seconds=Number((err.message.match(/через\s+(\d+)\s*с/)||[])[1]);
      setMessage('Ліміт запитів: '+err.message+'. Уже завершені категорії не повторюються. Продовжіть після закінчення таймера.');
