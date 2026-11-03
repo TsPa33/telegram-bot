@@ -12,9 +12,9 @@ const BROWSER_ARTICLE_CACHE_LIMIT=1200000; // Session-only, bounded, never durab
 const API_PACE_MS=3400; // Keep comfortably below the current 10 requests / 30 seconds local budget.
 
 export default function PlanPartsBatch({
- vehicleId,ktype,selected,disabled
+ vehicleId,ktype,selected,disabled,translatedNames
 }:{
- vehicleId:string;ktype:number;selected:Category[];disabled:boolean
+ vehicleId:string;ktype:number;selected:Category[];disabled:boolean;translatedNames:Record<string,string>
 }){
  const identity=useContext(TeamIdentity);
  const scope='plan-parts-batch-v1:'+String(identity?.id||'')+':'+vehicleId+':'+ktype;
@@ -200,7 +200,11 @@ export default function PlanPartsBatch({
     '. Нового платного запиту не виконано. Статистика попереднього завантаження збережена.');
   }finally{locked.current=false;}
  }
- const rows=previewId===null?[]:data[String(previewId)]||[];
+ function localName(name:string){
+  const reviewed=ukrainianPartName(name);
+  return reviewed.translated?reviewed.uk:(translatedNames[name]||reviewed.uk);
+ }
+  const rows=previewId===null?[]:data[String(previewId)]||[];
  const thisSession=Object.keys(data).length;
  return <section aria-label="Пакетне завантаження plan.parts" style={{border:'1px solid #b8dacd',borderRadius:10,padding:14,margin:'12px 0',background:'#f7fbf9'}}>
   <h4 style={{margin:'0 0 8px'}}>Завантажити вибрані типи одним запуском</h4>
@@ -208,7 +212,7 @@ export default function PlanPartsBatch({
   {selectedUncertain.length>0&&<div role="alert">
    <p>Неоднозначних або перерваних запитів: {selectedUncertain.length}. Платний повтор заблоковано.</p>
    {selectedUncertain.map(c=><div key={c.pt_id} style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',margin:'6px 0'}}>
-    <span>{ukrainianPartName(c.name).uk}</span>
+    <span>{localName(c.name)}</span>
     <button type="button" className="secondary" disabled={running} onClick={()=>void recoverFromCache(c.pt_id)}>Спробувати відновити з кешу · 0 токенів</button>
     <button type="button" className="secondary" disabled={running} onClick={()=>setRetryApproval(c.pt_id)}>Дозволити новий запит (може коштувати 2 токени)</button>
    </div>)}
@@ -259,7 +263,7 @@ export default function PlanPartsBatch({
   {previewId!==null&&<div style={{marginTop:12}}>
    <strong>Артикули вибраного типу: {rows.length}</strong><p><small>Якщо назва артикула відсутня, показано українську назву його категорії з plan.parts — це не підтверджена назва конкретного товару.</small></p>
    <div style={{maxHeight:260,overflow:'auto'}}><table><thead><tr><th>Назва</th><th>Бренд</th><th>Артикул</th></tr></thead><tbody>
-    {rows.map(a=><tr key={a.art_id}><td>{a.part_name?ukrainianPartName(a.part_name).uk:(selected.find(c=>c.pt_id===previewId)?ukrainianPartName(selected.find(c=>c.pt_id===previewId)!.name).uk:'Назва категорії не визначена')}</td><td>{a.brand}</td><td>{a.article_nr}</td></tr>)}
+    {rows.map(a=><tr key={a.art_id}><td>{a.part_name?localName(a.part_name):(selected.find(c=>c.pt_id===previewId)?localName(selected.find(c=>c.pt_id===previewId)!.name):'Назва категорії не визначена')}</td><td>{a.brand}</td><td>{a.article_nr}</td></tr>)}
    </tbody></table></div>
   </div>}
   <small>Тимчасовий серверний кеш діє до 30 хвилин і зникає після перезапуску. Для завершених типів доступна окрема безоплатна спроба відновлення артикулів. У межах поточної браузерної сесії також тимчасово зберігаються невеликі отримані списки артикулів (до 30 хвилин та обмеженого обсягу). Якщо Backend перезапуститься, не можна гарантувати безкоштовне відновлення всіх артикулів. Для постійного комерційного каталогу потрібне ліцензійне погодження.</small>
