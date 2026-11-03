@@ -10,7 +10,8 @@ from sqlalchemy import select
 from app.models import Part
 from app.db import get_db
 from app.models import Vehicle
-from app.services.inventory import owned, record, snapshot
+from app.services.inventory import owned, record, snapshot, stock
+from app.schemas import StockInput
 from app.services.parts_translation import translate_names, TranslationError
 
 from app.api.deps import Identity, identity
@@ -262,10 +263,10 @@ def add_selected_donor_part(
     db: Annotated[Session, Depends(get_db)],
     vehicle_id: str = Query(min_length=1, max_length=80),
 ):
-    """Explicitly add one *manual* zero-quantity donor position, never a vendor offer.
+    """Add exactly one selected donor type to stock with one user action.
 
     A server-side, cache-only check verifies pt_id membership in the selected
-    K-Type catalogue. No paid API calls, stock receipts or catalogue mutations.
+    K-Type catalogue. No paid API calls or reference-catalogue mutations.
     Replays for the same donor/pt_id are idempotent; prevent concurrent inserts
     by serializing on the donor row.
     """
@@ -288,9 +289,22 @@ def add_selected_donor_part(
         Part.compatibility_notes == marker,
     ).order_by(Part.created_at))
     if previous is not None:
-        return {"created": False, "part_id": previous.id, "name": previous.name,
-                "quantity": previous.quantity, "archived": previous.archived,
-                "message": "Цю запчастину вже додано до автомобіля"}
+        if previous.archived:
+            raise HTTPException(409, "Запчастина в архіві. Спочатку відновіть її в картці складу")
+        if previous.quantity == 0:
+            # Previous versions registered the part as a zero-stock candidate.
+            # Upgrade exactly once with an audited receipt, not a duplicate.
+            stock(db, previous, StockInput(
+                type="receipt", quantity=1,
+                reason="Оприбутковано вибрану запчастину plan.parts одним натисканням",
+            ), who.workspace_account_id)
+            db.commit()
+            return {"created": False, "received": True, "part_id": previous.id,
+                    "name": previous.name, "quantity": previous.quantity,
+                    "message": "Раніше додану запчастину оприбутковано: 1 одиниця"}
+        return {"created": False, "received": False, "part_id": previous.id,
+                "name": previous.name, "quantity": previous.quantity,
+                "message": "Запчастина вже на складі; повторного надходження не створено"}
     name = data.ukrainian_name.strip()
     if not any(ch in "іїєґІЇЄҐ" or "\u0400" <= ch <= "\u04ff" for ch in name):
         raise HTTPException(422, "Вкажіть українську назву деталі")
@@ -305,11 +319,54 @@ def add_selected_donor_part(
         condition="unknown",
         quantity=0,
         compatibility_notes=marker,
-        description="Потенційний тип запчастини; відповідність конкретному VIN і наявність не перевірені.",
+        description="Додано користувачем з довідника типів plan.parts. Точна відповідність VIN та OEM потребує звірки.",
     )
     db.add(part)
     record(db, who.workspace_account_id, part, "part_create",
-           "Додано вибраний конструктивний тип із довідника plan.parts без оприбуткування", {})
+           "Створено облікову картку вибраної запчастини plan.parts", {})
+    # A stock receipt is mandatory in the same transaction so quantity,
+    # inventory counters and audit trail remain consistent.
+    stock(db, part, StockInput(
+        type="receipt", quantity=1,
+        reason="Оприбуткування запчастини, вибраної власником для цього донора",
+    ), who.workspace_account_id)
     db.commit()
-    return {"created": True, "part_id": part.id, "name": name, "quantity": 0,
-            "message": "Запчастину додано до автомобіля без складського залишку"}
+    return {"created": True, "received": True, "part_id": part.id,
+            "name": name, "quantity": part.quantity,
+            "message": "Запчастину додано на склад: 1 одиниця"}
+
+
+@router.post("/donor-parts/receive-pending")
+def receive_previously_added_parts(
+    who: Annotated[Identity, Depends(identity)],
+    db: Annotated[Session, Depends(get_db)],
+    vehicle_id: str = Query(min_length=1, max_length=80),
+    ktype: int = Query(gt=0),
+):
+    """One-time audited stock receipt for legacy zero-balance plan.parts selections.
+
+    Only already selected, existing positions for this exact donor/K-Type can be
+    received. Other donor parts and manually recorded zero quantities are never
+    modified. On repeated calls the response is a harmless no-op.
+    """
+    if who.user.role != "DIRECTOR" or who.user.id != who.workspace_account_id:
+        raise HTTPException(403, "Оприбуткування зовнішнього каталогу доступне лише власнику")
+    donor = owned(db, Vehicle, vehicle_id, who.workspace_account_id, lock=True, active=True)
+    if donor.ktype != ktype:
+        raise HTTPException(409, "Вибрана модифікація автомобіля змінилася")
+    marker = f"plan.parts:ktype={ktype};pt_id="
+    pending = list(db.scalars(select(Part).where(
+        Part.account_id == who.workspace_account_id,
+        Part.vehicle_id == donor.id,
+        Part.archived.is_(False),
+        Part.quantity == 0,
+        Part.compatibility_notes.like(marker + "%"),
+    ).with_for_update()))
+    for part in pending:
+        stock(db, part, StockInput(
+            type="receipt", quantity=1,
+            reason="Разове оприбуткування раніше вибраної запчастини plan.parts",
+        ), who.workspace_account_id)
+    db.commit()
+    return {"received_count": len(pending),
+            "message": "Раніше додані позиції оприбутковано без повторного створення"}
