@@ -16,16 +16,48 @@ export default function VirtualDismantling({vehicle,onSaved}:{vehicle:Row;onSave
  const key='warehouse.virtual.1:'+JSON.stringify([identity?.id,identity?.workspace_account_id||identity?.id,vehicle.id]);
  const [plan,setPlan]=useState<Row|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[pending,setPending]=useState<Row|null>(null),[outcome,setOutcome]=useState<Row|null>(null);
  const [formation,setFormation]=useState<'create'|'update'|null>(null);
+ const [coverage,setCoverage]=useState<Row|null>(null),[coverageLoading,setCoverageLoading]=useState(false);
  const [q,setQ]=useState(''),[category,setCategory]=useState(''),[sub,setSub]=useState(''),[selected,setSelected]=useState<string[]>([]),[limit,setLimit]=useState(60),[powertrain,setPowertrain]=useState('');
  const [priceFilter,setPriceFilter]=useState(''),[stateFilter,setStateFilter]=useState(''),[stockRows,setStockRows]=useState<Record<string,Row>>({}),[stockError,setStockError]=useState('');
  const [detail,setDetail]=useState<Row|null>(null),[quantity,setQuantity]=useState('1'),[location,setLocation]=useState(''),[condition,setCondition]=useState('unknown');
- const running=useRef(false),epoch=useRef(0);
+ const running=useRef(false),coverageRequest=useRef(false),epoch=useRef(0);
  const editable=can('dismantling.manage')&&can('inventory.edit')&&!vehicle.archived;
  const activate=can('dismantling.manage')&&!vehicle.archived&&can('inventory.activate_virtual')&&can('inventory.create');
  async function load(){const e=epoch.current;const r=await api(path);if(e===epoch.current)setPlan(r);return r;}
  useEffect(()=>{const e=++epoch.current;setPlan(null);setSelected([]);setPending(null);setError('');api(path).then(r=>{if(epoch.current===e)setPlan(r);}).catch(e=>setError(e.message));try{const p=JSON.parse(sessionStorage.getItem(key)||'null');if(p&&p.scope===key&&['activate','availability'].includes(p.kind)&&p.payload&&/^[a-f0-9-]{36}$/.test(p.payload.request_key))setPending(p);}catch{setError('Не вдалося відновити локальний стан. Оновіть сторінку.');}return()=>{epoch.current++;};},[path,key,vehicle.engine,vehicle.fuel_type,vehicle.transmission,vehicle.vin]);
  async function work(fn:()=>Promise<void>){if(running.current)return;running.current=true;setBusy(true);setError('');try{await fn();}catch(e){setError(e instanceof TypeError?'З’єднання перервано. Збережений запит можна безпечно повторити.':(e as Error).message);}finally{running.current=false;setBusy(false);}}
  async function command(kind:string,payload:Row,existing?:Row){const generation=epoch.current;const request=existing||{scope:key,kind,payload:{...payload,request_key:crypto.randomUUID()}};setPending(request);try{sessionStorage.setItem(key,JSON.stringify(request));}catch{setPending(null);throw Error('Не вдалося зберегти захищений запит у браузері. Звільніть сховище або скористайтесь іншим браузером; дані не змінено.');}try{const r=await api(path+'/'+request.kind,'POST',request.payload);sessionStorage.removeItem(key);if(generation!==epoch.current)return;setOutcome(r);setPending(null);await load();if(request.kind==='activate'&&generation===epoch.current)onSaved(await api('/vehicles/'+vehicle.id));}catch(e){if(e instanceof ApiError&&e.status<500){sessionStorage.removeItem(key);if(generation===epoch.current){setPending(null);await load();}}throw e;}}
+ async function analyzeCoverage(){
+  if(!plan||running.current||coverageRequest.current||coverage)return;
+  coverageRequest.current=true;
+  setCoverageLoading(true);setError('');
+  let initial:Row={etag:plan.etag,local_candidates:(plan.items||[]).length,local_categories:new Set((plan.items||[]).map((i:Row)=>i.category).filter(Boolean)).size,pending:plan.pending_count||0};
+  try{
+   const prospective=await api<Row>('/vehicles/'+encodeURIComponent(String(vehicle.id))+'/virtual-dismantling/coverage-preview','POST');
+   initial={...initial,etag:prospective.etag,local_candidates:prospective.candidates,local_categories:prospective.categories,pending:prospective.review,prospective};
+  }catch(e){
+   setError('Не вдалося перевірити майбутній список деталей: '+(e as Error).message);coverageRequest.current=false;setCoverageLoading(false);return;
+  }
+  try{
+   // Paid supplier lookup is optional and owner-only; it never creates parts.
+   // A donor without an exact K-Type uses the existing CarPot catalogue at zero provider cost.
+   if(identity?.role==='DIRECTOR'&&vehicle.ktype){
+    try{
+     const details=await api<Row>('/plan-parts/coverage/lookup?vehicle_id='+encodeURIComponent(String(vehicle.id)),'POST');
+     setCoverage({...initial,external:details});
+    }catch(e){
+     setCoverage({...initial,external_error:(e as Error).message});
+    }
+   }else setCoverage(initial);
+  }finally{coverageRequest.current=false;setCoverageLoading(false);}
+ }
+ function confirmCoverage(){
+  if(!plan||!coverage||coverage.etag!==plan.etag||locked)return;
+  setCoverage(null);
+  setFormation(plan.virtual_mode?'update':'create');
+  void work(async()=>{try{await command('activate',{facts:plan.virtual_mode&&powertrain?[{field:'powertrain',value:powertrain,kind:'manual',reference:'Уточнення власника автомобіля',confidence:'reported'}]:[],etag:plan.etag,confirm:true});}finally{setFormation(null);}});
+ }
+ useEffect(()=>{setCoverage(null);},[vehicle.id,vehicle.ktype,vehicle.year,vehicle.engine,vehicle.fuel_type,vehicle.transmission,vehicle.vin]);
  const items:Row[]=(plan?.items||[]).map((i:Row)=>({...i,stock:i.stock?{...i.stock,oem_number:stockRows[i.part_id]?.oem_number,article_number:stockRows[i.part_id]?.article_number}:null}));
  const market=useMarketPrices(items.filter(i=>i.part_id).map(i=>i.part_id));
  const shown=items.filter(i=>matchesPart(i,{q,category,sub,state:stateFilter,price:priceFilter},market.rows[i.part_id]));
@@ -41,7 +73,27 @@ export default function VirtualDismantling({vehicle,onSaved}:{vehicle:Row;onSave
 
   {error&&!detail&&<p role="alert" className="error">{error}</p>}
   {pending&&<div role="status"><p>Результат попереднього запиту потребує перевірки. Повторення не створить дублікатів.</p><button disabled={busy} onClick={()=>work(()=>command(pending.kind,pending.payload,pending))}>Перевірити збережений запит</button></div>}
-  {!plan.virtual_mode?<><p>Одне натискання створить віртуальні облікові позиції. Деталі можуть залишатися на автомобілі; кількість 1 — редаговане припущення.</p>{items.length>0&&<p>Наявні ціни, продажі, резерви та виключення збережуться. Старі включені однозначні позиції без складської позиції будуть активовані лише цією дією.</p>}<button disabled={locked||!activate} onClick={()=>{setFormation('create');void work(async()=>{try{await command('activate',{facts:[],etag:plan.etag,confirm:true});}finally{setFormation(null);}});}}>{formation==='create'?<><span className="catalogue-button-spinner" aria-hidden="true"/>Формуємо список…</>:'Розібрати авто на запчастини'}</button></>:<button className="secondary ux1-update" disabled={locked||!activate} onClick={()=>{setFormation('update');void work(async()=>{try{await command('activate',{facts:powertrain?[{field:'powertrain',value:powertrain,kind:'manual',reference:'Уточнення власника автомобіля',confidence:'reported'}]:[],etag:plan.etag,confirm:true});}finally{setFormation(null);}});}}>{formation==='update'?<><span className="catalogue-button-spinner" aria-hidden="true"/>Оновлюємо…</>:'Оновити список'}</button>}
+  {!coverage&&!formation&&<><p>{plan.virtual_mode?'Оновлення списку почнеться з перевірки кількості можливих деталей.':'Спочатку перевіримо кількість кандидатів у каталозі. Позиції з’являться лише після окремого підтвердження.'}</p>
+  {items.length>0&&<p>Наявні ціни, продажі, резерви та виключення збережуться.</p>}
+  <button disabled={locked||coverageLoading||!activate} onClick={()=>void analyzeCoverage()}>{coverageLoading?'Аналізуємо…':plan.virtual_mode?'Перевірити оновлення деталей':'Розібрати авто на запчастини'}</button></>}
+  {coverageLoading&&<div className="catalogue-formation" role="status" aria-live="polite"><span className="catalogue-formation-spinner" aria-hidden="true"/><div><strong>Аналізуємо кількість запчастин</strong><p>Складські позиції не створюються.</p></div></div>}
+  {coverage&&<section className="catalogue-formation" aria-label="Попередній аналіз запчастин" role="status">
+   <div style={{width:'100%'}}>
+    <h3>Результат попереднього аналізу</h3>
+    <p>Категорій у майбутньому плані: <strong>{coverage.local_categories}</strong> · Потенційних позицій: <strong>{coverage.local_candidates}</strong> · Потребують перевірки: <strong>{coverage.pending}</strong>.</p>
+    {coverage.prospective?.limited&&<p role="status">Оцінка базується на неповному конструктивному довіднику. Це не повний OEM-каталог конкретного VIN.</p>}
+    {coverage.external?.available&&<p>У каталозі для обраної модифікації: <strong>{coverage.external.categories}</strong> категорій і <strong>{Number(coverage.external.article_records).toLocaleString('uk-UA')}</strong> артикулів різних виробників.</p>}
+    {coverage.external?.available===false&&<p>{coverage.external.reason}</p>}
+    {coverage.external_error&&<p role="status">Зовнішній каталог недоступний: {coverage.external_error}. Локальний аналіз залишається доступним.</p>}
+    <p>Кількість артикулів не дорівнює кількості фізичних деталей. Після підтвердження буде створено <strong>поточний план CarPot</strong>; перелік артикулів зовнішнього каталогу не імпортується автоматично.</p>
+    {coverage.etag!==plan.etag&&<p role="alert">Дані автомобіля змінилися. Повторіть аналіз перед підтвердженням.</p>}
+    <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+     <button disabled={locked||!activate||coverage.etag!==plan.etag} onClick={confirmCoverage}>{plan.virtual_mode?'Підтвердити оновлення':'Підтвердити створення списку'}</button>
+     <button className="secondary" disabled={locked} onClick={()=>setCoverage(null)}>Скасувати</button>
+    </div>
+    <small>Тестовий режим. Оплати, внутрішні бали й списання з користувачів вимкнені.</small>
+   </div>
+  </section>}
   {formation&&<div className="catalogue-formation" role="status" aria-live="polite"><span className="catalogue-formation-spinner" aria-hidden="true"/><div><strong>{formation==='create'?'Формуємо запчастини автомобіля':'Оновлюємо перелік запчастин'}</strong><p>Обробляємо дані каталогу. Кількість позицій з’явиться після відповіді сервера.</p></div></div>}
   {(plan.configuration_stale||plan.catalogue_changed)&&plan.virtual_mode&&<p role="status">Характеристики або каталог оновлено. Натисніть «Оновити список», щоб перевірити нові позиції; попередні рішення збережуться.</p>}
   {outcome&&<p role="status">{outcome.activated!==undefined?`Створено складських позицій: ${outcome.activated}. Повторно використано: ${outcome.reused_parts}. Потребують перевірки: ${outcome.pending}.`:`Доступність змінено: ${outcome.updated}.`}</p>}

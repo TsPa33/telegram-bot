@@ -12,6 +12,26 @@ router=APIRouter(route_class=SecureRoute,tags=['Managed dismantling plan v3'])
 def read(id:str,db:DB,who:Auth):return service.listing(db,owned(db,Vehicle,id,who.workspace_account_id))
 @router.post('/api/v1/vehicles/{id}/dismantling-v3/preview')
 def preview(id:str,data:PlanPreview,db:DB,who:Auth):return service.make_preview(db,owned(db,Vehicle,id,who.workspace_account_id),who,data)
+@router.post('/api/v1/vehicles/{id}/virtual-dismantling/coverage-preview')
+def virtual_coverage_preview(id:str,db:DB,who:Auth):
+    """Read-only prospective virtual plan summary. No paid supplier requests or writes."""
+    vehicle=owned(db,Vehicle,id,who.workspace_account_id)
+    if vehicle.archived:raise HTTPException(409,'Архівний автомобіль не можна розбирати')
+    report=service.make_preview(db,vehicle,who,PlanPreview(facts=[]),virtual_base=True)
+    proposals=report['proposals']
+    return {
+        'etag':report['etag'],
+        'candidates':report['counts']['proposed'],
+        'new':report['counts']['new'],
+        'existing':report['counts']['existing'],
+        'review':report['counts']['review'],
+        'skipped':report['counts']['skipped'],
+        'categories':len({p['item']['category'] for p in proposals}),
+        'limited':not report['catalogue_status']['published'],
+        'message':'Оцінка конструктивних позицій, а не підтверджена комплектація за VIN.',
+    }
+
+
 @router.post('/api/v1/vehicles/{id}/dismantling-v3/save')
 def save(id:str,data:PlanSave,db:DB,who:Auth):
     v=owned(db,Vehicle,id,who.workspace_account_id,lock=True,active=True)

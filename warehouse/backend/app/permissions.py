@@ -53,6 +53,7 @@ def route_permissions(method,path,body):
     if path.startswith('/vehicle-photos/'):return ['vehicles.view']
     if path.startswith('/archive'):return ['inventory.view','inventory.archive']
     if path.startswith('/smart-search/'):return ['inventory.view']
+    if path=='/plan-parts/coverage/lookup':return ['vehicles.view','catalog.view','dismantling.manage']
     if path.startswith('/plan-parts/'):return ['vehicles.create']
     if path.startswith('/dismantling/catalog/'):return ['catalog.import']
     if path=='/vehicle-catalog':return ['vehicles.view']
@@ -64,6 +65,7 @@ def route_permissions(method,path,body):
     if '/dismantling-v3/' in path and path.endswith('/decisions'):
         return ['dismantling.manage','inventory.create','inventory.adjust_quantity'] if body.get('action')=='receipt' else ['dismantling.manage']
     if path.endswith('/dismantling-preview'):return ['vehicles.view','catalog.view']
+    if path.endswith('/virtual-dismantling/coverage-preview'):return ['vehicles.view','catalog.view','dismantling.manage']
     if path.endswith('/virtual-dismantling/activate'):return ['vehicles.view','catalog.view','dismantling.manage','inventory.create','inventory.activate_virtual']
     if path.endswith('/virtual-dismantling/availability'):return ['vehicles.view','inventory.view','inventory.edit','dismantling.manage']
     if path.endswith('/virtual-dismantling'):return ['vehicles.view','inventory.view','catalog.view']
