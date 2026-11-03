@@ -361,7 +361,7 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
      <div><span>Режим</span><strong>plan.parts API</strong></div>
     </div>
     <button type="button" className="cp-plan-bulk" disabled={!chosenNew||batchBusy||addingType!==null||savedKtype!==picked||stockStatusLoading||Boolean(stockStatusError)} onClick={()=>void addSelectedToStock()}>{batchBusy?'Додаємо…':'＋ Додати вибрані на склад'}</button>
-    <button type="button" className="secondary" onClick={()=>document.getElementById('cp-plan-stock-link')?.click()}>Відкрити склад</button>
+    <a className="cp-plan-stock-link" href="/inventory">Відкрити склад</a>
     <p className="cp-plan-summary-note">Запчастини додаються з кількістю 1. Повторне оприбуткування вже наявних позицій заблоковано.</p>
    </aside>
   </div>
