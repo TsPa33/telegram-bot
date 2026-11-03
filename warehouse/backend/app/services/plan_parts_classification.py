@@ -83,7 +83,7 @@ def classify(name_en: str, name_uk: str = "") -> dict:
     matches = {section for section, regex in _COMPILED.items() if regex.search(source)}
     if len(matches) != 1:
         # For manually entered labels, translated text can provide a second clue.
-        if not en and uk:
+        if len(matches) == 0 and uk:
             matches = {section for section, regex in _COMPILED.items() if regex.search(uk)}
     return {"kind": kind, "section": next(iter(matches)) if len(matches) == 1 else None,
             "confidence": "rule" if len(matches) == 1 else "review",
