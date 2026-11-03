@@ -255,6 +255,43 @@ class AddSelectedDonorPart(BaseModel):
     ukrainian_name: str = Field(min_length=2, max_length=200)
 
 
+@router.get("/donor-parts/status")
+def donor_part_stock_status(
+    who: Annotated[Identity, Depends(identity)],
+    db: Annotated[Session, Depends(get_db)],
+    vehicle_id: str = Query(min_length=1, max_length=80),
+    ktype: int = Query(gt=0),
+):
+    """Return actual persisted supplier-origin parts and quantities for a donor.
+
+    No paid supplier API calls, and no reliance on a page-local 'added' flag.
+    """
+    if who.user.role != "DIRECTOR" or who.user.id != who.workspace_account_id:
+        raise HTTPException(403, "Перегляд інтеграції доступний лише власнику")
+    donor = owned(db, Vehicle, vehicle_id, who.workspace_account_id, active=True)
+    if donor.ktype != ktype:
+        raise HTTPException(409, "Модифікація автомобіля змінилася")
+    prefix = f"plan.parts:ktype={ktype};pt_id="
+    existing = list(db.scalars(select(Part).where(
+        Part.account_id == who.workspace_account_id,
+        Part.vehicle_id == donor.id,
+        Part.compatibility_notes.like(prefix + "%"),
+    ).order_by(Part.created_at)))
+    grouped = {}
+    for p in existing:
+        if p.archived:
+            continue
+        grouped.setdefault(" ".join(p.name.strip().casefold().split()), []).append(p)
+    duplicates = [{"name": rows[0].name, "count": len(rows), "part_ids": [p.id for p in rows]}
+                  for rows in grouped.values() if len(rows) > 1]
+    return {"parts": [
+        {"id": p.id, "pt_id": int(p.compatibility_notes[len(prefix):])
+         if p.compatibility_notes[len(prefix):].isdigit() else None,
+         "name": p.name, "quantity": p.quantity, "archived": p.archived}
+        for p in existing
+    ], "duplicate_names": duplicates}
+
+
 @router.post("/donor-parts/add")
 def add_selected_donor_part(
     data: AddSelectedDonorPart,
@@ -288,6 +325,21 @@ def add_selected_donor_part(
         Part.vehicle_id == donor.id,
         Part.compatibility_notes == marker,
     ).order_by(Part.created_at))
+    if previous is None:
+        # A provider can assign several pt_ids to the same named component.
+        # On a specific donor, don't create a second stock card for exactly
+        # the same normalized Ukrainian name from an earlier plan.parts type.
+        # Never merge different donors or manually added parts.
+        normalized_name = " ".join(data.ukrainian_name.strip().casefold().split())
+        sibling_rows = list(db.scalars(select(Part).where(
+            Part.account_id == who.workspace_account_id,
+            Part.vehicle_id == donor.id,
+            Part.compatibility_notes.like(f"plan.parts:ktype={data.ktype};pt_id=%"),
+        ).order_by(Part.created_at)))
+        previous = next((
+            row for row in sibling_rows
+            if " ".join(row.name.strip().casefold().split()) == normalized_name
+        ), None)
     if previous is not None:
         if previous.archived:
             raise HTTPException(409, "Запчастина в архіві. Спочатку відновіть її в картці складу")
