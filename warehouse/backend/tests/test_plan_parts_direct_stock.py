@@ -14,7 +14,7 @@ def test_selected_part_creates_one_stock_unit_and_does_not_duplicate(logged, veh
     class CacheOnlyCatalogue:
         def recover_categories(self, account_id, ktype):
             assert ktype==131094
-            return [SimpleNamespace(pt_id=555)]
+            return [SimpleNamespace(pt_id=555), SimpleNamespace(pt_id=556)]
 
     app.dependency_overrides[plan_parts_client]=lambda:CacheOnlyCatalogue()
     payload={"ktype":131094,"pt_id":555,"ukrainian_name":"Гальмівний супорт"}
@@ -34,6 +34,23 @@ def test_selected_part_creates_one_stock_unit_and_does_not_duplicate(logged, veh
         assert donor.status_code==200,donor.text
         assert donor.json()["stock_positions"]==1
         assert donor.json()["registered_parts"]==1
+        status=logged.get("/api/v1/plan-parts/donor-parts/status?vehicle_id="+vehicle["id"]+"&ktype=131094")
+        assert status.status_code==200,status.text
+        assert len(status.json()["parts"])==1
+        assert status.json()["parts"][0]["pt_id"]==555
+        assert status.json()["parts"][0]["quantity"]==1
+
+        # Two different supplier pt_ids can translate to the same physical
+        # donor-part name. Do not create another stock unit for same donor.
+        same_title=logged.post(url,json={**payload,"pt_id":556,"ukrainian_name":"  ГАЛЬМІВНИЙ   СУПОРТ  "})
+        assert same_title.status_code==200,same_title.text
+        assert same_title.json()["part_id"]==first.json()["part_id"]
+        assert same_title.json()["created"] is False
+        assert same_title.json()["received"] is False
+        assert same_title.json()["quantity"]==1
+        status_after=logged.get("/api/v1/plan-parts/donor-parts/status?vehicle_id="+vehicle["id"]+"&ktype=131094")
+        assert len(status_after.json()["parts"])==1
+
 
         with engine().begin() as conn:
             events=conn.execute(text(
