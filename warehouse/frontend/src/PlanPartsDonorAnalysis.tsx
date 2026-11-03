@@ -130,10 +130,24 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
     '/plan-parts/donor-parts/add?vehicle_id='+donorId,'POST',
     {ktype:picked,pt_id:category.pt_id,ukrainian_name:name});
    setAddedTypes(old=>({...old,[category.pt_id]:result.part_id}));
+   onSaved(await api('/vehicles/'+donorId));
    setAddMessage(result.received
     ? '«'+result.name+'» додано на склад. Залишок: '+result.quantity+'.'
     : '«'+result.name+'» уже на складі. Залишок: '+result.quantity+'. Повторного надходження немає.');
   }catch(err){setAddMessage('Не вдалося додати: '+(err as Error).message);}
+  finally{addLock.current=false;setAddingType(null);}
+ }
+ async function receivePreviousSelections(){
+  if(addLock.current||!picked||savedKtype!==picked)return;
+  addLock.current=true;setAddingType(-1);setAddMessage('Оприбутковуємо раніше додані позиції…');
+  try{
+   const r=await api<{received_count:number}>(
+    '/plan-parts/donor-parts/receive-pending?vehicle_id='+donorId+'&ktype='+picked,'POST');
+   setAddMessage(r.received_count
+    ? 'Оприбутковано раніше вибраних запчастин: '+r.received_count+'. Залишок кожної: 1.'
+    : 'Усі раніше додані запчастини вже враховані на складі.');
+   onSaved(await api('/vehicles/'+donorId));
+  }catch(err){setAddMessage('Не вдалося оприбуткувати раніше додані: '+(err as Error).message);}
   finally{addLock.current=false;setAddingType(null);}
  }
  function localizedName(name:string){
@@ -205,6 +219,10 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
   {categories.length>0&&<div style={{marginTop:14}}>
    <p>Категорій: <strong>{categories.length}</strong> · Артикулів aftermarket: <strong>{categories.reduce((n,c)=>n+c.article_count,0).toLocaleString('uk-UA')}</strong></p>
    <p>Перелік типів запчастин із plan.parts. «Додати на склад» одним натисканням створює запчастину і оприбутковує 1 одиницю для вибраного автомобіля. Раніше додані позиції з нульовим залишком також оприбутковуються без дублювання. Артикули завантажувати не потрібно.</p>
+    <button type="button" className="secondary" disabled={addingType!==null||savedKtype!==picked} onClick={()=>void receivePreviousSelections()}>
+     {addingType===-1?'Оприбутковуємо…':'Оприбуткувати раніше додані з нульовим залишком'}
+    </button>
+    <small style={{display:'block',margin:'6px 0'}}>Разова дія для запчастин, доданих старою версією CarPot. Нові запчастини одразу потрапляють на склад.</small>
    <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center',margin:'10px 0'}}>
     <button type="button" disabled={busy||selectedTypes.length===categories.length} className="secondary" onClick={()=>setSelectedTypes(categories.map(c=>c.pt_id))}>Вибрати всі ({categories.length})</button>
     <button type="button" disabled={busy||selectedTypes.length===0} className="secondary" onClick={()=>setSelectedTypes([])}>Зняти вибір</button>
