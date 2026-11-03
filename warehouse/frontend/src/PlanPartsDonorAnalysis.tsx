@@ -1,5 +1,6 @@
 import {useRef,useState} from 'react';
 import {api,type Row} from './api';
+import {ukrainianPartName,translatedCategoryCount} from './planPartsUkrainian';
 
 type Match={ktype:number;modification:string;year_from?:number;year_to?:number;power_kw?:number;power_ps?:number};
 type Category={pt_id:number;name:string;article_count:number};
@@ -83,19 +84,20 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
     <small>Це орієнтовна верхня межа за поточним тарифом для окремих запитів. Нульові або неуспішні відповіді можуть не тарифікуватися. Баланс plan.parts тут не перевіряється. Розрахунок не витрачає токенів.</small>
     <p style={{margin:'8px 0 0'}}>Пакетне завантаження не запускається: перед виконанням потрібен окремий керований імпорт із контролем залишку, відновленням після збоїв та перевіркою прав на збереження даних.</p>
    </div>
+   <p style={{margin:'8px 0'}}>Українські назви зі словника: <strong>{translatedCategoryCount(categories.map(c=>c.name))}</strong> із {categories.length}. Неперекладені терміни залишені оригінальними для точності.</p>
    <div style={{maxHeight:310,overflowY:'auto',border:'1px solid #dae5e0',borderRadius:9}}>
     {categories.map(c=><div key={c.pt_id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:8,padding:'9px 12px',borderBottom:'1px solid #e7efeb'}}>
-     <label style={{display:'flex',gap:8,alignItems:'center',flex:1}}><input type="checkbox" disabled={busy} checked={selectedTypes.includes(c.pt_id)} onChange={e=>setSelectedTypes(old=>e.target.checked?[...old,c.pt_id]:old.filter(id=>id!==c.pt_id))}/><span>{c.name} · <strong>{c.article_count.toLocaleString('uk-UA')}</strong> артикулів</span></label>
+     <label style={{display:'flex',gap:8,alignItems:'center',flex:1}}><input type="checkbox" disabled={busy} checked={selectedTypes.includes(c.pt_id)} onChange={e=>setSelectedTypes(old=>e.target.checked?[...old,c.pt_id]:old.filter(id=>id!==c.pt_id))}/><span><strong>{ukrainianPartName(c.name).uk}</strong>{ukrainianPartName(c.name).translated&&<small style={{display:'block',color:'#61746c'}}>Оригінал: {c.name}</small>}{!ukrainianPartName(c.name).translated&&<small style={{display:'block',color:'#9a611c'}}>Потрібен перевірений український відповідник</small>}<small style={{display:'block'}}>{c.article_count.toLocaleString('uk-UA')} артикулів</small></span></label>
      <button type="button" disabled={busy} className="secondary" onClick={()=>getArticles(c.pt_id)}>Артикули (2 токени)</button>
     </div>)}
    </div>
   </div>}
   {phase==='articles'&&<section style={{marginTop:12}}>
-   <h4>{selected?.name||'Обрана категорія'} · {articles.length.toLocaleString('uk-UA')} артикулів</h4>
+   <h4>{selected?ukrainianPartName(selected.name).uk:'Обрана категорія'} · {articles.length.toLocaleString('uk-UA')} артикулів</h4>
    <p>Унікальних назв: <strong>{new Set(articles.map(a=>a.part_name.toLocaleLowerCase('uk-UA'))).size}</strong>. Аналоги різних виробників не можна автоматично додавати як окремі фізичні деталі.</p>
    <div style={{maxHeight:350,overflowY:'auto'}}>
     <table><thead><tr><th>Деталь</th><th>Виробник</th><th>Артикул</th></tr></thead>
-     <tbody>{articles.slice(0,showAll?articles.length:80).map(a=><tr key={a.art_id}><td>{a.part_name}</td><td>{a.brand}</td><td>{a.article_nr}</td></tr>)}</tbody>
+     <tbody>{articles.slice(0,showAll?articles.length:80).map(a=><tr key={a.art_id}><td>{ukrainianPartName(a.part_name).uk}{ukrainianPartName(a.part_name).translated&&<small style={{display:'block',color:'#61746c'}}>Оригінал: {a.part_name}</small>}</td><td>{a.brand}</td><td>{a.article_nr}</td></tr>)}</tbody>
     </table>
    </div>
    {!showAll&&articles.length>80&&<button type="button" className="secondary" onClick={()=>setShowAll(true)}>Показати всі {articles.length.toLocaleString('uk-UA')} артикулів без нового запиту</button>}
