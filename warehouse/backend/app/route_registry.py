@@ -141,6 +141,7 @@ KNOWN_ROUTES = frozenset({
     ('POST','/api/v1/vehicles/{id}/configuration/preview'),
     ('POST','/api/v1/vehicles/{id}/configuration/confirm'),
     ('GET','/api/v1/vehicles/{id}/virtual-dismantling'),
+    ('POST','/api/v1/vehicles/{id}/virtual-dismantling/coverage-preview'),
     ('POST','/api/v1/vehicles/{id}/virtual-dismantling/activate'),
     ('POST','/api/v1/vehicles/{id}/virtual-dismantling/availability'),
     ('GET','/api/v1/parts/{id}/price-guidance'),
