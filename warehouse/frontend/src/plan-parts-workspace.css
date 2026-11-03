@@ -107,3 +107,11 @@
 .cp-plan-group .cp-plan-part{padding:10px 12px}
 .cp-plan-group .cp-plan-part:last-child{border-bottom:0}
 @media(max-width:600px){.cp-plan-group-heading{align-items:flex-start;flex-direction:column}.cp-plan-group-heading button{width:100%}}
+
+.cp-plan-classify{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 12px;padding:11px 12px;border:1px solid #dae8df;border-radius:9px;background:#f5faf6}
+.cp-plan-classify>div:first-child{flex:1 1 240px}
+.cp-plan-classify strong{font-size:12px;color:#214a38}
+.cp-plan-classify small{display:block;margin-top:3px;font-size:11px;color:#61786b}
+.cp-plan-classify-results{display:flex;gap:12px;align-items:center;flex-wrap:wrap;flex:1 1 100%;padding-top:8px;border-top:1px solid #dfeae3;font-size:11px;color:#3f6654}
+.cp-plan-classify-results button{margin-left:auto}
+.cp-plan-classify p{flex:1 1 100%;margin:0;font-size:12px;color:#205b42}
