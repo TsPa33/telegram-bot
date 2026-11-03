@@ -1,6 +1,8 @@
 """Explicit, bounded Plan.Parts requests. No cache, retries or background sync."""
 
 import json
+from copy import deepcopy
+from collections import OrderedDict
 import os
 import re
 from datetime import date
@@ -179,6 +181,14 @@ class RequestGate:
 
 request_gate = RequestGate()
 
+# A transient per-workspace cache for internal use only; no provider catalogue is
+# persisted to PostgreSQL, Redis, disk or sent to other accounts.
+# Cache expires after 30 minutes and disappears on API restarts.
+CACHE_TTL_SECONDS = 1800
+CACHE_MAX_KEYS = 64
+_cache_lock = Lock()
+_result_cache = OrderedDict()
+
 
 class PlanPartsClient:
     def __init__(self, transport: httpx.BaseTransport | None = None):
@@ -209,6 +219,34 @@ class PlanPartsClient:
                             Article, "art_id", gate)
 
     def _lookup(self, account_id, resource, params, schema, identifier, gate, name_field="", path=None):
+        # Cache only completed, validated responses, isolated by workspace,
+        # provider resource, query and configured schema. A single lock prevents
+        # concurrent identical paid requests from double-charging the same user.
+        # Transports are isolated to avoid cross-contamination of test fixtures.
+        if os.getenv("PLAN_PARTS_ENABLED", "false").lower() != "true":
+            raise PlanPartsError(503, "Інтеграцію Plan.Parts не ввімкнено")
+        key = os.getenv("PLAN_PARTS_API_KEY", "").strip()
+        if not key or any(ord(c) < 33 or ord(c) > 126 for c in key):
+            raise PlanPartsError(503, "API-ключ Plan.Parts не налаштовано")
+        cache_key = (account_id, resource, tuple(sorted(params.items())),
+                     schema.__name__, name_field, path, id(self._transport) if self._transport else None)
+        with _cache_lock:
+            now = monotonic()
+            for expired_key, (expires, _) in list(_result_cache.items()):
+                if expires <= now:
+                    del _result_cache[expired_key]
+            existing = _result_cache.get(cache_key)
+            if existing:
+                _result_cache.move_to_end(cache_key)
+                return deepcopy(existing[1])
+            result = self._uncached_lookup(account_id, resource, params, schema, identifier, gate, name_field, path)
+            if len(result) <= 10000:
+                _result_cache[cache_key] = (monotonic() + CACHE_TTL_SECONDS, deepcopy(result))
+                while len(_result_cache) > CACHE_MAX_KEYS:
+                    _result_cache.popitem(last=False)
+            return result
+
+    def _uncached_lookup(self, account_id, resource, params, schema, identifier, gate, name_field="", path=None):
         if os.getenv("PLAN_PARTS_ENABLED", "false").lower() != "true":
             raise PlanPartsError(503, "Інтеграцію Plan.Parts не ввімкнено")
         key = os.getenv("PLAN_PARTS_API_KEY", "").strip()
