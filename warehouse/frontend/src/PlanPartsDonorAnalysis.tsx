@@ -126,7 +126,7 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
  }
  function discover(){void run(async()=>{
   const result=await api<{matches:Match[]}>('/plan-parts/vehicle-matches/lookup?vehicle_id='+donorId,'POST');
-  setMatches(result.matches);setPhase('matching');setCategories([]);setArticles([]);
+  setMatches(result.matches);setPhase('matching');setArticles([]);
   if(!result.matches.length)setError('Точних кандидатів за маркою, моделлю та роком немає. Уточніть автомобіль.');
  });}
  function selectKtype(ktype:number){
@@ -346,13 +346,27 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
       {stockStatusError&&<p role="alert" className="cp-plan-error">{stockStatusError}</p>}
       {duplicateStockNames.length>0&&<p role="alert" className="cp-plan-error">У складі виявлено дублікати: {duplicateStockNames.map(d=>d.name+' ('+d.count+')').join(', ')}. Автоматичне видалення вимкнено.</p>}
       <div className="cp-plan-list">
-       {filteredCategories.map(c=>{const stored=alreadyStored(c);const localized=localizedName(c.name);return <div key={c.pt_id} className="cp-plan-part">
-        <label className="cp-plan-part-name"><input type="checkbox" checked={selectedTypes.includes(c.pt_id)} onChange={e=>setSelectedTypes(old=>e.target.checked?[...old,c.pt_id]:old.filter(id=>id!==c.pt_id))}/><span><strong>{localized}</strong><small>{c.name!==localized?c.name:'Тип '+c.pt_id}</small></span></label>
-        <span className="cp-plan-part-tag">{sectionOf(c)}</span>
-        <span className={stored?'cp-plan-status is-stored':'cp-plan-status'}>{stored?'На складі · '+stored.quantity+' шт.':'Нове'}</span>
-        <button type="button" className={stored?'secondary':'cp-plan-add'} disabled={addingType!==null||batchBusy||stockStatusLoading||Boolean(stockStatusError)||savedKtype!==picked||Boolean(stored)} onClick={()=>void addSelectedType(c)}>{stored?'Вже на складі':addingType===c.pt_id?'Додаємо…':'Додати на склад'}</button>
-        <button type="button" className="secondary" disabled={paidDisabled} onClick={()=>getArticles(c.pt_id)}>Артикули</button>
-       </div>})}
+       {[...new Set(filteredCategories.map(sectionOf))].sort((a,b)=>a.localeCompare(b,'uk')).map(group=>{
+        const groupParts=filteredCategories.filter(c=>sectionOf(c)===group);
+        const pending=groupParts.filter(c=>!alreadyStored(c));
+        const groupSelected=pending.filter(c=>selectedTypes.includes(c.pt_id));
+        return <section key={group} className="cp-plan-group">
+         <div className="cp-plan-group-heading">
+          <div><strong>{group}</strong><small>{groupParts.length} типів · доступні до додавання: {pending.length}</small></div>
+          <button type="button" className="secondary" disabled={!pending.length||batchBusy||addingType!==null} onClick={()=>{
+           const ids=new Set(pending.map(c=>c.pt_id));
+           setSelectedTypes(old=>groupSelected.length===pending.length?old.filter(id=>!ids.has(id)):[...new Set([...old,...ids])]);
+          }}>{pending.length&&groupSelected.length===pending.length?'Зняти вибір категорії':'Вибрати всю категорію'}</button>
+         </div>
+         {groupParts.map(c=>{const stored=alreadyStored(c);const localized=localizedName(c.name);return <div key={c.pt_id} className="cp-plan-part">
+          <label className="cp-plan-part-name"><input type="checkbox" checked={selectedTypes.includes(c.pt_id)} onChange={e=>setSelectedTypes(old=>e.target.checked?[...new Set([...old,c.pt_id])]:old.filter(id=>id!==c.pt_id))}/><span><strong>{localized}</strong><small>{c.name!==localized?c.name:'Тип '+c.pt_id}</small></span></label>
+          <span className="cp-plan-part-tag">{sectionOf(c)}</span>
+          <span className={stored?'cp-plan-status is-stored':'cp-plan-status'}>{stored?'На складі · '+stored.quantity+' шт.':'Нове'}</span>
+          <button type="button" className={stored?'secondary':'cp-plan-add'} disabled={addingType!==null||batchBusy||stockStatusLoading||Boolean(stockStatusError)||savedKtype!==picked||Boolean(stored)} onClick={()=>void addSelectedType(c)}>{stored?'Вже на складі':addingType===c.pt_id?'Додаємо…':'Додати на склад'}</button>
+          <button type="button" className="secondary" disabled={paidDisabled} onClick={()=>getArticles(c.pt_id)}>Артикули</button>
+         </div>})}
+        </section>;
+       })}
        {filteredCategories.length===0&&<p className="cp-plan-empty">За заданими фільтрами запчастин не знайдено.</p>}
       </div>
      </>:<div className="cp-plan-empty">Оберіть модифікацію та завантажте каталог, щоб побачити перелік запчастин.</div>}
