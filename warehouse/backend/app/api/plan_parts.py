@@ -138,6 +138,26 @@ def vehicle_categories(
             "message": "Це артикули aftermarket, а не фізичні запчастини автомобіля."}
 
 
+@router.post("/categories/recover")
+def recover_vehicle_categories(
+    who: Annotated[Identity, Depends(identity)],
+    client: Annotated[PlanPartsClient, Depends(plan_parts_client)],
+    db: Annotated[Session, Depends(get_db)],
+    vehicle_id: str = Query(min_length=1, max_length=80),
+    ktype: int = Query(gt=0),
+):
+    """Cache-only catalogue read. This endpoint cannot spend provider tokens."""
+    donor = _owned_paid_vehicle(who, db, vehicle_id)
+    if donor.ktype != ktype:
+        raise HTTPException(409, "Модифікація автомобіля змінилася")
+    try:
+        rows = client.recover_categories(who.workspace_account_id, ktype)
+    except PlanPartsError as exc:
+        _handle_provider(exc)
+    return {"ktype": ktype, "categories": [row.model_dump() for row in rows],
+            "from_cache": True, "category_count": len(rows)}
+
+
 @router.post("/articles/recover")
 def recover_vehicle_articles(
     who: Annotated[Identity, Depends(identity)],

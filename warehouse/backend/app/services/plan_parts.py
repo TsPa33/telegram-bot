@@ -222,6 +222,11 @@ class PlanPartsClient:
     def categories(self, account_id: str, ktype: int, gate: RequestGate = request_gate):
         return self._lookup(account_id, "categories", {"ktype": ktype}, CatalogPartType, "pt_id", gate)
 
+    def recover_categories(self, account_id: str, ktype: int):
+        """Return cached category metadata only, never contact plan.parts."""
+        return self._lookup(account_id, "categories", {"ktype": ktype},
+                            CatalogPartType, "pt_id", request_gate, cache_only=True)
+
     def vehicle_matches(self, account_id: str, brand: str, model: str, year: int, gate: RequestGate = request_gate):
         if not brand.strip() or not model.strip() or not 1886 <= year <= 2100:
             raise PlanPartsError(422, "Уточніть марку, модель і рік автомобіля")

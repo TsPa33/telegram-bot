@@ -101,6 +101,7 @@ KNOWN_ROUTES = frozenset({
     ('POST', '/api/v1/plan-parts/vehicle-matches/lookup'),
     ('POST', '/api/v1/plan-parts/vehicle-modification/select'),
     ('POST', '/api/v1/plan-parts/categories/lookup'),
+    ('POST', '/api/v1/plan-parts/categories/recover'),
     ('POST', '/api/v1/plan-parts/articles/lookup'),
     ('POST', '/api/v1/plan-parts/articles/recover'),
     ('POST', '/api/v1/team'),
