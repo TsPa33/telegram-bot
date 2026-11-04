@@ -7,12 +7,13 @@ import {AlertCircle,Check,CheckCircle2,ChevronDown,ChevronLeft,ChevronRight,Chev
 import './article-manager.css';
 
 type Category={pt_id:number;name:string;article_count:number};
-type StoredPart={id:string;pt_id:number|null;name:string;quantity:number;archived:boolean;article_number?:string};
+type StoredPart={id:string;pt_id:number|null;name:string;quantity:number;archived:boolean;article_number?:string;article_brand?:string};
 type Article={art_id:number;article_nr:string;brand:string;part_name:string};
 type StockIndex={byType:Map<number,StoredPart>;byName:Map<string,StoredPart>};
 type Props={vehicleId:string;ktype:number;categories:Category[];stockIndex:StockIndex;
  localizedName:(name:string)=>string;onSaved:()=>Promise<void>;disabled:boolean;translatedNames:Record<string,string>};
 type Listed={category:Category;stock:StoredPart;label:string};
+type Receipt={pt_id:number;status:'received'|'unavailable'|'uncertain';article_count:number;received_at:string|null;last_checked_at:string};
 const norm=(s:string)=>s.trim().toLocaleLowerCase('uk-UA').replace(/\s+/g,' ');
 const PAGE_SIZE=12;
 const ARTICLE_CACHE_LIMIT=1200000;
@@ -27,6 +28,7 @@ export default function ArticleManager({vehicleId,ktype,categories,stockIndex,lo
  const [page,setPage]=useState(0);
  const [selected,setSelected]=useState<number[]>([]);
  const [offers,setOffers]=useState<Record<number,Article[]>>({});
+ const [history,setHistory]=useState<Record<number,Receipt>>({});
  const [validated,setValidated]=useState<number[]>([]);
  const [active,setActive]=useState<number|null>(null);
  const [offerQuery,setOfferQuery]=useState('');
@@ -48,13 +50,13 @@ export default function ArticleManager({vehicleId,ktype,categories,stockIndex,lo
  const validatedSet=useMemo(()=>new Set(validated),[validated]);
  const savedCount=stockRows.filter(r=>Boolean(r.stock.article_number?.trim())).length;
  const missingCount=stockRows.length-savedCount;
- const availableCount=stockRows.filter(r=>!r.stock.article_number?.trim()&&Boolean(offers[r.category.pt_id]?.length)).length;
+ const availableCount=stockRows.filter(r=>!r.stock.article_number?.trim()&&(Boolean(offers[r.category.pt_id]?.length)||Boolean(history[r.category.pt_id]?.received_at))).length;
  const rows=useMemo(()=>stockRows.filter(r=>{
   const hasNumber=Boolean(r.stock.article_number?.trim());
-  const hasOptions=Boolean(offers[r.category.pt_id]?.length);
+  const hasOptions=Boolean(offers[r.category.pt_id]?.length)||Boolean(history[r.category.pt_id]?.received_at);
   return (tab==='all'||(tab==='missing'&&!hasNumber)||(tab==='saved'&&hasNumber)||(tab==='available'&&!hasNumber&&hasOptions))
    &&(!query||norm(r.label).includes(norm(query))||norm(r.stock.article_number||'').includes(norm(query)));
- }),[stockRows,tab,query,offers]);
+ }),[stockRows,tab,query,offers,history]);
  const pages=Math.max(1,Math.ceil(rows.length/PAGE_SIZE));
  const visible=rows.slice(page*PAGE_SIZE,(page+1)*PAGE_SIZE);
  const selectedMissing=selected.filter(id=>byType.has(id)&&!byType.get(id)?.stock.article_number?.trim());
@@ -66,7 +68,10 @@ export default function ArticleManager({vehicleId,ktype,categories,stockIndex,lo
  const isVerified=active!==null&&validatedSet.has(active);
 
  useEffect(()=>{setPage(0)},[tab,query]);
- useEffect(()=>{setOffers({});setValidated([]);setSelected([]);setActive(null);setNotice('');setBatchOpen(false);
+ useEffect(()=>{setOffers({});setValidated([]);setSelected([]);setActive(null);setNotice('');setBatchOpen(false);setHistory({});
+  void api<{receipts:Receipt[]}>('/plan-parts/articles/history?vehicle_id='+encodeURIComponent(vehicleId)+'&ktype='+ktype)
+   .then(result=>setHistory(Object.fromEntries(result.receipts.map(r=>[r.pt_id,r]))))
+   .catch(()=>{/* Do not infer unpaid status if history cannot load */});
   try{
    const raw=JSON.parse(sessionStorage.getItem(sharedKey)||'null') as {until?:number;data?:Record<string,Article[]>}|null;
    if(raw?.until&&raw.until>Date.now()&&raw.data){
@@ -106,14 +111,16 @@ export default function ArticleManager({vehicleId,ktype,categories,stockIndex,lo
   try{
    const records=await loadFromCache(ptId);
    setOffers(prev=>({...prev,[ptId]:records}));
+   setHistory(prev=>({...prev,[ptId]:{pt_id:ptId,status:'received',article_count:records.length,received_at:prev[ptId]?.received_at||new Date().toISOString(),last_checked_at:new Date().toISOString()}}));
    setValidated(prev=>[...new Set([...prev,ptId])]);
    remember(ptId,records);
   }catch(e){
    setValidated(prev=>prev.filter(id=>id!==ptId));
+   if(history[ptId]?.received_at){setHistory(prev=>({...prev,[ptId]:{...prev[ptId],status:'unavailable'}}));}
    if(offers[ptId]?.length){
-    setNotice('Попередні варіанти залишилися в цій сесії, але серверний кеш уже недоступний. Для призначення потрібен новий підтверджений запит.');
+    setNotice('Раніше отримані варіанти є в браузері, але серверний кеш недоступний. Повторну оплату не виконуємо автоматично.');
    }else{
-    setNotice('Безкоштовно відновити варіанти зараз не вдалося. Перевірте з’єднання або підтвердьте новий платний запит.');
+    setNotice(history[ptId]?.received_at?'Отримано раніше — дані потребують відновлення. Повторної оплати не було.':'Варіанти недоступні. Перевірте з’єднання; новий платний запит тільки після підтвердження.');
    }
   }finally{setLoading(false)}
  }
@@ -123,6 +130,7 @@ export default function ArticleManager({vehicleId,ktype,categories,stockIndex,lo
   try{
    const result=await api<{articles:Article[]}>('/plan-parts/articles/lookup?vehicle_id='+encodeURIComponent(vehicleId)+'&ktype='+ktype+'&pt_id='+active,'POST');
    setOffers(prev=>({...prev,[active]:result.articles}));
+   setHistory(prev=>({...prev,[active]:{pt_id:active,status:'received',article_count:result.articles.length,received_at:new Date().toISOString(),last_checked_at:new Date().toISOString()}}));
    setValidated(prev=>[...new Set([...prev,active])]);
    remember(active,result.articles);
    setNotice('Отримано '+result.articles.length+' варіантів. Оберіть перевірений номер для картки.');
@@ -183,16 +191,16 @@ export default function ArticleManager({vehicleId,ktype,categories,stockIndex,lo
     <button type="button" className="secondary" disabled={!selectedMissing.length||saving} onClick={prepareAuto}>Автовибір з отриманих</button>
     <input aria-label="Пошук у менеджері" placeholder="Назва або артикул…" value={query} onChange={e=>setQuery(e.target.value)}/>
    </div>
-   {batchOpen&&<div className="cp-am-batch-workspace"><div className="cp-am-batch-head"><div><strong>Пакетне отримання артикулів</strong><small>Вибрано {batchCategories.length} типів. Нові запити виконуються тільки після підтвердження бюджету токенів.</small></div><button type="button" className="secondary" onClick={()=>setBatchOpen(false)}>Згорнути</button></div><PlanPartsBatch vehicleId={vehicleId} ktype={ktype} selected={batchCategories} disabled={disabled||saving} translatedNames={translatedNames} onArticles={(ptId,records)=>{setOffers(prev=>({...prev,[ptId]:records}));setValidated(prev=>[...new Set([...prev,ptId])]);remember(ptId,records);}}/></div>}
+   {batchOpen&&<div className="cp-am-batch-workspace"><div className="cp-am-batch-head"><div><strong>Пакетне отримання артикулів</strong><small>Вибрано {batchCategories.length} типів. Нові запити виконуються тільки після підтвердження бюджету токенів.</small></div><button type="button" className="secondary" onClick={()=>setBatchOpen(false)}>Згорнути</button></div><PlanPartsBatch vehicleId={vehicleId} ktype={ktype} selected={batchCategories} disabled={disabled||saving} translatedNames={translatedNames} onArticles={(ptId,records)=>{setHistory(prev=>({...prev,[ptId]:{pt_id:ptId,status:'received',article_count:records.length,received_at:new Date().toISOString(),last_checked_at:new Date().toISOString()}}));setOffers(prev=>({...prev,[ptId]:records}));setValidated(prev=>[...new Set([...prev,ptId])]);remember(ptId,records);}}/></div>}
    {notice&&<p role="status" className="cp-am-message">{notice}</p>}
    {autoQueue&&<div className="cp-am-dialog" role="alertdialog" aria-label="Підтвердження автопризначення"><strong>Призначити по одному артикулу для {autoQueue.length} позицій?</strong><p>Це перша доступна aftermarket-пропозиція, а не підтверджений OEM. Перевірте сумісність. Жодного нового платного запиту не буде.</p>{saving&&<progress value={processed} max={autoQueue.length}/>}<button type="button" disabled={saving} onClick={()=>void confirmAuto()}>Підтвердити</button><button type="button" className="secondary" disabled={saving} onClick={()=>setAutoQueue(null)}>Скасувати</button></div>}
    <div className="cp-am-table-wrap"><table className="cp-am-table"><thead><tr><th><span className="cp-am-visually-hidden">Вибір</span></th><th>Запчастина</th><th>Статус</th><th>Артикул</th><th>Дії</th></tr></thead><tbody>
-    {visible.map(r=>{const id=r.category.pt_id;const assigned=Boolean(r.stock.article_number?.trim());const available=Boolean(offers[id]?.length);return <tr key={id} className={active===id?'cp-am-row-active':undefined}>
+    {visible.map(r=>{const id=r.category.pt_id;const assigned=Boolean(r.stock.article_number?.trim());const available=Boolean(offers[id]?.length);const previously=Boolean(history[id]?.received_at);return <tr key={id} className={active===id?'cp-am-row-active':undefined}>
      <td><input type="checkbox" aria-label={'Вибрати '+r.label} checked={selectedSet.has(id)} onChange={e=>setSelected(prev=>e.target.checked?[...new Set([...prev,id])]:prev.filter(x=>x!==id))}/></td>
      <td><strong>{r.label}</strong><small>{r.category.name!==r.label?r.category.name:'Тип '+id}</small></td>
-     <td>{assigned?<span className="cp-am-status yes"><CheckCircle2 size={14}/> Артикул додано</span>:available?<span className="cp-am-status available"><Layers3 size={14}/> Варіанти ({offers[id].length})</span>:<span className="cp-am-status no"><AlertCircle size={14}/> Не отримано</span>}</td>
+     <td>{assigned?<span className="cp-am-status yes"><CheckCircle2 size={14}/> Артикул додано</span>:available?<span className="cp-am-status available"><Layers3 size={14}/> Варіанти ({offers[id].length})</span>:previously?<span className="cp-am-status previously"><Layers3 size={14}/> Отримано раніше · відновити</span>:<span className="cp-am-status no"><AlertCircle size={14}/> Не отримано</span>}</td>
      <td><strong>{r.stock.article_number||'—'}</strong></td>
-     <td><button type="button" className="secondary" onClick={()=>void showDrawer(id)} disabled={saving||loading}>{assigned?'Переглянути / змінити':available?'Обрати артикул':'Отримати · до 2 токенів'}</button></td>
+     <td><button type="button" className="secondary" onClick={()=>void showDrawer(id)} disabled={saving||loading}>{assigned?'Переглянути / змінити':available?'Обрати артикул':previously?'Спробувати відновити':'Отримати · до 2 токенів'}</button></td>
     </tr>})}
     {!visible.length&&<tr><td colSpan={5}>Запчастин за цими фільтрами немає.</td></tr>}
    </tbody></table></div>
@@ -204,7 +212,7 @@ export default function ArticleManager({vehicleId,ktype,categories,stockIndex,lo
      <header className="cp-am-drawer-head"><div><small>CarPot Warehouse · Артикули</small><h3>{activeRow.label}</h3><p>Тип #{activeRow.category.pt_id} · K-Type {ktype}</p></div><button type="button" className="secondary" aria-label="Закрити" disabled={saving} onClick={dismiss}><X size={19}/></button></header>
      <div className="cp-am-drawer-scroll">
       <div className="cp-am-current"><small>Поточний артикул</small>{activeRow.stock.article_number?.trim()?<strong><CheckCircle2 size={17}/> {activeRow.stock.article_number}</strong>:<strong>Артикул не призначено</strong>}<span>Після призначення номер збережеться в картці товару.</span></div>
-      <div className="cp-am-drawer-summary"><Layers3 size={20}/><div><strong>{loading?'Перевіряємо отримані варіанти…':activeOffers.length?'Отримано '+activeOffers.length+' варіантів':'Варіантів поки немає'}</strong><small>{isVerified?'Серверний кеш підтверджений · запис доступний':activeOffers.length?'Варіанти збережені в сесії · потрібна перевірка сервера':'Запит до Plan.Parts лише після підтвердження'}</small></div></div>
+      <div className="cp-am-drawer-summary"><Layers3 size={20}/><div><strong>{loading?'Перевіряємо отримані варіанти…':activeOffers.length?'Отримано '+activeOffers.length+' варіантів':active!==null&&history[active]?.received_at?'Отримано раніше — потрібне відновлення':'Варіантів поки немає'}</strong><small>{isVerified?'Серверний кеш підтверджений · запис доступний':activeOffers.length?'Варіанти збережені в сесії · потрібна перевірка сервера':'Запит до Plan.Parts лише після підтвердження'}</small></div></div>
       {notice&&<p role="status" className="cp-am-message">{notice}</p>}
       {!isVerified&&!loading&&<div className="cp-am-warning"><ShieldAlert size={18}/><span>Для запису нового номера потрібні перевірені варіанти в серверному кеші. Повторний платний запит не запускається автоматично.</span></div>}
       {chargeConfirm&&<div className="cp-am-dialog" role="alertdialog" aria-label="Підтвердження оплати"><strong>Отримати нові варіанти · до 2 токенів?</strong><p>Plan.Parts може списати токени. Вибір артикула після отримання залишається безкоштовним.</p><button type="button" disabled={disabled||loading||saving} onClick={()=>void requestPaid()}>Підтвердити запит</button><button type="button" className="secondary" onClick={()=>setChargeConfirm(false)}>Скасувати</button></div>}
