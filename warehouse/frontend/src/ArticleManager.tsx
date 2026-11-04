@@ -10,7 +10,7 @@ type Category={pt_id:number;name:string;article_count:number};
 type StoredPart={id:string;pt_id:number|null;name:string;quantity:number;archived:boolean;article_number?:string;article_brand?:string};
 type Article={art_id:number;article_nr:string;brand:string;part_name:string};
 type StockIndex={byType:Map<number,StoredPart>;byName:Map<string,StoredPart>};
-type Props={vehicleId:string;ktype:number;categories:Category[];stockIndex:StockIndex;
+type Props={vehicleId:string;vehicleLabel?:string;ktype:number;categories:Category[];stockIndex:StockIndex;
  localizedName:(name:string)=>string;onSaved:()=>Promise<void>;disabled:boolean;translatedNames:Record<string,string>};
 type Listed={category:Category;stock:StoredPart;label:string};
 type Receipt={pt_id:number;status:'received'|'unavailable'|'uncertain';article_count:number;stored:boolean;received_at:string|null;last_checked_at:string};
@@ -18,7 +18,7 @@ const norm=(s:string)=>s.trim().toLocaleLowerCase('uk-UA').replace(/\s+/g,' ');
 const PAGE_SIZE=12;
 const ARTICLE_CACHE_LIMIT=1200000;
 
-export default function ArticleManager({vehicleId,ktype,categories,stockIndex,localizedName,onSaved,disabled,translatedNames}:Props){
+export default function ArticleManager({vehicleId,vehicleLabel,ktype,categories,stockIndex,localizedName,onSaved,disabled,translatedNames}:Props){
  const identity=useContext(TeamIdentity);
  const sharedKey='plan-parts-batch-v1:'+String(identity?.id||'')+':'+vehicleId+':'+ktype+':temporary-articles';
  const [opened,setOpened]=useState(true);
@@ -228,7 +228,7 @@ export default function ArticleManager({vehicleId,ktype,categories,stockIndex,lo
   {activeRow&&createPortal(<div className="cp-am-drawer-root" role="presentation">
     <button type="button" className="cp-am-backdrop" aria-label="Закрити вибір артикула" onClick={dismiss}/>
     <aside className="cp-am-drawer" role="dialog" aria-modal="true" aria-label={'Артикули: '+activeRow.label}>
-     <header className="cp-am-drawer-head"><div><small>CarPot Warehouse · Артикули</small><h3>{activeRow.label}</h3><p>Тип #{activeRow.category.pt_id} · K-Type {ktype}</p></div><button type="button" className="secondary" aria-label="Закрити" disabled={saving} onClick={dismiss}><X size={19}/></button></header>
+     <header className="cp-am-drawer-head"><div><small>CarPot Warehouse · Артикули</small><h3>{activeRow.label}</h3><p>{vehicleLabel?vehicleLabel+' · ':''}Тип #{activeRow.category.pt_id} · K-Type {ktype}</p></div><button type="button" className="secondary" aria-label="Закрити" disabled={saving} onClick={dismiss}><X size={19}/></button></header>
      <div className="cp-am-drawer-scroll">
       <div className="cp-am-current"><small>Поточний артикул</small>{activeRow.stock.article_number?.trim()?<strong><CheckCircle2 size={17}/> {activeRow.stock.article_number}</strong>:<strong>Артикул не призначено</strong>}<span>Після призначення номер збережеться в картці товару.</span></div>
       <div className="cp-am-drawer-summary"><Layers3 size={20}/><div><strong>{loading?'Перевіряємо отримані варіанти…':activeOffers.length?'Отримано '+activeOffers.length+' варіантів':active!==null&&history[active]?.received_at?'Отримано раніше — потрібне відновлення':'Варіантів поки немає'}</strong><small>{isVerified?(active!==null&&history[active]?.stored?'Збережено в PostgreSQL · повторна оплата не потрібна':'Дані підтверджено · запис доступний'):activeOffers.length?'Варіанти збережені в сесії · потрібна перевірка сервера':'Запит до Plan.Parts лише після підтвердження'}</small></div></div>
