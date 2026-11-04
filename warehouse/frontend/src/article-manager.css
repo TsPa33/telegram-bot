@@ -52,3 +52,58 @@
 .cp-am-inline-offers .cp-am-offers-scroll{max-height:300px;overflow-y:auto;overscroll-behavior:contain}
 .cp-am-inline-row .cp-am-dialog{margin:8px 0}
 @media(max-width:700px){.cp-am-inline-row>td{padding:10px!important}.cp-am-inline-heading{flex-wrap:wrap}}
+
+/* Approved CarPot article selection — overlay, no change to warehouse navigation. */
+.cp-am-status-tabs{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:15px 0}
+.cp-plan .cp-am-status-tabs button{font-size:12px}
+.cp-plan .cp-am-status-tabs button.selected{background:#006b50;color:#fff;border-color:#006b50}
+.cp-am-status.available{background:#e7f3ff;color:#225b90}
+.cp-am-row-active{background:#eff8f3}
+.cp-am-visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.cp-am-footer button{display:inline-flex;align-items:center;gap:5px}
+.cp-am-drawer-root{position:fixed;inset:0;z-index:1500;display:flex;justify-content:flex-end;font-family:inherit;color:#17352c}
+.cp-am-backdrop{position:absolute;inset:0;background:rgba(9,26,22,.45);border:0;cursor:pointer}
+.cp-am-drawer{position:relative;display:flex;flex-direction:column;width:min(640px,100vw);height:100%;overflow:hidden;background:#fff;box-shadow:-12px 0 40px rgba(8,35,25,.17)}
+.cp-am-drawer-head{display:flex;justify-content:space-between;align-items:start;gap:16px;padding:22px 24px 16px;border-bottom:1px solid #dde9e2;background:#fdfefe}
+.cp-am-drawer-head h3{margin:5px 0;font-size:21px;line-height:1.25;color:#0b2f23}
+.cp-am-drawer-head p{margin:4px 0 0;font-size:12px;color:#648074}
+.cp-am-drawer-head small{font-size:11px;color:#167255;font-weight:700}
+.cp-am-drawer-head button{min-width:36px;min-height:36px;display:grid;place-items:center;background:#fff;border:1px solid #d8e6dd;border-radius:9px;color:#234f3c}
+.cp-am-drawer-scroll{flex:1;overflow-y:auto;overscroll-behavior:contain;padding:21px 24px}
+.cp-am-current{display:grid;gap:9px;background:#f6faf7;border:1px dashed #bad8ca;border-radius:11px;padding:15px;margin-bottom:14px}
+.cp-am-current small{font-size:11px;color:#617b6c}
+.cp-am-current strong{display:flex;align-items:center;gap:7px;font-size:16px}
+.cp-am-current>span{font-size:11px;color:#61786d}
+.cp-am-drawer-summary{display:flex;align-items:center;gap:12px;background:#eff7fd;padding:13px;border:1px solid #d6e6fa;border-radius:11px}
+.cp-am-drawer-summary svg{flex-shrink:0;color:#1364a4}
+.cp-am-drawer-summary strong{font-size:14px;display:block}
+.cp-am-drawer-summary small{display:block;margin-top:4px;color:#536f83;font-size:11px}
+.cp-am-warning{display:flex;gap:10px;align-items:start;background:#fffaee;border:1px solid #ecd8a6;border-radius:9px;padding:11px;font-size:12px;line-height:1.5;margin:12px 0;color:#755d22}
+.cp-am-warning svg{flex:none}
+.cp-am-drawer-list-head{display:flex;align-items:center;justify-content:space-between;margin:20px 0 10px;gap:10px}
+.cp-am-drawer-list-head h4{margin:0;font-size:16px}
+.cp-am-drawer-list-head span{font-size:12px;color:#668173}
+.cp-am-search{display:flex;align-items:center;gap:8px;padding:9px 12px;border:1px solid #d4e3d9;border-radius:9px;background:#fff}
+.cp-am-search svg{color:#688477}
+.cp-am-search input{border:0!important;outline:none!important;background:transparent!important;box-shadow:none!important;flex:1;width:100%;height:26px;font-size:13px}
+.cp-am-drawer-offers{margin-top:12px;display:grid;gap:7px}
+.cp-am-drawer-offers>p{padding:15px;color:#617e6e;font-size:12px}
+.cp-am-offer{display:flex;gap:13px;align-items:center;border:1px solid #dce7e0;background:#fff;border-radius:9px;padding:13px;cursor:pointer}
+.cp-am-offer:hover{border-color:#8dbba4;background:#f9fcfa}
+.cp-am-offer.chosen{border-color:#087554;background:#e9f7ee}
+.cp-am-offer input{width:17px;height:17px;accent-color:#006b50;flex:none}
+.cp-am-offer>span:nth-child(2){flex:1;min-width:0}
+.cp-am-offer strong{display:block;font-size:14px;overflow-wrap:anywhere}
+.cp-am-offer small{display:block;font-size:11px;color:#6c8075;margin-top:5px}
+.cp-am-already{display:inline-flex;align-items:center;gap:4px;font-size:11px;white-space:nowrap;color:#176646}
+.cp-am-drawer-footer{border-top:1px solid #dce8df;background:#fbfefc;padding:14px 22px 20px}
+.cp-am-drawer-footer p{display:flex;align-items:center;gap:8px;font-size:11px;line-height:1.5;color:#597569;margin:0 0 12px}
+.cp-am-drawer-footer>div{display:flex;gap:10px}
+.cp-am-drawer-footer button,.cp-am-dialog button{font-size:12px;font-weight:700;border-radius:9px;min-height:40px;padding:8px 12px;border:1px solid #cbded3;cursor:pointer}
+.cp-am-drawer-footer button:not(.secondary),.cp-am-dialog button:not(.secondary){background:#006a4e;color:#fff;border-color:#006a4e}
+.cp-am-drawer-footer button.secondary,.cp-am-dialog button.secondary{background:#fff;color:#144b38}
+.cp-am-drawer-footer button:disabled,.cp-am-dialog button:disabled{opacity:.55;cursor:not-allowed}
+.cp-am-drawer-footer button:last-child{flex:1}
+.cp-am-drawer .cp-am-message{margin:12px 0}
+@media(max-width:640px){.cp-am-drawer-head{padding:16px}.cp-am-drawer-scroll{padding:15px}.cp-am-drawer-footer{padding:12px 15px}.cp-am-drawer-footer>div{flex-direction:column}.cp-am-drawer-footer button:last-child{min-height:44px}.cp-am-drawer-head h3{font-size:18px}}
+@media(prefers-reduced-motion:reduce){.cp-am-offer{transition:none}}
