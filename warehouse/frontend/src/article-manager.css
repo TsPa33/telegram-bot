@@ -124,3 +124,12 @@
 
 /* A paid result can be recorded even when the temporary offer cache expired. */
 .cp-am-status.previously{background:#edf1fa;color:#345c83;max-width:230px;white-space:normal;line-height:1.4}
+
+.cp-am-confirm-footer{border:1px solid #a6d2bd;background:#f1faf4;border-radius:10px;padding:12px}
+.cp-am-confirm-footer strong{display:block;font-size:13px;color:#15533a}
+.cp-am-confirm-footer p{display:block;margin:6px 0 12px;line-height:1.5;color:#557264;font-size:11px}
+.cp-am-confirm-footer>div{display:flex;gap:8px}
+.cp-am-confirm-footer button{flex:1;min-height:40px;border-radius:8px;padding:8px 12px;border:1px solid #cbded3;font-size:12px;font-weight:700}
+.cp-am-confirm-footer button:not(.secondary){background:#006a4e;color:white;border-color:#006a4e}
+.cp-am-confirm-footer button.secondary{background:white;color:#144b38}
+@media(max-width:640px){.cp-am-confirm-footer>div{flex-direction:column}}
