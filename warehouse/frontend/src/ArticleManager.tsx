@@ -1,6 +1,6 @@
 import {useEffect,useMemo,useRef,useState} from 'react';
 import {api} from './api';
-import {CheckCircle2,AlertCircle,Layers3,ChevronDown,ChevronUp,RefreshCw} from 'lucide-react';
+import {CheckCircle2,AlertCircle,Layers3,ChevronDown,ChevronUp} from 'lucide-react';
 import './article-manager.css';
 
 type Category={pt_id:number;name:string;article_count:number};
