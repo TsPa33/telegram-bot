@@ -201,7 +201,7 @@ def _mark_article_receipt(db: Session, account_id: str, vehicle_id: str, ktype: 
     )
     item.status = "received"
     item.article_count = count
-    item.received_at = now
+    item.received_at = item.received_at or now
     item.last_checked_at = now
     item.last_error = ""
     db.add(item)
