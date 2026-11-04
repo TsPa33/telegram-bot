@@ -115,20 +115,36 @@ export default function ArticleManager({vehicleId,ktype,categories,stockIndex,lo
    </div>
    <div className="cp-am-select"><button type="button" className="secondary" onClick={()=>setSelected(rows.filter(r=>!r.stock?.article_number?.trim()).map(r=>r.category.pt_id))}>Вибрати всі без артикула</button><button type="button" className="secondary" onClick={()=>setSelected([])}>Зняти вибір</button><small>Вибрано: {selected.length}</small></div>
    {notice&&<p className="cp-am-message" role="status">{notice}</p>}
-   {chargeConfirm!==null&&<div className="cp-am-dialog" role="alertdialog" aria-label="Підтвердження витрати токенів"><strong>Отримати варіанти — до 2 токенів?</strong><p>Платний запит Plan.Parts для «{localizedName(categories.find(c=>c.pt_id===chargeConfirm)?.name||'Запчастина')}». Отримання не гарантує сумісність з VIN і не присвоює артикул автоматично.</p><button type="button" disabled={disabled||saving} onClick={()=>void purchase(chargeConfirm)}>Підтвердити запит</button><button className="secondary" type="button" onClick={()=>setChargeConfirm(null)}>Скасувати</button></div>}
-   {proposed&&<div className="cp-am-dialog" role="alertdialog" aria-label="Підтвердження артикула"><strong>Записати {proposed.offer.article_nr} у картку?</strong><p>Виробник: {proposed.offer.brand}. Це aftermarket-пропозиція; сумісність із конкретною деталлю потрібно перевірити.</p><button type="button" disabled={saving} onClick={()=>void confirmOne()}>Записати у картку</button><button type="button" className="secondary" disabled={saving} onClick={()=>setProposed(null)}>Скасувати</button></div>}
    {autoQueue&&<div className="cp-am-dialog" role="alertdialog" aria-label="Підтвердження автоматичного вибору"><strong>Призначити по 1 артикулу для {autoQueue.length} запчастин?</strong><p>Використовуємо перший доступний варіант з уже отриманого кешу, без нових платних запитів. Це довідковий aftermarket-номер, не гарантія сумісності. Перевірте картки після операції.</p>{saving&&<progress value={processed} max={autoQueue.length}/>}<button type="button" disabled={saving} onClick={()=>void confirmAuto()}>Підтвердити запис</button><button type="button" className="secondary" disabled={saving} onClick={()=>setAutoQueue(null)}>Скасувати</button></div>}
-   <div className="cp-am-table-wrap"><table className="cp-am-table"><thead><tr><th>Вибір</th><th>Запчастина</th><th>Статус</th><th>Артикул</th><th>Дії</th></tr></thead><tbody>
-   {visible.map(({category:c,stock,label})=><tr key={c.pt_id}>
-    <td><input type="checkbox" aria-label={'Вибрати '+label} checked={selectedSet.has(c.pt_id)} onChange={e=>setSelected(old=>e.target.checked?[...new Set([...old,c.pt_id])]:old.filter(id=>id!==c.pt_id))}/></td>
-    <td><strong>{label}</strong><small>{c.name!==label?c.name:'Тип '+c.pt_id}</small></td>
-    <td>{stock?.article_number?.trim()?<span className="cp-am-status yes"><CheckCircle2 size={14}/> Артикул додано</span>:<span className="cp-am-status no"><AlertCircle size={14}/> Не вибрано</span>}</td>
-    <td><strong>{stock?.article_number||'—'}</strong></td>
-    <td><button type="button" className="secondary" disabled={loading!==null||saving||disabled} onClick={()=>void openOffers(c.pt_id)}>{loading===c.pt_id?'Перевірка…':offers[c.pt_id]?'Варіанти ('+offers[c.pt_id].length+')':'Відкрити варіанти'}</button></td>
-   </tr>)}
-   {!visible.length&&<tr><td colSpan={5}>За заданими фільтрами запчастин немає.</td></tr>}
-   </tbody></table></div>
-   {active!==null&&offers[active]&&<section className="cp-am-offers"><h4>{localizedName(categories.find(c=>c.pt_id===active)?.name||'Запчастина')} — {offers[active].length} варіантів</h4><p>Оберіть перевірений номер. Запис автоматично оновить поле «Артикул» у картці товару.</p><div className="cp-am-offers-scroll">{offers[active].slice(0,80).map(a=><div key={a.art_id}><span><strong>{a.article_nr}</strong><small>{a.brand} · {a.part_name}</small></span><button type="button" className="secondary" disabled={saving||!stockRows.find(r=>r.category.pt_id===active)?.stock} onClick={()=>{const stock=stockRows.find(r=>r.category.pt_id===active)?.stock;if(stock)setProposed({ptId:active,offer:a,partId:stock.id})}}>Обрати артикул</button></div>)}</div>{offers[active].length>80&&<small>Показано перші 80 варіантів. Уточніть відповідність деталі перед записом.</small>}</section>}
+   <div className="cp-am-table-wrap"><table className="cp-am-table"><thead><tr><th>Вибір</th><th>Запчастина</th><th>Статус</th><th>Артикул</th><th>Дії</th></tr></thead>
+   {visible.map(({category:c,stock,label})=><tbody key={c.pt_id} className={active===c.pt_id?'cp-am-active-group':undefined}>
+    <tr>
+     <td><input type="checkbox" aria-label={'Вибрати '+label} checked={selectedSet.has(c.pt_id)} onChange={e=>setSelected(old=>e.target.checked?[...new Set([...old,c.pt_id])]:old.filter(id=>id!==c.pt_id))}/></td>
+     <td><strong>{label}</strong><small>{c.name!==label?c.name:'Тип '+c.pt_id}</small></td>
+     <td>{stock?.article_number?.trim()?<span className="cp-am-status yes"><CheckCircle2 size={14}/> Артикул додано</span>:<span className="cp-am-status no"><AlertCircle size={14}/> Не вибрано</span>}</td>
+     <td><strong>{stock?.article_number||'—'}</strong></td>
+     <td><button type="button" className="secondary" aria-expanded={active===c.pt_id} disabled={loading!==null||saving||disabled} onClick={()=>{if(active===c.pt_id&&offers[c.pt_id]){setActive(null);return;}void openOffers(c.pt_id)}}>{loading===c.pt_id?'Перевіряємо…':active===c.pt_id&&offers[c.pt_id]?'Згорнути варіанти':offers[c.pt_id]?'Варіанти ('+offers[c.pt_id].length+')':'Відкрити варіанти'}</button></td>
+    </tr>
+    {active===c.pt_id&&<tr className="cp-am-inline-row"><td colSpan={5}>
+     {loading===c.pt_id&&<p role="status">Шукаємо раніше оплачені артикули без нового списання токенів…</p>}
+     {chargeConfirm===c.pt_id&&<div className="cp-am-dialog" role="alertdialog" aria-label="Підтвердження витрати токенів">
+      <strong>Отримати варіанти для «{label}» — до 2 токенів?</strong>
+      <p>Раніше отриманих даних у доступному кеші немає. Потрібен новий запит Plan.Parts; номер не буде автоматично призначений.</p>
+      <button type="button" disabled={disabled||saving} onClick={()=>void purchase(c.pt_id)}>Підтвердити платний запит</button>
+      <button type="button" className="secondary" onClick={()=>{setChargeConfirm(null);setActive(null)}}>Скасувати</button>
+     </div>}
+     {offers[c.pt_id]&&<div className="cp-am-inline-offers">
+      <div className="cp-am-inline-heading"><div><strong>Варіанти артикулів: {offers[c.pt_id].length}</strong><small>Обирайте номер лише після перевірки відповідності фізичній деталі. Ці дані не є підтвердженим OEM.</small></div><button type="button" className="secondary" onClick={()=>setActive(null)}>Закрити</button></div>
+      {proposed?.ptId===c.pt_id&&<div className="cp-am-dialog" role="alertdialog" aria-label="Підтвердження артикула"><strong>Записати {proposed.offer.article_nr} в картку «{label}»?</strong><p>Виробник: {proposed.offer.brand}. Сумісність потрібно перевірити.</p><button type="button" disabled={saving} onClick={()=>void confirmOne()}>{saving?'Зберігаємо…':'Підтвердити запис'}</button><button type="button" className="secondary" disabled={saving} onClick={()=>setProposed(null)}>Скасувати</button></div>}
+      {offers[c.pt_id].length===0&&<p>Для цього типу постачальник не повернув артикулів.</p>}
+      <div className="cp-am-offers-scroll">{offers[c.pt_id].slice(0,80).map(a=><div key={a.art_id}><span><strong>{a.article_nr}</strong><small>{a.brand} · {a.part_name}</small></span><button type="button" className="secondary" disabled={saving||!stock} onClick={()=>{if(stock)setProposed({ptId:c.pt_id,offer:a,partId:stock.id})}}>Записати в картку</button></div>)}</div>
+      {offers[c.pt_id].length>80&&<small>Показано 80 із {offers[c.pt_id].length} варіантів.</small>}
+     </div>}
+     {active===c.pt_id&&!offers[c.pt_id]&&loading!==c.pt_id&&chargeConfirm!==c.pt_id&&<p role="status">{notice||'Результат не знайдено. Повторний платний запит не запускається автоматично.'}</p>}
+    </td></tr>}
+   </tbody>)}
+   {!visible.length&&<tbody><tr><td colSpan={5}>За заданими фільтрами запчастин немає.</td></tr></tbody>}
+   </table></div>
    <footer className="cp-am-footer"><span>Показано {Math.min((page+1)*pageSize,rows.length)} із {rows.length}</span><button type="button" className="secondary" disabled={page===0} onClick={()=>setPage(p=>p-1)}>Назад</button><span>{page+1} / {Math.max(1,Math.ceil(rows.length/pageSize))}</span><button type="button" className="secondary" disabled={(page+1)*pageSize>=rows.length} onClick={()=>setPage(p=>p+1)}>Далі</button></footer>
   </div>}
  </section>;
