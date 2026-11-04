@@ -12,9 +12,9 @@ const BROWSER_ARTICLE_CACHE_LIMIT=1200000; // Session-only, bounded, never durab
 const API_PACE_MS=3400; // Keep comfortably below the current 10 requests / 30 seconds local budget.
 
 export default function PlanPartsBatch({
- vehicleId,ktype,selected,disabled,translatedNames
+ vehicleId,ktype,selected,disabled,translatedNames,onArticles
 }:{
- vehicleId:string;ktype:number;selected:Category[];disabled:boolean;translatedNames:Record<string,string>
+ vehicleId:string;ktype:number;selected:Category[];disabled:boolean;translatedNames:Record<string,string>;onArticles?:(ptId:number,articles:Article[])=>void
 }){
  const identity=useContext(TeamIdentity);
  const scope='plan-parts-batch-v1:'+String(identity?.id||'')+':'+vehicleId+':'+ktype;
@@ -131,6 +131,7 @@ export default function PlanPartsBatch({
     };
     setData(previous=>({...previous,[String(cat.pt_id)]:articles}));
     rememberArticles(cat.pt_id,articles);
+    onArticles?.(cat.pt_id,articles);
     finished++;
     setDoneCount(finished);
     checkpoint({...done},[...ambiguous]);
@@ -177,6 +178,7 @@ export default function PlanPartsBatch({
    const rest=uncertain.filter(id=>id!==ptId);
    setData(old=>({...old,[String(ptId)]:articles}));
    rememberArticles(ptId,articles);
+   onArticles?.(ptId,articles);
    checkpoint(next,rest);
    setMessage('Дані відновлено з кешу без нового запиту до plan.parts.');
   }catch(err){
@@ -194,6 +196,7 @@ export default function PlanPartsBatch({
     '&ktype='+ktype+'&pt_id='+ptId,'POST');
    setData(previous=>({...previous,[String(ptId)]:result.articles}));
    rememberArticles(ptId,result.articles);
+   onArticles?.(ptId,result.articles);
    setPreviewId(ptId);
    setMessage('Завантажені раніше артикули відновлено без нового запиту до plan.parts.');
   }catch(err){
