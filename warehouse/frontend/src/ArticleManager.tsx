@@ -166,6 +166,7 @@ export default function ArticleManager({vehicleId,ktype,categories,stockIndex,lo
   try{
    const result=await saveArticle(activeRow.category.pt_id,chosenOffer,activeRow.stock.id);
    await onSaved();
+   window.dispatchEvent(new Event('warehouse:inventory-changed'));
    setNotice('Артикул '+result.article_number+' записано у картку товару.');setChosenSelection(null);setChosen(null);
   }catch(e){setNotice('Не вдалося записати артикул: '+(e as Error).message+'. Повторно отримувати артикули за токени не потрібно. Перевірте, що вибрано потрібну складську позицію.')}
   finally{lock.current=false;setSaving(false)}
