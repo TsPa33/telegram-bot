@@ -91,8 +91,15 @@ def test_chosen_article_and_brand_persist_in_inventory_card(logged, vehicle):
         assert status.status_code==200,status.text
         part=next(x for x in status.json()["parts"] if x["id"]==part_id)
         assert part["article_number"]=="BATT-901" and part["article_brand"]=="Example Supplier"
+        # Even after all in-memory supplier data disappears, assigning remains
+        # possible from the validated PostgreSQL snapshot without another API call.
+        class ExpiredProvider:
+            def recover_articles(self, *args):
+                raise AssertionError("Do not contact supplier cache after permanent snapshot")
+        app.dependency_overrides[plan_parts_client]=ExpiredProvider
         same=logged.post("/api/v1/plan-parts/donor-parts/article/select?vehicle_id="+vehicle["id"],
                          json={"ktype":131094,"pt_id":909,"art_id":901,"part_id":part_id})
-        assert same.status_code==200 and same.json()["changed"] is False
+        assert same.status_code==200,same.text
+        assert same.json()["changed"] is False
     finally:
         app.dependency_overrides.pop(plan_parts_client,None)
