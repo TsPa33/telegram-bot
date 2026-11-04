@@ -20,7 +20,7 @@ const ARTICLE_CACHE_LIMIT=1200000;
 export default function ArticleManager({vehicleId,ktype,categories,stockIndex,localizedName,onSaved,disabled,translatedNames}:Props){
  const identity=useContext(TeamIdentity);
  const sharedKey='plan-parts-batch-v1:'+String(identity?.id||'')+':'+vehicleId+':'+ktype+':temporary-articles';
- const [opened,setOpened]=useState(false);
+ const [opened,setOpened]=useState(true);
  const [batchOpen,setBatchOpen]=useState(false);
  const [tab,setTab]=useState<'all'|'missing'|'saved'|'available'>('all');
  const [query,setQuery]=useState('');
