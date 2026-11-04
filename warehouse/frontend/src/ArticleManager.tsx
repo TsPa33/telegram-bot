@@ -13,7 +13,7 @@ type StockIndex={byType:Map<number,StoredPart>;byName:Map<string,StoredPart>};
 type Props={vehicleId:string;ktype:number;categories:Category[];stockIndex:StockIndex;
  localizedName:(name:string)=>string;onSaved:()=>Promise<void>;disabled:boolean;translatedNames:Record<string,string>};
 type Listed={category:Category;stock:StoredPart;label:string};
-type Receipt={pt_id:number;status:'received'|'unavailable'|'uncertain';article_count:number;received_at:string|null;last_checked_at:string};
+type Receipt={pt_id:number;status:'received'|'unavailable'|'uncertain';article_count:number;stored:boolean;received_at:string|null;last_checked_at:string};
 const norm=(s:string)=>s.trim().toLocaleLowerCase('uk-UA').replace(/\s+/g,' ');
 const PAGE_SIZE=12;
 const ARTICLE_CACHE_LIMIT=1200000;
@@ -69,8 +69,24 @@ export default function ArticleManager({vehicleId,ktype,categories,stockIndex,lo
 
  useEffect(()=>{setPage(0)},[tab,query]);
  useEffect(()=>{setOffers({});setValidated([]);setSelected([]);setActive(null);setNotice('');setBatchOpen(false);setHistory({});
+  let live=true;
   void api<{receipts:Receipt[]}>('/plan-parts/articles/history?vehicle_id='+encodeURIComponent(vehicleId)+'&ktype='+ktype)
-   .then(result=>setHistory(Object.fromEntries(result.receipts.map(r=>[r.pt_id,r]))))
+   .then(async result=>{
+    if(!live)return;
+    setHistory(Object.fromEntries(result.receipts.map(r=>[r.pt_id,r])));
+    // Safely archive previous successful paid lookups while their server cache
+    // is still available. This endpoint is strictly cache-only, never billable.
+    for(const receipt of result.receipts.filter(r=>r.received_at&&!r.stored).slice(0,12)){
+     if(!live)break;
+     try{
+      const recovered=await api<{articles:Article[]}>('/plan-parts/articles/recover?vehicle_id='+encodeURIComponent(vehicleId)+'&ktype='+ktype+'&pt_id='+receipt.pt_id,'POST');
+      if(!live)break;
+      setOffers(prev=>({...prev,[receipt.pt_id]:recovered.articles}));
+      setHistory(prev=>({...prev,[receipt.pt_id]:{...receipt,stored:true,status:'received',article_count:recovered.articles.length}}));
+      setValidated(prev=>[...new Set([...prev,receipt.pt_id])]);
+     }catch{/* Previous cache may already have expired; never repay automatically. */}
+    }
+   })
    .catch(()=>{/* Do not infer unpaid status if history cannot load */});
   try{
    const raw=JSON.parse(sessionStorage.getItem(sharedKey)||'null') as {until?:number;data?:Record<string,Article[]>}|null;
@@ -82,6 +98,7 @@ export default function ArticleManager({vehicleId,ktype,categories,stockIndex,lo
     setOffers(restored);
    }
   }catch{/* Session cache optional */}
+  return ()=>{live=false};
  },[sharedKey]);
  useEffect(()=>{
   if(active===null)return;
@@ -111,7 +128,7 @@ export default function ArticleManager({vehicleId,ktype,categories,stockIndex,lo
   try{
    const records=await loadFromCache(ptId);
    setOffers(prev=>({...prev,[ptId]:records}));
-   setHistory(prev=>({...prev,[ptId]:{pt_id:ptId,status:'received',article_count:records.length,received_at:prev[ptId]?.received_at||new Date().toISOString(),last_checked_at:new Date().toISOString()}}));
+   setHistory(prev=>({...prev,[ptId]:{pt_id:ptId,status:'received',stored:true,article_count:records.length,received_at:prev[ptId]?.received_at||new Date().toISOString(),last_checked_at:new Date().toISOString()}}));
    setValidated(prev=>[...new Set([...prev,ptId])]);
    remember(ptId,records);
   }catch(e){
@@ -130,7 +147,7 @@ export default function ArticleManager({vehicleId,ktype,categories,stockIndex,lo
   try{
    const result=await api<{articles:Article[]}>('/plan-parts/articles/lookup?vehicle_id='+encodeURIComponent(vehicleId)+'&ktype='+ktype+'&pt_id='+active,'POST');
    setOffers(prev=>({...prev,[active]:result.articles}));
-   setHistory(prev=>({...prev,[active]:{pt_id:active,status:'received',article_count:result.articles.length,received_at:new Date().toISOString(),last_checked_at:new Date().toISOString()}}));
+   setHistory(prev=>({...prev,[active]:{pt_id:active,status:'received',stored:true,article_count:result.articles.length,received_at:new Date().toISOString(),last_checked_at:new Date().toISOString()}}));
    setValidated(prev=>[...new Set([...prev,active])]);
    remember(active,result.articles);
    setNotice('Отримано '+result.articles.length+' варіантів. Оберіть перевірений номер для картки.');
@@ -179,7 +196,7 @@ export default function ArticleManager({vehicleId,ktype,categories,stockIndex,lo
     <div><small>Запчастин на складі</small><strong>{stockRows.length}</strong></div>
     <div><small>Артикул призначено</small><strong>{savedCount}</strong></div>
     <div><small>Без артикула</small><strong>{missingCount}</strong></div>
-    <div><small>Варіанти в сесії</small><strong>{availableCount}</strong></div>
+    <div><small>Отримані варіанти</small><strong>{availableCount}</strong></div>
    </div>
    <div className="cp-am-status-tabs" role="group" aria-label="Фільтр артикулів">
     {([{id:'all',label:'Усі'},{id:'missing',label:'Без артикула'},{id:'saved',label:'Є артикул'},{id:'available',label:'Отримані варіанти'}] as const).map(t=><button type="button" key={t.id} className={tab===t.id?'selected':'secondary'} aria-pressed={tab===t.id} onClick={()=>setTab(t.id)}>{t.label} ({t.id==='all'?stockRows.length:t.id==='missing'?missingCount:t.id==='saved'?savedCount:availableCount})</button>)}
@@ -191,14 +208,14 @@ export default function ArticleManager({vehicleId,ktype,categories,stockIndex,lo
     <button type="button" className="secondary" disabled={!selectedMissing.length||saving} onClick={prepareAuto}>Автовибір з отриманих</button>
     <input aria-label="Пошук у менеджері" placeholder="Назва або артикул…" value={query} onChange={e=>setQuery(e.target.value)}/>
    </div>
-   {batchOpen&&<div className="cp-am-batch-workspace"><div className="cp-am-batch-head"><div><strong>Пакетне отримання артикулів</strong><small>Вибрано {batchCategories.length} типів. Нові запити виконуються тільки після підтвердження бюджету токенів.</small></div><button type="button" className="secondary" onClick={()=>setBatchOpen(false)}>Згорнути</button></div><PlanPartsBatch vehicleId={vehicleId} ktype={ktype} selected={batchCategories} disabled={disabled||saving} translatedNames={translatedNames} onArticles={(ptId,records)=>{setHistory(prev=>({...prev,[ptId]:{pt_id:ptId,status:'received',article_count:records.length,received_at:new Date().toISOString(),last_checked_at:new Date().toISOString()}}));setOffers(prev=>({...prev,[ptId]:records}));setValidated(prev=>[...new Set([...prev,ptId])]);remember(ptId,records);}}/></div>}
+   {batchOpen&&<div className="cp-am-batch-workspace"><div className="cp-am-batch-head"><div><strong>Пакетне отримання артикулів</strong><small>Вибрано {batchCategories.length} типів. Нові запити виконуються тільки після підтвердження бюджету токенів.</small></div><button type="button" className="secondary" onClick={()=>setBatchOpen(false)}>Згорнути</button></div><PlanPartsBatch vehicleId={vehicleId} ktype={ktype} selected={batchCategories} disabled={disabled||saving} translatedNames={translatedNames} onArticles={(ptId,records)=>{setHistory(prev=>({...prev,[ptId]:{pt_id:ptId,status:'received',stored:true,article_count:records.length,received_at:new Date().toISOString(),last_checked_at:new Date().toISOString()}}));setOffers(prev=>({...prev,[ptId]:records}));setValidated(prev=>[...new Set([...prev,ptId])]);remember(ptId,records);}}/></div>}
    {notice&&<p role="status" className="cp-am-message">{notice}</p>}
    {autoQueue&&<div className="cp-am-dialog" role="alertdialog" aria-label="Підтвердження автопризначення"><strong>Призначити по одному артикулу для {autoQueue.length} позицій?</strong><p>Це перша доступна aftermarket-пропозиція, а не підтверджений OEM. Перевірте сумісність. Жодного нового платного запиту не буде.</p>{saving&&<progress value={processed} max={autoQueue.length}/>}<button type="button" disabled={saving} onClick={()=>void confirmAuto()}>Підтвердити</button><button type="button" className="secondary" disabled={saving} onClick={()=>setAutoQueue(null)}>Скасувати</button></div>}
    <div className="cp-am-table-wrap"><table className="cp-am-table"><thead><tr><th><span className="cp-am-visually-hidden">Вибір</span></th><th>Запчастина</th><th>Статус</th><th>Артикул</th><th>Дії</th></tr></thead><tbody>
     {visible.map(r=>{const id=r.category.pt_id;const assigned=Boolean(r.stock.article_number?.trim());const available=Boolean(offers[id]?.length);const previously=Boolean(history[id]?.received_at);return <tr key={id} className={active===id?'cp-am-row-active':undefined}>
      <td><input type="checkbox" aria-label={'Вибрати '+r.label} checked={selectedSet.has(id)} onChange={e=>setSelected(prev=>e.target.checked?[...new Set([...prev,id])]:prev.filter(x=>x!==id))}/></td>
      <td><strong>{r.label}</strong><small>{r.category.name!==r.label?r.category.name:'Тип '+id}</small></td>
-     <td>{assigned?<span className="cp-am-status yes"><CheckCircle2 size={14}/> Артикул додано</span>:available?<span className="cp-am-status available"><Layers3 size={14}/> Варіанти ({offers[id].length})</span>:previously?<span className="cp-am-status previously"><Layers3 size={14}/> Отримано раніше · відновити</span>:<span className="cp-am-status no"><AlertCircle size={14}/> Не отримано</span>}</td>
+     <td>{assigned?<span className="cp-am-status yes"><CheckCircle2 size={14}/> Артикул додано</span>:available?<span className="cp-am-status available"><Layers3 size={14}/> {history[id]?.stored?'Збережено · ':'Варіанти '}({offers[id].length})</span>:previously?<span className="cp-am-status previously"><Layers3 size={14}/> Отримано раніше · відновити</span>:<span className="cp-am-status no"><AlertCircle size={14}/> Не отримано</span>}</td>
      <td><strong>{r.stock.article_number||'—'}</strong></td>
      <td><button type="button" className="secondary" onClick={()=>void showDrawer(id)} disabled={saving||loading}>{assigned?'Переглянути / змінити':available?'Обрати артикул':previously?'Спробувати відновити':'Отримати · до 2 токенів'}</button></td>
     </tr>})}
@@ -212,7 +229,7 @@ export default function ArticleManager({vehicleId,ktype,categories,stockIndex,lo
      <header className="cp-am-drawer-head"><div><small>CarPot Warehouse · Артикули</small><h3>{activeRow.label}</h3><p>Тип #{activeRow.category.pt_id} · K-Type {ktype}</p></div><button type="button" className="secondary" aria-label="Закрити" disabled={saving} onClick={dismiss}><X size={19}/></button></header>
      <div className="cp-am-drawer-scroll">
       <div className="cp-am-current"><small>Поточний артикул</small>{activeRow.stock.article_number?.trim()?<strong><CheckCircle2 size={17}/> {activeRow.stock.article_number}</strong>:<strong>Артикул не призначено</strong>}<span>Після призначення номер збережеться в картці товару.</span></div>
-      <div className="cp-am-drawer-summary"><Layers3 size={20}/><div><strong>{loading?'Перевіряємо отримані варіанти…':activeOffers.length?'Отримано '+activeOffers.length+' варіантів':active!==null&&history[active]?.received_at?'Отримано раніше — потрібне відновлення':'Варіантів поки немає'}</strong><small>{isVerified?'Серверний кеш підтверджений · запис доступний':activeOffers.length?'Варіанти збережені в сесії · потрібна перевірка сервера':'Запит до Plan.Parts лише після підтвердження'}</small></div></div>
+      <div className="cp-am-drawer-summary"><Layers3 size={20}/><div><strong>{loading?'Перевіряємо отримані варіанти…':activeOffers.length?'Отримано '+activeOffers.length+' варіантів':active!==null&&history[active]?.received_at?'Отримано раніше — потрібне відновлення':'Варіантів поки немає'}</strong><small>{isVerified?(active!==null&&history[active]?.stored?'Збережено в PostgreSQL · повторна оплата не потрібна':'Дані підтверджено · запис доступний'):activeOffers.length?'Варіанти збережені в сесії · потрібна перевірка сервера':'Запит до Plan.Parts лише після підтвердження'}</small></div></div>
       {notice&&<p role="status" className="cp-am-message">{notice}</p>}
       {!isVerified&&!loading&&<div className="cp-am-warning"><ShieldAlert size={18}/><span>Для запису нового номера потрібні перевірені варіанти в серверному кеші. Повторний платний запит не запускається автоматично.</span></div>}
       {chargeConfirm&&<div className="cp-am-dialog" role="alertdialog" aria-label="Підтвердження оплати"><strong>Отримати нові варіанти · до 2 токенів?</strong><p>Plan.Parts може списати токени. Вибір артикула після отримання залишається безкоштовним.</p><button type="button" disabled={disabled||loading||saving} onClick={()=>void requestPaid()}>Підтвердити запит</button><button type="button" className="secondary" onClick={()=>setChargeConfirm(false)}>Скасувати</button></div>}
