@@ -1,6 +1,8 @@
-import {useEffect,useMemo,useRef,useState} from 'react';
+import {useCallback,useContext,useEffect,useMemo,useRef,useState} from 'react';
+import {createPortal} from 'react-dom';
 import {api} from './api';
-import {CheckCircle2,AlertCircle,Layers3,ChevronDown,ChevronUp} from 'lucide-react';
+import {TeamIdentity} from './permissions';
+import {AlertCircle,Check,CheckCircle2,ChevronDown,ChevronLeft,ChevronRight,ChevronUp,Layers3,Search,ShieldAlert,X} from 'lucide-react';
 import './article-manager.css';
 
 type Category={pt_id:number;name:string;article_count:number};
@@ -9,80 +11,140 @@ type Article={art_id:number;article_nr:string;brand:string;part_name:string};
 type StockIndex={byType:Map<number,StoredPart>;byName:Map<string,StoredPart>};
 type Props={vehicleId:string;ktype:number;categories:Category[];stockIndex:StockIndex;
  localizedName:(name:string)=>string;onSaved:()=>Promise<void>;onRequestBatch:(ids:number[])=>void;disabled:boolean};
-const normalize=(s:string)=>s.trim().toLocaleLowerCase('uk-UA').replace(/\s+/g,' ');
-const tokenRate=2;
-const pageSize=12;
+type Listed={category:Category;stock:StoredPart;label:string};
+const norm=(s:string)=>s.trim().toLocaleLowerCase('uk-UA').replace(/\s+/g,' ');
+const PAGE_SIZE=12;
+const ARTICLE_CACHE_LIMIT=1200000;
 
 export default function ArticleManager({vehicleId,ktype,categories,stockIndex,localizedName,onSaved,onRequestBatch,disabled}:Props){
+ const identity=useContext(TeamIdentity);
+ const sharedKey='plan-parts-batch-v1:'+String(identity?.id||'')+':'+vehicleId+':'+ktype+':temporary-articles';
  const [opened,setOpened]=useState(false);
- const [missingOnly,setMissingOnly]=useState(false);
+ const [tab,setTab]=useState<'all'|'missing'|'saved'|'available'>('all');
  const [query,setQuery]=useState('');
  const [page,setPage]=useState(0);
  const [selected,setSelected]=useState<number[]>([]);
  const [offers,setOffers]=useState<Record<number,Article[]>>({});
+ const [validated,setValidated]=useState<number[]>([]);
  const [active,setActive]=useState<number|null>(null);
- const [chargeConfirm,setChargeConfirm]=useState<number|null>(null);
+ const [offerQuery,setOfferQuery]=useState('');
+ const [chosen,setChosen]=useState<number|null>(null);
+ const [chargeConfirm,setChargeConfirm]=useState(false);
+ const [saveConfirm,setSaveConfirm]=useState(false);
+ const [loading,setLoading]=useState(false);
  const [saving,setSaving]=useState(false);
- const [loading,setLoading]=useState<number|null>(null);
  const [notice,setNotice]=useState('');
- const [proposed,setProposed]=useState<{ptId:number;offer:Article;partId:string}|null>(null);
  const [autoQueue,setAutoQueue]=useState<{ptId:number;offer:Article;partId:string}[]|null>(null);
  const [processed,setProcessed]=useState(0);
  const lock=useRef(false);
- const stockRows=useMemo(()=>categories.map(c=>({category:c,stock:stockIndex.byType.get(c.pt_id)||stockIndex.byName.get(normalize(localizedName(c.name))),label:localizedName(c.name)})).filter(r=>r.stock&&!r.stock.archived),[categories,stockIndex,localizedName]);
- const countWith=stockRows.filter(r=>Boolean(r.stock?.article_number?.trim())).length;
- const missing=stockRows.length-countWith;
+ const stockRows=useMemo<Listed[]>(()=>categories.flatMap(c=>{
+  const stock=stockIndex.byType.get(c.pt_id)||stockIndex.byName.get(norm(localizedName(c.name)));
+  return stock&&!stock.archived?[{category:c,stock,label:localizedName(c.name)}]:[];
+ }),[categories,stockIndex,localizedName]);
+ const byType=useMemo(()=>new Map(stockRows.map(r=>[r.category.pt_id,r])),[stockRows]);
  const selectedSet=useMemo(()=>new Set(selected),[selected]);
- const rows=stockRows.filter(r=>(!missingOnly||!r.stock?.article_number?.trim())&&(!query||normalize(r.label).includes(normalize(query))||String(r.stock?.article_number||'').toLowerCase().includes(query.toLowerCase())));
- const visible=rows.slice(page*pageSize,(page+1)*pageSize);
- const remaining=selected.filter(id=>stockRows.some(r=>r.category.pt_id===id&&!r.stock?.article_number?.trim()));
- const estimate=remaining.length*tokenRate;
- useEffect(()=>{setPage(0)},[missingOnly,query]);
- useEffect(()=>{setOffers({});setSelected([]);setActive(null);setChargeConfirm(null);setProposed(null);setAutoQueue(null);setNotice('')},[vehicleId,ktype]);
+ const validatedSet=useMemo(()=>new Set(validated),[validated]);
+ const savedCount=stockRows.filter(r=>Boolean(r.stock.article_number?.trim())).length;
+ const missingCount=stockRows.length-savedCount;
+ const availableCount=stockRows.filter(r=>!r.stock.article_number?.trim()&&Boolean(offers[r.category.pt_id]?.length)).length;
+ const rows=useMemo(()=>stockRows.filter(r=>{
+  const hasNumber=Boolean(r.stock.article_number?.trim());
+  const hasOptions=Boolean(offers[r.category.pt_id]?.length);
+  return (tab==='all'||(tab==='missing'&&!hasNumber)||(tab==='saved'&&hasNumber)||(tab==='available'&&!hasNumber&&hasOptions))
+   &&(!query||norm(r.label).includes(norm(query))||norm(r.stock.article_number||'').includes(norm(query)));
+ }),[stockRows,tab,query,offers]);
+ const pages=Math.max(1,Math.ceil(rows.length/PAGE_SIZE));
+ const visible=rows.slice(page*PAGE_SIZE,(page+1)*PAGE_SIZE);
+ const selectedMissing=selected.filter(id=>byType.has(id)&&!byType.get(id)?.stock.article_number?.trim());
+ const activeRow=active===null?null:byType.get(active)||null;
+ const activeOffers=active===null?[]:offers[active]||[];
+ const matchingOffers=useMemo(()=>activeOffers.filter(a=>!offerQuery||norm(a.article_nr).includes(norm(offerQuery))||norm(a.brand).includes(norm(offerQuery))||norm(a.part_name).includes(norm(offerQuery))),[activeOffers,offerQuery]);
+ const chosenOffer=activeOffers.find(a=>a.art_id===chosen)||null;
+ const isVerified=active!==null&&validatedSet.has(active);
 
- async function openOffers(ptId:number){
-  setActive(ptId);setNotice('');setChargeConfirm(null);setProposed(null);
-  if(offers[ptId])return;
-  setLoading(ptId);
+ useEffect(()=>{setPage(0)},[tab,query]);
+ useEffect(()=>{setOffers({});setValidated([]);setSelected([]);setActive(null);setNotice('');
   try{
-   const result=await api<{articles:Article[]}>('/plan-parts/articles/recover?vehicle_id='+encodeURIComponent(vehicleId)+'&ktype='+ktype+'&pt_id='+ptId,'POST');
-   setOffers(prev=>({...prev,[ptId]:result.articles}));
-   setNotice('Варіанти відкрито із кешу. 0 токенів.');
-  }catch{
-   setNotice('Оплачений список артикулів відсутній у доступному кеші. Для нового запиту потрібно підтвердження.');
-   setChargeConfirm(ptId);
-  }finally{setLoading(null)}
- }
- async function purchase(ptId:number){
-  if(disabled||lock.current)return;
-  lock.current=true;setLoading(ptId);setChargeConfirm(null);setNotice('Запит до Plan.Parts…');
+   const raw=JSON.parse(sessionStorage.getItem(sharedKey)||'null') as {until?:number;data?:Record<string,Article[]>}|null;
+   if(raw?.until&&raw.until>Date.now()&&raw.data){
+    const restored:Record<number,Article[]>={};
+    for(const [id,records] of Object.entries(raw.data)){
+     if(Array.isArray(records)&&records.length)restored[Number(id)]=records;
+    }
+    setOffers(restored);
+   }
+  }catch{/* Session cache optional */}
+ },[sharedKey]);
+ useEffect(()=>{
+  if(active===null)return;
+  const onKey=(event:KeyboardEvent)=>{if(event.key==='Escape'&&!saving){setActive(null);setChargeConfirm(false);setSaveConfirm(false)}};
+  window.addEventListener('keydown',onKey);
+  return ()=>window.removeEventListener('keydown',onKey);
+ },[active,saving]);
+ function remember(ptId:number,records:Article[]){
+  // Reuse the existing short-lived browser session cache; never claim permanent supplier storage.
   try{
-   const result=await api<{articles:Article[]}>('/plan-parts/articles/lookup?vehicle_id='+encodeURIComponent(vehicleId)+'&ktype='+ktype+'&pt_id='+ptId,'POST');
-   setOffers(prev=>({...prev,[ptId]:result.articles}));setActive(ptId);
-   setNotice('Отримано '+result.articles.length+' варіантів. Виберіть номер для картки товару.');
-  }catch(e){setNotice('Не вдалося отримати артикули: '+(e as Error).message+'. Після невизначеної помилки спочатку перевірте кеш — не запускайте платний повтор автоматично.');}
-  finally{lock.current=false;setLoading(null)}
+   const old=JSON.parse(sessionStorage.getItem(sharedKey)||'null') as {until?:number;data?:Record<string,Article[]>}|null;
+   const data=old?.until&&old.until>Date.now()&&old.data?{...old.data}:{};
+   data[String(ptId)]=records;
+   const payload=JSON.stringify({until:Date.now()+30*60*1000,data});
+   if(payload.length<=ARTICLE_CACHE_LIMIT)sessionStorage.setItem(sharedKey,payload);
+  }catch{/* Optional */}
  }
- async function saveOne(ptId:number,art:Article,partId:string){
-  const response=await api<{article_number:string}>('/plan-parts/donor-parts/article/select?vehicle_id='+encodeURIComponent(vehicleId),'POST',{
-   ktype,pt_id:ptId,art_id:art.art_id,part_id:partId
+ const dismiss=()=>{if(saving)return;setActive(null);setChosen(null);setChargeConfirm(false);setSaveConfirm(false);setNotice('')};
+ const loadFromCache=useCallback(async(ptId:number)=>{
+  const result=await api<{articles:Article[]}>('/plan-parts/articles/recover?vehicle_id='+encodeURIComponent(vehicleId)+'&ktype='+ktype+'&pt_id='+ptId,'POST');
+  return result.articles;
+ },[vehicleId,ktype]);
+ async function showDrawer(ptId:number){
+  if(saving||loading)return;
+  setActive(ptId);setChosen(null);setOfferQuery('');setSaveConfirm(false);setChargeConfirm(false);setNotice('');
+  setLoading(true);
+  try{
+   const records=await loadFromCache(ptId);
+   setOffers(prev=>({...prev,[ptId]:records}));
+   setValidated(prev=>[...new Set([...prev,ptId])]);
+   remember(ptId,records);
+  }catch(e){
+   setValidated(prev=>prev.filter(id=>id!==ptId));
+   if(offers[ptId]?.length){
+    setNotice('Попередні варіанти залишилися в цій сесії, але серверний кеш уже недоступний. Для призначення потрібен новий підтверджений запит.');
+   }else{
+    setNotice('Безкоштовно відновити варіанти зараз не вдалося. Перевірте з’єднання або підтвердьте новий платний запит.');
+   }
+  }finally{setLoading(false)}
+ }
+ async function requestPaid(){
+  if(active===null||disabled||lock.current||saving)return;
+  lock.current=true;setLoading(true);setChargeConfirm(false);
+  try{
+   const result=await api<{articles:Article[]}>('/plan-parts/articles/lookup?vehicle_id='+encodeURIComponent(vehicleId)+'&ktype='+ktype+'&pt_id='+active,'POST');
+   setOffers(prev=>({...prev,[active]:result.articles}));
+   setValidated(prev=>[...new Set([...prev,active])]);
+   remember(active,result.articles);
+   setNotice('Отримано '+result.articles.length+' варіантів. Оберіть перевірений номер для картки.');
+  }catch(e){setNotice('Запит не підтверджено: '+(e as Error).message+'. Не повторюйте платний запит без перевірки кешу.')}
+  finally{setLoading(false);lock.current=false}
+ }
+ async function saveArticle(ptId:number,offer:Article,partId:string){
+  return api<{article_number:string}>('/plan-parts/donor-parts/article/select?vehicle_id='+encodeURIComponent(vehicleId),'POST',{
+   ktype,pt_id:ptId,art_id:offer.art_id,part_id:partId
   });
-  return response.article_number;
  }
- async function confirmOne(){
-  if(!proposed||lock.current)return;
-  lock.current=true;setSaving(true);
-  try{const nr=await saveOne(proposed.ptId,proposed.offer,proposed.partId);await onSaved();setNotice('Артикул '+nr+' записано до картки товару.');setProposed(null)}
-  catch(e){setNotice('Не вдалося записати артикул: '+(e as Error).message)}
+ async function assign(){
+  if(!activeRow||!chosenOffer||!isVerified||lock.current||saving)return;
+  lock.current=true;setSaving(true);setSaveConfirm(false);
+  try{
+   const result=await saveArticle(activeRow.category.pt_id,chosenOffer,activeRow.stock.id);
+   await onSaved();
+   setNotice('Артикул '+result.article_number+' записано у картку товару.');
+  }catch(e){setNotice('Не вдалося записати артикул: '+(e as Error).message)}
   finally{lock.current=false;setSaving(false)}
  }
- function planAuto(){
-  const queue=stockRows.filter(r=>selectedSet.has(r.category.pt_id)&&!r.stock?.article_number?.trim()).flatMap(r=>{
-   const candidates=offers[r.category.pt_id];
-   const item=candidates?.find(a=>Boolean(a.article_nr.trim()));
-   return item&&r.stock?[{ptId:r.category.pt_id,offer:item,partId:r.stock.id}]:[];
-  });
-  if(!queue.length){setNotice('Спочатку відкрийте варіанти для вибраних запчастин. Нові платні запити автоматично не виконуються.');return}
+ function prepareAuto(){
+  const queue=stockRows.filter(r=>selectedSet.has(r.category.pt_id)&&!r.stock.article_number?.trim()&&validatedSet.has(r.category.pt_id))
+   .flatMap(r=>{const a=offers[r.category.pt_id]?.find(x=>x.article_nr.trim());return a?[{ptId:r.category.pt_id,offer:a,partId:r.stock.id}]:[]});
+  if(!queue.length){setNotice('Немає вибраних запчастин із перевіреними варіантами. Спочатку відкрийте варіанти — нових платних запитів не буде.');return}
   setAutoQueue(queue);setProcessed(0);
  }
  async function confirmAuto(){
@@ -90,62 +152,73 @@ export default function ArticleManager({vehicleId,ktype,categories,stockIndex,lo
   lock.current=true;setSaving(true);let done=0;
   try{
    for(const item of autoQueue){
-    await saveOne(item.ptId,item.offer,item.partId);
+    await saveArticle(item.ptId,item.offer,item.partId);
     done++;setProcessed(done);
    }
-   await onSaved();setNotice('Артикули записано для '+done+' запчастин; підбір орієнтовний, перевірте відповідність фізичним деталям.');
-  }catch(e){
-   await onSaved().catch(()=>{});
-   setNotice('Записано '+done+' із '+autoQueue.length+'. Операцію зупинено: '+(e as Error).message+'. Перевірте картки перед повтором.');
-  }finally{setAutoQueue(null);setSaving(false);lock.current=false}
+   await onSaved();setNotice('Записано '+done+' артикулів. Перевірте сумісність фізичних деталей.');
+  }catch(e){await onSaved().catch(()=>{});setNotice('Збережено '+done+' із '+autoQueue.length+'. '+(e as Error).message+'. Перевірте картки перед повтором.')}
+  finally{setAutoQueue(null);setSaving(false);lock.current=false}
  }
- const selectedMissing=remaining.length;
  return <section className="cp-am" aria-label="Менеджер артикулів">
   <button type="button" className="cp-am-toggle" aria-expanded={opened} onClick={()=>setOpened(v=>!v)}>
-   <Layers3 size={20}/><strong>Менеджер артикулів</strong><span>Статуси та запис номерів у картки запчастин</span>{opened?<ChevronUp size={19}/>:<ChevronDown size={19}/>}
+   <Layers3 size={20}/><strong>Менеджер артикулів</strong><span>Вибір і запис номера в картку запчастини</span>{opened?<ChevronUp size={19}/>:<ChevronDown size={19}/>}
   </button>
   {opened&&<div className="cp-am-content">
-   <div className="cp-am-stats"><div><small>Запчастин на складі</small><strong>{stockRows.length}</strong></div><div><small>З артикулом</small><strong>{countWith}</strong></div><div><small>Без артикула</small><strong>{missing}</strong></div><div><small>Оцінка для всіх відсутніх</small><strong>до {missing*tokenRate} токенів</strong></div></div>
-   <p className="cp-am-note">Збережений номер одразу відображається у картці товару. Автоматичний вибір використовує лише вже отримані варіанти; він не підтверджує відповідність OEM або VIN.</p>
-   <div className="cp-am-toolbar">
-    <button type="button" className="secondary" onClick={()=>setMissingOnly(v=>!v)}>{missingOnly?'Показати всі':'Лише без артикула'}</button>
-    <button type="button" className="secondary" disabled={!remaining.length||saving} onClick={planAuto}>Призначити по 1 з отриманих</button>
-    <button type="button" className="secondary" disabled={!selectedMissing||saving} onClick={()=>{onRequestBatch(remaining);setNotice('Для '+selectedMissing+' типів розраховано до '+estimate+' токенів. Відкрито пакетне завантаження вище. Перед витратою токенів потрібне окреме підтвердження.')}}>Отримати артикули вибраних · до {estimate} токенів</button>
-    <input aria-label="Пошук у менеджері артикулів" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Назва або артикул…"/>
+   <div className="cp-am-stats">
+    <div><small>Запчастин на складі</small><strong>{stockRows.length}</strong></div>
+    <div><small>Артикул призначено</small><strong>{savedCount}</strong></div>
+    <div><small>Без артикула</small><strong>{missingCount}</strong></div>
+    <div><small>Варіанти в сесії</small><strong>{availableCount}</strong></div>
    </div>
-   <div className="cp-am-select"><button type="button" className="secondary" onClick={()=>setSelected(rows.filter(r=>!r.stock?.article_number?.trim()).map(r=>r.category.pt_id))}>Вибрати всі без артикула</button><button type="button" className="secondary" onClick={()=>setSelected([])}>Зняти вибір</button><small>Вибрано: {selected.length}</small></div>
-   {notice&&<p className="cp-am-message" role="status">{notice}</p>}
-   {autoQueue&&<div className="cp-am-dialog" role="alertdialog" aria-label="Підтвердження автоматичного вибору"><strong>Призначити по 1 артикулу для {autoQueue.length} запчастин?</strong><p>Використовуємо перший доступний варіант з уже отриманого кешу, без нових платних запитів. Це довідковий aftermarket-номер, не гарантія сумісності. Перевірте картки після операції.</p>{saving&&<progress value={processed} max={autoQueue.length}/>}<button type="button" disabled={saving} onClick={()=>void confirmAuto()}>Підтвердити запис</button><button type="button" className="secondary" disabled={saving} onClick={()=>setAutoQueue(null)}>Скасувати</button></div>}
-   <div className="cp-am-table-wrap"><table className="cp-am-table"><thead><tr><th>Вибір</th><th>Запчастина</th><th>Статус</th><th>Артикул</th><th>Дії</th></tr></thead>
-   {visible.map(({category:c,stock,label})=><tbody key={c.pt_id} className={active===c.pt_id?'cp-am-active-group':undefined}>
-    <tr>
-     <td><input type="checkbox" aria-label={'Вибрати '+label} checked={selectedSet.has(c.pt_id)} onChange={e=>setSelected(old=>e.target.checked?[...new Set([...old,c.pt_id])]:old.filter(id=>id!==c.pt_id))}/></td>
-     <td><strong>{label}</strong><small>{c.name!==label?c.name:'Тип '+c.pt_id}</small></td>
-     <td>{stock?.article_number?.trim()?<span className="cp-am-status yes"><CheckCircle2 size={14}/> Артикул додано</span>:<span className="cp-am-status no"><AlertCircle size={14}/> Не вибрано</span>}</td>
-     <td><strong>{stock?.article_number||'—'}</strong></td>
-     <td><button type="button" className="secondary" aria-expanded={active===c.pt_id} disabled={loading!==null||saving||disabled} onClick={()=>{if(active===c.pt_id&&offers[c.pt_id]){setActive(null);return;}void openOffers(c.pt_id)}}>{loading===c.pt_id?'Перевіряємо…':active===c.pt_id&&offers[c.pt_id]?'Згорнути варіанти':offers[c.pt_id]?'Варіанти ('+offers[c.pt_id].length+')':'Відкрити варіанти'}</button></td>
-    </tr>
-    {active===c.pt_id&&<tr className="cp-am-inline-row"><td colSpan={5}>
-     {loading===c.pt_id&&<p role="status">Шукаємо раніше оплачені артикули без нового списання токенів…</p>}
-     {chargeConfirm===c.pt_id&&<div className="cp-am-dialog" role="alertdialog" aria-label="Підтвердження витрати токенів">
-      <strong>Отримати варіанти для «{label}» — до 2 токенів?</strong>
-      <p>Раніше отриманих даних у доступному кеші немає. Потрібен новий запит Plan.Parts; номер не буде автоматично призначений.</p>
-      <button type="button" disabled={disabled||saving} onClick={()=>void purchase(c.pt_id)}>Підтвердити платний запит</button>
-      <button type="button" className="secondary" onClick={()=>{setChargeConfirm(null);setActive(null)}}>Скасувати</button>
-     </div>}
-     {offers[c.pt_id]&&<div className="cp-am-inline-offers">
-      <div className="cp-am-inline-heading"><div><strong>Варіанти артикулів: {offers[c.pt_id].length}</strong><small>Обирайте номер лише після перевірки відповідності фізичній деталі. Ці дані не є підтвердженим OEM.</small></div><button type="button" className="secondary" onClick={()=>setActive(null)}>Закрити</button></div>
-      {proposed?.ptId===c.pt_id&&<div className="cp-am-dialog" role="alertdialog" aria-label="Підтвердження артикула"><strong>Записати {proposed.offer.article_nr} в картку «{label}»?</strong><p>Виробник: {proposed.offer.brand}. Сумісність потрібно перевірити.</p><button type="button" disabled={saving} onClick={()=>void confirmOne()}>{saving?'Зберігаємо…':'Підтвердити запис'}</button><button type="button" className="secondary" disabled={saving} onClick={()=>setProposed(null)}>Скасувати</button></div>}
-      {offers[c.pt_id].length===0&&<p>Для цього типу постачальник не повернув артикулів.</p>}
-      <div className="cp-am-offers-scroll">{offers[c.pt_id].slice(0,80).map(a=><div key={a.art_id}><span><strong>{a.article_nr}</strong><small>{a.brand} · {a.part_name}</small></span><button type="button" className="secondary" disabled={saving||!stock} onClick={()=>{if(stock)setProposed({ptId:c.pt_id,offer:a,partId:stock.id})}}>Записати в картку</button></div>)}</div>
-      {offers[c.pt_id].length>80&&<small>Показано 80 із {offers[c.pt_id].length} варіантів.</small>}
-     </div>}
-     {active===c.pt_id&&!offers[c.pt_id]&&loading!==c.pt_id&&chargeConfirm!==c.pt_id&&<p role="status">{notice||'Результат не знайдено. Повторний платний запит не запускається автоматично.'}</p>}
-    </td></tr>}
-   </tbody>)}
-   {!visible.length&&<tbody><tr><td colSpan={5}>За заданими фільтрами запчастин немає.</td></tr></tbody>}
-   </table></div>
-   <footer className="cp-am-footer"><span>Показано {Math.min((page+1)*pageSize,rows.length)} із {rows.length}</span><button type="button" className="secondary" disabled={page===0} onClick={()=>setPage(p=>p-1)}>Назад</button><span>{page+1} / {Math.max(1,Math.ceil(rows.length/pageSize))}</span><button type="button" className="secondary" disabled={(page+1)*pageSize>=rows.length} onClick={()=>setPage(p=>p+1)}>Далі</button></footer>
+   <div className="cp-am-status-tabs" role="group" aria-label="Фільтр артикулів">
+    {([{id:'all',label:'Усі'},{id:'missing',label:'Без артикула'},{id:'saved',label:'Є артикул'},{id:'available',label:'Отримані варіанти'}] as const).map(t=><button type="button" key={t.id} className={tab===t.id?'selected':'secondary'} aria-pressed={tab===t.id} onClick={()=>setTab(t.id)}>{t.label} ({t.id==='all'?stockRows.length:t.id==='missing'?missingCount:t.id==='saved'?savedCount:availableCount})</button>)}
+   </div>
+   <div className="cp-am-toolbar">
+    <button type="button" className="secondary" onClick={()=>setSelected(rows.filter(r=>!r.stock.article_number?.trim()).map(r=>r.category.pt_id))}>Вибрати без артикула</button>
+    <button type="button" className="secondary" onClick={()=>setSelected([])}>Зняти вибір</button>
+    <button type="button" className="secondary" disabled={!selectedMissing.length||saving} onClick={()=>{onRequestBatch(selectedMissing);setNotice('Пакетний запит: до '+selectedMissing.length*2+' токенів. Перед списанням потрібне підтвердження вище.')}}>Отримати вибрані · до {selectedMissing.length*2} токенів</button>
+    <button type="button" className="secondary" disabled={!selectedMissing.length||saving} onClick={prepareAuto}>Автовибір з отриманих</button>
+    <input aria-label="Пошук у менеджері" placeholder="Назва або артикул…" value={query} onChange={e=>setQuery(e.target.value)}/>
+   </div>
+   {notice&&<p role="status" className="cp-am-message">{notice}</p>}
+   {autoQueue&&<div className="cp-am-dialog" role="alertdialog" aria-label="Підтвердження автопризначення"><strong>Призначити по одному артикулу для {autoQueue.length} позицій?</strong><p>Це перша доступна aftermarket-пропозиція, а не підтверджений OEM. Перевірте сумісність. Жодного нового платного запиту не буде.</p>{saving&&<progress value={processed} max={autoQueue.length}/>}<button type="button" disabled={saving} onClick={()=>void confirmAuto()}>Підтвердити</button><button type="button" className="secondary" disabled={saving} onClick={()=>setAutoQueue(null)}>Скасувати</button></div>}
+   <div className="cp-am-table-wrap"><table className="cp-am-table"><thead><tr><th><span className="cp-am-visually-hidden">Вибір</span></th><th>Запчастина</th><th>Статус</th><th>Артикул</th><th>Дії</th></tr></thead><tbody>
+    {visible.map(r=>{const id=r.category.pt_id;const assigned=Boolean(r.stock.article_number?.trim());const available=Boolean(offers[id]?.length);return <tr key={id} className={active===id?'cp-am-row-active':undefined}>
+     <td><input type="checkbox" aria-label={'Вибрати '+r.label} checked={selectedSet.has(id)} onChange={e=>setSelected(prev=>e.target.checked?[...new Set([...prev,id])]:prev.filter(x=>x!==id))}/></td>
+     <td><strong>{r.label}</strong><small>{r.category.name!==r.label?r.category.name:'Тип '+id}</small></td>
+     <td>{assigned?<span className="cp-am-status yes"><CheckCircle2 size={14}/> Артикул додано</span>:available?<span className="cp-am-status available"><Layers3 size={14}/> Варіанти ({offers[id].length})</span>:<span className="cp-am-status no"><AlertCircle size={14}/> Не отримано</span>}</td>
+     <td><strong>{r.stock.article_number||'—'}</strong></td>
+     <td><button type="button" className="secondary" onClick={()=>void showDrawer(id)} disabled={saving||loading}>{assigned?'Переглянути / змінити':available?'Обрати артикул':'Отримати · до 2 токенів'}</button></td>
+    </tr>})}
+    {!visible.length&&<tr><td colSpan={5}>Запчастин за цими фільтрами немає.</td></tr>}
+   </tbody></table></div>
+   <div className="cp-am-footer"><span>Показано {Math.min((page+1)*PAGE_SIZE,rows.length)} із {rows.length}</span><button type="button" className="secondary" disabled={page===0} onClick={()=>setPage(v=>v-1)}><ChevronLeft size={15}/> Назад</button><span>{page+1}/{pages}</span><button type="button" className="secondary" disabled={page+1>=pages} onClick={()=>setPage(v=>v+1)}>Далі <ChevronRight size={15}/></button></div>
   </div>}
+  {activeRow&&createPortal(<div className="cp-am-drawer-root" role="presentation">
+    <button type="button" className="cp-am-backdrop" aria-label="Закрити вибір артикула" onClick={dismiss}/>
+    <aside className="cp-am-drawer" role="dialog" aria-modal="true" aria-label={'Артикули: '+activeRow.label}>
+     <header className="cp-am-drawer-head"><div><small>CarPot Warehouse · Артикули</small><h3>{activeRow.label}</h3><p>Тип #{activeRow.category.pt_id} · K-Type {ktype}</p></div><button type="button" className="secondary" aria-label="Закрити" disabled={saving} onClick={dismiss}><X size={19}/></button></header>
+     <div className="cp-am-drawer-scroll">
+      <div className="cp-am-current"><small>Поточний артикул</small>{activeRow.stock.article_number?.trim()?<strong><CheckCircle2 size={17}/> {activeRow.stock.article_number}</strong>:<strong>Артикул не призначено</strong>}<span>Після призначення номер збережеться в картці товару.</span></div>
+      <div className="cp-am-drawer-summary"><Layers3 size={20}/><div><strong>{loading?'Перевіряємо отримані варіанти…':activeOffers.length?'Отримано '+activeOffers.length+' варіантів':'Варіантів поки немає'}</strong><small>{isVerified?'Серверний кеш підтверджений · запис доступний':activeOffers.length?'Варіанти збережені в сесії · потрібна перевірка сервера':'Запит до Plan.Parts лише після підтвердження'}</small></div></div>
+      {notice&&<p role="status" className="cp-am-message">{notice}</p>}
+      {!isVerified&&!loading&&<div className="cp-am-warning"><ShieldAlert size={18}/><span>Для запису нового номера потрібні перевірені варіанти в серверному кеші. Повторний платний запит не запускається автоматично.</span></div>}
+      {chargeConfirm&&<div className="cp-am-dialog" role="alertdialog" aria-label="Підтвердження оплати"><strong>Отримати нові варіанти · до 2 токенів?</strong><p>Plan.Parts може списати токени. Вибір артикула після отримання залишається безкоштовним.</p><button type="button" disabled={disabled||loading||saving} onClick={()=>void requestPaid()}>Підтвердити запит</button><button type="button" className="secondary" onClick={()=>setChargeConfirm(false)}>Скасувати</button></div>}
+      <div className="cp-am-drawer-list-head"><h4>Варіанти артикулів</h4><span>{matchingOffers.length} результатів</span></div>
+      <label className="cp-am-search"><Search size={17}/><input value={offerQuery} onChange={e=>setOfferQuery(e.target.value)} placeholder="Пошук за артикулом або виробником…" aria-label="Пошук артикулів"/></label>
+      <div className="cp-am-drawer-offers">
+       {matchingOffers.slice(0,100).map(a=><label className={'cp-am-offer'+(chosen===a.art_id?' chosen':'')} key={a.art_id}>
+        <input type="radio" name="cp-am-offer" checked={chosen===a.art_id} onChange={()=>setChosen(a.art_id)}/>
+        <span><strong>{a.article_nr}</strong><small>{a.brand} · {a.part_name}</small></span>
+        {activeRow.stock.article_number===a.article_nr&&<span className="cp-am-already"><Check size={13}/> Збережено</span>}
+       </label>)}
+       {matchingOffers.length>100&&<p>Показано перші 100 із {matchingOffers.length}. Уточніть пошук за номером або виробником.</p>}
+       {!matchingOffers.length&&<p>{loading?'Завантаження…':'За запитом варіантів немає.'}</p>}
+      </div>
+      {saveConfirm&&chosenOffer&&<div className="cp-am-dialog" role="alertdialog" aria-label="Підтвердження запису"><strong>Призначити {chosenOffer.article_nr}?</strong><p>Виробник: {chosenOffer.brand}. Це aftermarket-номер, сумісність із фізичною деталлю та VIN не підтверджена.</p><button type="button" disabled={saving} onClick={()=>void assign()}>{saving?'Записуємо…':'Записати у картку'}</button><button type="button" className="secondary" onClick={()=>setSaveConfirm(false)}>Скасувати</button></div>}
+     </div>
+     <footer className="cp-am-drawer-footer"><p><AlertCircle size={15}/> Артикул потрібно звірити з реальною запчастиною.</p><div><button type="button" className="secondary" disabled={loading||saving||disabled} onClick={()=>setChargeConfirm(true)}>Отримати нові · до 2 токенів</button><button type="button" disabled={!chosenOffer||!isVerified||saving||loading} onClick={()=>setSaveConfirm(true)}>Призначити в картку</button></div></footer>
+    </aside>
+   </div>,document.body)}
  </section>;
 }
