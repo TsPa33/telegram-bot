@@ -181,6 +181,7 @@ class Part(Owned, Base):
     paint_code: Mapped[str | None] = mapped_column(String(40), nullable=True)
     oem_number: Mapped[str] = mapped_column(String(150), default="")
     article_number: Mapped[str] = mapped_column(String(150), default="")
+    article_brand: Mapped[str] = mapped_column(String(200), default="", server_default="")
     condition: Mapped[str] = mapped_column(String(30), default="used")
     quantity: Mapped[int] = mapped_column(Integer, default=0)
     reserved_quantity: Mapped[int] = mapped_column(Integer, default=0)
@@ -368,3 +369,5 @@ Index('ix_aleto_price_oem',AletoOffer.account_id,func.upper(func.regexp_replace(
 from app.models.import_runner import ImportJob,ImportJobEvent,ImportJobArtifact  # noqa: E402,F401
 
 from app.models.vehicle_directory import VehicleDirectoryVariant, VehicleDirectoryImport  # noqa: E402,F401
+
+from app.models.plan_parts_receipt import PlanPartsArticleReceipt  # noqa: E402,F401
