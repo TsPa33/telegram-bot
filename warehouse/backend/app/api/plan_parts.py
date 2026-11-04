@@ -256,8 +256,8 @@ def recover_vehicle_articles(
             history.last_checked_at = datetime.now(timezone.utc)
             db.commit()
             raise HTTPException(409, {
-                "code": "previously_received_unavailable",
-                "message": "Отримано раніше — дані потребують відновлення. Новий платний запит не виконувався.",
+                "code": "previously_received_unavailable" if history.received_at else "previous_payment_uncertain",
+                "message": "Отримано раніше — дані потребують відновлення. Новий платний запит не виконувався." if history.received_at else "Попередній запит має невизначений результат; платний повтор заблоковано.",
                 "article_count": history.article_count,
                 "received_at": history.received_at.isoformat() if history.received_at else None
             }) from None
@@ -292,8 +292,8 @@ def vehicle_articles(
                 history.last_checked_at = datetime.now(timezone.utc)
                 db.commit()
                 raise HTTPException(409, {
-                    "code": "previously_received_unavailable",
-                    "message": "Отримано раніше — дані потребують відновлення. Повторну оплату заблоковано.",
+                    "code": "previously_received_unavailable" if history.received_at else "previous_payment_uncertain",
+                    "message": "Отримано раніше — дані потребують відновлення. Повторну оплату заблоковано." if history.received_at else "Попередня оплата не підтверджена; повторний платний запит заблоковано.",
                     "article_count": history.article_count
                 }) from None
             _handle_provider(exc)
