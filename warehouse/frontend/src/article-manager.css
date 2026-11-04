@@ -41,3 +41,14 @@
 .cp-am-footer>span:first-child{margin-right:auto}
 @media(max-width:880px){.cp-am-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.cp-am-toggle>span{display:none}.cp-am-toolbar input{max-width:none;width:100%;margin:0}}
 @media(max-width:440px){.cp-am-content{padding:10px}.cp-am-stats{gap:6px}.cp-am-stats>div{padding:9px}.cp-am-stats strong{font-size:16px}.cp-am-toggle strong{font-size:14px}}
+
+/* Keep article choices adjacent to the clicked row, not below the entire table. */
+.cp-am-active-group>tr:first-child{background:#eaf5ef}
+.cp-am-inline-row>td{padding:12px 16px!important;background:#f8fbf9}
+.cp-am-inline-offers{border:1px solid #cddfd5;background:#fff;border-radius:9px;padding:12px}
+.cp-am-inline-heading{display:flex;justify-content:space-between;align-items:start;gap:12px;margin-bottom:10px}
+.cp-am-inline-heading strong{font-size:13px;color:#164833}
+.cp-am-inline-heading small{display:block;color:#658071;margin-top:5px;line-height:1.4}
+.cp-am-inline-offers .cp-am-offers-scroll{max-height:300px;overflow-y:auto;overscroll-behavior:contain}
+.cp-am-inline-row .cp-am-dialog{margin:8px 0}
+@media(max-width:700px){.cp-am-inline-row>td{padding:10px!important}.cp-am-inline-heading{flex-wrap:wrap}}
