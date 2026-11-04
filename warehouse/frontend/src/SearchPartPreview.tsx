@@ -63,9 +63,9 @@ export default function SearchPartPreview({part,vehicle,category,subcategory,can
     {photoError&&<p role="alert" className="ui11-inline-error">{photoError}</p>}
    </div>}
    <dl className="ui11-preview-facts">
-    <div><dt>Автомобіль</dt><dd>{vehicle?`${vehicle.manufacturer} ${vehicle.model} · ${vehicle.year}`:'Не вказано'}</dd></div>
-    <div><dt>OEM</dt><dd>{part.oem_number||'Не вказано'}</dd></div>
-    <div><dt>Артикул</dt><dd>{part.article_number||'Не вказано'}</dd></div>
+    <div><dt>Автомобіль / донор</dt><dd>{vehicle?`${vehicle.manufacturer} ${vehicle.model} · ${vehicle.year} · №${vehicle.number||'—'}`:'Не вказано'}</dd></div>
+    <div><dt>OEM (номер автовиробника)</dt><dd>{part.oem_number||'Не вказано'}</dd></div>
+    <div><dt>Артикул виробника запчастини</dt><dd>{part.article_number||'Не вказано'}{part.article_number&&part.article_brand&&<small className="ui11-article-brand">Виробник: {part.article_brand}</small>}</dd></div>
     <div><dt>Стан</dt><dd>{labels[part.condition]||'Не уточнено'}</dd></div>
     <div><dt>Залишок</dt><dd>{part.available_quantity??part.quantity??0} шт.</dd></div>
     <div><dt>Локація</dt><dd><MapPin size={13} aria-hidden="true"/>{part.location||'Не вказано'}</dd></div>
