@@ -213,3 +213,13 @@
 @media(prefers-reduced-motion:reduce){
   .cp-plan button.cp-plan-corporate-tile{transition:none}
 }
+
+/* Separate stock receipt from the single article-management workflow. */
+.cp-plan-stock-disclosure{display:flex;justify-content:space-between;align-items:center;gap:14px;border:1px solid #dce8e1;border-radius:10px;padding:12px 14px;margin-top:12px;background:#f8fbf9}
+.cp-plan-stock-disclosure>div{min-width:0}
+.cp-plan-stock-disclosure strong{display:block;font-size:13px;color:#214939}
+.cp-plan-stock-disclosure small{display:block;margin-top:4px;font-size:11px;color:#638073;line-height:1.5}
+.cp-plan-stock-disclosure button{flex-shrink:0}
+.cp-plan-stock-workspace{margin-top:12px}
+.cp-plan-article-hint{font-size:11px;color:#71867b;text-align:center;line-height:1.4}
+@media(max-width:640px){.cp-plan-stock-disclosure{align-items:stretch;flex-direction:column}.cp-plan-stock-disclosure button{width:100%}}
