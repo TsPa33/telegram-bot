@@ -244,9 +244,17 @@ export default function ArticleManager({vehicleId,ktype,categories,stockIndex,lo
        {matchingOffers.length>100&&<p>Показано перші 100 із {matchingOffers.length}. Уточніть пошук за номером або виробником.</p>}
        {!matchingOffers.length&&<p>{loading?'Завантаження…':'За запитом варіантів немає.'}</p>}
       </div>
-      {saveConfirm&&chosenOffer&&<div className="cp-am-dialog" role="alertdialog" aria-label="Підтвердження запису"><strong>Призначити {chosenOffer.article_nr}?</strong><p>Виробник: {chosenOffer.brand}. Це aftermarket-номер, сумісність із фізичною деталлю та VIN не підтверджена.</p><button type="button" disabled={saving} onClick={()=>void assign()}>{saving?'Записуємо…':'Записати у картку'}</button><button type="button" className="secondary" onClick={()=>setSaveConfirm(false)}>Скасувати</button></div>}
      </div>
-     <footer className="cp-am-drawer-footer"><p><AlertCircle size={15}/> Артикул потрібно звірити з реальною запчастиною.</p><div><button type="button" className="secondary" disabled={loading||saving||disabled} onClick={()=>setChargeConfirm(true)}>Отримати нові · до 2 токенів</button><button type="button" disabled={!chosenOffer||saving||loading} onClick={()=>setSaveConfirm(true)}>Призначити в картку</button></div></footer>
+     <footer className="cp-am-drawer-footer">
+      {saveConfirm&&chosenOffer?<div className="cp-am-confirm-footer" role="alertdialog" aria-label="Підтвердження призначення артикула">
+       <strong>Призначити {chosenOffer.article_nr} у картку товару?</strong>
+       <p>Виробник: {chosenOffer.brand}. Перевірте відповідність фізичній запчастині.</p>
+       <div><button type="button" disabled={saving} onClick={()=>void assign()}>{saving?'Записуємо…':'Підтвердити запис'}</button><button type="button" className="secondary" disabled={saving} onClick={()=>setSaveConfirm(false)}>Скасувати</button></div>
+      </div>:<>
+       <p><AlertCircle size={15}/> Артикул потрібно звірити з реальною запчастиною.</p>
+       <div><button type="button" className="secondary" disabled={loading||saving||disabled} onClick={()=>setChargeConfirm(true)}>Отримати нові · до 2 токенів</button><button type="button" disabled={!chosenOffer||saving||loading} onClick={()=>setSaveConfirm(true)}>Призначити в картку</button></div>
+      </>}
+     </footer>
     </aside>
    </div>,document.body)}
  </section>;
