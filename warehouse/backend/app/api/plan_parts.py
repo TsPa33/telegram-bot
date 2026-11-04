@@ -7,6 +7,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from sqlalchemy import select
+from datetime import datetime, timezone
+from uuid import uuid4
+from app.models.plan_parts_receipt import PlanPartsArticleReceipt
 from app.models import Part
 from app.services import checklists
 from app.services.plan_parts_classification import classify, match_existing_category
@@ -180,6 +183,57 @@ def recover_vehicle_categories(
             "from_cache": True, "category_count": len(rows)}
 
 
+def _receipt(db: Session, account_id: str, vehicle_id: str, ktype: int, pt_id: int):
+    return db.scalar(select(PlanPartsArticleReceipt).where(
+        PlanPartsArticleReceipt.account_id == account_id,
+        PlanPartsArticleReceipt.vehicle_id == vehicle_id,
+        PlanPartsArticleReceipt.ktype == ktype,
+        PlanPartsArticleReceipt.pt_id == pt_id
+    ))
+
+
+def _mark_article_receipt(db: Session, account_id: str, vehicle_id: str, ktype: int,
+                          pt_id: int, count: int, *, previous=None):
+    now = datetime.now(timezone.utc)
+    item = previous or PlanPartsArticleReceipt(
+        id=str(uuid4()), account_id=account_id, vehicle_id=vehicle_id,
+        ktype=ktype, pt_id=pt_id, created_at=now,
+    )
+    item.status = "received"
+    item.article_count = count
+    item.received_at = now
+    item.last_checked_at = now
+    item.last_error = ""
+    db.add(item)
+    db.commit()
+    return item
+
+
+@router.get("/articles/history")
+def article_receipt_history(
+    who: Annotated[Identity, Depends(identity)],
+    db: Annotated[Session, Depends(get_db)],
+    vehicle_id: str = Query(min_length=1, max_length=80),
+    ktype: int = Query(gt=0),
+):
+    """Return durable metadata only; cannot spend provider tokens."""
+    donor = _owned_paid_vehicle(who, db, vehicle_id)
+    if donor.ktype != ktype:
+        raise HTTPException(409, "Модифікація автомобіля змінилася")
+    receipts = db.scalars(select(PlanPartsArticleReceipt).where(
+        PlanPartsArticleReceipt.account_id == who.workspace_account_id,
+        PlanPartsArticleReceipt.vehicle_id == donor.id,
+        PlanPartsArticleReceipt.ktype == ktype
+    )).all()
+    return {"receipts": [{
+        "pt_id": x.pt_id,
+        "status": x.status,
+        "article_count": x.article_count,
+        "received_at": x.received_at.isoformat() if x.received_at else None,
+        "last_checked_at": x.last_checked_at.isoformat(),
+    } for x in receipts]}
+
+
 @router.post("/articles/recover")
 def recover_vehicle_articles(
     who: Annotated[Identity, Depends(identity)],
@@ -189,16 +243,29 @@ def recover_vehicle_articles(
     ktype: int = Query(gt=0),
     pt_id: int = Query(gt=0),
 ):
-    """Attempt recovery exclusively from previously received in-memory 2xx bytes."""
+    """Free-only recovery; keep evidence when provider cache expires."""
     donor = _owned_paid_vehicle(who, db, vehicle_id)
     if donor.ktype != ktype:
         raise HTTPException(409, "Модифікація автомобіля змінилася")
+    history = _receipt(db, who.workspace_account_id, donor.id, ktype, pt_id)
     try:
         rows = client.recover_articles(who.workspace_account_id, ktype, pt_id)
     except PlanPartsError as exc:
+        if history and exc.status == 409:
+            history.status = "unavailable" if history.received_at else "uncertain"
+            history.last_checked_at = datetime.now(timezone.utc)
+            db.commit()
+            raise HTTPException(409, {
+                "code": "previously_received_unavailable",
+                "message": "Отримано раніше — дані потребують відновлення. Новий платний запит не виконувався.",
+                "article_count": history.article_count,
+                "received_at": history.received_at.isoformat() if history.received_at else None
+            }) from None
         _handle_provider(exc)
+    if not history or history.status != "received":
+        _mark_article_receipt(db, who.workspace_account_id, donor.id, ktype, pt_id, len(rows), previous=history)
     return {"ktype": ktype, "pt_id": pt_id, "articles": [row.model_dump() for row in rows],
-            "total": len(rows), "from_cache": True}
+            "total": len(rows), "from_cache": True, "previously_received": True}
 
 
 @router.post("/articles/lookup")
@@ -209,15 +276,63 @@ def vehicle_articles(
     vehicle_id: str = Query(min_length=1, max_length=80),
     ktype: int = Query(gt=0),
     pt_id: int = Query(gt=0),
+    force_paid: bool = Query(default=False),
 ):
-    _owned_paid_vehicle(who, db, vehicle_id)
-    try:
-        rows = client.articles(who.workspace_account_id, ktype, pt_id)
-    except PlanPartsError as exc:
-        _handle_provider(exc)
+    donor = _owned_paid_vehicle(who, db, vehicle_id)
+    if donor.ktype != ktype:
+        raise HTTPException(409, "Модифікація автомобіля змінилася")
+    history = _receipt(db, who.workspace_account_id, donor.id, ktype, pt_id)
+    if history and not force_paid:
+        try:
+            rows = client.recover_articles(who.workspace_account_id, ktype, pt_id)
+        except PlanPartsError as exc:
+            if exc.status == 409:
+                history.status = "unavailable" if history.received_at else "uncertain"
+                history.last_checked_at = datetime.now(timezone.utc)
+                db.commit()
+                raise HTTPException(409, {
+                    "code": "previously_received_unavailable",
+                    "message": "Отримано раніше — дані потребують відновлення. Повторну оплату заблоковано.",
+                    "article_count": history.article_count
+                }) from None
+            _handle_provider(exc)
+        if history.status != "received":
+            _mark_article_receipt(db, who.workspace_account_id, donor.id, ktype, pt_id, len(rows), previous=history)
+    else:
+        if history is None:
+            now = datetime.now(timezone.utc)
+            history = PlanPartsArticleReceipt(
+                id=str(uuid4()), account_id=who.workspace_account_id,
+                vehicle_id=donor.id, ktype=ktype, pt_id=pt_id,
+                status="uncertain", article_count=0, created_at=now,
+                last_checked_at=now, last_error=""
+            )
+            db.add(history)
+            db.commit()  # Write-ahead evidence before any chargeable request.
+        else:
+            history.status = "uncertain"
+            history.last_checked_at = datetime.now(timezone.utc)
+            db.commit()
+        try:
+            rows = client.articles(who.workspace_account_id, ktype, pt_id)
+        except PlanPartsError as exc:
+            if exc.status == 429:
+                # Definite local refusal. Preserve older successful evidence.
+                if history.received_at:
+                    history.status = "unavailable"
+                else:
+                    db.delete(history)
+                db.commit()
+            else:
+                history.last_error = "Невизначений результат запиту; перевірте безкоштовний кеш"
+                history.last_checked_at = datetime.now(timezone.utc)
+                db.commit()
+            _handle_provider(exc)
+        _mark_article_receipt(db, who.workspace_account_id, donor.id, ktype, pt_id, len(rows), previous=history)
     return {"ktype": ktype, "pt_id": pt_id, "articles": [row.model_dump() for row in rows],
             "total": len(rows), "unique_names": len({row.part_name.casefold() for row in rows if row.part_name}),
-            "message": "Кількість різних назв є орієнтиром, не гарантованим переліком деталей для розбору."}
+            "from_cache": bool(history and history.status == "received"),
+            "message": "Aftermarket-пропозиції; сумісність фізичної запчастини потрібно перевірити."}
 
 
 class ChooseKtype(BaseModel):
@@ -306,7 +421,7 @@ def donor_part_stock_status(
         {"id": p.id, "pt_id": int(p.compatibility_notes[len(prefix):])
          if p.compatibility_notes[len(prefix):].isdigit() else None,
          "name": p.name, "quantity": p.quantity, "archived": p.archived,
-         "article_number": p.article_number}
+         "article_number": p.article_number, "article_brand": p.article_brand}
         for p in existing
     ], "duplicate_names": duplicates}
 
@@ -350,14 +465,15 @@ def select_donor_part_article(
         raise HTTPException(422, "Артикулу немає в підтвердженій відповіді Plan.Parts")
     if len(offer.article_nr) > 150:
         raise HTTPException(422, "Артикул перевищує ліміт картки складу")
-    if part.article_number == offer.article_nr:
-        return {"part_id": part.id, "article_number": part.article_number, "changed": False}
+    if part.article_number == offer.article_nr and part.article_brand == offer.brand:
+        return {"part_id": part.id, "article_number": part.article_number, "article_brand": part.article_brand, "changed": False}
     before = snapshot(part)
     part.article_number = offer.article_nr
+    part.article_brand = offer.brand
     record(db, who.workspace_account_id, part, "part_update",
            f"Власник вибрав aftermarket-артикул із Plan.Parts: тип {data.pt_id}, артикул {data.art_id}; VIN/OEM не підтверджено", before)
     db.commit()
-    return {"part_id": part.id, "article_number": part.article_number, "changed": True}
+    return {"part_id": part.id, "article_number": part.article_number, "article_brand": part.article_brand, "changed": True}
 
 
 @router.post("/donor-parts/add")
