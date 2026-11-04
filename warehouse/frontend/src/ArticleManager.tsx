@@ -33,6 +33,7 @@ export default function ArticleManager({vehicleId,ktype,categories,stockIndex,lo
  const [active,setActive]=useState<number|null>(null);
  const [offerQuery,setOfferQuery]=useState('');
  const [chosen,setChosen]=useState<number|null>(null);
+ const [chosenSelection,setChosenSelection]=useState<Article|null>(null);
  const [chargeConfirm,setChargeConfirm]=useState(false);
  const [saveConfirm,setSaveConfirm]=useState(false);
  const [loading,setLoading]=useState(false);
@@ -64,7 +65,7 @@ export default function ArticleManager({vehicleId,ktype,categories,stockIndex,lo
  const activeRow=active===null?null:byType.get(active)||null;
  const activeOffers=active===null?[]:offers[active]||[];
  const matchingOffers=useMemo(()=>activeOffers.filter(a=>!offerQuery||norm(a.article_nr).includes(norm(offerQuery))||norm(a.brand).includes(norm(offerQuery))||norm(a.part_name).includes(norm(offerQuery))),[activeOffers,offerQuery]);
- const chosenOffer=activeOffers.find(a=>a.art_id===chosen)||null;
+ const chosenOffer=chosenSelection && activeOffers.some(a=>a.art_id===chosenSelection.art_id&&a.article_nr===chosenSelection.article_nr)?chosenSelection:null;
  const isVerified=active!==null&&validatedSet.has(active);
 
  useEffect(()=>{setPage(0)},[tab,query]);
@@ -116,14 +117,14 @@ export default function ArticleManager({vehicleId,ktype,categories,stockIndex,lo
    if(payload.length<=ARTICLE_CACHE_LIMIT)sessionStorage.setItem(sharedKey,payload);
   }catch{/* Optional */}
  }
- const dismiss=()=>{if(saving)return;setActive(null);setChosen(null);setChargeConfirm(false);setSaveConfirm(false);setNotice('')};
+ const dismiss=()=>{if(saving)return;setActive(null);setChosen(null);setChosenSelection(null);setChargeConfirm(false);setSaveConfirm(false);setNotice('')};
  const loadFromCache=useCallback(async(ptId:number)=>{
   const result=await api<{articles:Article[]}>('/plan-parts/articles/recover?vehicle_id='+encodeURIComponent(vehicleId)+'&ktype='+ktype+'&pt_id='+ptId,'POST');
   return result.articles;
  },[vehicleId,ktype]);
  async function showDrawer(ptId:number){
   if(saving||loading)return;
-  setActive(ptId);setChosen(null);setOfferQuery('');setSaveConfirm(false);setChargeConfirm(false);setNotice('');
+  setActive(ptId);setChosen(null);setChosenSelection(null);setOfferQuery('');setSaveConfirm(false);setChargeConfirm(false);setNotice('');
   setLoading(true);
   try{
    const records=await loadFromCache(ptId);
@@ -165,7 +166,7 @@ export default function ArticleManager({vehicleId,ktype,categories,stockIndex,lo
   try{
    const result=await saveArticle(activeRow.category.pt_id,chosenOffer,activeRow.stock.id);
    await onSaved();
-   setNotice('Артикул '+result.article_number+' записано у картку товару.');
+   setNotice('Артикул '+result.article_number+' записано у картку товару.');setChosenSelection(null);setChosen(null);
   }catch(e){setNotice('Не вдалося записати артикул: '+(e as Error).message+'. Повторно отримувати артикули за токени не потрібно. Перевірте, що вибрано потрібну складську позицію.')}
   finally{lock.current=false;setSaving(false)}
  }
@@ -236,8 +237,8 @@ export default function ArticleManager({vehicleId,ktype,categories,stockIndex,lo
       <div className="cp-am-drawer-list-head"><h4>Варіанти артикулів</h4><span>{matchingOffers.length} результатів</span></div>
       <label className="cp-am-search"><Search size={17}/><input value={offerQuery} onChange={e=>setOfferQuery(e.target.value)} placeholder="Пошук за артикулом або виробником…" aria-label="Пошук артикулів"/></label>
       <div className="cp-am-drawer-offers">
-       {matchingOffers.slice(0,100).map(a=><label className={'cp-am-offer'+(chosen===a.art_id?' chosen':'')} key={a.art_id}>
-        <input type="radio" name="cp-am-offer" checked={chosen===a.art_id} onChange={()=>setChosen(a.art_id)}/>
+       {matchingOffers.slice(0,100).map(a=><label className={'cp-am-offer'+(chosen===a.art_id&&chosenSelection?.article_nr===a.article_nr?' chosen':'')} key={a.art_id}>
+        <input type="radio" name="cp-am-offer" checked={chosen===a.art_id&&chosenSelection?.article_nr===a.article_nr} onChange={()=>{setChosen(a.art_id);setChosenSelection(a);setSaveConfirm(false);}}/>
         <span><strong>{a.article_nr}</strong><small>{a.brand} · {a.part_name}</small></span>
         {activeRow.stock.article_number===a.article_nr&&<span className="cp-am-already"><Check size={13}/> Збережено</span>}
        </label>)}
@@ -252,7 +253,7 @@ export default function ArticleManager({vehicleId,ktype,categories,stockIndex,lo
        <div><button type="button" disabled={saving} onClick={()=>void assign()}>{saving?'Записуємо…':'Підтвердити запис'}</button><button type="button" className="secondary" disabled={saving} onClick={()=>setSaveConfirm(false)}>Скасувати</button></div>
       </div>:<>
        <p><AlertCircle size={15}/> Артикул потрібно звірити з реальною запчастиною.</p>
-       <div><button type="button" className="secondary" disabled={loading||saving||disabled} onClick={()=>setChargeConfirm(true)}>Отримати нові · до 2 токенів</button><button type="button" disabled={!chosenOffer||saving||loading} onClick={()=>setSaveConfirm(true)}>Призначити в картку</button></div>
+       <div><button type="button" className="secondary" disabled={loading||saving||disabled} onClick={()=>setChargeConfirm(true)}>Отримати нові · до 2 токенів</button><button type="button" disabled={saving||loading} onClick={()=>{if(chosenOffer)setSaveConfirm(true);else setNotice('Спочатку виберіть один артикул зі списку вище.');}}>Призначити в картку</button></div>
       </>}
      </footer>
     </aside>
