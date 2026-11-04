@@ -107,3 +107,17 @@
 .cp-am-drawer .cp-am-message{margin:12px 0}
 @media(max-width:640px){.cp-am-drawer-head{padding:16px}.cp-am-drawer-scroll{padding:15px}.cp-am-drawer-footer{padding:12px 15px}.cp-am-drawer-footer>div{flex-direction:column}.cp-am-drawer-footer button:last-child{min-height:44px}.cp-am-drawer-head h3{font-size:18px}}
 @media(prefers-reduced-motion:reduce){.cp-am-offer{transition:none}}
+
+/* Unified manager header follows the approved light CarPot section language. */
+.cp-plan button.cp-am-toggle:not(.secondary):not(.cp-plan-text-button):not(:disabled){
+  width:100%;background:#eff8f3;color:#154a37;border:0;box-shadow:none;
+  border-radius:0;padding:15px 18px;
+}
+.cp-plan button.cp-am-toggle:not(.secondary):not(.cp-plan-text-button):not(:disabled):hover{background:#e7f4ed;color:#0b5941}
+.cp-plan button.cp-am-toggle>svg{color:#087451}
+.cp-am-batch-workspace{margin:12px 0 14px;padding:12px;border:1px solid #d7e8de;border-radius:10px;background:#f7fbf8}
+.cp-am-batch-head{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.cp-am-batch-head strong{display:block;font-size:13px;color:#164d38}
+.cp-am-batch-head small{display:block;margin-top:4px;font-size:11px;color:#678174;line-height:1.5}
+.cp-am-batch-head button{flex-shrink:0}
+@media(max-width:650px){.cp-am-batch-head{flex-direction:column;align-items:stretch}}
