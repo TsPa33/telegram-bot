@@ -19,6 +19,7 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
  const [visibleLimit,setVisibleLimit]=useState(60);
  const [showTechnical,setShowTechnical]=useState(false);
  const [showMaintenance,setShowMaintenance]=useState(false);
+ const [showStockList,setShowStockList]=useState(false);
  const [batchBusy,setBatchBusy]=useState(false);
  const [confirmBatch,setConfirmBatch]=useState(false);
  const [batchProgress,setBatchProgress]=useState(0);
@@ -376,6 +377,8 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
       <select aria-label="Статус" value={stockFilter} onChange={e=>setStockFilter(e.target.value)}><option value="all">Усі статуси</option><option value="new">Не на складі</option><option value="stored">Вже на складі</option></select>
      </div>
      {categories.length>0&&<ArticleManager key={picked} vehicleId={String(vehicle.id)} ktype={picked} categories={categories} stockIndex={storedIndex} localizedName={localizedName} onSaved={refreshStockStatus} translatedNames={machineNames} disabled={paidDisabled||batchBusy||Boolean(stockStatusError)||savedKtype!==picked}/>}
+     <div className="cp-plan-stock-disclosure"><div><strong>Перелік запчастин для розбору та оприбуткування</strong><small>Окремо від менеджера артикулів. Тут вибирають фізичні позиції для додавання на склад.</small></div><button type="button" className="secondary" aria-expanded={showStockList} onClick={()=>setShowStockList(v=>!v)}>{showStockList?'Згорнути перелік':'Відкрити перелік запчастин'}</button></div>
+     {showStockList&&<div className="cp-plan-stock-workspace">
      {categories.length>0?<><div className="cp-plan-select-actions"><button type="button" className="secondary" onClick={()=>setSelectedTypes(categories.map(c=>c.pt_id))}>Вибрати всі</button><button type="button" className="secondary" onClick={()=>setSelectedTypes([])}>Зняти вибір</button><small>Вибрано: {selectedTypes.length}</small></div>
       {stockStatusError&&<p role="alert" className="cp-plan-error">{stockStatusError}</p>}
       {duplicateStockNames.length>0&&<p role="alert" className="cp-plan-error">У складі виявлено дублікати: {duplicateStockNames.map(d=>d.name+' ('+d.count+')').join(', ')}. Автоматичне видалення вимкнено.</p>}
@@ -405,6 +408,7 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
       {filteredCategories.length>visibleLimit&&<div className="cp-plan-load-more"><span>Показано {Math.min(visibleLimit,filteredCategories.length)} із {filteredCategories.length} типів. Вибір усієї категорії діє на повний перелік.</span><button type="button" className="secondary" onClick={()=>setVisibleLimit(v=>v+60)}>Показати ще 60</button></div>}
      </>:<div className="cp-plan-empty">Оберіть модифікацію та завантажте каталог, щоб побачити перелік запчастин.</div>}
      {addMessage&&<p role="status" aria-live="polite">{addMessage}</p>}
+     </div>}
     </div>
     {categories.length>0&&<div className="cp-plan-panel cp-plan-maintenance">
      <button type="button" className="secondary" aria-expanded={showMaintenance} onClick={()=>setShowMaintenance(v=>!v)}>Сервісні операції {showMaintenance?'▴':'▾'}</button>
