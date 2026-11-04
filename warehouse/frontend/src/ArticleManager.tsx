@@ -160,13 +160,13 @@ export default function ArticleManager({vehicleId,ktype,categories,stockIndex,lo
   });
  }
  async function assign(){
-  if(!activeRow||!chosenOffer||!isVerified||lock.current||saving)return;
+  if(!activeRow||!chosenOffer||lock.current||saving)return;
   lock.current=true;setSaving(true);setSaveConfirm(false);
   try{
    const result=await saveArticle(activeRow.category.pt_id,chosenOffer,activeRow.stock.id);
    await onSaved();
    setNotice('Артикул '+result.article_number+' записано у картку товару.');
-  }catch(e){setNotice('Не вдалося записати артикул: '+(e as Error).message)}
+  }catch(e){setNotice('Не вдалося записати артикул: '+(e as Error).message+'. Повторно отримувати артикули за токени не потрібно. Перевірте, що вибрано потрібну складську позицію.')}
   finally{lock.current=false;setSaving(false)}
  }
  function prepareAuto(){
@@ -246,7 +246,7 @@ export default function ArticleManager({vehicleId,ktype,categories,stockIndex,lo
       </div>
       {saveConfirm&&chosenOffer&&<div className="cp-am-dialog" role="alertdialog" aria-label="Підтвердження запису"><strong>Призначити {chosenOffer.article_nr}?</strong><p>Виробник: {chosenOffer.brand}. Це aftermarket-номер, сумісність із фізичною деталлю та VIN не підтверджена.</p><button type="button" disabled={saving} onClick={()=>void assign()}>{saving?'Записуємо…':'Записати у картку'}</button><button type="button" className="secondary" onClick={()=>setSaveConfirm(false)}>Скасувати</button></div>}
      </div>
-     <footer className="cp-am-drawer-footer"><p><AlertCircle size={15}/> Артикул потрібно звірити з реальною запчастиною.</p><div><button type="button" className="secondary" disabled={loading||saving||disabled} onClick={()=>setChargeConfirm(true)}>Отримати нові · до 2 токенів</button><button type="button" disabled={!chosenOffer||!isVerified||saving||loading} onClick={()=>setSaveConfirm(true)}>Призначити в картку</button></div></footer>
+     <footer className="cp-am-drawer-footer"><p><AlertCircle size={15}/> Артикул потрібно звірити з реальною запчастиною.</p><div><button type="button" className="secondary" disabled={loading||saving||disabled} onClick={()=>setChargeConfirm(true)}>Отримати нові · до 2 токенів</button><button type="button" disabled={!chosenOffer||saving||loading} onClick={()=>setSaveConfirm(true)}>Призначити в картку</button></div></footer>
     </aside>
    </div>,document.body)}
  </section>;
