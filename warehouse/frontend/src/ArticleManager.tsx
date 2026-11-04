@@ -29,7 +29,6 @@ export default function ArticleManager({vehicleId,ktype,categories,stockIndex,lo
  const [autoQueue,setAutoQueue]=useState<{ptId:number;offer:Article;partId:string}[]|null>(null);
  const [processed,setProcessed]=useState(0);
  const lock=useRef(false);
- const findStock=(c:Category)=>stockIndex.byType.get(c.pt_id)||stockIndex.byName.get(normalize(localizedName(c.name)));
  const stockRows=useMemo(()=>categories.map(c=>({category:c,stock:stockIndex.byType.get(c.pt_id)||stockIndex.byName.get(normalize(localizedName(c.name))),label:localizedName(c.name)})).filter(r=>r.stock&&!r.stock.archived),[categories,stockIndex,localizedName]);
  const countWith=stockRows.filter(r=>Boolean(r.stock?.article_number?.trim())).length;
  const missing=stockRows.length-countWith;
