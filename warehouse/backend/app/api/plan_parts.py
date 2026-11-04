@@ -282,6 +282,7 @@ def vehicle_articles(
     if donor.ktype != ktype:
         raise HTTPException(409, "Модифікація автомобіля змінилася")
     history = _receipt(db, who.workspace_account_id, donor.id, ktype, pt_id)
+    recovered_without_payment = bool(history and not force_paid)
     if history and not force_paid:
         try:
             rows = client.recover_articles(who.workspace_account_id, ktype, pt_id)
@@ -331,7 +332,7 @@ def vehicle_articles(
         _mark_article_receipt(db, who.workspace_account_id, donor.id, ktype, pt_id, len(rows), previous=history)
     return {"ktype": ktype, "pt_id": pt_id, "articles": [row.model_dump() for row in rows],
             "total": len(rows), "unique_names": len({row.part_name.casefold() for row in rows if row.part_name}),
-            "from_cache": bool(history and history.status == "received"),
+            "from_cache": recovered_without_payment,
             "message": "Aftermarket-пропозиції; сумісність фізичної запчастини потрібно перевірити."}
 
 
