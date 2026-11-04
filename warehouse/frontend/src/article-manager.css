@@ -1,0 +1,43 @@
+/* Article management integrated into the existing CarPot donor workspace */
+.cp-am{border:1px solid #d8e8df;border-radius:13px;background:#fff;overflow:hidden;margin:12px 0}
+.cp-plan .cp-am-toggle{width:100%;display:flex;align-items:center;gap:11px;border:0;border-radius:0;background:#f1f8f3;color:#173e30;text-align:left;padding:15px 17px;min-height:55px}
+.cp-am-toggle strong{font-size:16px;white-space:nowrap}
+.cp-am-toggle>span{margin-left:12px;font-size:11px;font-weight:500;color:#527463;flex:1}
+.cp-am-content{padding:15px}
+.cp-am-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+.cp-am-stats>div{display:grid;gap:7px;padding:12px;border:1px solid #deebe3;border-radius:9px;background:#fff}
+.cp-am-stats>div:nth-child(2){background:#eef9f1}
+.cp-am-stats>div:nth-child(3){background:#fff8ee}
+.cp-am-stats small{color:#587566;font-size:11px}
+.cp-am-stats strong{color:#123c2e;font-size:19px;font-variant-numeric:tabular-nums}
+.cp-am-note{padding:9px 12px;border-radius:7px;background:#f3f8f5;color:#3c6955;font-size:11px;line-height:1.6}
+.cp-am-toolbar,.cp-am-select,.cp-am-footer{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:11px 0}
+.cp-am-toolbar input{margin-left:auto;min-width:150px;max-width:225px}
+.cp-am-select small{margin-left:auto;color:#5d796b}
+.cp-am-message{font-size:12px;padding:10px 12px;background:#edf8f0;border-radius:8px;color:#155f43}
+.cp-am-dialog{background:#fffaf0;border:1px solid #e0c993;border-radius:10px;padding:14px;margin:12px 0;color:#53421e}
+.cp-am-dialog strong{display:block;font-size:13px}
+.cp-am-dialog p{font-size:12px;line-height:1.6}
+.cp-am-dialog button{margin-right:8px;margin-bottom:4px}
+.cp-am-dialog progress{display:block;width:100%;margin:12px 0}
+.cp-am-table-wrap{overflow-x:auto;border:1px solid #e2eae5;border-radius:10px}
+.cp-am-table{border-collapse:collapse;width:100%;min-width:700px}
+.cp-am-table th{background:#f2f8f4;color:#315b49;text-align:left;padding:11px 10px;font-size:11px}
+.cp-am-table td{padding:11px 10px;border-top:1px solid #e5eee8;color:#284c3a;font-size:12px;vertical-align:middle}
+.cp-am-table td:nth-child(2){min-width:180px}
+.cp-am-table td strong{display:block;font-size:12px;color:#173c2e}
+.cp-am-table td small{display:block;margin-top:4px;color:#6e8378;font-size:10px}
+.cp-am-table input[type=checkbox]{accent-color:#087352;width:16px;height:16px}
+.cp-am-status{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;padding:6px 8px;border-radius:7px;font-size:11px}
+.cp-am-status.yes{background:#e5f7e8;color:#13633b}
+.cp-am-status.no{background:#fff3d9;color:#8c6014}
+.cp-am-offers{border:1px solid #d9e8e0;border-radius:9px;padding:13px;margin:12px 0}
+.cp-am-offers h4{margin:0 0 7px;font-size:14px}
+.cp-am-offers p{font-size:11px;color:#557166}
+.cp-am-offers-scroll{max-height:285px;overflow:auto}
+.cp-am-offers-scroll>div{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:9px 0;border-top:1px solid #ebf0ec}
+.cp-am-offers-scroll small{display:block;font-size:10px;color:#6d8377;margin-top:3px}
+.cp-am-footer{justify-content:flex-end;font-size:11px;color:#597667}
+.cp-am-footer>span:first-child{margin-right:auto}
+@media(max-width:880px){.cp-am-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.cp-am-toggle>span{display:none}.cp-am-toolbar input{max-width:none;width:100%;margin:0}}
+@media(max-width:440px){.cp-am-content{padding:10px}.cp-am-stats{gap:6px}.cp-am-stats>div{padding:9px}.cp-am-stats strong{font-size:16px}.cp-am-toggle strong{font-size:14px}}
