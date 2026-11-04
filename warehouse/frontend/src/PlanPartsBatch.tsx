@@ -70,7 +70,7 @@ export default function PlanPartsBatch({
     sessionStorage.setItem(articleCacheKey,serialized);
    }else{
     // Do not evict previously cached categories just to fit an oversized one.
-    setMessage('Артикули доступні зараз, але обсяг перевищує ліміт тимчасової пам’яті браузера. Відновлення після оновлення сторінки не гарантовано.');
+    setMessage('Ліміт тимчасового кешу браузера перевищено. Отримані списки зберігаються на сервері в PostgreSQL.');
    }
   }catch{/* Optional cache; never impact the paid response itself */}
  }
@@ -158,13 +158,13 @@ export default function PlanPartsBatch({
    }
   }
   if(!stop.current&&finished===queue.length){
-   setMessage('Завершено '+finished+' типів. Дані доступні в цій сесії для аналізу; склад не змінено.');
+   setMessage('Завершено '+finished+' типів. Результати збережені у PostgreSQL; складські залишки не змінено.');
   }
   locked.current=false;setRunning(false);
  }
  async function recoverFromCache(ptId:number){
   if(locked.current||running)return;
-  locked.current=true;setRunning(true);setMessage('Перевіряємо тимчасовий кеш без платного запиту…');
+  locked.current=true;setRunning(true);setMessage('Перевіряємо збережені результати без платного запиту…');
   try{
    const response=await api<{articles:Article[]}>(
     '/plan-parts/articles/recover?vehicle_id='+encodeURIComponent(vehicleId)+
@@ -180,7 +180,7 @@ export default function PlanPartsBatch({
    rememberArticles(ptId,articles);
    onArticles?.(ptId,articles);
    checkpoint(next,rest);
-   setMessage('Дані відновлено з кешу без нового запиту до plan.parts.');
+   setMessage('Дані відновлено без нового платного запиту до Plan.Parts.');
   }catch(err){
    setMessage('Відновлення без оплати не вдалося: '+(err as Error).message+
     '. Категорію залишено заблокованою, новий платний запит не виконувався.');
@@ -189,7 +189,7 @@ export default function PlanPartsBatch({
  async function openCompletedType(ptId:number){
   if(data[String(ptId)]){setPreviewId(ptId);return;}
   if(locked.current||running)return;
-  locked.current=true;setMessage('Відновлюємо артикули з серверного кешу без платного запиту…');
+  locked.current=true;setMessage('Відновлюємо збережені артикули без платного запиту…');
   try{
    const result=await api<{articles:Article[]}>(
     '/plan-parts/articles/recover?vehicle_id='+encodeURIComponent(vehicleId)+
@@ -236,7 +236,7 @@ export default function PlanPartsBatch({
    <p>Неоднозначних або перерваних запитів: {selectedUncertain.length}. Платний повтор заблоковано.</p>
    {selectedUncertain.map(c=><div key={c.pt_id} style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',margin:'6px 0'}}>
     <span>{localName(c.name)}</span>
-    <button type="button" className="secondary" disabled={running} onClick={()=>void recoverFromCache(c.pt_id)}>Спробувати відновити з кешу · 0 токенів</button>
+    <button type="button" className="secondary" disabled={running} onClick={()=>void recoverFromCache(c.pt_id)}>Відновити збережені · 0 токенів</button>
     <button type="button" className="secondary" disabled={running} onClick={()=>setRetryApproval(c.pt_id)}>Дозволити новий запит (може коштувати 2 токени)</button>
    </div>)}
   </div>}
@@ -279,7 +279,7 @@ export default function PlanPartsBatch({
    {expanded&&<div style={{maxHeight:300,overflowY:'auto',marginTop:8}}>
     {completedSelected.map(c=><div key={c.pt_id} style={{padding:8,borderBottom:'1px solid #dfe9e4'}}>
      <strong>{ukrainianPartName(c.name).uk}</strong> · {completed[String(c.pt_id)].count} артикулів · {completed[String(c.pt_id)].names} назв
-     <button type="button" className="secondary" disabled={running} onClick={()=>void openCompletedType(c.pt_id)}>{data[String(c.pt_id)]?'Переглянути артикули':'Відновити артикули з кешу · 0 токенів'}</button>
+     <button type="button" className="secondary" disabled={running} onClick={()=>void openCompletedType(c.pt_id)}>{data[String(c.pt_id)]?'Переглянути артикули':'Відновити артикули · 0 токенів'}</button>
     </div>)}
    </div>}
   </div>}
@@ -289,6 +289,6 @@ export default function PlanPartsBatch({
     {rows.map(a=><tr key={a.art_id}><td>{a.part_name?localName(a.part_name):(selected.find(c=>c.pt_id===previewId)?localName(selected.find(c=>c.pt_id===previewId)!.name):'Назва категорії не визначена')}</td><td>{a.brand}</td><td>{a.article_nr}</td></tr>)}
    </tbody></table></div>
   </div>}
-  <small>Тимчасовий серверний кеш діє до 30 хвилин і зникає після перезапуску. Для завершених типів доступна окрема безоплатна спроба відновлення артикулів. У межах поточної браузерної сесії також тимчасово зберігаються невеликі отримані списки артикулів (до 30 хвилин та обмеженого обсягу). Якщо Backend перезапуститься, не можна гарантувати безкоштовне відновлення всіх артикулів. Для постійного комерційного каталогу потрібне ліцензійне погодження.</small>
+  <small>Успішно отримані й підтверджені сервером артикули зберігаються в PostgreSQL для цього автомобіля, модифікації та типу запчастини. Повторне відкриття не потребує токенів. Старі отримання до впровадження сховища можна перенести безкоштовно, лише якщо їхній тимчасовий кеш ще доступний. Запчастини на склад автоматично не додаються.</small>
  </section>;
 }
