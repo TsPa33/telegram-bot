@@ -47,17 +47,20 @@ def test_article_receipt_prevents_duplicate_paid_call_and_records_history(logged
 
         state["cached"]=False
         nocharge=logged.post(recovery)
-        assert nocharge.status_code==409
-        assert nocharge.json()["detail"]["code"]=="previously_received_unavailable"
+        assert nocharge.status_code==200,nocharge.text
+        assert nocharge.json()["from_saved"] is True
+        assert nocharge.json()["articles"][0]["article_nr"]=="PART-701"
         assert state["paid_calls"]==1
 
         protected=logged.post(path)
-        assert protected.status_code==409
-        assert protected.json()["detail"]["code"]=="previously_received_unavailable"
+        assert protected.status_code==200,protected.text
+        assert protected.json()["from_saved"] is True
+        assert protected.json()["articles"][0]["brand"]=="Example Brand"
         assert state["paid_calls"]==1
 
-        missing=logged.get(history)
-        assert next(x for x in missing.json()["receipts"] if x["pt_id"]==607)["status"]=="unavailable"
+        saved=logged.get(history)
+        receipt=next(x for x in saved.json()["receipts"] if x["pt_id"]==607)
+        assert receipt["status"]=="received" and receipt["stored"] is True
     finally:
         app.dependency_overrides.pop(plan_parts_client,None)
 
