@@ -1,6 +1,7 @@
 import {useCallback,useContext,useEffect,useMemo,useRef,useState} from 'react';
 import {createPortal} from 'react-dom';
 import {api} from './api';
+import PlanPartsBatch from './PlanPartsBatch';
 import {TeamIdentity} from './permissions';
 import {AlertCircle,Check,CheckCircle2,ChevronDown,ChevronLeft,ChevronRight,ChevronUp,Layers3,Search,ShieldAlert,X} from 'lucide-react';
 import './article-manager.css';
@@ -10,16 +11,17 @@ type StoredPart={id:string;pt_id:number|null;name:string;quantity:number;archive
 type Article={art_id:number;article_nr:string;brand:string;part_name:string};
 type StockIndex={byType:Map<number,StoredPart>;byName:Map<string,StoredPart>};
 type Props={vehicleId:string;ktype:number;categories:Category[];stockIndex:StockIndex;
- localizedName:(name:string)=>string;onSaved:()=>Promise<void>;onRequestBatch:(ids:number[])=>void;disabled:boolean};
+ localizedName:(name:string)=>string;onSaved:()=>Promise<void>;disabled:boolean;translatedNames:Record<string,string>};
 type Listed={category:Category;stock:StoredPart;label:string};
 const norm=(s:string)=>s.trim().toLocaleLowerCase('uk-UA').replace(/\s+/g,' ');
 const PAGE_SIZE=12;
 const ARTICLE_CACHE_LIMIT=1200000;
 
-export default function ArticleManager({vehicleId,ktype,categories,stockIndex,localizedName,onSaved,onRequestBatch,disabled}:Props){
+export default function ArticleManager({vehicleId,ktype,categories,stockIndex,localizedName,onSaved,disabled,translatedNames}:Props){
  const identity=useContext(TeamIdentity);
  const sharedKey='plan-parts-batch-v1:'+String(identity?.id||'')+':'+vehicleId+':'+ktype+':temporary-articles';
  const [opened,setOpened]=useState(false);
+ const [batchOpen,setBatchOpen]=useState(false);
  const [tab,setTab]=useState<'all'|'missing'|'saved'|'available'>('all');
  const [query,setQuery]=useState('');
  const [page,setPage]=useState(0);
@@ -56,6 +58,7 @@ export default function ArticleManager({vehicleId,ktype,categories,stockIndex,lo
  const pages=Math.max(1,Math.ceil(rows.length/PAGE_SIZE));
  const visible=rows.slice(page*PAGE_SIZE,(page+1)*PAGE_SIZE);
  const selectedMissing=selected.filter(id=>byType.has(id)&&!byType.get(id)?.stock.article_number?.trim());
+ const batchCategories=categories.filter(c=>selectedMissing.includes(c.pt_id));
  const activeRow=active===null?null:byType.get(active)||null;
  const activeOffers=active===null?[]:offers[active]||[];
  const matchingOffers=useMemo(()=>activeOffers.filter(a=>!offerQuery||norm(a.article_nr).includes(norm(offerQuery))||norm(a.brand).includes(norm(offerQuery))||norm(a.part_name).includes(norm(offerQuery))),[activeOffers,offerQuery]);
@@ -63,7 +66,7 @@ export default function ArticleManager({vehicleId,ktype,categories,stockIndex,lo
  const isVerified=active!==null&&validatedSet.has(active);
 
  useEffect(()=>{setPage(0)},[tab,query]);
- useEffect(()=>{setOffers({});setValidated([]);setSelected([]);setActive(null);setNotice('');
+ useEffect(()=>{setOffers({});setValidated([]);setSelected([]);setActive(null);setNotice('');setBatchOpen(false);
   try{
    const raw=JSON.parse(sessionStorage.getItem(sharedKey)||'null') as {until?:number;data?:Record<string,Article[]>}|null;
    if(raw?.until&&raw.until>Date.now()&&raw.data){
@@ -176,10 +179,11 @@ export default function ArticleManager({vehicleId,ktype,categories,stockIndex,lo
    <div className="cp-am-toolbar">
     <button type="button" className="secondary" onClick={()=>setSelected(rows.filter(r=>!r.stock.article_number?.trim()).map(r=>r.category.pt_id))}>Вибрати без артикула</button>
     <button type="button" className="secondary" onClick={()=>setSelected([])}>Зняти вибір</button>
-    <button type="button" className="secondary" disabled={!selectedMissing.length||saving} onClick={()=>{onRequestBatch(selectedMissing);setNotice('Пакетний запит: до '+selectedMissing.length*2+' токенів. Перед списанням потрібне підтвердження вище.')}}>Отримати вибрані · до {selectedMissing.length*2} токенів</button>
+    <button type="button" className="secondary" disabled={!selectedMissing.length||saving} aria-expanded={batchOpen} onClick={()=>setBatchOpen(v=>!v)}>{batchOpen?'Згорнути пакетне отримання':'Отримати вибрані · до '+selectedMissing.length*2+' токенів'}</button>
     <button type="button" className="secondary" disabled={!selectedMissing.length||saving} onClick={prepareAuto}>Автовибір з отриманих</button>
     <input aria-label="Пошук у менеджері" placeholder="Назва або артикул…" value={query} onChange={e=>setQuery(e.target.value)}/>
    </div>
+   {batchOpen&&<div className="cp-am-batch-workspace"><div className="cp-am-batch-head"><div><strong>Пакетне отримання артикулів</strong><small>Вибрано {batchCategories.length} типів. Нові запити виконуються тільки після підтвердження бюджету токенів.</small></div><button type="button" className="secondary" onClick={()=>setBatchOpen(false)}>Згорнути</button></div><PlanPartsBatch vehicleId={vehicleId} ktype={ktype} selected={batchCategories} disabled={disabled||saving} translatedNames={translatedNames} onArticles={(ptId,records)=>{setOffers(prev=>({...prev,[ptId]:records}));setValidated(prev=>[...new Set([...prev,ptId])]);remember(ptId,records);}}/></div>}
    {notice&&<p role="status" className="cp-am-message">{notice}</p>}
    {autoQueue&&<div className="cp-am-dialog" role="alertdialog" aria-label="Підтвердження автопризначення"><strong>Призначити по одному артикулу для {autoQueue.length} позицій?</strong><p>Це перша доступна aftermarket-пропозиція, а не підтверджений OEM. Перевірте сумісність. Жодного нового платного запиту не буде.</p>{saving&&<progress value={processed} max={autoQueue.length}/>}<button type="button" disabled={saving} onClick={()=>void confirmAuto()}>Підтвердити</button><button type="button" className="secondary" disabled={saving} onClick={()=>setAutoQueue(null)}>Скасувати</button></div>}
    <div className="cp-am-table-wrap"><table className="cp-am-table"><thead><tr><th><span className="cp-am-visually-hidden">Вибір</span></th><th>Запчастина</th><th>Статус</th><th>Артикул</th><th>Дії</th></tr></thead><tbody>
