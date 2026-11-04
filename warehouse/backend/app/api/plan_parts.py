@@ -337,8 +337,7 @@ def select_donor_part_article(
     if donor.ktype != data.ktype:
         raise HTTPException(409, "Модифікація автомобіля змінилася")
     part = owned(db, Part, data.part_id, who.workspace_account_id, lock=True, active=True)
-    if part.vehicle_id != donor.id or not part.compatibility_notes.startswith(
-            f"plan.parts:ktype={data.ktype};pt_id="):
+    if part.vehicle_id != donor.id or part.compatibility_notes != f"plan.parts:ktype={data.ktype};pt_id={data.pt_id}":
         raise HTTPException(422, "Запчастина не належить цьому донору та каталогу")
     if part.quantity < 1:
         raise HTTPException(409, "Спочатку додайте запчастину на склад")
