@@ -1,4 +1,4 @@
-import {useContext,useEffect,useMemo,useRef,useState} from 'react';
+import {useCallback,useContext,useEffect,useMemo,useRef,useState} from 'react';
 import {TeamIdentity} from './permissions';
 import {api,ApiError,type Row} from './api';
 import {ukrainianPartName} from './planPartsUkrainian';
@@ -255,10 +255,10 @@ export default function PlanPartsDonorAnalysis({vehicle,onSaved}:{vehicle:Row;on
   }catch(e){setClassMessage('Не вдалося оновити категорії: '+(e as Error).message);}
   finally{setClassLoading(false);}
  }
- function localizedName(name:string){
+ const localizedName=useCallback((name:string)=>{
   const reviewed=ukrainianPartName(name);
   return reviewed.translated?reviewed.uk:(machineNames[name]||reviewed.uk);
- }
+ },[machineNames]);
  async function translateAllCategories(){
   if(translationBusy.current||!categories.length)return;
   const missing=Array.from(new Set(categories.map(c=>c.name)))
