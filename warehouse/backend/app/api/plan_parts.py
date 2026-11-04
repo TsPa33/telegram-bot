@@ -20,7 +20,7 @@ from app.schemas import StockInput
 from app.services.parts_translation import translate_names, TranslationError
 
 from app.api.deps import Identity, identity
-from app.services.plan_parts import Brand, ModelOption, Modification, CatalogPartType, PlanPartsClient, PlanPartsError, modifications_for_year
+from app.services.plan_parts import Brand, ModelOption, Modification, CatalogPartType, Article, PlanPartsClient, PlanPartsError, modifications_for_year
 
 router = APIRouter(route_class=SecureRoute,prefix="/api/v1/plan-parts", tags=["Plan.Parts"])
 
@@ -193,20 +193,28 @@ def _receipt(db: Session, account_id: str, vehicle_id: str, ktype: int, pt_id: i
 
 
 def _mark_article_receipt(db: Session, account_id: str, vehicle_id: str, ktype: int,
-                          pt_id: int, count: int, *, previous=None):
+                          pt_id: int, rows: list[Article], *, previous=None):
     now = datetime.now(timezone.utc)
     item = previous or PlanPartsArticleReceipt(
         id=str(uuid4()), account_id=account_id, vehicle_id=vehicle_id,
         ktype=ktype, pt_id=pt_id, created_at=now,
     )
     item.status = "received"
-    item.article_count = count
+    item.article_count = len(rows)
+    item.article_snapshot = [row.model_dump(mode='json') for row in rows]
     item.received_at = item.received_at or now
     item.last_checked_at = now
     item.last_error = ""
     db.add(item)
     db.commit()
     return item
+
+
+def _saved_article_rows(receipt: PlanPartsArticleReceipt | None) -> list[Article] | None:
+    """Return an owned immutable-at-read snapshot; empty [] is a valid paid result."""
+    if receipt is None or receipt.article_snapshot is None:
+        return None
+    return [Article.model_validate(row) for row in receipt.article_snapshot]
 
 
 @router.get("/articles/history")
@@ -228,6 +236,7 @@ def article_receipt_history(
     return {"receipts": [{
         "pt_id": x.pt_id,
         "status": x.status,
+        "stored": x.article_snapshot is not None,
         "article_count": x.article_count,
         "received_at": x.received_at.isoformat() if x.received_at else None,
         "last_checked_at": x.last_checked_at.isoformat(),
@@ -243,11 +252,15 @@ def recover_vehicle_articles(
     ktype: int = Query(gt=0),
     pt_id: int = Query(gt=0),
 ):
-    """Free-only recovery; keep evidence when provider cache expires."""
+    """Restore a validated stored result first. Never send a paid provider request."""
     donor = _owned_paid_vehicle(who, db, vehicle_id)
     if donor.ktype != ktype:
         raise HTTPException(409, "Модифікація автомобіля змінилася")
     history = _receipt(db, who.workspace_account_id, donor.id, ktype, pt_id)
+    persisted = _saved_article_rows(history)
+    if persisted is not None:
+        return {"ktype": ktype, "pt_id": pt_id, "articles": [r.model_dump(mode="json") for r in persisted],
+                "total": len(persisted), "from_saved": True, "previously_received": True}
     try:
         rows = client.recover_articles(who.workspace_account_id, ktype, pt_id)
     except PlanPartsError as exc:
@@ -262,10 +275,9 @@ def recover_vehicle_articles(
                 "received_at": history.received_at.isoformat() if history.received_at else None
             }) from None
         _handle_provider(exc)
-    if not history or history.status != "received":
-        _mark_article_receipt(db, who.workspace_account_id, donor.id, ktype, pt_id, len(rows), previous=history)
-    return {"ktype": ktype, "pt_id": pt_id, "articles": [row.model_dump() for row in rows],
-            "total": len(rows), "from_cache": True, "previously_received": True}
+    _mark_article_receipt(db, who.workspace_account_id, donor.id, ktype, pt_id, rows, previous=history)
+    return {"ktype": ktype, "pt_id": pt_id, "articles": [row.model_dump(mode="json") for row in rows],
+            "total": len(rows), "from_cache": True, "from_saved": False, "previously_received": True}
 
 
 @router.post("/articles/lookup")
@@ -282,8 +294,12 @@ def vehicle_articles(
     if donor.ktype != ktype:
         raise HTTPException(409, "Модифікація автомобіля змінилася")
     history = _receipt(db, who.workspace_account_id, donor.id, ktype, pt_id)
-    recovered_without_payment = bool(history and not force_paid)
-    if history and not force_paid:
+    persisted = _saved_article_rows(history)
+    recovered_without_payment = False
+    if persisted is not None and not force_paid:
+        rows = persisted
+        recovered_without_payment = True
+    elif history and not force_paid:
         try:
             rows = client.recover_articles(who.workspace_account_id, ktype, pt_id)
         except PlanPartsError as exc:
@@ -297,8 +313,8 @@ def vehicle_articles(
                     "article_count": history.article_count
                 }) from None
             _handle_provider(exc)
-        if history.status != "received":
-            _mark_article_receipt(db, who.workspace_account_id, donor.id, ktype, pt_id, len(rows), previous=history)
+        _mark_article_receipt(db, who.workspace_account_id, donor.id, ktype, pt_id, rows, previous=history)
+        recovered_without_payment = True
     else:
         if history is None:
             now = datetime.now(timezone.utc)
@@ -318,21 +334,20 @@ def vehicle_articles(
             rows = client.articles(who.workspace_account_id, ktype, pt_id)
         except PlanPartsError as exc:
             if exc.status == 429:
-                # Definite local refusal. Preserve older successful evidence.
                 if history.received_at:
-                    history.status = "unavailable"
+                    history.status = "received" if history.article_snapshot is not None else "unavailable"
                 else:
                     db.delete(history)
                 db.commit()
             else:
-                history.last_error = "Невизначений результат запиту; перевірте безкоштовний кеш"
+                history.last_error = "Невизначений результат запиту; перевірте безкоштовне відновлення"
                 history.last_checked_at = datetime.now(timezone.utc)
                 db.commit()
             _handle_provider(exc)
-        _mark_article_receipt(db, who.workspace_account_id, donor.id, ktype, pt_id, len(rows), previous=history)
-    return {"ktype": ktype, "pt_id": pt_id, "articles": [row.model_dump() for row in rows],
+        _mark_article_receipt(db, who.workspace_account_id, donor.id, ktype, pt_id, rows, previous=history)
+    return {"ktype": ktype, "pt_id": pt_id, "articles": [row.model_dump(mode="json") for row in rows],
             "total": len(rows), "unique_names": len({row.part_name.casefold() for row in rows if row.part_name}),
-            "from_cache": recovered_without_payment,
+            "from_cache": recovered_without_payment, "from_saved": persisted is not None and not force_paid,
             "message": "Aftermarket-пропозиції; сумісність фізичної запчастини потрібно перевірити."}
 
 
@@ -457,10 +472,14 @@ def select_donor_part_article(
         raise HTTPException(422, "Запчастина не належить цьому донору та каталогу")
     if part.quantity < 1:
         raise HTTPException(409, "Спочатку додайте запчастину на склад")
-    try:
-        rows = client.recover_articles(who.workspace_account_id, data.ktype, data.pt_id)
-    except PlanPartsError as exc:
-        _handle_provider(exc)
+    saved = _receipt(db, who.workspace_account_id, donor.id, data.ktype, data.pt_id)
+    rows = _saved_article_rows(saved)
+    if rows is None:
+        try:
+            rows = client.recover_articles(who.workspace_account_id, data.ktype, data.pt_id)
+        except PlanPartsError as exc:
+            _handle_provider(exc)
+        _mark_article_receipt(db, who.workspace_account_id, donor.id, data.ktype, data.pt_id, rows, previous=saved)
     offer = next((x for x in rows if x.art_id == data.art_id), None)
     if offer is None:
         raise HTTPException(422, "Артикулу немає в підтвердженій відповіді Plan.Parts")
