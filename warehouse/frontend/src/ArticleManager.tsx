@@ -8,12 +8,12 @@ type StoredPart={id:string;pt_id:number|null;name:string;quantity:number;archive
 type Article={art_id:number;article_nr:string;brand:string;part_name:string};
 type StockIndex={byType:Map<number,StoredPart>;byName:Map<string,StoredPart>};
 type Props={vehicleId:string;ktype:number;categories:Category[];stockIndex:StockIndex;
- localizedName:(name:string)=>string;onSaved:()=>Promise<void>;disabled:boolean};
+ localizedName:(name:string)=>string;onSaved:()=>Promise<void>;onRequestBatch:(ids:number[])=>void;disabled:boolean};
 const normalize=(s:string)=>s.trim().toLocaleLowerCase('uk-UA').replace(/\s+/g,' ');
 const tokenRate=2;
 const pageSize=12;
 
-export default function ArticleManager({vehicleId,ktype,categories,stockIndex,localizedName,onSaved,disabled}:Props){
+export default function ArticleManager({vehicleId,ktype,categories,stockIndex,localizedName,onSaved,onRequestBatch,disabled}:Props){
  const [opened,setOpened]=useState(false);
  const [missingOnly,setMissingOnly]=useState(false);
  const [query,setQuery]=useState('');
@@ -110,7 +110,7 @@ export default function ArticleManager({vehicleId,ktype,categories,stockIndex,lo
    <div className="cp-am-toolbar">
     <button type="button" className="secondary" onClick={()=>setMissingOnly(v=>!v)}>{missingOnly?'Показати всі':'Лише без артикула'}</button>
     <button type="button" className="secondary" disabled={!remaining.length||saving} onClick={planAuto}>Призначити по 1 з отриманих</button>
-    <button type="button" className="secondary" disabled={!selectedMissing||saving} onClick={()=>setNotice('Для '+selectedMissing+' вибраних типів можливі нові платні запити — до '+estimate+' токенів. Для пакетного завантаження використовуйте блок «Отримання артикулів Plan.Parts», який має окреме підтвердження та ліміт токенів.')}>Розрахувати токени: до {estimate}</button>
+    <button type="button" className="secondary" disabled={!selectedMissing||saving} onClick={()=>{onRequestBatch(remaining);setNotice('Для '+selectedMissing+' типів розраховано до '+estimate+' токенів. Відкрито пакетне завантаження вище. Перед витратою токенів потрібне окреме підтвердження.')}}>Отримати артикули вибраних · до {estimate} токенів</button>
     <input aria-label="Пошук у менеджері артикулів" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Назва або артикул…"/>
    </div>
    <div className="cp-am-select"><button type="button" className="secondary" onClick={()=>setSelected(rows.filter(r=>!r.stock?.article_number?.trim()).map(r=>r.category.pt_id))}>Вибрати всі без артикула</button><button type="button" className="secondary" onClick={()=>setSelected([])}>Зняти вибір</button><small>Вибрано: {selected.length}</small></div>
