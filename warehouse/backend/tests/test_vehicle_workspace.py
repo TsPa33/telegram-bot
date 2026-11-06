@@ -475,3 +475,124 @@ def test_manual_card_edit_never_keeps_stale_provider_reference(logged, part):
         preserved.json()["article_number"] == "MANUAL-NEW"
         and preserved.json()["oem_number"] == "MANUAL-OEM"
     )
+
+
+def test_workspace_separates_catalogue_articles_assignment_and_recovery(
+    logged, vehicle
+):
+    from app.models import VehicleChecklistItem, now
+
+    with Session(engine()) as db:
+        who = identity(db, logged)
+        db.execute(
+            text("UPDATE vehicles SET ktype=123 WHERE id=:id"), {"id": vehicle["id"]}
+        )
+        for pt in range(1, 4):
+            db.add(
+                VehicleChecklistItem(
+                    account_id=who.actor_id,
+                    vehicle_id=vehicle["id"],
+                    source="plan.parts",
+                    ktype=123,
+                    pt_id=pt,
+                    name_en="Starter",
+                    article_count=999,
+                )
+            )
+        for pt, snapshot in [
+            (1, [{"art_id": 901, "article_nr": "A", "brand": "B"}]),
+            (2, []),
+            (3, None),
+        ]:
+            db.add(
+                PlanPartsArticleReceipt(
+                    account_id=who.actor_id,
+                    vehicle_id=vehicle["id"],
+                    ktype=123,
+                    pt_id=pt,
+                    status="received",
+                    article_count=999,
+                    article_snapshot=snapshot,
+                    received_at=now(),
+                )
+            )
+        db.add(
+            Part(
+                account_id=who.actor_id,
+                vehicle_id=vehicle["id"],
+                name="Стартер",
+                compatibility_notes="plan.parts:ktype=123;pt_id=1",
+                quantity=1,
+                article_number="A",
+                article_brand="B",
+                oem_number="OEM",
+            )
+        )
+        db.add(
+            Part(
+                account_id=who.actor_id,
+                vehicle_id=vehicle["id"],
+                name="Попередня картка",
+                article_number="LEGACY",
+                oem_number="OEM-LEGACY",
+            )
+        )
+        from datetime import timedelta
+
+        for state, offset in [("invalid", 2), ("validated", 0)]:
+            db.add(
+                PlanPartsResponse(
+                    account_id=who.actor_id,
+                    actor_id=who.actor_id,
+                    vehicle_id=vehicle["id"],
+                    resource="articles",
+                    parameters={"ktype": 123, "pt_id": 1},
+                    context_hash="c" * 64,
+                    request_key=str(uuid4()),
+                    status=state,
+                    created_at=now() - timedelta(seconds=offset),
+                    metadata_json={},
+                )
+            )
+        db.commit()
+        before = all_tables(db)
+    response = logged.get("/api/v1/plan-parts/workspace?vehicle_id=" + vehicle["id"])
+    assert response.status_code == 200, response.text
+    summary = response.json()["summary"]
+    assert {
+        k: summary[k]
+        for k in (
+            "types",
+            "saved_variants",
+            "article_assigned",
+            "oem_assigned",
+            "needs_recovery",
+        )
+    } == dict(
+        types=3, saved_variants=1, article_assigned=2, oem_assigned=2, needs_recovery=1
+    )
+    with Session(engine()) as db:
+        assert before == all_tables(db)
+
+
+def test_optional_article_characteristics_preserve_source_values():
+    row = Article.model_validate(
+        {
+            "art_id": 1,
+            "article_nr": "SYN-ONLY",
+            "brand": "Fixture Brand",
+            "attributes": [
+                {"name": "Power", "value": "1.4 kW"},
+                {"name": "complex", "value": {"unsupported": True}},
+            ],
+            "description": "Synthetic source description",
+        }
+    )
+    assert row.characteristics == {
+        "Power": "1.4 kW",
+        "description": "Synthetic source description",
+    }
+    assert (
+        Article.model_validate(row.model_dump()).characteristics == row.characteristics
+    )
+    assert not hasattr(row, "oem_number")

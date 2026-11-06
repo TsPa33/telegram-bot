@@ -36,6 +36,17 @@ try {
       storageState: state,
       viewport: { width, height: 1000 },
     });
+    if (width === 390)
+      await c.route("**/api/v1/plan-parts/workspace?*", async (route) => {
+        const response = await route.fetch();
+        const body = await response.json();
+        body.policy = {
+          ...body.policy,
+          max_tokens: {},
+          terms_confirmed: false,
+        };
+        await route.fulfill({ response, json: body });
+      });
     const p = await c.newPage(),
       errors = [],
       paid = [],
@@ -55,6 +66,15 @@ try {
       exact: true,
     });
     await expect(workspace).toBeVisible();
+    await expect(
+      workspace.getByLabel("Показники збережених даних"),
+    ).toContainText("Збережені типи запчастин");
+    await expect(
+      workspace.getByLabel("Показники збережених даних"),
+    ).toContainText("Позиції з призначеними артикулами");
+    await expect(
+      workspace.getByLabel("Показники збережених даних"),
+    ).toContainText("Типи, які потребують відновлення");
     await expect(workspace.locator(".vp-row:not(.vp-table-head)")).toHaveCount(
       60,
     );
@@ -83,19 +103,23 @@ try {
       .getByRole("button", { name: "Зняти вибір", exact: true })
       .click();
     const first = workspace.locator(".vp-row:not(.vp-table-head)").first();
-    await first.getByRole("button", { name: "Номери", exact: true }).click();
+    await first
+      .getByRole("button", { name: "Артикули та OEM", exact: true })
+      .click();
     const manager = workspace.getByRole("region", {
       name: "Артикули та OEM",
       exact: true,
     });
     await expect(manager.locator(".vp-offer")).toHaveCount(3);
     await expect(manager).toContainText("Synthetic Brand");
+    await expect(manager).toContainText("OEM");
+    if (width === 390)
+      await expect(
+        manager.getByRole("button", { name: /Отримати нові артикули/ }),
+      ).toBeDisabled();
     await expect(
-      manager.getByRole("button", {
-        name: "Призначити OEM із API",
-        exact: true,
-      }),
-    ).toBeDisabled();
+      manager.getByRole("button", { name: /Отримати нові артикули/ }),
+    ).toHaveCount(1);
     await p.evaluate(() => scrollTo({ left: 0, top: 0, behavior: "instant" }));
     await p.waitForTimeout(250);
     if (

@@ -910,7 +910,7 @@ def add_selected_donor_parts_batch(
 @router.get('/workspace')
 def saved_workspace(who: Annotated[Identity,Depends(identity)],db:Annotated[Session,Depends(get_db)],vehicle_id:str=Query(min_length=1,max_length=80)):
     """One donor read model; no external calls, cache writes, normalization or stock mutation."""
-    from sqlalchemy import func
+    from sqlalchemy import func, case
     from sqlalchemy.orm import defer
     from app.models import PlanPartsResponse
     from app.services.plan_parts_persistence import policy
@@ -929,6 +929,16 @@ def saved_workspace(who: Annotated[Identity,Depends(identity)],db:Annotated[Sess
                 PlanPartsArticleReceipt.pt_id,
                 PlanPartsArticleReceipt.status,
                 PlanPartsArticleReceipt.article_count,
+                case(
+                    (
+                        func.json_typeof(PlanPartsArticleReceipt.article_snapshot)
+                        == "array",
+                        func.json_array_length(
+                            PlanPartsArticleReceipt.article_snapshot
+                        ),
+                    ),
+                    else_=0,
+                ).label("saved_count"),
                 PlanPartsArticleReceipt.received_at,
                 PlanPartsArticleReceipt.response_metadata,
                 (
@@ -976,6 +986,37 @@ def saved_workspace(who: Annotated[Identity,Depends(identity)],db:Annotated[Sess
             .limit(30)
         ).mappings()
     )
+    recovery_types = {
+        r["pt_id"]
+        for r in receipts
+        if not r["stored"]
+        and (r["received_at"] or r["status"] in ("unavailable", "uncertain"))
+    }
+    latest_responses = (
+        select(PlanPartsResponse.parameters, PlanPartsResponse.status)
+        .where(
+            PlanPartsResponse.account_id == who.workspace_account_id,
+            PlanPartsResponse.resource == "articles",
+            PlanPartsResponse.parameters["ktype"].as_integer() == donor.ktype,
+        )
+        .distinct(PlanPartsResponse.context_hash)
+        .order_by(
+            PlanPartsResponse.context_hash,
+            PlanPartsResponse.created_at.desc(),
+            PlanPartsResponse.id.desc(),
+        )
+        .subquery()
+    )
+    recovery_types.update(
+        db.scalars(
+            select(latest_responses.c.parameters["pt_id"].as_integer()).where(
+                latest_responses.c.status.in_(
+                    ["pending", "uncertain", "invalid", "received"]
+                ),
+                latest_responses.c.parameters["pt_id"].as_integer().is_not(None),
+            )
+        )
+    )
     return dict(
         vehicle_id=donor.id,
         ktype=donor.ktype,
@@ -1009,14 +1050,16 @@ def saved_workspace(who: Annotated[Identity,Depends(identity)],db:Annotated[Sess
         policy=policy(),
         summary=dict(
             types=len(categories),
-            saved_variants=sum(r["article_count"] for r in receipts if r["stored"]),
+            saved_variants=sum(r["saved_count"] for r in receipts if r["stored"]),
+            article_assigned=sum(bool((p.article_number or "").strip()) for p in parts),
+            needs_recovery=len(recovery_types),
             saved_types=sum(bool(r["stored"]) for r in receipts),
             legacy_unavailable=sum(
                 bool(r["received_at"]) and not r["stored"] for r in receipts
             ),
             uncertain=sum(r["status"] == "uncertain" for r in receipts),
             stock_positions=len(pparts),
-            oem_assigned=sum(bool(p.oem_number) for p in pparts),
+            oem_assigned=sum(bool((p.oem_number or "").strip()) for p in parts),
         ),
     )
 

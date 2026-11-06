@@ -3,7 +3,6 @@ import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, type Row } from "./api";
 import { TeamIdentity } from "./permissions";
-import { ukrainianPartName } from "./planPartsUkrainian";
 import PartCharacteristicsEditor from "./PartCharacteristicsEditor";
 import {
   Boxes,
@@ -29,6 +28,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import {
+  workspacePartName,
   workspaceSections,
   sectionOf,
   filterWorkspace,
@@ -94,6 +94,8 @@ export default function PlanPartsDonorAnalysis({
   const [targetPartId, setTargetPartId] = useState("");
   const [loading, setLoading] = useState(true),
     [offerLimit, setOfferLimit] = useState(100);
+  const [offerLoading, setOfferLoading] = useState<number | null>(null);
+  const offerTicket = useRef(0);
   const managerRef = useRef<HTMLElement | null>(null);
   useEffect(() => {
     setOfferLimit(100);
@@ -114,6 +116,8 @@ export default function PlanPartsDonorAnalysis({
     const g = ++epoch.current;
     setWorkspace(null);
     setOffers({});
+    offerTicket.current++;
+    setOfferLoading(null);
     setNameDraft({});
     setTargetPartId("");
     setManualOem(false);
@@ -159,8 +163,7 @@ export default function PlanPartsDonorAnalysis({
         ),
       [workspace],
     );
-  const localized = (r: Row) =>
-    nameDraft[r.pt_id] || r.name_uk || ukrainianPartName(r.name).uk;
+  const localized = (r: Row) => workspacePartName(r, nameDraft[r.pt_id]);
   const filtered = filterWorkspace(
       categories,
       { section, q, stock: stockFilter, data: dataFilter, oem: oemFilter },
@@ -228,73 +231,73 @@ export default function PlanPartsDonorAnalysis({
     return r;
   }
   function open(r: Row) {
+    setQuote(null);
     setActive(r.pt_id);
     setTargetPartId("");
     setOfferSelection(null);
     setConfirmAssign(false);
     setManualOem(false);
-    if (!offers[r.pt_id])
-      void run(async (g) => {
-        try {
-          await recover(r.pt_id, g);
-        } catch (e) {
-          if (g === epoch.current) {
-            if (
-              receipts.has(r.pt_id) ||
-              (e as { status?: number }).status !== 409
-            )
-              setError((e as Error).message);
-            setNotice(
-              receipts.get(r.pt_id)?.received_at
-                ? "Отримано раніше — дані потребують відновлення. Повторна оплата не запускалась."
-                : "Збережених варіантів поки немає. Новий запит потребує окремого підтвердження.",
-            );
-          }
-        }
+    setNotice("");
+    setError("");
+    const ticket = ++offerTicket.current,
+      g = epoch.current;
+    if (Object.prototype.hasOwnProperty.call(offers, r.pt_id)) {
+      setOfferLoading(null);
+      return;
+    }
+    setOfferLoading(r.pt_id);
+    void recover(r.pt_id, g)
+      .catch((e) => {
+        if (g !== epoch.current || ticket !== offerTicket.current) return;
+        if (receipts.has(r.pt_id) || (e as { status?: number }).status !== 409)
+          setError((e as Error).message);
+        if (receipts.has(r.pt_id))
+          setNotice(
+            "Попередні дані потребують перевірки. Нової оплати не було.",
+          );
+      })
+      .finally(() => {
+        if (g === epoch.current && ticket === offerTicket.current)
+          setOfferLoading(null);
       });
   }
-  async function prepareArticles() {
+  function prepareArticles() {
+    if (!current) return;
+    setConfirmAssign(false);
+    setQuote({
+      resource: "articles",
+      ids: [current.pt_id],
+      cost: policy.max_tokens?.articles,
+      force: Boolean(
+        receipts.has(current.pt_id) ||
+          Object.prototype.hasOwnProperty.call(offers, current.pt_id),
+      ),
+    });
+  }
+  async function saveName() {
+    if (!current) return;
+    const row = { ...current },
+      name = localized(row).trim();
+    if (
+      !/[А-Яа-яІіЇїЄєҐґ]/.test(name) ||
+      name === "Потрібно уточнити українську назву"
+    ) {
+      setError("Вкажіть українську назву деталі");
+      return;
+    }
     await run(async (g) => {
-      const ids = selected.length ? selected : active ? [active] : [];
-      if (!ids.length) throw Error("Спочатку виберіть типи деталей");
-      if (ids.length > 20)
-        throw Error("Оберіть до 20 типів на один підтверджений запуск");
-      const pending: number[] = [];
-      let recovered = 0;
-      for (const pt of ids) {
-        if (g !== epoch.current || stop.current) break;
-        const history = receipts.get(pt);
-        if (
-          history?.stored ||
-          history?.received_at ||
-          history?.status === "uncertain"
-        ) {
-          try {
-            await recover(pt, g);
-            recovered++;
-          } catch {
-            if (g === epoch.current)
-              setNotice(
-                "Є раніше отримані або невизначені дані. Для них новий запит не запускається.",
-              );
-          }
-          continue;
-        }
-        pending.push(pt);
-      }
-      if (g !== epoch.current) return;
-      if (pending.length)
-        setQuote({
-          resource: "articles",
-          ids: pending,
-          cost: policy.max_tokens?.articles,
-          recovered,
-        });
-      else
+      await api(
+        "/vehicles/" +
+          query(vehicle.id) +
+          "/plan-parts-checklist/" +
+          row.checklist_id,
+        "PATCH",
+        { name_uk: name },
+      );
+      await load(g);
+      if (g === epoch.current)
         setNotice(
-          "Відновлено з PostgreSQL: " +
-            recovered +
-            " типів. Зовнішніх запитів не було.",
+          "Українську назву збережено. Оригінал залишається доступним для пошуку.",
         );
     });
   }
@@ -362,8 +365,10 @@ export default function PlanPartsDonorAnalysis({
     });
   }
   async function add() {
-    const pending = newSelected.filter((r) =>
-      /[А-Яа-яІіЇїЄєҐґ]/.test(localized(r)),
+    const pending = newSelected.filter(
+      (r) =>
+        /[А-Яа-яІіЇїЄєҐґ]/.test(localized(r)) &&
+        localized(r) !== "Потрібно уточнити українську назву",
     );
     if (pending.length !== newSelected.length) {
       setError("Уточніть українські назви перед додаванням");
@@ -445,6 +450,44 @@ export default function PlanPartsDonorAnalysis({
         categories.filter((c) => sectionOf(c) === s).length,
       ]),
     );
+  const paidConfirmation = quote && (
+    <div
+      role="alertdialog"
+      aria-label="Підтвердження API-запиту"
+      className="vp-confirm"
+    >
+      <strong>Новий зовнішній запит</strong>
+      <p>
+        Операцій: {quote.resource === "articles" ? quote.ids.length : 1}.
+        Максимальна вартість:{" "}
+        {priceQuote(
+          quote.cost,
+          quote.resource === "articles" ? quote.ids.length : 1,
+        ).known
+          ? priceQuote(
+              quote.cost,
+              quote.resource === "articles" ? quote.ids.length : 1,
+            ).max + " токенів"
+          : "не підтверджена"}
+        .
+      </p>
+      {(!policy.terms_confirmed || quote.cost == null) && (
+        <p>
+          Новий платний запит заблоковано, доки не підтверджені права збереження
+          та тариф. Наявні дані доступні для відновлення.
+        </p>
+      )}
+      <button
+        disabled={busy || !policy.terms_confirmed || quote.cost == null}
+        onClick={() => void pay()}
+      >
+        Підтвердити максимальну вартість
+      </button>
+      <button className="secondary" onClick={() => setQuote(null)}>
+        Скасувати
+      </button>
+    </div>
+  );
   return (
     <section className="vp-workspace" aria-label="Розбір і запчастини">
       <div className="vp-topline">
@@ -479,22 +522,27 @@ export default function PlanPartsDonorAnalysis({
           {notice}
         </p>
       )}
-      <div className="vp-kpis">
+      <div className="vp-kpis" aria-label="Показники збережених даних">
         <span>
           <Boxes size={15} />
-          <b>{counts.types || 0}</b> збережених типів
+          <b>{counts.types ?? "—"}</b> Збережені типи запчастин
         </span>
         <span>
           <Layers size={15} />
-          <b>{counts.saved_variants || 0}</b> збережених варіантів
+          <b>{counts.saved_variants ?? "—"}</b> Збережені варіанти артикулів
         </span>
         <span>
           <Tag size={15} />
-          {counts.oem_assigned || 0} OEM у картках
+          <b>{counts.oem_assigned ?? "—"}</b> Позиції з OEM
         </span>
         <span>
           <Database size={15} />
-          {counts.saved_types || 0} типів зі збереженими артикулами
+          <b>{counts.article_assigned ?? "—"}</b> Позиції з призначеними
+          артикулами
+        </span>
+        <span>
+          <RotateCcw size={15} />
+          <b>{counts.needs_recovery ?? "—"}</b> Типи, які потребують відновлення
         </span>
       </div>
       <p className="vp-storage">
@@ -573,44 +621,7 @@ export default function PlanPartsDonorAnalysis({
           </p>
         </div>
       )}
-      {quote && (
-        <div
-          role="alertdialog"
-          aria-label="Підтвердження API-запиту"
-          className="vp-confirm"
-        >
-          <strong>Новий зовнішній запит</strong>
-          <p>
-            Операцій: {quote.resource === "articles" ? quote.ids.length : 1}.
-            Максимальна вартість:{" "}
-            {priceQuote(
-              quote.cost,
-              quote.resource === "articles" ? quote.ids.length : 1,
-            ).known
-              ? priceQuote(
-                  quote.cost,
-                  quote.resource === "articles" ? quote.ids.length : 1,
-                ).max + " токенів"
-              : "не підтверджена"}
-            .
-          </p>
-          {(!policy.terms_confirmed || quote.cost == null) && (
-            <p>
-              Новий платний запит заблоковано, доки не підтверджені права
-              збереження та тариф. Наявні дані доступні для відновлення.
-            </p>
-          )}
-          <button
-            disabled={busy || !policy.terms_confirmed || quote.cost == null}
-            onClick={() => void pay()}
-          >
-            Підтвердити максимальну вартість
-          </button>
-          <button className="secondary" onClick={() => setQuote(null)}>
-            Скасувати
-          </button>
-        </div>
-      )}
+      {quote?.resource !== "articles" && paidConfirmation}
       <div className="vp-layout">
         <div className="vp-main">
           <section className="vp-categories" aria-label="Категорії CarPot">
@@ -668,15 +679,6 @@ export default function PlanPartsDonorAnalysis({
                 onClick={() => setConfirmStock(true)}
               >
                 <Package size={15} /> Додати вибрані ({newSelected.length})
-              </button>
-              <button
-                disabled={busy || !selected.length}
-                onClick={() => void prepareArticles()}
-              >
-                <Layers size={15} /> Отримати артикули ({selected.length})
-              </button>
-              <button disabled title={policy.oem_reason}>
-                <Tag size={15} /> Отримати OEM · недоступно
               </button>
             </div>
             <div className="vp-filters">
@@ -790,7 +792,7 @@ export default function PlanPartsDonorAnalysis({
                           : "Немає підтверджених даних"}
                       </small>
                     </span>
-                    <button onClick={() => open(r)}>Номери</button>
+                    <button onClick={() => open(r)}>Артикули та OEM</button>
                   </div>
                 );
               })}
@@ -882,205 +884,265 @@ export default function PlanPartsDonorAnalysis({
           </button>
         </div>
       )}
-      <section
-        ref={managerRef}
-        className="vp-manager"
-        aria-label="Артикули та OEM"
-      >
-        <header>
-          <Layers size={19} />
-          <h3>Менеджер артикулів та OEM</h3>
-          <span>
-            Обрана запчастина:{" "}
-            <b>{activeLabel || "виберіть рядок у таблиці"}</b>
-          </span>
-        </header>
-        {current ? (
-          <div className="vp-manager-body">
-            <div>
-              <h4>Артикули виробників</h4>
-              <p>
-                Донор №{vehicle.number || "—"} · {vehicle.manufacturer}{" "}
-                {vehicle.model} ·{" "}
-                {currentPart
-                  ? "Складська картка " + currentPart.name
-                  : "Позиція ще не на складі"}
-              </p>
-              {currentChoices.length > 1 && (
-                <label>
-                  Уточніть складську позицію
-                  <select
-                    aria-label="Складська позиція для номера"
-                    value={targetPartId}
-                    onChange={(e) => {
-                      setTargetPartId(e.target.value);
-                      setConfirmAssign(false);
-                      setManualOem(false);
-                    }}
-                  >
-                    <option value="">Оберіть картку явно</option>
-                    {currentChoices.map((p, i) => (
-                      <option key={p.id} value={p.id}>
-                        {i + 1}. {p.name} · {p.article_number || "без артикула"}{" "}
-                        · {p.quantity} шт.
-                      </option>
+      {current && (
+        <section
+          ref={managerRef}
+          className="vp-manager"
+          aria-label="Артикули та OEM"
+        >
+          <header>
+            <Layers size={19} />
+            <h3>Менеджер артикулів та OEM</h3>
+            <span>
+              Обрана запчастина:{" "}
+              <b>{activeLabel || "виберіть рядок у таблиці"}</b>
+            </span>
+            <button
+              className="secondary"
+              onClick={() => {
+                setQuote(null);setConfirmAssign(false);
+                setActive(null);
+                offerTicket.current++;
+                setOfferLoading(null);
+              }}
+            >
+              Закрити панель
+            </button>
+          </header>
+          {current ? (
+            <div className="vp-manager-body">
+              <div>
+                <h4>Артикули виробників</h4>
+                <p>
+                  Донор №{vehicle.number || "—"} · {vehicle.manufacturer}{" "}
+                  {vehicle.model} ·{" "}
+                  {currentPart
+                    ? "Складська картка " + currentPart.name
+                    : "Позиція ще не на складі"}
+                </p>
+                {currentChoices.length > 1 && (
+                  <label>
+                    Уточніть складську позицію
+                    <select
+                      aria-label="Складська позиція для номера"
+                      value={targetPartId}
+                      onChange={(e) => {
+                        setTargetPartId(e.target.value);
+                        setConfirmAssign(false);
+                        setManualOem(false);
+                      }}
+                    >
+                      <option value="">Оберіть картку явно</option>
+                      {currentChoices.map((p, i) => (
+                        <option key={p.id} value={p.id}>
+                          {i + 1}. {p.name} ·{" "}
+                          {p.article_number || "без артикула"} · {p.quantity}{" "}
+                          шт.
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+                {offerLoading === current.pt_id && (
+                  <p role="status">
+                    Завантажуємо збережені артикули з PostgreSQL · 0 токенів…
+                  </p>
+                )}
+                {Object.prototype.hasOwnProperty.call(
+                  offers,
+                  current.pt_id,
+                ) && (
+                  <p role="status">
+                    Збережено {currentOffers.length} варіантів артикулів ·
+                    перегляд без токенів.
+                  </p>
+                )}
+                {currentOffers.length ? (
+                  <div className="vp-offer-list">
+                    {currentOffers.slice(0, offerLimit).map((a) => (
+                      <label className="vp-offer" key={a.art_id}>
+                        <input
+                          type="radio"
+                          name="workspace-offer"
+                          checked={offerSelection === a.art_id}
+                          disabled={busy}
+                          onChange={() => {
+                            setOfferSelection(a.art_id);
+                            setConfirmAssign(false);
+                          }}
+                        />
+                        <span>
+                          <b>
+                            {a.article_nr} · {a.brand}
+                          </b>
+                          <small>
+                            {a.part_name || "Назву джерело не вказало"} ·
+                            Plan.Parts · збережено
+                          </small>
+                          {Object.keys(a.characteristics || {}).length > 0 && (
+                            <small>
+                              {Object.entries(a.characteristics).map(
+                                ([name, value]) => (
+                                  <span key={name} style={{ display: "block" }}>
+                                    {name}: {String(value)}
+                                  </span>
+                                ),
+                              )}
+                              Дані джерела не підтверджують сумісність із VIN.
+                            </small>
+                          )}
+                        </span>
+                      </label>
                     ))}
-                  </select>
-                </label>
-              )}
-              {currentOffers.length ? (
-                <div className="vp-offer-list">
-                  {currentOffers.slice(0, offerLimit).map((a) => (
-                    <label className="vp-offer" key={a.art_id}>
-                      <input
-                        type="radio"
-                        name="workspace-offer"
-                        checked={offerSelection === a.art_id}
-                        disabled={busy}
-                        onChange={() => {
-                          setOfferSelection(a.art_id);
-                          setConfirmAssign(false);
-                        }}
-                      />
-                      <span>
-                        <b>
-                          {a.article_nr} · {a.brand}
-                        </b>
-                        <small>
-                          {a.part_name || "Назву джерело не вказало"} ·
-                          Plan.Parts · збережено
-                        </small>
-                      </span>
-                    </label>
-                  ))}
-                  {currentOffers.length > offerLimit && (
-                    <button onClick={() => setOfferLimit((n) => n + 100)}>
-                      Ще 100 варіантів · {offerLimit} із {currentOffers.length}
+                    {currentOffers.length > offerLimit && (
+                      <button onClick={() => setOfferLimit((n) => n + 100)}>
+                        Ще 100 варіантів · {offerLimit} із{" "}
+                        {currentOffers.length}
+                      </button>
+                    )}
+                  </div>
+                ) : offerLoading === current.pt_id ? null : (
+                  <p>
+                    {Object.prototype.hasOwnProperty.call(offers, current.pt_id)
+                      ? "Збережена відповідь порожня: пропозицій не знайдено"
+                      : receipts.get(current.pt_id)?.received_at
+                        ? "Отримано раніше — дані потребують відновлення"
+                        : "Збережених варіантів поки немає"}
+                  </p>
+                )}
+                {offerLoading !== current.pt_id && (
+                  <button
+                    disabled={
+                      busy ||
+                      policy.max_tokens?.articles == null ||
+                      !policy.terms_confirmed
+                    }
+                    onClick={prepareArticles}
+                  >
+                    {Object.prototype.hasOwnProperty.call(
+                      offers,
+                      current.pt_id,
+                    ) || receipts.has(current.pt_id)
+                      ? "Отримати нові артикули"
+                      : "Отримати артикули"}{" "}
+                    ·{" "}
+                    {priceQuote(policy.max_tokens?.articles, 1).known
+                      ? "до " + policy.max_tokens.articles + " токенів"
+                      : "вартість не підтверджена"}
+                  </button>
+                )}
+                {quote?.resource === "articles" && paidConfirmation}
+                {(!policy.terms_confirmed ||
+                  policy.max_tokens?.articles == null) && (
+                  <p>
+                    Нові запити вимкнені: тариф або умови збереження не
+                    підтверджені. Збережені артикули доступні без оплати.
+                  </p>
+                )}
+                {receipts.has(current.pt_id) &&
+                  !Object.prototype.hasOwnProperty.call(
+                    offers,
+                    current.pt_id,
+                  ) &&
+                  offerLoading !== current.pt_id && (
+                    <button disabled={busy} onClick={() => open(current)}>
+                      Повторити відкриття збережених · 0 токенів
                     </button>
                   )}
-                </div>
-              ) : (
+              </div>
+              <div>
+                <h4>OEM автовиробника</h4>
+                <strong>
+                  {currentPart?.oem_number || "Немає підтверджених даних"}
+                </strong>
                 <p>
-                  {receipts.get(current.pt_id)?.received_at
-                    ? "Отримано раніше — дані потребують відновлення"
-                    : "Збережених варіантів поки немає"}
+                  {currentPart?.oem_provenance?.source === "manual"
+                    ? "Підтверджено вручну. Це окреме поле від aftermarket."
+                    : policy.oem_reason ||
+                      "Метод отримання OEM не підтверджено."}
                 </p>
-              )}
-              <button
-                disabled={busy}
-                onClick={() =>
-                  run(async (g) => {
-                    await recover(current.pt_id, g);
-                    if (g === epoch.current)
-                      setNotice(
-                        "Відновлено збережену відповідь. Нового платного запиту немає.",
-                      );
-                  })
-                }
-              >
-                <RotateCcw size={14} /> Відновити збережені · 0 токенів
-              </button>
-            </div>
-            <div>
-              <h4>OEM автовиробника</h4>
-              <strong>
-                {currentPart?.oem_number || "Немає підтверджених даних"}
-              </strong>
-              <p>
-                {currentPart?.oem_provenance?.source === "manual"
-                  ? "Підтверджено вручну. Це окреме поле від aftermarket."
-                  : policy.oem_reason || "Метод отримання OEM не підтверджено."}
-              </p>
-              <button
-                disabled={!currentPart || busy}
-                onClick={() => setManualOem(!manualOem)}
-              >
-                Підтвердити OEM вручну
-              </button>
-              {manualOem && currentPart && (
-                <PartCharacteristicsEditor
-                  part={currentPart}
-                  kind="oem"
-                  onSaved={() => {
-                    setManualOem(false);
-                    void run(refresh);
-                  }}
-                  onClose={() => setManualOem(false)}
-                />
-              )}
-            </div>
-            <div className="vp-manager-actions">
-              <label>
-                Українська назва
-                <input
-                  maxLength={200}
-                  value={localized(current)}
-                  onChange={(e) =>
-                    setNameDraft((old) => ({
-                      ...old,
-                      [current.pt_id]: e.target.value,
-                    }))
+                <button
+                  disabled={!currentPart || busy}
+                  onClick={() => setManualOem(!manualOem)}
+                >
+                  Підтвердити OEM вручну
+                </button>
+                {manualOem && currentPart && (
+                  <PartCharacteristicsEditor
+                    part={currentPart}
+                    kind="oem"
+                    onSaved={() => {
+                      setManualOem(false);
+                      void run(refresh);
+                    }}
+                    onClose={() => setManualOem(false)}
+                  />
+                )}
+              </div>
+              <div className="vp-manager-actions">
+                <label>
+                  Українська назва
+                  <input
+                    maxLength={200}
+                    value={localized(current)}
+                    onChange={(e) =>
+                      setNameDraft((old) => ({
+                        ...old,
+                        [current.pt_id]: e.target.value,
+                      }))
+                    }
+                  />
+                </label>
+                <button
+                  disabled={busy || !current?.checklist_id}
+                  onClick={() => void saveName()}
+                >
+                  Зберегти українську назву
+                </button>
+                <button
+                  disabled={
+                    !currentPart ||
+                    !chosen ||
+                    busy ||
+                    offerLoading === current.pt_id
                   }
-                />
-              </label>
-              <button
-                disabled={!currentPart || !chosen || busy}
-                onClick={() => setConfirmAssign(true)}
-              >
-                Призначити артикул
-              </button>
-              <button disabled title={policy.oem_reason}>
-                Призначити OEM із API
-              </button>
-              <button
-                className="secondary"
-                disabled={busy}
-                onClick={() => {
-                  setSelected((old) =>
-                    changeWorkspaceSelection(old, [current.pt_id], true),
-                  );
-                  setQuote({
-                    resource: "articles",
-                    ids: [current.pt_id],
-                    cost: policy.max_tokens?.articles,
-                    force: true,
-                  });
-                }}
-              >
-                Нові дані · з підтвердженням
-              </button>
-              {confirmAssign && chosen && (
-                <div role="alertdialog" aria-label="Підтвердження артикула">
-                  <p>
-                    Записати {chosen.article_nr} · {chosen.brand} у «
-                    {currentPart?.name}», донор №{vehicle.number || "—"}? OEM і
-                    залишок не змінюються.
-                  </p>
-                  <button disabled={busy} onClick={() => void assign()}>
-                    Підтвердити запис номера
-                  </button>
-                  <button
-                    className="secondary"
-                    onClick={() => setConfirmAssign(false)}
-                  >
-                    Скасувати
-                  </button>
-                </div>
-              )}
+                  onClick={() => setConfirmAssign(true)}
+                >
+                  Призначити артикул
+                </button>
+                {confirmAssign && chosen && (
+                  <div role="alertdialog" aria-label="Підтвердження артикула">
+                    <p>
+                      Записати {chosen.article_nr} · {chosen.brand} у «
+                      {currentPart?.name}», донор №{vehicle.number || "—"}? OEM
+                      і залишок не змінюються.
+                    </p>
+                    <button disabled={busy} onClick={() => void assign()}>
+                      Підтвердити запис номера
+                    </button>
+                    <button
+                      className="secondary"
+                      onClick={() => setConfirmAssign(false)}
+                    >
+                      Скасувати
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        ) : (
-          <p className="vp-empty">
-            Натисніть «Номери» у потрібному рядку. Варіанти, OEM та призначення
-            залишаються в одному workspace.
-          </p>
-        )}
-        <footer>
-          <Database size={15} /> Дані — у PostgreSQL{" "}
-          <span>Збережені дані → перегляд без оплати</span>
-          <span>OEM-крос не підтверджує комплектацію VIN</span>
-        </footer>
-      </section>
+          ) : (
+            <p className="vp-empty">
+              Натисніть «Артикули та OEM» у потрібному рядку. Варіанти, OEM та
+              призначення залишаються в одному workspace.
+            </p>
+          )}
+          <footer>
+            <Database size={15} /> Дані — у PostgreSQL{" "}
+            <span>Збережені дані → перегляд без оплати</span>
+            <span>OEM-крос не підтверджує комплектацію VIN</span>
+          </footer>
+        </section>
+      )}
     </section>
   );
 }

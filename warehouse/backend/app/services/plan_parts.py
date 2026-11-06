@@ -59,6 +59,42 @@ class Article(BaseModel):
             return ""
         return value
     img_url: str | None = None
+    characteristics: dict[str,str] = Field(default_factory=dict)
+
+    @model_validator(mode="before")
+    @classmethod
+    def retain_optional_characteristics(cls,values):
+        if not isinstance(values, dict):
+            return values
+        result = {}
+        for key in (
+            "characteristics",
+            "attributes",
+            "technical_details",
+            "description",
+        ):
+            raw = values.get(key)
+            if isinstance(raw, str):
+                pairs = [(key, raw)]
+            elif isinstance(raw, dict):
+                pairs = list(raw.items())[:40]
+            elif isinstance(raw, list):
+                pairs = [
+                    (r.get("name"), r.get("value"))
+                    for r in raw[:40]
+                    if isinstance(r, dict)
+                ]
+            else:
+                continue
+            for name, value in pairs:
+                if (
+                    isinstance(name, str)
+                    and isinstance(value, (str, int, float, bool))
+                    and value is not None
+                    and len(result) < 40
+                ):
+                    result[name[:120]] = str(value)[:2000]
+        return {**values, "characteristics": result}
 
 
 class VehicleMatch(BaseModel):
@@ -75,6 +111,7 @@ class VehicleMatch(BaseModel):
     @classmethod
     def normalize_year(cls, value):
         return production_year(value)
+
 
 def provider_results(payload, selectors):
     """Validate envelope/selector integrity; capture page completeness separately."""

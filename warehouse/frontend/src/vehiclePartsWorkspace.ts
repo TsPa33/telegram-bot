@@ -1,3 +1,4 @@
+import { ukrainianPartName } from "./planPartsUkrainian";
 import type { Row } from "./api";
 export const workspaceSections = [
   "Двигун та його системи",
@@ -35,6 +36,7 @@ export function filterWorkspace(
       (!query ||
         [
           r.name,
+          workspacePartName(r),
           r.name_uk,
           p?.name,
           p?.article_number,
@@ -76,3 +78,14 @@ export const priceQuote = (cost: unknown, count: number) =>
   count > 0
     ? { known: true, max: cost * count }
     : { known: false, max: null };
+
+export function workspacePartName(row: Row, draft?: string) {
+  const uk = (s: unknown) =>
+    typeof s === "string" && /[А-Яа-яІіЇїЄєҐґ]/.test(s);
+  if (draft !== undefined) return draft;
+  if (uk(row.name_uk)) return row.name_uk;
+  const term = ukrainianPartName(row.name);
+  return term.translated || uk(term.original)
+    ? term.uk
+    : "Потрібно уточнити українську назву";
+}

@@ -31,8 +31,11 @@ try {
   await p.goto("/vehicles?donor=" + f.vehicle.id);
   const workspace = p.locator(".vp-workspace"),
     first = workspace.locator(".vp-row:not(.vp-table-head)").first();
-  await first.getByRole("button", { name: "Номери", exact: true }).click();
+  await first
+    .getByRole("button", { name: "Артикули та OEM", exact: true })
+    .click();
   const manager = workspace.locator(".vp-manager");
+  await expect(manager).toContainText("Specification: synthetic-only");
   await manager.locator(".vp-offer input").first().check();
   await manager
     .getByRole("button", { name: "Призначити артикул", exact: true })
@@ -98,8 +101,11 @@ try {
   assert.equal(same.quantity, 1);
   // Explicit quoted mock request (the local API uses MockTransport, zero real tokens).
   await second.locator("input[type=checkbox]").check();
-  await workspace
-    .getByRole("button", { name: "Отримати артикули (1)", exact: true })
+  await second
+    .getByRole("button", { name: "Артикули та OEM", exact: true })
+    .click();
+  await manager
+    .getByRole("button", { name: /^Отримати артикули · до 2 токенів$/ })
     .click();
   const quote = workspace.getByRole("alertdialog", {
     name: "Підтвердження API-запиту",
@@ -115,15 +121,33 @@ try {
   await expect(workspace.locator(".vp-notice")).toContainText(
     "Отримані дані збережено",
   );
-  await second.getByRole("button", { name: "Номери", exact: true }).click();
+  await second
+    .getByRole("button", { name: "Артикули та OEM", exact: true })
+    .click();
   await expect(manager.locator(".vp-offer")).toHaveCount(3);
   await p.reload();
   await workspace
     .locator(".vp-row:not(.vp-table-head)")
     .nth(1)
-    .getByRole("button", { name: "Номери", exact: true })
+    .getByRole("button", { name: "Артикули та OEM", exact: true })
     .click();
   await expect(manager.locator(".vp-offer")).toHaveCount(3);
+  await workspace
+    .locator(".vp-row:not(.vp-table-head)")
+    .first()
+    .getByRole("button", { name: "Артикули та OEM", exact: true })
+    .click();
+  await manager
+    .getByLabel("Українська назва", { exact: true })
+    .fill("Стартер перевірений");
+  await manager
+    .getByRole("button", { name: "Зберегти українську назву", exact: true })
+    .click();
+  await expect(first).toContainText("Стартер перевірений");
+  await p.reload();
+  await expect(
+    workspace.locator(".vp-row:not(.vp-table-head)").first(),
+  ).toContainText("Стартер перевірений");
   await p.goto("/search");
   await expect(p.locator("body")).toContainText("Пошук запчастин");
   const search = p.getByRole("combobox", {

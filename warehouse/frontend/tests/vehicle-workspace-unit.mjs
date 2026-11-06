@@ -2,11 +2,28 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import ts from "typescript";
-const source = fs.readFileSync(
+let source = fs.readFileSync(
   new URL("../src/vehiclePartsWorkspace.ts", import.meta.url),
   "utf8",
 );
+const glossary = fs.readFileSync(
+  new URL("../src/planPartsUkrainian.ts", import.meta.url),
+  "utf8",
+);
+const compiled = ts.transpileModule(glossary, {
+  compilerOptions: {
+    target: ts.ScriptTarget.ES2022,
+    module: ts.ModuleKind.ESNext,
+  },
+}).outputText;
+source = source.replace(
+  '"./planPartsUkrainian"',
+  JSON.stringify(
+    "data:text/javascript;base64," + Buffer.from(compiled).toString("base64"),
+  ),
+);
 const {
+  workspacePartName,
   workspaceSections,
   sectionOf,
   filterWorkspace,
@@ -79,3 +96,27 @@ test("cost must be confirmed integer; no invented default", () => {
   for (const v of [undefined, null, "2", -1, 1.2, Infinity])
     assert.equal(priceQuote(v, 1).known, false);
 });
+
+test("English saved name must not shadow reviewed Ukrainian glossary", () => {
+  assert.equal(
+    workspacePartName({ name: "Starter", name_uk: "Starter" }),
+    "Стартер",
+  );
+  assert.equal(
+    workspacePartName({ name: "Alternator", name_uk: "Власний генератор" }),
+    "Власний генератор",
+  );
+});
+test("original source and Ukrainian display remain searchable", () => {
+  const rows = [{ pt_id: 1, name: "Starter", name_uk: "Starter" }];
+  for (const q of ["starter", "стартер"])
+    assert.equal(
+      filterWorkspace(rows, { q }, new Map(), new Map(), {}).length,
+      1,
+    );
+});
+test("unknown names are labelled for review, never guessed translations", () =>
+  assert.equal(
+    workspacePartName({ name: "Unreviewed component" }),
+    "Потрібно уточнити українську назву",
+  ));

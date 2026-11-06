@@ -48,6 +48,7 @@ def transport(request):
                 brand="Synthetic Brand",
                 part_name="Synthetic fixture only",
                 extra={"technical": "preserved"},
+                attributes={"Specification":"synthetic-only"},
             )
             for j in range(1, 4)
         ]

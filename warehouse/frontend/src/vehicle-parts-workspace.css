@@ -857,3 +857,6 @@
 .vp-workspace .vp-category-grid button {
   max-width: 100%;
 }
+/* Keep the existing table/grid; only the clarified action label wraps in its cell. */
+.vp-workspace .vp-row>button:last-child{white-space:normal;line-height:1.2;min-width:0}
+.vp-workspace .vp-manager>header>button{margin-left:auto}
