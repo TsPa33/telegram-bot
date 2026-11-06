@@ -41,7 +41,7 @@ def test_empty_and_identical_names(payload):
 
 
 @pytest.mark.parametrize("payload", [
-    {"data": []}, {"success": True, "data": {"results": []}},
+    {"data": []},
     {"success": True, "data": []}, {"success": False, "data": {"results": []}},
     [{"brand": "A"}], [{"brand": "", "mfa_id": 1}],
     [{"brand": "A", "mfa_id": True}], [{"brand": "A", "mfa_id": "121"}],
@@ -97,20 +97,13 @@ def test_disabled_or_missing_key_never_calls_provider(monkeypatch, variable, val
 def test_attempt_budget_is_account_scoped_and_expires():
     clock = [100.0]
     gate = RequestGate(clock=lambda: clock[0])
-    calls = []
-    def handler(request):
-        calls.append(request)
-        return httpx.Response(200, json=[])
-    run(handler, "a", gate)
-    with pytest.raises(PlanPartsError):
-        run(handler, "a", gate)
+    gate.acquire("a","brands")
+    with pytest.raises(PlanPartsError):gate.acquire("a","brands")
     clock[0] += 2
-    run(handler, "b", gate)
-    with pytest.raises(PlanPartsError):
-        run(handler, "a", gate)
+    gate.acquire("b","brands")
+    with pytest.raises(PlanPartsError):gate.acquire("a","brands")
     clock[0] += 60
-    run(handler, "a", gate)
-    assert len(calls) == 3
+    gate.acquire("a","brands")
 
 
 def test_failed_requests_consume_budget():

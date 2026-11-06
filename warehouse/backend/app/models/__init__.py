@@ -182,6 +182,8 @@ class Part(Owned, Base):
     oem_number: Mapped[str] = mapped_column(String(150), default="")
     article_number: Mapped[str] = mapped_column(String(150), default="")
     article_brand: Mapped[str] = mapped_column(String(200), default="", server_default="")
+    article_provenance: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    oem_provenance: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     condition: Mapped[str] = mapped_column(String(30), default="used")
     quantity: Mapped[int] = mapped_column(Integer, default=0)
     reserved_quantity: Mapped[int] = mapped_column(Integer, default=0)
@@ -371,3 +373,5 @@ from app.models.import_runner import ImportJob,ImportJobEvent,ImportJobArtifact 
 from app.models.vehicle_directory import VehicleDirectoryVariant, VehicleDirectoryImport  # noqa: E402,F401
 
 from app.models.plan_parts_receipt import PlanPartsArticleReceipt  # noqa: E402,F401
+
+from app.models.plan_parts_response import PlanPartsResponse  # noqa: E402,F401

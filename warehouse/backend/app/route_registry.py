@@ -173,3 +173,8 @@ KNOWN_ROUTES = KNOWN_ROUTES.union({('POST','/api/v1/admin/import-jobs'),('GET','
 KNOWN_ROUTES=KNOWN_ROUTES.union({('GET','/api/v1/admin/import-jobs/{id}/result'),('POST','/api/v1/admin/import-jobs/{id}/result/import')})
 
 KNOWN_ROUTES=KNOWN_ROUTES.union({('GET','/api/v1/admin/import-jobs/partline')})
+
+KNOWN_ROUTES=KNOWN_ROUTES.union({('GET','/api/v1/plan-parts/workspace')})
+KNOWN_ROUTES=KNOWN_ROUTES.union({('GET','/api/v1/plan-parts/responses/{id}')})
+
+KNOWN_ROUTES=KNOWN_ROUTES.union({('GET','/api/v1/plan-parts/articles/history'),('POST','/api/v1/plan-parts/donor-parts/article/select')})

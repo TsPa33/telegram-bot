@@ -1,0 +1,37 @@
+{
+  "backend_targeted": {
+    "unique_passed": 71,
+    "failed": 0,
+    "primary_suite": 70,
+    "supplemental_passed": 3,
+    "supplemental_overlap": 2
+  },
+  "backend_offline": {
+    "passed": 38,
+    "failed": 0
+  },
+  "frontend_unit": {
+    "passed": 537,
+    "failed": 0
+  },
+  "frontend_build": "PASS",
+  "browser_viewports": [
+    1440,
+    1280,
+    768,
+    390,
+    375
+  ],
+  "browser_write": "PASS synthetic only",
+  "migration": {
+    "parent": "ac97f052e1b4",
+    "head": "bd18a9f37c20",
+    "populated_upgrade": "PASS",
+    "repeat_upgrade": "PASS"
+  },
+  "real_tokens_spent": 0,
+  "live_oem_api": "DISABLED / UNVERIFIED",
+  "railway_isolation": "UNVERIFIED",
+  "push": false,
+  "deployment": false
+}

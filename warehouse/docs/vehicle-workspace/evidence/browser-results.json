@@ -1,0 +1,67 @@
+[
+  {
+    "width": 1440,
+    "real_app": true,
+    "local_db": true,
+    "mock_provider": true,
+    "categories": true,
+    "selection_preserved": true,
+    "all96": true,
+    "saved_recovery": true,
+    "no_paid_lookup": true,
+    "no_js_errors": true,
+    "no_overflow": true
+  },
+  {
+    "width": 1280,
+    "real_app": true,
+    "local_db": true,
+    "mock_provider": true,
+    "categories": true,
+    "selection_preserved": true,
+    "all96": true,
+    "saved_recovery": true,
+    "no_paid_lookup": true,
+    "no_js_errors": true,
+    "no_overflow": true
+  },
+  {
+    "width": 768,
+    "real_app": true,
+    "local_db": true,
+    "mock_provider": true,
+    "categories": true,
+    "selection_preserved": true,
+    "all96": true,
+    "saved_recovery": true,
+    "no_paid_lookup": true,
+    "no_js_errors": true,
+    "no_overflow": true
+  },
+  {
+    "width": 390,
+    "real_app": true,
+    "local_db": true,
+    "mock_provider": true,
+    "categories": true,
+    "selection_preserved": true,
+    "all96": true,
+    "saved_recovery": true,
+    "no_paid_lookup": true,
+    "no_js_errors": true,
+    "no_overflow": true
+  },
+  {
+    "width": 375,
+    "real_app": true,
+    "local_db": true,
+    "mock_provider": true,
+    "categories": true,
+    "selection_preserved": true,
+    "all96": true,
+    "saved_recovery": true,
+    "no_paid_lookup": true,
+    "no_js_errors": true,
+    "no_overflow": true
+  }
+]

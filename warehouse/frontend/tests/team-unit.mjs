@@ -47,3 +47,12 @@ test('platform capability change invalidates protected caches',()=>assert.notEqu
 
 test('virtual inventory head preserves team capabilities',()=>assert(isTeamReady({...valid,database_revisions:['95c3e7b12a04']})));
 test('seller pricing head preserves team capabilities',()=>assert(isTeamReady({...valid,database_revisions:['a6d94c72e310']})));
+
+test('structured recovery error keeps its concrete server message',async()=>{
+ const saved={fetch:globalThis.fetch,document:globalThis.document,window:globalThis.window};
+ try{
+  globalThis.document={cookie:''};globalThis.window={dispatchEvent:()=>{}};
+  globalThis.fetch=async()=>new Response(JSON.stringify({detail:{code:'previous_payment_uncertain',message:'Попередній запит невизначений; повторну оплату заблоковано'}}),{status:409,headers:{'Content-Type':'application/json'}});
+  await assert.rejects(()=>api('/plan-parts/articles/recover','POST'),/Попередній запит невизначений; повторну оплату заблоковано/);
+ }finally{Object.assign(globalThis,saved);}
+});

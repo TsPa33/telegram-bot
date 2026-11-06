@@ -63,12 +63,7 @@ export default function VirtualDismantling({vehicle,onSaved}:{vehicle:Row;onSave
  async function toggle(ids:string[],enabled:boolean){await work(async()=>{let current=plan!;for(let n=0;n<ids.length;n+=1000){await command('availability',{ids:ids.slice(n,n+1000),enabled,etag:current.etag});current=await load();}setSelected([]);});}
  async function openPart(id:string){await work(async()=>{const p=await api('/parts/'+id);setDetail(p);setQuantity(String(p.quantity));setLocation(p.location||'');setCondition(p.condition);});}
  async function updateDetail(fn:()=>Promise<unknown>){await work(async()=>{await fn();setDetail(await api('/parts/'+detail!.id));await load();});}
- if(!plan)return <section aria-label="Віртуальний розбір" className="catalogue-formation" role="status"><span className="catalogue-formation-spinner" aria-hidden="true"/><p>{error||'Завантажуємо перелік запчастин…'}</p></section>;
- return <section className="managed-v3 virtual-dismantling ux1-dismantling" aria-label="Віртуальний розбір">
-
-  {error&&!detail&&<p role="alert" className="error">{error}</p>}
-  <div className="cp-mode-panel">
-   <div className="cp-section-label"><h3>Режим розбору</h3><span>Оберіть джерело запчастин</span></div>
+ const sourceSelector=(<div className="cp-mode-panel">
    <div className="cp-mode-options" role="group" aria-label="Джерело запчастин">
     <button type="button" aria-pressed={source==='base'} className={'cp-mode-option '+(source==='base'?'is-selected':'')} onClick={()=>setSource('base')}>
      <span className="cp-mode-symbol">▣</span><span><strong>Базовий CarPot</strong><small>Основні запчастини · без токенів</small></span><span className="cp-radio" aria-hidden="true"/>
@@ -78,8 +73,13 @@ export default function VirtualDismantling({vehicle,onSaved}:{vehicle:Row;onSave
     </button>}
    </div>
    <small className="cp-source-help">{source==='base'?'Безкоштовний базовий розбір; сумісність деталей потребує перевірки.':'Використовуємо збережені дані каталогу. Артикули отримуються лише за окремим запитом.'}</small>
-  </div>
-  {source==='professional'&&identity?.role==='DIRECTOR'&&<PlanPartsDonorAnalysis key={String(vehicle.id)} vehicle={vehicle} onSaved={onSaved}/>}
+  </div>);
+ if(!plan)return <section aria-label="Віртуальний розбір" className="catalogue-formation" role="status"><span className="catalogue-formation-spinner" aria-hidden="true"/><p>{error||'Завантажуємо перелік запчастин…'}</p></section>;
+ return <section className="managed-v3 virtual-dismantling ux1-dismantling" aria-label="Віртуальний розбір">
+
+  {error&&!detail&&<p role="alert" className="error">{error}</p>}
+  {source==='base'&&sourceSelector}
+  {source==='professional'&&identity?.role==='DIRECTOR'&&<PlanPartsDonorAnalysis key={String(vehicle.id)} vehicle={vehicle} onSaved={onSaved} sourceSelector={sourceSelector}/>}
   {source==='base'&&<>
   {pending&&<div role="status"><p>Результат попереднього запиту потребує перевірки. Повторення не створить дублікатів.</p><button disabled={busy} onClick={()=>work(()=>command(pending.kind,pending.payload,pending))}>Перевірити збережений запит</button></div>}
   {!coverage&&!formation&&<><p>{plan.virtual_mode?'Оновлення списку почнеться з перевірки кількості можливих деталей.':'Спочатку перевіримо кількість кандидатів у каталозі. Позиції з’являться лише після окремого підтвердження.'}</p>

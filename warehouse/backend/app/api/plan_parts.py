@@ -3,9 +3,10 @@ from app.api.secure_route import SecureRoute
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy import select
 from datetime import datetime, timezone
 from uuid import uuid4
@@ -20,13 +21,44 @@ from app.schemas import StockInput
 from app.services.parts_translation import translate_names, TranslationError
 
 from app.api.deps import Identity, identity
-from app.services.plan_parts import Brand, ModelOption, Modification, CatalogPartType, Article, PlanPartsClient, PlanPartsError, modifications_for_year
+from app.services.plan_parts import (
+    Brand,
+    ModelOption,
+    Modification,
+    CatalogPartType,
+    Article,
+    PlanPartsClient,
+    PlanPartsError,
+    modifications_for_year,
+)
 
-router = APIRouter(route_class=SecureRoute,prefix="/api/v1/plan-parts", tags=["Plan.Parts"])
+router = APIRouter(
+    route_class=SecureRoute, prefix="/api/v1/plan-parts", tags=["Plan.Parts"]
+)
 
 
-def plan_parts_client():
-    return PlanPartsClient()
+def plan_parts_client(
+    request: Request,
+    db: Annotated[Session, Depends(get_db)],
+    who: Annotated[Identity, Depends(identity)],
+    request_key: str | None = Query(None, pattern=r"^[a-f0-9-]{36}$"),
+    confirm_paid: bool = False,
+    max_tokens: int | None = Query(None, ge=0, le=10000),
+    force_paid: bool = False,
+):
+    from app.services.plan_parts_persistence import ResponseStore
+
+    return PlanPartsClient(
+        store=ResponseStore(
+            db,
+            who,
+            request.query_params.get("vehicle_id") or request.path_params.get("id"),
+            request_key,
+            confirm_paid,
+            max_tokens,
+            force_paid,
+        )
+    )
 
 
 @router.post("/brands/lookup", response_model=list[Brand])
@@ -192,17 +224,37 @@ def _receipt(db: Session, account_id: str, vehicle_id: str, ktype: int, pt_id: i
     ))
 
 
-def _mark_article_receipt(db: Session, account_id: str, vehicle_id: str, ktype: int,
-                          pt_id: int, rows: list[Article], *, previous=None):
+def _mark_article_receipt(
+    db: Session,
+    account_id: str,
+    vehicle_id: str,
+    ktype: int,
+    pt_id: int,
+    rows: list[Article],
+    *,
+    previous=None,
+    metadata=None,
+):
     now = datetime.now(timezone.utc)
     item = previous or PlanPartsArticleReceipt(
-        id=str(uuid4()), account_id=account_id, vehicle_id=vehicle_id,
-        ktype=ktype, pt_id=pt_id, created_at=now,
+        id=str(uuid4()),
+        account_id=account_id,
+        vehicle_id=vehicle_id,
+        ktype=ktype,
+        pt_id=pt_id,
+        created_at=now,
     )
     item.status = "received"
     item.article_count = len(rows)
-    item.article_snapshot = [row.model_dump(mode='json') for row in rows]
-    item.received_at = item.received_at or now
+    item.article_snapshot = [row.model_dump(mode="json") for row in rows]
+    item.received_at = (
+        datetime.fromisoformat(metadata["received_at"])
+        if metadata and metadata.get("received_at")
+        else item.received_at or now
+    )
+    if metadata:
+        item.response_id = metadata.get("response_id")
+        item.response_metadata = metadata
     item.last_checked_at = now
     item.last_error = ""
     db.add(item)
@@ -275,7 +327,7 @@ def recover_vehicle_articles(
                 "received_at": history.received_at.isoformat() if history.received_at else None
             }) from None
         _handle_provider(exc)
-    _mark_article_receipt(db, who.workspace_account_id, donor.id, ktype, pt_id, rows, previous=history)
+    _mark_article_receipt(db, who.workspace_account_id, donor.id, ktype, pt_id, rows, previous=history, metadata=getattr(client,"last_metadata",{}))
     return {"ktype": ktype, "pt_id": pt_id, "articles": [row.model_dump(mode="json") for row in rows],
             "total": len(rows), "from_cache": True, "from_saved": False, "previously_received": True}
 
@@ -313,7 +365,7 @@ def vehicle_articles(
                     "article_count": history.article_count
                 }) from None
             _handle_provider(exc)
-        _mark_article_receipt(db, who.workspace_account_id, donor.id, ktype, pt_id, rows, previous=history)
+        _mark_article_receipt(db, who.workspace_account_id, donor.id, ktype, pt_id, rows, previous=history, metadata=getattr(client,"last_metadata",{}))
         recovered_without_payment = True
     else:
         if history is None:
@@ -325,7 +377,10 @@ def vehicle_articles(
                 last_checked_at=now, last_error=""
             )
             db.add(history)
-            db.commit()  # Write-ahead evidence before any chargeable request.
+            try:db.commit()  # Write-ahead evidence before any chargeable request.
+            except IntegrityError:
+                db.rollback()
+                raise HTTPException(409,'Запит цього типу вже розпочато; перечитайте збережений стан') from None
         else:
             history.status = "uncertain"
             history.last_checked_at = datetime.now(timezone.utc)
@@ -333,7 +388,8 @@ def vehicle_articles(
         try:
             rows = client.articles(who.workspace_account_id, ktype, pt_id)
         except PlanPartsError as exc:
-            if exc.status == 429:
+            definite=exc.status==429 or exc.status in (403,428,503) and getattr(getattr(client,'store',None),'current',None) is None
+            if definite:
                 if history.received_at:
                     history.status = "received" if history.article_snapshot is not None else "unavailable"
                 else:
@@ -344,10 +400,10 @@ def vehicle_articles(
                 history.last_checked_at = datetime.now(timezone.utc)
                 db.commit()
             _handle_provider(exc)
-        _mark_article_receipt(db, who.workspace_account_id, donor.id, ktype, pt_id, rows, previous=history)
+        _mark_article_receipt(db, who.workspace_account_id, donor.id, ktype, pt_id, rows, previous=history, metadata=getattr(client,"last_metadata",{}))
     return {"ktype": ktype, "pt_id": pt_id, "articles": [row.model_dump(mode="json") for row in rows],
             "total": len(rows), "unique_names": len({row.part_name.casefold() for row in rows if row.part_name}),
-            "from_cache": recovered_without_payment, "from_saved": persisted is not None and not force_paid,
+            "from_cache": recovered_without_payment, "from_saved": persisted is not None and not force_paid,"metadata":getattr(client,"last_metadata",{}) or (history.response_metadata if history else {}) or {},
             "message": "Aftermarket-пропозиції; сумісність фізичної запчастини потрібно перевірити."}
 
 
@@ -437,7 +493,7 @@ def donor_part_stock_status(
         {"id": p.id, "pt_id": int(p.compatibility_notes[len(prefix):])
          if p.compatibility_notes[len(prefix):].isdigit() else None,
          "name": p.name, "quantity": p.quantity, "archived": p.archived,
-         "article_number": p.article_number, "article_brand": p.article_brand}
+         "article_number": p.article_number, "article_brand": p.article_brand,"oem_number":p.oem_number,"article_provenance":p.article_provenance,"oem_provenance":p.oem_provenance}
         for p in existing
     ], "duplicate_names": duplicates}
 
@@ -447,6 +503,8 @@ class ConfirmDonorArticle(BaseModel):
     pt_id: int = Field(strict=True, gt=0)
     art_id: int = Field(strict=True, gt=0)
     part_id: str = Field(min_length=1, max_length=36)
+    expected_article_number: str | None = Field(default=None,max_length=150)
+    expected_article_brand: str | None = Field(default=None,max_length=200)
 
 
 @router.post("/donor-parts/article/select")
@@ -476,24 +534,98 @@ def select_donor_part_article(
     rows = _saved_article_rows(saved)
     if rows is None:
         try:
-            rows = client.recover_articles(who.workspace_account_id, data.ktype, data.pt_id)
+            rows = client.recover_articles(
+                who.workspace_account_id, data.ktype, data.pt_id
+            )
         except PlanPartsError as exc:
             _handle_provider(exc)
-        _mark_article_receipt(db, who.workspace_account_id, donor.id, data.ktype, data.pt_id, rows, previous=saved)
+        saved = _mark_article_receipt(
+            db,
+            who.workspace_account_id,
+            donor.id,
+            data.ktype,
+            data.pt_id,
+            rows,
+            previous=saved,
+            metadata=getattr(client, "last_metadata", {}),
+        )
+    # Recovery may commit a durable response. Reacquire and revalidate before assignment.
+    donor = owned(
+        db, Vehicle, vehicle_id, who.workspace_account_id, lock=True, active=True
+    )
+    part = owned(
+        db, Part, data.part_id, who.workspace_account_id, lock=True, active=True
+    )
+    db.refresh(donor)
+    db.refresh(part)
+    if (
+        donor.archived
+        or part.archived
+        or donor.ktype != data.ktype
+        or part.vehicle_id != donor.id
+        or part.compatibility_notes
+        != f"plan.parts:ktype={data.ktype};pt_id={data.pt_id}"
+        or part.quantity < 1
+    ):
+        raise HTTPException(
+            409, "Автомобіль або складська позиція змінилися; перечитайте дані"
+        )
     offer = next((x for x in rows if x.art_id == data.art_id), None)
     if offer is None:
         raise HTTPException(422, "Артикулу немає в підтвердженій відповіді Plan.Parts")
     if len(offer.article_nr) > 150:
         raise HTTPException(422, "Артикул перевищує ліміт картки складу")
+    if (
+        data.expected_article_number is not None
+        and (
+            part.article_number != data.expected_article_number
+            or data.expected_article_brand is not None
+            and part.article_brand != data.expected_article_brand
+        )
+        and (
+            part.article_number != offer.article_nr or part.article_brand != offer.brand
+        )
+    ):
+        raise HTTPException(
+            409, "Артикул уже змінено. Перечитайте позицію перед підтвердженням."
+        )
     if part.article_number == offer.article_nr and part.article_brand == offer.brand:
-        return {"part_id": part.id, "article_number": part.article_number, "article_brand": part.article_brand, "changed": False}
+        return {
+            "part_id": part.id,
+            "article_number": part.article_number,
+            "article_brand": part.article_brand,
+            "changed": False,
+        }
     before = snapshot(part)
     part.article_number = offer.article_nr
     part.article_brand = offer.brand
-    record(db, who.workspace_account_id, part, "part_update",
-           f"Власник вибрав aftermarket-артикул із Plan.Parts: тип {data.pt_id}, артикул {data.art_id}; VIN/OEM не підтверджено", before)
+    part.article_provenance = dict(
+        source="plan.parts",
+        art_id=data.art_id,
+        ktype=data.ktype,
+        pt_id=data.pt_id,
+        vehicle_id=donor.id,
+        confirmed_by=who.actor_id,
+        response_id=getattr(client, "last_metadata", {}).get("response_id")
+        or getattr(saved, "response_id", None),
+        receipt_id=getattr(saved, "id", None),
+        fitment_confirmed=False,
+    )
+    record(
+        db,
+        who.workspace_account_id,
+        part,
+        "part_update",
+        f"Власник вибрав aftermarket-артикул із Plan.Parts: тип {data.pt_id}, артикул {data.art_id}; VIN/OEM не підтверджено",
+        before,
+    )
     db.commit()
-    return {"part_id": part.id, "article_number": part.article_number, "article_brand": part.article_brand, "changed": True}
+    return {
+        "part_id": part.id,
+        "article_number": part.article_number,
+        "article_brand": part.article_brand,
+        "changed": True,
+    }
 
 
 @router.post("/donor-parts/add")
@@ -774,3 +906,150 @@ def add_selected_donor_parts_batch(
             break
     return {"results": results, "completed": sum(bool(r["ok"]) for r in results),
             "attempted": len(results), "requested": len(data.items)}
+
+@router.get('/workspace')
+def saved_workspace(who: Annotated[Identity,Depends(identity)],db:Annotated[Session,Depends(get_db)],vehicle_id:str=Query(min_length=1,max_length=80)):
+    """One donor read model; no external calls, cache writes, normalization or stock mutation."""
+    from sqlalchemy import func
+    from sqlalchemy.orm import defer
+    from app.models import PlanPartsResponse
+    from app.services.plan_parts_persistence import policy
+
+    donor = _owned_paid_vehicle(who, db, vehicle_id)
+    categories = (
+        checklists.stored_categories(
+            db, donor.id, who.workspace_account_id, donor.ktype
+        )
+        if donor.ktype
+        else []
+    )
+    receipts = list(
+        db.execute(
+            select(
+                PlanPartsArticleReceipt.pt_id,
+                PlanPartsArticleReceipt.status,
+                PlanPartsArticleReceipt.article_count,
+                PlanPartsArticleReceipt.received_at,
+                PlanPartsArticleReceipt.response_metadata,
+                (
+                    func.json_typeof(PlanPartsArticleReceipt.article_snapshot)
+                    == "array"
+                ).label("stored"),
+            ).where(
+                PlanPartsArticleReceipt.account_id == who.workspace_account_id,
+                PlanPartsArticleReceipt.vehicle_id == donor.id,
+                PlanPartsArticleReceipt.ktype == donor.ktype,
+            )
+        ).mappings()
+    )
+    parts = list(
+        db.scalars(
+            select(Part).where(
+                Part.account_id == who.workspace_account_id,
+                Part.vehicle_id == donor.id,
+                Part.archived.is_(False),
+            )
+        )
+    )
+    prefix = f"plan.parts:ktype={donor.ktype};pt_id="
+    pparts = [
+        p
+        for p in parts
+        if p.compatibility_notes.startswith(prefix)
+        and p.compatibility_notes[len(prefix) :].isdigit()
+    ]
+    responses = list(
+        db.execute(
+            select(
+                PlanPartsResponse.id,
+                PlanPartsResponse.resource,
+                PlanPartsResponse.status,
+                PlanPartsResponse.metadata_json,
+                PlanPartsResponse.received_at,
+                PlanPartsResponse.estimated_max_tokens,
+            )
+            .where(
+                PlanPartsResponse.account_id == who.workspace_account_id,
+                PlanPartsResponse.vehicle_id == donor.id,
+            )
+            .order_by(PlanPartsResponse.created_at.desc())
+            .limit(30)
+        ).mappings()
+    )
+    return dict(
+        vehicle_id=donor.id,
+        ktype=donor.ktype,
+        categories=[
+            dict(
+                checklist_id=c.id,
+                pt_id=c.pt_id,
+                name=c.name_en,
+                name_uk=c.name_uk,
+                article_count=c.article_count,
+                classification=classify(c.name_en, c.name_uk),
+            )
+            for c in categories
+        ],
+        receipts=[dict(r) for r in receipts],
+        parts=[
+            dict(
+                id=p.id,
+                pt_id=int(p.compatibility_notes[len(prefix) :]),
+                name=p.name,
+                quantity=p.quantity,
+                article_number=p.article_number,
+                article_brand=p.article_brand,
+                oem_number=p.oem_number,
+                article_provenance=p.article_provenance,
+                oem_provenance=p.oem_provenance,
+            )
+            for p in pparts
+        ],
+        responses=[dict(r) for r in responses],
+        policy=policy(),
+        summary=dict(
+            types=len(categories),
+            saved_variants=sum(r["article_count"] for r in receipts if r["stored"]),
+            saved_types=sum(bool(r["stored"]) for r in receipts),
+            legacy_unavailable=sum(
+                bool(r["received_at"]) and not r["stored"] for r in receipts
+            ),
+            uncertain=sum(r["status"] == "uncertain" for r in receipts),
+            stock_positions=len(pparts),
+            oem_assigned=sum(bool(p.oem_number) for p in pparts),
+        ),
+    )
+
+
+@router.get("/responses/{id}")
+def response_artifact(
+    id: str,
+    who: Annotated[Identity, Depends(identity)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    import hashlib
+    from fastapi.responses import Response
+    from app.models import PlanPartsResponse
+
+    if who.user.role != "DIRECTOR" or who.actor_id != who.workspace_account_id:
+        raise HTTPException(403, "Збережені відповіді доступні лише власнику")
+    r = db.scalar(
+        select(PlanPartsResponse).where(
+            PlanPartsResponse.id == id,
+            PlanPartsResponse.account_id == who.workspace_account_id,
+        )
+    )
+    if not r or r.body is None:
+        raise HTTPException(404, "Збереженої відповіді немає")
+    if hashlib.sha256(r.body).hexdigest() != r.sha256:
+        raise HTTPException(409, "Контрольна сума не збігається")
+    return Response(
+        r.body,
+        media_type="application/octet-stream",
+        headers={
+            "Content-Disposition": 'attachment; filename="plan-parts-response.json"',
+            "Cache-Control": "private, no-store",
+            "X-Content-Type-Options": "nosniff",
+            "X-Content-SHA256": r.sha256,
+        },
+    )

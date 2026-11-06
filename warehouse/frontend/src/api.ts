@@ -44,7 +44,7 @@ export async function api<T = Row>(
       message =
         typeof data.detail === "string"
           ? data.detail
-          : data.detail
+          : typeof data.detail?.message === "string" ? data.detail.message : data.detail
               ?.map((d: Row) => `${d.loc?.slice(1).join(".")}: ${d.msg}`)
               .join("; ") || message;
     } catch {

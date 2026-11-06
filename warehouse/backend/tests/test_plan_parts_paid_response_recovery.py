@@ -19,7 +19,7 @@ def test_cache_only_recovery_never_calls_supplier(monkeypatch):
     monkeypatch.setenv("PLAN_PARTS_ENABLED","true")
     monkeypatch.setenv("PLAN_PARTS_API_KEY","safe-test-key")
     count=[0]
-    bad={"success":True,"data":{"results":[{"art_id":1,"article_nr":"A",
+    bad={"success":True,"data":{"results":[{"art_id":"1","article_nr":"A",
                                               "brand":"B","part_name":None}]}}
     def fake(request):
         count[0]+=1
@@ -35,6 +35,7 @@ def test_cache_only_recovery_never_calls_supplier(monkeypatch):
         assert exc.value.status==502
         assert count[0]==1
         bad["data"]["results"][0]["part_name"]="Repair kit"
+        bad["data"]["results"][0]["art_id"]=1
         # Re-test payload parsing by updating in-memory fixture to emulate a
         # corrected vendor response already stored in the raw cache.
         import json

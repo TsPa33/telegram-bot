@@ -1,8 +1,10 @@
-"""Explicit, bounded Plan.Parts requests. No cache, retries or background sync."""
+"""Bounded Plan.Parts requests, durable capture and free PostgreSQL replay."""
 
 import json
 import logging
 from copy import deepcopy
+from app.services.plan_parts_persistence import PersistenceError
+from sqlalchemy.exc import SQLAlchemyError
 from collections import OrderedDict
 import os
 import re
@@ -75,7 +77,7 @@ class VehicleMatch(BaseModel):
         return production_year(value)
 
 def provider_results(payload, selectors):
-    """Validate the observed envelope and reject partial/mismatched responses."""
+    """Validate envelope/selector integrity; capture page completeness separately."""
     if isinstance(payload, dict):
         if payload.get("success") is not True or not isinstance(payload.get("data"), dict):
             raise ValueError("Invalid provider envelope")
@@ -205,8 +207,10 @@ _raw_response_cache = OrderedDict()
 
 
 class PlanPartsClient:
-    def __init__(self, transport: httpx.BaseTransport | None = None):
+    def __init__(self, transport: httpx.BaseTransport | None = None, store=None):
         self._transport = transport
+        self.store = store
+        self.last_metadata = {}
 
     def brands(self, account_id: str, gate: RequestGate = request_gate) -> list[Brand]:
         return self._lookup(account_id, "brands", {}, Brand, "mfa_id", gate)
@@ -242,7 +246,74 @@ class PlanPartsClient:
         return self._lookup(account_id, "articles", {"ktype": ktype, "pt_id": pt_id},
                             Article, "art_id", gate)
 
-    def _lookup(self, account_id, resource, params, schema, identifier, gate, name_field="", path=None, cache_only=False):
+    def _lookup(
+        self,
+        account_id,
+        resource,
+        params,
+        schema,
+        identifier,
+        gate,
+        name_field="",
+        path=None,
+        cache_only=False,
+    ):
+        if self.store:
+            if account_id != self.store.who.workspace_account_id:
+                raise PlanPartsError(403, "Робочий простір запиту не збігається")
+            try:
+                saved = self.store.recover(resource, params, cache_only)
+                if saved is not None:
+                    result = self._uncached_lookup(
+                        account_id,
+                        resource,
+                        params,
+                        schema,
+                        identifier,
+                        gate,
+                        name_field,
+                        path,
+                        raw_bytes=saved,
+                    )
+                    self.last_metadata = self.store.last_metadata
+                    return result
+                if cache_only:
+                    raise PlanPartsError(
+                        409,
+                        "Збереженої відповіді немає; новий платний запит не виконувався",
+                    )
+                if os.getenv("PLAN_PARTS_ENABLED", "false").lower() != "true":
+                    raise PlanPartsError(503, "Інтеграцію Plan.Parts не ввімкнено")
+                key = os.getenv("PLAN_PARTS_API_KEY", "").strip()
+                if not key or any(ord(c) < 33 or ord(c) > 126 for c in key):
+                    raise PlanPartsError(503, "API-ключ Plan.Parts не налаштовано")
+                self.store.reserve(resource, params)
+                result = self._uncached_lookup(
+                    account_id,
+                    resource,
+                    params,
+                    schema,
+                    identifier,
+                    gate,
+                    name_field,
+                    path,
+                )
+                self.last_metadata = self.store.last_metadata
+                return result
+            except PersistenceError as exc:
+                raise PlanPartsError(exc.status, str(exc)) from None
+            except SQLAlchemyError:
+                self.store.db.rollback()
+                raise PlanPartsError(
+                    503,
+                    "Запис відповіді не підтверджено; повторна оплата заблокована. Перевірте відновлення з тим самим ключем.",
+                ) from None
+            except PlanPartsError as exc:
+                try:
+                    self.store.failed(exc.status)
+                except SQLAlchemyError:
+                    self.store.db.rollback()
+                raise
         # Cache only completed, validated responses, isolated by workspace,
         # provider resource, query and configured schema. A single lock prevents
         # concurrent identical paid requests from double-charging the same user.
@@ -283,10 +354,10 @@ class PlanPartsClient:
             return result
 
     def _uncached_lookup(self, account_id, resource, params, schema, identifier, gate, name_field="", path=None, raw_bytes=None, raw_cache_key=None):
-        if os.getenv("PLAN_PARTS_ENABLED", "false").lower() != "true":
+        if raw_bytes is None and os.getenv("PLAN_PARTS_ENABLED", "false").lower() != "true":
             raise PlanPartsError(503, "Інтеграцію Plan.Parts не ввімкнено")
         key = os.getenv("PLAN_PARTS_API_KEY", "").strip()
-        if not key or any(ord(c) < 33 or ord(c) > 126 for c in key):
+        if raw_bytes is None and (not key or any(ord(c) < 33 or ord(c) > 126 for c in key)):
             raise PlanPartsError(503, "API-ключ Plan.Parts не налаштовано")
         try:
             if raw_bytes is None:
@@ -308,6 +379,7 @@ class PlanPartsClient:
                             if len(raw) > MAX_RESPONSE_BYTES:
                                 raise PlanPartsError(502, "Відповідь Plan.Parts завелика")
                 raw_bytes = bytes(raw)
+                if self.store:raw_bytes=self.store.received(raw_bytes,200)
                 if raw_cache_key is not None:
                     _raw_response_cache[raw_cache_key] = (monotonic() + CACHE_TTL_SECONDS, raw_bytes)
                     while len(_raw_response_cache) > RAW_CACHE_MAX_KEYS:
@@ -329,6 +401,7 @@ class PlanPartsClient:
                 rows = [schema.model_validate(item) for item in data]
             if len({getattr(row, identifier) for row in rows}) != len(rows):
                 raise ValueError("Duplicate identifier")
+            if self.store:self.store.parsed(rows,raw_bytes)
             return rows
         except httpx.TimeoutException:
             raise PlanPartsError(504, "Перевищено час очікування Plan.Parts") from None
@@ -337,4 +410,4 @@ class PlanPartsClient:
         except (ValueError, ValidationError) as exc:
             field_paths = [str(e.get("loc","")) for e in exc.errors()[:8]] if isinstance(exc, ValidationError) else [type(exc).__name__]
             logger.warning("plan_parts_schema_mismatch resource=%s paths=%s", resource, field_paths)
-            raise PlanPartsError(502, "Непідтримуваний формат відповіді Plan.Parts; оплачена відповідь тимчасово доступна для безкоштовної повторної перевірки") from None
+            raise PlanPartsError(502, "Непідтримуваний формат відповіді Plan.Parts; отримана відповідь потребує безкоштовного відновлення") from None

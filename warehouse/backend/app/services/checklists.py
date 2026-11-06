@@ -20,7 +20,12 @@ def generate(db, vehicle_id, account_id, client, *, refresh=False, preloaded_row
     ))}
     if not refresh and (existing or (vehicle.checklist_ktype == vehicle.ktype and vehicle.checklist_synced_at)):
         return {"created": 0, "updated": 0, "existing": len(existing), "total": len(existing), "provider_requested": False}
+    requested_ktype=vehicle.ktype
     rows = preloaded_rows if preloaded_rows is not None else client.categories(account_id, vehicle.ktype)
+    # A durable provider capture commits before parsing; restore the donor lock.
+    db.refresh(vehicle,with_for_update=True)
+    if vehicle.archived or vehicle.ktype!=requested_ktype:
+        raise HTTPException(409,"Модифікація змінилася під час отримання; відповідь збережено для відновлення")
     before = snapshot(vehicle)
     synced = now()
     created = updated = 0

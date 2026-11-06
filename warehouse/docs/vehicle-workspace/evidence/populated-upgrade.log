@@ -1,0 +1,15 @@
+{
+  "parent": "ac97f052e1b4",
+  "head": "bd18a9f37c20",
+  "old_columns_unchanged": {
+    "accounts": 2,
+    "vehicles": 2,
+    "categories": 0,
+    "parts": 1,
+    "operations": 7,
+    "vehicle_checklist_items": 728,
+    "plan_parts_article_receipts": 1
+  },
+  "startup_repeat": "PASS",
+  "new_api_requests": 0
+}

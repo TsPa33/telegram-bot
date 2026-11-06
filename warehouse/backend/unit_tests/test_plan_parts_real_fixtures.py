@@ -71,7 +71,7 @@ def test_categories_export_is_catalog_not_inventory():
     assert next(row for row in rows if row.pt_id == 3908).article_count == 4
 
 
-@pytest.mark.parametrize("mutation", ["failure","count","selector","row_selector","limit","truncation"])
+@pytest.mark.parametrize("mutation", ["failure","count","selector","row_selector","limit"])
 def test_corrupted_real_envelope_fails_closed(mutation):
     payload = copy.deepcopy(fixture("models"))
     if mutation == "failure": payload["success"] = False
@@ -84,3 +84,9 @@ def test_corrupted_real_envelope_fails_closed(mutation):
     with pytest.raises(PlanPartsError) as exc:
         client.models("offline-account",121,RequestGate())
     assert exc.value.status == 502
+
+
+def test_total_count_larger_than_page_is_not_a_corrupt_envelope():
+    payload=copy.deepcopy(fixture("models"))
+    payload["data"]["results"].pop()
+    assert len(provider_results(payload,{"mfa_id":121}))==291

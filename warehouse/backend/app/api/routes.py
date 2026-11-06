@@ -1,7 +1,7 @@
 from app.api.secure_route import SecureRoute
 import json
 import secrets
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Annotated, Literal
 from fastapi import (
     APIRouter,
@@ -615,8 +615,16 @@ def part_update(id: str, data: PartInput, db: DB, who: Auth):
         changes.pop('currency',None)
         if row.currency!='UAH' and changes.get('selling_price',row.selling_price)!=row.selling_price:
             raise HTTPException(409,'Підтвердіть валюту ціни в оновленій картці запчастини')
+    # Older forms must not erase a subsequently assigned reference by omission.
+    for field in ('article_number','oem_number'):
+        if field not in data.model_fields_set:changes.pop(field,None)
     for k, v in changes.items():
         setattr(row, k, v)
+    if row.article_number!=before['article_number']:
+        row.article_brand=''  # A manually changed number cannot retain a supplier's brand/provenance.
+        row.article_provenance=dict(source='manual',confirmed_by=who.actor_id,confirmed_at=datetime.now(timezone.utc).isoformat(),status='user_confirmed' if row.article_number else 'cleared')
+    if row.oem_number!=before['oem_number']:
+        row.oem_provenance=dict(source='manual',confirmed_by=who.actor_id,confirmed_at=datetime.now(timezone.utc).isoformat(),status='user_confirmed' if row.oem_number else 'cleared')
     record(db, who.workspace_account_id, row, "part_update", "Оновлено картку запчастини", before)
     db.commit()
     return {**snapshot(row), "available_quantity": row.available_quantity}
@@ -631,6 +639,7 @@ def part_characteristics(id: str, data: PartCharacteristicsInput, db: DB, who: A
     if any(getattr(row,k)!=v for k,v in data.expected.items()):
         raise HTTPException(409,'Характеристики вже змінено. Перечитайте картку та порівняйте значення.')
     for key,value in data.values.items():setattr(row,key,value)
+    if 'oem_number' in data.values:row.oem_provenance=dict(source='manual',confirmed_by=who.actor_id,confirmed_at=datetime.now(timezone.utc).isoformat(),status='user_confirmed' if row.oem_number else 'cleared')
     record(db,who.workspace_account_id,row,'part_update','Оновлено OEM / колір деталі',before)
     db.commit()
     return {**snapshot(row),'available_quantity':row.available_quantity}
