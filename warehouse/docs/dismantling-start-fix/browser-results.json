@@ -1,0 +1,18 @@
+[
+  {
+    "A": "PASS",
+    "B": "PASS",
+    "base_items": 227,
+    "no_physical_receipt": true,
+    "no_duplicate_on_reload": true
+  },
+  {
+    "C": "PASS",
+    "saved_types": 96,
+    "paid_lookups": 0
+  },
+  {
+    "missing_modification": "PASS",
+    "no_js_errors": true
+  }
+]

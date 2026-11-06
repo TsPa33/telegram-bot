@@ -211,6 +211,9 @@ def recover_vehicle_categories(
         rows = client.recover_categories(who.workspace_account_id, ktype)
     except PlanPartsError as exc:
         _handle_provider(exc)
+    # Explicit free restoration also persists the previously received list.
+    checklists.generate(db,vehicle_id,who.workspace_account_id,client,preloaded_rows=rows)
+    db.commit()
     return {"ktype": ktype, "categories": [row.model_dump() for row in rows],
             "from_cache": True, "category_count": len(rows)}
 
@@ -1046,6 +1049,12 @@ def saved_workspace(who: Annotated[Identity,Depends(identity)],db:Annotated[Sess
             )
             for p in pparts
         ],
+        saved_modifications=db.scalar(select(PlanPartsResponse.normalized).where(
+            PlanPartsResponse.account_id==who.workspace_account_id,PlanPartsResponse.resource=='ktype',PlanPartsResponse.status=='validated',
+            PlanPartsResponse.parameters['brand'].as_string()==donor.manufacturer,
+            PlanPartsResponse.parameters['model'].as_string()==donor.model,
+            PlanPartsResponse.parameters['year'].as_integer()==donor.year,
+        ).order_by(PlanPartsResponse.created_at.desc()).limit(1)) or [],
         responses=[dict(r) for r in responses],
         policy=policy(),
         summary=dict(

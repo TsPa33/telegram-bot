@@ -57,10 +57,12 @@ export default function PlanPartsDonorAnalysis({
   vehicle,
   onSaved,
   sourceSelector,
+  onLoaded,
 }: {
   vehicle: Row;
   onSaved: (row: Row) => void;
   sourceSelector?: ReactNode;
+  onLoaded?: (row: Row) => void;
 }) {
   const who = useContext(TeamIdentity),
     scope = JSON.stringify([who?.id, vehicle.id, vehicle.ktype]),
@@ -109,6 +111,8 @@ export default function PlanPartsDonorAnalysis({
     const r = await api(path);
     if (generation === epoch.current) {
       setWorkspace(r);
+      onLoaded?.(r);
+      if (r.saved_modifications?.length) setMatches(r.saved_modifications);
     }
     return r;
   }
@@ -133,6 +137,7 @@ export default function PlanPartsDonorAnalysis({
     setNotice("");
     setError("");
     setLoading(true);
+    setTech(!vehicle.ktype);
     load(g)
       .catch((e) => {
         if (g === epoch.current) setError(e.message);
@@ -272,6 +277,31 @@ export default function PlanPartsDonorAnalysis({
         receipts.has(current.pt_id) ||
           Object.prototype.hasOwnProperty.call(offers, current.pt_id),
       ),
+    });
+  }
+  async function startCatalogue() {
+    if (!vehicle.ktype) {
+      setTech(true);
+      return;
+    }
+    await run(async (g) => {
+      try {
+        await api(
+          root +
+            "/categories/recover?vehicle_id=" +
+            query(vehicle.id) +
+            "&ktype=" +
+            vehicle.ktype,
+          "POST",
+        );
+        await load(g);
+        if (g === epoch.current)
+          setNotice("Дані отримані раніше. Список збережено.");
+      } catch (e) {
+        if (g !== epoch.current) return;
+        if ((e as { status?: number }).status === 409) prepare("categories");
+        else throw e;
+      }
     });
   }
   async function saveName() {
@@ -492,11 +522,10 @@ export default function PlanPartsDonorAnalysis({
     <section className="vp-workspace" aria-label="Розбір і запчастини">
       <div className="vp-topline">
         <div>
-          <h3>1. Джерело даних API</h3>
+          <h3>Розбір і запчастини</h3>
           <p>
             Plan.Parts · {vehicle.manufacturer} {vehicle.model} · {vehicle.year}{" "}
-            · Донор №{vehicle.number || "—"} · K-Type{" "}
-            {vehicle.ktype || "не вибрано"}
+            · Донор №{vehicle.number || "—"}
           </p>
         </div>
         <button
@@ -505,13 +534,13 @@ export default function PlanPartsDonorAnalysis({
           aria-expanded={tech}
           onClick={() => setTech(!tech)}
         >
-          Модифікація та джерело
+          Джерело та модифікація
         </button>
       </div>
-      {sourceSelector && (
+      {sourceSelector && (tech || !categories.length) && (
         <div className="vp-source-selector">{sourceSelector}</div>
       )}
-      {loading && <p role="status">Читаємо збережені дані PostgreSQL…</p>}
+      {loading && <p role="status">Відкриваємо список…</p>}
       {error && (
         <p role="alert" className="vp-error">
           {error}
@@ -522,61 +551,61 @@ export default function PlanPartsDonorAnalysis({
           {notice}
         </p>
       )}
-      <div className="vp-kpis" aria-label="Показники збережених даних">
-        <span>
-          <Boxes size={15} />
-          <b>{counts.types ?? "—"}</b> Збережені типи запчастин
-        </span>
-        <span>
-          <Layers size={15} />
-          <b>{counts.saved_variants ?? "—"}</b> Збережені варіанти артикулів
-        </span>
-        <span>
-          <Tag size={15} />
-          <b>{counts.oem_assigned ?? "—"}</b> Позиції з OEM
-        </span>
-        <span>
-          <Database size={15} />
-          <b>{counts.article_assigned ?? "—"}</b> Позиції з призначеними
-          артикулами
-        </span>
-        <span>
-          <RotateCcw size={15} />
-          <b>{counts.needs_recovery ?? "—"}</b> Типи, які потребують відновлення
-        </span>
-      </div>
-      <p className="vp-storage">
-        <Info size={15} />
-        {counts.legacy_unavailable || counts.uncertain
-          ? "Отримано раніше або запит невизначений — перевірте відновлення. Автоматичної повторної оплати немає."
-          : "Збережені відповіді відкриваються з PostgreSQL без нового API-запиту."}{" "}
-        Каталожні артикули не дорівнюють кількості фізичних деталей.
-      </p>
-      {(workspace?.responses || []).some(
-        (r: Row) => r.metadata_json?.completeness === "partial",
-      ) && (
-        <p role="status" className="vp-notice">
-          Є часткові відповіді API: збережено всі отримані записи, але вони не
-          підтверджують повноту каталогу. Нові сторінки автоматично не
-          запитуються.
-        </p>
+      {categories.length > 0 && (
+        <>
+          <p role="status">Список збережено · {categories.length} деталей</p>
+          <div className="vp-kpis" aria-label="Показники збережених даних">
+            <span>
+              <Boxes size={15} />
+              <b>{counts.types ?? "—"}</b> Збережені типи запчастин
+            </span>
+            <span>
+              <Layers size={15} />
+              <b>{counts.saved_variants ?? "—"}</b> Збережені варіанти артикулів
+            </span>
+            <span>
+              <Tag size={15} />
+              <b>{counts.oem_assigned ?? "—"}</b> Позиції з OEM
+            </span>
+            <span>
+              <Database size={15} />
+              <b>{counts.article_assigned ?? "—"}</b> Позиції з призначеними
+              артикулами
+            </span>
+            <span>
+              <RotateCcw size={15} />
+              <b>{counts.needs_recovery ?? "—"}</b> Типи, які потребують
+              відновлення
+            </span>
+          </div>
+          <p className="vp-storage">
+            <Info size={15} />
+            {counts.legacy_unavailable || counts.uncertain
+              ? "Частину даних потрібно повторно відкрити. Нової оплати немає."
+              : "Дані отримані раніше. Повторне відкриття без оплати."}{" "}
+            Каталожні артикули не дорівнюють кількості фізичних деталей.
+          </p>
+          {(workspace?.responses || []).some(
+            (r: Row) => r.metadata_json?.completeness === "partial",
+          ) && (
+            <p role="status" className="vp-notice">
+              Отриманий список може бути неповним: збережені записи не
+              підтверджують повноту каталогу. Нові сторінки автоматично не
+              запитуються.
+            </p>
+          )}
+        </>
       )}
-      {tech && (
+      {(tech || !categories.length) && (
         <div className="vp-technical">
+          {!vehicle.ktype && <p role="status">Потрібно вибрати модифікацію</p>}
           <p>
             VIN: {vehicle.vin || "не додано"}. Сумісність фізичної деталі
             перевіряється окремо.
           </p>
           <button disabled={busy} onClick={() => prepare("ktype")}>
-            Знайти модифікацію · з підтвердженням
+            Знайти модифікацію
           </button>
-          <input
-            aria-label="K-Type модифікації"
-            type="number"
-            min="1"
-            value={picked || ""}
-            onChange={(e) => setPicked(Number(e.target.value))}
-          />
           {matches.length > 0 && (
             <select
               aria-label="Кандидати модифікації"
@@ -586,7 +615,7 @@ export default function PlanPartsDonorAnalysis({
               <option value={0}>Оберіть явно</option>
               {matches.map((m) => (
                 <option key={m.ktype} value={m.ktype}>
-                  {m.modification} · {m.ktype}
+                  {m.modification}
                 </option>
               ))}
             </select>
@@ -607,249 +636,265 @@ export default function PlanPartsDonorAnalysis({
               })
             }
           >
-            Закріпити модифікацію
+            Вибрати модифікацію
           </button>
           <button
             disabled={busy || !vehicle.ktype}
-            onClick={() => prepare("categories")}
+            onClick={() => void startCatalogue()}
           >
-            Отримати каталог · з підтвердженням
+            Сформувати список Plan.Parts
           </button>
-          <p>
-            OEM API: {policy.oem_reason || "метод не підтверджений"}. Вартість
-            API показується лише за підтвердженим серверним тарифом.
-          </p>
+          <details>
+            <summary>Технічні деталі</summary>
+            <p>K-Type: {vehicle.ktype || "не вибрано"}</p>{" "}
+            <input
+              aria-label="K-Type модифікації"
+              type="number"
+              min="1"
+              value={picked || ""}
+              onChange={(e) => setPicked(Number(e.target.value))}
+            />
+            <p>{policy.oem_reason}</p>
+            <p>
+              Збереження: PostgreSQL. Повторне відкриття не викликає
+              постачальника.
+            </p>
+          </details>
         </div>
       )}
       {quote?.resource !== "articles" && paidConfirmation}
-      <div className="vp-layout">
-        <div className="vp-main">
-          <section className="vp-categories" aria-label="Категорії CarPot">
-            <h3>2. Категорії CarPot</h3>
-            <p>
-              Фільтрують лише основний список деталей. Токени не витрачаються.
-            </p>
-            <div className="vp-category-grid">
-              <button
-                aria-pressed={section === "all"}
-                onClick={() => setSection("all")}
-              >
-                <Boxes size={20} />
-                <span>Усі категорії</span>
-                <b>{categories.length}</b>
-              </button>
-              {workspaceSections.map((s, i) => {
-                const Icon = icons[i];
-                return (
-                  <button
-                    key={s}
-                    aria-pressed={section === s}
-                    onClick={() => setSection(s)}
-                  >
-                    <Icon size={20} />
-                    <span>{s}</span>
-                    <b>{sectionCounts.get(s)}</b>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-          <section className="vp-list">
-            <h3>
-              3. Запчастини категорії: {section === "all" ? "Усі" : section} (
-              {filtered.length})
-            </h3>
-            <div className="vp-toolbar">
-              <button
-                onClick={() =>
-                  setSelected((old) =>
-                    changeWorkspaceSelection(
-                      old,
-                      filtered.map((r) => r.pt_id),
-                      true,
-                    ),
-                  )
-                }
-              >
-                Вибрати всі ({filtered.length})
-              </button>
-              <button onClick={() => setSelected([])}>Зняти вибір</button>
-              <button
-                disabled={busy || !newSelected.length}
-                onClick={() => setConfirmStock(true)}
-              >
-                <Package size={15} /> Додати вибрані ({newSelected.length})
-              </button>
-            </div>
-            <div className="vp-filters">
-              <label>
-                <Search size={15} />
-                <input
-                  aria-label="Пошук деталей автомобіля"
-                  placeholder="Назва, артикул, виробник або OEM…"
-                  value={q}
-                  onChange={(e) => setQ(e.target.value)}
-                />
-              </label>
-              <select
-                aria-label="Статус складу"
-                value={stockFilter}
-                onChange={(e) => setStockFilter(e.target.value)}
-              >
-                <option value="all">Склад: усі</option>
-                <option value="stored">Уже додано</option>
-                <option value="new">Нові</option>
-              </select>
-              <select
-                aria-label="Наявність збережених даних"
-                value={dataFilter}
-                onChange={(e) => setDataFilter(e.target.value)}
-              >
-                <option value="all">Дані: усі</option>
-                <option value="saved">Збережено</option>
-                <option value="missing">Без збережених артикулів</option>
-                <option value="uncertain">Невизначені</option>
-              </select>
-              <select
-                aria-label="Наявність OEM"
-                value={oemFilter}
-                onChange={(e) => setOemFilter(e.target.value)}
-              >
-                <option value="all">OEM: усі</option>
-                <option value="yes">Є номер</option>
-                <option value="no">Немає номера</option>
-              </select>
-            </div>
-            <div className="vp-table">
-              <div className="vp-row vp-table-head">
-                <span />
-                <span>Назва запчастини</span>
-                <span>Категорія</span>
-                <span>Стан на складі</span>
-                <span>Артикул / виробник</span>
-                <span>OEM номер</span>
-                <span>Дії</span>
-              </div>
-              {filtered.slice(0, limit).map((r) => {
-                const p = parts.get(r.pt_id),
-                  receipt = receipts.get(r.pt_id);
-                return (
-                  <div
-                    key={r.pt_id}
-                    className={"vp-row" + (active === r.pt_id ? " active" : "")}
-                  >
-                    <input
-                      aria-label={"Вибрати " + localized(r)}
-                      type="checkbox"
-                      checked={selectedSet.has(r.pt_id)}
-                      onChange={(e) =>
-                        setSelected((old) =>
-                          changeWorkspaceSelection(
-                            old,
-                            [r.pt_id],
-                            e.target.checked,
-                          ),
-                        )
-                      }
-                    />
-                    <button className="vp-name" onClick={() => open(r)}>
-                      <strong>{localized(r)}</strong>
-                      <small>{r.name}</small>
+      {categories.length > 0 && (
+        <div className="vp-layout">
+          <div className="vp-main">
+            <section className="vp-categories" aria-label="Категорії CarPot">
+              <h3>2. Категорії CarPot</h3>
+              <p>
+                Фільтрують лише основний список деталей. Токени не витрачаються.
+              </p>
+              <div className="vp-category-grid">
+                <button
+                  aria-pressed={section === "all"}
+                  onClick={() => setSection("all")}
+                >
+                  <Boxes size={20} />
+                  <span>Усі категорії</span>
+                  <b>{categories.length}</b>
+                </button>
+                {workspaceSections.map((s, i) => {
+                  const Icon = icons[i];
+                  return (
+                    <button
+                      key={s}
+                      aria-pressed={section === s}
+                      onClick={() => setSection(s)}
+                    >
+                      <Icon size={20} />
+                      <span>{s}</span>
+                      <b>{sectionCounts.get(s)}</b>
                     </button>
-                    <span className="vp-category-label">{sectionOf(r)}</span>
-                    <span>
-                      <b className={"vp-chip " + (p ? "stored" : "new")}>
-                        {p
-                          ? p.quantity > 0
-                            ? "Уже на складі"
-                            : "Картка без залишку"
-                          : "Нова позиція"}
-                      </b>
-                      <small>
-                        {p
-                          ? p.quantity + " шт."
-                          : receipt?.status === "uncertain"
-                            ? "Запит невизначений"
-                            : r.classification?.section
-                              ? "Наявність перевірити"
-                              : "Категорію уточнити"}
-                      </small>
-                    </span>
-                    <span>
-                      <b>{p?.article_number || "—"}</b>
-                      <small>
-                        {p?.article_brand ||
-                          (receipt?.stored
-                            ? "Варіанти збережені"
-                            : "Артикул не призначено")}
-                      </small>
-                    </span>
-                    <span>
-                      {p?.oem_number || "—"}
-                      <small>
-                        {p?.oem_number
-                          ? "Джерело — у картці"
-                          : "Немає підтверджених даних"}
-                      </small>
-                    </span>
-                    <button onClick={() => open(r)}>Артикули та OEM</button>
-                  </div>
-                );
-              })}
-              {!loading && filtered.length === 0 && (
-                <p className="vp-empty">
-                  {categories.length
-                    ? "За цими фільтрами деталей немає."
-                    : "Збереженого каталогу цього K-Type немає. Відкрийте модифікацію та джерело; новий запит потребує підтвердження."}
-                </p>
+                  );
+                })}
+              </div>
+            </section>
+            <section className="vp-list">
+              <h3>
+                3. Запчастини категорії: {section === "all" ? "Усі" : section} (
+                {filtered.length})
+              </h3>
+              <div className="vp-toolbar">
+                <button
+                  onClick={() =>
+                    setSelected((old) =>
+                      changeWorkspaceSelection(
+                        old,
+                        filtered.map((r) => r.pt_id),
+                        true,
+                      ),
+                    )
+                  }
+                >
+                  Вибрати всі ({filtered.length})
+                </button>
+                <button onClick={() => setSelected([])}>Зняти вибір</button>
+                <button
+                  disabled={busy || !newSelected.length}
+                  onClick={() => setConfirmStock(true)}
+                >
+                  <Package size={15} /> Додати вибрані ({newSelected.length})
+                </button>
+              </div>
+              <div className="vp-filters">
+                <label>
+                  <Search size={15} />
+                  <input
+                    aria-label="Пошук деталей автомобіля"
+                    placeholder="Назва, артикул, виробник або OEM…"
+                    value={q}
+                    onChange={(e) => setQ(e.target.value)}
+                  />
+                </label>
+                <select
+                  aria-label="Статус складу"
+                  value={stockFilter}
+                  onChange={(e) => setStockFilter(e.target.value)}
+                >
+                  <option value="all">Склад: усі</option>
+                  <option value="stored">Уже додано</option>
+                  <option value="new">Нові</option>
+                </select>
+                <select
+                  aria-label="Наявність збережених даних"
+                  value={dataFilter}
+                  onChange={(e) => setDataFilter(e.target.value)}
+                >
+                  <option value="all">Дані: усі</option>
+                  <option value="saved">Збережено</option>
+                  <option value="missing">Без збережених артикулів</option>
+                  <option value="uncertain">Невизначені</option>
+                </select>
+                <select
+                  aria-label="Наявність OEM"
+                  value={oemFilter}
+                  onChange={(e) => setOemFilter(e.target.value)}
+                >
+                  <option value="all">OEM: усі</option>
+                  <option value="yes">Є номер</option>
+                  <option value="no">Немає номера</option>
+                </select>
+              </div>
+              <div className="vp-table">
+                <div className="vp-row vp-table-head">
+                  <span />
+                  <span>Назва запчастини</span>
+                  <span>Категорія</span>
+                  <span>Стан на складі</span>
+                  <span>Артикул / виробник</span>
+                  <span>OEM номер</span>
+                  <span>Дії</span>
+                </div>
+                {filtered.slice(0, limit).map((r) => {
+                  const p = parts.get(r.pt_id),
+                    receipt = receipts.get(r.pt_id);
+                  return (
+                    <div
+                      key={r.pt_id}
+                      className={
+                        "vp-row" + (active === r.pt_id ? " active" : "")
+                      }
+                    >
+                      <input
+                        aria-label={"Вибрати " + localized(r)}
+                        type="checkbox"
+                        checked={selectedSet.has(r.pt_id)}
+                        onChange={(e) =>
+                          setSelected((old) =>
+                            changeWorkspaceSelection(
+                              old,
+                              [r.pt_id],
+                              e.target.checked,
+                            ),
+                          )
+                        }
+                      />
+                      <button className="vp-name" onClick={() => open(r)}>
+                        <strong>{localized(r)}</strong>
+                        <small>{r.name}</small>
+                      </button>
+                      <span className="vp-category-label">{sectionOf(r)}</span>
+                      <span>
+                        <b className={"vp-chip " + (p ? "stored" : "new")}>
+                          {p
+                            ? p.quantity > 0
+                              ? "Уже на складі"
+                              : "Картка без залишку"
+                            : "Нова позиція"}
+                        </b>
+                        <small>
+                          {p
+                            ? p.quantity + " шт."
+                            : receipt?.status === "uncertain"
+                              ? "Запит невизначений"
+                              : r.classification?.section
+                                ? "Наявність перевірити"
+                                : "Категорію уточнити"}
+                        </small>
+                      </span>
+                      <span>
+                        <b>{p?.article_number || "—"}</b>
+                        <small>
+                          {p?.article_brand ||
+                            (receipt?.stored
+                              ? "Варіанти збережені"
+                              : "Артикул не призначено")}
+                        </small>
+                      </span>
+                      <span>
+                        {p?.oem_number || "—"}
+                        <small>
+                          {p?.oem_number
+                            ? "Джерело — у картці"
+                            : "Немає підтверджених даних"}
+                        </small>
+                      </span>
+                      <button onClick={() => open(r)}>Артикули та OEM</button>
+                    </div>
+                  );
+                })}
+                {!loading && filtered.length === 0 && (
+                  <p className="vp-empty">
+                    {categories.length
+                      ? "За цими фільтрами деталей немає."
+                      : "Список ще не сформовано. Виберіть модифікацію та джерело."}
+                  </p>
+                )}
+              </div>
+              {filtered.length > limit && (
+                <button
+                  className="vp-more"
+                  onClick={() => setLimit((n) => n + 60)}
+                >
+                  Показати ще 60 · {Math.min(limit, filtered.length)} із{" "}
+                  {filtered.length}
+                </button>
               )}
-            </div>
-            {filtered.length > limit && (
-              <button
-                className="vp-more"
-                onClick={() => setLimit((n) => n + 60)}
-              >
-                Показати ще 60 · {Math.min(limit, filtered.length)} із{" "}
-                {filtered.length}
-              </button>
-            )}
-          </section>
+            </section>
+          </div>
+          <aside className="vp-actions">
+            <h3>Дії</h3>
+            <dl>
+              <div>
+                <dt>Обрано</dt>
+                <dd>{selected.length} типів</dd>
+              </div>
+              <div>
+                <dt>Нових вибраних</dt>
+                <dd>{newSelected.length}</dd>
+              </div>
+              <div>
+                <dt>Уже на складі</dt>
+                <dd>{parts.size}</dd>
+              </div>
+              <div>
+                <dt>Джерело</dt>
+                <dd>Plan.Parts</dd>
+              </div>
+            </dl>
+            <button
+              disabled={busy || !newSelected.length}
+              onClick={() => setConfirmStock(true)}
+            >
+              ＋ Додати вибрані на склад
+            </button>
+            <Link to={"/inventory?vehicle_id=" + query(vehicle.id)}>
+              Відкрити склад
+            </Link>
+            <small>
+              Складські операції виконуються тільки після підтвердження. API не
+              визначає фізичну кількість деталей.
+            </small>
+          </aside>
         </div>
-        <aside className="vp-actions">
-          <h3>Дії</h3>
-          <dl>
-            <div>
-              <dt>Обрано</dt>
-              <dd>{selected.length} типів</dd>
-            </div>
-            <div>
-              <dt>Нових вибраних</dt>
-              <dd>{newSelected.length}</dd>
-            </div>
-            <div>
-              <dt>Уже на складі</dt>
-              <dd>{parts.size}</dd>
-            </div>
-            <div>
-              <dt>Джерело</dt>
-              <dd>Plan.Parts</dd>
-            </div>
-          </dl>
-          <button
-            disabled={busy || !newSelected.length}
-            onClick={() => setConfirmStock(true)}
-          >
-            ＋ Додати вибрані на склад
-          </button>
-          <Link to={"/inventory?vehicle_id=" + query(vehicle.id)}>
-            Відкрити склад
-          </Link>
-          <small>
-            Складські операції виконуються тільки після підтвердження. API не
-            визначає фізичну кількість деталей.
-          </small>
-        </aside>
-      </div>
+      )}
       {progress && (
         <div className="vp-progress" role="status">
           <strong>
@@ -900,7 +945,8 @@ export default function PlanPartsDonorAnalysis({
             <button
               className="secondary"
               onClick={() => {
-                setQuote(null);setConfirmAssign(false);
+                setQuote(null);
+                setConfirmAssign(false);
                 setActive(null);
                 offerTicket.current++;
                 setOfferLoading(null);
@@ -945,7 +991,7 @@ export default function PlanPartsDonorAnalysis({
                 )}
                 {offerLoading === current.pt_id && (
                   <p role="status">
-                    Завантажуємо збережені артикули з PostgreSQL · 0 токенів…
+                    Відкриваємо збережені артикули · 0 токенів…
                   </p>
                 )}
                 {Object.prototype.hasOwnProperty.call(
@@ -1137,7 +1183,7 @@ export default function PlanPartsDonorAnalysis({
             </p>
           )}
           <footer>
-            <Database size={15} /> Дані — у PostgreSQL{" "}
+            <Database size={15} /> Список збережено{" "}
             <span>Збережені дані → перегляд без оплати</span>
             <span>OEM-крос не підтверджує комплектацію VIN</span>
           </footer>
