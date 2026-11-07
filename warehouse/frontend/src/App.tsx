@@ -1,3 +1,4 @@
+import {ThemeSwitch} from "./Theme";
 import {
   Archive as ArchiveIcon,
   ArrowDownLeft,
@@ -218,6 +219,7 @@ export default function App() {
             </span>
           </div>
           <div className="user">
+            <ThemeSwitch/>
             <span className="avatar">
               {user.name.slice(0, 1).toUpperCase()}
             </span>

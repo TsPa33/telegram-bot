@@ -229,7 +229,7 @@ export default function PlanPartsBatch({
  },[previewId,data]);
 
  const thisSession=Object.keys(data).length;
- return <section aria-label="Пакетне завантаження plan.parts" style={{border:'1px solid #b8dacd',borderRadius:10,padding:14,margin:'12px 0',background:'#f7fbf9'}}>
+ return <section aria-label="Пакетне завантаження plan.parts" style={{border:'1px solid var(--color-border)',borderRadius:10,padding:14,margin:'12px 0',background:'var(--color-surface)'}}>
   <h4 style={{margin:'0 0 8px'}}>Завантажити вибрані типи одним запуском</h4>
   <p>Вибрано: <strong>{selected.length}</strong> · Уже оброблено: <strong>{completedSelected.length}</strong> · Залишилось: <strong>{pending.length}</strong> · Максимально за нові запити: <strong>{requiredTokens} токенів</strong>.</p>
   {selectedUncertain.length>0&&<div role="alert">
@@ -257,7 +257,7 @@ export default function PlanPartsBatch({
   </label>
   <p>У цьому запуску: <strong>{nextCount}</strong> типів, максимум <strong>{maxSpend}</strong> токенів за тарифом. Баланс плану не перевіряється. Операція використовує реальні платні API-запити.</p>
   {!confirmation&&!running&&<button type="button" disabled={disabled||pending.length===0||!validBudget||locked.current} onClick={()=>setConfirmation(true)}>Перейти до підтвердження завантаження</button>}
-  {confirmation&&!running&&<div style={{border:'1px solid #d3c4a2',background:'#fffbef',borderRadius:8,padding:12}}>
+  {confirmation&&!running&&<div style={{border:'1px solid var(--color-warning)',background:'var(--color-warning-surface)',borderRadius:8,padding:12}}>
     <strong>Підтвердити платні запити</strong>
     <p>CarPot послідовно завантажить до {nextCount} типів, за тарифом до {maxSpend} токенів. Уже завершені пропустить. Без поповнення балів CarPot чи створення складських позицій.</p>
     <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>

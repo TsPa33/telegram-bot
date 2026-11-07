@@ -20,6 +20,7 @@ const descriptions:Record<string,string>={
 };
 export default function Team({user,notify}:{user:Row;notify:Notify}){
  const can=useCan(),guard=useRef(false);
+ const [viewMember,setViewMember]=useState<Row|null>(null);
  const [edit,setEdit]=useState<Row|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[page,setPage]=useState(0);
  const [q,setQ]=useState(''),[role,setRole]=useState(''),[status,setStatus]=useState('');
  const readiness=useLoad(async()=>{
@@ -39,12 +40,6 @@ export default function Team({user,notify}:{user:Row;notify:Notify}){
  ]):Promise.resolve(null),[readiness.data,readiness.error,page]);
  const teamEvents=useLoad(()=>user.role==='DIRECTOR'?api('/team/events?offset=0&limit=100'):Promise.resolve(null),[user.role]);
  const recentEvents:Row[]=teamEvents.data?.items||[];
- const dailyActivity=Array.from({length:7},(_,i)=>{
-  const date=new Date();date.setHours(0,0,0,0);date.setDate(date.getDate()-(6-i));
-  const key=date.toLocaleDateString('en-CA');
-  return {label:date.toLocaleDateString('uk-UA',{day:'2-digit',month:'2-digit'}),value:recentEvents.filter((ev:Row)=>ev.created_at&&new Date(ev.created_at).toLocaleDateString('en-CA')===key).length};
- });
- const peak=Math.max(1,...dailyActivity.map(d=>d.value));
  function exportVisible(){
   const headers=['Ім’я','Email','Роль','Статус','Останній вхід'];
   const cells=visible.map(u=>[u.name,u.email,roleLabel(u.role),u.is_active?'Активний':'Заблокований',u.last_login_at||'']);
@@ -71,18 +66,39 @@ export default function Team({user,notify}:{user:Row;notify:Notify}){
     await api('/team'+(edit.id?'/'+edit.id:''),edit.id?'PATCH':'POST',body);
     notify('Дані працівника збережено');
    }
-   setEdit(null);data.reload();summary.reload();readiness.reload();
+   setEdit(null);data.reload();summary.reload();readiness.reload();teamEvents.reload();
   }catch(e){setError((e as Error).message);data.reload();}
   finally{guard.current=false;setBusy(false);}
  }
  if(readiness.error||(!readiness.data&&readiness.loading))return <section className="panel padded"><h1>Команда</h1><State error={readiness.error} loading={readiness.loading}/><button disabled={readiness.loading} onClick={readiness.reload}>Перевірити готовність команди</button></section>;
  return <>
-  <div className="page-heading"><div><h1>Команда</h1><p>{user.workspace_name} · особисті облікові записи працівників</p></div>
-   {can('team.manage_managers')&&readiness.data?.employee_creation_enabled&&<button disabled={!data.data||data.loading||!!data.error} onClick={()=>open({name:'',email:'',password:'',role:'MANAGER',permissions:['inventory.view','vehicles.view','catalog.view'].filter(p=>grantable.includes(p)),is_active:true})}>Додати працівника</button>}
-  </div>
-  {!readiness.data?.employee_creation_enabled&&<p className="notice" role="status">Створення співробітників ще не ввімкнено. Для додавання працівників директору потрібно погодити активацію модуля. Наявними обліковими записами можна керувати.</p>}
-  <button className="secondary" onClick={()=>{readiness.reload();summary.reload();data.reload();}}>Оновити команду та доступність створення</button>
-  <State error={summary.error} loading={summary.loading}/>
+  <div className="team-workspace"><header className="page-heading"><div><h1>Команда</h1><p>Управління працівниками, ролями та доступами</p></div><button onClick={()=>{readiness.reload();summary.reload();data.reload();teamEvents.reload();}}>Оновити</button></header>
+  {!readiness.data?.employee_creation_enabled&&<p className="notice" role="status">Додавання працівників поки недоступне. Наявними обліковими записами можна керувати.</p>}
+<div className="team-primary-grid"><section className="panel padded team-role-panel"><h2><Users size={18}/> Працівники за ролями</h2>{summary.data&&!summary.error&&<div className="team-role-list">{(['DIRECTOR','ADMIN','MANAGER'] as const).map(r=><div key={r}><div className="team-role-label"><span>{roleLabel(r)}</span><strong>{(summary.data?.by_role?.[r]||0)}</strong></div><div className="team-role-track"><div style={{width:(summary.data?.total?(summary.data?.by_role?.[r]||0)/(summary.data?.total||1)*100:0)+'%'}}/></div></div>)}</div>}</section><div className="team-member-area">  <section className="panel padded team-filters" aria-label="Фільтри команди">
+   <label>Пошук на цій сторінці<input type="search" aria-label="Пошук працівників на сторінці" value={q} onChange={e=>setQ(e.target.value)} placeholder="Ім’я або email"/></label>
+   <label>Роль<select aria-label="Роль у списку" value={role} onChange={e=>setRole(e.target.value)}><option value="">Усі ролі</option>{['DIRECTOR','ADMIN','MANAGER'].map(r=><option value={r} key={r}>{roleLabel(r)}</option>)}</select></label>
+   <label>Статус<select aria-label="Статус працівника" value={status} onChange={e=>setStatus(e.target.value)}><option value="">Усі</option><option value="active">Активні</option><option value="blocked">Заблоковані</option></select></label>
+  </section>
+  <State error={data.error} loading={data.loading}/>{data.error&&<button onClick={data.reload}>Оновити команду</button>}
+  <section id="team-members" className="team-directory panel" aria-label="Працівники команди">
+   <div className="team-directory-title"><h2>Працівники команди</h2>{can('team.manage_managers')&&readiness.data?.employee_creation_enabled&&<button className="primary" disabled={!data.data||data.loading||!!data.error} onClick={()=>open({name:'',email:'',password:'',role:'MANAGER',permissions:['inventory.view','vehicles.view','catalog.view'].filter(p=>grantable.includes(p)),is_active:true})}>Додати працівника</button>}<span>{data.data?.[0]?.total||0} облікових записів</span></div>
+   <div className="team-directory-scroll"><table><thead><tr><th>Працівник</th><th>Роль</th><th>Статус</th><th>Остання активність</th><th>Дії</th></tr></thead>
+    <tbody>{visible.map(u=><tr key={u.id} tabIndex={0} onClick={e=>{if(!(e.target as Element).closest('button,a,input,label,select,textarea'))manageable(u)?open(u):setViewMember(u);}} onKeyDown={e=>{if(e.target===e.currentTarget&&['Enter',' '].includes(e.key)){e.preventDefault();manageable(u)?open(u):setViewMember(u);}}}>
+     <td><div className="team-person"><span className="team-person-avatar">{(u.name||'?').trim().slice(0,1).toUpperCase()}</span><div><strong>{u.name}</strong><small>{u.email}</small></div></div></td>
+     <td><span className={'team-role-pill role-'+String(u.role).toLowerCase()}>{roleLabel(u.role)}</span></td>
+     <td><span className={'team-status '+(u.is_active?'is-active':'is-blocked')}>{u.is_active?'Активний':'Заблокований'}</span></td>
+     <td><time>{u.last_login_at?new Date(u.last_login_at).toLocaleString('uk-UA',{dateStyle:'short',timeStyle:'short'}):'Не зафіксовано'}</time></td>
+     <td><div className="team-row-actions">
+      {can('audit.view')&&<Link to={'/analytics?actor_id='+encodeURIComponent(u.id)}>Активність</Link>}
+      {manageable(u)&&<><button type="button" onClick={()=>open(u)}>Керувати</button><button type="button" disabled={!resettable(u)} onClick={()=>{open(u);setEdit({...u,reset:true,password:''});}}>Скинути доступ</button></>}
+      {!manageable(u)&&!can('audit.view')&&<span className="muted">—</span>}
+     </div></td>
+    </tr>)}</tbody>
+   </table></div>
+  </section>
+  {data.data&&!data.loading&&!data.error&&!visible.length&&<Empty title={members.length?'Працівників не знайдено':'Співробітників ще немає'}>{members.length?'Змініть фільтри на цій сторінці.':'Після створення тут з’являться особисті облікові записи команди.'}</Empty>}
+  <div className="pager"><span>Сторінка {page+1} · Усього: {data.data?.[0]?.total||0}</span><button disabled={!page||data.loading} onClick={()=>setPage(page-1)}>Попередні працівники</button><button disabled={data.loading||(page+1)*50>=(data.data?.[0]?.total||0)} onClick={()=>setPage(page+1)}>Наступні працівники</button></div>
+</div></div>  <State error={summary.error} loading={summary.loading}/>
   {summary.data&&!summary.error&&<section className="team-summary" aria-label="Підсумки команди">
    {Object.entries({'Усього облікових записів':summary.data.total,'Активні':summary.data.active,'Заблоковані':summary.data.blocked,'Директори':summary.data.by_role.DIRECTOR,'Адміністратори':summary.data.by_role.ADMIN,'Менеджери':summary.data.by_role.MANAGER}).map(([label,value])=><div className="panel padded" key={label}><span>{label}</span><strong>{String(value)}</strong></div>)}
    <small>{summary.data.scope==='workspace'?'Усі облікові записи робочого простору, включно з директором.':'Лише менеджери, доступні вам за правами.'}</small>
@@ -96,55 +112,8 @@ export default function Team({user,notify}:{user:Row;notify:Notify}){
     <button type="button" disabled={!data.data||!visible.length} onClick={exportVisible}><Download size={20}/><span><strong>Експорт CSV</strong><small>Працівники поточної сторінки</small></span></button>
    </div>
   </section>
-  <section className="team-insights" aria-label="Аналітика команди">
-   <div className="panel padded team-insight-panel">
-    <header><h2><Activity size={18}/> Зміни в команді за 7 днів</h2></header>
-    {user.role==='DIRECTOR'?<>
-     <div className="team-bars" role="img" aria-label={'Кількість подій керування командою за 7 днів: '+dailyActivity.map(d=>d.label+': '+d.value).join(', ')}>
-      {dailyActivity.map(d=><div className="team-bar-column" key={d.label}><span className="team-bar-value">{d.value}</span><div className="team-bar-track"><div style={{height:(d.value/peak*100)+'%'}}/></div><small>{d.label}</small></div>)}
-     </div>
-     <small className="muted">Лише події керування командою. Останні {recentEvents.length} доступних записів; не загальна активність складу.</small>
-     {teamEvents.error&&<p role="alert">{teamEvents.error}</p>}
-    </>:<p className="muted">Журнал змін команди доступний директору.</p>}
-   </div>
-   <div className="panel padded team-insight-panel">
-    <header><h2><Users size={18}/> Працівники за ролями</h2></header>
-    {summary.data&&<div className="team-role-list">{(['DIRECTOR','ADMIN','MANAGER'] as const).map(roleName=>{
-     const n=summary.data?.by_role?.[roleName]||0,total=Math.max(1,summary.data?.total||0);
-     return <div key={roleName}><div className="team-role-label"><span>{roleLabel(roleName)}</span><strong>{n}</strong></div><div className="team-role-track"><div style={{width:(n/total*100)+'%'}}/></div></div>;
-    })}</div>}
-    <small className="muted">Фактичні облікові записи у доступній області перегляду.</small>
-   </div>
-   <div className="panel padded team-insight-panel">
-    <header><h2><BarChart3 size={18}/> Останні зміни доступів</h2></header>
-    {user.role==='DIRECTOR'?<div className="team-event-list">{recentEvents.slice(0,5).map(ev=><div key={ev.id}><span>{({employee_created:'Створення працівника',employee_updated:'Зміна ролі або доступів',access_reset:'Скидання доступу',password_changed:'Зміна пароля'} as Record<string,string>)[ev.type]||'Подія команди'}</span><time>{new Date(ev.created_at).toLocaleString('uk-UA',{dateStyle:'short',timeStyle:'short'})}</time></div>)}{!recentEvents.length&&<p className="muted">Подій поки немає.</p>}</div>:<p className="muted">Історія доступна директору.</p>}
-   </div>
-  </section>
-  <section className="panel padded team-filters" aria-label="Фільтри команди">
-   <label>Пошук на цій сторінці<input type="search" aria-label="Пошук працівників на сторінці" value={q} onChange={e=>setQ(e.target.value)} placeholder="Ім’я або email"/></label>
-   <label>Роль<select aria-label="Роль у списку" value={role} onChange={e=>setRole(e.target.value)}><option value="">Усі ролі</option>{['DIRECTOR','ADMIN','MANAGER'].map(r=><option value={r} key={r}>{roleLabel(r)}</option>)}</select></label>
-   <label>Статус<select aria-label="Статус працівника" value={status} onChange={e=>setStatus(e.target.value)}><option value="">Усі</option><option value="active">Активні</option><option value="blocked">Заблоковані</option></select></label>
-  </section>
-  <State error={data.error} loading={data.loading}/>{data.error&&<button onClick={data.reload}>Оновити команду</button>}
-  <section id="team-members" className="team-directory panel" aria-label="Працівники команди">
-   <div className="team-directory-title"><h2>Працівники команди</h2><span>{data.data?.[0]?.total||0} облікових записів</span></div>
-   <div className="team-directory-scroll"><table><thead><tr><th>Працівник</th><th>Роль</th><th>Статус</th><th>Останній вхід</th><th>Допуски</th><th>Дії</th></tr></thead>
-    <tbody>{visible.map(u=><tr key={u.id}>
-     <td><div className="team-person"><span className="team-person-avatar">{(u.name||'?').trim().slice(0,1).toUpperCase()}</span><div><strong>{u.name}</strong><small>{u.email}</small></div></div></td>
-     <td><span className={'team-role-pill role-'+String(u.role).toLowerCase()}>{roleLabel(u.role)}</span></td>
-     <td><span className={'team-status '+(u.is_active?'is-active':'is-blocked')}>{u.is_active?'Активний':'Заблокований'}</span></td>
-     <td><time>{u.last_login_at?new Date(u.last_login_at).toLocaleString('uk-UA',{dateStyle:'short',timeStyle:'short'}):'Не зафіксовано'}</time></td>
-     <td><span className="team-grants">{u.permissions.length} дозволів</span></td>
-     <td><div className="team-row-actions">
-      {can('audit.view')&&<Link to={'/analytics?actor_id='+encodeURIComponent(u.id)}>Активність</Link>}
-      {manageable(u)&&<><button type="button" onClick={()=>open(u)}>Керувати</button><button type="button" disabled={!resettable(u)} onClick={()=>{open(u);setEdit({...u,reset:true,password:''});}}>Скинути доступ</button></>}
-      {!manageable(u)&&!can('audit.view')&&<span className="muted">—</span>}
-     </div></td>
-    </tr>)}</tbody>
-   </table></div>
-  </section>
-  {data.data&&!data.loading&&!data.error&&!visible.length&&<Empty title={members.length?'Працівників не знайдено':'Співробітників ще немає'}>{members.length?'Змініть фільтри на цій сторінці.':'Після створення тут з’являться особисті облікові записи команди.'}</Empty>}
-  <div className="pager"><span>Сторінка {page+1} · Усього: {data.data?.[0]?.total||0}</span><button disabled={!page||data.loading} onClick={()=>setPage(page-1)}>Попередні працівники</button><button disabled={data.loading||(page+1)*50>=(data.data?.[0]?.total||0)} onClick={()=>setPage(page+1)}>Наступні працівники</button></div>
+<section className="panel padded team-access-log"><h2>Останні зміни доступів</h2>{user.role==='DIRECTOR'?<><State error={teamEvents.error} loading={teamEvents.loading}/><div className="team-event-list">{recentEvents.slice(0,5).map(ev=><div key={ev.id}><span>{({employee_created:'Створення працівника',employee_updated:'Зміна ролі або доступів',access_reset:'Скидання доступу',password_changed:'Зміна пароля'} as Record<string,string>)[ev.type]||'Подія команди'}</span><time>{new Date(ev.created_at).toLocaleString('uk-UA',{dateStyle:'short',timeStyle:'short'})}</time></div>)}{!teamEvents.loading&&!teamEvents.error&&!recentEvents.length&&<p>Подій поки немає.</p>}</div></>:<p>Історія доступна директору.</p>}</section></div>
+  {viewMember&&<Modal title="Картка працівника" onClose={()=>setViewMember(null)}><h3>{viewMember.name}</h3><p>{viewMember.email}</p><p>{roleLabel(viewMember.role)} · {viewMember.is_active?'Активний':'Заблокований'}</p><p>Остання активність: {viewMember.last_login_at?new Date(viewMember.last_login_at).toLocaleString('uk-UA'):'Не зафіксовано'}</p></Modal>}
   {edit&&<Modal className="team-edit-dialog" title={edit.reset?'Скидання доступу':edit.id?'Права працівника':'Новий співробітник'} onClose={()=>{if(!busy)setEdit(null);}}><form onSubmit={save}>
    {!edit.reset&&<>
     <label>Ім’я<input required maxLength={120} value={edit.name} onChange={e=>setEdit({...edit,name:e.target.value})}/></label>
