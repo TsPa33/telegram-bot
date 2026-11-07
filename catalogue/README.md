@@ -24,3 +24,32 @@ A tunnel avoids opening public MySQL access. Read the Railway tunnel instruction
 ## Limits
 Source table `article_oe` contains confirmed OEM references; source table `articles` contains confirmed names. Other datasets (images, prices, vehicle-fitment, tree categories, modifiers) are NOT confirmed ready to import. Some passenger_* reads currently return MySQL error 1146; do not import these until their metadata/files are diagnosed on a backed-up copy.
 Source records may require licensing permission before use in a commercial service.
+
+## Selective resumable importer
+
+The Windows-only script `selective_import.py` is the next stage after `pilot_import.py`.
+It reads only the local `td1q2018` database, writes to isolated Railway staging and keeps
+per-job resume checkpoints in `.import_state` after each committed batch.
+It does not transfer 50 GiB or alter CarPot Warehouse.
+
+Jobs: `manufacturers`, `models`, `volvo-oem`.
+The last job uses Volvo OEM manufacturer ID 120 and can be slower due to the large source tables.
+Do not attempt a full import before measuring its performance.
+It only transfers known fields, not images, prices, categories, fitment or translations.
+
+From an existing PowerShell session with SOURCE_* and DEST_* settings,
+local MySQL running, and Railway MySQL tunnel open:
+
+```powershell
+cd C:\CarPot\Catalogue
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/TsPa33/telegram-bot/feature/carpot-catalogue-mvp/catalogue/selective_import.py" -OutFile "selective_import.py"
+python -u .\selective_import.py --job manufacturers --max-rows 5000 --batch-size 250 --confirm-staging
+python -u .\selective_import.py --job models --max-rows 5000 --batch-size 250 --confirm-staging
+```
+
+Re-run the models command to proceed from its saved position.
+For OEM, first test with `--job volvo-oem --max-rows 250 --batch-size 100 --confirm-staging`.
+Each invocation is bounded to at most 20,000 records and uses a destination metadata
+size guard of 3500 MiB. This is not a guaranteed physical disk usage measurement.
+Maintain backups; do not remove `.import_state` or run overlapping jobs.
+Existing source metadata errors involving `passenger_*` remain outside this release.
