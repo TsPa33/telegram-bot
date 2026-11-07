@@ -1,10 +1,10 @@
 /* Shared row interaction across donor, inventory and search; no table geometry reset. */
 .wd-row:not(.wd-th),.ui3-part{background:#fff;transition:background-color .12s;cursor:pointer}
-.wd-row:not(.wd-th):nth-of-type(even),.ui3-part:nth-of-type(even){background:#f3f8f6}
-.wd-row:not(.wd-th):hover,.ui3-part:hover{background:#eaf4ef}
+.wd-row:not(.wd-th):nth-of-type(even),.ui3-part:nth-of-type(even){background:var(--part-row-zebra)}
+.wd-row:not(.wd-th):hover,.ui3-part:hover{background:var(--part-row-hover)}
 .wd-row:not(.wd-th):focus-visible,.ui3-part:focus-visible{outline:2px solid #08785d;outline-offset:-2px}
-.wd-row.selected,.ui3-part:has(input[type=checkbox]:checked){background:#dff1e7}
-.wd-row:has([data-part-actions][aria-expanded=true]),.ui3-part:has([data-part-actions][aria-expanded=true]){background:#cde9dc;box-shadow:inset 3px 0 #08785d}
+.wd-row.selected,.ui3-part:has(input[type=checkbox]:checked){background:var(--part-row-selected)}
+.wd-row:has([data-part-actions][aria-expanded=true]),.ui3-part:has([data-part-actions][aria-expanded=true]){background:var(--part-row-active);box-shadow:inset 3px 0 #08785d}
 [data-part-actions]{min-width:72px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;gap:6px}
 .part-row-menu{position:fixed;margin:0;padding:6px;border:1px solid var(--border,#dee5ef);border-radius:10px;box-shadow:0 12px 36px #17223530;overflow:auto;background:white}
 .part-row-menu button{display:block;text-align:left;width:100%;min-height:44px;border:0;background:transparent;padding:8px 12px}

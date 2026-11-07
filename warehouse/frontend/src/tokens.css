@@ -38,6 +38,16 @@
   --color-group-count: #deebe5;
   --color-overlay: #14292459;
   --color-shadow: #162d2515;
+  --font-warehouse: Manrope, Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --part-font-title: 26px;
+  --part-font-section: 19px;
+  --part-font-name: 14px;
+  --part-font-body: 13px;
+  --part-font-caption: 12px;
+  --part-row-zebra: var(--color-subtle);
+  --part-row-hover: var(--color-accent-surface);
+  --part-row-selected: var(--color-success-surface);
+  --part-row-active: var(--color-group-count);
   --radius-control: 8px;
   --radius-panel: 12px;
   --space-1: 4px;

@@ -82,6 +82,7 @@ function sectionFor(label:string){
 export default function PartsQuickCategories({categories,selected,onSelect,smart}:{
  categories:Row[];selected:string;onSelect:(id:string)=>void;smart:boolean
 }){
+ const [more,setMore]=useState(false);
  const [activeSection,setActiveSection]=useState<number|null>(null);
  const groups=groupQuickCategoryRoots(categories);
  const sectionGroups=activeSection===null?[]:groups.filter(g=>sectionFor(g.label)===activeSection);
@@ -89,16 +90,17 @@ export default function PartsQuickCategories({categories,selected,onSelect,smart
   <div className="ui11-category-heading"><span>Швидкий вибір категорії</span>
    {smart&&<small>Оберіть систему автомобіля, а потім потрібну групу деталей</small>}
   </div>
-  <div className="ui11-category-grid expanded">
+  <div className={"ui11-category-grid"+(more?" expanded":" compact")}>
    <button type="button" aria-pressed={!selected&&activeSection===null} className={'ui11-category-tile'+(!selected&&activeSection===null?' selected':'')} onClick={()=>{setActiveSection(null);onSelect('');}}>
     <Boxes size={22} strokeWidth={1.7} aria-hidden="true"/><span>Усі категорії</span>
    </button>
-   {sections.map((section,i)=>{const Icon=section.icon;
+   {(more?sections:sections.slice(0,4)).map((section,i)=>{const Icon=section.icon;
     return <button type="button" key={section.name} className={'ui11-category-tile'+(activeSection===i?' selected':'')} aria-pressed={activeSection===i} aria-expanded={activeSection===i}
     onClick={()=>{setActiveSection(i===activeSection?null:i);}}>
       <Icon size={22} strokeWidth={1.7} aria-hidden="true"/><span>{section.name}</span>
     </button>;
    })}
+   <button type="button" className="ui11-category-tile" aria-expanded={more} onClick={()=>setMore(v=>!v)}><span>{more?'Згорнути категорії':`Ще категорії (${sections.length-4})`}</span></button>
   </div>
   {activeSection!==null&&<div className="ui11-section-children" aria-label={'Підгрупи: '+sections[activeSection].name}>
    <div className="ui11-category-heading"><span>{sections[activeSection].name} — підгрупи</span>

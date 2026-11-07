@@ -42,7 +42,7 @@ export function InventoryTableHead({
           "Запчастина"
         )}
       </span>
-      <span>Автомобіль</span>
+      {!dashboard&&<span>Автомобіль</span>}
       <span>
         {onSort ? (
           <button
@@ -86,6 +86,8 @@ export function InventoryPartRow({
   canSelect,
   onSelect,
   onOpen,
+  onPreview,
+  active = false,
   onSaved,
   actions,
   photo,
@@ -101,6 +103,8 @@ export function InventoryPartRow({
   canSelect: boolean;
   onSelect: (checked: boolean) => void;
   onOpen: () => void;
+  onPreview?: () => void;
+  active?: boolean;
   onSaved: (p: Row) => void;
   actions: ReactNode;
   photo?: ReactNode;
@@ -113,8 +117,8 @@ export function InventoryPartRow({
     kind = inventoryStockKind(p);
   return (
     <article
-      {...partRowInteraction}
-      className={"ui3-part" + (dashboard ? " r115-part" : "")}
+      {...partRowInteraction(onPreview || onOpen)}
+      className={"ui3-part" + (dashboard ? " r115-part" : "") + (active ? " part-row-active" : "")}
       aria-label={p.name}
     >
       <div className="ui3-identity">
@@ -139,10 +143,11 @@ export function InventoryPartRow({
             {category?.name || "Потребує уточнення"} ›{" "}
             {sub?.name || "Підкатегорію уточнити"}
           </small>
+          {dashboard&&vehicle&&<small><Link to={"/vehicles?donor="+vehicle.id}>{vehicle.manufacturer} {vehicle.model} · {vehicle.year} · №{vehicle.number}</Link></small>}
           {extra}
         </div>
       </div>
-      <div className="ui3-donor">
+      <div className={"ui3-donor"+(dashboard?" compact-donor-hidden":"")}>
         {vehicle ? (
           <>
             <Link to={"/vehicles?donor="+vehicle.id}>{vehicle.manufacturer} {vehicle.model}</Link>

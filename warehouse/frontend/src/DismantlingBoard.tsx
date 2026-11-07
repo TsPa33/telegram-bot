@@ -1,3 +1,5 @@
+import SearchPartPreview from "./SearchPartPreview";
+import {NotesDialog,InspectionDialog} from "./WorkshopDialogs";
 import InventoryQuantity from "./InventoryQuantity";
 import PlanPartActions from "./PlanPartActions";
 import {partRowInteraction} from "./partRowInteraction";
@@ -62,6 +64,8 @@ export default function DismantlingBoard({
   onTranslationConsumed?: () => void;
 }) {
   const settings = view === "settings";
+  const [previewKey,setPreviewKey]=useState(''),[previewNotes,setPreviewNotes]=useState<Row|null>(null),[previewInspection,setPreviewInspection]=useState<Row|null>(null),[photoRevision,setPhotoRevision]=useState(0);
+  useEffect(()=>setPreviewKey(''),[view]);
   const [oemFilter, setOemFilter] = useState(""),
     [articleFilter, setArticleFilter] = useState("");
   const [savedSearch, setSavedSearch] = useState<Row | null>(null);
@@ -545,6 +549,9 @@ export default function DismantlingBoard({
     canManage = can("dismantling.manage") && !vehicle.archived;
   if (!data)
     return <p role="status">{error || "Відкриваємо збережений список…"}</p>;
+  const previewRow=rows.find(r=>r.key===previewKey),previewStock=previewRow&&(partFor(previewRow)||previewRow.parts[0]);
+  const previewPart=previewRow?{...previewStock,name:previewRow.name,original:previewRow.original,...(!previewStock?{catalogue_only:true,plan_status:status[previewRow.state]}:{})}:null;
+  const previewSaved=()=>{void load(epoch.current);window.dispatchEvent(new Event('warehouse:inventory-changed'));};
   return (
     <section
       className="wd-board"
@@ -668,7 +675,7 @@ export default function DismantlingBoard({
           Зняти вибір
         </button>
       </div>
-      <div className="wd-layout">
+      <div className={"wd-layout part-preview-layout"+(!settings&&previewRow?" has-preview":"")}>
         <section className="wd-list">
           <div className="wd-list-heading">
             <h3>
@@ -853,9 +860,9 @@ export default function DismantlingBoard({
               return (
                 <Fragment key={row.key}>
                   <article
-                    {...(!settings ? partRowInteraction : {})}
+                    {...(!settings ? partRowInteraction(()=>setPreviewKey(row.key)) : {})}
                     className={
-                      "wd-row" + (chosen.has(row.key) ? " selected" : "")
+                      "wd-row" + (chosen.has(row.key) ? " selected" : "") + (previewKey===row.key ? " part-row-active" : "")
                     }
                     data-entry-key={row.key}
                     aria-label={
@@ -1283,7 +1290,15 @@ export default function DismantlingBoard({
           )}
           {!filtered.length && <p>За цими фільтрами позицій немає.</p>}
         </section>
+        {!settings&&previewRow&&<SearchPartPreview part={previewPart} vehicle={vehicle} category={{name:displayCategory(previewRow)}} canSell={false} onOpen={()=>previewStock&&onOpenPart(previewStock.id)} onSell={()=>{}} onEdit={()=>previewStock&&onOpenPart(previewStock.id)} onSaved={previewSaved} open onClose={()=>setPreviewKey('')} position={Math.max(1,filtered.findIndex(r=>r.key===previewKey)+1)} total={filtered.length} onPrevious={()=>{const i=filtered.findIndex(r=>r.key===previewKey);if(i>0)setPreviewKey(filtered[i-1].key);}} onNext={()=>{const i=filtered.findIndex(r=>r.key===previewKey);if(i>=0&&i+1<filtered.length)setPreviewKey(filtered[i+1].key);}} photoRevision={photoRevision} onPhotoSaved={()=>setPhotoRevision(n=>n+1)} onNotes={previewStock?()=>setPreviewNotes(previewStock):undefined} onInspection={previewStock?()=>setPreviewInspection(previewStock):undefined} contextActions={<>
+          {previewRow.parts.length>1&&<label>Складська картка<select aria-label="Картка для швидкого перегляду" value={previewStock?.id||''} onChange={e=>setTarget(old=>({...old,[previewRow.key]:e.target.value}))}>{previewRow.parts.map((card:Row,i:number)=><option key={card.id} value={card.id}>{card.article_number||card.name} · {i+1} · {card.quantity} шт.</option>)}</select></label>}
+          {!previewRow.parts.length&&canAdd(previewRow)&&!["sold","hidden","received","empty"].includes(previewRow.state)&&<button disabled={busy} onClick={()=>void addToStock([previewRow.key])}>Додати 1 шт. на склад</button>}
+          {canManage&&!["sold","hidden","received"].includes(previewRow.state)&&<button disabled={busy} onClick={()=>void annotate([previewRow.key],"dismantled")}>Позначити як демонтовано</button>}
+          {canManage&&<button disabled={busy} onClick={()=>void annotate([previewRow.key],previewRow.state==="hidden"?"restore":"hide")}>{previewRow.state==="hidden"?"Повернути в план":"Приховати з плану"}</button>}
+        </>}/>}
       </div>
+      {previewNotes&&<NotesDialog part={previewNotes} onClose={()=>setPreviewNotes(null)} onSaved={()=>{setPreviewNotes(null);previewSaved();}}/>}
+      {previewInspection&&<InspectionDialog part={previewInspection} onClose={()=>setPreviewInspection(null)} onSaved={()=>{setPreviewInspection(null);previewSaved();}}/>}
       {progress && (
         <p role="status">
           Оброблено {progress.done} із {progress.total}

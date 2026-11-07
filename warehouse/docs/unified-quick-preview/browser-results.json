@@ -1,0 +1,17 @@
+{
+  "three_contexts": true,
+  "shared_preview": true,
+  "real_stock_and_catalogue": true,
+  "row_menu_separation": true,
+  "checkbox_quantity_isolation": true,
+  "escape_layers": true,
+  "keyboard": true,
+  "close_no_reopen": true,
+  "price_oem_sync": true,
+  "explicit_add_one": true,
+  "desktop1440_narrow1100_mobile390": true,
+  "mobile_focus_lock": true,
+  "overflow": false,
+  "js_errors": [],
+  "paid_requests": 0
+}

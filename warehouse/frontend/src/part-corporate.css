@@ -1,0 +1,66 @@
+/* Shared presentation for the three part workspaces. Existing app palette is authoritative. */
+.part-preview-layout{min-width:0}
+.ui3-inventory .part-preview-layout,.ui4-search-page .ui11-results-layout.part-preview-layout,.wd-board .wd-layout.part-preview-layout{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;align-items:start}
+.ui3-inventory .part-preview-layout.has-preview,.ui4-search-page .ui11-results-layout.part-preview-layout.has-preview,.wd-board .wd-layout.part-preview-layout.has-preview{grid-template-columns:minmax(0,1fr) minmax(290px,330px)}
+.part-preview-layout>*{min-width:0}.part-preview-slot{grid-column:2;grid-row:1;position:sticky;top:16px;min-width:0}
+.part-preview-slot dialog.part-preview-frame{position:static;inset:auto;margin:0;padding:0;max-width:100%;width:100%;max-height:none;overflow:visible;border:0;background:transparent;box-shadow:none;color:var(--color-text);font-family:var(--font-warehouse)}
+#search-part-preview.part-quick-preview{position:static;display:block;max-height:var(--preview-available-height,calc(100dvh - 110px));overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;margin:0;padding:16px;border:1px solid var(--color-border);border-radius:var(--radius-panel);background:var(--color-surface);box-shadow:0 6px 24px var(--color-shadow);font-family:var(--font-warehouse);font-size:var(--part-font-body)}
+#search-part-preview.part-quick-preview .ui11-preview-heading{position:relative;padding:0 0 12px;margin:0}
+#search-part-preview.part-quick-preview h2{font-size:var(--part-font-section);line-height:1.3;letter-spacing:-.02em;margin:14px 0 5px;overflow-wrap:anywhere}
+#search-part-preview.part-quick-preview p,#search-part-preview.part-quick-preview small{font-size:var(--part-font-caption);color:var(--color-secondary);line-height:1.4;margin:0}
+#search-part-preview.part-quick-preview .ui11-preview-topline{display:flex;align-items:center;gap:8px;padding-right:44px;flex-wrap:wrap}
+#search-part-preview.part-quick-preview .ui11-eyebrow{font-size:13px;font-weight:700;color:var(--color-accent)}
+#search-part-preview.part-quick-preview .ui11-preview-navigation{display:flex;align-items:center;gap:5px;font-size:12px}
+#search-part-preview.part-quick-preview .ui11-preview-close{position:absolute;display:flex;right:0;top:0;min-width:44px;min-height:44px;padding:8px;background:var(--color-subtle);border:1px solid var(--color-border)}
+#search-part-preview.part-quick-preview button,#search-part-preview.part-quick-preview summary{font-family:inherit;font-size:var(--part-font-body);font-weight:600;min-height:44px;line-height:1.3;border-radius:var(--radius-control);white-space:normal;overflow-wrap:anywhere}
+#search-part-preview.part-quick-preview .ui11-preview-image{height:145px;min-height:145px;max-height:145px;overflow:hidden;background:var(--color-subtle);border-radius:var(--radius-control)}
+#search-part-preview.part-quick-preview .ui11-preview-image img{width:100%;height:100%;object-fit:contain}
+#search-part-preview.part-quick-preview .ui12-photo-placeholder{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--color-secondary);font-size:12px}
+#search-part-preview.part-quick-preview .ui11-photo-actions{font-size:12px;margin:8px 0}
+#search-part-preview.part-quick-preview .ui11-preview-facts{display:block;margin:12px 0}
+#search-part-preview.part-quick-preview .ui11-preview-facts>div{display:grid;grid-template-columns:minmax(70px,.8fr) minmax(0,1.2fr);gap:10px;padding:9px 0;border-bottom:1px solid var(--color-border);font-size:13px}
+#search-part-preview.part-quick-preview dt{font-size:12px;color:var(--color-secondary)}
+#search-part-preview.part-quick-preview dd{margin:0;overflow-wrap:anywhere;font-size:13px;font-weight:600}
+#search-part-preview.part-quick-preview dd small{display:block;font-weight:400}
+#search-part-preview.part-quick-preview .ui11-preview-buttons{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;margin-top:12px}
+#search-part-preview.part-quick-preview .ui11-preview-buttons>button{width:100%;display:flex;align-items:center;justify-content:center;gap:7px;padding:9px}
+#search-part-preview.part-quick-preview details.part-preview-price-edit{display:block;width:100%;max-width:none;padding:0;border:1px solid var(--color-border);border-radius:var(--radius-control)}
+#search-part-preview.part-quick-preview details.part-preview-price-edit>summary{padding:11px;text-align:center;cursor:pointer}
+#search-part-preview.part-quick-preview details.part-preview-price-edit .seller-pricing{padding:8px;min-width:0}
+.part-preview-layout button[data-part-actions],.wd-board button[data-part-actions]{font-family:var(--font-warehouse);font-size:var(--part-font-body);font-weight:600;min-width:70px;min-height:44px;gap:5px;padding:8px;border-radius:var(--radius-control);line-height:1.2;white-space:nowrap}
+.part-preview-layout .ui3-part,.wd-board .wd-row{font-family:var(--font-warehouse);font-size:var(--part-font-body)}
+.part-preview-layout .ui3-part .ux1-part-name,.wd-board .wd-row .wd-name strong{font-size:var(--part-font-name);font-weight:600;line-height:1.35}
+.part-preview-layout .ui3-part small,.wd-board .wd-row small{font-size:var(--part-font-caption);line-height:1.35}
+.part-preview-layout .ui3-table-head,.wd-board .wd-th{font-size:var(--part-font-caption)}
+.ui3-inventory .stock-compact-table .compact-donor-hidden{display:none}
+.ui3-inventory .stock-compact-table .r115-table-head,.ui3-inventory .stock-compact-table article.r115-part{grid-template-columns:minmax(190px,1.8fr) minmax(145px,1.1fr) minmax(130px,1fr) minmax(100px,.8fr) 76px}
+.ui3-inventory .part-preview-layout.has-preview .stock-compact-table article.r115-part,.ui3-inventory .part-preview-layout.has-preview .stock-compact-table .r115-table-head{grid-template-columns:minmax(130px,1.6fr) minmax(140px,1.1fr) minmax(105px,1fr) minmax(90px,.8fr) 70px;gap:8px}
+.part-preview-layout .ui3-part.part-row-active,.part-preview-layout .stock-row-wrap article.part-row-active,.wd-board .wd-row.part-row-active{background:var(--part-row-active);box-shadow:inset 3px 0 var(--color-accent)}
+.part-preview-layout .stock-row-wrap article.part-row-active:has(input:checked),.wd-board .wd-row.part-row-active.selected{background:var(--part-row-active)}
+@media(min-width:901px){.ui4-search-page .part-preview-layout.has-preview .ui3-part,.ui4-search-page .part-preview-layout.has-preview .ui3-table-head{grid-template-columns:minmax(125px,1.6fr) minmax(85px,1fr) minmax(145px,1.1fr) minmax(90px,1fr) minmax(85px,.8fr) 70px;gap:8px}.ui4-search-page .part-preview-layout.has-preview .inventory-quantity>div{flex-wrap:nowrap}.wd-board .wd-layout.has-preview .wd-row:not(.wd-th){grid-template-columns:24px minmax(130px,1.5fr) minmax(100px,1fr) minmax(145px,1fr) 110px;gap:8px}.wd-board .wd-layout.has-preview .wd-row-actions{flex-wrap:wrap}}
+@media(max-width:1150px) and (min-width:901px){.ui3-inventory .part-preview-layout.has-preview article.r115-part,.ui4-search-page .part-preview-layout.has-preview .ui3-part{display:grid;grid-template-columns:minmax(0,1fr) minmax(140px,1fr)}.ui3-inventory .part-preview-layout.has-preview article.r115-part>div,.ui4-search-page .part-preview-layout.has-preview .ui3-part>div{grid-column:auto;grid-row:auto;margin:0}.ui3-inventory .part-preview-layout.has-preview article.r115-part .ui3-identity,.ui4-search-page .part-preview-layout.has-preview .ui3-part .ui3-identity{grid-column:1/-1}.part-preview-layout.has-preview .ui3-table-head{display:none}}
+@media(max-width:900px){.ui3-inventory .part-preview-layout.has-preview,.ui4-search-page .ui11-results-layout.part-preview-layout.has-preview,.wd-board .wd-layout.part-preview-layout.has-preview{grid-template-columns:minmax(0,1fr)}.part-preview-slot{display:contents}.part-preview-slot dialog.part-preview-frame.mobile{position:fixed;inset:auto 0 0;margin:0 auto;width:calc(100% - 16px);max-width:540px;max-height:calc(100dvh - 24px);overflow:auto;border-radius:14px 14px 0 0;background:var(--color-surface);box-shadow:var(--shadow-overlay)}.part-preview-frame::backdrop{background:var(--color-overlay)}#search-part-preview.part-quick-preview{max-height:calc(100dvh - 24px);padding-bottom:max(16px,env(safe-area-inset-bottom))}.ui3-inventory .stock-compact-table article.r115-part{grid-template-columns:minmax(0,1fr)}.ui3-inventory .stock-compact-table .r115-table-head{display:none}}
+
+.ui3-inventory .r115-heading h1,.ui4-search-page .ui4-heading h1{font-size:var(--part-font-title);font-family:var(--font-warehouse)}
+.part-preview-layout .ui3-part button,.part-preview-layout .ui3-table-head button,.wd-board .wd-row button{font-family:var(--font-warehouse);font-size:var(--part-font-body);line-height:1.3}
+
+.part-preview-layout .ux1-status{display:inline-flex;align-items:center;width:auto;height:auto;min-height:0;padding:3px 7px;margin:0;border:0;border-radius:6px;font-size:var(--part-font-caption);line-height:1.3}
+.wd-board .wd-layout.has-preview .wd-row-actions>button{min-height:44px;white-space:nowrap;font-size:var(--part-font-body);padding:8px}
+
+.ui4-search-page .ui11-category-grid.compact{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}
+.ui4-search-page .ui11-category-grid.compact .ui11-category-tile{min-height:76px;padding:10px}
+.ui4-search-page .ui11-category-grid.compact .ui11-category-tile span{font-size:13px;line-height:1.3}
+@media(max-width:900px){.ui4-search-page .ui11-category-grid.compact{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:600px){.ui4-search-page .ui11-category-grid.compact{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:1250px) and (min-width:901px){
+ .wd-board .wd-layout.has-preview .wd-row:not(.wd-th){grid-template-columns:24px minmax(0,1fr)}
+ .wd-board .wd-layout.has-preview .wd-row .wd-name{grid-column:2;grid-row:1}
+ .wd-board .wd-layout.has-preview .wd-row>div:nth-child(3){grid-column:2;grid-row:2}
+ .wd-board .wd-layout.has-preview .wd-row .wd-quantity{grid-column:2;grid-row:3}
+ .wd-board .wd-layout.has-preview .wd-row .wd-row-actions{grid-column:2;grid-row:4;justify-content:flex-start}
+ .wd-board .wd-layout.has-preview .wd-row.wd-th{display:none}
+}
+#search-part-preview.part-quick-preview .ui11-preview-buttons{position:static;inset:auto;box-shadow:none;background:transparent;padding:0}
+.ui4-search-page .part-preview-layout .ui11-results-list .ui3-actions{min-width:0;width:100%;max-width:100%}
+.ui4-search-page .part-preview-layout .ui11-results-list .ui3-actions .seller-actions{display:flex;min-width:0;width:100%;gap:0;justify-content:flex-end}
+.ui4-search-page .part-preview-layout .ui11-results-list .ui3-actions .seller-actions>button[data-part-actions]{min-width:64px;min-height:44px;max-width:100%;flex:0 0 auto;padding:8px;font-size:var(--part-font-body)}

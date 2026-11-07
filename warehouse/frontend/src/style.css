@@ -1,11 +1,5 @@
 :root {
-  font-family:
-    Manrope,
-    Inter,
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    sans-serif;
+  font-family: var(--font-warehouse);
   color: var(--color-text);
   background: var(--color-background);
   font-synthesis: none;
