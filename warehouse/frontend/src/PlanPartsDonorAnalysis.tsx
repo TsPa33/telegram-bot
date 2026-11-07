@@ -590,7 +590,10 @@ export default function PlanPartsDonorAnalysis({
       {!loading && categories.length === 0 && <section className="vp-start" aria-label="Почати розбір автомобіля">
         <h3>Розбір автомобіля на запчастини</h3>
         <p>{vehicle.ktype ? "Модифікацію вибрано. Створіть перелік запчастин." : "Виберіть двигун і модифікацію, після чого сформуйте список запчастин."}</p>
-        <button type="button" disabled={busy} onClick={() => vehicle.ktype ? void startCatalogue() : setTech(true)}>
+        <button type="button" disabled={busy} onClick={() => {
+          if (vehicle.ktype) void startCatalogue();
+          else { setTech(true); prepare("ktype"); }
+        }}>
           Розібрати авто на запчастини
         </button>
       </section>}
