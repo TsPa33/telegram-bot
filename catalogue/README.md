@@ -10,13 +10,13 @@ This module is isolated from /warehouse and production. It uses its own MySQL da
 - No copying 50 GiB and no modification to local source.
 
 ## Database initialization
-Create a dedicated `catalogue` database within the new Railway MySQL, then execute `schema.sql` there. Point `catalogue-api` MYSQLDATABASE at that database.
+The `catalogue-api` pre-deploy command executes `python bootstrap.py` against the newly provisioned Railway MySQL database specified by `MYSQLDATABASE` (usually `railway`). Schema creation is idempotent. Do not point it at production.
 
 ## Pilot transfer
 On Windows, install Python and `pip install -r requirements.txt`. Keep local MySQL running.
 Use Railway CLI `railway connect MySQL --tunnel-only` from the correct project/environment to open a local TCP tunnel (use its reported port).
 Set SOURCE_HOST=127.0.0.1, SOURCE_PORT=3306, SOURCE_USER, SOURCE_PASSWORD (empty if local root has none).
-Set DEST_HOST=127.0.0.1, DEST_PORT=<tunnel-port>, DEST_USER, DEST_PASSWORD, DEST_DATABASE=catalogue.
+Set DEST_HOST=127.0.0.1, DEST_PORT=<tunnel-port>, DEST_USER, DEST_PASSWORD, DEST_DATABASE=railway (or `catalogue` only if you explicitly created and configured that database).
 Set PILOT_MAX_ROWS=1000, then `python pilot_import.py`.
 Do not paste database secrets into a chat or commit them to Git.
 A tunnel avoids opening public MySQL access. Read the Railway tunnel instructions for the actual local port.
