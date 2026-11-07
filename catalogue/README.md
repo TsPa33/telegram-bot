@@ -53,3 +53,38 @@ Each invocation is bounded to at most 20,000 records and uses a destination meta
 size guard of 3500 MiB. This is not a guaranteed physical disk usage measurement.
 Maintain backups; do not remove `.import_state` or run overlapping jobs.
 Existing source metadata errors involving `passenger_*` remain outside this release.
+
+## Full articles/OEM import (all manufacturers)
+
+`full_import.py` is a separate Windows importer. It NEVER updates source `td1q2018`. Two jobs:
+`articles` copies all article identities and names; `oem` copies all original-number mappings.
+The destination retains only necessary columns. Checkpoints are written in
+`railway.catalogue_import_progress` within the **same transaction** as each batch.
+
+The importer tests for a matching leftmost compound index on the local source table
+before attempting large reads. If the required OEM index does not exist, it stops
+safely with a list of available indexes: do NOT create an index on the 50-GiB
+source without a backup. Local source ordering must remain unchanged during import.
+
+Download from the `feature/carpot-catalogue-mvp` branch and run in the existing
+PowerShell session that has SOURCE_* / DEST_* variables and an active SSH tunnel:
+
+```powershell
+cd "C:\CarPot\Catalogue"
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/TsPa33/telegram-bot/feature/carpot-catalogue-mvp/catalogue/full_import.py" -OutFile "full_import.py"
+python -u .\full_import.py --job articles --preflight --confirm-staging
+python -u .\full_import.py --job oem --preflight --confirm-staging
+```
+
+Only after preflight and confirmation of available Railway storage, run
+`--job articles --max-rows 20000 --batch-size 500 --confirm-staging`
+and repeat. Once all articles are done, import OEM in the same manner.
+You can raise `--max-rows` to 200000 per run; it is a *per-run safety bound*,
+not a global catalogue size limit. The script stops if the *estimated*
+destination database table sizes reach 3000 MiB. This metadata guard is
+not a reliable substitute for checking physical storage in Railway. The
+Railway MySQL service is currently on a 5-GB volume.
+
+Do not run simultaneous importers against the same job. Existing test
+rows are preserved via duplicate-key handling. Source image, price,
+category and vehicle compatibility data remain outside this importer.
