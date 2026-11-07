@@ -56,7 +56,6 @@ const root = "/plan-parts",
 export default function PlanPartsDonorAnalysis({
   vehicle,
   onSaved,
-  sourceSelector,
   onLoaded,
 }: {
   vehicle: Row;
@@ -534,7 +533,7 @@ export default function PlanPartsDonorAnalysis({
           aria-expanded={tech}
           onClick={() => setTech(!tech)}
         >
-          Джерело та модифікація
+          {vehicle.ktype ? "Змінити модифікацію" : "Вибрати модифікацію"}
         </button>
       </div>
 
@@ -590,12 +589,12 @@ export default function PlanPartsDonorAnalysis({
       )}
       {!loading && categories.length === 0 && <section className="vp-start" aria-label="Почати розбір автомобіля">
         <h3>Розбір автомобіля на запчастини</h3>
-        <p>{vehicle.ktype ? "Модифікацію вибрано. Створіть перелік запчастин." : "Спочатку виберіть модифікацію автомобіля."}</p>
+        <p>{vehicle.ktype ? "Модифікацію вибрано. Створіть перелік запчастин." : "Виберіть двигун і модифікацію, після чого сформуйте список запчастин."}</p>
         <button type="button" disabled={busy} onClick={() => vehicle.ktype ? void startCatalogue() : setTech(true)}>
           Розібрати авто на запчастини
         </button>
       </section>}
-      {(tech || !categories.length) && (
+      {(tech || !vehicle.ktype) && (
         <div className="vp-technical">
           {!vehicle.ktype && <p role="status">Потрібно вибрати модифікацію</p>}
           <p>
