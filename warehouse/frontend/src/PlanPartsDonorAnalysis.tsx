@@ -482,35 +482,27 @@ export default function PlanPartsDonorAnalysis({
   const paidConfirmation = quote && (
     <div
       role="alertdialog"
-      aria-label="Підтвердження API-запиту"
+      aria-label="Підтвердження витрати токенів"
       className="vp-confirm"
     >
-      <strong>Новий зовнішній запит</strong>
-      <p>
-        Операцій: {quote.resource === "articles" ? quote.ids.length : 1}.
-        Максимальна вартість:{" "}
-        {priceQuote(
-          quote.cost,
-          quote.resource === "articles" ? quote.ids.length : 1,
-        ).known
-          ? priceQuote(
-              quote.cost,
-              quote.resource === "articles" ? quote.ids.length : 1,
-            ).max + " токенів"
-          : "не підтверджена"}
-        .
-      </p>
-      {(!policy.terms_confirmed || quote.cost == null) && (
-        <p>
-          Новий платний запит заблоковано, доки не підтверджені права збереження
-          та тариф. Наявні дані доступні для відновлення.
-        </p>
+      <strong>{quote.resource === "ktype" ? "Пошук модифікації" : quote.resource === "categories" ? "Розібрати авто на запчастини" : "Отримати артикули"}</strong>
+      {priceQuote(quote.cost, quote.resource === "articles" ? quote.ids.length : 1).known ? (
+        <>
+          <p>
+            {quote.resource === "articles" ? `Вибрано типів: ${quote.ids.length}. ` : ""}
+            Максимальна вартість: <b>{priceQuote(quote.cost, quote.resource === "articles" ? quote.ids.length : 1).max} токенів</b>.
+          </p>
+          <p>Якщо результат уже збережено, повторна оплата не потрібна. Токени витрачаються лише за нову успішну відповідь Plan.Parts.</p>
+        </>
+      ) : (
+        <p>Вартість запиту тимчасово недоступна. Платний запит не запускається без відомого тарифу.</p>
       )}
+      {!policy.terms_confirmed && <p>Отримання нових даних тимчасово недоступне. Збережені дані можна переглядати.</p>}
       <button
-        disabled={busy || !policy.terms_confirmed || quote.cost == null}
+        disabled={busy || !policy.terms_confirmed || !priceQuote(quote.cost, quote.resource === "articles" ? quote.ids.length : 1).known}
         onClick={() => void pay()}
       >
-        Підтвердити максимальну вартість
+        Підтвердити та отримати
       </button>
       <button className="secondary" onClick={() => setQuote(null)}>
         Скасувати
