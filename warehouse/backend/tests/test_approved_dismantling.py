@@ -248,3 +248,26 @@ def test_unconfigured_translation_never_fabricates_success(setup, monkeypatch):
     assert response.status_code == 200
     assert response.json()["configured"] is False and response.json()["saved"] == 0
     assert read(c, v)["items"][1]["name"] == "Synthetic unknown unit"
+
+
+def test_original_name_can_be_added_without_translation_and_replay_is_safe(setup):
+    c,v=setup
+    endpoint="/api/v1/plan-parts/donor-parts/add?vehicle_id="+v["id"]
+    data={"ktype":123,"pt_id":2,"ukrainian_name":"Synthetic unknown unit"}
+    first=c.post(endpoint,json=data)
+    assert first.status_code==200,first.text
+    again=c.post(endpoint,json=data)
+    assert again.status_code==200,again.text
+    assert first.json()["part_id"]==again.json()["part_id"]
+    assert again.json()["quantity"]==1
+
+
+def test_modification_change_requires_confirmation_preserves_previous_plan(setup):
+    c,v=setup
+    endpoint="/api/v1/plan-parts/vehicle-modification/select?vehicle_id="+v["id"]
+    assert c.post(endpoint,json={"ktype":456}).status_code==409
+    assert c.post(endpoint,json={"ktype":456,"confirm_change":True}).status_code==200
+    history=c.get("/api/v1/plan-parts/workspace?vehicle_id="+v["id"]).json()
+    assert 123 in history["saved_plan_ktypes"]
+    assert c.post(endpoint,json={"ktype":123,"confirm_change":True}).status_code==200
+    assert len(read(c,v)["items"])==3

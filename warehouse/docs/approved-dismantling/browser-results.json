@@ -7,6 +7,9 @@
     "manual_name_persisted": true,
     "hide_restore_dismantled": true,
     "explicit_stock": true,
+    "stock_location_optional": true,
+    "first_article_preselected": true,
+    "create_and_assign_without_stock_card": true,
     "stock_metadata_preserved": true,
     "paid_lookups": 0
   },

@@ -54,6 +54,9 @@ export default function DismantlingBoard({
   onTranslationConsumed?: () => void;
 }) {
   const [page, setPage] = useState(0);
+  const [articleChoice, setArticleChoice] = useState<Record<string, number>>(
+    {},
+  );
   const [offerLimits, setOfferLimits] = useState<Record<string, number>>({});
   const who = useContext(TeamIdentity),
     can = useCan(),
@@ -115,7 +118,7 @@ export default function DismantlingBoard({
               .toLocaleLowerCase("uk-UA")
               .includes(q.toLocaleLowerCase("uk-UA")),
           )) &&
-        (!state || r.state === state) &&
+        (state ? r.state === state : r.state !== "sold") &&
         (!stock ||
           (stock === "yes" && r.received) ||
           (stock === "no" && !r.received)),
@@ -135,6 +138,7 @@ export default function DismantlingBoard({
     setSelected([]);
     setExpanded(null);
     setOffers({});
+    setArticleChoice({});
     setQuote(null);
     setCategory("");
     setQ("");
@@ -314,14 +318,18 @@ export default function DismantlingBoard({
       : row.parts.find((p: Row) => p.id === target[row.key]);
   }
   async function assign(row: Row, offer: Row) {
-    const p = partFor(row);
-    if (!p) {
-      setError(
-        "Спочатку додайте деталь на склад або виберіть її складську картку",
-      );
-      return;
-    }
     await run(async (g) => {
+      let p = partFor(row);
+      if (!p && row.parts.length)
+        throw Error("Виберіть конкретну складську картку");
+      if (!p) {
+        const created = await api(
+          "/plan-parts/donor-parts/add?vehicle_id=" + vehicle.id,
+          "POST",
+          { ktype: vehicle.ktype, pt_id: row.pt_id, ukrainian_name: row.name },
+        );
+        p = await api("/parts/" + created.part_id);
+      }
       await api(
         "/plan-parts/donor-parts/article/select?vehicle_id=" + vehicle.id,
         "POST",
@@ -401,8 +409,6 @@ export default function DismantlingBoard({
               throw Error(
                 "Позиція не має складської картки. Сформуйте або оновіть план.",
               );
-            if (!/[А-Яа-яІіЇїЄєҐґ]/.test(row.name))
-              throw Error("Спочатку уточніть українську назву");
             const r = await api(
               "/plan-parts/donor-parts/add?vehicle_id=" + vehicle.id,
               "POST",
@@ -413,6 +419,42 @@ export default function DismantlingBoard({
               },
             );
             p = await api("/parts/" + r.part_id);
+          }
+          if (!row.parts.length) {
+            let variants = offers[row.key];
+            if (variants === undefined) {
+              try {
+                const saved = await api(
+                  "/plan-parts/articles/recover?vehicle_id=" +
+                    vehicle.id +
+                    "&ktype=" +
+                    vehicle.ktype +
+                    "&pt_id=" +
+                    row.pt_id,
+                  "POST",
+                );
+                variants = saved.articles;
+              } catch (e) {
+                if ((e as { status?: number }).status !== 409) throw e;
+              }
+            }
+            const chosen =
+              variants?.find((a: Row) => a.art_id === articleChoice[row.key]) ||
+              variants?.[0];
+            if (chosen)
+              await api(
+                "/plan-parts/donor-parts/article/select?vehicle_id=" +
+                  vehicle.id,
+                "POST",
+                {
+                  ktype: vehicle.ktype,
+                  pt_id: row.pt_id,
+                  part_id: p.id,
+                  art_id: chosen.art_id,
+                  expected_article_number: p.article_number || "",
+                  expected_article_brand: p.article_brand || "",
+                },
+              );
           }
           if (p.quantity <= 0)
             throw Error(
@@ -428,7 +470,7 @@ export default function DismantlingBoard({
           await api("/parts/" + p.id + "/operations", "POST", {
             type: "transfer",
             quantity: 0,
-            location,
+            location: location.trim() || "Склад (місце не уточнено)",
             physical_location_kind: "on_shelf",
             reason:
               "Явне підтвердження переміщення лота на склад із плану розбору",
@@ -446,6 +488,18 @@ export default function DismantlingBoard({
       }
     });
   }
+  useEffect(() => {
+    if (confirmStock)
+      document
+        .querySelector('.wd-confirm[aria-label="Підтвердження складу"]')
+        ?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, [confirmStock]);
+  useEffect(() => {
+    if (error)
+      document
+        .querySelector(".wd-board .wd-error")
+        ?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, [error]);
   const canAdd = (row: Row) =>
     row.parts.length ? can("inventory.transfer") : can("inventory.create");
   const actionKeys = selected.length ? selected : [],
@@ -457,18 +511,14 @@ export default function DismantlingBoard({
       <section className="wd-progress" aria-label="Стан розбору автомобіля">
         <div>
           <strong>Стан розбору автомобіля</strong>
-          <p>
-            Оприбутковано: <b>{metrics.percent}%</b>
-          </p>
-          <progress max={100} value={metrics.percent} />
           <small>
-            Частка позицій плану з надходженням або підтвердженим переміщенням
-            на полицю. Кількість одиниць та артикулів рахується окремо.
+            Продані деталі — у фільтрі «Продано». Збережені записи залишаються
+            доступними.
           </small>
         </div>
         {[
           [metrics.planned, "Заплановано", Package],
-          [metrics.received, "Оприбутковано", Layers],
+          [rows.filter((r) => r.state === "sold").length, "Продано", Layers],
           [metrics.with_photo, "З фото", Camera],
         ].map(([n, label, Icon]: any) => (
           <div className="wd-metric" key={label}>
@@ -610,8 +660,8 @@ export default function DismantlingBoard({
               onChange={(e) => setStock(e.target.value)}
             >
               <option value="">Склад: усі</option>
-              <option value="yes">Оприбутковано</option>
-              <option value="no">Ще не оприбутковано</option>
+              <option value="yes">На складі</option>
+              <option value="no">Ще не додано на склад</option>
             </select>
             <select
               aria-label="Стан деталей плану"
@@ -621,7 +671,7 @@ export default function DismantlingBoard({
               <option value="">Стан: усі</option>
               {Object.entries(status).map(([k, v]) => (
                 <option key={k} value={k}>
-                  {v}
+                  {k === "sold" ? "Архів — продані" : v}
                 </option>
               ))}
             </select>
@@ -727,13 +777,40 @@ export default function DismantlingBoard({
                       )}
                       <button
                         className="wd-link"
-                        disabled={!p || !can("inventory.edit")}
-                        onClick={() => {
-                          setExpanded(row.key);
-                          setEditing("oem:" + row.key);
-                        }}
+                        disabled={
+                          !can("inventory.edit") ||
+                          (!p && !can("inventory.create"))
+                        }
+                        onClick={() =>
+                          void run(async (g) => {
+                            if (!p) {
+                              if (
+                                !window.confirm(
+                                  "Створити складську картку: 1 шт., і ввести OEM вручну?",
+                                )
+                              )
+                                return;
+                              await api(
+                                "/plan-parts/donor-parts/add?vehicle_id=" +
+                                  vehicle.id,
+                                "POST",
+                                {
+                                  ktype: vehicle.ktype,
+                                  pt_id: row.pt_id,
+                                  ukrainian_name: row.name,
+                                },
+                              );
+                              await load(g);
+                              window.dispatchEvent(
+                                new Event("warehouse:inventory-changed"),
+                              );
+                            }
+                            setExpanded(row.key);
+                            setEditing("oem:" + row.key);
+                          })
+                        }
                       >
-                        Змінити OEM
+                        {p ? "Ввести OEM" : "Додати 1 шт. і ввести OEM"}
                       </button>
                     </div>
                     <div>
@@ -747,8 +824,22 @@ export default function DismantlingBoard({
                               <b>{p.article_number}</b> ·{" "}
                               {p.article_brand || "Виробник не вказаний"}
                             </>
+                          ) : offers[row.key]?.length ? (
+                            (() => {
+                              const a =
+                                offers[row.key].find(
+                                  (a: Row) =>
+                                    a.art_id === articleChoice[row.key],
+                                ) || offers[row.key][0];
+                              return (
+                                <>
+                                  <b>{a.article_nr}</b> · {a.brand}
+                                  <small>Попередній вибір — не збережено</small>
+                                </>
+                              );
+                            })()
                           ) : (
-                            "Артикул не вибрано"
+                            "Відкрити артикули"
                           )}
                           <small>
                             {count > 0
@@ -859,8 +950,8 @@ export default function DismantlingBoard({
                         />
                       )}
                       <p className="wd-hint">
-                        OEM вводиться окремо. Автоматичний OEM API не
-                        підтверджений; OEM-крос не гарантує відповідність VIN.
+                        Автоматичне отримання OEM недоступне. Введіть номер
+                        вручну та перевірте його відповідність автомобілю.
                       </p>
                       {loadingOffer === row.key ? (
                         <p role="status">
@@ -874,6 +965,24 @@ export default function DismantlingBoard({
                                 .slice(0, offerLimits[row.key] || 100)
                                 .map((a) => (
                                   <div key={a.art_id}>
+                                    <input
+                                      type="radio"
+                                      aria-label={
+                                        "Вибрати артикул " + a.article_nr
+                                      }
+                                      name={"article-" + row.key}
+                                      checked={
+                                        (articleChoice[row.key] ??
+                                          offers[row.key][0]?.art_id) ===
+                                        a.art_id
+                                      }
+                                      onChange={() =>
+                                        setArticleChoice((v) => ({
+                                          ...v,
+                                          [row.key]: a.art_id,
+                                        }))
+                                      }
+                                    />
                                     <span>
                                       <b>{a.article_nr}</b> · {a.brand}
                                       <small>
@@ -888,10 +997,14 @@ export default function DismantlingBoard({
                                         ))}
                                     </span>
                                     <button
-                                      disabled={!p || busy}
+                                      disabled={
+                                        busy || (!p && row.parts.length > 0)
+                                      }
                                       onClick={() => void assign(row, a)}
                                     >
-                                      Призначити та зберегти
+                                      {p
+                                        ? "Призначити та зберегти"
+                                        : "Додати 1 шт. та призначити"}
                                     </button>
                                   </div>
                                 ))}
@@ -1050,25 +1163,22 @@ export default function DismantlingBoard({
           role="alertdialog"
           aria-label="Підтвердження складу"
         >
-          <strong>Додати вибрані позиції на склад?</strong>
+          <strong>Додати на склад: {confirmStock.length} шт.</strong>
           <p>
-            Нові типи — по 1 підтвердженій фізичній деталі. Існуючі лоти —
-            переміщення на полицю без зміни кількості та ціни. Уже оприбутковані
-            позиції пропускаються.
+            Для кожної нової деталі буде створено одну складську позицію з
+            кількістю 1. Наявні позиції не дублюються, їхні ціни та кількість не
+            змінюються.
           </p>
           <label>
-            Місце на складі
+            Місце на складі (необов’язково)
             <input
               maxLength={120}
               value={location}
               onChange={(e) => setLocation(e.target.value)}
             />
           </label>
-          <button
-            disabled={busy || !location.trim()}
-            onClick={() => void addToStock()}
-          >
-            Підтвердити складську дію
+          <button disabled={busy} onClick={() => void addToStock()}>
+            Додати на склад
           </button>
           <button onClick={() => setConfirmStock(null)}>Скасувати</button>
         </div>

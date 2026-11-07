@@ -121,7 +121,7 @@ export default function PlanPartsDonorAnalysis({
     const r = await api(path);
     if (generation === epoch.current) {
       setWorkspace(r);
-      setBoardRevision(n=>n+1);
+      setBoardRevision((n) => n + 1);
       if (receivedCatalogue) {
         setTranslationKick((n) => n + 1);
         onCatalogueReady?.();
@@ -656,10 +656,40 @@ export default function PlanPartsDonorAnalysis({
               }
             }}
           >
-            Розібрати авто на запчастини
+            {vehicle.ktype
+              ? "Розібрати авто на запчастини"
+              : "1. Вибрати модифікацію"}
           </button>
         </section>
       )}
+      {(workspace?.saved_plan_ktypes || [])
+        .filter((k: number) => k !== Number(vehicle.ktype))
+        .map((k: number) => (
+          <button
+            key={k}
+            onClick={() =>
+              void run(async (g) => {
+                if (
+                  !window.confirm(
+                    "Відкрити раніше збережений список? Поточні дані залишаться збереженими.",
+                  )
+                )
+                  return;
+                await api(
+                  root +
+                    "/vehicle-modification/select?vehicle_id=" +
+                    query(vehicle.id),
+                  "POST",
+                  { ktype: k, confirm_change: true },
+                );
+                if (g === epoch.current)
+                  onSaved(await api("/vehicles/" + query(vehicle.id)));
+              })
+            }
+          >
+            Відкрити попередній збережений список
+          </button>
+        ))}
       {(tech || !vehicle.ktype) && (
         <div className="vp-technical">
           {!vehicle.ktype && <p role="status">Потрібно вибрати модифікацію</p>}
@@ -688,12 +718,19 @@ export default function PlanPartsDonorAnalysis({
             disabled={!picked || busy || picked === Number(vehicle.ktype)}
             onClick={() =>
               run(async (g) => {
+                if (
+                  vehicle.ktype &&
+                  !window.confirm(
+                    "Модифікація зміниться. Попередній список, артикули та склад збережуться окремо. Продовжити?",
+                  )
+                )
+                  return;
                 await api(
                   root +
                     "/vehicle-modification/select?vehicle_id=" +
                     query(vehicle.id),
                   "POST",
-                  { ktype: picked },
+                  { ktype: picked, confirm_change: true },
                 );
                 const donor = await api("/vehicles/" + query(vehicle.id));
                 if (g === epoch.current) onSaved(donor);

@@ -16,6 +16,7 @@ export default function VehicleCard({vehicle:v,context,onParts,onData,onSaved}:P
      <div><button type="button" className="text-button vehicle-card-name" onClick={onData||onParts}>{name}</button><p>{v.year} · Донор №{v.number??'—'}</p></div>
      <span className="r1141-status">{v.archived?'Архів':v.status==='completed'?'Завершено':v.status==='planned'?'Заплановано':'На розборі'}</span>
     </div>
+    {v.ktype&&<p><strong>Модифікація:</strong> {v.engine||"Вибрана"}</p>}
     <VehicleQuickPowertrain vehicle={v} onSaved={onSaved}/>
    </div>
   </div>

@@ -72,6 +72,8 @@ with httpx.Client(base_url="http://127.0.0.1:8022") as c:
         ),
     )
     assert r.status_code == 200, r.text
+    r = c.post("/api/v1/plan-parts/articles/lookup",params=dict(vehicle_id=vehicle["id"],ktype=131094,pt_id=3,request_key=str(uuid4()),confirm_paid="true",max_tokens=2))
+    assert r.status_code == 200, r.text
     with open("/tmp/vehicle-workspace-fixture.json", "w") as f:
         json.dump(
             dict(

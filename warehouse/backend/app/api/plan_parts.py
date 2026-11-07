@@ -411,6 +411,7 @@ def vehicle_articles(
 
 
 class ChooseKtype(BaseModel):
+    confirm_change: bool = False
     ktype: int = Field(strict=True, gt=0, le=2147483647)
 
 
@@ -430,8 +431,18 @@ def select_vehicle_modification(
         raise HTTPException(403, "Вибір модифікації доступний лише власнику")
     donor = owned(db, Vehicle, vehicle_id, who.workspace_account_id, lock=True, active=True)
     if donor.ktype != data.ktype:
+        from app.models import PlanPartsResponse, VehicleChecklistItem
+        has_previous = db.scalar(select(VehicleChecklistItem.id).where(VehicleChecklistItem.account_id == who.workspace_account_id, VehicleChecklistItem.vehicle_id == donor.id).limit(1))
+        if donor.ktype and has_previous and not data.confirm_change:
+            raise HTTPException(409, "Зміна модифікації відкриє окремий список. Попередні деталі та артикули збережені. Підтвердьте зміну.")
         before = snapshot(donor)
         donor.ktype = data.ktype
+        saved = db.scalars(select(PlanPartsResponse).where(PlanPartsResponse.account_id == who.workspace_account_id, PlanPartsResponse.resource == "ktype", PlanPartsResponse.status == "validated").order_by(PlanPartsResponse.created_at.desc()))
+        for response in saved:
+            selected = next((r for r in (response.normalized or []) if str(r.get("ktype")) == str(data.ktype)), None)
+            if selected and selected.get("modification"):
+                donor.engine = str(selected["modification"])[:100]
+                break
         record(db, who.workspace_account_id, donor, "vehicle_update",
                "Власник вручну вибрав модифікацію K-Type з plan.parts; сумісність VIN не перевірена", before)
         db.commit()
@@ -707,8 +718,8 @@ def add_selected_donor_part(
                 "name": previous.name, "quantity": previous.quantity,
                 "message": "Запчастина вже на складі; повторного надходження не створено"}
     name = data.ukrainian_name.strip()
-    if not any(ch in "іїєґІЇЄҐ" or "\u0400" <= ch <= "\u04ff" for ch in name):
-        raise HTTPException(422, "Вкажіть українську назву деталі")
+    if not any(ch in "іїєґІЇЄҐ" or "\u0400" <= ch <= "\u04ff" for ch in name) and name.casefold() != verified_type.name.strip().casefold():
+        raise HTTPException(422, "Вкажіть українську назву або збережену назву з каталогу")
     part = Part(
         account_id=who.workspace_account_id,
         vehicle_id=donor.id,
@@ -915,7 +926,7 @@ def saved_workspace(who: Annotated[Identity,Depends(identity)],db:Annotated[Sess
     """One donor read model; no external calls, cache writes, normalization or stock mutation."""
     from sqlalchemy import func, case
     from sqlalchemy.orm import defer
-    from app.models import PlanPartsResponse
+    from app.models import PlanPartsResponse, VehicleChecklistItem
     from app.services.plan_parts_persistence import policy
 
     donor = _owned_paid_vehicle(who, db, vehicle_id)
@@ -1049,6 +1060,7 @@ def saved_workspace(who: Annotated[Identity,Depends(identity)],db:Annotated[Sess
             )
             for p in pparts
         ],
+        saved_plan_ktypes=list(db.scalars(select(VehicleChecklistItem.ktype).where(VehicleChecklistItem.account_id==who.workspace_account_id,VehicleChecklistItem.vehicle_id==donor.id).distinct())),
         saved_modifications=db.scalar(select(PlanPartsResponse.normalized).where(
             PlanPartsResponse.account_id==who.workspace_account_id,PlanPartsResponse.resource=='ktype',PlanPartsResponse.status=='validated',
             PlanPartsResponse.parameters['brand'].as_string()==donor.manufacturer,
