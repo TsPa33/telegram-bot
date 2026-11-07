@@ -27,8 +27,10 @@ def execute(phase, filename, batch_limit, limit_arg, done_text, size_limit):
         "--max-db-mib", str(size_limit),
         "--confirm-staging",
     ]
-    command.extend(["--batch-size", "500"] if phase == "articles"
-                   else ["--batch-articles", "100"])
+    if phase == "articles":
+        command.extend(["--job", "articles", "--batch-size", "500"])
+    else:
+        command.extend(["--batch-articles", "100"])
     print(f"\n[{phase}] Starting next resumable segment", flush=True)
     result = subprocess.Popen(
         command, cwd=str(ROOT), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
