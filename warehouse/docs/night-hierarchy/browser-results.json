@@ -1,0 +1,23 @@
+{
+  "states": {
+    "base": "rgb(17, 42, 37)",
+    "alt": "rgb(25, 55, 47)",
+    "hover": "rgb(32, 66, 55)",
+    "selected": "rgb(36, 62, 72)",
+    "active": "rgb(23, 77, 60)"
+  },
+  "colors": {
+    "price": "rgb(231, 195, 108)",
+    "missing": "rgb(159, 182, 170)",
+    "link": "rgb(163, 212, 244)",
+    "oem": "rgb(159, 182, 170)"
+  },
+  "day_night": true,
+  "persistence": true,
+  "cross_tab_sync": true,
+  "shared_routes": 10,
+  "desktop_mobile": true,
+  "menu_preview_drawer": true,
+  "js_errors": [],
+  "business_writes": 0
+}

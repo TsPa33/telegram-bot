@@ -10,7 +10,7 @@ button,.button,.secondary {
 }
 button:hover:not(:disabled),.button:hover { background:var(--color-accent-surface); border-color:var(--color-control-border); }
 button:active:not(:disabled),.button:active { background:var(--color-subtle); }
-.primary { transition-property:border-color,box-shadow; background:var(--color-accent-strong)!important; border-color:var(--color-accent-strong)!important; color:var(--color-surface)!important; }
+.primary { transition-property:border-color,box-shadow; background:var(--color-accent-strong)!important; border-color:var(--color-accent-strong)!important; color:var(--color-on-accent)!important; }
 .primary:hover:not(:disabled),.primary:active:not(:disabled) { background:var(--color-accent-pressed)!important; border-color:var(--color-accent-pressed)!important; }
 .icon-button,button[popovertarget] { min-width:var(--control-height); min-height:var(--control-height); }
 .ghost,.text-button,.icon-button { background:transparent; border-color:transparent; }

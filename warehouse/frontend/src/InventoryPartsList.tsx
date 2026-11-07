@@ -143,14 +143,14 @@ export function InventoryPartRow({
             {category?.name || "Потребує уточнення"} ›{" "}
             {sub?.name || "Підкатегорію уточнити"}
           </small>
-          {dashboard&&vehicle&&<small><Link to={"/vehicles?donor="+vehicle.id}>{vehicle.manufacturer} {vehicle.model} · {vehicle.year} · №{vehicle.number}</Link></small>}
+          {dashboard&&vehicle&&<small><Link className="part-donor-link" to={"/vehicles?donor="+vehicle.id}>{vehicle.manufacturer} {vehicle.model} · {vehicle.year} · №{vehicle.number}</Link></small>}
           {extra}
         </div>
       </div>
       <div className={"ui3-donor"+(dashboard?" compact-donor-hidden":"")}>
         {vehicle ? (
           <>
-            <Link to={"/vehicles?donor="+vehicle.id}>{vehicle.manufacturer} {vehicle.model}</Link>
+            <Link className="part-donor-link" to={"/vehicles?donor="+vehicle.id}>{vehicle.manufacturer} {vehicle.model}</Link>
             <small>
               {vehicle.year} · №{vehicle.number}
             </small>
@@ -181,8 +181,8 @@ export function InventoryPartRow({
       </div>
       {dashboard && (
         <div className="r115-codes">
-          <strong>OEM: {p.oem_number || "Не визначено"}</strong>
-          <small>
+          <strong data-number-present={!!p.oem_number}>OEM: {p.oem_number || "Не визначено"}</strong>
+          <small data-number-present={!!p.article_number}>
             {p.article_number || "Артикул не призначено"}
             {p.article_number && p.article_brand ? " · " + p.article_brand : ""}
           </small>

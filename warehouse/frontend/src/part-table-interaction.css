@@ -1,5 +1,5 @@
 /* Shared row interaction across donor, inventory and search; no table geometry reset. */
-.wd-row:not(.wd-th),.ui3-part{background:#fff;transition:background-color .12s;cursor:pointer}
+.wd-row:not(.wd-th),.ui3-part{background:var(--part-row-base);transition:background-color .12s;cursor:pointer}
 .wd-row:not(.wd-th):nth-of-type(even),.ui3-part:nth-of-type(even){background:var(--part-row-zebra)}
 .wd-row:not(.wd-th):hover,.ui3-part:hover{background:var(--part-row-hover)}
 .wd-row:not(.wd-th):focus-visible,.ui3-part:focus-visible{outline:2px solid #08785d;outline-offset:-2px}

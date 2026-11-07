@@ -931,7 +931,7 @@ export default function DismantlingBoard({
                     </div>
                     {settings ? (
                       <>
-                        <div className="wd-oem">
+                        <div className="wd-oem" data-number-present={!!p?.oem_number}>
                           {p?.oem_number ? (
                             <button
                               className="wd-code"

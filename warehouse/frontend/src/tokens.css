@@ -44,6 +44,14 @@
   --part-font-name: 14px;
   --part-font-body: 13px;
   --part-font-caption: 12px;
+  --color-table: var(--color-surface);
+  --color-text-muted: var(--color-secondary);
+  --color-link: #275f7c;
+  --color-price: #77551a;
+  --color-on-accent: var(--color-surface);
+  --color-number: var(--color-text);
+  --part-row-base: var(--color-surface);
+  --part-row-selected-border: var(--color-accent);
   --part-row-zebra: var(--color-subtle);
   --part-row-hover: var(--color-accent-surface);
   --part-row-selected: var(--color-success-surface);
