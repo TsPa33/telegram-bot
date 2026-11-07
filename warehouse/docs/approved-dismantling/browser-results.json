@@ -1,0 +1,20 @@
+[
+  {
+    "professional": true,
+    "selection_across_categories_and_pages": true,
+    "inline_assignment": true,
+    "manual_oem": true,
+    "manual_name_persisted": true,
+    "hide_restore_dismantled": true,
+    "explicit_stock": true,
+    "stock_metadata_preserved": true,
+    "paid_lookups": 0
+  },
+  {
+    "base": true,
+    "real_virtual_plan": true,
+    "no_fake_receipts": true,
+    "persistent": true,
+    "no_js_errors": true
+  }
+]

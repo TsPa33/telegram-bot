@@ -302,3 +302,6 @@ export function ukrainianPartName(name:string):{uk:string;original:string;transl
 export function translatedCategoryCount(names:string[]):number{
  return names.filter(name=>ukrainianPartName(name).translated).length;
 }
+
+/** Shared reviewed source; backend generated JSON is checked by the focused UI tests. */
+export const reviewedGlossary = exact;

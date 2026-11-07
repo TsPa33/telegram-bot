@@ -17,6 +17,7 @@ os.environ.update(
     WAREHOUSE_COOKIE_SECURE="false",
     PLAN_PARTS_ENABLED="true",
     PLAN_PARTS_API_KEY="synthetic-fixture-key",
+    WAREHOUSE_DEEPL_API_KEY="",
     WAREHOUSE_PLAN_PARTS_STORAGE_APPROVED="true",
     WAREHOUSE_PLAN_PARTS_TOKEN_MAXIMA='{"categories":1,"articles":2,"ktype":1}',
 )

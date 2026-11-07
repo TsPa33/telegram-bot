@@ -58,11 +58,15 @@ export default function PlanPartsDonorAnalysis({
   onSaved,
   sourceSelector,
   onLoaded,
+  onCatalogueReady,
+  setupOnly=false,
 }: {
   vehicle: Row;
   onSaved: (row: Row) => void;
   sourceSelector?: ReactNode;
   onLoaded?: (row: Row) => void;
+  onCatalogueReady?:()=>void;
+  setupOnly?:boolean;
 }) {
   const who = useContext(TeamIdentity),
     scope = JSON.stringify([who?.id, vehicle.id, vehicle.ktype]),
@@ -107,10 +111,11 @@ export default function PlanPartsDonorAnalysis({
         behavior: "instant",
       });
   }, [active]);
-  async function load(generation = epoch.current) {
+  async function load(generation = epoch.current, receivedCatalogue=false) {
     const r = await api(path);
     if (generation === epoch.current) {
       setWorkspace(r);
+      if(receivedCatalogue)onCatalogueReady?.();
       onLoaded?.(r);
       if (r.saved_modifications?.length) setMatches(r.saved_modifications);
     }
@@ -294,7 +299,7 @@ export default function PlanPartsDonorAnalysis({
             vehicle.ktype,
           "POST",
         );
-        await load(g);
+        await load(g,true);
         if (g === epoch.current)
           setNotice("Дані отримані раніше. Список збережено.");
       } catch (e) {
@@ -381,7 +386,7 @@ export default function PlanPartsDonorAnalysis({
         if (intent.resource === "articles")
           setOffers((old) => ({ ...old, [pt]: r.articles }));
         else if (intent.resource === "ktype") setMatches(r.matches);
-        await load(g);
+        await load(g,intent.resource==='categories');
         setProgress({
           done: i + 1,
           total: ids.length,
@@ -537,7 +542,7 @@ export default function PlanPartsDonorAnalysis({
           Джерело та модифікація
         </button>
       </div>
-      {sourceSelector && (tech || !categories.length) && (
+      {sourceSelector && (setupOnly||tech || !categories.length) && (
         <div className="vp-source-selector">{sourceSelector}</div>
       )}
       {loading && <p role="status">Відкриваємо список…</p>}
@@ -551,7 +556,7 @@ export default function PlanPartsDonorAnalysis({
           {notice}
         </p>
       )}
-      {categories.length > 0 && (
+      {!setupOnly&&categories.length > 0 && (
         <>
           <p role="status">Список збережено · {categories.length} деталей</p>
           <div className="vp-kpis" aria-label="Показники збережених даних">
@@ -596,7 +601,7 @@ export default function PlanPartsDonorAnalysis({
           )}
         </>
       )}
-      {(tech || !categories.length) && (
+      {(setupOnly || tech || !categories.length) && (
         <div className="vp-technical">
           {!vehicle.ktype && <p role="status">Потрібно вибрати модифікацію</p>}
           <p>
@@ -663,7 +668,7 @@ export default function PlanPartsDonorAnalysis({
         </div>
       )}
       {quote?.resource !== "articles" && paidConfirmation}
-      {categories.length > 0 && (
+      {!setupOnly&&categories.length > 0 && (
         <div className="vp-layout">
           <div className="vp-main">
             <section className="vp-categories" aria-label="Категорії CarPot">

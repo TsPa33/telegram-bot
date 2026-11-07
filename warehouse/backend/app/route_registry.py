@@ -178,3 +178,4 @@ KNOWN_ROUTES=KNOWN_ROUTES.union({('GET','/api/v1/plan-parts/workspace')})
 KNOWN_ROUTES=KNOWN_ROUTES.union({('GET','/api/v1/plan-parts/responses/{id}')})
 
 KNOWN_ROUTES=KNOWN_ROUTES.union({('GET','/api/v1/plan-parts/articles/history'),('POST','/api/v1/plan-parts/donor-parts/article/select')})
+KNOWN_ROUTES=KNOWN_ROUTES.union({('GET','/api/v1/vehicles/{id}/dismantling-workspace'),('POST','/api/v1/vehicles/{id}/dismantling-workspace/annotations'),('POST','/api/v1/vehicles/{id}/dismantling-workspace/translations')})

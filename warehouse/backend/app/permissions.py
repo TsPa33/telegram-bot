@@ -76,6 +76,7 @@ def route_permissions(method,path,body):
     if path.endswith('/virtual-dismantling/activate'):return ['vehicles.view','catalog.view','dismantling.manage','inventory.create','inventory.activate_virtual']
     if path.endswith('/virtual-dismantling/availability'):return ['vehicles.view','inventory.view','inventory.edit','dismantling.manage']
     if path.endswith('/virtual-dismantling'):return ['vehicles.view','inventory.view','catalog.view']
+    if '/dismantling-workspace' in path:return ['vehicles.view','catalog.view','inventory.view'] if read else ['vehicles.view','dismantling.manage']
     if path.startswith('/vehicles'):
         if '/analytics' in path:return ['analytics.view']
         if '/dismantling' in path or '/checklist' in path or '/plan-parts-checklist' in path:

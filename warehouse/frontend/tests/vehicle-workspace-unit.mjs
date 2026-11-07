@@ -120,3 +120,10 @@ test("unknown names are labelled for review, never guessed translations", () =>
     workspacePartName({ name: "Unreviewed component" }),
     "Потрібно уточнити українську назву",
   ));
+
+test('backend reviewed glossary exactly matches the approved frontend source',async()=>{
+ const text=fs.readFileSync(new URL('../src/planPartsUkrainian.ts',import.meta.url),'utf8');
+ const code=ts.transpileModule(text,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}}).outputText;
+ const {reviewedGlossary}=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
+ assert.deepEqual(JSON.parse(fs.readFileSync(new URL('../../backend/app/data/plan_parts_uk_glossary.json',import.meta.url),'utf8')),reviewedGlossary);
+});
