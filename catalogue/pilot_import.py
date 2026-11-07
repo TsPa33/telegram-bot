@@ -1,20 +1,20 @@
-"""One-time bounded local-to-staging pilot import. Never writes to the source DB.
+"""Bounded, repeatable Volvo OEM pilot import via an existing Railway TCP tunnel.
 
-Run on the Windows PC hosting td1q2018, with a Railway TCP tunnel open.
-Environment variables:
-  SOURCE_HOST, SOURCE_PORT, SOURCE_USER, SOURCE_PASSWORD
-  DEST_HOST, DEST_PORT, DEST_USER, DEST_PASSWORD, DEST_DATABASE
-Use a staging destination account only.
+Reads source td1q2018; writes ONLY to explicitly configured staging MySQL.
+No destructive SQL. Uses batch writes to reduce tunnel round-trips.
 """
 import os
-import sys
+import time
 import pymysql
 
 MAX_ROWS = int(os.environ.get("PILOT_MAX_ROWS", "1000"))
+BATCH_SIZE = 100
 if not 1 <= MAX_ROWS <= 5000:
-    raise SystemExit("PILOT_MAX_ROWS must be 1..5000")
+    raise SystemExit("PILOT_MAX_ROWS must be in 1..5000")
 if os.environ.get("DEST_DATABASE") not in ("railway", "catalogue"):
-    raise SystemExit("Destination database must be railway or catalogue in isolated staging")
+    raise SystemExit("Refusing an unexpected destination database")
+if os.environ.get("SOURCE_PORT", "3306") == os.environ.get("DEST_PORT", ""):
+    raise SystemExit("Source and destination ports must be different")
 
 def connect(prefix, database):
     return pymysql.connect(
@@ -24,51 +24,78 @@ def connect(prefix, database):
         password=os.environ.get(prefix + "_PASSWORD", ""),
         database=database,
         charset="utf8mb4",
-        connect_timeout=10,
-        read_timeout=120,
+        connect_timeout=8,
+        read_timeout=30 if prefix == "DEST" else 120,
+        write_timeout=30,
         autocommit=False,
         cursorclass=pymysql.cursors.DictCursor,
     )
 
+print("1/4 Connecting to local source and Railway staging...", flush=True)
 source = connect("SOURCE", "td1q2018")
-target = connect("DEST", os.environ["DEST_DATABASE"])
 try:
-    with source.cursor() as cur:
-        # Volvo OEM references only: a small, reproducible integration test.
-        cur.execute(
-            """SELECT oe.supplierId AS supplier_id,
-                      oe.DataSupplierArticleNumber AS article_number,
-                      oe.manufacturerId AS oem_manufacturer_id,
-                      oe.OENbr AS oem_number,
-                      a.NormalizedDescription AS name_source
-               FROM article_oe oe
-               INNER JOIN articles a
-                 ON a.supplierId=oe.supplierId
-                AND a.DataSupplierArticleNumber=oe.DataSupplierArticleNumber
-               WHERE oe.manufacturerId=120
-               LIMIT %s""", (MAX_ROWS,))
-        rows = cur.fetchall()
-    with target.cursor() as cur:
-        for row in rows:
+    target = connect("DEST", os.environ["DEST_DATABASE"])
+    try:
+        with target.cursor() as cur:
+            cur.execute("SELECT DATABASE() AS db, VERSION() AS version")
+            info = cur.fetchone()
+            print(f"2/4 Destination reachable: database={info['db']}, version={info['version']}", flush=True)
+            for name in ("catalogue_parts", "catalogue_oem"):
+                cur.execute("SHOW TABLES LIKE %s", (name,))
+                if cur.fetchone() is None:
+                    raise RuntimeError(f"Destination staging table {name} is missing")
+        with source.cursor() as cur:
+            print(f"3/4 Reading up to {MAX_ROWS} Volvo OEM references...", flush=True)
             cur.execute(
-                """INSERT INTO catalogue_parts
-                   (supplier_id, article_number, name_source)
-                   VALUES (%s,%s,%s)
-                   ON DUPLICATE KEY UPDATE name_source=VALUES(name_source)""",
-                (row["supplier_id"], row["article_number"], row["name_source"]),
+                """SELECT oe.supplierId AS supplier_id,
+                          oe.DataSupplierArticleNumber AS article_number,
+                          oe.manufacturerId AS oem_manufacturer_id,
+                          oe.OENbr AS oem_number,
+                          a.NormalizedDescription AS name_source
+                   FROM article_oe oe
+                   JOIN articles a
+                     ON a.supplierId = oe.supplierId
+                    AND a.DataSupplierArticleNumber = oe.DataSupplierArticleNumber
+                   WHERE oe.manufacturerId = 120
+                   LIMIT %s""",
+                (MAX_ROWS,),
             )
-            cur.execute(
-                """INSERT IGNORE INTO catalogue_oem
-                   (supplier_id, article_number, oem_manufacturer_id, oem_number)
-                   VALUES (%s,%s,%s,%s)""",
-                (row["supplier_id"], row["article_number"],
-                 row["oem_manufacturer_id"], row["oem_number"]),
-            )
-    target.commit()
-    print(f"Pilot imported {len(rows)} Volvo OEM references to catalogue-staging")
-except Exception:
-    target.rollback()
-    raise
+            rows = cur.fetchall()
+        print(f"4/4 Transferring {len(rows)} records in batches of {BATCH_SIZE}...", flush=True)
+        for start in range(0, len(rows), BATCH_SIZE):
+            batch = rows[start:start+BATCH_SIZE]
+            unique_parts = {
+                (r["supplier_id"], r["article_number"]): r["name_source"] for r in batch
+            }
+            parts = [(k[0], k[1], v) for k, v in unique_parts.items()]
+            oems = [
+                (r["supplier_id"], r["article_number"], r["oem_manufacturer_id"], r["oem_number"])
+                for r in batch
+            ]
+            begun = time.monotonic()
+            try:
+                with target.cursor() as cur:
+                    cur.executemany(
+                        """INSERT INTO catalogue_parts
+                           (supplier_id, article_number, name_source)
+                           VALUES (%s,%s,%s)
+                           ON DUPLICATE KEY UPDATE name_source=VALUES(name_source)""",
+                        parts,
+                    )
+                    cur.executemany(
+                        """INSERT IGNORE INTO catalogue_oem
+                           (supplier_id, article_number, oem_manufacturer_id, oem_number)
+                           VALUES (%s,%s,%s,%s)""",
+                        oems,
+                    )
+                target.commit()
+            except Exception:
+                target.rollback()
+                raise
+            print(f"  Committed {start + len(batch)}/{len(rows)} "
+                  f"({time.monotonic()-begun:.1f}s)", flush=True)
+        print(f"SUCCESS: processed {len(rows)} Volvo OEM references", flush=True)
+    finally:
+        target.close()
 finally:
     source.close()
-    target.close()
