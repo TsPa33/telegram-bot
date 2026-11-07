@@ -1,3 +1,4 @@
+import {partRowInteraction} from "./partRowInteraction";
 import InventoryQuantity from "./InventoryQuantity";
 import { useCan } from "./permissions";
 import type { ReactNode } from "react";
@@ -111,6 +112,7 @@ export function InventoryPartRow({
     kind = inventoryStockKind(p);
   return (
     <article
+      {...partRowInteraction}
       className={"ui3-part" + (dashboard ? " r115-part" : "")}
       aria-label={p.name}
     >
@@ -155,11 +157,7 @@ export function InventoryPartRow({
       </div>
       <div className="ui3-stock">
         <span className={"ux1-status " + kind}>{states[kind]}</span>
-        {dashboard ? (
-          <InventoryQuantity key={p.id} part={p} onSaved={onSaved} />
-        ) : (
-          <b>{p.quantity} шт.</b>
-        )}
+        <InventoryQuantity key={p.id} part={p} onSaved={onSaved} />
         <small>
           {p.physical_location_kind === "on_vehicle"
             ? "На автомобілі"

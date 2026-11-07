@@ -1,3 +1,6 @@
+import InventoryQuantity from "./InventoryQuantity";
+import PlanPartActions from "./PlanPartActions";
+import {partRowInteraction} from "./partRowInteraction";
 import { workspaceSections } from "./vehiclePartsWorkspace";
 import { corporateCategoryGroups } from "./catalogueLabels";
 import { sections as categoryIcons } from "./PartsQuickCategories";
@@ -850,6 +853,7 @@ export default function DismantlingBoard({
               return (
                 <Fragment key={row.key}>
                   <article
+                    {...(!settings ? partRowInteraction : {})}
                     className={
                       "wd-row" + (chosen.has(row.key) ? " selected" : "")
                     }
@@ -1004,9 +1008,7 @@ export default function DismantlingBoard({
                       </>
                     ) : (
                       <div className="wd-quantity">
-                        {row.parts.length
-                          ? `${row.parts.reduce((n: number, p: Row) => n + p.quantity, 0)} шт.`
-                          : "—"}
+                        {row.parts.length ? row.parts.map((stockPart: Row)=><InventoryQuantity key={stockPart.id} part={stockPart} onSaved={()=>void load(epoch.current)} />) : "Не на складі"}
                         {row.parts.length > 1 && (
                           <small>{row.parts.length} картки складу</small>
                         )}
@@ -1028,15 +1030,14 @@ export default function DismantlingBoard({
                           Додати 1 шт.
                         </button>
                       )}
-                      {p && (
-                        <button
-                          className="wd-icon"
-                          aria-label={"Картка " + row.name}
-                          onClick={() => onOpenPart(p.id)}
-                        >
-                          •••
-                        </button>
-                      )}
+                      <PlanPartActions name={row.name} actions={[
+                        ...(p ? [{label:"Відкрити картку",run:()=>onOpenPart(p.id)}] : []),
+                        ...(!settings && !row.parts.length && canAdd(row) && !busy && !["received","sold","hidden","empty"].includes(row.state) ? [{label:"Додати на склад",run:()=>void addToStock([row.key])}] : []),
+                        ...(!settings && p && !p.archived && can("inventory.adjust_quantity") ? [{label:"Змінити кількість",run:()=>window.dispatchEvent(new CustomEvent("warehouse:quantity-edit",{detail:p.id}))}] : []),
+                        ...(canManage && !busy && !["sold","hidden","received"].includes(row.state) ? [{label:"Позначити як демонтовано",run:()=>void annotate([row.key],"dismantled")}] : []),
+                        ...(p && can("inventory.edit") ? [{label:"Редагувати запчастину",run:()=>onOpenPart(p.id)}] : []),
+                        ...(canManage && !busy ? [{label:row.state==="hidden"?"Повернути в план":"Приховати з плану",run:()=>void annotate([row.key],row.state==="hidden"?"restore":"hide")}] : []),
+                      ]} />
                     </div>
                   </article>
                   {settings && expanded === row.key && (

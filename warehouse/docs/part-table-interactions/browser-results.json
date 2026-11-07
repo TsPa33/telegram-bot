@@ -1,0 +1,18 @@
+{
+  "row_menu": true,
+  "checkbox_isolated": true,
+  "quantity_isolated": true,
+  "single_menu": true,
+  "add_one": true,
+  "idempotent_retry": true,
+  "audit": true,
+  "zebra": true,
+  "outside_dismiss": true,
+  "quantity_persisted": true,
+  "reservation_guard": true,
+  "keyboard": true,
+  "desktop_mobile": true,
+  "inventory_search": true,
+  "paid_requests": 0,
+  "js_errors": []
+}

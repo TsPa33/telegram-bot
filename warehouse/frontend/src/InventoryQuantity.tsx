@@ -1,4 +1,4 @@
-import { useContext, useRef, useState } from "react";
+import { useContext, useRef, useState, useEffect } from "react";
 import { api, ApiError, type Row } from "./api";
 import { TeamIdentity, useCan } from "./permissions";
 export default function InventoryQuantity({
@@ -31,6 +31,7 @@ export default function InventoryQuantity({
     [mode, setMode] = useState(""),
     [quantity, setQuantity] = useState(String(p.quantity)),
     [reason, setReason] = useState("");
+  useEffect(()=>{const edit=(e:Event)=>{if((e as CustomEvent).detail===p.id&&!pending&&!busy&&!p.archived&&can("inventory.adjust_quantity")){setMode("correction");setQuantity(String(p.quantity));setReason("");}};window.addEventListener("warehouse:quantity-edit",edit);return()=>window.removeEventListener("warehouse:quantity-edit",edit);},[p.id,p.quantity,p.archived,pending,busy,can]);
   async function send(payload?: Row) {
     if (guard.current) return;
     guard.current = true;
@@ -84,7 +85,7 @@ export default function InventoryQuantity({
         >
           −
         </button>
-        <b>{p.quantity} шт.</b>
+        <button type="button" aria-label={"Змінити кількість " + p.name} disabled={busy||!!pending||p.archived||!can("inventory.adjust_quantity")} onClick={()=>{setMode("correction");setQuantity(String(p.quantity));setReason("");}}>{p.quantity} шт.</button>
         <button
           type="button"
           aria-label={"Додати 1 шт. " + p.name}
@@ -101,20 +102,7 @@ export default function InventoryQuantity({
         >
           +
         </button>
-        {can("inventory.adjust_quantity") && (
-          <button
-            type="button"
-            aria-label={"Уточнити залишок " + p.name}
-            disabled={busy || !!pending || p.archived}
-            onClick={() => {
-              setMode("correction");
-              setQuantity(String(p.quantity));
-              setReason("");
-            }}
-          >
-            …
-          </button>
-        )}
+
       </div>
       {mode && (
         <form
