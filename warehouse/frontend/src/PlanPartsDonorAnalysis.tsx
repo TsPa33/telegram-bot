@@ -537,7 +537,7 @@ export default function PlanPartsDonorAnalysis({
         </button>
       </div>
 
-      {loading && <p role="status">Відкриваємо список…</p>}}
+      {loading && <p role="status">Відкриваємо список…</p>}
       {error && (
         <p role="alert" className="vp-error">
           {error}
