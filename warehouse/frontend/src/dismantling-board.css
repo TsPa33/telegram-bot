@@ -851,3 +851,28 @@
   .wd-board .wd-modification > button { flex: 1 1 44%; min-width: 130px; }
   .wd-board .wd-translations button { flex: 1 1 100px; min-width: 100px; }
 }
+/* Vehicle parts tabs share one mounted plan and data; only presentation changes. */
+.wd-board .wd-layout{grid-template-columns:minmax(0,1fr)}
+.wd-board .wd-categories{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));grid-auto-rows:60px;gap:8px}
+.wd-board .wd-categories>button{min-width:0;min-height:0;height:100%;padding:8px;display:flex;gap:7px;font-size:11px;line-height:1.25}
+.wd-board .wd-categories>button>svg{flex:none}
+.wd-board .wd-categories>button>span{flex:1;text-align:left;min-width:0}
+.wd-board .wd-categories>button>b{font-size:11px;background:#edf6f0;border-radius:5px;padding:3px 5px;min-width:23px;color:#164c3b}
+.wd-board .wd-categories>button[aria-pressed=true]>b{background:#ffffff30;color:white}
+.wd-actionbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 12px;border:1px solid var(--wd-border);border-radius:10px;background:white;margin:10px 0;font-size:12px}
+.wd-actionbar>strong{margin-right:auto}
+.wd-board[data-view=operations] .wd-row{grid-template-columns:20px minmax(180px,2fr) minmax(110px,1fr) 100px 120px}
+.wd-quantity{font-weight:650;font-size:12px}
+.wd-board .wd-filters{flex-wrap:wrap}
+.wd-board[data-view=settings] .wd-filters>label{flex:1 1 260px}
+@media(max-width:760px){
+ .wd-board .wd-categories{grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:64px}
+ .wd-actionbar{gap:6px}.wd-actionbar>strong{flex-basis:100%}.wd-actionbar>button{flex:1 1 140px;min-height:40px}
+ .wd-board[data-view=operations] .wd-row:not(.wd-th){grid-template-columns:20px minmax(0,1fr) 100px}
+ .wd-board[data-view=operations] .wd-row .wd-name{grid-column:2/4;grid-row:1}
+ .wd-board[data-view=operations] .wd-row>div:nth-child(3){grid-column:2/4;grid-row:2}
+ .wd-board[data-view=operations] .wd-row .wd-quantity{grid-column:2;grid-row:3}
+ .wd-board[data-view=operations] .wd-row .wd-row-actions{grid-column:3;grid-row:3}
+ .wd-board[data-view=operations] .wd-row.wd-th{display:flex}
+ .wd-board[data-view=settings] .wd-filters>button{flex:1 1 100%;min-height:40px}
+}

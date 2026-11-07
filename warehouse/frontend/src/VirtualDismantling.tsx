@@ -9,15 +9,18 @@ import PlanPartsDonorAnalysis from "./PlanPartsDonorAnalysis";
 export default function VirtualDismantling({
   vehicle,
   onSaved,
+  view = "operations",
 }: {
   vehicle: Row;
   onSaved: (row: Row) => void;
+  view?: "operations" | "settings";
 }) {
   return (
     <PlanPartsDonorAnalysis
       key={String(vehicle.id)}
       vehicle={vehicle}
       onSaved={onSaved}
+      view={view}
     />
   );
 }

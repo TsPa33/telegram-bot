@@ -1,3 +1,6 @@
+import { workspaceSections } from "./vehiclePartsWorkspace";
+import { corporateCategoryGroups } from "./catalogueLabels";
+import { sections as categoryIcons } from "./PartsQuickCategories";
 import {
   Fragment,
   useContext,
@@ -42,8 +45,10 @@ export default function DismantlingBoard({
   translationKick = 0,
   revision,
   onTranslationConsumed,
+  view = "operations",
 }: {
   vehicle: Row;
+  view?: "operations" | "settings";
   source: "base" | "professional";
   controls: ReactNode;
   onUpdate?: () => Promise<void>;
@@ -53,6 +58,16 @@ export default function DismantlingBoard({
   revision?: string;
   onTranslationConsumed?: () => void;
 }) {
+  const settings = view === "settings";
+  const [oemFilter, setOemFilter] = useState(""),
+    [articleFilter, setArticleFilter] = useState("");
+  const [savedSearch, setSavedSearch] = useState<Row | null>(null);
+  const [savedIndex, setSavedIndex] = useState<Record<string, string[]>>({});
+  const savedSearchGuard = useRef(false);
+  const displayCategory = (r: Row) =>
+    corporateCategoryGroups([
+      { id: "display", name: r.category, kind: "category" },
+    ])[0]?.label || "Потребує уточнення";
   const [page, setPage] = useState(0);
   const [goodsKind, setGoodsKind] = useState("part");
   const [articleChoice, setArticleChoice] = useState<Record<string, number>>(
@@ -103,11 +118,26 @@ export default function DismantlingBoard({
     filtered = rows.filter(
       (r) =>
         (!goodsKind || (r.kind || "review") === goodsKind) &&
-        (!category || r.category === category) &&
+        (!category || displayCategory(r) === category) &&
+        (!settings ||
+          !oemFilter ||
+          r.parts.some((p: Row) => !!p.oem_number) === (oemFilter === "yes")) &&
+        (!settings ||
+          !articleFilter ||
+          r.parts.some((p: Row) => !!p.article_number) ===
+            (articleFilter === "yes")) &&
         (!q ||
           [
             r.name,
             r.original,
+            ...(settings ? savedIndex[r.key] || [] : []),
+            ...(settings
+              ? (offers[r.key] || []).flatMap((a: Row) => [
+                  a.article_nr,
+                  a.brand,
+                  a.part_name,
+                ])
+              : []),
             ...r.parts.flatMap((p: Row) => [
               p.article_number,
               p.article_brand,
@@ -118,17 +148,90 @@ export default function DismantlingBoard({
               .toLocaleLowerCase("uk-UA")
               .includes(q.toLocaleLowerCase("uk-UA")),
           )) &&
-        (state ? r.state === state : r.state !== "sold") &&
-        (!stock ||
+        (settings || (state ? r.state === state : r.state !== "sold")) &&
+        (settings ||
+          !stock ||
           (stock === "yes" && r.received) ||
           (stock === "no" && !r.received)),
     );
   const categoryRows = rows.filter(
     (r) => !goodsKind || (r.kind || "review") === goodsKind,
   );
-  const categories = [...new Set(categoryRows.map((r) => r.category))],
+  const categories = [
+      ...workspaceSections.slice(0, 12),
+      ...(categoryRows.some((r) => displayCategory(r) === "Потребує уточнення")
+        ? ["Потребує уточнення"]
+        : []),
+    ],
     metrics = data?.progress || {},
     names = data?.translation || {};
+  useEffect(() => {
+    setExpanded(null);
+    setQuote(null);
+    setEditing("");
+    setPage(0);
+  }, [view]);
+  async function searchSaved() {
+    if (savedSearchGuard.current) return;
+    savedSearchGuard.current = true;
+    setError("");
+    const g = epoch.current,
+      targets = rows.filter(
+        (r) =>
+          r.pt_id &&
+          r.receipt?.stored &&
+          r.receipt.saved_count > 0 &&
+          offers[r.key] === undefined &&
+          savedIndex[r.key] === undefined,
+      );
+    let cursor = 0,
+      done = 0;
+    const failures: string[] = [];
+    setSavedSearch({ done: 0, total: targets.length });
+    try {
+      await Promise.all(
+        Array.from({ length: Math.min(3, targets.length) }, async () => {
+          while (cursor < targets.length && g === epoch.current) {
+            const row = targets[cursor++];
+            try {
+              const result = await api(
+                "/plan-parts/articles/recover?vehicle_id=" +
+                  vehicle.id +
+                  "&ktype=" +
+                  vehicle.ktype +
+                  "&pt_id=" +
+                  row.pt_id,
+                "POST",
+              );
+              if (g !== epoch.current) return;
+              setSavedIndex((old) => ({
+                ...old,
+                [row.key]: result.articles.flatMap((a: Row) =>
+                  [a.article_nr, a.brand, a.part_name].filter(Boolean),
+                ),
+              }));
+            } catch (e) {
+              failures.push((e as Error).message);
+            }
+            if (g === epoch.current)
+              setSavedSearch({ done: ++done, total: targets.length });
+          }
+        }),
+      );
+      if (g === epoch.current) {
+        if (failures.length)
+          setError(
+            "Не вдалося відкрити частину збережених варіантів: " + failures[0],
+          );
+        else setNotice("Збережені варіанти доступні для пошуку.");
+      }
+    } catch (e) {
+      if (g === epoch.current) setError((e as Error).message);
+    } finally {
+      savedSearchGuard.current = false;
+      if (g === epoch.current) setSavedSearch(null);
+    }
+  }
   async function load(g = epoch.current) {
     const r = await api(path + "?source=" + source);
     if (g === epoch.current) setData(r);
@@ -141,6 +244,7 @@ export default function DismantlingBoard({
     setSelected([]);
     setExpanded(null);
     setOffers({});
+    setSavedIndex({});
     setArticleChoice({});
     setQuote(null);
     setCategory("");
@@ -329,24 +433,10 @@ export default function DismantlingBoard({
           );
         if (!p && row.parts.length)
           throw Error("Виберіть конкретну складську картку");
-        if (!p) {
-          const created = await api(
-            "/plan-parts/donor-parts/add?vehicle_id=" + vehicle.id,
-            "POST",
-            {
-              ktype: vehicle.ktype,
-              pt_id: row.pt_id,
-              ukrainian_name: row.name,
-            },
+        if (!p)
+          throw Error(
+            "Спочатку додайте деталь на склад у вкладці «Розбір і запчастини».",
           );
-          if (!created.part_id)
-            throw Error(
-              "Є кілька попередніх карток. Уточніть потрібну картку на складі.",
-            );
-          p = await api("/parts/" + created.part_id);
-          if (p.archived)
-            throw Error("Картка в архіві. Відновіть її через Склад → Архів.");
-        }
         await api(
           "/plan-parts/donor-parts/article/select?vehicle_id=" + vehicle.id,
           "POST",
@@ -453,77 +543,16 @@ export default function DismantlingBoard({
   if (!data)
     return <p role="status">{error || "Відкриваємо збережений список…"}</p>;
   return (
-    <section className="wd-board" aria-label="Єдиний план розбору">
-      <section className="wd-progress" aria-label="Стан розбору автомобіля">
-        <div>
-          <strong>Стан розбору автомобіля</strong>
-          <small>
-            Продані деталі — у фільтрі «Продано». Збережені записи залишаються
-            доступними.
-          </small>
-        </div>
-        {[
-          [metrics.planned, "Заплановано", Package],
-          [rows.filter((r) => r.state === "sold").length, "Продано", Layers],
-          [metrics.with_photo, "З фото", Camera],
-        ].map(([n, label, Icon]: any) => (
-          <div className="wd-metric" key={label}>
-            <Icon size={25} />
-            <span>
-              <b>{n}</b>
-              <small>{label}</small>
-            </span>
-          </div>
-        ))}
-      </section>
-      <div className="wd-modification">
-        <div>
-          <small>Модифікація</small>
-          <strong>
-            {vehicle.engine || "Потребує уточнення"}
-            {vehicle.fuel_type ? " · " + vehicle.fuel_type : ""}
-          </strong>
-        </div>
-        <div className="wd-saved">
-          <Check size={21} />
-          <span>
-            <strong>Список запчастин сформовано</strong>
-            <small>{metrics.planned} деталей · Список збережено</small>
-          </span>
-        </div>
-        <button
-          onClick={() =>
-            void run(async (g) => {
-              if (onUpdate) {
-                await onUpdate();
-                document
-                  .querySelector('[aria-label="Попередній аналіз запчастин"]')
-                  ?.scrollIntoView({ block: "nearest" });
-              } else {
-                await api(
-                  "/plan-parts/categories/recover?vehicle_id=" +
-                    vehicle.id +
-                    "&ktype=" +
-                    vehicle.ktype,
-                  "POST",
-                );
-                await load(g);
-              }
-            })
-          }
-        >
-          Оновити список
-        </button>
-        <button
-          onClick={() => (onModify ? onModify() : setModifying(!modifying))}
-        >
-          Змінити модифікацію
-        </button>
-      </div>
-      {modifying && <div className="wd-source-controls">{controls}</div>}
+    <section
+      className="wd-board"
+      data-view={view}
+      aria-label={
+        settings ? "Налаштування деталей автомобіля" : "Єдиний план розбору"
+      }
+    >
       {error && (
         <p className="wd-error" role="alert">
-          {error}
+          {error.replace(/plan\.parts/gi, "каталог")}
         </p>
       )}
       {notice && (
@@ -531,42 +560,111 @@ export default function DismantlingBoard({
           {notice}
         </p>
       )}
-      <nav className="wd-categories" aria-label="Категорії CarPot">
-        <button aria-pressed={!category} onClick={() => setCategory("")}>
-          Усі ({categoryRows.length})
-        </button>
-        {categories.slice(0, 5).map((c) => (
-          <button
-            key={c}
-            aria-pressed={category === c}
-            onClick={() => setCategory(c)}
-          >
-            <Package size={17} />
-            {c} ({categoryRows.filter((r) => r.category === c).length})
-          </button>
-        ))}
-        {categories.length > 5 && (
-          <details>
-            <summary>
-              Інші категорії <ChevronDown size={16} />
-            </summary>
-            <div>
-              {categories.slice(5).map((c) => (
-                <button
-                  key={c}
-                  aria-pressed={category === c}
-                  onClick={(e) => {
-                    setCategory(c);
-                    e.currentTarget.closest("details")?.removeAttribute("open");
-                  }}
-                >
-                  {c} ({categoryRows.filter((r) => r.category === c).length})
-                </button>
-              ))}
-            </div>
-          </details>
+      {!settings && (
+        <nav className="wd-categories" aria-label="Категорії CarPot">
+          {["", ...categories].map((c) => {
+            const Icon =
+              categoryIcons.find((s) => s.name === c)?.icon || Package;
+            return (
+              <button
+                key={c || "all"}
+                aria-pressed={category === c}
+                onClick={() => {
+                  setCategory(c);
+                  setPage(0);
+                }}
+              >
+                <Icon size={18} />
+                <span>{c || "Усі категорії"}</span>
+                <b>
+                  {c
+                    ? categoryRows.filter((r) => displayCategory(r) === c)
+                        .length
+                    : categoryRows.length}
+                </b>
+              </button>
+            );
+          })}
+        </nav>
+      )}
+      <div
+        className="wd-actionbar"
+        role="group"
+        aria-label={settings ? "Вибір для налаштування" : "Дії з вибраними"}
+      >
+        <strong>Вибрано: {selected.length}</strong>
+        {!settings && (
+          <>
+            <button
+              className="wd-primary"
+              disabled={
+                busy ||
+                !selected.some((k) => {
+                  const r = rows.find((r) => r.key === k);
+                  return (
+                    r &&
+                    !r.parts.length &&
+                    ["planned", "dismantled"].includes(r.state) &&
+                    canAdd(r)
+                  );
+                })
+              }
+              onClick={() => void addToStock(actionKeys)}
+            >
+              Додати на склад
+            </button>
+            <button
+              disabled={
+                busy ||
+                !canManage ||
+                !selected.length ||
+                selected.some(
+                  (k) =>
+                    !["planned", "dismantled"].includes(
+                      rows.find((r) => r.key === k)?.state,
+                    ),
+                )
+              }
+              onClick={() => void annotate(actionKeys, "dismantled")}
+            >
+              Позначити як демонтовано
+            </button>
+            <button
+              disabled={
+                busy ||
+                !canManage ||
+                !selected.length ||
+                selected.some(
+                  (k) => rows.find((r) => r.key === k)?.state === "hidden",
+                )
+              }
+              onClick={() => void annotate(actionKeys, "hide")}
+            >
+              Приховати з плану
+            </button>
+            {selected.some(
+              (k) => rows.find((r) => r.key === k)?.state === "hidden",
+            ) && (
+              <button
+                disabled={busy || !canManage}
+                onClick={() =>
+                  void annotate(
+                    actionKeys.filter(
+                      (k) => rows.find((r) => r.key === k)?.state === "hidden",
+                    ),
+                    "restore",
+                  )
+                }
+              >
+                Повернути в план
+              </button>
+            )}
+          </>
         )}
-      </nav>
+        <button disabled={!selected.length} onClick={() => setSelected([])}>
+          Зняти вибір
+        </button>
+      </div>
       <div className="wd-layout">
         <section className="wd-list">
           <div className="wd-list-heading">
@@ -577,24 +675,78 @@ export default function DismantlingBoard({
                   : "Позиції каталогу")}{" "}
               ({filtered.length})
             </h3>
-            <label>
-              <input
-                type="checkbox"
-                checked={auto}
-                onChange={(e) => {
-                  setAuto(e.target.checked);
-                  try {
-                    localStorage.setItem(
-                      "warehouse.translation:" + scope,
-                      e.target.checked ? "on" : "off",
-                    );
-                  } catch {}
-                }}
-              />
-              Автопереклад назв
-            </label>
+            {settings && (
+              <label>
+                <input
+                  type="checkbox"
+                  checked={auto}
+                  onChange={(e) => {
+                    setAuto(e.target.checked);
+                    try {
+                      localStorage.setItem(
+                        "warehouse.translation:" + scope,
+                        e.target.checked ? "on" : "off",
+                      );
+                    } catch {}
+                  }}
+                />
+                Автопереклад назв
+              </label>
+            )}
           </div>
           <div className="wd-filters">
+            {settings && (
+              <>
+                <select
+                  aria-label="Категорія налаштувань"
+                  value={category}
+                  onChange={(e) => {
+                    setCategory(e.target.value);
+                    setPage(0);
+                  }}
+                >
+                  <option value="">Усі категорії</option>
+                  {categories.map((c) => (
+                    <option key={c}>{c}</option>
+                  ))}
+                </select>
+                <select
+                  aria-label="Наявність OEM"
+                  value={oemFilter}
+                  onChange={(e) => {
+                    setOemFilter(e.target.value);
+                    setPage(0);
+                  }}
+                >
+                  <option value="">OEM: усі</option>
+                  <option value="yes">Є OEM</option>
+                  <option value="no">Немає OEM</option>
+                </select>
+                <select
+                  aria-label="Наявність артикула"
+                  value={articleFilter}
+                  onChange={(e) => {
+                    setArticleFilter(e.target.value);
+                    setPage(0);
+                  }}
+                >
+                  <option value="">Артикули: усі</option>
+                  <option value="yes">Є артикул</option>
+                  <option value="no">Немає артикула</option>
+                </select>
+                <button
+                  disabled={!!savedSearch}
+                  onClick={() => void searchSaved()}
+                >
+                  Пошук у збережених варіантах
+                </button>
+                {savedSearch && (
+                  <small role="status">
+                    Завантажено: {savedSearch.done} із {savedSearch.total}
+                  </small>
+                )}
+              </>
+            )}
             <select
               aria-label="Тип позицій"
               value={goodsKind}
@@ -626,32 +778,39 @@ export default function DismantlingBoard({
               <Search size={17} />
               <input
                 aria-label="Пошук деталей плану"
-                placeholder="Пошук запчастин, OEM або артикулу…"
+                placeholder={
+                  settings ? "Назва, OEM або артикул…" : "Пошук запчастин…"
+                }
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
               />
             </label>
-            <select
-              aria-label="Наявність на складі"
-              value={stock}
-              onChange={(e) => setStock(e.target.value)}
-            >
-              <option value="">Склад: усі</option>
-              <option value="yes">На складі</option>
-              <option value="no">Ще не додано на склад</option>
-            </select>
-            <select
-              aria-label="Стан деталей плану"
-              value={state}
-              onChange={(e) => setState(e.target.value)}
-            >
-              <option value="">Стан: усі</option>
-              {Object.entries(status).map(([k, v]) => (
-                <option key={k} value={k}>
-                  {k === "sold" ? "Архів — продані" : v}
-                </option>
-              ))}
-            </select>
+            {!settings && (
+              <>
+                {" "}
+                <select
+                  aria-label="Наявність на складі"
+                  value={stock}
+                  onChange={(e) => setStock(e.target.value)}
+                >
+                  <option value="">Склад: усі</option>
+                  <option value="yes">На складі</option>
+                  <option value="no">Ще не додано на склад</option>
+                </select>
+                <select
+                  aria-label="Стан деталей плану"
+                  value={state}
+                  onChange={(e) => setState(e.target.value)}
+                >
+                  <option value="">Стан: усі</option>
+                  {Object.entries(status).map(([k, v]) => (
+                    <option key={k} value={k}>
+                      {k === "sold" ? "Архів — продані" : v}
+                    </option>
+                  ))}
+                </select>
+              </>
+            )}{" "}
           </div>
           <div className="wd-table">
             <div className="wd-row wd-th">
@@ -670,9 +829,15 @@ export default function DismantlingBoard({
                 }
               />
               <span>Назва запчастини</span>
-              <span>Статус</span>
-              <span>OEM номер</span>
-              <span>Артикул / виробник</span>
+              <span>{settings ? "Категорія" : "Статус"}</span>
+              {settings ? (
+                <>
+                  <span>OEM номер</span>
+                  <span>Артикул / виробник</span>
+                </>
+              ) : (
+                <span>Кількість</span>
+              )}
               <span>Дії</span>
             </div>
             {filtered.slice(page * 10, page * 10 + 10).map((row) => {
@@ -712,147 +877,157 @@ export default function DismantlingBoard({
                             : row.category}
                         </small>
                       </div>
-                      <button
-                        className="wd-icon"
-                        aria-label={"Змінити назву " + row.name}
-                        disabled={!canManage}
-                        onClick={() => {
-                          setEditing(row.key);
-                          setName(row.name);
-                          setExpanded(row.key);
-                        }}
-                      >
-                        <Pencil size={13} />
-                      </button>
-                    </div>
-                    <div>
-                      <span className={"wd-chip " + row.state}>
-                        {status[row.state]}
-                      </span>
-                      {row.decision_review && (
-                        <small>
-                          Різні попередні рішення — перевірте назву та стан.
-                        </small>
-                      )}
-                      {row.context_matches === false && (
-                        <small>
-                          Є у попередньому списку. Відповідність модифікації
-                          потребує звірки.
-                        </small>
-                      )}
-                      {row.state === "planned" && (
-                        <small>Наявність перевірити</small>
-                      )}
-                    </div>
-                    <div className="wd-oem">
-                      {p?.oem_number ? (
+                      {settings && (
                         <button
-                          className="wd-code"
-                          title="Скопіювати OEM"
-                          onClick={() =>
-                            void navigator.clipboard
-                              ?.writeText(p.oem_number)
-                              .catch(() =>
-                                setError("Не вдалося скопіювати номер"),
-                              )
-                          }
-                        >
-                          {p.oem_number}
-                          <Copy size={13} />
-                        </button>
-                      ) : (
-                        <span className="wd-muted">OEM не визначено</span>
-                      )}
-                      <button
-                        className="wd-link"
-                        disabled={
-                          !can("inventory.edit") ||
-                          (!p && row.parts.length > 0) ||
-                          (!p && !can("inventory.create"))
-                        }
-                        onClick={() =>
-                          void run(async (g) => {
-                            if (!p) {
-                              if (
-                                !window.confirm(
-                                  "Створити складську картку: 1 шт., і ввести OEM вручну?",
-                                )
-                              )
-                                return;
-                              await api(
-                                "/plan-parts/donor-parts/add?vehicle_id=" +
-                                  vehicle.id,
-                                "POST",
-                                {
-                                  ktype: vehicle.ktype,
-                                  pt_id: row.pt_id,
-                                  ukrainian_name: row.name,
-                                },
-                              );
-                              await load(g);
-                              window.dispatchEvent(
-                                new Event("warehouse:inventory-changed"),
-                              );
-                            }
+                          className="wd-icon"
+                          aria-label={"Змінити назву " + row.name}
+                          disabled={!canManage}
+                          onClick={() => {
+                            setEditing(row.key);
+                            setName(row.name);
                             setExpanded(row.key);
-                            setEditing("oem:" + row.key);
-                          })
-                        }
-                      >
-                        {p ? "Ввести OEM" : "Додати 1 шт. і ввести OEM"}
-                      </button>
+                          }}
+                        >
+                          <Pencil size={13} />
+                        </button>
+                      )}
                     </div>
                     <div>
-                      <button
-                        className="wd-article"
-                        onClick={() => void open(row)}
-                      >
-                        <span>
-                          {p?.article_number ? (
-                            <>
-                              <b>{p.article_number}</b> ·{" "}
-                              {p.article_brand || "Виробник не вказаний"}
-                            </>
-                          ) : offers[row.key]?.length ? (
-                            (() => {
-                              const a =
-                                offers[row.key].find(
-                                  (a: Row) =>
-                                    a.art_id === articleChoice[row.key],
-                                ) || offers[row.key][0];
-                              return (
-                                <>
-                                  <b>{a.article_nr}</b> · {a.brand}
-                                  <small>Попередній вибір — не збережено</small>
-                                </>
-                              );
-                            })()
-                          ) : (
-                            "Відкрити артикули"
+                      {settings ? (
+                        <span>{displayCategory(row)}</span>
+                      ) : (
+                        <>
+                          {" "}
+                          <span className={"wd-chip " + row.state}>
+                            {status[row.state]}
+                          </span>
+                          {row.decision_review && (
+                            <small>
+                              Різні попередні рішення — перевірте назву та стан.
+                            </small>
                           )}
-                          <small>
-                            {count > 0
-                              ? "Збережені артикули (" + count + ")"
-                              : "Переглянути артикули"}
-                          </small>
-                        </span>
-                        <ChevronDown size={15} />
-                      </button>
+                          {row.context_matches === false && (
+                            <small>
+                              Є у попередньому списку. Відповідність модифікації
+                              потребує звірки.
+                            </small>
+                          )}
+                          {row.state === "planned" && (
+                            <small>Наявність перевірити</small>
+                          )}
+                        </>
+                      )}
                     </div>
+                    {settings ? (
+                      <>
+                        <div className="wd-oem">
+                          {p?.oem_number ? (
+                            <button
+                              className="wd-code"
+                              title="Скопіювати OEM"
+                              onClick={() =>
+                                void navigator.clipboard
+                                  ?.writeText(p.oem_number)
+                                  .catch(() =>
+                                    setError("Не вдалося скопіювати номер"),
+                                  )
+                              }
+                            >
+                              {p.oem_number}
+                              <Copy size={13} />
+                            </button>
+                          ) : (
+                            <span className="wd-muted">OEM не визначено</span>
+                          )}
+                          <button
+                            className="wd-link"
+                            disabled={!p || !can("inventory.edit")}
+                            onClick={() => {
+                              if (!p) return;
+                              setExpanded(row.key);
+                              setEditing("oem:" + row.key);
+                            }}
+                          >
+                            Ввести OEM
+                          </button>
+                        </div>
+                        <div>
+                          <button
+                            className="wd-article"
+                            onClick={() => void open(row)}
+                          >
+                            <span>
+                              {p?.article_number ? (
+                                <>
+                                  <b>{p.article_number}</b> ·{" "}
+                                  {p.article_brand || "Виробник не вказаний"}
+                                </>
+                              ) : offers[row.key]?.length ? (
+                                (() => {
+                                  const a =
+                                    offers[row.key].find(
+                                      (a: Row) =>
+                                        a.art_id === articleChoice[row.key],
+                                    ) || offers[row.key][0];
+                                  return (
+                                    <>
+                                      <b>{a.article_nr}</b> · {a.brand}
+                                      <small>
+                                        Попередній вибір — не збережено
+                                      </small>
+                                    </>
+                                  );
+                                })()
+                              ) : (
+                                "Відкрити артикули"
+                              )}
+                              <small>
+                                {count > 0
+                                  ? (p?.article_number && !offers[row.key]
+                                      ? "Збережені варіанти ("
+                                      : "Інші артикули (") +
+                                    (offers[row.key]
+                                      ? offers[row.key].filter(
+                                          (a: Row) =>
+                                            a.article_nr !==
+                                              p?.article_number ||
+                                            a.brand !== p?.article_brand,
+                                        ).length
+                                      : count) +
+                                    ")"
+                                  : "Переглянути артикули"}
+                              </small>
+                            </span>
+                            <ChevronDown size={15} />
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="wd-quantity">
+                        {row.parts.length
+                          ? `${row.parts.reduce((n: number, p: Row) => n + p.quantity, 0)} шт.`
+                          : "—"}
+                        {row.parts.length > 1 && (
+                          <small>{row.parts.length} картки складу</small>
+                        )}
+                      </div>
+                    )}
                     <div className="wd-row-actions">
-                      <button
-                        disabled={
-                          !canAdd(row) ||
-                          busy ||
-                          ["received", "sold", "hidden", "empty"].includes(
-                            row.state,
-                          )
-                        }
-                        onClick={() => void addToStock([row.key])}
-                      >
-                        <Plus size={14} />
-                        На склад
-                      </button>
+                      {!settings && !row.parts.length && (
+                        <button
+                          disabled={
+                            !canAdd(row) ||
+                            busy ||
+                            ["received", "sold", "hidden", "empty"].includes(
+                              row.state,
+                            )
+                          }
+                          onClick={() => void addToStock([row.key])}
+                        >
+                          <Plus size={14} />
+                          Додати 1 шт.
+                        </button>
+                      )}
                       {p && (
                         <button
                           className="wd-icon"
@@ -864,7 +1039,7 @@ export default function DismantlingBoard({
                       )}
                     </div>
                   </article>
-                  {expanded === row.key && (
+                  {settings && expanded === row.key && (
                     <div
                       className="wd-inline"
                       aria-label={"Номери " + row.name}
@@ -938,109 +1113,116 @@ export default function DismantlingBoard({
                           onClose={() => setEditing("")}
                         />
                       )}
-                      <p className="wd-hint">
-                        Автоматичне отримання OEM недоступне. Введіть номер
-                        вручну та перевірте його відповідність автомобілю.
-                      </p>
-                      {loadingOffer === row.key ? (
-                        <p role="status">
-                          Відкриваємо збережені артикули · без токенів…
-                        </p>
-                      ) : (
+                      {editing !== row.key && (
                         <>
-                          {offers[row.key]?.length ? (
-                            <div className="wd-offers">
-                              {offers[row.key]
-                                .slice(0, offerLimits[row.key] || 100)
-                                .map((a) => (
-                                  <div key={a.art_id}>
-                                    <input
-                                      type="radio"
-                                      aria-label={
-                                        "Вибрати артикул " + a.article_nr
-                                      }
-                                      name={"article-" + row.key}
-                                      checked={
-                                        (articleChoice[row.key] ??
-                                          offers[row.key][0]?.art_id) ===
-                                        a.art_id
-                                      }
-                                      onChange={() =>
-                                        setArticleChoice((v) => ({
-                                          ...v,
-                                          [row.key]: a.art_id,
+                          <p className="wd-hint">
+                            Автоматичне отримання OEM недоступне. Введіть номер
+                            вручну та перевірте його відповідність автомобілю.
+                          </p>
+                          {loadingOffer === row.key ? (
+                            <p role="status">
+                              Відкриваємо збережені артикули · без токенів…
+                            </p>
+                          ) : (
+                            <>
+                              {offers[row.key]?.length ? (
+                                <div className="wd-offers">
+                                  {offers[row.key]
+                                    .slice(0, offerLimits[row.key] || 100)
+                                    .map((a) => (
+                                      <div key={a.art_id}>
+                                        <input
+                                          type="radio"
+                                          aria-label={
+                                            "Вибрати артикул " + a.article_nr
+                                          }
+                                          name={"article-" + row.key}
+                                          checked={
+                                            (articleChoice[row.key] ??
+                                              offers[row.key][0]?.art_id) ===
+                                            a.art_id
+                                          }
+                                          onChange={() =>
+                                            setArticleChoice((v) => ({
+                                              ...v,
+                                              [row.key]: a.art_id,
+                                            }))
+                                          }
+                                        />
+                                        <span>
+                                          <b>{a.article_nr}</b> · {a.brand}
+                                          <small>
+                                            {a.part_name || "Назву не надано"}
+                                          </small>
+                                          {Object.entries(
+                                            a.characteristics || {},
+                                          )
+                                            .slice(0, 8)
+                                            .map(([k, v]) => (
+                                              <small key={k}>
+                                                {k}: {String(v)}
+                                              </small>
+                                            ))}
+                                        </span>
+                                        <button
+                                          disabled={
+                                            busy ||
+                                            !p ||
+                                            row.context_matches === false
+                                          }
+                                          onClick={() => void assign(row, a)}
+                                        >
+                                          {p
+                                            ? "Призначити та зберегти"
+                                            : "Спочатку додайте на склад"}
+                                        </button>
+                                      </div>
+                                    ))}
+                                  {offers[row.key].length >
+                                    (offerLimits[row.key] || 100) && (
+                                    <button
+                                      onClick={() =>
+                                        setOfferLimits((old) => ({
+                                          ...old,
+                                          [row.key]:
+                                            (old[row.key] || 100) + 100,
                                         }))
                                       }
-                                    />
-                                    <span>
-                                      <b>{a.article_nr}</b> · {a.brand}
-                                      <small>
-                                        {a.part_name || "Назву не надано"}
-                                      </small>
-                                      {Object.entries(a.characteristics || {})
-                                        .slice(0, 8)
-                                        .map(([k, v]) => (
-                                          <small key={k}>
-                                            {k}: {String(v)}
-                                          </small>
-                                        ))}
-                                    </span>
-                                    <button
-                                      disabled={
-                                        busy ||
-                                        row.context_matches === false ||
-                                        (!p && row.parts.length > 0)
-                                      }
-                                      onClick={() => void assign(row, a)}
                                     >
-                                      {p
-                                        ? "Призначити та зберегти"
-                                        : "Додати 1 шт. та призначити"}
+                                      Ще 100 варіантів ·{" "}
+                                      {offerLimits[row.key] || 100} із{" "}
+                                      {offers[row.key].length}
                                     </button>
-                                  </div>
-                                ))}
-                              {offers[row.key].length >
-                                (offerLimits[row.key] || 100) && (
-                                <button
-                                  onClick={() =>
-                                    setOfferLimits((old) => ({
-                                      ...old,
-                                      [row.key]: (old[row.key] || 100) + 100,
-                                    }))
-                                  }
-                                >
-                                  Ще 100 варіантів ·{" "}
-                                  {offerLimits[row.key] || 100} із{" "}
-                                  {offers[row.key].length}
-                                </button>
+                                  )}
+                                </div>
+                              ) : (
+                                <p>Збережених варіантів поки немає.</p>
                               )}
-                            </div>
-                          ) : (
-                            <p>Збережених варіантів поки немає.</p>
-                          )}
-                          {!p && (
-                            <p>
-                              Спочатку додайте деталь на склад. Попередній вибір
-                              не видається за призначений номер.
-                            </p>
-                          )}
-                          {row.pt_id ? (
-                            <button
-                              disabled={
-                                busy ||
-                                row.context_matches === false ||
-                                who?.role !== "DIRECTOR"
-                              }
-                              onClick={() => void prepareQuote(row)}
-                            >
-                              Отримати нові артикули
-                            </button>
-                          ) : (
-                            <p>
-                              Для підбору артикулів потрібний точний тип
-                              Plan.Parts. Схожі назви автоматично не
-                              зіставляються.
-                            </p>
+                              {!p && (
+                                <p>
+                                  Щоб призначити номер, спочатку додайте деталь
+                                  у вкладці «Розбір і запчастини».
+                                </p>
+                              )}
+                              {row.pt_id ? (
+                                <button
+                                  disabled={
+                                    busy ||
+                                    row.context_matches === false ||
+                                    who?.role !== "DIRECTOR"
+                                  }
+                                  onClick={() => void prepareQuote(row)}
+                                >
+                                  Отримати нові артикули
+                                </button>
+                              ) : (
+                                <p>
+                                  Для підбору артикулів потрібний точний тип
+                                  каталогу. Схожі назви автоматично не
+                                  зіставляються.
+                                </p>
+                              )}
+                            </>
                           )}
                         </>
                       )}
@@ -1100,57 +1282,6 @@ export default function DismantlingBoard({
           )}
           {!filtered.length && <p>За цими фільтрами позицій немає.</p>}
         </section>
-        <aside className="wd-aside">
-          <section>
-            <h3>Дії з вибраними</h3>
-            <p>Обрано: {selected.length} позицій</p>
-            <button
-              className="wd-primary"
-              disabled={
-                !selected.length ||
-                busy ||
-                !rows.filter((r) => selected.includes(r.key)).every(canAdd)
-              }
-              onClick={() => void addToStock(actionKeys)}
-            >
-              <Plus size={17} />
-              Додати на склад
-            </button>
-            <button
-              disabled={!selected.length || busy || !canManage}
-              onClick={() => void annotate(actionKeys, "dismantled")}
-            >
-              Позначити як демонтовано
-            </button>
-            <button
-              disabled={!selected.length || busy || !canManage}
-              onClick={() => void annotate(actionKeys, "hide")}
-            >
-              <EyeOff size={15} />
-              Приховати з плану
-            </button>
-            <button
-              disabled={!selected.length || busy || !canManage}
-              onClick={() => void annotate(actionKeys, "restore")}
-            >
-              <RotateCcw size={15} />
-              Повернути у план
-            </button>
-            <button className="wd-link" onClick={() => setSelected([])}>
-              Зняти вибір
-            </button>
-          </section>
-          <section>
-            <h3>Статуси запчастин</h3>
-            {Object.entries(status).map(([k, v]) => (
-              <div className="wd-status-count" key={k}>
-                <span className={"wd-dot wd-dot-" + k} />
-                <span>{v}</span>
-                <b>{rows.filter((r) => r.state === k).length}</b>
-              </div>
-            ))}
-          </section>
-        </aside>
       </div>
       {progress && (
         <p role="status">
@@ -1164,54 +1295,56 @@ export default function DismantlingBoard({
           </button>
         </p>
       )}
-      <section className="wd-translations" aria-label="Керування назвами">
-        <Languages size={30} />
-        <div>
-          <h3>Керування назвами</h3>
-          <small>Українські назви запчастин та оригінали для пошуку.</small>
-        </div>
-        <span className="wd-chip received">
-          Перекладено: {names.translated}
-        </span>
-        <span className="wd-chip planned">
-          Потребують уточнення: {names.pending}
-        </span>
-        <button
-          disabled={!!translation || who?.role !== "DIRECTOR"}
-          onClick={() => void translate()}
-        >
-          Оновити переклад
-        </button>
-        <button
-          disabled={selected.length !== 1 || !canManage}
-          onClick={() => {
-            const r = rows.find((r) => r.key === selected[0])!;
-            setExpanded(r.key);
-            setEditing(r.key);
-            setName(r.name);
-          }}
-        >
-          Змінити назву
-        </button>
-        <button
-          disabled={!!translation || who?.role !== "DIRECTOR"}
-          onClick={() => void translate()}
-        >
-          Перекласти відсутні назви
-        </button>
-        {translation && (
-          <span role="status">
-            Переклад: {translation.done} із {translation.total}
-            <button
-              onClick={() => {
-                stop.current = true;
-              }}
-            >
-              Зупинити
-            </button>
+      {settings && (
+        <section className="wd-translations" aria-label="Керування назвами">
+          <Languages size={30} />
+          <div>
+            <h3>Керування назвами</h3>
+            <small>Українські назви запчастин та оригінали для пошуку.</small>
+          </div>
+          <span className="wd-chip received">
+            Перекладено: {names.translated}
           </span>
-        )}
-      </section>
+          <span className="wd-chip planned">
+            Потребують уточнення: {names.pending}
+          </span>
+          <button
+            disabled={!!translation || who?.role !== "DIRECTOR"}
+            onClick={() => void translate()}
+          >
+            Оновити переклад
+          </button>
+          <button
+            disabled={selected.length !== 1 || !canManage}
+            onClick={() => {
+              const r = rows.find((r) => r.key === selected[0])!;
+              setExpanded(r.key);
+              setEditing(r.key);
+              setName(r.name);
+            }}
+          >
+            Змінити назву
+          </button>
+          <button
+            disabled={!!translation || who?.role !== "DIRECTOR"}
+            onClick={() => void translate()}
+          >
+            Перекласти відсутні назви
+          </button>
+          {translation && (
+            <span role="status">
+              Переклад: {translation.done} із {translation.total}
+              <button
+                onClick={() => {
+                  stop.current = true;
+                }}
+              >
+                Зупинити
+              </button>
+            </span>
+          )}
+        </section>
+      )}
     </section>
   );
 }

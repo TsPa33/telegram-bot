@@ -1,3 +1,4 @@
+import { vehicleModificationLabel } from "./vehicleModificationLabel";
 import DismantlingBoard from "./DismantlingBoard";
 import { Modal } from "./components";
 import { PartDetail } from "./pages/Inventory";
@@ -62,6 +63,7 @@ export default function PlanPartsDonorAnalysis({
   onLoaded,
   onCatalogueReady,
   setupOnly = false,
+  view = "operations",
 }: {
   vehicle: Row;
   onSaved: (row: Row) => void;
@@ -69,6 +71,7 @@ export default function PlanPartsDonorAnalysis({
   onLoaded?: (row: Row) => void;
   onCatalogueReady?: () => void;
   setupOnly?: boolean;
+  view?: "operations" | "settings";
 }) {
   const [translationKick, setTranslationKick] = useState(0);
   const [detail, setDetail] = useState<Row | null>(null);
@@ -358,14 +361,16 @@ export default function PlanPartsDonorAnalysis({
       const ids = intent.resource === "articles" ? intent.ids : [0],
         unit = intent.cost;
       if (!priceQuote(unit, ids.length).known || !policy.terms_confirmed)
-        throw Error("Тариф або умови збереження API не підтверджені");
+        throw Error(
+          "Новий запит недоступний: вартість або умови отримання ще не підтверджені",
+        );
       setQuote(null);
       for (let i = 0; i < ids.length; i++) {
         if (g !== epoch.current || stop.current) break;
         setProgress({
           done: i,
           total: ids.length,
-          label: "Отримання даних API",
+          label: "Отримуємо дані",
         });
         const pt = ids[i];
         const key =
@@ -402,7 +407,7 @@ export default function PlanPartsDonorAnalysis({
         setProgress({
           done: i + 1,
           total: ids.length,
-          label: "Дані API збережено",
+          label: "Дані збережено",
         });
       }
       if (g === epoch.current)
@@ -497,6 +502,10 @@ export default function PlanPartsDonorAnalysis({
         categories.filter((c) => sectionOf(c) === s).length,
       ]),
     );
+  const modification = vehicleModificationLabel(
+    vehicle,
+    workspace?.saved_modifications || [],
+  );
   const paidConfirmation = quote && (
     <div
       role="alertdialog"
@@ -533,7 +542,7 @@ export default function PlanPartsDonorAnalysis({
           </p>
           <p>
             Якщо результат уже збережено, повторна оплата не потрібна. Токени
-            витрачаються лише за нову успішну відповідь Plan.Parts.
+            витрачаються лише за нову успішну відповідь каталогу.
           </p>
         </>
       ) : (
@@ -570,26 +579,37 @@ export default function PlanPartsDonorAnalysis({
     <section className="vp-workspace" aria-label="Розбір і запчастини">
       <div className="vp-topline">
         <div>
-          <h3>Розбір і запчастини</h3>
+          <h3>
+            {view === "settings"
+              ? "Налаштування запчастин"
+              : "Розбір і запчастини"}
+          </h3>
           <p>
-            Plan.Parts · {vehicle.manufacturer} {vehicle.model} · {vehicle.year}{" "}
-            · Донор №{vehicle.number || "—"}
+            {modification.label}
+            {modification.details && <small>{modification.details}</small>}
           </p>
         </div>
-        <button
-          type="button"
-          className="secondary"
-          aria-expanded={tech}
-          onClick={() => setTech(!tech)}
-        >
-          {vehicle.ktype ? "Змінити модифікацію" : "Вибрати модифікацію"}
-        </button>
+        {view === "operations" && (
+          <button
+            type="button"
+            className="secondary"
+            aria-expanded={tech}
+            onClick={() => setTech(!tech)}
+          >
+            {vehicle.ktype ? "Змінити модифікацію" : "Вибрати модифікацію"}
+          </button>
+        )}
+        {view === "operations" && categories.length > 0 && (
+          <button disabled={busy} onClick={() => void startCatalogue()}>
+            Оновити список
+          </button>
+        )}
       </div>
 
       {loading && <p role="status">Відкриваємо список…</p>}
       {error && (
         <p role="alert" className="vp-error">
-          {error}
+          {error.replace(/plan\.parts/gi, "каталог")}
         </p>
       )}
       {notice && (
@@ -637,7 +657,7 @@ export default function PlanPartsDonorAnalysis({
         </>
       )}
 
-      {!loading && categories.length === 0 && (
+      {!loading && categories.length === 0 && view === "operations" && (
         <section className="vp-start" aria-label="Почати розбір автомобіля">
           <h3>Розбір автомобіля на запчастини</h3>
           <p>
@@ -656,9 +676,7 @@ export default function PlanPartsDonorAnalysis({
               }
             }}
           >
-            {vehicle.ktype
-              ? "Розібрати авто на запчастини"
-              : "1. Вибрати модифікацію"}
+            Розібрати авто на запчастини
           </button>
         </section>
       )}
@@ -690,7 +708,10 @@ export default function PlanPartsDonorAnalysis({
             Відкрити попередній збережений список
           </button>
         ))}
-      {(tech || !vehicle.ktype) && (
+      {view === "settings" && !loading && !categories.length && (
+        <p>Спочатку сформуйте список у вкладці «Розбір і запчастини».</p>
+      )}
+      {view === "operations" && (tech || !vehicle.ktype) && (
         <div className="vp-technical">
           {!vehicle.ktype && <p role="status">Потрібно вибрати модифікацію</p>}
           <p>
@@ -739,27 +760,6 @@ export default function PlanPartsDonorAnalysis({
           >
             Вибрати модифікацію
           </button>
-          {categories.length > 0 && (
-            <button
-              disabled={busy || !vehicle.ktype}
-              onClick={() => void startCatalogue()}
-            >
-              Оновити список запчастин
-            </button>
-          )}
-          <details>
-            <summary>Технічні деталі</summary>
-            <p>K-Type: {vehicle.ktype || "не вибрано"}</p>{" "}
-            <input
-              aria-label="K-Type модифікації"
-              type="number"
-              min="1"
-              value={picked || ""}
-              onChange={(e) => setPicked(Number(e.target.value))}
-            />
-            <p>{policy.oem_reason}</p>
-            <p>Збережені списки можна відкрити повторно.</p>
-          </details>
         </div>
       )}
       {quote?.resource !== "articles" && paidConfirmation}
@@ -767,6 +767,7 @@ export default function PlanPartsDonorAnalysis({
         <DismantlingBoard
           vehicle={vehicle}
           source="professional"
+          view={view}
           controls={null}
           onModify={() => setTech((v) => !v)}
           onUpdate={startCatalogue}

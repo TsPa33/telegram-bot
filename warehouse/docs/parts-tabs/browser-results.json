@@ -1,0 +1,21 @@
+{
+  "shared_plan": true,
+  "tab_order": true,
+  "equal_category_tiles": 13,
+  "operations_columns": 5,
+  "settings_columns": 6,
+  "stats_and_sidebar_removed": true,
+  "no_settings_stock_creation": true,
+  "free_saved_variant_search": true,
+  "explicit_price_confirmation": true,
+  "shared_article_oem_and_manual_name": true,
+  "stock_changes_only_on_explicit_add": true,
+  "tab_switch_stock_unchanged": true,
+  "original_name_search": true,
+  "reload": true,
+  "desktop_mobile": true,
+  "new_donor_modification_first": true,
+  "paid_lookup_requests": 0,
+  "automatic_translation_requests": 0,
+  "js_errors": []
+}
