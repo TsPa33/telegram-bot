@@ -537,10 +537,8 @@ export default function PlanPartsDonorAnalysis({
           Джерело та модифікація
         </button>
       </div>
-      {sourceSelector && (tech || !categories.length) && (
-        <div className="vp-source-selector">{sourceSelector}</div>
-      )}
-      {loading && <p role="status">Відкриваємо список…</p>}
+
+      {loading && <p role="status">Відкриваємо список…</p>}}
       {error && (
         <p role="alert" className="vp-error">
           {error}
@@ -578,13 +576,7 @@ export default function PlanPartsDonorAnalysis({
               відновлення
             </span>
           </div>
-          <p className="vp-storage">
-            <Info size={15} />
-            {counts.legacy_unavailable || counts.uncertain
-              ? "Частину даних потрібно повторно відкрити. Нової оплати немає."
-              : "Дані отримані раніше. Повторне відкриття без оплати."}{" "}
-            Каталожні артикули не дорівнюють кількості фізичних деталей.
-          </p>
+
           {(workspace?.responses || []).some(
             (r: Row) => r.metadata_json?.completeness === "partial",
           ) && (
@@ -596,6 +588,13 @@ export default function PlanPartsDonorAnalysis({
           )}
         </>
       )}
+      {!loading && categories.length === 0 && <section className="vp-start" aria-label="Почати розбір автомобіля">
+        <h3>Розбір автомобіля на запчастини</h3>
+        <p>{vehicle.ktype ? "Модифікацію вибрано. Створіть перелік запчастин." : "Спочатку виберіть модифікацію автомобіля."}</p>
+        <button type="button" disabled={busy} onClick={() => vehicle.ktype ? void startCatalogue() : setTech(true)}>
+          Розібрати авто на запчастини
+        </button>
+      </section>}
       {(tech || !categories.length) && (
         <div className="vp-technical">
           {!vehicle.ktype && <p role="status">Потрібно вибрати модифікацію</p>}
@@ -638,12 +637,12 @@ export default function PlanPartsDonorAnalysis({
           >
             Вибрати модифікацію
           </button>
-          <button
+          {categories.length > 0 && <button
             disabled={busy || !vehicle.ktype}
             onClick={() => void startCatalogue()}
           >
-            Сформувати список Plan.Parts
-          </button>
+            Оновити список запчастин
+          </button>}
           <details>
             <summary>Технічні деталі</summary>
             <p>K-Type: {vehicle.ktype || "не вибрано"}</p>{" "}
@@ -656,8 +655,7 @@ export default function PlanPartsDonorAnalysis({
             />
             <p>{policy.oem_reason}</p>
             <p>
-              Збереження: PostgreSQL. Повторне відкриття не викликає
-              постачальника.
+              Збережені списки можна відкрити повторно.
             </p>
           </details>
         </div>
@@ -1178,15 +1176,10 @@ export default function PlanPartsDonorAnalysis({
             </div>
           ) : (
             <p className="vp-empty">
-              Натисніть «Артикули та OEM» у потрібному рядку. Варіанти, OEM та
-              призначення залишаються в одному workspace.
+              Виберіть запчастину в таблиці, щоб переглянути й призначити номери.
             </p>
           )}
-          <footer>
-            <Database size={15} /> Список збережено{" "}
-            <span>Збережені дані → перегляд без оплати</span>
-            <span>OEM-крос не підтверджує комплектацію VIN</span>
-          </footer>
+          <footer><span>Зміни запчастин зберігаються автоматично.</span></footer>
         </section>
       )}
     </section>
