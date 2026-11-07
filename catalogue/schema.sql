@@ -32,3 +32,14 @@ CREATE TABLE IF NOT EXISTS catalogue_models (
  name_uk VARCHAR(128) NULL,
  INDEX idx_model_manufacturer (manufacturer_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Existing compact catalogue tables are retained. Staging-only additive migration.
+CREATE TABLE IF NOT EXISTS catalogue_import_progress (
+  job VARCHAR(32) NOT NULL PRIMARY KEY,
+  last_supplier_id SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+  last_article_number VARCHAR(32) NOT NULL DEFAULT '',
+  last_manufacturer_id INT UNSIGNED NOT NULL DEFAULT 0,
+  last_oem_number VARCHAR(64) NOT NULL DEFAULT '',
+  processed BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
