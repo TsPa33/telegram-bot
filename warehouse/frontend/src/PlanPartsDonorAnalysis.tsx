@@ -1,3 +1,6 @@
+import DismantlingBoard from "./DismantlingBoard";
+import { Modal } from "./components";
+import { PartDetail } from "./pages/Inventory";
 import type { ReactNode } from "react";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
@@ -56,18 +59,21 @@ const root = "/plan-parts",
 export default function PlanPartsDonorAnalysis({
   vehicle,
   onSaved,
-  sourceSelector,
   onLoaded,
   onCatalogueReady,
-  setupOnly=false,
+  setupOnly = false,
 }: {
   vehicle: Row;
   onSaved: (row: Row) => void;
   sourceSelector?: ReactNode;
   onLoaded?: (row: Row) => void;
-  onCatalogueReady?:()=>void;
-  setupOnly?:boolean;
+  onCatalogueReady?: () => void;
+  setupOnly?: boolean;
 }) {
+  const [translationKick, setTranslationKick] = useState(0);
+  const [detail, setDetail] = useState<Row | null>(null);
+  const [boardRevision, setBoardRevision] = useState(0);
+  const legacyLayout = false;
   const who = useContext(TeamIdentity),
     scope = JSON.stringify([who?.id, vehicle.id, vehicle.ktype]),
     epoch = useRef(0),
@@ -111,11 +117,15 @@ export default function PlanPartsDonorAnalysis({
         behavior: "instant",
       });
   }, [active]);
-  async function load(generation = epoch.current, receivedCatalogue=false) {
+  async function load(generation = epoch.current, receivedCatalogue = false) {
     const r = await api(path);
     if (generation === epoch.current) {
       setWorkspace(r);
-      if(receivedCatalogue)onCatalogueReady?.();
+      setBoardRevision(n=>n+1);
+      if (receivedCatalogue) {
+        setTranslationKick((n) => n + 1);
+        onCatalogueReady?.();
+      }
       onLoaded?.(r);
       if (r.saved_modifications?.length) setMatches(r.saved_modifications);
     }
@@ -124,6 +134,8 @@ export default function PlanPartsDonorAnalysis({
   useEffect(() => {
     const g = ++epoch.current;
     setWorkspace(null);
+    setTranslationKick(0);
+    setDetail(null);
     setOffers({});
     offerTicket.current++;
     setOfferLoading(null);
@@ -299,7 +311,7 @@ export default function PlanPartsDonorAnalysis({
             vehicle.ktype,
           "POST",
         );
-        await load(g,true);
+        await load(g, true);
         if (g === epoch.current)
           setNotice("Дані отримані раніше. Список збережено.");
       } catch (e) {
@@ -386,7 +398,7 @@ export default function PlanPartsDonorAnalysis({
         if (intent.resource === "articles")
           setOffers((old) => ({ ...old, [pt]: r.articles }));
         else if (intent.resource === "ktype") setMatches(r.matches);
-        await load(g,intent.resource==='categories');
+        await load(g, intent.resource === "categories");
         setProgress({
           done: i + 1,
           total: ids.length,
@@ -488,35 +500,66 @@ export default function PlanPartsDonorAnalysis({
   const paidConfirmation = quote && (
     <div
       role="alertdialog"
-      aria-label="Підтвердження API-запиту"
+      aria-label="Підтвердження витрати токенів"
       className="vp-confirm"
     >
-      <strong>Новий зовнішній запит</strong>
-      <p>
-        Операцій: {quote.resource === "articles" ? quote.ids.length : 1}.
-        Максимальна вартість:{" "}
-        {priceQuote(
-          quote.cost,
-          quote.resource === "articles" ? quote.ids.length : 1,
-        ).known
-          ? priceQuote(
-              quote.cost,
-              quote.resource === "articles" ? quote.ids.length : 1,
-            ).max + " токенів"
-          : "не підтверджена"}
-        .
-      </p>
-      {(!policy.terms_confirmed || quote.cost == null) && (
+      <strong>
+        {quote.resource === "ktype"
+          ? "Пошук модифікації"
+          : quote.resource === "categories"
+            ? "Розібрати авто на запчастини"
+            : "Отримати артикули"}
+      </strong>
+      {priceQuote(
+        quote.cost,
+        quote.resource === "articles" ? quote.ids.length : 1,
+      ).known ? (
+        <>
+          <p>
+            {quote.resource === "articles"
+              ? `Вибрано типів: ${quote.ids.length}. `
+              : ""}
+            Максимальна вартість:{" "}
+            <b>
+              {
+                priceQuote(
+                  quote.cost,
+                  quote.resource === "articles" ? quote.ids.length : 1,
+                ).max
+              }{" "}
+              токенів
+            </b>
+            .
+          </p>
+          <p>
+            Якщо результат уже збережено, повторна оплата не потрібна. Токени
+            витрачаються лише за нову успішну відповідь Plan.Parts.
+          </p>
+        </>
+      ) : (
         <p>
-          Новий платний запит заблоковано, доки не підтверджені права збереження
-          та тариф. Наявні дані доступні для відновлення.
+          Вартість запиту тимчасово недоступна. Платний запит не запускається
+          без відомого тарифу.
+        </p>
+      )}
+      {!policy.terms_confirmed && (
+        <p>
+          Отримання нових даних тимчасово недоступне. Збережені дані можна
+          переглядати.
         </p>
       )}
       <button
-        disabled={busy || !policy.terms_confirmed || quote.cost == null}
+        disabled={
+          busy ||
+          !policy.terms_confirmed ||
+          !priceQuote(
+            quote.cost,
+            quote.resource === "articles" ? quote.ids.length : 1,
+          ).known
+        }
         onClick={() => void pay()}
       >
-        Підтвердити максимальну вартість
+        Підтвердити та отримати
       </button>
       <button className="secondary" onClick={() => setQuote(null)}>
         Скасувати
@@ -539,12 +582,10 @@ export default function PlanPartsDonorAnalysis({
           aria-expanded={tech}
           onClick={() => setTech(!tech)}
         >
-          Джерело та модифікація
+          {vehicle.ktype ? "Змінити модифікацію" : "Вибрати модифікацію"}
         </button>
       </div>
-      {sourceSelector && (setupOnly||tech || !categories.length) && (
-        <div className="vp-source-selector">{sourceSelector}</div>
-      )}
+
       {loading && <p role="status">Відкриваємо список…</p>}
       {error && (
         <p role="alert" className="vp-error">
@@ -556,7 +597,7 @@ export default function PlanPartsDonorAnalysis({
           {notice}
         </p>
       )}
-      {!setupOnly&&categories.length > 0 && (
+      {legacyLayout && categories.length > 0 && (
         <>
           <p role="status">Список збережено · {categories.length} деталей</p>
           <div className="vp-kpis" aria-label="Показники збережених даних">
@@ -583,13 +624,7 @@ export default function PlanPartsDonorAnalysis({
               відновлення
             </span>
           </div>
-          <p className="vp-storage">
-            <Info size={15} />
-            {counts.legacy_unavailable || counts.uncertain
-              ? "Частину даних потрібно повторно відкрити. Нової оплати немає."
-              : "Дані отримані раніше. Повторне відкриття без оплати."}{" "}
-            Каталожні артикули не дорівнюють кількості фізичних деталей.
-          </p>
+
           {(workspace?.responses || []).some(
             (r: Row) => r.metadata_json?.completeness === "partial",
           ) && (
@@ -601,7 +636,31 @@ export default function PlanPartsDonorAnalysis({
           )}
         </>
       )}
-      {(setupOnly || tech || !categories.length) && (
+
+      {!loading && categories.length === 0 && (
+        <section className="vp-start" aria-label="Почати розбір автомобіля">
+          <h3>Розбір автомобіля на запчастини</h3>
+          <p>
+            {vehicle.ktype
+              ? "Модифікацію вибрано. Створіть перелік запчастин."
+              : "Виберіть двигун і модифікацію, після чого сформуйте список запчастин."}
+          </p>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => {
+              if (vehicle.ktype) void startCatalogue();
+              else {
+                setTech(true);
+                prepare("ktype");
+              }
+            }}
+          >
+            Розібрати авто на запчастини
+          </button>
+        </section>
+      )}
+      {(tech || !vehicle.ktype) && (
         <div className="vp-technical">
           {!vehicle.ktype && <p role="status">Потрібно вибрати модифікацію</p>}
           <p>
@@ -643,12 +702,14 @@ export default function PlanPartsDonorAnalysis({
           >
             Вибрати модифікацію
           </button>
-          <button
-            disabled={busy || !vehicle.ktype}
-            onClick={() => void startCatalogue()}
-          >
-            Сформувати список Plan.Parts
-          </button>
+          {categories.length > 0 && (
+            <button
+              disabled={busy || !vehicle.ktype}
+              onClick={() => void startCatalogue()}
+            >
+              Оновити список запчастин
+            </button>
+          )}
           <details>
             <summary>Технічні деталі</summary>
             <p>K-Type: {vehicle.ktype || "не вибрано"}</p>{" "}
@@ -660,15 +721,52 @@ export default function PlanPartsDonorAnalysis({
               onChange={(e) => setPicked(Number(e.target.value))}
             />
             <p>{policy.oem_reason}</p>
-            <p>
-              Збереження: PostgreSQL. Повторне відкриття не викликає
-              постачальника.
-            </p>
+            <p>Збережені списки можна відкрити повторно.</p>
           </details>
         </div>
       )}
       {quote?.resource !== "articles" && paidConfirmation}
-      {!setupOnly&&categories.length > 0 && (
+      {categories.length > 0 && (
+        <DismantlingBoard
+          vehicle={vehicle}
+          source="professional"
+          controls={null}
+          onModify={() => setTech((v) => !v)}
+          onUpdate={startCatalogue}
+          revision={String(boardRevision)}
+          translationKick={translationKick}
+          onTranslationConsumed={() => setTranslationKick(0)}
+          onOpenPart={async (id) => {
+            try {
+              setDetail(await api("/parts/" + id));
+            } catch (e) {
+              setError((e as Error).message);
+            }
+          }}
+        />
+      )}
+      {detail && (
+        <Modal
+          className="r1-part-dialog"
+          title={detail.name}
+          onClose={() => setDetail(null)}
+        >
+          <PartDetail
+            part={detail}
+            onSaved={(r) => {
+              setDetail(r);
+              setBoardRevision((n) => n + 1);
+              window.dispatchEvent(new Event("warehouse:inventory-changed"));
+            }}
+            onChanged={() => {
+              void api("/parts/" + detail.id).then(setDetail);
+              setBoardRevision((n) => n + 1);
+              window.dispatchEvent(new Event("warehouse:inventory-changed"));
+            }}
+          />
+        </Modal>
+      )}
+      {legacyLayout && categories.length > 0 && (
         <div className="vp-layout">
           <div className="vp-main">
             <section className="vp-categories" aria-label="Категорії CarPot">
@@ -1183,14 +1281,12 @@ export default function PlanPartsDonorAnalysis({
             </div>
           ) : (
             <p className="vp-empty">
-              Натисніть «Артикули та OEM» у потрібному рядку. Варіанти, OEM та
-              призначення залишаються в одному workspace.
+              Виберіть запчастину в таблиці, щоб переглянути й призначити
+              номери.
             </p>
           )}
           <footer>
-            <Database size={15} /> Список збережено{" "}
-            <span>Збережені дані → перегляд без оплати</span>
-            <span>OEM-крос не підтверджує комплектацію VIN</span>
+            <span>Зміни запчастин зберігаються автоматично.</span>
           </footer>
         </section>
       )}

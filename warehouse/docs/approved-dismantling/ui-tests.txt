@@ -1,17 +1,17 @@
-✔ backend classification only; ambiguous stays review (3.975501ms)
-✔ category filters main list without supplier lookups (1.011612ms)
-✔ selection persists across category/page changes and deduplicates (0.231196ms)
-✔ search Стартер (0.763029ms)
-✔ search ART-1 (0.296864ms)
-✔ search Brand (0.147005ms)
-✔ search OEM-1 (0.128815ms)
-✔ combined filters use actual saved snapshots and stock (0.405815ms)
-✔ all source variants can be searched after free recovery (0.410688ms)
-✔ cost must be confirmed integer; no invented default (0.443233ms)
-✔ English saved name must not shadow reviewed Ukrainian glossary (0.217203ms)
-✔ original source and Ukrainian display remain searchable (0.213529ms)
-✔ unknown names are labelled for review, never guessed translations (0.236535ms)
-✔ backend reviewed glossary exactly matches the approved frontend source (14.712196ms)
+✔ backend classification only; ambiguous stays review (2.917192ms)
+✔ category filters main list without supplier lookups (1.521203ms)
+✔ selection persists across category/page changes and deduplicates (0.430123ms)
+✔ search Стартер (0.571443ms)
+✔ search ART-1 (0.254876ms)
+✔ search Brand (0.357411ms)
+✔ search OEM-1 (0.145712ms)
+✔ combined filters use actual saved snapshots and stock (0.513551ms)
+✔ all source variants can be searched after free recovery (0.386729ms)
+✔ cost must be confirmed integer; no invented default (0.849162ms)
+✔ English saved name must not shadow reviewed Ukrainian glossary (0.659286ms)
+✔ original source and Ukrainian display remain searchable (0.20018ms)
+✔ unknown names are labelled for review, never guessed translations (0.132324ms)
+✔ backend reviewed glossary exactly matches the approved frontend source (14.083514ms)
 ℹ tests 14
 ℹ suites 0
 ℹ pass 14
@@ -19,4 +19,4 @@
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 452.501035
+ℹ duration_ms 437.166817

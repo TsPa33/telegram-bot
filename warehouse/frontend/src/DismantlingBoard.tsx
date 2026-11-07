@@ -37,6 +37,7 @@ export default function DismantlingBoard({
   source,
   controls,
   onUpdate,
+  onModify,
   onOpenPart,
   translationKick = 0,
   revision,
@@ -46,6 +47,7 @@ export default function DismantlingBoard({
   source: "base" | "professional";
   controls: ReactNode;
   onUpdate?: () => Promise<void>;
+  onModify?: () => void;
   onOpenPart: (id: string) => void;
   translationKick?: number;
   revision?: string;
@@ -516,7 +518,9 @@ export default function DismantlingBoard({
         >
           Оновити список
         </button>
-        <button onClick={() => setModifying(!modifying)}>
+        <button
+          onClick={() => (onModify ? onModify() : setModifying(!modifying))}
+        >
           Змінити модифікацію
         </button>
       </div>

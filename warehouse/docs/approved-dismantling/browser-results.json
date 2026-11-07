@@ -11,10 +11,10 @@
     "paid_lookups": 0
   },
   {
-    "base": true,
-    "real_virtual_plan": true,
-    "no_fake_receipts": true,
-    "persistent": true,
+    "professional_only_entry": true,
+    "modification_token_confirmation": true,
+    "no_base_catalogue_ui": true,
+    "no_paid_lookups": true,
     "no_js_errors": true
   }
 ]
