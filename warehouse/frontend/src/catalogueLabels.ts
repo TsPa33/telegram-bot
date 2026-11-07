@@ -1,3 +1,4 @@
+import corporateAliases from "./corporateCategoryAliases.json";
 /** Read-only display normalization of already established UA terminology.
  * Pending R13 translations/hierarchy proposals are deliberately NOT applied here.
  * IDs, source names, API search values, hierarchy and fitment are unchanged.
@@ -56,5 +57,14 @@ export function categoryOptionLabel(row:CategoryDisplayRow,rows:CategoryDisplayR
  const dup=rows.some(other=>other.id!==row.id&&other.kind===row.kind
   &&(other.parent_id||'')===(row.parent_id||'')
   &&key(catalogueLabelUk(other.name||''))===key(displayed));
- return dup?displayed+' · '+(row.source||'джерело не вказано')+' · #'+String(row.id).slice(0,8):displayed;
+ const index=rows.filter(other=>other.kind===row.kind&&(other.parent_id||'')===(row.parent_id||'')&&key(catalogueLabelUk(other.name||''))===key(displayed)).findIndex(other=>other.id===row.id);
+ return dup?displayed+' · варіант '+(index+1):displayed;
+}
+
+/** Generated aliases mirror backend CarPot taxonomy; no technical keys in filters. */
+export function corporateCategoryGroups(rows:CategoryDisplayRow[]){
+ const norm=(s:string)=>s.normalize('NFKC').toLocaleLowerCase('uk').replace(/[^\p{L}\p{N}_]+/gu,' ').trim().replace(/\s+/g,' ');
+ const roots=rows.filter(r=>r.kind==='category'&&!r.parent_id);
+ const groups=Object.entries(corporateAliases).map(([label,aliases])=>({label,members:roots.filter(r=>[label,...aliases].some(a=>norm(a)===norm(catalogueLabelUk(r.name||''))))})).filter(g=>g.members.length);
+ return groups;
 }

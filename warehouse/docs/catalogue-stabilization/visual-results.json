@@ -1,0 +1,8 @@
+{
+  "header_columns": 6,
+  "oem_quantity_visible_desktop_mobile": true,
+  "optional_location_fields": true,
+  "mobile_location_fields": true,
+  "location_preserves_stock_prices_and_numbers": true,
+  "js_errors": []
+}

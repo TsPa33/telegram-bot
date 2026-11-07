@@ -650,105 +650,8 @@ def add_selected_donor_part(
     db: Annotated[Session, Depends(get_db)],
     vehicle_id: str = Query(min_length=1, max_length=80),
 ):
-    """Add exactly one selected donor type to stock with one user action.
-
-    A server-side, cache-only check verifies pt_id membership in the selected
-    K-Type catalogue. No paid API calls or reference-catalogue mutations.
-    Replays for the same donor/pt_id are idempotent; prevent concurrent inserts
-    by serializing on the donor row.
-    """
-    if who.user.role != "DIRECTOR" or who.user.id != who.workspace_account_id:
-        raise HTTPException(403, "Додавання з зовнішнього каталогу поки доступне лише власнику")
-    donor = owned(db, Vehicle, vehicle_id, who.workspace_account_id, lock=True, active=True)
-    if donor.ktype != data.ktype:
-        raise HTTPException(409, "Вибрана модифікація автомобіля змінилася")
-    stored = checklists.stored_categories(db, vehicle_id, who.workspace_account_id, data.ktype)
-    if stored:
-        types = [CatalogPartType(pt_id=x.pt_id, name=x.name_en, article_count=x.article_count) for x in stored]
-    else:
-        try:
-            types = client.recover_categories(who.workspace_account_id, data.ktype)
-        except PlanPartsError as exc:
-            _handle_provider(exc)
-    if not any(cat.pt_id == data.pt_id for cat in types):
-        raise HTTPException(422, "Вибраного типу немає в перевіреному каталозі цієї модифікації")
-    # Classify the *verified* generic supplier type, not a user-submitted
-    # category ID. Match only preexisting CarPot categories of this workspace.
-    verified_type = next(cat for cat in types if cat.pt_id == data.pt_id)
-    classification = match_existing_category(
-        db, who.workspace_account_id,
-        classify(getattr(verified_type, 'name', ''), data.ukrainian_name), data.ukrainian_name)
-    # Reference ID is part of CarPot's internal provenance, not an article copy.
-    marker = f"plan.parts:ktype={data.ktype};pt_id={data.pt_id}"
-    previous = db.scalar(select(Part).where(
-        Part.account_id == who.workspace_account_id,
-        Part.vehicle_id == donor.id,
-        Part.compatibility_notes == marker,
-    ).order_by(Part.created_at))
-    if previous is None:
-        # A provider can assign several pt_ids to the same named component.
-        # On a specific donor, don't create a second stock card for exactly
-        # the same normalized Ukrainian name from an earlier plan.parts type.
-        # Never merge different donors or manually added parts.
-        normalized_name = " ".join(data.ukrainian_name.strip().casefold().split())
-        sibling_rows = list(db.scalars(select(Part).where(
-            Part.account_id == who.workspace_account_id,
-            Part.vehicle_id == donor.id,
-            Part.compatibility_notes.like(f"plan.parts:ktype={data.ktype};pt_id=%"),
-        ).order_by(Part.created_at)))
-        previous = next((
-            row for row in sibling_rows
-            if " ".join(row.name.strip().casefold().split()) == normalized_name
-        ), None)
-    if previous is not None:
-        if previous.archived:
-            raise HTTPException(409, "Запчастина в архіві. Спочатку відновіть її в картці складу")
-        if previous.quantity == 0:
-            # Previous versions registered the part as a zero-stock candidate.
-            # Upgrade exactly once with an audited receipt, not a duplicate.
-            stock(db, previous, StockInput(
-                type="receipt", quantity=1,
-                reason="Оприбутковано вибрану запчастину plan.parts одним натисканням",
-            ), who.workspace_account_id)
-            db.commit()
-            return {"created": False, "received": True, "part_id": previous.id,
-                    "name": previous.name, "quantity": previous.quantity,
-                    "message": "Раніше додану запчастину оприбутковано: 1 одиниця"}
-        return {"created": False, "received": False, "part_id": previous.id,
-                "name": previous.name, "quantity": previous.quantity,
-                "message": "Запчастина вже на складі; повторного надходження не створено"}
-    name = data.ukrainian_name.strip()
-    if not any(ch in "іїєґІЇЄҐ" or "\u0400" <= ch <= "\u04ff" for ch in name) and name.casefold() != verified_type.name.strip().casefold():
-        raise HTTPException(422, "Вкажіть українську назву або збережену назву з каталогу")
-    part = Part(
-        account_id=who.workspace_account_id,
-        vehicle_id=donor.id,
-        name=name,
-        category_id=classification["category_id"],
-        subcategory_id=classification["subcategory_id"],
-        inventory_origin="manual",
-        quantity_basis="assumed",
-        physical_location_kind="on_vehicle",
-        availability="unchecked",
-        condition="unknown",
-        quantity=0,
-        compatibility_notes=marker,
-        description="Додано користувачем з довідника типів plan.parts. Точна відповідність VIN та OEM потребує звірки.",
-    )
-    db.add(part)
-    record(db, who.workspace_account_id, part, "part_create",
-           "Створено облікову картку вибраної запчастини plan.parts", {})
-    # A stock receipt is mandatory in the same transaction so quantity,
-    # inventory counters and audit trail remain consistent.
-    stock(db, part, StockInput(
-        type="receipt", quantity=1,
-        reason="Оприбуткування запчастини, вибраної власником для цього донора",
-    ), who.workspace_account_id)
-    db.commit()
-    return {"created": True, "received": True, "part_id": part.id,
-            "name": name, "quantity": part.quantity,
-            "classification": {k: classification[k] for k in ("kind", "section", "mapping")},
-            "message": "Запчастину додано на склад: 1 одиниця"}
+    result = add_selected_donor_parts_batch(AddSelectedDonorPartBatch(items=[data]), who, client, db, vehicle_id)
+    return result['results'][0]
 
 
 @router.post("/donor-parts/receive-pending")
@@ -769,12 +672,14 @@ def receive_previously_added_parts(
     donor = owned(db, Vehicle, vehicle_id, who.workspace_account_id, lock=True, active=True)
     if donor.ktype != ktype:
         raise HTTPException(409, "Вибрана модифікація автомобіля змінилася")
+    from app.models import Operation
     marker = f"plan.parts:ktype={ktype};pt_id="
     pending = list(db.scalars(select(Part).where(
         Part.account_id == who.workspace_account_id,
         Part.vehicle_id == donor.id,
         Part.archived.is_(False),
         Part.quantity == 0,
+        ~select(Operation.id).where(Operation.account_id==who.workspace_account_id,Operation.part_id==Part.id,Operation.type.in_(['receipt','sale','write_off'])).exists(),
         Part.compatibility_notes.like(marker + "%"),
     ).with_for_update()))
     for part in pending:
@@ -796,90 +701,30 @@ def _owner_plan_parts_donor(who, db, vehicle_id: str, ktype: int, *, lock=False)
     return donor
 
 
-def _legacy_classification_plan(db, who, donor, ktype):
-    """Analyze existing parts, no mutation or external API calls."""
-    prefix = f"plan.parts:ktype={ktype};pt_id="
-    parts = list(db.scalars(select(Part).where(
-        Part.account_id == who.workspace_account_id,
-        Part.vehicle_id == donor.id,
-        Part.archived.is_(False),
-        Part.compatibility_notes.like(prefix + "%"),
-    ).order_by(Part.created_at)))
-    rows = []
-    for part in parts:
-        # A historical stock card has only the confirmed saved Ukrainian name;
-        # classify conservatively rather than reconstructing a vanished API body.
-        proposal = match_existing_category(db, who.workspace_account_id,
-                                           classify("", part.name), part.name)
-        if part.category_id is not None:
-            action = "already_categorized"
-        elif proposal["category_id"] is None:
-            action = "needs_review"
-        else:
-            action = "can_apply"
-        rows.append({
-            "part_id": part.id, "name": part.name,
-            "kind": proposal["kind"], "section": proposal["section"],
-            "mapping": proposal["mapping"], "action": action,
-            "category_id": proposal["category_id"],
-            "subcategory_id": proposal["subcategory_id"]
-        })
-    return rows
+class CategoryRepair(BaseModel):
+    token: str = Field(min_length=64,max_length=64)
+    provision: bool = False
 
 
 @router.get("/donor-parts/classification/preview")
-def donor_classification_preview(
-    who: Annotated[Identity, Depends(identity)],
-    db: Annotated[Session, Depends(get_db)],
-    vehicle_id: str = Query(min_length=1, max_length=80),
-    ktype: int = Query(gt=0),
-):
-    donor = _owner_plan_parts_donor(who, db, vehicle_id, ktype)
-    rows = _legacy_classification_plan(db, who, donor, ktype)
-    return {
-        "rows": rows, "total": len(rows),
-        "can_apply": sum(r["action"] == "can_apply" for r in rows),
-        "needs_review": sum(r["action"] == "needs_review" for r in rows),
-        "already_categorized": sum(r["action"] == "already_categorized" for r in rows),
-        "no_stock_changes": True,
-    }
+def donor_classification_preview(who: Annotated[Identity,Depends(identity)],db:Annotated[Session,Depends(get_db)],vehicle_id:str=Query(min_length=1,max_length=80),ktype:int=Query(gt=0),provision:bool=False):
+    from app.services.source_types import normalization
+    donor=_owner_plan_parts_donor(who,db,vehicle_id,ktype)
+    return normalization(db,who,donor,provision=provision)
 
 
 @router.post("/donor-parts/classification/apply")
-def donor_classification_apply(
-    who: Annotated[Identity, Depends(identity)],
-    db: Annotated[Session, Depends(get_db)],
-    vehicle_id: str = Query(min_length=1, max_length=80),
-    ktype: int = Query(gt=0),
-):
-    """Owner-confirmed metadata-only repair of previously uncategorized parts.
+def donor_classification_apply(data:CategoryRepair,who:Annotated[Identity,Depends(identity)],db:Annotated[Session,Depends(get_db)],vehicle_id:str=Query(min_length=1,max_length=80),ktype:int=Query(gt=0)):
+    from app.models import Account
+    from app.services.source_types import normalization
+    db.scalar(select(Account).where(Account.id==who.workspace_account_id).with_for_update())
+    donor=_owner_plan_parts_donor(who,db,vehicle_id,ktype,lock=True)
+    return normalization(db,who,donor,apply=True,token=data.token,provision=data.provision)
 
-    No inserts, deletes, sales, receipts or changes to quantities and prices.
-    Existing category choices are never overwritten.
-    """
-    donor = _owner_plan_parts_donor(who, db, vehicle_id, ktype, lock=True)
-    plan = _legacy_classification_plan(db, who, donor, ktype)
-    updated = []
-    for row in plan:
-        if row["action"] != "can_apply":
-            continue
-        part = owned(db, Part, row["part_id"], who.workspace_account_id, lock=True)
-        if part.vehicle_id != donor.id or part.category_id is not None:
-            continue
-        before = snapshot(part)
-        part.category_id = row["category_id"]
-        part.subcategory_id = row["subcategory_id"]
-        record(db, who.workspace_account_id, part, "part_update",
-               "Уточнено категорію запчастини plan.parts без зміни залишків", before)
-        updated.append(part.id)
-    db.commit()
-    return {"updated_count": len(updated), "part_ids": updated,
-            "needs_review": sum(r["action"] == "needs_review" for r in plan),
-            "message": "Категорії оновлено; складські залишки та ціни не змінено"}
 
 class AddSelectedDonorPartBatch(BaseModel):
-    """One explicit user action, at most 40 source types per API request."""
-    items: list[AddSelectedDonorPart] = Field(min_length=1, max_length=40)
+    """One explicit atomic user action, at most 1000 source types per request."""
+    items: list[AddSelectedDonorPart] = Field(min_length=1, max_length=1000)
 
 
 @router.post("/donor-parts/add-batch")
@@ -890,36 +735,22 @@ def add_selected_donor_parts_batch(
     db: Annotated[Session, Depends(get_db)],
     vehicle_id: str = Query(min_length=1, max_length=80),
 ):
-    """Add selected types using existing audited receipt/idempotency implementation.
+    from app.models import Account
+    from app.services.donor_stock_batch import add
+    if who.user.role != "DIRECTOR" or who.user.id != who.workspace_account_id:
+        raise HTTPException(403, "Додавання доступне лише власнику")
+    # Global mapping writers serialize before donor/part locks, across API replicas.
+    db.scalar(select(Account).where(Account.id==who.workspace_account_id).with_for_update())
+    donor=owned(db,Vehicle,vehicle_id,who.workspace_account_id,lock=True,active=True)
+    if donor.ktype is None or any(item.ktype != donor.ktype for item in data.items):
+        raise HTTPException(409,'Спочатку виберіть правильну модифікацію автомобіля')
+    try:
+        return add(db,who,donor,data.items,client)
+    except PlanPartsError as exc:
+        db.rollback();_handle_provider(exc)
+    except Exception:
+        db.rollback();raise
 
-    No paid lookup is triggered. Per-item outcomes make interrupted batches
-    resumable and prevent invisible partial-success reports.
-    """
-    if len({item.pt_id for item in data.items}) != len(data.items):
-        raise HTTPException(422, "Повторювані типи в одному запиті")
-    if len({item.ktype for item in data.items}) != 1:
-        raise HTTPException(422, "Типи належать різним модифікаціям автомобіля")
-    results = []
-    for item in data.items:
-        try:
-            result = add_selected_donor_part(item, who, client, db, vehicle_id)
-            results.append({"pt_id": item.pt_id, "ok": True, **result})
-        except HTTPException as exc:
-            db.rollback()
-            results.append({"pt_id": item.pt_id, "ok": False,
-                            "error": str(exc.detail), "status": exc.status_code})
-            # If cache/identity/permissions are invalid for one item they are
-            # invalid for remaining requests. Avoid unneeded retries.
-            if exc.status_code in (401, 403, 409, 429, 502, 503):
-                break
-        except Exception:
-            db.rollback()
-            # Unknown commit outcome: abort, never automatically retry.
-            results.append({"pt_id": item.pt_id, "ok": False,
-                            "error": "Результат запису невідомий. Оновіть статус складу перед повтором."})
-            break
-    return {"results": results, "completed": sum(bool(r["ok"]) for r in results),
-            "attempted": len(results), "requested": len(data.items)}
 
 @router.get('/workspace')
 def saved_workspace(who: Annotated[Identity,Depends(identity)],db:Annotated[Session,Depends(get_db)],vehicle_id:str=Query(min_length=1,max_length=80)):
@@ -1031,6 +862,8 @@ def saved_workspace(who: Annotated[Identity,Depends(identity)],db:Annotated[Sess
             )
         )
     )
+    from app.services.source_types import Resolver
+    resolver=Resolver(db,who.workspace_account_id)
     return dict(
         vehicle_id=donor.id,
         ktype=donor.ktype,
@@ -1041,7 +874,7 @@ def saved_workspace(who: Annotated[Identity,Depends(identity)],db:Annotated[Sess
                 name=c.name_en,
                 name_uk=c.name_uk,
                 article_count=c.article_count,
-                classification=classify(c.name_en, c.name_uk),
+                classification=resolver.resolve(c.pt_id,c.name_en,c.name_uk or ""),
             )
             for c in categories
         ],

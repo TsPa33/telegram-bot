@@ -40,6 +40,17 @@ def entries(db, who, v, source):
             )
         )
     )
+    from app.models import Category
+
+    category_by_id = {
+        c.id: c
+        for c in db.scalars(
+            select(Category).where(
+                Category.account_id == who.workspace_account_id,
+                Category.archived.is_(False),
+            )
+        )
+    }
     byid = {p.id: p for p in parts}
     if source == "professional":
         from app.api.plan_parts import saved_workspace
@@ -50,13 +61,37 @@ def entries(db, who, v, source):
         for c in w["categories"]:
             marker = f"plan.parts:ktype={v.ktype};pt_id={c['pt_id']}"
             ps = [p for p in parts if p.compatibility_notes == marker]
+            if not ps:
+                ps = [
+                    p
+                    for p in parts
+                    if (
+                        m := re.fullmatch(
+                            r"plan\.parts:ktype=(\d+);pt_id=(\d+)",
+                            p.compatibility_notes or "",
+                        )
+                    )
+                    and int(m[2]) == c["pt_id"]
+                ]
+            classification = c["classification"]
+            assigned = category_by_id.get(ps[0].category_id) if len(ps) == 1 else None
+            display_category = (
+                assigned.name
+                if assigned and assigned.kind == "category" and not assigned.parent_id
+                else classification["section"]
+            )
             result.append(
                 dict(
                     key=f"pp:{v.ktype}:{c['pt_id']}",
                     original=c["name"],
                     manual_name=c["name_uk"],
-                    category=c["classification"]["section"] or "Потребують уточнення",
+                    category=display_category or "Потребує уточнення",
                     position="",
+                    kind=classification["kind"] if display_category else "review",
+                    type_key=c["classification"].get("type_key"),
+                    context_matches=all(p.compatibility_notes == marker for p in ps),
+                    annotation_fallback_allowed=classification.get("reason")
+                    != "supplier_type_changed",
                     pt_id=c["pt_id"],
                     parts=ps,
                     receipt=rs.get(c["pt_id"]),
@@ -92,6 +127,28 @@ def entries(db, who, v, source):
                 )
             )
     return result
+
+
+def annotation_for(annotations, key, allow_fallback=True):
+    if key in annotations:
+        return annotations[key]
+    m = re.fullmatch(r"pp:\d+:(\d+)", key)
+    if not m or not allow_fallback:
+        return None
+    previous = [a for k, a in annotations.items() if re.fullmatch(r"pp:\d+:" + m[1], k)]
+    if previous and len({(a.name_uk, a.hidden, a.dismantled) for a in previous}) == 1:
+        return previous[0]
+    if previous:
+        from types import SimpleNamespace
+
+        names = {a.name_uk for a in previous}
+        return SimpleNamespace(
+            name_uk=next(iter(names)) if len(names) == 1 else None,
+            hidden=any(a.hidden for a in previous),
+            dismantled=all(a.dismantled for a in previous),
+            review_required=True,
+        )
+    return None
 
 
 def read(db, who, v, source):
@@ -150,7 +207,9 @@ def read(db, who, v, source):
     )
     output = []
     for r in rows:
-        a = annotations.get(r["key"])
+        a = annotation_for(
+            annotations, r["key"], r.get("annotation_fallback_allowed", True)
+        )
         t = translations.get(name_key(r["original"]))
         dictionary = GLOSSARY.get(name_key(r["original"]))
         manual = (
@@ -199,6 +258,10 @@ def read(db, who, v, source):
                     else "glossary" if dictionary else t.method if t else "original"
                 ),
                 position=r["position"],
+                kind=r.get("kind", "part"),
+                type_key=r.get("type_key"),
+                context_matches=r.get("context_matches", True),
+                decision_review=bool(getattr(a, "review_required", False)),
                 category=r["category"],
                 pt_id=r["pt_id"],
                 state=state,
@@ -211,17 +274,19 @@ def read(db, who, v, source):
                 ],
             )
         )
-    n = len(output)
-    r = sum(i["received"] for i in output)
+    physical = [i for i in output if i["kind"] == "part"]
+    n = len(physical)
+    r = sum(i["received"] for i in physical)
     return dict(
         vehicle_id=v.id,
         source=source,
         ktype=v.ktype,
         items=output,
+        catalogue_total=len(output),
         progress=dict(
             planned=n,
             received=r,
-            with_photo=sum(i["with_photo"] for i in output),
+            with_photo=sum(i["with_photo"] for i in physical),
             percent=round(100 * r / n, 1) if n else 0,
             unit="plan_entries",
         ),
@@ -248,6 +313,15 @@ def annotate(db, who, v, source, keys, action, name=None):
                 409,
                 "Оприбутковані, продані або приховані позиції не переводяться назад у демонтаж",
             )
+    historical = {
+        a.entry_key: a
+        for a in db.scalars(
+            select(DismantlingAnnotation).where(
+                DismantlingAnnotation.account_id == who.workspace_account_id,
+                DismantlingAnnotation.vehicle_id == v.id,
+            )
+        )
+    }
     for key in keys:
         r = rows[key]
         a = db.scalar(
@@ -260,13 +334,17 @@ def annotate(db, who, v, source, keys, action, name=None):
             .with_for_update()
         )
         if not a:
+            inherited = annotation_for(
+                historical, key, r.get("annotation_fallback_allowed", True)
+            )
             a = DismantlingAnnotation(
                 account_id=who.workspace_account_id,
                 vehicle_id=v.id,
                 entry_key=key,
                 actor_id=who.actor_id,
-                hidden=False,
-                dismantled=False,
+                hidden=inherited.hidden if inherited else False,
+                dismantled=inherited.dismantled if inherited else False,
+                name_uk=inherited.name_uk if inherited else None,
             )
         before = snapshot(a) if a.id else {}
         desired = (
@@ -325,6 +403,15 @@ def translate_batch(db, who, v, source, keys):
     pending = []
     pending_keys = set()
     saved = 0
+    historical = {
+        a.entry_key: a
+        for a in db.scalars(
+            select(DismantlingAnnotation).where(
+                DismantlingAnnotation.account_id == who.workspace_account_id,
+                DismantlingAnnotation.vehicle_id == v.id,
+            )
+        )
+    }
     for key in keys:
         r = rows[key]
         original = r["original"]

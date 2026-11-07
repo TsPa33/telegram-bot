@@ -1,7 +1,7 @@
 import {useState} from 'react';
 import {Boxes,CarFront,Lightbulb,Zap,Cog,Armchair,Layers3,ShieldCheck,Disc3,LockKeyhole,Settings2,PlugZap,Fan,SlidersHorizontal,Wrench,Fuel,Gauge,CircleDot,Snowflake,Link2,CircleGauge,Droplets,Package,KeyRound,ClipboardList,Car,Truck,Wind} from 'lucide-react';
 import type {Row} from './api';
-import {catalogueLabelUk as categoryLabelUk} from './catalogueLabels';
+import {catalogueLabelUk as categoryLabelUk,corporateCategoryGroups} from './catalogueLabels';
 export {categoryLabelUk};
 
 function categoryIcon(name:string) {
@@ -52,14 +52,7 @@ function categoryIcon(name:string) {
 type Group={label:string;members:Row[]};
 function normalizeLabel(s:string){return s.trim().normalize('NFKC').toLocaleLowerCase('uk').replace(/\s+/g,' ');}
 export function groupQuickCategoryRoots(categories:Row[]):Group[]{
- const grouped=new Map<string,Group>();
- for(const row of categories.filter(c=>c.kind!=='part'&&!c.parent_id)){
-  const label=categoryLabelUk(String(row.name||''));
-  const key=normalizeLabel(label);
-  const group=grouped.get(key);
-  if(group)group.members.push(row);else grouped.set(key,{label,members:[row]});
- }
- return [...grouped.values()].sort((a,b)=>a.label.localeCompare(b.label,'uk'));
+ return [...corporateCategoryGroups(categories),{label:'Потребує уточнення',members:[{id:'__review__',name:'Потребує уточнення'}]}] as Group[];
 }
 export const sections=[
  {name:'Двигун та його системи',icon:Cog,terms:/двиг|мотор|силовий агрегат|запал|зажиган|палив|топлив|подачі палива|суміш|смес|охолод|охлаж|ремінн|ремен|випуск|выпуск|впуск/},

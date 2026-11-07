@@ -98,7 +98,7 @@ def test_progress_uses_receipts_not_assumed_quantity_and_is_read_only(setup):
         before = all_tables(db)
     d = read(c, v)
     assert d["progress"] == dict(
-        planned=3, received=1, with_photo=1, percent=33.3, unit="plan_entries"
+        planned=2, received=1, with_photo=1, percent=50.0, unit="plan_entries"
     )
     assert d["items"][0]["name"] == "Стартер" and d["items"][1]["state"] == "planned"
     with Session(engine()) as db:

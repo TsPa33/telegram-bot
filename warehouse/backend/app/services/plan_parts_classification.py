@@ -96,13 +96,13 @@ def classify(name_en: str, name_uk: str = "") -> dict:
             "reason": "single_system" if len(matches) == 1 else "ambiguous_or_unknown"}
 
 
-def match_existing_category(db, account_id: str, classification: dict, name: str) -> dict:
+def match_existing_category(db, account_id: str, classification: dict, name: str, *, categories=None) -> dict:
     """Resolve existing category IDs; never invent nodes or pick ambiguous labels."""
     section = classification["section"]
     if not section:
         return {**classification, "category_id": None, "subcategory_id": None,
                 "mapping": "review_required"}
-    rows = list(db.scalars(select(Category).where(
+    rows = categories if categories is not None else list(db.scalars(select(Category).where(
         Category.account_id == account_id, Category.archived.is_(False)
     )))
     aliases = {normalize(x) for x in CATEGORY_ALIASES.get(section, ())}

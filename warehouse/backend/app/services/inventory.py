@@ -54,7 +54,7 @@ def validate_part_links(db, data, account_id):
             raise HTTPException(422, "Підкатегорія не належить вибраній категорії")
 
 
-def stock(db, row, data, account_id, *, reservation_id=None, return_operation=False, sale_context=None):
+def stock(db, row, data, account_id, *, reservation_id=None, return_operation=False, sale_context=None, flush_before=True):
     if row.archived:
         raise HTTPException(409, "Спершу відновіть запчастину з архіву")
     if data.type not in ('receipt','write_off','sale','reserve','release','correction','transfer','virtual_activation'):
@@ -112,7 +112,7 @@ def stock(db, row, data, account_id, *, reservation_id=None, return_operation=Fa
         }
         sale_snapshot.update(sale_context or {})
     operation=record(db, account_id, row, data.type, data.reason, before,
-        after_extra={"sale":sale_snapshot} if sale_snapshot else None)
+        after_extra={"sale":sale_snapshot} if sale_snapshot else None, flush_before=flush_before)
     return operation if return_operation else row
 
 

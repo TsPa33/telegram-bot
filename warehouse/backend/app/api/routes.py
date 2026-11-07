@@ -186,20 +186,24 @@ def listing(
                 model.name,
                 model.oem_number,
                 model.article_number,
+                model.article_brand,
+                model.description,
                 model.location,
                 model.serial_number,
             ]
             if model is Part
             else [model.name]
         )
-        stmt = stmt.where(
-            or_(
-                *(
-                    f.ilike("%" + q.replace("%", r"\%").replace("_", r"\_") + "%")
-                    for f in fields
-                )
-            )
-        )
+        pattern="%" + q.replace("%", r"\%").replace("_", r"\_") + "%"
+        expressions=[f.ilike(pattern) for f in fields]
+        if model is Part:
+            from app.models import VehicleChecklistItem
+            original=select(VehicleChecklistItem.id).where(
+                VehicleChecklistItem.account_id==account_id,VehicleChecklistItem.vehicle_id==Part.vehicle_id,
+                Part.compatibility_notes==func.concat('plan.parts:ktype=',cast(VehicleChecklistItem.ktype,String),';pt_id=',cast(VehicleChecklistItem.pt_id,String)),
+                or_(VehicleChecklistItem.name_en.ilike(pattern),VehicleChecklistItem.name_uk.ilike(pattern))).exists()
+            expressions.append(original)
+        stmt=stmt.where(or_(*expressions))
     total = db.scalar(select(func.count()).select_from(stmt.subquery()))
     rows = list(db.scalars(
         stmt.order_by(model.created_at.desc(), model.id).offset(offset).limit(limit)
@@ -534,7 +538,12 @@ def parts(
     filters = []
     # Compatible with legacy single category_id; grouped catalogue tiles send
     # a comma-separated collection of legacy IDs. No changes to stock FKs.
-    if category_id is not None:
+    if category_id == '__review__':
+        from app.services.plan_parts_classification import CATEGORY_ALIASES, normalize
+        aliases={normalize(n) for title,names in CATEGORY_ALIASES.items() for n in (title,*names)}
+        roots=[c.id for c in db.scalars(select(Category).where(Category.account_id==who.workspace_account_id,Category.archived.is_(False),Category.kind=='category',Category.parent_id.is_(None))) if normalize(c.name) in aliases]
+        filters.append(or_(Part.category_id.is_(None),Part.category_id.not_in(roots)))
+    elif category_id is not None:
         category_ids = list(dict.fromkeys(v.strip() for v in category_id.split(",") if v.strip()))
         if not category_ids or len(category_ids) > 50 or any(len(v) > 80 for v in category_ids):
             raise HTTPException(422, "Invalid category_id selection")

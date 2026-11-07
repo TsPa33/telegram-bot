@@ -1,0 +1,33 @@
+✔ frontend category aliases exactly mirror the backend authoritative classifier (41.220565ms)
+✔ corporate root groups aggregate aliases without exposing part/subcategory roots (2.220526ms)
+✔ duplicate selector labels omit source keys and internal identifiers (0.512937ms)
+✔ zero stock is not invented as sold (0.826238ms)
+✔ partial reserve keeps real available status; full reserve is reserved (0.133185ms)
+✔ excluded and archived records retain distinct states (0.088801ms)
+✔ zero selling_price is a real own price in either currency (0.162833ms)
+✔ subcategory and price filters combine without dropping late-page matches (0.980493ms)
+✔ reserved filter includes partial reserves but excludes disabled assortment (0.15465ms)
+✔ active pricing candidates exclude archived/disabled/zero quantities (0.214784ms)
+✔ filtering never changes server quantities or price values (0.146312ms)
+✔ backend classification only; ambiguous stays review (1.244545ms)
+✔ category filters main list without supplier lookups (0.889498ms)
+✔ selection persists across category/page changes and deduplicates (0.322215ms)
+✔ search Стартер (1.516305ms)
+✔ search ART-1 (0.368534ms)
+✔ search Brand (0.372608ms)
+✔ search OEM-1 (0.157299ms)
+✔ combined filters use actual saved snapshots and stock (0.302168ms)
+✔ all source variants can be searched after free recovery (0.424308ms)
+✔ cost must be confirmed integer; no invented default (0.507988ms)
+✔ English saved name must not shadow reviewed Ukrainian glossary (0.508277ms)
+✔ original source and Ukrainian display remain searchable (0.323825ms)
+✔ unknown names are labelled for review, never guessed translations (2.511634ms)
+✔ backend reviewed glossary exactly matches the approved frontend source (12.883121ms)
+ℹ tests 25
+ℹ suites 0
+ℹ pass 25
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 546.32817

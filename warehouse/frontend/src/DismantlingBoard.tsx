@@ -54,6 +54,7 @@ export default function DismantlingBoard({
   onTranslationConsumed?: () => void;
 }) {
   const [page, setPage] = useState(0);
+  const [goodsKind, setGoodsKind] = useState("part");
   const [articleChoice, setArticleChoice] = useState<Record<string, number>>(
     {},
   );
@@ -87,8 +88,6 @@ export default function DismantlingBoard({
     [modifying, setModifying] = useState(false),
     [auto, setAuto] = useState(true),
     [translation, setTranslation] = useState<Row | null>(null),
-    [confirmStock, setConfirmStock] = useState<string[] | null>(null),
-    [location, setLocation] = useState(""),
     [quote, setQuote] = useState<Row | null>(null),
     [progress, setProgress] = useState<Row | null>(null),
     [target, setTarget] = useState<Record<string, string>>({});
@@ -103,6 +102,7 @@ export default function DismantlingBoard({
     chosen = new Set(selected),
     filtered = rows.filter(
       (r) =>
+        (!goodsKind || (r.kind || "review") === goodsKind) &&
         (!category || r.category === category) &&
         (!q ||
           [
@@ -123,7 +123,10 @@ export default function DismantlingBoard({
           (stock === "yes" && r.received) ||
           (stock === "no" && !r.received)),
     );
-  const categories = [...new Set(rows.map((r) => r.category))],
+  const categoryRows = rows.filter(
+    (r) => !goodsKind || (r.kind || "review") === goodsKind,
+  );
+  const categories = [...new Set(categoryRows.map((r) => r.category))],
     metrics = data?.progress || {},
     names = data?.translation || {};
   async function load(g = epoch.current) {
@@ -147,8 +150,6 @@ export default function DismantlingBoard({
     setTranslation(null);
     setEditing("");
     setName("");
-    setConfirmStock(null);
-    setLocation("");
     setTarget({});
     setNotice("");
     setProgress(null);
@@ -188,6 +189,7 @@ export default function DismantlingBoard({
     writing.current = true;
     setBusy(true);
     setError("");
+    setNotice("");
     stop.current = false;
     const g = epoch.current;
     try {
@@ -319,33 +321,50 @@ export default function DismantlingBoard({
   }
   async function assign(row: Row, offer: Row) {
     await run(async (g) => {
-      let p = partFor(row);
-      if (!p && row.parts.length)
-        throw Error("Виберіть конкретну складську картку");
-      if (!p) {
-        const created = await api(
-          "/plan-parts/donor-parts/add?vehicle_id=" + vehicle.id,
+      try {
+        let p = partFor(row);
+        if (row.context_matches === false)
+          throw Error(
+            "Відкрийте попередній список для цієї складської картки. Модифікація потребує звірки.",
+          );
+        if (!p && row.parts.length)
+          throw Error("Виберіть конкретну складську картку");
+        if (!p) {
+          const created = await api(
+            "/plan-parts/donor-parts/add?vehicle_id=" + vehicle.id,
+            "POST",
+            {
+              ktype: vehicle.ktype,
+              pt_id: row.pt_id,
+              ukrainian_name: row.name,
+            },
+          );
+          if (!created.part_id)
+            throw Error(
+              "Є кілька попередніх карток. Уточніть потрібну картку на складі.",
+            );
+          p = await api("/parts/" + created.part_id);
+          if (p.archived)
+            throw Error("Картка в архіві. Відновіть її через Склад → Архів.");
+        }
+        await api(
+          "/plan-parts/donor-parts/article/select?vehicle_id=" + vehicle.id,
           "POST",
-          { ktype: vehicle.ktype, pt_id: row.pt_id, ukrainian_name: row.name },
+          {
+            ktype: vehicle.ktype,
+            pt_id: row.pt_id,
+            part_id: p.id,
+            art_id: offer.art_id,
+            expected_article_number: p.article_number || "",
+            expected_article_brand: p.article_brand || "",
+          },
         );
-        p = await api("/parts/" + created.part_id);
-      }
-      await api(
-        "/plan-parts/donor-parts/article/select?vehicle_id=" + vehicle.id,
-        "POST",
-        {
-          ktype: vehicle.ktype,
-          pt_id: row.pt_id,
-          part_id: p.id,
-          art_id: offer.art_id,
-          expected_article_number: p.article_number || "",
-          expected_article_brand: p.article_brand || "",
-        },
-      );
-      await load(g);
-      if (g === epoch.current) {
-        setExpanded(null);
-        setNotice("Артикул і виробника збережено в складській картці.");
+        if (g === epoch.current) {
+          setExpanded(null);
+          setNotice("Артикул і виробника збережено в складській картці.");
+        }
+      } finally {
+        await load(g);
         window.dispatchEvent(new Event("warehouse:inventory-changed"));
       }
     });
@@ -388,99 +407,39 @@ export default function DismantlingBoard({
       allowed: w.policy.terms_confirmed,
     });
   }
-  async function addToStock() {
-    const keys = confirmStock || [];
-    setConfirmStock(null);
+  async function addToStock(keys: string[]) {
     await run(async (g) => {
+      const picked = rows.filter(
+        (r) =>
+          keys.includes(r.key) &&
+          r.pt_id &&
+          !["sold", "hidden"].includes(r.state),
+      );
+      if (picked.length > 1000)
+        throw Error(
+          "Один пакет — до 1000 позицій. Звузьте вибір за категорією.",
+        );
+      if (!picked.length)
+        throw Error("Немає нових доступних позицій у виборі.");
       try {
-        for (let n = 0; n < keys.length; n++) {
-          if (g !== epoch.current || stop.current) break;
-          const row = rows.find((r) => r.key === keys[n]);
-          if (!row || row.received || ["sold", "hidden"].includes(row.state))
-            continue;
-          setProgress({ done: n, total: keys.length });
-          let p = partFor(row);
-          if (row.parts.length > 1 && !p)
-            throw Error(
-              "Уточніть конкретну складську картку перед переміщенням",
-            );
-          if (!p) {
-            if (source !== "professional")
-              throw Error(
-                "Позиція не має складської картки. Сформуйте або оновіть план.",
-              );
-            const r = await api(
-              "/plan-parts/donor-parts/add?vehicle_id=" + vehicle.id,
-              "POST",
-              {
-                ktype: vehicle.ktype,
-                pt_id: row.pt_id,
-                ukrainian_name: row.name,
-              },
-            );
-            p = await api("/parts/" + r.part_id);
-          }
-          if (!row.parts.length) {
-            let variants = offers[row.key];
-            if (variants === undefined) {
-              try {
-                const saved = await api(
-                  "/plan-parts/articles/recover?vehicle_id=" +
-                    vehicle.id +
-                    "&ktype=" +
-                    vehicle.ktype +
-                    "&pt_id=" +
-                    row.pt_id,
-                  "POST",
-                );
-                variants = saved.articles;
-              } catch (e) {
-                if ((e as { status?: number }).status !== 409) throw e;
-              }
-            }
-            const chosen =
-              variants?.find((a: Row) => a.art_id === articleChoice[row.key]) ||
-              variants?.[0];
-            if (chosen)
-              await api(
-                "/plan-parts/donor-parts/article/select?vehicle_id=" +
-                  vehicle.id,
-                "POST",
-                {
-                  ktype: vehicle.ktype,
-                  pt_id: row.pt_id,
-                  part_id: p.id,
-                  art_id: chosen.art_id,
-                  expected_article_number: p.article_number || "",
-                  expected_article_brand: p.article_brand || "",
-                },
-              );
-          }
-          if (p.quantity <= 0)
-            throw Error(
-              "Позиція має нульовий залишок. Уточніть його через картку складу.",
-            );
-          const intent =
-            "warehouse.shelf:" + scope + ":" + p.id + ":" + location;
-          let requestKey = sessionStorage.getItem(intent);
-          if (!requestKey) {
-            requestKey = crypto.randomUUID();
-            sessionStorage.setItem(intent, requestKey);
-          }
-          await api("/parts/" + p.id + "/operations", "POST", {
-            type: "transfer",
-            quantity: 0,
-            location: location.trim() || "Склад (місце не уточнено)",
-            physical_location_kind: "on_shelf",
-            reason:
-              "Явне підтвердження переміщення лота на склад із плану розбору",
-            request_key: requestKey,
-          });
-          sessionStorage.removeItem(intent);
-        }
+        setProgress({ done: 0, total: picked.length });
+        const result = await api(
+          "/plan-parts/donor-parts/add-batch?vehicle_id=" + vehicle.id,
+          "POST",
+          {
+            items: picked.map((r) => ({
+              ktype: vehicle.ktype,
+              pt_id: r.pt_id,
+              ukrainian_name: r.name,
+            })),
+          },
+        );
         if (g === epoch.current) {
+          setProgress({ done: picked.length, total: picked.length });
           setSelected([]);
-          setNotice("Склад оновлено. Наявні кількості й ціни збережено.");
+          setNotice(
+            `Додано: ${result.added}. Уже існують: ${result.skipped}. Помилок: 0.${result.review_required ? " Потребують звірки: " + result.review_required + "." : ""}`,
+          );
         }
       } finally {
         await load(g);
@@ -488,20 +447,7 @@ export default function DismantlingBoard({
       }
     });
   }
-  useEffect(() => {
-    if (confirmStock)
-      document
-        .querySelector('.wd-confirm[aria-label="Підтвердження складу"]')
-        ?.scrollIntoView({ block: "center", behavior: "smooth" });
-  }, [confirmStock]);
-  useEffect(() => {
-    if (error)
-      document
-        .querySelector(".wd-board .wd-error")
-        ?.scrollIntoView({ block: "center", behavior: "smooth" });
-  }, [error]);
-  const canAdd = (row: Row) =>
-    row.parts.length ? can("inventory.transfer") : can("inventory.create");
+  const canAdd = (_row: Row) => can("inventory.create");
   const actionKeys = selected.length ? selected : [],
     canManage = can("dismantling.manage") && !vehicle.archived;
   if (!data)
@@ -542,7 +488,7 @@ export default function DismantlingBoard({
           <Check size={21} />
           <span>
             <strong>Список запчастин сформовано</strong>
-            <small>{rows.length} позицій · Список збережено</small>
+            <small>{metrics.planned} деталей · Список збережено</small>
           </span>
         </div>
         <button
@@ -587,7 +533,7 @@ export default function DismantlingBoard({
       )}
       <nav className="wd-categories" aria-label="Категорії CarPot">
         <button aria-pressed={!category} onClick={() => setCategory("")}>
-          Усі ({rows.length})
+          Усі ({categoryRows.length})
         </button>
         {categories.slice(0, 5).map((c) => (
           <button
@@ -596,7 +542,7 @@ export default function DismantlingBoard({
             onClick={() => setCategory(c)}
           >
             <Package size={17} />
-            {c} ({rows.filter((r) => r.category === c).length})
+            {c} ({categoryRows.filter((r) => r.category === c).length})
           </button>
         ))}
         {categories.length > 5 && (
@@ -614,7 +560,7 @@ export default function DismantlingBoard({
                     e.currentTarget.closest("details")?.removeAttribute("open");
                   }}
                 >
-                  {c} ({rows.filter((r) => r.category === c).length})
+                  {c} ({categoryRows.filter((r) => r.category === c).length})
                 </button>
               ))}
             </div>
@@ -625,7 +571,11 @@ export default function DismantlingBoard({
         <section className="wd-list">
           <div className="wd-list-heading">
             <h3>
-              {category || "Усі запчастини"} ({filtered.length})
+              {category ||
+                (goodsKind === "part"
+                  ? "Фізичні деталі"
+                  : "Позиції каталогу")}{" "}
+              ({filtered.length})
             </h3>
             <label>
               <input
@@ -645,6 +595,33 @@ export default function DismantlingBoard({
             </label>
           </div>
           <div className="wd-filters">
+            <select
+              aria-label="Тип позицій"
+              value={goodsKind}
+              onChange={(e) => {
+                setGoodsKind(e.target.value);
+                setCategory("");
+                setPage(0);
+              }}
+            >
+              {[
+                ["part", "Фізичні деталі"],
+                ["kit", "Ремонтні комплекти"],
+                ["consumable", "Витратні матеріали"],
+                ["tool", "Інструменти"],
+                ["review", "Потребує уточнення"],
+                ["", "Усі типи"],
+              ].map(([key, label]) => (
+                <option key={key} value={key}>
+                  {label} (
+                  {
+                    rows.filter((r) => !key || (r.kind || "review") === key)
+                      .length
+                  }
+                  )
+                </option>
+              ))}
+            </select>
             <label>
               <Search size={17} />
               <input
@@ -752,6 +729,17 @@ export default function DismantlingBoard({
                       <span className={"wd-chip " + row.state}>
                         {status[row.state]}
                       </span>
+                      {row.decision_review && (
+                        <small>
+                          Різні попередні рішення — перевірте назву та стан.
+                        </small>
+                      )}
+                      {row.context_matches === false && (
+                        <small>
+                          Є у попередньому списку. Відповідність модифікації
+                          потребує звірки.
+                        </small>
+                      )}
                       {row.state === "planned" && (
                         <small>Наявність перевірити</small>
                       )}
@@ -779,6 +767,7 @@ export default function DismantlingBoard({
                         className="wd-link"
                         disabled={
                           !can("inventory.edit") ||
+                          (!p && row.parts.length > 0) ||
                           (!p && !can("inventory.create"))
                         }
                         onClick={() =>
@@ -859,7 +848,7 @@ export default function DismantlingBoard({
                             row.state,
                           )
                         }
-                        onClick={() => setConfirmStock([row.key])}
+                        onClick={() => void addToStock([row.key])}
                       >
                         <Plus size={14} />
                         На склад
@@ -998,7 +987,9 @@ export default function DismantlingBoard({
                                     </span>
                                     <button
                                       disabled={
-                                        busy || (!p && row.parts.length > 0)
+                                        busy ||
+                                        row.context_matches === false ||
+                                        (!p && row.parts.length > 0)
                                       }
                                       onClick={() => void assign(row, a)}
                                     >
@@ -1035,7 +1026,11 @@ export default function DismantlingBoard({
                           )}
                           {row.pt_id ? (
                             <button
-                              disabled={busy || who?.role !== "DIRECTOR"}
+                              disabled={
+                                busy ||
+                                row.context_matches === false ||
+                                who?.role !== "DIRECTOR"
+                              }
                               onClick={() => void prepareQuote(row)}
                             >
                               Отримати нові артикули
@@ -1116,7 +1111,7 @@ export default function DismantlingBoard({
                 busy ||
                 !rows.filter((r) => selected.includes(r.key)).every(canAdd)
               }
-              onClick={() => setConfirmStock(actionKeys)}
+              onClick={() => void addToStock(actionKeys)}
             >
               <Plus size={17} />
               Додати на склад
@@ -1157,32 +1152,6 @@ export default function DismantlingBoard({
           </section>
         </aside>
       </div>
-      {confirmStock && (
-        <div
-          className="wd-confirm"
-          role="alertdialog"
-          aria-label="Підтвердження складу"
-        >
-          <strong>Додати на склад: {confirmStock.length} шт.</strong>
-          <p>
-            Для кожної нової деталі буде створено одну складську позицію з
-            кількістю 1. Наявні позиції не дублюються, їхні ціни та кількість не
-            змінюються.
-          </p>
-          <label>
-            Місце на складі (необов’язково)
-            <input
-              maxLength={120}
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-            />
-          </label>
-          <button disabled={busy} onClick={() => void addToStock()}>
-            Додати на склад
-          </button>
-          <button onClick={() => setConfirmStock(null)}>Скасувати</button>
-        </div>
-      )}
       {progress && (
         <p role="status">
           Оброблено {progress.done} із {progress.total}
@@ -1228,7 +1197,7 @@ export default function DismantlingBoard({
           disabled={!!translation || who?.role !== "DIRECTOR"}
           onClick={() => void translate()}
         >
-          Перекласти автоматично
+          Перекласти відсутні назви
         </button>
         {translation && (
           <span role="status">

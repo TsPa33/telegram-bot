@@ -1,0 +1,15 @@
+{
+  "local": true,
+  "physical_parts": 96,
+  "service_types_separated": 4,
+  "batch_http_requests": 1,
+  "new_from_batch": 93,
+  "repeated_added": 0,
+  "categorized": 96,
+  "quantity_plus_minus_correction": true,
+  "response_lost_reload_retry_no_duplicate": true,
+  "prices_oem_articles_preserved": true,
+  "desktop_mobile": true,
+  "js_errors": [],
+  "paid_lookup_requests": 0
+}

@@ -40,16 +40,15 @@ def test_selected_part_creates_one_stock_unit_and_does_not_duplicate(logged, veh
         assert status.json()["parts"][0]["pt_id"]==555
         assert status.json()["parts"][0]["quantity"]==1
 
-        # Two different supplier pt_ids can translate to the same physical
-        # donor-part name. Do not create another stock unit for same donor.
+        # Different supplier pt_ids remain different identities even with identical translations.
         same_title=logged.post(url,json={**payload,"pt_id":556,"ukrainian_name":"  ГАЛЬМІВНИЙ   СУПОРТ  "})
         assert same_title.status_code==200,same_title.text
-        assert same_title.json()["part_id"]==first.json()["part_id"]
-        assert same_title.json()["created"] is False
-        assert same_title.json()["received"] is False
+        assert same_title.json()["part_id"]!=first.json()["part_id"]
+        assert same_title.json()["created"] is True
+        assert same_title.json()["received"] is True
         assert same_title.json()["quantity"]==1
         status_after=logged.get("/api/v1/plan-parts/donor-parts/status?vehicle_id="+vehicle["id"]+"&ktype=131094")
-        assert len(status_after.json()["parts"])==1
+        assert len(status_after.json()["parts"])==2
 
 
         with engine().begin() as conn:
@@ -68,8 +67,8 @@ def test_selected_part_creates_one_stock_unit_and_does_not_duplicate(logged, veh
         recovered=logged.post(url,json=payload)
         assert recovered.status_code==200,recovered.text
         assert recovered.json()["created"] is False
-        assert recovered.json()["received"] is True
-        assert recovered.json()["quantity"]==1
+        assert recovered.json()["received"] is False
+        assert recovered.json()["quantity"]==0
         reset_again=logged.post(
             "/api/v1/parts/"+first.json()["part_id"]+"/operations",
             json={"type":"correction","quantity":0,"reason":"Test historical zero quantity"},
@@ -79,7 +78,7 @@ def test_selected_part_creates_one_stock_unit_and_does_not_duplicate(logged, veh
             "/api/v1/plan-parts/donor-parts/receive-pending?vehicle_id="+vehicle["id"]+"&ktype=131094",
         )
         assert migrate.status_code==200,migrate.text
-        assert migrate.json()["received_count"]==1
+        assert migrate.json()["received_count"]==0
         migrate_again=logged.post(
             "/api/v1/plan-parts/donor-parts/receive-pending?vehicle_id="+vehicle["id"]+"&ktype=131094",
         )

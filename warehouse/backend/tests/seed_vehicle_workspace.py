@@ -74,6 +74,13 @@ with httpx.Client(base_url="http://127.0.0.1:8022") as c:
     assert r.status_code == 200, r.text
     r = c.post("/api/v1/plan-parts/articles/lookup",params=dict(vehicle_id=vehicle["id"],ktype=131094,pt_id=3,request_key=str(uuid4()),confirm_paid="true",max_tokens=2))
     assert r.status_code == 200, r.text
+    if os.getenv('WAREHOUSE_STABILIZATION_FIXTURE')=='1':
+        from sqlalchemy.orm import Session
+        from app.models import VehicleChecklistItem
+        with Session(engine()) as db:
+            for id,en,uk in [(10001,'Adjustment Tool Set, valve timing','Інструмент для фаз'),(10002,'Repair Kit, brake caliper','Ремонтний комплект супорта'),(10003,'Brake Service Paste','Паста для гальм'),(10004,'Unidentified synthetic object','Невизначений елемент')]:
+                db.add(VehicleChecklistItem(account_id=owner,vehicle_id=vehicle['id'],source='plan.parts',ktype=131094,pt_id=id,name_en=en,name_uk=uk,article_count=0))
+            db.commit()
     with open("/tmp/vehicle-workspace-fixture.json", "w") as f:
         json.dump(
             dict(

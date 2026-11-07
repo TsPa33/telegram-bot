@@ -65,10 +65,11 @@ def test_stock_receipt_and_owner_confirmed_metadata_backfill(logged, vehicle):
         assert preview.status_code==200, preview.text
         assert preview.json()["can_apply"]==1
         assert preview.json()["rows"][0]["section"]=="Гальмівна система"
-        apply=logged.post("/api/v1/plan-parts/donor-parts/classification/apply?vehicle_id="+vehicle["id"]+"&ktype=131094")
+        apply=logged.post("/api/v1/plan-parts/donor-parts/classification/apply?vehicle_id="+vehicle["id"]+"&ktype=131094",json={"token":preview.json()["token"]})
         assert apply.status_code==200, apply.text
         assert apply.json()["updated_count"]==1
-        repeated=logged.post("/api/v1/plan-parts/donor-parts/classification/apply?vehicle_id="+vehicle["id"]+"&ktype=131094")
+        fresh=logged.get("/api/v1/plan-parts/donor-parts/classification/preview?vehicle_id="+vehicle["id"]+"&ktype=131094")
+        repeated=logged.post("/api/v1/plan-parts/donor-parts/classification/apply?vehicle_id="+vehicle["id"]+"&ktype=131094",json={"token":fresh.json()["token"]})
         assert repeated.status_code==200,repeated.text
         assert repeated.json()["updated_count"]==0
 
