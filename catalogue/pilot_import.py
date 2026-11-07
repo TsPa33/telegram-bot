@@ -13,8 +13,8 @@ import pymysql
 MAX_ROWS = int(os.environ.get("PILOT_MAX_ROWS", "1000"))
 if not 1 <= MAX_ROWS <= 5000:
     raise SystemExit("PILOT_MAX_ROWS must be 1..5000")
-if os.environ.get("DEST_DATABASE") != "catalogue":
-    raise SystemExit("Refusing destination other than dedicated 'catalogue' database")
+if os.environ.get("DEST_DATABASE") not in ("railway", "catalogue"):
+    raise SystemExit("Destination database must be railway or catalogue in isolated staging")
 
 def connect(prefix, database):
     return pymysql.connect(
@@ -31,7 +31,7 @@ def connect(prefix, database):
     )
 
 source = connect("SOURCE", "td1q2018")
-target = connect("DEST", "catalogue")
+target = connect("DEST", os.environ["DEST_DATABASE"])
 try:
     with source.cursor() as cur:
         # Volvo OEM references only: a small, reproducible integration test.
