@@ -88,3 +88,33 @@ Railway MySQL service is currently on a 5-GB volume.
 Do not run simultaneous importers against the same job. Existing test
 rows are preserved via duplicate-key handling. Source image, price,
 category and vehicle compatibility data remain outside this importer.
+
+## OEM migration without modifying source indexes
+
+On source `td1q2018.article_oe`, the current index only begins with
+`supplierid, datasupplierarticlenumber`; therefore `full_import.py --job oem`
+intentionally stops at preflight. Do NOT add a compound index to the 50-GiB
+source merely to make that command pass.
+
+Use `oem_indexed_import.py` instead. It iterates source article IDs in indexed
+order and retrieves all OEM rows for each article using the existing pair index.
+Its checkpoint is atomic with the Railway target writes in
+`catalogue_import_progress`, under the job `oem-by-article`.
+One unit of progress is an *article examined*, not an OEM row; a batch may
+contain zero or many OEM rows. This is a correctness-first migration path,
+possibly slow at millions of indexed lookups.
+
+```powershell
+cd "C:\CarPot\Catalogue"
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/TsPa33/telegram-bot/feature/carpot-catalogue-mvp/catalogue/oem_indexed_import.py" -OutFile "oem_indexed_import.py"
+python -u .\oem_indexed_import.py --preflight --confirm-staging
+python -u .\oem_indexed_import.py --max-articles 100 --batch-articles 25 --confirm-staging
+```
+
+After verifying the results in HeidiSQL, subsequent runs may increase
+`--max-articles` up to 20,000 (per-run cap) without discarding checkpoints.
+This only imports OEM records attached to source article keys existing in
+`articles`; orphan OEM rows, if any, require a separate integrity audit.
+
+No source modifications; no warehouse migrations; stop if the Railway disk
+is near capacity (the metadata guard is an approximation).
