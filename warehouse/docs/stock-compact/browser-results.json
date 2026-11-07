@@ -1,0 +1,14 @@
+{
+  "server_pagination": true,
+  "cross_page_selection": true,
+  "filters": true,
+  "quantity": true,
+  "price": true,
+  "manual_oem": true,
+  "archive_confirmation": true,
+  "export": true,
+  "history_location_preserved": true,
+  "desktop_mobile": true,
+  "js_errors": [],
+  "paid_requests": 0
+}

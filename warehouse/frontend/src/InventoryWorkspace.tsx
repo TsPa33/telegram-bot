@@ -47,7 +47,6 @@ export default function InventoryWorkspace({accountId,notify}:{accountId:string;
  }
  const vehicle=vehicles?.find(v=>v.id===donor);
  return <>
-  <header className="r115-page-heading"><div><h1>Склад</h1><p>Облік запчастин, залишків, локацій та складських операцій.</p></div></header>
   <nav className="inventory-modes r115-inventory-modes" aria-label="Режим складу">
    <button type="button" aria-pressed={!history&&preference.mode==='general'} onClick={()=>switchMode('general')}><Boxes size={16}/> Загальний склад</button>
    <button type="button" aria-pressed={!history&&preference.mode==='donors'} onClick={()=>switchMode('donors')}><CarFront size={16}/> За автомобілями</button>

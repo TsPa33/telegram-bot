@@ -1,3 +1,4 @@
+import {Link} from "react-router-dom";
 import {partRowInteraction} from "./partRowInteraction";
 import InventoryQuantity from "./InventoryQuantity";
 import { useCan } from "./permissions";
@@ -144,9 +145,7 @@ export function InventoryPartRow({
       <div className="ui3-donor">
         {vehicle ? (
           <>
-            <span>
-              {vehicle.manufacturer} {vehicle.model}
-            </span>
+            <Link to={"/vehicles?donor="+vehicle.id}>{vehicle.manufacturer} {vehicle.model}</Link>
             <small>
               {vehicle.year} · №{vehicle.number}
             </small>
@@ -158,7 +157,7 @@ export function InventoryPartRow({
       <div className="ui3-stock">
         <span className={"ux1-status " + kind}>{states[kind]}</span>
         <InventoryQuantity key={p.id} part={p} onSaved={onSaved} />
-        <small>
+        <small className="stock-location-detail">
           {p.physical_location_kind === "on_vehicle"
             ? "На автомобілі"
             : p.physical_location_kind === "on_shelf"
