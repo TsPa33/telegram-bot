@@ -177,3 +177,34 @@ Keep the source DB unchanged during the transfer.
 
 The private monitor shows per-brand priority OEM progress. Existing
 `oem-by-article` checkpoint remains separate and unaffected.
+
+## Staged priority review: first 10 OEM makes, then 30
+
+The importer supports `--first 10` and `--first 30` when using `--brand all`.
+The initial ten are Volvo, Volkswagen, Renault, Skoda, Mercedes-Benz,
+Ford, Toyota, BMW, Audi, Nissan. Already completed makes are skipped
+by the `catalogue_oem_brand_progress` checkpoint table.
+
+First validate:
+```powershell
+python -u .\oem_priority_import.py --brand Volvo --preflight --confirm-staging
+python -u .\oem_priority_import.py --brand all --first 10 --preflight --confirm-staging
+```
+
+Then, after verifying Railway volume space:
+```powershell
+python -u .\oem_priority_import.py --brand Volvo --confirm-staging
+python -u .\oem_priority_import.py --brand all --first 10 --confirm-staging
+```
+
+If preflight for ten makes does not resolve all IDs, start with Volvo
+and review the unresolved names from printed output; do not guess IDs.
+
+Use the authorized /monitor dashboard (OEM Priority section), and
+the indexed OEM search after the first ten are fully imported.
+For later expansion, `--brand all --first 30 --preflight` followed by
+`--brand all --first 30` imports the remaining makes without
+reimporting those marked complete.
+
+Do not run priority OEM concurrently with the old oem-by-article
+importer; no coordination exists across these two scripts.
