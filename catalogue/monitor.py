@@ -3,7 +3,7 @@ import os
 import secrets
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Response, Query, status
 from fastapi.responses import FileResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 import pymysql
@@ -101,3 +101,43 @@ def import_progress(response: Response):
         "estimated_source_articles": 5090000,
         "notes": "Checkpoint totals count source records processed. OEM checkpoint counts article groups scanned, not OEM links. Table rows are MySQL estimates.",
     }
+
+@router.get("/api/v1/monitor-search", dependencies=[Depends(require_dashboard)], include_in_schema=False)
+def monitor_search(
+    response: Response,
+    mode: str = Query(pattern="^(article|oem)$"),
+    q: str = Query(min_length=2, max_length=32),
+):
+    """Indexed and strictly bounded lookup; no leading-wildcard scans during import."""
+    response.headers["Cache-Control"] = "no-store"
+    q = q.strip()
+    if len(q) < 2:
+        raise HTTPException(status_code=422, detail="Введіть щонайменше два символи")
+    # Reject SQL LIKE wildcards; article mode performs prefix lookup using existing index.
+    if any(c in q for c in ("%", "_", "\\\\", "\\x00")):
+        raise HTTPException(status_code=422, detail="Недопустимі символи у запиті")
+    try:
+        with connection() as conn, conn.cursor() as cur:
+            if mode == "article":
+                cur.execute(
+                    """SELECT supplier_id, article_number, name_uk, name_source
+                       FROM catalogue_parts FORCE INDEX (idx_article_number)
+                       WHERE article_number LIKE %s
+                       ORDER BY article_number LIMIT 30""",
+                    (q + "%",),
+                )
+            else:
+                cur.execute(
+                    """SELECT o.supplier_id, o.article_number, o.oem_number,
+                              o.oem_manufacturer_id, p.name_uk, p.name_source
+                       FROM catalogue_oem o FORCE INDEX (idx_oem_number)
+                       LEFT JOIN catalogue_parts p
+                         ON p.supplier_id=o.supplier_id AND p.article_number=o.article_number
+                       WHERE o.oem_number=%s
+                       LIMIT 30""",
+                    (q,),
+                )
+            items = cur.fetchall()
+    except pymysql.MySQLError:
+        raise HTTPException(status_code=503, detail="Пошук тимчасово недоступний")
+    return {"items":items, "mode":mode, "query":q, "limit":30}
