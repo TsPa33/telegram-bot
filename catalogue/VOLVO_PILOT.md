@@ -8,7 +8,7 @@ A CarPot Warehouse user chooses Volvo -> model -> generation -> year -> specific
 - The existing Warehouse plan.parts integration already has K-Type modification selection, saved part types, Article.article_nr, Article.brand, optional Article.img_url and characteristics.
 - Warehouse parts already have article_number, article_brand, oem_number and separate provenance fields; it already has part photo and user vehicle photo functionality.
 - The current Volvo XC60/XC90 vehicle fallback artwork is generic SUV body artwork, NOT an actual Volvo model photograph.
-- The previous local passenger_cars / passenger_car_pds reads failed with MySQL 1146. True per-model fitment from local DB remains unverified.
+- Correct spelling discovered in the 2026-11-08 local audit: passanger_cars, passanger_car_attributes, passanger_car_pds, passanger_car_trees, passanger_car_prd, passanger_car_qsi, passanger_car_engines. These tables DO exist; earlier checks mistakenly queried passenger_* and got MySQL 1146. The broad audit read their metadata but did not include their sample rows because its name filter expected passenger. Run volvo_deep_audit.py to inspect actual Volvo modifications and article fitment through indexed samples. Local fitment remains unverified until relationship tests pass.
 
 ## Source-data discovery (read-only first)
 Run volvo_source_audit.py on Windows. It records source schema, columns,
