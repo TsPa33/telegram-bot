@@ -9,7 +9,9 @@ import json
 import os
 import re
 import sys
+import tempfile
 import unicodedata
+from itertools import islice
 from pathlib import Path
 from time import monotonic
 
@@ -26,7 +28,7 @@ def norm(text):
 
 
 def db(prefix, database, source=False):
-    return pymysql.connect(
+    conn = pymysql.connect(
         host=os.getenv(prefix + "_HOST", "127.0.0.1"),
         port=int(os.getenv(prefix + "_PORT", "3306")),
         user=os.environ[prefix + "_USER"],
@@ -35,6 +37,17 @@ def db(prefix, database, source=False):
         cursorclass=pymysql.cursors.DictCursor,
         connect_timeout=10, read_timeout=180 if source else 60,
         write_timeout=60, autocommit=source)
+    if source:
+        # SOURCE connection only. Session-level timeout has no persistent effect
+        # on the local server and does not modify the original database.
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT @@SESSION.max_execution_time AS limit_ms")
+            prior_ms = int(cursor.fetchone()["limit_ms"])
+            if prior_ms:
+                cursor.execute("SET SESSION max_execution_time = 0")
+                print(f"Local source SELECT time limit: {prior_ms} ms -> "
+                      "disabled for this importer connection only", flush=True)
+    return conn
 
 
 def resolve(source, selected):
@@ -129,8 +142,8 @@ def brand_start(target, brand, manufacturer_id):
 
 
 def brand_batch(target, brand, batch):
-    records = [(r["supplierId"],r["DataSupplierArticleNumber"],
-                r["manufacturerId"],r["OENbr"]) for r in batch]
+    # Each row is a compact 4-element list read from the temporary local spool.
+    records = [tuple(row) for row in batch]
     try:
         with target.cursor() as cur:
             cur.executemany(
@@ -151,7 +164,8 @@ def brand_batch(target, brand, batch):
         raise
 
 
-def import_brand(source,target,brand,mid,index,batch_size,limit_rows,disk_limit):
+def import_brand(source,target,brand,mid,index,batch_size,limit_rows,disk_limit,
+                 max_spool_mib):
     if not brand_start(target,brand,mid):
         return
     print(f"IMPORT {brand} ({mid})",flush=True)
@@ -163,10 +177,41 @@ def import_brand(source,target,brand,mid,index,batch_size,limit_rows,disk_limit)
     if limit_rows:
         sql += " LIMIT %s"
         params.append(limit_rows)
-    with source.cursor(pymysql.cursors.SSDictCursor) as cur:
-        cur.execute(sql,params)
+
+    # IMPORTANT: The old version kept a source SELECT open while doing slow
+    # remote writes. MySQL cancelled that long-running SELECT with error 3024.
+    # Drain the indexed read quickly to a bounded LOCAL temporary file first.
+    # This keeps RAM bounded and closes the source SELECT before any batch
+    # goes over the Railway SSH tunnel.
+    source_rows = 0
+    spool_started = monotonic()
+    with tempfile.TemporaryFile(mode="w+t",encoding="utf-8",newline="") as spool:
+        with source.cursor(pymysql.cursors.SSDictCursor) as cur:
+            cur.execute(sql,params)
+            while True:
+                chunk = cur.fetchmany(2000)
+                if not chunk:
+                    break
+                for row in chunk:
+                    compact = [row["supplierId"],row["DataSupplierArticleNumber"],
+                               row["manufacturerId"],row["OENbr"]]
+                    spool.write(json.dumps(compact,ensure_ascii=False,
+                                           separators=(",",":"))+"\\n")
+                source_rows += len(chunk)
+                if spool.tell() > max_spool_mib * 1024 * 1024:
+                    raise RuntimeError(
+                        f"Local OEM spool exceeded {max_spool_mib} MiB. "
+                        "No new destination rows were written in this attempt."
+                    )
+                if source_rows % 100000 == 0:
+                    print(f"{brand}: read {source_rows:,} source rows to "
+                          "temporary file",flush=True)
+        print(f"{brand}: source query finished; {source_rows:,} rows buffered "
+              f"locally in {monotonic()-spool_started:.1f}s. "
+              "Starting Railway write batches.",flush=True)
+        spool.seek(0)
         while True:
-            rows = cur.fetchmany(batch_size)
+            rows = [json.loads(line) for line in islice(spool,batch_size)]
             if not rows:
                 break
             if batches % 10 == 0:
@@ -179,6 +224,11 @@ def import_brand(source,target,brand,mid,index,batch_size,limit_rows,disk_limit)
                 print(f"{brand}: scanned={scanned:,}; new OEM={added:,}; "
                       f"{scanned/elapsed:.0f} rows/s; InnoDB files≈{mib:.0f} MiB",
                       flush=True)
+
+    if scanned != source_rows:
+        raise RuntimeError(
+            f"{brand}: local spool mismatch: read {source_rows}, wrote {scanned}"
+        )
     if limit_rows:
         print(f"PARTIAL TEST {brand}: {scanned:,} scanned; "
               "next run will reread the brand, skipping duplicates.",flush=True)
@@ -191,7 +241,6 @@ def import_brand(source,target,brand,mid,index,batch_size,limit_rows,disk_limit)
         target.commit()
         print(f"COMPLETE {brand}: scanned={scanned:,}; new OEM={added:,}",flush=True)
 
-
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--brand",default="all",help="Exact manufacturer from manifest, or all")
@@ -202,6 +251,8 @@ def main():
     p.add_argument("--max-rows",type=int,default=0,
                    help="Test only: 0 means all rows for the brand")
     p.add_argument("--max-db-mib",type=int,default=2000)
+    p.add_argument("--max-spool-mib",type=int,default=768,
+                   help="Max temporary local disk space for source read per brand")
     p.add_argument("--confirm-staging",action="store_true")
     a = p.parse_args()
     if not a.confirm_staging:
@@ -210,6 +261,8 @@ def main():
         p.error("batch-size 50..1000, max-rows >= 0")
     if not 500 <= a.max_db_mib <= 3500:
         p.error("max-db-mib 500..3500")
+    if not 64 <= a.max_spool_mib <= 4096:
+        p.error("max-spool-mib must be 64..4096")
     if os.getenv("DEST_DATABASE") not in ("railway","catalogue"):
         p.error("Unexpected destination database")
     if os.getenv("DEST_HOST") not in ("127.0.0.1","localhost"):
@@ -243,7 +296,7 @@ def main():
             try:
                 for brand,mid in mapped:
                     import_brand(source,target,brand,mid,index,a.batch_size,
-                                 a.max_rows,a.max_db_mib)
+                                 a.max_rows,a.max_db_mib,a.max_spool_mib)
             finally:
                 with target.cursor() as cur:
                     cur.execute("DO RELEASE_LOCK(%s)",(LOCK,))
