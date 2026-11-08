@@ -194,7 +194,9 @@ def import_brand(source,target,brand,mid,index,batch_size,limit_rows,disk_limit)
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("--brand",default="all")
+    p.add_argument("--brand",default="all",help="Exact manufacturer from manifest, or all")
+    p.add_argument("--first",type=int,choices=(10,30),default=30,
+                   help="When --brand all: only the first 10 or all 30 makes (Volvo first)")
     p.add_argument("--preflight",action="store_true")
     p.add_argument("--batch-size",type=int,default=500)
     p.add_argument("--max-rows",type=int,default=0,
@@ -217,9 +219,13 @@ def main():
     makes = json.loads(MANIFEST.read_text(encoding="utf-8"))["brands"]
     if len(makes)!=30 or makes[0]["name"]!="Volvo":
         p.error("Manifest must contain Volvo first and 30 brands")
-    selected = [m for m in makes if a.brand in ("all",m["name"])]
+    if a.brand == "all":
+        selected = makes[:a.first]
+    else:
+        selected = [m for m in makes if m["name"] == a.brand]
     if not selected:
         p.error("Brand not in manifest")
+    print("Selected makes ("+str(len(selected))+"): "+", ".join(m["name"] for m in selected),flush=True)
     source = db("SOURCE","td1q2018",source=True)
     try:
         index,mapped = resolve(source,selected)
