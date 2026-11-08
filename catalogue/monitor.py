@@ -76,6 +76,13 @@ def import_progress(response: Response):
                    AND table_name IN ('catalogue_parts','catalogue_oem')"""
             )
             estimated = {r["table_name"]: int(r["table_rows"] or 0) for r in cur.fetchall()}
+            cur.execute(
+                """SELECT brand,manufacturer_id,scanned_in_attempt,
+                          inserted_unique,status,updated_at,completed_at
+                   FROM catalogue_oem_brand_progress
+                   ORDER BY FIELD(brand, 'Volvo') DESC, brand"""
+            )
+            priority_rows = cur.fetchall()
     except pymysql.MySQLError:
         raise HTTPException(status_code=503, detail="Import progress unavailable")
     progress = {}
@@ -88,7 +95,25 @@ def import_progress(response: Response):
             "processed": int(item["processed"]),
             "updated_at": timestamp,
         }
+
+    priority = []
+    for item in priority_rows:
+        stamp = item["updated_at"]
+        priority.append({
+            "brand": item["brand"],
+            "manufacturer_id": int(item["manufacturer_id"]),
+            "scanned": int(item["scanned_in_attempt"]),
+            "inserted_unique": int(item["inserted_unique"]),
+            "status": item["status"],
+            "updated_at": stamp.replace(tzinfo=timezone.utc).isoformat() if stamp else None,
+        })
     return {
+        "priority_oem": {
+            "brands": priority,
+            "completed_brands": sum(x["status"] == "complete" for x in priority),
+            "selected_brands": 30,
+            "new_unique_rows": sum(x["inserted_unique"] for x in priority),
+        },
         "observed_at": datetime.now(timezone.utc).isoformat(),
         "jobs": {
             "articles": progress.get("articles", {"processed":0,"updated_at":None}),
