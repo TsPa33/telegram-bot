@@ -118,3 +118,62 @@ This only imports OEM records attached to source article keys existing in
 
 No source modifications; no warehouse migrations; stop if the Railway disk
 is near capacity (the metadata guard is an approximation).
+
+## OEM Top 30, Volvo first (separate from full OEM import)
+
+`oem_priority_30.json` is the approved 30-make list: Volvo first, then
+Volkswagen, Renault, Skoda, Mercedes-Benz, Ford, Toyota, BMW, Audi,
+Nissan, Opel, Hyundai, Kia, Peugeot, Citroen, Mazda, Honda,
+Mitsubishi, Suzuki, Fiat, Dacia, SEAT, Chevrolet, Subaru, Daewoo,
+Lada/VAZ, Lexus, Land Rover, Jeep, ZAZ.
+
+`oem_priority_import.py` uses the *existing* leading source index on
+`article_oe.manufacturerId` to retrieve only matching OEM references;
+it does not perform the 5-million-article full scan. This is an OEM
+manufacturer filter, NOT verified car/part fitment. Alias-to-ID mapping
+is verified against source `manufacturers` before any writes.
+Unresolved/ambiguous mappings stop safely instead of selecting guesses.
+
+Brand-level checkpoints are stored in
+`catalogue_oem_brand_progress` on Railway. Finished brands are
+skipped on reruns. An interrupted *partial brand* must be scanned
+again from its start because the source lacks a suitable compound
+resume index; duplicate target rows are skipped using the primary key.
+Committed batches are retained. Do not run two OEM importers at once.
+
+Keep local MySQL and the Railway SSH tunnel available. After the
+articles-only import completes, download both files:
+
+```powershell
+cd "C:\CarPot\Catalogue"
+$base = "https://raw.githubusercontent.com/TsPa33/telegram-bot/feature/carpot-catalogue-mvp/catalogue"
+Invoke-WebRequest -Uri "$base/oem_priority_30.json" -OutFile "oem_priority_30.json"
+Invoke-WebRequest -Uri "$base/oem_priority_import.py" -OutFile "oem_priority_import.py"
+python -u .\oem_priority_import.py --brand Volvo --preflight --confirm-staging
+python -u .\oem_priority_import.py --brand all --preflight --confirm-staging
+```
+
+If any mapping is unresolved, review the printed candidate IDs and
+update only the manifest after confirming source names. The importer
+must not run `--brand all` until preflight succeeds for all 30 brands.
+
+Once validated, use bounded Volvo test:
+```powershell
+python -u .\oem_priority_import.py --brand Volvo --max-rows 1000 --confirm-staging
+```
+
+For complete run (after validating actual free Railway volume capacity):
+```powershell
+python -u .\oem_priority_import.py --brand all --confirm-staging
+```
+
+A *test limit* is not a complete brand import; rerunning without
+`--max-rows` scans that brand from its start. The storage guard uses
+InnoDB tablespace file size, which can be more reliable than stale
+`information_schema.tables` statistics but **does not include all
+physical Railway volume usage** (redo logs, binlogs, etc.). Monitor
+Railway Volume Metrics and stop if space becomes constrained.
+Keep the source DB unchanged during the transfer.
+
+The private monitor shows per-brand priority OEM progress. Existing
+`oem-by-article` checkpoint remains separate and unaffected.
