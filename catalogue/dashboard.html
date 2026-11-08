@@ -21,20 +21,41 @@ footer{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;color:
 
 .navbar{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 16px}.navbar a{padding:9px 13px;color:var(--text);background:#162838;border:1px solid var(--line);border-radius:9px;text-decoration:none}
 .lookup{margin-top:16px}.searchform{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}.searchform input,.searchform select{padding:12px;border:1px solid #344657;border-radius:9px;background:#0c1722;color:var(--text);font:inherit}.searchform input{flex:1;min-width:170px}.searchform button{border:0;border-radius:9px;padding:12px 18px;background:var(--accent);font-weight:700;cursor:pointer}.searchform button:disabled{opacity:.5}.results{overflow-x:auto;margin-top:15px}table{width:100%;border-collapse:collapse;font-size:13px}td,th{text-align:left;padding:11px 8px;border-bottom:1px solid var(--line)}th{color:var(--muted)}.hint{color:var(--muted);font-size:12px;margin-top:12px}
+
+/* Subtle loading feedback without constant distracting motion */
+@keyframes shimmer{from{background-position:200% 0}to{background-position:-200% 0}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{50%{opacity:.55}}
+@keyframes rise{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+.loading .value,.loading .counter{color:transparent!important;border-radius:7px;background:linear-gradient(100deg,#243749 20%,#355065 43%,#243749 66%);background-size:220% 100%;animation:shimmer 1.6s linear infinite;min-height:1.2em;width:72%}
+.loading .value{height:44px}.loading .counter{height:35px}
+.status.loading-state .dot{animation:pulse 1.2s ease-in-out infinite}
+.status.online.live .dot{animation:pulse 2.8s ease-in-out infinite}
+.poll-indicator{display:inline-block;width:10px;height:10px;border:2px solid #43677b;border-top-color:var(--accent);border-radius:50%;visibility:hidden}
+.poll-indicator.active{visibility:visible;animation:spin .7s linear infinite}
+.searchform button .spinner{display:none;vertical-align:-2px;width:14px;height:14px;border:2px solid #154c45;border-top-color:#071b19;border-radius:50%;margin-right:7px}
+.searchform button:disabled .spinner{display:inline-block;animation:spin .7s linear infinite}
+.fill{transition:width .85s cubic-bezier(.2,.7,.2,1)}
+.summary-enter{animation:rise .35s ease both}
+.speed-bars{height:88px;display:flex;align-items:flex-end;gap:4px;margin-top:16px;padding-bottom:2px;border-bottom:1px solid #344657}
+.speed-bars .bar{flex:1;min-width:3px;background:linear-gradient(#24d2b1,#087b78);border-radius:3px 3px 0 0;min-height:2px;transition:height .4s ease}
+.speed-bars .bar.zero{background:#304455}
+.history-label{font-size:12px;color:var(--muted);margin-top:8px}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
 <main>
 <header class="top">
  <div><div class="eyebrow">CarPot <span style="color:#95aabc">/ Catalogue</span></div><h1>Монітор імпорту каталогу</h1><p>Контроль передавання даних із локальної MySQL до Railway</p></div>
- <div class="status" id="status"><span class="dot"></span><span id="connection">Підключення…</span></div>
+ <div class="status loading-state" id="status"><span class="dot"></span><span id="connection">Підключення…</span><span class="poll-indicator" id="pollIndicator" aria-hidden="true"></span></div>
 </header>
-<nav class="navbar"><a href="#progress">Прогрес</a><a href="#lookup">Пошук запчастин</a><a href="#diagnostics">Діагностика</a></nav><section class="cards" id="progress" aria-label="Зведення">
+<nav class="navbar"><a href="#progress">Прогрес</a><a href="#lookup">Пошук запчастин</a><a href="#diagnostics">Діагностика</a></nav><section class="cards loading" id="progress" aria-label="Зведення">
  <div class="panel"><div class="kicker">Артикулів оброблено</div><div class="value" id="articles">—</div><div class="sub" id="articlesInfo">Контрольна точка Railway</div></div>
  <div class="panel"><div class="kicker">OEM-зв'язків у базі (оцінка)</div><div class="value" id="oemCount">—</div><div class="sub">Оцінка MySQL, може оновлюватися із затримкою</div></div>
  <div class="panel"><div class="kicker">Швидкість артикулів</div><div class="value" id="speed">—</div><div class="sub" id="speedInfo">Записів/с · вимірювання з цієї вкладки</div></div>
 </section>
-<section class="jobs" aria-label="Етапи">
+<section class="jobs loading" id="jobCards" aria-label="Етапи">
  <div class="panel">
   <div class="jobheader"><div class="jobtitle">01 / Артикули</div><span class="tag" id="articleTag">Очікування даних</span></div>
   <div class="counter" id="articlesSecondary">—</div><div class="track"><div class="fill" id="articleFill"></div></div>
@@ -49,12 +70,13 @@ footer{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;color:
  </div>
 </section>
 
+<section class="panel lookup" id="speedHistory"><div class="jobheader"><div class="jobtitle">Динаміка імпорту</div><span class="tag" id="speedTrend">Збір показників</span></div><p>Швидкість запису між опитуваннями за останні кілька хвилин у цій вкладці.</p><div id="speedBars" class="speed-bars" role="img" aria-label="Графік швидкості імпорту"><div class="bar zero" style="height:8%"></div></div><div class="history-label" id="historySummary">Графік сформується після двох оновлень. Історія не зберігається на сервері.</div></section>
 <section id="lookup" class="panel lookup">
 <div class="jobtitle">Пошук запчастин</div><p>Артикул — пошук за початком номера. OEM — точна відповідність. Результати лише з імпортованого каталогу.</p>
 <form id="searchForm" class="searchform">
 <select id="searchMode" aria-label="Тип пошуку"><option value="article">Артикул</option><option value="oem">OEM</option></select>
 <input id="searchQuery" required minlength="2" maxlength="32" placeholder="Введіть номер" aria-label="Номер запчастини">
-<button id="searchButton" type="submit">Знайти</button>
+<button id="searchButton" type="submit"><span class="spinner" aria-hidden="true"></span><span id="searchButtonText">Знайти</span></button>
 </form>
 <div id="searchStatus" class="hint" role="status">Максимум 30 результатів</div>
 <div class="results"><table><thead><tr><th>Артикул</th><th>Постачальник</th><th>Назва</th><th>OEM</th></tr></thead><tbody id="searchResults"><tr><td colspan="4">Введіть номер для пошуку</td></tr></tbody></table></div>
@@ -72,6 +94,8 @@ const $ = id => document.getElementById(id);
 let prior = null;
 let history=[];
 let lastMovement=null;
+let speedSamples=[];
+let pollBusy=false;
 function timeLabel(stamp) {
  if(!stamp) return "Ще не надходило";
  const date = new Date(stamp);
@@ -83,6 +107,9 @@ function progressClass(job) {
  return Number.isFinite(elapsed) && elapsed>=0 && elapsed<120000 ? "Нещодавно оновлено" : "Немає нових записів";
 }
 async function refresh() {
+ if(pollBusy)return;
+ pollBusy=true;
+ $("pollIndicator").classList.add("active");
  try {
   const response=await fetch("/api/v1/import-progress",{cache:"no-store",credentials:"same-origin"});
   if(!response.ok) throw new Error("HTTP "+response.status);
@@ -91,7 +118,8 @@ async function refresh() {
   const total=data.estimated_source_articles;
   const aPct=Math.min(100,100*a.processed/total);
   const oPct=Math.min(100,100*o.processed/total);
-  $("status").className="status online"; $("connection").textContent="Дані доступні";
+  $("status").className="status online live"; $("connection").textContent="Дані доступні";
+  $("progress").classList.remove("loading");$("jobCards").classList.remove("loading");
   $("articles").textContent=formatter.format(a.processed);
   $("articlesSecondary").textContent=formatter.format(a.processed)+" записів";
   $("oemCount").textContent=data.approximate_table_rows.oem>0?formatter.format(data.approximate_table_rows.oem):"Немає оцінки";
@@ -112,6 +140,12 @@ async function refresh() {
     const rate=(a.processed-prior.articles)/((current-prior.time)/1000);
     $("speed").textContent=rate>0?formatter.format(Math.round(rate)):"0";
     $("speedInfo").textContent=rate>0?"Записів/с · за останні "+Math.round((current-prior.time)/1000)+" с":"Нових артикулів немає";
+    speedSamples.push(Math.max(0,rate));speedSamples=speedSamples.slice(-20);
+    const max=Math.max(1,...speedSamples),bars=$("speedBars");bars.replaceChildren();
+    for(const v of speedSamples){const el=document.createElement("div");el.className="bar"+(v===0?" zero":"");el.style.height=Math.max(3,Math.round(v/max*100))+"%";bars.append(el);}
+    const avg=speedSamples.reduce((sum,v)=>sum+v,0)/speedSamples.length;
+    $("historySummary").textContent="Середня швидкість: "+formatter.format(Math.round(avg))+" записів/с · "+speedSamples.length+" вимірювань";
+    $("speedTrend").textContent=rate===0?"Немає нових записів":(speedSamples.length>=3 && rate<avg*.7?"Сповільнення":"Імпорт оновлюється");
   }
 
   if(prior && a.processed>prior.articles)lastMovement=Date.now();
@@ -131,6 +165,9 @@ async function refresh() {
    $("connection").textContent="Немає зв'язку з Railway";
    $("refreshed").textContent="Помилка отримання даних";
    $("apiState").textContent="Помилка";
+ } finally {
+   pollBusy=false;
+   $("pollIndicator").classList.remove("active");
  }
 }
 
@@ -138,7 +175,7 @@ document.getElementById("searchForm").addEventListener("submit",async function(e
  ev.preventDefault();
  const mode=$("searchMode").value,q=$("searchQuery").value.trim();
  if(q.length<2){$("searchStatus").textContent="Введіть щонайменше 2 символи";return;}
- $("searchButton").disabled=true;$("searchStatus").textContent="Пошук…";
+ $("searchButton").disabled=true;$("searchButtonText").textContent="Шукаємо…";$("searchStatus").textContent="Пошук…";
  try{
   const url="/api/v1/monitor-search?mode="+encodeURIComponent(mode)+"&q="+encodeURIComponent(q);
   const response=await fetch(url,{cache:"no-store",credentials:"same-origin"});
@@ -154,7 +191,7 @@ document.getElementById("searchForm").addEventListener("submit",async function(e
   }
   if(!data.items.length){const tr=document.createElement("tr"),td=document.createElement("td");td.colSpan=4;td.textContent="Немає результатів";tr.append(td);tbody.append(tr);}
  }catch(err){$("searchStatus").textContent="Помилка пошуку. Перевірте номер і спробуйте знову";}
- finally{$("searchButton").disabled=false;}
+ finally{$("searchButton").disabled=false;$("searchButtonText").textContent="Знайти";}
 });
 refresh();setInterval(refresh,15000);
 </script>
