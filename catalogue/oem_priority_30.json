@@ -1,0 +1,197 @@
+{
+  "description": "CarPot Catalogue prioritized OEM manufacturer selection. Volvo always first; others are not ranked.",
+  "market": "UA used-parts pilot; user-selected 30 brands",
+  "brands": [
+    {
+      "name": "Volvo",
+      "aliases": [
+        "Volvo"
+      ],
+      "confirmed_source_id": 120
+    },
+    {
+      "name": "Volkswagen",
+      "aliases": [
+        "Volkswagen",
+        "VW"
+      ]
+    },
+    {
+      "name": "Renault",
+      "aliases": [
+        "Renault"
+      ]
+    },
+    {
+      "name": "Skoda",
+      "aliases": [
+        "Skoda",
+        "Škoda"
+      ]
+    },
+    {
+      "name": "Mercedes-Benz",
+      "aliases": [
+        "Mercedes-Benz",
+        "Mercedes Benz",
+        "Mercedes"
+      ]
+    },
+    {
+      "name": "Ford",
+      "aliases": [
+        "Ford"
+      ]
+    },
+    {
+      "name": "Toyota",
+      "aliases": [
+        "Toyota"
+      ]
+    },
+    {
+      "name": "BMW",
+      "aliases": [
+        "BMW"
+      ]
+    },
+    {
+      "name": "Audi",
+      "aliases": [
+        "Audi"
+      ]
+    },
+    {
+      "name": "Nissan",
+      "aliases": [
+        "Nissan"
+      ]
+    },
+    {
+      "name": "Opel",
+      "aliases": [
+        "Opel"
+      ]
+    },
+    {
+      "name": "Hyundai",
+      "aliases": [
+        "Hyundai"
+      ]
+    },
+    {
+      "name": "Kia",
+      "aliases": [
+        "Kia"
+      ]
+    },
+    {
+      "name": "Peugeot",
+      "aliases": [
+        "Peugeot"
+      ]
+    },
+    {
+      "name": "Citroën",
+      "aliases": [
+        "Citroën",
+        "Citroen"
+      ]
+    },
+    {
+      "name": "Mazda",
+      "aliases": [
+        "Mazda"
+      ]
+    },
+    {
+      "name": "Honda",
+      "aliases": [
+        "Honda"
+      ]
+    },
+    {
+      "name": "Mitsubishi",
+      "aliases": [
+        "Mitsubishi"
+      ]
+    },
+    {
+      "name": "Suzuki",
+      "aliases": [
+        "Suzuki"
+      ]
+    },
+    {
+      "name": "Fiat",
+      "aliases": [
+        "Fiat"
+      ]
+    },
+    {
+      "name": "Dacia",
+      "aliases": [
+        "Dacia"
+      ]
+    },
+    {
+      "name": "SEAT",
+      "aliases": [
+        "SEAT"
+      ]
+    },
+    {
+      "name": "Chevrolet",
+      "aliases": [
+        "Chevrolet"
+      ]
+    },
+    {
+      "name": "Subaru",
+      "aliases": [
+        "Subaru"
+      ]
+    },
+    {
+      "name": "Daewoo",
+      "aliases": [
+        "Daewoo"
+      ]
+    },
+    {
+      "name": "ВАЗ/Lada",
+      "aliases": [
+        "Lada",
+        "VAZ",
+        "ВАЗ",
+        "Лада"
+      ]
+    },
+    {
+      "name": "Lexus",
+      "aliases": [
+        "Lexus"
+      ]
+    },
+    {
+      "name": "Land Rover",
+      "aliases": [
+        "Land Rover",
+        "Land-Rover"
+      ]
+    },
+    {
+      "name": "Jeep",
+      "aliases": [
+        "Jeep"
+      ]
+    },
+    {
+      "name": "ЗАЗ",
+      "aliases": [
+        "ЗАЗ",
+        "ZAZ"
+      ]
+    }
+  ]
+}

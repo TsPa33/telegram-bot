@@ -17,7 +17,7 @@ Auth = Annotated[Identity, Depends(identity)]
 
 
 class Keys(Input):
-    source: Literal["base", "professional"]
+    source: Literal["base", "professional", "catalogue"]
     keys: list[str] = Field(min_length=1, max_length=40)
 
 
@@ -36,7 +36,7 @@ class Change(Keys):
 
 
 @router.get("/{id}/dismantling-workspace")
-def read(id: str, db: DB, who: Auth, source: Literal["base", "professional"] = "base"):
+def read(id: str, db: DB, who: Auth, source: Literal["base", "professional", "catalogue"] = "base"):
     require_permission(who, "vehicles.view", "inventory.view", "catalog.view")
     return service.read(
         db, who, owned(db, Vehicle, id, who.workspace_account_id), source

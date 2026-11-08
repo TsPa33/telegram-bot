@@ -131,3 +131,6 @@ from app.api.dismantling_workspace import router as dismantling_workspace_router
 app.include_router(dismantling_workspace_router)
 from app.api.billing import router as billing_router
 app.include_router(billing_router)
+
+from app.api.unified_catalogue import router as unified_catalogue_router
+app.include_router(unified_catalogue_router)

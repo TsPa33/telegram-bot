@@ -54,7 +54,7 @@ export default function DismantlingBoard({
 }: {
   vehicle: Row;
   view?: "operations" | "settings";
-  source: "base" | "professional";
+  source: "base" | "professional" | "catalogue";
   controls: ReactNode;
   onUpdate?: () => Promise<void>;
   onModify?: () => void;
@@ -397,6 +397,13 @@ export default function DismantlingBoard({
     setExpanded((old) => (old === row.key ? null : row.key));
     setQuote(null);
     setEditing("");
+    if (source === "catalogue") {
+      try {
+        const result = await api("/vehicles/" + vehicle.id + "/unified-catalogue/articles?key=" + encodeURIComponent(row.key));
+        setOffers((old) => ({...old, [row.key]: result.articles}));
+      } catch (e) { setError((e as Error).message); }
+      return;
+    }
     if (offers[row.key] !== undefined || !row.pt_id) return;
     const g = epoch.current,
       ticket = ++offerTicket.current;
@@ -445,11 +452,10 @@ export default function DismantlingBoard({
             "Спочатку додайте деталь на склад у вкладці «Розбір і запчастини».",
           );
         await api(
-          "/plan-parts/donor-parts/article/select?vehicle_id=" + vehicle.id,
+          source === "catalogue" ? "/vehicles/" + vehicle.id + "/unified-catalogue/article" : "/plan-parts/donor-parts/article/select?vehicle_id=" + vehicle.id,
           "POST",
           {
-            ktype: vehicle.ktype,
-            pt_id: row.pt_id,
+            ...(source === "catalogue" ? {key: row.key} : {ktype: vehicle.ktype, pt_id: row.pt_id}),
             part_id: p.id,
             art_id: offer.art_id,
             expected_article_number: p.article_number || "",
@@ -464,6 +470,15 @@ export default function DismantlingBoard({
         await load(g);
         window.dispatchEvent(new Event("warehouse:inventory-changed"));
       }
+    });
+  }
+  async function assignCatalogueOem(row: Row, offer: Row, number: string) {
+    const p = partFor(row);
+    if (!p || !window.confirm(`Призначити OEM-крос ${number}? Відповідність VIN не перевірена.`)) return;
+    await run(async g => {
+      await api("/vehicles/"+vehicle.id+"/unified-catalogue/oem","POST",{key:row.key,part_id:p.id,art_id:offer.art_id,oem_number:number,confirm_cross_reference:true});
+      await load(g);
+      window.dispatchEvent(new Event("warehouse:inventory-changed"));
     });
   }
   async function requestArticles(row: Row) {
@@ -509,7 +524,7 @@ export default function DismantlingBoard({
       const picked = rows.filter(
         (r) =>
           keys.includes(r.key) &&
-          r.pt_id &&
+          (r.pt_id || source !== "professional") &&
           !["sold", "hidden"].includes(r.state),
       );
       if (picked.length > 1000)
@@ -520,15 +535,16 @@ export default function DismantlingBoard({
         throw Error("Немає нових доступних позицій у виборі.");
       try {
         setProgress({ done: 0, total: picked.length });
+        if (source !== "professional" && !window.confirm(`Додати на склад по 1 фізичній деталі: ${picked.length} позицій?`)) return;
         const result = await api(
-          "/plan-parts/donor-parts/add-batch?vehicle_id=" + vehicle.id,
+          source !== "professional" ? "/vehicles/" + vehicle.id + "/unified-catalogue/stock" : "/plan-parts/donor-parts/add-batch?vehicle_id=" + vehicle.id,
           "POST",
           {
-            items: picked.map((r) => ({
+            ...(source !== "professional" ? {keys: picked.map(r=>r.key), confirm_physical_receipt: true} : {items: picked.map((r) => ({
               ktype: vehicle.ktype,
               pt_id: r.pt_id,
               ukrainian_name: r.name,
-            })),
+            }))}),
           },
         );
         if (g === epoch.current) {
@@ -544,7 +560,7 @@ export default function DismantlingBoard({
       }
     });
   }
-  const canAdd = (_row: Row) => can("inventory.create");
+  const canAdd = (_row: Row) => can("inventory.create") && (source === "professional" || can("inventory.adjust_quantity"));
   const actionKeys = selected.length ? selected : [],
     canManage = can("dismantling.manage") && !vehicle.archived;
   if (!data)
@@ -1124,8 +1140,7 @@ export default function DismantlingBoard({
                       {editing !== row.key && (
                         <>
                           <p className="wd-hint">
-                            Автоматичне отримання OEM недоступне. Введіть номер
-                            вручну та перевірте його відповідність автомобілю.
+                            {source === "catalogue" ? "OEM-кроси показані окремо. Вони не підтверджують відповідність VIN; призначайте перевірений номер у картці." : "Автоматичне отримання OEM недоступне. Введіть номер вручну та перевірте його відповідність автомобілю."}
                           </p>
                           {loadingOffer === row.key ? (
                             <p role="status">
@@ -1162,6 +1177,8 @@ export default function DismantlingBoard({
                                           <small>
                                             {a.part_name || "Назву не надано"}
                                           </small>
+                                          {a.oem_numbers?.length > 0 && <small>OEM-кроси: {a.oem_numbers.join(", ")}</small>}
+                                          {source === "catalogue" && p && !p.oem_number && can("inventory.edit") && a.oem_numbers?.map((number:string)=><button key={number} disabled={busy} onClick={()=>void assignCatalogueOem(row,a,number)}>Призначити OEM {number}</button>)}
                                           {Object.entries(
                                             a.characteristics || {},
                                           )
@@ -1225,9 +1242,7 @@ export default function DismantlingBoard({
                                 </button>
                               ) : (
                                 <p>
-                                  Для підбору артикулів потрібний точний тип
-                                  каталогу. Схожі назви автоматично не
-                                  зіставляються.
+                                  {source === "catalogue" ? "Збережені дані власного каталогу — без повторного платного запиту." : "Для підбору артикулів потрібний точний тип каталогу. Схожі назви автоматично не зіставляються."}
                                 </p>
                               )}
                             </>

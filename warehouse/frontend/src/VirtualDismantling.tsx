@@ -1,11 +1,7 @@
 import type { Row } from "./api";
-import PlanPartsDonorAnalysis from "./PlanPartsDonorAnalysis";
+import UnifiedCatalogue from "./UnifiedCatalogue";
 
-/**
- * Vehicle dismantling has one supported user-facing workflow: Plan.Parts.
- * The experimental CarPot base checklist is retained server-side for historical
- * compatibility, but is not an option on the warehouse vehicle page.
- */
+/** Reuses the existing dismantling board and explicit paid Plan.Parts flow. */
 export default function VirtualDismantling({
   vehicle,
   onSaved,
@@ -16,7 +12,7 @@ export default function VirtualDismantling({
   view?: "operations" | "settings";
 }) {
   return (
-    <PlanPartsDonorAnalysis
+    <UnifiedCatalogue
       key={String(vehicle.id)}
       vehicle={vehicle}
       onSaved={onSaved}

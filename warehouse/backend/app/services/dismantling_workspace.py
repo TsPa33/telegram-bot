@@ -52,6 +52,9 @@ def entries(db, who, v, source):
         )
     }
     byid = {p.id: p for p in parts}
+    if source == "catalogue":
+        from app.services.unified_catalogue import workspace_entries
+        return workspace_entries(db, who, v)
     if source == "professional":
         from app.api.plan_parts import saved_workspace
 

@@ -876,3 +876,9 @@
  .wd-board[data-view=operations] .wd-row.wd-th{display:flex}
  .wd-board[data-view=settings] .wd-filters>button{flex:1 1 100%;min-height:40px}
 }
+/* Offer identity must retain width beside the explicit assignment action. */
+.wd-offers input[type="radio"] {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+}
