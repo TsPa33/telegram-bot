@@ -65,16 +65,27 @@ class CatalogueAdapter:
         data = self.get(f'modifications/{int(source_modification_id)}/plan')
         try:
             payload = data['payload']
-            actual = hashlib.sha256(json.dumps(payload, ensure_ascii=False, sort_keys=True,
-                separators=(',', ':')).encode()).hexdigest()
-            if actual != data['sha256'] or payload['schema'] != 'carpot.volvo.v1' or payload['car_id'] != source_modification_id or payload['manufacturer_id'] != 120:
-                raise ValueError()
-            if payload['coverage'] not in ('complete_verified', 'partial'):
+            actual = hashlib.sha256(json.dumps(payload,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+            if actual!=data['sha256'] or payload['car_id']!=source_modification_id or payload['manufacturer_id']!=120:
                 raise ValueError()
             validate_plan(payload)
-        except (ValueError, KeyError, TypeError, AttributeError):
+        except (ValueError,KeyError,TypeError,AttributeError):
             raise CatalogueUnavailable('invalid_contract') from None
         return data
+
+    def articles(self, car_id, product_id, snapshot_sha):
+        data=self.get(f'modifications/{int(car_id)}/articles',{'product_id':product_id,'snapshot_sha':snapshot_sha})
+        if not isinstance(data,dict) or data.get('snapshot_sha')!=snapshot_sha or data.get('car_id')!=car_id or data.get('product_id')!=product_id or not isinstance(data.get('items'),list):
+            raise CatalogueUnavailable('pinned_snapshot_mismatch')
+        items=data['items']
+        seen=set()
+        for item in items:
+            if not isinstance(item,dict) or type(item.get('supplier_id')) is not int or item.get('car_id')!=car_id or not isinstance(item.get('article_number'),str):
+                raise CatalogueUnavailable('article_identity_mismatch')
+            identity=(item['supplier_id'],item['article_number'])
+            if identity in seen:raise CatalogueUnavailable('duplicate_article_identity')
+            seen.add(identity)
+        return items
 
 
 class CatalogueResolver:
@@ -89,11 +100,11 @@ class CatalogueResolver:
                 envelope = self.adapter.plan(source_modification_id)
                 payload = envelope['payload']
                 categories = payload['categories']
-                if payload['coverage'] == 'complete_verified' and payload.get('collection_complete') and payload.get('reviewed_by') and categories and all(
-                    r.get('name_uk') and len(r.get('category_path', [])) == 3 and r.get('mapping_reviewed_by') for r in categories
+                if payload['coverage'] == 'complete_verified' and payload.get('coverage_verified') is True and payload.get('taxonomy_status')=='reviewed' and categories and all(
+                    r.get('name_uk') and len(r.get('category_path', [])) == 3 and r.get('mapping_reviewed_by') and r.get('kind') in ('part','consumable','equipment') for r in categories
                 ):
                     return dict(source='catalogue', cost='free', coverage='complete_verified', plan=envelope, reason=None)
-                reason = 'partial_coverage'
+                reason = 'taxonomy_unreviewed' if payload.get('coverage_verified') is True and payload.get('taxonomy_status')!='reviewed' else 'partial_coverage'
             except (CatalogueUnavailable, KeyError, TypeError):
                 reason = 'catalogue_unavailable'
         return dict(source='saved_plan_parts' if saved_plan_parts else 'base', cost='free',
@@ -122,7 +133,7 @@ def persist(db, who, vehicle, envelope):
     from app.services.inventory import record, snapshot
     existing = saved_state(vehicle)
     if existing:
-        if existing['sha256'] != envelope['sha256']:
+        if existing['payload'].get('source_snapshot_sha',existing['sha256']) != envelope['payload'].get('source_snapshot_sha',envelope['sha256']):
             raise HTTPException(409, 'Збережений план вже існує. Зміна модифікації потребує окремого узгодження.')
         return existing
     # Never merge a new source into a donor with work/history by similar labels.
@@ -131,6 +142,7 @@ def persist(db, who, vehicle, envelope):
         if db.scalar(select(cls.id).where(cls.account_id == who.workspace_account_id, cls.vehicle_id == vehicle.id).limit(1)):
             raise HTTPException(409, 'Автомобіль вже має план або складську історію. Наявні рішення збережено.')
     payload = envelope['payload']
+    validate_plan(payload)
     before = snapshot(vehicle)
     for row in payload['categories']:
         root, sub, _ = row['category_path']
@@ -139,7 +151,9 @@ def persist(db, who, vehicle, envelope):
             source='carpot.catalogue.v1', catalog_key=f"car:{payload['car_id']}:product:{row['product_id']}",
             category_key=stable(root), category_name=root, subcategory_key=stable(root + '/' + sub),
             subcategory_name=sub, name=row['name_uk'], position='', quantity=1))
-    envelope={**envelope,'vehicle_basis':vehicle_basis(vehicle)}
+    projection=compact_payload(payload)
+    local_sha=hashlib.sha256(json.dumps(projection,sort_keys=True,ensure_ascii=False,separators=(',',':')).encode()).hexdigest()
+    envelope={'payload':projection,'sha256':local_sha,'vehicle_basis':vehicle_basis(vehicle)}
     vehicle.dismantling_v3 = {**(vehicle.dismantling_v3 or {}), 'unified_catalogue': envelope}
     record(db, who.workspace_account_id, vehicle, 'unified_catalogue_save',
            'Збережено потенційний план Catalogue; склад не змінено', before)
@@ -167,28 +181,41 @@ def workspace_entries(db, who, vehicle):
             continue
         ps = [parts[r.part_id]] if r.part_id in parts else []
         result.append(dict(key='catalogue:' + r.id, original=str(product.get('name_source') or r.name),
-            manual_name=r.name, category=r.category_name, position=r.position, kind='part', pt_id=None,
+            manual_name=r.name, category=r.category_name, position=r.position, kind=product.get('kind','part' if payload.get('schema')=='carpot.volvo.v1' else 'review'), pt_id=None,
             parts=ps, receipt=None, included=r.included,
             base_state='dismantled' if r.status == 'dismantled' else 'planned'))
     return result
 
 
+PLAN_KEYS=('schema','manufacturer_id','car_id','model_id','modification','observed_at','source_snapshot_sha','coverage','coverage_verified','taxonomy_status','photos')
+TYPE_KEYS=('product_id','name_source','name_uk','category_path','kind','mapping_reviewed_by','taxonomy_note','article_count')
+
+
+def compact_payload(payload):
+    result={k:payload[k] for k in PLAN_KEYS if k in payload}
+    result['categories']=[{k:r[k] for k in TYPE_KEYS if k in r} for r in payload['categories']]
+    return result
+
+
 def validate_plan(payload):
-    from app.services.catalogue_carpot_sections import SECTIONS
+    import re
     from datetime import datetime
-    datetime.fromisoformat(payload['observed_at'])
-    if type(payload['model_id']) is not int or payload['model_id']<=0 or not isinstance(payload['articles'],dict):raise ValueError()
+    from app.services.catalogue_carpot_sections import SECTIONS, SUBCATEGORIES
+    datetime.fromisoformat(payload['observed_at'].replace('Z','+00:00'))
+    if payload.get('schema')!='carpot.volvo.plan.v2' or not re.fullmatch('[0-9a-f]{64}',payload.get('source_snapshot_sha','')):
+        raise ValueError('Compact pinned plan required')
+    if type(payload['model_id']) is not int or payload['model_id']<=0 or type(payload['car_id']) is not int or payload['car_id']<=0:raise ValueError()
+    if payload.get('coverage') not in ('partial','complete_verified'):raise ValueError()
     rows=payload['categories']
-    if not isinstance(rows,list) or len(rows)>10000:raise ValueError()
+    if not isinstance(rows,list) or not 0<=len(rows)<=10000:raise ValueError()
+    if len(json.dumps(compact_payload(payload),ensure_ascii=False).encode())>512*1024:raise ValueError('Compact plan exceeds 512 KiB')
     seen=set()
     for row in rows:
         product=row['product_id']
         if type(product) is not int or product<=0 or product in seen:raise ValueError()
         seen.add(product)
-        if not isinstance(row['articles'],list) or len(row['articles'])>20000:raise ValueError()
-        for key in row['articles']:
-            article=payload['articles'][key]
-            if type(article['supplier_id']) is not int or article['supplier_id']<=0 or not isinstance(article['article_number'],str) or not 1<=len(article['article_number'])<=100:raise ValueError()
-        if payload['coverage']=='complete_verified':
+        if row.get('kind') not in ('part','consumable','equipment','review'):raise ValueError()
+        if payload.get('taxonomy_status')=='reviewed':
             path=row['category_path']
             if len(path)!=3 or path[0] not in SECTIONS or any(not isinstance(p,str) or not 1<=len(p)<=100 for p in path) or not isinstance(row['name_uk'],str) or not 1<=len(row['name_uk'])<=200 or not row.get('mapping_reviewed_by'):raise ValueError()
+            if path[1] not in {label for label,_ in SUBCATEGORIES[SECTIONS.index(path[0])]}:raise ValueError('Unknown corporate subsection')

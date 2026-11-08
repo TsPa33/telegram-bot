@@ -127,21 +127,30 @@ def volvo_article_lookup(
 
 # Volvo integration snapshots are explicitly imported, never built on API startup.
 import json
-from volvo_contract import validate as validate_volvo, digest as volvo_digest
+from volvo_contract import validate as validate_volvo, digest as volvo_digest, compact_plan, coverage_verified
 
 
-def volvo_snapshot(car_id):
+def volvo_snapshot(car_id, snapshot_sha=None):
     try:
         with db() as conn, conn.cursor() as cur:
-            cur.execute('SELECT payload,sha256 FROM catalogue_volvo_snapshots WHERE car_id=%s', (car_id,))
+            if snapshot_sha:
+                cur.execute('SELECT payload,sha256 FROM catalogue_volvo_versions WHERE car_id=%s AND sha256=%s', (car_id,snapshot_sha))
+            else:
+                cur.execute('SELECT payload,sha256 FROM catalogue_volvo_snapshots WHERE car_id=%s', (car_id,))
             row = cur.fetchone()
-    except pymysql.MySQLError:
+            if row is not None:
+                parsed=json.loads(row['payload'])
+                if parsed.get('schema')=='carpot.volvo.plan.v2':
+                    # The latest directory is compact; raw data is stored once per version.
+                    cur.execute('SELECT payload,sha256 FROM catalogue_volvo_versions WHERE car_id=%s AND sha256=%s',(car_id,row['sha256']))
+                    row=cur.fetchone()
+    except (pymysql.MySQLError,ValueError,TypeError):
         raise HTTPException(503, 'Volvo catalogue is not ready') from None
     if row is None:
-        raise HTTPException(404, 'Exact source modification not imported')
+        raise HTTPException(409 if snapshot_sha else 404, 'Pinned source snapshot unavailable' if snapshot_sha else 'Exact source modification not imported')
     try:
         payload = validate_volvo(json.loads(row['payload']))
-        if payload['car_id'] != car_id or volvo_digest(payload) != row['sha256']:
+        if payload['car_id'] != car_id or volvo_digest(payload) != row['sha256'] or (snapshot_sha and row['sha256']!=snapshot_sha):
             raise ValueError('Snapshot checksum')
     except (ValueError, TypeError, KeyError):
         raise HTTPException(503, 'Volvo catalogue validation failed') from None
@@ -162,13 +171,12 @@ def volvo_modifications(model_id: int = Query(gt=0)):
     items = []
     for r in rows:
         try:
-            data = validate_volvo(json.loads(r['payload']))
-            if volvo_digest(data) != r['sha256'] or data['model_id'] != model_id or data['car_id'] != r['car_id']:
-                raise ValueError('Snapshot identity/checksum mismatch')
+            data,sha=volvo_snapshot(r['car_id'])
+            if data['model_id'] != model_id:raise ValueError('Snapshot identity mismatch')
         except (ValueError, KeyError, TypeError):
             raise HTTPException(503, 'Volvo catalogue validation failed') from None
         items.append(dict(source_modification_id=data['car_id'], model_id=model_id,
-            modification=data['modification'], coverage=data['coverage'],
+            modification=data['modification'], coverage=data['coverage'], coverage_verified=coverage_verified(data),taxonomy_status=data.get('taxonomy_status','unreviewed'),
             specifications=data.get('details', {}).get('passanger_car_attributes', [])))
     return dict(source='carpot-catalogue', items=items, ktype_mapping_verified=False)
 
@@ -177,7 +185,7 @@ def volvo_modifications(model_id: int = Query(gt=0)):
 def volvo_coverage(car_id: int):
     data, sha = volvo_snapshot(car_id)
     return dict(source='carpot-catalogue', source_modification_id=car_id,
-        coverage=data['coverage'], type_count=len(data['categories']), article_count=len(data['articles']),
+        coverage=data['coverage'],coverage_verified=coverage_verified(data),taxonomy_status=data.get('taxonomy_status','unreviewed'),type_count=len(data['categories']),article_count=len(data['articles']),
         snapshot_sha=sha, observed_at=data['observed_at'], photos='metadata_only')
 
 
@@ -185,7 +193,8 @@ def volvo_coverage(car_id: int):
 def volvo_plan(car_id: int):
     data, sha = volvo_snapshot(car_id)
     # Partial data is useful for review/enrichment, never disguised as full plan.
-    return dict(payload=data, sha256=sha)
+    compact=compact_plan(data,sha)
+    return dict(payload=compact,sha256=volvo_digest(compact))
 
 
 @app.get('/api/v1/volvo/modifications/{car_id}/categories', dependencies=[Depends(authorize)])
@@ -195,12 +204,12 @@ def volvo_categories(car_id: int):
 
 
 @app.get('/api/v1/volvo/modifications/{car_id}/articles', dependencies=[Depends(authorize)])
-def volvo_articles(car_id: int, product_id: int = Query(gt=0)):
-    data, sha = volvo_snapshot(car_id)
+def volvo_articles(car_id: int, product_id: int = Query(gt=0), snapshot_sha: str = Query(pattern=r'^[0-9a-f]{64}$')):
+    data, sha = volvo_snapshot(car_id,snapshot_sha)
     category = next((r for r in data['categories'] if r['product_id'] == product_id), None)
     if category is None:
         raise HTTPException(404, 'Part type not present for this modification')
-    return dict(items=[data['articles'][k] for k in category['articles']], snapshot_sha=sha,
+    return dict(items=[data['articles'][k] for k in category['articles']], snapshot_sha=sha, product_id=product_id, car_id=car_id,
                 fitment='source_modification_link', vin_verified=False, photos='metadata_only')
 
 

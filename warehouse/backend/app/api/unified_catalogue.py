@@ -103,16 +103,28 @@ def source_value(row,key):
 
 
 def saved_articles(product, state):
-    result = []
-    for i, key in enumerate(product['articles']):
-        item = state['payload']['articles'][key]
-        supplier = item.get('supplier', [])
-        article = item.get('article', [])
-        result.append(dict(art_id=i+1, article_nr=item['article_number'],
+    payload=state['payload']
+    if payload.get('schema')=='carpot.volvo.plan.v2':
+        try:
+            items=service.CatalogueAdapter().articles(payload['car_id'],product['product_id'],payload['source_snapshot_sha'])
+        except service.CatalogueUnavailable:
+            raise HTTPException(503,'Артикули збереженої версії тимчасово недоступні. Платний запит не виконувався.') from None
+        if len(items)!=product['article_count']:
+            raise HTTPException(503,'Неповна відповідь збереженої версії каталогу')
+    else:
+        # Read compatibility only: previously saved raw snapshots are not rewritten.
+        items=[payload['articles'][key] for key in product['articles']]
+    result=[]
+    for i,item in enumerate(items):
+        supplier=item.get('supplier',[])
+        article=item.get('article',[])
+        result.append(dict(art_id=i+1,article_nr=item['article_number'],
             brand=str(source_value(supplier[0],'description') or '') if supplier else '',
-            supplier_id=item['supplier_id'], part_name=str(source_value(article[0],'NormalizedDescription') or '') if article else '',
-            characteristics={}, oem_numbers=sorted({str(source_value(r,'OENbr')) for r in item.get('oem', []) if source_value(r,'OENbr')}),
-            observed_at=state['payload']['observed_at'], fitment='source_modification_link', vin_verified=False))
+            supplier_id=item['supplier_id'],part_name=str(source_value(article[0],'NormalizedDescription') or '') if article else '',
+            characteristics={},source_attributes=item.get('attributes',[]),cross_references=item.get('crosses',[]),
+            image_metadata=item.get('images',[]),photo=None,
+            oem_numbers=sorted({str(source_value(r,'OENbr')) for r in item.get('oem',[]) if source_value(r,'OENbr')}),
+            observed_at=payload['observed_at'],fitment='source_modification_link',vin_verified=False))
     return result
 
 
@@ -140,7 +152,10 @@ def add_stock(id: str, data: StockSelection, db: DB, who: Auth):
     from app.api.dismantling import DismantlingAction
     from app.services import dismantling_workspace
     states = {r['key']: r['state'] for r in dismantling_workspace.read(db, who, v, 'base' if (v.dismantling_v3 or {}).get('unified_base') else 'catalogue')['items']}
-    rows = [selected_row(db, who, v, key, write=True)[0] for key in sorted(data.keys)]
+    selected = [selected_row(db,who,v,key,write=True) for key in sorted(data.keys)]
+    if any(product is not None and product.get('kind')!='part' for _,product,_ in selected):
+        raise HTTPException(409,'Витратні матеріали, обладнання та неперевірені типи потребують окремої перевірки перед складським обліком')
+    rows=[row for row,_,_ in selected]
     if any(states.get(key) in ('hidden', 'sold', 'empty') for key in data.keys):
         raise HTTPException(409, 'Приховані або продані позиції не оприбутковуються повторно')
     pending = [r.id for r in rows if r.received_at is None]
@@ -182,7 +197,7 @@ def assign_article(id: str, data: ArticleSelection, db: DB, who: Auth):
     before = snapshot(p)
     p.article_number, p.article_brand = offer['article_nr'], offer['brand']
     p.article_provenance = dict(source='carpot.catalogue', source_modification_id=state['payload']['car_id'],
-        supplier_id=offer['supplier_id'], observed_at=offer['observed_at'], snapshot_sha=state['sha256'],
+        supplier_id=offer['supplier_id'], observed_at=offer['observed_at'], snapshot_sha=state['payload'].get('source_snapshot_sha',state['sha256']),
         verification='source_modification_link', vin_verified=False)
     record(db, who.workspace_account_id, p, 'part_update', 'Явно призначено артикул Catalogue; OEM і залишки не змінено', before)
     db.commit()
@@ -245,7 +260,7 @@ def assign_oem(id: str, data: OemSelection, db: DB, who: Auth):
     p.oem_number=data.oem_number
     p.oem_provenance=dict(source='carpot.catalogue',status='user_selected_cross_reference',
         source_modification_id=state['payload']['car_id'],supplier_id=offer['supplier_id'],
-        source_article=offer['article_nr'],observed_at=offer['observed_at'],snapshot_sha=state['sha256'],
+        source_article=offer['article_nr'],observed_at=offer['observed_at'],snapshot_sha=state['payload'].get('source_snapshot_sha',state['sha256']),
         confirmed_by=who.actor_id,vin_verified=False)
     record(db,who.workspace_account_id,p,'part_update','Явно призначено OEM-крос без твердження VIN-сумісності',before)
     db.commit()

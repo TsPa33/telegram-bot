@@ -14,3 +14,13 @@ CREATE TABLE IF NOT EXISTS catalogue_suppliers (
  name_source VARCHAR(128) NOT NULL,
  observed_at TIMESTAMP NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Immutable raw export versions; latest directory stores only a compact projection.
+CREATE TABLE IF NOT EXISTS catalogue_volvo_versions (
+ car_id INT UNSIGNED NOT NULL,
+ sha256 CHAR(64) NOT NULL,
+ payload JSON NOT NULL,
+ coverage VARCHAR(24) NOT NULL,
+ observed_at TIMESTAMP NOT NULL,
+ PRIMARY KEY (car_id, sha256)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

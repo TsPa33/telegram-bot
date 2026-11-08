@@ -8,11 +8,15 @@ from app.models import Part,Vehicle,DismantlingItem,Operation
 from app.services.unified_catalogue import CatalogueAdapter,CatalogueResolver,CatalogueUnavailable
 
 
+def detail_items():
+    return [dict(supplier_id=2,article_number='EXAMPLE',car_id=107555,supplier=[{'description':'HELLA'}],article=[{'NormalizedDescription':'Bulb'}],oem=[{'OENbr':'OEM-ONE'},{'OENbr':'OEM-TWO'}],images=[{'PictureName':'2_E325.JPG'}])]
+
+
 def envelope(car=107555,coverage='complete_verified'):
-    p=dict(schema='carpot.volvo.v1',manufacturer_id=120,car_id=car,model_id=13084,
-        modification={'id':car,'description':'T6 AWD'},collection_complete=True,reviewed_by='synthetic',coverage=coverage,
-        observed_at='2026-11-08T12:00:00+00:00',categories=[dict(product_id=106,name_source='Bulb',name_uk='Лампа',mapping_reviewed_by='fixture',category_path=['Освітлення','Лампи','Лампа'],articles=['2:EXAMPLE'])],
-        articles={'2:EXAMPLE':dict(supplier_id=2,article_number='EXAMPLE',supplier=[{'description':'HELLA'}],article=[{'NormalizedDescription':'Bulb'}],oem=[{'OENbr':'OEM-ONE'},{'OENbr':'OEM-TWO'}],images=[{'PictureName':'2_E325.JPG'}])})
+    p=dict(schema='carpot.volvo.plan.v2',manufacturer_id=120,car_id=car,model_id=13084,
+        modification={'id':car,'description':'T6 AWD'},coverage_verified=coverage=='complete_verified',taxonomy_status='reviewed',coverage=coverage,
+        source_snapshot_sha='a'*64,observed_at='2026-11-08T12:00:00+00:00',
+        categories=[dict(product_id=106,name_source='Bulb',name_uk='Лампа',kind='part',mapping_reviewed_by='fixture',category_path=['Освітлення','Передні фари','Лампа'],article_count=1)])
     return dict(payload=p,sha256=hashlib.sha256(json.dumps(p,sort_keys=True,ensure_ascii=False,separators=(',',':')).encode()).hexdigest())
 
 @pytest.fixture
@@ -20,6 +24,7 @@ def volvo(logged,monkeypatch):
     r=logged.post('/api/v1/vehicles',json={'manufacturer':'Volvo','model':'XC90 II','year':2018,'donor_id':'SYNTHETIC'})
     assert r.status_code==201,r.text
     monkeypatch.setattr(CatalogueAdapter,'plan',lambda self,car:envelope(car))
+    monkeypatch.setattr(CatalogueAdapter,'articles',lambda *args:detail_items())
     return r.json()
 
 def create(c,v,car=107555):
@@ -180,3 +185,82 @@ def test_changed_vehicle_keeps_plan_but_blocks_stale_receipt(logged,volvo):
     assert logged.get(b+'/dismantling-workspace?source=catalogue').json()['items']
     assert logged.post(b+'/unified-catalogue/stock',json={'keys':[key],'confirm_physical_receipt':True}).status_code==409
     with Session(engine()) as db:assert db.scalar(select(func.count()).select_from(Part))==0
+
+
+def test_new_donor_stores_compact_plan_not_raw_article_blob(logged,volvo,monkeypatch):
+    e=envelope()
+    e['payload']['articles']={'private_blob':'SYNTHETIC '*350000}
+    monkeypatch.setattr(CatalogueAdapter,'plan',lambda *args:e)
+    assert create(logged,volvo).status_code==200
+    with Session(engine()) as db:
+        state=db.get(Vehicle,volvo['id']).dismantling_v3['unified_catalogue']
+        assert len(json.dumps(state).encode())<10000
+        assert 'articles' not in state['payload'] and 'details' not in state['payload']
+        assert state['payload']['source_snapshot_sha']=='a'*64
+
+
+def test_reviewed_taxonomy_does_not_override_partial_coverage():
+    class Adapter:
+        def plan(self,*args):
+            e=envelope();e['payload']['coverage_verified']=False
+            return e
+    r=CatalogueResolver(Adapter()).resolve(make='Volvo',source_modification_id=107555,saved_plan_parts=True)
+    assert r['source']=='saved_plan_parts' and r['cost']=='free'
+
+
+def test_detail_outage_does_not_break_saved_plan_or_write_articles(logged,volvo,monkeypatch):
+    assert create(logged,volvo).status_code==200
+    b=f"/api/v1/vehicles/{volvo['id']}"
+    key=logged.get(b+'/dismantling-workspace?source=catalogue').json()['items'][0]['key']
+    calls=[]
+    def down(*args):
+        calls.append(args[1:]);raise CatalogueUnavailable()
+    monkeypatch.setattr(CatalogueAdapter,'articles',down)
+    assert logged.get(b+'/unified-catalogue').status_code==200
+    assert logged.get(b+'/dismantling-workspace?source=catalogue').status_code==200
+    assert not calls
+    assert logged.get(b+'/unified-catalogue/articles',params={'key':key}).status_code==503
+    assert calls==[(107555,106,'a'*64)]
+    with Session(engine()) as db:assert db.scalar(select(func.count()).select_from(Part))==0
+
+
+@pytest.mark.parametrize('reply_sha,reply_car', [('b'*64,107555),('a'*64,107556)])
+def test_details_never_fall_back_to_latest_or_other_car(reply_sha,reply_car,monkeypatch):
+    monkeypatch.setenv('WAREHOUSE_CATALOGUE_URL','https://catalogue.test');monkeypatch.setenv('WAREHOUSE_CATALOGUE_HOST','catalogue.test');monkeypatch.setenv('WAREHOUSE_CATALOGUE_KEY','test-only')
+    seen=[]
+    def respond(request):
+        seen.append(dict(request.url.params))
+        return httpx.Response(200,json=dict(snapshot_sha=reply_sha,car_id=reply_car,product_id=106,items=detail_items()))
+    adapter=CatalogueAdapter(transport=httpx.MockTransport(respond))
+    with pytest.raises(CatalogueUnavailable):adapter.articles(107555,106,'a'*64)
+    assert seen==[{'product_id':'106','snapshot_sha':'a'*64}]
+
+
+def test_non_part_classification_cannot_create_stock(logged,volvo,monkeypatch):
+    e=envelope();e['payload']['categories'][0]['kind']='consumable'
+    monkeypatch.setattr(CatalogueAdapter,'plan',lambda *args:e)
+    assert create(logged,volvo).status_code==200
+    b=f"/api/v1/vehicles/{volvo['id']}"
+    row=logged.get(b+'/dismantling-workspace?source=catalogue').json()['items'][0]
+    assert row['kind']=='consumable'
+    assert logged.post(b+'/unified-catalogue/stock',json={'keys':[row['key']],'confirm_physical_receipt':True}).status_code==409
+    with Session(engine()) as db:assert db.scalar(select(func.count()).select_from(Part))==0
+
+
+def test_adapter_consumes_compact_real_shape_not_private_source(monkeypatch):
+    import importlib.util
+    from pathlib import Path
+    root=Path(__file__).resolve().parents[3]
+    def load(name,path):
+        spec=importlib.util.spec_from_file_location(name,path);module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module);return module
+    contract=load('catalogue_contract_fixture',root/'catalogue/volvo_contract.py')
+    fixtures=load('catalogue_shape_fixture',root/'catalogue/tests/volvo_shape_fixture.py')
+    raw=fixtures.fixture(padded=True)
+    compact=contract.compact_plan(raw,contract.digest(raw))
+    wire=dict(payload=compact,sha256=contract.digest(compact))
+    monkeypatch.setenv('WAREHOUSE_CATALOGUE_URL','https://catalogue.test');monkeypatch.setenv('WAREHOUSE_CATALOGUE_HOST','catalogue.test');monkeypatch.setenv('WAREHOUSE_CATALOGUE_KEY','test-only')
+    adapter=CatalogueAdapter(transport=httpx.MockTransport(lambda r:httpx.Response(200,json=wire)))
+    plan=adapter.plan(107555)
+    assert len(plan['payload']['categories'])==113
+    assert len(json.dumps(plan).encode())<50000
+    assert CatalogueResolver(adapter).resolve(make='Volvo',source_modification_id=107555,saved_plan_parts=True)['source']=='saved_plan_parts'

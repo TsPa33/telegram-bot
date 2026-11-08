@@ -1,5 +1,8 @@
 # Unified Catalogue — Volvo-first integration
 
+**Current first-import corrections:** [FIRST_IMPORT_READINESS.md](FIRST_IMPORT_READINESS.md).
+The initial review/upload procedure below is historical and superseded by that report.
+
 Status: LOCAL IMPLEMENTATION / REAL DATA AND STAGING ACCEPTANCE BLOCKED.
 Photos do not block catalogue development or dismantling. No image import is claimed.
 
@@ -43,7 +46,7 @@ actual Alembic revision: **UNVERIFIED**. No Railway Variables/configuration chan
   Explicit offline review (`volvo_review.py`) is required for Ukrainian names,
   3-level taxonomy, source links and completeness. No invented translations.
 - Additive MySQL tables in `catalogue/volvo_integration.sql`:
-  `catalogue_volvo_snapshots`, `catalogue_suppliers`. No source/Warehouse DDL,
+  `catalogue_volvo_snapshots`, `catalogue_suppliers`, `catalogue_volvo_versions`. No source/Warehouse DDL,
   backfill, stock or financial table modifications; not executed remotely.
 - Existing `/api/v1/volvo/article` reviewed: parameterized exact supplier+number
   SQL; number comparisons now binary, OEM still manufacturer120, cross-only.
@@ -62,8 +65,8 @@ actual Alembic revision: **UNVERIFIED**. No Railway Variables/configuration chan
   identity. It returns cross-reference evidence, never automatic field writes.
 - Catalogue plans use existing `Vehicle.dismantling_v3` JSON and
   `DismantlingItem`; no duplicate plan/stock model and no PostgreSQL migration.
-  Frozen source envelope retains original fields, source IDs, observation time,
-  taxonomy review and checksum. Existing annotations/translations remain authoritative.
+  Compact source projection retains labels, source IDs, observation time,
+  taxonomy status and a pinned SHA; raw detail is stored centrally by version. Existing annotations/translations remain authoritative.
 - Existing `DismantlingBoard` reused for corporate categories, filtering,
   Ukrainian/original names, annotations, stock UI and settings. Same donor page;
   no parallel application or navigation section. Existing Plan.Parts flow retained.
@@ -92,60 +95,13 @@ fabricated actual photos. User reports `2_E325.JPG` absent under C:\CarPot;
 `2_M892.JPG` existence and all redistribution rights are unverified. Parts and
 OEM remain usable without them. No external image is fetched by this integration.
 
-## Windows commands (local export first)
+## Windows commands / first import
 
-Use a checkout of this integration branch; do not run old all-brand importers.
-Configure existing SOURCE_USER/SOURCE_PASSWORD privately in the local shell,
-with a MySQL user restricted to SELECT on td1q2018. Never paste secrets into chat.
-
-```powershell
-Set-Location C:\CarPot\telegram-bot
-# Fetch/switch only in a clean local checkout; don't overwrite an existing workspace.
-git fetch origin refs/heads/integration/volvo-unified-catalogue:refs/remotes/origin/integration/volvo-unified-catalogue
-git switch integration/volvo-unified-catalogue
-Set-Location .\catalogue
-python -m pip install -r requirements.txt
-$env:SOURCE_HOST = '127.0.0.1'
-$env:SOURCE_PORT = '3306'
-# SOURCE_USER and SOURCE_PASSWORD must already be set privately.
-python -u .\volvo_vehicle_import.py --model-id 13084 --car-id 107555 --max-modifications 1 --output .\volvo-export
-```
-
-Inspect `volvo-export\107555.json`. It contains original source values, not
-fabricated data or photos. A missing source column/table must be investigated
-with bounded read-only queries; do not mark the import complete or alter source.
-For both checked model families, rerun (completed variants skipped):
-
-```powershell
-python -u .\volvo_vehicle_import.py --model-id 13084 --model-id 37773 --max-modifications 15 --output .\volvo-export
-```
-
-Prepare a reviewed `volvo-taxonomy.json` keyed by actual product IDs, each with
-`name_uk` and `category_path: [existing CarPot section, subgroup, part-type]`.
-Original labels remain in the snapshot. Do not copy synthetic test labels as data.
-Explicit review is separate from extraction:
-
-```powershell
-python .\volvo_review.py .\volvo-export\107555.json --mapping .\volvo-taxonomy.json --reviewed-by 'OWNER_REVIEW_REFERENCE' --confirm-source-links-and-completeness
-```
-
-Only after confirming project `selfless-caring`, environment `catalogue-staging`,
-its separate MySQL and local SSH tunnel, privately set DEST_USER/DEST_PASSWORD,
-DEST_HOST=127.0.0.1, DEST_PORT=actual tunnel port (not source3306),
-DEST_DATABASE=actual catalogue staging database (`railway` or `catalogue`).
-Review the two CREATE TABLE statements first. MySQL DDL auto-commits; no automatic rollback.
-
-```powershell
-python .\volvo_target.py --confirm-staging --apply-additive-schema
-python -u .\volvo_vehicle_import.py --model-id 13084 --car-id 107555 --max-modifications 1 --output .\volvo-export --upload --confirm-staging
-python .\volvo_target.py --confirm-staging
-```
-
-Upload is idempotent by exact source car ID and supplier ID. Completed export
-files are checksum-checked and uploaded; repeat does not create duplicate rows.
-Do not put unrelated snapshots in the output directory. A stale output lock after
-crash must only be removed after confirming no importer is running. Source rows
-must remain stable during an export; a snapshot is not a VIN compatibility guarantee.
+Use the current [first-import procedure](FIRST_IMPORT_READINESS.md), including
+zero-connection preflight, explicit107555 allowlist, independently verified SHA
+and expected partial coverage. The old combined taxonomy/completeness flag is
+removed. Do not run an old all-file upload command or treat translation as proof
+of full vehicle coverage.
 
 ## Staging activation / rollback
 

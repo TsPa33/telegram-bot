@@ -560,7 +560,7 @@ export default function DismantlingBoard({
       }
     });
   }
-  const canAdd = (_row: Row) => can("inventory.create") && (source === "professional" || can("inventory.adjust_quantity"));
+  const canAdd = (_row: Row) => (source !== "catalogue" || _row.kind === "part") && can("inventory.create") && (source === "professional" || can("inventory.adjust_quantity"));
   const actionKeys = selected.length ? selected : [],
     canManage = can("dismantling.manage") && !vehicle.archived;
   if (!data)
@@ -787,6 +787,7 @@ export default function DismantlingBoard({
                 ["kit", "Ремонтні комплекти"],
                 ["consumable", "Витратні матеріали"],
                 ["tool", "Інструменти"],
+                ["equipment", "Додаткове обладнання"],
                 ["review", "Потребує уточнення"],
                 ["", "Усі типи"],
               ].map(([key, label]) => (
