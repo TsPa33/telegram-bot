@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CarPot · Монітор імпорту</title>
+<style>
+:root{color-scheme:dark;--bg:#0a1019;--panel:#121e2b;--line:#273544;--text:#eef5fa;--muted:#91a5b6;--accent:#19c4a1}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 70% -20%,#163344 0%,var(--bg) 52%);font:15px/1.5 system-ui,-apple-system,Segoe UI,Arial,sans-serif;color:var(--text)}
+main{max-width:1090px;margin:0 auto;padding:36px 24px 64px}.top{display:flex;justify-content:space-between;align-items:start;gap:20px;margin-bottom:28px}
+.eyebrow{color:var(--accent);font-weight:800;letter-spacing:.14em;font-size:11px;text-transform:uppercase}.brand{font-weight:850;letter-spacing:.02em;font-size:28px}.brand b{color:var(--accent)}
+h1{font-size:30px;line-height:1.2;margin:9px 0 7px;letter-spacing:-.03em}p{margin:0;color:var(--muted)}
+.status{display:flex;align-items:center;gap:9px;border:1px solid var(--line);padding:8px 13px;border-radius:24px;color:var(--muted);white-space:nowrap;font-size:12px}.dot{width:8px;height:8px;border-radius:50%;background:#ffbd64}
+.status.online .dot{background:var(--accent);box-shadow:0 0 0 4px #19c4a11a}.status.error .dot{background:#ff767c}
+.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:15px;margin-bottom:15px}.panel{border:1px solid var(--line);background:linear-gradient(155deg,#162433,var(--panel));border-radius:16px;padding:23px}.kicker{color:var(--muted);font-size:12px;font-weight:600;margin-bottom:7px}.value{font-weight:780;font-size:35px;letter-spacing:-.04em;line-height:1.25;font-variant-numeric:tabular-nums}.sub{color:var(--muted);font-size:12px;margin-top:8px}
+.jobs{display:grid;grid-template-columns:1fr 1fr;gap:15px}.jobheader{display:flex;justify-content:space-between;align-items:center;gap:10px}.jobtitle{font-size:18px;font-weight:750}.tag{color:#a3e9d8;background:#17443e;padding:4px 9px;font-size:11px;border-radius:30px}.track{height:9px;border-radius:12px;background:#293948;overflow:hidden;margin:20px 0 8px}.fill{height:100%;width:0;background:linear-gradient(90deg,#0a9a8e,var(--accent));border-radius:12px;transition:width .5s}
+.flex{display:flex;justify-content:space-between;gap:10px}.muted{color:var(--muted);font-size:12px}.counter{font-size:27px;letter-spacing:-.02em;font-variant-numeric:tabular-nums;font-weight:750;margin-top:15px}
+.meta{margin-top:18px;display:grid;grid-template-columns:1fr 1fr;gap:12px}.meta strong{font-size:15px;font-weight:650;display:block;font-variant-numeric:tabular-nums}
+.notice{padding:18px 21px;border:1px solid var(--line);border-radius:13px;color:var(--muted);font-size:12px;margin-top:15px;background:#0d1721}
+footer{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;color:var(--muted);font-size:12px;margin-top:20px}
+@media(max-width:750px){main{padding:22px 14px 40px}.top{align-items:start}.cards{grid-template-columns:1fr}.jobs{grid-template-columns:1fr}.panel{padding:19px}h1{font-size:25px}.value{font-size:30px}.status{white-space:normal}}
+</style>
+</head>
+<body>
+<main>
+<header class="top">
+ <div><div class="eyebrow">CarPot <span style="color:#95aabc">/ Catalogue</span></div><h1>Монітор імпорту каталогу</h1><p>Контроль передавання даних із локальної MySQL до Railway</p></div>
+ <div class="status" id="status"><span class="dot"></span><span id="connection">Підключення…</span></div>
+</header>
+<section class="cards" aria-label="Зведення">
+ <div class="panel"><div class="kicker">Артикулів оброблено</div><div class="value" id="articles">—</div><div class="sub" id="articlesInfo">Контрольна точка Railway</div></div>
+ <div class="panel"><div class="kicker">OEM-зв'язків у базі (оцінка)</div><div class="value" id="oemCount">—</div><div class="sub">Оцінка MySQL, може оновлюватися із затримкою</div></div>
+ <div class="panel"><div class="kicker">Швидкість артикулів</div><div class="value" id="speed">—</div><div class="sub" id="speedInfo">Записів/с · вимірювання з цієї вкладки</div></div>
+</section>
+<section class="jobs" aria-label="Етапи">
+ <div class="panel">
+  <div class="jobheader"><div class="jobtitle">01 / Артикули</div><span class="tag" id="articleTag">Очікування даних</span></div>
+  <div class="counter" id="articlesSecondary">—</div><div class="track"><div class="fill" id="articleFill"></div></div>
+  <div class="flex muted"><span id="articlePercent">—</span><span>≈5,09 млн у джерелі</span></div>
+  <div class="meta"><div><div class="kicker">Орієнтовно залишилось</div><strong id="remaining">—</strong></div><div><div class="kicker">Оновлено</div><strong id="articleUpdated">—</strong></div></div>
+ </div>
+ <div class="panel">
+  <div class="jobheader"><div class="jobtitle">02 / OEM-зв'язки</div><span class="tag" id="oemTag">Очікування даних</span></div>
+  <div class="counter" id="oemProcessed">—</div><div class="track"><div class="fill" id="oemFill"></div></div>
+  <div class="flex muted"><span id="oemPercent">—</span><span>Артикулів перевірено</span></div>
+  <div class="meta"><div><div class="kicker">Контрольна точка OEM</div><strong id="oemCheckpoint">—</strong></div><div><div class="kicker">Оновлено</div><strong id="oemUpdated">—</strong></div></div>
+ </div>
+</section>
+<div class="notice">Дані з контрольних точок Railway оновлюються кожні 15 секунд. Відсотки розраховано від приблизних 5,09 млн артикулів; реальна кількість може відрізнятися. Швидкість показана тільки після двох успішних опитувань у відкритій вкладці. Час оновлення не підтверджує, що локальний імпортер працює безперервно. Монітор не показує фізичний вільний простір на диску Railway.</div>
+<footer><span>CarPot Catalogue · окреме середовище catalogue-staging</span><span id="refreshed">Оновлення: —</span></footer>
+</main>
+<script>
+"use strict";
+const formatter = new Intl.NumberFormat("uk-UA");
+const $ = id => document.getElementById(id);
+let prior = null;
+function timeLabel(stamp) {
+ if(!stamp) return "Ще не надходило";
+ const date = new Date(stamp);
+ return Number.isFinite(date.getTime()) ? date.toLocaleTimeString("uk-UA",{hour:"2-digit",minute:"2-digit",second:"2-digit"}) : "Невідомо";
+}
+function progressClass(job) {
+ if(!job.updated_at) return "Не розпочато";
+ const elapsed = Date.now()-Date.parse(job.updated_at);
+ return Number.isFinite(elapsed) && elapsed>=0 && elapsed<120000 ? "Нещодавно оновлено" : "Немає нових записів";
+}
+async function refresh() {
+ try {
+  const response=await fetch("/api/v1/import-progress",{cache:"no-store",credentials:"same-origin"});
+  if(!response.ok) throw new Error("HTTP "+response.status);
+  const data=await response.json();
+  const a=data.jobs.articles, o=data.jobs.oem;
+  const total=data.estimated_source_articles;
+  const aPct=Math.min(100,100*a.processed/total);
+  const oPct=Math.min(100,100*o.processed/total);
+  $("status").className="status online"; $("connection").textContent="Дані доступні";
+  $("articles").textContent=formatter.format(a.processed);
+  $("articlesSecondary").textContent=formatter.format(a.processed)+" записів";
+  $("oemCount").textContent=formatter.format(data.approximate_table_rows.oem);
+  $("articleFill").style.width=aPct.toFixed(2)+"%";
+  $("oemFill").style.width=oPct.toFixed(2)+"%";
+  $("articlePercent").textContent=aPct.toFixed(1)+"% (оцінка)";
+  $("oemPercent").textContent=oPct.toFixed(1)+"% (оцінка)";
+  $("oemProcessed").textContent=formatter.format(o.processed)+" артикулів";
+  $("remaining").textContent=formatter.format(Math.max(0,total-a.processed))+" артикулів";
+  $("oemCheckpoint").textContent=formatter.format(o.processed)+" перевірено";
+  $("articleTag").textContent=progressClass(a);
+  $("oemTag").textContent=progressClass(o);
+  $("articleUpdated").textContent=timeLabel(a.updated_at);
+  $("oemUpdated").textContent=timeLabel(o.updated_at);
+  const current=Date.parse(data.observed_at);
+  if(prior && Number.isFinite(current) && current>prior.time && a.processed>=prior.articles) {
+    const rate=(a.processed-prior.articles)/((current-prior.time)/1000);
+    $("speed").textContent=rate>0?formatter.format(Math.round(rate)):"0";
+    $("speedInfo").textContent=rate>0?"Записів/с · за останні "+Math.round((current-prior.time)/1000)+" с":"Нових артикулів немає";
+  }
+  prior={time:current,articles:a.processed};
+  $("refreshed").textContent="Оновлено: "+new Date().toLocaleTimeString("uk-UA");
+ } catch(e) {
+   $("status").className="status error";
+   $("connection").textContent="Немає зв'язку з Railway";
+   $("refreshed").textContent="Помилка отримання даних";
+ }
+}
+refresh();setInterval(refresh,15000);
+</script>
+</body></html>
