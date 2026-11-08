@@ -6,7 +6,10 @@ from contextlib import contextmanager
 import pymysql
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
 
+from monitor import router as monitor_router
+
 app = FastAPI(title="CarPot Catalogue", version="0.1.0", docs_url=None, redoc_url=None)
+app.include_router(monitor_router)
 
 def authorize(x_catalogue_key: str | None = Header(default=None)):
     expected = os.environ.get("CATALOGUE_API_KEY", "")
