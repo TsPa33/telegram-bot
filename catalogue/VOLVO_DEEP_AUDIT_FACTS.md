@@ -30,3 +30,7 @@ Source: local Windows MySQL td1q2018, user-produced volvo_deep_audit.json. The a
 Warehouse Volvo XC90 II, user-confirmed correct source variant + saved or explicit K-Type, stable item categories, exact article->OEM lookup, optional licensed image, one physical stock position per selected part, saved evidence/provenance, reopen without new paid requests. Non-Volvo/XC40 continues to use existing saved plan.parts or base catalogue.
 
 Related context: catalogue/UNIFIED_CATALOGUE_PLAN.md and catalogue/VOLVO_PILOT.md.
+## Local image-file check (user, 2026-11-08)
+- PowerShell `Get-ChildItem "C:\\CarPot" -Recurse -File -Filter "2_E325.JPG" -ErrorAction SilentlyContinue | Select-Object -First 5 FullName` returned **no matches**.
+- This proves only that this exact file was not found under `C:\\CarPot` by that check. It does not establish that all image files or remote media sources are unavailable.
+- Do NOT present article_images.PictureName as a resolvable photograph. For initial Volvo pilot, retain a neutral image placeholder plus existing user-photo upload. Media import is blocked pending verification of a media archive/directory or documented provider URLs and reuse rights.
