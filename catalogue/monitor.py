@@ -70,7 +70,7 @@ def import_progress(response: Response):
             )
             rows = cur.fetchall()
             cur.execute(
-                """SELECT table_name, table_rows
+                """SELECT TABLE_NAME AS table_name, TABLE_ROWS AS table_rows
                    FROM information_schema.tables
                    WHERE table_schema=DATABASE()
                    AND table_name IN ('catalogue_parts','catalogue_oem')"""
