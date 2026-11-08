@@ -42,6 +42,13 @@ footer{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;color:
 .speed-bars .bar.zero{background:#304455}
 .history-label{font-size:12px;color:var(--muted);margin-top:8px}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+
+.priority-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:15px}
+.priority-entry{border:1px solid var(--line);border-radius:10px;padding:12px 15px;display:flex;justify-content:space-between;gap:12px;align-items:center}
+.priority-entry.volvo{border-color:#17a18d;background:#15312f}
+.priority-entry .name{font-weight:650}
+.priority-entry .meta-number{font-variant-numeric:tabular-nums;color:var(--muted);font-size:12px;text-align:right}
+@media(max-width:750px){.priority-list{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -50,7 +57,7 @@ footer{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;color:
  <div><div class="eyebrow">CarPot <span style="color:#95aabc">/ Catalogue</span></div><h1>Монітор імпорту каталогу</h1><p>Контроль передавання даних із локальної MySQL до Railway</p></div>
  <div class="status loading-state" id="status"><span class="dot"></span><span id="connection">Підключення…</span><span class="poll-indicator" id="pollIndicator" aria-hidden="true"></span></div>
 </header>
-<nav class="navbar"><a href="#progress">Прогрес</a><a href="#lookup">Пошук запчастин</a><a href="#diagnostics">Діагностика</a></nav><section class="cards loading" id="progress" aria-label="Зведення">
+<nav class="navbar"><a href="#progress">Прогрес</a><a href="#brands">OEM Top 30</a><a href="#lookup">Пошук запчастин</a><a href="#diagnostics">Діагностика</a></nav><section class="cards loading" id="progress" aria-label="Зведення">
  <div class="panel"><div class="kicker">Артикулів оброблено</div><div class="value" id="articles">—</div><div class="sub" id="articlesInfo">Контрольна точка Railway</div></div>
  <div class="panel"><div class="kicker">OEM-зв'язків у базі (оцінка)</div><div class="value" id="oemCount">—</div><div class="sub">Оцінка MySQL, може оновлюватися із затримкою</div></div>
  <div class="panel"><div class="kicker">Швидкість артикулів</div><div class="value" id="speed">—</div><div class="sub" id="speedInfo">Записів/с · вимірювання з цієї вкладки</div></div>
@@ -71,6 +78,13 @@ footer{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;color:
 </section>
 
 <section class="panel lookup" id="speedHistory"><div class="jobheader"><div class="jobtitle">Динаміка імпорту</div><span class="tag" id="speedTrend">Збір показників</span></div><p>Швидкість запису між опитуваннями за останні кілька хвилин у цій вкладці.</p><div id="speedBars" class="speed-bars" role="img" aria-label="Графік швидкості імпорту"><div class="bar zero" style="height:8%"></div></div><div class="history-label" id="historySummary">Графік сформується після двох оновлень. Історія не зберігається на сервері.</div></section>
+<section id="brands" class="panel lookup">
+<div class="jobheader"><div class="jobtitle">OEM · Пріоритетні марки</div><span class="tag" id="priorityStatus">Volvo — перша</span></div>
+<p>Вибірковий імпорт OEM за 30 виробниками. Кожна марка отримує власний стан; завершені пропускаються при наступному запуску.</p>
+<div class="meta"><div><div class="kicker">Завершено марок</div><strong id="priorityDone">0 / 30</strong></div>
+<div><div class="kicker">Нових OEM у вибірковому імпорті</div><strong id="priorityNew">0</strong></div></div>
+<div class="priority-list" id="priorityBrands"><div class="priority-entry volvo"><span class="name">Volvo</span><span class="meta-number">Очікування імпорту</span></div></div>
+</section>
 <section id="lookup" class="panel lookup">
 <div class="jobtitle">Пошук запчастин</div><p>Артикул — пошук за початком номера. OEM — точна відповідність. Результати лише з імпортованого каталогу.</p>
 <form id="searchForm" class="searchform">
@@ -128,6 +142,29 @@ async function refresh() {
   $("articlePercent").textContent=aPct.toFixed(1)+"% (оцінка)";
   $("oemPercent").textContent=oPct.toFixed(1)+"% (оцінка)";
   $("oemProcessed").textContent=formatter.format(o.processed)+" артикулів";
+  const priority=data.priority_oem;
+  if(priority){
+    $("priorityDone").textContent=priority.completed_brands+" / "+priority.selected_brands;
+    $("priorityNew").textContent=formatter.format(priority.new_unique_rows);
+    const holder=$("priorityBrands");holder.replaceChildren();
+    if(!priority.brands.length){
+      const item=document.createElement("div");
+      item.className="priority-entry volvo";
+      item.textContent="Volvo — ще не розпочато";
+      holder.append(item);
+      $("priorityStatus").textContent="Очікування Volvo";
+    }else{
+      const active=priority.brands.find(x=>x.status==="running");
+      $("priorityStatus").textContent=active ? "Активна: "+active.brand : "Завершено: "+priority.completed_brands;
+      for(const brand of priority.brands){
+        const row=document.createElement("div");row.className="priority-entry"+(brand.brand==="Volvo"?" volvo":"");
+        const title=document.createElement("span");title.className="name";title.textContent=brand.brand;
+        const details=document.createElement("span");details.className="meta-number";
+        details.textContent=(brand.status==="complete"?"Завершено":"У процесі")+" · нових OEM "+formatter.format(brand.inserted_unique);
+        row.append(title,details);holder.append(row);
+      }
+    }
+  }
   $("remaining").textContent=formatter.format(Math.max(0,total-a.processed))+" артикулів";
   $("oemCheckpoint").textContent=formatter.format(o.processed)+" перевірено";
   $("articleTag").textContent=progressClass(a);
