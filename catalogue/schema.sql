@@ -43,3 +43,18 @@ CREATE TABLE IF NOT EXISTS catalogue_import_progress (
   processed BIGINT UNSIGNED NOT NULL DEFAULT 0,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+
+
+-- Priority OEM import: separate, restartable state for each selected brand.
+-- A brand is marked complete ONLY after the source cursor reaches EOF.
+CREATE TABLE IF NOT EXISTS catalogue_oem_brand_progress (
+    brand VARCHAR(64) NOT NULL PRIMARY KEY,
+    manufacturer_id INT UNSIGNED NOT NULL,
+    scanned_in_attempt BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    inserted_unique BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    status VARCHAR(16) NOT NULL DEFAULT 'running',
+    started_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    completed_at TIMESTAMP NULL DEFAULT NULL,
+    INDEX idx_oem_brand_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
