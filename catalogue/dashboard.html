@@ -98,7 +98,7 @@ footer{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;color:
 <section id="diagnostics" class="panel lookup"><div class="jobtitle">Діагностика</div>
 <div class="meta"><div><div class="kicker">API монітора</div><strong id="apiState">—</strong></div><div><div class="kicker">Фізичне місце на диску</div><strong>Поки недоступне</strong></div></div>
 <p class="hint">Показник приблизного розміру MySQL не відображає фактичне заповнення Railway Volume. Перевіряйте його в Railway Metrics.</p></section>
-<div class="notice">Дані з контрольних точок Railway оновлюються кожні 15 секунд. Відсотки розраховано від приблизних 5,09 млн артикулів; реальна кількість може відрізнятися. Швидкість показана тільки після двох успішних опитувань у відкритій вкладці. Час оновлення не підтверджує, що локальний імпортер працює безперервно. Монітор не показує фізичний вільний простір на диску Railway.</div>
+<div class="notice">Дані з контрольних точок Railway оновлюються кожні 15 секунд. Відсотки для артикулів розраховано від точного COUNT(*) локальної бази на момент перевірки: 5 382 176; якщо джерело змінюється, підсумок потрібно перевірити повторно. Швидкість показана тільки після двох успішних опитувань у відкритій вкладці. Час оновлення не підтверджує, що локальний імпортер працює безперервно. Монітор не показує фізичний вільний простір на диску Railway.</div>
 <footer><span>CarPot Catalogue · окреме середовище catalogue-staging</span><span id="refreshed">Оновлення: —</span></footer>
 </main>
 <script>
