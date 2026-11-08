@@ -196,7 +196,7 @@ def import_brand(source,target,brand,mid,index,batch_size,limit_rows,disk_limit,
                     compact = [row["supplierId"],row["DataSupplierArticleNumber"],
                                row["manufacturerId"],row["OENbr"]]
                     spool.write(json.dumps(compact,ensure_ascii=False,
-                                           separators=(",",":"))+"\\n")
+                                           separators=(",",":"))+"\n")
                 source_rows += len(chunk)
                 if spool.tell() > max_spool_mib * 1024 * 1024:
                     raise RuntimeError(
