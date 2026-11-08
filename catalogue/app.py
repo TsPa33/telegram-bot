@@ -68,3 +68,50 @@ def search_oem(number: str = Query(min_length=2, max_length=64), limit: int = Qu
             (number, limit),
         )
         return {"items": cur.fetchall()}
+
+
+@app.get("/api/v1/volvo/article", dependencies=[Depends(authorize)])
+def volvo_article_lookup(
+    supplier_id: int = Query(ge=1, le=65535),
+    article_number: str = Query(min_length=1, max_length=32),
+):
+    """Read-only OEM enrichment by exact verified supplier ID + article key.
+
+    Does not assert fitment, does not fetch images, and never creates stock.
+    The supplier-to-brand mapping must be validated before Warehouse calls it.
+    """
+    article_number = article_number.strip()
+    if not article_number or any(ch in article_number for ch in ("\x00", "\n", "\r")):
+        raise HTTPException(422, detail="Invalid article number")
+    with db() as conn, conn.cursor() as cur:
+        cur.execute(
+            """SELECT supplier_id, article_number, name_uk, name_source
+               FROM catalogue_parts
+               WHERE supplier_id=%s AND article_number=%s
+               LIMIT 1""",
+            (supplier_id, article_number),
+        )
+        part = cur.fetchone()
+        cur.execute(
+            """SELECT oem_number
+               FROM catalogue_oem
+               WHERE supplier_id=%s AND article_number=%s
+                 AND oem_manufacturer_id=120
+               ORDER BY oem_number LIMIT 101""",
+            (supplier_id, article_number),
+        )
+        rows = cur.fetchall()
+    return {
+        "source": "carpot-catalogue",
+        "vehicle_manufacturer": "Volvo",
+        "vehicle_manufacturer_id": 120,
+        "supplier_id": supplier_id,
+        "article_number": article_number,
+        "part": part,
+        "oem_numbers": [row["oem_number"] for row in rows[:100]],
+        "oem_numbers_truncated": len(rows) > 100,
+        "fitment_verified": False,
+        "vehicle_modification": None,
+        "photo": None,
+        "note": "OEM cross references do not prove compatibility with a given K-Type/VIN.",
+    }
