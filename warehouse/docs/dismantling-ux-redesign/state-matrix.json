@@ -1,0 +1,198 @@
+[
+  {
+    "scenario": "empty",
+    "width": 1440,
+    "js_errors": [],
+    "writes": 0,
+    "simulated_paid": 0
+  },
+  {
+    "scenario": "selected",
+    "width": 1440,
+    "js_errors": [],
+    "writes": 0,
+    "simulated_paid": 0
+  },
+  {
+    "scenario": "partial",
+    "width": 1440,
+    "js_errors": [],
+    "writes": 0,
+    "simulated_paid": 0
+  },
+  {
+    "scenario": "complete",
+    "width": 1440,
+    "js_errors": [],
+    "writes": 0,
+    "simulated_paid": 0
+  },
+  {
+    "scenario": "saved_pp",
+    "width": 1440,
+    "js_errors": [],
+    "writes": 0,
+    "simulated_paid": 0
+  },
+  {
+    "scenario": "unavailable",
+    "width": 1440,
+    "js_errors": [],
+    "writes": 0,
+    "simulated_paid": 0
+  },
+  {
+    "scenario": "tokens",
+    "width": 1440,
+    "js_errors": [],
+    "writes": 2,
+    "simulated_paid": 1
+  },
+  {
+    "scenario": "base",
+    "width": 1440,
+    "js_errors": [],
+    "writes": 0,
+    "simulated_paid": 0
+  },
+  {
+    "scenario": "saved",
+    "width": 1440,
+    "js_errors": [],
+    "writes": 0,
+    "simulated_paid": 0
+  },
+  {
+    "scenario": "stock",
+    "width": 1440,
+    "js_errors": [],
+    "writes": 0,
+    "simulated_paid": 0
+  },
+  {
+    "scenario": "stale",
+    "width": 1440,
+    "js_errors": [],
+    "writes": 0,
+    "simulated_paid": 0
+  },
+  {
+    "scenario": "limited",
+    "width": 1440,
+    "js_errors": [],
+    "writes": 0,
+    "simulated_paid": 0
+  },
+  {
+    "scenario": "limited_saved",
+    "width": 1440,
+    "js_errors": [],
+    "writes": 0,
+    "simulated_paid": 0
+  },
+  {
+    "scenario": "taxonomy",
+    "width": 1440,
+    "js_errors": [],
+    "writes": 0,
+    "simulated_paid": 0
+  },
+  {
+    "scenario": "empty",
+    "width": 390,
+    "js_errors": [],
+    "writes": 0,
+    "simulated_paid": 0
+  },
+  {
+    "scenario": "selected",
+    "width": 390,
+    "js_errors": [],
+    "writes": 0,
+    "simulated_paid": 0
+  },
+  {
+    "scenario": "partial",
+    "width": 390,
+    "js_errors": [],
+    "writes": 0,
+    "simulated_paid": 0
+  },
+  {
+    "scenario": "complete",
+    "width": 390,
+    "js_errors": [],
+    "writes": 0,
+    "simulated_paid": 0
+  },
+  {
+    "scenario": "saved_pp",
+    "width": 390,
+    "js_errors": [],
+    "writes": 0,
+    "simulated_paid": 0
+  },
+  {
+    "scenario": "unavailable",
+    "width": 390,
+    "js_errors": [],
+    "writes": 0,
+    "simulated_paid": 0
+  },
+  {
+    "scenario": "tokens",
+    "width": 390,
+    "js_errors": [],
+    "writes": 2,
+    "simulated_paid": 1
+  },
+  {
+    "scenario": "base",
+    "width": 390,
+    "js_errors": [],
+    "writes": 0,
+    "simulated_paid": 0
+  },
+  {
+    "scenario": "saved",
+    "width": 390,
+    "js_errors": [],
+    "writes": 0,
+    "simulated_paid": 0
+  },
+  {
+    "scenario": "stock",
+    "width": 390,
+    "js_errors": [],
+    "writes": 0,
+    "simulated_paid": 0
+  },
+  {
+    "scenario": "stale",
+    "width": 390,
+    "js_errors": [],
+    "writes": 0,
+    "simulated_paid": 0
+  },
+  {
+    "scenario": "limited",
+    "width": 390,
+    "js_errors": [],
+    "writes": 0,
+    "simulated_paid": 0
+  },
+  {
+    "scenario": "limited_saved",
+    "width": 390,
+    "js_errors": [],
+    "writes": 0,
+    "simulated_paid": 0
+  },
+  {
+    "scenario": "taxonomy",
+    "width": 390,
+    "js_errors": [],
+    "writes": 0,
+    "simulated_paid": 0
+  }
+]

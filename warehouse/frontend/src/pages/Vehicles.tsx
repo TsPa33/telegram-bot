@@ -170,7 +170,7 @@ function VehicleDetail({
   const history=useLoad(()=>tab==='history'&&can('audit.view')?api(`/audit?vehicle_id=${v.id}&limit=50`):Promise.resolve(null),[v.id,tab]);
   return (
     <>
-      <header className="r1144-donor-header">
+      <header className={"r1144-donor-header"+(["parts","partSettings"].includes(tab)?" uf-car-context":"")}>
        <VehicleDonorPhotos vehicle={v} mode="hero" revision={photoRevision} onChanged={()=>setPhotoRevision(i=>i+1)}/>
        <div className="r1144-donor-main">
         <div className="r1144-donor-title"><h1>{v.manufacturer} {v.model} · {v.year} · №{v.number??'—'}</h1><span className="r1144-status">{labels[v.status]||'Не уточнено'}</span></div>
@@ -180,11 +180,11 @@ function VehicleDetail({
          <span><ClipboardCheck size={16}/> VIN: {v.vin||'Не вказано'}</span>
         </div>
         <div className="r1144-donor-actions">
-         <button type="button" className="primary" onClick={onInventory}><Package size={16}/> Склад запчастин</button>
+         <button type="button" data-action="inventory" className={["parts","partSettings"].includes(tab)?"secondary":"primary"} onClick={onInventory}><Package size={16}/> Склад запчастин</button>
          <button type="button" onClick={()=>setTab('info')}><Info size={15}/> Картка авто</button>
          <button type="button" onClick={()=>setTab('photos')}><Images size={15}/> Фото</button>
          {can('parts.view_cost')&&<button type="button" onClick={()=>setTab('finance')}><Coins size={15}/> Фінанси</button>}
-         {!v.archived&&<Permit permission="vehicles.edit"><button type="button" onClick={onEdit}><Pencil size={15}/> Редагувати авто</button></Permit>}
+         {!v.archived&&<Permit permission="vehicles.edit"><button type="button" data-action="edit-vehicle" onClick={onEdit}><Pencil size={15}/> Редагувати авто</button></Permit>}
         </div>
        </div>
       </header>
@@ -196,7 +196,7 @@ function VehicleDetail({
        ].map(([key,label])=><button type="button" key={key} className={tab===key?'active':''} aria-current={tab===key?'page':undefined} onClick={()=>setTab(key)}>{label}</button>)}
       </nav>
       <div hidden={tab!=='parts'&&tab!=='partSettings'}>
-      {legacyVehicle!==v.id&&can('catalog.view')&&can('vehicles.view')&&<ManagedDismantling key={v.id} vehicle={v} onSaved={onSaved} view={tab==='partSettings'?'settings':'operations'}/>}
+      {legacyVehicle!==v.id&&can('catalog.view')&&can('vehicles.view')&&<ManagedDismantling key={v.id} vehicle={v} onSaved={onSaved} onModify={onEdit} view={tab==='partSettings'?'settings':'operations'}/>}
       <details hidden={tab!=='parts'} className="vehicle-secondary"><summary>Попередній довідник та джерела</summary>{can('catalog.view')&&can('vehicles.view')&&<AletoCatalogue key={v.id} vehicleId={v.id}/>}{canCatalog&&<DismantlingCatalogImport onImported={()=>{onRefresh();}}/>}
       {canCatalog&&(legacyVehicle===v.id?<><button onClick={()=>setLegacyVehicle('')}>До основного списку деталей</button><Dismantling vehicle={v} onChange={() => {reloadAnalytics();onRefresh();}} onInventory={onInventory} /></>:!v.dismantling_v3?.revision&&<button className="secondary" onClick={()=>setLegacyVehicle(v.id)}>Відкрити попередній план</button>)}
       </details>

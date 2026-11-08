@@ -57,12 +57,21 @@ const icons = [
 ];
 const root = "/plan-parts",
   query = (v: unknown) => encodeURIComponent(String(v));
+export type DismantlingFlow = {
+  loading: boolean; busy: boolean; error: string; notice: string;
+  saved: boolean; categories: Row[]; matches: Row[]; workspace: Row | null;
+  modification: ReturnType<typeof vehicleModificationLabel>;
+  find: () => void; choose: (id: number) => Promise<void>;
+  start: () => Promise<void>; confirmation: ReactNode; board: ReactNode;
+};
 export default function PlanPartsDonorAnalysis({
   vehicle,
   onSaved,
   onLoaded,
   onCatalogueReady,
   setupOnly = false,
+  renderFlow,
+  onBoardProgress,
   view = "operations",
 }: {
   vehicle: Row;
@@ -71,6 +80,8 @@ export default function PlanPartsDonorAnalysis({
   onLoaded?: (row: Row) => void;
   onCatalogueReady?: () => void;
   setupOnly?: boolean;
+  renderFlow?: (flow: DismantlingFlow) => ReactNode;
+  onBoardProgress?: (active:boolean)=>void;
   view?: "operations" | "settings";
 }) {
   const [translationKick, setTranslationKick] = useState(0);
@@ -114,6 +125,14 @@ export default function PlanPartsDonorAnalysis({
   const [offerLoading, setOfferLoading] = useState<number | null>(null);
   const offerTicket = useRef(0);
   const managerRef = useRef<HTMLElement | null>(null);
+  const confirmationRef=useRef<HTMLDivElement|null>(null);
+  useEffect(()=>{
+    if(!renderFlow||!quote)return;
+    const before=document.activeElement;
+    confirmationRef.current?.focus();
+    confirmationRef.current?.scrollIntoView({block:"nearest"});
+    return()=>{if(before instanceof HTMLElement&&before.isConnected)before.focus();};
+  },[quote]);
   useEffect(() => {
     setOfferLimit(100);
     if (active !== null)
@@ -512,6 +531,8 @@ export default function PlanPartsDonorAnalysis({
   const paidConfirmation = quote && (
     <div
       role="alertdialog"
+      ref={confirmationRef}
+      tabIndex={-1}
       aria-label="Підтвердження витрати токенів"
       className="vp-confirm"
     >
@@ -562,6 +583,7 @@ export default function PlanPartsDonorAnalysis({
         </p>
       )}
       <button
+        className={renderFlow ? "primary" : undefined}
         disabled={
           busy ||
           !policy.terms_confirmed ||
@@ -579,6 +601,57 @@ export default function PlanPartsDonorAnalysis({
       </button>
     </div>
   );
+  const board = categories.length > 0 ? (<DismantlingBoard
+          vehicle={vehicle}
+          source="professional"
+          view={view}
+          controls={null}
+          integrated={!!renderFlow}
+          onProgress={onBoardProgress}
+          onModify={() => setTech((v) => !v)}
+          onUpdate={startCatalogue}
+          revision={String(boardRevision)}
+          translationKick={translationKick}
+          onTranslationConsumed={() => setTranslationKick(0)}
+          onOpenPart={async (id) => {
+            try {
+              setDetail(await api("/parts/" + id));
+            } catch (e) {
+              setError((e as Error).message);
+            }
+          }}
+        />) : null;
+  const partDialog = (detail && (
+        <Modal
+          className="r1-part-dialog"
+          title={detail.name}
+          onClose={() => setDetail(null)}
+        >
+          <PartDetail
+            part={detail}
+            onSaved={(r) => {
+              setDetail(r);
+              setBoardRevision((n) => n + 1);
+              window.dispatchEvent(new Event("warehouse:inventory-changed"));
+            }}
+            onChanged={() => {
+              void api("/parts/" + detail.id).then(setDetail);
+              setBoardRevision((n) => n + 1);
+              window.dispatchEvent(new Event("warehouse:inventory-changed"));
+            }}
+          />
+        </Modal>
+      ));
+  async function chooseModification(id: number) {
+    await run(async g => {
+      if (vehicle.ktype && id !== Number(vehicle.ktype) && !window.confirm("Змінити комплектацію? Попередній список і складські дані залишаться збереженими.")) return;
+      await api(root+"/vehicle-modification/select?vehicle_id="+query(vehicle.id),"POST",{ktype:id,confirm_change:true});
+      const donor=await api("/vehicles/"+query(vehicle.id));
+      if(g===epoch.current)onSaved(donor);
+    });
+  }
+  if(renderFlow) return <>{renderFlow({loading,busy,error,notice,saved:categories.length>0,categories,matches,workspace,modification,
+    find:()=>prepare("ktype"),choose:chooseModification,start:startCatalogue,confirmation:paidConfirmation,board})}{partDialog}</>;
   return (
     <section className="vp-workspace" aria-label="Розбір і запчастини">
       <div className="vp-topline">
@@ -767,47 +840,8 @@ export default function PlanPartsDonorAnalysis({
         </div>
       )}
       {quote?.resource !== "articles" && paidConfirmation}
-      {categories.length > 0 && (
-        <DismantlingBoard
-          vehicle={vehicle}
-          source="professional"
-          view={view}
-          controls={null}
-          onModify={() => setTech((v) => !v)}
-          onUpdate={startCatalogue}
-          revision={String(boardRevision)}
-          translationKick={translationKick}
-          onTranslationConsumed={() => setTranslationKick(0)}
-          onOpenPart={async (id) => {
-            try {
-              setDetail(await api("/parts/" + id));
-            } catch (e) {
-              setError((e as Error).message);
-            }
-          }}
-        />
-      )}
-      {detail && (
-        <Modal
-          className="r1-part-dialog"
-          title={detail.name}
-          onClose={() => setDetail(null)}
-        >
-          <PartDetail
-            part={detail}
-            onSaved={(r) => {
-              setDetail(r);
-              setBoardRevision((n) => n + 1);
-              window.dispatchEvent(new Event("warehouse:inventory-changed"));
-            }}
-            onChanged={() => {
-              void api("/parts/" + detail.id).then(setDetail);
-              setBoardRevision((n) => n + 1);
-              window.dispatchEvent(new Event("warehouse:inventory-changed"));
-            }}
-          />
-        </Modal>
-      )}
+      {board}
+      {partDialog}
       {legacyLayout && categories.length > 0 && (
         <div className="vp-layout">
           <div className="vp-main">

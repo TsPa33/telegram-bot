@@ -1,0 +1,14 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import ts from 'typescript';
+const source=fs.readFileSync(new URL('../src/dismantlingFlow.ts',import.meta.url),'utf8');
+const compiled=ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}}).outputText;
+const {flowStep,verifiedOption,nextChoice,supportedModel,vehicleFacts,modificationTitle,userMessage}=await import('data:text/javascript;base64,'+Buffer.from(compiled).toString('base64'));
+for(const [saved,prepared,expected] of [[false,false,1],[false,true,2],[true,false,3],[true,true,3]])test(`step saved=${saved}, prepared=${prepared}`,()=>assert.equal(flowStep(saved,prepared),expected));
+for(const [row,result] of [[undefined,false],[{coverage_verified:false,taxonomy_status:'reviewed'},false],[{coverage_verified:true,taxonomy_status:'draft'},false],[{coverage:'complete_verified'},false],[{coverage_verified:true,taxonomy_status:'reviewed'},true]])test('coverage and taxonomy gates '+JSON.stringify(row),()=>{assert.equal(verifiedOption(row),result);assert.equal(nextChoice(row),result?'catalogue':'base')});
+test('year/make alone never infer source generation or K-Type',()=>{assert.equal(supportedModel({model:'XC90',year:2018}),'');assert.equal(supportedModel({model:'XC90 II'}),'13084');assert.equal(supportedModel({model:'XC40'}),'')});
+test('header uses saved facts only',()=>{const value=vehicleFacts({manufacturer:'Volvo',model:'XC90',year:2018,drive_type:'AWD'});assert.equal(value,'Volvo · XC90 · 2018 · AWD');assert(!value.includes('бензин'))});
+test('modification labels disambiguate without source IDs',()=>{const value=modificationTitle({source_modification_id:107555,modification:{description:'T6 AWD'}},1);assert.equal(value,'T6 AWD · варіант 2');assert(!value.includes('107555'));assert(!modificationTitle({modification:{}},0).includes('[object Object]'))});
+test('token failure preserves actionable user feedback',()=>assert.match(userMessage('Недостатньо токенів API'),/безкоштовний/));
+test('technical failures are not dumped into the main flow',()=>assert(!/snapshot|SHA|PostgreSQL/.test(userMessage('snapshot SHA mismatch PostgreSQL'))));

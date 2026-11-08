@@ -51,8 +51,14 @@ export default function DismantlingBoard({
   revision,
   onTranslationConsumed,
   view = "operations",
+  integrated = false,
+  onProgress,
+  blockedReason = "",
 }: {
   vehicle: Row;
+  integrated?: boolean;
+  onProgress?: (active:boolean)=>void;
+  blockedReason?: string;
   view?: "operations" | "settings";
   source: "base" | "professional" | "catalogue";
   controls: ReactNode;
@@ -560,9 +566,10 @@ export default function DismantlingBoard({
       }
     });
   }
-  const canAdd = (_row: Row) => (source !== "catalogue" || _row.kind === "part") && can("inventory.create") && (source === "professional" || can("inventory.adjust_quantity"));
+  const canAdd = (_row: Row) => !blockedReason && (source !== "catalogue" || _row.kind === "part") && can("inventory.create") && (source === "professional" || can("inventory.adjust_quantity"));
   const actionKeys = selected.length ? selected : [],
-    canManage = can("dismantling.manage") && !vehicle.archived;
+    canManage = can("dismantling.manage") && !vehicle.archived && !blockedReason;
+  useEffect(()=>{if(data)onProgress?.(data.items.some((r:Row)=>["dismantled","received","sold"].includes(r.state)));},[data,onProgress]);
   if (!data)
     return <p role="status">{error || "Відкриваємо збережений список…"}</p>;
   const previewRow=rows.find(r=>r.key===previewKey),previewStock=previewRow&&(partFor(previewRow)||previewRow.parts[0]);
@@ -570,12 +577,18 @@ export default function DismantlingBoard({
   const previewSaved=()=>{void load(epoch.current);window.dispatchEvent(new Event('warehouse:inventory-changed'));};
   return (
     <section
-      className="wd-board"
+      className={"wd-board"+(integrated?" wd-integrated":"")}
       data-view={view}
       aria-label={
         settings ? "Налаштування деталей автомобіля" : "Єдиний план розбору"
       }
     >
+      {integrated && <div className="uf-metrics" aria-label="Показники розбору">{[
+        ["У плані",rows.length],
+        ["Розібрано",rows.filter(r=>["dismantled","received","sold"].includes(r.state)).length],
+        ["На складі",rows.filter(r=>r.parts.some((p:Row)=>p.quantity>0&&!p.archived)).length],
+        ["Потребує уваги",rows.filter(r=>r.kind==="review"||r.decision_review||r.context_matches===false||!r.translated).length],
+      ].map(([label,value])=><div key={label}><strong>{value}</strong><span>{label}</span></div>)}</div>}
       {error && (
         <p className="wd-error" role="alert">
           {error.replace(/plan\.parts/gi, "каталог")}
@@ -588,7 +601,7 @@ export default function DismantlingBoard({
       )}
       {!settings && (
         <nav className="wd-categories" aria-label="Категорії CarPot">
-          {["", ...categories].map((c) => {
+          {["", ...categories].filter(c=>!integrated||!c||c===category||categoryRows.some(r=>displayCategory(r)===c)).map((c) => {
             const Icon =
               categoryIcons.find((s) => s.name === c)?.icon || Package;
             return (
@@ -613,7 +626,7 @@ export default function DismantlingBoard({
           })}
         </nav>
       )}
-      <div
+      {(!integrated || selected.length>0) && <div
         className="wd-actionbar"
         role="group"
         aria-label={settings ? "Вибір для налаштування" : "Дії з вибраними"}
@@ -690,7 +703,7 @@ export default function DismantlingBoard({
         <button disabled={!selected.length} onClick={() => setSelected([])}>
           Зняти вибір
         </button>
-      </div>
+      </div>}
       <div className={"wd-layout part-preview-layout"+(!settings&&previewRow?" has-preview":"")}>
         <section className="wd-list">
           <div className="wd-list-heading">
@@ -1179,7 +1192,7 @@ export default function DismantlingBoard({
                                             {a.part_name || "Назву не надано"}
                                           </small>
                                           {a.oem_numbers?.length > 0 && <small>OEM-кроси: {a.oem_numbers.join(", ")}</small>}
-                                          {source === "catalogue" && p && !p.oem_number && can("inventory.edit") && a.oem_numbers?.map((number:string)=><button key={number} disabled={busy} onClick={()=>void assignCatalogueOem(row,a,number)}>Призначити OEM {number}</button>)}
+                                          {source === "catalogue" && p && !p.oem_number && can("inventory.edit") && a.oem_numbers?.map((number:string)=><button key={number} disabled={busy||!!blockedReason} onClick={()=>void assignCatalogueOem(row,a,number)}>Призначити OEM {number}</button>)}
                                           {Object.entries(
                                             a.characteristics || {},
                                           )
@@ -1193,7 +1206,7 @@ export default function DismantlingBoard({
                                         <button
                                           disabled={
                                             busy ||
-                                            !p ||
+                                            !p || !!blockedReason ||
                                             row.context_matches === false
                                           }
                                           onClick={() => void assign(row, a)}

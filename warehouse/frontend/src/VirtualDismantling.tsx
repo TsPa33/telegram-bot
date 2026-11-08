@@ -5,10 +5,12 @@ import UnifiedCatalogue from "./UnifiedCatalogue";
 export default function VirtualDismantling({
   vehicle,
   onSaved,
+  onModify,
   view = "operations",
 }: {
   vehicle: Row;
   onSaved: (row: Row) => void;
+  onModify?: () => void;
   view?: "operations" | "settings";
 }) {
   return (
@@ -16,6 +18,7 @@ export default function VirtualDismantling({
       key={String(vehicle.id)}
       vehicle={vehicle}
       onSaved={onSaved}
+      onModify={onModify}
       view={view}
     />
   );

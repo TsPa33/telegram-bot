@@ -94,4 +94,4 @@ export function LegacyManagedDismantling({vehicle,onSaved}:{vehicle:Row;onSaved:
  </section>;
 }
 
-export default function ManagedDismantling(props:{vehicle:Row;onSaved:(row:Row)=>void;view?:'operations'|'settings'}){return <VirtualDismantling {...props}/>;}
+export default function ManagedDismantling(props:{vehicle:Row;onSaved:(row:Row)=>void;onModify?:()=>void;view?:'operations'|'settings'}){return <VirtualDismantling {...props}/>;}
