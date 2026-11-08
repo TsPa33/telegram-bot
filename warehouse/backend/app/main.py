@@ -129,3 +129,5 @@ app.include_router(import_jobs_router)
 
 from app.api.dismantling_workspace import router as dismantling_workspace_router
 app.include_router(dismantling_workspace_router)
+from app.api.billing import router as billing_router
+app.include_router(billing_router)

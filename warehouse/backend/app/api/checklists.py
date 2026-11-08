@@ -36,7 +36,12 @@ def get_checklist(id: str, db: DB, who: Auth, offset: int = Query(0, ge=0),
 
 @router.post("/{id}/plan-parts-checklist")
 def generate_checklist(id: str, db: DB, who: Auth,
-                       client: Annotated[PlanPartsClient, Depends(plan_parts_client)], refresh: bool = False):
+                       client: Annotated[PlanPartsClient, Depends(plan_parts_client)], refresh: bool = False, confirm_credit: bool = False):
+    from app.services import billing
+    from app.models import Vehicle
+    donor=db.get(Vehicle,id)
+    if billing.enabled() and not billing.exempt(who.workspace_account_id) and donor and donor.account_id==who.workspace_account_id and not donor.checklist_synced_at and not confirm_credit:
+        raise HTTPException(409,'Підтвердіть використання 1 розбору')
     try:
         result = checklists.generate(db, id, who.workspace_account_id, client, refresh=refresh)
     except PlanPartsError as exc:

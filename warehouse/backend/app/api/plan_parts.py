@@ -168,6 +168,7 @@ def vehicle_categories(
     db: Annotated[Session, Depends(get_db)],
     vehicle_id: str = Query(min_length=1, max_length=80),
     ktype: int = Query(gt=0),
+    confirm_credit: bool = False,
 ):
     donor = _owned_paid_vehicle(who, db, vehicle_id)
     if donor.ktype != ktype:
@@ -178,12 +179,18 @@ def vehicle_categories(
         return {"ktype": ktype, "categories": [row.model_dump() for row in rows],
                 "category_count": len(rows), "article_records": sum(row.article_count for row in rows),
                 "from_saved": True, "message": "Збережений каталог автомобіля, без списання токенів."}
+    from app.services import billing
+    if billing.enabled() and not billing.exempt(who.workspace_account_id) and not confirm_credit:
+        raise HTTPException(409,'Підтвердіть використання 1 розбору після успішного збереження каталогу')
     try:
-        rows = client.categories(who.workspace_account_id, ktype)
+        if billing.enabled() and not billing.exempt(who.workspace_account_id):
+            checklists.generate(db,vehicle_id,who.workspace_account_id,client)
+            rows=[CatalogPartType(pt_id=x.pt_id,name=x.name_en,article_count=x.article_count) for x in checklists.stored_categories(db,vehicle_id,who.workspace_account_id,ktype)]
+        else:
+            rows=client.categories(who.workspace_account_id,ktype)
+            checklists.generate(db,vehicle_id,who.workspace_account_id,client,preloaded_rows=rows)
     except PlanPartsError as exc:
         _handle_provider(exc)
-    # Persist a donor-owned potential-parts checklist; never create physical stock.
-    checklists.generate(db, vehicle_id, who.workspace_account_id, client, preloaded_rows=rows)
     db.commit()
     return {"ktype": ktype, "categories": [row.model_dump() for row in rows],
             "category_count": len(rows), "article_records": sum(row.article_count for row in rows),
@@ -212,7 +219,7 @@ def recover_vehicle_categories(
     except PlanPartsError as exc:
         _handle_provider(exc)
     # Explicit free restoration also persists the previously received list.
-    checklists.generate(db,vehicle_id,who.workspace_account_id,client,preloaded_rows=rows)
+    checklists.generate(db,vehicle_id,who.workspace_account_id,client,preloaded_rows=rows,charge=False)
     db.commit()
     return {"ktype": ktype, "categories": [row.model_dump() for row in rows],
             "from_cache": True, "category_count": len(rows)}

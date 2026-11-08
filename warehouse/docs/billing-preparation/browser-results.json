@@ -1,0 +1,10 @@
+{
+  "provider_checkout_disabled": true,
+  "inactive_access_preserved": true,
+  "server_plans": true,
+  "empty_actual_history": true,
+  "day_night": true,
+  "desktop_mobile": true,
+  "js_errors": [],
+  "business_writes": 0
+}

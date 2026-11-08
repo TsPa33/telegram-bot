@@ -1,3 +1,4 @@
+import Billing from "../Billing";
 import {useRef,useState,type FormEvent} from 'react';
 import {Link} from 'react-router-dom';
 import {
@@ -104,6 +105,7 @@ export default function Settings({user}:{user:Row}){
       <span className="r123-role"><ShieldCheck size={15}/>{roleLabel(user.role)}</span>
     </div>
 
+    <Billing/>
     <div className="r123-grid">
       <section className="r123-panel" aria-labelledby="r123-profile-heading">
         <div className="r123-panel-heading">

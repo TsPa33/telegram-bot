@@ -1,0 +1,5 @@
+import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';
+const read=p=>fs.readFileSync(new URL('../src/'+p,import.meta.url),'utf8');
+test('billing uses server catalogue and has no active checkout submission',()=>{const s=read('Billing.tsx');assert(s.includes('Object.entries(data.plans'));assert(s.includes('Object.entries(data.packs'));assert(s.includes('disabled={!data.checkout_available}'));assert(!s.includes("'POST'"));assert(!s.includes('public_key'));});
+test('billing history and status are isolated by active identity scope',()=>{const s=read('Billing.tsx');assert(s.includes('who?.workspace_account_id'));assert(s.includes('data._scope===scope'));assert(s.includes('history.data?._scope===scope'));});
+test('internal credit confirmation remains separate from provider tokens',()=>{const s=read('PlanPartsDonorAnalysis.tsx');assert(s.includes('1 розбір CarPot'));assert(s.includes('Це окремо від токенів зовнішнього API'));assert(s.includes('confirm_credit=true'));});

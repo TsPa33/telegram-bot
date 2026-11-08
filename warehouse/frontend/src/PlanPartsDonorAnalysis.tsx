@@ -82,6 +82,8 @@ export default function PlanPartsDonorAnalysis({
     epoch = useRef(0),
     lock = useRef(false),
     stop = useRef(false);
+  const [billingStatus,setBillingStatus]=useState<Row|null>(null);
+  useEffect(()=>{let active=true;setBillingStatus(null);api('/billing/status').then(r=>{if(active)setBillingStatus(r);}).catch(()=>{});return()=>{active=false;};},[scope,who?.workspace_account_id]);
   const [workspace, setWorkspace] = useState<Row | null>(null),
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
@@ -395,7 +397,8 @@ export default function PlanPartsDonorAnalysis({
             requestKey +
             "&confirm_paid=true&max_tokens=" +
             unit +
-            (intent.force ? "&force_paid=true" : ""),
+            (intent.force ? "&force_paid=true" : "") +
+            (intent.resource === "categories" && billingStatus?.enabled && !billingStatus.demo_access ? "&confirm_credit=true" : ""),
           "POST",
         );
         sessionStorage.removeItem(key);
@@ -519,6 +522,7 @@ export default function PlanPartsDonorAnalysis({
             ? "Розібрати авто на запчастини"
             : "Отримати артикули"}
       </strong>
+      {quote.resource==='categories'&&billingStatus?.enabled&&!billingStatus.demo_access&&<p>Після першого успішного збереження повного каталогу буде використано 1 розбір CarPot. Це окремо від токенів зовнішнього API. Повторне відкриття збереженого каталогу — без списання.</p>}
       {priceQuote(
         quote.cost,
         quote.resource === "articles" ? quote.ids.length : 1,

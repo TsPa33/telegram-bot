@@ -377,3 +377,4 @@ from app.models.plan_parts_receipt import PlanPartsArticleReceipt  # noqa: E402,
 from app.models.plan_parts_response import PlanPartsResponse  # noqa: E402,F401
 from app.models.dismantling_ui import DismantlingAnnotation,PartNameTranslation  # noqa: E402,F401
 from app.models.source_type_mapping import SourceTypeMapping  # noqa: E402,F401
+from app.models.billing import WorkspaceSubscription,BillingPayment,DismantlingCredit,DismantlingUsage,BillingEvent  # noqa: E402,F401

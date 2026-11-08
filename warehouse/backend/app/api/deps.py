@@ -56,5 +56,10 @@ def identity(request:Request,db:DBSession=Depends(get_db),body:dict=Depends(perm
         raise HTTPException(403,'Спочатку змініть тимчасовий пароль')
     require_permission(who,*route_permissions(request.method,path,body));check_fields(who,path,body)
     db.info.update(actor_id=user.id,workspace_account_id=workspace,permissions=who.permissions)
+    from app.services import billing
+    read_post=path in ('/api/v1/pricing/guidance',) or path.endswith('/categories/recover') or path.endswith('/articles/recover')
+    security_write=path in ('/api/v1/auth/logout','/api/v1/auth/password') or (path.startswith('/api/v1/team/') and (body.get('is_active') is False or path.endswith('/reset-password')))
+    if request.method not in ('GET','HEAD','OPTIONS') and not read_post and not security_write and not path.startswith('/api/v1/billing/'):
+        billing.require_active(db,workspace)
     request.state.identity=who
     return who

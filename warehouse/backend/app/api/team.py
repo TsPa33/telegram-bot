@@ -75,6 +75,8 @@ def summary(db:DB,who:Auth):
 def create(data:CreateEmployee,db:DB,who:Auth):
     team.require_creation_enabled()
     team.authorize_target(who,data.role,data.permissions)
+    from app.services.billing import employee_limit
+    employee_limit(db,who.workspace_account_id)
     row=Account(name=data.name,email=data.email,password_hash=auth.hasher.hash(data.password),workspace_account_id=who.workspace_account_id,role=data.role,permissions=sorted(set(data.permissions)),must_change_password=True)
     db.add(row);db.flush();team.event(db,who,row,'employee_created',{'role':row.role,'permissions':row.permissions});db.commit()
     return team.user_info(row)
@@ -87,6 +89,9 @@ def update(id:str,data:UpdateEmployee,db:DB,who:Auth):
     # Reactivation restores effective access, so all retained permissions are grants.
     grants=data.permissions if who.user.role=='DIRECTOR' or (data.is_active and not row.is_active) else sorted(set(data.permissions)-set(row.permissions))
     team.authorize_target(who,data.role,grants)
+    if data.is_active and not row.is_active:
+        from app.services.billing import employee_limit
+        employee_limit(db,who.workspace_account_id,row.id)
     before={'name':row.name,'role':row.role,'permissions':row.permissions,'is_active':row.is_active}
     row.name=data.name;row.role=data.role;row.permissions=sorted(set(data.permissions));row.is_active=data.is_active
     if not row.is_active:team.revoke_sessions(db,row.id)

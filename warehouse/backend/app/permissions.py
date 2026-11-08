@@ -33,6 +33,7 @@ def route_permissions(method,path,body):
         return []  # Admin endpoints independently require the platform allowlist.
     if path=='/catalogue' or path.startswith('/catalogue/'):
         return ['catalog.view']
+    if path.startswith('/billing/') :return [] # Owner checks are inside each financial route.
     if path.startswith('/team'):return ['team.view'] if read else ['team.manage_managers']
     if path in ('/parts','/inventory') and read:return ['inventory.view']
     if path=='/parts/bulk-actions':return ['inventory.transfer' if body.get('action')=='transfer' else 'inventory.archive']

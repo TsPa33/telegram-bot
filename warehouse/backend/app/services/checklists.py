@@ -6,7 +6,7 @@ from app.models import Vehicle, VehicleChecklistItem, now
 from app.services.inventory import owned, record, snapshot
 
 
-def generate(db, vehicle_id, account_id, client, *, refresh=False, preloaded_rows=None):
+def _generate(db, vehicle_id, account_id, client, *, refresh=False, preloaded_rows=None):
     # Same lock as vehicle editing: concurrent first imports cannot pay twice,
     # or attach an in-flight result to a subsequently changed K-Type.
     vehicle = owned(db, Vehicle, vehicle_id, account_id, lock=True, active=True)
@@ -94,3 +94,29 @@ def stored_categories(db, vehicle_id, account_id, ktype):
         VehicleChecklistItem.ktype == ktype,
     ).order_by(VehicleChecklistItem.pt_id)))
     return items
+
+
+def generate(db, vehicle_id, account_id, client, *, refresh=False, preloaded_rows=None, charge=True):
+    from app.services import billing
+    if not billing.enabled() or billing.exempt(account_id):
+        return _generate(db,vehicle_id,account_id,client,refresh=refresh,preloaded_rows=preloaded_rows)
+    vehicle=owned(db,Vehicle,vehicle_id,account_id,active=True)
+    saved=bool(stored_categories(db,vehicle_id,account_id,vehicle.ktype)) or (vehicle.checklist_ktype==vehicle.ktype and vehicle.checklist_synced_at is not None)
+    usage_id=None
+    if not saved and charge:
+        usage_id=billing.reserve(db,account_id,vehicle_id,vehicle.ktype)
+    elif not saved:
+        from app.models import DismantlingUsage
+        pending=db.scalar(select(DismantlingUsage).where(DismantlingUsage.workspace_id==account_id,DismantlingUsage.vehicle_id==vehicle_id,DismantlingUsage.ktype==vehicle.ktype,DismantlingUsage.status=='reserved'))
+        usage_id=pending.id if pending else None
+    try:
+        result=_generate(db,vehicle_id,account_id,client,refresh=refresh,preloaded_rows=preloaded_rows)
+        if usage_id and (not result.get('total') or getattr(client,'last_metadata',{}).get('completeness')!='complete'):
+            raise HTTPException(409,'Повноту каталогу не підтверджено. Розбір не списано; відповідь збережена для відновлення.')
+        billing.finalize(db,account_id,usage_id,complete=True)
+        return result
+    except Exception:
+        db.rollback()
+        billing.finalize(db,account_id,usage_id,complete=False)
+        db.commit()
+        raise
