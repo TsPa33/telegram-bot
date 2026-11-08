@@ -18,6 +18,9 @@ h1{font-size:30px;line-height:1.2;margin:9px 0 7px;letter-spacing:-.03em}p{margi
 .notice{padding:18px 21px;border:1px solid var(--line);border-radius:13px;color:var(--muted);font-size:12px;margin-top:15px;background:#0d1721}
 footer{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;color:var(--muted);font-size:12px;margin-top:20px}
 @media(max-width:750px){main{padding:22px 14px 40px}.top{align-items:start}.cards{grid-template-columns:1fr}.jobs{grid-template-columns:1fr}.panel{padding:19px}h1{font-size:25px}.value{font-size:30px}.status{white-space:normal}}
+
+.navbar{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 16px}.navbar a{padding:9px 13px;color:var(--text);background:#162838;border:1px solid var(--line);border-radius:9px;text-decoration:none}
+.lookup{margin-top:16px}.searchform{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}.searchform input,.searchform select{padding:12px;border:1px solid #344657;border-radius:9px;background:#0c1722;color:var(--text);font:inherit}.searchform input{flex:1;min-width:170px}.searchform button{border:0;border-radius:9px;padding:12px 18px;background:var(--accent);font-weight:700;cursor:pointer}.searchform button:disabled{opacity:.5}.results{overflow-x:auto;margin-top:15px}table{width:100%;border-collapse:collapse;font-size:13px}td,th{text-align:left;padding:11px 8px;border-bottom:1px solid var(--line)}th{color:var(--muted)}.hint{color:var(--muted);font-size:12px;margin-top:12px}
 </style>
 </head>
 <body>
@@ -26,7 +29,7 @@ footer{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;color:
  <div><div class="eyebrow">CarPot <span style="color:#95aabc">/ Catalogue</span></div><h1>Монітор імпорту каталогу</h1><p>Контроль передавання даних із локальної MySQL до Railway</p></div>
  <div class="status" id="status"><span class="dot"></span><span id="connection">Підключення…</span></div>
 </header>
-<section class="cards" aria-label="Зведення">
+<nav class="navbar"><a href="#progress">Прогрес</a><a href="#lookup">Пошук запчастин</a><a href="#diagnostics">Діагностика</a></nav><section class="cards" id="progress" aria-label="Зведення">
  <div class="panel"><div class="kicker">Артикулів оброблено</div><div class="value" id="articles">—</div><div class="sub" id="articlesInfo">Контрольна точка Railway</div></div>
  <div class="panel"><div class="kicker">OEM-зв'язків у базі (оцінка)</div><div class="value" id="oemCount">—</div><div class="sub">Оцінка MySQL, може оновлюватися із затримкою</div></div>
  <div class="panel"><div class="kicker">Швидкість артикулів</div><div class="value" id="speed">—</div><div class="sub" id="speedInfo">Записів/с · вимірювання з цієї вкладки</div></div>
@@ -36,7 +39,7 @@ footer{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;color:
   <div class="jobheader"><div class="jobtitle">01 / Артикули</div><span class="tag" id="articleTag">Очікування даних</span></div>
   <div class="counter" id="articlesSecondary">—</div><div class="track"><div class="fill" id="articleFill"></div></div>
   <div class="flex muted"><span id="articlePercent">—</span><span>≈5,09 млн у джерелі</span></div>
-  <div class="meta"><div><div class="kicker">Орієнтовно залишилось</div><strong id="remaining">—</strong></div><div><div class="kicker">Оновлено</div><strong id="articleUpdated">—</strong></div></div>
+  <div class="meta"><div><div class="kicker">Орієнтовно залишилось</div><strong id="remaining">—</strong></div><div><div class="kicker">Оновлено</div><strong id="articleUpdated">—</strong></div><div><div class="kicker">ETA до завершення</div><strong id="eta">—</strong></div><div><div class="kicker">Стан</div><strong id="importState">—</strong></div></div>
  </div>
  <div class="panel">
   <div class="jobheader"><div class="jobtitle">02 / OEM-зв'язки</div><span class="tag" id="oemTag">Очікування даних</span></div>
@@ -45,6 +48,20 @@ footer{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;color:
   <div class="meta"><div><div class="kicker">Контрольна точка OEM</div><strong id="oemCheckpoint">—</strong></div><div><div class="kicker">Оновлено</div><strong id="oemUpdated">—</strong></div></div>
  </div>
 </section>
+
+<section id="lookup" class="panel lookup">
+<div class="jobtitle">Пошук запчастин</div><p>Артикул — пошук за початком номера. OEM — точна відповідність. Результати лише з імпортованого каталогу.</p>
+<form id="searchForm" class="searchform">
+<select id="searchMode" aria-label="Тип пошуку"><option value="article">Артикул</option><option value="oem">OEM</option></select>
+<input id="searchQuery" required minlength="2" maxlength="32" placeholder="Введіть номер" aria-label="Номер запчастини">
+<button id="searchButton" type="submit">Знайти</button>
+</form>
+<div id="searchStatus" class="hint" role="status">Максимум 30 результатів</div>
+<div class="results"><table><thead><tr><th>Артикул</th><th>Постачальник</th><th>Назва</th><th>OEM</th></tr></thead><tbody id="searchResults"><tr><td colspan="4">Введіть номер для пошуку</td></tr></tbody></table></div>
+</section>
+<section id="diagnostics" class="panel lookup"><div class="jobtitle">Діагностика</div>
+<div class="meta"><div><div class="kicker">API монітора</div><strong id="apiState">—</strong></div><div><div class="kicker">Фізичне місце на диску</div><strong>Поки недоступне</strong></div></div>
+<p class="hint">Показник приблизного розміру MySQL не відображає фактичне заповнення Railway Volume. Перевіряйте його в Railway Metrics.</p></section>
 <div class="notice">Дані з контрольних точок Railway оновлюються кожні 15 секунд. Відсотки розраховано від приблизних 5,09 млн артикулів; реальна кількість може відрізнятися. Швидкість показана тільки після двох успішних опитувань у відкритій вкладці. Час оновлення не підтверджує, що локальний імпортер працює безперервно. Монітор не показує фізичний вільний простір на диску Railway.</div>
 <footer><span>CarPot Catalogue · окреме середовище catalogue-staging</span><span id="refreshed">Оновлення: —</span></footer>
 </main>
@@ -53,6 +70,8 @@ footer{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;color:
 const formatter = new Intl.NumberFormat("uk-UA");
 const $ = id => document.getElementById(id);
 let prior = null;
+let history=[];
+let lastMovement=null;
 function timeLabel(stamp) {
  if(!stamp) return "Ще не надходило";
  const date = new Date(stamp);
@@ -75,7 +94,7 @@ async function refresh() {
   $("status").className="status online"; $("connection").textContent="Дані доступні";
   $("articles").textContent=formatter.format(a.processed);
   $("articlesSecondary").textContent=formatter.format(a.processed)+" записів";
-  $("oemCount").textContent=formatter.format(data.approximate_table_rows.oem);
+  $("oemCount").textContent=data.approximate_table_rows.oem>0?formatter.format(data.approximate_table_rows.oem):"Немає оцінки";
   $("articleFill").style.width=aPct.toFixed(2)+"%";
   $("oemFill").style.width=oPct.toFixed(2)+"%";
   $("articlePercent").textContent=aPct.toFixed(1)+"% (оцінка)";
@@ -86,6 +105,7 @@ async function refresh() {
   $("articleTag").textContent=progressClass(a);
   $("oemTag").textContent=progressClass(o);
   $("articleUpdated").textContent=timeLabel(a.updated_at);
+  $("apiState").textContent="Доступний";
   $("oemUpdated").textContent=timeLabel(o.updated_at);
   const current=Date.parse(data.observed_at);
   if(prior && Number.isFinite(current) && current>prior.time && a.processed>=prior.articles) {
@@ -93,14 +113,49 @@ async function refresh() {
     $("speed").textContent=rate>0?formatter.format(Math.round(rate)):"0";
     $("speedInfo").textContent=rate>0?"Записів/с · за останні "+Math.round((current-prior.time)/1000)+" с":"Нових артикулів немає";
   }
+
+  if(prior && a.processed>prior.articles)lastMovement=Date.now();
+  history.push({time:current,count:a.processed});
+  history=history.filter(x=>current-x.time<=300000).slice(-24);
+  const first=history[0],last=history[history.length-1],secs=(last.time-first.time)/1000;
+  const speed5m=secs>10?(last.count-first.count)/secs:0;
+  const recent=lastMovement!==null && Date.now()-lastMovement<120000;
+  $("importState").textContent=recent?"Надходять записи":"Активність не підтверджена";
+  $("eta").textContent=recent && speed5m>0
+    ?formatter.format(Math.ceil(Math.max(0,total-a.processed)/speed5m/60))+" хв (оцінка)"
+    :"Недостатньо даних";
   prior={time:current,articles:a.processed};
   $("refreshed").textContent="Оновлено: "+new Date().toLocaleTimeString("uk-UA");
  } catch(e) {
    $("status").className="status error";
    $("connection").textContent="Немає зв'язку з Railway";
    $("refreshed").textContent="Помилка отримання даних";
+   $("apiState").textContent="Помилка";
  }
 }
+
+document.getElementById("searchForm").addEventListener("submit",async function(ev){
+ ev.preventDefault();
+ const mode=$("searchMode").value,q=$("searchQuery").value.trim();
+ if(q.length<2){$("searchStatus").textContent="Введіть щонайменше 2 символи";return;}
+ $("searchButton").disabled=true;$("searchStatus").textContent="Пошук…";
+ try{
+  const url="/api/v1/monitor-search?mode="+encodeURIComponent(mode)+"&q="+encodeURIComponent(q);
+  const response=await fetch(url,{cache:"no-store",credentials:"same-origin"});
+  if(!response.ok)throw Error("HTTP "+response.status);
+  const data=await response.json();
+  const tbody=$("searchResults");tbody.replaceChildren();
+  $("searchStatus").textContent=data.items.length?"Знайдено: "+data.items.length+" (максимум 30)":"Нічого не знайдено";
+  for(const record of data.items){
+    const tr=document.createElement("tr");
+    const cells=[record.article_number,record.supplier_id,record.name_uk||record.name_source||"Без назви",record.oem_number||"—"];
+    for(const value of cells){const td=document.createElement("td");td.textContent=String(value??"—");tr.append(td);}
+    tbody.append(tr);
+  }
+  if(!data.items.length){const tr=document.createElement("tr"),td=document.createElement("td");td.colSpan=4;td.textContent="Немає результатів";tr.append(td);tbody.append(tr);}
+ }catch(err){$("searchStatus").textContent="Помилка пошуку. Перевірте номер і спробуйте знову";}
+ finally{$("searchButton").disabled=false;}
+});
 refresh();setInterval(refresh,15000);
 </script>
 </body></html>
