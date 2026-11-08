@@ -123,7 +123,7 @@ def import_progress(response: Response):
             "articles": estimated.get("catalogue_parts", 0),
             "oem": estimated.get("catalogue_oem", 0),
         },
-        "estimated_source_articles": 5090000,
+        "estimated_source_articles": 5382176,
         "notes": "Checkpoint totals count source records processed. OEM checkpoint counts article groups scanned, not OEM links. Table rows are MySQL estimates.",
     }
 
