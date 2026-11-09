@@ -27,7 +27,7 @@ class CatalogueAdapter:
         started=time.monotonic()
         try:
             with httpx.Client(transport=self.transport, timeout=httpx.Timeout(5, connect=2), follow_redirects=False, trust_env=False) as client:
-                with client.stream('GET', origin.rstrip('/') + '/api/v1/volvo/' + path,
+                with client.stream('GET', origin.rstrip('/') + '/api/v1/' + (path.removeprefix('global:') if path.startswith('global:') else 'volvo/' + path),
                                    params=params, headers={'X-Catalogue-Key': key}) as response:
                     if response.status_code != 200:
                         raise CatalogueUnavailable('unavailable')
@@ -61,20 +61,26 @@ class CatalogueAdapter:
                 raise CatalogueUnavailable('invalid_identity')
         return result
 
-    def plan(self, source_modification_id):
-        data = self.get(f'modifications/{int(source_modification_id)}/plan')
+    def directory(self, after=0, car_id=None):
+        result=self.get('global:vehicles/directory',{'after':after,**({'car_id':car_id} if car_id is not None else {})})
+        if not isinstance(result,dict) or not isinstance(result.get('items'),list) or len(result['items'])>100:
+            raise CatalogueUnavailable('invalid_directory')
+        return result
+
+    def plan(self, source_modification_id, *, global_source=False):
+        data = self.get(f'global:vehicles/{int(source_modification_id)}/plan' if global_source else f'modifications/{int(source_modification_id)}/plan')
         try:
             payload = data['payload']
             actual = hashlib.sha256(json.dumps(payload,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()).hexdigest()
-            if actual!=data['sha256'] or payload['car_id']!=source_modification_id or payload['manufacturer_id']!=120:
+            if actual!=data['sha256'] or payload['car_id']!=source_modification_id or (not global_source and payload['manufacturer_id']!=120):
                 raise ValueError()
             validate_plan(payload)
         except (ValueError,KeyError,TypeError,AttributeError):
             raise CatalogueUnavailable('invalid_contract') from None
         return data
 
-    def articles(self, car_id, product_id, snapshot_sha):
-        data=self.get(f'modifications/{int(car_id)}/articles',{'product_id':product_id,'snapshot_sha':snapshot_sha})
+    def articles(self, car_id, product_id, snapshot_sha, *, global_source=False):
+        data=self.get(f'global:vehicles/{int(car_id)}/articles' if global_source else f'modifications/{int(car_id)}/articles',{'product_id':product_id,'snapshot_sha':snapshot_sha})
         if not isinstance(data,dict) or data.get('snapshot_sha')!=snapshot_sha or data.get('car_id')!=car_id or data.get('product_id')!=product_id or not isinstance(data.get('items'),list):
             raise CatalogueUnavailable('pinned_snapshot_mismatch')
         items=data['items']
@@ -125,7 +131,7 @@ def saved_state(vehicle):
     return (vehicle.dismantling_v3 or {}).get('unified_catalogue')
 
 
-def persist(db, who, vehicle, envelope):
+def persist(db, who, vehicle, envelope, *, allow_partial=False):
     """Persist potential types only. Existing plan/manual data never overwritten."""
     from sqlalchemy import select
     from fastapi import HTTPException
@@ -145,12 +151,16 @@ def persist(db, who, vehicle, envelope):
     validate_plan(payload)
     before = snapshot(vehicle)
     for row in payload['categories']:
-        root, sub, _ = row['category_path']
+        path=row.get('category_path') or []
+        root=path[0] if len(path)>0 and path[0] else 'Потребує уточнення'
+        sub=path[1] if len(path)>1 and path[1] else 'Потребує уточнення'
+        if not allow_partial and (not row.get('name_uk') or len(path)!=3):
+            raise HTTPException(409,'Категоризація потребує перевірки')
         stable = lambda text: hashlib.sha256(text.encode()).hexdigest()[:24]
         db.add(DismantlingItem(account_id=who.workspace_account_id, vehicle_id=vehicle.id,
             source='carpot.catalogue.v1', catalog_key=f"car:{payload['car_id']}:product:{row['product_id']}",
             category_key=stable(root), category_name=root, subcategory_key=stable(root + '/' + sub),
-            subcategory_name=sub, name=row['name_uk'], position='', quantity=1))
+            subcategory_name=sub, name=row.get('name_uk') or row.get('name_source') or 'Потребує уточнення', position='', quantity=1))
     projection=compact_payload(payload)
     local_sha=hashlib.sha256(json.dumps(projection,sort_keys=True,ensure_ascii=False,separators=(',',':')).encode()).hexdigest()
     envelope={'payload':projection,'sha256':local_sha,'vehicle_basis':vehicle_basis(vehicle)}
@@ -202,7 +212,7 @@ def validate_plan(payload):
     from datetime import datetime
     from app.services.catalogue_carpot_sections import SECTIONS, SUBCATEGORIES
     datetime.fromisoformat(payload['observed_at'].replace('Z','+00:00'))
-    if payload.get('schema')!='carpot.volvo.plan.v2' or not re.fullmatch('[0-9a-f]{64}',payload.get('source_snapshot_sha','')):
+    if payload.get('schema') not in ('carpot.volvo.plan.v2','carpot.vehicle.plan.v1') or not re.fullmatch('[0-9a-f]{64}',payload.get('source_snapshot_sha','')):
         raise ValueError('Compact pinned plan required')
     if type(payload['model_id']) is not int or payload['model_id']<=0 or type(payload['car_id']) is not int or payload['car_id']<=0:raise ValueError()
     if payload.get('coverage') not in ('partial','complete_verified'):raise ValueError()

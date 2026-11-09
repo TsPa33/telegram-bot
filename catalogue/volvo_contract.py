@@ -42,7 +42,7 @@ def coverage_verified(payload):
 def validate(payload):
     if not isinstance(payload, dict) or len(encode(payload)) > MAX_BYTES:
         raise ValueError('Invalid or oversized Volvo snapshot')
-    if payload.get('schema') != 'carpot.volvo.v1' or payload.get('manufacturer_id') != 120:
+    if not ((payload.get('schema') == 'carpot.volvo.v1' and payload.get('manufacturer_id') == 120) or (payload.get('schema') == 'carpot.vehicle.v1' and type(payload.get('manufacturer_id')) is int and payload['manufacturer_id'] > 0)):
         raise ValueError('Not a Volvo integration snapshot')
     for key in ('car_id', 'model_id'):
         if type(payload.get(key)) is not int or payload[key] <= 0:
@@ -99,7 +99,7 @@ def compact_plan(payload, snapshot_sha):
         item['article_count'] = len(row.get('articles', []))
         item['kind'] = row.get('kind','review')
         rows.append(item)
-    return dict(schema='carpot.volvo.plan.v2', manufacturer_id=120,
+    return dict(schema='carpot.volvo.plan.v2' if payload['schema']=='carpot.volvo.v1' else 'carpot.vehicle.plan.v1', manufacturer_id=payload['manufacturer_id'],
         car_id=payload['car_id'], model_id=payload['model_id'],
         modification=payload.get('modification', {}), observed_at=payload['observed_at'],
         source_snapshot_sha=snapshot_sha, coverage=payload['coverage'],

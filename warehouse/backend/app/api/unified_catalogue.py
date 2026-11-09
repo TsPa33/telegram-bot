@@ -104,9 +104,9 @@ def source_value(row,key):
 
 def saved_articles(product, state):
     payload=state['payload']
-    if payload.get('schema')=='carpot.volvo.plan.v2':
+    if payload.get('schema') in ('carpot.volvo.plan.v2','carpot.vehicle.plan.v1'):
         try:
-            items=service.CatalogueAdapter().articles(payload['car_id'],product['product_id'],payload['source_snapshot_sha'])
+            items=service.CatalogueAdapter().articles(payload['car_id'],product['product_id'],payload['source_snapshot_sha'],**({'global_source':True} if payload.get('schema')=='carpot.vehicle.plan.v1' else {}))
         except service.CatalogueUnavailable:
             raise HTTPException(503,'Артикули збереженої версії тимчасово недоступні. Платний запит не виконувався.') from None
         if len(items)!=product['article_count']:
@@ -265,3 +265,94 @@ def assign_oem(id: str, data: OemSelection, db: DB, who: Auth):
     record(db,who.workspace_account_id,p,'part_update','Явно призначено OEM-крос без твердження VIN-сумісності',before)
     db.commit()
     return dict(saved=True)
+
+
+@router.get('/catalogue-directory/available')
+def global_directory(db: DB, who: Auth, after: int = Query(0, ge=0)):
+    require_permission(who, 'vehicles.view', 'catalog.view')
+    try:
+        return service.CatalogueAdapter().directory(after)
+    except service.CatalogueUnavailable:
+        raise HTTPException(503, 'Глобальний каталог недоступний') from None
+
+
+class GlobalVehicle(Input):
+    request_key: str = Field(min_length=36,max_length=36)
+    source_modification_id: int = Field(strict=True,gt=0)
+    year: int = Field(ge=1886, le=2100)
+
+
+@router.post('/catalogue-directory/vehicles', status_code=201)
+def global_vehicle(data: GlobalVehicle, db: DB, who: Auth):
+    require_permission(who, 'vehicles.create', 'catalog.view')
+    from sqlalchemy import select,func
+    from app.models import Account
+    from app.api.routes import vehicle_view
+    from app.services.vehicle_catalog import automatic_donor_id
+    from app.services.inventory import record
+    # Workspace lock serializes both donor numbering and retry-key lookup.
+    db.scalar(select(Account).where(Account.id==who.workspace_account_id).with_for_update())
+    for existing in db.scalars(select(Vehicle).where(Vehicle.account_id==who.workspace_account_id)):
+        if (existing.dismantling_v3 or {}).get('global_selection',{}).get('request_key')==data.request_key:
+            selection=existing.dismantling_v3['global_selection']
+            if selection['car_id']!=data.source_modification_id or existing.year!=data.year:
+                raise HTTPException(409,'Ключ повторного запиту вже використано')
+            return vehicle_view(db,existing,who.workspace_account_id)
+    try:
+        plan=service.CatalogueAdapter().plan(data.source_modification_id,global_source=True)
+        directory=service.CatalogueAdapter().directory(car_id=data.source_modification_id)['items']
+        entry=next((r for r in directory if r['source_modification_id']==data.source_modification_id),None)
+    except service.CatalogueUnavailable:
+        raise HTTPException(503, 'Не вдалося перевірити каталог') from None
+    if not entry or entry.get('snapshot_sha')!=plan['payload']['source_snapshot_sha'] or entry['model_id']!=plan['payload']['model_id'] or entry['manufacturer_id']!=plan['payload']['manufacturer_id'] or not plan['payload']['categories']:
+        raise HTTPException(409,'Підтверджених каталожних зв’язків немає')
+    number=(db.scalar(select(func.max(Vehicle.number)).where(Vehicle.account_id==who.workspace_account_id)) or 0)+1
+    vehicle=Vehicle(account_id=who.workspace_account_id,number=number,donor_id=automatic_donor_id(db,who.workspace_account_id),
+        manufacturer=entry['manufacturer'],model=entry['model'],generation=entry.get('generation') or '',year=data.year,
+        engine='',status='dismantling',
+        dismantling_v3={'global_selection':dict(car_id=data.source_modification_id,model_id=entry['model_id'],
+            manufacturer_id=entry['manufacturer_id'],modification_description=plan['payload']['modification'].get('description'),
+            source_specifications=entry.get('specifications',[])[:100],request_key=data.request_key,source_snapshot_sha=plan['payload']['source_snapshot_sha'])})
+    db.add(vehicle);db.flush()
+    vehicle.dismantling_v3={'global_selection':{**vehicle.dismantling_v3['global_selection'],'vehicle_basis':service.vehicle_basis(vehicle)}}
+    record(db,who.workspace_account_id,vehicle,'vehicle_create','Додано автомобіль із глобального каталогу',{})
+    db.commit()
+    return vehicle_view(db,vehicle,who.workspace_account_id)
+
+
+@router.post('/{id}/global-dismantling')
+def global_dismantling(id: str, db: DB, who: Auth):
+    require_permission(who, 'vehicles.view', 'dismantling.manage')
+    v=owned(db,Vehicle,id,who.workspace_account_id,lock=True,active=True)
+    saved=service.saved_state(v)
+    selection=(v.dismantling_v3 or {}).get('global_selection')
+    if not selection:
+        raise HTTPException(409,'Для цього автомобіля не вибрано глобальну модифікацію. Наявні дані збережено.')
+    if service.needs_review(v) or (selection.get('vehicle_basis') and selection['vehicle_basis']!=service.vehicle_basis(v)):
+        raise HTTPException(409,'Характеристики автомобіля змінились. Збережені дані залишено; потрібна звірка модифікації.')
+    if saved:
+        return dict(saved=True,created=0)
+    try:
+        envelope=service.CatalogueAdapter().plan(selection['car_id'],global_source=True)
+    except service.CatalogueUnavailable:
+        raise HTTPException(503,'Не вдалося отримати глобальний каталог') from None
+    if envelope['payload']['model_id']!=selection['model_id'] or envelope['payload']['source_snapshot_sha']!=selection['source_snapshot_sha']:
+        raise HTTPException(409,'Версія каталогу змінилась; потрібне повторне підтвердження модифікації')
+    service.persist(db,who,v,envelope,allow_partial=True)
+    db.commit()
+    return dict(saved=True,created=len(envelope['payload']['categories']))
+
+
+@router.get('/{id}/global-dismantling')
+def global_saved(id: str, db: DB, who: Auth):
+    require_permission(who,'vehicles.view','catalog.view')
+    v=owned(db,Vehicle,id,who.workspace_account_id)
+    state=service.saved_state(v)
+    from sqlalchemy import select
+    from app.models import DismantlingItem
+    keys={int(r.catalog_key.rsplit(':',1)[1]):'catalogue:'+r.id for r in db.scalars(select(DismantlingItem).where(
+        DismantlingItem.vehicle_id==v.id,DismantlingItem.account_id==who.workspace_account_id,
+        DismantlingItem.source=='carpot.catalogue.v1'))} if state else {}
+    return dict(selection=(v.dismantling_v3 or {}).get('global_selection'),saved=state,
+        keys=keys,legacy=bool(not state and (v.dismantling_v3 or v.ktype)),
+        legacy_source='base' if (v.dismantling_v3 or {}).get('unified_base') else 'professional')

@@ -24,7 +24,7 @@ def volvo(logged,monkeypatch):
     r=logged.post('/api/v1/vehicles',json={'manufacturer':'Volvo','model':'XC90 II','year':2018,'donor_id':'SYNTHETIC'})
     assert r.status_code==201,r.text
     monkeypatch.setattr(CatalogueAdapter,'plan',lambda self,car:envelope(car))
-    monkeypatch.setattr(CatalogueAdapter,'articles',lambda *args:detail_items())
+    monkeypatch.setattr(CatalogueAdapter,'articles',lambda *args,**kwargs:detail_items())
     return r.json()
 
 def create(c,v,car=107555):
@@ -264,3 +264,50 @@ def test_adapter_consumes_compact_real_shape_not_private_source(monkeypatch):
     assert len(plan['payload']['categories'])==113
     assert len(json.dumps(plan).encode())<50000
     assert CatalogueResolver(adapter).resolve(make='Volvo',source_modification_id=107555,saved_plan_parts=True)['source']=='saved_plan_parts'
+
+
+@pytest.mark.parametrize("car,manufacturer",[(107555,120),(900,77)])
+def test_global_partial_create_reopen_and_article_without_legacy(logged, monkeypatch,car,manufacturer):
+    source=envelope(car,coverage='partial')
+    source['payload']['manufacturer_id']=manufacturer
+    if manufacturer!=120:source['payload']['schema']='carpot.vehicle.plan.v1'
+    source['payload']['taxonomy_status']='draft'
+    source['payload']['categories'][0].update(name_uk=None,category_path=[None,None,None],mapping_reviewed_by=None)
+    prototype=source['payload']['categories'][0]
+    source['payload']['categories']=[dict(prototype,product_id=106+i,name_source=f'Synthetic type {i}') for i in range(113)]
+    def plan(self,car,**kwargs):
+        assert kwargs.get('global_source') is True
+        return source
+    monkeypatch.setattr(CatalogueAdapter,'plan',plan)
+    monkeypatch.setattr(CatalogueAdapter,'directory',lambda self,after=0,**kwargs:dict(items=[dict(source_modification_id=car,model_id=13084,manufacturer_id=manufacturer,manufacturer='Synthetic source brand',model='Synthetic source model',generation=None,snapshot_sha='a'*64)],next_after=None))
+    monkeypatch.setattr(CatalogueAdapter,'articles',lambda *args,**kwargs:detail_items())
+    monkeypatch.setattr(CatalogueResolver,'resolve',lambda *a,**kw:pytest.fail('Legacy resolver forbidden'))
+    from app.services import dismantling
+    monkeypatch.setattr(dismantling,'start',lambda *a,**kw:pytest.fail('Base forbidden'))
+    body=dict(request_key='11111111-1111-1111-1111-111111111111',source_modification_id=car,year=2018)
+    r=logged.post('/api/v1/vehicles/catalogue-directory/vehicles',json=body)
+    assert r.status_code==201,r.text
+    v=r.json();base=f"/api/v1/vehicles/{v['id']}/global-dismantling"
+    assert logged.post('/api/v1/vehicles/catalogue-directory/vehicles',json=body).json()['id']==v['id']
+    assert logged.post(base).status_code==200
+    state=logged.get(base).json()
+    assert state['saved']['payload']['coverage']=='partial'
+    key=state['keys']['106']
+    assert logged.get(f"/api/v1/vehicles/{v['id']}/unified-catalogue/articles",params={'key':key}).json()['articles'][0]['oem_numbers']==['OEM-ONE','OEM-TWO']
+    monkeypatch.setattr(CatalogueAdapter,'plan',lambda *a,**kw:pytest.fail('Saved plan must reopen offline'))
+    assert logged.post(base).json()['created']==0
+    assert logged.get(base).json()['saved']==state['saved']
+    with Session(engine()) as db:
+        assert db.scalar(select(func.count()).select_from(Part))==0
+        assert db.scalar(select(func.count()).select_from(Vehicle))==1
+        assert db.scalar(select(func.count()).select_from(DismantlingItem))==113
+
+
+def test_global_rejects_missing_links_and_preserves_old(logged,volvo,monkeypatch):
+    assert logged.post(f"/api/v1/vehicles/{volvo['id']}/global-dismantling").status_code==409
+    monkeypatch.setattr(CatalogueAdapter,'plan',lambda *a,**kw:envelope())
+    monkeypatch.setattr(CatalogueAdapter,'directory',lambda *a,**kw:dict(items=[],next_after=None))
+    r=logged.post('/api/v1/vehicles/catalogue-directory/vehicles',json=dict(request_key='22222222-2222-2222-2222-222222222222',source_modification_id=107555,year=2018))
+    assert r.status_code==409,r.text
+    with Session(engine()) as db:
+        assert db.scalar(select(func.count()).select_from(Vehicle))==1

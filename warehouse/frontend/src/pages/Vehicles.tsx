@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, all, labels, money, when, type Row } from "../api";
 import { Empty, Modal, Pager, RecordForm, type Field } from "../components";
-import VehicleForm from "../VehicleForm";
-import VehicleVinQuickAdd from "../VehicleVinQuickAdd";
+import {GlobalVehicleForm} from "../GlobalCatalogueFlow";
+
 import AletoCatalogue from "../AletoCatalogue";
 import DismantlingCatalogImport from "../DismantlingCatalogImport";
 import VehicleChecklist from "../VehicleChecklist";
@@ -93,10 +93,10 @@ export default function Vehicles({notify}:{notify:Notify}) {
     let active=true;api(`/vehicles/${encodeURIComponent(donorId)}`).then(row=>{if(active)setDetail(row);}).catch(e=>{if(active)notify(e.message);});
     return ()=>{active=false;};
   },[donorId,params.get('info')]);
-  if(params.get('add')==='vin'&&!detail)return <VehicleVinQuickAdd onBack={()=>setParams({})} onCreated={row=>{setCreated(row);reload();setParams({donor:row.id});notify('Автомобіль створено. Розбір можна почати з його картки.');}}/>;
+
   return <>
     {!detail&&<><Heading eyebrow="АВТОМОБІЛІ" title="Автомобілі" description="Керуйте автомобілями-донорами, їхніми характеристиками та процесом розбору.">
-      <Permit permission="vehicles.create"><div style={{display:'flex',gap:8,flexWrap:'wrap'}}><button className="secondary" onClick={()=>setEdit({status:'dismantling'})}><Plus size={17}/>Додати автомобіль</button><button type="button" onClick={()=>setParams({add:'vin'})}><CarFront size={17}/>Швидко додати за VIN</button></div></Permit>
+      <Permit permission="vehicles.create"><div style={{display:'flex',gap:8,flexWrap:'wrap'}}><button className="secondary" onClick={()=>setEdit({status:'dismantling'})}><Plus size={17}/>Додати автомобіль</button></div></Permit>
     </Heading>
     {created&&<p role="status">Додано: {created.manufacturer} {created.model} · {created.year}. <button onClick={()=>openDetail(created)}>Відкрити картку</button></p>}
     <div className="r114-toolbar r1146-toolbar">
@@ -123,10 +123,7 @@ export default function Vehicles({notify}:{notify:Notify}) {
       {edit.id?<RecordForm initial={edit} fields={vehicleFields.filter(f=>f.key!=='acquisition_cost'||can('parts.view_cost'))} submit="Зберегти зміни" onSave={async values=>{
         const row=await api('/vehicles/'+edit.id,'PUT',values);
         saved(row);setEdit(null);notify('Дані автомобіля збережено');
-      }}/>:<VehicleForm initial={edit} fields={vehicleFields.filter(f=>f.key!=='acquisition_cost'||can('parts.view_cost'))} onSave={async values=>{
-        const row=await api('/vehicles'+(edit.id?'/'+edit.id:''),edit.id?'PUT':'POST',values);
-        if(!edit.id){setCreated(row);setQ('');setStatusFilter('');setBrandFilter('');setModelFilter('');setYearFilter('');setPage(0);}saved(row);setEdit(null);notify('Дані автомобіля збережено');
-      }}/>} 
+      }}/>:<GlobalVehicleForm onSaved={row=>{setCreated(row);saved(row);setEdit(null);openDetail(row);notify('Автомобіль додано з глобального каталогу');}}/>}
     </Modal>}
     {detail&&<section className="ux1-workspace" aria-label="Автомобіль і запчастини"><button className="ux1-back" onClick={closeDetail}><ArrowLeft size={16}/>Автомобілі</button>
       <VehicleDetail key={detail.id} vehicle={detail} showInfo={showInfo} onSaved={saved} onArchive={()=>{setConfirm(detail);}} onEdit={async()=>{try{const row=await api(`/vehicles/${detail.id}`);setEdit(row);}catch(e){notify((e as Error).message);}}} onRefresh={refresh} notify={notify} onInventory={()=>navigate(`/inventory?vehicle_id=${detail.id}`)}/>
@@ -197,9 +194,9 @@ function VehicleDetail({
       </nav>
       <div hidden={tab!=='parts'&&tab!=='partSettings'}>
       {legacyVehicle!==v.id&&can('catalog.view')&&can('vehicles.view')&&<ManagedDismantling key={v.id} vehicle={v} onSaved={onSaved} onModify={onEdit} view={tab==='partSettings'?'settings':'operations'}/>}
-      <details hidden={tab!=='parts'} className="vehicle-secondary"><summary>Попередній довідник та джерела</summary>{can('catalog.view')&&can('vehicles.view')&&<AletoCatalogue key={v.id} vehicleId={v.id}/>}{canCatalog&&<DismantlingCatalogImport onImported={()=>{onRefresh();}}/>}
+      {!v.dismantling_v3?.global_selection&&<details hidden={tab!=='parts'} className="vehicle-secondary"><summary>Попередній довідник та джерела</summary>{can('catalog.view')&&can('vehicles.view')&&<AletoCatalogue key={v.id} vehicleId={v.id}/>}{canCatalog&&<DismantlingCatalogImport onImported={()=>{onRefresh();}}/>}
       {canCatalog&&(legacyVehicle===v.id?<><button onClick={()=>setLegacyVehicle('')}>До основного списку деталей</button><Dismantling vehicle={v} onChange={() => {reloadAnalytics();onRefresh();}} onInventory={onInventory} /></>:!v.dismantling_v3?.revision&&<button className="secondary" onClick={()=>setLegacyVehicle(v.id)}>Відкрити попередній план</button>)}
-      </details>
+      </details>}
       </div>
       {tab==='history'&&<section className="ux1-history" aria-label="Історія автомобіля"><State error={history.error} loading={history.loading}/>{history.data?.items.map((r:Row)=><article key={r.id}><strong>{labels[r.type]||'Складська операція'}</strong><span>{when(r.created_at)}</span><p>{r.reason}</p></article>)}{history.data?.items.length===0&&<p>Операцій ще немає.</p>}{history.data?.total>50&&<p>Показано останні 50 операцій.</p>}</section>}
       <div hidden={tab!=='info'}>
@@ -213,11 +210,11 @@ function VehicleDetail({
         <div><small>Запчастин у картці</small><strong>{v.registered_parts??'—'}</strong><small>На складі: {v.stock_positions??'—'}</small></div>
         <div><small>Дані двигуна</small><strong>{v.engine_code||'Код не вказано'}</strong></div>
        </div>
-       <details className="r1144-advanced"><summary>Додаткові інструменти каталогу та чекліста</summary>
+       {!v.dismantling_v3?.global_selection&&<details className="r1144-advanced"><summary>Додаткові інструменти каталогу та чекліста</summary>
         {canReceipt&&<VehicleChecklist vehicle={v}/>}
         <p className="notice">Стандартний чекліст містить можливі запчастини, а не підтверджений OEM-каталог. Нові позиції створюються з нульовим залишком.</p>
         <button type="button" disabled={busy||!canReceipt} onClick={async()=>{setBusy(true);try{const r=await api(`/vehicles/${v.id}/checklist`,'POST');notify(`Додано: ${r.created}. Уже існує: ${r.existing}`);}catch(e){notify((e as Error).message)}finally{setBusy(false)}}}>Сформувати ручний список запчастин</button>
-       </details>
+       </details>}
       </div>
       {tab==='photos'&&<VehicleDonorPhotos vehicle={v} mode="gallery" revision={photoRevision} onChanged={()=>setPhotoRevision(i=>i+1)}/>}
       {tab==='finance'&&can('parts.view_cost')&&<VehicleFinance vehicle={v} analytics={d??null} onSaved={onSaved}/>}

@@ -140,7 +140,7 @@ def volvo_snapshot(car_id, snapshot_sha=None):
             row = cur.fetchone()
             if row is not None:
                 parsed=json.loads(row['payload'])
-                if parsed.get('schema')=='carpot.volvo.plan.v2':
+                if parsed.get('schema') in ('carpot.volvo.plan.v2','carpot.vehicle.plan.v1'):
                     # The latest directory is compact; raw data is stored once per version.
                     cur.execute('SELECT payload,sha256 FROM catalogue_volvo_versions WHERE car_id=%s AND sha256=%s',(car_id,row['sha256']))
                     row=cur.fetchone()
@@ -226,3 +226,46 @@ def volvo_diagnostics():
     except pymysql.MySQLError:
         raise HTTPException(503,'Volvo integration tables are not ready') from None
     return dict(source='carpot-catalogue',counts=counts,photos='metadata_only',vin_fitment_verified=False)
+
+
+@app.get('/api/v1/vehicles/directory', dependencies=[Depends(authorize)])
+def vehicle_directory(after: int = Query(0, ge=0), limit: int = Query(100, ge=1, le=100), car_id: int | None = Query(None,gt=0)):
+    # Directory-only rows have no fitment graph and must never advertise readiness.
+    try:
+        with db() as conn, conn.cursor() as cur:
+            cur.execute("""SELECT s.car_id,s.model_id AS source_model_id,m.manufacturer_id,m.name_source AS model_name,
+                f.name_source AS manufacturer_name FROM catalogue_volvo_snapshots s
+                JOIN catalogue_models m ON m.id=s.model_id
+                JOIN catalogue_manufacturers f ON f.id=m.manufacturer_id
+                WHERE s.car_id>%s AND (%s IS NULL OR s.car_id=%s) ORDER BY s.car_id LIMIT %s""",(after,car_id,car_id,limit+1))
+            rows=cur.fetchall()
+    except pymysql.MySQLError:
+        raise HTTPException(503,'Vehicle catalogue unavailable') from None
+    items=[]
+    for row in rows[:limit]:
+        try:
+            data,sha=volvo_snapshot(row['car_id'])
+        except HTTPException:
+            continue # Corrupt/missing pinned graph is not a usable modification.
+        linked={key for r in data['categories'] for key in r.get('articles',[])}
+        if not linked or data['manufacturer_id']!=row['manufacturer_id'] or data['model_id']!=row['source_model_id'] or not row['manufacturer_name'] or not row['model_name']:
+            continue
+        model=data.get('model') or {}
+        generation=model.get('generation') or None
+        items.append(dict(source_modification_id=data['car_id'],model_id=data['model_id'],
+            manufacturer_id=data['manufacturer_id'],manufacturer=row['manufacturer_name'],model=row['model_name'],
+            generation=generation,modification=data['modification'],coverage=data['coverage'],
+            type_count=len(data['categories']),article_count=len(linked),
+            oem_links=sum(len(data['articles'][key].get('oem',[])) for key in linked),snapshot_sha=sha,
+            specifications=data.get('details',{}).get('passanger_car_attributes',[])))
+    return dict(items=items,next_after=rows[limit-1]['car_id'] if len(rows)>limit else None)
+
+
+@app.get('/api/v1/vehicles/{car_id}/plan', dependencies=[Depends(authorize)])
+def vehicle_plan(car_id: int):
+    return volvo_plan(car_id)
+
+
+@app.get('/api/v1/vehicles/{car_id}/articles', dependencies=[Depends(authorize)])
+def vehicle_articles(car_id: int, product_id: int = Query(gt=0), snapshot_sha: str = Query(pattern=r'^[0-9a-f]{64}$')):
+    return volvo_articles(car_id,product_id,snapshot_sha)

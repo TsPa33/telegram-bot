@@ -226,3 +226,35 @@ def test_first_import_read_only_preflight_has_no_connections(tmp_path,monkeypatc
     assert (summary['types'],summary['articles'],summary['suppliers'])==(113,736,175)
     assert (summary['pds_pair_total'],summary['pds_pairs_matched'])==(434,434)
     assert summary['coverage']=='partial' and summary['writes']==0
+
+
+def test_generic_directory_only_advertises_valid_linked_snapshots(monkeypatch):
+    from volvo_contract import compact_plan
+    p=payload();p.update(schema='carpot.vehicle.v1',manufacturer_id=77,car_id=900,model_id=880,model={'generation':'Source generation'})
+    p['categories']=[dict(product_id=1,articles=['5:SOURCE-1'])]
+    p['articles']={'5:SOURCE-1':dict(article_number='SOURCE-1',supplier_id=5,car_id=900,oem=[])}
+    validate(p)
+    assert compact_plan(p,'a'*64)['schema']=='carpot.vehicle.plan.v1'
+    class DirectoryCursor(Cursor):
+        def execute(self,sql,args):
+            assert sql.lstrip().startswith('SELECT')
+            self.sql.append((sql,args))
+        def fetchall(self):
+            return [dict(car_id=900,source_model_id=880,manufacturer_id=77,manufacturer_name='Actual source brand',model_name='Source model')]
+    cursor=DirectoryCursor(p)
+    class Connection:
+        def cursor(self):return cursor
+    @contextmanager
+    def database():yield Connection()
+    monkeypatch.setattr(catalogue_app,'db',database)
+    monkeypatch.setattr(catalogue_app,'volvo_snapshot',lambda car:(p,digest(p)))
+    monkeypatch.setenv('CATALOGUE_API_KEY','fixture-only')
+    client=TestClient(catalogue_app.app)
+    response=client.get('/api/v1/vehicles/directory',headers={'X-Catalogue-Key':'fixture-only'})
+    assert response.status_code==200,response.text
+    item=response.json()['items'][0]
+    assert item['manufacturer']=='Actual source brand' and item['generation']=='Source generation'
+    assert item['type_count']==1 and item['article_count']==1
+    p['categories'][0]['articles']=[]
+    assert client.get('/api/v1/vehicles/directory',headers={'X-Catalogue-Key':'fixture-only'}).json()['items']==[]
+    assert client.get('/api/v1/vehicles/directory').status_code==401

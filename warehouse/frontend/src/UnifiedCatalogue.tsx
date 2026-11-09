@@ -1,3 +1,4 @@
+import GlobalCatalogueFlow from './GlobalCatalogueFlow';
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { api, type Row } from "./api";
 import { Modal } from "./components";
@@ -9,7 +10,7 @@ import { flowStep, modificationTitle, nextChoice, supportedModel, userMessage, v
 import "./unified-dismantling.css";
 
 /** One coordinator; existing provider handlers and board remain the sole write paths. */
-export default function UnifiedCatalogue({ vehicle, onSaved, onModify, view = "operations" }: {
+export function LegacyUnifiedCatalogue({ vehicle, onSaved, onModify, view = "operations" }: {
   vehicle: Row; onSaved: (r: Row) => void; onModify?: () => void; view?: "operations" | "settings";
 }) {
   const can = useCan(), who = useContext(TeamIdentity);
@@ -151,4 +152,9 @@ export default function UnifiedCatalogue({ vehicle, onSaved, onModify, view = "o
     {own?.saved || loading || !mayUseProfessional ? render() : <PlanPartsDonorAnalysis vehicle={vehicle} onSaved={row=>{setPrepared(!!row.ktype);onSaved(row);}} view={view} onBoardProgress={onBoardProgress} renderFlow={render}/>}
     {detail&&<Modal className="r1-part-dialog" title={detail.name} onClose={()=>setDetail(null)}><PartDetail part={detail} onSaved={r=>{setDetail(r);setRevision(n=>n+1);window.dispatchEvent(new Event("warehouse:inventory-changed"));}} onChanged={()=>{void api("/parts/"+detail.id).then(setDetail);setRevision(n=>n+1);window.dispatchEvent(new Event("warehouse:inventory-changed"));}}/></Modal>}
   </>;
+}
+
+
+export default function UnifiedCatalogue(props: Parameters<typeof LegacyUnifiedCatalogue>[0]) {
+ return <GlobalCatalogueFlow vehicle={props.vehicle} onSaved={props.onSaved}/>;
 }
