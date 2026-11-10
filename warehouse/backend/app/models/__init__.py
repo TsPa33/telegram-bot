@@ -253,10 +253,14 @@ class VehiclePhoto(Base):
 
 
 class DismantlingItem(Base):
+    assembly_completeness: Mapped[str | None] = mapped_column(String(20),nullable=True)
+    assembly_consumed_operation_id: Mapped[str | None] = mapped_column(ForeignKey('operations.id'),nullable=True)
     plan_v3: Mapped[dict] = mapped_column(JSON,default=dict,server_default="{}")
     """Local workflow state; actual stock is exclusively Part + Operation."""
     __tablename__ = "dismantling_items"
     __table_args__ = (
+        UniqueConstraint('id','account_id','vehicle_id',name='uq_dismantling_assembly_scope'),
+        CheckConstraint("assembly_completeness IS NULL OR assembly_completeness IN ('unchecked','complete','incomplete')",name='ck_assembly_completeness'),
         Index('uq_dismantling_v3_placement','vehicle_id',text("(plan_v3 ->> 'placement_id')"),unique=True,postgresql_where=text("(plan_v3 ->> 'placement_id') IS NOT NULL")),
         ForeignKeyConstraint(["vehicle_id", "account_id"], ["vehicles.id", "vehicles.account_id"], name="fk_dismantling_vehicle_account"),
         UniqueConstraint("vehicle_id", "source", "catalog_key", name="uq_dismantling_catalog_key"),
@@ -378,3 +382,5 @@ from app.models.plan_parts_response import PlanPartsResponse  # noqa: E402,F401
 from app.models.dismantling_ui import DismantlingAnnotation,PartNameTranslation  # noqa: E402,F401
 from app.models.source_type_mapping import SourceTypeMapping  # noqa: E402,F401
 from app.models.billing import WorkspaceSubscription,BillingPayment,DismantlingCredit,DismantlingUsage,BillingEvent  # noqa: E402,F401
+
+from app.models.assemblies import AssemblyMembership, AssemblyTemplate  # noqa: E402,F401

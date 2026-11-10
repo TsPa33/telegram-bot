@@ -594,6 +594,11 @@ def part_get(id: str, request: Request, db: DB, who: Auth):
     # hryvnia amount to that client; the exact stored value is never changed.
     if row.currency!='UAH' and request.headers.get('X-Warehouse-Client')!='5':
         result.update(selling_price=None,price_requires_currency_client=True)
+    from app.services.assemblies import part_context
+    context=part_context(db,who.workspace_account_id,row.id)
+    if context:
+        if 'orders.view' not in who.permissions:context.pop('order_id',None);context.pop('order_number',None)
+        result['assembly_context']=context
     return result
 
 
@@ -601,6 +606,8 @@ def part_get(id: str, request: Request, db: DB, who: Auth):
 def part_update(id: str, data: PartInput, db: DB, who: Auth):
     row = owned(db, Part, id, who.workspace_account_id, lock=True, active=True)
     validate_part_links(db, data, who.workspace_account_id)
+    from app.services.assemblies import protect_identity
+    protect_identity(db,row,data.vehicle_id)
     if data.individually_tracked and row.quantity > 1:
         raise HTTPException(
             409, "Спочатку розділіть кількісну позицію на окремі одиниці"
@@ -669,6 +676,9 @@ def stock_operation(id: str, data: StockInput, db: DB, who: Auth):
     # Preserve pre-UX5.6 fingerprints exactly when financial fields are absent.
     payload=data.model_dump(mode='json',exclude={'request_key','sale_price','sale_currency'})
     if data.physical_location_kind is None:payload.pop('physical_location_kind',None)
+    if data.assembly_token is None:payload.pop('assembly_token',None)
+    if not data.assembly_description:payload.pop('assembly_description',None)
+    if not data.assembly_remainder:payload.pop('assembly_remainder',None)
     if data.sale_price is not None:
         payload.update(sale_price=format(data.sale_price,'.2f'),sale_currency=data.sale_currency)
     fingerprint=sha256(json.dumps({'part_id':id,**payload},sort_keys=True).encode()).hexdigest()

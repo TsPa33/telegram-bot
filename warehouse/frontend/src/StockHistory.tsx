@@ -17,7 +17,7 @@ export default function StockHistory({partId='',vehicleId=''}:{partId?:string;ve
  const vehicleName=(id:string)=>{const v=vehicles.find(v=>v.id===id);return v?`${v.manufacturer} ${v.model} · ${v.year} · №${v.number}`:id?'Автомобіль недоступний':'Без автомобіля';};
  return <section className="stock-history" aria-label="Історія операцій">
   <div className="stock-history-filters">
-   <label>Тип операції<select aria-label="Тип історії" value={type} onChange={e=>setType(e.target.value)}><option value="">Усі події аудиту</option>{['sale','write_off','transfer','reserve','release','correction','receipt','part_update'].map(t=><option key={t} value={t}>{labels[t]||t}</option>)}</select></label>
+   <label>Тип операції<select aria-label="Тип історії" value={type} onChange={e=>setType(e.target.value)}><option value="">Усі події аудиту</option>{['sale','assembly_included_sale','assembly_return','assembly_attach','assembly_detach','write_off','transfer','reserve','release','correction','receipt','part_update'].map(t=><option key={t} value={t}>{labels[t]||t}</option>)}</select></label>
    {!vehicleId&&<label>Автомобіль<select aria-label="Автомобіль історії" value={vehicle} onChange={e=>{setVehicle(e.target.value);setPart(partId);}}><option value="">Усі автомобілі</option>{vehicles.map(v=><option key={v.id} value={v.id}>{vehicleName(v.id)}</option>)}</select></label>}
    {!partId&&<label>Запчастина<select aria-label="Запчастина історії" value={part} onChange={e=>setPart(e.target.value)}><option value="">Усі запчастини</option>{parts.filter(p=>!vehicle||p.vehicle_id===vehicle).map(p=><option key={p.id} value={p.id}>{p.name}{p.archived?' · архів':''}</option>)}</select></label>}
    <label>Від<input aria-label="Історія від" type="date" value={from} onChange={e=>setFrom(e.target.value)}/></label><label>До<input aria-label="Історія до" type="date" min={from||undefined} value={to} onChange={e=>setTo(e.target.value)}/></label>
@@ -32,6 +32,7 @@ export default function StockHistory({partId='',vehicleId=''}:{partId?:string;ve
    return <article className="stock-history-event" key={row.id}><header><strong>{labels[row.type]||'Інша подія аудиту'}</strong><time>{when(row.created_at)}</time></header><b>{name}</b><small>{vehicleName(row.vehicle_id)}</small>
     {quantity!==null&&<p>Зміна кількості: {quantity>0?'+':''}{quantity} · Залишок після: {after.quantity}</p>}
     {reserved!==null&&reserved!==0&&<p>Зміна резерву: {reserved>0?'+':''}{reserved} · Резерв після: {after.reserved_quantity}</p>}
+    {after.included_in_sale&&<p>Продано у складі: {after.parent_name||'вузла'}{can('orders.view')&&after.order_number?' · Замовлення №'+after.order_number:''}. Без окремої виручки.</p>}
     {row.type==='transfer'&&<p>Місце: {before.location||'Не вказано'} → {after.location||'Не вказано'}</p>}
     {row.type==='sale'&&after.sale&&<p>Фактична ціна продажу: {money(after.sale.unit_price,after.sale.currency)} · {after.sale.source==='order'?'Замовлення':'Швидкий продаж'}</p>}
     {row.type==='sale'&&!can('sales.view_financials')&&<p>Фінансові дані доступні лише з відповідним дозволом.</p>}

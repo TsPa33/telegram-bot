@@ -134,3 +134,6 @@ app.include_router(billing_router)
 
 from app.api.unified_catalogue import router as unified_catalogue_router
 app.include_router(unified_catalogue_router)
+
+from app.api.assemblies import router as assemblies_router
+app.include_router(assemblies_router)

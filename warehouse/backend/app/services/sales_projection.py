@@ -26,7 +26,7 @@ def project_sales(db,who,ops,*,center=False):
                     'total':sold['line_total'],'donor':sold.get('donor_snapshot'),
                     'buyer_name':event.get('contact_name'),'buyer_phone':event.get('contact_phone')}
         quantity=op.before.get('quantity',0)-op.after.get('quantity',0)
-        items.append({'id':op.id,'part_id':op.part_id,'name':op.after.get('name'),'vehicle_id':op.vehicle_id,
+        items.append({'id':op.id,'part_id':op.part_id,'name':financial.get('item_name') or (link[0].name if link else op.after.get('name')),'vehicle_id':op.vehicle_id,
             'donor':financial.get('donor') or donors.get(op.vehicle_id),'donor_is_current':not bool(financial.get('donor')),
             'quantity':quantity,'unit_price':financial.get('unit_price'),'currency':financial.get('currency'),
             'total':financial.get('total'),'price_recorded':financial.get('unit_price') is not None,

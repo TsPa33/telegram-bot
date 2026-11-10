@@ -135,6 +135,9 @@ class PartInput(Input):
 
 
 class StockInput(Input):
+    assembly_token: Annotated[str, Field(min_length=64,max_length=64)] | None = None
+    assembly_description: Annotated[str, Field(max_length=200)] = ''
+    assembly_remainder: bool = False
     type: Literal[
         "receipt", "write_off", "sale", "reserve", "release", "correction", "transfer"
     ]

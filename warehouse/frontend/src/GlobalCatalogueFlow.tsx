@@ -2,6 +2,7 @@ import {useEffect,useState} from 'react';
 import {api,type Row} from './api';
 import './unified-dismantling.css';
 import {useCan} from './permissions';
+import AssemblyTree from './AssemblyTree';
 
 export function GlobalVehicleForm({onSaved}:{onSaved:(row:Row)=>void}) {
  const [items,setItems]=useState<Row[]>([]),[picked,setPicked]=useState(''),[brand,setBrand]=useState(''),[model,setModel]=useState(''),[gen,setGen]=useState(''),[year,setYear]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false);
@@ -29,7 +30,7 @@ export default function GlobalCatalogueFlow({vehicle,onSaved}:{vehicle:Row;onSav
  useEffect(()=>{let active=true;setState({});api(`/vehicles/${vehicle.id}/global-dismantling`).then(r=>{if(active)setState(r)}).catch(e=>{if(active)setError(e.message)});return()=>{active=false}},[vehicle.id,revision]);
  const products:Row[]=saved?.payload?.categories||[];
  const filtered=products.filter(p=>`${p.name_uk} ${p.name_source}`.toLowerCase().includes(q.toLowerCase()));
- return <section className="unified-flow" aria-label="Розбір автомобіля"><h2>Розбір автомобіля</h2>{error&&<p role="alert">{error}</p>}
+ return <section className="unified-flow" aria-label="Розбір автомобіля"><AssemblyTree vehicle={vehicle}/><h2>Розбір автомобіля</h2>{error&&<p role="alert">{error}</p>}
  {state.legacy&&<><p>Історичний список збережено окремо від глобального каталогу.</p><button onClick={async()=>{try{setLegacy((await api(`/vehicles/${vehicle.id}/dismantling-workspace?source=${state.legacy_source}`)).items)}catch(e){setError((e as Error).message)}}}>Переглянути збережений список</button>{legacy?.map(r=><p key={r.key}>{r.name}</p>)}</>}
  {!saved?<><p>Список буде отримано лише з глобального каталогу. Фізичні залишки не створюються.</p><button disabled={busy||!state.selection||!can("dismantling.manage")} onClick={async()=>{setBusy(true);setError('');try{await api(`/vehicles/${vehicle.id}/global-dismantling`,'POST');onSaved(await api(`/vehicles/${vehicle.id}`));setRevision(n=>n+1)}catch(e){setError((e as Error).message)}finally{setBusy(false)}}}>{busy?'Отримуємо запчастини…':'Розібрати автомобіль'}</button>{!state.selection&&<p>Цей автомобіль не має прив’язки до глобальної модифікації. Попередній план збережено окремо.</p>}</>:<>
  <p>Список збережено · {products.length} типів · {saved.payload.coverage==='partial'?'Часткове покриття — повноту не підтверджено':'Покриття перевірено'}</p>
