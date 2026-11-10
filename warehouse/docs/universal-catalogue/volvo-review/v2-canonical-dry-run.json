@@ -1,0 +1,13 @@
+{
+  "repeat_identical": true,
+  "counts": {
+    "source_records": 113,
+    "duplicate_source_rows": 0,
+    "physical_types": 0,
+    "review": 113,
+    "excluded": 0,
+    "classifications": {}
+  },
+  "database_writes": 0,
+  "note": "No approved reviews supplied; semantic proposals are not publication approval."
+}

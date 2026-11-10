@@ -1,0 +1,69 @@
+{
+  "before": {
+    "missing_subcategory": 17,
+    "needs_review": 26,
+    "proposed": 87
+  },
+  "after": {
+    "missing_subcategory": 1,
+    "needs_review": 12,
+    "proposed": 101
+  },
+  "gaps_closed": 16,
+  "new_paths": [
+    [
+      "Двигун та його системи",
+      "Система змащення"
+    ],
+    [
+      "Підвіска та ходова частина",
+      "Важелі та шарніри підвіски"
+    ],
+    [
+      "Підвіска та ходова частина",
+      "Балка підвіски та її опори"
+    ],
+    [
+      "Підвіска та ходова частина",
+      "Стабілізатори та їхні стійки"
+    ],
+    [
+      "Гальмівна система",
+      "Вакуумна система гальм"
+    ],
+    [
+      "Кузов та зовнішні деталі",
+      "Дах та багажні кріплення"
+    ],
+    [
+      "Кузов та зовнішні деталі",
+      "Багажник та його механізми"
+    ],
+    [
+      "Кузов та зовнішні деталі",
+      "Пороги та підніжки"
+    ],
+    [
+      "Електрика та електроніка",
+      "Вимикачі та перемикачі"
+    ],
+    [
+      "Освітлення",
+      "Сигнальне та допоміжне освітлення"
+    ]
+  ],
+  "source_ids_preserved": true,
+  "canonical_candidates_preserved": true,
+  "prior_proposals_preserved": true,
+  "repeat_prepare_identical": true,
+  "prepare_counts": {
+    "source_records": 113,
+    "duplicate_source_rows": 0,
+    "physical_types": 0,
+    "review": 113,
+    "excluded": 0,
+    "classifications": {}
+  },
+  "writes_to_staging": 0,
+  "owner_approved": 0
+}

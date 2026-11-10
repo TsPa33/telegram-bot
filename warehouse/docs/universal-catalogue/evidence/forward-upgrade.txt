@@ -1,0 +1,1 @@
+{"status": "PASS", "from": "e641b3a20f97", "to": "f7a10b8c43d2", "preserved_tables": ["vehicles", "parts", "operations", "buyers", "orders", "order_lines", "dismantling_items"], "quantity": 5, "reserved": 2, "price": "123.45", "currency": "USD", "new_memberships": 0}

@@ -1,0 +1,793 @@
+[
+  {
+    "id": 1,
+    "assemblygroupdescription": "Система стартера",
+    "description": "Стартерная аккумуляторная батарея",
+    "normalizeddescription": "Аккумулятор",
+    "usagedescription": ""
+  },
+  {
+    "id": 2,
+    "assemblygroupdescription": "Система стартера",
+    "description": "Стартер",
+    "normalizeddescription": "Стартер",
+    "usagedescription": ""
+  },
+  {
+    "id": 4,
+    "assemblygroupdescription": "Генератор",
+    "description": "Генератор",
+    "normalizeddescription": "Генератор",
+    "usagedescription": ""
+  },
+  {
+    "id": 7,
+    "assemblygroupdescription": "Смазывание",
+    "description": "Масляный фильтр",
+    "normalizeddescription": "Фильтр",
+    "usagedescription": "Моторное масло"
+  },
+  {
+    "id": 8,
+    "assemblygroupdescription": "Система подачи воздуха",
+    "description": "Воздушный фильтр",
+    "normalizeddescription": "Фильтр",
+    "usagedescription": "Воздух"
+  },
+  {
+    "id": 9,
+    "assemblygroupdescription": "Система подачи топлива",
+    "description": "Топливный фильтр",
+    "normalizeddescription": "Фильтр",
+    "usagedescription": "Топливо"
+  },
+  {
+    "id": 27,
+    "assemblygroupdescription": "Головка цилиндра",
+    "description": "Прокладка, выпускной коллектор",
+    "normalizeddescription": "Прокладкa",
+    "usagedescription": "Выпускной коллектор"
+  },
+  {
+    "id": 38,
+    "assemblygroupdescription": "Прицепное оборудование",
+    "description": "Прицепное ярмо, прицепное оборудование",
+    "normalizeddescription": "Прицепное ярмо",
+    "usagedescription": ""
+  },
+  {
+    "id": 39,
+    "assemblygroupdescription": "Прицепное оборудование",
+    "description": "Прицепное оборудование",
+    "normalizeddescription": "Прицеп",
+    "usagedescription": ""
+  },
+  {
+    "id": 42,
+    "assemblygroupdescription": "Головка цилиндра",
+    "description": "Прокладка, впускной коллектор",
+    "normalizeddescription": "Прокладкa",
+    "usagedescription": "Впускной коллектор"
+  },
+  {
+    "id": 44,
+    "assemblygroupdescription": "Система подачи воздуха",
+    "description": "Прокладка, корпус впускного коллектора",
+    "normalizeddescription": "Прокладкa",
+    "usagedescription": "Корпус впускного коллектора"
+  },
+  {
+    "id": 51,
+    "assemblygroupdescription": "Рулевое управление",
+    "description": "Осевой шарнир, рулевая тяга",
+    "normalizeddescription": "Шарнир",
+    "usagedescription": "Осевой шарнир"
+  },
+  {
+    "id": 56,
+    "assemblygroupdescription": "Охлаждение",
+    "description": "Крышка, резервуар охлаждающей жидкости",
+    "normalizeddescription": "Запор",
+    "usagedescription": "Резервуар охлаждающей жидкости"
+  },
+  {
+    "id": 78,
+    "assemblygroupdescription": "Тормозная система",
+    "description": "Тормозной суппорт",
+    "normalizeddescription": "Тормозной суппорт",
+    "usagedescription": ""
+  },
+  {
+    "id": 82,
+    "assemblygroupdescription": "Тормозная система",
+    "description": "Тормозной диск",
+    "normalizeddescription": "Тормозной диск",
+    "usagedescription": ""
+  },
+  {
+    "id": 83,
+    "assemblygroupdescription": "Тормозная система",
+    "description": "Тормозной шланг",
+    "normalizeddescription": "Шлангопровод",
+    "usagedescription": "Тормозная гидросистема"
+  },
+  {
+    "id": 105,
+    "assemblygroupdescription": "Сигнализация",
+    "description": "Лампа накаливания, фонарь указателя поворота",
+    "normalizeddescription": "Лампа накаливания",
+    "usagedescription": "Фонарь указателя поворота"
+  },
+  {
+    "id": 106,
+    "assemblygroupdescription": "Освещение",
+    "description": "Лампа накаливания, фара дальнего света",
+    "normalizeddescription": "Лампа накаливания",
+    "usagedescription": "Фара дальнего света"
+  },
+  {
+    "id": 107,
+    "assemblygroupdescription": "Освещение",
+    "description": "Лампа накаливания, основная фара",
+    "normalizeddescription": "Лампа накаливания",
+    "usagedescription": "Основная фара"
+  },
+  {
+    "id": 110,
+    "assemblygroupdescription": "Освещение",
+    "description": "Лампа накаливания, фонарь сигнала тормоза/задний габаритный",
+    "normalizeddescription": "Лампа накаливания",
+    "usagedescription": "фонарь сигнала тормож./ задний габ. огонь"
+  },
+  {
+    "id": 112,
+    "assemblygroupdescription": "Освещение",
+    "description": "Лампа накаливания, фонарь освещения номерного знака",
+    "normalizeddescription": "Лампа накаливания",
+    "usagedescription": "Фонарь освещения номерного знака"
+  },
+  {
+    "id": 114,
+    "assemblygroupdescription": "Освещение",
+    "description": "Лампа накаливания, фара заднего хода",
+    "normalizeddescription": "Лампа накаливания",
+    "usagedescription": "Фара заднего хода"
+  },
+  {
+    "id": 115,
+    "assemblygroupdescription": "Освещение",
+    "description": "Лампа накаливания, задний габаритный фонарь",
+    "normalizeddescription": "Лампа накаливания",
+    "usagedescription": "Задний габаритный огонь"
+  },
+  {
+    "id": 127,
+    "assemblygroupdescription": "Оборудование для перевозки",
+    "description": "Рейлинги",
+    "normalizeddescription": "Багажник - носитель",
+    "usagedescription": "Рейлинги"
+  },
+  {
+    "id": 135,
+    "assemblygroupdescription": "Смазывание",
+    "description": "Уплотнительное кольцо, резьбовая пробка маслосливн. отверст.",
+    "normalizeddescription": "Уплотняющее кольцо",
+    "usagedescription": "Резьбовая пробка маслосливного отверстия"
+  },
+  {
+    "id": 138,
+    "assemblygroupdescription": "Система выпуска ОГ",
+    "description": "Прокладка, труба выхлопного газа",
+    "normalizeddescription": "Прокладкa",
+    "usagedescription": "Труба выхлопного газа"
+  },
+  {
+    "id": 150,
+    "assemblygroupdescription": "Блок-картер двигателя",
+    "description": "Комплект прокладок, блок-картер двигателя",
+    "normalizeddescription": "Комплект прокладок",
+    "usagedescription": "Блок-картер двигателя"
+  },
+  {
+    "id": 179,
+    "assemblygroupdescription": "Прицепное оборудование",
+    "description": "Комплект электрики, прицепное оборудование",
+    "normalizeddescription": "Комплект электрики",
+    "usagedescription": ""
+  },
+  {
+    "id": 188,
+    "assemblygroupdescription": "Подвеска / амортизация",
+    "description": "Пружина ходовой части",
+    "normalizeddescription": "Пружина",
+    "usagedescription": ""
+  },
+  {
+    "id": 189,
+    "assemblygroupdescription": "Подвеска / амортизация",
+    "description": "Комплект ходовой части, пружины",
+    "normalizeddescription": "Комплект пружин",
+    "usagedescription": "Рессора"
+  },
+  {
+    "id": 191,
+    "assemblygroupdescription": "Рулевое управление",
+    "description": "Пыльник, рулевое управление",
+    "normalizeddescription": "Пыльник",
+    "usagedescription": ""
+  },
+  {
+    "id": 215,
+    "assemblygroupdescription": "Внутренняя отделка",
+    "description": "Комплект ковриков",
+    "normalizeddescription": "Комплект ковриков",
+    "usagedescription": ""
+  },
+  {
+    "id": 219,
+    "assemblygroupdescription": "Кузов",
+    "description": "Газовая пружина, крышка багажник",
+    "normalizeddescription": "Газовая пружина",
+    "usagedescription": "Крышка багажника / помещения для груза"
+  },
+  {
+    "id": 247,
+    "assemblygroupdescription": "Подвеска двигателя",
+    "description": "Подвеска, двигатель",
+    "normalizeddescription": "Подвеска",
+    "usagedescription": ""
+  },
+  {
+    "id": 251,
+    "assemblygroupdescription": "Подвеска колеса",
+    "description": "Подвеска, рычаг независимой подвески колеса",
+    "normalizeddescription": "Подвеска",
+    "usagedescription": "Рычаг независимой подвески колеса"
+  },
+  {
+    "id": 273,
+    "assemblygroupdescription": "Подвеска колеса",
+    "description": "Рычаг независимой подвески колеса, подвеска колеса",
+    "normalizeddescription": "Рычаг независимой подвески колеса",
+    "usagedescription": ""
+  },
+  {
+    "id": 288,
+    "assemblygroupdescription": "Генератор",
+    "description": "Регулятор генератора",
+    "normalizeddescription": "Регулятор",
+    "usagedescription": ""
+  },
+  {
+    "id": 298,
+    "assemblygroupdescription": "Система очистки окон",
+    "description": "Щетка стеклоочистителя",
+    "normalizeddescription": "Щетка стеклоочистителя",
+    "usagedescription": ""
+  },
+  {
+    "id": 305,
+    "assemblygroupdescription": "Ременный привод",
+    "description": "Поликлиновой ремень",
+    "normalizeddescription": "Ремень",
+    "usagedescription": "Поликлиновой ремень"
+  },
+  {
+    "id": 318,
+    "assemblygroupdescription": "Головка цилиндра",
+    "description": "Прокладка, головка цилиндра",
+    "normalizeddescription": "Прокладкa",
+    "usagedescription": "Блок двигателя"
+  },
+  {
+    "id": 319,
+    "assemblygroupdescription": "Головка цилиндра",
+    "description": "Комплект прокладок, головка цилиндра",
+    "normalizeddescription": "Комплект прокладок",
+    "usagedescription": ""
+  },
+  {
+    "id": 321,
+    "assemblygroupdescription": "Головка цилиндра",
+    "description": "Прокладка, крышка головки цилиндра",
+    "normalizeddescription": "Прокладкa",
+    "usagedescription": "Крышка головки цилиндра"
+  },
+  {
+    "id": 322,
+    "assemblygroupdescription": "Головка цилиндра",
+    "description": "Уплотнительное кольцо, стержень кла",
+    "normalizeddescription": "Уплотняющее кольцо",
+    "usagedescription": "Стержень клапана"
+  },
+  {
+    "id": 323,
+    "assemblygroupdescription": "Головка цилиндра",
+    "description": "Комплект прокладок, стержень клапана",
+    "normalizeddescription": "Комплект прокладок",
+    "usagedescription": "Стержень клапана"
+  },
+  {
+    "id": 387,
+    "assemblygroupdescription": "Тормозная система",
+    "description": "Вакуумный насос, тормозная система",
+    "normalizeddescription": "Насос",
+    "usagedescription": "Пониженное давление"
+  },
+  {
+    "id": 402,
+    "assemblygroupdescription": "Тормозная система",
+    "description": "Комплект тормозных колодок, дисковый тормоз",
+    "normalizeddescription": "Комплект тормозных колодок",
+    "usagedescription": ""
+  },
+  {
+    "id": 412,
+    "assemblygroupdescription": "Тормозная система",
+    "description": "Датчик, частота вращения колеса",
+    "normalizeddescription": "Датчик",
+    "usagedescription": "Частота вращения колеса"
+  },
+  {
+    "id": 424,
+    "assemblygroupdescription": "Отопление / вентиляция",
+    "description": "Фильтр, воздух во внутренном пространстве",
+    "normalizeddescription": "Фильтр",
+    "usagedescription": "Воздух во внутренном пространстве"
+  },
+  {
+    "id": 447,
+    "assemblygroupdescription": "Кондиционер",
+    "description": "Компрессор, кондиционер",
+    "normalizeddescription": "Компрессор",
+    "usagedescription": ""
+  },
+  {
+    "id": 448,
+    "assemblygroupdescription": "Кондиционер",
+    "description": "Конденсатор, кондиционер",
+    "normalizeddescription": "Конденсатор",
+    "usagedescription": ""
+  },
+  {
+    "id": 450,
+    "assemblygroupdescription": "Кузов",
+    "description": "Расширение, крыло",
+    "normalizeddescription": "Расширение",
+    "usagedescription": "Крыло"
+  },
+  {
+    "id": 455,
+    "assemblygroupdescription": "Смазывание",
+    "description": "Прокладка, масляный поддон",
+    "normalizeddescription": "Прокладкa",
+    "usagedescription": "Масляный поддон"
+  },
+  {
+    "id": 514,
+    "assemblygroupdescription": "Кузов",
+    "description": "Газовая пружина, капот",
+    "normalizeddescription": "Газовая пружина",
+    "usagedescription": "Капот"
+  },
+  {
+    "id": 548,
+    "assemblygroupdescription": "Охлаждение",
+    "description": "Крышка, радиатор",
+    "normalizeddescription": "Запор",
+    "usagedescription": "Пробка радиатора"
+  },
+  {
+    "id": 572,
+    "assemblygroupdescription": "Кривошипношатунный механизм",
+    "description": "Уплотняющее кольцо, коленчатый вал",
+    "normalizeddescription": "Уплотняющее кольцо",
+    "usagedescription": "Коленчатый вал"
+  },
+  {
+    "id": 574,
+    "assemblygroupdescription": "Кривошипношатунный механизм",
+    "description": "Подшипник коленвала",
+    "normalizeddescription": "Вкладыш подшипника",
+    "usagedescription": "Коленчатый вал"
+  },
+  {
+    "id": 582,
+    "assemblygroupdescription": "Кривошипношатунный механизм",
+    "description": "Шатунный подшипник",
+    "normalizeddescription": "Вкладыш подшипника",
+    "usagedescription": "Шатун"
+  },
+  {
+    "id": 584,
+    "assemblygroupdescription": "Кривошипношатунный механизм",
+    "description": "Втулка подшипника, шатун",
+    "normalizeddescription": "Втулка",
+    "usagedescription": "Подвеска шатуна"
+  },
+  {
+    "id": 593,
+    "assemblygroupdescription": "Смазывание",
+    "description": "Резьбовая пробка, масляный поддон",
+    "normalizeddescription": "Болт",
+    "usagedescription": "Слив масла"
+  },
+  {
+    "id": 654,
+    "assemblygroupdescription": "Подвеска колеса",
+    "description": "Комплект подшипника ступицы колеса",
+    "normalizeddescription": "Комплект подшипника",
+    "usagedescription": "Ступица колеса"
+  },
+  {
+    "id": 657,
+    "assemblygroupdescription": "Колеса",
+    "description": "Болт крепления колеса",
+    "normalizeddescription": "Болт",
+    "usagedescription": "Колесо"
+  },
+  {
+    "id": 686,
+    "assemblygroupdescription": "Система зажигания",
+    "description": "Свеча зажигания",
+    "normalizeddescription": "Свеча зажигания",
+    "usagedescription": ""
+  },
+  {
+    "id": 757,
+    "assemblygroupdescription": "Управление двигателем",
+    "description": "Уплотняющее кольцо, распределительный вал",
+    "normalizeddescription": "Уплотняющее кольцо",
+    "usagedescription": "Распределительный вал"
+  },
+  {
+    "id": 794,
+    "assemblygroupdescription": "Система очистки окон",
+    "description": "Водяной насос, система очистки окон",
+    "normalizeddescription": "Насос",
+    "usagedescription": "Вода для чистки"
+  },
+  {
+    "id": 807,
+    "assemblygroupdescription": "Освещение",
+    "description": "Выключатель, фара заднего хода",
+    "normalizeddescription": "Переключатель",
+    "usagedescription": "Фара заднего хода"
+  },
+  {
+    "id": 830,
+    "assemblygroupdescription": "Охлаждение",
+    "description": "Датчик, температура охлаждающей жидкости",
+    "normalizeddescription": "Датчик",
+    "usagedescription": "Температура охлаждающей жидкости"
+  },
+  {
+    "id": 851,
+    "assemblygroupdescription": "Кондиционер",
+    "description": "Осушитель, кондиционер",
+    "normalizeddescription": "Осушитель",
+    "usagedescription": ""
+  },
+  {
+    "id": 854,
+    "assemblygroupdescription": "Подвеска / амортизация",
+    "description": "Амортизатор",
+    "normalizeddescription": "Амортизатор",
+    "usagedescription": ""
+  },
+  {
+    "id": 914,
+    "assemblygroupdescription": "Рулевое управление",
+    "description": "Наконечник поперечной рулевой тяги",
+    "normalizeddescription": "Шарнир",
+    "usagedescription": "Наконечник поперечной рулевой тяги"
+  },
+  {
+    "id": 1080,
+    "assemblygroupdescription": "Подвеска колеса",
+    "description": "Втулка, балка моста",
+    "normalizeddescription": "Подвеска",
+    "usagedescription": "Балка моста"
+  },
+  {
+    "id": 1092,
+    "assemblygroupdescription": "Освещение",
+    "description": "Лампа накаливания, стояночные огни / габаритные фонари",
+    "normalizeddescription": "Лампа накаливания",
+    "usagedescription": "Стояночные огни / габаритные фонари"
+  },
+  {
+    "id": 1164,
+    "assemblygroupdescription": "Тормозная система",
+    "description": "Комплектующие, колодки дискового тормоза",
+    "normalizeddescription": "Комплектующие",
+    "usagedescription": "Колодки дискового тормоза"
+  },
+  {
+    "id": 1165,
+    "assemblygroupdescription": "Тормозная система",
+    "description": "Комплект направляющей гильзы",
+    "normalizeddescription": "Комплект гильз",
+    "usagedescription": "Корпус скобы тормоза"
+  },
+  {
+    "id": 1180,
+    "assemblygroupdescription": "Подвеска колеса",
+    "description": "Опора стойки амортизатора",
+    "normalizeddescription": "Подшипник",
+    "usagedescription": "Амортизационная стойка"
+  },
+  {
+    "id": 1191,
+    "assemblygroupdescription": "Кузов",
+    "description": "Ветровое стекло",
+    "normalizeddescription": "Ветровое стекло",
+    "usagedescription": ""
+  },
+  {
+    "id": 1192,
+    "assemblygroupdescription": "Кузов",
+    "description": "Заднее стекло",
+    "normalizeddescription": "Заднее окно",
+    "usagedescription": ""
+  },
+  {
+    "id": 1194,
+    "assemblygroupdescription": "Кузов",
+    "description": "Боковое окно",
+    "normalizeddescription": "Боковое окно",
+    "usagedescription": ""
+  },
+  {
+    "id": 1217,
+    "assemblygroupdescription": "Головка цилиндра",
+    "description": "Комплект болтов головки цилидра",
+    "normalizeddescription": "Комплект болтов",
+    "usagedescription": ""
+  },
+  {
+    "id": 1260,
+    "assemblygroupdescription": "Охлаждение",
+    "description": "Водяной насос",
+    "normalizeddescription": "Насос",
+    "usagedescription": "Охлаждающая вода"
+  },
+  {
+    "id": 1269,
+    "assemblygroupdescription": "Управление двигателем",
+    "description": "Впускной клапан",
+    "normalizeddescription": "Клапан",
+    "usagedescription": "Впуск"
+  },
+  {
+    "id": 1270,
+    "assemblygroupdescription": "Управление двигателем",
+    "description": "Выпускной клапан",
+    "normalizeddescription": "Клапан",
+    "usagedescription": "Выпуск"
+  },
+  {
+    "id": 1419,
+    "assemblygroupdescription": "Тормозная система",
+    "description": "Комплект тормозных колодок, стояночная тормозная система",
+    "normalizeddescription": "Комлект тормозных накладок",
+    "usagedescription": "Стояночная тормозная система"
+  },
+  {
+    "id": 1510,
+    "assemblygroupdescription": "Кузов",
+    "description": "Подножка",
+    "normalizeddescription": "Подножка",
+    "usagedescription": ""
+  },
+  {
+    "id": 1561,
+    "assemblygroupdescription": "Внутренняя отделка",
+    "description": "Подъемное устройство для окон",
+    "normalizeddescription": "Подъемное устройство для окон",
+    "usagedescription": ""
+  },
+  {
+    "id": 1914,
+    "assemblygroupdescription": "Кузов",
+    "description": "Зеркальное стекло, наружное зеркало",
+    "normalizeddescription": "Зеркальное стекло",
+    "usagedescription": "Наружное зеркало"
+  },
+  {
+    "id": 2055,
+    "assemblygroupdescription": "Кондиционер",
+    "description": "Датчик, температура охлаждающей жидкости",
+    "normalizeddescription": "Датчик",
+    "usagedescription": "Температура охлаждающей жидкости"
+  },
+  {
+    "id": 2070,
+    "assemblygroupdescription": "Колеса",
+    "description": "Болт для крепления колеса",
+    "normalizeddescription": "Болт",
+    "usagedescription": ""
+  },
+  {
+    "id": 2169,
+    "assemblygroupdescription": "Тормозная система",
+    "description": "Направляющий болт, корпус скобы тормоза",
+    "normalizeddescription": "Болт",
+    "usagedescription": "Управление корпуса скобы тормоза"
+  },
+  {
+    "id": 2232,
+    "assemblygroupdescription": "Колеса",
+    "description": "Датчик частоты вращения колеса, контроль давления в шинах",
+    "normalizeddescription": "Датчик",
+    "usagedescription": "Контрольная система давления в шинах"
+  },
+  {
+    "id": 2254,
+    "assemblygroupdescription": "Тормозная система",
+    "description": "Зубчатый диск импульсного датчика, противобл. устр.",
+    "normalizeddescription": "Зубчатый диск импульсного датчика",
+    "usagedescription": "Противоблокировочное устройство"
+  },
+  {
+    "id": 2394,
+    "assemblygroupdescription": "Система накаливания",
+    "description": "Датчик, температура охлаждающей жидкости",
+    "normalizeddescription": "Датчик",
+    "usagedescription": "Температура охлаждающей жидкости"
+  },
+  {
+    "id": 2462,
+    "assemblygroupdescription": "Подвеска колеса",
+    "description": "Несущий / направляющий шарнир",
+    "normalizeddescription": "Шарнир",
+    "usagedescription": "несущий / направляющий шарнир"
+  },
+  {
+    "id": 3069,
+    "assemblygroupdescription": "Автоматическая коробка передач",
+    "description": "Масло автоматической коробки передач",
+    "normalizeddescription": "Масло",
+    "usagedescription": "Автоматическая коробка передач"
+  },
+  {
+    "id": 3224,
+    "assemblygroupdescription": "Смазывание",
+    "description": "Моторное масло",
+    "normalizeddescription": "Масло",
+    "usagedescription": "Двигатель"
+  },
+  {
+    "id": 3229,
+    "assemblygroupdescription": "Подвеска колеса",
+    "description": "Тяга / стойка, стабилизатор",
+    "normalizeddescription": "Стойка",
+    "usagedescription": "Стабилизатор"
+  },
+  {
+    "id": 3356,
+    "assemblygroupdescription": "Охлаждение",
+    "description": "Антифриз",
+    "normalizeddescription": "Антифриз",
+    "usagedescription": ""
+  },
+  {
+    "id": 3357,
+    "assemblygroupdescription": "Тормозная система",
+    "description": "Тормозная жидкость",
+    "normalizeddescription": "Тормозная жидкость",
+    "usagedescription": ""
+  },
+  {
+    "id": 3406,
+    "assemblygroupdescription": "Подвеска колеса",
+    "description": "Подвеска, корпус колесного подшипника",
+    "normalizeddescription": "Подвеска",
+    "usagedescription": "корпус колесного подшипника"
+  },
+  {
+    "id": 3694,
+    "assemblygroupdescription": "Внутренняя отделка",
+    "description": "Солнцезащитный козырёк",
+    "normalizeddescription": "Насадка-облицовка",
+    "usagedescription": "Солнцезащитный козырёк"
+  },
+  {
+    "id": 3792,
+    "assemblygroupdescription": "Колеса",
+    "description": "Расширение колеи",
+    "normalizeddescription": "Дистанционная шайба",
+    "usagedescription": "Расширение колеи"
+  },
+  {
+    "id": 3853,
+    "assemblygroupdescription": "Освещение",
+    "description": "Лампа накаливания, фара дневного освещения",
+    "normalizeddescription": "Лампа накаливания",
+    "usagedescription": "дневное освещение"
+  },
+  {
+    "id": 3939,
+    "assemblygroupdescription": "Приготовление смеси",
+    "description": "Датчик, температура впускаемого воздуха",
+    "normalizeddescription": "Датчик",
+    "usagedescription": "Температура впускаемого воздуха"
+  },
+  {
+    "id": 3944,
+    "assemblygroupdescription": "Приготовление смеси",
+    "description": "Датчик, температура охлаждающей жидкости",
+    "normalizeddescription": "Датчик",
+    "usagedescription": "Температура охлаждающей жидкости"
+  },
+  {
+    "id": 3945,
+    "assemblygroupdescription": "Приготовление смеси",
+    "description": "Датчик, давление наддува",
+    "normalizeddescription": "Датчик",
+    "usagedescription": "Давление наддува"
+  },
+  {
+    "id": 3947,
+    "assemblygroupdescription": "Приготовление смеси",
+    "description": "Датчик, давление во впускной трубе",
+    "normalizeddescription": "Датчик",
+    "usagedescription": "Впускная труба"
+  },
+  {
+    "id": 4175,
+    "assemblygroupdescription": "Контрольные приборы",
+    "description": "Датчик, температуры / давления масла",
+    "normalizeddescription": "Датчик",
+    "usagedescription": "Температура / давление масла"
+  },
+  {
+    "id": 4272,
+    "assemblygroupdescription": "Приготовление смеси",
+    "description": "Датчик, давление выхлопных газов",
+    "normalizeddescription": "Датчик",
+    "usagedescription": "Давление выхлопных газов"
+  },
+  {
+    "id": 4394,
+    "assemblygroupdescription": "Отопление / вентиляция",
+    "description": "Регулятор, вентилятор салона",
+    "normalizeddescription": "Регулятор",
+    "usagedescription": "Вентиляция салона"
+  },
+  {
+    "id": 5025,
+    "assemblygroupdescription": "Кузов",
+    "description": "Аэродефлектор",
+    "normalizeddescription": "Аэродефлектор",
+    "usagedescription": ""
+  },
+  {
+    "id": 5171,
+    "assemblygroupdescription": "Комплектующие",
+    "description": "Колесная цепь противоскольжения",
+    "normalizeddescription": "Колесная цепь противоскольжения",
+    "usagedescription": ""
+  },
+  {
+    "id": 5213,
+    "assemblygroupdescription": "Тормозная система",
+    "description": "Болт воздушного клапана / вентиль, тормозной суппорт",
+    "normalizeddescription": "Болт",
+    "usagedescription": "тормозной суппорт, вентиляция тормозной системы"
+  },
+  {
+    "id": 5750,
+    "assemblygroupdescription": "Кондиционер",
+    "description": "Датчик, качество воздуха",
+    "normalizeddescription": "Датчик",
+    "usagedescription": "Качество воздуха"
+  },
+  {
+    "id": 6331,
+    "assemblygroupdescription": "Система выпуска ОГ",
+    "description": "Чистка катализатора",
+    "normalizeddescription": "Чистка катализатора",
+    "usagedescription": ""
+  }
+]

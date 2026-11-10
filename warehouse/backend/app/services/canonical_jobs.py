@@ -16,9 +16,12 @@ def enqueue(db,who,mode,preview_id=None,token=None,request=None):
     if active:
         if (active.mode,active.preview_id,active.token)==(mode,preview_id,token) and active.report.get('request')==request:return active
         raise HTTPException(409,'Нормалізація вже виконується')
+    if mode=='publish' and request and request.get('kind')=='universal-publish-request':
+        prior=db.scalar(select(Run).where(Run.mode=='publish',Run.status=='done',Run.preview_id==preview_id,Run.token==token,Run.actor_id==who.actor_id).order_by(Run.created_at.desc()).limit(1))
+        if prior:return prior
     if mode=='publish':
         preview=db.get(Run,preview_id)
-        if not preview or preview.mode!='preview' or preview.status!='done' or preview.token!=token or preview.report.get('kind')!=('rule-preview' if request and request.get('kind')=='rule-approve-request' else None):raise HTTPException(409,'Потрібна завершена перевірка нормалізації')
+        if not preview or preview.mode!='preview' or preview.status!='done' or preview.token!=token or preview.report.get('kind')!=('universal-preview' if request and request.get('kind')=='universal-publish-request' else 'rule-preview' if request and request.get('kind')=='rule-approve-request' else None):raise HTTPException(409,'Потрібна завершена перевірка нормалізації')
     run=Run(actor_id=who.actor_id,session_hash=who.session.token_hash,mode=mode,preview_id=preview_id,token=token,status='queued',report={'request':request} if request else {})
     db.add(run);db.flush();return run
 
@@ -44,7 +47,14 @@ def process_one(engine):
                     if run.status!='running':return True
                     authorize(db,run)
                     request=run.report.get('request') or {}
-                    if request.get('kind')=='rule-preview-request':
+                    if request.get('kind')=='universal-preview-request':
+                        from app.services.universal_catalogue import batch_preview
+                        plan=batch_preview(db,request)
+                    elif request.get('kind')=='universal-publish-request':
+                        if request.get('confirm') is not True:raise HTTPException(422,'Потрібне підтвердження публікації')
+                        from app.services.universal_catalogue import publish_batch
+                        plan=publish_batch(db,run.preview_id,run.token,run.actor_id)
+                    elif request.get('kind')=='rule-preview-request':
                         from app.services.canonical_review import rule_preview
                         plan=rule_preview(db,request['draft'])
                     elif request.get('kind')=='rule-approve-request':

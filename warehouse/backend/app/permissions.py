@@ -77,6 +77,8 @@ def route_permissions(method,path,body):
     if path.endswith('/aleto-catalog'):return ['vehicles.view','catalog.view']
     if path.endswith('/dismantling-v3/bulk'):return ['vehicles.view','catalog.view','dismantling.manage']+(['inventory.create','inventory.adjust_quantity'] if body.get('action')=='receipt' else [])
     if path.endswith('/dismantling-v3/bulk/preview'):return ['vehicles.view','catalog.view']
+    if path.endswith('/universal-plan/preview'):return ['vehicles.view','catalog.view']
+    if path.endswith('/universal-plan'):return ['vehicles.view','catalog.view','dismantling.manage']
     if path.endswith('/dismantling-v3/preview'):return ['vehicles.view','catalog.view']
     if '/dismantling-v3/' in path and path.endswith('/decisions'):
         return ['dismantling.manage','inventory.create','inventory.adjust_quantity'] if body.get('action')=='receipt' else ['dismantling.manage']
