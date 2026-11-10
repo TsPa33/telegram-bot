@@ -57,7 +57,7 @@ def validate_consistency(vehicle):
     engine=clean(vehicle.get("engine"))
     size=vehicle.get("engine_displacement_l")
     if engine and size not in ("",None):
-        match=re.search(r"(?<!\\d)(\\d{1,2}\\.\\d)\\s*[lл](?![a-z])",engine,re.I)
+        match=re.search(r"(?<!\d)(\d{1,2}\.\d)\s*[lл](?![a-z])",engine,re.I)
         if match:
             try:
                 stated=float(size)

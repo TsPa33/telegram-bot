@@ -62,6 +62,7 @@ class Owned:
 
 
 class Vehicle(Owned, Base):
+    vin_details: Mapped[dict | None] = mapped_column(JSON,nullable=True)
     dismantling_v3: Mapped[dict] = mapped_column(JSON,default=dict,server_default="{}")
     __tablename__ = "vehicles"
     __table_args__ = (
