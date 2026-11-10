@@ -37,7 +37,32 @@ class Registration(Credentials):
     name: Annotated[str, Field(min_length=1, max_length=120)]
 
 
+class VinConflict(Input):
+    primary: str = Field(max_length=200)
+    secondary: str = Field(max_length=200)
+
+
+class VinDetails(Input):
+    conflicts: dict[str,VinConflict] = Field(default_factory=dict,max_length=40)
+    characteristics: dict[str,str|int|float|None] = Field(default_factory=dict,max_length=40)
+    decoded: dict[str,str|int|float|None] = Field(default_factory=dict,max_length=40)
+    field_sources: dict[str,str] = Field(default_factory=dict,max_length=40)
+    source: str = Field(default='manual',max_length=100)
+    observed_at: str = Field(default='',max_length=80)
+
+    @model_validator(mode='after')
+    def bounded(self):
+        allowed={'manufacturer','model','generation','year','engine','engine_code','engine_displacement_l','engine_power_kw','engine_power_hp','fuel_type','transmission','transmission_code','drive_type','body_class','trim','doors','engine_cylinders','plant_country','plant_city','series','vehicle_type','market'}
+        for values in (self.characteristics,self.decoded):
+            if not set(values)<=allowed or any(len(str(v))>200 for v in values.values()):
+                raise ValueError('Неприпустимі VIN-характеристики')
+        if not set(self.conflicts)<=allowed:raise ValueError('Неприпустимі конфлікти VIN')
+        if not set(self.field_sources)<=allowed or any(len(v)>100 for v in self.field_sources.values()):raise ValueError('Неприпустиме джерело VIN')
+        return self
+
+
 class VehicleInput(Input):
+    vin_details: VinDetails | None = None
     ktype: Annotated[int, Field(gt=0, le=2147483647, strict=True)] | None = None
     manufacturer: Text100
     model: Text100
@@ -56,6 +81,11 @@ class VehicleInput(Input):
     acquisition_date: date | None = None
     notes: Annotated[str, Field(max_length=10000)] = ""
     status: Literal["planned", "dismantling", "completed"] = "dismantling"
+
+    @field_validator('vin',mode='before')
+    @classmethod
+    def normalized_vin(cls,value):
+        return value.strip().upper() if isinstance(value,str) else value
 
 
 class VehicleSpecificationsInput(Input):
