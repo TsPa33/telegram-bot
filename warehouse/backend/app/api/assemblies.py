@@ -46,12 +46,15 @@ def preview(id:str,item:str,db:DB,who:Auth):
 
 class Change(Input):
     request_key: Key
-    action: Literal['attach','detach','confirm','return','receipt','link_part']
+    action: Literal['attach','detach','confirm','return','receipt','link_part','inspect']
     item_id: str = Field(default='',max_length=36)
     part_id: str = Field(default='',max_length=36)
     parent_id: str = Field(default='',max_length=36)
     token: str = Field(default='',max_length=64)
     sale_operation_id: str = Field(default='',max_length=36)
+    presence: Literal['unchecked','present','damaged','absent'] = 'unchecked'
+    quantity: int = Field(default=1,strict=True,ge=0,le=1000000)
+    note: str = Field(default='',max_length=2000)
     confirm_physical: bool = False
     confirm_inventory_return_only: bool = False
 
@@ -64,8 +67,9 @@ def change(id:str,data:Change,db:DB,who:Auth):
     if data.action=='receipt':require_permission(who,'inventory.create')
     def run():
         account=who.workspace_account_id
+        if data.action=='inspect':return service.inspect_item(db,account,id,data)
         if data.action=='link_part':return service.link_existing_part(db,account,id,data.part_id)
-        if data.action=='receipt':return service.receive_root(db,account,id,data.item_id)
+        if data.action=='receipt':return service.receive_root(db,account,id,data.item_id,data.token)
         if data.action=='attach':return service.attach(db,account,id,data.parent_id,data.item_id)
         if data.action=='detach':return service.detach(db,account,id,data.item_id)
         if data.action=='confirm':return service.confirm(db,account,id,data.item_id,data.token)

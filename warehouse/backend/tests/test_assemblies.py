@@ -226,6 +226,9 @@ def test_template_version_and_explicit_single_root_receipt(logged,group):
     assert logged.post(url,json={**body,'request_key':key(),'provenance':'Changed same version'}).status_code==409
     cyclic={**body,'request_key':key(),'version':2,'template':{**body['template'],'edges':body['template']['edges']+[{'parent':'template-placement-2','child':'template-placement-1'}]}}
     assert logged.post(url,json=cyclic).status_code==422
+    assert change(logged,g,'receipt',item_id=node).status_code==409
+    token=logged.get(f"/api/v1/vehicles/{g['vehicle']}/assemblies/{node}/preview").json()['token']
+    assert change(logged,g,'inspect',item_id=node,token=token,presence='present',quantity=1).status_code==200
     result=change(logged,g,'receipt',item_id=node);assert result.status_code==200,result.text
     assert change(logged,g,'receipt',item_id=node).status_code==409
     with Session(engine()) as db:
@@ -417,3 +420,76 @@ def test_managed_physical_id_cannot_become_a_quantity_lot(logged,group):
     assert r.status_code==409
     # Legacy/manual creation still requires a real serial number.
     assert logged.post('/api/v1/parts',json={'name':'Legacy tracked','individually_tracked':True}).status_code==422
+
+
+def inspect_node(c,g,index=0,**fields):
+    return change(c,g,'inspect',item_id=g['nodes'][index],token=preview(c,g,index)['token'],presence='present',quantity=fields.pop('quantity',1),**fields)
+
+
+def test_inspection_no_stock_write_and_quantity_plan(logged,group):
+    g=group
+    with Session(engine()) as db:
+        n=DismantlingItem(account_id=g['account'],vehicle_id=g['vehicle'],name='Фільтр',source='synthetic',catalog_key='extra',category_key='engine',category_name='Двигун',subcategory_key='filter',subcategory_name='Фільтри',quantity=1)
+        db.add(n);db.flush();node=n.id;g['nodes'].append(node);db.commit()
+    r=inspect_node(logged,g,13,quantity=2,note='Перевірено');assert r.status_code==200,r.text
+    with Session(engine()) as db:
+        n=db.get(DismantlingItem,node);assert n.part_id is None and n.quantity==2 and n.plan_v3['inspection']=='present'
+        assert db.scalar(select(func.count()).select_from(Part))==13
+        assert db.scalar(select(func.count()).select_from(Operation).where(Operation.type.in_(['receipt','sale','correction'])))==0
+    view=logged.get(f"/api/v1/vehicles/{g['vehicle']}/assemblies").json()
+    row=next(n for n in view['items'] if n['id']==node)
+    assert row['presence']=='present' and row['planned_quantity']==2 and row['quantity']==0 and row['note']=='Перевірено'
+    stale=preview(logged,g,13)['token']
+    assert inspect_node(logged,g,13,quantity=2,note='Повторно перевірено').status_code==200
+    assert change(logged,g,'receipt',item_id=node,token=stale).status_code==409
+    result=change(logged,g,'receipt',item_id=node,token=preview(logged,g,13)['token']);assert result.status_code==200,result.text
+    with Session(engine()) as db:assert db.get(Part,result.json()['part_id']).quantity==2
+
+
+def test_inspection_reserve_consumed_token_and_physical_quantity(logged,group):
+    g=group;attach_all(logged,g)
+    assert inspect_node(logged,g,quantity=2).status_code==409
+    stale=preview(logged,g)['token']
+    r=change(logged,g,'inspect',item_id=g['nodes'][1],token=preview(logged,g,1)['token'],presence='damaged',quantity=0,note='Тріщина');assert r.status_code==200,r.text
+    assert preview(logged,g)['incomplete']
+    assert change(logged,g,'inspect',item_id=g['nodes'][0],token=stale,presence='present',quantity=1).status_code==409
+    assert sell(logged,g).status_code==409
+    assert change(logged,g,'inspect',item_id=g['nodes'][1],token=preview(logged,g,1)['token'],presence='present',quantity=0).status_code==200
+    assert sell(logged,g).status_code==200
+    assert inspect_node(logged,g,quantity=0).status_code==409
+
+
+def test_inspect_requires_csrf_and_workspace(logged,group):
+    g=group
+    with TestClient(app) as other:
+        signup(other,'other-inspection@example.test')
+        assert change(other,g,'inspect',item_id=g['nodes'][0],token=preview(logged,g)['token']).status_code==404
+    with TestClient(app) as c:
+        c.cookies.update(logged.cookies)
+        assert c.post(f"/api/v1/vehicles/{g['vehicle']}/assemblies",json=dict(request_key=key(),action='inspect',item_id=g['nodes'][0],token=preview(logged,g)['token'])).status_code==403
+
+
+def test_inspection_replay_reserve_and_stock_lot_correction(logged,group):
+    g=group
+    with Session(engine()) as db:
+        p=db.get(Part,g['parts'][1]);p.individually_tracked=False;p.quantity=3;db.commit()
+    body=dict(request_key=key(),action='inspect',item_id=g['nodes'][1],token=preview(logged,g,1)['token'],presence='present',quantity=4,note='Перераховано')
+    r=logged.post(f"/api/v1/vehicles/{g['vehicle']}/assemblies",json=body);assert r.status_code==200,r.text
+    assert logged.post(f"/api/v1/vehicles/{g['vehicle']}/assemblies",json=body).json()==r.json()
+    with Session(engine()) as db:
+        assert db.get(Part,g['parts'][1]).quantity==4
+        assert db.scalar(select(func.count()).select_from(Operation).where(Operation.type=='correction'))==1
+        assert db.scalar(select(func.count()).select_from(Operation).where(Operation.type=='sale'))==0
+    assert logged.post('/api/v1/parts/'+g['parts'][1]+'/operations',json=dict(type='reserve',quantity=1,reason='Local reserve')).status_code==200
+    assert inspect_node(logged,g,1,quantity=4).status_code==409
+
+
+def test_inspection_cannot_resurrect_ordinary_sold_position(logged,group):
+    g=group
+    assert sell(logged,g,part=1).status_code==200
+    r=inspect_node(logged,g,1,quantity=1)
+    assert r.status_code==409,r.text
+    row=next(n for n in logged.get(f"/api/v1/vehicles/{g['vehicle']}/assemblies").json()['items'] if n['id']==g['nodes'][1])
+    assert row['quantity']==0 and row['consumed_type']=='sale'
+    with Session(engine()) as db:
+        assert db.scalar(select(func.count()).select_from(Operation).where(Operation.type=='correction'))==0

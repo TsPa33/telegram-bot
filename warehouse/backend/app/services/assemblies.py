@@ -68,7 +68,7 @@ def composition(nodes,edges,parts,root):
     if root not in nodes:raise HTTPException(404,'Позицію не знайдено')
     rows=[dict(item_id=id,part_id=nodes[id].part_id,name=nodes[id].name,
         archived=parts[nodes[id].part_id].archived if nodes[id].part_id in parts else False,presence=nodes[id].status,availability=parts[nodes[id].part_id].availability if nodes[id].part_id in parts else None,condition=parts[nodes[id].part_id].condition if nodes[id].part_id in parts else nodes[id].condition,
-        completeness=nodes[id].assembly_completeness,consumed_operation_id=nodes[id].assembly_consumed_operation_id,
+        inspection=nodes[id].plan_v3.get('inspection'),note=nodes[id].plan_v3.get('inspection_note',''),planned_quantity=nodes[id].quantity,completeness=nodes[id].assembly_completeness,consumed_operation_id=nodes[id].assembly_consumed_operation_id,
         quantity=parts[nodes[id].part_id].quantity if nodes[id].part_id in parts else None) for id in ids]
     memberships=[dict(id=e.id,parent=e.parent_item_id,child=e.child_item_id) for e in edges if e.parent_item_id in ids]
     data=dict(root=root,items=rows,memberships=memberships)
@@ -99,6 +99,9 @@ def tree(db,account,vehicle):
     nodes,edges,parts=graph(db,account,vehicle)
     attached={e.child_item_id:e.parent_item_id for e in edges}
     consumed_types={op.id:op.type for op in db.scalars(select(Operation).where(Operation.account_id==account,Operation.id.in_([n.assembly_consumed_operation_id for n in nodes.values() if n.assembly_consumed_operation_id])))}
+    last_stock={}
+    for op in db.scalars(select(Operation).where(Operation.account_id==account,Operation.part_id.in_([p.id for p in parts.values() if p.quantity==0]),Operation.type.in_(['sale','write_off','receipt','correction','virtual_activation'])).distinct(Operation.part_id).order_by(Operation.part_id,Operation.created_at.desc(),Operation.id.desc())):
+        last_stock[op.part_id]=op.type
     parents={e.child_item_id:e.parent_item_id for e in edges}
     affected=set()
     for n in nodes.values():
@@ -112,9 +115,9 @@ def tree(db,account,vehicle):
     items=[]
     for n in nodes.values():
         p=parts.get(n.part_id)
-        items.append(dict(id=n.id,name=n.name,category=n.category_name,parent_id=attached.get(n.id),part_id=n.part_id,
-            completeness='incomplete' if n.id in affected and (n.assembly_completeness is not None or n.id in assembly_parents) else n.assembly_completeness,consumed_operation_id=n.assembly_consumed_operation_id,consumed_type=consumed_types.get(n.assembly_consumed_operation_id),
-            presence=n.status,quantity=p.quantity if p else 0,reserved=p.reserved_quantity if p else 0,
+        items.append(dict(id=n.id,name=n.name,category=n.category_name,subcategory=n.subcategory_name,parent_id=attached.get(n.id),part_id=n.part_id,
+            completeness='incomplete' if n.id in affected and (n.assembly_completeness is not None or n.id in assembly_parents) else n.assembly_completeness,consumed_operation_id=n.assembly_consumed_operation_id,consumed_type=consumed_types.get(n.assembly_consumed_operation_id) or (last_stock.get(p.id) if p and p.quantity==0 and n.id not in attached else None),
+            presence='absent' if 'absent' in inspection_issues(n,p) else 'damaged' if 'damaged' in inspection_issues(n,p) else 'present' if n.part_id or n.status=='dismantled' else n.plan_v3.get('inspection','unchecked'),condition=p.condition if p else n.condition,note=n.plan_v3.get('inspection_note',''),planned_quantity=n.quantity,individually_tracked=bool(p and p.individually_tracked),archived=bool(p and p.archived),quantity=p.quantity if p else 0,reserved=p.reserved_quantity if p else 0,
             standalone=bool(p and p.available_quantity>0 and p.assortment_enabled and not p.archived and n.id not in attached and not n.assembly_consumed_operation_id)))
     unlinked=list(db.scalars(select(Part).where(Part.account_id==account,Part.vehicle_id==vehicle,Part.archived.is_(False),Part.quantity==1,Part.reserved_quantity==0,~select(DismantlingItem.id).where(DismantlingItem.part_id==Part.id).exists()).order_by(Part.name,Part.id).limit(1000)))
     return dict(items=items,unlinked_parts=[{'id':p.id,'name':p.name} for p in unlinked],counts=dict(potential=len(nodes),confirmed_attached=sum('absent' not in inspection_issues(nodes[e.child_item_id],parts.get(nodes[e.child_item_id].part_id)) for e in edges),
@@ -215,6 +218,7 @@ def stock_guard(db,part,data,account,confirmation=None):
     node=db.scalar(select(DismantlingItem).where(DismantlingItem.account_id==account,DismantlingItem.part_id==part.id))
     if node is None:return None
     membership_history=db.scalar(select(AssemblyMembership.id).where(AssemblyMembership.account_id==account,or_(AssemblyMembership.parent_item_id==node.id,AssemblyMembership.child_item_id==node.id)).limit(1))
+    if data.type in ('sale','reserve') and 'absent' in inspection_issues(node,part):raise HTTPException(409,'Спочатку звірте наявність деталі')
     if node.assembly_completeness is None and not node.assembly_consumed_operation_id and not membership_history and node.source!='carpot.assembly.v1':return None
     nodes,edges,parts=graph(db,account,node.vehicle_id,lock=True)
     if any(e.child_item_id==node.id for e in edges):raise HTTPException(409,'Деталь входить до вузла. Спочатку відокремте її.')
@@ -294,7 +298,11 @@ def inventory_return(db,account,vehicle,operation_id):
 
 def command(db,who,vehicle,kind,data,execute):
     account=who.workspace_account_id;lock_workspace(db,account)
-    sha=digest(dict(vehicle=vehicle,kind=kind,data=data.model_dump(mode='json',exclude={'request_key'})))
+    payload=data.model_dump(mode='json',exclude={'request_key'})
+    # Keep existing command fingerprints stable across this additive API extension.
+    if kind!='assembly:inspect':
+        for field in ('presence','quantity','note'):payload.pop(field,None)
+    sha=digest(dict(vehicle=vehicle,kind=kind,data=payload))
     prior=db.scalar(select(DismantlingRequest).where(DismantlingRequest.account_id==account,DismantlingRequest.request_key==str(data.request_key)))
     if prior:
         if prior.actor_id!=who.actor_id or prior.request_sha!=sha:raise HTTPException(409,'Ключ уже використано для іншої дії або виконавця')
@@ -347,13 +355,14 @@ def save_template(db,account,data):
     return dict(template_id=row.id)
 
 
-def receive_root(db,account,vehicle,item):
-    """Explicit single physical receipt via the existing dismantling pipeline."""
+def receive_root(db,account,vehicle,item,token=''):
+    """Explicit receipt via the existing ledger; assemblies remain single physical IDs."""
     from app.services import dismantling,unified_catalogue
     from app.api.dismantling import DismantlingAction
     nodes,edges,parts=graph(db,account,vehicle,lock=True)
     if item not in nodes:raise HTTPException(404,'Позицію не знайдено')
     n=nodes[item];assert_uncontained_item(db,n,account)
+    if token and token!=composition(nodes,edges,parts,item)['token']:raise HTTPException(409,'Дані деталі змінилися. Оновіть перевірку перед надходженням.')
     if n.part_id:
         raise HTTPException(409,'Позицію вже пов’язано зі складом; повторне надходження через вузли заборонене')
     if n.source=='carpot.catalogue.v1':
@@ -362,8 +371,11 @@ def receive_root(db,account,vehicle,item):
         if not state or unified_catalogue.needs_review(v):raise HTTPException(409,'Потрібна звірка збереженого каталогу')
         product=next((r for r in state['payload']['categories'] if n.catalog_key==f"car:{state['payload']['car_id']}:product:{r['product_id']}"),None)
         if not product or product.get('kind')!='part':raise HTTPException(409,'Неперевірені типи, обладнання й витратні матеріали потребують окремих правил')
-    dismantling.actions(db,vehicle,account,DismantlingAction(ids=[item],action='dismantled'))
-    dismantling.actions(db,vehicle,account,DismantlingAction(ids=[item],action='receipt',quantity=1))
+    if n.quantity!=1 and (n.assembly_completeness is not None or any(e.parent_item_id==item or e.child_item_id==item for e in edges)):raise HTTPException(409,'Один фізичний вузол — одна одиниця')
+    if n.status=='absent' or n.plan_v3.get('inspection')!='present':raise HTTPException(409,'Спочатку підтвердьте наявність деталі на автомобілі')
+    before=snapshot(n);n.status='dismantled'
+    record(db,account,n,'dismantling_status','Підтверджено демонтаж перед додаванням на склад',before)
+    dismantling.actions(db,vehicle,account,DismantlingAction(ids=[item],action='receipt',quantity=n.quantity))
     return dict(received=True,part_id=n.part_id)
 
 
@@ -404,3 +416,39 @@ def part_context(db,account,part_id):
 def managed_part(db,part):
     node=db.scalar(select(DismantlingItem).where(DismantlingItem.account_id==part.account_id,DismantlingItem.part_id==part.id))
     return bool(node and (node.assembly_completeness is not None or node.assembly_consumed_operation_id or node.source=='carpot.assembly.v1' or db.scalar(select(AssemblyMembership.id).where(AssemblyMembership.account_id==part.account_id,or_(AssemblyMembership.parent_item_id==node.id,AssemblyMembership.child_item_id==node.id)).limit(1))))
+
+
+def inspect_item(db,account,vehicle,data):
+    """Inspection is metadata, never a receipt; quantity lots use the sole stock ledger."""
+    from app.services.inventory import stock
+    nodes,edges,parts=graph(db,account,vehicle,lock=True)
+    n=nodes.get(data.item_id)
+    if not n:raise HTTPException(404,'Позицію цього автомобіля не знайдено')
+    if composition(nodes,edges,parts,n.id)['token']!=data.token:raise HTTPException(409,'Дані деталі змінилися. Відкрийте її ще раз.')
+    relevant=closure(n.id,edges)+ancestors(n.id,edges)
+    if any(nodes[i].assembly_consumed_operation_id or (parts.get(nodes[i].part_id) and (parts[nodes[i].part_id].reserved_quantity or parts[nodes[i].part_id].archived)) for i in relevant):
+        raise HTTPException(409,'Продана, архівована або зарезервована деталь недоступна для редагування')
+    p=parts.get(n.part_id)
+    if p and p.quantity==0:
+        last=db.scalar(select(Operation).where(Operation.account_id==account,Operation.part_id==p.id,Operation.type.in_(['sale','write_off','receipt','correction','virtual_activation'])).order_by(Operation.created_at.desc(),Operation.id.desc()).limit(1))
+        if last and last.type in ('sale','write_off'):raise HTTPException(409,'Цю позицію вже продано або списано; використайте чинний контрольований процес повернення')
+    physical=bool(n.assembly_completeness is not None or any(e.child_item_id==n.id or e.parent_item_id==n.id for e in edges) or (p and p.individually_tracked))
+    before=snapshot(n)
+    current=p.quantity if p else n.quantity
+    if data.quantity!=current:
+        if physical:raise HTTPException(409,'Ця фізична деталь обліковується окремо; її кількість не можна дублювати')
+        if p:
+            stock(db,p,SimpleNamespace(type='correction',quantity=data.quantity,reason='Уточнення фактичної кількості під час перевірки автомобіля',sale_price=None),account)
+        else:
+            if data.quantity<1:raise HTTPException(422,'Для відсутньої деталі виберіть «Відсутня», не нульову кількість плану')
+            n.quantity=data.quantity
+    n.plan_v3={**n.plan_v3,'inspection':'present' if data.presence=='damaged' else data.presence,'inspection_source':'user_decision','inspection_note':data.note}
+    n.status='damaged' if data.presence=='damaged' else 'absent' if data.presence=='absent' else 'dismantled' if n.received_at else 'unchecked'
+    n.condition='damaged' if data.presence=='damaged' else 'used' if n.condition=='damaged' else n.condition
+    if p:
+        old=snapshot(p)
+        p.condition='damaged' if data.presence=='damaged' else 'used' if p.condition=='damaged' else p.condition
+        p.availability='absent' if data.presence=='absent' else 'damaged' if data.presence=='damaged' else 'present'
+        record(db,account,p,'update','Перевірка наявності та стану; залишок не змінено',old)
+    record(db,account,n,'dismantling_status','Збережено результат фізичної перевірки',before)
+    return dict(saved=True,item_id=n.id)

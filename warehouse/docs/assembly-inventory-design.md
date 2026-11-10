@@ -313,3 +313,7 @@ Ready for Draft code review and separately approved isolated staging acceptance,
 NOT for automatic operational enablement. Owner review must accept inventory-only
 returns, blocked automatic cost redistribution, conservative absent-component
 handling, and the existing unrelated migration-test limits before rollout.
+
+### Інтерфейс затвердженої концепції (2026-11-10)
+
+Триколонковий робочий екран, окрема фізична перевірка/примітки, guarded кількісні дії та screenshots описані в [UI concept report](assembly-inventory/ui-concept/README.md). Використано той самий граф, ledger, ідемпотентні команди та feature flag; нових міграцій немає.

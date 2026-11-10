@@ -29,7 +29,8 @@ def seed(request:Request):
             if i<13:
                 part=Part(account_id=account.id,vehicle_id=v.id,name='Двері передні ліві в зборі' if i==0 else f'Компонент дверей {i}',quantity=1,reserved_quantity=0,individually_tracked=True)
                 db.add(part);db.flush()
-            node=DismantlingItem(account_id=account.id,vehicle_id=v.id,name=part.name if part else f'Потенційна позиція {i}',source='assembly.fixture',catalog_key=str(i),category_key='body',category_name='Кузов',subcategory_key='door',subcategory_name='Двері',quantity=1,part_id=part.id if part else None)
+            category=('body','Кузов та зовнішні деталі') if i<13 else [('body','Кузов та зовнішні деталі'),('engine','Двигун та його системи'),('electric','Електрика та електроніка'),('interior',"Салон та інтер’єр")][i%4]
+            node=DismantlingItem(account_id=account.id,vehicle_id=v.id,name=part.name if part else f'Потенційна позиція {i}',source='assembly.fixture',catalog_key=str(i),category_key=category[0],category_name=category[1],subcategory_key='door',subcategory_name='Двері',quantity=1,part_id=part.id if part else None)
             db.add(node);db.flush();nodes.append(node)
         for node in nodes[1:13]:attach(db,account.id,v.id,nodes[0].id,node.id)
         confirm(db,account.id,v.id,nodes[0].id,preview(db,account.id,nodes[0].id)['token'])
