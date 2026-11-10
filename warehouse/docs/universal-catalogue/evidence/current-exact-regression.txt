@@ -1,0 +1,183 @@
+.................................F...............F.F...............      [100%]
+=================================== FAILURES ===================================
+______________________ test_real_A_xc90_read_only_example ______________________
+
+platform = <starlette.testclient.TestClient object at 0x7f695a15a690>
+vehicle = {'dismantling_v3': {}, 'manufacturer': 'Test manufacturer', 'ktype': None, 'checklist_ktype': None, ...}
+tmp_path = PosixPath('/tmp/pytest-of-agent/pytest-1/test_real_A_xc90_read_only_exa0')
+
+    def test_real_A_xc90_read_only_example(platform,vehicle,tmp_path):
+        from app.services.aleto_import import BUNDLED_PACKAGE
+        j=plan(platform,upload(platform,raw=BUNDLED_PACKAGE.read_bytes(),filename=BUNDLED_PACKAGE.name))
+        if j['report']['issues']:j=plan(platform,j,{i['key']:{'action':'skip'} for i in j['report']['issues']})
+>       confirm(platform,j);build(platform);setup_vehicle(vehicle)
+        ^^^^^^^^^^^^^^^^^^^
+
+tests/test_dismantling_preview.py:88:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+c = <starlette.testclient.TestClient object at 0x7f695a15a690>
+job = {'id': '50f5471d-5c99-469b-bdd3-e2c26e2db9fc', 'filename': 'catalogue.sqlite3.gz', 'file_sha256': '1b6eab050b283cdfa2f...e8cffed84a91a2b428b16e565a', 'payload_sha256': '256659e717e811dcc094e168b54a02f7b35a32627485f034b7a2b5a11031f848', ...}
+expected = 200
+
+    def confirm(c,job,expected=200):
+        r=c.post(f"/api/v1/catalogue/admin/jobs/{job['id']}/apply",json={'preview_token':job['preview_token'],'confirm':True})
+>       return finish_operation(c,r,expected)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_catalogue_v2.py:69:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+c = <starlette.testclient.TestClient object at 0x7f695a15a690>
+response = <Response [409 Conflict]>, expected = 200
+
+    def finish_operation(c,response,expected):
+        if response.status_code!=202:
+>           assert response.status_code==expected,response.text
+E           AssertionError: {"detail":"Потрібен новий preview"}
+E           assert 409 == 200
+E            +  where 409 = <Response [409 Conflict]>.status_code
+
+tests/test_catalogue_v2.py:56: AssertionError
+__________________ test_real_A_xc90_plan_and_multiple_donors ___________________
+
+platform = <starlette.testclient.TestClient object at 0x7f6954030790>
+vehicle = {'dismantling_v3': {}, 'manufacturer': 'Test manufacturer', 'ktype': None, 'checklist_ktype': None, ...}
+tmp_path = PosixPath('/tmp/pytest-of-agent/pytest-1/test_real_A_xc90_plan_and_mult0')
+
+    def test_real_A_xc90_plan_and_multiple_donors(platform,vehicle,tmp_path):
+        from app.services.aleto_import import BUNDLED_PACKAGE
+        j=plan(platform,upload(platform,raw=BUNDLED_PACKAGE.read_bytes(),filename=BUNDLED_PACKAGE.name))
+        if j['report']['issues']:j=plan(platform,j,{i['key']:{'action':'skip'} for i in j['report']['issues']})
+>       confirm(platform,j);build(platform);setup_vehicle(vehicle)
+        ^^^^^^^^^^^^^^^^^^^
+
+tests/test_dismantling_plan_v3.py:164:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+c = <starlette.testclient.TestClient object at 0x7f6954030790>
+job = {'id': '7084a092-079c-4375-b677-089e8103abbc', 'filename': 'catalogue.sqlite3.gz', 'file_sha256': '1b6eab050b283cdfa2f...e8cffed84a91a2b428b16e565a', 'payload_sha256': '256659e717e811dcc094e168b54a02f7b35a32627485f034b7a2b5a11031f848', ...}
+expected = 200
+
+    def confirm(c,job,expected=200):
+        r=c.post(f"/api/v1/catalogue/admin/jobs/{job['id']}/apply",json={'preview_token':job['preview_token'],'confirm':True})
+>       return finish_operation(c,r,expected)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_catalogue_v2.py:69:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+c = <starlette.testclient.TestClient object at 0x7f6954030790>
+response = <Response [409 Conflict]>, expected = 200
+
+    def finish_operation(c,response,expected):
+        if response.status_code!=202:
+>           assert response.status_code==expected,response.text
+E           AssertionError: {"detail":"Потрібен новий preview"}
+E           assert 409 == 200
+E            +  where 409 = <Response [409 Conflict]>.status_code
+
+tests/test_catalogue_v2.py:56: AssertionError
+________________ test_additive_migration_on_populated_legacy_db ________________
+
+platform = <starlette.testclient.TestClient object at 0x7f6954c8c090>
+vehicle = {'dismantling_v3': {}, 'manufacturer': 'Test manufacturer', 'ktype': None, 'checklist_ktype': None, ...}
+part = {'assortment_enabled': True, 'inventory_origin': 'legacy', 'quantity_basis': 'legacy', 'physical_location_kind': 'unknown', ...}
+
+    def test_additive_migration_on_populated_legacy_db(platform,vehicle,part):
+        import subprocess,sys
+        setup_vehicle(vehicle);platform.post(f"/api/v1/vehicles/{vehicle['id']}/dismantling/start")
+        with Session(engine()) as db:
+            db.scalar(select(DismantlingItem).limit(1)).included=False;db.commit()
+            before={t:list(db.execute(text(sql)).mappings()) for t,sql in {'parts':'SELECT id,quantity,selling_price,unit_cost FROM parts ORDER BY id','items':'SELECT id,source,catalog_key,included,status FROM dismantling_items ORDER BY id','ops':'SELECT * FROM operations ORDER BY id'}.items()}
+        try:
+>           subprocess.run([sys.executable,'-m','alembic','downgrade','76af12de4b90'],check=True,capture_output=True)
+
+tests/test_dismantling_plan_v3.py:211:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+input = None, capture_output = True, timeout = None, check = True
+popenargs = (['/workspace/.venvs/warehouse/bin/python', '-m', 'alembic', 'downgrade', '76af12de4b90'],)
+kwargs = {'stdout': -1, 'stderr': -1}
+
+    def run(*popenargs,
+            input=None, capture_output=False, timeout=None, check=False, **kwargs):
+        """Run command with arguments and return a CompletedProcess instance.
+
+        The returned instance will have attributes args, returncode, stdout and
+        stderr. By default, stdout and stderr are not captured, and those attributes
+        will be None. Pass stdout=PIPE and/or stderr=PIPE in order to capture them,
+        or pass capture_output=True to capture both.
+
+        If check is True and the exit code was non-zero, it raises a
+        CalledProcessError. The CalledProcessError object will have the return code
+        in the returncode attribute, and output & stderr attributes if those streams
+        were captured.
+
+        If timeout is given, and the process takes too long, a TimeoutExpired
+        exception will be raised.
+
+        There is an optional argument "input", allowing you to
+        pass bytes or a string to the subprocess's stdin.  If you use this argument
+        you may not also use the Popen constructor's "stdin" argument, as
+        it will be used internally.
+
+        By default, all communication is in bytes, and therefore any "input" should
+        be bytes, and the stdout and stderr will be bytes. If in text mode, any
+        "input" should be a string, and stdout and stderr will be strings decoded
+        according to locale encoding, or by "encoding" if set. Text mode is
+        triggered by setting any of text, encoding, errors or universal_newlines.
+
+        The other arguments are the same as for the Popen constructor.
+        """
+        if input is not None:
+            if kwargs.get('stdin') is not None:
+                raise ValueError('stdin and input arguments may not both be used.')
+            kwargs['stdin'] = PIPE
+
+        if capture_output:
+            if kwargs.get('stdout') is not None or kwargs.get('stderr') is not None:
+                raise ValueError('stdout and stderr arguments may not be used '
+                                 'with capture_output.')
+            kwargs['stdout'] = PIPE
+            kwargs['stderr'] = PIPE
+
+        with Popen(*popenargs, **kwargs) as process:
+            try:
+                stdout, stderr = process.communicate(input, timeout=timeout)
+            except TimeoutExpired as exc:
+                process.kill()
+                if _mswindows:
+                    # Windows accumulates the output in a single blocking
+                    # read() call run on child threads, with the timeout
+                    # being done in a join() on those threads.  communicate()
+                    # _after_ kill() is required to collect that and add it
+                    # to the exception.
+                    exc.stdout, exc.stderr = process.communicate()
+                else:
+                    # POSIX _communicate already populated the output so
+                    # far into the TimeoutExpired exception.
+                    process.wait()
+                raise
+            except:  # Including KeyboardInterrupt, communicate handled that.
+                process.kill()
+                # We don't call process.wait() as .__exit__ does that for us.
+                raise
+            retcode = process.poll()
+            if check and retcode:
+>               raise CalledProcessError(retcode, process.args,
+                                         output=stdout, stderr=stderr)
+E               subprocess.CalledProcessError: Command '['/workspace/.venvs/warehouse/bin/python', '-m', 'alembic', 'downgrade', '76af12de4b90']' returned non-zero exit status 1.
+
+../../../.python/cpython-3.11.9-linux-x86_64-gnu/lib/python3.11/subprocess.py:571: CalledProcessError
+=============================== warnings summary ===============================
+../../../.venvs/warehouse/lib/python3.11/site-packages/fastapi/testclient.py:1
+  /workspace/.venvs/warehouse/lib/python3.11/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_dismantling_preview.py::test_real_A_xc90_read_only_example
+FAILED tests/test_dismantling_plan_v3.py::test_real_A_xc90_plan_and_multiple_donors
+FAILED tests/test_dismantling_plan_v3.py::test_additive_migration_on_populated_legacy_db
+3 failed, 64 passed, 1 warning in 100.91s (0:01:40)

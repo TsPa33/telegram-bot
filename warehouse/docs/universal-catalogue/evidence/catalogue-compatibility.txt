@@ -1,0 +1,78 @@
+........................F.F...                                           [100%]
+=================================== FAILURES ===================================
+____________ test_concurrent_worker_coordination_and_ordinary_reads ____________
+
+platform = <starlette.testclient.TestClient object at 0x7fd732759d90>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7fd72eb46890>
+
+    def test_concurrent_worker_coordination_and_ordinary_reads(platform,monkeypatch):
+        from threading import Event
+        import app.services.canonical_jobs as worker
+        entered,release=Event(),Event();original=worker.build
+        def slow(*a,**kw):entered.set();assert release.wait(10);return original(*a,**kw)
+        monkeypatch.setattr(worker,'build',slow)
+        r=platform.post(PREFIX+'/runs',json={'mode':'preview'});assert r.status_code==202
+        assert platform.post(PREFIX+'/runs',json={'mode':'preview'}).json()['id']==r.json()['id']
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            future=pool.submit(process_one,engine())
+            try:
+                assert entered.wait(5)
+                assert not process_one(engine())
+                assert platform.get('/health').status_code==200
+>               assert platform.post(PREFIX+'/types',json={'name':'Насос','category':'Двигун','subcategory':'Насоси','evidence':'Concurrent mutation test'}).status_code==409
+E               AssertionError: assert 201 == 409
+E                +  where 201 = <Response [201 Created]>.status_code
+E                +    where <Response [201 Created]> = post(('/api/v1/catalogue/admin/canonical' + '/types'), json={'name': 'Насос', 'category': 'Двигун', 'subcategory': 'Насоси', 'evidence': 'Concurrent mutation test'})
+E                +      where post = <starlette.testclient.TestClient object at 0x7fd732759d90>.post
+
+tests/test_canonical_v3.py:261: AssertionError
+------------------------------ Captured log call -------------------------------
+ERROR    app.services.canonical_jobs:canonical_jobs.py:69 Canonical run da340ef7-c1eb-460b-80a4-398f5e12ede1 failed
+Traceback (most recent call last):
+  File "/workspace/telegram-bot/warehouse/backend/app/services/canonical_jobs.py", line 64, in process_one
+    else:plan=build(db,run.mode=='publish',run.preview_id,run.token)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/telegram-bot/warehouse/backend/tests/test_canonical_v3.py", line 251, in slow
+    def slow(*a,**kw):entered.set();assert release.wait(10);return original(*a,**kw)
+                                    ^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: assert False
+ +  where False = wait(10)
+ +    where wait = <threading.Event at 0x7fd72eb461d0: unset>.wait
+________ test_full_real_A_normalization_report_preserves_source_tables _________
+
+platform = <starlette.testclient.TestClient object at 0x7fd732759550>
+tmp_path = PosixPath('/tmp/pytest-of-agent/pytest-2/test_full_real_A_normalization0')
+
+    def test_full_real_A_normalization_report_preserves_source_tables(platform,tmp_path):
+        j=plan(platform,upload(platform,raw=BUNDLED_PACKAGE.read_bytes(),filename=BUNDLED_PACKAGE.name))
+        if j['report']['issues']:j=plan(platform,j,{i['key']:{'action':'skip'} for i in j['report']['issues']})
+>       confirm(platform,j)
+
+tests/test_canonical_v3.py:279:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests/test_catalogue_v2.py:69: in confirm
+    return finish_operation(c,r,expected)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+c = <starlette.testclient.TestClient object at 0x7fd732759550>
+response = <Response [409 Conflict]>, expected = 200
+
+    def finish_operation(c,response,expected):
+        if response.status_code!=202:
+>           assert response.status_code==expected,response.text
+E           AssertionError: {"detail":"Потрібен новий preview"}
+E           assert 409 == 200
+E            +  where 409 = <Response [409 Conflict]>.status_code
+
+tests/test_catalogue_v2.py:56: AssertionError
+=============================== warnings summary ===============================
+../../../.venvs/warehouse/lib/python3.11/site-packages/fastapi/testclient.py:1
+  /workspace/.venvs/warehouse/lib/python3.11/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_canonical_v3.py::test_concurrent_worker_coordination_and_ordinary_reads
+FAILED tests/test_canonical_v3.py::test_full_real_A_normalization_report_preserves_source_tables
+2 failed, 28 passed, 1 deselected, 1 warning in 61.47s (0:01:01)

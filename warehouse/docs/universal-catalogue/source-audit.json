@@ -1,0 +1,87 @@
+{
+  "available_sources": [
+    {
+      "file": "volvo_xc90_107555_product_types_113.json",
+      "sha256": "430887c3e61fafea3249fba692358e6afce51778a40cf74a0232c9c77fc0c718",
+      "records": 113,
+      "evidence": "source labels only"
+    },
+    {
+      "file": "warehouse/docs/unified-catalogue/review/volvo-107555-taxonomy-draft.json",
+      "sha256": "b41c4da6e073dcd8ced104f495f7d95da026ce7ebc4d1e48379fbd5aee2c4475",
+      "records": 113,
+      "evidence": "draft taxonomy"
+    }
+  ],
+  "missing_sources": [
+    "CARPOT_CATALOGUE_CODEX_RESUME_INPUTS_2026-11-10.zip",
+    "carpot_prd_export_result.zip",
+    "carpot_prd_safe_filter_v1.zip",
+    "CarPot_taxonomy_pilot_2026_11_10.zip",
+    "CarPot_Codex_data_sources_fitment_spec_v2.md",
+    "MANIFEST.json"
+  ],
+  "existing_bundled_constructive_types": 216,
+  "existing_bundled_candidate_placements": 227,
+  "volvo": {
+    "source_types": 113,
+    "draft_kinds": {
+      "part": 64,
+      "consumable": 37,
+      "equipment": 9,
+      "review": 3
+    },
+    "draft_review": {
+      "draft": 113
+    },
+    "categories": {
+      "Електрика та електроніка": {
+        "part": 5
+      },
+      "Обладнання та витратні матеріали": {
+        "consumable": 6,
+        "equipment": 7
+      },
+      "Двигун та його системи": {
+        "consumable": 18,
+        "part": 19
+      },
+      "Кермове управління": {
+        "part": 3
+      },
+      "Гальмівна система": {
+        "part": 9,
+        "consumable": 3
+      },
+      "Освітлення": {
+        "consumable": 9,
+        "part": 1
+      },
+      "Підвіска та ходова частина": {
+        "part": 13
+      },
+      "Салон та інтер’єр": {
+        "equipment": 1,
+        "part": 1
+      },
+      "Кузов та зовнішні деталі": {
+        "part": 8,
+        "equipment": 1
+      },
+      "Кліматична система": {
+        "part": 5
+      },
+      "Трансмісія та привід": {
+        "consumable": 1
+      },
+      "Ручний перегляд": {
+        "review": 3
+      }
+    },
+    "verified_applicability": 0,
+    "verified_physical_positions": null,
+    "verified_factory_bom": false,
+    "verified_500": false
+  },
+  "new_real_prd_types_published": 0
+}

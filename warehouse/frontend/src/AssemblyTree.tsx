@@ -4,6 +4,7 @@ import {api,type Row} from './api';
 import {TeamIdentity,useCan} from './permissions';
 import {Box,Check,ChevronDown,ChevronRight,Layers,Minus,Plus,Search,Settings2,TriangleAlert,X,MoreHorizontal,List,Network,DoorOpen,Cog,Zap,Armchair,Wind,ShieldCheck,Lightbulb,Disc,Settings} from 'lucide-react';
 import './assembly-tree.css';
+import UniversalPlanReview from './UniversalPlanReview';
 
 /** Optional inline view over existing donor placements, never a stock generator. */
 export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;onReady?:(enabled:boolean)=>void;revision?:number}) {
@@ -143,5 +144,6 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
   </div>}
   </div>
   {editable&&assemblyEnabled&&!!data.unlinked_parts?.length&&<details className="assembly-legacy"><summary>Пов’язати наявну складську позицію</summary><p>Залишок не зміниться.</p><label>Наявна фізична позиція<select value={legacyPart} onChange={e=>setLegacyPart(e.target.value)}><option value="">Оберіть позицію</option>{data.unlinked_parts.map((p:Row)=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label><button disabled={busy||!legacyPart} onClick={()=>void send('link_part',{part_id:legacyPart,confirm_physical:true})}>Пов’язати з деревом</button></details>}
+ <UniversalPlanReview vehicle={vehicle} onSaved={()=>load()}/>
  </section>;
 }

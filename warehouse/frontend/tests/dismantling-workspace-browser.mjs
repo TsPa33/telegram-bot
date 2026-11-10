@@ -39,6 +39,12 @@ try{for(const width of [1440,390]){
   await page.screenshot({path:`${out}/partial113-${width}-${theme}.png`,fullPage:false});
   if(width===390){await page.evaluate(()=>scrollTo(0,0));await page.screenshot({path:`${out}/partial113-overview-${width}-${theme}.png`,fullPage:false});}
  }
+ const update=work.locator('.assembly-plan-review');await update.locator('summary').click();
+ await update.getByRole('button',{name:'Переглянути зміни плану',exact:true}).click();
+ await expect(update).toContainText('Нових позицій:');await expect(update).toContainText('Потрібні рішення:');
+ const untouched=await (await c.request.get(base+'/assemblies')).json();assert.equal(untouched.items.length,113);assert.equal(untouched.items.filter(i=>i.part_id).length,1);
+ await update.scrollIntoViewIfNeeded();assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+ for(const theme of ['day','night']){await page.getByRole('button',{name:theme==='day'?'День':'Ніч',exact:true}).click();await update.scrollIntoViewIfNeeded();assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);await page.screenshot({path:`${out}/universal-review-${width}-${theme}.png`,fullPage:false});}
  await page.route('**/api/v1/vehicles/*/assemblies',route=>route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({detail:'Локальна перевірка недоступності списку'})}));
  await page.reload();await expect(page.getByRole('alert')).toContainText('Локальна перевірка недоступності списку');assert.equal(await page.getByRole('columnheader',{name:'Артикули',exact:true}).count(),0);
  assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);

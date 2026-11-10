@@ -89,3 +89,20 @@ def virtual_availability(id:str,data:VirtualAvailability,db:DB,who:Auth):
     virtual.lock_workspace(db,who.workspace_account_id)
     v=owned(db,Vehicle,id,who.workspace_account_id,lock=True,active=True)
     result=virtual.availability(db,v,who,data);db.commit();return result
+
+
+@router.post('/api/v1/vehicles/{id}/universal-plan/preview')
+def universal_preview(id:str,data:PlanPreview,db:DB,who:Auth):
+    from app.permissions import require_permission
+    require_permission(who,'vehicles.view','catalog.view')
+    return service.make_preview(db,owned(db,Vehicle,id,who.workspace_account_id),who,data,include_universal=True)
+
+@router.post('/api/v1/vehicles/{id}/universal-plan')
+def universal_save(id:str,data:PlanSave,db:DB,who:Auth):
+    from app.permissions import require_permission
+    from app.services.assemblies import lock_workspace
+    require_permission(who,'vehicles.view','catalog.view','dismantling.manage')
+    lock_workspace(db,who.workspace_account_id)
+    v=owned(db,Vehicle,id,who.workspace_account_id,lock=True,active=True)
+    if not db.scalar(text('SELECT pg_try_advisory_xact_lock(:key)'),{'key':LOCK}):raise HTTPException(409,'Каталог оновлюється')
+    result=service.save(db,v,who,data,universal=True);db.commit();return result

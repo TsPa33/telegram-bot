@@ -1,0 +1,216 @@
+.................F..........................F..............              [100%]
+=================================== FAILURES ===================================
+___ test_500_reference_slots_apply_and_regeneration_preserve_physical_state ____
+
+platform = <starlette.testclient.TestClient object at 0x7f552280ce50>
+vehicle = {'dismantling_v3': {}, 'manufacturer': 'Test manufacturer', 'ktype': None, 'checklist_ktype': None, ...}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f5525a2d4d0>
+
+    def test_500_reference_slots_apply_and_regeneration_preserve_physical_state(platform,vehicle,monkeypatch):
+        from app.services import dismantling_preview,assemblies
+        from app.models import AssemblyMembership,now
+        # Synthetic published catalogue fixture, not a claim about any real model.
+        monkeypatch.setattr(dismantling_preview,'candidates',lambda *a,**k:dict(items=[],unmapped_total=0,snapshot_sha='fixture',published=True))
+        rows=[source(i) for i in range(1,501)]
+        reviews=[{**review(r),'name_uk':f"Контрольний тип {r['id']}"} for r in rows]
+        publish(platform,rows,reviews)
+        url=f"/api/v1/vehicles/{vehicle['id']}/universal-plan"
+        p=platform.post(url+'/preview',json={'facts':[]});assert p.status_code==200,p.text
+        assert p.json()['counts']['proposed']==500 and p.json()['counts']['new']==500
+        body=dict(facts=[],token=p.json()['token'],request_key=str(uuid4()),confirm=True)
+        r=platform.post(url,json=body);assert r.status_code==200,r.text
+        assert r.json()['created']==500
+        assert platform.post(url,json=body).json()==r.json()
+        with Session(engine()) as db:
+            v=db.get(Vehicle,vehicle['id']);nodes=list(db.scalars(select(DismantlingItem).order_by(DismantlingItem.id)))
+            assert len(nodes)==500 and db.scalar(select(func.count()).select_from(Part))==0
+            for i,n in enumerate(nodes[:2]):
+                part=Part(account_id=v.account_id,vehicle_id=v.id,name=f'Ручна назва {i}',quantity=1,reserved_quantity=0,individually_tracked=True,selling_price=100,currency='USD')
+                db.add(part);db.flush();n.part_id=part.id;n.received_at=now();n.status='dismantled';n.plan_v3={**n.plan_v3,'inspection':'present','inspection_note':'Ручна перевірка'}
+            db.flush();assemblies.attach(db,v.account_id,v.id,nodes[0].id,nodes[1].id)
+            root=db.get(Part,nodes[0].part_id);root.reserved_quantity=1
+            nodes[0].included=False
+            expected={n.id:(n.part_id,n.name,n.included,n.status,n.plan_v3.get('inspection'),n.plan_v3.get('inspection_note')) for n in nodes}
+            parts={p.id:(p.quantity,p.reserved_quantity,str(p.selling_price),p.currency) for p in db.scalars(select(Part))}
+            membership=db.scalar(select(AssemblyMembership)).id
+            db.commit()
+        p=platform.post(url+'/preview',json={'facts':[]});assert p.status_code==200,p.text
+        assert p.json()['counts']['review']==0 and p.json()['counts']['existing']==500
+        r=platform.post(url,json=dict(facts=[],token=p.json()['token'],request_key=str(uuid4()),confirm=True));assert r.status_code==200,r.text
+        with Session(engine()) as db:
+            assert expected=={n.id:(n.part_id,n.name,n.included,n.status,n.plan_v3.get('inspection'),n.plan_v3.get('inspection_note')) for n in db.scalars(select(DismantlingItem))}
+>           assert parts=={p.id:(p.quantity,p.reserved_quantity,str(p.selling_price),p.currency) for p in db.scalars(select(Part))}
+E           AssertionError: assert {'13334127-5d...0.00', 'USD')} == {'13334127-5d...0.00', 'USD')}
+E
+E             Omitting 1 identical items, use -vv to show
+E             Differing items:
+E             {'13334127-5ddb-49fa-a233-58441da7c36a': (0, 0, '100', 'USD')} != {'13334127-5ddb-49fa-a233-58441da7c36a': (0, 0, '100.00', 'USD')}
+E             Use -v to get more diff
+
+tests/test_universal_catalogue.py:187: AssertionError
+_ test_virtual_refresh_and_activation_cannot_create_standalone_contained_components _
+
+logged = <starlette.testclient.TestClient object at 0x7f5522bd7590>
+vehicle = {'dismantling_v3': {}, 'manufacturer': 'Test manufacturer', 'ktype': None, 'checklist_ktype': None, ...}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f5522bd6390>
+
+    def test_virtual_refresh_and_activation_cannot_create_standalone_contained_components(logged,vehicle,monkeypatch):
+        from test_stage2d import fixture_catalogue,candidate
+        from test_stage3b import activate,read,payload
+        fixture_catalogue(monkeypatch,[candidate('Door'),candidate('Window')])
+>       assert activate(logged,vehicle).status_code==200
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_assemblies.py:397:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests/test_stage3b.py:20: in activate
+    def activate(c,v,data=None):return c.post(path(v)+'/activate',json=data or payload(c,v))
+                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../.venvs/warehouse/lib/python3.11/site-packages/httpx/_client.py:1144: in post
+    return self.request(
+../../../.venvs/warehouse/lib/python3.11/site-packages/starlette/testclient.py:457: in request
+    return super().request(
+../../../.venvs/warehouse/lib/python3.11/site-packages/httpx/_client.py:825: in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../.venvs/warehouse/lib/python3.11/site-packages/httpx/_client.py:914: in send
+    response = self._send_handling_auth(
+../../../.venvs/warehouse/lib/python3.11/site-packages/httpx/_client.py:942: in _send_handling_auth
+    response = self._send_handling_redirects(
+../../../.venvs/warehouse/lib/python3.11/site-packages/httpx/_client.py:979: in _send_handling_redirects
+    response = self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../.venvs/warehouse/lib/python3.11/site-packages/httpx/_client.py:1014: in _send_single_request
+    response = transport.handle_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../.venvs/warehouse/lib/python3.11/site-packages/starlette/testclient.py:354: in handle_request
+    raise exc
+../../../.venvs/warehouse/lib/python3.11/site-packages/starlette/testclient.py:351: in handle_request
+    portal.call(self.app, scope, receive, send)
+../../../.venvs/warehouse/lib/python3.11/site-packages/anyio/from_thread.py:340: in call
+    return cast(T_Retval, self.start_task_soon(func, *args).result())
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../.python/cpython-3.11.9-linux-x86_64-gnu/lib/python3.11/concurrent/futures/_base.py:456: in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+../../../.python/cpython-3.11.9-linux-x86_64-gnu/lib/python3.11/concurrent/futures/_base.py:401: in __get_result
+    raise self._exception
+../../../.venvs/warehouse/lib/python3.11/site-packages/anyio/from_thread.py:265: in _call_func
+    retval = await retval_or_awaitable
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../.venvs/warehouse/lib/python3.11/site-packages/fastapi/applications.py:1216: in __call__
+    await super().__call__(scope, receive, send)
+../../../.venvs/warehouse/lib/python3.11/site-packages/starlette/applications.py:96: in __call__
+    await self.middleware_stack(scope, receive, send)
+../../../.venvs/warehouse/lib/python3.11/site-packages/starlette/middleware/errors.py:186: in __call__
+    raise exc
+../../../.venvs/warehouse/lib/python3.11/site-packages/starlette/middleware/errors.py:164: in __call__
+    await self.app(scope, receive, _send)
+../../../.venvs/warehouse/lib/python3.11/site-packages/fastapi/telemetry/_asgi.py:151: in __call__
+    await self.app(scope, receive, send)
+../../../.venvs/warehouse/lib/python3.11/site-packages/starlette/middleware/base.py:203: in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app/main.py:82: in security_headers
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+../../../.venvs/warehouse/lib/python3.11/site-packages/starlette/middleware/base.py:179: in call_next
+    raise app_exc from app_exc.__cause__ or app_exc.__context__
+../../../.venvs/warehouse/lib/python3.11/site-packages/starlette/middleware/base.py:149: in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+app/api/catalogue_limits.py:18: in __call__
+    return await self.app(scope,receive,send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../.venvs/warehouse/lib/python3.11/site-packages/starlette/middleware/exceptions.py:63: in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+../../../.venvs/warehouse/lib/python3.11/site-packages/starlette/_exception_handler.py:53: in wrapped_app
+    raise exc
+../../../.venvs/warehouse/lib/python3.11/site-packages/starlette/_exception_handler.py:42: in wrapped_app
+    await app(scope, receive, sender)
+../../../.venvs/warehouse/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py:18: in __call__
+    await self.app(scope, receive, send)
+../../../.venvs/warehouse/lib/python3.11/site-packages/starlette/routing.py:676: in __call__
+    await self.middleware_stack(scope, receive, send)
+../../../.venvs/warehouse/lib/python3.11/site-packages/fastapi/routing.py:2788: in app
+    await route.handle(scope, receive, send)
+../../../.venvs/warehouse/lib/python3.11/site-packages/fastapi/routing.py:1819: in handle
+    await self.original_router.handle(scope, receive, send)
+../../../.venvs/warehouse/lib/python3.11/site-packages/fastapi/routing.py:2871: in handle
+    await included_router._handle_selected(scope, receive, send)
+../../../.venvs/warehouse/lib/python3.11/site-packages/fastapi/routing.py:1845: in _handle_selected
+    await original_route.handle(scope, receive, send)
+../../../.venvs/warehouse/lib/python3.11/site-packages/fastapi/routing.py:1308: in handle
+    await effective_context.app(scope, receive, send)
+../../../.venvs/warehouse/lib/python3.11/site-packages/fastapi/routing.py:165: in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+../../../.venvs/warehouse/lib/python3.11/site-packages/starlette/_exception_handler.py:53: in wrapped_app
+    raise exc
+../../../.venvs/warehouse/lib/python3.11/site-packages/starlette/_exception_handler.py:42: in wrapped_app
+    await app(scope, receive, sender)
+../../../.venvs/warehouse/lib/python3.11/site-packages/fastapi/routing.py:151: in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+app/api/secure_route.py:9: in handle
+    response=await original(request)
+             ^^^^^^^^^^^^^^^^^^^^^^^
+../../../.venvs/warehouse/lib/python3.11/site-packages/fastapi/routing.py:727: in app
+    raw_response = await run_endpoint_function(
+../../../.venvs/warehouse/lib/python3.11/site-packages/fastapi/routing.py:362: in run_endpoint_function
+    return await run_in_threadpool(
+../../../.venvs/warehouse/lib/python3.11/site-packages/starlette/concurrency.py:34: in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../.venvs/warehouse/lib/python3.11/site-packages/anyio/to_thread.py:65: in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+../../../.venvs/warehouse/lib/python3.11/site-packages/anyio/_backends/_asyncio.py:2706: in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+../../../.venvs/warehouse/lib/python3.11/site-packages/anyio/_backends/_asyncio.py:1100: in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+../../../.venvs/warehouse/lib/python3.11/site-packages/fastapi/telemetry/_api.py:244: in _run_sync_endpoint
+    return function(**arguments)
+           ^^^^^^^^^^^^^^^^^^^^^
+app/api/dismantling_v3.py:85: in virtual_activate
+    result=virtual.activate(db,v,who,data);db.commit();return result
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app/services/virtual_inventory.py:21: in activate
+    report=plan.make_preview(db,v,who,PlanPreview.model_validate(data.model_dump(exclude={'etag','request_key','confirm','token'})),virtual_base=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+db = <sqlalchemy.orm.session.Session object at 0x7f551b550a10>
+v = <app.models.Vehicle object at 0x7f5522a60b50>
+who = Identity(user=<app.models.Account object at 0x7f551b598090>, session=<app.models.Session object at 0x7f551b59bf50>, wo...cs.financial', 'sales.view', 'sales.create', 'team.manage_managers', 'catalog.view', 'orders.fulfill', 'parts.notes'}))
+data = PlanPreview(facts=[], selected={}, reset_trial=False, resolutions={})
+virtual_base = True
+
+    def make_preview(db,v,who,data,*,virtual_base=False):
+        source=latest(db,v,v.account_id);source_id=source.get('id') if source else None
+        prior=v.dismantling_v3.get('trial_input',{}) if not data.reset_trial and v.dismantling_v3.get('vehicle_basis')==basis(v) and v.dismantling_v3.get('configuration_source_id')==source_id else {}
+        incoming=[{**f.model_dump(),'confidence':'reported'} for f in data.facts]
+        replaced={f['field'] for f in incoming};kept=[(i,f) for i,f in enumerate(prior.get('facts',[])) if f['field'] not in replaced]
+        index={old:new for new,(old,_) in enumerate(kept)}
+        selected={field:index[i] for field,i in prior.get('selected',{}).items() if field not in replaced and i in index}
+        selected.update({field:i+len(kept) for field,i in data.selected.items()})
+        facts=[f for _,f in kept]+incoming
+        if len(facts)>200:raise HTTPException(422,'Забагато пробних фактів; скиньте попередні уточнення')
+        if any(f['field']=='options_complete' and f['value'] for f in facts):raise HTTPException(422,'Потрібна окрема підтверджена конфігурація')
+        trial_input=dict(facts=facts,selected=selected)
+        canonical=db.get(CanonicalState,1)
+        options={'universal_base':True} if virtual_base else {}
+>       generated=jsonable_encoder(preview(db,v,v.account_id,facts,selected,**options));existing=rows_for(db,v)
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: fixture_catalogue.<locals>.generate() got an unexpected keyword argument 'universal_base'
+
+app/services/dismantling_plan_v3.py:69: TypeError
+=============================== warnings summary ===============================
+../../../.venvs/warehouse/lib/python3.11/site-packages/fastapi/testclient.py:1
+  /workspace/.venvs/warehouse/lib/python3.11/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_universal_catalogue.py::test_500_reference_slots_apply_and_regeneration_preserve_physical_state
+FAILED tests/test_assemblies.py::test_virtual_refresh_and_activation_cannot_create_standalone_contained_components
+2 failed, 57 passed, 1 warning in 36.84s

@@ -52,7 +52,7 @@ def listing(db,v):
 def axes_match(a,b):
     if a['details'].get('ordinal') and b['details'].get('ordinal') and a['details']['ordinal']!=b['details']['ordinal']:return False
     return all(a[k]=='unknown' or b[k]=='unknown' or a[k]==b[k] for k in ('side','position')) and (not a['details']['mount'] or not b['details']['mount'] or a['details']['mount']==b['details']['mount'])
-def make_preview(db,v,who,data,*,virtual_base=False):
+def make_preview(db,v,who,data,*,virtual_base=False,include_universal=False):
     source=latest(db,v,v.account_id);source_id=source.get('id') if source else None
     prior=v.dismantling_v3.get('trial_input',{}) if not data.reset_trial and v.dismantling_v3.get('vehicle_basis')==basis(v) and v.dismantling_v3.get('configuration_source_id')==source_id else {}
     incoming=[{**f.model_dump(),'confidence':'reported'} for f in data.facts]
@@ -66,6 +66,7 @@ def make_preview(db,v,who,data,*,virtual_base=False):
     trial_input=dict(facts=facts,selected=selected)
     canonical=db.get(CanonicalState,1)
     options={'universal_base':True} if virtual_base and not (canonical and canonical.snapshot_sha) else {}
+    if include_universal:options={'universal_base':True,'reviewed_universal':True}
     generated=jsonable_encoder(preview(db,v,v.account_id,facts,selected,**options));existing=rows_for(db,v)
     legacy={};unclassified=[]
     for r in existing:
@@ -76,6 +77,7 @@ def make_preview(db,v,who,data,*,virtual_base=False):
     # Index by constructive identity/context, not by market offer count.
     by_id={r.id:r for r in existing};exact_by_placement=defaultdict(list);bound_by_type=defaultdict(list);legacy_by_type=defaultdict(list);legacy_by_ref=defaultdict(list);unknown_by_category=defaultdict(list)
     for r in existing:
+        if r.source=='carpot.catalogue.v1':legacy_by_ref[('td1q2018:prd',r.catalog_key.rsplit(':',1)[-1])].append(r)
         if r.plan_v3:
             if r.plan_v3.get('placement_id'):exact_by_placement[r.plan_v3['placement_id']].append(r)
             bound_by_type[r.plan_v3.get('canonical_part_type_id')].append(r)
@@ -94,6 +96,8 @@ def make_preview(db,v,who,data,*,virtual_base=False):
             if axes_match(legacy[r.id][1],item['installation_position']):possible_by_id[r.id]=r
         for ref in item['source']:
             legacy_ref=ref.get('legacy_ref') or {}
+            if ref.get('kind')=='universal' and ref.get('key','').startswith('td1q2018:prd:'):
+                for r in legacy_by_ref[('td1q2018:prd',ref['key'].rsplit(':',1)[-1])]:possible_by_id[r.id]=r
             for r in legacy_by_ref[(legacy_ref.get('source'),legacy_ref.get('catalog_key'))]:possible_by_id[r.id]=r
         for r in unknown_by_category[norm(item['category'])]:possible_by_id[r.id]=r
         possible=[possible_by_id[key] for key in sorted(possible_by_id)]
@@ -108,6 +112,7 @@ def make_preview(db,v,who,data,*,virtual_base=False):
             action=resolution.action;target=resolution.item_id
             if action=='link' and target not in {r.id for r in candidates}:raise HTTPException(422,'Неприпустима legacy-позиція для зіставлення')
             if action=='new' and exact:raise HTTPException(409,'Канонічна позиція вже існує; не можна створити дублікат')
+        if item['applicability_status']=='incompatible' and action=='new':action='skip';target=None
         if target:used[target].append(pid)
         proposals.append(dict(id=pid,item=item,action=action,target_id=target,manual=bool(resolution),reason=resolution.reason if resolution else saved_skip or '',candidates=[dict(id=r.id,name=r.name,position=r.position,protected=protected(r),included=r.included,inspection=inspection(r),reason=r.plan_v3.get('reason','')) for r in candidates],previous_snapshot=by_id[target].plan_v3.get('snapshot') if target in by_id else None))
     # Generic and more precise NEW positions can describe the same physical part.
@@ -152,11 +157,11 @@ def replay(db,v,who,data,kind):
 def finish(db,v,who,data,sha,result):
     db.add(DismantlingRequest(account_id=v.account_id,vehicle_id=v.id,actor_id=who.actor_id,request_key=str(data.request_key),request_sha=sha,result=result));db.flush();return result
 
-def save(db,v,who,data):
-    previous,sha=replay(db,v,who,data,'save')
+def save(db,v,who,data,*,universal=False):
+    previous,sha=replay(db,v,who,data,'universal-save' if universal else 'save')
     if previous:return previous
     if not data.confirm:raise HTTPException(422,'Потрібне явне підтвердження створення/оновлення плану')
-    plan=make_preview(db,v,who,PlanPreview.model_validate(data.model_dump(exclude={'token','request_key','confirm'})))
+    plan=make_preview(db,v,who,PlanPreview.model_validate(data.model_dump(exclude={'token','request_key','confirm'})),include_universal=universal)
     if data.token!=plan['token']:raise HTTPException(409,'Preview застарів; повторіть перевірку різниці')
     if plan['counts']['review']:raise HTTPException(409,'Спочатку вирішіть неоднозначні legacy-зіставлення')
     return persist_plan(db,v,who,data,plan,sha)
@@ -243,6 +248,15 @@ def persist_plan(db,v,who,data,plan,sha,*,partial=False,pending=None):
             r=DismantlingItem(id=sid('donor-plan',v.account_id,v.id,item['id'],str(data.request_key)),account_id=v.account_id,vehicle_id=v.id,source='carpot.v3',catalog_key=sid('plan-source',v.id,item['id'],str(data.request_key)),name=item['name'],position=position,category_key=sid('category',item['category']),category_name=item['category'],subcategory_key=sid('subcategory',item['category'],item['subcategory']),subcategory_name=item['subcategory'],included=True,status='unchecked',quantity=1,plan_v3={})
             db.add(r);counts['created']+=1;before={}
         else:before=snapshot(r);counts['linked' if not r.plan_v3 else 'updated']+=1
+        if proposal['manual'] and proposal['action']=='link' and not protected(r) and r.category_name=='Потребує уточнення' and any(ref.get('kind')=='universal' for ref in item['source']):
+            # Only explicitly reviewed, unstocked legacy metadata; never names/physical history.
+            r.category_name=item['category'];r.subcategory_name=item['subcategory']
+            if r.source=='carpot.catalogue.v1':
+                import hashlib
+                r.category_key=hashlib.sha256(r.category_name.encode()).hexdigest()[:24]
+                r.subcategory_key=hashlib.sha256((r.category_name+'/'+r.subcategory_name).encode()).hexdigest()[:24]
+            else:
+                r.category_key=sid('category',r.category_name);r.subcategory_key=sid('subcategory',r.category_name,r.subcategory_name)
         r.plan_v3={**r.plan_v3,'placement_id':item['id'],'canonical_part_type_id':item['canonical_part_type_id'],'inspection':inspection(r),'reason':r.plan_v3.get('reason','' if r.included else 'Збережене виключення legacy'),'snapshot':item,'mapping_reason':proposal['reason'] if proposal['manual'] else r.plan_v3.get('mapping_reason',''),'mapping_decision':proposal['action'] if proposal['manual'] else r.plan_v3.get('mapping_decision'),'revision':revision}
         changes.append((r,before))
     skipped=dict(v.dismantling_v3.get('skipped',{}))

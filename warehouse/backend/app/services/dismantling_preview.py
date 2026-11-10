@@ -67,6 +67,8 @@ def price_summaries(db,variants,now):
 def status_for(variant,assessment,config):
     fit=variant.get('compatibility',{})
     # A partial/manual trial or contradictory facts cannot confirm or reject fitment.
+    if assessment.get('controlled_result') is not None:
+        value=assessment['controlled_result'];return value['status'],'Версійне переглянуте правило' if value['status']!='unknown' else 'Бракує доказів або правила конфліктують'
     if config['conflicts']:return 'unknown','Конфліктні характеристики; уточніть джерело даних'
     if fit.get('status')=='unknown' and len(fit.get('evidence_ids',[]))>1:return 'unknown','Суперечливі докази сумісності; потрібен перегляд власника'
     known=config['values'];quality=config['provenance']
@@ -79,7 +81,7 @@ def status_for(variant,assessment,config):
     if assessment['missing_or_unverified'] or 'E' in assessment['groups']:return 'unknown','Недостатньо підтверджених даних; позицію не виключено'
     return 'possible','Конструктивна функція/джерельна модель є кандидатом; точний fitment не підтверджено'
 
-def preview(db,vehicle,workspace,facts=(),selected=None,now=None,*,universal_base=False):
+def preview(db,vehicle,workspace,facts=(),selected=None,now=None,*,universal_base=False,reviewed_universal=False):
     config=configuration(db,vehicle,workspace,list(facts),selected or {})
     values=config['values'];query={k:values.get(k) or '' for k in ('manufacturer','model','generation','fuel_type','transmission','powertrain','drive','body_type','engine_code','options')}
     query['year']=values.get('year');query['engine']=values.get('engine_code') or values.get('engine_label') or ''
@@ -111,6 +113,15 @@ def preview(db,vehicle,workspace,facts=(),selected=None,now=None,*,universal_bas
                          source_ref_count=1,offer_count=0,
                          applicability=assess(type_id,query,configuration=values,
                                               provenance=config['provenance'])))
+    if reviewed_universal:
+        from app.services.universal_catalogue import reference_candidates
+        additional=reference_candidates(db,config)
+        replacement={r['placement']['id']:r for r in additional}
+        for original in rows:
+            target=replacement.get(original['placement']['id'])
+            if target:
+                target['variants']=original['variants'];target['source_refs']+=original['source_refs'];target['source_ref_count']+=original['source_ref_count'];target['offer_count']=original['offer_count']
+        rows=[r for r in rows if r['placement']['id'] not in replacement]+additional
     prices_by_variant=defaultdict(list)
     for summary in price_summaries(db,[v for g in rows for v in g['variants']],now or utcnow()):prices_by_variant[summary['variant_id']].append(summary)
     evidence_ids={e for g in rows for v in g['variants'] for e in v.get('compatibility',{}).get('evidence_ids',[])}
@@ -129,6 +140,10 @@ def preview(db,vehicle,workspace,facts=(),selected=None,now=None,*,universal_bas
         if states:
             status='confirmed' if 'confirmed' in states else 'possible' if 'possible' in states else 'unknown' if 'unknown' in states else 'incompatible'
             explanation='Оцінка на рівні варіантів; непідтверджені варіанти залишено видимими'
+        controlled=a.get('controlled_result')
+        if controlled and (controlled['conflicts'] or controlled['status']!='unknown'):
+            status='unknown' if controlled['conflicts'] or (controlled['status']=='incompatible' and 'confirmed' in states) or (controlled['status']=='confirmed' and states and all(s=='incompatible' for s in states)) else controlled['status']
+            explanation='Переглянуте правило; суперечливі докази залишаються для перевірки'
         prices=[p for v in variants if v['applicability_status']!='incompatible' for p in prices_by_variant[v['id']]]
         for v in variants:v.pop('_sources',None)
         items.append(dict(id=group['placement']['id'],canonical_part_type_id=group['canonical_type_id'],name=group['name'],installation_position=group['placement'],category=group['category'],subcategory=group['subcategory'],quantity=None,quantity_explanation='Конструктивно необхідна кількість не підтверджена; кількість оголошень не є кількістю деталей',variants=variants,source=sorted(group['source_refs'],key=lambda r:(r['kind'],r['key'])),source_ref_count=group['source_ref_count'],source_truncated=group.get('source_refs_truncated',False),rule_evidence={'version':VERSION,'source':'canonical_rules_v1_5.json','criteria':a,'vehicle_provenance':config['provenance']},applicability_status=status,explanation=explanation,applicability=a,compatible_evidence=sorted({e for v in variants for e in v.get('compatibility',{}).get('evidence_ids',[])}),evidence_details=[evidence_details[e] for e in sorted({e for v in variants for e in v.get('compatibility',{}).get('evidence_ids',[])}) if e in evidence_details],relevant_offer_count=group['offer_count'],reference_prices=prices,price_label='Ринковий орієнтир' if prices else 'Ціну не визначено',selling_price=None))

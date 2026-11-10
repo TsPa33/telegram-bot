@@ -1,0 +1,2 @@
+1440: partial113 flag-OFF workspace, inspect without stock, bulk receipt, reload, Day/Night, no JS errors/overflow: PASS
+390: partial113 flag-OFF workspace, inspect without stock, bulk receipt, reload, Day/Night, no JS errors/overflow: PASS
