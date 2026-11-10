@@ -133,7 +133,8 @@ Implementation/test evidence and exact residual limits are appended below.
   the order service. It is a conservative workflow, not automatic BOM consumption.
 - Templates are immutable opt-in suggestions over existing canonical placements;
   this MVP stores/validates them but does not auto-instantiate or auto-confirm BOMs.
-- Return is whole-assembly inventory-only. Partial returns, cash refunds and automated
+- Return is inventory-only against the complete original sale snapshot (whole assembly
+  or a separately sold detached singleton). Partial assembly returns, cash refunds and automated
   cost redistribution are deliberately unavailable, not claimed implemented.
 - Workspace write serialization also moves account locking before employee actor-row
   locking in identity(), avoiding team-management/stock lock inversion. Authentication,
@@ -237,3 +238,78 @@ populated assembly graph.
 Legacy/manual/Plan.Parts physical Parts can be explicitly adopted through
 `link_part` without creating another Part or changing quantity. Existing category
 IDs/names are reused. This is not an automatic migration of historical plans.
+
+
+## Final audit — 2026-11-10
+
+Starting commit8549f03, feature branch only. No operational DB, Railway, MySQL,
+production deployment, migration application or operational flag activation.
+Only existing isolated localhost PostgreSQL fixtures enable the flag for tests.
+
+### Confirmed defects and fixes
+
+1. A detached singleton sold through ordinary stock had no consumed marker. Its
+   zero-balance physical ID could be attached again to an assembly, allowing another
+   commercial sale. A regression reproduced HTTP200 before the fix. Membership
+   HISTORY now keeps that ID managed after detach; singleton sales/write-offs record
+   their own immutable composition/consumption marker. Receipt/correction/activation
+   cannot resurrect it. Reattachment requires an actual standalone quantity1 and a
+   non-consumed identity. Only inventory return against its exact original sale
+   restores it; no duplicate Part or income is created.
+2. Physical inspection did not consistently affect completeness. Tests reproduced
+   a confirmed complete root despite damaged/absent Part metadata. Effective
+   completeness now includes descendant condition, inspection availability and
+   archival state; previews bind these fields in the token. Confirm cannot waive
+   the issues. Damaged-but-present assemblies require explicit remainder mode and
+   accurate description. Missing/archived components block consumption. No phantom
+   component is materialized to resolve an absence.
+3. Internal physical singleton tracking does not necessarily have a manufacturer's
+   serial number. Existing PartInput validation prevented editing its condition with
+   the real API. Validation now accepts the existing, server-verified managed ID for
+   edits; unrelated/manual tracked creation still requires a serial. Omitted tracking
+   fields are preserved and conversion of a managed singleton into a quantity lot
+   is rejected. No serial number is fabricated.
+
+### Channel matrix
+
+| Channel | Invariant / evidence |
+|---|---|
+| Quick sale | Shared stock_guard, exact assembly preview, singleton consumed marker, StockRequest replay |
+| Orders | Same guard at draft/reserve/sell, one root commercial line, no ancestor+active child lines |
+| Reserve/release/cancel | Attached child blocked; reserved standalone child cannot attach; reserved root cannot detach/sell; owning-order release only |
+| Bulk stock | Mixed root/contained-child transfer fails409 and rolls back all rows; no bulk quantity bypass |
+| Assembly consumption | Exact recursive ACTIVE memberships only; detached children excluded; children have service audit, not sale proceeds |
+| Detached singleton | Parent becomes incomplete at detach; its own sale remains protected afterward, including correction/receipt paths |
+| Virtual plan/activation | Bound Parts are reused without quantity creation; still-contained unstocked nodes reject activation before Part creation and roll back |
+| Correction/receipt | Managed identities cannot be reset or re-received independently; legacy unrelated lots retain normal behavior |
+| Write-off | Recursively consumes actual members without any revenue and blocks resurrection |
+| Inventory return | Exact original IDs/memberships, zero/reserve/archive checks, existing replay keys; whole snapshot only, no cash refund |
+| Metadata/identity | Scope/CSRF/RBAC retained; physical ID/Part donor links remain guarded; missing/damaged inspection affects effective readiness |
+
+### Final checks
+
+- Three initial reproductions failed on8549f03 (sold singleton reattach, damaged
+  condition, absent inspection). They pass after fixes.
+- Expanded assembly suite:28 cases including availability=damaged, same/different-key
+  concurrent root sales, root-vs-child sale, write-off, reserve ownership, bulk
+  rollback, virtual refresh/new activation, CSRF401/403, old fingerprints, history,
+  inventory return, graph constraints and workspace isolation.
+- Focused assembly/order/sales/dismantling/team/virtual regression run:97 PASS,
+  6 historical migration/populated-downgrade cases deselected. Overlapping final
+  assembly+old-warehouse run:47 PASS,1 historical migrations_roundtrip deselected.
+  These counts are individual runs, not an additive unique total.
+- Backend compileall/API startup PASS. Frontend40 target units PASS, tsc/Vite PASS.
+- Browser1440/390 with local PostgreSQL and552 synthetic placements: PASS, including
+  damaged-component warning, disabled full-set sale, repaired metadata through the
+  real API, one final root sale, reload, Day/Night, no JS errors, no horizontal
+  overflow or per-node request fan-out. Damage screenshots are included.
+- No new migration was added in this audit. PR still contains the prior additive
+  f7a10b8c43d2 migration after e641b3a20f97, never applied to Railway.
+- Previously documented forward-only downgrade incompatibilities, unrelated sourceA
+  preview/apply baseline failure and directory index naming discrepancy are retained
+  as explicit limits; they are not relabeled as passes or fixed outside scope.
+
+Ready for Draft code review and separately approved isolated staging acceptance,
+NOT for automatic operational enablement. Owner review must accept inventory-only
+returns, blocked automatic cost redistribution, conservative absent-component
+handling, and the existing unrelated migration-test limits before rollout.

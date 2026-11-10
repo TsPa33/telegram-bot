@@ -578,6 +578,7 @@ def parts(
 
 @router.post("/parts", status_code=201, tags=["Inventory"])
 def part_create(data: PartInput, db: DB, who: Auth):
+    if data.individually_tracked and not data.serial_number:raise HTTPException(422,"Для індивідуального обліку потрібен серійний номер")
     validate_part_links(db, data, who.workspace_account_id)
     row = Part(account_id=who.workspace_account_id, **data.model_dump())
     db.add(row)
@@ -606,7 +607,11 @@ def part_get(id: str, request: Request, db: DB, who: Auth):
 def part_update(id: str, data: PartInput, db: DB, who: Auth):
     row = owned(db, Part, id, who.workspace_account_id, lock=True, active=True)
     validate_part_links(db, data, who.workspace_account_id)
-    from app.services.assemblies import protect_identity
+    from app.services.assemblies import protect_identity,managed_part
+    managed=managed_part(db,row)
+    if data.individually_tracked and not data.serial_number and not managed:raise HTTPException(422,"Для індивідуального обліку потрібен серійний номер")
+    if managed and row.individually_tracked and 'individually_tracked' in data.model_fields_set and not data.individually_tracked:
+        raise HTTPException(409,'Індивідуальний фізичний ID компонента не можна перетворити на кількісну позицію')
     protect_identity(db,row,data.vehicle_id)
     if data.individually_tracked and row.quantity > 1:
         raise HTTPException(
@@ -614,6 +619,9 @@ def part_update(id: str, data: PartInput, db: DB, who: Auth):
         )
     before = snapshot(row)
     changes=data.model_dump()
+    if managed:
+        for field in ('individually_tracked','serial_number'):
+            if field not in data.model_fields_set:changes.pop(field,None)
     # Old full-form clients must retain newly introduced optional characteristics.
     for field in ("color_name","paint_code"):
         if field not in data.model_fields_set:changes.pop(field,None)

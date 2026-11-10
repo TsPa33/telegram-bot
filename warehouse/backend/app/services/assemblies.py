@@ -55,16 +55,25 @@ def digest(data):
     return hashlib.sha256(json.dumps(data,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()).hexdigest()
 
 
+def inspection_issues(node,part):
+    issues=[]
+    if node.status=='absent' or (part and part.availability=='absent' and not node.assembly_consumed_operation_id):issues.append('absent')
+    if node.status=='damaged' or (part.condition if part else node.condition)=='damaged' or (part and part.availability=='damaged'):issues.append('damaged')
+    if part and part.archived:issues.append('archived')
+    return issues
+
+
 def composition(nodes,edges,parts,root):
     ids=closure(root,edges)
     if root not in nodes:raise HTTPException(404,'Позицію не знайдено')
     rows=[dict(item_id=id,part_id=nodes[id].part_id,name=nodes[id].name,
-        presence=nodes[id].status,condition=parts[nodes[id].part_id].condition if nodes[id].part_id in parts else nodes[id].condition,
+        archived=parts[nodes[id].part_id].archived if nodes[id].part_id in parts else False,presence=nodes[id].status,availability=parts[nodes[id].part_id].availability if nodes[id].part_id in parts else None,condition=parts[nodes[id].part_id].condition if nodes[id].part_id in parts else nodes[id].condition,
         completeness=nodes[id].assembly_completeness,consumed_operation_id=nodes[id].assembly_consumed_operation_id,
         quantity=parts[nodes[id].part_id].quantity if nodes[id].part_id in parts else None) for id in ids]
     memberships=[dict(id=e.id,parent=e.parent_item_id,child=e.child_item_id) for e in edges if e.parent_item_id in ids]
     data=dict(root=root,items=rows,memberships=memberships)
-    return dict(**data,token=digest(data),incomplete=any(nodes[id].assembly_completeness in ('unchecked','incomplete') for id in ids),
+    issues=[dict(item_id=id,name=nodes[id].name,reason=reason) for id in ids for reason in inspection_issues(nodes[id],parts.get(nodes[id].part_id))]
+    return dict(**data,token=digest(data),issues=issues,incomplete=bool(issues) or any(nodes[id].assembly_completeness in ('unchecked','incomplete') for id in ids),
         conflicts=[dict(part_id=p.id,reserved=p.reserved_quantity) for p in parts.values() if p.id in {nodes[id].part_id for id in ids} and p.reserved_quantity])
 
 
@@ -90,22 +99,32 @@ def tree(db,account,vehicle):
     nodes,edges,parts=graph(db,account,vehicle)
     attached={e.child_item_id:e.parent_item_id for e in edges}
     consumed_types={op.id:op.type for op in db.scalars(select(Operation).where(Operation.account_id==account,Operation.id.in_([n.assembly_consumed_operation_id for n in nodes.values() if n.assembly_consumed_operation_id])))}
+    parents={e.child_item_id:e.parent_item_id for e in edges}
+    affected=set()
+    for n in nodes.values():
+        if inspection_issues(n,parts.get(n.part_id)):
+            current=n.id
+            while current not in affected:
+                affected.add(current)
+                if current not in parents:break
+                current=parents[current]
+    assembly_parents={e.parent_item_id for e in edges}
     items=[]
     for n in nodes.values():
         p=parts.get(n.part_id)
         items.append(dict(id=n.id,name=n.name,category=n.category_name,parent_id=attached.get(n.id),part_id=n.part_id,
-            completeness=n.assembly_completeness,consumed_operation_id=n.assembly_consumed_operation_id,consumed_type=consumed_types.get(n.assembly_consumed_operation_id),
+            completeness='incomplete' if n.id in affected and (n.assembly_completeness is not None or n.id in assembly_parents) else n.assembly_completeness,consumed_operation_id=n.assembly_consumed_operation_id,consumed_type=consumed_types.get(n.assembly_consumed_operation_id),
             presence=n.status,quantity=p.quantity if p else 0,reserved=p.reserved_quantity if p else 0,
             standalone=bool(p and p.available_quantity>0 and p.assortment_enabled and not p.archived and n.id not in attached and not n.assembly_consumed_operation_id)))
     unlinked=list(db.scalars(select(Part).where(Part.account_id==account,Part.vehicle_id==vehicle,Part.archived.is_(False),Part.quantity==1,Part.reserved_quantity==0,~select(DismantlingItem.id).where(DismantlingItem.part_id==Part.id).exists()).order_by(Part.name,Part.id).limit(1000)))
-    return dict(items=items,unlinked_parts=[{'id':p.id,'name':p.name} for p in unlinked],counts=dict(potential=len(nodes),confirmed_attached=len(edges),
+    return dict(items=items,unlinked_parts=[{'id':p.id,'name':p.name} for p in unlinked],counts=dict(potential=len(nodes),confirmed_attached=sum('absent' not in inspection_issues(nodes[e.child_item_id],parts.get(nodes[e.child_item_id].part_id)) for e in edges),
         standalone=sum(i['standalone'] for i in items),included_in_sale=sum(bool(i['consumed_type']=='sale' and i['parent_id']) for i in items)))
 
 
 def no_reserves(db,nodes,parts,ids):
     for id in ids:
         n=nodes[id];p=parts.get(n.part_id)
-        if n.status=='absent':raise HTTPException(409,'Компонент позначено відсутнім; спочатку звірте наявність')
+        if 'absent' in inspection_issues(n,p):raise HTTPException(409,'Компонент позначено відсутнім; спочатку звірте наявність')
         if n.assembly_consumed_operation_id:raise HTTPException(409,'Позиція вже передана у складі вузла; потрібне контрольоване повернення')
         if p and (p.archived or p.reserved_quantity):
             raise HTTPException(409,dict(message='Позиція архівована або має резерв; зніміть його у відповідному замовленні',part_id=p.id,orders=reservation_orders(db,p.account_id,[p.id])))
@@ -137,6 +156,7 @@ def attach(db,account,vehicle,parent,child):
         if n.quantity!=1 or n.status=='absent' or not n.included or (p and (p.vehicle_id!=vehicle or p.quantity>1)):
             raise HTTPException(409,'Потрібна одна підтверджена фізична позиція того самого донора')
     c=nodes[child];p=parts.get(c.part_id)
+    if p and p.quantity!=1:raise HTTPException(409,'Немає самостійної фізичної одиниці компонента. Спочатку оформіть контрольоване повернення.')
     if p and p.unit_cost is not None and p.unit_cost>0:raise HTTPException(409,'Компонент має власну собівартість. Узгодьте розподіл вартості перед включенням у вузол.')
     for id in group:
         physical=parts.get(nodes[id].part_id)
@@ -162,7 +182,7 @@ def detach(db,account,vehicle,child):
     c=nodes[child];p=parts.get(c.part_id)
     if p and p.quantity:raise HTTPException(409,'Компонент уже має самостійний залишок')
     if not p:
-        p=Part(account_id=account,vehicle_id=vehicle,name=c.name,quantity=0,reserved_quantity=0,individually_tracked=True)
+        p=Part(account_id=account,vehicle_id=vehicle,name=c.name,quantity=0,reserved_quantity=0,individually_tracked=True,condition=c.condition or 'unknown')
         db.add(p);db.flush();c.part_id=p.id
     before=snapshot(c)
     op=internal_stock(db,p,'receipt',1,account,'Відокремлено підтверджений компонент вузла')
@@ -178,6 +198,7 @@ def confirm(db,account,vehicle,item,token):
     if item not in nodes:raise HTTPException(404,'Позицію не знайдено')
     view=composition(nodes,edges,parts,item)
     if token!=view['token']:raise HTTPException(409,'Склад змінився; перегляньте його повторно')
+    if view['issues']:raise HTTPException(409,'Є відсутні, пошкоджені або архівовані компоненти; повний комплект не підтверджено')
     if any(e.child_item_id==item for e in edges):raise HTTPException(409,'Підтверджуйте склад від кореня або відокремте вузол')
     no_reserves(db,nodes,parts,closure(item,edges))
     if not parts.get(nodes[item].part_id) or parts[nodes[item].part_id].quantity!=1:raise HTTPException(409,'Немає фізичного кореневого вузла')
@@ -193,16 +214,24 @@ def stock_guard(db,part,data,account,confirmation=None):
     lock_workspace(db,account)
     node=db.scalar(select(DismantlingItem).where(DismantlingItem.account_id==account,DismantlingItem.part_id==part.id))
     if node is None:return None
-    active_edge=db.scalar(select(AssemblyMembership.id).where(AssemblyMembership.active,or_(AssemblyMembership.parent_item_id==node.id,AssemblyMembership.child_item_id==node.id)).limit(1))
-    if node.assembly_completeness is None and not node.assembly_consumed_operation_id and not active_edge:return None
+    membership_history=db.scalar(select(AssemblyMembership.id).where(AssemblyMembership.account_id==account,or_(AssemblyMembership.parent_item_id==node.id,AssemblyMembership.child_item_id==node.id)).limit(1))
+    if node.assembly_completeness is None and not node.assembly_consumed_operation_id and not membership_history and node.source!='carpot.assembly.v1':return None
     nodes,edges,parts=graph(db,account,node.vehicle_id,lock=True)
     if any(e.child_item_id==node.id for e in edges):raise HTTPException(409,'Деталь входить до вузла. Спочатку відокремте її.')
     if node.assembly_consumed_operation_id:
         raise HTTPException(409,'Вузол уже передано; надходження можливе лише через контрольоване повернення')
     is_assembly=node.assembly_completeness is not None or any(e.parent_item_id==node.id for e in edges)
-    if not is_assembly:return None
     if data.type in ('receipt','virtual_activation','correction'):
-        raise HTTPException(409,'Залишок фізичного вузла не змінюється корекцією або повторним надходженням')
+        raise HTTPException(409,'Фізичний ID не відновлюється корекцією або повторним надходженням; використайте контрольоване повернення')
+    if not is_assembly:
+        if data.type in ('sale','write_off','reserve'):
+            if data.quantity!=1:raise HTTPException(409,'Один фізичний компонент — одна одиниця')
+            view=composition(nodes,edges,parts,node.id)
+            token=(confirmation or {}).get('token') or getattr(data,'assembly_token',None)
+            if token and token!=view['token']:raise HTTPException(409,'Склад змінився; оновіть перегляд')
+            if data.type!='write_off' and any(i['reason']=='absent' for i in view['issues']):raise HTTPException(409,'Фізичний компонент позначено відсутнім')
+            return dict(view=view,description='',consume=data.type in ('sale','write_off'))
+        return None
     if data.type in ('sale','write_off','reserve'):
         view=composition(nodes,edges,parts,node.id)
         context=confirmation or dict(token=getattr(data,'assembly_token',None),description=getattr(data,'assembly_description',''),remainder=getattr(data,'assembly_remainder',False))
@@ -212,7 +241,7 @@ def stock_guard(db,part,data,account,confirmation=None):
             raise HTTPException(409,'Неповний комплект: підтвердіть продаж решти та точний опис без «в зборі»')
         if data.quantity!=1:raise HTTPException(409,'Фізичний вузол продається або резервується як одна одиниця')
         for id in closure(node.id,edges):
-            if nodes[id].status=='absent':raise HTTPException(409,'Перевірка позначає компонент відсутнім. Звірте фізичний склад перед продажем.')
+            if 'absent' in inspection_issues(nodes[id],parts.get(nodes[id].part_id)):raise HTTPException(409,'Перевірка позначає компонент відсутнім. Звірте фізичний склад перед продажем.')
             p=parts.get(nodes[id].part_id)
             if id!=node.id and p and (p.quantity or p.reserved_quantity or p.archived):raise HTTPException(409,'Конфлікт складського стану компонента')
         return dict(view=view,description=description,consume=data.type in ('sale','write_off'))
@@ -350,6 +379,9 @@ def link_existing_part(db,account,vehicle,part_id):
     node=DismantlingItem(account_id=account,vehicle_id=vehicle,part_id=part.id,source='carpot.assembly.v1',catalog_key='part:'+part.id,
         category_key=part.category_id or 'unclassified',category_name=categories.get(part.category_id,'Потребує уточнення'),subcategory_key=part.subcategory_id or 'unclassified',subcategory_name=categories.get(part.subcategory_id,'Потребує уточнення'),
         name=part.name,quantity=1,status='dismantled',received_at=now(),plan_v3={'origin':'explicit_existing_part_link'})
+    if not part.individually_tracked:
+        before=snapshot(part);part.individually_tracked=True
+        record(db,account,part,'assembly_identity','Закріплено один фізичний ID без зміни кількості',before)
     db.add(node);db.flush()
     record(db,account,node,'assembly_part_link','Явно пов’язано існуючий фізичний ID; залишок не змінено',{},after_extra={'part_id':part.id})
     return dict(item_id=node.id,created=True)
@@ -361,9 +393,14 @@ def part_context(db,account,part_id):
     parent=db.scalar(select(AssemblyMembership).where(AssemblyMembership.account_id==account,AssemblyMembership.child_item_id==node.id,AssemblyMembership.active))
     if node.assembly_consumed_operation_id:
         op=owned(db,Operation,node.assembly_consumed_operation_id,account)
-        return dict(state='sold_in_assembly' if op.type=='sale' else 'written_off_in_assembly',parent_name=(op.after.get('assembly') or {}).get('description') or op.after.get('name'),
+        return dict(state=('sold_separately' if node.assembly_completeness is None and len((op.after.get('assembly') or {}).get('items',[]))==1 else 'sold_in_assembly') if op.type=='sale' else 'written_off_in_assembly',parent_name=(op.after.get('assembly') or {}).get('description') or op.after.get('name'),
             order_id=(op.after.get('sale') or {}).get('order_id'),order_number=(op.after.get('sale') or {}).get('order_number'),vehicle_id=node.vehicle_id)
     if parent:
         p=owned(db,DismantlingItem,parent.parent_item_id,account)
         return dict(state='contained',parent_name=p.name,vehicle_id=node.vehicle_id)
     return None
+
+
+def managed_part(db,part):
+    node=db.scalar(select(DismantlingItem).where(DismantlingItem.account_id==part.account_id,DismantlingItem.part_id==part.id))
+    return bool(node and (node.assembly_completeness is not None or node.assembly_consumed_operation_id or node.source=='carpot.assembly.v1' or db.scalar(select(AssemblyMembership.id).where(AssemblyMembership.account_id==part.account_id,or_(AssemblyMembership.parent_item_id==node.id,AssemblyMembership.child_item_id==node.id)).limit(1))))

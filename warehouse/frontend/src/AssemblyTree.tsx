@@ -25,7 +25,14 @@ export default function AssemblyTree({vehicle}:{vehicle:Row}) {
  },[scope]);
  async function select(node:Row) {
   const request=++previewEpoch.current;const ticket=epoch.current;setSelected(node);setPreview(null);setPhysical(false);setConfirmSale(false);setConfirmReturn(false);setDescription('');setChild('');setError('');
-  try{const value=await api(`/vehicles/${vehicle.id}/assemblies/${node.id}/preview`);if(ticket===epoch.current&&request===previewEpoch.current)setPreview(value)}catch(e){if(ticket===epoch.current)setError((e as Error).message)}
+  try{const value=await api(`/vehicles/${vehicle.id}/assemblies/${node.id}/preview`);if(ticket===epoch.current&&request===previewEpoch.current){
+    setPreview(value);
+    const root=value.items.find((i:Row)=>i.item_id===node.id);
+    if(root){const completeness=value.incomplete&&(root.completeness!=null||value.items.length>1)?'incomplete':root.completeness;
+     setSelected(old=>old?.id===node.id?{...old,completeness}:old);
+     setData(old=>old?{...old,items:old.items.map((i:Row)=>i.id===node.id?{...i,completeness}:i)}:old);
+    }
+   }}catch(e){if(ticket===epoch.current)setError((e as Error).message)}
  }
  async function send(action:string,body:Row,part?:string) {
   if(writing.current)return;writing.current=true;setBusy(true);setError('');const ticket=epoch.current;
@@ -49,7 +56,7 @@ export default function AssemblyTree({vehicle}:{vehicle:Row}) {
   return <li key={node.id}>
    <div className="assembly-node"><button className="text-button" aria-label={`${expanded?'Згорнути':'Розгорнути'} ${node.name}`} aria-expanded={kids.length?expanded:undefined} disabled={!kids.length} onClick={()=>setOpen(old=>{const next=new Set(old);if(next.has(node.id))next.delete(node.id);else next.add(node.id);return next})}>{kids.length?(expanded?'−':'+'):'·'}</button>
     <button className="text-button" onClick={()=>void select(node)}>{node.name}</button>
-    <span>{node.consumed_operation_id?(node.consumed_type==='sale'?(node.parent_id?'Продано у складі вузла':'Вузол продано'):'Передано у складі списання'):node.parent_id?'У складі вузла':node.standalone?'Доступна самостійно':'Потенційна позиція'}</span>
+    <span>{node.consumed_operation_id?(node.consumed_type==='sale'?(node.parent_id?'Продано у складі вузла':node.completeness?'Вузол продано':'Деталь продано'):'Передано у складі списання'):node.parent_id?'У складі вузла':node.standalone?'Доступна самостійно':'Потенційна позиція'}</span>
     {node.completeness&&<span>{node.completeness==='complete'?'Склад підтверджено':node.completeness==='incomplete'?'Неповний комплект':'Склад не перевірено'}</span>}
     {kids.length>0&&<small>{kids.length} компонентів</small>}
    </div>{expanded&&kids.length>0&&<ul>{kids.map(render)}</ul>}
@@ -62,6 +69,7 @@ export default function AssemblyTree({vehicle}:{vehicle:Row}) {
   {error&&<p role="alert">{error}</p>}
   {selected&&<div className="assembly-inspector"><div className="assembly-heading"><h4>{selected.name}</h4><button onClick={()=>{previewEpoch.current++;setSelected(null);setPreview(null)}}>Закрити склад вузла</button></div>
    {!preview?<p role="status">{error?'Не вдалося перевірити склад.':'Перевіряємо склад…'}</p>:<>
+    {!!preview.issues?.length&&<p role="alert">Комплектність потребує перевірки: {preview.issues.map((i:Row)=>`${i.name} — ${{absent:'відсутня',damaged:'пошкоджена',archived:'архівована'}[i.reason as 'absent'|'damaged'|'archived']}`).join('; ')}</p>}
     <h5>Фактичний склад</h5><ul>{preview.items.map((n:Row)=><li key={n.item_id}>{n.name}{n.condition==='damaged'?' · Пошкоджено':''}{n.presence==='absent'?' · Відсутня':''}</li>)}</ul>
     {preview.conflicts.length>0&&<p role="alert">Є резерви. Зніміть їх через відповідне замовлення.</p>}{preview.reservation_orders?.map((r:Row)=><p key={r.order_id+r.part_id}><Link to={'/orders/'+r.order_id}>Відкрити замовлення №{r.order_number}</Link></p>)}
     {!selected.consumed_operation_id&&<>
@@ -70,7 +78,7 @@ export default function AssemblyTree({vehicle}:{vehicle:Row}) {
      <div className="assembly-actions">
       <label>Компонент для включення<select value={child} onChange={e=>setChild(e.target.value)}><option value="">Оберіть фізичну позицію</option>{items.filter(n=>n.id!==selected.id&&!n.parent_id&&!n.consumed_operation_id).map(n=><option key={n.id} value={n.id}>{n.name}</option>)}</select></label>
       <button disabled={busy||!physical||!child} onClick={()=>void send('attach',{item_id:child,parent_id:selected.id,confirm_physical:true})}>Включити до вузла</button>
-      {selected.parent_id?<button disabled={busy||!physical} onClick={()=>void send('detach',{item_id:selected.id,confirm_physical:true})}>Відокремити компонент</button>:<button disabled={busy||!physical} onClick={()=>void send('confirm',{item_id:selected.id,token:preview.token,confirm_physical:true})}>Підтвердити поточний склад</button>}
+      {selected.parent_id?<button disabled={busy||!physical} onClick={()=>void send('detach',{item_id:selected.id,confirm_physical:true})}>Відокремити компонент</button>:<button disabled={busy||!physical||!!preview.issues?.length} onClick={()=>void send('confirm',{item_id:selected.id,token:preview.token,confirm_physical:true})}>Підтвердити поточний склад</button>}
      </div></>}
      {selected.part_id&&!selected.parent_id&&can('sales.create')&&<div className="assembly-sale">
       <label>Фактична ціна<input type="number" min="0" step="0.01" value={price} onChange={e=>setPrice(e.target.value)}/></label>
@@ -78,7 +86,7 @@ export default function AssemblyTree({vehicle}:{vehicle:Row}) {
       <label>Опис продажу<input maxLength={200} value={description} onChange={e=>setDescription(e.target.value)}/></label>
       <label><input type="checkbox" checked={remainder} onChange={e=>setRemainder(e.target.checked)}/>Продати решту вузла за вказаним описом</label>
       <label><input type="checkbox" checked={confirmSale} onChange={e=>setConfirmSale(e.target.checked)}/>Підтверджую передачу всього наведеного складу за одну ціну</label>
-      <button disabled={busy||!confirmSale||price===''||Number(price)<0||preview.conflicts.length>0} onClick={()=>void send('sale',{type:'sale',quantity:1,sale_price:price,sale_currency:currency,assembly_token:preview.token,assembly_description:description,assembly_remainder:remainder},selected.part_id)}>{remainder?'Продати решту вузла':selected.completeness?'Продати вузол у зборі':'Продати деталь'}</button>
+      <button disabled={busy||!confirmSale||price===''||Number(price)<0||preview.conflicts.length>0||(preview.incomplete&&!remainder)||!!preview.issues?.some((i:Row)=>i.reason==='absent'||i.reason==='archived')} onClick={()=>void send('sale',{type:'sale',quantity:1,sale_price:price,sale_currency:currency,assembly_token:preview.token,assembly_description:description,assembly_remainder:remainder},selected.part_id)}>{remainder?'Продати решту вузла':selected.completeness?'Продати вузол у зборі':'Продати деталь'}</button>
      </div>}
     </>}
     {editable&&selected.consumed_type==='sale'&&!selected.parent_id&&<>

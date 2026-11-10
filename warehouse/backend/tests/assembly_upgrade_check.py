@@ -1,5 +1,5 @@
 """Explicit local empty-DB parent→head evidence; never runs during pytest collection."""
-import os,subprocess,json
+import os,subprocess,json,sys
 from sqlalchemy import create_engine,text
 from sqlalchemy.orm import Session
 from sqlalchemy.engine import make_url
@@ -12,7 +12,7 @@ with create_engine(url).connect() as check:
   raise RuntimeError('Only a new empty dedicated test database may be initialized')
 os.environ['WAREHOUSE_DATABASE_URL']=url
 env=dict(os.environ)
-def migrate(rev):subprocess.run(['/workspace/.venvs/warehouse/bin/python','-m','alembic','upgrade',rev],env=env,check=True)
+def migrate(rev):subprocess.run([sys.executable,'-m','alembic','upgrade',rev],env=env,check=True)
 migrate('e641b3a20f97')
 from app.models import Account,Vehicle,Part,Operation,Buyer,Order,OrderLine
 engine=create_engine(url)

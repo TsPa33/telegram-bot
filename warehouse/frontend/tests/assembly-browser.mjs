@@ -29,7 +29,20 @@ try{for(const width of [1440,390]){
  await tree.getByLabel('Пошук у дереві').fill('');
  // Only one readiness + one bounded tree read; expanding/search makes no calls.
  assert.equal(requests.filter(u=>u.endsWith('/assemblies')).length,1);
+ const current=await (await context.request.get(`/api/v1/vehicles/${fixture.vehicle_id}/assemblies/${fixture.root_id}/preview`)).json();
+ const child=current.items.find(n=>n.item_id!==fixture.root_id&&n.part_id);
+ const part=await (await context.request.get('/api/v1/parts/'+child.part_id)).json();
+ async function condition(value){const response=await context.request.put('/api/v1/parts/'+child.part_id,{headers:{'X-CSRF-Token':auth.csrf_token},data:{name:part.name,vehicle_id:fixture.vehicle_id,individually_tracked:true,condition:value}});assert.equal(response.status(),200,await response.text())}
+ await condition('damaged');
  await tree.getByRole('button',{name:'Двері передні ліві в зборі',exact:true}).click();
+ await expect(tree.getByRole('alert')).toContainText('пошкоджена');
+ await tree.getByLabel('Фактична ціна').fill('750');await tree.getByLabel('Підтверджую передачу всього наведеного складу за одну ціну').check();
+ await expect(tree.getByRole('button',{name:'Продати вузол у зборі',exact:true})).toBeDisabled();
+ await page.screenshot({path:`${out}/assembly-damaged-${width}.png`,fullPage:false});
+ await tree.getByRole('button',{name:'Закрити склад вузла'}).click();
+ await condition('used');
+ await tree.getByRole('button',{name:'Двері передні ліві в зборі',exact:true}).click();
+ await expect(tree.getByRole('heading',{name:'Фактичний склад'})).toBeVisible();
  await tree.getByLabel('Фактична ціна').fill('750');await tree.getByLabel('Підтверджую передачу всього наведеного складу за одну ціну').check();
  await tree.getByRole('button',{name:'Продати вузол у зборі',exact:true}).click();
  await expect(tree).toContainText('Передано у вузлах: 12');

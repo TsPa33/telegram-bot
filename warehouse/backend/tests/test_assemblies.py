@@ -78,7 +78,8 @@ def test_detach_sell_remainder(logged,group):
     assert sell(logged,g).status_code==409
     r=sell(logged,g,assembly_remainder=True,assembly_description='Двері без склопідіймача');assert r.status_code==200,r.text
     with Session(engine()) as db:
-        assert db.get(DismantlingItem,g['nodes'][1]).assembly_consumed_operation_id is None
+        leaf_sale=db.scalar(select(Operation).where(Operation.type=='sale',Operation.part_id==g['parts'][1]))
+        assert db.get(DismantlingItem,g['nodes'][1]).assembly_consumed_operation_id==leaf_sale.id
         assert db.scalar(select(func.count()).select_from(Operation).where(Operation.type=='sale'))==2
         assert db.scalar(select(func.count()).select_from(Operation).where(Operation.type=='assembly_included_sale'))==11
 
@@ -288,3 +289,131 @@ def test_legacy_order_request_fingerprint_replays_after_schema_extension(logged,
     changed={**body,'lines':[{**body['lines'][0],'unit_price':'13.00'}]}
     assert logged.post('/api/v1/orders',json=changed).status_code==409
     with Session(engine()) as db:assert db.scalar(select(func.count()).select_from(Order))==0
+
+
+def test_sold_detached_component_cannot_be_reattached_or_restored_by_correction(logged,group):
+    g=group;attach_all(logged,g)
+    assert change(logged,g,'detach',item_id=g['nodes'][1]).status_code==200
+    assert sell(logged,g,part=1).status_code==200
+    assert change(logged,g,'attach',parent_id=g['nodes'][0],item_id=g['nodes'][1]).status_code==409
+    for kind in ('receipt','correction'):
+        r=logged.post('/api/v1/parts/'+g['parts'][1]+'/operations',json=dict(type=kind,quantity=1,reason='Cannot resurrect sold physical ID',request_key=key()))
+        assert r.status_code==409,r.text
+    with Session(engine()) as db:
+        assert db.get(Part,g['parts'][1]).quantity==0
+        assert db.scalar(select(func.count()).select_from(Operation).where(Operation.type=='sale'))==1
+
+
+@pytest.mark.parametrize('field,value',[('condition','damaged'),('availability','absent'),('availability','damaged')])
+def test_component_inspection_changes_effective_completeness(logged,group,field,value):
+    g=group;attach_all(logged,g)
+    before=preview(logged,g)['token']
+    body=dict(name='Компонент 1',vehicle_id=g['vehicle'],individually_tracked=True,**{field:value})
+    updated=logged.put('/api/v1/parts/'+g['parts'][1],json=body)
+    assert updated.status_code==200,updated.text
+    assert updated.json()['individually_tracked'] is True
+    current=preview(logged,g)
+    assert current['incomplete'] is True
+    assert current['token']!=before
+    assert change(logged,g,'confirm',item_id=g['nodes'][0],token=current['token']).status_code==409
+    assert sell(logged,g).status_code==409
+    tree=logged.get(f"/api/v1/vehicles/{g['vehicle']}/assemblies").json()
+    assert next(n for n in tree['items'] if n['id']==g['nodes'][0])['completeness']=='incomplete'
+
+
+def test_bulk_transfer_rolls_back_and_write_off_consumes_only_actual_members(logged,group):
+    g=group;attach_all(logged,g)
+    r=logged.post('/api/v1/parts/bulk-actions',json=dict(ids=g['parts'][:2],action='transfer',location='Should roll back',reason='Mixed assembly selection'))
+    assert r.status_code==409
+    with Session(engine()) as db:assert all(db.get(Part,id).location=='' for id in g['parts'][:2])
+    token=preview(logged,g)['token']
+    r=logged.post('/api/v1/parts/'+g['parts'][0]+'/operations',json=dict(type='write_off',quantity=1,request_key=key(),assembly_token=token,reason='Synthetic assembly write-off'))
+    assert r.status_code==200,r.text
+    with Session(engine()) as db:
+        assert db.scalar(select(func.count()).select_from(Operation).where(Operation.type=='sale'))==0
+        assert db.scalar(select(func.count()).select_from(Operation).where(Operation.type=='assembly_included_write_off'))==12
+    for part in (0,1):
+        assert logged.post('/api/v1/parts/'+g['parts'][part]+'/operations',json=dict(type='correction',quantity=1,reason='No write-off resurrection')).status_code==409
+
+
+@pytest.mark.parametrize('same_key',[False,True])
+def test_concurrent_root_sales_and_retry_keys(logged,group,same_key):
+    g=group;attach_all(logged,g);token=preview(logged,g)['token'];request=key()
+    cookies=dict(logged.cookies);headers=dict(logged.headers)
+    def attempt(i):
+        with TestClient(app) as c:
+            c.cookies.update(cookies);c.headers.update(headers)
+            return sell(c,g,request_key=request if same_key else key(),assembly_token=token).status_code
+    with ThreadPoolExecutor(max_workers=2) as pool:results=list(pool.map(attempt,[0,1]))
+    assert sorted(results)==([200,200] if same_key else [200,409])
+    with Session(engine()) as db:
+        assert db.scalar(select(func.count()).select_from(Operation).where(Operation.type=='sale'))==1
+        assert all(p.quantity==0 for p in db.scalars(select(Part)))
+
+
+def test_authentication_and_csrf_cannot_mutate_graph_or_stock(logged,group):
+    g=group;token=logged.headers.pop('X-CSRF-Token')
+    try:
+        assert change(logged,g,'attach',parent_id=g['nodes'][0],item_id=g['nodes'][1]).status_code==403
+        assert sell(logged,g,part=1).status_code==403
+    finally:logged.headers['X-CSRF-Token']=token
+    with TestClient(app) as anonymous:
+        assert anonymous.get(f"/api/v1/vehicles/{g['vehicle']}/assemblies").status_code==401
+        assert change(anonymous,g,'attach',parent_id=g['nodes'][0],item_id=g['nodes'][1]).status_code==401
+    with Session(engine()) as db:
+        assert not db.scalar(select(AssemblyMembership.id))
+        assert all(p.quantity==1 for p in db.scalars(select(Part)))
+
+
+def test_individual_component_return_requires_original_sale_and_no_duplicate_receipt(logged,group):
+    g=group;attach_all(logged,g)
+    assert change(logged,g,'detach',item_id=g['nodes'][1]).status_code==200
+    assert sell(logged,g,part=1).status_code==200
+    with Session(engine()) as db:sale=db.scalar(select(Operation).where(Operation.type=='sale',Operation.part_id==g['parts'][1]));sale_id=sale.id
+    assert change(logged,g,'return',sale_operation_id=sale_id,confirm_inventory_return_only=True).status_code==200
+    assert change(logged,g,'return',sale_operation_id=sale_id,confirm_inventory_return_only=True).status_code==409
+    assert logged.post('/api/v1/parts/'+g['parts'][1]+'/operations',json=dict(type='receipt',quantity=1,reason='No second unit')).status_code==409
+    assert change(logged,g,'attach',parent_id=g['nodes'][0],item_id=g['nodes'][1]).status_code==200
+    with Session(engine()) as db:
+        assert db.get(Part,g['parts'][1]).quantity==0
+        assert db.scalar(select(func.count()).select_from(Operation).where(Operation.type=='sale'))==1
+
+
+def test_damaged_component_allows_described_remainder_but_not_false_full_set(logged,group):
+    g=group;attach_all(logged,g)
+    with Session(engine()) as db:db.get(Part,g['parts'][1]).condition='damaged';db.commit()
+    assert sell(logged,g,assembly_remainder=True,assembly_description='Двері у зборі').status_code==409
+    assert sell(logged,g,assembly_remainder=True,assembly_description='Двері з пошкодженим замком').status_code==200
+
+
+def test_virtual_refresh_and_activation_cannot_create_standalone_contained_components(logged,vehicle,monkeypatch):
+    from test_stage2d import fixture_catalogue,candidate
+    from test_stage3b import activate,read,payload
+    fixture_catalogue(monkeypatch,[candidate('Door'),candidate('Window')])
+    assert activate(logged,vehicle).status_code==200
+    rows=read(logged,vehicle)['items'];parent=next(n for n in rows if n['name']=='Door');child=next(n for n in rows if n['name']=='Window')
+    g=dict(vehicle=vehicle['id'])
+    assert change(logged,g,'attach',parent_id=parent['id'],item_id=child['id']).status_code==200
+    assert activate(logged,vehicle).status_code==200
+    with Session(engine()) as db:
+        assert db.get(Part,child['part_id']).quantity==0
+        assert db.scalar(select(func.count()).select_from(Part))==2
+    fixture_catalogue(monkeypatch,[candidate('Door'),candidate('Window'),candidate('Unstocked component')])
+    quick=logged.post(f"/api/v1/vehicles/{vehicle['id']}/dismantling-v3/quick",json=payload(logged,vehicle))
+    assert quick.status_code==200,quick.text
+    new=next(n for n in read(logged,vehicle)['items'] if n['name']=='Unstocked component')
+    assert new['part_id'] is None
+    assert change(logged,g,'attach',parent_id=parent['id'],item_id=new['id']).status_code==200
+    result=activate(logged,vehicle);assert result.status_code==409,result.text
+    with Session(engine()) as db:
+        assert db.get(DismantlingItem,new['id']).part_id is None
+        assert db.scalar(select(func.count()).select_from(Part))==2
+
+
+
+def test_managed_physical_id_cannot_become_a_quantity_lot(logged,group):
+    g=group;attach_all(logged,g)
+    r=logged.put('/api/v1/parts/'+g['parts'][1],json=dict(name='Component',vehicle_id=g['vehicle'],individually_tracked=False))
+    assert r.status_code==409
+    # Legacy/manual creation still requires a real serial number.
+    assert logged.post('/api/v1/parts',json={'name':'Legacy tracked','individually_tracked':True}).status_code==422

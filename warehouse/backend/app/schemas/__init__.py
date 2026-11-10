@@ -127,11 +127,7 @@ class PartInput(Input):
             raise ValueError('Керувальні символи у кольорі не дозволені')
         return value or None
 
-    @model_validator(mode="after")
-    def serial_required(self):
-        if self.individually_tracked and not self.serial_number:
-            raise ValueError("Для індивідуального обліку потрібен серійний номер")
-        return self
+    # Serial requirement is checked at the API boundary against existing physical identity.
 
 
 class StockInput(Input):
