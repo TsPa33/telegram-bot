@@ -75,4 +75,17 @@ class VolvoReviewTests(unittest.TestCase):
             self.assertEqual(r['owner_approval'],'PENDING_OWNER_REVIEW')
             self.assertEqual(r['stock_link_status'],'UNVERIFIED_NO_DATABASE_READ')
 
+
+class TaxonomyGapReviewTests(unittest.TestCase):
+    def test_exact_sixteen_gap_resolutions_and_unresolved_retention(self):
+        source=json.loads(SOURCE.read_text());rows={r['source_id']:r for r in review(source)}
+        resolved={105,112,127,219,251,273,387,807,1080,1092,1510,2462,3229,3406,3853,4175}
+        self.assertTrue(all(rows[k]['subcategory'] for k in resolved))
+        self.assertIsNone(rows[5025]['subcategory'])
+        for k in [3406,4175,5025,38,2232,6331,657,2070,830,2055,2394,3944]:
+            self.assertEqual(rows[k]['decision'],'needs_review')
+        s=summary(list(rows.values()))
+        self.assertEqual((s['subcategory_proposals'],s['proposed_rows'],s['unresolved_rows']),(112,101,12))
+        self.assertEqual(s['duplicate_checked_rows'],6)
+
 if __name__=='__main__':unittest.main()

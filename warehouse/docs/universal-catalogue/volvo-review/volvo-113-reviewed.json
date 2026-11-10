@@ -10,7 +10,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 1: Стартерная аккумуляторная батарея; SHA-256 964b6facffb10149c9cd3662a7918a6b97b6bf10bda701ff190f60d2e3f417d2. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 1: Стартерная аккумуляторная батарея; SHA-256 964b6facffb10149c9cd3662a7918a6b97b6bf10bda701ff190f60d2e3f417d2. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 1,
       "assemblygroupdescription": "Система стартера",
@@ -53,7 +53,7 @@
     "role": "assembly_candidate",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 2: Стартер; SHA-256 16aaf058bd5b81df57bd3e77d93b52a59504fa085f80e6dc142d6124c416bfd4. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 2: Стартер; SHA-256 16aaf058bd5b81df57bd3e77d93b52a59504fa085f80e6dc142d6124c416bfd4. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 2,
       "assemblygroupdescription": "Система стартера",
@@ -100,7 +100,7 @@
     "role": "assembly_candidate",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 4: Генератор; SHA-256 f2a3cd7aceba9e66c93de49b500083e38627c522f62b43e93bb768537b6f67da. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 4: Генератор; SHA-256 f2a3cd7aceba9e66c93de49b500083e38627c522f62b43e93bb768537b6f67da. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 4,
       "assemblygroupdescription": "Генератор",
@@ -147,7 +147,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "NON_DISMANTLING",
     "duplicate_candidate": [],
-    "evidence": "PRD 7: Масляный фильтр; SHA-256 e49693cece258633797cdd45906f3d0c016838d72fee90465c556aedf4fcafd9. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 7: Масляный фильтр; SHA-256 e49693cece258633797cdd45906f3d0c016838d72fee90465c556aedf4fcafd9. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 7,
       "assemblygroupdescription": "Смазывание",
@@ -190,7 +190,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "NON_DISMANTLING",
     "duplicate_candidate": [],
-    "evidence": "PRD 8: Воздушный фильтр; SHA-256 692ef82cd5be7a003e0e02e594319427ea1f86454ce324022f6eb67094df0935. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 8: Воздушный фильтр; SHA-256 692ef82cd5be7a003e0e02e594319427ea1f86454ce324022f6eb67094df0935. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 8,
       "assemblygroupdescription": "Система подачи воздуха",
@@ -233,7 +233,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "NON_DISMANTLING",
     "duplicate_candidate": [],
-    "evidence": "PRD 9: Топливный фильтр; SHA-256 8b061e8344c251140b17f9f87ea75b4a89fb447946dad11a29e903d63c05d8ae. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 9: Топливный фильтр; SHA-256 8b061e8344c251140b17f9f87ea75b4a89fb447946dad11a29e903d63c05d8ae. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 9,
       "assemblygroupdescription": "Система подачи топлива",
@@ -276,7 +276,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "NON_DISMANTLING",
     "duplicate_candidate": [],
-    "evidence": "PRD 27: Прокладка, выпускной коллектор; SHA-256 7a8f42c02cd4e50968cb33eb602d120437a98a2328effabdf63c178c1ac007f6. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 27: Прокладка, выпускной коллектор; SHA-256 7a8f42c02cd4e50968cb33eb602d120437a98a2328effabdf63c178c1ac007f6. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 27,
       "assemblygroupdescription": "Головка цилиндра",
@@ -319,7 +319,7 @@
     "role": "component_candidate",
     "applicability": "OPTIONAL",
     "duplicate_candidate": [],
-    "evidence": "PRD 38: Прицепное ярмо, прицепное оборудование; SHA-256 597a3a371556d7a4aae0cf5922d7e9650055d802d5c2ad72f6074a45cb113aa9. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 38: Прицепное ярмо, прицепное оборудование; SHA-256 597a3a371556d7a4aae0cf5922d7e9650055d802d5c2ad72f6074a45cb113aa9. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 38,
       "assemblygroupdescription": "Прицепное оборудование",
@@ -364,7 +364,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "OPTIONAL",
     "duplicate_candidate": [],
-    "evidence": "PRD 39: Прицепное оборудование; SHA-256 31825c19cc9b6b097f9797096dfaecae5502d748727dc1072ef4ce9cbff2f969. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 39: Прицепное оборудование; SHA-256 31825c19cc9b6b097f9797096dfaecae5502d748727dc1072ef4ce9cbff2f969. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 39,
       "assemblygroupdescription": "Прицепное оборудование",
@@ -407,7 +407,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "NON_DISMANTLING",
     "duplicate_candidate": [],
-    "evidence": "PRD 42: Прокладка, впускной коллектор; SHA-256 c75c6d38ea2ff8d1a2ada2879690120e3cd30bfd1af09523458ce7435f0c505b. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 42: Прокладка, впускной коллектор; SHA-256 c75c6d38ea2ff8d1a2ada2879690120e3cd30bfd1af09523458ce7435f0c505b. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 42,
       "assemblygroupdescription": "Головка цилиндра",
@@ -450,7 +450,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "NON_DISMANTLING",
     "duplicate_candidate": [],
-    "evidence": "PRD 44: Прокладка, корпус впускного коллектора; SHA-256 09393d08c2fb7c6b8ad2742d1a0b90223408529e413dc4e5df0a2347fd3aa98d. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 44: Прокладка, корпус впускного коллектора; SHA-256 09393d08c2fb7c6b8ad2742d1a0b90223408529e413dc4e5df0a2347fd3aa98d. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 44,
       "assemblygroupdescription": "Система подачи воздуха",
@@ -493,7 +493,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 51: Осевой шарнир, рулевая тяга; SHA-256 8c39d6dc13d51ac856e1c59a075a7a274485f5edf12a8f6b1761380b2bf59a1a. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 51: Осевой шарнир, рулевая тяга; SHA-256 8c39d6dc13d51ac856e1c59a075a7a274485f5edf12a8f6b1761380b2bf59a1a. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 51,
       "assemblygroupdescription": "Рулевое управление",
@@ -536,7 +536,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 56: Крышка, резервуар охлаждающей жидкости; SHA-256 ad64e700c56813d38d4a260ae72215031cef34fb21035a7cad6eb3d984d47467. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 56: Крышка, резервуар охлаждающей жидкости; SHA-256 ad64e700c56813d38d4a260ae72215031cef34fb21035a7cad6eb3d984d47467. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 56,
       "assemblygroupdescription": "Охлаждение",
@@ -579,7 +579,7 @@
     "role": "assembly_candidate",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 78: Тормозной суппорт; SHA-256 5e41d5560c9be7063e8bee04a57b7d18ebd698d5059e9ca2ca988b5e47ed25e9. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 78: Тормозной суппорт; SHA-256 5e41d5560c9be7063e8bee04a57b7d18ebd698d5059e9ca2ca988b5e47ed25e9. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 78,
       "assemblygroupdescription": "Тормозная система",
@@ -626,7 +626,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 82: Тормозной диск; SHA-256 a59899a716013788d401b5c61aeb8a371a68ee18f3d96ab3f3b9aa66950f62e6. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 82: Тормозной диск; SHA-256 a59899a716013788d401b5c61aeb8a371a68ee18f3d96ab3f3b9aa66950f62e6. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 82,
       "assemblygroupdescription": "Тормозная система",
@@ -673,7 +673,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 83: Тормозной шланг; SHA-256 fe55454ad55f9c97ae6f8daee62b0fc601849f815bed77d3ade672fc4fd4de92. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 83: Тормозной шланг; SHA-256 fe55454ad55f9c97ae6f8daee62b0fc601849f815bed77d3ade672fc4fd4de92. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 83,
       "assemblygroupdescription": "Тормозная система",
@@ -715,12 +715,12 @@
     "original_name": "Лампа накаливания, фонарь указателя поворота",
     "ukrainian_name": "Лампа покажчика повороту",
     "category": "Освітлення",
-    "subcategory": null,
+    "subcategory": "Сигнальне та допоміжне освітлення",
     "type": "consumable",
     "role": "standalone_or_unresolved",
     "applicability": "NON_DISMANTLING",
     "duplicate_candidate": [],
-    "evidence": "PRD 105: Лампа накаливания, фонарь указателя поворота; SHA-256 1f22ccc801a7f46f05a1afda2aa6be72a670f52649202096a0e9b2e3030c4d1d. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 105: Лампа накаливания, фонарь указателя поворота; SHA-256 1f22ccc801a7f46f05a1afda2aa6be72a670f52649202096a0e9b2e3030c4d1d. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 105,
       "assemblygroupdescription": "Сигнализация",
@@ -729,10 +729,8 @@
       "usagedescription": "Фонарь указателя поворота"
     },
     "duplicate_review": "not_flagged",
-    "decision": "needs_review",
-    "unresolved_reasons": [
-      "Чинний довідник не має однозначної підкатегорії без вигадування розташування/функції."
-    ],
+    "decision": "proposed",
+    "unresolved_reasons": [],
     "canonical_candidate_ids": [],
     "canonical_reuse": "requires_context_review",
     "stock_link_status": "UNVERIFIED_NO_DATABASE_READ",
@@ -765,7 +763,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "NON_DISMANTLING",
     "duplicate_candidate": [],
-    "evidence": "PRD 106: Лампа накаливания, фара дальнего света; SHA-256 63df93183fcca7877ea15a6601d284c177e20aa49b01cea6e44a7d29ec6b8193. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 106: Лампа накаливания, фара дальнего света; SHA-256 63df93183fcca7877ea15a6601d284c177e20aa49b01cea6e44a7d29ec6b8193. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 106,
       "assemblygroupdescription": "Освещение",
@@ -808,7 +806,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "NON_DISMANTLING",
     "duplicate_candidate": [],
-    "evidence": "PRD 107: Лампа накаливания, основная фара; SHA-256 d13f2f0bfdc786899c910b12ed6c2aeba90e673de0c4d29804af8bbf9c06a676. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 107: Лампа накаливания, основная фара; SHA-256 d13f2f0bfdc786899c910b12ed6c2aeba90e673de0c4d29804af8bbf9c06a676. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 107,
       "assemblygroupdescription": "Освещение",
@@ -851,7 +849,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "NON_DISMANTLING",
     "duplicate_candidate": [],
-    "evidence": "PRD 110: Лампа накаливания, фонарь сигнала тормоза/задний габаритный; SHA-256 0112d3a5ca2aa6a2e0aaa796f27bad84f0314f455ebd933899e4d8dc20f59a91. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 110: Лампа накаливания, фонарь сигнала тормоза/задний габаритный; SHA-256 0112d3a5ca2aa6a2e0aaa796f27bad84f0314f455ebd933899e4d8dc20f59a91. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 110,
       "assemblygroupdescription": "Освещение",
@@ -889,12 +887,12 @@
     "original_name": "Лампа накаливания, фонарь освещения номерного знака",
     "ukrainian_name": "Лампа підсвічування номерного знака",
     "category": "Освітлення",
-    "subcategory": null,
+    "subcategory": "Сигнальне та допоміжне освітлення",
     "type": "consumable",
     "role": "standalone_or_unresolved",
     "applicability": "NON_DISMANTLING",
     "duplicate_candidate": [],
-    "evidence": "PRD 112: Лампа накаливания, фонарь освещения номерного знака; SHA-256 ec3852838d49679cda21ff5a56b1f6c9b06cd9779ef844e12ded2ac43faca72b. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 112: Лампа накаливания, фонарь освещения номерного знака; SHA-256 ec3852838d49679cda21ff5a56b1f6c9b06cd9779ef844e12ded2ac43faca72b. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 112,
       "assemblygroupdescription": "Освещение",
@@ -903,10 +901,8 @@
       "usagedescription": "Фонарь освещения номерного знака"
     },
     "duplicate_review": "not_flagged",
-    "decision": "needs_review",
-    "unresolved_reasons": [
-      "Чинний довідник не має однозначної підкатегорії без вигадування розташування/функції."
-    ],
+    "decision": "proposed",
+    "unresolved_reasons": [],
     "canonical_candidate_ids": [],
     "canonical_reuse": "requires_context_review",
     "stock_link_status": "UNVERIFIED_NO_DATABASE_READ",
@@ -939,7 +935,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "NON_DISMANTLING",
     "duplicate_candidate": [],
-    "evidence": "PRD 114: Лампа накаливания, фара заднего хода; SHA-256 a4756f2208873f7a19ea650a140314dca1d113c92f4f05a4cdf275e6ea158472. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 114: Лампа накаливания, фара заднего хода; SHA-256 a4756f2208873f7a19ea650a140314dca1d113c92f4f05a4cdf275e6ea158472. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 114,
       "assemblygroupdescription": "Освещение",
@@ -982,7 +978,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "NON_DISMANTLING",
     "duplicate_candidate": [],
-    "evidence": "PRD 115: Лампа накаливания, задний габаритный фонарь; SHA-256 c81dd493bc8ade1f4998cad634509124cc0ad8923eca08d29cbc254d93795549. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 115: Лампа накаливания, задний габаритный фонарь; SHA-256 c81dd493bc8ade1f4998cad634509124cc0ad8923eca08d29cbc254d93795549. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 115,
       "assemblygroupdescription": "Освещение",
@@ -1020,12 +1016,12 @@
     "original_name": "Рейлинги",
     "ukrainian_name": "Рейлінг даху",
     "category": "Кузов та зовнішні деталі",
-    "subcategory": null,
+    "subcategory": "Дах та багажні кріплення",
     "type": "equipment",
     "role": "standalone_or_unresolved",
     "applicability": "OPTIONAL",
     "duplicate_candidate": [],
-    "evidence": "PRD 127: Рейлинги; SHA-256 73fdc56a11f6750c438efcab88e535f346e1e012cf8d5cdabe434e496c8b5a39. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 127: Рейлинги; SHA-256 73fdc56a11f6750c438efcab88e535f346e1e012cf8d5cdabe434e496c8b5a39. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 127,
       "assemblygroupdescription": "Оборудование для перевозки",
@@ -1034,10 +1030,8 @@
       "usagedescription": "Рейлинги"
     },
     "duplicate_review": "not_flagged",
-    "decision": "needs_review",
-    "unresolved_reasons": [
-      "Чинний довідник не має однозначної підкатегорії без вигадування розташування/функції."
-    ],
+    "decision": "proposed",
+    "unresolved_reasons": [],
     "canonical_candidate_ids": [],
     "canonical_reuse": "requires_context_review",
     "stock_link_status": "UNVERIFIED_NO_DATABASE_READ",
@@ -1070,7 +1064,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "NON_DISMANTLING",
     "duplicate_candidate": [],
-    "evidence": "PRD 135: Уплотнительное кольцо, резьбовая пробка маслосливн. отверст.; SHA-256 cdf1affdd9fda4e3331ba955ec18a04a3d97d3612a0607ae952e89e38e2531dc. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 135: Уплотнительное кольцо, резьбовая пробка маслосливн. отверст.; SHA-256 cdf1affdd9fda4e3331ba955ec18a04a3d97d3612a0607ae952e89e38e2531dc. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 135,
       "assemblygroupdescription": "Смазывание",
@@ -1113,7 +1107,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "NON_DISMANTLING",
     "duplicate_candidate": [],
-    "evidence": "PRD 138: Прокладка, труба выхлопного газа; SHA-256 a9e7ae1b23e9c14149b8c7be13ac845676d295e8d194d83db479170c2ca872a1. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 138: Прокладка, труба выхлопного газа; SHA-256 a9e7ae1b23e9c14149b8c7be13ac845676d295e8d194d83db479170c2ca872a1. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 138,
       "assemblygroupdescription": "Система выпуска ОГ",
@@ -1156,7 +1150,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "NON_DISMANTLING",
     "duplicate_candidate": [],
-    "evidence": "PRD 150: Комплект прокладок, блок-картер двигателя; SHA-256 f6304a95ac82ac81ae8ba3d000a6b2fd2769d3cc8e0dbdab8d4e126bdfc20e8c. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 150: Комплект прокладок, блок-картер двигателя; SHA-256 f6304a95ac82ac81ae8ba3d000a6b2fd2769d3cc8e0dbdab8d4e126bdfc20e8c. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 150,
       "assemblygroupdescription": "Блок-картер двигателя",
@@ -1199,7 +1193,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "OPTIONAL",
     "duplicate_candidate": [],
-    "evidence": "PRD 179: Комплект электрики, прицепное оборудование; SHA-256 4f8b964b54ad7c377bd616aeec3ba474b6c5db464224d04d08b8812740065c76. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 179: Комплект электрики, прицепное оборудование; SHA-256 4f8b964b54ad7c377bd616aeec3ba474b6c5db464224d04d08b8812740065c76. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 179,
       "assemblygroupdescription": "Прицепное оборудование",
@@ -1242,7 +1236,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 188: Пружина ходовой части; SHA-256 a0e563ecd9c6f922108ca05d8a85c55116139c0a4e45b8740615c3df3195de1e. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 188: Пружина ходовой части; SHA-256 a0e563ecd9c6f922108ca05d8a85c55116139c0a4e45b8740615c3df3195de1e. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 188,
       "assemblygroupdescription": "Подвеска / амортизация",
@@ -1289,7 +1283,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "NON_DISMANTLING",
     "duplicate_candidate": [],
-    "evidence": "PRD 189: Комплект ходовой части, пружины; SHA-256 2d231580779f3c1efe74e334ea21e5705a9139f5d0b92c66362013d0293a7aeb. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 189: Комплект ходовой части, пружины; SHA-256 2d231580779f3c1efe74e334ea21e5705a9139f5d0b92c66362013d0293a7aeb. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 189,
       "assemblygroupdescription": "Подвеска / амортизация",
@@ -1332,7 +1326,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 191: Пыльник, рулевое управление; SHA-256 8b677fc2e62eb3cd3d0d8e4955b2d5e46b7d7e396bc99e04c87d71fe92066c96. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 191: Пыльник, рулевое управление; SHA-256 8b677fc2e62eb3cd3d0d8e4955b2d5e46b7d7e396bc99e04c87d71fe92066c96. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 191,
       "assemblygroupdescription": "Рулевое управление",
@@ -1375,7 +1369,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "OPTIONAL",
     "duplicate_candidate": [],
-    "evidence": "PRD 215: Комплект ковриков; SHA-256 808e5f678b6d2aa6a72f33feb61cbf4fb46fa3ae858cba14993b92541a54c62c. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 215: Комплект ковриков; SHA-256 808e5f678b6d2aa6a72f33feb61cbf4fb46fa3ae858cba14993b92541a54c62c. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 215,
       "assemblygroupdescription": "Внутренняя отделка",
@@ -1413,12 +1407,12 @@
     "original_name": "Газовая пружина, крышка багажник",
     "ukrainian_name": "Газовий упор кришки багажника",
     "category": "Кузов та зовнішні деталі",
-    "subcategory": null,
+    "subcategory": "Багажник та його механізми",
     "type": "physical_part",
     "role": "standalone_or_unresolved",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 219: Газовая пружина, крышка багажник; SHA-256 7b6e383a6637e279d15f233867f70f0eb34bde917708f0e9c08b1e46e1e22dbd. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 219: Газовая пружина, крышка багажник; SHA-256 7b6e383a6637e279d15f233867f70f0eb34bde917708f0e9c08b1e46e1e22dbd. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 219,
       "assemblygroupdescription": "Кузов",
@@ -1427,10 +1421,8 @@
       "usagedescription": "Крышка багажника / помещения для груза"
     },
     "duplicate_review": "not_flagged",
-    "decision": "needs_review",
-    "unresolved_reasons": [
-      "Чинний довідник не має однозначної підкатегорії без вигадування розташування/функції."
-    ],
+    "decision": "proposed",
+    "unresolved_reasons": [],
     "canonical_candidate_ids": [],
     "canonical_reuse": "requires_context_review",
     "stock_link_status": "UNVERIFIED_NO_DATABASE_READ",
@@ -1463,7 +1455,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 247: Подвеска, двигатель; SHA-256 dd05e8b1712dd872928fee7eb3cb4061cd0765803661661359aadf72f14b2fd5. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 247: Подвеска, двигатель; SHA-256 dd05e8b1712dd872928fee7eb3cb4061cd0765803661661359aadf72f14b2fd5. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 247,
       "assemblygroupdescription": "Подвеска двигателя",
@@ -1505,12 +1497,12 @@
     "original_name": "Подвеска, рычаг независимой подвески колеса",
     "ukrainian_name": "Сайлентблок важеля підвіски",
     "category": "Підвіска та ходова частина",
-    "subcategory": null,
+    "subcategory": "Важелі та шарніри підвіски",
     "type": "physical_part",
     "role": "standalone_or_unresolved",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 251: Подвеска, рычаг независимой подвески колеса; SHA-256 822afa692cb0e838861c31defc338bf0b6ff75d3e7b568e88da818c6157ecfff. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 251: Подвеска, рычаг независимой подвески колеса; SHA-256 822afa692cb0e838861c31defc338bf0b6ff75d3e7b568e88da818c6157ecfff. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 251,
       "assemblygroupdescription": "Подвеска колеса",
@@ -1519,10 +1511,8 @@
       "usagedescription": "Рычаг независимой подвески колеса"
     },
     "duplicate_review": "not_flagged",
-    "decision": "needs_review",
-    "unresolved_reasons": [
-      "Чинний довідник не має однозначної підкатегорії без вигадування розташування/функції."
-    ],
+    "decision": "proposed",
+    "unresolved_reasons": [],
     "canonical_candidate_ids": [],
     "canonical_reuse": "requires_context_review",
     "stock_link_status": "UNVERIFIED_NO_DATABASE_READ",
@@ -1550,12 +1540,12 @@
     "original_name": "Рычаг независимой подвески колеса, подвеска колеса",
     "ukrainian_name": "Важіль підвіски",
     "category": "Підвіска та ходова частина",
-    "subcategory": null,
+    "subcategory": "Важелі та шарніри підвіски",
     "type": "physical_part",
     "role": "standalone_or_unresolved",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 273: Рычаг независимой подвески колеса, подвеска колеса; SHA-256 0b95688e767a75b1faf85a3f2948e3ba81106b6471a413e5f80bb9d2cd398c76. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 273: Рычаг независимой подвески колеса, подвеска колеса; SHA-256 0b95688e767a75b1faf85a3f2948e3ba81106b6471a413e5f80bb9d2cd398c76. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 273,
       "assemblygroupdescription": "Подвеска колеса",
@@ -1564,10 +1554,8 @@
       "usagedescription": ""
     },
     "duplicate_review": "not_flagged",
-    "decision": "needs_review",
-    "unresolved_reasons": [
-      "Чинний довідник не має однозначної підкатегорії без вигадування розташування/функції."
-    ],
+    "decision": "proposed",
+    "unresolved_reasons": [],
     "canonical_candidate_ids": [
       "6f292acf-369a-5416-921a-4f616d157edf"
     ],
@@ -1604,7 +1592,7 @@
     "role": "component_candidate",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 288: Регулятор генератора; SHA-256 554bc047dffa032383c4022c2d3911bcb03c0fcf4c633f4a91b8ca107e1d83f6. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 288: Регулятор генератора; SHA-256 554bc047dffa032383c4022c2d3911bcb03c0fcf4c633f4a91b8ca107e1d83f6. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 288,
       "assemblygroupdescription": "Генератор",
@@ -1647,7 +1635,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "NON_DISMANTLING",
     "duplicate_candidate": [],
-    "evidence": "PRD 298: Щетка стеклоочистителя; SHA-256 9f2dcf587d72037393cb599220da6248d08727a3c73905067b86e07cfbdb27a6. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 298: Щетка стеклоочистителя; SHA-256 9f2dcf587d72037393cb599220da6248d08727a3c73905067b86e07cfbdb27a6. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 298,
       "assemblygroupdescription": "Система очистки окон",
@@ -1690,7 +1678,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "NON_DISMANTLING",
     "duplicate_candidate": [],
-    "evidence": "PRD 305: Поликлиновой ремень; SHA-256 d0c087b0722d79e74cb4b46a19f6e0377b519a860631656225cf9854eb7f9e34. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 305: Поликлиновой ремень; SHA-256 d0c087b0722d79e74cb4b46a19f6e0377b519a860631656225cf9854eb7f9e34. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 305,
       "assemblygroupdescription": "Ременный привод",
@@ -1733,7 +1721,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "NON_DISMANTLING",
     "duplicate_candidate": [],
-    "evidence": "PRD 318: Прокладка, головка цилиндра; SHA-256 7781577529aa1b4856126de69b379a69e529e3452911edd682ecfefe3c567987. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 318: Прокладка, головка цилиндра; SHA-256 7781577529aa1b4856126de69b379a69e529e3452911edd682ecfefe3c567987. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 318,
       "assemblygroupdescription": "Головка цилиндра",
@@ -1776,7 +1764,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "NON_DISMANTLING",
     "duplicate_candidate": [],
-    "evidence": "PRD 319: Комплект прокладок, головка цилиндра; SHA-256 4c1f76a7166f421d86037189c5c91e8942e4745a5340e1390069a76cf79363f9. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 319: Комплект прокладок, головка цилиндра; SHA-256 4c1f76a7166f421d86037189c5c91e8942e4745a5340e1390069a76cf79363f9. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 319,
       "assemblygroupdescription": "Головка цилиндра",
@@ -1819,7 +1807,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "NON_DISMANTLING",
     "duplicate_candidate": [],
-    "evidence": "PRD 321: Прокладка, крышка головки цилиндра; SHA-256 0376bcef3058b274c67329a1564acb4c8485ce22ccb6b4f19e627589c79d14b8. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 321: Прокладка, крышка головки цилиндра; SHA-256 0376bcef3058b274c67329a1564acb4c8485ce22ccb6b4f19e627589c79d14b8. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 321,
       "assemblygroupdescription": "Головка цилиндра",
@@ -1862,7 +1850,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "NON_DISMANTLING",
     "duplicate_candidate": [],
-    "evidence": "PRD 322: Уплотнительное кольцо, стержень кла; SHA-256 88e12fcc249c9dccc667622db36a355e8c8aba5e44359f98417eac5a806c0e22. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 322: Уплотнительное кольцо, стержень кла; SHA-256 88e12fcc249c9dccc667622db36a355e8c8aba5e44359f98417eac5a806c0e22. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 322,
       "assemblygroupdescription": "Головка цилиндра",
@@ -1905,7 +1893,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "NON_DISMANTLING",
     "duplicate_candidate": [],
-    "evidence": "PRD 323: Комплект прокладок, стержень клапана; SHA-256 0c7dd636ef8649ddc2b993a86eee5e20599e1aef21bee66e8370cf5599609c55. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 323: Комплект прокладок, стержень клапана; SHA-256 0c7dd636ef8649ddc2b993a86eee5e20599e1aef21bee66e8370cf5599609c55. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 323,
       "assemblygroupdescription": "Головка цилиндра",
@@ -1943,12 +1931,12 @@
     "original_name": "Вакуумный насос, тормозная система",
     "ukrainian_name": "Вакуумний насос гальмівної системи",
     "category": "Гальмівна система",
-    "subcategory": null,
+    "subcategory": "Вакуумна система гальм",
     "type": "physical_part",
     "role": "assembly_candidate",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 387: Вакуумный насос, тормозная система; SHA-256 3a368fb5671a63860992f9223baec41949c698ebe5307b0130a4dcb2af159db3. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 387: Вакуумный насос, тормозная система; SHA-256 3a368fb5671a63860992f9223baec41949c698ebe5307b0130a4dcb2af159db3. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 387,
       "assemblygroupdescription": "Тормозная система",
@@ -1957,10 +1945,8 @@
       "usagedescription": "Пониженное давление"
     },
     "duplicate_review": "not_flagged",
-    "decision": "needs_review",
-    "unresolved_reasons": [
-      "Чинний довідник не має однозначної підкатегорії без вигадування розташування/функції."
-    ],
+    "decision": "proposed",
+    "unresolved_reasons": [],
     "canonical_candidate_ids": [],
     "canonical_reuse": "requires_context_review",
     "stock_link_status": "UNVERIFIED_NO_DATABASE_READ",
@@ -1993,7 +1979,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "NON_DISMANTLING",
     "duplicate_candidate": [],
-    "evidence": "PRD 402: Комплект тормозных колодок, дисковый тормоз; SHA-256 115d917c38cc8d20456115f4cb062e7ee89ba024c9f8eabd878ed6c8e71c3822. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 402: Комплект тормозных колодок, дисковый тормоз; SHA-256 115d917c38cc8d20456115f4cb062e7ee89ba024c9f8eabd878ed6c8e71c3822. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 402,
       "assemblygroupdescription": "Тормозная система",
@@ -2036,7 +2022,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 412: Датчик, частота вращения колеса; SHA-256 5236804474e7afcde8781dac0fdf93d0789d9e43bcdd0f2b4e46a952fb5f05ea. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 412: Датчик, частота вращения колеса; SHA-256 5236804474e7afcde8781dac0fdf93d0789d9e43bcdd0f2b4e46a952fb5f05ea. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 412,
       "assemblygroupdescription": "Тормозная система",
@@ -2079,7 +2065,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "NON_DISMANTLING",
     "duplicate_candidate": [],
-    "evidence": "PRD 424: Фильтр, воздух во внутренном пространстве; SHA-256 f79f6521f7f1ca3f184142129a0bafaeb9ac52fc8044b0dfb2f8264357211f52. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 424: Фильтр, воздух во внутренном пространстве; SHA-256 f79f6521f7f1ca3f184142129a0bafaeb9ac52fc8044b0dfb2f8264357211f52. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 424,
       "assemblygroupdescription": "Отопление / вентиляция",
@@ -2122,7 +2108,7 @@
     "role": "assembly_candidate",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 447: Компрессор, кондиционер; SHA-256 b3b4d68cc9d1f06b5d482a831fe5e7f6a537d19848ad6ec7e234563b3ff1e659. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 447: Компрессор, кондиционер; SHA-256 b3b4d68cc9d1f06b5d482a831fe5e7f6a537d19848ad6ec7e234563b3ff1e659. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 447,
       "assemblygroupdescription": "Кондиционер",
@@ -2169,7 +2155,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 448: Конденсатор, кондиционер; SHA-256 1b38f2ca409d46b824110a015e88c492fd2db7428edfe50b019d39ec3132993d. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 448: Конденсатор, кондиционер; SHA-256 1b38f2ca409d46b824110a015e88c492fd2db7428edfe50b019d39ec3132993d. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 448,
       "assemblygroupdescription": "Кондиционер",
@@ -2212,7 +2198,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 450: Расширение, крыло; SHA-256 845b9088794744c1b9e9261378b82eaa3fb239afcef98a8f8819918b56aa8c5e. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 450: Расширение, крыло; SHA-256 845b9088794744c1b9e9261378b82eaa3fb239afcef98a8f8819918b56aa8c5e. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 450,
       "assemblygroupdescription": "Кузов",
@@ -2255,7 +2241,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "NON_DISMANTLING",
     "duplicate_candidate": [],
-    "evidence": "PRD 455: Прокладка, масляный поддон; SHA-256 b2f8ee92e5f4dd6f100d3b2f80168f6eb663113739451847ea4a4328e4fae46a. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 455: Прокладка, масляный поддон; SHA-256 b2f8ee92e5f4dd6f100d3b2f80168f6eb663113739451847ea4a4328e4fae46a. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 455,
       "assemblygroupdescription": "Смазывание",
@@ -2298,7 +2284,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 514: Газовая пружина, капот; SHA-256 3042a2f598dd015bd5282f2337160d5e4ef28579c9bc0566c36e8f6701888d4f. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 514: Газовая пружина, капот; SHA-256 3042a2f598dd015bd5282f2337160d5e4ef28579c9bc0566c36e8f6701888d4f. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 514,
       "assemblygroupdescription": "Кузов",
@@ -2345,7 +2331,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 548: Крышка, радиатор; SHA-256 f9ec260cf30ff015ced69e034ffc1fb11b91264f0047ee75a43805e060dfb38f. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 548: Крышка, радиатор; SHA-256 f9ec260cf30ff015ced69e034ffc1fb11b91264f0047ee75a43805e060dfb38f. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 548,
       "assemblygroupdescription": "Охлаждение",
@@ -2388,7 +2374,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "NON_DISMANTLING",
     "duplicate_candidate": [],
-    "evidence": "PRD 572: Уплотняющее кольцо, коленчатый вал; SHA-256 212b9a5d6ab1aa8f24d23223dd48fd19c1e9b1521a13f93ed756f3253dd88630. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 572: Уплотняющее кольцо, коленчатый вал; SHA-256 212b9a5d6ab1aa8f24d23223dd48fd19c1e9b1521a13f93ed756f3253dd88630. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 572,
       "assemblygroupdescription": "Кривошипношатунный механизм",
@@ -2431,7 +2417,7 @@
     "role": "component_candidate",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 574: Подшипник коленвала; SHA-256 bf541f628e130648f5da8251b319f50a7c58afedde074698d7b13066f469ad0a. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 574: Подшипник коленвала; SHA-256 bf541f628e130648f5da8251b319f50a7c58afedde074698d7b13066f469ad0a. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 574,
       "assemblygroupdescription": "Кривошипношатунный механизм",
@@ -2474,7 +2460,7 @@
     "role": "component_candidate",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 582: Шатунный подшипник; SHA-256 e48cd8d88d30ffc50638fc75d63fb1a869d63d9537de72a46bf4fd01ec1500f1. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 582: Шатунный подшипник; SHA-256 e48cd8d88d30ffc50638fc75d63fb1a869d63d9537de72a46bf4fd01ec1500f1. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 582,
       "assemblygroupdescription": "Кривошипношатунный механизм",
@@ -2517,7 +2503,7 @@
     "role": "component_candidate",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 584: Втулка подшипника, шатун; SHA-256 69626923832c09f9ccd06f8bf5709f1aa4eba9ba46e21101701913ec94d322ee. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 584: Втулка подшипника, шатун; SHA-256 69626923832c09f9ccd06f8bf5709f1aa4eba9ba46e21101701913ec94d322ee. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 584,
       "assemblygroupdescription": "Кривошипношатунный механизм",
@@ -2560,7 +2546,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 593: Резьбовая пробка, масляный поддон; SHA-256 5b8ff504e0b9a63b3d737915ee2b31fe79d6d14e48a9ecf157715f021913c153. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 593: Резьбовая пробка, масляный поддон; SHA-256 5b8ff504e0b9a63b3d737915ee2b31fe79d6d14e48a9ecf157715f021913c153. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 593,
       "assemblygroupdescription": "Смазывание",
@@ -2603,7 +2589,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "NON_DISMANTLING",
     "duplicate_candidate": [],
-    "evidence": "PRD 654: Комплект подшипника ступицы колеса; SHA-256 541d62a0ae169a071433969b1304af53d0990a6cc599ef19a286bd72ba3b386d. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 654: Комплект подшипника ступицы колеса; SHA-256 541d62a0ae169a071433969b1304af53d0990a6cc599ef19a286bd72ba3b386d. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 654,
       "assemblygroupdescription": "Подвеска колеса",
@@ -2648,7 +2634,7 @@
     "duplicate_candidate": [
       2070
     ],
-    "evidence": "PRD 657: Болт крепления колеса; SHA-256 90eae21d2ce45608508df73e6a91ac9aa86b56209183250ed9210ca7fc2a37ff. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 657: Болт крепления колеса; SHA-256 90eae21d2ce45608508df73e6a91ac9aa86b56209183250ed9210ca7fc2a37ff. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 657,
       "assemblygroupdescription": "Колеса",
@@ -2693,7 +2679,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "NON_DISMANTLING",
     "duplicate_candidate": [],
-    "evidence": "PRD 686: Свеча зажигания; SHA-256 fe4059086f88fda63474cb6701babf8c0a9655cec0c6bb5c7667dd344d239b2f. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 686: Свеча зажигания; SHA-256 fe4059086f88fda63474cb6701babf8c0a9655cec0c6bb5c7667dd344d239b2f. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 686,
       "assemblygroupdescription": "Система зажигания",
@@ -2740,7 +2726,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "NON_DISMANTLING",
     "duplicate_candidate": [],
-    "evidence": "PRD 757: Уплотняющее кольцо, распределительный вал; SHA-256 70f22bfed162d329d07bcd9680cd63b24c0646cafa4c71657648cb9e4ad26e9e. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 757: Уплотняющее кольцо, распределительный вал; SHA-256 70f22bfed162d329d07bcd9680cd63b24c0646cafa4c71657648cb9e4ad26e9e. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 757,
       "assemblygroupdescription": "Управление двигателем",
@@ -2783,7 +2769,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 794: Водяной насос, система очистки окон; SHA-256 05485858034f51cf86fbd4e27fd84cbaa4f4a26c8f6f677325ac33d4ab1f65a6. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 794: Водяной насос, система очистки окон; SHA-256 05485858034f51cf86fbd4e27fd84cbaa4f4a26c8f6f677325ac33d4ab1f65a6. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 794,
       "assemblygroupdescription": "Система очистки окон",
@@ -2821,12 +2807,12 @@
     "original_name": "Выключатель, фара заднего хода",
     "ukrainian_name": "Вимикач ліхтаря заднього ходу",
     "category": "Електрика та електроніка",
-    "subcategory": null,
+    "subcategory": "Вимикачі та перемикачі",
     "type": "physical_part",
     "role": "standalone_or_unresolved",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 807: Выключатель, фара заднего хода; SHA-256 b16520342730b55de115ff8b8af514cfb65ee04c64a7dc48174f9a9cb580dec6. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 807: Выключатель, фара заднего хода; SHA-256 b16520342730b55de115ff8b8af514cfb65ee04c64a7dc48174f9a9cb580dec6. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 807,
       "assemblygroupdescription": "Освещение",
@@ -2835,10 +2821,8 @@
       "usagedescription": "Фара заднего хода"
     },
     "duplicate_review": "not_flagged",
-    "decision": "needs_review",
-    "unresolved_reasons": [
-      "Чинний довідник не має однозначної підкатегорії без вигадування розташування/функції."
-    ],
+    "decision": "proposed",
+    "unresolved_reasons": [],
     "canonical_candidate_ids": [],
     "canonical_reuse": "requires_context_review",
     "stock_link_status": "UNVERIFIED_NO_DATABASE_READ",
@@ -2875,7 +2859,7 @@
       2394,
       3944
     ],
-    "evidence": "PRD 830: Датчик, температура охлаждающей жидкости; SHA-256 031f3162e7232621cceb2e569853f5180a62271064ee28674637b8fbffaccdb5. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 830: Датчик, температура охлаждающей жидкости; SHA-256 031f3162e7232621cceb2e569853f5180a62271064ee28674637b8fbffaccdb5. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 830,
       "assemblygroupdescription": "Охлаждение",
@@ -2920,7 +2904,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "NON_DISMANTLING",
     "duplicate_candidate": [],
-    "evidence": "PRD 851: Осушитель, кондиционер; SHA-256 7d3724e55ec7dbb68eb1b1cf0ba9271a4c7fbf5e690c72a7d09d325800ef58d3. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 851: Осушитель, кондиционер; SHA-256 7d3724e55ec7dbb68eb1b1cf0ba9271a4c7fbf5e690c72a7d09d325800ef58d3. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 851,
       "assemblygroupdescription": "Кондиционер",
@@ -2967,7 +2951,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 854: Амортизатор; SHA-256 e479cd3ed9a09867d0c959f9ee6dcf710968bb7af0815c9a844ca6ba66c8a160. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 854: Амортизатор; SHA-256 e479cd3ed9a09867d0c959f9ee6dcf710968bb7af0815c9a844ca6ba66c8a160. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 854,
       "assemblygroupdescription": "Подвеска / амортизация",
@@ -3014,7 +2998,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 914: Наконечник поперечной рулевой тяги; SHA-256 a0f8efad23ed8d31e796f8b7bbf4ea01af0394af495d4e16b20230873f4c2542. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 914: Наконечник поперечной рулевой тяги; SHA-256 a0f8efad23ed8d31e796f8b7bbf4ea01af0394af495d4e16b20230873f4c2542. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 914,
       "assemblygroupdescription": "Рулевое управление",
@@ -3052,12 +3036,12 @@
     "original_name": "Втулка, балка моста",
     "ukrainian_name": "Сайлентблок балки підвіски",
     "category": "Підвіска та ходова частина",
-    "subcategory": null,
+    "subcategory": "Балка підвіски та її опори",
     "type": "physical_part",
     "role": "standalone_or_unresolved",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 1080: Втулка, балка моста; SHA-256 8a1f096da2fbfdd028e94756bca7c5dccf98ff320630efa6ce630d65cbecd697. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 1080: Втулка, балка моста; SHA-256 8a1f096da2fbfdd028e94756bca7c5dccf98ff320630efa6ce630d65cbecd697. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 1080,
       "assemblygroupdescription": "Подвеска колеса",
@@ -3066,10 +3050,8 @@
       "usagedescription": "Балка моста"
     },
     "duplicate_review": "not_flagged",
-    "decision": "needs_review",
-    "unresolved_reasons": [
-      "Чинний довідник не має однозначної підкатегорії без вигадування розташування/функції."
-    ],
+    "decision": "proposed",
+    "unresolved_reasons": [],
     "canonical_candidate_ids": [],
     "canonical_reuse": "requires_context_review",
     "stock_link_status": "UNVERIFIED_NO_DATABASE_READ",
@@ -3097,12 +3079,12 @@
     "original_name": "Лампа накаливания, стояночные огни / габаритные фонари",
     "ukrainian_name": "Лампа габаритного світла",
     "category": "Освітлення",
-    "subcategory": null,
+    "subcategory": "Сигнальне та допоміжне освітлення",
     "type": "consumable",
     "role": "standalone_or_unresolved",
     "applicability": "NON_DISMANTLING",
     "duplicate_candidate": [],
-    "evidence": "PRD 1092: Лампа накаливания, стояночные огни / габаритные фонари; SHA-256 bf974d88a9062b4b2ea7eced95920879472b797363a674f6043d52c1ad514af2. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 1092: Лампа накаливания, стояночные огни / габаритные фонари; SHA-256 bf974d88a9062b4b2ea7eced95920879472b797363a674f6043d52c1ad514af2. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 1092,
       "assemblygroupdescription": "Освещение",
@@ -3111,10 +3093,8 @@
       "usagedescription": "Стояночные огни / габаритные фонари"
     },
     "duplicate_review": "not_flagged",
-    "decision": "needs_review",
-    "unresolved_reasons": [
-      "Чинний довідник не має однозначної підкатегорії без вигадування розташування/функції."
-    ],
+    "decision": "proposed",
+    "unresolved_reasons": [],
     "canonical_candidate_ids": [],
     "canonical_reuse": "requires_context_review",
     "stock_link_status": "UNVERIFIED_NO_DATABASE_READ",
@@ -3147,7 +3127,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "NON_DISMANTLING",
     "duplicate_candidate": [],
-    "evidence": "PRD 1164: Комплектующие, колодки дискового тормоза; SHA-256 7ae1a7b5ae0daf91bb9712ded1ca06fbf85687e10436ffff02519a0155ed8627. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 1164: Комплектующие, колодки дискового тормоза; SHA-256 7ae1a7b5ae0daf91bb9712ded1ca06fbf85687e10436ffff02519a0155ed8627. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 1164,
       "assemblygroupdescription": "Тормозная система",
@@ -3190,7 +3170,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "NON_DISMANTLING",
     "duplicate_candidate": [],
-    "evidence": "PRD 1165: Комплект направляющей гильзы; SHA-256 c995f91d83e19f1f41efbf88befc92498d80ff253ea42e40775c87200da99bce. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 1165: Комплект направляющей гильзы; SHA-256 c995f91d83e19f1f41efbf88befc92498d80ff253ea42e40775c87200da99bce. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 1165,
       "assemblygroupdescription": "Тормозная система",
@@ -3233,7 +3213,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 1180: Опора стойки амортизатора; SHA-256 2a5f6e753b4bf2f20ff2f1b81cd7dc26d9b8c2dd9e7538cc6e9162606d192588. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 1180: Опора стойки амортизатора; SHA-256 2a5f6e753b4bf2f20ff2f1b81cd7dc26d9b8c2dd9e7538cc6e9162606d192588. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 1180,
       "assemblygroupdescription": "Подвеска колеса",
@@ -3276,7 +3256,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 1191: Ветровое стекло; SHA-256 4b62eae7a05da8bd8f7559d97ec3bf15befc43ddf705015db00a8b6ba11a92d7. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 1191: Ветровое стекло; SHA-256 4b62eae7a05da8bd8f7559d97ec3bf15befc43ddf705015db00a8b6ba11a92d7. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 1191,
       "assemblygroupdescription": "Кузов",
@@ -3319,7 +3299,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 1192: Заднее стекло; SHA-256 91cfaab38febcb6d7a9fdbe7277d7d1033299bf81c7c91fa69f9372adccc7250. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 1192: Заднее стекло; SHA-256 91cfaab38febcb6d7a9fdbe7277d7d1033299bf81c7c91fa69f9372adccc7250. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 1192,
       "assemblygroupdescription": "Кузов",
@@ -3362,7 +3342,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 1194: Боковое окно; SHA-256 c0952d8d6950f4a5fddeeb41767707226a061cb1cb9437239c1fd60c81a15024. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 1194: Боковое окно; SHA-256 c0952d8d6950f4a5fddeeb41767707226a061cb1cb9437239c1fd60c81a15024. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 1194,
       "assemblygroupdescription": "Кузов",
@@ -3405,7 +3385,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "NON_DISMANTLING",
     "duplicate_candidate": [],
-    "evidence": "PRD 1217: Комплект болтов головки цилидра; SHA-256 cdec209a6c977aa2056fbdff15bf3677cece338af2aa1009a4e60c69aa016e6c. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 1217: Комплект болтов головки цилидра; SHA-256 cdec209a6c977aa2056fbdff15bf3677cece338af2aa1009a4e60c69aa016e6c. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 1217,
       "assemblygroupdescription": "Головка цилиндра",
@@ -3448,7 +3428,7 @@
     "role": "assembly_candidate",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 1260: Водяной насос; SHA-256 0b337333b94bc43ba5be17c01f3d8b44994c1a12ba35bb8a53a0de83b918b1d8. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 1260: Водяной насос; SHA-256 0b337333b94bc43ba5be17c01f3d8b44994c1a12ba35bb8a53a0de83b918b1d8. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 1260,
       "assemblygroupdescription": "Охлаждение",
@@ -3495,7 +3475,7 @@
     "role": "component_candidate",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 1269: Впускной клапан; SHA-256 d9e3eff32d26977b4ae627036c72ff14927b83bb3089b7518e53a37122c379b3. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 1269: Впускной клапан; SHA-256 d9e3eff32d26977b4ae627036c72ff14927b83bb3089b7518e53a37122c379b3. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 1269,
       "assemblygroupdescription": "Управление двигателем",
@@ -3538,7 +3518,7 @@
     "role": "component_candidate",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 1270: Выпускной клапан; SHA-256 2240d307ec5c5f0b22401541c7b18b3a1642203ae98e27b7198e02abcb0e81b6. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 1270: Выпускной клапан; SHA-256 2240d307ec5c5f0b22401541c7b18b3a1642203ae98e27b7198e02abcb0e81b6. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 1270,
       "assemblygroupdescription": "Управление двигателем",
@@ -3581,7 +3561,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "NON_DISMANTLING",
     "duplicate_candidate": [],
-    "evidence": "PRD 1419: Комплект тормозных колодок, стояночная тормозная система; SHA-256 e0268ff91a190f942ada1c8ad0778a7555f02a0404537bb9cf3ec139d3452fcd. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 1419: Комплект тормозных колодок, стояночная тормозная система; SHA-256 e0268ff91a190f942ada1c8ad0778a7555f02a0404537bb9cf3ec139d3452fcd. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 1419,
       "assemblygroupdescription": "Тормозная система",
@@ -3619,12 +3599,12 @@
     "original_name": "Подножка",
     "ukrainian_name": "Поріг-підніжка",
     "category": "Кузов та зовнішні деталі",
-    "subcategory": null,
+    "subcategory": "Пороги та підніжки",
     "type": "equipment",
     "role": "standalone_or_unresolved",
     "applicability": "OPTIONAL",
     "duplicate_candidate": [],
-    "evidence": "PRD 1510: Подножка; SHA-256 e0ef08dc4311bf2289a3c10a6c283a900c3f6b79a38b2c2953f56ae57dc54d3f. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 1510: Подножка; SHA-256 e0ef08dc4311bf2289a3c10a6c283a900c3f6b79a38b2c2953f56ae57dc54d3f. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 1510,
       "assemblygroupdescription": "Кузов",
@@ -3633,10 +3613,8 @@
       "usagedescription": ""
     },
     "duplicate_review": "not_flagged",
-    "decision": "needs_review",
-    "unresolved_reasons": [
-      "Чинний довідник не має однозначної підкатегорії без вигадування розташування/функції."
-    ],
+    "decision": "proposed",
+    "unresolved_reasons": [],
     "canonical_candidate_ids": [],
     "canonical_reuse": "requires_context_review",
     "stock_link_status": "UNVERIFIED_NO_DATABASE_READ",
@@ -3669,7 +3647,7 @@
     "role": "assembly_candidate",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 1561: Подъемное устройство для окон; SHA-256 c131cc9bba8cb210306790e2954a244ec85cc642810546670b90d39935f0af4b. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 1561: Подъемное устройство для окон; SHA-256 c131cc9bba8cb210306790e2954a244ec85cc642810546670b90d39935f0af4b. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 1561,
       "assemblygroupdescription": "Внутренняя отделка",
@@ -3716,7 +3694,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 1914: Зеркальное стекло, наружное зеркало; SHA-256 9c3f30636f0fbf5715e8e2afad1cd66b16ea575f033476a99c46cb776fcbde0f. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 1914: Зеркальное стекло, наружное зеркало; SHA-256 9c3f30636f0fbf5715e8e2afad1cd66b16ea575f033476a99c46cb776fcbde0f. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 1914,
       "assemblygroupdescription": "Кузов",
@@ -3763,7 +3741,7 @@
       2394,
       3944
     ],
-    "evidence": "PRD 2055: Датчик, температура охлаждающей жидкости; SHA-256 4dc56a2c2b3c87f9f54155a4fadf6c96b2900d6d7ea08dae50b5e8eabf1041de. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 2055: Датчик, температура охлаждающей жидкости; SHA-256 4dc56a2c2b3c87f9f54155a4fadf6c96b2900d6d7ea08dae50b5e8eabf1041de. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 2055,
       "assemblygroupdescription": "Кондиционер",
@@ -3810,7 +3788,7 @@
     "duplicate_candidate": [
       657
     ],
-    "evidence": "PRD 2070: Болт для крепления колеса; SHA-256 83d8a1c6a42bb3630a3ad99e50bc64868275050aadf3e0221e115c39b7f2aacd. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 2070: Болт для крепления колеса; SHA-256 83d8a1c6a42bb3630a3ad99e50bc64868275050aadf3e0221e115c39b7f2aacd. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 2070,
       "assemblygroupdescription": "Колеса",
@@ -3855,7 +3833,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 2169: Направляющий болт, корпус скобы тормоза; SHA-256 e396ea9ceb222598c4eac865677905f9c2684e83d2d74079d0e487c2056dd59e. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 2169: Направляющий болт, корпус скобы тормоза; SHA-256 e396ea9ceb222598c4eac865677905f9c2684e83d2d74079d0e487c2056dd59e. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 2169,
       "assemblygroupdescription": "Тормозная система",
@@ -3898,7 +3876,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 2232: Датчик частоты вращения колеса, контроль давления в шинах; SHA-256 676cdbee486e01dc9c839cf2066d0de07deb5bd80d9aa6433053ff81be64f9aa. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 2232: Датчик частоты вращения колеса, контроль давления в шинах; SHA-256 676cdbee486e01dc9c839cf2066d0de07deb5bd80d9aa6433053ff81be64f9aa. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 2232,
       "assemblygroupdescription": "Колеса",
@@ -3943,7 +3921,7 @@
     "role": "component_candidate",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 2254: Зубчатый диск импульсного датчика, противобл. устр.; SHA-256 68f71bc100beb0969ffd29d5e143aac2d4ea4791f845a9431268823cad3b43a0. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 2254: Зубчатый диск импульсного датчика, противобл. устр.; SHA-256 68f71bc100beb0969ffd29d5e143aac2d4ea4791f845a9431268823cad3b43a0. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 2254,
       "assemblygroupdescription": "Тормозная система",
@@ -3990,7 +3968,7 @@
       2055,
       3944
     ],
-    "evidence": "PRD 2394: Датчик, температура охлаждающей жидкости; SHA-256 53099bacc5fcf8bfd01bb9b31d5a3945bba788ffb700e918d96f7690a4f425c1. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 2394: Датчик, температура охлаждающей жидкости; SHA-256 53099bacc5fcf8bfd01bb9b31d5a3945bba788ffb700e918d96f7690a4f425c1. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 2394,
       "assemblygroupdescription": "Система накаливания",
@@ -4030,12 +4008,12 @@
     "original_name": "Несущий / направляющий шарнир",
     "ukrainian_name": "Кульова опора підвіски",
     "category": "Підвіска та ходова частина",
-    "subcategory": null,
+    "subcategory": "Важелі та шарніри підвіски",
     "type": "physical_part",
     "role": "standalone_or_unresolved",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 2462: Несущий / направляющий шарнир; SHA-256 5ae731d229d0dff0d631fec18e664400d2e1316eb39ef65c4bff19b9d2621547. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 2462: Несущий / направляющий шарнир; SHA-256 5ae731d229d0dff0d631fec18e664400d2e1316eb39ef65c4bff19b9d2621547. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 2462,
       "assemblygroupdescription": "Подвеска колеса",
@@ -4044,10 +4022,8 @@
       "usagedescription": "несущий / направляющий шарнир"
     },
     "duplicate_review": "not_flagged",
-    "decision": "needs_review",
-    "unresolved_reasons": [
-      "Чинний довідник не має однозначної підкатегорії без вигадування розташування/функції."
-    ],
+    "decision": "proposed",
+    "unresolved_reasons": [],
     "canonical_candidate_ids": [],
     "canonical_reuse": "requires_context_review",
     "stock_link_status": "UNVERIFIED_NO_DATABASE_READ",
@@ -4080,7 +4056,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "NON_DISMANTLING",
     "duplicate_candidate": [],
-    "evidence": "PRD 3069: Масло автоматической коробки передач; SHA-256 6762d026a9dd585763fde2aba02cc4fb31b44971dcd48e91e7c136c2cd126983. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 3069: Масло автоматической коробки передач; SHA-256 6762d026a9dd585763fde2aba02cc4fb31b44971dcd48e91e7c136c2cd126983. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 3069,
       "assemblygroupdescription": "Автоматическая коробка передач",
@@ -4123,7 +4099,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "NON_DISMANTLING",
     "duplicate_candidate": [],
-    "evidence": "PRD 3224: Моторное масло; SHA-256 0601c7b0529a74ddaf1be8e8a8e8c4a358680ac9d6d778fbd8f2c206bf0126eb. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 3224: Моторное масло; SHA-256 0601c7b0529a74ddaf1be8e8a8e8c4a358680ac9d6d778fbd8f2c206bf0126eb. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 3224,
       "assemblygroupdescription": "Смазывание",
@@ -4161,12 +4137,12 @@
     "original_name": "Тяга / стойка, стабилизатор",
     "ukrainian_name": "Стійка стабілізатора",
     "category": "Підвіска та ходова частина",
-    "subcategory": null,
+    "subcategory": "Стабілізатори та їхні стійки",
     "type": "physical_part",
     "role": "standalone_or_unresolved",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 3229: Тяга / стойка, стабилизатор; SHA-256 5eb247b532ece1764f1fb9b4d1c0aa2481d7e80d104cfef8f7ed2b5c7a0b4cb3. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 3229: Тяга / стойка, стабилизатор; SHA-256 5eb247b532ece1764f1fb9b4d1c0aa2481d7e80d104cfef8f7ed2b5c7a0b4cb3. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 3229,
       "assemblygroupdescription": "Подвеска колеса",
@@ -4175,10 +4151,8 @@
       "usagedescription": "Стабилизатор"
     },
     "duplicate_review": "not_flagged",
-    "decision": "needs_review",
-    "unresolved_reasons": [
-      "Чинний довідник не має однозначної підкатегорії без вигадування розташування/функції."
-    ],
+    "decision": "proposed",
+    "unresolved_reasons": [],
     "canonical_candidate_ids": [
       "5478d9d0-d8f5-54cf-89ca-c7b28e89e52d"
     ],
@@ -4215,7 +4189,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "NON_DISMANTLING",
     "duplicate_candidate": [],
-    "evidence": "PRD 3356: Антифриз; SHA-256 96cf41db48c5f513eccfd988a9e8349a3ac949327752a8d8e42fd6167ab0604a. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 3356: Антифриз; SHA-256 96cf41db48c5f513eccfd988a9e8349a3ac949327752a8d8e42fd6167ab0604a. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 3356,
       "assemblygroupdescription": "Охлаждение",
@@ -4258,7 +4232,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "NON_DISMANTLING",
     "duplicate_candidate": [],
-    "evidence": "PRD 3357: Тормозная жидкость; SHA-256 150721219b1ae4e3a6e6511b48c5e66890d3fc411161e9f39ba500deaf126b6b. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 3357: Тормозная жидкость; SHA-256 150721219b1ae4e3a6e6511b48c5e66890d3fc411161e9f39ba500deaf126b6b. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 3357,
       "assemblygroupdescription": "Тормозная система",
@@ -4296,12 +4270,12 @@
     "original_name": "Подвеска, корпус колесного подшипника",
     "ukrainian_name": "Опора корпусу колісного підшипника",
     "category": "Підвіска та ходова частина",
-    "subcategory": null,
+    "subcategory": "Маточини та підшипники",
     "type": "needs_review",
     "role": "standalone_or_unresolved",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 3406: Подвеска, корпус колесного подшипника; SHA-256 3672cc4c879d21fa91bb37dd0e7e718a4b9cddeedc2e47a85c48dd82778a3054. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 3406: Подвеска, корпус колесного подшипника; SHA-256 3672cc4c879d21fa91bb37dd0e7e718a4b9cddeedc2e47a85c48dd82778a3054. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 3406,
       "assemblygroupdescription": "Подвеска колеса",
@@ -4312,7 +4286,6 @@
     "duplicate_review": "not_flagged",
     "decision": "needs_review",
     "unresolved_reasons": [
-      "Чинний довідник не має однозначної підкатегорії без вигадування розташування/функції.",
       "Не ототожнювати опору корпусу підшипника з поворотним кулаком."
     ],
     "canonical_candidate_ids": [],
@@ -4347,7 +4320,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 3694: Солнцезащитный козырёк; SHA-256 469b4422fd7035b1a69007bde94be3a5478893e9f11e2c7754c7f8937d24324e. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 3694: Солнцезащитный козырёк; SHA-256 469b4422fd7035b1a69007bde94be3a5478893e9f11e2c7754c7f8937d24324e. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 3694,
       "assemblygroupdescription": "Внутренняя отделка",
@@ -4394,7 +4367,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "OPTIONAL",
     "duplicate_candidate": [],
-    "evidence": "PRD 3792: Расширение колеи; SHA-256 f277ba701e06845c8dc1696f1a4905ae4123ee92035113c17b8eead08cf60f96. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 3792: Расширение колеи; SHA-256 f277ba701e06845c8dc1696f1a4905ae4123ee92035113c17b8eead08cf60f96. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 3792,
       "assemblygroupdescription": "Колеса",
@@ -4432,12 +4405,12 @@
     "original_name": "Лампа накаливания, фара дневного освещения",
     "ukrainian_name": "Лампа денного ходового світла",
     "category": "Освітлення",
-    "subcategory": null,
+    "subcategory": "Сигнальне та допоміжне освітлення",
     "type": "consumable",
     "role": "standalone_or_unresolved",
     "applicability": "NON_DISMANTLING",
     "duplicate_candidate": [],
-    "evidence": "PRD 3853: Лампа накаливания, фара дневного освещения; SHA-256 98339e606c59345a43795ae1e173c6832795213c971f36fbc074b600c2b791c8. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 3853: Лампа накаливания, фара дневного освещения; SHA-256 98339e606c59345a43795ae1e173c6832795213c971f36fbc074b600c2b791c8. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 3853,
       "assemblygroupdescription": "Освещение",
@@ -4446,10 +4419,8 @@
       "usagedescription": "дневное освещение"
     },
     "duplicate_review": "not_flagged",
-    "decision": "needs_review",
-    "unresolved_reasons": [
-      "Чинний довідник не має однозначної підкатегорії без вигадування розташування/функції."
-    ],
+    "decision": "proposed",
+    "unresolved_reasons": [],
     "canonical_candidate_ids": [],
     "canonical_reuse": "requires_context_review",
     "stock_link_status": "UNVERIFIED_NO_DATABASE_READ",
@@ -4482,7 +4453,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 3939: Датчик, температура впускаемого воздуха; SHA-256 517b3414a39d0c48e407782204314e5ccf186c729ae7de5e6043fbd706174850. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 3939: Датчик, температура впускаемого воздуха; SHA-256 517b3414a39d0c48e407782204314e5ccf186c729ae7de5e6043fbd706174850. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 3939,
       "assemblygroupdescription": "Приготовление смеси",
@@ -4529,7 +4500,7 @@
       2055,
       2394
     ],
-    "evidence": "PRD 3944: Датчик, температура охлаждающей жидкости; SHA-256 48bb66c15afbb4dde424ce5e9698b7caf44befe425b8a8be051882af94217985. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 3944: Датчик, температура охлаждающей жидкости; SHA-256 48bb66c15afbb4dde424ce5e9698b7caf44befe425b8a8be051882af94217985. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 3944,
       "assemblygroupdescription": "Приготовление смеси",
@@ -4574,7 +4545,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 3945: Датчик, давление наддува; SHA-256 e354cac91ca2ddc901cc00cc10aae22f08db5772882ccae421581d2c50e0ca6a. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 3945: Датчик, давление наддува; SHA-256 e354cac91ca2ddc901cc00cc10aae22f08db5772882ccae421581d2c50e0ca6a. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 3945,
       "assemblygroupdescription": "Приготовление смеси",
@@ -4621,7 +4592,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 3947: Датчик, давление во впускной трубе; SHA-256 7116e2a1c79ea1dc23662ae2584414397124d9ff03cada618040aea5b76d1004. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 3947: Датчик, давление во впускной трубе; SHA-256 7116e2a1c79ea1dc23662ae2584414397124d9ff03cada618040aea5b76d1004. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 3947,
       "assemblygroupdescription": "Приготовление смеси",
@@ -4659,12 +4630,12 @@
     "original_name": "Датчик, температуры / давления масла",
     "ukrainian_name": "Датчик температури / тиску оливи",
     "category": "Двигун та його системи",
-    "subcategory": null,
+    "subcategory": "Система змащення",
     "type": "needs_review",
     "role": "standalone_or_unresolved",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 4175: Датчик, температуры / давления масла; SHA-256 204f4c69feefb2470c9de69d652e9ff4c7ad5e4b0a24ac0ddc49b173b6e80ea9. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 4175: Датчик, температуры / давления масла; SHA-256 204f4c69feefb2470c9de69d652e9ff4c7ad5e4b0a24ac0ddc49b173b6e80ea9. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 4175,
       "assemblygroupdescription": "Контрольные приборы",
@@ -4675,7 +4646,6 @@
     "duplicate_review": "not_flagged",
     "decision": "needs_review",
     "unresolved_reasons": [
-      "Чинний довідник не має однозначної підкатегорії без вигадування розташування/функції.",
       "Не визначено, чи це комбінований датчик, чи альтернативні функції."
     ],
     "canonical_candidate_ids": [],
@@ -4710,7 +4680,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 4272: Датчик, давление выхлопных газов; SHA-256 ecee708a316f24259a5fe9866bd960a191a393c6e9e94414fa1610a7d60c7d15. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 4272: Датчик, давление выхлопных газов; SHA-256 ecee708a316f24259a5fe9866bd960a191a393c6e9e94414fa1610a7d60c7d15. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 4272,
       "assemblygroupdescription": "Приготовление смеси",
@@ -4753,7 +4723,7 @@
     "role": "component_candidate",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 4394: Регулятор, вентилятор салона; SHA-256 f73f4b38b023b7e5e397ec4c94b346c9d1854161ee43586e7f2d7de80acfed0b. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 4394: Регулятор, вентилятор салона; SHA-256 f73f4b38b023b7e5e397ec4c94b346c9d1854161ee43586e7f2d7de80acfed0b. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 4394,
       "assemblygroupdescription": "Отопление / вентиляция",
@@ -4796,7 +4766,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "OPTIONAL",
     "duplicate_candidate": [],
-    "evidence": "PRD 5025: Аэродефлектор; SHA-256 38c16caca7967d4310e0821b722048f3e9a754ae4f18f044a46e557608647406. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 5025: Аэродефлектор; SHA-256 38c16caca7967d4310e0821b722048f3e9a754ae4f18f044a46e557608647406. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 5025,
       "assemblygroupdescription": "Кузов",
@@ -4842,7 +4812,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "OPTIONAL",
     "duplicate_candidate": [],
-    "evidence": "PRD 5171: Колесная цепь противоскольжения; SHA-256 40b3b908ca3cd871f4a8f2aa04c4495701379059a43cbbb1127ea7f55ae7b4ec. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 5171: Колесная цепь противоскольжения; SHA-256 40b3b908ca3cd871f4a8f2aa04c4495701379059a43cbbb1127ea7f55ae7b4ec. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 5171,
       "assemblygroupdescription": "Комплектующие",
@@ -4885,7 +4855,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 5213: Болт воздушного клапана / вентиль, тормозной суппорт; SHA-256 bc6da7ca4a78a0ba1ca859fa2d4948ee2fd60a3891945aa01f5604a5888c038b. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 5213: Болт воздушного клапана / вентиль, тормозной суппорт; SHA-256 bc6da7ca4a78a0ba1ca859fa2d4948ee2fd60a3891945aa01f5604a5888c038b. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 5213,
       "assemblygroupdescription": "Тормозная система",
@@ -4928,7 +4898,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 5750: Датчик, качество воздуха; SHA-256 bb9db63fc39be0254c1a9c974585feadb8999c651c154b5c278f081c0fea4228. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 5750: Датчик, качество воздуха; SHA-256 bb9db63fc39be0254c1a9c974585feadb8999c651c154b5c278f081c0fea4228. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 5750,
       "assemblygroupdescription": "Кондиционер",
@@ -4971,7 +4941,7 @@
     "role": "standalone_or_unresolved",
     "applicability": "UNKNOWN",
     "duplicate_candidate": [],
-    "evidence": "PRD 6331: Чистка катализатора; SHA-256 178144f3a51ec7d08d3e27d292cf72d798b0583448772ce3c13574aca25e62a1. Semantic review v2; not VIN/placement evidence.",
+    "evidence": "PRD 6331: Чистка катализатора; SHA-256 178144f3a51ec7d08d3e27d292cf72d798b0583448772ce3c13574aca25e62a1. Semantic review v3 (taxonomy 1.3); not VIN/placement evidence.",
     "source_context": {
       "id": 6331,
       "assemblygroupdescription": "Система выпуска ОГ",
