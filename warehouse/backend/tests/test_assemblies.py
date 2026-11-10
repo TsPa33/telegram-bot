@@ -164,8 +164,9 @@ def test_last_child_error_rolls_back_entire_sale(logged,group,monkeypatch):
 
 def test_feature_gate_stale_preview_and_unstocked_component(logged,group,monkeypatch):
     g=group;monkeypatch.setenv('ASSEMBLY_INVENTORY_ENABLED','false')
-    assert logged.get(f"/api/v1/vehicles/{g['vehicle']}/assemblies/readiness").json()=={'enabled':False}
-    assert logged.get(f"/api/v1/vehicles/{g['vehicle']}/assemblies").status_code==404
+    assert logged.get(f"/api/v1/vehicles/{g['vehicle']}/assemblies/readiness").json()=={'enabled':False,'workspace_enabled':True}
+    assert logged.get(f"/api/v1/vehicles/{g['vehicle']}/assemblies").status_code==200
+    assert change(logged,g,'attach',parent_id=g['nodes'][0],item_id=g['nodes'][1]).status_code==404
     monkeypatch.setenv('ASSEMBLY_INVENTORY_ENABLED','true')
     with Session(engine()) as db:
         n=DismantlingItem(account_id=g['account'],vehicle_id=g['vehicle'],name='Confirmed unstocked component',source='synthetic',catalog_key='unstocked',category_key='body',category_name='Body',subcategory_key='door',subcategory_name='Door',quantity=1)

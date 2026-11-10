@@ -2,6 +2,7 @@
 KNOWN_ROUTES = frozenset({
     ('GET','/api/v1/vehicles/{id}/assemblies/readiness'),
     ('GET','/api/v1/vehicles/{id}/assemblies'),
+    ('GET','/api/v1/vehicles/{id}/assemblies/receipt-preview'),
     ('GET','/api/v1/vehicles/{id}/assemblies/{item}/preview'),
     ('POST','/api/v1/vehicles/{id}/assemblies'),
     ('POST','/api/v1/vehicles/{id}/assemblies/templates'),

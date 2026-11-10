@@ -302,6 +302,7 @@ def command(db,who,vehicle,kind,data,execute):
     # Keep existing command fingerprints stable across this additive API extension.
     if kind!='assembly:inspect':
         for field in ('presence','quantity','note'):payload.pop(field,None)
+    if kind!='assembly:receipt_bulk':payload.pop('include_damaged',None)
     sha=digest(dict(vehicle=vehicle,kind=kind,data=payload))
     prior=db.scalar(select(DismantlingRequest).where(DismantlingRequest.account_id==account,DismantlingRequest.request_key==str(data.request_key)))
     if prior:
@@ -355,11 +356,11 @@ def save_template(db,account,data):
     return dict(template_id=row.id)
 
 
-def receive_root(db,account,vehicle,item,token=''):
+def receive_root(db,account,vehicle,item,token='',_graph=None):
     """Explicit receipt via the existing ledger; assemblies remain single physical IDs."""
     from app.services import dismantling,unified_catalogue
     from app.api.dismantling import DismantlingAction
-    nodes,edges,parts=graph(db,account,vehicle,lock=True)
+    nodes,edges,parts=_graph or graph(db,account,vehicle,lock=True)
     if item not in nodes:raise HTTPException(404,'Позицію не знайдено')
     n=nodes[item];assert_uncontained_item(db,n,account)
     if token and token!=composition(nodes,edges,parts,item)['token']:raise HTTPException(409,'Дані деталі змінилися. Оновіть перевірку перед надходженням.')
@@ -452,3 +453,50 @@ def inspect_item(db,account,vehicle,data):
         record(db,account,p,'update','Перевірка наявності та стану; залишок не змінено',old)
     record(db,account,n,'dismantling_status','Збережено результат фізичної перевірки',before)
     return dict(saved=True,item_id=n.id)
+
+
+def confirmed_receipt_preview(db,account,vehicle,include_damaged=False,*,locked_graph=None):
+    """Read-only, pinned eligible subset; at most 100 receipts per atomic command."""
+    from app.services import unified_catalogue
+    v=owned(db,Vehicle,vehicle,account)
+    nodes,edges,parts=locked_graph or graph(db,account,vehicle)
+    state=unified_catalogue.saved_state(v)
+    products={f"car:{state['payload']['car_id']}:product:{row['product_id']}":row.get('kind') for row in state['payload']['categories']} if state else {}
+    catalogue_ready=bool(state and not unified_catalogue.needs_review(v))
+    attached={e.child_item_id for e in edges}
+    eligible=[];skipped=[];stamp=[]
+    for n in sorted(nodes.values(),key=lambda n:n.id):
+        p=parts.get(n.part_id)
+        issues=inspection_issues(n,p)
+        damaged='damaged' in issues
+        confirmed=n.plan_v3.get('inspection')=='present'
+        reason=None
+        if v.archived:reason='Автомобіль архівовано'
+        elif n.assembly_consumed_operation_id:reason='Продано або списано'
+        elif n.id in attached:reason='У складі вузла'
+        elif n.part_id or n.received_at:reason='Уже пов’язано зі складом'
+        elif not n.included:reason='Виключено зі списку'
+        elif 'absent' in issues:reason='Відсутня'
+        elif not confirmed:reason='Спочатку підтвердьте наявність'
+        elif damaged and not include_damaged:reason='Пошкоджена — потрібне окреме підтвердження'
+        elif n.source=='carpot.catalogue.v1' and (not catalogue_ready or products.get(n.catalog_key)!='part'):reason='Потрібна перевірка каталожної позиції'
+        elif n.quantity!=1 and (n.assembly_completeness is not None or any(e.parent_item_id==n.id for e in edges)):reason='Потрібна одна фізична одиниця вузла'
+        elif len(eligible)>=100:reason='Наступний пакет — ліміт 100 позицій'
+        row=dict(id=n.id,name=n.name,quantity=n.quantity,damaged=damaged)
+        if reason:skipped.append({**row,'reason':reason})
+        else:eligible.append(row)
+        stamp.append(dict(id=n.id,part_id=n.part_id,received=bool(n.received_at),status=n.status,condition=n.condition,quantity=n.quantity,included=n.included,inspection=n.plan_v3.get('inspection'),note=n.plan_v3.get('inspection_note'),consumed=n.assembly_consumed_operation_id))
+    report=dict(eligible=eligible,skipped=skipped,include_damaged=include_damaged,total=len(nodes),semantics='atomic',limit=100)
+    report['token']=digest(dict(report=report,vehicle=vehicle,archived=v.archived,stamp=stamp,edges=[(e.id,e.parent_item_id,e.child_item_id) for e in edges],parts=[dict(id=p.id,quantity=p.quantity,reserved=p.reserved_quantity,archived=p.archived,condition=p.condition,availability=p.availability) for p in parts.values()]))
+    return report
+
+
+def receive_confirmed(db,account,vehicle,data):
+    nodes,edges,parts=graph(db,account,vehicle,lock=True)
+    report=confirmed_receipt_preview(db,account,vehicle,data.include_damaged,locked_graph=(nodes,edges,parts))
+    if not data.token or report['token']!=data.token:raise HTTPException(409,'Список змінився. Перевірте підсумок надходження ще раз.')
+    results=[]
+    for row in report['eligible']:
+        result=receive_root(db,account,vehicle,row['id'],_graph=(nodes,edges,parts))
+        results.append(dict(item_id=row['id'],part_id=result['part_id'],name=row['name'],quantity=row['quantity']))
+    return dict(received=results,skipped=report['skipped'],semantics='atomic')

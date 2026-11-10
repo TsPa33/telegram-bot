@@ -317,3 +317,7 @@ handling, and the existing unrelated migration-test limits before rollout.
 ### Інтерфейс затвердженої концепції (2026-11-10)
 
 Триколонковий робочий екран, окрема фізична перевірка/примітки, guarded кількісні дії та screenshots описані в [UI concept report](assembly-inventory/ui-concept/README.md). Використано той самий граф, ledger, ідемпотентні команди та feature flag; нових міграцій немає.
+
+### Збережений partial-каталог і масове надходження (2026-11-10)
+
+[Актуальний звіт робочого простору](dismantling-workspace/README.md) відокремлює звичайний інтерфейс/receipt від opt-in редагування фізичного графа. Додано атомарний preview→receipt_bulk через чинні сервіси, без міграції. Перевірено локальне відтворення partial113 при Assembly flag=false.

@@ -14,7 +14,7 @@ try{for(const width of [1440,390]){
  page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(r.url().includes('/assemblies'))requests.push(r.url())});
  await page.goto('/vehicles?donor='+fixture.vehicle_id);
  const tree=page.getByRole('region',{name:'Фізичний склад вузлів',exact:true});
- await expect(tree).toContainText('Усього в плані: 552 позицій');
+ await expect(tree.getByRole('region',{name:'Показники розбору'})).toContainText('552');
  await expect(tree.getByRole('navigation',{name:'Категорії запчастин'})).toBeVisible();
  assert.equal(await tree.locator('.assembly-roots > li').count(),50);
  const treeReads=requests.filter(u=>u.endsWith('/assemblies')).length;
@@ -39,7 +39,7 @@ try{for(const width of [1440,390]){
  await tree.getByLabel('Пошук у дереві').fill('Потенційна позиція 551');
  assert.equal(await tree.locator('.assembly-roots > li').count(),1);
  await tree.getByRole('button',{name:'Потенційна позиція 551',exact:true}).click();
- await tree.getByRole('button',{name:'Є',exact:true}).click();
+ await tree.getByRole('button',{name:'Підтвердити наявність',exact:true}).click();
  await expect(tree.locator('.assembly-inspector')).toContainText('Ще не на складі');
  await tree.getByPlaceholder('Стан, особливості, пошкодження…').fill('Локальна перевірка без надходження');
  await tree.getByRole('button',{name:'Зберегти примітку',exact:true}).click();
