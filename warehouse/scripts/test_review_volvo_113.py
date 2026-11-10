@@ -35,7 +35,7 @@ class VolvoReviewTests(unittest.TestCase):
 
     def test_ambiguous_names_not_silently_promoted(self):
         rows={r['source_id']:r for r in review(self.source)}
-        for key in [38,39,2232,3406,4175,5213,6331]:
+        for key in [38,2232,3406,4175,6331]:
             self.assertEqual(rows[key]['decision'],'needs_review')
         self.assertNotIn('Передній',rows[572]['ukrainian_name'])
         self.assertNotIn('зборі',rows[39]['ukrainian_name'])
@@ -47,6 +47,22 @@ class VolvoReviewTests(unittest.TestCase):
             self.assertTrue(rows[key]['duplicate_candidate'])
             self.assertEqual(rows[key]['decision'],'needs_review')
         self.assertEqual(len(rows),113)
+
+    def test_usage_resolves_classification_without_physical_confirmation(self):
+        rows={r['source_id']:r for r in review(self.source)}
+        for key in [39,107,110,114,115,5213]:
+            self.assertEqual(rows[key]['decision'],'proposed')
+            self.assertNotEqual(rows[key]['applicability'],'EXPECTED')
+        self.assertEqual(rows[107]['subcategory'],'Передні фари')
+        self.assertEqual(rows[110]['subcategory'],'Задні ліхтарі')
+        self.assertIn('прокачування',rows[5213]['ukrainian_name'])
+
+    def test_context_change_rejected(self):
+        from review_volvo_113 import CONTEXT_PATH
+        context=json.loads(CONTEXT_PATH.read_text())
+        context[0]['usagedescription']='Непідтверджені зміни'
+        with self.assertRaisesRegex(ValueError,'checksum'):
+            review(self.source,context)
 
     def test_no_physical_fitment_or_stock_inference(self):
         rows=review(self.source);s=summary(rows)

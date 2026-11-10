@@ -23,7 +23,7 @@ GROUPS = [
  (0,3,'56 548 830 1260 2055 2394 3944'),
  (4,1,'78 1164 1165 2169 5213'), (4,0,'82 402 1419'),
  (4,2,'83'), (4,3,'412 2254'), (4,None,'387'),
- (8,None,'105 107 110 112 114 115 1092 3853'), (8,0,'106'),
+ (8,None,'105 112 1092 3853'), (8,0,'106 107'), (8,1,'110 114 115'),
  (5,None,'127 219 1510 5025'),
  (0,0,'135 150 247 318 319 321 322 323 455 572 574 582 584 593 757 1217 1269 1270'),
  (2,2,'188 189 854 1180'), (3,0,'191'), (6,2,'215 3694'),
@@ -41,17 +41,15 @@ CORRECTIONS = {
  2232:'Датчик швидкості колеса / контролю тиску шин',
  3406:'Опора корпусу колісного підшипника',
  4175:'Датчик температури / тиску оливи',
- 5213:'Клапан / штуцер гальмівного супорта',
+ 5213:'Штуцер прокачування гальмівного супорта',
  6331:'Очищення каталізатора',
 }
 AMBIGUITIES = {
  38:'Назва не визначає точний склад зчіпного пристрою.',
- 39:'Загальна назва обладнання не підтверджує вузол у зборі.',
  2232:'Джерело змішує швидкість колеса й контроль тиску; потрібен опис артикула.',
  3406:'Не ототожнювати опору корпусу підшипника з поворотним кулаком.',
  4175:'Не визначено, чи це комбінований датчик, чи альтернативні функції.',
  5025:'Не визначено розташування аеродефлектора.',
- 5213:'Не підтверджено, що це саме штуцер прокачування.',
  6331:'Назва може означати послугу або хімічний засіб; товарний тип не доведений.',
 }
 OPTIONAL = {38,39,127,179,215,1510,3792,5025,5171}
@@ -60,7 +58,18 @@ ASSEMBLIES = {2,4,78,387,447,1260,1561}
 CONSUMABLE_KINDS = {'витратний матеріал','ущільнення','хімія','ремонтний комплект'}
 
 
-def review(proposals):
+DUPLICATE_REASONS = {
+ 657:'PRD 657 має usage «Колесо», 2070 — порожнє usage. Немає артикульного/розмірного доказу тотожності; залишити обидва ID.',
+ 2070:'Семантично схожий колісний болт 657, але usage порожнє; різьба, розміри й артикули не підтверджені.',
+ 830:'Група «Охлаждение»; інші однойменні датчики мають контексти кондиціонера, розжарювання та сумішоутворення. Не merge.',
+ 2055:'Група «Кондиционер» суперечить автоматичному зведенню до датчика системи охолодження двигуна; потрібен артикул.',
+ 2394:'Група «Система накаливания» не доводить застосовність до T6 бензин; не виключати за групою без артикульного fitment.',
+ 3944:'Група «Приготовление смеси»; однойменний датчик може мати іншу функцію/установку. Потрібні артикульні зв’язки.',
+}
+CONTEXT_PATH=Path(__file__).resolve().parents[1]/'docs/universal-catalogue/volvo-review/volvo-113-source-context.json'
+
+
+def review(proposals, source_context=None):
     fingerprint=hashlib.sha256(json.dumps(proposals,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()).hexdigest()
     if fingerprint != INPUT_SHA256:
         raise ValueError('Source proposals changed; re-review required')
@@ -70,6 +79,14 @@ def review(proposals):
         if not isinstance(key,int) or key in by_id:
             raise ValueError('Invalid/duplicate source ID')
         by_id[key] = row
+    context_rows=json.loads(CONTEXT_PATH.read_text()) if source_context is None else source_context
+    context={r['id']:r for r in context_rows}
+    if len(context_rows)!=len(context) or context.keys()!=by_id.keys():
+        raise ValueError('Source context identity mismatch')
+    for key,row in context.items():
+        sha=hashlib.sha256(json.dumps(row,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+        if sha!=by_id[key]['source_sha256'] or row['description']!=by_id[key]['original_name']:
+            raise ValueError('Source context checksum mismatch')
     paths = {}
     for section, subcategory, ids in GROUPS:
         for key in map(int,ids.split()):
@@ -91,7 +108,7 @@ def review(proposals):
             issues.append(AMBIGUITIES[key])
         duplicate = [i for i in duplicate_names[old['name_uk_proposal'].casefold()] if i != key]
         if duplicate:
-            issues.append('Однаковий переклад не доводить тотожність PRD; зберегти всі source ID.')
+            issues.append(DUPLICATE_REASONS[key])
         kind = old['record_kind_proposal']
         record_type = ('needs_review' if key in AMBIGUITIES else
                        'equipment' if key in OPTIONAL else
@@ -102,7 +119,8 @@ def review(proposals):
                            category=category,subcategory=subcategory,type=record_type,
                            role='assembly_candidate' if key in ASSEMBLIES else 'component_candidate' if kind=='компонент' else 'standalone_or_unresolved',
                            applicability=applicability, duplicate_candidate=duplicate,
-                           evidence=f"PRD {key}: {old['original_name']}; SHA-256 {old['source_sha256']}. Semantic review v1; not VIN/placement evidence.",
+                           evidence=f"PRD {key}: {old['original_name']}; SHA-256 {old['source_sha256']}. Semantic review v2; not VIN/placement evidence.",
+                           source_context=context[key], duplicate_review='checked_keep_separate' if duplicate else 'not_flagged',
                            decision='needs_review' if issues else 'proposed', unresolved_reasons=issues,
                            canonical_candidate_ids=old['canonical_candidate_ids'], canonical_reuse='requires_context_review',
                            stock_link_status='UNVERIFIED_NO_DATABASE_READ',
@@ -116,6 +134,7 @@ def summary(rows):
                 unresolved_rows=sum(r['decision']=='needs_review' for r in rows),
                 proposed_rows=sum(r['decision']=='proposed' for r in rows),
                 duplicate_suspect_rows=sum(bool(r['duplicate_candidate']) for r in rows),
+                duplicate_checked_rows=sum(r['duplicate_review']=='checked_keep_separate' for r in rows),
                 non_dismantling_proposals=sum(r['applicability']=='NON_DISMANTLING' for r in rows),
                 possible_existing_id_rows=sum(bool(r['canonical_candidate_ids']) for r in rows),
                 applicability=dict(Counter(r['applicability'] for r in rows)),

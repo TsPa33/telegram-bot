@@ -145,3 +145,5 @@ ZIP перевіряється за MANIFEST, із захистом від trave
 
 
 Оновлення 2026-11-10: [поточний review усіх 113 Volvo-типів](volvo-review/README.md). 81 proposed / 32 needs_review; це замінює попередні припущення про готовність категоризації, але не змінює джерельні ID чи підтвердження fitment.
+
+Уточнення review v2: 87 proposed / 26 needs_review; 6 duplicate-кандидатів перевірено без merge. Поточні докази — [Volvo review](volvo-review/README.md).

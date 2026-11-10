@@ -1,10 +1,11 @@
 {
   "source_rows": 113,
   "category_proposals": 113,
-  "subcategory_proposals": 92,
-  "unresolved_rows": 32,
-  "proposed_rows": 81,
+  "subcategory_proposals": 96,
+  "unresolved_rows": 26,
+  "proposed_rows": 87,
   "duplicate_suspect_rows": 6,
+  "duplicate_checked_rows": 6,
   "non_dismantling_proposals": 42,
   "possible_existing_id_rows": 18,
   "applicability": {

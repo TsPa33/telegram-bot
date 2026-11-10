@@ -1,0 +1,34 @@
+✔ 113/2/0/113 are overlapping item counts, not independent totals (2.680296ms)
+✔ missing and whitespace categories remain visible through the same category key (0.248792ms)
+✔ attention is union, stock excludes contained, sold and archived items (0.318057ms)
+✔ whole category selection and tri-state use all records, not 60 cards (2.305684ms)
+✔ action counts and blocked reasons remain separate for mixed selection (0.762713ms)
+✔ safe checkpointed requests honor maximum 1000 with one token per command (1.445305ms)
+✔ uncertain receipt resumes the identical body/key, then processes only remaining batches (2.125064ms)
+✔ concurrent state change stops after completed prefix without reapplying it (0.804845ms)
+✔ definitive 4xx permits safe stop; no retry payload is retained (0.327241ms)
+✔ quantity/price validation rejects implicit or malformed values (0.491777ms)
+✔ receipt ignores initial ineligible rows and exposes skipped total (0.281622ms)
+✔ scope changes and malformed saved commands cannot replay foreign selections (0.566028ms)
+✔ step saved=false, prepared=false (0.921261ms)
+✔ step saved=false, prepared=true (0.095122ms)
+✔ step saved=true, prepared=false (0.060801ms)
+✔ step saved=true, prepared=true (0.056464ms)
+✔ coverage and taxonomy gates undefined (0.134802ms)
+✔ coverage and taxonomy gates {"coverage_verified":false,"taxonomy_status":"reviewed"} (0.064526ms)
+✔ coverage and taxonomy gates {"coverage_verified":true,"taxonomy_status":"draft"} (0.07332ms)
+✔ coverage and taxonomy gates {"coverage":"complete_verified"} (0.083435ms)
+✔ coverage and taxonomy gates {"coverage_verified":true,"taxonomy_status":"reviewed"} (0.130636ms)
+✔ year/make alone never infer source generation or K-Type (0.38747ms)
+✔ header uses saved facts only (0.254441ms)
+✔ modification labels disambiguate without source IDs (0.145609ms)
+✔ token failure preserves actionable user feedback (0.270275ms)
+✔ technical failures are not dumped into the main flow (0.167791ms)
+ℹ tests 26
+ℹ suites 0
+ℹ pass 26
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 551.308921
