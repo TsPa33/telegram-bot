@@ -318,6 +318,11 @@ def vehicle_create(data: VehicleInput, db: DB, who: Auth):
         values["donor_id"] = automatic_donor_id(db, who.workspace_account_id)
     # Serialize allocation even when callers supply their own donor_id.
     db.scalar(select(Account).where(Account.id == who.workspace_account_id).with_for_update())
+    if values.get('vin'):
+        existing=db.scalar(select(Vehicle).where(Vehicle.account_id==who.workspace_account_id,func.upper(func.trim(Vehicle.vin))==values['vin']))
+        if existing:raise HTTPException(409,detail={'message':'Автомобіль із цим VIN уже існує','vehicle_id':existing.id})
+    if values.get('vin_details'):
+        values['vin_details']={**values['vin_details'],'trust':'user_confirmed_reported_not_factory_verified'}
     number = (db.scalar(select(func.max(Vehicle.number)).where(Vehicle.account_id == who.workspace_account_id)) or 0) + 1
     row = Vehicle(account_id=who.workspace_account_id, number=number, **values)
     db.add(row)
@@ -331,71 +336,11 @@ def vehicle_create(data: VehicleInput, db: DB, who: Auth):
 def vehicle_vin_decode(who: Auth, vin: str = Query(min_length=17, max_length=17)):
     """Authenticated, read-only VIN lookup. Uncertain fields require user confirmation."""
     import re
-    from urllib.request import Request, urlopen
-    from urllib.error import URLError, HTTPError
-    value = vin.strip().upper()
-    if not re.fullmatch(r"[A-HJ-NPR-Z0-9]{17}", value):
-        raise HTTPException(422, "VIN має складатися з 17 символів без I, O, Q")
-    url = "https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVinValues/" + value + "?format=json"
-    try:
-        with urlopen(Request(url, headers={"User-Agent":"CarPotWarehouse/1.0","Accept":"application/json"}), timeout=7) as response:
-            payload = json.loads(response.read(160000))
-        item = payload["Results"][0]
-        if not isinstance(item, dict):
-            raise ValueError("Invalid response")
-    except (HTTPError, URLError, TimeoutError, OSError, ValueError, KeyError, IndexError, TypeError):
-        raise HTTPException(503, "VIN-сервіс недоступний. Спробуйте пізніше або додайте авто вручну")
-    def field(key):
-        found = str(item.get(key) or "").strip()
-        return "" if found.lower() in ("not applicable", "null", "none", "0") else found
-    year = field("ModelYear")
-    # Unknown European model years must not be inferred from the VIN cycle.
-    year_number = int(year) if year.isdigit() and 1886 <= int(year) <= 2100 and field("Model") and not field("ErrorCode").startswith(("5", "6", "7")) else None
-    if not field("Model"):
-        year_number = None
-    fuel = field("FuelTypePrimary")
-    transmission = field("TransmissionStyle")
-    speeds = field("TransmissionSpeeds")
-    result = {
-        "manufacturer":field("Make"), "model":field("Model"), "year":year_number,
-        "engine":field("EngineModel"), "engine_displacement_l":field("DisplacementL"),
-        "fuel_type":("Дизель" if "diesel" in fuel.lower() else "Бензин" if "gasoline" in fuel.lower() else ""),
-        "transmission":(transmission + (" · " + speeds + " передач" if speeds else "")).strip(" ·"),
-        "drive_type":field("DriveType"), "body_class":field("BodyClass"),
-        "trim":field("Trim"), "plant_country":field("PlantCountry"),
-        "engine_cylinders":field("EngineCylinders"), "engine_power_kw":field("EngineKW"),
-        "vin":value,
-    }
-    from app.services.vin_normalize import merge_verified, normalize, validate_consistency
-    result = normalize(result)
-    conflicts = {}
-    provider_name = "NHTSA vPIC"
-    provider_note = ""
-    if not (result["model"] and result["year"] and result["engine"] and result["transmission"]):
-        from app.services.vin_europe import europe_vin
-        try:
-            enriched = europe_vin(value)
-            if enriched:
-                # Prefer a more complete European lookup over partially decoded US-market data.
-                result, new_conflicts = merge_verified(result, enriched)
-                conflicts.update(new_conflicts)
-                provider_name = "NHTSA vPIC + Vincario"
-        except (OSError, ValueError, KeyError, TypeError):
-            provider_note = " Європейський декодер тимчасово недоступний."
-    if not (result["model"] and result["year"] and result["engine"] and result["transmission"]):
-        from app.services.vin_freevindecoder import decode_page
-        try:
-            page = decode_page(value)
-            if page:
-                result, new_conflicts = merge_verified(result, page)
-                conflicts.update(new_conflicts)
-                provider_name += " + FreeVINDecoder"
-        except (OSError, ValueError, TypeError):
-            provider_note += " Дані FreeVINDecoder недоступні."
-    return {"vin":value,"source":provider_name,"vehicle":result,"conflicts":conflicts,"consistency_issues":validate_consistency(result),
-            "available_fields":[key for key,val in result.items() if val and key!="vin"],
-            "requires_review":True,
-            "message":("NHTSA не визначив модель: модельний рік приховано як ненадійний. Уточніть автомобіль в іншому VIN-декодері." if not result["model"] else "Перевірте визначені параметри перед створенням. Відсутні поля заповніть вручну.") + provider_note}
+    value=vin.strip().upper()
+    if not re.fullmatch('[A-HJ-NPR-Z0-9]{17}',value):
+        raise HTTPException(422,'VIN має складатися з 17 символів без I, O, Q')
+    from app.services.vin_lookup import lookup
+    return lookup(value)
 
 
 @router.get("/vehicles/{id}", tags=["Vehicles"])
@@ -405,9 +350,13 @@ def vehicle_get(id: str, db: DB, who: Auth):
 
 @router.put("/vehicles/{id}", tags=["Vehicles"])
 def vehicle_update(id: str, data: VehicleInput, db: DB, who: Auth):
+    db.scalar(select(Account).where(Account.id==who.workspace_account_id).with_for_update())
     row = owned(db, Vehicle, id, who.workspace_account_id, lock=True, active=True)
     before = snapshot(row)
     changes = data.model_dump(exclude_unset=True)
+    if changes.get('vin'):
+        existing=db.scalar(select(Vehicle).where(Vehicle.account_id==who.workspace_account_id,func.upper(func.trim(Vehicle.vin))==changes['vin'],Vehicle.id!=id))
+        if existing:raise HTTPException(409,detail={'message':'Автомобіль із цим VIN уже існує','vehicle_id':existing.id})
     if "donor_id" in changes and changes["donor_id"] is None:
         raise HTTPException(422, "Внутрішній ID не може бути порожнім")
     identifying = ("manufacturer", "model", "year", "engine", "generation", "fuel_type", "transmission")

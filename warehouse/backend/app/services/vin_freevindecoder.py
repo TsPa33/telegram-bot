@@ -36,7 +36,10 @@ def decode_page(vin):
     robots=RobotFileParser()
     try:
         robots.set_url(BASE+"/robots.txt")
-        robots.read()
+        with urlopen(Request(BASE+'/robots.txt',headers={'User-Agent':AGENT}),timeout=4) as policy:
+            raw_policy=policy.read(65537)
+            if len(raw_policy)>65536 or policy.status!=200:return None
+            robots.parse(raw_policy.decode('utf-8','replace').splitlines())
         # A missing or inaccessible robots policy must never be interpreted as consent.
         if not robots.can_fetch(AGENT,address):return None
         with urlopen(Request(address,headers={"User-Agent":AGENT,"Accept":"text/html"}),timeout=7) as response:
