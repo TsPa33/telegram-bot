@@ -93,6 +93,23 @@ def template(id:str,data:Template,db:DB,who:Auth):
     return service.command(db,who,id,'assembly:template',data,lambda:service.save_template(db,who.workspace_account_id,data))
 
 
+class DoorPlanComponent(Input):
+    request_key: Key
+    parent_item_id: str = Field(min_length=1,max_length=36)
+    component_key: Literal['shell','glass','regulator','lock','outer-handle','inner-handle','trim','harness','seal']
+    confirm: bool
+
+
+@router.post('/{id}/assemblies/door-plan-components')
+def add_door_plan_component(id:str,data:DoorPlanComponent,db:DB,who:Auth):
+    """Plan-only admission; a physical stock move requires its own explicit workflow."""
+    gate(who,True)
+    if not data.confirm:raise HTTPException(422,'Підтвердіть додавання компонента до плану')
+    from app.services.assembly_door_plan import add_plan_component
+    return service.command(db,who,id,'assembly:door-plan',data,
+                           lambda:add_plan_component(db,who.workspace_account_id,id,data.parent_item_id,data.component_key))
+
+
 @router.get('/{id}/assemblies/receipt-preview')
 def receipt_preview(id:str,db:DB,who:Auth,include_damaged:bool=False):
     gate(who)
