@@ -6,7 +6,7 @@ No paid provider calls, no guess about factory configuration or physical presenc
 import re
 from fastapi import HTTPException
 from sqlalchemy import select
-from app.models import DismantlingItem, Vehicle
+from app.models import DismantlingItem, Vehicle, AssemblyMembership
 from app.services.inventory import owned, record
 
 SOURCE='carpot.assembly.door-reference.v1'
@@ -63,6 +63,9 @@ def add_plan_component(db,account,vehicle_id,parent_id,key):
     existing=list(db.scalars(select(DismantlingItem).where(
         DismantlingItem.account_id==account,DismantlingItem.vehicle_id==v.id
     ).order_by(DismantlingItem.id)))
+    physical_parents={row.child_item_id:row.parent_item_id for row in db.scalars(select(AssemblyMembership).where(
+        AssemblyMembership.account_id==account,AssemblyMembership.vehicle_id==v.id,AssemblyMembership.active.is_(True)
+    ))}
     for item in existing:
         if item.source==SOURCE and item.catalog_key==catalog_key:
             return dict(created=False,item_id=item.id,name=item.name,part_id=item.part_id)
@@ -75,6 +78,8 @@ def add_plan_component(db,account,vehicle_id,parent_id,key):
         except HTTPException:
             continue
         if other==axes:
+            if physical_parents.get(item.id) not in (None,parent.id):
+                raise HTTPException(409,'Компонент уже належить іншому фізичному вузлу; перевірте існуючий запис')
             return dict(created=False,item_id=item.id,name=item.name,part_id=item.part_id)
     if len(existing)>=10000:raise HTTPException(409,'План перевищує межу фізичних позицій')
     position=' '.join((
