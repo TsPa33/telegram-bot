@@ -181,7 +181,9 @@ def read_type_links(source, car_ids, max_rows):
            'WHERE linkagetypeid=2 AND linkageid IN (' + placeholders + ')')
     linked = defaultdict(set)
     count = 0
-    with source.cursor() as cur:
+    # Unbuffered result: a dense vehicle batch cannot load all matching rows into RAM.
+    from pymysql.cursors import SSDictCursor
+    with source.cursor(SSDictCursor) as cur:
         cur.execute(sql, tuple(car_ids))
         while True:
             records = cur.fetchmany(1000)
