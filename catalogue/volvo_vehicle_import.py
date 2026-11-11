@@ -34,7 +34,7 @@ def bounded(conn, table, where, args):
     return rows
 
 
-def collect(source, car, model, mapping):
+def collect(source, car, model, mapping, manufacturer_id=120):
     car_id = int(value(car,'id'))
     details = {t: bounded(source, t, 'passangercarid=%s', (car_id,)) for t in TABLES}
     links = []
@@ -62,7 +62,7 @@ def collect(source, car, model, mapping):
             articles[key] = dict(supplier_id=sid, article_number=number,
                 article=bounded(source, 'articles', 'supplierId=%s AND DataSupplierArticleNumber=%s', exact),
                 supplier=bounded(source, 'suppliers', 'id=%s', (sid,)),
-                oem=bounded(source, 'article_oe', 'supplierId=%s AND DataSupplierArticleNumber=%s AND manufacturerId=120', exact),
+                oem=bounded(source, 'article_oe', 'supplierId=%s AND DataSupplierArticleNumber=%s AND manufacturerId=%s', (*exact, manufacturer_id)),
                 attributes=bounded(source, 'article_attributes', 'supplierId=%s AND DataSupplierArticleNumber=%s', exact),
                 images=bounded(source, 'article_images', 'supplierId=%s AND DataSupplierArticleNumber=%s', exact),
                 crosses=bounded(source, 'article_cross', 'SupplierId=%s AND PartsDataSupplierArticleNumber=%s', exact),
@@ -75,7 +75,7 @@ def collect(source, car, model, mapping):
             fields={k:proposed[k] for k in ('name_uk','category_path','kind','taxonomy_note') if k in proposed}
             products[product] = dict(product_id=product, original=p, articles=[], **fields)
         products[product]['articles'].append(key)
-    return validate(dict(schema='carpot.volvo.v1', manufacturer_id=120, model_id=int(value(model,'id')),
+    return validate(dict(schema='carpot.volvo.v1' if manufacturer_id==120 else 'carpot.vehicle.v1', manufacturer_id=manufacturer_id, model_id=int(value(model,'id')),
         car_id=car_id, modification={**car,'id':car_id,'description':value(car,'description'),'constructioninterval':value(car,'constructioninterval')}, model=model, details=details, categories=list(products.values()),
         articles=articles, collection_complete=True, coverage='partial',
         observed_at=datetime.now(timezone.utc).isoformat(), image_status='metadata_only'))
@@ -120,10 +120,11 @@ def import_summary(envelope):
         writes=0,photos='metadata_only')
 
 
-def upload_snapshot(target, envelope):
+def upload_snapshot(target, envelope, approved_identity=None):
     data = validate(envelope['payload'])
     sha = envelope['sha256']
-    if UPLOAD_ALLOWLIST.get(data['car_id'])!=data['model_id'] or digest(data)!=sha:
+    allowed = (data['manufacturer_id'],data['model_id'],data['car_id']) == approved_identity if approved_identity else UPLOAD_ALLOWLIST.get(data['car_id'])==data['model_id']
+    if not allowed or digest(data)!=sha:
         raise ValueError('Disallowed or corrupt snapshot; no target writes')
     summary = compact_plan(data, sha)
     check_space(target)

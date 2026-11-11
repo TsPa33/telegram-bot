@@ -42,7 +42,7 @@ def published_reference_rows(db,config):
     return result
 
 
-def exact_modification_rows(vehicle,config):
+def exact_modification_rows(vehicle,config,db=None):
     """Exact pinned modification identity for ANY maker. Never match by display name."""
     selection=(vehicle.dismantling_v3 or {}).get('global_selection') or {}
     saved=catalogue.saved_state(vehicle)
@@ -59,12 +59,30 @@ def exact_modification_rows(vehicle,config):
             return [],['Джерельний snapshot/модифікація змінилися; автоматичне змішування заблоковано.']
     except (catalogue.CatalogueUnavailable,KeyError,TypeError,ValueError):return [],['Точний глобальний каталог недоступний; дані не вигадано.']
     if payload['coverage']=='partial':gaps.append('Джерело має часткове покриття; це не повний заводський BOM.')
+    bindings={}
+    if db is not None:
+        for t in db.scalars(select(CanonicalType)):
+            for ref in (t.provenance or {}).get('universal_sources',[]):
+                bindings.setdefault(ref['source_key'],[]).append(t)
     result=[]
     for row in payload['categories']:
         if row.get('kind')!='part' or payload.get('taxonomy_status')!='reviewed':continue
-        tid=sid('source-modification-type',str(payload['manufacturer_id']),str(row['product_id']))
+        source_key=f"td1q2018:prd:{row['product_id']}"
+        candidates=bindings.get(source_key,[])
+        matches=[t for t in candidates if any(ref['source_key']==source_key and ref.get('source_sha')==row.get('source_prd_sha256') for ref in t.provenance['universal_sources'])]
+        if candidates and not matches:gaps.append('Контрольна сума PRD відсутня або змінилася; канонічне зіставлення потребує перевірки.')
+        if len(matches)>1:
+            gaps.append('Неоднозначний зв’язок PRD із канонічним типом; потрібен перегляд.');continue
+        tid=matches[0].id if matches else sid('source-modification-type',str(payload['manufacturer_id']),str(row['product_id']))
         p=placement(dict(type_id=tid,installation={'side':'unknown','position':'unknown','mount':[]}))
         path=row['category_path'];key=f"car:{payload['car_id']}:product:{row['product_id']}"
         result.append(dict(canonical_type_id=tid,name=row['name_uk'],category=path[0],subcategory=path[1],placement=p,variants=[],source_refs=[dict(kind='global_modification',key=key,source_snapshot_sha=payload['source_snapshot_sha'],legacy_ref={'source':'carpot.catalogue.v1','catalog_key':key})],source_ref_count=1,offer_count=0,source_confirmed=True,applicability=assess(tid,{},configuration=config['values'],provenance=config['provenance'])))
     if len(result)<len(payload['categories']):gaps.append('Неузгоджені типи та витратні матеріали не видано за підтверджені фізичні деталі.')
-    return result,gaps
+    grouped={}
+    for row in result:
+        key=row['placement']['id']
+        if key in grouped:
+            grouped[key]['source_refs'].extend(row['source_refs'])
+            grouped[key]['source_ref_count']=len(grouped[key]['source_refs'])
+        else:grouped[key]=row
+    return list(grouped.values()),gaps

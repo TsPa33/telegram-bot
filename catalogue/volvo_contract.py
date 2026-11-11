@@ -96,6 +96,9 @@ def compact_plan(payload, snapshot_sha):
         original = row.get('original') or []
         labels = {str(k).casefold(): v for r in original for k, v in r.items()}
         item['name_source'] = row.get('name_source') or labels.get('description') or labels.get('normalizeddescription') or ''
+        if len(original)==1:
+            normalized={str(k).casefold():v for k,v in original[0].items()}
+            item['source_prd_sha256']=digest({k:normalized.get(k) for k in ('id','assemblygroupdescription','description','normalizeddescription','usagedescription')})
         item['article_count'] = len(row.get('articles', []))
         item['kind'] = row.get('kind','review')
         rows.append(item)

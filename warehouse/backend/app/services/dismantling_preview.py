@@ -106,7 +106,7 @@ def preview(db,vehicle,workspace,facts=(),selected=None,now=None,*,universal_bas
     exact=[];baseline_added=0;reference_added=0
     if universal_base:
         from app.services.universal_generator import exact_modification_rows,published_reference_rows
-        exact,source_gaps=exact_modification_rows(vehicle,config);gaps.extend(source_gaps)
+        exact,source_gaps=exact_modification_rows(vehicle,config,db);gaps.extend(source_gaps)
         if exact:rows=exact
         else:
             references=published_reference_rows(db,config);known={r['placement']['id'] for r in rows}

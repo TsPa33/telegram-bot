@@ -200,3 +200,22 @@ def diagnose(db:DB,owner:Admin,who:Auth,vehicle_id:str|None=Query(None,max_lengt
 def available_types(db:DB,owner:Admin):
     rows={**TYPES,**{t.id:{k:getattr(t,k) for k in ('id','name','category','subcategory')} for t in db.scalars(select(Type))}}
     return {'items':sorted([dict(id=r['id'],name=r['name'],category=r['category'],subcategory=r['subcategory']) for r in rows.values()],key=lambda r:(r['category'],r['name']))}
+
+
+
+from app.services.universal_catalogue import ReviewedType
+class UniversalBatch(Strict):
+    rows:list[dict]=Field(min_length=1,max_length=500)
+    reviews:list[ReviewedType]=Field(default_factory=list,max_length=500)
+    input_sha:str=Field(pattern=r'^[a-f0-9]{64}$')
+
+@router.post('/api/v1/catalogue/admin/canonical/universal/preview',status_code=202)
+def universal_batch(data:UniversalBatch,db:DB,owner:Admin,who:Auth):
+    request={'kind':'universal-preview-request',**data.model_dump(mode='json')}
+    if len(__import__('json').dumps(request,ensure_ascii=False).encode())>2*1024*1024:raise HTTPException(413,'Пакет перевищує 2 МіБ')
+    run=enqueue(db,who,'preview',request=request);db.commit();return summary(run)
+
+@router.post('/api/v1/catalogue/admin/canonical/universal/publish',status_code=202)
+def universal_publish(data:RunInput,db:DB,owner:Admin,who:Auth):
+    if not data.confirm or not data.preview_id or not data.token:raise HTTPException(422,'Потрібні preview, token і явне підтвердження')
+    run=enqueue(db,who,'publish',data.preview_id,data.token,request={'kind':'universal-publish-request','confirm':True});db.commit();return summary(run)

@@ -16,7 +16,7 @@ def preview(c,v):
 def save(c,v,p,key=None):
     return c.post(f"/api/v1/vehicles/{v['id']}/dismantling-v3/save",json=dict(facts=[],universal=True,token=p['token'],request_key=key or str(uuid4()),confirm=True))
 
-@pytest.mark.parametrize('make,model,year,details',[('Volvo','XC60',2022,{}),('Volvo','XC90',2016,{}),('Renault','ZOE',2020,{'electrification':'Електромобіль (BEV)','body_class':'Хетчбек'})])
+@pytest.mark.parametrize('make,model,year,details',[('Volvo','XC60',2022,{}),('Volvo','XC90',2016,{}),('Volkswagen','Golf',2019,{}),('Renault','ZOE',2020,{'electrification':'Електромобіль (BEV)','body_class':'Хетчбек'})])
 def test_one_generator_all_makes_unknowns_repeat_and_no_stock(logged,monkeypatch,make,model,year,details):
     monkeypatch.setattr(catalogue.CatalogueAdapter,'plan',lambda *a,**k:pytest.fail('No remote calls without explicit modification'))
     r=logged.post('/api/v1/vehicles',json={'manufacturer':make,'model':model,'year':year,'vin_details':{'characteristics':details}});assert r.status_code==201

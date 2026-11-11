@@ -198,7 +198,7 @@ def workspace_entries(db, who, vehicle):
 
 
 PLAN_KEYS=('schema','manufacturer_id','car_id','model_id','modification','observed_at','source_snapshot_sha','coverage','coverage_verified','taxonomy_status','photos')
-TYPE_KEYS=('product_id','name_source','name_uk','category_path','kind','mapping_reviewed_by','taxonomy_note','article_count')
+TYPE_KEYS=('product_id','name_source','name_uk','category_path','kind','mapping_reviewed_by','taxonomy_note','article_count','source_prd_sha256')
 
 
 def compact_payload(payload):
@@ -221,6 +221,7 @@ def validate_plan(payload):
     if len(json.dumps(compact_payload(payload),ensure_ascii=False).encode())>512*1024:raise ValueError('Compact plan exceeds 512 KiB')
     seen=set()
     for row in rows:
+        if 'source_prd_sha256' in row and not re.fullmatch('[0-9a-f]{64}',row['source_prd_sha256']):raise ValueError('Invalid PRD checksum')
         product=row['product_id']
         if type(product) is not int or product<=0 or product in seen:raise ValueError()
         seen.add(product)
