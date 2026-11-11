@@ -19,7 +19,7 @@ def clear_cache():
 
 
 def _lookup(vin):
-    vehicle={};additional={};sources=[];conflicts={};provenance={};provider_status={};counts={}
+    vehicle={};additional={};sources=[];conflicts={};provenance={};provider_status={};counts={};diagnostics={};year_uncertain=False
     try:
         url='https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVinValues/'+vin+'?format=json'
         with urlopen(Request(url,headers={'User-Agent':'CarPotWarehouse/1.0','Accept':'application/json'}),timeout=7) as response:
@@ -35,6 +35,10 @@ def _lookup(vin):
         year=incoming.get('year','')
         errors={e.strip() for e in str(row.get('ErrorCode','')).split(',')}
         if not (incoming.get('model') and year.isdigit() and 1886<=int(year)<=2100) or errors.intersection({'5','6','7'}):incoming.pop('year',None)
+        error_text=str(row.get('ErrorText','')).casefold()
+        year_uncertain='10' in errors or ('model year' in error_text and any(word in error_text for word in ('ambiguous','unable','cannot','not be valid','multiple')))
+        if year_uncertain:
+            diagnostics['year_observation']={'reported_year':incoming.pop('year',None),'reason':'provider_model_year_uncertain','codes':sorted(e for e in errors if e.isdigit())}
         if incoming.get('year'):incoming['year']=int(incoming['year'])
         vehicle=normalize(incoming)
         for source_key,(key,label) in EXTRA.items():
@@ -67,9 +71,11 @@ def _lookup(vin):
         except (OSError,ValueError,TypeError):provider_status['FreeVINDecoder']='unavailable_or_invalid_response'
     else:provider_status['FreeVINDecoder']='not_needed'
     missing=sorted(k for k in IMPORTANT if not present(vehicle.get(k)))
-    return dict(vin=vin,source=' + '.join(sources) or 'unavailable',vehicle=vehicle,additional=additional,
+    issues=validate_consistency(vehicle)
+    if year_uncertain:issues['year']='Джерело не визначило рік однозначно. Перевірте рік автомобіля перед збереженням.'
+    return dict(diagnostics=diagnostics,vin=vin,source=' + '.join(sources) or 'unavailable',vehicle=vehicle,additional=additional,
         available_fields=[k for k,v in vehicle.items() if present(v)],field_sources=provenance,
-        conflicts=conflicts,consistency_issues=validate_consistency(vehicle),requires_review=True,
+        conflicts=conflicts,consistency_issues=issues,requires_review=True,
         observed_at=datetime.now(timezone.utc).isoformat(),live_data_received=bool(vehicle or additional),
         missing_fields=missing,provider_status=provider_status,
         counts={**counts,'received_useful':len(vehicle)+len(additional),'catalogue_useful':sum(k in CATALOGUE_KEYS for k in vehicle)+len(additional),'undefined_important':len(missing),'undefined_supported':sum(not present(vehicle.get(k)) for k in PRIMARY_KEYS),'conflicting':len(conflicts)+sum('alternative' in a for a in additional.values())},

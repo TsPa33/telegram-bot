@@ -2,7 +2,7 @@ import {useEffect,useRef,useState} from 'react';
 import {api,type Row} from './api';
 import {useCan} from './permissions';
 import './universal-generator.css';
-const labels:Record<string,string>={confirmed:'Підтверджено джерелом',possible:'Можливо',unknown:'Потребує уточнення',incompatible:'Несумісно'};
+const labels:Record<string,string>={confirmed:'Підтверджено',possible:'Типовий',unknown:'Потребує уточнення',incompatible:'Несумісно'};
 const sources:Record<string,string>={base:'Довідник CarPot',universal_prd:'Опублікований PRD',global_modification:'Каталог модифікації',local:'Каталог робочого простору',v2:'Опубліковані каталожні зв’язки',v1:'Збережені пропозиції'};
 export default function UniversalPlanGenerator({vehicle,revision,onSaved}:{vehicle:Row;revision:number;onSaved:()=>void}){
  const can=useCan(),epoch=useRef(0),writing=useRef(false),key=useRef('');

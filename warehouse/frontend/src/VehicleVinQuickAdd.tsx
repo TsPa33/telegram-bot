@@ -3,7 +3,7 @@ import {api,ApiError,type Row} from './api';
 import {Permit} from './permissions';
 import './vin-intake.css';
 
-type Result={vin:string;source:string;vehicle:Row;available_fields:string[];field_sources?:Row;message:string;observed_at?:string;conflicts?:Row;consistency_issues?:Row;additional?:Row;counts?:Row;provider_status?:Row;cached?:boolean};
+type Result={vin:string;source:string;vehicle:Row;available_fields:string[];field_sources?:Row;message:string;observed_at?:string;conflicts?:Row;consistency_issues?:Row;additional?:Row;counts?:Row;provider_status?:Row;diagnostics?:Row;cached?:boolean};
 const groups:[string,[string,string][]][]=[
  ['Автомобіль',[['manufacturer','Марка'],['model','Модель'],['generation','Покоління'],['year','Рік'],['trim','Модифікація / комплектація'],['series','Серія'],['series_secondary','Додаткова серія'],['trim_secondary','Додаткова комплектація']]],
  ['Двигун',[['engine','Двигун'],['engine_code','Код двигуна'],['engine_displacement_l','Об’єм двигуна, л'],['engine_power_kw','Потужність, кВт'],['engine_power_hp','Потужність, к.с.'],['engine_cylinders','Циліндри'],['fuel_type','Паливо'],['fuel_secondary','Додаткове паливо'],['electrification','Силова установка'],['engine_manufacturer','Виробник двигуна'],['engine_configuration','Конфігурація двигуна'],['fuel_injection','Впорскування']]],
@@ -32,7 +32,7 @@ export default function VehicleVinQuickAdd({onBack,onCreated}:{onBack:()=>void;o
   for(const field of ['engine','engine_code','fuel_type','transmission'])if(draft[field])values[field]=draft[field];
   if(draft.drive_type)values.drive_type=draft.drive_type;
   if(draft.engine_displacement_l){const d=Number(String(draft.engine_displacement_l).replace(',','.'));if(!Number.isFinite(d)||d<=0||d>12){setError('Об’єм двигуна має бути більше 0 та не більше 12 л.');return;}values.engine_displacement_l=Math.round(d*10)/10;}
-  values.vin_details={additional:extra,decoded_additional:result.additional||{},characteristics:draft,decoded:result.vehicle,field_sources:result.field_sources||{},conflicts:result.conflicts||{},source:result.source,observed_at:result.observed_at||''};
+  values.vin_details={diagnostics:result.diagnostics||{},consistency_issues:result.consistency_issues||{},additional:extra,decoded_additional:result.additional||{},characteristics:draft,decoded:result.vehicle,field_sources:result.field_sources||{},conflicts:result.conflicts||{},source:result.source,observed_at:result.observed_at||''};
   writing.current=true;setSaving(true);setError('');
   try{onCreated(await api('/vehicles','POST',values));}
   catch(e){setError((e as Error).message);if(e instanceof ApiError&&e.status===409&&valid){try{const found=await api('/vehicles?q='+encodeURIComponent(vin));setExisting(found.items.find((r:Row)=>r.vin===vin)||null);}catch{/* Existing VIN remains blocked even if listing is unavailable. */}}}
