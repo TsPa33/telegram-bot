@@ -6,7 +6,7 @@ from app.models import Category, Operation, Part, Vehicle, Account, VehicleCheck
 
 
 def owned(db, model, id, account_id, *, lock=False, active=False):
-    if lock and model is Vehicle:
+    if lock and model in (Vehicle, Part):
         # Donor writers take the workspace lock before vehicle/part locks.
         db.scalar(select(Account).where(Account.id==account_id).with_for_update(key_share=True))
     stmt = select(model).where(model.id == id, model.account_id == account_id)
@@ -54,10 +54,12 @@ def validate_part_links(db, data, account_id):
             raise HTTPException(422, "Підкатегорія не належить вибраній категорії")
 
 
-def stock(db, row, data, account_id, *, reservation_id=None, return_operation=False, sale_context=None, flush_before=True):
+def stock(db, row, data, account_id, *, reservation_id=None, return_operation=False, sale_context=None, flush_before=True, assembly_confirmation=None, _assembly_internal=False):
+    from app.services import assemblies
+    assembly_context=None if _assembly_internal else assemblies.stock_guard(db,row,data,account_id,assembly_confirmation)
     if row.archived:
         raise HTTPException(409, "Спершу відновіть запчастину з архіву")
-    if data.type not in ('receipt','write_off','sale','reserve','release','correction','transfer','virtual_activation'):
+    if data.type not in ('receipt','write_off','sale','reserve','release','correction','transfer','virtual_activation','assembly_containment'):
         raise HTTPException(422, 'Невідома складська операція')
     if data.type in ('sale','reserve') and not row.assortment_enabled:
         raise HTTPException(409, 'Деталь виключено з асортименту')
@@ -66,7 +68,10 @@ def stock(db, row, data, account_id, *, reservation_id=None, return_operation=Fa
             raise HTTPException(409, 'Повторна віртуальна активація заборонена')
     before = snapshot(row)
     q = data.quantity
-    if data.type in ("receipt", "virtual_activation"):
+    if data.type == 'assembly_containment':
+        if not _assembly_internal:raise HTTPException(409,'Внутрішня операція вузла')
+        row.quantity=q
+    elif data.type in ("receipt", "virtual_activation"):
         row.quantity += q
     elif data.type in ("write_off", "sale"):
         row.quantity -= q
@@ -111,8 +116,10 @@ def stock(db, row, data, account_id, *, reservation_id=None, return_operation=Fa
             "donor": {k: getattr(donor, k) for k in ('manufacturer','model','year','number')} if donor else None,
         }
         sale_snapshot.update(sale_context or {})
+        if assembly_context and assembly_context.get('description'):sale_snapshot['item_name']=assembly_context['description']
     operation=record(db, account_id, row, data.type, data.reason, before,
         after_extra={"sale":sale_snapshot} if sale_snapshot else None, flush_before=flush_before)
+    if not _assembly_internal:assemblies.consumed(db,row,operation,assembly_context,account_id)
     return operation if return_operation else row
 
 

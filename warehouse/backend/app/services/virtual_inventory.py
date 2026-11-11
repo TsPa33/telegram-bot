@@ -38,6 +38,8 @@ def activate(db,v,who,data):
         if row.part_id:
             # Old receipts, sold/archived parts and user prices are authoritative.
             linked+=1;continue
+        from app.services.assemblies import assert_uncontained_item
+        assert_uncontained_item(db,row,v.account_id)
         before=snapshot(row)
         from app.services.dismantling import category_node
         reason='Категорія віртуального обліку; без фізичного надходження'

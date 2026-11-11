@@ -1,0 +1,82 @@
+[
+  {
+    "vin": "YV4L12RK6N1970668",
+    "source": "unavailable",
+    "vehicle": {},
+    "additional": {},
+    "available_fields": [],
+    "field_sources": {},
+    "conflicts": {},
+    "consistency_issues": {},
+    "requires_review": true,
+    "observed_at": "2026-11-11T01:01:15.081704+00:00",
+    "live_data_received": false,
+    "missing_fields": [
+      "body_class",
+      "doors",
+      "drive_type",
+      "engine",
+      "engine_code",
+      "engine_displacement_l",
+      "engine_power_kw",
+      "fuel_type",
+      "manufacturer",
+      "model",
+      "transmission",
+      "transmission_speeds",
+      "year"
+    ],
+    "provider_status": {
+      "NHTSA vPIC": "unavailable_or_invalid_response",
+      "FreeVINDecoder": "unavailable_or_blocked"
+    },
+    "counts": {
+      "received_useful": 0,
+      "catalogue_useful": 0,
+      "undefined_important": 13,
+      "conflicting": 0
+    },
+    "message": "Джерела недоступні або не знайшли даних. Додайте автомобіль вручну.",
+    "cached": false
+  },
+  {
+    "vin": "YV4A22PK2G1092943",
+    "source": "unavailable",
+    "vehicle": {},
+    "additional": {},
+    "available_fields": [],
+    "field_sources": {},
+    "conflicts": {},
+    "consistency_issues": {},
+    "requires_review": true,
+    "observed_at": "2026-11-11T01:01:15.104786+00:00",
+    "live_data_received": false,
+    "missing_fields": [
+      "body_class",
+      "doors",
+      "drive_type",
+      "engine",
+      "engine_code",
+      "engine_displacement_l",
+      "engine_power_kw",
+      "fuel_type",
+      "manufacturer",
+      "model",
+      "transmission",
+      "transmission_speeds",
+      "year"
+    ],
+    "provider_status": {
+      "NHTSA vPIC": "unavailable_or_invalid_response",
+      "FreeVINDecoder": "policy_unavailable"
+    },
+    "counts": {
+      "received_useful": 0,
+      "catalogue_useful": 0,
+      "undefined_important": 13,
+      "conflicting": 0
+    },
+    "message": "Джерела недоступні або не знайшли даних. Додайте автомобіль вручну.",
+    "cached": false
+  }
+]

@@ -21,7 +21,13 @@ def lock_account(db, account_id):
 
 def command(db, account_id, scope, data, execute):
     lock_account(db,account_id)
-    fingerprint=hashlib.sha256(json.dumps({'scope':scope,'data':data.model_dump(mode='json',exclude={'request_key'})},sort_keys=True).encode()).hexdigest()
+    payload=data.model_dump(mode='json',exclude={'request_key'})
+    # Preserve historical request fingerprints for lines without assembly metadata.
+    for line in payload.get('lines',[]):
+        if line.get('assembly_token') is None:line.pop('assembly_token',None)
+        if not line.get('assembly_description'):line.pop('assembly_description',None)
+        if not line.get('assembly_remainder'):line.pop('assembly_remainder',None)
+    fingerprint=hashlib.sha256(json.dumps({'scope':scope,'data':payload},sort_keys=True).encode()).hexdigest()
     prior=db.scalar(select(OrderRequest).where(OrderRequest.account_id==account_id,OrderRequest.request_key==data.request_key))
     if prior:
         if prior.actor_id!=db.info.get('actor_id',account_id):raise HTTPException(409,'Ключ належить іншому виконавцю')
@@ -84,8 +90,12 @@ def insert_lines(db,order,data,parts):
     for item in data:
         part=parts[item.part_id]
         donor=owned(db,Vehicle,part.vehicle_id,order.account_id) if part.vehicle_id else None
-        db.add(OrderLine(account_id=order.account_id,order_id=order.id,part_id=part.id,name=part.name,
-            donor_snapshot={key:getattr(donor,key) for key in ('id','manufacturer','model','year','number')} if donor else {},
+        from app.services.assemblies import stock_guard
+        confirmation=dict(token=item.assembly_token,description=item.assembly_description,remainder=item.assembly_remainder)
+        # Validate a draft's exact commercial composition without making a reserve.
+        stock_guard(db,part,StockInput(type='reserve',quantity=item.quantity,reason='Перевірка складу'),order.account_id,confirmation)
+        db.add(OrderLine(account_id=order.account_id,order_id=order.id,part_id=part.id,name=item.assembly_description or part.name,
+            donor_snapshot={**({key:getattr(donor,key) for key in ('id','manufacturer','model','year','number')} if donor else {}),**({'assembly_confirmation':confirmation} if item.assembly_token else {})},
             quantity=item.quantity,unit_price=item.unit_price,currency=item.currency,line_total=item.unit_price*item.quantity))
     db.flush()
 
@@ -131,9 +141,10 @@ def replace_lines(db,order,data):
 
 def move_stock(db,part,order,type,quantity,reservation=None,*,line=None):
     operation=stock(db,part,StockInput(type=type,quantity=quantity,reason=f'Замовлення №{order.number}',
-        **({'sale_price':line.unit_price,'sale_currency':line.currency} if line else {})),order.account_id,
+        **({'sale_price':line.unit_price,'sale_currency':line.currency} if line and type=='sale' else {})),order.account_id,
         reservation_id=reservation.id if reservation else None,return_operation=True,
-        sale_context={'source':'order','order_id':order.id,'order_number':order.number,
+        assembly_confirmation=(line.donor_snapshot or {}).get('assembly_confirmation') if line else None,
+        sale_context={'source':'order','item_name':line.name,'order_id':order.id,'order_number':order.number,
             'buyer_name':order.contact_name,'buyer_phone':order.contact_phone,
             'donor':line.donor_snapshot} if line else None)
     db.flush();return operation.id
@@ -150,7 +161,7 @@ def action(db,order,kind):
         if order.status!='new' or active:raise HTTPException(409,'Позиції вже зарезервовано або відправлено')
         for line in active_lines:
             part=parts[line.part_id]
-            op=move_stock(db,part,order,'reserve',line.quantity)
+            op=move_stock(db,part,order,'reserve',line.quantity,line=line)
             db.add(OrderReservation(account_id=order.account_id,order_line_id=line.id,part_id=part.id,quantity=line.quantity,reserve_operation_id=op))
             operations.append(op)
         status(db,order,'reserved');event(db,order,'reserved',{'operation_ids':operations})

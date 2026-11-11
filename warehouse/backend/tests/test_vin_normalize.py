@@ -1,8 +1,8 @@
 from app.services.vin_normalize import ukrainian, merge_verified, normalize
 
 def test_ukrainian_descriptors():
-    assert ukrainian("drive_type", "Front-wheel drive") == "Передній (FWD)"
-    assert ukrainian("drive_type", "4WD") == "Повний (4WD)"
+    assert ukrainian("drive_type", "Front-wheel drive") == "Передній привід (FWD)"
+    assert ukrainian("drive_type", "4WD") == "Повний привід (4WD)"
     assert ukrainian("body_class", "Wagon") == "Універсал"
     assert ukrainian("body_class", "Pickup") == "Пікап"
     assert ukrainian("transmission", "6-Speed Automatic") == "6-ступенева автоматична"

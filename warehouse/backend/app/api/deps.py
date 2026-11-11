@@ -37,6 +37,11 @@ def identity(request:Request,db:DBSession=Depends(get_db),body:dict=Depends(perm
     if not session or session.expires_at<=now():raise HTTPException(401,'Увійдіть до облікового запису')
     user=db.get(Account,session.account_id)
     if not user or not user.is_active:raise HTTPException(401,'Доступ заблоковано')
+    # One consistent account→actor→order/vehicle→Part order for all mutations.
+    # In particular, employee stock writes must not hold actor SHARE while waiting
+    # for an owner lock held by a team-management command.
+    if request.method not in ('GET','HEAD','OPTIONS'):
+        db.scalar(select(Account).where(Account.id==(user.workspace_account_id or user.id)).with_for_update(key_share=True))
     if request.method not in ('GET','HEAD','OPTIONS') and user.role!='DIRECTOR':
         user=db.scalar(select(Account).where(Account.id==user.id).with_for_update(read=True).execution_options(populate_existing=True))
         if not user.is_active:raise HTTPException(401,'Доступ заблоковано')

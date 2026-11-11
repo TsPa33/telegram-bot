@@ -95,6 +95,8 @@ def receipt(db, row, data, account_id, *, confirmed=False):
     # Durable workflow marker, independent of current stock, sale, archive or reload.
     if row.received_at is not None:
         return False
+    from app.services.assemblies import assert_uncontained_item
+    assert_uncontained_item(db,row,account_id)
     if row.plan_v3 and (row.plan_v3.get('inspection')!='present' or row.status!='dismantled'):
         raise HTTPException(409,'План v3: потрібні окремі підтвердження наявності та демонтажу')
     if not row.included or (not confirmed and row.status != 'dismantled'):

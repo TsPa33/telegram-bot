@@ -1,0 +1,21 @@
+.vin-intake{min-width:0;color:var(--color-text)}
+.vin-intake p{font-size:.85rem;margin:10px 0;overflow-wrap:anywhere}
+.vin-intake .vin-actions{display:flex;gap:8px;align-items:end;flex-wrap:wrap}
+.vin-intake .vin-actions>label{flex:1 1 220px;min-width:0}
+.vin-intake fieldset{margin:10px 0;padding:10px;border:1px solid var(--color-border);border-radius:8px;min-width:0}
+.vin-intake legend{font-weight:650;font-size:.9rem;padding:0 4px}
+.vin-intake .vin-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 12px}
+.vin-intake label{font-size:.78rem;display:flex;flex-direction:column;gap:3px;min-width:0}
+.vin-intake input:not([type=checkbox]){width:100%;min-width:0;height:34px;min-height:34px;padding:6px 8px;font-size:.85rem}
+.vin-intake small{font-size:.68rem;color:var(--color-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.vin-intake .vin-summary{padding:12px;border:1px solid var(--color-border);background:var(--color-accent-surface);border-radius:8px}
+.vin-intake .vin-summary>strong{font-size:1rem}
+.vin-intake dl{margin:8px 0 0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px 12px}
+.vin-intake dt{font-size:.7rem;color:var(--color-secondary)}
+.vin-intake dd{font-size:.82rem;margin:0;overflow-wrap:anywhere}
+.vin-intake .vin-unknown,.vin-intake .vin-source-status{margin:10px 0;border:1px solid var(--color-border);border-radius:8px;padding:8px}
+.vin-intake summary{font-size:.85rem;font-weight:600;cursor:pointer}
+.vin-intake details[open]>.vin-fields{margin-top:8px}
+.vin-intake .vin-confirm{flex-direction:row;align-items:center;margin:12px 0;line-height:1.4}
+.vin-intake .vin-conflict{white-space:normal;color:var(--color-warning)}
+@media(max-width:420px){.vin-intake .vin-actions>label{flex-basis:100%}.vin-intake .vin-fields{gap:8px}.vin-intake fieldset{padding:8px}}

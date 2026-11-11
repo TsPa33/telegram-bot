@@ -1,0 +1,27 @@
+{
+  "archive_sha256": "74989841bfad03ddf47e78782d48fc53498cacc54cb544f96361461e1202cc11",
+  "packages": {
+    "carpot_prd_export_result.zip": "b69a121f9e4519b240f1d90307a45c60f2e31ee595fdad895e39aab6160d9906",
+    "carpot_prd_safe_filter_v1.zip": "a3e1df5a69f2a1a2979ce5f14bf51552cec07534c90b52b2ce1c77285a615ca7",
+    "CarPot_taxonomy_pilot_2026_11_10.zip": "7d3a858e37249f307e9f4f4d3595432121d3f60e44a220ef7886f8c88dd4a283"
+  },
+  "real_prd": {
+    "source_records": 26938,
+    "duplicate_source_rows": 0,
+    "physical_types": 0,
+    "review": 26938,
+    "excluded": 0,
+    "classifications": {}
+  },
+  "prepared_sha": "3c2370af7fc37d68851675cdf62485890a57ecde699a5e3fa635d98ef8271921",
+  "prior_screening_advisory": {
+    "carpot_prd_excluded_3833.csv": 3833,
+    "carpot_prd_priority_review_789.csv": 789,
+    "carpot_prd_remaining_23105.csv": 23105,
+    "carpot_prd_screening_all_26938.csv": 26938
+  },
+  "preview_batches": 54,
+  "new_types_published": 0,
+  "source_links": "UNVERIFIED: no authorized source or catalogue-staging connection",
+  "factory_bom": false
+}
