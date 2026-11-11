@@ -166,3 +166,40 @@
  .assembly-virtual-group-toggle small{flex-basis:100%;margin-left:24px}
  .assembly-virtual-group>ul{padding-left:4px!important}
 }
+
+
+/* PR3 visual fidelity: distinguish confirmed membership from unlinked candidates.
+   Candidates are existing plan rows, never physical child Parts. */
+.assembly-children{margin:1px 0 8px 20px!important;padding:0 0 0 9px!important;border-left:1px solid var(--color-border)!important}
+.assembly-connected-heading{display:flex;align-items:center;gap:6px;margin:7px 0 3px;padding:3px 4px;color:var(--color-success);font-size:.72rem;font-weight:650}
+.assembly-door-component-preview{padding:5px 7px 7px!important;margin:5px 2px 7px;border:1px dashed var(--color-border);border-radius:8px;background:var(--color-subtle)}
+.assembly-component-preview-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 4px;flex-wrap:wrap}
+.assembly-component-preview-heading strong{font-size:.76rem;font-weight:650}
+.assembly-component-preview-heading>span{font-size:.68rem;color:var(--muted)}
+.assembly-door-component-preview p{font-size:.72rem;line-height:1.35;color:var(--muted);margin:4px 0}
+.assembly-door-component-preview ul{margin:4px 0!important;padding:0!important;border:0!important;list-style:none}
+.assembly-door-candidate{display:flex;align-items:center;gap:7px;min-height:33px;border-top:1px solid var(--color-border);font-size:.74rem}
+.assembly-door-candidate>button{flex:1;text-align:left;padding:5px 2px;border:0!important;box-shadow:none!important;background:transparent!important;font-size:.75rem;color:var(--color-text)}
+.assembly-door-candidate>button:hover{text-decoration:underline}
+.assembly-door-candidate small{font-size:.68rem;color:var(--muted)}
+.assembly-door-candidate>span{padding:3px 5px;border-radius:5px;background:var(--color-surface);color:var(--muted);font-size:.68rem;white-space:nowrap}
+.assembly-door-component-preview p.assembly-component-hint{border-top:1px solid var(--color-border);margin-top:6px;padding-top:5px;font-size:.67rem}
+.assembly-inspector-close{display:inline-grid;place-items:center;flex:none;width:29px;height:29px;min-width:29px;padding:0!important;border:1px solid var(--color-border)!important;border-radius:7px!important;box-shadow:none!important;background:transparent!important}
+.assembly-tree .assembly-presence{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;flex-direction:row}
+.assembly-tree .assembly-presence button{display:flex;justify-content:center;align-items:center;gap:3px;padding:7px 3px!important;min-height:37px;font-size:.72rem;line-height:1.15;border:1px solid var(--color-border);border-radius:7px!important;white-space:normal}
+.assembly-tree .assembly-presence button[aria-pressed=true]{border-color:var(--color-accent);font-weight:650;background:var(--color-success-surface)}
+.assembly-tree .assembly-photo{height:106px!important;min-height:106px!important;padding:8px;gap:4px}
+.assembly-tree .assembly-photo img{max-height:91px}
+.assembly-tree .assembly-photo>span{font-size:.75rem}
+.assembly-tree .assembly-inspector textarea{min-height:75px}
+.assembly-tree .assembly-heading h4{font-size:1rem;line-height:1.2}
+.assembly-tree .assembly-inspector{gap:9px}
+.assembly-tree .assembly-manage-shortcut{display:flex;align-items:center;justify-content:center;gap:8px;min-height:40px;font-size:.8rem;font-weight:650}
+.assembly-tree .assembly-management{margin:3px 0;border:1px solid var(--color-border);border-radius:8px;padding:8px}
+.assembly-tree .assembly-management summary{display:flex;align-items:center;gap:6px;font-size:.78rem;font-weight:650}
+.assembly-tree .assembly-management[open] summary{margin-bottom:9px}
+@media(max-width:650px){
+ .assembly-tree .assembly-presence button{font-size:.77rem;min-height:43px}
+ .assembly-children{margin-left:8px!important;padding-left:5px!important}
+ .assembly-door-candidate>span{font-size:.63rem}
+}
