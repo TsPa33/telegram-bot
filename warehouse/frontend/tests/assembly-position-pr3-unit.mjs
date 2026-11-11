@@ -12,7 +12,7 @@ const transformed=ts.transpileModule(read('assemblyPresentation.ts'),{
 const exports={};
 new Function('exports',transformed.outputText)(exports);
 const {assemblyLabel,doorKey,doorOrder,installationAxes,isGenericDoor,
- isKnownDoorComponent,sameDoorInstallation,manuallyReviewableDoorComponent}=exports;
+ isKnownDoorComponent,sameDoorInstallation,manuallyReviewableDoorComponent,suggestedDoorComponents}=exports;
 const node=(id,position,side)=>({
  id,name:'Двері',position:position==='front'?'':position==='rear'?'':'',
  installation_position:{position,side}
@@ -89,4 +89,33 @@ test('package #3 never modifies stock quantities or adds unknown parts by displa
  const helper=read('assemblyPresentation.ts');
  assert.doesNotMatch(helper,/fetch\(|api\(|request_key|Part\(|stock\(/);
  assert.match(helper,/display group never creates a Part/);
+});
+
+test('nested candidate preview reuses existing IDs and only evidence-matched placements',()=>{
+ const root=node('door-front-left','front','left');
+ const matched={id:'original-glass-part',name:'Скло дверей',position:'передня ліва',part_id:'stock-part-original'};
+ const unknown={id:'unknown-glass',name:'Скло дверей',position:''};
+ const wrong={id:'wrong-glass',name:'Скло дверей',position:'передня права'};
+ const joined={id:'joined-glass',name:'Скло дверей',position:'передня ліва',parent_id:'another-door'};
+ const sold={id:'sold-glass',name:'Скло дверей',position:'передня ліва',consumed_operation_id:'sale-op'};
+ const irrelevant={id:'engine',name:'Блок циліндрів',position:'передня ліва'};
+ const found=suggestedDoorComponents(root,[matched,unknown,wrong,joined,sold,irrelevant,root]);
+ assert.deepEqual(found.map(x=>x.id),['original-glass-part']);
+ assert.equal(found[0],matched,'same object and physical ID, not a new stock record');
+ assert.deepEqual(suggestedDoorComponents({name:'Двері'},[matched]),[]);
+});
+test('reference-aligned details visually separate attached children and unlinked candidates',()=>{
+ const tree=read('AssemblyTree.tsx');
+ assert.match(tree,/assembly-children/);
+ assert.match(tree,/Фізично приєднані/);
+ assert.match(tree,/Компоненти для звірки/);
+ assert.match(tree,/Не включені до вузла/);
+ assert.match(tree,/suggestedDoorComponents/);
+ assert.match(tree,/Кандидат|Не включено/);
+ assert.match(tree,/preview\.memberships\?\.length/);
+ assert.match(tree,/assembly-manage-shortcut/);
+ const css=read('assembly-tree.css');
+ assert.match(css,/\.assembly-presence\{display:grid;grid-template-columns:repeat\(3/);
+ assert.match(css,/\.assembly-door-candidate/);
+ assert.match(css,/\.assembly-inspector-close/);
 });
