@@ -6,7 +6,7 @@ No paid provider calls, no guess about factory configuration or physical presenc
 import re
 from fastapi import HTTPException
 from sqlalchemy import select
-from app.models import DismantlingItem, Vehicle, AssemblyMembership
+from app.models import DismantlingItem, Vehicle, AssemblyMembership, Part
 from app.services.inventory import owned, record
 
 SOURCE='carpot.assembly.door-reference.v1'
@@ -56,6 +56,10 @@ def add_plan_component(db,account,vehicle_id,parent_id,key):
         raise HTTPException(409,'Компонент можна додати лише до конкретних дверей цього автомобіля')
     if parent.assembly_consumed_operation_id or parent.status=='absent':
         raise HTTPException(409,'Двері відсутні або вже передані; план не змінено')
+    if parent.part_id:
+        stock=owned(db,Part,parent.part_id,account)
+        if stock.vehicle_id!=v.id or stock.archived or stock.quantity!=1:
+            raise HTTPException(409,'Двері продані, архівовані або мають неоднозначний фізичний залишок')
     if key not in COMPONENTS:raise HTTPException(422,'Невідомий компонент конструктивного шаблону')
     axes=door_axes(parent)
     label=COMPONENTS[key]
