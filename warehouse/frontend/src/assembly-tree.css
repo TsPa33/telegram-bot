@@ -242,3 +242,18 @@ details.assembly-door-component-preview[open]>summary{border-bottom:1px solid va
 .assembly-door-template-list .assembly-template-control:not(:disabled):hover{border-color:var(--color-accent)!important;color:var(--color-accent)}
 @media(max-width:650px){.assembly-door-template-list .assembly-template-control{min-width:83px;font-size:.68rem;padding:4px 5px!important}}
 @media(prefers-reduced-motion:reduce){details.assembly-door-component-preview>summary:before{transition:none}}
+
+
+/* PR4 — reference composition for all resaleable units; no child stock/plan actions. */
+.assembly-assembly-explanation{border-left:2px solid var(--color-accent);padding:5px 8px;background:var(--color-surface);border-radius:4px;font-size:.75rem;line-height:1.4;color:var(--color-text)}
+.assembly-plan-items{padding:5px 7px;border:1px solid var(--color-border);border-radius:8px;margin:4px 2px 6px;background:var(--color-surface)}
+.assembly-plan-items>summary{cursor:pointer;min-height:31px;padding:6px 4px;font-weight:650;font-size:.75rem}
+.assembly-plan-items[open]>summary{border-bottom:1px solid var(--color-border);margin-bottom:5px}
+.assembly-plan-items>ul{margin:3px 0!important;padding:0 0 0 6px!important;border-left:1px dashed var(--color-border)!important}
+.assembly-unit-warning{font-size:.75rem;background:var(--color-subtle);border:1px solid var(--color-border);border-radius:7px;padding:8px}
+.assembly-door-template-list>.assembly-door-candidate{min-height:31px!important;background:transparent;align-items:center;border-top:1px solid var(--color-border)}
+.assembly-door-template-list>.assembly-door-candidate .assembly-template-label{background:transparent!important;border:none!important;border-radius:0!important;font-size:.76rem;font-weight:450;padding:1px 2px}
+.assembly-door-template-list>.assembly-door-candidate>small{flex:none;font-size:.65rem;font-weight:500;max-width:115px;text-align:right}
+.assembly-door-component-preview summary>span{font-size:.67rem;white-space:normal}
+.assembly-assembly-explanation + .assembly-door-template-list{margin-top:5px!important}
+@media(max-width:650px){.assembly-assembly-explanation{font-size:.76rem}.assembly-door-template-list>.assembly-door-candidate>small{max-width:92px}}
