@@ -61,10 +61,10 @@ def select_passenger_manufacturer(rows, manufacturer_id):
     return passenger[0]
 
 
-def export(source, output, car_ids, model_queries, limit, mapping=None):
+def export(source, output, car_ids, model_queries, limit, mapping=None, *, graph_only=False):
     output.mkdir(parents=True, exist_ok=True)
     requested = dict(car_ids=sorted(set(car_ids)), model_queries=sorted(set(model_queries)), limit=limit,
-                     mapping_sha=digest(mapping or {}))
+                     mapping_sha=digest(mapping or {}), graph_only=graph_only)
     manifest_path = output/'manifest.json'
     previous = json.loads(manifest_path.read_text('utf-8')) if manifest_path.exists() else None
     if previous and previous['request'] != requested:
@@ -120,7 +120,7 @@ def export(source, output, car_ids, model_queries, limit, mapping=None):
             if path.name in files and files[path.name]!=file_sha(path):
                 raise ValueError('Manifest checkpoint file changed')
         else:
-            payload=collect(source,car,model,mapping or {},manufacturer_id=mid)
+            payload=collect(source,car,model,mapping or {},manufacturer_id=mid,graph_only=graph_only)
             payload['manufacturer']=maker
             if not payload['categories']:
                 raise ValueError('No article-linked types; empty modification not exportable')
@@ -242,12 +242,14 @@ def main():
     p.add_argument('--car-id',type=int,action='append',default=[])
     p.add_argument('--discover-model',action='append',default=[])
     p.add_argument('--max-modifications',type=int,default=8)
+    p.add_argument('--graph-only',action='store_true',help='Export PRD/article links without bulky per-article enrichment')
     p.add_argument('--mapping',type=Path)
     p.add_argument('--manifest-sha256')
     p.add_argument('--reviewed-by')
     p.add_argument('--review-output',type=Path)
     p.add_argument('--confirm-catalogue-staging',action='store_true')
     a=p.parse_args()
+    if a.graph_only and a.mode!='export':p.error('--graph-only is only valid for export')
     if not 1<=a.max_modifications<=100 or any(i<=0 for i in a.car_id):p.error('Bounded positive identities required')
     if a.mode=='review':
         if not a.mapping or not a.reviewed_by or not a.review_output:p.error('Review requires mapping, reviewer, and NEW review-output')
@@ -272,7 +274,7 @@ def main():
         with connection('SOURCE','td1q2018') as source:
             read(source,'SET SESSION max_execution_time=30000')
             read(source,'START TRANSACTION WITH CONSISTENT SNAPSHOT, READ ONLY')
-            try:result=export(source,a.output,a.car_id,a.discover_model,a.max_modifications,json.loads(a.mapping.read_text('utf-8-sig')) if a.mapping else {})
+            try:result=export(source,a.output,a.car_id,a.discover_model,a.max_modifications,json.loads(a.mapping.read_text('utf-8-sig')) if a.mapping else {},graph_only=a.graph_only)
             finally:source.rollback()
         print(json.dumps(dict(modifications=len(result['modifications']),manifest_sha256=file_sha(a.output/'manifest.json'))))
     finally:lock.unlink(missing_ok=True)
