@@ -43,7 +43,7 @@ test('after split the original inspector refreshes and inventory navigation rema
  assert.match(ui,/setPreview\(next\)/);
  assert.match(ui,/warehouse:inventory-changed/);
  assert.match(ui,/Відкрити склад і оформити продаж/);
- assert.match(ui,/send\('sale'/);
+ assert.match(ui,/setCheckout\(/);
  assert.match(ui,/assembly_remainder:remainder/);
 });
 test('split UI stays accessible and does not auto-submit on checkbox choice',()=>{

@@ -100,6 +100,7 @@ def route_permissions(method,path,body):
     if path.startswith('/buyers'):return ['orders.view' if read else 'orders.create' if path=='/buyers' else 'orders.edit']
     if path.startswith('/orders'):
         if read:return ['orders.view']
+        if path=='/orders/checkout':return ['orders.create']+(['orders.fulfill'] if body.get('checkout_action','draft')!='draft' else [])+(['sales.create'] if body.get('checkout_action')=='sell' else [])
         if path=='/orders':return ['orders.create']
         if path.endswith('/{action}'):return ['orders.fulfill']+(['sales.create'] if body.get('_route_action')=='sell' else [])
         return ['orders.edit']

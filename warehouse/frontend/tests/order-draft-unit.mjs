@@ -6,3 +6,5 @@ test('large totals use integer cents without floating point loss',()=>{assert.de
 test('zero price is explicit; missing price is not zero',()=>{assert.deepEqual(draftAmounts([line('0','1','USD'),line('')]),{USD:'0.00'});assert.throws(()=>linePayload([line('')]));});
 test('payload contains only part quantity agreed price and currency',()=>{assert.deepEqual(linePayload([line('12,34','2')]),[{part_id:'synthetic',quantity:2,unit_price:'12.34',currency:'UAH'}]);});
 test('invalid quantities and precision are rejected before command',()=>{for(const q of ['0','-1','1.5','1000001',''])assert.throws(()=>linePayload([line('1',q)]));for(const price of ['-1','1.234','NaN','1e3',''])assert.throws(()=>linePayload([line(price)]));});
+
+test('assembly composition confirmation survives checkout without client-only fields',()=>{const token='a'.repeat(64);assert.deepEqual(linePayload([{...line('15.25'),assembly_token:token,assembly_description:'Неповний вузол',assembly_remainder:true,vehicle_id:'private-ui-context'}]),[{part_id:'synthetic',quantity:1,unit_price:'15.25',currency:'UAH',assembly_token:token,assembly_description:'Неповний вузол',assembly_remainder:true}]);});

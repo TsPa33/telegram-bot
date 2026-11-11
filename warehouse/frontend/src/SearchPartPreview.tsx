@@ -82,7 +82,7 @@ export default function SearchPartPreview({part,vehicle,category,subcategory,can
     <PartCharacteristicsEditor key={part.id} part={part} kind="oem" onSaved={row=>{setEditingOem(false);onSaved(row);}} onClose={()=>setEditingOem(false)}/>
    </div>}
    <div className="ui11-preview-buttons">
-    {canSell&&part.available_quantity>0&&part.assortment_enabled!==false&&!part.archived&&<button type="button" className="primary" onClick={onSell}><ShoppingCart size={16}/> Продати</button>}
+    {canSell&&part.available_quantity>0&&part.assortment_enabled!==false&&!part.archived&&<button type="button" className="primary" onClick={onSell}><ShoppingCart size={16}/> Оформити замовлення</button>}
     {part.id&&can('parts.change_price')&&!part.archived&&<details ref={pricePanel} className="part-preview-price-edit"><summary>Змінити ціну</summary><SellerPriceEditor key={part.id} part={part} initialOpen onSaved={row=>{if(pricePanel.current)pricePanel.current.open=false;onSaved(row);}}/></details>}
     {part.id&&can('inventory.edit')&&!part.archived&&<><button type="button" className="secondary" onClick={()=>setEditingOem(v=>!v)}><Pencil size={14}/> OEM / артикул</button><button type="button" className="secondary" onClick={onEdit}><Pencil size={14}/> Редагувати дані</button></>}
     {onNotes&&can('parts.notes')&&part.id&&<button type="button" onClick={onNotes}>Додати нотатку</button>}

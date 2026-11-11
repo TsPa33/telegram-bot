@@ -138,12 +138,13 @@ def test_two_employees_cannot_sell_last_unit_twice(logged,part):
         for c in clients:c.close()
 
 
-def test_migration_preserves_populated_history_and_owners(logged,part):
+def test_forward_only_migration_preserves_populated_history_and_owners(logged,part):
     with engine().connect() as db:
         parts=db.execute(text('SELECT row_to_json(p) FROM parts p ORDER BY id')).scalars().all()
         operations=db.execute(text('SELECT row_to_json(o) FROM operations o ORDER BY id')).scalars().all()
         ids=db.execute(text('SELECT id,email,password_hash FROM accounts ORDER BY id')).all()
-    assert run([sys.executable,'-m','alembic','downgrade','a73e05b9c842'],capture_output=True).returncode==0
+    refused=run([sys.executable,'-m','alembic','downgrade','a73e05b9c842'],capture_output=True,text=True)
+    assert refused.returncode!=0 and 'Forward-only VIN evidence migration' in refused.stderr
     assert run([sys.executable,'-m','alembic','upgrade','head'],capture_output=True).returncode==0
     with engine().connect() as db:
         assert db.execute(text('SELECT row_to_json(p) FROM parts p ORDER BY id')).scalars().all()==parts
@@ -362,7 +363,7 @@ def test_actor_cannot_be_spoofed_in_stock_payload(logged,part):
     finally:worker.close()
 
 
-def test_populated_upgrade_preserves_sessions_reserves_orders_and_failed_retry(logged,part):
+def test_forward_only_refusal_preserves_sessions_reserves_orders_and_replays(logged,part):
     # All transitions affect only this disposable *_test database.
     # Seed priced sales, manual and order reservations, request caches and sessions.
     assert logged.post('/api/v1/parts/'+part['id']+'/operations',json={'type':'receipt','quantity':7,'reason':'Migration regression'}).status_code==200
@@ -397,17 +398,18 @@ def test_populated_upgrade_preserves_sessions_reserves_orders_and_failed_retry(l
         for row in before[table]:row.pop('actor_id')
     with engine().connect() as db:
         owners=db.execute(text('SELECT id,email,name,password_hash,created_at FROM accounts ORDER BY id')).all()
-    assert run([sys.executable,'-m','alembic','downgrade','a73e05b9c842'],capture_output=True).returncode==0
-    # Existing inventory rows lock DDL out. A failed migration must roll back,
-    # retain the old revision, and be retryable with no partial role columns.
-    with engine().begin() as locked:
-        locked.execute(text('LOCK TABLE accounts IN SHARE MODE'))
-        failed=run([sys.executable,'-m','alembic','upgrade','head'],capture_output=True,timeout=20)
-        assert failed.returncode!=0
+    # Current production-compatible contract is forward-only: never discard VIN
+    # evidence to exercise a superseded historical schema. Test refusal plus
+    # current-head retry, preserving the real cookie, request keys and reserves.
+    with engine().connect() as db:revision=db.scalar(text('SELECT version_num FROM alembic_version'))
+    refused=run([sys.executable,'-m','alembic','downgrade','a73e05b9c842'],capture_output=True,text=True)
+    assert refused.returncode!=0 and 'Forward-only VIN evidence migration' in refused.stderr
     with engine().connect() as db:
-        assert db.scalar(text('SELECT version_num FROM alembic_version'))=='a73e05b9c842'
-        assert not db.scalar(text("SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name='accounts' AND column_name='role')"))
-    assert normalized(snapshot_tables())==normalized(before)
+        assert db.scalar(text('SELECT version_num FROM alembic_version'))==revision
+    preserved=snapshot_tables()
+    for table in ['stock_requests','order_requests']:
+        for row in preserved[table]:assert row.pop('actor_id')==row['account_id']
+    assert normalized(preserved)==normalized(before)
     for _ in range(2):assert run([sys.executable,'-m','alembic','upgrade','head'],capture_output=True).returncode==0
     after=snapshot_tables()
     for table in ['stock_requests','order_requests']:

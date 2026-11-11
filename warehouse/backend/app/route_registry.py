@@ -113,6 +113,7 @@ KNOWN_ROUTES = frozenset({
     ('POST', '/api/v1/categories/import-file'),
     ('POST', '/api/v1/dismantling/catalog/import'),
     ('POST', '/api/v1/orders'),
+    ('POST', '/api/v1/orders/checkout'),
     ('POST', '/api/v1/orders/{id}/status'),
     ('POST', '/api/v1/orders/{id}/{action}'),
     ('POST', '/api/v1/parts'),

@@ -83,6 +83,17 @@ class CreateOrder(LinesInput,Delivery):
     buyer_id: Id
 
 
+class CheckoutOrder(CreateOrder):
+    checkout_action: Literal['draft','reserve','sell'] = 'draft'
+    confirm_sale: bool = False
+
+    @model_validator(mode='after')
+    def explicit_sale(self):
+        if self.checkout_action=='sell' and not self.confirm_sale:
+            raise ValueError('Підтвердьте продаж і списання вибраних позицій')
+        return self
+
+
 class UpdateOrder(Input):
     request_key: Key
     buyer_id: Id | None = None

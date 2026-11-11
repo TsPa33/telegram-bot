@@ -47,7 +47,7 @@ test('an inspect refresh preserves selected card without calling select again',(
 test('existing stock receipt, sale protections and confirm workflow remain wired',()=>{
  assert.match(board,/GuidedReceipt/);
  assert.match(board,/bulk\.start/);
- assert.match(board,/send\('sale'/);
+ assert.match(board,/setCheckout\(/);
  assert.match(board,/send\('return'/);
  assert.match(board,/preview\.conflicts\.length/);
 });
