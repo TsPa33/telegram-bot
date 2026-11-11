@@ -89,8 +89,12 @@ def split(db,account,vehicle,root_id,unit_id,requested,token):
             Part.account_id==account,Part.vehicle_id==vehicle,
             Part.id!=root_part.id,Part.quantity>0,Part.archived.is_(False)
         )))
-        if any(_normalized(p.name)==_normalized(label) for p in standalone):
-            raise HTTPException(409,f'«{label}» уже має активний залишок на цьому автомобілі. Звірте склад')
+        linked_stock={n.part_id:n for n in nodes.values() if n.part_id}
+        if any(_normalized(p.name)==_normalized(label) and not (
+            linked_stock.get(p.id) is not None and root.position and
+            linked_stock[p.id].position and linked_stock[p.id].position!=root.position
+        ) for p in standalone):
+            raise HTTPException(409,f'«{label}» уже має активний залишок на цій установчій позиції. Звірте склад')
         existing=[n for n in nodes.values() if
             n.id!=root_id and _normalized(n.name)==_normalized(label)
             and (n.position==root.position or not n.position)
