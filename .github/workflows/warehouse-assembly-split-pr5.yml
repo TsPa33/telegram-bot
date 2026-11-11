@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write
 
 jobs:
   backend:
@@ -40,7 +41,24 @@ jobs:
           python-version: '3.11'
       - run: python -m pip install --require-hashes -r requirements.lock
       - name: Run isolated inventory / assembly regressions
-        run: python -m pytest -q tests/test_assemblies.py tests/test_assembly_split.py
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m pytest -q tests/test_assemblies.py tests/test_assembly_split.py 2>&1 | tee "$RUNNER_TEMP/pr5-pytest.log"
+      - name: Publish isolated test failure details on draft PR
+        if: failure() && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        shell: bash
+        run: |
+          {
+            printf '### PR5 — ізольовані backend-тести (не staging)\n\n'
+            printf 'Повний PASS ще не отримано. Останні рядки pytest:\n\n```\n'
+            tail -c 14000 "$RUNNER_TEMP/pr5-pytest.log" || true
+            printf '\n```\n'
+          } > "$RUNNER_TEMP/pr5-comment.md"
+          gh pr comment "$PR_NUMBER" --body-file "$RUNNER_TEMP/pr5-comment.md"
 
   frontend:
     name: Frontend build and component selection
