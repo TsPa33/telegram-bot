@@ -36,6 +36,8 @@ def test_export_resume_hashes_and_pds_candidates(tmp_path,monkeypatch):
     assert first['modifications'][0]['pds_only_product_ids']==[2]
     assert first['modifications'][0]['pds_only_fitment']=='needs_review'
     batch.export(None,tmp_path,[99],[],1)
+    with pytest.raises(ValueError,match='Checkpoint request changed'):
+        batch.export(None,tmp_path,[99],[],1,graph_only=True)
     assert len(calls)==1 and calls[0]['manufacturer_id']==77
     sha=batch.file_sha(tmp_path/'manifest.json')
     envelopes=batch.validate_batch(tmp_path,sha)
@@ -88,6 +90,49 @@ def test_collector_oem_uses_exact_manufacturer(monkeypatch):
     assert p['schema']=='carpot.vehicle.v1' and p['manufacturer_id']==77
     oem=next((sql,args) for sql,args in queries if 'FROM article_oe ' in sql)
     assert oem[1][-2]==77 and 'manufacturerId=120' not in oem[0]
+
+
+def test_graph_only_preserves_exact_links_without_per_article_enrichment(monkeypatch):
+    queries=[]
+    def read(db,sql,args=()):
+        queries.append(sql)
+        if sql.startswith('SELECT DISTINCT'):
+            if args[1:] == (0,0,''):
+                return [dict(productid=1,supplierid=5,datasupplierarticlenumber='TEST'),
+                        dict(productid=2,supplierid=5,datasupplierarticlenumber='TEST')]
+            return []
+        if 'FROM prd ' in sql:
+            return [dict(id=args[0],description='Synthetic source type')]
+        if 'FROM passanger_car_' in sql:
+            return []
+        raise AssertionError('Graph-only mode must not fetch individual article enrichment: '+sql)
+    monkeypatch.setattr(collector,'read',read)
+    p=collector.collect(None,dict(id=99),dict(id=88),{},manufacturer_id=77,graph_only=True)
+    assert p['schema']=='carpot.vehicle.v1'
+    assert p['source_scope']=='modification_prd_article_graph'
+    assert p['image_status']=='not_exported'
+    assert len(p['articles'])==1 and p['articles']['5:TEST']['enrichment_status']=='not_exported'
+    assert {r['product_id'] for r in p['categories']}=={1,2}
+    assert all(r['articles']==['5:TEST'] for r in p['categories'])
+    assert all('FROM article_' not in q for q in queries if not q.startswith('SELECT DISTINCT'))
+
+
+def test_repeated_article_metadata_counted_once(monkeypatch):
+    large='X'*(5*1024*1024)
+    def read(db,sql,args=()):
+        if sql.startswith('SELECT DISTINCT'):
+            if args[1:]==(0,0,''):
+                return [dict(productid=1,supplierid=5,datasupplierarticlenumber='TEST'),
+                        dict(productid=2,supplierid=5,datasupplierarticlenumber='TEST')]
+            return []
+        if 'FROM article_attributes' in sql:return [dict(raw_metadata=large)]
+        if 'FROM prd ' in sql:return [dict(id=args[0],description='Synthetic type')]
+        return []
+    monkeypatch.setattr(collector,'read',read)
+    p=collector.collect(None,dict(id=99),dict(id=88),{},manufacturer_id=77)
+    assert len(p['articles'])==1
+    assert len(p['categories'])==2
+    assert len(encode(p)) < 8*1024*1024
 
 
 def test_offline_review_keeps_original_and_coverage(tmp_path,monkeypatch):
