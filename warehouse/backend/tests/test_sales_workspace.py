@@ -114,18 +114,37 @@ def test_price_operations_auth_csrf_isolation(logged,vehicle):
     assert logged.post(url+'/operations',json={'type':'sale','quantity':1}).status_code==403
 
 
-def test_currency_migration_preserves_old_price_and_protects_usd(logged,vehicle):
+def test_forward_only_currency_persistence_preserves_history_and_rejects_downgrade(logged,vehicle):
+    # The VIN evidence migration is forward-only. A historical round-trip
+    # through e17b6c04a932 is no longer a valid compatibility test.
     p=create(logged,vehicle,'Migration part',selling_price='123.45')
     with engine().connect() as db:
         before=db.execute(text('SELECT before, after FROM operations ORDER BY id')).all()
-    run([sys.executable,'-m','alembic','downgrade','e17b6c04a932'],check=True)
-    run([sys.executable,'-m','alembic','upgrade','head'],check=True)
-    assert logged.get('/api/v1/parts/'+p['id']).json()['selling_price']=='123.45'
-    assert logged.get('/api/v1/parts/'+p['id']).json()['currency']=='UAH'
-    with engine().connect() as db:assert db.execute(text('SELECT before, after FROM operations ORDER BY id')).all()==before
-    logged.patch('/api/v1/parts/'+p['id']+'/price',json={'selling_price':'123.45','currency':'USD'})
-    result=run([sys.executable,'-m','alembic','downgrade','e17b6c04a932'],capture_output=True,text=True)
-    assert result.returncode!=0 and 'Cannot discard' in result.stderr
+    refused=run([sys.executable,'-m','alembic','downgrade','e17b6c04a932'],
+                capture_output=True,text=True)
+    assert refused.returncode!=0
+    assert 'Forward-only VIN evidence migration' in refused.stderr
+    current=logged.get('/api/v1/parts/'+p['id'])
+    assert current.status_code==200 and current.json()['selling_price']=='123.45'
+    assert current.json()['currency']=='UAH'
+    with engine().connect() as db:
+        assert db.execute(text('SELECT before, after FROM operations ORDER BY id')).all()==before
+
+    changed=logged.patch('/api/v1/parts/'+p['id']+'/price',
+                         json={'selling_price':'123.45','currency':'USD'})
+    assert changed.status_code==200,changed.text
+    current=logged.get('/api/v1/parts/'+p['id'])
+    assert current.status_code==200 and current.json()['selling_price']=='123.45'
+    assert current.json()['currency']=='USD'
+    with engine().connect() as db:
+        after=db.execute(text('SELECT before, after FROM operations ORDER BY id')).all()
+        assert after[:len(before)]==before
+        assert len(after)>len(before)
+
+    refused_again=run([sys.executable,'-m','alembic','downgrade','e17b6c04a932'],
+                      capture_output=True,text=True)
+    assert refused_again.returncode!=0
+    assert 'Forward-only VIN evidence migration' in refused_again.stderr
     assert logged.get('/api/v1/sales-workspace/readiness').json()['contract_version']==5
 
 
