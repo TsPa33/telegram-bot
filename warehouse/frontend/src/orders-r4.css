@@ -2,3 +2,5 @@ dialog.order-dialog{width:min(1120px,calc(100vw - 24px))}.r4-workspace{display:g
 @media(max-width:900px){.r4-workspace{grid-template-columns:minmax(0,1fr);gap:12px}.r4-picker .order-picker-results{max-height:250px}.r4-workspace input,.r4-workspace select{font-size:16px;min-height:44px}.r4-workspace .order-line-values label:last-child{grid-column:auto}.r4-workspace .order-buyer-selected{overflow-wrap:anywhere}.r4-workspace .order-line-values{grid-template-columns:minmax(0,1fr) minmax(0,1.4fr) minmax(0,1fr)}}
 
 .r4-workspace.is-compact{display:flex;flex-direction:column}.r4-workspace.is-compact>.r4-basket{order:0}.r4-workspace.is-compact>.r4-picker{order:1}.r4-workspace.is-compact>[hidden]{display:none}.is-compact .order-line-editor{padding:10px}.is-compact .order-line-values{gap:8px}
+
+.r4-workspace input:is([type=checkbox],[type=radio]){width:18px;min-width:18px;min-height:18px;height:18px;flex:0 0 18px}.order-dialog form>.modal-actions{position:static}.r4-workspace .check-inline{align-items:center;gap:8px}

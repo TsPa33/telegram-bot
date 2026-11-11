@@ -39,7 +39,7 @@ export default function Orders({accountId,notify}:{accountId:string;notify:Notif
 function DeliveryFields({value,set}:{value:Row;set:(value:Row)=>void}){
  return <div className="form-grid"><label>Доставка<select aria-label="Доставка" value={value.delivery_method} onChange={e=>set({...value,delivery_method:e.target.value})}>{Object.entries(deliveries).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></label>
  {value.delivery_method!=='pickup'&&<><label>Місто<input required maxLength={150} value={value.city} onChange={e=>set({...value,city:e.target.value})}/></label><label>{value.delivery_method==='branch'?'Відділення':'Адреса'}<input required maxLength={300} value={value.delivery_address} onChange={e=>set({...value,delivery_address:e.target.value})}/></label></>}
- <label>Номер ТТН<input maxLength={100} value={value.tracking_number} onChange={e=>set({...value,tracking_number:e.target.value})}/></label><label className="wide">Примітка до замовлення<textarea maxLength={10000} value={value.notes} onChange={e=>set({...value,notes:e.target.value})}/></label></div>;
+ <details className="wide"><summary>ТТН та примітка (необов’язково)</summary><label>Номер ТТН<input maxLength={100} value={value.tracking_number} onChange={e=>set({...value,tracking_number:e.target.value})}/></label><label className="wide">Примітка до замовлення<textarea maxLength={10000} value={value.notes} onChange={e=>set({...value,notes:e.target.value})}/></label></details></div>;
 }
 
 function BuyerPicker({selected,onSelect}:{selected:Row|null;onSelect:(value:Row|null)=>void}){
