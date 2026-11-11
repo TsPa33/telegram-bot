@@ -93,7 +93,7 @@ def collect(source, car, model, mapping, manufacturer_id=120, *, graph_only=Fals
         articles=articles, collection_complete=True, coverage='partial',
         observed_at=datetime.now(timezone.utc).isoformat(),
         image_status='not_exported' if graph_only else 'metadata_only',
-        source_scope='modification_prd_article_graph' if graph_only else 'enriched_article_snapshot'))
+        **({'source_scope':'modification_prd_article_graph'} if graph_only else {})))
 
 
 def load_upload(output, car_id, expected_sha, expected_coverage):
