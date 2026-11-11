@@ -61,7 +61,7 @@ const draft=(part:Row):LineDraft=>({part_id:part.part_id||part.id,vehicle_id:par
 function DraftTotals({lines}:{lines:LineDraft[]}){return <p className="order-totals">{Object.entries(draftAmounts(lines)).map(([currency,value])=><strong key={currency}>{money(value,currency)}</strong>)}</p>;}
 
 function AssemblyApproval({line,onConfirm}:{line:LineDraft;onConfirm:(value:Partial<LineDraft>)=>void}){
- const can=useCan(),[description,setDescription]=useState(''),[remainder,setRemainder]=useState(false);
+ const can=useCan(),[description,setDescription]=useState(line.assembly_description||''),[remainder,setRemainder]=useState(!!line.assembly_remainder);
  const check=useLoad(async()=>{
   if(!line.vehicle_id||!can('vehicles.view')||!can('inventory.view'))return null;
   const tree=await api(`/vehicles/${line.vehicle_id}/assemblies`);
