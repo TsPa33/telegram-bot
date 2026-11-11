@@ -108,7 +108,7 @@ test('reference-aligned details visually separate attached children and unlinked
  const tree=read('AssemblyTree.tsx');
  assert.match(tree,/assembly-children/);
  assert.match(tree,/Фізично приєднані/);
- assert.match(tree,/Компоненти дверей/);
+ assert.match(read('assemblyUnitCatalog.ts'),/Компоненти дверей/);
  assert.match(tree,/Довідковий склад · \{template.length\} типів/);
  assert.match(tree,/assemblyReferenceLines/);
  assert.match(tree,/Можлива складова|Окремо у плані/);
