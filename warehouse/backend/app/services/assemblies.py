@@ -211,6 +211,7 @@ def detach(db,account,vehicle,child):
     op=internal_stock(db,p,'receipt',1,account,'Відокремлено підтверджений компонент вузла')
     db.flush();edge.active=False;edge.detached_at=now();edge.detached_operation_id=op.id
     c.received_at=c.received_at or now();c.status='dismantled'
+    c.plan_v3={**(c.plan_v3 or {}),'assembly_reference_parent_id':edge.parent_item_id}
     for id in ancestors(child,edges):nodes[id].assembly_completeness='incomplete'
     record(db,account,c,'assembly_detach','Збережено історичний зв’язок із вузлом',before,after_extra={'former_parent_id':edge.parent_item_id})
     return dict(detached=True,part_id=p.id)
