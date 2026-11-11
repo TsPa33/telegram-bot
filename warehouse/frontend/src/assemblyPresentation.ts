@@ -64,3 +64,15 @@ export function manuallyReviewableDoorComponent(parent:AssemblyDisplayNode,compo
  if(p.position&&c.position&&p.position!==c.position)return false;
  return !sameDoorInstallation(parent,component);
 }
+
+/**
+ * Suggestions are separate, existing plan positions — NOT membership edges.
+ * Never use this list to infer stock, completeness, fitment or a physical assembly.
+ */
+export function suggestedDoorComponents<T extends AssemblyDisplayNode>(parent:T, rows:T[]):T[]{
+ const key=doorKey(parent);
+ if(!key)return [];
+ return rows.filter(row=>row.id!==parent.id&&!row.parent_id&&!row.consumed_operation_id&&!row.archived
+  &&isKnownDoorComponent(row)&&sameDoorInstallation(parent,row))
+ .sort((a,b)=>(a.name||'').localeCompare(b.name||'','uk')||String(a.id||'').localeCompare(String(b.id||'')));
+}
