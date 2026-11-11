@@ -31,6 +31,7 @@ jobs:
           --health-retries 20
     env:
       WAREHOUSE_TEST_DATABASE_URL: postgresql+psycopg://warehouse:testonly@127.0.0.1:5432/warehouse_assembly_test
+      WAREHOUSE_DATABASE_URL: postgresql+psycopg://warehouse:testonly@127.0.0.1:5432/warehouse_assembly_test
     defaults:
       run:
         working-directory: warehouse/backend
@@ -51,6 +52,11 @@ jobs:
             tests/test_orders.py \
             tests/test_issue502_checkout.py \
             tests/test_team.py \
+            tests/test_vin_intake.py \
+            tests/test_vin_normalize.py \
+            tests/test_universal_generator.py \
+            tests/test_sales_center.py \
+            tests/test_sales_workspace.py \
             2>&1 | tee "$RUNNER_TEMP/pr5-pytest.log"
       - name: Assert no unrecorded schema changes
         run: python -m alembic check
