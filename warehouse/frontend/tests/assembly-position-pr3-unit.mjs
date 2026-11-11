@@ -109,9 +109,9 @@ test('reference-aligned details visually separate attached children and unlinked
  assert.match(tree,/assembly-children/);
  assert.match(tree,/Фізично приєднані/);
  assert.match(tree,/Компоненти дверей/);
- assert.match(tree,/Типовий склад · \{template.length\} позицій/);
- assert.match(tree,/suggestedDoorComponents/);
- assert.match(tree,/Кандидат|Не включено/);
+ assert.match(tree,/Довідковий склад · \{template.length\} типів/);
+ assert.match(tree,/assemblyReferenceLines/);
+ assert.match(tree,/Можлива складова|Окремо у плані/);
  assert.match(tree,/preview\.memberships\?\.length/);
  assert.match(tree,/assembly-manage-shortcut/);
  const css=read('assembly-tree.css');
@@ -122,10 +122,10 @@ test('reference-aligned details visually separate attached children and unlinked
 
 test('door can expand with no physical children, arrow uses expandable not kids.length',()=>{
  const tree=read('AssemblyTree.tsx');
- assert.match(tree,/const expandable=kids\.length>0\|\|isGenericDoor\(node\)/);
+ assert.match(tree,/const expandable=kids\.length>0\|\|planned\.length>0\|\|!!unit/);
  assert.match(tree,/\{expandable\?\(expanded\?<ChevronDown size=\{16\}\/>:<ChevronRight size=\{16\}\/>\):<span\/>\}/);
- assert.match(tree,/if\(isGenericDoor\(node\)\)setOpen\(previous=>new Set\(\[\.\.\.previous,node\.id\]\)\)/);
- assert.match(tree,/template\.filter\(entry=>entry\.kind!=='physically_attached'\)/);
+ assert.match(tree,/if\(assemblyUnitFor\(node\)\)setOpen\(previous=>new Set\(\[\.\.\.previous,node\.id\]\)\)/);
+ assert.match(tree,/template\.filter\(entry=>entry\.kind!=='attached'\)/);
 });
 test('reference door template renders nine explicit unconfirmed components even without source fitment',()=>{
  const root=node('FL','front','left');
@@ -155,16 +155,17 @@ test('existing physical and exact source components retain their original IDs, n
  assert.equal(items.some(x=>x.linkedId===wrong.id),false);
 });
 
-test('level two is its own collapse control, and every type can become a managed plan item',()=>{
+test('independent constructive reference tier never creates a separate plan or stock item',()=>{
  const tree=read('AssemblyTree.tsx');
  assert.match(tree,/<details className="assembly-door-component-preview">/);
  assert.match(tree,/<summary className="assembly-component-preview-heading">/);
- assert.match(tree,/assembly-template-control/);
- assert.match(tree,/Додати до плану/);
- assert.match(tree,/addDoorComponentToPlan/);
- assert.match(tree,/\/assemblies\/door-plan-components/);
- assert.match(tree,/request_key:pendingTemplate\.current\.key/);
- assert.match(tree,/setOpen\(old=>new Set\(\[\.\.\.old,parent\.id\]\)\)/);
- assert.match(tree,/plan_parent_id/);
- assert.match(tree,/Відкрити керовану позицію плану/);
+ assert.match(tree,/Складові наведені для перевірки, окремо додавати їх не потрібно/);
+ assert.match(tree,/Окремі записи плану/);
+ assert.match(tree,/assemblyUnitFor/);
+ assert.match(tree,/assemblyReferenceLines/);
+ assert.match(tree,/planChildren/);
+ assert.doesNotMatch(tree,/addDoorComponentToPlan/);
+ assert.doesNotMatch(tree,/\/assemblies\/door-plan-components/);
+ assert.doesNotMatch(tree,/Додати до плану/);
+ assert.doesNotMatch(tree,/pendingTemplate/);
 });
