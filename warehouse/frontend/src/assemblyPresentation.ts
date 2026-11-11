@@ -19,8 +19,8 @@ export function installationAxes(node:AssemblyDisplayNode):PositionAxes{
  const storedSide=placement?.side==='left'||placement?.side==='right'?placement.side:null;
  const storedPosition=placement?.position==='front'||placement?.position==='rear'?placement.position:null;
  const text=(node.position||'').toLocaleLowerCase('uk');
- const textSide=uniqueAxis(text,/\b(?:лів\w*|left)\b/iu,/\b(?:прав\w*|right)\b/iu);
- const textPosition=uniqueEnd(text,/\b(?:передн\w*|front)\b/iu,/\b(?:задн\w*|rear)\b/iu);
+ const textSide=uniqueAxis(text,/лів[а-яіїєґ]*|left/iu,/прав[а-яіїєґ]*|right/iu);
+ const textPosition=uniqueEnd(text,/передн[а-яіїєґ]*|front/iu,/задн[а-яіїєґ]*|rear/iu);
  // Conflicting source fields are not resolved by guessing. Require manual review.
  return {side:storedSide&&textSide&&storedSide!==textSide?null:storedSide||textSide,
          position:storedPosition&&textPosition&&storedPosition!==textPosition?null:storedPosition||textPosition};
