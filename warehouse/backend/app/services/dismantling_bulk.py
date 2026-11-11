@@ -25,7 +25,8 @@ def eligibility(row,archived=False):
     if not present:
         blocked['dismantled']='Спочатку підтвердіть наявність на автомобілі'
         blocked['receipt']='Наявність на автомобілі не підтверджена'
-    elif row.status!='dismantled':blocked['receipt']='Потрібен фактичний демонтаж'
+    # Receipt explicitly confirms both physical dismantling and stock intake.
+    # In one transaction, execute() records dismantling before the existing receipt ledger.
     if row.status=='dismantled':blocked['dismantled']='Уже демонтовано'
     return blocked
 
@@ -66,9 +67,17 @@ def execute(db,v,who,data):
         lines={r.id:r for r in data.lines}
         if not set(eligible)<=lines.keys():raise HTTPException(409,'Для нових придатних позицій не підтверджено кількість. Перевірте підсумок знову')
         from app.services.dismantling import receipt
+        from app.services.inventory import snapshot,record
         updated=0
         for id in eligible:
             line=lines[id];r=targets[id]
+            # A receipt is an explicit user confirmation of actual dismantling.
+            # Keep the same audit trail and transaction as the stock receipt.
+            # Any failure rolls both changes back; no VIN-based auto-confirmation.
+            if r.status!='dismantled':
+                before=snapshot(r)
+                r.status='dismantled'
+                record(db,v.account_id,r,'dismantling_v3_decision','Фізичний демонтаж підтверджено разом із надходженням',before)
             updated+=int(receipt(db,r,SimpleNamespace(quantity=line.quantity,condition=line.condition,location=line.location,selling_price=line.selling_price),v.account_id))
             part_ids.append(r.part_id)
     else:
