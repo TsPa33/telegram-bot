@@ -2,502 +2,288 @@
 > carpot-warehouse@0.1.0 prebuild
 > node --test tests/readiness-head-unit.mjs tests/workshop-gate-unit.mjs tests/vehicle-directory-admin-unit.mjs tests/vehicle-brand-combobox-unit.mjs tests/settings-personal-r123-unit.mjs tests/statistics-r124-unit.mjs tests/catalogue-normalization-r14-unit.mjs tests/approved-layout-pr2-unit.mjs tests/assembly-position-pr3-unit.mjs tests/assembly-units-pr4-unit.mjs tests/assembly-split-pr5-unit.mjs tests/issue502-vin-plan-unit.mjs
 
-✔ source identity remains visible but does not occupy a large separate panel (1.265131ms)
-✔ the full source list and technical provenance are collapsed, not repeated above workbench (0.248787ms)
-✔ approved workbench keeps three predictable columns and selection-side inspector (0.302997ms)
-✔ quantity buttons edit a local draft without an HTTP request per click (0.340223ms)
-✔ an inspect refresh preserves selected card without calling select again (0.27714ms)
-✔ existing stock receipt, sale protections and confirm workflow remain wired (0.231812ms)
-✔ four separate door placements have stable identities and Ukrainian names (4.329621ms)
-✔ saved Cyrillic positions are useful without inventing VIN fitment (0.79173ms)
-✔ conflicting source location is not guessed (0.46013ms)
-✔ door grouping excludes boot hatch and individual components (0.585976ms)
-✔ source-position candidates are not guessed or auto-attached (0.919669ms)
-✔ UI grouping remains display-only; stock uses existing physical operations (1.310698ms)
-✔ package #3 never modifies stock quantities or adds unknown parts by display grouping (0.497586ms)
-✔ nested candidate preview reuses existing IDs and only evidence-matched placements (0.544525ms)
-✔ reference-aligned details visually separate attached children and unlinked candidates (1.768905ms)
-✔ door can expand with no physical children, arrow uses expandable not kids.length (1.300282ms)
-✔ reference door template renders nine explicit unconfirmed components even without source fitment (0.634999ms)
-✔ existing physical and exact source components retain their original IDs, no fabricated Parts (4.864682ms)
-✔ independent constructive reference tier never creates a separate plan or stock item (1.107417ms)
-✔ one physical unit is required; references alone cannot create receipts (1.14317ms)
-✔ physical split is a single atomic replay-protected backend command (0.229799ms)
-✔ condition and selection are explicit physical confirmations (0.320414ms)
-✔ stock and planned reference rows remain separated (0.301706ms)
-✔ after split the original inspector refreshes and inventory navigation remains (0.224381ms)
-✖ split UI stays accessible and does not auto-submit on checkbox choice (1.638311ms)
-✖ stocked recognized assembly always exposes split even when a secondary prerequisite fails (2.605301ms)
-✖ split entry is available before preview and gives a guarded loading/error state (0.272222ms)
-✔ 24 independently resaleable unit families are recognized without duplicating catalogue types (2.823294ms)
-✔ ordinary part types are not mistakenly treated as physical assemblies (0.474632ms)
-✔ a whole door, engine or gearbox has reference components but remains one original stock part (0.438849ms)
-✔ real physical children and separately saved plan items remain distinct and retain IDs (1.161407ms)
-✔ templates cannot generate a stock or plan operation and UI has no add-each-component action (1.140446ms)
-✔ reference components never count as real donor or stock inventory (0.631463ms)
-✔ bumper installation qualifiers identify the family, not a component or stock quantity (0.293874ms)
-✔ normalization review appears only inside existing platform-admin gated page (0.930986ms)
-✔ duplicate group browsing is paginated and retains individual category IDs (0.237741ms)
-✔ unapproved Ukrainian terms are never silently displayed as approved categories (0.232214ms)
-✔ review offers data-only CSV export, not any stock modification (0.164614ms)
-✔ free generation is outside collapsed modification controls (1.267864ms)
-✔ exactly one packaged Warehouse Alembic head (0.738071ms)
-✔ frontend readiness includes current packaged DB head: WorkshopDialogs.tsx (2.743565ms)
-✔ frontend readiness includes current packaged DB head: teamReadiness.ts (2.024392ms)
-✔ frontend readiness includes current packaged DB head: smartSearch.ts (1.437895ms)
-✔ personal Settings never displays catalogue imports or platform admin links (1.426479ms)
-✔ Settings are routed to every authenticated employee independently of role permissions (0.280735ms)
-✔ all user shortcuts are derived from real effective user permissions (0.266694ms)
-✔ password change is an authenticated API mutation with confirmation and forced relogin (0.287825ms)
-✔ no nested vertical scrollbars remain in statistics chart lists (1.610992ms)
-✔ finance is shown only under dedicated analytics financial permission (0.185475ms)
-✔ zero valuation is shown as unpriced only when price coverage is zero (0.147228ms)
-✔ sales periods are not misrepresented as stock snapshot filters (0.457887ms)
-✔ stock dashboard uses API data and no static example numbers (1.120476ms)
-✔ vehicle brand dropdown is not truncated at first 60 options (1.086586ms)
-✔ large dropdown tells user how many options exist (0.2169ms)
-✔ keyboard focus scrolls to selected entry (0.204753ms)
-✔ vehicle import is not exposed on customer donor listing (8.460787ms)
-✔ vehicle directory import is platform-admin catalogue tab (3.571479ms)
-✔ accept known sole head c7e49f2a118d (2.583649ms)
-✔ accept additive features c7e49f2a118d (0.412239ms)
-✔ reject status on c7e49f2a118d (0.335496ms)
-✔ reject version on c7e49f2a118d (0.127719ms)
-✔ reject stringVersion on c7e49f2a118d (0.158004ms)
-✔ reject minimum on c7e49f2a118d (0.190792ms)
-✔ reject futureMinimum on c7e49f2a118d (0.134078ms)
-✔ reject emptyHeads on c7e49f2a118d (0.105827ms)
-✔ reject multipleHeads on c7e49f2a118d (0.14206ms)
-✔ reject noFeatures on c7e49f2a118d (0.314344ms)
-✔ require actual_quick_sale_price on c7e49f2a118d (0.413231ms)
-✔ require ledger_sales_projection on c7e49f2a118d (0.102532ms)
-✔ require notes_compare_and_set on c7e49f2a118d (0.077694ms)
-✔ require inspection_patch on c7e49f2a118d (0.065868ms)
-✔ accept known sole head f5c84d31a620 (0.052217ms)
-✔ accept additive features f5c84d31a620 (0.053079ms)
-✔ reject status on f5c84d31a620 (0.071465ms)
-✔ reject version on f5c84d31a620 (0.15517ms)
-✔ reject stringVersion on f5c84d31a620 (0.069703ms)
-✔ reject minimum on f5c84d31a620 (0.056704ms)
-✔ reject futureMinimum on f5c84d31a620 (0.053319ms)
-✔ reject emptyHeads on f5c84d31a620 (0.070294ms)
-✔ reject multipleHeads on f5c84d31a620 (0.058957ms)
-✔ reject noFeatures on f5c84d31a620 (0.055362ms)
-✔ require actual_quick_sale_price on f5c84d31a620 (0.057665ms)
-✔ require ledger_sales_projection on f5c84d31a620 (0.054801ms)
-✔ require notes_compare_and_set on f5c84d31a620 (0.094961ms)
-✔ require inspection_patch on f5c84d31a620 (0.065076ms)
+✔ source identity remains visible but does not occupy a large separate panel (0.718473ms)
+✔ the full source list and technical provenance are collapsed, not repeated above workbench (0.130413ms)
+✔ approved workbench keeps three predictable columns and selection-side inspector (0.163371ms)
+✔ quantity buttons edit a local draft without an HTTP request per click (0.245473ms)
+✔ an inspect refresh preserves selected card without calling select again (0.232775ms)
+✔ existing stock receipt, sale protections and confirm workflow remain wired (0.172896ms)
+✔ four separate door placements have stable identities and Ukrainian names (1.854543ms)
+✔ saved Cyrillic positions are useful without inventing VIN fitment (0.372641ms)
+✔ conflicting source location is not guessed (0.248888ms)
+✔ door grouping excludes boot hatch and individual components (0.131564ms)
+✔ source-position candidates are not guessed or auto-attached (0.437828ms)
+✔ UI grouping remains display-only; stock uses existing physical operations (0.524936ms)
+✔ package #3 never modifies stock quantities or adds unknown parts by display grouping (0.239404ms)
+✔ nested candidate preview reuses existing IDs and only evidence-matched placements (0.345971ms)
+✔ reference-aligned details visually separate attached children and unlinked candidates (0.560499ms)
+✔ door can expand with no physical children, arrow uses expandable not kids.length (0.431538ms)
+✔ reference door template renders nine explicit unconfirmed components even without source fitment (0.249209ms)
+✔ existing physical and exact source components retain their original IDs, no fabricated Parts (2.547858ms)
+✔ independent constructive reference tier never creates a separate plan or stock item (1.112766ms)
+✔ one physical unit is required; references alone cannot create receipts (0.835085ms)
+✔ physical split is a single atomic replay-protected backend command (0.213035ms)
+✔ condition and selection are explicit physical confirmations (0.239734ms)
+✔ stock and planned reference rows remain separated (0.258122ms)
+✔ after split the original inspector refreshes and inventory navigation remains (0.186225ms)
+✔ split UI stays accessible and does not auto-submit on checkbox choice (0.150282ms)
+✔ stocked recognized assembly always exposes split even when a secondary prerequisite fails (0.252563ms)
+✔ split entry is available before preview and gives a guarded loading/error state (0.232594ms)
+✔ 24 independently resaleable unit families are recognized without duplicating catalogue types (2.491975ms)
+✔ ordinary part types are not mistakenly treated as physical assemblies (0.262928ms)
+✔ a whole door, engine or gearbox has reference components but remains one original stock part (0.360182ms)
+✔ real physical children and separately saved plan items remain distinct and retain IDs (0.793984ms)
+✔ templates cannot generate a stock or plan operation and UI has no add-each-component action (0.833963ms)
+✔ reference components never count as real donor or stock inventory (0.558165ms)
+✔ bumper installation qualifiers identify the family, not a component or stock quantity (0.818801ms)
+✔ normalization review appears only inside existing platform-admin gated page (2.013017ms)
+✔ duplicate group browsing is paginated and retains individual category IDs (0.268567ms)
+✔ unapproved Ukrainian terms are never silently displayed as approved categories (0.719214ms)
+✔ review offers data-only CSV export, not any stock modification (0.30408ms)
+✔ free generation is outside collapsed modification controls (1.055832ms)
+✔ exactly one packaged Warehouse Alembic head (0.847132ms)
+✔ frontend readiness includes current packaged DB head: WorkshopDialogs.tsx (3.060155ms)
+✔ frontend readiness includes current packaged DB head: teamReadiness.ts (1.033428ms)
+✔ frontend readiness includes current packaged DB head: smartSearch.ts (1.200405ms)
+✔ personal Settings never displays catalogue imports or platform admin links (0.786773ms)
+✔ Settings are routed to every authenticated employee independently of role permissions (0.164153ms)
+✔ all user shortcuts are derived from real effective user permissions (0.146987ms)
+✔ password change is an authenticated API mutation with confirmation and forced relogin (0.127659ms)
+✔ no nested vertical scrollbars remain in statistics chart lists (2.105624ms)
+✔ finance is shown only under dedicated analytics financial permission (0.313233ms)
+✔ zero valuation is shown as unpriced only when price coverage is zero (0.15581ms)
+✔ sales periods are not misrepresented as stock snapshot filters (0.138935ms)
+✔ stock dashboard uses API data and no static example numbers (0.10809ms)
+✔ vehicle brand dropdown is not truncated at first 60 options (2.250088ms)
+✔ large dropdown tells user how many options exist (0.267947ms)
+✔ keyboard focus scrolls to selected entry (0.166305ms)
+✔ vehicle import is not exposed on customer donor listing (5.01813ms)
+✔ vehicle directory import is platform-admin catalogue tab (2.499156ms)
+✔ accept known sole head c7e49f2a118d (2.543612ms)
+✔ accept additive features c7e49f2a118d (0.306424ms)
+✔ reject status on c7e49f2a118d (0.367343ms)
+✔ reject version on c7e49f2a118d (0.132807ms)
+✔ reject stringVersion on c7e49f2a118d (0.17583ms)
+✔ reject minimum on c7e49f2a118d (0.186125ms)
+✔ reject futureMinimum on c7e49f2a118d (0.164102ms)
+✔ reject emptyHeads on c7e49f2a118d (0.138835ms)
+✔ reject multipleHeads on c7e49f2a118d (0.170643ms)
+✔ reject noFeatures on c7e49f2a118d (0.201448ms)
+✔ require actual_quick_sale_price on c7e49f2a118d (0.204502ms)
+✔ require ledger_sales_projection on c7e49f2a118d (0.098406ms)
+✔ require notes_compare_and_set on c7e49f2a118d (0.102762ms)
+✔ require inspection_patch on c7e49f2a118d (0.065076ms)
+✔ accept known sole head f5c84d31a620 (0.046239ms)
+✔ accept additive features f5c84d31a620 (0.049864ms)
+✔ reject status on f5c84d31a620 (0.06746ms)
+✔ reject version on f5c84d31a620 (0.056594ms)
+✔ reject stringVersion on f5c84d31a620 (0.053019ms)
+✔ reject minimum on f5c84d31a620 (0.050595ms)
+✔ reject futureMinimum on f5c84d31a620 (0.048432ms)
+✔ reject emptyHeads on f5c84d31a620 (0.070524ms)
+✔ reject multipleHeads on f5c84d31a620 (0.057726ms)
+✔ reject noFeatures on f5c84d31a620 (0.0538ms)
+✔ require actual_quick_sale_price on f5c84d31a620 (0.052557ms)
+✔ require ledger_sales_projection on f5c84d31a620 (0.167398ms)
+✔ require notes_compare_and_set on f5c84d31a620 (0.058146ms)
+✔ require inspection_patch on f5c84d31a620 (0.056804ms)
 ✔ accept known sole head d86f21a90b34 (0.042092ms)
-✔ accept additive features d86f21a90b34 (0.051706ms)
-✔ reject status on d86f21a90b34 (0.051937ms)
-✔ reject version on d86f21a90b34 (0.086648ms)
-✔ reject stringVersion on d86f21a90b34 (0.194608ms)
-✔ reject minimum on d86f21a90b34 (0.109602ms)
-✔ reject futureMinimum on d86f21a90b34 (0.130433ms)
-✔ reject emptyHeads on d86f21a90b34 (0.281366ms)
-✔ reject multipleHeads on d86f21a90b34 (0.139897ms)
-✔ reject noFeatures on d86f21a90b34 (0.119878ms)
-✔ require actual_quick_sale_price on d86f21a90b34 (0.156131ms)
-✔ require ledger_sales_projection on d86f21a90b34 (0.164433ms)
-✔ require notes_compare_and_set on d86f21a90b34 (0.193596ms)
-✔ require inspection_patch on d86f21a90b34 (0.115941ms)
-✔ accept known sole head a73e05b9c842 (0.109241ms)
-✔ accept additive features a73e05b9c842 (0.144894ms)
-✔ reject status on a73e05b9c842 (0.16897ms)
-✔ reject version on a73e05b9c842 (0.1214ms)
-✔ reject stringVersion on a73e05b9c842 (2.121566ms)
-✔ reject minimum on a73e05b9c842 (0.131154ms)
-✔ reject futureMinimum on a73e05b9c842 (0.10868ms)
-✔ reject emptyHeads on a73e05b9c842 (0.129231ms)
-✔ reject multipleHeads on a73e05b9c842 (0.104735ms)
-✔ reject noFeatures on a73e05b9c842 (0.10155ms)
-✔ require actual_quick_sale_price on a73e05b9c842 (0.196781ms)
-✔ require ledger_sales_projection on a73e05b9c842 (0.127248ms)
-✔ require notes_compare_and_set on a73e05b9c842 (0.283419ms)
-✔ require inspection_patch on a73e05b9c842 (0.113929ms)
-✔ accept known sole head b94f62d18e07 (0.089903ms)
-✔ accept additive features b94f62d18e07 (0.202529ms)
-✔ reject status on b94f62d18e07 (0.305722ms)
-✔ reject version on b94f62d18e07 (0.117974ms)
-✔ reject stringVersion on b94f62d18e07 (0.140828ms)
-✔ reject minimum on b94f62d18e07 (0.11456ms)
-✔ reject futureMinimum on b94f62d18e07 (0.237711ms)
-✔ reject emptyHeads on b94f62d18e07 (0.112446ms)
-✔ reject multipleHeads on b94f62d18e07 (0.233365ms)
-✔ reject noFeatures on b94f62d18e07 (0.118145ms)
-✔ require actual_quick_sale_price on b94f62d18e07 (0.274847ms)
-✔ require ledger_sales_projection on b94f62d18e07 (0.27723ms)
-✔ require notes_compare_and_set on b94f62d18e07 (0.117664ms)
-✔ require inspection_patch on b94f62d18e07 (0.143913ms)
-✔ accept known sole head b8716962f6b8 (0.14888ms)
-✔ accept additive features b8716962f6b8 (0.208097ms)
-✔ reject status on b8716962f6b8 (0.124364ms)
-✔ reject version on b8716962f6b8 (0.109612ms)
-✔ reject stringVersion on b8716962f6b8 (0.264912ms)
-✔ reject minimum on b8716962f6b8 (0.170912ms)
-✔ reject futureMinimum on b8716962f6b8 (0.107639ms)
-✔ reject emptyHeads on b8716962f6b8 (0.113628ms)
-✔ reject multipleHeads on b8716962f6b8 (0.197852ms)
-✔ reject noFeatures on b8716962f6b8 (0.123483ms)
-✔ require actual_quick_sale_price on b8716962f6b8 (0.124655ms)
-✔ require ledger_sales_projection on b8716962f6b8 (0.133427ms)
-✔ require notes_compare_and_set on b8716962f6b8 (0.114539ms)
-✔ require inspection_patch on b8716962f6b8 (0.116783ms)
-✔ accept known sole head 021e8f6f220c (0.118655ms)
-✔ accept additive features 021e8f6f220c (0.125376ms)
-✔ reject status on 021e8f6f220c (0.264811ms)
-✔ reject version on 021e8f6f220c (0.111314ms)
-✔ reject stringVersion on 021e8f6f220c (0.10168ms)
-✔ reject minimum on 021e8f6f220c (0.112266ms)
-✔ reject futureMinimum on 021e8f6f220c (0.192545ms)
-✔ reject emptyHeads on 021e8f6f220c (0.253915ms)
-✔ reject multipleHeads on 021e8f6f220c (0.120317ms)
-✔ reject noFeatures on 021e8f6f220c (0.103784ms)
-✔ require actual_quick_sale_price on 021e8f6f220c (0.102882ms)
-✔ require ledger_sales_projection on 021e8f6f220c (0.35817ms)
-✔ require notes_compare_and_set on 021e8f6f220c (0.374163ms)
-✔ require inspection_patch on 021e8f6f220c (0.177382ms)
-✔ accept known sole head 41f9a2c87d10 (0.091295ms)
-✔ accept additive features 41f9a2c87d10 (0.299513ms)
-✔ reject status on 41f9a2c87d10 (0.197042ms)
-✔ reject version on 41f9a2c87d10 (0.214406ms)
-✔ reject stringVersion on 41f9a2c87d10 (0.169921ms)
-✔ reject minimum on 41f9a2c87d10 (0.286754ms)
-✔ reject futureMinimum on 41f9a2c87d10 (0.118786ms)
-✔ reject emptyHeads on 41f9a2c87d10 (0.119747ms)
-✔ reject multipleHeads on 41f9a2c87d10 (0.149141ms)
-✔ reject noFeatures on 41f9a2c87d10 (0.189941ms)
-✔ require actual_quick_sale_price on 41f9a2c87d10 (0.363928ms)
-✔ require ledger_sales_projection on 41f9a2c87d10 (0.117263ms)
-✔ require notes_compare_and_set on 41f9a2c87d10 (0.12166ms)
-✔ require inspection_patch on 41f9a2c87d10 (0.106097ms)
-✔ accept known sole head 5c7d9e1a320f (0.098836ms)
-✔ accept additive features 5c7d9e1a320f (0.084595ms)
-✔ reject status on 5c7d9e1a320f (0.10815ms)
-✔ reject version on 5c7d9e1a320f (0.13527ms)
-✔ reject stringVersion on 5c7d9e1a320f (0.132075ms)
-✔ reject minimum on 5c7d9e1a320f (0.106598ms)
-✔ reject futureMinimum on 5c7d9e1a320f (0.110994ms)
-✔ reject emptyHeads on 5c7d9e1a320f (0.16222ms)
-✔ reject multipleHeads on 5c7d9e1a320f (0.105466ms)
-✔ reject noFeatures on 5c7d9e1a320f (0.10194ms)
-✔ require actual_quick_sale_price on 5c7d9e1a320f (0.12867ms)
-✔ require ledger_sales_projection on 5c7d9e1a320f (0.152906ms)
-✔ require notes_compare_and_set on 5c7d9e1a320f (0.110032ms)
-✔ require inspection_patch on 5c7d9e1a320f (0.101269ms)
-✔ accept known sole head 76af12de4b90 (0.186125ms)
-✔ accept additive features 76af12de4b90 (0.109582ms)
-✔ reject status on 76af12de4b90 (0.105035ms)
-✔ reject version on 76af12de4b90 (0.170211ms)
-✔ reject stringVersion on 76af12de4b90 (0.105166ms)
-✔ reject minimum on 76af12de4b90 (0.123152ms)
-✔ reject futureMinimum on 76af12de4b90 (0.09453ms)
-✔ reject emptyHeads on 76af12de4b90 (0.105225ms)
-✔ reject multipleHeads on 76af12de4b90 (0.116032ms)
-✔ reject noFeatures on 76af12de4b90 (0.109161ms)
-✔ require actual_quick_sale_price on 76af12de4b90 (0.212274ms)
-✔ require ledger_sales_projection on 76af12de4b90 (0.175039ms)
-✔ require notes_compare_and_set on 76af12de4b90 (0.124253ms)
-✔ require inspection_patch on 76af12de4b90 (0.100398ms)
-✔ accept known sole head 84d2c6fa190b (0.148871ms)
-✔ accept additive features 84d2c6fa190b (0.159495ms)
-✔ reject status on 84d2c6fa190b (2.476917ms)
-✔ reject version on 84d2c6fa190b (0.068331ms)
-✔ reject stringVersion on 84d2c6fa190b (0.049223ms)
-✔ reject minimum on 84d2c6fa190b (0.044426ms)
-✔ reject futureMinimum on 84d2c6fa190b (0.041812ms)
-✔ reject emptyHeads on 84d2c6fa190b (0.038197ms)
-✔ reject multipleHeads on 84d2c6fa190b (0.082202ms)
-✔ reject noFeatures on 84d2c6fa190b (0.050424ms)
-✔ require actual_quick_sale_price on 84d2c6fa190b (0.04087ms)
-✔ require ledger_sales_projection on 84d2c6fa190b (0.038367ms)
-✔ require notes_compare_and_set on 84d2c6fa190b (0.035873ms)
-✔ require inspection_patch on 84d2c6fa190b (0.036304ms)
-✔ accept known sole head 95c3e7b12a04 (0.030936ms)
-✔ accept additive features 95c3e7b12a04 (0.031968ms)
-✔ reject status on 95c3e7b12a04 (0.038206ms)
-✔ reject version on 95c3e7b12a04 (0.036995ms)
-✔ reject stringVersion on 95c3e7b12a04 (0.037095ms)
-✔ reject minimum on 95c3e7b12a04 (0.076863ms)
-✔ reject futureMinimum on 95c3e7b12a04 (0.066439ms)
-✔ reject emptyHeads on 95c3e7b12a04 (0.050364ms)
-✔ reject multipleHeads on 95c3e7b12a04 (0.073829ms)
-✔ reject noFeatures on 95c3e7b12a04 (0.05409ms)
-✔ require actual_quick_sale_price on 95c3e7b12a04 (0.091225ms)
-✔ require ledger_sales_projection on 95c3e7b12a04 (0.052508ms)
-✔ require notes_compare_and_set on 95c3e7b12a04 (0.04075ms)
-✔ require inspection_patch on 95c3e7b12a04 (0.038367ms)
-✔ accept known sole head a6d94c72e310 (0.030375ms)
-✔ accept additive features a6d94c72e310 (0.094891ms)
-✔ reject status on a6d94c72e310 (0.12139ms)
-✔ reject version on a6d94c72e310 (0.081541ms)
-✔ reject stringVersion on a6d94c72e310 (0.052939ms)
-✔ reject minimum on a6d94c72e310 (0.040911ms)
-✔ reject futureMinimum on a6d94c72e310 (0.040329ms)
-✔ reject emptyHeads on a6d94c72e310 (0.039569ms)
-✔ reject multipleHeads on a6d94c72e310 (0.072547ms)
-✔ reject noFeatures on a6d94c72e310 (0.086257ms)
-✔ require actual_quick_sale_price on a6d94c72e310 (0.041411ms)
-✔ require ledger_sales_projection on a6d94c72e310 (0.069273ms)
-✔ require notes_compare_and_set on a6d94c72e310 (0.072857ms)
-✔ require inspection_patch on a6d94c72e310 (0.042794ms)
-✔ reject incomplete/unknown response null (0.117494ms)
-✔ reject incomplete/unknown response {} (0.04707ms)
-✔ reject incomplete/unknown response {"status":"ready","contract_version":7,"required_revision":"d86f21a90b34","database_revisions":["unknown"],"features":["actual_quick_sale_price","ledger_sales_projection","notes_compare_and_set","inspection_patch"]} (0.039268ms)
-✔ reject incomplete/unknown response {"status":"ready","contract_version":7,"required_revision":"d86f21a90b34","database_revisions":"b94f62d18e07","features":["actual_quick_sale_price","ledger_sales_projection","notes_compare_and_set","inspection_patch"]} (0.037255ms)
-✔ require status (0.120959ms)
-✔ require contract_version (0.080029ms)
-✔ require required_revision (0.057354ms)
-✔ require database_revisions (0.070925ms)
-✔ require features (0.044596ms)
-✔ propagate HTTP 401 (0.339122ms)
-✔ propagate HTTP 404 (0.494501ms)
-✔ propagate HTTP 503 (0.092717ms)
-✔ propagate network failure (0.147087ms)
+✔ accept additive features d86f21a90b34 (0.043995ms)
+✔ reject status on d86f21a90b34 (0.049393ms)
+✔ reject version on d86f21a90b34 (0.050344ms)
+✔ reject stringVersion on d86f21a90b34 (0.071435ms)
+✔ reject minimum on d86f21a90b34 (0.050054ms)
+✔ reject futureMinimum on d86f21a90b34 (0.050975ms)
+✔ reject emptyHeads on d86f21a90b34 (0.0544ms)
+✔ reject multipleHeads on d86f21a90b34 (0.052968ms)
+✔ reject noFeatures on d86f21a90b34 (0.048833ms)
+✔ require actual_quick_sale_price on d86f21a90b34 (0.104034ms)
+✔ require ledger_sales_projection on d86f21a90b34 (0.065707ms)
+✔ require notes_compare_and_set on d86f21a90b34 (0.103073ms)
+✔ require inspection_patch on d86f21a90b34 (0.060689ms)
+✔ accept known sole head a73e05b9c842 (0.087239ms)
+✔ accept additive features a73e05b9c842 (0.059047ms)
+✔ reject status on a73e05b9c842 (0.072747ms)
+✔ reject version on a73e05b9c842 (1.041039ms)
+✔ reject stringVersion on a73e05b9c842 (0.083904ms)
+✔ reject minimum on a73e05b9c842 (0.056604ms)
+✔ reject futureMinimum on a73e05b9c842 (0.050925ms)
+✔ reject emptyHeads on a73e05b9c842 (0.082462ms)
+✔ reject multipleHeads on a73e05b9c842 (0.048611ms)
+✔ reject noFeatures on a73e05b9c842 (0.044286ms)
+✔ require actual_quick_sale_price on a73e05b9c842 (0.050565ms)
+✔ require ledger_sales_projection on a73e05b9c842 (0.050845ms)
+✔ require notes_compare_and_set on a73e05b9c842 (0.046879ms)
+✔ require inspection_patch on a73e05b9c842 (0.044586ms)
+✔ accept known sole head b94f62d18e07 (0.037916ms)
+✔ accept additive features b94f62d18e07 (0.043214ms)
+✔ reject status on b94f62d18e07 (0.046499ms)
+✔ reject version on b94f62d18e07 (0.044545ms)
+✔ reject stringVersion on b94f62d18e07 (0.117734ms)
+✔ reject minimum on b94f62d18e07 (0.046568ms)
+✔ reject futureMinimum on b94f62d18e07 (0.043354ms)
+✔ reject emptyHeads on b94f62d18e07 (0.045337ms)
+✔ reject multipleHeads on b94f62d18e07 (0.055412ms)
+✔ reject noFeatures on b94f62d18e07 (0.044215ms)
+✔ require actual_quick_sale_price on b94f62d18e07 (0.045628ms)
+✔ require ledger_sales_projection on b94f62d18e07 (0.085436ms)
+✔ require notes_compare_and_set on b94f62d18e07 (0.082312ms)
+✔ require inspection_patch on b94f62d18e07 (0.078686ms)
+✔ accept known sole head b8716962f6b8 (0.143783ms)
+✔ accept additive features b8716962f6b8 (0.04746ms)
+✔ reject status on b8716962f6b8 (0.051446ms)
+✔ reject version on b8716962f6b8 (0.044265ms)
+✔ reject stringVersion on b8716962f6b8 (0.042163ms)
+✔ reject minimum on b8716962f6b8 (0.043684ms)
+✔ reject futureMinimum on b8716962f6b8 (0.082652ms)
+✔ reject emptyHeads on b8716962f6b8 (0.055001ms)
+✔ reject multipleHeads on b8716962f6b8 (0.081961ms)
+✔ reject noFeatures on b8716962f6b8 (0.097294ms)
+✔ require actual_quick_sale_price on b8716962f6b8 (0.071005ms)
+✔ require ledger_sales_projection on b8716962f6b8 (0.051536ms)
+✔ require notes_compare_and_set on b8716962f6b8 (0.045567ms)
+✔ require inspection_patch on b8716962f6b8 (0.051145ms)
+✔ accept known sole head 021e8f6f220c (0.096964ms)
+✔ accept additive features 021e8f6f220c (0.062062ms)
+✔ reject status on 021e8f6f220c (0.140848ms)
+✔ reject version on 021e8f6f220c (0.056163ms)
+✔ reject stringVersion on 021e8f6f220c (0.04727ms)
+✔ reject minimum on 021e8f6f220c (0.044196ms)
+✔ reject futureMinimum on 021e8f6f220c (0.08771ms)
+✔ reject emptyHeads on 021e8f6f220c (0.049613ms)
+✔ reject multipleHeads on 021e8f6f220c (0.042653ms)
+✔ reject noFeatures on 021e8f6f220c (0.042634ms)
+✔ require actual_quick_sale_price on 021e8f6f220c (0.044857ms)
+✔ require ledger_sales_projection on 021e8f6f220c (0.073569ms)
+✔ require notes_compare_and_set on 021e8f6f220c (0.060379ms)
+✔ require inspection_patch on 021e8f6f220c (0.049443ms)
+✔ accept known sole head 41f9a2c87d10 (0.038627ms)
+✔ accept additive features 41f9a2c87d10 (0.037736ms)
+✔ reject status on 41f9a2c87d10 (0.075261ms)
+✔ reject version on 41f9a2c87d10 (0.046499ms)
+✔ reject stringVersion on 41f9a2c87d10 (0.041471ms)
+✔ reject minimum on 41f9a2c87d10 (0.042874ms)
+✔ reject futureMinimum on 41f9a2c87d10 (0.045758ms)
+✔ reject emptyHeads on 41f9a2c87d10 (0.037325ms)
+✔ reject multipleHeads on 41f9a2c87d10 (0.041011ms)
+✔ reject noFeatures on 41f9a2c87d10 (0.043724ms)
+✔ require actual_quick_sale_price on 41f9a2c87d10 (0.042313ms)
+✔ require ledger_sales_projection on 41f9a2c87d10 (0.041862ms)
+✔ require notes_compare_and_set on 41f9a2c87d10 (0.043144ms)
+✔ require inspection_patch on 41f9a2c87d10 (0.042442ms)
+✔ accept known sole head 5c7d9e1a320f (0.042463ms)
+✔ accept additive features 5c7d9e1a320f (0.063173ms)
+✔ reject status on 5c7d9e1a320f (0.044265ms)
+✔ reject version on 5c7d9e1a320f (0.042763ms)
+✔ reject stringVersion on 5c7d9e1a320f (0.042773ms)
+✔ reject minimum on 5c7d9e1a320f (0.069964ms)
+✔ reject futureMinimum on 5c7d9e1a320f (0.049754ms)
+✔ reject emptyHeads on 5c7d9e1a320f (0.041712ms)
+✔ reject multipleHeads on 5c7d9e1a320f (0.041612ms)
+✔ reject noFeatures on 5c7d9e1a320f (0.040921ms)
+✔ require actual_quick_sale_price on 5c7d9e1a320f (0.042403ms)
+✔ require ledger_sales_projection on 5c7d9e1a320f (0.043605ms)
+✔ require notes_compare_and_set on 5c7d9e1a320f (0.042963ms)
+✔ require inspection_patch on 5c7d9e1a320f (0.043935ms)
+✔ accept known sole head 76af12de4b90 (0.035783ms)
+✔ accept additive features 76af12de4b90 (0.043324ms)
+✔ reject status on 76af12de4b90 (0.043184ms)
+✔ reject version on 76af12de4b90 (0.043014ms)
+✔ reject stringVersion on 76af12de4b90 (0.04757ms)
+✔ reject minimum on 76af12de4b90 (0.041482ms)
+✔ reject futureMinimum on 76af12de4b90 (0.042443ms)
+✔ reject emptyHeads on 76af12de4b90 (0.041722ms)
+✔ reject multipleHeads on 76af12de4b90 (0.042112ms)
+✔ reject noFeatures on 76af12de4b90 (0.087961ms)
+✔ require actual_quick_sale_price on 76af12de4b90 (0.08778ms)
+✔ require ledger_sales_projection on 76af12de4b90 (0.049824ms)
+✔ require notes_compare_and_set on 76af12de4b90 (0.055242ms)
+✔ require inspection_patch on 76af12de4b90 (0.045728ms)
+✔ accept known sole head 84d2c6fa190b (0.037315ms)
+✔ accept additive features 84d2c6fa190b (0.036283ms)
+✔ reject status on 84d2c6fa190b (0.040991ms)
+✔ reject version on 84d2c6fa190b (0.094811ms)
+✔ reject stringVersion on 84d2c6fa190b (0.050996ms)
+✔ reject minimum on 84d2c6fa190b (0.042072ms)
+✔ reject futureMinimum on 84d2c6fa190b (0.038167ms)
+✔ reject emptyHeads on 84d2c6fa190b (0.038106ms)
+✔ reject multipleHeads on 84d2c6fa190b (0.036484ms)
+✔ reject noFeatures on 84d2c6fa190b (0.036995ms)
+✔ require actual_quick_sale_price on 84d2c6fa190b (0.037616ms)
+✔ require ledger_sales_projection on 84d2c6fa190b (0.036204ms)
+✔ require notes_compare_and_set on 84d2c6fa190b (0.037496ms)
+✔ require inspection_patch on 84d2c6fa190b (0.035633ms)
+✔ accept known sole head 95c3e7b12a04 (0.030535ms)
+✔ accept additive features 95c3e7b12a04 (0.029935ms)
+✔ reject status on 95c3e7b12a04 (0.035442ms)
+✔ reject version on 95c3e7b12a04 (0.036414ms)
+✔ reject stringVersion on 95c3e7b12a04 (0.036885ms)
+✔ reject minimum on 95c3e7b12a04 (0.073669ms)
+✔ reject futureMinimum on 95c3e7b12a04 (0.056574ms)
+✔ reject emptyHeads on 95c3e7b12a04 (0.037426ms)
+✔ reject multipleHeads on 95c3e7b12a04 (0.035312ms)
+✔ reject noFeatures on 95c3e7b12a04 (0.048202ms)
+✔ require actual_quick_sale_price on 95c3e7b12a04 (0.070094ms)
+✔ require ledger_sales_projection on 95c3e7b12a04 (0.083894ms)
+✔ require notes_compare_and_set on 95c3e7b12a04 (0.045758ms)
+✔ require inspection_patch on 95c3e7b12a04 (0.037756ms)
+✔ accept known sole head a6d94c72e310 (0.029894ms)
+✔ accept additive features a6d94c72e310 (0.070965ms)
+✔ reject status on a6d94c72e310 (0.090914ms)
+✔ reject version on a6d94c72e310 (0.078466ms)
+✔ reject stringVersion on a6d94c72e310 (0.039709ms)
+✔ reject minimum on a6d94c72e310 (0.061641ms)
+✔ reject futureMinimum on a6d94c72e310 (0.042293ms)
+✔ reject emptyHeads on a6d94c72e310 (0.039719ms)
+✔ reject multipleHeads on a6d94c72e310 (0.071536ms)
+✔ reject noFeatures on a6d94c72e310 (0.045246ms)
+✔ require actual_quick_sale_price on a6d94c72e310 (0.037044ms)
+✔ require ledger_sales_projection on a6d94c72e310 (0.034951ms)
+✔ require notes_compare_and_set on a6d94c72e310 (0.035172ms)
+✔ require inspection_patch on a6d94c72e310 (0.035723ms)
+✔ reject incomplete/unknown response null (0.097794ms)
+✔ reject incomplete/unknown response {} (0.044947ms)
+✔ reject incomplete/unknown response {"status":"ready","contract_version":7,"required_revision":"d86f21a90b34","database_revisions":["unknown"],"features":["actual_quick_sale_price","ledger_sales_projection","notes_compare_and_set","inspection_patch"]} (0.036474ms)
+✔ reject incomplete/unknown response {"status":"ready","contract_version":7,"required_revision":"d86f21a90b34","database_revisions":"b94f62d18e07","features":["actual_quick_sale_price","ledger_sales_projection","notes_compare_and_set","inspection_patch"]} (0.035993ms)
+✔ require status (0.174868ms)
+✔ require contract_version (0.134819ms)
+✔ require required_revision (0.079427ms)
+✔ require database_revisions (0.045508ms)
+✔ require features (0.041501ms)
+✔ propagate HTTP 401 (0.275908ms)
+✔ propagate HTTP 404 (0.128821ms)
+✔ propagate HTTP 503 (0.053879ms)
+✔ propagate network failure (0.113178ms)
 ℹ tests 252
 ℹ suites 0
-ℹ pass 249
-ℹ fail 3
+ℹ pass 252
+ℹ fail 0
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 1087.54002
+ℹ duration_ms 890.940968
 
-✖ failing tests:
+> carpot-warehouse@0.1.0 build
+> tsc -b && vite build
 
-test at tests/assembly-split-pr5-unit.mjs:49:1
-✖ split UI stays accessible and does not auto-submit on checkbox choice (1.638311ms)
-  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /<details className="assembly-physical-split">/. Input:
-  
-  "import {Link} from 'react-router-dom';\n" +
-    "import {useContext,useEffect,useRef,useState,type ReactNode} from 'react';\n" +
-    "import {api,type Row} from './api';\n" +
-    "import {TeamIdentity,useCan} from './permissions';\n" +
-    "import {Box,Check,ChevronDown,ChevronRight,Layers,Minus,Plus,Search,Settings2,TriangleAlert,X,MoreHorizontal,List,Network,DoorOpen,Cog,Zap,Armchair,Wind,ShieldCheck,Lightbulb,Disc,Settings} from 'lucide-react';\n" +
-    "import {usePlanBulk,BulkStatus,BulkActionBar,GuidedReceipt,SelectionCheck} from './DismantlingBulk';\n" +
-    "import {assemblyLabel,doorKey,doorOrder,isGenericDoor,isKnownDoorComponent,sameDoorInstallation,manuallyReviewableDoorComponent} from './assemblyPresentation';\n" +
-    "import {assemblyUnitFor,assemblyReferenceLines} from './assemblyUnitCatalog';\n" +
-    "import './assembly-tree.css';\n" +
-    '\n' +
-    '/** Optional inline view over existing donor placements, never a stock generator. */\n' +
-    'export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;onReady?:(enabled:boolean)=>void;revision?:number}) {\n' +
-    ' const can=useCan(),who=useContext(TeamIdentity);\n' +
-    ' const scope=JSON.stringify([who?.id,who?.workspace_account_id,vehicle.id]);\n' +
-    " const [assemblyEnabled,setAssemblyEnabled]=useState(false),[enabled,setEnabled]=useState(false),[data,setData]=useState<Row|null>(null),[open,setOpen]=useState<Set<string>>(new Set()),[q,setQ]=useState(''),[limit,setLimit]=useState(50);\n" +
-    " const [selected,setSelected]=useState<Row|null>(null),[preview,setPreview]=useState<Row|null>(null),[error,setError]=useState(''),[commandBusy,setBusy]=useState(false),[physical,setPhysical]=useState(false),[child,setChild]=useState(''),[legacyPart,setLegacyPart]=useState('');\n" +
-    ' const [doorGroupOpen,setDoorGroupOpen]=useState(true),[manualComponents,setManualComponents]=useState(false),[assemblyToolsOpen,setAssemblyToolsOpen]=useState(false);\n' +
-    ' const [splitSelected,setSplitSelected]=useState<number[]>([]),[splitConditions,setSplitConditions]=useState<Record<number,string>>({}),[splitConfirmed,setSplitConfirmed]=useState(false),[splitResult,setSplitResult]=useState<Row|null>(null);\n' +
-    ' const splitPending=useRef<{fingerprint:string;key:string}|null>(null);\n' +
-    " const [price,setPrice]=useState(''),[currency,setCurrency]=useState('UAH'),[description,setDescription]=useState(''),[remainder,setRemainder]=useState(false),[confirmSale,setConfirmSale]=useState(false),[confirmReturn,setConfirmReturn]=useState(false);\n" +
-    " const [photo,setPhoto]=useState('');\n" +
-    ' const [reference,setReference]=useState<string|null>(null);\n' +
-    " useEffect(()=>{let active=true;setPhoto('');if(selected?.part_id)api(`/parts/${selected.part_id}/photos`).then(rows=>{if(active)setPhoto(rows[0]?.url||'')}).catch(()=>{});return()=>{active=false}},[selected?.part_id]);\n" +
-    " const [category,setCategory]=useState(''),[status,setStatus]=useState('all'),[mode,setMode]=useState('tree'),[note,setNote]=useState('');\n" +
-    ' const inspectorRef=useRef<HTMLDivElement>(null);\n' +
-    ' const [quantityDraft,setQuantityDraft]=useState<Record<string,number>>({});\n' +
-    ' const selectedId=useRef<string|null>(null);\n' +
-    " useEffect(()=>{if(selected&&preview&&window.innerWidth<=650){inspectorRef.current?.focus({preventScroll:true});inspectorRef.current?.scrollIntoView({block:'start',behavior:'instant'});}},[selected?.id,preview?.token]);\n" +
-    ' const previewEpoch=useRef(0);\n' +
-    ' const epoch=useRef(0),pending=useRef<{fingerprint:string;key:string}|null>(null),writing=useRef(false);\n' +
-    ' const [bulkPlan,setBulkPlan]=useState<Row|null>(null),[checkedIds,setCheckedIds]=useState<string[]>([]),[receiptOpen,setReceiptOpen]=useState(false),[toolbarHeight,setToolbarHeight]=useState(0);\n' +
-    ' const planPath=`/vehicles/${vehicle.id}/dismantling-v3`;\n' +
-    " const bulk=usePlanBulk({path:planPath,scope:{actor:String(who?.id||''),workspace:String(who?.workspace_account_id||who?.id||''),vehicle:String(vehicle.id)},onLoad:()=>load(),onSelection:setCheckedIds,onComplete:()=>{setReceiptOpen(false);window.dispatchEvent(new Event('warehouse:inventory-changed'));}});\n" +
-    ' const busy=commandBusy||bulk.busy||!!bulk.intent;\n' +
-    " const editable=can('dismantling.manage')&&can('inventory.edit')&&can('inventory.adjust_quantity');\n" +
-    ' async function load(ticket=epoch.current) {\n' +
-    '  const result=await api(`/vehicles/${vehicle.id}/assemblies`);\n' +
-    "  const managed=can('catalog.view')?await api(planPath):null;\n" +
-    '  if(ticket===epoch.current){setData(result);setBulkPlan(managed);setCheckedIds(ids=>ids.filter(id=>managed?.items.some((n:Row)=>n.id===id&&n.selectable)));}return result;\n' +
-    ' }\n' +
-    ' useEffect(()=>{\n' +
-    "  const ticket=++epoch.current;setData(null);setBulkPlan(null);setCheckedIds([]);setReceiptOpen(false);setEnabled(false);setCategory('');setStatus('all');setMode('tree');setSelected(null);selectedId.current=null;setPreview(null);setQuantityDraft({});setDoorGroupOpen(true);setManualComponents(false);setAssemblyToolsOpen(false);setError('');setOpen(new Set());setQ('');setLimit(50);pending.current=null;splitPending.current=null;setSplitSelected([]);setSplitConditions({});setSplitConfirmed(false);setSplitResult(null);writing.current=false;setBusy(false);\n" +
-    "  api(`/vehicles/${vehicle.id}/assemblies/readiness`).then(async r=>{if(ticket!==epoch.current)return;setAssemblyEnabled(r.enabled);const ready=r.workspace_enabled??r.enabled;setEnabled(ready);onReady?.(ready&&can('inventory.view'));if(ready&&can('inventory.view'))await load(ticket)}).catch(e=>{if(ticket===epoch.current){setError(e.message)}});\n" +
-    '  return()=>{epoch.current++};\n' +
-    ' },[scope,revision]);\n' +
-    ' async function select(node:Row) {\n' +
-    "  const request=++previewEpoch.current;const ticket=epoch.current;selectedId.current=node.id;setSelected(node);setReference(null);if(assemblyUnitFor(node))setOpen(previous=>new Set([...previous,node.id]));setNote(node.note||'');setPreview(null);setPhysical(false);setConfirmSale(false);setConfirmReturn(false);setDescription('');setChild('');setManualComponents(false);setAssemblyToolsOpen(false);setSplitSelected([]);setSplitConditions({});setSplitConfirmed(false);setSplitResult(null);setError('');\n" +
-    '  try{const value=await api(`/vehicles/${vehicle.id}/assemblies/${node.id}/preview`);if(ticket===epoch.current&&request===previewEpoch.current){\n' +
-    '    setPreview(value);\n' +
-    '    const root=value.items.find((i:Row)=>i.item_id===node.id);\n' +
-    "    if(root){const completeness=value.incomplete&&(root.completeness!=null||value.items.length>1)?'incomplete':root.completeness;\n" +
-    '     setSelected(old=>old?.id===node.id?{...old,completeness}:old);\n' +
-    '     setData(old=>old?{...old,items:old.items.map((i:Row)=>i.id===node.id?{...i,completeness}:i)}:old);\n' +
-    '    }\n' +
-    '   }}catch(e){if(ticket===epoch.current)setError((e as Error).message)}\n' +
-    ' }\n' +
-    ' async function send(action:string,body:Row,part?:string):Promise<boolean> {\n' +
-    "  if(writing.current||bulk.busy||bulk.intent)return false;writing.current=true;setBusy(true);setError('');const ticket=epoch.current;\n" +
-    '  const fingerprint=JSON.stringify([scope,action,body,part]);\n' +
-    '  if(pending.current?.fingerprint!==fingerprint)pending.current={fingerprint,key:crypto.randomUUID()};\n' +
-    '  try{\n' +
-    "   await api(part?`/parts/${part}/operations`:`/vehicles/${vehicle.id}/assemblies`,'POST',{...body,request_key:pending.current.key,...(!part?{action}: {})});\n" +
-    '   if(ticket!==epoch.current)return false;\n' +
-    "   pending.current=null;const fresh=await load(ticket);if(action==='inspect'){\n" +
-    '    const node=fresh.items.find((n:Row)=>n.id===body.item_id);\n' +
-    '    if(node&&selectedId.current===node.id){\n' +
-    '      setSelected(node);\n' +
-    '      try{const next=await api(`/vehicles/${vehicle.id}/assemblies/${node.id}/preview`);if(ticket===epoch.current&&selectedId.current===node.id)setPreview(next);}catch(e){setError((e as Error).message)}\n' +
-    '    }\n' +
-    "   }else{selectedId.current=null;setPreview(null);setSelected(null);}window.dispatchEvent(new Event('warehouse:inventory-changed'));return true;\n" +
-    '  }catch(e){if(ticket===epoch.current)setError((e as Error).message);return false}finally{if(ticket===epoch.current){writing.current=false;setBusy(false)}}\n' +
-    ' }\n' +
-    ` if(!enabled||!can('inventory.view'))return error?<p role="alert">{error}</p>:null;\n` +
-    " if(!data)return <p role={error?'alert':'status'}>{error||'Завантажуємо фізичний склад…'}</p>;\n" +
-    ' const items:Row[]=data.items||[],byId=new Map(items.map(n=>[n.id,n])),children=new Map<string,Row[]>(),planChildren=new Map<string,Row[]>();\n' +
-    ' items.forEach(n=>{if(n.parent_id)children.set(n.parent_id,[...(children.get(n.parent_id)||[]),n]);else if(n.plan_parent_id&&byId.has(n.plan_parent_id))planChildren.set(n.plan_parent_id,[...(planChildren.get(n.plan_parent_id)||[]),n])});\n' +
-    " children.forEach(rows=>rows.sort((a,b)=>String(a.name).localeCompare(String(b.name),'uk',{numeric:true})));\n" +
-    " planChildren.forEach(rows=>rows.sort((a,b)=>String(a.name).localeCompare(String(b.name),'uk',{numeric:true})));\n" +
-    " const categories=[...new Set(items.map(n=>String(n.category||'Інші деталі')))];\n" +
-    ' function icon(name:string){const Icon=/двер/i.test(name)?DoorOpen:/двиг|трансм/i.test(name)?Cog:/електр/i.test(name)?Zap:/салон|інтер/i.test(name)?Armchair:/клімат/i.test(name)?Wind:/безпек/i.test(name)?ShieldCheck:/освіт/i.test(name)?Lightbulb:/гальм/i.test(name)?Disc:/кермов|підвіск/i.test(name)?Settings:Box;return <Icon size={20} strokeWidth={1.6}/>;}\n' +
-    " const checked=items.filter(n=>['present','damaged'].includes(n.presence)).length,attention=items.filter(n=>['unchecked','damaged','absent'].includes(n.presence)||n.completeness==='incomplete'||n.category==='Потребує уточнення').length,stocked=items.filter(n=>n.part_id&&!n.parent_id&&!n.consumed_operation_id&&!n.archived&&n.quantity>0).length;\n" +
-    " // Never hide a recognized assembly's split workflow due to a permission or stock guard.\n" +
-    ' // A visible, precise reason is preferable to silently removing the action.\n' +
-    " const splitBlockReason=!selected?''\n" +
-    "  :!selected.part_id?'Спочатку оприбуткуйте вузол на склад.'\n" +
-    '  :Number(selected.quantity)!==1?`Для розбору потрібен один фізичний вузол. Зараз у цій позиції: ${selected.quantity} шт. Спочатку звірте й виділіть конкретну фізичну одиницю без зміни загального залишку.`\n' +
-    "  :selected.parent_id?'Цей компонент входить до іншого вузла. Спочатку відокремте його.'\n" +
-    '  :selected.consum'... 32603 more characters
-  
-      at TestContext.<anonymous> (file:///workspace/carpot-502/warehouse/frontend/tests/assembly-split-pr5-unit.mjs:50:9)
-      at Test.runInAsyncScope (node:async_hooks:227:14)
-      at Test.run (node:internal/test_runner/test:1382:25)
-      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
-      at Test.postRun (node:internal/test_runner/test:1522:19)
-      at Test.run (node:internal/test_runner/test:1447:12)
-      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
-    generatedMessage: true,
-    code: 'ERR_ASSERTION',
-    actual: 'import {Link} from \'react-router-dom\';\nimport {useContext,useEffect,useRef,useState,type ReactNode} from \'react\';\nimport {api,type Row} from \'./api\';\nimport {TeamIdentity,useCan} from \'./permissions\';\nimport {Box,Check,ChevronDown,ChevronRight,Layers,Minus,Plus,Search,Settings2,TriangleAlert,X,MoreHorizontal,List,Network,DoorOpen,Cog,Zap,Armchair,Wind,ShieldCheck,Lightbulb,Disc,Settings} from \'lucide-react\';\nimport {usePlanBulk,BulkStatus,BulkActionBar,GuidedReceipt,SelectionCheck} from \'./DismantlingBulk\';\nimport {assemblyLabel,doorKey,doorOrder,isGenericDoor,isKnownDoorComponent,sameDoorInstallation,manuallyReviewableDoorComponent} from \'./assemblyPresentation\';\nimport {assemblyUnitFor,assemblyReferenceLines} from \'./assemblyUnitCatalog\';\nimport \'./assembly-tree.css\';\n\n/** Optional inline view over existing donor placements, never a stock generator. */\nexport default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;onReady?:(enabled:boolean)=>void;revision?:number}) {\n const can=useCan(),who=useContext(TeamIdentity);\n const scope=JSON.stringify([who?.id,who?.workspace_account_id,vehicle.id]);\n const [assemblyEnabled,setAssemblyEnabled]=useState(false),[enabled,setEnabled]=useState(false),[data,setData]=useState<Row|null>(null),[open,setOpen]=useState<Set<string>>(new Set()),[q,setQ]=useState(\'\'),[limit,setLimit]=useState(50);\n const [selected,setSelected]=useState<Row|null>(null),[preview,setPreview]=useState<Row|null>(null),[error,setError]=useState(\'\'),[commandBusy,setBusy]=useState(false),[physical,setPhysical]=useState(false),[child,setChild]=useState(\'\'),[legacyPart,setLegacyPart]=useState(\'\');\n const [doorGroupOpen,setDoorGroupOpen]=useState(true),[manualComponents,setManualComponents]=useState(false),[assemblyToolsOpen,setAssemblyToolsOpen]=useState(false);\n const [splitSelected,setSplitSelected]=useState<number[]>([]),[splitConditions,setSplitConditions]=useState<Record<number,string>>({}),[splitConfirmed,setSplitConfirmed]=useState(false),[splitResult,setSplitResult]=useState<Row|null>(null);\n const splitPending=useRef<{fingerprint:string;key:string}|null>(null);\n const [price,setPrice]=useState(\'\'),[currency,setCurrency]=useState(\'UAH\'),[description,setDescription]=useState(\'\'),[remainder,setRemainder]=useState(false),[confirmSale,setConfirmSale]=useState(false),[confirmReturn,setConfirmReturn]=useState(false);\n const [photo,setPhoto]=useState(\'\');\n const [reference,setReference]=useState<string|null>(null);\n useEffect(()=>{let active=true;setPhoto(\'\');if(selected?.part_id)api(`/parts/${selected.part_id}/photos`).then(rows=>{if(active)setPhoto(rows[0]?.url||\'\')}).catch(()=>{});return()=>{active=false}},[selected?.part_id]);\n const [category,setCategory]=useState(\'\'),[status,setStatus]=useState(\'all\'),[mode,setMode]=useState(\'tree\'),[note,setNote]=useState(\'\');\n const inspectorRef=useRef<HTMLDivElement>(null);\n const [quantityDraft,setQuantityDraft]=useState<Record<string,number>>({});\n const selectedId=useRef<string|null>(null);\n useEffect(()=>{if(selected&&preview&&window.innerWidth<=650){inspectorRef.current?.focus({preventScroll:true});inspectorRef.current?.scrollIntoView({block:\'start\',behavior:\'instant\'});}},[selected?.id,preview?.token]);\n const previewEpoch=useRef(0);\n const epoch=useRef(0),pending=useRef<{fingerprint:string;key:string}|null>(null),writing=useRef(false);\n const [bulkPlan,setBulkPlan]=useState<Row|null>(null),[checkedIds,setCheckedIds]=useState<string[]>([]),[receiptOpen,setReceiptOpen]=useState(false),[toolbarHeight,setToolbarHeight]=useState(0);\n const planPath=`/vehicles/${vehicle.id}/dismantling-v3`;\n const bulk=usePlanBulk({path:planPath,scope:{actor:String(who?.id||\'\'),workspace:String(who?.workspace_account_id||who?.id||\'\'),vehicle:String(vehicle.id)},onLoad:()=>load(),onSelection:setCheckedIds,onComplete:()=>{setReceiptOpen(false);window.dispatchEvent(new Event(\'warehouse:inventory-changed\'));}});\n const busy=commandBusy||bulk.busy||!!bulk.intent;\n const editable=can(\'dismantling.manage\')&&can(\'inventory.edit\')&&can(\'inventory.adjust_quantity\');\n async function load(ticket=epoch.current) {\n  const result=await api(`/vehicles/${vehicle.id}/assemblies`);\n  const managed=can(\'catalog.view\')?await api(planPath):null;\n  if(ticket===epoch.current){setData(result);setBulkPlan(managed);setCheckedIds(ids=>ids.filter(id=>managed?.items.some((n:Row)=>n.id===id&&n.selectable)));}return result;\n }\n useEffect(()=>{\n  const ticket=++epoch.current;setData(null);setBulkPlan(null);setCheckedIds([]);setReceiptOpen(false);setEnabled(false);setCategory(\'\');setStatus(\'all\');setMode(\'tree\');setSelected(null);selectedId.current=null;setPreview(null);setQuantityDraft({});setDoorGroupOpen(true);setManualComponents(false);setAssemblyToolsOpen(false);setError(\'\');setOpen(new Set());setQ(\'\');setLimit(50);pending.current=null;splitPending.current=null;setSplitSelected([]);setSplitConditions({});setSplitConfirmed(false);setSplitResult(null);writing.current=false;setBusy(false);\n  api(`/vehicles/${vehicle.id}/assemblies/readiness`).then(async r=>{if(ticket!==epoch.current)return;setAssemblyEnabled(r.enabled);const ready=r.workspace_enabled??r.enabled;setEnabled(ready);onReady?.(ready&&can(\'inventory.view\'));if(ready&&can(\'inventory.view\'))await load(ticket)}).catch(e=>{if(ticket===epoch.current){setError(e.message)}});\n  return()=>{epoch.current++};\n },[scope,revision]);\n async function select(node:Row) {\n  const request=++previewEpoch.current;const ticket=epoch.current;selectedId.current=node.id;setSelected(node);setReference(null);if(assemblyUnitFor(node))setOpen(previous=>new Set([...previous,node.id]));setNote(node.note||\'\');setPreview(null);setPhysical(false);setConfirmSale(false);setConfirmReturn(false);setDescription(\'\');setChild(\'\');setManualComponents(false);setAssemblyToolsOpen(false);setSplitSelected([]);setSplitConditions({});setSplitConfirmed(false);setSplitResult(null);setError(\'\');\n  try{const value=await api(`/vehicles/${vehicle.id}/assemblies/${node.id}/preview`);if(ticket===epoch.current&&request===previewEpoch.current){\n    setPreview(value);\n    const root=value.items.find((i:Row)=>i.item_id===node.id);\n    if(root){const completeness=value.incomplete&&(root.completeness!=null||value.items.length>1)?\'incomplete\':root.completeness;\n     setSelected(old=>old?.id===node.id?{...old,completeness}:old);\n     setData(old=>old?{...old,items:old.items.map((i:Row)=>i.id===node.id?{...i,completeness}:i)}:old);\n    }\n   }}catch(e){if(ticket===epoch.current)setError((e as Error).message)}\n }\n async function send(action:string,body:Row,part?:string):Promise<boolean> {\n  if(writing.current||bulk.busy||bulk.intent)return false;writing.current=true;setBusy(true);setError(\'\');const ticket=epoch.current;\n  const fingerprint=JSON.stringify([scope,action,body,part]);\n  if(pending.current?.fingerprint!==fingerprint)pending.current={fingerprint,key:crypto.randomUUID()};\n  try{\n   await api(part?`/parts/${part}/operations`:`/vehicles/${vehicle.id}/assemblies`,\'POST\',{...body,request_key:pending.current.key,...(!part?{action}: {})});\n   if(ticket!==epoch.current)return false;\n   pending.current=null;const fresh=await load(ticket);if(action===\'inspect\'){\n    const node=fresh.items.find((n:Row)=>n.id===body.item_id);\n    if(node&&selectedId.current===node.id){\n      setSelected(node);\n      try{const next=await api(`/vehicles/${vehicle.id}/assemblies/${node.id}/preview`);if(ticket===epoch.current&&selectedId.current===node.id)setPreview(next);}catch(e){setError((e as Error).message)}\n    }\n   }else{selectedId.current=null;setPreview(null);setSelected(null);}window.dispatchEvent(new Event(\'warehouse:inventory-changed\'));return true;\n  }catch(e){if(ticket===epoch.current)setError((e as Error).message);return false}finally{if(ticket===epoch.current){writing.current=false;setBusy(false)}}\n }\n if(!enabled||!can(\'inventory.view\'))return error?<p role="alert">{error}</p>:null;\n if(!data)return <p role={error?\'alert\':\'status\'}>{error||\'Завантажуємо фізичний склад…\'}</p>;\n const items:Row[]=data.items||[],byId=new Map(items.map(n=>[n.id,n])),children=new Map<string,Row[]>(),planChildren=new Map<string,Row[]>();\n items.forEach(n=>{if(n.parent_id)children.set(n.parent_id,[...(children.get(n.parent_id)||[]),n]);else if(n.plan_parent_id&&byId.has(n.plan_parent_id))planChildren.set(n.plan_parent_id,[...(planChildren.get(n.plan_parent_id)||[]),n])});\n children.forEach(rows=>rows.sort((a,b)=>String(a.name).localeCompare(String(b.name),\'uk\',{numeric:true})));\n planChildren.forEach(rows=>rows.sort((a,b)=>String(a.name).localeCompare(String(b.name),\'uk\',{numeric:true})));\n const categories=[...new Set(items.map(n=>String(n.category||\'Інші деталі\')))];\n function icon(name:string){const Icon=/двер/i.test(name)?DoorOpen:/двиг|трансм/i.test(name)?Cog:/електр/i.test(name)?Zap:/салон|інтер/i.test(name)?Armchair:/клімат/i.test(name)?Wind:/безпек/i.test(name)?ShieldCheck:/освіт/i.test(name)?Lightbulb:/гальм/i.test(name)?Disc:/кермов|підвіск/i.test(name)?Settings:Box;return <Icon size={20} strokeWidth={1.6}/>;}\n const checked=items.filter(n=>[\'present\',\'damaged\'].includes(n.presence)).length,attention=items.filter(n=>[\'unchecked\',\'damaged\',\'absent\'].includes(n.presence)||n.completeness===\'incomplete\'||n.category===\'Потребує уточнення\').length,stocked=items.filter(n=>n.part_id&&!n.parent_id&&!n.consumed_operation_id&&!n.archived&&n.quantity>0).length;\n // Never hide a recognized assembly\'s split workflow due to a permission or stock guard.\n // A visible, precise reason is preferable to silently removing the action.\n const splitBlockReason=!selected?\'\'\n  :!selected.part_id?\'Спочатку оприбуткуйте вузол на склад.\'\n  :Number(selected.quantity)!==1?`Для розбору потрібен один фізичний вузол. Зараз у цій позиції: ${selected.quantity} шт. Спочатку звірте й виділіть конкретну фізичну одиницю без зміни загального залишку.`\n  :selected.parent_id?\'Цей компонент входить до іншого вузла. Спочатку відокремте його.\'\n  :selected.consum'... 32603 more characters,
-    expected: /<details className="assembly-physical-split">/,
-    operator: 'match',
-    diff: 'simple'
-  }
+vite v6.4.4 building for production...
+transforming...
+✓ 1787 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                  0.86 kB │ gzip:   0.48 kB
+dist/assets/generic-suv-480-Bbl4bGOp.webp       22.35 kB
+dist/assets/generic-unknown-480-B3KTeBhD.webp   25.25 kB
+dist/assets/generic-suv-C7bDqCdi.webp           58.76 kB
+dist/assets/generic-unknown-WLpe4sbc.webp       67.26 kB
+dist/assets/index-mCd_HeQL.css                 415.98 kB │ gzip:  66.01 kB
+dist/assets/index-8MNpgFZD.js                  778.06 kB │ gzip: 221.80 kB
 
-test at tests/assembly-split-pr5-unit.mjs:59:1
-✖ stocked recognized assembly always exposes split even when a secondary prerequisite fails (2.605301ms)
-  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /\{!!assemblyUnitFor\(selected\)&&\s*<details className="assembly-physical-split">/. Input:
-  
-  "import {Link} from 'react-router-dom';\n" +
-    "import {useContext,useEffect,useRef,useState,type ReactNode} from 'react';\n" +
-    "import {api,type Row} from './api';\n" +
-    "import {TeamIdentity,useCan} from './permissions';\n" +
-    "import {Box,Check,ChevronDown,ChevronRight,Layers,Minus,Plus,Search,Settings2,TriangleAlert,X,MoreHorizontal,List,Network,DoorOpen,Cog,Zap,Armchair,Wind,ShieldCheck,Lightbulb,Disc,Settings} from 'lucide-react';\n" +
-    "import {usePlanBulk,BulkStatus,BulkActionBar,GuidedReceipt,SelectionCheck} from './DismantlingBulk';\n" +
-    "import {assemblyLabel,doorKey,doorOrder,isGenericDoor,isKnownDoorComponent,sameDoorInstallation,manuallyReviewableDoorComponent} from './assemblyPresentation';\n" +
-    "import {assemblyUnitFor,assemblyReferenceLines} from './assemblyUnitCatalog';\n" +
-    "import './assembly-tree.css';\n" +
-    '\n' +
-    '/** Optional inline view over existing donor placements, never a stock generator. */\n' +
-    'export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;onReady?:(enabled:boolean)=>void;revision?:number}) {\n' +
-    ' const can=useCan(),who=useContext(TeamIdentity);\n' +
-    ' const scope=JSON.stringify([who?.id,who?.workspace_account_id,vehicle.id]);\n' +
-    " const [assemblyEnabled,setAssemblyEnabled]=useState(false),[enabled,setEnabled]=useState(false),[data,setData]=useState<Row|null>(null),[open,setOpen]=useState<Set<string>>(new Set()),[q,setQ]=useState(''),[limit,setLimit]=useState(50);\n" +
-    " const [selected,setSelected]=useState<Row|null>(null),[preview,setPreview]=useState<Row|null>(null),[error,setError]=useState(''),[commandBusy,setBusy]=useState(false),[physical,setPhysical]=useState(false),[child,setChild]=useState(''),[legacyPart,setLegacyPart]=useState('');\n" +
-    ' const [doorGroupOpen,setDoorGroupOpen]=useState(true),[manualComponents,setManualComponents]=useState(false),[assemblyToolsOpen,setAssemblyToolsOpen]=useState(false);\n' +
-    ' const [splitSelected,setSplitSelected]=useState<number[]>([]),[splitConditions,setSplitConditions]=useState<Record<number,string>>({}),[splitConfirmed,setSplitConfirmed]=useState(false),[splitResult,setSplitResult]=useState<Row|null>(null);\n' +
-    ' const splitPending=useRef<{fingerprint:string;key:string}|null>(null);\n' +
-    " const [price,setPrice]=useState(''),[currency,setCurrency]=useState('UAH'),[description,setDescription]=useState(''),[remainder,setRemainder]=useState(false),[confirmSale,setConfirmSale]=useState(false),[confirmReturn,setConfirmReturn]=useState(false);\n" +
-    " const [photo,setPhoto]=useState('');\n" +
-    ' const [reference,setReference]=useState<string|null>(null);\n' +
-    " useEffect(()=>{let active=true;setPhoto('');if(selected?.part_id)api(`/parts/${selected.part_id}/photos`).then(rows=>{if(active)setPhoto(rows[0]?.url||'')}).catch(()=>{});return()=>{active=false}},[selected?.part_id]);\n" +
-    " const [category,setCategory]=useState(''),[status,setStatus]=useState('all'),[mode,setMode]=useState('tree'),[note,setNote]=useState('');\n" +
-    ' const inspectorRef=useRef<HTMLDivElement>(null);\n' +
-    ' const [quantityDraft,setQuantityDraft]=useState<Record<string,number>>({});\n' +
-    ' const selectedId=useRef<string|null>(null);\n' +
-    " useEffect(()=>{if(selected&&preview&&window.innerWidth<=650){inspectorRef.current?.focus({preventScroll:true});inspectorRef.current?.scrollIntoView({block:'start',behavior:'instant'});}},[selected?.id,preview?.token]);\n" +
-    ' const previewEpoch=useRef(0);\n' +
-    ' const epoch=useRef(0),pending=useRef<{fingerprint:string;key:string}|null>(null),writing=useRef(false);\n' +
-    ' const [bulkPlan,setBulkPlan]=useState<Row|null>(null),[checkedIds,setCheckedIds]=useState<string[]>([]),[receiptOpen,setReceiptOpen]=useState(false),[toolbarHeight,setToolbarHeight]=useState(0);\n' +
-    ' const planPath=`/vehicles/${vehicle.id}/dismantling-v3`;\n' +
-    " const bulk=usePlanBulk({path:planPath,scope:{actor:String(who?.id||''),workspace:String(who?.workspace_account_id||who?.id||''),vehicle:String(vehicle.id)},onLoad:()=>load(),onSelection:setCheckedIds,onComplete:()=>{setReceiptOpen(false);window.dispatchEvent(new Event('warehouse:inventory-changed'));}});\n" +
-    ' const busy=commandBusy||bulk.busy||!!bulk.intent;\n' +
-    " const editable=can('dismantling.manage')&&can('inventory.edit')&&can('inventory.adjust_quantity');\n" +
-    ' async function load(ticket=epoch.current) {\n' +
-    '  const result=await api(`/vehicles/${vehicle.id}/assemblies`);\n' +
-    "  const managed=can('catalog.view')?await api(planPath):null;\n" +
-    '  if(ticket===epoch.current){setData(result);setBulkPlan(managed);setCheckedIds(ids=>ids.filter(id=>managed?.items.some((n:Row)=>n.id===id&&n.selectable)));}return result;\n' +
-    ' }\n' +
-    ' useEffect(()=>{\n' +
-    "  const ticket=++epoch.current;setData(null);setBulkPlan(null);setCheckedIds([]);setReceiptOpen(false);setEnabled(false);setCategory('');setStatus('all');setMode('tree');setSelected(null);selectedId.current=null;setPreview(null);setQuantityDraft({});setDoorGroupOpen(true);setManualComponents(false);setAssemblyToolsOpen(false);setError('');setOpen(new Set());setQ('');setLimit(50);pending.current=null;splitPending.current=null;setSplitSelected([]);setSplitConditions({});setSplitConfirmed(false);setSplitResult(null);writing.current=false;setBusy(false);\n" +
-    "  api(`/vehicles/${vehicle.id}/assemblies/readiness`).then(async r=>{if(ticket!==epoch.current)return;setAssemblyEnabled(r.enabled);const ready=r.workspace_enabled??r.enabled;setEnabled(ready);onReady?.(ready&&can('inventory.view'));if(ready&&can('inventory.view'))await load(ticket)}).catch(e=>{if(ticket===epoch.current){setError(e.message)}});\n" +
-    '  return()=>{epoch.current++};\n' +
-    ' },[scope,revision]);\n' +
-    ' async function select(node:Row) {\n' +
-    "  const request=++previewEpoch.current;const ticket=epoch.current;selectedId.current=node.id;setSelected(node);setReference(null);if(assemblyUnitFor(node))setOpen(previous=>new Set([...previous,node.id]));setNote(node.note||'');setPreview(null);setPhysical(false);setConfirmSale(false);setConfirmReturn(false);setDescription('');setChild('');setManualComponents(false);setAssemblyToolsOpen(false);setSplitSelected([]);setSplitConditions({});setSplitConfirmed(false);setSplitResult(null);setError('');\n" +
-    '  try{const value=await api(`/vehicles/${vehicle.id}/assemblies/${node.id}/preview`);if(ticket===epoch.current&&request===previewEpoch.current){\n' +
-    '    setPreview(value);\n' +
-    '    const root=value.items.find((i:Row)=>i.item_id===node.id);\n' +
-    "    if(root){const completeness=value.incomplete&&(root.completeness!=null||value.items.length>1)?'incomplete':root.completeness;\n" +
-    '     setSelected(old=>old?.id===node.id?{...old,completeness}:old);\n' +
-    '     setData(old=>old?{...old,items:old.items.map((i:Row)=>i.id===node.id?{...i,completeness}:i)}:old);\n' +
-    '    }\n' +
-    '   }}catch(e){if(ticket===epoch.current)setError((e as Error).message)}\n' +
-    ' }\n' +
-    ' async function send(action:string,body:Row,part?:string):Promise<boolean> {\n' +
-    "  if(writing.current||bulk.busy||bulk.intent)return false;writing.current=true;setBusy(true);setError('');const ticket=epoch.current;\n" +
-    '  const fingerprint=JSON.stringify([scope,action,body,part]);\n' +
-    '  if(pending.current?.fingerprint!==fingerprint)pending.current={fingerprint,key:crypto.randomUUID()};\n' +
-    '  try{\n' +
-    "   await api(part?`/parts/${part}/operations`:`/vehicles/${vehicle.id}/assemblies`,'POST',{...body,request_key:pending.current.key,...(!part?{action}: {})});\n" +
-    '   if(ticket!==epoch.current)return false;\n' +
-    "   pending.current=null;const fresh=await load(ticket);if(action==='inspect'){\n" +
-    '    const node=fresh.items.find((n:Row)=>n.id===body.item_id);\n' +
-    '    if(node&&selectedId.current===node.id){\n' +
-    '      setSelected(node);\n' +
-    '      try{const next=await api(`/vehicles/${vehicle.id}/assemblies/${node.id}/preview`);if(ticket===epoch.current&&selectedId.current===node.id)setPreview(next);}catch(e){setError((e as Error).message)}\n' +
-    '    }\n' +
-    "   }else{selectedId.current=null;setPreview(null);setSelected(null);}window.dispatchEvent(new Event('warehouse:inventory-changed'));return true;\n" +
-    '  }catch(e){if(ticket===epoch.current)setError((e as Error).message);return false}finally{if(ticket===epoch.current){writing.current=false;setBusy(false)}}\n' +
-    ' }\n' +
-    ` if(!enabled||!can('inventory.view'))return error?<p role="alert">{error}</p>:null;\n` +
-    " if(!data)return <p role={error?'alert':'status'}>{error||'Завантажуємо фізичний склад…'}</p>;\n" +
-    ' const items:Row[]=data.items||[],byId=new Map(items.map(n=>[n.id,n])),children=new Map<string,Row[]>(),planChildren=new Map<string,Row[]>();\n' +
-    ' items.forEach(n=>{if(n.parent_id)children.set(n.parent_id,[...(children.get(n.parent_id)||[]),n]);else if(n.plan_parent_id&&byId.has(n.plan_parent_id))planChildren.set(n.plan_parent_id,[...(planChildren.get(n.plan_parent_id)||[]),n])});\n' +
-    " children.forEach(rows=>rows.sort((a,b)=>String(a.name).localeCompare(String(b.name),'uk',{numeric:true})));\n" +
-    " planChildren.forEach(rows=>rows.sort((a,b)=>String(a.name).localeCompare(String(b.name),'uk',{numeric:true})));\n" +
-    " const categories=[...new Set(items.map(n=>String(n.category||'Інші деталі')))];\n" +
-    ' function icon(name:string){const Icon=/двер/i.test(name)?DoorOpen:/двиг|трансм/i.test(name)?Cog:/електр/i.test(name)?Zap:/салон|інтер/i.test(name)?Armchair:/клімат/i.test(name)?Wind:/безпек/i.test(name)?ShieldCheck:/освіт/i.test(name)?Lightbulb:/гальм/i.test(name)?Disc:/кермов|підвіск/i.test(name)?Settings:Box;return <Icon size={20} strokeWidth={1.6}/>;}\n' +
-    " const checked=items.filter(n=>['present','damaged'].includes(n.presence)).length,attention=items.filter(n=>['unchecked','damaged','absent'].includes(n.presence)||n.completeness==='incomplete'||n.category==='Потребує уточнення').length,stocked=items.filter(n=>n.part_id&&!n.parent_id&&!n.consumed_operation_id&&!n.archived&&n.quantity>0).length;\n" +
-    " // Never hide a recognized assembly's split workflow due to a permission or stock guard.\n" +
-    ' // A visible, precise reason is preferable to silently removing the action.\n' +
-    " const splitBlockReason=!selected?''\n" +
-    "  :!selected.part_id?'Спочатку оприбуткуйте вузол на склад.'\n" +
-    '  :Number(selected.quantity)!==1?`Для розбору потрібен один фізичний вузол. Зараз у цій позиції: ${selected.quantity} шт. Спочатку звірте й виділіть конкретну фізичну одиницю без зміни загального залишку.`\n' +
-    "  :selected.parent_id?'Цей компонент входить до іншого вузла. Спочатку відокремте його.'\n" +
-    '  :selected.consum'... 32603 more characters
-  
-      at TestContext.<anonymous> (file:///workspace/carpot-502/warehouse/frontend/tests/assembly-split-pr5-unit.mjs:60:9)
-      at Test.runInAsyncScope (node:async_hooks:227:14)
-      at Test.run (node:internal/test_runner/test:1382:25)
-      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
-      at Test.postRun (node:internal/test_runner/test:1522:19)
-      at Test.run (node:internal/test_runner/test:1447:12)
-      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
-    generatedMessage: true,
-    code: 'ERR_ASSERTION',
-    actual: 'import {Link} from \'react-router-dom\';\nimport {useContext,useEffect,useRef,useState,type ReactNode} from \'react\';\nimport {api,type Row} from \'./api\';\nimport {TeamIdentity,useCan} from \'./permissions\';\nimport {Box,Check,ChevronDown,ChevronRight,Layers,Minus,Plus,Search,Settings2,TriangleAlert,X,MoreHorizontal,List,Network,DoorOpen,Cog,Zap,Armchair,Wind,ShieldCheck,Lightbulb,Disc,Settings} from \'lucide-react\';\nimport {usePlanBulk,BulkStatus,BulkActionBar,GuidedReceipt,SelectionCheck} from \'./DismantlingBulk\';\nimport {assemblyLabel,doorKey,doorOrder,isGenericDoor,isKnownDoorComponent,sameDoorInstallation,manuallyReviewableDoorComponent} from \'./assemblyPresentation\';\nimport {assemblyUnitFor,assemblyReferenceLines} from \'./assemblyUnitCatalog\';\nimport \'./assembly-tree.css\';\n\n/** Optional inline view over existing donor placements, never a stock generator. */\nexport default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;onReady?:(enabled:boolean)=>void;revision?:number}) {\n const can=useCan(),who=useContext(TeamIdentity);\n const scope=JSON.stringify([who?.id,who?.workspace_account_id,vehicle.id]);\n const [assemblyEnabled,setAssemblyEnabled]=useState(false),[enabled,setEnabled]=useState(false),[data,setData]=useState<Row|null>(null),[open,setOpen]=useState<Set<string>>(new Set()),[q,setQ]=useState(\'\'),[limit,setLimit]=useState(50);\n const [selected,setSelected]=useState<Row|null>(null),[preview,setPreview]=useState<Row|null>(null),[error,setError]=useState(\'\'),[commandBusy,setBusy]=useState(false),[physical,setPhysical]=useState(false),[child,setChild]=useState(\'\'),[legacyPart,setLegacyPart]=useState(\'\');\n const [doorGroupOpen,setDoorGroupOpen]=useState(true),[manualComponents,setManualComponents]=useState(false),[assemblyToolsOpen,setAssemblyToolsOpen]=useState(false);\n const [splitSelected,setSplitSelected]=useState<number[]>([]),[splitConditions,setSplitConditions]=useState<Record<number,string>>({}),[splitConfirmed,setSplitConfirmed]=useState(false),[splitResult,setSplitResult]=useState<Row|null>(null);\n const splitPending=useRef<{fingerprint:string;key:string}|null>(null);\n const [price,setPrice]=useState(\'\'),[currency,setCurrency]=useState(\'UAH\'),[description,setDescription]=useState(\'\'),[remainder,setRemainder]=useState(false),[confirmSale,setConfirmSale]=useState(false),[confirmReturn,setConfirmReturn]=useState(false);\n const [photo,setPhoto]=useState(\'\');\n const [reference,setReference]=useState<string|null>(null);\n useEffect(()=>{let active=true;setPhoto(\'\');if(selected?.part_id)api(`/parts/${selected.part_id}/photos`).then(rows=>{if(active)setPhoto(rows[0]?.url||\'\')}).catch(()=>{});return()=>{active=false}},[selected?.part_id]);\n const [category,setCategory]=useState(\'\'),[status,setStatus]=useState(\'all\'),[mode,setMode]=useState(\'tree\'),[note,setNote]=useState(\'\');\n const inspectorRef=useRef<HTMLDivElement>(null);\n const [quantityDraft,setQuantityDraft]=useState<Record<string,number>>({});\n const selectedId=useRef<string|null>(null);\n useEffect(()=>{if(selected&&preview&&window.innerWidth<=650){inspectorRef.current?.focus({preventScroll:true});inspectorRef.current?.scrollIntoView({block:\'start\',behavior:\'instant\'});}},[selected?.id,preview?.token]);\n const previewEpoch=useRef(0);\n const epoch=useRef(0),pending=useRef<{fingerprint:string;key:string}|null>(null),writing=useRef(false);\n const [bulkPlan,setBulkPlan]=useState<Row|null>(null),[checkedIds,setCheckedIds]=useState<string[]>([]),[receiptOpen,setReceiptOpen]=useState(false),[toolbarHeight,setToolbarHeight]=useState(0);\n const planPath=`/vehicles/${vehicle.id}/dismantling-v3`;\n const bulk=usePlanBulk({path:planPath,scope:{actor:String(who?.id||\'\'),workspace:String(who?.workspace_account_id||who?.id||\'\'),vehicle:String(vehicle.id)},onLoad:()=>load(),onSelection:setCheckedIds,onComplete:()=>{setReceiptOpen(false);window.dispatchEvent(new Event(\'warehouse:inventory-changed\'));}});\n const busy=commandBusy||bulk.busy||!!bulk.intent;\n const editable=can(\'dismantling.manage\')&&can(\'inventory.edit\')&&can(\'inventory.adjust_quantity\');\n async function load(ticket=epoch.current) {\n  const result=await api(`/vehicles/${vehicle.id}/assemblies`);\n  const managed=can(\'catalog.view\')?await api(planPath):null;\n  if(ticket===epoch.current){setData(result);setBulkPlan(managed);setCheckedIds(ids=>ids.filter(id=>managed?.items.some((n:Row)=>n.id===id&&n.selectable)));}return result;\n }\n useEffect(()=>{\n  const ticket=++epoch.current;setData(null);setBulkPlan(null);setCheckedIds([]);setReceiptOpen(false);setEnabled(false);setCategory(\'\');setStatus(\'all\');setMode(\'tree\');setSelected(null);selectedId.current=null;setPreview(null);setQuantityDraft({});setDoorGroupOpen(true);setManualComponents(false);setAssemblyToolsOpen(false);setError(\'\');setOpen(new Set());setQ(\'\');setLimit(50);pending.current=null;splitPending.current=null;setSplitSelected([]);setSplitConditions({});setSplitConfirmed(false);setSplitResult(null);writing.current=false;setBusy(false);\n  api(`/vehicles/${vehicle.id}/assemblies/readiness`).then(async r=>{if(ticket!==epoch.current)return;setAssemblyEnabled(r.enabled);const ready=r.workspace_enabled??r.enabled;setEnabled(ready);onReady?.(ready&&can(\'inventory.view\'));if(ready&&can(\'inventory.view\'))await load(ticket)}).catch(e=>{if(ticket===epoch.current){setError(e.message)}});\n  return()=>{epoch.current++};\n },[scope,revision]);\n async function select(node:Row) {\n  const request=++previewEpoch.current;const ticket=epoch.current;selectedId.current=node.id;setSelected(node);setReference(null);if(assemblyUnitFor(node))setOpen(previous=>new Set([...previous,node.id]));setNote(node.note||\'\');setPreview(null);setPhysical(false);setConfirmSale(false);setConfirmReturn(false);setDescription(\'\');setChild(\'\');setManualComponents(false);setAssemblyToolsOpen(false);setSplitSelected([]);setSplitConditions({});setSplitConfirmed(false);setSplitResult(null);setError(\'\');\n  try{const value=await api(`/vehicles/${vehicle.id}/assemblies/${node.id}/preview`);if(ticket===epoch.current&&request===previewEpoch.current){\n    setPreview(value);\n    const root=value.items.find((i:Row)=>i.item_id===node.id);\n    if(root){const completeness=value.incomplete&&(root.completeness!=null||value.items.length>1)?\'incomplete\':root.completeness;\n     setSelected(old=>old?.id===node.id?{...old,completeness}:old);\n     setData(old=>old?{...old,items:old.items.map((i:Row)=>i.id===node.id?{...i,completeness}:i)}:old);\n    }\n   }}catch(e){if(ticket===epoch.current)setError((e as Error).message)}\n }\n async function send(action:string,body:Row,part?:string):Promise<boolean> {\n  if(writing.current||bulk.busy||bulk.intent)return false;writing.current=true;setBusy(true);setError(\'\');const ticket=epoch.current;\n  const fingerprint=JSON.stringify([scope,action,body,part]);\n  if(pending.current?.fingerprint!==fingerprint)pending.current={fingerprint,key:crypto.randomUUID()};\n  try{\n   await api(part?`/parts/${part}/operations`:`/vehicles/${vehicle.id}/assemblies`,\'POST\',{...body,request_key:pending.current.key,...(!part?{action}: {})});\n   if(ticket!==epoch.current)return false;\n   pending.current=null;const fresh=await load(ticket);if(action===\'inspect\'){\n    const node=fresh.items.find((n:Row)=>n.id===body.item_id);\n    if(node&&selectedId.current===node.id){\n      setSelected(node);\n      try{const next=await api(`/vehicles/${vehicle.id}/assemblies/${node.id}/preview`);if(ticket===epoch.current&&selectedId.current===node.id)setPreview(next);}catch(e){setError((e as Error).message)}\n    }\n   }else{selectedId.current=null;setPreview(null);setSelected(null);}window.dispatchEvent(new Event(\'warehouse:inventory-changed\'));return true;\n  }catch(e){if(ticket===epoch.current)setError((e as Error).message);return false}finally{if(ticket===epoch.current){writing.current=false;setBusy(false)}}\n }\n if(!enabled||!can(\'inventory.view\'))return error?<p role="alert">{error}</p>:null;\n if(!data)return <p role={error?\'alert\':\'status\'}>{error||\'Завантажуємо фізичний склад…\'}</p>;\n const items:Row[]=data.items||[],byId=new Map(items.map(n=>[n.id,n])),children=new Map<string,Row[]>(),planChildren=new Map<string,Row[]>();\n items.forEach(n=>{if(n.parent_id)children.set(n.parent_id,[...(children.get(n.parent_id)||[]),n]);else if(n.plan_parent_id&&byId.has(n.plan_parent_id))planChildren.set(n.plan_parent_id,[...(planChildren.get(n.plan_parent_id)||[]),n])});\n children.forEach(rows=>rows.sort((a,b)=>String(a.name).localeCompare(String(b.name),\'uk\',{numeric:true})));\n planChildren.forEach(rows=>rows.sort((a,b)=>String(a.name).localeCompare(String(b.name),\'uk\',{numeric:true})));\n const categories=[...new Set(items.map(n=>String(n.category||\'Інші деталі\')))];\n function icon(name:string){const Icon=/двер/i.test(name)?DoorOpen:/двиг|трансм/i.test(name)?Cog:/електр/i.test(name)?Zap:/салон|інтер/i.test(name)?Armchair:/клімат/i.test(name)?Wind:/безпек/i.test(name)?ShieldCheck:/освіт/i.test(name)?Lightbulb:/гальм/i.test(name)?Disc:/кермов|підвіск/i.test(name)?Settings:Box;return <Icon size={20} strokeWidth={1.6}/>;}\n const checked=items.filter(n=>[\'present\',\'damaged\'].includes(n.presence)).length,attention=items.filter(n=>[\'unchecked\',\'damaged\',\'absent\'].includes(n.presence)||n.completeness===\'incomplete\'||n.category===\'Потребує уточнення\').length,stocked=items.filter(n=>n.part_id&&!n.parent_id&&!n.consumed_operation_id&&!n.archived&&n.quantity>0).length;\n // Never hide a recognized assembly\'s split workflow due to a permission or stock guard.\n // A visible, precise reason is preferable to silently removing the action.\n const splitBlockReason=!selected?\'\'\n  :!selected.part_id?\'Спочатку оприбуткуйте вузол на склад.\'\n  :Number(selected.quantity)!==1?`Для розбору потрібен один фізичний вузол. Зараз у цій позиції: ${selected.quantity} шт. Спочатку звірте й виділіть конкретну фізичну одиницю без зміни загального залишку.`\n  :selected.parent_id?\'Цей компонент входить до іншого вузла. Спочатку відокремте його.\'\n  :selected.consum'... 32603 more characters,
-    expected: /\{!!assemblyUnitFor\(selected\)&&\s*<details className="assembly-physical-split">/,
-    operator: 'match',
-    diff: 'simple'
-  }
-
-test at tests/assembly-split-pr5-unit.mjs:73:1
-✖ split entry is available before preview and gives a guarded loading/error state (0.272222ms)
-  AssertionError [ERR_ASSERTION]: preview failure must not remove the split entry
-      at TestContext.<anonymous> (file:///workspace/carpot-502/warehouse/frontend/tests/assembly-split-pr5-unit.mjs:76:9)
-      at Test.runInAsyncScope (node:async_hooks:227:14)
-      at Test.run (node:internal/test_runner/test:1382:25)
-      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
-      at Test.postRun (node:internal/test_runner/test:1522:19)
-      at Test.run (node:internal/test_runner/test:1447:12)
-      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
-    generatedMessage: false,
-    code: 'ERR_ASSERTION',
-    actual: false,
-    expected: true,
-    operator: '==',
-    diff: 'simple'
-  }
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 2.60s
 npm notice
 npm notice New major version of npm available! 11.9.0 -> 12.2.2
 npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.2
