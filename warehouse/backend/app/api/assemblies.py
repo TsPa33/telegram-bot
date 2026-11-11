@@ -93,6 +93,33 @@ def template(id:str,data:Template,db:DB,who:Auth):
     return service.command(db,who,id,'assembly:template',data,lambda:service.save_template(db,who.workspace_account_id,data))
 
 
+class SplitComponent(Input):
+    index: int = Field(strict=True,ge=0,le=50)
+    condition: Literal['used','new','damaged','refurbished'] = 'used'
+
+
+class SplitAssembly(Input):
+    request_key: Key
+    root_item_id: str = Field(min_length=1,max_length=36)
+    unit_id: str = Field(min_length=2,max_length=40)
+    token: str = Field(min_length=64,max_length=64)
+    components: list[SplitComponent] = Field(min_length=1,max_length=20)
+    confirm_physical: bool
+
+
+@router.post('/{id}/assemblies/split')
+def split_assembly(id:str,data:SplitAssembly,db:DB,who:Auth):
+    """Physical batch split, replay protected, one atomic Part/Operation ledger."""
+    gate(who,True,physical=True)
+    require_permission(who,'inventory.create')
+    if not data.confirm_physical:
+        raise HTTPException(422,'Підтвердіть фактичне відокремлення вибраних компонентів')
+    from app.services.assembly_split import split
+    return service.command(db,who,id,'assembly:split',data,
+        lambda:split(db,who.workspace_account_id,id,data.root_item_id,
+            data.unit_id,data.components,data.token))
+
+
 class DoorPlanComponent(Input):
     request_key: Key
     parent_item_id: str = Field(min_length=1,max_length=36)
