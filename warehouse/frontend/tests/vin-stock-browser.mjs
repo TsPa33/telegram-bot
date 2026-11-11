@@ -15,12 +15,13 @@ try{
  await dialog.getByRole('button',{name:'Визначити автомобіль',exact:true}).click();await expect(dialog).toContainText('Локальні синтетичні дані');
  await dialog.getByLabel('Характеристики перевірено, підтверджую додавання').check();await dialog.getByRole('button',{name:'Додати автомобіль',exact:true}).click();await expect(dialog).not.toBeVisible();
  await page.getByRole('button',{name:'Розбір і запчастини',exact:true}).click();
- await page.getByRole('button',{name:'Вибрати точну модифікацію',exact:true}).click();
+ await page.locator('.uf-catalogue-disclosure>summary').click();
+ await page.getByRole('button',{name:'Вибрати модифікацію',exact:true}).click();
  const form=page.getByRole('form',{name:'Модифікація наявного автомобіля'});
  await form.getByLabel('Марка',{exact:true}).selectOption('Volvo');await form.getByLabel('Модель',{exact:true}).selectOption('13084');await form.getByLabel('Покоління',{exact:true}).selectOption('II (fixture)');await form.getByLabel('Модифікація',{exact:true}).selectOption('107555');
  await form.getByRole('checkbox').check();await form.getByRole('button',{name:'Підтвердити модифікацію'}).click();await expect(form).not.toBeVisible();
  const generator=page.getByRole('region',{name:'Універсальний каталог запчастин'});
- await generator.getByRole('button',{name:'Розібрати на запчастини',exact:true}).click();await expect(generator).toContainText('Доступних типів: 2');await generator.getByRole('button',{name:'Зберегти перелік',exact:true}).click();
+ await generator.getByRole('button',{name:'Розібрати на запчастини',exact:true}).click();await expect(generator).toContainText('Джерела та обмеження · 2 типів');await generator.getByRole('button',{name:'Зберегти перелік',exact:true}).click();
  const tree=page.getByRole('region',{name:'Фізичний склад вузлів'});
  await expect(tree.getByLabel('Вибрати: Тестовий стартер',{exact:true})).toBeVisible();
  // Category selection must not receive the other category.

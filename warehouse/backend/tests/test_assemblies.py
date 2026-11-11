@@ -494,3 +494,68 @@ def test_inspection_cannot_resurrect_ordinary_sold_position(logged,group):
     assert row['quantity']==0 and row['consumed_type']=='sale'
     with Session(engine()) as db:
         assert db.scalar(select(func.count()).select_from(Operation).where(Operation.type=='correction'))==0
+
+
+def test_tree_exposes_door_installations_without_merging_or_creating_stock(logged,vehicle):
+    """Distinct canonical positions are displayed, never treated as duplicate Parts."""
+    positions=[
+        ('front','left','передня ліва'),
+        ('front','right','передня права'),
+        ('rear','left','задня ліва'),
+        ('rear','right','задня права'),
+    ]
+    with Session(engine()) as db:
+        account=db.get(Vehicle,vehicle['id']).account_id
+        ids=[]
+        for index,(position,side,label) in enumerate(positions):
+            node=DismantlingItem(
+                account_id=account,vehicle_id=vehicle['id'],
+                name='Двері',position=label,source='carpot.v3',
+                catalog_key=f'synthetic-door-{index}',
+                category_key='body',category_name='Кузов',
+                subcategory_key='door',subcategory_name='Двері',
+                quantity=1,
+                plan_v3={
+                    'placement_id':f'fixture-door-{index}',
+                    'snapshot':{
+                        'installation_position':{'position':position,'side':side,'details':{'mount':[]}}
+                    },
+                },
+            )
+            db.add(node);db.flush();ids.append(node.id)
+        db.commit()
+    path=f"/api/v1/vehicles/{vehicle['id']}/assemblies"
+    result=logged.get(path)
+    assert result.status_code==200,result.text
+    rows=[r for r in result.json()['items'] if r['id'] in ids]
+    assert len(rows)==4 and len({r['id'] for r in rows})==4
+    assert {r['installation_position']['position']+':'+r['installation_position']['side'] for r in rows}=={
+        'front:left','front:right','rear:left','rear:right',
+    }
+    assert {r['position'] for r in rows}=={p[2] for p in positions}
+    assert all(not r['part_id'] and r['parent_id'] is None for r in rows)
+    with Session(engine()) as db:
+        assert db.scalar(select(func.count()).select_from(Part))==0
+        assert db.scalar(select(func.count()).select_from(AssemblyMembership))==0
+        assert db.scalar(select(func.count()).select_from(Operation).where(Operation.type.in_(['receipt','sale','assembly_attach','assembly_detach','assembly_included_sale'])))==0
+
+
+def test_tree_unknown_door_installation_stays_unknown(logged,vehicle):
+    """No fabricated left/right or door hierarchy from name-only canonical type."""
+    with Session(engine()) as db:
+        account=db.get(Vehicle,vehicle['id']).account_id
+        node=DismantlingItem(
+            account_id=account,vehicle_id=vehicle['id'],
+            name='Двері',source='carpot.v3',catalog_key='unknown-door',
+            category_key='body',category_name='Кузов',
+            subcategory_key='door',subcategory_name='Двері',
+            quantity=1,plan_v3={'snapshot':{'installation_position':{'side':'unknown','position':'unknown'}}},
+        )
+        db.add(node);db.flush();node_id=node.id;db.commit()
+    result=logged.get(f"/api/v1/vehicles/{vehicle['id']}/assemblies")
+    assert result.status_code==200,result.text
+    row=next(r for r in result.json()['items'] if r['id']==node_id)
+    assert row['name']=='Двері'
+    assert row['position']==''
+    assert row['installation_position']=={'side':'unknown','position':'unknown'}
+    assert row['parent_id'] is None and row['part_id'] is None
