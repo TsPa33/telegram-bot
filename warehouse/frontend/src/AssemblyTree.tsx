@@ -171,7 +171,7 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
          <p className="assembly-component-hint">«Додати до плану» не означає фізичної наявності чи надходження на склад. Фізично приєднані компоненти показано окремо.</p>
         </div>
        </details>
-      </li>
+      </li>}
     </ul>}
   </li>;
  }
