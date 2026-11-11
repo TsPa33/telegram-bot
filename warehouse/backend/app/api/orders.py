@@ -6,7 +6,7 @@ from sqlalchemy import String, cast, func, or_, select, text
 from sqlalchemy.exc import SQLAlchemyError
 from app.api.routes import DB, Auth
 from app.models import Account,Buyer, Order, OrderEvent, OrderLine, OrderRequest, OrderReservation,Part
-from app.schemas.orders import BuyerInput, CreateOrder, UpdateOrder, LinesInput, OrderAction, OrderStatus, normalize_phone
+from app.schemas.orders import BuyerInput, CreateOrder, CheckoutOrder, UpdateOrder, LinesInput, OrderAction, OrderStatus, normalize_phone
 from app.services import orders as service
 from app.services.inventory import owned, snapshot
 
@@ -48,12 +48,22 @@ def readiness(db:DB,who:Auth):
         for model in (Buyer,Order,OrderLine,OrderReservation,OrderEvent,OrderRequest):db.execute(select(model).limit(0))
     except SQLAlchemyError:raise HTTPException(503,'Orders schema is not ready') from None
     return {'status':'ready','contract_version':6,'required_revision':'d86f21a90b34','database_revisions':sorted(versions),
-            'features':['buyers','orders','assigned_reservations','explicit_order_sale','order_request_replay']}
+            'features':['atomic_checkout','buyers','orders','assigned_reservations','explicit_order_sale','order_request_replay']}
 
 
 @router.post('/orders',status_code=201)
 def create_order(data:CreateOrder,db:DB,who:Auth):
     return service.command(db,who.workspace_account_id,'orders:create',data,lambda:service.create(db,who.workspace_account_id,data))
+
+
+@router.post('/orders/checkout',status_code=201)
+def checkout_order(data:CheckoutOrder,db:DB,who:Auth):
+    def execute():
+        result=service.create(db,who.workspace_account_id,data)
+        if data.checkout_action!='draft':
+            return service.action(db,service.locked_order(db,result['id'],who.workspace_account_id),data.checkout_action)
+        return result
+    return service.command(db,who.workspace_account_id,'orders:checkout',data,execute)
 
 
 @router.get('/orders')

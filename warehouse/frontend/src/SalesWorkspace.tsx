@@ -111,7 +111,7 @@ function SalesWorkspaceContent({quick=false,notify,accountId,grouped=false,inven
  const priceLabel=(p:Row)=>p.selling_price==null?'Вказати ціну':money(p.selling_price,p.currency||'UAH');
  const canSelect=canBulkPrice||can('inventory.adjust_quantity')||can('inventory.edit')||can('inventory.archive');
  const select=(ids:string[],checked:boolean)=>setPricingSelected(old=>checked?[...new Set([...old,...ids])]:old.filter(id=>!ids.includes(id)));
- const actions=(p:Row)=><PartActionMenu part={p} onSale={()=>openAction(p,'sale')} onPrice={()=>{setDetail(null);setPrice(p);}} onNotes={()=>{setDetail(null);setNotes(p);}} onInspection={()=>{setDetail(null);setInspection(p);}} onAction={type=>openAction(p,type)} onDetail={()=>openDetail(p)} onOem={()=>openDetail(p,'oem')} onColor={()=>openDetail(p,'color')} onEdit={()=>{setDetail(null);setEdit(p);}} onArchive={()=>{setDetail(null);setArchive(p);}} onHistory={()=>{setDetail(null);setHistory(p);}} compact/>;
+ const actions=(p:Row)=><PartActionMenu part={p} onSale={()=>{setDetail(null);setOrderPart(p);}} onPrice={()=>{setDetail(null);setPrice(p);}} onNotes={()=>{setDetail(null);setNotes(p);}} onInspection={()=>{setDetail(null);setInspection(p);}} onAction={type=>openAction(p,type)} onDetail={()=>openDetail(p)} onOem={()=>openDetail(p,'oem')} onColor={()=>openDetail(p,'color')} onEdit={()=>{setDetail(null);setEdit(p);}} onArchive={()=>{setDetail(null);setArchive(p);}} onHistory={()=>{setDetail(null);setHistory(p);}} compact/>;
  useEffect(()=>{const refresh=()=>lookups.reload();window.addEventListener('warehouse:categories-changed',refresh);return()=>window.removeEventListener('warehouse:categories-changed',refresh);},[]);
  const renderInventoryPart=(p:Row,inspect=false)=><InventoryPartRow dashboard active={previewId===p.id} onPreview={()=>selectPreview(p.id)} part={p} categories={categories} vehicle={vehicles.find(v=>v.id===p.vehicle_id)} market={market.rows[p.id]} marketError={market.error} selected={pricingSelected.includes(p.id)} canSelect={canSelect} onSelect={checked=>select([p.id],checked)} onOpen={()=>openDetail(p)} onSaved={updated} actions={<>{inspect&&can('parts.inspect')&&<button type="button" className="r115-inspect-button" onClick={()=>setInspection(p)}>Перевірити</button>}{actions(p)}</>} photo={<SearchPartPhoto id={p.id} name={p.name} revision={photoRevisions[p.id]||0}/>}/>;
  const categoryCounts=new Map<string,number>(),locationCounts=new Map<string,number>();
@@ -121,7 +121,7 @@ function SalesWorkspaceContent({quick=false,notify,accountId,grouped=false,inven
  const previewPanel=<SearchPartPreview part={previewPart} vehicle={previewVehicle}
       category={categories.find(c=>c.id===previewPart?.category_id)}
       subcategory={categories.find(c=>c.id===previewPart?.subcategory_id)}
-      canSell={can('sales.create')} open={!!previewId} onClose={()=>setPreviewId('')}
+      canSell={can('orders.create')} open={!!previewId} onClose={()=>setPreviewId('')}
       position={previewIndex+1} total={rows.length}
       onPrevious={()=>{if(previewIndex>0)selectPreview(rows[previewIndex-1].id);}}
       onNext={()=>{if(previewIndex>=0&&previewIndex<rows.length-1)selectPreview(rows[previewIndex+1].id);}}
@@ -130,7 +130,7 @@ function SalesWorkspaceContent({quick=false,notify,accountId,grouped=false,inven
       onSaved={updated}
       photoRevision={photoRevisions[previewPart?.id||'']||0}
       onPhotoSaved={id=>setPhotoRevisions(old=>({...old,[id]:(old[id]||0)+1}))}
-      onNotes={()=>{if(previewPart)setNotes(previewPart);}} onInspection={()=>{if(previewPart)setInspection(previewPart);}} onSell={()=>{if(previewPart)openAction(previewPart,'sale');}}/>;
+      onNotes={()=>{if(previewPart)setNotes(previewPart);}} onInspection={()=>{if(previewPart)setInspection(previewPart);}} onSell={()=>{if(previewPart)setOrderPart(previewPart);}}/>;
  const content=<>
   {!quick&&<header className="r115-heading"><div><h1>Склад</h1><p>{waiting?'Завантаження…':error?'Не вдалося завантажити склад':`Усі запчастини на складі · ${data?.total||0} позицій`}</p></div><div className="r115-top-actions">{can('inventory.create')&&<button className="primary" onClick={()=>setEdit({condition:'used',currency:'UAH',vehicle_id:vehicle})}><Plus size={16}/> Додати запчастину</button>}<button disabled={exportBusy||waiting||!!error} onClick={async()=>{setExportBusy(true);setExportError('');try{const exportQuery=new URLSearchParams(query);exportQuery.delete('offset');exportQuery.delete('limit');const items=await all('/parts?'+exportQuery);const cell=(v:unknown)=>'"'+String(v??'').replace(/^[=+@-]/,"'$&").replaceAll('"','""')+'"';const csv=[['Запчастина','Донор','Залишок','Резерв','OEM','Артикул','Виробник','Моя ціна','Валюта'],...items.map(p=>[p.name,vehicles.find(v=>v.id===p.vehicle_id)?.number||'',p.quantity,p.reserved_quantity,p.oem_number,p.article_number,p.article_brand,p.selling_price,p.currency])].map(r=>r.map(cell).join(';')).join('\r\n');const url=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='carpot-stock.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}catch(e){setExportError((e as Error).message);}finally{setExportBusy(false);}}}>{exportBusy?'Експортуємо…':'Експорт'}</button></div></header>}
   {!quick&&exportError&&<p role="alert">{exportError}</p>}

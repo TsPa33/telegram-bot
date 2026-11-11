@@ -1,3 +1,4 @@
+import {OrderComposer} from './Orders';
 import {Link} from 'react-router-dom';
 import {useContext,useEffect,useRef,useState,type ReactNode} from 'react';
 import {api,type Row} from './api';
@@ -20,6 +21,7 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
  const [price,setPrice]=useState(''),[currency,setCurrency]=useState('UAH'),[description,setDescription]=useState(''),[remainder,setRemainder]=useState(false),[confirmSale,setConfirmSale]=useState(false),[confirmReturn,setConfirmReturn]=useState(false);
  const [photo,setPhoto]=useState('');
  const [reference,setReference]=useState<string|null>(null);
+ const [checkout,setCheckout]=useState<Row|null>(null);
  useEffect(()=>{let active=true;setPhoto('');if(selected?.part_id)api(`/parts/${selected.part_id}/photos`).then(rows=>{if(active)setPhoto(rows[0]?.url||'')}).catch(()=>{});return()=>{active=false}},[selected?.part_id]);
  const [category,setCategory]=useState(''),[status,setStatus]=useState('all'),[mode,setMode]=useState('tree'),[note,setNote]=useState('');
  const inspectorRef=useRef<HTMLDivElement>(null);
@@ -207,6 +209,7 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
   </li>;
  }
  return <section className="assembly-tree" aria-label="Фізичний склад вузлів" style={{paddingBottom:toolbarHeight?toolbarHeight+16:undefined}}>
+  {checkout&&<OrderComposer accountId={String(who?.workspace_account_id||who?.id||'')} initialPart={checkout} onClose={()=>setCheckout(null)} onCreated={()=>{setCheckout(null);void load();void select(selected!);window.dispatchEvent(new Event('warehouse:inventory-changed'));}}/>}
   <div className="assembly-plan-ready"><h2>Розбір автомобіля</h2><span>{items.length?'План сформовано':'Сформуйте список деталей'}</span></div>
   <header className="assembly-overview"><div className="assembly-metrics" role="region" aria-label="Показники розбору">{[['У плані',items.length],['Підтверджено',checked],['На складі',stocked],['Потребує уваги',attention]].map(([label,value])=><div key={label}><span>{label==='На складі'?<Box size={22}/>:label==='Потребує уваги'?<TriangleAlert size={22}/>:<Check size={22}/>}</span><div><small>{label}</small><strong>{value}</strong></div></div>)}</div><div className="assembly-top-actions"><button className="primary" disabled={busy||!editable||!can('inventory.create')||!(checkedIds.length||selectable.length)} onClick={()=>{if(!checkedIds.length)setCheckedIds(selectable);setReceiptOpen(true);}}><Box size={18}/>{checkedIds.length?'Додати вибрані на склад':'Додати доступні на склад'}</button><details><summary><Settings2 size={16}/>Швидкі дії</summary><button disabled={busy} onClick={()=>void load().catch(e=>setError(e.message))}>Оновити список</button><button onClick={()=>{setQ('');setCategory('');setStatus('unchecked')}}>Знайти непідтверджені</button><button onClick={()=>{setQ('');setCategory('');setStatus('damaged')}}>Переглянути пошкодження</button></details></div></header>
   {error&&<p role="alert">{error}</p>}
@@ -296,13 +299,13 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
       <button disabled={busy||!physical||!child} onClick={()=>void send('attach',{item_id:child,parent_id:selected.id,confirm_physical:true})}>Включити до вузла</button>
       {selected.parent_id?<button disabled={busy||!physical} onClick={()=>void send('detach',{item_id:selected.id,confirm_physical:true})}>Відокремити компонент</button>:<button disabled={busy||!physical||!!preview.issues?.length} onClick={()=>void send('confirm',{item_id:selected.id,token:preview.token,confirm_physical:true})}>Підтвердити комплектність вузла</button>}
      </div></details>}
-     {selected.part_id&&!selected.parent_id&&can('sales.create')&&<details className="assembly-sale"><summary>Продаж за одним чеком</summary>
+     {selected.part_id&&!selected.parent_id&&can('orders.create')&&<details className="assembly-sale"><summary>Оформити замовлення</summary>
       <label>Фактична ціна<input type="number" min="0" step="0.01" value={price} onChange={e=>setPrice(e.target.value)}/></label>
       <label>Валюта<select value={currency} onChange={e=>setCurrency(e.target.value)}><option>UAH</option><option>USD</option></select></label>
       <label>Опис продажу<input maxLength={200} value={description} onChange={e=>setDescription(e.target.value)}/></label>
       <label><input type="checkbox" checked={remainder} onChange={e=>setRemainder(e.target.checked)}/>Продати решту вузла за вказаним описом</label>
       <label><input type="checkbox" checked={confirmSale} onChange={e=>setConfirmSale(e.target.checked)}/>Підтверджую передачу всього наведеного складу за одну ціну</label>
-      <button disabled={busy||!confirmSale||price===''||Number(price)<0||preview.conflicts.length>0||(preview.incomplete&&!remainder)||!!preview.issues?.some((i:Row)=>i.reason==='absent'||i.reason==='archived')} onClick={()=>void send('sale',{type:'sale',quantity:1,sale_price:price,sale_currency:currency,assembly_token:preview.token,assembly_description:description,assembly_remainder:remainder},selected.part_id)}>{remainder?'Продати решту вузла':selected.completeness?'Продати вузол у зборі':'Продати деталь'}</button>
+      <button disabled={busy||!confirmSale||price===''||Number(price)<0||preview.conflicts.length>0||(preview.incomplete&&!remainder)||!!preview.issues?.some((i:Row)=>i.reason==='absent'||i.reason==='archived')} onClick={()=>setCheckout({id:selected.part_id,name:selected.name,quantity:1,unit_price:price,currency,assembly_token:preview.token,assembly_description:description,assembly_remainder:remainder,donor_snapshot:vehicle})}>Оформити замовлення</button>
      </details>}
     </>}
     {editable&&assemblyEnabled&&selected.consumed_type==='sale'&&!selected.parent_id&&<>

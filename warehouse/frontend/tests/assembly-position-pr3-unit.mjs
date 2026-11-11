@@ -78,7 +78,7 @@ test('UI grouping remains display-only; stock uses existing physical operations'
  assert.match(board,/componentCandidates\.map/);
  assert.match(board,/send\('attach'/);
  assert.match(board,/send\('detach'/);
- assert.match(board,/send\('sale'/);
+ assert.match(board,/setCheckout\(/);
  const flow=read('GlobalCatalogueFlow.tsx');
  assert.match(flow,/<details className="uf-catalogue-disclosure">/);
  assert.match(flow,/Точна модифікація не підтверджена/);

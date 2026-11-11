@@ -67,7 +67,7 @@ test('templates cannot generate a stock or plan operation and UI has no add-each
  assert.match(ui,/Підтвердити комплектність вузла/);
  assert.match(ui,/send\('attach'/);
  assert.match(ui,/send\('detach'/);
- assert.match(ui,/send\('sale'/);
+ assert.match(ui,/setCheckout\(/);
  assert.match(ui,/role="status"/);
 });
 test('reference components never count as real donor or stock inventory',()=>{
