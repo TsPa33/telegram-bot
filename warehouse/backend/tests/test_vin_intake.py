@@ -3,6 +3,13 @@ from copy import deepcopy
 import pytest
 from app.services import vin_lookup
 
+@pytest.fixture(autouse=True)
+def fresh_vin_cache():
+    vin_lookup.clear_cache()
+    yield
+    vin_lookup.clear_cache()
+
+
 VINS=['YV4L12RK6N1970668','YV4A22PK2G1092943']
 
 def values(vin):
@@ -65,6 +72,7 @@ def test_primary_fixture_decode_reports_fields_and_never_calls_paid_provider(log
         def __exit__(self,*args):pass
         def read(self,*args):return json.dumps({'Results':[{'Make':'Volvo','Model':'Fixture','ModelYear':'2020','EngineModel':'FIXTURE','TransmissionStyle':'Automatic','DriveType':'AWD','Doors':'5','ErrorCode':'0'}]}).encode()
     monkeypatch.setattr(vin_lookup,'urlopen',lambda *a,**k:Reply())
+    monkeypatch.setattr('app.services.vin_freevindecoder.decode_page',lambda v:None)
     monkeypatch.setattr('app.services.vin_europe.europe_vin',lambda *a:(_ for _ in ()).throw(AssertionError('Paid provider must not run')))
     for vin in VINS:
         data=logged.get('/api/v1/vehicles/vin/decode?vin='+vin).json()

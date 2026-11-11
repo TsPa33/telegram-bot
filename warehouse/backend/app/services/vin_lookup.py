@@ -1,41 +1,90 @@
-"""Existing free VIN sources, independently attempted; never infer missing facts."""
+"""Two bounded free sources, field provenance, conservative merging and short cache."""
+from copy import deepcopy
+import hashlib
 import json
 import re
-from datetime import datetime, timezone
+from datetime import datetime,timezone
+from threading import Lock
+from time import monotonic
 from urllib.request import Request,urlopen
-from app.services.vin_normalize import normalize,merge_verified,validate_consistency
+from app.services.vin_normalize import normalize,merge_verified,validate_consistency,ukrainian,equivalent
+from app.services.vin_fields import PRIMARY,EXTRA,PRIMARY_KEYS,EXTRA_KEYS,IMPORTANT,CATALOGUE_KEYS,present
 
-VPIC_FIELDS={'Make':'manufacturer','Model':'model','ModelYear':'year','EngineModel':'engine','DisplacementL':'engine_displacement_l','FuelTypePrimary':'fuel_type','TransmissionStyle':'transmission','DriveType':'drive_type','BodyClass':'body_class','Trim':'trim','PlantCountry':'plant_country','EngineCylinders':'engine_cylinders','EngineKW':'engine_power_kw','Doors':'doors','EngineHP':'engine_power_hp','Series':'series','VehicleType':'vehicle_type','PlantCity':'plant_city'}
+VPIC_FIELDS=PRIMARY  # Existing adapter test compatibility.
+_cache={};_cache_guard=Lock();_locks=tuple(Lock() for _ in range(16))
 
 
-def lookup(vin):
-    if not re.fullmatch('[A-HJ-NPR-Z0-9]{17}',vin):raise ValueError('Invalid VIN')
-    vehicle={};sources=[];conflicts={};errors=[];provenance={}
+def clear_cache():
+    with _cache_guard:_cache.clear()
+
+
+def _lookup(vin):
+    vehicle={};additional={};sources=[];conflicts={};provenance={};provider_status={};counts={}
     try:
         url='https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVinValues/'+vin+'?format=json'
         with urlopen(Request(url,headers={'User-Agent':'CarPotWarehouse/1.0','Accept':'application/json'}),timeout=7) as response:
             body=response.read(160001)
             if len(body)>160000:raise ValueError('Response too large')
             row=json.loads(body)['Results'][0]
-        incoming={target:str(row.get(key) or '').strip() for key,target in VPIC_FIELDS.items()}
-        incoming={k:v for k,v in incoming.items() if v.casefold() not in ('','null','none','not applicable','0')}
+        if not isinstance(row,dict):raise ValueError('Invalid provider response')
+        counts['nhtsa_nonempty_fields']=sum(present(v) for k,v in row.items() if k not in ('VIN','ErrorText','ErrorCode','SuggestedVIN'))
+        incoming={target:str(row[key]).strip() for key,target in PRIMARY.items() if present(row.get(key)) and len(str(row[key]))<=200}
+        # Zero is meaningful for doors/electrification/battery, but not for model year/displacement.
+        for key in ['year','engine_displacement_l','engine_power_kw','engine_power_hp']:
+            if incoming.get(key) in ('0','0.0'):incoming.pop(key,None)
         year=incoming.get('year','')
-        if not (incoming.get('model') and year.isdigit() and 1886<=int(year)<=2100) or str(row.get('ErrorCode','')).startswith(('5','6','7')):incoming.pop('year',None)
+        errors={e.strip() for e in str(row.get('ErrorCode','')).split(',')}
+        if not (incoming.get('model') and year.isdigit() and 1886<=int(year)<=2100) or errors.intersection({'5','6','7'}):incoming.pop('year',None)
         if incoming.get('year'):incoming['year']=int(incoming['year'])
         vehicle=normalize(incoming)
-        if vehicle:sources.append('NHTSA vPIC');provenance.update({k:'NHTSA vPIC' for k in vehicle})
-    except (OSError,ValueError,KeyError,IndexError,TypeError):errors.append('NHTSA vPIC unavailable')
-    # Paid/credentialed Vincario is deliberately not called by the quick-add flow.
-    if not all(vehicle.get(k) for k in ('model','year','engine','transmission')):
-        from app.services.vin_freevindecoder import decode_page
+        for source_key,(key,label) in EXTRA.items():
+            if present(row.get(source_key)) and len(str(row[source_key]))<=200:
+                additional[key]={'label':label,'value':ukrainian(key,row[source_key]),'source':'NHTSA vPIC'}
+        provider_status['NHTSA vPIC']='reported' if vehicle or additional else 'empty'
+        if vehicle or additional:sources.append('NHTSA vPIC');provenance.update({k:'NHTSA vPIC' for k in vehicle})
+    except (OSError,ValueError,KeyError,IndexError,TypeError):provider_status['NHTSA vPIC']='unavailable_or_invalid_response'
+    missing=sorted(k for k in IMPORTANT if not present(vehicle.get(k)))
+    if missing:
+        from app.services.vin_freevindecoder import decode_page,source_status
         try:
             incoming=decode_page(vin)
             if incoming:
-                prior=dict(vehicle);vehicle,new_conflicts=merge_verified(vehicle,incoming);conflicts.update(new_conflicts);sources.append('FreeVINDecoder')
-                provenance.update({k:'FreeVINDecoder' for k,v in incoming.items() if v not in ('',None) and not prior.get(k)})
-        except (OSError,ValueError,TypeError):errors.append('FreeVINDecoder unavailable')
-    return dict(vin=vin,source=' + '.join(sources) or 'unavailable',vehicle=vehicle,
-        available_fields=[k for k,v in vehicle.items() if v not in ('',None)],field_sources=provenance,
+                incoming_extra=incoming.get('additional',{})
+                incoming={k:v for k,v in incoming.items() if k in PRIMARY_KEYS and present(v) and len(str(v))<=200}
+                prior=dict(vehicle);vehicle,new_conflicts=merge_verified(vehicle,incoming);conflicts.update(new_conflicts)
+                for key,attribute in incoming_extra.items():
+                    if key not in EXTRA_KEYS or not isinstance(attribute,dict) or not present(attribute.get('value')) or len(str(attribute['value']))>200:continue
+                    value=ukrainian(key,attribute['value'])
+                    if key in additional:
+                        if not equivalent(key,additional[key]['value'],value):additional[key].update(alternative=value,alternative_source='FreeVINDecoder')
+                    else:
+                        label=next(label for k,label in EXTRA.values() if k==key)
+                        additional[key]={'label':label,'value':value,'source':'FreeVINDecoder'}
+                if incoming or incoming_extra:sources.append('FreeVINDecoder')
+                provenance.update({k:'FreeVINDecoder' for k,v in incoming.items() if not present(prior.get(k))})
+                provider_status['FreeVINDecoder']='reported' if incoming or incoming_extra else 'empty'
+            else:provider_status['FreeVINDecoder']=source_status(vin)
+        except (OSError,ValueError,TypeError):provider_status['FreeVINDecoder']='unavailable_or_invalid_response'
+    else:provider_status['FreeVINDecoder']='not_needed'
+    missing=sorted(k for k in IMPORTANT if not present(vehicle.get(k)))
+    return dict(vin=vin,source=' + '.join(sources) or 'unavailable',vehicle=vehicle,additional=additional,
+        available_fields=[k for k,v in vehicle.items() if present(v)],field_sources=provenance,
         conflicts=conflicts,consistency_issues=validate_consistency(vehicle),requires_review=True,
-        observed_at=datetime.now(timezone.utc).isoformat(),live_data_received=bool(vehicle),
-        message='Перевірте знайдені характеристики. Невизначені поля можна заповнити вручну.' if vehicle else 'Декодери недоступні або не знайшли даних. Додайте автомобіль вручну.')
+        observed_at=datetime.now(timezone.utc).isoformat(),live_data_received=bool(vehicle or additional),
+        missing_fields=missing,provider_status=provider_status,
+        counts={**counts,'received_useful':len(vehicle)+len(additional),'catalogue_useful':sum(k in CATALOGUE_KEYS for k in vehicle)+len(additional),'undefined_important':len(missing),'undefined_supported':sum(not present(vehicle.get(k)) for k in PRIMARY_KEYS),'conflicting':len(conflicts)+sum('alternative' in a for a in additional.values())},
+        message='Перевірте знайдені характеристики. Невизначені поля можна уточнити.' if vehicle else 'Джерела недоступні або не знайшли даних. Додайте автомобіль вручну.')
+
+
+def lookup(vin):
+    vin=vin.strip().upper()
+    if not re.fullmatch('[A-HJ-NPR-Z0-9]{17}',vin):raise ValueError('Invalid VIN')
+    with _locks[int(hashlib.sha256(vin.encode()).hexdigest()[:8],16)%len(_locks)]:
+        now=monotonic()
+        with _cache_guard:entry=_cache.get(vin)
+        if entry and entry[0]>now:return {**deepcopy(entry[1]),'cached':True}
+        result=_lookup(vin)
+        with _cache_guard:
+            if len(_cache)>=128:_cache.pop(next(iter(_cache)))
+            _cache[vin]=(monotonic()+(300 if result['live_data_received'] else 30),deepcopy(result))
+        return {**result,'cached':False}

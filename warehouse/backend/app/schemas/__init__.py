@@ -42,7 +42,17 @@ class VinConflict(Input):
     secondary: str = Field(max_length=200)
 
 
+class VinAttribute(Input):
+    alternative: str | None = Field(default=None,max_length=200)
+    alternative_source: str | None = Field(default=None,max_length=100)
+    label: str = Field(min_length=1,max_length=120)
+    value: str = Field(max_length=200)
+    source: str = Field(max_length=100)
+
+
 class VinDetails(Input):
+    additional: dict[str,VinAttribute] = Field(default_factory=dict,max_length=40)
+    decoded_additional: dict[str,VinAttribute] = Field(default_factory=dict,max_length=40)
     conflicts: dict[str,VinConflict] = Field(default_factory=dict,max_length=40)
     characteristics: dict[str,str|int|float|None] = Field(default_factory=dict,max_length=40)
     decoded: dict[str,str|int|float|None] = Field(default_factory=dict,max_length=40)
@@ -52,7 +62,10 @@ class VinDetails(Input):
 
     @model_validator(mode='after')
     def bounded(self):
-        allowed={'manufacturer','model','generation','year','engine','engine_code','engine_displacement_l','engine_power_kw','engine_power_hp','fuel_type','transmission','transmission_code','drive_type','body_class','trim','doors','engine_cylinders','plant_country','plant_city','series','vehicle_type','market'}
+        from app.services.vin_fields import PRIMARY_KEYS,EXTRA_KEYS
+        allowed=PRIMARY_KEYS
+        if not set(self.additional)<=EXTRA_KEYS or not set(self.decoded_additional)<=EXTRA_KEYS:raise ValueError('Неприпустимі додаткові VIN-дані')
+
         for values in (self.characteristics,self.decoded):
             if not set(values)<=allowed or any(len(str(v))>200 for v in values.values()):
                 raise ValueError('Неприпустимі VIN-характеристики')
@@ -81,6 +94,13 @@ class VehicleInput(Input):
     acquisition_date: date | None = None
     notes: Annotated[str, Field(max_length=10000)] = ""
     status: Literal["planned", "dismantling", "completed"] = "dismantling"
+
+    @field_validator('drive_type',mode='before')
+    @classmethod
+    def normalized_drive(cls,value):
+        if not value:return value
+        from app.services.vin_normalize import drive_code
+        return drive_code(value) or value
 
     @field_validator('vin',mode='before')
     @classmethod
