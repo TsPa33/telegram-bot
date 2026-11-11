@@ -109,7 +109,7 @@ test('reference-aligned details visually separate attached children and unlinked
  assert.match(tree,/assembly-children/);
  assert.match(tree,/Фізично приєднані/);
  assert.match(tree,/Компоненти дверей/);
- assert.match(tree,/Типовий склад · потребує підтвердження/);
+ assert.match(tree,/Типовий склад · \{template.length\} позицій/);
  assert.match(tree,/suggestedDoorComponents/);
  assert.match(tree,/Кандидат|Не включено/);
  assert.match(tree,/preview\.memberships\?\.length/);
@@ -153,4 +153,18 @@ test('existing physical and exact source components retain their original IDs, n
  assert.equal(glass.linkedId,confirmed.id);
  assert.ok(items.filter(x=>x.kind==='template_only').every(x=>x.linkedId===undefined));
  assert.equal(items.some(x=>x.linkedId===wrong.id),false);
+});
+
+test('level two is its own collapse control, and every type can become a managed plan item',()=>{
+ const tree=read('AssemblyTree.tsx');
+ assert.match(tree,/<details className="assembly-door-component-preview">/);
+ assert.match(tree,/<summary className="assembly-component-preview-heading">/);
+ assert.match(tree,/assembly-template-control/);
+ assert.match(tree,/Додати до плану/);
+ assert.match(tree,/addDoorComponentToPlan/);
+ assert.match(tree,/\/assemblies\/door-plan-components/);
+ assert.match(tree,/request_key:pendingTemplate\.current\.key/);
+ assert.match(tree,/setOpen\(old=>new Set\(\[\.\.\.old,parent\.id\]\)\)/);
+ assert.match(tree,/plan_parent_id/);
+ assert.match(tree,/Відкрити керовану позицію плану/);
 });

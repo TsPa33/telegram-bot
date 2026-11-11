@@ -559,3 +559,99 @@ def test_tree_unknown_door_installation_stays_unknown(logged,vehicle):
     assert row['position']==''
     assert row['installation_position']=={'side':'unknown','position':'unknown'}
     assert row['parent_id'] is None and row['part_id'] is None
+
+
+
+def test_door_template_confirmation_is_idempotent_plan_only(logged,vehicle):
+    """Reference row becomes manageable plan item, never Part, receipt or AssemblyMembership."""
+    with Session(engine()) as db:
+        account=db.get(Vehicle,vehicle['id']).account_id
+        parent=DismantlingItem(
+            account_id=account,vehicle_id=vehicle['id'],source='synthetic.door',
+            catalog_key='synthetic-door-front-left',category_key='body',
+            category_name='Кузов та зовнішні деталі',subcategory_key='doors',
+            subcategory_name='Двері та крила',name='Двері',position='передня ліва',
+            status='unchecked',plan_v3={'snapshot':{'installation_position':{
+                'position':'front','side':'left','details':{'mount':[]}}}},
+        )
+        db.add(parent);db.flush();parent_id=parent.id;db.commit()
+        baseline_parts=db.scalar(select(func.count()).select_from(Part))
+        baseline_receipts=db.scalar(select(func.count()).select_from(Operation).where(Operation.type=='receipt'))
+        baseline_edges=db.scalar(select(func.count()).select_from(AssemblyMembership))
+    url=f"/api/v1/vehicles/{vehicle['id']}/assemblies/door-plan-components"
+    data=dict(request_key=key(),parent_item_id=parent_id,component_key='glass',confirm=True)
+    assert logged.post(url,json={**data,'confirm':False}).status_code==422
+    first=logged.post(url,json=data)
+    assert first.status_code==200,first.text
+    assert first.json()['created'] is True and first.json()['part_id'] is None
+    saved_id=first.json()['item_id']
+    assert logged.post(url,json=data).json()==first.json()
+    second=logged.post(url,json={**data,'request_key':key()})
+    assert second.status_code==200,second.text
+    assert second.json()['created'] is False and second.json()['item_id']==saved_id
+    assert logged.post(url,json={**data,'component_key':'lock'}).status_code==409
+    tree=logged.get(f"/api/v1/vehicles/{vehicle['id']}/assemblies")
+    assert tree.status_code==200,tree.text
+    row=next(i for i in tree.json()['items'] if i['id']==saved_id)
+    assert row['name']=='Скло дверей' and row['plan_parent_id']==parent_id
+    assert row['position']=='передня ліва'
+    assert row['parent_id'] is None and row['part_id'] is None
+    listing=logged.get(f"/api/v1/vehicles/{vehicle['id']}/dismantling-v3")
+    assert listing.status_code==200,listing.text
+    plan_row=next(i for i in listing.json()['items'] if i['id']==saved_id)
+    assert plan_row['inspection']=='unchecked' and plan_row['selectable'] is True
+    assert plan_row['source_confirmed'] is False
+    with Session(engine()) as db:
+        saved=db.get(DismantlingItem,saved_id)
+        assert saved.plan_v3['assembly_template_key']=='glass'
+        assert saved.received_at is None and saved.status=='unchecked'
+        assert db.scalar(select(func.count()).select_from(Part))==baseline_parts
+        assert db.scalar(select(func.count()).select_from(Operation).where(Operation.type=='receipt'))==baseline_receipts
+        assert db.scalar(select(func.count()).select_from(AssemblyMembership))==baseline_edges
+
+
+def test_door_template_reuses_existing_same_position_without_altering_stock(logged,vehicle):
+    with Session(engine()) as db:
+        account=db.get(Vehicle,vehicle['id']).account_id
+        root=DismantlingItem(account_id=account,vehicle_id=vehicle['id'],
+            name='Двері',position='передня права',source='synthetic.door',catalog_key='door-right',
+            category_key='body',category_name='Кузов',
+            subcategory_key='door',subcategory_name='Двері')
+        item=DismantlingItem(account_id=account,vehicle_id=vehicle['id'],
+            name='Замок дверей',position='передня права',source='legacy.preserved',catalog_key='existing-lock',
+            category_key='body',category_name='Кузов',subcategory_key='door',subcategory_name='Двері')
+        db.add_all([root,item]);db.flush();root_id=root.id;item_id=item.id;db.commit()
+        before=db.scalar(select(func.count()).select_from(DismantlingItem))
+    r=logged.post(f"/api/v1/vehicles/{vehicle['id']}/assemblies/door-plan-components",json=dict(
+        request_key=key(),parent_item_id=root_id,component_key='lock',confirm=True))
+    assert r.status_code==200,r.text
+    assert r.json()==dict(created=False,item_id=item_id,name='Замок дверей',part_id=None)
+    with Session(engine()) as db:
+        assert db.scalar(select(func.count()).select_from(DismantlingItem))==before
+        original=db.get(DismantlingItem,item_id)
+        assert original.source=='legacy.preserved' and original.plan_v3=={}
+
+
+def test_door_template_blocks_ambiguous_parent_and_foreign_component(logged,vehicle):
+    with Session(engine()) as db:
+        account=db.get(Vehicle,vehicle['id']).account_id
+        unknown=DismantlingItem(account_id=account,vehicle_id=vehicle['id'],
+            name='Двері',source='synthetic',catalog_key='unknown-position',category_key='body',
+            category_name='Кузов',subcategory_key='door',subcategory_name='Двері')
+        contradictory=DismantlingItem(account_id=account,vehicle_id=vehicle['id'],
+            name='Двері',position='передня ліва',source='synthetic',catalog_key='opposing',
+            category_key='body',category_name='Кузов',subcategory_key='door',subcategory_name='Двері',
+            plan_v3={'snapshot':{'installation_position':{'position':'front','side':'right'}}})
+        not_door=DismantlingItem(account_id=account,vehicle_id=vehicle['id'],
+            name='Двигун',position='передня ліва',source='synthetic',catalog_key='engine',
+            category_key='engine',category_name='Двигун',subcategory_key='other',
+            subcategory_name='Інше')
+        db.add_all([unknown,contradictory,not_door]);db.flush()
+        ids=[unknown.id,contradictory.id,not_door.id];db.commit()
+        before=db.scalar(select(func.count()).select_from(DismantlingItem))
+    path=f"/api/v1/vehicles/{vehicle['id']}/assemblies/door-plan-components"
+    for item_id in ids:
+        r=logged.post(path,json=dict(request_key=key(),parent_item_id=item_id,component_key='glass',confirm=True))
+        assert r.status_code==409,r.text
+    assert logged.post(path,json=dict(request_key=key(),parent_item_id=ids[0],component_key='unexpected',confirm=True)).status_code==422
+    with Session(engine()) as db:assert db.scalar(select(func.count()).select_from(DismantlingItem))==before

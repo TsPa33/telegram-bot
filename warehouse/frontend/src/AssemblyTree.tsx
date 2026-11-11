@@ -21,6 +21,7 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
  const inspectorRef=useRef<HTMLDivElement>(null);
  const [quantityDraft,setQuantityDraft]=useState<Record<string,number>>({});
  const selectedId=useRef<string|null>(null);
+ const pendingTemplate=useRef<{fingerprint:string;key:string}|null>(null);
  useEffect(()=>{if(selected&&preview&&window.innerWidth<=650){inspectorRef.current?.focus({preventScroll:true});inspectorRef.current?.scrollIntoView({block:'start',behavior:'instant'});}},[selected?.id,preview?.token]);
  const previewEpoch=useRef(0);
  const epoch=useRef(0),pending=useRef<{fingerprint:string;key:string}|null>(null),writing=useRef(false);
@@ -35,7 +36,7 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
   if(ticket===epoch.current){setData(result);setBulkPlan(managed);setCheckedIds(ids=>ids.filter(id=>managed?.items.some((n:Row)=>n.id===id&&n.selectable)));}return result;
  }
  useEffect(()=>{
-  const ticket=++epoch.current;setData(null);setBulkPlan(null);setCheckedIds([]);setReceiptOpen(false);setEnabled(false);setCategory('');setStatus('all');setMode('tree');setSelected(null);selectedId.current=null;setPreview(null);setQuantityDraft({});setDoorGroupOpen(true);setManualComponents(false);setAssemblyToolsOpen(false);setError('');setOpen(new Set());setQ('');setLimit(50);pending.current=null;writing.current=false;setBusy(false);
+  const ticket=++epoch.current;setData(null);setBulkPlan(null);setCheckedIds([]);setReceiptOpen(false);setEnabled(false);setCategory('');setStatus('all');setMode('tree');setSelected(null);selectedId.current=null;setPreview(null);setQuantityDraft({});setDoorGroupOpen(true);setManualComponents(false);setAssemblyToolsOpen(false);setError('');setOpen(new Set());setQ('');setLimit(50);pending.current=null;pendingTemplate.current=null;writing.current=false;setBusy(false);
   api(`/vehicles/${vehicle.id}/assemblies/readiness`).then(async r=>{if(ticket!==epoch.current)return;setAssemblyEnabled(r.enabled);const ready=r.workspace_enabled??r.enabled;setEnabled(ready);onReady?.(ready&&can('inventory.view'));if(ready&&can('inventory.view'))await load(ticket)}).catch(e=>{if(ticket===epoch.current){setError(e.message)}});
   return()=>{epoch.current++};
  },[scope,revision]);
@@ -79,6 +80,26 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
  async function inspect(n:Row,presence:string,quantity:number,noteValue:string){
   const ticket=epoch.current;try{const current=selected?.id===n.id&&preview?preview:await api(`/vehicles/${vehicle.id}/assemblies/${n.id}/preview`);if(ticket!==epoch.current)return;const root=current.items.find((i:Row)=>i.item_id===n.id);if(!root||root.quantity!==(n.part_id?n.quantity:null)||root.planned_quantity!==n.planned_quantity||root.note!==(n.note||''))throw Error('Дані змінилися. Оновіть список перед редагуванням.');return await send('inspect',{item_id:n.id,token:current.token,presence,quantity,note:noteValue});}catch(e){setError((e as Error).message);return false}
  }
+ async function addDoorComponentToPlan(parent:Row,componentKey:string){
+  if(busy||writing.current||!editable)return;
+  const ticket=epoch.current;
+  const fingerprint=JSON.stringify([scope,parent.id,componentKey]);
+  if(pendingTemplate.current?.fingerprint!==fingerprint)pendingTemplate.current={fingerprint,key:crypto.randomUUID()};
+  writing.current=true;setBusy(true);setError('');
+  try{
+   const saved=await api(`/vehicles/${vehicle.id}/assemblies/door-plan-components`,'POST',{
+    request_key:pendingTemplate.current.key,parent_item_id:parent.id,component_key:componentKey,confirm:true
+   });
+   if(ticket!==epoch.current)return;
+   pendingTemplate.current=null;
+   // The saved plan item is not a physical child or an inventory unit.
+   const refreshed=await load(ticket);
+   setOpen(old=>new Set([...old,parent.id]));setQ('');setStatus('all');setCategory('');
+   const item=(refreshed.items||[]).find((n:Row)=>n.id===saved.item_id);
+   if(item)await select(item);
+  }catch(e){if(ticket===epoch.current)setError((e as Error).message)}
+  finally{if(ticket===epoch.current){writing.current=false;setBusy(false)}}
+ }
  async function saveQuantity(n:Row){
   const next=quantityDraft[n.id];if(next==null||!Number.isInteger(next)||next<1)return;
   const ok=await inspect(n,n.presence,next,n.note);
@@ -89,8 +110,8 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
  const managedById=new Map<string,Row>((bulkPlan?.items||[]).map((n:Row)=>[n.id,n]));
  const selectable=matches.filter(n=>managedById.get(n.id)?.selectable).map(n=>String(n.id));
  const chosen=checkedIds.map(id=>managedById.get(id)).filter((n):n is Row=>!!n);
- const matching=new Set<string>();matches.forEach(n=>{let cursor:Row|undefined=n;while(cursor&&!matching.has(cursor.id)){matching.add(cursor.id);cursor=byId.get(cursor.parent_id)}});
- const roots=(mode==='list'?matches:items.filter(n=>!n.parent_id&&matching.has(n.id))).sort((a,b)=>Number(!!b.completeness)-Number(!!a.completeness)||String(a.name).localeCompare(String(b.name),'uk',{numeric:true}));
+ const matching=new Set<string>();matches.forEach(n=>{let cursor:Row|undefined=n;while(cursor&&!matching.has(cursor.id)){matching.add(cursor.id);cursor=byId.get(cursor.parent_id||cursor.plan_parent_id)}});
+ const roots=(mode==='list'?matches:items.filter(n=>!n.parent_id&&(!n.plan_parent_id||!byId.has(n.plan_parent_id))&&matching.has(n.id))).sort((a,b)=>Number(!!b.completeness)-Number(!!a.completeness)||String(a.name).localeCompare(String(b.name),'uk',{numeric:true}));
  const visibleRoots=roots.slice(0,limit);
  // This group is presentation-only. It has no Part ID or membership edge.
  const doorRoots=mode==='tree'?visibleRoots.filter(isGenericDoor).sort((a,b)=>doorOrder(a)-doorOrder(b)): [];
@@ -131,20 +152,25 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
    </div>{expanded&&mode==='tree'&&expandable&&<ul className="assembly-children">
      {kids.length>0&&<li className="assembly-connected-heading"><Check size={13}/>Фізично приєднані · {kids.length}</li>}
      {kids.map(render)}
-     {isGenericDoor(node)&&<li className="assembly-door-component-preview">
-       <div className="assembly-component-preview-heading"><strong>Компоненти дверей</strong><span>Типовий склад · потребує підтвердження</span></div>
-       {ambiguousDoor?<p>У цих дверей неоднозначне розташування. Підтвердьте фізичну позицію перед зіставленням.</p>:
-       template.length>0?
-         <ul className="assembly-door-template-list">{template.filter(entry=>entry.kind!=='physically_attached').map(entry=><li key={entry.key} className={'assembly-door-candidate '+(entry.kind==='source_candidate'?'has-source':'template-only')}>
+     {isGenericDoor(node)&&<li className="assembly-door-component-wrapper">
+       <details className="assembly-door-component-preview">
+        <summary className="assembly-component-preview-heading"><strong>Компоненти дверей</strong><span>Типовий склад · {template.length} позицій</span></summary>
+        <div className="assembly-component-preview-body">
+         {ambiguousDoor?<p>У цих дверей неоднозначне розташування. Уточніть фізичну позицію перед додаванням компонентів.</p>:
+         template.length>0?
+          <ul className="assembly-door-template-list">{template.filter(entry=>entry.kind!=='physically_attached').map(entry=><li key={entry.key} className={'assembly-door-candidate '+(entry.kind==='source_candidate'?'has-source':'template-only')}>
            <Box size={15}/>
            {entry.kind==='source_candidate'&&entry.linkedId?
-             <button type="button" title="Відкрити існуючий запис плану" onClick={()=>{const linked=items.find(item=>item.id===entry.linkedId);if(linked)void select(linked)}}>{entry.label}</button>:
-             <span className="assembly-template-label">{entry.label}</span>}
-           <small>{entry.kind==='source_candidate'?'У плані · не включено':'Типовий компонент'}</small>
-         </li>)}</ul>:
-         <p>Розташування дверей не встановлено. Спочатку уточніть позицію.</p>}
-       {extraDoorSuggestions.length>0&&<details className="assembly-door-extra"><summary>Інші знайдені записи плану ({extraDoorSuggestions.length})</summary><ul>{extraDoorSuggestions.map(candidate=><li key={candidate.id} className="assembly-door-candidate"><Box size={15}/><button type="button" onClick={()=>void select(candidate)}>{candidate.name}</button><small>Не включено</small></li>)}</ul></details>}
-       <p className="assembly-component-hint">Типовий склад не підтверджує комплектацію VIN, не створює складських залишків і не дозволяє продаж. Фізично приєднані компоненти показані окремо вище.</p>
+            <button type="button" className="assembly-template-existing" title="Відкрити керовану позицію плану" onClick={()=>{const linked=items.find(item=>item.id===entry.linkedId);if(linked)void select(linked)}}>{entry.label}</button>:
+            <span className="assembly-template-label">{entry.label}</span>}
+           {entry.kind==='source_candidate'?<button type="button" className="assembly-template-control" onClick={()=>{const linked=items.find(item=>item.id===entry.linkedId);if(linked)void select(linked)}} disabled={busy}>Керувати</button>:
+            <button type="button" className="assembly-template-control" disabled={busy||!editable} onClick={()=>void addDoorComponentToPlan(node,entry.key)}>Додати до плану</button>}
+          </li>)}</ul>:
+          <p>Розташування дверей не встановлено. Спочатку уточніть позицію.</p>}
+         {extraDoorSuggestions.length>0&&<details className="assembly-door-extra"><summary>Інші знайдені записи плану ({extraDoorSuggestions.length})</summary><ul>{extraDoorSuggestions.map(candidate=><li key={candidate.id} className="assembly-door-candidate"><Box size={15}/><button type="button" onClick={()=>void select(candidate)}>{candidate.name}</button><small>Не включено</small></li>)}</ul></details>}
+         <p className="assembly-component-hint">«Додати до плану» не означає фізичної наявності чи надходження на склад. Фізично приєднані компоненти показано окремо.</p>
+        </div>
+       </details>
       </li>}
     </ul>}
   </li>;
