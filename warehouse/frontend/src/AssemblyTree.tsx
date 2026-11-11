@@ -17,6 +17,8 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
  useEffect(()=>{let active=true;setPhoto('');if(selected?.part_id)api(`/parts/${selected.part_id}/photos`).then(rows=>{if(active)setPhoto(rows[0]?.url||'')}).catch(()=>{});return()=>{active=false}},[selected?.part_id]);
  const [category,setCategory]=useState(''),[status,setStatus]=useState('all'),[mode,setMode]=useState('tree'),[note,setNote]=useState('');
  const inspectorRef=useRef<HTMLDivElement>(null);
+ const [quantityDraft,setQuantityDraft]=useState<Record<string,number>>({});
+ const selectedId=useRef<string|null>(null);
  useEffect(()=>{if(selected&&preview&&window.innerWidth<=650){inspectorRef.current?.focus({preventScroll:true});inspectorRef.current?.scrollIntoView({block:'start',behavior:'instant'});}},[selected?.id,preview?.token]);
  const previewEpoch=useRef(0);
  const epoch=useRef(0),pending=useRef<{fingerprint:string;key:string}|null>(null),writing=useRef(false);
@@ -31,12 +33,12 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
   if(ticket===epoch.current){setData(result);setBulkPlan(managed);setCheckedIds(ids=>ids.filter(id=>managed?.items.some((n:Row)=>n.id===id&&n.selectable)));}return managed||result;
  }
  useEffect(()=>{
-  const ticket=++epoch.current;setData(null);setBulkPlan(null);setCheckedIds([]);setReceiptOpen(false);setEnabled(false);setCategory('');setStatus('all');setMode('tree');setSelected(null);setPreview(null);setError('');setOpen(new Set());setQ('');setLimit(50);pending.current=null;writing.current=false;setBusy(false);
+  const ticket=++epoch.current;setData(null);setBulkPlan(null);setCheckedIds([]);setReceiptOpen(false);setEnabled(false);setCategory('');setStatus('all');setMode('tree');setSelected(null);selectedId.current=null;setPreview(null);setQuantityDraft({});setError('');setOpen(new Set());setQ('');setLimit(50);pending.current=null;writing.current=false;setBusy(false);
   api(`/vehicles/${vehicle.id}/assemblies/readiness`).then(async r=>{if(ticket!==epoch.current)return;setAssemblyEnabled(r.enabled);const ready=r.workspace_enabled??r.enabled;setEnabled(ready);onReady?.(ready&&can('inventory.view'));if(ready&&can('inventory.view'))await load(ticket)}).catch(e=>{if(ticket===epoch.current){setError(e.message)}});
   return()=>{epoch.current++};
  },[scope,revision]);
  async function select(node:Row) {
-  const request=++previewEpoch.current;const ticket=epoch.current;setSelected(node);setNote(node.note||'');setPreview(null);setPhysical(false);setConfirmSale(false);setConfirmReturn(false);setDescription('');setChild('');setError('');
+  const request=++previewEpoch.current;const ticket=epoch.current;selectedId.current=node.id;setSelected(node);setNote(node.note||'');setPreview(null);setPhysical(false);setConfirmSale(false);setConfirmReturn(false);setDescription('');setChild('');setError('');
   try{const value=await api(`/vehicles/${vehicle.id}/assemblies/${node.id}/preview`);if(ticket===epoch.current&&request===previewEpoch.current){
     setPreview(value);
     const root=value.items.find((i:Row)=>i.item_id===node.id);
@@ -46,15 +48,21 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
     }
    }}catch(e){if(ticket===epoch.current)setError((e as Error).message)}
  }
- async function send(action:string,body:Row,part?:string) {
-  if(writing.current||bulk.busy||bulk.intent)return;writing.current=true;setBusy(true);setError('');const ticket=epoch.current;
+ async function send(action:string,body:Row,part?:string):Promise<boolean> {
+  if(writing.current||bulk.busy||bulk.intent)return false;writing.current=true;setBusy(true);setError('');const ticket=epoch.current;
   const fingerprint=JSON.stringify([scope,action,body,part]);
   if(pending.current?.fingerprint!==fingerprint)pending.current={fingerprint,key:crypto.randomUUID()};
   try{
    await api(part?`/parts/${part}/operations`:`/vehicles/${vehicle.id}/assemblies`,'POST',{...body,request_key:pending.current.key,...(!part?{action}: {})});
    if(ticket!==epoch.current)return;
-   pending.current=null;const fresh=await load(ticket);if(action==='inspect'){const node=fresh.items.find((n:Row)=>n.id===body.item_id);if(node)await select(node);}else{setPreview(null);setSelected(null);}window.dispatchEvent(new Event('warehouse:inventory-changed'));
-  }catch(e){if(ticket===epoch.current)setError((e as Error).message)}finally{if(ticket===epoch.current){writing.current=false;setBusy(false)}}
+   pending.current=null;const fresh=await load(ticket);if(action==='inspect'){
+    const node=fresh.items.find((n:Row)=>n.id===body.item_id);
+    if(node&&selectedId.current===node.id){
+      setSelected(node);
+      try{const next=await api(`/vehicles/${vehicle.id}/assemblies/${node.id}/preview`);if(ticket===epoch.current&&selectedId.current===node.id)setPreview(next);}catch(e){setError((e as Error).message)}
+    }
+   }else{selectedId.current=null;setPreview(null);setSelected(null);}window.dispatchEvent(new Event('warehouse:inventory-changed'));return true;
+  }catch(e){if(ticket===epoch.current)setError((e as Error).message);return false}finally{if(ticket===epoch.current){writing.current=false;setBusy(false)}}
  }
  if(!enabled||!can('inventory.view'))return error?<p role="alert">{error}</p>:null;
  if(!data)return <p role={error?'alert':'status'}>{error||'Завантажуємо фізичний склад…'}</p>;
@@ -65,9 +73,14 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
  function icon(name:string){const Icon=/двер/i.test(name)?DoorOpen:/двиг|трансм/i.test(name)?Cog:/електр/i.test(name)?Zap:/салон|інтер/i.test(name)?Armchair:/клімат/i.test(name)?Wind:/безпек/i.test(name)?ShieldCheck:/освіт/i.test(name)?Lightbulb:/гальм/i.test(name)?Disc:/кермов|підвіск/i.test(name)?Settings:Box;return <Icon size={20} strokeWidth={1.6}/>;}
  const checked=items.filter(n=>['present','damaged'].includes(n.presence)).length,attention=items.filter(n=>['unchecked','damaged','absent'].includes(n.presence)||n.completeness==='incomplete'||n.category==='Потребує уточнення').length,stocked=items.filter(n=>n.part_id&&!n.parent_id&&!n.consumed_operation_id&&!n.archived&&n.quantity>0).length;
  function stockLabel(n:Row){return n.consumed_operation_id||n.consumed_type==='sale'||n.consumed_type==='write_off'?(n.consumed_type==='sale'?(n.parent_id?'Продано у складі вузла':'Продано'):'Списано'):n.parent_id?'У складі вузла':n.part_id&&n.quantity>0?'На складі':n.part_id?'Немає залишку':'Ще не на складі'}
- function presenceLabel(n:Row){return ({present:'Є в автомобілі',damaged:'Пошкоджена',absent:'Відсутня'} as Record<string,string>)[n.presence]||'Перевірити наявність'}
+ function presenceLabel(n:Row){return ({present:'Є',damaged:'Пошкоджено',absent:'Немає'} as Record<string,string>)[n.presence]||'Перевірити'}
  async function inspect(n:Row,presence:string,quantity:number,noteValue:string){
-  const ticket=epoch.current;try{const current=selected?.id===n.id&&preview?preview:await api(`/vehicles/${vehicle.id}/assemblies/${n.id}/preview`);if(ticket!==epoch.current)return;const root=current.items.find((i:Row)=>i.item_id===n.id);if(!root||root.quantity!==(n.part_id?n.quantity:null)||root.planned_quantity!==n.planned_quantity||root.note!==(n.note||''))throw Error('Дані змінилися. Оновіть список перед редагуванням.');await send('inspect',{item_id:n.id,token:current.token,presence,quantity,note:noteValue});}catch(e){setError((e as Error).message)}
+  const ticket=epoch.current;try{const current=selected?.id===n.id&&preview?preview:await api(`/vehicles/${vehicle.id}/assemblies/${n.id}/preview`);if(ticket!==epoch.current)return;const root=current.items.find((i:Row)=>i.item_id===n.id);if(!root||root.quantity!==(n.part_id?n.quantity:null)||root.planned_quantity!==n.planned_quantity||root.note!==(n.note||''))throw Error('Дані змінилися. Оновіть список перед редагуванням.');return await send('inspect',{item_id:n.id,token:current.token,presence,quantity,note:noteValue});}catch(e){setError((e as Error).message);return false}
+ }
+ async function saveQuantity(n:Row){
+  const next=quantityDraft[n.id];if(next==null||!Number.isInteger(next)||next<1)return;
+  const ok=await inspect(n,n.presence,next,n.note);
+  if(ok)setQuantityDraft(d=>{const copy={...d};delete copy[n.id];return copy});
  }
  async function receive(n:Row){const ticket=epoch.current;try{const current=selected?.id===n.id&&preview?preview:await api(`/vehicles/${vehicle.id}/assemblies/${n.id}/preview`);if(ticket!==epoch.current)return;const root=current.items.find((i:Row)=>i.item_id===n.id);if(!root||root.planned_quantity!==n.planned_quantity)throw Error('Кількість змінилася. Відкрийте деталь ще раз.');await send('receipt',{item_id:n.id,token:current.token,confirm_physical:true});}catch(e){setError((e as Error).message)}}
  const matches=items.filter(n=>(!category||n.category===category)&&(!q.trim()||String(n.name).toLocaleLowerCase('uk').includes(q.trim().toLocaleLowerCase('uk')))&&(status==='all'||status==='confirmed'&&['present','damaged'].includes(n.presence)||status===n.presence||status==='stock'&&stockLabel(n)==='На складі'||status==='sold'&&n.consumed_type==='sale'));
