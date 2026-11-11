@@ -50,7 +50,19 @@ class VinAttribute(Input):
     source: str = Field(max_length=100)
 
 
+class VinYearObservation(Input):
+    reported_year: Annotated[str,Field(max_length=80)] | int | None = None
+    reason: Literal['provider_model_year_uncertain']
+    codes: list[Annotated[str,Field(max_length=10)]] = Field(default_factory=list,max_length=20)
+
+
+class VinDiagnostics(Input):
+    year_observation: VinYearObservation | None = None
+
+
 class VinDetails(Input):
+    diagnostics: VinDiagnostics = Field(default_factory=VinDiagnostics)
+    consistency_issues: dict[str,Annotated[str,Field(max_length=500)]] = Field(default_factory=dict,max_length=40)
     additional: dict[str,VinAttribute] = Field(default_factory=dict,max_length=40)
     decoded_additional: dict[str,VinAttribute] = Field(default_factory=dict,max_length=40)
     conflicts: dict[str,VinConflict] = Field(default_factory=dict,max_length=40)
@@ -69,6 +81,7 @@ class VinDetails(Input):
         for values in (self.characteristics,self.decoded):
             if not set(values)<=allowed or any(len(str(v))>200 for v in values.values()):
                 raise ValueError('Неприпустимі VIN-характеристики')
+        if not set(self.consistency_issues)<=allowed:raise ValueError('Неприпустиме уточнення VIN')
         if not set(self.conflicts)<=allowed:raise ValueError('Неприпустимі конфлікти VIN')
         if not set(self.field_sources)<=allowed or any(len(v)>100 for v in self.field_sources.values()):raise ValueError('Неприпустиме джерело VIN')
         return self
