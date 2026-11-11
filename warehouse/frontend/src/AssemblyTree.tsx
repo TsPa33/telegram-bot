@@ -30,7 +30,7 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
  async function load(ticket=epoch.current) {
   const result=await api(`/vehicles/${vehicle.id}/assemblies`);
   const managed=can('catalog.view')?await api(planPath):null;
-  if(ticket===epoch.current){setData(result);setBulkPlan(managed);setCheckedIds(ids=>ids.filter(id=>managed?.items.some((n:Row)=>n.id===id&&n.selectable)));}return managed||result;
+  if(ticket===epoch.current){setData(result);setBulkPlan(managed);setCheckedIds(ids=>ids.filter(id=>managed?.items.some((n:Row)=>n.id===id&&n.selectable)));}return result;
  }
  useEffect(()=>{
   const ticket=++epoch.current;setData(null);setBulkPlan(null);setCheckedIds([]);setReceiptOpen(false);setEnabled(false);setCategory('');setStatus('all');setMode('tree');setSelected(null);selectedId.current=null;setPreview(null);setQuantityDraft({});setError('');setOpen(new Set());setQ('');setLimit(50);pending.current=null;writing.current=false;setBusy(false);
@@ -54,7 +54,7 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
   if(pending.current?.fingerprint!==fingerprint)pending.current={fingerprint,key:crypto.randomUUID()};
   try{
    await api(part?`/parts/${part}/operations`:`/vehicles/${vehicle.id}/assemblies`,'POST',{...body,request_key:pending.current.key,...(!part?{action}: {})});
-   if(ticket!==epoch.current)return;
+   if(ticket!==epoch.current)return false;
    pending.current=null;const fresh=await load(ticket);if(action==='inspect'){
     const node=fresh.items.find((n:Row)=>n.id===body.item_id);
     if(node&&selectedId.current===node.id){
