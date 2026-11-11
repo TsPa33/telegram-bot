@@ -85,10 +85,30 @@ def reservation_orders(db,account,part_ids):
         .where(OrderReservation.account_id==account,Order.account_id==account,OrderReservation.state=='active',OrderReservation.part_id.in_(part_ids)))]
 
 
+def physically_missing(db,account,vehicle,root,edges):
+    """Previously attached components not currently inside this root.
+
+    Historical detaches cannot be overridden by marking the remainder 'complete'.
+    A genuine, recorded re-attach restores completeness eligibility.
+    """
+    active=set(closure(root,edges))
+    missing=list(db.scalars(select(AssemblyMembership).where(
+        AssemblyMembership.account_id==account,
+        AssemblyMembership.vehicle_id==vehicle,
+        AssemblyMembership.parent_item_id.in_(active),
+        AssemblyMembership.active.is_(False),
+    )))
+    return sorted({e.child_item_id for e in missing if e.child_item_id not in active})
+
+
 def preview(db,account,item):
     node=owned(db,DismantlingItem,item,account)
     nodes,edges,parts=graph(db,account,node.vehicle_id)
     result=composition(nodes,edges,parts,item)
+    missing=physically_missing(db,account,node.vehicle_id,item,edges)
+    if missing:
+        result['incomplete']=True
+        result['missing_component_ids']=missing
     relevant=set(closure(item,edges)+ancestors(item,edges))
     result['reservation_orders']=reservation_orders(db,account,[nodes[id].part_id for id in relevant if nodes[id].part_id])
     return result
@@ -202,6 +222,8 @@ def confirm(db,account,vehicle,item,token):
     view=composition(nodes,edges,parts,item)
     if token!=view['token']:raise HTTPException(409,'Склад змінився; перегляньте його повторно')
     if view['issues']:raise HTTPException(409,'Є відсутні, пошкоджені або архівовані компоненти; повний комплект не підтверджено')
+    if physically_missing(db,account,vehicle,item,edges):
+        raise HTTPException(409,'Із вузла вже відокремлено компоненти. Продайте решту з точним описом або фізично приєднайте їх назад.')
     if any(e.child_item_id==item for e in edges):raise HTTPException(409,'Підтверджуйте склад від кореня або відокремте вузол')
     no_reserves(db,nodes,parts,closure(item,edges))
     if not parts.get(nodes[item].part_id) or parts[nodes[item].part_id].quantity!=1:raise HTTPException(409,'Немає фізичного кореневого вузла')
@@ -238,6 +260,10 @@ def stock_guard(db,part,data,account,confirmation=None):
         return None
     if data.type in ('sale','write_off','reserve'):
         view=composition(nodes,edges,parts,node.id)
+        missing=physically_missing(db,account,node.vehicle_id,node.id,edges)
+        if missing:
+            view['incomplete']=True
+            view['missing_component_ids']=missing
         context=confirmation or dict(token=getattr(data,'assembly_token',None),description=getattr(data,'assembly_description',''),remainder=getattr(data,'assembly_remainder',False))
         if context.get('token')!=view['token']:raise HTTPException(409,'Спочатку перегляньте та підтвердіть фактичний склад вузла')
         description=context.get('description') or ''
