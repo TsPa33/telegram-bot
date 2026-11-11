@@ -114,6 +114,7 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
   const ambiguousDoor=!!posKey&&(doorPositionCounts.get(posKey)||0)>1;
   const doorSuggestions=isGenericDoor(node)&&!ambiguousDoor&&mode==='tree'&&status==='all'&&!q.trim()?suggestedDoorComponents(node,items):[];
   const template=mode==='tree'&&isGenericDoor(node)&&!ambiguousDoor?doorTemplateEntries(node,items,kids):[];
+  const extraDoorSuggestions=doorSuggestions.filter(candidate=>!template.some(entry=>entry.linkedId===candidate.id));
   const expandable=kids.length>0||isGenericDoor(node);
   const locked=busy||!editable||!!node.part_id||individual||!!node.consumed_type||!!node.consumed_operation_id||!!node.reserved||node.archived;
   return <li key={node.id}>
@@ -142,7 +143,7 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
            <small>{entry.kind==='source_candidate'?'У плані · не включено':'Типовий компонент'}</small>
          </li>)}</ul>:
          <p>Розташування дверей не встановлено. Спочатку уточніть позицію.</p>}
-       {doorSuggestions.length>0&&<details className="assembly-door-extra"><summary>Інші знайдені записи плану ({doorSuggestions.length})</summary><ul>{doorSuggestions.map(candidate=><li key={candidate.id} className="assembly-door-candidate"><Box size={15}/><button type="button" onClick={()=>void select(candidate)}>{candidate.name}</button><small>Не включено</small></li>)}</ul></details>}
+       {extraDoorSuggestions.length>0&&<details className="assembly-door-extra"><summary>Інші знайдені записи плану ({extraDoorSuggestions.length})</summary><ul>{extraDoorSuggestions.map(candidate=><li key={candidate.id} className="assembly-door-candidate"><Box size={15}/><button type="button" onClick={()=>void select(candidate)}>{candidate.name}</button><small>Не включено</small></li>)}</ul></details>}
        <p className="assembly-component-hint">Типовий склад не підтверджує комплектацію VIN, не створює складських залишків і не дозволяє продаж. Фізично приєднані компоненти показані окремо вище.</p>
       </li>}
     </ul>}
