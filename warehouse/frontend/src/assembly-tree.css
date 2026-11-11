@@ -203,3 +203,19 @@
  .assembly-children{margin-left:8px!important;padding-left:5px!important}
  .assembly-door-candidate>span{font-size:.63rem}
 }
+
+
+/* Door reference template: visible constructively useful hierarchy, not virtual inventory. */
+.assembly-door-template-list{display:flex;flex-direction:column;gap:0!important}
+.assembly-door-template-list>.assembly-door-candidate{padding:5px 4px;min-height:34px}
+.assembly-door-template-list>.assembly-door-candidate .assembly-template-label{flex:1;min-width:0;font-size:.76rem;color:var(--color-text)}
+.assembly-door-template-list>.assembly-door-candidate>small{font-size:.67rem;color:var(--muted);white-space:nowrap;font-weight:500}
+.assembly-door-template-list>.assembly-door-candidate.has-source>small{color:var(--color-accent)}
+.assembly-door-template-list>.assembly-door-candidate.template-only{opacity:.88}
+.assembly-door-template-list>.assembly-door-candidate svg{width:14px;height:14px;color:var(--muted)}
+.assembly-door-component-preview .assembly-component-preview-heading{align-items:baseline}
+.assembly-door-extra{padding:6px 0;border-top:1px solid var(--color-border);font-size:.73rem}
+.assembly-door-extra summary{cursor:pointer;color:var(--color-accent);font-weight:600}
+.assembly-virtual-group .assembly-expand:not(:disabled){opacity:1;pointer-events:auto;display:inline-flex;justify-content:center;align-items:center}
+.assembly-door-component-preview p.assembly-component-hint{font-size:.68rem;line-height:1.45}
+@media(max-width:650px){.assembly-door-template-list>.assembly-door-candidate>small{white-space:normal;text-align:right;max-width:105px}}

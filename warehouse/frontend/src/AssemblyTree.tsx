@@ -4,7 +4,7 @@ import {api,type Row} from './api';
 import {TeamIdentity,useCan} from './permissions';
 import {Box,Check,ChevronDown,ChevronRight,Layers,Minus,Plus,Search,Settings2,TriangleAlert,X,MoreHorizontal,List,Network,DoorOpen,Cog,Zap,Armchair,Wind,ShieldCheck,Lightbulb,Disc,Settings} from 'lucide-react';
 import {usePlanBulk,BulkStatus,BulkActionBar,GuidedReceipt,SelectionCheck} from './DismantlingBulk';
-import {assemblyLabel,doorKey,doorOrder,isGenericDoor,isKnownDoorComponent,sameDoorInstallation,manuallyReviewableDoorComponent,suggestedDoorComponents} from './assemblyPresentation';
+import {assemblyLabel,doorKey,doorOrder,isGenericDoor,isKnownDoorComponent,sameDoorInstallation,manuallyReviewableDoorComponent,suggestedDoorComponents,doorTemplateEntries} from './assemblyPresentation';
 import './assembly-tree.css';
 
 /** Optional inline view over existing donor placements, never a stock generator. */
@@ -40,7 +40,7 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
   return()=>{epoch.current++};
  },[scope,revision]);
  async function select(node:Row) {
-  const request=++previewEpoch.current;const ticket=epoch.current;selectedId.current=node.id;setSelected(node);setNote(node.note||'');setPreview(null);setPhysical(false);setConfirmSale(false);setConfirmReturn(false);setDescription('');setChild('');setManualComponents(false);setAssemblyToolsOpen(false);setError('');
+  const request=++previewEpoch.current;const ticket=epoch.current;selectedId.current=node.id;setSelected(node);if(isGenericDoor(node))setOpen(previous=>new Set([...previous,node.id]));setNote(node.note||'');setPreview(null);setPhysical(false);setConfirmSale(false);setConfirmReturn(false);setDescription('');setChild('');setManualComponents(false);setAssemblyToolsOpen(false);setError('');
   try{const value=await api(`/vehicles/${vehicle.id}/assemblies/${node.id}/preview`);if(ticket===epoch.current&&request===previewEpoch.current){
     setPreview(value);
     const root=value.items.find((i:Row)=>i.item_id===node.id);
@@ -113,11 +113,13 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
   const posKey=doorKey(node);
   const ambiguousDoor=!!posKey&&(doorPositionCounts.get(posKey)||0)>1;
   const doorSuggestions=isGenericDoor(node)&&!ambiguousDoor&&mode==='tree'&&status==='all'&&!q.trim()?suggestedDoorComponents(node,items):[];
+  const template=mode==='tree'&&isGenericDoor(node)&&!ambiguousDoor?doorTemplateEntries(node,items,kids):[];
+  const extraDoorSuggestions=doorSuggestions.filter(candidate=>!template.some(entry=>entry.linkedId===candidate.id));
   const expandable=kids.length>0||isGenericDoor(node);
   const locked=busy||!editable||!!node.part_id||individual||!!node.consumed_type||!!node.consumed_operation_id||!!node.reserved||node.archived;
   return <li key={node.id}>
    <div className={`assembly-node ${selected?.id===node.id?'is-selected':''}`} onClick={e=>{if(!(e.target as HTMLElement).closest('button,input,a,select'))void select(node)}}>
-    <span className="assembly-select-expand">{editable&&managedById.get(node.id)?.selectable&&<SelectionCheck label={`Вибрати: ${node.name}`} ids={[node.id]} selected={new Set(checkedIds)} disabled={busy||receiptOpen} onToggle={value=>setCheckedIds(ids=>value?[...new Set([...ids,node.id])]:ids.filter(id=>id!==node.id))}/>}<button className="assembly-expand" aria-label={`${expanded?'Згорнути':'Розгорнути'} ${node.name}`} aria-expanded={expandable?expanded:undefined} disabled={!expandable||mode==='list'} onClick={()=>setOpen(old=>{const next=new Set(old);if(next.has(node.id))next.delete(node.id);else next.add(node.id);return next})}>{kids.length?(expanded?<ChevronDown size={16}/>:<ChevronRight size={16}/>):<span/>}</button></span>
+    <span className="assembly-select-expand">{editable&&managedById.get(node.id)?.selectable&&<SelectionCheck label={`Вибрати: ${node.name}`} ids={[node.id]} selected={new Set(checkedIds)} disabled={busy||receiptOpen} onToggle={value=>setCheckedIds(ids=>value?[...new Set([...ids,node.id])]:ids.filter(id=>id!==node.id))}/>}<button className="assembly-expand" aria-label={`${expanded?'Згорнути':'Розгорнути'} ${visibleName}`} aria-expanded={expandable?expanded:undefined} disabled={!expandable||mode==='list'} onClick={()=>setOpen(old=>{const next=new Set(old);if(next.has(node.id))next.delete(node.id);else next.add(node.id);return next})}>{expandable?(expanded?<ChevronDown size={16}/>:<ChevronRight size={16}/>):<span/>}</button></span>
     <button className="assembly-name" id={'assembly-node-'+node.id} aria-label={visibleName} onClick={()=>void select(node)}>{icon(node.name+' '+node.category)}<span><strong>{visibleName}</strong>{ambiguousDoor&&<small className="assembly-position-ambiguous">Збіг розташування — перевірити</small>}{node.completeness&&<small>{node.completeness==='complete'?'Комплектний вузол':node.completeness==='incomplete'?'Неповний комплект':'Перевірте склад вузла'}</small>}{node.position&&!isGenericDoor(node)&&<small>{node.position}</small>}</span></button>
     <span className="assembly-row-category" title={node.category}>{node.category==='Потребує уточнення'?'Без категорії':node.category}</span>
     <button className={`assembly-status is-${node.presence}`} title={node.presence==='present'?'Наявність підтверджена':'Переглянути наявність та стан'} aria-label={`Статус: ${node.name}, ${presenceLabel(node)}`} onClick={()=>void select(node)}>{node.presence==='present'?<Check size={14}/>:node.presence==='damaged'?<TriangleAlert size={14}/>:node.presence==='absent'?<X size={14}/>:<Search size={14}/>} {presenceLabel(node)}</button>
@@ -130,14 +132,19 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
      {kids.length>0&&<li className="assembly-connected-heading"><Check size={13}/>Фізично приєднані · {kids.length}</li>}
      {kids.map(render)}
      {isGenericDoor(node)&&<li className="assembly-door-component-preview">
-       <div className="assembly-component-preview-heading"><strong>Компоненти для звірки</strong><span>Не включені до вузла</span></div>
-       {ambiguousDoor?<p>Розташування збігається з іншою позицією. Спочатку уточніть фізичний ID.</p>:
-        doorSuggestions.length>0?
-          <ul>{doorSuggestions.map(candidate=><li key={candidate.id} className="assembly-door-candidate">
-            <Box size={15}/><button type="button" onClick={()=>void select(candidate)}>{candidate.name}{candidate.position?<small> · {candidate.position}</small>:null}</button><span>Не включено</span>
-          </li>)}</ul>:
-          <p>Компоненти за точною позицією не знайдені. Звірте їх у картці вузла.</p>}
-       <p className="assembly-component-hint">Це лише існуючі позиції плану, не підтверджений склад дверей і не новий залишок.</p>
+       <div className="assembly-component-preview-heading"><strong>Компоненти дверей</strong><span>Типовий склад · потребує підтвердження</span></div>
+       {ambiguousDoor?<p>У цих дверей неоднозначне розташування. Підтвердьте фізичну позицію перед зіставленням.</p>:
+       template.length>0?
+         <ul className="assembly-door-template-list">{template.filter(entry=>entry.kind!=='physically_attached').map(entry=><li key={entry.key} className={'assembly-door-candidate '+(entry.kind==='source_candidate'?'has-source':'template-only')}>
+           <Box size={15}/>
+           {entry.kind==='source_candidate'&&entry.linkedId?
+             <button type="button" title="Відкрити існуючий запис плану" onClick={()=>{const linked=items.find(item=>item.id===entry.linkedId);if(linked)void select(linked)}}>{entry.label}</button>:
+             <span className="assembly-template-label">{entry.label}</span>}
+           <small>{entry.kind==='source_candidate'?'У плані · не включено':'Типовий компонент'}</small>
+         </li>)}</ul>:
+         <p>Розташування дверей не встановлено. Спочатку уточніть позицію.</p>}
+       {extraDoorSuggestions.length>0&&<details className="assembly-door-extra"><summary>Інші знайдені записи плану ({extraDoorSuggestions.length})</summary><ul>{extraDoorSuggestions.map(candidate=><li key={candidate.id} className="assembly-door-candidate"><Box size={15}/><button type="button" onClick={()=>void select(candidate)}>{candidate.name}</button><small>Не включено</small></li>)}</ul></details>}
+       <p className="assembly-component-hint">Типовий склад не підтверджує комплектацію VIN, не створює складських залишків і не дозволяє продаж. Фізично приєднані компоненти показані окремо вище.</p>
       </li>}
     </ul>}
   </li>;
