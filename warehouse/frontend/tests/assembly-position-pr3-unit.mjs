@@ -12,7 +12,7 @@ const transformed=ts.transpileModule(read('assemblyPresentation.ts'),{
 const exports={};
 new Function('exports',transformed.outputText)(exports);
 const {assemblyLabel,doorKey,doorOrder,installationAxes,isGenericDoor,
- isKnownDoorComponent,sameDoorInstallation,manuallyReviewableDoorComponent,suggestedDoorComponents}=exports;
+ isKnownDoorComponent,sameDoorInstallation,manuallyReviewableDoorComponent,suggestedDoorComponents,doorTemplateEntries}=exports;
 const node=(id,position,side)=>({
  id,name:'Двері',position:position==='front'?'':position==='rear'?'':'',
  installation_position:{position,side}
@@ -108,8 +108,8 @@ test('reference-aligned details visually separate attached children and unlinked
  const tree=read('AssemblyTree.tsx');
  assert.match(tree,/assembly-children/);
  assert.match(tree,/Фізично приєднані/);
- assert.match(tree,/Компоненти для звірки/);
- assert.match(tree,/Не включені до вузла/);
+ assert.match(tree,/Компоненти дверей/);
+ assert.match(tree,/Типовий склад · потребує підтвердження/);
  assert.match(tree,/suggestedDoorComponents/);
  assert.match(tree,/Кандидат|Не включено/);
  assert.match(tree,/preview\.memberships\?\.length/);
@@ -118,4 +118,39 @@ test('reference-aligned details visually separate attached children and unlinked
  assert.match(css,/\.assembly-presence\{display:grid;grid-template-columns:repeat\(3/);
  assert.match(css,/\.assembly-door-candidate/);
  assert.match(css,/\.assembly-inspector-close/);
+});
+
+test('door can expand with no physical children, arrow uses expandable not kids.length',()=>{
+ const tree=read('AssemblyTree.tsx');
+ assert.match(tree,/const expandable=kids\.length>0\|\|isGenericDoor\(node\)/);
+ assert.match(tree,/\{expandable\?\(expanded\?<ChevronDown size=\{16\}\/>:<ChevronRight size=\{16\}\/>\):<span\/>\}/);
+ assert.match(tree,/if\(isGenericDoor\(node\)\)setOpen\(previous=>new Set\(\[\.\.\.previous,node\.id\]\)\)/);
+ assert.match(tree,/template\.filter\(entry=>entry\.kind!=='physically_attached'\)/);
+});
+test('reference door template renders nine explicit unconfirmed components even without source fitment',()=>{
+ const root=node('FL','front','left');
+ const rows=doorTemplateEntries(root,[root],[]);
+ assert.deepEqual(rows.map(x=>x.label),[
+  'Каркас дверей','Скло дверей','Склопідіймач','Замок дверей',
+  'Зовнішня ручка дверей','Внутрішня ручка дверей','Обшивка дверей',
+  'Проводка дверей','Ущільнювач дверей'
+ ]);
+ assert.equal(rows.length,9);
+ assert.ok(rows.every(row=>row.kind==='template_only'));
+ assert.ok(rows.every(row=>row.linkedId===undefined));
+ assert.deepEqual(doorTemplateEntries({name:'Двері'},[],[]),[]);
+});
+test('existing physical and exact source components retain their original IDs, no fabricated Parts',()=>{
+ const root=node('FL','front','left');
+ const attached={id:'real-child-part',name:'Замок дверей',parent_id:'FL'};
+ const confirmed={id:'known-glass-plan',name:'Скло дверей',installation_position:{position:'front',side:'left'}};
+ const wrong={id:'right-door-glass',name:'Скло дверей',installation_position:{position:'front',side:'right'}};
+ const items=doorTemplateEntries(root,[confirmed,wrong], [attached]);
+ const lock=items.find(x=>x.key==='lock'),glass=items.find(x=>x.key==='glass');
+ assert.equal(lock.kind,'physically_attached');
+ assert.equal(lock.linkedId,attached.id);
+ assert.equal(glass.kind,'source_candidate');
+ assert.equal(glass.linkedId,confirmed.id);
+ assert.ok(items.filter(x=>x.kind==='template_only').every(x=>x.linkedId===undefined));
+ assert.equal(items.some(x=>x.linkedId===wrong.id),false);
 });
