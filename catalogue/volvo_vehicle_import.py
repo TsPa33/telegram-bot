@@ -132,7 +132,7 @@ def import_summary(envelope):
         articles_with_image_metadata=sum(bool(r.get('images')) for r in data['articles'].values()),
         pds_pair_total=len(expected),pds_pairs_matched=len(found & expected),
         raw_bytes=len(encode(data)),compact_plan_bytes=len(encode(compact_plan(data,envelope['sha256']))),
-        writes=0,photos='metadata_only')
+        writes=0,photos=data.get('image_status','metadata_only'))
 
 
 def upload_snapshot(target, envelope, approved_identity=None):
