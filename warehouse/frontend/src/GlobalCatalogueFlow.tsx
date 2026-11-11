@@ -33,7 +33,15 @@ export default function GlobalCatalogueFlow({vehicle,onSaved}:{vehicle:Row;onSav
  useEffect(()=>{let active=true;setState({});api(`/vehicles/${vehicle.id}/global-dismantling`).then(r=>{if(active)setState(r)}).catch(e=>{if(active)setError(e.message)});return()=>{active=false}},[vehicle.id,revision]);
  const products:Row[]=saved?.payload?.categories||[];
  const filtered=products.filter(p=>`${p.name_uk} ${p.name_source}`.toLowerCase().includes(q.toLowerCase()));
- return <section className="unified-flow" aria-label="Розбір автомобіля"><section aria-label="Джерельна модифікація"><p>{state.selection?`Модифікація каталогу: ${state.selection.modification_description||'Підтверджено користувачем'}`:'Точну модифікацію каталогу не вибрано. Загальний каталог доступний без токенів.'}</p><button disabled={vehicle.archived||!can('vehicles.edit')||!can('dismantling.manage')} onClick={()=>setChooseModification(v=>!v)}>{chooseModification?'Закрити вибір модифікації':'Вибрати точну модифікацію'}</button>{chooseModification&&state.selection_basis&&<GlobalVehicleForm key={vehicle.id+':'+state.selection_basis} vehicle={vehicle} expectedBasis={state.selection_basis} onSaved={row=>{setChooseModification(false);setRevision(n=>n+1);onSaved(row)}}/>}</section><UniversalPlanGenerator vehicle={vehicle} revision={revision} onSaved={()=>{setRevision(n=>n+1);onSaved(vehicle)}}/><AssemblyTree vehicle={vehicle} revision={revision} onReady={setAssemblyMode}/>{!assemblyMode&&<h2>Розбір автомобіля</h2>}{error&&<p role="alert">{error}</p>}
+ return <section className="unified-flow" aria-label="Розбір автомобіля">
+  <div className="uf-source-strip" aria-label="Модифікація каталогу">
+   <span className={state.selection?'uf-source-confirmed':'uf-source-warning'}>
+    {state.selection?'Модифікація: '+(state.selection.modification_description||'підтверджена користувачем'):'Точну каталожну модифікацію не вибрано — показано базовий каталог'}
+   </span>
+   <button className="secondary" disabled={vehicle.archived||!can('vehicles.edit')||!can('dismantling.manage')} onClick={()=>setChooseModification(v=>!v)}>{chooseModification?'Закрити вибір':'Вибрати модифікацію'}</button>
+  </div>
+  {chooseModification&&state.selection_basis&&<div className="uf-source-picker"><GlobalVehicleForm key={vehicle.id+':'+state.selection_basis} vehicle={vehicle} expectedBasis={state.selection_basis} onSaved={row=>{setChooseModification(false);setRevision(n=>n+1);onSaved(row)}}/></div>}
+  <UniversalPlanGenerator vehicle={vehicle} revision={revision} onSaved={()=>{setRevision(n=>n+1);onSaved(vehicle)}}/><AssemblyTree vehicle={vehicle} revision={revision} onReady={setAssemblyMode}/>{!assemblyMode&&<h2>Розбір автомобіля</h2>}{error&&<p role="alert">{error}</p>}
  {state.legacy&&<details><summary>Збережені попередні списки</summary><p>Історичний список збережено окремо від глобального каталогу.</p><button onClick={async()=>{try{setLegacy((await api(`/vehicles/${vehicle.id}/dismantling-workspace?source=${state.legacy_source}`)).items)}catch(e){setError((e as Error).message)}}}>Переглянути збережений список</button>{legacy?.map(r=><p key={r.key}>{r.name}</p>)}</details>}
  {!saved?null:assemblyMode===false?<>
  <p>Список збережено · {products.length} типів · {saved.payload.coverage==='partial'?'Часткове покриття — повноту не підтверджено':'Покриття перевірено'}</p>
