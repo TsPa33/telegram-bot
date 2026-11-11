@@ -66,3 +66,13 @@
 .uf-summary-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
 
 .uf-summary .uf-summary-actions{flex-direction:row;align-items:center;min-width:0}
+
+
+/* PR2: compact source fitment status: the user sees a warning without a full-page panel. */
+.unified-flow{min-width:0}
+.uf-source-strip{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:7px 10px;border:1px solid var(--color-border);border-radius:9px;background:var(--color-surface);font-size:.8rem}
+.uf-source-strip .uf-source-warning{color:var(--color-secondary);font-weight:550}
+.uf-source-strip .uf-source-confirmed{color:var(--color-accent);font-weight:600}
+.uf-source-strip>button{min-height:34px;padding:5px 10px;font-size:.8rem;flex-shrink:0}
+.uf-source-picker{padding:12px;border:1px solid var(--color-border);border-radius:10px;background:var(--color-surface);margin:8px 0}
+@media(max-width:650px){.uf-source-strip{align-items:stretch}.uf-source-strip>button{width:100%}}
