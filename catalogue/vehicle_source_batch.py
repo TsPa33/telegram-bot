@@ -46,6 +46,21 @@ def relation_summary(payload):
             'pds_only_fitment': 'needs_review', 'factory_bom': False}
 
 
+def select_passenger_manufacturer(rows, manufacturer_id):
+    """Pick the passenger-car role, not engine/axle/commercial-only manufacturer rows.
+
+    TecDoc can repeat the same manufacturer ID for different data domains.
+    Ambiguous or missing passenger-car roles must fail closed, not select first.
+    """
+    passenger = [row for row in rows if str(value(row, 'ispassengercar', '')).strip().casefold() in ('1', 'true')]
+    if len(passenger) != 1:
+        raise ValueError(
+            f'Passenger-car manufacturer {manufacturer_id}: expected exactly one ispassengercar=True row; '
+            f'found {len(passenger)} among {len(rows)} records'
+        )
+    return passenger[0]
+
+
 def export(source, output, car_ids, model_queries, limit, mapping=None):
     output.mkdir(parents=True, exist_ok=True)
     requested = dict(car_ids=sorted(set(car_ids)), model_queries=sorted(set(model_queries)), limit=limit,
@@ -96,8 +111,7 @@ def export(source, output, car_ids, model_queries, limit, mapping=None):
             raise ValueError('Exact source model missing')
         model=models[0];mid=int(value(model,'manufacturerid'))
         makers=read(source, 'SELECT * FROM manufacturers WHERE id=%s', (mid,))
-        if len(makers)!=1:
-            raise ValueError('Exact source manufacturer missing')
+        maker=select_passenger_manufacturer(makers,mid)
         path=output/f'{cid}.json'
         if path.exists():
             envelope=verified(path)
@@ -107,7 +121,7 @@ def export(source, output, car_ids, model_queries, limit, mapping=None):
                 raise ValueError('Manifest checkpoint file changed')
         else:
             payload=collect(source,car,model,mapping or {},manufacturer_id=mid)
-            payload['manufacturer']=makers[0]
+            payload['manufacturer']=maker
             if not payload['categories']:
                 raise ValueError('No article-linked types; empty modification not exportable')
             envelope=dict(payload=payload,sha256=digest(payload))
