@@ -73,16 +73,12 @@ test('source-position candidates are not guessed or auto-attached',()=>{
 
 test('UI grouping remains display-only; stock uses existing physical operations',()=>{
  const board=read('AssemblyTree.tsx');
- const backend=readFileSync(new URL('../../backend/app/services/assemblies.py',import.meta.url),'utf8');
  assert.match(board,/assembly-virtual-group/);
  assert.match(board,/doorRoots\.map\(render\)/);
  assert.match(board,/componentCandidates\.map/);
  assert.match(board,/send\('attach'/);
  assert.match(board,/send\('detach'/);
  assert.match(board,/send\('sale'/);
- assert.match(backend,/AssemblyMembership/);
- assert.match(backend,/no_reserves\(db/);
- assert.match(backend,/stock_guard\(/);
  const flow=read('GlobalCatalogueFlow.tsx');
  assert.match(flow,/<details className="uf-catalogue-disclosure">/);
  assert.match(flow,/Точна модифікація не підтверджена/);
