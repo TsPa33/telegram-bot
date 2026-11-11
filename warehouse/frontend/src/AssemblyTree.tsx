@@ -147,6 +147,8 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
   const ambiguousDoor=!!posKey&&(doorPositionCounts.get(posKey)||0)>1;
   const unit=mode==='tree'?assemblyUnitFor(node):null;
   const planned=(planChildren.get(node.id)||[]).filter(n=>matching.has(n.id));
+  const separated=planned.filter(n=>!!n.part_id);
+  const waiting=planned.filter(n=>!n.part_id);
   const template=unit?assemblyReferenceLines(node,items,kids):[];
   const expandable=kids.length>0||planned.length>0||!!unit;
   const locked=busy||!editable||!!node.part_id||individual||!!node.consumed_type||!!node.consumed_operation_id||!!node.reserved||node.archived;
@@ -164,9 +166,13 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
    </div>{expanded&&mode==='tree'&&expandable&&<ul className="assembly-children">
      {kids.length>0&&<li className="assembly-connected-heading"><Check size={13}/>Фізично приєднані · {kids.length}</li>}
      {kids.map(render)}
-     {planned.length>0&&<li className="assembly-door-component-wrapper"><details className="assembly-plan-items">
-       <summary>Окремі записи плану · {planned.length}</summary>
-       <ul className="assembly-children">{planned.map(render)}</ul>
+     {separated.length>0&&<li className="assembly-door-component-wrapper"><details className="assembly-plan-items" open>
+       <summary>Відокремлені складські позиції · {separated.length}</summary>
+       <ul className="assembly-children">{separated.map(render)}</ul>
+      </details></li>}
+     {waiting.length>0&&<li className="assembly-door-component-wrapper"><details className="assembly-plan-items">
+       <summary>Окремі записи плану · {waiting.length}</summary>
+       <ul className="assembly-children">{waiting.map(render)}</ul>
       </details></li>}
      {unit&&<li className="assembly-door-component-wrapper">
        <details className="assembly-door-component-preview">
@@ -175,7 +181,7 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
          <p className="assembly-assembly-explanation">{node.part_id?(Number(node.quantity)===1?'Вузол обліковується як одна складська одиниця.':'Складський запис містить більше ніж один вузол; перед підтвердженням комплектності уточніть фізичні одиниці.'):'Це потенційний вузол у плані, не складський залишок.'} Складові наведені для перевірки, окремо додавати їх не потрібно.</p>
          <ul className="assembly-door-template-list">{template.filter(entry=>entry.kind!=='attached').map(entry=><li key={entry.key} className={'assembly-door-candidate '+(entry.kind==='existing_plan'?'has-source':'template-only')}>
            <Box size={15}/><span className="assembly-template-label">{entry.label}</span>
-           <small>{entry.kind==='existing_plan'?'Окремо у плані':'Можлива складова'}</small>
+           <small>{entry.kind==='existing_plan'?(entry.linkedId&&byId.get(entry.linkedId)?.part_id?'Відокремлена позиція':'Окремо у плані'):'Можлива складова'}</small>
           </li>)}</ul>
          <p className="assembly-component-hint">Конструктивна довідка не підтверджує комплектацію за VIN і не створює позицій, кількості чи можливості окремого продажу. Для продажу всього вузла підтвердьте його фактичну комплектність.</p>
         </div>
