@@ -49,3 +49,22 @@ def test_checkout_csrf_and_workspace(logged,vehicle):
         signup(other,"other502@example.test")
         assert other.post('/api/v1/orders/checkout',json=data).status_code==404
     assert state(logged,p)['quantity']==3
+
+@pytest.mark.parametrize('same_key',[True,False])
+def test_checkout_concurrent_sale_deducts_once(logged,vehicle,same_key):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier
+    from fastapi.testclient import TestClient
+    from app.main import app
+    p=stocked(logged,vehicle,quantity=1);b=buyer(logged);barrier=Barrier(2)
+    data=dict(request_key=str(uuid4()),buyer_id=b['id'],lines=[line(p)],checkout_action='sell',confirm_sale=True)
+    def send(body):
+        with TestClient(app) as other:
+            other.cookies.update(dict(logged.cookies));other.headers.update(dict(logged.headers));barrier.wait(timeout=5)
+            r=other.post('/api/v1/orders/checkout',json=body);return r.status_code,r.json()
+    bodies=[data,data if same_key else {**data,'request_key':str(uuid4())}]
+    with ThreadPoolExecutor(max_workers=2) as pool:results=list(pool.map(send,bodies))
+    assert sorted(status for status,_ in results)==([201,201] if same_key else [201,409])
+    if same_key:assert results[0][1]==results[1][1]
+    assert state(logged,p)['quantity']==0
+    assert logged.get('/api/v1/orders').json()['total']==1
