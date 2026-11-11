@@ -119,7 +119,7 @@ def test_forward_only_currency_persistence_preserves_history_and_rejects_downgra
     # through e17b6c04a932 is no longer a valid compatibility test.
     p=create(logged,vehicle,'Migration part',selling_price='123.45')
     with engine().connect() as db:
-        before=db.execute(text('SELECT before, after FROM operations ORDER BY id')).all()
+        before={id:(old,new) for id,old,new in db.execute(text('SELECT id, before, after FROM operations'))}
     refused=run([sys.executable,'-m','alembic','downgrade','e17b6c04a932'],
                 capture_output=True,text=True)
     assert refused.returncode!=0
@@ -128,7 +128,7 @@ def test_forward_only_currency_persistence_preserves_history_and_rejects_downgra
     assert current.status_code==200 and current.json()['selling_price']=='123.45'
     assert current.json()['currency']=='UAH'
     with engine().connect() as db:
-        assert db.execute(text('SELECT before, after FROM operations ORDER BY id')).all()==before
+        assert {id:(old,new) for id,old,new in db.execute(text('SELECT id, before, after FROM operations'))}==before
 
     changed=logged.patch('/api/v1/parts/'+p['id']+'/price',
                          json={'selling_price':'123.45','currency':'USD'})
@@ -137,9 +137,9 @@ def test_forward_only_currency_persistence_preserves_history_and_rejects_downgra
     assert current.status_code==200 and current.json()['selling_price']=='123.45'
     assert current.json()['currency']=='USD'
     with engine().connect() as db:
-        after=db.execute(text('SELECT before, after FROM operations ORDER BY id')).all()
-        assert after[:len(before)]==before
+        after={id:(old,new) for id,old,new in db.execute(text('SELECT id, before, after FROM operations'))}
         assert len(after)>len(before)
+        assert all(after.get(op_id)==snapshot for op_id,snapshot in before.items())
 
     refused_again=run([sys.executable,'-m','alembic','downgrade','e17b6c04a932'],
                       capture_output=True,text=True)
