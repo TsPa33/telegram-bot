@@ -88,8 +88,10 @@ def test_nested_engine_detached_generator(logged,group):
     for parent,child in [(0,1),(1,2),(0,3)]:
         assert change(logged,g,'attach',parent_id=g['nodes'][parent],item_id=g['nodes'][child]).status_code==200
     assert change(logged,g,'detach',item_id=g['nodes'][3]).status_code==200
-    assert change(logged,g,'confirm',item_id=g['nodes'][0],token=preview(logged,g)['token']).status_code==200
-    assert sell(logged,g).status_code==200
+    # A physically incomplete root may only be sold as a named remainder.
+    assert change(logged,g,'confirm',item_id=g['nodes'][0],token=preview(logged,g)['token']).status_code==409
+    assert sell(logged,g).status_code==409
+    assert sell(logged,g,assembly_remainder=True,assembly_description='Вузол без окремо проданого генератора').status_code==200
     with Session(engine()) as db:
         assert db.get(Part,g['parts'][3]).quantity==1
         assert db.get(DismantlingItem,g['nodes'][2]).assembly_consumed_operation_id
