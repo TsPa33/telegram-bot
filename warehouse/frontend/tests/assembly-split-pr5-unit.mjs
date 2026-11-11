@@ -54,3 +54,18 @@ test('split UI stays accessible and does not auto-submit on checkbox choice',()=
  assert.match(css,/\.assembly-split-confirm/);
  assert.match(css,/@media\(max-width:650px\)/);
 });
+
+
+test('stocked recognized assembly always exposes split even when a secondary prerequisite fails',()=>{
+ assert.match(ui,/\{!!assemblyUnitFor\(selected\)&&\s*<details className="assembly-physical-split">/);
+ assert.match(ui,/splitBlockReason=!selected/);
+ assert.match(ui,/Немає дозволів на розбір та оприбуткування/);
+ assert.match(ui,/Керування фізичним складом вимкнене/);
+ assert.match(ui,/Вузол зарезервовано/);
+ assert.match(ui,/Для розбору потрібен один фізичний вузол/);
+ assert.match(ui,/className="assembly-split-unavailable"/);
+ assert.match(ui,/className="assembly-split-locked-label"/);
+ assert.match(ui,/if\(!unit\|\|!preview\|\|!root\.part_id\|\|Number\(root\.quantity\)!==1/);
+ assert.match(ui,/\|\|splitBlockReason\)return/);
+ assert.doesNotMatch(ui,/\{editable&&assemblyEnabled&&can\('inventory.create'\)&&!!assemblyUnitFor\(selected\)/);
+});
