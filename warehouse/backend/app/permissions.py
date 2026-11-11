@@ -34,6 +34,8 @@ def route_permissions(method,path,body):
     if path=='/catalogue' or path.startswith('/catalogue/'):
         return ['catalog.view']
     if '/assemblies' in path:
+        if path.endswith('/assemblies/split'):
+            return ['vehicles.view','inventory.view','dismantling.manage','inventory.edit','inventory.adjust_quantity','inventory.create']
         return ['vehicles.view'] if path.endswith('/readiness') else ['vehicles.view','inventory.view'] if read else ['vehicles.view','inventory.view','dismantling.manage','inventory.edit','inventory.adjust_quantity']
     if path.endswith('/catalogue-selection'):return ['vehicles.view','vehicles.edit','catalog.view','dismantling.manage']
     if '/catalogue-directory/' in path:
