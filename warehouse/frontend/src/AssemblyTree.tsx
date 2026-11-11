@@ -15,6 +15,8 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
  const [assemblyEnabled,setAssemblyEnabled]=useState(false),[enabled,setEnabled]=useState(false),[data,setData]=useState<Row|null>(null),[open,setOpen]=useState<Set<string>>(new Set()),[q,setQ]=useState(''),[limit,setLimit]=useState(50);
  const [selected,setSelected]=useState<Row|null>(null),[preview,setPreview]=useState<Row|null>(null),[error,setError]=useState(''),[commandBusy,setBusy]=useState(false),[physical,setPhysical]=useState(false),[child,setChild]=useState(''),[legacyPart,setLegacyPart]=useState('');
  const [doorGroupOpen,setDoorGroupOpen]=useState(true),[manualComponents,setManualComponents]=useState(false),[assemblyToolsOpen,setAssemblyToolsOpen]=useState(false);
+ const [splitSelected,setSplitSelected]=useState<number[]>([]),[splitConditions,setSplitConditions]=useState<Record<number,string>>({}),[splitConfirmed,setSplitConfirmed]=useState(false),[splitResult,setSplitResult]=useState<Row|null>(null);
+ const splitPending=useRef<{fingerprint:string;key:string}|null>(null);
  const [price,setPrice]=useState(''),[currency,setCurrency]=useState('UAH'),[description,setDescription]=useState(''),[remainder,setRemainder]=useState(false),[confirmSale,setConfirmSale]=useState(false),[confirmReturn,setConfirmReturn]=useState(false);
  const [photo,setPhoto]=useState('');
  useEffect(()=>{let active=true;setPhoto('');if(selected?.part_id)api(`/parts/${selected.part_id}/photos`).then(rows=>{if(active)setPhoto(rows[0]?.url||'')}).catch(()=>{});return()=>{active=false}},[selected?.part_id]);
@@ -36,12 +38,12 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
   if(ticket===epoch.current){setData(result);setBulkPlan(managed);setCheckedIds(ids=>ids.filter(id=>managed?.items.some((n:Row)=>n.id===id&&n.selectable)));}return result;
  }
  useEffect(()=>{
-  const ticket=++epoch.current;setData(null);setBulkPlan(null);setCheckedIds([]);setReceiptOpen(false);setEnabled(false);setCategory('');setStatus('all');setMode('tree');setSelected(null);selectedId.current=null;setPreview(null);setQuantityDraft({});setDoorGroupOpen(true);setManualComponents(false);setAssemblyToolsOpen(false);setError('');setOpen(new Set());setQ('');setLimit(50);pending.current=null;writing.current=false;setBusy(false);
+  const ticket=++epoch.current;setData(null);setBulkPlan(null);setCheckedIds([]);setReceiptOpen(false);setEnabled(false);setCategory('');setStatus('all');setMode('tree');setSelected(null);selectedId.current=null;setPreview(null);setQuantityDraft({});setDoorGroupOpen(true);setManualComponents(false);setAssemblyToolsOpen(false);setError('');setOpen(new Set());setQ('');setLimit(50);pending.current=null;splitPending.current=null;setSplitSelected([]);setSplitConditions({});setSplitConfirmed(false);setSplitResult(null);writing.current=false;setBusy(false);
   api(`/vehicles/${vehicle.id}/assemblies/readiness`).then(async r=>{if(ticket!==epoch.current)return;setAssemblyEnabled(r.enabled);const ready=r.workspace_enabled??r.enabled;setEnabled(ready);onReady?.(ready&&can('inventory.view'));if(ready&&can('inventory.view'))await load(ticket)}).catch(e=>{if(ticket===epoch.current){setError(e.message)}});
   return()=>{epoch.current++};
  },[scope,revision]);
  async function select(node:Row) {
-  const request=++previewEpoch.current;const ticket=epoch.current;selectedId.current=node.id;setSelected(node);if(assemblyUnitFor(node))setOpen(previous=>new Set([...previous,node.id]));setNote(node.note||'');setPreview(null);setPhysical(false);setConfirmSale(false);setConfirmReturn(false);setDescription('');setChild('');setManualComponents(false);setAssemblyToolsOpen(false);setError('');
+  const request=++previewEpoch.current;const ticket=epoch.current;selectedId.current=node.id;setSelected(node);if(assemblyUnitFor(node))setOpen(previous=>new Set([...previous,node.id]));setNote(node.note||'');setPreview(null);setPhysical(false);setConfirmSale(false);setConfirmReturn(false);setDescription('');setChild('');setManualComponents(false);setAssemblyToolsOpen(false);setSplitSelected([]);setSplitConditions({});setSplitConfirmed(false);setSplitResult(null);setError('');
   try{const value=await api(`/vehicles/${vehicle.id}/assemblies/${node.id}/preview`);if(ticket===epoch.current&&request===previewEpoch.current){
     setPreview(value);
     const root=value.items.find((i:Row)=>i.item_id===node.id);
@@ -76,10 +78,53 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
  const categories=[...new Set(items.map(n=>String(n.category||'Інші деталі')))];
  function icon(name:string){const Icon=/двер/i.test(name)?DoorOpen:/двиг|трансм/i.test(name)?Cog:/електр/i.test(name)?Zap:/салон|інтер/i.test(name)?Armchair:/клімат/i.test(name)?Wind:/безпек/i.test(name)?ShieldCheck:/освіт/i.test(name)?Lightbulb:/гальм/i.test(name)?Disc:/кермов|підвіск/i.test(name)?Settings:Box;return <Icon size={20} strokeWidth={1.6}/>;}
  const checked=items.filter(n=>['present','damaged'].includes(n.presence)).length,attention=items.filter(n=>['unchecked','damaged','absent'].includes(n.presence)||n.completeness==='incomplete'||n.category==='Потребує уточнення').length,stocked=items.filter(n=>n.part_id&&!n.parent_id&&!n.consumed_operation_id&&!n.archived&&n.quantity>0).length;
+ // Never hide a recognized assembly's split workflow due to a permission or stock guard.
+ // A visible, precise reason is preferable to silently removing the action.
+ const splitBlockReason=!selected?''
+  :!selected.part_id?'Спочатку оприбуткуйте вузол на склад.'
+  :Number(selected.quantity)!==1?`Для розбору потрібен один фізичний вузол. Зараз у цій позиції: ${selected.quantity} шт. Розділіть партію на окремі одиниці.`
+  :selected.parent_id?'Цей компонент входить до іншого вузла. Спочатку відокремте його.'
+  :selected.consumed_operation_id||selected.consumed_type?'Вузол уже продано або списано.'
+  :selected.archived?'Вузол архівований. Спочатку відновіть його.'
+  :selected.included===false?'Вузол виключено з плану розбору.'
+  :selected.presence==='absent'?'Вузол позначено відсутнім.'
+  :!assemblyEnabled?'Керування фізичним складом вимкнене для цього середовища.'
+  :!editable||!can('inventory.create')?'Немає дозволів на розбір та оприбуткування. Зверніться до директора.'
+  :preview?.conflicts?.length?'Вузол зарезервовано. Зніміть резерв у відповідному замовленні.'
+  :'';
  function stockLabel(n:Row){return n.consumed_operation_id||n.consumed_type==='sale'||n.consumed_type==='write_off'?(n.consumed_type==='sale'?(n.parent_id?'Продано у складі вузла':'Продано'):'Списано'):n.parent_id?'У складі вузла':n.part_id&&n.quantity>0?'На складі':n.part_id?'Немає залишку':'Ще не на складі'}
  function presenceLabel(n:Row){return ({present:'Є в авто',damaged:'Пошкоджено',absent:'Немає'} as Record<string,string>)[n.presence]||'Перевірити'}
  async function inspect(n:Row,presence:string,quantity:number,noteValue:string){
   const ticket=epoch.current;try{const current=selected?.id===n.id&&preview?preview:await api(`/vehicles/${vehicle.id}/assemblies/${n.id}/preview`);if(ticket!==epoch.current)return;const root=current.items.find((i:Row)=>i.item_id===n.id);if(!root||root.quantity!==(n.part_id?n.quantity:null)||root.planned_quantity!==n.planned_quantity||root.note!==(n.note||''))throw Error('Дані змінилися. Оновіть список перед редагуванням.');return await send('inspect',{item_id:n.id,token:current.token,presence,quantity,note:noteValue});}catch(e){setError((e as Error).message);return false}
+ }
+ async function splitPhysicalUnit(root:Row) {
+  const unit=assemblyUnitFor(root);
+  if(!unit||!preview||!root.part_id||Number(root.quantity)!==1||!splitSelected.length||
+     !splitConfirmed||busy||writing.current||!editable||!can('inventory.create')||splitBlockReason)return;
+  const ticket=epoch.current,token=String(preview.token);
+  const components=splitSelected.slice().sort((a,b)=>a-b).map(index=>({index,condition:splitConditions[index]||'used'}));
+  const fingerprint=JSON.stringify([scope,'assembly:split',root.id,unit.id,token,components]);
+  if(splitPending.current?.fingerprint!==fingerprint)
+    splitPending.current={fingerprint,key:crypto.randomUUID()};
+  writing.current=true;setBusy(true);setError('');
+  try {
+   const result=await api(`/vehicles/${vehicle.id}/assemblies/split`,'POST',{
+     request_key:splitPending.current.key,root_item_id:root.id,unit_id:unit.id,
+     token,components,confirm_physical:true
+   });
+   if(ticket!==epoch.current)return;
+   splitPending.current=null;
+   const fresh=await load(ticket);
+   const updated=fresh.items.find((n:Row)=>n.id===root.id);
+   if(updated&&selectedId.current===root.id){
+    setSelected(updated);
+    const next=await api(`/vehicles/${vehicle.id}/assemblies/${root.id}/preview`);
+    if(ticket===epoch.current&&selectedId.current===root.id)setPreview(next);
+   }
+   setSplitResult(result);setSplitSelected([]);setSplitConfirmed(false);
+   window.dispatchEvent(new Event('warehouse:inventory-changed'));
+  }catch(e){if(ticket===epoch.current)setError((e as Error).message)}
+  finally{if(ticket===epoch.current){writing.current=false;setBusy(false)}}
  }
  async function saveQuantity(n:Row){
   const next=quantityDraft[n.id];if(next==null||!Number.isInteger(next)||next<1)return;
@@ -116,6 +161,8 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
   const ambiguousDoor=!!posKey&&(doorPositionCounts.get(posKey)||0)>1;
   const unit=mode==='tree'?assemblyUnitFor(node):null;
   const planned=(planChildren.get(node.id)||[]).filter(n=>matching.has(n.id));
+  const separated=planned.filter(n=>!!n.part_id);
+  const waiting=planned.filter(n=>!n.part_id);
   const template=unit?assemblyReferenceLines(node,items,kids):[];
   const expandable=kids.length>0||planned.length>0||!!unit;
   const locked=busy||!editable||!!node.part_id||individual||!!node.consumed_type||!!node.consumed_operation_id||!!node.reserved||node.archived;
@@ -133,9 +180,13 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
    </div>{expanded&&mode==='tree'&&expandable&&<ul className="assembly-children">
      {kids.length>0&&<li className="assembly-connected-heading"><Check size={13}/>Фізично приєднані · {kids.length}</li>}
      {kids.map(render)}
-     {planned.length>0&&<li className="assembly-door-component-wrapper"><details className="assembly-plan-items">
-       <summary>Окремі записи плану · {planned.length}</summary>
-       <ul className="assembly-children">{planned.map(render)}</ul>
+     {separated.length>0&&<li className="assembly-door-component-wrapper"><details className="assembly-plan-items" open>
+       <summary>Відокремлені складські позиції · {separated.length}</summary>
+       <ul className="assembly-children">{separated.map(render)}</ul>
+      </details></li>}
+     {waiting.length>0&&<li className="assembly-door-component-wrapper"><details className="assembly-plan-items">
+       <summary>Окремі записи плану · {waiting.length}</summary>
+       <ul className="assembly-children">{waiting.map(render)}</ul>
       </details></li>}
      {unit&&<li className="assembly-door-component-wrapper">
        <details className="assembly-door-component-preview">
@@ -144,7 +195,7 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
          <p className="assembly-assembly-explanation">{node.part_id?(Number(node.quantity)===1?'Вузол обліковується як одна складська одиниця.':'Складський запис містить більше ніж один вузол; перед підтвердженням комплектності уточніть фізичні одиниці.'):'Це потенційний вузол у плані, не складський залишок.'} Складові наведені для перевірки, окремо додавати їх не потрібно.</p>
          <ul className="assembly-door-template-list">{template.filter(entry=>entry.kind!=='attached').map(entry=><li key={entry.key} className={'assembly-door-candidate '+(entry.kind==='existing_plan'?'has-source':'template-only')}>
            <Box size={15}/><span className="assembly-template-label">{entry.label}</span>
-           <small>{entry.kind==='existing_plan'?'Окремо у плані':'Можлива складова'}</small>
+           <small>{entry.kind==='existing_plan'?(entry.linkedId&&byId.get(entry.linkedId)?.part_id?'Відокремлена позиція':'Окремо у плані'):'Можлива складова'}</small>
           </li>)}</ul>
          <p className="assembly-component-hint">Конструктивна довідка не підтверджує комплектацію за VIN і не створює позицій, кількості чи можливості окремого продажу. Для продажу всього вузла підтвердьте його фактичну комплектність.</p>
         </div>
@@ -188,6 +239,39 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
     <button className="secondary" disabled={busy||!editable||!!selected.consumed_type||!!selected.consumed_operation_id||note===(selected.note||'')} onClick={()=>void inspect(selected,selected.presence,selected.part_id?selected.quantity:selected.planned_quantity,note)}>Зберегти примітку</button>
     {editable&&!selected.part_id&&!selected.parent_id&&!selected.consumed_operation_id&&can('inventory.create')&&<button className="primary" disabled={busy||!['present','damaged'].includes(selected.presence)} onClick={()=>void receive(selected)}><Box size={18}/>Додати на склад</button>}
     {selected.part_id&&<Link className="assembly-part-link" to={'/inventory?vehicle_id='+vehicle.id}>Перейти до складу автомобіля</Link>}
+    {!!assemblyUnitFor(selected)&&
+      <details className="assembly-physical-split">
+       <summary><Layers size={16}/><span>Розібрати вузол на окремі запчастини</span>{splitBlockReason&&<small className="assembly-split-locked-label">Недоступно</small>}</summary>
+       {splitBlockReason?<p role="status" className="assembly-split-unavailable">{splitBlockReason}</p>:<>
+       <p>Позначте лише деталі, які <strong>вже фізично відокремили</strong>. Після підтвердження вони стануть окремими складськими позиціями для продажу. Вузол залишиться неповним.</p>
+       {assemblyReferenceLines(selected,items,children.get(selected.id)||[]).map((entry,index)=>{
+        const actual=entry.linkedId?byId.get(entry.linkedId):null;
+        const alreadySeparated=entry.kind==='existing_plan'&&!!actual?.part_id;
+        const checked=splitSelected.includes(index);
+        return <div className="assembly-split-row" key={entry.key}>
+         <label><input type="checkbox" checked={checked} disabled={busy||alreadySeparated||!!preview.conflicts.length||!!splitBlockReason}
+           onChange={event=>{const on=event.target.checked;setSplitSelected(old=>on?[...old,index]:old.filter(i=>i!==index));setSplitConfirmed(false);setSplitResult(null)}}/>
+          <span>{entry.label}</span></label>
+         {alreadySeparated?<small>Вже окремо на складі</small>:entry.kind==='attached'?<small>У вузлі</small>:<small>Можлива складова</small>}
+         {checked&&<select value={splitConditions[index]||'used'} disabled={busy} aria-label={'Стан: '+entry.label}
+          onChange={event=>{setSplitConditions(old=>({...old,[index]:event.target.value}));setSplitConfirmed(false)}}>
+           <option value="used">Вживана</option><option value="damaged">Пошкоджена</option>
+           <option value="new">Нова</option><option value="refurbished">Відновлена</option>
+          </select>}
+        </div>;
+       })}
+       <p className="assembly-split-note">Складські залишки з'являться лише для підтверджених відокремлених деталей. Кількість вихідного вузла залишиться 1 — це залишок без вилучених компонентів. Його продаж «у зборі» буде заблоковано, поки склад фізично не відновлено.</p>
+       <label className="assembly-split-confirm"><input type="checkbox" checked={splitConfirmed} disabled={busy||!splitSelected.length}
+         onChange={e=>setSplitConfirmed(e.target.checked)}/> Підтверджую демонтаж {splitSelected.length} деталей і зміну комплектності вузла</label>
+       <button type="button" className="primary" disabled={busy||!splitConfirmed||!splitSelected.length||!!preview.conflicts.length||!!splitBlockReason}
+         onClick={()=>void splitPhysicalUnit(selected)}><Box size={16}/>Відокремити та оприбуткувати {splitSelected.length}</button>
+       {splitResult&&<div className="assembly-split-success" role="status">
+         <strong>Оприбутковано {splitResult.count} компонентів</strong>
+         <p>Вузол тепер неповний. Собівартість автоматично не розподілялася.</p>
+         <Link to={'/inventory?vehicle_id='+vehicle.id}>Відкрити склад і оформити продаж</Link>
+        </div>}
+       </>}
+      </details>}
     {editable&&assemblyEnabled&&!!assemblyUnitFor(selected)&&selected.part_id&&Number(selected.quantity)===1&&!selected.parent_id&&!selected.consumed_operation_id&&!selected.consumed_type&&<button type="button" className="secondary assembly-manage-shortcut" onClick={()=>setAssemblyToolsOpen(open=>!open)}>
       <Layers size={17}/>{preview.memberships?.length?'Керувати складом вузла':'Підтвердити вузол у зборі'}
     </button>}

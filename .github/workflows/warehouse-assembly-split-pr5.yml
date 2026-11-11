@@ -1,0 +1,77 @@
+name: Warehouse assembly split (isolated DB)
+
+on:
+  pull_request:
+    paths:
+      - "warehouse/**"
+      - ".github/workflows/warehouse-assembly-split-pr5.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  backend:
+    name: Backend physical assembly / sales
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: warehouse_assembly_test
+          POSTGRES_USER: warehouse
+          POSTGRES_PASSWORD: testonly
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U warehouse -d warehouse_assembly_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      WAREHOUSE_TEST_DATABASE_URL: postgresql+psycopg://warehouse:testonly@127.0.0.1:5432/warehouse_assembly_test
+    defaults:
+      run:
+        working-directory: warehouse/backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install --require-hashes -r requirements.lock
+      - name: Run isolated inventory / assembly regressions
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m pytest -q tests/test_assemblies.py tests/test_assembly_split.py 2>&1 | tee "$RUNNER_TEMP/pr5-pytest.log"
+      - name: Publish isolated test failure details on draft PR
+        if: failure() && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        shell: bash
+        run: |
+          {
+            printf '### PR5 — ізольовані backend-тести (не staging)\n\n'
+            printf 'Повний PASS ще не отримано. Останні рядки pytest:\n\n```\n'
+            tail -c 14000 "$RUNNER_TEMP/pr5-pytest.log" || true
+            printf '\n```\n'
+          } > "$RUNNER_TEMP/pr5-comment.md"
+          gh pr comment "$PR_NUMBER" --body-file "$RUNNER_TEMP/pr5-comment.md"
+
+  frontend:
+    name: Frontend build and component selection
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: warehouse/frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: warehouse/frontend/package-lock.json
+      - run: npm ci
+      - run: npm run build
