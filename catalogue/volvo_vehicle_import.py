@@ -34,9 +34,13 @@ def bounded(conn, table, where, args):
     return rows
 
 
-def collect(source, car, model, mapping, manufacturer_id=120):
+def collect(source, car, model, mapping, manufacturer_id=120, *, graph_only=False):
     car_id = int(value(car,'id'))
-    details = {t: bounded(source, t, 'passangercarid=%s', (car_id,)) for t in TABLES}
+    # PRD/modification fitment graph requires source IDs and links, not every
+    # article's large image, cross-reference and technical-attribute metadata.
+    # Keep the original enriched collector unchanged for its existing callers.
+    detail_tables = ('passanger_car_attributes', 'passanger_car_pds') if graph_only else TABLES
+    details = {t: bounded(source, t, 'passangercarid=%s', (car_id,)) for t in detail_tables}
     links = []
     after = (0, 0, '')
     while True:
@@ -58,17 +62,26 @@ def collect(source, car, model, mapping, manufacturer_id=120):
         sid, number, product = int(link['supplierid']), link['datasupplierarticlenumber'], int(link['productid'])
         key = f'{sid}:{number}'
         if key not in articles:
-            exact = (sid, number)
-            articles[key] = dict(supplier_id=sid, article_number=number,
-                article=bounded(source, 'articles', 'supplierId=%s AND DataSupplierArticleNumber=%s', exact),
-                supplier=bounded(source, 'suppliers', 'id=%s', (sid,)),
-                oem=bounded(source, 'article_oe', 'supplierId=%s AND DataSupplierArticleNumber=%s AND manufacturerId=%s', (*exact, manufacturer_id)),
-                attributes=bounded(source, 'article_attributes', 'supplierId=%s AND DataSupplierArticleNumber=%s', exact),
-                images=bounded(source, 'article_images', 'supplierId=%s AND DataSupplierArticleNumber=%s', exact),
-                crosses=bounded(source, 'article_cross', 'SupplierId=%s AND PartsDataSupplierArticleNumber=%s', exact),
-                image_status='metadata_only', fitment='verified_source_link', car_id=car_id)
-        artifact_bytes += len(encode(articles[key]))
-        if artifact_bytes > 8*1024*1024:raise ValueError('Per-modification artifact byte cap exceeded')
+            if graph_only:
+                articles[key] = dict(supplier_id=sid, article_number=number,
+                    fitment='verified_source_link', car_id=car_id, enrichment_status='not_exported')
+            else:
+                exact = (sid, number)
+                articles[key] = dict(supplier_id=sid, article_number=number,
+                    article=bounded(source, 'articles', 'supplierId=%s AND DataSupplierArticleNumber=%s', exact),
+                    supplier=bounded(source, 'suppliers', 'id=%s', (sid,)),
+                    oem=bounded(source, 'article_oe', 'supplierId=%s AND DataSupplierArticleNumber=%s AND manufacturerId=%s', (*exact, manufacturer_id)),
+                    attributes=bounded(source, 'article_attributes', 'supplierId=%s AND DataSupplierArticleNumber=%s', exact),
+                    images=bounded(source, 'article_images', 'supplierId=%s AND DataSupplierArticleNumber=%s', exact),
+                    crosses=bounded(source, 'article_cross', 'SupplierId=%s AND PartsDataSupplierArticleNumber=%s', exact),
+                    image_status='metadata_only', fitment='verified_source_link', car_id=car_id)
+            # A supplier/article key may be linked to several PRD product types.
+            # Its JSON bytes are stored ONCE; never count them per relation row.
+            artifact_bytes += len(encode(articles[key]))
+            if artifact_bytes > MAX_BYTES:
+                raise ValueError(f'Per-modification artifact byte cap exceeded: car_id={car_id}, '
+                    f'unique_articles={len(articles)}, source_links={len(links)}, '
+                    f'details_bytes={len(encode(details))}; use graph-only export for source links')
         if product not in products:
             p = bounded(source, 'prd', 'id=%s', (product,))
             proposed = mapping.get(str(product), {})
@@ -78,7 +91,9 @@ def collect(source, car, model, mapping, manufacturer_id=120):
     return validate(dict(schema='carpot.volvo.v1' if manufacturer_id==120 else 'carpot.vehicle.v1', manufacturer_id=manufacturer_id, model_id=int(value(model,'id')),
         car_id=car_id, modification={**car,'id':car_id,'description':value(car,'description'),'constructioninterval':value(car,'constructioninterval')}, model=model, details=details, categories=list(products.values()),
         articles=articles, collection_complete=True, coverage='partial',
-        observed_at=datetime.now(timezone.utc).isoformat(), image_status='metadata_only'))
+        observed_at=datetime.now(timezone.utc).isoformat(),
+        image_status='not_exported' if graph_only else 'metadata_only',
+        source_scope='modification_prd_article_graph' if graph_only else 'enriched_article_snapshot'))
 
 
 def load_upload(output, car_id, expected_sha, expected_coverage):
