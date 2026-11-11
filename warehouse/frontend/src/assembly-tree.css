@@ -219,3 +219,26 @@
 .assembly-virtual-group .assembly-expand:not(:disabled){opacity:1;pointer-events:auto;display:inline-flex;justify-content:center;align-items:center}
 .assembly-door-component-preview p.assembly-component-hint{font-size:.68rem;line-height:1.45}
 @media(max-width:650px){.assembly-door-template-list>.assembly-door-candidate>small{white-space:normal;text-align:right;max-width:105px}}
+
+
+/* PR3.3: level-two is independently collapsible and source templates may be admitted to a real plan. */
+.assembly-door-component-wrapper{margin:5px 0!important;padding:0!important;list-style:none}
+details.assembly-door-component-preview{display:block;width:100%;margin:0;border:1px dashed var(--color-border);border-radius:9px;padding:0;background:var(--color-subtle)}
+details.assembly-door-component-preview>summary{list-style:none;cursor:pointer;padding:9px 10px;min-height:38px;margin:0;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+details.assembly-door-component-preview>summary::-webkit-details-marker{display:none}
+details.assembly-door-component-preview>summary:before{content:"▸";color:var(--color-accent);font-size:.86rem;display:inline-block;transition:transform .15s ease}
+details.assembly-door-component-preview[open]>summary:before{transform:rotate(90deg)}
+details.assembly-door-component-preview>summary:focus-visible{outline:2px solid var(--color-accent);outline-offset:-2px}
+details.assembly-door-component-preview[open]>summary{border-bottom:1px solid var(--color-border)}
+.assembly-component-preview-body{padding:6px 8px 8px}
+.assembly-door-component-preview>.assembly-component-preview-body{padding:8px}
+.assembly-door-component-preview .assembly-component-preview-heading>strong{font-size:.79rem}
+.assembly-door-component-preview .assembly-component-preview-heading>span{margin-left:auto;font-size:.69rem;color:var(--muted)}
+.assembly-door-template-list>.assembly-door-candidate{display:flex;align-items:center;gap:6px;min-height:36px}
+.assembly-door-template-list .assembly-template-existing{flex:1;min-width:0;text-align:left;font-size:.75rem}
+.assembly-door-template-list .assembly-template-label{flex:1;min-width:0}
+.assembly-door-template-list .assembly-template-control{flex:none!important;min-width:95px;min-height:29px;padding:4px 8px!important;border:1px solid var(--color-border)!important;background:var(--color-surface)!important;border-radius:6px;font-size:.72rem;cursor:pointer}
+.assembly-door-template-list .assembly-template-control:disabled{opacity:.45;cursor:default}
+.assembly-door-template-list .assembly-template-control:not(:disabled):hover{border-color:var(--color-accent)!important;color:var(--color-accent)}
+@media(max-width:650px){.assembly-door-template-list .assembly-template-control{min-width:83px;font-size:.68rem;padding:4px 5px!important}}
+@media(prefers-reduced-motion:reduce){details.assembly-door-component-preview>summary:before{transition:none}}
