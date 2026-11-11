@@ -69,3 +69,12 @@ test('stocked recognized assembly always exposes split even when a secondary pre
  assert.match(ui,/\|\|splitBlockReason\)return/);
  assert.doesNotMatch(ui,/\{editable&&assemblyEnabled&&can\('inventory.create'\)&&!!assemblyUnitFor\(selected\)/);
 });
+
+test('split entry is available before preview and gives a guarded loading/error state',()=>{
+ const entry=ui.indexOf('<details className="assembly-physical-split">');
+ const previewGate=ui.indexOf('{!preview?<p role="status">');
+ assert.ok(entry>0&&entry<previewGate,'preview failure must not remove the split entry');
+ assert.match(ui,/Не вдалося перевірити склад/);
+ assert.match(ui,/Цей екран не виконує виділення одиниці з партії/);
+ assert.match(ui,/Не зменшуйте кількість вручну/);
+});

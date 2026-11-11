@@ -82,7 +82,7 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
  // A visible, precise reason is preferable to silently removing the action.
  const splitBlockReason=!selected?''
   :!selected.part_id?'Спочатку оприбуткуйте вузол на склад.'
-  :Number(selected.quantity)!==1?`Для розбору потрібен один фізичний вузол. Зараз у цій позиції: ${selected.quantity} шт. Розділіть партію на окремі одиниці.`
+  :Number(selected.quantity)!==1?`Для розбору потрібен один фізичний вузол. Зараз у цій позиції: ${selected.quantity} шт. Спочатку звірте й виділіть конкретну фізичну одиницю без зміни загального залишку.`
   :selected.parent_id?'Цей компонент входить до іншого вузла. Спочатку відокремте його.'
   :selected.consumed_operation_id||selected.consumed_type?'Вузол уже продано або списано.'
   :selected.archived?'Вузол архівований. Спочатку відновіть його.'
@@ -91,6 +91,7 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
   :!assemblyEnabled?'Керування фізичним складом вимкнене для цього середовища.'
   :!editable||!can('inventory.create')?'Немає дозволів на розбір та оприбуткування. Зверніться до директора.'
   :preview?.conflicts?.length?'Вузол зарезервовано. Зніміть резерв у відповідному замовленні.'
+  :!preview?(error?'Не вдалося перевірити склад. Оновіть перегляд вузла перед розбором.':'Перевіряємо склад вузла; до завершення перевірки розбір недоступний.')
   :'';
  function stockLabel(n:Row){return n.consumed_operation_id||n.consumed_type==='sale'||n.consumed_type==='write_off'?(n.consumed_type==='sale'?(n.parent_id?'Продано у складі вузла':'Продано'):'Списано'):n.parent_id?'У складі вузла':n.part_id&&n.quantity>0?'На складі':n.part_id?'Немає залишку':'Ще не на складі'}
  function presenceLabel(n:Row){return ({present:'Є в авто',damaged:'Пошкоджено',absent:'Немає'} as Record<string,string>)[n.presence]||'Перевірити'}
@@ -227,29 +228,17 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
     {roots.length>limit&&<button onClick={()=>setLimit(n=>n+50)}>Показати ще 50 позицій</button>}
    </div>
   {selected?<div ref={inspectorRef} tabIndex={-1} role="region" className="assembly-inspector" aria-label="Картка запчастини"><div className="assembly-heading"><h4>{assemblyLabel(selected)}</h4><button type="button" className="assembly-inspector-close" aria-label="Закрити картку" title="Закрити картку" onClick={()=>{previewEpoch.current++;document.getElementById('assembly-node-'+selected.id)?.focus();selectedId.current=null;setSelected(null);setPreview(null)}}><X size={17}/></button></div>
-   {!preview?<p role="status">{error?'Не вдалося перевірити склад.':'Перевіряємо склад…'}</p>:<>
-
-    <p className="assembly-breadcrumb">{selected.category} › {selected.subcategory}{selected.position?` · ${selected.position}`:''} </p>
-    <div className="assembly-photo">{photo?<img src={photo} alt={selected.name} onError={()=>setPhoto('')}/>:<><Box size={44}/><span>Фото ще немає</span></>}</div>
-    {assemblyUnitFor(selected)&&selected.part_id&&Number(selected.quantity)!==1&&<p className="assembly-unit-warning" role="status">Кількість цього складського запису відрізняється від однієї фізичної одиниці. Продаж як підтвердженого комплектного вузла потребує уточнення.</p>}
-    <h5>Наявність на автомобілі</h5>
-    <div className="assembly-presence" role="group" aria-label="Наявність на автомобілі">{(['present','damaged','absent'] as const).map(value=><button key={value} aria-label={{present:'Підтвердити наявність',damaged:'Позначити пошкодження',absent:'Позначити відсутність'}[value]} aria-pressed={selected.presence===value} disabled={busy||!editable||!!selected.consumed_type||!!selected.consumed_operation_id||!!selected.archived||preview.conflicts.length>0} onClick={()=>void inspect(selected,value,selected.part_id?selected.quantity:selected.planned_quantity,note)}>{value==='present'?<Check size={16}/>:value==='damaged'?<TriangleAlert size={16}/>:<X size={16}/>}{{present:'Є',damaged:'Пошкоджено',absent:'Відсутня'}[value]}</button>)}</div>
-    <p className="assembly-stock-label">{stockLabel(selected)} · Кількість: {selected.parent_id?selected.planned_quantity:selected.part_id?selected.quantity:selected.planned_quantity}</p>
-    <label>Примітка<textarea maxLength={2000} value={note} disabled={!editable||busy||!!selected.consumed_type||!!selected.consumed_operation_id} onChange={e=>setNote(e.target.value)} placeholder="Стан, особливості, пошкодження…"/></label>
-    <button className="secondary" disabled={busy||!editable||!!selected.consumed_type||!!selected.consumed_operation_id||note===(selected.note||'')} onClick={()=>void inspect(selected,selected.presence,selected.part_id?selected.quantity:selected.planned_quantity,note)}>Зберегти примітку</button>
-    {editable&&!selected.part_id&&!selected.parent_id&&!selected.consumed_operation_id&&can('inventory.create')&&<button className="primary" disabled={busy||!['present','damaged'].includes(selected.presence)} onClick={()=>void receive(selected)}><Box size={18}/>Додати на склад</button>}
-    {selected.part_id&&<Link className="assembly-part-link" to={'/inventory?vehicle_id='+vehicle.id}>Перейти до складу автомобіля</Link>}
     {!!assemblyUnitFor(selected)&&
       <details className="assembly-physical-split">
        <summary><Layers size={16}/><span>Розібрати вузол на окремі запчастини</span>{splitBlockReason&&<small className="assembly-split-locked-label">Недоступно</small>}</summary>
-       {splitBlockReason?<p role="status" className="assembly-split-unavailable">{splitBlockReason}</p>:<>
+       {splitBlockReason?<><p role="status" className="assembly-split-unavailable">{splitBlockReason}</p>{selected.part_id&&Number(selected.quantity)>1&&<div className="assembly-split-unit-steps"><ol><li>Звірте кількість і резерви партії та позначте конкретний фізичний вузол, який плануєте розібрати.</li><li>Потрібна контрольована операція виділення однієї одиниці: 1 окремо, решта {Number(selected.quantity)-1} у партії; загальний залишок {selected.quantity} і резерви мають зберегтися.</li><li>Після звірки відкрийте запис саме цієї одиниці з кількістю 1 та підтвердьте відокремлені компоненти.</li></ol><p>Цей екран не виконує виділення одиниці з партії. Не зменшуйте кількість вручну й не створюйте дублікати надходжень.</p><Link to={'/inventory?vehicle_id='+vehicle.id}>Переглянути партію на складі</Link></div>}</>:<>
        <p>Позначте лише деталі, які <strong>вже фізично відокремили</strong>. Після підтвердження вони стануть окремими складськими позиціями для продажу. Вузол залишиться неповним.</p>
        {assemblyReferenceLines(selected,items,children.get(selected.id)||[]).map((entry,index)=>{
         const actual=entry.linkedId?byId.get(entry.linkedId):null;
         const alreadySeparated=entry.kind==='existing_plan'&&!!actual?.part_id;
         const checked=splitSelected.includes(index);
         return <div className="assembly-split-row" key={entry.key}>
-         <label><input type="checkbox" checked={checked} disabled={busy||alreadySeparated||!!preview.conflicts.length||!!splitBlockReason}
+         <label><input type="checkbox" checked={checked} disabled={busy||alreadySeparated||!!preview?.conflicts?.length||!!splitBlockReason}
            onChange={event=>{const on=event.target.checked;setSplitSelected(old=>on?[...old,index]:old.filter(i=>i!==index));setSplitConfirmed(false);setSplitResult(null)}}/>
           <span>{entry.label}</span></label>
          {alreadySeparated?<small>Вже окремо на складі</small>:entry.kind==='attached'?<small>У вузлі</small>:<small>Можлива складова</small>}
@@ -263,7 +252,7 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
        <p className="assembly-split-note">Складські залишки з'являться лише для підтверджених відокремлених деталей. Кількість вихідного вузла залишиться 1 — це залишок без вилучених компонентів. Його продаж «у зборі» буде заблоковано, поки склад фізично не відновлено.</p>
        <label className="assembly-split-confirm"><input type="checkbox" checked={splitConfirmed} disabled={busy||!splitSelected.length}
          onChange={e=>setSplitConfirmed(e.target.checked)}/> Підтверджую демонтаж {splitSelected.length} деталей і зміну комплектності вузла</label>
-       <button type="button" className="primary" disabled={busy||!splitConfirmed||!splitSelected.length||!!preview.conflicts.length||!!splitBlockReason}
+       <button type="button" className="primary" disabled={busy||!splitConfirmed||!splitSelected.length||!!preview?.conflicts?.length||!!splitBlockReason}
          onClick={()=>void splitPhysicalUnit(selected)}><Box size={16}/>Відокремити та оприбуткувати {splitSelected.length}</button>
        {splitResult&&<div className="assembly-split-success" role="status">
          <strong>Оприбутковано {splitResult.count} компонентів</strong>
@@ -272,6 +261,19 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
         </div>}
        </>}
       </details>}
+
+   {!preview?<p role="status">{error?'Не вдалося перевірити склад.':'Перевіряємо склад…'}</p>:<>
+
+    <p className="assembly-breadcrumb">{selected.category} › {selected.subcategory}{selected.position?` · ${selected.position}`:''} </p>
+    <div className="assembly-photo">{photo?<img src={photo} alt={selected.name} onError={()=>setPhoto('')}/>:<><Box size={44}/><span>Фото ще немає</span></>}</div>
+    {assemblyUnitFor(selected)&&selected.part_id&&Number(selected.quantity)!==1&&<p className="assembly-unit-warning" role="status">Кількість цього складського запису відрізняється від однієї фізичної одиниці. Продаж як підтвердженого комплектного вузла потребує уточнення.</p>}
+    <h5>Наявність на автомобілі</h5>
+    <div className="assembly-presence" role="group" aria-label="Наявність на автомобілі">{(['present','damaged','absent'] as const).map(value=><button key={value} aria-label={{present:'Підтвердити наявність',damaged:'Позначити пошкодження',absent:'Позначити відсутність'}[value]} aria-pressed={selected.presence===value} disabled={busy||!editable||!!selected.consumed_type||!!selected.consumed_operation_id||!!selected.archived||preview.conflicts.length>0} onClick={()=>void inspect(selected,value,selected.part_id?selected.quantity:selected.planned_quantity,note)}>{value==='present'?<Check size={16}/>:value==='damaged'?<TriangleAlert size={16}/>:<X size={16}/>}{{present:'Є',damaged:'Пошкоджено',absent:'Відсутня'}[value]}</button>)}</div>
+    <p className="assembly-stock-label">{stockLabel(selected)} · Кількість: {selected.parent_id?selected.planned_quantity:selected.part_id?selected.quantity:selected.planned_quantity}</p>
+    <label>Примітка<textarea maxLength={2000} value={note} disabled={!editable||busy||!!selected.consumed_type||!!selected.consumed_operation_id} onChange={e=>setNote(e.target.value)} placeholder="Стан, особливості, пошкодження…"/></label>
+    <button className="secondary" disabled={busy||!editable||!!selected.consumed_type||!!selected.consumed_operation_id||note===(selected.note||'')} onClick={()=>void inspect(selected,selected.presence,selected.part_id?selected.quantity:selected.planned_quantity,note)}>Зберегти примітку</button>
+    {editable&&!selected.part_id&&!selected.parent_id&&!selected.consumed_operation_id&&can('inventory.create')&&<button className="primary" disabled={busy||!['present','damaged'].includes(selected.presence)} onClick={()=>void receive(selected)}><Box size={18}/>Додати на склад</button>}
+    {selected.part_id&&<Link className="assembly-part-link" to={'/inventory?vehicle_id='+vehicle.id}>Перейти до складу автомобіля</Link>}
     {editable&&assemblyEnabled&&!!assemblyUnitFor(selected)&&selected.part_id&&Number(selected.quantity)===1&&!selected.parent_id&&!selected.consumed_operation_id&&!selected.consumed_type&&<button type="button" className="secondary assembly-manage-shortcut" onClick={()=>setAssemblyToolsOpen(open=>!open)}>
       <Layers size={17}/>{preview.memberships?.length?'Керувати складом вузла':'Підтвердити вузол у зборі'}
     </button>}

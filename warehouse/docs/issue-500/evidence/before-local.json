@@ -1,0 +1,267 @@
+{
+  "target": "LOCAL_REAL_AUTH_POSTGRES_TEST_RECORDS",
+  "phase": "before",
+  "readiness": {
+    "enabled": true,
+    "workspace_enabled": true
+  },
+  "role": "DIRECTOR",
+  "permissions": [
+    "analytics.financial",
+    "analytics.view",
+    "audit.view",
+    "catalog.import",
+    "catalog.view",
+    "dismantling.manage",
+    "inventory.activate_virtual",
+    "inventory.adjust_quantity",
+    "inventory.archive",
+    "inventory.create",
+    "inventory.edit",
+    "inventory.reserve",
+    "inventory.transfer",
+    "inventory.view",
+    "inventory.write_off",
+    "market.check",
+    "orders.create",
+    "orders.edit",
+    "orders.fulfill",
+    "orders.view",
+    "parts.change_price",
+    "parts.inspect",
+    "parts.notes",
+    "parts.view_cost",
+    "sales.create",
+    "sales.view",
+    "sales.view_financials",
+    "settings.manage",
+    "team.manage_managers",
+    "team.view",
+    "vehicles.create",
+    "vehicles.edit",
+    "vehicles.view"
+  ],
+  "outcomes": [
+    {
+      "width": 1440,
+      "name": "Бампер (задній)",
+      "quantity": 1,
+      "actionPresent": false,
+      "phase": "before"
+    },
+    {
+      "width": 1440,
+      "name": "Бампер (передній)",
+      "quantity": 6,
+      "actionPresent": false,
+      "phase": "before"
+    },
+    {
+      "width": 1440,
+      "name": "Двері",
+      "quantity": 1,
+      "actionPresent": true,
+      "phase": "before"
+    },
+    {
+      "width": 1440,
+      "name": "Двигун у зборі",
+      "quantity": 1,
+      "actionPresent": true,
+      "phase": "before"
+    },
+    {
+      "width": 390,
+      "name": "Бампер (задній)",
+      "quantity": 1,
+      "actionPresent": false,
+      "phase": "before"
+    },
+    {
+      "width": 390,
+      "name": "Бампер (передній)",
+      "quantity": 6,
+      "actionPresent": false,
+      "phase": "before"
+    },
+    {
+      "width": 390,
+      "name": "Двері",
+      "quantity": 1,
+      "actionPresent": true,
+      "phase": "before"
+    },
+    {
+      "width": 390,
+      "name": "Двигун у зборі",
+      "quantity": 1,
+      "actionPresent": true,
+      "phase": "before"
+    }
+  ],
+  "network": [
+    {
+      "method": "GET",
+      "path": "/vehicles",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index-mCd_HeQL.css",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/assets/index-D6BMNoq_.js",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/me",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/vehicles",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/vehicles/c39dc8df-305c-476c-867f-96ff98f5f961",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/assets/generic-unknown-WLpe4sbc.webp",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/settings",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/vehicles/c39dc8df-305c-476c-867f-96ff98f5f961/photos",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/vehicles/c39dc8df-305c-476c-867f-96ff98f5f961/global-dismantling",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/vehicles/c39dc8df-305c-476c-867f-96ff98f5f961/assemblies/readiness",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/vehicles/c39dc8df-305c-476c-867f-96ff98f5f961/plan-parts-checklist",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/vehicles/c39dc8df-305c-476c-867f-96ff98f5f961/analytics",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/vehicles/c39dc8df-305c-476c-867f-96ff98f5f961/assemblies",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/vehicles/c39dc8df-305c-476c-867f-96ff98f5f961/dismantling-v3",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/vehicles/c39dc8df-305c-476c-867f-96ff98f5f961/dismantling-v3",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/parts/54a237ba-8ae8-447c-957e-19939a28c275/photos",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/vehicles/c39dc8df-305c-476c-867f-96ff98f5f961/assemblies/98fc54f0-cb01-484a-9c90-3c9183d79d36/preview",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/parts/e4a115db-a2f5-492c-a41a-65179dc9cde7/photos",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/vehicles/c39dc8df-305c-476c-867f-96ff98f5f961/assemblies/7dbe5a44-506c-4e68-9f99-597921a3e33e/preview",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/parts/1ab42215-a987-4444-89a3-dd0262cefe15/photos",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/vehicles/c39dc8df-305c-476c-867f-96ff98f5f961/assemblies/992a3415-8a6a-4e43-992b-aef08b0f8c21/preview",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/parts/2ebb4c9e-fbe2-41bd-8782-fcf5b16abad0/photos",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/vehicles/c39dc8df-305c-476c-867f-96ff98f5f961/assemblies/95d71218-d0d9-4c6c-9f10-edfe751f0ec7/preview",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/parts/54a237ba-8ae8-447c-957e-19939a28c275/photos",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/vehicles/c39dc8df-305c-476c-867f-96ff98f5f961/assemblies/98fc54f0-cb01-484a-9c90-3c9183d79d36/preview",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/parts/e4a115db-a2f5-492c-a41a-65179dc9cde7/photos",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/vehicles/c39dc8df-305c-476c-867f-96ff98f5f961/assemblies/7dbe5a44-506c-4e68-9f99-597921a3e33e/preview",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/parts/1ab42215-a987-4444-89a3-dd0262cefe15/photos",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/vehicles/c39dc8df-305c-476c-867f-96ff98f5f961/assemblies/992a3415-8a6a-4e43-992b-aef08b0f8c21/preview",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/parts/2ebb4c9e-fbe2-41bd-8782-fcf5b16abad0/photos",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/vehicles/c39dc8df-305c-476c-867f-96ff98f5f961/assemblies/95d71218-d0d9-4c6c-9f10-edfe751f0ec7/preview",
+      "status": 200
+    }
+  ],
+  "errors": [],
+  "mutations": [],
+  "stockUnchanged": true
+}

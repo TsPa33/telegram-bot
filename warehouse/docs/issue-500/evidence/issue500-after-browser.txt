@@ -1,0 +1,1 @@
+LOCAL_REAL_AUTH_POSTGRES_TEST_RECORDS after: authenticated exact donor route, 1/6 stock, 1440/390, readonly diagnostics + optional explicit local confirmation: PASS (favicon warnings retained in report)
