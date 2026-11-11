@@ -76,3 +76,44 @@ export function suggestedDoorComponents<T extends AssemblyDisplayNode>(parent:T,
   &&isKnownDoorComponent(row)&&sameDoorInstallation(parent,row))
  .sort((a,b)=>(a.name||'').localeCompare(b.name||'','uk')||String(a.id||'').localeCompare(String(b.id||'')));
 }
+
+
+/**
+ * A constructive REFERENCE template, not inventory or a factory BOM.
+ * Render only for an identifiable door position. No generated row has a stock/plan ID.
+ * Fitment and physical presence must be confirmed before any business operation.
+ */
+const DOOR_COMPONENT_TEMPLATE = [
+ {key:'shell',label:'Каркас дверей',pattern:/каркас.*двер|двер.*каркас|панель.*двер.*метал/iu},
+ {key:'glass',label:'Скло дверей',pattern:/скло.*двер|двер.*скло|віконн.*скло/iu},
+ {key:'regulator',label:'Склопідіймач',pattern:/склопідіймач|механізм.*підйом.*скл/iu},
+ {key:'lock',label:'Замок дверей',pattern:/замок.*двер|двер.*замок|защіпк.*двер/iu},
+ {key:'outer-handle',label:'Зовнішня ручка дверей',pattern:/зовнішн.*ручк.*двер|ручк.*двер.*зовнішн/iu},
+ {key:'inner-handle',label:'Внутрішня ручка дверей',pattern:/внутрішн.*ручк.*двер|ручк.*двер.*внутрішн/iu},
+ {key:'trim',label:'Обшивка дверей',pattern:/обшивк.*двер|карт.*двер/iu},
+ {key:'harness',label:'Проводка дверей',pattern:/проводк.*двер|джгут.*двер/iu},
+ {key:'seal',label:'Ущільнювач дверей',pattern:/ущільнювач.*двер|двер.*ущільнювач/iu},
+] as const;
+
+export type DoorTemplateEntry = {
+ key:string;
+ label:string;
+ kind:'physically_attached'|'source_candidate'|'template_only';
+ linkedId?:string;
+};
+/** Display interpretation only; never insert templates into DismantlingItem, Part or AssemblyMembership. */
+export function doorTemplateEntries<T extends AssemblyDisplayNode>(
+ door:T,
+ all:T[],
+ attached:T[],
+):DoorTemplateEntry[]{
+ if(!doorKey(door))return [];
+ const source=suggestedDoorComponents(door,all);
+ return DOOR_COMPONENT_TEMPLATE.map(spec=>{
+  const physical=attached.find(item=>spec.pattern.test(item.name||''));
+  if(physical)return {key:spec.key,label:spec.label,kind:'physically_attached' as const,linkedId:physical.id};
+  const candidate=source.find(item=>spec.pattern.test(item.name||''));
+  if(candidate)return {key:spec.key,label:spec.label,kind:'source_candidate' as const,linkedId:candidate.id};
+  return {key:spec.key,label:spec.label,kind:'template_only' as const};
+ });
+}
