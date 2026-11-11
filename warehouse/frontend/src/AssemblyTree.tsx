@@ -78,6 +78,20 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
  const categories=[...new Set(items.map(n=>String(n.category||'Інші деталі')))];
  function icon(name:string){const Icon=/двер/i.test(name)?DoorOpen:/двиг|трансм/i.test(name)?Cog:/електр/i.test(name)?Zap:/салон|інтер/i.test(name)?Armchair:/клімат/i.test(name)?Wind:/безпек/i.test(name)?ShieldCheck:/освіт/i.test(name)?Lightbulb:/гальм/i.test(name)?Disc:/кермов|підвіск/i.test(name)?Settings:Box;return <Icon size={20} strokeWidth={1.6}/>;}
  const checked=items.filter(n=>['present','damaged'].includes(n.presence)).length,attention=items.filter(n=>['unchecked','damaged','absent'].includes(n.presence)||n.completeness==='incomplete'||n.category==='Потребує уточнення').length,stocked=items.filter(n=>n.part_id&&!n.parent_id&&!n.consumed_operation_id&&!n.archived&&n.quantity>0).length;
+ // Never hide a recognized assembly's split workflow due to a permission or stock guard.
+ // A visible, precise reason is preferable to silently removing the action.
+ const splitBlockReason=!selected?''
+  :!selected.part_id?'Спочатку оприбуткуйте вузол на склад.'
+  :Number(selected.quantity)!==1?`Для розбору потрібен один фізичний вузол. Зараз у цій позиції: ${selected.quantity} шт. Розділіть партію на окремі одиниці.`
+  :selected.parent_id?'Цей компонент входить до іншого вузла. Спочатку відокремте його.'
+  :selected.consumed_operation_id||selected.consumed_type?'Вузол уже продано або списано.'
+  :selected.archived?'Вузол архівований. Спочатку відновіть його.'
+  :selected.included===false?'Вузол виключено з плану розбору.'
+  :selected.presence==='absent'?'Вузол позначено відсутнім.'
+  :!assemblyEnabled?'Керування фізичним складом вимкнене для цього середовища.'
+  :!editable||!can('inventory.create')?'Немає дозволів на розбір та оприбуткування. Зверніться до директора.'
+  :preview?.conflicts?.length?'Вузол зарезервовано. Зніміть резерв у відповідному замовленні.'
+  :'';
  function stockLabel(n:Row){return n.consumed_operation_id||n.consumed_type==='sale'||n.consumed_type==='write_off'?(n.consumed_type==='sale'?(n.parent_id?'Продано у складі вузла':'Продано'):'Списано'):n.parent_id?'У складі вузла':n.part_id&&n.quantity>0?'На складі':n.part_id?'Немає залишку':'Ще не на складі'}
  function presenceLabel(n:Row){return ({present:'Є в авто',damaged:'Пошкоджено',absent:'Немає'} as Record<string,string>)[n.presence]||'Перевірити'}
  async function inspect(n:Row,presence:string,quantity:number,noteValue:string){
@@ -86,7 +100,7 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
  async function splitPhysicalUnit(root:Row) {
   const unit=assemblyUnitFor(root);
   if(!unit||!preview||!root.part_id||Number(root.quantity)!==1||!splitSelected.length||
-     !splitConfirmed||busy||writing.current||!editable||!can('inventory.create'))return;
+     !splitConfirmed||busy||writing.current||!editable||!can('inventory.create')||splitBlockReason)return;
   const ticket=epoch.current,token=String(preview.token);
   const components=splitSelected.slice().sort((a,b)=>a-b).map(index=>({index,condition:splitConditions[index]||'used'}));
   const fingerprint=JSON.stringify([scope,'assembly:split',root.id,unit.id,token,components]);
@@ -225,16 +239,17 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
     <button className="secondary" disabled={busy||!editable||!!selected.consumed_type||!!selected.consumed_operation_id||note===(selected.note||'')} onClick={()=>void inspect(selected,selected.presence,selected.part_id?selected.quantity:selected.planned_quantity,note)}>Зберегти примітку</button>
     {editable&&!selected.part_id&&!selected.parent_id&&!selected.consumed_operation_id&&can('inventory.create')&&<button className="primary" disabled={busy||!['present','damaged'].includes(selected.presence)} onClick={()=>void receive(selected)}><Box size={18}/>Додати на склад</button>}
     {selected.part_id&&<Link className="assembly-part-link" to={'/inventory?vehicle_id='+vehicle.id}>Перейти до складу автомобіля</Link>}
-    {editable&&assemblyEnabled&&can('inventory.create')&&!!assemblyUnitFor(selected)&&selected.part_id&&Number(selected.quantity)===1&&!selected.parent_id&&!selected.consumed_operation_id&&!selected.consumed_type&&!selected.archived&&
+    {!!assemblyUnitFor(selected)&&
       <details className="assembly-physical-split">
-       <summary><Layers size={16}/>Розібрати вузол на окремі запчастини</summary>
+       <summary><Layers size={16}/><span>Розібрати вузол на окремі запчастини</span>{splitBlockReason&&<small className="assembly-split-locked-label">Недоступно</small>}</summary>
+       {splitBlockReason?<p role="status" className="assembly-split-unavailable">{splitBlockReason}</p>:<>
        <p>Позначте лише деталі, які <strong>вже фізично відокремили</strong>. Після підтвердження вони стануть окремими складськими позиціями для продажу. Вузол залишиться неповним.</p>
        {assemblyReferenceLines(selected,items,children.get(selected.id)||[]).map((entry,index)=>{
         const actual=entry.linkedId?byId.get(entry.linkedId):null;
         const alreadySeparated=entry.kind==='existing_plan'&&!!actual?.part_id;
         const checked=splitSelected.includes(index);
         return <div className="assembly-split-row" key={entry.key}>
-         <label><input type="checkbox" checked={checked} disabled={busy||alreadySeparated||!!preview.conflicts.length}
+         <label><input type="checkbox" checked={checked} disabled={busy||alreadySeparated||!!preview.conflicts.length||!!splitBlockReason}
            onChange={event=>{const on=event.target.checked;setSplitSelected(old=>on?[...old,index]:old.filter(i=>i!==index));setSplitConfirmed(false);setSplitResult(null)}}/>
           <span>{entry.label}</span></label>
          {alreadySeparated?<small>Вже окремо на складі</small>:entry.kind==='attached'?<small>У вузлі</small>:<small>Можлива складова</small>}
@@ -248,13 +263,14 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
        <p className="assembly-split-note">Складські залишки з'являться лише для підтверджених відокремлених деталей. Кількість вихідного вузла залишиться 1 — це залишок без вилучених компонентів. Його продаж «у зборі» буде заблоковано, поки склад фізично не відновлено.</p>
        <label className="assembly-split-confirm"><input type="checkbox" checked={splitConfirmed} disabled={busy||!splitSelected.length}
          onChange={e=>setSplitConfirmed(e.target.checked)}/> Підтверджую демонтаж {splitSelected.length} деталей і зміну комплектності вузла</label>
-       <button type="button" className="primary" disabled={busy||!splitConfirmed||!splitSelected.length||!!preview.conflicts.length}
+       <button type="button" className="primary" disabled={busy||!splitConfirmed||!splitSelected.length||!!preview.conflicts.length||!!splitBlockReason}
          onClick={()=>void splitPhysicalUnit(selected)}><Box size={16}/>Відокремити та оприбуткувати {splitSelected.length}</button>
        {splitResult&&<div className="assembly-split-success" role="status">
          <strong>Оприбутковано {splitResult.count} компонентів</strong>
          <p>Вузол тепер неповний. Собівартість автоматично не розподілялася.</p>
          <Link to={'/inventory?vehicle_id='+vehicle.id}>Відкрити склад і оформити продаж</Link>
         </div>}
+       </>}
       </details>}
     {editable&&assemblyEnabled&&!!assemblyUnitFor(selected)&&selected.part_id&&Number(selected.quantity)===1&&!selected.parent_id&&!selected.consumed_operation_id&&!selected.consumed_type&&<button type="button" className="secondary assembly-manage-shortcut" onClick={()=>setAssemblyToolsOpen(open=>!open)}>
       <Layers size={17}/>{preview.memberships?.length?'Керувати складом вузла':'Підтвердити вузол у зборі'}
