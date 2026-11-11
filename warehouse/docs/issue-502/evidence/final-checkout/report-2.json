@@ -1,0 +1,8 @@
+{
+  "target": "LOCAL_AUTHENTICATED_POSTGRES_TEST_RECORDS",
+  "checkout": true,
+  "onDemandSearch": true,
+  "sale": true,
+  "quantityAfterReload": 1,
+  "errors": []
+}

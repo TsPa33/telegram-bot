@@ -26,7 +26,7 @@ try{
  const page=await c.newPage();page.setDefaultTimeout(15000);page.setDefaultNavigationTimeout(20000);page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')consoleErrors.push({text:m.text(),location:m.location()})});
  page.on('response',r=>{const u=new URL(r.url());if(u.origin===new URL(base).origin)network.push({method:r.request().method(),path:u.pathname,status:r.status(),cacheControl:r.headers()['cache-control']||null,etag:r.headers().etag||null})});
  page.on('request',r=>{if(!['GET','HEAD','OPTIONS'].includes(r.method()))mutations.push({method:r.method(),path:new URL(r.url()).pathname})});
- await page.goto('/vehicles?donor='+encodeURIComponent(id));await page.screenshot({path:`${dir}/initial.png`});
+ await page.goto('/vehicles?donor='+encodeURIComponent(id));await page.screenshot({animations:'disabled',path:`${dir}/initial.png`});
  const cases=live?initial.items.filter(n=>n.part_id&&/бампер/iu.test(n.name)&&[1,6].includes(n.quantity)):fixture.rows;
  assert.ok(cases.some(n=>n.quantity===1)&&cases.some(n=>n.quantity===6),'Both 1 and 6 stock cases required; do not synthesize missing staging records');
  const outcomes=[];
@@ -51,10 +51,20 @@ try{
    }
    await panel.scrollIntoViewIfNeeded();assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'No horizontal page overflow');
    const name=n.name.includes('передній')?'front-6':n.name.includes('задній')?'rear-1':/двигун/iu.test(n.name)?'engine-1':'door-1';
-   await page.screenshot({path:`${dir}/${name}-${width}.png`,fullPage:false});
+   await page.screenshot({animations:'disabled',path:`${dir}/${name}-${width}.png`,fullPage:false});
    outcomes.push({width,name:n.name,quantity:n.quantity,actionPresent:await action.count()===1,phase});
    await panel.getByRole('button',{name:'Закрити картку',exact:true}).click();
   }
+ }
+ if(!live){
+  await page.setViewportSize({width:1440,height:1000});const root=fixture.rows.find(n=>n.name==='Бампер (задній)');
+  await page.locator(`[id="assembly-node-${root.id}"]`).click();
+  const reference=page.locator('.assembly-door-component-preview').first();await reference.locator('summary').click();
+  const choice=reference.locator('button.assembly-template-label').first(),label=await choice.innerText();await choice.click();
+  const inspector=page.getByRole('region',{name:'Картка запчастини',exact:true});await expect(inspector.getByRole('region',{name:'Довідкова складова'})).toContainText(label);
+  await expect(inspector.locator('.assembly-physical-split')).toHaveAttribute('open','');
+  assert.equal(await inspector.locator('.assembly-split-row input:checked').count(),0,'Reference selection is not physical confirmation');
+  await inspector.getByRole('button',{name:'Закрити картку',exact:true}).click();
  }
  const after=await get(`/api/v1/parts?vehicle_id=${id}&limit=200`);assert.deepEqual(after,before,'Read-only diagnostic must not alter existing stock');
  assert.deepEqual(await get(`/api/v1/vehicles/${id}/assemblies`),initial,'No plan/membership mutations');
@@ -82,7 +92,7 @@ try{
   const tree=await get(`/api/v1/vehicles/${id}/assemblies`);assert.equal(tree.items.find(n=>n.id===root.id).completeness,'incomplete');
   assert.equal(new Set(result.split.map(n=>n.part_id)).size,2);assert.ok(result.split.every(n=>stock.items.find(p=>p.id===n.part_id).quantity===1));
   functionalLocalSplit={count:result.count,rootQuantity:1,frontLotQuantity:6,originalPartIdsPreserved:true};
-  await page.screenshot({path:`${dir}/local-confirmed-split.png`,fullPage:false});
+  await page.screenshot({animations:'disabled',path:`${dir}/local-confirmed-split.png`,fullPage:false});
  }
  const assets=await page.locator('script[src]').evaluateAll(nodes=>nodes.map(n=>n.src));
  const report={target:live?'STAGING':'LOCAL_REAL_AUTH_POSTGRES_TEST_RECORDS',phase,readiness,role:actor.role||'actor',permissions:actor.permissions,outcomes,network,errors,consoleErrors,mutations,diagnosticStockUnchanged:true,functionalLocalSplit,previewFailureVisible,assets,canonicalOrigin:new URL(base).origin,documentPath:'/vehicles?donor=<owned-id>'};
