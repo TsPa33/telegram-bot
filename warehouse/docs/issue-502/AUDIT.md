@@ -1,0 +1,32 @@
+# #502 — read-only baseline audit and controlled package plan
+
+11.11.2026 (Europe/Kyiv). Baseline exact `a0d00c2e39135bee88e5c4e1bdf3adea5649b8ce`, source `fix/warehouse-500-split-visibility`, includes unmerged PR499/501. Public PR501 page confirms owner-reported API/Web a0d00c2 deployment; it is not a fresh authenticated staging verification. Git fetch currently fails for unavailable credentials; public HTML issue/PR remains readable. No history is discarded or rebased onto main.
+
+## Read-only findings
+
+| Stage | State / source / root cause | Minimal package |
+|---|---|---|
+| VIN intake | Existing vPIC/free fallback, structured vin_details, edit/confirm/duplicate guard. `vin_lookup.py` suppresses some provider errors but loses ambiguous ModelYear warnings; `vin_normalize.validate_consistency` only checks engine displacement. Actual Peugeot VIN/provider response not supplied, so 1987 cannot be corrected by guessing a generation. | A: preserve uncertainty, ask year confirmation on provider ambiguity, no model hardcodes |
+| Empty donor→base plan | **Code regression confirmed:** `GlobalCatalogueFlow.tsx:37–49` nests UniversalPlanGenerator inside closed catalogue details. AssemblyTree renders0 and empty-state text while primary generation is invisible. Generator backend already provides216/227 without exact modification or paid API. | A: visible primary action, preview/save and refresh; no auto Parts |
+| Assembly references | Existing24 family references, safe `assembly_split`, explicit confirmation, real ledger, qty1 gate. PR501 preserves aliases and visible loading/error/qty6 blockers. Reference list rows are non-interactive spans, so users cannot select a proposed component into the inspector. | B: reference→existing parent split controls, no invented IDs/membership |
+| Six-unit lot | Qty6 deliberately409. No validated lot→individual-unit transaction exists. Arbitrary decrement/re-receipt would damage cost/reserve/order identities. | B: keep precise blocker until verified extraction; never fake six units |
+| Inventory/Part | Existing PartCard/photo/location/quantity/history/edit services. There is no need for a second inventory ledger. Reserves/sales/membership locks are already implemented. | B/P1: reuse views; no existing data changes |
+| Order UI | `SalesWorkspace`/PartActionMenu/SearchPartPreview call direct sale modal while separate OrderComposer exists. Composer always shows large search and manager/author developer text. UI orderDraft discards existing assembly confirmation metadata supported by OrderLineInput. | C: one checkout; retain legacy direct API for history/compatibility |
+| Order backend | `orders.create`, `action`, request replay, workspace/part locks and inventory.stock already ensure transactional lines/reserves/sales. Existing create→reserve frontend uses two requests; single checkout confirmation needs same existing transaction/ledger, not another order system. | C: small checkout orchestration using existing services; atomic rollback and replay tests |
+| Shared UX/theme/sidebar | Existing tokens/themes, mobile focus-managed menu and corporate styles. Desktop has no compact explicit toggle; Settings renders Billing directly, without requested General/Payments structure. | P1: reuse tokens/panels, compact keyboard-accessible desktop navigation, display-only payments tab |
+| Staging | One Web request CONNECT403. No authorized browser connector/session. Actual DOM/assets/roles/DB aggregates NOT VERIFIED; no retry/proxy, no working-data writes. | External acceptance gate, not fixture PASS |
+
+## Data and safety gates
+
+26,938 raw PRD /2,184 linked PRD /60,098 modifications from owner evidence are not runtime stock, published types or factory BOM. Full normalization is NOT a prerequisite to baseline216/227 workflow. No paid calls, publication, import/export, payment integration or new environment in #502. Source MySQL unchanged. Backend tests only fresh dedicated localhost *_test PostgreSQL; conftest truncates those databases.
+
+The issue references16 new screenshots which are not attached to the issue or current request. Their presence is not claimed. Existing corporate code/tokens and earlier approved reference images guide local UX; exact comparison to those16 requires the owner-provided images.
+
+## Package boundaries / DONE / rollback
+
+- **A** `fix/warehouse-502-a-vin-plan`, base a0d00c2: visible free base plan for3+ brands, VIN uncertainty; no source/stock writes until explicit save/receipt. DONE backend VIN/base regressions + real local auth/API browser, mobile. Rollback application commit, no migrations.
+- **B** `fix/warehouse-502-b-assembly`, base A: interactive references to existing physical confirmation; qty1 split/qty6 guarded, cost uncertainty visible, no financial policy invention. DONE full physical regression suite + browser, original IDs preserved. Rollback application; preserve operations created by explicitly authorized real use, never undo ledger by SQL.
+- **C** `fix/warehouse-502-c-checkout`, base B: single frontend checkout using existing orders/stock services, conditional item picker, exact totals, atomic confirmation/replay/role/reserve/assembly guard. DONE1/2-line orders and conflicting/retried sales on isolated DB/browser. Rollback application; no migration/backfill.
+- **P1** `fix/warehouse-502-d-shared-ux`, base C: common existing styles/theme/panels, compact sidebar/keyboard/mobile and Settings tabs without payments. DONE day/night1440/1920/390 + keyboard/no overflow browser; no new financial endpoints. Rollback application/CSS only.
+
+Stacked, separately reviewable PRs; no uncontrolled merge into main/shared staging. Each package logs exact tests and changes. A local combined candidate is allowed for E2E; it is not a deployed staging claim. GitHub/Railway access required to publish/create actual Draft PRs and execute live QA. A request for an authorized channel was made, without requesting credentials in chat.

@@ -34,6 +34,7 @@ export default function GlobalCatalogueFlow({vehicle,onSaved}:{vehicle:Row;onSav
  const products:Row[]=saved?.payload?.categories||[];
  const filtered=products.filter(p=>`${p.name_uk} ${p.name_source}`.toLowerCase().includes(q.toLowerCase()));
  return <section className="unified-flow" aria-label="Розбір автомобіля">
+  <UniversalPlanGenerator vehicle={vehicle} revision={revision} onSaved={()=>{setRevision(n=>n+1);onSaved(vehicle)}}/>
   <details className="uf-catalogue-disclosure">
    <summary><span><strong>Каталог і модифікація</strong><small>{state.selection?'Точна модифікація вибрана':'Точна модифікація не підтверджена · базовий каталог'}</small></span><span className="uf-catalogue-toggle">Налаштувати</span></summary>
    <div className="uf-catalogue-details">
@@ -44,7 +45,6 @@ export default function GlobalCatalogueFlow({vehicle,onSaved}:{vehicle:Row;onSav
    <button className="secondary" disabled={vehicle.archived||!can('vehicles.edit')||!can('dismantling.manage')} onClick={()=>setChooseModification(v=>!v)}>{chooseModification?'Закрити вибір':'Вибрати модифікацію'}</button>
   </div>
   {chooseModification&&state.selection_basis&&<div className="uf-source-picker"><GlobalVehicleForm key={vehicle.id+':'+state.selection_basis} vehicle={vehicle} expectedBasis={state.selection_basis} onSaved={row=>{setChooseModification(false);setRevision(n=>n+1);onSaved(row)}}/></div>}
-  <UniversalPlanGenerator vehicle={vehicle} revision={revision} onSaved={()=>{setRevision(n=>n+1);onSaved(vehicle)}}/>
    </div>
   </details>
   <AssemblyTree vehicle={vehicle} revision={revision} onReady={setAssemblyMode}/>{!assemblyMode&&<h2>Розбір автомобіля</h2>}{error&&<p role="alert">{error}</p>}
