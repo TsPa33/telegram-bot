@@ -216,3 +216,37 @@ def test_single_root_reference_catalogue_preserves_24_family_ids():
     assert len({u['id'] for u in FAMILIES.values()})==24
     assert all(len(f['parts'])>=5 and f['aliases'] for f in FAMILIES.values())
     assert sum(len(f['parts']) for f in FAMILIES.values())==154
+
+
+def test_legacy_unlinked_stock_blocks_duplicate_component_receipt(logged,stocked):
+    g=stocked
+    with Session(engine()) as db:
+        db.add(Part(account_id=g['account'],vehicle_id=g['vehicle'],
+            name='Скло дверей',quantity=1,reserved_quantity=0))
+        db.commit()
+    result=split(logged,g,[1])
+    assert result.status_code==409,result.text
+    with Session(engine()) as db:
+        assert count(db,Part)==2
+        assert count(db,AssemblyMembership)==0
+        assert db.get(DismantlingItem,g['root']).assembly_completeness is None
+
+
+def test_opposite_door_side_existing_stock_is_not_false_duplicate(logged,stocked):
+    g=stocked
+    with Session(engine()) as db:
+        right=Part(account_id=g['account'],vehicle_id=g['vehicle'],
+            name='Скло дверей',quantity=1,reserved_quantity=0)
+        db.add(right);db.flush()
+        n=DismantlingItem(account_id=g['account'],vehicle_id=g['vehicle'],
+            name='Скло дверей',position='передня права',source='synthetic.right',
+            catalog_key='right-glass',part_id=right.id,
+            category_key='body',category_name='Кузов',
+            subcategory_key='door',subcategory_name='Двері',
+            quantity=1,status='dismantled')
+        db.add(n);db.commit()
+    result=split(logged,g,[1])
+    assert result.status_code==200,result.text
+    assert result.json()['count']==1
+    with Session(engine()) as db:
+        assert count(db,Part)==3
