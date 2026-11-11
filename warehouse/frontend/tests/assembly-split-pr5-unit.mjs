@@ -47,7 +47,7 @@ test('after split the original inspector refreshes and inventory navigation rema
  assert.match(ui,/assembly_remainder:remainder/);
 });
 test('split UI stays accessible and does not auto-submit on checkbox choice',()=>{
- assert.match(ui,/<details className="assembly-physical-split">/);
+ assert.match(ui,/<details className="assembly-physical-split"/);
  assert.match(ui,/type="checkbox" checked=\{checked\}/);
  assert.match(ui,/aria-label=\{'Стан: '\+entry\.label\}/);
  assert.match(ui,/onClick=\{\(\)=>void splitPhysicalUnit\(selected\)\}/);
@@ -57,7 +57,7 @@ test('split UI stays accessible and does not auto-submit on checkbox choice',()=
 
 
 test('stocked recognized assembly always exposes split even when a secondary prerequisite fails',()=>{
- assert.match(ui,/\{!!assemblyUnitFor\(selected\)&&\s*<details className="assembly-physical-split">/);
+ assert.match(ui,/\{!!assemblyUnitFor\(selected\)&&\s*<details className="assembly-physical-split"/);
  assert.match(ui,/splitBlockReason=!selected/);
  assert.match(ui,/Немає дозволів на розбір та оприбуткування/);
  assert.match(ui,/Керування фізичним складом вимкнене/);
@@ -71,7 +71,7 @@ test('stocked recognized assembly always exposes split even when a secondary pre
 });
 
 test('split entry is available before preview and gives a guarded loading/error state',()=>{
- const entry=ui.indexOf('<details className="assembly-physical-split">');
+ const entry=ui.indexOf('<details className="assembly-physical-split"');
  const previewGate=ui.indexOf('{!preview?<p role="status">');
  assert.ok(entry>0&&entry<previewGate,'preview failure must not remove the split entry');
  assert.match(ui,/Не вдалося перевірити склад/);
