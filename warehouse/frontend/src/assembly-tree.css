@@ -280,3 +280,10 @@ details.assembly-door-component-preview[open]>summary{border-bottom:1px solid va
 .assembly-split-success p{font-size:.74rem;margin:5px 0;line-height:1.4}
 .assembly-split-success a{font-weight:650}
 @media(max-width:650px){.assembly-split-row{min-height:44px}.assembly-split-row label{font-size:.8rem}.assembly-physical-split>button.primary{min-height:46px}}
+
+
+/* Eligibility is always discoverable: a missing permission must never hide the split control. */
+.assembly-physical-split>summary{border-left:3px solid #075c4e;gap:8px;line-height:1.25}
+.assembly-physical-split>summary>span{flex:1;min-width:0}
+.assembly-physical-split>summary>.assembly-split-locked-label{flex-shrink:0;font-size:.68rem;color:#875b21;font-weight:650}
+.assembly-physical-split>.assembly-split-unavailable{margin:8px 10px!important;padding:10px!important;border:1px solid var(--color-border);border-radius:8px;line-height:1.5;font-size:.76rem}
