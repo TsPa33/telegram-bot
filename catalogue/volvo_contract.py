@@ -107,4 +107,4 @@ def compact_plan(payload, snapshot_sha):
         modification=payload.get('modification', {}), observed_at=payload['observed_at'],
         source_snapshot_sha=snapshot_sha, coverage=payload['coverage'],
         coverage_verified=coverage_verified(payload), taxonomy_status=payload.get('taxonomy_status', 'unreviewed'),
-        categories=rows, photos='metadata_only')
+        categories=rows, photos=payload.get('image_status','metadata_only'))
