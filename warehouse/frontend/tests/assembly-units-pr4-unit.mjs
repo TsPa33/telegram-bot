@@ -77,3 +77,8 @@ test('reference components never count as real donor or stock inventory',()=>{
  assert.match(ui,/У плані',items.length/);
  assert.match(ui,/template.filter\(entry=>entry.kind!=='attached'\)/);
 });
+
+test('bumper installation qualifiers identify the family, not a component or stock quantity',()=>{
+ for(const name of ['Бампер (передній)','Бампер (задній)','Передній бампер','Задній бампер','Бампер передній','Бампер задній','Бампер (передній) у зборі','Бампер   (задній)'])assert.equal(assemblyUnitFor({name})?.id,'bumper',name);
+ for(const name of ['Облицювання бампера','Підсилювач бампера','Бампер (з датчиками)','Бампер передній і задній'])assert.equal(assemblyUnitFor({name}),null,name);
+});

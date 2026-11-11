@@ -250,3 +250,40 @@ def test_opposite_door_side_existing_stock_is_not_false_duplicate(logged,stocked
     assert result.json()['count']==1
     with Session(engine()) as db:
         assert count(db,Part)==3
+
+
+@pytest.mark.parametrize('name',['Бампер (передній)','Бампер (задній)','Передній бампер','Бампер задній','Бампер (передній) у зборі'])
+def test_positioned_bumper_is_recognized_and_split_atomically(logged,stocked,name):
+    g=stocked
+    with Session(engine()) as db:
+        n=db.get(DismantlingItem,g['root']);n.name=name;n.position='';db.get(Part,g['root_part']).name=name;db.commit()
+    response=split(logged,g,[0],unit_id='bumper')
+    assert response.status_code==200,response.text
+    with Session(engine()) as db:
+        assert db.get(Part,g['root_part']).quantity==1
+        assert db.get(Part,g['root_part']).unit_cost==Decimal('70.00')
+        assert db.get(DismantlingItem,g['root']).assembly_completeness=='incomplete'
+        assert count(db,Part)==2
+        assert db.scalar(select(func.count()).select_from(Operation).where(Operation.type=='receipt'))==1
+
+
+def test_six_bumpers_are_not_assumed_to_be_six_identified_units(logged,stocked):
+    g=stocked
+    with Session(engine()) as db:
+        n=db.get(DismantlingItem,g['root']);n.name='Бампер (передній)';n.quantity=6
+        p=db.get(Part,g['root_part']);p.quantity=6;p.individually_tracked=False;db.commit()
+        before=[(p.id,p.quantity,p.reserved_quantity,p.unit_cost)]
+        operations=count(db,Operation);edges=count(db,AssemblyMembership)
+    r=split(logged,g,[0,1],unit_id='bumper');assert r.status_code==409,r.text
+    with Session(engine()) as db:
+        p=db.get(Part,g['root_part'])
+        assert [(p.id,p.quantity,p.reserved_quantity,p.unit_cost)]==before
+        assert count(db,Part)==1 and count(db,DismantlingItem)==1
+        assert count(db,Operation)==operations and count(db,AssemblyMembership)==edges
+
+
+def test_bumper_component_names_are_not_whole_units():
+    from types import SimpleNamespace
+    from app.services.assembly_split import family_for
+    for name in ('Облицювання бампера','Підсилювач бампера','Бампер (з датчиками)','Бампер передній і задній'):
+        assert family_for(SimpleNamespace(name=name)) is None
