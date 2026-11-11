@@ -38,3 +38,14 @@ def test_empty_donor_always_has_free_generic_plan(logged,monkeypatch,maker,model
         assert db.get(Vehicle,v['id']).year==year # Never rewrite the existing owner's facts.
         assert db.scalar(select(func.count()).select_from(DismantlingItem))==227
         assert db.scalar(select(func.count()).select_from(Part))==0
+
+
+def test_vin_uncertainty_roundtrip(logged):
+    details={'source':'offline_fixture','characteristics':{'year':'2021'},'decoded':{'year':2022},'consistency_issues':{'year':'Перевірте рік'},'diagnostics':{'year_observation':{'reported_year':'1987','reason':'provider_model_year_uncertain','codes':['10']}}}
+    r=logged.post('/api/v1/vehicles',json={'manufacturer':'PEUGEOT','model':'5008','year':2021,'vin_details':details})
+    assert r.status_code==201,r.text
+    saved=logged.get('/api/v1/vehicles/'+r.json()['id']).json()['vin_details']
+    assert saved['diagnostics']['year_observation']['reported_year']=='1987'
+    assert saved['characteristics']['year']=='2021' and saved['decoded']['year']==2022
+    invalid={**details,'diagnostics':{'unexpected':'Not allowed'}}
+    assert logged.post('/api/v1/vehicles',json={'manufacturer':'Test','model':'Invalid','year':2021,'vin_details':invalid}).status_code==422
