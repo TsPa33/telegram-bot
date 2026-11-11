@@ -27,7 +27,7 @@ def test_export_resume_hashes_and_pds_candidates(tmp_path,monkeypatch):
         if 'information_schema' in sql:return [dict(TABLE_NAME='passenger_cars')]
         if 'FROM passenger_cars' in sql:return [dict(id=99,modelid=88)]
         if 'FROM models' in sql:return [dict(id=88,manufacturerid=77)]
-        if 'FROM manufacturers' in sql:return [dict(id=77,description='Synthetic maker')]
+        if 'FROM manufacturers' in sql:return [dict(id=77,description='Synthetic maker',ispassengercar=True)]
         if 'FROM prd' in sql:return [dict(id=1,description='Test starter')] if args==(0,) else []
         raise AssertionError(sql)
     def collect(*args,**kwargs):calls.append(kwargs);return payload()
@@ -43,6 +43,23 @@ def test_export_resume_hashes_and_pds_candidates(tmp_path,monkeypatch):
     with pytest.raises(ValueError):batch.export(None,tmp_path,[100],[],1)
     (tmp_path/'99.json').write_text('{}')
     with pytest.raises(ValueError):batch.validate_batch(tmp_path,sha)
+
+
+def test_passenger_manufacturer_selects_only_correct_role():
+    rows=[
+        dict(id=120,description='VOLVO',ispassengercar='False',isaxle='True'),
+        dict(id=120,description='VOLVO',ispassengercar='True',iscommercialvehicle='True'),
+        dict(id=120,description='VOLVO',ispassengercar='False',isengine='True'),
+    ]
+    assert batch.select_passenger_manufacturer(rows,120) is rows[1]
+    assert batch.select_passenger_manufacturer([dict(id=121,ispassengercar=1),dict(id=121,ispassengercar=0)],121)['ispassengercar']==1
+
+
+@pytest.mark.parametrize('rows',[[],[dict(id=120,ispassengercar='False')],
+    [dict(id=120,ispassengercar=True),dict(id=120,ispassengercar='True')]])
+def test_passenger_manufacturer_rejects_missing_or_ambiguous_role(rows):
+    with pytest.raises(ValueError,match='expected exactly one ispassengercar=True row'):
+        batch.select_passenger_manufacturer(rows,120)
 
 
 def test_manifest_path_traversal_and_identity(tmp_path):
