@@ -94,3 +94,9 @@ Follow-up Draft PR base: `feature/warehouse-pr5-physical-split-to-sale` (PR499 h
 Before any staging deployment: confirm project/environment/service IDs, actual API/Web source SHAs and DB isolation through authorized Railway; ensure no source branch advanced unexpectedly. This issue has no migration changes. After deployment, verify API/Web same reviewed SHA, `/health`, startup logs, actual asset hash (hard refresh/new browser context), owned donor1/6 role/flag/DOM at1440/390 in **read-only diagnostic mode**. Any physical split/sale acceptance must be on separately authorized disposable QA data, never the real donor bumpers.
 
 **Status: LOCAL SOURCE FIX / ISOLATED REGRESSIONS VERIFIED; REAL STAGING ROOT CAUSE + AUTHENTICATED STAGING E2E UNVERIFIED/BLOCKED.** Full issue500 acceptance is not claimed complete. Qty6 controlled lot-unit extraction remains intentionally unavailable; no financial cost allocation is implied.
+
+### Delivery result
+
+Code fix commit: `10dee5583ce4230e1f2fb21904296a85a44e0469`, published only to `fix/warehouse-500-split-visibility`. A subsequent documentation-only commit records this delivery status. PR499 source remains `4ddc21984e2ba98e629245a8478cb085d728cda1`.
+
+The one attempted official GitHub REST `POST /repos/TsPa33/telegram-bot/pulls` returned **Forbidden**. A Draft PR number was not obtained; no PR creation is claimed. [Ready API request](draft-pr.json) contains base/head/title/body/draft=true and no credentials. [Create the focused PR with the correct base](https://github.com/TsPa33/telegram-bot/compare/feature/warehouse-pr5-physical-split-to-sale...fix/warehouse-500-split-visibility?expand=1), then choose Draft. Do not select main or push directly to the PR499/staging source branch.
