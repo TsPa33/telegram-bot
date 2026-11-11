@@ -8,7 +8,7 @@ from app.db import Base
 class VehicleDirectoryVariant(Base):
     __tablename__ = 'vehicle_directory_variants'
     id: Mapped[str] = mapped_column(String(64),primary_key=True)
-    account_id: Mapped[str] = mapped_column(String(36),ForeignKey('accounts.id'),nullable=False,index=True)
+    account_id: Mapped[str] = mapped_column(String(36),ForeignKey('accounts.id'),nullable=False)
     brand: Mapped[str] = mapped_column(String(120),nullable=False)
     model: Mapped[str] = mapped_column(String(200),nullable=False)
     modification: Mapped[str] = mapped_column(String(350),nullable=False)
@@ -24,6 +24,7 @@ class VehicleDirectoryVariant(Base):
     kba_numbers: Mapped[list] = mapped_column(JSON,nullable=False,default=list)
     source_sha: Mapped[str] = mapped_column(String(64),nullable=False)
     __table_args__ = (
+        Index('ix_vehicle_directory_account_id','account_id'),
         Index('ix_vehicle_directory_brand_model','account_id','brand','model'),
         Index('ix_vehicle_directory_years','year_from','year_to'),
         CheckConstraint('year_to IS NULL OR year_from IS NULL OR year_to >= year_from',name='ck_directory_year_range'),
