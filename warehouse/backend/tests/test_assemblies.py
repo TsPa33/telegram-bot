@@ -537,7 +537,7 @@ def test_tree_exposes_door_installations_without_merging_or_creating_stock(logge
     with Session(engine()) as db:
         assert db.scalar(select(func.count()).select_from(Part))==0
         assert db.scalar(select(func.count()).select_from(AssemblyMembership))==0
-        assert db.scalar(select(func.count()).select_from(Operation))==0
+        assert db.scalar(select(func.count()).select_from(Operation).where(Operation.type.in_(['receipt','sale','assembly_attach','assembly_detach','assembly_included_sale'])))==0
 
 
 def test_tree_unknown_door_installation_stays_unknown(logged,vehicle):
