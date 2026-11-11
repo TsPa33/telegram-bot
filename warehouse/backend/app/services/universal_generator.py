@@ -46,6 +46,9 @@ def exact_modification_rows(vehicle,config,db=None):
     """Exact pinned modification identity for ANY maker. Never match by display name."""
     selection=(vehicle.dismantling_v3 or {}).get('global_selection') or {}
     saved=catalogue.saved_state(vehicle)
+    if selection.get('identity_fingerprint'):
+        from app.services.dismantling_plan_v3 import generator_basis
+        if selection['identity_fingerprint']!=generator_basis(vehicle):return [],['Характеристики VIN змінилися після підтвердження модифікації; потрібна звірка.']
     gaps=[]
     if not selection.get('car_id'):return [],['Немає точного каталожного зв’язку модифікації; використано доступні загальні типи.']
     if selection.get('vehicle_basis')!=catalogue.vehicle_basis(vehicle):return [],['Характеристики змінені після вибору модифікації; точний зв’язок потребує перевірки.']

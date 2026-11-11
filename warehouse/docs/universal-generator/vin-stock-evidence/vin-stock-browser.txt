@@ -1,0 +1,1 @@
+LOCAL SYNTHETIC UI PASS: VIN→same donor→explicit exact IDs→2-type plan→category selection→presence/dismantle→1 stock receipt; other category untouched; reload; 1440/390 no overflow/JS errors/paid calls.

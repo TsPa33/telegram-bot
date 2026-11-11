@@ -1,0 +1,17 @@
+✔ whole category selection and tri-state use all records, not 60 cards (1.673097ms)
+✔ action counts and blocked reasons remain separate for mixed selection (0.35248ms)
+✔ safe checkpointed requests honor maximum 1000 with one token per command (1.178717ms)
+✔ uncertain receipt resumes the identical body/key, then processes only remaining batches (1.921051ms)
+✔ concurrent state change stops after completed prefix without reapplying it (0.426418ms)
+✔ definitive 4xx permits safe stop; no retry payload is retained (0.260855ms)
+✔ quantity/price validation rejects implicit or malformed values (0.487078ms)
+✔ receipt ignores initial ineligible rows and exposes skipped total (0.282006ms)
+✔ scope changes and malformed saved commands cannot replay foreign selections (0.412148ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 523.752337
