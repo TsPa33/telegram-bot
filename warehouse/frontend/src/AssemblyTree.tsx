@@ -19,6 +19,7 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
  const splitPending=useRef<{fingerprint:string;key:string}|null>(null);
  const [price,setPrice]=useState(''),[currency,setCurrency]=useState('UAH'),[description,setDescription]=useState(''),[remainder,setRemainder]=useState(false),[confirmSale,setConfirmSale]=useState(false),[confirmReturn,setConfirmReturn]=useState(false);
  const [photo,setPhoto]=useState('');
+ const [reference,setReference]=useState<string|null>(null);
  useEffect(()=>{let active=true;setPhoto('');if(selected?.part_id)api(`/parts/${selected.part_id}/photos`).then(rows=>{if(active)setPhoto(rows[0]?.url||'')}).catch(()=>{});return()=>{active=false}},[selected?.part_id]);
  const [category,setCategory]=useState(''),[status,setStatus]=useState('all'),[mode,setMode]=useState('tree'),[note,setNote]=useState('');
  const inspectorRef=useRef<HTMLDivElement>(null);
@@ -43,7 +44,7 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
   return()=>{epoch.current++};
  },[scope,revision]);
  async function select(node:Row) {
-  const request=++previewEpoch.current;const ticket=epoch.current;selectedId.current=node.id;setSelected(node);if(assemblyUnitFor(node))setOpen(previous=>new Set([...previous,node.id]));setNote(node.note||'');setPreview(null);setPhysical(false);setConfirmSale(false);setConfirmReturn(false);setDescription('');setChild('');setManualComponents(false);setAssemblyToolsOpen(false);setSplitSelected([]);setSplitConditions({});setSplitConfirmed(false);setSplitResult(null);setError('');
+  const request=++previewEpoch.current;const ticket=epoch.current;selectedId.current=node.id;setSelected(node);setReference(null);if(assemblyUnitFor(node))setOpen(previous=>new Set([...previous,node.id]));setNote(node.note||'');setPreview(null);setPhysical(false);setConfirmSale(false);setConfirmReturn(false);setDescription('');setChild('');setManualComponents(false);setAssemblyToolsOpen(false);setSplitSelected([]);setSplitConditions({});setSplitConfirmed(false);setSplitResult(null);setError('');
   try{const value=await api(`/vehicles/${vehicle.id}/assemblies/${node.id}/preview`);if(ticket===epoch.current&&request===previewEpoch.current){
     setPreview(value);
     const root=value.items.find((i:Row)=>i.item_id===node.id);
@@ -195,7 +196,7 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
         <div className="assembly-component-preview-body">
          <p className="assembly-assembly-explanation">{node.part_id?(Number(node.quantity)===1?'Вузол обліковується як одна складська одиниця.':'Складський запис містить більше ніж один вузол; перед підтвердженням комплектності уточніть фізичні одиниці.'):'Це потенційний вузол у плані, не складський залишок.'} Складові наведені для перевірки, окремо додавати їх не потрібно.</p>
          <ul className="assembly-door-template-list">{template.filter(entry=>entry.kind!=='attached').map(entry=><li key={entry.key} className={'assembly-door-candidate '+(entry.kind==='existing_plan'?'has-source':'template-only')}>
-           <Box size={15}/><span className="assembly-template-label">{entry.label}</span>
+           <Box size={15}/><button type="button" className="assembly-template-label" onClick={()=>{void select(node);setReference(entry.label);requestAnimationFrame(()=>inspectorRef.current?.focus());}}>{entry.label}</button>
            <small>{entry.kind==='existing_plan'?(entry.linkedId&&byId.get(entry.linkedId)?.part_id?'Відокремлена позиція':'Окремо у плані'):'Можлива складова'}</small>
           </li>)}</ul>
          <p className="assembly-component-hint">Конструктивна довідка не підтверджує комплектацію за VIN і не створює позицій, кількості чи можливості окремого продажу. Для продажу всього вузла підтвердьте його фактичну комплектність.</p>
@@ -228,8 +229,9 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
     {roots.length>limit&&<button onClick={()=>setLimit(n=>n+50)}>Показати ще 50 позицій</button>}
    </div>
   {selected?<div ref={inspectorRef} tabIndex={-1} role="region" className="assembly-inspector" aria-label="Картка запчастини"><div className="assembly-heading"><h4>{assemblyLabel(selected)}</h4><button type="button" className="assembly-inspector-close" aria-label="Закрити картку" title="Закрити картку" onClick={()=>{previewEpoch.current++;document.getElementById('assembly-node-'+selected.id)?.focus();selectedId.current=null;setSelected(null);setPreview(null)}}><X size={17}/></button></div>
+    {reference&&<section className="notice" aria-label="Довідкова складова"><strong>{reference}</strong><p>Можлива складова, не окремий товар. Перевірте фактичну наявність і стан. Для відокремлення позначте цю деталь нижче та підтвердьте демонтаж.</p></section>}
     {!!assemblyUnitFor(selected)&&
-      <details className="assembly-physical-split">
+      <details className="assembly-physical-split" open={reference?true:undefined}>
        <summary><Layers size={16}/><span>Розібрати вузол на окремі запчастини</span>{splitBlockReason&&<small className="assembly-split-locked-label">Недоступно</small>}</summary>
        {splitBlockReason?<><p role="status" className="assembly-split-unavailable">{splitBlockReason}</p>{selected.part_id&&Number(selected.quantity)>1&&<div className="assembly-split-unit-steps"><ol><li>Звірте кількість і резерви партії та позначте конкретний фізичний вузол, який плануєте розібрати.</li><li>Потрібна контрольована операція виділення однієї одиниці: 1 окремо, решта {Number(selected.quantity)-1} у партії; загальний залишок {selected.quantity} і резерви мають зберегтися.</li><li>Після звірки відкрийте запис саме цієї одиниці з кількістю 1 та підтвердьте відокремлені компоненти.</li></ol><p>Цей екран не виконує виділення одиниці з партії. Не зменшуйте кількість вручну й не створюйте дублікати надходжень.</p><Link to={'/inventory?vehicle_id='+vehicle.id}>Переглянути партію на складі</Link></div>}</>:<>
        <p>Позначте лише деталі, які <strong>вже фізично відокремили</strong>. Після підтвердження вони стануть окремими складськими позиціями для продажу. Вузол залишиться неповним.</p>
@@ -240,7 +242,7 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
         return <div className="assembly-split-row" key={entry.key}>
          <label><input type="checkbox" checked={checked} disabled={busy||alreadySeparated||!!preview?.conflicts?.length||!!splitBlockReason}
            onChange={event=>{const on=event.target.checked;setSplitSelected(old=>on?[...old,index]:old.filter(i=>i!==index));setSplitConfirmed(false);setSplitResult(null)}}/>
-          <span>{entry.label}</span></label>
+          <span>{entry.label}{reference===entry.label&&<small> · Вибрано для перевірки</small>}</span></label>
          {alreadySeparated?<small>Вже окремо на складі</small>:entry.kind==='attached'?<small>У вузлі</small>:<small>Можлива складова</small>}
          {checked&&<select value={splitConditions[index]||'used'} disabled={busy} aria-label={'Стан: '+entry.label}
           onChange={event=>{setSplitConditions(old=>({...old,[index]:event.target.value}));setSplitConfirmed(false)}}>
