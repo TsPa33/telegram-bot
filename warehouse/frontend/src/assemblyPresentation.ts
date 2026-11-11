@@ -1,7 +1,7 @@
 /** Read-only, evidence-bound labels. A display group never creates a Part, membership or stock operation. */
 export type PositionAxes={side:'left'|'right'|null;position:'front'|'rear'|null};
 export type AssemblyDisplayNode={
- id:string;name:string;position?:string|null;
+ id?:string;name?:string;position?:string|null;
  installation_position?:{side?:string;position?:string}|null;
  completeness?:string|null;parent_id?:string|null;part_id?:string|null;
  consumed_operation_id?:string|null;archived?:boolean;
@@ -26,7 +26,7 @@ export function installationAxes(node:AssemblyDisplayNode):PositionAxes{
          position:storedPosition&&textPosition&&storedPosition!==textPosition?null:storedPosition||textPosition};
 }
 export function isGenericDoor(node:AssemblyDisplayNode):boolean{
- return /^двері$/iu.test(node.name.trim());
+ return /^двері$/iu.test((node.name||'').trim());
 }
 export function doorKey(node:AssemblyDisplayNode):string|null{
  if(!isGenericDoor(node))return null;
@@ -34,7 +34,7 @@ export function doorKey(node:AssemblyDisplayNode):string|null{
  return side&&position?position+':'+side:null;
 }
 export function assemblyLabel(node:AssemblyDisplayNode):string{
- if(!isGenericDoor(node))return node.name;
+ if(!isGenericDoor(node))return node.name||'';
  const {side,position}=installationAxes(node);
  const leading=position==='front'?'Передні':position==='rear'?'Задні':'';
  const trailing=side==='left'?'ліві':side==='right'?'праві':'';
@@ -49,8 +49,8 @@ export function doorOrder(node:AssemblyDisplayNode):number{
 }
 /** Components are shown as suggestions only when the car's stored placement identifies both axes. */
 export function isKnownDoorComponent(node:AssemblyDisplayNode):boolean{
- return /(?:каркас|скло|склопідіймач|замок|ручк|обшивк|молдинг|ущільнювач|петл|проводк|динамік|механізм)/iu.test(node.name)
-  && /(?:двер|склопідіймач|каркас двер|скло двер|обшивк двер)/iu.test(node.name);
+ return /(?:каркас|скло|склопідіймач|замок|ручк|обшивк|молдинг|ущільнювач|петл|проводк|динамік|механізм)/iu.test(node.name||'')
+  && /(?:двер|склопідіймач|каркас двер|скло двер|обшивк двер)/iu.test(node.name||'');
 }
 export function sameDoorInstallation(parent:AssemblyDisplayNode,component:AssemblyDisplayNode):boolean{
  const p=installationAxes(parent),c=installationAxes(component);
