@@ -28,17 +28,18 @@ try{
  const all=tree.getByLabel('Вибрати всі за поточними фільтрами',{exact:true});await all.check();
  let bar=tree.getByRole('region',{name:'Масові дії'});if(await bar.count()===0)bar=tree.getByLabel('Масові дії',{exact:true});
  await bar.getByRole('button',{name:'Є в авто (1)',exact:true}).click();await expect(tree.getByRole('status').filter({hasText:'Оновлено: 1'}).first()).toBeVisible();
- await all.check();await bar.getByRole('button',{name:'Демонтовано (1)',exact:true}).click();await expect(all).not.toBeChecked();
+ // The explicit receipt also confirms actual dismantling: no separate mass action.
  await all.check();await tree.getByRole('button',{name:'Додати вибрані на склад',exact:true}).click();
- const receipt=tree.getByRole('region',{name:'Підтвердження надходження'});await expect(receipt).toContainText('Придатні: 1');
- await receipt.getByLabel(/Підтверджую надходження 1 деталей/).check();await receipt.getByRole('button',{name:'Оприбуткувати 1 деталей'}).click();await expect(receipt).not.toBeVisible();
+ const receipt=tree.getByRole('region',{name:'Підтвердження надходження'});await expect(receipt).toContainText('До надходження: 1');await expect(receipt).toContainText('Підтвердимо демонтаж: 1');
+ await receipt.getByLabel(/Підтверджую фактичний демонтаж і надходження 1 деталей/).check();await receipt.getByRole('button',{name:'Оприбуткувати 1 деталей'}).click();await expect(receipt).not.toBeVisible();
  const cookie=(await c.cookies()).find(r=>r.name==='warehouse_session').value;
  const vehicles=await (await c.request.get('/api/v1/vehicles')).json();assert.equal(vehicles.items.length,1);const v=vehicles.items[0];
  const parts=await (await c.request.get('/api/v1/parts?vehicle_id='+v.id)).json();assert.equal(parts.items.length,1);assert.equal(parts.items[0].quantity,1);assert.match(parts.items[0].name,/Тестовий стартер/);
  const nodes=await (await c.request.get(`/api/v1/vehicles/${v.id}/assemblies`)).json();assert.equal(nodes.items.find(n=>n.name==='Тестова фара').part_id,null);
+ const managed=await (await c.request.get(`/api/v1/vehicles/${v.id}/dismantling-v3`)).json();assert.equal(managed.items.find(n=>n.name==='Тестовий стартер').operational_state,'received');
  await page.reload();await page.getByRole('button',{name:'Розбір і запчастини',exact:true}).click();await expect(tree).toContainText('На складі');
  await page.screenshot({path:'/tmp/vin-stock-qa/desktop-1440.png',fullPage:false});await page.setViewportSize({width:390,height:844});await tree.scrollIntoViewIfNeeded();assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);await page.screenshot({path:'/tmp/vin-stock-qa/mobile-390.png',fullPage:false});
  assert.deepEqual(errors,[]);assert.deepEqual(paid,[]);
- console.log('LOCAL SYNTHETIC UI PASS: VIN→same donor→explicit exact IDs→2-type plan→category selection→presence/dismantle→1 stock receipt; other category untouched; reload; 1440/390 no overflow/JS errors/paid calls.');
+ console.log('LOCAL SYNTHETIC UI PASS: VIN→same donor→explicit exact IDs→2-type plan→category selection→presence→explicit dismantle+receipt→1 stock receipt; other category untouched; reload; 1440/390 no overflow/JS errors/paid calls.');
  await c.close();
 }finally{await b.close()}
