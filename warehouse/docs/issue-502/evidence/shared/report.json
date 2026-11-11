@@ -1,0 +1,35 @@
+{
+  "target": "LOCAL_REAL_AUTH_POSTGRES_TEST_RECORDS",
+  "results": [
+    {
+      "manufacturer": "PEUGEOT",
+      "positions": 227,
+      "stock": 0,
+      "reload": true
+    },
+    {
+      "manufacturer": "Renault",
+      "positions": 227,
+      "stock": 0,
+      "reload": true
+    },
+    {
+      "manufacturer": "Volkswagen",
+      "positions": 227,
+      "stock": 0,
+      "reload": true
+    }
+  ],
+  "themes": [
+    "light",
+    "dark"
+  ],
+  "widths": [
+    1440,
+    1920,
+    390
+  ],
+  "keyboard": true,
+  "mobileMenu": true,
+  "errors": []
+}

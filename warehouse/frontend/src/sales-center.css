@@ -4,3 +4,8 @@
 @media(max-width:1000px){.sc-period{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
 
 .sc-journal td small{white-space:normal}
+
+.sc-workspace .sc-center{min-width:0}.sc-workspace .sc-journal{overflow-x:auto}.sc-workspace .sc-journal th,.sc-workspace .sc-journal td{white-space:normal;overflow-wrap:anywhere}.sc-workspace [hidden]{display:none}.sc-workspace .assembly-categories button{justify-content:flex-start}.sc-workspace .r1-part-card{height:auto;max-height:none;overflow:visible}.sc-workspace .r1-part-card .details>div{min-width:0;overflow-wrap:anywhere}
+
+@media(min-width:1200px){.sc-workspace{grid-template-columns:170px minmax(0,1fr) 280px}}
+@media(min-width:1001px) and (max-width:1699px){.sc-workspace .sc-journal :is(th,td):nth-child(1),.sc-workspace .sc-journal :is(th,td):nth-child(3),.sc-workspace .sc-journal :is(th,td):nth-child(4),.sc-workspace .sc-journal :is(th,td):nth-child(5){display:none}.sc-workspace .sc-journal :is(th,td):nth-child(2){width:34%}}

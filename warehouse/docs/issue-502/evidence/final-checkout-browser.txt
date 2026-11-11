@@ -1,0 +1,2 @@
+Local real-auth checkout 1 lines, 1440/390, price edit, sale, reload and ledger: PASS
+Local real-auth checkout 2 lines, 1440/390, price edit, sale, reload and ledger: PASS

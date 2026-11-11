@@ -1,4 +1,4 @@
-import Billing from "../Billing";
+
 import {useRef,useState,type FormEvent} from 'react';
 import {Link} from 'react-router-dom';
 import {
@@ -93,7 +93,8 @@ function SessionExit(){
 }
 
 export default function Settings({user}:{user:Row}){
-  const can=useCan();
+  const can=useCan(),[tab,setTab]=useState('general');
+  const billing=useLoad(()=>api('/billing/status'),[]);
   const {data,error,loading,reload}=useLoad(()=>api('/settings'),[]);
   const sections=shortcuts.filter(item=>can(item.permission)).filter((item,i,items)=>item.path!=='/sales'||items.findIndex(x=>x.path==='/sales')===i);
   const permissionCount=Array.isArray(user.permissions)?user.permissions.length:0;
@@ -105,7 +106,9 @@ export default function Settings({user}:{user:Row}){
       <span className="r123-role"><ShieldCheck size={15}/>{roleLabel(user.role)}</span>
     </div>
 
-    <Billing/>
+    <div className="settings-tabs" role="tablist" aria-label="Розділи налаштувань" onKeyDown={e=>{if(['ArrowLeft','ArrowRight','Home','End'].includes(e.key)){e.preventDefault();const next=e.key==='Home'?'general':e.key==='End'?'payments':tab==='general'?'payments':'general';setTab(next);document.getElementById('settings-tab-'+next)?.focus();}}}>{[['general','Загальні'],['payments','Оплати']].map(([key,label])=><button type="button" key={key} role="tab" id={'settings-tab-'+key} aria-controls={'settings-panel-'+key} aria-selected={tab===key} tabIndex={tab===key?0:-1} onClick={()=>setTab(key)}>{label}</button>)}</div>
+    {tab==='payments'&&<section className="r123-panel" role="tabpanel" id="settings-panel-payments" aria-labelledby="settings-tab-payments"><h2>Оплати</h2><State loading={billing.loading} error={billing.error}/>{billing.data&&<p>{billing.data.enabled?(billing.data.read_only?'Доступ у режимі перегляду':'Поточний доступ активний'):'Оплати не підключені. Поточний доступ збережено.'}</p>}<p>Оформлення платежів на цьому етапі недоступне.</p></section>}
+    <div role="tabpanel" id="settings-panel-general" aria-labelledby="settings-tab-general" hidden={tab!=='general'}>
     <div className="r123-grid">
       <section className="r123-panel" aria-labelledby="r123-profile-heading">
         <div className="r123-panel-heading">
@@ -156,5 +159,6 @@ export default function Settings({user}:{user:Row}){
 
     <ChangeOwnPassword/>
     <SessionExit/>
+    </div>
   </div>;
 }

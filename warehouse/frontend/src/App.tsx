@@ -72,6 +72,7 @@ export default function App() {
     navigate = useNavigate();
   const sidebarScroll=useSidebarScroll(menu,setMenu,location.pathname,!!user&&!checking);
   const [accessUnverified,setAccessUnverified]=useState(false);
+  const [compactSidebar,setCompactSidebar]=useState(()=>{try{return localStorage.getItem('warehouse.sidebar.compact')==='true';}catch{return false;}});
   const currentUser=useRef<Row|null>(null),generation=useRef(0),inFlight=useRef(0);
   const retryIdentity=useRef<(force?:boolean)=>void>(()=>{});
   const changeUser=useCallback((next:Row|null)=>{
@@ -79,7 +80,7 @@ export default function App() {
     setUser(next);setAccessUnverified(false);setToast('');
   },[]);
   useEffect(() => {
-    let mounted=true;
+    let mounted=true;inFlight.current=0;
     async function refresh(force=false){
       if(inFlight.current&&!force)return;
       const ticket=++generation.current;inFlight.current=ticket;
@@ -153,7 +154,7 @@ export default function App() {
   const routeAllowed=(location.pathname==='/sales'?(can('sales.view')||can('orders.view')):!routePermission(location.pathname)||can(routePermission(location.pathname)))&&(!['/inventory/advanced','/operations'].includes(location.pathname)||advanced.every(can))&&(location.pathname!=='/archive'||can('inventory.view'));
   const current = [...nav,...secondary,{to:"/administration/catalogue/import",label:"Каталог запчастин"}].find((n) => n.to === location.pathname) || (location.pathname.startsWith("/orders")?nav.find(n=>n.to==="/sales"):undefined);
   return (
-    <TeamIdentity.Provider value={user}><div className="app">
+    <TeamIdentity.Provider value={user}><div className={compactSidebar?"app sidebar-compact":"app"}>
       <aside ref={sidebarScroll.sidebar} id="warehouse-sidebar" className={sidebarScroll.mobileOpen ? "sidebar open" : "sidebar"} aria-label="Навігація Warehouse" role={sidebarScroll.mobileOpen?"dialog":undefined} aria-modal={sidebarScroll.mobileOpen?true:undefined} inert={sidebarScroll.mobile&&!sidebarScroll.mobileOpen}>
         <Link to="/" className="brand">
           <span className="brand-icon">
@@ -163,6 +164,7 @@ export default function App() {
             CarPot<strong>WAREHOUSE</strong>
           </span>
         </Link>
+        <button type="button" className="sidebar-desktop-toggle" aria-label={compactSidebar?'Розгорнути бічне меню':'Згорнути бічне меню'} aria-controls="warehouse-sidebar" aria-expanded={!compactSidebar} onClick={()=>{setCompactSidebar(v=>{try{localStorage.setItem('warehouse.sidebar.compact',String(!v));}catch{}return !v;});}}><Menu size={18}/></button>
         {sidebarScroll.mobileOpen&&<button className="sidebar-close icon-button" aria-label="Закрити меню" onClick={()=>setMenu(false)}><X size={20}/></button>}
         <div className="workspace">
           <span className="workspace-letter">
@@ -179,12 +181,12 @@ export default function App() {
           {nav.filter(n=>n.to==='/sales'?(can('sales.view')||can('orders.view')):can(routePermission(n.to))).map((n) => (
             <NavLink key={n.to} to={n.to} end={n.to!=="/orders"} className={({isActive})=>isActive||(n.to==="/sales"&&location.pathname.startsWith("/orders"))?"active":undefined}>
               <n.icon size={18} />
-              {n.label}
+              <span className="sidebar-link-label">{n.label}</span>
             </NavLink>
           ))}
         </nav>
-        {user.catalogue_platform_admin===true&&<NavLink to="/administration/catalogue/import"><ShieldCheck size={18}/>Адміністрування → Каталог</NavLink>}
-        <NavLink className="settings-nav" to="/settings"><Settings2 size={18}/>Налаштування</NavLink>
+        {user.catalogue_platform_admin===true&&<NavLink to="/administration/catalogue/import"><ShieldCheck size={18}/><span className="sidebar-link-label">Адміністрування → Каталог</span></NavLink>}
+        <NavLink className="settings-nav" to="/settings"><Settings2 size={18}/><span className="sidebar-link-label">Налаштування</span></NavLink>
         <div className="sidebar-foot">
           <div className="safe-dot" />
           Незалежний облік складу<small>CarPot Warehouse · MVP</small>

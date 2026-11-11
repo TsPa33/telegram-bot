@@ -1,6 +1,6 @@
-import {useRef,useState} from 'react';
+import {useContext,useRef,useState} from 'react';
 import {api,ApiError,type Row} from './api';
-import {Permit} from './permissions';
+import {Permit,TeamIdentity} from './permissions';
 import './vin-intake.css';
 
 type Result={vin:string;source:string;vehicle:Row;available_fields:string[];field_sources?:Row;message:string;observed_at?:string;conflicts?:Row;consistency_issues?:Row;additional?:Row;counts?:Row;provider_status?:Row;diagnostics?:Row;cached?:boolean};
@@ -12,6 +12,7 @@ const groups:[string,[string,string][]][]=[
  ['Додаткові характеристики',[['plant_country','Країна заводу'],['plant_city','Місто заводу'],['plant_company','Компанія заводу'],['market','Ринок / регіон'],['vehicle_type','Тип автомобіля']]]
 ];
 export default function VehicleVinQuickAdd({onBack,onCreated}:{onBack:()=>void;onCreated:(row:Row)=>void}){
+ const identity=useContext(TeamIdentity);
  const [extra,setExtra]=useState<Row>({});
  const [vin,setVin]=useState(''),[result,setResult]=useState<Result|null>(null),[draft,setDraft]=useState<Row>({});
  const [loading,setLoading]=useState(false),[saving,setSaving]=useState(false),[confirmed,setConfirmed]=useState(false),[error,setError]=useState(''),[existing,setExisting]=useState<Row|null>(null);
@@ -44,7 +45,7 @@ export default function VehicleVinQuickAdd({onBack,onCreated}:{onBack:()=>void;o
  function field(key:string,label:string){
   const modified=String(draft[key]??'')!==String(result?.vehicle[key]??'');
   const source=modified?'Змінено вручну':has(key)?result?.field_sources?.[key]||result?.source:'Потребує уточнення';
-  return <label key={key}>{label}<input aria-label={label} disabled={saving} value={String(draft[key]??'')} onChange={e=>{setDraft(p=>({...p,[key]:e.target.value}));setConfirmed(false);}}/><small title={source}>{source}</small>{result?.conflicts?.[key]&&<small className="vin-conflict">Розбіжність: {result.conflicts[key].primary} / {result.conflicts[key].secondary}</small>}</label>;
+  return <label key={key}>{label}<input aria-label={label} disabled={saving} value={String(draft[key]??'')} onChange={e=>{setDraft(p=>({...p,[key]:e.target.value}));setConfirmed(false);}}/><small>{modified?'Змінено вручну':has(key)?'Знайдено':'Потребує уточнення'}</small>{result?.conflicts?.[key]&&<small className="vin-conflict">Розбіжність: {result.conflicts[key].primary} / {result.conflicts[key].secondary}</small>}</label>;
  }
  return <section className="vin-intake" aria-label="Додавання автомобіля за VIN">
   <div className="vin-actions"><label>VIN<input aria-label="VIN" value={vin} maxLength={17} spellCheck={false} disabled={saving} onChange={e=>{epoch.current++;setVin(e.target.value.trim().toUpperCase());setResult(null);setDraft({});setExtra({});setLoading(false);setConfirmed(false);setError('');setExisting(null);}} placeholder="YV4L12RK6N1970668"/></label>
@@ -55,9 +56,9 @@ export default function VehicleVinQuickAdd({onBack,onCreated}:{onBack:()=>void;o
    <div className="vin-summary" role="region" aria-label="Зведення автомобіля"><strong>{[draft.manufacturer,draft.model,draft.year].filter(Boolean).join(' · ')||'Автомобіль потребує уточнення'}</strong><dl>{[['trim','Модифікація'],['body_class','Кузов'],['engine','Двигун'],['fuel_type','Паливо'],['transmission','КПП'],['drive_type','Привід']].map(([key,label])=><div key={key}><dt>{label}</dt><dd>{String(draft[key]||'Не визначено')}</dd></div>)}</dl></div>
    {result.counts&&<p className="vin-counts">Отримано: {result.counts.received_useful} · Важливих уточнень: {result.counts.undefined_important} · Конфліктів: {result.counts.conflicting}</p>}
    {Object.keys(result.consistency_issues||{}).length>0&&<p role="alert">{Object.values(result.consistency_issues||{}).join(' ')}</p>}
-   {groups.map(([name,fields])=>{const visible=fields.filter(([key])=>has(key)||required.has(key));return (visible.length>0||name==='Додаткові характеристики'&&Object.keys(extra).length>0)&&<fieldset key={name}><legend>{name}</legend><div className="vin-fields">{visible.map(([key,label])=>field(key,label))}{name==='Додаткові характеристики'&&Object.entries(extra).map(([key,item])=><label key={'extra-'+key}>{item.label}<input aria-label={item.label} disabled={saving} value={item.value} onChange={e=>{setExtra(p=>({...p,[key]:{...p[key],value:e.target.value,source:'manual'}}));setConfirmed(false);}}/><small>{item.source}</small>{item.alternative&&<small className="vin-conflict">Розбіжність: {item.alternative} · {item.alternative_source}</small>}</label>)}</div></fieldset>})}
+   {groups.map(([name,fields])=>{const visible=fields.filter(([key])=>has(key)||required.has(key));return (visible.length>0||name==='Додаткові характеристики'&&Object.keys(extra).length>0)&&<fieldset key={name}><legend>{name}</legend><div className="vin-fields">{visible.map(([key,label])=>field(key,label))}{name==='Додаткові характеристики'&&Object.entries(extra).map(([key,item])=><label key={'extra-'+key}>{item.label}<input aria-label={item.label} disabled={saving} value={item.value} onChange={e=>{setExtra(p=>({...p,[key]:{...p[key],value:e.target.value,source:'manual'}}));setConfirmed(false);}}/><small>{item.source==='manual'?'Змінено вручну':'Знайдено'}</small>{item.alternative&&<small className="vin-conflict">Розбіжність: {item.alternative}</small>}</label>)}</div></fieldset>})}
    {unknown.length>0&&<details className="vin-unknown"><summary>Потребує уточнення ({unknown.length})</summary><div className="vin-fields">{unknown.map(([key,label])=>field(key,label))}</div></details>}
-   {result.provider_status&&<details className="vin-source-status"><summary>Джерела даних</summary>{result.cached&&<p>Нещодавно отримана відповідь з кешу; час спостереження збережено.</p>}{Object.entries(result.provider_status).map(([name,state])=><p key={name}>{name}: {state==='reported'?'дані отримано':state==='not_needed'?'доповнення не потрібне':state==='robots_denied'?'автоматичний доступ заборонено правилами джерела':state==='rate_limited'?'досягнуто обмеження частоти':state==='empty'||state==='no_explicit_vehicle_data'?'потрібних даних немає':'дані недоступні; повторіть пізніше'}</p>)}</details>}
+   {identity?.catalogue_platform_admin===true&&result.provider_status&&<details className="vin-source-status"><summary>Технічні деталі</summary>{result.cached&&<p>Нещодавно отримана відповідь з кешу; час спостереження збережено.</p>}{Object.entries(result.provider_status).map(([name,state])=><p key={name}>{name}: {state==='reported'?'дані отримано':state==='not_needed'?'доповнення не потрібне':state==='robots_denied'?'автоматичний доступ заборонено правилами джерела':state==='rate_limited'?'досягнуто обмеження частоти':state==='empty'||state==='no_explicit_vehicle_data'?'потрібних даних немає':'дані недоступні; повторіть пізніше'}</p>)}</details>}
    <p className="vin-disclaimer">Відповідь джерела не підтверджує заводську комплектацію. Рік може бути модельним. Невідомі значення можна залишити порожніми.</p>
    <label className="vin-confirm"><input type="checkbox" checked={confirmed} disabled={saving} onChange={e=>setConfirmed(e.target.checked)}/>Характеристики перевірено, підтверджую додавання</label>
    <div className="vin-actions"><Permit permission="vehicles.create"><button className="primary" type="button" disabled={saving||!confirmed} onClick={()=>void create()}>{saving?'Зберігаємо…':'Додати автомобіль'}</button></Permit><button disabled={saving} onClick={onBack}>Скасувати</button></div>

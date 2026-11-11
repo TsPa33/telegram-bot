@@ -1,0 +1,1 @@
+Baseline a0d00c2: hidden free-plan action and parallel direct-sale UI reproduced, 1440/390; no sale performed

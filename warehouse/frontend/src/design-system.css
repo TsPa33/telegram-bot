@@ -141,3 +141,20 @@ dialog::backdrop { background:var(--color-overlay); }
 
 .sidebar .sidebar-close { position:absolute;right:6px;top:22px;color:var(--color-sidebar-text); }
 @media(max-height:480px){.sidebar .sidebar-close{top:6px}}
+
+/* Existing corporate tokens and navigation; no alternate theme or stock behavior. */
+.sidebar-desktop-toggle{align-self:flex-start;min-height:36px;margin:10px;color:var(--color-sidebar-text);background:transparent;border-color:var(--color-sidebar-border)}
+.settings-tabs{display:flex;gap:8px;margin-block:12px}.settings-tabs [aria-selected=true]{background:var(--color-accent);color:var(--color-on-accent,#fff)}
+.r123-settings [hidden]{display:none}
+.r1-card-actions{flex-wrap:wrap;position:sticky;top:0;z-index:2;background:var(--color-surface);padding-block:8px}
+.assembly-template-label{color:var(--color-accent);text-align:left;min-width:0;white-space:normal;min-height:36px}
+@media(min-width:1100px){
+ .sidebar-compact .sidebar{width:78px;padding-inline:10px;transition:width .15s ease;overflow:hidden}
+ .sidebar-compact .main{margin-left:78px;width:calc(100% - 78px)}
+ .sidebar-compact .sidebar:not(:hover):not(:focus-within) .brand>span:last-child,.sidebar-compact .sidebar:not(:hover):not(:focus-within) .workspace>div,.sidebar-compact .sidebar:not(:hover):not(:focus-within) .workspace>svg,.sidebar-compact .sidebar:not(:hover):not(:focus-within) .sidebar-link-label,.sidebar-compact .sidebar:not(:hover):not(:focus-within) .nav-label,.sidebar-compact .sidebar:not(:hover):not(:focus-within) .sidebar-foot{position:absolute;clip-path:inset(50%);width:1px;height:1px;overflow:hidden}
+ .sidebar-compact .sidebar:hover,.sidebar-compact .sidebar:focus-within{width:240px}
+ .sidebar-compact .sidebar nav a,.sidebar-compact .sidebar .settings-nav{white-space:nowrap}
+}
+@media(max-width:1099px){.sidebar-desktop-toggle{display:none}}
+@media(prefers-reduced-motion:reduce){.sidebar-compact .sidebar{transition:none}}
+.assembly-categories button[aria-pressed=true],.settings-tabs [aria-selected=true]{background:var(--color-accent-strong);color:var(--color-on-accent);border-color:var(--color-accent-strong)}
