@@ -353,6 +353,57 @@ def global_saved(id: str, db: DB, who: Auth):
     keys={int(r.catalog_key.rsplit(':',1)[1]):'catalogue:'+r.id for r in db.scalars(select(DismantlingItem).where(
         DismantlingItem.vehicle_id==v.id,DismantlingItem.account_id==who.workspace_account_id,
         DismantlingItem.source=='carpot.catalogue.v1'))} if state else {}
-    return dict(selection=(v.dismantling_v3 or {}).get('global_selection'),saved=state,
+    from app.services.dismantling_plan_v3 import generator_basis
+    return dict(selection_basis=generator_basis(v),selection=(v.dismantling_v3 or {}).get('global_selection'),saved=state,
         keys=keys,legacy=bool(not state and (v.dismantling_v3 or v.ktype)),
         legacy_source='base' if (v.dismantling_v3 or {}).get('unified_base') else 'professional')
+
+
+from app.schemas.orders import Key
+class ExistingVehicleSelection(Input):
+    request_key: Key
+    source_modification_id: int = Field(strict=True,gt=0)
+    model_id: int = Field(strict=True,gt=0)
+    manufacturer_id: int = Field(strict=True,gt=0)
+    source_snapshot_sha: str = Field(pattern=r'^[a-f0-9]{64}$')
+    expected_basis: str = Field(pattern=r'^[a-f0-9]{64}$')
+    confirm_exact_modification: bool = False
+
+
+@router.post('/{id}/catalogue-selection')
+def select_existing_vehicle(id:str,data:ExistingVehicleSelection,db:DB,who:Auth):
+    """Attach an explicitly confirmed source identity; never create a second donor."""
+    from sqlalchemy import select
+    from app.models import DismantlingItem
+    from app.services.dismantling_plan_v3 import generator_basis,replay,finish
+    from app.services.inventory import snapshot,record
+    require_permission(who,'vehicles.view','vehicles.edit','catalog.view','dismantling.manage')
+    v=owned(db,Vehicle,id,who.workspace_account_id,lock=True,active=True)
+    prior,sha=replay(db,v,who,data,'catalogue-selection')
+    if prior is not None:return prior
+    if not data.confirm_exact_modification:raise HTTPException(422,'Підтвердіть конкретну модифікацію; VIN не доводить джерельний ID')
+    if data.expected_basis!=generator_basis(v):raise HTTPException(409,'Характеристики автомобіля змінилися. Повторіть вибір модифікації')
+    old=(v.dismantling_v3 or {}).get('global_selection')
+    has_items=db.scalar(select(DismantlingItem.id).where(DismantlingItem.account_id==who.workspace_account_id,DismantlingItem.vehicle_id==v.id).limit(1))
+    same=bool(old and (old['car_id'],old['model_id'],old['manufacturer_id'],old['source_snapshot_sha'])==(data.source_modification_id,data.model_id,data.manufacturer_id,data.source_snapshot_sha))
+    if (old and not same) or (has_items and (not same or old.get('identity_fingerprint')!=generator_basis(v))):
+        raise HTTPException(409,'Наявний план збережено. Зміна джерельної модифікації потребує окремої звірки без перезапису позицій')
+    try:
+        plan=service.CatalogueAdapter().plan(data.source_modification_id,global_source=True)
+        service.validate_plan(plan['payload'])
+        entries=service.CatalogueAdapter().directory(car_id=data.source_modification_id)['items']
+        entry=next((r for r in entries if r['source_modification_id']==data.source_modification_id),None)
+    except (service.CatalogueUnavailable,ValueError,KeyError,TypeError):
+        raise HTTPException(503,'Не вдалося перевірити точну модифікацію каталогу') from None
+    expected=(data.source_modification_id,data.model_id,data.manufacturer_id,data.source_snapshot_sha)
+    payload=plan['payload']
+    if not entry or not payload['categories'] or (payload['car_id'],payload['model_id'],payload['manufacturer_id'],payload['source_snapshot_sha'])!=expected or (entry['source_modification_id'],entry['model_id'],entry['manufacturer_id'],entry['snapshot_sha'])!=expected:
+        raise HTTPException(409,'Джерельні ID або версія каталогу змінилися')
+    # Exact normalized maker guard only. Model names never select a source car ID.
+    normalized=lambda value:''.join(c for c in value.casefold() if c.isalnum())
+    if normalized(v.manufacturer)!=normalized(entry['manufacturer']):raise HTTPException(409,'Марка джерельної модифікації не відповідає автомобілю')
+    before=snapshot(v)
+    v.dismantling_v3={**(v.dismantling_v3 or {}),'global_selection':dict(car_id=data.source_modification_id,model_id=data.model_id,manufacturer_id=data.manufacturer_id,source_snapshot_sha=data.source_snapshot_sha,modification_description=payload['modification'].get('description'),source_specifications=entry.get('specifications',[])[:100],vehicle_basis=service.vehicle_basis(v),identity_fingerprint=generator_basis(v),request_key=data.request_key,confirmation='explicit_user_source_identity_not_vin_verified')}
+    record(db,who.workspace_account_id,v,'vehicle_update','Підтверджено джерельну модифікацію; VIN, характеристики й склад не змінено',before)
+    result=finish(db,v,who,data,sha,dict(saved=True,vehicle_id=v.id))
+    db.commit();return result

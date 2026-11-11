@@ -13,7 +13,7 @@ try{
  const page=await c.newPage(),errors=[],forbidden=[];page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(/\/plan-parts\/|\/vin\/decode|aleto.*(?:refresh|import)/.test(r.url()))forbidden.push(r.url())});
  await page.goto('/vehicles?donor='+row.id);
  const generator=page.getByRole('region',{name:'Універсальний каталог запчастин'});
- await generator.getByRole('button',{name:'Сформувати каталог',exact:true}).click();
+ await generator.getByRole('button',{name:'Розібрати на запчастини',exact:true}).click();
  await expect(generator).toContainText('Доступних типів:');await expect(generator).toContainText('Довідник CarPot');await expect(generator).toContainText('Потребує уточнення');
  await page.screenshot({path:'/tmp/generator-qa/preview-1440.png',fullPage:false});
  await generator.getByRole('button',{name:'Зберегти перелік',exact:true}).click();

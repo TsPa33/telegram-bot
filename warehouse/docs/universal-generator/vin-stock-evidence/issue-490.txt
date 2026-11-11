@@ -1,0 +1,97 @@
+Мета / Definition of Done
+Власник хоче робочий наскрізний сценарій, а НЕ нову архітектуру:
+ввести VIN → система визначає авто й просить уточнити тільки невідоме → натиснути «Розібрати» → отримати максимальний обґрунтований каталог для конкретної модифікації → вибрати всі/категорію → додати до складу швидко, ідемпотентно, з подальшим редагуванням/продажем.
+VIN, розбір, склад і частина каталогізації вже реалізовані в різних модулях.
+Не оцінювати як greenfield, не переписувати працюючі підсистеми.
+Початковий контекст, перевірити фактичний стан
+Repo:
+TsPa33/telegram-bot
+; робоча гілка
+feature/assembly-component-inventory
+. Не вважати її автоматично задеплоєною; звірити HEAD, staging SHA, branch diff.
+Компоненти:
+/warehouse
+React + FastAPI + PostgreSQL, VIN Quick Add; генератор розбору; Plan.Parts API (платні статті/OEM, токени, повторне використання результатів); warehouse stock; catalogue MySQL.
+Підтверджені попередні локальні дані: MySQL 8.0.26,
+td1q2018
+, 26 938 source PRD IDs; 2 184 PRD ID мають article_links легкових авто; 67 117 модифікацій обстежено, із них 60 098 мають PRD-зв'язки; 10 232 моделей, 406 джерельних manufacturer IDs; 9 378 948 пар car_id–product_id; без відсутніх PRD ID. Це НЕ 2 184 фізичних деталей, не BOM і не publish.
+Універсальний fallback: 216 типів / 227 потенційних позицій, не заводський перелік. Публікація 2 184 після owner review:
+0 затверджено
+.
+Контрольний
+car_id=107555
+Volvo XC90 II: verified export SHA
+fd66f3cc633f0eb1bb0ad3585bee80b259b2050e4f4ea846745a475551508c8f
+, 113 PRD type IDs, 736 unique supplier articles, 175 suppliers, PDS matched 434/436 pairs, 0 extra PDS-only type IDs. Компактний
+--graph-only
+працює.
+catalogue/source_coverage_audit.py
+був доданий у feature branch, SELECT-only (авторський аудит локально виконаний до
+complete=true
+). Покриття лише джерельне; воно не означає live availability у PostgreSQL.
+Попередній staging у Railway міг бути pinned до SHA
+afdc62a
+(перевірити поточний стан самостійно). Production не змінювати.
+Дані source PRD, mapping review та canonical-публікація вже мають розроблені pipeline
+warehouse/backend/scripts/prepare_universal_catalogue.py
+,
+app/services/universal_catalogue.py
+,
+canonical_catalogue.py
+. Перевірити, а не припускати їхні зв'язки з runtime генератора.
+Власник повідомляв про VIN fallback / ручне підтвердження, неактивні кнопки, «Потребує уточнення» попри вибрану модифікацію, повільне додавання, дублікати, витрату токенів і UI поза корпоративним дизайном. Чинний фактичний статус цих проблем невідомий.
+Файли
+linked-prd-for-review.csv
+,
+by_brand.csv
+,
+by_model.csv
+є локальними/в чаті; для цієї перевірки жоден із них не повинен бути необхідним для трасування базової роботи VIN→stock.
+Обов'язковий аудит: read-only, із доказами
+VIN
+: API entry points, decoder providers/fallback, normalization, mapping VIN→manufacturer/model/modification/source
+car_id
+, save donor, failure modes, required confirmation. Перевірити UI і backend, а не лише наявність functions.
+Disassembly
+: реальний маршрут кнопки
+Розібрати
+→ handler/endpoint/service → plan generation → canonical 216 fallback → published PRD matching by exact identity → Plan.Parts API. Чи є функції, приховані за feature flag, route guard, owner role, config, disabled frontend control або не зв'язані між собою?
+Matching
+: чи може runtime використовувати 2 184 raw PRD? Якщо ні — покажи фактичний gate (reviewed source SHA, publication, exact model match), мінімальний шлях до робочого pilot і fallback коли даних немає. Не робити source links доказом повної заводської BOM.
+Stock
+: select-all, category batch, progress, endpoints, DB transactions, dedupe, collision on retries, qty, article assignment, photos, price, locations, reservations, sales/archive/history protection. Виявити API, що вже існують, але не викликаються UI.
+Operations
+: staging API/Web SHA, services & env, Alembic versions, migrations, owner roles, CORS, CSRF, auth, background jobs, flags, payment/tokens. Без читання чи друку значень секретів.
+Proof
+: статичний код-аудит + наявні tests/build, тести без мережі/платних API. Якщо staging недоступний — позначити
+NOT VERIFIED
+, не вигадувати PASS. Тести не повинні змінювати production/source DB.
+Формат звіту (обов'язково)
+A. Таблиця кроків VIN→stock:
+готово і перевірено / написано, але не підключено / працює частково / відсутнє / не вдалося перевірити
+. Для кожного: конкретний
+path:line
+, API route, feature flag, тест/скрін або лог, точне місце обриву.
+B.
+Список прихованих/відключених функцій
+, які можна одразу ввімкнути без переписування, та чому вони не видимі користувачу.
+C.
+Blockers P0/P1/P2
+: мінімальний патч (path/function), ризик для складу, тест, залежність від external API. Розділити code-blocker від data-review-blocker.
+D.
+Оцінка ТІЛЬКИ невиконаної роботи в людино-годинах/операціях
+, із припущеннями: smallest functional E2E pilot (VIN→plan→stock) і polishing UI окремо; не вказувати тижні без доказів.
+E. План 2 PR:
+PR1 functional E2E мінімальний без редизайну
+,
+PR2 UI/UX корпоративний
+. У PR1 reuse existing interfaces, зробити тести/idempotency; не створювати другий генератор.
+F. Запропонувати чіткі acceptance tests на контрольному VIN і car_id=107555 + другій марці; fallback без токенів; повторне натискання «Додати всі», перевірка складських карток після refresh та збереження історії.
+G. Записати звіт у
+warehouse/docs/universal-generator/VIN_TO_STOCK_AUDIT.md
+або поза репо, якщо правила гілки не дозволяють. Відповідь українською.
+Безпека і межі
+Перший прохід — read-only аудит.
+Не робити деплой, міграції, SOURCE_* DDL, записи Railway чи виклики платних API. Не торкатися production, не видаляти/перепризначати складські позиції. Якщо потрібно щось змінити — спочатку сформувати точний мінімальний план по діючих функціях. Не створювати штучних нових функцій, UI redesign чи фейкову кількість «деталей».
+Ціль власника:
+не затягувати через повторну реалізацію готового; у першій черзі відновити робочий механізм розбору та stock, UI після цього.
