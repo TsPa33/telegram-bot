@@ -122,3 +122,63 @@ def test_binding_readonly_employee_cannot_write(logged,vehicle,monkeypatch):
     c=activate(invite)
     try:assert c.post(f"/api/v1/vehicles/{vehicle['id']}/catalogue-selection",json=body).status_code==403
     finally:c.close()
+
+
+def test_present_only_then_receipt_in_two_atomic_batches_without_duplicate_stock(logged,vehicle):
+    """Regression: 123 selected/confirmed, zero previously dismantled, 100+23 received.
+
+    All data use the local synthetic generator and dedicated *_test PostgreSQL.
+    No external VIN provider, Plan.Parts API or production stock.
+    """
+    path=f"/api/v1/vehicles/{vehicle['id']}/dismantling-v3"
+    p=logged.post(path+'/preview',json=dict(facts=[],universal=True))
+    assert p.status_code==200,p.text
+    saved=logged.post(path+'/save',json=dict(
+        facts=[],universal=True,token=p.json()['token'],
+        request_key=str(uuid4()),confirm=True))
+    assert saved.status_code==200,saved.text
+    items=logged.get(path).json()['items']
+    ids=[r['id'] for r in items if r['selectable']][:123]
+    assert len(ids)==123,"The synthetic fallback fixture must expose >100 distinct placements"
+
+    bulk(logged,vehicle,ids,'present')
+    pre=logged.post(path+'/bulk/preview',json=dict(ids=ids,action='receipt'))
+    assert pre.status_code==200,pre.text
+    assert pre.json()['confirmed']==123
+    assert pre.json()['dismantled']==0
+    assert len(pre.json()['eligible_ids'])==123
+
+    # A receipt without the explicit physical confirmation is rejected without writes.
+    rejected=logged.post(path+'/bulk',json=dict(
+        ids=ids[:100],action='receipt',etag=pre.json()['etag'],
+        preview_token=pre.json()['preview_token'],request_key=str(uuid4()),
+        confirm=False,lines=[dict(id=id,quantity=1) for id in ids[:100]]))
+    assert rejected.status_code==422
+    with Session(engine()) as db:
+        assert db.scalar(select(func.count()).select_from(Part))==0
+
+    first,original=bulk(logged,vehicle,ids[:100],'receipt',
+        lines=[dict(id=id,quantity=1,location='SYNTHETIC-B1') for id in ids[:100]])
+    assert first.json()['updated']==100
+    # Retry the same key after the first transaction: replay, not a second receipt.
+    replay=logged.post(path+'/bulk',json=original)
+    assert replay.status_code==200,replay.text
+    assert replay.json()==first.json()
+    with Session(engine()) as db:
+        assert db.scalar(select(func.count()).select_from(Part))==100
+
+    rest,_=bulk(logged,vehicle,ids[100:],'receipt',
+        lines=[dict(id=id,quantity=1,location='SYNTHETIC-B2') for id in ids[100:]])
+    assert rest.json()['updated']==23
+    duplicate,_=bulk(logged,vehicle,ids,'receipt',lines=[])
+    assert duplicate.json()['updated']==0
+    assert duplicate.json()['skipped']==123
+
+    with Session(engine()) as db:
+        parts=list(db.scalars(select(Part)))
+        assert len(parts)==123
+        assert all(part.quantity==1 for part in parts)
+        assert db.scalar(select(func.count()).select_from(Operation).where(Operation.type=='receipt'))==123
+        rows=list(db.scalars(select(DismantlingItem).where(DismantlingItem.id.in_(ids))))
+        assert len(rows)==123
+        assert all(row.status=='dismantled' and row.part_id and row.received_at for row in rows)
