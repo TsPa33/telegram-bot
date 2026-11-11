@@ -145,3 +145,24 @@
  .assembly-selection p{display:none}
 }
 @media(prefers-reduced-motion:reduce){.assembly-node{transition:none}}
+
+
+/* PR3: display-only grouping of distinct source installation positions. */
+.assembly-virtual-group{margin:5px 0 9px;padding:0;border:1px solid var(--color-border);border-radius:9px;overflow:hidden}
+.assembly-virtual-group-toggle{display:flex;align-items:center;gap:7px;width:100%;min-height:40px;padding:7px 10px!important;background:var(--color-subtle)!important;border:0!important;border-radius:0!important;text-align:left;color:var(--color-text)!important;box-shadow:none!important}
+.assembly-virtual-group-toggle>span{font-size:.82rem;font-weight:700}
+.assembly-virtual-group-toggle>small{font-size:.7rem;color:var(--color-secondary);font-weight:400}
+.assembly-virtual-group-toggle>b{margin-left:auto;font-size:.74rem;padding:2px 7px;border-radius:14px;background:var(--color-surface)}
+.assembly-virtual-group>ul{margin:0!important;padding:0 7px 5px 12px!important;border-left:none!important}
+.assembly-virtual-group .assembly-node{min-height:48px}
+.assembly-position-ambiguous{font-size:.68rem;color:var(--color-warning)!important;font-weight:600!important}
+.assembly-door-guidance{background:var(--color-subtle);border:1px solid var(--color-border);border-radius:9px;padding:9px;display:flex;flex-direction:column;gap:6px}
+.assembly-door-guidance strong{font-size:.85rem}
+.assembly-door-guidance p{margin:0;font-size:.76rem;line-height:1.45}
+.assembly-door-guidance button{min-height:33px;font-size:.75rem;align-self:stretch}
+.assembly-inspector h4{overflow-wrap:anywhere}
+@media(max-width:650px){
+ .assembly-virtual-group-toggle{flex-wrap:wrap;gap:5px;min-height:44px}
+ .assembly-virtual-group-toggle small{flex-basis:100%;margin-left:24px}
+ .assembly-virtual-group>ul{padding-left:4px!important}
+}
