@@ -1,4 +1,4 @@
-name: Warehouse assembly split (isolated DB)
+name: Warehouse #502 complete regression (isolated DB)
 
 on:
   pull_request:
@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   backend:
-    name: Backend physical assembly / sales
+    name: Backend VIN, assembly, orders and access controls
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -40,11 +40,20 @@ jobs:
         with:
           python-version: '3.11'
       - run: python -m pip install --require-hashes -r requirements.lock
-      - name: Run isolated inventory / assembly regressions
+      - name: Run full #502 isolated PostgreSQL regressions
         shell: bash
         run: |
           set -o pipefail
-          python -m pytest -q tests/test_assemblies.py tests/test_assembly_split.py 2>&1 | tee "$RUNNER_TEMP/pr5-pytest.log"
+          python -m pytest -q \
+            tests/test_assemblies.py \
+            tests/test_assembly_split.py \
+            tests/test_issue502_vin_plan.py \
+            tests/test_orders.py \
+            tests/test_issue502_checkout.py \
+            tests/test_team.py \
+            2>&1 | tee "$RUNNER_TEMP/pr5-pytest.log"
+      - name: Assert no unrecorded schema changes
+        run: python -m alembic check
       - name: Publish isolated test failure details on draft PR
         if: failure() && github.event_name == 'pull_request'
         env:
@@ -53,7 +62,7 @@ jobs:
         shell: bash
         run: |
           {
-            printf '### PR5 — ізольовані backend-тести (не staging)\n\n'
+            printf '### CarPot #502 — isolated backend regression (never staging)\n\n'
             printf 'Повний PASS ще не отримано. Останні рядки pytest:\n\n```\n'
             tail -c 14000 "$RUNNER_TEMP/pr5-pytest.log" || true
             printf '\n```\n'
