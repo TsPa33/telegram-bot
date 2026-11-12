@@ -12,6 +12,7 @@ import "./theme-surfaces.css";
 import "./themes.css";
 import "./corporate-ux-v2.css";
 import "./integrated-ux-polish.css";
+import "./mobile-search-checkout.css";
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <BrowserRouter>

@@ -1,4 +1,4 @@
-import {ThemeSwitch} from "./Theme";
+import {ThemeSwitch,MobileThemeSwitch} from "./Theme";
 import {
   Archive as ArchiveIcon,
   ArrowDownLeft,
@@ -159,7 +159,7 @@ export default function App() {
   const routeAllowed=(location.pathname==='/sales'?(can('sales.view')||can('orders.view')):!routePermission(location.pathname)||can(routePermission(location.pathname)))&&(!['/inventory/advanced','/operations'].includes(location.pathname)||advanced.every(can))&&(location.pathname!=='/archive'||can('inventory.view'));
   const current = [...nav,...secondary,{to:"/administration/catalogue/import",label:"Каталог запчастин"}].find((n) => n.to === location.pathname) || (location.pathname.startsWith("/orders")?nav.find(n=>n.to==="/sales"):undefined);
   return (
-    <TeamIdentity.Provider value={user}><div className={compactSidebar?"app sidebar-compact":"app"}>
+    <TeamIdentity.Provider value={user}><div className={(compactSidebar?"app sidebar-compact":"app")+((location.pathname==='/'||location.pathname==='/search')?' mobile-search-shell':'')}>
       <aside ref={sidebarScroll.sidebar} id="warehouse-sidebar" className={sidebarScroll.mobileOpen ? "sidebar open" : "sidebar"} aria-label="Навігація Warehouse" role={sidebarScroll.mobileOpen?"dialog":undefined} aria-modal={sidebarScroll.mobileOpen?true:undefined} inert={sidebarScroll.mobile&&!sidebarScroll.mobileOpen}>
         <Link to="/" className="brand">
           <span className="brand-icon">
@@ -220,14 +220,14 @@ export default function App() {
             >
               <Menu size={22} />
             </button>
-            <span className="breadcrumb">
+            <span className="mobile-search-brand">CarPot <small>Warehouse</small></span><span className="breadcrumb">
               Робочий простір <ChevronRight size={14} />
               <b>{current?.label || "Склад"}</b>
             </span>
           </div>
           <div className="user">
-            <ThemeSwitch/>
-            <span className="avatar">
+            <ThemeSwitch/><MobileThemeSwitch/>
+            <span className="avatar" title={user.name+' · '+roleLabel(user.role)} aria-label={user.name+' · '+roleLabel(user.role)}>
               {user.name.slice(0, 1).toUpperCase()}
             </span>
             <span>
