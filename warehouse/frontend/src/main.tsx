@@ -10,6 +10,7 @@ import "./vehicle-cards.css";
 import "./premium-emerald-r10.css";
 import "./theme-surfaces.css";
 import "./themes.css";
+import "./corporate-ux-v2.css";
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <BrowserRouter>
