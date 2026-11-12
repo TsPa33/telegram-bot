@@ -49,7 +49,7 @@ def readiness(db:DB,who:Auth):
         for model in (Buyer,Order,OrderLine,OrderReservation,OrderEvent,OrderRequest):db.execute(select(model).limit(0))
     except SQLAlchemyError:raise HTTPException(503,'Orders schema is not ready') from None
     return {'status':'ready','contract_version':6,'required_revision':'d86f21a90b34','database_revisions':sorted(versions),
-            'features':['atomic_checkout','confirm_received','revise_reserved','buyers','orders','assigned_reservations','explicit_order_sale','order_request_replay']}
+            'features':['atomic_checkout','confirm_received','revise_reserved','buyers','orders','assigned_reservations','explicit_order_sale','order_request_replay','buyer_order_history']}
 
 
 @router.post('/orders',status_code=201)
@@ -69,8 +69,13 @@ def checkout_order(data:CheckoutOrder,db:DB,who:Auth):
 
 @router.get('/orders')
 def order_list(db:DB,who:Auth,q:str=Query('',max_length=100),phone:str=Query('',max_length=50),number:int|None=Query(None,gt=0),
-               status:Literal['new','reserved','shipped','completed','cancelled']|None=None,offset:int=Query(0,ge=0),limit:int=Query(50,ge=1,le=100)):
+               status:Literal['new','reserved','shipped','completed','cancelled']|None=None,offset:int=Query(0,ge=0),limit:int=Query(50,ge=1,le=100),
+               buyer_id:str|None=Query(None,min_length=1,max_length=36)):
     stmt=select(Order).where(Order.account_id==who.workspace_account_id)
+    if buyer_id is not None:
+        # Exact identity, never infer ownership from a mutable or shared contact phone.
+        owned(db,Buyer,buyer_id,who.workspace_account_id)
+        stmt=stmt.where(Order.buyer_id==buyer_id)
     if status:stmt=stmt.where(Order.status==status)
     if number is not None:stmt=stmt.where(Order.number==number)
     def matching_phone(digits):

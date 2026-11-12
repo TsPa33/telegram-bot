@@ -45,8 +45,12 @@ def test_sales_only_cannot_read_or_filter_phone_or_orders(logged,vehicle):
     for kind in ['reader','orders','blocked']:
         with TestClient(app) as c:
             assert c.post('/api/v1/auth/login',json={'email':kind+'@example.test','password':'local-reader-password'}).status_code==200
-            r=c.get('/api/v1/sales-center')
+            r=c.get('/api/v1/sales-center?include_summary=true')
             if kind=='blocked':assert r.status_code==403;continue
+            summary=r.json()['summary']
+            assert ('sales_today_operations' in summary)==(kind=='reader')
+            assert ('new_orders' in summary)==(kind=='orders')
+            assert ('reserved_orders' in summary)==(kind=='orders')
             rows=r.json()['items'];assert len(rows)==1;assert rows[0]['kind']==('sale' if kind=='reader' else 'order')
             assert 'totals_by_currency' not in rows[0]
             if kind=='reader':assert not rows[0]['contact_phone'] and not rows[0]['buyer_phone'];assert c.get('/api/v1/sales-center?phone=123').status_code==403
@@ -66,3 +70,24 @@ def test_inactive_employee_is_not_replaced_by_current_owner(logged,vehicle):
     with Session(engine()) as db:a=db.get(Account,wid);a.is_active=False;a.name='Змінене ім’я';db.commit()
     r=logged.get('/api/v1/sales-center?manager_id='+wid).json();assert r['total']==1 and r['items'][0]['manager_name']=='Історичний менеджер'
     assert next(m for m in logged.get('/api/v1/sales-center/managers').json()['items'] if m['id']==wid)['active'] is False
+
+
+def test_workspace_summary_uses_unsold_orders_and_actual_sale_operations(logged,vehicle):
+    p=stocked(logged,vehicle,quantity=5);b=buyer(logged)
+    new=create(logged,b,[line(p)])
+    reserved=create(logged,b,[line(p)])
+    sold=create(logged,b,[line(p)])
+    assert action(logged,reserved,'reserve').status_code==200
+    assert action(logged,sold,'sell').status_code==200
+    result=logged.get('/api/v1/sales-center',params={'include_summary':'true','kind':'sales','limit':1,'q':'unmatched'}).json()
+    assert result['total']==0
+    assert result['summary']['new_orders']==1
+    assert result['summary']['reserved_orders']==1
+    assert result['summary']['sales_today_operations']==1
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    assert result['summary']['sales_day']==datetime.now(ZoneInfo('Europe/Kyiv')).date().isoformat()
+    with TestClient(app) as outsider:
+        signup(outsider,'summary-isolation@example.test')
+        empty=outsider.get('/api/v1/sales-center?include_summary=true').json()['summary']
+        assert empty['new_orders']==empty['reserved_orders']==empty['sales_today_operations']==0
