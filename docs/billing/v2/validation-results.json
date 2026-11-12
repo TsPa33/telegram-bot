@@ -1,0 +1,102 @@
+{
+  "local_finance": {
+    "passed": 53,
+    "original_phase1_cases": 49
+  },
+  "local_phase2_backend": {
+    "passed": 13
+  },
+  "frontend_unit": {
+    "passed": 631
+  },
+  "production_build": "pass",
+  "browser": {
+    "engines": [
+      "chromium",
+      "webkit"
+    ],
+    "widths": [
+      320,
+      390,
+      430,
+      1440
+    ],
+    "themes": [
+      "gold",
+      "forest"
+    ],
+    "scenarios": 8,
+    "screenshots": 16,
+    "result": "pass"
+  },
+  "initial_full_backend": {
+    "passed": 845,
+    "failed": 48,
+    "skipped": 1,
+    "superseded": true
+  },
+  "untouched_phase1_comparison": {
+    "sha": "6cc2ee9d76bbb766371cae8fcc3adb169940b79c",
+    "selected_cases": 48,
+    "failed": 44,
+    "passed": 4,
+    "failures": [
+      "tests/test_aleto_adapter.py::test_upgrade_from_r82_preserves_existing_queue_and_data",
+      "tests/test_aleto_catalogue.py::test_aleto_migration_roundtrip_keeps_existing_stock_and_history",
+      "tests/test_canonical_v3.py::test_concurrent_worker_coordination_and_ordinary_reads",
+      "tests/test_canonical_v3.py::test_full_real_A_normalization_report_preserves_source_tables",
+      "tests/test_canonical_v3.py::test_populated_migration_is_additive",
+      "tests/test_catalogue_jobs.py::test_worker_does_not_block_api_and_other_workers_cannot_claim",
+      "tests/test_catalogue_language_gate.py::test_language_gate_accepts_ukrainian_category_names",
+      "tests/test_catalogue_stabilization.py::test_batch_100_profile_against_previous_implementation",
+      "tests/test_catalogue_v2.py::test_additive_migration_roundtrip_keeps_v1_and_business_data",
+      "tests/test_catalogue_v2.py::test_full_volvo_v1_then_incremental_and_repeat_preserves_legacy",
+      "tests/test_catalogue_v2.py::test_v2_alias_unicode_and_known_part_traits_are_not_lost",
+      "tests/test_checklists.py::test_migration_preserves_existing_inventory",
+      "tests/test_dismantling.py::test_migration_preserves_inventory_and_plan_parts",
+      "tests/test_dismantling_plan_v3.py::test_additive_migration_on_populated_legacy_db",
+      "tests/test_dismantling_plan_v3.py::test_real_A_xc90_plan_and_multiple_donors",
+      "tests/test_dismantling_plan_v3.py::test_trial_configuration_survives_reload_and_catalogue_checks",
+      "tests/test_dismantling_preview.py::test_real_A_xc90_read_only_example",
+      "tests/test_dismantling_readiness.py::test_gate_rejects_unmigrated_database",
+      "tests/test_dismantling_v2.py::test_v2_readiness_and_migration_keep_existing_receipts_planparts_and_sales",
+      "tests/test_import_runner.py::test_additive_upgrade_preserves_populated_old_tables",
+      "tests/test_part_characteristics.py::test_populated_stock_and_historical_sale_are_immutable_during_characteristic_edit",
+      "tests/test_part_characteristics.py::test_populated_upgrade_additive_and_startup_repeat_safe",
+      "tests/test_partline_provider.py::test_upgrade_preserves_existing_r83_data",
+      "tests/test_plan_parts_migration.py::test_existing_donor_survives_upgrade_via_staging_startup",
+      "tests/test_quick_vehicle.py::test_downgrade_refuses_to_fabricate_unknown_dates",
+      "tests/test_quick_vehicle.py::test_known_date_survives_nullable_migration",
+      "tests/test_simple_warehouse.py::test_number_migration_preserves_existing_ids_stock_and_audit",
+      "tests/test_smart_migration_permissions.py::test_extension_permissions_and_failed_transaction[True]",
+      "tests/test_smart_search.py::test_failed_upgrade_is_transactional_and_retryable[late_index_conflict]",
+      "tests/test_smart_search.py::test_failed_upgrade_is_transactional_and_retryable[table_lock]",
+      "tests/test_smart_search.py::test_migration_preserves_inventory_audit_and_readiness",
+      "tests/test_stage2c.py::test_real_A_readonly_activation_evidence",
+      "tests/test_stage2c.py::test_unpublished_diagnostics_is_readonly_and_proves_33_fallback",
+      "tests/test_stage3b.py::test_populated_upgrade_and_guarded_downgrade",
+      "tests/test_stage3c.py::test_pricing_downgrade_preserves_durable_decisions",
+      "tests/test_stage3c.py::test_revoked_session_while_waiting_for_workspace_lock",
+      "tests/test_staging.py::test_staging_public_host_and_authenticated_sales_readiness",
+      "tests/test_v3_release_audit.py::test_nonfinancial_etag_projection_has_stable_json_bytes",
+      "tests/test_v3_release_audit.py::test_upgrade_from_staging_revision_preserves_real_A_and_populated_business_data",
+      "tests/test_vehicle_ux4.py::test_stock_counts_are_actual_positions_account_scoped_and_batched",
+      "tests/test_vin_to_stock_handoff.py::test_vin_same_donor_exact_selection_bulk_receipt_replay[VF1AAAAA000000001-Renault-222222-93]",
+      "tests/test_vin_to_stock_handoff.py::test_vin_same_donor_exact_selection_bulk_receipt_replay[YV4A22PK2G1092943-Volvo-107555-120]",
+      "tests/test_vin_to_stock_handoff.py::test_vin_same_donor_exact_selection_bulk_receipt_replay[YV4L12RK6N1970668-Volvo-111111-120]",
+      "tests/test_warehouse.py::test_migrations_roundtrip"
+    ]
+  },
+  "initial_head_only_failures_fixed_and_retested": {
+    "passed": 4,
+    "cases": [
+      "tests/test_orders.py::test_migration_preserves_v5_data_and_refuses_destructive_downgrade",
+      "tests/test_sales_workspace.py::test_forward_only_currency_persistence_preserves_history_and_rejects_downgrade",
+      "tests/test_team.py::test_forward_only_migration_preserves_populated_history_and_owners",
+      "tests/test_team.py::test_forward_only_refusal_preserves_sessions_reserves_orders_and_replays"
+    ]
+  },
+  "final_full_backend": "running",
+  "remote_ci": "not yet observed",
+  "production_ready": false
+}
