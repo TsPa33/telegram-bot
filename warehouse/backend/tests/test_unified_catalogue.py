@@ -311,3 +311,40 @@ def test_global_rejects_missing_links_and_preserves_old(logged,volvo,monkeypatch
     assert r.status_code==409,r.text
     with Session(engine()) as db:
         assert db.scalar(select(func.count()).select_from(Vehicle))==1
+
+
+def test_volvo_oem_preview_preserves_existing_plan(logged,volvo,monkeypatch):
+    base=f"/api/v1/vehicles/{volvo['id']}"
+    assert logged.post(base+'/unified-catalogue/base').status_code==200
+    monkeypatch.setattr(CatalogueAdapter,'plan',lambda self,car:envelope(car,'partial'))
+    from app.services.inventory import snapshot
+    def state():
+        with Session(engine()) as db:
+            return (snapshot(db.get(Vehicle,volvo['id'])),
+                    [snapshot(r) for r in db.scalars(select(DismantlingItem).order_by(DismantlingItem.id))],
+                    db.scalar(select(func.count()).select_from(Part)),
+                    db.scalar(select(func.count()).select_from(Operation)))
+    before=state()
+    url=base+'/volvo-oem-preview'
+    r=logged.get(url,params={'source_modification_id':107555})
+    assert r.status_code==200,r.text
+    data=r.json()
+    assert data['coverage']=='partial' and data['vin_verified'] is False
+    assert data['plan_items'] and data['catalogue_types'][0]['product_id']==106
+    query=dict(source_modification_id=107555,product_id=106,snapshot_sha=data['snapshot_sha'])
+    detail=logged.get(url,params=query)
+    assert detail.status_code==200,detail.text
+    assert detail.json()['articles'][0]['oem_numbers']==['OEM-ONE','OEM-TWO']
+    assert logged.get(url,params={**query,'snapshot_sha':'b'*64}).status_code==409
+    assert logged.get(url,params={**query,'product_id':999}).status_code==404
+    assert logged.get(url,params={'source_modification_id':107555,'product_id':106}).status_code==422
+    assert logged.get(url,params={'source_modification_id':107556}).status_code==422
+    assert state()==before
+
+def test_volvo_oem_preview_wrong_brand_and_workspace(logged,volvo,client):
+    other=logged.post('/api/v1/vehicles',json={'manufacturer':'Peugeot','model':'3008','year':2017,'donor_id':'OTHER'}).json()
+    assert logged.get(f"/api/v1/vehicles/{other['id']}/volvo-oem-preview",params={'source_modification_id':107555}).status_code==409
+    from conftest import signup
+    logged.post('/api/v1/auth/logout')
+    signup(client,'other-oem-preview@example.test')
+    assert client.get(f"/api/v1/vehicles/{volvo['id']}/volvo-oem-preview",params={'source_modification_id':107555}).status_code==404

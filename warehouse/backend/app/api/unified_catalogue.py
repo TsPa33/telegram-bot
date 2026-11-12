@@ -407,3 +407,64 @@ def select_existing_vehicle(id:str,data:ExistingVehicleSelection,db:DB,who:Auth)
     record(db,who.workspace_account_id,v,'vehicle_update','Підтверджено джерельну модифікацію; VIN, характеристики й склад не змінено',before)
     result=finish(db,v,who,data,sha,dict(saved=True,vehicle_id=v.id))
     db.commit();return result
+
+
+@router.get('/{id}/volvo-oem-preview')
+def volvo_oem_preview(
+    id: str, db: DB, who: Auth,
+    source_modification_id: int = Query(gt=0),
+    product_id: int | None = Query(None, gt=0),
+    snapshot_sha: str | None = Query(None, pattern=r'^[a-f0-9]{64}$'),
+):
+    """Read-only XC90 pilot: compare an existing plan with a pinned Catalogue source.
+
+    A catalogue type or cross reference is not a physical part or verified VIN fitment.
+    No selection, stock receipt, plan replacement or OEM assignment is performed here.
+    """
+    import re
+    from sqlalchemy import select
+    from app.models import DismantlingItem
+    require_permission(who, 'vehicles.view', 'catalog.view', 'inventory.view')
+    v = owned(db, Vehicle, id, who.workspace_account_id)
+    if v.manufacturer.strip().casefold() != 'volvo' or not re.search(r'\bXC90\b', v.model, re.IGNORECASE):
+        raise HTTPException(409, 'Пілот OEM доступний лише для Volvo XC90')
+    if source_modification_id != 107555:
+        raise HTTPException(422, 'Для пілота доступна лише модифікація 107555')
+    if product_id is not None and snapshot_sha is None:
+        raise HTTPException(422, 'Потрібна версія каталогу з попереднього перегляду')
+    try:
+        envelope = service.CatalogueAdapter().plan(source_modification_id)
+        payload = envelope['payload']
+        service.validate_plan(payload)
+        if (payload['car_id'], payload['model_id'], payload['manufacturer_id']) != (107555, 13084, 120):
+            raise ValueError('source identity')
+    except (service.CatalogueUnavailable, ValueError, KeyError, TypeError):
+        raise HTTPException(503, 'Каталог Volvo тимчасово недоступний; план збережено') from None
+    sha = payload['source_snapshot_sha']
+    if snapshot_sha is not None and snapshot_sha != sha:
+        raise HTTPException(409, 'Версія каталогу змінилася. Оновіть попередній перегляд')
+    base = dict(source_modification_id=107555, model_id=13084, snapshot_sha=sha,
+                modification=payload['modification'], coverage=payload['coverage'],
+                observed_at=payload['observed_at'], vin_verified=False, cost='free')
+    if product_id is not None:
+        product = next((p for p in payload['categories'] if p['product_id'] == product_id), None)
+        if product is None:
+            raise HTTPException(404, 'Тип запчастини відсутній у цій модифікації')
+        offers = saved_articles(product, {'payload': payload})
+        # Reference evidence only; no persistent writes. Keep supplier identity visible.
+        return dict(**base, product_id=product_id, articles=[
+            {k: offer[k] for k in ('supplier_id','article_nr','brand','oem_numbers','vin_verified')}
+            for offer in offers
+        ])
+    rows = db.scalars(select(DismantlingItem).where(
+        DismantlingItem.account_id == who.workspace_account_id,
+        DismantlingItem.vehicle_id == v.id,
+    ).order_by(DismantlingItem.name, DismantlingItem.id))
+    return dict(**base,
+        plan_items=[dict(id=row.id, name=row.name, position=row.position,
+                         category=row.category_name, subcategory=row.subcategory_name,
+                         included=row.included, part_id=row.part_id) for row in rows],
+        catalogue_types=[dict(product_id=p['product_id'], name_uk=p.get('name_uk'),
+                              name_source=p.get('name_source'), category_path=p.get('category_path'),
+                              article_count=p['article_count'], kind=p['kind'])
+                         for p in payload['categories']])
