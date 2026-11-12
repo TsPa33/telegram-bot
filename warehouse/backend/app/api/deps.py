@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session as DBSession
 from app.db import get_db
 from app.models import Account, Session, now
 from app.services.auth import digest
+from app.services import entitlements
 from app.permissions import effective,require_permission,route_permissions,check_fields
 
 @dataclass
@@ -41,7 +42,7 @@ def identity(request:Request,db:DBSession=Depends(get_db),body:dict=Depends(perm
     # In particular, employee stock writes must not hold actor SHARE while waiting
     # for an owner lock held by a team-management command.
     if request.method not in ('GET','HEAD','OPTIONS'):
-        db.scalar(select(Account).where(Account.id==(user.workspace_account_id or user.id)).with_for_update(key_share=True))
+        db.scalar(select(Account).where(Account.id==(user.workspace_account_id or user.id)).with_for_update(key_share=not entitlements.enabled()))
     if request.method not in ('GET','HEAD','OPTIONS') and user.role!='DIRECTOR':
         user=db.scalar(select(Account).where(Account.id==user.id).with_for_update(read=True).execution_options(populate_existing=True))
         if not user.is_active:raise HTTPException(401,'Доступ заблоковано')
@@ -64,7 +65,8 @@ def identity(request:Request,db:DBSession=Depends(get_db),body:dict=Depends(perm
     from app.services import billing
     read_post=path in ('/api/v1/pricing/guidance',) or path.endswith('/categories/recover') or path.endswith('/articles/recover')
     security_write=path in ('/api/v1/auth/logout','/api/v1/auth/password') or (path.startswith('/api/v1/team/') and (body.get('is_active') is False or path.endswith('/reset-password')))
-    if request.method not in ('GET','HEAD','OPTIONS') and not read_post and not security_write and not path.startswith('/api/v1/billing/'):
+    entitlements.policy(db,who,request.method,path,body,request.path_params)
+    if not entitlements.enforced(db,workspace) and request.method not in ('GET','HEAD','OPTIONS') and not read_post and not security_write and not path.startswith('/api/v1/billing/'):
         billing.require_active(db,workspace)
     request.state.identity=who
     return who

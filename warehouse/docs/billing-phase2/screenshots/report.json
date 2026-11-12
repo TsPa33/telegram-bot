@@ -1,0 +1,106 @@
+[
+  {
+    "engine": "chromium",
+    "width": 320,
+    "themes": [
+      "gold",
+      "forest"
+    ],
+    "authenticated": true,
+    "lastSlot": true,
+    "quote": true,
+    "trialDeadlinePreserved": true,
+    "jsErrors": []
+  },
+  {
+    "engine": "chromium",
+    "width": 390,
+    "themes": [
+      "gold",
+      "forest"
+    ],
+    "authenticated": true,
+    "lastSlot": true,
+    "quote": true,
+    "trialDeadlinePreserved": true,
+    "jsErrors": []
+  },
+  {
+    "engine": "chromium",
+    "width": 430,
+    "themes": [
+      "gold",
+      "forest"
+    ],
+    "authenticated": true,
+    "lastSlot": true,
+    "quote": true,
+    "trialDeadlinePreserved": true,
+    "jsErrors": []
+  },
+  {
+    "engine": "chromium",
+    "width": 1440,
+    "themes": [
+      "gold",
+      "forest"
+    ],
+    "authenticated": true,
+    "lastSlot": true,
+    "quote": true,
+    "trialDeadlinePreserved": true,
+    "jsErrors": []
+  },
+  {
+    "engine": "webkit",
+    "width": 320,
+    "themes": [
+      "gold",
+      "forest"
+    ],
+    "authenticated": true,
+    "lastSlot": true,
+    "quote": true,
+    "trialDeadlinePreserved": true,
+    "jsErrors": []
+  },
+  {
+    "engine": "webkit",
+    "width": 390,
+    "themes": [
+      "gold",
+      "forest"
+    ],
+    "authenticated": true,
+    "lastSlot": true,
+    "quote": true,
+    "trialDeadlinePreserved": true,
+    "jsErrors": []
+  },
+  {
+    "engine": "webkit",
+    "width": 430,
+    "themes": [
+      "gold",
+      "forest"
+    ],
+    "authenticated": true,
+    "lastSlot": true,
+    "quote": true,
+    "trialDeadlinePreserved": true,
+    "jsErrors": []
+  },
+  {
+    "engine": "webkit",
+    "width": 1440,
+    "themes": [
+      "gold",
+      "forest"
+    ],
+    "authenticated": true,
+    "lastSlot": true,
+    "quote": true,
+    "trialDeadlinePreserved": true,
+    "jsErrors": []
+  }
+]

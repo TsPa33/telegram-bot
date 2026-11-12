@@ -716,6 +716,8 @@ class CategoryRepair(BaseModel):
 @router.get("/donor-parts/classification/preview")
 def donor_classification_preview(who: Annotated[Identity,Depends(identity)],db:Annotated[Session,Depends(get_db)],vehicle_id:str=Query(min_length=1,max_length=80),ktype:int=Query(gt=0),provision:bool=False):
     from app.services.source_types import normalization
+    from app.services.entitlements import require_paid
+    if provision:require_paid(db,who.workspace_account_id)
     donor=_owner_plan_parts_donor(who,db,vehicle_id,ktype)
     return normalization(db,who,donor,provision=provision)
 

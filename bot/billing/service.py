@@ -10,7 +10,7 @@ import hashlib
 import json
 from uuid import uuid4
 from psycopg2.extras import Json
-from .catalogue import CATALOGUE, monthly_end
+from .catalogue import CATALOGUE
 from .db import Database
 from .models import (
     Actor,
@@ -168,8 +168,6 @@ class Billing:
         ):
             raise BillingError("Invalid period")
         start, end = (t.astimezone(timezone.utc) for t in (start, end))
-        if end != monthly_end(start):
-            raise BillingError("A base invoice must cover exactly one calendar month")
         request_hash = fingerprint(
             [subscription_id, start.isoformat(), end.isoformat()]
         )
@@ -198,18 +196,49 @@ class Billing:
             sub = cur.fetchone()
             if not sub:
                 raise Forbidden("Subscription denied")
+            from .warehouse import anchored_month
+
+            anchor = sub.get("calendar_anchor") or start.day
+            if end != anchored_month(start, anchor=anchor):
+                raise BillingError(
+                    "A base invoice must cover exactly one anchored calendar month"
+                )
+            if "calendar_anchor" in sub and sub["calendar_anchor"] is None:
+                cur.execute(
+                    "UPDATE billing.subscriptions SET calendar_anchor=%s WHERE id=%s",
+                    (anchor, subscription_id),
+                )
             cur.execute(
-                "SELECT 1 FROM billing.periods WHERE subscription_id=%s "
-                "AND starts_at<%s AND ends_at>%s",
+                "SELECT to_regclass('billing.reconciliation_cases') AS relation"
+            )
+            phase2 = bool(cur.fetchone()["relation"])
+            cur.execute(
+                "SELECT p.id,p.starts_at,p.ends_at FROM billing.periods p WHERE subscription_id=%s AND starts_at<%s AND ends_at>%s",
                 (subscription_id, end, start),
             )
-            if cur.fetchone():
-                raise Conflict("Overlapping billing period")
-            period, invoice = uid(), uid()
-            cur.execute(
-                "INSERT INTO billing.periods VALUES (%s,%s,%s,%s,%s)",
-                (period, actor.account_id, subscription_id, start, end),
-            )
+            overlaps = cur.fetchall()
+            period = None
+            for existing_period in overlaps:
+                cur.execute(
+                    "SELECT 1 FROM billing.invoices WHERE period_id=%s AND status<>'void'",
+                    (existing_period["id"],),
+                )
+                collectible = cur.fetchone()
+                if (
+                    not phase2
+                    or collectible
+                    or existing_period["starts_at"] != start
+                    or existing_period["ends_at"] != end
+                ):
+                    raise Conflict("Overlapping billing period")
+                period = existing_period["id"]
+            invoice = uid()
+            if period is None:
+                period = uid()
+                cur.execute(
+                    "INSERT INTO billing.periods VALUES (%s,%s,%s,%s,%s)",
+                    (period, actor.account_id, subscription_id, start, end),
+                )
             cur.execute(
                 "INSERT INTO billing.invoices(id,account_id,period_id,request_key,request_hash,amount_minor,currency) "
                 "VALUES (%s,%s,%s,%s,%s,%s,%s)",
@@ -348,7 +377,28 @@ class Billing:
                     event.status == "success"
                     and settled["transaction_id"] != event.transaction_id
                 ):
-                    raise Conflict("Second external payment requires reconciliation")
+                    cur.execute(
+                        "SELECT to_regclass('billing.reconciliation_cases') AS relation"
+                    )
+                    if not cur.fetchone()["relation"]:
+                        raise Conflict(
+                            "Second external payment requires reconciliation"
+                        )
+                    cur.execute(
+                        "INSERT INTO billing.reconciliation_cases(id,account_id,invoice_id,provider,transaction_id,event_id,amount_minor,currency,reason) "
+                        "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,'excess_payment') ON CONFLICT DO NOTHING",
+                        (
+                            uid(),
+                            intent["account_id"],
+                            intent["invoice_id"],
+                            event.provider,
+                            event.transaction_id,
+                            event.event_id,
+                            event.amount_minor,
+                            event.currency,
+                        ),
+                    )
+                    return "reconciliation_required"
                 return "already_settled"
             if event.status != "success":
                 # Pending after failure cannot reopen or alter a settled invoice.

@@ -561,7 +561,7 @@ def test_legacy_checkout_remains_fixture_only_without_network():
 
 def test_legacy_and_warehouse_unchanged():
     root = Path(__file__).resolve().parents[3]
-    # Strong scope regression: existing runtime trees must be byte-for-byte baseline.
+    # Legacy CarPot remains byte-for-byte baseline. Warehouse is intentionally extended in Phase 2.
     changed = subprocess.check_output(
         [
             "git",
@@ -573,7 +573,6 @@ def test_legacy_and_warehouse_unchanged():
             "bot/services",
             "bot/database",
             "bot/handlers",
-            "warehouse",
             "requirements.txt",
         ],
         cwd=root,
