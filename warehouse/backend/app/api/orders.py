@@ -6,8 +6,9 @@ from sqlalchemy import String, cast, func, or_, select, text
 from sqlalchemy.exc import SQLAlchemyError
 from app.api.routes import DB, Auth
 from app.models import Account,Buyer, Order, OrderEvent, OrderLine, OrderRequest, OrderReservation,Part
-from app.schemas.orders import BuyerInput, CreateOrder, CheckoutOrder, UpdateOrder, LinesInput, OrderAction, OrderStatus, normalize_phone
+from app.schemas.orders import BuyerInput, CreateOrder, CheckoutOrder, UpdateOrder, LinesInput, OrderAction, OrderStatus, CompleteOrder, ReviseReservedOrder, normalize_phone
 from app.services import orders as service
+from app.permissions import require_permission
 from app.services.inventory import owned, snapshot
 
 router=APIRouter(route_class=SecureRoute,prefix='/api/v1',tags=['Buyers and orders'])
@@ -48,7 +49,7 @@ def readiness(db:DB,who:Auth):
         for model in (Buyer,Order,OrderLine,OrderReservation,OrderEvent,OrderRequest):db.execute(select(model).limit(0))
     except SQLAlchemyError:raise HTTPException(503,'Orders schema is not ready') from None
     return {'status':'ready','contract_version':6,'required_revision':'d86f21a90b34','database_revisions':sorted(versions),
-            'features':['atomic_checkout','buyers','orders','assigned_reservations','explicit_order_sale','order_request_replay']}
+            'features':['atomic_checkout','confirm_received','revise_reserved','buyers','orders','assigned_reservations','explicit_order_sale','order_request_replay']}
 
 
 @router.post('/orders',status_code=201)
@@ -111,6 +112,25 @@ def update_lines(id:str,data:LinesInput,db:DB,who:Auth):
 @router.post('/orders/{id}/status')
 def order_status(id:str,data:OrderStatus,db:DB,who:Auth):
     return service.command(db,who.workspace_account_id,'orders:'+id+':status',data,lambda:service.change_status(db,service.locked_order(db,id,who.workspace_account_id),data.status))
+
+
+@router.post('/orders/{id}/complete')
+def complete_order(id:str,data:CompleteOrder,db:DB,who:Auth):
+    if not data.confirm_received:raise HTTPException(422,'Підтвердьте отримання товару')
+    require_permission(who,'orders.edit','orders.fulfill')
+    def execute():
+        order=service.locked_order(db,id,who.workspace_account_id)
+        if not order.sold_at:require_permission(who,'sales.create')
+        return service.complete_received(db,order)
+    return service.command(db,who.workspace_account_id,'orders:'+id+':complete',data,execute)
+
+
+@router.post('/orders/{id}/revise-reserved')
+def revise_reserved_order(id:str,data:ReviseReservedOrder,db:DB,who:Auth):
+    if not data.confirm_re_reserve:raise HTTPException(422,'Підтвердьте зміну резерву')
+    require_permission(who,'orders.edit','orders.fulfill','sales.view_financials')
+    return service.command(db,who.workspace_account_id,'orders:'+id+':revise-reserved',data,
+        lambda:service.revise_reserved(db,service.locked_order(db,id,who.workspace_account_id),data))
 
 
 @router.post('/orders/{id}/{action}')
