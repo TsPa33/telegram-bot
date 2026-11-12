@@ -77,6 +77,19 @@ try{
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'Buyers overflow '+width);
  }
 
+ for(const width of [1440,1920,390]){
+  await page.setViewportSize({width,height:1000});await page.goto('/statistics');
+  await expect(page.getByRole('heading',{name:'Статистика складу',exact:true})).toBeVisible();
+  await expect(page.locator('.stats-finance')).toContainText('Не визначено');
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'Statistics overflow '+width);
+  await page.screenshot({path:output+'/statistics-'+width+'.png',animations:'disabled'});
+ }
+ await page.goto('/settings?section=general');
+ const settings=page.getByRole('navigation',{name:'Розділ налаштувань'});
+ await expect(settings.getByRole('link',{name:'Загальні'})).toHaveAttribute('aria-current','page');
+ await settings.getByRole('link',{name:'Оплати'}).click();
+ await expect(settings.getByRole('link',{name:'Оплати'})).toHaveAttribute('aria-current','page');
+ await expect(page.getByRole('region',{name:'Оплати'})).toContainText('недоступне');
  assert.deepEqual(errors,[]);console.log('Corporate UX: real-auth stock, aligned sidebar, inline picker, persisted palettes, responsive widths, sales lifecycle and exact buyer history PASS');
  await c.close();
 }finally{await browser.close();}
