@@ -416,6 +416,12 @@ def volvo_pilot_payload(v, source_modification_id, snapshot_sha=None):
         raise HTTPException(409, 'Пілот OEM доступний лише для Volvo XC90')
     if source_modification_id != 107555:
         raise HTTPException(422, 'Для пілота доступна лише модифікація 107555')
+    # Reject explicit contradictory characteristics; missing fields still require user review.
+    fuel=(v.fuel_type or '').strip().casefold()
+    drive=(v.drive_type or '').strip().casefold()
+    code=re.sub(r'[^a-z0-9]','',(v.engine_code or '').casefold())
+    if v.year<2014 or fuel in {'diesel','hybrid','electric','дизель','гібрид','електро'} or drive in {'fwd','rwd','front','rear'} or (code and code!='b4204t27'):
+        raise HTTPException(409,'Характеристики автомобіля суперечать XC90 II T6 AWD; перевірте модифікацію')
     try:
         payload = service.CatalogueAdapter().plan(source_modification_id)['payload']
         service.validate_plan(payload)
@@ -425,7 +431,8 @@ def volvo_pilot_payload(v, source_modification_id, snapshot_sha=None):
         raise HTTPException(503, 'Каталог Volvo тимчасово недоступний; план збережено') from None
     if snapshot_sha is not None and snapshot_sha != payload['source_snapshot_sha']:
         raise HTTPException(409, 'Версія каталогу змінилася. Оновіть попередній перегляд')
-    return payload
+    from app.services.volvo_oem_review import overlay
+    return overlay(payload)
 
 
 def volvo_row_basis(row):
@@ -451,6 +458,7 @@ def volvo_oem_preview(
     from app.models import DismantlingItem, Part
     from app.services.dismantling_plan_v3 import generator_basis
     from app.services.catalogue_format import digest
+    from app.services.volvo_oem_review import candidates
     require_permission(who, 'vehicles.view', 'catalog.view', 'inventory.view')
     v = owned(db, Vehicle, id, who.workspace_account_id)
     if product_id is not None and snapshot_sha is None:
@@ -484,6 +492,7 @@ def volvo_oem_preview(
         return dict(id=row.id,name=row.name,position=row.position,
                     category=row.category_name,subcategory=row.subcategory_name,
                     included=row.included,part_id=row.part_id,row_basis=volvo_row_basis(row),
+                    candidate_product_ids=candidates(row,payload['categories']),
                     reference=ref,reference_digest=digest(ref),
                     reference_stale=bool(ref and (ref['vehicle_basis']!=basis or ref['snapshot_sha']!=sha)),
                     stock_oem=part.oem_number if part else None,
@@ -492,7 +501,8 @@ def volvo_oem_preview(
     return dict(**base, plan_items=[row_view(row) for row in rows],
         catalogue_types=[dict(product_id=p['product_id'], name_uk=p.get('name_uk'),
                               name_source=p.get('name_source'), category_path=p.get('category_path'),
-                              article_count=p['article_count'], kind=p['kind'])
+                              article_count=p['article_count'], kind=p['kind'],pilot_reviewed=bool(p.get('pilot_reviewed')),
+                              candidate_aliases=p.get('candidate_aliases',[]))
                          for p in payload['categories']])
 
 

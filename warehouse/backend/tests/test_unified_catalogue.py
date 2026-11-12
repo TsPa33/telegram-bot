@@ -412,3 +412,22 @@ def test_volvo_oem_selection_plan_then_stock(logged,volvo,monkeypatch):
     with Session(engine()) as db:
         v=db.get(Vehicle,volvo['id']);v.year=2019;db.commit()
     assert logged.post(url,json=body(data,row)).status_code==409
+
+
+def test_volvo_real_export_review_is_exact_version_and_label():
+    from app.services.volvo_oem_review import overlay, SOURCE_SHA, candidates
+    from types import SimpleNamespace
+    raw=dict(source_snapshot_sha=SOURCE_SHA,categories=[
+        dict(product_id=2,name_source='Стартер',kind='review',article_count=12),
+        dict(product_id=4,name_source='Wrong label',kind='review',article_count=13),
+        dict(product_id=3224,name_source='Моторное масло',kind='review',article_count=21)])
+    reviewed=overlay(raw)
+    assert reviewed['categories'][0]['kind']=='part'
+    assert reviewed['categories'][0]['name_uk']=='Стартер'
+    assert reviewed['categories'][0]['pilot_reviewed']
+    assert reviewed['categories'][1]['kind']=='review'
+    assert reviewed['categories'][2]['kind']=='review'
+    assert raw['categories'][0]['kind']=='review'
+    assert candidates(SimpleNamespace(name='стартер'),reviewed['categories'])==[2]
+    assert candidates(SimpleNamespace(name='Стартер у зборі'),reviewed['categories'])==[]
+    assert overlay({**raw,'source_snapshot_sha':'b'*64})['categories'][0]['kind']=='review'
