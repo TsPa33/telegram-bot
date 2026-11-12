@@ -1,0 +1,42 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+______________________ test_real_A_xc90_read_only_example ______________________
+
+platform = <starlette.testclient.TestClient object at 0x7fc63ce01110>
+vehicle = {'vin_details': None, 'dismantling_v3': {}, 'manufacturer': 'Test manufacturer', 'ktype': None, ...}
+tmp_path = PosixPath('/tmp/pytest-of-agent/pytest-8/test_real_A_xc90_read_only_exa0')
+
+    def test_real_A_xc90_read_only_example(platform,vehicle,tmp_path):
+        from app.services.aleto_import import BUNDLED_PACKAGE
+        j=plan(platform,upload(platform,raw=BUNDLED_PACKAGE.read_bytes(),filename=BUNDLED_PACKAGE.name))
+        if j['report']['issues']:j=plan(platform,j,{i['key']:{'action':'skip'} for i in j['report']['issues']})
+>       confirm(platform,j);build(platform);setup_vehicle(vehicle)
+        ^^^^^^^^^^^^^^^^^^^
+
+tests/test_dismantling_preview.py:88: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_catalogue_v2.py:69: in confirm
+    return finish_operation(c,r,expected)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+c = <starlette.testclient.TestClient object at 0x7fc63ce01110>
+response = <Response [409 Conflict]>, expected = 200
+
+    def finish_operation(c,response,expected):
+        if response.status_code!=202:
+>           assert response.status_code==expected,response.text
+E           AssertionError: {"detail":"Потрібен новий preview"}
+E           assert 409 == 200
+E            +  where 409 = <Response [409 Conflict]>.status_code
+
+tests/test_catalogue_v2.py:56: AssertionError
+=============================== warnings summary ===============================
+../../../.venvs/warehouse/lib/python3.11/site-packages/fastapi/testclient.py:1
+  /workspace/.venvs/warehouse/lib/python3.11/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_dismantling_preview.py::test_real_A_xc90_read_only_example
+1 failed, 1 warning in 32.23s

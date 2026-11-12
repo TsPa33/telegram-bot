@@ -63,22 +63,22 @@ def test_mixed_receipt_quantities_fields_ledger_inventory_and_replays(client,veh
     items=seed(client,vehicle,monkeypatch);ids=[i['id'] for i in items]
     assert command(client,vehicle,ids[:3],'present').json()['updated']==3
     assert command(client,vehicle,ids[:2],'dismantled').json()['updated']==2
-    p=preview(client,vehicle,ids);assert (p['selected'],p['confirmed'],p['dismantled'],p['received'],p['eligible'])==(5,3,2,0,2)
-    assert len(p['blocked'])==3
-    lines=[dict(id=ids[0],quantity=2,condition='new',location='Полиця A',selling_price='25.90'),dict(id=ids[1],quantity=5,condition='used',location='Полиця Б')]
+    p=preview(client,vehicle,ids);assert (p['selected'],p['confirmed'],p['dismantled'],p['received'],p['eligible'])==(5,3,2,0,3)
+    assert len(p['blocked'])==2
+    lines=[dict(id=ids[0],quantity=2,condition='new',location='Полиця A',selling_price='25.90'),dict(id=ids[1],quantity=5,condition='used',location='Полиця Б'),dict(id=ids[2],quantity=1)]
     body=dict(ids=ids,action='receipt',etag=p['etag'],preview_token=p['preview_token'],request_key=str(uuid4()),confirm=True,lines=lines)
     path=f"/api/v1/vehicles/{vehicle['id']}/dismantling-v3/bulk"
     r=client.post(path,json=body);assert r.status_code==200,r.text
-    assert r.json()['updated']==2 and r.json()['skipped']==3 and len(r.json()['part_ids'])==2
+    assert r.json()['updated']==3 and r.json()['skipped']==2 and len(r.json()['part_ids'])==3
     assert client.post(path,json=body).json()==r.json()
     with Session(engine()) as db:
         parts=[db.get(Part,id) for id in r.json()['part_ids']]
-        assert [p.quantity for p in parts]==[2,5] and parts[0].selling_price==__import__('decimal').Decimal('25.90')
+        assert [p.quantity for p in parts]==[2,5,1] and parts[0].selling_price==__import__('decimal').Decimal('25.90')
         assert parts[0].condition=='new' and parts[0].location=='Полиця A'
         assert parts[1].selling_price is None and all(p.unit_cost is None for p in parts)
-        assert db.scalar(select(func.count()).select_from(Operation).where(Operation.type=='receipt'))==2
+        assert db.scalar(select(func.count()).select_from(Operation).where(Operation.type=='receipt'))==3
         before_parts=[(p.id,p.quantity,p.selling_price) for p in parts];before_ops={r.id:str(r.after) for r in db.scalars(select(Operation))}
-    stock=client.get('/api/v1/parts').json();assert stock['total']==2 and sorted(i['quantity'] for i in stock['items'])==[2,5]
+    stock=client.get('/api/v1/parts').json();assert stock['total']==3 and sorted(i['quantity'] for i in stock['items'])==[1,2,5]
     repeated=command(client,vehicle,ids,'receipt');assert repeated.status_code==200 and repeated.json()['updated']==0
     with Session(engine()) as db:
         assert before_parts==[(db.get(Part,id).id,db.get(Part,id).quantity,db.get(Part,id).selling_price) for id,_,_ in before_parts]

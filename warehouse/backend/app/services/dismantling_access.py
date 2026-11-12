@@ -1,10 +1,12 @@
 """Response-only catalogue minimization. Stored evidence and request tokens are unchanged."""
 from collections import Counter
 from app.services.catalogue_import import platform_admin
-TECHNICAL={'source','sources','source_refs','source_ref_count','source_truncated','source_snapshot_sha','rule_evidence','vehicle_provenance','evidence_details','compatible_evidence','reference_prices','provenance'}
+TECHNICAL={'baseline_positions','published_reference_positions','exact_source_positions','gaps','source','sources','source_refs','source_ref_count','source_truncated','source_snapshot_sha','rule_evidence','vehicle_provenance','evidence_details','compatible_evidence','reference_prices','provenance'}
 def public_payload(value):
     if isinstance(value,list):return [public_payload(v) for v in value]
-    if isinstance(value,dict):return {k:public_payload(v) for k,v in value.items() if k not in TECHNICAL}
+    if isinstance(value,dict):
+        # Keep legacy array shapes without exposing a single private reference.
+        return {k:([] if k in TECHNICAL else public_payload(v)) for k,v in value.items() if k not in TECHNICAL or k in {'source','sources','reference_prices','gaps'} and isinstance(v,list)}
     return value
 
 def source_report(rows):

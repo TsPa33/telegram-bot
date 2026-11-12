@@ -1,0 +1,1 @@
+LOCAL E2E PASS: 3 makes, generation/error/retry, five/mixed/227 intake, committed-response loss/reload/replay, qty1/qty6, day/night widths

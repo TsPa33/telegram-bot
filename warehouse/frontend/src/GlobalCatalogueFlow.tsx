@@ -36,7 +36,6 @@ export default function GlobalCatalogueFlow({vehicle,onSaved}:{vehicle:Row;onSav
  const filtered=products.filter(p=>`${p.name_uk} ${p.name_source}`.toLowerCase().includes(q.toLowerCase()));
  return <section className="unified-flow" aria-label="Розбір автомобіля">
   <UniversalPlanGenerator vehicle={vehicle} revision={revision} onWorking={setWorking} onSaved={()=>{setRevision(n=>n+1);onSaved(vehicle)}}/>
-  {working&&<>
   <details className="uf-catalogue-disclosure">
    <summary><span><strong>Каталог і модифікація</strong><small>{state.selection?'Точна модифікація вибрана':'Точна модифікація не підтверджена · базовий каталог'}</small></span><span className="uf-catalogue-toggle">Налаштувати</span></summary>
    <div className="uf-catalogue-details">
@@ -49,6 +48,7 @@ export default function GlobalCatalogueFlow({vehicle,onSaved}:{vehicle:Row;onSav
   {chooseModification&&state.selection_basis&&<div className="uf-source-picker"><GlobalVehicleForm key={vehicle.id+':'+state.selection_basis} vehicle={vehicle} expectedBasis={state.selection_basis} onSaved={row=>{setChooseModification(false);setRevision(n=>n+1);onSaved(row)}}/></div>}
    </div>
   </details>
+  {working&&<>
   <AssemblyTree vehicle={vehicle} revision={revision} onReady={setAssemblyMode}/>{!assemblyMode&&<h2>Розбір автомобіля</h2>}{error&&<p role="alert">{error}</p>}
  {state.legacy&&<details><summary>Збережені попередні списки</summary><p>Історичний список збережено окремо від глобального каталогу.</p><button onClick={async()=>{try{setLegacy((await api(`/vehicles/${vehicle.id}/dismantling-workspace?source=${state.legacy_source}`)).items)}catch(e){setError((e as Error).message)}}}>Переглянути збережений список</button>{legacy?.map(r=><p key={r.key}>{r.name}</p>)}</details>}
  {!saved?null:assemblyMode===false?<>
