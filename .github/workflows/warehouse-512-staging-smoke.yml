@@ -1,0 +1,158 @@
+name: Warehouse #512 live staging read-only acceptance
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/warehouse-512-staging-smoke.yml"
+permissions:
+  contents: read
+jobs:
+  api:
+    name: Live staging API contract (GET only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      API: https://telegram-bot-warehouse-staging.up.railway.app
+    steps:
+      - name: Verify health, new API contract and anonymous authorization
+        run: |
+          python3 - <<'PY'
+          import json, os, time, urllib.request, urllib.error
+          base=os.environ['API']
+          def get(path):
+              try:
+                  with urllib.request.urlopen(base+path,timeout=15) as response:
+                      return response.status,response.read()
+              except urllib.error.HTTPError as error:
+                  return error.code,error.read()
+          last=None
+          for i in range(60):
+              try:
+                  status,body=get('/health')
+                  assert status==200 and json.loads(body).get('status')=='ok', ('health',status)
+                  status,body=get('/openapi.json')
+                  assert status==200, ('openapi',status)
+                  paths=json.loads(body)['paths']
+                  for p,method in [
+                      ('/api/v1/orders/{id}/complete','post'),
+                      ('/api/v1/orders/{id}/revise-reserved','post'),
+                      ('/api/v1/vehicles/{id}/dismantling-v3/sources','get')]:
+                      assert method in paths.get(p,{}), ('missing route',p,method)
+                  params=paths['/api/v1/orders']['get']['parameters']
+                  assert any(p['name']=='buyer_id' for p in params), 'missing buyer_id'
+                  params=paths['/api/v1/sales-center']['get']['parameters']
+                  assert any(p['name']=='include_summary' for p in params), 'missing summary'
+                  break
+              except Exception as error:
+                  last=error
+                  print('Awaiting approved API:',type(error).__name__,str(error)[:200],flush=True)
+                  time.sleep(5)
+          else:
+              raise AssertionError(str(last))
+          for p in ['/api/v1/auth/me','/api/v1/orders/readiness','/api/v1/vehicles','/api/v1/sales-center','/api/v1/buyers']:
+              status,_=get(p)
+              assert status in (401,403),(p,status)
+              print('AUTH GUARD PASS',p,status)
+          status,body=get('/api/v1/auth/options')
+          assert status==200 and isinstance(json.loads(body).get('registration_enabled'),bool)
+          print('LIVE API PASS: health 200, integrated OpenAPI contract, anonymous access rejected, auth options')
+          PY
+  web:
+    name: Live staging Web bundle and anonymous browser (GET only)
+    needs: api
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      WEB: https://confident-sparkle-warehouse-staging.up.railway.app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Wait for the integrated Web and verify API proxy
+        run: |
+          python3 - <<'PY'
+          import json, os, re, time, urllib.request, urllib.error, urllib.parse
+          base=os.environ['WEB']
+          def get(path):
+              url=urllib.parse.urljoin(base+'/',path)
+              assert urllib.parse.urlsplit(url).netloc==urllib.parse.urlsplit(base).netloc
+              try:
+                  with urllib.request.urlopen(url,timeout=15) as response:
+                      return response.status,response.read()
+              except urllib.error.HTTPError as error:
+                  return error.code,error.read()
+          markers=[b'buyer_order_history',b'confirm_physical',b'revise_reserved',b'sales_today_operations']
+          last=None
+          for i in range(90):
+              try:
+                  status,body=get('/')
+                  assert status==200,('Web root',status)
+                  assets=re.findall(rb'<script[^>]*src="([^"]+)"',body)
+                  assert assets,'No script assets in index'
+                  bundles=b''
+                  for asset in assets:
+                      status,js=get(asset.decode('utf-8'))
+                      assert status==200,('JS asset',status)
+                      bundles+=js
+                  assert all(marker in bundles for marker in markers),'Old bundle or missing integrated features'
+                  break
+              except Exception as error:
+                  last=error
+                  print('Awaiting approved Web:',type(error).__name__,str(error)[:200],flush=True)
+                  time.sleep(5)
+          else:
+              raise AssertionError(str(last))
+          status,body=get('/health')
+          assert status==200 and json.loads(body).get('status')=='ok'
+          for p in ['/api/v1/auth/me','/api/v1/orders/readiness','/api/v1/vehicles']:
+              status,_=get(p)
+              assert status in (401,403),(p,status)
+          status,body=get('/api/v1/auth/options')
+          assert status==200 and isinstance(json.loads(body).get('registration_enabled'),bool)
+          status,body=get('/inventory')
+          assert status==200 and b'<html' in body.lower()
+          print('LIVE WEB PASS: integrated JS assets, health, API proxy, SPA deep link, anonymous guards')
+          PY
+      - name: Install browser for anonymous live UI smoke
+        working-directory: warehouse/frontend
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Verify live login and responsive protected route without login
+        working-directory: warehouse/frontend
+        run: |
+          node --input-type=module <<'JS'
+          import {chromium,expect} from '@playwright/test';
+          import assert from 'node:assert/strict';
+          import fs from 'node:fs';
+          const browser=await chromium.launch({args:['--no-sandbox']});
+          fs.mkdirSync('/tmp/warehouse-staging-readonly',{recursive:true});
+          try{
+            const context=await browser.newContext({baseURL:process.env.WEB});
+            // The live application is never allowed to submit a mutation in this test.
+            await context.route('**/*',r=>['GET','HEAD','OPTIONS'].includes(r.request().method())?r.continue():r.abort());
+            const page=await context.newPage();
+            const errors=[];page.on('pageerror',error=>errors.push(error.message));
+            for(const width of [1440,390]){
+              await page.setViewportSize({width,height:900});
+              for(const path of ['/','/inventory']){
+                await page.goto(path);
+                await expect(page.getByRole('heading',{name:'З поверненням'})).toBeVisible();
+                await expect(page.getByLabel('Електронна пошта')).toBeVisible();
+                const password=page.getByLabel('Пароль');
+                await expect(password).toBeVisible();
+                await expect(password).toHaveAttribute('type','password');
+                await expect(page.getByRole('button',{name:'Увійти',exact:true})).toBeVisible();
+                assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+              }
+              await page.screenshot({path:'/tmp/warehouse-staging-readonly/login-'+width+'.png',animations:'disabled'});
+            }
+            assert.deepEqual(errors,[]);
+            console.log('LIVE ANONYMOUS BROWSER PASS: desktop/mobile, login and protected route, no mutations');
+          }finally{await browser.close();}
+          JS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: warehouse-staging-readonly
+          path: /tmp/warehouse-staging-readonly
