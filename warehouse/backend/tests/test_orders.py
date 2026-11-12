@@ -378,3 +378,43 @@ def test_current_inventory_is_permission_scoped_and_actor_is_not_assignable(setu
         r=c.post('/api/v1/orders',json={**key(),'buyer_id':b['id'],'lines':[line(p)],**extra})
         assert r.status_code==422,r.text
     assert c.post('/api/v1/orders',json={**key(),'buyer_id':b['id'],'lines':[{'part_id':p['id'],'quantity':1,'currency':'UAH'}]}).status_code==422
+
+
+def test_ux_v2_confirm_receipt_shipped_or_pickup_once(setup):
+    c,b,p=setup
+    order=create(c,b,[line(p)],delivery_method='branch',city='Київ',delivery_address='Відділення 1')
+    assert action(c,order,'complete',{**key(),'confirm_received':True}).status_code==409
+    assert action(c,order,'reserve').status_code==200
+    assert action(c,order,'status',{**key(),'status':'shipped'}).status_code==200
+    assert action(c,order,'complete',{**key(),'confirm_received':False}).status_code==422
+    body={**key(),'confirm_received':True}
+    r=action(c,order,'complete',body)
+    assert r.status_code==200,r.text
+    assert r.json()['status']=='completed' and r.json()['sold_at']
+    assert action(c,order,'complete',body).json()==r.json()
+    assert action(c,order,'complete',{**key(),'confirm_received':True}).status_code==200
+    assert state(c,p)['quantity']==2 and state(c,p)['reserved_quantity']==0
+    pickup=create(c,b,[line(p)])
+    assert action(c,pickup,'sell').status_code==200
+    assert action(c,pickup,'complete',{**key(),'confirm_received':True}).json()['status']=='completed'
+    assert state(c,p)['quantity']==1
+    assert c.get('/api/v1/audit',params={'part_id':p['id'],'type':'sale'}).json()['total']==2
+
+
+def test_ux_v2_reserved_revision_preserves_reserve_on_failure(setup):
+    c,b,p=setup;order=create(c,b,[line(p)])
+    assert action(c,order,'reserve').status_code==200
+    body={**key(),'lines':[line(p,2,unit_price='456.78')],'confirm_re_reserve':True}
+    r=action(c,order,'revise-reserved',body)
+    assert r.status_code==200,r.text
+    assert r.json()['status']=='reserved'
+    assert state(c,p)['reserved_quantity']==2 and state(c,p)['quantity']==3
+    assert action(c,order,'revise-reserved',body).json()==r.json()
+    failed=action(c,order,'revise-reserved',{**key(),'lines':[line(p,4)],'confirm_re_reserve':True})
+    assert failed.status_code==409,failed.text
+    assert state(c,p)['reserved_quantity']==2 and state(c,p)['quantity']==3
+    now=c.get('/api/v1/orders/'+order['id']).json()
+    assert now['status']=='reserved' and now['lines'][0]['quantity']==2
+    assert now['lines'][0]['unit_price']=='456.78'
+    assert action(c,order,'sell').status_code==200
+    assert action(c,order,'revise-reserved',{**key(),'lines':[line(p)],'confirm_re_reserve':True}).status_code==409
