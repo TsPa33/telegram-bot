@@ -22,3 +22,33 @@
 :root[data-theme=dark] .inventory-modes button{color:var(--color-secondary)}
 :root[data-theme=dark] .inventory-modes button[aria-pressed=true]{color:var(--color-accent);border-color:var(--color-accent)}
 .navigation-chip:active{background:var(--color-accent-surface)}
+
+/* Stock/search thumbnails must never render at intrinsic image dimensions. Keep existing responsive slot sizes. */
+.ui3-photo{min-inline-size:0;min-block-size:0;overflow:hidden;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr)}
+.ui3-photo>img{display:block;inline-size:100%;block-size:100%;max-inline-size:100%;max-block-size:100%;min-inline-size:0;min-block-size:0;object-fit:contain;object-position:center;border-radius:inherit}
+/* Gallery retains the whole image, including long portrait/wide photos, inside the preview. */
+#search-part-preview .ui12-photo-stage{position:relative;min-width:0;isolation:isolate;overflow:hidden}
+#search-part-preview .ui12-photo-stage>img{display:block;width:100%;height:100%;max-width:100%;max-height:100%;object-fit:contain;object-position:center}
+#search-part-preview .ui12-photo-thumbs button{min-width:0;overflow:hidden}
+#search-part-preview .ui12-photo-thumbs button>img{display:block;width:100%;height:100%;max-width:100%;max-height:100%;object-fit:contain}
+
+/* Explicit grid tracks prevent intrinsic portrait sizing from expanding the gallery. */
+#search-part-preview.part-quick-preview .ui12-photo-stage {
+  grid-template-columns: minmax(0,1fr);
+  grid-template-rows: minmax(0,1fr);
+}
+#search-part-preview.part-quick-preview .ui12-photo-stage > img {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  object-fit: contain;
+  object-position: center;
+}
+#search-part-preview.part-quick-preview .ui12-photo-arrow,
+#search-part-preview.part-quick-preview .ui12-photo-counter {
+  z-index: 1;
+}
