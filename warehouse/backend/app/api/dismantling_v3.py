@@ -89,3 +89,11 @@ def virtual_availability(id:str,data:VirtualAvailability,db:DB,who:Auth):
     virtual.lock_workspace(db,who.workspace_account_id)
     v=owned(db,Vehicle,id,who.workspace_account_id,lock=True,active=True)
     result=virtual.availability(db,v,who,data);db.commit();return result
+
+@router.get('/api/v1/vehicles/{id}/dismantling-v3/sources')
+def sources(id:str,db:DB,who:Auth):
+    from app.services.catalogue_import import platform_admin
+    from app.services.dismantling_access import source_report
+    if not platform_admin(who.user):raise HTTPException(403,'Деталі підбору доступні лише адміністратору платформи')
+    v=owned(db,Vehicle,id,who.workspace_account_id)
+    return source_report(service.rows_for(db,v))

@@ -18,10 +18,11 @@ test('source identity remains visible but does not occupy a large separate panel
  assert.match(sourceCss,/\.uf-source-strip/);
 });
 test('the full source list and technical provenance are collapsed, not repeated above workbench',()=>{
- assert.match(generator,/<details className="ug-diagnostics">/);
- assert.match(generator,/<details className="ug-type-review" open=\{!!plan\}>/);
+ assert.match(generator,/catalogue_platform_admin===true/);
+ assert.match(generator,/dv2-sources/);
+ assert.doesNotMatch(generator,/ug-type-review/);
  assert.match(generator,/Оновити каталог/);
- assert.match(generator,/Повноту заводського переліку не підтверджено/);
+ assert.match(generator,/не підтверджена фізична наявність/);
 });
 test('approved workbench keeps three predictable columns and selection-side inspector',()=>{
  assert.match(board,/className="assembly-workspace has-inspector"/);
