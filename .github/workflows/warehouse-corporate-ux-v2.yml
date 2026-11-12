@@ -3,6 +3,15 @@ on:
   pull_request:
     paths:
       - "warehouse/frontend/src/corporate-ux-v2.css"
+      - "warehouse/frontend/src/integrated-ux-polish.css"
+      - "warehouse/frontend/src/themes.css"
+      - "warehouse/frontend/src/Theme.tsx"
+      - "warehouse/frontend/src/InventoryQuantity.tsx"
+      - "warehouse/frontend/src/Orders.tsx"
+      - "warehouse/frontend/src/SalesCenter.tsx"
+      - "warehouse/frontend/src/SalesTrend.tsx"
+      - "warehouse/frontend/src/SearchPartPreview.tsx"
+      - "warehouse/frontend/tests/integrated-ux-*.mjs"
       - "warehouse/frontend/tests/corporate-ux-v2-browser.mjs"
       - "warehouse/frontend/tests/dismantling-v2-browser.mjs"
       - ".github/workflows/warehouse-corporate-ux-v2.yml"
@@ -131,11 +140,13 @@ jobs:
           done
           curl -fsS http://127.0.0.1:5260/health
           node tests/dismantling-v2-browser.mjs
+          UX_POLISH_ORIGIN=http://127.0.0.1:5260 node tests/integrated-ux-browser.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: integrated-dismantling-v2-browser
           path: |
+            /tmp/integrated-ux-browser
             /tmp/dv2-browser
             /tmp/dv2-api.log
             /tmp/dv2-vite.log

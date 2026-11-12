@@ -28,12 +28,12 @@ export default function SalesTrend({managers=[]}:{managers?:Row[]}){
   {validation&&<p role="alert">{validation}</p>}
   <State loading={data.loading} error={data.error}/>{data.error&&<button onClick={data.reload}>Повторити завантаження продажів</button>}
   {!data.loading&&!data.error&&d&&<>
-   <p className="sales-trend-total">Продано одиниць: <strong>{d.units}</strong> · Операцій: <strong>{d.sales_count}</strong></p>
+   <div className="sales-kpi-grid"><article className="stat-card"><span>Продано одиниць</span><strong>{d.units}</strong></article><article className="stat-card"><span>Операцій продажу</span><strong>{d.sales_count}</strong></article>{d.totals_by_currency.map((r:Row)=><article className="stat-card" key={r.currency}><span>Сума продажів · {r.currency}</span><strong>{money(r.amount,r.currency)}</strong></article>)}</div>
    {!d.sales_count?<p role="status">За обраний період проведених продажів немає.</p>:<>
     <div className="sales-trend-totals">{d.totals_by_currency.map((r:Row)=><p key={r.currency}>{money(r.amount,r.currency)} · {r.units} од.</p>)}</div>
     {!!d.unpriced_units&&<p className="notice">{d.unpriced_units} проданих одиниць без достовірної історичної ціни. Їх включено лише до кількості.</p>}
-    {currencies.map(currency=><Bars key={`${currency}:${range.from}:${range.to}:${interval}:${tz}`} title={'Сума продажів · '+currency} note="Нові періоди зверху. Виберіть стовпчик для точного значення. Перший і останній періоди можуть бути неповними." rows={[...d.periods].reverse().map((p:Row)=>{const r=p.by_currency.find((v:Row)=>v.currency===currency);return {name:periodLabel(p.date,interval),value:Number(r?.amount||0),display:money(r?.amount||'0.00',currency)+' · '+(r?.units||0)+' од.'};})}/>)}
-    <Bars key={`units:${range.from}:${range.to}:${interval}:${tz}`} title="Продані одиниці" rows={[...d.periods].reverse().map((p:Row)=>({name:periodLabel(p.date,interval),value:p.units,display:p.units+' од. · '+p.sales_count+' операцій'}))}/>
+    <div className="sales-trend-charts">{currencies.map(currency=><Bars key={`${currency}:${range.from}:${range.to}:${interval}:${tz}`} title={'Сума продажів · '+currency} note="Нові періоди зверху. Виберіть стовпчик для точного значення. Перший і останній періоди можуть бути неповними." rows={[...d.periods].reverse().map((p:Row)=>{const r=p.by_currency.find((v:Row)=>v.currency===currency);return {name:periodLabel(p.date,interval),value:Number(r?.amount||0),display:money(r?.amount||'0.00',currency)+' · '+(r?.units||0)+' од.'};})}/>)}
+    <Bars key={`units:${range.from}:${range.to}:${interval}:${tz}`} title="Продані одиниці" rows={[...d.periods].reverse().map((p:Row)=>({name:periodLabel(p.date,interval),value:p.units,display:p.units+' од. · '+p.sales_count+' операцій'}))}/></div>
    </>}
   </>}
  </section>;

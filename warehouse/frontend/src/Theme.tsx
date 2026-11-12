@@ -2,12 +2,12 @@ import {createContext,useContext,useEffect,useState,type ReactNode} from 'react'
 import {Sun,Moon,Palette} from 'lucide-react';
 export const themeKey='warehouse.theme';
 export const nightStyleKey='warehouse.nightStyle';
-export type NightStyle='emerald'|'onyx'|'gold';
-export const nightStyles=[{value:'emerald',label:'Emerald',description:'Графіт і смарагд'},{value:'onyx',label:'Onyx',description:'Чорний і зелений'},{value:'gold',label:'Midnight Gold',description:'Темно-синій і золотий'}] as const;
+export type NightStyle='forest'|'gold'|'onyx';
+export const nightStyles=[{value:'onyx',label:'Onyx',description:'Чорний і зелений'},{value:'gold',label:'Midnight Gold',description:'Темно-синій і стриманий золотий'},{value:'forest',label:'Forest Slate',description:'Темно-зелений сланець і тепла мідь'}] as const;
 export function savedTheme(): 'light'|'dark'|null{try{const t=localStorage.getItem(themeKey);return t==='light'||t==='dark'?t:null;}catch{return null;}}
-export function savedNightStyle():NightStyle{try{const v=localStorage.getItem(nightStyleKey);return v==='onyx'||v==='gold'?v:'emerald';}catch{return 'emerald';}}
+export function savedNightStyle():NightStyle{try{const v=localStorage.getItem(nightStyleKey);return v==='gold'||v==='onyx'?v:'forest';}catch{return 'forest';}}
 export function systemTheme(){return matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}
-const Theme=createContext({theme:'light',setTheme:(_t:'light'|'dark')=>{},nightStyle:'emerald' as NightStyle,setNightStyle:(_s:NightStyle)=>{}});
+const Theme=createContext({theme:'light',setTheme:(_t:'light'|'dark')=>{},nightStyle:'forest' as NightStyle,setNightStyle:(_s:NightStyle)=>{}});
 export function ThemeProvider({children}:{children:ReactNode}){
  const [theme,set]=useState(()=>savedTheme()||systemTheme());
  const [nightStyle,setStyle]=useState(savedNightStyle);

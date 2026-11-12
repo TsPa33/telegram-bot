@@ -4,9 +4,9 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 if(process.env.WAREHOUSE_E2E!=='1')throw Error('Explicit local test guard required');
 const output=process.env.UX_V2_OUTPUT||'/tmp/corporate-ux-v2';fs.mkdirSync(output,{recursive:true});
-const browser=await chromium.launch({args:['--no-sandbox']});
+const browser=await chromium.launch({...(process.env.WAREHOUSE_CHROMIUM_PATH?{executablePath:process.env.WAREHOUSE_CHROMIUM_PATH}:{}),args:['--no-sandbox']});
 try{
- const c=await browser.newContext({baseURL:'http://127.0.0.1:5251',viewport:{width:1440,height:1000}});
+ const c=await browser.newContext({baseURL:process.env.UX_V2_ORIGIN||'http://127.0.0.1:5251',viewport:{width:1440,height:1000}});
  const reg=await c.request.post('/api/v1/auth/register',{data:{name:'Corporate UX QA',email:`ux-v2-${crypto.randomUUID()}@example.test`,password:'synthetic-test-only-password'}});assert.equal(reg.status(),201,await reg.text());const auth=await reg.json();
  const post=async(path,data)=>{const r=await c.request.post('/api/v1'+path,{data,headers:{'X-CSRF-Token':auth.csrf_token}});assert.ok(r.ok(),await r.text());return r.json()};
  const v=await post('/vehicles',{manufacturer:'Renault',model:'ZOE',year:2020});
@@ -30,7 +30,7 @@ try{
  await picker.getByRole('button',{name:/UX QA filter/}).click();await expect(picker).toHaveCount(0);await expect(dialog.locator('.order-line-editor')).toHaveCount(2);
  await page.screenshot({path:output+'/checkout.png',animations:'disabled'});await page.keyboard.press('Escape');
  await page.goto('/settings?section=general');await expect(page.getByRole('region',{name:'Оформлення'})).toBeVisible();
- for(const style of ['emerald','onyx','gold']){await page.locator('.theme-switch select').selectOption(style);await expect(page.locator('html')).toHaveAttribute('data-night-style',style);await page.reload();await expect(page.locator('html')).toHaveAttribute('data-night-style',style);await expect(page.locator('html')).toHaveAttribute('data-theme','dark');}
+ for(const style of ['forest','onyx','gold']){await page.locator('.theme-switch select').selectOption(style);await expect(page.locator('html')).toHaveAttribute('data-night-style',style);await page.reload();await expect(page.locator('html')).toHaveAttribute('data-night-style',style);await expect(page.locator('html')).toHaveAttribute('data-theme','dark');}
  await page.goto('/settings?section=payments');await expect(page.getByRole('region',{name:'Оплати'})).toContainText('недоступне');
  for(const width of [1440,1920,390]){await page.setViewportSize({width,height:1000});await page.goto('/inventory');await expect(page.locator('.stock-v2-main')).toBeVisible();assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'Inventory overflow '+width);await page.screenshot({path:output+'/inventory-'+width+'.png',animations:'disabled'});}
 
