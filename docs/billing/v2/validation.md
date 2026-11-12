@@ -10,7 +10,7 @@ Commands:
 - Warehouse `pytest tests/test_entitlements_phase2.py`: signed two-DB binding/trial,
   capacity Standard/Premium, VIN/global ingress, last-slot race, archive/reserve/origin,
   returns after expiry, old-order completion without line inflation, temporal downgrade
-  and add-on expiry, team concurrency/reactivation, trial race/deadline and transport scope.
+  and add-on expiry, team concurrency/reactivation, trial race/deadline and transport scope, plus denial of catalogue provisioning through a read-shaped GET.
 - Full Warehouse `pytest tests` and independent failing-case comparison at untouched
   Phase 1 SHA. Do not interpret a focused green suite as full application acceptance.
 - Frontend `node --test tests/*unit*.mjs`, `npm run build`.

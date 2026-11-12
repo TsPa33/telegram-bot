@@ -4,7 +4,7 @@
     "original_phase1_cases": 49
   },
   "local_phase2_backend": {
-    "passed": 13
+    "passed": 14
   },
   "frontend_unit": {
     "passed": 631
@@ -96,7 +96,7 @@
       "tests/test_team.py::test_forward_only_refusal_preserves_sessions_reserves_orders_and_replays"
     ]
   },
-  "final_full_backend": "running",
-  "remote_ci": "not yet observed",
+  "final_full_backend": "See PR #521 acceptance and independent CI artifacts",
+  "remote_ci": "See https://github.com/TsPa33/telegram-bot/pull/521",
   "production_ready": false
 }

@@ -448,3 +448,14 @@ def test_two_concurrent_trial_claims_have_one_winner(pilot):
 
     with ThreadPoolExecutor(2) as pool:
         assert sorted(pool.map(claim, [1, 2])) == [200, 409]
+
+
+def test_expired_get_cannot_provision_new_catalogue(pilot):
+    c, w, project = pilot
+    v = c.post("/api/v1/vehicles", json=vehicle(72)).json()
+    project([])
+    r = c.get(
+        "/api/v1/plan-parts/donor-parts/classification/preview",
+        params={"vehicle_id": v["id"], "ktype": 123, "provision": True},
+    )
+    assert r.status_code == 402, r.text
