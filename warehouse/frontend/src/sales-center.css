@@ -9,3 +9,46 @@
 
 @media(min-width:1200px){.sc-workspace{grid-template-columns:170px minmax(0,1fr) 280px}}
 @media(min-width:1001px) and (max-width:1699px){.sc-workspace .sc-journal :is(th,td):nth-child(1),.sc-workspace .sc-journal :is(th,td):nth-child(3),.sc-workspace .sc-journal :is(th,td):nth-child(4),.sc-workspace .sc-journal :is(th,td):nth-child(5){display:none}.sc-workspace .sc-journal :is(th,td):nth-child(2){width:34%}}
+
+
+/* Corporate sales workspace: use the existing theme tokens and shared controls. */
+.sc-kpi-region{margin:0 0 10px;min-width:0}
+.sc-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr));gap:10px}
+.sc-kpi{min-width:0;display:grid;gap:4px;padding:12px 15px}
+.sc-kpi>span,.sc-kpi>small{font-size:12px;color:var(--color-secondary)}
+.sc-kpi>strong{font-size:25px;line-height:1.15;color:var(--color-text);font-variant-numeric:tabular-nums}
+.sc-metric-error{display:flex;align-items:center;gap:8px;margin-top:6px;color:var(--color-secondary)}
+.sc-metric-error button{font-size:12px;min-height:32px}
+.sc-inspector-actions{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px}
+.sc-inspector-actions a{font-size:12px}
+.sc-inspector-actions button{min-width:34px;min-height:34px}
+.sc-workspace .order-detail--embedded{min-width:0;padding:0;margin:0;box-shadow:none;border:0;background:transparent}
+.sc-workspace .order-detail--embedded .order-detail-heading{display:flex;flex-wrap:wrap;gap:6px;align-items:start}
+.sc-workspace .order-detail--embedded .order-detail-heading h2{font-size:16px;line-height:1.35}
+.sc-workspace .order-detail--embedded .order-state-stack{align-items:start}
+.sc-workspace .order-detail--embedded .order-detail-lines{display:grid;grid-template-columns:minmax(0,1fr);gap:6px}
+.sc-workspace .order-detail--embedded .order-detail-lines article{min-width:0;display:flex;flex-direction:column;align-items:start;gap:3px;padding:8px;overflow-wrap:anywhere}
+.sc-workspace .order-detail--embedded .order-action-group{display:flex;flex-wrap:wrap;gap:6px;min-width:0;padding:0;border:0}
+.sc-workspace .order-detail--embedded .order-action-group button{flex:1 1 auto;white-space:normal;min-height:36px;padding:7px;font-size:12px}
+.sc-workspace .order-detail--embedded .order-history{overflow-wrap:anywhere}
+.sc-workspace .order-detail--embedded .order-history .pager{flex-wrap:wrap}
+.sc-buyers-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,380px);gap:12px;align-items:start;min-width:0}
+.sc-buyers-list,.sc-buyer-detail{min-width:0;padding:14px;overflow-wrap:anywhere}
+.sc-buyers-list h2,.sc-buyer-heading h2{font-size:17px;margin:0 0 10px}
+.sc-buyers-list>label{max-width:420px;margin-bottom:12px}
+.sc-buyers-list input{width:100%;min-width:0}
+.sc-buyer-rows,.sc-buyer-orders{display:grid;gap:6px}
+.sc-buyer-rows>button,.sc-buyer-order{display:flex;flex-direction:column;align-items:start;gap:4px;padding:10px 12px;min-width:0;text-align:left;white-space:normal;overflow-wrap:anywhere;border:1px solid var(--color-border);border-radius:8px;background:var(--color-surface);color:var(--color-text)}
+.sc-buyer-rows>button[aria-pressed=true]{background:var(--color-accent-surface);border-color:var(--color-accent)}
+.sc-buyer-rows>button span,.sc-buyer-rows>button small,.sc-buyer-order span,.sc-buyer-order small{font-size:12px;color:var(--color-secondary)}
+.sc-buyer-order{text-decoration:none}
+.sc-buyer-order:hover,.sc-buyer-order:focus-visible{border-color:var(--color-accent)}
+.sc-buyer-heading{display:flex;align-items:start;justify-content:space-between;gap:8px}
+.sc-buyer-heading button{min-width:34px;min-height:34px}
+.sc-buyer-contacts{margin-bottom:12px}
+.sc-buyer-contacts dd{white-space:pre-wrap;overflow-wrap:anywhere}
+.sc-buyer-history-heading{font-size:14px;margin:16px 0 10px}
+.sc-buyers-layout .pager{flex-wrap:wrap}
+@media(min-width:1200px){.sc-workspace{grid-template-columns:160px minmax(0,1fr) minmax(300px,340px)}}
+@media(max-width:900px){.sc-buyers-layout{grid-template-columns:minmax(0,1fr)}.sc-buyer-detail{grid-row:1}.sc-buyer-rows>button,.sc-buyer-order{min-height:48px}.sc-buyer-detail .order-action-group button{min-height:42px}}
+@media(max-width:600px){.sc-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.sc-kpi{padding:10px}.sc-kpi>strong{font-size:21px}.sc-kpi>span,.sc-kpi>small{font-size:11px}.sc-buyers-list,.sc-buyer-detail{padding:10px}.sc-workspace .order-detail--embedded .order-action-group button{min-height:42px}}
