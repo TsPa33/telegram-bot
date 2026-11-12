@@ -123,3 +123,11 @@ class OrderAction(Input):
 
 class OrderStatus(OrderAction):
     status: Literal['new','reserved','shipped','completed','cancelled']
+
+
+class CompleteOrder(OrderAction):
+    confirm_received: bool
+
+
+class ReviseReservedOrder(LinesInput):
+    confirm_re_reserve: bool
