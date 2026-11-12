@@ -1,0 +1,54 @@
+/* Approved corporate UX, isolated from dismantling plan styling. */
+.ui3-inventory .part-preview-layout.stock-v2-layout{display:grid;grid-template-columns:minmax(170px,210px) minmax(0,1fr) minmax(260px,315px);align-items:start;gap:12px}
+.stock-v2-layout>.stock-category-rail{grid-column:1;grid-row:1;min-width:0;display:flex;flex-direction:column;gap:4px;padding:12px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-panel)}
+.stock-category-rail h3{font-size:13px;margin:0 0 10px;color:var(--color-text)}
+.stock-category-rail button{display:flex;align-items:center;gap:7px;text-align:left;width:100%;min-width:0;min-height:38px;padding:7px 9px;border:1px solid transparent;background:transparent;color:var(--color-text);border-radius:7px;font-size:12px;white-space:normal;overflow-wrap:anywhere}
+.stock-category-rail button:hover{background:var(--color-subtle)}
+.stock-category-rail button[aria-pressed=true]{color:var(--color-accent);background:var(--color-accent-surface);font-weight:700;border-color:var(--color-border)}
+.stock-category-rail button>svg{flex:none;color:var(--color-accent)}.stock-category-rail button>span{flex:1;min-width:0}
+.stock-category-count{flex:none;font-variant-numeric:tabular-nums;color:var(--color-secondary);font-size:11px}
+.stock-category-root{display:flex;align-items:stretch;gap:2px}.stock-category-root>button:first-child{flex:1}.stock-category-root .stock-category-expand{width:25px;padding:3px;justify-content:center;flex:none}.stock-category-children{padding-left:16px;border-left:1px solid var(--color-border);margin:2px 0 5px 12px}
+.stock-category-children button{font-size:11px;min-height:32px;padding:5px 6px}
+.stock-v2-layout>.stock-v2-main{grid-column:2;grid-row:1;min-width:0;overflow:visible}
+.stock-v2-layout>.stock-v2-empty,.stock-v2-layout>.part-preview-slot{grid-column:3;grid-row:1;min-width:0}
+.stock-v2-empty{display:flex;flex-direction:column;align-items:center;gap:10px;padding:32px 15px;text-align:center;background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-panel);color:var(--color-secondary);font-size:12px}.stock-v2-empty strong{color:var(--color-text)}.stock-v2-empty p{margin:0}
+.ui3-inventory .stock-v2-layout .stock-compact-table .r115-table-head{display:none}
+.ui3-inventory .part-preview-layout.stock-v2-layout .stock-compact-table article.r115-part{display:grid;grid-template-columns:minmax(0,1fr) minmax(105px,auto) 70px;gap:8px;padding:12px 10px;min-width:0;align-items:center}
+.ui3-inventory .stock-v2-layout .stock-compact-table article.r115-part>div{min-width:0;margin:0;grid-column:auto;grid-row:auto}
+.ui3-inventory .stock-v2-layout .stock-compact-table article.r115-part .ui3-identity{grid-column:1/-1}
+.ui3-inventory .stock-v2-layout .stock-compact-table article.r115-part .compact-donor-hidden{display:none}
+.ui3-inventory .stock-v2-layout .stock-compact-table article.r115-part .ui3-actions{grid-column:3;grid-row:2}
+.ui3-inventory .stock-v2-layout .stock-compact-table article.r115-part .ui3-stock{grid-column:2;grid-row:2;min-width:0}
+.ui3-inventory .stock-v2-layout .stock-compact-table .inventory-quantity>div{flex-wrap:wrap;gap:4px}
+.stock-v2-layout .stock-pagination{flex-wrap:wrap;gap:8px}
+.stock-primary-action:not(:empty){margin:0 0 10px}.stock-primary-action>button{width:100%;display:flex;align-items:center;justify-content:center;gap:7px}
+.stock-assembly-panel{border-top:1px solid var(--color-border);padding-top:9px}.stock-assembly-toggle{display:flex;align-items:center;justify-content:space-between;gap:6px;width:100%}.stock-assembly-body{display:grid;gap:9px;padding-top:10px}.stock-assembly-body h4{font-size:13px;margin:4px 0}.stock-assembly-body .check-inline{display:flex;align-items:flex-start;gap:7px;white-space:normal}.stock-assembly-body input[type=checkbox]{flex:none;margin-top:3px;width:16px;height:16px}.stock-assembly-ref,.stock-assembly-child{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:7px 0;border-bottom:1px solid var(--color-border)}.stock-assembly-ref label,.stock-assembly-child span{flex:1;min-width:0}.stock-assembly-ref small,.stock-assembly-child small{color:var(--color-secondary);font-size:10px}.stock-assembly-ref select{width:100%}.stock-assembly-child button{font-size:11px!important;padding:5px 8px}.stock-assembly-summary{display:grid;gap:3px;background:var(--color-subtle);padding:8px;border-radius:7px}.stock-assembly-block{padding:8px;background:var(--color-warning-surface);color:var(--color-warning)!important;border-radius:7px}.stock-assembly-result{color:var(--color-success)!important}
+@media(min-width:901px){.stock-v2-layout>.part-preview-slot{position:static}.stock-v2-layout #search-part-preview.part-quick-preview{max-height:none;overflow:visible}}
+@media(max-width:1270px) and (min-width:901px){.ui3-inventory .part-preview-layout.stock-v2-layout{grid-template-columns:180px minmax(0,1fr)}.stock-v2-layout>.part-preview-slot,.stock-v2-layout>.stock-v2-empty{grid-column:2;grid-row:2}}
+@media(max-width:900px){.ui3-inventory .part-preview-layout.stock-v2-layout{grid-template-columns:minmax(0,1fr)}.stock-v2-layout>.stock-category-rail,.stock-v2-layout>.stock-v2-main{grid-column:1;grid-row:auto}.stock-v2-layout>.stock-v2-empty{display:none}.stock-v2-layout>.part-preview-slot{display:contents}.stock-category-rail{max-height:260px;overflow:auto}}
+@media(max-width:450px){.ui3-inventory .part-preview-layout.stock-v2-layout .stock-compact-table article.r115-part{grid-template-columns:minmax(0,1fr) 65px}.ui3-inventory .stock-v2-layout .stock-compact-table article.r115-part .ui3-stock{grid-column:1;grid-row:2}.ui3-inventory .stock-v2-layout .stock-compact-table article.r115-part .ui3-actions{grid-column:2;grid-row:2}}
+/* Common donor card: image and caption never overlay vehicle data. */
+.corporate-donor-card .r1146-card-intro{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:12px!important}
+.corporate-donor-top{display:grid;grid-template-columns:minmax(0,1fr) minmax(90px,120px);gap:10px;align-items:start}
+.corporate-donor-card .r1146-card-heading{display:flex;flex-direction:column;align-items:flex-start;gap:5px}
+.corporate-donor-card .r1146-card-photo{position:static!important;inset:auto!important;width:100%!important;min-width:0;max-width:120px;display:flex;flex-direction:column;align-items:center}
+.corporate-donor-card .vehicle-image-shell{width:100%}.corporate-donor-card .vehicle-image{height:68px!important;margin:0!important}
+.corporate-donor-card .donor-image-caption{position:static!important;display:block;font-size:10px;line-height:1.3;text-align:center;white-space:normal;color:var(--color-secondary);max-width:100%}
+.corporate-donor-card .r1146-card-summary{min-width:0}.corporate-donor-card .r1146-card-footer{flex-wrap:wrap;gap:8px}.corporate-donor-card .r1141-car-actions{flex-wrap:wrap}
+.corporate-donor-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media(max-width:900px){.corporate-donor-grid{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:600px){.night-style-select{display:none!important}.corporate-donor-top{grid-template-columns:minmax(0,1fr) 90px}}
+/* Order creation and fulfilment. */
+dialog.order-dialog{width:min(760px,calc(100vw - 24px));max-height:calc(100dvh - 24px)}
+.order-dialog .order-add-product{margin:9px 0;width:100%;border-style:dashed;color:var(--color-accent)}
+.order-dialog .r4-basket>.r4-picker{margin:0 0 14px;padding:12px;background:var(--color-subtle);border:1px solid var(--color-border);border-radius:10px}
+.order-dialog .r4-picker .order-picker-results{max-height:280px;overflow:auto;display:grid;gap:5px}
+.order-dialog .r4-picker .order-picker-results>button{min-height:60px;gap:2px;padding:8px;text-align:left;background:var(--color-surface);border:1px solid var(--color-border)}
+.order-picker-pages{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.order-dialog .order-buyer-picker{display:grid;gap:8px}.order-dialog .order-buyer-picker h3{margin:8px 0 0}.order-dialog .order-buyer-picker details{margin:0}
+.order-dialog form>.modal-actions{position:sticky;bottom:0;background:var(--color-surface);padding:10px 0 0;border-top:1px solid var(--color-border);z-index:2}
+.order-detail{max-width:980px}.order-detail-heading{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}.order-state-stack{display:grid;gap:5px;text-align:right}.order-state-stack small{color:var(--color-success)}
+.order-customer-card{padding:12px;border:1px solid var(--color-border);border-radius:10px;background:var(--color-subtle);margin:10px 0}.order-customer-card h3{margin:0 0 5px}.order-detail-lines>article{padding:10px 0;gap:8px}.order-detail .order-totals{font-size:18px;font-weight:750;color:var(--color-accent)}
+.order-detail .order-action-group{display:flex;flex-wrap:wrap;gap:8px;border:0;padding:0;margin:10px 0;min-width:0}
+.order-history{margin-top:16px;padding-top:10px;border-top:1px solid var(--color-border)}.order-history summary{font-weight:700;cursor:pointer}
+.stats-kpi,.stats-pane,.r123-panel{padding:14px!important}.stats-kpi h3{font-size:13px!important}.stats-kpi strong{font-size:22px!important}.r123-profile-bar{gap:10px!important;padding:12px!important}.settings-breadcrumb{display:flex;gap:8px;font-size:12px;color:var(--color-secondary);margin:0 0 12px}
