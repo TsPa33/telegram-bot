@@ -9,7 +9,7 @@ from app.services.unified_catalogue import CatalogueAdapter,CatalogueResolver,Ca
 
 
 def detail_items():
-    return [dict(supplier_id=2,article_number='EXAMPLE',car_id=107555,supplier=[{'description':'HELLA'}],article=[{'NormalizedDescription':'Bulb'}],oem=[{'OENbr':'OEM-ONE'},{'OENbr':'OEM-TWO'}],images=[{'PictureName':'2_E325.JPG'}])]
+    return [dict(supplier_id=2,article_number='EXAMPLE',car_id=107555,supplier=[{'description':'HELLA'}],article=[{'NormalizedDescription':'Bulb'}],oem=[{'manufacturerId':120,'OENbr':'OEM-ONE'},{'manufacturerId':120,'OENbr':'OEM-TWO'}],images=[{'PictureName':'2_E325.JPG'}])]
 
 
 def envelope(car=107555,coverage='complete_verified'):
@@ -348,3 +348,67 @@ def test_volvo_oem_preview_wrong_brand_and_workspace(logged,volvo,client):
     logged.post('/api/v1/auth/logout')
     signup(client,'other-oem-preview@example.test')
     assert client.get(f"/api/v1/vehicles/{volvo['id']}/volvo-oem-preview",params={'source_modification_id':107555}).status_code==404
+
+
+def test_volvo_oem_selection_plan_then_stock(logged,volvo,monkeypatch):
+    from app.services.inventory import snapshot
+    from app.services.catalogue_format import digest
+    from uuid import uuid4
+    base=f"/api/v1/vehicles/{volvo['id']}"
+    assert logged.post(base+'/unified-catalogue/base').status_code==200
+    monkeypatch.setattr(CatalogueAdapter,'plan',lambda self,car:envelope(car,'partial'))
+    offers=detail_items()
+    offers[0]['oem'] += [{'manufacturerId':80,'OENbr':'OTHER-MAKE'},{'OENbr':'UNKNOWN-MAKE'}]
+    monkeypatch.setattr(CatalogueAdapter,'articles',lambda *a,**kw:offers)
+    def preview():
+        r=logged.get(base+'/volvo-oem-preview',params={'source_modification_id':107555})
+        assert r.status_code==200,r.text
+        return r.json()
+    def body(data,row,**kwargs):
+        return dict(request_key=str(uuid4()),source_modification_id=107555,snapshot_sha=data['snapshot_sha'],
+            expected_vehicle_basis=data['vehicle_basis'],item_id=row['id'],expected_row_basis=row['row_basis'],
+            expected_reference_digest=row['reference_digest'],product_id=106,supplier_id=2,
+            article_number='EXAMPLE',oem_number='OEM-ONE',confirm_reference=True,**kwargs)
+    url=base+'/volvo-oem-selection'
+    data=preview();row=data['plan_items'][0]
+    detail=logged.get(base+'/volvo-oem-preview',params={'source_modification_id':107555,
+        'product_id':106,'snapshot_sha':data['snapshot_sha']}).json()
+    assert detail['articles'][0]['oem_numbers']==['OEM-ONE','OEM-TWO']
+    assert logged.post(url,json={**body(data,row),'oem_number':'OTHER-MAKE'}).status_code==422
+    assert logged.post(url,json={**body(data,row),'confirm_reference':False}).status_code==422
+    assert logged.post(url,json=body(data,row,assign_stock=True,confirm_physical_oem=True)).status_code==409
+    with Session(engine()) as db:
+        before=[snapshot(x) for x in db.scalars(select(DismantlingItem).order_by(DismantlingItem.id))]
+    request=body(data,row)
+    result=logged.post(url,json=request)
+    assert result.status_code==200,result.text
+    assert result.json()['stock_assigned'] is False
+    assert logged.post(url,json=request).json()==result.json()
+    assert logged.post(url,json=body(data,row)).status_code==409
+    with Session(engine()) as db:
+        assert [snapshot(x) for x in db.scalars(select(DismantlingItem).order_by(DismantlingItem.id))]==before
+        assert db.scalar(select(func.count()).select_from(Part))==0
+    key='base:'+row['id']
+    assert logged.post(base+'/unified-catalogue/stock',json={'keys':[key],'confirm_physical_receipt':True}).status_code==200
+    data=preview();row=next(x for x in data['plan_items'] if x['id']==row['id'])
+    assert row['reference']['oem_number']=='OEM-ONE' and row['stock_eligible']
+    with Session(engine()) as db:
+        p=db.get(Part,row['part_id']);p.selling_price=123.45;p.article_number='MANUAL';db.commit()
+        before=snapshot(p)
+    assert logged.post(url,json=body(data,row,assign_stock=True)).status_code==422
+    request=body(data,row,assign_stock=True,confirm_physical_oem=True)
+    result=logged.post(url,json=request)
+    assert result.status_code==200,result.text
+    assert result.json()['stock_assigned']
+    assert logged.post(url,json=request).json()==result.json()
+    with Session(engine()) as db:
+        p=db.get(Part,row['part_id']);after=snapshot(p)
+        assert p.oem_number=='OEM-ONE' and p.oem_provenance['vin_verified'] is False
+        assert {k:v for k,v in before.items() if k not in ('oem_number','oem_provenance')}=={k:v for k,v in after.items() if k not in ('oem_number','oem_provenance')}
+        assert db.scalar(select(func.count()).select_from(Operation).where(Operation.type=='receipt'))==1
+    data=preview();row=next(x for x in data['plan_items'] if x['id']==row['id'])
+    assert not row['stock_eligible']
+    assert logged.post(url,json=body(data,row,assign_stock=True,confirm_physical_oem=True)).status_code==409
+    with Session(engine()) as db:
+        v=db.get(Vehicle,volvo['id']);v.year=2019;db.commit()
+    assert logged.post(url,json=body(data,row)).status_code==409
