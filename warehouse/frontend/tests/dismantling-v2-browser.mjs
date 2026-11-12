@@ -1,7 +1,9 @@
 // Real auth/API/PostgreSQL and production build. Only failures/delivery timing are injected.
 import {chromium,expect} from '@playwright/test';import assert from 'node:assert/strict';import fs from 'node:fs';
 if(process.env.WAREHOUSE_E2E!=='1')throw Error('Isolated local only');
-const dir=process.env.DV2_OUTPUT||'/tmp/dv2-browser';fs.mkdirSync(dir,{recursive:true});const browser=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox']});
+const dir=process.env.DV2_OUTPUT||'/tmp/dv2-browser';fs.mkdirSync(dir,{recursive:true});
+const executablePath=process.env.WAREHOUSE_CHROMIUM_PATH||(!process.env.CI&&fs.existsSync('/usr/bin/chromium')?'/usr/bin/chromium':undefined);
+const browser=await chromium.launch({...(executablePath?{executablePath}:{}),args:['--no-sandbox']});
 try{
  const c=await browser.newContext({baseURL:'http://127.0.0.1:5260',viewport:{width:1440,height:1000}});
  const reg=await c.request.post('/api/v1/auth/register',{data:{name:'Dismantling V2 QA',email:`dv2-${crypto.randomUUID()}@example.test`,password:'synthetic-test-only-password'}});assert.equal(reg.status(),201);const auth=await reg.json();
@@ -52,5 +54,58 @@ try{
  assert.equal((await c.request.get('/api/v1'+path(vehicles[0])+'/sources')).status(),403);assert.equal(await page.getByText('Джерела підбору',{exact:true}).count(),0);
  const owner=await c.request.post('http://127.0.0.1:8060/__dv2_owner',{headers:{'X-CSRF-Token':auth.csrf_token,Cookie:(await c.cookies()).map(v=>`${v.name}=${v.value}`).join('; ')}});assert.equal(owner.status(),200);await page.goto('/vehicles?donor='+vehicles[0].id);await page.getByText('Джерела підбору',{exact:true}).click();await expect(page.locator('.dv2-sources')).toContainText('Унікальних позицій: 227');const source=await get(path(vehicles[0])+'/sources');assert.equal(Object.values(source.counts).reduce((a,b)=>a+b,0),227);await shot('platform-owner-sources');
  assert.equal((await (await cc.request.get(`/api/v1/parts?vehicle_id=${f.vehicle_id}&limit=200`)).json()).total,4,'References create no SKU');assert.equal((await c.request.get(`/api/v1/vehicles/${f.vehicle_id}`)).status(),404,'Workspace isolation');await cc.close();assert.deepEqual(errors,[]);
- fs.writeFileSync(`${dir}/report.json`,JSON.stringify({target:'LOCAL_REAL_AUTH_POSTGRES_TEST_RECORDS',threeMakes:true,planPositions:227,five:{parts:5,units:7},mixed:{parts:5,newParts:3,soldQuantity:0,damagePreserved:true},large:{parts:227,lossAfterCommittedSecondBatch:true,reloadReplay:true},qty6:'BLOCKED_AS_REQUIRED',referenceStockUnchanged:true,filtersAndInspectorPreserved:true,sourceAccess:{directorDenied:true,platformOwnerAllowed:true,uniqueSourcePositions:227},pageErrors:errors},null,2));console.log('LOCAL E2E PASS: 3 makes, generation/error/retry, five/mixed/227 intake, committed-response loss/reload/replay, qty1/qty6, day/night widths');
+
+
+ // Integrated flow: sell TWO of the same actual Parts received above, not separately seeded SKUs.
+ const actual=(await get(`/parts?vehicle_id=${v.id}&limit=200`)).items;
+ const actualTree=(await get(`/vehicles/${v.id}/assemblies`)).items;
+ const sellable=actual.filter(part=>part.available_quantity>0&&actual.filter(other=>other.name===part.name).length===1&&actualTree.some(node=>node.part_id===part.id&&!node.parent_id&&!node.completeness&&!node.consumed_operation_id));
+ assert.ok(sellable.length>=2,'Two distinct, received, standalone Parts required');
+ const [first,second]=sellable;
+ const buyer=await post('/buyers',{name:'DV2 Integrated Buyer',phone:'0509998877'});
+ await page.setViewportSize({width:1440,height:1000});await page.getByRole('button',{name:'День',exact:true}).click();
+ await page.goto('/inventory?vehicle_id='+v.id);
+ const firstRow=page.locator('article.ui3-part').filter({has:page.getByRole('button',{name:'Дії '+first.name,exact:true})});
+ await firstRow.getByRole('button',{name:'Дії '+first.name,exact:true}).click();
+ await page.getByRole('menuitem',{name:'Оформити замовлення',exact:true}).click();
+ const checkoutDialog=page.getByRole('dialog',{name:'Оформити замовлення'});
+ await expect(checkoutDialog.getByRole('heading',{name:'Кошик · 1 позицій',exact:true})).toBeVisible();
+ await checkoutDialog.getByRole('button',{name:'+ Додати товар',exact:true}).click();
+ const picker=checkoutDialog.getByRole('region',{name:'Пошук для замовлення'});
+ await picker.getByRole('combobox',{name:'Автомобіль для замовлення'}).selectOption(v.id);
+ await picker.getByRole('searchbox',{name:'Пошук позицій замовлення'}).fill(second.name);
+ await picker.locator('.order-picker-results').getByText(second.name,{exact:true}).click();
+ await expect(checkoutDialog.locator('.order-line-editor')).toHaveCount(2);
+ await checkoutDialog.getByLabel('Погоджена ціна '+first.name,{exact:true}).fill('125.50');
+ await checkoutDialog.getByLabel('Погоджена ціна '+second.name,{exact:true}).fill('80.25');
+ await checkoutDialog.getByRole('textbox',{name:'Телефон покупця',exact:true}).fill(buyer.phone);
+ await checkoutDialog.getByRole('button',{name:/DV2 Integrated Buyer/}).click();
+ await checkoutDialog.getByRole('combobox',{name:'Дія з замовленням'}).selectOption('sell');
+ await checkoutDialog.getByRole('checkbox',{name:'Підтверджую продаж і списання всіх позицій',exact:true}).check();
+ const checkoutResponse=page.waitForResponse(response=>response.url().endsWith('/api/v1/orders/checkout')&&response.request().method()==='POST');
+ await shot('integrated-checkout');
+ await checkoutDialog.getByRole('button',{name:'Підтвердити продаж',exact:true}).click();
+ const response=await checkoutResponse;assert.equal(response.status(),201,await response.text());
+ const order=await response.json();assert.ok(order.sold_at);assert.deepEqual(order.totals_by_currency,{UAH:'205.75'});
+ assert.deepEqual(order.lines.map(line=>line.part_id).sort(),[first.id,second.id].sort());
+ await expect(page.getByRole('heading',{name:'Замовлення №'+order.number,exact:true})).toBeVisible();
+ // Exact request replay must recover the same order without creating a second sale.
+ const replay=await post('/orders/checkout',response.request().postDataJSON());assert.equal(replay.id,order.id);
+ for(const original of [first,second])assert.equal((await get('/parts/'+original.id)).quantity,original.quantity-1);
+ const salesBefore=(await get('/audit?type=sale&vehicle_id='+v.id+'&limit=200')).items;
+ assert.equal(salesBefore.length,2);assert.ok(salesBefore.every(op=>op.after.sale.order_id===order.id));
+ await page.getByRole('button',{name:'Підтвердити передачу покупцеві',exact:true}).click();
+ await page.getByRole('dialog',{name:'Покупець отримав замовлення?',exact:true}).getByRole('button',{name:'Підтвердити',exact:true}).click();
+ await expect(page.getByText('Завершено',{exact:true})).toBeVisible();
+ assert.equal((await get('/orders/'+order.id)).status,'completed');
+ for(const original of [first,second])assert.equal((await get('/parts/'+original.id)).quantity,original.quantity-1);
+ assert.equal((await get('/audit?type=sale&vehicle_id='+v.id+'&limit=200')).total,2,'Receipt confirmation must not deduct again');
+ assert.equal((await get('/orders?buyer_id='+buyer.id)).total,1,'Buyer history exact link');
+ const soldPlanIds=actualTree.filter(node=>[first.id,second.id].includes(node.part_id)).map(node=>node.id);
+ const noNewReceipt=await post(path(v)+'/bulk/preview',{ids:soldPlanIds,action:'receipt',confirm_physical:true});
+ assert.deepEqual(noNewReceipt.eligible_ids,[],'Previously received or sold plan items cannot restock');
+ await shot('integrated-completed-order');
+ const integratedCheckout={actualReceivedParts:2,checkoutTotal:'205.75',currency:'UAH',oneOrder:true,saleOperations:2,replaySafe:true,receivedWithoutSecondDeduction:true,repeatReceiptBlocked:true};
+ assert.deepEqual(errors,[]);
+ fs.writeFileSync(`${dir}/report.json`,JSON.stringify({target:'LOCAL_REAL_AUTH_POSTGRES_TEST_RECORDS',threeMakes:true,planPositions:227,five:{parts:5,units:7},mixed:{parts:5,newParts:3,soldQuantity:0,damagePreserved:true},large:{parts:227,lossAfterCommittedSecondBatch:true,reloadReplay:true},qty6:'BLOCKED_AS_REQUIRED',referenceStockUnchanged:true,filtersAndInspectorPreserved:true,sourceAccess:{directorDenied:true,platformOwnerAllowed:true,uniqueSourcePositions:227},integratedCheckout,pageErrors:errors},null,2));console.log('LOCAL E2E PASS: 3 makes, generation/error/retry, five/mixed/227 intake, committed-response loss/reload/replay, qty1/qty6, day/night widths, integrated stock checkout + exact replay + completion PASS');
 }finally{await browser.close()}
