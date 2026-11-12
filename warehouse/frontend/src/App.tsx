@@ -10,6 +10,8 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  Pin,
+  PinOff,
   Settings2,
   Search,
   ShieldCheck,
@@ -73,6 +75,9 @@ export default function App() {
   const sidebarScroll=useSidebarScroll(menu,setMenu,location.pathname,!!user&&!checking);
   const [accessUnverified,setAccessUnverified]=useState(false);
   const [compactSidebar,setCompactSidebar]=useState(()=>{try{return localStorage.getItem('warehouse.sidebar.compact')==='true';}catch{return false;}});
+  const [settingsOpen,setSettingsOpen]=useState(location.pathname==='/settings');
+  useEffect(()=>{if(location.pathname==='/settings')setSettingsOpen(true);},[location.pathname]);
+  const settingsSection=new URLSearchParams(location.search).get('section')==='payments'?'payments':'general';
   const currentUser=useRef<Row|null>(null),generation=useRef(0),inFlight=useRef(0);
   const retryIdentity=useRef<(force?:boolean)=>void>(()=>{});
   const changeUser=useCallback((next:Row|null)=>{
@@ -164,7 +169,7 @@ export default function App() {
             CarPot<strong>WAREHOUSE</strong>
           </span>
         </Link>
-        <button type="button" className="sidebar-desktop-toggle" aria-label={compactSidebar?'Розгорнути бічне меню':'Згорнути бічне меню'} aria-controls="warehouse-sidebar" aria-expanded={!compactSidebar} onClick={()=>{setCompactSidebar(v=>{try{localStorage.setItem('warehouse.sidebar.compact',String(!v));}catch{}return !v;});}}><Menu size={18}/></button>
+        <button type="button" className="sidebar-desktop-toggle" aria-label={compactSidebar?'Закріпити бічне меню':'Увімкнути автоматичне меню'} title={compactSidebar?'Закріпити меню відкритим':'Автоматично згортати меню'} aria-pressed={!compactSidebar} aria-controls="warehouse-sidebar" onClick={()=>{setCompactSidebar(v=>{try{localStorage.setItem('warehouse.sidebar.compact',String(!v));}catch{}return !v;});}}>{compactSidebar?<Pin size={18}/>:<PinOff size={18}/>}<span className="sidebar-link-label">{compactSidebar?'Закріпити меню':'Автоматичне меню'}</span></button>
         {sidebarScroll.mobileOpen&&<button className="sidebar-close icon-button" aria-label="Закрити меню" onClick={()=>setMenu(false)}><X size={20}/></button>}
         <div className="workspace">
           <span className="workspace-letter">
@@ -186,7 +191,7 @@ export default function App() {
           ))}
         </nav>
         {user.catalogue_platform_admin===true&&<NavLink to="/administration/catalogue/import"><ShieldCheck size={18}/><span className="sidebar-link-label">Адміністрування → Каталог</span></NavLink>}
-        <NavLink className="settings-nav" to="/settings"><Settings2 size={18}/><span className="sidebar-link-label">Налаштування</span></NavLink>
+        <div className="sidebar-settings-group"><button type="button" className={'settings-nav'+(location.pathname==='/settings'?' active':'')} aria-expanded={settingsOpen} aria-controls="warehouse-settings-nav" onClick={()=>{setSettingsOpen(v=>!v);if(location.pathname!=='/settings'){navigate('/settings?section=general');setSettingsOpen(true);}}}><Settings2 size={18}/><span className="sidebar-link-label">Налаштування</span><ChevronRight className="settings-chevron" size={14}/></button>{settingsOpen&&<nav id="warehouse-settings-nav" className="sidebar-settings-sub" aria-label="Налаштування"><Link className={location.pathname==='/settings'&&settingsSection==='general'?'active':undefined} aria-current={location.pathname==='/settings'&&settingsSection==='general'?'page':undefined} to="/settings?section=general" onClick={()=>setMenu(false)}>Загальні</Link><Link className={location.pathname==='/settings'&&settingsSection==='payments'?'active':undefined} aria-current={location.pathname==='/settings'&&settingsSection==='payments'?'page':undefined} to="/settings?section=payments" onClick={()=>setMenu(false)}>Оплати</Link></nav>}</div>
         <div className="sidebar-foot">
           <div className="safe-dot" />
           Незалежний облік складу<small>CarPot Warehouse · MVP</small>
