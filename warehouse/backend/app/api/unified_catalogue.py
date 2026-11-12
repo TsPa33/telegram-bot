@@ -416,6 +416,12 @@ def volvo_pilot_payload(v, source_modification_id, snapshot_sha=None):
         raise HTTPException(409, 'Пілот OEM доступний лише для Volvo XC90')
     if source_modification_id != 107555:
         raise HTTPException(422, 'Для пілота доступна лише модифікація 107555')
+    # A confirmed different source identity is authoritative, even if generic specs match.
+    saved=service.saved_state(v)
+    selected=(v.dismantling_v3 or {}).get('global_selection') or {}
+    identities=[selected.get('car_id'),(saved or {}).get('payload',{}).get('car_id')]
+    if any(identity is not None and identity!=source_modification_id for identity in identities):
+        raise HTTPException(409,'В автомобілі вже підтверджено іншу каталожну модифікацію')
     # Reject explicit contradictory characteristics; missing fields still require user review.
     fuel=(v.fuel_type or '').strip().casefold()
     drive=(v.drive_type or '').strip().casefold()

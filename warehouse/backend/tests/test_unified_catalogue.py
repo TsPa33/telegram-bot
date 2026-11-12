@@ -435,3 +435,13 @@ def test_volvo_real_export_review_is_exact_version_and_label():
     assert candidates(SimpleNamespace(name='стартер'),reviewed['categories'])==[2]
     assert candidates(SimpleNamespace(name='Стартер у зборі'),reviewed['categories'])==[]
     assert overlay({**raw,'source_snapshot_sha':'b'*64})['categories'][0]['kind']=='review'
+
+
+def test_volvo_pilot_rejects_confirmed_different_source(logged,volvo,monkeypatch):
+    with Session(engine()) as db:
+        v=db.get(Vehicle,volvo['id'])
+        v.dismantling_v3={'global_selection':{'car_id':107556}}
+        db.commit()
+    monkeypatch.setattr(CatalogueAdapter,'plan',lambda *a,**kw:pytest.fail('Conflicting selection must not call Catalogue'))
+    r=logged.get(f"/api/v1/vehicles/{volvo['id']}/volvo-oem-preview",params={'source_modification_id':107555})
+    assert r.status_code==409,r.text
