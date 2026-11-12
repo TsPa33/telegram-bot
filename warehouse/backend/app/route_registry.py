@@ -1,6 +1,8 @@
 """Reviewed route allowlist. New authenticated routes fail closed until reviewed."""
 KNOWN_ROUTES = frozenset({
     ('POST', '/api/v1/vehicles/{id}/catalogue-selection'),
+    ('GET', '/api/v1/vehicles/{id}/volvo-oem-preview'),
+    ('POST', '/api/v1/vehicles/{id}/volvo-oem-selection'),
     ('GET','/api/v1/vehicles/{id}/assemblies/readiness'),
     ('GET','/api/v1/vehicles/{id}/assemblies'),
     ('GET','/api/v1/vehicles/{id}/assemblies/receipt-preview'),

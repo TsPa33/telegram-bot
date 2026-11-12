@@ -38,3 +38,20 @@ def local_platform_owner(request:Request):
         if not account.email.endswith('@example.test'):raise HTTPException(403)
         os.environ['WAREHOUSE_CATALOG_PLATFORM_ADMIN_IDS']=account.id
         return {'local_test_owner':True}
+
+
+# Synthetic upstream only, the actual Warehouse API, authorization and DB are exercised.
+from app.services.unified_catalogue import CatalogueAdapter
+from test_unified_catalogue import envelope, detail_items
+_original_plan=CatalogueAdapter.plan
+_original_articles=CatalogueAdapter.articles
+def pilot_plan(self,car,**kwargs):
+    if car==107555 and not kwargs.get('global_source'):
+        return envelope(car,'partial')
+    return _original_plan(self,car,**kwargs)
+def pilot_articles(self,car,product_id,snapshot_sha,**kwargs):
+    if car==107555 and product_id==106 and snapshot_sha=='a'*64 and not kwargs.get('global_source'):
+        return detail_items()
+    return _original_articles(self,car,product_id,snapshot_sha,**kwargs)
+CatalogueAdapter.plan=pilot_plan
+CatalogueAdapter.articles=pilot_articles

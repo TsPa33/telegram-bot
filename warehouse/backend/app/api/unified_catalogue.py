@@ -488,7 +488,7 @@ def volvo_oem_preview(
                     reference_stale=bool(ref and (ref['vehicle_basis']!=basis or ref['snapshot_sha']!=sha)),
                     stock_oem=part.oem_number if part else None,
                     stock_eligible=bool(part and not part.archived and part.quantity>0 and not part.reserved_quantity
-                        and not part.oem_number and not part.oem_provenance and not row.assembly_consumed_operation_id))
+                        and not part.oem_number and not part.oem_provenance and not row.assembly_consumed_operation_id and row.included and row.status!='absent'))
     return dict(**base, plan_items=[row_view(row) for row in rows],
         catalogue_types=[dict(product_id=p['product_id'], name_uk=p.get('name_uk'),
                               name_source=p.get('name_source'), category_path=p.get('category_path'),
