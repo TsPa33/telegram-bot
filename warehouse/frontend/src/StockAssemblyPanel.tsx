@@ -28,7 +28,7 @@ export default function StockAssemblyPanel({part,onChanged}:{part:Row;onChanged:
  const node=data.data?.node,preview=data.data?.preview,tree=data.data?.tree,unit=assemblyUnitFor(node||part);
  const children:Row[]=(tree?.items||[]).filter((n:Row)=>n.parent_id===node?.id&&node);
  const detached:Row[]=(tree?.items||[]).filter((n:Row)=>preview?.missing_component_ids?.includes(n.id));
- const refs=node&&unit?assemblyReferenceLines(node,tree.items,children):[];
+ const refs=node&&unit?assemblyReferenceLines(node,tree?.items||[],children):[];
  const alreadySeparated=(label:string)=>detached.some(n=>String(n.name).trim().toLocaleLowerCase('uk')===label.trim().toLocaleLowerCase('uk'));
  const block=!writable?'Немає дозволу на керування вузлом.':data.loading?'Перевіряємо фактичний склад…':data.error?'Не вдалося перевірити вузол.':!data.data?.ready?.enabled?'Керування вузлами недоступне.':Number(part.quantity)!==1?'Для розбору потрібна одна фізична одиниця. Уточніть партію; не змінюйте залишок вручну.':part.archived||part.assortment_enabled===false?'Позиція неактивна.':part.reserved_quantity>0||preview?.conflicts?.length?'Вузол зарезервований. Спочатку зніміть резерв.':node?.parent_id?'Спочатку відокремте цей компонент від батьківського вузла.':node?.consumed_operation_id||node?.consumed_type||node?.presence==='absent'?'Вузол уже передано або позначено відсутнім.':'';
  async function send(command:Command){
