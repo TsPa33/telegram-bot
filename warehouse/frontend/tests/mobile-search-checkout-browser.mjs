@@ -2,9 +2,9 @@ import {chromium,expect} from '@playwright/test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 if(process.env.WAREHOUSE_E2E!=='1')throw Error('Explicit isolated E2E required');
-const origin='http://127.0.0.1:5260',out='/tmp/mobile-search-checkout';
+const origin=process.env.MOBILE_SEARCH_ORIGIN||'http://127.0.0.1:5260',out='/tmp/mobile-search-checkout';
 fs.mkdirSync(out,{recursive:true});
-const browser=await chromium.launch({args:['--no-sandbox']});
+const browser=await chromium.launch({...(process.env.WAREHOUSE_CHROMIUM_PATH?{executablePath:process.env.WAREHOUSE_CHROMIUM_PATH}:{}),args:['--no-sandbox']});
 try{
  const c=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true}),page=await c.newPage(),errors=[];
  page.on('pageerror',e=>errors.push(e.message));
@@ -34,13 +34,13 @@ try{
  await expect(categories.locator('.ui11-category-grid').first()).toBeVisible();
  await categories.locator('summary').click();
  await search.fill('MOBILE-QA-123');
- await page.getByRole('button',{name:'Знайти',exact:true}).click();
+
  const card=page.getByRole('article',{name:part.name,exact:true});
  await expect(card).toBeVisible();
  await expect(card).toContainText('MOBILE-QA-123');
  await expect(card).toContainText('В наявності · 3 шт.');
  await expect(page.locator('.mobile-search-result')).toHaveCount(1);
- await card.getByRole('button',{name:'Деталі запчастини',exact:true}).click();
+ await card.getByRole('button',{name:part.name,exact:true}).click();
  await expect(page.getByRole('button',{name:'Закрити швидкий перегляд'})).toBeVisible();
  await page.getByRole('button',{name:'Закрити швидкий перегляд'}).click();
  await page.screenshot({path:out+'/result-390.png'});
@@ -68,7 +68,7 @@ try{
  assert.equal((await get('/parts/'+part.id)).quantity,3);
  assert.equal((await get('/parts/'+part.id)).reserved_quantity,1);
  await expect(dialog).not.toBeVisible();
- await page.goto(origin+'/search');await search.fill('Генератор Mobile QA');await page.getByRole('button',{name:'Знайти',exact:true}).click();
+ await page.goto(origin+'/search');await search.fill('Генератор Mobile QA');
  await expect(card).toContainText('В наявності · 2 шт.');
  await card.getByRole('button',{name:'Оформити',exact:true}).click();
  await dialog.getByRole('button',{name:'Продовжити пошук',exact:true}).click();

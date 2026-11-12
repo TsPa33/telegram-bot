@@ -1,0 +1,50 @@
+[
+  {
+    "engine": "chromium",
+    "width": 320,
+    "automaticSuggestions": true,
+    "oemArticle": true,
+    "quantityPriceBuyerDeliveryPreserved": true,
+    "reserveReplay": true,
+    "saleOnce": true,
+    "keyboard": "reduced viewport simulation, not physical keyboard",
+    "jsErrors": [],
+    "staleResponseChecked": false
+  },
+  {
+    "engine": "chromium",
+    "width": 390,
+    "automaticSuggestions": true,
+    "oemArticle": true,
+    "quantityPriceBuyerDeliveryPreserved": true,
+    "reserveReplay": true,
+    "saleOnce": true,
+    "keyboard": "reduced viewport simulation, not physical keyboard",
+    "jsErrors": [],
+    "staleResponseChecked": true
+  },
+  {
+    "engine": "chromium",
+    "width": 430,
+    "automaticSuggestions": true,
+    "oemArticle": true,
+    "quantityPriceBuyerDeliveryPreserved": true,
+    "reserveReplay": true,
+    "saleOnce": true,
+    "keyboard": "reduced viewport simulation, not physical keyboard",
+    "jsErrors": [],
+    "staleResponseChecked": false
+  },
+  {
+    "engine": "chromium",
+    "width": 1440,
+    "automaticSuggestions": true,
+    "oemArticle": true,
+    "quantityPriceBuyerDeliveryPreserved": true,
+    "reserveReplay": true,
+    "saleOnce": true,
+    "keyboard": "desktop",
+    "jsErrors": [],
+    "staleResponseChecked": false
+  }
+]
