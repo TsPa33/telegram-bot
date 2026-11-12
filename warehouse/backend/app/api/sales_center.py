@@ -1,5 +1,6 @@
 """Read-only, bounded UNION journal. Orders are commitments, sale rows are proceeds."""
-from datetime import datetime,timezone
+from datetime import datetime,timezone,time,timedelta
+from zoneinfo import ZoneInfo
 from typing import Literal
 from fastapi import APIRouter,HTTPException,Query
 from sqlalchemy import select,func,literal,or_,and_,exists,union_all,cast,String,false,case
@@ -27,10 +28,36 @@ def managers(db:DB,who:Auth):
     if len(people)>1000:raise HTTPException(422,'Забагато працівників для списку фільтра')
     return {'items':[{'id':p.id,'name':p.name,'active':p.is_active} for p in people]}
 
+def workspace_summary(db, workspace, can_orders, can_sales):
+    """Workspace-wide counts, independent of the journal page and filters."""
+    summary={}
+    if can_orders:
+        for status, count in db.execute(
+            select(Order.status,func.count()).where(
+                Order.account_id==workspace,Order.sold_at.is_(None),
+                Order.status.in_(('new','reserved'))
+            ).group_by(Order.status)
+        ):
+            summary[status+'_orders']=count
+        summary.setdefault('new_orders',0)
+        summary.setdefault('reserved_orders',0)
+    if can_sales:
+        kyiv=ZoneInfo('Europe/Kyiv')
+        today=datetime.now(kyiv).date()
+        start=datetime.combine(today,time.min,tzinfo=kyiv).astimezone(timezone.utc)
+        end=datetime.combine(today+timedelta(days=1),time.min,tzinfo=kyiv).astimezone(timezone.utc)
+        summary['sales_today_operations']=db.scalar(select(func.count()).select_from(Operation).where(
+            Operation.account_id==workspace,Operation.type=='sale',
+            Operation.created_at>=start,Operation.created_at<end
+        ))
+        summary['sales_day']=today.isoformat()
+    return summary
+
 @router.get('')
 def journal(db:DB,who:Auth,kind:Literal['all','orders','sales']='all',q:str=Query('',max_length=200),phone:str=Query('',max_length=50),manager_id:str|None=Query(None,max_length=36),
             number:int|None=Query(None,gt=0),status:Literal['new','reserved','shipped','completed','cancelled','sold']|None=None,vehicle_id:str|None=Query(None,max_length=36),
-            date_from:datetime|None=None,date_to:datetime|None=None,offset:int=Query(0,ge=0,le=100000),limit:int=Query(50,ge=1,le=100)):
+            date_from:datetime|None=None,date_to:datetime|None=None,offset:int=Query(0,ge=0,le=100000),limit:int=Query(50,ge=1,le=100),
+            include_summary:bool=False):
     can_sales='sales.view' in who.permissions;can_orders='orders.view' in who.permissions
     if not(can_sales or can_orders):raise HTTPException(403,'Недостатньо прав')
     if phone and not can_orders:raise HTTPException(403,'Для пошуку за телефоном потрібен перегляд замовлень')
@@ -84,4 +111,6 @@ def journal(db:DB,who:Auth,kind:Literal['all','orders','sales']='all',q:str=Quer
             order=order_rows[r['id']];event=created.get(order.id);identity=(event.data.get('actor_identity') or {}) if event else {}
             result.append({**orders.snapshot(order),'totals_by_currency':amounts.get(order.id,{}),'kind':'order','manager_id':event.actor_id if event else None,'manager_name':(identity.get('name') or actors.get(event.actor_id)) if event else None,'position_count':positions.get(order.id,0),'source':'order','order_id':order.id,'name':None})
     status_counts=[{'status':status,'count':count,'sold_count':sold} for status,count,sold in db.execute(select(Order.status,func.count(),func.count().filter(Order.sold_at.is_not(None))).where(*of).group_by(Order.status))]
-    return {'order_status_counts':status_counts,'items':result,'total':total,'offset':offset,'limit':limit,'money_scope':'order_commitments_and_sale_proceeds_are_distinct'}
+    response={'order_status_counts':status_counts,'items':result,'total':total,'offset':offset,'limit':limit,'money_scope':'order_commitments_and_sale_proceeds_are_distinct'}
+    if include_summary:response['summary']=workspace_summary(db,workspace,can_orders,can_sales)
+    return response
