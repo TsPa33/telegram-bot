@@ -57,13 +57,13 @@ function StockOverview({available,reserved}:{available:number;reserved:number}){
  const all=available+reserved;
  return <section className="stats-pane" aria-labelledby="stats-stock-title">
   <div className="stats-pane-title"><h2 id="stats-stock-title">Наявність і резерви</h2><span><PackageCheck size={17}/></span></div>
-  <p className="stats-pane-subtitle">Доступний залишок і одиниці, відкладені в резерв.</p>
+  <p className="stats-pane-subtitle">Фізичний залишок без резерву та зарезервовані одиниці. Придатність до продажу перевіряється окремо.</p>
   <div className="stats-stock-total"><strong>{number(all)}</strong><span>одиниць на складі</span></div>
-  <div className="stats-condition-segments" aria-label="Доступні одиниці та резерв" role="img">
+  <div className="stats-condition-segments" aria-label="Одиниці без резерву та резерв" role="img">
    {all>0&&<><div className="stats-segment stats-segment-0" style={{width:available/all*100+'%'}}/><div className="stats-segment stats-segment-2" style={{width:reserved/all*100+'%'}}/></>}
   </div>
   <div className="stats-stock-rows">
-   <div><span className="stats-dot stats-dot-0"/>Доступно <strong>{number(available)}</strong></div>
+   <div><span className="stats-dot stats-dot-0"/>Без резерву <strong>{number(available)}</strong></div>
    <div><span className="stats-dot stats-dot-2"/>У резерві <strong>{number(reserved)}</strong></div>
   </div>
   <Link className="stats-inline-link" to="/inventory">Відкрити склад <ArrowRight size={14}/></Link>
