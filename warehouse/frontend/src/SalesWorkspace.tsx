@@ -61,7 +61,7 @@ function SalesWorkspaceContent({quick=false,notify,accountId,grouped=false,inven
  const smartReady=!smartReadiness.loading&&!smartReadiness.error&&isSmartReady(smartReadiness.data);
  const [brand,setBrand]=useState(''),[model,setModel]=useState(''),[q,setQ]=useState(()=>{try{return quick?sessionStorage.getItem('warehouse.search:'+accountId)||'':'';}catch{return '';}}),[term,setTerm]=useState(q),[page,setPage]=useState(0),[showZero,setShowZero]=useState(false);
  const [category,setCategory]=useState(''),[sub,setSub]=useState(''),[condition,setCondition]=useState(''),[ownPrice,setOwnPrice]=useState(''),[inventoryState,setInventoryState]=useState('stock'),[stockBulk,setStockBulk]=useState(false);
- const [previewId,setPreviewId]=useState('');
+ const [previewId,setPreviewId]=useState(''),[previewSnapshot,setPreviewSnapshot]=useState<{accountId:string;row:Row}|null>(null);
  const [quickActionsOpen,setQuickActionsOpen]=useState(false);
  useEffect(()=>{if(!quick)setQuickActionsOpen(false);},[quick]);
  const [pageSize,setPageSize]=useState(25),[selectionEdit,setSelectionEdit]=useState(''),[exportBusy,setExportBusy]=useState(false),[exportError,setExportError]=useState('');
@@ -84,8 +84,8 @@ function SalesWorkspaceContent({quick=false,notify,accountId,grouped=false,inven
  const {data,error,loading,reload}=useLoad(()=>(!searchEnabled||q!==term||smart&&!smartReady?Promise.resolve({items:[],total:0}):api<Page&{category_facets?:{category_id:string|null;subcategory_id:string|null;count:number}[]}>((smart?'/smart-search/parts?':'/parts?')+query)).then(result=>({...result,query_key:searchKey})),[searchKey,grouped,smart&&smartReady,searchEnabled]);
  useEffect(()=>{const changed=()=>{reload();lookups.reload();};window.addEventListener('warehouse:inventory-changed',changed);return()=>window.removeEventListener('warehouse:inventory-changed',changed);},[]);
  useEffect(()=>{if(!quick&&data?.query_key===searchKey&&data.total>0&&page*pageSize>=data.total)setPage(Math.floor((data.total-1)/pageSize));},[data,searchKey,page,pageSize,quick]);
- const current=!error&&!loading&&(!smart||smartReady)&&data?.query_key===searchKey&&q===term;
- const waiting=loading||q!==term||(!current&&!error&&(!smart||smartReady));
+ const current=searchEnabled&&!error&&!loading&&(!smart||smartReady)&&data?.query_key===searchKey&&q===term;
+ const waiting=searchEnabled&&(loading||q!==term||(!current&&!error&&(!smart||smartReady)));
  const unlocatedRows=current?data!.items.map(p=>overrides[p.id]||p).filter(p=>!p.archived&&(showZero||(smart?p.available_quantity>0:p.quantity>0))):[];
  const rows=!quick&&locationFilter?unlocatedRows.filter(p=>locationFilter==='__none__'?!String(p.location||'').trim():String(p.location||'').trim()===locationFilter):unlocatedRows;
  const suggestions=rows.slice(0,5),optionsOpen=quick&&focused&&!!q.trim()&&!waiting&&!error;
@@ -104,11 +104,18 @@ function SalesWorkspaceContent({quick=false,notify,accountId,grouped=false,inven
  function sortInventory(key:string){if(tableSort===key)setDescending(v=>!v);else{setTableSort(key);setDescending(false);}setTablePage(0);}
  const brands=[...new Set(vehicles.map(v=>v.manufacturer))].sort((a,b)=>a.localeCompare(b,'uk'));
  const models=[...new Set(vehicles.filter(v=>!brand||v.manufacturer===brand).map(v=>v.model))].sort((a,b)=>a.localeCompare(b,'uk'));
- const previewPart=data?.query_key===searchKey?data.items.map((p:Row)=>overrides[p.id]||p).find((p:Row)=>p.id===previewId)||null:null;
+ // A desktop preview survives a resize to mobile even when the empty search stops fetching the full stock list.
+ const detachedPreviewId=quick&&mobile&&!searchEnabled?previewId:'';
+ const detachedPreview=useLoad(()=>detachedPreviewId?api<Row>('/parts/'+encodeURIComponent(detachedPreviewId)).then(row=>({id:detachedPreviewId,accountId,row})):Promise.resolve(null),[detachedPreviewId,accountId]);
+ useEffect(()=>{if(!detachedPreviewId)return;const changed=()=>detachedPreview.reload();window.addEventListener('warehouse:inventory-changed',changed);return()=>window.removeEventListener('warehouse:inventory-changed',changed);},[detachedPreviewId,accountId]);
+ const listedPreview=data?.query_key===searchKey?data.items.map((p:Row)=>overrides[p.id]||p).find((p:Row)=>p.id===previewId)||null:null;
+ const cachedPreview=previewSnapshot?.accountId===accountId&&previewSnapshot.row.id===previewId?previewSnapshot.row:null;
+ const freshPreview=detachedPreview.data?.accountId===accountId&&detachedPreview.data.id===detachedPreviewId&&detachedPreview.data.row.id===detachedPreviewId?detachedPreview.data.row:null;
+ const previewPart=detachedPreviewId?(detachedPreview.error?null:(freshPreview||cachedPreview)):listedPreview;
  const previewVehicle=previewPart?vehicles.find(v=>v.id===previewPart.vehicle_id)||previewPart.donor:undefined;
- const previewIndex=previewPart?rows.findIndex(p=>p.id===previewPart.id):-1;
- function selectPreview(id:string,_scroll=false){setPreviewId(id);}
- function updated(row:Row){setOverrides(values=>({...values,[row.id]:row}));setDetail(current=>current?.id===row.id?row:current);window.dispatchEvent(new Event('warehouse:inventory-changed'));}
+ const previewIndex=detachedPreviewId?0:previewPart?rows.findIndex(p=>p.id===previewPart.id):-1;
+ function selectPreview(id:string,_scroll=false){const row=rows.find(p=>p.id===id);setPreviewSnapshot(row?{accountId,row}:null);setPreviewId(id);}
+ function updated(row:Row){setOverrides(values=>({...values,[row.id]:row}));setPreviewSnapshot(current=>current?.accountId===accountId&&current.row.id===row.id?{accountId,row}:current);setDetail(current=>current?.id===row.id?row:current);window.dispatchEvent(new Event('warehouse:inventory-changed'));}
  function openDetail(row:Row,edit?:'oem'|'color'){setDetailEdit(edit);setDetailEditVersion(v=>v+1);setDetail(row);}
  function openAction(part:Row,type:string){setDetail(null);setAction({part,type,key:crypto.randomUUID()});}
  const [pricingSelected,setPricingSelected]=useState<string[]>([]);
@@ -128,7 +135,7 @@ function SalesWorkspaceContent({quick=false,notify,accountId,grouped=false,inven
       category={categories.find(c=>c.id===previewPart?.category_id)}
       subcategory={categories.find(c=>c.id===previewPart?.subcategory_id)}
       canSell={can('orders.create')} contextActions={!quick&&previewPart?<StockAssemblyPanel key={previewPart.id} part={previewPart} onChanged={()=>window.dispatchEvent(new Event('warehouse:inventory-changed'))}/>:undefined} open={!!previewId} onClose={()=>setPreviewId('')}
-      position={previewIndex+1} total={rows.length}
+      position={previewIndex+1} total={detachedPreviewId?1:rows.length}
       onPrevious={()=>{if(previewIndex>0)selectPreview(rows[previewIndex-1].id);}}
       onNext={()=>{if(previewIndex>=0&&previewIndex<rows.length-1)selectPreview(rows[previewIndex+1].id);}}
       onOpen={()=>{if(previewPart)openDetail(previewPart);}}
@@ -162,10 +169,11 @@ function SalesWorkspaceContent({quick=false,notify,accountId,grouped=false,inven
 
   {quick&&<section className="ui4-results" aria-label="Результати пошуку">
    <p className="ui4-count" role="status">{!searchEnabled?'Введіть назву, OEM або артикул':waiting?'Пошук…':error?'Результати недоступні':`Знайдено ${data?.total||0} результатів`}</p>
-   {!!rows.length&&<div className={"ui11-results-layout part-preview-layout"+(previewPart?" has-preview":"")}>
+   {detachedPreviewId&&detachedPreview.error&&<div role="alert" className="error">{detachedPreview.error} <button type="button" onClick={detachedPreview.reload}>Повторити перегляд</button> <button type="button" onClick={()=>setPreviewId('')}>Закрити</button></div>}
+   {(!!rows.length||!!previewPart)&&<div className={"ui11-results-layout part-preview-layout"+(previewPart?" has-preview":"")}>
     {previewPart&&previewPanel}
 
-    <div className="ui11-results-list">{!mobile&&<InventoryTableHead/>}{rows.map(p=>mobile?<MobileSearchResult key={p.id} part={p} vehicle={vehicles.find(v=>v.id===p.vehicle_id)||p.donor} revision={photoRevisions[p.id]||0} onPreview={()=>{setFocused(false);if(document.activeElement instanceof HTMLElement)document.activeElement.blur();selectPreview(p.id,true);}} onOrder={()=>{setFocused(false);if(document.activeElement instanceof HTMLElement)document.activeElement.blur();setOrderPart({...p,donor_snapshot:vehicles.find(v=>v.id===p.vehicle_id)||p.donor});}} actions={actions(p)}/>:<div key={p.id} className={'ui11-result-wrap'+(previewPart?.id===p.id?' selected':'')}>
+    {!!rows.length&&<div className="ui11-results-list">{!mobile&&<InventoryTableHead/>}{rows.map(p=>mobile?<MobileSearchResult key={p.id} part={p} vehicle={vehicles.find(v=>v.id===p.vehicle_id)||p.donor} revision={photoRevisions[p.id]||0} onPreview={()=>{setFocused(false);if(document.activeElement instanceof HTMLElement)document.activeElement.blur();selectPreview(p.id,true);}} onOrder={()=>{setFocused(false);if(document.activeElement instanceof HTMLElement)document.activeElement.blur();setOrderPart({...p,donor_snapshot:vehicles.find(v=>v.id===p.vehicle_id)||p.donor});}} actions={actions(p)}/>:<div key={p.id} className={'ui11-result-wrap'+(previewPart?.id===p.id?' selected':'')}>
      <InventoryPartRow active={previewId===p.id} onPreview={()=>selectPreview(p.id)} part={p} categories={categories} vehicle={vehicles.find(v=>v.id===p.vehicle_id)||p.donor} market={market.rows[p.id]} marketError={market.error} selected={false} canSelect={false} onSelect={()=>{}} onOpen={()=>selectPreview(p.id,true)} onSaved={updated} actions={actions(p)} photo={<SearchPartPhoto id={p.id} name={p.name} revision={photoRevisions[p.id]||0}/>} extra={<>
       {(p.oem_number||p.article_number)&&<small className="ui11-codes">{p.oem_number&&`OEM: ${p.oem_number}`}{p.oem_number&&p.article_number?' · ':''}{p.article_number&&`Артикул: ${p.article_number}`}{p.article_number&&p.article_brand&&` · ${p.article_brand}`}</small>}
       <small>{labels[p.condition]||'Стан не уточнено'}</small>
@@ -173,7 +181,7 @@ function SalesWorkspaceContent({quick=false,notify,accountId,grouped=false,inven
       <button type="button" className="ui11-quick-view" aria-pressed={previewPart?.id===p.id} onClick={()=>selectPreview(p.id,true)}>Швидкий перегляд</button>
      </>}/></div>)}
      <Pager total={data?.total||0} page={page} setPage={setPage}/>
-    </div>
+    </div>}
 
    </div>}
    {searchEnabled&&!waiting&&!error&&(!smart||smartReady)&&!(data as Row)?.clarification&&!rows.length&&<Empty title="Нічого не знайдено">Змініть назву або автомобіль.</Empty>}

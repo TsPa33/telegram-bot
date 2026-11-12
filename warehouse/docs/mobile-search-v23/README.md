@@ -93,3 +93,7 @@ Backend/API, schema/migrations, import-worker, stock algorithms, money calculati
 ## GitHub
 
 Git transport працює. GitHub API у поточному середовищі повертає `Forbidden`; автоматичне створення Draft PR недоступне. Після push відкрити compare зазначених гілок через авторизований GitHub і вибрати **Create draft pull request**. Не вважати compare link уже створеним PR.
+
+## Independent CI follow-up
+
+Initial GitHub Actions run 43169144024 exposed a real responsive regression: opening a desktop preview with an empty query and resizing to mobile cleared the underlying full-stock list and unmounted the preview. Fixed by preserving the selected workspace-scoped row during resize, loading only that part via the existing GET /parts/{id}, keeping a single-item preview even when mobile results are empty, and displaying retry/close on a detail-read failure. The original integrated test is retained and strengthened to assert the same selected part, 1 of 1 navigation, zero mobile result rows and no unfiltered parts request after resize. No change to backend, stock, permissions or checkout. Original approved SHA must not be deployed after the failed CI; the follow-up SHA needs fresh CI and owner approval. Physical iOS keyboard acceptance remains separate.
