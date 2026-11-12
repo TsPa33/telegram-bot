@@ -46,6 +46,7 @@ jobs:
         run: |
           set -o pipefail
           python -m pytest -q \
+            tests/test_unified_catalogue.py \
             tests/test_assemblies.py \
             tests/test_assembly_split.py \
             tests/test_issue502_vin_plan.py \

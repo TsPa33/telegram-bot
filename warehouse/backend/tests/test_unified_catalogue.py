@@ -9,7 +9,7 @@ from app.services.unified_catalogue import CatalogueAdapter,CatalogueResolver,Ca
 
 
 def detail_items():
-    return [dict(supplier_id=2,article_number='EXAMPLE',car_id=107555,supplier=[{'description':'HELLA'}],article=[{'NormalizedDescription':'Bulb'}],oem=[{'OENbr':'OEM-ONE'},{'OENbr':'OEM-TWO'}],images=[{'PictureName':'2_E325.JPG'}])]
+    return [dict(supplier_id=2,article_number='EXAMPLE',car_id=107555,supplier=[{'description':'HELLA'}],article=[{'NormalizedDescription':'Bulb'}],oem=[{'manufacturerId':120,'OENbr':'OEM-ONE'},{'manufacturerId':120,'OENbr':'OEM-TWO'}],images=[{'PictureName':'2_E325.JPG'}])]
 
 
 def envelope(car=107555,coverage='complete_verified'):
@@ -311,3 +311,137 @@ def test_global_rejects_missing_links_and_preserves_old(logged,volvo,monkeypatch
     assert r.status_code==409,r.text
     with Session(engine()) as db:
         assert db.scalar(select(func.count()).select_from(Vehicle))==1
+
+
+def test_volvo_oem_preview_preserves_existing_plan(logged,volvo,monkeypatch):
+    base=f"/api/v1/vehicles/{volvo['id']}"
+    assert logged.post(base+'/unified-catalogue/base').status_code==200
+    monkeypatch.setattr(CatalogueAdapter,'plan',lambda self,car:envelope(car,'partial'))
+    from app.services.inventory import snapshot
+    def state():
+        with Session(engine()) as db:
+            return (snapshot(db.get(Vehicle,volvo['id'])),
+                    [snapshot(r) for r in db.scalars(select(DismantlingItem).order_by(DismantlingItem.id))],
+                    db.scalar(select(func.count()).select_from(Part)),
+                    db.scalar(select(func.count()).select_from(Operation)))
+    before=state()
+    url=base+'/volvo-oem-preview'
+    r=logged.get(url,params={'source_modification_id':107555})
+    assert r.status_code==200,r.text
+    data=r.json()
+    assert data['coverage']=='partial' and data['vin_verified'] is False
+    assert data['plan_items'] and data['catalogue_types'][0]['product_id']==106
+    query=dict(source_modification_id=107555,product_id=106,snapshot_sha=data['snapshot_sha'])
+    detail=logged.get(url,params=query)
+    assert detail.status_code==200,detail.text
+    assert detail.json()['articles'][0]['oem_numbers']==['OEM-ONE','OEM-TWO']
+    assert logged.get(url,params={**query,'snapshot_sha':'b'*64}).status_code==409
+    assert logged.get(url,params={**query,'product_id':999}).status_code==404
+    assert logged.get(url,params={'source_modification_id':107555,'product_id':106}).status_code==422
+    assert logged.get(url,params={'source_modification_id':107556}).status_code==422
+    assert state()==before
+
+def test_volvo_oem_preview_wrong_brand_and_workspace(logged,volvo,client):
+    other=logged.post('/api/v1/vehicles',json={'manufacturer':'Peugeot','model':'3008','year':2017,'donor_id':'OTHER'}).json()
+    assert logged.get(f"/api/v1/vehicles/{other['id']}/volvo-oem-preview",params={'source_modification_id':107555}).status_code==409
+    from conftest import signup
+    logged.post('/api/v1/auth/logout')
+    signup(client,'other-oem-preview@example.test')
+    assert client.get(f"/api/v1/vehicles/{volvo['id']}/volvo-oem-preview",params={'source_modification_id':107555}).status_code==404
+
+
+def test_volvo_oem_selection_plan_then_stock(logged,volvo,monkeypatch):
+    from app.services.inventory import snapshot
+    from app.services.catalogue_format import digest
+    from uuid import uuid4
+    base=f"/api/v1/vehicles/{volvo['id']}"
+    assert logged.post(base+'/unified-catalogue/base').status_code==200
+    monkeypatch.setattr(CatalogueAdapter,'plan',lambda self,car:envelope(car,'partial'))
+    offers=detail_items()
+    offers[0]['oem'] += [{'manufacturerId':80,'OENbr':'OTHER-MAKE'},{'OENbr':'UNKNOWN-MAKE'}]
+    monkeypatch.setattr(CatalogueAdapter,'articles',lambda *a,**kw:offers)
+    def preview():
+        r=logged.get(base+'/volvo-oem-preview',params={'source_modification_id':107555})
+        assert r.status_code==200,r.text
+        return r.json()
+    def body(data,row,**kwargs):
+        return dict(request_key=str(uuid4()),source_modification_id=107555,snapshot_sha=data['snapshot_sha'],
+            expected_vehicle_basis=data['vehicle_basis'],item_id=row['id'],expected_row_basis=row['row_basis'],
+            expected_reference_digest=row['reference_digest'],product_id=106,supplier_id=2,
+            article_number='EXAMPLE',oem_number='OEM-ONE',confirm_reference=True,**kwargs)
+    url=base+'/volvo-oem-selection'
+    data=preview();row=data['plan_items'][0]
+    detail=logged.get(base+'/volvo-oem-preview',params={'source_modification_id':107555,
+        'product_id':106,'snapshot_sha':data['snapshot_sha']}).json()
+    assert detail['articles'][0]['oem_numbers']==['OEM-ONE','OEM-TWO']
+    assert logged.post(url,json={**body(data,row),'oem_number':'OTHER-MAKE'}).status_code==422
+    assert logged.post(url,json={**body(data,row),'confirm_reference':False}).status_code==422
+    assert logged.post(url,json=body(data,row,assign_stock=True,confirm_physical_oem=True)).status_code==409
+    with Session(engine()) as db:
+        before=[snapshot(x) for x in db.scalars(select(DismantlingItem).order_by(DismantlingItem.id))]
+    request=body(data,row)
+    result=logged.post(url,json=request)
+    assert result.status_code==200,result.text
+    assert result.json()['stock_assigned'] is False
+    tree=logged.get(base+'/assemblies').json()
+    assert next(x for x in tree['items'] if x['id']==row['id'])['reference_oem']=='OEM-ONE'
+    assert logged.post(url,json=request).json()==result.json()
+    assert logged.post(url,json=body(data,row)).status_code==409
+    with Session(engine()) as db:
+        assert [snapshot(x) for x in db.scalars(select(DismantlingItem).order_by(DismantlingItem.id))]==before
+        assert db.scalar(select(func.count()).select_from(Part))==0
+    key='base:'+row['id']
+    assert logged.post(base+'/unified-catalogue/stock',json={'keys':[key],'confirm_physical_receipt':True}).status_code==200
+    data=preview();row=next(x for x in data['plan_items'] if x['id']==row['id'])
+    assert row['reference']['oem_number']=='OEM-ONE' and row['stock_eligible']
+    with Session(engine()) as db:
+        p=db.get(Part,row['part_id']);p.selling_price=123.45;p.article_number='MANUAL';db.commit()
+        before=snapshot(p)
+    assert logged.post(url,json=body(data,row,assign_stock=True)).status_code==422
+    request=body(data,row,assign_stock=True,confirm_physical_oem=True)
+    result=logged.post(url,json=request)
+    assert result.status_code==200,result.text
+    assert result.json()['stock_assigned']
+    tree=logged.get(base+'/assemblies').json()
+    assert next(x for x in tree['items'] if x['id']==row['id'])['stock_oem']=='OEM-ONE'
+    assert logged.post(url,json=request).json()==result.json()
+    with Session(engine()) as db:
+        p=db.get(Part,row['part_id']);after=snapshot(p)
+        assert p.oem_number=='OEM-ONE' and p.oem_provenance['vin_verified'] is False
+        assert {k:v for k,v in before.items() if k not in ('oem_number','oem_provenance')}=={k:v for k,v in after.items() if k not in ('oem_number','oem_provenance')}
+        assert db.scalar(select(func.count()).select_from(Operation).where(Operation.type=='receipt'))==1
+    data=preview();row=next(x for x in data['plan_items'] if x['id']==row['id'])
+    assert not row['stock_eligible']
+    assert logged.post(url,json=body(data,row,assign_stock=True,confirm_physical_oem=True)).status_code==409
+    with Session(engine()) as db:
+        v=db.get(Vehicle,volvo['id']);v.year=2019;db.commit()
+    assert logged.post(url,json=body(data,row)).status_code==409
+
+
+def test_volvo_real_export_review_is_exact_version_and_label():
+    from app.services.volvo_oem_review import overlay, SOURCE_SHA, candidates
+    from types import SimpleNamespace
+    raw=dict(source_snapshot_sha=SOURCE_SHA,categories=[
+        dict(product_id=2,name_source='Стартер',kind='review',article_count=12),
+        dict(product_id=4,name_source='Wrong label',kind='review',article_count=13),
+        dict(product_id=3224,name_source='Моторное масло',kind='review',article_count=21)])
+    reviewed=overlay(raw)
+    assert reviewed['categories'][0]['kind']=='part'
+    assert reviewed['categories'][0]['name_uk']=='Стартер'
+    assert reviewed['categories'][0]['pilot_reviewed']
+    assert reviewed['categories'][1]['kind']=='review'
+    assert reviewed['categories'][2]['kind']=='review'
+    assert raw['categories'][0]['kind']=='review'
+    assert candidates(SimpleNamespace(name='стартер'),reviewed['categories'])==[2]
+    assert candidates(SimpleNamespace(name='Стартер у зборі'),reviewed['categories'])==[]
+    assert overlay({**raw,'source_snapshot_sha':'b'*64})['categories'][0]['kind']=='review'
+
+
+def test_volvo_pilot_rejects_confirmed_different_source(logged,volvo,monkeypatch):
+    with Session(engine()) as db:
+        v=db.get(Vehicle,volvo['id'])
+        v.dismantling_v3={'global_selection':{'car_id':107556}}
+        db.commit()
+    monkeypatch.setattr(CatalogueAdapter,'plan',lambda *a,**kw:pytest.fail('Conflicting selection must not call Catalogue'))
+    r=logged.get(f"/api/v1/vehicles/{volvo['id']}/volvo-oem-preview",params={'source_modification_id':107555})
+    assert r.status_code==409,r.text

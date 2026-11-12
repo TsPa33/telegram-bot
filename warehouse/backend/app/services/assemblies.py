@@ -115,7 +115,13 @@ def preview(db,account,item):
 
 
 def tree(db,account,vehicle):
-    owned(db,Vehicle,vehicle,account)
+    v=owned(db,Vehicle,vehicle,account)
+    refs=(v.dismantling_v3 or {}).get('volvo_oem_references',{})
+    basis=None
+    if refs:
+        from app.services.dismantling_plan_v3 import generator_basis
+        from app.services.volvo_oem_review import reference_matches
+        basis=generator_basis(v)
     nodes,edges,parts=graph(db,account,vehicle)
     attached={e.child_item_id:e.parent_item_id for e in edges}
     consumed_types={op.id:op.type for op in db.scalars(select(Operation).where(Operation.account_id==account,Operation.id.in_([n.assembly_consumed_operation_id for n in nodes.values() if n.assembly_consumed_operation_id])))}
@@ -135,7 +141,9 @@ def tree(db,account,vehicle):
     items=[]
     for n in nodes.values():
         p=parts.get(n.part_id)
-        items.append(dict(id=n.id,name=n.name,position=n.position or '',installation_position=(n.plan_v3 or {}).get('snapshot',{}).get('installation_position') or {},placement_id=(n.plan_v3 or {}).get('placement_id'),plan_parent_id=(n.plan_v3 or {}).get('assembly_reference_parent_id'),category=n.category_name,subcategory=n.subcategory_name,parent_id=attached.get(n.id),part_id=n.part_id,
+        ref=refs.get(n.id)
+        oem_view=dict(stock_oem=p.oem_number if p else '',reference_oem=ref['oem_number'] if ref else '',reference_oem_stale=bool(ref and not reference_matches(ref,n,basis))) if refs else {}
+        items.append(dict(**oem_view,id=n.id,name=n.name,position=n.position or '',installation_position=(n.plan_v3 or {}).get('snapshot',{}).get('installation_position') or {},placement_id=(n.plan_v3 or {}).get('placement_id'),plan_parent_id=(n.plan_v3 or {}).get('assembly_reference_parent_id'),category=n.category_name,subcategory=n.subcategory_name,parent_id=attached.get(n.id),part_id=n.part_id,
             completeness='incomplete' if n.id in affected and (n.assembly_completeness is not None or n.id in assembly_parents) else n.assembly_completeness,consumed_operation_id=n.assembly_consumed_operation_id,consumed_type=consumed_types.get(n.assembly_consumed_operation_id) or (last_stock.get(p.id) if p and p.quantity==0 and n.id not in attached else None),
             presence='absent' if 'absent' in inspection_issues(n,p) else 'damaged' if 'damaged' in inspection_issues(n,p) else 'present' if n.part_id or n.status=='dismantled' else n.plan_v3.get('inspection','unchecked'),condition=p.condition if p else n.condition,note=n.plan_v3.get('inspection_note',''),planned_quantity=n.quantity,individually_tracked=bool(p and p.individually_tracked),archived=bool(p and p.archived),quantity=p.quantity if p else 0,reserved=p.reserved_quantity if p else 0,
             standalone=bool(p and p.available_quantity>0 and p.assortment_enabled and not p.archived and n.id not in attached and not n.assembly_consumed_operation_id)))

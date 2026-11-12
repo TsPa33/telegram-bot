@@ -92,3 +92,15 @@
 .uf-catalogue-details>.uf-source-strip{margin:0}
 .uf-catalogue-details>.universal-generator{margin:6px 0 0}
 @media(max-width:650px){.uf-catalogue-disclosure>summary{align-items:flex-start}.uf-catalogue-disclosure>summary>span:first-child{flex-direction:column;gap:2px;align-items:flex-start}}
+
+/* Volvo OEM comparison: inline, responsive, no new full-page modal. */
+.volvo-oem-preview{display:grid;grid-template-columns:minmax(0,1fr);gap:9px;max-width:100%;overflow-wrap:anywhere}
+.volvo-oem-preview>p,.volvo-oem-preview section p{margin:0}
+.volvo-oem-preview label{min-width:0;display:grid;gap:5px}
+.volvo-oem-preview select,.volvo-oem-preview input:not([type=checkbox]){min-width:0;max-width:100%;width:100%}
+.volvo-oem-preview .volvo-oem-confirm{display:flex;align-items:flex-start;gap:8px}
+.volvo-oem-preview .volvo-oem-confirm input{flex:0 0 auto}
+.volvo-oem-preview>button{justify-self:start}
+.volvo-oem-preview section{display:grid;gap:8px;min-width:0}
+.volvo-oem-preview section article{border:1px solid var(--color-border);border-radius:9px;padding:8px}
+@media(max-width:650px){.volvo-oem-preview>button{width:100%}}

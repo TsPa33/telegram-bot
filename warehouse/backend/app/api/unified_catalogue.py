@@ -102,7 +102,7 @@ def source_value(row,key):
     return next((v for k,v in row.items() if k.casefold()==key.casefold()),None)
 
 
-def saved_articles(product, state):
+def saved_articles(product, state, *, oem_manufacturer_id=None):
     payload=state['payload']
     if payload.get('schema') in ('carpot.volvo.plan.v2','carpot.vehicle.plan.v1'):
         try:
@@ -123,7 +123,7 @@ def saved_articles(product, state):
             supplier_id=item['supplier_id'],part_name=str(source_value(article[0],'NormalizedDescription') or '') if article else '',
             characteristics={},source_attributes=item.get('attributes',[]),cross_references=item.get('crosses',[]),
             image_metadata=item.get('images',[]),photo=None,
-            oem_numbers=sorted({str(source_value(r,'OENbr')) for r in item.get('oem',[]) if source_value(r,'OENbr')}),
+            oem_numbers=sorted({str(source_value(r,'OENbr')) for r in item.get('oem',[]) if source_value(r,'OENbr') and (oem_manufacturer_id is None or source_value(r,'manufacturerId') == oem_manufacturer_id)}),
             observed_at=payload['observed_at'],fitment='source_modification_link',vin_verified=False))
     return result
 
@@ -407,3 +407,184 @@ def select_existing_vehicle(id:str,data:ExistingVehicleSelection,db:DB,who:Auth)
     record(db,who.workspace_account_id,v,'vehicle_update','Підтверджено джерельну модифікацію; VIN, характеристики й склад не змінено',before)
     result=finish(db,v,who,data,sha,dict(saved=True,vehicle_id=v.id))
     db.commit();return result
+
+
+def volvo_pilot_payload(v, source_modification_id, snapshot_sha=None):
+    """Only the verified source identity of this pilot, not VIN fitment."""
+    import re
+    if v.manufacturer.strip().casefold() != 'volvo' or not re.search(r'\bXC90\b', v.model, re.IGNORECASE):
+        raise HTTPException(409, 'Пілот OEM доступний лише для Volvo XC90')
+    if source_modification_id != 107555:
+        raise HTTPException(422, 'Для пілота доступна лише модифікація 107555')
+    # A confirmed different source identity is authoritative, even if generic specs match.
+    saved=service.saved_state(v)
+    selected=(v.dismantling_v3 or {}).get('global_selection') or {}
+    identities=[selected.get('car_id'),(saved or {}).get('payload',{}).get('car_id')]
+    if any(identity is not None and identity!=source_modification_id for identity in identities):
+        raise HTTPException(409,'В автомобілі вже підтверджено іншу каталожну модифікацію')
+    # Reject explicit contradictory characteristics; missing fields still require user review.
+    fuel=(v.fuel_type or '').strip().casefold()
+    drive=(v.drive_type or '').strip().casefold()
+    code=re.sub(r'[^a-z0-9]','',(v.engine_code or '').casefold())
+    if v.year<2014 or fuel in {'diesel','hybrid','electric','дизель','гібрид','електро'} or drive in {'fwd','rwd','front','rear'} or (code and code!='b4204t27'):
+        raise HTTPException(409,'Характеристики автомобіля суперечать XC90 II T6 AWD; перевірте модифікацію')
+    try:
+        payload = service.CatalogueAdapter().plan(source_modification_id)['payload']
+        service.validate_plan(payload)
+        if (payload['car_id'], payload['model_id'], payload['manufacturer_id']) != (107555, 13084, 120):
+            raise ValueError('source identity')
+    except (service.CatalogueUnavailable, ValueError, KeyError, TypeError):
+        raise HTTPException(503, 'Каталог Volvo тимчасово недоступний; план збережено') from None
+    if snapshot_sha is not None and snapshot_sha != payload['source_snapshot_sha']:
+        raise HTTPException(409, 'Версія каталогу змінилася. Оновіть попередній перегляд')
+    from app.services.volvo_oem_review import overlay
+    return overlay(payload)
+
+
+def volvo_row_basis(row):
+    from app.services.catalogue_format import digest
+    return digest([row.id,row.source,row.catalog_key,row.name,row.position,row.category_name,
+                   row.subcategory_name,row.included,row.part_id,row.status,
+                   row.assembly_consumed_operation_id])
+
+
+def volvo_references(v):
+    return (v.dismantling_v3 or {}).get('volvo_oem_references', {})
+
+
+@router.get('/{id}/volvo-oem-preview')
+def volvo_oem_preview(
+    id: str, db: DB, who: Auth,
+    source_modification_id: int = Query(gt=0),
+    product_id: int | None = Query(None, gt=0),
+    snapshot_sha: str | None = Query(None, pattern=r'^[a-f0-9]{64}$'),
+):
+    """Read-only comparison with a pinned Catalogue source."""
+    from sqlalchemy import select
+    from app.models import DismantlingItem, Part
+    from app.services.dismantling_plan_v3 import generator_basis
+    from app.services.catalogue_format import digest
+    from app.services.volvo_oem_review import candidates, reference_matches
+    require_permission(who, 'vehicles.view', 'catalog.view', 'inventory.view')
+    v = owned(db, Vehicle, id, who.workspace_account_id)
+    if product_id is not None and snapshot_sha is None:
+        raise HTTPException(422, 'Потрібна версія каталогу з попереднього перегляду')
+    payload = volvo_pilot_payload(v, source_modification_id, snapshot_sha)
+    sha = payload['source_snapshot_sha']
+    basis = generator_basis(v)
+    base = dict(source_modification_id=107555, model_id=13084, snapshot_sha=sha,
+                vehicle_basis=basis, modification=payload['modification'], coverage=payload['coverage'],
+                observed_at=payload['observed_at'], vin_verified=False, cost='free')
+    if product_id is not None:
+        product = next((p for p in payload['categories'] if p['product_id'] == product_id), None)
+        if product is None:
+            raise HTTPException(404, 'Тип запчастини відсутній у цій модифікації')
+        offers = saved_articles(product, {'payload': payload}, oem_manufacturer_id=120)
+        return dict(**base, product_id=product_id, articles=[
+            {k: offer[k] for k in ('supplier_id','article_nr','brand','oem_numbers','vin_verified')}
+            for offer in offers
+        ])
+    rows = list(db.scalars(select(DismantlingItem).where(
+        DismantlingItem.account_id == who.workspace_account_id,
+        DismantlingItem.vehicle_id == v.id,
+    ).order_by(DismantlingItem.name, DismantlingItem.id)))
+    parts = {p.id:p for p in db.scalars(select(Part).where(
+        Part.account_id==v.account_id,Part.vehicle_id==v.id,
+        Part.id.in_([row.part_id for row in rows if row.part_id])))}
+    references = volvo_references(v)
+    def row_view(row):
+        ref=references.get(row.id)
+        part=parts.get(row.part_id)
+        return dict(id=row.id,name=row.name,position=row.position,
+                    category=row.category_name,subcategory=row.subcategory_name,
+                    included=row.included,part_id=row.part_id,row_basis=volvo_row_basis(row),
+                    candidate_product_ids=candidates(row,payload['categories']),
+                    reference=ref,reference_digest=digest(ref),
+                    reference_stale=bool(ref and (not reference_matches(ref,row,basis) or ref['snapshot_sha']!=sha)),
+                    stock_oem=part.oem_number if part else None,
+                    stock_eligible=bool(part and not part.archived and part.quantity==1 and part.inventory_origin!='virtual_donor' and not part.reserved_quantity
+                        and not part.oem_number and not part.oem_provenance and not row.assembly_consumed_operation_id and row.included and row.status!='absent'))
+    return dict(**base, plan_items=[row_view(row) for row in rows],
+        catalogue_types=[dict(product_id=p['product_id'], name_uk=p.get('name_uk'),
+                              name_source=p.get('name_source'), category_path=p.get('category_path'),
+                              article_count=p['article_count'], kind=p['kind'],pilot_reviewed=bool(p.get('pilot_reviewed')),
+                              candidate_aliases=p.get('candidate_aliases',[]))
+                         for p in payload['categories']])
+
+
+class VolvoOemSelection(Input):
+    request_key: Key
+    source_modification_id: int = Field(strict=True,gt=0)
+    snapshot_sha: str = Field(pattern=r'^[a-f0-9]{64}$')
+    expected_vehicle_basis: str = Field(pattern=r'^[a-f0-9]{64}$')
+    item_id: str = Field(min_length=1,max_length=36)
+    expected_row_basis: str = Field(pattern=r'^[a-f0-9]{64}$')
+    expected_reference_digest: str = Field(pattern=r'^[a-f0-9]{64}$')
+    product_id: int = Field(strict=True,gt=0)
+    supplier_id: int = Field(strict=True,gt=0)
+    article_number: str = Field(min_length=1,max_length=150)
+    oem_number: str = Field(min_length=1,max_length=150)
+    confirm_reference: bool = False
+    assign_stock: bool = False
+    confirm_physical_oem: bool = False
+
+
+@router.post('/{id}/volvo-oem-selection')
+def save_volvo_oem(id: str, data: VolvoOemSelection, db: DB, who: Auth):
+    """Explicit cross-reference selection, separate from physical receipt."""
+    from sqlalchemy import select
+    from app.models import DismantlingItem, Part
+    from app.services.inventory import record, snapshot
+    from app.services.dismantling_plan_v3 import generator_basis, replay, finish
+    from app.services.catalogue_format import digest
+    from app.services.volvo_oem_review import row_identity
+    require_permission(who,'vehicles.view','catalog.view','inventory.view','dismantling.manage')
+    if data.assign_stock:
+        require_permission(who,'inventory.edit')
+    if not data.confirm_reference or (data.assign_stock and not data.confirm_physical_oem):
+        raise HTTPException(422,'Підтвердіть каталожний вибір і, для складу, номер фактичної деталі')
+    v=owned(db,Vehicle,id,who.workspace_account_id,lock=True,active=True)
+    prior,request_sha=replay(db,v,who,data,'volvo-oem-selection')
+    if prior is not None:return prior
+    basis=generator_basis(v)
+    if data.expected_vehicle_basis!=basis:
+        raise HTTPException(409,'Характеристики автомобіля змінилися. Оновіть перегляд')
+    row=db.scalar(select(DismantlingItem).where(DismantlingItem.id==data.item_id,
+        DismantlingItem.account_id==v.account_id,DismantlingItem.vehicle_id==v.id).with_for_update())
+    if row is None:raise HTTPException(404,'Позицію плану не знайдено')
+    refs=volvo_references(v)
+    if volvo_row_basis(row)!=data.expected_row_basis or digest(refs.get(row.id))!=data.expected_reference_digest:
+        raise HTTPException(409,'Позиція або OEM змінилися. Оновіть перегляд')
+    if not row.included or row.status=='absent' or row.assembly_consumed_operation_id:
+        raise HTTPException(409,'Виключена, відсутня або спожита позиція недоступна для призначення')
+    payload=volvo_pilot_payload(v,data.source_modification_id,data.snapshot_sha)
+    product=next((p for p in payload['categories'] if p['product_id']==data.product_id),None)
+    if not product or product.get('kind')!='part':
+        raise HTTPException(422,'Потрібен перевірений тип деталі каталогу')
+    offers=saved_articles(product,{'payload':payload},oem_manufacturer_id=120)
+    offer=next((o for o in offers if o['supplier_id']==data.supplier_id and o['article_nr']==data.article_number),None)
+    if not offer or not offer['brand'] or data.oem_number not in offer['oem_numbers']:
+        raise HTTPException(422,'OEM Volvo відсутній у підтвердженому джерелі')
+    ref=dict(source='carpot.catalogue',status='user_selected_cross_reference',vin_verified=False,
+        source_modification_id=107555,oem_manufacturer_id=120,product_id=data.product_id,
+        supplier_id=data.supplier_id,source_article=data.article_number,source_brand=offer['brand'],
+        oem_number=data.oem_number,snapshot_sha=data.snapshot_sha,observed_at=payload['observed_at'],
+        vehicle_basis=basis,row_identity=row_identity(row))
+    stock=False
+    if data.assign_stock:
+        if not row.part_id:raise HTTPException(409,'Спочатку оприбуткуйте фактичну деталь')
+        p=owned(db,Part,row.part_id,v.account_id,lock=True,active=True)
+        if p.vehicle_id!=v.id or p.quantity!=1 or p.inventory_origin=='virtual_donor' or p.reserved_quantity or p.oem_number or p.oem_provenance:
+            raise HTTPException(409,'Складська картка змінилася або вже має OEM; наявні дані збережено')
+        before=snapshot(p)
+        p.oem_number=data.oem_number
+        p.oem_provenance={**ref,'physical_number_confirmed_by_user':True,'plan_item_id':row.id}
+        record(db,v.account_id,p,'part_update','Явно підтверджено OEM Volvo фактичної деталі',before)
+        stock=True
+    if refs.get(row.id)!=ref:
+        before=snapshot(v)
+        v.dismantling_v3={**(v.dismantling_v3 or {}),'volvo_oem_references':{**refs,row.id:ref}}
+        record(db,v.account_id,v,'vehicle_update','Збережено довідковий OEM позиції плану; без зміни залишків',before)
+    result=finish(db,v,who,data,request_sha,dict(saved=True,item_id=row.id,reference=ref,stock_assigned=stock))
+    db.commit()
+    return result

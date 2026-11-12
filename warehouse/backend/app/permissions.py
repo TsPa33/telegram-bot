@@ -37,6 +37,8 @@ def route_permissions(method,path,body):
         if path.endswith('/assemblies/split'):
             return ['vehicles.view','inventory.view','dismantling.manage','inventory.edit','inventory.adjust_quantity','inventory.create']
         return ['vehicles.view'] if path.endswith('/readiness') else ['vehicles.view','inventory.view'] if read else ['vehicles.view','inventory.view','dismantling.manage','inventory.edit','inventory.adjust_quantity']
+    if path.endswith('/volvo-oem-preview'):return ['vehicles.view','catalog.view','inventory.view']
+    if path.endswith('/volvo-oem-selection'):return ['vehicles.view','catalog.view','inventory.view','dismantling.manage']+(['inventory.edit'] if body.get('assign_stock') else [])
     if path.endswith('/catalogue-selection'):return ['vehicles.view','vehicles.edit','catalog.view','dismantling.manage']
     if '/catalogue-directory/' in path:
         return ['vehicles.view','catalog.view'] if read else ['vehicles.create','catalog.view']
