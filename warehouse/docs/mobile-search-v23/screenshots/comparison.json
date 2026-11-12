@@ -1,0 +1,11 @@
+{
+  "base-13fd0cc": {
+    "input": 182.171875,
+    "firstResult": 574.265625
+  },
+  "v23": {
+    "input": 115,
+    "firstResult": 259.390625
+  },
+  "note": "Layout comparison, not a latency benchmark. Same local API/test record; baseline Vite dev vs production preview."
+}

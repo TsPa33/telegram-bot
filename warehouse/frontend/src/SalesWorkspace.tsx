@@ -38,8 +38,8 @@ import SearchPartPreview from './SearchPartPreview';
 import SearchPartPhoto from './SearchPartPhoto';
 import './parts-search-ui4.css';
 import './search-r11.css';
-import {useMobileSearch} from './useMobileSearch';
-import {ShoppingCart,ChevronRight} from 'lucide-react';
+import {useMobileSearch,useKeyboardViewport} from './useMobileSearch';
+import {ShoppingCart,ChevronRight,Search,X} from 'lucide-react';
 type Action={part:Row;type:string;key:string};
 const actionLabels:Record<string,string>={sale:'Продати',write_off:'Списати',transfer:'Перемістити',reserve:'Зарезервувати',release:'Зняти резерв',receipt:'Додати кількість',correction:'Змінити кількість'};
 type WorkspaceProps={quick?:boolean;notify:Notify;accountId:string;grouped?:boolean;inventoryVehicles?:Row[]|null;onHistory?:()=>void};
@@ -47,7 +47,7 @@ export default function SalesWorkspace(props:WorkspaceProps) {
  return <WorkshopGate><SalesWorkspaceContent {...props}/></WorkshopGate>;
 }
 function SalesWorkspaceContent({quick=false,notify,accountId,grouped=false,inventoryVehicles,onHistory}:{quick?:boolean;notify:Notify;accountId:string;grouped?:boolean;inventoryVehicles?:Row[]|null;onHistory?:()=>void}) {
- const mobile=useMobileSearch();
+ const mobile=useMobileSearch();useKeyboardViewport(mobile&&quick);
  const can=useCan(),pricingIdentity=useContext(TeamIdentity);const canBulkPrice=pricingIdentity?.role==='DIRECTOR'&&can('parts.change_price');
  const navigate=useNavigate(),[orderPart,setOrderPart]=useState<Row|null>(null);
  const [params,setParams]=useSearchParams(),vehicle=params.get('vehicle_id')||'';
@@ -59,9 +59,9 @@ function SalesWorkspaceContent({quick=false,notify,accountId,grouped=false,inven
   return result;
  },[quick]);
  const smartReady=!smartReadiness.loading&&!smartReadiness.error&&isSmartReady(smartReadiness.data);
- const [brand,setBrand]=useState(''),[model,setModel]=useState(''),[q,setQ]=useState(''),[term,setTerm]=useState(''),[page,setPage]=useState(0),[showZero,setShowZero]=useState(false);
+ const [brand,setBrand]=useState(''),[model,setModel]=useState(''),[q,setQ]=useState(()=>{try{return quick?sessionStorage.getItem('warehouse.search:'+accountId)||'':'';}catch{return '';}}),[term,setTerm]=useState(q),[page,setPage]=useState(0),[showZero,setShowZero]=useState(false);
  const [category,setCategory]=useState(''),[sub,setSub]=useState(''),[condition,setCondition]=useState(''),[ownPrice,setOwnPrice]=useState(''),[inventoryState,setInventoryState]=useState('stock'),[stockBulk,setStockBulk]=useState(false);
- const [previewId,setPreviewId]=useState('');
+ const [previewId,setPreviewId]=useState(''),[previewSnapshot,setPreviewSnapshot]=useState<{accountId:string;row:Row}|null>(null);
  const [quickActionsOpen,setQuickActionsOpen]=useState(false);
  useEffect(()=>{if(!quick)setQuickActionsOpen(false);},[quick]);
  const [pageSize,setPageSize]=useState(25),[selectionEdit,setSelectionEdit]=useState(''),[exportBusy,setExportBusy]=useState(false),[exportError,setExportError]=useState('');
@@ -76,18 +76,19 @@ function SalesWorkspaceContent({quick=false,notify,accountId,grouped=false,inven
  useEffect(()=>{const scan=()=>{try{const prefix='warehouse-stock-pending:'+accountId+':';setPendingRequests(Object.keys(sessionStorage).filter(k=>k.startsWith(prefix)).map(k=>{const [partId,type]=k.slice(prefix.length).split(':');return {partId,type,body:JSON.parse(sessionStorage.getItem(k)!)};}));}catch{setPendingError('Не вдалося прочитати непідтверджені операції.');}};scan();window.addEventListener('warehouse:stock-pending',scan);return()=>window.removeEventListener('warehouse:stock-pending',scan);},[accountId]);
  const [focused,setFocused]=useState(false),[suggestion,setSuggestion]=useState(-1);
  const lookups=useLoad(()=>Promise.all([inventoryVehicles!==undefined?Promise.resolve([]):can('vehicles.view')?all('/vehicles'):Promise.resolve([]),inventoryVehicles!==undefined?Promise.resolve([]):can('vehicles.view')?all('/vehicles?archived=true'):Promise.resolve([]),can('catalog.view')?all('/categories'):Promise.resolve([])]),[]),vehicles=inventoryVehicles!==undefined?(inventoryVehicles||[]):[...(lookups.data?.[0]||[]),...(lookups.data?.[1]||[])],categories=lookups.data?.[2]||[];
- useEffect(()=>{const timer=setTimeout(()=>{setTerm(q);setPage(0);setSuggestion(-1);},300);return()=>clearTimeout(timer);},[q]);
+ useEffect(()=>{if(quick)try{sessionStorage.setItem('warehouse.search:'+accountId,q);}catch{}const timer=setTimeout(()=>{setTerm(q);setPage(0);setSuggestion(-1);},300);return()=>clearTimeout(timer);},[q]);
  const query=quick?partsSearchQuery({smart,q:term,vehicle,brand,model,condition,category,stock:!showZero,page}):new URLSearchParams({q:term,in_stock:String(!showZero),limit:String(pageSize),offset:String(page*pageSize)});
  if(!quick){if(condition)query.set('condition',condition);if(category)query.set('category_id',category);if(sub)query.set('subcategory_id',sub);if(can('catalog.view'))query.set('category_facets','true');if(vehicle)query.set('vehicle_id',vehicle);if(brand)query.set('manufacturer',brand);if(model)query.set('model',model);}
+ const searchEnabled=!quick||!mobile||!!(q.trim()||category||brand||model||vehicle||condition);
  const searchKey=(smart?'smart:':'standard:')+query.toString();
- const {data,error,loading,reload}=useLoad(()=>(smart&&!smartReady?Promise.resolve({items:[],total:0}):api<Page&{category_facets?:{category_id:string|null;subcategory_id:string|null;count:number}[]}>((smart?'/smart-search/parts?':'/parts?')+query)).then(result=>({...result,query_key:searchKey})),[searchKey,grouped,smart&&smartReady]);
+ const {data,error,loading,reload}=useLoad(()=>(!searchEnabled||q!==term||smart&&!smartReady?Promise.resolve({items:[],total:0}):api<Page&{category_facets?:{category_id:string|null;subcategory_id:string|null;count:number}[]}>((smart?'/smart-search/parts?':'/parts?')+query)).then(result=>({...result,query_key:searchKey})),[searchKey,grouped,smart&&smartReady,searchEnabled]);
  useEffect(()=>{const changed=()=>{reload();lookups.reload();};window.addEventListener('warehouse:inventory-changed',changed);return()=>window.removeEventListener('warehouse:inventory-changed',changed);},[]);
  useEffect(()=>{if(!quick&&data?.query_key===searchKey&&data.total>0&&page*pageSize>=data.total)setPage(Math.floor((data.total-1)/pageSize));},[data,searchKey,page,pageSize,quick]);
- const current=!error&&!loading&&(!smart||smartReady)&&data?.query_key===searchKey&&q===term;
- const waiting=loading||q!==term||(!current&&!error&&(!smart||smartReady));
+ const current=searchEnabled&&!error&&!loading&&(!smart||smartReady)&&data?.query_key===searchKey&&q===term;
+ const waiting=searchEnabled&&(loading||q!==term||(!current&&!error&&(!smart||smartReady)));
  const unlocatedRows=current?data!.items.map(p=>overrides[p.id]||p).filter(p=>!p.archived&&(showZero||(smart?p.available_quantity>0:p.quantity>0))):[];
  const rows=!quick&&locationFilter?unlocatedRows.filter(p=>locationFilter==='__none__'?!String(p.location||'').trim():String(p.location||'').trim()===locationFilter):unlocatedRows;
- const suggestions=rows.slice(0,5),optionsOpen=quick&&!mobile&&focused&&!!q&&!waiting&&!error;
+ const suggestions=rows.slice(0,5),optionsOpen=quick&&focused&&!!q.trim()&&!waiting&&!error;
  useEffect(()=>{setSuggestion(-1);setOverrides({});},[data]);
  const sortedInventoryRows=!quick?[...rows].sort((a,b)=>{
   let result=0;
@@ -103,11 +104,18 @@ function SalesWorkspaceContent({quick=false,notify,accountId,grouped=false,inven
  function sortInventory(key:string){if(tableSort===key)setDescending(v=>!v);else{setTableSort(key);setDescending(false);}setTablePage(0);}
  const brands=[...new Set(vehicles.map(v=>v.manufacturer))].sort((a,b)=>a.localeCompare(b,'uk'));
  const models=[...new Set(vehicles.filter(v=>!brand||v.manufacturer===brand).map(v=>v.model))].sort((a,b)=>a.localeCompare(b,'uk'));
- const previewPart=data?.query_key===searchKey?data.items.map((p:Row)=>overrides[p.id]||p).find((p:Row)=>p.id===previewId)||null:null;
+ // A desktop preview survives a resize to mobile even when the empty search stops fetching the full stock list.
+ const detachedPreviewId=quick&&mobile&&!searchEnabled?previewId:'';
+ const detachedPreview=useLoad(()=>detachedPreviewId?api<Row>('/parts/'+encodeURIComponent(detachedPreviewId)).then(row=>({id:detachedPreviewId,accountId,row})):Promise.resolve(null),[detachedPreviewId,accountId]);
+ useEffect(()=>{if(!detachedPreviewId)return;const changed=()=>detachedPreview.reload();window.addEventListener('warehouse:inventory-changed',changed);return()=>window.removeEventListener('warehouse:inventory-changed',changed);},[detachedPreviewId,accountId]);
+ const listedPreview=data?.query_key===searchKey?data.items.map((p:Row)=>overrides[p.id]||p).find((p:Row)=>p.id===previewId)||null:null;
+ const cachedPreview=previewSnapshot?.accountId===accountId&&previewSnapshot.row.id===previewId?previewSnapshot.row:null;
+ const freshPreview=detachedPreview.data?.accountId===accountId&&detachedPreview.data.id===detachedPreviewId&&detachedPreview.data.row.id===detachedPreviewId?detachedPreview.data.row:null;
+ const previewPart=detachedPreviewId?(detachedPreview.error?null:(freshPreview||cachedPreview)):listedPreview;
  const previewVehicle=previewPart?vehicles.find(v=>v.id===previewPart.vehicle_id)||previewPart.donor:undefined;
- const previewIndex=previewPart?rows.findIndex(p=>p.id===previewPart.id):-1;
- function selectPreview(id:string,_scroll=false){setPreviewId(id);}
- function updated(row:Row){setOverrides(values=>({...values,[row.id]:row}));setDetail(current=>current?.id===row.id?row:current);window.dispatchEvent(new Event('warehouse:inventory-changed'));}
+ const previewIndex=detachedPreviewId?0:previewPart?rows.findIndex(p=>p.id===previewPart.id):-1;
+ function selectPreview(id:string,_scroll=false){const row=rows.find(p=>p.id===id);setPreviewSnapshot(row?{accountId,row}:null);setPreviewId(id);}
+ function updated(row:Row){setOverrides(values=>({...values,[row.id]:row}));setPreviewSnapshot(current=>current?.accountId===accountId&&current.row.id===row.id?{accountId,row}:current);setDetail(current=>current?.id===row.id?row:current);window.dispatchEvent(new Event('warehouse:inventory-changed'));}
  function openDetail(row:Row,edit?:'oem'|'color'){setDetailEdit(edit);setDetailEditVersion(v=>v+1);setDetail(row);}
  function openAction(part:Row,type:string){setDetail(null);setAction({part,type,key:crypto.randomUUID()});}
  const [pricingSelected,setPricingSelected]=useState<string[]>([]);
@@ -127,7 +135,7 @@ function SalesWorkspaceContent({quick=false,notify,accountId,grouped=false,inven
       category={categories.find(c=>c.id===previewPart?.category_id)}
       subcategory={categories.find(c=>c.id===previewPart?.subcategory_id)}
       canSell={can('orders.create')} contextActions={!quick&&previewPart?<StockAssemblyPanel key={previewPart.id} part={previewPart} onChanged={()=>window.dispatchEvent(new Event('warehouse:inventory-changed'))}/>:undefined} open={!!previewId} onClose={()=>setPreviewId('')}
-      position={previewIndex+1} total={rows.length}
+      position={previewIndex+1} total={detachedPreviewId?1:rows.length}
       onPrevious={()=>{if(previewIndex>0)selectPreview(rows[previewIndex-1].id);}}
       onNext={()=>{if(previewIndex>=0&&previewIndex<rows.length-1)selectPreview(rows[previewIndex+1].id);}}
       onOpen={()=>{if(previewPart)openDetail(previewPart);}}
@@ -145,10 +153,10 @@ function SalesWorkspaceContent({quick=false,notify,accountId,grouped=false,inven
   {!quick&&<section className="stock-compact-filters" aria-label="Фільтри складу"><input type="search" aria-label="Пошук запчастин" placeholder="Назва, OEM або артикул…" value={q} onChange={e=>setQ(e.target.value)}/><select aria-label="Стан запчастини" value={condition} onChange={e=>{setCondition(e.target.value);setPage(0);}}><option value="">Стан: усі</option>{['unknown','used','new','damaged','refurbished'].map(v=><option key={v} value={v}>{labels[v]}</option>)}</select><label className="check-inline"><input type="checkbox" checked={!showZero} onChange={e=>{setShowZero(!e.target.checked);setPage(0);}}/>Тільки в наявності</label><details><summary>Ще фільтри</summary><label>Автомобіль-донор<select aria-label="Автомобіль пошуку" value={vehicle} onChange={e=>{setParams(e.target.value?{vehicle_id:e.target.value}:{});setPage(0);}}><option value="">Усі автомобілі</option>{vehicles.map(v=><option key={v.id} value={v.id}>{v.manufacturer} {v.model} · {v.year} · №{v.number}</option>)}</select></label></details></section>}
 
   {quick&&<PartsSearchControls beforeControls={<PartsQuickCategories categories={categories} selected={category} smart={smart} onSelect={id=>{setSmart(false);setCategory(id);setPage(0);setPreviewId('');setSuggestion(-1);}}/>} smart={smart} ready={smartReady} brand={brand} model={model} vehicle={vehicle} condition={condition} stock={!showZero} vehicles={vehicles} brands={brands} models={models} onMode={value=>{setSmart(value);if(value)setCategory('');setPage(0);setSuggestion(-1);}} onSearch={()=>{setTerm(q);setPage(0);setFocused(false);setSuggestion(-1);if(mobile&&document.activeElement instanceof HTMLElement)document.activeElement.blur();}} onChange={(key,value)=>{setPage(0);if(key==='brand'){setBrand(value);setModel('');setParams({});}if(key==='model'){setModel(value);setParams({});}if(key==='vehicle'){const donor=vehicles.find(v=>v.id===value);if(donor){setBrand(donor.manufacturer);setModel(donor.model);}setParams(value?{vehicle_id:value}:{});}if(key==='condition')setCondition(value);if(key==='stock')setShowZero(value!=='true');if(key==='reset'){setBrand('');setModel('');setCondition('');setCategory('');setShowZero(false);setParams({});}}}>
-   <div className="seller-autocomplete"><label>Назва, OEM або артикул<input type={quick&&smart?'search':undefined} maxLength={smart?160:undefined} role={quick?'combobox':'searchbox'} aria-label="Пошук запчастин" aria-expanded={quick?optionsOpen:undefined} aria-autocomplete={quick?'list':undefined} aria-controls={quick?'part-suggestions':undefined} aria-activedescendant={suggestion>=0?`suggestion-${suggestion}`:undefined} placeholder="Назва, OEM або артикул" value={q} onFocus={()=>setFocused(true)} onBlur={()=>setFocused(false)} onChange={e=>setQ(e.target.value)} onKeyDown={e=>{
-    if(e.key==='Escape'){setFocused(false);setSuggestion(-1);}if(!mobile&&e.key==='ArrowDown'&&suggestions.length){e.preventDefault();setFocused(true);setSuggestion(i=>(i+1)%suggestions.length);}if(!mobile&&e.key==='ArrowUp'&&suggestions.length){e.preventDefault();setSuggestion(i=>(i+suggestions.length-1)%suggestions.length);}if(e.key==='Enter'&&optionsOpen&&suggestion>=0){e.preventDefault();openDetail(suggestions[suggestion]);setFocused(false);}
-   }}/></label>
-   {optionsOpen&&<ul role="listbox" id="part-suggestions" aria-label="Підказки запчастин">{suggestions.map((p,i)=><li key={p.id}><button type="button" role="option" id={`suggestion-${i}`} aria-selected={suggestion===i} onPointerDown={e=>e.preventDefault()} onMouseDown={e=>e.preventDefault()} onClick={()=>{openDetail(p);setFocused(false);}}>{p.name}<small>{p.available_quantity} вільних · {priceLabel(p)}</small></button></li>)}{!suggestions.length&&<li>Нічого не знайдено</li>}</ul>}
+   <div className="seller-autocomplete"><div className="search-input-shell">{mobile&&<Search size={19} aria-hidden="true"/>}<label><span className={mobile?'search-label-hidden':''}>Назва, OEM або артикул</span><input type={quick&&smart?'search':undefined} maxLength={smart?160:undefined} role={quick?'combobox':'searchbox'} aria-label="Пошук запчастин" aria-expanded={quick?optionsOpen:undefined} aria-autocomplete={quick?'list':undefined} aria-controls={quick?'part-suggestions':undefined} aria-activedescendant={suggestion>=0?`suggestion-${suggestion}`:undefined} placeholder="Назва, OEM або артикул" value={q} onFocus={()=>setFocused(true)} onBlur={()=>setFocused(false)} onChange={e=>setQ(e.target.value)} onKeyDown={e=>{
+    if(e.key==='Escape'){setFocused(false);setSuggestion(-1);}if(e.key==='ArrowDown'&&suggestions.length){e.preventDefault();setFocused(true);setSuggestion(i=>(i+1)%suggestions.length);}if(e.key==='ArrowUp'&&suggestions.length){e.preventDefault();setSuggestion(i=>(i+suggestions.length-1)%suggestions.length);}if(e.key==='Enter'&&optionsOpen&&suggestion>=0){e.preventDefault();openDetail(suggestions[suggestion]);setFocused(false);}
+   }}/></label>{q&&<button type="button" className="search-clear" aria-label="Очистити пошук" onPointerDown={e=>e.preventDefault()} onClick={()=>{setQ('');setTerm('');setPage(0);setFocused(true);}}><X size={18}/></button>}</div>
+   {optionsOpen&&<ul role="listbox" id="part-suggestions" aria-label="Підказки запчастин">{suggestions.map((p,i)=><li key={p.id}><button type="button" role="option" id={`suggestion-${i}`} aria-selected={suggestion===i} onPointerDown={e=>e.preventDefault()} onMouseDown={e=>e.preventDefault()} onClick={()=>{if(document.activeElement instanceof HTMLElement)document.activeElement.blur();if(mobile)selectPreview(p.id);else openDetail(p);setFocused(false);}}>{p.name}<small>{[vehicles.find(v=>v.id===p.vehicle_id)?.model,p.oem_number||p.article_number,p.available_quantity+' вільних',priceLabel(p)].filter(Boolean).join(' · ')}</small></button></li>)}{!suggestions.length&&<li>Нічого не знайдено</li>}</ul>}
    </div>
   </PartsSearchControls>}
 
@@ -160,11 +168,12 @@ function SalesWorkspaceContent({quick=false,notify,accountId,grouped=false,inven
   {!quick&&<><details className="stock-quick-actions" open={quickActionsOpen} onToggle={e=>setQuickActionsOpen(e.currentTarget.open)}><summary>Швидкі дії · Вибрано: {pricingSelected.length}</summary><div><button disabled={!current||!rows.length} onClick={()=>select(rows.map(p=>p.id),true)}>Вибрати сторінку</button><button disabled={!pricingSelected.length} onClick={()=>setPricingSelected([])}>Зняти вибір</button>{[['quantity','Змінити кількість','inventory.adjust_quantity'],['price','Оновити ціну','parts.change_price'],['numbers','Призначити OEM / артикул','inventory.edit'],['category','Змінити категорію','inventory.edit']].filter(([, ,permission])=>can(permission)).map(([mode,label])=><button key={mode} disabled={!pricingSelected.length||mode==='category'&&!can('catalog.view')} onClick={()=>setSelectionEdit(mode)}>{label}</button>)}{can('inventory.archive')&&<button className="destructive" disabled={!pricingSelected.length||pricingSelected.length>100} onClick={()=>setStockBulk(true)}>Архівувати</button>}</div></details><div className={"part-preview-layout stock-v2-layout"+(previewPart?" has-preview":"")}><StockCategoryRail categories={categories} facets={current&&data&&'category_facets' in data?data.category_facets:undefined} category={category} subcategory={sub} canBrowse={can('catalog.view')} total={current?data?.total||0:0} onSelect={(cat,next)=>{setCategory(cat);setSub(next);setPage(0);setPreviewId('');setPricingSelected([]);}}/><section className="r115-inventory-table stock-compact-table stock-v2-main" aria-label="Таблиця складських запчастин"><InventoryTableHead dashboard/>{rows.map(p=><div className="stock-row-wrap" key={p.id}>{renderInventoryPart(p)}</div>)}{!waiting&&!error&&!rows.length&&<Empty title="Нічого не знайдено">Змініть фільтри або автомобіль.</Empty>}<footer className="stock-pagination"><label>На сторінці<select aria-label="Позицій на сторінці" value={pageSize} onChange={e=>{setPageSize(Number(e.target.value));setPage(0);}}>{[25,50,100].map(n=><option key={n}>{n}</option>)}</select></label><span role="status">{current&&data?.total?`${page*pageSize+1}–${Math.min((page+1)*pageSize,data.total)} із ${data.total}`:'0 позицій'}</span><button disabled={!current||page===0} onClick={()=>setPage(n=>n-1)}>Попередня</button><button disabled={!current||(page+1)*pageSize>=(data?.total||0)} onClick={()=>setPage(n=>n+1)}>Наступна</button></footer></section>{previewPart?previewPanel:<aside className="stock-v2-empty" aria-label="Картка запчастини"><Boxes size={32}/><strong>Картка запчастини</strong><p>Виберіть деталь, щоб переглянути її дані та доступні дії.</p></aside>}</div></>}
 
   {quick&&<section className="ui4-results" aria-label="Результати пошуку">
-   <p className="ui4-count" role="status">{waiting?'Пошук…':error?'Результати недоступні':`Знайдено ${data?.total||0} результатів`}</p>
-   {!!rows.length&&<div className={"ui11-results-layout part-preview-layout"+(previewPart?" has-preview":"")}>
+   <p className="ui4-count" role="status">{!searchEnabled?'Введіть назву, OEM або артикул':waiting?'Пошук…':error?'Результати недоступні':`Знайдено ${data?.total||0} результатів`}</p>
+   {detachedPreviewId&&detachedPreview.error&&<div role="alert" className="error">{detachedPreview.error} <button type="button" onClick={detachedPreview.reload}>Повторити перегляд</button> <button type="button" onClick={()=>setPreviewId('')}>Закрити</button></div>}
+   {(!!rows.length||!!previewPart)&&<div className={"ui11-results-layout part-preview-layout"+(previewPart?" has-preview":"")}>
     {previewPart&&previewPanel}
 
-    <div className="ui11-results-list">{!mobile&&<InventoryTableHead/>}{rows.map(p=>mobile?<MobileSearchResult key={p.id} part={p} vehicle={vehicles.find(v=>v.id===p.vehicle_id)||p.donor} revision={photoRevisions[p.id]||0} onPreview={()=>selectPreview(p.id,true)} onOrder={()=>setOrderPart({...p,donor_snapshot:vehicles.find(v=>v.id===p.vehicle_id)||p.donor})} actions={actions(p)}/>:<div key={p.id} className={'ui11-result-wrap'+(previewPart?.id===p.id?' selected':'')}>
+    {!!rows.length&&<div className="ui11-results-list">{!mobile&&<InventoryTableHead/>}{rows.map(p=>mobile?<MobileSearchResult key={p.id} part={p} vehicle={vehicles.find(v=>v.id===p.vehicle_id)||p.donor} revision={photoRevisions[p.id]||0} onPreview={()=>{setFocused(false);if(document.activeElement instanceof HTMLElement)document.activeElement.blur();selectPreview(p.id,true);}} onOrder={()=>{setFocused(false);if(document.activeElement instanceof HTMLElement)document.activeElement.blur();setOrderPart({...p,donor_snapshot:vehicles.find(v=>v.id===p.vehicle_id)||p.donor});}} actions={actions(p)}/>:<div key={p.id} className={'ui11-result-wrap'+(previewPart?.id===p.id?' selected':'')}>
      <InventoryPartRow active={previewId===p.id} onPreview={()=>selectPreview(p.id)} part={p} categories={categories} vehicle={vehicles.find(v=>v.id===p.vehicle_id)||p.donor} market={market.rows[p.id]} marketError={market.error} selected={false} canSelect={false} onSelect={()=>{}} onOpen={()=>selectPreview(p.id,true)} onSaved={updated} actions={actions(p)} photo={<SearchPartPhoto id={p.id} name={p.name} revision={photoRevisions[p.id]||0}/>} extra={<>
       {(p.oem_number||p.article_number)&&<small className="ui11-codes">{p.oem_number&&`OEM: ${p.oem_number}`}{p.oem_number&&p.article_number?' · ':''}{p.article_number&&`Артикул: ${p.article_number}`}{p.article_number&&p.article_brand&&` · ${p.article_brand}`}</small>}
       <small>{labels[p.condition]||'Стан не уточнено'}</small>
@@ -172,10 +181,10 @@ function SalesWorkspaceContent({quick=false,notify,accountId,grouped=false,inven
       <button type="button" className="ui11-quick-view" aria-pressed={previewPart?.id===p.id} onClick={()=>selectPreview(p.id,true)}>Швидкий перегляд</button>
      </>}/></div>)}
      <Pager total={data?.total||0} page={page} setPage={setPage}/>
-    </div>
+    </div>}
 
    </div>}
-   {!waiting&&!error&&(!smart||smartReady)&&!(data as Row)?.clarification&&!rows.length&&<Empty title="Нічого не знайдено">Змініть назву або автомобіль.</Empty>}
+   {searchEnabled&&!waiting&&!error&&(!smart||smartReady)&&!(data as Row)?.clarification&&!rows.length&&<Empty title="Нічого не знайдено">Змініть назву або автомобіль.</Empty>}
   </section>}
   {selectionEdit&&<InventorySelectionEditor ids={pricingSelected} mode={selectionEdit} categories={categories} vehicles={vehicles} onClose={()=>setSelectionEdit('')} onSaved={()=>window.dispatchEvent(new Event('warehouse:inventory-changed'))}/>}
   {stockBulk&&<StockBulkDialog archiveOnly={!quick} ids={pricingSelected} onClose={()=>setStockBulk(false)} onSaved={()=>{setStockBulk(false);setPricingSelected([]);window.dispatchEvent(new Event('warehouse:inventory-changed'));notify('Масову операцію проведено');}}/>}
@@ -193,12 +202,12 @@ function SalesWorkspaceContent({quick=false,notify,accountId,grouped=false,inven
 }
 function MobileSearchResult({part,vehicle,revision,onPreview,onOrder,actions}:{part:Row;vehicle?:Row;revision:number;onPreview:()=>void;onOrder:()=>void;actions:React.ReactNode}){
  const can=useCan(),available=Number(part.available_quantity||0),sellable=available>0&&part.assortment_enabled!==false&&!part.archived&&!part.catalogue_only;
- return <article className="mobile-search-result" aria-label={part.name}>
+ return <article className="mobile-search-result" aria-label={part.name} onPointerDown={e=>{if((e.target as Element).closest('button')&&document.activeElement?.matches('[role=combobox]'))e.preventDefault();}}>
   <div className="mobile-result-identity"><SearchPartPhoto id={part.id} name={part.name} revision={revision}/><div><button type="button" className="mobile-result-name" onClick={onPreview}>{part.name}<ChevronRight size={16}/></button><small>{vehicle?[vehicle.manufacturer,vehicle.model,vehicle.year].filter(Boolean).join(' · '):'Автомобіль не вказано'}</small>
   {(part.oem_number||part.article_number)&&<small>{part.oem_number?'OEM: '+part.oem_number:''}{part.oem_number&&part.article_number?' · ':''}{part.article_number?'Арт.: '+part.article_number:''}</small>}
   <span className={sellable?'mobile-result-available':'mobile-result-unavailable'}>{sellable?'В наявності · '+available+' шт.':part.catalogue_only?'У плані розбору':part.assortment_enabled===false?'Виключена з продажу':'Немає вільного залишку'}</span></div></div>
-  <div className="mobile-result-bottom"><div><small>Ціна</small><strong>{part.selling_price!=null?money(part.selling_price,part.currency||'UAH'):'Не вказано'}</strong></div>{can('orders.create')&&<button type="button" className="primary mobile-result-order" disabled={!sellable} onClick={onOrder}><ShoppingCart size={17}/> Оформити</button>}</div>
-  <div className="mobile-result-secondary"><button type="button" className="secondary" onClick={onPreview}>Деталі запчастини</button>{actions}</div>
+  <div className="mobile-result-bottom"><div><small>Ціна</small><strong>{part.selling_price!=null?money(part.selling_price,part.currency||'UAH'):'Не вказано'}</strong></div>{can('orders.create')&&<button type="button" className="primary mobile-result-order" disabled={!sellable} onClick={onOrder}><ShoppingCart size={17}/> Оформити</button>}{actions}</div>
+
  </article>;
 }
 function PriceDialog({part,onClose,onSaved}:{part:Row;onClose:()=>void;onSaved:(row:Row)=>void}){return <Modal title="Ціна запчастини" onClose={onClose}><SellerPriceEditor part={part} initialOpen onSaved={onSaved}/></Modal>;}
