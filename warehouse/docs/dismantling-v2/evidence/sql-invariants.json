@@ -1,0 +1,36 @@
+{
+  "target": "DEDICATED_LOCAL_BROWSER_TEST_DB",
+  "transaction": "READ ONLY",
+  "rows": [
+    {
+      "manufacturer": "PEUGEOT",
+      "parts": 5,
+      "units": 7,
+      "receipt_operations": 5,
+      "distinct_receipt_parts": 5,
+      "sale_operations": 0
+    },
+    {
+      "manufacturer": "Renault",
+      "parts": 227,
+      "units": 227,
+      "receipt_operations": 227,
+      "distinct_receipt_parts": 227,
+      "sale_operations": 0
+    },
+    {
+      "manufacturer": "Volkswagen",
+      "parts": 5,
+      "units": 4,
+      "receipt_operations": 5,
+      "distinct_receipt_parts": 5,
+      "sale_operations": 1
+    }
+  ],
+  "large_receipt_commands": [
+    100,
+    100,
+    27
+  ],
+  "no_duplicate_receipts": true
+}

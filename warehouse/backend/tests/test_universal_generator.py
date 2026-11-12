@@ -66,6 +66,8 @@ def test_exact_generic_modification_partial_source_is_distinct_from_physical(log
     conflicts=[dict(field='powertrain',value=x,kind='manual',reference='Synthetic conflict fixture') for x in ('petrol','BEV')]
     conflict=logged.post(f"/api/v1/vehicles/{v['id']}/dismantling-v3/preview",json={'facts':conflicts,'universal':True}).json()
     assert conflict['configuration']['conflicts'] and not conflict['proposals'][0]['item']['source_confirmed']
+    assert 'exact_source_positions' not in preview(logged,v)['catalogue_status']['generator']
+    monkeypatch.setenv('WAREHOUSE_CATALOG_PLATFORM_ADMIN_IDS',logged.get('/api/v1/auth/me').json()['id'])
     p=preview(logged,v);assert p['catalogue_status']['generator']['exact_source_positions']==1
     assert p['proposals'][0]['item']['source_confirmed']
     assert save(logged,v,p).status_code==200
@@ -96,7 +98,7 @@ def test_changed_vin_attributes_invalidates_preview_and_scope(logged,vehicle,cli
     assert client.post(f"/api/v1/vehicles/{vehicle['id']}/dismantling-v3/preview",json={'facts':[],'universal':True}).status_code==404
 
 
-def test_verified_bev_and_published_prd_extension_without_new_generation_logic(logged):
+def test_verified_bev_and_published_prd_extension_without_new_generation_logic(logged,monkeypatch):
     from app.models.canonical import CanonicalType,CanonicalPlacement
     from app.services.canonical_rules import type_record,placement
     v=logged.post('/api/v1/vehicles',json={'manufacturer':'Other EV maker','model':'Synthetic EV','year':2020,'fuel_type':'Електро'}).json()
@@ -108,6 +110,8 @@ def test_verified_bev_and_published_prd_extension_without_new_generation_logic(l
     t['provenance']={'universal_publication':'offline_owner_review_fixture','universal_sources':[{'source_key':'td1q2018:prd:999998'}],'fitment_rules':[{'when':{'powertrain':['BEV']},'effect':'incompatible','evidence':'Synthetic combustion-only function restriction'}]}
     pos=placement(dict(type_id=t['id'],installation={'side':'unknown','position':'unknown','mount':[]}))
     with Session(engine()) as db:db.add(CanonicalType(**t));db.flush();db.add(CanonicalPlacement(**pos));db.commit()
+    assert 'published_reference_positions' not in preview(logged,v)['catalogue_status']['generator']
+    monkeypatch.setenv('WAREHOUSE_CATALOG_PLATFORM_ADMIN_IDS',logged.get('/api/v1/auth/me').json()['id'])
     p=preview(logged,v);assert p['catalogue_status']['generator']['published_reference_positions']==1
     item=next(i['item'] for i in p['proposals'] if i['item']['canonical_part_type_id']==t['id'])
     assert item['applicability_status']=='incompatible'

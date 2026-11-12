@@ -60,7 +60,7 @@ def selection(id:str,db:DB,who:Auth,q:str=Query('',max_length=200),category:str=
 @router.post('/api/v1/vehicles/{id}/dismantling-v3/bulk/preview')
 def bulk_preview(id:str,data:BulkSelection,db:DB,who:Auth):
     from app.services.dismantling_bulk import preview
-    return preview(db,owned(db,Vehicle,id,who.workspace_account_id),data.ids,data.action)
+    return preview(db,owned(db,Vehicle,id,who.workspace_account_id),data.ids,data.action,data.confirm_physical)
 
 @router.post('/api/v1/vehicles/{id}/dismantling-v3/bulk')
 def bulk_command(id:str,data:BulkCommand,db:DB,who:Auth):
@@ -89,3 +89,11 @@ def virtual_availability(id:str,data:VirtualAvailability,db:DB,who:Auth):
     virtual.lock_workspace(db,who.workspace_account_id)
     v=owned(db,Vehicle,id,who.workspace_account_id,lock=True,active=True)
     result=virtual.availability(db,v,who,data);db.commit();return result
+
+@router.get('/api/v1/vehicles/{id}/dismantling-v3/sources')
+def sources(id:str,db:DB,who:Auth):
+    from app.services.catalogue_import import platform_admin
+    from app.services.dismantling_access import source_report
+    if not platform_admin(who.user):raise HTTPException(403,'Деталі підбору доступні лише адміністратору платформи')
+    v=owned(db,Vehicle,id,who.workspace_account_id)
+    return source_report(service.rows_for(db,v))

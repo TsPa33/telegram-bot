@@ -31,7 +31,7 @@ def eligibility(row,archived=False):
     return blocked
 
 
-def preview(db,v,ids,action):
+def preview(db,v,ids,action,confirm_physical=False):
     rows=plan.rows_for(db,v);by_id={r.id:r for r in rows}
     if not set(ids)<=by_id.keys():raise HTTPException(404,'Позицію власного плану не знайдено')
     from app.models import Part
@@ -40,10 +40,14 @@ def preview(db,v,ids,action):
     eligible=[];blocked=[];items=[]
     for id in ids:
         r=by_id[id];reason=eligibility(r,v.archived or r.part_id in archived)[action]
+        needs_confirmation=plan.inspection(r)=='unchecked'
+        if action=='receipt' and confirm_physical and needs_confirmation and not plan.protected(r) and r.included and not v.archived and r.plan_v3.get('placement_id'):
+            reason=None
         (blocked if reason else eligible).append(dict(id=id,name=r.name,reason=reason) if reason else id)
-        items.append(dict(id=id,name=r.name,position=r.position,included=r.included,inspection=plan.inspection(r),dismantled=r.status=='dismantled',received=bool(r.received_at),reason=reason))
+        items.append(dict(id=id,name=r.name,position=r.position,included=r.included,inspection=plan.inspection(r),dismantled=r.status=='dismantled',received=bool(r.received_at),reason=reason,requires_confirmation=needs_confirmation,quantity=r.quantity,condition=r.condition or ('damaged' if r.status=='damaged' else None)))
     result=dict(action=action,selected=len(ids),eligible_ids=eligible,eligible=len(eligible),blocked=blocked,items=items,
         confirmed=sum(plan.inspection(by_id[id])=='present' for id in ids),dismantled=sum(by_id[id].status=='dismantled' for id in ids),received=sum(bool(by_id[id].received_at) for id in ids),etag=plan.state(db,v,rows))
+    if confirm_physical:result['confirm_physical']=True
     result['preview_token']=digest(result)
     return result
 
@@ -59,7 +63,7 @@ def select_ids(db,v,*,q='',category='',subcategory='',status='all',offset=0,limi
 def execute(db,v,who,data):
     cached,sha=plan.replay(db,v,who,data,'bulk')
     if cached is not None:return cached
-    report=preview(db,v,data.ids,data.action)
+    report=preview(db,v,data.ids,data.action,data.confirm_physical)
     if data.etag!=report['etag']:raise HTTPException(409,'План або склад змінився. Оновіть придатність перед наступною дією')
     if data.action=='receipt' and data.preview_token!=report['preview_token']:raise HTTPException(409,'Перевірка надходження застаріла; перегляньте підсумок')
     targets={r.id:r for r in plan.rows_for(db,v)};eligible=report['eligible_ids'];part_ids=[]
@@ -71,6 +75,12 @@ def execute(db,v,who,data):
         updated=0
         for id in eligible:
             line=lines[id];r=targets[id]
+            if plan.inspection(r)=='unchecked':
+                if not data.confirm_physical or not line.confirm_physical:raise HTTPException(409,'Підтвердьте фактичну наявність і демонтаж кожної нової деталі')
+                before=snapshot(r)
+                r.plan_v3={**r.plan_v3,'inspection':'present','inspection_source':'receipt_confirmation'}
+                record(db,v.account_id,r,'dismantling_v3_decision','Фактичну наявність підтверджено під час надходження',before)
+            if r.status=='damaged' and r.condition is None:r.condition='damaged'
             # A receipt is an explicit user confirmation of actual dismantling.
             # Keep the same audit trail and transaction as the stock receipt.
             # Any failure rolls both changes back; no VIN-based auto-confirmation.

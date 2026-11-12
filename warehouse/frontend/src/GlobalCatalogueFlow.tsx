@@ -25,6 +25,7 @@ export function GlobalVehicleForm({onSaved,vehicle,expectedBasis}:{onSaved:(row:
 
 export default function GlobalCatalogueFlow({vehicle,onSaved}:{vehicle:Row;onSaved:(row:Row)=>void}) {
  const can=useCan();
+ const [working,setWorking]=useState(false);
  const [assemblyMode,setAssemblyMode]=useState<boolean|null>(null);
  const [legacy,setLegacy]=useState<Row[]|null>(null);
  const [state,setState]=useState<Row>({}),[revision,setRevision]=useState(0),[chooseModification,setChooseModification]=useState(false);
@@ -34,7 +35,7 @@ export default function GlobalCatalogueFlow({vehicle,onSaved}:{vehicle:Row;onSav
  const products:Row[]=saved?.payload?.categories||[];
  const filtered=products.filter(p=>`${p.name_uk} ${p.name_source}`.toLowerCase().includes(q.toLowerCase()));
  return <section className="unified-flow" aria-label="Розбір автомобіля">
-  <UniversalPlanGenerator vehicle={vehicle} revision={revision} onSaved={()=>{setRevision(n=>n+1);onSaved(vehicle)}}/>
+  <UniversalPlanGenerator vehicle={vehicle} revision={revision} onWorking={setWorking} onSaved={()=>{setRevision(n=>n+1);onSaved(vehicle)}}/>
   <details className="uf-catalogue-disclosure">
    <summary><span><strong>Каталог і модифікація</strong><small>{state.selection?'Точна модифікація вибрана':'Точна модифікація не підтверджена · базовий каталог'}</small></span><span className="uf-catalogue-toggle">Налаштувати</span></summary>
    <div className="uf-catalogue-details">
@@ -47,6 +48,7 @@ export default function GlobalCatalogueFlow({vehicle,onSaved}:{vehicle:Row;onSav
   {chooseModification&&state.selection_basis&&<div className="uf-source-picker"><GlobalVehicleForm key={vehicle.id+':'+state.selection_basis} vehicle={vehicle} expectedBasis={state.selection_basis} onSaved={row=>{setChooseModification(false);setRevision(n=>n+1);onSaved(row)}}/></div>}
    </div>
   </details>
+  {working&&<>
   <AssemblyTree vehicle={vehicle} revision={revision} onReady={setAssemblyMode}/>{!assemblyMode&&<h2>Розбір автомобіля</h2>}{error&&<p role="alert">{error}</p>}
  {state.legacy&&<details><summary>Збережені попередні списки</summary><p>Історичний список збережено окремо від глобального каталогу.</p><button onClick={async()=>{try{setLegacy((await api(`/vehicles/${vehicle.id}/dismantling-workspace?source=${state.legacy_source}`)).items)}catch(e){setError((e as Error).message)}}}>Переглянути збережений список</button>{legacy?.map(r=><p key={r.key}>{r.name}</p>)}</details>}
  {!saved?null:assemblyMode===false?<>
@@ -54,5 +56,6 @@ export default function GlobalCatalogueFlow({vehicle,onSaved}:{vehicle:Row;onSav
  <label>Пошук деталей<input value={q} onChange={e=>{setQ(e.target.value);setPage(0)}}/></label>
  <div style={{overflowX:'auto'}}><table><thead><tr><th>Деталь</th><th>Категорія</th><th>Артикули</th><th>Дані</th></tr></thead><tbody>{filtered.slice(page*25,(page+1)*25).map(p=><tr key={p.product_id}><td>{p.name_uk||p.name_source}<small>{p.name_uk&&p.name_source}</small></td><td>{p.category_path?.filter(Boolean).join(' → ')||'Потребує уточнення'}</td><td>{p.article_count} <button disabled={busy||!state.keys} onClick={async()=>{const key=state.keys?.[p.product_id];if(!key){setError('Позицію не знайдено у збереженому списку');return}setBusy(true);try{setDetail(await api(`/vehicles/${vehicle.id}/unified-catalogue/articles?key=${encodeURIComponent(key)}`))}catch(e){setError((e as Error).message)}finally{setBusy(false)}}}>Переглянути</button></td><td>{p.mapping_reviewed_by?'Категорію перевірено':'Потребує перевірки'}</td></tr>)}</tbody></table></div>{filtered.length>25&&<nav aria-label="Сторінки деталей"><button disabled={page===0} onClick={()=>setPage(p=>p-1)}>Попередня</button><span> {page+1} / {Math.ceil(filtered.length/25)} </span><button disabled={(page+1)*25>=filtered.length} onClick={()=>setPage(p=>p+1)}>Наступна</button></nav>}
  {detail&&<section aria-label="Каталожні варіанти"><h3>Артикули та OEM-кроси</h3><button onClick={()=>setDetail(null)}>Закрити</button><p>Каталожний крос не підтверджує VIN-сумісність.</p>{detail.articles.map((a:Row)=><article key={a.art_id}><strong>{a.article_nr} · {a.brand||'Виробника не вказано'}</strong><p>OEM: {a.oem_numbers.join(', ')||'Немає даних'}</p></article>)}</section>}</>:null}
+ </>}
  </section>;
 }

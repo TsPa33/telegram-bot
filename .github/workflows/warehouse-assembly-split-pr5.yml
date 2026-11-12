@@ -57,6 +57,8 @@ jobs:
             tests/test_universal_generator.py \
             tests/test_sales_center.py \
             tests/test_sales_workspace.py \
+            tests/test_dismantling_v2_ux.py \
+            tests/test_stage2e.py \
             2>&1 | tee "$RUNNER_TEMP/pr5-pytest.log"
       - name: Assert no unrecorded schema changes
         run: python -m alembic check
