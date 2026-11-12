@@ -161,7 +161,12 @@ def make_preview(db,v,who,data,*,virtual_base=False):
     return report
 
 def replay(db,v,who,data,kind):
-    key=str(data.request_key);sha=digest([kind,v.id,who.actor_id,data.model_dump(mode='json')])
+    key=str(data.request_key);payload=data.model_dump(mode='json')
+    if kind=='bulk':
+        if not payload.get('confirm_physical'):payload.pop('confirm_physical',None)
+        for line in payload.get('lines',[]):
+            if not line.get('confirm_physical'):line.pop('confirm_physical',None)
+    sha=digest([kind,v.id,who.actor_id,payload])
     old=db.scalar(select(DismantlingRequest).where(DismantlingRequest.account_id==v.account_id,DismantlingRequest.request_key==key))
     if old:
         if old.actor_id!=who.actor_id or old.vehicle_id!=v.id or old.request_sha!=sha:raise HTTPException(409,'Ключ запиту вже використано для іншої дії')

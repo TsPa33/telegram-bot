@@ -49,6 +49,7 @@ class PlanQuick(PlanPreview):
         return self
 
 class BulkSelection(Input):
+    confirm_physical:bool=Field(default=False,strict=True)
     ids:list[str]=Field(min_length=1,max_length=1000)
     action:Literal['present','absent','not_applicable','unchecked','exclude','restore','dismantled','receipt']
     @model_validator(mode='after')
@@ -58,6 +59,7 @@ class BulkSelection(Input):
 
 from app.schemas import Money
 class ReceiptLine(Input):
+    confirm_physical:bool=Field(default=False,strict=True)
     id:str=Field(min_length=1,max_length=36)
     quantity:int=Field(ge=1,le=1000000,strict=True)
     condition:Literal['used','new','damaged','refurbished']|None=None
@@ -76,6 +78,7 @@ class BulkCommand(BulkSelection):
         if self.action in ('absent','exclude','not_applicable') and len(self.reason.strip())<3:raise ValueError('Потрібна причина рішення')
         if self.action in ('receipt','dismantled') and not self.confirm:raise ValueError('Потрібна явна дія підтвердження')
         if self.action=='receipt' and not self.preview_token:raise ValueError('Потрібна перевірка придатності оприбуткування')
+        if self.action!='receipt' and self.confirm_physical:raise ValueError('Фізичне підтвердження дозволене лише для надходження')
         if self.action!='receipt' and self.lines:raise ValueError('Параметри надходження дозволені лише для receipt')
         if len({r.id for r in self.lines})!=len(self.lines) or not {r.id for r in self.lines}<=set(self.ids):raise ValueError('Кожен рядок надходження має належати вибраним ID та бути унікальним')
         return self
