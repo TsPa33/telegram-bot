@@ -52,3 +52,10 @@ dialog.order-dialog{width:min(760px,calc(100vw - 24px));max-height:calc(100dvh -
 .order-detail .order-action-group{display:flex;flex-wrap:wrap;gap:8px;border:0;padding:0;margin:10px 0;min-width:0}
 .order-history{margin-top:16px;padding-top:10px;border-top:1px solid var(--color-border)}.order-history summary{font-weight:700;cursor:pointer}
 .stats-kpi,.stats-pane,.r123-panel{padding:14px!important}.stats-kpi h3{font-size:13px!important}.stats-kpi strong{font-size:22px!important}.r123-profile-bar{gap:10px!important;padding:12px!important}.settings-breadcrumb{display:flex;gap:8px;font-size:12px;color:var(--color-secondary);margin:0 0 12px}
+
+/* Explicit grid placement avoids inherited table columns at smaller widths. */
+.ui3-inventory .part-preview-layout.stock-v2-layout .stock-compact-table article.r115-part .r115-codes{grid-column:1;grid-row:2;margin:0;overflow-wrap:anywhere}
+.ui3-inventory .part-preview-layout.stock-v2-layout .stock-compact-table article.r115-part .ui3-own{grid-column:1/-1;grid-row:3;margin:0}
+.ui3-inventory .stock-v2-layout .r115-part .ui3-own .seller-price-compact{max-width:100%}
+@media(max-width:450px){.ui3-inventory .part-preview-layout.stock-v2-layout .stock-compact-table article.r115-part .r115-codes{grid-column:1/-1;grid-row:3}.ui3-inventory .part-preview-layout.stock-v2-layout .stock-compact-table article.r115-part .ui3-own{grid-row:4}}
+:root[data-theme=dark] .app .sidebar{background:linear-gradient(160deg,var(--color-sidebar),var(--color-subtle));border-right-color:var(--color-sidebar-border)}
