@@ -139,7 +139,9 @@ jobs:
                 await page.goto(path);
                 await expect(page.getByRole('heading',{name:'З поверненням'})).toBeVisible();
                 await expect(page.getByLabel('Електронна пошта')).toBeVisible();
-                await expect(page.getByLabel('Пароль',{exact:true})).toBeVisible();
+                const password=page.getByLabel('Пароль');
+                await expect(password).toBeVisible();
+                await expect(password).toHaveAttribute('type','password');
                 await expect(page.getByRole('button',{name:'Увійти',exact:true})).toBeVisible();
                 assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
               }
