@@ -15,6 +15,10 @@ export default function Dashboard(){
  const can=useCan();
  const {data:d,error,loading,reload}=useLoad(()=>api('/dashboard'),[]);
  const finance=can('analytics.financial');
+ const cost=finance&&can('parts.view_cost');
+ const coverage=d?.cost_coverage;
+ const uah=d?.valuation_by_currency?.find((r:Row)=>r.currency==='UAH');
+ const knownValue=(value:unknown,known:unknown,currency='UAH')=>Number(known)>0?money(value,currency):'Не визначено';
  const [showFinance,setShowFinance]=useState(false);
  const [showSales,setShowSales]=useState(false);
  return <div className="stats-page">
@@ -28,9 +32,9 @@ export default function Dashboard(){
    <section className="stats-kpis" aria-label="Основні показники складу">
     {[
       {name:'Автомобілі-донори',value:count(d.vehicles),detail:'Активні автомобілі',Icon:CarFront},
-      {name:'Позиції на складі',value:count(d.positions),detail:count(d.stock_units)+' фізичних одиниць',Icon:Package},
-      {name:'Доступно до продажу',value:count(d.available_units),detail:count(d.reserved_units)+' одиниць у резерві',Icon:Boxes},
-      finance?{name:'Оцінка запасів · UAH',value:money(d.estimated_sales_value,'UAH'),detail:'Лише позиції з ціною, не дохід',Icon:ChartNoAxesCombined}:
+      {name:'Позиції на складі',value:count(d.stock_positions??d.positions),detail:count(d.stock_units)+' фізичних одиниць',Icon:Package},
+      {name:'Одиниці без резерву',value:count(d.available_units),detail:count(d.reserved_units)+' одиниць у резерві',Icon:Boxes},
+      finance?{name:'Оцінка запасів · UAH',value:knownValue(uah?.value,uah?.priced_positions),detail:count(uah?.unpriced_positions)+' позицій без ціни · не дохід',Icon:ChartNoAxesCombined}:
       {name:'Одиниці в резерві',value:count(d.reserved_units),detail:'Не доступні до продажу',Icon:ClipboardList}
     ].map(m=><article className="stats-kpi" key={m.name}><div className="stats-kpi-top"><span>{m.name}</span><m.Icon size={18}/></div><strong>{m.value}</strong><small>{m.detail}</small></article>)}
    </section>
@@ -44,13 +48,14 @@ export default function Dashboard(){
      <div className="stats-pane-title"><h2>Фінансовий огляд</h2><span className="stats-currency">UAH</span></div>
      <p className="stats-pane-subtitle">Облікована оцінка, а не отриманий дохід.</p>
      <div className="stats-finance-rows">
-      <div><span>Вартість придбання донорів</span><strong>{money(d.vehicle_acquisition_cost)}</strong></div>
-      <div><span>Облікована собівартість деталей</span><strong>{money(d.allocated_parts_cost)}</strong></div>
-      <div><span>Потенційна валова маржа</span><strong>{money(d.potential_gross_margin)}</strong></div>
+      {cost&&<><div><span>Вартість придбання донорів</span><strong>{knownValue(d.vehicle_acquisition_cost,coverage?.vehicles_with_cost)}</strong></div>
+      <div><span>Облікована собівартість деталей</span><strong>{knownValue(d.allocated_parts_cost,coverage?.stock_positions_with_cost)}</strong></div>
+      <div><span>Потенційна валова маржа · UAH</span><strong>{knownValue(d.potential_gross_margin,d.margin_positions)}</strong></div></>}
+      <div><span>Оцінка запасів · UAH</span><strong>{knownValue(uah?.value,uah?.priced_positions)}</strong></div>
      </div>
-     <p className="stats-finance-foot">Маржа розрахована для {count(d.margin_positions)} позицій із ціною та собівартістю. Вартість донорів не віднімається повторно.</p>
+     {cost&&<p className="stats-finance-foot">Собівартість відома для {count(coverage?.stock_positions_with_cost)} позицій; не визначена для {count(coverage?.stock_positions_without_cost)}. Вартість придбання не визначена для {count(coverage?.vehicles_without_cost)} донорів. Маржа охоплює лише {count(d.margin_positions)} фізичних позицій із ціною та собівартістю в UAH. Вартість донорів не віднімається повторно.</p>}
      <button type="button" className="stats-expand" aria-expanded={showFinance} onClick={()=>setShowFinance(x=>!x)}>{showFinance?'Сховати':'Вартість за валютами'}</button>
-     {showFinance&&<div className="stats-finance-rows">{(d.valuation_by_currency||[]).map((r:Row)=><div key={r.currency}><span>{r.currency}</span><strong>{money(r.value,r.currency)}</strong></div>)}</div>}
+     {showFinance&&<div className="stats-finance-rows">{(d.valuation_by_currency||[]).map((r:Row)=><div key={r.currency}><span>{r.currency} · {count(r.unpriced_positions)} без ціни</span><strong>{knownValue(r.value,r.priced_positions,r.currency)}</strong></div>)}</div>}
     </section></Permit>
    </div>
    {['analytics.view','analytics.financial','sales.view','sales.view_financials'].every(p=>can(p))&&<section className="stats-sales-section">
