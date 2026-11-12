@@ -1,0 +1,16 @@
+{
+  "localOnly": true,
+  "skipAudit": true,
+  "soldOpensCheckoutWithoutWrite": true,
+  "saleLedgerOperations": 1,
+  "defectAndCustomAudit": true,
+  "orderAddRemoveQuantityPrice": true,
+  "reservedReplacementAtomic": true,
+  "palettes": [
+    "gold",
+    "forest"
+  ],
+  "desktop": 1440,
+  "mobile": 390,
+  "pageErrors": []
+}

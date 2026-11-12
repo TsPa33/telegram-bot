@@ -45,13 +45,13 @@ export default function SearchPartPreview({part,vehicle,category,subcategory,can
  return <QuickPreviewFrame onClose={onClose}><aside id="search-part-preview" className="ui11-preview part-quick-preview open" aria-label="Дані запчастини">
   {!part?<div className="ui11-preview-empty"><Package size={32} strokeWidth={1.2}/><strong>Оберіть запчастину</strong><p>Інформація про деталь з’явиться тут.</p></div>:<>
    <div className="ui11-preview-heading">
-    <button type="button" className="ui11-preview-close" aria-label="Закрити швидкий перегляд" onClick={onClose}><X size={18}/></button>
     <div className="ui11-preview-topline"><span className="ui11-eyebrow">Швидкий перегляд</span>
      <div className="ui11-preview-navigation" aria-label="Перехід між результатами">
       <button type="button" onClick={onPrevious} disabled={position<=1} aria-label="Попередня запчастина"><ChevronLeft size={16}/></button>
       <span aria-live="polite">{position} із {total}</span>
       <button type="button" onClick={onNext} disabled={position>=total} aria-label="Наступна запчастина"><ChevronRight size={16}/></button>
      </div>
+    <button type="button" className="ui11-preview-close" aria-label="Закрити швидкий перегляд" onClick={onClose}><X size={18}/></button>
     </div>
     <h2>{part.name}</h2>
     {(part.original_name||part.original)&&(part.original_name||part.original)!==part.name&&<p>{part.original_name||part.original}</p>}
