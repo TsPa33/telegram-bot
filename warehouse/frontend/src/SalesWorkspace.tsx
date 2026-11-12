@@ -38,6 +38,8 @@ import SearchPartPreview from './SearchPartPreview';
 import SearchPartPhoto from './SearchPartPhoto';
 import './parts-search-ui4.css';
 import './search-r11.css';
+import {useMobileSearch} from './useMobileSearch';
+import {ShoppingCart,ChevronRight} from 'lucide-react';
 type Action={part:Row;type:string;key:string};
 const actionLabels:Record<string,string>={sale:'Продати',write_off:'Списати',transfer:'Перемістити',reserve:'Зарезервувати',release:'Зняти резерв',receipt:'Додати кількість',correction:'Змінити кількість'};
 type WorkspaceProps={quick?:boolean;notify:Notify;accountId:string;grouped?:boolean;inventoryVehicles?:Row[]|null;onHistory?:()=>void};
@@ -45,6 +47,7 @@ export default function SalesWorkspace(props:WorkspaceProps) {
  return <WorkshopGate><SalesWorkspaceContent {...props}/></WorkshopGate>;
 }
 function SalesWorkspaceContent({quick=false,notify,accountId,grouped=false,inventoryVehicles,onHistory}:{quick?:boolean;notify:Notify;accountId:string;grouped?:boolean;inventoryVehicles?:Row[]|null;onHistory?:()=>void}) {
+ const mobile=useMobileSearch();
  const can=useCan(),pricingIdentity=useContext(TeamIdentity);const canBulkPrice=pricingIdentity?.role==='DIRECTOR'&&can('parts.change_price');
  const navigate=useNavigate(),[orderPart,setOrderPart]=useState<Row|null>(null);
  const [params,setParams]=useSearchParams(),vehicle=params.get('vehicle_id')||'';
@@ -84,7 +87,7 @@ function SalesWorkspaceContent({quick=false,notify,accountId,grouped=false,inven
  const waiting=loading||q!==term||(!current&&!error&&(!smart||smartReady));
  const unlocatedRows=current?data!.items.map(p=>overrides[p.id]||p).filter(p=>!p.archived&&(showZero||(smart?p.available_quantity>0:p.quantity>0))):[];
  const rows=!quick&&locationFilter?unlocatedRows.filter(p=>locationFilter==='__none__'?!String(p.location||'').trim():String(p.location||'').trim()===locationFilter):unlocatedRows;
- const suggestions=rows.slice(0,5),optionsOpen=quick&&focused&&!!q&&!waiting&&!error;
+ const suggestions=rows.slice(0,5),optionsOpen=quick&&!mobile&&focused&&!!q&&!waiting&&!error;
  useEffect(()=>{setSuggestion(-1);setOverrides({});},[data]);
  const sortedInventoryRows=!quick?[...rows].sort((a,b)=>{
   let result=0;
@@ -141,9 +144,9 @@ function SalesWorkspaceContent({quick=false,notify,accountId,grouped=false,inven
   {pendingError&&<p role="alert" className="error">{pendingError}</p>}
   {!quick&&<section className="stock-compact-filters" aria-label="Фільтри складу"><input type="search" aria-label="Пошук запчастин" placeholder="Назва, OEM або артикул…" value={q} onChange={e=>setQ(e.target.value)}/><select aria-label="Стан запчастини" value={condition} onChange={e=>{setCondition(e.target.value);setPage(0);}}><option value="">Стан: усі</option>{['unknown','used','new','damaged','refurbished'].map(v=><option key={v} value={v}>{labels[v]}</option>)}</select><label className="check-inline"><input type="checkbox" checked={!showZero} onChange={e=>{setShowZero(!e.target.checked);setPage(0);}}/>Тільки в наявності</label><details><summary>Ще фільтри</summary><label>Автомобіль-донор<select aria-label="Автомобіль пошуку" value={vehicle} onChange={e=>{setParams(e.target.value?{vehicle_id:e.target.value}:{});setPage(0);}}><option value="">Усі автомобілі</option>{vehicles.map(v=><option key={v.id} value={v.id}>{v.manufacturer} {v.model} · {v.year} · №{v.number}</option>)}</select></label></details></section>}
 
-  {quick&&<PartsSearchControls beforeControls={<PartsQuickCategories categories={categories} selected={category} smart={smart} onSelect={id=>{setSmart(false);setCategory(id);setPage(0);setPreviewId('');setSuggestion(-1);}}/>} smart={smart} ready={smartReady} brand={brand} model={model} vehicle={vehicle} condition={condition} stock={!showZero} vehicles={vehicles} brands={brands} models={models} onMode={value=>{setSmart(value);if(value)setCategory('');setPage(0);setSuggestion(-1);}} onSearch={()=>{setTerm(q);setPage(0);setFocused(false);setSuggestion(-1);}} onChange={(key,value)=>{setPage(0);if(key==='brand'){setBrand(value);setModel('');setParams({});}if(key==='model'){setModel(value);setParams({});}if(key==='vehicle'){const donor=vehicles.find(v=>v.id===value);if(donor){setBrand(donor.manufacturer);setModel(donor.model);}setParams(value?{vehicle_id:value}:{});}if(key==='condition')setCondition(value);if(key==='stock')setShowZero(value!=='true');if(key==='reset'){setBrand('');setModel('');setCondition('');setCategory('');setShowZero(false);setParams({});}}}>
+  {quick&&<PartsSearchControls beforeControls={<PartsQuickCategories categories={categories} selected={category} smart={smart} onSelect={id=>{setSmart(false);setCategory(id);setPage(0);setPreviewId('');setSuggestion(-1);}}/>} smart={smart} ready={smartReady} brand={brand} model={model} vehicle={vehicle} condition={condition} stock={!showZero} vehicles={vehicles} brands={brands} models={models} onMode={value=>{setSmart(value);if(value)setCategory('');setPage(0);setSuggestion(-1);}} onSearch={()=>{setTerm(q);setPage(0);setFocused(false);setSuggestion(-1);if(mobile&&document.activeElement instanceof HTMLElement)document.activeElement.blur();}} onChange={(key,value)=>{setPage(0);if(key==='brand'){setBrand(value);setModel('');setParams({});}if(key==='model'){setModel(value);setParams({});}if(key==='vehicle'){const donor=vehicles.find(v=>v.id===value);if(donor){setBrand(donor.manufacturer);setModel(donor.model);}setParams(value?{vehicle_id:value}:{});}if(key==='condition')setCondition(value);if(key==='stock')setShowZero(value!=='true');if(key==='reset'){setBrand('');setModel('');setCondition('');setCategory('');setShowZero(false);setParams({});}}}>
    <div className="seller-autocomplete"><label>Назва, OEM або артикул<input type={quick&&smart?'search':undefined} maxLength={smart?160:undefined} role={quick?'combobox':'searchbox'} aria-label="Пошук запчастин" aria-expanded={quick?optionsOpen:undefined} aria-autocomplete={quick?'list':undefined} aria-controls={quick?'part-suggestions':undefined} aria-activedescendant={suggestion>=0?`suggestion-${suggestion}`:undefined} placeholder="Назва, OEM або артикул" value={q} onFocus={()=>setFocused(true)} onBlur={()=>setFocused(false)} onChange={e=>setQ(e.target.value)} onKeyDown={e=>{
-    if(e.key==='Escape'){setFocused(false);setSuggestion(-1);}if(e.key==='ArrowDown'&&suggestions.length){e.preventDefault();setFocused(true);setSuggestion(i=>(i+1)%suggestions.length);}if(e.key==='ArrowUp'&&suggestions.length){e.preventDefault();setSuggestion(i=>(i+suggestions.length-1)%suggestions.length);}if(e.key==='Enter'&&optionsOpen&&suggestion>=0){e.preventDefault();openDetail(suggestions[suggestion]);setFocused(false);}
+    if(e.key==='Escape'){setFocused(false);setSuggestion(-1);}if(!mobile&&e.key==='ArrowDown'&&suggestions.length){e.preventDefault();setFocused(true);setSuggestion(i=>(i+1)%suggestions.length);}if(!mobile&&e.key==='ArrowUp'&&suggestions.length){e.preventDefault();setSuggestion(i=>(i+suggestions.length-1)%suggestions.length);}if(e.key==='Enter'&&optionsOpen&&suggestion>=0){e.preventDefault();openDetail(suggestions[suggestion]);setFocused(false);}
    }}/></label>
    {optionsOpen&&<ul role="listbox" id="part-suggestions" aria-label="Підказки запчастин">{suggestions.map((p,i)=><li key={p.id}><button type="button" role="option" id={`suggestion-${i}`} aria-selected={suggestion===i} onPointerDown={e=>e.preventDefault()} onMouseDown={e=>e.preventDefault()} onClick={()=>{openDetail(p);setFocused(false);}}>{p.name}<small>{p.available_quantity} вільних · {priceLabel(p)}</small></button></li>)}{!suggestions.length&&<li>Нічого не знайдено</li>}</ul>}
    </div>
@@ -161,7 +164,7 @@ function SalesWorkspaceContent({quick=false,notify,accountId,grouped=false,inven
    {!!rows.length&&<div className={"ui11-results-layout part-preview-layout"+(previewPart?" has-preview":"")}>
     {previewPart&&previewPanel}
 
-    <div className="ui11-results-list"><InventoryTableHead/>{rows.map(p=><div key={p.id} className={'ui11-result-wrap'+(previewPart?.id===p.id?' selected':'')}>
+    <div className="ui11-results-list">{!mobile&&<InventoryTableHead/>}{rows.map(p=>mobile?<MobileSearchResult key={p.id} part={p} vehicle={vehicles.find(v=>v.id===p.vehicle_id)||p.donor} revision={photoRevisions[p.id]||0} onPreview={()=>selectPreview(p.id,true)} onOrder={()=>setOrderPart({...p,donor_snapshot:vehicles.find(v=>v.id===p.vehicle_id)||p.donor})} actions={actions(p)}/>:<div key={p.id} className={'ui11-result-wrap'+(previewPart?.id===p.id?' selected':'')}>
      <InventoryPartRow active={previewId===p.id} onPreview={()=>selectPreview(p.id)} part={p} categories={categories} vehicle={vehicles.find(v=>v.id===p.vehicle_id)||p.donor} market={market.rows[p.id]} marketError={market.error} selected={false} canSelect={false} onSelect={()=>{}} onOpen={()=>selectPreview(p.id,true)} onSaved={updated} actions={actions(p)} photo={<SearchPartPhoto id={p.id} name={p.name} revision={photoRevisions[p.id]||0}/>} extra={<>
       {(p.oem_number||p.article_number)&&<small className="ui11-codes">{p.oem_number&&`OEM: ${p.oem_number}`}{p.oem_number&&p.article_number?' · ':''}{p.article_number&&`Артикул: ${p.article_number}`}{p.article_number&&p.article_brand&&` · ${p.article_brand}`}</small>}
       <small>{labels[p.condition]||'Стан не уточнено'}</small>
@@ -187,6 +190,16 @@ function SalesWorkspaceContent({quick=false,notify,accountId,grouped=false,inven
   {archive&&<Confirm destructive title="Архівувати запчастину?" text="Архівування — не продаж. Історія й залишки зберігаються; позиція буде доступна в архіві." onClose={()=>setArchive(null)} onConfirm={async()=>{await api('/archive/parts/'+archive.id,'POST');if(detail?.id===archive.id)setDetail(null);setArchive(null);window.dispatchEvent(new Event('warehouse:inventory-changed'));}}/>}
  </>;
  return quick?<div className="ui4-search-page">{content}</div>:<div className="ui3-inventory">{content}</div>;
+}
+function MobileSearchResult({part,vehicle,revision,onPreview,onOrder,actions}:{part:Row;vehicle?:Row;revision:number;onPreview:()=>void;onOrder:()=>void;actions:React.ReactNode}){
+ const can=useCan(),available=Number(part.available_quantity||0),sellable=available>0&&part.assortment_enabled!==false&&!part.archived&&!part.catalogue_only;
+ return <article className="mobile-search-result" aria-label={part.name}>
+  <div className="mobile-result-identity"><SearchPartPhoto id={part.id} name={part.name} revision={revision}/><div><button type="button" className="mobile-result-name" onClick={onPreview}>{part.name}<ChevronRight size={16}/></button><small>{vehicle?[vehicle.manufacturer,vehicle.model,vehicle.year].filter(Boolean).join(' · '):'Автомобіль не вказано'}</small>
+  {(part.oem_number||part.article_number)&&<small>{part.oem_number?'OEM: '+part.oem_number:''}{part.oem_number&&part.article_number?' · ':''}{part.article_number?'Арт.: '+part.article_number:''}</small>}
+  <span className={sellable?'mobile-result-available':'mobile-result-unavailable'}>{sellable?'В наявності · '+available+' шт.':part.catalogue_only?'У плані розбору':part.assortment_enabled===false?'Виключена з продажу':'Немає вільного залишку'}</span></div></div>
+  <div className="mobile-result-bottom"><div><small>Ціна</small><strong>{part.selling_price!=null?money(part.selling_price,part.currency||'UAH'):'Не вказано'}</strong></div>{can('orders.create')&&<button type="button" className="primary mobile-result-order" disabled={!sellable} onClick={onOrder}><ShoppingCart size={17}/> Оформити</button>}</div>
+  <div className="mobile-result-secondary"><button type="button" className="secondary" onClick={onPreview}>Деталі запчастини</button>{actions}</div>
+ </article>;
 }
 function PriceDialog({part,onClose,onSaved}:{part:Row;onClose:()=>void;onSaved:(row:Row)=>void}){return <Modal title="Ціна запчастини" onClose={onClose}><SellerPriceEditor part={part} initialOpen onSaved={onSaved}/></Modal>;}
 function OperationDialog({action,onClose,onSaved}:{action:Action;onClose:()=>void;onSaved:(row:Row)=>void}){
