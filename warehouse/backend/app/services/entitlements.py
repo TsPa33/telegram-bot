@@ -464,12 +464,14 @@ def bind_owner(db, who):
     bridge = local_bridge()
     lock(db, who.workspace_account_id)
     p = db.get(EntitlementWorkspace, who.workspace_account_id)
-    if p:
-        return p
     token = bridge.owner_transport.sign(
         dict(workspace_id=who.workspace_account_id, owner_id=who.actor_id)
     )
     account = bridge.bind(token)
+    if p:
+        if p.billing_account_id != account or p.owner_id != who.actor_id:
+            raise HTTPException(409, "Canonical binding потребує перевірки власника")
+        return p
     p = EntitlementWorkspace(
         workspace_id=who.workspace_account_id,
         billing_account_id=account,

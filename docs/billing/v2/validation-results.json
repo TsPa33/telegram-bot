@@ -1,6 +1,6 @@
 {
   "local_finance": {
-    "passed": 53,
+    "passed": 54,
     "original_phase1_cases": 49
   },
   "local_phase2_backend": {
@@ -98,5 +98,14 @@
   },
   "final_full_backend": "See PR #521 acceptance and independent CI artifacts",
   "remote_ci": "See https://github.com/TsPa33/telegram-bot/pull/521",
-  "production_ready": false
+  "production_ready": false,
+  "final_local_full_backend": {
+    "passed": 861,
+    "failed": 44,
+    "skipped": 1,
+    "cases": 906,
+    "head_only_failures": 0,
+    "all_failures_reproduced_on_phase1": true,
+    "note": "Full pre-canonical run plus final focused 14-case suite; latest independent full CI in PR #521"
+  }
 }

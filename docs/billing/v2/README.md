@@ -17,7 +17,7 @@ flowchart LR
     Policy --> Quota[Workspace lock + atomic quota/provenance guards]
 ```
 
-Finance owns account binding and trial claim; Warehouse owns only product projections,
+Phase 1's canonical billing.bindings (unique product/workspace) owns the account link; the bridge reuses it and rejects conflicting ownership. Its warehouse_bindings table is only a delivery/trial checkpoint, not another identity authority. Finance owns the trial claim; Warehouse owns only product projections,
 usage and inventory. No second payment ledger, wallet or provider integration is added.
 The existing Phase 1 v1 consumer remains intact. v2 snapshots contain per-interval
 plan/capacity/seats and effective_from/effective_until, so future changes cannot rewrite

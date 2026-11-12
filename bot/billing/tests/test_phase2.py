@@ -67,3 +67,22 @@ def test_invoice_calendar_anchor_is_persisted(foundation):
         )[0]["calendar_anchor"]
         == 31
     )
+
+
+def test_warehouse_bridge_reuses_canonical_phase1_company_binding(foundation):
+    from bot.billing.warehouse import WarehouseBridge, migrate_phase2
+
+    b, a, s, i, p = foundation
+    migrate_phase2(b.db)
+    bridge = WarehouseBridge(b.db, b"local-test-canonical-binding-key-123456789")
+    binding = rows(
+        b.db,
+        "SELECT workspace_id FROM billing.bindings WHERE account_id=%s",
+        (a.account_id,),
+    )[0]
+    token = bridge.owner_transport.sign(
+        dict(workspace_id=binding["workspace_id"], owner_id=a.principal_id)
+    )
+    assert bridge.bind(token) == a.account_id
+    assert len(rows(b.db, "SELECT * FROM billing.accounts")) == 1
+    assert len(rows(b.db, "SELECT * FROM billing.bindings")) == 1

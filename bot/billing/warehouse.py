@@ -61,19 +61,47 @@ class WarehouseBridge:
                 (p["workspace_id"],),
             )
             old = c.fetchone()
+            c.execute(
+                "SELECT b.account_id,a.owner_principal,a.kind FROM billing.bindings b JOIN billing.accounts a ON a.id=b.account_id "
+                "WHERE b.product='warehouse' AND b.workspace_id=%s FOR UPDATE OF b",
+                (p["workspace_id"],),
+            )
+            canonical = c.fetchone()
+            if canonical and (
+                canonical["owner_principal"] != p["owner_id"]
+                or canonical["kind"] != "company"
+            ):
+                raise Conflict("Canonical company binding requires ownership review")
             if old:
-                if old["owner_id"] != p["owner_id"]:
-                    raise Conflict("Owner changed; manual verification required")
-                return old["account_id"]
-            account = str(uuid4())
-            c.execute(
-                "INSERT INTO billing.accounts(id,owner_principal,kind) VALUES (%s,%s,'company')",
-                (account, p["owner_id"]),
-            )
-            c.execute(
-                "INSERT INTO billing.warehouse_bindings(workspace_id,account_id,owner_id) VALUES (%s,%s,%s)",
-                (p["workspace_id"], account, p["owner_id"]),
-            )
+                if (
+                    old["owner_id"] != p["owner_id"]
+                    or canonical
+                    and canonical["account_id"] != old["account_id"]
+                ):
+                    raise Conflict(
+                        "Owner or canonical binding changed; manual verification required"
+                    )
+                account = old["account_id"]
+            elif canonical:
+                account = canonical["account_id"]
+            else:
+                account = str(uuid4())
+                c.execute(
+                    "INSERT INTO billing.accounts(id,owner_principal,kind) VALUES (%s,%s,'company')",
+                    (account, p["owner_id"]),
+                )
+            if not canonical:
+                # Reuse Phase 1's unique product/workspace binding as the authority.
+                c.execute(
+                    "INSERT INTO billing.bindings(id,account_id,workspace_id,product,evidence_id,verified_by) "
+                    "VALUES (%s,%s,%s,'warehouse',%s,'warehouse-local')",
+                    (str(uuid4()), account, p["workspace_id"], e["jti"]),
+                )
+            if not old:
+                c.execute(
+                    "INSERT INTO billing.warehouse_bindings(workspace_id,account_id,owner_id) VALUES (%s,%s,%s)",
+                    (p["workspace_id"], account, p["owner_id"]),
+                )
             return account
 
     def trial(self, workspace, account, plan, *, now=None):
