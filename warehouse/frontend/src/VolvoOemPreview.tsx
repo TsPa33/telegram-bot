@@ -14,7 +14,7 @@ export default function VolvoOemPreview({vehicle}:{vehicle:Row}) {
  const row=rows.find(r=>r.id===rowId);
  const product=types.find(p=>String(p.product_id)===productId);
  const norm=(s:unknown)=>String(s||'').trim().toLocaleLowerCase('uk');
- const filtered=types.filter(p=>norm(p.name_uk+' '+p.name_source).includes(norm(q)));
+ const filtered=types.filter(p=>String(p.product_id)===productId||norm((p.name_uk||'')+' '+(p.name_source||'')).includes(norm(q)));
  async function load(nextProduct?:string){
   const ticket=++epoch.current;
   setBusy(true);setError('');setDetail(null);
@@ -28,9 +28,9 @@ export default function VolvoOemPreview({vehicle}:{vehicle:Row}) {
  }
  return <details className="uf-catalogue-disclosure">
   <summary><span><strong>OEM Volvo · власний каталог</strong><small>Порівняння з наявним планом без його заміни</small></span><span className="uf-catalogue-toggle">Переглянути</span></summary>
-  <div className="uf-catalogue-details">
+  <div className="uf-catalogue-details volvo-oem-preview">
    <p>Пілот: XC90 II T6 AWD · джерельна модифікація 107555. Каталог частковий. Номери є каталожними кросами, а не підтвердженням сумісності за VIN.</p>
-   <label><input type="checkbox" checked={confirmed} disabled={busy} onChange={e=>{setConfirmed(e.target.checked);setData(null);setDetail(null);setRowId('');setProductId('');setError('')}}/> Я перевірив характеристики автомобіля і хочу порівняти його з цією модифікацією.</label>
+   <label className="volvo-oem-confirm"><input type="checkbox" checked={confirmed} disabled={busy} onChange={e=>{setConfirmed(e.target.checked);setData(null);setDetail(null);setRowId('');setProductId('');setError('')}}/> Я перевірив характеристики автомобіля і хочу порівняти його з цією модифікацією.</label>
    <button type="button" className="secondary" disabled={!confirmed||busy} onClick={()=>void load()}>{busy?'Завантажуємо…':'Завантажити OEM-каталог'}</button>
    {error&&<p role="alert">{error}</p>}
    {data&&<>
