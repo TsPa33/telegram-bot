@@ -171,6 +171,7 @@ KNOWN_ROUTES = frozenset({
     ('POST','/api/v1/catalogue/admin/canonical/rules/approve'),
     ('POST','/api/v1/vehicles/{id}/dismantling-preview'),
     ('GET','/api/v1/vehicles/{id}/dismantling-v3'),
+    ('GET','/api/v1/vehicles/{id}/dismantling-v3/sources'),
     ('POST','/api/v1/vehicles/{id}/dismantling-v3/preview'),
     ('POST','/api/v1/vehicles/{id}/dismantling-v3/save'),
     ('POST','/api/v1/vehicles/{id}/dismantling-v3/quick'),

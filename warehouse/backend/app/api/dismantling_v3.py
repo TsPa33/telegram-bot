@@ -60,7 +60,7 @@ def selection(id:str,db:DB,who:Auth,q:str=Query('',max_length=200),category:str=
 @router.post('/api/v1/vehicles/{id}/dismantling-v3/bulk/preview')
 def bulk_preview(id:str,data:BulkSelection,db:DB,who:Auth):
     from app.services.dismantling_bulk import preview
-    return preview(db,owned(db,Vehicle,id,who.workspace_account_id),data.ids,data.action)
+    return preview(db,owned(db,Vehicle,id,who.workspace_account_id),data.ids,data.action,data.confirm_physical)
 
 @router.post('/api/v1/vehicles/{id}/dismantling-v3/bulk')
 def bulk_command(id:str,data:BulkCommand,db:DB,who:Auth):

@@ -6,7 +6,7 @@ export const bulkStorageKey=(s:QuickScope)=>'warehouse.bulk-plan.1:'+JSON.string
 export function restoreBulk(raw:string|null,scope:QuickScope):BulkIntent|null{
  if(!raw||raw.length>4*1024*1024)return null;
  try{const r=JSON.parse(raw);if(r.version!==1||JSON.stringify(r.scope)!==JSON.stringify(scope)||!Array.isArray(r.ids)||!r.ids.length||new Set(r.ids).size!==r.ids.length||r.ids.some((id:unknown)=>typeof id!=='string')||!Number.isInteger(r.cursor)||r.cursor<0||r.cursor>r.ids.length||!Array.isArray(r.results)||!r.lines||typeof r.lines!=='object'||!/^[a-f0-9]{64}$/.test(r.expectedEtag)||!['present','absent','exclude','restore','unchecked','not_applicable','dismantled','receipt'].includes(r.action))return null;
- if(r.pending&&(r.pending.action!==r.action||!Array.isArray(r.pending.ids)||JSON.stringify(r.pending.ids)!==JSON.stringify(r.ids.slice(r.cursor,r.cursor+batchSize(r.action)))||!/^[a-f0-9-]{36}$/.test(r.pending.request_key)||Object.keys(r.pending).some(k=>!['action','ids','etag','request_key','confirm','reason','lines','preview_token'].includes(k))))return null;
+ if(r.pending&&(r.pending.action!==r.action||!Array.isArray(r.pending.ids)||JSON.stringify(r.pending.ids)!==JSON.stringify(r.ids.slice(r.cursor,r.cursor+batchSize(r.action)))||!/^[a-f0-9-]{36}$/.test(r.pending.request_key)||Object.keys(r.pending).some(k=>!['action','ids','etag','request_key','confirm','reason','lines','preview_token','confirm_physical'].includes(k))))return null;
  return r;
  }catch{return null;}
 }
@@ -20,7 +20,7 @@ export async function runBatches(intent:BulkIntent,io:{preview:(ids:string[],act
    const ids=intent.ids.slice(intent.cursor,intent.cursor+batchSize(intent.action)),p=await io.preview(ids,intent.action);
    if(p.etag!==intent.expectedEtag)throw Error('Список змінився між порціями. Зупинено без повторення виконаних дій; перегляньте решту позицій.');
    if(intent.action==='receipt'&&p.eligible_ids.some((id:string)=>!intent.lines[id]))throw Error('Змінилася придатність деталей. Перегляньте кількості перед новим надходженням.');
-   intent.pending={ids,action:intent.action,etag:p.etag,request_key:crypto.randomUUID(),reason:intent.reason,confirm:['dismantled','receipt'].includes(intent.action),...(intent.action==='receipt'?{preview_token:p.preview_token,lines:ids.filter(id=>intent.lines[id]).map(id=>intent.lines[id])}:{})};io.checkpoint(intent);
+   intent.pending={ids,action:intent.action,etag:p.etag,request_key:crypto.randomUUID(),reason:intent.reason,confirm:['dismantled','receipt'].includes(intent.action),...(intent.action==='receipt'?{...(ids.some(id=>intent.lines[id]?.confirm_physical)?{confirm_physical:true}:{}),preview_token:p.preview_token,lines:ids.filter(id=>intent.lines[id]).map(id=>intent.lines[id])}:{})};io.checkpoint(intent);
   }
   let result:Row;
   try{result=await io.post(intent.pending);}catch(e){if(typeof (e as Row)?.status==='number'&&(e as Row).status<500){delete intent.pending;io.checkpoint(intent);}throw e;}

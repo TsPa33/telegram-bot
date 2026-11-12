@@ -17,14 +17,14 @@ export default function UniversalPlanGenerator({vehicle,revision,onSaved,onWorki
   const ticket=epoch.current;setPhase('saving');
   const body=pending.current||{facts:[],universal:true,token:report.token,request_key:crypto.randomUUID(),confirm:true};pending.current=body;
   try{sessionStorage.setItem(storageKey,JSON.stringify(body))}catch{/* The same in-memory key remains available for retry. */}
-  await api(base+'/save','POST',body);if(ticket!==epoch.current)return;
+  try{await api(base+'/save','POST',body)}catch(e){if(typeof (e as Row).status==='number'&&(e as Row).status<500){pending.current=null;try{sessionStorage.removeItem(storageKey)}catch{}}throw e}if(ticket!==epoch.current)return;
   pending.current=null;try{sessionStorage.removeItem(storageKey)}catch{}
   const result=await api(base);if(ticket!==epoch.current)return;setSaved(result);setPreview(null);setPhase('result');onWorking?.(false);
  }
  async function generate(){if(guard.current)return;guard.current=true;setError('');const ticket=epoch.current;try{
   if(pending.current){await persist({});return;}
   setPhase('generating');const p=await api(base+'/preview','POST',{facts:[],universal:true});if(ticket!==epoch.current)return;
-  if(saved?.total||p.counts.review){setPreview(p);setPhase('review');}else await persist(p);
+  if(saved?.total||p.counts.existing||p.counts.review||p.retained_historical_ids?.length){setPreview(p);setPhase('review');}else await persist(p);
  }catch(e){if(ticket===epoch.current){setError((e as Error).message);setPhase(saved?.total?'work':'start');onWorking?.(!!saved?.total)}}finally{guard.current=false}}
  async function confirmUpdate(){if(!preview||guard.current)return;guard.current=true;setError('');try{await persist(preview)}catch(e){setError((e as Error).message);setPhase('review')}finally{guard.current=false}}
  function view(){setPhase('work');onWorking?.(true);onSaved();}
