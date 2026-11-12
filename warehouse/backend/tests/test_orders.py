@@ -378,3 +378,65 @@ def test_current_inventory_is_permission_scoped_and_actor_is_not_assignable(setu
         r=c.post('/api/v1/orders',json={**key(),'buyer_id':b['id'],'lines':[line(p)],**extra})
         assert r.status_code==422,r.text
     assert c.post('/api/v1/orders',json={**key(),'buyer_id':b['id'],'lines':[{'part_id':p['id'],'quantity':1,'currency':'UAH'}]}).status_code==422
+
+
+def test_ux_v2_confirm_receipt_shipped_or_pickup_once(setup):
+    c,b,p=setup
+    order=create(c,b,[line(p)],delivery_method='branch',city='Київ',delivery_address='Відділення 1')
+    assert action(c,order,'complete',{**key(),'confirm_received':True}).status_code==409
+    assert action(c,order,'reserve').status_code==200
+    assert action(c,order,'status',{**key(),'status':'shipped'}).status_code==200
+    assert action(c,order,'complete',{**key(),'confirm_received':False}).status_code==422
+    body={**key(),'confirm_received':True}
+    r=action(c,order,'complete',body)
+    assert r.status_code==200,r.text
+    assert r.json()['status']=='completed' and r.json()['sold_at']
+    assert action(c,order,'complete',body).json()==r.json()
+    assert action(c,order,'complete',{**key(),'confirm_received':True}).status_code==200
+    assert state(c,p)['quantity']==2 and state(c,p)['reserved_quantity']==0
+    pickup=create(c,b,[line(p)])
+    assert action(c,pickup,'sell').status_code==200
+    assert action(c,pickup,'complete',{**key(),'confirm_received':True}).json()['status']=='completed'
+    assert state(c,p)['quantity']==1
+    assert c.get('/api/v1/audit',params={'part_id':p['id'],'type':'sale'}).json()['total']==2
+
+
+def test_ux_v2_reserved_revision_preserves_reserve_on_failure(setup):
+    c,b,p=setup;order=create(c,b,[line(p)])
+    assert action(c,order,'reserve').status_code==200
+    body={**key(),'lines':[line(p,2,unit_price='456.78')],'confirm_re_reserve':True}
+    r=action(c,order,'revise-reserved',body)
+    assert r.status_code==200,r.text
+    assert r.json()['status']=='reserved'
+    assert state(c,p)['reserved_quantity']==2 and state(c,p)['quantity']==3
+    assert action(c,order,'revise-reserved',body).json()==r.json()
+    failed=action(c,order,'revise-reserved',{**key(),'lines':[line(p,4)],'confirm_re_reserve':True})
+    assert failed.status_code==409,failed.text
+    assert state(c,p)['reserved_quantity']==2 and state(c,p)['quantity']==3
+    now=c.get('/api/v1/orders/'+order['id']).json()
+    assert now['status']=='reserved' and now['lines'][0]['quantity']==2
+    assert now['lines'][0]['unit_price']=='456.78'
+    assert action(c,order,'sell').status_code==200
+    assert action(c,order,'revise-reserved',{**key(),'lines':[line(p)],'confirm_re_reserve':True}).status_code==409
+
+
+def test_ux_v2_category_facets_are_unpaginated_and_donor_scoped(logged,vehicle,catalog,vehicle_data):
+    c=logged
+    assert c.post('/api/v1/categories/import',json=catalog).status_code==200
+    rows=c.get('/api/v1/categories').json()['items']
+    roots={r['name']:r for r in rows if r['kind']=='category'}
+    root=roots['Group A']
+    sub=next(r for r in rows if r['parent_id']==root['id'] and r['kind']=='subcategory')
+    p=stocked(c,vehicle,category_id=root['id'],subcategory_id=sub['id'])
+    stocked(c,vehicle,name='Another part',category_id=root['id'],subcategory_id=sub['id'])
+    stocked(c,vehicle,name='Other group',category_id=roots['Group B']['id'])
+    second=c.post('/api/v1/vehicles',json={**vehicle_data,'donor_id':'TEST-FACET-2'}).json()
+    stocked(c,second,name='Outside donor',category_id=root['id'],subcategory_id=sub['id'])
+    params={'vehicle_id':vehicle['id'],'category_facets':True,'in_stock':True,'limit':1,'category_id':root['id'],'subcategory_id':sub['id']}
+    result=c.get('/api/v1/parts',params=params)
+    assert result.status_code==200,result.text
+    data=result.json()
+    assert data['total']==2 and len(data['items'])==1
+    assert sum(f['count'] for f in data['category_facets'])==3
+    assert next(f['count'] for f in data['category_facets'] if f['subcategory_id']==sub['id'])==2
+    assert c.get('/api/v1/parts',params={**params,'q':'Another'}).json()['total']==1

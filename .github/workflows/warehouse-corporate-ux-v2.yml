@@ -1,0 +1,67 @@
+name: Warehouse corporate UX browser QA
+on:
+  pull_request:
+    paths:
+      - "warehouse/frontend/src/corporate-ux-v2.css"
+      - "warehouse/frontend/tests/corporate-ux-v2-browser.mjs"
+      - ".github/workflows/warehouse-corporate-ux-v2.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: warehouse_corporate_ux_test
+          POSTGRES_USER: warehouse
+          POSTGRES_PASSWORD: testonly
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U warehouse -d warehouse_corporate_ux_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      WAREHOUSE_DATABASE_URL: postgresql+psycopg://warehouse:testonly@127.0.0.1:5432/warehouse_corporate_ux_test
+      WAREHOUSE_COOKIE_SECURE: "false"
+      WAREHOUSE_CATALOGUE_WORKER_ENABLED: "false"
+      WAREHOUSE_REGISTRATION_ENABLED: "true"
+      WAREHOUSE_E2E: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install backend and migrate disposable database
+        working-directory: warehouse/backend
+        run: |
+          python -m pip install --require-hashes -r requirements.lock
+          python -m alembic upgrade head
+          python -m uvicorn app.main:app --host 127.0.0.1 --port 8010 > /tmp/ux-api.log 2>&1 &
+      - name: Build and run browser checks
+        working-directory: warehouse/frontend
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+          npm run dev -- --host 127.0.0.1 --port 5251 > /tmp/ux-vite.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:5251/health >/dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:5251/health
+          node tests/corporate-ux-v2-browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: corporate-ux-v2-browser
+          path: |
+            /tmp/corporate-ux-v2
+            /tmp/ux-api.log
+            /tmp/ux-vite.log

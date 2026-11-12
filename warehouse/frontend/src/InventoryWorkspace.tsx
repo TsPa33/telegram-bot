@@ -57,7 +57,7 @@ export default function InventoryWorkspace({accountId,notify}:{accountId:string;
   {preference.mode==='general'?<><State error={error} loading={loading}/><SalesWorkspace accountId={accountId} notify={notify} inventoryVehicles={vehicles||null} onHistory={()=>setHistory(true)}/></>:<>
    <State error={error} loading={loading}/>
    {error&&<button onClick={reload}>Спробувати знову</button>}
-   {!vehicle&&<><h1>Склад за автомобілями</h1><section className="donor-stock-grid" aria-label="Автомобілі на складі">
+   {!vehicle&&<><h1>Склад за автомобілями</h1><section className="donor-stock-grid r114-grid corporate-donor-grid" aria-label="Автомобілі на складі">
     {vehicles?.map(v=><VehicleCard key={v.id} vehicle={v} context="inventory" onParts={()=>choose(v.id)} onSaved={reload}/>)}
     {!loading&&!error&&!vehicles?.length&&<Empty title="Автомобілів поки немає">Додайте автомобіль у розділі «Автомобілі».</Empty>}
    </section></>}

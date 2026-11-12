@@ -172,7 +172,7 @@ def vehicle_view(db, row, account_id):
 
 
 def listing(
-    db, model, account_id, *, q="", archived=False, offset=0, limit=100, filters=(), currency_aware=False
+    db, model, account_id, *, q="", archived=False, offset=0, limit=100, filters=(), currency_aware=False, category_filters=(), category_facets=False
 ):
     stmt = select(model).where(
         model.account_id == account_id, model.archived == archived, *filters
@@ -204,6 +204,14 @@ def listing(
                 or_(VehicleChecklistItem.name_en.ilike(pattern),VehicleChecklistItem.name_uk.ilike(pattern))).exists()
             expressions.append(original)
         stmt=stmt.where(or_(*expressions))
+    facets = None
+    if category_facets and model is Part:
+        # Same account, search, stock and donor filters as the inventory query;
+        # category navigation never counts just the visible page.
+        facet_stmt=stmt.with_only_columns(Part.category_id,Part.subcategory_id,func.count(Part.id)).group_by(Part.category_id,Part.subcategory_id)
+        facets=[dict(category_id=cat,subcategory_id=sub,count=count) for cat,sub,count in db.execute(facet_stmt)]
+    if category_filters:
+        stmt=stmt.where(*category_filters)
     total = db.scalar(select(func.count()).select_from(stmt.subquery()))
     rows = list(db.scalars(
         stmt.order_by(model.created_at.desc(), model.id).offset(offset).limit(limit)
@@ -222,7 +230,9 @@ def listing(
                 item["selling_price"] = None
                 item["price_requires_currency_client"] = True
         items.append(item)
-    return {"items": items, "total": total, "offset": offset, "limit": limit}
+    result={"items": items, "total": total, "offset": offset, "limit": limit}
+    if facets is not None: result["category_facets"]=facets
+    return result
 
 
 @router.get("/vehicles", tags=["Vehicles"])
@@ -475,6 +485,8 @@ def parts(
     archived: bool = False,
     vehicle_id: str | None = None,
     category_id: str | None = None,
+    subcategory_id: str | None = Query(None,max_length=80),
+    category_facets: bool = False,
     availability: str | None = None,
     condition: str | None = None,
     location: str | None = None,
@@ -485,18 +497,21 @@ def parts(
     limit: int = Query(100, ge=1, le=200),
 ):
     filters = []
+    category_filters = []
     # Compatible with legacy single category_id; grouped catalogue tiles send
     # a comma-separated collection of legacy IDs. No changes to stock FKs.
     if category_id == '__review__':
         from app.services.plan_parts_classification import CATEGORY_ALIASES, normalize
         aliases={normalize(n) for title,names in CATEGORY_ALIASES.items() for n in (title,*names)}
         roots=[c.id for c in db.scalars(select(Category).where(Category.account_id==who.workspace_account_id,Category.archived.is_(False),Category.kind=='category',Category.parent_id.is_(None))) if normalize(c.name) in aliases]
-        filters.append(or_(Part.category_id.is_(None),Part.category_id.not_in(roots)))
+        category_filters.append(or_(Part.category_id.is_(None),Part.category_id.not_in(roots)))
     elif category_id is not None:
         category_ids = list(dict.fromkeys(v.strip() for v in category_id.split(",") if v.strip()))
         if not category_ids or len(category_ids) > 50 or any(len(v) > 80 for v in category_ids):
             raise HTTPException(422, "Invalid category_id selection")
-        filters.append(Part.category_id.in_(category_ids))
+        category_filters.append(Part.category_id.in_(category_ids))
+    if subcategory_id is not None:
+        category_filters.append(Part.subcategory_id.is_(None) if subcategory_id=="__none__" else Part.subcategory_id==subcategory_id)
     for col, value in [
         (Part.vehicle_id, vehicle_id),
         (Part.availability, availability),
@@ -521,6 +536,8 @@ def parts(
         offset=offset,
         limit=limit,
         filters=filters,
+        category_filters=category_filters,
+        category_facets=category_facets,
         currency_aware=request.headers.get("X-Warehouse-Client")=="5",
     )
 

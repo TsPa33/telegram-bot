@@ -148,13 +148,31 @@ dialog::backdrop { background:var(--color-overlay); }
 .r123-settings [hidden]{display:none}
 .r1-card-actions{flex-wrap:wrap;position:sticky;top:0;z-index:2;background:var(--color-surface);padding-block:8px}
 .assembly-template-label{color:var(--color-accent);text-align:left;min-width:0;white-space:normal;min-height:36px}
+/* Desktop sidebar: a fixed icon rail with one shared width for sidebar and content.
+ * Opening is deliberately gentle; closing is fast and never overlays the workspace. */
+.sidebar .sidebar-desktop-toggle{display:flex;align-items:center;justify-content:flex-start;gap:11px;white-space:nowrap;padding:8px 12px;margin:10px 0;min-height:40px;overflow:hidden;font-size:12px}
+.sidebar-desktop-toggle svg,.sidebar nav a svg,.sidebar-scroll>a svg,.sidebar .settings-nav svg{flex:0 0 18px}
+.sidebar-settings-group{flex:none}
+.sidebar .settings-nav{display:flex;align-items:center;gap:11px;min-height:44px;width:100%;padding:12px;border:0;background:transparent;color:var(--color-sidebar-text);text-align:left;font-weight:650;font-size:12px;border-radius:var(--radius-control);white-space:nowrap}
+.sidebar .settings-nav:hover,.sidebar .settings-nav.active{background:var(--color-sidebar-active);color:var(--color-sidebar-text)}
+.sidebar .settings-chevron{margin-left:auto;transition:transform .16s}
+.sidebar .settings-nav[aria-expanded=true] .settings-chevron{transform:rotate(90deg)}
+.sidebar-settings-sub{padding-left:24px;margin:2px 0 6px;gap:3px}
+.sidebar-settings-sub a{font-size:12px;min-height:36px;white-space:nowrap}
 @media(min-width:1100px){
- .sidebar-compact .sidebar{width:78px;padding-inline:10px;transition:width .15s ease;overflow:hidden}
- .sidebar-compact .main{margin-left:78px;width:calc(100% - 78px)}
- .sidebar-compact .sidebar:not(:hover):not(:focus-within) .brand>span:last-child,.sidebar-compact .sidebar:not(:hover):not(:focus-within) .workspace>div,.sidebar-compact .sidebar:not(:hover):not(:focus-within) .workspace>svg,.sidebar-compact .sidebar:not(:hover):not(:focus-within) .sidebar-link-label,.sidebar-compact .sidebar:not(:hover):not(:focus-within) .nav-label,.sidebar-compact .sidebar:not(:hover):not(:focus-within) .sidebar-foot{position:absolute;clip-path:inset(50%);width:1px;height:1px;overflow:hidden}
- .sidebar-compact .sidebar:hover,.sidebar-compact .sidebar:focus-within{width:240px}
- .sidebar-compact .sidebar nav a,.sidebar-compact .sidebar .settings-nav{white-space:nowrap}
+ .app.sidebar-compact{--sidebar-live-width:78px;--sidebar-motion:95ms;--sidebar-delay:0ms}
+ .app.sidebar-compact:has(.sidebar:hover),.app.sidebar-compact:has(.sidebar :focus-visible){--sidebar-live-width:240px;--sidebar-motion:260ms;--sidebar-delay:60ms}
+ .app.sidebar-compact .sidebar{width:var(--sidebar-live-width);padding-inline:10px;overflow:hidden;transition:width var(--sidebar-motion) cubic-bezier(.2,.7,.2,1) var(--sidebar-delay)}
+ .app.sidebar-compact .main{margin-left:var(--sidebar-live-width);width:calc(100% - var(--sidebar-live-width));transition:margin-left var(--sidebar-motion) cubic-bezier(.2,.7,.2,1) var(--sidebar-delay),width var(--sidebar-motion) cubic-bezier(.2,.7,.2,1) var(--sidebar-delay)}
+ .app.sidebar-compact .sidebar>.brand,.app.sidebar-compact .sidebar>.workspace,.app.sidebar-compact .sidebar-desktop-toggle,.app.sidebar-compact .sidebar-scroll>nav,.app.sidebar-compact .sidebar-scroll>a,.app.sidebar-compact .sidebar-settings-group,.app.sidebar-compact .sidebar-foot{width:216px;max-width:none;flex-shrink:0}
+ .app.sidebar-compact .sidebar .brand-icon,.app.sidebar-compact .sidebar .workspace-letter{flex-shrink:0}
+ .app.sidebar-compact .sidebar nav a,.app.sidebar-compact .sidebar .settings-nav{white-space:nowrap}
+ .app.sidebar-compact .sidebar:not(:hover):not(:has(:focus-visible)) :is(.brand>span:last-child,.workspace>div,.workspace>svg,.sidebar-link-label,.nav-label,.sidebar-foot,.sidebar-settings-sub,.settings-chevron){opacity:0;pointer-events:none;transition:opacity 65ms}
+ .app.sidebar-compact .sidebar:is(:hover,:has(:focus-visible)) :is(.brand>span:last-child,.workspace>div,.workspace>svg,.sidebar-link-label,.nav-label,.sidebar-foot,.sidebar-settings-sub,.settings-chevron){opacity:1;transition:opacity 190ms 65ms}
+ .app.sidebar-compact .sidebar-scroll{scrollbar-width:none}
+ .app.sidebar-compact .sidebar-scroll::-webkit-scrollbar{width:0}
+ .app.sidebar-compact .sidebar nav a{justify-content:flex-start}
 }
-@media(max-width:1099px){.sidebar-desktop-toggle{display:none}}
-@media(prefers-reduced-motion:reduce){.sidebar-compact .sidebar{transition:none}}
+@media(max-width:1099px){.sidebar .sidebar-desktop-toggle{display:none}}
+@media(prefers-reduced-motion:reduce){.app.sidebar-compact .sidebar,.app.sidebar-compact .main,.app.sidebar-compact .sidebar *{transition:none!important}}
 .assembly-categories button[aria-pressed=true],.settings-tabs [aria-selected=true]{background:var(--color-accent-strong);color:var(--color-on-accent);border-color:var(--color-accent-strong)}

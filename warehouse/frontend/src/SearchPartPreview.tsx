@@ -56,7 +56,7 @@ export default function SearchPartPreview({part,vehicle,category,subcategory,can
     <h2>{part.name}</h2>
     {(part.original_name||part.original)&&(part.original_name||part.original)!==part.name&&<p>{part.original_name||part.original}</p>}
    </div>
-   <div className="ui11-preview-image ui12-photo-stage">
+   <div className="stock-primary-action">{canSell&&part.available_quantity>0&&part.assortment_enabled!==false&&!part.archived&&<button type="button" className="primary" onClick={onSell}><ShoppingCart size={16}/> Оформити замовлення</button>}</div><div className="ui11-preview-image ui12-photo-stage">
     {photos[activePhoto]?.url?<img src={photos[activePhoto].url} alt={part.name+' — фото '+(activePhoto+1)} loading="lazy"/>:<div className="ui12-photo-placeholder"><Package size={38}/><span>{photoLoading?'Завантаження фото…':'Фото ще немає'}</span></div>}
     {photos.length>1&&<><button type="button" className="ui12-photo-arrow prev" aria-label="Попереднє фото" onClick={()=>setActivePhoto(i=>(i+photos.length-1)%photos.length)}><ChevronLeft size={18}/></button><button type="button" className="ui12-photo-arrow next" aria-label="Наступне фото" onClick={()=>setActivePhoto(i=>(i+1)%photos.length)}><ChevronRight size={18}/></button><span className="ui12-photo-counter">{activePhoto+1} / {photos.length}</span></>}
    </div>
@@ -82,7 +82,7 @@ export default function SearchPartPreview({part,vehicle,category,subcategory,can
     <PartCharacteristicsEditor key={part.id} part={part} kind="oem" onSaved={row=>{setEditingOem(false);onSaved(row);}} onClose={()=>setEditingOem(false)}/>
    </div>}
    <div className="ui11-preview-buttons">
-    {canSell&&part.available_quantity>0&&part.assortment_enabled!==false&&!part.archived&&<button type="button" className="primary" onClick={onSell}><ShoppingCart size={16}/> Оформити замовлення</button>}
+    
     {part.id&&can('parts.change_price')&&!part.archived&&<details ref={pricePanel} className="part-preview-price-edit"><summary>Змінити ціну</summary><SellerPriceEditor key={part.id} part={part} initialOpen onSaved={row=>{if(pricePanel.current)pricePanel.current.open=false;onSaved(row);}}/></details>}
     {part.id&&can('inventory.edit')&&!part.archived&&<><button type="button" className="secondary" onClick={()=>setEditingOem(v=>!v)}><Pencil size={14}/> OEM / артикул</button><button type="button" className="secondary" onClick={onEdit}><Pencil size={14}/> Редагувати дані</button></>}
     {onNotes&&can('parts.notes')&&part.id&&<button type="button" onClick={onNotes}>Додати нотатку</button>}
