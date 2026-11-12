@@ -459,3 +459,14 @@ def test_expired_get_cannot_provision_new_catalogue(pilot):
         params={"vehicle_id": v["id"], "ktype": 123, "provision": True},
     )
     assert r.status_code == 402, r.text
+
+
+def test_trial_cannot_replace_confirmed_paid_windows(pilot):
+    c, w, project = pilot
+    before = c.get("/api/v1/billing/entitlements").json()
+    r = c.post("/api/v1/billing/trial", json={"plan": "premium"})
+    assert r.status_code == 409, r.text
+    after = c.get("/api/v1/billing/entitlements").json()
+    assert after["status"] == before["status"] == "ACTIVE"
+    assert after["plan"] == before["plan"] == "standard"
+    assert after["period_end"] == before["period_end"]

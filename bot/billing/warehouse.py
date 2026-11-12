@@ -117,6 +117,16 @@ class WarehouseBridge:
             if not binding:
                 raise BillingError("Unverified workspace")
             c.execute(
+                "SELECT payload FROM billing.warehouse_outbox WHERE workspace_id=%s ORDER BY version DESC LIMIT 1",
+                (workspace,),
+            )
+            previous = c.fetchone()
+            if previous and any(
+                i.get("kind") == "base"
+                for i in previous["payload"].get("intervals", [])
+            ):
+                raise Conflict("Trial не замінює підтверджені платні періоди")
+            c.execute(
                 "SELECT * FROM billing.warehouse_trials WHERE account_id=%s", (account,)
             )
             old = c.fetchone()

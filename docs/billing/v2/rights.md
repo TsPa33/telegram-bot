@@ -64,3 +64,5 @@ refund or LiqPay reversal. Money/refund accounting remains a Phase 3+ gate.
 Detailed grace rights, trial tariff switching policy, add-on billing integration,
 upgrade proration credits, organization duplicate detection and production enrollment
 must be ratified before any real workspace rollout. No fixture grant proves payment.
+
+A trial cannot replace an existing confirmed base-paid window. Central Billing rejects that transition without changing the projection. Eligibility for already-paid companies remains an owner-approved production policy, not a live behavior change.

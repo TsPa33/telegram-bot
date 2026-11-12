@@ -21,7 +21,7 @@ export default function WorkspaceBilling(){
    {!data.paid&&<p>Доступні перегляд, пошук, історія, експорт і безпечне завершення раніше створених зобов’язань. Для нових операцій відновіть доступ.</p>}
    {data.can_manage?<><div className="entitlement-plans">{Object.entries(data.plans as Row).map(([key,p])=><article key={key}><h3>{key==='standard'?'Standard':'Premium'}</h3><strong>{(p.amount_minor/100).toLocaleString('uk-UA')} грн/місяць</strong><p>{p.vehicle_capacity} автомобілів · власник + {p.employee_seats} працівників</p></article>)}</div>
     <label>Тариф тестового періоду<select value={plan} onChange={e=>setPlan(e.target.value)}><option value="standard">Standard</option><option value="premium">Premium</option></select></label>
-    <button className="primary" disabled={busy||(data.trial_used&&data.status!=='TRIAL')} onClick={trial}>{data.status==='TRIAL'?'Змінити тариф trial без зміни строку':'Активувати CarPot безкоштовно на 10 днів'}</button>
+    <button className="primary" disabled={busy||(data.paid&&data.status!=='TRIAL')||(data.trial_used&&data.status!=='TRIAL')} onClick={trial}>{data.status==='TRIAL'?'Змінити тариф trial без зміни строку':'Активувати CarPot безкоштовно на 10 днів'}</button>
     <p>Один trial на клієнта/компанію, без картки й автоматичного продовження.</p>
     <h3>Розширити гараж</h3><label>Щомісячний пакет<select value={pack} onChange={e=>{setPack(e.target.value);setQuote(null);}}>{Object.entries(data.packs as Row).map(([key,p])=><option key={key} value={key}>+{p.capacity} · {p.amount_minor/100} грн/місяць</option>)}</select></label>
     <button disabled={busy||!data.paid||data.status==='GRACE'} onClick={calculate}>Розрахувати за залишок періоду</button>
