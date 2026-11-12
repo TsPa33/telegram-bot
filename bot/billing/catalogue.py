@@ -38,6 +38,8 @@ def money_minor(value: str) -> int:
         amount = Decimal(value)
         if not amount.is_finite() or amount < 0 or amount > Decimal("90000000000000"):
             raise BillingError("Invalid money")
+        if amount and amount < Decimal("0.01"):
+            raise BillingError("Positive money must be at least one kopeck")
         with localcontext() as context:
             context.prec = 160
             minor = amount * 100

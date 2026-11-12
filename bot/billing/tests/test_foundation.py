@@ -39,6 +39,7 @@ def test_money(value, expected):
         "invalid",
         "999999999999999999999",
         "1000.000000000000000000000000000001",
+        "1e-999999999",
     ],
 )
 def test_invalid_money(value):
