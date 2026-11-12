@@ -31,6 +31,7 @@ jobs:
       WAREHOUSE_CATALOGUE_WORKER_ENABLED: "false"
       WAREHOUSE_REGISTRATION_ENABLED: "true"
       WAREHOUSE_E2E: "1"
+      ASSEMBLY_INVENTORY_ENABLED: "true"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

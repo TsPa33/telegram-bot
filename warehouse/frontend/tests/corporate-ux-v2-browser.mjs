@@ -77,6 +77,47 @@ try{
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'Buyers overflow '+width);
  }
 
+ for(const width of [1440,1920,390]){
+  await page.setViewportSize({width,height:1000});await page.goto('/statistics');
+  await expect(page.getByRole('heading',{name:'Статистика складу',exact:true})).toBeVisible();
+  await expect(page.locator('.stats-finance')).toContainText('Не визначено');
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'Statistics overflow '+width);
+  await page.screenshot({path:output+'/statistics-'+width+'.png',animations:'disabled'});
+ }
+ await page.goto('/settings?section=general');
+ const settings=page.getByRole('navigation',{name:'Розділ налаштувань'});
+ await expect(settings.getByRole('link',{name:'Загальні'})).toHaveAttribute('aria-current','page');
+ await settings.getByRole('link',{name:'Оплати'}).click();
+ await expect(settings.getByRole('link',{name:'Оплати'})).toHaveAttribute('aria-current','page');
+ await expect(page.getByRole('region',{name:'Оплати'})).toContainText('недоступне');
+ // Physical assembly operations are exercised only on disposable stock.
+ await page.setViewportSize({width:1440,height:1000});
+ const rear=await post('/parts',{name:'Бампер (задній)',vehicle_id:v.id,selling_price:'100.00',currency:'UAH'});
+ const front=await post('/parts',{name:'Бампер (передній)',vehicle_id:v.id,selling_price:'100.00',currency:'UAH'});
+ for(const [p,q] of [[rear,1],[front,6]])await post('/parts/'+p.id+'/operations',{type:'receipt',quantity:q,reason:'Isolated assembly QA'});
+ await page.goto('/inventory');
+ const openPart=async(name)=>{const row=page.locator('article.ui3-part').filter({has:page.getByRole('button',{name,exact:true})});await row.focus();await row.press('Enter');};
+ const assembly=page.getByRole('region',{name:'Керування фізичним вузлом'});
+ await openPart('Бампер (передній)');
+ await assembly.getByRole('button',{name:'Керувати вузлом'}).click();
+ await expect(assembly).toContainText('Для розбору потрібна одна фізична одиниця');
+ await expect(assembly.getByRole('button',{name:'Зв’язати зі складом'})).toBeDisabled();
+ await openPart('Бампер (задній)');
+ await assembly.getByRole('button',{name:'Керувати вузлом'}).click();
+ await assembly.getByRole('checkbox',{name:'Підтверджую одну фізичну одиницю'}).check();
+ await assembly.getByRole('button',{name:'Зв’язати зі складом'}).click();
+ await expect(assembly.getByRole('heading',{name:'Розібрати вузол'})).toBeVisible();
+ await assembly.getByRole('checkbox',{name:'Облицювання бампера',exact:true}).check();
+ await expect(assembly.getByRole('button',{name:'Відокремити й оприбуткувати 1'})).toBeDisabled();
+ await assembly.getByRole('checkbox',{name:'Підтверджую фактичний демонтаж 1 складових'}).check();
+ const splitResponse=page.waitForResponse(r=>r.url().endsWith('/assemblies/split')&&r.request().method()==='POST');
+ await assembly.getByRole('button',{name:'Відокремити й оприбуткувати 1'}).click();
+ const split=await splitResponse;assert.ok(split.ok(),await split.text());
+ const getPart=async(id)=>{const res=await c.request.get('/api/v1/parts/'+id,{headers:{'X-Warehouse-Client':'5'}});assert.ok(res.ok());return res.json();};
+ assert.equal((await getPart(rear.id)).quantity,1);assert.equal((await getPart(front.id)).quantity,6);
+ await expect(assembly).toContainText('Неповний вузол');
+ await expect(assembly.getByRole('checkbox',{name:'Облицювання бампера',exact:true})).toBeDisabled();
+ await page.screenshot({path:output+'/stock-assembly.png',animations:'disabled'});
  assert.deepEqual(errors,[]);console.log('Corporate UX: real-auth stock, aligned sidebar, inline picker, persisted palettes, responsive widths, sales lifecycle and exact buyer history PASS');
  await c.close();
 }finally{await browser.close();}

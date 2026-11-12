@@ -254,7 +254,7 @@ def test_analytics_does_not_bypass_audit_or_finance_permissions(logged,part):
         result=c.get('/api/v1/dashboard');assert result.status_code==200
         body=result.json()
         assert body['positions']==1
-        assert not {'recent_operations','estimated_sales_value','valuation_by_currency','allocated_parts_cost','potential_gross_margin','by_vehicle'}&body.keys()
+        assert not {'recent_operations','estimated_sales_value','valuation_by_currency','allocated_parts_cost','potential_gross_margin','by_vehicle','cost_coverage'}&body.keys()
         assert c.get('/api/v1/audit').status_code==403
         assert c.post('/api/v1/auth/logout').status_code==204
         assert c.get('/api/v1/auth/me').status_code==401

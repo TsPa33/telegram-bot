@@ -28,6 +28,6 @@ test('sales periods are not misrepresented as stock snapshot filters',()=>{
 });
 test('stock dashboard uses API data and no static example numbers',()=>{
  assert.match(page,/api\('\/dashboard'\)/);
- assert.match(page,/count\(d\.positions\)/);
+ assert.match(page,/count\(d\.stock_positions\?\?d\.positions\)/);
  assert.match(page,/count\(d\.available_units\)/);
 });

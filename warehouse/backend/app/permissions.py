@@ -128,7 +128,7 @@ def check_fields(who,path,body):
         if 'selling_price' in body or 'currency' in body:require_permission(who,'parts.change_price')
     if path.startswith('/api/v1/vehicles') and 'acquisition_cost' in body:require_permission(who,'parts.view_cost')
 
-COST={'unit_cost','acquisition_cost','allocated_parts_cost','potential_gross_margin','margin_positions','vehicle_acquisition_cost'}
+COST={'unit_cost','acquisition_cost','allocated_parts_cost','potential_gross_margin','margin_positions','vehicle_acquisition_cost','cost_coverage'}
 FINANCE={'sale','unit_price','line_total','totals_by_currency','sale_price','sale_currency','price_recorded'}
 ANALYTICS={'vehicle_valuation_by_currency','valuation_by_currency','estimated_sales_value','by_vehicle'}
 def redact(value,permissions,*,path='',nested=False):

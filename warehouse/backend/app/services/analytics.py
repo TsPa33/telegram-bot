@@ -24,15 +24,17 @@ def dashboard(db, account_id, vehicle_id=None):
                 0,
             ),
             func.count(Part.id).filter(
-                Part.unit_cost.is_not(None), Part.selling_price.is_not(None), Part.currency=="UAH"
+                Part.unit_cost.is_not(None), Part.selling_price.is_not(None), Part.currency=="UAH", Part.quantity > 0
             ),
+            func.count(Part.id).filter(Part.quantity > 0),
+            func.count(Part.id).filter(Part.quantity > 0, Part.unit_cost.is_not(None)),
         ).where(*filters)
     ).one()
     vf = [Vehicle.account_id == account_id, Vehicle.archived.is_(False)]
     if vehicle_id:
         vf.append(Vehicle.id == vehicle_id)
-    vcount, vcost = db.execute(
-        select(func.count(Vehicle.id), expr(Vehicle.acquisition_cost)).where(*vf)
+    vcount, vcost, vcost_known = db.execute(
+        select(func.count(Vehicle.id), expr(Vehicle.acquisition_cost), func.count(Vehicle.id).filter(Vehicle.acquisition_cost.is_not(None))).where(*vf)
     ).one()
     categories = db.execute(
         select(Category.name, expr(Part.quantity))
@@ -73,9 +75,14 @@ def dashboard(db, account_id, vehicle_id=None):
             .limit(8)
         )
     )
-    valuations=db.execute(select(Part.currency,func.coalesce(func.sum(Part.quantity*Part.selling_price),0)).where(*filters).group_by(Part.currency)).all()
+    valuations=db.execute(select(Part.currency,func.coalesce(func.sum(Part.quantity*Part.selling_price),0),
+        func.count(Part.id).filter(Part.quantity > 0, Part.selling_price.is_not(None)),
+        func.count(Part.id).filter(Part.quantity > 0, Part.selling_price.is_(None))).where(*filters).group_by(Part.currency)).all()
     return dict(
-        valuation_by_currency=[{'currency':currency,'value':str(value)} for currency,value in valuations],
+        valuation_by_currency=[{'currency':currency,'value':str(value),'priced_positions':priced,'unpriced_positions':unpriced} for currency,value,priced,unpriced in valuations],
+        stock_positions=totals[8],
+        cost_coverage={'stock_positions_with_cost':totals[9], 'stock_positions_without_cost':totals[8]-totals[9],
+                       'vehicles_with_cost':vcost_known,'vehicles_without_cost':vcount-vcost_known},
         vehicles=vcount,
         positions=totals[0],
         stock_units=totals[1],
