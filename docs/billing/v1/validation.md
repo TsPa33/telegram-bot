@@ -1,5 +1,9 @@
 # Phase 1 validation
 
+Acceptance on 2026-11-12: **49 passed** using `python -m bot.billing.run_fixture_tests`
+on a freshly created PostgreSQL container and two databases. Ruff F checks and
+`git diff --check` passed. Remote CI results must be checked separately on the Draft PR.
+
 Local PostgreSQL 16 on the managed local Docker daemon; tmpfs data, loopback port,
 separate finance and projection DBs. No Railway variables, live DB connection,
 LiqPay keys, payment, real webhook, refund, payout or deployment used.

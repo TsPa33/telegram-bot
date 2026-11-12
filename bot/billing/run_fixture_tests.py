@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 import secrets
+import socket
 import subprocess
 import sys
 import time
@@ -35,6 +36,11 @@ def main():
     password = secrets.token_hex(24)
     # Image digest used during acceptance, PostgreSQL 16 Alpine.
     image = "postgres:16-alpine@sha256:aa6cb33cf4c19c765cefcf48d96176258800870a9a1e930ad126200f9d825139"
+    # Rootless Docker's allocator may choose a port occupied by another host process.
+    # Ask the host OS for a free loopback port instead of relying on its port range.
+    with socket.socket() as listener:
+        listener.bind(("127.0.0.1", 0))
+        requested_port = listener.getsockname()[1]
 
     def command(args, **kwargs):
         return subprocess.check_output(
@@ -50,7 +56,7 @@ def main():
                 "--name",
                 name,
                 "--publish",
-                "127.0.0.1::5432",
+                f"127.0.0.1:{requested_port}:5432",
                 "--env",
                 f"POSTGRES_PASSWORD={password}",
                 "--env",
