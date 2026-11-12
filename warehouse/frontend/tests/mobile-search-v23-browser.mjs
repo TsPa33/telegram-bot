@@ -40,10 +40,17 @@ try{for(const width of [320,390,430,1440]){
  await pilot.getByRole('button',{name:'Зберегти OEM у плані'}).click();
  await expect(pilot.getByText('Довідковий OEM збережено у плані.')).toBeVisible();
  await expect(pilot.getByText('Довідковий OEM: OEM-ONE')).toBeVisible();
+ const secondPilotRow=initialPilot.plan_items.find(r=>r.included&&r.id!==pilotRow.id);assert(secondPilotRow);
+ await pilot.getByLabel('Позиція наявного плану').selectOption(secondPilotRow.id);await pilot.getByLabel('Каталожний тип OEM').selectOption('106');
+ await pilot.getByRole('button',{name:'Знайти артикули та OEM'}).click();await pilot.getByRole('button',{name:'Вибрати OEM OEM-TWO',exact:true}).click();
+ await pilot.getByRole('checkbox',{name:/Підтверджую відповідність типу/}).check();await pilot.getByRole('button',{name:'Додати до пакета'}).click();
+ await expect(pilot.getByRole('region',{name:'Пакет перевірених OEM'})).toBeVisible();await pilot.getByRole('button',{name:'Зберегти пакет OEM'}).click();
+ await expect(pilot.getByText('Збережено довідкові OEM: 1 із 1.')).toBeVisible();
  const savedPilot=await get(pilotPath);assert.equal(savedPilot.plan_items.length,initialPilot.plan_items.length);
  assert.equal(savedPilot.plan_items.find(r=>r.id===pilotRow.id).reference.oem_number,'OEM-ONE');
  assert.equal((await get('/parts?vehicle_id='+volvo.id+'&limit=1')).total,0);
- assert.equal(pilotRequests.filter(r=>r.method==='POST').length,1);
+ assert.equal(savedPilot.plan_items.find(r=>r.id===secondPilotRow.id).reference.oem_number,'OEM-TWO');
+ assert.equal(pilotRequests.filter(r=>r.method==='POST').length,2);
  await overflow();await shot('volvo-oem-preview');
  let emptyRequests=0;page.on('request',r=>{const u=new URL(r.url());if(u.pathname.endsWith('/parts')&&u.searchParams.has('q')&&!u.searchParams.get('q'))emptyRequests++;});
  await page.goto(origin+'/search');const search=page.getByRole('combobox',{name:'Пошук запчастин',exact:true});await expect(search).toBeVisible();if(mobile){await expect(page.locator('.mobile-search-result')).toHaveCount(0);await expect(page.getByText('Введіть назву, OEM або артикул',{exact:true})).toBeVisible();assert.equal(emptyRequests,0);}await shot('initial');

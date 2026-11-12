@@ -458,7 +458,7 @@ def volvo_oem_preview(
     from app.models import DismantlingItem, Part
     from app.services.dismantling_plan_v3 import generator_basis
     from app.services.catalogue_format import digest
-    from app.services.volvo_oem_review import candidates
+    from app.services.volvo_oem_review import candidates, reference_matches
     require_permission(who, 'vehicles.view', 'catalog.view', 'inventory.view')
     v = owned(db, Vehicle, id, who.workspace_account_id)
     if product_id is not None and snapshot_sha is None:
@@ -494,9 +494,9 @@ def volvo_oem_preview(
                     included=row.included,part_id=row.part_id,row_basis=volvo_row_basis(row),
                     candidate_product_ids=candidates(row,payload['categories']),
                     reference=ref,reference_digest=digest(ref),
-                    reference_stale=bool(ref and (ref['vehicle_basis']!=basis or ref['snapshot_sha']!=sha)),
+                    reference_stale=bool(ref and (not reference_matches(ref,row,basis) or ref['snapshot_sha']!=sha)),
                     stock_oem=part.oem_number if part else None,
-                    stock_eligible=bool(part and not part.archived and part.quantity>0 and not part.reserved_quantity
+                    stock_eligible=bool(part and not part.archived and part.quantity==1 and part.inventory_origin!='virtual_donor' and not part.reserved_quantity
                         and not part.oem_number and not part.oem_provenance and not row.assembly_consumed_operation_id and row.included and row.status!='absent'))
     return dict(**base, plan_items=[row_view(row) for row in rows],
         catalogue_types=[dict(product_id=p['product_id'], name_uk=p.get('name_uk'),
@@ -531,6 +531,7 @@ def save_volvo_oem(id: str, data: VolvoOemSelection, db: DB, who: Auth):
     from app.services.inventory import record, snapshot
     from app.services.dismantling_plan_v3 import generator_basis, replay, finish
     from app.services.catalogue_format import digest
+    from app.services.volvo_oem_review import row_identity
     require_permission(who,'vehicles.view','catalog.view','inventory.view','dismantling.manage')
     if data.assign_stock:
         require_permission(who,'inventory.edit')
@@ -562,12 +563,12 @@ def save_volvo_oem(id: str, data: VolvoOemSelection, db: DB, who: Auth):
         source_modification_id=107555,oem_manufacturer_id=120,product_id=data.product_id,
         supplier_id=data.supplier_id,source_article=data.article_number,source_brand=offer['brand'],
         oem_number=data.oem_number,snapshot_sha=data.snapshot_sha,observed_at=payload['observed_at'],
-        vehicle_basis=basis)
+        vehicle_basis=basis,row_identity=row_identity(row))
     stock=False
     if data.assign_stock:
         if not row.part_id:raise HTTPException(409,'Спочатку оприбуткуйте фактичну деталь')
         p=owned(db,Part,row.part_id,v.account_id,lock=True,active=True)
-        if p.vehicle_id!=v.id or p.quantity<=0 or p.reserved_quantity or p.oem_number or p.oem_provenance:
+        if p.vehicle_id!=v.id or p.quantity!=1 or p.inventory_origin=='virtual_donor' or p.reserved_quantity or p.oem_number or p.oem_provenance:
             raise HTTPException(409,'Складська картка змінилася або вже має OEM; наявні дані збережено')
         before=snapshot(p)
         p.oem_number=data.oem_number

@@ -383,6 +383,8 @@ def test_volvo_oem_selection_plan_then_stock(logged,volvo,monkeypatch):
     result=logged.post(url,json=request)
     assert result.status_code==200,result.text
     assert result.json()['stock_assigned'] is False
+    tree=logged.get(base+'/assemblies').json()
+    assert next(x for x in tree['items'] if x['id']==row['id'])['reference_oem']=='OEM-ONE'
     assert logged.post(url,json=request).json()==result.json()
     assert logged.post(url,json=body(data,row)).status_code==409
     with Session(engine()) as db:
@@ -400,6 +402,8 @@ def test_volvo_oem_selection_plan_then_stock(logged,volvo,monkeypatch):
     result=logged.post(url,json=request)
     assert result.status_code==200,result.text
     assert result.json()['stock_assigned']
+    tree=logged.get(base+'/assemblies').json()
+    assert next(x for x in tree['items'] if x['id']==row['id'])['stock_oem']=='OEM-ONE'
     assert logged.post(url,json=request).json()==result.json()
     with Session(engine()) as db:
         p=db.get(Part,row['part_id']);after=snapshot(p)

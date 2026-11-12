@@ -76,3 +76,14 @@ def candidates(row, products):
     if not name:return []
     return [p['product_id'] for p in products if p.get('kind')=='part' and
             name in {normalized(n) for n in [p.get('name_uk'),*p.get('candidate_aliases',[])] if n}]
+
+
+def row_identity(row):
+    from app.services.catalogue_format import digest
+    return digest([row.id,row.source,row.catalog_key,row.name,row.position,
+                   row.category_name,row.subcategory_name])
+
+
+def reference_matches(ref, row, vehicle_basis):
+    return bool(ref and ref.get('vehicle_basis')==vehicle_basis and
+                ref.get('row_identity')==row_identity(row))
