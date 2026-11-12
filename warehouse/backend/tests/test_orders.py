@@ -418,3 +418,25 @@ def test_ux_v2_reserved_revision_preserves_reserve_on_failure(setup):
     assert now['lines'][0]['unit_price']=='456.78'
     assert action(c,order,'sell').status_code==200
     assert action(c,order,'revise-reserved',{**key(),'lines':[line(p)],'confirm_re_reserve':True}).status_code==409
+
+
+def test_ux_v2_category_facets_are_unpaginated_and_donor_scoped(logged,vehicle,catalog,vehicle_data):
+    c=logged
+    assert c.post('/api/v1/categories/import',json=catalog).status_code==200
+    rows=c.get('/api/v1/categories').json()['items']
+    roots={r['name']:r for r in rows if r['kind']=='category'}
+    root=roots['Group A']
+    sub=next(r for r in rows if r['parent_id']==root['id'] and r['kind']=='subcategory')
+    p=stocked(c,vehicle,category_id=root['id'],subcategory_id=sub['id'])
+    stocked(c,vehicle,name='Another part',category_id=root['id'],subcategory_id=sub['id'])
+    stocked(c,vehicle,name='Other group',category_id=roots['Group B']['id'])
+    second=c.post('/api/v1/vehicles',json={**vehicle_data,'donor_id':'TEST-FACET-2'}).json()
+    stocked(c,second,name='Outside donor',category_id=root['id'],subcategory_id=sub['id'])
+    params={'vehicle_id':vehicle['id'],'category_facets':True,'in_stock':True,'limit':1,'category_id':root['id'],'subcategory_id':sub['id']}
+    result=c.get('/api/v1/parts',params=params)
+    assert result.status_code==200,result.text
+    data=result.json()
+    assert data['total']==2 and len(data['items'])==1
+    assert sum(f['count'] for f in data['category_facets'])==3
+    assert next(f['count'] for f in data['category_facets'] if f['subcategory_id']==sub['id'])==2
+    assert c.get('/api/v1/parts',params={**params,'q':'Another'}).json()['total']==1
