@@ -95,7 +95,7 @@ function SessionExit(){
 
 export default function Settings({user}:{user:Row}){
   const can=useCan(),[params]=useSearchParams();const tab=params.get('section')==='payments'?'payments':'general';
-  const billing=useLoad(()=>api('/billing/status'),[]);
+  const billing=useLoad(()=>tab==='payments'?api('/billing/status'):Promise.resolve(null),[tab]);
   const {data,error,loading,reload}=useLoad(()=>api('/settings'),[]);
   const sections=shortcuts.filter(item=>can(item.permission)).filter((item,i,items)=>item.path!=='/sales'||items.findIndex(x=>x.path==='/sales')===i);
   const permissionCount=Array.isArray(user.permissions)?user.permissions.length:0;
@@ -107,7 +107,7 @@ export default function Settings({user}:{user:Row}){
       <span className="r123-role"><ShieldCheck size={15}/>{roleLabel(user.role)}</span>
     </div>
 
-    <nav className="settings-breadcrumb" aria-label="Розділ налаштувань"><Link to="/settings?section=general">Загальні</Link><span> / </span><Link to="/settings?section=payments">Оплати</Link></nav>
+    <nav className="settings-section-tabs" aria-label="Розділ налаштувань"><Link aria-current={tab==='general'?'page':undefined} to="/settings?section=general">Загальні</Link><Link aria-current={tab==='payments'?'page':undefined} to="/settings?section=payments">Оплати</Link></nav>
     {tab==='payments'&&<section className="r123-panel" aria-label="Оплати"><h2>Оплати</h2><State loading={billing.loading} error={billing.error}/>{billing.data&&<p>{billing.data.enabled?(billing.data.read_only?'Доступ у режимі перегляду':'Поточний доступ активний'):'Оплати не підключені. Поточний доступ збережено.'}</p>}<p>Оформлення платежів на цьому етапі недоступне.</p></section>}
     <div aria-label="Загальні" hidden={tab!=='general'}>
     <div className="r123-grid">
