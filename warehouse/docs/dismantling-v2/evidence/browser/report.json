@@ -1,0 +1,29 @@
+{
+  "target": "LOCAL_REAL_AUTH_POSTGRES_TEST_RECORDS",
+  "threeMakes": true,
+  "planPositions": 227,
+  "five": {
+    "parts": 5,
+    "units": 7
+  },
+  "mixed": {
+    "parts": 5,
+    "newParts": 3,
+    "soldQuantity": 0,
+    "damagePreserved": true
+  },
+  "large": {
+    "parts": 227,
+    "lossAfterCommittedSecondBatch": true,
+    "reloadReplay": true
+  },
+  "qty6": "BLOCKED_AS_REQUIRED",
+  "referenceStockUnchanged": true,
+  "filtersAndInspectorPreserved": true,
+  "sourceAccess": {
+    "directorDenied": true,
+    "platformOwnerAllowed": true,
+    "uniqueSourcePositions": 227
+  },
+  "pageErrors": []
+}
