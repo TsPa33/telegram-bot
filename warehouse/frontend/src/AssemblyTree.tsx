@@ -4,7 +4,8 @@ import {api,type Row} from './api';
 import {TeamIdentity,useCan} from './permissions';
 import {Box,Check,ChevronDown,ChevronRight,Layers,Minus,Plus,Search,Settings2,TriangleAlert,X,MoreHorizontal,List,Network,DoorOpen,Cog,Zap,Armchair,Wind,ShieldCheck,Lightbulb,Disc,Settings} from 'lucide-react';
 import {usePlanBulk,BulkStatus,BulkActionBar,GuidedReceipt,SelectionCheck} from './DismantlingBulk';
-import {assemblyLabel,doorKey,doorOrder,isGenericDoor,isKnownDoorComponent,sameDoorInstallation,manuallyReviewableDoorComponent,suggestedDoorComponents,doorTemplateEntries} from './assemblyPresentation';
+import {assemblyLabel,doorKey,doorOrder,isGenericDoor,isKnownDoorComponent,sameDoorInstallation,manuallyReviewableDoorComponent} from './assemblyPresentation';
+import {assemblyUnitFor,assemblyReferenceLines} from './assemblyUnitCatalog';
 import './assembly-tree.css';
 
 /** Optional inline view over existing donor placements, never a stock generator. */
@@ -21,7 +22,6 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
  const inspectorRef=useRef<HTMLDivElement>(null);
  const [quantityDraft,setQuantityDraft]=useState<Record<string,number>>({});
  const selectedId=useRef<string|null>(null);
- const pendingTemplate=useRef<{fingerprint:string;key:string}|null>(null);
  useEffect(()=>{if(selected&&preview&&window.innerWidth<=650){inspectorRef.current?.focus({preventScroll:true});inspectorRef.current?.scrollIntoView({block:'start',behavior:'instant'});}},[selected?.id,preview?.token]);
  const previewEpoch=useRef(0);
  const epoch=useRef(0),pending=useRef<{fingerprint:string;key:string}|null>(null),writing=useRef(false);
@@ -36,12 +36,12 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
   if(ticket===epoch.current){setData(result);setBulkPlan(managed);setCheckedIds(ids=>ids.filter(id=>managed?.items.some((n:Row)=>n.id===id&&n.selectable)));}return result;
  }
  useEffect(()=>{
-  const ticket=++epoch.current;setData(null);setBulkPlan(null);setCheckedIds([]);setReceiptOpen(false);setEnabled(false);setCategory('');setStatus('all');setMode('tree');setSelected(null);selectedId.current=null;setPreview(null);setQuantityDraft({});setDoorGroupOpen(true);setManualComponents(false);setAssemblyToolsOpen(false);setError('');setOpen(new Set());setQ('');setLimit(50);pending.current=null;pendingTemplate.current=null;writing.current=false;setBusy(false);
+  const ticket=++epoch.current;setData(null);setBulkPlan(null);setCheckedIds([]);setReceiptOpen(false);setEnabled(false);setCategory('');setStatus('all');setMode('tree');setSelected(null);selectedId.current=null;setPreview(null);setQuantityDraft({});setDoorGroupOpen(true);setManualComponents(false);setAssemblyToolsOpen(false);setError('');setOpen(new Set());setQ('');setLimit(50);pending.current=null;writing.current=false;setBusy(false);
   api(`/vehicles/${vehicle.id}/assemblies/readiness`).then(async r=>{if(ticket!==epoch.current)return;setAssemblyEnabled(r.enabled);const ready=r.workspace_enabled??r.enabled;setEnabled(ready);onReady?.(ready&&can('inventory.view'));if(ready&&can('inventory.view'))await load(ticket)}).catch(e=>{if(ticket===epoch.current){setError(e.message)}});
   return()=>{epoch.current++};
  },[scope,revision]);
  async function select(node:Row) {
-  const request=++previewEpoch.current;const ticket=epoch.current;selectedId.current=node.id;setSelected(node);if(isGenericDoor(node))setOpen(previous=>new Set([...previous,node.id]));setNote(node.note||'');setPreview(null);setPhysical(false);setConfirmSale(false);setConfirmReturn(false);setDescription('');setChild('');setManualComponents(false);setAssemblyToolsOpen(false);setError('');
+  const request=++previewEpoch.current;const ticket=epoch.current;selectedId.current=node.id;setSelected(node);if(assemblyUnitFor(node))setOpen(previous=>new Set([...previous,node.id]));setNote(node.note||'');setPreview(null);setPhysical(false);setConfirmSale(false);setConfirmReturn(false);setDescription('');setChild('');setManualComponents(false);setAssemblyToolsOpen(false);setError('');
   try{const value=await api(`/vehicles/${vehicle.id}/assemblies/${node.id}/preview`);if(ticket===epoch.current&&request===previewEpoch.current){
     setPreview(value);
     const root=value.items.find((i:Row)=>i.item_id===node.id);
@@ -69,9 +69,10 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
  }
  if(!enabled||!can('inventory.view'))return error?<p role="alert">{error}</p>:null;
  if(!data)return <p role={error?'alert':'status'}>{error||'Завантажуємо фізичний склад…'}</p>;
- const items:Row[]=data.items||[],byId=new Map(items.map(n=>[n.id,n])),children=new Map<string,Row[]>();
- items.forEach(n=>{if(n.parent_id)children.set(n.parent_id,[...(children.get(n.parent_id)||[]),n])});
+ const items:Row[]=data.items||[],byId=new Map(items.map(n=>[n.id,n])),children=new Map<string,Row[]>(),planChildren=new Map<string,Row[]>();
+ items.forEach(n=>{if(n.parent_id)children.set(n.parent_id,[...(children.get(n.parent_id)||[]),n]);else if(n.plan_parent_id&&byId.has(n.plan_parent_id))planChildren.set(n.plan_parent_id,[...(planChildren.get(n.plan_parent_id)||[]),n])});
  children.forEach(rows=>rows.sort((a,b)=>String(a.name).localeCompare(String(b.name),'uk',{numeric:true})));
+ planChildren.forEach(rows=>rows.sort((a,b)=>String(a.name).localeCompare(String(b.name),'uk',{numeric:true})));
  const categories=[...new Set(items.map(n=>String(n.category||'Інші деталі')))];
  function icon(name:string){const Icon=/двер/i.test(name)?DoorOpen:/двиг|трансм/i.test(name)?Cog:/електр/i.test(name)?Zap:/салон|інтер/i.test(name)?Armchair:/клімат/i.test(name)?Wind:/безпек/i.test(name)?ShieldCheck:/освіт/i.test(name)?Lightbulb:/гальм/i.test(name)?Disc:/кермов|підвіск/i.test(name)?Settings:Box;return <Icon size={20} strokeWidth={1.6}/>;}
  const checked=items.filter(n=>['present','damaged'].includes(n.presence)).length,attention=items.filter(n=>['unchecked','damaged','absent'].includes(n.presence)||n.completeness==='incomplete'||n.category==='Потребує уточнення').length,stocked=items.filter(n=>n.part_id&&!n.parent_id&&!n.consumed_operation_id&&!n.archived&&n.quantity>0).length;
@@ -79,26 +80,6 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
  function presenceLabel(n:Row){return ({present:'Є в авто',damaged:'Пошкоджено',absent:'Немає'} as Record<string,string>)[n.presence]||'Перевірити'}
  async function inspect(n:Row,presence:string,quantity:number,noteValue:string){
   const ticket=epoch.current;try{const current=selected?.id===n.id&&preview?preview:await api(`/vehicles/${vehicle.id}/assemblies/${n.id}/preview`);if(ticket!==epoch.current)return;const root=current.items.find((i:Row)=>i.item_id===n.id);if(!root||root.quantity!==(n.part_id?n.quantity:null)||root.planned_quantity!==n.planned_quantity||root.note!==(n.note||''))throw Error('Дані змінилися. Оновіть список перед редагуванням.');return await send('inspect',{item_id:n.id,token:current.token,presence,quantity,note:noteValue});}catch(e){setError((e as Error).message);return false}
- }
- async function addDoorComponentToPlan(parent:Row,componentKey:string){
-  if(busy||writing.current||!editable)return;
-  const ticket=epoch.current;
-  const fingerprint=JSON.stringify([scope,parent.id,componentKey]);
-  if(pendingTemplate.current?.fingerprint!==fingerprint)pendingTemplate.current={fingerprint,key:crypto.randomUUID()};
-  writing.current=true;setBusy(true);setError('');
-  try{
-   const saved=await api(`/vehicles/${vehicle.id}/assemblies/door-plan-components`,'POST',{
-    request_key:pendingTemplate.current.key,parent_item_id:parent.id,component_key:componentKey,confirm:true
-   });
-   if(ticket!==epoch.current)return;
-   pendingTemplate.current=null;
-   // The saved plan item is not a physical child or an inventory unit.
-   const refreshed=await load(ticket);
-   setOpen(old=>new Set([...old,parent.id]));setQ('');setStatus('all');setCategory('');
-   const item=(refreshed.items||[]).find((n:Row)=>n.id===saved.item_id);
-   if(item)await select(item);
-  }catch(e){if(ticket===epoch.current)setError((e as Error).message)}
-  finally{if(ticket===epoch.current){writing.current=false;setBusy(false)}}
  }
  async function saveQuantity(n:Row){
   const next=quantityDraft[n.id];if(next==null||!Number.isInteger(next)||next<1)return;
@@ -133,15 +114,15 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
   const visibleName=assemblyLabel(node);
   const posKey=doorKey(node);
   const ambiguousDoor=!!posKey&&(doorPositionCounts.get(posKey)||0)>1;
-  const doorSuggestions=isGenericDoor(node)&&!ambiguousDoor&&mode==='tree'&&status==='all'&&!q.trim()?suggestedDoorComponents(node,items):[];
-  const template=mode==='tree'&&isGenericDoor(node)&&!ambiguousDoor?doorTemplateEntries(node,items,kids):[];
-  const extraDoorSuggestions=doorSuggestions.filter(candidate=>!template.some(entry=>entry.linkedId===candidate.id));
-  const expandable=kids.length>0||isGenericDoor(node);
+  const unit=mode==='tree'?assemblyUnitFor(node):null;
+  const planned=(planChildren.get(node.id)||[]).filter(n=>matching.has(n.id));
+  const template=unit?assemblyReferenceLines(node,items,kids):[];
+  const expandable=kids.length>0||planned.length>0||!!unit;
   const locked=busy||!editable||!!node.part_id||individual||!!node.consumed_type||!!node.consumed_operation_id||!!node.reserved||node.archived;
   return <li key={node.id}>
    <div className={`assembly-node ${selected?.id===node.id?'is-selected':''}`} onClick={e=>{if(!(e.target as HTMLElement).closest('button,input,a,select'))void select(node)}}>
     <span className="assembly-select-expand">{editable&&managedById.get(node.id)?.selectable&&<SelectionCheck label={`Вибрати: ${node.name}`} ids={[node.id]} selected={new Set(checkedIds)} disabled={busy||receiptOpen} onToggle={value=>setCheckedIds(ids=>value?[...new Set([...ids,node.id])]:ids.filter(id=>id!==node.id))}/>}<button className="assembly-expand" aria-label={`${expanded?'Згорнути':'Розгорнути'} ${visibleName}`} aria-expanded={expandable?expanded:undefined} disabled={!expandable||mode==='list'} onClick={()=>setOpen(old=>{const next=new Set(old);if(next.has(node.id))next.delete(node.id);else next.add(node.id);return next})}>{expandable?(expanded?<ChevronDown size={16}/>:<ChevronRight size={16}/>):<span/>}</button></span>
-    <button className="assembly-name" id={'assembly-node-'+node.id} aria-label={visibleName} onClick={()=>void select(node)}>{icon(node.name+' '+node.category)}<span><strong>{visibleName}</strong>{ambiguousDoor&&<small className="assembly-position-ambiguous">Збіг розташування — перевірити</small>}{node.completeness&&<small>{node.completeness==='complete'?'Комплектний вузол':node.completeness==='incomplete'?'Неповний комплект':'Перевірте склад вузла'}</small>}{node.position&&!isGenericDoor(node)&&<small>{node.position}</small>}</span></button>
+    <button className="assembly-name" id={'assembly-node-'+node.id} aria-label={visibleName} onClick={()=>void select(node)}>{icon(node.name+' '+node.category)}<span><strong>{visibleName}</strong>{ambiguousDoor&&<small className="assembly-position-ambiguous">Збіг розташування — перевірити</small>}{node.completeness&&<small>{node.completeness==='complete'?'Комплектний вузол':node.completeness==='incomplete'?'Неповний комплект':'Перевірте склад вузла'}</small>}{node.position&&!isGenericDoor(node)&&<small>{node.position}</small>}{unit&&node.part_id&&<small>{Number(node.quantity)!==1?'Уточніть кількість фізичних вузлів':node.completeness==='complete'?'У зборі — склад підтверджено':'Вузол — уточніть комплектацію'}</small>}</span></button>
     <span className="assembly-row-category" title={node.category}>{node.category==='Потребує уточнення'?'Без категорії':node.category}</span>
     <button className={`assembly-status is-${node.presence}`} title={node.presence==='present'?'Наявність підтверджена':'Переглянути наявність та стан'} aria-label={`Статус: ${node.name}, ${presenceLabel(node)}`} onClick={()=>void select(node)}>{node.presence==='present'?<Check size={14}/>:node.presence==='damaged'?<TriangleAlert size={14}/>:node.presence==='absent'?<X size={14}/>:<Search size={14}/>} {presenceLabel(node)}</button>
     <div className="assembly-counter" role="group" aria-label={`Кількість: ${visibleName}`} title={individual?'Одна фізична позиція; дублювання кількості заборонене':node.part_id?'Залишок змінюється тільки у складі':'Кількість у плані; для запису натисніть зберегти'}><button aria-label={`Зменшити кількість: ${visibleName}`} disabled={locked||amount<=1} onClick={()=>setQuantityDraft(d=>({...d,[node.id]:amount-1}))}><Minus size={14}/></button><output>{amount}</output><button aria-label={`Збільшити кількість: ${visibleName}`} disabled={locked} onClick={()=>setQuantityDraft(d=>({...d,[node.id]:amount+1}))}><Plus size={14}/></button><button className="assembly-counter-save" aria-label={`Зберегти кількість: ${visibleName}`} title="Зберегти зміну кількості" disabled={locked||!quantityChanged} onClick={()=>void saveQuantity(node)}><Check size={14}/></button></div>
@@ -152,23 +133,20 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
    </div>{expanded&&mode==='tree'&&expandable&&<ul className="assembly-children">
      {kids.length>0&&<li className="assembly-connected-heading"><Check size={13}/>Фізично приєднані · {kids.length}</li>}
      {kids.map(render)}
-     {isGenericDoor(node)&&<li className="assembly-door-component-wrapper">
+     {planned.length>0&&<li className="assembly-door-component-wrapper"><details className="assembly-plan-items">
+       <summary>Окремі записи плану · {planned.length}</summary>
+       <ul className="assembly-children">{planned.map(render)}</ul>
+      </details></li>}
+     {unit&&<li className="assembly-door-component-wrapper">
        <details className="assembly-door-component-preview">
-        <summary className="assembly-component-preview-heading"><strong>Компоненти дверей</strong><span>Типовий склад · {template.length} позицій</span></summary>
+        <summary className="assembly-component-preview-heading"><strong>{unit.title}</strong><span>Довідковий склад · {template.length} типів</span></summary>
         <div className="assembly-component-preview-body">
-         {ambiguousDoor?<p>У цих дверей неоднозначне розташування. Уточніть фізичну позицію перед додаванням компонентів.</p>:
-         template.length>0?
-          <ul className="assembly-door-template-list">{template.filter(entry=>entry.kind!=='physically_attached').map(entry=><li key={entry.key} className={'assembly-door-candidate '+(entry.kind==='source_candidate'?'has-source':'template-only')}>
-           <Box size={15}/>
-           {entry.kind==='source_candidate'&&entry.linkedId?
-            <button type="button" className="assembly-template-existing" title="Відкрити керовану позицію плану" onClick={()=>{const linked=items.find(item=>item.id===entry.linkedId);if(linked)void select(linked)}}>{entry.label}</button>:
-            <span className="assembly-template-label">{entry.label}</span>}
-           {entry.kind==='source_candidate'?<button type="button" className="assembly-template-control" onClick={()=>{const linked=items.find(item=>item.id===entry.linkedId);if(linked)void select(linked)}} disabled={busy}>Керувати</button>:
-            <button type="button" className="assembly-template-control" disabled={busy||!editable} onClick={()=>void addDoorComponentToPlan(node,entry.key)}>Додати до плану</button>}
-          </li>)}</ul>:
-          <p>Розташування дверей не встановлено. Спочатку уточніть позицію.</p>}
-         {extraDoorSuggestions.length>0&&<details className="assembly-door-extra"><summary>Інші знайдені записи плану ({extraDoorSuggestions.length})</summary><ul>{extraDoorSuggestions.map(candidate=><li key={candidate.id} className="assembly-door-candidate"><Box size={15}/><button type="button" onClick={()=>void select(candidate)}>{candidate.name}</button><small>Не включено</small></li>)}</ul></details>}
-         <p className="assembly-component-hint">«Додати до плану» не означає фізичної наявності чи надходження на склад. Фізично приєднані компоненти показано окремо.</p>
+         <p className="assembly-assembly-explanation">{node.part_id?(Number(node.quantity)===1?'Вузол обліковується як одна складська одиниця.':'Складський запис містить більше ніж один вузол; перед підтвердженням комплектності уточніть фізичні одиниці.'):'Це потенційний вузол у плані, не складський залишок.'} Складові наведені для перевірки, окремо додавати їх не потрібно.</p>
+         <ul className="assembly-door-template-list">{template.filter(entry=>entry.kind!=='attached').map(entry=><li key={entry.key} className={'assembly-door-candidate '+(entry.kind==='existing_plan'?'has-source':'template-only')}>
+           <Box size={15}/><span className="assembly-template-label">{entry.label}</span>
+           <small>{entry.kind==='existing_plan'?'Окремо у плані':'Можлива складова'}</small>
+          </li>)}</ul>
+         <p className="assembly-component-hint">Конструктивна довідка не підтверджує комплектацію за VIN і не створює позицій, кількості чи можливості окремого продажу. Для продажу всього вузла підтвердьте його фактичну комплектність.</p>
         </div>
        </details>
       </li>}
@@ -202,6 +180,7 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
 
     <p className="assembly-breadcrumb">{selected.category} › {selected.subcategory}{selected.position?` · ${selected.position}`:''} </p>
     <div className="assembly-photo">{photo?<img src={photo} alt={selected.name} onError={()=>setPhoto('')}/>:<><Box size={44}/><span>Фото ще немає</span></>}</div>
+    {assemblyUnitFor(selected)&&selected.part_id&&Number(selected.quantity)!==1&&<p className="assembly-unit-warning" role="status">Кількість цього складського запису відрізняється від однієї фізичної одиниці. Продаж як підтвердженого комплектного вузла потребує уточнення.</p>}
     <h5>Наявність на автомобілі</h5>
     <div className="assembly-presence" role="group" aria-label="Наявність на автомобілі">{(['present','damaged','absent'] as const).map(value=><button key={value} aria-label={{present:'Підтвердити наявність',damaged:'Позначити пошкодження',absent:'Позначити відсутність'}[value]} aria-pressed={selected.presence===value} disabled={busy||!editable||!!selected.consumed_type||!!selected.consumed_operation_id||!!selected.archived||preview.conflicts.length>0} onClick={()=>void inspect(selected,value,selected.part_id?selected.quantity:selected.planned_quantity,note)}>{value==='present'?<Check size={16}/>:value==='damaged'?<TriangleAlert size={16}/>:<X size={16}/>}{{present:'Є',damaged:'Пошкоджено',absent:'Відсутня'}[value]}</button>)}</div>
     <p className="assembly-stock-label">{stockLabel(selected)} · Кількість: {selected.parent_id?selected.planned_quantity:selected.part_id?selected.quantity:selected.planned_quantity}</p>
@@ -209,8 +188,8 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
     <button className="secondary" disabled={busy||!editable||!!selected.consumed_type||!!selected.consumed_operation_id||note===(selected.note||'')} onClick={()=>void inspect(selected,selected.presence,selected.part_id?selected.quantity:selected.planned_quantity,note)}>Зберегти примітку</button>
     {editable&&!selected.part_id&&!selected.parent_id&&!selected.consumed_operation_id&&can('inventory.create')&&<button className="primary" disabled={busy||!['present','damaged'].includes(selected.presence)} onClick={()=>void receive(selected)}><Box size={18}/>Додати на склад</button>}
     {selected.part_id&&<Link className="assembly-part-link" to={'/inventory?vehicle_id='+vehicle.id}>Перейти до складу автомобіля</Link>}
-    {editable&&assemblyEnabled&&isGenericDoor(selected)&&selected.part_id&&!selected.parent_id&&!selected.consumed_operation_id&&!selected.consumed_type&&<button type="button" className="secondary assembly-manage-shortcut" onClick={()=>setAssemblyToolsOpen(open=>!open)}>
-      <Layers size={17}/>{preview.memberships?.length?'Розібрати вузол':'Налаштувати вузол'}
+    {editable&&assemblyEnabled&&!!assemblyUnitFor(selected)&&selected.part_id&&Number(selected.quantity)===1&&!selected.parent_id&&!selected.consumed_operation_id&&!selected.consumed_type&&<button type="button" className="secondary assembly-manage-shortcut" onClick={()=>setAssemblyToolsOpen(open=>!open)}>
+      <Layers size={17}/>{preview.memberships?.length?'Керувати складом вузла':'Підтвердити вузол у зборі'}
     </button>}
     {!!preview.issues?.length&&<p role="alert">Комплектність потребує перевірки: {preview.issues.map((i:Row)=>`${i.name} — ${{absent:'відсутня',damaged:'пошкоджена',archived:'архівована'}[i.reason as 'absent'|'damaged'|'archived']}`).join('; ')}</p>}
     <details className="assembly-composition" open={!!selected.completeness}><summary>Фактичний склад</summary><ul>{preview.items.map((n:Row)=><li key={n.item_id}>{n.name}{n.condition==='damaged'?' · Пошкоджено':''}{n.presence==='absent'?' · Відсутня':''}</li>)}</ul></details>
@@ -227,7 +206,7 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
       </div>}
       <label>Компонент для включення<select value={child} onChange={e=>setChild(e.target.value)}><option value="">Оберіть фізичну позицію</option>{componentCandidates.map(n=><option key={n.id} value={n.id}>{assemblyLabel(n)}{n.position?` · ${n.position}`:''}</option>)}</select></label>
       <button disabled={busy||!physical||!child} onClick={()=>void send('attach',{item_id:child,parent_id:selected.id,confirm_physical:true})}>Включити до вузла</button>
-      {selected.parent_id?<button disabled={busy||!physical} onClick={()=>void send('detach',{item_id:selected.id,confirm_physical:true})}>Відокремити компонент</button>:<button disabled={busy||!physical||!!preview.issues?.length} onClick={()=>void send('confirm',{item_id:selected.id,token:preview.token,confirm_physical:true})}>Підтвердити поточний склад</button>}
+      {selected.parent_id?<button disabled={busy||!physical} onClick={()=>void send('detach',{item_id:selected.id,confirm_physical:true})}>Відокремити компонент</button>:<button disabled={busy||!physical||!!preview.issues?.length} onClick={()=>void send('confirm',{item_id:selected.id,token:preview.token,confirm_physical:true})}>Підтвердити комплектність вузла</button>}
      </div></details>}
      {selected.part_id&&!selected.parent_id&&can('sales.create')&&<details className="assembly-sale"><summary>Продаж за одним чеком</summary>
       <label>Фактична ціна<input type="number" min="0" step="0.01" value={price} onChange={e=>setPrice(e.target.value)}/></label>
