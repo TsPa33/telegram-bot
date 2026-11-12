@@ -196,3 +196,27 @@ def change_status(db,order,value):
     allowed=(value=='shipped' and order.status in ('new','reserved') and (order.sold_at or reservations(db,order))) or (value=='completed' and order.status=='shipped' and order.sold_at)
     if not allowed:raise HTTPException(409,'Недопустимий перехід; резервування, продаж і скасування мають окремі дії')
     status(db,order,value);db.flush();return view(db,order)
+
+
+def complete_received(db,order):
+    """One command: confirmed delivery/pickup, with at most one stock sale."""
+    if order.status=='completed':return view(db,order)
+    if order.status=='cancelled':raise HTTPException(409,'Замовлення скасовано')
+    if order.status!='shipped' and not (order.delivery_method=='pickup' and order.status in ('new','reserved')):
+        raise HTTPException(409,'Спочатку позначте замовлення відправленим')
+    if not order.sold_at:
+        action(db,order,'sell')
+    status(db,order,'completed')
+    db.flush()
+    return view(db,order)
+
+
+def revise_reserved(db,order,data):
+    """Release old holds, replace lines, and reserve new lines atomically.
+    A conflict rolls back every release and edit; historical rows remain intact.
+    """
+    if order.sold_at or order.status!='reserved' or not reservations(db,order):
+        raise HTTPException(409,'Редагування доступне лише для непроданого зарезервованого замовлення')
+    action(db,order,'release')
+    replace_lines(db,order,data)
+    return action(db,order,'reserve')
