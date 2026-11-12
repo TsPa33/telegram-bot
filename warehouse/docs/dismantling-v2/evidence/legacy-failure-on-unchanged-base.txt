@@ -13,12 +13,12 @@ tmp_path = PosixPath('/tmp/pytest-of-agent/pytest-8/test_real_A_xc90_read_only_e
 >       confirm(platform,j);build(platform);setup_vehicle(vehicle)
         ^^^^^^^^^^^^^^^^^^^
 
-tests/test_dismantling_preview.py:88: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_dismantling_preview.py:88:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 tests/test_catalogue_v2.py:69: in confirm
     return finish_operation(c,r,expected)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 
 c = <starlette.testclient.TestClient object at 0x7fc63ce01110>
 response = <Response [409 Conflict]>, expected = 200
