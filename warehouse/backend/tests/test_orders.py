@@ -440,3 +440,26 @@ def test_ux_v2_category_facets_are_unpaginated_and_donor_scoped(logged,vehicle,c
     assert sum(f['count'] for f in data['category_facets'])==3
     assert next(f['count'] for f in data['category_facets'] if f['subcategory_id']==sub['id'])==2
     assert c.get('/api/v1/parts',params={**params,'q':'Another'}).json()['total']==1
+
+def test_exact_buyer_history_does_not_join_on_shared_or_changed_contact(setup):
+    c, first, part = setup
+    second = buyer(c, name='Інший покупець', phone='0675554433')
+    before = state(c, part)
+    first_order = create(c, first, [line(part)])
+    second_order = create(c, second, [line(part)], contact_phone=first['phone'])
+    # Both snapshots now have the same phone, but the buyer IDs remain distinct.
+    for customer, expected in ((first, first_order), (second, second_order)):
+        response = c.get('/api/v1/orders', params={'buyer_id':customer['id']})
+        assert response.status_code == 200, response.text
+        assert response.json()['total'] == 1
+        assert [row['id'] for row in response.json()['items']] == [expected['id']]
+    assert c.get('/api/v1/orders', params={'buyer_id':first['id'], 'offset':1}).json()['items'] == []
+    assert c.put('/api/v1/buyers/'+first['id'], json={'name':'Нові контакти','phone':'0931234567'}).status_code == 200
+    assert c.get('/api/v1/orders', params={'buyer_id':first['id']}).json()['items'][0]['id'] == first_order['id']
+    assert c.get('/api/v1/orders', params={'buyer_id':str(uuid4())}).status_code == 404
+    assert 'buyer_order_history' in c.get('/api/v1/orders/readiness').json()['features']
+    with TestClient(app) as outsider:
+        signup(outsider, 'buyer-history-other@example.test')
+        assert outsider.get('/api/v1/orders', params={'buyer_id':first['id']}).status_code == 404
+    assert state(c, part) == before
+
