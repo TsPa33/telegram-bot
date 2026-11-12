@@ -153,3 +153,17 @@ def test_sales_readiness_rejects_missing_guard_table(logged):
     try:assert logged.get('/api/v1/sales-workspace/readiness').status_code==503
     finally:
         with engine().begin() as db:db.execute(text('ALTER TABLE stock_requests_offline RENAME TO stock_requests'))
+
+
+def test_dashboard_distinguishes_unknown_cost_from_recorded_zero(logged,vehicle):
+    create(logged,vehicle,'Unknown cost',selling_price='10.00')
+    create(logged,vehicle,'Recorded zero cost',selling_price='20.00',unit_cost='0.00')
+    create(logged,vehicle,'USD unpriced',currency='USD')
+    r=logged.get('/api/v1/dashboard');assert r.status_code==200,r.text
+    d=r.json();assert d['stock_positions']==3
+    assert d['cost_coverage']['stock_positions_with_cost']==1
+    assert d['cost_coverage']['stock_positions_without_cost']==2
+    assert d['margin_positions']==1
+    values={v['currency']:v for v in d['valuation_by_currency']}
+    assert values['UAH']['priced_positions']==2
+    assert values['USD']['priced_positions']==0 and values['USD']['unpriced_positions']==1
