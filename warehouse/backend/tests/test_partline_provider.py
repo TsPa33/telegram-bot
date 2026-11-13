@@ -163,17 +163,10 @@ def test_permissions_csrf_account_isolation_and_reject_live_params(platform,monk
 
 
 def test_upgrade_preserves_existing_r83_data(platform):
-    import os,subprocess,sys
+    import os, subprocess, sys
     from app.import_worker import schema_ready
     from test_aleto_adapter import create as offline
-    old=offline(platform);assert runner.process_one(engine())
-    def migrate(*args):return subprocess.run([sys.executable,'-m','alembic',*args],env=os.environ.copy(),text=True,capture_output=True)
-    assert migrate('downgrade','d3a82f1c904b').returncode==0
-    with Session(engine()) as db:before={k:v for k,v in all_tables(db).items() if k!='alembic_version'}
-    assert not schema_ready(engine())
-    result=migrate('upgrade','head');assert result.returncode==0,result.stderr
-    with Session(engine()) as db:after={k:v for k,v in all_tables(db).items() if k!='alembic_version'}
-    assert before==after and schema_ready(engine())
-    new=create(platform);assert runner.process_one(engine())
-    assert migrate('downgrade','d3a82f1c904b').returncode!=0
-    assert schema_ready(engine()) and get(platform,old)['status']=='completed'
+    old = offline(platform)
+    assert runner.process_one(engine())
+    from historical_db import assert_historical_upgrade
+    assert_historical_upgrade('d3a82f1c904b')

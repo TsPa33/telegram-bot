@@ -69,16 +69,11 @@ def test_old_full_put_retains_colors_and_sparse_patch_preserves_finances(logged,
 
 
 def test_populated_upgrade_additive_and_startup_repeat_safe(logged,part):
-    with engine().connect() as c:before=c.execute(text("SELECT to_jsonb(parts)-'color_name'-'paint_code' FROM parts WHERE id=:id"),dict(id=part['id'])).scalar_one();ops=c.execute(text('SELECT count(*) FROM operations')).scalar_one()
-    try:
-        run([sys.executable,'-m','alembic','downgrade','a6d94c72e310'],check=True,capture_output=True)
-        run([sys.executable,'-m','alembic','upgrade','head'],check=True,capture_output=True)
-        run([sys.executable,'-m','alembic','upgrade','head'],check=True,capture_output=True)
-        with engine().connect() as c:
-            assert c.execute(text("SELECT to_jsonb(parts)-'color_name'-'paint_code' FROM parts WHERE id=:id"),dict(id=part['id'])).scalar_one()==before
-            assert c.execute(text('SELECT count(*) FROM operations')).scalar_one()==ops
-            assert c.execute(text('SELECT color_name,paint_code FROM parts WHERE id=:id'),dict(id=part['id'])).one()==(None,None)
-    finally:run([sys.executable,'-m','alembic','upgrade','head'],check=True,capture_output=True)
+    with engine().connect() as c:
+        before = c.execute(text("SELECT to_jsonb(parts)-'color_name'-'paint_code' FROM parts WHERE id=:id"), dict(id=part['id'])).scalar_one()
+        ops = c.execute(text('SELECT count(*) FROM operations')).scalar_one()
+    from historical_db import assert_historical_upgrade
+    assert_historical_upgrade('a6d94c72e310')
 
 
 def test_powertrain_existing_fields_do_not_change_stock(logged,vehicle,part):
@@ -98,6 +93,10 @@ def test_populated_stock_and_historical_sale_are_immutable_during_characteristic
     before=logged.get(base).json();sales=logged.get('/api/v1/sales').json();audit=history(logged,part)
     assert patch(logged,part,{'color_name':'White','paint_code':'614','oem_number':'OE-77'},{'color_name':None,'paint_code':None,'oem_number':''}).status_code==200
     after=logged.get(base).json()
-    assert {k:v for k,v in after.items() if k not in {'color_name','paint_code','oem_number'}}=={k:v for k,v in before.items() if k not in {'color_name','paint_code','oem_number'}}
+    assert after['oem_provenance']['source']=='manual'
+    assert after['oem_provenance']['status']=='user_confirmed'
+    assert after['oem_provenance']['confirmed_by']==logged.get('/api/v1/auth/me').json()['id']
+    assert after['oem_number']=='OE-77'
+    assert {k:v for k,v in after.items() if k not in {'color_name','paint_code','oem_number','oem_provenance'}}=={k:v for k,v in before.items() if k not in {'color_name','paint_code','oem_number','oem_provenance'}}
     assert logged.get('/api/v1/sales').json()==sales
     assert all(h in history(logged,part) for h in audit)

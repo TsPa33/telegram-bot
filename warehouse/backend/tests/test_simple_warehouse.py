@@ -105,17 +105,10 @@ def test_vehicle_numbers_are_stable_account_local_and_not_mutable(logged,vehicle
 
 def test_number_migration_preserves_existing_ids_stock_and_audit(logged,vehicle,part):
     with engine().connect() as db:
-        old=db.execute(text('SELECT id, donor_id, account_id FROM vehicles')).all()
-        count=db.execute(text('SELECT count(*) FROM operations')).scalar_one()
-    run([sys.executable,'-m','alembic','downgrade','f06a41c9d2b7'],check=True)
-    try:
-        run([sys.executable,'-m','alembic','upgrade','head'],check=True)
-        with engine().connect() as db:
-            assert db.execute(text('SELECT id, donor_id, account_id FROM vehicles')).all()==old
-            assert db.execute(text('SELECT number FROM vehicles')).scalar_one()==1
-            assert db.execute(text('SELECT count(*) FROM operations')).scalar_one()==count
-        assert logged.get('/api/v1/parts/'+part['id']).status_code==200
-    finally:run([sys.executable,'-m','alembic','upgrade','head'],check=True)
+        old = db.execute(text('SELECT id, donor_id, account_id FROM vehicles')).all()
+        count = db.execute(text('SELECT count(*) FROM operations')).scalar_one()
+    from historical_db import assert_historical_upgrade
+    assert_historical_upgrade('f06a41c9d2b7')
 
 
 def test_previous_backend_can_insert_without_number(logged,vehicle):

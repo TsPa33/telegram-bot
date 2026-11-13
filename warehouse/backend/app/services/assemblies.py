@@ -237,6 +237,10 @@ def confirm(db,account,vehicle,item,token):
 
 def stock_guard(db,part,data,account,confirmation=None):
     """Called for EVERY existing stock path, regardless of UI feature flag."""
+    if part.id in db.info.get('fresh_unassembled_receipts',()):
+        # IDs minted and inserted by this transaction cannot have committed assembly links.
+        if data.type!='receipt' or part.quantity or part.reserved_quantity:raise HTTPException(409,'Invalid fresh receipt scope')
+        return None
     lock_workspace(db,account)
     node=db.scalar(select(DismantlingItem).where(DismantlingItem.account_id==account,DismantlingItem.part_id==part.id))
     if node is None:return None

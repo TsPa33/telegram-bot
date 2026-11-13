@@ -470,3 +470,76 @@ def test_trial_cannot_replace_confirmed_paid_windows(pilot):
     assert after["status"] == before["status"] == "ACTIVE"
     assert after["plan"] == before["plan"] == "standard"
     assert after["period_end"] == before["period_end"]
+
+
+@pytest.mark.parametrize("change,expected", [("expiry", 402), ("downgrade", 409)])
+def test_snapshot_change_serializes_with_pending_vehicle_and_search_stays_readable(
+    pilot, monkeypatch, change, expected
+):
+    import threading
+
+    c, w, project = pilot
+    project([interval("premium")])
+    for i in range(10):
+        assert c.post("/api/v1/vehicles", json=vehicle(i)).status_code == 201
+    with Session(engine()) as db:
+        binding = db.get(EntitlementWorkspace, w).billing_account_id
+    replacement = (
+        [interval(end=now() - timedelta(days=4), start=now() - timedelta(days=34))]
+        if change == "expiry"
+        else [interval("standard")]
+    )
+    token = e.local_bridge().publish_fixture(w, binding, replacement)
+    waiting = threading.Event()
+    original = e.lock
+
+    def lock(db, workspace):
+        if threading.current_thread().name.startswith("quota-race"):
+            waiting.set()
+        return original(db, workspace)
+
+    monkeypatch.setattr(e, "lock", lock)
+
+    def create():
+        with Session(engine()) as db:
+            db.add(Vehicle(account_id=w, number=100, **vehicle(100)))
+            try:
+                db.commit()
+                return 201
+            except HTTPException as error:
+                db.rollback()
+                return error.status_code
+
+    with ThreadPoolExecutor(1, thread_name_prefix="quota-race") as pool:
+        with Session(engine()) as writer:
+            original(writer, w)
+            pending = pool.submit(create)
+            assert waiting.wait(5)
+            # GET performs no workspace row lock even with enforcement enabled.
+            assert (
+                c.get("/api/v1/smart-search/parts", params={"q": "test"}).status_code
+                == 200
+            )
+            assert e.accept(writer, token) == "applied"
+            writer.commit()
+        assert pending.result(5) == expected
+    assert c.get("/api/v1/billing/entitlements").json()["usage"]["vehicles"] == 10
+
+
+def test_quota_refreshes_committed_usage_after_cached_donor_is_restored(pilot):
+    c, w, _ = pilot
+    for i in range(10):
+        assert c.post("/api/v1/vehicles", json=vehicle(i)).status_code == 201
+    donor = c.get("/api/v1/vehicles").json()["items"][0]
+    url = "/api/v1/archive/vehicles/" + donor["id"]
+    assert c.post(url).status_code == 200
+    with Session(engine()) as stale:
+        cached = list(stale.scalars(select(Vehicle).where(Vehicle.account_id == w)))
+        assert next(v for v in cached if v.id == donor["id"]).archived
+        assert c.post(url + "?restore=true").status_code == 200
+        stale.add(Vehicle(account_id=w, number=100, **vehicle(100)))
+        with pytest.raises(HTTPException) as error:
+            stale.commit()
+        assert error.value.status_code == 409
+        stale.rollback()
+    assert c.get("/api/v1/billing/entitlements").json()["usage"]["vehicles"] == 10

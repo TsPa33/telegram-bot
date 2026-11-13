@@ -111,40 +111,44 @@ def add(db, who, donor, items, client):
     # Assign defaults once so before/after snapshots remain complete without per-row flush.
     db.flush()
     actor = db.get(Account, db.info.get("actor_id", who.workspace_account_id))
-    with db.no_autoflush:
-        for p, item, d in new:
-            record(
-                db,
-                who.workspace_account_id,
-                p,
-                "part_create",
-                "Вибрану позицію додано пакетно",
-                {},
-                flush_before=False,
-            )
-            stock(
-                db,
-                p,
-                StockInput(
-                    type="receipt",
-                    quantity=1,
-                    reason="Явне пакетне додавання деталі: 1 шт.",
-                ),
-                who.workspace_account_id,
-                flush_before=False,
-            )
-            results.append(
-                {
-                    "pt_id": item.pt_id,
-                    "ok": True,
-                    "created": True,
-                    "received": True,
-                    "part_id": p.id,
-                    "quantity": 1,
-                    "name": p.name,
-                    "classification": d,
-                }
-            )
+    db.info['fresh_unassembled_receipts']=frozenset(p.id for p,_,_ in new)
+    try:
+        with db.no_autoflush:
+            for p, item, d in new:
+                record(
+                    db,
+                    who.workspace_account_id,
+                    p,
+                    "part_create",
+                    "Вибрану позицію додано пакетно",
+                    {},
+                    flush_before=False,
+                )
+                stock(
+                    db,
+                    p,
+                    StockInput(
+                        type="receipt",
+                        quantity=1,
+                        reason="Явне пакетне додавання деталі: 1 шт.",
+                    ),
+                    who.workspace_account_id,
+                    flush_before=False,
+                )
+                results.append(
+                    {
+                        "pt_id": item.pt_id,
+                        "ok": True,
+                        "created": True,
+                        "received": True,
+                        "part_id": p.id,
+                        "quantity": 1,
+                        "name": p.name,
+                        "classification": d,
+                    }
+                )
+    finally:
+        db.info.pop('fresh_unassembled_receipts',None)
     db.commit()
     bytype = {r["pt_id"]: r for r in results}
     return {
