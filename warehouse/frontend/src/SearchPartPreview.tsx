@@ -10,6 +10,7 @@ import {useCan} from './permissions';
 import {categoryLabelUk} from './PartsQuickCategories';
 import {SellerPriceEditor} from './MarketPricing';
 import PartCharacteristicsEditor from './PartCharacteristicsEditor';
+import {StockOemField} from './OemField';
 
 type Props={
  part:Row|null;vehicle?:Row;category?:Row;subcategory?:Row;canSell:boolean;
@@ -73,7 +74,7 @@ export default function SearchPartPreview({part,vehicle,category,subcategory,can
     <div><dt>Категорія</dt><dd>{category?categoryLabelUk(category.name):'Без категорії'}{subcategory?' · '+categoryLabelUk(subcategory.name):''}</dd></div>
     <div><dt>Статус</dt><dd>{part.catalogue_only?(part.plan_status||'У плані розбору'):part.archived?'Архівна':part.reserved_quantity>0?'Зарезервована':part.quantity>0?'В наявності':'Без залишку'}</dd></div>
     <div><dt>Залишок</dt><dd>{part.catalogue_only?'Не на складі':`${part.quantity??0} шт.`}{part.reserved_quantity>0&&<small>Резерв: {part.reserved_quantity} · Вільно: {part.available_quantity}</small>}</dd></div>
-    <div><dt>OEM</dt><dd data-field="oem" data-number-present={!!part.oem_number}>{part.oem_number||'Не встановлено'}</dd></div>
+    <div><dt>OEM</dt><dd data-field="oem" data-number-present={!!part.oem_number}><StockOemField part={part} editable={can('inventory.edit')&&!part.archived} onSaved={onSaved}/></dd></div>
     <div><dt>Артикул</dt><dd data-field="article" data-number-present={!!part.article_number}>{part.article_number||'Не встановлено'}{part.article_number&&part.article_brand&&<small>{part.article_brand}</small>}</dd></div>
     <div><dt>Моя ціна</dt><dd data-price-state={part.selling_price==null?"missing":"set"}>{part.selling_price!=null?money(part.selling_price,part.currency||'UAH'):'Не встановлено'}</dd></div>
    </dl>

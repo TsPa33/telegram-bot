@@ -131,6 +131,8 @@ def receipt(db, row, data, account_id, *, confirmed=False):
                     category_id=root.id, subcategory_id=sub.id, checklist_category_id=leaf.id)
         db.add(part)
         record(db, account_id, part, 'part_create', 'Позиція розбору перед явним надходженням', {})
+    from app.services.auto_oem import receipt_oem
+    receipt_oem(db,row,part)
     part_before = snapshot(part)
     if data.condition is not None:
         part.condition = data.condition

@@ -445,3 +445,46 @@ def test_volvo_pilot_rejects_confirmed_different_source(logged,volvo,monkeypatch
     monkeypatch.setattr(CatalogueAdapter,'plan',lambda *a,**kw:pytest.fail('Conflicting selection must not call Catalogue'))
     r=logged.get(f"/api/v1/vehicles/{volvo['id']}/volvo-oem-preview",params={'source_modification_id':107555})
     assert r.status_code==409,r.text
+
+
+def test_automatic_oem_backfill_and_receipt(logged,volvo,monkeypatch):
+    from app.services.auto_oem import enrich_vehicle,SourceCache,source_identity
+    from app.services.inventory import snapshot
+    base=f"/api/v1/vehicles/{volvo['id']}"
+    assert logged.post(base+'/unified-catalogue/base').status_code==200
+    with Session(engine()) as db:
+        v=db.get(Vehicle,volvo['id']);v.year=2016;v.vin='YV4A22PK2G1092943';v.fuel_type='petrol';v.drive_type='awd';v.engine_displacement_l=2
+        rows=list(db.scalars(select(DismantlingItem).where(DismantlingItem.vehicle_id==v.id).order_by(DismantlingItem.id)))
+        target=rows[0];target.name='Лампа';target.category_name='Освітлення';target.included=True
+        aid=v.account_id;rid=target.id;vid=v.id
+        db.commit();before=[snapshot(x) for x in rows];assert source_identity(v)[0]==107555
+    monkeypatch.setattr(CatalogueAdapter,'plan',lambda self,car,**kw:envelope(car,'partial'))
+    assert enrich_vehicle(engine(),aid,vid)==1
+    assert enrich_vehicle(engine(),aid,vid)==0
+    with Session(engine()) as db:
+        v=db.get(Vehicle,vid);ref=v.dismantling_v3['volvo_oem_references'][rid]
+        assert ref['oem_number']=='OEM-ONE' and len(ref['alternatives'])==2 and not ref['vin_verified']
+        assert [snapshot(x) for x in db.scalars(select(DismantlingItem).where(DismantlingItem.vehicle_id==vid).order_by(DismantlingItem.id))]==before
+        assert db.scalar(select(func.count()).select_from(Part))==0
+    assert logged.patch(base+'/oem/'+rid,json={'expected_oem':'OEM-ONE','oem_number':'WRONG'}).status_code==422
+    assert logged.patch(base+'/oem/'+rid,json={'expected_oem':'OEM-ONE','oem_number':'OEM-TWO'}).status_code==200
+    assert logged.patch(base+'/oem/'+rid,json={'expected_oem':'OEM-ONE','oem_number':'OEM-TWO'}).status_code==409
+    assert enrich_vehicle(engine(),aid,vid)==0
+    assert logged.post(base+'/unified-catalogue/stock',json={'keys':['base:'+rid],'confirm_physical_receipt':True}).status_code==200
+    with Session(engine()) as db:
+        p=db.get(Part,db.get(DismantlingItem,rid).part_id)
+        assert p.oem_number=='OEM-TWO' and p.quantity==1 and not p.oem_provenance['vin_verified']
+        assert len(p.oem_provenance['alternatives'])==2
+        assert db.scalar(select(func.count()).select_from(Operation).where(Operation.type=='receipt'))==1
+
+def test_automatic_oem_does_not_guess_other_modifications(logged,volvo):
+    from app.services.auto_oem import source_identity
+    with Session(engine()) as db:
+        v=db.get(Vehicle,volvo['id']);assert source_identity(v) is None
+        v.year=2016;v.vin='YV4A22PK2G1092943';v.fuel_type='diesel'
+        assert source_identity(v) is None
+        v.fuel_type='petrol';v.manufacturer='Peugeot'
+        assert source_identity(v) is None
+        v.dismantling_v3={'global_selection':{'car_id':88,'model_id':9,'manufacturer_id':7,'source_snapshot_sha':'b'*64,
+            'vehicle_basis':__import__('app.services.unified_catalogue',fromlist=['vehicle_basis']).vehicle_basis(v)}}
+        assert source_identity(v)==(88,9,7,'b'*64,True)

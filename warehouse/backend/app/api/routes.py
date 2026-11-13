@@ -629,7 +629,10 @@ def part_characteristics(id: str, data: PartCharacteristicsInput, db: DB, who: A
     if any(getattr(row,k)!=v for k,v in data.expected.items()):
         raise HTTPException(409,'Характеристики вже змінено. Перечитайте картку та порівняйте значення.')
     for key,value in data.values.items():setattr(row,key,value)
-    if 'oem_number' in data.values:row.oem_provenance=dict(source='manual',confirmed_by=who.actor_id,confirmed_at=datetime.now(timezone.utc).isoformat(),status='user_confirmed' if row.oem_number else 'cleared')
+    if 'oem_number' in data.values:
+        previous=before.get('oem_provenance') or {}
+        option=next((a for a in previous.get('alternatives',[]) if a.get('oem_number')==row.oem_number),None)
+        row.oem_provenance={**previous,**option,'status':'user_selected_cross_reference'} if option else dict(source='manual',confirmed_by=who.actor_id,confirmed_at=datetime.now(timezone.utc).isoformat(),status='user_confirmed' if row.oem_number else 'cleared')
     record(db,who.workspace_account_id,row,'part_update','Оновлено OEM / колір деталі',before)
     db.commit()
     return {**snapshot(row),'available_quantity':row.available_quantity}

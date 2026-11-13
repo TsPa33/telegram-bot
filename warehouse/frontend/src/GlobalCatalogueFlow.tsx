@@ -4,7 +4,6 @@ import './unified-dismantling.css';
 import {useCan} from './permissions';
 import AssemblyTree from './AssemblyTree';
 import UniversalPlanGenerator from './UniversalPlanGenerator';
-import VolvoOemPreview from './VolvoOemPreview';
 
 export function GlobalVehicleForm({onSaved,vehicle,expectedBasis}:{onSaved:(row:Row)=>void;vehicle?:Row;expectedBasis?:string}) {
  const [items,setItems]=useState<Row[]>([]),[picked,setPicked]=useState(''),[brand,setBrand]=useState(''),[model,setModel]=useState(''),[gen,setGen]=useState(''),[year,setYear]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false);
@@ -49,7 +48,6 @@ export default function GlobalCatalogueFlow({vehicle,onSaved}:{vehicle:Row;onSav
   {chooseModification&&state.selection_basis&&<div className="uf-source-picker"><GlobalVehicleForm key={vehicle.id+':'+state.selection_basis} vehicle={vehicle} expectedBasis={state.selection_basis} onSaved={row=>{setChooseModification(false);setRevision(n=>n+1);onSaved(row)}}/></div>}
    </div>
   </details>
-  {can('catalog.view')&&can('inventory.view')&&String(vehicle.manufacturer).trim().toLowerCase()==='volvo'&&/\bXC90\b/i.test(String(vehicle.model))&&<VolvoOemPreview key={vehicle.id} vehicle={vehicle}/>}
   {working&&<>
   <AssemblyTree vehicle={vehicle} revision={revision} onReady={setAssemblyMode}/>{!assemblyMode&&<h2>Розбір автомобіля</h2>}{error&&<p role="alert">{error}</p>}
  {state.legacy&&<details><summary>Збережені попередні списки</summary><p>Історичний список збережено окремо від глобального каталогу.</p><button onClick={async()=>{try{setLegacy((await api(`/vehicles/${vehicle.id}/dismantling-workspace?source=${state.legacy_source}`)).items)}catch(e){setError((e as Error).message)}}}>Переглянути збережений список</button>{legacy?.map(r=><p key={r.key}>{r.name}</p>)}</details>}

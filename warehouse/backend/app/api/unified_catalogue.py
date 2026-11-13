@@ -588,3 +588,32 @@ def save_volvo_oem(id: str, data: VolvoOemSelection, db: DB, who: Auth):
     result=finish(db,v,who,data,request_sha,dict(saved=True,item_id=row.id,reference=ref,stock_assigned=stock))
     db.commit()
     return result
+
+
+class OemChange(Input):
+    oem_number: str = Field(min_length=1,max_length=150)
+    expected_oem: str = Field(min_length=1,max_length=150)
+
+
+@router.patch('/{id}/oem/{item_id}')
+def change_plan_oem(id: str,item_id: str,data: OemChange,db: DB,who: Auth):
+    from sqlalchemy import select
+    from app.models import DismantlingItem
+    from app.services.auto_oem import references,REF_KEY,basis
+    from app.services.volvo_oem_review import reference_matches
+    from app.services.inventory import record,snapshot
+    require_permission(who,'vehicles.view','catalog.view','inventory.view','dismantling.manage')
+    v=owned(db,Vehicle,id,who.workspace_account_id,lock=True,active=True)
+    row=db.scalar(select(DismantlingItem).where(DismantlingItem.id==item_id,DismantlingItem.account_id==v.account_id,DismantlingItem.vehicle_id==v.id).with_for_update())
+    if not row:raise HTTPException(404,'Запчастину не знайдено')
+    refs=dict(references(v));ref=refs.get(row.id)
+    if not reference_matches(ref,row,basis(v)) or ref['oem_number']!=data.expected_oem:
+        raise HTTPException(409,'OEM змінився')
+    option=next((a for a in ref.get('alternatives',[]) if a['oem_number']==data.oem_number),None)
+    if not option:raise HTTPException(422,'OEM недоступний')
+    if data.oem_number!=ref['oem_number']:
+        before=snapshot(v);refs[row.id]={**ref,**option,'status':'user_selected_cross_reference'}
+        v.dismantling_v3={**v.dismantling_v3,REF_KEY:refs}
+        record(db,v.account_id,v,'vehicle_update','Змінено OEM запчастини',before)
+        db.commit()
+    return dict(oem_number=data.oem_number)
