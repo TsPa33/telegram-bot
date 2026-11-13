@@ -17,6 +17,9 @@ from app.services.plan_parts import MAX_RESPONSE_BYTES, PlanPartsClient, PlanPar
 
 @pytest.fixture(autouse=True)
 def configuration(monkeypatch):
+    from app.services.plan_parts import _cache_lock,_result_cache,_raw_response_cache
+    with _cache_lock:
+        _result_cache.clear();_raw_response_cache.clear()
     monkeypatch.setenv("PLAN_PARTS_ENABLED", "true")
     monkeypatch.setenv("PLAN_PARTS_API_KEY", "offline-placeholder-not-a-real-key")
 
@@ -146,6 +149,10 @@ def test_route_requires_session_csrf_and_uses_authenticated_account(path):
     class DB:
         def __init__(self):
             self.info = {}
+
+        def scalar(self, statement):
+            model=statement.column_descriptions[0]["entity"]
+            return session if model is Session else account
 
         def get(self, model, key):
             return session if model is Session else account

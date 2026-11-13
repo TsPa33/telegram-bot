@@ -32,6 +32,11 @@ async def permission_body(request:Request):
     return body
 
 
+def lock_workspace(db,workspace):
+    # NO KEY UPDATE serializes writers without blocking a worker FK/key-share fence.
+    return db.scalar(select(Account).where(Account.id==workspace).with_for_update(key_share=True).execution_options(populate_existing=True))
+
+
 def identity(request:Request,db:DBSession=Depends(get_db),body:dict=Depends(permission_body)):
     token=request.cookies.get('warehouse_session','')
     session=db.get(Session,digest(token)) if token else None
@@ -42,8 +47,8 @@ def identity(request:Request,db:DBSession=Depends(get_db),body:dict=Depends(perm
     # In particular, employee stock writes must not hold actor SHARE while waiting
     # for an owner lock held by a team-management command.
     if request.method not in ('GET','HEAD','OPTIONS'):
-        db.scalar(select(Account).where(Account.id==(user.workspace_account_id or user.id)).with_for_update(key_share=not entitlements.enabled()))
-    if request.method not in ('GET','HEAD','OPTIONS') and user.role!='DIRECTOR':
+        lock_workspace(db,user.workspace_account_id or user.id)
+    if request.method not in ('GET','HEAD','OPTIONS'):
         user=db.scalar(select(Account).where(Account.id==user.id).with_for_update(read=True).execution_options(populate_existing=True))
         if not user.is_active:raise HTTPException(401,'Доступ заблоковано')
         # A reset/logout may have revoked the session while this request waited
