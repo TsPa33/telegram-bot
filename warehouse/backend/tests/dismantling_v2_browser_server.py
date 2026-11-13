@@ -47,7 +47,11 @@ _original_plan=CatalogueAdapter.plan
 _original_articles=CatalogueAdapter.articles
 def pilot_plan(self,car,**kwargs):
     if car==107555 and not kwargs.get('global_source'):
-        return envelope(car,'partial')
+        import hashlib,json
+        data=envelope(car,'partial')
+        data['payload']['categories'][0]['name_uk']='Стартер'
+        data['sha256']=hashlib.sha256(json.dumps(data['payload'],ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+        return data
     return _original_plan(self,car,**kwargs)
 def pilot_articles(self,car,product_id,snapshot_sha,**kwargs):
     if car==107555 and product_id==106 and snapshot_sha=='a'*64 and not kwargs.get('global_source'):

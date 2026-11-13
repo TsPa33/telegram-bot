@@ -15,6 +15,7 @@ export default function VolvoOemPreview({vehicle}:{vehicle:Row}) {
  const [confirmed,setConfirmed]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState('');
  const [rowId,setRowId]=useState(''),[productId,setProductId]=useState(''),[q,setQ]=useState('');
  const epoch=useRef(0);
+ const panel=useRef<HTMLDetailsElement>(null);
  useEffect(()=>{epoch.current++;return()=>{epoch.current++;}},[vehicle.id]);
  const path='/vehicles/'+vehicle.id+'/volvo-oem-preview?source_modification_id=107555';
  const types:Row[]=data?.catalogue_types||[];
@@ -49,6 +50,26 @@ export default function VolvoOemPreview({vehicle}:{vehicle:Row}) {
   }catch(e){if(ticket===epoch.current)setError((e as Error).message)}
   finally{if(ticket===epoch.current){setBusy(false);setProgress('')}}
  }
+ async function openAlternative(itemId:string){
+  if(busy||writing.current)return;
+  const ticket=++epoch.current;
+  if(panel.current){panel.current.open=true;panel.current.scrollIntoView({block:'start',behavior:'smooth'});}
+  setBusy(true);setError('');setMessage('');setDetail(null);setChoice(null);setVerify(false);setPhysical(false);setQ('');
+  try{
+   const fresh=await api(path);if(ticket!==epoch.current)return;
+   const selected=(fresh.plan_items||[]).find((r:Row)=>r.id===itemId);
+   if(!selected?.reference)throw Error('Збережений OEM не знайдено. Оновіть план.');
+   setData(fresh);setRowId(itemId);setProductId(String(selected.reference.product_id));setConfirmed(true);
+   const result=await api(path+'&product_id='+encodeURIComponent(String(selected.reference.product_id))+'&snapshot_sha='+encodeURIComponent(String(fresh.snapshot_sha)));
+   if(ticket===epoch.current)setDetail(result);
+  }catch(e){if(ticket===epoch.current)setError((e as Error).message)}
+  finally{if(ticket===epoch.current)setBusy(false)}
+ }
+ useEffect(()=>{
+  const handler=(e:Event)=>{const d=(e as CustomEvent).detail;if(d?.vehicleId===vehicle.id&&d?.itemId)void openAlternative(d.itemId);};
+  window.addEventListener('warehouse:volvo-oem-edit',handler);
+  return()=>window.removeEventListener('warehouse:volvo-oem-edit',handler);
+ },[vehicle.id,busy]);
  function selection(stock:boolean){
   if(!row||!choice||!verify||!data||!detail||!editable)return null;
   return {source_modification_id:107555,snapshot_sha:data.snapshot_sha,expected_vehicle_basis:data.vehicle_basis,item_id:row.id,expected_row_basis:row.row_basis,expected_reference_digest:row.reference_digest,product_id:Number(productId),supplier_id:choice.supplier_id,article_number:choice.article_nr,oem_number:choice.oem_number,confirm_reference:true,assign_stock:stock,confirm_physical_oem:stock&&physical};
@@ -99,7 +120,7 @@ export default function VolvoOemPreview({vehicle}:{vehicle:Row}) {
   }catch(e){if(ticket===epoch.current)setError((e as Error).message)}
   finally{writing.current=false;if(ticket===epoch.current)setBusy(false)}
  }
- return <details className="uf-catalogue-disclosure">
+ return <details ref={panel} className="uf-catalogue-disclosure">
   <summary><span><strong>OEM Volvo · власний каталог</strong><small>Автоматичне заповнення OEM без заміни плану</small></span><span className="uf-catalogue-toggle">Переглянути</span></summary>
   <div className="uf-catalogue-details volvo-oem-preview">
    <p>Пілот: XC90 II T6 AWD · джерельна модифікація 107555. Каталог частковий. CarPot автоматично обирає довідковий номер; за потреби його можна замінити. Номери не підтверджені за VIN.</p>
@@ -110,7 +131,7 @@ export default function VolvoOemPreview({vehicle}:{vehicle:Row}) {
    {data&&<>
     <p role="status">У плані {rows.length} · у джерелі {types.length} типів · {data.coverage==='partial'?'часткове покриття':'перевірене покриття'}.<br/>Збережено OEM: {rows.filter(r=>r.reference).length} · є варіант для перевірки: {rows.filter(r=>r.candidate_product_ids?.length&&!r.reference).length}.</p>
     <label>Змінити OEM / переглянути позицію<select aria-label="Позиція наявного плану" disabled={busy} value={rowId} onChange={e=>{setRowId(e.target.value);const selected=rows.find(r=>r.id===e.target.value);setProductId(String(selected?.reference?.product_id||(selected?.candidate_product_ids?.length===1?selected.candidate_product_ids[0]:'')));setQ('');setDetail(null);setChoice(null);setVerify(false);setPhysical(false)}}><option value="">Оберіть позицію</option>{rows.map(r=><option key={r.id} value={r.id}>{r.name}{r.position?' · '+r.position:''}{r.included===false?' · виключено':''}</option>)}</select></label>
-    {row&&<><p>Категорія плану: {row.category} › {row.subcategory}. Назва сама по собі не встановлює відповідність.</p>{row.reference&&<p>Довідковий OEM: {row.reference.oem_number}{row.reference_stale?' · потребує повторної звірки':''}</p>}{row.stock_oem&&<p>OEM на складі: {row.stock_oem}</p>}
+    {row&&<><p>Категорія плану: {row.category} › {row.subcategory}. Назва сама по собі не встановлює відповідність.</p>{row.reference&&<p>Довідковий OEM: {row.reference.oem_number}{row.reference.status==='auto_selected_cross_reference'?' · підібрано автоматично':''}{row.reference_stale?' · потребує повторної звірки':''}</p>}{row.stock_oem&&<p>OEM на складі: {row.stock_oem}</p>}
      <label>Пошук типу в каталозі<input value={q} disabled={busy} onChange={e=>setQ(e.target.value)} placeholder="Назва запчастини"/></label>
      <label>Каталожний тип<select aria-label="Каталожний тип OEM" value={productId} disabled={busy} onChange={e=>{setProductId(e.target.value);setDetail(null);setChoice(null);setVerify(false);setPhysical(false)}}><option value="">Оберіть тип для порівняння</option>{filtered.map(p=><option key={p.product_id} value={p.product_id}>{p.name_uk||p.name_source} · #{p.product_id} · {p.article_count} арт.{(row.candidate_product_ids||[]).includes(p.product_id)?' · запропоновано для звірки':''}</option>)}</select></label>
      {product&&<p>{(product.category_path||[]).filter(Boolean).join(' › ')||'Категорію не перевірено'} · {product.kind==='part'?'Тип деталі визначено':'Потребує перевірки типу'}{product.pilot_reviewed?' · локальна класифікація Volvo':''}</p>}

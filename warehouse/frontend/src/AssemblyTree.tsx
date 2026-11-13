@@ -273,7 +273,7 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
    {!preview?<p role="status">{error?'Не вдалося перевірити склад.':'Перевіряємо склад…'}</p>:<>
 
     <p className="assembly-breadcrumb">{selected.category} › {selected.subcategory}{selected.position?` · ${selected.position}`:''} </p>
-    {selected.stock_oem&&<p>OEM на складі: {selected.stock_oem}</p>}{selected.reference_oem&&<p>Довідковий OEM: {selected.reference_oem}{selected.reference_oem_stale?' · потрібна звірка':''} · не підтверджено за VIN</p>}
+    {selected.stock_oem&&<p>OEM на складі: {selected.stock_oem}</p>}{selected.reference_oem&&<><p>Довідковий OEM: {selected.reference_oem}{selected.reference_oem_stale?' · потрібна звірка':''} · не підтверджено за VIN</p>{can('catalog.view')&&can('inventory.view')&&can('dismantling.manage')&&!vehicle.archived&&<button type="button" className="secondary" onClick={()=>window.dispatchEvent(new CustomEvent('warehouse:volvo-oem-edit',{detail:{vehicleId:vehicle.id,itemId:selected.id}}))}>Змінити OEM</button>}</>}
     <div className="assembly-photo">{photo?<img src={photo} alt={selected.name} onError={()=>setPhoto('')}/>:<><Box size={44}/><span>Фото ще немає</span></>}</div>
     {assemblyUnitFor(selected)&&selected.part_id&&Number(selected.quantity)!==1&&<p className="assembly-unit-warning" role="status">Кількість цього складського запису відрізняється від однієї фізичної одиниці. Продаж як підтвердженого комплектного вузла потребує уточнення.</p>}
     <h5>Наявність на автомобілі</h5>
