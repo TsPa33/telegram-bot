@@ -588,3 +588,94 @@ def save_volvo_oem(id: str, data: VolvoOemSelection, db: DB, who: Auth):
     result=finish(db,v,who,data,request_sha,dict(saved=True,item_id=row.id,reference=ref,stock_assigned=stock))
     db.commit()
     return result
+
+
+class VolvoOemAuto(Input):
+    request_key: Key
+    source_modification_id: int = Field(strict=True,gt=0)
+    snapshot_sha: str = Field(pattern=r'^[a-f0-9]{64}$')
+    expected_vehicle_basis: str = Field(pattern=r'^[a-f0-9]{64}$')
+    confirm_modification: bool = False
+
+
+def preferred_volvo_oem(offers):
+    """Stable catalogue suggestion, not proof of fitment or OE supersession."""
+    from collections import defaultdict
+    evidence=defaultdict(list)
+    for offer in offers:
+        if not offer['brand']:continue
+        for number in offer['oem_numbers']:
+            if number and len(number)<=150 and len(offer['article_nr'])<=150:
+                evidence[number].append(offer)
+    if not evidence:return None
+    number=min(evidence,key=lambda n:(-len({o['supplier_id'] for o in evidence[n]}),n))
+    offer=min(evidence[number],key=lambda o:(o['supplier_id'],o['article_nr']))
+    return number,offer,len(evidence)
+
+
+@router.post('/{id}/volvo-oem-auto')
+def auto_volvo_oem(id: str, data: VolvoOemAuto, db: DB, who: Auth):
+    """Fill missing catalogue references in one transaction; never modify stock."""
+    from concurrent.futures import ThreadPoolExecutor
+    from sqlalchemy import select
+    from app.models import DismantlingItem, Part
+    from app.services.inventory import record, snapshot
+    from app.services.dismantling_plan_v3 import generator_basis, replay, finish
+    from app.services.volvo_oem_review import candidates, row_identity
+    require_permission(who,'vehicles.view','catalog.view','inventory.view','dismantling.manage')
+    if not data.confirm_modification:
+        raise HTTPException(422,'Підтвердіть модифікацію автомобіля один раз')
+    v=owned(db,Vehicle,id,who.workspace_account_id,lock=True,active=True)
+    prior,request_sha=replay(db,v,who,data,'volvo-oem-auto')
+    if prior is not None:return prior
+    basis=generator_basis(v)
+    if basis!=data.expected_vehicle_basis:
+        raise HTTPException(409,'Характеристики автомобіля змінилися. Оновіть каталог')
+    payload=volvo_pilot_payload(v,data.source_modification_id,data.snapshot_sha)
+    rows=list(db.scalars(select(DismantlingItem).where(
+        DismantlingItem.account_id==v.account_id,DismantlingItem.vehicle_id==v.id
+    ).order_by(DismantlingItem.id).with_for_update()))
+    refs=dict(volvo_references(v))
+    products={p['product_id']:p for p in payload['categories']}
+    stock={p.id:p for p in db.scalars(select(Part).where(
+        Part.account_id==v.account_id,Part.vehicle_id==v.id,
+        Part.id.in_([row.part_id for row in rows if row.part_id])))}
+    eligible={}; skipped={}
+    for row in rows:
+        part=stock.get(row.part_id)
+        if row.id in refs or (part and (part.oem_number or part.oem_provenance)):
+            skipped[row.id]='already_has_oem';continue
+        if not row.included or row.status=='absent' or row.assembly_consumed_operation_id:
+            skipped[row.id]='not_eligible';continue
+        ids=candidates(row,payload['categories'])
+        if len(ids)!=1:
+            skipped[row.id]='no_type_match' if not ids else 'ambiguous_type';continue
+        eligible[row.id]=ids[0]
+    def resolve(pid):
+        return pid,preferred_volvo_oem(saved_articles(products[pid],{'payload':payload},oem_manufacturer_id=120))
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        resolved=dict(pool.map(resolve,sorted(set(eligible.values()))))
+    added=[]
+    for row in rows:
+        if row.id not in eligible:continue
+        pid=eligible[row.id];choice=resolved[pid]
+        if choice is None:
+            skipped[row.id]='no_oem';continue
+        number,offer,alternative_count=choice
+        refs[row.id]=dict(source='carpot.catalogue',status='auto_selected_cross_reference',
+            vin_verified=False,source_modification_id=107555,oem_manufacturer_id=120,
+            product_id=pid,supplier_id=offer['supplier_id'],source_article=offer['article_nr'],
+            source_brand=offer['brand'],oem_number=number,snapshot_sha=data.snapshot_sha,
+            observed_at=payload['observed_at'],vehicle_basis=basis,row_identity=row_identity(row),
+            alternative_count=alternative_count,selection_rule='supplier_support_then_lexical')
+        added.append(dict(item_id=row.id,oem_number=number,alternative_count=alternative_count))
+    if added:
+        before=snapshot(v)
+        v.dismantling_v3={**(v.dismantling_v3 or {}),'volvo_oem_references':refs}
+        record(db,v.account_id,v,'vehicle_update','Автоматично заповнено довідкові OEM Volvo; без зміни складу',before)
+    result=finish(db,v,who,data,request_sha,dict(added=len(added),total_rows=len(rows),
+        preserved=sum(x=='already_has_oem' for x in skipped.values()),
+        unresolved=sum(x in ('no_type_match','ambiguous_type','no_oem') for x in skipped.values()),
+        items=added,skipped=skipped,stock_changed=False))
+    db.commit()
+    return result
