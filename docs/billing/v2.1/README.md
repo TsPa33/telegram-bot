@@ -17,7 +17,7 @@ The release gate is **pending**, until the full independent CI finishes with zer
 
 Historical migrations are unchanged. Historical tests now create UUID-named disposable loopback `*_test` databases at their actual parent revisions, seed synthetic VIN, stock, sale, reservation, order and audit history, and copy compatible columns from their original domain fixtures with constraints/triggers enabled. Forward upgrade runs twice; every original table/column is compared exactly and Alembic metadata check runs at HEAD. Only the newly created historical database is dropped.
 
-The staging `08b72c9d4e16` → packaged Phase 2 HEAD `a12b34c56d78` case retains real bundled Volvo A source counts (7246 offers / 10112 applications / 14400 paths), synthetic physical history, legacy exclusions and validated foreign keys. This is not a copy of live staging data. Unknown acquisition date, durable pricing decisions and virtual inventory downgrades are independently refused at their immediate migration boundaries. Failed smart-search upgrades verify transactional rollback and successful retry on index conflict and real table lock.
+The staging `08b72c9d4e16` → packaged Phase 2 HEAD `a12b34c56d78` case retains real bundled Volvo A source counts (7246 offers / 10112 applications / 14400 paths), synthetic physical history, legacy exclusions and validated foreign keys. This is not a copy of live staging data. Unknown acquisition date, durable pricing decisions, virtual inventory, runner/adapter/PartLine queue history, VIN evidence and populated entitlement projection downgrades are independently refused at their immediate migration boundaries. Failed smart-search upgrades verify transactional rollback and successful retry on index conflict and real table lock.
 
 Intentional API changes are asserted explicitly: private exact-source count is absent publicly and equals one through real platform-admin preview; manual OEM provenance records the actor while all other stock/sale fields stay unchanged; engine label is separate from structured engine code; ETag includes VIN evidence, engine code and drive while excluding private costs; missing generator is explicit null; current revisions come from packaged migration heads.
 
@@ -37,6 +37,8 @@ Source audit of `warehouse/backend/app` found no bulk SQL insert/update/delete t
 - Frontend: 631 PASS; production build PASS (existing bundle-size advisory remains).
 - Additional entitlement audit: 18 PASS. Security/worker flags OFF+ON and snapshot/ETag/OEM regression subset: 10 PASS.
 - Local complete discovery (`tests` + `unit_tests`): 998 PASS / 4 FAIL / 1 existing SKIP before final test-infrastructure corrections. All four failures are covered by a subsequent 29 PASS targeted run. A final independent full run is still required.
+- Browser suites: corporate, current seller checkout (1440/390), integrated dismantling, mobile v2.3 Chromium/WebKit (320/390/430/1440), and Billing Chromium/WebKit × those widths × Gold/Forest: PASS locally. Product UI is unchanged.
+- Five additional immediate-boundary forward-only history refusals: PASS.
 - Eight focused historical/negative migration tests including populated real A: PASS. Complete local run passed the other historical cases; final import-runner packaged-head expectation is fixed and retested.
 - The existing single skip is `test_smart_search_perf.py::test_scale`: explicitly opt-in 100k-row benchmark (`WAREHOUSE_SMART_PERF=1`), unchanged. It is separate from the measured mandatory batch/query regressions. No new skip, xfail or failure waiver is added.
 

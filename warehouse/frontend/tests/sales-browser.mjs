@@ -22,7 +22,9 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  async function searchPage(){await page.goto(origin+'/search');await search.fill('ка');await search.press('Escape');await expect(row('Капот')).toBeVisible();}
  async function action(label,stock=false,scope=row('Капот')){await scope.getByRole('button',{name:'Дії Капот',exact:true}).click();if(stock)await page.getByRole('menuitem',{name:'Складські операції',exact:true}).click();await page.getByRole('menuitem',{name:label,exact:true}).click();return page.getByRole('dialog').last();}
  await page.goto(origin+'/search');await expect(page.getByRole('heading',{name:'Пошук запчастин',exact:true})).toBeVisible();
+ if(viewport.width<601)await page.getByRole('button',{name:'Фільтри',exact:true}).click();
  await page.getByLabel('Марка пошуку',{exact:true}).selectOption('Volvo');await page.getByLabel('Модель пошуку',{exact:true}).selectOption('XC90');await page.getByLabel('Автомобіль пошуку',{exact:true}).selectOption(volvo.id);
+ if(viewport.width<601)await page.getByRole('button',{name:'Фільтри',exact:true}).click();
  await search.fill('ка');await expect(page.getByRole('listbox',{name:'Підказки запчастин'})).toBeVisible();await expect(page.getByRole('option',{name:/Капот/})).toHaveCount(1);await expect(page.getByRole('option',{name:/Кардан/})).toHaveCount(1);
  await expect(row('Капот')).toHaveCount(1);await expect(row('Капот BMW')).toHaveCount(0);await expect(row('Капот потенційний')).toHaveCount(0);
  await search.fill('КА');await expect(row('Кардан')).toBeVisible();await search.fill('OEM-123');await expect(row('Кардан')).toHaveCount(0);await expect(row('Капот')).toBeVisible();await search.fill('ART-123');await expect(row('Капот')).toBeVisible();
