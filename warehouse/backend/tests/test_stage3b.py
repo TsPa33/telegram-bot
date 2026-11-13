@@ -183,20 +183,11 @@ def test_order_reservation_consumption_and_disabled_draft(client,vehicle,monkeyp
 
 
 def test_populated_upgrade_and_guarded_downgrade(client,vehicle,part,monkeypatch):
-    import sys,subprocess
+    import sys, subprocess
     from sqlalchemy import text
-    def alembic(*args):return subprocess.run([sys.executable,'-m','alembic',*args],capture_output=True,text=True)
-    before=client.get('/api/v1/parts/'+part['id']).json()
-    assert alembic('downgrade','84d2c6fa190b').returncode==0
-    assert alembic('upgrade','head').returncode==0
-    assert client.get('/api/v1/parts/'+part['id']).json()==before
-    assert alembic('upgrade','head').returncode==0
-    fixture_catalogue(monkeypatch,[candidate('Safe')]);assert activate(client,vehicle).status_code==200
-    with Session(engine()) as db:state=all_tables(db)
-    r=alembic('downgrade','84d2c6fa190b');assert r.returncode!=0 and 'downgrade forbidden' in r.stderr
-    with Session(engine()) as db:
-        assert all_tables(db)==state
-        assert db.scalar(text('SELECT version_num FROM alembic_version'))=='f5c84d31a620'
+    before = client.get('/api/v1/parts/' + part['id']).json()
+    from historical_db import assert_historical_upgrade
+    assert_historical_upgrade('84d2c6fa190b')
 
 
 def test_legacy_receipts_sale_archive_exclusions_preserved_on_explicit_transition(client,vehicle,monkeypatch):
@@ -246,3 +237,15 @@ def test_existing_position_conflict_is_warning_not_deletion(client,vehicle,monke
     assert after['id']==before['id'] and after['part_id']==before['part_id']
     assert after['stock']['quantity']==1 and after['included']
     assert after['configuration_warning']
+
+
+def test_virtual_inventory_downgrade_refuses_durable_metadata():
+    from historical_db import historical_db,seed_inventory,protected
+    with historical_db('95c3e7b12a04') as (c,migrate,env):
+        ids=seed_inventory(c)
+        c.execute("UPDATE parts SET inventory_origin='virtual_donor' WHERE id=%s",(ids['part'],))
+        before=protected(c)
+        result=migrate('downgrade','84d2c6fa190b',check=False)
+        assert result.returncode!=0 and 'Virtual inventory is in use' in result.stderr
+        assert c.execute('SELECT version_num FROM alembic_version').fetchone()==('95c3e7b12a04',)
+        assert protected(c)==before

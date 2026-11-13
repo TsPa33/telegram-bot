@@ -51,6 +51,27 @@ def plan(c,job,resolutions=None,expected=200):
     return finish_operation(c,r,expected)
 
 
+def review_fixture(c,job):
+    """Explicitly skip each review item in the synthetic import fixture, page by page.
+
+    Production preview intentionally returns at most 200 issues. Keep every decision
+    and run a fresh planner/token; never turn a review response into fake success.
+    """
+    decisions=dict(job.get('resolutions') or {})
+    for _ in range(100):
+        if not job['report']['unresolved_total']:
+            assert job['status']=='ready'
+            return job
+        issues=job['report']['issues']
+        assert issues
+        fresh={i['key']:{'action':'skip'} for i in issues if i['key'] not in decisions}
+        assert fresh,'Fixture review made no progress'
+        assert all('skip' in i['allowed_actions'] for i in issues)
+        decisions.update(fresh)
+        job=plan(c,job,decisions)
+    raise AssertionError('Fixture review exceeded 100 real preview pages')
+
+
 def finish_operation(c,response,expected):
     if response.status_code!=202:
         assert response.status_code==expected,response.text
@@ -262,8 +283,7 @@ def test_full_volvo_v1_then_incremental_and_repeat_preserves_legacy(platform,veh
     a=upload(platform,raw=BUNDLED_PACKAGE.read_bytes(),filename='aleto-v1.sqlite3.gz')
     a=plan(platform,a)
     assert a['report']['counts']['offers']['inserted']==7246
-    resolutions={i['key']:{'action':'skip'} for i in a['report']['issues']}
-    if resolutions:a=plan(platform,a,resolutions)
+    a=review_fixture(platform,a)
     assert a['status']=='ready',a['report']['issues']
     confirm(platform,a)
     with Session(engine()) as db:
@@ -282,13 +302,12 @@ def test_full_volvo_v1_then_incremental_and_repeat_preserves_legacy(platform,veh
     incremental=[unchanged,changed,row('SYNTHETIC-NEW',subcategory='Тестова нова підкатегорія',part_name='Синтетична деталь',price_uah=''),
                  row('SYNTHETIC-PENDING',subcategory='Комп',part_name='Синтетична неоднозначна деталь')]
     b=plan(platform,upload(platform,incremental))
-    decision={i['key']:{'action':'skip'} for i in b['report']['issues']}
-    if decision:b=plan(platform,b,decision)
+    b=review_fixture(platform,b)
     confirm(platform,b)
     before=counts()
     assert before['catalogue_offers']==7248 and before['catalogue_prices']==7249
     c=plan(platform,upload(platform,incremental))
-    if c['report']['issues']:c=plan(platform,c,{i['key']:{'action':'skip'} for i in c['report']['issues']})
+    c=review_fixture(platform,c)
     assert all(v['inserted']==v['updated']==0 for v in c['report']['counts'].values())
     confirm(platform,c);assert counts()==before
     with Session(engine()) as db:
@@ -358,17 +377,11 @@ def test_concurrent_distinct_jobs_require_repreview_after_catalogue_change(platf
 
 
 def test_additive_migration_roundtrip_keeps_v1_and_business_data(platform,vehicle,part):
-    import subprocess,sys
-    with Session(engine()) as db:before=original_fingerprints(db)
-    try:
-        subprocess.run([sys.executable,'-m','alembic','downgrade','b8716962f6b8'],check=True,capture_output=True)
-        subprocess.run([sys.executable,'-m','alembic','upgrade','head'],check=True,capture_output=True)
-        subprocess.run([sys.executable,'-m','alembic','check'],check=True,capture_output=True)
-        with Session(engine()) as db:
-            after=original_fingerprints(db)
-            assert before==after
-    finally:
-        subprocess.run([sys.executable,'-m','alembic','upgrade','head'],check=True,capture_output=True)
+    import subprocess, sys
+    with Session(engine()) as db:
+        before = original_fingerprints(db)
+    from historical_db import assert_historical_upgrade
+    assert_historical_upgrade('b8716962f6b8')
 
 
 def test_v2_alias_unicode_and_known_part_traits_are_not_lost(platform):

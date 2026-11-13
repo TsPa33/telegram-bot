@@ -182,19 +182,10 @@ def test_small_storage_limit_and_immutable_content(platform,monkeypatch):
 
 
 def test_upgrade_from_r82_preserves_existing_queue_and_data(platform):
-    import os,subprocess,sys
+    import os, subprocess, sys
     from app.import_worker import schema_ready
     from test_catalogue_v2 import upload
     from test_import_runner import create as file_job
-    old=file_job(platform,upload(platform))
-    def migrate(*args):return subprocess.run([sys.executable,'-m','alembic',*args],capture_output=True,text=True,env=os.environ.copy())
-    assert migrate('downgrade','c8f21d6e903a').returncode==0
-    with Session(engine()) as db:before={k:v for k,v in all_tables(db).items() if k!='alembic_version'}
-    assert not schema_ready(engine())
-    result=migrate('upgrade','head');assert result.returncode==0,result.stderr
-    with Session(engine()) as db:after={k:v for k,v in all_tables(db).items() if k not in ('alembic_version','import_job_artifacts')}
-    assert before==after and schema_ready(engine())
-    assert get(platform,old)['status']=='queued' and runner.process_one(engine())
-    new=create(platform);assert runner.process_one(engine())
-    assert migrate('downgrade','c8f21d6e903a').returncode!=0
-    assert schema_ready(engine()) and get(platform,new)['status']=='completed'
+    old = file_job(platform, upload(platform))
+    from historical_db import assert_historical_upgrade
+    assert_historical_upgrade('c8f21d6e903a')

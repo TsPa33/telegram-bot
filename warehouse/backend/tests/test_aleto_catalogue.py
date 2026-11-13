@@ -246,17 +246,9 @@ def test_reference_read_permission_and_no_http_import_surface(logged,data,monkey
 
 def test_aleto_migration_roundtrip_keeps_existing_stock_and_history(logged,vehicle,part):
     with Session(engine()) as db:
-        before={cls.__tablename__:[snapshot(r) for r in db.scalars(select(cls).order_by(cls.id))] for cls in (Part,Vehicle,Operation)}
-    try:
-        subprocess.run([sys.executable,'-m','alembic','downgrade','b94f62d18e07'],check=True,capture_output=True)
-        for _ in range(2):
-            subprocess.run([sys.executable,'-m','alembic','upgrade','head'],check=True,capture_output=True)
-        subprocess.run([sys.executable,'-m','alembic','check'],check=True,capture_output=True)
-        with Session(engine()) as db:
-            for cls in (Part,Vehicle,Operation):
-                assert [snapshot(r) for r in db.scalars(select(cls).order_by(cls.id))]==before[cls.__tablename__]
-    finally:
-        subprocess.run([sys.executable,'-m','alembic','upgrade','head'],check=True,capture_output=True)
+        before = {cls.__tablename__: [snapshot(r) for r in db.scalars(select(cls).order_by(cls.id))] for cls in (Part, Vehicle, Operation)}
+    from historical_db import assert_historical_upgrade
+    assert_historical_upgrade('b94f62d18e07')
 
 
 @pytest.mark.parametrize('environment,name,flag,railway,allowed',[

@@ -185,7 +185,7 @@ def test_migration_preserves_existing_inventory(logged,donor,part):
         from app.db import Base
         with engine().connect() as conn:
             drift=compare_metadata(MigrationContext.configure(conn),Base.metadata)
-        assert {(d[0],d[1].name) for d in drift}=={('remove_index','ix_vehicle_directory_account_id'),('add_index','ix_vehicle_directory_variants_account_id')}
+        assert drift==[]
     finally:run([sys.executable,'-m','alembic','upgrade','head'],check=True)
 
 

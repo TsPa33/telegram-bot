@@ -29,7 +29,7 @@ def test_unpublished_diagnostics_is_readonly_and_proves_33_fallback(platform,veh
     d=r.json();assert d['catalogue_v2']==dict(offers=1,paths=1,models=1)
     assert d['canonical']['published'] is False and d['canonical']['snapshot_sha'] is None
     assert d['vehicle']['candidates']==33 and d['vehicle']['fallback_used']
-    assert preview(platform,vehicle)['catalogue_status']==dict(published=False,fallback_used=True)
+    assert preview(platform,vehicle)['catalogue_status']==dict(published=False,fallback_used=True,generator=None)
     with Session(engine()) as db:assert all_tables(db)==before
 
 
@@ -133,7 +133,8 @@ def test_real_A_readonly_activation_evidence(platform,vehicle,tmp_path):
     with Session(engine()) as db:
         v=db.get(Vehicle,vehicle['id']);v.model='XC60';v.year=2018;db.commit()
     j=plan(platform,upload(platform,raw=BUNDLED_PACKAGE.read_bytes(),filename=BUNDLED_PACKAGE.name))
-    if j['report']['issues']:j=plan(platform,j,{i['key']:{'action':'skip'} for i in j['report']['issues']})
+    from test_catalogue_v2 import review_fixture
+    j=review_fixture(platform,j)
     confirm(platform,j)
     before=platform.get(PREFIX+'/diagnostics',params={'vehicle_id':vehicle['id']}).json()
     report=build(platform)['report']
