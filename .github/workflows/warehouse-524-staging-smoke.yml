@@ -1,0 +1,168 @@
+name: Warehouse #524 live read-only acceptance
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/warehouse-524-staging-smoke.yml"
+permissions:
+  contents: read
+jobs:
+  api:
+    name: Live API health, contract and access guards
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    env:
+      API: https://telegram-bot-warehouse-staging.up.railway.app
+      CATALOGUE: https://catalogue-api-catalogue-staging.up.railway.app
+      CATALOGUE_KEY: ${{ secrets.WAREHOUSE_CATALOGUE_KEY }}
+      STAGING_SESSION: ${{ secrets.WAREHOUSE_STAGING_SESSION }}
+    steps:
+      - name: GET-only acceptance of API and optional preexisting authenticated read credentials
+        run: |
+          python3 - <<'PY'
+          import json, os, time, urllib.request, urllib.error
+          def get(base,path,headers=None):
+              try:
+                  with urllib.request.urlopen(urllib.request.Request(base+path,headers=headers or {},method='GET'),timeout=15) as r:
+                      return r.status,r.read()
+              except urllib.error.HTTPError as e:
+                  return e.code,e.read()
+          api=os.environ['API']
+          for i in range(30):
+              try:
+                  s,b=get(api,'/health')
+                  assert s==200 and json.loads(b)['status']=='ok'
+                  s,b=get(api,'/openapi.json')
+                  assert s==200
+                  paths=json.loads(b)['paths']
+                  for p,m in [('/api/v1/vehicles/{id}/volvo-oem-preview','get'),('/api/v1/vehicles/{id}/volvo-oem-selection','post'),('/api/v1/orders/checkout','post'),('/api/v1/parts','get')]:
+                      assert m in paths.get(p,{}),(p,m)
+                  break
+              except Exception:
+                  if i==29:raise
+                  time.sleep(5)
+          for p in ['/api/v1/auth/me','/api/v1/vehicles','/api/v1/vehicles/nonexistent/volvo-oem-preview?source_modification_id=107555','/api/v1/parts']:
+              s,_=get(api,p)
+              assert s in (401,403),(p,s)
+              print('AUTH GUARD PASS',p,s)
+          print('LIVE API PASS: health 200, new OEM paths, existing checkout and stock contracts, no anonymous access')
+          catalogue=os.environ['CATALOGUE']
+          s,b=get(catalogue,'/health')
+          assert s==200,('catalogue health',s)
+          print('CATALOGUE HEALTH PASS',s)
+          s,_=get(catalogue,'/api/v1/volvo/modifications/107555/plan')
+          assert s in (401,403),('catalogue anonymous guard',s)
+          print('CATALOGUE AUTH GUARD PASS',s)
+          key=os.environ.get('CATALOGUE_KEY')
+          if key:
+              import hashlib
+              s,b=get(catalogue,'/api/v1/volvo/modifications/107555/plan',{'X-Catalogue-Key':key})
+              assert s==200,('authenticated snapshot',s)
+              env=json.loads(b); p=env['payload']
+              assert hashlib.sha256(json.dumps(p,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()).hexdigest()==env['sha256']
+              assert (p['car_id'],p['model_id'],p['manufacturer_id'])==(107555,13084,120)
+              assert p['source_snapshot_sha']=='a283d46afe1812e2b989c17815190e330443cdffc7f7243a82d3942cc200ca17'
+              assert len(p['categories'])==113
+              for product in [2,4,854]:
+                  s,b=get(catalogue,f"/api/v1/volvo/modifications/107555/articles?product_id={product}&snapshot_sha={p['source_snapshot_sha']}",{'X-Catalogue-Key':key})
+                  assert s==200
+                  items=json.loads(b)['items']
+                  assert any(any(str(k).casefold()=='manufacturerid' and v==120 for k,v in oe.items()) for item in items for oe in item.get('oem',[]))
+              print('LIVE SNAPSHOT PASS: exact SHA, 113 types, starter/generator/shock OEM')
+          else:
+              print('LIVE SNAPSHOT UNVERIFIED: no preexisting WAREHOUSE_CATALOGUE_KEY secret')
+          session=os.environ.get('STAGING_SESSION')
+          if session:
+              headers={'Cookie':'warehouse_session='+session}
+              s,b=get(api,'/api/v1/vehicles?limit=100',headers)
+              assert s==200,('authenticated donor list',s)
+              body=json.loads(b); rows=body if isinstance(body,list) else body.get('items',[])
+              matches=[v for v in rows if v.get('number')==32 and str(v.get('manufacturer','')).casefold()=='volvo' and 'xc90' in str(v.get('model','')).casefold()]
+              assert len(matches)==1,'donor 32 not uniquely found in authorized workspace'
+              v=matches[0]
+              s,b=get(api,f"/api/v1/vehicles/{v['id']}/volvo-oem-preview?source_modification_id=107555",headers)
+              assert s==200,('donor preview',s)
+              p=json.loads(b)
+              assert p['source_modification_id']==107555 and p['snapshot_sha']=='a283d46afe1812e2b989c17815190e330443cdffc7f7243a82d3942cc200ca17'
+              print('LIVE DONOR PASS: plan rows',len(p['plan_items']),'candidate rows',sum(bool(x.get('candidate_product_ids')) for x in p['plan_items']),'types',len(p['catalogue_types']))
+          else:
+              print('LIVE DONOR UNVERIFIED: no preexisting read session; no login or mutation performed')
+          PY
+  web:
+    name: Live Web assets and anonymous browser, GET only
+    needs: api
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      WEB: https://confident-sparkle-warehouse-staging.up.railway.app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Verify deployed bundle, proxy and SPA
+        run: |
+          python3 - <<'PY'
+          import json, os, re, time, urllib.request, urllib.error, urllib.parse
+          base=os.environ['WEB']
+          def get(path):
+              url=urllib.parse.urljoin(base+'/',path)
+              assert urllib.parse.urlsplit(url).netloc==urllib.parse.urlsplit(base).netloc
+              try:
+                  with urllib.request.urlopen(url,timeout=15) as r:return r.status,r.read()
+              except urllib.error.HTTPError as e:return e.code,e.read()
+          for i in range(90):
+              try:
+                  s,b=get('/')
+                  assert s==200
+                  assets=re.findall(rb'<script[^>]*src="([^"]+)"',b)
+                  assert assets
+                  bundle=b''.join(get(a.decode())[1] for a in assets)
+                  assert all(m in bundle for m in [b'volvo-oem-preview',b'volvo-oem-selection',b'volvo-oem-changed',b'candidate_product_ids',b'mobile-search-result'])
+                  break
+              except Exception:
+                  if i==89:raise
+                  time.sleep(5)
+          s,b=get('/health');assert s==200 and json.loads(b)['status']=='ok'
+          for p in ['/vehicles','/inventory','/search']:
+              s,b=get(p);assert s==200 and b'<html' in b.lower()
+          for p in ['/api/v1/auth/me','/api/v1/vehicles/nonexistent/volvo-oem-preview?source_modification_id=107555']:
+              s,_=get(p);assert s in (401,403),(p,s)
+          print('LIVE WEB PASS: OEM bundle, health, API proxy and SPA, GET only')
+          PY
+      - name: Install Chromium
+        working-directory: warehouse/frontend
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Anonymous responsive browser smoke with all mutations blocked
+        working-directory: warehouse/frontend
+        run: |
+          node --input-type=module <<'JS'
+          import {chromium,expect} from '@playwright/test';
+          import assert from 'node:assert/strict';
+          import fs from 'node:fs';
+          const browser=await chromium.launch({args:['--no-sandbox']});
+          fs.mkdirSync('/tmp/warehouse-524-live',{recursive:true});
+          try{
+            const context=await browser.newContext({baseURL:process.env.WEB});
+            await context.route('**/*',r=>['GET','HEAD','OPTIONS'].includes(r.request().method())?r.continue():r.abort());
+            const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
+            for(const width of [320,390,430,1440]){
+              await page.setViewportSize({width,height:900});
+              for(const route of ['/vehicles','/inventory','/search']){
+                await page.goto(route);
+                await expect(page.getByRole('heading',{name:'З поверненням'})).toBeVisible();
+                await expect(page.getByRole('button',{name:'Увійти',exact:true})).toBeVisible();
+                assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+              }
+              await page.screenshot({path:'/tmp/warehouse-524-live/login-'+width+'.png'});
+            }
+            assert.deepEqual(errors,[]);
+            console.log('LIVE BROWSER PASS: 320/390/430/1440; zero mutations or JS errors');
+          }finally{await browser.close();}
+          JS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: warehouse-524-live-readonly
+          path: /tmp/warehouse-524-live
