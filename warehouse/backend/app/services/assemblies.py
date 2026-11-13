@@ -142,8 +142,8 @@ def tree(db,account,vehicle):
     for n in nodes.values():
         p=parts.get(n.part_id)
         ref=refs.get(n.id)
-        from app.services.auto_oem import options
-        valid=bool(ref and reference_matches(ref,n,basis)) if refs else False
+        from app.services.auto_oem import options,valid_reference
+        valid=bool(ref and valid_reference(v,n,ref)) if refs else False
         oem_view=dict(stock_oem=p.oem_number if p else '',reference_oem=ref['oem_number'] if valid else '',reference_oem_stale=bool(ref and not valid),oem_options=options(p.oem_provenance) if p and p.oem_number else options(ref) if valid else [])
         items.append(dict(**oem_view,id=n.id,name=n.name,position=n.position or '',installation_position=(n.plan_v3 or {}).get('snapshot',{}).get('installation_position') or {},placement_id=(n.plan_v3 or {}).get('placement_id'),plan_parent_id=(n.plan_v3 or {}).get('assembly_reference_parent_id'),category=n.category_name,subcategory=n.subcategory_name,parent_id=attached.get(n.id),part_id=n.part_id,
             completeness='incomplete' if n.id in affected and (n.assembly_completeness is not None or n.id in assembly_parents) else n.assembly_completeness,consumed_operation_id=n.assembly_consumed_operation_id,consumed_type=consumed_types.get(n.assembly_consumed_operation_id) or (last_stock.get(p.id) if p and p.quantity==0 and n.id not in attached else None),

@@ -511,3 +511,33 @@ def test_automatic_oem_all_makes_exact_article_without_snapshot(logged,monkeypat
     assert len(r.json()['oem_provenance']['alternatives'])==2
     assert enrich_vehicle(engine(),aid,v['id'])==0
     with Session(engine()) as db:assert db.get(Part,p['id']).oem_number=='P-002'
+
+
+def test_auto_oem_placement_filters_opposite_and_unknown():
+    from app.services.auto_oem import choices
+    from types import SimpleNamespace
+    def offer(number,position):
+        return dict(brand='BOSCH',article_nr=number,supplier_id=2,oem_numbers=[number],
+            source_attributes=[{'id':100,'description':'Сторона установки','displayvalue':position}] if position else [])
+    row=SimpleNamespace(name='Амортизатор',position='передня ліва')
+    product={'name_uk':'Амортизатор'}
+    offers=[offer('REAR','задний мост слева'),offer('RIGHT','передний мост справа'),offer('OK','передний мост слева'),offer('UNKNOWN','')]
+    assert [a['oem_number'] for a in choices(offers,row=row,product=product)]==['OK']
+
+def test_auto_oem_directory_requires_unique_engine_and_year():
+    from types import SimpleNamespace
+    from app.services.auto_oem import SourceCache
+    v=SimpleNamespace(manufacturer='Peugeot',model='3008',generation='II',engine_code='EP6 FDT',year=2017,
+        fuel_type='petrol',drive_type='fwd',engine_variant='',engine_displacement_l=1.6)
+    entry=dict(manufacturer='PEUGEOT',model='3008 II',source_modification_id=88,model_id=9,manufacturer_id=7,
+        snapshot_sha='b'*64,modification={'description':'1.6 THP'},specifications=[
+            {'attributetype':'EngineCode','displayvalue':'EP6FDT'},
+            {'attributetype':'ConstructionInterval','displayvalue':'2016 - 2020'},
+            {'attributetype':'FuelType','displayvalue':'бензин'},
+            {'attributetype':'DriveType','displayvalue':'передний привод'},
+            {'attributetype':'Capacity','displayvalue':'1.6 l'}])
+    cache=SourceCache();cache.directory=[entry]
+    assert cache.resolve_directory(v)==(88,9,7,'b'*64,True)
+    cache.directory.append({**entry,'source_modification_id':89})
+    assert cache.resolve_directory(v) is None
+    cache.directory=[entry];v.year=2014;assert cache.resolve_directory(v) is None
