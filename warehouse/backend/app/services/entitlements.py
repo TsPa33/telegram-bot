@@ -34,7 +34,7 @@ def lock(db, workspace):
     return db.scalar(
         select(Account)
         .where(Account.id == workspace)
-        .with_for_update()
+        .with_for_update(key_share=True)
         .execution_options(populate_existing=True)
     )
 
@@ -162,50 +162,61 @@ def state(db, workspace, *, at=None):
 
 
 def usage(db, workspace):
-    # Include pending mutations: before_flush calls this while changes are still in memory.
+    # Read committed scalar values after the workspace lock, rather than cached
+    # ORM entities loaded before a concurrent restore/receipt/reactivation.
+    # Overlay our pending writes explicitly: populate_existing would erase them.
     with db.no_autoflush:
-        vehicles = {
-            v.id: v
-            for v in db.scalars(select(Vehicle).where(Vehicle.account_id == workspace))
-        }
+        vehicles = dict(
+            db.execute(
+                select(Vehicle.id, Vehicle.archived).where(
+                    Vehicle.account_id == workspace
+                )
+            ).all()
+        )
         parts = {
-            p.id: p
-            for p in db.scalars(select(Part).where(Part.account_id == workspace))
+            r.id: (r.vehicle_id, r.quantity, r.reserved_quantity)
+            for r in db.execute(
+                select(
+                    Part.id, Part.vehicle_id, Part.quantity, Part.reserved_quantity
+                ).where(Part.account_id == workspace)
+            )
         }
         origins = (
-            {
-                p.part_id: p.vehicle_id
-                for p in db.scalars(
-                    select(DonorProvenance).where(
+            dict(
+                db.execute(
+                    select(DonorProvenance.part_id, DonorProvenance.vehicle_id).where(
                         DonorProvenance.workspace_id == workspace
                     )
-                )
-            }
+                ).all()
+            )
             if enabled()
             else {}
         )
-        employees = {
-            a.id: a
-            for a in db.scalars(
-                select(Account).where(Account.workspace_account_id == workspace)
-            )
-        }
-        for row in db.new:
-            if isinstance(row, Vehicle) and row.account_id == workspace:
-                vehicles[row.id or id(row)] = row
-            if isinstance(row, Part) and row.account_id == workspace:
-                parts[row.id or id(row)] = row
-            if isinstance(row, Account) and row.workspace_account_id == workspace:
-                employees[row.id or id(row)] = row
-        occupied = {v.id or id(v) for v in vehicles.values() if not v.archived}
-        for p in parts.values():
-            if (p.quantity or 0) > 0 or (p.reserved_quantity or 0) > 0:
-                occupied.update(
-                    v for v in (p.vehicle_id, origins.get(p.id)) if v is not None
+        employees = dict(
+            db.execute(
+                select(Account.id, Account.is_active).where(
+                    Account.workspace_account_id == workspace
                 )
+            ).all()
+        )
+        for row in list(db.new) + list(db.dirty):
+            if isinstance(row, Vehicle) and row.account_id == workspace:
+                vehicles[row.id or id(row)] = row.archived
+            if isinstance(row, Part) and row.account_id == workspace:
+                parts[row.id or id(row)] = (
+                    row.vehicle_id,
+                    row.quantity,
+                    row.reserved_quantity,
+                )
+            if isinstance(row, Account) and row.workspace_account_id == workspace:
+                employees[row.id or id(row)] = row.is_active
+        occupied = {key for key, archived in vehicles.items() if not archived}
+        for key, (donor, quantity, reserved) in parts.items():
+            if (quantity or 0) > 0 or (reserved or 0) > 0:
+                occupied.update(v for v in (donor, origins.get(key)) if v is not None)
         return dict(
             vehicles=len(occupied),
-            employees=sum(a.is_active is not False for a in employees.values()),
+            employees=sum(active is not False for active in employees.values()),
         )
 
 

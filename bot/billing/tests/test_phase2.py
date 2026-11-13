@@ -86,3 +86,44 @@ def test_warehouse_bridge_reuses_canonical_phase1_company_binding(foundation):
     assert bridge.bind(token) == a.account_id
     assert len(rows(b.db, "SELECT * FROM billing.accounts")) == 1
     assert len(rows(b.db, "SELECT * FROM billing.bindings")) == 1
+
+
+def test_concurrent_warehouse_snapshots_keep_monotonic_versions_and_canonical_binding(
+    foundation,
+):
+    from concurrent.futures import ThreadPoolExecutor
+    from bot.billing.warehouse import WarehouseBridge, migrate_phase2
+
+    b, actor, *_ = foundation
+    migrate_phase2(b.db)
+    bridge = WarehouseBridge(b.db, b"local-test-snapshot-concurrency-key-123456789")
+    workspace = rows(
+        b.db,
+        "SELECT workspace_id FROM billing.bindings WHERE account_id=%s",
+        (actor.account_id,),
+    )[0]["workspace_id"]
+    owner = bridge.owner_transport.sign(
+        dict(workspace_id=workspace, owner_id=actor.principal_id)
+    )
+    assert bridge.bind(owner) == actor.account_id
+    with ThreadPoolExecutor(4) as pool:
+        tokens = list(
+            pool.map(
+                lambda _: bridge.publish_fixture(workspace, actor.account_id, []),
+                range(8),
+            )
+        )
+    payloads = [bridge.entitlement_transport.verify(t)["payload"] for t in tokens]
+    assert sorted(p["version"] for p in payloads) == list(range(1, 9))
+    assert len({p["event_id"] for p in payloads}) == 8
+    assert all(
+        p["billing_account_id"] == actor.account_id and p["workspace_id"] == workspace
+        for p in payloads
+    )
+    latest = bridge.entitlement_transport.verify(
+        bridge.latest(workspace, actor.account_id)
+    )["payload"]
+    assert latest["version"] == 8
+    assert len(rows(b.db, "SELECT * FROM billing.warehouse_outbox")) == 8
+    assert len(rows(b.db, "SELECT * FROM billing.accounts")) == 1
+    assert len(rows(b.db, "SELECT * FROM billing.bindings")) == 1
