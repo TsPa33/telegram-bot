@@ -51,7 +51,13 @@ def test_vin_same_donor_exact_selection_bulk_receipt_replay(logged,monkeypatch,v
     assert fresh['vin']==vin and fresh['vin_details']['characteristics']==body['vin_details']['characteristics']
     path=f"/api/v1/vehicles/{v['id']}/dismantling-v3"
     p=logged.post(path+'/preview',json=dict(facts=[],universal=True));assert p.status_code==200,p.text
-    assert p.json()['catalogue_status']['generator']['exact_source_positions']==1
+    assert 'exact_source_positions' not in p.json()['catalogue_status']['generator']
+    owner=logged.get('/api/v1/auth/me').json()['id']
+    with monkeypatch.context() as admin:
+        admin.setenv('WAREHOUSE_CATALOG_PLATFORM_ADMIN_IDS',owner)
+        evidence=logged.post(path+'/preview',json=dict(facts=[],universal=True))
+        assert evidence.status_code==200,evidence.text
+        assert evidence.json()['catalogue_status']['generator']['exact_source_positions']==1
     save=dict(facts=[],universal=True,token=p.json()['token'],request_key=str(uuid4()),confirm=True)
     r=logged.post(path+'/save',json=save);assert r.status_code==200,r.text
     ids=logged.get(path).json()['items'];assert len(ids)==1
