@@ -17,7 +17,7 @@ try{
  await page.goto('/inventory');await expect(page.getByRole('navigation',{name:'Категорії складу'})).toBeVisible();
  await expect(page.locator('.stock-v2-main')).toBeVisible();
  const menu=page.locator('#warehouse-sidebar'),main=page.locator('.main');
- const aligned=async()=>{const a=await menu.boundingBox(),b=await main.boundingBox();assert.ok(Math.abs(a.x+a.width-b.x)<2,'No sidebar overlay');};
+ const aligned=async()=>{await expect.poll(async()=>{const a=await menu.boundingBox(),b=await main.boundingBox();return Math.abs(a.x+a.width-b.x);},{message:'No sidebar overlay after layout transition'}).toBeLessThan(2);};
  await page.getByRole('button',{name:'Увімкнути автоматичне меню',exact:true}).click();
  await page.mouse.move(1100,600);await expect.poll(async()=>Math.round((await menu.boundingBox()).width)).toBe(78);await aligned();
  await menu.hover({position:{x:25,y:100}});await expect.poll(async()=>Math.round((await menu.boundingBox()).width)).toBe(240);await aligned();
