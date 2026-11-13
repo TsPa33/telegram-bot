@@ -102,11 +102,11 @@ def source_value(row,key):
     return next((v for k,v in row.items() if k.casefold()==key.casefold()),None)
 
 
-def saved_articles(product, state, *, oem_manufacturer_id=None):
+def saved_articles(product, state, *, oem_manufacturer_id=None, adapter=None):
     payload=state['payload']
     if payload.get('schema') in ('carpot.volvo.plan.v2','carpot.vehicle.plan.v1'):
         try:
-            items=service.CatalogueAdapter().articles(payload['car_id'],product['product_id'],payload['source_snapshot_sha'],**({'global_source':True} if payload.get('schema')=='carpot.vehicle.plan.v1' else {}))
+            items=(adapter or service.CatalogueAdapter()).articles(payload['car_id'],product['product_id'],payload['source_snapshot_sha'],**({'global_source':True} if payload.get('schema')=='carpot.vehicle.plan.v1' else {}))
         except service.CatalogueUnavailable:
             raise HTTPException(503,'Артикули збереженої версії тимчасово недоступні. Платний запит не виконувався.') from None
         if len(items)!=product['article_count']:
@@ -349,13 +349,21 @@ def global_saved(id: str, db: DB, who: Auth):
     v=owned(db,Vehicle,id,who.workspace_account_id)
     state=service.saved_state(v)
     from sqlalchemy import select
-    from app.models import DismantlingItem
-    keys={int(r.catalog_key.rsplit(':',1)[1]):'catalogue:'+r.id for r in db.scalars(select(DismantlingItem).where(
-        DismantlingItem.vehicle_id==v.id,DismantlingItem.account_id==who.workspace_account_id,
-        DismantlingItem.source=='carpot.catalogue.v1'))} if state else {}
+    from app.models import DismantlingItem,Part
+    from app.services.auto_oem import references,options,valid_reference
+    rows=list(db.scalars(select(DismantlingItem).where(DismantlingItem.vehicle_id==v.id,DismantlingItem.account_id==v.account_id,DismantlingItem.source=='carpot.catalogue.v1'))) if state else []
+    keys={int(r.catalog_key.rsplit(':',1)[1]):'catalogue:'+r.id for r in rows}
+    oems={}
+    if 'inventory.view' in who.permissions:
+        parts={p.id:p for p in db.scalars(select(Part).where(Part.account_id==v.account_id,Part.vehicle_id==v.id,Part.id.in_([r.part_id for r in rows if r.part_id])))}
+        refs=references(v)
+        for row in rows:
+            ref=refs.get(row.id);part=parts.get(row.part_id)
+            if part and part.oem_number:oems[int(row.catalog_key.rsplit(':',1)[1])]=dict(item_id=row.id,part_id=part.id,oem_number=part.oem_number,oem_options=options(part.oem_provenance))
+            elif valid_reference(v,row,ref):oems[int(row.catalog_key.rsplit(':',1)[1])]=dict(item_id=row.id,part_id=None,oem_number=ref['oem_number'],oem_options=options(ref))
     from app.services.dismantling_plan_v3 import generator_basis
     return dict(selection_basis=generator_basis(v),selection=(v.dismantling_v3 or {}).get('global_selection'),saved=state,
-        keys=keys,legacy=bool(not state and (v.dismantling_v3 or v.ktype)),
+        keys=keys,oems=oems,legacy=bool(not state and (v.dismantling_v3 or v.ktype)),
         legacy_source='base' if (v.dismantling_v3 or {}).get('unified_base') else 'professional')
 
 
@@ -588,3 +596,31 @@ def save_volvo_oem(id: str, data: VolvoOemSelection, db: DB, who: Auth):
     result=finish(db,v,who,data,request_sha,dict(saved=True,item_id=row.id,reference=ref,stock_assigned=stock))
     db.commit()
     return result
+
+
+class OemChange(Input):
+    oem_number: str = Field(min_length=1,max_length=150)
+    expected_oem: str = Field(min_length=1,max_length=150)
+
+
+@router.patch('/{id}/oem/{item_id}')
+def change_plan_oem(id: str,item_id: str,data: OemChange,db: DB,who: Auth):
+    from sqlalchemy import select
+    from app.models import DismantlingItem
+    from app.services.auto_oem import references,REF_KEY,valid_reference
+    from app.services.inventory import record,snapshot
+    require_permission(who,'vehicles.view','catalog.view','inventory.view','dismantling.manage')
+    v=owned(db,Vehicle,id,who.workspace_account_id,lock=True,active=True)
+    row=db.scalar(select(DismantlingItem).where(DismantlingItem.id==item_id,DismantlingItem.account_id==v.account_id,DismantlingItem.vehicle_id==v.id).with_for_update())
+    if not row:raise HTTPException(404,'Запчастину не знайдено')
+    refs=dict(references(v));ref=refs.get(row.id)
+    if not valid_reference(v,row,ref) or ref['oem_number']!=data.expected_oem:
+        raise HTTPException(409,'OEM змінився')
+    option=next((a for a in ref.get('alternatives',[]) if a['oem_number']==data.oem_number),None)
+    if not option:raise HTTPException(422,'OEM недоступний')
+    if data.oem_number!=ref['oem_number']:
+        before=snapshot(v);refs[row.id]={**ref,**option,'status':'user_selected_cross_reference'}
+        v.dismantling_v3={**v.dismantling_v3,REF_KEY:refs}
+        record(db,v.account_id,v,'vehicle_update','Змінено OEM запчастини',before)
+        db.commit()
+    return dict(oem_number=data.oem_number)

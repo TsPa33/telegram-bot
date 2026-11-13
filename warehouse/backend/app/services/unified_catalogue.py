@@ -52,6 +52,18 @@ class CatalogueAdapter:
             truncated=bool(result.get('oem_numbers_truncated')),observed_at=result.get('observed_at'),
             fitment='cross_reference_only',vin_verified=False,photo=None)
 
+    def exact_oem(self, manufacturer, supplier_brand, article_number, supplier_id=None):
+        data=self.get('global:articles/oem',{'manufacturer':manufacturer,'supplier_brand':supplier_brand,'article_number':article_number,**({'supplier_id':supplier_id} if supplier_id else {})})
+        import unicodedata
+        norm=lambda s:unicodedata.normalize('NFKC',s if isinstance(s,str) else '').strip().casefold()
+        if (not isinstance(data,dict) or norm(data.get('manufacturer'))!=norm(manufacturer)
+            or norm(data.get('supplier_name'))!=norm(supplier_brand) or data.get('article_number')!=article_number
+            or type(data.get('supplier_id')) is not int or type(data.get('manufacturer_id')) is not int
+            or (supplier_id and data['supplier_id']!=supplier_id) or not isinstance(data.get('oem_numbers'),list)
+            or len(data['oem_numbers'])>1000 or any(not isinstance(n,str) or not n or len(n)>150 for n in data['oem_numbers'])):
+            raise CatalogueUnavailable('article_identity_unverified')
+        return data
+
     def modifications(self, model_id):
         result = self.get('modifications', {'model_id': model_id})
         if not isinstance(result, dict) or not isinstance(result.get('items'), list) or len(result['items'])>100:

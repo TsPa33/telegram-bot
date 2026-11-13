@@ -445,3 +445,99 @@ def test_volvo_pilot_rejects_confirmed_different_source(logged,volvo,monkeypatch
     monkeypatch.setattr(CatalogueAdapter,'plan',lambda *a,**kw:pytest.fail('Conflicting selection must not call Catalogue'))
     r=logged.get(f"/api/v1/vehicles/{volvo['id']}/volvo-oem-preview",params={'source_modification_id':107555})
     assert r.status_code==409,r.text
+
+
+def test_automatic_oem_backfill_and_receipt(logged,volvo,monkeypatch):
+    from app.services.auto_oem import enrich_vehicle,SourceCache,source_identity
+    from app.services.inventory import snapshot
+    base=f"/api/v1/vehicles/{volvo['id']}"
+    assert logged.post(base+'/unified-catalogue/base').status_code==200
+    with Session(engine()) as db:
+        v=db.get(Vehicle,volvo['id']);v.year=2016;v.vin='YV4A22PK2G1092943';v.fuel_type='petrol';v.drive_type='awd';v.engine_displacement_l=2
+        rows=list(db.scalars(select(DismantlingItem).where(DismantlingItem.vehicle_id==v.id).order_by(DismantlingItem.id)))
+        target=rows[0];target.name='Лампа';target.position='';target.category_name='Освітлення';target.included=True
+        aid=v.account_id;rid=target.id;vid=v.id
+        db.commit();before=[snapshot(x) for x in rows];assert source_identity(v)[0]==107555
+    monkeypatch.setattr(CatalogueAdapter,'plan',lambda self,car,**kw:envelope(car,'partial'))
+    assert enrich_vehicle(engine(),aid,vid)==1
+    assert enrich_vehicle(engine(),aid,vid)==0
+    with Session(engine()) as db:
+        v=db.get(Vehicle,vid);ref=v.dismantling_v3['volvo_oem_references'][rid]
+        assert ref['oem_number']=='OEM-ONE' and len(ref['alternatives'])==2 and not ref['vin_verified']
+        assert [snapshot(x) for x in db.scalars(select(DismantlingItem).where(DismantlingItem.vehicle_id==vid).order_by(DismantlingItem.id))]==before
+        assert db.scalar(select(func.count()).select_from(Part))==0
+    assert logged.patch(base+'/oem/'+rid,json={'expected_oem':'OEM-ONE','oem_number':'WRONG'}).status_code==422
+    assert logged.patch(base+'/oem/'+rid,json={'expected_oem':'OEM-ONE','oem_number':'OEM-TWO'}).status_code==200
+    assert logged.patch(base+'/oem/'+rid,json={'expected_oem':'OEM-ONE','oem_number':'OEM-TWO'}).status_code==409
+    assert enrich_vehicle(engine(),aid,vid)==0
+    assert logged.post(base+'/unified-catalogue/stock',json={'keys':['base:'+rid],'confirm_physical_receipt':True}).status_code==200
+    with Session(engine()) as db:
+        p=db.get(Part,db.get(DismantlingItem,rid).part_id)
+        assert p.oem_number=='OEM-TWO' and p.quantity==1 and not p.oem_provenance['vin_verified']
+        assert len(p.oem_provenance['alternatives'])==2
+        assert db.scalar(select(func.count()).select_from(Operation).where(Operation.type=='receipt'))==1
+
+def test_automatic_oem_does_not_guess_other_modifications(logged,volvo):
+    from app.services.auto_oem import source_identity
+    with Session(engine()) as db:
+        v=db.get(Vehicle,volvo['id']);assert source_identity(v) is None
+        v.year=2016;v.vin='YV4A22PK2G1092943';v.fuel_type='diesel'
+        assert source_identity(v) is None
+        v.fuel_type='petrol';v.manufacturer='Peugeot'
+        assert source_identity(v) is None
+        v.dismantling_v3={'global_selection':{'car_id':88,'model_id':9,'manufacturer_id':7,'source_snapshot_sha':'b'*64,
+            'vehicle_basis':__import__('app.services.unified_catalogue',fromlist=['vehicle_basis']).vehicle_basis(v)}}
+        assert source_identity(v)==(88,9,7,'b'*64,True)
+
+
+def test_automatic_oem_all_makes_exact_article_without_snapshot(logged,monkeypatch):
+    from app.services.auto_oem import enrich_vehicle
+    from app.services.inventory import snapshot
+    v=logged.post('/api/v1/vehicles',json={'manufacturer':'Peugeot','model':'3008','year':2017}).json()
+    p=logged.post('/api/v1/parts',json={'name':'Стартер','vehicle_id':v['id'],'article_number':'P-EXACT','selling_price':'123.45'}).json()
+    with Session(engine()) as db:
+        part=db.get(Part,p['id']);part.article_brand='BOSCH';part.quantity=1;db.commit()
+        aid=part.account_id;before=snapshot(part)
+    monkeypatch.setattr(CatalogueAdapter,'exact_oem',lambda self,make,brand,article,sid=None:dict(
+        manufacturer=make,manufacturer_id=88,supplier_id=22,supplier_name=brand,article_number=article,oem_numbers=['P-002','P-001']))
+    assert enrich_vehicle(engine(),aid,v['id'])==1
+    assert enrich_vehicle(engine(),aid,v['id'])==0
+    with Session(engine()) as db:
+        part=db.get(Part,p['id']);after=snapshot(part)
+        assert part.oem_number=='P-001' and part.oem_provenance['oem_manufacturer_id']==88
+        assert {k:x for k,x in before.items() if k not in ('oem_number','oem_provenance')}=={k:x for k,x in after.items() if k not in ('oem_number','oem_provenance')}
+    r=logged.patch('/api/v1/parts/'+p['id']+'/characteristics',json={'expected':{'oem_number':'P-001'},'values':{'oem_number':'P-002'}})
+    assert r.status_code==200,r.text
+    assert len(r.json()['oem_provenance']['alternatives'])==2
+    assert enrich_vehicle(engine(),aid,v['id'])==0
+    with Session(engine()) as db:assert db.get(Part,p['id']).oem_number=='P-002'
+
+
+def test_auto_oem_placement_filters_opposite_and_unknown():
+    from app.services.auto_oem import choices
+    from types import SimpleNamespace
+    def offer(number,position):
+        return dict(brand='BOSCH',article_nr=number,supplier_id=2,oem_numbers=[number],
+            source_attributes=[{'id':100,'description':'Сторона установки','displayvalue':position}] if position else [])
+    row=SimpleNamespace(name='Амортизатор',position='передня ліва')
+    product={'name_uk':'Амортизатор'}
+    offers=[offer('REAR','задний мост слева'),offer('RIGHT','передний мост справа'),offer('OK','передний мост слева'),offer('UNKNOWN','')]
+    assert [a['oem_number'] for a in choices(offers,row=row,product=product)]==['OK']
+
+def test_auto_oem_directory_requires_unique_engine_and_year():
+    from types import SimpleNamespace
+    from app.services.auto_oem import SourceCache
+    v=SimpleNamespace(manufacturer='Peugeot',model='3008',generation='II',engine_code='EP6 FDT',year=2017,
+        fuel_type='petrol',drive_type='fwd',engine_variant='',engine_displacement_l=1.6)
+    entry=dict(manufacturer='PEUGEOT',model='3008 II',source_modification_id=88,model_id=9,manufacturer_id=7,
+        snapshot_sha='b'*64,modification={'description':'1.6 THP'},specifications=[
+            {'attributetype':'EngineCode','displayvalue':'EP6FDT'},
+            {'attributetype':'ConstructionInterval','displayvalue':'2016 - 2020'},
+            {'attributetype':'FuelType','displayvalue':'бензин'},
+            {'attributetype':'DriveType','displayvalue':'передний привод'},
+            {'attributetype':'Capacity','displayvalue':'1.6 l'}])
+    cache=SourceCache();cache.directory=[entry]
+    assert cache.resolve_directory(v)==(88,9,7,'b'*64,True)
+    cache.directory.append({**entry,'source_modification_id':89})
+    assert cache.resolve_directory(v) is None
+    cache.directory=[entry];v.year=2014;assert cache.resolve_directory(v) is None

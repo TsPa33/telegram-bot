@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "warehouse/**"
+      - "catalogue/**"
       - ".github/workflows/warehouse-assembly-split-pr5.yml"
   workflow_dispatch:
 
@@ -93,3 +94,15 @@ jobs:
           cache-dependency-path: warehouse/frontend/package-lock.json
       - run: npm ci
       - run: npm run build
+
+  catalogue:
+    name: Catalogue read-only API and source contracts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install -r catalogue/requirements.txt pytest httpx
+      - run: python -m pytest -q --rootdir=. tests
+        working-directory: catalogue

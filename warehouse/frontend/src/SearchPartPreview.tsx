@@ -10,6 +10,7 @@ import {useCan} from './permissions';
 import {categoryLabelUk} from './PartsQuickCategories';
 import {SellerPriceEditor} from './MarketPricing';
 import PartCharacteristicsEditor from './PartCharacteristicsEditor';
+import {StockOemField,oemOptions} from './OemField';
 
 type Props={
  part:Row|null;vehicle?:Row;category?:Row;subcategory?:Row;canSell:boolean;
@@ -73,18 +74,18 @@ export default function SearchPartPreview({part,vehicle,category,subcategory,can
     <div><dt>Категорія</dt><dd>{category?categoryLabelUk(category.name):'Без категорії'}{subcategory?' · '+categoryLabelUk(subcategory.name):''}</dd></div>
     <div><dt>Статус</dt><dd>{part.catalogue_only?(part.plan_status||'У плані розбору'):part.archived?'Архівна':part.reserved_quantity>0?'Зарезервована':part.quantity>0?'В наявності':'Без залишку'}</dd></div>
     <div><dt>Залишок</dt><dd>{part.catalogue_only?'Не на складі':`${part.quantity??0} шт.`}{part.reserved_quantity>0&&<small>Резерв: {part.reserved_quantity} · Вільно: {part.available_quantity}</small>}</dd></div>
-    <div><dt>OEM</dt><dd data-field="oem" data-number-present={!!part.oem_number}>{part.oem_number||'Не встановлено'}</dd></div>
+    <div><dt>OEM</dt><dd data-field="oem" data-number-present={!!part.oem_number}><StockOemField part={part} editable={can('inventory.edit')&&!part.archived} onSaved={onSaved}/></dd></div>
     <div><dt>Артикул</dt><dd data-field="article" data-number-present={!!part.article_number}>{part.article_number||'Не встановлено'}{part.article_number&&part.article_brand&&<small>{part.article_brand}</small>}</dd></div>
     <div><dt>Моя ціна</dt><dd data-price-state={part.selling_price==null?"missing":"set"}>{part.selling_price!=null?money(part.selling_price,part.currency||'UAH'):'Не встановлено'}</dd></div>
    </dl>
    {editingOem&&<button type="button" onClick={onEdit}>Змінити артикул у картці</button>}
-   {editingOem&&can('inventory.edit')&&'color_name' in part&&<div className="ui11-oem-editor">
+   {editingOem&&oemOptions(part).length===0&&can('inventory.edit')&&'color_name' in part&&<div className="ui11-oem-editor">
     <PartCharacteristicsEditor key={part.id} part={part} kind="oem" onSaved={row=>{setEditingOem(false);onSaved(row);}} onClose={()=>setEditingOem(false)}/>
    </div>}
    <div className="ui11-preview-buttons">
     
     {part.id&&can('parts.change_price')&&!part.archived&&<details ref={pricePanel} className="part-preview-price-edit"><summary>Змінити ціну</summary><SellerPriceEditor key={part.id} part={part} initialOpen onSaved={row=>{if(pricePanel.current)pricePanel.current.open=false;onSaved(row);}}/></details>}
-    {part.id&&can('inventory.edit')&&!part.archived&&<><button type="button" className="secondary" onClick={()=>setEditingOem(v=>!v)}><Pencil size={14}/> OEM / артикул</button><button type="button" className="secondary" onClick={onEdit}><Pencil size={14}/> Редагувати дані</button></>}
+    {part.id&&can('inventory.edit')&&!part.archived&&<>{oemOptions(part).length===0&&<button type="button" className="secondary" onClick={()=>setEditingOem(v=>!v)}><Pencil size={14}/> OEM / артикул</button>}<button type="button" className="secondary" onClick={onEdit}><Pencil size={14}/> Редагувати дані</button></>}
     {onNotes&&can('parts.notes')&&part.id&&<button type="button" onClick={onNotes}>Додати нотатку</button>}
     {onInspection&&can('parts.inspect')&&part.id&&<button type="button" onClick={onInspection}>Стан і перевірка</button>}
     {contextActions}

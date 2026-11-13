@@ -258,3 +258,33 @@ def test_generic_directory_only_advertises_valid_linked_snapshots(monkeypatch):
     p['categories'][0]['articles']=[]
     assert client.get('/api/v1/vehicles/directory',headers={'X-Catalogue-Key':'fixture-only'}).json()['items']==[]
     assert client.get('/api/v1/vehicles/directory').status_code==401
+
+
+def test_exact_oem_all_makes_select_only_and_ambiguous_guard(monkeypatch):
+    monkeypatch.setenv('CATALOGUE_API_KEY','fixture-only')
+    class ExactCursor:
+        def __init__(self):self.calls=[];self.ambiguous=False
+        def __enter__(self):return self
+        def __exit__(self,*args):pass
+        def execute(self,sql,args):self.calls.append((sql,args))
+        def fetchall(self):
+            sql,args=self.calls[-1]
+            if 'FROM catalogue_manufacturers' in sql:return [{'id':88,'name_source':'PEUGEOT'}]+([{'id':89,'name_source':'Peugeot'}] if self.ambiguous else [])
+            if 'FROM catalogue_parts' in sql:return [{'supplier_id':22,'article_number':'P-EXACT','supplier_name':'BOSCH'}]
+            assert args==(22,'P-EXACT','P-EXACT',88)
+            return [{'oem_number':'P-001'},{'oem_number':'P-002'}]
+    cursor=ExactCursor()
+    class Connection:
+        def cursor(self):return cursor
+    @contextmanager
+    def db():yield Connection()
+    monkeypatch.setattr(catalogue_app,'db',db)
+    client=TestClient(catalogue_app.app)
+    url='/api/v1/articles/oem?manufacturer=Peugeot&supplier_brand=BOSCH&article_number=P-EXACT'
+    assert client.get(url).status_code==401
+    r=client.get(url,headers={'X-Catalogue-Key':'fixture-only'})
+    assert r.status_code==200,r.text
+    assert r.json()['manufacturer_id']==88 and r.json()['oem_numbers']==['P-001','P-002']
+    assert all(s.lstrip().startswith('SELECT') for s,_ in cursor.calls)
+    cursor.ambiguous=True
+    assert client.get(url,headers={'X-Catalogue-Key':'fixture-only'}).status_code==404

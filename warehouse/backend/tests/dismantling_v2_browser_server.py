@@ -47,7 +47,12 @@ _original_plan=CatalogueAdapter.plan
 _original_articles=CatalogueAdapter.articles
 def pilot_plan(self,car,**kwargs):
     if car==107555 and not kwargs.get('global_source'):
-        return envelope(car,'partial')
+        import hashlib,json
+        data=envelope(car,'partial');data['payload']['categories'][0]['name_uk']='Стартер'
+        # Keep the reviewed fixture's existing valid category instead; the test row is aligned explicitly.
+        data['payload']['categories'][0]['category_path']=['Освітлення','Передні фари','Стартер']
+        data['sha256']=hashlib.sha256(json.dumps(data['payload'],ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+        return data
     return _original_plan(self,car,**kwargs)
 def pilot_articles(self,car,product_id,snapshot_sha,**kwargs):
     if car==107555 and product_id==106 and snapshot_sha=='a'*64 and not kwargs.get('global_source'):
@@ -55,3 +60,20 @@ def pilot_articles(self,car,product_id,snapshot_sha,**kwargs):
     return _original_articles(self,car,product_id,snapshot_sha,**kwargs)
 CatalogueAdapter.plan=pilot_plan
 CatalogueAdapter.articles=pilot_articles
+
+
+@app.post('/api/v1/__dv2_auto_oem/{vehicle_id}')
+def local_auto_oem(vehicle_id:str,request:Request):
+    from app.services.auto_oem import enrich_vehicle
+    with Session(engine()) as db:
+        login=db.get(LoginSession,digest(request.cookies.get('warehouse_session','')))
+        if not login or login.expires_at<=now() or digest(request.headers.get('X-CSRF-Token',''))!=login.csrf_hash:raise HTTPException(403)
+        v=db.get(Vehicle,vehicle_id)
+        if not v or v.account_id!=login.account_id:raise HTTPException(404)
+        v.year=2016;v.vin='YV4A22PK2G1092943';v.fuel_type='petrol';v.drive_type='awd'
+        from sqlalchemy import select
+        row=db.scalar(select(DismantlingItem).where(DismantlingItem.vehicle_id==v.id,DismantlingItem.name=='Стартер'))
+        if not row:raise HTTPException(404)
+        row.category_name='Освітлення'
+        aid=v.account_id;rid=row.id;db.commit()
+    return {'count':enrich_vehicle(engine(),aid,vehicle_id),'item_id':rid}

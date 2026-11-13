@@ -17,9 +17,14 @@ from app.db import engine
 async def lifespan(app):
     from app.services.catalogue_jobs import start_worker
     stop,thread=start_worker()
+    from app.services.auto_oem import start_worker as start_oem_worker
+    oem_stop,oem_thread=start_oem_worker()
     try:yield
     finally:
-        stop.set()
+        stop.set();oem_stop.set()
+        if oem_thread:
+            import asyncio
+            await asyncio.to_thread(oem_thread.join,2)
         # No unbounded shutdown wait. A killed transaction rolls back; the next
         # process exposes an interrupted operation as an explicit retryable error.
         if thread:

@@ -297,3 +297,5 @@ details.assembly-door-component-preview[open]>summary{border-bottom:1px solid va
 .dv2-select-all{display:flex!important;flex-direction:row!important;align-items:center;gap:8px;margin:0!important;font-size:12px;white-space:nowrap}.dv2-select-all input[type=checkbox]{width:18px;min-width:18px;height:18px;min-height:18px;margin:0}.assembly-selection{background:transparent!important}.dv2-bulk>strong{font-size:12px}
 
 .dv2-mobile-action{display:none!important}@media(max-width:650px){.dv2-bulk .dv2-extra-action{display:none}.dv2-bulk .dv2-mobile-action{display:inline-flex!important}.dv2-bulk>strong{flex-basis:auto}.dv2-bulk>details[open]{flex-basis:100%}}
+
+.assembly-oem-field{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:8px 0}.oem-inline{display:inline-flex;gap:4px;flex-direction:column;min-width:0;max-width:100%}.oem-inline select{max-width:100%;min-width:0;font-size:inherit;padding:6px 8px;min-height:32px}.oem-inline small{font-size:.75rem}

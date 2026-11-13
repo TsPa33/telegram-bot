@@ -269,3 +269,41 @@ def vehicle_plan(car_id: int):
 @app.get('/api/v1/vehicles/{car_id}/articles', dependencies=[Depends(authorize)])
 def vehicle_articles(car_id: int, product_id: int = Query(gt=0), snapshot_sha: str = Query(pattern=r'^[0-9a-f]{64}$')):
     return volvo_articles(car_id,product_id,snapshot_sha)
+
+
+@app.get('/api/v1/articles/oem',dependencies=[Depends(authorize)])
+def exact_article_oem(manufacturer:str=Query(min_length=1,max_length=100),
+                      supplier_brand:str=Query(min_length=1,max_length=128),
+                      article_number:str=Query(min_length=1,max_length=32),
+                      supplier_id:int|None=Query(None,ge=1,le=65535)):
+    """All makes: exact article and supplier, filtered by exact vehicle manufacturer.
+    Only SELECT; ambiguous identities are unavailable, never guessed.
+    """
+    import unicodedata
+    norm=lambda s:unicodedata.normalize('NFKC',s or '').strip().casefold()
+    if not manufacturer.strip() or not supplier_brand.strip() or not article_number.strip():raise HTTPException(422,'Empty identity')
+    if any(c in article_number for c in ('\x00','\n','\r')):raise HTTPException(422,'Invalid article number')
+    with db() as conn,conn.cursor() as cur:
+        cur.execute("""SELECT id,name_source FROM catalogue_manufacturers
+            WHERE LOWER(TRIM(name_source))=LOWER(TRIM(%s)) LIMIT 100""",(manufacturer,))
+        makers=[m for m in cur.fetchall() if norm(m['name_source'])==norm(manufacturer)]
+        if len(makers)!=1:raise HTTPException(404,'Manufacturer identity unavailable')
+        make=makers[0]
+        cur.execute("""SELECT p.supplier_id,p.article_number,s.name_source AS supplier_name
+            FROM catalogue_parts p JOIN catalogue_suppliers s ON s.supplier_id=p.supplier_id
+            WHERE p.article_number=%s AND BINARY p.article_number=BINARY %s
+              AND LOWER(TRIM(s.name_source))=LOWER(TRIM(%s))
+              AND (%s IS NULL OR p.supplier_id=%s) LIMIT 100""",
+            (article_number,article_number,supplier_brand,supplier_id,supplier_id))
+        articles=[a for a in cur.fetchall() if a['article_number']==article_number and norm(a['supplier_name'])==norm(supplier_brand)]
+        if len(articles)!=1:raise HTTPException(404,'Supplier article identity unavailable')
+        article=articles[0]
+        cur.execute("""SELECT oem_number FROM catalogue_oem
+            WHERE supplier_id=%s AND article_number=%s AND BINARY article_number=BINARY %s
+              AND oem_manufacturer_id=%s ORDER BY oem_number LIMIT 1001""",
+            (article['supplier_id'],article_number,article_number,make['id']))
+        rows=cur.fetchall()
+    if len(rows)>1000:raise HTTPException(409,'Too many references for exact article')
+    return dict(manufacturer=make['name_source'],manufacturer_id=make['id'],
+        supplier_id=article['supplier_id'],supplier_name=article['supplier_name'],
+        article_number=article_number,oem_numbers=[r['oem_number'] for r in rows],vin_verified=False)
