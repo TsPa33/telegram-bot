@@ -1,0 +1,82 @@
+name: Warehouse #527 live read-only acceptance
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/warehouse-527-staging-smoke.yml'
+permissions:
+  contents: read
+jobs:
+  live:
+    name: Catalogue, Warehouse API and Web GET-only acceptance
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      API: https://telegram-bot-warehouse-staging.up.railway.app
+      CATALOGUE: https://catalogue-api-catalogue-staging.up.railway.app
+      WEB: https://confident-sparkle-warehouse-staging.up.railway.app
+      STAGING_SESSION: ${{ secrets.WAREHOUSE_STAGING_SESSION }}
+    steps:
+      - name: Verify live API contracts, guards and updated Web bundle
+        run: |
+          python3 - <<'PY'
+          import json, os, re, time, urllib.request, urllib.error, urllib.parse
+          def get(base,path,headers=None):
+              url=urllib.parse.urljoin(base+'/',path)
+              assert urllib.parse.urlsplit(url).netloc==urllib.parse.urlsplit(base).netloc
+              req=urllib.request.Request(url,headers=headers or {},method='GET')
+              try:
+                  with urllib.request.urlopen(req,timeout=15) as r:
+                      return r.status,r.read()
+              except urllib.error.HTTPError as e:
+                  return e.code,e.read()
+          api=os.environ['API']
+          cat=os.environ['CATALOGUE']
+          web=os.environ['WEB']
+          s,b=get(cat,'/health'); assert s==200,('Catalogue health',s)
+          s,b=get(cat,'/openapi.json'); assert s==200
+          assert 'get' in json.loads(b)['paths']['/api/v1/articles/oem']
+          s,_=get(cat,'/api/v1/articles/oem?manufacturer=Volvo&supplier_brand=Bosch&article_number=TEST')
+          assert s in (401,403),('Catalogue auth guard',s)
+          print('PASS Catalogue health, new exact OEM GET, anonymous auth guard')
+          s,b=get(api,'/health');assert s==200 and json.loads(b)['status']=='ok'
+          s,b=get(api,'/openapi.json');assert s==200
+          paths=json.loads(b)['paths']
+          for p,m in [('/api/v1/vehicles/{id}/oem/{item_id}','patch'),('/api/v1/vehicles/{id}/global-dismantling','get'),('/api/v1/parts/{id}/characteristics','patch'),('/api/v1/orders/checkout','post')]:
+              assert m in paths.get(p,{}),(p,m)
+          for p in ['/api/v1/auth/me','/api/v1/vehicles','/api/v1/parts','/api/v1/vehicles/nonexistent/global-dismantling']:
+              s,_=get(api,p);assert s in (401,403),(p,s)
+          print('PASS Warehouse API health, new OEM route, stock/checkout contracts, anonymous auth guards')
+          for i in range(60):
+              try:
+                  s,b=get(web,'/');assert s==200
+                  assets=re.findall(rb'<script[^>]*src="([^"]+)"',b);assert assets
+                  js=b''.join(get(web,a.decode())[1] for a in assets)
+                  assert b'oem_options' in js and b'oem-inline' in js,'New OEM Web bundle not yet served'
+                  assert 'Завантажити OEM-каталог'.encode() not in js,'Legacy OEM load button still bundled'
+                  assert b'volvo-oem-preview' not in js,'Legacy OEM preview panel still bundled'
+                  break
+              except Exception:
+                  if i==59:raise
+                  time.sleep(5)
+          s,b=get(web,'/health');assert s==200 and json.loads(b)['status']=='ok'
+          for p in ['/vehicles','/inventory','/search']:
+              s,b=get(web,p);assert s==200 and b'<html' in b.lower(),(p,s)
+          s,_=get(web,'/api/v1/auth/me');assert s in (401,403)
+          print('PASS Web new OEM controls, old preview/load panel absent, SPA routes and API proxy')
+          session=os.environ.get('STAGING_SESSION')
+          if session:
+              headers={'Cookie':'warehouse_session='+session}
+              s,b=get(api,'/api/v1/vehicles?limit=200',headers)
+              assert s==200,('existing read session',s)
+              body=json.loads(b);rows=body if isinstance(body,list) else body.get('items',[])
+              matches=[v for v in rows if str(v.get('number'))=='32' and str(v.get('manufacturer','')).casefold()=='volvo' and 'xc90' in str(v.get('model','')).casefold()]
+              if len(matches)==1:
+                  s,b=get(api,'/api/v1/vehicles/'+str(matches[0]['id'])+'/volvo-oem-preview?source_modification_id=107555',headers)
+                  if s==200:
+                      p=json.loads(b);rows=p['plan_items']
+                      assert p['snapshot_sha']=='a283d46afe1812e2b989c17815190e330443cdffc7f7243a82d3942cc200ca17'
+                      print('DONOR 32 READ ONLY: plan rows',len(rows),'valid automatic references',sum(bool(x.get('reference') and not x.get('reference_stale') and x['reference'].get('status')=='auto_selected_cross_reference') for x in rows),'stock OEM rows',sum(bool(x.get('stock_oem')) for x in rows))
+                  else:print('DONOR 32 COVERAGE UNVERIFIED: preview status',s)
+              else:print('DONOR 32 COVERAGE UNVERIFIED: not uniquely visible in authorized workspace')
+          else:print('DONOR 32 COVERAGE UNVERIFIED: no preexisting read-session secret; no login, mutation or new secret')
+          PY
