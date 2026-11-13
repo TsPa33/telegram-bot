@@ -445,3 +445,41 @@ def test_volvo_pilot_rejects_confirmed_different_source(logged,volvo,monkeypatch
     monkeypatch.setattr(CatalogueAdapter,'plan',lambda *a,**kw:pytest.fail('Conflicting selection must not call Catalogue'))
     r=logged.get(f"/api/v1/vehicles/{volvo['id']}/volvo-oem-preview",params={'source_modification_id':107555})
     assert r.status_code==409,r.text
+
+
+def test_volvo_auto_fills_missing_once_and_preserves_plan(logged,volvo,monkeypatch):
+    from uuid import uuid4
+    from app.services.inventory import snapshot
+    base=f"/api/v1/vehicles/{volvo['id']}"
+    assert logged.post(base+'/unified-catalogue/base').status_code==200
+    monkeypatch.setattr(CatalogueAdapter,'plan',lambda self,car:envelope(car,'partial'))
+    with Session(engine()) as db:
+        rows=list(db.scalars(select(DismantlingItem).order_by(DismantlingItem.id)))
+        assert len(rows)>2
+        rows[0].name='Лампа';rows[0].included=True
+        rows[1].name='Лампа';rows[1].included=False
+        db.commit()
+        target=rows[0].id; excluded=rows[1].id
+        before=[snapshot(x) for x in rows]
+    preview=logged.get(base+'/volvo-oem-preview',params={'source_modification_id':107555}).json()
+    request=dict(request_key=str(uuid4()),source_modification_id=107555,
+        snapshot_sha=preview['snapshot_sha'],expected_vehicle_basis=preview['vehicle_basis'],confirm_modification=True)
+    url=base+'/volvo-oem-auto'
+    assert logged.post(url,json={**request,'confirm_modification':False}).status_code==422
+    assert logged.post(url,json={**request,'snapshot_sha':'b'*64}).status_code==409
+    response=logged.post(url,json=request)
+    assert response.status_code==200,response.text
+    result=response.json()
+    assert result['added']>=1 and result['stock_changed'] is False
+    assert next(x for x in result['items'] if x['item_id']==target)['oem_number']=='OEM-ONE'
+    assert result['skipped'][excluded]=='not_eligible'
+    assert logged.post(url,json=request).json()==result
+    assert logged.post(url,json={**request,'request_key':str(uuid4())}).json()['added']==0
+    after=logged.get(base+'/volvo-oem-preview',params={'source_modification_id':107555}).json()
+    ref=next(x for x in after['plan_items'] if x['id']==target)['reference']
+    assert ref['status']=='auto_selected_cross_reference' and ref['vin_verified'] is False
+    assert ref['alternative_count']==2
+    with Session(engine()) as db:
+        assert [snapshot(x) for x in db.scalars(select(DismantlingItem).order_by(DismantlingItem.id))]==before
+        assert db.scalar(select(func.count()).select_from(Part))==0
+        assert db.scalar(select(func.count()).select_from(Operation).where(Operation.type=='receipt'))==0

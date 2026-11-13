@@ -30,10 +30,10 @@ try{for(const width of [320,390,430,1440]){
  const pilot=page.locator('details.uf-catalogue-disclosure').filter({hasText:'OEM Volvo · власний каталог'});
  await expect(pilot).toBeVisible();await pilot.locator('summary').click();await expect(pilot.getByRole('button',{name:'Завантажити OEM-каталог'})).toBeDisabled();
  await pilot.getByRole('checkbox').check();await pilot.getByRole('button',{name:'Завантажити OEM-каталог'}).click();
- await pilot.getByLabel('Позиція наявного плану').selectOption(pilotRow.id);
+ await expect(pilot.getByText(/Автоматично додано OEM:/)).toBeVisible();await pilot.getByLabel('Позиція наявного плану').selectOption(pilotRow.id);
  await pilot.getByLabel('Каталожний тип OEM').selectOption('106');
  await pilot.getByRole('button',{name:'Знайти артикули та OEM'}).click();await expect(pilot.getByText('OEM: OEM-ONE, OEM-TWO')).toBeVisible();
- assert.equal(pilotRequests.length,2);assert.equal(pilotRequests[1].url.searchParams.get('snapshot_sha'),'a'.repeat(64));
+ assert.equal(pilotRequests.filter(r=>r.url.pathname.endsWith('/volvo-oem-auto')&&r.method==='POST').length,1);assert.equal(pilotRequests.find(r=>r.url.searchParams.has('product_id')).url.searchParams.get('snapshot_sha'),'a'.repeat(64));
  await pilot.getByRole('button',{name:'Вибрати OEM OEM-ONE',exact:true}).click();
  await expect(pilot.getByRole('button',{name:'Зберегти OEM у плані'})).toBeDisabled();
  await pilot.getByRole('checkbox',{name:/Підтверджую відповідність типу/}).check();
@@ -50,7 +50,7 @@ try{for(const width of [320,390,430,1440]){
  assert.equal(savedPilot.plan_items.find(r=>r.id===pilotRow.id).reference.oem_number,'OEM-ONE');
  assert.equal((await get('/parts?vehicle_id='+volvo.id+'&limit=1')).total,0);
  assert.equal(savedPilot.plan_items.find(r=>r.id===secondPilotRow.id).reference.oem_number,'OEM-TWO');
- assert.equal(pilotRequests.filter(r=>r.method==='POST').length,2);
+ assert.equal(pilotRequests.filter(r=>r.method==='POST').length,3);
  await overflow();await shot('volvo-oem-preview');
  let emptyRequests=0;page.on('request',r=>{const u=new URL(r.url());if(u.pathname.endsWith('/parts')&&u.searchParams.has('q')&&!u.searchParams.get('q'))emptyRequests++;});
  await page.goto(origin+'/search');const search=page.getByRole('combobox',{name:'Пошук запчастин',exact:true});await expect(search).toBeVisible();if(mobile){await expect(page.locator('.mobile-search-result')).toHaveCount(0);await expect(page.getByText('Введіть назву, OEM або артикул',{exact:true})).toBeVisible();assert.equal(emptyRequests,0);}await shot('initial');
