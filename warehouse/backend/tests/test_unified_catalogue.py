@@ -455,7 +455,7 @@ def test_automatic_oem_backfill_and_receipt(logged,volvo,monkeypatch):
     with Session(engine()) as db:
         v=db.get(Vehicle,volvo['id']);v.year=2016;v.vin='YV4A22PK2G1092943';v.fuel_type='petrol';v.drive_type='awd';v.engine_displacement_l=2
         rows=list(db.scalars(select(DismantlingItem).where(DismantlingItem.vehicle_id==v.id).order_by(DismantlingItem.id)))
-        target=rows[0];target.name='Лампа';target.category_name='Освітлення';target.included=True
+        target=rows[0];target.name='Лампа';target.position='';target.category_name='Освітлення';target.included=True
         aid=v.account_id;rid=target.id;vid=v.id
         db.commit();before=[snapshot(x) for x in rows];assert source_identity(v)[0]==107555
     monkeypatch.setattr(CatalogueAdapter,'plan',lambda self,car,**kw:envelope(car,'partial'))

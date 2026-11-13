@@ -104,4 +104,5 @@ jobs:
         with:
           python-version: '3.11'
       - run: python -m pip install -r catalogue/requirements.txt pytest httpx
-      - run: python -m pytest -q catalogue/tests
+      - run: python -m pytest -q --rootdir=. tests
+        working-directory: catalogue
