@@ -100,7 +100,7 @@ def choices(offers,part=None):
     for n in sorted(evidence,key=lambda n:(-len({o['supplier_id'] for o in evidence[n]}),n)):
         o=min(evidence[n],key=lambda o:(o['supplier_id'],o['article_nr']))
         result.append(dict(oem_number=n,supplier_id=o['supplier_id'],source_article=o['article_nr'],source_brand=o['brand']))
-    return result[:200]
+    return result if len(result)<=1000 else []
 
 def options(ref):
     if not isinstance(ref,dict):return []
@@ -124,7 +124,7 @@ def fill_part(db,v,row,part,ref,*,receipt=False):
     """Copy the reference only to a genuinely empty card; never overwrite a manual clear.
     If an article was set, require matching supplier+article evidence.
     """
-    if not ref or not reference_matches(ref,row,basis(v)) or part.oem_number or part.oem_provenance or part.archived or part.reserved_quantity:return False
+    if not ref or ref.get('oem_number') not in options(ref) or not reference_matches(ref,row,basis(v)) or part.oem_number or part.oem_provenance or part.archived or part.reserved_quantity:return False
     if not receipt and not eligible_part(part):return False
     if part.vehicle_id!=v.id or part.account_id!=v.account_id:return False
     if part.article_number and (not part.article_brand or normalized(part.article_brand)!=normalized(ref.get('source_brand')) or normalized(part.article_number)!=normalized(ref.get('source_article'))):return False
@@ -143,7 +143,7 @@ def receipt_oem(db,row,part):
 class SourceCache:
     def __init__(self,adapter=None):
         self.adapter=adapter or catalogue.CatalogueAdapter()
-        self.plans={};self.offers={}
+        self.plans={};self.offers={};self.exact={};self.lock=threading.Lock()
     def plan(self,identity):
         car,model,make,sha,global_source=identity
         if identity not in self.plans:
@@ -157,67 +157,114 @@ class SourceCache:
     def get_offers(self,payload,product):
         from app.api.unified_catalogue import saved_articles
         key=(payload['car_id'],payload['source_snapshot_sha'],product['product_id'])
-        if key not in self.offers:
-            # Use the existing validated article contract with the same adapter.
-            # Test adapters may supply fixtures; the real adapter is constructed in saved_articles.
-            offers=saved_articles(product,{'payload':payload},oem_manufacturer_id=payload['manufacturer_id'])
+        with self.lock:
+            if key in self.offers:return self.offers[key]
+        offers=saved_articles(product,{'payload':payload},oem_manufacturer_id=payload['manufacturer_id'],adapter=self.adapter)
+        with self.lock:
             if len(self.offers)>=512:self.offers.clear()
             self.offers[key]=offers
-        return self.offers[key]
+        return offers
+
+    def exact_lookup(self,make,brand,article,supplier_id):
+        key=(make,brand,article,supplier_id)
+        with self.lock:
+            if key in self.exact:return self.exact[key]
+        try:result=self.adapter.exact_oem(make,brand,article,supplier_id)
+        except catalogue.CatalogueUnavailable:
+            # Compatibility while the older Catalogue service is deployed:
+            # only Volvo and only when an exact supplier ID is already available.
+            if normalized(make)!='volvo' or not supplier_id:return None
+            try:result={**self.adapter.article(supplier_id,article,brand),'manufacturer_id':120,
+                        'supplier_id':supplier_id,'supplier_name':brand,'article_number':article}
+            except catalogue.CatalogueUnavailable:return None
+            if result.get('truncated'):return None
+        with self.lock:
+            if len(self.exact)>=512:self.exact.clear()
+            self.exact[key]=result
+        return result
+
+def exact_key(part,vehicle):
+    if not eligible_part(part) or not part.article_number or not part.article_brand or len(part.article_number)>32:return None
+    sid=(part.article_provenance or {}).get('supplier_id')
+    if type(sid) is not int or not 1<=sid<=65535:sid=None
+    return (vehicle.manufacturer,part.article_brand,part.article_number,sid)
+
+def fill_exact(db,v,part,result):
+    numbers=sorted(set(result.get('oem_numbers',[])))
+    if not numbers or len(numbers)>1000 or any(not isinstance(n,str) or not n or len(n)>150 for n in numbers):return False
+    alternatives=[dict(oem_number=n,supplier_id=result['supplier_id'],source_article=result['article_number'],source_brand=result['supplier_name']) for n in numbers]
+    before=snapshot(part);part.oem_number=numbers[0]
+    part.oem_provenance=dict(**alternatives[0],source='carpot.catalogue',status='auto_selected_cross_reference',
+        vin_verified=False,oem_manufacturer_id=result['manufacturer_id'],vehicle_basis=basis(v),
+        alternatives=alternatives,selection_rule='exact_supplier_article_lexical')
+    record(db,v.account_id,part,'part_update','Каталожний OEM',before,after_extra={'automatic_oem':True})
+    return True
 
 def enrich_vehicle(engine,account_id,vehicle_id,cache=None):
-    """Network outside write locks, then recheck donor/type/part identities under lock.
-    Called for every active donor, including those created since the previous sweep.
+    """Network outside write locks; recheck all identities before committing.
+    Existing and new donors, including unlinked stock and all makes with exact articles.
     """
     cache=cache or SourceCache()
     with Session(engine) as db:
         v=db.scalar(select(Vehicle).where(Vehicle.id==vehicle_id,Vehicle.account_id==account_id,Vehicle.archived.is_(False)))
         if not v:return 0
-        identity=source_identity(v)
-        if not identity:return 0
-        old_basis=basis(v)
+        identity=source_identity(v);old_basis=basis(v)
         rows=list(db.scalars(select(DismantlingItem).where(DismantlingItem.vehicle_id==v.id,DismantlingItem.account_id==account_id)))
-        if not rows:return 0
         old_refs=references(v)
         linked={p.id:p for p in db.scalars(select(Part).where(Part.vehicle_id==v.id,Part.account_id==account_id))}
+        exact={p.id:k for p in linked.values() if (k:=exact_key(p,v))}
         needs=[r for r in rows if eligible_row(r) and (r.id not in old_refs or not options(old_refs[r.id]) or (r.part_id in linked and eligible_part(linked[r.part_id])))]
-        if not needs:return 0
-    payload=cache.plan(identity)
-    products={p['product_id']:p for p in payload['categories']}
-    needed={}
-    for row in needs:
-        p=matches(row,products,payload['car_id'])
-        if p:needed[p['product_id']]=p
-    # Bounded network fanout; a failed source never produces partial invented numbers.
-    with ThreadPoolExecutor(max_workers=4) as pool:
-        data=dict(zip(needed,pool.map(lambda p:cache.get_offers(payload,p),needed.values())))
+        if not exact and not (identity and needs):return 0
+    payload=None;products={};data={};exact_data={}
+    if identity and needs:
+        try:
+            payload=cache.plan(identity);products={p['product_id']:p for p in payload['categories']}
+            needed={}
+            for row in needs:
+                p=matches(row,products,payload['car_id'])
+                if p:needed[p['product_id']]=p
+            with ThreadPoolExecutor(max_workers=4) as pool:
+                data=dict(zip(needed,pool.map(lambda p:cache.get_offers(payload,p),needed.values())))
+        except Exception:
+            # Exact-article lookup remains independent of snapshot availability.
+            log.warning('OEM snapshot lookup deferred for donor %s',vehicle_id)
+            payload=None;products={};data={}
+    if exact:
+        unique=list(set(exact.values()))
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            exact_data=dict(zip(unique,pool.map(lambda k:cache.exact_lookup(*k),unique)))
+    if not payload and not any(exact_data.values()):return 0
     with Session(engine) as db:
         db.execute(text("SET LOCAL lock_timeout = '2s'"))
         db.scalar(select(Account).where(Account.id==account_id).with_for_update(key_share=True))
         v=db.scalar(select(Vehicle).where(Vehicle.id==vehicle_id,Vehicle.account_id==account_id,Vehicle.archived.is_(False)).with_for_update())
         if not v or basis(v)!=old_basis or source_identity(v)!=identity:return 0
         rows=list(db.scalars(select(DismantlingItem).where(DismantlingItem.vehicle_id==v.id,DismantlingItem.account_id==account_id).order_by(DismantlingItem.id).with_for_update()))
-        parts={p.id:p for p in db.scalars(select(Part).where(Part.vehicle_id==v.id,Part.account_id==account_id,Part.id.in_([r.part_id for r in rows if r.part_id])).order_by(Part.id).with_for_update())}
+        parts={p.id:p for p in db.scalars(select(Part).where(Part.vehicle_id==v.id,Part.account_id==account_id).order_by(Part.id).with_for_update())}
         refs=dict(references(v));added=0;changed=False;stock_changes=0
         before=snapshot(v)
-        for row in rows:
-            if not eligible_row(row):continue
-            product=matches(row,products,payload['car_id'])
-            part=parts.get(row.part_id)
-            ref=refs.get(row.id)
-            if ref:
-                # Preserve all prior user-selected/automatic codes; enrich their
-                # alternatives only when the same number is present in the same source.
-                if not options(ref) and product and reference_matches(ref,row,old_basis) and ref.get('snapshot_sha')==payload['source_snapshot_sha'] and ref.get('product_id')==product['product_id']:
-                    alternatives=choices(data.get(product['product_id'],[]))
-                    if ref['oem_number'] in [a['oem_number'] for a in alternatives]:
-                        ref={**ref,'alternatives':alternatives};refs[row.id]=ref;changed=True
-            elif product and product['product_id'] in data:
-                if part and (part.oem_number or part.oem_provenance):continue
-                alternatives=choices(data[product['product_id']],part)
-                if not alternatives:continue
-                ref=ref_for(v,row,payload,product,alternatives);refs[row.id]=ref;added+=1;changed=True
-            if ref and part and fill_part(db,v,row,part,ref):stock_changes+=1
+        for pid,key in exact.items():
+            part=parts.get(pid);result=exact_data.get(key)
+            if part and result and exact_key(part,v)==key and fill_exact(db,v,part,result):stock_changes+=1
+        if payload:
+            for row in rows:
+                if not eligible_row(row):continue
+                product=matches(row,products,payload['car_id']);part=parts.get(row.part_id);ref=refs.get(row.id)
+                if ref:
+                    if not options(ref) and product and reference_matches(ref,row,old_basis) and ref.get('snapshot_sha')==payload['source_snapshot_sha'] and ref.get('product_id')==product['product_id']:
+                        alternatives=choices(data.get(product['product_id'],[]))
+                        if ref['oem_number'] in [a['oem_number'] for a in alternatives]:
+                            ref={**ref,'alternatives':alternatives};refs[row.id]=ref;changed=True
+                elif product and product['product_id'] in data:
+                    alternatives=choices(data[product['product_id']],part)
+                    if not alternatives:continue
+                    # Preserve a stock OEM, but mirror its matching reference if available.
+                    if part and (part.oem_number or part.oem_provenance):
+                        match=next((a for a in alternatives if a['oem_number']==part.oem_number),None)
+                        if not match:continue
+                        alternatives=[match,*[a for a in alternatives if a!=match]]
+                    ref=ref_for(v,row,payload,product,alternatives);refs[row.id]=ref;added+=1;changed=True
+                if ref and part and fill_part(db,v,row,part,ref):stock_changes+=1
         if changed:
             v.dismantling_v3={**(v.dismantling_v3 or {}),REF_KEY:refs}
             record(db,account_id,v,'vehicle_update','Каталожні OEM',before,after_extra={'automatic_oem':True})

@@ -31,7 +31,7 @@ try{for(const width of [320,390,430,1440]){
  await expect(page.getByText('OEM Volvo · власний каталог')).toHaveCount(0);
  await expect(page.getByRole('button',{name:'Завантажити OEM-каталог'})).toHaveCount(0);
  const starter=page.locator('#assembly-node-'+automatic.item_id);
- await page.getByPlaceholder('Пошук запчастини...').fill('Стартер');
+ await page.getByRole('textbox',{name:'Пошук у дереві'}).fill('Стартер');
  await expect(starter).toBeVisible();await starter.click();
  const inspector=page.getByRole('region',{name:'Картка запчастини'});
  await expect(inspector.getByLabel('OEM',{exact:true})).toHaveValue('OEM-ONE');

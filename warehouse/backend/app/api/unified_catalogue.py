@@ -102,11 +102,11 @@ def source_value(row,key):
     return next((v for k,v in row.items() if k.casefold()==key.casefold()),None)
 
 
-def saved_articles(product, state, *, oem_manufacturer_id=None):
+def saved_articles(product, state, *, oem_manufacturer_id=None, adapter=None):
     payload=state['payload']
     if payload.get('schema') in ('carpot.volvo.plan.v2','carpot.vehicle.plan.v1'):
         try:
-            items=service.CatalogueAdapter().articles(payload['car_id'],product['product_id'],payload['source_snapshot_sha'],**({'global_source':True} if payload.get('schema')=='carpot.vehicle.plan.v1' else {}))
+            items=(adapter or service.CatalogueAdapter()).articles(payload['car_id'],product['product_id'],payload['source_snapshot_sha'],**({'global_source':True} if payload.get('schema')=='carpot.vehicle.plan.v1' else {}))
         except service.CatalogueUnavailable:
             raise HTTPException(503,'Артикули збереженої версії тимчасово недоступні. Платний запит не виконувався.') from None
         if len(items)!=product['article_count']:

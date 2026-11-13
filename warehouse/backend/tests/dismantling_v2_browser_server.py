@@ -48,7 +48,7 @@ _original_articles=CatalogueAdapter.articles
 def pilot_plan(self,car,**kwargs):
     if car==107555 and not kwargs.get('global_source'):
         import hashlib,json
-        data=envelope(car,'partial');data['payload']['categories'][0]['name_uk']='Стартер';data['payload']['categories'][0]['category_path']=['Двигун та його системи','Електрообладнання двигуна','Стартер']
+        data=envelope(car,'partial');data['payload']['categories'][0]['name_uk']='Стартер'
         # Keep the reviewed fixture's existing valid category instead; the test row is aligned explicitly.
         data['payload']['categories'][0]['category_path']=['Освітлення','Передні фари','Стартер']
         data['sha256']=hashlib.sha256(json.dumps(data['payload'],ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()).hexdigest()
@@ -62,7 +62,7 @@ CatalogueAdapter.plan=pilot_plan
 CatalogueAdapter.articles=pilot_articles
 
 
-@app.post('/__dv2_auto_oem/{vehicle_id}')
+@app.post('/api/v1/__dv2_auto_oem/{vehicle_id}')
 def local_auto_oem(vehicle_id:str,request:Request):
     from app.services.auto_oem import enrich_vehicle
     with Session(engine()) as db:

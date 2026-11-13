@@ -10,7 +10,7 @@ import {useCan} from './permissions';
 import {categoryLabelUk} from './PartsQuickCategories';
 import {SellerPriceEditor} from './MarketPricing';
 import PartCharacteristicsEditor from './PartCharacteristicsEditor';
-import {StockOemField} from './OemField';
+import {StockOemField,oemOptions} from './OemField';
 
 type Props={
  part:Row|null;vehicle?:Row;category?:Row;subcategory?:Row;canSell:boolean;
@@ -85,7 +85,7 @@ export default function SearchPartPreview({part,vehicle,category,subcategory,can
    <div className="ui11-preview-buttons">
     
     {part.id&&can('parts.change_price')&&!part.archived&&<details ref={pricePanel} className="part-preview-price-edit"><summary>Змінити ціну</summary><SellerPriceEditor key={part.id} part={part} initialOpen onSaved={row=>{if(pricePanel.current)pricePanel.current.open=false;onSaved(row);}}/></details>}
-    {part.id&&can('inventory.edit')&&!part.archived&&<><button type="button" className="secondary" onClick={()=>setEditingOem(v=>!v)}><Pencil size={14}/> OEM / артикул</button><button type="button" className="secondary" onClick={onEdit}><Pencil size={14}/> Редагувати дані</button></>}
+    {part.id&&can('inventory.edit')&&!part.archived&&<>{oemOptions(part).length<2&&<button type="button" className="secondary" onClick={()=>setEditingOem(v=>!v)}><Pencil size={14}/> OEM / артикул</button>}<button type="button" className="secondary" onClick={onEdit}><Pencil size={14}/> Редагувати дані</button></>}
     {onNotes&&can('parts.notes')&&part.id&&<button type="button" onClick={onNotes}>Додати нотатку</button>}
     {onInspection&&can('parts.inspect')&&part.id&&<button type="button" onClick={onInspection}>Стан і перевірка</button>}
     {contextActions}

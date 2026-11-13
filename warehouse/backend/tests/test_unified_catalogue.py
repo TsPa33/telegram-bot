@@ -488,3 +488,26 @@ def test_automatic_oem_does_not_guess_other_modifications(logged,volvo):
         v.dismantling_v3={'global_selection':{'car_id':88,'model_id':9,'manufacturer_id':7,'source_snapshot_sha':'b'*64,
             'vehicle_basis':__import__('app.services.unified_catalogue',fromlist=['vehicle_basis']).vehicle_basis(v)}}
         assert source_identity(v)==(88,9,7,'b'*64,True)
+
+
+def test_automatic_oem_all_makes_exact_article_without_snapshot(logged,monkeypatch):
+    from app.services.auto_oem import enrich_vehicle
+    from app.services.inventory import snapshot
+    v=logged.post('/api/v1/vehicles',json={'manufacturer':'Peugeot','model':'3008','year':2017}).json()
+    p=logged.post('/api/v1/parts',json={'name':'Стартер','vehicle_id':v['id'],'article_number':'P-EXACT','selling_price':'123.45'}).json()
+    with Session(engine()) as db:
+        part=db.get(Part,p['id']);part.article_brand='BOSCH';part.quantity=1;db.commit()
+        aid=part.account_id;before=snapshot(part)
+    monkeypatch.setattr(CatalogueAdapter,'exact_oem',lambda self,make,brand,article,sid=None:dict(
+        manufacturer=make,manufacturer_id=88,supplier_id=22,supplier_name=brand,article_number=article,oem_numbers=['P-002','P-001']))
+    assert enrich_vehicle(engine(),aid,v['id'])==1
+    assert enrich_vehicle(engine(),aid,v['id'])==0
+    with Session(engine()) as db:
+        part=db.get(Part,p['id']);after=snapshot(part)
+        assert part.oem_number=='P-001' and part.oem_provenance['oem_manufacturer_id']==88
+        assert {k:x for k,x in before.items() if k not in ('oem_number','oem_provenance')}=={k:x for k,x in after.items() if k not in ('oem_number','oem_provenance')}
+    r=logged.patch('/api/v1/parts/'+p['id']+'/characteristics',json={'expected':{'oem_number':'P-001'},'values':{'oem_number':'P-002'}})
+    assert r.status_code==200,r.text
+    assert len(r.json()['oem_provenance']['alternatives'])==2
+    assert enrich_vehicle(engine(),aid,v['id'])==0
+    with Session(engine()) as db:assert db.get(Part,p['id']).oem_number=='P-002'
