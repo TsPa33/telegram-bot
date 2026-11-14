@@ -102,11 +102,11 @@ export default function Settings({user}:{user:Row}){
   const permissionCount=Array.isArray(user.permissions)?user.permissions.length:0;
   return <div className={'r123-settings'+(tab==='payments'?' r123-settings--payments':'')}>
     <Heading eyebrow="РОБОЧИЙ ПРОСТІР" title={tab==='payments'?'Оплати':'Загальні налаштування'} description={tab==='payments'?'Підписка, місткість гаража та фінансова історія.':'Ваш профіль, безпека та доступ до інструментів CarPot Warehouse.'}/>
-    <div className="r123-profile-bar">
+    {tab==='general'&&<div className="r123-profile-bar">
       <span className="r123-profile-avatar" aria-hidden="true">{String(user.name||'К').slice(0,1).toLocaleUpperCase('uk')}</span>
       <div className="r123-profile-intro"><strong>{user.name||'Користувач'}</strong><span>{user.email}</span></div>
       <span className="r123-role"><ShieldCheck size={15}/>{roleLabel(user.role)}</span>
-    </div>
+    </div>}
 
     <nav className="settings-section-tabs" aria-label="Розділ налаштувань"><Link aria-current={tab==='general'?'page':undefined} to="/settings?section=general">Загальні</Link><Link aria-current={tab==='payments'?'page':undefined} to="/settings?section=payments">Оплати</Link></nav>
     {tab==='payments'&&billing.data?.entitlements_available&&<WorkspaceBilling/>}
