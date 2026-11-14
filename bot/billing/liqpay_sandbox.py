@@ -83,6 +83,15 @@ class SandboxCheckout:
             if c.fetchone():
                 return "duplicate"
             classification = event.classification
+            # Evidence of a payment against a void/paid invoice or a conflicting
+            # fixture intent is retained for review, not marked successful.
+            c.execute("SELECT status FROM billing.invoices WHERE id=%s FOR UPDATE",
+                      (row["invoice_id"],))
+            invoice_state = c.fetchone()["status"]
+            c.execute("SELECT 1 FROM billing.intents WHERE invoice_id=%s", (row["invoice_id"],))
+            has_fixture_intent = c.fetchone() is not None
+            if classification == "test_success" and (invoice_state != "open" or has_fixture_intent):
+                classification = "review"
             if classification == "test_success":
                 c.execute("""INSERT INTO billing.liqpay_sandbox_payment_ids (merchant,payment_id,order_id)
                            VALUES (%s,%s,%s) ON CONFLICT DO NOTHING""",
