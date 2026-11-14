@@ -12,4 +12,4 @@ def upgrade():
     op.create_check_constraint('ck_account_registration_referral','accounts',"(registration_referral_code IS NULL AND registration_referral_state IS NULL) OR (registration_referral_code IS NOT NULL AND registration_referral_state IN ('pending','accepted','invalid') AND registration_referral_state IS NOT NULL)")
 
 def downgrade():
-    raise RuntimeError('Preserve registration referral attribution; roll forward or disable routing')
+    raise RuntimeError('Preserve canonical Billing identities and snapshots; roll forward or disable routing')
