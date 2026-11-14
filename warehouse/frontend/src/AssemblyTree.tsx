@@ -6,7 +6,7 @@ import {useContext,useEffect,useRef,useState,type ReactNode} from 'react';
 import {api,type Row} from './api';
 import {TeamIdentity,useCan} from './permissions';
 import {Box,Check,ChevronDown,ChevronRight,Layers,Minus,Plus,Search,Settings2,TriangleAlert,X,MoreHorizontal,List,Network,DoorOpen,Cog,Zap,Armchair,Wind,ShieldCheck,Lightbulb,Disc,Settings} from 'lucide-react';
-import {usePlanBulk,BulkStatus,BulkActionBar,GuidedReceipt,SelectionCheck} from './DismantlingBulk';
+import {usePlanBulk,BulkStatus,BulkActionBar,GuidedReceipt,SelectionCheck,OperationProgress} from './DismantlingBulk';
 import {assemblyLabel,doorKey,doorOrder,isGenericDoor,isKnownDoorComponent,sameDoorInstallation,manuallyReviewableDoorComponent} from './assemblyPresentation';
 import {assemblyUnitFor,assemblyReferenceLines} from './assemblyUnitCatalog';
 import './assembly-tree.css';
@@ -77,7 +77,7 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
   }catch(e){if(ticket===epoch.current)setError((e as Error).message);return false}finally{if(ticket===epoch.current){writing.current=false;setBusy(false)}}
  }
  if(!enabled||!can('inventory.view'))return error?<p role="alert">{error}</p>:null;
- if(!data)return <p role={error?'alert':'status'}>{error||'Завантажуємо фізичний склад…'}</p>;
+ if(!data)return error?<p role="alert">{error}</p>:<OperationProgress label="Завантажуємо фізичний склад…"/>;
  const items:Row[]=data.items||[],byId=new Map(items.map(n=>[n.id,n])),children=new Map<string,Row[]>(),planChildren=new Map<string,Row[]>();
  items.forEach(n=>{if(n.parent_id)children.set(n.parent_id,[...(children.get(n.parent_id)||[]),n]);else if(n.plan_parent_id&&byId.has(n.plan_parent_id))planChildren.set(n.plan_parent_id,[...(planChildren.get(n.plan_parent_id)||[]),n])});
  children.forEach(rows=>rows.sort((a,b)=>String(a.name).localeCompare(String(b.name),'uk',{numeric:true})));
@@ -217,7 +217,8 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
   <div className="assembly-plan-ready"><h2>Розбір автомобіля</h2><span>{items.length?'План сформовано':'Сформуйте список деталей'}</span></div>
   <header className="assembly-overview"><div className="assembly-metrics" role="region" aria-label="Показники розбору">{[['У плані',items.length],['Підтверджено',checked],['На складі',stocked],['Потребує уточнення',attention]].map(([label,value])=><div key={label}><span>{label==='На складі'?<Box size={22}/>:label==='Потребує уточнення'?<TriangleAlert size={22}/>:<Check size={22}/>}</span><div><small>{label}</small><strong>{value}</strong></div></div>)}</div><div className="assembly-top-actions"><details><summary><Settings2 size={16}/>Швидкі дії</summary><button disabled={busy} onClick={()=>void load().catch(e=>setError(e.message))}>Оновити список</button><button onClick={()=>{setQ('');setCategory('');setStatus('unchecked')}}>Знайти непідтверджені</button><button onClick={()=>{setQ('');setCategory('');setStatus('damaged')}}>Переглянути пошкодження</button></details></div></header>
   {error&&<p role="alert">{error}</p>}
-  <BulkStatus bulk={bulk}/>
+  {commandBusy&&<OperationProgress label="Виконуємо операцію зі складом…"/>}
+  {!receiptOpen&&<BulkStatus bulk={bulk}/>}
   {receiptOpen&&<Modal className="dv2-receipt-dialog" title="Підтвердження надходження" onClose={()=>{if(!busy)setReceiptOpen(false)}}><GuidedReceipt path={planPath} ids={checkedIds} bulk={bulk} onBack={()=>setReceiptOpen(false)}/></Modal>}
   {editable&&bulkPlan&&chosen.length===0&&<div className="assembly-selection"><label className="dv2-select-all"><SelectionCheck ids={selectable} selected={new Set(checkedIds)} disabled={busy||receiptOpen} label="Вибрати всі за поточними фільтрами" onToggle={value=>setCheckedIds(ids=>value?[...new Set([...ids,...selectable])]:ids.filter(id=>!selectable.includes(id)))}/>Усі за фільтром ({selectable.length})</label></div>}
   {editable&&chosen.length>0&&!receiptOpen&&<BulkActionBar items={chosen} selection={<label className="dv2-select-all"><SelectionCheck ids={selectable} selected={new Set(checkedIds)} disabled={busy||receiptOpen} label="Вибрати всі за поточними фільтрами" onToggle={value=>setCheckedIds(ids=>value?[...new Set([...ids,...selectable])]:ids.filter(id=>!selectable.includes(id)))}/>Усі за фільтром ({selectable.length})</label>} disabled={busy} onAction={(action,reason)=>void bulk.start(action,checkedIds,bulkPlan!.etag,reason)} onReceipt={()=>{bulk.resetFeedback();setReceiptOpen(true);}} onClear={()=>setCheckedIds([])} onHeight={setToolbarHeight}/>}
