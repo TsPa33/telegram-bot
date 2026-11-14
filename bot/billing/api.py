@@ -1,0 +1,506 @@
+"""Separate ASGI service. Explicit environment, DSN and peer authentication; flags OFF."""
+
+import os, json, time, threading, hashlib
+from datetime import datetime, timezone
+from urllib.parse import parse_qsl
+from fastapi import FastAPI, Request, Depends, HTTPException
+from fastapi.responses import JSONResponse, HTMLResponse
+from pydantic import BaseModel, ConfigDict, Field
+from starlette.concurrency import run_in_threadpool
+from .models import Actor, Permission, BillingError, Conflict, Forbidden
+from .storage import OperationalDatabase, migrate_all
+from .global_core import GlobalBilling
+from .liqpay_provider import ProviderProfile, LiqPayProvider
+from .payments import Payments
+from .transport import Transport
+
+
+class Command(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+
+class Purchase(Command):
+    binding_id: str = Field(min_length=1, max_length=160)
+    sku: str = Field(min_length=1, max_length=100)
+    request_key: str = Field(min_length=1, max_length=160)
+    quantity: int = Field(default=1, strict=True, ge=1, le=1000)
+
+
+class Checkout(Command):
+    invoice_id: str = Field(min_length=1, max_length=160)
+
+
+class Binding(Command):
+    workspace_id: str = Field(min_length=1, max_length=160)
+    product: str = Field(min_length=1, max_length=80)
+    account_id: str | None = None
+
+
+class Window:
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.count = 0
+        self.start = 0
+
+    def acquire(self):
+        with self.lock:
+            now = time.monotonic()
+            if now - self.start > 1:
+                self.start = now
+                self.count = 0
+            self.count += 1
+            if self.count > 100:
+                raise HTTPException(429, "Забагато запитів; повторіть пізніше.")
+
+
+def create_app(
+    db=None,
+    profile=None,
+    *,
+    peer_keys=None,
+    checkout_enabled=None,
+    provider=None,
+    delivery=None,
+):
+    if db is None:
+        environment = os.environ["BILLING_ENVIRONMENT"]
+        db = OperationalDatabase(
+            os.environ["BILLING_OPERATIONAL_DSN"], environment=environment
+        )
+        profile = ProviderProfile(
+            environment,
+            os.environ["BILLING_LIQPAY_PUBLIC_KEY"],
+            os.environ["BILLING_LIQPAY_PRIVATE_KEY"],
+            os.environ["BILLING_RESULT_URL"],
+            os.environ["BILLING_CALLBACK_URL"],
+            protocol=os.getenv("BILLING_LIQPAY_PROFILE", "v7-sha3-256"),
+            merchant_confirmed=os.getenv("BILLING_MERCHANT_CONFIRMED") == "true",
+            live_enabled=os.getenv("BILLING_LIVE_ENABLED") == "true",
+            network_enabled=os.getenv("BILLING_PROVIDER_NETWORK_ENABLED") == "true",
+            reversals_confirmed=os.getenv("BILLING_REVERSALS_CONFIRMED") == "true",
+        )
+        peer_keys = {
+            name: value.encode()
+            for name, value in json.loads(os.environ["BILLING_PEER_KEYS_JSON"]).items()
+        }
+        checkout_enabled = os.getenv("BILLING_CHECKOUT_ENABLED") == "true"
+    if not peer_keys or any(len(k) < 32 for k in peer_keys.values()):
+        raise BillingError("Explicit peer authentication keys required")
+    from .public_checkout import HostedLinks
+
+    links = None
+    if os.getenv("BILLING_PUBLIC_ORIGIN") and os.getenv("BILLING_PUBLIC_LINK_KEY"):
+        links = HostedLinks(
+            os.environ["BILLING_PUBLIC_ORIGIN"],
+            os.environ["BILLING_PUBLIC_LINK_KEY"].encode(),
+            db.environment,
+        )
+    core = GlobalBilling(db)
+    payments = Payments(
+        core,
+        provider or LiqPayProvider(profile),
+        checkout_enabled=checkout_enabled is True,
+        hosted_links=links,
+    )
+    from .delivery import EntitlementDelivery
+
+    destinations = json.loads(os.getenv("BILLING_ENTITLEMENT_URLS_JSON", "{}"))
+    delivery = delivery or EntitlementDelivery(
+        db,
+        {
+            name: {"key": key, "url": destinations.get(name)}
+            for name, key in peer_keys.items()
+        },
+        network_enabled=os.getenv("BILLING_DELIVERY_ENABLED") == "true",
+    )
+    app = FastAPI(
+        title="CarPot Billing", docs_url=None, redoc_url=None, openapi_url=None
+    )
+    app.state.core, app.state.payments, app.state.delivery = core, payments, delivery
+    from .recurring import Recurring
+
+    recurring = Recurring(
+        core,
+        payments,
+        enabled=os.getenv("BILLING_RECURRING_ENABLED") == "true",
+        contract_confirmed=os.getenv("BILLING_RECURRING_CONTRACT_CONFIRMED") == "true",
+    )
+    app.state.recurring = recurring
+    limiter = Window()
+
+    @app.middleware("http")
+    async def bounded_body(request, call_next):
+        raw = bytearray()
+        async for chunk in request.stream():
+            raw.extend(chunk)
+            if len(raw) > 70000:
+                return JSONResponse({"detail": "Request too large"}, status_code=413)
+        request._body = bytes(raw)
+        response = await call_next(request)
+        response.headers["Cache-Control"] = "no-store"
+        return response
+
+    @app.exception_handler(BillingError)
+    async def error(request, exc):
+        status = (
+            403
+            if isinstance(exc, Forbidden)
+            else 409
+            if isinstance(exc, Conflict)
+            else 400
+        )
+        return JSONResponse(
+            {
+                "detail": "Фінансову операцію не підтверджено. Перевірте стан або зверніться до підтримки."
+            },
+            status_code=status,
+        )
+
+    async def claims(request: Request):
+        return await run_in_threadpool(authenticate, request, await request.body())
+
+    def authenticate(request: Request, raw_body):
+        limiter.acquire()
+        issuer = request.headers.get("X-CarPot-Peer", "")
+        key = peer_keys.get(issuer)
+        auth = request.headers.get("Authorization", "")
+        if not key or not auth.startswith("Bearer "):
+            raise HTTPException(401, "Авторизація потрібна")
+        try:
+            envelope = Transport(
+                key,
+                issuer,
+                "billing-api",
+                "billing.session",
+                environment=db.environment,
+            ).verify(auth[7:])
+            payload = envelope["payload"]
+            # A per-request nonce cannot be reused across different HTTP actions.
+            if (
+                payload.get("method") != request.method
+                or payload.get("path") != request.url.path
+                or payload.get("body_sha256") != hashlib.sha256(raw_body).hexdigest()
+            ):
+                raise BillingError("Request scope mismatch")
+            with db.transaction() as c:
+                c.execute(
+                    "INSERT INTO billing.api_receipts VALUES (%s,%s,%s) ON CONFLICT DO NOTHING RETURNING nonce",
+                    (
+                        issuer,
+                        envelope["jti"],
+                        datetime.fromtimestamp(envelope["exp"], timezone.utc),
+                    ),
+                )
+                if not c.fetchone():
+                    raise BillingError("Transport replay")
+            if not isinstance(payload.get("principal_id"), str):
+                raise BillingError("Stable principal required")
+            request.state.peer = issuer
+            return payload
+        except BillingError:
+            raise HTTPException(401, "Недійсна авторизація") from None
+
+    def actor(payload=Depends(claims)):
+        if not isinstance(payload.get("account_id"), str):
+            raise HTTPException(403, "Підтвердження компанії потрібне")
+        with db.transaction() as c:
+            c.execute(
+                "SELECT permissions FROM billing.memberships WHERE account_id=%s AND principal_id=%s",
+                (payload["account_id"], payload["principal_id"]),
+            )
+            membership = c.fetchone()
+        if not membership:
+            raise Forbidden("Financial membership required")
+        permissions = frozenset(
+            p for p in Permission if p.value in membership["permissions"]
+        )
+        return Actor(payload["principal_id"], payload["account_id"], permissions)
+
+    class Trial(Command):
+        binding_id: str
+        plan: str
+
+    class Proof(Command):
+        proof: str = Field(min_length=1, max_length=200000)
+
+    @app.post("/v1/trial")
+    def trial(data: Trial, who=Depends(actor)):
+        return core.trial(who, data.binding_id, data.plan)
+
+    @app.get("/v1/entitlements/{binding}")
+    def entitlement(binding: str, who=Depends(actor)):
+        return delivery.latest(core, who, binding)
+
+    @app.post("/v1/entitlements/ack")
+    def ack(data: Proof, who=Depends(actor)):
+        with db.transaction() as c:
+            core.authorize(c, who, Permission.VIEW)
+        delivery.acknowledge(data.proof)
+        return {"accepted": True}
+
+    @app.get("/pay/{token}")
+    def hosted(token: str):
+        limiter.acquire()
+        if not links or not payments.checkout_enabled:
+            raise HTTPException(404)
+        order = links.verify(token)
+        with db.transaction() as c:
+            row = payments._row(c, order)
+            if row["invoice_status"] != "open" or row["expires_at"] <= datetime.now(
+                timezone.utc
+            ):
+                raise Conflict("Checkout no longer payable")
+            form = payments.provider.checkout(payments._terms(row))
+        return HTMLResponse(
+            links.document(form, db.environment == "sandbox"),
+            headers={
+                "Content-Security-Policy": "default-src 'none'; form-action https://www.liqpay.ua; base-uri 'none'; frame-ancestors 'none'",
+                "Referrer-Policy": "no-referrer",
+                "X-Content-Type-Options": "nosniff",
+            },
+        )
+
+    @app.get("/health")
+    def health():
+        return {"status": "ok"}
+
+    @app.get("/ready")
+    def ready():
+        with db.transaction() as c:
+            c.execute("SELECT version FROM billing.schema_migrations WHERE version=9")
+            if not c.fetchone():
+                raise HTTPException(503, "Billing schema not ready")
+        return dict(status="ready", environment=db.environment)
+
+    @app.post("/v1/bindings")
+    def bind(data: Binding, request: Request, payload=Depends(claims)):
+        if (
+            payload.get("owner_verified") is not True
+            or payload.get("workspace_id") != data.workspace_id
+            or payload.get("product") != data.product
+        ):
+            raise Forbidden("Trusted owner proof required")
+        if data.account_id != payload.get("account_id"):
+            raise Forbidden("Account linking proof mismatch")
+        allowed = json.loads(
+            os.getenv(
+                "BILLING_PEER_PRODUCTS_JSON",
+                '{"warehouse":["warehouse"],"telegram":["garage","site","seller_crm"]}',
+            )
+        )
+        if data.product not in allowed.get(request.state.peer, []):
+            raise Forbidden("Peer is not authorized for this product")
+        return core.bind_owner(
+            data.workspace_id,
+            payload["principal_id"],
+            data.product,
+            request.state.peer,
+            account_id=data.account_id,
+        )
+
+    class RecurringConsent(Command):
+        binding_id: str
+        sku: str
+        request_key: str
+        accepted: bool = Field(strict=True)
+        version: str
+
+    @app.post("/v1/recurring")
+    def recurring_consent(data: RecurringConsent, who=Depends(actor)):
+        values = data.model_dump()
+        return recurring.consent(
+            who,
+            values.pop("binding_id"),
+            values.pop("sku"),
+            values.pop("request_key"),
+            **values,
+        )
+
+    @app.post("/v1/recurring/{mandate}/registration")
+    def recurring_registration(mandate: str, who=Depends(actor)):
+        return recurring.registration(who, mandate)
+
+    @app.post("/v1/recurring/{mandate}/cancel")
+    def recurring_cancel(mandate: str, who=Depends(actor)):
+        return recurring.cancel(who, mandate)
+
+    @app.post("/v1/bindings/{binding}/cancel-renewal")
+    def binding_cancel(binding: str, who=Depends(actor)):
+        with db.transaction() as c:
+            core.authorize(c, who, Permission.MANAGE)
+            c.execute(
+                "SELECT m.id FROM billing.recurring_mandates m WHERE m.binding_id=%s AND m.account_id=%s AND m.state<>'canceled'",
+                (binding, who.account_id),
+            )
+            row = c.fetchone()
+        if not row:
+            return dict(
+                state="off", provider_confirmed=True, paid_access_preserved=True
+            )
+        return recurring.cancel(who, row["id"])
+
+    def test_wallet():
+        from .wallet import Wallet
+
+        return Wallet(core, enabled=os.getenv("BILLING_WALLET_TEST_ENABLED") == "true")
+
+    def test_referrals():
+        from .referrals import Referrals
+
+        return Referrals(
+            core, enabled=os.getenv("BILLING_REFERRALS_TEST_ENABLED") == "true"
+        )
+
+    class ReferralBinding(Command):
+        code: str = Field(min_length=16, max_length=16)
+
+    @app.get("/v1/wallet")
+    def wallet_view(who=Depends(actor)):
+        return test_wallet().view(who)
+
+    @app.post("/v1/referrals/code")
+    def referral_code(who=Depends(actor)):
+        return dict(code=test_referrals().code(who), test_only=True)
+
+    @app.post("/v1/referrals/bind")
+    def referral_bind(data: ReferralBinding, who=Depends(actor)):
+        return test_referrals().bind(who, data.code)
+
+    @app.get("/v1/referrals")
+    def referral_history(who=Depends(actor)):
+        return test_referrals().history(who)
+
+    @app.get("/v1/catalogue")
+    def catalogue(who=Depends(actor)):
+        with db.transaction() as c:
+            core.authorize(c, who, Permission.VIEW)
+            c.execute(
+                "SELECT * FROM billing.plan_versions ORDER BY product,sku,version DESC"
+            )
+            return {"items": [dict(r) for r in c.fetchall()]}
+
+    @app.get("/v1/cabinet/{binding}")
+    def cabinet(binding: str, who=Depends(actor)):
+        result = core.cabinet(who, binding)
+        if (
+            db.environment == "sandbox"
+            and os.getenv("BILLING_WALLET_TEST_ENABLED") == "true"
+        ):
+            result["wallet"] = test_wallet().view(who)
+        if (
+            db.environment == "sandbox"
+            and os.getenv("BILLING_REFERRALS_TEST_ENABLED") == "true"
+        ):
+            result["referrals"] = test_referrals().history(who)
+        result.update(
+            checkout_available=payments.checkout_enabled,
+            recurring_available=False,
+            wallet_available=False,
+        )
+        return result
+
+    @app.post("/v1/invoices")
+    def invoice(data: Purchase, who=Depends(actor)):
+        return core.purchase(
+            who, data.binding_id, data.sku, data.request_key, quantity=data.quantity
+        )
+
+    @app.get("/v1/invoices/{invoice}")
+    def get_invoice(invoice: str, who=Depends(actor)):
+        with db.transaction() as c:
+            core.authorize(c, who, Permission.VIEW)
+            return core._invoice_view(c, who, invoice)
+
+    @app.post("/v1/invoices/{invoice}/void")
+    def void(invoice: str, who=Depends(actor)):
+        core.transition_invoice(who, invoice, "void")
+        return {"status": "void"}
+
+    @app.post("/v1/checkout")
+    def checkout(data: Checkout, who=Depends(actor)):
+        return payments.checkout(who, data.invoice_id)
+
+    @app.get("/v1/orders/{order}")
+    def status(order: str, who=Depends(actor)):
+        return payments.status(who, order)
+
+    @app.post("/v1/orders/{order}/refresh")
+    def refresh(order: str, who=Depends(actor)):
+        return payments.reconcile(who, order)
+
+    @app.post("/v1/liqpay/callback")
+    async def callback(request: Request):
+        limiter.acquire()
+        if (
+            request.headers.get("content-type", "").split(";")[0]
+            != "application/x-www-form-urlencoded"
+        ):
+            raise HTTPException(415, "Form encoding required")
+        raw = bytearray()
+        async for chunk in request.stream():
+            raw.extend(chunk)
+            if len(raw) > 70000:
+                raise HTTPException(413, "Callback too large")
+        try:
+            pairs = parse_qsl(
+                raw.decode("ascii"), strict_parsing=True, max_num_fields=2
+            )
+            if len(pairs) != 2 or {p[0] for p in pairs} != {"data", "signature"}:
+                raise ValueError()
+            value = dict(pairs)
+        except (ValueError, UnicodeError):
+            raise HTTPException(400, "Invalid callback") from None
+        decoded = payments.provider.decode_callback(value["data"], value["signature"])
+        if str(decoded.get("order_id", "")).startswith("carpot-recurring-"):
+            await run_in_threadpool(
+                recurring.callback, value["data"], value["signature"]
+            )
+        else:
+            await run_in_threadpool(
+                payments.callback, value["data"], value["signature"]
+            )
+        return {"accepted": True}
+
+    @app.get("/v1/admin/reconciliation")
+    def reviews(request: Request, who=Depends(actor)):
+        if request.state.peer not in set(
+            os.getenv("BILLING_ADMIN_PEERS", "").split(",")
+        ):
+            raise Forbidden("Administrator peer required")
+        with db.transaction() as c:
+            core.authorize(c, who, Permission.MANAGE)
+            c.execute(
+                "SELECT id,invoice_id,reason,created_at FROM billing.reconciliation_cases WHERE account_id=%s ORDER BY created_at DESC LIMIT 100",
+                (who.account_id,),
+            )
+            return {"items": [dict(r) for r in c.fetchall()]}
+
+    return app
+
+
+def main():
+    import argparse
+
+    p = argparse.ArgumentParser()
+    p.add_argument("command", choices=["migrate", "work-once"])
+    args = p.parse_args()
+    if args.command == "work-once":
+        app = create_app()
+        status = (
+            app.state.payments.reconcile_pending()
+            if os.getenv("BILLING_PROVIDER_NETWORK_ENABLED") == "true"
+            else {"checked": 0, "blocked": "provider_network_disabled"}
+        )
+        print(json.dumps({"status": status, "delivery": app.state.delivery.run_once()}))
+        return
+    db = OperationalDatabase(
+        os.environ["BILLING_MIGRATOR_DSN"],
+        environment=os.environ["BILLING_ENVIRONMENT"],
+        role="migrator",
+    )
+    migrate_all(db)
+    GlobalBilling(db).seed_catalogue()
+
+
+if __name__ == "__main__":
+    main()

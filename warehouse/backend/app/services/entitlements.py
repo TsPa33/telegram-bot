@@ -22,6 +22,10 @@ PACKS = {"pack_1": (30000, 1), "pack_5": (120000, 5), "pack_10": (200000, 10)}
 
 
 def enabled():
+    from .global_billing import enabled as global_enabled, environment
+    if global_enabled():
+        environment()  # fail closed for a mixed operational environment
+        return True
     if os.getenv("WAREHOUSE_ENTITLEMENTS_ENABLED") != "true":
         return False
     url = make_url(database_url())
@@ -40,11 +44,12 @@ def lock(db, workspace):
 
 
 def projection(db, workspace):
-    return (
-        db.get(EntitlementWorkspace, workspace, populate_existing=True)
-        if enabled()
-        else None
-    )
+    if not enabled():return None
+    row=db.get(EntitlementWorkspace, workspace, populate_existing=True)
+    from .global_billing import enabled as global_enabled, environment
+    if global_enabled() and row and row.source_environment!=environment():
+        raise HTTPException(409,'Існуючі права потребують перевірки середовища та міграції')
+    return row
 
 
 def enforced(db, workspace):

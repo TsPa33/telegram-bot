@@ -3,6 +3,7 @@ import json
 import hashlib
 import logging
 import uuid
+from urllib.parse import urlencode
 
 from bot.database.repositories.payment_repo import create_payment
 from bot.services.site_packages import format_site_package_title
@@ -66,6 +67,9 @@ class LiqPayService:
         seller_id: int,
         product: str
     ):
+        from bot.services.global_billing import enabled,create_checkout
+        if enabled(product):
+            return await create_checkout(seller_id,product,amount)
         order_id = str(uuid.uuid4())
 
         logger.info(
@@ -103,7 +107,7 @@ class LiqPayService:
         json_data = json.dumps(payload)
         data = base64.b64encode(json_data.encode()).decode()
         signature = self._sign(data)
-        url = f"{self.api_url}?data={data}&signature={signature}"
+        url = self.api_url + "?" + urlencode({"data":data,"signature":signature})
 
         if product == "seller_crm":
             logger.info("CRM_PAYMENT_ROW_CREATED order_id=%s", payment["order_id"])

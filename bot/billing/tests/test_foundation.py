@@ -503,6 +503,7 @@ def test_cross_company_foreign_keys_and_outbox_immutability(foundation):
 def test_legacy_checkout_remains_fixture_only_without_network():
     # Execute only the original class AST, replacing its DB boundary with a stub.
     import ast, asyncio, base64, hashlib, json, logging
+    from urllib.parse import urlencode, urlsplit, parse_qs
 
     source = Path("bot/services/liqpay_service.py").read_text()
     tree = ast.parse(source)
@@ -516,6 +517,7 @@ def test_legacy_checkout_remains_fixture_only_without_network():
         return {"order_id": kwargs["order_id"]}
 
     namespace = dict(
+        urlencode=urlencode,
         base64=base64,
         json=json,
         hashlib=hashlib,
@@ -537,11 +539,8 @@ def test_legacy_checkout_remains_fixture_only_without_network():
     )
     from urllib.parse import urlsplit
 
-    # Legacy concatenates unescaped base64; inspect raw query to preserve '+' bytes.
-    # Its encoding problem belongs to the separately scoped provider migration.
-    query = dict(
-        part.split("=", 1) for part in urlsplit(result["url"]).query.split("&")
-    )
+    # Standard URL parsing must preserve every base64 byte, including '+' and '='.
+    query = {k: v[0] for k, v in parse_qs(urlsplit(result["url"]).query).items()}
     data = query["data"]
     payload = json.loads(base64.b64decode(data))
     assert (
@@ -561,7 +560,7 @@ def test_legacy_checkout_remains_fixture_only_without_network():
 
 def test_legacy_and_warehouse_unchanged():
     root = Path(__file__).resolve().parents[3]
-    # Legacy CarPot remains byte-for-byte baseline. Warehouse is intentionally extended in Phase 2.
+    # Global integration changes only the explicit adapters below. All other legacy code remains byte-for-byte baseline.
     changed = subprocess.check_output(
         [
             "git",
@@ -578,7 +577,53 @@ def test_legacy_and_warehouse_unchanged():
         cwd=root,
         text=True,
     )
-    assert changed == ""
+    allowed = {
+        "bot/api/liqpay_callback.py",
+        "bot/services/liqpay_service.py",
+        "bot/services/global_billing.py",
+        "bot/database/repositories/seller_repo.py",
+        "bot/database/repositories/seller_crm_repo.py",
+        "bot/database/repositories/site_repo.py",
+        "bot/database/migrations/20261114_global_billing_projection.sql",
+    }
+    assert set(changed.splitlines()) <= allowed
+    # The original checkout implementation remains byte-for-byte in AST after the opt-in guard.
+    import ast
+
+    baseline = subprocess.check_output(
+        [
+            "git",
+            "show",
+            "160ffbeef61d80b174a82dca1bebef90c7f2e033:bot/services/liqpay_service.py",
+        ],
+        cwd=root,
+        text=True,
+    )
+
+    def checkout(source):
+        return next(
+            n
+            for n in ast.walk(ast.parse(source))
+            if isinstance(n, ast.AsyncFunctionDef) and n.name == "create_payment"
+        )
+
+    before = checkout(baseline)
+    after = checkout((root / "bot/services/liqpay_service.py").read_text())
+    assert (
+        isinstance(after.body[0], ast.ImportFrom)
+        and after.body[0].module == "bot.services.global_billing"
+    )
+    assert isinstance(after.body[1], ast.If)
+    # Fix the legacy URL's base64 + escaping; every other legacy checkout statement is retained.
+    for node in before.body:
+        if isinstance(node, ast.Assign) and any(
+            isinstance(t, ast.Name) and t.id == "url" for t in node.targets
+        ):
+            node.value = ast.parse(
+                'self.api_url + "?" + urlencode({"data":data,"signature":signature})',
+                mode="eval",
+            ).body
+    assert [ast.dump(n) for n in before.body] == [ast.dump(n) for n in after.body[2:]]
     # No startup registration or legacy provider coupling in the new module.
     for path in (root / "bot/billing").glob("*.py"):
         source = path.read_text()

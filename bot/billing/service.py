@@ -36,11 +36,24 @@ def fingerprint(payload):
 class Billing:
     def __init__(self, db: Database, adapter: PaymentAdapter | None = None):
         self.db = db
-        self.adapter = adapter or FixtureAdapter()
-        if self.adapter.name != "fixture" or self.adapter.environment != "test":
-            raise BillingError(
-                "Only the isolated fixture adapter is executable in Phase 1"
-            )
+        from .storage import OperationalDatabase
+
+        if type(db) is OperationalDatabase:
+            if adapter is not None:
+                raise BillingError(
+                    "Operational verification belongs to the configured provider boundary"
+                )
+            self.adapter = None
+        else:
+            self.adapter = adapter or FixtureAdapter()
+            if (
+                type(db) is not Database
+                or self.adapter.name != "fixture"
+                or self.adapter.environment != "test"
+            ):
+                raise BillingError(
+                    "Only the isolated fixture adapter is executable in fixture storage"
+                )
 
     @staticmethod
     def authorize(cur, actor: Actor, permission: Permission):
@@ -58,6 +71,10 @@ class Billing:
 
     def provision_fixture_account(self, owner: str, *, kind: str = "company") -> Actor:
         """Trusted fixture provisioning, not a public registration endpoint."""
+        if type(self.db) is not Database:
+            raise BillingError(
+                "Fixture provisioning is forbidden in operational storage"
+            )
         account = uid()
         with self.db.transaction() as cur:
             cur.execute(
@@ -328,6 +345,10 @@ class Billing:
         Only callable in local fixture storage; no HTTP route is registered.
         A failed/pending event never demotes confirmed money or entitlements.
         """
+        if self.adapter is None:
+            raise BillingError(
+                "Fixture verification cannot settle operational invoices"
+            )
         self.adapter.verify(event)
         digest = fingerprint(asdict(event))
         with self.db.transaction() as cur:
@@ -410,101 +431,116 @@ class Billing:
                 return event.status
             if intent["invoice_status"] != "open":
                 raise Conflict("Invoice is not collectible")
-            journal = uid()
+            return self._settle(cur, intent, event)
+
+    def _settle(self, cur, intent, event):
+        """Shared atomic posting only; callers must cross their provider verifier first."""
+        intent_id = intent.get("intent_id", intent["id"])
+        journal = uid()
+        cur.execute(
+            "INSERT INTO billing.journal_transactions(id,account_id,external_key,currency) VALUES (%s,%s,%s,%s)",
+            (
+                journal,
+                intent["account_id"],
+                f"{event.provider}:{event.transaction_id}",
+                event.currency,
+            ),
+        )
+        for ledger, amount in (
+            ("provider_clearing", event.amount_minor),
+            ("service_obligation", -event.amount_minor),
+        ):
             cur.execute(
-                "INSERT INTO billing.journal_transactions(id,account_id,external_key,currency) VALUES (%s,%s,%s,%s)",
-                (
-                    journal,
-                    intent["account_id"],
-                    f"{event.provider}:{event.transaction_id}",
-                    event.currency,
-                ),
+                "INSERT INTO billing.journal_entries VALUES (%s,%s,%s,%s,%s)",
+                (uid(), journal, intent["account_id"], ledger, amount),
             )
-            for ledger, amount in (
-                ("provider_clearing", event.amount_minor),
-                ("service_obligation", -event.amount_minor),
-            ):
-                cur.execute(
-                    "INSERT INTO billing.journal_entries VALUES (%s,%s,%s,%s,%s)",
-                    (uid(), journal, intent["account_id"], ledger, amount),
-                )
-            cur.execute(
-                "INSERT INTO billing.settlements(id,account_id,invoice_id,intent_id,provider,transaction_id,journal_id) "
-                "VALUES (%s,%s,%s,%s,%s,%s,%s)",
-                (
-                    uid(),
-                    intent["account_id"],
-                    intent["invoice_id"],
-                    event.intent_id,
-                    event.provider,
-                    event.transaction_id,
-                    journal,
-                ),
-            )
-            cur.execute(
-                "UPDATE billing.invoices SET status='paid' WHERE id=%s",
-                (intent["invoice_id"],),
-            )
-            cur.execute(
-                "UPDATE billing.attempts SET status='confirmed' WHERE intent_id=%s",
-                (event.intent_id,),
-            )
-            cur.execute(
-                "SELECT p.*,s.binding_id,s.sku,s.plan_version,b.workspace_id,b.product "
-                "FROM billing.periods p JOIN billing.subscriptions s ON s.id=p.subscription_id "
-                "JOIN billing.bindings b ON b.id=s.binding_id WHERE p.id=%s FOR UPDATE OF s",
-                (intent["period_id"],),
-            )
-            period = cur.fetchone()
-            cur.execute(
-                "UPDATE billing.subscriptions SET status='active',projection_version=projection_version+1 "
-                "WHERE id=%s RETURNING projection_version",
-                (period["subscription_id"],),
-            )
-            version = cur.fetchone()["projection_version"]
-            cur.execute(
-                "SELECT vehicle_capacity,employees FROM billing.plan_versions WHERE sku=%s AND version=%s",
-                (period["sku"], period["plan_version"]),
-            )
-            limits = dict(cur.fetchone())
-            # Full snapshot of paid intervals, so late settlement cannot shorten access.
-            cur.execute(
-                "SELECT p.starts_at,p.ends_at FROM billing.periods p JOIN billing.invoices i "
-                "ON i.period_id=p.id WHERE p.subscription_id=%s AND i.status='paid' ORDER BY p.starts_at",
-                (period["subscription_id"],),
-            )
-            intervals = [
-                {"start": p["starts_at"].isoformat(), "end": p["ends_at"].isoformat()}
-                for p in cur.fetchall()
-            ]
-            event_id = uid()
-            payload = {
-                "schema_version": 1,
-                "event_id": event_id,
-                "environment": "test",
-                "activates_real_services": False,
-                "account_id": intent["account_id"],
-                "workspace_id": period["workspace_id"],
-                "product": period["product"],
-                "subscription_id": period["subscription_id"],
-                "version": version,
-                "sku": period["sku"],
-                "plan_version": period["plan_version"],
-                "limits": limits,
-                "paid_intervals": intervals,
-            }
-            cur.execute(
-                "INSERT INTO billing.outbox(id,account_id,aggregate_id,version,topic,payload) "
-                "VALUES (%s,%s,%s,%s,'billing.entitlement.snapshot.v1',%s)",
-                (
-                    event_id,
-                    intent["account_id"],
-                    period["subscription_id"],
-                    version,
-                    Json(payload),
-                ),
-            )
-            return "settled"
+        cur.execute(
+            "INSERT INTO billing.settlements(id,account_id,invoice_id,intent_id,provider,transaction_id,journal_id) "
+            "VALUES (%s,%s,%s,%s,%s,%s,%s)",
+            (
+                uid(),
+                intent["account_id"],
+                intent["invoice_id"],
+                intent_id,
+                event.provider,
+                event.transaction_id,
+                journal,
+            ),
+        )
+        cur.execute(
+            "UPDATE billing.invoices SET status='paid' WHERE id=%s",
+            (intent["invoice_id"],),
+        )
+        cur.execute(
+            "UPDATE billing.attempts SET status='confirmed' WHERE intent_id=%s",
+            (intent_id,),
+        )
+        cur.execute(
+            "SELECT p.*,s.binding_id,s.sku,s.plan_version,b.workspace_id,b.product "
+            "FROM billing.periods p JOIN billing.subscriptions s ON s.id=p.subscription_id "
+            "JOIN billing.bindings b ON b.id=s.binding_id WHERE p.id=%s FOR UPDATE OF s",
+            (intent["period_id"],),
+        )
+        period = cur.fetchone()
+        cur.execute(
+            "UPDATE billing.subscriptions SET status='active',projection_version=projection_version+1 "
+            "WHERE id=%s RETURNING projection_version",
+            (period["subscription_id"],),
+        )
+        version = cur.fetchone()["projection_version"]
+        cur.execute(
+            "SELECT vehicle_capacity,employees FROM billing.plan_versions WHERE sku=%s AND version=%s",
+            (period["sku"], period["plan_version"]),
+        )
+        limits = dict(cur.fetchone())
+        # Full snapshot of paid intervals, so late settlement cannot shorten access.
+        cur.execute(
+            "SELECT p.starts_at,p.ends_at FROM billing.periods p JOIN billing.invoices i "
+            "ON i.period_id=p.id WHERE p.subscription_id=%s AND i.status='paid' ORDER BY p.starts_at",
+            (period["subscription_id"],),
+        )
+        intervals = [
+            {"start": p["starts_at"].isoformat(), "end": p["ends_at"].isoformat()}
+            for p in cur.fetchall()
+        ]
+        event_id = uid()
+        payload = {
+            "schema_version": 1,
+            "event_id": event_id,
+            "environment": "test",
+            "activates_real_services": False,
+            "account_id": intent["account_id"],
+            "workspace_id": period["workspace_id"],
+            "product": period["product"],
+            "subscription_id": period["subscription_id"],
+            "version": version,
+            "sku": period["sku"],
+            "plan_version": period["plan_version"],
+            "limits": limits,
+            "paid_intervals": intervals,
+        }
+        payload = self.entitlement_payload(cur, period, intent, payload)
+        topic = (
+            "billing.entitlement.snapshot.v1"
+            if payload["schema_version"] == 1
+            else "billing.entitlement.snapshot.v2"
+        )
+        cur.execute(
+            "INSERT INTO billing.outbox(id,account_id,aggregate_id,version,topic,payload) "
+            "VALUES (%s,%s,%s,%s,%s,%s)",
+            (
+                event_id,
+                intent["account_id"],
+                period["subscription_id"],
+                version,
+                topic,
+                Json(payload),
+            ),
+        )
+        return "settled"
+
+    def entitlement_payload(self, cur, period, intent, payload):
+        return payload
 
     def invoice(self, actor: Actor, invoice_id: str):
         with self.db.transaction() as cur:

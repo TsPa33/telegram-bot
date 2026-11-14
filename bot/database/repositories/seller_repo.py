@@ -111,7 +111,11 @@ async def get_active_slots(seller_id: int) -> int:
           AND expires_at > NOW()
     """, seller_id)
 
-    return row["total"] if row else 0
+    legacy = row["total"] if row else 0
+    from bot.services.global_billing import active_intervals
+    intervals=await active_intervals(seller_id,'garage')
+    # Legacy capacity is preserved. Canonical renewals are continuous, never monthly credits.
+    return legacy+max((i['vehicle_capacity'] for i in intervals),default=0)
 
 
 async def get_used_slots(seller_id: int) -> int:

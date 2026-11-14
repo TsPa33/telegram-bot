@@ -57,23 +57,26 @@ class Database:
             conn.close()
 
     def migrate(self):
-        """Additive local migration only, never part of legacy migrations_runner."""
-        with self.transaction() as cur:
-            cur.execute("SELECT pg_advisory_xact_lock(48151901)")
-            cur.execute("CREATE SCHEMA IF NOT EXISTS billing")
-            cur.execute(
-                "CREATE TABLE IF NOT EXISTS billing.schema_migrations "
-                "(version integer PRIMARY KEY, applied_at timestamptz DEFAULT now())"
-            )
-            cur.execute("SELECT version FROM billing.schema_migrations WHERE version=1")
-            if cur.fetchone():
-                return
-            cur.execute(
-                (Path(__file__).parent / "migrations/001_foundation.sql").read_text()
-            )
-            cur.execute("INSERT INTO billing.schema_migrations(version) VALUES (1)")
+        migrate_foundation(self)
 
     def rollback(self):
         raise BillingError(
             "Destructive downgrade refused: preserve financial history; disable routing instead"
         )
+
+
+def migrate_foundation(db):
+    with db.transaction() as cur:
+        cur.execute("SELECT pg_advisory_xact_lock(48151901)")
+        cur.execute("CREATE SCHEMA IF NOT EXISTS billing")
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS billing.schema_migrations "
+            "(version integer PRIMARY KEY, applied_at timestamptz DEFAULT now())"
+        )
+        cur.execute("SELECT version FROM billing.schema_migrations WHERE version=1")
+        if cur.fetchone():
+            return
+        cur.execute(
+            (Path(__file__).parent / "migrations/001_foundation.sql").read_text()
+        )
+        cur.execute("INSERT INTO billing.schema_migrations(version) VALUES (1)")

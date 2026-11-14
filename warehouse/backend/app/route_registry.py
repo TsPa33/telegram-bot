@@ -219,3 +219,13 @@ KNOWN_ROUTES=KNOWN_ROUTES.union({('GET','/api/v1/plan-parts/responses/{id}')})
 
 KNOWN_ROUTES=KNOWN_ROUTES.union({('GET','/api/v1/plan-parts/articles/history'),('POST','/api/v1/plan-parts/donor-parts/article/select')})
 KNOWN_ROUTES=KNOWN_ROUTES.union({('GET','/api/v1/vehicles/{id}/dismantling-workspace'),('POST','/api/v1/vehicles/{id}/dismantling-workspace/annotations'),('POST','/api/v1/vehicles/{id}/dismantling-workspace/translations')})
+
+# Explicit global finance routes. Each handler still performs owner/company authorization.
+KNOWN_ROUTES=KNOWN_ROUTES.union({
+    ('GET','/api/v1/billing/cabinet'),
+    ('POST','/api/v1/billing/invoices'),
+    ('GET','/api/v1/billing/invoices/{invoice}'),
+    ('POST','/api/v1/billing/invoices/{invoice}/void'),
+    ('GET','/api/v1/billing/orders/{order}'),
+    ('POST','/api/v1/billing/orders/{order}/refresh'),
+})

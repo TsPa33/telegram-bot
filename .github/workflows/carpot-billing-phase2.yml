@@ -22,6 +22,10 @@ jobs:
         with: {python-version: '3.12'}
       - run: python -m pip install -r bot/billing/requirements-test.txt
       - run: python -m bot.billing.run_fixture_tests
+      - name: Build isolated API image without acceptance drivers
+        run: |
+          docker build -f bot/billing/Dockerfile -t carpot-billing-api:ci .
+          docker run --rm --entrypoint python carpot-billing-api:ci -c "from pathlib import Path; import bot.billing.api; assert not Path('/app/bot/billing/tests').exists()"
   warehouse-full:
     runs-on: ubuntu-latest
     timeout-minutes: 35
@@ -256,3 +260,72 @@ jobs:
             /tmp/dv2-browser
             /tmp/dv2-api.log
             /tmp/dv2-vite.log
+
+  global-billing-browser:
+    name: Global Billing synthetic two-service checkout (Chromium and WebKit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env: {POSTGRES_PASSWORD: isolated-ci-fixture, POSTGRES_DB: warehouse_global_browser_test}
+        ports: ['5432:5432']
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      WAREHOUSE_DATABASE_URL: postgresql+psycopg://postgres:isolated-ci-fixture@127.0.0.1:5432/warehouse_global_browser_test
+      CARPOT_BILLING_BROWSER_DSN: host=127.0.0.1 port=5432 dbname=carpot_billing_global_browser_test user=postgres password=isolated-ci-fixture
+      WAREHOUSE_ENV: local
+      WAREHOUSE_COOKIE_SECURE: 'false'
+      WAREHOUSE_CATALOGUE_WORKER_ENABLED: 'false'
+      WAREHOUSE_E2E: '1'
+      WAREHOUSE_GLOBAL_BILLING_ENABLED: 'true'
+      WAREHOUSE_BILLING_ENVIRONMENT: sandbox
+      WAREHOUSE_GLOBAL_BILLING_MODE: enforce
+      WAREHOUSE_BILLING_API_URL: https://billing.example.test
+      WAREHOUSE_BILLING_SERVICE_KEY: global-browser-synthetic-peer-secret-123456789
+      BILLING_BROWSER_FIXTURE_KEY: local-browser-driver-secret-123456789
+      WAREHOUSE_API_PROXY: http://127.0.0.1:8421
+      GLOBAL_BILLING_ORIGIN: http://127.0.0.1:5255
+      PYTHONPATH: '${{ github.workspace }}:${{ github.workspace }}/warehouse/backend'
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: python -m pip install -r warehouse/backend/requirements.txt psycopg2-binary==2.9.9
+      - name: Prepare isolated Finance DB
+        run: |
+          python - <<'PY'
+          import psycopg
+          with psycopg.connect('host=127.0.0.1 user=postgres password=isolated-ci-fixture dbname=warehouse_global_browser_test',autocommit=True) as c:
+              c.execute('CREATE DATABASE carpot_billing_global_browser_test')
+          PY
+      - run: python -m alembic upgrade head
+        working-directory: warehouse/backend
+      - run: npm ci
+        working-directory: warehouse/frontend
+      - run: npx playwright install --with-deps chromium webkit
+        working-directory: warehouse/frontend
+      - name: Start explicitly local-only browser drivers
+        run: |
+          cd warehouse/backend
+          python -m uvicorn global_browser_warehouse:app --app-dir tests --host 127.0.0.1 --port 8421 > /tmp/global-billing-api.log 2>&1 &
+          cd ../frontend
+          npm run dev -- --host 127.0.0.1 --port 5255 --strictPort > /tmp/global-billing-ui.log 2>&1 &
+          for attempt in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:5255/health >/dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:5255/health
+      - run: node tests/billing-global-browser.mjs
+        working-directory: warehouse/frontend
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: global-billing-synthetic-browser-evidence
+          path: |
+            /tmp/carpot-global-billing
+            /tmp/global-billing-api.log
+            /tmp/global-billing-ui.log

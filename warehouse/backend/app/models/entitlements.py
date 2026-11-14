@@ -24,6 +24,8 @@ class EntitlementWorkspace(Base):
     version: Mapped[int] = mapped_column(Integer, default=0)
     intervals: Mapped[list] = mapped_column(JSON, default=list)
     trial_used: Mapped[bool] = mapped_column(Boolean, default=False)
+    source_environment: Mapped[str] = mapped_column(String(20), default="test", server_default="test")
+    global_binding_id: Mapped[str | None] = mapped_column(String(80), nullable=True)
 
 
 class EntitlementReceipt(Base):

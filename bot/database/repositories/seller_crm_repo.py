@@ -1,3 +1,4 @@
+from bot.services.global_billing import projected_crm
 from datetime import datetime
 import json
 import logging
@@ -263,7 +264,7 @@ async def ensure_free_crm_account(
 
 
 async def get_crm_account_by_slug(crm_slug: str):
-    return await fetchrow(
+    return await projected_crm(await fetchrow(
         """
         SELECT sca.*, s.telegram_id, s.username, s.shop_name, s.name, s.crm_enabled, s.has_site, s.website, s.city
         FROM seller_crm_accounts sca
@@ -272,13 +273,13 @@ async def get_crm_account_by_slug(crm_slug: str):
         LIMIT 1
         """,
         crm_slug,
-    )
+    ))
 
 
 async def get_crm_account_for_login(identifier: str, crm_slug: str | None = None):
     identifier = (identifier or "").strip()
     if crm_slug:
-        return await fetchrow(
+        return await projected_crm(await fetchrow(
             """
             SELECT sca.*, s.telegram_id, s.username, s.shop_name, s.name, s.crm_enabled
             FROM seller_crm_accounts sca
@@ -289,9 +290,9 @@ async def get_crm_account_for_login(identifier: str, crm_slug: str | None = None
             """,
             crm_slug,
             identifier,
-        )
+        ))
 
-    return await fetchrow(
+    return await projected_crm(await fetchrow(
         """
         SELECT sca.*, s.telegram_id, s.username, s.shop_name, s.name, s.crm_enabled
         FROM seller_crm_accounts sca
@@ -303,7 +304,7 @@ async def get_crm_account_for_login(identifier: str, crm_slug: str | None = None
         LIMIT 1
         """,
         identifier,
-    )
+    ))
 
 
 async def upsert_crm_account(seller_id: int, crm_slug: str, password_hash: str):
@@ -342,7 +343,7 @@ async def create_crm_session(account_id: int, token: str, expires_at: datetime):
 
 
 async def get_crm_session(token: str):
-    return await fetchrow(
+    return await projected_crm(await fetchrow(
         """
         SELECT scs.*, sca.seller_id, sca.crm_slug, sca.is_active, s.crm_enabled,
                s.telegram_id, s.username, s.shop_name, s.name
@@ -353,7 +354,7 @@ async def get_crm_session(token: str):
         LIMIT 1
         """,
         token,
-    )
+    ))
 
 
 async def delete_crm_session(token: str):

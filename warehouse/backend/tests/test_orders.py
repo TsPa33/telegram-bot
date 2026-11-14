@@ -238,7 +238,8 @@ def test_migration_preserves_v5_data_and_refuses_destructive_downgrade(logged,ve
         assert db.execute(text('SELECT count(*) FROM buyers')).scalar_one()==0
     b=buyer(c);order=create(c,b,[line(p)])
     result=run([sys.executable,'-m','alembic','downgrade','c24a9b71e603'],capture_output=True,text=True)
-    assert result.returncode!=0 and ('Cannot discard' in result.stderr or 'Paid response/provenance history must be preserved' in result.stderr or 'Forward-only VIN evidence migration' in result.stderr)
+    assert result.returncode!=0 and 'Preserve canonical Billing identities and snapshots; roll forward or disable routing' in result.stderr
+    with engine().connect() as db:assert db.execute(text('SELECT version_num FROM alembic_version')).scalar_one()=='b23c45d67e89'
     assert c.get('/api/v1/orders/'+order['id']).status_code==200
 
 

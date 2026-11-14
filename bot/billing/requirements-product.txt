@@ -1,0 +1,2 @@
+# Optional product HTTP SDK. Install alongside existing bot requirements only for opt-in rollout.
+httpx==0.28.1
