@@ -23,3 +23,9 @@ export function paymentMessage(payment:Row|null){
  if(payment.status==='expired')return 'Строк оплати завершився. Перевірте статус перед створенням нового рахунку.';
  return 'Очікуємо підтвердження LiqPay';
 }
+
+export function capacityBreakdown(used:number,limit:number){
+ const u=Number.isFinite(used)?Math.max(0,used):0,l=Number.isFinite(limit)?Math.max(0,limit):0;
+ const free=Math.max(0,l-u),excess=Math.max(0,u-l),total=Math.max(1,u,l);
+ return {used:u,limit:l,free,excess,usedPercent:Math.min(u,l)/total*100,excessPercent:excess/total*100};
+}
