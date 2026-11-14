@@ -112,6 +112,7 @@ def register(data: Registration, request: Request, response: Response, db: DB):
     # Commit the real registration before calling a remote service. A temporary
     # outage cannot lose the account or its referral intent.
     if finance.enabled() and os.getenv("WAREHOUSE_BILLING_ENVIRONMENT") == "sandbox":
+        result["billing_onboarding"] = True
         try:
             lock_workspace(db, user.id)
             who = Identity(user, None, user.id, user.id, frozenset())

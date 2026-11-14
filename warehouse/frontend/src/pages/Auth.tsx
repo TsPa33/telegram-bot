@@ -91,7 +91,7 @@ export default function Auth({ onLogin }: { onLogin: (u: Row, registered: boolea
                 "POST",
                 register&&invite?{...data,referral_code:invite}:data,
               );
-              onLogin(res.user,register);
+              onLogin(res.user,register&&res.billing_onboarding===true);
             }}
           />
           {registrationAllowed ? (
