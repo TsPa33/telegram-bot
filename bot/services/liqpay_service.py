@@ -66,6 +66,9 @@ class LiqPayService:
         seller_id: int,
         product: str
     ):
+        from bot.services.global_billing import enabled,create_checkout
+        if enabled(product):
+            return await create_checkout(seller_id,product,amount)
         order_id = str(uuid.uuid4())
 
         logger.info(

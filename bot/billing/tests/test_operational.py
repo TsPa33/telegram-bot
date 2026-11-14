@@ -386,3 +386,106 @@ def test_production_adoption_rejects_fixture_money_history(foundation):
     )
     with pytest.raises(BillingError):
         migrate_all(db)
+
+
+def test_product_terms_and_canonical_settlement(operational):
+    core, payments, p, _, _, _ = operational
+    core.seed_catalogue()
+    from bot.billing.products import PRODUCTS
+    from datetime import datetime, timezone
+
+    for number, (sku, (product, amount, capacity, cadence)) in enumerate(
+        PRODUCTS.items()
+    ):
+        bound = core.bind_owner(
+            "seller:" + str(number), "telegram:" + str(number), product, "telegram"
+        )
+        a = Actor("telegram:" + str(number), bound["account_id"], frozenset(Permission))
+        invoice = core.purchase(
+            a,
+            bound["binding_id"],
+            sku,
+            "product-1",
+            now=datetime(2026, 11, 14, tzinfo=timezone.utc),
+        )
+        assert invoice["amount_minor"] == amount
+        assert (invoice["ends_at"] - invoice["starts_at"]).days == (
+            365 if cadence == "year" else 30
+        )
+        order = payments.checkout(a, invoice["id"])
+        assert (
+            payments.callback(**callback(p, order, payment_id="product-" + str(number)))
+            == "settled"
+        )
+        snapshot = rows(
+            core.db,
+            "SELECT payload FROM billing.outbox WHERE account_id=%s",
+            (a.account_id,),
+        )[0]["payload"]
+        assert snapshot["product"] == product and len(snapshot["intervals"]) == 1
+        assert snapshot["intervals"][0]["vehicle_capacity"] == capacity
+        next_invoice = core.purchase(a, bound["binding_id"], sku, "product-2")
+        assert next_invoice["starts_at"] == invoice["ends_at"]
+
+
+def test_hosted_capability_and_product_sdk(operational, monkeypatch):
+    import asyncio
+    from bot.billing.public_checkout import HostedLinks
+    from bot.billing.client import BillingClient
+
+    core, payments, p, a, _, invoice = operational
+    monkeypatch.setenv("BILLING_PUBLIC_ORIGIN", "https://billing.example.test")
+    monkeypatch.setenv(
+        "BILLING_PUBLIC_LINK_KEY", "synthetic-only-public-link-key-123456789"
+    )
+    app = create_app(
+        core.db, p.profile, peer_keys={"warehouse": KEY}, checkout_enabled=True
+    )
+    order = app.state.payments.checkout(a, invoice)
+    token = order["hosted_url"].split("/pay/")[1]
+    with TestClient(app) as c:
+        page = c.get("/pay/" + token)
+        assert page.status_code == 200 and 'method="post"' in page.text
+        assert p.profile.private_key not in page.text and "cc-number" not in page.text
+        assert "frame-ancestors" in page.headers["content-security-policy"]
+        assert (
+            c.get("/pay/" + token[:-1] + ("0" if token[-1] != "0" else "1")).status_code
+            == 400
+        )
+    sdk = BillingClient(
+        "https://billing.example.test",
+        KEY,
+        "warehouse",
+        "sandbox",
+        transport=httpx.ASGITransport(app=app),
+    )
+    reply = asyncio.run(
+        sdk.request(
+            "GET",
+            "/v1/orders/" + order["order_id"],
+            dict(principal_id=a.principal_id, account_id=a.account_id),
+        )
+    )
+    assert reply["status"] == "pending"
+
+
+def test_legacy_preview_cannot_mint_financial_evidence(operational):
+    from bot.billing.products import LegacyMigration
+
+    core, *_ = operational
+    preview = LegacyMigration(core.db).preview(
+        "telegram",
+        [
+            {"order_id": "old-uuid", "status": "success"},
+            {"order_id": "old-uuid", "status": "success"},
+        ],
+    )
+    assert (
+        preview[0]["decision"] == "provider_verification_required"
+        and preview[1]["duplicate"]
+    )
+    with pytest.raises(BillingError):
+        LegacyMigration(core.db).map_verified(
+            "telegram", "old-uuid", "missing", "missing", "missing"
+        )
+    assert not rows(core.db, "SELECT * FROM billing.legacy_mappings")

@@ -21,6 +21,13 @@ class GlobalBilling(Billing):
             raise BillingError("Operational Billing storage required")
         super().__init__(db)
 
+    def seed_catalogue(self):
+        super().seed_catalogue()
+        from .products import seed
+
+        with self.db.transaction() as c:
+            seed(c)
+
     def bind_owner(self, workspace, principal, product, peer, *, account_id=None):
         if not all(
             isinstance(v, str) and 0 < len(v) <= 160
@@ -123,7 +130,16 @@ class GlobalBilling(Billing):
             s = c.fetchone()
         return b, p, s
 
-    def purchase(self, actor, binding, sku, request_key, *, quantity=1, now=None):
+    def purchase(
+        self,
+        actor,
+        binding,
+        sku,
+        request_key,
+        *,
+        quantity=1,
+        now=None,
+    ):
         stamp = now or utcnow()
         if (
             not isinstance(request_key, str)
@@ -173,8 +189,10 @@ class GlobalBilling(Billing):
                     )
                     return self._invoice_view(c, actor, unpaid["id"])
             if p["kind"] == "addon":
+                if p["vehicle_capacity"] * quantity > 1000:
+                    raise BillingError("Add-on exceeds the approved projection limit")
                 c.execute(
-                    "SELECT p.* FROM billing.periods p JOIN billing.invoices i ON i.period_id=p.id WHERE p.subscription_id=%s AND i.kind='base' AND i.status='paid' AND p.starts_at<=%s AND p.ends_at>%s ORDER BY p.starts_at DESC LIMIT 1",
+                    "SELECT p.* FROM billing.periods p JOIN billing.invoices i ON i.period_id=p.id WHERE p.subscription_id=%s AND i.kind='base' AND i.status='paid' AND NOT EXISTS(SELECT 1 FROM billing.settlements q WHERE q.invoice_id=i.id AND (SELECT coalesce(sum(r.amount_minor),0) FROM billing.reversals r WHERE r.settlement_id=q.id)>=i.amount_minor) AND p.starts_at<=%s AND p.ends_at>%s ORDER BY p.starts_at DESC LIMIT 1",
                     (s["id"], stamp, stamp),
                 )
                 period = c.fetchone()
@@ -194,13 +212,18 @@ class GlobalBilling(Billing):
                 )
             else:
                 c.execute(
-                    "SELECT max(p.ends_at) AS ends_at FROM billing.periods p JOIN billing.invoices i ON i.period_id=p.id WHERE p.subscription_id=%s AND i.kind='base' AND i.status='paid'",
+                    "SELECT max(p.ends_at) AS ends_at FROM billing.periods p JOIN billing.invoices i ON i.period_id=p.id WHERE p.subscription_id=%s AND i.kind='base' AND i.status='paid' AND NOT EXISTS(SELECT 1 FROM billing.settlements q WHERE q.invoice_id=i.id AND (SELECT coalesce(sum(r.amount_minor),0) FROM billing.reversals r WHERE r.settlement_id=q.id)>=i.amount_minor)",
                     (s["id"],),
                 )
                 last = c.fetchone()["ends_at"]
                 start = max(stamp, last) if last else stamp
                 anchor = s["calendar_anchor"] or start.day
-                end = anchored_month(start, anchor=anchor)
+                if b["product"] == "warehouse":
+                    end = anchored_month(start, anchor=anchor)
+                else:
+                    from .products import period_end
+
+                    end = period_end(c, p, start)
                 effective = start
                 c.execute(
                     "SELECT * FROM billing.periods WHERE subscription_id=%s AND starts_at=%s",
@@ -316,7 +339,7 @@ class GlobalBilling(Billing):
             (intent["account_id"],),
         )
         trial = c.fetchone()
-        if trial:
+        if trial and period["product"] == "warehouse":
             from .catalogue import CATALOGUE
 
             p = CATALOGUE["warehouse." + trial["plan"]]
@@ -382,16 +405,22 @@ class GlobalBilling(Billing):
             )
             invoices = [dict(r) for r in c.fetchall()]
             c.execute(
-                "SELECT s.id,s.invoice_id,s.created_at,i.amount_minor,i.currency FROM billing.settlements s JOIN billing.invoices i ON i.id=s.invoice_id JOIN billing.periods p ON p.id=i.period_id JOIN billing.subscriptions u ON u.id=p.subscription_id WHERE u.binding_id=%s ORDER BY s.created_at DESC LIMIT 100",
+                "SELECT s.id,s.invoice_id,s.created_at,i.amount_minor,i.currency,o.order_id,(SELECT l.sku FROM billing.invoice_lines l WHERE l.invoice_id=i.id LIMIT 1) AS sku,(SELECT coalesce(sum(r.amount_minor),0)::bigint FROM billing.reversals r WHERE r.settlement_id=s.id) AS refunded_minor FROM billing.settlements s JOIN billing.invoices i ON i.id=s.invoice_id JOIN billing.intents n ON n.id=s.intent_id LEFT JOIN billing.provider_orders o ON o.intent_id=n.id JOIN billing.periods p ON p.id=i.period_id JOIN billing.subscriptions u ON u.id=p.subscription_id WHERE u.binding_id=%s ORDER BY s.created_at DESC LIMIT 100",
                 (binding,),
             )
             payments = [dict(r) for r in c.fetchall()]
+            c.execute(
+                "SELECT r.id,r.invoice_id,r.created_at,i.amount_minor,i.currency FROM billing.reconciliation_cases r JOIN billing.invoices i ON i.id=r.invoice_id JOIN billing.periods p ON p.id=i.period_id JOIN billing.subscriptions s ON s.id=p.subscription_id WHERE s.binding_id=%s ORDER BY r.created_at DESC LIMIT 100",
+                (binding,),
+            )
+            reviews = [dict(r) for r in c.fetchall()]
             return dict(
                 environment=self.db.environment,
                 plans=plans,
                 subscription=dict(subscription) if subscription else None,
                 invoices=invoices,
                 payments=payments,
+                reviews=reviews,
                 can_manage=Permission.MANAGE in actor.permissions,
             )
 

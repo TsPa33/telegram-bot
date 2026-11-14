@@ -2,6 +2,7 @@ from fastapi import APIRouter, Request, HTTPException
 import base64
 import json
 import hashlib
+import hmac
 import logging
 from datetime import datetime
 import pytz
@@ -31,7 +32,7 @@ def verify_signature(data: str, signature: str | None) -> bool:
         hashlib.sha1(sign_string.encode()).digest()
     ).decode()
 
-    return signature == expected_signature
+    return hmac.compare_digest(signature,expected_signature)
 
 
 @router.post("/liqpay/callback")
@@ -46,6 +47,18 @@ async def liqpay_callback(request: Request):
         if not data:
             raise HTTPException(status_code=400, detail="No data")
 
+        # Inspect only a bounded order namespace for routing; never use this as payment proof.
+        from bot.services.global_billing import canonical_order,forward_callback
+        try:
+            if len(data)>65536:raise ValueError()
+            candidate=json.loads(base64.b64decode(data,validate=True))
+            candidate_order=candidate.get('order_id') if isinstance(candidate,dict) else None
+        except (ValueError,TypeError,UnicodeError):
+            raise HTTPException(status_code=400,detail='Invalid payment envelope')
+        if canonical_order(candidate_order):
+            from bot.billing.models import BillingError
+            try:return await forward_callback(data,signature,candidate_order)
+            except BillingError:raise HTTPException(status_code=503,detail='Canonical payment requires retry') from None
         if not verify_signature(data, signature):
             raise HTTPException(status_code=400, detail="Invalid signature")
 

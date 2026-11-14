@@ -3,3 +3,6 @@ psycopg2-binary==2.9.9
 pytest==8.3.5
 fastapi==0.143.1
 httpx==0.28.1
+
+asyncpg==0.29.0
+python-dotenv>=1.0,<2

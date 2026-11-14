@@ -194,12 +194,15 @@ class LiqPayProvider:
     def _json(raw):
         if len(raw) > MAX_DATA:
             raise BillingError("Provider response too large")
-        value = json.loads(
-            raw,
-            parse_float=Decimal,
-            parse_constant=_reject_constant,
-            object_pairs_hook=_unique_object,
-        )
+        try:
+            value = json.loads(
+                raw,
+                parse_float=Decimal,
+                parse_constant=_reject_constant,
+                object_pairs_hook=_unique_object,
+            )
+        except (ValueError, UnicodeError, RecursionError) as exc:
+            raise BillingError("Invalid provider response") from exc
         if not isinstance(value, dict):
             raise BillingError("Provider object required")
         return value

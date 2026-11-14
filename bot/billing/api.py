@@ -4,7 +4,7 @@ import os, json, time, threading, hashlib
 from datetime import datetime, timezone
 from urllib.parse import parse_qsl
 from fastapi import FastAPI, Request, Depends, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, HTMLResponse
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.concurrency import run_in_threadpool
 from .models import Actor, Permission, BillingError, Conflict, Forbidden
@@ -86,11 +86,21 @@ def create_app(
         checkout_enabled = os.getenv("BILLING_CHECKOUT_ENABLED") == "true"
     if not peer_keys or any(len(k) < 32 for k in peer_keys.values()):
         raise BillingError("Explicit peer authentication keys required")
+    from .public_checkout import HostedLinks
+
+    links = None
+    if os.getenv("BILLING_PUBLIC_ORIGIN") and os.getenv("BILLING_PUBLIC_LINK_KEY"):
+        links = HostedLinks(
+            os.environ["BILLING_PUBLIC_ORIGIN"],
+            os.environ["BILLING_PUBLIC_LINK_KEY"].encode(),
+            db.environment,
+        )
     core = GlobalBilling(db)
     payments = Payments(
         core,
         provider or LiqPayProvider(profile),
         checkout_enabled=checkout_enabled is True,
+        hosted_links=links,
     )
     from .delivery import EntitlementDelivery
 
@@ -184,9 +194,18 @@ def create_app(
     def actor(payload=Depends(claims)):
         if not isinstance(payload.get("account_id"), str):
             raise HTTPException(403, "Підтвердження компанії потрібне")
-        return Actor(
-            payload["principal_id"], payload["account_id"], frozenset(Permission)
+        with db.transaction() as c:
+            c.execute(
+                "SELECT permissions FROM billing.memberships WHERE account_id=%s AND principal_id=%s",
+                (payload["account_id"], payload["principal_id"]),
+            )
+            membership = c.fetchone()
+        if not membership:
+            raise Forbidden("Financial membership required")
+        permissions = frozenset(
+            p for p in Permission if p.value in membership["permissions"]
         )
+        return Actor(payload["principal_id"], payload["account_id"], permissions)
 
     class Trial(Command):
         binding_id: str
@@ -210,6 +229,28 @@ def create_app(
         delivery.acknowledge(data.proof)
         return {"accepted": True}
 
+    @app.get("/pay/{token}")
+    def hosted(token: str):
+        limiter.acquire()
+        if not links or not payments.checkout_enabled:
+            raise HTTPException(404)
+        order = links.verify(token)
+        with db.transaction() as c:
+            row = payments._row(c, order)
+            if row["invoice_status"] != "open" or row["expires_at"] <= datetime.now(
+                timezone.utc
+            ):
+                raise Conflict("Checkout no longer payable")
+            form = payments.provider.checkout(payments._terms(row))
+        return HTMLResponse(
+            links.document(form, db.environment == "sandbox"),
+            headers={
+                "Content-Security-Policy": "default-src 'none'; form-action https://www.liqpay.ua; base-uri 'none'; frame-ancestors 'none'",
+                "Referrer-Policy": "no-referrer",
+                "X-Content-Type-Options": "nosniff",
+            },
+        )
+
     @app.get("/health")
     def health():
         return {"status": "ok"}
@@ -217,7 +258,7 @@ def create_app(
     @app.get("/ready")
     def ready():
         with db.transaction() as c:
-            c.execute("SELECT version FROM billing.schema_migrations WHERE version=5")
+            c.execute("SELECT version FROM billing.schema_migrations WHERE version=6")
             if not c.fetchone():
                 raise HTTPException(503, "Billing schema not ready")
         return dict(status="ready", environment=db.environment)
@@ -232,6 +273,14 @@ def create_app(
             raise Forbidden("Trusted owner proof required")
         if data.account_id != payload.get("account_id"):
             raise Forbidden("Account linking proof mismatch")
+        allowed = json.loads(
+            os.getenv(
+                "BILLING_PEER_PRODUCTS_JSON",
+                '{"warehouse":["warehouse"],"telegram":["garage","site","seller_crm"]}',
+            )
+        )
+        if data.product not in allowed.get(request.state.peer, []):
+            raise Forbidden("Peer is not authorized for this product")
         return core.bind_owner(
             data.workspace_id,
             payload["principal_id"],

@@ -1,3 +1,4 @@
+from bot.services.global_billing import projected_site
 import json
 
 from bot.database.base import fetch, fetchrow, execute, transaction
@@ -50,7 +51,7 @@ async def get_site_by_seller(seller_id: int):
 
 
 async def get_site_by_subdomain(subdomain: str):
-    return await fetchrow(
+    return await projected_site(await fetchrow(
         """
         SELECT *
         FROM seller_sites
@@ -58,7 +59,7 @@ async def get_site_by_subdomain(subdomain: str):
         LIMIT 1
         """,
         normalize_subdomain(subdomain),
-    )
+    ))
 
 
 # ================= SAFE MERGE =================

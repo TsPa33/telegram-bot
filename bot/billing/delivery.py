@@ -24,7 +24,10 @@ class EntitlementDelivery:
                 _check_url(p["url"])
 
     def _proof(self, row, peer):
-        if row["payload"].get("environment")!=self.db.environment or row["payload"].get("schema_version")!=2:
+        if (
+            row["payload"].get("environment") != self.db.environment
+            or row["payload"].get("schema_version") != 2
+        ):
             raise BillingError("Outbox environment mismatch")
         return Transport(
             self.peers[peer]["key"],
@@ -77,11 +80,15 @@ class EntitlementDelivery:
                     or payload["version"] < row["version"]
                 ):
                     raise Forbidden("Entitlement acknowledgment scope mismatch")
-                c.execute('SELECT max(version) AS version FROM billing.outbox WHERE aggregate_id=%s',(row['aggregate_id'],))
-                if payload['version']>c.fetchone()['version']:raise Forbidden('Unknown entitlement acknowledgment version')
+                c.execute(
+                    "SELECT max(version) AS version FROM billing.outbox WHERE aggregate_id=%s",
+                    (row["aggregate_id"],),
+                )
+                if payload["version"] > c.fetchone()["version"]:
+                    raise Forbidden("Unknown entitlement acknowledgment version")
                 c.execute(
                     "UPDATE billing.outbox SET delivered_at=now() WHERE aggregate_id=%s AND version<=%s AND delivered_at IS NULL",
-                    (row["aggregate_id"],payload["version"]),
+                    (row["aggregate_id"], payload["version"]),
                 )
                 return True
 
