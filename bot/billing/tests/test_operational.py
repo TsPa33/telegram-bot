@@ -626,3 +626,21 @@ def test_peer_product_allowlist_and_staff_permissions(operational):
             ).status_code
             == 403
         )
+
+
+def test_legacy_mapping_requires_original_provider_order_not_arbitrary_alias(
+    operational,
+):
+    from bot.billing.products import LegacyMigration
+
+    core, payments, p, a, binding, invoice = operational
+    order = payments.checkout(a, invoice)
+    event = callback(p, order)
+    payments.callback(**event)
+    settlement = rows(core.db, "SELECT * FROM billing.settlements")[0]
+    digest = hashlib.sha256(event["data"].encode()).hexdigest()
+    with pytest.raises(BillingError):
+        LegacyMigration(core.db).map_verified(
+            "telegram", "unrelated-legacy-order", invoice, settlement["id"], digest
+        )
+    assert not rows(core.db, "SELECT * FROM billing.legacy_mappings")

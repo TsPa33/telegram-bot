@@ -96,8 +96,8 @@ class LegacyMigration:
         # Only operational LiqPay evidence already verified by the canonical payment boundary.
         with self.db.transaction() as c:
             c.execute(
-                "SELECT s.id FROM billing.settlements s JOIN billing.intents n ON n.id=s.intent_id JOIN billing.provider_orders o ON o.intent_id=n.id JOIN billing.provider_evidence e ON e.order_id=o.order_id WHERE s.id=%s AND s.invoice_id=%s AND n.environment=%s AND n.provider='liqpay' AND e.digest=%s AND e.classification='success' AND e.payment_id=s.transaction_id",
-                (settlement, invoice, self.db.environment, evidence),
+                "SELECT s.id FROM billing.settlements s JOIN billing.intents n ON n.id=s.intent_id JOIN billing.provider_orders o ON o.intent_id=n.id JOIN billing.provider_evidence e ON e.order_id=o.order_id WHERE s.id=%s AND s.invoice_id=%s AND n.environment=%s AND n.provider='liqpay' AND e.digest=%s AND e.classification='success' AND e.payment_id=s.transaction_id AND o.order_id=%s",
+                (settlement, invoice, self.db.environment, evidence, legacy_order),
             )
             if not c.fetchone():
                 raise BillingError("Verified provider evidence required")

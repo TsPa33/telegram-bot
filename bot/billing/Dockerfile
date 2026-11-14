@@ -3,7 +3,6 @@ ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 WORKDIR /app
 COPY bot/billing/requirements-api.txt /tmp/requirements-api.txt
 RUN pip install --no-cache-dir -r /tmp/requirements-api.txt
-COPY bot/__init__.py /app/bot/__init__.py
 COPY bot/billing /app/bot/billing
 RUN rm -rf /app/bot/billing/tests
 RUN useradd --uid 10001 --create-home billing

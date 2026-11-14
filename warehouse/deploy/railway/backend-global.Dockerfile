@@ -6,7 +6,6 @@ RUN pip install --require-hashes -r requirements.lock
 COPY warehouse/backend/app ./app
 COPY warehouse/backend/alembic ./alembic
 COPY warehouse/backend/alembic.ini ./alembic.ini
-COPY bot/__init__.py ./bot/__init__.py
 COPY bot/billing/__init__.py bot/billing/models.py bot/billing/transport.py ./bot/billing/
 RUN useradd --uid 10001 --create-home warehouse && mkdir -p /data/photos && chown -R warehouse:warehouse /data
 USER warehouse
