@@ -126,5 +126,5 @@ def test_global_billing_upgrade_preserves_populated_projection_and_refuses_rollb
         upgraded=protected(c)
         refused=migrate('downgrade','a12b34c56d78',check=False)
         assert refused.returncode!=0 and 'Preserve canonical Billing identities and snapshots; roll forward or disable routing' in refused.stderr
-        assert c.execute('SELECT version_num FROM alembic_version').fetchone()==('b23c45d67e89',)
+        assert c.execute('SELECT version_num FROM alembic_version').fetchone()==('c34d56e78f90',)
         assert protected(c)==upgraded

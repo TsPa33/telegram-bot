@@ -254,3 +254,76 @@ def test_referral_gateway_requires_flags_owner_and_valid_code(global_pilot, monk
         assert staff.post("/api/v1/billing/referrals/code").status_code == 403
     finally:
         staff.close()
+
+
+def _register_invited(client, code, suffix):
+    r = client.post("/api/v1/auth/register", json={
+        "name": "Invited " + suffix, "email": suffix + "@example.test",
+        "password": "synthetic-password-123", "referral_code": code,
+    })
+    assert r.status_code == 201, r.text
+    assert r.json()["billing_onboarding"] is True
+    client.headers["X-CSRF-Token"] = r.json()["csrf_token"]
+    return r.json()["user"]["id"]
+
+
+def test_registration_automatically_attributes_only_new_owner(global_pilot, monkeypatch):
+    from app.main import app
+    c, _, core = global_pilot
+    monkeypatch.setenv("WAREHOUSE_REFERRALS_TEST_ENABLED", "true")
+    monkeypatch.setenv("BILLING_REFERRALS_TEST_ENABLED", "true")
+    assert c.post("/api/v1/billing/bind").status_code == 200
+    code = c.post("/api/v1/billing/referrals/code").json()["code"]
+    with TestClient(app) as invited:
+        workspace = _register_invited(invited, code, "automatic-invite")
+        cabinet = invited.get("/api/v1/billing/cabinet").json()
+        assert cabinet["bound"] is True and cabinet["referral_state"] == "accepted"
+        assert invited.get("/api/v1/billing/referrals").json()["attributed"] is True
+        assert c.get("/api/v1/billing/referrals").json()["invited"] == 1
+        assert invited.post("/api/v1/billing/bind").status_code == 200
+        # Repeat login and opening another URL cannot alter attribution.
+        r = invited.post("/api/v1/auth/login", json={"email": "automatic-invite@example.test", "password": "synthetic-password-123"})
+        assert r.status_code == 200
+        invited.headers["X-CSRF-Token"] = r.json()["csrf_token"]
+        assert invited.get("/api/v1/billing/referrals").json()["attributed"] is True
+        assert c.get("/api/v1/billing/referrals").json()["invited"] == 1
+        with Session(engine()) as db:
+            from app.models import Account
+            row = db.get(Account, workspace)
+            assert row.registration_referral_code == code
+            assert row.registration_referral_state == "accepted"
+    with TestClient(app) as invalid:
+        unknown = "0" * 16 if code != "0" * 16 else "1" * 16
+        _register_invited(invalid, unknown, "invalid-invite")
+        cabinet = invalid.get("/api/v1/billing/cabinet").json()
+        assert cabinet["bound"] and cabinet["referral_state"] == "invalid"
+        assert invalid.get("/api/v1/billing/referrals").json()["attributed"] is False
+        assert invalid.post("/api/v1/billing/invoices", json={"sku":"warehouse.standard","request_key":str(uuid4())}).status_code == 200
+
+
+def test_registration_referral_intent_survives_outage_before_first_invoice(global_pilot, monkeypatch):
+    from app.main import app
+    c, _, core = global_pilot
+    monkeypatch.setenv("WAREHOUSE_REFERRALS_TEST_ENABLED", "true")
+    monkeypatch.setenv("BILLING_REFERRALS_TEST_ENABLED", "true")
+    c.post("/api/v1/billing/bind")
+    code = c.post("/api/v1/billing/referrals/code").json()["code"]
+    original = gateway.request
+    def offline(who, method, path, *args, **kwargs):
+        if path == "/v1/referrals/bind":
+            raise HTTPException(503, "temporary test outage")
+        return original(who, method, path, *args, **kwargs)
+    monkeypatch.setattr(gateway, "request", offline)
+    with TestClient(app) as invited:
+        workspace = _register_invited(invited, code, "outage-invite")
+        assert invited.get("/api/v1/billing/cabinet").json()["referral_state"] == "pending"
+        payload = {"sku":"warehouse.standard","request_key":str(uuid4())}
+        assert invited.post("/api/v1/billing/invoices", json=payload).status_code == 503
+        assert c.get("/api/v1/billing/referrals").json()["invited"] == 0
+        monkeypatch.setattr(gateway, "request", original)
+        result = invited.post("/api/v1/billing/invoices", json=payload)
+        assert result.status_code == 200, result.text
+        assert invited.get("/api/v1/billing/cabinet").json()["referral_state"] == "accepted"
+        assert c.get("/api/v1/billing/referrals").json()["invited"] == 1
+        assert invited.post("/api/v1/billing/invoices", json=payload).json()["id"] == result.json()["id"]
+        assert c.get("/api/v1/billing/referrals").json()["invited"] == 1

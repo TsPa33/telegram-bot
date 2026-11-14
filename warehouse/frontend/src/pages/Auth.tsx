@@ -5,7 +5,7 @@ import { api, type Row } from "../api";
 import { RecordForm } from "../components";
 import {referralInvite} from "../referralCabinet";
 
-export default function Auth({ onLogin }: { onLogin: (u: Row) => void }) {
+export default function Auth({ onLogin }: { onLogin: (u: Row, registered: boolean) => void }) {
   const invite=referralInvite(location.search);
   const [register, setRegister] = useState(false);
   const [registrationAllowed, setRegistrationAllowed] = useState(false);
@@ -63,7 +63,7 @@ export default function Auth({ onLogin }: { onLogin: (u: Row) => void }) {
               ? "Почніть із чистого складу. Додавайте тільки свої дані."
               : "Увійдіть, щоб продовжити роботу зі складом."}
           </p>
-          {invite&&<p className="notice">Запрошення CarPot. Після входу або реєстрації ви зможете підтвердити його до першої оплати.</p>}
+          {invite&&register&&<p className="notice">Вас запросили до CarPot. Запрошення буде враховано автоматично під час реєстрації.</p>}
           <RecordForm
             key={String(register)}
             fields={[
@@ -89,9 +89,9 @@ export default function Auth({ onLogin }: { onLogin: (u: Row) => void }) {
               const res = await api(
                 register ? "/auth/register" : "/auth/login",
                 "POST",
-                data,
+                register&&invite?{...data,referral_code:invite}:data,
               );
-              onLogin(res.user);
+              onLogin(res.user,register&&res.billing_onboarding===true);
             }}
           />
           {registrationAllowed ? (
