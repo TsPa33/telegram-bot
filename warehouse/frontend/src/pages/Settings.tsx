@@ -100,8 +100,8 @@ export default function Settings({user}:{user:Row}){
   const {data,error,loading,reload}=useLoad(()=>api('/settings'),[]);
   const sections=shortcuts.filter(item=>can(item.permission)).filter((item,i,items)=>item.path!=='/sales'||items.findIndex(x=>x.path==='/sales')===i);
   const permissionCount=Array.isArray(user.permissions)?user.permissions.length:0;
-  return <div className="r123-settings">
-    <Heading eyebrow="РОБОЧИЙ ПРОСТІР" title={tab==='payments'?'Оплати':'Загальні налаштування'} description="Ваш профіль, безпека та доступ до інструментів CarPot Warehouse."/>
+  return <div className={'r123-settings'+(tab==='payments'?' r123-settings--payments':'')}>
+    <Heading eyebrow="РОБОЧИЙ ПРОСТІР" title={tab==='payments'?'Оплати':'Загальні налаштування'} description={tab==='payments'?'Підписка, місткість гаража та фінансова історія.':'Ваш профіль, безпека та доступ до інструментів CarPot Warehouse.'}/>
     <div className="r123-profile-bar">
       <span className="r123-profile-avatar" aria-hidden="true">{String(user.name||'К').slice(0,1).toLocaleUpperCase('uk')}</span>
       <div className="r123-profile-intro"><strong>{user.name||'Користувач'}</strong><span>{user.email}</span></div>
