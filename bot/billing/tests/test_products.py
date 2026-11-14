@@ -112,6 +112,7 @@ def test_telegram_garage_projection_and_flags_off(operational, monkeypatch):
 
 def test_flags_off_keep_legacy_projection_objects_and_checkout(monkeypatch):
     import ast, base64, hashlib, json, uuid, logging
+    from urllib.parse import urlencode
     from bot.services import global_billing as gb
 
     for flag in gb.PRODUCT_FLAGS.values():
@@ -133,6 +134,7 @@ def test_flags_off_keep_legacy_projection_objects_and_checkout(monkeypatch):
             return kwargs
 
         namespace = dict(
+            urlencode=urlencode,
             base64=base64,
             hashlib=hashlib,
             json=json,

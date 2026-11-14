@@ -419,7 +419,7 @@ class GlobalBilling(Billing):
             if not b:
                 raise Forbidden("Binding denied")
             c.execute(
-                "SELECT * FROM billing.plan_versions WHERE product=%s ORDER BY sku,version DESC",
+                "SELECT DISTINCT ON (sku) * FROM billing.plan_versions WHERE product=%s ORDER BY sku,version DESC",
                 (b["product"],),
             )
             plans = [dict(r) for r in c.fetchall()]

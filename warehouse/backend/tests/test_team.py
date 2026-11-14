@@ -144,7 +144,7 @@ def test_forward_only_migration_preserves_populated_history_and_owners(logged,pa
         operations=db.execute(text('SELECT row_to_json(o) FROM operations o ORDER BY id')).scalars().all()
         ids=db.execute(text('SELECT id,email,password_hash FROM accounts ORDER BY id')).all()
     refused=run([sys.executable,'-m','alembic','downgrade','a73e05b9c842'],capture_output=True,text=True)
-    assert refused.returncode!=0 and 'Forward-only VIN evidence migration' in refused.stderr
+    assert refused.returncode!=0 and 'Preserve canonical Billing identities and snapshots; roll forward or disable routing' in refused.stderr
     assert run([sys.executable,'-m','alembic','upgrade','head'],capture_output=True).returncode==0
     with engine().connect() as db:
         assert db.execute(text('SELECT row_to_json(p) FROM parts p ORDER BY id')).scalars().all()==parts
@@ -403,7 +403,7 @@ def test_forward_only_refusal_preserves_sessions_reserves_orders_and_replays(log
     # current-head retry, preserving the real cookie, request keys and reserves.
     with engine().connect() as db:revision=db.scalar(text('SELECT version_num FROM alembic_version'))
     refused=run([sys.executable,'-m','alembic','downgrade','a73e05b9c842'],capture_output=True,text=True)
-    assert refused.returncode!=0 and 'Forward-only VIN evidence migration' in refused.stderr
+    assert refused.returncode!=0 and 'Preserve canonical Billing identities and snapshots; roll forward or disable routing' in refused.stderr
     with engine().connect() as db:
         assert db.scalar(text('SELECT version_num FROM alembic_version'))==revision
     preserved=snapshot_tables()

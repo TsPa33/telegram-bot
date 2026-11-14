@@ -107,3 +107,24 @@ def test_entitlement_projection_history_refuses_destructive_downgrade():
             "a12b34c56d78",
         )
         assert protected(c) == before
+
+
+def test_global_billing_upgrade_preserves_populated_projection_and_refuses_rollback():
+    with historical_db('a12b34c56d78') as (c,migrate,env):
+        ids=seed_inventory(c)
+        insert(c,'warehouse_entitlement_workspaces',dict(workspace_id=ids['owner'],owner_id=ids['owner'],billing_account_id=str(uuid4()),version=7,intervals=[]))
+        before=protected(c)
+        projection=c.execute('SELECT row_to_json(w) FROM warehouse_entitlement_workspaces w').fetchone()[0]
+        migrate('upgrade','head')
+        from psycopg import sql
+        for table,(names,rows) in before.items():
+            query=sql.SQL('SELECT {} FROM {} ORDER BY 1').format(sql.SQL(',').join(map(sql.Identifier,names)),sql.Identifier(table))
+            assert c.execute(query).fetchall()==rows,table
+        after=c.execute('SELECT row_to_json(w) FROM warehouse_entitlement_workspaces w').fetchone()[0]
+        assert after.pop('source_environment')=='test' and after.pop('global_binding_id') is None
+        assert after==projection
+        upgraded=protected(c)
+        refused=migrate('downgrade','a12b34c56d78',check=False)
+        assert refused.returncode!=0 and 'Preserve canonical Billing identities and snapshots; roll forward or disable routing' in refused.stderr
+        assert c.execute('SELECT version_num FROM alembic_version').fetchone()==('b23c45d67e89',)
+        assert protected(c)==upgraded
