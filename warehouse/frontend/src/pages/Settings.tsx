@@ -98,7 +98,7 @@ function SessionExit(){
 
 export default function Settings({user}:{user:Row}){
   const can=useCan(),[params]=useSearchParams();const tab=params.get('section')==='referrals'?'referrals':params.get('section')==='payments'?'payments':'general';
-  const referral=useLoad(()=>user.role==='DIRECTOR'?api('/billing/referrals'):Promise.resolve(null),[user.id]);
+  const referral=useLoad(()=>user.role==='DIRECTOR'?api('/billing/referrals/status'):Promise.resolve(null),[user.id]);
   const referralVisible=user.role==='DIRECTOR'&&referral.data?.enabled===true;
   const billing=useLoad(()=>tab==='payments'?api('/billing/status'):Promise.resolve(null),[tab]);
   const {data,error,loading,reload}=useLoad(()=>api('/settings'),[]);

@@ -248,6 +248,11 @@ class ReferralCode(BaseModel):
     model_config=ConfigDict(extra='forbid')
     code:str=Field(pattern=r'^[A-F0-9]{16}$')
 
+@router.get('/referrals/status')
+def referral_status(who:Auth):
+    owner(who)
+    return {'enabled':referrals_enabled()}
+
 @router.get('/referrals')
 def referral_dashboard(db:DB,who:Auth):
     owner(who)

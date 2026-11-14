@@ -12,7 +12,7 @@ for(const [engineName,engine] of Object.entries(process.env.GLOBAL_BILLING_ENGIN
  const browser=await engine.launch({headless:true});
  try{for(const width of (process.env.GLOBAL_BILLING_WIDTHS?process.env.GLOBAL_BILLING_WIDTHS.split(',').map(Number):[320,390,430,1440]))for(const style of (process.env.GLOBAL_BILLING_STYLES?process.env.GLOBAL_BILLING_STYLES.split(','):['light','onyx','gold','forest'])){
   const c=await browser.newContext({baseURL:origin,viewport:{width,height:900}}),page=await c.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
-  const auth=await c.request.post('/api/v1/auth/register',{headers:{'X-Forwarded-For':'198.18.'+crypto.randomInt(1,250)+'.'+crypto.randomInt(1,250)},data:{name:'Synthetic Billing Browser',email:'global-'+crypto.randomUUID()+'@example.test',password:'global-browser-only-password'}});assert.equal(auth.status(),201,await auth.text());
+  if(!(width===390&&style==='forest')){const auth=await c.request.post('/api/v1/auth/register',{headers:{'X-Forwarded-For':'198.18.'+crypto.randomInt(1,250)+'.'+crypto.randomInt(1,250)},data:{name:'Synthetic Billing Browser',email:'global-'+crypto.randomUUID()+'@example.test',password:'global-browser-only-password'}});assert.equal(auth.status(),201,await auth.text());}
   let inviterContext,inviterPage,inviterLink;
   if(width===390&&style==='forest'){
    inviterContext=await browser.newContext({baseURL:origin,viewport:{width,height:900}});inviterPage=await inviterContext.newPage();
@@ -24,7 +24,15 @@ for(const [engineName,engine] of Object.entries(process.env.GLOBAL_BILLING_ENGIN
    await expect(refs.getByRole('textbox',{name:'Персональне посилання'})).toBeVisible();
    inviterLink=await refs.getByRole('textbox',{name:'Персональне посилання'}).inputValue();
    assert.match(inviterLink,/\/settings\?section=referrals&ref=[A-F0-9]{16}$/);
-   await page.goto(inviterLink);const invite=page.getByRole('region',{name:'Реферальна програма',exact:true});
+   await page.route('**/api/v1/auth/register',route=>route.continue({headers:{...route.request().headers(),'X-Forwarded-For':'198.18.'+crypto.randomInt(1,250)+'.'+crypto.randomInt(1,250)}}));
+   await page.goto(inviterLink);
+   await expect(page.getByRole('button',{name:'Створити обліковий запис',exact:true})).toBeVisible();
+   await page.locator('input[name=name]').fill('Synthetic Invited Company');
+   await page.locator('input[name=email]').fill('invited-'+crypto.randomUUID()+'@example.test');
+   await page.locator('input[name=password]').fill('global-browser-only-password');
+   await page.getByRole('button',{name:'Створити обліковий запис',exact:true}).click();
+   await expect(page).toHaveURL(inviterLink);
+   const invite=page.getByRole('region',{name:'Реферальна програма',exact:true});
    await invite.getByRole('button',{name:'Підключити компанію',exact:true}).click();
    await invite.getByRole('button',{name:'Підтвердити запрошення',exact:true}).click();
    await expect(invite).toContainText('Запрошення вже прив’язане до вашої компанії.'.replace('’',"'"));

@@ -228,9 +228,11 @@ def test_global_flags_off_preserve_legacy_disabled_checkout(logged, monkeypatch)
 
 def test_referral_gateway_requires_flags_owner_and_valid_code(global_pilot, monkeypatch):
     c, _, core = global_pilot
+    assert c.get("/api/v1/billing/referrals/status").json() == {"enabled": False}
     assert c.get("/api/v1/billing/referrals").json() == {"enabled": False}
     monkeypatch.setenv("WAREHOUSE_REFERRALS_TEST_ENABLED", "true")
     monkeypatch.setenv("BILLING_REFERRALS_TEST_ENABLED", "true")
+    assert c.get("/api/v1/billing/referrals/status").json() == {"enabled": True}
     assert c.get("/api/v1/billing/referrals").json()["bound"] is False
     assert c.post("/api/v1/billing/bind").status_code == 200
     overview = c.get("/api/v1/billing/referrals")
