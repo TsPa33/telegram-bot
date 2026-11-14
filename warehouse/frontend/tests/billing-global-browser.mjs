@@ -19,7 +19,6 @@ for(const [engineName,engine] of Object.entries(process.env.GLOBAL_BILLING_ENGIN
    const invited=await inviterContext.request.post('/api/v1/auth/register',{headers:{'X-Forwarded-For':'198.19.'+crypto.randomInt(1,250)+'.'+crypto.randomInt(1,250)},data:{name:'Synthetic Referrer',email:'referrer-'+crypto.randomUUID()+'@example.test',password:'global-browser-only-password'}});
    assert.equal(invited.status(),201,await invited.text());
    await inviterPage.goto('/settings?section=referrals');const refs=inviterPage.getByRole('region',{name:'Реферальна програма',exact:true});
-   await refs.getByRole('button',{name:'Підключити компанію',exact:true}).click();
    await refs.getByRole('button',{name:'Отримати посилання',exact:true}).click();
    await expect(refs.getByRole('textbox',{name:'Персональне посилання'})).toBeVisible();
    inviterLink=await refs.getByRole('textbox',{name:'Персональне посилання'}).inputValue();
@@ -31,18 +30,22 @@ for(const [engineName,engine] of Object.entries(process.env.GLOBAL_BILLING_ENGIN
    await page.locator('input[name=email]').fill('invited-'+crypto.randomUUID()+'@example.test');
    await page.locator('input[name=password]').fill('global-browser-only-password');
    await page.getByRole('button',{name:'Створити обліковий запис',exact:true}).click();
-   await expect(page).toHaveURL(inviterLink);
-   const invite=page.getByRole('region',{name:'Реферальна програма',exact:true});
-   await invite.getByRole('button',{name:'Підключити компанію',exact:true}).click();
-   await invite.getByRole('button',{name:'Підтвердити запрошення',exact:true}).click();
-   await expect(invite).toContainText('Запрошення вже прив’язане до вашої компанії.'.replace('’',"'"));
+   await expect(page).toHaveURL(origin+'/settings?section=payments');
+   const firstPanel=page.getByRole('region',{name:'Підписка та оплата',exact:true});
+   await expect(firstPanel.getByRole('button',{name:'Обрати Standard',exact:true})).toBeEnabled();
+   const attribution=await c.request.get('/api/v1/billing/referrals');assert.equal(attribution.status(),200);assert.equal((await attribution.json()).attributed,true);
+   assert.equal(await firstPanel.getByRole('button',{name:'Підключити оплату CarPot',exact:true}).count(),0);
+   assert.equal(await page.getByRole('button',{name:'Підтвердити запрошення',exact:true}).count(),0);
    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
   }
   await page.goto('/settings?section=general');
   const themeNames={light:/Світла/,onyx:/Onyx/,gold:/Midnight Gold/,forest:/Forest Slate/};
   await page.getByRole('region',{name:'Оформлення',exact:true}).getByRole('button',{name:themeNames[style]}).click();
   await page.goto('/settings?section=payments');const panel=page.getByRole('region',{name:'Підписка та оплата',exact:true});
-  if(!inviterContext)await panel.getByRole('button',{name:'Підключити оплату CarPot',exact:true}).click();await expect(panel.getByRole('button',{name:'Обрати Standard',exact:true})).toBeEnabled();
+  await expect(panel.getByRole('button',{name:'Обрати Standard',exact:true})).toBeEnabled();
+  await expect(panel.getByRole('heading',{name:'Оберіть свій тариф',exact:true})).toBeVisible();
+  assert(await panel.evaluate(el=>!!(el.querySelector('#billing-plans').compareDocumentPosition(el.querySelector('#billing-overview'))&Node.DOCUMENT_POSITION_FOLLOWING)));
+  assert.equal(await panel.getByRole('button',{name:'Підключити оплату CarPot',exact:true}).count(),0);
   let invoiceLost=false,invoiceCalls=0;
   if(width===390&&style==='gold')await page.route('**/api/v1/billing/invoices',async route=>{invoiceCalls++;await route.fetch();invoiceLost=true;await route.abort('failed');});
   await panel.getByRole('button',{name:'Обрати Standard',exact:true}).click();
