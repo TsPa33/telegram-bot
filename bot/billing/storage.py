@@ -90,6 +90,26 @@ class OperationalDatabase:
 def migrate_operational(db):
     if type(db) is not OperationalDatabase or db.role != "migrator":
         raise BillingError("Explicit operational migrator required")
+    with db.transaction() as c:
+        c.execute("SELECT to_regclass('billing.operational_identity') AS identity")
+        established = bool(c.fetchone()["identity"])
+        if not established:
+            c.execute("SELECT 1 FROM pg_tables WHERE schemaname='public' LIMIT 1")
+            if c.fetchone():
+                raise BillingError(
+                    "Separate Billing database required; legacy/product DB adoption forbidden"
+                )
+            if db.environment == "production":
+                for table in ("intents", "warehouse_trials"):
+                    c.execute(
+                        "SELECT to_regclass(%s) AS relation", ("billing." + table,)
+                    )
+                    if c.fetchone()["relation"]:
+                        c.execute("SELECT 1 FROM billing." + table + " LIMIT 1")
+                        if c.fetchone():
+                            raise BillingError(
+                                "Test financial/trial evidence cannot be adopted into production"
+                            )
     from .phase2 import migrate
     from .warehouse import migrate_phase2
 
@@ -108,3 +128,26 @@ def migrate_operational(db):
             (db.environment,),
         )
         c.execute("INSERT INTO billing.schema_migrations(version) VALUES (4)")
+
+
+def migrate_all(db):
+    """Operator CLI only. Runtime never calls this function."""
+    migrate_operational(db)
+    for path in sorted(
+        (Path(__file__).parent / "migrations").glob("[0-9][0-9][0-9]_*.sql")
+    ):
+        version = int(path.name[:3])
+        if version < 5:
+            continue
+        with db.transaction() as c:
+            c.execute("SELECT pg_advisory_xact_lock(48151901)")
+            c.execute(
+                "SELECT version FROM billing.schema_migrations WHERE version=%s",
+                (version,),
+            )
+            if c.fetchone():
+                continue
+            c.execute(path.read_text())
+            c.execute(
+                "INSERT INTO billing.schema_migrations(version) VALUES (%s)", (version,)
+            )

@@ -1,12 +1,15 @@
-from typing import Annotated
-from fastapi import APIRouter,Depends,HTTPException
+from pydantic import BaseModel,ConfigDict,Field
+from typing import Annotated,Any
+from fastapi import APIRouter,Depends,HTTPException,Body
 from sqlalchemy import select,func
 from sqlalchemy.orm import Session
 from app.api.deps import identity,Identity
 from app.api.secure_route import SecureRoute
 from app.db import get_db
 from app.models import Account,BillingPayment,DismantlingCredit
+from app.models.entitlements import EntitlementWorkspace
 from app.services import billing
+from app.services import global_billing as global_finance
 router=APIRouter(prefix='/api/v1/billing',route_class=SecureRoute,tags=['Warehouse billing'])
 DB=Annotated[Session,Depends(get_db)]
 Auth=Annotated[Identity,Depends(identity)]
@@ -37,10 +40,18 @@ def payments(db:DB,who:Auth,offset:int=0):
     total=db.scalar(select(func.count()).select_from(q.subquery()))
     return {'items':[{'order_id':p.id,'product':p.product,'amount':str(p.amount),'currency':p.currency,'status':p.status,'created_at':p.created_at,'confirmed_at':p.confirmed_at} for p in db.scalars(q.order_by(BillingPayment.created_at.desc(),BillingPayment.id).offset(offset).limit(25))],'total':total}
 
+class GlobalCheckout(BaseModel):
+    model_config=ConfigDict(extra='forbid')
+    invoice_id:str=Field(min_length=36,max_length=36)
+
 @router.post('/checkout')
-def checkout(who:Auth):
+def checkout(db:DB,who:Auth,body:Any=Body(default=None)):
     owner(who)
-    raise HTTPException(503,'Sandbox checkout вимкнено до перевірки офіційного контракту LiqPay. Платіж не створено.')
+    if not global_finance.enabled():raise HTTPException(503,'Sandbox checkout вимкнено до перевірки офіційного контракту LiqPay. Платіж не створено.')
+    try:data=GlobalCheckout.model_validate(body)
+    except ValueError:raise HTTPException(422,'Потрібний чинний рахунок') from None
+    p=global_finance.binding(db,who)
+    return global_finance.request(who,'POST','/v1/checkout',{'invoice_id':data.invoice_id},binding=p)
 
 @router.post('/cancel-renewal')
 def cancel(who:Auth):
@@ -86,11 +97,17 @@ def entitlement_status(db:DB,who:Auth):
 
 @router.post('/bind')
 def bind_workspace(db:DB,who:Auth):
+    if global_finance.enabled():
+        p=global_finance.bind(db,who);db.commit();return {'bound':True,'workspace_id':p.workspace_id,'mode':p.mode}
     p=entitlements.bind_owner(db,who);db.commit()
     return {'bound':True,'workspace_id':p.workspace_id,'mode':p.mode}
 
 @router.post('/trial')
 def start_trial(data:TrialInput,db:DB,who:Auth):
+    if global_finance.enabled():
+        p=global_finance.bind(db,who);db.commit()
+        global_finance.request(who,'POST','/v1/trial',{'binding_id':p.global_binding_id,'plan':data.plan},binding=p)
+        return global_finance.sync(db,who,p)
     entitlements.owner(who)
     p=entitlements.bind_owner(db,who);db.commit()
     from bot.billing.models import BillingError
@@ -101,6 +118,7 @@ def start_trial(data:TrialInput,db:DB,who:Auth):
 
 @router.post('/sync')
 def sync_entitlements(db:DB,who:Auth):
+    if global_finance.enabled():return global_finance.sync(db,who)
     entitlements.owner(who);p=entitlements.bind_owner(db,who);db.commit()
     token=entitlements.local_bridge().latest(p.workspace_id,p.billing_account_id)
     if token:entitlements.accept(db,token);db.commit()
@@ -150,3 +168,65 @@ def verified_return(data:ReturnInput,db:DB,who:Auth):
         db.commit()
     finally:db.info.pop('verified_entitlement_return',None)
     return {'id':row.id,'replayed':False}
+
+
+class GlobalPurchase(BaseModel):
+    model_config=ConfigDict(extra='forbid')
+    sku:Literal['warehouse.standard','warehouse.premium','warehouse.slots.1','warehouse.slots.5','warehouse.slots.10']
+    request_key:str=Field(min_length=1,max_length=160)
+    quantity:int=Field(default=1,strict=True,ge=1,le=1000)
+
+class GlobalProof(BaseModel):
+    model_config=ConfigDict(extra='forbid')
+    proof:str=Field(min_length=1,max_length=200000)
+
+@router.get('/cabinet')
+def global_cabinet(db:DB,who:Auth):
+    if not global_finance.enabled():return {'enabled':False}
+    can_manage=who.user.role=='DIRECTOR' and who.actor_id==who.workspace_account_id
+    if not can_manage:return {'enabled':True,'can_manage':False}
+    p=db.get(EntitlementWorkspace,who.workspace_account_id)
+    if not p or not p.global_binding_id:return {'enabled':True,'can_manage':True,'bound':False,'environment':global_finance.environment()}
+    p=global_finance.binding(db,who)
+    result=global_finance.request(who,'GET','/v1/cabinet/'+p.global_binding_id,binding=p)
+    result.update(enabled=True,bound=True,can_manage=True,entitlements=entitlements.report(db,who.workspace_account_id))
+    return result
+
+@router.post('/invoices')
+def global_invoice(data:GlobalPurchase,db:DB,who:Auth):
+    p=global_finance.binding(db,who)
+    return global_finance.request(who,'POST','/v1/invoices',{'binding_id':p.global_binding_id,**data.model_dump()},binding=p)
+
+def financial_id(value):
+    from uuid import UUID
+    try:UUID(value)
+    except (ValueError,TypeError):raise HTTPException(422,'Некоректний фінансовий ідентифікатор') from None
+    return value
+
+@router.get('/invoices/{invoice}')
+def global_invoice_view(invoice:str,db:DB,who:Auth):
+    p=global_finance.binding(db,who)
+    return global_finance.request(who,'GET','/v1/invoices/'+financial_id(invoice),binding=p)
+
+@router.post('/invoices/{invoice}/void')
+def global_invoice_void(invoice:str,db:DB,who:Auth):
+    p=global_finance.binding(db,who)
+    return global_finance.request(who,'POST','/v1/invoices/'+financial_id(invoice)+'/void',binding=p)
+
+@router.get('/orders/{order}')
+def global_order(order:str,db:DB,who:Auth):
+    import re
+    if not re.fullmatch(r'carpot-(sandbox|production)-[0-9a-f]{32}',order):raise HTTPException(422,'Некоректне замовлення')
+    p=global_finance.binding(db,who)
+    return global_finance.request(who,'GET','/v1/orders/'+order,binding=p)
+
+@router.post('/orders/{order}/refresh')
+def global_refresh(order:str,db:DB,who:Auth):
+    import re
+    if not re.fullmatch(r'carpot-(sandbox|production)-[0-9a-f]{32}',order):raise HTTPException(422,'Некоректне замовлення')
+    p=global_finance.binding(db,who)
+    return global_finance.request(who,'POST','/v1/orders/'+order+'/refresh',binding=p)
+
+@router.post('/internal/entitlements')
+def global_entitlement_delivery(data:GlobalProof,db:DB):
+    return global_finance.apply(db,data.proof)

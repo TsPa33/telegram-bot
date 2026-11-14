@@ -169,6 +169,12 @@ class Payments:
         return "review"
 
     def _receive(self, payload, digest, source):
+        if (
+            payload.get("status") in {"refund", "reversed", "chargeback"}
+            and self.provider.profile.reversals_confirmed
+            and {"refund_id", "refund_amount"} <= set(payload)
+        ):
+            return self._apply_reversal(payload, digest)
         order = payload.get("order_id")
         if not isinstance(order, str):
             raise BillingError("Invalid order")
@@ -304,3 +310,164 @@ class Payments:
         payload, digest = self.provider.query_status(terms)
         self._receive(payload, digest, "status")
         return self.status(actor, order)
+
+    def reconcile_pending(self, *, limit=50):
+        if not self.provider.profile.network_enabled:
+            return {"checked": 0, "blocked": "provider_network_disabled"}
+        if type(limit) is not int or not 1 <= limit <= 100:
+            raise BillingError("Bounded reconciliation required")
+        checked = 0
+        for _ in range(limit):
+            # Hold only polling metadata across network I/O, never an account/invoice lock.
+            with self.db.transaction() as c:
+                c.execute(
+                    "INSERT INTO billing.provider_polling(intent_id) SELECT id FROM billing.intents WHERE provider='liqpay' ON CONFLICT DO NOTHING"
+                )
+                c.execute(
+                    "SELECT o.order_id,p.intent_id FROM billing.provider_polling p JOIN billing.provider_orders o ON o.intent_id=p.intent_id LEFT JOIN billing.settlements s ON s.intent_id=p.intent_id WHERE s.id IS NULL AND p.next_attempt_at<=now() ORDER BY p.next_attempt_at LIMIT 1 FOR UPDATE OF p SKIP LOCKED"
+                )
+                job = c.fetchone()
+                if not job:
+                    break
+                c.execute(
+                    "UPDATE billing.provider_polling SET attempts=attempts+1,next_attempt_at=now()+interval '15 minutes' WHERE intent_id=%s",
+                    (job["intent_id"],),
+                )
+                row = self._row(c, job["order_id"])
+                terms = self._terms(row)
+                try:
+                    payload, digest = self.provider.query_status(terms)
+                    # Separate financial transaction: no polling row is needed during settlement.
+                    self._receive(payload, digest, "status")
+                    checked += 1
+                except BillingError:
+                    c.execute(
+                        "UPDATE billing.provider_polling SET last_error='status_unavailable' WHERE intent_id=%s",
+                        (job["intent_id"],),
+                    )
+        return {"checked": checked}
+
+    def verified_reversal(self, data, signature):
+        """Incoming signed reversal only; never initiates a provider refund.
+
+        Require explicit original payment ID, a distinct reversal ID and exact refund
+        amount. Missing merchant-specific reversal fields stay in review via callback.
+        """
+        payload = self.provider.decode_callback(data, signature)
+        return self._apply_reversal(payload, hashlib.sha256(data.encode()).hexdigest())
+
+    def _apply_reversal(self, payload, digest):
+        if (
+            not self.provider.profile.merchant_confirmed
+            or not self.provider.profile.reversals_confirmed
+        ):
+            raise BillingError("Merchant reversal contract is not confirmed")
+        order = payload.get("order_id")
+        if payload.get("status") not in {"reversed", "chargeback", "refund"}:
+            raise BillingError("Explicit reversal evidence required")
+        with self.db.transaction() as c:
+            row = self._row(c, order)
+            self.provider.correlate(payload, self._terms(row), digest=digest)
+            c.execute(
+                "SELECT id FROM billing.accounts WHERE id=%s FOR UPDATE",
+                (row["account_id"],),
+            )
+            c.execute(
+                "SELECT * FROM billing.settlements WHERE invoice_id=%s FOR UPDATE",
+                (row["invoice_id"],),
+            )
+            settlement = c.fetchone()
+            if (
+                not settlement
+                or str(payload.get("payment_id")) != settlement["transaction_id"]
+            ):
+                raise BillingError("Original settled transaction required")
+            from .catalogue import money_minor
+
+            amount = money_minor(str(payload.get("refund_amount", "invalid")))
+            external = payload.get("refund_id")
+            if (
+                not isinstance(external, str)
+                or not 1 <= len(external) <= 160
+                or amount <= 0
+            ):
+                raise BillingError("Confirmed merchant reversal identity required")
+            c.execute(
+                "SELECT * FROM billing.reversals WHERE provider=%s AND provider_event_id=%s",
+                (settlement["provider"], external),
+            )
+            old = c.fetchone()
+            if old:
+                if (
+                    old["settlement_id"] != settlement["id"]
+                    or old["amount_minor"] != amount
+                ):
+                    raise Conflict("Reversal identity conflict")
+                return "duplicate"
+            c.execute(
+                "SELECT coalesce(sum(amount_minor),0) AS refunded FROM billing.reversals WHERE settlement_id=%s",
+                (settlement["id"],),
+            )
+            refunded = c.fetchone()["refunded"]
+            if refunded + amount > row["amount_minor"]:
+                raise Conflict("Reversal exceeds confirmed payment")
+            journal = uid()
+            c.execute(
+                "INSERT INTO billing.journal_transactions(id,account_id,external_key,currency) VALUES (%s,%s,%s,'UAH')",
+                (
+                    journal,
+                    row["account_id"],
+                    "reversal:" + settlement["provider"] + ":" + external,
+                ),
+            )
+            for ledger, value in (
+                ("provider_clearing", -amount),
+                ("service_obligation", amount),
+            ):
+                c.execute(
+                    "INSERT INTO billing.journal_entries VALUES (%s,%s,%s,%s,%s)",
+                    (uid(), journal, row["account_id"], ledger, value),
+                )
+            c.execute(
+                "INSERT INTO billing.reversals(id,settlement_id,provider,provider_event_id,amount_minor,reason,journal_id) VALUES (%s,%s,%s,%s,%s,%s,%s)",
+                (
+                    uid(),
+                    settlement["id"],
+                    settlement["provider"],
+                    external,
+                    amount,
+                    "chargeback"
+                    if payload["status"] == "chargeback"
+                    else "reversal"
+                    if payload["status"] == "reversed"
+                    else "refund",
+                    journal,
+                ),
+            )
+            c.execute(
+                "SELECT p.*,s.binding_id,s.sku,s.plan_version,b.workspace_id,b.product FROM billing.periods p JOIN billing.subscriptions s ON s.id=p.subscription_id JOIN billing.bindings b ON b.id=s.binding_id WHERE p.id=%s FOR UPDATE OF s",
+                (row["period_id"],),
+            )
+            period = c.fetchone()
+            c.execute(
+                "UPDATE billing.subscriptions SET projection_version=projection_version+1 WHERE id=%s RETURNING projection_version",
+                (period["subscription_id"],),
+            )
+            version = c.fetchone()["projection_version"]
+            event_id = uid()
+            base = dict(schema_version=2, event_id=event_id, version=version)
+            snapshot = self.core.entitlement_payload(c, period, row, base)
+            c.execute(
+                "INSERT INTO billing.outbox(id,account_id,aggregate_id,version,topic,payload) VALUES (%s,%s,%s,%s,'billing.entitlement.snapshot.v2',%s)",
+                (
+                    event_id,
+                    row["account_id"],
+                    period["subscription_id"],
+                    version,
+                    Json(snapshot),
+                ),
+            )
+            # Referral reversal hook is installed by the separately gated ledger package.
+            if hasattr(self.core, "reverse_referral"):
+                self.core.reverse_referral(c, settlement["id"])
+            return "reversed"

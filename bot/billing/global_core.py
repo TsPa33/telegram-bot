@@ -292,8 +292,8 @@ class GlobalBilling(Billing):
     def entitlement_payload(self, c, period, intent, payload):
         # Original invoice-line versions, never mutable current subscription terms.
         c.execute(
-            "SELECT coalesce(i.effective_at,p.starts_at) AS starts_at,p.ends_at,i.kind,l.quantity,v.* FROM billing.periods p JOIN billing.invoices i ON i.period_id=p.id JOIN billing.invoice_lines l ON l.invoice_id=i.id JOIN billing.plan_versions v ON (v.sku,v.version)=(l.sku,l.plan_version) WHERE p.subscription_id=%s AND i.status='paid' ORDER BY p.starts_at,i.id",
-            (period["subscription_id"],),
+            "SELECT coalesce(i.effective_at,p.starts_at) AS starts_at,p.ends_at,i.kind,l.quantity,v.* FROM billing.periods p JOIN billing.invoices i ON i.period_id=p.id JOIN billing.invoice_lines l ON l.invoice_id=i.id JOIN billing.plan_versions v ON (v.sku,v.version)=(l.sku,l.plan_version) WHERE p.subscription_id=%s AND i.status='paid' AND EXISTS(SELECT 1 FROM billing.settlements q JOIN billing.intents n ON n.id=q.intent_id WHERE q.invoice_id=i.id AND n.environment=%s AND n.provider='liqpay') AND NOT EXISTS(SELECT 1 FROM billing.settlements z WHERE z.invoice_id=i.id AND (SELECT coalesce(sum(r.amount_minor),0) FROM billing.reversals r WHERE r.settlement_id=z.id)>=i.amount_minor) ORDER BY p.starts_at,i.id",
+            (period["subscription_id"], self.db.environment),
         )
         intervals = []
         for r in c.fetchall():
@@ -394,3 +394,76 @@ class GlobalBilling(Billing):
                 payments=payments,
                 can_manage=Permission.MANAGE in actor.permissions,
             )
+
+    def trial(self, actor, binding, plan, *, now=None):
+        from .catalogue import CATALOGUE
+
+        if plan not in ("standard", "premium"):
+            raise BillingError("Unknown trial plan")
+        stamp = now or utcnow()
+        with self.db.transaction() as c:
+            self.authorize(c, actor, Permission.MANAGE)
+            c.execute(
+                "SELECT id FROM billing.accounts WHERE id=%s FOR UPDATE",
+                (actor.account_id,),
+            )
+            b, p, s = self._subscription(c, actor, binding, "warehouse." + plan)
+            c.execute(
+                "SELECT 1 FROM billing.invoices i JOIN billing.periods p ON p.id=i.period_id WHERE p.subscription_id=%s AND i.status='paid' AND i.kind='base' LIMIT 1",
+                (s["id"],),
+            )
+            if c.fetchone():
+                raise Conflict("A trial cannot replace paid history")
+            c.execute(
+                "SELECT * FROM billing.warehouse_trials WHERE account_id=%s",
+                (actor.account_id,),
+            )
+            old = c.fetchone()
+            if old and old["ends_at"] <= stamp:
+                raise Conflict("Company trial already used")
+            if not old:
+                c.execute(
+                    "INSERT INTO billing.warehouse_trials VALUES (%s,%s,%s,%s) RETURNING *",
+                    (actor.account_id, plan, stamp, stamp + timedelta(days=10)),
+                )
+                old = c.fetchone()
+            elif old["plan"] != plan:
+                c.execute(
+                    "UPDATE billing.warehouse_trials SET plan=%s WHERE account_id=%s",
+                    (plan, actor.account_id),
+                )
+            c.execute(
+                "UPDATE billing.subscriptions SET projection_version=projection_version+1 WHERE id=%s RETURNING projection_version",
+                (s["id"],),
+            )
+            version = c.fetchone()["projection_version"]
+            event = uid()
+            payload = dict(
+                schema_version=2,
+                event_id=event,
+                environment=self.db.environment,
+                activates_real_services=self.db.environment == "production",
+                billing_account_id=actor.account_id,
+                workspace_id=b["workspace_id"],
+                product="warehouse",
+                subscription_id=s["id"],
+                version=version,
+                trial_used=True,
+                intervals=[
+                    dict(
+                        kind="trial",
+                        plan=plan,
+                        sku=p["sku"],
+                        plan_version=p["version"],
+                        effective_from=old["starts_at"].isoformat(),
+                        effective_until=old["ends_at"].isoformat(),
+                        vehicle_capacity=p["vehicle_capacity"],
+                        employee_seats=p["employees"],
+                    )
+                ],
+            )
+            c.execute(
+                "INSERT INTO billing.outbox(id,account_id,aggregate_id,version,topic,payload) VALUES (%s,%s,%s,%s,'billing.entitlement.snapshot.v2',%s)",
+                (event, actor.account_id, s["id"], version, Json(payload)),
+            )
+            return dict(deadline=old["ends_at"], version=version)

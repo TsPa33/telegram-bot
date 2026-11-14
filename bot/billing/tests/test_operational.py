@@ -7,7 +7,7 @@ from uuid import uuid4
 import hashlib, json
 import httpx, pytest
 from fastapi.testclient import TestClient
-from bot.billing.storage import OperationalDatabase, migrate_operational
+from bot.billing.storage import OperationalDatabase, migrate_all
 from bot.billing.global_core import GlobalBilling, utcnow
 from bot.billing.liqpay_provider import ProviderProfile, LiqPayProvider
 from bot.billing.payments import Payments
@@ -25,7 +25,7 @@ def operational(foundation):
     migration = OperationalDatabase(
         b.db.dsn, environment="sandbox", role="migrator", disposable=True
     )
-    migrate_operational(migration)
+    migrate_all(migration)
     db = OperationalDatabase(b.db.dsn, environment="sandbox", disposable=True)
     core = GlobalBilling(db)
     profile = ProviderProfile(
@@ -239,3 +239,150 @@ def test_http_authorization_tenant_body_integrity_and_nonce(operational):
             ).status_code
             == 413
         )
+
+
+def test_addon_uses_current_paid_period_without_accumulating_monthly_credits(
+    operational,
+):
+    core, payments, p, a, binding, invoice = operational
+    order = payments.checkout(a, invoice)
+    assert payments.callback(**callback(p, order)) == "settled"
+    addon = core.purchase(a, binding, "warehouse.slots.5", "addon-request")
+    assert 0 < addon["amount_minor"] <= 120000
+    assert (
+        core.purchase(a, binding, "warehouse.slots.5", "addon-request")["id"]
+        == addon["id"]
+    )
+    add_order = payments.checkout(a, addon["id"])
+    assert (
+        payments.callback(**callback(p, add_order, payment_id="addon-payment"))
+        == "settled"
+    )
+    snapshot = rows(
+        core.db, "SELECT payload FROM billing.outbox ORDER BY version DESC LIMIT 1"
+    )[0]["payload"]
+    extra = next(i for i in snapshot["intervals"] if i["kind"] == "addon")
+    assert extra["vehicle_capacity"] == 5 and extra["employee_seats"] == 0
+    assert len([i for i in snapshot["intervals"] if i["kind"] == "base"]) == 1
+    assert (
+        extra["effective_until"]
+        == next(i for i in snapshot["intervals"] if i["kind"] == "base")[
+            "effective_until"
+        ]
+    )
+
+
+def test_trial_race_and_plan_change_preserve_one_deadline(operational):
+    core, _, _, a, binding, _ = operational
+    with ThreadPoolExecutor(2) as pool:
+        results = list(
+            pool.map(lambda plan: core.trial(a, binding, plan), ["standard", "premium"])
+        )
+    assert results[0]["deadline"] == results[1]["deadline"]
+    assert len(rows(core.db, "SELECT * FROM billing.warehouse_trials")) == 1
+    assert core.trial(a, binding, "standard")["deadline"] == results[0]["deadline"]
+
+
+def test_delivery_ack_failure_and_replay_do_not_duplicate_rights(operational):
+    from bot.billing.delivery import EntitlementDelivery
+
+    core, payments, p, a, binding, invoice = operational
+    core.bind_owner(
+        "workspace-fixture",
+        a.principal_id,
+        "warehouse",
+        "warehouse",
+        account_id=a.account_id,
+    )
+    order = payments.checkout(a, invoice)
+    payments.callback(**callback(p, order))
+    received = set()
+    attempts = []
+
+    def consumer(request):
+        token = json.loads(request.content)["proof"]
+        payload = Transport(
+            KEY, "billing-api", "warehouse", "entitlements.write", environment="sandbox"
+        ).verify(token)["payload"]
+        received.add(payload["event_id"])
+        attempts.append(payload["version"])
+        ack = Transport(
+            KEY, "warehouse", "billing-api", "entitlements.ack", environment="sandbox"
+        ).sign(
+            {
+                k: payload[k]
+                for k in ("event_id", "workspace_id", "billing_account_id", "version")
+            }
+        )
+        return httpx.Response(200, json={"ack": ack})
+
+    delivery = EntitlementDelivery(
+        core.db,
+        {
+            "warehouse": {
+                "key": KEY,
+                "url": "https://warehouse.example.test/api/v1/billing/internal/entitlements",
+            }
+        },
+        network_enabled=True,
+        transport=httpx.MockTransport(consumer),
+    )
+    latest = delivery.latest(core, a, binding)
+    assert latest["proof"]
+    assert delivery.run_once() == {"delivered": 1}
+    assert delivery.run_once() == {"delivered": 0}
+    assert len(received) == 1 and attempts == [1]
+    assert payments.status(a, order["order_id"])["activation_pending"] is False
+    with pytest.raises(BillingError):
+        Transport(
+            KEY,
+            "billing-api",
+            "warehouse",
+            "entitlements.write",
+            environment="production",
+        ).verify(latest["proof"])
+
+
+def test_refund_is_separate_immutable_journal_and_replay_safe(operational):
+    core, payments, p, a, _, invoice = operational
+    order = payments.checkout(a, invoice)
+    payments.callback(**callback(p, order))
+    payments.provider = LiqPayProvider(
+        replace(p.profile, merchant_confirmed=True, reversals_confirmed=True)
+    )
+    refund = callback(
+        p, order, status="reversed", refund_id="refund-one", refund_amount="1000.00"
+    )
+    assert payments.verified_reversal(**refund) == "reversed"
+    assert payments.verified_reversal(**refund) == "duplicate"
+    assert len(rows(core.db, "SELECT * FROM billing.settlements")) == 1
+    assert len(rows(core.db, "SELECT * FROM billing.reversals")) == 1
+    assert (
+        rows(core.db, "SELECT sum(amount_minor) AS n FROM billing.journal_entries")[0][
+            "n"
+        ]
+        == 0
+    )
+    last = rows(
+        core.db, "SELECT payload FROM billing.outbox ORDER BY version DESC LIMIT 1"
+    )[0]["payload"]
+    assert last["intervals"] == []
+    assert (
+        rows(core.db, "SELECT status FROM billing.invoices WHERE id=%s", (invoice,))[0][
+            "status"
+        ]
+        == "paid"
+    )
+
+
+def test_production_adoption_rejects_fixture_money_history(foundation):
+    b, a, s, i, _ = foundation
+    from bot.billing.tests.conftest import opened
+
+    event = opened(foundation)
+    b.receive_fixture(event)
+    db = OperationalDatabase(
+        b.db.dsn, environment="production", role="migrator", disposable=True
+    )
+    with pytest.raises(BillingError):
+        migrate_all(db)

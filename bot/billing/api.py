@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.concurrency import run_in_threadpool
 from .models import Actor, Permission, BillingError, Conflict, Forbidden
-from .storage import OperationalDatabase, migrate_operational
+from .storage import OperationalDatabase, migrate_all
 from .global_core import GlobalBilling
 from .liqpay_provider import ProviderProfile, LiqPayProvider
 from .payments import Payments
@@ -54,7 +54,13 @@ class Window:
 
 
 def create_app(
-    db=None, profile=None, *, peer_keys=None, checkout_enabled=None, provider=None
+    db=None,
+    profile=None,
+    *,
+    peer_keys=None,
+    checkout_enabled=None,
+    provider=None,
+    delivery=None,
 ):
     if db is None:
         environment = os.environ["BILLING_ENVIRONMENT"]
@@ -71,6 +77,7 @@ def create_app(
             merchant_confirmed=os.getenv("BILLING_MERCHANT_CONFIRMED") == "true",
             live_enabled=os.getenv("BILLING_LIVE_ENABLED") == "true",
             network_enabled=os.getenv("BILLING_PROVIDER_NETWORK_ENABLED") == "true",
+            reversals_confirmed=os.getenv("BILLING_REVERSALS_CONFIRMED") == "true",
         )
         peer_keys = {
             name: value.encode()
@@ -84,6 +91,17 @@ def create_app(
         core,
         provider or LiqPayProvider(profile),
         checkout_enabled=checkout_enabled is True,
+    )
+    from .delivery import EntitlementDelivery
+
+    destinations = json.loads(os.getenv("BILLING_ENTITLEMENT_URLS_JSON", "{}"))
+    delivery = delivery or EntitlementDelivery(
+        db,
+        {
+            name: {"key": key, "url": destinations.get(name)}
+            for name, key in peer_keys.items()
+        },
+        network_enabled=os.getenv("BILLING_DELIVERY_ENABLED") == "true",
     )
     app = FastAPI(
         title="CarPot Billing", docs_url=None, redoc_url=None, openapi_url=None
@@ -120,6 +138,9 @@ def create_app(
         )
 
     async def claims(request: Request):
+        return await run_in_threadpool(authenticate, request, await request.body())
+
+    def authenticate(request: Request, raw_body):
         limiter.acquire()
         issuer = request.headers.get("X-CarPot-Peer", "")
         key = peer_keys.get(issuer)
@@ -139,8 +160,7 @@ def create_app(
             if (
                 payload.get("method") != request.method
                 or payload.get("path") != request.url.path
-                or payload.get("body_sha256")
-                != hashlib.sha256(await request.body()).hexdigest()
+                or payload.get("body_sha256") != hashlib.sha256(raw_body).hexdigest()
             ):
                 raise BillingError("Request scope mismatch")
             with db.transaction() as c:
@@ -168,6 +188,28 @@ def create_app(
             payload["principal_id"], payload["account_id"], frozenset(Permission)
         )
 
+    class Trial(Command):
+        binding_id: str
+        plan: str
+
+    class Proof(Command):
+        proof: str = Field(min_length=1, max_length=200000)
+
+    @app.post("/v1/trial")
+    def trial(data: Trial, who=Depends(actor)):
+        return core.trial(who, data.binding_id, data.plan)
+
+    @app.get("/v1/entitlements/{binding}")
+    def entitlement(binding: str, who=Depends(actor)):
+        return delivery.latest(core, who, binding)
+
+    @app.post("/v1/entitlements/ack")
+    def ack(data: Proof, who=Depends(actor)):
+        with db.transaction() as c:
+            core.authorize(c, who, Permission.VIEW)
+        delivery.acknowledge(data.proof)
+        return {"accepted": True}
+
     @app.get("/health")
     def health():
         return {"status": "ok"}
@@ -175,7 +217,7 @@ def create_app(
     @app.get("/ready")
     def ready():
         with db.transaction() as c:
-            c.execute("SELECT version FROM billing.schema_migrations WHERE version=4")
+            c.execute("SELECT version FROM billing.schema_migrations WHERE version=5")
             if not c.fetchone():
                 raise HTTPException(503, "Billing schema not ready")
         return dict(status="ready", environment=db.environment)
@@ -299,7 +341,7 @@ def main():
         environment=os.environ["BILLING_ENVIRONMENT"],
         role="migrator",
     )
-    migrate_operational(db)
+    migrate_all(db)
     GlobalBilling(db).seed_catalogue()
 
 

@@ -4,6 +4,7 @@ import base64
 from dataclasses import dataclass, field
 from decimal import Decimal
 import hashlib, hmac, json, re, time, threading
+from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
 import httpx
 from .liqpay import (
     CHECKOUT_URL,
@@ -29,6 +30,7 @@ class ProviderProfile:
     merchant_confirmed: bool = False
     live_enabled: bool = False
     network_enabled: bool = False
+    reversals_confirmed: bool = False
 
     def __post_init__(self):
         if self.environment not in {"sandbox", "production"} or self.protocol not in {
@@ -149,10 +151,23 @@ class LiqPayProvider:
                     order_id=terms.order_id,
                     description="Оплата сервісу CarPot",
                     language="uk",
-                    result_url=self.profile.result_url,
+                    result_url=self.return_url(terms.order_id),
                     server_url=self.profile.server_url,
                 )
             ),
+        )
+
+    def return_url(self, order_id):
+        url = urlsplit(self.profile.result_url)
+        query = [(k, v) for k, v in parse_qsl(url.query) if k != "billing_order"]
+        return urlunsplit(
+            (
+                url.scheme,
+                url.netloc,
+                url.path,
+                urlencode(query + [("billing_order", order_id)]),
+                "",
+            )
         )
 
     def _namespace(self, terms):
@@ -195,7 +210,7 @@ class LiqPayProvider:
         if (
             payload.get("public_key") != p.public_key
             or payload.get("version") not in (p.version, str(p.version))
-            or isinstance(payload.get("version"), bool)
+            or type(payload.get("version")) not in (str, int)
         ):
             raise BillingError("Merchant or protocol mismatch")
         if (
