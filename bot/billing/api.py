@@ -116,7 +116,7 @@ def create_app(
     app = FastAPI(
         title="CarPot Billing", docs_url=None, redoc_url=None, openapi_url=None
     )
-    app.state.core, app.state.payments = core, payments
+    app.state.core, app.state.payments, app.state.delivery = core, payments, delivery
     from .recurring import Recurring
 
     recurring = Recurring(
@@ -267,7 +267,7 @@ def create_app(
     @app.get("/ready")
     def ready():
         with db.transaction() as c:
-            c.execute("SELECT version FROM billing.schema_migrations WHERE version=8")
+            c.execute("SELECT version FROM billing.schema_migrations WHERE version=9")
             if not c.fetchone():
                 raise HTTPException(503, "Billing schema not ready")
         return dict(status="ready", environment=db.environment)
@@ -482,8 +482,17 @@ def main():
     import argparse
 
     p = argparse.ArgumentParser()
-    p.add_argument("command", choices=["migrate"])
+    p.add_argument("command", choices=["migrate", "work-once"])
     args = p.parse_args()
+    if args.command == "work-once":
+        app = create_app()
+        status = (
+            app.state.payments.reconcile_pending()
+            if os.getenv("BILLING_PROVIDER_NETWORK_ENABLED") == "true"
+            else {"checked": 0, "blocked": "provider_network_disabled"}
+        )
+        print(json.dumps({"status": status, "delivery": app.state.delivery.run_once()}))
+        return
     db = OperationalDatabase(
         os.environ["BILLING_MIGRATOR_DSN"],
         environment=os.environ["BILLING_ENVIRONMENT"],

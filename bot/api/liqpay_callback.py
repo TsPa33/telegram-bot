@@ -53,7 +53,7 @@ async def liqpay_callback(request: Request):
             if len(data)>65536:raise ValueError()
             candidate=json.loads(base64.b64decode(data,validate=True))
             candidate_order=candidate.get('order_id') if isinstance(candidate,dict) else None
-        except (ValueError,TypeError,UnicodeError):
+        except (ValueError,TypeError,UnicodeError,RecursionError):
             raise HTTPException(status_code=400,detail='Invalid payment envelope')
         if canonical_order(candidate_order):
             from bot.billing.models import BillingError
@@ -246,6 +246,8 @@ async def liqpay_callback(request: Request):
 
         return {"ok": True}
 
-    except Exception as e:
-        logger.exception("LIQPAY_CALLBACK_ERROR")
-        raise HTTPException(status_code=500, detail=str(e))
+    except HTTPException:
+        raise
+    except Exception:
+        logger.error("LIQPAY_CALLBACK_ERROR")
+        raise HTTPException(status_code=500, detail="Payment processing requires retry") from None

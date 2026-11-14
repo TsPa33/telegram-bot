@@ -1,0 +1,35 @@
+# CarPot Checkpoint 014 — Phase 6 integration/release gate
+
+2026-11-14 Europe/Kyiv. Branch `feature/carpot-global-liqpay`.
+Original verified base #533: `b45d3789f4ec7da267da60779cad489866dbb4b6`.
+Package base: `111f28e` (Phase 5). Head: containing integration commit (`git log -1 --format=%H -- docs/billing/checkpoints/CarPot_Checkpoint_014_Phase6.md`); exact final tested code SHA and independent CI outcome are reported in the PR/final report.
+Draft [PR #534](https://github.com/TsPa33/telegram-bot/pull/534).
+
+## Implemented integration
+
+Packages 008–013 extend the original Core with separate operational storage/API, manual LiqPay verification and atomic settlement, status recovery/reconciliation, replayable signed rights, existing Warehouse cabinet/hosted checkout, opt-in Telegram product adapters, separately gated recurring, and sandbox-only wallet/referral ledger. No fixture conversion, duplicate Warehouse finance ledger, production charge, secret replacement or destructive migration.
+
+Final hardening adds role-guard migration 009, explicit minimum database grants, peer product binding allowlist and actual membership-derived API permissions. The app role is exercised through bind→Premium invoice→checkout→verified payment→rights proof→refund; forbidden DDL, history delete/truncate, catalogue/schema changes and account identity mutations are tested. Add-ons cannot create a snapshot beyond the existing consumer's per-interval capacity contract. Fully reversed base periods cannot be used to purchase new add-ons or postpone a new manual subscription. Payment history includes immutable order/SKU and refund totals; review cases have a nontechnical cabinet presentation.
+
+Files: `.github/workflows/carpot-billing-phase2.yml` (retains all previous jobs, adds global two-service browser matrix and operational image build); `bot/billing/{api,global_core,payments,liqpay_provider}.py`, migration 009 and `deploy/grants.sql`, role/permissions regression tests; optional product HTTP dependency and lazy imports, sanitized compatibility callback failures; [operator/contract/deployment guide](../global/README.md). Warehouse schema remains `b23c45d67e89`; Finance head 009. Existing operational migrations 004–008 are retained. Financial and Warehouse migrations remain explicit; no live database was migrated.
+
+## Evidence and independent gate
+
+- Verified #533 source CI before implementation: financial run [43571332942](https://github.com/TsPa33/telegram-bot/actions/runs/43571332942), full release gate [43571332967](https://github.com/TsPa33/telegram-bot/actions/runs/43571332967), both successful.
+- Complete disposable financial suite: **141 PASS / 0 FAIL**, original 114 retained, no skips/xfails. Later integration-only changes are rechecked by independent head CI.
+- Frontend unit suite: **636 PASS / 0 FAIL / 0 SKIP**, production build PASS (existing bundle-size advisory only).
+- Global browser acceptance: **32 PASS**: Chromium/WebKit × 320/390/430/1440 × Light/Onyx/Midnight Gold/Forest Slate. Real authenticated APIs and separate real PostgreSQL databases; signed synthetic callback and intercepted synthetic hosted page. Exact one-order/one-settlement activation, browser-return nonauthority, lost invoice/checkout response recovery, no card inputs/script errors/horizontal overflow. Screenshot/report artifacts are generated in `/tmp/carpot-global-billing` locally and uploaded by CI. This is not a genuine LiqPay Sandbox test.
+- Targeted Warehouse global pipeline: **4 PASS** before final whole-suite run, including paid/trial projection, staff/tenant/environment isolation and flags OFF.
+- Full Warehouse backend, existing Phase 2 browser, corporate UX, sales/dismantling, integrated UX and mobile/search suites are mandatory jobs in the unchanged full-gate workflow. At checkpoint creation the local full backend and independent final-code gate were still running/not yet published; consult the exact completed results in the PR/final report. No pending test is counted as passed.
+
+[Current independent PR checks](https://github.com/TsPa33/telegram-bot/pull/534/checks) and [workflow runs](https://github.com/TsPa33/telegram-bot/actions?query=branch%3Afeature%2Fcarpot-global-liqpay). CI uploads full backend XML, existing regression artifacts and global synthetic browser evidence. No existing suite is removed or weakened; the historical legacy-byte-boundary assertion now explicitly covers the authorized adapter files plus an exact original checkout AST and flags-OFF behavior, rather than forbidding the new product integration.
+
+## Readiness, blockers and continuation
+
+Local implementation is reviewable. Genuine merchant Sandbox acceptance remains blocked by merchant-issued keys/profile and exact manual/status/reversal/recurring contract. Railway staging and production are unchanged. Production is NOT released. Recurring enrollment/cycle/cancellation network execution remains disabled pending capability acceptance; wallet funding/transfers/payouts remain unconditionally unavailable for production pending legal/provider decisions. Site Plus/custom need approved fulfillment/renewal terms; independently owned legacy product accounts need reviewed company linking before their histories can appear together in one company cabinet. No email/username-based merge or automatic financial-history import is enabled.
+
+Only necessary owner actions: confirm the merchant contract and provide dedicated Sandbox credentials through the approved secret mechanism; approve optional sandbox Billing resources/deployment; settle ambiguous site quote terms and any non-default CRM catalogue version; later separately approve production/live, recurring capability and legal wallet/payout model. No credentials should be pasted into PRs or copied from production to staging.
+
+Resume in a new session: checkout this branch, verify PR534 exact HEAD and latest independent checks; read checkpoints 008–014 and `docs/billing/global/README.md`. If a check fails, inspect its logs and fix without skips/waivers. Run local suites only against explicit validated disposable *_test DBs. For deployment preparation use the documented separate migrator/app roles, Finance 009, Warehouse `b23c45d67e89`, optional bot projection migration, dedicated keys/origins and all creation/network flags OFF. Never launch the local browser drivers outside their guarded disposable environment.
+
+Rollback: disable global/checkout/delivery/creation flags, roll back code, preserve all legacy and canonical invoices, payments, settlement, journal, reversals, rewards, mappings and snapshots. No downgrade/drop/history deletion. Reconcile provider-side outstanding payments/cancellations separately; compensate and migrate forward only. Existing OEM, catalogue worker, progress and bulk warehouse flows were not disabled or reimported.

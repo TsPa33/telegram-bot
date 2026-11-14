@@ -489,3 +489,140 @@ def test_legacy_preview_cannot_mint_financial_evidence(operational):
             "telegram", "old-uuid", "missing", "missing", "missing"
         )
     assert not rows(core.db, "SELECT * FROM billing.legacy_mappings")
+
+
+def test_application_role_runs_lifecycle_without_migration_or_history_privileges(
+    operational, monkeypatch
+):
+    from pathlib import Path
+    from contextlib import contextmanager
+    from psycopg2 import sql, errors
+    from bot.billing.delivery import EntitlementDelivery
+
+    core, payments, p, _, _, _ = operational
+    original = core.db.transaction
+    role = "billing_test_" + uuid4().hex
+    with original() as c:
+        c.execute(
+            sql.SQL(
+                "CREATE ROLE {} NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT"
+            ).format(sql.Identifier(role))
+        )
+        grants = (
+            (Path(__file__).parents[1] / "deploy/grants.sql")
+            .read_text()
+            .replace(':"app_role"', sql.Identifier(role).as_string(c))
+        )
+        c.execute(grants)
+
+    @contextmanager
+    def scoped():
+        with original() as c:
+            c.execute(sql.SQL("SET LOCAL ROLE {}").format(sql.Identifier(role)))
+            yield c
+
+    monkeypatch.setattr(core.db, "transaction", scoped)
+    try:
+        bound = core.bind_owner(
+            "app-role-workspace", "app-role-owner", "warehouse", "warehouse"
+        )
+        actor = Actor("app-role-owner", bound["account_id"], frozenset(Permission))
+        invoice = core.purchase(
+            actor, bound["binding_id"], "warehouse.premium", "app-role-invoice"
+        )
+        order = payments.checkout(actor, invoice["id"])
+        assert (
+            payments.callback(**callback(p, order, payment_id="app-role-payment"))
+            == "settled"
+        )
+        delivery = EntitlementDelivery(core.db, {"warehouse": {"key": KEY}})
+        assert delivery.latest(core, actor, bound["binding_id"])["proof"]
+        p.profile = replace(
+            p.profile, merchant_confirmed=True, reversals_confirmed=True
+        )
+        assert (
+            payments.verified_reversal(
+                **callback(
+                    p,
+                    order,
+                    status="refund",
+                    refund_id="app-role-refund",
+                    refund_amount="4500.00",
+                    payment_id="app-role-payment",
+                )
+            )
+            == "reversed"
+        )
+        for statement in (
+            "DELETE FROM billing.settlements",
+            "TRUNCATE billing.journal_entries",
+            "CREATE TABLE billing.illegal(id int)",
+            "UPDATE billing.schema_migrations SET version=99",
+            "UPDATE billing.plan_versions SET amount_minor=1",
+        ):
+            with pytest.raises(errors.InsufficientPrivilege):
+                with core.db.transaction() as c:
+                    c.execute(statement)
+        with pytest.raises(Exception, match="immutable"):
+            with core.db.transaction() as c:
+                c.execute("UPDATE billing.accounts SET id=id")
+    finally:
+        monkeypatch.setattr(core.db, "transaction", original)
+        with original() as c:
+            c.execute(sql.SQL("DROP OWNED BY {}").format(sql.Identifier(role)))
+            c.execute(sql.SQL("DROP ROLE {}").format(sql.Identifier(role)))
+
+
+def test_peer_product_allowlist_and_staff_permissions(operational):
+    core, payments, p, a, binding, invoice = operational
+    with core.db.transaction() as c:
+        c.execute(
+            "INSERT INTO billing.memberships VALUES (%s,%s,%s)",
+            (a.account_id, "read-only-staff", [Permission.VIEW.value]),
+        )
+    staff = Actor("read-only-staff", a.account_id, frozenset({Permission.VIEW}))
+    app = create_app(
+        core.db, p.profile, peer_keys={"warehouse": KEY}, checkout_enabled=True
+    )
+    with TestClient(app) as c:
+        path = "/v1/cabinet/" + binding
+        assert c.get(path, headers=headers(staff, path)).json()["can_manage"] is False
+        body = json.dumps({"invoice_id": invoice}).encode()
+        assert (
+            c.post(
+                "/v1/checkout",
+                content=body,
+                headers={
+                    **headers(staff, "/v1/checkout", "POST", body),
+                    "Content-Type": "application/json",
+                },
+            ).status_code
+            == 403
+        )
+        body = json.dumps(
+            {"workspace_id": "another-product", "product": "garage"}
+        ).encode()
+        payload = dict(
+            principal_id=a.principal_id,
+            workspace_id="another-product",
+            product="garage",
+            owner_verified=True,
+            method="POST",
+            path="/v1/bindings",
+            body_sha256=hashlib.sha256(body).hexdigest(),
+        )
+        proof = Transport(
+            KEY, "warehouse", "billing-api", "billing.session", environment="sandbox"
+        ).sign(payload)
+        assert (
+            c.post(
+                "/v1/bindings",
+                content=body,
+                headers={
+                    "X-CarPot-Peer": "warehouse",
+                    "Authorization": "Bearer " + proof,
+                    "Content-Type": "application/json",
+                },
+            ).status_code
+            == 403
+        )

@@ -2,8 +2,6 @@
 
 import os, re, json, hashlib
 from datetime import datetime, timezone
-import httpx
-from bot.billing.client import BillingClient
 from bot.billing.transport import Transport
 from bot.billing.models import BillingError
 from bot.database.base import fetchrow, execute, transaction
@@ -35,12 +33,19 @@ def environment():
 
 
 def client():
-    return BillingClient(
-        os.environ["BOT_BILLING_API_URL"],
-        os.environ["BOT_BILLING_SERVICE_KEY"].encode(),
-        "telegram",
-        environment(),
-    )
+    try:
+        from bot.billing.client import BillingClient
+
+        return BillingClient(
+            os.environ["BOT_BILLING_API_URL"],
+            os.environ["BOT_BILLING_SERVICE_KEY"].encode(),
+            "telegram",
+            environment(),
+        )
+    except (KeyError, ImportError) as exc:
+        raise BillingError(
+            "Explicit product Billing configuration and optional SDK dependency required"
+        ) from exc
 
 
 def claims(b):
@@ -230,6 +235,8 @@ async def forward_callback(data, signature, order):
     if not canonical_order(order):
         raise BillingError("Canonical namespace required")
     api = client()
+    import httpx
+
     try:
         async with httpx.AsyncClient(
             timeout=httpx.Timeout(15, connect=3), follow_redirects=False
