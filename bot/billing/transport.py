@@ -10,7 +10,12 @@ from .models import BillingError
 
 
 class Transport:
-    def __init__(self, key: bytes, issuer: str, audience: str, scope: str):
+    def __init__(
+        self, key: bytes, issuer: str, audience: str, scope: str, *, environment="test"
+    ):
+        if environment not in {"test", "sandbox", "production"}:
+            raise BillingError("Explicit transport environment required")
+        self.environment = environment
         if len(key) < 32:
             raise BillingError("At least 32 random key bytes required")
         self.key, self.issuer, self.audience, self.scope = key, issuer, audience, scope
@@ -24,7 +29,7 @@ class Transport:
             iat=stamp,
             exp=stamp + 60,
             jti=str(uuid4()),
-            environment="test",
+            environment=self.environment,
             payload=payload,
         )
         raw = json.dumps(envelope, sort_keys=True, separators=(",", ":")).encode()
@@ -47,7 +52,7 @@ class Transport:
                 e["iss"] != self.issuer
                 or e["aud"] != self.audience
                 or e["scope"] != self.scope
-                or e["environment"] != "test"
+                or e["environment"] != self.environment
                 or type(e["iat"]) is not int
                 or type(e["exp"]) is not int
                 or not e["iat"] <= stamp < e["exp"]
