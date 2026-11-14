@@ -267,7 +267,7 @@ def create_app(
     @app.get("/ready")
     def ready():
         with db.transaction() as c:
-            c.execute("SELECT version FROM billing.schema_migrations WHERE version=7")
+            c.execute("SELECT version FROM billing.schema_migrations WHERE version=8")
             if not c.fetchone():
                 raise HTTPException(503, "Billing schema not ready")
         return dict(status="ready", environment=db.environment)
@@ -339,6 +339,37 @@ def create_app(
             )
         return recurring.cancel(who, row["id"])
 
+    def test_wallet():
+        from .wallet import Wallet
+
+        return Wallet(core, enabled=os.getenv("BILLING_WALLET_TEST_ENABLED") == "true")
+
+    def test_referrals():
+        from .referrals import Referrals
+
+        return Referrals(
+            core, enabled=os.getenv("BILLING_REFERRALS_TEST_ENABLED") == "true"
+        )
+
+    class ReferralBinding(Command):
+        code: str = Field(min_length=16, max_length=16)
+
+    @app.get("/v1/wallet")
+    def wallet_view(who=Depends(actor)):
+        return test_wallet().view(who)
+
+    @app.post("/v1/referrals/code")
+    def referral_code(who=Depends(actor)):
+        return dict(code=test_referrals().code(who), test_only=True)
+
+    @app.post("/v1/referrals/bind")
+    def referral_bind(data: ReferralBinding, who=Depends(actor)):
+        return test_referrals().bind(who, data.code)
+
+    @app.get("/v1/referrals")
+    def referral_history(who=Depends(actor)):
+        return test_referrals().history(who)
+
     @app.get("/v1/catalogue")
     def catalogue(who=Depends(actor)):
         with db.transaction() as c:
@@ -351,6 +382,16 @@ def create_app(
     @app.get("/v1/cabinet/{binding}")
     def cabinet(binding: str, who=Depends(actor)):
         result = core.cabinet(who, binding)
+        if (
+            db.environment == "sandbox"
+            and os.getenv("BILLING_WALLET_TEST_ENABLED") == "true"
+        ):
+            result["wallet"] = test_wallet().view(who)
+        if (
+            db.environment == "sandbox"
+            and os.getenv("BILLING_REFERRALS_TEST_ENABLED") == "true"
+        ):
+            result["referrals"] = test_referrals().history(who)
         result.update(
             checkout_available=payments.checkout_enabled,
             recurring_available=False,

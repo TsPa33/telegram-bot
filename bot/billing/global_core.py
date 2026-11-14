@@ -21,6 +21,19 @@ class GlobalBilling(Billing):
             raise BillingError("Operational Billing storage required")
         super().__init__(db)
 
+    def _settle(self, c, intent, event):
+        result = super()._settle(c, intent, event)
+        import os
+
+        if (
+            self.db.environment == "sandbox"
+            and os.getenv("BILLING_REFERRALS_TEST_ENABLED") == "true"
+        ):
+            from .referrals import Referrals
+
+            Referrals(self, enabled=True).on_settlement(c, intent)
+        return result
+
     def seed_catalogue(self):
         super().seed_catalogue()
         from .products import seed

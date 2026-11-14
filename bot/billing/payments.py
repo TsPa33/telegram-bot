@@ -533,6 +533,12 @@ class Payments:
                     journal,
                 ),
             )
+            import os
+
+            if self.db.environment == "sandbox":
+                from .referrals import Referrals
+
+                Referrals(self.core, enabled=True).on_reversal(c, settlement)
             c.execute(
                 "SELECT p.*,s.binding_id,s.sku,s.plan_version,b.workspace_id,b.product FROM billing.periods p JOIN billing.subscriptions s ON s.id=p.subscription_id JOIN billing.bindings b ON b.id=s.binding_id WHERE p.id=%s FOR UPDATE OF s",
                 (row["period_id"],),
