@@ -12,3 +12,17 @@ test('browser return identifies an order but never confirms money or activation'
 test('refund and future paid periods do not pretend immediate activation',()=>{assert.match(m.paymentMessage({status:'refunded',activated:true}),/повернено/);assert.match(m.paymentMessage({status:'paid',effective_from:new Date(Date.now()+86400000).toISOString()}),/Новий період почнеться/);});
 
 test('garage capacity distinguishes occupied, free and excess without negative free slots',()=>{assert.deepEqual(m.capacityBreakdown(34,10),{used:34,limit:10,free:0,excess:24,usedPercent:10/34*100,excessPercent:24/34*100});assert.deepEqual(m.capacityBreakdown(3,10),{used:3,limit:10,free:7,excess:0,usedPercent:30,excessPercent:0});assert.equal(m.capacityBreakdown(0,0).usedPercent,0);assert.equal(m.capacityBreakdown(34,50).free,16);});
+
+test('paid coverage follows contiguous confirmed base invoices, not add-ons, gaps or full refunds',()=>{
+ const periods=['2026-11-14','2026-12-14','2027-01-14','2027-02-14','2027-03-14'].map(x=>x+'T19:00:13.000Z');
+ const invoices=periods.slice(0,-1).map((start,i)=>({id:'i'+i,kind:'base',status:'paid',amount_minor:100000,starts_at:start,ends_at:periods[i+1]}));
+ const payments=invoices.map(i=>({invoice_id:i.id,sku:'warehouse.standard',amount_minor:100000,refunded_minor:0}));
+ const now=Date.parse('2026-11-15T00:00:00Z'),run=(i=invoices,p=payments,status='ACTIVE')=>m.paidCoverage(periods[1],status,i,p,now);
+ assert.deepEqual(run(),{through:periods[4],additionalPeriods:3,limited:false});
+ assert.equal(run(invoices.filter(i=>i.id!=='i2')).through,periods[2]);
+ assert.equal(run(invoices,payments.map(p=>p.invoice_id==='i2'?{...p,refunded_minor:100000}:p)).through,periods[2]);
+ assert.equal(run(invoices.map(i=>i.id==='i2'?{...i,kind:'addon'}:i)).through,periods[2]);
+ assert.equal(run(invoices.filter(i=>i.id!=='i0')),null);
+ assert.equal(run(invoices,payments,'TRIAL'),null);
+ assert.equal(run(invoices,payments.filter(p=>p.invoice_id!=='i1')).through,periods[1]);
+});

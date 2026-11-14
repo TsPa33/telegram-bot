@@ -29,3 +29,18 @@ export function capacityBreakdown(used:number,limit:number){
  const free=Math.max(0,l-u),excess=Math.max(0,u-l),total=Math.max(1,u,l);
  return {used:u,limit:l,free,excess,usedPercent:Math.min(u,l)/total*100,excessPercent:excess/total*100};
 }
+
+/** A conservative display-only chain of settled base periods in the bound cabinet.
+ * Never extend across gaps, missing settlement evidence, full refunds, or add-ons.
+ * The API returns at most 100 records of each kind; callers label truncated data.
+ */
+export function paidCoverage(currentEnd:string|null,status:string,invoices:Row[],payments:Row[],now=Date.now()){
+ if(status!=='ACTIVE'||!currentEnd)return null;
+ const end=Date.parse(currentEnd);if(!Number.isFinite(end)||end<=now)return null;
+ const settled=new Map(payments.filter(p=>typeof p.invoice_id==='string'&&Number.isSafeInteger(p.amount_minor)&&p.amount_minor>0&&Number.isSafeInteger(p.refunded_minor)&&p.refunded_minor>=0&&p.refunded_minor<p.amount_minor&&/^warehouse\.(standard|premium)$/.test(p.sku)).map(p=>[p.invoice_id,p]));
+ const intervals=invoices.filter(i=>i.kind==='base'&&i.status==='paid'&&settled.get(i.id)?.amount_minor===i.amount_minor).map(i=>({start:Date.parse(i.starts_at),end:Date.parse(i.ends_at)})).filter(i=>Number.isFinite(i.start)&&Number.isFinite(i.end)&&i.start<i.end).sort((a,b)=>a.start-b.start||a.end-b.end);
+ if(!intervals.some(i=>i.start<=now&&i.end===end))return null;
+ let through=end,additionalPeriods=0;
+ for(const i of intervals){if(i.start>through)break;if(i.end>through){through=i.end;additionalPeriods++;}}
+ return {through:new Date(through).toISOString(),additionalPeriods,limited:invoices.length>=100||payments.length>=100};
+}
