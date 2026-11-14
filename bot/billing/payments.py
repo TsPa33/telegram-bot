@@ -12,9 +12,14 @@ from .service import uid
 
 class Payments:
     def __init__(
-        self, core: GlobalBilling, provider: LiqPayProvider, *, checkout_enabled=False, hosted_links=None
+        self,
+        core: GlobalBilling,
+        provider: LiqPayProvider,
+        *,
+        checkout_enabled=False,
+        hosted_links=None,
     ):
-        self.hosted_links=hosted_links
+        self.hosted_links = hosted_links
         if core.db.environment != provider.profile.environment:
             raise BillingError("Storage/provider environment mismatch")
         self.core, self.provider, self.db, self.checkout_enabled = (
@@ -47,7 +52,7 @@ class Payments:
             raise BillingError("Unknown payment order")
         return row
 
-    def checkout(self, actor, invoice_id):
+    def checkout(self, actor, invoice_id, *, collector="manual", mandate_id=None):
         if not self.checkout_enabled:
             raise BillingError("Checkout is disabled")
         with self.db.transaction() as c:
@@ -65,6 +70,31 @@ class Payments:
                 raise Forbidden("Invoice denied")
             if invoice["status"] != "open" or invoice["ends_at"] <= utcnow():
                 raise Conflict("Invoice is not collectible")
+            if collector not in {"manual", "recurring"} or (
+                collector == "recurring"
+            ) != (mandate_id is not None):
+                raise BillingError("Explicit collection ownership required")
+            if collector == "recurring":
+                c.execute(
+                    "SELECT 1 FROM billing.recurring_mandates m JOIN billing.subscriptions s ON s.binding_id=m.binding_id JOIN billing.periods p ON p.subscription_id=s.id WHERE m.id=%s AND m.account_id=%s AND m.state='active' AND p.id=%s",
+                    (mandate_id, actor.account_id, invoice["period_id"]),
+                )
+                if not c.fetchone():
+                    raise Forbidden("Active mandate required")
+            c.execute(
+                "INSERT INTO billing.invoice_collectors VALUES (%s,%s,%s) ON CONFLICT DO NOTHING",
+                (invoice_id, collector, mandate_id),
+            )
+            c.execute(
+                "SELECT * FROM billing.invoice_collectors WHERE invoice_id=%s",
+                (invoice_id,),
+            )
+            ownership = c.fetchone()
+            if (ownership["method"], ownership["mandate_id"]) != (
+                collector,
+                mandate_id,
+            ):
+                raise Conflict("Invoice already belongs to another collection method")
             c.execute(
                 "SELECT * FROM billing.intents WHERE invoice_id=%s", (invoice_id,)
             )
@@ -96,7 +126,9 @@ class Payments:
                         p.protocol,
                         p.result_url,
                         p.server_url,
-                        min(utcnow() + timedelta(minutes=30), invoice["ends_at"]),
+                        invoice["ends_at"]
+                        if collector == "recurring"
+                        else min(utcnow() + timedelta(minutes=30), invoice["ends_at"]),
                     ),
                 )
             c.execute(
@@ -120,7 +152,9 @@ class Payments:
                 environment=self.db.environment,
                 expires_at=row["expires_at"],
                 form=self.provider.checkout(terms),
-                hosted_url=self.hosted_links.url(terms.order_id,row["expires_at"]) if self.hosted_links else None,
+                hosted_url=self.hosted_links.url(terms.order_id, row["expires_at"])
+                if self.hosted_links
+                else None,
             )
 
     def callback(self, data, signature):
@@ -189,6 +223,25 @@ class Payments:
             row = self._row(c, order, lock=True)
             event = self.provider.correlate(payload, self._terms(row), digest=digest)
             c.execute(
+                "SELECT m.* FROM billing.recurring_cycles z JOIN billing.recurring_mandates m ON m.id=z.mandate_id WHERE z.invoice_id=%s",
+                (row["invoice_id"],),
+            )
+            mandate = c.fetchone()
+            c.execute(
+                "SELECT method FROM billing.invoice_collectors WHERE invoice_id=%s",
+                (row["invoice_id"],),
+            )
+            collection = c.fetchone()
+            if collection and collection["method"] == "recurring" and not mandate:
+                raise BillingError("Cycle registration incomplete; retry callback")
+            if (
+                mandate
+                and payload.get("subscription_id")
+                != mandate["provider_subscription_id"]
+            ):
+                raise BillingError("Recurring provider subscription correlation failed")
+
+            c.execute(
                 "INSERT INTO billing.provider_evidence(provider,environment,digest,order_id,payment_id,status,classification,source) VALUES ('liqpay',%s,%s,%s,%s,%s,%s,%s) ON CONFLICT DO NOTHING RETURNING digest",
                 (
                     event.environment,
@@ -222,6 +275,11 @@ class Payments:
                 if event.status == "review":
                     return self._review(
                         c, row, event, "provider_status:" + event.raw_status
+                    )
+                if mandate and event.status == "failure":
+                    c.execute(
+                        "UPDATE billing.recurring_mandates SET last_failure_at=now() WHERE id=%s",
+                        (mandate["id"],),
                     )
                 if not settled and event.status == "failure":
                     c.execute(
@@ -263,21 +321,75 @@ class Payments:
                     "UPDATE billing.subscriptions s SET sku=%s,plan_version=%s FROM billing.periods p WHERE p.id=%s AND s.id=p.subscription_id",
                     (plan["sku"], plan["plan_version"], row["period_id"]),
                 )
-            return self.core._settle(c, row, event)
+            result = self.core._settle(c, row, event)
+            if mandate:
+                c.execute(
+                    "SELECT ends_at FROM billing.periods WHERE id=%s",
+                    (row["period_id"],),
+                )
+                end = c.fetchone()["ends_at"]
+                c.execute(
+                    "UPDATE billing.recurring_mandates SET next_payment_at=greatest(next_payment_at,%s) WHERE id=%s AND state='active'",
+                    (end, mandate["id"]),
+                )
+            return result
 
-    def status(self,actor,order):
+    def status(self, actor, order):
         with self.db.transaction() as c:
-            self.core.authorize(c,actor,Permission.VIEW)
-            row=self._row(c,order)
-            if row['account_id']!=actor.account_id:raise Forbidden('Order denied')
+            self.core.authorize(c, actor, Permission.VIEW)
+            row = self._row(c, order)
+            if row["account_id"] != actor.account_id:
+                raise Forbidden("Order denied")
             self._terms(row)
-            c.execute('SELECT 1 FROM billing.settlements WHERE invoice_id=%s',(row['invoice_id'],));settled=bool(c.fetchone())
-            c.execute('SELECT 1 FROM billing.outbox o JOIN billing.periods p ON p.subscription_id=o.aggregate_id WHERE p.id=%s AND o.delivered_at IS NULL LIMIT 1',(row['period_id'],));pending=bool(c.fetchone())
-            c.execute('SELECT 1 FROM billing.reconciliation_cases WHERE invoice_id=%s',(row['invoice_id'],));review=bool(c.fetchone())
-            c.execute('SELECT coalesce(sum(r.amount_minor),0) AS refunded FROM billing.reversals r JOIN billing.settlements s ON s.id=r.settlement_id WHERE s.invoice_id=%s',(row['invoice_id'],));refunded=c.fetchone()['refunded']
-            c.execute('SELECT starts_at,ends_at FROM billing.periods WHERE id=%s',(row['period_id'],));period=c.fetchone()
-            state='refunded' if refunded>=row['amount_minor'] else 'paid' if settled else 'review' if review else 'expired' if row['expires_at']<=utcnow() else 'pending'
-            return dict(order_id=order,invoice_id=row['invoice_id'],amount_minor=row['amount_minor'],currency=row['currency'],paid=settled,activation_pending=settled and pending,status=state,environment=row['environment'],refunded_minor=refunded,effective_from=row['effective_at'] or period['starts_at'],effective_until=period['ends_at'])
+            c.execute(
+                "SELECT 1 FROM billing.settlements WHERE invoice_id=%s",
+                (row["invoice_id"],),
+            )
+            settled = bool(c.fetchone())
+            c.execute(
+                "SELECT 1 FROM billing.outbox o JOIN billing.periods p ON p.subscription_id=o.aggregate_id WHERE p.id=%s AND o.delivered_at IS NULL LIMIT 1",
+                (row["period_id"],),
+            )
+            pending = bool(c.fetchone())
+            c.execute(
+                "SELECT 1 FROM billing.reconciliation_cases WHERE invoice_id=%s",
+                (row["invoice_id"],),
+            )
+            review = bool(c.fetchone())
+            c.execute(
+                "SELECT coalesce(sum(r.amount_minor),0) AS refunded FROM billing.reversals r JOIN billing.settlements s ON s.id=r.settlement_id WHERE s.invoice_id=%s",
+                (row["invoice_id"],),
+            )
+            refunded = c.fetchone()["refunded"]
+            c.execute(
+                "SELECT starts_at,ends_at FROM billing.periods WHERE id=%s",
+                (row["period_id"],),
+            )
+            period = c.fetchone()
+            state = (
+                "refunded"
+                if refunded >= row["amount_minor"]
+                else "paid"
+                if settled
+                else "review"
+                if review
+                else "expired"
+                if row["expires_at"] <= utcnow()
+                else "pending"
+            )
+            return dict(
+                order_id=order,
+                invoice_id=row["invoice_id"],
+                amount_minor=row["amount_minor"],
+                currency=row["currency"],
+                paid=settled,
+                activation_pending=settled and pending,
+                status=state,
+                environment=row["environment"],
+                refunded_minor=refunded,
+                effective_from=row["effective_at"] or period["starts_at"],
+                effective_until=period["ends_at"],
+            )
 
     def reconcile(self, actor, order):
         self.status(actor, order)  # tenant/financial authorization before network I/O

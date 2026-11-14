@@ -139,6 +139,7 @@ class GlobalBilling(Billing):
         *,
         quantity=1,
         now=None,
+        recurring_mandate=None,
     ):
         stamp = now or utcnow()
         if (
@@ -165,6 +166,20 @@ class GlobalBilling(Billing):
                     raise Conflict("Idempotency key conflict")
                 return self._invoice_view(c, actor, old["invoice_id"])
             b, p, s = self._subscription(c, actor, binding, sku)
+            if p["kind"] == "base":
+                c.execute(
+                    "SELECT id FROM billing.recurring_mandates WHERE binding_id=%s AND state IN ('active','cancel_requested')",
+                    (binding,),
+                )
+                mandate = c.fetchone()
+                if mandate and mandate["id"] != recurring_mandate:
+                    raise Conflict(
+                        "Cancel and confirm the provider mandate before manual renewal or plan change"
+                    )
+                if recurring_mandate and (
+                    not mandate or mandate["id"] != recurring_mandate
+                ):
+                    raise Forbidden("Recurring collection ownership denied")
             if p["kind"] == "base" and quantity != 1:
                 raise BillingError("A base plan has quantity one")
             if p["kind"] == "base":
@@ -399,6 +414,20 @@ class GlobalBilling(Billing):
                 "SELECT * FROM billing.subscriptions WHERE binding_id=%s", (binding,)
             )
             subscription = c.fetchone()
+            if subscription:
+                subscription = dict(subscription)
+                c.execute(
+                    "SELECT id,state,next_payment_at,last_failure_at FROM billing.recurring_mandates WHERE binding_id=%s ORDER BY consented_at DESC LIMIT 1",
+                    (binding,),
+                )
+                mandate = c.fetchone()
+                subscription.update(
+                    auto_renew=bool(mandate and mandate["state"] == "active"),
+                    recurring=dict(mandate) if mandate else None,
+                    next_payment_at=mandate["next_payment_at"]
+                    if mandate and mandate["state"] == "active"
+                    else None,
+                )
             c.execute(
                 "SELECT i.id,i.amount_minor,i.currency,i.status,i.kind,p.starts_at,p.ends_at FROM billing.invoices i JOIN billing.periods p ON p.id=i.period_id JOIN billing.subscriptions s ON s.id=p.subscription_id WHERE s.binding_id=%s ORDER BY p.starts_at DESC,i.id LIMIT 100",
                 (binding,),

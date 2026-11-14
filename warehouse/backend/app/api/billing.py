@@ -54,8 +54,11 @@ def checkout(db:DB,who:Auth,body:Any=Body(default=None)):
     return global_finance.request(who,'POST','/v1/checkout',{'invoice_id':data.invoice_id},binding=p)
 
 @router.post('/cancel-renewal')
-def cancel(who:Auth):
+def cancel(db:DB,who:Auth):
     owner(who)
+    if global_finance.enabled():
+        p=global_finance.binding(db,who)
+        return global_finance.request(who,'POST','/v1/bindings/'+p.global_binding_id+'/cancel-renewal',binding=p)
     raise HTTPException(503,'Скасування у провайдера ще не підтверджене. Стан підписки не змінено.')
 
 @router.post('/callback')

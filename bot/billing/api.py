@@ -117,6 +117,15 @@ def create_app(
         title="CarPot Billing", docs_url=None, redoc_url=None, openapi_url=None
     )
     app.state.core, app.state.payments = core, payments
+    from .recurring import Recurring
+
+    recurring = Recurring(
+        core,
+        payments,
+        enabled=os.getenv("BILLING_RECURRING_ENABLED") == "true",
+        contract_confirmed=os.getenv("BILLING_RECURRING_CONTRACT_CONFIRMED") == "true",
+    )
+    app.state.recurring = recurring
     limiter = Window()
 
     @app.middleware("http")
@@ -258,7 +267,7 @@ def create_app(
     @app.get("/ready")
     def ready():
         with db.transaction() as c:
-            c.execute("SELECT version FROM billing.schema_migrations WHERE version=6")
+            c.execute("SELECT version FROM billing.schema_migrations WHERE version=7")
             if not c.fetchone():
                 raise HTTPException(503, "Billing schema not ready")
         return dict(status="ready", environment=db.environment)
@@ -288,6 +297,47 @@ def create_app(
             request.state.peer,
             account_id=data.account_id,
         )
+
+    class RecurringConsent(Command):
+        binding_id: str
+        sku: str
+        request_key: str
+        accepted: bool = Field(strict=True)
+        version: str
+
+    @app.post("/v1/recurring")
+    def recurring_consent(data: RecurringConsent, who=Depends(actor)):
+        values = data.model_dump()
+        return recurring.consent(
+            who,
+            values.pop("binding_id"),
+            values.pop("sku"),
+            values.pop("request_key"),
+            **values,
+        )
+
+    @app.post("/v1/recurring/{mandate}/registration")
+    def recurring_registration(mandate: str, who=Depends(actor)):
+        return recurring.registration(who, mandate)
+
+    @app.post("/v1/recurring/{mandate}/cancel")
+    def recurring_cancel(mandate: str, who=Depends(actor)):
+        return recurring.cancel(who, mandate)
+
+    @app.post("/v1/bindings/{binding}/cancel-renewal")
+    def binding_cancel(binding: str, who=Depends(actor)):
+        with db.transaction() as c:
+            core.authorize(c, who, Permission.MANAGE)
+            c.execute(
+                "SELECT m.id FROM billing.recurring_mandates m WHERE m.binding_id=%s AND m.account_id=%s AND m.state<>'canceled'",
+                (binding, who.account_id),
+            )
+            row = c.fetchone()
+        if not row:
+            return dict(
+                state="off", provider_confirmed=True, paid_access_preserved=True
+            )
+        return recurring.cancel(who, row["id"])
 
     @app.get("/v1/catalogue")
     def catalogue(who=Depends(actor)):
@@ -359,7 +409,15 @@ def create_app(
             value = dict(pairs)
         except (ValueError, UnicodeError):
             raise HTTPException(400, "Invalid callback") from None
-        await run_in_threadpool(payments.callback, value["data"], value["signature"])
+        decoded = payments.provider.decode_callback(value["data"], value["signature"])
+        if str(decoded.get("order_id", "")).startswith("carpot-recurring-"):
+            await run_in_threadpool(
+                recurring.callback, value["data"], value["signature"]
+            )
+        else:
+            await run_in_threadpool(
+                payments.callback, value["data"], value["signature"]
+            )
         return {"accepted": True}
 
     @app.get("/v1/admin/reconciliation")
