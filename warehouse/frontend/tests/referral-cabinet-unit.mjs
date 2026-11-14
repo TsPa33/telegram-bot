@@ -1,0 +1,4 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {readFile} from 'node:fs/promises';import {transform} from 'esbuild';
+const {code}=await transform(await readFile(new URL('../src/referralCabinet.ts',import.meta.url),'utf8'),{loader:'ts',format:'esm'});
+const m=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
+test('invite code is normalized and never redirects off site',()=>{assert.equal(m.referralCode(' abcdef1234567890 '),'ABCDEF1234567890');assert.equal(m.referralCode('https://evil.test'),null);assert.equal(m.referralInvite('?section=payments&ref=ABCDEF1234567890'),null);assert.equal(m.referralInvite('?section=referrals&ref=abcdef1234567890'),'ABCDEF1234567890');assert.equal(m.referralPath('abcdef1234567890'),'/settings?section=referrals&ref=ABCDEF1234567890');assert.throws(()=>m.referralPath('../admin'));});

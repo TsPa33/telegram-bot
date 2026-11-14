@@ -12,6 +12,8 @@ import {roleLabel,useCan} from '../permissions';
 import {Heading,State,useLoad} from '../shared';
 import '../settings-r123.css';
 import WorkspaceBilling from '../WorkspaceBilling';
+import WorkspaceReferrals from '../WorkspaceReferrals';
+import {referralCode} from '../referralCabinet';
 
 type Capability={permission:string;label:string;description:string;path:string;icon:typeof Boxes};
 
@@ -95,20 +97,23 @@ function SessionExit(){
 }
 
 export default function Settings({user}:{user:Row}){
-  const can=useCan(),[params]=useSearchParams();const tab=params.get('section')==='payments'?'payments':'general';
+  const can=useCan(),[params]=useSearchParams();const tab=params.get('section')==='referrals'?'referrals':params.get('section')==='payments'?'payments':'general';
+  const referral=useLoad(()=>user.role==='DIRECTOR'?api('/billing/referrals/status'):Promise.resolve(null),[user.id]);
+  const referralVisible=user.role==='DIRECTOR'&&referral.data?.enabled===true;
   const billing=useLoad(()=>tab==='payments'?api('/billing/status'):Promise.resolve(null),[tab]);
   const {data,error,loading,reload}=useLoad(()=>api('/settings'),[]);
   const sections=shortcuts.filter(item=>can(item.permission)).filter((item,i,items)=>item.path!=='/sales'||items.findIndex(x=>x.path==='/sales')===i);
   const permissionCount=Array.isArray(user.permissions)?user.permissions.length:0;
-  return <div className={'r123-settings'+(tab==='payments'?' r123-settings--payments':'')}>
-    <Heading eyebrow="РОБОЧИЙ ПРОСТІР" title={tab==='payments'?'Оплати':'Загальні налаштування'} description={tab==='payments'?'Підписка, місткість гаража та фінансова історія.':'Ваш профіль, безпека та доступ до інструментів CarPot Warehouse.'}/>
+  return <div className={'r123-settings'+(tab==='payments'?' r123-settings--payments':tab==='referrals'?' r123-settings--referrals':'')}>
+    <Heading eyebrow="РОБОЧИЙ ПРОСТІР" title={tab==='referrals'?'Реферальна програма':tab==='payments'?'Оплати':'Загальні налаштування'} description={tab==='referrals'?'Запрошення партнерів та винагороди.':tab==='payments'?'Підписка, місткість гаража та фінансова історія.':'Ваш профіль, безпека та доступ до інструментів CarPot Warehouse.'}/>
     {tab==='general'&&<div className="r123-profile-bar">
       <span className="r123-profile-avatar" aria-hidden="true">{String(user.name||'К').slice(0,1).toLocaleUpperCase('uk')}</span>
       <div className="r123-profile-intro"><strong>{user.name||'Користувач'}</strong><span>{user.email}</span></div>
       <span className="r123-role"><ShieldCheck size={15}/>{roleLabel(user.role)}</span>
     </div>}
 
-    <nav className="settings-section-tabs" aria-label="Розділ налаштувань"><Link aria-current={tab==='general'?'page':undefined} to="/settings?section=general">Загальні</Link><Link aria-current={tab==='payments'?'page':undefined} to="/settings?section=payments">Оплати</Link></nav>
+    <nav className={'settings-section-tabs'+(referralVisible?' referrals-tabs':'')} aria-label="Розділ налаштувань"><Link aria-current={tab==='general'?'page':undefined} to="/settings?section=general">Загальні</Link><Link aria-current={tab==='payments'?'page':undefined} to="/settings?section=payments">Оплати</Link>{referralVisible&&<Link aria-current={tab==='referrals'?'page':undefined} to="/settings?section=referrals">Реферали</Link>}</nav>
+    {tab==='referrals'&&(user.role==='DIRECTOR'?<WorkspaceReferrals key={user.id} invite={referralCode(params.get('ref'))}/>:<p>Реферальним кабінетом керує власник компанії.</p>)}
     {tab==='payments'&&billing.data?.entitlements_available&&<WorkspaceBilling/>}
     {tab==='payments'&&!billing.data?.entitlements_available&&<section className="r123-panel" aria-label="Оплати"><h2>Оплати</h2><State loading={billing.loading} error={billing.error}/>{billing.data&&<p>{billing.data.enabled?(billing.data.read_only?'Доступ у режимі перегляду':'Поточний доступ активний'):'Оплати не підключені. Поточний доступ збережено.'}</p>}<p>Оформлення платежів на цьому етапі недоступне.</p></section>}
     <div aria-label="Загальні" hidden={tab!=='general'}>

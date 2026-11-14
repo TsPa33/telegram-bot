@@ -47,6 +47,7 @@ import Orders from "./Orders";
 import SalesCenter from "./SalesCenter";
 import Operations from "./pages/Operations";
 import Settings from "./pages/Settings";
+import {referralInvite,referralPath} from "./referralCabinet";
 import Vehicles from "./pages/Vehicles";
 const nav = [
   { to: "/team", label: "Команда", icon: Users },
@@ -77,7 +78,10 @@ export default function App() {
   const [compactSidebar,setCompactSidebar]=useState(()=>{try{return localStorage.getItem('warehouse.sidebar.compact')==='true';}catch{return false;}});
   const [settingsOpen,setSettingsOpen]=useState(location.pathname==='/settings');
   useEffect(()=>{if(location.pathname==='/settings')setSettingsOpen(true);},[location.pathname]);
-  const settingsSection=new URLSearchParams(location.search).get('section')==='payments'?'payments':'general';
+  const section=new URLSearchParams(location.search).get('section');
+  const settingsSection=section==='referrals'?'referrals':section==='payments'?'payments':'general';
+  const [referralNav,setReferralNav]=useState('');
+  useEffect(()=>{let active=true;setReferralNav('');if(user?.role==='DIRECTOR')api('/billing/referrals/status').then(r=>{if(active&&r.enabled===true)setReferralNav(String(user.id));}).catch(()=>{});return()=>{active=false};},[user?.id,user?.role]);
   const currentUser=useRef<Row|null>(null),generation=useRef(0),inFlight=useRef(0);
   const retryIdentity=useRef<(force?:boolean)=>void>(()=>{});
   const changeUser=useCallback((next:Row|null)=>{
@@ -148,7 +152,8 @@ export default function App() {
       <Auth
         onLogin={(u) => {
           changeUser(u);
-          navigate("/");
+          const invite=location.pathname==='/settings'?referralInvite(location.search):null;
+          navigate(invite?referralPath(invite):"/");
         }}
       />
     );
@@ -191,7 +196,7 @@ export default function App() {
           ))}
         </nav>
         {user.catalogue_platform_admin===true&&<NavLink to="/administration/catalogue/import"><ShieldCheck size={18}/><span className="sidebar-link-label">Адміністрування → Каталог</span></NavLink>}
-        <div className="sidebar-settings-group"><button type="button" className={'settings-nav'+(location.pathname==='/settings'?' active':'')} aria-expanded={settingsOpen} aria-controls="warehouse-settings-nav" onClick={()=>{setSettingsOpen(v=>!v);if(location.pathname!=='/settings'){navigate('/settings?section=general');setSettingsOpen(true);}}}><Settings2 size={18}/><span className="sidebar-link-label">Налаштування</span><ChevronRight className="settings-chevron" size={14}/></button>{settingsOpen&&<nav id="warehouse-settings-nav" className="sidebar-settings-sub" aria-label="Налаштування"><Link className={location.pathname==='/settings'&&settingsSection==='general'?'active':undefined} aria-current={location.pathname==='/settings'&&settingsSection==='general'?'page':undefined} to="/settings?section=general" onClick={()=>setMenu(false)}>Загальні</Link><Link className={location.pathname==='/settings'&&settingsSection==='payments'?'active':undefined} aria-current={location.pathname==='/settings'&&settingsSection==='payments'?'page':undefined} to="/settings?section=payments" onClick={()=>setMenu(false)}>Оплати</Link></nav>}</div>
+        <div className="sidebar-settings-group"><button type="button" className={'settings-nav'+(location.pathname==='/settings'?' active':'')} aria-expanded={settingsOpen} aria-controls="warehouse-settings-nav" onClick={()=>{setSettingsOpen(v=>!v);if(location.pathname!=='/settings'){navigate('/settings?section=general');setSettingsOpen(true);}}}><Settings2 size={18}/><span className="sidebar-link-label">Налаштування</span><ChevronRight className="settings-chevron" size={14}/></button>{settingsOpen&&<nav id="warehouse-settings-nav" className="sidebar-settings-sub" aria-label="Налаштування"><Link className={location.pathname==='/settings'&&settingsSection==='general'?'active':undefined} aria-current={location.pathname==='/settings'&&settingsSection==='general'?'page':undefined} to="/settings?section=general" onClick={()=>setMenu(false)}>Загальні</Link><Link className={location.pathname==='/settings'&&settingsSection==='payments'?'active':undefined} aria-current={location.pathname==='/settings'&&settingsSection==='payments'?'page':undefined} to="/settings?section=payments" onClick={()=>setMenu(false)}>Оплати</Link>{user.role==='DIRECTOR'&&referralNav===String(user.id)&&<Link className={location.pathname==='/settings'&&settingsSection==='referrals'?'active':undefined} aria-current={location.pathname==='/settings'&&settingsSection==='referrals'?'page':undefined} to="/settings?section=referrals" onClick={()=>setMenu(false)}>Реферали</Link>}</nav>}</div>
         <div className="sidebar-foot">
           <div className="safe-dot" />
           Незалежний облік складу<small>CarPot Warehouse · MVP</small>

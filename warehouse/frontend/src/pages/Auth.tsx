@@ -3,13 +3,15 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, type Row } from "../api";
 import { RecordForm } from "../components";
+import {referralInvite} from "../referralCabinet";
 
 export default function Auth({ onLogin }: { onLogin: (u: Row) => void }) {
+  const invite=referralInvite(location.search);
   const [register, setRegister] = useState(false);
   const [registrationAllowed, setRegistrationAllowed] = useState(false);
   useEffect(() => {
     api("/auth/options")
-      .then((r) => setRegistrationAllowed(r.registration_enabled))
+      .then((r) => {setRegistrationAllowed(r.registration_enabled);if(invite&&r.registration_enabled)setRegister(true);})
       .catch(() => setRegistrationAllowed(false));
   }, []);
   return (
@@ -61,6 +63,7 @@ export default function Auth({ onLogin }: { onLogin: (u: Row) => void }) {
               ? "Почніть із чистого складу. Додавайте тільки свої дані."
               : "Увійдіть, щоб продовжити роботу зі складом."}
           </p>
+          {invite&&<p className="notice">Запрошення CarPot. Після входу або реєстрації ви зможете підтвердити його до першої оплати.</p>}
           <RecordForm
             key={String(register)}
             fields={[
