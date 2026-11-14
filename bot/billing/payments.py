@@ -12,8 +12,9 @@ from .service import uid
 
 class Payments:
     def __init__(
-        self, core: GlobalBilling, provider: LiqPayProvider, *, checkout_enabled=False
+        self, core: GlobalBilling, provider: LiqPayProvider, *, checkout_enabled=False, hosted_links=None
     ):
+        self.hosted_links=hosted_links
         if core.db.environment != provider.profile.environment:
             raise BillingError("Storage/provider environment mismatch")
         self.core, self.provider, self.db, self.checkout_enabled = (
@@ -119,6 +120,7 @@ class Payments:
                 environment=self.db.environment,
                 expires_at=row["expires_at"],
                 form=self.provider.checkout(terms),
+                hosted_url=self.hosted_links.url(terms.order_id,row["expires_at"]) if self.hosted_links else None,
             )
 
     def callback(self, data, signature):
@@ -263,44 +265,19 @@ class Payments:
                 )
             return self.core._settle(c, row, event)
 
-    def status(self, actor, order):
+    def status(self,actor,order):
         with self.db.transaction() as c:
-            self.core.authorize(c, actor, Permission.VIEW)
-            row = self._row(c, order)
-            if row["account_id"] != actor.account_id:
-                raise Forbidden("Order denied")
+            self.core.authorize(c,actor,Permission.VIEW)
+            row=self._row(c,order)
+            if row['account_id']!=actor.account_id:raise Forbidden('Order denied')
             self._terms(row)
-            c.execute(
-                "SELECT 1 FROM billing.settlements WHERE invoice_id=%s",
-                (row["invoice_id"],),
-            )
-            settled = bool(c.fetchone())
-            c.execute(
-                "SELECT 1 FROM billing.outbox o JOIN billing.periods p ON p.subscription_id=o.aggregate_id WHERE p.id=%s AND o.delivered_at IS NULL LIMIT 1",
-                (row["period_id"],),
-            )
-            pending = bool(c.fetchone())
-            c.execute(
-                "SELECT 1 FROM billing.reconciliation_cases WHERE invoice_id=%s",
-                (row["invoice_id"],),
-            )
-            review = bool(c.fetchone())
-            return dict(
-                order_id=order,
-                invoice_id=row["invoice_id"],
-                amount_minor=row["amount_minor"],
-                currency=row["currency"],
-                paid=settled,
-                activation_pending=settled and pending,
-                status="paid"
-                if settled
-                else "review"
-                if review
-                else "expired"
-                if row["expires_at"] <= utcnow()
-                else "pending",
-                environment=row["environment"],
-            )
+            c.execute('SELECT 1 FROM billing.settlements WHERE invoice_id=%s',(row['invoice_id'],));settled=bool(c.fetchone())
+            c.execute('SELECT 1 FROM billing.outbox o JOIN billing.periods p ON p.subscription_id=o.aggregate_id WHERE p.id=%s AND o.delivered_at IS NULL LIMIT 1',(row['period_id'],));pending=bool(c.fetchone())
+            c.execute('SELECT 1 FROM billing.reconciliation_cases WHERE invoice_id=%s',(row['invoice_id'],));review=bool(c.fetchone())
+            c.execute('SELECT coalesce(sum(r.amount_minor),0) AS refunded FROM billing.reversals r JOIN billing.settlements s ON s.id=r.settlement_id WHERE s.invoice_id=%s',(row['invoice_id'],));refunded=c.fetchone()['refunded']
+            c.execute('SELECT starts_at,ends_at FROM billing.periods WHERE id=%s',(row['period_id'],));period=c.fetchone()
+            state='refunded' if refunded>=row['amount_minor'] else 'paid' if settled else 'review' if review else 'expired' if row['expires_at']<=utcnow() else 'pending'
+            return dict(order_id=order,invoice_id=row['invoice_id'],amount_minor=row['amount_minor'],currency=row['currency'],paid=settled,activation_pending=settled and pending,status=state,environment=row['environment'],refunded_minor=refunded,effective_from=row['effective_at'] or period['starts_at'],effective_until=period['ends_at'])
 
     def reconcile(self, actor, order):
         self.status(actor, order)  # tenant/financial authorization before network I/O

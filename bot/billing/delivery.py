@@ -24,6 +24,8 @@ class EntitlementDelivery:
                 _check_url(p["url"])
 
     def _proof(self, row, peer):
+        if row["payload"].get("environment")!=self.db.environment or row["payload"].get("schema_version")!=2:
+            raise BillingError("Outbox environment mismatch")
         return Transport(
             self.peers[peer]["key"],
             "billing-api",
@@ -61,7 +63,7 @@ class EntitlementDelivery:
 
             def apply(c):
                 c.execute(
-                    "SELECT o.id,o.version,o.payload,l.peer FROM billing.outbox o JOIN billing.subscriptions s ON s.id=o.aggregate_id JOIN billing.product_links l ON l.binding_id=s.binding_id WHERE o.id=%s",
+                    "SELECT o.id,o.aggregate_id,o.version,o.payload,l.peer FROM billing.outbox o JOIN billing.subscriptions s ON s.id=o.aggregate_id JOIN billing.product_links l ON l.binding_id=s.binding_id WHERE o.id=%s",
                     (payload.get("event_id"),),
                 )
                 row = c.fetchone()
@@ -75,9 +77,11 @@ class EntitlementDelivery:
                     or payload["version"] < row["version"]
                 ):
                     raise Forbidden("Entitlement acknowledgment scope mismatch")
+                c.execute('SELECT max(version) AS version FROM billing.outbox WHERE aggregate_id=%s',(row['aggregate_id'],))
+                if payload['version']>c.fetchone()['version']:raise Forbidden('Unknown entitlement acknowledgment version')
                 c.execute(
-                    "UPDATE billing.outbox SET delivered_at=now() WHERE id=%s AND delivered_at IS NULL",
-                    (row["id"],),
+                    "UPDATE billing.outbox SET delivered_at=now() WHERE aggregate_id=%s AND version<=%s AND delivered_at IS NULL",
+                    (row["aggregate_id"],payload["version"]),
                 )
                 return True
 
@@ -99,7 +103,7 @@ class EntitlementDelivery:
                     "INSERT INTO billing.outbox_delivery(outbox_id) SELECT id FROM billing.outbox WHERE delivered_at IS NULL AND topic='billing.entitlement.snapshot.v2' ON CONFLICT DO NOTHING"
                 )
                 c.execute(
-                    "SELECT o.*,l.peer FROM billing.outbox_delivery d JOIN billing.outbox o ON o.id=d.outbox_id JOIN billing.subscriptions s ON s.id=o.aggregate_id JOIN billing.product_links l ON l.binding_id=s.binding_id WHERE o.delivered_at IS NULL AND d.next_attempt_at<=now() ORDER BY o.created_at LIMIT 1 FOR UPDATE OF d SKIP LOCKED"
+                    "SELECT o.*,l.peer FROM billing.outbox_delivery d JOIN billing.outbox o ON o.id=d.outbox_id JOIN billing.subscriptions s ON s.id=o.aggregate_id JOIN billing.product_links l ON l.binding_id=s.binding_id WHERE o.delivered_at IS NULL AND d.next_attempt_at<=now() AND NOT EXISTS(SELECT 1 FROM billing.outbox newer WHERE newer.aggregate_id=o.aggregate_id AND newer.version>o.version) ORDER BY o.created_at LIMIT 1 FOR UPDATE OF d SKIP LOCKED"
                 )
                 row = c.fetchone()
                 if not row:

@@ -1,0 +1,12 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {transform} from 'esbuild';
+const source=await readFile(new URL('../src/billingCabinet.ts',import.meta.url),'utf8');
+const {code}=await transform(source,{loader:'ts',format:'esm'});
+const m=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
+test('billing purchase recovery is scoped to actor and company',()=>{const scope=m.billingScope('actor','company'),value={scope,kind:'invoice',sku:'warehouse.standard',request_key:crypto.randomUUID()};assert.deepEqual(m.restoreBillingCommand(JSON.stringify(value),scope),value);assert.throws(()=>m.restoreBillingCommand(JSON.stringify(value),m.billingScope('employee','company')));assert.throws(()=>m.restoreBillingCommand(JSON.stringify(value),m.billingScope('actor','another-company')));});
+test('checkout recovery retains exact canonical invoice',()=>{const scope=m.billingScope('a','w'),value={scope,kind:'checkout',invoice_id:crypto.randomUUID()};assert.deepEqual(m.restoreBillingCommand(JSON.stringify(value),scope),value);assert.throws(()=>m.restoreBillingCommand(JSON.stringify({...value,invoice_id:'../admin'}),scope));assert.equal(m.restoreBillingCommand(null,scope),null);});
+test('hosted checkout is the official fixed POST and contains no card or secret fields',()=>{const form={url:'https://www.liqpay.ua/api/3/checkout',method:'POST',data:'data',signature:'signature'};assert.deepEqual(m.validCheckoutForm(form),{url:form.url,data:form.data,signature:form.signature});for(const bad of [{url:'https://evil.test/'},{method:'GET'},{data:''},{signature:''}])assert.throws(()=>m.validCheckoutForm({...form,...bad}));});
+test('browser return identifies an order but never confirms money or activation',()=>{assert.equal(m.billingOrder('success=true'),null);assert.equal(m.billingOrder('carpot-sandbox-'+'a'.repeat(32)),'carpot-sandbox-'+'a'.repeat(32));assert.equal(m.paymentMessage({status:'pending'}),'Очікуємо підтвердження LiqPay');assert.doesNotMatch(m.paymentMessage({status:'paid'}),/Підписку активовано/);assert.match(m.paymentMessage({status:'paid',activated:true}),/Підписку активовано/);});
+test('refund and future paid periods do not pretend immediate activation',()=>{assert.match(m.paymentMessage({status:'refunded',activated:true}),/повернено/);assert.match(m.paymentMessage({status:'paid',effective_from:new Date(Date.now()+86400000).toISOString()}),/Новий період почнеться/);});

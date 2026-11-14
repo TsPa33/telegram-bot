@@ -186,10 +186,10 @@ def global_cabinet(db:DB,who:Auth):
     can_manage=who.user.role=='DIRECTOR' and who.actor_id==who.workspace_account_id
     if not can_manage:return {'enabled':True,'can_manage':False}
     p=db.get(EntitlementWorkspace,who.workspace_account_id)
-    if not p or not p.global_binding_id:return {'enabled':True,'can_manage':True,'bound':False,'environment':global_finance.environment()}
+    if not p or not p.global_binding_id:return {'enabled':True,'can_manage':True,'bound':False,'workspace_scope':who.workspace_account_id,'environment':global_finance.environment()}
     p=global_finance.binding(db,who)
     result=global_finance.request(who,'GET','/v1/cabinet/'+p.global_binding_id,binding=p)
-    result.update(enabled=True,bound=True,can_manage=True,entitlements=entitlements.report(db,who.workspace_account_id))
+    result.update(enabled=True,bound=True,can_manage=True,workspace_scope=who.workspace_account_id,entitlements=entitlements.report(db,who.workspace_account_id))
     return result
 
 @router.post('/invoices')
