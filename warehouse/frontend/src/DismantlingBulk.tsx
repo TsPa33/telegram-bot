@@ -1,6 +1,7 @@
 import {useEffect,useRef,useState,type ReactNode} from 'react';
 import {api,type Row} from './api';
 import {useCan} from './permissions';
+import './operation-progress.css';
 import type {QuickScope} from './quickDismantling';
 import {bulkStorageKey,restoreBulk,newIntent,runBatches,eligibleFor,blockedReasons,selectionState,receiptLinesValid,type BulkIntent} from './bulkDismantling';
 export function SelectionCheck({ids,selected,label,disabled,onToggle}:{ids:string[];selected:Set<string>;label:string;disabled:boolean;onToggle:(checked:boolean)=>void}){
@@ -26,9 +27,27 @@ export function usePlanBulk({path,scope,onLoad,onSelection,onComplete}:{path:str
  return {intent,busy,error,outcome,warning,start,resume,stop,resetFeedback:()=>{setOutcome(null);setError('');}};
 }
 export type BulkController=ReturnType<typeof usePlanBulk>;
+export function OperationProgress({label,done,total,active=true,children}:{label:string;done?:number;total?:number;active?:boolean;children?:ReactNode}){
+ const known=typeof total==='number'&&total>0&&typeof done==='number';
+ const percent=known?Math.floor(100*Math.min(total,Math.max(0,done))/total):0;
+ return <div className={'wh-operation-progress'+(active?' is-running':' is-paused')}>
+  <div className="wh-operation-title" role="status" aria-live="polite">{active&&<span className="wh-operation-spinner" aria-hidden="true"/>}<strong>{label}</strong>{known&&<b>{percent}%</b>}</div>
+  <div className={'wh-operation-track'+(known?'':' is-indeterminate')} role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={known?total:100} aria-valuenow={known?done:undefined} aria-valuetext={known?`${done} із ${total} позицій оброблено`:undefined}><span style={known?{width:`${percent}%`}:undefined}/></div>
+  {children}
+ </div>;
+}
 export function BulkStatus({bulk}:{bulk:BulkController}){
- return <div className="managed-bulk-status">{bulk.error&&<p role="alert">{bulk.error}</p>}{bulk.warning&&<p role="status">{bulk.warning}</p>}{bulk.outcome&&<><p role="status">{bulk.outcome.action==='receipt'?'Додано на склад':'Оновлено'}: {bulk.outcome.updated} деталей.{bulk.outcome.skipped>0&&<> {bulk.outcome.skipped} деталей не додано.</>}</p>{bulk.outcome.action==='receipt'&&<a href="/inventory">Відкрити склад</a>}{bulk.outcome.skipped>0&&<details><summary>Причини пропуску</summary>{Object.entries(blockedReasons(bulk.outcome.blocked.map((r:Row)=>({eligibility:{blocked:r.reason}})),'blocked')).map(([reason,n])=><p key={reason}>{reason}: {n}</p>)}</details>}</>}
- {bulk.intent&&<div role="status"><p>{bulk.intent.action==='receipt'?'Надходження':'Масова дія'}: оброблено {bulk.intent.cursor} із {bulk.intent.ids.length}. Прогрес збережено. Не закривайте сторінку до завершення.</p>{!bulk.busy&&<><button onClick={()=>bulk.resume()}>{bulk.intent.action==='receipt'?'Продовжити надходження':'Продовжити дію'}</button>{!bulk.intent.pending&&<button className="secondary" onClick={()=>bulk.stop()}>Завершити й переглянути решту</button>}</>}</div>}</div>;
+ const intent=bulk.intent;
+ const updated=intent?.results.reduce((n,r)=>n+Number(r.updated||0),0)??0;
+ const skipped=intent?.results.reduce((n,r)=>n+Number(r.skipped||0),0)??0;
+ return <div className="managed-bulk-status">{bulk.error&&<p role="alert">{bulk.error}</p>}{bulk.warning&&<p role="status">{bulk.warning}</p>}
+ {bulk.busy&&!intent&&<OperationProgress label="Оновлюємо список після збереження…"/>}
+ {bulk.outcome&&<><p role="status" className="wh-operation-complete">{bulk.outcome.action==='receipt'?'Додано на склад':'Оновлено'}: {bulk.outcome.updated} деталей.{bulk.outcome.skipped>0&&<> {bulk.outcome.skipped} деталей не додано.</>}</p>{bulk.outcome.action==='receipt'&&<a href="/inventory">Відкрити склад</a>}{bulk.outcome.skipped>0&&<details><summary>Причини пропуску</summary>{Object.entries(blockedReasons(bulk.outcome.blocked.map((r:Row)=>({eligibility:{blocked:r.reason}})),'blocked')).map(([reason,n])=><p key={reason}>{reason}: {n}</p>)}</details>}</>}
+ {intent&&<OperationProgress label={bulk.busy?(intent.action==='receipt'?(intent.cursor===0&&!intent.pending?'Перевіряємо деталі…':'Додаємо деталі на склад…'):'Виконуємо масову дію…'):'Операцію призупинено'} done={intent.cursor} total={intent.ids.length} active={bulk.busy}>
+   <div className="wh-operation-counts"><span>Оброблено: <b>{intent.cursor} / {intent.ids.length}</b></span><span>{intent.action==='receipt'?'Додано':'Оновлено'}: <b>{updated}</b></span><span>Пропущено: <b>{skipped}</b></span></div>
+   <p className="wh-operation-hint">{bulk.busy?'Дані зберігаються порціями. Не закривайте сторінку до завершення.':intent.pending?'Останній пакет потребує перевірки. Продовжіть операцію, щоб отримати його результат без повторного додавання.':'Підтверджені результати збережено. Можна продовжити або переглянути решту.'}</p>
+   {!bulk.busy&&<div className="wh-operation-actions"><button onClick={()=>bulk.resume()}>{intent.action==='receipt'?'Продовжити надходження':'Продовжити дію'}</button>{!intent.pending&&<button className="secondary" onClick={()=>bulk.stop()}>Завершити й переглянути решту</button>}</div>}
+ </OperationProgress>}</div>;
 }
 const labels:Record<string,string>={present:'Позначити наявними',absent:'Позначити відсутніми',exclude:'Виключити',dismantled:'Демонтовано',receipt:'Додати на склад',restore:'Повернути'};
 export function BulkActionBar({items,disabled,onAction,onReceipt,onClear,onHeight,selection}:{items:Row[];disabled:boolean;onAction:(action:string,reason:string)=>void;onReceipt:()=>void;onClear:()=>void;onHeight:(n:number)=>void;selection?:ReactNode}){
@@ -46,14 +65,15 @@ export function GuidedReceipt({path,ids,bulk,onBack}:{path:string;ids:string[];b
  const disabled=bulk.busy||!!bulk.intent;
  function edit(id:string,patch:Row){setLines(r=>({...r,[id]:{...r[id],...patch}}));setConfirmed(false)}
  const picked=Object.fromEntries(selected.map(id=>[id,lines[id]]));
- return <section className="managed-receipt" aria-label="Підтвердження надходження"><h3>Додати на склад</h3><p>Вкажіть тільки фактично отримані деталі. Вибір у каталозі сам по собі не підтверджує наявність.</p><BulkStatus bulk={bulk}/>{error&&<p role="alert">{error}</p>}{!report&&!error&&<p role="status">Перевіряємо вибрані деталі…</p>}
- {report&&<><div className="dv2-summary"><span>Вибрано: <b>{report.selected}</b></span><span>До надходження після підтвердження: <b>{selected.length}</b></span><span>Потребують підтвердження: <b>{report.items.filter((i:Row)=>selected.includes(i.id)&&i.requires_confirmation).length}</b></span>{report.received>0&&<span>Уже на складі: {report.received}</span>}</div>
- {report.blocked.length>0&&<details><summary>Не буде додано: {report.blocked.length}</summary>{Object.entries(blockedReasons(report.blocked.map((r:Row)=>({eligibility:{receipt:r.reason}})),'receipt')).map(([reason,n])=><p key={reason}>{reason}: {n}</p>)}</details>}
+ return <section className="managed-receipt" aria-label="Підтвердження надходження"><h3>Додати на склад</h3><p>Вкажіть тільки фактично отримані деталі. Вибір у каталозі сам по собі не підтверджує наявність.</p><BulkStatus bulk={bulk}/>{error&&<p role="alert">{error}</p>}{!report&&!error&&!bulk.intent&&<OperationProgress label="Перевіряємо вибрані деталі…"/>}
+ {report&&<><div className="dv2-summary" hidden={disabled}><span>Вибрано: <b>{report.selected}</b></span><span>До надходження після підтвердження: <b>{selected.length}</b></span><span>Потребують підтвердження: <b>{report.items.filter((i:Row)=>selected.includes(i.id)&&i.requires_confirmation).length}</b></span>{report.received>0&&<span>Уже на складі: {report.received}</span>}</div>
+ {!disabled&&report.blocked.length>0&&<details><summary>Не буде додано: {report.blocked.length}</summary>{Object.entries(blockedReasons(report.blocked.map((r:Row)=>({eligibility:{receipt:r.reason}})),'receipt')).map(([reason,n])=><p key={reason}>{reason}: {n}</p>)}</details>}
  {!report.eligible_ids.length&&<p role="status">Серед вибраних немає доступних до надходження деталей. Перегляньте причини вище та виберіть інші позиції.</p>}
- {report.eligible_ids.length>0&&<><details className="dv2-receipt-list"><summary>Переглянути деталі та уточнити кількість ({selected.length})</summary>{report.items.filter((i:Row)=>!i.reason).map((i:Row)=><div className="dv2-receipt-line" key={i.id}><label><input type="checkbox" checked={selected.includes(i.id)} disabled={disabled} onChange={e=>{setSelected(v=>e.target.checked?[...v,i.id]:v.filter(id=>id!==i.id));setConfirmed(false)}}/>{i.name} {i.position}</label><label>Кількість<input aria-label={'Кількість '+i.name+' '+i.position} type="number" min={1} max={1000000} disabled={disabled||!selected.includes(i.id)} value={lines[i.id]?.quantity??1} onChange={e=>edit(i.id,{quantity:Number(e.target.value)})}/></label>{can('parts.inspect')&&<label>Стан<select aria-label={'Стан '+i.name+' '+i.position} disabled={disabled||!selected.includes(i.id)} value={lines[i.id]?.condition||''} onChange={e=>edit(i.id,{condition:e.target.value||null})}><option value="">Збережений стан</option><option value="used">Вживана</option><option value="damaged">Пошкоджена</option><option value="new">Нова</option><option value="refurbished">Відновлена</option></select></label>}</div>)}</details>
+ {report.eligible_ids.length>0&&!disabled&&<><details className="dv2-receipt-list"><summary>Переглянути деталі та уточнити кількість ({selected.length})</summary>{report.items.filter((i:Row)=>!i.reason).map((i:Row)=><div className="dv2-receipt-line" key={i.id}><label><input type="checkbox" checked={selected.includes(i.id)} disabled={disabled} onChange={e=>{setSelected(v=>e.target.checked?[...v,i.id]:v.filter(id=>id!==i.id));setConfirmed(false)}}/>{i.name} {i.position}</label><label>Кількість<input aria-label={'Кількість '+i.name+' '+i.position} type="number" min={1} max={1000000} disabled={disabled||!selected.includes(i.id)} value={lines[i.id]?.quantity??1} onChange={e=>edit(i.id,{quantity:Number(e.target.value)})}/></label>{can('parts.inspect')&&<label>Стан<select aria-label={'Стан '+i.name+' '+i.position} disabled={disabled||!selected.includes(i.id)} value={lines[i.id]?.condition||''} onChange={e=>edit(i.id,{condition:e.target.value||null})}><option value="">Збережений стан</option><option value="used">Вживана</option><option value="damaged">Пошкоджена</option><option value="new">Нова</option><option value="refurbished">Відновлена</option></select></label>}</div>)}</details>
  <label className="managed-v3-check dv2-physical-confirm"><input type="checkbox" checked={confirmed} disabled={disabled||!selected.length} onChange={e=>setConfirmed(e.target.checked)}/>Підтверджую фактичну наявність, демонтаж і надходження {selected.length} вибраних деталей із зазначеними кількостями</label><small>Вузол у зборі залишається одним товаром; довідкові складові окремо не додаються.</small>
  {!receiptLinesValid(picked)&&<p role="alert">Перевірте цілі кількості вибраних деталей.</p>}
  <button className="primary" disabled={disabled||!confirmed||!selected.length||!receiptLinesValid(picked)} onClick={()=>{const payload=Object.fromEntries(selected.map(id=>[id,{...lines[id],confirm_physical:true}]));void bulk.start('receipt',selected,report.etag,'',payload,report.blocked)}}>Додати {selected.length} деталей на склад</button></>}
  </>}
- <button className="secondary" disabled={disabled} onClick={onBack}>Повернутися до деталей</button></section>;
+ {bulk.busy&&<button className="primary wh-operation-button" disabled aria-busy="true"><span className="wh-operation-spinner" aria-hidden="true"/>Додаємо на склад…</button>}
+ {!disabled&&<button className="secondary" onClick={onBack}>Повернутися до деталей</button>}</section>;
 }

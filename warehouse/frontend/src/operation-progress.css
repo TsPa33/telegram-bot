@@ -1,0 +1,22 @@
+/* Shared, theme-aware feedback for actual in-flight Warehouse operations. */
+.wh-operation-progress{min-width:0;display:grid;gap:10px;margin-block:10px;padding:14px;border:1px solid var(--color-border,var(--border));border-radius:10px;background:var(--color-surface,var(--surface));color:var(--color-text);box-sizing:border-box}
+.wh-operation-title{display:flex;align-items:center;gap:9px;min-width:0;font-size:.9rem;line-height:1.4}
+.wh-operation-title strong{flex:1;min-width:0;overflow-wrap:anywhere}
+.wh-operation-title b{font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--color-accent)}
+.wh-operation-spinner{display:inline-block;flex:0 0 17px;width:17px;height:17px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;box-sizing:border-box;animation:wh-operation-spin .85s linear infinite;color:var(--color-accent)}
+.wh-operation-track{height:9px;overflow:hidden;position:relative;border-radius:999px;background:var(--color-subtle,var(--border))}
+.wh-operation-track>span{display:block;height:100%;max-width:100%;border-radius:inherit;background:var(--color-accent);transition:width .25s ease}
+.wh-operation-track.is-indeterminate>span{position:absolute;width:36%;animation:wh-operation-sweep 1.3s ease-in-out infinite}
+.wh-operation-progress.is-paused .wh-operation-track>span{opacity:.65;animation:none;transition:none}
+.wh-operation-counts{display:flex;flex-wrap:wrap;column-gap:16px;row-gap:6px;font-size:.82rem;font-variant-numeric:tabular-nums}
+.wh-operation-counts span{white-space:normal}
+.wh-operation-hint{margin:0!important;color:var(--muted);font-size:.8rem;line-height:1.5}
+.wh-operation-actions{display:flex;flex-wrap:wrap;gap:8px}
+.wh-operation-actions>button{max-width:100%;white-space:normal}
+.wh-operation-button{display:inline-flex!important;align-items:center;justify-content:center;gap:9px;white-space:normal}
+.wh-operation-button .wh-operation-spinner{color:inherit}
+.wh-operation-complete{color:var(--color-success,var(--color-text))}
+@keyframes wh-operation-spin{to{transform:rotate(360deg)}}
+@keyframes wh-operation-sweep{0%{left:-36%}100%{left:100%}}
+@media(max-width:480px){.wh-operation-progress{padding:11px;gap:8px}.wh-operation-actions>button,.managed-receipt .wh-operation-button{width:100%}}
+@media(prefers-reduced-motion:reduce){.wh-operation-spinner,.wh-operation-track.is-indeterminate>span{animation:none}.wh-operation-track>span{transition:none}.wh-operation-track.is-indeterminate>span{left:32%}}
