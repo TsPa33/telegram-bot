@@ -6,7 +6,7 @@ CREATE TABLE billing.liqpay_sandbox_orders (
     invoice_id text NOT NULL UNIQUE,
     amount_minor bigint NOT NULL CHECK(amount_minor>0),
     currency text NOT NULL CHECK(currency='UAH'),
-    merchant text NOT NULL CHECK(merchant LIKE 'sandbox\_%' ESCAPE '\'),
+    merchant text NOT NULL CHECK(left(merchant,8)='sandbox_'),
     version integer NOT NULL CHECK(version=7),
     result_url text NOT NULL,
     server_url text NOT NULL,
