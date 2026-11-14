@@ -6,6 +6,7 @@ import httpx
 from fastapi import HTTPException
 from sqlalchemy import select
 from app.models.entitlements import EntitlementWorkspace, EntitlementReceipt
+from app.models import Account
 
 
 def enabled():
@@ -168,6 +169,41 @@ def binding(db, who):
     if not p or p.source_environment != environment() or not p.global_binding_id:
         raise HTTPException(409, "Спершу підтвердьте підключення компанії до оплати")
     return p
+
+
+def referrals_enabled():
+    return enabled() and os.getenv("WAREHOUSE_REFERRALS_TEST_ENABLED") == "true" and environment() == "sandbox"
+
+
+def ensure_onboarding(db, who):
+    """Authenticated owner POST or committed registration. Durable intent, idempotent remote replay."""
+    from . import entitlements as e
+
+    e.owner(who)
+    e.lock(db, who.workspace_account_id)
+    account = db.get(Account, who.workspace_account_id, populate_existing=True)
+    p = db.get(EntitlementWorkspace, who.workspace_account_id, populate_existing=True)
+    if not p or not p.global_binding_id or p.source_environment != environment():
+        p = bind(db, who)
+    else:
+        p = binding(db, who)
+    if account.registration_referral_state == "pending":
+        if not referrals_enabled():
+            raise HTTPException(503, "Запрошення тимчасово перевіряється. Спробуйте пізніше.")
+        try:
+            request(who, "POST", "/v1/referrals/bind",
+                    {"code": account.registration_referral_code}, binding=p)
+        except HTTPException as exc:
+            # Billing's 400 is a terminal domain rejection (unknown/self/cycle).
+            # Never discard an invitation on transport failure or immutable conflict.
+            if exc.status_code != 400:
+                raise
+            account.registration_referral_state = "invalid"
+        else:
+            account.registration_referral_state = "accepted"
+    db.commit()
+    return p
+
 
 
 def apply(db, proof):

@@ -98,12 +98,27 @@ def register(data: Registration, request: Request, response: Response, db: DB):
     auth.throttle(("register", request.client.host if request.client else "unknown"))
     if db.scalar(select(Account).where(Account.email == data.email)):
         raise HTTPException(409, "Не вдалося створити обліковий запис із цією поштою")
+    from app.services import global_billing as finance
+    from app.api.deps import lock_workspace
+    import os
+    invite = data.referral_code if finance.enabled() and os.getenv("WAREHOUSE_REFERRALS_TEST_ENABLED") == "true" and os.getenv("WAREHOUSE_BILLING_ENVIRONMENT") == "sandbox" else None
     user = Account(
-        email=data.email, name=data.name, password_hash=auth.hasher.hash(data.password)
+        email=data.email, name=data.name, password_hash=auth.hasher.hash(data.password),
+        registration_referral_code=invite, registration_referral_state="pending" if invite else None,
     )
     db.add(user)
     db.flush()
-    return session_response(db, response, user)
+    result = session_response(db, response, user)
+    # Commit the real registration before calling a remote service. A temporary
+    # outage cannot lose the account or its referral intent.
+    if finance.enabled() and os.getenv("WAREHOUSE_BILLING_ENVIRONMENT") == "sandbox":
+        try:
+            lock_workspace(db, user.id)
+            who = Identity(user, None, user.id, user.id, frozenset())
+            finance.ensure_onboarding(db, who)
+        except HTTPException:
+            db.rollback()
+    return result
 
 
 @router.post("/auth/login", tags=["Authentication"])

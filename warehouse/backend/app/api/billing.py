@@ -50,7 +50,7 @@ def checkout(db:DB,who:Auth,body:Any=Body(default=None)):
     if not global_finance.enabled():raise HTTPException(503,'Sandbox checkout вимкнено до перевірки офіційного контракту LiqPay. Платіж не створено.')
     try:data=GlobalCheckout.model_validate(body)
     except ValueError:raise HTTPException(422,'Потрібний чинний рахунок') from None
-    p=global_finance.binding(db,who)
+    p=global_finance.ensure_onboarding(db,who)
     return global_finance.request(who,'POST','/v1/checkout',{'invoice_id':data.invoice_id},binding=p)
 
 @router.post('/cancel-renewal')
@@ -101,14 +101,14 @@ def entitlement_status(db:DB,who:Auth):
 @router.post('/bind')
 def bind_workspace(db:DB,who:Auth):
     if global_finance.enabled():
-        p=global_finance.bind(db,who);db.commit();return {'bound':True,'workspace_id':p.workspace_id,'mode':p.mode}
+        p=global_finance.ensure_onboarding(db,who);return {'bound':True,'workspace_id':p.workspace_id,'mode':p.mode}
     p=entitlements.bind_owner(db,who);db.commit()
     return {'bound':True,'workspace_id':p.workspace_id,'mode':p.mode}
 
 @router.post('/trial')
 def start_trial(data:TrialInput,db:DB,who:Auth):
     if global_finance.enabled():
-        p=global_finance.bind(db,who);db.commit()
+        p=global_finance.ensure_onboarding(db,who)
         global_finance.request(who,'POST','/v1/trial',{'binding_id':p.global_binding_id,'plan':data.plan},binding=p)
         return global_finance.sync(db,who,p)
     entitlements.owner(who)
@@ -189,15 +189,15 @@ def global_cabinet(db:DB,who:Auth):
     can_manage=who.user.role=='DIRECTOR' and who.actor_id==who.workspace_account_id
     if not can_manage:return {'enabled':True,'can_manage':False}
     p=db.get(EntitlementWorkspace,who.workspace_account_id)
-    if not p or not p.global_binding_id:return {'enabled':True,'can_manage':True,'bound':False,'workspace_scope':who.workspace_account_id,'environment':global_finance.environment()}
+    if not p or not p.global_binding_id:return {'enabled':True,'can_manage':True,'bound':False,'workspace_scope':who.workspace_account_id,'environment':global_finance.environment(),'referral_state':who.user.registration_referral_state}
     p=global_finance.binding(db,who)
     result=global_finance.request(who,'GET','/v1/cabinet/'+p.global_binding_id,binding=p)
-    result.update(enabled=True,bound=True,can_manage=True,workspace_scope=who.workspace_account_id,entitlements=entitlements.report(db,who.workspace_account_id))
+    result.update(enabled=True,bound=True,can_manage=True,workspace_scope=who.workspace_account_id,referral_state=who.user.registration_referral_state,entitlements=entitlements.report(db,who.workspace_account_id))
     return result
 
 @router.post('/invoices')
 def global_invoice(data:GlobalPurchase,db:DB,who:Auth):
-    p=global_finance.binding(db,who)
+    p=global_finance.ensure_onboarding(db,who)
     return global_finance.request(who,'POST','/v1/invoices',{'binding_id':p.global_binding_id,**data.model_dump()},binding=p)
 
 def financial_id(value):
@@ -236,8 +236,7 @@ def global_entitlement_delivery(data:GlobalProof,db:DB):
 
 
 def referrals_enabled():
-    import os
-    return global_finance.enabled() and os.getenv('WAREHOUSE_REFERRALS_TEST_ENABLED')=='true' and global_finance.environment()=='sandbox'
+    return global_finance.referrals_enabled()
 
 def referral_binding(db,who):
     owner(who)
@@ -270,6 +269,8 @@ def referral_code(db:DB,who:Auth):
 
 @router.post('/referrals/bind')
 def referral_bind(data:ReferralCode,db:DB,who:Auth):
-    p=referral_binding(db,who)
+    owner(who)
+    if not referrals_enabled():raise HTTPException(503,'Реферальна програма ще недоступна')
+    p=global_finance.ensure_onboarding(db,who)
     global_finance.request(who,'POST','/v1/referrals/bind',{'code':data.code},binding=p)
     return {'attributed':True,'test_only':True}

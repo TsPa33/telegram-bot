@@ -36,6 +36,8 @@ class Account(Base):
     email: Mapped[str] = mapped_column(String(254), unique=True)
     name: Mapped[str] = mapped_column(String(120))
     password_hash: Mapped[str] = mapped_column(Text)
+    registration_referral_code: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    registration_referral_state: Mapped[str | None] = mapped_column(String(16), nullable=True)
     workspace_account_id: Mapped[str | None] = mapped_column(ForeignKey('accounts.id'), nullable=True, index=True)
     role: Mapped[str] = mapped_column(String(20), default='DIRECTOR', server_default='DIRECTOR')
     permissions: Mapped[list] = mapped_column(JSON, default=list, server_default='[]')

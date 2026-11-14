@@ -35,6 +35,7 @@ class Credentials(Input):
 
 class Registration(Credentials):
     name: Annotated[str, Field(min_length=1, max_length=120)]
+    referral_code: str | None = Field(default=None, pattern=r"^[A-F0-9]{16}$")
 
 
 class VinConflict(Input):

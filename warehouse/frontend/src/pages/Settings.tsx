@@ -13,7 +13,6 @@ import {Heading,State,useLoad} from '../shared';
 import '../settings-r123.css';
 import WorkspaceBilling from '../WorkspaceBilling';
 import WorkspaceReferrals from '../WorkspaceReferrals';
-import {referralCode} from '../referralCabinet';
 
 type Capability={permission:string;label:string;description:string;path:string;icon:typeof Boxes};
 
@@ -113,7 +112,7 @@ export default function Settings({user}:{user:Row}){
     </div>}
 
     <nav className={'settings-section-tabs'+(referralVisible?' referrals-tabs':'')} aria-label="Розділ налаштувань"><Link aria-current={tab==='general'?'page':undefined} to="/settings?section=general">Загальні</Link><Link aria-current={tab==='payments'?'page':undefined} to="/settings?section=payments">Оплати</Link>{referralVisible&&<Link aria-current={tab==='referrals'?'page':undefined} to="/settings?section=referrals">Реферали</Link>}</nav>
-    {tab==='referrals'&&(user.role==='DIRECTOR'?<WorkspaceReferrals key={user.id} invite={referralCode(params.get('ref'))}/>:<p>Реферальним кабінетом керує власник компанії.</p>)}
+    {tab==='referrals'&&(user.role==='DIRECTOR'?<WorkspaceReferrals key={user.id}/>:<p>Реферальним кабінетом керує власник компанії.</p>)}
     {tab==='payments'&&billing.data?.entitlements_available&&<WorkspaceBilling/>}
     {tab==='payments'&&!billing.data?.entitlements_available&&<section className="r123-panel" aria-label="Оплати"><h2>Оплати</h2><State loading={billing.loading} error={billing.error}/>{billing.data&&<p>{billing.data.enabled?(billing.data.read_only?'Доступ у режимі перегляду':'Поточний доступ активний'):'Оплати не підключені. Поточний доступ збережено.'}</p>}<p>Оформлення платежів на цьому етапі недоступне.</p></section>}
     <div aria-label="Загальні" hidden={tab!=='general'}>
