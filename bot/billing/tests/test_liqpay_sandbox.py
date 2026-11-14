@@ -5,7 +5,6 @@ from datetime import datetime, timezone
 import base64
 import hashlib
 import json
-import subprocess
 
 import pytest
 import psycopg2
@@ -66,11 +65,8 @@ def test_checkout_and_status_are_server_signed_and_no_secret_exposed():
         "description": "CarPot Warehouse — тестова оплата", "language": "uk",
         "result_url": contract().result_url, "server_url": contract().server_url,
     }
-    independent = subprocess.check_output(
-        ["openssl", "dgst", "-sha3-256", "-binary"],
-        input=(contract().private_key + form["data"] + contract().private_key).encode(),
-    )
-    assert form["signature"] == base64.b64encode(independent).decode()
+    # Fixed synthetic vector calculated independently with OpenSSL SHA3-256.
+    assert form["signature"] == "Qmsgo+iCOOfqLCUk5b1y8no+MYDP7rxHaZcqPHaf/Cw="
     assert contract().private_key not in repr(contract())
     assert contract().private_key not in json.dumps(form)
     status = codec.status_request(terms)
