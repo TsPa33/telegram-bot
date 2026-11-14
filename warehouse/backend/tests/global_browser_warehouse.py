@@ -16,6 +16,10 @@ from app.main import app
 from app.services import global_billing
 from bot.billing.tests.global_browser_server import app as finance
 
+# Only the explicit disposable two-service browser driver enables referrals.
+os.environ["WAREHOUSE_REFERRALS_TEST_ENABLED"] = "true"
+os.environ["BILLING_REFERRALS_TEST_ENABLED"] = "true"
+
 client = TestClient(finance)
 client.__enter__()
 

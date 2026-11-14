@@ -257,3 +257,30 @@ class Referrals:
                     else "pending",
                 )
             return dict(test_only=True, payout_available=False, rewards=rewards)
+
+    def dashboard(self, actor):
+        """Owner-scoped overview, no invited account identities or payment IDs."""
+        self.wallet.gate()
+        with self.db.transaction() as c:
+            self.core.authorize(c, actor, Permission.MANAGE)
+            c.execute("SELECT code FROM billing.referral_codes WHERE account_id=%s", (actor.account_id,))
+            code = c.fetchone()
+            c.execute("SELECT version,rate_bps,hold_days FROM billing.referral_policies ORDER BY version DESC LIMIT 1")
+            policy = c.fetchone()
+            if not policy:
+                raise BillingError("Referral policy unavailable")
+            c.execute("SELECT count(*) AS invited FROM billing.referral_bindings WHERE referrer_account=%s", (actor.account_id,))
+            invited = int(c.fetchone()["invited"])
+            c.execute("SELECT count(*) AS converted FROM billing.referral_rewards WHERE referrer_account=%s", (actor.account_id,))
+            converted = int(c.fetchone()["converted"])
+            c.execute("SELECT 1 FROM billing.referral_bindings WHERE referred_account=%s", (actor.account_id,))
+            attributed = bool(c.fetchone())
+            c.execute("SELECT 1 FROM billing.settlements s JOIN billing.invoices i ON i.id=s.invoice_id WHERE s.account_id=%s AND i.kind='base' LIMIT 1", (actor.account_id,))
+            can_bind = not attributed and not bool(c.fetchone())
+            c.execute("SELECT r.id,r.created_at,r.available_after,r.amount_minor,p.rate_bps FROM billing.referral_rewards r JOIN billing.referral_policies p ON p.version=r.policy_version WHERE r.referrer_account=%s ORDER BY r.created_at DESC,r.id LIMIT 100", (actor.account_id,))
+            rewards = [dict(row) for row in c.fetchall()]
+            for reward in rewards:
+                state = self.state(c, reward)
+                reward.update(reversed_minor=state["reversed"], state="reversed" if state["reversed"] >= reward["amount_minor"] else "available" if state["available"] else "pending")
+            balances = self.wallet.balances(c, actor.account_id)["referral"]
+            return dict(test_only=True, payout_available=False, spending_available=False, code=code["code"] if code else None, policy=dict(policy), invited=invited, converted=converted, attributed=attributed, can_bind=can_bind, balances=balances, rewards=rewards)

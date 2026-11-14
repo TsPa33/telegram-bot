@@ -224,3 +224,31 @@ def test_global_flags_off_preserve_legacy_disabled_checkout(logged, monkeypatch)
         logged.post("/api/v1/billing/checkout", json={"legacy": "ignored"}).status_code
         == 503
     )
+
+
+def test_referral_gateway_requires_flags_owner_and_valid_code(global_pilot, monkeypatch):
+    c, _, core = global_pilot
+    assert c.get("/api/v1/billing/referrals").json() == {"enabled": False}
+    monkeypatch.setenv("WAREHOUSE_REFERRALS_TEST_ENABLED", "true")
+    monkeypatch.setenv("BILLING_REFERRALS_TEST_ENABLED", "true")
+    assert c.get("/api/v1/billing/referrals").json()["bound"] is False
+    assert c.post("/api/v1/billing/bind").status_code == 200
+    overview = c.get("/api/v1/billing/referrals")
+    assert overview.status_code == 200, overview.text
+    assert overview.json()["policy"]["rate_bps"] == 2000
+    assert overview.json()["code"] is None
+    code = c.post("/api/v1/billing/referrals/code").json()["code"]
+    assert c.post("/api/v1/billing/referrals/code").json()["code"] == code
+    assert c.post("/api/v1/billing/referrals/bind", json={"code": code}).status_code == 400
+    assert c.post("/api/v1/billing/referrals/bind", json={"code": "bad"}).status_code == 422
+    assert c.get("/api/v1/billing/referrals").json()["invited"] == 0
+    from test_team import employee, activate
+    monkeypatch.setenv("WAREHOUSE_TEAM_CREATION_ENABLED", "true")
+    c.post("/api/v1/billing/trial", json={"plan": "standard"})
+    _, data = employee(c, ["inventory.view", "vehicles.view"])
+    staff = activate(data)
+    try:
+        assert staff.get("/api/v1/billing/referrals").status_code == 403
+        assert staff.post("/api/v1/billing/referrals/code").status_code == 403
+    finally:
+        staff.close()

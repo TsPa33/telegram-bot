@@ -233,3 +233,38 @@ def global_refresh(order:str,db:DB,who:Auth):
 @router.post('/internal/entitlements')
 def global_entitlement_delivery(data:GlobalProof,db:DB):
     return global_finance.apply(db,data.proof)
+
+
+def referrals_enabled():
+    import os
+    return global_finance.enabled() and os.getenv('WAREHOUSE_REFERRALS_TEST_ENABLED')=='true' and global_finance.environment()=='sandbox'
+
+def referral_binding(db,who):
+    owner(who)
+    if not referrals_enabled():raise HTTPException(503,'Реферальна програма ще недоступна')
+    return global_finance.binding(db,who)
+
+class ReferralCode(BaseModel):
+    model_config=ConfigDict(extra='forbid')
+    code:str=Field(pattern=r'^[A-F0-9]{16}$')
+
+@router.get('/referrals')
+def referral_dashboard(db:DB,who:Auth):
+    owner(who)
+    if not referrals_enabled():return {'enabled':False}
+    p=db.get(EntitlementWorkspace,who.workspace_account_id)
+    if not p or not p.global_binding_id:return {'enabled':True,'bound':False,'test_only':True}
+    p=referral_binding(db,who)
+    result=global_finance.request(who,'GET','/v1/referrals/dashboard',binding=p)
+    return {**result,'enabled':True,'bound':True}
+
+@router.post('/referrals/code')
+def referral_code(db:DB,who:Auth):
+    p=referral_binding(db,who)
+    return global_finance.request(who,'POST','/v1/referrals/code',binding=p)
+
+@router.post('/referrals/bind')
+def referral_bind(data:ReferralCode,db:DB,who:Auth):
+    p=referral_binding(db,who)
+    global_finance.request(who,'POST','/v1/referrals/bind',{'code':data.code},binding=p)
+    return {'attributed':True,'test_only':True}

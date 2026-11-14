@@ -13,11 +13,28 @@ for(const [engineName,engine] of Object.entries(process.env.GLOBAL_BILLING_ENGIN
  try{for(const width of (process.env.GLOBAL_BILLING_WIDTHS?process.env.GLOBAL_BILLING_WIDTHS.split(',').map(Number):[320,390,430,1440]))for(const style of (process.env.GLOBAL_BILLING_STYLES?process.env.GLOBAL_BILLING_STYLES.split(','):['light','onyx','gold','forest'])){
   const c=await browser.newContext({baseURL:origin,viewport:{width,height:900}}),page=await c.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
   const auth=await c.request.post('/api/v1/auth/register',{headers:{'X-Forwarded-For':'198.18.'+crypto.randomInt(1,250)+'.'+crypto.randomInt(1,250)},data:{name:'Synthetic Billing Browser',email:'global-'+crypto.randomUUID()+'@example.test',password:'global-browser-only-password'}});assert.equal(auth.status(),201,await auth.text());
+  let inviterContext,inviterPage,inviterLink;
+  if(width===390&&style==='forest'){
+   inviterContext=await browser.newContext({baseURL:origin,viewport:{width,height:900}});inviterPage=await inviterContext.newPage();
+   const invited=await inviterContext.request.post('/api/v1/auth/register',{headers:{'X-Forwarded-For':'198.19.'+crypto.randomInt(1,250)+'.'+crypto.randomInt(1,250)},data:{name:'Synthetic Referrer',email:'referrer-'+crypto.randomUUID()+'@example.test',password:'global-browser-only-password'}});
+   assert.equal(invited.status(),201,await invited.text());
+   await inviterPage.goto('/settings?section=referrals');const refs=inviterPage.getByRole('region',{name:'Реферальна програма',exact:true});
+   await refs.getByRole('button',{name:'Підключити компанію',exact:true}).click();
+   await refs.getByRole('button',{name:'Отримати посилання',exact:true}).click();
+   await expect(refs.getByRole('textbox',{name:'Персональне посилання'})).toBeVisible();
+   inviterLink=await refs.getByRole('textbox',{name:'Персональне посилання'}).inputValue();
+   assert.match(inviterLink,/\/settings\?section=referrals&ref=[A-F0-9]{16}$/);
+   await page.goto(inviterLink);const invite=page.getByRole('region',{name:'Реферальна програма',exact:true});
+   await invite.getByRole('button',{name:'Підключити компанію',exact:true}).click();
+   await invite.getByRole('button',{name:'Підтвердити запрошення',exact:true}).click();
+   await expect(invite).toContainText('Запрошення вже прив’язане до вашої компанії.'.replace('’',"'"));
+   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+  }
   await page.goto('/settings?section=general');
   const themeNames={light:/Світла/,onyx:/Onyx/,gold:/Midnight Gold/,forest:/Forest Slate/};
   await page.getByRole('region',{name:'Оформлення',exact:true}).getByRole('button',{name:themeNames[style]}).click();
   await page.goto('/settings?section=payments');const panel=page.getByRole('region',{name:'Підписка та оплата',exact:true});
-  await panel.getByRole('button',{name:'Підключити оплату CarPot',exact:true}).click();await expect(panel.getByRole('button',{name:'Обрати Standard',exact:true})).toBeEnabled();
+  if(!inviterContext)await panel.getByRole('button',{name:'Підключити оплату CarPot',exact:true}).click();await expect(panel.getByRole('button',{name:'Обрати Standard',exact:true})).toBeEnabled();
   let invoiceLost=false,invoiceCalls=0;
   if(width===390&&style==='gold')await page.route('**/api/v1/billing/invoices',async route=>{invoiceCalls++;await route.fetch();invoiceLost=true;await route.abort('failed');});
   await panel.getByRole('button',{name:'Обрати Standard',exact:true}).click();
@@ -47,6 +64,12 @@ for(const [engineName,engine] of Object.entries(process.env.GLOBAL_BILLING_ENGIN
   const check=await c.request.get('/api/v1/__billing_fixture/order/'+orderId,{headers:{'X-Fixture-Key':fixtureKey}});assert.equal(check.status(),200);assert.deepEqual(await check.json(),{settlements:1,orders:1,amount_minor:100000,synthetic_only:true});
   await expect(panel.getByRole('heading',{name:'Історія оплат',exact:true})).toBeVisible();assert.equal(await page.locator('input[autocomplete=cc-number],input[autocomplete=cc-csc]').count(),0);if(!await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)){await page.screenshot({path:out+'/overflow-'+engineName+'-'+width+'-'+style+'.png'});console.log(await page.locator('body *').evaluateAll(nodes=>nodes.filter(n=>n.getBoundingClientRect().right>innerWidth+1).map(n=>({tag:n.tagName,class:n.className,text:n.textContent?.slice(0,80)})).slice(-20)));}assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
   await page.screenshot({path:out+'/'+engineName+'-'+width+'-'+style+'-active.png',animations:'disabled'});assert.deepEqual(errors,[]);
+  if(inviterContext){
+   await inviterPage.reload();const refs=inviterPage.getByRole('region',{name:'Реферальна програма',exact:true});
+   await expect(refs.getByText('Історія винагород',{exact:true})).toBeVisible();
+   const dashboard=await inviterContext.request.get('/api/v1/billing/referrals');assert.equal(dashboard.status(),200,await dashboard.text());const d=await dashboard.json();assert.equal(d.invited,1);assert.equal(d.converted,1);assert.equal(d.balances.pending_minor,20000);assert.equal(d.balances.available_minor,0);assert.equal(d.rewards.length,1);
+   await expect(refs).toContainText('200,00');await inviterPage.screenshot({path:out+'/'+engineName+'-referrals.png',animations:'disabled'});await inviterContext.close();
+  }
   report.push({engine:engineName,width,style,invoiceLost,checkoutLost,serverConfirmed:true,settlements:1,providerOrders:1,realLiqPayTest:false});await c.close();console.log('PASS synthetic global billing '+engineName+' '+width+' '+style);
  }}finally{await browser.close();}
 }

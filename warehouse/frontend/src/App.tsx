@@ -47,6 +47,7 @@ import Orders from "./Orders";
 import SalesCenter from "./SalesCenter";
 import Operations from "./pages/Operations";
 import Settings from "./pages/Settings";
+import {referralInvite,referralPath} from "./referralCabinet";
 import Vehicles from "./pages/Vehicles";
 const nav = [
   { to: "/team", label: "Команда", icon: Users },
@@ -148,7 +149,8 @@ export default function App() {
       <Auth
         onLogin={(u) => {
           changeUser(u);
-          navigate("/");
+          const invite=location.pathname==='/settings'?referralInvite(location.search):null;
+          navigate(invite?referralPath(invite):"/");
         }}
       />
     );

@@ -366,6 +366,10 @@ def create_app(
     def referral_bind(data: ReferralBinding, who=Depends(actor)):
         return test_referrals().bind(who, data.code)
 
+    @app.get("/v1/referrals/dashboard")
+    def referral_dashboard(who=Depends(actor)):
+        return test_referrals().dashboard(who)
+
     @app.get("/v1/referrals")
     def referral_history(who=Depends(actor)):
         return test_referrals().history(who)

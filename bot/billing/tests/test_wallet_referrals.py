@@ -118,3 +118,33 @@ def test_first_base_reward_once_pending_available_partial_and_full_reversal(
     next_order = payments.checkout(a, next_invoice["id"])
     payments.callback(**callback(p, next_order, payment_id="second-base"))
     assert len(referrals.history(referrer)["rewards"]) == 1
+
+
+def test_referral_dashboard_scope_and_exact_statistics(operational, monkeypatch):
+    core, payments, provider, actor, binding, invoice = operational
+    monkeypatch.setenv("BILLING_REFERRALS_TEST_ENABLED", "true")
+    referrals = Referrals(core, enabled=True)
+    owner = core.bind_owner("dashboard-referrer", "dashboard-owner", "warehouse", "warehouse")
+    referrer = Actor("dashboard-owner", owner["account_id"], frozenset(Permission))
+    assert referrals.dashboard(referrer)["code"] is None
+    code = referrals.code(referrer)
+    assert referrals.dashboard(referrer)["code"] == code
+    assert referrals.dashboard(actor)["can_bind"] is True
+    referrals.bind(actor, code)
+    assert referrals.dashboard(actor)["attributed"] is True
+    assert referrals.dashboard(actor)["can_bind"] is False
+    before = referrals.dashboard(referrer)
+    assert before["invited"] == 1 and before["converted"] == 0
+    order = payments.checkout(actor, invoice)
+    payments.callback(**callback(provider, order))
+    after = referrals.dashboard(referrer)
+    assert after["invited"] == after["converted"] == 1
+    assert after["balances"]["pending_minor"] == 20000
+    assert after["policy"]["rate_bps"] == 2000
+    assert after["policy"]["hold_days"] == 14
+    assert after["rewards"][0]["amount_minor"] == 20000
+    assert "referred_account" not in after["rewards"][0]
+    assert "settlement_id" not in after["rewards"][0]
+    assert referrals.dashboard(actor)["rewards"] == []
+    with pytest.raises(BillingError):
+        Referrals(core).dashboard(referrer)
