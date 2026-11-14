@@ -115,15 +115,15 @@ def test_price_operations_auth_csrf_isolation(logged,vehicle):
 
 
 def test_forward_only_currency_persistence_preserves_history_and_rejects_downgrade(logged,vehicle):
-    # The VIN evidence migration is forward-only. A historical round-trip
-    # through e17b6c04a932 is no longer a valid compatibility test.
+    # The latest Billing identity guard refuses before older forward-only migrations.
+    # Each historical guard is exercised separately at its immediate boundary.
     p=create(logged,vehicle,'Migration part',selling_price='123.45')
     with engine().connect() as db:
         before={id:(old,new) for id,old,new in db.execute(text('SELECT id, before, after FROM operations'))}
     refused=run([sys.executable,'-m','alembic','downgrade','e17b6c04a932'],
                 capture_output=True,text=True)
     assert refused.returncode!=0
-    assert 'Forward-only VIN evidence migration' in refused.stderr
+    assert 'Preserve canonical Billing identities and snapshots; roll forward or disable routing' in refused.stderr
     current=logged.get('/api/v1/parts/'+p['id'])
     assert current.status_code==200 and current.json()['selling_price']=='123.45'
     assert current.json()['currency']=='UAH'
@@ -144,7 +144,7 @@ def test_forward_only_currency_persistence_preserves_history_and_rejects_downgra
     refused_again=run([sys.executable,'-m','alembic','downgrade','e17b6c04a932'],
                       capture_output=True,text=True)
     assert refused_again.returncode!=0
-    assert 'Forward-only VIN evidence migration' in refused_again.stderr
+    assert 'Preserve canonical Billing identities and snapshots; roll forward or disable routing' in refused_again.stderr
     assert logged.get('/api/v1/sales-workspace/readiness').json()['contract_version']==5
 
 
