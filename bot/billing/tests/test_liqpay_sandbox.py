@@ -253,3 +253,36 @@ def test_invalid_callback_is_not_persisted_and_history_immutable(foundation):
         with pytest.raises(psycopg2.Error):
             with b.db.transaction() as c:
                 c.execute(f"DELETE FROM billing.{table}")
+
+
+def test_void_invoice_late_evidence_requires_review(foundation):
+    b, actor, _, invoice, s = local(foundation)
+    order = s.create(actor, invoice)["order_id"]
+    b.transition_invoice(actor, invoice, "void")
+    assert s.receive(*encode(s.codec, payload(order))) == "review"
+    assert s.status(actor, order)["status"] == "review"
+    assert b.invoice(actor, invoice)["status"] == "void"
+    assert not rows(b.db, "SELECT * FROM billing.settlements")
+
+
+def test_premium_uses_issued_invoice_not_browser_price(foundation):
+    from bot.billing.models import VerifiedBinding
+    from uuid import uuid4
+    b, _, _, _, _ = foundation
+    migrate_sandbox(b.db)
+    actor = b.provision_fixture_account("premium-owner")
+    binding = b.bind(actor, VerifiedBinding("premium-workspace", "warehouse", str(uuid4()), "fixture"))
+    subscription = b.subscribe(actor, binding, "warehouse.premium")
+    start = datetime(2026, 11, 12, tzinfo=timezone.utc)
+    end = datetime(2026, 12, 12, tzinfo=timezone.utc)
+    invoice = b.create_invoice(actor, subscription, start, end, "premium-first")
+    b.transition_invoice(actor, invoice, "open")
+    s = SandboxCheckout(b.db, contract(), enabled=True)
+    order = s.create(actor, invoice)
+    assert order["amount_minor"] == 450000
+    data = json.loads(base64.b64decode(order["form"]["data"]))
+    assert data["amount"] == "4500.00"
+    with pytest.raises(BillingError):
+        s.receive(*encode(s.codec, payload(order["order_id"], amount="1000.00")))
+    assert s.receive(*encode(s.codec, payload(order["order_id"], amount="4500.00"))) == "test_success"
+    assert not rows(b.db, "SELECT * FROM billing.settlements")
