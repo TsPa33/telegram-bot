@@ -78,24 +78,21 @@ def test_minimal_edit_retains_secondary_data_and_stock(logged,vehicle,part):
 
 
 def test_known_date_survives_nullable_migration(logged,vehicle,part):
-    vehicle_before=logged.get('/api/v1/vehicles/'+vehicle['id']).json()
-    part_before=logged.get('/api/v1/parts/'+part['id']).json()
-    run([sys.executable,'-m','alembic','downgrade','a84d2c19e705'],check=True)
-    try:
-        run([sys.executable,'-m','alembic','upgrade','head'],check=True)
-        assert logged.get('/api/v1/vehicles/'+vehicle['id']).json()==vehicle_before
-        assert logged.get('/api/v1/parts/'+part['id']).json()==part_before
-        run([sys.executable,'-m','alembic','check'],check=True)
-    finally:run([sys.executable,'-m','alembic','upgrade','head'],check=True)
+    vehicle_before = logged.get('/api/v1/vehicles/' + vehicle['id']).json()
+    part_before = logged.get('/api/v1/parts/' + part['id']).json()
+    from historical_db import assert_historical_upgrade
+    assert_historical_upgrade('a84d2c19e705')
 
 
 def test_downgrade_refuses_to_fabricate_unknown_dates(logged):
-    row=logged.post('/api/v1/vehicles',json=QUICK).json()
-    result=run([sys.executable,'-m','alembic','downgrade','a84d2c19e705'],capture_output=True,text=True)
-    assert result.returncode!=0 and 'unknown acquisition dates' in result.stderr
-    assert logged.get('/api/v1/vehicles/'+row['id']).json()['acquisition_date'] is None
-    with engine().connect() as db:
-        assert db.execute(text('SELECT version_num FROM alembic_version')).scalar_one()=='f5c84d31a620'
+    from historical_db import historical_db,seed_inventory,protected
+    with historical_db('b72f03d8e196') as (c,migrate,env):
+        ids=seed_inventory(c,unknown_date=True);before=protected(c)
+        result=migrate('downgrade','a84d2c19e705',check=False)
+        assert result.returncode!=0 and 'unknown acquisition dates' in result.stderr
+        assert c.execute('SELECT acquisition_date FROM vehicles WHERE id=%s',(ids['vehicle'],)).fetchone()==(None,)
+        assert c.execute('SELECT version_num FROM alembic_version').fetchone()==('b72f03d8e196',)
+        assert protected(c)==before
 
 
 def test_quick_create_still_checks_auth_csrf_and_validation(logged):

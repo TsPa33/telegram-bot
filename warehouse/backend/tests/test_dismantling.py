@@ -178,14 +178,9 @@ def test_sale_count_is_explicit_not_writeoff_and_receipt_never_replenishes(logge
 
 
 def test_migration_preserves_inventory_and_plan_parts(logged,xc90,part):
-    before=logged.get('/api/v1/parts/'+part['id']).json()
-    run([sys.executable,'-m','alembic','downgrade','b72f03d8e196'],check=True)
-    try:
-        run([sys.executable,'-m','alembic','upgrade','head'],check=True)
-        assert logged.get('/api/v1/parts/'+part['id']).json()==before
-        assert logged.get('/api/v1/vehicles/'+xc90['id']).json()['acquisition_date'] is None
-        run([sys.executable,'-m','alembic','check'],check=True)
-    finally:run([sys.executable,'-m','alembic','upgrade','head'],check=True)
+    before = logged.get('/api/v1/parts/' + part['id']).json()
+    from historical_db import assert_historical_upgrade
+    assert_historical_upgrade('b72f03d8e196')
 
 
 def test_parallel_donors_share_category_tree_without_duplicates(logged,xc90):

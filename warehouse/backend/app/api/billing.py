@@ -26,6 +26,7 @@ def status(db:DB,who:Auth):
         'subscription':{'plan':s.plan,'status':s.status if billing.active(s) else 'expired','period_end':s.period_end,'auto_renew':s.auto_renew} if s else None,
         'employees':{'used':employees if who.user.role=='DIRECTOR' or 'team.view' in who.permissions else None,'limit':plan['employees'] if plan else None},'credits':{**limits,'used':used,'included':plan['credits'] if plan else 0},'read_only':configured and not billing.exempt(who.workspace_account_id) and not billing.active(s)}
     if result['can_manage']:result.update(plans=billing.PLANS,packs={k:{'amount':v[0],'credits':v[1]} for k,v in billing.PACKS.items()})
+    if entitlements.enabled():result['entitlements_available']=True
     return result
 
 @router.get('/payments')
@@ -50,3 +51,102 @@ def cancel(who:Auth):
 def callback():
     # No permissive webhook before the merchant/sandbox contract is independently verified.
     raise HTTPException(503,'LiqPay callback is disabled pending verified sandbox contract')
+
+# Phase 2 routes are separate from disabled legacy checkout/credits.
+from app.services import entitlements
+from pydantic import BaseModel,ConfigDict,Field
+from typing import Literal
+
+class TrialInput(BaseModel):
+    model_config=ConfigDict(extra='forbid')
+    plan:Literal['standard','premium']
+
+class QuoteInput(BaseModel):
+    model_config=ConfigDict(extra='forbid')
+    pack:Literal['pack_1','pack_5','pack_10']
+
+class ReturnInput(BaseModel):
+    model_config=ConfigDict(extra='forbid')
+    sale_id:str=Field(min_length=36,max_length=36)
+    quantity:int=Field(strict=True,gt=0,le=1000000)
+    request_key:str=Field(min_length=36,max_length=36)
+
+@router.get('/entitlements')
+def entitlement_status(db:DB,who:Auth):
+    if who.user.role!='DIRECTOR' and not {'inventory.view','vehicles.view','dismantling.manage'} & who.permissions:
+        raise HTTPException(403,'Недостатньо прав для перегляду використання')
+    result=entitlements.report(db,who.workspace_account_id)
+    result.update(can_manage=who.user.role=='DIRECTOR' and who.actor_id==who.workspace_account_id,
+        plans=entitlements.PLANS,packs={k:{'amount_minor':v[0],'capacity':v[1]} for k,v in entitlements.PACKS.items()},
+        feature_enabled=entitlements.enabled())
+    if not result['can_manage']:
+        result.pop('plans');result.pop('packs')
+        if 'team.view' not in who.permissions:result['usage']['employees']=None
+    return result
+
+@router.post('/bind')
+def bind_workspace(db:DB,who:Auth):
+    p=entitlements.bind_owner(db,who);db.commit()
+    return {'bound':True,'workspace_id':p.workspace_id,'mode':p.mode}
+
+@router.post('/trial')
+def start_trial(data:TrialInput,db:DB,who:Auth):
+    entitlements.owner(who)
+    p=entitlements.bind_owner(db,who);db.commit()
+    from bot.billing.models import BillingError
+    try:token=entitlements.local_bridge().trial(p.workspace_id,p.billing_account_id,data.plan)
+    except BillingError as exc:raise HTTPException(409,str(exc)) from None
+    entitlements.accept(db,token);db.commit()
+    return entitlements.report(db,who.workspace_account_id)
+
+@router.post('/sync')
+def sync_entitlements(db:DB,who:Auth):
+    entitlements.owner(who);p=entitlements.bind_owner(db,who);db.commit()
+    token=entitlements.local_bridge().latest(p.workspace_id,p.billing_account_id)
+    if token:entitlements.accept(db,token);db.commit()
+    return entitlements.report(db,who.workspace_account_id)
+
+@router.post('/quote')
+def addon_quote(data:QuoteInput,db:DB,who:Auth):
+    entitlements.owner(who)
+    from decimal import Decimal,ROUND_HALF_UP
+    from datetime import datetime
+    s=entitlements.state(db,who.workspace_account_id);p=entitlements.projection(db,who.workspace_account_id)
+    if not p or not s['paid'] or s['status']=='GRACE':raise HTTPException(409,'Потрібний чинний період')
+    stamp=entitlements.now()
+    current=next(i for i in p.intervals if i['kind']!='addon' and datetime.fromisoformat(i['effective_from'])<=stamp<datetime.fromisoformat(i['effective_until']))
+    a,b=(datetime.fromisoformat(current[k]) for k in ('effective_from','effective_until'))
+    amount,capacity=entitlements.PACKS[data.pack]
+    micros=lambda d:(d.days*86400+d.seconds)*1000000+d.microseconds
+    due=int((Decimal(amount)*micros(b-stamp)/micros(b-a)).quantize(Decimal(1),rounding=ROUND_HALF_UP))
+    return {'amount_minor':due,'full_amount_minor':amount,'currency':'UAH','capacity':capacity,
+            'effective_until':b,'checkout_available':False,'cadence':'monthly'}
+
+@router.post('/returns')
+def verified_return(data:ReturnInput,db:DB,who:Auth):
+    from app.models import Operation,Part,uid
+    from app.models.entitlements import EntitlementReturn
+    from app.permissions import require_permission
+    from app.services.inventory import record,snapshot
+    if not entitlements.enabled():raise HTTPException(503,'Новий контур вимкнено')
+    require_permission(who,'inventory.adjust_quantity','sales.create')
+    entitlements.lock(db,who.workspace_account_id)
+    old=db.scalar(select(EntitlementReturn).where(EntitlementReturn.workspace_id==who.workspace_account_id,EntitlementReturn.request_key==data.request_key))
+    if old:
+        if (old.sale_id,old.quantity)!=(data.sale_id,data.quantity):raise HTTPException(409,'Конфлікт ключа повернення')
+        return {'id':old.id,'replayed':True}
+    sale=db.scalar(select(Operation).where(Operation.id==data.sale_id,Operation.account_id==who.workspace_account_id,Operation.type=='sale'))
+    if not sale:raise HTTPException(404,'Підтверджений продаж не знайдено')
+    sold=int(sale.before['quantity'])-int(sale.after['quantity'])
+    returned=db.scalar(select(func.coalesce(func.sum(EntitlementReturn.quantity),0)).where(EntitlementReturn.sale_id==sale.id))
+    if returned+data.quantity>sold:raise HTTPException(409,'Повернення перевищує продану кількість')
+    part=db.scalar(select(Part).where(Part.id==sale.part_id,Part.account_id==who.workspace_account_id).with_for_update())
+    if not part:raise HTTPException(409,'Історичний товар відсутній')
+    before=snapshot(part);part.archived=False;part.quantity+=data.quantity;part.availability='present'
+    row=EntitlementReturn(id=uid(),workspace_id=who.workspace_account_id,sale_id=sale.id,quantity=data.quantity,request_key=data.request_key)
+    db.info['verified_entitlement_return']=True
+    try:
+        db.add(row);record(db,who.workspace_account_id,part,'return','Повернення за підтвердженим продажем',before,after_extra={'source_sale_id':sale.id})
+        db.commit()
+    finally:db.info.pop('verified_entitlement_return',None)
+    return {'id':row.id,'replayed':False}

@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CarPot Warehouse fixture entitlements v2",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 2
+    },
+    "environment": {
+      "const": "test"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "trial_used": {
+      "type": "boolean"
+    },
+    "event_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "workspace_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "billing_account_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "intervals": {
+      "type": "array",
+      "maxItems": 1000,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "enum": [
+              "base",
+              "trial",
+              "addon"
+            ]
+          },
+          "plan": {
+            "enum": [
+              "standard",
+              "premium"
+            ]
+          },
+          "vehicle_capacity": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "employee_seats": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "effective_from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "effective_until": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "kind",
+          "plan",
+          "vehicle_capacity",
+          "employee_seats",
+          "effective_from",
+          "effective_until"
+        ]
+      }
+    }
+  },
+  "required": [
+    "schema_version",
+    "environment",
+    "version",
+    "trial_used",
+    "event_id",
+    "workspace_id",
+    "billing_account_id",
+    "intervals"
+  ]
+}

@@ -49,7 +49,9 @@ def test_short_durable_submission_duplicate_conflict_and_disconnect(platform):
     assert counts()['catalogue_offers']==1
 
 
-def test_worker_does_not_block_api_and_other_workers_cannot_claim(platform,monkeypatch):
+@pytest.mark.parametrize('entitlements_enabled',['false','true'])
+def test_worker_does_not_block_api_and_other_workers_cannot_claim(platform,monkeypatch,entitlements_enabled):
+    monkeypatch.setenv('WAREHOUSE_ENTITLEMENTS_ENABLED',entitlements_enabled)
     job=upload(platform);command(platform,job)
     entered,release=Event(),Event();original=Planner.run
     def slow(self,rows):

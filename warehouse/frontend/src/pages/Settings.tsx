@@ -11,6 +11,7 @@ import {api,type Row} from '../api';
 import {roleLabel,useCan} from '../permissions';
 import {Heading,State,useLoad} from '../shared';
 import '../settings-r123.css';
+import WorkspaceBilling from '../WorkspaceBilling';
 
 type Capability={permission:string;label:string;description:string;path:string;icon:typeof Boxes};
 
@@ -108,7 +109,8 @@ export default function Settings({user}:{user:Row}){
     </div>
 
     <nav className="settings-section-tabs" aria-label="Розділ налаштувань"><Link aria-current={tab==='general'?'page':undefined} to="/settings?section=general">Загальні</Link><Link aria-current={tab==='payments'?'page':undefined} to="/settings?section=payments">Оплати</Link></nav>
-    {tab==='payments'&&<section className="r123-panel" aria-label="Оплати"><h2>Оплати</h2><State loading={billing.loading} error={billing.error}/>{billing.data&&<p>{billing.data.enabled?(billing.data.read_only?'Доступ у режимі перегляду':'Поточний доступ активний'):'Оплати не підключені. Поточний доступ збережено.'}</p>}<p>Оформлення платежів на цьому етапі недоступне.</p></section>}
+    {tab==='payments'&&billing.data?.entitlements_available&&<WorkspaceBilling/>}
+    {tab==='payments'&&!billing.data?.entitlements_available&&<section className="r123-panel" aria-label="Оплати"><h2>Оплати</h2><State loading={billing.loading} error={billing.error}/>{billing.data&&<p>{billing.data.enabled?(billing.data.read_only?'Доступ у режимі перегляду':'Поточний доступ активний'):'Оплати не підключені. Поточний доступ збережено.'}</p>}<p>Оформлення платежів на цьому етапі недоступне.</p></section>}
     <div aria-label="Загальні" hidden={tab!=='general'}>
     <div className="r123-grid">
       <section className="r123-panel" aria-labelledby="r123-profile-heading">

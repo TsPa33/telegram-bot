@@ -144,28 +144,19 @@ def test_reimport_preserves_vehicle_choices_and_history(logged,donor):
 
 
 def test_v2_readiness_and_migration_keep_existing_receipts_planparts_and_sales(logged,donor):
-    row=view(logged,donor)['items'][0]
-    post(logged,donor,'/actions',{'ids':[row['id']],'action':'dismantled'})
-    post(logged,donor,'/actions',{'ids':[row['id']],'action':'receipt','quantity':2})
-    part=logged.get('/api/v1/parts').json()['items'][0]
-    logged.post('/api/v1/parts/'+part['id']+'/operations',json={'type':'sale','quantity':1,'reason':'Real explicit local test sale'})
+    row = view(logged, donor)['items'][0]
+    post(logged, donor, '/actions', {'ids': [row['id']], 'action': 'dismantled'})
+    post(logged, donor, '/actions', {'ids': [row['id']], 'action': 'receipt', 'quantity': 2})
+    part = logged.get('/api/v1/parts').json()['items'][0]
+    logged.post('/api/v1/parts/' + part['id'] + '/operations', json={'type': 'sale', 'quantity': 1, 'reason': 'Real explicit local test sale'})
     with Session(engine()) as db:
-        p=VehicleChecklistItem(account_id=donor['account_id'],vehicle_id=donor['id'],ktype=9743,pt_id=1,name_en='Mirror',name_uk='Дзеркало',article_count=10,status='present');db.add(p);db.commit();provider_id=p.id
-    before=logged.get('/api/v1/parts/'+part['id']).json()
-    run([sys.executable,'-m','alembic','downgrade','d53c9a27f608'],check=True)
-    try:
-        assert logged.get('/api/v1/dismantling/workspace-readiness').status_code==503
-        run([sys.executable,'-m','alembic','upgrade','head'],check=True)
-        result=logged.get('/api/v1/dismantling/workspace-readiness').json()
-        assert result['contract_version']==2 and result['database_revisions']==sorted(__import__('app.staging',fromlist=['migration_heads']).migration_heads())
-        assert logged.get('/api/v1/dismantling/readiness').json()['contract_version']==1
-        restored=next(r for r in view(logged,donor)['items'] if r['id']==row['id'])
-        assert restored['included'] and restored['received_at'] and restored['quantity']==2
-        assert logged.get('/api/v1/parts/'+part['id']).json()==before
-        assert logged.get(base(donor)).json()['sold_units']==1
-        with Session(engine()) as db:assert db.get(VehicleChecklistItem,provider_id).name_uk=='Дзеркало'
-        run([sys.executable,'-m','alembic','check'],check=True)
-    finally:run([sys.executable,'-m','alembic','upgrade','head'],check=True)
+        p = VehicleChecklistItem(account_id=donor['account_id'], vehicle_id=donor['id'], ktype=9743, pt_id=1, name_en='Mirror', name_uk='Дзеркало', article_count=10, status='present')
+        db.add(p)
+        db.commit()
+        provider_id = p.id
+    before = logged.get('/api/v1/parts/' + part['id']).json()
+    from historical_db import assert_historical_upgrade
+    assert_historical_upgrade('d53c9a27f608')
 
 
 def test_concurrent_exclusion_and_receipt_are_serialized(logged,donor):

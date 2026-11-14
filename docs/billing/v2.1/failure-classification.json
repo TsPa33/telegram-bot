@@ -1,0 +1,354 @@
+[
+  {
+    "test_id": "tests/test_aleto_adapter.py::test_upgrade_from_r82_preserves_existing_queue_and_data",
+    "severity": "P1",
+    "classification": "migration test infrastructure",
+    "root_cause": "Historical migration test attempted destructive downgrade of populated modern HEAD through forward-only history guards.",
+    "change": "Create isolated historical schema, copy compatible original domain fixture columns plus synthetic VIN/stock/sale/reserve/order history, upgrade twice and compare every original table/column; Alembic check at HEAD.",
+    "result": "PASS: complete local discovery; independent CI pending"
+  },
+  {
+    "test_id": "tests/test_aleto_catalogue.py::test_aleto_migration_roundtrip_keeps_existing_stock_and_history",
+    "severity": "P1",
+    "classification": "migration test infrastructure",
+    "root_cause": "Historical migration test attempted destructive downgrade of populated modern HEAD through forward-only history guards.",
+    "change": "Create isolated historical schema, copy compatible original domain fixture columns plus synthetic VIN/stock/sale/reserve/order history, upgrade twice and compare every original table/column; Alembic check at HEAD.",
+    "result": "PASS: complete local discovery; independent CI pending"
+  },
+  {
+    "test_id": "tests/test_canonical_v3.py::test_concurrent_worker_coordination_and_ordinary_reads",
+    "severity": "P0",
+    "classification": "application concurrency",
+    "root_cause": "Worker actor FOR SHARE conflicted with the API workspace NO KEY UPDATE; writer could wait for the entire import transaction.",
+    "change": "Use a key-share actor fence; retain session SHARE and atomic queue/advisory claim; verify two-worker exclusion and ordinary API availability with flags OFF/ON.",
+    "result": "PASS: complete local discovery; independent CI pending"
+  },
+  {
+    "test_id": "tests/test_canonical_v3.py::test_full_real_A_normalization_report_preserves_source_tables",
+    "severity": "P1",
+    "classification": "incorrect paginated-review fixture",
+    "root_cause": "Preview limits visible issues to 200; one-pass skip resolved only that page, leaving legitimate unresolved review and status=review.",
+    "change": "Explicitly review every page, accumulate real decisions, regenerate planner/token and require ready before apply; keep all counts and physical-stock assertions.",
+    "result": "PASS: complete local discovery; independent CI pending"
+  },
+  {
+    "test_id": "tests/test_canonical_v3.py::test_populated_migration_is_additive",
+    "severity": "P1",
+    "classification": "migration test infrastructure",
+    "root_cause": "Historical migration test attempted destructive downgrade of populated modern HEAD through forward-only history guards.",
+    "change": "Create isolated historical schema, copy compatible original domain fixture columns plus synthetic VIN/stock/sale/reserve/order history, upgrade twice and compare every original table/column; Alembic check at HEAD.",
+    "result": "PASS: complete local discovery; independent CI pending"
+  },
+  {
+    "test_id": "tests/test_catalogue_jobs.py::test_worker_does_not_block_api_and_other_workers_cannot_claim",
+    "severity": "P0",
+    "classification": "application concurrency",
+    "root_cause": "Worker actor FOR SHARE conflicted with the API workspace NO KEY UPDATE; writer could wait for the entire import transaction.",
+    "change": "Use a key-share actor fence; retain session SHARE and atomic queue/advisory claim; verify two-worker exclusion and ordinary API availability with flags OFF/ON.",
+    "result": "PASS: complete local discovery; independent CI pending"
+  },
+  {
+    "test_id": "tests/test_catalogue_language_gate.py::test_language_gate_accepts_ukrainian_category_names",
+    "severity": "P1",
+    "classification": "application language classification",
+    "root_cause": "Shared Ukrainian/Russian word передача was treated as an exclusively Russian signal.",
+    "change": "Remove only that shared token; retain Главная and other strong Russian signals and rejection tests.",
+    "result": "PASS: complete local discovery; independent CI pending"
+  },
+  {
+    "test_id": "tests/test_catalogue_stabilization.py::test_batch_100_profile_against_previous_implementation",
+    "severity": "P1",
+    "classification": "application performance",
+    "root_cause": "Fresh batch receipts repeated workspace and assembly-node queries for every uncommitted newly minted part.",
+    "change": "Restrict a transaction-local scope to exact new IDs; retain stock validation and finally cleanup; enforce <40 SQL calls and audit equality.",
+    "result": "PASS: complete local discovery; independent CI pending"
+  },
+  {
+    "test_id": "tests/test_catalogue_v2.py::test_additive_migration_roundtrip_keeps_v1_and_business_data",
+    "severity": "P1",
+    "classification": "migration test infrastructure",
+    "root_cause": "Historical migration test attempted destructive downgrade of populated modern HEAD through forward-only history guards.",
+    "change": "Create isolated historical schema, copy compatible original domain fixture columns plus synthetic VIN/stock/sale/reserve/order history, upgrade twice and compare every original table/column; Alembic check at HEAD.",
+    "result": "PASS: complete local discovery; independent CI pending"
+  },
+  {
+    "test_id": "tests/test_catalogue_v2.py::test_full_volvo_v1_then_incremental_and_repeat_preserves_legacy",
+    "severity": "P1",
+    "classification": "incorrect paginated-review fixture",
+    "root_cause": "Preview limits visible issues to 200; one-pass skip resolved only that page, leaving legitimate unresolved review and status=review.",
+    "change": "Explicitly review every page, accumulate real decisions, regenerate planner/token and require ready before apply; keep all counts and physical-stock assertions.",
+    "result": "PASS: complete local discovery; independent CI pending"
+  },
+  {
+    "test_id": "tests/test_catalogue_v2.py::test_v2_alias_unicode_and_known_part_traits_are_not_lost",
+    "severity": "P1",
+    "classification": "application duplicate classification",
+    "root_cause": "Same normalized type name with distinct constructive details (side/position) was incorrectly flagged as a duplicate.",
+    "change": "Compare normalized details as well as names and parent context; retain explicit alias review for actual duplicates.",
+    "result": "PASS: complete local discovery; independent CI pending"
+  },
+  {
+    "test_id": "tests/test_checklists.py::test_migration_preserves_existing_inventory",
+    "severity": "P1",
+    "classification": "stale schema-drift expectation",
+    "root_cause": "The old expected index-name drift has already been reconciled.",
+    "change": "Require no metadata drift at all; preserve donor/stock assertions.",
+    "result": "PASS: complete local discovery; independent CI pending"
+  },
+  {
+    "test_id": "tests/test_dismantling.py::test_migration_preserves_inventory_and_plan_parts",
+    "severity": "P1",
+    "classification": "migration test infrastructure",
+    "root_cause": "Historical migration test attempted destructive downgrade of populated modern HEAD through forward-only history guards.",
+    "change": "Create isolated historical schema, copy compatible original domain fixture columns plus synthetic VIN/stock/sale/reserve/order history, upgrade twice and compare every original table/column; Alembic check at HEAD.",
+    "result": "PASS: complete local discovery; independent CI pending"
+  },
+  {
+    "test_id": "tests/test_dismantling_plan_v3.py::test_additive_migration_on_populated_legacy_db",
+    "severity": "P1",
+    "classification": "migration test infrastructure",
+    "root_cause": "Historical migration test attempted destructive downgrade of populated modern HEAD through forward-only history guards.",
+    "change": "Create isolated historical schema, copy compatible original domain fixture columns plus synthetic VIN/stock/sale/reserve/order history, upgrade twice and compare every original table/column; Alembic check at HEAD.",
+    "result": "PASS: complete local discovery; independent CI pending"
+  },
+  {
+    "test_id": "tests/test_dismantling_plan_v3.py::test_real_A_xc90_plan_and_multiple_donors",
+    "severity": "P1",
+    "classification": "incorrect paginated-review fixture",
+    "root_cause": "Preview limits visible issues to 200; one-pass skip resolved only that page, leaving legitimate unresolved review and status=review.",
+    "change": "Explicitly review every page, accumulate real decisions, regenerate planner/token and require ready before apply; keep all counts and physical-stock assertions.",
+    "result": "PASS: complete local discovery; independent CI pending"
+  },
+  {
+    "test_id": "tests/test_dismantling_plan_v3.py::test_trial_configuration_survives_reload_and_catalogue_checks",
+    "severity": "P1",
+    "classification": "stale fixture contract",
+    "root_cause": "Free-text engine label is no longer promoted into structured verified engine_code.",
+    "change": "Supply both explicit structured code and label in the synthetic change; retain stale configuration and previous confirmed state checks.",
+    "result": "PASS: complete local discovery; independent CI pending"
+  },
+  {
+    "test_id": "tests/test_dismantling_preview.py::test_real_A_xc90_read_only_example",
+    "severity": "P1",
+    "classification": "incorrect paginated-review fixture",
+    "root_cause": "Preview limits visible issues to 200; one-pass skip resolved only that page, leaving legitimate unresolved review and status=review.",
+    "change": "Explicitly review every page, accumulate real decisions, regenerate planner/token and require ready before apply; keep all counts and physical-stock assertions.",
+    "result": "PASS: complete local discovery; independent CI pending"
+  },
+  {
+    "test_id": "tests/test_dismantling_readiness.py::test_gate_rejects_unmigrated_database",
+    "severity": "P1",
+    "classification": "migration test infrastructure",
+    "root_cause": "Downgrading shared current HEAD hits an unrelated newer forward-only guard before the intended historical boundary.",
+    "change": "Create a fresh isolated DB at the exact guard/upgrade boundary; seed history, exercise actual refusal/failure and retry, assert revision and complete original-column data preservation.",
+    "result": "PASS: complete local discovery; independent CI pending"
+  },
+  {
+    "test_id": "tests/test_dismantling_v2.py::test_v2_readiness_and_migration_keep_existing_receipts_planparts_and_sales",
+    "severity": "P1",
+    "classification": "migration test infrastructure",
+    "root_cause": "Historical migration test attempted destructive downgrade of populated modern HEAD through forward-only history guards.",
+    "change": "Create isolated historical schema, copy compatible original domain fixture columns plus synthetic VIN/stock/sale/reserve/order history, upgrade twice and compare every original table/column; Alembic check at HEAD.",
+    "result": "PASS: complete local discovery; independent CI pending"
+  },
+  {
+    "test_id": "tests/test_import_runner.py::test_additive_upgrade_preserves_populated_old_tables",
+    "severity": "P1",
+    "classification": "migration test infrastructure",
+    "root_cause": "Historical migration test attempted destructive downgrade of populated modern HEAD through forward-only history guards.",
+    "change": "Create isolated historical schema, copy compatible original domain fixture columns plus synthetic VIN/stock/sale/reserve/order history, upgrade twice and compare every original table/column; Alembic check at HEAD.",
+    "result": "PASS: subsequent 29-case migration/offline-unit regression run; independent CI pending"
+  },
+  {
+    "test_id": "tests/test_part_characteristics.py::test_populated_stock_and_historical_sale_are_immutable_during_characteristic_edit",
+    "severity": "P1",
+    "classification": "stale provenance expectation",
+    "root_cause": "Explicit OEM edit now intentionally writes manual OEM provenance as well as the OEM value.",
+    "change": "Assert manual/user_confirmed/current actor provenance; compare every other stock field, all sales, and historical operations unchanged.",
+    "result": "PASS: complete local discovery; independent CI pending"
+  },
+  {
+    "test_id": "tests/test_part_characteristics.py::test_populated_upgrade_additive_and_startup_repeat_safe",
+    "severity": "P1",
+    "classification": "migration test infrastructure",
+    "root_cause": "Historical migration test attempted destructive downgrade of populated modern HEAD through forward-only history guards.",
+    "change": "Create isolated historical schema, copy compatible original domain fixture columns plus synthetic VIN/stock/sale/reserve/order history, upgrade twice and compare every original table/column; Alembic check at HEAD.",
+    "result": "PASS: complete local discovery; independent CI pending"
+  },
+  {
+    "test_id": "tests/test_partline_provider.py::test_upgrade_preserves_existing_r83_data",
+    "severity": "P1",
+    "classification": "migration test infrastructure",
+    "root_cause": "Historical migration test attempted destructive downgrade of populated modern HEAD through forward-only history guards.",
+    "change": "Create isolated historical schema, copy compatible original domain fixture columns plus synthetic VIN/stock/sale/reserve/order history, upgrade twice and compare every original table/column; Alembic check at HEAD.",
+    "result": "PASS: complete local discovery; independent CI pending"
+  },
+  {
+    "test_id": "tests/test_plan_parts_migration.py::test_existing_donor_survives_upgrade_via_staging_startup",
+    "severity": "P1",
+    "classification": "stale packaged-head expectation",
+    "root_cause": "Tests hardcoded an earlier Alembic head instead of the packaged migration heads.",
+    "change": "Compare actual revision set with migration_heads(); retain host/origin/CSRF, data preservation and real non-superuser privilege checks.",
+    "result": "PASS: complete local discovery; independent CI pending"
+  },
+  {
+    "test_id": "tests/test_quick_vehicle.py::test_downgrade_refuses_to_fabricate_unknown_dates",
+    "severity": "P1",
+    "classification": "migration test infrastructure",
+    "root_cause": "Downgrading shared current HEAD hits an unrelated newer forward-only guard before the intended historical boundary.",
+    "change": "Create a fresh isolated DB at the exact guard/upgrade boundary; seed history, exercise actual refusal/failure and retry, assert revision and complete original-column data preservation.",
+    "result": "PASS: complete local discovery; independent CI pending"
+  },
+  {
+    "test_id": "tests/test_quick_vehicle.py::test_known_date_survives_nullable_migration",
+    "severity": "P1",
+    "classification": "migration test infrastructure",
+    "root_cause": "Historical migration test attempted destructive downgrade of populated modern HEAD through forward-only history guards.",
+    "change": "Create isolated historical schema, copy compatible original domain fixture columns plus synthetic VIN/stock/sale/reserve/order history, upgrade twice and compare every original table/column; Alembic check at HEAD.",
+    "result": "PASS: complete local discovery; independent CI pending"
+  },
+  {
+    "test_id": "tests/test_simple_warehouse.py::test_number_migration_preserves_existing_ids_stock_and_audit",
+    "severity": "P1",
+    "classification": "migration test infrastructure",
+    "root_cause": "Historical migration test attempted destructive downgrade of populated modern HEAD through forward-only history guards.",
+    "change": "Create isolated historical schema, copy compatible original domain fixture columns plus synthetic VIN/stock/sale/reserve/order history, upgrade twice and compare every original table/column; Alembic check at HEAD.",
+    "result": "PASS: complete local discovery; independent CI pending"
+  },
+  {
+    "test_id": "tests/test_smart_migration_permissions.py::test_extension_permissions_and_failed_transaction[True]",
+    "severity": "P1",
+    "classification": "stale packaged-head expectation",
+    "root_cause": "Tests hardcoded an earlier Alembic head instead of the packaged migration heads.",
+    "change": "Compare actual revision set with migration_heads(); retain host/origin/CSRF, data preservation and real non-superuser privilege checks.",
+    "result": "PASS: complete local discovery; independent CI pending"
+  },
+  {
+    "test_id": "tests/test_smart_search.py::test_failed_upgrade_is_transactional_and_retryable[late_index_conflict]",
+    "severity": "P1",
+    "classification": "migration test infrastructure",
+    "root_cause": "Downgrading shared current HEAD hits an unrelated newer forward-only guard before the intended historical boundary.",
+    "change": "Create a fresh isolated DB at the exact guard/upgrade boundary; seed history, exercise actual refusal/failure and retry, assert revision and complete original-column data preservation.",
+    "result": "PASS: complete local discovery; independent CI pending"
+  },
+  {
+    "test_id": "tests/test_smart_search.py::test_failed_upgrade_is_transactional_and_retryable[table_lock]",
+    "severity": "P1",
+    "classification": "migration test infrastructure",
+    "root_cause": "Downgrading shared current HEAD hits an unrelated newer forward-only guard before the intended historical boundary.",
+    "change": "Create a fresh isolated DB at the exact guard/upgrade boundary; seed history, exercise actual refusal/failure and retry, assert revision and complete original-column data preservation.",
+    "result": "PASS: complete local discovery; independent CI pending"
+  },
+  {
+    "test_id": "tests/test_smart_search.py::test_migration_preserves_inventory_audit_and_readiness",
+    "severity": "P1",
+    "classification": "migration test infrastructure",
+    "root_cause": "Historical migration test attempted destructive downgrade of populated modern HEAD through forward-only history guards.",
+    "change": "Create isolated historical schema, copy compatible original domain fixture columns plus synthetic VIN/stock/sale/reserve/order history, upgrade twice and compare every original table/column; Alembic check at HEAD.",
+    "result": "PASS: complete local discovery; independent CI pending"
+  },
+  {
+    "test_id": "tests/test_stage2c.py::test_real_A_readonly_activation_evidence",
+    "severity": "P1",
+    "classification": "incorrect paginated-review fixture",
+    "root_cause": "Preview limits visible issues to 200; one-pass skip resolved only that page, leaving legitimate unresolved review and status=review.",
+    "change": "Explicitly review every page, accumulate real decisions, regenerate planner/token and require ready before apply; keep all counts and physical-stock assertions.",
+    "result": "PASS: complete local discovery; independent CI pending"
+  },
+  {
+    "test_id": "tests/test_stage2c.py::test_unpublished_diagnostics_is_readonly_and_proves_33_fallback",
+    "severity": "P2",
+    "classification": "stale API contract",
+    "root_cause": "Catalogue status explicitly includes generator:null when no generator is used.",
+    "change": "Assert exact dictionary including generator=None and unchanged database fingerprints.",
+    "result": "PASS: complete local discovery; independent CI pending"
+  },
+  {
+    "test_id": "tests/test_stage3b.py::test_populated_upgrade_and_guarded_downgrade",
+    "severity": "P1",
+    "classification": "migration test infrastructure",
+    "root_cause": "Historical migration test attempted destructive downgrade of populated modern HEAD through forward-only history guards.",
+    "change": "Create isolated historical schema, copy compatible original domain fixture columns plus synthetic VIN/stock/sale/reserve/order history, upgrade twice and compare every original table/column; Alembic check at HEAD.",
+    "result": "PASS: complete local discovery; independent CI pending"
+  },
+  {
+    "test_id": "tests/test_stage3c.py::test_pricing_downgrade_preserves_durable_decisions",
+    "severity": "P1",
+    "classification": "migration test infrastructure",
+    "root_cause": "Downgrading shared current HEAD hits an unrelated newer forward-only guard before the intended historical boundary.",
+    "change": "Create a fresh isolated DB at the exact guard/upgrade boundary; seed history, exercise actual refusal/failure and retry, assert revision and complete original-column data preservation.",
+    "result": "PASS: complete local discovery; independent CI pending"
+  },
+  {
+    "test_id": "tests/test_stage3c.py::test_revoked_session_while_waiting_for_workspace_lock",
+    "severity": "P0",
+    "classification": "application + test synchronization",
+    "root_cause": "Director mutations trusted a session loaded before waiting for the workspace lock; test intercepted a later lock instead of the identity boundary.",
+    "change": "Re-read every mutation actor/session after the actual workspace lock; deterministic event at that boundary, flags OFF/ON.",
+    "result": "PASS: complete local discovery; independent CI pending"
+  },
+  {
+    "test_id": "tests/test_staging.py::test_staging_public_host_and_authenticated_sales_readiness",
+    "severity": "P1",
+    "classification": "stale packaged-head expectation",
+    "root_cause": "Tests hardcoded an earlier Alembic head instead of the packaged migration heads.",
+    "change": "Compare actual revision set with migration_heads(); retain host/origin/CSRF, data preservation and real non-superuser privilege checks.",
+    "result": "PASS: complete local discovery; independent CI pending"
+  },
+  {
+    "test_id": "tests/test_v3_release_audit.py::test_nonfinancial_etag_projection_has_stable_json_bytes",
+    "severity": "P1",
+    "classification": "stale ETag contract",
+    "root_cause": "VIN evidence, structured engine code and drive now invalidate the plan ETag; old expected payload omitted these fields.",
+    "change": "Assert exact current projection digest, repeated stability, private-cost invariance and engine-code invalidation.",
+    "result": "PASS: complete local discovery; independent CI pending"
+  },
+  {
+    "test_id": "tests/test_v3_release_audit.py::test_upgrade_from_staging_revision_preserves_real_A_and_populated_business_data",
+    "severity": "P1",
+    "classification": "migration test infrastructure",
+    "root_cause": "Historical migration test attempted destructive downgrade of populated modern HEAD through forward-only history guards.",
+    "change": "Create isolated historical schema, copy compatible original domain fixture columns plus synthetic VIN/stock/sale/reserve/order history, upgrade twice and compare every original table/column; Alembic check at HEAD.",
+    "result": "PASS: complete local discovery; independent CI pending"
+  },
+  {
+    "test_id": "tests/test_vehicle_ux4.py::test_stock_counts_are_actual_positions_account_scoped_and_batched",
+    "severity": "P1",
+    "classification": "application performance",
+    "root_cause": "Vehicle list queried physical and registered part counts separately.",
+    "change": "One grouped aggregate with filtered physical count and total registered count; retain tenant/archive predicates and one parts-query assertion.",
+    "result": "PASS: complete local discovery; independent CI pending"
+  },
+  {
+    "test_id": "tests/test_vin_to_stock_handoff.py::test_vin_same_donor_exact_selection_bulk_receipt_replay[VF1AAAAA000000001-Renault-222222-93]",
+    "severity": "P1",
+    "classification": "stale private/public contract assertion",
+    "root_cause": "Response minimization intentionally removes exact_source_positions from ordinary users; stored evidence remains available to platform admin.",
+    "change": "Assert field absence publicly and exact count=1 through actual admin preview; retain same-donor, one receipt, replay and zero-duplicate stock checks.",
+    "result": "PASS: complete local discovery; independent CI pending"
+  },
+  {
+    "test_id": "tests/test_vin_to_stock_handoff.py::test_vin_same_donor_exact_selection_bulk_receipt_replay[YV4A22PK2G1092943-Volvo-107555-120]",
+    "severity": "P1",
+    "classification": "stale private/public contract assertion",
+    "root_cause": "Response minimization intentionally removes exact_source_positions from ordinary users; stored evidence remains available to platform admin.",
+    "change": "Assert field absence publicly and exact count=1 through actual admin preview; retain same-donor, one receipt, replay and zero-duplicate stock checks.",
+    "result": "PASS: complete local discovery; independent CI pending"
+  },
+  {
+    "test_id": "tests/test_vin_to_stock_handoff.py::test_vin_same_donor_exact_selection_bulk_receipt_replay[YV4L12RK6N1970668-Volvo-111111-120]",
+    "severity": "P1",
+    "classification": "stale private/public contract assertion",
+    "root_cause": "Response minimization intentionally removes exact_source_positions from ordinary users; stored evidence remains available to platform admin.",
+    "change": "Assert field absence publicly and exact count=1 through actual admin preview; retain same-donor, one receipt, replay and zero-duplicate stock checks.",
+    "result": "PASS: complete local discovery; independent CI pending"
+  },
+  {
+    "test_id": "tests/test_warehouse.py::test_migrations_roundtrip",
+    "severity": "P1",
+    "classification": "migration test infrastructure",
+    "root_cause": "Historical migration test attempted destructive downgrade of populated modern HEAD through forward-only history guards.",
+    "change": "Create isolated historical schema, copy compatible original domain fixture columns plus synthetic VIN/stock/sale/reserve/order history, upgrade twice and compare every original table/column; Alembic check at HEAD.",
+    "result": "PASS: complete local discovery; independent CI pending"
+  }
+]

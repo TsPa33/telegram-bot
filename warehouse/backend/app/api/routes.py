@@ -142,33 +142,18 @@ def logout(response: Response, db: DB, who: Auth):
     )
 
 
-def vehicle_stock_counts(db, account_id, ids):
-    """One account-scoped aggregate for a whole page, never per-row queries.
+def vehicle_part_counts(db,account_id,ids):
+    if not ids:return {}
+    return {vehicle:(physical,registered) for vehicle,physical,registered in db.execute(
+        select(Part.vehicle_id,func.count(Part.id).filter(Part.quantity>0),func.count(Part.id)).where(
+            Part.account_id==account_id,Part.vehicle_id.in_(ids),Part.archived.is_(False),Part.assortment_enabled.is_(True)
+        ).group_by(Part.vehicle_id))}
 
-    A position counts when it is active and has physical quantity > 0, including
-    reserved units. A potential checklist/zero balance is not stock.
-    """
-    return dict(db.execute(select(Part.vehicle_id, func.count(Part.id)).where(
-        Part.account_id == account_id, Part.vehicle_id.in_(ids),
-        Part.archived.is_(False), Part.assortment_enabled.is_(True), Part.quantity > 0).group_by(Part.vehicle_id)).all()) if ids else {}
-
-
-def vehicle_registered_part_counts(db, account_id, ids):
-    """Part cards associated with each donor, including zero-quantity candidates.
-
-    This is NOT physical stock. A zero-quantity candidate is registered but
-    must not increase stock_positions, stock_units or financial values.
-    """
-    return dict(db.execute(select(Part.vehicle_id, func.count(Part.id)).where(
-        Part.account_id == account_id, Part.vehicle_id.in_(ids),
-        Part.archived.is_(False), Part.assortment_enabled.is_(True)
-    ).group_by(Part.vehicle_id)).all()) if ids else {}
-
-
-def vehicle_view(db, row, account_id):
-    return {**snapshot(row),
-            'stock_positions':vehicle_stock_counts(db, account_id, [row.id]).get(row.id, 0),
-            'registered_parts':vehicle_registered_part_counts(db, account_id, [row.id]).get(row.id, 0)}
+def vehicle_stock_counts(db,account_id,ids):return {k:v[0] for k,v in vehicle_part_counts(db,account_id,ids).items()}
+def vehicle_registered_part_counts(db,account_id,ids):return {k:v[1] for k,v in vehicle_part_counts(db,account_id,ids).items()}
+def vehicle_view(db,row,account_id):
+    physical,registered=vehicle_part_counts(db,account_id,[row.id]).get(row.id,(0,0))
+    return {**snapshot(row),'stock_positions':physical,'registered_parts':registered}
 
 
 def listing(
@@ -216,8 +201,9 @@ def listing(
     rows = list(db.scalars(
         stmt.order_by(model.created_at.desc(), model.id).offset(offset).limit(limit)
     ))
-    vehicle_counts = vehicle_stock_counts(db, account_id, [r.id for r in rows]) if model is Vehicle else {}
-    registered_counts = vehicle_registered_part_counts(db, account_id, [r.id for r in rows]) if model is Vehicle else {}
+    combined_counts=vehicle_part_counts(db,account_id,[r.id for r in rows]) if model is Vehicle else {}
+    vehicle_counts={k:v[0] for k,v in combined_counts.items()}
+    registered_counts={k:v[1] for k,v in combined_counts.items()}
     items = []
     for row in rows:
         item = snapshot(row)
