@@ -385,3 +385,5 @@ from app.models.source_type_mapping import SourceTypeMapping  # noqa: E402,F401
 from app.models.billing import WorkspaceSubscription,BillingPayment,DismantlingCredit,DismantlingUsage,BillingEvent  # noqa: E402,F401
 
 from app.models.assemblies import AssemblyMembership, AssemblyTemplate  # noqa: E402,F401
+
+from app.models.entitlements import EntitlementWorkspace, EntitlementReceipt, DonorProvenance, EntitlementReturn

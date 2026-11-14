@@ -84,7 +84,8 @@ def test_positions_oems_and_workspace_csrf(platform,vehicle):
 def test_real_A_xc90_read_only_example(platform,vehicle,tmp_path):
     from app.services.aleto_import import BUNDLED_PACKAGE
     j=plan(platform,upload(platform,raw=BUNDLED_PACKAGE.read_bytes(),filename=BUNDLED_PACKAGE.name))
-    if j['report']['issues']:j=plan(platform,j,{i['key']:{'action':'skip'} for i in j['report']['issues']})
+    from test_catalogue_v2 import review_fixture
+    j=review_fixture(platform,j)
     confirm(platform,j);build(platform);setup_vehicle(vehicle)
     with Session(engine()) as db:db.get(Vehicle,vehicle['id']).model='XC90';db.commit();before=fingerprints(db)
     result=run(platform,vehicle);assert result.status_code==200,result.text

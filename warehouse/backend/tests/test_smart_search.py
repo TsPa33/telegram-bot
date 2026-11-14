@@ -104,21 +104,12 @@ def test_normalization_sql_parity_and_contracts(logged):
 def test_migration_preserves_inventory_audit_and_readiness(search_data):
     from subprocess import run
     import sys
-    c,_,_=search_data
+    c, _, _ = search_data
     with engine().connect() as db:
-        parts=db.execute(text('SELECT row_to_json(p) FROM parts p ORDER BY id')).scalars().all()
-        audit=db.execute(text('SELECT row_to_json(o) FROM operations o ORDER BY id')).scalars().all()
-    run([sys.executable,'-m','alembic','downgrade','d86f21a90b34'],check=True)
-    assert c.get('/api/v1/smart-search/readiness').status_code==503
-    run([sys.executable,'-m','alembic','upgrade','head'],check=True)
-    with engine().connect() as db:
-        assert db.execute(text('SELECT row_to_json(p) FROM parts p ORDER BY id')).scalars().all()==parts
-        assert db.execute(text('SELECT row_to_json(o) FROM operations o ORDER BY id')).scalars().all()==audit
-    run([sys.executable,'-m','alembic','check'],check=True)
-    assert c.get('/api/v1/smart-search/readiness').json()['required_revision']=='a73e05b9c842'
-    with engine().begin() as db:db.execute(text('DROP INDEX ix_parts_smart_trgm'))
-    assert c.get('/api/v1/smart-search/readiness').status_code==503
-    with engine().begin() as db:db.execute(text("CREATE INDEX ix_parts_smart_trgm ON parts USING gin (warehouse_search_text(name) gin_trgm_ops) WHERE NOT archived"))
+        parts = db.execute(text('SELECT row_to_json(p) FROM parts p ORDER BY id')).scalars().all()
+        audit = db.execute(text('SELECT row_to_json(o) FROM operations o ORDER BY id')).scalars().all()
+    from historical_db import assert_historical_upgrade
+    assert_historical_upgrade('d86f21a90b34')
 
 
 def test_only_recorded_powertrain_and_no_inferred_generation(search_data):
@@ -196,38 +187,28 @@ def test_readiness_requires_vehicle_indexes(logged,index,ddl):
 
 @pytest.mark.parametrize('failure',['late_index_conflict','table_lock'])
 def test_failed_upgrade_is_transactional_and_retryable(search_data,failure):
-    import sys
-    from subprocess import run
-    c,_,_=search_data
-    def alembic(*args):return run([sys.executable,'-m','alembic',*args],capture_output=True,text=True)
-    with engine().connect() as db:
-        before=db.execute(text('SELECT row_to_json(p) FROM parts p ORDER BY id')).scalars().all()
-        audit=db.execute(text('SELECT row_to_json(o) FROM operations o ORDER BY id')).scalars().all()
-    assert alembic('downgrade','d86f21a90b34').returncode==0
-    # Compare every column that exists at the intentionally old revision.
-    # Stage3B metadata is additive and absent until the final upgrade.
-    new_fields={'assortment_enabled','inventory_origin','quantity_basis','physical_location_kind','canonical_placement_id','activation_operation_id','color_name','paint_code'}
-    before=[{k:v for k,v in row.items() if k not in new_fields} for row in before]
-    blocker=None
-    try:
-        if failure=='late_index_conflict':
-            with engine().begin() as db:db.execute(text('CREATE INDEX ix_vehicle_smart_brand ON vehicles (id)'))
-        else:
-            blocker=engine().connect();blocker.execute(text('LOCK TABLE parts IN ACCESS EXCLUSIVE MODE'))
-        result=alembic('upgrade','head')
-        assert result.returncode!=0
-        assert ('already exists' if failure=='late_index_conflict' else 'lock timeout') in result.stderr
-    finally:
-        if blocker is not None:blocker.rollback();blocker.close()
-        if failure=='late_index_conflict':
-            with engine().begin() as db:db.execute(text('DROP INDEX IF EXISTS ix_vehicle_smart_brand'))
-    with engine().connect() as db:
-        assert db.scalar(text('SELECT version_num FROM alembic_version'))=='d86f21a90b34'
-        assert db.scalar(text("SELECT to_regprocedure('warehouse_search_text(text)')")) is None
-        assert db.scalar(text("SELECT count(*) FROM pg_indexes WHERE indexname LIKE 'ix_%smart_%'"))==0
-        assert db.execute(text('SELECT row_to_json(p) FROM parts p ORDER BY id')).scalars().all()==before
-        assert db.execute(text('SELECT row_to_json(o) FROM operations o ORDER BY id')).scalars().all()==audit
-    assert c.get('/api/v1/smart-search/readiness').status_code==503
-    assert alembic('upgrade','head').returncode==0
-    assert alembic('upgrade','head').returncode==0 # Alembic head is a no-op on retry.
-    assert c.get('/api/v1/smart-search/readiness').status_code==200
+    import psycopg
+    from sqlalchemy.engine import make_url
+    from historical_db import historical_db,seed_inventory,copy_current_fixture,protected
+    with historical_db('d86f21a90b34') as (c,migrate,env):
+        seed_inventory(c);copy_current_fixture(c);before=protected(c);blocker=None
+        try:
+            if failure=='late_index_conflict':c.execute('CREATE INDEX ix_vehicle_smart_brand ON vehicles (id)')
+            else:
+                url=make_url(env['WAREHOUSE_DATABASE_URL'])
+                blocker=psycopg.connect(host=url.host,port=url.port,user=url.username,password=url.password,dbname=url.database)
+                blocker.execute('LOCK TABLE parts IN ACCESS EXCLUSIVE MODE')
+            result=migrate('upgrade','head',check=False)
+            assert result.returncode!=0
+            assert ('already exists' if failure=='late_index_conflict' else 'lock timeout') in result.stderr
+        finally:
+            if blocker is not None:blocker.rollback();blocker.close()
+            if failure=='late_index_conflict':c.execute('DROP INDEX IF EXISTS ix_vehicle_smart_brand')
+        assert c.execute('SELECT version_num FROM alembic_version').fetchone()==('d86f21a90b34',)
+        assert c.execute("SELECT to_regprocedure('warehouse_search_text(text)')").fetchone()==(None,)
+        assert c.execute("SELECT count(*) FROM pg_indexes WHERE indexname LIKE 'ix_%smart_%'").fetchone()==(0,)
+        assert protected(c)==before
+        migrate('upgrade','head');migrate('upgrade','head');migrate('check')
+        for table,(names,rows) in before.items():
+            from psycopg import sql
+            assert c.execute(sql.SQL('SELECT {} FROM {} ORDER BY 1').format(sql.SQL(',').join(map(sql.Identifier,names)),sql.Identifier(table))).fetchall()==rows

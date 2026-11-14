@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:carpot:billing:fixture-entitlement:v1",
+  "title": "Billing fixture entitlement snapshot v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "account_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "workspace_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "product": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "subscription_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "sku": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "environment": {
+      "const": "test"
+    },
+    "activates_real_services": {
+      "const": false
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "plan_version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "vehicle_capacity",
+        "employees"
+      ],
+      "properties": {
+        "vehicle_capacity": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "employees": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "paid_intervals": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "start",
+          "end"
+        ],
+        "properties": {
+          "start": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "event_id",
+    "account_id",
+    "workspace_id",
+    "product",
+    "subscription_id",
+    "sku",
+    "schema_version",
+    "environment",
+    "activates_real_services",
+    "version",
+    "plan_version",
+    "limits",
+    "paid_intervals"
+  ]
+}

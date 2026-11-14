@@ -273,12 +273,16 @@ def test_v1_bridge_is_tenant_scoped_and_deduplicates_v2_same_ad(platform,vehicle
 
 
 def test_pricing_downgrade_preserves_durable_decisions(platform,vehicle):
-    import sys,subprocess
-    p=setup(platform,vehicle,[item(i) for i in range(3)]);j=preview(platform,[p])
-    with Session(engine()) as db:before=all_tables(db)
-    result=subprocess.run([sys.executable,'-m','alembic','downgrade','95c3e7b12a04'],capture_output=True,text=True)
-    assert result.returncode!=0 and 'Pricing decisions exist' in result.stderr
-    with Session(engine()) as db:assert all_tables(db)==before
+    from historical_db import historical_db,copy_current_fixture,protected
+    p=setup(platform,vehicle,[item(i) for i in range(3)]);preview(platform,[p])
+    with historical_db('a6d94c72e310') as (c,migrate,env):
+        copy_current_fixture(c)
+        assert c.execute('SELECT count(*) FROM price_decisions').fetchone()[0]>0
+        before=protected(c)
+        result=migrate('downgrade','95c3e7b12a04',check=False)
+        assert result.returncode!=0 and 'Pricing decisions exist' in result.stderr
+        assert c.execute('SELECT version_num FROM alembic_version').fetchone()==('a6d94c72e310',)
+        assert protected(c)==before
 
 
 def test_bounded_batch_over_ten_thousand_offers_has_no_per_card_queries(platform,vehicle,tmp_path):
@@ -326,11 +330,13 @@ def test_bounded_batch_over_ten_thousand_offers_has_no_per_card_queries(platform
     target=os.environ.get('WAREHOUSE_PRICING_PERF_REPORT',str(tmp_path/'pricing-performance.json'))
     __import__('pathlib').Path(target).write_text(json.dumps(result,indent=2)+'\n')
 
-def test_revoked_session_while_waiting_for_workspace_lock(platform,vehicle,monkeypatch):
+@pytest.mark.parametrize('entitlements_enabled',['false','true'])
+def test_revoked_session_while_waiting_for_workspace_lock(platform,vehicle,monkeypatch,entitlements_enabled):
+    monkeypatch.setenv('WAREHOUSE_ENTITLEMENTS_ENABLED',entitlements_enabled)
     from threading import Event
     from sqlalchemy import text,delete
     from app.models import Session as AuthSession
-    from app.api import pricing as routes
+    from app.api import deps as routes
     p=setup(platform,vehicle,[item(i) for i in range(3)])
     job=preview(platform,[p]);waiting=Event();original=routes.lock_workspace
     def signalled(db,account):

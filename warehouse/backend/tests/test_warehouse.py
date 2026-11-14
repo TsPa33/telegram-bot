@@ -370,20 +370,9 @@ def test_vehicle_ktype_is_optional_and_persisted(logged, vehicle_data):
 
 
 def test_migrations_roundtrip():
-    alembic = [sys.executable, "-m", "alembic"]
-    run([*alembic, "downgrade", "base"], check=True)
-    assert "parts" not in inspect(engine()).get_table_names()
-    run([*alembic, "upgrade", "head"], check=True)
-    assert {
-        "accounts",
-        "sessions",
-        "vehicles",
-        "categories",
-        "parts",
-        "operations",
-        "photos",
-    } <= set(inspect(engine()).get_table_names())
-    run([*alembic, "check"], check=True)
+    alembic = [sys.executable, '-m', 'alembic']
+    from historical_db import assert_historical_upgrade
+    assert_historical_upgrade('eb8fddfe982f')
 
 
 def test_photo_storage_and_isolation(logged, part, tmp_path, monkeypatch):

@@ -49,8 +49,13 @@ def test_nonfinancial_etag_projection_has_stable_json_bytes(platform,vehicle,par
         v=db.get(Vehicle,vehicle['id']);rows=managed.rows_for(db,v)
         parts=list(db.scalars(select(Part).where(Part.account_id==v.account_id,Part.vehicle_id==v.id).order_by(Part.id)))
         ops=list(db.scalars(select(Operation.id).where(Operation.account_id==v.account_id,Operation.vehicle_id==v.id).order_by(Operation.id)))
-        original=digest(jsonable_encoder([v.id,v.account_id,basis(v),v.archived,v.dismantling_v3,[snapshot(r) for r in rows],[{k:getattr(p,k) for k in managed.PART_STATE_FIELDS} for p in parts],ops]))
+        original=digest(jsonable_encoder([v.vin_details,v.engine_code,v.drive_type,v.id,v.account_id,basis(v),v.archived,v.dismantling_v3,[snapshot(r) for r in rows],[{k:getattr(p,k) for k in managed.PART_STATE_FIELDS} for p in parts],ops]))
         assert managed.state(db,v,rows)==original
+        assert managed.state(db,v,rows)==original  # repeat serialization is byte-stable
+        p=db.get(Part,part['id']);p.unit_cost=p.unit_cost+1;db.flush()
+        assert managed.state(db,v,rows)==original
+        v.engine_code='NEW-VERIFIED-CODE';db.flush()
+        assert managed.state(db,v,rows)!=original
 
 
 def test_repeated_actual_startup_with_worker_has_no_automatic_apply(platform,vehicle,monkeypatch):
@@ -80,49 +85,34 @@ def test_repeated_actual_startup_with_worker_has_no_automatic_apply(platform,veh
 
 
 def test_upgrade_from_staging_revision_preserves_real_A_and_populated_business_data(platform,vehicle,part,tmp_path):
-    import os,sys,subprocess
+    import os, sys, subprocess
     from app.services.aleto_import import BUNDLED_PACKAGE
-    from test_catalogue_v2 import plan,upload,confirm
-    from app.models.catalogue import CatalogueOffer,CatalogueApplication,CataloguePath
+    from test_catalogue_v2 import plan, upload, confirm
+    from app.models.catalogue import CatalogueOffer, CatalogueApplication, CataloguePath
     from app.models.canonical import CanonicalType
     from sqlalchemy import func
-    j=plan(platform,upload(platform,raw=BUNDLED_PACKAGE.read_bytes(),filename=BUNDLED_PACKAGE.name))
-    if j['report']['issues']:j=plan(platform,j,{i['key']:{'action':'skip'} for i in j['report']['issues']})
-    confirm(platform,j);setup_vehicle(vehicle)
-    assert platform.post(f"/api/v1/vehicles/{vehicle['id']}/dismantling/start").status_code==200
-    assert platform.post(f"/api/v1/parts/{part['id']}/operations",json={'type':'receipt','quantity':5,'reason':'Populated migration fixture'}).status_code==200
-    assert platform.post(f"/api/v1/parts/{part['id']}/operations",json={'type':'reserve','quantity':1,'reason':'Persist reservation'}).status_code==200
     from uuid import uuid4
-    assert platform.post(f"/api/v1/parts/{part['id']}/operations",json={'type':'sale','quantity':1,'sale_price':'73.25','sale_currency':'USD','request_key':str(uuid4())}).status_code==200
+    j = plan(platform, upload(platform, raw=BUNDLED_PACKAGE.read_bytes(), filename=BUNDLED_PACKAGE.name))
+    from test_catalogue_v2 import review_fixture
+    j=review_fixture(platform,j)
+    confirm(platform, j)
+    setup_vehicle(vehicle)
+    assert platform.post(f"/api/v1/vehicles/{vehicle['id']}/dismantling/start").status_code == 200
+    assert platform.post(f"/api/v1/parts/{part['id']}/operations", json={'type': 'receipt', 'quantity': 5, 'reason': 'Populated migration fixture'}).status_code == 200
+    assert platform.post(f"/api/v1/parts/{part['id']}/operations", json={'type': 'reserve', 'quantity': 1, 'reason': 'Persist reservation'}).status_code == 200
+    assert platform.post(f"/api/v1/parts/{part['id']}/operations", json={'type': 'sale', 'quantity': 1, 'sale_price': '73.25', 'sale_currency': 'USD', 'request_key': str(uuid4())}).status_code == 200
     with Session(engine()) as db:
-        first=db.scalar(select(DismantlingItem));first.included=False;db.commit();excluded=first.id
-    # Test-only downgrade produces the expected staging schema, with NO v3 plans yet.
-    try:
-        subprocess.run([sys.executable,'-m','alembic','downgrade','41f9a2c87d10'],check=True,capture_output=True)
-        with engine().connect() as c:
-            schema={table:[col['name'] for col in inspect(c).get_columns(table)] for table in inspect(c).get_table_names() if table!='alembic_version'}
-        def old_data():
-            result={}
-            with engine().connect() as c:
-                for table,columns in schema.items():
-                    sql='SELECT '+','.join('"'+col+'"' for col in columns)+' FROM "'+table+'"'
-                    result[table]=hashlib.sha256(json.dumps(sorted(json.dumps(dict(r),sort_keys=True,default=str) for r in c.execute(text(sql)).mappings())).encode()).hexdigest()
-            return result
-        before=old_data()
-        subprocess.run([sys.executable,'-m','alembic','upgrade','head'],check=True,capture_output=True)
-        assert old_data()==before
-        with Session(engine()) as db:
-            counts=[db.scalar(select(func.count()).select_from(cls)) for cls in (CatalogueOffer,CatalogueApplication,CataloguePath)]
-            assert counts==[7246,10112,14400]
-            assert db.scalar(select(func.count()).select_from(CanonicalType))==0
-            assert not db.get(DismantlingItem,excluded).included
-            assert db.scalar(text("SELECT count(*) FROM pg_constraint WHERE contype='f' AND connamespace='public'::regnamespace AND NOT convalidated"))==0
-        assert platform.get('/api/v1/auth/me').status_code==200
-        assert get(platform,vehicle)['total']==33
-        destination=os.environ.get('WAREHOUSE_RELEASE_MIGRATION_REPORT',str(tmp_path/'populated-upgrade.json'))
-        from pathlib import Path
-        Path(destination).write_text(json.dumps(dict(dataset='real Volvo A; synthetic local stock/sale/reservation/legacy-exclusion fixtures, NOT a Railway DB copy',from_revision='41f9a2c87d10',to_revision='e4b93a2d715c',offers=counts[0],applications=counts[1],paths=counts[2],all_original_columns_and_tables_unchanged=True,legacy_plan_accessible=True,no_canonical_backfill=True,fk_validated=True),indent=2)+'\n')
-    finally:subprocess.run([sys.executable,'-m','alembic','upgrade','head'],check=True,capture_output=True)
+        first = db.scalar(select(DismantlingItem))
+        first.included = False
+        db.commit()
+        excluded = first.id
+    from historical_db import assert_historical_upgrade
+    def verify(c,ids):
+        assert [c.execute('SELECT count(*) FROM '+table).fetchone()[0] for table in ('catalogue_offers','catalogue_applications','catalogue_paths')]==[7246,10112,14400]
+        assert c.execute('SELECT count(*) FROM canonical_types').fetchone()==(0,)
+        assert c.execute('SELECT included FROM dismantling_items WHERE id=%s',(excluded,)).fetchone()==(False,)
+        assert c.execute("SELECT count(*) FROM pg_constraint WHERE contype='f' AND connamespace='public'::regnamespace AND NOT convalidated").fetchone()==(0,)
+    assert_historical_upgrade('08b72c9d4e16',verify=verify)
 
 
 def test_plan_etag_is_not_a_private_cost_guessing_oracle(platform,vehicle,part,monkeypatch):
@@ -144,7 +134,7 @@ def test_plan_etag_is_not_a_private_cost_guessing_oracle(platform,vehicle,part,m
         matched=[]
         for amount in range(100):
             guessed={**template,'unit_cost':format(amount,'.2f')}
-            candidate=digest([public_vehicle['id'],public_vehicle['account_id'],digest({k:public_vehicle[k] for k in BASIS}),public_vehicle['archived'],public_vehicle['dismantling_v3'],[],[guessed],ids])
+            candidate=digest([public_vehicle.get('vin_details'),public_vehicle.get('engine_code'),public_vehicle.get('drive_type'),public_vehicle['id'],public_vehicle['account_id'],digest({k:public_vehicle[k] for k in BASIS}),public_vehicle['archived'],public_vehicle['dismantling_v3'],[],[guessed],ids])
             if candidate==observed:matched.append(amount)
         assert not matched,'A low-permission user could validate a hidden financial value'
     finally:c.close()

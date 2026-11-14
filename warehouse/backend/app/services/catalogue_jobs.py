@@ -53,7 +53,7 @@ def operation_summary(op,include_command=False):
 
 
 def authorize(db,op):
-    actor=db.scalar(select(Account).where(Account.id==op.actor_id).with_for_update(read=True))
+    actor=db.scalar(select(Account).where(Account.id==op.actor_id).with_for_update(read=True,key_share=True))
     session=db.scalar(select(AuthSession).where(AuthSession.token_hash==op.session_hash).with_for_update(read=True))
     if not platform_admin(actor) or not session or session.account_id!=op.actor_id or session.expires_at<=now():
         raise HTTPException(403,'Доступ власника або сесію відкликано; увійдіть повторно')

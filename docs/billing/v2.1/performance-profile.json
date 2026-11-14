@@ -1,0 +1,12 @@
+{
+  "legacy": {
+    "queries": 1501,
+    "commits": 100,
+    "seconds": 1.4066
+  },
+  "batch": {
+    "queries": 17,
+    "commits": 1,
+    "seconds": 0.1355
+  }
+}

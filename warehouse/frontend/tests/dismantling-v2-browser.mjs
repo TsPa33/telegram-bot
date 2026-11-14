@@ -45,9 +45,9 @@ try{
  await bulk(mixed,[mids[1]],'present');await bulk(mixed,[mids[2]],'absent');await bulk(mixed,[mids[4]],'exclude');const preview=await get(`/vehicles/${mixed.id}/assemblies/${mids[3]}/preview`);await post(`/vehicles/${mixed.id}/assemblies`,{action:'inspect',item_id:mids[3],token:preview.token,presence:'damaged',quantity:1,note:'QA damaged state',request_key:crypto.randomUUID()});
  await selectIds(mixed,mids);const md=await receipt();await expect(md).toContainText('До надходження після підтвердження: 3');await confirm(md,3);await md.getByRole('button',{name:'Додати 3 деталей на склад',exact:true}).click();await expect(md).not.toBeVisible();stock=await get(`/parts?vehicle_id=${mixed.id}&limit=200`);assert.equal(stock.total,5);assert.equal(stock.items.find(p=>p.id===soldId).quantity,0);assert.ok(stock.items.some(p=>p.condition==='damaged'));await shot('mixed-result');
  // 227 positions; lose the already-committed second response, reload, replay exact key.
- const large=vehicles[1];await page.goto('/vehicles?donor='+large.id);await page.getByRole('checkbox',{name:'Вибрати всі за поточними фільтрами',exact:true}).check();const ld=await receipt();await confirm(ld,227);let responses=0;let lost=false;
+ const large=vehicles[1];await page.goto('/vehicles?donor='+large.id);await page.getByRole('checkbox',{name:'Вибрати всі за поточними фільтрами',exact:true}).check();const ld=await receipt();await confirm(ld,227);let responses=0;let lost=false;let lostResolve;const lostResponse=new Promise(resolve=>{lostResolve=resolve;});
  const bulkPattern=`**/vehicles/${large.id}/dismantling-v3/bulk`;let releaseFirst,releaseSecond;const firstGate=new Promise(r=>{releaseFirst=r}),secondGate=new Promise(r=>{releaseSecond=r});
- await page.route(bulkPattern,async route=>{responses++;if(responses===1){await firstGate;await route.continue()}else if(responses===2){await secondGate;const r=await route.fetch();assert.equal(r.status(),200);lost=true;await route.abort('failed')}else await route.continue()});
+ await page.route(bulkPattern,async route=>{responses++;if(responses===1){await firstGate;await route.continue()}else if(responses===2){await secondGate;const r=await route.fetch();assert.equal(r.status(),200);lost=true;await route.abort('failed');lostResolve();}else await route.continue()});
  try{
    await ld.getByRole('button',{name:'Додати 227 деталей на склад',exact:true}).click();
    const progress=ld.getByRole('progressbar');
@@ -63,6 +63,7 @@ try{
    await expect(ld).toContainText('Додано: 100');
    await shot('receipt-live-progress-100');
  }finally{releaseFirst();releaseSecond();}
+ await lostResponse;
  await expect(ld.getByRole('alert')).toBeVisible();
  await expect(ld.getByRole('progressbar')).toHaveAttribute('aria-valuenow','100');
  await expect(ld).toContainText('Операцію призупинено');

@@ -72,7 +72,7 @@ def test_stale_requests_archived_workspace_and_bad_input(platform,vehicle):
     from app.main import app
     from conftest import signup
     setup_vehicle(vehicle);p=preview(platform,vehicle)
-    with Session(engine()) as db:db.get(Vehicle,vehicle['id']).engine='D4204T14';db.commit()
+    with Session(engine()) as db:v=db.get(Vehicle,vehicle['id']);v.engine='D4204T14';v.engine_code='D4204T14';db.commit()
     assert save(platform,vehicle,p).status_code==409
     p=preview(platform,vehicle);assert save(platform,vehicle,p).status_code==200
     old=get(platform,vehicle);rid=old['items'][0]['id']
@@ -160,7 +160,8 @@ def test_source_price_and_new_model_do_not_mutate_saved_plan(platform,vehicle):
 def test_real_A_xc90_plan_and_multiple_donors(platform,vehicle,tmp_path):
     from app.services.aleto_import import BUNDLED_PACKAGE
     j=plan(platform,upload(platform,raw=BUNDLED_PACKAGE.read_bytes(),filename=BUNDLED_PACKAGE.name))
-    if j['report']['issues']:j=plan(platform,j,{i['key']:{'action':'skip'} for i in j['report']['issues']})
+    from test_catalogue_v2 import review_fixture
+    j=review_fixture(platform,j)
     confirm(platform,j);build(platform);setup_vehicle(vehicle)
     with Session(engine()) as db:db.get(Vehicle,vehicle['id']).model='XC90';db.commit()
     reports=[]
@@ -202,17 +203,15 @@ def test_legacy_stock_prices_reservations_and_bypass_protection(platform,vehicle
 
 
 def test_additive_migration_on_populated_legacy_db(platform,vehicle,part):
-    import subprocess,sys
-    setup_vehicle(vehicle);platform.post(f"/api/v1/vehicles/{vehicle['id']}/dismantling/start")
+    import subprocess, sys
+    setup_vehicle(vehicle)
+    platform.post(f"/api/v1/vehicles/{vehicle['id']}/dismantling/start")
     with Session(engine()) as db:
-        db.scalar(select(DismantlingItem).limit(1)).included=False;db.commit()
-        before={t:list(db.execute(text(sql)).mappings()) for t,sql in {'parts':'SELECT id,quantity,selling_price,unit_cost FROM parts ORDER BY id','items':'SELECT id,source,catalog_key,included,status FROM dismantling_items ORDER BY id','ops':'SELECT * FROM operations ORDER BY id'}.items()}
-    try:
-        subprocess.run([sys.executable,'-m','alembic','downgrade','76af12de4b90'],check=True,capture_output=True)
-        subprocess.run([sys.executable,'-m','alembic','upgrade','head'],check=True,capture_output=True)
-        with Session(engine()) as db:
-            for t,sql in {'parts':'SELECT id,quantity,selling_price,unit_cost FROM parts ORDER BY id','items':'SELECT id,source,catalog_key,included,status FROM dismantling_items ORDER BY id','ops':'SELECT * FROM operations ORDER BY id'}.items():assert before[t]==list(db.execute(text(sql)).mappings())
-    finally:subprocess.run([sys.executable,'-m','alembic','upgrade','head'],check=True,capture_output=True)
+        db.scalar(select(DismantlingItem).limit(1)).included = False
+        db.commit()
+        before = {t: list(db.execute(text(sql)).mappings()) for t, sql in {'parts': 'SELECT id,quantity,selling_price,unit_cost FROM parts ORDER BY id', 'items': 'SELECT id,source,catalog_key,included,status FROM dismantling_items ORDER BY id', 'ops': 'SELECT * FROM operations ORDER BY id'}.items()}
+    from historical_db import assert_historical_upgrade
+    assert_historical_upgrade('76af12de4b90')
 
 
 def test_failure_rolls_back_plan_and_receipt_batches(platform,vehicle,monkeypatch):
@@ -274,7 +273,7 @@ def test_trial_configuration_survives_reload_and_catalogue_checks(platform,vehic
     assert get(platform,vehicle)['configuration']['values']['powertrain']=='petrol'
     cleared=preview(platform,vehicle,reset_trial=True);assert cleared['configuration']['values']['engine_code'] is None
     assert 'engine_code' in cleared['configuration_changes']
-    with Session(engine()) as db:db.get(Vehicle,vehicle['id']).engine='D4204T14';db.commit()
+    with Session(engine()) as db:v=db.get(Vehicle,vehicle['id']);v.engine='D4204T14';v.engine_code='D4204T14';db.commit()
     assert get(platform,vehicle)['configuration_stale']
     changed=preview(platform,vehicle);assert changed['configuration']['values']['engine_code']=='D4204T14'
     assert get(platform,vehicle)['configuration']['values']['engine_code']=='B4204T23'

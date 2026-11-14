@@ -200,26 +200,20 @@ def test_max_expired_attempts_and_immutable_events(platform):
         with engine().begin() as db:db.execute(text('UPDATE import_job_events SET message=:m WHERE job_id=:id'),{'m':'tamper','id':j['id']})
 
 def test_additive_upgrade_preserves_populated_old_tables(platform,vehicle):
-    import subprocess,sys,os
+    import subprocess, sys, os
     from test_orders import stocked
     from app.import_worker import schema_ready
     from alembic.config import Config
     from alembic.script import ScriptDirectory
-    part=stocked(platform,vehicle,quantity=3)
-    assert platform.post('/api/v1/parts/'+part['id']+'/operations',json={'type':'sale','quantity':1,'sale_price':'55.00','sale_currency':'USD','request_key':key()}).status_code==200
-    from test_catalogue_v2 import plan,confirm
-    old_upload=upload(platform);confirm(platform,plan(platform,old_upload))
-    scripts=ScriptDirectory.from_config(Config('alembic.ini'));assert scripts.get_heads()==['f5c84d31a620'] and scripts.get_revision('c8f21d6e903a').down_revision=='b7e14d90c2f6'
-    def alembic(*args):return subprocess.run([sys.executable,'-m','alembic',*args],capture_output=True,text=True,env=os.environ.copy())
-    assert alembic('downgrade','b7e14d90c2f6').returncode==0
-    assert not schema_ready(engine())
-    with Session(engine()) as db:before={k:v for k,v in all_tables(db).items() if k!='alembic_version'}
-    assert alembic('upgrade','head').returncode==0 and schema_ready(engine())
-    with Session(engine()) as db:after={k:v for k,v in all_tables(db).items() if k not in ('alembic_version','import_jobs','import_job_events','import_job_artifacts')}
-    assert before==after
-    create(platform,upload(platform))
-    assert alembic('downgrade','b7e14d90c2f6').returncode!=0
-    assert schema_ready(engine())
+    from test_catalogue_v2 import plan, confirm
+    part = stocked(platform, vehicle, quantity=3)
+    assert platform.post('/api/v1/parts/' + part['id'] + '/operations', json={'type': 'sale', 'quantity': 1, 'sale_price': '55.00', 'sale_currency': 'USD', 'request_key': key()}).status_code == 200
+    old_upload = upload(platform)
+    confirm(platform, plan(platform, old_upload))
+    scripts = ScriptDirectory.from_config(Config('alembic.ini'))
+    assert set(scripts.get_heads()) == __import__('app.staging',fromlist=['migration_heads']).migration_heads() and scripts.get_revision('c8f21d6e903a').down_revision == 'b7e14d90c2f6'
+    from historical_db import assert_historical_upgrade
+    assert_historical_upgrade('b7e14d90c2f6')
 
 def test_runner_preview_supersedes_old_terminal_operation_not_new_active_one(platform):
     from app.models.catalogue import CatalogueOperation

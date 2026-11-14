@@ -22,7 +22,8 @@ from test_catalogue_v2 import platform,upload,plan,confirm,row
 PREFIX='/api/v1/catalogue/admin/canonical'
 def market(c,rows):
     j=plan(c,upload(c,rows))
-    if j['report']['issues']:j=plan(c,j,{i['key']:{'action':'skip'} for i in j['report']['issues']})
+    from test_catalogue_v2 import review_fixture
+    j=review_fixture(c,j)
     confirm(c,j)
 def item(article='g1',**kw):
     return row(article,category='Електрика',subcategory='Генератори',part_name='Генератор Volvo XC40 2020 чорний',side='',position='',oem='OEM-'+article,**kw)
@@ -159,16 +160,11 @@ def test_fitment_requires_explicit_coverage_and_keeps_history(platform):
 
 
 def test_populated_migration_is_additive(platform,vehicle,part):
-    market(platform,[item()])
-    with Session(engine()) as db:before=fingerprints(db)
-    try:
-        subprocess.run([sys.executable,'-m','alembic','downgrade','41f9a2c87d10'],check=True,capture_output=True)
-        subprocess.run([sys.executable,'-m','alembic','upgrade','head'],check=True,capture_output=True)
-        subprocess.run([sys.executable,'-m','alembic','check'],check=True,capture_output=True)
-        with Session(engine()) as db:
-            assert fingerprints(db)==before
-            assert db.scalar(select(func.count()).select_from(CanonicalMapping))==0
-    finally:subprocess.run([sys.executable,'-m','alembic','upgrade','head'],check=True,capture_output=True)
+    market(platform, [item()])
+    with Session(engine()) as db:
+        before = fingerprints(db)
+    from historical_db import assert_historical_upgrade
+    assert_historical_upgrade('41f9a2c87d10')
 
 
 def test_base_audit_exactly_covers_unchanged_legacy_positions():
@@ -244,7 +240,9 @@ worker.process_one(engine())
     assert build(platform)['report']['committed'] is True
 
 
-def test_concurrent_worker_coordination_and_ordinary_reads(platform,monkeypatch):
+@pytest.mark.parametrize('entitlements_enabled',['false','true'])
+def test_concurrent_worker_coordination_and_ordinary_reads(platform,monkeypatch,entitlements_enabled):
+    monkeypatch.setenv('WAREHOUSE_ENTITLEMENTS_ENABLED',entitlements_enabled)
     from threading import Event
     import app.services.canonical_jobs as worker
     entered,release=Event(),Event();original=worker.build
@@ -275,7 +273,8 @@ def test_startup_never_builds_or_publishes_and_csrf_is_required(platform):
 
 def test_full_real_A_normalization_report_preserves_source_tables(platform,tmp_path):
     j=plan(platform,upload(platform,raw=BUNDLED_PACKAGE.read_bytes(),filename=BUNDLED_PACKAGE.name))
-    if j['report']['issues']:j=plan(platform,j,{i['key']:{'action':'skip'} for i in j['report']['issues']})
+    from test_catalogue_v2 import review_fixture
+    j=review_fixture(platform,j)
     confirm(platform,j)
     with Session(engine()) as db:before=fingerprints(db)
     report=build(platform)['report']
