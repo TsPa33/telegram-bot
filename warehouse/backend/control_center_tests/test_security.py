@@ -393,3 +393,82 @@ def test_missing_configuration_fails_closed_without_secret_details(
     assert response.status_code == 503 and "CONTROL_CENTER_MFA_KEY" not in response.text
     monkeypatch.setenv("CONTROL_CENTER_ORIGIN", "invalid-origin")
     assert client.get("/api/control/status").status_code == 503
+
+
+def test_concurrent_reassignment_keeps_only_final_manager(client, staff_factory, db):
+    """Two independent staff sessions contend for the same real PostgreSQL row."""
+    from concurrent.futures import ThreadPoolExecutor
+    from fastapi.testclient import TestClient
+
+    owner = staff_factory("Owner", "assign-owner")
+    admin = staff_factory("Administrator", "assign-admin")
+    old = staff_factory("Manager", "assign-old")
+    first = staff_factory("Manager", "assign-first")
+    second = staff_factory("Manager", "assign-second")
+    support = staff_factory("Support", "assign-support")
+    c = company(db)
+    authenticate(client, owner)
+    path = "/api/control/companies/" + c.id + "/assign"
+    assert client.post(path, json={"staff_id": old.id}).status_code == 200
+    assert client.post(path, json={"staff_id": support.id}).status_code == 200
+    with TestClient(client.app, base_url="http://testserver",
+                    headers={"Origin": "http://testserver"}) as other:
+        authenticate(other, admin)
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            # Force both requests into the race, without relying on a sleep to
+            # assume they reached the critical section. The runtime pool has 2 slots.
+            with db.bind.begin() as blocker:
+                blocker.execute(text("SELECT id FROM control_center.companies WHERE id=:id FOR NO KEY UPDATE"), {"id": c.id})
+                futures = [
+                    pool.submit(client.post, path, json={"staff_id": first.id}),
+                    pool.submit(other.post, path, json={"staff_id": second.id}),
+                ]
+                deadline = time.monotonic() + 2
+                waiting = 0
+                while time.monotonic() < deadline:
+                    blocker.execute(text("SELECT pg_stat_clear_snapshot()"))
+                    waiting = blocker.scalar(text(
+                        "SELECT count(*) FROM pg_stat_activity WHERE datname=current_database() "
+                        "AND usename='cc_app' AND wait_event_type='Lock'"
+                    ))
+                    if waiting >= 2:
+                        break
+                    time.sleep(.02)
+            assert waiting >= 2, "Both API requests must actually contend"
+            for future in futures:
+                response = future.result(timeout=10)
+                assert response.status_code == 200, response.text
+    db.expire_all()
+    winner = db.get(Company, c.id).manager_id
+    assert winner in {first.id, second.id}
+    loser = second if winner == first.id else first
+    assert set(db.scalars(select(Grant.staff_id).where(Grant.company_id == c.id))) == {winner, support.id}
+    assert db.scalar(select(func.count()).select_from(Audit).where(Audit.permission == "assignments.write")) == 4
+    for person, expected in [(old, 404), (loser, 404), (first if winner == first.id else second, 200), (support, 200)]:
+        with TestClient(client.app, base_url="http://testserver", headers={"Origin":"http://testserver"}) as scoped:
+            authenticate(scoped, person)
+            assert scoped.get("/api/control/companies/" + c.id).status_code == expected
+
+
+def test_role_change_does_not_inherit_company_grants(client, staff_factory, db):
+    owner = staff_factory()
+    manager = staff_factory("Manager", "role-manager")
+    support = staff_factory("Support", "role-support")
+    c = company(db)
+    authenticate(client, owner)
+    path = "/api/control/companies/" + c.id + "/assign"
+    assert client.post(path, json={"staff_id": owner.id}).status_code == 422
+    assert client.post(path, json={"staff_id": manager.id}).status_code == 200
+    assert client.post(path, json={"staff_id": support.id}).status_code == 200
+    for target, role in [(support, "Manager"), (manager, "Support")]:
+        response = client.patch("/api/control/staff/" + target.id,
+                                json=dict(role=role, active=True, finance=False, reason="role changed"))
+        assert response.status_code == 200, response.text
+    db.expire_all()
+    assert db.get(Company, c.id).manager_id is None
+    assert list(db.scalars(select(Grant).where(Grant.company_id == c.id))) == []
+    from fastapi.testclient import TestClient
+    for person in (manager, support):
+        with TestClient(client.app, base_url="http://testserver", headers={"Origin":"http://testserver"}) as scoped:
+            authenticate(scoped, person)
+            assert scoped.get("/api/control/companies/" + c.id).status_code == 404

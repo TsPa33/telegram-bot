@@ -180,15 +180,16 @@ export default function CompanyPreview({
                 onSubmit={(e) => {
                   e.preventDefault();
                   const data = new FormData(e.currentTarget);
-                  void work(() =>
-                    api("/companies/" + id + "/assign", "POST", {
+                  void work(async () => {
+                    await api("/companies/" + id + "/assign", "POST", {
                       staff_id: data.get("staff_id"),
-                    }),
-                  );
+                    });
+                    setCompany(await api("/companies/" + id));
+                  });
                 }}
               >
                 <label>
-                  Staff
+                  Співробітник
                   <select
                     name="staff_id"
                     defaultValue={company.manager_id || ""}
@@ -198,7 +199,7 @@ export default function CompanyPreview({
                       Оберіть співробітника
                     </option>
                     {people
-                      .filter((p) => p.active)
+                      .filter((p) => p.active && ["Manager", "Support"].includes(p.role))
                       .map((p) => (
                         <option value={p.id} key={p.id}>
                           {p.username} · {p.role}

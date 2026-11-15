@@ -8,7 +8,7 @@ from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import DateTime, cast, delete, func, select, tuple_
+from sqlalchemy import DateTime, cast, delete, func, select, tuple_, update
 from sqlalchemy.exc import SQLAlchemyError
 from . import security as sec
 from .config import cipher, enabled, environment, get_db, origin
@@ -271,6 +271,10 @@ def create_app():
             data.active,
             data.finance if data.role != "Support" else False,
         )
+        # A different role must not inherit company grants from the old role.
+        if before["role"] != target.role:
+            db.execute(update(Company).where(Company.manager_id == target.id).values(manager_id=None))
+            db.execute(delete(Grant).where(Grant.staff_id == target.id))
         sec.revoke(db, target.id)
         sec.audit(
             db,
@@ -542,12 +546,22 @@ def create_app():
     def assign(
         company_id: str, data: Assign, staff=Depends(sec.identity), db=Depends(get_db)
     ):
-        row = sec.company(db, staff, company_id)
+        sec.company(db, staff, company_id)
         if not sec.global_access(staff):
             raise HTTPException(403)
-        target = db.get(Staff, data.staff_id)
-        if not target or not target.active:
-            raise HTTPException(422)
+        # Lock the target before the company, consistent with staff role updates.
+        # This prevents a concurrent role change from leaving a stale grant.
+        target = db.scalar(select(Staff).where(Staff.id == data.staff_id)
+                           .with_for_update(read=True).execution_options(populate_existing=True))
+        if not target or not target.active or target.role not in {"Manager", "Support"}:
+            raise HTTPException(422, "Оберіть активного менеджера або працівника підтримки")
+        # Serialize replacements on the company. Refresh after waiting: the ORM
+        # may already hold the pre-lock company loaded by the permission check.
+        row = db.scalar(select(Company).where(
+            Company.id == company_id, Company.environment == environment()
+        ).with_for_update(key_share=True).execution_options(populate_existing=True))
+        if not row:
+            raise HTTPException(404, "Компанію не знайдено")
         # Assignment grants company context; replacing a manager revokes old scope.
         old_manager = row.manager_id
         if target.role != "Support":
