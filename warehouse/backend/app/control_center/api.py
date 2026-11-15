@@ -231,6 +231,16 @@ def create_app():
     def me(staff=Depends(sec.identity)):
         return staff_view(staff)
 
+    @app.get("/auth/csrf")
+    def csrf(request: Request, staff=Depends(sec.identity)):
+        # No session mutation, no CORS, no cache. Reject cross-origin requests
+        # even if a browser supplies an authenticated cookie.
+        supplied = request.headers.get("origin")
+        site = request.headers.get("sec-fetch-site")
+        if (supplied and supplied != origin()) or site in {"cross-site", "same-site"}:
+            raise HTTPException(403, "Недійсне джерело запиту")
+        return {"csrf": sec.session_csrf(request.cookies[sec.COOKIE]), "staff_id": staff.id}
+
     @app.post("/auth/logout", status_code=204)
     def logout(
         request: Request,

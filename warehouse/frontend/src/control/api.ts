@@ -7,27 +7,67 @@ export type Staff = {
   can_finance: boolean;
   can_assign: boolean;
 };
+let expectedStaff: string | null = null;
+const storageKey = "control.csrf";
+const readProof = () => sessionStorage.getItem(storageKey) || "";
+
+async function recoverProof() {
+  const response = await fetch("/api/control/auth/csrf", {
+    credentials: "same-origin", cache: "no-store",
+  });
+  if (!response.ok) throw new Error("Сесію завершено. Увійдіть повторно.");
+  const value = await response.json();
+  if (!expectedStaff || value.staff_id !== expectedStaff)
+    throw new Error("Обліковий запис змінився. Оновіть сторінку.");
+  sessionStorage.setItem(storageKey, value.csrf);
+  return value.csrf as string;
+}
+
 export async function api(path: string, method = "GET", body?: unknown) {
-  const response = await fetch("/api/control" + path, {
+  const write = !["GET", "HEAD", "OPTIONS"].includes(method);
+  const protectedWrite = write && path !== "/auth/login";
+  const send = (csrf: string) => fetch("/api/control" + path, {
     method,
     credentials: "same-origin",
     headers: {
       "Content-Type": "application/json",
-      ...(method !== "GET"
-        ? { "X-Control-CSRF": sessionStorage.getItem("control.csrf") || "" }
-        : {}),
+      ...(protectedWrite ? { "X-Control-CSRF": csrf } : {}),
     },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
-  const value = response.status === 204 ? null : await response.json();
+  // Logout may use an empty proof initially; a 401 is already signed out.
+  let proof = protectedWrite ? readProof() || (path === "/auth/logout" ? "" : await recoverProof()) : "";
+  let response = await send(proof);
+  let value = response.status === 204 ? null : await response.json();
+  // Only retry an explicit rejection before the action handler ran.
+  // Never retry a timeout, general 403, or ambiguous write outcome.
+  if (protectedWrite && response.status === 403 && value?.detail === "Недійсний CSRF-токен") {
+    proof = await recoverProof();
+    response = await send(proof);
+    value = response.status === 204 ? null : await response.json();
+  }
+  if (path === "/auth/logout" && response.status === 401) {
+    expectedStaff = null;
+    sessionStorage.removeItem(storageKey);
+    return null;
+  }
   if (!response.ok)
     throw new Error(
       response.status === 401
-        ? "Увійдіть із staff MFA"
+        ? "Сесію завершено. Увійдіть повторно."
         : typeof value?.detail === "string"
           ? value.detail
           : "Запит не виконано",
     );
+  if (path === "/auth/login") {
+    expectedStaff = value.staff.id;
+    sessionStorage.setItem(storageKey, value.csrf);
+  } else if (path === "/auth/me") {
+    expectedStaff = value.id;
+  } else if (path === "/auth/logout" || path === "/auth/rotate") {
+    expectedStaff = null;
+    sessionStorage.removeItem(storageKey);
+  }
   return value;
 }
 export const date = (value?: string) =>

@@ -27,6 +27,11 @@ def digest(value):
     return hashlib.sha256(value.encode()).hexdigest()
 
 
+def session_csrf(token):
+    """Domain-separated proof derived from the high-entropy HttpOnly session token."""
+    return hmac.new(token.encode(), b"carpot-control-csrf-v1", hashlib.sha256).hexdigest()
+
+
 def totp(secret, step):
     key = base64.b32decode(secret, casefold=True)
     if not 20 <= len(key) <= 64:
@@ -113,7 +118,8 @@ def login(db, username, password, code, ip):
         db.commit()
         raise HTTPException(401, "Перевірте логін, пароль і MFA-код")
     staff.last_totp_step = step
-    token, csrf = secrets.token_urlsafe(48), secrets.token_urlsafe(32)
+    token = secrets.token_urlsafe(48)
+    csrf = session_csrf(token)
     db.add(
         Session(
             token_hash=digest(token),
@@ -154,7 +160,12 @@ def identity(request: Request, db=Depends(get_db)):
         raise HTTPException(401, "Staff-сесію відкликано")
     if request.method not in {"GET", "HEAD", "OPTIONS"}:
         csrf = request.headers.get("X-Control-CSRF", "")
-        if not csrf or not hmac.compare_digest(digest(csrf), session.csrf_hash):
+        # Recoverable cookie-bound proof also works with pre-upgrade sessions.
+        # The old stored proof remains valid until that session expires/revokes.
+        if not csrf or len(csrf) > 128 or not (
+            hmac.compare_digest(digest(csrf), session.csrf_hash)
+            or hmac.compare_digest(digest(csrf), digest(session_csrf(token)))
+        ):
             raise HTTPException(403, "Недійсний CSRF-токен")
     request.state.control_session = session
     return staff

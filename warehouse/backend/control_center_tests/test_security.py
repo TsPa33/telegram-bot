@@ -472,3 +472,30 @@ def test_role_change_does_not_inherit_company_grants(client, staff_factory, db):
         with TestClient(client.app, base_url="http://testserver", headers={"Origin":"http://testserver"}) as scoped:
             authenticate(scoped, person)
             assert scoped.get("/api/control/companies/" + c.id).status_code == 404
+
+
+def test_csrf_recovery_for_existing_session_and_logout(client, staff_factory, db):
+    owner = staff_factory()
+    authenticate(client, owner)
+    token = client.cookies.get("carpot_control_session")
+    session = db.get(Session, digest(token))
+    # Simulate the original random-proof session used before this upgrade.
+    session.csrf_hash = digest("old-random-proof")
+    db.commit()
+    assert client.post("/api/control/auth/enrollment", headers={"X-Control-CSRF": ""}).status_code == 403
+    assert client.post("/api/control/auth/logout", headers={"X-Control-CSRF": "wrong"}).status_code == 403
+    for headers in ({"Origin": "https://evil.test"}, {"Sec-Fetch-Site": "same-site"}, {"Sec-Fetch-Site": "cross-site"}):
+        assert client.get("/api/control/auth/csrf", headers=headers).status_code == 403
+    recovered = client.get("/api/control/auth/csrf")
+    assert recovered.status_code == 200
+    assert recovered.headers["cache-control"] == "no-store"
+    proof = recovered.json()["csrf"]
+    assert recovered.json()["staff_id"] == owner.id
+    assert proof != token and token not in recovered.text
+    assert client.get("/api/control/auth/csrf").json()["csrf"] == proof
+    assert client.post("/api/control/auth/enrollment", headers={"X-Control-CSRF": "old-random-proof"}).status_code == 200
+    assert client.post("/api/control/auth/enrollment", headers={"X-Control-CSRF": proof}).status_code == 200
+    assert client.post("/api/control/auth/logout", headers={"X-Control-CSRF": proof}).status_code == 204
+    assert client.get("/api/control/auth/csrf").status_code == 401
+    client.cookies.set("carpot_control_session", token, path="/api/control")
+    assert client.get("/api/control/auth/csrf").status_code == 401

@@ -89,6 +89,16 @@ for (const [engine, driver] of Object.entries(engines)) {
             theme,
           );
         if (width === 320 && theme === "light") {
+          // A new tab shares the HttpOnly cookie, not sessionStorage.
+          const second = await context.newPage();
+          await second.goto("/control/");
+          await second.getByRole("heading", {name:"Огляд Warehouse"}).waitFor();
+          assert.equal(await second.evaluate(()=>sessionStorage.getItem("control.csrf")), null);
+          await second.getByRole("button", {name:"Безпека",exact:true}).click();
+          await second.getByRole("button", {name:"Налаштувати новий ключ MFA"}).click();
+          await second.getByLabel("Новий пароль (від 12 символів)").waitFor();
+          await second.close();
+          await page.evaluate(()=>sessionStorage.setItem("control.csrf","stale-proof"));
           // Deliberate UI fault injection; actual source role/failure behavior has
           // separate PostgreSQL/API coverage. No production endpoints involved.
           await page.route("**/api/control/overview", async (route) => {
@@ -242,6 +252,12 @@ for (const [engine, driver] of Object.entries(engines)) {
             path: "/tmp/control-center-mobile.png",
             fullPage: true,
           });
+        if (width === 320 && theme === "light") {
+          await page.evaluate(()=>sessionStorage.removeItem("control.csrf"));
+          await page.getByRole("button", {name:"Вийти",exact:true}).click();
+          await page.getByRole("button", {name:"Увійти",exact:true}).waitFor();
+          assert.equal((await context.request.get("/api/control/auth/me")).status(),401);
+        }
         assert.deepEqual(errors, []);
         report.push({ engine, width, theme, status: "passed" });
         await context.close();
