@@ -1,0 +1,105 @@
+name: Control Center Warehouse-first gate
+on:
+  pull_request:
+    paths:
+      - "warehouse/backend/app/control_center/**"
+      - "warehouse/backend/control_center_tests/**"
+      - "warehouse/backend/control_center_migrations/**"
+      - "warehouse/backend/requirements-control-center*"
+      - "warehouse/frontend/src/control/**"
+      - "warehouse/frontend/control/**"
+      - "warehouse/frontend/tests/control-center-browser.mjs"
+      - "warehouse/frontend/vite.config.ts"
+      - "warehouse/deploy/railway/backend-control.Dockerfile"
+      - "bot/billing/staff_read.py"
+      - ".github/workflows/control-center.yml"
+  push:
+    branches: ["feature/carpot-control-center-warehouse"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  staff-and-projections:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: disposable-control-tests-only
+          POSTGRES_DB: warehouse_control_test
+        ports: ["5432:5432"]
+        options: --health-cmd pg_isready --health-interval 5s --health-retries 10
+    env:
+      CONTROL_CENTER_TEST_ADMIN_URL: postgresql+psycopg://postgres:disposable-control-tests-only@127.0.0.1:5432/warehouse_control_test
+      CONTROL_CENTER_TEST_SOURCE_URL: postgresql+psycopg://postgres:disposable-control-tests-only@127.0.0.1:5432/warehouse_source_test
+      WAREHOUSE_DATABASE_URL: postgresql+psycopg://postgres:disposable-control-tests-only@127.0.0.1:5432/warehouse_source_test
+      PYTHONPATH: "${{ github.workspace }}:${{ github.workspace }}/warehouse/backend"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install --require-hashes -r warehouse/backend/requirements-control-center.lock
+      - name: Create disposable source database
+        run: |
+          python - <<'PY'
+          import psycopg
+          with psycopg.connect('host=127.0.0.1 user=postgres password=disposable-control-tests-only dbname=warehouse_control_test',autocommit=True) as c:
+              c.execute('CREATE DATABASE warehouse_source_test')
+          PY
+      - run: python -m alembic -c warehouse/backend/alembic.ini upgrade head
+      - run: python -m pytest -c warehouse/backend/control_center_tests/pytest.ini warehouse/backend/control_center_tests -q --junitxml=/tmp/control-tests.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: control-staff-tests, path: /tmp/control-tests.xml }
+  browsers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: disposable-control-tests-only
+          POSTGRES_DB: warehouse_control_browser_test
+        ports: ["5432:5432"]
+        options: --health-cmd pg_isready --health-interval 5s --health-retries 10
+    env:
+      CONTROL_CENTER_BROWSER_ADMIN_URL: postgresql+psycopg://postgres:disposable-control-tests-only@127.0.0.1:5432/warehouse_control_browser_test
+      CONTROL_CENTER_BROWSER_TEST: "1"
+      WAREHOUSE_API_PROXY: http://127.0.0.1:8029
+      PYTHONPATH: "${{ github.workspace }}:${{ github.workspace }}/warehouse/backend"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - run: pip install --require-hashes -r warehouse/backend/requirements-control-center.lock
+      - run: npm ci
+        working-directory: warehouse/frontend
+      - run: npm run build
+        working-directory: warehouse/frontend
+      - run: npx playwright install --with-deps chromium webkit
+        working-directory: warehouse/frontend
+      - name: Start local disposable fixture and separate staff entry
+        run: |
+          python warehouse/backend/control_center_tests/browser_server.py > /tmp/control-browser-api.log 2>&1 &
+          cd warehouse/frontend
+          npm run dev -- --host 127.0.0.1 --port 5269 --strictPort > /tmp/control-browser-vite.log 2>&1 &
+          for attempt in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:5269/api/control/status; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:5269/api/control/status
+      - run: node tests/control-center-browser.mjs
+        working-directory: warehouse/frontend
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: control-browser-results
+          path: |
+            /tmp/control-center-browser-results.json
+            /tmp/control-center-desktop.png
+            /tmp/control-center-mobile.png
+            /tmp/control-browser-api.log
+            /tmp/control-browser-vite.log

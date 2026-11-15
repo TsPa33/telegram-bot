@@ -1,0 +1,17 @@
+**
+!warehouse/
+!warehouse/backend/
+!warehouse/backend/requirements-control-center.lock
+!warehouse/backend/app/
+!warehouse/backend/app/**
+!warehouse/backend/control_center_migrations/
+!warehouse/backend/control_center_migrations/**
+!warehouse/backend/alembic/
+!warehouse/backend/alembic/**
+!warehouse/backend/alembic.ini
+!bot/
+!bot/billing/
+!bot/billing/__init__.py
+!bot/billing/models.py
+!bot/billing/transport.py
+**/__pycache__/**

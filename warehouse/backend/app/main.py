@@ -142,3 +142,10 @@ app.include_router(unified_catalogue_router)
 
 from app.api.assemblies import router as assemblies_router
 app.include_router(assemblies_router)
+
+# Lazy mount: OFF preserves customer dependencies, startup and route behavior.
+# Dedicated ASGI entry is also available for future runtime extraction.
+import os as _control_os
+if _control_os.getenv('CONTROL_CENTER_ENABLED', 'false') == 'true':
+    from app.control_center.api import create_app as _control_app
+    app.mount('/api/control', _control_app())
