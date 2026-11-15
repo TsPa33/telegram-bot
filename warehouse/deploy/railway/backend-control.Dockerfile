@@ -1,4 +1,13 @@
-# Prepared image, root repository build context. No deployment performed.
+# Dedicated staff-only runtime; root repository build context.
+FROM node:22-alpine AS web
+WORKDIR /build
+COPY warehouse/frontend/package.json warehouse/frontend/package-lock.json ./
+RUN npm ci
+COPY warehouse/frontend/tsconfig.json warehouse/frontend/vite.control.config.ts ./
+COPY warehouse/frontend/control ./control
+COPY warehouse/frontend/src ./src
+RUN npx tsc -b && npx vite build --config vite.control.config.ts
+
 FROM python:3.12-slim
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 WORKDIR /app
@@ -11,8 +20,8 @@ COPY warehouse/backend/control_center_migrations ./control_center_migrations
 COPY warehouse/backend/alembic ./alembic
 COPY warehouse/backend/alembic.ini ./alembic.ini
 COPY bot/billing/__init__.py bot/billing/models.py bot/billing/transport.py ./bot/billing/
-RUN useradd --uid 10001 --create-home warehouse && mkdir -p /data/photos && chown -R warehouse:warehouse /app /data/photos
+COPY --from=web /build/dist-control /app/control-web
+RUN useradd --uid 10001 --create-home warehouse && chown -R warehouse:warehouse /app
 USER warehouse
-# No implicit migration/provision/synchronization. Dedicated ASGI can be selected
-# after extraction; for shared Warehouse readiness use the existing /health.
-CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8010}"]
+# No customer startup, automatic migration, provisioning or synchronization.
+CMD ["sh", "-c", "exec uvicorn app.control_center.asgi:app --host 0.0.0.0 --port ${PORT:-8010}"]

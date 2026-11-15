@@ -10,6 +10,8 @@ on:
       - "warehouse/frontend/control/**"
       - "warehouse/frontend/tests/control-center-browser.mjs"
       - "warehouse/frontend/vite.config.ts"
+      - "warehouse/frontend/vite.control.config.ts"
+      - "warehouse/deploy/railway/frontend.Dockerfile"
       - "warehouse/deploy/railway/backend-control.Dockerfile"
       - "bot/billing/staff_read.py"
       - ".github/workflows/control-center.yml"
@@ -68,7 +70,7 @@ jobs:
     env:
       CONTROL_CENTER_BROWSER_ADMIN_URL: postgresql+psycopg://postgres:disposable-control-tests-only@127.0.0.1:5432/warehouse_control_browser_test
       CONTROL_CENTER_BROWSER_TEST: "1"
-      WAREHOUSE_API_PROXY: http://127.0.0.1:8029
+      CONTROL_CENTER_BROWSER_STATIC_DIR: "${{ github.workspace }}/warehouse/frontend/dist-control"
       PYTHONPATH: "${{ github.workspace }}:${{ github.workspace }}/warehouse/backend"
     steps:
       - uses: actions/checkout@v4
@@ -81,18 +83,20 @@ jobs:
         working-directory: warehouse/frontend
       - run: npm run build
         working-directory: warehouse/frontend
+      - run: npx vite build --config vite.control.config.ts
+        working-directory: warehouse/frontend
       - run: npx playwright install --with-deps chromium webkit
         working-directory: warehouse/frontend
       - name: Start local disposable fixture and separate staff entry
         run: |
           python warehouse/backend/control_center_tests/browser_server.py > /tmp/control-browser-api.log 2>&1 &
-          cd warehouse/frontend
-          npm run dev -- --host 127.0.0.1 --port 5269 --strictPort > /tmp/control-browser-vite.log 2>&1 &
           for attempt in $(seq 1 60); do
-            if curl -fsS http://127.0.0.1:5269/api/control/status; then break; fi
+            if curl -fsS http://127.0.0.1:5269/health; then break; fi
             sleep 1
           done
-          curl -fsS http://127.0.0.1:5269/api/control/status
+          curl -fsS http://127.0.0.1:5269/health
+          curl -fsS http://127.0.0.1:5269/control/ >/dev/null
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:5269/api/v1/auth/options)" = 404
       - run: node tests/control-center-browser.mjs
         working-directory: warehouse/frontend
       - uses: actions/upload-artifact@v4
@@ -104,8 +108,20 @@ jobs:
             /tmp/control-center-desktop.png
             /tmp/control-center-mobile.png
             /tmp/control-browser-api.log
-            /tmp/control-browser-vite.log
+            /tmp/control-center-overview.png
+            /tmp/control-center-clients.png
+            /tmp/control-center-company.png
+            /tmp/control-center-company-mobile.png
 
+  standalone-image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f warehouse/deploy/railway/backend-control.Dockerfile -t carpot-control-check .
+      - name: Verify built staff-only image without live configuration
+        run: |
+          docker run --rm --entrypoint sh carpot-control-check -c 'test "$(id -u)" = 10001 && test -f /app/control-web/control/index.html && test ! -f /app/control-web/index.html && test ! -d /app/control_center_tests && python -c "import app.control_center.asgi"'
   billing-compatibility:
     runs-on: ubuntu-latest
     timeout-minutes: 15

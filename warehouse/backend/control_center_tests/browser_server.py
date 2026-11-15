@@ -119,6 +119,13 @@ fixture = Path(
 )
 fixture.write_text(json.dumps(dict(password=password, seed=seed)))
 fixture.chmod(0o600)
-parent = FastAPI()
-parent.mount("/api/control", create_app())
-uvicorn.run(parent, host="127.0.0.1", port=8029, log_level="warning", access_log=False)
+static_dir = os.getenv("CONTROL_CENTER_BROWSER_STATIC_DIR")
+if static_dir:
+    from app.control_center.asgi import create_standalone
+    parent = create_standalone(Path(static_dir).resolve())
+    port = 5269
+else:
+    parent = FastAPI()
+    parent.mount("/api/control", create_app())
+    port = 8029
+uvicorn.run(parent, host="127.0.0.1", port=port, log_level="warning", access_log=False)

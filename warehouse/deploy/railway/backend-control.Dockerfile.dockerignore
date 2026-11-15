@@ -1,5 +1,14 @@
 **
 !warehouse/
+!warehouse/frontend/
+!warehouse/frontend/package.json
+!warehouse/frontend/package-lock.json
+!warehouse/frontend/tsconfig.json
+!warehouse/frontend/vite.control.config.ts
+!warehouse/frontend/control/
+!warehouse/frontend/control/**
+!warehouse/frontend/src/
+!warehouse/frontend/src/**
 !warehouse/backend/
 !warehouse/backend/requirements-control-center.lock
 !warehouse/backend/app/

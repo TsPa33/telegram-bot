@@ -9,8 +9,10 @@ See numbered checkpoints for exact local evidence and remaining external gates.
 
 Separate React entry `/control/` (its own Vite HTML/chunk) and staff API
 `/api/control`. Customer navigation/login/permissions are unchanged. Lazy mount
-in Warehouse main only when CONTROL_CENTER_ENABLED=true; future extraction:
-`uvicorn app.control_center.asgi:app`. No customer auth impersonation.
+in Warehouse main only when CONTROL_CENTER_ENABLED=true. For the first isolated
+review prefer the standalone image: `uvicorn app.control_center.asgi:app`,
+serving the compiled staff UI and mounted staff API on one origin. It does not
+start Warehouse workers or expose customer routes. No customer auth impersonation.
 
 BFF uses an independently permissioned `control_center` PostgreSQL schema;
 read-only Warehouse adapter executes only explicit bounded operator sweeps.
@@ -91,8 +93,10 @@ worktree. Work from repository root unless stated otherwise.
 8. In frontend: `npm ci`, `npm run build`; serve `dist/control/index.html` for
    `/control/` and proxy `/api/control/*` without rewriting its cookie path.
    Default `/` still serves the customer Warehouse app. `backend-control.Dockerfile`
-   is prepared with root build context and the transport-only SDK. It does not
-   run migrations, sync, provision or create paid resources at startup.
+   is prepared with root build context, the staff-only Vite build and the
+   transport-only SDK. Its default entry is standalone. /health checks the
+   built UI, MFA key and isolated DB schema; it does not run migrations, sync,
+   provision or create paid resources at startup.
 
 Keep runtime free of migrator/operator URLs. An isolated schema is not CPU/IO
 isolation. Start with Owner-only reads; profile sweep batches on representative

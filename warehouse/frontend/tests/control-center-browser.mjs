@@ -73,6 +73,10 @@ for (const [engine, driver] of Object.entries(engines)) {
         await page.getByLabel("MFA-код").fill(otp());
         await page.getByRole("button", { name: "Увійти", exact: true }).click();
         await page.getByRole("heading", { name: "Огляд Warehouse" }).waitFor();
+        if (width === 1440 && theme === "forest") {
+          await page.getByText("Стани доступу · snapshot").waitFor();
+          await page.screenshot({ path: "/tmp/control-center-overview.png", fullPage: true });
+        }
         assert.equal(
           await page.evaluate(() => document.documentElement.dataset.theme),
           theme === "light" ? "light" : "dark",
@@ -162,11 +166,17 @@ for (const [engine, driver] of Object.entries(engines)) {
             .click();
           await launch.waitFor();
         }
+        if (width === 1440 && theme === "forest")
+          await page.screenshot({ path: "/tmp/control-center-clients.png", fullPage: true });
         await launch.focus();
         await page.keyboard.press("Enter");
         const modal = page.getByRole("dialog");
         await modal.waitFor();
         await modal.getByText("o***@example.test", { exact: true }).waitFor();
+        if (width === 1440 && theme === "forest")
+          await page.screenshot({ path: "/tmp/control-center-company.png" });
+        if (width === 390 && theme === "light")
+          await page.screenshot({ path: "/tmp/control-center-company-mobile.png" });
         assert.equal(
           await modal.evaluate(
             (element) => getComputedStyle(element).animationName,
