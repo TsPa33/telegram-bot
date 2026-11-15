@@ -141,7 +141,7 @@ def identity(request: Request, db=Depends(get_db)):
         raise HTTPException(401, "Увійдіть із staff MFA")
     # Serialize staff commands with revoke/role changes, including in-flight writes.
     staff = db.scalar(
-        select(Staff).where(Staff.id == session.staff_id).with_for_update(read=True)
+        select(Staff).where(Staff.id == session.staff_id).with_for_update(read=not request.url.path.endswith("/auth/rotate"))
     )
     if not staff or not staff.active:
         raise HTTPException(401, "Staff-доступ відкликано")

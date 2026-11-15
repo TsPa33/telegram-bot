@@ -1,6 +1,8 @@
 """Dedicated Control Center entry: staff API and compiled UI, no Warehouse startup."""
 
 import os
+import asyncio
+from contextlib import asynccontextmanager
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -16,7 +18,17 @@ from .config import cipher, connection, enabled, environment, origin
 
 def create_standalone(static_dir=None):
     root = Path(static_dir or os.getenv("CONTROL_CENTER_STATIC_DIR", "/app/control-web"))
-    app = FastAPI(title="CarPot Control Center", docs_url=None, redoc_url=None, openapi_url=None)
+    @asynccontextmanager
+    async def lifespan(app):
+        from .sync_worker import start
+        stop, thread = start()
+        try:
+            yield
+        finally:
+            stop.set()
+            if thread:
+                await asyncio.to_thread(thread.join, 2)
+    app = FastAPI(title="CarPot Control Center", docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
     app.mount("/api/control", create_app())
     app.mount("/assets", StaticFiles(directory=root / "assets", check_dir=False))
 

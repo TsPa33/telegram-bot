@@ -3,6 +3,9 @@
 import base64
 import json
 import os
+import secrets
+from argon2.exceptions import VerificationError, InvalidHashError
+from cryptography.fernet import InvalidToken
 from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
@@ -34,6 +37,14 @@ class Login(Input):
     username: str = Field(min_length=1, max_length=120)
     password: str = Field(min_length=1, max_length=128)
     code: str = Field(min_length=6, max_length=6)
+
+
+class Rotate(Input):
+    current_password: str = Field(min_length=1, max_length=128)
+    current_code: str = Field(pattern=r"^[0-9]{6}$")
+    new_password: str = Field(min_length=12, max_length=128)
+    new_code: str = Field(pattern=r"^[0-9]{6}$")
+    enrollment: str = Field(min_length=1, max_length=2048)
 
 
 class NoteInput(Input):
@@ -128,10 +139,17 @@ def company_view(row, staff, detail=False):
     # Binding ownership references are not financial amounts, still hidden from Support.
     if staff.role != "Support":
         value["binding"] = snapshot.get("binding")
+    full_contacts = staff.role == "Owner" and row.environment == "staging" and snapshot.get("source_environment") == "staging" and "Демонстрація" not in row.labels
+    people = snapshot.get("people", [])
+    owner = next((p for p in people if p.get("role") == "DIRECTOR"), None)
+    if owner:
+        value["owner_email"] = owner.get("email", "") if full_contacts else mask_email(owner.get("email", ""))
+        value["owner_name"] = owner.get("name")
+        value["last_login_at"] = owner.get("last_login_at")
     if detail:
         value["people"] = [
-            {**p, "email": mask_email(p.get("email", ""))}
-            for p in snapshot.get("people", [])
+            {**p, "email": p.get("email", "") if full_contacts else mask_email(p.get("email", ""))}
+            for p in people
         ]
     return value
 
@@ -230,6 +248,43 @@ def create_app():
             httponly=True,
             samesite="strict",
         )
+
+    @app.post("/auth/enrollment")
+    def enrollment(request: Request, staff=Depends(sec.identity)):
+        if staff.role != "Owner":
+            raise HTTPException(403, "Лише власник")
+        seed = base64.b32encode(secrets.token_bytes(20)).decode()
+        payload = json.dumps({"staff": staff.id, "session": request.state.control_session.token_hash, "seed": seed})
+        return {"seed": seed, "enrollment": cipher().encrypt(payload.encode()).decode()}
+
+    @app.post("/auth/rotate", status_code=204)
+    def rotate(data: Rotate, request: Request, response: Response, staff=Depends(sec.identity), db=Depends(get_db)):
+        if staff.role != "Owner":
+            raise HTTPException(403, "Лише власник")
+        try:
+            payload = json.loads(cipher().decrypt(data.enrollment.encode(), ttl=600))
+            if payload["staff"] != staff.id or payload["session"] != request.state.control_session.token_hash:
+                raise ValueError()
+            sec.hasher.verify(staff.password_hash, data.current_password)
+            if data.new_password == data.current_password:
+                raise ValueError()
+            old_seed = cipher().decrypt(staff.mfa_ciphertext.encode()).decode()
+            if sec.mfa_step(old_seed, data.current_code, staff.last_totp_step) is None:
+                raise ValueError()
+            if payload["seed"] == old_seed:
+                raise ValueError()
+            step = sec.mfa_step(payload["seed"], data.new_code)
+            if step is None:
+                raise ValueError()
+        except (ValueError, TypeError, KeyError, InvalidToken, VerificationError, InvalidHashError):
+            raise HTTPException(422, "Перевірте пароль і обидва коди. Старий код має бути новішим за код входу.") from None
+        staff.password_hash = sec.hasher.hash(data.new_password)
+        staff.mfa_ciphertext = cipher().encrypt(payload["seed"].encode()).decode()
+        staff.last_totp_step = step
+        sec.revoke(db, staff.id)
+        sec.audit(db, staff.id, "auth.rotate", "staff", staff.id)
+        db.commit()
+        response.delete_cookie(sec.COOKIE, path=sec.COOKIE_PATH, secure=environment() != "local", httponly=True, samesite="strict")
 
     @app.get("/readiness")
     def readiness(staff=Depends(sec.identity), db=Depends(get_db)):
@@ -460,8 +515,15 @@ def create_app():
                 ),
             )
         )
-        source = freshness(db.get(SourceState, "warehouse:" + environment()))
+        source_row = db.get(SourceState, "warehouse:" + environment())
+        source = freshness(source_row)
+        demo = environment() == "staging" and os.getenv("CONTROL_CENTER_PREVIEW", "false") == "true" and (not source_row or source_row.schema_version == "001")
+        rotated = bool(db.scalar(select(Audit.id).where(Audit.permission == "auth.rotate", Audit.actor == staff.id).limit(1))) if staff.role == "Owner" else False
+        new_count = db.scalar(select(func.count()).select_from(Company).where(*base, Company.registered_at >= now() - timedelta(days=30)))
         return dict(
+            new_30d=new_count if source["state"] != "unavailable" else None,
+            credentials_rotated=rotated,
+            source_configured=bool(os.getenv("CONTROL_CENTER_WAREHOUSE_SOURCE_URL")),
             expiring_14d=expiring if source["state"] != "unavailable" else None,
             conflicts=conflicts if source["state"] != "unavailable" else None,
             workspaces=total if source["state"] != "unavailable" else None,
@@ -469,7 +531,7 @@ def create_app():
             states=dict(rows),
             source=source,
             environment=environment(),
-            preview=environment() == "staging" and os.getenv("CONTROL_CENTER_PREVIEW", "false") == "true",
+            preview=demo,
             metrics=dict(
                 mrr={"state": "unavailable", "reason": "metric_policy_not_approved"},
                 cash_collected={

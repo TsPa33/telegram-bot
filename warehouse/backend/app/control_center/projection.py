@@ -6,7 +6,7 @@ refreshed again each sweep; no updated_at timestamp assumptions, no lost ties.
 """
 
 from datetime import datetime, timedelta
-from sqlalchemy import func, select, text, tuple_
+from sqlalchemy import func, select, text, tuple_, update
 from sqlalchemy.orm import Session, load_only
 from .config import connection, environment
 from .models import Company, SourceLink, SourceState, now
@@ -129,6 +129,11 @@ def sync_batch(db, limit=50):
             with Session(connection("CONTROL_CENTER_WAREHOUSE_READ_URL")) as source:
                 source.execute(text("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY"))
                 records, cursor = read_batch(source, state.watermark, limit)
+        # Archive synthetic data only after a successful real-source response.
+        if env == "staging" and state.schema_version == "001" and os.getenv("CONTROL_CENTER_PREVIEW") == "true" and os.getenv("CONTROL_CENTER_WAREHOUSE_SOURCE_URL"):
+            demo_ids = select(SourceLink.company_id).where(SourceLink.environment == "staging", SourceLink.system == "warehouse", SourceLink.evidence == "synthetic-preview")
+            db.execute(update(Company).where(Company.id.in_(demo_ids)).values(environment="preview"))
+            db.execute(update(SourceLink).where(SourceLink.company_id.in_(select(Company.id).where(Company.environment == "preview"))).values(environment="preview"))
         for record in records:
             upsert(db, record, env)
         from app.staging import migration_heads
