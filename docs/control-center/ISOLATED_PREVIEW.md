@@ -37,3 +37,6 @@ It captures the dashboard, client list, desktop/mobile company detail and queue
 from real Chromium/WebKit flows. This is test evidence, not a public deployment.
 The standalone-image job builds the actual production Dockerfile and checks
 non-root runtime, staff-only HTML and import without live configuration.
+
+## Railway isolated preview bootstrap
+The separate preview DB image uses the official PostgreSQL 16 entrypoint and a new persistent volume. It refuses a database name other than carpot_control_preview. TLS certificate/key are supplied as secret variables, with a hostname-matching trusted certificate on the app. Schema owner and operator are NOLOGIN; runtime is restricted. Initial Owner password hash and encrypted MFA seed are supplied only via private Railway variables; never committed. The five fictional records are seeded only on fresh PGDATA. No real data adapter is configured. Initial owner credentials are delivered via the authorized Railway dashboard and must be rotated before any real-data access. Demo staff cannot authenticate. The bootstrap image is preview-only, not a migration path to production.
