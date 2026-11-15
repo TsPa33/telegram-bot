@@ -108,14 +108,14 @@ export default function CompanyPreview({
         <>
           <p>
             <span className="cc-badge">{company.environment}</span>{" "}
-            {company.state === "stale" ? "Застарілі дані" : "Snapshot"} ·{" "}
+            {company.state === "stale" ? "Дані потребують оновлення" : "Оновлено"} ·{" "}
             {date(company.fetched_at)}
           </p>
           <section>
             <h3>Доступ і ліміти</h3>
             <p>
               {company.access_incomplete
-                ? "Неповні дані: немає entitlement projection."
+                ? "Дані про тариф ще не отримано."
                 : `${states[company.access.status] || company.access.status} · ${company.access.plan || "Тариф невідомий"}`}
             </p>
             <p>Завершення періоду: {date(company.access.period_end)}</p>
@@ -151,7 +151,7 @@ export default function CompanyPreview({
               <article key={p.id}>
                 <strong>{p.name}</strong>
                 <span>
-                  {p.role} · {p.active ? "Активний" : "Вимкнений"}
+                  {({DIRECTOR:"Власник",MANAGER:"Менеджер",WORKER:"Працівник"} as Record<string,string>)[p.role] || p.role} · {p.active ? "Активний" : "Вимкнений"}
                 </span>
                 <span>{p.email}</span>
                 <small>
@@ -162,15 +162,14 @@ export default function CompanyPreview({
             ))}
           </section>
           <section>
-            <h3>Зв’язки з джерелами</h3>
+            <h3>Підключені продукти</h3>
             {company.links.map((l: Row) => (
               <p key={l.system + l.entity_type}>
-                {l.system} · {l.environment} · <strong>{l.status}</strong>
-                <small>{l.evidence}</small>
+                {l.system === "warehouse" ? "Warehouse" : l.system === "billing" ? "Оплати" : l.system} · <strong>{l.status==="verified"?"Підключено":l.status==="conflict"?"Потребує перевірки":"Не підключено"}</strong>
               </p>
             ))}
             {!company.links.some((l: Row) => l.system === "billing") && (
-              <p>Billing не пов’язано. Новий binding тут не створюється.</p>
+              <p>Фінансовий акаунт ще не підключено.</p>
             )}
           </section>
           {staff.can_assign && (

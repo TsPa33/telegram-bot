@@ -68,13 +68,13 @@ for (const [engine, driver] of Object.entries(engines)) {
           );
         }, theme);
         await page.goto("/control/");
-        await page.getByLabel("Staff логін").fill("browser-" + index++);
+        await page.getByLabel("Логін").fill("browser-" + index++);
         await page.getByLabel("Пароль", { exact: true }).fill(fixture.password);
         await page.getByLabel("MFA-код").fill(otp());
         await page.getByRole("button", { name: "Увійти", exact: true }).click();
         await page.getByRole("heading", { name: "Огляд Warehouse" }).waitFor();
         if (width === 1440 && theme === "forest") {
-          await page.getByText("Стани доступу · snapshot").waitFor();
+          await page.getByText("Стан підписок").waitFor();
           await page.screenshot({ path: "/tmp/control-center-overview.png", fullPage: true });
         }
         assert.equal(
@@ -160,7 +160,7 @@ for (const [engine, driver] of Object.entries(engines)) {
             .click();
           await page
             .getByText(
-              "Компаній за цими умовами немає. Враховується ваш scope.",
+              "Компаній за цими умовами немає.",
             )
             .waitFor();
           await page.getByLabel("Пошук", { exact: true }).fill("");

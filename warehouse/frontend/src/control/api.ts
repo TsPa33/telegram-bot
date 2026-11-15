@@ -48,9 +48,10 @@ export const money = (row: Row) =>
 export const states: Record<string, string> = {
   ACTIVE: "Оплачено",
   TRIAL: "Пробний",
-  GRACE: "Grace",
+  GRACE: "Пільговий період",
   EXPIRED: "Завершено",
-  FREE: "Без paid coverage",
+  FREE: "Безкоштовний",
+  UNKNOWN: "Немає даних",
 };
 
 export const coverageName: Record<string, string> = {

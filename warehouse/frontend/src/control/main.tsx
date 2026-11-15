@@ -3,6 +3,8 @@ import { createRoot } from "react-dom/client";
 import { ThemeProvider, ThemeSwitch } from "../Theme";
 import { State } from "../shared";
 import CompanyPreview from "./CompanyPreview";
+import SecuritySettings from "./SecuritySettings";
+import { LayoutDashboard, Users, ClipboardList, ShieldCheck, Warehouse, RefreshCw, LogOut } from "lucide-react";
 import { api, date, states, coverageName, type Row, type Staff } from "./api";
 import "../tokens.css";
 import "../themes.css";
@@ -14,7 +16,7 @@ function Login({ onLogin }: { onLogin: (s: Staff) => void }) {
   return (
     <main className="cc-login">
       <section>
-        <small>CARPOT / STAFF</small>
+        <small>CARPOT / АДМІНІСТРУВАННЯ</small>
         <h1>Control Center</h1>
         <p>
           Окремий доступ персоналу. Акаунт Warehouse не надає адміністративних
@@ -38,7 +40,7 @@ function Login({ onLogin }: { onLogin: (s: Staff) => void }) {
           }}
         >
           <label>
-            Staff логін
+            Логін
             <input
               name="username"
               autoComplete="username"
@@ -138,28 +140,26 @@ function Workspace({ staff, logout }: { staff: Staff; logout: () => void }) {
   return (
     <div className="cc-shell">
       <aside>
-        <small>CARPOT</small>
-        <h1>Control Center</h1>
-        <p>Warehouse First</p>
+        <div className="cc-brand"><span><Warehouse size={23}/></span><div><strong>CarPot</strong><small>CONTROL CENTER</small></div></div>
+        <p className="cc-nav-label">УПРАВЛІННЯ</p>
         <nav aria-label="Control Center">
           {[
-            ["overview", "Огляд"],
-            ["clients", "Клієнти"],
-            ["queue", "Робоча черга"],
-          ].map(([key, title]) => (
+            {key:"overview", title:"Огляд", Icon:LayoutDashboard},
+            {key:"clients", title:"Клієнти", Icon:Users},
+            {key:"queue", title:"Робоча черга", Icon:ClipboardList},
+          ].map(({key, title, Icon}) => (
             <button
               key={key}
               aria-current={tab === key ? "page" : undefined}
               onClick={() => setTab(key)}
             >
-              {title}
+              <Icon size={18}/> {title}
             </button>
           ))}
         </nav>
-        <p>
-          {staff.username}
-          <small>{staff.role}</small>
-        </p>
+        <div className="cc-sidebar-bottom">
+        {staff.role === "Owner" && <button className="cc-security-nav" aria-current={tab==="security"?"page":undefined} onClick={()=>setTab("security")}><ShieldCheck size={18}/> Безпека</button>}
+        <div className="cc-user"><strong>{staff.username}</strong><small>{({Owner:"Власник",Administrator:"Адміністратор",Manager:"Менеджер",Support:"Підтримка"} as Record<string,string>)[staff.role]||staff.role}</small></div>
         <ThemeSwitch />
         <button
           onClick={async () => {
@@ -172,8 +172,9 @@ function Workspace({ staff, logout }: { staff: Staff; logout: () => void }) {
             }
           }}
         >
-          Вийти
+          <LogOut size={16}/> Вийти
         </button>
+        </div>
       </aside>
       <main>
         <header className="cc-top">
@@ -183,16 +184,17 @@ function Workspace({ staff, logout }: { staff: Staff; logout: () => void }) {
                 overview: "Огляд Warehouse",
                 clients: "Клієнтські компанії",
                 queue: "Внутрішня робоча черга",
+                security: "Безпека",
               }[tab]
             }
           </h2>
           <span className="cc-badge">
             {overview?.preview ? "Демонстраційний режим" : overview?.environment || "Перевіряємо середовище"}
           </span>
-          <button onClick={refresh}>Оновити</button>
+          <button onClick={refresh}><RefreshCw size={16}/> Оновити</button>
         </header>
         <State error={error} loading={loading} />
-        {overview?.preview && <p className="cc-source" role="status">Тільки демонстраційні компанії. Реальні клієнти, платежі та фінансові дані не підключені.</p>}
+        {overview?.preview && <div className="cc-preview-banner" role="status"><span>Демонстраційні дані. {overview.source_configured ? (overview.credentials_rotated ? "Підключення клієнтів Warehouse виконується автоматично." : "Змініть початковий пароль і MFA, щоб підключити клієнтів Warehouse.") : "Реальні клієнти ще не підключені."}</span>{staff.role==="Owner" && !overview.credentials_rotated && overview.source_configured && <button onClick={()=>setTab("security")}>Налаштувати захист</button>}</div>}
         {overview && (
           <p className={"cc-source " + overview.source.state} role="status">
             {overview.source.state === "fresh"
@@ -204,46 +206,38 @@ function Workspace({ staff, logout }: { staff: Staff; logout: () => void }) {
             {date(overview.source.last_success)}. Час: Київ.
           </p>
         )}
+        {tab === "security" && staff.role === "Owner" && <SecuritySettings logout={logout}/>}
         {tab === "overview" && overview && (
           <>
             <div className="cc-metrics">
               <article>
-                <small>Workspaces у вашому scope</small>
+                <small>Компанії</small>
                 <strong>{overview.workspaces ?? "Немає даних"}</strong>
               </article>
               <article>
-                <small>Перевірені Billing links</small>
-                <strong>{overview.linked ?? "Немає даних"}</strong>
+                <small>Нові за 30 днів</small>
+                <strong>{overview.new_30d ?? "Немає даних"}</strong>
               </article>
               <article>
-                <small>Непов’язані / непідтверджені</small>
-                <strong>
-                  {overview.workspaces === null
-                    ? "Немає даних"
-                    : overview.workspaces - overview.linked}
-                </strong>
+                <small>Активні підписки</small>
+                <strong>{overview.workspaces === null ? "Немає даних" : (overview.states?.ACTIVE ?? 0)}</strong>
               </article>
             </div>
-            <section className="cc-card">
-              <h3>Стани доступу · snapshot</h3>
+            <div className="cc-overview-grid"><section className="cc-card">
+              <h3>Стан підписок</h3><div className="cc-status-grid">
               {Object.keys(overview.states).length ? (
                 Object.entries(overview.states).map(([key, count]) => (
-                  <p key={key}>
-                    {states[key] || "Невідомо"} <strong>{String(count)}</strong>
-                  </p>
+                  <div className="cc-status-cell" key={key}><small>{states[key] || "Невідомо"}</small><strong>{String(count)}</strong></div>
                 ))
               ) : (
                 <p>Покриття джерела ще не підтверджено.</p>
               )}
-              <p>
-                Trial і Grace не є підтвердженим paid revenue. Без entitlement
-                projection доступ позначено неповним.
-              </p>
+              </div><small>Пробний період не є оплаченою підпискою.</small>
             </section>
             <section className="cc-card">
               <h3>Потребують уваги</h3>
               <p>
-                Paid coverage завершується за 14 днів:{" "}
+                Підписки завершуються за 14 днів:{" "}
                 {overview.expiring_14d ?? "Немає даних"}. Конфлікти:{" "}
                 {overview.conflicts ?? "Немає даних"}.
               </p>
@@ -255,14 +249,7 @@ function Workspace({ staff, logout }: { staff: Staff; logout: () => void }) {
               </button>
               <button onClick={() => setTab("queue")}>Робоча черга</button>
             </section>
-            <section className="cc-card">
-              <h3>Фінансові показники</h3>
-              <p>
-                MRR і churn недоступні: методологію не затверджено. Cash
-                collected недоступний: немає повної фінансової проєкції. Продажі
-                запчастин і legacy success не включаються.
-              </p>
-            </section>
+            </div><section className="cc-card"><h3>Фінанси</h3><p>Загальні надходження та місячний дохід ще не підключені.</p></section>
           </>
         )}
         {tab === "clients" && (
@@ -312,7 +299,7 @@ function Workspace({ staff, logout }: { staff: Staff; logout: () => void }) {
                 </select>
               </label>
               <label>
-                Billing link
+                Фінансовий зв’язок
                 <select
                   value={filters.linking}
                   onChange={(e) =>
@@ -369,7 +356,7 @@ function Workspace({ staff, logout }: { staff: Staff; logout: () => void }) {
             </form>
             <div className="cc-directory" aria-label="Компанії">
               {page?.items.length === 0 && !loading && (
-                <p>Компаній за цими умовами немає. Враховується ваш scope.</p>
+                <p>Компаній за цими умовами немає.</p>
               )}
               {page?.items.map((c: Row) => (
                 <button
@@ -377,17 +364,17 @@ function Workspace({ staff, logout }: { staff: Staff; logout: () => void }) {
                   key={c.id}
                   onClick={() => setSelected(c.id)}
                 >
-                  <strong>{c.display_name}</strong>
+                  <div className="cc-company-title"><strong>{c.display_name}</strong><small>{c.owner_email || "Контакти недоступні"}</small></div>
                   <span>
                     {c.access_incomplete
                       ? "Доступ: даних недостатньо"
                       : states[c.access.status] || c.access.status}
                   </span>
                   <span>{c.access.plan || "Тариф невідомий"}</span>
-                  <span>{c.linking}</span>
+                  <span>{({linked:"Підключено",verified:"Підключено",unlinked:"Не підключено",conflict:"Потребує перевірки",revoked:"Відкликано"} as Record<string,string>)[c.linking] || "Немає даних"}</span>
                   <small>
                     {c.state === "stale"
-                      ? "Застарілий snapshot"
+                      ? "Дані потребують оновлення"
                       : date(c.registered_at)}
                   </small>
                 </button>
@@ -411,7 +398,7 @@ function Workspace({ staff, logout }: { staff: Staff; logout: () => void }) {
         )}
         {tab === "queue" && (
           <section className="cc-card">
-            <p>Внутрішні дії персоналу. Legacy Support тут не інтегровано.</p>
+            <p>Завдання та наступні дії вашої команди.</p>
             {tasks.length === 0 ? (
               <p>Дій у вашій черзі немає.</p>
             ) : (
