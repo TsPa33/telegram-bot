@@ -42,6 +42,7 @@ def test_actual_source_adapter_counts_workspaces_not_staff_and_is_read_only(
         )
         source.add(owner)
         source.flush()
+        owner_id = owner.id
         worker = Account(
             name="Employee",
             email="employee@source.test",
@@ -84,7 +85,7 @@ def test_actual_source_adapter_counts_workspaces_not_staff_and_is_read_only(
         headers={"X-Control-Stamp":stamp,"X-Control-Signature":signature(key,stamp,"",20)}
         result=c.get("/internal/control/warehouse-directory",headers=headers)
         assert result.status_code==200,result.text
-        assert result.json()["records"][0]["workspace_id"]==owner.id
+        assert result.json()["records"][0]["workspace_id"] == owner_id
         assert result.json()["records"][0]["snapshot"]["source_environment"]=="staging"
         assert "password_hash" not in result.text
         assert c.get("/internal/control/warehouse-directory").status_code==401
