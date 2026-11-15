@@ -192,3 +192,9 @@ Rollback: flag OFF, restore prior code. Keep staff audit, notes, source links,
 customer and financial histories; do not destructive-downgrade or drop schema.
 Disabling code does not itself revoke stolen tokens; use operator revocation
 and investigate before re-enabling. Do not change unrelated service flags.
+
+Final independent gate: run 43682622139 on 55c10e16 passed all four jobs.
+Checkpoint 006 preserves raw broad-suite errors from a mixed-edit execution,
+fresh isolated/CI passes, exact limitations and the blocked Draft PR handoff.
+Use PR_DESCRIPTION.md after GitHub API access is available; no need to repeat
+architecture approval or ask for new credentials. No Draft PR exists yet.

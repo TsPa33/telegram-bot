@@ -24,3 +24,6 @@ Migrations: planned separate control_center schema; Warehouse head unchanged.
 Next: staff realm with durable throttling, encrypted TOTP, revoke and audit.
 Resume: verify branch/status, read subsequent checkpoints and README; never
 use old main as implementation base. Rollback: flag OFF; no live changes made.
+
+Follow-up: checkpoint 006 records public GitHub verification of PR538 Draft
+state and successful exact-base checks, plus completed new independent CI.
