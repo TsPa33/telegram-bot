@@ -4,7 +4,9 @@ from app.control_center.models import Audit, Staff
 from app.control_center.security import totp
 from test_support import authenticate, SECRET
 
-def test_rotate_requires_both_mfa_codes_and_revokes_session(client, staff_factory, db):
+def test_rotate_requires_both_mfa_codes_and_revokes_session(client, staff_factory, db, monkeypatch):
+    stamp=time.time()
+    monkeypatch.setattr(time,"time",lambda:stamp)
     owner=staff_factory()
     step=int(time.time())//30
     authenticate(client,owner,step=step-1)

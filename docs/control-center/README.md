@@ -202,3 +202,9 @@ Checkpoint 006 preserves raw broad-suite errors from a mixed-edit execution,
 fresh isolated/CI passes, exact limitations and the blocked Draft PR handoff.
 Use PR_DESCRIPTION.md after GitHub API access is available; no need to repeat
 architecture approval or ask for new credentials. No Draft PR exists yet.
+
+## Stage 2: real Warehouse directory over signed HTTPS
+
+Warehouse-only staging endpoint /internal/control/warehouse-directory is OFF unless WAREHOUSE_ENV=staging and WAREHOUSE_CONTROL_DIRECTORY_ENABLED=true. A separate >=32 byte HMAC key signs method/path/environment/timestamp/cursor/limit. Bounded pages, read-only repeatable-read transactions, short query timeout. No new Warehouse DB roles, passwords or migrations. CRM validates HTTPS origin, signed request, response environment and bounded size. The original DB reader remains an explicit alternative; do not configure both. Source key is independent of Billing.
+
+The isolated preview Owner must replace the initial password AND MFA seed in the Security screen. Enrollment is encrypted, session-bound and expires in 10 minutes; fresh old MFA and new MFA proof required; all prior sessions revoked atomically. The automatic staging-only refresh starts only after successful rotation. First valid source page moves demo companies and source links to a separate preview namespace; their internal history is preserved. No demo entries are included in the connected directory. Owner sees real contacts; delegated roles remain masked. Refresh completes bounded pages then repeats every 5 minutes. Source errors retain prior data and are marked stale. No real financial totals, Telegram or Sites data are connected by this package.

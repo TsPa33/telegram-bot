@@ -65,6 +65,29 @@ def test_actual_source_adapter_counts_workspaces_not_staff_and_is_read_only(
         assert records[0]["snapshot"]["usage"]["employees"] == 1
         assert "password_hash" not in str(records)
         assert records[0]["snapshot"]["access_incomplete"] is True
+    # The deployed service adapter reuses the same actual read model and has
+    # independent machine authorization rather than a customer session.
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    from app.api import control_directory as directory
+    from app.services.control_transport import signature
+    import time
+    monkeypatch.setenv("WAREHOUSE_ENV", "staging")
+    monkeypatch.setenv("WAREHOUSE_CONTROL_DIRECTORY_ENABLED", "true")
+    key="local-test-directory-key-"*3
+    monkeypatch.setenv("WAREHOUSE_CONTROL_DIRECTORY_KEY",key)
+    monkeypatch.setattr(directory,"engine",lambda:engine)
+    source_app=FastAPI()
+    source_app.include_router(directory.router)
+    with TestClient(source_app) as c:
+        stamp=str(int(time.time()))
+        headers={"X-Control-Stamp":stamp,"X-Control-Signature":signature(key,stamp,"",20)}
+        result=c.get("/internal/control/warehouse-directory",headers=headers)
+        assert result.status_code==200,result.text
+        assert result.json()["records"][0]["workspace_id"]==owner.id
+        assert result.json()["records"][0]["snapshot"]["source_environment"]=="staging"
+        assert "password_hash" not in result.text
+        assert c.get("/internal/control/warehouse-directory").status_code==401
     import pytest
     from sqlalchemy.exc import DBAPIError
 

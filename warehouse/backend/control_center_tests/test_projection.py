@@ -148,3 +148,38 @@ def test_production_workspace_cannot_adopt_sandbox_binding(db):
     db.commit()
     link = db.scalar(select(SourceLink).where(SourceLink.system == "billing"))
     assert link.status == "conflict"
+
+
+def test_real_sync_requires_rotation_and_archives_only_demo(db, monkeypatch):
+    from app.control_center import projection, sync_worker
+    from app.control_center.models import Audit, Staff
+    from app.control_center.security import audit
+    from sqlalchemy.orm import Session
+    from app.control_center import source_client
+    import pytest
+    monkeypatch.setenv("CONTROL_CENTER_SOURCE_ENVIRONMENT","staging")
+    monkeypatch.setenv("CONTROL_CENTER_PREVIEW","true")
+    monkeypatch.setenv("CONTROL_CENTER_WAREHOUSE_SOURCE_URL","https://source.example.test")
+    demo=upsert(db,record("demo","Demo"),"staging")
+    link=db.scalar(select(SourceLink).where(SourceLink.company_id==demo.id))
+    link.evidence="synthetic-preview"
+    db.add(SourceState(key="warehouse:staging",environment="staging",schema_version="001",coverage="sweep_complete",last_success=now()))
+    db.commit()
+    real=record("real","Real")
+    real["snapshot"]["source_environment"]="staging"
+    monkeypatch.setattr(source_client,"fetch_batch",lambda *a:([real],None))
+    monkeypatch.setattr(sync_worker,"connection",lambda:db.bind)
+    assert sync_worker.refresh_once()==15
+    db.expire_all()
+    assert db.get(Company,demo.id).environment=="staging"
+    owner=Staff(username="owner-preview",role="Owner",password_hash="test",mfa_ciphertext="test",active=True)
+    db.add(owner)
+    db.flush()
+    audit(db,owner.id,"auth.rotate","staff",owner.id)
+    db.commit()
+    assert sync_worker.refresh_once()==300
+    db.expire_all()
+    assert db.get(Company,demo.id).environment=="preview"
+    assert db.scalar(select(func.count()).select_from(Company).where(Company.environment=="staging"))==1
+    assert db.get(SourceState,"warehouse:staging").schema_version.startswith("1/")
+    assert db.scalar(select(SourceLink).where(SourceLink.company_id==demo.id)).environment=="preview"
