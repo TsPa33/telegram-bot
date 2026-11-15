@@ -127,6 +127,8 @@ for (const [engine, driver] of Object.entries(engines)) {
             await gate;
             await route.continue();
           });
+          const recovered = page.waitForResponse((res) =>
+            new URL(res.url()).pathname === "/api/control/companies" && res.status() === 200);
           await page
             .getByRole("button", { name: "Оновити", exact: true })
             .click();
@@ -135,6 +137,7 @@ for (const [engine, driver] of Object.entries(engines)) {
             .filter({ hasText: "Завантаження даних" })
             .waitFor();
           release();
+          await recovered;
           await page
             .getByRole("status")
             .filter({ hasText: "Завантаження даних" })

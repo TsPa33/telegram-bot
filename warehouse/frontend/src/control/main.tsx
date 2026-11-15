@@ -112,16 +112,15 @@ function Workspace({ staff, logout }: { staff: Staff; logout: () => void }) {
       Object.entries(applied).filter(([, value]) => value),
     );
     if (cursor) query.set("cursor", cursor);
-    Promise.all([api("/overview"), api("/companies?" + query), api("/tasks")])
+    // Preserve successful sections when another source temporarily fails.
+    Promise.allSettled([api("/overview"), api("/companies?" + query), api("/tasks")])
       .then(([o, p, t]) => {
-        if (current) {
-          setOverview(o);
-          setPage(p);
-          setTasks(t);
-        }
-      })
-      .catch((e) => {
-        if (current) setError(e.message);
+        if (!current) return;
+        if (o.status === "fulfilled") setOverview(o.value);
+        if (p.status === "fulfilled") setPage(p.value);
+        if (t.status === "fulfilled") setTasks(t.value);
+        const failed = [o, p, t].find((item) => item.status === "rejected");
+        if (failed?.status === "rejected") setError(failed.reason?.message || "Не вдалося оновити дані");
       })
       .finally(() => {
         if (current) setLoading(false);
@@ -188,11 +187,12 @@ function Workspace({ staff, logout }: { staff: Staff; logout: () => void }) {
             }
           </h2>
           <span className="cc-badge">
-            {overview?.environment || "Environment перевіряється"}
+            {overview?.preview ? "Демонстраційний режим" : overview?.environment || "Перевіряємо середовище"}
           </span>
           <button onClick={refresh}>Оновити</button>
         </header>
         <State error={error} loading={loading} />
+        {overview?.preview && <p className="cc-source" role="status">Тільки демонстраційні компанії. Реальні клієнти, платежі та фінансові дані не підключені.</p>}
         {overview && (
           <p className={"cc-source " + overview.source.state} role="status">
             {overview.source.state === "fresh"

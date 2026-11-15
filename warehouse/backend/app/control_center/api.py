@@ -2,6 +2,7 @@
 
 import base64
 import json
+import os
 from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
@@ -468,6 +469,7 @@ def create_app():
             states=dict(rows),
             source=source,
             environment=environment(),
+            preview=environment() == "staging" and os.getenv("CONTROL_CENTER_PREVIEW", "false") == "true",
             metrics=dict(
                 mrr={"state": "unavailable", "reason": "metric_policy_not_approved"},
                 cash_collected={

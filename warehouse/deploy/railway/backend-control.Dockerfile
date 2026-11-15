@@ -12,9 +12,9 @@ FROM python:3.12-slim
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 WORKDIR /app
 COPY warehouse/backend/requirements-control-center.lock ./requirements-control-center.lock
-RUN --mount=type=secret,id=warehouse_ca,required=false \
-    if [ -f /run/secrets/warehouse_ca ]; then export PIP_CERT=/run/secrets/warehouse_ca; fi; \
-    pip install --require-hashes -r requirements-control-center.lock
+# Railway builder supports cache mounts, not BuildKit secret mounts.
+# Public PyPI TLS verification and the locked artifact hashes remain mandatory.
+RUN pip install --require-hashes -r requirements-control-center.lock
 COPY warehouse/backend/app ./app
 COPY warehouse/backend/control_center_migrations ./control_center_migrations
 COPY warehouse/backend/alembic ./alembic
