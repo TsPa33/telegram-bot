@@ -11,11 +11,12 @@ let expectedStaff: string | null = null;
 const storageKey = "control.csrf";
 const readProof = () => sessionStorage.getItem(storageKey) || "";
 
+function clearSession(){expectedStaff=null;sessionStorage.removeItem(storageKey);window.dispatchEvent(new Event('control:session-invalid'));}
 async function recoverProof() {
   const response = await fetch("/api/control/auth/csrf", {
-    credentials: "same-origin", cache: "no-store",
+    credentials: "same-origin", cache: "no-store",headers:expectedStaff?{'X-Control-Staff':expectedStaff}:{},
   });
-  if (!response.ok) throw new Error("Сесію завершено. Увійдіть повторно.");
+  if (!response.ok){if(response.status===401)clearSession();throw new Error("Сесію завершено. Увійдіть повторно.");}
   const value = await response.json();
   if (!expectedStaff || value.staff_id !== expectedStaff)
     throw new Error("Обліковий запис змінився. Оновіть сторінку.");
@@ -24,6 +25,8 @@ async function recoverProof() {
 }
 
 export async function api(path: string, method = "GET", body?: unknown) {
+  const actor=expectedStaff;
+  const assertActor=path!=="/auth/login"&&path!=="/auth/me"&&path!=="/status";
   const write = !["GET", "HEAD", "OPTIONS"].includes(method);
   const protectedWrite = write && path !== "/auth/login";
   const send = (csrf: string) => fetch("/api/control" + path, {
@@ -31,6 +34,7 @@ export async function api(path: string, method = "GET", body?: unknown) {
     credentials: "same-origin",
     headers: {
       "Content-Type": "application/json",
+      ...(assertActor&&actor?{'X-Control-Staff':actor}:{}),
       ...(protectedWrite ? { "X-Control-CSRF": csrf } : {}),
     },
     body: body === undefined ? undefined : JSON.stringify(body),
@@ -46,6 +50,8 @@ export async function api(path: string, method = "GET", body?: unknown) {
     response = await send(proof);
     value = response.status === 204 ? null : await response.json();
   }
+  if(assertActor&&actor!==expectedStaff)throw new Error('Staff-сесію змінено. Застарілу відповідь відхилено.');
+  if(response.status===401&&path!=="/auth/login")clearSession();
   if (path === "/auth/logout" && response.status === 401) {
     expectedStaff = null;
     sessionStorage.removeItem(storageKey);

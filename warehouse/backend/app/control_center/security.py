@@ -29,7 +29,9 @@ def digest(value):
 
 def session_csrf(token):
     """Domain-separated proof derived from the high-entropy HttpOnly session token."""
-    return hmac.new(token.encode(), b"carpot-control-csrf-v1", hashlib.sha256).hexdigest()
+    return hmac.new(
+        token.encode(), b"carpot-control-csrf-v1", hashlib.sha256
+    ).hexdigest()
 
 
 def totp(secret, step):
@@ -68,10 +70,12 @@ def audit(
     )
 
 
-def throttle(db, username, ip):
+def throttle(db, username, ip, *, operation="login", commit=True):
     # Both account and IP budgets; persisted before password verification.
     for kind, value in [("user", username), ("ip", ip)]:
-        key = digest(kind + ":" + value)
+        key = digest(
+            (operation + ":" if operation != "login" else "") + kind + ":" + value
+        )
         db.execute(
             insert(Throttle)
             .values(key=key, attempts=0, until=now() + timedelta(minutes=15))
@@ -84,7 +88,8 @@ def throttle(db, username, ip):
             db.commit()
             raise HTTPException(429, "Забагато спроб. Спробуйте пізніше")
         bucket.attempts += 1
-    db.commit()
+    if commit:
+        db.commit()
 
 
 def login(db, username, password, code, ip):
@@ -147,10 +152,15 @@ def identity(request: Request, db=Depends(get_db)):
         raise HTTPException(401, "Увійдіть із staff MFA")
     # Serialize staff commands with revoke/role changes, including in-flight writes.
     staff = db.scalar(
-        select(Staff).where(Staff.id == session.staff_id).with_for_update(read=not request.url.path.endswith("/auth/rotate"))
+        select(Staff)
+        .where(Staff.id == session.staff_id)
+        .with_for_update(read=request.method in {"GET", "HEAD", "OPTIONS"})
     )
     if not staff or not staff.active:
         raise HTTPException(401, "Staff-доступ відкликано")
+    expected_staff = request.headers.get("X-Control-Staff")
+    if expected_staff and expected_staff != staff.id:
+        raise HTTPException(401, "Staff-сесію змінено")
     session = db.scalar(
         select(Session)
         .where(Session.token_hash == digest(token))
@@ -162,9 +172,13 @@ def identity(request: Request, db=Depends(get_db)):
         csrf = request.headers.get("X-Control-CSRF", "")
         # Recoverable cookie-bound proof also works with pre-upgrade sessions.
         # The old stored proof remains valid until that session expires/revokes.
-        if not csrf or len(csrf) > 128 or not (
-            hmac.compare_digest(digest(csrf), session.csrf_hash)
-            or hmac.compare_digest(digest(csrf), digest(session_csrf(token)))
+        if (
+            not csrf
+            or len(csrf) > 128
+            or not (
+                hmac.compare_digest(digest(csrf), session.csrf_hash)
+                or hmac.compare_digest(digest(csrf), digest(session_csrf(token)))
+            )
         ):
             raise HTTPException(403, "Недійсний CSRF-токен")
     request.state.control_session = session
@@ -185,14 +199,26 @@ def scope_query(staff):
     return Company.id.in_(select(Grant.company_id).where(Grant.staff_id == staff.id))
 
 
-def company(db, staff, company_id):
+def company(db, staff, company_id, *, write=False):
     row = db.scalar(
-        select(Company).where(
+        select(Company)
+        .where(
             Company.id == company_id,
             Company.environment == environment(),
             scope_query(staff),
         )
+        .with_for_update(read=not write)
     )
+    # A scope subquery can use a snapshot from before a row-lock wait. Recheck
+    # the grant in a fresh READ COMMITTED statement after acquiring the lock.
+    if row and not global_access(staff):
+        grant = db.scalar(
+            select(Grant.staff_id).where(
+                Grant.company_id == row.id, Grant.staff_id == staff.id
+            )
+        )
+        if grant is None:
+            row = None
     if not row:
         raise HTTPException(404, "Компанію не знайдено")
     return row
@@ -200,3 +226,23 @@ def company(db, staff, company_id):
 
 def revoke(db, staff_id):
     db.execute(delete(Session).where(Session.staff_id == staff_id))
+
+
+def require_step_up(db, staff, code, *, ip):
+    """A fresh single-use MFA code for staff privilege changes, in the same tx."""
+    throttle(db, staff.username, ip, operation="step-up", commit=False)
+    step = None
+    try:
+        if code:
+            step = mfa_step(
+                cipher().decrypt(staff.mfa_ciphertext.encode()).decode(),
+                code,
+                staff.last_totp_step,
+            )
+    except (InvalidToken, ValueError):
+        pass
+    if step is None:
+        audit(db, staff.id, "staff.step_up", "staff", staff.id, result="denied")
+        db.commit()
+        raise HTTPException(403, "Для зміни доступу потрібен новий одноразовий MFA-код")
+    staff.last_totp_step = step

@@ -56,6 +56,7 @@ class Assign(Input):
 
 
 class StaffUpdate(Input):
+    mfa_code: str | None = Field(default=None, pattern=r"^[0-9]{6}$")
     role: str = Field(pattern="^(Owner|Administrator|Manager|Support)$")
     active: bool
     finance: bool = False
@@ -139,16 +140,30 @@ def company_view(row, staff, detail=False):
     # Binding ownership references are not financial amounts, still hidden from Support.
     if staff.role != "Support":
         value["binding"] = snapshot.get("binding")
-    full_contacts = staff.role == "Owner" and row.environment == "staging" and snapshot.get("source_environment") == "staging" and "Демонстрація" not in row.labels
+    full_contacts = (
+        staff.role == "Owner"
+        and row.environment == "staging"
+        and snapshot.get("source_environment") == "staging"
+        and "Демонстрація" not in row.labels
+    )
     people = snapshot.get("people", [])
     owner = next((p for p in people if p.get("role") == "DIRECTOR"), None)
     if owner:
-        value["owner_email"] = owner.get("email", "") if full_contacts else mask_email(owner.get("email", ""))
+        value["owner_email"] = (
+            owner.get("email", "")
+            if full_contacts
+            else mask_email(owner.get("email", ""))
+        )
         value["owner_name"] = owner.get("name")
         value["last_login_at"] = owner.get("last_login_at")
     if detail:
         value["people"] = [
-            {**p, "email": p.get("email", "") if full_contacts else mask_email(p.get("email", ""))}
+            {
+                **p,
+                "email": p.get("email", "")
+                if full_contacts
+                else mask_email(p.get("email", "")),
+            }
             for p in people
         ]
     return value
@@ -239,7 +254,10 @@ def create_app():
         site = request.headers.get("sec-fetch-site")
         if (supplied and supplied != origin()) or site in {"cross-site", "same-site"}:
             raise HTTPException(403, "Недійсне джерело запиту")
-        return {"csrf": sec.session_csrf(request.cookies[sec.COOKIE]), "staff_id": staff.id}
+        return {
+            "csrf": sec.session_csrf(request.cookies[sec.COOKIE]),
+            "staff_id": staff.id,
+        }
 
     @app.post("/auth/logout", status_code=204)
     def logout(
@@ -264,16 +282,38 @@ def create_app():
         if staff.role != "Owner":
             raise HTTPException(403, "Лише власник")
         seed = base64.b32encode(secrets.token_bytes(20)).decode()
-        payload = json.dumps({"staff": staff.id, "session": request.state.control_session.token_hash, "seed": seed})
+        payload = json.dumps(
+            {
+                "staff": staff.id,
+                "session": request.state.control_session.token_hash,
+                "seed": seed,
+            }
+        )
         return {"seed": seed, "enrollment": cipher().encrypt(payload.encode()).decode()}
 
     @app.post("/auth/rotate", status_code=204)
-    def rotate(data: Rotate, request: Request, response: Response, staff=Depends(sec.identity), db=Depends(get_db)):
+    def rotate(
+        data: Rotate,
+        request: Request,
+        response: Response,
+        staff=Depends(sec.identity),
+        db=Depends(get_db),
+    ):
         if staff.role != "Owner":
             raise HTTPException(403, "Лише власник")
+        sec.throttle(
+            db,
+            staff.username,
+            request.client.host if request.client else "unknown",
+            operation="credential-rotation",
+            commit=False,
+        )
         try:
             payload = json.loads(cipher().decrypt(data.enrollment.encode(), ttl=600))
-            if payload["staff"] != staff.id or payload["session"] != request.state.control_session.token_hash:
+            if (
+                payload["staff"] != staff.id
+                or payload["session"] != request.state.control_session.token_hash
+            ):
                 raise ValueError()
             sec.hasher.verify(staff.password_hash, data.current_password)
             if data.new_password == data.current_password:
@@ -286,15 +326,35 @@ def create_app():
             step = sec.mfa_step(payload["seed"], data.new_code)
             if step is None:
                 raise ValueError()
-        except (ValueError, TypeError, KeyError, InvalidToken, VerificationError, InvalidHashError):
-            raise HTTPException(422, "Перевірте пароль і обидва коди. Старий код має бути новішим за код входу.") from None
+        except (
+            ValueError,
+            TypeError,
+            KeyError,
+            InvalidToken,
+            VerificationError,
+            InvalidHashError,
+        ):
+            sec.audit(
+                db, staff.id, "auth.rotate_denied", "staff", staff.id, result="denied"
+            )
+            db.commit()
+            raise HTTPException(
+                422,
+                "Перевірте пароль і обидва коди. Старий код має бути новішим за код входу.",
+            ) from None
         staff.password_hash = sec.hasher.hash(data.new_password)
         staff.mfa_ciphertext = cipher().encrypt(payload["seed"].encode()).decode()
         staff.last_totp_step = step
         sec.revoke(db, staff.id)
         sec.audit(db, staff.id, "auth.rotate", "staff", staff.id)
         db.commit()
-        response.delete_cookie(sec.COOKIE, path=sec.COOKIE_PATH, secure=environment() != "local", httponly=True, samesite="strict")
+        response.delete_cookie(
+            sec.COOKIE,
+            path=sec.COOKIE_PATH,
+            secure=environment() != "local",
+            httponly=True,
+            samesite="strict",
+        )
 
     @app.get("/readiness")
     def readiness(staff=Depends(sec.identity), db=Depends(get_db)):
@@ -319,6 +379,7 @@ def create_app():
     def update_staff(
         staff_id: str,
         data: StaffUpdate,
+        request: Request,
         staff=Depends(sec.identity),
         db=Depends(get_db),
     ):
@@ -328,6 +389,12 @@ def create_app():
             raise HTTPException(
                 409, "Власний привілейований доступ змінює інший Owner або оператор"
             )
+        sec.require_step_up(
+            db,
+            staff,
+            data.mfa_code,
+            ip=request.client.host if request.client else "unknown",
+        )
         target = db.get(Staff, staff_id, with_for_update=True)
         if not target:
             raise HTTPException(404)
@@ -339,7 +406,11 @@ def create_app():
         )
         # A different role must not inherit company grants from the old role.
         if before["role"] != target.role:
-            db.execute(update(Company).where(Company.manager_id == target.id).values(manager_id=None))
+            db.execute(
+                update(Company)
+                .where(Company.manager_id == target.id)
+                .values(manager_id=None)
+            )
             db.execute(delete(Grant).where(Grant.staff_id == target.id))
         sec.revoke(db, target.id)
         sec.audit(
@@ -527,9 +598,27 @@ def create_app():
         )
         source_row = db.get(SourceState, "warehouse:" + environment())
         source = freshness(source_row)
-        demo = environment() == "staging" and os.getenv("CONTROL_CENTER_PREVIEW", "false") == "true" and (not source_row or source_row.schema_version == "001")
-        rotated = bool(db.scalar(select(Audit.id).where(Audit.permission == "auth.rotate", Audit.actor == staff.id).limit(1))) if staff.role == "Owner" else False
-        new_count = db.scalar(select(func.count()).select_from(Company).where(*base, Company.registered_at >= now() - timedelta(days=30)))
+        demo = (
+            environment() == "staging"
+            and os.getenv("CONTROL_CENTER_PREVIEW", "false") == "true"
+            and (not source_row or source_row.schema_version == "001")
+        )
+        rotated = (
+            bool(
+                db.scalar(
+                    select(Audit.id)
+                    .where(Audit.permission == "auth.rotate", Audit.actor == staff.id)
+                    .limit(1)
+                )
+            )
+            if staff.role == "Owner"
+            else False
+        )
+        new_count = db.scalar(
+            select(func.count())
+            .select_from(Company)
+            .where(*base, Company.registered_at >= now() - timedelta(days=30))
+        )
         return dict(
             new_30d=new_count if source["state"] != "unavailable" else None,
             credentials_rotated=rotated,
@@ -620,22 +709,21 @@ def create_app():
     def assign(
         company_id: str, data: Assign, staff=Depends(sec.identity), db=Depends(get_db)
     ):
-        sec.company(db, staff, company_id)
         if not sec.global_access(staff):
             raise HTTPException(403)
         # Lock the target before the company, consistent with staff role updates.
         # This prevents a concurrent role change from leaving a stale grant.
-        target = db.scalar(select(Staff).where(Staff.id == data.staff_id)
-                           .with_for_update(read=True).execution_options(populate_existing=True))
+        target = db.scalar(
+            select(Staff)
+            .where(Staff.id == data.staff_id)
+            .with_for_update(read=True)
+            .execution_options(populate_existing=True)
+        )
         if not target or not target.active or target.role not in {"Manager", "Support"}:
-            raise HTTPException(422, "Оберіть активного менеджера або працівника підтримки")
-        # Serialize replacements on the company. Refresh after waiting: the ORM
-        # may already hold the pre-lock company loaded by the permission check.
-        row = db.scalar(select(Company).where(
-            Company.id == company_id, Company.environment == environment()
-        ).with_for_update(key_share=True).execution_options(populate_existing=True))
-        if not row:
-            raise HTTPException(404, "Компанію не знайдено")
+            raise HTTPException(
+                422, "Оберіть активного менеджера або працівника підтримки"
+            )
+        row = sec.company(db, staff, company_id, write=True)
         # Assignment grants company context; replacing a manager revokes old scope.
         old_manager = row.manager_id
         if target.role != "Support":

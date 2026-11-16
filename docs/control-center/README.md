@@ -208,3 +208,21 @@ architecture approval or ask for new credentials. No Draft PR exists yet.
 Warehouse-only staging endpoint /internal/control/warehouse-directory is OFF unless WAREHOUSE_ENV=staging and WAREHOUSE_CONTROL_DIRECTORY_ENABLED=true. A separate >=32 byte HMAC key signs method/path/environment/timestamp/cursor/limit. Bounded pages, read-only repeatable-read transactions, short query timeout. No new Warehouse DB roles, passwords or migrations. CRM validates HTTPS origin, signed request, response environment and bounded size. The original DB reader remains an explicit alternative; do not configure both. Source key is independent of Billing.
 
 The isolated preview Owner must replace the initial password AND MFA seed in the Security screen. Enrollment is encrypted, session-bound and expires in 10 minutes; fresh old MFA and new MFA proof required; all prior sessions revoked atomically. The automatic staging-only refresh starts only after successful rotation. First valid source page moves demo companies and source links to a separate preview namespace; their internal history is preserved. No demo entries are included in the connected directory. Owner sees real contacts; delegated roles remain masked. Refresh completes bounded pages then repeats every 5 minutes. Source errors retain prior data and are marked stale. No real financial totals, Telegram or Sites data are connected by this package.
+
+## Stabilization — 2026-11-16
+
+Draft PR: https://github.com/TsPa33/telegram-bot/pull/539. Checkpoint 007 records
+the clean older frozen baseline and integration onto subsequent preview/source/UX
+commits; older counts are not attributed to the later code. Staff privilege
+changes additionally require a fresh single-use `mfa_code` with durable budgets.
+Company scope is rechecked after row-lock waits; assignment keeps target-staff
+then company lock order. Existing cookie-derived CSRF recovery is preserved; no
+new readable auth/CSRF cookie is introduced. Browser actor assertions and revoked
+session clearing prevent stale protected UI. Final independent gate runs the
+whole Warehouse backend and unit suite, rather than the earlier selected cases.
+No staging/production actions were performed by this stabilization task.
+
+Credential-rotation failures have their own durable account/IP attempt budget.
+Denied rotation audits cannot satisfy the source-refresh gate, which requires
+`auth.rotate` with result `success`. Existing CSRF proof recovery and signed
+source/deployment contracts from the intervening commits remain unchanged.

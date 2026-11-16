@@ -158,7 +158,7 @@ jobs:
         with: { name: control-finance-tests, path: /tmp/control-finance.xml }
   warehouse-regressions:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 50
     services:
       postgres:
         image: postgres:16-alpine
@@ -173,6 +173,7 @@ jobs:
       PYTHONPATH: "${{ github.workspace }}:${{ github.workspace }}/warehouse/backend:${{ github.workspace }}/warehouse/backend/tests"
     steps:
       - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
       - run: pip install --require-hashes -r warehouse/backend/requirements-control-center.lock
@@ -184,9 +185,9 @@ jobs:
           with psycopg.connect('host=127.0.0.1 user=postgres password=disposable-control-tests-only dbname=postgres',autocommit=True) as c:
               c.execute('CREATE DATABASE carpot_billing_warehouse_test')
           PY
-      - name: Customer tenant/security, stock/orders, bulk, OEM and Billing compatibility
+      - name: Full frozen-source Warehouse backend and unit regression
         working-directory: warehouse/backend
-        run: python -m pytest --import-mode=importlib --confcutdir=. tests/test_warehouse.py tests/test_team.py tests/test_orders.py tests/test_plan_parts_batch_stock.py tests/test_unified_catalogue.py tests/test_global_billing.py -q --junitxml=/tmp/control-warehouse.xml
+        run: python -m pytest --import-mode=importlib --confcutdir=. tests unit_tests -q --junitxml=/tmp/control-warehouse.xml
       - uses: actions/upload-artifact@v4
         if: always()
         with:

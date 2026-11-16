@@ -143,7 +143,13 @@ def test_role_change_deactivation_revoke(client, staff_factory, db, active, role
     db.commit()
     r = client.patch(
         "/api/control/staff/" + target.id,
-        json=dict(role=role, active=active, finance=False, reason="review access"),
+        json=dict(
+            role=role,
+            active=active,
+            finance=False,
+            reason="review access",
+            mfa_code=totp(SECRET, int(time.time()) // 30 + 1),
+        ),
     )
     assert r.status_code == 200, r.text
     db.expire_all()
@@ -411,14 +417,22 @@ def test_concurrent_reassignment_keeps_only_final_manager(client, staff_factory,
     path = "/api/control/companies/" + c.id + "/assign"
     assert client.post(path, json={"staff_id": old.id}).status_code == 200
     assert client.post(path, json={"staff_id": support.id}).status_code == 200
-    with TestClient(client.app, base_url="http://testserver",
-                    headers={"Origin": "http://testserver"}) as other:
+    with TestClient(
+        client.app,
+        base_url="http://testserver",
+        headers={"Origin": "http://testserver"},
+    ) as other:
         authenticate(other, admin)
         with ThreadPoolExecutor(max_workers=2) as pool:
             # Force both requests into the race, without relying on a sleep to
             # assume they reached the critical section. The runtime pool has 2 slots.
             with db.bind.begin() as blocker:
-                blocker.execute(text("SELECT id FROM control_center.companies WHERE id=:id FOR NO KEY UPDATE"), {"id": c.id})
+                blocker.execute(
+                    text(
+                        "SELECT id FROM control_center.companies WHERE id=:id FOR NO KEY UPDATE"
+                    ),
+                    {"id": c.id},
+                )
                 futures = [
                     pool.submit(client.post, path, json={"staff_id": first.id}),
                     pool.submit(other.post, path, json={"staff_id": second.id}),
@@ -427,13 +441,15 @@ def test_concurrent_reassignment_keeps_only_final_manager(client, staff_factory,
                 waiting = 0
                 while time.monotonic() < deadline:
                     blocker.execute(text("SELECT pg_stat_clear_snapshot()"))
-                    waiting = blocker.scalar(text(
-                        "SELECT count(*) FROM pg_stat_activity WHERE datname=current_database() "
-                        "AND usename='cc_app' AND wait_event_type='Lock'"
-                    ))
+                    waiting = blocker.scalar(
+                        text(
+                            "SELECT count(*) FROM pg_stat_activity WHERE datname=current_database() "
+                            "AND usename='cc_app' AND wait_event_type='Lock'"
+                        )
+                    )
                     if waiting >= 2:
                         break
-                    time.sleep(.02)
+                    time.sleep(0.02)
             assert waiting >= 2, "Both API requests must actually contend"
             for future in futures:
                 response = future.result(timeout=10)
@@ -442,15 +458,36 @@ def test_concurrent_reassignment_keeps_only_final_manager(client, staff_factory,
     winner = db.get(Company, c.id).manager_id
     assert winner in {first.id, second.id}
     loser = second if winner == first.id else first
-    assert set(db.scalars(select(Grant.staff_id).where(Grant.company_id == c.id))) == {winner, support.id}
-    assert db.scalar(select(func.count()).select_from(Audit).where(Audit.permission == "assignments.write")) == 4
-    for person, expected in [(old, 404), (loser, 404), (first if winner == first.id else second, 200), (support, 200)]:
-        with TestClient(client.app, base_url="http://testserver", headers={"Origin":"http://testserver"}) as scoped:
+    assert set(db.scalars(select(Grant.staff_id).where(Grant.company_id == c.id))) == {
+        winner,
+        support.id,
+    }
+    assert (
+        db.scalar(
+            select(func.count())
+            .select_from(Audit)
+            .where(Audit.permission == "assignments.write")
+        )
+        == 4
+    )
+    for person, expected in [
+        (old, 404),
+        (loser, 404),
+        (first if winner == first.id else second, 200),
+        (support, 200),
+    ]:
+        with TestClient(
+            client.app,
+            base_url="http://testserver",
+            headers={"Origin": "http://testserver"},
+        ) as scoped:
             authenticate(scoped, person)
             assert scoped.get("/api/control/companies/" + c.id).status_code == expected
 
 
-def test_role_change_does_not_inherit_company_grants(client, staff_factory, db):
+def test_role_change_does_not_inherit_company_grants(
+    client, staff_factory, db, monkeypatch
+):
     owner = staff_factory()
     manager = staff_factory("Manager", "role-manager")
     support = staff_factory("Support", "role-support")
@@ -460,16 +497,33 @@ def test_role_change_does_not_inherit_company_grants(client, staff_factory, db):
     assert client.post(path, json={"staff_id": owner.id}).status_code == 422
     assert client.post(path, json={"staff_id": manager.id}).status_code == 200
     assert client.post(path, json={"staff_id": support.id}).status_code == 200
-    for target, role in [(support, "Manager"), (manager, "Support")]:
-        response = client.patch("/api/control/staff/" + target.id,
-                                json=dict(role=role, active=True, finance=False, reason="role changed"))
+    stamp = time.time()
+    for index, (target, role) in enumerate(
+        [(support, "Manager"), (manager, "Support")]
+    ):
+        monkeypatch.setattr(time, "time", lambda: stamp + (index + 1) * 30)
+        response = client.patch(
+            "/api/control/staff/" + target.id,
+            json=dict(
+                role=role,
+                active=True,
+                finance=False,
+                reason="role changed",
+                mfa_code=totp(SECRET, int(time.time()) // 30),
+            ),
+        )
         assert response.status_code == 200, response.text
     db.expire_all()
     assert db.get(Company, c.id).manager_id is None
     assert list(db.scalars(select(Grant).where(Grant.company_id == c.id))) == []
     from fastapi.testclient import TestClient
+
     for person in (manager, support):
-        with TestClient(client.app, base_url="http://testserver", headers={"Origin":"http://testserver"}) as scoped:
+        with TestClient(
+            client.app,
+            base_url="http://testserver",
+            headers={"Origin": "http://testserver"},
+        ) as scoped:
             authenticate(scoped, person)
             assert scoped.get("/api/control/companies/" + c.id).status_code == 404
 
@@ -482,9 +536,23 @@ def test_csrf_recovery_for_existing_session_and_logout(client, staff_factory, db
     # Simulate the original random-proof session used before this upgrade.
     session.csrf_hash = digest("old-random-proof")
     db.commit()
-    assert client.post("/api/control/auth/enrollment", headers={"X-Control-CSRF": ""}).status_code == 403
-    assert client.post("/api/control/auth/logout", headers={"X-Control-CSRF": "wrong"}).status_code == 403
-    for headers in ({"Origin": "https://evil.test"}, {"Sec-Fetch-Site": "same-site"}, {"Sec-Fetch-Site": "cross-site"}):
+    assert (
+        client.post(
+            "/api/control/auth/enrollment", headers={"X-Control-CSRF": ""}
+        ).status_code
+        == 403
+    )
+    assert (
+        client.post(
+            "/api/control/auth/logout", headers={"X-Control-CSRF": "wrong"}
+        ).status_code
+        == 403
+    )
+    for headers in (
+        {"Origin": "https://evil.test"},
+        {"Sec-Fetch-Site": "same-site"},
+        {"Sec-Fetch-Site": "cross-site"},
+    ):
         assert client.get("/api/control/auth/csrf", headers=headers).status_code == 403
     recovered = client.get("/api/control/auth/csrf")
     assert recovered.status_code == 200
@@ -493,9 +561,196 @@ def test_csrf_recovery_for_existing_session_and_logout(client, staff_factory, db
     assert recovered.json()["staff_id"] == owner.id
     assert proof != token and token not in recovered.text
     assert client.get("/api/control/auth/csrf").json()["csrf"] == proof
-    assert client.post("/api/control/auth/enrollment", headers={"X-Control-CSRF": "old-random-proof"}).status_code == 200
-    assert client.post("/api/control/auth/enrollment", headers={"X-Control-CSRF": proof}).status_code == 200
-    assert client.post("/api/control/auth/logout", headers={"X-Control-CSRF": proof}).status_code == 204
+    assert (
+        client.post(
+            "/api/control/auth/enrollment",
+            headers={"X-Control-CSRF": "old-random-proof"},
+        ).status_code
+        == 200
+    )
+    assert (
+        client.post(
+            "/api/control/auth/enrollment", headers={"X-Control-CSRF": proof}
+        ).status_code
+        == 200
+    )
+    assert (
+        client.post(
+            "/api/control/auth/logout", headers={"X-Control-CSRF": proof}
+        ).status_code
+        == 204
+    )
     assert client.get("/api/control/auth/csrf").status_code == 401
     client.cookies.set("carpot_control_session", token, path="/api/control")
     assert client.get("/api/control/auth/csrf").status_code == 401
+
+
+def test_privilege_change_requires_fresh_single_use_mfa(client, staff_factory, db):
+    owner, target = staff_factory(), staff_factory("Manager")
+    authenticate(client, owner)
+    body = dict(
+        role="Administrator", active=True, finance=True, reason="Approved access"
+    )
+    path = "/api/control/staff/" + target.id
+    assert client.patch(path, json=body).status_code == 403
+    db.refresh(owner)
+    replay = totp(SECRET, owner.last_totp_step)
+    assert client.patch(path, json=dict(body, mfa_code=replay)).status_code == 403
+    db.expire_all()
+    assert db.get(Staff, target.id).role == "Manager"
+    fresh = totp(SECRET, owner.last_totp_step + 1)
+    assert client.patch(path, json=dict(body, mfa_code=fresh)).status_code == 200
+    assert client.patch(path, json=dict(body, mfa_code=fresh)).status_code == 403
+    assert (
+        db.scalar(
+            select(func.count())
+            .select_from(Audit)
+            .where(Audit.permission == "staff.update")
+        )
+        == 1
+    )
+    assert fresh not in str([a.safe_diff for a in db.scalars(select(Audit))])
+
+
+def test_csrf_recovery_bound_to_expected_staff(client, staff_factory, db):
+    owner = staff_factory()
+    authenticate(client, owner)
+    c = company(db)
+    assert (
+        client.get(
+            "/api/control/companies/" + c.id,
+            headers={"X-Control-Staff": "different-staff"},
+        ).status_code
+        == 401
+    )
+    assert (
+        client.get(
+            "/api/control/auth/csrf", headers={"X-Control-Staff": "different-staff"}
+        ).status_code
+        == 401
+    )
+    recovered = client.get(
+        "/api/control/auth/csrf", headers={"X-Control-Staff": owner.id}
+    )
+    assert recovered.status_code == 200 and recovered.json()["staff_id"] == owner.id
+    client.headers["X-Control-CSRF"] = recovered.json()["csrf"]
+    assert (
+        client.post(
+            "/api/control/companies/" + c.id + "/notes",
+            json={"text": "new tab"},
+            headers={"X-Control-Staff": owner.id},
+        ).status_code
+        == 201
+    )
+
+
+@pytest.mark.parametrize("second_action", ["reassign", "revoked_note"])
+def test_concurrent_assignment_never_leaves_stale_manager_scope(
+    client, staff_factory, db, second_action
+):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Event
+    from sqlalchemy import event
+    from fastapi.testclient import TestClient
+
+    first_owner = staff_factory("Owner", "owner-one")
+    second_owner = staff_factory("Owner", "owner-two")
+    old = staff_factory("Manager", "old-manager")
+    new = staff_factory("Manager", "new-manager")
+    last = staff_factory("Manager", "last-manager")
+    c = company(db)
+    c.manager_id = old.id
+    db.add(Grant(company_id=c.id, staff_id=old.id))
+    db.commit()
+    authenticate(client, first_owner)
+    with TestClient(
+        client.app,
+        base_url="http://testserver",
+        headers={"Origin": "http://testserver"},
+    ) as other:
+        authenticate(other, second_owner if second_action == "reassign" else old)
+        first_deleted, release = Event(), Event()
+
+        def pause(conn, cursor, statement, params, context, many):
+            if not first_deleted.is_set() and statement.startswith(
+                "DELETE FROM control_center.company_grants"
+            ):
+                first_deleted.set()
+                if not release.wait(8):
+                    raise AssertionError(
+                        "Concurrent request did not finish synchronization"
+                    )
+
+        runtime = connection()
+        event.listen(runtime, "after_cursor_execute", pause)
+
+        def first():
+            return client.post(
+                "/api/control/companies/" + c.id + "/assign", json={"staff_id": new.id}
+            )
+
+        def second():
+            if second_action == "reassign":
+                return other.post(
+                    "/api/control/companies/" + c.id + "/assign",
+                    json={"staff_id": last.id},
+                )
+            return other.post(
+                "/api/control/companies/" + c.id + "/notes",
+                json={"text": "Revoked write must not commit"},
+            )
+
+        try:
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                one = pool.submit(first)
+                assert first_deleted.wait(5)
+                two = pool.submit(second)
+                try:
+                    deadline = time.monotonic() + 2
+                    observed = False
+                    # Observe actual PostgreSQL contention, rather than assume a scheduler delay.
+                    while time.monotonic() < deadline:
+                        with db.bind.connect() as probe:
+                            waiting = probe.scalar(
+                                text(
+                                    "SELECT count(*) FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock' AND query LIKE '%control_center.%'"
+                                )
+                            )
+                        if waiting or two.done():
+                            observed = True
+                            break
+                        time.sleep(0.01)
+                    assert observed, "Second request did not reach a database boundary"
+                finally:
+                    release.set()
+                assert one.result(timeout=5).status_code == 200
+                result = two.result(timeout=5)
+                assert result.status_code == (
+                    200 if second_action == "reassign" else 404
+                ), result.text
+        finally:
+            release.set()
+            event.remove(runtime, "after_cursor_execute", pause)
+    db.expire_all()
+    assert db.get(Company, c.id).manager_id == (
+        last.id if second_action == "reassign" else new.id
+    )
+    assert list(db.scalars(select(Grant.staff_id).where(Grant.company_id == c.id))) == [
+        last.id if second_action == "reassign" else new.id
+    ]
+    assert db.scalar(select(func.count()).select_from(Note)) == 0
+
+
+def test_step_up_attempt_budget_is_durable_and_separate_from_login(
+    client, staff_factory
+):
+    owner, target = staff_factory(), staff_factory("Manager")
+    authenticate(client, owner)
+    body = dict(role="Administrator", active=True, reason="Access review")
+    for _ in range(12):
+        assert (
+            client.patch("/api/control/staff/" + target.id, json=body).status_code
+            == 403
+        )
+    assert client.patch("/api/control/staff/" + target.id, json=body).status_code == 429
+    assert client.get("/api/control/auth/me").status_code == 200

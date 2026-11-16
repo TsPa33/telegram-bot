@@ -258,6 +258,13 @@ for (const [engine, driver] of Object.entries(engines)) {
           await page.getByRole("button", {name:"Увійти",exact:true}).waitFor();
           assert.equal((await context.request.get("/api/control/auth/me")).status(),401);
         }
+        if(width===320&&theme==='forest'){
+          await page.route('**/api/control/overview',route=>route.fulfill({status:401,json:{detail:'Session revoked'}}));
+          await page.getByRole('button',{name:'Оновити',exact:true}).click();
+          await page.getByLabel('Логін',{exact:true}).waitFor();
+          assert.equal(await page.getByRole('heading',{name:'Огляд Warehouse'}).count(),0,'revoked session clears protected UI');
+          assert.equal(await page.evaluate(()=>sessionStorage.getItem('control.csrf')),null);
+        }
         assert.deepEqual(errors, []);
         report.push({ engine, width, theme, status: "passed" });
         await context.close();

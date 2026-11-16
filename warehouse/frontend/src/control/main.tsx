@@ -455,6 +455,7 @@ function Workspace({ staff, logout }: { staff: Staff; logout: () => void }) {
 function App() {
   const [staff, setStaff] = useState<Staff | null>(null),
     [state, setState] = useState("loading");
+  useEffect(()=>{const reset=()=>{setStaff(null);setState('ready');};window.addEventListener('control:session-invalid',reset);return()=>window.removeEventListener('control:session-invalid',reset);},[]);
   useEffect(() => {
     api("/status")
       .then(() =>
