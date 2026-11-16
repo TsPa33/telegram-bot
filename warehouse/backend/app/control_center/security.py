@@ -13,12 +13,19 @@ from argon2.exceptions import InvalidHashError, VerificationError
 from fastapi import Depends, HTTPException, Request
 from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert
-from .config import cipher, environment, get_db
+from .config import cipher, environment, get_db, password_only
 from .models import Audit, Company, Grant, Session, Staff, Throttle, now, uid
 
 COOKIE = "carpot_control_session"
 COOKIE_PATH = "/api/control"
 AUDIENCE = "carpot-control-center"
+PASSWORD_AUDIENCE = "carpot-control-password-staging"
+
+
+def session_audience():
+    return PASSWORD_AUDIENCE if password_only() else AUDIENCE
+
+
 hasher = PasswordHasher()
 DUMMY = hasher.hash(secrets.token_urlsafe(32))
 
@@ -101,8 +108,9 @@ def login(db, username, password, code, ip):
         hasher.verify(staff.password_hash if staff else DUMMY, password)
     except (VerificationError, InvalidHashError):
         valid = False
+    simplified = password_only()
     step = None
-    if valid and staff and staff.active:
+    if valid and staff and staff.active and not simplified:
         try:
             step = mfa_step(
                 cipher().decrypt(staff.mfa_ciphertext.encode()).decode(),
@@ -111,7 +119,7 @@ def login(db, username, password, code, ip):
             )
         except (InvalidToken, ValueError):
             step = None
-    if step is None:
+    if not (valid and staff and staff.active and (simplified or step is not None)):
         audit(
             db,
             staff.id if staff else "anonymous",
@@ -121,8 +129,9 @@ def login(db, username, password, code, ip):
             result="denied",
         )
         db.commit()
-        raise HTTPException(401, "Перевірте логін, пароль і MFA-код")
-    staff.last_totp_step = step
+        raise HTTPException(401, "Перевірте облікові дані")
+    if step is not None:
+        staff.last_totp_step = step
     token = secrets.token_urlsafe(48)
     csrf = session_csrf(token)
     db.add(
@@ -130,12 +139,19 @@ def login(db, username, password, code, ip):
             token_hash=digest(token),
             staff_id=staff.id,
             csrf_hash=digest(csrf),
-            audience=AUDIENCE,
-            mfa_verified=True,
+            audience=session_audience(),
+            mfa_verified=not simplified,
             expires_at=now() + timedelta(hours=4),
         )
     )
-    audit(db, staff.id, "auth.login", "staff", "session")
+    audit(
+        db,
+        staff.id,
+        "auth.login",
+        "staff",
+        "session",
+        diff={"auth_mode": "password-only" if simplified else "mfa"},
+    )
     db.commit()
     return staff, token, csrf
 
@@ -145,11 +161,11 @@ def identity(request: Request, db=Depends(get_db)):
     session = db.get(Session, digest(token)) if token else None
     if (
         not session
-        or session.audience != AUDIENCE
-        or not session.mfa_verified
+        or session.audience != session_audience()
+        or (not password_only() and not session.mfa_verified)
         or session.expires_at <= now()
     ):
-        raise HTTPException(401, "Увійдіть із staff MFA")
+        raise HTTPException(401, "Увійдіть у staff-акаунт")
     # Serialize staff commands with revoke/role changes, including in-flight writes.
     staff = db.scalar(
         select(Staff)
@@ -228,9 +244,17 @@ def revoke(db, staff_id):
     db.execute(delete(Session).where(Session.staff_id == staff_id))
 
 
-def require_step_up(db, staff, code, *, ip):
-    """A fresh single-use MFA code for staff privilege changes, in the same tx."""
+def require_step_up(db, staff, code, *, ip, password=None):
+    """Policy-bound step-up for privilege changes in the same transaction."""
     throttle(db, staff.username, ip, operation="step-up", commit=False)
+    if password_only():
+        try:
+            hasher.verify(staff.password_hash, password or "")
+        except (VerificationError, InvalidHashError):
+            audit(db, staff.id, "staff.step_up", "staff", staff.id, result="denied")
+            db.commit()
+            raise HTTPException(403, "Підтвердьте дію поточним паролем") from None
+        return
     step = None
     try:
         if code:
@@ -246,3 +270,49 @@ def require_step_up(db, staff, code, *, ip):
         db.commit()
         raise HTTPException(403, "Для зміни доступу потрібен новий одноразовий MFA-код")
     staff.last_totp_step = step
+
+
+def retire_staging_owner_mfa():
+    """One-time retirement of preview keys and pending session-bound enrollment."""
+    if not password_only():
+        return 0
+    from sqlalchemy.orm import Session as DBSession
+    from .config import connection
+
+    count = 0
+    with DBSession(connection()) as db:
+        owners = db.scalars(
+            select(Staff)
+            .where(Staff.role == "Owner")
+            .order_by(Staff.id)
+            .with_for_update()
+        ).all()
+        for staff in owners:
+            retired = db.scalar(
+                select(Audit.id)
+                .where(
+                    Audit.actor == staff.id,
+                    Audit.permission == "auth.mfa_retired",
+                    Audit.result == "success",
+                )
+                .limit(1)
+            )
+            if retired:
+                continue
+            # Never reuse or reveal a screenshot/enrollment seed. No new seed is enrolled.
+            staff.mfa_ciphertext = (
+                cipher().encrypt(base64.b32encode(secrets.token_bytes(20))).decode()
+            )
+            staff.last_totp_step = -1
+            revoke(db, staff.id)
+            audit(
+                db,
+                staff.id,
+                "auth.mfa_retired",
+                "staff",
+                staff.id,
+                reason="staging password-only policy; secure re-enrollment required before MFA use",
+            )
+            count += 1
+        db.commit()
+    return count

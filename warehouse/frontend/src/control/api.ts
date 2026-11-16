@@ -70,7 +70,7 @@ export async function api(path: string, method = "GET", body?: unknown) {
     sessionStorage.setItem(storageKey, value.csrf);
   } else if (path === "/auth/me") {
     expectedStaff = value.id;
-  } else if (path === "/auth/logout" || path === "/auth/rotate") {
+  } else if (path === "/auth/logout" || path === "/auth/rotate" || path === "/auth/password") {
     expectedStaff = null;
     sessionStorage.removeItem(storageKey);
   }

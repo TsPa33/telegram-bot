@@ -150,7 +150,7 @@ def test_production_workspace_cannot_adopt_sandbox_binding(db):
     assert link.status == "conflict"
 
 
-def test_real_sync_requires_rotation_and_archives_only_demo(db, monkeypatch):
+def test_real_sync_without_rotation_archives_only_demo(db, monkeypatch):
     from app.control_center import projection, sync_worker
     from app.control_center.models import Audit, Staff
     from app.control_center.security import audit
@@ -180,20 +180,6 @@ def test_real_sync_requires_rotation_and_archives_only_demo(db, monkeypatch):
     real["snapshot"]["source_environment"] = "staging"
     monkeypatch.setattr(source_client, "fetch_batch", lambda *a: ([real], None))
     monkeypatch.setattr(sync_worker, "connection", lambda: db.bind)
-    assert sync_worker.refresh_once() == 15
-    db.expire_all()
-    assert db.get(Company, demo.id).environment == "staging"
-    owner = Staff(
-        username="owner-preview",
-        role="Owner",
-        password_hash="test",
-        mfa_ciphertext="test",
-        active=True,
-    )
-    db.add(owner)
-    db.flush()
-    audit(db, owner.id, "auth.rotate", "staff", owner.id)
-    db.commit()
     assert sync_worker.refresh_once() == 300
     db.expire_all()
     assert db.get(Company, demo.id).environment == "preview"
@@ -214,11 +200,11 @@ def test_real_sync_requires_rotation_and_archives_only_demo(db, monkeypatch):
     )
 
 
-def test_denied_rotation_audit_does_not_enable_source_refresh(db, monkeypatch):
+def test_rotation_audit_cannot_override_production_source_guard(db, monkeypatch):
     from app.control_center import sync_worker
     from app.control_center.models import Staff, Audit
 
-    monkeypatch.setenv("CONTROL_CENTER_SOURCE_ENVIRONMENT", "staging")
+    monkeypatch.setenv("CONTROL_CENTER_SOURCE_ENVIRONMENT", "production")
     monkeypatch.setenv("CONTROL_CENTER_PREVIEW", "true")
     monkeypatch.setenv(
         "CONTROL_CENTER_WAREHOUSE_SOURCE_URL", "https://source.example.test"
@@ -250,4 +236,4 @@ def test_denied_rotation_audit_does_not_enable_source_refresh(db, monkeypatch):
         raise AssertionError("Denied MFA attempt must not unlock source sync")
 
     monkeypatch.setattr(sync_worker, "sync_batch", unexpected)
-    assert sync_worker.refresh_once() == 15
+    assert sync_worker.refresh_once() == 300

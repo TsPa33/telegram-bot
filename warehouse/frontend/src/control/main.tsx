@@ -13,6 +13,8 @@ import "./style.css";
 function Login({ onLogin }: { onLogin: (s: Staff) => void }) {
   const [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
+  const [policy, setPolicy] = useState<Row | null>(null);
+  useEffect(() => { let live = true; api("/status").then(p => { if(live) setPolicy(p); }).catch(e => { if(live) setError(e.message); }); return () => { live=false; }; }, []);
   return (
     <main className="cc-login">
       <section>
@@ -58,7 +60,7 @@ function Login({ onLogin }: { onLogin: (s: Staff) => void }) {
               maxLength={128}
             />
           </label>
-          <label>
+          {policy?.auth_mode === "mfa" && <label>
             MFA-код
             <input
               name="code"
@@ -68,9 +70,9 @@ function Login({ onLogin }: { onLogin: (s: Staff) => void }) {
               maxLength={6}
               required
             />
-          </label>
-          <State loading={busy} error={error} />
-          <button disabled={busy}>{busy ? "Перевіряємо…" : "Увійти"}</button>
+          </label>}
+          <State loading={busy || !policy} error={error} />
+          <button disabled={busy || !policy}>{busy ? "Перевіряємо…" : "Увійти"}</button>
         </form>
         <small>Доступ створює оператор. Публічної реєстрації немає.</small>
       </section>
@@ -158,7 +160,7 @@ function Workspace({ staff, logout }: { staff: Staff; logout: () => void }) {
           ))}
         </nav>
         <div className="cc-sidebar-bottom">
-        {staff.role === "Owner" && <button className="cc-security-nav" aria-current={tab==="security"?"page":undefined} onClick={()=>setTab("security")}><ShieldCheck size={18}/> Безпека</button>}
+        <button className="cc-security-nav" aria-current={tab==="security"?"page":undefined} onClick={()=>setTab("security")}><ShieldCheck size={18}/> Безпека</button>
         <div className="cc-user"><strong>{staff.username}</strong><small>{({Owner:"Власник",Administrator:"Адміністратор",Manager:"Менеджер",Support:"Підтримка"} as Record<string,string>)[staff.role]||staff.role}</small></div>
         <ThemeSwitch />
         <button
@@ -194,7 +196,7 @@ function Workspace({ staff, logout }: { staff: Staff; logout: () => void }) {
           <button onClick={refresh}><RefreshCw size={16}/> Оновити</button>
         </header>
         <State error={error} loading={loading} />
-        {overview?.preview && <div className="cc-preview-banner" role="status"><span>Демонстраційні дані. {overview.source_configured ? (overview.credentials_rotated ? "Підключення клієнтів Warehouse виконується автоматично." : "Змініть початковий пароль і MFA, щоб підключити клієнтів Warehouse.") : "Реальні клієнти ще не підключені."}</span>{staff.role==="Owner" && !overview.credentials_rotated && overview.source_configured && <button onClick={()=>setTab("security")}>Налаштувати захист</button>}</div>}
+        {overview?.preview && <div className="cc-preview-banner" role="status"><span>Демонстраційні дані. {overview.source_configured ? "Клієнти Warehouse завантажуються автоматично. Стан джерела показано в огляді." : "Реальні клієнти ще не підключені."}</span></div>}
         {overview && (
           <p className={"cc-source " + overview.source.state} role="status">
             {overview.source.state === "fresh"
@@ -206,7 +208,7 @@ function Workspace({ staff, logout }: { staff: Staff; logout: () => void }) {
             {date(overview.source.last_success)}. Час: Київ.
           </p>
         )}
-        {tab === "security" && staff.role === "Owner" && <SecuritySettings logout={logout}/>}
+        {tab === "security" && <SecuritySettings logout={logout} passwordOnly={overview?.auth_mode === "password-only"} canRotateMfa={staff.role === "Owner"}/>}
         {tab === "overview" && overview && (
           <>
             <div className="cc-metrics">

@@ -15,7 +15,15 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import DateTime, cast, delete, func, select, tuple_, update
 from sqlalchemy.exc import SQLAlchemyError
 from . import security as sec
-from .config import cipher, enabled, environment, get_db, origin
+from .config import (
+    cipher,
+    enabled,
+    environment,
+    get_db,
+    origin,
+    auth_mode,
+    password_only,
+)
 from .models import (
     Audit,
     Company,
@@ -36,7 +44,7 @@ class Input(BaseModel):
 class Login(Input):
     username: str = Field(min_length=1, max_length=120)
     password: str = Field(min_length=1, max_length=128)
-    code: str = Field(min_length=6, max_length=6)
+    code: str | None = Field(default=None, min_length=6, max_length=6)
 
 
 class Rotate(Input):
@@ -45,6 +53,12 @@ class Rotate(Input):
     new_password: str = Field(min_length=12, max_length=128)
     new_code: str = Field(pattern=r"^[0-9]{6}$")
     enrollment: str = Field(min_length=1, max_length=2048)
+
+
+class PasswordChange(Input):
+    current_password: str = Field(min_length=1, max_length=128)
+    new_password: str = Field(min_length=12, max_length=128)
+    mfa_code: str | None = Field(default=None, pattern=r"^[0-9]{6}$")
 
 
 class NoteInput(Input):
@@ -56,6 +70,7 @@ class Assign(Input):
 
 
 class StaffUpdate(Input):
+    current_password: str | None = Field(default=None, max_length=128)
     mfa_code: str | None = Field(default=None, pattern=r"^[0-9]{6}$")
     role: str = Field(pattern="^(Owner|Administrator|Manager|Support)$")
     active: bool
@@ -220,7 +235,7 @@ def create_app():
 
     @app.get("/status")
     def status():
-        return dict(enabled=True, environment=environment())
+        return dict(enabled=True, environment=environment(), auth_mode=auth_mode())
 
     @app.post("/auth/login")
     def login(data: Login, request: Request, response: Response, db=Depends(get_db)):
@@ -228,7 +243,7 @@ def create_app():
             db,
             data.username,
             data.password,
-            data.code,
+            data.code or "",
             request.client.host if request.client else "unknown",
         )
         response.set_cookie(
@@ -277,10 +292,54 @@ def create_app():
             samesite="strict",
         )
 
+    @app.post("/auth/password", status_code=204)
+    def change_password(
+        data: PasswordChange,
+        request: Request,
+        response: Response,
+        staff=Depends(sec.identity),
+        db=Depends(get_db),
+    ):
+        sec.throttle(
+            db,
+            staff.username,
+            request.client.host if request.client else "unknown",
+            operation="password-change",
+            commit=False,
+        )
+        try:
+            sec.hasher.verify(staff.password_hash, data.current_password)
+            if data.new_password == data.current_password:
+                raise ValueError()
+        except (VerificationError, InvalidHashError, ValueError):
+            sec.audit(db, staff.id, "auth.password", "staff", staff.id, result="denied")
+            db.commit()
+            raise HTTPException(422, "Перевірте поточний і новий пароль") from None
+        if not password_only():
+            sec.require_step_up(
+                db,
+                staff,
+                data.mfa_code,
+                ip=request.client.host if request.client else "unknown",
+            )
+        staff.password_hash = sec.hasher.hash(data.new_password)
+        sec.revoke(db, staff.id)
+        sec.audit(db, staff.id, "auth.password", "staff", staff.id)
+        db.commit()
+        response.delete_cookie(
+            sec.COOKIE,
+            path=sec.COOKIE_PATH,
+            secure=environment() != "local",
+            httponly=True,
+            samesite="strict",
+        )
+
     @app.post("/auth/enrollment")
     def enrollment(request: Request, staff=Depends(sec.identity)):
         if staff.role != "Owner":
             raise HTTPException(403, "Лише власник")
+        if password_only():
+            raise HTTPException(409, "MFA-налаштування вимкнено політикою staging")
         seed = base64.b32encode(secrets.token_bytes(20)).decode()
         payload = json.dumps(
             {
@@ -301,6 +360,8 @@ def create_app():
     ):
         if staff.role != "Owner":
             raise HTTPException(403, "Лише власник")
+        if password_only():
+            raise HTTPException(409, "Скористайтеся звичайною зміною пароля")
         sec.throttle(
             db,
             staff.username,
@@ -393,6 +454,7 @@ def create_app():
             db,
             staff,
             data.mfa_code,
+            password=data.current_password,
             ip=request.client.host if request.client else "unknown",
         )
         target = db.get(Staff, staff_id, with_for_update=True)
@@ -607,7 +669,11 @@ def create_app():
             bool(
                 db.scalar(
                     select(Audit.id)
-                    .where(Audit.permission == "auth.rotate", Audit.actor == staff.id)
+                    .where(
+                        Audit.permission == "auth.rotate",
+                        Audit.result == "success",
+                        Audit.actor == staff.id,
+                    )
                     .limit(1)
                 )
             )
@@ -622,6 +688,8 @@ def create_app():
         return dict(
             new_30d=new_count if source["state"] != "unavailable" else None,
             credentials_rotated=rotated,
+            auth_mode=auth_mode(),
+            sync_requires_rotation=False,
             source_configured=bool(os.getenv("CONTROL_CENTER_WAREHOUSE_SOURCE_URL")),
             expiring_14d=expiring if source["state"] != "unavailable" else None,
             conflicts=conflicts if source["state"] != "unavailable" else None,

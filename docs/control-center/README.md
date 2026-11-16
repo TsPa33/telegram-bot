@@ -226,3 +226,38 @@ Credential-rotation failures have their own durable account/IP attempt budget.
 Denied rotation audits cannot satisfy the source-refresh gate, which requires
 `auth.rotate` with result `success`. Existing CSRF proof recovery and signed
 source/deployment contracts from the intervening commits remain unchanged.
+
+
+## Staging password-only policy — 2026-11-16 (supersedes rotation prerequisite)
+
+Owner-authorized simplified access is opt-in with CONTROL_CENTER_AUTH_MODE=password-only.
+For Railway staging it additionally requires CONTROL_CENTER_SOURCE_ENVIRONMENT=staging,
+the actual RAILWAY_ENVIRONMENT_NAME=warehouse-staging, and a nonempty
+CONTROL_CENTER_PASSWORD_ONLY_ENVIRONMENT_ID matching RAILWAY_ENVIRONMENT_ID.
+Copying staging configuration into a different runtime/production environment cannot
+activate it. Local mode requires a loopback/test origin and no Railway environment
+identity. All other configurations, including the default, require MFA.
+
+The login form reads the server policy; password-only hides Authenticator. Sessions
+retain Argon2 verification, durable account/IP limits, hashed opaque tokens, separate
+audience, CSRF/Origin protection, HttpOnly/Secure/SameSite cookies, RBAC and safe audit.
+A password-only session is not MFA-verified and is rejected if MFA policy returns.
+Staff privilege step-up uses the current password in simplified mode and a fresh
+single-use MFA code otherwise. All staff can change their own password in Settings;
+this revokes all their sessions. No public registration or reset endpoint exists.
+
+At simplified-mode startup, existing preview Owner MFA seeds are replaced once with
+unshared random material, old sessions are revoked and auth.mfa_retired is audited.
+No screenshot seed is read, installed or reused. Pending session-bound enrollments
+cannot be completed: enrollment/combined rotation are disabled under this policy.
+The password remains unchanged. Retired preview keys require secure operator
+re-enrollment before returning that same database to MFA use; toggling back must
+not restore a disclosed key. This does not touch the separate production database.
+
+Automatic source sync now depends on the existing AUTO_SYNC/ENABLED/PREVIEW/staging
+source configuration and signed staging HTTPS authorization, not staff rotation.
+Successful pages preserve historical demo records in the preview namespace. Logs
+emit only aggregate counts, source coverage and freshness; failures are sanitized.
+Do not interpret projected directory counts as a live census with tombstones applied.
+No migration, seed reset, customer/finance mutation or other product adapter is added.
+See Checkpoint 009 for deployment and actual acceptance evidence.

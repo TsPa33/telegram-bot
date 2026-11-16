@@ -19,7 +19,7 @@ key = Fernet.generate_key().decode()
 os.environ.update(
     CONTROL_CENTER_ENABLED="true",
     CONTROL_CENTER_SOURCE_ENVIRONMENT="local",
-    CONTROL_CENTER_ORIGIN="http://127.0.0.1:5269",
+    CONTROL_CENTER_ORIGIN=os.getenv("CONTROL_CENTER_BROWSER_ORIGIN", "http://127.0.0.1:5269"),
     CONTROL_CENTER_MFA_KEY=key,
     CONTROL_CENTER_DATABASE_URL=url.replace(
         "postgres:disposable-control-tests-only", "cc_app:cc-local-tests-only"
@@ -123,7 +123,7 @@ static_dir = os.getenv("CONTROL_CENTER_BROWSER_STATIC_DIR")
 if static_dir:
     from app.control_center.asgi import create_standalone
     parent = create_standalone(Path(static_dir).resolve())
-    port = 5269
+    port = int(os.getenv("CONTROL_CENTER_BROWSER_PORT", "5269"))
 else:
     parent = FastAPI()
     parent.mount("/api/control", create_app())

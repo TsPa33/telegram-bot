@@ -18,6 +18,32 @@ def environment():
     return value
 
 
+def password_only():
+    """Explicit opt-in, bound to the actual non-production runtime identity."""
+    if os.getenv("CONTROL_CENTER_AUTH_MODE", "mfa") != "password-only":
+        return False
+    env = environment()
+    runtime = os.getenv("RAILWAY_ENVIRONMENT_NAME", "")
+    runtime_id = os.getenv("RAILWAY_ENVIRONMENT_ID", "")
+    if env == "local":
+        return (
+            not runtime
+            and not runtime_id
+            and urlsplit(origin()).hostname in {"localhost", "127.0.0.1", "testserver"}
+        )
+    expected_id = os.getenv("CONTROL_CENTER_PASSWORD_ONLY_ENVIRONMENT_ID", "")
+    return (
+        env == "staging"
+        and runtime == "warehouse-staging"
+        and bool(expected_id)
+        and runtime_id == expected_id
+    )
+
+
+def auth_mode():
+    return "password-only" if password_only() else "mfa"
+
+
 def origin():
     value = os.getenv("CONTROL_CENTER_ORIGIN", "")
     p = urlsplit(value)
