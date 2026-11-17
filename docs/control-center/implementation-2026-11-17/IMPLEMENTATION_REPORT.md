@@ -68,9 +68,37 @@ Activity sort, daily series, глобальний attention aggregate, MRR/churn
 інтеграцій. Операційний доступ показаний неперевіреним, коли немає відповідного
 серверного evidence. Повний WCAG-аудит і runtime acceptance на staging ще потрібні.
 
+## Зображення фактичного React UI
+
+**Synthetic local API fixtures, не живі компанії або staging metrics.**
+Одна й та сама production React implementation; дані надходять із disposable API.
+
+![Огляд у Forest Slate](screenshots/overview.png)
+
+[Каталог](screenshots/clients.png) · [Профіль](screenshots/profile.png) ·
+[Черга — чесний empty state](screenshots/queue.png) ·
+[Mobile 390](screenshots/mobile.png)
+
 ## Перевірка та release gate
 
-Результати завершених перевірок і точний SHA — у
+Implementation SHA: `472d9ad1339c7f714c7b350e98b2932765571650`.
+[Незалежний CI](https://github.com/TsPa33/telegram-bot/actions/runs/44050429380):
+**4 jobs SUCCESS**, довгий Warehouse regression явно пропущений.
+
+| Перевірка | Результат |
+| --- | --- |
+| Staff security/projection | 60 PASS |
+| Чинний frontend prebuild | 275 PASS |
+| Нові model unit | 5 PASS |
+| Chromium/WebKit × 4 widths × 4 themes | 32 PASS |
+| Manager/Support/Administrator browsers | 6 PASS |
+| API failures/out-of-order reads/long name | 4 PASS |
+| Password-only/password change/CSRF/logout | 4 PASS |
+| Billing compatibility | 145 PASS у CI |
+| TypeScript/customer + staff builds | PASS |
+| Non-root staff-only image smoke | PASS у CI |
+
+Повний список змінених компонентів наведено вище. Результати і source boundaries — у
 [`Checkpoint 012`](../Checkpoint_012_Review_02_Implementation.md).
 Browser fixtures — лише synthetic loopback PostgreSQL/API, не production або staging.
 Тестовий helper розширено opt-in прапорцем для 25 записів, UNKNOWN/over-quota та

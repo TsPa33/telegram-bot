@@ -19,8 +19,12 @@ domain code та інші продукти не змінено. Наявний r
 
 Перевірки та межі доказів:
 
-- Targeted staff security/projection, model/unit/build і real React browser tests
-  описані в Checkpoint 012 та implementation report.
+- Незалежний CI https://github.com/TsPa33/telegram-bot/actions/runs/44050429380
+  на SHA `472d9ad1339c7f714c7b350e98b2932765571650`: 4 jobs SUCCESS.
+- Staff security/projection 60, frontend prebuild 275, model unit 5, real React
+  browser matrix 32 + role 6 + resilience 4 + password-only 4, Billing compatibility
+  145 PASS; TypeScript/build та non-root staff-only image smoke PASS.
+- Receipts, screenshots і всі межі — у Checkpoint 012 та implementation report.
 - Manual Control Center gate може пропускати довгий Warehouse domain regression
   через `warehouse_full=false`; звичайні PR/push gates залишаються незмінними.
 - Browser acceptance використовує лише disposable synthetic local PostgreSQL/API.

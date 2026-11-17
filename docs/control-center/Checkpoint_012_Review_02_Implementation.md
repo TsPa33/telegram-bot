@@ -13,8 +13,10 @@ Implementation SHA — перший commit, що додає цей checkpoint:
 git log --diff-filter=A --format=%H -- docs/control-center/Checkpoint_012_Review_02_Implementation.md
 ```
 
-Повний SHA і незалежний CI run будуть наведені у release receipt та фінальному
-handoff. Наступні коміти до початку цієї роботи не виявлено; перед push head
+Implementation SHA: `472d9ad1339c7f714c7b350e98b2932765571650`.
+Незалежний [CI run 44050429380](https://github.com/TsPa33/telegram-bot/actions/runs/44050429380)
+перевірив саме цей SHA та завершився SUCCESS. Наступний docs-only commit
+додає receipts і не змінює перевірений код. Наступні коміти до початку цієї роботи не виявлено; перед push head
 перевіряється повторно. Force push, merge/main і Railway deployment заборонені
 межами цього пакета.
 
@@ -63,14 +65,21 @@ Telegram/Sites/Billing integration не починалася.
   login/password change/relogin, CSRF recovery, logout401.
 - Source boundary, auth transport comparison, workflow YAML та whitespace: PASS.
 
-Незалежний CI receipt фіксується окремо після завершення запуску.
-Локальні результати не видаються за GitHub Actions success.
+Незалежний CI на implementation SHA: **4 jobs SUCCESS** — staff-and-projections
+(60 PASS), browsers (275 prebuild + 5 model unit; 32 matrix + 6 role + 4 resilience
++ 4 password-only PASS), standalone-image (non-root staff-only image smoke),
+billing-compatibility (145 PASS). `warehouse-regressions` — явний manual SKIP,
+не success і не повторний 1025-case regression.
+
+Sanitized receipts: [local-verification.json](implementation-2026-11-17/local-verification.json),
+[ci-verification.json](implementation-2026-11-17/ci-verification.json).
+Перевірено logs результатів, не лише статус run.
 Попередні 639 frontend або 1025 Warehouse результати не видаються за новий запуск.
 Повний багатогодинний Warehouse regression не запускався: domain code незмінний.
 
 ## Готовність та обмеження
 
-Локальний targeted gate пройдено. Пакет потребує незалежного CI та code review перед окремим staging
+Локальний targeted gate та незалежний CI пройдено. Пакет потребує code review перед окремим staging
 rollout. Staging/runtime acceptance і реальна Directory freshness цією роботою
 не перевірялися. **Deployment ID відсутній: Railway не розгортали.**
 
