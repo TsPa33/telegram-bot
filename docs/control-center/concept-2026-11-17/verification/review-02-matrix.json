@@ -1,0 +1,730 @@
+{
+  "configurations": 32,
+  "screenChecks": 160,
+  "profileSectionChecks": 224,
+  "issues": [],
+  "results": [
+    {
+      "engine": "chromium",
+      "theme": "light",
+      "width": 320,
+      "screenChecks": 5,
+      "profileSectionChecks": 7,
+      "errors": [],
+      "external": []
+    },
+    {
+      "engine": "chromium",
+      "theme": "light",
+      "width": 390,
+      "screenChecks": 5,
+      "profileSectionChecks": 7,
+      "errors": [],
+      "external": []
+    },
+    {
+      "engine": "chromium",
+      "theme": "light",
+      "width": 768,
+      "screenChecks": 5,
+      "profileSectionChecks": 7,
+      "errors": [],
+      "external": []
+    },
+    {
+      "engine": "chromium",
+      "theme": "light",
+      "width": 1440,
+      "screenChecks": 5,
+      "profileSectionChecks": 7,
+      "errors": [],
+      "external": []
+    },
+    {
+      "engine": "chromium",
+      "theme": "onyx",
+      "width": 320,
+      "screenChecks": 5,
+      "profileSectionChecks": 7,
+      "errors": [],
+      "external": []
+    },
+    {
+      "engine": "chromium",
+      "theme": "onyx",
+      "width": 390,
+      "screenChecks": 5,
+      "profileSectionChecks": 7,
+      "errors": [],
+      "external": []
+    },
+    {
+      "engine": "chromium",
+      "theme": "onyx",
+      "width": 768,
+      "screenChecks": 5,
+      "profileSectionChecks": 7,
+      "errors": [],
+      "external": []
+    },
+    {
+      "engine": "chromium",
+      "theme": "onyx",
+      "width": 1440,
+      "screenChecks": 5,
+      "profileSectionChecks": 7,
+      "errors": [],
+      "external": []
+    },
+    {
+      "engine": "chromium",
+      "theme": "gold",
+      "width": 320,
+      "screenChecks": 5,
+      "profileSectionChecks": 7,
+      "errors": [],
+      "external": []
+    },
+    {
+      "engine": "chromium",
+      "theme": "gold",
+      "width": 390,
+      "screenChecks": 5,
+      "profileSectionChecks": 7,
+      "errors": [],
+      "external": []
+    },
+    {
+      "engine": "chromium",
+      "theme": "gold",
+      "width": 768,
+      "screenChecks": 5,
+      "profileSectionChecks": 7,
+      "errors": [],
+      "external": []
+    },
+    {
+      "engine": "chromium",
+      "theme": "gold",
+      "width": 1440,
+      "screenChecks": 5,
+      "profileSectionChecks": 7,
+      "errors": [],
+      "external": []
+    },
+    {
+      "engine": "chromium",
+      "theme": "forest",
+      "width": 320,
+      "screenChecks": 5,
+      "profileSectionChecks": 7,
+      "errors": [],
+      "external": []
+    },
+    {
+      "engine": "chromium",
+      "theme": "forest",
+      "width": 390,
+      "screenChecks": 5,
+      "profileSectionChecks": 7,
+      "errors": [],
+      "external": []
+    },
+    {
+      "engine": "chromium",
+      "theme": "forest",
+      "width": 768,
+      "screenChecks": 5,
+      "profileSectionChecks": 7,
+      "errors": [],
+      "external": []
+    },
+    {
+      "engine": "chromium",
+      "theme": "forest",
+      "width": 1440,
+      "screenChecks": 5,
+      "profileSectionChecks": 7,
+      "errors": [],
+      "external": []
+    },
+    {
+      "engine": "webkit",
+      "theme": "light",
+      "width": 320,
+      "screenChecks": 5,
+      "profileSectionChecks": 7,
+      "errors": [],
+      "external": []
+    },
+    {
+      "engine": "webkit",
+      "theme": "light",
+      "width": 390,
+      "screenChecks": 5,
+      "profileSectionChecks": 7,
+      "errors": [],
+      "external": []
+    },
+    {
+      "engine": "webkit",
+      "theme": "light",
+      "width": 768,
+      "screenChecks": 5,
+      "profileSectionChecks": 7,
+      "errors": [],
+      "external": []
+    },
+    {
+      "engine": "webkit",
+      "theme": "light",
+      "width": 1440,
+      "screenChecks": 5,
+      "profileSectionChecks": 7,
+      "errors": [],
+      "external": []
+    },
+    {
+      "engine": "webkit",
+      "theme": "onyx",
+      "width": 320,
+      "screenChecks": 5,
+      "profileSectionChecks": 7,
+      "errors": [],
+      "external": []
+    },
+    {
+      "engine": "webkit",
+      "theme": "onyx",
+      "width": 390,
+      "screenChecks": 5,
+      "profileSectionChecks": 7,
+      "errors": [],
+      "external": []
+    },
+    {
+      "engine": "webkit",
+      "theme": "onyx",
+      "width": 768,
+      "screenChecks": 5,
+      "profileSectionChecks": 7,
+      "errors": [],
+      "external": []
+    },
+    {
+      "engine": "webkit",
+      "theme": "onyx",
+      "width": 1440,
+      "screenChecks": 5,
+      "profileSectionChecks": 7,
+      "errors": [],
+      "external": []
+    },
+    {
+      "engine": "webkit",
+      "theme": "gold",
+      "width": 320,
+      "screenChecks": 5,
+      "profileSectionChecks": 7,
+      "errors": [],
+      "external": []
+    },
+    {
+      "engine": "webkit",
+      "theme": "gold",
+      "width": 390,
+      "screenChecks": 5,
+      "profileSectionChecks": 7,
+      "errors": [],
+      "external": []
+    },
+    {
+      "engine": "webkit",
+      "theme": "gold",
+      "width": 768,
+      "screenChecks": 5,
+      "profileSectionChecks": 7,
+      "errors": [],
+      "external": []
+    },
+    {
+      "engine": "webkit",
+      "theme": "gold",
+      "width": 1440,
+      "screenChecks": 5,
+      "profileSectionChecks": 7,
+      "errors": [],
+      "external": []
+    },
+    {
+      "engine": "webkit",
+      "theme": "forest",
+      "width": 320,
+      "screenChecks": 5,
+      "profileSectionChecks": 7,
+      "errors": [],
+      "external": []
+    },
+    {
+      "engine": "webkit",
+      "theme": "forest",
+      "width": 390,
+      "screenChecks": 5,
+      "profileSectionChecks": 7,
+      "errors": [],
+      "external": []
+    },
+    {
+      "engine": "webkit",
+      "theme": "forest",
+      "width": 768,
+      "screenChecks": 5,
+      "profileSectionChecks": 7,
+      "errors": [],
+      "external": []
+    },
+    {
+      "engine": "webkit",
+      "theme": "forest",
+      "width": 1440,
+      "screenChecks": 5,
+      "profileSectionChecks": 7,
+      "errors": [],
+      "external": []
+    }
+  ],
+  "contrast": [
+    {
+      "engine": "chromium",
+      "theme": "light",
+      "pairs": [
+        {
+          "fg": "--text",
+          "bg": "--surface",
+          "min": 4.5,
+          "ratio": 14.39
+        },
+        {
+          "fg": "--muted",
+          "bg": "--surface",
+          "min": 4.5,
+          "ratio": 4.88
+        },
+        {
+          "fg": "--muted",
+          "bg": "--subtle",
+          "min": 4.5,
+          "ratio": 4.58
+        },
+        {
+          "fg": "--accent",
+          "bg": "--tint",
+          "min": 4.5,
+          "ratio": 6.08
+        },
+        {
+          "fg": "--success-text",
+          "bg": "--success-bg",
+          "min": 4.5,
+          "ratio": 6.58
+        },
+        {
+          "fg": "--danger",
+          "bg": "--danger-bg",
+          "min": 4.5,
+          "ratio": 5.32
+        },
+        {
+          "fg": "--amber",
+          "bg": "--amber-bg",
+          "min": 4.5,
+          "ratio": 4.9
+        },
+        {
+          "fg": "--control-line",
+          "bg": "--surface",
+          "min": 3,
+          "ratio": 3.64
+        }
+      ]
+    },
+    {
+      "engine": "chromium",
+      "theme": "onyx",
+      "pairs": [
+        {
+          "fg": "--text",
+          "bg": "--surface",
+          "min": 4.5,
+          "ratio": 14.63
+        },
+        {
+          "fg": "--muted",
+          "bg": "--surface",
+          "min": 4.5,
+          "ratio": 8.4
+        },
+        {
+          "fg": "--muted",
+          "bg": "--subtle",
+          "min": 4.5,
+          "ratio": 7.51
+        },
+        {
+          "fg": "--accent",
+          "bg": "--tint",
+          "min": 4.5,
+          "ratio": 6.73
+        },
+        {
+          "fg": "--success-text",
+          "bg": "--success-bg",
+          "min": 4.5,
+          "ratio": 7.74
+        },
+        {
+          "fg": "--danger",
+          "bg": "--danger-bg",
+          "min": 4.5,
+          "ratio": 7.13
+        },
+        {
+          "fg": "--amber",
+          "bg": "--amber-bg",
+          "min": 4.5,
+          "ratio": 7.23
+        },
+        {
+          "fg": "--control-line",
+          "bg": "--surface",
+          "min": 3,
+          "ratio": 4.73
+        }
+      ]
+    },
+    {
+      "engine": "chromium",
+      "theme": "gold",
+      "pairs": [
+        {
+          "fg": "--text",
+          "bg": "--surface",
+          "min": 4.5,
+          "ratio": 14.88
+        },
+        {
+          "fg": "--muted",
+          "bg": "--surface",
+          "min": 4.5,
+          "ratio": 9.24
+        },
+        {
+          "fg": "--muted",
+          "bg": "--subtle",
+          "min": 4.5,
+          "ratio": 7.86
+        },
+        {
+          "fg": "--accent",
+          "bg": "--tint",
+          "min": 4.5,
+          "ratio": 7.78
+        },
+        {
+          "fg": "--success-text",
+          "bg": "--success-bg",
+          "min": 4.5,
+          "ratio": 8.08
+        },
+        {
+          "fg": "--danger",
+          "bg": "--danger-bg",
+          "min": 4.5,
+          "ratio": 7.31
+        },
+        {
+          "fg": "--amber",
+          "bg": "--amber-bg",
+          "min": 4.5,
+          "ratio": 7.78
+        },
+        {
+          "fg": "--control-line",
+          "bg": "--surface",
+          "min": 3,
+          "ratio": 5.42
+        }
+      ]
+    },
+    {
+      "engine": "chromium",
+      "theme": "forest",
+      "pairs": [
+        {
+          "fg": "--text",
+          "bg": "--surface",
+          "min": 4.5,
+          "ratio": 14.02
+        },
+        {
+          "fg": "--muted",
+          "bg": "--surface",
+          "min": 4.5,
+          "ratio": 9.18
+        },
+        {
+          "fg": "--muted",
+          "bg": "--subtle",
+          "min": 4.5,
+          "ratio": 7.56
+        },
+        {
+          "fg": "--accent",
+          "bg": "--tint",
+          "min": 4.5,
+          "ratio": 7.2
+        },
+        {
+          "fg": "--success-text",
+          "bg": "--success-bg",
+          "min": 4.5,
+          "ratio": 8.22
+        },
+        {
+          "fg": "--danger",
+          "bg": "--danger-bg",
+          "min": 4.5,
+          "ratio": 7.23
+        },
+        {
+          "fg": "--amber",
+          "bg": "--amber-bg",
+          "min": 4.5,
+          "ratio": 7.2
+        },
+        {
+          "fg": "--control-line",
+          "bg": "--surface",
+          "min": 3,
+          "ratio": 6.07
+        }
+      ]
+    },
+    {
+      "engine": "webkit",
+      "theme": "light",
+      "pairs": [
+        {
+          "fg": "--text",
+          "bg": "--surface",
+          "min": 4.5,
+          "ratio": 14.39
+        },
+        {
+          "fg": "--muted",
+          "bg": "--surface",
+          "min": 4.5,
+          "ratio": 4.88
+        },
+        {
+          "fg": "--muted",
+          "bg": "--subtle",
+          "min": 4.5,
+          "ratio": 4.58
+        },
+        {
+          "fg": "--accent",
+          "bg": "--tint",
+          "min": 4.5,
+          "ratio": 6.08
+        },
+        {
+          "fg": "--success-text",
+          "bg": "--success-bg",
+          "min": 4.5,
+          "ratio": 6.58
+        },
+        {
+          "fg": "--danger",
+          "bg": "--danger-bg",
+          "min": 4.5,
+          "ratio": 5.32
+        },
+        {
+          "fg": "--amber",
+          "bg": "--amber-bg",
+          "min": 4.5,
+          "ratio": 4.9
+        },
+        {
+          "fg": "--control-line",
+          "bg": "--surface",
+          "min": 3,
+          "ratio": 3.64
+        }
+      ]
+    },
+    {
+      "engine": "webkit",
+      "theme": "onyx",
+      "pairs": [
+        {
+          "fg": "--text",
+          "bg": "--surface",
+          "min": 4.5,
+          "ratio": 14.63
+        },
+        {
+          "fg": "--muted",
+          "bg": "--surface",
+          "min": 4.5,
+          "ratio": 8.4
+        },
+        {
+          "fg": "--muted",
+          "bg": "--subtle",
+          "min": 4.5,
+          "ratio": 7.51
+        },
+        {
+          "fg": "--accent",
+          "bg": "--tint",
+          "min": 4.5,
+          "ratio": 6.73
+        },
+        {
+          "fg": "--success-text",
+          "bg": "--success-bg",
+          "min": 4.5,
+          "ratio": 7.74
+        },
+        {
+          "fg": "--danger",
+          "bg": "--danger-bg",
+          "min": 4.5,
+          "ratio": 7.13
+        },
+        {
+          "fg": "--amber",
+          "bg": "--amber-bg",
+          "min": 4.5,
+          "ratio": 7.23
+        },
+        {
+          "fg": "--control-line",
+          "bg": "--surface",
+          "min": 3,
+          "ratio": 4.73
+        }
+      ]
+    },
+    {
+      "engine": "webkit",
+      "theme": "gold",
+      "pairs": [
+        {
+          "fg": "--text",
+          "bg": "--surface",
+          "min": 4.5,
+          "ratio": 14.88
+        },
+        {
+          "fg": "--muted",
+          "bg": "--surface",
+          "min": 4.5,
+          "ratio": 9.24
+        },
+        {
+          "fg": "--muted",
+          "bg": "--subtle",
+          "min": 4.5,
+          "ratio": 7.86
+        },
+        {
+          "fg": "--accent",
+          "bg": "--tint",
+          "min": 4.5,
+          "ratio": 7.78
+        },
+        {
+          "fg": "--success-text",
+          "bg": "--success-bg",
+          "min": 4.5,
+          "ratio": 8.08
+        },
+        {
+          "fg": "--danger",
+          "bg": "--danger-bg",
+          "min": 4.5,
+          "ratio": 7.31
+        },
+        {
+          "fg": "--amber",
+          "bg": "--amber-bg",
+          "min": 4.5,
+          "ratio": 7.78
+        },
+        {
+          "fg": "--control-line",
+          "bg": "--surface",
+          "min": 3,
+          "ratio": 5.42
+        }
+      ]
+    },
+    {
+      "engine": "webkit",
+      "theme": "forest",
+      "pairs": [
+        {
+          "fg": "--text",
+          "bg": "--surface",
+          "min": 4.5,
+          "ratio": 14.02
+        },
+        {
+          "fg": "--muted",
+          "bg": "--surface",
+          "min": 4.5,
+          "ratio": 9.18
+        },
+        {
+          "fg": "--muted",
+          "bg": "--subtle",
+          "min": 4.5,
+          "ratio": 7.56
+        },
+        {
+          "fg": "--accent",
+          "bg": "--tint",
+          "min": 4.5,
+          "ratio": 7.2
+        },
+        {
+          "fg": "--success-text",
+          "bg": "--success-bg",
+          "min": 4.5,
+          "ratio": 8.22
+        },
+        {
+          "fg": "--danger",
+          "bg": "--danger-bg",
+          "min": 4.5,
+          "ratio": 7.23
+        },
+        {
+          "fg": "--amber",
+          "bg": "--amber-bg",
+          "min": 4.5,
+          "ratio": 7.2
+        },
+        {
+          "fg": "--control-line",
+          "bg": "--surface",
+          "min": 3,
+          "ratio": 6.07
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,90 @@
+[
+  {
+    "engine": "chromium",
+    "width": 320,
+    "rowOrCardNavigation": true,
+    "filtersAndCursor": true,
+    "activeNav": true,
+    "unsupportedSortDisabled": true,
+    "noteEscapingAndIsolation": true,
+    "taskComposeAndStatus": true,
+    "keyboardAndMenuFocus": true
+  },
+  {
+    "engine": "chromium",
+    "width": 390,
+    "rowOrCardNavigation": true,
+    "filtersAndCursor": true,
+    "activeNav": true,
+    "unsupportedSortDisabled": true,
+    "noteEscapingAndIsolation": true,
+    "taskComposeAndStatus": true,
+    "keyboardAndMenuFocus": true
+  },
+  {
+    "engine": "chromium",
+    "width": 768,
+    "rowOrCardNavigation": true,
+    "filtersAndCursor": true,
+    "activeNav": true,
+    "unsupportedSortDisabled": true,
+    "noteEscapingAndIsolation": true,
+    "taskComposeAndStatus": true,
+    "keyboardAndMenuFocus": true
+  },
+  {
+    "engine": "chromium",
+    "width": 1440,
+    "rowOrCardNavigation": true,
+    "filtersAndCursor": true,
+    "activeNav": true,
+    "unsupportedSortDisabled": true,
+    "noteEscapingAndIsolation": true,
+    "taskComposeAndStatus": true,
+    "keyboardAndMenuFocus": true
+  },
+  {
+    "engine": "webkit",
+    "width": 320,
+    "rowOrCardNavigation": true,
+    "filtersAndCursor": true,
+    "activeNav": true,
+    "unsupportedSortDisabled": true,
+    "noteEscapingAndIsolation": true,
+    "taskComposeAndStatus": true,
+    "keyboardAndMenuFocus": true
+  },
+  {
+    "engine": "webkit",
+    "width": 390,
+    "rowOrCardNavigation": true,
+    "filtersAndCursor": true,
+    "activeNav": true,
+    "unsupportedSortDisabled": true,
+    "noteEscapingAndIsolation": true,
+    "taskComposeAndStatus": true,
+    "keyboardAndMenuFocus": true
+  },
+  {
+    "engine": "webkit",
+    "width": 768,
+    "rowOrCardNavigation": true,
+    "filtersAndCursor": true,
+    "activeNav": true,
+    "unsupportedSortDisabled": true,
+    "noteEscapingAndIsolation": true,
+    "taskComposeAndStatus": true,
+    "keyboardAndMenuFocus": true
+  },
+  {
+    "engine": "webkit",
+    "width": 1440,
+    "rowOrCardNavigation": true,
+    "filtersAndCursor": true,
+    "activeNav": true,
+    "unsupportedSortDisabled": true,
+    "noteEscapingAndIsolation": true,
+    "taskComposeAndStatus": true,
+    "keyboardAndMenuFocus": true
+  }
+]

@@ -1,0 +1,20 @@
+[
+  {
+    "engine": "chromium",
+    "singleFilePreview": true,
+    "queryTheme": true,
+    "drawerKeyboard": true,
+    "galleryImages": 5,
+    "externalHttpRequests": 0,
+    "errors": 0
+  },
+  {
+    "engine": "webkit",
+    "singleFilePreview": true,
+    "queryTheme": true,
+    "drawerKeyboard": true,
+    "galleryImages": 5,
+    "externalHttpRequests": 0,
+    "errors": 0
+  }
+]
