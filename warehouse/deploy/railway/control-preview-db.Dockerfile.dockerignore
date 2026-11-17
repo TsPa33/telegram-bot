@@ -1,0 +1,11 @@
+**
+!warehouse/
+!warehouse/backend/
+!warehouse/backend/control_center_migrations/
+!warehouse/backend/control_center_migrations/001.sql
+!warehouse/backend/control_center_migrations/grants.sql
+!warehouse/deploy/
+!warehouse/deploy/railway/
+!warehouse/deploy/railway/control-preview-init.sh
+!warehouse/deploy/railway/control-preview-db-start.sh
+!warehouse/deploy/railway/control-preview-seed.sql

@@ -1,0 +1,231 @@
+name: Control Center Warehouse-first gate
+on:
+  pull_request:
+    paths:
+      - "warehouse/backend/app/control_center/**"
+      - "warehouse/backend/control_center_tests/**"
+      - "warehouse/backend/control_center_migrations/**"
+      - "warehouse/backend/requirements-control-center*"
+      - "warehouse/frontend/src/control/**"
+      - "warehouse/frontend/control/**"
+      - "warehouse/frontend/tests/control-center-*.mjs"
+      - "warehouse/frontend/vite.config.ts"
+      - "warehouse/frontend/vite.control.config.ts"
+      - "warehouse/deploy/railway/frontend.Dockerfile"
+      - "warehouse/deploy/railway/backend-control.Dockerfile"
+      - "bot/billing/staff_read.py"
+      - ".github/workflows/control-center.yml"
+  push:
+    branches: ["feature/carpot-control-center-warehouse"]
+    paths:
+      ["warehouse/**", "bot/billing/**", ".github/workflows/control-center.yml"]
+  workflow_dispatch:
+    inputs:
+      warehouse_full:
+        description: "Also run the long Warehouse domain regression (not needed for staff UI-only changes)"
+        type: boolean
+        default: false
+permissions:
+  contents: read
+jobs:
+  staff-and-projections:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: disposable-control-tests-only
+          POSTGRES_DB: warehouse_control_test
+        ports: ["5432:5432"]
+        options: --health-cmd pg_isready --health-interval 5s --health-retries 10
+    env:
+      CONTROL_CENTER_TEST_ADMIN_URL: postgresql+psycopg://postgres:disposable-control-tests-only@127.0.0.1:5432/warehouse_control_test
+      CONTROL_CENTER_TEST_SOURCE_URL: postgresql+psycopg://postgres:disposable-control-tests-only@127.0.0.1:5432/warehouse_source_test
+      WAREHOUSE_DATABASE_URL: postgresql+psycopg://postgres:disposable-control-tests-only@127.0.0.1:5432/warehouse_source_test
+      PYTHONPATH: "${{ github.workspace }}:${{ github.workspace }}/warehouse/backend"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install --require-hashes -r warehouse/backend/requirements-control-center.lock
+      - name: Create disposable source database
+        run: |
+          python - <<'PY'
+          import psycopg
+          with psycopg.connect('host=127.0.0.1 user=postgres password=disposable-control-tests-only dbname=warehouse_control_test',autocommit=True) as c:
+              c.execute('CREATE DATABASE warehouse_source_test')
+          PY
+      - run: python -m alembic -c warehouse/backend/alembic.ini upgrade head
+      - run: python -m pytest -c warehouse/backend/control_center_tests/pytest.ini warehouse/backend/control_center_tests -q --junitxml=/tmp/control-tests.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: control-staff-tests, path: /tmp/control-tests.xml }
+  browsers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: disposable-control-tests-only
+          POSTGRES_DB: warehouse_control_browser_test
+        ports: ["5432:5432"]
+        options: --health-cmd pg_isready --health-interval 5s --health-retries 10
+    env:
+      CONTROL_CENTER_BROWSER_ADMIN_URL: postgresql+psycopg://postgres:disposable-control-tests-only@127.0.0.1:5432/warehouse_control_browser_test
+      CONTROL_CENTER_BROWSER_TEST: "1"
+      CONTROL_CENTER_BROWSER_REVIEW02: "1"
+      CONTROL_CENTER_BROWSER_STATIC_DIR: "${{ github.workspace }}/warehouse/frontend/dist-control"
+      PYTHONPATH: "${{ github.workspace }}:${{ github.workspace }}/warehouse/backend"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - run: pip install --require-hashes -r warehouse/backend/requirements-control-center.lock
+      - run: npm ci
+        working-directory: warehouse/frontend
+      - run: npm run build
+        working-directory: warehouse/frontend
+      - run: npx vite build --config vite.control.config.ts
+        working-directory: warehouse/frontend
+      - run: npx playwright install --with-deps chromium webkit
+        working-directory: warehouse/frontend
+      - name: Start local disposable fixture and separate staff entry
+        run: |
+          python warehouse/backend/control_center_tests/browser_server.py > /tmp/control-browser-api.log 2>&1 &
+          echo $! > /tmp/control-browser.pid
+          for attempt in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:5269/health; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:5269/health
+          curl -fsS http://127.0.0.1:5269/control/ >/dev/null
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:5269/api/v1/auth/options)" = 404
+      - run: node --experimental-strip-types --test tests/control-center-model-unit.mjs
+        working-directory: warehouse/frontend
+      - run: node tests/control-center-browser.mjs
+        working-directory: warehouse/frontend
+      - run: node tests/control-center-resilience-browser.mjs
+        working-directory: warehouse/frontend
+      - run: node tests/control-center-roles-browser.mjs
+        working-directory: warehouse/frontend
+      - name: Verify password-only policy through the same React UI
+        run: |
+          read -r fixture_pid < /tmp/control-browser.pid
+          kill "$fixture_pid"
+          CONTROL_CENTER_AUTH_MODE=password-only python warehouse/backend/control_center_tests/browser_server.py > /tmp/control-password-api.log 2>&1 &
+          python - <<'PY'
+          import time, httpx
+          for attempt in range(60):
+              try:
+                  r=httpx.get('http://127.0.0.1:5269/api/control/status')
+                  if r.status_code==200 and r.json().get('auth_mode')=='password-only':
+                      break
+              except httpx.HTTPError:
+                  pass
+              time.sleep(1)
+          else:
+              raise RuntimeError('Password-only fixture did not become ready')
+          PY
+          cd warehouse/frontend
+          node tests/control-center-password-browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: control-browser-results
+          path: |
+            /tmp/control-center-browser-results.json
+            /tmp/control-center-desktop.png
+            /tmp/control-center-mobile.png
+            /tmp/control-browser-api.log
+            /tmp/control-center-overview.png
+            /tmp/control-center-clients.png
+            /tmp/control-center-company.png
+            /tmp/control-center-company-mobile.png
+
+  standalone-image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f warehouse/deploy/railway/backend-control.Dockerfile -t carpot-control-check .
+      - name: Verify built staff-only image without live configuration
+        run: |
+          docker run --rm --entrypoint sh carpot-control-check -c 'test "$(id -u)" = 10001 && test -f /app/control-web/control/index.html && test ! -f /app/control-web/index.html && test ! -d /app/control_center_tests && python -c "import app.control_center.asgi"'
+  billing-compatibility:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: disposable-control-tests-only
+          POSTGRES_DB: carpot_billing_control_test
+        ports: ["5432:5432"]
+        options: --health-cmd pg_isready --health-interval 5s --health-retries 10
+    env:
+      CARPOT_BILLING_TEST_DSN: host=127.0.0.1 user=postgres password=disposable-control-tests-only dbname=carpot_billing_control_test
+      CARPOT_BILLING_PROJECTION_TEST_DSN: host=127.0.0.1 user=postgres password=disposable-control-tests-only dbname=carpot_billing_projection_test
+      PYTHONPATH: "${{ github.workspace }}"
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -r bot/billing/requirements-test.txt
+      - name: Prepare separate disposable projection database
+        run: |
+          python - <<'PY'
+          import psycopg2
+          c=psycopg2.connect('host=127.0.0.1 user=postgres password=disposable-control-tests-only dbname=postgres')
+          c.autocommit=True
+          with c.cursor() as q: q.execute('CREATE DATABASE carpot_billing_projection_test')
+          c.close()
+          PY
+      - run: python -m pytest -c bot/billing/pytest.ini bot/billing/tests -q --junitxml=/tmp/control-finance.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: control-finance-tests, path: /tmp/control-finance.xml }
+  warehouse-regressions:
+    if: github.event_name != 'workflow_dispatch' || inputs.warehouse_full
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: disposable-control-tests-only
+          POSTGRES_DB: warehouse_control_regression_test
+        ports: ["5432:5432"]
+        options: --health-cmd pg_isready --health-interval 5s --health-retries 10
+    env:
+      WAREHOUSE_TEST_DATABASE_URL: postgresql+psycopg://postgres:disposable-control-tests-only@127.0.0.1:5432/warehouse_control_regression_test
+      CARPOT_BILLING_TEST_DSN: host=127.0.0.1 user=postgres password=disposable-control-tests-only dbname=carpot_billing_warehouse_test
+      PYTHONPATH: "${{ github.workspace }}:${{ github.workspace }}/warehouse/backend:${{ github.workspace }}/warehouse/backend/tests"
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install --require-hashes -r warehouse/backend/requirements-control-center.lock
+      - run: pip install psycopg2-binary==2.9.9
+      - name: Prepare separate disposable finance database
+        run: |
+          python - <<'PY'
+          import psycopg
+          with psycopg.connect('host=127.0.0.1 user=postgres password=disposable-control-tests-only dbname=postgres',autocommit=True) as c:
+              c.execute('CREATE DATABASE carpot_billing_warehouse_test')
+          PY
+      - name: Full frozen-source Warehouse backend and unit regression
+        working-directory: warehouse/backend
+        run: python -m pytest --import-mode=importlib --confcutdir=. tests unit_tests -q --junitxml=/tmp/control-warehouse.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          {
+            name: control-warehouse-regressions,
+            path: /tmp/control-warehouse.xml,
+          }

@@ -479,6 +479,8 @@ def create_app(
             )
             return {"items": [dict(r) for r in c.fetchall()]}
 
+    from .staff_read import register as register_staff_read
+    register_staff_read(app, db, peer_keys, limiter)
     return app
 
 
