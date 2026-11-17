@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 if(process.env.CONTROL_CENTER_BROWSER_TEST !== '1') throw Error('Local fixture opt-in required');
 const origin=process.env.CONTROL_CENTER_BROWSER_ORIGIN || 'http://127.0.0.1:5269';
 if(!/^http:\/\/127\.0\.0\.1:\d+$/.test(origin)) throw Error('Loopback fixture only');
-const fixture=JSON.parse(fs.readFileSync('/tmp/control-browser-fixture.json','utf8'));
+const fixture=JSON.parse(fs.readFileSync(process.env.CONTROL_CENTER_BROWSER_FIXTURE_FILE||'/tmp/control-browser-fixture.json','utf8'));
 let index=0;const report=[];
 for(const [engine,driver] of Object.entries({chromium,webkit})){
  const browser=await driver.launch();
@@ -23,11 +23,11 @@ for(const [engine,driver] of Object.entries({chromium,webkit})){
    await page.getByRole('button',{name:'Увійти',exact:true}).click();
   };
   await login(fixture.password);
-  await page.getByRole('heading',{name:'Огляд Warehouse',exact:true}).waitFor();
+  await page.getByRole('heading',{name:'Огляд клієнтів',exact:true}).waitFor();
   const denied=await page.evaluate(async()=>{
    const r=await fetch('/api/control/auth/logout',{method:'POST',headers:{'X-Control-CSRF':'bad','Content-Type':'application/json'}});return r.status;
   });assert.equal(denied,403);
-  await page.getByRole('button',{name:'Безпека',exact:true}).click();
+  await page.evaluate(()=>location.hash='#/security');
   await page.getByRole('button',{name:'Змінити пароль',exact:true}).waitFor();
   assert.equal(await page.getByRole('button',{name:'Налаштувати новий ключ MFA',exact:true}).count(),0);
   assert.equal(await page.locator('input[name=mfa_code]').count(),0);
@@ -38,8 +38,9 @@ for(const [engine,driver] of Object.entries({chromium,webkit})){
   await page.getByRole('button',{name:'Змінити пароль',exact:true}).click();
   await page.getByLabel('Логін',{exact:true}).waitFor();
   await login(next);
-  await page.getByRole('heading',{name:'Огляд Warehouse',exact:true}).waitFor();
+  await page.getByRole('heading',{name:'Безпека та налаштування',exact:true}).waitFor();
   await page.evaluate(()=>sessionStorage.removeItem('control.csrf'));
+  if(width<=1100)await page.getByRole('button',{name:'Відкрити меню',exact:true}).click();
   await page.getByRole('button',{name:'Вийти',exact:true}).click();
   await page.getByLabel('Логін',{exact:true}).waitFor();
   const status=await page.evaluate(async()=> (await fetch('/api/control/auth/me')).status);

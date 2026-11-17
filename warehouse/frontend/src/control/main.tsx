@@ -1,496 +1,487 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { ThemeProvider, ThemeSwitch } from "../Theme";
-import { State } from "../shared";
-import CompanyPreview from "./CompanyPreview";
+import {
+  Box,
+  ChevronDown,
+  ClipboardList,
+  Globe,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  RefreshCw,
+  Send,
+  Share2,
+  ShieldCheck,
+  Users,
+  Wallet,
+  X,
+} from "lucide-react";
+import { ThemeProvider, MobileThemeSwitch } from "../Theme";
+import { api, type Row, type Staff } from "./api";
+import { parseRoute } from "./model";
+import {
+  Empty,
+  Feedback,
+  Freshness,
+  PageHeader,
+  useLoad,
+  useRevision,
+} from "./shared";
+import Login from "./Login";
+import Directory from "./Directory";
+import Overview from "./Overview";
+import CompanyProfile from "./CompanyProfile";
+import WorkQueue from "./Tasks";
 import SecuritySettings from "./SecuritySettings";
-import { LayoutDashboard, Users, ClipboardList, ShieldCheck, Warehouse, RefreshCw, LogOut } from "lucide-react";
-import { api, date, states, coverageName, type Row, type Staff } from "./api";
 import "../tokens.css";
 import "../themes.css";
 import "./style.css";
-
-function Login({ onLogin }: { onLogin: (s: Staff) => void }) {
-  const [error, setError] = useState(""),
-    [busy, setBusy] = useState(false);
-  const [policy, setPolicy] = useState<Row | null>(null);
-  useEffect(() => { let live = true; api("/status").then(p => { if(live) setPolicy(p); }).catch(e => { if(live) setError(e.message); }); return () => { live=false; }; }, []);
-  return (
-    <main className="cc-login">
-      <section>
-        <small>CARPOT / АДМІНІСТРУВАННЯ</small>
-        <h1>Control Center</h1>
-        <p>
-          Окремий доступ персоналу. Акаунт Warehouse не надає адміністративних
-          прав.
-        </p>
-        <form
-          onSubmit={async (e) => {
-            e.preventDefault();
-            const data = Object.fromEntries(new FormData(e.currentTarget));
-            setBusy(true);
-            setError("");
-            try {
-              const result = await api("/auth/login", "POST", data);
-              sessionStorage.setItem("control.csrf", result.csrf);
-              onLogin(result.staff);
-            } catch (e) {
-              setError((e as Error).message);
-            } finally {
-              setBusy(false);
-            }
-          }}
-        >
-          <label>
-            Логін
-            <input
-              name="username"
-              autoComplete="username"
-              required
-              maxLength={120}
-            />
-          </label>
-          <label>
-            Пароль
-            <input
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              required
-              maxLength={128}
-            />
-          </label>
-          {policy?.auth_mode === "mfa" && <label>
-            MFA-код
-            <input
-              name="code"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              pattern="[0-9]{6}"
-              maxLength={6}
-              required
-            />
-          </label>}
-          <State loading={busy || !policy} error={error} />
-          <button disabled={busy || !policy}>{busy ? "Перевіряємо…" : "Увійти"}</button>
-        </form>
-        <small>Доступ створює оператор. Публічної реєстрації немає.</small>
-      </section>
-    </main>
-  );
+function useRoute() {
+  const [hash, setHash] = useState(() => location.hash);
+  useEffect(() => {
+    const changed = () => setHash(location.hash);
+    window.addEventListener("hashchange", changed);
+    return () => window.removeEventListener("hashchange", changed);
+  }, []);
+  return { route: parseRoute(hash), hash };
 }
-const initialFilters = {
-  q: "",
-  plan: "",
-  status: "",
-  linking: "",
-  manager: "",
-  sort: "name",
-  registered_from: "",
-};
-function Workspace({ staff, logout }: { staff: Staff; logout: () => void }) {
-  const [tab, setTab] = useState("overview"),
-    [overview, setOverview] = useState<Row | null>(null),
-    [page, setPage] = useState<Row | null>(null);
-  const [tasks, setTasks] = useState<Row[]>([]),
-    [staffOptions, setStaffOptions] = useState<Staff[]>([]),
-    [selected, setSelected] = useState<string | null>(null);
-  const [error, setError] = useState(""),
-    [loading, setLoading] = useState(false),
-    [revision, setRevision] = useState(0);
-  const [filters, setFilters] = useState(initialFilters),
-    [applied, setApplied] = useState(initialFilters),
-    [cursor, setCursor] = useState("");
-  const refresh = () => setRevision((v) => v + 1);
+function Workspace({
+  staff,
+  status,
+  logout,
+}: {
+  staff: Staff;
+  status: Row;
+  logout: () => void;
+}) {
+  const { route, hash } = useRoute(),
+    [revision, refresh] = useRevision(),
+    overview = useLoad<Row>("/overview", revision),
+    staffList = useLoad<Staff[]>(staff.can_assign ? "/staff" : null, revision);
+  const [drawer, setDrawer] = useState(false),
+    [clientsOpen, setClientsOpen] = useState(true),
+    [compact, setCompact] = useState(
+      () => matchMedia("(max-width:1100px)").matches,
+    ),
+    [error, setError] = useState(""),
+    [signingOut, setSigningOut] = useState(false);
+  const aside = useRef<HTMLElement>(null),
+    content = useRef<HTMLDivElement>(null),
+    menu = useRef<HTMLButtonElement>(null),
+    main = useRef<HTMLElement>(null);
   useEffect(() => {
-    if (staff.can_assign)
-      api("/staff")
-        .then(setStaffOptions)
-        .catch((e) => setError(e.message));
-  }, [staff.can_assign]);
+    const media = matchMedia("(max-width:1100px)"),
+      change = () => {
+        setCompact(media.matches);
+        setDrawer(false);
+      };
+    media.addEventListener("change", change);
+    return () => media.removeEventListener("change", change);
+  }, []);
   useEffect(() => {
-    let current = true;
-    setLoading(true);
-    setError("");
-    const query = new URLSearchParams(
-      Object.entries(applied).filter(([, value]) => value),
-    );
-    if (cursor) query.set("cursor", cursor);
-    // Preserve successful sections when another source temporarily fails.
-    Promise.allSettled([api("/overview"), api("/companies?" + query), api("/tasks")])
-      .then(([o, p, t]) => {
-        if (!current) return;
-        if (o.status === "fulfilled") setOverview(o.value);
-        if (p.status === "fulfilled") setPage(p.value);
-        if (t.status === "fulfilled") setTasks(t.value);
-        const failed = [o, p, t].find((item) => item.status === "rejected");
-        if (failed?.status === "rejected") setError(failed.reason?.message || "Не вдалося оновити дані");
-      })
-      .finally(() => {
-        if (current) setLoading(false);
-      });
-    return () => {
-      current = false;
+    const sidebar = aside.current,
+      body = content.current;
+    if (!sidebar || !body) return;
+    sidebar.inert = compact && !drawer;
+    body.inert = compact && drawer;
+    if (!compact || !drawer) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const focusable = () =>
+      [
+        ...sidebar.querySelectorAll<HTMLElement>(
+          'a[href],button:not(:disabled),input,select,[tabindex="0"]',
+        ),
+      ].filter((e) => e.getClientRects().length);
+    focusable()[0]?.focus();
+    const key = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setDrawer(false);
+      }
+      if (e.key === "Tab") {
+        const all = focusable(),
+          first = all[0],
+          last = all.at(-1);
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last?.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first?.focus();
+        }
+      }
     };
-  }, [applied, cursor, revision]);
-  const view = (changes: Partial<typeof initialFilters>) => {
-    setFilters({ ...initialFilters, ...changes });
-    setApplied({ ...initialFilters, ...changes });
-    setCursor("");
-    setTab("clients");
-  };
+    document.addEventListener("keydown", key);
+    return () => {
+      document.removeEventListener("keydown", key);
+      document.body.style.overflow = previous;
+      body.inert = false;
+      if (
+        (sidebar.contains(document.activeElement) ||
+          document.activeElement === document.body) &&
+        menu.current?.getClientRects().length
+      )
+        menu.current.focus();
+    };
+  }, [compact, drawer]);
+  useLayoutEffect(() => {
+    setDrawer(false);
+    if (content.current) content.current.inert = false;
+    main.current
+      ?.querySelector<HTMLElement>("h1")
+      ?.focus({ preventScroll: true });
+    window.scrollTo(0, 0);
+  }, [hash]);
+  const active = route.view === "company" ? "clients" : route.view,
+    title = {
+      overview: "Огляд",
+      clients: "Клієнти",
+      company: "Профіль клієнта",
+      queue: "Робоча черга",
+      security: "Безпека та налаштування",
+      missing: "Сторінка недоступна",
+    }[route.view];
+  const staffOptions = staffList.data || [];
+  async function signOut() {
+    setSigningOut(true);
+    setError("");
+    try {
+      await api("/auth/logout", "POST");
+      sessionStorage.removeItem("control.csrf");
+      location.hash = "#/overview";
+      logout();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSigningOut(false);
+    }
+  }
   return (
-    <div className="cc-shell">
-      <aside>
-        <div className="cc-brand"><span><Warehouse size={23}/></span><div><strong>CarPot</strong><small>CONTROL CENTER</small></div></div>
-        <p className="cc-nav-label">УПРАВЛІННЯ</p>
-        <nav aria-label="Control Center">
-          {[
-            {key:"overview", title:"Огляд", Icon:LayoutDashboard},
-            {key:"clients", title:"Клієнти", Icon:Users},
-            {key:"queue", title:"Робоча черга", Icon:ClipboardList},
-          ].map(({key, title, Icon}) => (
-            <button
-              key={key}
-              aria-current={tab === key ? "page" : undefined}
-              onClick={() => setTab(key)}
+    <div className={"cc-shell " + (compact && drawer ? "drawer-open" : "")}>
+      <a
+        className="cc-skip"
+        href="#main"
+        onClick={(e) => {
+          e.preventDefault();
+          main.current?.focus();
+        }}
+      >
+        До вмісту
+      </a>
+      <aside
+        ref={aside}
+        id="cc-sidebar-region"
+        className="cc-sidebar"
+        role={compact && drawer ? "dialog" : undefined}
+        aria-modal={compact && drawer ? true : undefined}
+        aria-label="Головне меню"
+      >
+        <button
+          className="cc-drawer-close cc-icon-button"
+          aria-label="Закрити меню"
+          onClick={() => setDrawer(false)}
+        >
+          <X size={20} />
+        </button>
+        <a className="cc-brand" href="#/overview">
+          <span className="cc-brandmark">
+            C<span>→</span>
+          </span>
+          <span>
+            CarPot<small>GLOBAL CRM</small>
+          </span>
+        </a>
+        <div className="cc-workspace">
+          <Box size={24} />
+          <div>
+            <strong>CarPot Workspace</strong>
+            <small>Внутрішня команда</small>
+          </div>
+        </div>
+        <nav className="cc-nav" aria-label="Global CRM">
+          <p className="cc-nav-label">УПРАВЛІННЯ</p>
+          <a
+            href="#/overview"
+            aria-current={active === "overview" ? "page" : undefined}
+          >
+            <LayoutDashboard size={18} /> Огляд
+          </a>
+          <button
+            className={"cc-nav-group " + (active === "clients" ? "active" : "")}
+            aria-expanded={clientsOpen}
+            aria-controls="cc-client-menu"
+            aria-current={
+              active === "clients" && !clientsOpen ? "page" : undefined
+            }
+            onClick={() => setClientsOpen((v) => !v)}
+          >
+            <Users size={18} /> Клієнти
+            <ChevronDown size={15} />
+          </button>
+          <div className="cc-submenu" id="cc-client-menu" hidden={!clientsOpen}>
+            <a
+              href="#/clients"
+              aria-current={
+                active === "clients" &&
+                !route.query.get("status") &&
+                !route.query.get("linking")
+                  ? "page"
+                  : undefined
+              }
             >
-              <Icon size={18}/> {title}
+              Усі клієнти
+            </a>
+            <a
+              href="#/clients?status=EXPIRED"
+              aria-current={
+                active === "clients" && route.query.get("status") === "EXPIRED"
+                  ? "page"
+                  : undefined
+              }
+            >
+              Завершені періоди
+            </a>
+            <a
+              href="#/clients?status=UNKNOWN"
+              aria-current={
+                active === "clients" && route.query.get("status") === "UNKNOWN"
+                  ? "page"
+                  : undefined
+              }
+            >
+              Недостатньо даних
+            </a>
+          </div>
+          <a
+            href="#/queue"
+            aria-current={active === "queue" ? "page" : undefined}
+          >
+            <ClipboardList size={18} /> Робоча черга
+          </a>
+          <p className="cc-nav-label">ЕКОСИСТЕМА</p>
+          <a href="#/clients">
+            <Box size={18} /> Warehouse
+          </a>
+          {[
+            { name: "Telegram / Garage", Icon: Send },
+            { name: "Sites", Icon: Globe },
+            { name: "Billing", Icon: Wallet },
+            { name: "Реферальна програма", Icon: Share2 },
+          ].map(({ name, Icon }) => (
+            <button disabled key={name} title="Інтеграцію не підключено">
+              <Icon size={18} />
+              {name}
+              <small>План</small>
             </button>
           ))}
         </nav>
         <div className="cc-sidebar-bottom">
-        <button className="cc-security-nav" aria-current={tab==="security"?"page":undefined} onClick={()=>setTab("security")}><ShieldCheck size={18}/> Безпека</button>
-        <div className="cc-user"><strong>{staff.username}</strong><small>{({Owner:"Власник",Administrator:"Адміністратор",Manager:"Менеджер",Support:"Підтримка"} as Record<string,string>)[staff.role]||staff.role}</small></div>
-        <ThemeSwitch />
-        <button
-          onClick={async () => {
-            try {
-              await api("/auth/logout", "POST");
-              sessionStorage.removeItem("control.csrf");
-              logout();
-            } catch (e) {
-              setError((e as Error).message);
-            }
-          }}
-        >
-          <LogOut size={16}/> Вийти
-        </button>
+          <a
+            href="#/security"
+            aria-current={active === "security" ? "page" : undefined}
+          >
+            <ShieldCheck size={18} /> Безпека та налаштування
+          </a>
+          <div className="cc-staff">
+            <span className="cc-avatar">
+              {staff.username.slice(0, 2).toUpperCase()}
+            </span>
+            <div>
+              <strong>{staff.username}</strong>
+              <small>
+                {(
+                  {
+                    Owner: "Власник",
+                    Administrator: "Адміністратор",
+                    Manager: "Менеджер",
+                    Support: "Підтримка",
+                  } as Record<string, string>
+                )[staff.role] || staff.role}
+              </small>
+            </div>
+            <button
+              disabled={signingOut}
+              className="cc-icon-button"
+              onClick={() => void signOut()}
+              aria-label="Вийти"
+            >
+              <LogOut size={18} />
+            </button>
+          </div>
         </div>
       </aside>
-      <main>
-        <header className="cc-top">
-          <h2>
-            {
-              {
-                overview: "Огляд Warehouse",
-                clients: "Клієнтські компанії",
-                queue: "Внутрішня робоча черга",
-                security: "Безпека",
-              }[tab]
-            }
-          </h2>
-          <span className="cc-badge">
-            {overview?.preview ? "Демонстраційний режим" : overview?.environment || "Перевіряємо середовище"}
-          </span>
-          <button onClick={refresh}><RefreshCw size={16}/> Оновити</button>
-        </header>
-        <State error={error} loading={loading} />
-        {overview?.preview && <div className="cc-preview-banner" role="status"><span>Демонстраційні дані. {overview.source_configured ? "Клієнти Warehouse завантажуються автоматично. Стан джерела показано в огляді." : "Реальні клієнти ще не підключені."}</span></div>}
-        {overview && (
-          <p className={"cc-source " + overview.source.state} role="status">
-            {overview.source.state === "fresh"
-              ? "Джерело оновлено"
-              : overview.source.state === "stale"
-                ? "Дані застаріли"
-                : "Джерело недоступне"}{" "}
-            · {coverageName[overview.source.coverage] || "Неповне покриття"} ·{" "}
-            {date(overview.source.last_success)}. Час: Київ.
-          </p>
-        )}
-        {tab === "security" && <SecuritySettings logout={logout} passwordOnly={overview?.auth_mode === "password-only"} canRotateMfa={staff.role === "Owner"}/>}
-        {tab === "overview" && overview && (
-          <>
-            <div className="cc-metrics">
-              <article>
-                <small>Компанії</small>
-                <strong>{overview.workspaces ?? "Немає даних"}</strong>
-              </article>
-              <article>
-                <small>Нові за 30 днів</small>
-                <strong>{overview.new_30d ?? "Немає даних"}</strong>
-              </article>
-              <article>
-                <small>Активні підписки</small>
-                <strong>{overview.workspaces === null ? "Немає даних" : (overview.states?.ACTIVE ?? 0)}</strong>
-              </article>
-            </div>
-            <div className="cc-overview-grid"><section className="cc-card">
-              <h3>Стан підписок</h3><div className="cc-status-grid">
-              {Object.keys(overview.states).length ? (
-                Object.entries(overview.states).map(([key, count]) => (
-                  <div className="cc-status-cell" key={key}><small>{states[key] || "Невідомо"}</small><strong>{String(count)}</strong></div>
-                ))
-              ) : (
-                <p>Покриття джерела ще не підтверджено.</p>
-              )}
-              </div><small>Пробний період не є оплаченою підпискою.</small>
-            </section>
-            <section className="cc-card">
-              <h3>Потребують уваги</h3>
-              <p>
-                Підписки завершуються за 14 днів:{" "}
-                {overview.expiring_14d ?? "Немає даних"}. Конфлікти:{" "}
-                {overview.conflicts ?? "Немає даних"}.
-              </p>
-              <button onClick={() => view({ status: "EXPIRED" })}>
-                Завершені підписки
-              </button>
-              <button onClick={() => view({ linking: "conflict" })}>
-                Конфлікти зв’язків
-              </button>
-              <button onClick={() => setTab("queue")}>Робоча черга</button>
-            </section>
-            </div><section className="cc-card"><h3>Фінанси</h3><p>Загальні надходження та місячний дохід ще не підключені.</p></section>
-          </>
-        )}
-        {tab === "clients" && (
-          <>
-            <form
-              className="cc-filters"
-              onSubmit={(e) => {
-                e.preventDefault();
-                setCursor("");
-                setApplied({ ...filters });
-              }}
-            >
-              <label>
-                Пошук
-                <input
-                  placeholder="Компанія або email власника"
-                  value={filters.q}
-                  onChange={(e) =>
-                    setFilters({ ...filters, q: e.target.value })
-                  }
-                />
-              </label>
-              <label>
-                Тариф
-                <input
-                  placeholder="Назва тарифу"
-                  value={filters.plan}
-                  onChange={(e) =>
-                    setFilters({ ...filters, plan: e.target.value })
-                  }
-                />
-              </label>
-              <label>
-                Стан
-                <select
-                  value={filters.status}
-                  onChange={(e) =>
-                    setFilters({ ...filters, status: e.target.value })
-                  }
-                >
-                  <option value="">Усі</option>
-                  {Object.entries(states).map(([key, value]) => (
-                    <option key={key} value={key}>
-                      {value}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Фінансовий зв’язок
-                <select
-                  value={filters.linking}
-                  onChange={(e) =>
-                    setFilters({ ...filters, linking: e.target.value })
-                  }
-                >
-                  <option value="">Усі</option>
-                  <option value="linked">Пов’язано</option>
-                  <option value="unlinked">Не пов’язано</option>
-                  <option value="conflict">Конфлікт</option>
-                </select>
-              </label>
-              {staff.can_assign && (
-                <label>
-                  Менеджер
-                  <select
-                    value={filters.manager}
-                    onChange={(e) =>
-                      setFilters({ ...filters, manager: e.target.value })
-                    }
-                  >
-                    <option value="">Усі</option>
-                    {staffOptions.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.username}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              )}
-              <label>
-                Зареєстровано від · Київ
-                <input
-                  type="date"
-                  value={filters.registered_from}
-                  onChange={(e) =>
-                    setFilters({ ...filters, registered_from: e.target.value })
-                  }
-                />
-              </label>
-              <label>
-                Сортування
-                <select
-                  value={filters.sort}
-                  onChange={(e) =>
-                    setFilters({ ...filters, sort: e.target.value })
-                  }
-                >
-                  <option value="name">Назва</option>
-                  <option value="registered">Дата реєстрації</option>
-                </select>
-              </label>
-              <button>Застосувати</button>
-            </form>
-            <div className="cc-directory" aria-label="Компанії">
-              {page?.items.length === 0 && !loading && (
-                <p>Компаній за цими умовами немає.</p>
-              )}
-              {page?.items.map((c: Row) => (
-                <button
-                  className="cc-company"
-                  key={c.id}
-                  onClick={() => setSelected(c.id)}
-                >
-                  <div className="cc-company-title"><strong>{c.display_name}</strong><small>{c.owner_email || "Контакти недоступні"}</small></div>
-                  <span>
-                    {c.access_incomplete
-                      ? "Доступ: даних недостатньо"
-                      : states[c.access.status] || c.access.status}
-                  </span>
-                  <span>{c.access.plan || "Тариф невідомий"}</span>
-                  <span>{({linked:"Підключено",verified:"Підключено",unlinked:"Не підключено",conflict:"Потребує перевірки",revoked:"Відкликано"} as Record<string,string>)[c.linking] || "Немає даних"}</span>
-                  <small>
-                    {c.state === "stale"
-                      ? "Дані потребують оновлення"
-                      : date(c.registered_at)}
-                  </small>
-                </button>
-              ))}
-            </div>
-            <div className="cc-pagination">
-              <button
-                disabled={!cursor || loading}
-                onClick={() => setCursor("")}
-              >
-                На початок
-              </button>
-              <button
-                disabled={!page?.next_cursor || loading}
-                onClick={() => setCursor(page?.next_cursor || "")}
-              >
-                Наступні
-              </button>
-            </div>
-          </>
-        )}
-        {tab === "queue" && (
-          <section className="cc-card">
-            <p>Завдання та наступні дії вашої команди.</p>
-            {tasks.length === 0 ? (
-              <p>Дій у вашій черзі немає.</p>
-            ) : (
-              tasks.map((t) => (
-                <article className="cc-task" key={t.id}>
-                  <strong>{t.company_name}</strong>
-                  <button onClick={() => setSelected(t.company_id)}>
-                    {t.next_action}
-                  </button>
-                  <small>
-                    Відповідальний: {t.assignee_name} ·{" "}
-                    {t.due_at ? date(t.due_at) : "Без строку"}
-                  </small>
-                  <label>
-                    Статус
-                    <select
-                      value={t.status}
-                      onChange={async (e) => {
-                        try {
-                          await api("/tasks/" + t.id, "PATCH", {
-                            next_action: t.next_action,
-                            status: e.target.value,
-                            due_at: t.due_at,
-                          });
-                          refresh();
-                        } catch (e) {
-                          setError((e as Error).message);
-                        }
-                      }}
-                    >
-                      <option value="open">Відкрита</option>
-                      <option value="in_progress">У роботі</option>
-                      <option value="done">Завершено</option>
-                    </select>
-                  </label>
-                </article>
-              ))
-            )}
-          </section>
-        )}
-      </main>
-      {selected && (
-        <CompanyPreview
-          key={selected}
-          id={selected}
-          staff={staff}
-          close={() => setSelected(null)}
-          changed={refresh}
+      {compact && drawer && (
+        <button
+          className="cc-scrim"
+          tabIndex={-1}
+          aria-label="Закрити бічну панель"
+          onClick={() => setDrawer(false)}
         />
       )}
+      <div className="cc-layout-main" ref={content}>
+        <header className="cc-topbar">
+          <button
+            ref={menu}
+            className="cc-menu-button cc-icon-button"
+            aria-label="Відкрити меню"
+            aria-expanded={drawer}
+            aria-controls="cc-sidebar-region"
+            onClick={() => setDrawer(true)}
+          >
+            <Menu size={20} />
+          </button>
+          <div className="cc-breadcrumbs">
+            <a href="#/overview">Робочий простір</a>
+            <span>/</span>
+            <strong>{title}</strong>
+          </div>
+          <div className="cc-top-actions">
+            <div className="cc-theme">
+              <MobileThemeSwitch />
+            </div>
+            <span className="cc-environment">
+              {overview.data?.preview
+                ? "Demo"
+                : status.environment || "Середовище невідоме"}
+            </span>
+            <button
+              onClick={refresh}
+              className="cc-refresh"
+              aria-label="Оновити"
+            >
+              <RefreshCw size={16} />
+              <span>Оновити</span>
+            </button>
+          </div>
+        </header>
+        <main ref={main} id="main" className="cc-main" tabIndex={-1}>
+          <Feedback error={error} />
+          {overview.data?.preview && (
+            <p className="cc-preview-banner" role="status">
+              Демонстраційні дані.{" "}
+              {overview.data.source_configured
+                ? "Warehouse Directory оновлюється автоматично."
+                : "Реальне джерело ще не підключено."}
+            </p>
+          )}
+          {route.view !== "clients" && (
+            <Freshness source={overview.data?.source} />
+          )}
+          {route.view === "overview" && (
+            <Overview
+              overview={overview.data}
+              loading={overview.loading}
+              error={overview.error}
+              retry={refresh}
+              revision={revision}
+            />
+          )}{" "}
+          {route.view === "clients" && (
+            <Directory
+              key={route.query.toString()}
+              route={route}
+              staff={staff}
+              staffOptions={staffOptions}
+              staffError={staffList.error}
+              revision={revision}
+            />
+          )}{" "}
+          {route.view === "company" && route.id && (
+            <CompanyProfile
+              key={route.id}
+              id={route.id}
+              section={route.section || "overview"}
+              staff={staff}
+              staffOptions={staffOptions}
+              staffError={staffList.error}
+              revision={revision}
+            />
+          )}{" "}
+          {route.view === "queue" && <WorkQueue revision={revision} />}{" "}
+          {route.view === "security" && (
+            <>
+              <PageHeader
+                title="Безпека та налаштування"
+                subtitle="Особистий доступ і корпоративне оформлення."
+              />
+              <SecuritySettings
+                logout={logout}
+                passwordOnly={status.auth_mode === "password-only"}
+                canRotateMfa={staff.role === "Owner"}
+              />
+            </>
+          )}{" "}
+          {route.view === "missing" && (
+            <>
+              <PageHeader title="Сторінку не знайдено" />
+              <Empty title="Цей розділ недоступний">
+                <a href="#/overview">Повернутися до огляду</a>
+              </Empty>
+            </>
+          )}
+        </main>
+        <footer className="cc-footer">
+          <span>CarPot Global CRM</span>
+          <span>Warehouse · час Києва</span>
+        </footer>
+      </div>
     </div>
   );
 }
 function App() {
   const [staff, setStaff] = useState<Staff | null>(null),
+    [status, setStatus] = useState<Row | null>(null),
     [state, setState] = useState("loading");
-  useEffect(()=>{const reset=()=>{setStaff(null);setState('ready');};window.addEventListener('control:session-invalid',reset);return()=>window.removeEventListener('control:session-invalid',reset);},[]);
+  useEffect(() => {
+    const reset = () => {
+      setStaff(null);
+      setState("ready");
+    };
+    window.addEventListener("control:session-invalid", reset);
+    return () => window.removeEventListener("control:session-invalid", reset);
+  }, []);
   useEffect(() => {
     api("/status")
-      .then(() =>
-        api("/auth/me")
+      .then((s) => {
+        setStatus(s);
+        return api("/auth/me")
           .then((s) => {
             setStaff(s);
             setState("ready");
           })
-          .catch(() => setState("ready")),
-      )
+          .catch(() => setState("ready"));
+      })
       .catch(() => setState("disabled"));
   }, []);
   return (
     <ThemeProvider>
-      {state === "loading" ? (
-        <main className="cc-login">
-          <p role="status">Перевіряємо доступ…</p>
-        </main>
-      ) : state === "disabled" ? (
-        <main className="cc-login">
-          <section>
-            <h1>Control Center недоступний</h1>
-            <p>
-              Контур вимкнено або сервіс не відповідає. Дані клієнтів не
-              завантажено.
-            </p>
-          </section>
-        </main>
-      ) : staff ? (
-        <Workspace staff={staff} logout={() => setStaff(null)} />
-      ) : (
-        <Login onLogin={setStaff} />
-      )}
+      <div className="cc-app">
+        {state === "loading" ? (
+          <main className="cc-login">
+            <p role="status">Перевіряємо доступ…</p>
+          </main>
+        ) : state === "disabled" ? (
+          <main className="cc-login">
+            <section>
+              <h1>Control Center недоступний</h1>
+              <p>
+                Контур вимкнено або сервіс не відповідає. Дані клієнтів не
+                завантажено.
+              </p>
+            </section>
+          </main>
+        ) : staff ? (
+          <Workspace
+            key={staff.id}
+            staff={staff}
+            status={status || {}}
+            logout={() => setStaff(null)}
+          />
+        ) : (
+          <Login onLogin={setStaff} />
+        )}
+      </div>
     </ThemeProvider>
   );
 }

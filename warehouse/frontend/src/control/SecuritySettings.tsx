@@ -5,7 +5,7 @@ export default function SecuritySettings({ logout, passwordOnly, canRotateMfa }:
   const [enroll, setEnroll] = useState<Row | null>(null), [busy, setBusy] = useState(false), [error, setError] = useState("");
   return <section className="cc-card cc-security">
     <h3>Захист облікового запису</h3>
-    <form onSubmit={async e => {
+    <form aria-label="Звичайна зміна пароля" onSubmit={async e => {
       e.preventDefault(); setBusy(true); setError("");
       const body = Object.fromEntries(new FormData(e.currentTarget));
       try { await api("/auth/password", "POST", body); logout(); }
@@ -25,7 +25,7 @@ export default function SecuritySettings({ logout, passwordOnly, canRotateMfa }:
       try { setEnroll(await api("/auth/enrollment", "POST")); }
       catch (e) { setError((e as Error).message); }
       finally { setBusy(false); }
-    }}>Налаштувати новий ключ MFA</button> : <form onSubmit={async e => {
+    }}>Налаштувати новий ключ MFA</button> : <form aria-label="Зміна пароля та MFA" onSubmit={async e => {
       e.preventDefault(); setBusy(true); setError("");
       const body = Object.fromEntries(new FormData(e.currentTarget));
       try {

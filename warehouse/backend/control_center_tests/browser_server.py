@@ -25,7 +25,7 @@ os.environ.update(
         "postgres:disposable-control-tests-only", "cc_app:cc-local-tests-only"
     ),
 )
-from app.control_center.models import Staff, SourceState, now
+from app.control_center.models import Staff, SourceState, Grant, now
 from app.control_center.projection import upsert
 from app.control_center.security import hasher
 from app.control_center.api import create_app
@@ -65,8 +65,13 @@ with Session(engine) as db:
                 last_totp_step=-1,
             )
         )
-    for index, name in enumerate(["Тестова компанія Альфа", "Тестова компанія Бета"]):
-        upsert(
+    review = os.getenv("CONTROL_CENTER_BROWSER_REVIEW02") == "1"
+    names = ["Тестова компанія Альфа", "Тестова компанія Бета"]
+    if review:
+        names += ["Фікстура компанії " + str(i).zfill(2) for i in range(3, 26)]
+    companies = []
+    for index, name in enumerate(names):
+        company = upsert(
             db,
             dict(
                 workspace_id="browser-workspace-" + str(index),
@@ -92,7 +97,7 @@ with Session(engine) as db:
                         period_end=(now() + timedelta(days=10)).isoformat(),
                         continuous_paid_until=(now() + timedelta(days=10)).isoformat(),
                     ),
-                    usage=dict(vehicles=3, employees=1),
+                    usage=dict(vehicles=34 if review and index == 0 else 3, employees=1),
                     access_incomplete=False,
                     binding=None,
                     business_activity_at=now().isoformat(),
@@ -101,6 +106,19 @@ with Session(engine) as db:
             ),
             "local",
         )
+        companies.append({"id": company.id, "name": name})
+        if review and index == 1:
+            company.snapshot = {**company.snapshot, "access_incomplete": True,
+                                "access": {"status": "UNKNOWN"}, "business_activity_at": None}
+    if review:
+        for username, role in [("browser-manager"+suffix, "Manager") for suffix in ("", "-webkit")] + [("browser-support"+suffix, "Support") for suffix in ("", "-webkit")] + [("browser-admin"+suffix, "Administrator") for suffix in ("", "-webkit")]:
+            member = Staff(username=username, role=role, password_hash=hashed,
+                           mfa_ciphertext=Fernet(key.encode()).encrypt(seed.encode()).decode(),
+                           active=True, finance=False, last_totp_step=-1)
+            db.add(member)
+            db.flush()
+            if role in {"Manager", "Support"}:
+                db.add(Grant(company_id=companies[0]["id"], staff_id=member.id))
     db.add(
         SourceState(
             key="warehouse:local",
@@ -117,7 +135,7 @@ fixture = Path(
         "CONTROL_CENTER_BROWSER_FIXTURE_FILE", "/tmp/control-browser-fixture.json"
     )
 )
-fixture.write_text(json.dumps(dict(password=password, seed=seed)))
+fixture.write_text(json.dumps(dict(password=password, seed=seed, companies=companies)))
 fixture.chmod(0o600)
 static_dir = os.getenv("CONTROL_CENTER_BROWSER_STATIC_DIR")
 if static_dir:

@@ -1,4 +1,4 @@
-// Real local API + disposable PostgreSQL; synthetic staff/company fixtures only.
+// Actual staff-only React build + real local API + disposable PostgreSQL. No live data.
 import { chromium, webkit } from "@playwright/test";
 import fs from "node:fs";
 import crypto from "node:crypto";
@@ -15,7 +15,7 @@ const fixture = JSON.parse(
 const origin =
   process.env.CONTROL_CENTER_BROWSER_ORIGIN || "http://127.0.0.1:5269";
 if (!/^http:\/\/127\.0\.0\.1:\d+$/.test(origin))
-  throw Error("Only local fixture origin permitted");
+  throw Error("Only loopback fixture origin permitted");
 function otp() {
   const step = Buffer.alloc(8);
   step.writeBigUInt64BE(BigInt(Math.floor(Date.now() / 30000)));
@@ -29,7 +29,7 @@ function otp() {
     "0",
   );
 }
-const engines =
+const drivers =
   process.env.CONTROL_CENTER_BROWSER_ENGINE === "chromium"
     ? { chromium }
     : process.env.CONTROL_CENTER_BROWSER_ENGINE === "webkit"
@@ -37,7 +37,21 @@ const engines =
       : { chromium, webkit };
 const report = [];
 let index = 0;
-for (const [engine, driver] of Object.entries(engines)) {
+async function nav(page, hash, heading) {
+  await page.evaluate((h) => (location.hash = h), hash);
+  if (heading)
+    await page.getByRole("heading", { name: heading, exact: true }).waitFor();
+}
+async function noOverflow(page) {
+  assert.equal(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth > innerWidth + 1,
+    ),
+    false,
+    "no document horizontal overflow",
+  );
+}
+for (const [engine, driver] of Object.entries(drivers)) {
   const browser = await driver.launch(
     engine === "chromium" && process.env.WAREHOUSE_CHROMIUM_PATH
       ? {
@@ -47,15 +61,16 @@ for (const [engine, driver] of Object.entries(engines)) {
       : {},
   );
   try {
-    for (const width of [320, 390, 430, 1440])
+    for (const width of [320, 390, 768, 1440])
       for (const theme of ["light", "forest", "gold", "onyx"]) {
+        console.log(JSON.stringify({ checking: { engine, width, theme } }));
         const context = await browser.newContext({
             baseURL: origin,
             viewport: { width, height: 960 },
             reducedMotion: "reduce",
           }),
-          page = await context.newPage();
-        const errors = [];
+          page = await context.newPage(),
+          errors = [];
         page.on("pageerror", (e) => errors.push(e.message));
         await page.addInitScript((theme) => {
           localStorage.setItem(
@@ -68,15 +83,16 @@ for (const [engine, driver] of Object.entries(engines)) {
           );
         }, theme);
         await page.goto("/control/");
-        await page.getByLabel("Логін").fill("browser-" + index++);
+        await page
+          .getByLabel("Логін", { exact: true })
+          .fill("browser-" + index++);
         await page.getByLabel("Пароль", { exact: true }).fill(fixture.password);
-        await page.getByLabel("MFA-код").fill(otp());
+        await page.getByLabel("MFA-код", { exact: true }).fill(otp());
         await page.getByRole("button", { name: "Увійти", exact: true }).click();
-        await page.getByRole("heading", { name: "Огляд Warehouse" }).waitFor();
-        if (width === 1440 && theme === "forest") {
-          await page.getByText("Стан підписок").waitFor();
-          await page.screenshot({ path: "/tmp/control-center-overview.png", fullPage: true });
-        }
+        await page
+          .getByRole("heading", { name: "Огляд клієнтів", exact: true })
+          .waitFor();
+        await page.getByText("25", { exact: true }).first().waitFor();
         assert.equal(
           await page.evaluate(() => document.documentElement.dataset.theme),
           theme === "light" ? "light" : "dark",
@@ -88,22 +104,42 @@ for (const [engine, driver] of Object.entries(engines)) {
             ),
             theme,
           );
+        await noOverflow(page);
         if (width === 320 && theme === "light") {
-          // A new tab shares the HttpOnly cookie, not sessionStorage.
           const second = await context.newPage();
           await second.goto("/control/");
-          await second.getByRole("heading", {name:"Огляд Warehouse"}).waitFor();
-          assert.equal(await second.evaluate(()=>sessionStorage.getItem("control.csrf")), null);
-          await second.getByRole("button", {name:"Безпека",exact:true}).click();
-          await second.getByRole("button", {name:"Налаштувати новий ключ MFA"}).click();
-          await second.getByLabel("Новий пароль (від 12 символів)").waitFor();
+          await second
+            .getByRole("heading", { name: "Огляд клієнтів", exact: true })
+            .waitFor();
+          assert.equal(
+            await second.evaluate(() => sessionStorage.getItem("control.csrf")),
+            null,
+          );
+          await nav(
+            second,
+            "#/company/" + fixture.companies[0].id + "/notes",
+            "Тестова компанія Альфа",
+          );
+          await second
+            .getByLabel("Нова нотатка", { exact: true })
+            .fill("Перевірка CSRF нової вкладки " + engine);
+          const saved = second.waitForResponse(
+            (r) =>
+              r.request().method() === "POST" &&
+              r.url().endsWith("/notes") &&
+              r.status() === 201,
+          );
+          await second
+            .getByRole("button", { name: "Зберегти нотатку", exact: true })
+            .click();
+          await saved;
           await second.close();
-          await page.evaluate(()=>sessionStorage.setItem("control.csrf","stale-proof"));
-          // Deliberate UI fault injection; actual source role/failure behavior has
-          // separate PostgreSQL/API coverage. No production endpoints involved.
+          await page.evaluate(() =>
+            sessionStorage.setItem("control.csrf", "stale-proof"),
+          );
           await page.route("**/api/control/overview", async (route) => {
-            const response = await route.fetch();
-            const value = await response.json();
+            const response = await route.fetch(),
+              value = await response.json();
             value.source.state = "stale";
             await route.fulfill({ response, json: value });
           });
@@ -137,111 +173,233 @@ for (const [engine, driver] of Object.entries(engines)) {
             await gate;
             await route.continue();
           });
-          const recovered = page.waitForResponse((res) =>
-            new URL(res.url()).pathname === "/api/control/companies" && res.status() === 200);
           await page
             .getByRole("button", { name: "Оновити", exact: true })
             .click();
           await page
+            .locator(".cc-two-col > section")
+            .first()
             .getByRole("status")
-            .filter({ hasText: "Завантаження даних" })
+            .filter({ hasText: "Завантажуємо дані" })
             .waitFor();
           release();
-          await recovered;
           await page
+            .locator(".cc-two-col > section")
+            .first()
             .getByRole("status")
-            .filter({ hasText: "Завантаження даних" })
+            .filter({ hasText: "Завантажуємо дані" })
             .waitFor({ state: "hidden" });
           await page.unroute("**/api/control/companies?*");
         }
+        await nav(page, "#/clients", "Клієнти");
         await page
-          .getByRole("button", { name: "Клієнти", exact: true })
-          .click();
-        const launch = page.getByRole("button", {
-          name: /Тестова компанія Альфа/,
-        });
-        await launch.waitFor();
+          .getByRole("link", { name: "Тестова компанія Альфа", exact: true })
+          .waitFor();
         if (width === 320 && theme === "light") {
           await page
-            .getByLabel("Пошук", { exact: true })
+            .getByLabel("Пошук клієнта", { exact: true })
             .fill("no-such-company");
           await page
             .getByRole("button", { name: "Застосувати", exact: true })
             .click();
           await page
-            .getByText(
-              "Компаній за цими умовами немає.",
-            )
+            .getByRole("heading", {
+              name: "Клієнтів за цими умовами немає",
+              exact: true,
+            })
             .waitFor();
-          await page.getByLabel("Пошук", { exact: true }).fill("");
           await page
-            .getByRole("button", { name: "Застосувати", exact: true })
+            .getByRole("link", { name: "Скинути", exact: true })
             .click();
-          await launch.waitFor();
+          await page
+            .getByRole("link", { name: "Тестова компанія Альфа", exact: true })
+            .waitFor();
+          await page
+            .getByRole("link", { name: "Наступні →", exact: true })
+            .click();
+          await page.getByText("Кінець вибірки", { exact: true }).waitFor();
+          assert(new URL(page.url()).hash.includes("cursor="));
+          assert.equal(
+            await page.locator(".cc-client-cards .cc-client-card").count(),
+            5,
+          );
+          await page.reload();
+          await page.getByText("Кінець вибірки", { exact: true }).waitFor();
+          await page
+            .getByRole("link", { name: "На початок", exact: true })
+            .click();
+          await page
+            .getByRole("link", { name: "Тестова компанія Альфа", exact: true })
+            .waitFor();
         }
-        if (width === 1440 && theme === "forest")
-          await page.screenshot({ path: "/tmp/control-center-clients.png", fullPage: true });
+        if (width <= 1100) {
+          await page
+            .getByRole("button", { name: "Відкрити меню", exact: true })
+            .click();
+          const sidebar = page.getByRole("dialog", {
+            name: "Головне меню",
+            exact: true,
+          });
+          await sidebar.waitFor();
+          assert(
+            await page.locator(".cc-layout-main").evaluate((e) => e.inert),
+          );
+          const first = sidebar.getByRole("button", {
+            name: "Закрити меню",
+            exact: true,
+          });
+          await first.focus();
+          await page.keyboard.press("Shift+Tab");
+          assert.equal(
+            await sidebar
+              .getByRole("button", { name: "Вийти", exact: true })
+              .evaluate((e) => e === document.activeElement),
+            true,
+          );
+          await page.keyboard.press("Escape");
+          await page.waitForFunction(
+            () =>
+              document.querySelector(".cc-menu-button") ===
+                document.activeElement &&
+              document.querySelector(".cc-sidebar").inert,
+          );
+        }
+        const launch = page.getByRole("link", {
+          name: "Тестова компанія Альфа",
+          exact: true,
+        });
         await launch.focus();
         await page.keyboard.press("Enter");
-        const modal = page.getByRole("dialog");
-        await modal.waitFor();
-        await modal.getByText("o***@example.test", { exact: true }).waitFor();
-        if (width === 1440 && theme === "forest")
-          await page.screenshot({ path: "/tmp/control-center-company.png" });
-        if (width === 390 && theme === "light")
-          await page.screenshot({ path: "/tmp/control-center-company-mobile.png" });
-        assert.equal(
-          await modal.evaluate(
-            (element) => getComputedStyle(element).animationName,
-          ),
-          "none",
-          "reduced motion",
-        );
-        assert.equal(
-          await modal.getByText("o***@example.test", { exact: true }).count(),
-          1,
-        );
-        await modal
-          .getByLabel("Нова нотатка")
-          .fill(
-            "Внутрішня browser-нотатка " + engine + " " + width + " " + theme,
-          );
-        await modal.getByRole("button", { name: "Зберегти нотатку" }).click();
-        await modal
-          .getByRole("status")
-          .filter({ hasText: "Збережено лише" })
+        await page
+          .getByRole("heading", { name: "Тестова компанія Альфа", exact: true })
           .waitFor();
-        await modal
-          .getByRole("button", { name: "Оновити фінансовий контекст" })
-          .click();
-        await modal.getByText(/Немає перевіреного зв’язку з Billing/).waitFor();
-        await modal
-          .getByLabel("Дія", { exact: true })
-          .fill("Тестова наступна дія");
-        await modal
-          .getByRole("button", { name: "Додати до моєї черги" })
-          .click();
-        await page.keyboard.press("Escape");
-        await modal.waitFor({ state: "hidden" });
+        await page.getByText("34", { exact: false }).first().waitFor();
         assert.equal(
-          await launch.evaluate((e) => e === document.activeElement),
-          true,
-          "focus restored",
+          await page.getByText("Оплачено", { exact: true }).count(),
+          0,
         );
+        await noOverflow(page);
+        if (width === 1440 && theme === "forest")
+          await page.screenshot({
+            path: "/tmp/control-center-company.png",
+            fullPage: true,
+          });
+        if (width === 390 && theme === "light")
+          await page.screenshot({
+            path: "/tmp/control-center-company-mobile.png",
+            fullPage: true,
+          });
+        for (const [section, label] of [
+          ["products", "Продукти"],
+          ["people", "Працівники"],
+          ["activity", "Активність"],
+          ["history", "Історія"],
+        ]) {
+          await page
+            .locator(".cc-profile-tabs")
+            .getByRole("link", { name: label, exact: true })
+            .click();
+          await page.waitForURL((u) => u.hash.endsWith("/" + section));
+          await noOverflow(page);
+        }
+        await page
+          .locator(".cc-profile-tabs")
+          .getByRole("link", { name: "Фінанси", exact: true })
+          .click();
+        await page
+          .getByRole("button", {
+            name: "Оновити фінансовий контекст",
+            exact: true,
+          })
+          .click();
+        await page
+          .getByText("Немає перевіреного зв’язку з Billing", { exact: true })
+          .waitFor();
+        await page
+          .locator(".cc-profile-tabs")
+          .getByRole("link", { name: "Нотатки", exact: true })
+          .click();
+        const note =
+          "Внутрішня нотатка " +
+          engine +
+          " " +
+          width +
+          " " +
+          theme +
+          " <img src=x onerror=alert(1)>";
+        await page.getByLabel("Нова нотатка", { exact: true }).fill(note);
         assert.equal(
-          await page.evaluate(
-            () => document.documentElement.scrollWidth <= innerWidth,
-          ),
-          true,
-          "no page horizontal overflow",
+          await page.getByLabel("Нова нотатка", { exact: true }).inputValue(),
+          note,
+          "route focus must not interrupt immediate typing",
+        );
+        const noteSaved = page.waitForResponse(
+          (r) =>
+            r.request().method() === "POST" &&
+            r.url().endsWith("/notes") &&
+            r.status() !== 403,
         );
         await page
-          .getByRole("button", { name: "Робоча черга", exact: true })
+          .getByRole("button", { name: "Зберегти нотатку", exact: true })
           .click();
+        const noteResponse = await noteSaved;
+        assert.equal(noteResponse.status(), 201, await noteResponse.text());
+        await page.getByText(note, { exact: true }).waitFor();
+        assert.equal(await page.locator(".cc-note img").count(), 0);
+        const taskAction =
+          "Тестова наступна дія " + engine + " " + width + " " + theme;
+        const taskButton = page.getByRole("button", {
+          name: "Завдання",
+          exact: true,
+        });
+        await taskButton.click();
+        const dialog = page.getByRole("dialog", {
+          name: "Нове завдання",
+          exact: true,
+        });
+        await dialog
+          .getByLabel("Наступна дія", { exact: true })
+          .fill(taskAction);
+        await dialog
+          .getByRole("button", { name: "Додати до моєї черги", exact: true })
+          .click();
+        await dialog.waitFor({ state: "hidden" });
         await page
-          .getByText("Тестова наступна дія", { exact: true })
+          .getByText("Завдання збережено", { exact: false })
           .first()
           .waitFor();
+        assert.equal(
+          await taskButton.evaluate((e) => e === document.activeElement),
+          true,
+          "task dialog restores focus",
+        );
+        await nav(page, "#/queue", "Робоча черга");
+        const task = page
+          .locator(
+            width <= 850
+              ? ".cc-task-cards .cc-client-card"
+              : ".cc-task-table tr",
+          )
+          .filter({ hasText: taskAction });
+        await task.waitFor();
+        const selector = task.getByLabel("Статус завдання: " + taskAction, {
+          exact: true,
+        });
+        await selector.selectOption("in_progress");
+        await page
+          .getByRole("status")
+          .filter({ hasText: "Статус завдання збережено" })
+          .waitFor();
+        await page.waitForFunction(
+          (action) =>
+            [...document.querySelectorAll("label.cc-task-status")]
+              .filter((l) => l.textContent.includes(action))
+              .some((l) => l.querySelector("select")?.value === "in_progress"),
+          taskAction,
+        );
+        await selector.waitFor();
+        assert.equal(await selector.inputValue(), "in_progress");
+        await noOverflow(page);
         if (width === 1440 && theme === "forest")
           await page.screenshot({
             path: "/tmp/control-center-desktop.png",
@@ -253,17 +411,32 @@ for (const [engine, driver] of Object.entries(engines)) {
             fullPage: true,
           });
         if (width === 320 && theme === "light") {
-          await page.evaluate(()=>sessionStorage.removeItem("control.csrf"));
-          await page.getByRole("button", {name:"Вийти",exact:true}).click();
-          await page.getByRole("button", {name:"Увійти",exact:true}).waitFor();
-          assert.equal((await context.request.get("/api/control/auth/me")).status(),401);
+          await page.evaluate(() => sessionStorage.removeItem("control.csrf"));
+          await page
+            .getByRole("button", { name: "Відкрити меню", exact: true })
+            .click();
+          await page
+            .getByRole("button", { name: "Вийти", exact: true })
+            .click();
+          await page.getByLabel("Логін", { exact: true }).waitFor();
+          assert.equal(
+            (await context.request.get("/api/control/auth/me")).status(),
+            401,
+          );
         }
-        if(width===320&&theme==='forest'){
-          await page.route('**/api/control/overview',route=>route.fulfill({status:401,json:{detail:'Session revoked'}}));
-          await page.getByRole('button',{name:'Оновити',exact:true}).click();
-          await page.getByLabel('Логін',{exact:true}).waitFor();
-          assert.equal(await page.getByRole('heading',{name:'Огляд Warehouse'}).count(),0,'revoked session clears protected UI');
-          assert.equal(await page.evaluate(()=>sessionStorage.getItem('control.csrf')),null);
+        if (width === 320 && theme === "forest") {
+          await page.route("**/api/control/overview", (route) =>
+            route.fulfill({ status: 401, json: { detail: "Session revoked" } }),
+          );
+          await page
+            .getByRole("button", { name: "Оновити", exact: true })
+            .click();
+          await page.getByLabel("Логін", { exact: true }).waitFor();
+          assert.equal(await page.locator(".cc-shell").count(), 0);
+          assert.equal(
+            await page.evaluate(() => sessionStorage.getItem("control.csrf")),
+            null,
+          );
         }
         assert.deepEqual(errors, []);
         report.push({ engine, width, theme, status: "passed" });
@@ -273,14 +446,15 @@ for (const [engine, driver] of Object.entries(engines)) {
     await browser.close();
   }
 }
-const output =
+fs.writeFileSync(
   process.env.CONTROL_CENTER_BROWSER_REPORT ||
-  "/tmp/control-center-browser-results.json";
-fs.writeFileSync(output, JSON.stringify(report, null, 2));
+    "/tmp/control-center-browser-results.json",
+  JSON.stringify(report, null, 2),
+);
 console.log(
   JSON.stringify({
     passed: report.length,
     failed: 0,
-    engines: Object.keys(engines),
+    engines: Object.keys(drivers),
   }),
 );

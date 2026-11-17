@@ -92,12 +92,12 @@ export const money = (row: Row) =>
       }).format(row.amount_minor / 100)
     : "Немає даних";
 export const states: Record<string, string> = {
-  ACTIVE: "Оплачено",
+  ACTIVE: "Чинний",
   TRIAL: "Пробний",
   GRACE: "Пільговий період",
   EXPIRED: "Завершено",
-  FREE: "Безкоштовний",
-  UNKNOWN: "Немає даних",
+  FREE: "Без чинного періоду",
+  UNKNOWN: "Недостатньо даних",
 };
 
 export const coverageName: Record<string, string> = {

@@ -8,7 +8,7 @@ on:
       - "warehouse/backend/requirements-control-center*"
       - "warehouse/frontend/src/control/**"
       - "warehouse/frontend/control/**"
-      - "warehouse/frontend/tests/control-center-browser.mjs"
+      - "warehouse/frontend/tests/control-center-*.mjs"
       - "warehouse/frontend/vite.config.ts"
       - "warehouse/frontend/vite.control.config.ts"
       - "warehouse/deploy/railway/frontend.Dockerfile"
@@ -20,6 +20,11 @@ on:
     paths:
       ["warehouse/**", "bot/billing/**", ".github/workflows/control-center.yml"]
   workflow_dispatch:
+    inputs:
+      warehouse_full:
+        description: "Also run the long Warehouse domain regression (not needed for staff UI-only changes)"
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
@@ -70,6 +75,7 @@ jobs:
     env:
       CONTROL_CENTER_BROWSER_ADMIN_URL: postgresql+psycopg://postgres:disposable-control-tests-only@127.0.0.1:5432/warehouse_control_browser_test
       CONTROL_CENTER_BROWSER_TEST: "1"
+      CONTROL_CENTER_BROWSER_REVIEW02: "1"
       CONTROL_CENTER_BROWSER_STATIC_DIR: "${{ github.workspace }}/warehouse/frontend/dist-control"
       PYTHONPATH: "${{ github.workspace }}:${{ github.workspace }}/warehouse/backend"
     steps:
@@ -90,6 +96,7 @@ jobs:
       - name: Start local disposable fixture and separate staff entry
         run: |
           python warehouse/backend/control_center_tests/browser_server.py > /tmp/control-browser-api.log 2>&1 &
+          echo $! > /tmp/control-browser.pid
           for attempt in $(seq 1 60); do
             if curl -fsS http://127.0.0.1:5269/health; then break; fi
             sleep 1
@@ -97,8 +104,34 @@ jobs:
           curl -fsS http://127.0.0.1:5269/health
           curl -fsS http://127.0.0.1:5269/control/ >/dev/null
           test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:5269/api/v1/auth/options)" = 404
+      - run: node --experimental-strip-types --test tests/control-center-model-unit.mjs
+        working-directory: warehouse/frontend
       - run: node tests/control-center-browser.mjs
         working-directory: warehouse/frontend
+      - run: node tests/control-center-resilience-browser.mjs
+        working-directory: warehouse/frontend
+      - run: node tests/control-center-roles-browser.mjs
+        working-directory: warehouse/frontend
+      - name: Verify password-only policy through the same React UI
+        run: |
+          read -r fixture_pid < /tmp/control-browser.pid
+          kill "$fixture_pid"
+          CONTROL_CENTER_AUTH_MODE=password-only python warehouse/backend/control_center_tests/browser_server.py > /tmp/control-password-api.log 2>&1 &
+          python - <<'PY'
+          import time, httpx
+          for attempt in range(60):
+              try:
+                  r=httpx.get('http://127.0.0.1:5269/api/control/status')
+                  if r.status_code==200 and r.json().get('auth_mode')=='password-only':
+                      break
+              except httpx.HTTPError:
+                  pass
+              time.sleep(1)
+          else:
+              raise RuntimeError('Password-only fixture did not become ready')
+          PY
+          cd warehouse/frontend
+          node tests/control-center-password-browser.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -157,6 +190,7 @@ jobs:
         if: always()
         with: { name: control-finance-tests, path: /tmp/control-finance.xml }
   warehouse-regressions:
+    if: github.event_name != 'workflow_dispatch' || inputs.warehouse_full
     runs-on: ubuntu-latest
     timeout-minutes: 50
     services:
