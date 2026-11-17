@@ -13,7 +13,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import DateTime, cast, delete, func, select, tuple_, update
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from . import security as sec
 from .config import (
     cipher,
@@ -34,6 +34,7 @@ from .models import (
     Staff,
     Task,
     now,
+    uid,
 )
 
 
@@ -59,6 +60,7 @@ class PasswordChange(Input):
     current_password: str = Field(min_length=1, max_length=128)
     new_password: str = Field(min_length=12, max_length=128)
     mfa_code: str | None = Field(default=None, pattern=r"^[0-9]{6}$")
+    enrollment: str | None = Field(default=None, max_length=2048)
 
 
 class NoteInput(Input):
@@ -72,10 +74,23 @@ class Assign(Input):
 class StaffUpdate(Input):
     current_password: str | None = Field(default=None, max_length=128)
     mfa_code: str | None = Field(default=None, pattern=r"^[0-9]{6}$")
-    role: str = Field(pattern="^(Owner|Administrator|Manager|Support)$")
+    role: str = Field(pattern="^(Owner|Administrator|Manager|Support|Moderator)$")
     active: bool
     finance: bool = False
     reason: str = Field(min_length=3, max_length=300)
+
+
+class StaffCommand(Input):
+    current_password: str | None = Field(default=None, max_length=128)
+    mfa_code: str | None = Field(default=None, pattern=r"^[0-9]{6}$")
+    reason: str = Field(min_length=3, max_length=300)
+
+
+class StaffCreate(StaffCommand):
+    username: str = Field(
+        min_length=3, max_length=120, pattern=r"^[a-zA-Z0-9][a-zA-Z0-9._-]{2,119}$"
+    )
+    role: str = Field(default="Moderator", pattern="^(Moderator|Manager|Support)$")
 
 
 class TaskInput(Input):
@@ -91,7 +106,8 @@ def staff_view(staff):
         role=staff.role,
         active=staff.active,
         can_finance=sec.finance_access(staff),
-        can_assign=sec.global_access(staff),
+        can_assign=sec.can_assign_tasks(staff),
+        must_change_password=staff.must_change_password,
     )
 
 
@@ -101,11 +117,13 @@ def freshness(row):
             state="unavailable", reason="source_not_synchronized", coverage="incomplete"
         )
     return dict(
-        state="stale"
-        if row.last_error
-        or not row.last_success
-        or row.last_success < now() - timedelta(minutes=15)
-        else "fresh",
+        state=(
+            "stale"
+            if row.last_error
+            or not row.last_success
+            or row.last_success < now() - timedelta(minutes=15)
+            else "fresh"
+        ),
         environment=row.environment,
         schema_version=row.schema_version,
         watermark=row.watermark,
@@ -161,6 +179,12 @@ def company_view(row, staff, detail=False):
         and snapshot.get("source_environment") == "staging"
         and "Демонстрація" not in row.labels
     )
+    if staff.role == "Moderator":
+        full_contacts = (
+            row.environment == environment()
+            and snapshot.get("source_environment") == environment()
+            and "Демонстрація" not in row.labels
+        )
     people = snapshot.get("people", [])
     owner = next((p for p in people if p.get("role") == "DIRECTOR"), None)
     if owner:
@@ -175,9 +199,11 @@ def company_view(row, staff, detail=False):
         value["people"] = [
             {
                 **p,
-                "email": p.get("email", "")
-                if full_contacts
-                else mask_email(p.get("email", "")),
+                "email": (
+                    p.get("email", "")
+                    if full_contacts
+                    else mask_email(p.get("email", ""))
+                ),
             }
             for p in people
         ]
@@ -315,7 +341,29 @@ def create_app():
             sec.audit(db, staff.id, "auth.password", "staff", staff.id, result="denied")
             db.commit()
             raise HTTPException(422, "Перевірте поточний і новий пароль") from None
-        if not password_only():
+        if staff.must_change_password and not password_only():
+            try:
+                payload = json.loads(
+                    cipher().decrypt((data.enrollment or "").encode(), ttl=600)
+                )
+                if (
+                    payload["staff"] != staff.id
+                    or payload["session"] != request.state.control_session.token_hash
+                    or payload["purpose"] != "activation"
+                ):
+                    raise ValueError()
+                step = sec.mfa_step(payload["seed"], data.mfa_code or "")
+                if step is None:
+                    raise ValueError()
+            except (InvalidToken, ValueError, KeyError, TypeError):
+                sec.audit(
+                    db, staff.id, "auth.activation", "staff", staff.id, result="denied"
+                )
+                db.commit()
+                raise HTTPException(422, "Підтвердьте новий ключ MFA") from None
+            staff.mfa_ciphertext = cipher().encrypt(payload["seed"].encode()).decode()
+            staff.last_totp_step = step
+        elif not password_only():
             sec.require_step_up(
                 db,
                 staff,
@@ -323,6 +371,8 @@ def create_app():
                 ip=request.client.host if request.client else "unknown",
             )
         staff.password_hash = sec.hasher.hash(data.new_password)
+        staff.must_change_password = False
+        staff.temporary_expires_at = None
         sec.revoke(db, staff.id)
         sec.audit(db, staff.id, "auth.password", "staff", staff.id)
         db.commit()
@@ -333,6 +383,21 @@ def create_app():
             httponly=True,
             samesite="strict",
         )
+
+    @app.post("/auth/activation-enrollment")
+    def activation_enrollment(request: Request, staff=Depends(sec.identity)):
+        if not staff.must_change_password or password_only():
+            raise HTTPException(403, "Активація MFA недоступна")
+        seed = base64.b32encode(secrets.token_bytes(20)).decode()
+        payload = json.dumps(
+            dict(
+                staff=staff.id,
+                purpose="activation",
+                session=request.state.control_session.token_hash,
+                seed=seed,
+            )
+        )
+        return {"seed": seed, "enrollment": cipher().encrypt(payload.encode()).decode()}
 
     @app.post("/auth/enrollment")
     def enrollment(request: Request, staff=Depends(sec.identity)):
@@ -422,7 +487,7 @@ def create_app():
         cipher()  # detect missing/invalid key without disclosing it
         db.scalar(select(Staff.id).limit(1))
         return dict(
-            staff_schema="001",
+            staff_schema="002",
             source=freshness(db.get(SourceState, "warehouse:" + environment())),
             environment=environment(),
         )
@@ -435,6 +500,97 @@ def create_app():
             staff_view(s)
             for s in db.scalars(select(Staff).order_by(Staff.username).limit(100))
         ]
+
+    def owner_confirmation(db, staff, data, request):
+        if staff.role != "Owner":
+            raise HTTPException(403, "Лише Owner")
+        sec.require_step_up(
+            db,
+            staff,
+            data.mfa_code,
+            password=data.current_password,
+            ip=request.client.host if request.client else "unknown",
+        )
+
+    def temporary_access(db, target):
+        password = secrets.token_urlsafe(24)
+        target.password_hash = sec.hasher.hash(password)
+        target.must_change_password = True
+        target.temporary_expires_at = now() + timedelta(hours=24)
+        # Fresh enrollment is required in MFA mode; no old seed survives reset.
+        target.mfa_ciphertext = (
+            cipher().encrypt(base64.b32encode(secrets.token_bytes(20))).decode()
+        )
+        target.last_totp_step = -1
+        with db.no_autoflush:
+            sec.revoke(db, target.id)
+        return password
+
+    @app.post("/staff", status_code=201)
+    def create_staff(
+        data: StaffCreate,
+        request: Request,
+        staff=Depends(sec.identity),
+        db=Depends(get_db),
+    ):
+        owner_confirmation(db, staff, data, request)
+        target = Staff(
+            id=uid(),
+            username=data.username.lower(),
+            role=data.role,
+            finance=False,
+            active=True,
+        )
+        db.add(target)
+        password = temporary_access(db, target)
+        try:
+            db.flush()
+            sec.audit(
+                db,
+                staff.id,
+                "staff.create",
+                "staff",
+                target.id,
+                reason=data.reason,
+                diff={"role": target.role},
+            )
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+            # Only authenticated Owner can reach this response.
+            raise HTTPException(
+                409, "Не вдалося створити обліковий запис із цим ім’ям"
+            ) from None
+        return dict(
+            staff=staff_view(target),
+            temporary_password=password,
+            expires_at=target.temporary_expires_at,
+        )
+
+    @app.post("/staff/{staff_id}/reset")
+    def reset_staff(
+        staff_id: str,
+        data: StaffCommand,
+        request: Request,
+        staff=Depends(sec.identity),
+        db=Depends(get_db),
+    ):
+        owner_confirmation(db, staff, data, request)
+        if staff_id == staff.id:
+            raise HTTPException(409, "Для власного доступу використайте зміну пароля")
+        target = db.get(Staff, staff_id, with_for_update=True)
+        if not target:
+            raise HTTPException(404)
+        if target.role == "Owner":
+            raise HTTPException(409, "Відновлення Owner виконує оператор")
+        password = temporary_access(db, target)
+        sec.audit(db, staff.id, "staff.reset", "staff", target.id, reason=data.reason)
+        db.commit()
+        return dict(
+            staff=staff_view(target),
+            temporary_password=password,
+            expires_at=target.temporary_expires_at,
+        )
 
     @app.patch("/staff/{staff_id}")
     def update_staff(
@@ -464,7 +620,7 @@ def create_app():
         target.role, target.active, target.finance = (
             data.role,
             data.active,
-            data.finance if data.role != "Support" else False,
+            data.finance if data.role not in {"Support", "Moderator"} else False,
         )
         # A different role must not inherit company grants from the old role.
         if before["role"] != target.role:
@@ -595,9 +751,11 @@ def create_app():
                 json.dumps(
                     dict(
                         filters=filters,
-                        value=last.display_name
-                        if sort == "name"
-                        else last.registered_at.isoformat(),
+                        value=(
+                            last.display_name
+                            if sort == "name"
+                            else last.registered_at.isoformat()
+                        ),
                         id=last.id,
                     )
                 ).encode()
@@ -773,6 +931,29 @@ def create_app():
         db.commit()
         return dict(id=row.id)
 
+    @app.patch("/companies/{company_id}/notes/{note_id}")
+    def edit_note(
+        company_id: str,
+        note_id: str,
+        data: NoteInput,
+        staff=Depends(sec.identity),
+        db=Depends(get_db),
+    ):
+        sec.company(db, staff, company_id)
+        row = db.get(Note, note_id, with_for_update=True)
+        if not row or row.company_id != company_id:
+            raise HTTPException(404)
+        if not sec.can_handle_company(staff) and row.staff_id != staff.id:
+            raise HTTPException(403)
+        if not data.text.strip():
+            raise HTTPException(422)
+        row.text = data.text.strip()
+        sec.audit(
+            db, staff.id, "notes.write", company_id, row.id, diff={"updated": True}
+        )
+        db.commit()
+        return {"updated": True}
+
     @app.post("/companies/{company_id}/assign")
     def assign(
         company_id: str, data: Assign, staff=Depends(sec.identity), db=Depends(get_db)
@@ -826,7 +1007,7 @@ def create_app():
             .join(Staff, Staff.id == Task.assignee_id)
             .where(Task.company_id.in_(allowed))
         )
-        if not sec.global_access(staff):
+        if not sec.can_handle_company(staff):
             query = query.where(Task.assignee_id == staff.id)
         return [
             dict(
@@ -879,7 +1060,7 @@ def create_app():
         if not row:
             raise HTTPException(404)
         sec.company(db, staff, row.company_id)
-        if not sec.global_access(staff) and row.assignee_id != staff.id:
+        if not sec.can_handle_company(staff) and row.assignee_id != staff.id:
             raise HTTPException(404)
         if not data.next_action.strip() or data.due_at and data.due_at.tzinfo is None:
             raise HTTPException(422)

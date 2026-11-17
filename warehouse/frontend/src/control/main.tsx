@@ -32,6 +32,8 @@ import Directory from "./Directory";
 import Overview from "./Overview";
 import CompanyProfile from "./CompanyProfile";
 import WorkQueue from "./Tasks";
+import TeamSettings from "./TeamSettings";
+import ActivateAccount from "./ActivateAccount";
 import SecuritySettings from "./SecuritySettings";
 import "../tokens.css";
 import "../themes.css";
@@ -296,6 +298,7 @@ function Workspace({
                     Administrator: "Адміністратор",
                     Manager: "Менеджер",
                     Support: "Підтримка",
+                    Moderator: "Модератор",
                   } as Record<string, string>
                 )[staff.role] || staff.role}
               </small>
@@ -405,6 +408,7 @@ function Workspace({
                 title="Безпека та налаштування"
                 subtitle="Особистий доступ і корпоративне оформлення."
               />
+              {staff.role === "Owner" && <TeamSettings staff={staff} passwordOnly={status.auth_mode === "password-only"} />}
               <SecuritySettings
                 logout={logout}
                 passwordOnly={status.auth_mode === "password-only"}
@@ -471,6 +475,8 @@ function App() {
               </p>
             </section>
           </main>
+        ) : staff?.must_change_password ? (
+          <ActivateAccount passwordOnly={status?.auth_mode === "password-only"} logout={() => setStaff(null)} />
         ) : staff ? (
           <Workspace
             key={staff.id}

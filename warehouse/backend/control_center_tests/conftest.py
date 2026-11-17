@@ -43,6 +43,9 @@ def schema():
         c.execute(
             text("INSERT INTO control_center.schema_version VALUES ('001','local')")
         )
+        c.connection.driver_connection.execute(
+            (root / "control_center_migrations/002.sql").read_text()
+        )
         c.execute(
             text(
                 "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='cc_app') THEN CREATE ROLE cc_app LOGIN PASSWORD 'cc-local-tests-only' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT; END IF; END $$"

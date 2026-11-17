@@ -32,6 +32,7 @@ export default function Login({ onLogin }: { onLogin: (s: Staff) => void }) {
           onSubmit={async (e) => {
             e.preventDefault();
             const data = Object.fromEntries(new FormData(e.currentTarget));
+            if (!data.code) delete data.code;
             setBusy(true);
             setError("");
             try {
@@ -69,12 +70,13 @@ export default function Login({ onLogin }: { onLogin: (s: Staff) => void }) {
               MFA-код
               <input
                 name="code"
+                aria-label="MFA-код"
                 inputMode="numeric"
                 autoComplete="one-time-code"
                 pattern="[0-9]{6}"
                 maxLength={6}
-                required
               />
+              <small>Під час першого входу з тимчасовим паролем залиште порожнім.</small>
             </label>
           )}
           <State loading={busy || !policy} error={error} />
@@ -82,7 +84,7 @@ export default function Login({ onLogin }: { onLogin: (s: Staff) => void }) {
             {busy ? "Перевіряємо…" : "Увійти"}
           </button>
         </form>
-        <small>Доступ створює оператор. Публічної реєстрації немає.</small>
+        <small>Доступ створює власник CRM. Публічної реєстрації немає.</small>
       </section>
     </main>
   );

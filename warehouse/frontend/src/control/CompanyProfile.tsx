@@ -176,7 +176,7 @@ function People({ company }: { company: Row }) {
     </Panel>
   );
 }
-function Notes({ id }: { id: string }) {
+function Notes({ id, staff }: { id: string; staff: Staff }) {
   const [revision, refresh] = useRevision(),
     request = useLoad<Row[]>(
       "/companies/" + encodeURIComponent(id) + "/notes",
@@ -201,6 +201,18 @@ function Notes({ id }: { id: string }) {
               <article className="cc-note" key={n.id}>
                 <p>{n.text}</p>
                 <small>{date(n.created_at)}</small>
+                {(n.staff_id === staff.id || ["Owner", "Administrator", "Moderator"].includes(staff.role)) && <details>
+                  <summary>Редагувати нотатку</summary>
+                  <form className="cc-form" onSubmit={async e => {
+                    e.preventDefault(); setBusy(true); setError("");
+                    const text = new FormData(e.currentTarget).get("text");
+                    try { await api(`/companies/${encodeURIComponent(id)}/notes/${n.id}`, "PATCH", { text }); refresh(); }
+                    catch(e) { setError((e as Error).message); } finally { setBusy(false); }
+                  }}>
+                    <label>Текст нотатки<textarea name="text" defaultValue={n.text} required maxLength={4000} /></label>
+                    <button disabled={busy}>Зберегти зміни нотатки</button>
+                  </form>
+                </details>}
               </article>
             ))
           ) : (
@@ -632,7 +644,7 @@ export default function CompanyProfile({
               <Empty title="Фінансовий контекст недоступний вашій ролі" />
             ))}
           {section === "activity" && <BusinessActivity company={c} />}{" "}
-          {section === "notes" && <Notes key={id} id={id} />}{" "}
+          {section === "notes" && <Notes key={id} id={id} staff={staff} />}{" "}
           {section === "history" && (
             <Panel title="Історія змін профілю">
               <Empty title="Повну історію змін ще не підключено">

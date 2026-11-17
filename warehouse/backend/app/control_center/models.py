@@ -30,7 +30,9 @@ class Base(DeclarativeBase):
 class Staff(Base):
     __tablename__ = "staff"
     __table_args__ = (
-        CheckConstraint("role IN ('Owner','Administrator','Manager','Support')"),
+        CheckConstraint(
+            "role IN ('Owner','Administrator','Manager','Support','Moderator')"
+        ),
         {"schema": "control_center"},
     )
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
@@ -41,6 +43,12 @@ class Staff(Base):
     role: Mapped[str] = mapped_column(String(20))
     finance: Mapped[bool] = mapped_column(Boolean, default=False)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
+    must_change_password: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false"
+    )
+    temporary_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 

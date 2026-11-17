@@ -6,6 +6,7 @@ export type Staff = {
   active: boolean;
   can_finance: boolean;
   can_assign: boolean;
+  must_change_password: boolean;
 };
 let expectedStaff: string | null = null;
 const storageKey = "control.csrf";

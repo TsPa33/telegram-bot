@@ -2792,3 +2792,9 @@ body:has(.cc-app) {
 }
 
 .cc-app td,.cc-app th{overflow-wrap:anywhere}
+
+.cc-activation-receipt { padding: 1rem; border: 1px solid var(--border); margin-block: 1rem; overflow-wrap: anywhere; }
+.cc-team-list { padding-left: 1.2rem; }
+.cc-team-list li { margin-block: .75rem; overflow-wrap: anywhere; }
+.cc-team-list button { margin: .4rem; }
+.cc-key { overflow-wrap: anywhere; white-space: normal; }

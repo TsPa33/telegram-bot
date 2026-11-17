@@ -98,7 +98,7 @@ def create_standalone(static_dir=None):
                         "SELECT version,environment FROM control_center.schema_version"
                     )
                 ).one()
-                if tuple(version) != ("001", environment()):
+                if tuple(version) != ("002", environment()):
                     raise RuntimeError("Schema mismatch")
             return {"status": "ok"}
         except (KeyError, ValueError, RuntimeError, SQLAlchemyError):

@@ -12,30 +12,29 @@ from .security import audit, hasher, mfa_step, revoke
 
 
 def migrate():
-    # Migrator URL only in the operator process. Never fall back to runtime URL.
+    # Explicit operator process only, never runtime startup.
     engine = connection("CONTROL_CENTER_MIGRATOR_URL")
+    directory = Path(__file__).resolve().parents[2] / "control_center_migrations"
     with engine.begin() as c:
         c.execute(
             text("SELECT pg_advisory_xact_lock(hashtext('control-center-migrate'))")
         )
         exists = c.scalar(text("SELECT to_regclass('control_center.schema_version')"))
         if exists:
-            row = c.execute(
+            version, source_env = c.execute(
                 text("SELECT version,environment FROM control_center.schema_version")
             ).one()
-            if row != ("001", environment()):
+            if version not in {"001", "002"} or source_env != environment():
                 raise RuntimeError("Control Center schema/environment mismatch")
-            return
-        sql = (
-            Path(__file__).resolve().parents[2]
-            / "control_center_migrations"
-            / "001.sql"
-        )
-        c.connection.driver_connection.execute(sql.read_text())
-        c.execute(
-            text("INSERT INTO control_center.schema_version VALUES (:v,:e)"),
-            {"v": "001", "e": environment()},
-        )
+        else:
+            c.connection.driver_connection.execute((directory / "001.sql").read_text())
+            c.execute(
+                text("INSERT INTO control_center.schema_version VALUES ('001',:e)"),
+                {"e": environment()},
+            )
+            version = "001"
+        if version == "001":
+            c.connection.driver_connection.execute((directory / "002.sql").read_text())
 
 
 def provision(db, username, role, password, secret, code):
@@ -43,7 +42,7 @@ def provision(db, username, role, password, secret, code):
         len(password) < 12
         or len(password) > 128
         or not username.strip()
-        or role not in {"Owner", "Administrator", "Manager", "Support"}
+        or role not in {"Owner", "Administrator", "Manager", "Support", "Moderator"}
     ):
         raise ValueError("Invalid staff provisioning fields")
     step = mfa_step(secret, code)
@@ -89,7 +88,7 @@ def main():
     parser.add_argument("--username")
     parser.add_argument(
         "--role",
-        choices=["Owner", "Administrator", "Manager", "Support"],
+        choices=["Owner", "Administrator", "Manager", "Support", "Moderator"],
         default="Owner",
     )
     parser.add_argument("--limit", type=int, default=50)

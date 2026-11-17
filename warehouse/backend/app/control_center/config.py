@@ -112,7 +112,7 @@ def connection(name="CONTROL_CENTER_DATABASE_URL"):
                 c.execute(
                     "SELECT version,environment FROM control_center.schema_version"
                 )
-                if c.fetchone() != ("001", environment()):
+                if c.fetchone() != ("002", environment()):
                     raise RuntimeError("Control Center schema/environment mismatch")
             raw.rollback()
 

@@ -43,6 +43,7 @@ with engine.begin() as c:
         (root / "control_center_migrations/001.sql").read_text()
     )
     c.execute(text("INSERT INTO control_center.schema_version VALUES ('001','local')"))
+    c.connection.driver_connection.execute((root / "control_center_migrations/002.sql").read_text())
     c.connection.driver_connection.execute(
         (root / "control_center_migrations/grants.sql")
         .read_text()
@@ -79,6 +80,7 @@ with Session(engine) as db:
                 owner_email="owner@example.test",
                 registered_at=now(),
                 snapshot=dict(
+                    source_environment="local",
                     people=[
                         dict(
                             id="owner",

@@ -112,6 +112,8 @@ jobs:
         working-directory: warehouse/frontend
       - run: node tests/control-center-roles-browser.mjs
         working-directory: warehouse/frontend
+      - run: node tests/control-center-activation-browser.mjs
+        working-directory: warehouse/frontend
       - name: Verify password-only policy through the same React UI
         run: |
           read -r fixture_pid < /tmp/control-browser.pid
@@ -132,6 +134,7 @@ jobs:
           PY
           cd warehouse/frontend
           node tests/control-center-password-browser.mjs
+          node tests/control-center-moderator-browser.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:

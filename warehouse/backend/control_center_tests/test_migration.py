@@ -18,7 +18,7 @@ def test_migration_repeatable_and_runtime_permissions(db, monkeypatch):
     migrate()
     with connection().connect() as c:
         assert (
-            c.scalar(text("SELECT version FROM control_center.schema_version")) == "001"
+            c.scalar(text("SELECT version FROM control_center.schema_version")) == "002"
         )
     for sql in [
         "CREATE TABLE control_center.forbidden(id int)",

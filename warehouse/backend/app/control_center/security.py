@@ -110,7 +110,11 @@ def login(db, username, password, code, ip):
         valid = False
     simplified = password_only()
     step = None
-    if valid and staff and staff.active and not simplified:
+    activating = bool(staff and staff.must_change_password)
+    activation_valid = bool(
+        activating and staff.temporary_expires_at and staff.temporary_expires_at > now()
+    )
+    if valid and staff and staff.active and not simplified and not activating:
         try:
             step = mfa_step(
                 cipher().decrypt(staff.mfa_ciphertext.encode()).decode(),
@@ -119,7 +123,15 @@ def login(db, username, password, code, ip):
             )
         except (InvalidToken, ValueError):
             step = None
-    if not (valid and staff and staff.active and (simplified or step is not None)):
+    if not (
+        valid
+        and staff
+        and staff.active
+        and (
+            (activating and activation_valid)
+            or (not activating and (simplified or step is not None))
+        )
+    ):
         audit(
             db,
             staff.id if staff else "anonymous",
@@ -132,6 +144,10 @@ def login(db, username, password, code, ip):
         raise HTTPException(401, "Перевірте облікові дані")
     if step is not None:
         staff.last_totp_step = step
+    if activating:
+        # A temporary password can open exactly one restricted, ten-minute session.
+        staff.temporary_expires_at = None
+        revoke(db, staff.id)
     token = secrets.token_urlsafe(48)
     csrf = session_csrf(token)
     db.add(
@@ -140,8 +156,9 @@ def login(db, username, password, code, ip):
             staff_id=staff.id,
             csrf_hash=digest(csrf),
             audience=session_audience(),
-            mfa_verified=not simplified,
-            expires_at=now() + timedelta(hours=4),
+            mfa_verified=not simplified and not activating,
+            expires_at=now()
+            + (timedelta(minutes=10) if activating else timedelta(hours=4)),
         )
     )
     audit(
@@ -162,7 +179,6 @@ def identity(request: Request, db=Depends(get_db)):
     if (
         not session
         or session.audience != session_audience()
-        or (not password_only() and not session.mfa_verified)
         or session.expires_at <= now()
     ):
         raise HTTPException(401, "Увійдіть у staff-акаунт")
@@ -174,6 +190,17 @@ def identity(request: Request, db=Depends(get_db)):
     )
     if not staff or not staff.active:
         raise HTTPException(401, "Staff-доступ відкликано")
+    if staff.must_change_password:
+        if request.url.path not in {
+            "/api/control/auth/me",
+            "/api/control/auth/csrf",
+            "/api/control/auth/logout",
+            "/api/control/auth/password",
+            "/api/control/auth/activation-enrollment",
+        }:
+            raise HTTPException(403, "Спочатку змініть тимчасовий пароль")
+    elif not password_only() and not session.mfa_verified:
+        raise HTTPException(401, "Потрібна MFA-автентифікація")
     expected_staff = request.headers.get("X-Control-Staff")
     if expected_staff and expected_staff != staff.id:
         raise HTTPException(401, "Staff-сесію змінено")
@@ -206,11 +233,25 @@ def global_access(staff):
 
 
 def finance_access(staff):
-    return staff.role == "Owner" or (staff.role != "Support" and staff.finance)
+    return staff.role == "Owner" or (
+        staff.role not in {"Support", "Moderator"} and staff.finance
+    )
+
+
+def can_view_all_companies(staff):
+    return global_access(staff) or staff.role == "Moderator"
+
+
+def can_handle_company(staff):
+    return can_view_all_companies(staff)
+
+
+def can_assign_tasks(staff):
+    return global_access(staff)
 
 
 def scope_query(staff):
-    if global_access(staff):
+    if can_view_all_companies(staff):
         return True
     return Company.id.in_(select(Grant.company_id).where(Grant.staff_id == staff.id))
 
@@ -227,7 +268,7 @@ def company(db, staff, company_id, *, write=False):
     )
     # A scope subquery can use a snapshot from before a row-lock wait. Recheck
     # the grant in a fresh READ COMMITTED statement after acquiring the lock.
-    if row and not global_access(staff):
+    if row and not can_view_all_companies(staff):
         grant = db.scalar(
             select(Grant.staff_id).where(
                 Grant.company_id == row.id, Grant.staff_id == staff.id
