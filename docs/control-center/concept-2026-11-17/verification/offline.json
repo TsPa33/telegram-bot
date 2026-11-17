@@ -1,0 +1,14 @@
+[
+  {
+    "engine": "chromium",
+    "standaloneFile": true,
+    "externalRequests": 0,
+    "errors": 0
+  },
+  {
+    "engine": "webkit",
+    "standaloneFile": true,
+    "externalRequests": 0,
+    "errors": 0
+  }
+]

@@ -1,0 +1,57 @@
+{
+  "passed": 4,
+  "report": [
+    {
+      "engine": "chromium",
+      "width": 390,
+      "search": true,
+      "empty": true,
+      "filters": true,
+      "pagination": true,
+      "profileTabs": true,
+      "permissionDemonstration": true,
+      "noteIsolation": true,
+      "taskComposer": true,
+      "menu": true
+    },
+    {
+      "engine": "chromium",
+      "width": 1440,
+      "search": true,
+      "empty": true,
+      "filters": true,
+      "pagination": true,
+      "profileTabs": true,
+      "permissionDemonstration": true,
+      "noteIsolation": true,
+      "taskComposer": true,
+      "menu": true
+    },
+    {
+      "engine": "webkit",
+      "width": 390,
+      "search": true,
+      "empty": true,
+      "filters": true,
+      "pagination": true,
+      "profileTabs": true,
+      "permissionDemonstration": true,
+      "noteIsolation": true,
+      "taskComposer": true,
+      "menu": true
+    },
+    {
+      "engine": "webkit",
+      "width": 1440,
+      "search": true,
+      "empty": true,
+      "filters": true,
+      "pagination": true,
+      "profileTabs": true,
+      "permissionDemonstration": true,
+      "noteIsolation": true,
+      "taskComposer": true,
+      "menu": true
+    }
+  ]
+}
