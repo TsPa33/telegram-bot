@@ -183,7 +183,8 @@ function Notes({ id, staff }: { id: string; staff: Staff }) {
       revision,
     ),
     [busy, setBusy] = useState(false),
-    [error, setError] = useState("");
+    [error, setError] = useState(""),
+    [editing, setEditing] = useState<string | null>(null);
   return (
     <Panel
       title="Внутрішні нотатки"
@@ -201,18 +202,64 @@ function Notes({ id, staff }: { id: string; staff: Staff }) {
               <article className="cc-note" key={n.id}>
                 <p>{n.text}</p>
                 <small>{date(n.created_at)}</small>
-                {(n.staff_id === staff.id || ["Owner", "Administrator", "Moderator"].includes(staff.role)) && <details>
-                  <summary>Редагувати нотатку</summary>
-                  <form className="cc-form" onSubmit={async e => {
-                    e.preventDefault(); setBusy(true); setError("");
-                    const text = new FormData(e.currentTarget).get("text");
-                    try { await api(`/companies/${encodeURIComponent(id)}/notes/${n.id}`, "PATCH", { text }); refresh(); }
-                    catch(e) { setError((e as Error).message); } finally { setBusy(false); }
-                  }}>
-                    <label>Текст нотатки<textarea name="text" defaultValue={n.text} required maxLength={4000} /></label>
-                    <button disabled={busy}>Зберегти зміни нотатки</button>
-                  </form>
-                </details>}
+                {(n.staff_id === staff.id ||
+                  ["Owner", "Administrator", "Moderator"].includes(
+                    staff.role,
+                  )) && (
+                  <>
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => setEditing(n.id)}
+                    >
+                      Редагувати нотатку
+                    </button>
+                    {editing === n.id && (
+                      <form
+                        className="cc-form"
+                        onSubmit={async (e) => {
+                          e.preventDefault();
+                          setBusy(true);
+                          setError("");
+                          const text = new FormData(e.currentTarget).get(
+                            "text",
+                          );
+                          try {
+                            await api(
+                              `/companies/${encodeURIComponent(id)}/notes/${n.id}`,
+                              "PATCH",
+                              { text },
+                            );
+                            setEditing(null);
+                            refresh();
+                          } catch (e) {
+                            setError((e as Error).message);
+                          } finally {
+                            setBusy(false);
+                          }
+                        }}
+                      >
+                        <label>
+                          Текст нотатки
+                          <textarea
+                            name="text"
+                            defaultValue={n.text}
+                            required
+                            maxLength={4000}
+                          />
+                        </label>
+                        <button disabled={busy}>Зберегти зміни нотатки</button>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => setEditing(null)}
+                        >
+                          Скасувати редагування
+                        </button>
+                      </form>
+                    )}
+                  </>
+                )}
               </article>
             ))
           ) : (

@@ -31,7 +31,8 @@ function otp(seed, offset = 0) {
   );
 }
 const report = [];
-let index = 34;
+// Existing matrix uses 0–31, resilience uses 32–35. Keep MFA replay budgets separate.
+let index = 36;
 for (const [engine, driver] of Object.entries({ chromium, webkit })) {
   const browser = await driver.launch();
   try {
