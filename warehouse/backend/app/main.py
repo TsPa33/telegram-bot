@@ -144,6 +144,8 @@ from app.api.vin_tecalliance import router as tecalliance_router
 app.include_router(tecalliance_router)
 from app.api.vin_vincario_balance import router as vincario_balance_router
 app.include_router(vincario_balance_router)
+from app.api.vin_vincario_trial import router as vincario_trial_router
+app.include_router(vincario_trial_router)
 
 from app.api.unified_catalogue import router as unified_catalogue_router
 app.include_router(unified_catalogue_router)
