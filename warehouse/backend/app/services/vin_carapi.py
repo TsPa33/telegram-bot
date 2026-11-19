@@ -63,7 +63,12 @@ def decode(vin):
             "body_class": spec.get("bodyStyle"),
             "drive_type": spec.get("drivetrain"),
         }
-        # The provider explicitly declares these body styles as vehicle categories.\n        vehicle_type = {"TRUCK": "Вантажний автомобіль", "BUS": "Автобус",\n                        "MOTORCYCLE": "Мотоцикл"}.get(str(spec.get("bodyStyle", "")).upper())\n        if vehicle_type:\n            mapping["vehicle_type"] = vehicle_type\n        if str(spec.get("enginePowerUnit", "")).casefold() == "kw":
+        # The provider explicitly declares these body styles as vehicle categories.
+        vehicle_type = {"TRUCK": "Вантажний автомобіль", "BUS": "Автобус",
+                        "MOTORCYCLE": "Мотоцикл"}.get(str(spec.get("bodyStyle", "")).upper())
+        if vehicle_type:
+            mapping["vehicle_type"] = vehicle_type
+        if str(spec.get("enginePowerUnit", "")).casefold() == "kw":
             mapping["engine_power_kw"] = spec.get("enginePower")
         # registrationDate is not the manufacture/model year; do not infer year.
     elif isinstance(payload.get("data"), dict):
