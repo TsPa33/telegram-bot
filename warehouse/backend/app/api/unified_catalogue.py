@@ -69,7 +69,7 @@ def create(id: str, data: Selection, db: DB, who: Auth):
     if result['source'] == 'catalogue':
         if result['plan']['payload']['model_id'] != data.model_id:
             raise HTTPException(409, 'Модифікація належить іншій моделі')
-        service.persist(db, who, v, result['plan'])
+        service.persist(db, v, result['plan'])
         db.commit()
         return dict(saved=True, source='catalogue', created=len(result['plan']['payload']['categories']))
     return dict(saved=False, **result)
@@ -118,12 +118,18 @@ def saved_articles(product, state, *, oem_manufacturer_id=None, adapter=None):
     for i,item in enumerate(items):
         supplier=item.get('supplier',[])
         article=item.get('article',[])
+        oem_sources = {
+            str(source_value(ref,'OENbr')): ref.get('source', 'catalogue_snapshot')
+            for ref in item.get('oem', [])
+            if source_value(ref,'OENbr') and
+            (oem_manufacturer_id is None or source_value(ref,'manufacturerId') == oem_manufacturer_id)
+        }
         result.append(dict(art_id=i+1,article_nr=item['article_number'],
             brand=str(source_value(supplier[0],'description') or '') if supplier else '',
             supplier_id=item['supplier_id'],part_name=str(source_value(article[0],'NormalizedDescription') or '') if article else '',
             characteristics={},source_attributes=item.get('attributes',[]),cross_references=item.get('crosses',[]),
             image_metadata=item.get('images',[]),photo=None,
-            oem_numbers=sorted({str(source_value(r,'OENbr')) for r in item.get('oem',[]) if source_value(r,'OENbr') and (oem_manufacturer_id is None or source_value(r,'manufacturerId') == oem_manufacturer_id)}),
+            oem_numbers=sorted(oem_sources),oem_sources=oem_sources,
             observed_at=payload['observed_at'],fitment='source_modification_link',vin_verified=False))
     return result
 
@@ -356,7 +362,7 @@ def global_dismantling(id: str, db: DB, who: Auth):
         selection['car_id'],selection['model_id'],selection['manufacturer_id'],selection['source_snapshot_sha']
     ):
         raise HTTPException(409,'Версія каталогу змінилась; потрібне повторне підтвердження модифікації')
-    service.persist(db,who,v,envelope,allow_partial=True)
+    service.persist(db,v,envelope,allow_partial=True)
     db.commit()
     return dict(saved=True,created=len(envelope['payload']['categories']))
 

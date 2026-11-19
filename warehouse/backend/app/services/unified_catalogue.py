@@ -143,7 +143,16 @@ def saved_state(vehicle):
     return (vehicle.dismantling_v3 or {}).get('unified_catalogue')
 
 
-def persist(db, who, vehicle, envelope, *, allow_partial=False):
+def has_plan_history(db, vehicle):
+    from sqlalchemy import select
+    from app.models import DismantlingItem, Part, VehicleChecklistItem
+
+    return any(db.scalar(select(model.id).where(
+        model.account_id == vehicle.account_id, model.vehicle_id == vehicle.id
+    ).limit(1)) for model in (DismantlingItem, Part, VehicleChecklistItem))
+
+
+def persist(db, vehicle, envelope, *, allow_partial=False):
     """Persist potential types only. Existing plan/manual data never overwritten."""
     from sqlalchemy import select
     from fastapi import HTTPException
@@ -154,11 +163,8 @@ def persist(db, who, vehicle, envelope, *, allow_partial=False):
         if existing['payload'].get('source_snapshot_sha',existing['sha256']) != envelope['payload'].get('source_snapshot_sha',envelope['sha256']):
             raise HTTPException(409, 'Збережений план вже існує. Зміна модифікації потребує окремого узгодження.')
         return existing
-    # Never merge a new source into a donor with work/history by similar labels.
-    from app.models import Part, VehicleChecklistItem
-    for cls in (DismantlingItem, Part, VehicleChecklistItem):
-        if db.scalar(select(cls.id).where(cls.account_id == who.workspace_account_id, cls.vehicle_id == vehicle.id).limit(1)):
-            raise HTTPException(409, 'Автомобіль вже має план або складську історію. Наявні рішення збережено.')
+    if has_plan_history(db, vehicle):
+        raise HTTPException(409, 'Автомобіль вже має план або складську історію. Наявні рішення збережено.')
     payload = envelope['payload']
     validate_plan(payload)
     before = snapshot(vehicle)
@@ -169,7 +175,7 @@ def persist(db, who, vehicle, envelope, *, allow_partial=False):
         if not allow_partial and (not row.get('name_uk') or len(path)!=3):
             raise HTTPException(409,'Категоризація потребує перевірки')
         stable = lambda text: hashlib.sha256(text.encode()).hexdigest()[:24]
-        db.add(DismantlingItem(account_id=who.workspace_account_id, vehicle_id=vehicle.id,
+        db.add(DismantlingItem(account_id=vehicle.account_id, vehicle_id=vehicle.id,
             source='carpot.catalogue.v1', catalog_key=f"car:{payload['car_id']}:product:{row['product_id']}",
             category_key=stable(root), category_name=root, subcategory_key=stable(root + '/' + sub),
             subcategory_name=sub, name=row.get('name_uk') or row.get('name_source') or 'Потребує уточнення', position='', quantity=1))
@@ -177,7 +183,7 @@ def persist(db, who, vehicle, envelope, *, allow_partial=False):
     local_sha=hashlib.sha256(json.dumps(projection,sort_keys=True,ensure_ascii=False,separators=(',',':')).encode()).hexdigest()
     envelope={'payload':projection,'sha256':local_sha,'vehicle_basis':vehicle_basis(vehicle)}
     vehicle.dismantling_v3 = {**(vehicle.dismantling_v3 or {}), 'unified_catalogue': envelope}
-    record(db, who.workspace_account_id, vehicle, 'unified_catalogue_save',
+    record(db, vehicle.account_id, vehicle, 'unified_catalogue_save',
            'Збережено потенційний план Catalogue; склад не змінено', before)
     db.flush()
     return envelope

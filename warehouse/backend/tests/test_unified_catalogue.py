@@ -541,27 +541,63 @@ def test_auto_oem_directory_requires_unique_engine_and_year():
     cache.directory=[entry];v.year=2014;assert cache.resolve_directory(v) is None
 
 
-def test_automatic_identity_saved_before_plan_rows_exist(logged, volvo, monkeypatch):
+def test_vin_donor_automatically_gets_plan_oem_and_stock_carryover(logged, monkeypatch):
     from app.services.auto_oem import automatic_identity, enrich_vehicle
+
+    response=logged.post('/api/v1/vehicles',json={
+        'manufacturer':'Volvo','model':'XC90 II','year':2016,'vin':'YV4A22PK2G1092943',
+        'engine_code':'B4204T27','fuel_type':'petrol','drive_type':'AWD',
+    })
+    assert response.status_code==201,response.text
+    vehicle_id=response.json()['id']
     with Session(engine()) as db:
-        v=db.get(Vehicle,volvo['id'])
-        aid=v.account_id
+        aid=db.get(Vehicle,vehicle_id).account_id
+    monkeypatch.setattr(CatalogueAdapter,'plan',lambda self,car,**kw:envelope(car))
+    monkeypatch.setattr(CatalogueAdapter,'articles',lambda *a,**kw:detail_items())
+
+    assert enrich_vehicle(engine(),'other-workspace',vehicle_id)==0
+    assert enrich_vehicle(engine(),aid,vehicle_id)==1
+    assert enrich_vehicle(engine(),aid,vehicle_id)==0
+    with Session(engine()) as db:
+        v=db.get(Vehicle,vehicle_id)
+        assert automatic_identity(v)['car_id']==107555
+        row=db.scalar(select(DismantlingItem))
+        assert row.catalog_key=='car:107555:product:106'
+        assert db.scalar(select(func.count()).select_from(DismantlingItem))==1
+        assert db.scalar(select(func.count()).select_from(Part))==0
+        v.engine_variant='changed'
+        assert automatic_identity(v) is None
+        row_id=row.id
+
+    base=f"/api/v1/vehicles/{vehicle_id}"
+    assert logged.get(base+'/global-dismantling').json()['oems']['106']['oem_number']=='OEM-ONE'
+    assert logged.post(base+'/unified-catalogue/stock',json={
+        'keys':['catalogue:'+row_id],'confirm_physical_receipt':True,
+    }).status_code==200
+    with Session(engine()) as db:
+        part=db.scalar(select(Part))
+        assert part.oem_number=='OEM-ONE'
+        assert part.oem_provenance['source_modification_id']==107555
+        assert part.oem_provenance['source_article']=='EXAMPLE'
+        assert part.oem_provenance['retrieved_at']
+
+
+def test_automatic_plan_preserves_existing_rows(logged, volvo, monkeypatch):
+    from app.services.auto_oem import enrich_vehicle
+
+    base=f"/api/v1/vehicles/{volvo['id']}"
+    assert logged.post(base+'/unified-catalogue/base').status_code==200
+    with Session(engine()) as db:
+        aid=db.get(Vehicle,volvo['id']).account_id
+        previous=set(db.scalars(select(DismantlingItem.id)))
     monkeypatch.setattr(CatalogueAdapter,'plan',lambda self,car,**kw:envelope(car))
     monkeypatch.setattr('app.services.auto_oem.SourceCache.resolve_directory',
                         lambda self,v:(107555,13084,120,'a'*64,True))
+
     assert enrich_vehicle(engine(),aid,volvo['id'])==0
     with Session(engine()) as db:
-        v=db.get(Vehicle,volvo['id'])
-        assert automatic_identity(v)['car_id']==107555
-        assert db.scalar(select(func.count()).select_from(DismantlingItem))==0
-        v.engine_variant='changed'
-        assert automatic_identity(v) is None
-    base=f"/api/v1/vehicles/{volvo['id']}/global-dismantling"
-    assert logged.get(base).json()['selection']['car_id']==107555
-    assert logged.post(base).json()['created']==1
-    assert enrich_vehicle(engine(),aid,volvo['id'])==1
-    state=logged.get(base).json()
-    assert state['oems']['106']['oem_number']=='OEM-ONE'
+        assert set(db.scalars(select(DismantlingItem.id)))==previous
+        assert db.scalar(select(func.count()).select_from(Part))==0
 
 
 def test_automatic_oem_requires_stable_product_key():
