@@ -66,3 +66,42 @@ def test_balance_endpoint_not_accessible_without_platform_admin(logged, monkeypa
     monkeypatch.setattr(route, "fetch_balance", lambda: (_ for _ in ()).throw(AssertionError("Unauthorized request triggered provider")))
     response = logged.post("/api/v1/vehicles/vin/vincario/balance")
     assert response.status_code == 403
+
+
+def test_decoder_missing_is_not_equated_to_zero():
+    report = balance.parse_balance({"API Stolen Check": 5, "API Vehicle Market Value": 5})
+    assert report["status"] == "reported"
+    assert report["decode_balance_status"] == "not_returned"
+    assert report["decode_balance"] is None
+    assert report["free_trial_verified"] is False
+    assert all(f["name"] != "API Decode" for f in report["provider_balance_fields"])
+
+
+def test_alternate_decoder_name_is_recognized():
+    report = balance.parse_balance({"API VIN Decode": 20, "API Stolen Check": 5})
+    assert report["decode_balance"] == 20
+    assert report["decode_balance_status"] == "available"
+    assert report["balances"]["API Decode"] == 20
+    assert report["free_trial_verified"] is False
+
+
+def test_decoder_zero_is_distinguishable_from_missing():
+    report = balance.parse_balance({"API Decode": 0})
+    assert report["decode_balance_status"] == "available"
+    assert report["decode_balance"] == 0
+
+
+def test_diagnostic_never_reflects_unknown_sensitive_keys_or_values():
+    report = balance.parse_balance({
+        "API Decode": "unrecognized", "Secret Key": "SECRET_VALUE",
+        "API Token": "TOKEN_VALUE", "customer_email": "private@example.com",
+        "VIN Decode Extra": 0,
+    })
+    assert report["decode_balance_status"] == "unexpected_value_type"
+    assert report["decode_balance"] is None
+    assert report["provider_balance_fields"] == [
+        {"name": "API Decode", "type": "text"},
+        {"name": "VIN Decode Extra", "type": "integer"},
+    ]
+    for value in ("SECRET_VALUE", "TOKEN_VALUE", "private@example.com"):
+        assert value not in str(report)
