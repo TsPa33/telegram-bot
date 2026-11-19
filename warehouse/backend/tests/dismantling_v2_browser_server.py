@@ -48,8 +48,7 @@ _original_articles=CatalogueAdapter.articles
 def pilot_plan(self,car,**kwargs):
     if car==107555 and not kwargs.get('global_source'):
         import hashlib,json
-        data=envelope(car,'partial');data['payload']['categories'][0]['name_uk']='Стартер'
-        # Keep the reviewed fixture's existing valid category instead; the test row is aligned explicitly.
+        data=envelope(car);data['payload']['categories'][0]['name_uk']='Стартер'
         data['payload']['categories'][0]['category_path']=['Освітлення','Передні фари','Стартер']
         data['sha256']=hashlib.sha256(json.dumps(data['payload'],ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()).hexdigest()
         return data
@@ -70,10 +69,10 @@ def local_auto_oem(vehicle_id:str,request:Request):
         if not login or login.expires_at<=now() or digest(request.headers.get('X-CSRF-Token',''))!=login.csrf_hash:raise HTTPException(403)
         v=db.get(Vehicle,vehicle_id)
         if not v or v.account_id!=login.account_id:raise HTTPException(404)
-        v.year=2016;v.vin='YV4A22PK2G1092943';v.fuel_type='petrol';v.drive_type='awd'
         from sqlalchemy import select
-        row=db.scalar(select(DismantlingItem).where(DismantlingItem.vehicle_id==v.id,DismantlingItem.name=='Стартер'))
+        row=db.scalar(select(DismantlingItem).where(
+            DismantlingItem.vehicle_id==v.id,DismantlingItem.account_id==v.account_id,
+            DismantlingItem.source=='carpot.catalogue.v1',DismantlingItem.catalog_key=='car:107555:product:106'))
         if not row:raise HTTPException(404)
-        row.category_name='Освітлення'
-        aid=v.account_id;rid=row.id;db.commit()
+        aid=v.account_id;rid=row.id
     return {'count':enrich_vehicle(engine(),aid,vehicle_id),'item_id':rid}

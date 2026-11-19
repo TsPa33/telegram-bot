@@ -15,6 +15,10 @@ CONTROL_VINS = {
 }
 
 
+def _percent(numerator, denominator):
+    return round(100 * numerator / denominator, 2) if denominator else None
+
+
 def audit(db):
     report = []
     for vin,label in CONTROL_VINS.items():
@@ -27,6 +31,7 @@ def audit(db):
             state = car.dismantling_v3 or {}
             refs = auto_oem.references(car) or {}
             identity = auto_oem.source_identity(car)
+            automatic = auto_oem.automatic_identity(car)
             entries = db.scalars(select(DismantlingItem).where(
                 DismantlingItem.vehicle_id==car.id,
                 DismantlingItem.account_id==car.account_id)).all()
@@ -38,8 +43,32 @@ def audit(db):
             grouped['included_rows'] += sum(1 for r in entries if auto_oem.eligible_row(r))
             grouped['stored_oem_refs'] += sum(1 for value in refs.values()
                                               if isinstance(value,dict) and value.get('oem_number'))
+            grouped['eligible_rows_without_oem_ref'] += sum(
+                1 for r in entries if auto_oem.eligible_row(r)
+                and not (isinstance(refs.get(r.id), dict) and refs[r.id].get('oem_number'))
+            )
+            grouped['valid_oem_refs'] += sum(
+                1 for r in entries if auto_oem.eligible_row(r)
+                and auto_oem.transferable_reference(refs.get(r.id))
+                and auto_oem.valid_reference(car, r, refs[r.id])
+            )
             grouped['stock_parts'] += len(parts)
+            current_stock = [p for p in parts if p.quantity > 0 and p.availability != 'absent']
+            grouped['eligible_stock_parts'] += len(current_stock)
+            grouped['eligible_stock_with_oem'] += sum(bool(p.oem_number) for p in current_stock)
             grouped['stock_with_oem'] += sum(bool(p.oem_number) for p in parts)
+            grouped['stock_manual_oem_clear'] += sum(
+                bool(p.oem_provenance and not p.oem_number) for p in parts
+            )
+            linked = {r.part_id: r for r in entries if r.part_id is not None}
+            grouped['stock_linked_to_dismantling_row'] += sum(p.id in linked for p in parts)
+            grouped['stock_linked_valid_oem_ref_without_oem'] += sum(
+                1 for p in parts
+                if not p.oem_number and p.id in linked
+                and auto_oem.transferable_reference(refs.get(linked[p.id].id))
+                and auto_oem.valid_reference(car, linked[p.id], refs[linked[p.id].id])
+                and not p.oem_provenance
+            )
             grouped['stock_with_article'] += sum(bool(p.article_number and p.article_brand) for p in parts)
             grouped['stock_with_exact_supplier'] += sum(bool(auto_oem.exact_key(p,car)) for p in parts)
             if identity:
@@ -50,6 +79,9 @@ def audit(db):
                     reasons['has_pinned_catalogue_identity'] += 1
             elif state.get('global_selection') or catalogue.saved_state(car):
                 reasons['stale_or_incomplete_catalogue_selection'] += 1
+            elif automatic:
+                grouped['vehicles_with_source_identity'] += 1
+                reasons['has_automatic_catalogue_identity'] += 1
             elif not car.engine_code:
                 reasons['missing_exact_engine_code_and_modification'] += 1
             elif car.year is None:
@@ -67,6 +99,10 @@ def audit(db):
             "vin": vin,
             "counts": dict(grouped),
             "reasons": dict(reasons),
+            "coverage": {
+                "plan_percent": _percent(grouped['valid_oem_refs'], grouped['included_rows']),
+                "stock_percent": _percent(grouped['eligible_stock_with_oem'], grouped['eligible_stock_parts']),
+            },
             "classification": "read_only_diagnostic_not_fitment",
         })
     return {"status": "reported", "read_only": True,

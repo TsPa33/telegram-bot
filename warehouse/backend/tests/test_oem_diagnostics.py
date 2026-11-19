@@ -55,4 +55,9 @@ def test_oem_audit_is_read_only_and_reports_missing_source(logged,monkeypatch):
     assert result["provider_credits"] == 0
     daf=next(x for x in result["vehicles"] if x["model"]=="DAF XF")
     assert daf["counts"]["vehicles"] == 1
+    assert daf["counts"]["valid_oem_refs"] == 0
+    assert daf["counts"]["eligible_rows_without_oem_ref"] == 0
+    assert daf["counts"]["stock_linked_to_dismantling_row"] == 0
+    assert daf["counts"]["stock_linked_valid_oem_ref_without_oem"] == 0
+    assert daf["counts"]["stock_manual_oem_clear"] == 0
     assert daf["reasons"]["missing_exact_engine_code_and_modification"] == 1

@@ -23,7 +23,7 @@ def test_engine_attributes_are_independent():
 
 @pytest.mark.parametrize("data", [
     {"engine_displacement_l": 0},
-    {"engine_displacement_l": 13},
+    {"engine_displacement_l": 100},
     {"drive_type": "UNKNOWN"},
     {"engine_code": "A"*81},
     {},
