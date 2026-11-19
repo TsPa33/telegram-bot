@@ -22,6 +22,26 @@ export default function VehicleVinQuickAdd({onBack,onCreated}:{onBack:()=>void;o
  const [vinstateBusy,setVinstateBusy]=useState(false),[vinstateError,setVinstateError]=useState('');
  const [vinstateApproved,setVinstateApproved]=useState(false);
  const [vincarioBalance,setVincarioBalance]=useState<Row|null>(null);
+ const [vincarioTrial,setVincarioTrial]=useState<Row|null>(null);
+ const [vincarioTrialReady,setVincarioTrialReady]=useState<Row|null>(null);
+ const [vincarioTrialConfirmed,setVincarioTrialConfirmed]=useState(false);
+ const [vincarioTrialBusy,setVincarioTrialBusy]=useState(false);
+ const [vincarioTrialError,setVincarioTrialError]=useState('');
+ async function inspectVincarioTrial(){
+  setVincarioTrialBusy(true);setVincarioTrialError('');
+  try{setVincarioTrialReady(await api<Row>('/vehicles/vin/vincario/trial/readiness'));}
+  catch(e){setVincarioTrialError((e as Error).message);}
+  finally{setVincarioTrialBusy(false);}
+ }
+ async function runVincarioTrial(){
+  if(!valid||!vincarioTrialConfirmed||vincarioTrialBusy)return;
+  setVincarioTrialBusy(true);setVincarioTrialError('');setVincarioTrial(null);
+  try{setVincarioTrial(await api<Row>('/vehicles/vin/vincario/trial/preview','POST',
+    {vin:vin.toUpperCase(),acknowledge_free_quota:true}));}
+  catch(e){setVincarioTrialError((e as Error).message);}
+  finally{setVincarioTrialBusy(false);}
+ }
+
  const [vincarioBusy,setVincarioBusy]=useState(false),[vincarioError,setVincarioError]=useState('');
  async function getVincarioBalance(){
   if(vincarioBusy)return;
@@ -101,7 +121,17 @@ export default function VehicleVinQuickAdd({onBack,onCreated}:{onBack:()=>void;o
      <button type="button" disabled={vincarioBusy} onClick={()=>void getVincarioBalance()}>{vincarioBusy?'Перевірка балансу Vincario…':'Vincario: перевірити API-баланс'}</button>
      {vincarioError&&<p role="alert">{vincarioError}</p>}
      {vincarioBalance&&<div role="status"><p>Vincario API: {vincarioBalance.status}</p><p>VIN Decode: {vincarioBalance.decode_balance_status==='available'?String(vincarioBalance.decode_balance):vincarioBalance.decode_balance_status==='not_returned'?'поле відсутнє у відповіді API':'значення не розпізнане'}</p>{Object.entries(vincarioBalance.balances||{}).filter(([k])=>k!=='API Decode').map(([k,v])=><p key={k}>{k}: {String(v)}</p>)}<p>Назви полів відповіді: {(vincarioBalance.provider_balance_fields||[]).map((f:Row)=>String(f.name)+' ['+String(f.type)+']').join(', ')||'немає доступних даних'}</p><p>Платне декодування: вимкнене. Наявність балансу не підтверджує безкоштовну квоту.</p></div>}
-    </div><div className="vinstate-test">
+    <div className="vinstate-test">
+      <button type="button" disabled={vincarioTrialBusy} onClick={()=>void inspectVincarioTrial()}>Vincario: перевірити готовність Free Demo</button>
+      {vincarioTrialReady&&<p>Тест: {vincarioTrialReady.credentials_present&&vincarioTrialReady.staging?'готовий':'недоступний'} · Дозволені VIN: 3 · Платежі CarPot: вимкнені</p>}
+      {vincarioTrialReady?.credentials_present&&vincarioTrialReady?.staging&&
+       (vincarioTrialReady.supported_vins||[]).includes(vin.toUpperCase())&&<>
+        <label className="vin-confirm"><input type="checkbox" checked={vincarioTrialConfirmed} onChange={e=>setVincarioTrialConfirmed(e.target.checked)}/>Підтверджую один тестовий запит Vincario Free Demo для цього VIN (витратиться 1 API Decode кредит).</label>
+        <button type="button" disabled={!vincarioTrialConfirmed||vincarioTrialBusy||!valid} onClick={()=>void runVincarioTrial()}>{vincarioTrialBusy?'Отримання даних…':'Тест Vincario — один VIN'}</button>
+       </>}
+      {vincarioTrialError&&<p role="alert">{vincarioTrialError}</p>}
+      {vincarioTrial&&<div role="status"><p>Vincario: {vincarioTrial.status} {vincarioTrial.from_cache?'(кеш)':''}</p><p>API Decode до / після: {vincarioTrial.balance_before??'—'} / {vincarioTrial.balance_after??'—'}</p>{vincarioTrial.vehicle&&<p>Дані: {Object.entries(vincarioTrial.vehicle).map(([k,v])=>k+': '+String(v)).join(', ')||'немає'}</p>}{vincarioTrial.missing&&<p>Відсутні: {(vincarioTrial.missing as string[]).join(', ')||'немає'}</p>}{vincarioTrial.logo_field_available&&<p>Логотип: поле існує, права на використання ще не підтверджено.</p>}</div>}
+     </div></div><div className="vinstate-test">
      <button type="button" disabled={vinstateBusy} onClick={()=>void checkVinstate()}>VINState: перевірити тестовий режим</button>
      {vinstateReady&&<p>Ключ: {vinstateReady.key_present?'наявний':'не налаштовано'} · Тестування: {vinstateReady.diagnostic_enabled?'доступне':'вимкнено'}</p>}
      {vinstateReady?.diagnostic_enabled&&<>
