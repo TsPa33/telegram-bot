@@ -93,6 +93,10 @@ def _lookup(vin):
             provider_status['Vincario']='not_enabled_or_no_data'
     except (OSError,ValueError,KeyError,TypeError):
         provider_status['Vincario']='unavailable_or_invalid_response'
+    # Normalize a verified numeric model year regardless of provider; never invent one.
+    merged_year=vehicle.get('year')
+    if merged_year is not None and str(merged_year).isdigit() and 1886<=int(merged_year)<=2100:
+        vehicle['year']=int(merged_year)
     missing=sorted(k for k in IMPORTANT if not present(vehicle.get(k)))
     issues=validate_consistency(vehicle)
     if year_uncertain:issues['year']='Джерело не визначило рік однозначно. Перевірте рік автомобіля перед збереженням.'
