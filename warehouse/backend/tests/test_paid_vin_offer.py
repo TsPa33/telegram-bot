@@ -74,3 +74,21 @@ def test_wallet_keys_deterministic_and_scoped():
     assert a == paid.payment_keys("workspace-a", VIN.lower())
     assert a != paid.payment_keys("workspace-b", VIN)
     assert len(set(a.values())) == 3
+
+
+def test_paid_cache_requires_same_tenant_and_authorized_unexpired_receipt():
+    receipt = dict(
+        workspace_id="a", vin=VIN, product=paid.PRODUCT,
+        provider_version="v1", financial_status="captured",
+        license_allows_reuse=True, expires_at_epoch=2000,
+        confirmed_fields={"year": 2014},
+    )
+    assert paid.reusable_receipt(receipt,workspace="a",vin=VIN,
+                                 provider_version="v1",now_epoch=1000)
+    assert not paid.reusable_receipt(receipt,workspace="b",vin=VIN,
+                                     provider_version="v1",now_epoch=1000)
+    assert not paid.reusable_receipt(receipt,workspace="a",vin=VIN,
+                                     provider_version="v1",now_epoch=2000)
+    receipt["license_allows_reuse"] = False
+    assert not paid.reusable_receipt(receipt,workspace="a",vin=VIN,
+                                     provider_version="v1",now_epoch=1000)
