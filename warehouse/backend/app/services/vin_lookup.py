@@ -72,9 +72,14 @@ def _lookup(vin):
     else:provider_status['FreeVINDecoder']='not_needed'
     # An explicitly enabled, credentialed European provider can enrich partial results.
     # Never call it without opt-in: some plans charge per decoded VIN.
-    from app.services.vin_europe import europe_vin
+    import os
+    european_enabled = (os.getenv('WAREHOUSE_VINCARIO_ENABLED', 'false').lower() == 'true'
+        and bool(os.getenv('WAREHOUSE_VINCARIO_API_KEY', '').strip())
+        and bool(os.getenv('WAREHOUSE_VINCARIO_SECRET_KEY', '').strip()))
+    if european_enabled:
+        from app.services.vin_europe import europe_vin
     try:
-        european=europe_vin(vin)
+        european=europe_vin(vin) if european_enabled else None
         if european:
             incoming={k:v for k,v in european.items() if k in PRIMARY_KEYS and present(v) and len(str(v))<=200}
             prior=dict(vehicle)
