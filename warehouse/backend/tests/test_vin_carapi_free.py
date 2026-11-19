@@ -36,7 +36,8 @@ def test_specs_mapping_never_infers_year_from_registration_date(monkeypatch):
     }))
     result = vin_carapi.decode(VIN)
     assert result["manufacturer"] == "DAF"
-    assert result["body_class"] == "TRUCK"\n    assert result["vehicle_type"] == "Вантажний автомобіль"
+    assert result["body_class"] == "TRUCK"
+    assert result["vehicle_type"] == "Вантажний автомобіль"
     assert result["transmission"] == "automatic"
     assert result["engine_power_kw"] == "300"
     assert "year" not in result
