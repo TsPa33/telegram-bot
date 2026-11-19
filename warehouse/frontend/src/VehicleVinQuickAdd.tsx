@@ -21,6 +21,16 @@ export default function VehicleVinQuickAdd({onBack,onCreated}:{onBack:()=>void;o
  const [vinstateReport,setVinstateReport]=useState<Row|null>(null);
  const [vinstateBusy,setVinstateBusy]=useState(false),[vinstateError,setVinstateError]=useState('');
  const [vinstateApproved,setVinstateApproved]=useState(false);
+ const [vincarioBalance,setVincarioBalance]=useState<Row|null>(null);
+ const [vincarioBusy,setVincarioBusy]=useState(false),[vincarioError,setVincarioError]=useState('');
+ async function getVincarioBalance(){
+  if(vincarioBusy)return;
+  setVincarioBusy(true);setVincarioError('');
+  try{setVincarioBalance(await api<Row>('/vehicles/vin/vincario/balance','POST'));}
+  catch(e){setVincarioError((e as Error).message);}
+  finally{setVincarioBusy(false);}
+ }
+
  async function checkVinstate(){
   setVinstateBusy(true);setVinstateError('');
   try{setVinstateReady(await api('/vehicles/vin/vinstate/readiness'));}
@@ -88,6 +98,10 @@ export default function VehicleVinQuickAdd({onBack,onCreated}:{onBack:()=>void;o
    {groups.map(([name,fields])=>{const visible=fields.filter(([key])=>has(key)||required.has(key));return (visible.length>0||name==='Додаткові характеристики'&&Object.keys(extra).length>0)&&<fieldset key={name}><legend>{name}</legend><div className="vin-fields">{visible.map(([key,label])=>field(key,label))}{name==='Додаткові характеристики'&&Object.entries(extra).map(([key,item])=><label key={'extra-'+key}>{item.label}<input aria-label={item.label} disabled={saving} value={item.value} onChange={e=>{setExtra(p=>({...p,[key]:{...p[key],value:e.target.value,source:'manual'}}));setConfirmed(false);}}/><small>{item.source==='manual'?'Змінено вручну':'Знайдено'}</small>{item.alternative&&<small className="vin-conflict">Розбіжність: {item.alternative}</small>}</label>)}</div></fieldset>})}
    {unknown.length>0&&<details className="vin-unknown"><summary>Потребує уточнення ({unknown.length})</summary><div className="vin-fields">{unknown.map(([key,label])=>field(key,label))}</div></details>}
    {identity?.catalogue_platform_admin===true&&result.provider_status&&<details className="vin-source-status"><summary>Технічні деталі</summary>{result.cached&&<p>Нещодавно отримана відповідь з кешу; час спостереження збережено.</p>}{Object.entries(result.provider_status).map(([name,state])=><p key={name}>{name}: {state==='reported'?'дані отримано':state==='not_needed'?'доповнення не потрібне':state==='robots_denied'?'автоматичний доступ заборонено правилами джерела':state==='rate_limited'?'досягнуто обмеження частоти':state==='empty'||state==='no_explicit_vehicle_data'?'потрібних даних немає':state==='not_enabled'||state==='not_enabled_or_no_data'?'вимкнено або даних немає':state==='empty_or_quota_unavailable'?'даних немає або вичерпано квоту':'дані недоступні; повторіть пізніше'}{state==='reported'&&<span> · Прийнято полів: {result.provider_contributions?.[name]?.length??0}{(result.provider_contributions?.[name]?.length??0)>0&&' ('+result.provider_contributions?.[name]?.join(', ')+')'}</span>}</p>)}<div className="vinstate-test">
+     <button type="button" disabled={vincarioBusy} onClick={()=>void getVincarioBalance()}>{vincarioBusy?'Перевірка балансу Vincario…':'Vincario: перевірити API-баланс'}</button>
+     {vincarioError&&<p role="alert">{vincarioError}</p>}
+     {vincarioBalance&&<div role="status"><p>Vincario API: {vincarioBalance.status}</p>{Object.entries(vincarioBalance.balances||{}).map(([k,v])=><p key={k}>{k}: {String(v)}</p>)}<p>Платне декодування: вимкнене. Баланс не підтверджує, що запити безкоштовні.</p></div>}
+    </div><div className="vinstate-test">
      <button type="button" disabled={vinstateBusy} onClick={()=>void checkVinstate()}>VINState: перевірити тестовий режим</button>
      {vinstateReady&&<p>Ключ: {vinstateReady.key_present?'наявний':'не налаштовано'} · Тестування: {vinstateReady.diagnostic_enabled?'доступне':'вимкнено'}</p>}
      {vinstateReady?.diagnostic_enabled&&<>
