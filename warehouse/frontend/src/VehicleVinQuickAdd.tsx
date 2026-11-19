@@ -27,12 +27,12 @@ export default function VehicleVinQuickAdd({onBack,onCreated}:{onBack:()=>void;o
  }
  async function create(){
   if(!result||writing.current||!confirmed)return;
-  if((vin&&!valid)||!String(draft.manufacturer||'').trim()||!String(draft.model||'').trim()||!/^\d{4}$/.test(String(draft.year||''))){setError('Перевірте VIN, марку, модель і рік.');return;}
-  const values:Row={manufacturer:draft.manufacturer,model:draft.model,generation:draft.generation||'',year:Number(draft.year),status:'planned'};
+  if((vin&&!valid)||!String(draft.manufacturer||'').trim()||!String(draft.model||'').trim()||(String(draft.year||'').trim()!==''&&!/^\d{4}$/.test(String(draft.year)))){setError('Перевірте VIN, марку й модель. Якщо рік відомий, укажіть чотири цифри.');return;}
+  const values:Row={manufacturer:draft.manufacturer,model:draft.model,generation:draft.generation||'',year:String(draft.year||'').trim()?Number(draft.year):null,status:'planned'};
   if(valid)values.vin=vin;
   for(const field of ['engine','engine_code','fuel_type','transmission'])if(draft[field])values[field]=draft[field];
   if(draft.drive_type)values.drive_type=draft.drive_type;
-  if(draft.engine_displacement_l){const d=Number(String(draft.engine_displacement_l).replace(',','.'));if(!Number.isFinite(d)||d<=0||d>12){setError('Об’єм двигуна має бути більше 0 та не більше 12 л.');return;}values.engine_displacement_l=Math.round(d*10)/10;}
+  if(draft.engine_displacement_l){const d=Number(String(draft.engine_displacement_l).replace(',','.'));if(!Number.isFinite(d)||d<=0||d>99.9){setError('Об’єм двигуна має бути більше 0 та не більше 99,9 л.');return;}values.engine_displacement_l=Math.round(d*10)/10;}
   values.vin_details={diagnostics:result.diagnostics||{},consistency_issues:result.consistency_issues||{},additional:extra,decoded_additional:result.additional||{},characteristics:draft,decoded:result.vehicle,field_sources:result.field_sources||{},conflicts:result.conflicts||{},source:result.source,observed_at:result.observed_at||''};
   writing.current=true;setSaving(true);setError('');
   try{onCreated(await api('/vehicles','POST',values));}
