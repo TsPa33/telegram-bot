@@ -48,8 +48,8 @@ export default function VehicleForm({initial, fields, onSave}: {initial: Row; fi
   const years = Array.from({length: Math.max(0, upper - lower + 1)}, (_, i) => upper - i);
   const matches = mods.filter(m => year && m.year_from !== null && m.year_from <= Number(year) && (m.year_to === null || m.year_to >= Number(year)));
   const selected = matches.find(m => String(m.ktype) === ktype);
-  const valid = brand && model && /^\d{4}$/.test(year) && Number(year) >= 1886 && Number(year) <= 2100 && (!provider || ((!chosenModel?.year_from || Number(year) >= chosenModel.year_from) && (!chosenModel?.year_to || Number(year) <= chosenModel.year_to)));
-  const primary = {manufacturer:brand, model, year:Number(year),
+  const valid = brand && model && (!year || (/^\d{4}$/.test(year) && Number(year) >= 1886 && Number(year) <= 2100)) && (!provider || !year || ((!chosenModel?.year_from || Number(year) >= chosenModel.year_from) && (!chosenModel?.year_to || Number(year) <= chosenModel.year_to)));
+  const primary = {manufacturer:brand, model, year:year ? Number(year) : null,
     engine: selectedDirectory?([selectedDirectory.displacement_l,selectedDirectory.fuel_type].filter(Boolean).join(' ')||engine):engine,
     ...(selectedDirectory?{
       engine_displacement_l:selectedDirectory.displacement_l?Number(selectedDirectory.displacement_l):null,
@@ -71,8 +71,8 @@ export default function VehicleForm({initial, fields, onSave}: {initial: Row; fi
         <SearchSelect key={`model-${brand}`} label="Модель" required value={provider ? modelId : model} disabled={!brand || busy || saving} manual={!provider}
           options={provider ? models.filter(m => m.name).map(m => ({value:String(m.ms_id),label:m.name})) : modelOptions.map(name=>({value:name,label:name}))}
           onChange={value => {generation.current++;setModelId(provider ? value : "");setModel(provider ? models.find(m => String(m.ms_id) === value)?.name || "" : value);setYear("");setEngine("");setKtype("");setMods([]);setSelectedDirectory(null);}} />
-        <label>Рік випуску *<select aria-label="Рік випуску" required value={year} disabled={!model || busy || saving} onChange={e => {setYear(e.target.value);setKtype("");setEngine("");setSelectedDirectory(null);}}>
-          <option value="">Оберіть…</option>
+        <label>Рік випуску (необов’язково)<select aria-label="Рік випуску" value={year} disabled={!model || busy || saving} onChange={e => {setYear(e.target.value);setKtype("");setEngine("");setSelectedDirectory(null);}}>
+          <option value="">Не визначено</option>
           {year && !years.includes(Number(year)) && <option value={year}>{year}</option>}
           {years.map(y => <option key={y} value={y}>{y}</option>)}
           {(!provider || !chosenModel?.year_from || !chosenModel?.year_to) && <option value="custom">Інший рік…</option>}

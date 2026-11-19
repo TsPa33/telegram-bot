@@ -101,7 +101,7 @@ export default function Vehicles({notify}:{notify:Notify}) {
     {!detail&&<><Heading eyebrow="АВТОМОБІЛІ" title="Автомобілі" description="Керуйте автомобілями-донорами, їхніми характеристиками та процесом розбору.">
       <Permit permission="vehicles.create"><div style={{display:'flex',gap:8,flexWrap:'wrap'}}><button className="secondary" onClick={()=>{setCatalogueCreate(false);setEdit({status:'dismantling'});}}><Plus size={17}/>Додати автомобіль</button></div></Permit>
     </Heading>
-    {created&&<p role="status">Додано: {created.manufacturer} {created.model} · {created.year}. <button onClick={()=>openDetail(created)}>Відкрити картку</button></p>}
+    {created&&<p role="status">Додано: {created.manufacturer} {created.model} · {created.year??'рік не визначено'}. <button onClick={()=>openDetail(created)}>Відкрити картку</button></p>}
     <div className="r114-toolbar r1146-toolbar">
      <label className="search vehicle-search"><Search size={17}/><input aria-label="Пошук автомобілів" placeholder="Марка, модель, номер або VIN" value={q} onChange={e=>{setQ(e.target.value);setPage(0);}}/></label>
      <select aria-label="Фільтр статусу автомобіля" value={statusFilter} onChange={e=>{setStatusFilter(e.target.value);setPage(0);}}><option value="">Усі статуси</option><option value="planned">Заплановано</option><option value="dismantling">На розборі</option><option value="completed">Завершено</option></select>
@@ -118,7 +118,7 @@ export default function Vehicles({notify}:{notify:Notify}) {
      {!loading&&!visible.length&&<Empty title={q||statusFilter||brandFilter||modelFilter||yearFilter?'Автомобілів не знайдено':'Додайте перший автомобіль'}>Змініть фільтри або створіть автомобіль.</Empty>}
     </section>:<section className="r114-table-wrap" aria-label="Таблиця автомобілів">
      <table><thead><tr><th>Автомобіль</th><th>Рік / №</th><th>Двигун / паливо</th><th>КПП</th><th>Статус</th><th>Запчастин / на складі</th><th>Дії</th></tr></thead>
-      <tbody>{visible.map(v=><tr key={v.id}><td><strong>{v.manufacturer} {v.model}</strong><small>{v.vin?'VIN: '+v.vin:'VIN не вказано'}</small></td><td>{v.year} · №{v.number??'—'}</td><td>{[v.engine_displacement_l?v.engine_displacement_l+' л':null,v.fuel_type,v.engine_variant].filter(Boolean).join(' · ')||v.engine||'Не вказано'}</td><td>{v.transmission||'Не вказано'}{v.drive_type?' · '+v.drive_type:''}</td><td>{labels[v.status]||'Не уточнено'}</td><td>{v.registered_parts??'—'} / {v.stock_positions??'—'}</td><td><button onClick={()=>openDetail(v,true)}>Картка авто</button><button onClick={()=>openDetail(v)}>Розбір</button></td></tr>)}</tbody>
+      <tbody>{visible.map(v=><tr key={v.id}><td><strong>{v.manufacturer} {v.model}</strong><small>{v.vin?'VIN: '+v.vin:'VIN не вказано'}</small></td><td>{v.year??'—'} · №{v.number??'—'}</td><td>{[v.engine_displacement_l?v.engine_displacement_l+' л':null,v.fuel_type,v.engine_variant].filter(Boolean).join(' · ')||v.engine||'Не вказано'}</td><td>{v.transmission||'Не вказано'}{v.drive_type?' · '+v.drive_type:''}</td><td>{labels[v.status]||'Не уточнено'}</td><td>{v.registered_parts??'—'} / {v.stock_positions??'—'}</td><td><button onClick={()=>openDetail(v,true)}>Картка авто</button><button onClick={()=>openDetail(v)}>Розбір</button></td></tr>)}</tbody>
      </table>{!loading&&!visible.length&&<p>Автомобілів не знайдено.</p>}
     </section>}
     {filtered.length>50&&<Pager total={filtered.length} page={page} setPage={setPage}/>}</>}
@@ -173,7 +173,7 @@ function VehicleDetail({
       <header className={"r1144-donor-header"+(["parts","partSettings"].includes(tab)?" uf-car-context":"")}>
        <VehicleDonorPhotos vehicle={v} mode="hero" revision={photoRevision} onChanged={()=>setPhotoRevision(i=>i+1)}/>
        <div className="r1144-donor-main">
-        <div className="r1144-donor-title"><h1>{v.manufacturer} {v.model} · {v.year} · №{v.number??'—'}</h1><span className="r1144-status">{labels[v.status]||'Не уточнено'}</span></div>
+        <div className="r1144-donor-title"><h1>{v.manufacturer} {v.model} · {v.year??'Рік не визначено'} · №{v.number??'—'}</h1><span className="r1144-status">{labels[v.status]||'Не уточнено'}</span></div>
         <div className="r1144-donor-spec-line">
          <span><Wrench size={16}/>{[v.fuel_type,v.engine_displacement_l?v.engine_displacement_l+' л':null,v.engine_variant||v.engine].filter(Boolean).join(' · ')||'Двигун не уточнено'}</span>
          <span><Cog size={16}/>{[v.transmission,v.drive_type].filter(Boolean).join(' · ')||'КПП не уточнено'}</span>

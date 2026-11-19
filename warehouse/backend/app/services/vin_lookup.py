@@ -70,6 +70,33 @@ def _lookup(vin):
             else:provider_status['FreeVINDecoder']=source_status(vin)
         except (OSError,ValueError,TypeError):provider_status['FreeVINDecoder']='unavailable_or_invalid_response'
     else:provider_status['FreeVINDecoder']='not_needed'
+    # An explicitly enabled, credentialed European provider can enrich partial results.
+    # Never call it without opt-in: some plans charge per decoded VIN.
+    import os
+    european_enabled = (os.getenv('WAREHOUSE_VINCARIO_ENABLED', 'false').lower() == 'true'
+        and bool(os.getenv('WAREHOUSE_VINCARIO_API_KEY', '').strip())
+        and bool(os.getenv('WAREHOUSE_VINCARIO_SECRET_KEY', '').strip()))
+    if european_enabled:
+        from app.services.vin_europe import europe_vin
+    try:
+        european=europe_vin(vin) if european_enabled else None
+        if european:
+            incoming={k:v for k,v in european.items() if k in PRIMARY_KEYS and present(v) and len(str(v))<=200}
+            prior=dict(vehicle)
+            vehicle,new_conflicts=merge_verified(vehicle,incoming)
+            for key,conflict in new_conflicts.items():
+                conflicts.setdefault(key,conflict)
+            provenance.update({k:'Vincario' for k in incoming if not present(prior.get(k))})
+            sources.append('Vincario')
+            provider_status['Vincario']='reported'
+        else:
+            provider_status['Vincario']='not_enabled_or_no_data'
+    except (OSError,ValueError,KeyError,TypeError):
+        provider_status['Vincario']='unavailable_or_invalid_response'
+    # Normalize a verified numeric model year regardless of provider; never invent one.
+    merged_year=vehicle.get('year')
+    if merged_year is not None and str(merged_year).isdigit() and 1886<=int(merged_year)<=2100:
+        vehicle['year']=int(merged_year)
     missing=sorted(k for k in IMPORTANT if not present(vehicle.get(k)))
     issues=validate_consistency(vehicle)
     if year_uncertain:issues['year']='Джерело не визначило рік однозначно. Перевірте рік автомобіля перед збереженням.'

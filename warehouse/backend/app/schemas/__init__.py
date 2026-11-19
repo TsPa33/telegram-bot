@@ -94,11 +94,11 @@ class VehicleInput(Input):
     manufacturer: Text100
     model: Text100
     generation: Annotated[str, Field(max_length=100)] = ""
-    year: Annotated[int, Field(ge=1886, le=2100)]
+    year: Annotated[int, Field(ge=1886, le=2100)] | None = None
     engine: Annotated[str, Field(max_length=100)] = ""
     fuel_type: Annotated[str, Field(max_length=50)] = ""
     transmission: Annotated[str, Field(max_length=50)] = ""
-    engine_displacement_l: Annotated[Decimal, Field(gt=0, le=12, max_digits=3, decimal_places=1)] | None = None
+    engine_displacement_l: Annotated[Decimal, Field(gt=0, le=99.9, max_digits=4, decimal_places=1)] | None = None
     engine_variant: Annotated[str, Field(max_length=50)] | None = None
     engine_code: Annotated[str, Field(max_length=80)] | None = None
     drive_type: Literal["", "FWD", "RWD", "AWD", "4WD"] | None = None
@@ -124,7 +124,7 @@ class VehicleInput(Input):
 
 class VehicleSpecificationsInput(Input):
     """Partial patch for verified or owner-reported donor facts; never infer fitment."""
-    engine_displacement_l: Annotated[Decimal, Field(gt=0, le=12, max_digits=3, decimal_places=1)] | None = None
+    engine_displacement_l: Annotated[Decimal, Field(gt=0, le=99.9, max_digits=4, decimal_places=1)] | None = None
     engine_variant: Annotated[str, Field(max_length=50)] | None = None
     engine_code: Annotated[str, Field(max_length=80)] | None = None
     drive_type: Literal["", "FWD", "RWD", "AWD", "4WD"] | None = None

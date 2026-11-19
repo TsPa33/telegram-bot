@@ -10,7 +10,7 @@ export default function VehicleCard({vehicle:v,context,onParts,onData,onSaved}:P
  return <article className="vehicle-card vehicle-summary-card r1141-card r1146-card corporate-donor-card">
   <div className="r1146-card-intro">
    <div className="corporate-donor-top"><div className="r1146-card-heading">
-     <div><button type="button" className="text-button vehicle-card-name" onClick={onData||onParts}>{name}</button><p>{v.year} · Донор №{v.number??'—'}</p></div>
+     <div><button type="button" className="text-button vehicle-card-name" onClick={onData||onParts}>{name}</button><p>{v.year??'Рік не визначено'} · Донор №{v.number??'—'}</p></div>
      <span className="r1141-status">{v.archived?'Архів':v.status==='completed'?'Завершено':v.status==='planned'?'Заплановано':'На розборі'}</span>
     </div><div className="r1146-card-photo"><VehicleImage vehicle={v}/><small className="donor-image-caption">Довідкова ілюстрація</small></div></div>
    <div className="r1146-card-summary">
