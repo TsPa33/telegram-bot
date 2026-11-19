@@ -140,6 +140,7 @@ def _lookup(vin):
     if year_uncertain:issues['year']='Джерело не визначило рік однозначно. Перевірте рік автомобіля перед збереженням.'
     return dict(diagnostics=diagnostics,vin=vin,source=' + '.join(sources) or 'unavailable',vehicle=vehicle,additional=additional,
         available_fields=[k for k,v in vehicle.items() if present(v)],field_sources=provenance,
+        provider_contributions={name:sorted(k for k,v in provenance.items() if v==name) for name in provider_status},
         conflicts=conflicts,consistency_issues=issues,requires_review=True,
         observed_at=datetime.now(timezone.utc).isoformat(),live_data_received=bool(vehicle or additional),
         missing_fields=missing,provider_status=provider_status,
