@@ -38,8 +38,29 @@ def audit(db):
             grouped['included_rows'] += sum(1 for r in entries if auto_oem.eligible_row(r))
             grouped['stored_oem_refs'] += sum(1 for value in refs.values()
                                               if isinstance(value,dict) and value.get('oem_number'))
+            grouped['eligible_rows_without_oem_ref'] += sum(
+                1 for r in entries if auto_oem.eligible_row(r)
+                and not (isinstance(refs.get(r.id), dict) and refs[r.id].get('oem_number'))
+            )
+            grouped['valid_oem_refs'] += sum(
+                1 for r in entries if auto_oem.eligible_row(r)
+                and isinstance(refs.get(r.id), dict)
+                and auto_oem.valid_reference(car, r, refs[r.id])
+            )
             grouped['stock_parts'] += len(parts)
             grouped['stock_with_oem'] += sum(bool(p.oem_number) for p in parts)
+            grouped['stock_manual_oem_clear'] += sum(
+                bool(p.oem_provenance and not p.oem_number) for p in parts
+            )
+            linked = {r.part_id: r for r in entries if r.part_id is not None}
+            grouped['stock_linked_to_dismantling_row'] += sum(p.id in linked for p in parts)
+            grouped['stock_linked_valid_oem_ref_without_oem'] += sum(
+                1 for p in parts
+                if not p.oem_number and p.id in linked
+                and isinstance(refs.get(linked[p.id].id), dict)
+                and auto_oem.valid_reference(car, linked[p.id], refs[linked[p.id].id])
+                and not p.oem_provenance
+            )
             grouped['stock_with_article'] += sum(bool(p.article_number and p.article_brand) for p in parts)
             grouped['stock_with_exact_supplier'] += sum(bool(auto_oem.exact_key(p,car)) for p in parts)
             if identity:
