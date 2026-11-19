@@ -128,7 +128,6 @@ def volvo_article_lookup(
 # Volvo integration snapshots are explicitly imported, never built on API startup.
 import json
 from volvo_contract import validate as validate_volvo, digest as volvo_digest, compact_plan, coverage_verified
-from volvo_vehicle_import import value as volvo_value
 
 
 def volvo_snapshot(car_id, snapshot_sha=None):
@@ -251,10 +250,9 @@ def volvo_articles(car_id: int, product_id: int = Query(gt=0), snapshot_sha: str
     enriched = []
     for item in items:
         imported = references.get((item['supplier_id'], item['article_number']), {})
-        snapshot_numbers = {
-            (volvo_value(ref, 'manufacturerId'), volvo_value(ref, 'OENbr'))
-            for ref in item.get('oem', [])
-        }
+        snapshot_oems = [{key.casefold():value for key,value in ref.items()}
+                         for ref in item.get('oem', [])]
+        snapshot_numbers = {(ref.get('manufacturerid'), ref.get('oenbr')) for ref in snapshot_oems}
         additions = [ref for ref in imported.get('oem', []) if (ref['manufacturerId'], ref['OENbr']) not in snapshot_numbers]
         supplier = item.get('supplier') or []
         if not supplier and imported.get('supplier'):
