@@ -32,6 +32,7 @@ def clean(migrated):
             )
         )
     with engine().begin() as conn:
+        conn.execute(text("TRUNCATE vin_evidence_snapshots CASCADE"))
         conn.execute(text('TRUNCATE catalogue_sources, catalogue_entities, catalogue_state CASCADE'))
         conn.execute(text('INSERT INTO catalogue_state (id,revision) VALUES (1,0)'))
         conn.execute(text('TRUNCATE canonical_types, canonical_runs, canonical_state CASCADE'))
