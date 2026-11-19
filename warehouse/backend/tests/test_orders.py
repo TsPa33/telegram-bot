@@ -239,7 +239,7 @@ def test_migration_preserves_v5_data_and_refuses_destructive_downgrade(logged,ve
     b=buyer(c);order=create(c,b,[line(p)])
     result=run([sys.executable,'-m','alembic','downgrade','c24a9b71e603'],capture_output=True,text=True)
     assert result.returncode!=0 and 'Preserve canonical Billing identities and snapshots; roll forward or disable routing' in result.stderr
-    with engine().connect() as db:assert db.execute(text('SELECT version_num FROM alembic_version')).scalar_one()=='c42e1109a001'
+    with engine().connect() as db:assert db.execute(text('SELECT version_num FROM alembic_version')).scalar_one()=='a20261119056'
     assert c.get('/api/v1/orders/'+order['id']).status_code==200
 
 
