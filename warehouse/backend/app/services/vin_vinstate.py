@@ -16,7 +16,7 @@ VIN_PATTERN = re.compile(r"^[A-HJ-NPR-Z0-9]{17}$")
 MAX_BYTES = 128_000
 API_ORIGIN = "https://vinstate.com/api/v1/vin/"
 FIELD_PATHS = {
-    "manufacturer": (("vehicle", "make"), ("wmi", "make")),
+    "manufacturer": (("vehicle", "make"), ("wmi", "make"), ("wmi", "manufacturer")),
     "model": (("vehicle", "model"),),
     "year": (("vehicle", "model_year"), ("vehicle", "year")),
     "body_class": (("vehicle", "body_type"), ("vehicle", "body_style")),
@@ -117,9 +117,15 @@ def parse(payload: dict, vin: str) -> dict:
         "charged_credits": meta.get("charged_credits") if type(meta.get("charged_credits")) is int else None,
     }
     label = _pick(decoded, (("vehicle", "car"),))
+    # year.year_code is a VIN model-year *code*, not a year. Do not infer a
+    # calendar year: it is cyclic and needs manufacturer/model context.
+    # WMI alone is an identifier, not an enhanced vehicle specification.
+    identifier_only = set(values) <= {"manufacturer"}
+    status = ("identifier_only" if values and identifier_only
+              else "reported" if values else "label_only_or_empty")
     return {
         "vehicle": values,
-        "status": "reported" if values else "label_only_or_empty",
+        "status": status,
         "vehicle_label": label,
         "billing": billing,
         "response_shape": response_shape(payload),
