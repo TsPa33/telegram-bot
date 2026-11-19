@@ -31,4 +31,12 @@ def upgrade():
     op.create_index("ix_vin_evidence_snapshots_vin","vin_evidence_snapshots",["vin"])
 
 def downgrade():
-    raise RuntimeError("VIN evidence history is forward-only; export and reconcile before removal")
+    connection = op.get_bind()
+    # Allow a harmless empty-table rollback so the existing historical
+    # forward-only Billing migration can enforce its original safety contract.
+    if connection.scalar(sa.text("SELECT EXISTS (SELECT 1 FROM vin_evidence_snapshots)")):
+        raise RuntimeError(
+            "VIN evidence history is populated; export and reconcile before removal"
+        )
+    op.drop_index("ix_vin_evidence_snapshots_vin", table_name="vin_evidence_snapshots")
+    op.drop_table("vin_evidence_snapshots")
