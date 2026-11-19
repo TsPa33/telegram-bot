@@ -51,7 +51,7 @@ def source_identity(v):
     # Source-specific pilot evidence: 2016 XC90 II T6 AWD, B4204T27;
     # the known North American YV4A22PK/G VIN pattern encodes this variant.
     if normalized(v.manufacturer)!='volvo' or not re.search(r'\bxc90\b',v.model,re.I):return None
-    if not 2015<=v.year<=2018:return None
+    if type(v.year) is not int or not 2015<=v.year<=2018:return None
     fuel=normalized(v.fuel_type);drive=normalized(v.drive_type);code=normalized(v.engine_code)
     variant=normalized(v.engine_variant)
     if fuel and fuel not in {'petrol','gasoline','бензин','gas'}:return None
@@ -177,7 +177,7 @@ class SourceCache:
         """Unique exact maker/model/engine/year match among published snapshots."""
         code=lambda s:''.join(c for c in normalized(s) if c.isalnum())
         engine=code(v.engine_code)
-        if not engine:return None
+        if not engine or type(v.year) is not int:return None
         if self.directory is None:
             entries=[];cursor=0
             for _ in range(100):
