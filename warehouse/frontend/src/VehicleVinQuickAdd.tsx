@@ -16,6 +16,25 @@ export default function VehicleVinQuickAdd({onBack,onCreated}:{onBack:()=>void;o
  const [extra,setExtra]=useState<Row>({});
  const [paidQuote,setPaidQuote]=useState<Row|null>(null);
  const [paidLoading,setPaidLoading]=useState(false),[paidError,setPaidError]=useState('');
+ 
+ const [vinstateReady,setVinstateReady]=useState<Row|null>(null);
+ const [vinstateReport,setVinstateReport]=useState<Row|null>(null);
+ const [vinstateBusy,setVinstateBusy]=useState(false),[vinstateError,setVinstateError]=useState('');
+ const [vinstateApproved,setVinstateApproved]=useState(false);
+ async function checkVinstate(){
+  setVinstateBusy(true);setVinstateError('');
+  try{setVinstateReady(await api('/vehicles/vin/vinstate/readiness'));}
+  catch(e){setVinstateError((e as Error).message);}
+  finally{setVinstateBusy(false);}
+ }
+ async function previewVinstate(){
+  if(!valid||!vinstateApproved||vinstateBusy||!vinstateReady?.diagnostic_enabled)return;
+  setVinstateBusy(true);setVinstateError('');setVinstateReport(null);
+  try{setVinstateReport(await api('/vehicles/vin/vinstate/preview','POST',{vin,acknowledge_provider_quota:true}));}
+  catch(e){setVinstateError((e as Error).message);}
+  finally{setVinstateBusy(false);}
+ }
+
  async function showPaidQuote(){
   if(!valid||paidLoading)return;
   setPaidLoading(true);setPaidError('');
@@ -58,7 +77,7 @@ export default function VehicleVinQuickAdd({onBack,onCreated}:{onBack:()=>void;o
   return <label key={key}>{label}<input aria-label={label} disabled={saving} value={String(draft[key]??'')} onChange={e=>{setDraft(p=>({...p,[key]:e.target.value}));setConfirmed(false);}}/><small>{modified?'Змінено вручну':has(key)?'Знайдено':'Потребує уточнення'}</small>{result?.conflicts?.[key]&&<small className="vin-conflict">Розбіжність: {result.conflicts[key].primary} / {result.conflicts[key].secondary}</small>}</label>;
  }
  return <section className="vin-intake" aria-label="Додавання автомобіля за VIN">
-  <div className="vin-actions"><label>VIN<input aria-label="VIN" value={vin} maxLength={17} spellCheck={false} disabled={saving} onChange={e=>{epoch.current++;setVin(e.target.value.trim().toUpperCase());setResult(null);setDraft({});setExtra({});setLoading(false);setConfirmed(false);setError('');setExisting(null);setPaidQuote(null);setPaidError('');}} placeholder="YV4L12RK6N1970668"/></label>
+  <div className="vin-actions"><label>VIN<input aria-label="VIN" value={vin} maxLength={17} spellCheck={false} disabled={saving} onChange={e=>{epoch.current++;setVin(e.target.value.trim().toUpperCase());setResult(null);setDraft({});setExtra({});setLoading(false);setConfirmed(false);setError('');setExisting(null);setPaidQuote(null);setPaidError('');setVinstateReady(null);setVinstateReport(null);setVinstateApproved(false);setVinstateError('');}} placeholder="YV4L12RK6N1970668"/></label>
   <button type="button" disabled={!valid||loading||saving} onClick={()=>void decode()}>{loading?'Визначаємо…':'Визначити автомобіль'}</button><button type="button" disabled={saving} onClick={manual}>Додати вручну</button></div>
   {vin&&!valid&&<p role="status">Введіть 17 символів без I, O, Q.</p>}
   {error&&<p role="alert">{error}</p>}{existing&&<button onClick={()=>onCreated(existing)}>Відкрити наявний автомобіль</button>}
@@ -68,7 +87,16 @@ export default function VehicleVinQuickAdd({onBack,onCreated}:{onBack:()=>void;o
    {Object.keys(result.consistency_issues||{}).length>0&&<p role="alert">{Object.values(result.consistency_issues||{}).join(' ')}</p>}
    {groups.map(([name,fields])=>{const visible=fields.filter(([key])=>has(key)||required.has(key));return (visible.length>0||name==='Додаткові характеристики'&&Object.keys(extra).length>0)&&<fieldset key={name}><legend>{name}</legend><div className="vin-fields">{visible.map(([key,label])=>field(key,label))}{name==='Додаткові характеристики'&&Object.entries(extra).map(([key,item])=><label key={'extra-'+key}>{item.label}<input aria-label={item.label} disabled={saving} value={item.value} onChange={e=>{setExtra(p=>({...p,[key]:{...p[key],value:e.target.value,source:'manual'}}));setConfirmed(false);}}/><small>{item.source==='manual'?'Змінено вручну':'Знайдено'}</small>{item.alternative&&<small className="vin-conflict">Розбіжність: {item.alternative}</small>}</label>)}</div></fieldset>})}
    {unknown.length>0&&<details className="vin-unknown"><summary>Потребує уточнення ({unknown.length})</summary><div className="vin-fields">{unknown.map(([key,label])=>field(key,label))}</div></details>}
-   {identity?.catalogue_platform_admin===true&&result.provider_status&&<details className="vin-source-status"><summary>Технічні деталі</summary>{result.cached&&<p>Нещодавно отримана відповідь з кешу; час спостереження збережено.</p>}{Object.entries(result.provider_status).map(([name,state])=><p key={name}>{name}: {state==='reported'?'дані отримано':state==='not_needed'?'доповнення не потрібне':state==='robots_denied'?'автоматичний доступ заборонено правилами джерела':state==='rate_limited'?'досягнуто обмеження частоти':state==='empty'||state==='no_explicit_vehicle_data'?'потрібних даних немає':state==='not_enabled'||state==='not_enabled_or_no_data'?'вимкнено або даних немає':state==='empty_or_quota_unavailable'?'даних немає або вичерпано квоту':'дані недоступні; повторіть пізніше'}{state==='reported'&&<span> · Прийнято полів: {result.provider_contributions?.[name]?.length??0}{(result.provider_contributions?.[name]?.length??0)>0&&' ('+result.provider_contributions?.[name]?.join(', ')+')'}</span>}</p>)}</details>}
+   {identity?.catalogue_platform_admin===true&&result.provider_status&&<details className="vin-source-status"><summary>Технічні деталі</summary>{result.cached&&<p>Нещодавно отримана відповідь з кешу; час спостереження збережено.</p>}{Object.entries(result.provider_status).map(([name,state])=><p key={name}>{name}: {state==='reported'?'дані отримано':state==='not_needed'?'доповнення не потрібне':state==='robots_denied'?'автоматичний доступ заборонено правилами джерела':state==='rate_limited'?'досягнуто обмеження частоти':state==='empty'||state==='no_explicit_vehicle_data'?'потрібних даних немає':state==='not_enabled'||state==='not_enabled_or_no_data'?'вимкнено або даних немає':state==='empty_or_quota_unavailable'?'даних немає або вичерпано квоту':'дані недоступні; повторіть пізніше'}{state==='reported'&&<span> · Прийнято полів: {result.provider_contributions?.[name]?.length??0}{(result.provider_contributions?.[name]?.length??0)>0&&' ('+result.provider_contributions?.[name]?.join(', ')+')'}</span>}</p>)}<div className="vinstate-test">
+     <button type="button" disabled={vinstateBusy} onClick={()=>void checkVinstate()}>VINState: перевірити тестовий режим</button>
+     {vinstateReady&&<p>Ключ: {vinstateReady.key_present?'наявний':'не налаштовано'} · Тестування: {vinstateReady.diagnostic_enabled?'доступне':'вимкнено'}</p>}
+     {vinstateReady?.diagnostic_enabled&&<>
+      <label className="vin-confirm"><input type="checkbox" checked={vinstateApproved} onChange={e=>setVinstateApproved(e.target.checked)}/>Розумію, що запит може витратити квоту VINState або придбані кредити.</label>
+      <button type="button" disabled={!valid||!vinstateApproved||vinstateBusy} onClick={()=>void previewVinstate()}>Тест VINState — один запит</button>
+     </>}
+     {vinstateError&&<p role="alert">{vinstateError}</p>}
+     {vinstateReport&&<div role="status"><p>VINState: {vinstateReport.status}</p><p>Явні поля: {Object.entries(vinstateReport.vehicle||{}).map(([k,v])=>k+': '+String(v)).join(', ')||'відсутні'}</p><p>Діагностичний опис: {vinstateReport.vehicle_label||'відсутній'}</p><p>Джерело квоти: {vinstateReport.billing?.funding_source||'невідомо'}, кредити: {vinstateReport.billing?.charged_credits??'невідомо'}</p></div>}
+    </div></details>}
    <p className="vin-disclaimer">Відповідь джерела не підтверджує заводську комплектацію. Рік може бути модельним. Невідомі значення можна залишити порожніми.</p>
    <label className="vin-confirm"><input type="checkbox" checked={confirmed} disabled={saving} onChange={e=>setConfirmed(e.target.checked)}/>Характеристики перевірено, підтверджую додавання</label>
    <section className="vin-paid-panel" aria-label="Розширений VIN-пошук">
