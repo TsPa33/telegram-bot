@@ -38,7 +38,7 @@ def test_documented_payload_never_guesses_model_year_from_label():
     result = vin_vinstate.parse(documented_fixture(), VIN)
     assert result["vehicle"] == {"manufacturer": "DAF"}
     assert result["vehicle_label"] == "2014 DAF FT"
-    assert result["status"] == "reported"
+    assert result["status"] == "identifier_only"
     assert result["billing"]["funding_source"] == "included"
     assert result["billing"]["charged_credits"] == 0
 
@@ -120,3 +120,33 @@ def test_empty_documented_response_shape_without_assuming_no_coverage():
     assert out["response_shape"]["fields"] == [
         {"path": "vehicle.car", "type": "text", "populated": True}
     ]
+
+
+def test_real_daf_shape_wmi_only_does_not_invent_model_year_or_gearbox():
+    # Structure observed for DAF: sequence.sequence, wmi.{manufacturer,region,wmi},
+    # year.year_code. Values here are synthetic and never copied from the actual VIN.
+    response = {
+        "success": True,
+        "data": [{"vin": VIN, "decoded": {
+            "sequence": {"sequence": "SYNTHETIC"},
+            "wmi": {"manufacturer": "DAF", "region": "Europe", "wmi": "XLR"},
+            "year": {"year_code": "E"},
+        }}],
+        "meta": {"billed": False},
+    }
+    parsed = vin_vinstate.parse(response, VIN)
+    assert parsed["vehicle"] == {"manufacturer": "DAF"}
+    assert parsed["status"] == "identifier_only"
+    assert "year" not in parsed["vehicle"]
+    assert "model" not in parsed["vehicle"]
+    assert "transmission" not in parsed["vehicle"]
+    assert parsed["response_shape"]["sections"] == ["sequence", "wmi", "year"]
+    assert {"path": "year.year_code", "type": "text", "populated": True} in parsed["response_shape"]["fields"]
+
+
+def test_other_explicit_specs_prevent_identifier_only_status():
+    response = documented_fixture()
+    response["data"][0]["decoded"]["vehicle"]["transmission"] = "Manual"
+    parsed = vin_vinstate.parse(response, VIN)
+    assert parsed["status"] == "reported"
+    assert parsed["vehicle"]["transmission"] == "Manual"
