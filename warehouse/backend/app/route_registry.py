@@ -92,6 +92,8 @@ KNOWN_ROUTES = frozenset({
     ('GET', '/api/v1/vehicle-view/readiness'),
     ('GET', '/api/v1/vehicles'),
     ('GET', '/api/v1/vehicles/vin/decode'),
+    ('GET', '/api/v1/vehicles/vin/vinstate/readiness'),
+    ('POST', '/api/v1/vehicles/vin/vinstate/preview'),
     ('GET', '/api/v1/vehicles/vin/paid/quote'),
     ('POST', '/api/v1/vehicles/vin/paid/confirm'),
     ('GET', '/api/v1/vehicles/{id}'),
