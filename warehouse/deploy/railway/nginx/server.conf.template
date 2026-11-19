@@ -56,6 +56,11 @@ server {
         proxy_read_timeout 120s;
         proxy_pass $warehouse_backend$request_uri;
     }
+    # CarAPI's initial VIN lookup may take up to 90 seconds; other API requests stay at 60s.
+    location = /api/v1/vehicles/vin/decode {
+        proxy_read_timeout 115s;
+        proxy_pass $warehouse_backend$request_uri;
+    }
     location ^~ /api/ {
         # Preserve /api/v1 and all error statuses; never return SPA HTML for API.
         proxy_pass $warehouse_backend$request_uri;

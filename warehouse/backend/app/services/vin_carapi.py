@@ -38,7 +38,7 @@ def decode(vin):
     request = Request(url, headers={"Accept": "application/json",
                                     "User-Agent": "CarPotWarehouse/1.0"})
     try:
-        with urlopen(request, timeout=6) as response:
+        with urlopen(request, timeout=90) as response:
             body = response.read(MAX_BYTES + 1)
     except HTTPError as exc:
         if exc.code in (400, 403, 404, 429):
