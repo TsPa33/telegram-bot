@@ -36,6 +36,9 @@ def test_european_provider_unavailable_is_not_a_failed_lookup(monkeypatch):
     monkeypatch.setattr(vin_lookup,"urlopen",lambda *a,**kw:Response())
     monkeypatch.setattr(vin_freevindecoder,"decode_page",lambda vin:None)
     monkeypatch.setattr(vin_freevindecoder,"source_status",lambda vin:"no_data_or_access_unavailable")
+    monkeypatch.setenv('WAREHOUSE_VINCARIO_ENABLED', 'true')
+    monkeypatch.setenv('WAREHOUSE_VINCARIO_API_KEY', 'test-key')
+    monkeypatch.setenv('WAREHOUSE_VINCARIO_SECRET_KEY', 'test-secret')
     monkeypatch.setattr(vin_europe,"europe_vin",lambda vin: (_ for _ in ()).throw(OSError("provider offline")))
     data=vin_lookup.lookup(VIN)
     assert data["vehicle"]["manufacturer"]=="DAF"
