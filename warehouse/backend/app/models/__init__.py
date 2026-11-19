@@ -389,3 +389,5 @@ from app.models.billing import WorkspaceSubscription,BillingPayment,DismantlingC
 from app.models.assemblies import AssemblyMembership, AssemblyTemplate  # noqa: E402,F401
 
 from app.models.entitlements import EntitlementWorkspace, EntitlementReceipt, DonorProvenance, EntitlementReturn
+
+from app.models.vin_evidence import VinEvidenceSnapshot  # noqa: E402,F401
