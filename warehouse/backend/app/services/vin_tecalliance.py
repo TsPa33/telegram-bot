@@ -133,7 +133,8 @@ def readiness() -> dict:
     return {
         "provider": "TecAlliance Vehicle Identification VIN v1",
         "credentials_configured": bool(os.getenv("WAREHOUSE_TECALLIANCE_API_KEY", "").strip()),
-        "country_valid": bool(COUNTRY.fullmatch(country)),
+        "country_configured": bool(country),
+        "country_contract_verified": False,
         "country": country if COUNTRY.fullmatch(country) else None,
         "transport_enabled": False,
         "billing_enabled": False,
