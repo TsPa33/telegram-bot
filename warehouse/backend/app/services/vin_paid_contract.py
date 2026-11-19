@@ -112,3 +112,26 @@ def next_state(current: str, event: str) -> str:
     }:
         return current
     raise ValueError(f"Forbidden VIN payment transition: {current} / {event}")
+
+
+def reusable_receipt(receipt: dict | None, *, workspace: str, vin: str,
+                     provider_version: str, now_epoch: int) -> bool:
+    """Billing-verified receipt eligibility; never reuse data across tenants.
+
+    Storage, expiry and license permission are owned by the future gateway.
+    Passing an untrusted client-side receipt is forbidden by the API design.
+    """
+    if not isinstance(receipt, dict):
+        return False
+    return (
+        receipt.get("workspace_id") == workspace
+        and receipt.get("vin") == quote(vin)["vin"]
+        and receipt.get("product") == PRODUCT
+        and receipt.get("provider_version") == provider_version
+        and receipt.get("financial_status") == "captured"
+        and receipt.get("license_allows_reuse") is True
+        and type(receipt.get("expires_at_epoch")) is int
+        and receipt["expires_at_epoch"] > now_epoch
+        and isinstance(receipt.get("confirmed_fields"), dict)
+        and bool(set(receipt["confirmed_fields"]) & USEFUL_FIELDS)
+    )
