@@ -81,7 +81,8 @@ def test_readiness_never_enables_calls_just_from_key(monkeypatch):
     monkeypatch.setenv("WAREHOUSE_TECALLIANCE_COUNTRY", "UA")
     result = vin_tecalliance.readiness()
     assert result["credentials_configured"] is True
-    assert result["country_valid"] is True
+    assert result["country_configured"] is True
+    assert result["country_contract_verified"] is False
     assert result["transport_enabled"] is False
     assert result["billing_enabled"] is False
     assert "secret-should-not-leak" not in str(result)
