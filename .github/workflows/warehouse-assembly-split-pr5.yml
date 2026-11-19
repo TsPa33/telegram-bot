@@ -62,6 +62,7 @@ jobs:
             tests/test_vinstate_diagnostic.py \
             tests/test_tecalliance_preintegration.py \
             tests/test_vincario_balance.py \
+            tests/test_vincario_free_demo_trial.py \
             tests/test_vin_partial_registration.py \
             tests/test_universal_generator.py \
             tests/test_sales_center.py \
