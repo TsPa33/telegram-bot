@@ -14,6 +14,16 @@ const groups:[string,[string,string][]][]=[
 export default function VehicleVinQuickAdd({onBack,onCreated}:{onBack:()=>void;onCreated:(row:Row)=>void}){
  const identity=useContext(TeamIdentity);
  const [extra,setExtra]=useState<Row>({});
+ const [paidQuote,setPaidQuote]=useState<Row|null>(null);
+ const [paidLoading,setPaidLoading]=useState(false),[paidError,setPaidError]=useState('');
+ async function showPaidQuote(){
+  if(!valid||paidLoading)return;
+  setPaidLoading(true);setPaidError('');
+  try{setPaidQuote(await api<Row>('/vehicles/vin/paid/quote?vin='+encodeURIComponent(vin)));}
+  catch(e){setPaidError((e as Error).message);}
+  finally{setPaidLoading(false);}
+ }
+
  const [vin,setVin]=useState(''),[result,setResult]=useState<Result|null>(null),[draft,setDraft]=useState<Row>({});
  const [loading,setLoading]=useState(false),[saving,setSaving]=useState(false),[confirmed,setConfirmed]=useState(false),[error,setError]=useState(''),[existing,setExisting]=useState<Row|null>(null);
  const epoch=useRef(0),writing=useRef(false);
@@ -48,7 +58,7 @@ export default function VehicleVinQuickAdd({onBack,onCreated}:{onBack:()=>void;o
   return <label key={key}>{label}<input aria-label={label} disabled={saving} value={String(draft[key]??'')} onChange={e=>{setDraft(p=>({...p,[key]:e.target.value}));setConfirmed(false);}}/><small>{modified?'Змінено вручну':has(key)?'Знайдено':'Потребує уточнення'}</small>{result?.conflicts?.[key]&&<small className="vin-conflict">Розбіжність: {result.conflicts[key].primary} / {result.conflicts[key].secondary}</small>}</label>;
  }
  return <section className="vin-intake" aria-label="Додавання автомобіля за VIN">
-  <div className="vin-actions"><label>VIN<input aria-label="VIN" value={vin} maxLength={17} spellCheck={false} disabled={saving} onChange={e=>{epoch.current++;setVin(e.target.value.trim().toUpperCase());setResult(null);setDraft({});setExtra({});setLoading(false);setConfirmed(false);setError('');setExisting(null);}} placeholder="YV4L12RK6N1970668"/></label>
+  <div className="vin-actions"><label>VIN<input aria-label="VIN" value={vin} maxLength={17} spellCheck={false} disabled={saving} onChange={e=>{epoch.current++;setVin(e.target.value.trim().toUpperCase());setResult(null);setDraft({});setExtra({});setLoading(false);setConfirmed(false);setError('');setExisting(null);setPaidQuote(null);setPaidError('');}} placeholder="YV4L12RK6N1970668"/></label>
   <button type="button" disabled={!valid||loading||saving} onClick={()=>void decode()}>{loading?'Визначаємо…':'Визначити автомобіль'}</button><button type="button" disabled={saving} onClick={manual}>Додати вручну</button></div>
   {vin&&!valid&&<p role="status">Введіть 17 символів без I, O, Q.</p>}
   {error&&<p role="alert">{error}</p>}{existing&&<button onClick={()=>onCreated(existing)}>Відкрити наявний автомобіль</button>}
@@ -61,6 +71,21 @@ export default function VehicleVinQuickAdd({onBack,onCreated}:{onBack:()=>void;o
    {identity?.catalogue_platform_admin===true&&result.provider_status&&<details className="vin-source-status"><summary>Технічні деталі</summary>{result.cached&&<p>Нещодавно отримана відповідь з кешу; час спостереження збережено.</p>}{Object.entries(result.provider_status).map(([name,state])=><p key={name}>{name}: {state==='reported'?'дані отримано':state==='not_needed'?'доповнення не потрібне':state==='robots_denied'?'автоматичний доступ заборонено правилами джерела':state==='rate_limited'?'досягнуто обмеження частоти':state==='empty'||state==='no_explicit_vehicle_data'?'потрібних даних немає':state==='not_enabled'||state==='not_enabled_or_no_data'?'вимкнено або даних немає':state==='empty_or_quota_unavailable'?'даних немає або вичерпано квоту':'дані недоступні; повторіть пізніше'}{state==='reported'&&<span> · Прийнято полів: {result.provider_contributions?.[name]?.length??0}{(result.provider_contributions?.[name]?.length??0)>0&&' ('+result.provider_contributions?.[name]?.join(', ')+')'}</span>}</p>)}</details>}
    <p className="vin-disclaimer">Відповідь джерела не підтверджує заводську комплектацію. Рік може бути модельним. Невідомі значення можна залишити порожніми.</p>
    <label className="vin-confirm"><input type="checkbox" checked={confirmed} disabled={saving} onChange={e=>setConfirmed(e.target.checked)}/>Характеристики перевірено, підтверджую додавання</label>
+   <section className="vin-paid-panel" aria-label="Розширений VIN-пошук">
+    <strong>Потрібно більше характеристик?</strong>
+    <p>Додаткова перевірка через платний VIN-каталог. Рік, кузов або КПП можуть залишитися невизначеними навіть після перевірки.</p>
+    {!paidQuote&&<button type="button" disabled={!valid||paidLoading||saving} onClick={()=>void showPaidQuote()}>{paidLoading?'Перевіряємо ціну…':'Розширений VIN-пошук — 50 грн'}</button>}
+    {paidError&&<p role="alert">{paidError}</p>}
+    {paidQuote&&<div className="vin-paid-quote">
+      <strong>Підтвердження ціни: {paidQuote.price_label}</strong>
+      <p>VIN: {paidQuote.vin}. Якщо нових корисних характеристик немає — резерв коштів буде повернуто після підключення перевіреного платіжного сервісу.</p>
+      <p role="status">{paidQuote.blocker}</p>
+      <div className="vin-actions">
+        <button type="button" disabled={!paidQuote.checkout_available}>Підтвердити списання {paidQuote.price_label}</button>
+        <button type="button" onClick={()=>setPaidQuote(null)}>Закрити</button>
+      </div>
+    </div>}
+   </section>
    <div className="vin-actions"><Permit permission="vehicles.create"><button className="primary" type="button" disabled={saving||!confirmed} onClick={()=>void create()}>{saving?'Зберігаємо…':'Додати автомобіль'}</button></Permit><button disabled={saving} onClick={onBack}>Скасувати</button></div>
   </>}
  </section>;
