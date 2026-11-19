@@ -320,12 +320,27 @@ def global_vehicle(data: GlobalVehicle, db: DB, who: Auth):
     return vehicle_view(db,vehicle,who.workspace_account_id)
 
 
+def automatic_global_selection(vehicle):
+    from app.services.auto_oem import automatic_identity
+
+    identity = automatic_identity(vehicle)
+    if identity and identity['global_source']:
+        return {
+            'car_id': identity['car_id'],
+            'model_id': identity['model_id'],
+            'manufacturer_id': identity['manufacturer_id'],
+            'source_snapshot_sha': identity['snapshot_sha'],
+            'modification_description': identity['modification_description'],
+        }
+    return None
+
+
 @router.post('/{id}/global-dismantling')
 def global_dismantling(id: str, db: DB, who: Auth):
     require_permission(who, 'vehicles.view', 'dismantling.manage')
     v=owned(db,Vehicle,id,who.workspace_account_id,lock=True,active=True)
     saved=service.saved_state(v)
-    selection=(v.dismantling_v3 or {}).get('global_selection')
+    selection=(v.dismantling_v3 or {}).get('global_selection') or automatic_global_selection(v)
     if not selection:
         raise HTTPException(409,'Для цього автомобіля не вибрано глобальну модифікацію. Наявні дані збережено.')
     if service.needs_review(v) or (selection.get('vehicle_basis') and selection['vehicle_basis']!=service.vehicle_basis(v)):
@@ -336,7 +351,10 @@ def global_dismantling(id: str, db: DB, who: Auth):
         envelope=service.CatalogueAdapter().plan(selection['car_id'],global_source=True)
     except service.CatalogueUnavailable:
         raise HTTPException(503,'Не вдалося отримати глобальний каталог') from None
-    if envelope['payload']['model_id']!=selection['model_id'] or envelope['payload']['source_snapshot_sha']!=selection['source_snapshot_sha']:
+    payload=envelope['payload']
+    if (payload['car_id'],payload['model_id'],payload['manufacturer_id'],payload['source_snapshot_sha'])!=(
+        selection['car_id'],selection['model_id'],selection['manufacturer_id'],selection['source_snapshot_sha']
+    ):
         raise HTTPException(409,'Версія каталогу змінилась; потрібне повторне підтвердження модифікації')
     service.persist(db,who,v,envelope,allow_partial=True)
     db.commit()
@@ -359,10 +377,10 @@ def global_saved(id: str, db: DB, who: Auth):
         refs=references(v)
         for row in rows:
             ref=refs.get(row.id);part=parts.get(row.part_id)
-            if part and part.oem_number:oems[int(row.catalog_key.rsplit(':',1)[1])]=dict(item_id=row.id,part_id=part.id,oem_number=part.oem_number,oem_options=options(part.oem_provenance))
+            if part and (part.oem_number or part.oem_provenance):oems[int(row.catalog_key.rsplit(':',1)[1])]=dict(item_id=row.id,part_id=part.id,oem_number=part.oem_number,oem_options=options(part.oem_provenance))
             elif valid_reference(v,row,ref):oems[int(row.catalog_key.rsplit(':',1)[1])]=dict(item_id=row.id,part_id=None,oem_number=ref['oem_number'],oem_options=options(ref))
     from app.services.dismantling_plan_v3 import generator_basis
-    return dict(selection_basis=generator_basis(v),selection=(v.dismantling_v3 or {}).get('global_selection'),saved=state,
+    return dict(selection_basis=generator_basis(v),selection=(v.dismantling_v3 or {}).get('global_selection') or automatic_global_selection(v),saved=state,
         keys=keys,oems=oems,legacy=bool(not state and (v.dismantling_v3 or v.ktype)),
         legacy_source='base' if (v.dismantling_v3 or {}).get('unified_base') else 'professional')
 
