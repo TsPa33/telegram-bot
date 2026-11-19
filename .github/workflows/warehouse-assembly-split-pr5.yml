@@ -57,6 +57,7 @@ jobs:
             tests/test_vin_intake.py \
             tests/test_vin_normalize.py \
             tests/test_vin_europe_pipeline.py \
+            tests/test_vin_carapi_free.py \
             tests/test_vin_partial_registration.py \
             tests/test_universal_generator.py \
             tests/test_sales_center.py \
