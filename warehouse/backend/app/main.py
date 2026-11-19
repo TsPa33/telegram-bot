@@ -140,6 +140,8 @@ from app.api.vin_paid import router as vin_paid_router
 app.include_router(vin_paid_router)
 from app.api.vinstate_preview import router as vinstate_preview_router
 app.include_router(vinstate_preview_router)
+from app.api.vin_tecalliance import router as tecalliance_router
+app.include_router(tecalliance_router)
 
 from app.api.unified_catalogue import router as unified_catalogue_router
 app.include_router(unified_catalogue_router)
