@@ -61,6 +61,8 @@ def test_explicit_staging_balance_uses_only_balance_endpoint(monkeypatch):
 
 
 def test_balance_endpoint_not_accessible_without_platform_admin(logged, monkeypatch):
-    monkeypatch.setattr(balance, "fetch_balance", lambda: (_ for _ in ()).throw(AssertionError("Unauthorized request triggered provider")))
+    from app.api import vin_vincario_balance as route
+    monkeypatch.setattr(route, "platform_admin", lambda user: False)
+    monkeypatch.setattr(route, "fetch_balance", lambda: (_ for _ in ()).throw(AssertionError("Unauthorized request triggered provider")))
     response = logged.post("/api/v1/vehicles/vin/vincario/balance")
     assert response.status_code == 403
