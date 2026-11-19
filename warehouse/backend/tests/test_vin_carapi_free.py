@@ -73,3 +73,19 @@ def test_pipeline_does_not_overwrite_primary_and_only_calls_with_sparse_core(mon
     assert result["conflicts"]["model"]["secondary"] == "XF"
     assert result["provider_status"]["CarAPI.dev"] == "reported"
     assert vin_lookup.lookup(VIN)["cached"] is True
+
+
+def test_capacity_and_drivetrain_shorthand_is_not_engine_model(monkeypatch):
+    vin_lookup.clear_cache()
+    monkeypatch.setenv("WAREHOUSE_CARAPI_ENABLED", "false")
+    monkeypatch.setenv("WAREHOUSE_VINCARIO_ENABLED", "false")
+    monkeypatch.setattr(vin_lookup, "urlopen", lambda *a, **kw: Response({
+        "Results": [{"Make": "DAF", "Model": "FT", "EngineModel": "12.9L AWD", "ErrorCode": "0"}],
+    }))
+    monkeypatch.setattr(vin_freevindecoder, "decode_page", lambda vin: None)
+    monkeypatch.setattr(vin_freevindecoder, "source_status", lambda vin: "no_data")
+    result = vin_lookup.lookup(VIN)
+    assert "engine" not in result["vehicle"]
+    assert result["vehicle"]["engine_displacement_l"] == "12.9"
+    assert result["vehicle"]["drive_type"] == "Повний привід (AWD)"
+    assert result["field_sources"]["engine_displacement_l"] == "NHTSA vPIC"
