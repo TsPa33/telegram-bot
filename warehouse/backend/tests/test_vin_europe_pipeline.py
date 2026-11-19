@@ -17,6 +17,9 @@ def test_european_enrichment_merges_missing_fields_without_replacing_original(mo
     monkeypatch.setattr(vin_lookup, "urlopen", lambda *a, **kw: Response())
     monkeypatch.setattr(vin_freevindecoder, "decode_page", lambda vin: None)
     monkeypatch.setattr(vin_freevindecoder, "source_status", lambda vin: "no_data_or_access_unavailable")
+    monkeypatch.setenv('WAREHOUSE_VINCARIO_ENABLED', 'true')
+    monkeypatch.setenv('WAREHOUSE_VINCARIO_API_KEY', 'test-key')
+    monkeypatch.setenv('WAREHOUSE_VINCARIO_SECRET_KEY', 'test-secret')
     monkeypatch.setattr(vin_europe, "europe_vin", lambda vin: {
         "manufacturer":"DAF", "model":"Different model", "year":2014,
         "fuel_type":"Diesel","engine_displacement_l":"12.9"})
