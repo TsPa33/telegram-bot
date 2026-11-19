@@ -75,7 +75,9 @@ def _lookup(vin):
     # Its terms prohibit retaining raw API responses beyond 24h.
     missing=sorted(k for k in IMPORTANT if not present(vehicle.get(k)))
     from app.services.vin_carapi import is_enabled as carapi_enabled
-    # Keep the monthly free quota for genuinely sparse decodes, not absent optional codes.\n    core_missing={k for k in ('manufacturer','model','year','body_class','transmission','engine','fuel_type') if not present(vehicle.get(k))}\n    if len(core_missing) >= 2 and carapi_enabled():
+    # Keep the monthly free quota for genuinely sparse decodes, not absent optional codes.
+    core_missing={k for k in ('manufacturer','model','year','body_class','transmission','engine','fuel_type') if not present(vehicle.get(k))}
+    if len(core_missing) >= 2 and carapi_enabled():
         from app.services.vin_carapi import decode as carapi_decode
         try:
             incoming=carapi_decode(vin)
