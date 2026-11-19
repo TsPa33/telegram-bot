@@ -31,3 +31,11 @@ def test_matching_engine_volume_is_not_flagged():
     from app.services.vin_normalize import validate_consistency
     assert validate_consistency({"engine":"3.5L V6","engine_displacement_l":3.5})=={}
     assert validate_consistency({"engine":"D4204T14","engine_displacement_l":2.0})=={}
+
+
+def test_all_wheel_drive_alias_does_not_create_spurious_conflict():
+    from app.services.vin_normalize import equivalent
+    assert equivalent("drive_type", "Повний привід (AWD)", "ALL_WHEEL_DRIVE")
+    merged, conflicts=merge_verified({"drive_type":"Повний привід (AWD)"}, {"drive_type":"ALL_WHEEL_DRIVE"})
+    assert merged["drive_type"]=="Повний привід (AWD)"
+    assert conflicts=={}

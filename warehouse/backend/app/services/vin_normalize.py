@@ -54,7 +54,7 @@ def ukrainian(key,value):
 
 def drive_code(value):
     """Shared storage mapping; never infer drive from a model or trim."""
-    raw=clean(value).upper()
+    raw=clean(value).upper().replace("_"," ").replace("-"," ")
     match=re.search(r'\b(FWD|RWD|AWD|4WD)\b',raw)
     if match:return match.group(1)
     raw=raw.replace('-',' ')

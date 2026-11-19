@@ -72,6 +72,8 @@ def test_pipeline_does_not_overwrite_primary_and_only_calls_with_sparse_core(mon
     assert result["field_sources"]["year"] == "CarAPI.dev"
     assert result["conflicts"]["model"]["secondary"] == "XF"
     assert result["provider_status"]["CarAPI.dev"] == "reported"
+    assert result["provider_contributions"]["CarAPI.dev"] == ["body_class", "transmission", "year"]
+
     assert vin_lookup.lookup(VIN)["cached"] is True
 
 
