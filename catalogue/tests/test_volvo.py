@@ -288,3 +288,42 @@ def test_exact_oem_all_makes_select_only_and_ambiguous_guard(monkeypatch):
     assert all(s.lstrip().startswith('SELECT') for s,_ in cursor.calls)
     cursor.ambiguous=True
     assert client.get(url,headers={'X-Catalogue-Key':'fixture-only'}).status_code==404
+
+
+def test_pinned_articles_include_imported_exact_oem_without_changing_snapshot(monkeypatch):
+    monkeypatch.setenv('CATALOGUE_API_KEY','fixture-only')
+    from volvo_shape_fixture import fixture
+    original=fixture()
+    category=original['categories'][0]
+    item=original['articles'][category['articles'][0]]
+    item['supplier']=[]
+    item['oem']=[{'manufacturerId':120,'OENbr':'OLD-REF'}]
+    key=item['supplier_id'],item['article_number']
+
+    class CrossReferenceCursor(Cursor):
+        def fetchall(self):
+            assert 'FROM catalogue_oem' in self.sql[-1][0]
+            assert self.sql[-1][1][0]==120
+            assert key in list(zip(self.sql[-1][1][1::2],self.sql[-1][1][2::2]))
+            return [
+                dict(supplier_id=key[0],article_number=key[1],oem_number=n,name_source='Fixture supplier')
+                for n in ('NEW-REF','OLD-REF')
+            ] + [dict(supplier_id=key[0]+500,article_number=key[1],oem_number='UNLINKED',name_source='Other')]
+
+    cursor=CrossReferenceCursor(original)
+    class Connection:
+        def cursor(self):return cursor
+    @contextmanager
+    def connection():yield Connection()
+    monkeypatch.setattr(catalogue_app,'db',connection)
+    sha=digest(original)
+    response=TestClient(catalogue_app.app).get('/api/v1/vehicles/107555/articles',
+        params={'product_id':category['product_id'],'snapshot_sha':sha},headers={'X-Catalogue-Key':'fixture-only'})
+    assert response.status_code==200,response.text
+    result=response.json()
+    assert result['snapshot_sha']==sha
+    found=next(a for a in result['items'] if (a['supplier_id'],a['article_number'])==key)
+    assert found['supplier']==[{'description':'Fixture supplier'}]
+    assert found['oem']==[{'manufacturerId':120,'OENbr':'OLD-REF'},
+                         {'manufacturerId':120,'OENbr':'NEW-REF','source':'catalogue_oem'}]
+    assert digest(original)==sha

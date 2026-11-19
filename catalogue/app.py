@@ -203,13 +203,62 @@ def volvo_categories(car_id: int):
     return dict(items=data['categories'], coverage=data['coverage'], snapshot_sha=sha)
 
 
+def linked_article_oems(items, manufacturer_id):
+    keys = {(item['supplier_id'], item['article_number']) for item in items}
+    ordered = sorted(keys)
+    if not ordered:
+        return {}
+    references = {}
+    try:
+        with db() as conn, conn.cursor() as cur:
+            for offset in range(0, len(ordered), 100):
+                batch = ordered[offset:offset+100]
+                placeholders = ','.join(['(%s,%s)'] * len(batch))
+                params = (manufacturer_id, *(value for key in batch for value in key))
+                cur.execute(
+                    f'''SELECT o.supplier_id,o.article_number,o.oem_number,s.name_source
+                        FROM catalogue_oem o LEFT JOIN catalogue_suppliers s ON s.supplier_id=o.supplier_id
+                        WHERE o.oem_manufacturer_id=%s AND (o.supplier_id,o.article_number) IN ({placeholders})
+                        ORDER BY o.supplier_id,o.article_number,o.oem_number LIMIT 10001''',
+                    params,
+                )
+                rows = cur.fetchall()
+                if len(rows)>10000:
+                    raise HTTPException(503, 'OEM cross-reference batch exceeds limit')
+                for row in rows:
+                    key = (row['supplier_id'], row['article_number'])
+                    # MySQL can use a case-insensitive collation for the indexed lookup.
+                    if key in batch:
+                        group=references.setdefault(key, {'supplier':row['name_source'], 'oem':[]})
+                        group['oem'].append(dict(
+                            manufacturerId=manufacturer_id, OENbr=row['oem_number'],
+                            source='catalogue_oem',
+                        ))
+    except pymysql.MySQLError:
+        raise HTTPException(503, 'Catalogue OEM cross-references unavailable') from None
+    return references
+
+
 @app.get('/api/v1/volvo/modifications/{car_id}/articles', dependencies=[Depends(authorize)])
 def volvo_articles(car_id: int, product_id: int = Query(gt=0), snapshot_sha: str = Query(pattern=r'^[0-9a-f]{64}$')):
     data, sha = volvo_snapshot(car_id,snapshot_sha)
     category = next((r for r in data['categories'] if r['product_id'] == product_id), None)
     if category is None:
         raise HTTPException(404, 'Part type not present for this modification')
-    return dict(items=[data['articles'][k] for k in category['articles']], snapshot_sha=sha, product_id=product_id, car_id=car_id,
+    items = [data['articles'][k] for k in category['articles']]
+    references = linked_article_oems(items, data['manufacturer_id'])
+    enriched = []
+    for item in items:
+        imported = references.get((item['supplier_id'], item['article_number']), {})
+        snapshot_oems = [{key.casefold():value for key,value in ref.items()}
+                         for ref in item.get('oem', [])]
+        snapshot_numbers = {(ref.get('manufacturerid'), ref.get('oenbr')) for ref in snapshot_oems}
+        additions = [ref for ref in imported.get('oem', []) if (ref['manufacturerId'], ref['OENbr']) not in snapshot_numbers]
+        supplier = item.get('supplier') or []
+        if not supplier and imported.get('supplier'):
+            supplier = [{'description':imported['supplier']}]
+        enriched.append({**item, 'supplier':supplier, 'oem': [*item.get('oem', []), *additions]})
+    return dict(items=enriched, snapshot_sha=sha, product_id=product_id, car_id=car_id,
                 fitment='source_modification_link', vin_verified=False, photos='metadata_only')
 
 
