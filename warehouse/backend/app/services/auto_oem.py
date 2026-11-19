@@ -12,9 +12,10 @@ from concurrent.futures import ThreadPoolExecutor
 from sqlalchemy import select,text,create_engine
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import NullPool
-from app.models import Vehicle,DismantlingItem,Part,Account
+from app.models import Vehicle,DismantlingItem,Part,Account,now
 from app.services import unified_catalogue as catalogue
 from app.services.dismantling_plan_v3 import generator_basis
+from app.services.catalogue_format import digest
 from app.services.volvo_oem_review import overlay,normalized,row_identity,reference_matches
 from app.services.inventory import record,snapshot
 from app.config import database_url,is_staging
@@ -130,7 +131,8 @@ def choices(offers,part=None,row=None,product=None):
     result=[]
     for n in sorted(evidence,key=lambda n:(-len({o['supplier_id'] for o in evidence[n]}),n)):
         o=min(evidence[n],key=lambda o:(o['supplier_id'],o['article_nr']))
-        result.append(dict(oem_number=n,supplier_id=o['supplier_id'],source_article=o['article_nr'],source_brand=o['brand']))
+        result.append(dict(oem_number=n,supplier_id=o['supplier_id'],source_article=o['article_nr'],source_brand=o['brand'],
+                           oem_source=o.get('oem_sources',{}).get(n,'catalogue_snapshot')))
     return result if len(result)<=1000 else []
 
 def options(ref):
@@ -172,7 +174,7 @@ def eligible_part(p):
 def ref_for(v,row,payload,product,alternatives):
     return dict(**alternatives[0],source='carpot.catalogue',status='auto_selected_cross_reference',
         vin_verified=False,source_modification_id=payload['car_id'],oem_manufacturer_id=payload['manufacturer_id'],
-        product_id=product['product_id'],snapshot_sha=payload['source_snapshot_sha'],observed_at=payload['observed_at'],
+        product_id=product['product_id'],snapshot_sha=payload['source_snapshot_sha'],observed_at=payload['observed_at'],retrieved_at=now().isoformat(),
         vehicle_basis=basis(v),engine_variant=normalized(v.engine_variant),row_identity=row_identity(row),alternatives=alternatives,selection_rule=RULE)
 
 def fill_part(db,v,row,part,ref,*,receipt=False):
@@ -295,9 +297,15 @@ def fill_exact(db,v,part,result):
     before=snapshot(part);part.oem_number=numbers[0]
     part.oem_provenance=dict(**alternatives[0],source='carpot.catalogue',status='auto_selected_cross_reference',
         vin_verified=False,oem_manufacturer_id=result['manufacturer_id'],vehicle_basis=basis(v),
+        retrieved_at=now().isoformat(),
         alternatives=alternatives,selection_rule='exact_supplier_article_lexical')
     record(db,v.account_id,part,'part_update','Каталожний OEM',before,after_extra={'automatic_oem':True})
     return True
+
+def accepts_automatic_plan(v):
+    state = v.dismantling_v3 or {}
+    return not (set(state) - {'global_selection', IDENTITY_KEY}) and not v.ktype
+
 
 def enrich_vehicle(engine,account_id,vehicle_id,cache=None):
     """Network outside write locks; recheck all identities before committing.
@@ -320,17 +328,21 @@ def enrich_vehicle(engine,account_id,vehicle_id,cache=None):
         discover=not has_selection and not saved_identity
         if saved_identity and not identity and not has_selection:
             identity=tuple(saved_identity[k] for k in ('car_id','model_id','manufacturer_id','snapshot_sha','global_source'))
-        if not exact and not needs and not discover:return 0
+        create_plan = accepts_automatic_plan(v) and not rows and not linked and not catalogue.has_plan_history(db, v)
+        if not exact and not needs and not discover and not create_plan:return 0
     if identity is None and discover:
         try:identity=cache.resolve_directory(v)
         except catalogue.CatalogueUnavailable:pass
     publish_identity=discover and identity is not None
     type_rows=[r for r in needs if r.source=='carpot.catalogue.v1']
     payload=None;products={};data={};exact_data={}
-    if identity and (type_rows or publish_identity):
+    if identity and (type_rows or publish_identity or create_plan):
         try:
             payload=cache.plan(identity);products={p['product_id']:p for p in payload['categories']}
-            needed={}
+            needed = {
+                pid: product for pid, product in products.items()
+                if create_plan and product['kind']=='part' and product['article_count']>0
+            }
             for row in type_rows:
                 p=matches(row,products,payload['car_id'])
                 if p:needed[p['product_id']]=p
@@ -355,10 +367,17 @@ def enrich_vehicle(engine,account_id,vehicle_id,cache=None):
         if not v or basis(v)!=old_basis or normalized(v.engine_variant)!=old_variant or source_identity(v)!=direct_identity:return 0
         rows=list(db.scalars(select(DismantlingItem).where(DismantlingItem.vehicle_id==v.id,DismantlingItem.account_id==account_id).order_by(DismantlingItem.id).with_for_update()))
         parts={p.id:p for p in db.scalars(select(Part).where(Part.vehicle_id==v.id,Part.account_id==account_id).order_by(Part.id).with_for_update())}
+        if (payload and create_plan and accepts_automatic_plan(v) and not rows and not parts
+                and any(product['kind']=='part' for product in products.values())
+                and not catalogue.has_plan_history(db, v)):
+            catalogue.persist(db, v, {'payload':payload, 'sha256':digest(payload)}, allow_partial=True)
+            rows = list(db.scalars(select(DismantlingItem).where(
+                DismantlingItem.account_id==account_id, DismantlingItem.vehicle_id==v.id
+            ).order_by(DismantlingItem.id)))
         refs=dict(references(v));added=0;changed=False;stock_changes=0
         before=snapshot(v)
         state=dict(v.dismantling_v3 or {})
-        if payload and publish_identity and not (state.get('global_selection') or catalogue.saved_state(v)):
+        if payload and publish_identity and not state.get('global_selection'):
             state[IDENTITY_KEY]=dict(car_id=payload['car_id'],model_id=payload['model_id'],
                 manufacturer_id=payload['manufacturer_id'],snapshot_sha=payload['source_snapshot_sha'],
                 global_source=identity[4],modification_description=payload['modification'].get('description'),
