@@ -50,6 +50,40 @@ def _pick(decoded: dict, options: tuple[tuple[str, str], ...]):
     return None
 
 
+
+# Bounded diagnostic includes only schema paths and coarse types, NEVER values.
+# Avoid recording secrets, VINs, email addresses or uncontrolled dynamic keys.
+SAFE_NAME = re.compile(r"^[A-Za-z][A-Za-z0-9_]{0,47}$")
+SENSITIVE = re.compile(r"vin|token|secret|key|auth|email|phone|name|address|password", re.I)
+
+
+def response_shape(payload: dict) -> dict:
+    """Structure-only inventory of known provider sections, no source values."""
+    if not isinstance(payload, dict):
+        return {"sections": [], "fields": [], "billing_meta_present": False}
+    rows = payload.get("data")
+    row = rows[0] if isinstance(rows, list) and len(rows) == 1 and isinstance(rows[0], dict) else {}
+    decoded = row.get("decoded")
+    decoded = decoded if isinstance(decoded, dict) else {}
+    sections, fields = [], []
+    for name, group in sorted(decoded.items()):
+        if not isinstance(name, str) or not SAFE_NAME.fullmatch(name) or SENSITIVE.search(name):
+            continue
+        if not isinstance(group, dict):
+            continue
+        sections.append(name)
+        for key, value in sorted(group.items()):
+            if len(fields) >= 60:
+                break
+            if not isinstance(key, str) or not SAFE_NAME.fullmatch(key) or SENSITIVE.search(key):
+                continue
+            kind = "object" if isinstance(value, dict) else "array" if isinstance(value, list) else "number" if type(value) in (int, float) else "text" if isinstance(value, str) else "boolean" if isinstance(value, bool) else "null"
+            fields.append({"path": name + "." + key, "type": kind, "populated": value is not None and value != ""})
+    meta = payload.get("meta")
+    return {"sections": sections[:20], "fields": fields,
+            "billing_meta_present": isinstance(meta, dict),
+            "data_rows": len(rows) if isinstance(rows, list) else 0}
+
 def parse(payload: dict, vin: str) -> dict:
     """Only named, explicit attributes are accepted; no inference from car label."""
     if not isinstance(payload, dict) or payload.get("success") is not True:
@@ -88,6 +122,7 @@ def parse(payload: dict, vin: str) -> dict:
         "status": "reported" if values else "label_only_or_empty",
         "vehicle_label": label,
         "billing": billing,
+        "response_shape": response_shape(payload),
     }
 
 

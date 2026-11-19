@@ -93,3 +93,30 @@ def test_paid_vin_gate_remains_separate(logged, monkeypatch):
     response = logged.post("/api/v1/vehicles/vin/vinstate/preview",
                            json={"vin": VIN, "acknowledge_provider_quota": True})
     assert response.status_code in (403, 503)
+
+
+def test_schema_diagnostics_never_reveal_identifiers_or_secrets():
+    payload = documented_fixture()
+    payload["data"][0]["decoded"]["vehicle"].update({
+        "transmission": "Automatic", "body_type": "Truck",
+        "api_key": "DO_NOT_DISCLOSE", "email": "person@example.invalid",
+        "vin": VIN, "nested": {"private": "secret value"}
+    })
+    shape = vin_vinstate.parse(payload, VIN)["response_shape"]
+    assert shape["sections"] == ["vehicle", "wmi"]
+    assert shape["billing_meta_present"] is True
+    assert {"path": "vehicle.transmission", "type": "text", "populated": True} in shape["fields"]
+    assert all(not any(p in item["path"] for p in ("vin", "key", "email")) for item in shape["fields"])
+    assert VIN not in str(shape)
+    assert "DO_NOT_DISCLOSE" not in str(shape)
+    assert "person@example.invalid" not in str(shape)
+
+
+def test_empty_documented_response_shape_without_assuming_no_coverage():
+    data = documented_fixture()
+    data["data"][0]["decoded"] = {"vehicle": {"car": "2014 DAF FT"}}
+    out = vin_vinstate.parse(data, VIN)
+    assert out["status"] == "label_only_or_empty"
+    assert out["response_shape"]["fields"] == [
+        {"path": "vehicle.car", "type": "text", "populated": True}
+    ]
