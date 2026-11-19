@@ -119,6 +119,18 @@ def _lookup(vin):
             provider_status['Vincario']='not_enabled_or_no_data'
     except (OSError,ValueError,KeyError,TypeError):
         provider_status['Vincario']='unavailable_or_invalid_response'
+    # Some free pages put a capacity + drivetrain shorthand in the "engine" label.
+    # Those are two explicitly observed specs, not an actual engine model name.
+    compound=re.fullmatch(r'(\d{1,2}(?:[.,]\d{1,2})?)\s*[LlЛл]\s+(AWD|FWD|RWD|4WD)', str(vehicle.get('engine') or '').strip(), re.I)
+    if compound:
+        observed_source=provenance.pop('engine',None)
+        if not present(vehicle.get('engine_displacement_l')):
+            vehicle['engine_displacement_l']=compound.group(1).replace(',','.')
+            if observed_source:provenance['engine_displacement_l']=observed_source
+        if not present(vehicle.get('drive_type')):
+            vehicle['drive_type']=ukrainian('drive_type',compound.group(2).upper())
+            if observed_source:provenance['drive_type']=observed_source
+        vehicle.pop('engine',None)
     # Normalize a verified numeric model year regardless of provider; never invent one.
     merged_year=vehicle.get('year')
     if merged_year is not None and str(merged_year).isdigit() and 1886<=int(merged_year)<=2100:
