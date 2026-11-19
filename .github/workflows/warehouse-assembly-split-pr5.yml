@@ -64,6 +64,7 @@ jobs:
             tests/test_vincario_balance.py \
             tests/test_vincario_free_demo_trial.py \
             tests/test_vin_evidence_persistence.py \
+            tests/test_oem_diagnostics.py \
             tests/test_vin_partial_registration.py \
             tests/test_universal_generator.py \
             tests/test_sales_center.py \
