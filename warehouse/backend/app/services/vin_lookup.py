@@ -70,16 +70,42 @@ def _lookup(vin):
             else:provider_status['FreeVINDecoder']=source_status(vin)
         except (OSError,ValueError,TypeError):provider_status['FreeVINDecoder']='unavailable_or_invalid_response'
     else:provider_status['FreeVINDecoder']='not_needed'
+    # CarAPI.dev free-tier: one request only when core fields remain incomplete.
+    # Provider requires a configured free account/token; no implicit paid usage.
+    # Its terms prohibit retaining raw API responses beyond 24h.
+    missing=sorted(k for k in IMPORTANT if not present(vehicle.get(k)))
+    from app.services.vin_carapi import is_enabled as carapi_enabled
+    # Keep the monthly free quota for genuinely sparse decodes, not absent optional codes.
+    core_missing={k for k in ('manufacturer','model','year','body_class','transmission','engine','fuel_type') if not present(vehicle.get(k))}
+    if len(core_missing) >= 2 and carapi_enabled():
+        from app.services.vin_carapi import decode as carapi_decode
+        try:
+            incoming=carapi_decode(vin)
+            if incoming:
+                incoming={k:v for k,v in incoming.items() if k in PRIMARY_KEYS and present(v) and len(str(v))<=200}
+                prior=dict(vehicle)
+                vehicle,new_conflicts=merge_verified(vehicle,incoming)
+                for key,conflict in new_conflicts.items():
+                    conflicts.setdefault(key,conflict)
+                provenance.update({k:'CarAPI.dev' for k in incoming if not present(prior.get(k))})
+                sources.append('CarAPI.dev')
+                provider_status['CarAPI.dev']='reported'
+            else:
+                provider_status['CarAPI.dev']='empty_or_quota_unavailable'
+        except (OSError,ValueError,KeyError,IndexError,TypeError):
+            provider_status['CarAPI.dev']='unavailable_or_invalid_response'
+    else:
+        provider_status['CarAPI.dev']='not_enabled' if not carapi_enabled() else 'not_needed'
     # An explicitly enabled, credentialed European provider can enrich partial results.
     # Never call it without opt-in: some plans charge per decoded VIN.
     import os
     european_enabled = (os.getenv('WAREHOUSE_VINCARIO_ENABLED', 'false').lower() == 'true'
         and bool(os.getenv('WAREHOUSE_VINCARIO_API_KEY', '').strip())
         and bool(os.getenv('WAREHOUSE_VINCARIO_SECRET_KEY', '').strip()))
-    if european_enabled:
+    if european_enabled and any(not present(vehicle.get(k)) for k in IMPORTANT):
         from app.services.vin_europe import europe_vin
     try:
-        european=europe_vin(vin) if european_enabled else None
+        european=europe_vin(vin) if european_enabled and any(not present(vehicle.get(k)) for k in IMPORTANT) else None
         if european:
             incoming={k:v for k,v in european.items() if k in PRIMARY_KEYS and present(v) and len(str(v))<=200}
             prior=dict(vehicle)
