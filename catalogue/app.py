@@ -302,6 +302,7 @@ def volvo_diagnostics():
 
 @app.get('/api/v1/vehicles/directory', dependencies=[Depends(authorize)])
 def vehicle_directory(after: int = Query(0, ge=0), limit: int = Query(100, ge=1, le=100), car_id: int | None = Query(None,gt=0),
+                      model_id: int | None = Query(None,gt=0),
                       maker_key: str | None = Query(None,min_length=1,max_length=100),
                       model_key: list[str] | None = Query(None,max_length=2)):
     # Directory-only rows have no fitment graph and must never advertise readiness.
@@ -312,6 +313,9 @@ def vehicle_directory(after: int = Query(0, ge=0), limit: int = Query(100, ge=1,
             if car_id is not None:
                 filters.append('s.car_id=%s')
                 args.append(car_id)
+            if model_id is not None:
+                filters.append('s.model_id=%s')
+                args.append(model_id)
             if maker_key:
                 filters.append("REGEXP_REPLACE(LOWER(f.name_source),'[^[:alnum:]]','')=%s")
                 args.append(maker_key)
