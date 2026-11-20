@@ -64,6 +64,10 @@ def audit(db):
             grouped['positions_with_unconfirmed_other_modification_oems'] += sum(
                 bool(other.get(row.id)) for row in entries if auto_oem.eligible_row(row)
             )
+            outcomes=state.get(auto_oem.OUTCOMES_KEY) or {}
+            for row in entries:
+                if auto_oem.eligible_row(row) and outcomes.get(row.id):
+                    grouped[outcomes[row.id]]+=1
             grouped['stock_parts'] += len(parts)
             current_stock = [p for p in parts if p.quantity > 0 and p.availability != 'absent']
             grouped['eligible_stock_parts'] += len(current_stock)

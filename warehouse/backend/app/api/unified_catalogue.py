@@ -408,7 +408,7 @@ def select_existing_vehicle(id:str,data:ExistingVehicleSelection,db:DB,who:Auth)
     """Attach an explicitly confirmed source identity; never create a second donor."""
     from app.services.dismantling_plan_v3 import generator_basis,replay,finish
     from app.services.inventory import snapshot,record
-    from app.services.auto_oem import CANDIDATES_KEY
+    from app.services.auto_oem import CANDIDATES_KEY,OUTCOMES_KEY
     require_permission(who,'vehicles.view','vehicles.edit','catalog.view','dismantling.manage')
     v=owned(db,Vehicle,id,who.workspace_account_id,lock=True,active=True)
     prior,sha=replay(db,v,who,data,'catalogue-selection')
@@ -443,7 +443,7 @@ def select_existing_vehicle(id:str,data:ExistingVehicleSelection,db:DB,who:Auth)
     before=snapshot(v)
     if saved and saved['payload']['source_snapshot_sha']!=data.source_snapshot_sha:
         service.persist(db,v,plan,allow_partial=True,replace_selection=True)
-    v.dismantling_v3={**(v.dismantling_v3 or {}),CANDIDATES_KEY:{},'global_selection':dict(car_id=data.source_modification_id,model_id=data.model_id,manufacturer_id=data.manufacturer_id,source_snapshot_sha=data.source_snapshot_sha,modification_description=payload['modification'].get('description'),source_specifications=entry.get('specifications',[])[:100],vehicle_basis=service.vehicle_basis(v),identity_fingerprint=generator_basis(v),request_key=data.request_key,confirmation='user_selected',vin_verified=False)}
+    v.dismantling_v3={**(v.dismantling_v3 or {}),CANDIDATES_KEY:{},OUTCOMES_KEY:{},'global_selection':dict(car_id=data.source_modification_id,model_id=data.model_id,manufacturer_id=data.manufacturer_id,source_snapshot_sha=data.source_snapshot_sha,modification_description=payload['modification'].get('description'),source_specifications=entry.get('specifications',[])[:100],vehicle_basis=service.vehicle_basis(v),identity_fingerprint=generator_basis(v),request_key=data.request_key,confirmation='user_selected',vin_verified=False)}
     record(db,who.workspace_account_id,v,'vehicle_update','Підтверджено джерельну модифікацію; VIN, характеристики й склад не змінено',before)
     result=finish(db,v,who,data,sha,dict(saved=True,vehicle_id=v.id))
     db.commit();return result

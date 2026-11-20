@@ -13,6 +13,7 @@ from sqlalchemy import select,text,create_engine
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import NullPool
 from app.models import Vehicle,DismantlingItem,Part,Account,Operation,now
+from app.models.canonical import CanonicalType
 from app.services import unified_catalogue as catalogue
 from app.services.dismantling_plan_v3 import generator_basis
 from app.services.catalogue_format import digest
@@ -27,6 +28,7 @@ RULE='supplier_support_then_lexical'
 IDENTITY_KEY='automatic_catalogue_identity'
 CANDIDATES_KEY='other_modification_oems'
 AUTO_STATUS='auto_selected_cross_reference'
+OUTCOMES_KEY='oem_lookup_outcomes'
 
 def basis(v):
     return generator_basis(v)
@@ -94,11 +96,33 @@ def eligible_product(product):
     )))
 
 
-def matches(row,products):
+def canonical_prd_bindings(db,rows):
+    ids={row.plan_v3.get('canonical_part_type_id') for row in rows if row.plan_v3}
+    ids.discard(None)
+    bindings={}
+    if ids:
+        for canonical in db.scalars(select(CanonicalType).where(CanonicalType.id.in_(ids))):
+            for ref in (canonical.provenance or {}).get('universal_sources',[]):
+                key=ref.get('source_key') or ''
+                sha=ref.get('source_sha') or ''
+                match=re.fullmatch(r'td1q2018:prd:([1-9][0-9]*)',key)
+                if match and re.fullmatch(r'[a-f0-9]{64}',sha):
+                    bindings.setdefault(canonical.id,set()).add((int(match[1]),sha))
+    return bindings
+
+
+def matches(row,products,bindings=None):
     product_id=catalogue.row_product_id(row)
     if product_id is not None:
         product=products.get(product_id)
         return product if eligible_product(product) else None
+    if bindings:
+        canonical=(getattr(row,'plan_v3',None) or {}).get('canonical_part_type_id')
+        linked=[products[pid] for pid,sha in bindings.get(canonical,())
+                if pid in products and products[pid].get('source_prd_sha256')==sha
+                and eligible_product(products[pid])]
+        if linked:
+            return linked[0] if len(linked)==1 else None
     if not row.name or not getattr(row,'category_name',None) or not getattr(row,'subcategory_name',None):
         return None
     identity=tuple(normalized(value) for value in (row.category_name,row.subcategory_name,row.name))
@@ -424,7 +448,7 @@ def fill_exact(db,v,part,result):
 
 def accepts_automatic_plan(v):
     state = v.dismantling_v3 or {}
-    return not (set(state) - {'global_selection', IDENTITY_KEY, CANDIDATES_KEY}) and not v.ktype
+    return not (set(state) - {'global_selection', IDENTITY_KEY, CANDIDATES_KEY, OUTCOMES_KEY}) and not v.ktype
 
 
 def enrich_vehicle(engine,account_id,vehicle_id,cache=None):
@@ -437,6 +461,7 @@ def enrich_vehicle(engine,account_id,vehicle_id,cache=None):
         if not v:return 0
         identity=source_identity(v);direct_identity=identity;old_basis=basis(v);old_variant=normalized(v.engine_variant)
         rows=list(db.scalars(select(DismantlingItem).where(DismantlingItem.vehicle_id==v.id,DismantlingItem.account_id==account_id)))
+        bindings=canonical_prd_bindings(db,rows)
         old_refs=references(v)
         linked={p.id:p for p in db.scalars(select(Part).where(Part.vehicle_id==v.id,Part.account_id==account_id))}
         exact={p.id:k for p in linked.values() if (k:=exact_key(p,v))}
@@ -475,7 +500,7 @@ def enrich_vehicle(engine,account_id,vehicle_id,cache=None):
                 if create_plan and eligible_product(product) and product['article_count']>0
             }
             for row in type_rows:
-                p=matches(row,products)
+                p=matches(row,products,bindings)
                 if p:needed[p['product_id']]=p
             def offers_for(product):
                 try:return cache.get_offers(payload,product)
@@ -488,7 +513,7 @@ def enrich_vehicle(engine,account_id,vehicle_id,cache=None):
                 possible={pid for pid,offers in data.items() if not choices(offers,product=products[pid])}
                 possible.update(
                     product['product_id'] for row in type_rows
-                    if (product:=matches(row,products))
+                    if (product:=matches(row,products,bindings))
                     and product['product_id'] in data
                     and not choices(data[product['product_id']],linked.get(row.part_id),row,product)
                 )
@@ -534,12 +559,13 @@ def enrich_vehicle(engine,account_id,vehicle_id,cache=None):
             Operation.account_id==account_id,Operation.part_id.in_(parts),Operation.type=='sale'
         ))) if parts else set()
         candidates=dict(state.get(CANDIDATES_KEY) or {})
+        outcomes=dict(state.get(OUTCOMES_KEY) or {})
         for row in rows:
             if not eligible_row(row) or row.part_id in sold:
                 continue
             part=parts.get(row.part_id)
             ref=refs.get(row.id)
-            product=matches(row,products) if payload else None
+            product=matches(row,products,bindings) if payload else None
             pid=product['product_id'] if product else None
             evaluated=payload is not None and (
                 pid in data or pid is None and (catalogue.row_product_id(row) is not None or
@@ -574,13 +600,20 @@ def enrich_vehicle(engine,account_id,vehicle_id,cache=None):
                     else:
                         candidates.pop(row.id,None)
                     changed=True
+            if payload is not None and not valid_reference(v,row,ref):
+                outcome=('no_verified_prd_binding' if pid is None else
+                         'no_selected_modification_oem' if pid in data else 'article_lookup_pending')
+                if outcomes.get(row.id)!=outcome:
+                    outcomes[row.id]=outcome;changed=True
+            elif valid_reference(v,row,ref) and row.id in outcomes:
+                outcomes.pop(row.id);changed=True
             if part and (ref or evaluated) and refresh_stock_reference(db,v,row,part,ref):
                 stock_changes+=1
         for pid,key in exact.items():
             part=parts.get(pid);result=exact_data.get(key)
             if part and pid not in sold and result and exact_key(part,v)==key and fill_exact(db,v,part,result):stock_changes+=1
         if changed:
-            v.dismantling_v3={**state,REF_KEY:refs,CANDIDATES_KEY:candidates}
+            v.dismantling_v3={**state,REF_KEY:refs,CANDIDATES_KEY:candidates,OUTCOMES_KEY:outcomes}
             record(db,account_id,v,'vehicle_update','Каталожні OEM',before,after_extra={'automatic_oem':True})
         db.commit()
         return added+stock_changes

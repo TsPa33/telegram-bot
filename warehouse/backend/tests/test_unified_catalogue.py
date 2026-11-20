@@ -804,3 +804,15 @@ def test_sibling_oem_candidates_are_visible_but_never_copied_to_stock(logged,mon
     assert r.status_code==200,r.text
     with Session(engine()) as db:
         assert db.scalar(select(Part)).oem_number==''
+
+
+def test_canonical_prd_backfill_requires_catalogue_checksum():
+    from types import SimpleNamespace
+    from app.services.auto_oem import matches
+
+    row=SimpleNamespace(source='carpot.v3',catalog_key='generated-item',name='Legacy',
+                        category_name='Existing',subcategory_name='Existing',
+                        plan_v3={'canonical_part_type_id':'fixture-type'})
+    product={'product_id':106,'kind':'review','source_fitment_linked':True,'source_prd_sha256':'a'*64}
+    assert matches(row,{106:product},{'fixture-type':{(106,'b'*64)}}) is None
+    assert matches(row,{106:product},{'fixture-type':{(106,'a'*64)}})==product
