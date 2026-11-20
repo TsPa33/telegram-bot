@@ -77,8 +77,10 @@ class CatalogueAdapter:
         params={'after':after}
         if car_id is not None:
             params['car_id']=car_id
-        if maker_key and model_keys:
-            params.update(maker_key=maker_key,model_key=sorted(model_keys))
+        if maker_key:
+            params['maker_key']=maker_key
+        if model_keys:
+            params['model_key']=sorted(model_keys)
         result=self.get('global:vehicles/directory',params)
         if not isinstance(result,dict) or not isinstance(result.get('items'),list) or len(result['items'])>100:
             raise CatalogueUnavailable('invalid_directory')

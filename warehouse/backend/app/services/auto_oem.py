@@ -213,14 +213,15 @@ class SourceCache:
         engine=code(v.engine_code)
         if not engine or type(v.year) is not int:return None
         maker=code(v.manufacturer);model=code(v.model)
+        generation=code(v.generation) if normalized(v.generation) not in ('', 'не уточнено') else ''
         models={model}
-        if v.generation and normalized(v.generation)!='не уточнено':models.add(code(v.model+' '+v.generation))
-        key=(maker,tuple(sorted(models)))
+        if generation:models.add(code(v.model+' '+v.generation))
+        key=(maker,tuple(sorted(models)) if generation else ())
         entries=self.directory if self.directory is not None else self.directories.get(key)
         if entries is None:
             entries=[];cursor=0
             for _ in range(100):
-                result=self.adapter.directory(after=cursor,maker_key=maker,model_keys=models)
+                result=self.adapter.directory(after=cursor,maker_key=maker,model_keys=models if generation else None)
                 entries.extend(result['items'])
                 nxt=result.get('next_after')
                 if nxt is None:break
@@ -230,7 +231,13 @@ class SourceCache:
             self.directories[key]=entries
         candidates=[]
         for e in entries:
-            if code(e.get('manufacturer'))!=maker or code(e.get('model')) not in models:continue
+            entry_model=code(e.get('model'))
+            # Some vehicle records keep just "XC60", while the source directory
+            # names the generation "XC60 II". Only broaden a *missing* generation;
+            # the mandatory engine code, year and unique result still gate matching.
+            unknown_generation_suffix=(not generation and entry_model.startswith(model)
+                and re.fullmatch(r'(?:i|ii|iii|iv|v|vi|vii|viii|ix|x)',entry_model[len(model):] or '') is not None)
+            if code(e.get('manufacturer'))!=maker or not (entry_model in models or unknown_generation_suffix):continue
             attrs={a.get('attributetype'):str(a.get('displayvalue') or '') for a in e.get('specifications',[]) if isinstance(a,dict)}
             if code(attrs.get('EngineCode'))!=engine:continue
             interval=attrs.get('ConstructionInterval') or e.get('modification',{}).get('constructioninterval') or ''
