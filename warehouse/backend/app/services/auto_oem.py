@@ -278,14 +278,27 @@ class SourceCache:
         if type(v.year) is not int:return []
         maker=code(v.manufacturer);model=code(v.model)
         generation=code(v.generation) if normalized(v.generation) not in ('', 'не уточнено') else ''
+        roman=('x','ix','viii','vii','vi','iv','iii','ii','v','i')
+        aliases={'1':'i','2':'ii','3':'iii','4':'iv','5':'v','6':'vi','7':'vii','8':'viii','9':'ix','10':'x'}
+        hint=generation
+        if hint.startswith(model):hint=hint[len(model):]
+        if hint.startswith('generation'):hint=hint[len('generation'):]
+        if hint.startswith('gen'):hint=hint[3:]
+        if hint in aliases:hint=aliases[hint]
+        elif hint not in roman:
+            hint=next((token for token in roman if hint.startswith(token) and
+                       (hint[len(token):].startswith('20') or hint[len(token):].startswith('19'))),'')
         models={model}
-        if generation:models.add(code(v.model+' '+v.generation))
-        key=(maker,tuple(sorted(models)) if generation else ())
+        if hint:models.add(model+hint)
+        # Query-side filtering must use the same aliases as the local matcher.
+        # Unknown generation => fetch maker entries and match models locally.
+        model_filter=models if generation and hint else None
+        key=(maker,tuple(sorted(models)) if model_filter else ())
         entries=self.directory if self.directory is not None else self.directories.get(key)
         if entries is None:
             entries=[];cursor=0
             for _ in range(100):
-                result=self.adapter.directory(after=cursor,maker_key=maker,model_keys=models if generation else None)
+                result=self.adapter.directory(after=cursor,maker_key=maker,model_keys=model_filter)
                 entries.extend(result['items'])
                 nxt=result.get('next_after')
                 if nxt is None:break
@@ -298,16 +311,6 @@ class SourceCache:
         # A VIN decoder can report "2" or "II (2017-)" while the source model
         # is called "XC60 II". Treat those as the same explicit generation.
         # Do not cross an explicitly different generation.
-        roman=('x','ix','viii','vii','vi','iv','iii','ii','v','i')
-        aliases={'1':'i','2':'ii','3':'iii','4':'iv','5':'v','6':'vi','7':'vii','8':'viii','9':'ix','10':'x'}
-        hint=generation
-        if hint.startswith(model):hint=hint[len(model):]
-        if hint.startswith('generation'):hint=hint[len('generation'):]
-        if hint.startswith('gen'):hint=hint[3:]
-        if hint in aliases:hint=aliases[hint]
-        elif hint not in roman:
-            hint=next((token for token in roman if hint.startswith(token) and
-                       (hint[len(token):].startswith('20') or hint[len(token):].startswith('19'))),'')
         for e in entries:
             entry_model=code(e.get('model'))
             suffix=entry_model[len(model):] if entry_model.startswith(model) else None
