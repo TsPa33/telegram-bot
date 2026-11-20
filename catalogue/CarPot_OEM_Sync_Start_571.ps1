@@ -44,9 +44,9 @@ if ($dirty) {
 Assert-Exit 'Update isolated worktree'
 
 Write-Host '2/3 Exporting the next source-linked passenger batch across ALL makes...' -ForegroundColor Cyan
-Write-Host 'Source: local td1q2018 (read-only). Target: LOCAL FILES ONLY; no Railway writes.'
+Write-Host 'Source: local td1q2018 (read-only). LOCAL spool capped at ~5 GiB; minimum 3 GiB free disk. No Railway writes.'
 $script = Join-Path $worktree 'catalogue\transfer-oem-graph.ps1'
-& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $script -PageSize 50 -MaxPages 20 -Checkpoint $output
+& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $script -PageSize 50 -MaxPages 20 -MaxLocalGiB 5 -MinFreeGiB 3 -Checkpoint $output
 Assert-Exit 'MySQL source-only export'
 
 Write-Host '3/3 Finished source-only export.' -ForegroundColor Green
