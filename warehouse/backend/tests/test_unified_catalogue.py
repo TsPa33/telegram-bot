@@ -637,7 +637,7 @@ def test_auto_oem_xc60_directory_matches_missing_generation_with_available_facts
     from app.services.auto_oem import SourceCache
     v=SimpleNamespace(manufacturer='Volvo',model='XC60',generation='',engine_code='B4204T',
         year=2022,fuel_type='petrol',drive_type='AWD',engine_variant='',engine_displacement_l=2.0)
-    entry=dict(manufacturer='Volvo',model='XC60 II',source_modification_id=126480,
+    entry=dict(manufacturer='Volvo',model='XC60 II (246)',source_modification_id=126480,
         model_id=37773,manufacturer_id=120,snapshot_sha='a'*64,
         modification={'description':'2.0 T5 AWD'},specifications=[
             {'attributetype':'EngineCode','displayvalue':'B4204T'},
@@ -894,3 +894,21 @@ def test_oem_catalogue_consumable_types_with_article_links_are_not_dropped():
         name='Прокладка',category_name='Двигун',subcategory_name='Прокладки')
     assert matches(legacy,{145:gasket})==gasket
     assert not eligible_product({'kind':'review','source_fitment_linked':False})
+
+
+def test_auto_oem_directory_parses_tecdoc_model_platform_without_losing_generation():
+    from types import SimpleNamespace
+    from app.services.auto_oem import SourceCache
+    source=dict(manufacturer='Volvo',model='XC60 II (246)',
+        source_modification_id=126480,model_id=37773,manufacturer_id=120,
+        snapshot_sha='b'*64,
+        modification={'description':'2.0 T5 AWD','constructioninterval':'03.2017 -'},
+        specifications=[])
+    v=SimpleNamespace(manufacturer='Volvo',model='XC60',generation='2',
+        engine_code='',year=2022,fuel_type='',drive_type='',engine_variant='',engine_displacement_l=None)
+    cache=SourceCache();cache.directory=[source]
+    assert cache.resolve_directory(v)[0]==126480
+    v.generation='I'
+    assert cache.resolve_directory(v) is None
+    v.model='XC60 II (246)';v.generation=''
+    assert cache.resolve_directory(v)[0]==126480
