@@ -352,6 +352,12 @@ class SourceCache:
                     fuel and source_fuel,drive and source_drive,variant and description,attrs.get('Capacity') and v.engine_displacement_l,
                 )))
                 candidates.append(((-int(evidence[0]),-evidence[1],*ids),(*ids,sha,True)))
+        # Internal staging observability: expose catalogue identity metadata only;
+        # never log VIN, user identity, credentials or supplier articles.
+        if is_staging() and maker=='volvo':
+            log.info('OEM Volvo source candidates vehicle=%s requested_model=%s year=%s generation=%s remote_entries=%d source_models=%s evidence_matches=%d fallback_matches=%d',
+                getattr(v,'id',None),model,v.year,generation,len(entries),
+                sorted({code(e.get('model')) for e in entries})[:16],len(candidates),len(relaxed))
         # Prefer evidence-backed matches. If the VIN information is incomplete
         # or conflicts with the imported variant descriptions, provide a usable
         # *assumed* modification by make + model/generation + production year.
