@@ -17,7 +17,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy import String, cast, func, or_, select
 from sqlalchemy.orm import Session as DBSession
 from app.api.deps import Identity, identity
-from app.config import photo_dir, secure_cookies, registration_enabled
+from app.config import photo_dir, secure_cookies, registration_enabled, vehicle_delete_enabled
 from app.db import get_db
 from app.models import Account, Category, Operation, Part, Photo, Vehicle, VehiclePhoto
 from app.schemas import (
@@ -358,6 +358,16 @@ def vehicle_vin_decode(who: Auth, vin: str = Query(min_length=17, max_length=17)
 @router.get("/vehicles/{id}", tags=["Vehicles"])
 def vehicle_get(id: str, db: DB, who: Auth):
     return vehicle_view(db, owned(db, Vehicle, id, who.workspace_account_id), who.workspace_account_id)
+
+
+@router.delete("/vehicles/{id}", status_code=204, tags=["Vehicles"])
+def delete_vehicle(id: str, db: DB, who: Auth):
+    from app.services.vehicle_delete import purge
+
+    if not vehicle_delete_enabled():
+        raise HTTPException(404, "Запис не знайдено")
+    purge(db, id, who.workspace_account_id, who.actor_id)
+    return Response(status_code=204)
 
 
 @router.put("/vehicles/{id}", tags=["Vehicles"])

@@ -42,7 +42,7 @@ def op(c,part,type='sale',key=None,**kwargs):
     return c.post('/api/v1/parts/'+part['id']+'/operations',json={'type':type,'quantity':1,'request_key':key or str(uuid4()),'sale_price':'12.34','sale_currency':'USD',**kwargs})
 
 def test_owner_and_activation_blocking_revocation(logged,part):
-    info=logged.get('/api/v1/auth/me').json();assert info['role']=='DIRECTOR' and set(info['permissions'])==set(PERMISSIONS)
+    info=logged.get('/api/v1/auth/me').json();assert info['role']=='DIRECTOR' and set(info['permissions'])==set(PERMISSIONS)-{'vehicles.delete'}
     row,data=employee(logged);c=activate(data)
     try:
         assert c.get('/api/v1/parts').json()['items'][0]['id']==part['id']

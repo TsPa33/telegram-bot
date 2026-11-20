@@ -105,6 +105,7 @@ KNOWN_ROUTES = frozenset({
     ('GET', '/api/v1/vehicles/vin/paid/quote'),
     ('POST', '/api/v1/vehicles/vin/paid/confirm'),
     ('GET', '/api/v1/vehicles/{id}'),
+    ('DELETE', '/api/v1/vehicles/{id}'),
     ('PATCH', '/api/v1/vehicles/{id}/specifications'),
     ('GET', '/api/v1/vehicles/{id}/photos'),
     ('POST', '/api/v1/vehicles/{id}/photos'),
