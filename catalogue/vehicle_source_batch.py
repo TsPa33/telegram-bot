@@ -429,17 +429,31 @@ def review_batch(folder, expected_sha, mapping, reviewer, output):
 def add_oems_to_existing_graph(target,item,old):
     """Preserve the versioned snapshot and enrich only exact shared article links."""
     data=item['payload']
-    with target.cursor() as cursor:
-        cursor.execute('SELECT payload FROM catalogue_volvo_versions WHERE car_id=%s AND sha256=%s',
-                       (data['car_id'],old['sha256']))
-        version=cursor.fetchone()
-        if not version:raise ValueError('Existing snapshot version unavailable')
-        current=validate(json.loads(version['payload']))
-        if digest(current)!=old['sha256'] or current['manufacturer_id']!=data['manufacturer_id']:
-            raise ValueError('Existing snapshot identity mismatch')
-        old_links={(row['product_id'],key) for row in current['categories'] for key in row['articles']}
-        new_links={(row['product_id'],key) for row in data['categories'] for key in row['articles']}
-    shared_keys={key for _,key in old_links & new_links}
+    new_links={(row['product_id'],key) for row in data['categories'] for key in row['articles']}
+    # Exact SHA means immutable source payload already matches the incoming
+    # checksum-verified graph. Avoid reading megabytes of stored JSON over a
+    # fragile SSH tunnel. Still replay exact OEM/part upserts to heal a prior
+    # interruption after the separate snapshot commit.
+    if old['sha256']==item['sha256']:
+        with target.cursor() as cursor:
+            cursor.execute('SELECT 1 AS version_exists FROM catalogue_volvo_versions WHERE car_id=%s AND sha256=%s',
+                           (data['car_id'],old['sha256']))
+            if not cursor.fetchone():raise ValueError('Existing snapshot version unavailable')
+        shared_keys={key for _,key in new_links}
+        gaps=0
+        progress('existing_graph_exact_sha',car_id=data['car_id'],keys=len(shared_keys))
+    else:
+        with target.cursor() as cursor:
+            cursor.execute('SELECT payload FROM catalogue_volvo_versions WHERE car_id=%s AND sha256=%s',
+                           (data['car_id'],old['sha256']))
+            version=cursor.fetchone()
+            if not version:raise ValueError('Existing snapshot version unavailable')
+            current=validate(json.loads(version['payload']))
+            if digest(current)!=old['sha256'] or current['manufacturer_id']!=data['manufacturer_id']:
+                raise ValueError('Existing snapshot identity mismatch')
+            old_links={(row['product_id'],key) for row in current['categories'] for key in row['articles']}
+        shared_keys={key for _,key in old_links & new_links}
+        gaps=len(new_links-old_links)
     allowed={(data['articles'][key]['supplier_id'],data['articles'][key]['article_number'])
              for key in shared_keys}
     progress('existing_graph_shared_links',car_id=data['car_id'],keys=len(allowed))
@@ -447,7 +461,7 @@ def add_oems_to_existing_graph(target,item,old):
     inserted=insert_fitted_oems(target,item,allowed)
     target.commit()
     progress('existing_graph_committed',car_id=data['car_id'],inserted=inserted)
-    return inserted,len(new_links-old_links)
+    return inserted,gaps
 
 
 
