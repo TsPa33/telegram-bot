@@ -363,3 +363,36 @@ def test_vehicle_directory_binds_exact_source_model_id(monkeypatch):
     sql,args=cursor.sql[0]
     assert 's.model_id=%s' in sql
     assert args==(0,13084,101)
+
+
+def test_directory_model_query_strips_tecdoc_platform_code_before_exact_match(monkeypatch):
+    from volvo_contract import compact_plan
+    item=payload()
+    item.update(schema='carpot.vehicle.v1',car_id=126480,model_id=37773,
+        model={'id':37773,'description':'XC60 II (246)'},
+        manufacturer={'id':120,'description':'VOLVO'},
+        modification={'description':'2.0 T5 AWD','constructioninterval':'03.2017 -'})
+    item['categories']=[dict(product_id=1,articles=['5:ONE'])]
+    item['articles']={'5:ONE':dict(article_number='ONE',supplier_id=5,car_id=126480,oem=[])}
+    validate(item)
+    class CursorWithFilter(Cursor):
+        def execute(self,sql,args):
+            assert '[(][^)]*[)]' in sql
+            assert args[0]==0 and args[-3:-1]==('xc60','xc60ii')
+            self.sql.append((sql,args))
+        def fetchall(self):
+            return [dict(car_id=126480,source_model_id=37773,manufacturer_id=120,
+                         manufacturer_name='VOLVO',model_name='XC60 II (246)')]
+    cursor=CursorWithFilter(item)
+    class Database:
+        def cursor(self):return cursor
+        def __enter__(self):return self
+        def __exit__(self,*args):pass
+    monkeypatch.setattr(catalogue_app,'db',lambda:Database())
+    monkeypatch.setattr(catalogue_app,'volvo_snapshot',lambda car:(item,digest(item)))
+    monkeypatch.setenv('CATALOGUE_API_KEY','fixture-only')
+    client=TestClient(catalogue_app.app)
+    response=client.get('/api/v1/vehicles/directory?after=0&maker_key=volvo&model_key=xc60&model_key=xc60ii',
+                        headers={'X-Catalogue-Key':'fixture-only'})
+    assert response.status_code==200,response.text
+    assert response.json()['items'][0]['model']=='XC60 II (246)'

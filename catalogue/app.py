@@ -320,7 +320,10 @@ def vehicle_directory(after: int = Query(0, ge=0), limit: int = Query(100, ge=1,
                 filters.append("REGEXP_REPLACE(LOWER(f.name_source),'[^[:alnum:]]','')=%s")
                 args.append(maker_key)
             if model_key:
-                filters.append("REGEXP_REPLACE(LOWER(m.name_source),'[^[:alnum:]]','') IN ("+
+                # TecDoc source names carry platform identifiers in parentheses:
+                # "XC60 II (246)" must match lookup key "xc60ii", without
+                # treating the platform number as a different car generation.
+                filters.append("REGEXP_REPLACE(REGEXP_REPLACE(LOWER(m.name_source),'[(][^)]*[)]',''),'[^[:alnum:]]','') IN ("+
                                ','.join(['%s']*len(model_key))+')')
                 args.extend(model_key)
             cur.execute("""SELECT s.car_id,s.model_id AS source_model_id,m.manufacturer_id,m.name_source AS model_name,
