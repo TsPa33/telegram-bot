@@ -877,3 +877,20 @@ def test_auto_oem_generation_alias_is_applied_to_catalogue_http_filter():
     v.generation='невідоме'
     assert cache.resolve_directory(v)[0]==126480
     assert adapter.queries[-1]['model_keys'] is None
+
+
+def test_oem_catalogue_consumable_types_with_article_links_are_not_dropped():
+    from types import SimpleNamespace
+    from app.services.auto_oem import eligible_product, matches
+    gasket=dict(product_id=145,kind='consumable',name_uk='Прокладка',
+                category_path=['Двигун','Прокладки','Прокладка'],
+                mapping_reviewed_by='source-review',article_count=2)
+    assert eligible_product(gasket)
+    existing=SimpleNamespace(source='carpot.catalogue.v1',
+        catalog_key='car:126480:product:145',plan_v3={},name='Прокладка',
+        category_name='Двигун',subcategory_name='Прокладки')
+    assert matches(existing,{145:gasket})==gasket
+    legacy=SimpleNamespace(source='base',catalog_key='legacy',plan_v3={},
+        name='Прокладка',category_name='Двигун',subcategory_name='Прокладки')
+    assert matches(legacy,{145:gasket})==gasket
+    assert not eligible_product({'kind':'review','source_fitment_linked':False})
