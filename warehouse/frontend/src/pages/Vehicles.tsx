@@ -13,7 +13,7 @@ import DismantlingCatalogImport from "../DismantlingCatalogImport";
 import VehicleChecklist from "../VehicleChecklist";
 import Dismantling from "../Dismantling";
 import ManagedDismantling from "../ManagedDismantling";
-import VehicleCard from "../VehicleCard";
+import VehicleCard,{VehicleDeleteActions} from "../VehicleCard";
 import "../warehouse-ux1.css";
 import "../vehicles-r114.css";
 import "../vehicles-r1144.css";
@@ -66,6 +66,7 @@ const vehicleFields: Field[] = [
 ];
 export default function Vehicles({notify}:{notify:Notify}) {
   const can=useCan();
+  const [deleting,setDeleting]=useState<Row|null>(null);
   const [catalogueCreate,setCatalogueCreate]=useState(false);
   const [view,setView]=useState<'cards'|'table'>('cards'),[statusFilter,setStatusFilter]=useState(''),[brandFilter,setBrandFilter]=useState(''),[modelFilter,setModelFilter]=useState(''),[yearFilter,setYearFilter]=useState(''),[q,setQ]=useState(''),[page,setPage]=useState(0),[edit,setEdit]=useState<Row|null>(null),[created,setCreated]=useState<Row|null>(null),[detail,setDetail]=useState<Row|null>(null),[confirm,setConfirm]=useState<Row|null>(null),[showInfo,setShowInfo]=useState(false);
   // The workshop currently holds tens of donors. Fetch all account-scoped pages so every
@@ -114,11 +115,11 @@ export default function Vehicles({notify}:{notify:Notify}) {
     {data&&<div className="r114-summary" aria-label="Показники автомобілів"><div><CarFront size={18}/><span><strong>{vehicles.length}</strong><small>Усього автомобілів</small></span></div><div><Wrench size={18}/><span><strong>{vehicles.filter(v=>v.status==='dismantling').length}</strong><small>На розборі</small></span></div><div><Package size={18}/><span><strong>{vehicles.reduce((n,v)=>n+(Number(v.stock_positions)||0),0).toLocaleString('uk-UA')}</strong><small>Позицій на складі</small></span></div><div><ClipboardCheck size={18}/><span><strong>{vehicles.filter(v=>v.status==='completed').length}</strong><small>Завершено</small></span></div></div>}
     {data&&<div className="r1146-result-meta"><span>Знайдено: <strong>{filtered.length}</strong> автомобілів</span>{(q||statusFilter||brandFilter||modelFilter||yearFilter)&&<button type="button" onClick={()=>{setQ('');setStatusFilter('');setBrandFilter('');setModelFilter('');setYearFilter('');setPage(0)}}>Скинути фільтри</button>}</div>}
     {view==='cards'?<section className="vehicle-grid r114-grid" aria-label="Список автомобілів">
-     {visible.map(v=><VehicleCard key={v.id} vehicle={v} context="vehicles" onParts={()=>openDetail(v)} onData={()=>openDetail(v,true)} onSaved={saved}/>)}
+     {visible.map(v=><VehicleCard key={v.id} vehicle={v} context="vehicles" onParts={()=>openDetail(v)} onData={()=>openDetail(v,true)} onSaved={saved} onDelete={can('vehicles.delete')?()=>setDeleting(v):undefined}/>)}
      {!loading&&!visible.length&&<Empty title={q||statusFilter||brandFilter||modelFilter||yearFilter?'Автомобілів не знайдено':'Додайте перший автомобіль'}>Змініть фільтри або створіть автомобіль.</Empty>}
     </section>:<section className="r114-table-wrap" aria-label="Таблиця автомобілів">
      <table><thead><tr><th>Автомобіль</th><th>Рік / №</th><th>Двигун / паливо</th><th>КПП</th><th>Статус</th><th>Запчастин / на складі</th><th>Дії</th></tr></thead>
-      <tbody>{visible.map(v=><tr key={v.id}><td><strong>{v.manufacturer} {v.model}</strong><small>{v.vin?'VIN: '+v.vin:'VIN не вказано'}</small></td><td>{v.year??'—'} · №{v.number??'—'}</td><td>{[v.engine_displacement_l?v.engine_displacement_l+' л':null,v.fuel_type,v.engine_variant].filter(Boolean).join(' · ')||v.engine||'Не вказано'}</td><td>{v.transmission||'Не вказано'}{v.drive_type?' · '+v.drive_type:''}</td><td>{labels[v.status]||'Не уточнено'}</td><td>{v.registered_parts??'—'} / {v.stock_positions??'—'}</td><td><button onClick={()=>openDetail(v,true)}>Картка авто</button><button onClick={()=>openDetail(v)}>Розбір</button></td></tr>)}</tbody>
+      <tbody>{visible.map(v=><tr key={v.id}><td><strong>{v.manufacturer} {v.model}</strong><small>{v.vin?'VIN: '+v.vin:'VIN не вказано'}</small></td><td>{v.year??'—'} · №{v.number??'—'}</td><td>{[v.engine_displacement_l?v.engine_displacement_l+' л':null,v.fuel_type,v.engine_variant].filter(Boolean).join(' · ')||v.engine||'Не вказано'}</td><td>{v.transmission||'Не вказано'}{v.drive_type?' · '+v.drive_type:''}</td><td>{labels[v.status]||'Не уточнено'}</td><td>{v.registered_parts??'—'} / {v.stock_positions??'—'}</td><td><button onClick={()=>openDetail(v,true)}>Картка авто</button><button onClick={()=>openDetail(v)}>Розбір</button>{can('vehicles.delete')&&<VehicleDeleteActions onDelete={()=>setDeleting(v)}/>}</td></tr>)}</tbody>
      </table>{!loading&&!visible.length&&<p>Автомобілів не знайдено.</p>}
     </section>}
     {filtered.length>50&&<Pager total={filtered.length} page={page} setPage={setPage}/>}</>}
@@ -129,8 +130,16 @@ export default function Vehicles({notify}:{notify:Notify}) {
       }}/>:<><button onClick={()=>setCatalogueCreate(v=>!v)}>{catalogueCreate?'Додати за VIN':'Вибрати автомобіль із каталогу'}</button>{catalogueCreate?<GlobalVehicleForm onSaved={row=>{saved(row);setEdit(null);openDetail(row,true);}}/>:<VehicleVinQuickAdd onBack={()=>setEdit(null)} onCreated={row=>{setCreated(row);saved(row);setEdit(null);openDetail(row,true);notify('Картку автомобіля відкрито');}}/>}</>}
     </Modal>}
     {detail&&<section className="ux1-workspace" aria-label="Автомобіль і запчастини"><button className="ux1-back" onClick={closeDetail}><ArrowLeft size={16}/>Автомобілі</button>
-      <VehicleDetail key={detail.id} vehicle={detail} showInfo={showInfo} onSaved={saved} onArchive={()=>{setConfirm(detail);}} onEdit={async()=>{try{const row=await api(`/vehicles/${detail.id}`);setEdit(row);}catch(e){notify((e as Error).message);}}} onRefresh={refresh} notify={notify} onInventory={()=>navigate(`/inventory?vehicle_id=${detail.id}`)}/>
+      <VehicleDetail key={detail.id} vehicle={detail} showInfo={showInfo} onSaved={saved} onDelete={can('vehicles.delete')?()=>setDeleting(detail):undefined} onArchive={()=>{setConfirm(detail);}} onEdit={async()=>{try{const row=await api(`/vehicles/${detail.id}`);setEdit(row);}catch(e){notify((e as Error).message);}}} onRefresh={refresh} notify={notify} onInventory={()=>navigate(`/inventory?vehicle_id=${detail.id}`)}/>
     </section>}
+    {deleting&&<Confirm destructive title="Видалити автомобіль?"
+      text={`${deleting.manufacturer} ${deleting.model} · донор №${deleting.number??deleting.donor_id??'—'} · VIN ${deleting.vin||'не вказано'}. Автомобіль, пов’язані тестові деталі, план і фото буде видалено назавжди.`}
+      onClose={()=>setDeleting(null)} onConfirm={async()=>{
+        await api('/vehicles/'+deleting.id,'DELETE');
+        setCreated(current=>current?.id===deleting.id?null:current);
+        if(detail?.id===deleting.id)closeDetail();
+        setDeleting(null);setPage(0);reload();notify('Автомобіль видалено');
+      }}/>}
     {confirm&&<Confirm destructive title="Архівувати автомобіль?" text="Автомобіль залишиться в історії. Його запчастини залишаться на складі." onClose={()=>setConfirm(null)} onConfirm={async()=>{await api('/archive/vehicles/'+confirm.id,'POST');setConfirm(null);closeDetail();reload();notify('Автомобіль переміщено в архів');}}/>}
   </>;
 }
@@ -142,11 +151,13 @@ function VehicleDetail({
   onInventory,
   onSaved,
   onArchive,
+  onDelete,
   showInfo,
 }: {
   vehicle: Row;
   onSaved: (row:Row)=>void;
   onArchive: ()=>void;
+  onDelete?: ()=>void;
   showInfo: boolean;
   onEdit: () => void;
   onRefresh: () => void;
@@ -184,6 +195,7 @@ function VehicleDetail({
          <button type="button" onClick={()=>setTab('info')}><Info size={15}/> Картка авто</button>
          <button type="button" onClick={()=>setTab('photos')}><Images size={15}/> Фото</button>
          {can('parts.view_cost')&&<button type="button" onClick={()=>setTab('finance')}><Coins size={15}/> Фінанси</button>}
+         {onDelete&&<VehicleDeleteActions onDelete={onDelete}/>}
          {!v.archived&&<Permit permission="vehicles.edit"><button type="button" data-action="edit-vehicle" onClick={onEdit}><Pencil size={15}/> Редагувати авто</button></Permit>}
         </div>
        </div>

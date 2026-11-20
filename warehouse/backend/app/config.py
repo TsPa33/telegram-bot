@@ -53,6 +53,10 @@ def is_staging():
     return os.getenv("WAREHOUSE_ENV") == "staging"
 
 
+def vehicle_delete_enabled():
+    return is_staging() and os.getenv("RAILWAY_ENVIRONMENT_NAME", "warehouse-staging") == "warehouse-staging"
+
+
 def public_origin():
     value = os.getenv("WAREHOUSE_PUBLIC_ORIGIN", "")
     parsed = urlsplit(value)

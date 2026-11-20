@@ -1,12 +1,13 @@
 """Central, fail-closed route policy. Workspace and actor are always server-derived."""
 from fastapi import HTTPException
 from app.route_registry import KNOWN_ROUTES
+from app.config import vehicle_delete_enabled
 GROUPS={
  'Склад':{'inventory.view':'Перегляд складу','inventory.activate_virtual':'Віртуальний розбір','inventory.create':'Додавання деталей','inventory.edit':'Редагування деталей','inventory.archive':'Архівування та відновлення','inventory.adjust_quantity':'Коригування кількості','inventory.write_off':'Списання','inventory.transfer':'Переміщення','inventory.reserve':'Ручне резервування','parts.notes':'Внутрішні нотатки','parts.inspect':'Стан і перевірка','parts.change_price':'Зміна ціни'},
  'Фінанси':{'parts.view_cost':'Собівартість і витрати','sales.view_financials':'Фінансові дані продажів та замовлень'},
  'Продажі':{'sales.view':'Перегляд продажів','sales.create':'Проведення продажів'},
  'Замовлення':{'orders.view':'Перегляд замовлень і покупців','orders.create':'Створення замовлень','orders.edit':'Редагування замовлень','orders.fulfill':'Резервування та виконання замовлень'},
- 'Автомобілі':{'vehicles.view':'Перегляд автомобілів','vehicles.create':'Додавання автомобілів','vehicles.edit':'Редагування автомобілів','dismantling.manage':'План розбору','catalog.view':'Перегляд довідника','catalog.import':'Імпорт каталогу','market.check':'Ручна перевірка ринкових даних'},
+ 'Автомобілі':{'vehicles.view':'Перегляд автомобілів','vehicles.create':'Додавання автомобілів','vehicles.edit':'Редагування автомобілів','vehicles.delete':'Видалення тестових автомобілів','dismantling.manage':'План розбору','catalog.view':'Перегляд довідника','catalog.import':'Імпорт каталогу','market.check':'Ручна перевірка ринкових даних'},
  'Аналітика':{'analytics.view':'Статистика залишків','analytics.financial':'Фінансова аналітика','audit.view':'Історія операцій'},
  'Команда':{'team.view':'Перегляд команди','team.manage_managers':'Керування менеджерами'},
  'Налаштування':{'settings.manage':'Налаштування складу'},
@@ -16,6 +17,8 @@ DEFAULT_EMPLOYEE=['inventory.view','vehicles.view','catalog.view']
 
 def effective(user):
     rights=frozenset(PERMISSIONS) if user.role=='DIRECTOR' else frozenset(user.permissions)&PERMISSIONS.keys()
+    if not vehicle_delete_enabled():
+        rights=rights-{'vehicles.delete'}
     return rights-{'team.manage_managers'} if user.role=='MANAGER' else rights
 def require_permission(who,*permissions):
     if not set(permissions)<=who.permissions:raise HTTPException(403,'Недостатньо прав для цієї дії. Зверніться до директора')
@@ -102,6 +105,7 @@ def route_permissions(method,path,body):
         return ['vehicles.create']
     if path.startswith('/vehicles/vin/paid/'):
         return ['vehicles.create']
+    if method=='DELETE' and path=='/vehicles/{id}':return ['vehicles.delete']
     if path.startswith('/vehicles'):
         if '/analytics' in path:return ['analytics.view']
         if '/dismantling' in path or '/checklist' in path or '/plan-parts-checklist' in path:

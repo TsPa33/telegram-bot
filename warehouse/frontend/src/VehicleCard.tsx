@@ -4,8 +4,18 @@ import type {Row} from './api';
 import VehicleImage from './VehicleImage';
 import VehicleQuickPowertrain from './VehicleQuickPowertrain';
 
-type Props={vehicle:Row;context:'vehicles'|'inventory';onParts:()=>void;onData?:()=>void;onSaved:(row:Row)=>void};
-export default function VehicleCard({vehicle:v,context,onParts,onData,onSaved}:Props) {
+type Props={vehicle:Row;context:'vehicles'|'inventory';onParts:()=>void;onData?:()=>void;onSaved:(row:Row)=>void;onDelete?:()=>void};
+export function VehicleDeleteActions({onDelete}:{onDelete:()=>void}) {
+ return <details className="vehicle-delete-actions">
+   <summary>Дії</summary>
+   <button type="button" className="destructive" onClick={event=>{
+     event.currentTarget.closest('details')?.removeAttribute('open');
+     onDelete();
+   }}>Видалити автомобіль</button>
+ </details>;
+}
+
+export default function VehicleCard({vehicle:v,context,onParts,onData,onSaved,onDelete}:Props) {
  const name=`${v.manufacturer} ${v.model}`;
  return <article className="vehicle-card vehicle-summary-card r1141-card r1146-card corporate-donor-card">
   <div className="r1146-card-intro">
@@ -22,6 +32,7 @@ export default function VehicleCard({vehicle:v,context,onParts,onData,onSaved}:P
   <div className="r1146-card-footer">
    <div className="r1141-stock"><Package size={18} aria-hidden="true"/><strong>{v.registered_parts??'—'}</strong><span>запчастин у картці</span><span style={{marginLeft:8,color:"var(--muted,#60746c)"}}>· На складі: <b>{v.stock_positions??'—'}</b></span></div>
    <div className="r1141-car-actions">{context==='inventory'&&!onData?<Link className="button secondary" to={'/vehicles?donor='+v.id+'&info=1'}><ClipboardList size={15}/> Картка авто</Link>:<button type="button" className="secondary" onClick={onData||onParts}><ClipboardList size={15}/> Картка авто</button>}<button type="button" className="primary" aria-label={context==='inventory'?'Відкрити склад '+name+' · '+v.year+' · №'+v.number+' · Запчастини':undefined} onClick={onParts}>{context==='inventory'?'Запчастини':'Розбір'} <ArrowRight size={16}/></button></div>
+   {onDelete&&<VehicleDeleteActions onDelete={onDelete}/>}
   </div>
  </article>;
 }
