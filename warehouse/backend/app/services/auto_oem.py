@@ -91,7 +91,9 @@ def source_identity(v):
     return (107555,13084,120,None,False)
 
 def eligible_product(product):
-    return bool(product and (product.get('kind')=='part' or (
+    # Catalogue stores verified OEM-bearing gaskets, belts, etc. as consumables.
+    # They are valid dismantling parts with PRD/article source links too.
+    return bool(product and (product.get('kind') in ('part','consumable') or (
         product.get('kind')=='review' and product.get('source_fitment_linked') is True
     )))
 
@@ -129,7 +131,7 @@ def matches(row,products,bindings=None):
     matches=[]
     for product in products.values():
         path=product.get('category_path') or []
-        if (product.get('kind')=='part' and product.get('mapping_reviewed_by') and len(path)==3
+        if (product.get('kind') in ('part','consumable') and product.get('mapping_reviewed_by') and len(path)==3
                 and tuple(normalized(value) for value in (*path[:2],product.get('name_uk')))==identity):
             matches.append(product)
     return matches[0] if len(matches)==1 else None
@@ -276,16 +278,32 @@ class SourceCache:
         code=lambda s:''.join(c for c in normalized(s) if c.isalnum())
         engine=code(v.engine_code)
         if type(v.year) is not int:return []
-        maker=code(v.manufacturer);model=code(v.model)
+        maker=code(v.manufacturer)
+        # "XC60 II (246)" is a TecDoc model/platform display label.
+        # The platform code in parentheses is not part of the model identity.
+        model=code(re.sub(r'[(][^)]*[)]','',v.model or ''))
         generation=code(v.generation) if normalized(v.generation) not in ('', 'не уточнено') else ''
+        roman=('x','ix','viii','vii','vi','iv','iii','ii','v','i')
+        aliases={'1':'i','2':'ii','3':'iii','4':'iv','5':'v','6':'vi','7':'vii','8':'viii','9':'ix','10':'x'}
+        hint=generation
+        if hint.startswith(model):hint=hint[len(model):]
+        if hint.startswith('generation'):hint=hint[len('generation'):]
+        if hint.startswith('gen'):hint=hint[3:]
+        if hint in aliases:hint=aliases[hint]
+        elif hint not in roman:
+            hint=next((token for token in roman if hint.startswith(token) and
+                       (hint[len(token):].startswith('20') or hint[len(token):].startswith('19'))),'')
         models={model}
-        if generation:models.add(code(v.model+' '+v.generation))
-        key=(maker,tuple(sorted(models)) if generation else ())
+        if hint:models.add(model+hint)
+        # Query-side filtering must use the same aliases as the local matcher.
+        # Unknown generation => fetch maker entries and match models locally.
+        model_filter=models if generation and hint else None
+        key=(maker,tuple(sorted(models)) if model_filter else ())
         entries=self.directory if self.directory is not None else self.directories.get(key)
         if entries is None:
             entries=[];cursor=0
             for _ in range(100):
-                result=self.adapter.directory(after=cursor,maker_key=maker,model_keys=models if generation else None)
+                result=self.adapter.directory(after=cursor,maker_key=maker,model_keys=model_filter)
                 entries.extend(result['items'])
                 nxt=result.get('next_after')
                 if nxt is None:break
@@ -294,20 +312,29 @@ class SourceCache:
             else:raise catalogue.CatalogueUnavailable('directory_limit')
             self.directories[key]=entries
         candidates=[]
+        relaxed=[]
+        # A VIN decoder can report "2" or "II (2017-)" while the source model
+        # is called "XC60 II". Treat those as the same explicit generation.
+        # Do not cross an explicitly different generation.
         for e in entries:
-            entry_model=code(e.get('model'))
-            # Some vehicle records keep just "XC60", while the source directory
-            # names the generation "XC60 II". Only broaden a *missing* generation;
-            # the mandatory engine code, year and unique result still gate matching.
-            unknown_generation_suffix=(not generation and entry_model.startswith(model)
-                and re.fullmatch(r'(?:i|ii|iii|iv|v|vi|vii|viii|ix|x)',entry_model[len(model):] or '') is not None)
-            if code(e.get('manufacturer'))!=maker or not (entry_model in models or unknown_generation_suffix):continue
+            entry_model=code(re.sub(r'[(][^)]*[)]','',e.get('model') or ''))
+            suffix=entry_model[len(model):] if entry_model.startswith(model) else None
+            source_generation=(suffix in roman or suffix in aliases)
+            matches_model=(entry_model in models or
+                (source_generation and (not generation or not hint or
+                    aliases.get(suffix,suffix)==hint)))
+            if code(e.get('manufacturer'))!=maker or not matches_model:continue
             attrs={a.get('attributetype'):str(a.get('displayvalue') or '') for a in e.get('specifications',[]) if isinstance(a,dict)}
-            source_engine=code(attrs.get('EngineCode'))
-            if engine and source_engine and source_engine!=engine:continue
             interval=attrs.get('ConstructionInterval') or e.get('modification',{}).get('constructioninterval') or ''
             years=[int(y) for y in re.findall(r'\b(?:19|20)\d{2}\b',interval)]
             if not years or v.year<years[0] or (len(years)>1 and v.year>years[-1]):continue
+            sha=e.get('snapshot_sha')
+            ids=(e.get('source_modification_id'),e.get('model_id'),e.get('manufacturer_id'))
+            if not isinstance(sha,str) or not re.fullmatch(r'[a-f0-9]{64}',sha) or not all(type(n) is int and n>0 for n in ids):
+                continue
+            relaxed.append((*ids,sha,True))
+            source_engine=code(attrs.get('EngineCode'))
+            if engine and source_engine and source_engine!=engine:continue
             fuel=normalized(v.fuel_type);source_fuel=normalized(attrs.get('FuelType'))
             drive=normalized(v.drive_type);source_drive=normalized(attrs.get('DriveType'))
             fuel_groups=[{'petrol','gasoline','бензин','gas'},{'diesel','дизель','дизельное топливо'},{'hybrid','гібрид','гибрид'},{'electric','електро','электричество'}]
@@ -328,10 +355,24 @@ class SourceCache:
                     fuel and source_fuel,drive and source_drive,variant and description,attrs.get('Capacity') and v.engine_displacement_l,
                 )))
                 candidates.append(((-int(evidence[0]),-evidence[1],*ids),(*ids,sha,True)))
-        return [identity for _,identity in sorted(candidates)]
+        # Internal staging observability: expose catalogue identity metadata only;
+        # never log VIN, user identity, credentials or supplier articles.
+        if is_staging() and maker=='volvo':
+            log.info('OEM Volvo source candidates vehicle=%s requested_model=%s year=%s generation=%s remote_entries=%d source_models=%s evidence_matches=%d fallback_matches=%d',
+                getattr(v,'id',None),model,v.year,generation,len(entries),
+                sorted({code(e.get('model')) for e in entries})[:16],len(candidates),len(relaxed))
+        # Prefer evidence-backed matches. If the VIN information is incomplete
+        # or conflicts with the imported variant descriptions, provide a usable
+        # *assumed* modification by make + model/generation + production year.
+        # This remains vin_verified=False and is user-changeable.
+        return [identity for _,identity in sorted(candidates)] or sorted(set(relaxed))
 
     def resolve_directory(self,v):
-        return next(iter(self.directory_candidates(v)),None)
+        options=self.directory_candidates(v)
+        selected=next(iter(options),None)
+        log.info('OEM modification lookup vehicle=%s alternatives=%d selected_source_id=%s',
+                 getattr(v,'id',None),len(options),selected[0] if selected else None)
+        return selected
 
     def plan(self,identity):
         car,model,make,sha,global_source=identity
@@ -531,7 +572,9 @@ def enrich_vehicle(engine,account_id,vehicle_id,cache=None):
     if not payload and not can_copy and not any(exact_data.values()):return 0
     with Session(engine) as db:
         db.execute(text("SET LOCAL lock_timeout = '2s'"))
-        db.scalar(select(Account).where(Account.id==account_id).with_for_update(key_share=True))
+        # PostgreSQL key_share=True alone emits FOR NO KEY UPDATE (exclusive).
+        # read=True is required for the intended nonexclusive FOR KEY SHARE.
+        db.scalar(select(Account).where(Account.id==account_id).with_for_update(read=True,key_share=True))
         v=db.scalar(select(Vehicle).where(Vehicle.id==vehicle_id,Vehicle.account_id==account_id,Vehicle.archived.is_(False)).with_for_update())
         if not v or basis(v)!=old_basis or normalized(v.engine_variant)!=old_variant or source_identity(v)!=direct_identity:return 0
         rows=list(db.scalars(select(DismantlingItem).where(DismantlingItem.vehicle_id==v.id,DismantlingItem.account_id==account_id).order_by(DismantlingItem.id).with_for_update()))
@@ -616,6 +659,21 @@ def enrich_vehicle(engine,account_id,vehicle_id,cache=None):
             v.dismantling_v3={**state,REF_KEY:refs,CANDIDATES_KEY:candidates,OUTCOMES_KEY:outcomes}
             record(db,account_id,v,'vehicle_update','Каталожні OEM',before,after_extra={'automatic_oem':True})
         db.commit()
+        # Operational acceptance must count nonempty persisted OEM fields,
+        # not mutations: a stock update can legitimately clear an invalid number.
+        active=[p for p in parts.values() if not p.archived and p.quantity>0 and p.availability!='absent']
+        valid_refs=sum(bool(eligible_row(row) and valid_reference(v,row,refs.get(row.id))
+                            and transferable_reference(refs.get(row.id))) for row in rows)
+        failures={name:sum(value==name for value in outcomes.values())
+                  for name in ('no_verified_prd_binding','no_selected_modification_oem','article_lookup_pending')}
+        log.info('OEM lifecycle coverage vehicle=%s donor_number=%s model=%s year=%s source_modification=%s plan_total=%d plan_valid_oem=%d stock_total=%d stock_nonempty_oem=%d unmatched_source_prd=%d missing_selected_oem=%d pending_articles=%d',
+                 vehicle_id,v.number,v.model,v.year,payload['car_id'] if payload else None,
+                 sum(eligible_row(row) for row in rows),valid_refs,
+                 len(active),sum(bool(p.oem_number) for p in active),
+                 failures['no_verified_prd_binding'],failures['no_selected_modification_oem'],
+                 failures['article_lookup_pending'])
+        log.info('OEM enrichment committed vehicle=%s plan_refs=%d stock_updates=%d source_modification=%s',
+                 vehicle_id,added,stock_changes,payload['car_id'] if payload else None)
         return added+stock_changes
 
 def sweep(engine,stop,cache=None):

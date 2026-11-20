@@ -538,8 +538,10 @@ def test_auto_oem_directory_stably_ranks_matching_modifications():
     assert cache.resolve_directory(v)==(88,9,7,'b'*64,True)
     cache.directory.insert(0,{**entry,'source_modification_id':89})
     assert cache.resolve_directory(v)==(88,9,7,'b'*64,True)
+    # A conflicting VIN decoder value must not prevent a clearly labelled
+    # auto_assumed catalogue variant; it does not claim VIN-verified fitment.
     v.engine_code='CONFLICTING'
-    assert cache.resolve_directory(v) is None
+    assert cache.resolve_directory(v)==(88,9,7,'b'*64,True)
     v.engine_code='EP6 FDT'
     cache.directory=[entry];v.year=2014;assert cache.resolve_directory(v) is None
 
@@ -635,7 +637,7 @@ def test_auto_oem_xc60_directory_matches_missing_generation_with_available_facts
     from app.services.auto_oem import SourceCache
     v=SimpleNamespace(manufacturer='Volvo',model='XC60',generation='',engine_code='B4204T',
         year=2022,fuel_type='petrol',drive_type='AWD',engine_variant='',engine_displacement_l=2.0)
-    entry=dict(manufacturer='Volvo',model='XC60 II',source_modification_id=126480,
+    entry=dict(manufacturer='Volvo',model='XC60 II (246)',source_modification_id=126480,
         model_id=37773,manufacturer_id=120,snapshot_sha='a'*64,
         modification={'description':'2.0 T5 AWD'},specifications=[
             {'attributetype':'EngineCode','displayvalue':'B4204T'},
@@ -649,6 +651,10 @@ def test_auto_oem_xc60_directory_matches_missing_generation_with_available_facts
     assert cache.resolve_directory(v)==(126480,37773,120,'a'*64,True)
     v.engine_code='B4204T';v.generation='I'
     assert cache.resolve_directory(v) is None
+    v.generation='2'
+    assert cache.resolve_directory(v)==(126480,37773,120,'a'*64,True)
+    v.generation='II (2017)'
+    assert cache.resolve_directory(v)==(126480,37773,120,'a'*64,True)
     v.generation='';cache.directory.insert(0,{**entry,'source_modification_id':126481})
     assert cache.resolve_directory(v)==(126480,37773,120,'a'*64,True)
 
@@ -816,3 +822,93 @@ def test_canonical_prd_backfill_requires_catalogue_checksum():
     product={'product_id':106,'kind':'review','source_fitment_linked':True,'source_prd_sha256':'a'*64}
     assert matches(row,{106:product},{'fixture-type':{(106,'b'*64)}}) is None
     assert matches(row,{106:product},{'fixture-type':{(106,'a'*64)}})==product
+
+
+def test_auto_oem_account_row_lock_is_shared_on_postgresql():
+    """Avoid the PostgreSQL trap: key_share=True alone emits NO KEY UPDATE."""
+    from sqlalchemy import select
+    from sqlalchemy.dialects import postgresql
+    from app.models import Account
+    sql=str(select(Account).with_for_update(read=True,key_share=True).compile(
+        dialect=postgresql.dialect()))
+    assert sql.endswith('FOR KEY SHARE') and 'FOR NO KEY UPDATE' not in sql
+
+def test_auto_oem_directory_fallback_requires_exact_model_year_not_brand_only():
+    from types import SimpleNamespace
+    from app.services.auto_oem import SourceCache
+    item=dict(manufacturer='Volvo',model='XC60 II',source_modification_id=126478,
+        model_id=37773,manufacturer_id=120,snapshot_sha='a'*64,
+        modification={'description':'2.0 D4 AWD','constructioninterval':'03.2017 -'},
+        specifications=[{'attributetype':'FuelType','displayvalue':'diesel'}])
+    v=SimpleNamespace(manufacturer='Volvo',model='XC60',generation='',
+        year=2022,engine_code='',fuel_type='petrol',drive_type='',engine_variant='',
+        engine_displacement_l=None)
+    cache=SourceCache();cache.directory=[item]
+    assert cache.resolve_directory(v)==(126478,37773,120,'a'*64,True)
+    v.model='XC90'
+    assert cache.resolve_directory(v) is None
+    v.model='XC60';v.year=2010
+    assert cache.resolve_directory(v) is None
+    v.year=2022;v.generation='I'
+    assert cache.resolve_directory(v) is None
+
+
+def test_auto_oem_generation_alias_is_applied_to_catalogue_http_filter():
+    from types import SimpleNamespace
+    from app.services.auto_oem import SourceCache
+    entry=dict(manufacturer='Volvo',model='XC60 II',source_modification_id=126480,
+        model_id=37773,manufacturer_id=120,snapshot_sha='a'*64,
+        modification={'description':'2.0 T5 AWD','constructioninterval':'03.2017 -'},
+        specifications=[])
+    class DirectoryAdapter:
+        def __init__(self):self.queries=[]
+        def directory(self,**kwargs):
+            self.queries.append(kwargs)
+            return {'items':[entry], 'next_after':None}
+    v=SimpleNamespace(manufacturer='Volvo',model='XC60',generation='2',
+        engine_code='',year=2022,fuel_type='',drive_type='',engine_variant='',
+        engine_displacement_l=None)
+    adapter=DirectoryAdapter()
+    cache=SourceCache(adapter=adapter)
+    assert cache.resolve_directory(v)[0]==126480
+    assert set(adapter.queries[0]['model_keys'])=={'xc60','xc60ii'}
+    v.generation='II (2017)'
+    assert cache.resolve_directory(v)[0]==126480
+    v.generation='невідоме'
+    assert cache.resolve_directory(v)[0]==126480
+    assert adapter.queries[-1]['model_keys'] is None
+
+
+def test_oem_catalogue_consumable_types_with_article_links_are_not_dropped():
+    from types import SimpleNamespace
+    from app.services.auto_oem import eligible_product, matches
+    gasket=dict(product_id=145,kind='consumable',name_uk='Прокладка',
+                category_path=['Двигун','Прокладки','Прокладка'],
+                mapping_reviewed_by='source-review',article_count=2)
+    assert eligible_product(gasket)
+    existing=SimpleNamespace(source='carpot.catalogue.v1',
+        catalog_key='car:126480:product:145',plan_v3={},name='Прокладка',
+        category_name='Двигун',subcategory_name='Прокладки')
+    assert matches(existing,{145:gasket})==gasket
+    legacy=SimpleNamespace(source='base',catalog_key='legacy',plan_v3={},
+        name='Прокладка',category_name='Двигун',subcategory_name='Прокладки')
+    assert matches(legacy,{145:gasket})==gasket
+    assert not eligible_product({'kind':'review','source_fitment_linked':False})
+
+
+def test_auto_oem_directory_parses_tecdoc_model_platform_without_losing_generation():
+    from types import SimpleNamespace
+    from app.services.auto_oem import SourceCache
+    source=dict(manufacturer='Volvo',model='XC60 II (246)',
+        source_modification_id=126480,model_id=37773,manufacturer_id=120,
+        snapshot_sha='b'*64,
+        modification={'description':'2.0 T5 AWD','constructioninterval':'03.2017 -'},
+        specifications=[])
+    v=SimpleNamespace(manufacturer='Volvo',model='XC60',generation='2',
+        engine_code='',year=2022,fuel_type='',drive_type='',engine_variant='',engine_displacement_l=None)
+    cache=SourceCache();cache.directory=[source]
+    assert cache.resolve_directory(v)[0]==126480
+    v.generation='I'
+    assert cache.resolve_directory(v) is None
+    v.model='XC60 II (246)';v.generation=''
+    assert cache.resolve_directory(v)[0]==126480
