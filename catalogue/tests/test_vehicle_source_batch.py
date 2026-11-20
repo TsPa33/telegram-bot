@@ -215,7 +215,7 @@ def test_oem_export_can_omit_full_prd_dump_per_modification(tmp_path,monkeypatch
         if 'FROM prd' in sql:raise AssertionError('Must not scan all PRD for every donor')
         raise AssertionError(sql)
     def fake_collect(*args,**kwargs):return payload()
-    def fake_attach(source,p):
+    def fake_attach(source,p,sidecar_path=None):
         p['source_scope']='passenger_prd_article_oem'
     monkeypatch.setattr(batch,'read',fake_read)
     monkeypatch.setattr(batch,'collect',fake_collect)
@@ -267,3 +267,69 @@ def test_commercial_preflight_never_assumes_passenger_fitment(monkeypatch):
     assert result['linkage_examples'][0]['observed_linkage_type_ids']==[1]
     assert result['linkage_examples'][1]['observed_linkage_type_ids']==[]
     assert all(sql.strip().startswith('SELECT') for sql,_ in source_calls)
+
+
+def test_large_oem_snapshot_streams_outside_8mib_source_graph_contract(tmp_path,monkeypatch):
+    """Artificially low byte cap reproduces the live failure at modest size."""
+    import volvo_contract
+    p=payload()
+    p['taxonomy_status']='unreviewed'
+    p['articles']['5:TEST'].pop('oem',None)
+    monkeypatch.setattr(volvo_contract,'MAX_BYTES',4096)
+    source_rows=[{'supplierId':5,'DataSupplierArticleNumber':'TEST',
+                  'manufacturerId':77,'OENbr':'V'+str(i).zfill(40)}
+                 for i in range(150)]
+    def fake_read(source,sql,args=()):
+        if 'FROM article_oe' in sql:return source_rows
+        if 'FROM suppliers' in sql:return [{'id':5,'description':'Supplier A'}]
+        raise AssertionError(sql)
+    monkeypatch.setattr(batch,'read',fake_read)
+    sidecar=tmp_path/'oem-99.jsonl'
+    count=batch.attach_source_oems(None,p,sidecar)
+    assert count==150
+    assert sidecar.exists()
+    assert 'oem' not in p['articles']['5:TEST']
+    assert volvo_contract.validate(p) is p
+    assert batch.verified_oem_sidecar(sidecar,p)==150
+    assert sidecar.stat().st_size>4096
+
+    envelope={'payload':p,'sha256':digest(p)}
+    batch.atomic(tmp_path/'99.json',envelope)
+    manifest={'schema':'carpot.source.batch.v1','request':{},
+              'files':{'99.json':batch.file_sha(tmp_path/'99.json'),
+                       sidecar.name:batch.file_sha(sidecar)},
+              'complete':True,'source_database':'td1q2018',
+              'modifications':[batch.relation_summary(p)]}
+    batch.atomic(tmp_path/'manifest.json',manifest)
+    items=batch.validate_batch(tmp_path,batch.file_sha(tmp_path/'manifest.json'))
+    assert items[0]['_oem_sidecar']==sidecar
+    assert len(list(batch.fitted_oem_references(items[0])))==150
+    assert all(r[2]==77 for r in batch.fitted_oem_references(items[0]))
+
+    # A sidecar changed independently of the manifest must never be imported.
+    with sidecar.open('ab') as f:f.write(b'[1,"OTHER",77,"bad"]\\n')
+    with pytest.raises(ValueError,match='checksum'):
+        batch.validate_batch(tmp_path,batch.file_sha(tmp_path/'manifest.json'))
+
+
+def test_oem_sidecar_import_filters_to_exact_existing_article_keys(tmp_path):
+    p=payload()
+    p['source_scope']='passenger_prd_article_oem'
+    path=tmp_path/'oem-99.jsonl'
+    path.write_bytes(encode([5,'TEST',77,'VOLVO-CROSS'])+b'\\n')
+    envelope={'payload':p,'sha256':digest(p),'_oem_sidecar':path}
+    assert batch.verified_oem_sidecar(path,p)==1
+    calls=[]
+    class Cursor:
+        def __enter__(self):return self
+        def __exit__(self,*args):pass
+        def executemany(self,sql,rows):
+            calls.extend(rows)
+            return len(rows)
+    class Target:
+        def cursor(self):return Cursor()
+    assert batch.insert_fitted_oems(Target(),envelope,{(5,'TEST')})==1
+    assert calls==[(5,'TEST',77,'VOLVO-CROSS')]
+    calls.clear()
+    assert batch.insert_fitted_oems(Target(),envelope,{(5,'OTHER')})==0
+    assert calls==[]
