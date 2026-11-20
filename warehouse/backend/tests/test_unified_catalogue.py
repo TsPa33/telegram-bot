@@ -851,3 +851,29 @@ def test_auto_oem_directory_fallback_requires_exact_model_year_not_brand_only():
     assert cache.resolve_directory(v) is None
     v.year=2022;v.generation='I'
     assert cache.resolve_directory(v) is None
+
+
+def test_auto_oem_generation_alias_is_applied_to_catalogue_http_filter():
+    from types import SimpleNamespace
+    from app.services.auto_oem import SourceCache
+    entry=dict(manufacturer='Volvo',model='XC60 II',source_modification_id=126480,
+        model_id=37773,manufacturer_id=120,snapshot_sha='a'*64,
+        modification={'description':'2.0 T5 AWD','constructioninterval':'03.2017 -'},
+        specifications=[])
+    class DirectoryAdapter:
+        def __init__(self):self.queries=[]
+        def directory(self,**kwargs):
+            self.queries.append(kwargs)
+            return {'items':[entry], 'next_after':None}
+    v=SimpleNamespace(manufacturer='Volvo',model='XC60',generation='2',
+        engine_code='',year=2022,fuel_type='',drive_type='',engine_variant='',
+        engine_displacement_l=None)
+    adapter=DirectoryAdapter()
+    cache=SourceCache(adapter=adapter)
+    assert cache.resolve_directory(v)[0]==126480
+    assert set(adapter.queries[0]['model_keys'])=={'xc60','xc60ii'}
+    v.generation='II (2017)'
+    assert cache.resolve_directory(v)[0]==126480
+    v.generation='невідоме'
+    assert cache.resolve_directory(v)[0]==126480
+    assert adapter.queries[-1]['model_keys'] is None
