@@ -9,6 +9,8 @@ param(
     [ValidateRange(1,500)][int]$PageSize = 50,
     [ValidateRange(0,2147483647)][int]$ModelId = 0,
     [ValidateRange(0,1000000)][int]$MaxPages = 0,
+    [ValidateRange(0,1000)][double]$MaxLocalGiB = 0,
+    [ValidateRange(0,1000)][double]$MinFreeGiB = 3,
     [string]$SourceUser = 'root',
     [switch]$PromptSourcePassword
 )
@@ -69,7 +71,28 @@ function Write-Cursor([int]$Value) {
     Move-Item -Force $temporary $destination
 }
 
+# Check available space before EVERY graph; scan aggregate spool size once per
+# 25 modifications to avoid quadratic directory traversal on large exports.
+$script:CapacityChecks = 0
+function Assert-LocalCapacity {
+    $driveRoot = [IO.Path]::GetPathRoot([IO.Path]::GetFullPath($Checkpoint))
+    $drive = New-Object IO.DriveInfo($driveRoot)
+    if ($drive.AvailableFreeSpace -lt ($MinFreeGiB * 1GB)) {
+        throw "LOCAL_STORAGE_LIMIT: only $([math]::Round($drive.AvailableFreeSpace/1GB,2)) GiB remains. Stop export; keep existing checkpoints; stage verified data before continuing."
+    }
+    if ($MaxLocalGiB -gt 0 -and ($script:CapacityChecks % 25 -eq 0)) {
+        $stats = Get-ChildItem -LiteralPath $Checkpoint -Recurse -File |
+            Measure-Object -Property Length -Sum
+        [double]$used = if ($null -eq $stats.Sum) { 0 } else { [double]$stats.Sum }
+        if ($used -ge $MaxLocalGiB * 1GB) {
+            throw "LOCAL_SPOOL_QUOTA: $([math]::Round($used/1GB,2)) GiB is staged locally (limit $MaxLocalGiB GiB). No files were deleted; use bounded Railway staging transfer before resuming."
+        }
+    }
+    $script:CapacityChecks++
+}
+
 function Import-One([int]$Id) {
+    Assert-LocalCapacity
     $folder = Join-Path $Checkpoint "passenger-$Id"
     Invoke-Importer -Arguments @('export','--graph-only','--with-oem','--omit-prd-export',
         '--car-id',"$Id",'--max-modifications','1','--output',$folder)
