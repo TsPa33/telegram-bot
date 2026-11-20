@@ -102,11 +102,12 @@ def attach_source_oems(source, payload):
     validate(payload)
 
 
-def export(source, output, car_ids, model_queries, limit, mapping=None, *, graph_only=False, with_oem=False):
+def export(source, output, car_ids, model_queries, limit, mapping=None, *, graph_only=False, with_oem=False, omit_prd_export=False):
     output.mkdir(parents=True, exist_ok=True)
     requested = dict(car_ids=sorted(set(car_ids)), model_queries=sorted(set(model_queries)), limit=limit,
                      mapping_sha=digest(mapping or {}), graph_only=graph_only)
     if with_oem:requested['with_oem']=True
+    if omit_prd_export:requested['omit_prd_export']=True
     manifest_path = output/'manifest.json'
     previous = json.loads(manifest_path.read_text('utf-8')) if manifest_path.exists() else None
     if previous and previous['request'] != requested:
@@ -174,16 +175,17 @@ def export(source, output, car_ids, model_queries, limit, mapping=None, *, graph
              complete=False,source_database='td1q2018',factory_bom=False))
     # PRD export is deterministic keyset pagination. Resume skips only checksum-verified full file.
     prd=output/'prd.json'
-    if prd.name in files:
-        if file_sha(prd)!=files[prd.name]:raise ValueError('PRD checksum mismatch')
-    else:
-        rows=[];after=0
-        while True:
-            batch=read(source, 'SELECT id,assemblygroupdescription,description,normalizeddescription,usagedescription FROM prd WHERE id>%s ORDER BY id LIMIT 1000',(after,))
-            if not batch:break
-            rows.extend(batch);after=int(batch[-1]['id'])
-            if len(rows)>100000:raise ValueError('PRD record cap exceeded')
-        atomic(prd,rows);files[prd.name]=file_sha(prd)
+    if not omit_prd_export:
+        if prd.name in files:
+            if file_sha(prd)!=files[prd.name]:raise ValueError('PRD checksum mismatch')
+        else:
+            rows=[];after=0
+            while True:
+                batch=read(source, 'SELECT id,assemblygroupdescription,description,normalizeddescription,usagedescription FROM prd WHERE id>%s ORDER BY id LIMIT 1000',(after,))
+                if not batch:break
+                rows.extend(batch);after=int(batch[-1]['id'])
+                if len(rows)>100000:raise ValueError('PRD record cap exceeded')
+            atomic(prd,rows);files[prd.name]=file_sha(prd)
     manifest=dict(schema='carpot.source.batch.v1',request=requested,files=files,complete=True,
         source_database='td1q2018',factory_bom=False,discovery=discovery,
         modifications=[relation_summary(verified(output/f'{cid}.json')['payload']) for cid in sorted(selected)])
@@ -329,15 +331,45 @@ def upload(target, envelopes):
     return result
 
 
+def discover_passenger(source, after_id, scan_limit):
+    """Keyset scan without manually supplied IDs. Source is always SELECT-only.
+
+    Scan by the passenger modification primary key (not the huge article_links
+    table), then probe the exact source relation for each candidate. The caller
+    commits its checkpoint only after processing all IDs in this page.
+    """
+    if after_id < 0 or not 1 <= scan_limit <= 500:
+        raise ValueError('Invalid keyset position or bounded scan size')
+    tables={value(r,'TABLE_NAME') for r in read(source,
+        'SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA=%s',('td1q2018',))}
+    table='passanger_cars' if 'passanger_cars' in tables else 'passenger_cars'
+    if table not in tables:
+        raise ValueError('Passenger car modification table missing')
+    candidates=read(source, f'SELECT id FROM {table} WHERE id>%s ORDER BY id LIMIT %s',
+                    (after_id,scan_limit))
+    found=[]
+    for row in candidates:
+        car_id=int(value(row,'id'))
+        link=read(source, 'SELECT productid FROM article_links WHERE linkageid=%s AND linkagetypeid=2 LIMIT 1',(car_id,))
+        if link:found.append(car_id)
+    return {'mode':'discover','after_id':after_id,
+            'next_after_id':int(value(candidates[-1],'id')) if candidates else after_id,
+            'scanned':len(candidates),'linked_ids':found,'complete':len(candidates)<scan_limit,
+            'source':'td1q2018','linkage_type':2}
+
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
-    p.add_argument('mode',choices=['export','validate','inventory','upload','review'])
+    p.add_argument('mode',choices=['export','validate','inventory','upload','review','discover'])
     p.add_argument('--output',type=Path,required=True)
     p.add_argument('--car-id',type=int,action='append',default=[])
+    p.add_argument('--after-id',type=int,default=0,help='SELECT-only passenger discovery keyset cursor')
+    p.add_argument('--scan-limit',type=int,default=50,help='Maximum passenger modifications scanned in one discovery page, 1..500')
     p.add_argument('--discover-model',action='append',default=[])
     p.add_argument('--max-modifications',type=int,default=8)
     p.add_argument('--graph-only',action='store_true',help='Export PRD/article links without bulky per-article enrichment')
     p.add_argument('--with-oem',action='store_true',help='Include exact manufacturer OEMs in graph-only export')
+    p.add_argument('--omit-prd-export',action='store_true',help='For OEM graph checkpoint runs, omit redundant whole-database PRD dump')
     p.add_argument('--mapping',type=Path)
     p.add_argument('--manifest-sha256')
     p.add_argument('--reviewed-by')
@@ -346,6 +378,7 @@ def main():
     p.add_argument('--target-server-uuid')
     a=p.parse_args()
     if a.with_oem and (a.mode!='export' or not a.graph_only):p.error('--with-oem requires export --graph-only')
+    if a.omit_prd_export and (a.mode!='export' or not a.graph_only or not a.with_oem):p.error('--omit-prd-export requires export --graph-only --with-oem')
     if a.graph_only and a.mode!='export':p.error('--graph-only is only valid for export')
     if not 1<=a.max_modifications<=100 or any(i<=0 for i in a.car_id):p.error('Bounded positive identities required')
     if a.mode=='review':
@@ -370,6 +403,16 @@ def main():
             else:result=upload(target,envelopes)
         print(json.dumps(dict(mode=a.mode,rows=len(result)) if a.mode=='inventory' else result));return
     if os.getenv('SOURCE_HOST','127.0.0.1') not in ('127.0.0.1','localhost') or os.getenv('SOURCE_DATABASE','td1q2018')!='td1q2018':p.error('Only local td1q2018 source allowed')
+    if a.mode=='discover':
+        if a.after_id<0 or not 1<=a.scan_limit<=500:p.error('Invalid discovery cursor/page size')
+        with connection('SOURCE','td1q2018') as source:
+            read(source,'SET SESSION max_execution_time=30000')
+            read(source,'START TRANSACTION READ ONLY')
+            try:result=discover_passenger(source,a.after_id,a.scan_limit)
+            finally:source.rollback()
+        a.output.mkdir(parents=True,exist_ok=True)
+        atomic(a.output/'discovery.json',result)
+        print(json.dumps(result,ensure_ascii=False));return
     if not a.car_id and not a.discover_model:p.error('Specify exact source IDs or model discovery')
     a.output.mkdir(parents=True,exist_ok=True);lock=a.output/'.batch.lock'
     fd=os.open(lock,os.O_CREAT|os.O_EXCL|os.O_WRONLY,0o600);os.close(fd)
@@ -377,7 +420,7 @@ def main():
         with connection('SOURCE','td1q2018') as source:
             read(source,'SET SESSION max_execution_time=30000')
             read(source,'START TRANSACTION WITH CONSISTENT SNAPSHOT, READ ONLY')
-            try:result=export(source,a.output,a.car_id,a.discover_model,a.max_modifications,json.loads(a.mapping.read_text('utf-8-sig')) if a.mapping else {},graph_only=a.graph_only,with_oem=a.with_oem)
+            try:result=export(source,a.output,a.car_id,a.discover_model,a.max_modifications,json.loads(a.mapping.read_text('utf-8-sig')) if a.mapping else {},graph_only=a.graph_only,with_oem=a.with_oem,omit_prd_export=a.omit_prd_export)
             finally:source.rollback()
         print(json.dumps(dict(modifications=len(result['modifications']),manifest_sha256=file_sha(a.output/'manifest.json'))))
     finally:lock.unlink(missing_ok=True)
