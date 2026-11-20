@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from typing import Annotated, Literal
 from fastapi import (
     APIRouter,
+    BackgroundTasks,
     Depends,
     File,
     HTTPException,
@@ -323,8 +324,21 @@ async def directory_import(db: DB,who: Auth,file:UploadFile=File(...),dry_run:bo
     return apply_payload(db,raw,file.filename or "carpot-vehicles.txt",who.workspace_account_id,dry_run)
 
 
+def _new_vehicle_oem_enrichment(account_id: str, vehicle_id: str):
+    """Run once after a successful staged create; never block the response."""
+    import logging
+    from app.db import engine
+    from app.services.auto_oem import enrich_vehicle
+    try:
+        enrich_vehicle(engine(),account_id,vehicle_id)
+    except Exception:
+        logging.getLogger(__name__).warning(
+            'New-vehicle OEM enrichment deferred vehicle=%s',vehicle_id,exc_info=True
+        )
+
+
 @router.post("/vehicles", status_code=201, tags=["Vehicles"])
-def vehicle_create(data: VehicleInput, db: DB, who: Auth):
+def vehicle_create(data: VehicleInput, db: DB, who: Auth, background_tasks: BackgroundTasks):
     values = data.model_dump()
     if values["donor_id"] is None:
         values["donor_id"] = automatic_donor_id(db, who.workspace_account_id)
@@ -340,6 +354,14 @@ def vehicle_create(data: VehicleInput, db: DB, who: Auth):
     db.add(row)
     record(db, who.workspace_account_id, row, "vehicle_create", "Додано донора", {})
     db.commit()
+    # Staging-only OEM enrichment starts immediately AFTER the vehicle is committed.
+    # The periodic, idempotent sweep remains the retry path after transient failures.
+    from app.config import is_staging
+    import os
+    if (is_staging() and os.getenv('WAREHOUSE_CATALOGUE_URL')
+            and os.getenv('WAREHOUSE_CATALOGUE_KEY')
+            and os.getenv('WAREHOUSE_AUTO_OEM_ENABLED','true').lower()=='true'):
+        background_tasks.add_task(_new_vehicle_oem_enrichment,who.workspace_account_id,row.id)
     return vehicle_view(db, row, who.workspace_account_id)
 
 
