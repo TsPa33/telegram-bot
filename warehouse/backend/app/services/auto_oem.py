@@ -91,7 +91,9 @@ def source_identity(v):
     return (107555,13084,120,None,False)
 
 def eligible_product(product):
-    return bool(product and (product.get('kind')=='part' or (
+    # Catalogue stores verified OEM-bearing gaskets, belts, etc. as consumables.
+    # They are valid dismantling parts with PRD/article source links too.
+    return bool(product and (product.get('kind') in ('part','consumable') or (
         product.get('kind')=='review' and product.get('source_fitment_linked') is True
     )))
 
@@ -129,7 +131,7 @@ def matches(row,products,bindings=None):
     matches=[]
     for product in products.values():
         path=product.get('category_path') or []
-        if (product.get('kind')=='part' and product.get('mapping_reviewed_by') and len(path)==3
+        if (product.get('kind') in ('part','consumable') and product.get('mapping_reviewed_by') and len(path)==3
                 and tuple(normalized(value) for value in (*path[:2],product.get('name_uk')))==identity):
             matches.append(product)
     return matches[0] if len(matches)==1 else None
