@@ -611,3 +611,64 @@ def test_automatic_oem_requires_stable_product_key():
     assert matches(row,{106:product},107555) is None
     row.catalog_key='car:107555:product:106'
     assert matches(row,{106:product},107555)==product
+
+
+def test_auto_oem_xc60_directory_can_match_missing_generation_only_with_exact_engine():
+    """XC60 and XC60 II can match only with a unique, evidence-backed variant."""
+    from types import SimpleNamespace
+    from app.services.auto_oem import SourceCache
+    v=SimpleNamespace(manufacturer='Volvo',model='XC60',generation='',engine_code='B4204T',
+        year=2022,fuel_type='petrol',drive_type='AWD',engine_variant='',engine_displacement_l=2.0)
+    entry=dict(manufacturer='Volvo',model='XC60 II',source_modification_id=126480,
+        model_id=37773,manufacturer_id=120,snapshot_sha='a'*64,
+        modification={'description':'2.0 T5 AWD'},specifications=[
+            {'attributetype':'EngineCode','displayvalue':'B4204T'},
+            {'attributetype':'ConstructionInterval','displayvalue':'03.2017 -'},
+            {'attributetype':'FuelType','displayvalue':'petrol'},
+            {'attributetype':'DriveType','displayvalue':'AWD'},
+            {'attributetype':'Capacity','displayvalue':'2.0 l'}])
+    cache=SourceCache();cache.directory=[entry]
+    assert cache.resolve_directory(v)==(126480,37773,120,'a'*64,True)
+    v.engine_code=''
+    assert cache.resolve_directory(v) is None
+    v.engine_code='B4204T';v.generation='I'
+    assert cache.resolve_directory(v) is None
+    v.generation='';cache.directory.append({**entry,'source_modification_id':126481})
+    assert cache.resolve_directory(v) is None
+
+
+def test_xc60_confirmed_modification_builds_plan_and_oem_without_vin_guess(logged, monkeypatch):
+    """The six imported XC60 variants are usable after exact source confirmation."""
+    from app.services import unified_catalogue as catalogue
+    from app.services.auto_oem import enrich_vehicle
+
+    response=logged.post('/api/v1/vehicles',json={
+        'manufacturer':'Volvo','model':'XC60','year':2022,
+        'vin':'YV4L12RK6N1970668',
+    })
+    assert response.status_code==201,response.text
+    vid=response.json()['id']
+    with Session(engine()) as db:
+        v=db.get(Vehicle,vid)
+        aid=v.account_id
+        v.dismantling_v3={'global_selection':dict(
+            car_id=126480,model_id=37773,manufacturer_id=120,
+            source_snapshot_sha='a'*64,vehicle_basis=catalogue.vehicle_basis(v))}
+        db.commit()
+
+    source=envelope(126480)
+    source['payload']['model_id']=37773
+    source['payload']['source_snapshot_sha']='a'*64
+    monkeypatch.setattr(CatalogueAdapter,'plan',lambda self,car,**kw:source)
+    monkeypatch.setattr(CatalogueAdapter,'articles',lambda *a,**kw:detail_items())
+    assert enrich_vehicle(engine(),aid,vid)==1
+    assert enrich_vehicle(engine(),aid,vid)==0
+    with Session(engine()) as db:
+        rows=list(db.scalars(select(DismantlingItem).where(DismantlingItem.vehicle_id==vid)))
+        assert len(rows)==1
+        assert rows[0].catalog_key=='car:126480:product:106'
+        ref=db.get(Vehicle,vid).dismantling_v3['volvo_oem_references'][rows[0].id]
+        assert ref['source_modification_id']==126480
+        assert ref['oem_number']=='OEM-ONE'
+        assert not ref['vin_verified']
+        assert db.scalar(select(func.count()).select_from(Part).where(Part.vehicle_id==vid))==0
