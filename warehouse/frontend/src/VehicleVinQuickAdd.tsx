@@ -110,7 +110,22 @@ export default function VehicleVinQuickAdd({onBack,onCreated}:{onBack:()=>void;o
   values.vin_details={diagnostics:result.diagnostics||{},consistency_issues:result.consistency_issues||{},additional:extra,decoded_additional:result.additional||{},characteristics:draft,decoded:result.vehicle,field_sources:result.field_sources||{},conflicts:result.conflicts||{},source:result.source,observed_at:result.observed_at||''};
   writing.current=true;setSaving(true);setError('');
   try{onCreated(await api('/vehicles','POST',values));}
-  catch(e){setError((e as Error).message);if(e instanceof ApiError&&e.status===409&&valid){try{const found=await api('/vehicles?q='+encodeURIComponent(vin));setExisting(found.items.find((r:Row)=>r.vin===vin)||null);}catch{/* Existing VIN remains blocked even if listing is unavailable. */}}}
+  catch(e){
+   setError((e as Error).message);
+   if(e instanceof ApiError&&e.status===409&&valid){
+    const detail=e.detail && typeof e.detail==='object' ? e.detail as Row : null;
+    const id=typeof detail?.vehicle_id==='string'?detail.vehicle_id:'';
+    try{
+     if(id){
+      const found=await api<Row>('/vehicles/'+encodeURIComponent(id));
+      if(found.vin?.trim().toUpperCase()===vin.toUpperCase())setExisting(found);
+     }else{
+      const found=await api<Row>('/vehicles?q='+encodeURIComponent(vin));
+      setExisting((found.items||[]).find((r:Row)=>String(r.vin||'').trim().toUpperCase()===vin.toUpperCase())||null);
+     }
+    }catch{/* Keep the server's conflict message; never create a duplicate. */}
+   }
+  }
   finally{writing.current=false;setSaving(false);}
  }
  const required=new Set(['manufacturer','model','year']);
@@ -125,7 +140,7 @@ export default function VehicleVinQuickAdd({onBack,onCreated}:{onBack:()=>void;o
   <div className="vin-actions"><label>VIN<input aria-label="VIN" value={vin} maxLength={17} spellCheck={false} disabled={saving} onChange={e=>{epoch.current++;setVin(e.target.value.trim().toUpperCase());setResult(null);setDraft({});setExtra({});setLoading(false);setConfirmed(false);setError('');setExisting(null);setPaidQuote(null);setPaidError('');setVinstateReady(null);setVinstateReport(null);setVinstateApproved(false);setVinstateError('');}} placeholder="YV4L12RK6N1970668"/></label>
   <button type="button" disabled={!valid||loading||saving} onClick={()=>void decode()}>{loading?'Визначаємо…':'Визначити автомобіль'}</button><button type="button" disabled={saving} onClick={manual}>Додати вручну</button></div>
   {vin&&!valid&&<p role="status">Введіть 17 символів без I, O, Q.</p>}
-  {error&&<p role="alert">{error}</p>}{existing&&<button onClick={()=>onCreated(existing)}>Відкрити наявний автомобіль</button>}
+  {error&&<p role="alert">{error}</p>}{existing&&<button type="button" className="primary" onClick={()=>onCreated(existing)}>Відкрити наявний автомобіль</button>}
   {result&&<><p role="status">{result.message}</p>
    <div className="vin-summary" role="region" aria-label="Зведення автомобіля"><strong>{[draft.manufacturer,draft.model,draft.year].filter(Boolean).join(' · ')||'Автомобіль потребує уточнення'}</strong><dl>{[['trim','Модифікація'],['body_class','Кузов'],['engine','Двигун'],['fuel_type','Паливо'],['transmission','КПП'],['drive_type','Привід']].map(([key,label])=><div key={key}><dt>{label}</dt><dd>{String(draft[key]||'Не визначено')}</dd></div>)}</dl></div>
    {result.counts&&<p className="vin-counts">Отримано: {result.counts.received_useful} · Важливих уточнень: {result.counts.undefined_important} · Конфліктів: {result.counts.conflicting}</p>}
@@ -161,6 +176,7 @@ export default function VehicleVinQuickAdd({onBack,onCreated}:{onBack:()=>void;o
     </div></details>}
    <p className="vin-disclaimer">Відповідь джерела не підтверджує заводську комплектацію. Рік може бути модельним. Невідомі значення можна залишити порожніми.</p>
    <label className="vin-confirm"><input type="checkbox" checked={confirmed} disabled={saving} onChange={e=>setConfirmed(e.target.checked)}/>Характеристики перевірено, підтверджую додавання</label>
+   {!confirmed&&<small role="status">Щоб додати новий автомобіль, підтвердьте перевірку характеристик. Уже наявний VIN повторно не додається.</small>}
    <section className="vin-paid-panel" aria-label="Розширений VIN-пошук">
     <strong>Потрібно більше характеристик?</strong>
     <p>Додаткова перевірка через платний VIN-каталог. Рік, кузов або КПП можуть залишитися невизначеними навіть після перевірки.</p>
