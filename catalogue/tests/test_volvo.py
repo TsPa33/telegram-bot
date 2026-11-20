@@ -347,3 +347,19 @@ def test_article_batch_resolves_one_pinned_snapshot_and_deduplicates_linked_look
     assert response.status_code==200
     assert response.json()['items']['1']==response.json()['items']['2']
     assert response.json()['vin_verified'] is False
+
+
+def test_vehicle_directory_binds_exact_source_model_id(monkeypatch):
+    monkeypatch.setenv('CATALOGUE_API_KEY','fixture-only')
+    cursor=Cursor(payload())
+    class Connection:
+        def cursor(self):return cursor
+    @contextmanager
+    def connection():yield Connection()
+    monkeypatch.setattr(catalogue_app,'db',connection)
+    response=TestClient(catalogue_app.app).get('/api/v1/vehicles/directory?model_id=13084',
+        headers={'X-Catalogue-Key':'fixture-only'})
+    assert response.status_code==200
+    sql,args=cursor.sql[0]
+    assert 's.model_id=%s' in sql
+    assert args==(0,13084,101)
