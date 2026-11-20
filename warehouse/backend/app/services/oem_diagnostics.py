@@ -52,6 +52,18 @@ def audit(db):
                 and auto_oem.transferable_reference(refs.get(r.id))
                 and auto_oem.valid_reference(car, r, refs[r.id])
             )
+            grouped['selected_modification_oems'] += sum(
+                1 for row in entries if auto_oem.eligible_row(row) and auto_oem.valid_reference(car,row,refs.get(row.id))
+                and refs[row.id].get('status')==auto_oem.AUTO_STATUS
+            )
+            grouped['manually_selected_plan_oems'] += sum(
+                1 for row in entries if auto_oem.eligible_row(row) and auto_oem.valid_reference(car,row,refs.get(row.id))
+                and refs[row.id].get('status')=='user_selected_cross_reference'
+            )
+            other=state.get(auto_oem.CANDIDATES_KEY) or {}
+            grouped['positions_with_unconfirmed_other_modification_oems'] += sum(
+                bool(other.get(row.id)) for row in entries if auto_oem.eligible_row(row)
+            )
             grouped['stock_parts'] += len(parts)
             current_stock = [p for p in parts if p.quantity > 0 and p.availability != 'absent']
             grouped['eligible_stock_parts'] += len(current_stock)

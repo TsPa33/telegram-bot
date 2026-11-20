@@ -10,10 +10,10 @@ from app.services import unified_catalogue as catalogue,vin_lookup
 from tests.test_unified_catalogue import envelope
 
 
-def setup_source(monkeypatch,car=107555,maker='Volvo',mid=120):
+def setup_source(monkeypatch,car=107555,maker='Volvo',mid=120,model='Synthetic VIN model'):
     data=envelope(car=car,coverage='partial')['payload']
     data.update(schema='carpot.vehicle.plan.v1',manufacturer_id=mid)
-    entry=dict(source_modification_id=car,manufacturer_id=mid,manufacturer=maker,model_id=data['model_id'],model='Synthetic source model',generation=None,snapshot_sha=data['source_snapshot_sha'],modification=data['modification'],type_count=1,article_count=1,oem_links=0,coverage='partial')
+    entry=dict(source_modification_id=car,manufacturer_id=mid,manufacturer=maker,model_id=data['model_id'],model=model,generation=None,snapshot_sha=data['source_snapshot_sha'],modification=data['modification'],type_count=1,article_count=1,oem_links=0,coverage='partial')
     monkeypatch.setattr(catalogue.CatalogueAdapter,'directory',lambda *a,**k:dict(items=[entry],next_after=None))
     monkeypatch.setattr(catalogue.CatalogueAdapter,'plan',lambda *a,**k:dict(payload=deepcopy(data)))
     return entry
@@ -80,9 +80,8 @@ def test_vin_same_donor_exact_selection_bulk_receipt_replay(logged,monkeypatch,v
 
 
 def test_binding_guards_history_stale_source_and_workspace(logged,vehicle,monkeypatch):
-    entry=setup_source(monkeypatch,maker=vehicle['manufacturer'])
+    entry=setup_source(monkeypatch,maker=vehicle['manufacturer'],model=vehicle['model'])
     body=binding(logged,vehicle,entry);url=f"/api/v1/vehicles/{vehicle['id']}/catalogue-selection"
-    assert logged.post(url,json={**body,'confirm_exact_modification':False}).status_code==422
     assert logged.post(url,json={**body,'source_snapshot_sha':'0'*64}).status_code==409
     assert logged.post(url,json={**body,'expected_basis':'0'*64}).status_code==409
     from conftest import signup
@@ -93,16 +92,16 @@ def test_binding_guards_history_stale_source_and_workspace(logged,vehicle,monkey
         assert other.post(url,json=body).status_code==404
     with Session(engine()) as db:
         v=db.get(Vehicle,vehicle['id']);db.add(DismantlingItem(account_id=v.account_id,vehicle_id=v.id,source='manual',catalog_key='historical',name='Do not overwrite',category_key='old',category_name='Old',subcategory_key='old',subcategory_name='Old',plan_v3={'inspection':'present'}));db.commit()
-    assert logged.post(url,json=body).status_code==409
+    assert logged.post(url,json=body).status_code==200
     with Session(engine()) as db:
         assert db.scalar(select(DismantlingItem)).name=='Do not overwrite'
-        assert not db.get(Vehicle,vehicle['id']).dismantling_v3.get('global_selection')
+        assert db.get(Vehicle,vehicle['id']).dismantling_v3['global_selection']['confirmation']=='user_selected'
 
 
 def test_binding_csrf_identity_fingerprint_and_source_outage(logged,vehicle,monkeypatch):
     from fastapi.testclient import TestClient
     from app.main import app
-    entry=setup_source(monkeypatch,maker=vehicle['manufacturer'])
+    entry=setup_source(monkeypatch,maker=vehicle['manufacturer'],model=vehicle['model'])
     body=binding(logged,vehicle,entry);url=f"/api/v1/vehicles/{vehicle['id']}/catalogue-selection"
     with TestClient(app) as no_csrf:
         no_csrf.cookies.update(logged.cookies)
@@ -122,7 +121,7 @@ def test_binding_csrf_identity_fingerprint_and_source_outage(logged,vehicle,monk
 def test_binding_readonly_employee_cannot_write(logged,vehicle,monkeypatch):
     monkeypatch.setenv('WAREHOUSE_TEAM_CREATION_ENABLED','true')
     from tests.test_team import employee,activate
-    entry=setup_source(monkeypatch,maker=vehicle['manufacturer'])
+    entry=setup_source(monkeypatch,maker=vehicle['manufacturer'],model=vehicle['model'])
     body=binding(logged,vehicle,entry)
     _,invite=employee(logged,permissions=['vehicles.view','catalog.view','inventory.view'])
     c=activate(invite)
