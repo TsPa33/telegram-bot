@@ -611,3 +611,27 @@ def test_automatic_oem_requires_stable_product_key():
     assert matches(row,{106:product},107555) is None
     row.catalog_key='car:107555:product:106'
     assert matches(row,{106:product},107555)==product
+
+
+def test_auto_oem_xc60_directory_can_match_missing_generation_only_with_exact_engine():
+    """XC60 and XC60 II can match only with a unique, evidence-backed variant."""
+    from types import SimpleNamespace
+    from app.services.auto_oem import SourceCache
+    v=SimpleNamespace(manufacturer='Volvo',model='XC60',generation='',engine_code='B4204T',
+        year=2022,fuel_type='petrol',drive_type='AWD',engine_variant='',engine_displacement_l=2.0)
+    entry=dict(manufacturer='Volvo',model='XC60 II',source_modification_id=126480,
+        model_id=37773,manufacturer_id=120,snapshot_sha='a'*64,
+        modification={'description':'2.0 T5 AWD'},specifications=[
+            {'attributetype':'EngineCode','displayvalue':'B4204T'},
+            {'attributetype':'ConstructionInterval','displayvalue':'03.2017 -'},
+            {'attributetype':'FuelType','displayvalue':'petrol'},
+            {'attributetype':'DriveType','displayvalue':'AWD'},
+            {'attributetype':'Capacity','displayvalue':'2.0 l'}])
+    cache=SourceCache();cache.directory=[entry]
+    assert cache.resolve_directory(v)==(126480,37773,120,'a'*64,True)
+    v.engine_code=''
+    assert cache.resolve_directory(v) is None
+    v.engine_code='B4204T';v.generation='I'
+    assert cache.resolve_directory(v) is None
+    v.generation='';cache.directory.append({**entry,'source_modification_id':126481})
+    assert cache.resolve_directory(v) is None
