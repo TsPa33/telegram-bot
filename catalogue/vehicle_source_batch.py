@@ -211,7 +211,10 @@ def export(source, output, car_ids, model_queries, limit, mapping=None, *, graph
         files[path.name]=file_sha(path)
         sidecar=output/f'oem-{cid}.jsonl'
         if with_oem and sidecar.exists():
-            files[sidecar.name]=file_sha(sidecar)
+            sidecar_sha=file_sha(sidecar)
+            if sidecar.name in files and files[sidecar.name]!=sidecar_sha:
+                raise ValueError('OEM sidecar checkpoint checksum mismatch')
+            files[sidecar.name]=sidecar_sha
         atomic(manifest_path,dict(schema='carpot.source.batch.v1',request=requested,files=files,
              complete=False,source_database='td1q2018',factory_bom=False))
     # PRD export is deterministic keyset pagination. Resume skips only checksum-verified full file.
@@ -234,24 +237,108 @@ def export(source, output, car_ids, model_queries, limit, mapping=None, *, graph
     return manifest
 
 
+def verified_oem_sidecar(path, payload):
+    """Validate every OEM evidence row against exact fitted source article keys.
+
+    The outer checkpoint manifest binds the file's SHA-256 and filename. Each
+    record must additionally match the modification and one of its exact
+    (supplier, article) identities. No cross-model/catalogue guesses.
+    """
+    source_keys={(r['supplier_id'],r['article_number']) for r in payload['articles'].values()}
+    manufacturer=payload['manufacturer_id']
+    count=0
+    with path.open('rb') as stream:
+        for line in stream:
+            count+=1
+            if count>2_000_000 or len(line)>4096:
+                raise ValueError('Oversized or malformed OEM evidence sidecar')
+            try:record=json.loads(line)
+            except (ValueError,UnicodeDecodeError) as exc:
+                raise ValueError('Invalid OEM evidence sidecar JSONL') from exc
+            if (not isinstance(record,list) or len(record)!=4
+                    or type(record[0]) is not int or type(record[2]) is not int
+                    or record[2]!=manufacturer
+                    or not isinstance(record[1],str) or not isinstance(record[3],str)
+                    or not 1<=record[0]<=65535 or not 1<=len(record[1])<=32
+                    or not 1<=len(record[3])<=64
+                    or (record[0],record[1]) not in source_keys):
+                raise ValueError('OEM sidecar reference has no exact fitted source article identity')
+    return count
+
+
+def fitted_oem_references(envelope):
+    """Yield only exact supplier+article+manufacturer OEM keys from source."""
+    payload=envelope['payload']
+    sidecar=envelope.get('_oem_sidecar')
+    if sidecar is not None:
+        with sidecar.open('rb') as stream:
+            for line in stream:
+                record=json.loads(line)
+                yield tuple(record)
+        return
+    for article in payload['articles'].values():
+        for ref in article.get('oem',[]):
+            number=ref.get('OENbr')
+            if (ref.get('manufacturerId')==payload['manufacturer_id'] and
+                    isinstance(number,str) and 0<len(number)<=64 and
+                    1<=article['supplier_id']<=65535 and
+                    0<len(article['article_number'])<=32):
+                yield (article['supplier_id'],article['article_number'],
+                       payload['manufacturer_id'],number)
+
+
+def insert_fitted_oems(target,envelope,allowed_keys):
+    """Idempotent batched relational upsert; caller controls commit/rollback."""
+    inserted=0
+    buffer=[]
+    with target.cursor() as cursor:
+        for key in fitted_oem_references(envelope):
+            if (key[0],key[1]) not in allowed_keys:continue
+            buffer.append(key)
+            if len(buffer)>=250:
+                inserted+=cursor.executemany("""INSERT IGNORE INTO catalogue_oem
+                    (supplier_id,article_number,oem_manufacturer_id,oem_number)
+                    VALUES (%s,%s,%s,%s)""",buffer)
+                buffer.clear()
+        if buffer:
+            inserted+=cursor.executemany("""INSERT IGNORE INTO catalogue_oem
+                (supplier_id,article_number,oem_manufacturer_id,oem_number)
+                VALUES (%s,%s,%s,%s)""",buffer)
+    return inserted
+
+
 def validate_batch(folder, expected_sha):
     path=folder/'manifest.json'
     if file_sha(path)!=expected_sha:raise ValueError('Explicit manifest SHA-256 mismatch')
     manifest=json.loads(path.read_text('utf-8'))
     if manifest.get('schema')!='carpot.source.batch.v1' or not manifest.get('complete'):
         raise ValueError('Incomplete export')
-    result=[];seen=set()
+    result=[];seen=set();sidecars={}
     for name,sha in manifest['files'].items():
-        if name!='prd.json' and (not name.endswith('.json') or not name[:-5].isdigit()):raise ValueError('Invalid manifest path')
+        is_oem=(name.startswith('oem-') and name.endswith('.jsonl')
+                and name[4:-6].isdigit() and int(name[4:-6])>0)
+        is_graph=name.endswith('.json') and name[:-5].isdigit()
+        if name!='prd.json' and not (is_oem or is_graph):raise ValueError('Invalid manifest path')
         if file_sha(folder/name)!=sha:raise ValueError('File checksum mismatch')
         if name=='prd.json':continue
+        if is_oem:
+            car_id=int(name[4:-6])
+            if car_id in sidecars:raise ValueError('Duplicate OEM sidecar')
+            sidecars[car_id]=folder/name
+            continue
         item=verified(folder/name);data=item['payload']
         if name!=f"{data['car_id']}.json" or data['car_id'] in seen:raise ValueError('Duplicate/mismatched modification')
         seen.add(data['car_id']);result.append(item)
     summaries={r['car_id']:r for r in manifest['modifications']}
-    if seen!=set(summaries):raise ValueError('Manifest identity mismatch')
+    if seen!=set(summaries) or not set(sidecars).issubset(seen):raise ValueError('Manifest identity mismatch')
     for item in result:
-        if relation_summary(item['payload'])!=summaries[item['payload']['car_id']]:raise ValueError('Manifest graph mismatch')
+        payload=item['payload'];car_id=payload['car_id']
+        if relation_summary(payload)!=summaries[car_id]:raise ValueError('Manifest graph mismatch')
+        if car_id in sidecars:
+            if payload.get('source_scope')!='passenger_prd_article_oem':
+                raise ValueError('OEM sidecar attached to non-OEM source graph')
+            verified_oem_sidecar(sidecars[car_id],payload)
+            item['_oem_sidecar']=sidecars[car_id]
     return result
 
 
@@ -291,37 +378,26 @@ def review_batch(folder, expected_sha, mapping, reviewer, output):
     return dict(reviewed=len(prepared),manifest_sha256=file_sha(output/'manifest.json'))
 
 
-def add_oems_to_existing_graph(target, item, old):
-    """Enrich existing immutable snapshots through exact shared fitment triples."""
+def add_oems_to_existing_graph(target,item,old):
+    """Preserve the versioned snapshot and enrich only exact shared article links."""
     data=item['payload']
     with target.cursor() as cursor:
         cursor.execute('SELECT payload FROM catalogue_volvo_versions WHERE car_id=%s AND sha256=%s',
                        (data['car_id'],old['sha256']))
         version=cursor.fetchone()
-        if not version:
-            raise ValueError('Existing snapshot version unavailable')
+        if not version:raise ValueError('Existing snapshot version unavailable')
         current=validate(json.loads(version['payload']))
         if digest(current)!=old['sha256'] or current['manufacturer_id']!=data['manufacturer_id']:
             raise ValueError('Existing snapshot identity mismatch')
         old_links={(row['product_id'],key) for row in current['categories'] for key in row['articles']}
         new_links={(row['product_id'],key) for row in data['categories'] for key in row['articles']}
-        references=set()
-        for key in {key for _,key in old_links & new_links}:
-            article=data['articles'][key]
-            for ref in article.get('oem',[]):
-                number=ref.get('OENbr')
-                if (ref.get('manufacturerId')==data['manufacturer_id'] and isinstance(number,str)
-                        and 0<len(number)<=64 and 0<len(article['article_number'])<=32
-                        and 1<=article['supplier_id']<=65535):
-                    references.add((article['supplier_id'],article['article_number'],data['manufacturer_id'],number))
-        inserted=0
-        ordered=sorted(references)
-        for offset in range(0,len(ordered),250):
-            inserted+=cursor.executemany("""INSERT IGNORE INTO catalogue_oem
-                (supplier_id,article_number,oem_manufacturer_id,oem_number) VALUES (%s,%s,%s,%s)""",
-                ordered[offset:offset+250])
+    shared_keys={key for _,key in old_links & new_links}
+    allowed={(data['articles'][key]['supplier_id'],data['articles'][key]['article_number'])
+             for key in shared_keys}
+    inserted=insert_fitted_oems(target,item,allowed)
     target.commit()
     return inserted,len(new_links-old_links)
+
 
 
 def upload(target, envelopes):
@@ -363,6 +439,13 @@ def upload(target, envelopes):
                 c.execute('SELECT car_id FROM catalogue_volvo_snapshots WHERE car_id=%s FOR UPDATE',(data['car_id'],))
                 if c.fetchone():raise ValueError('Concurrent snapshot import; retry inventory')
             upload_snapshot(target,item,approved_identity=(data['manufacturer_id'],data['model_id'],data['car_id']))
+            # The source snapshot is committed before relational OEM upserts.
+            # A failed upsert is safe to retry: the next run uses the existing
+            # snapshot's exact-shared-link path above. INSERT IGNORE is idempotent.
+            if data.get('source_scope')=='passenger_prd_article_oem':
+                allowed={(a['supplier_id'],a['article_number']) for a in data['articles'].values()}
+                oem_inserted+=insert_fitted_oems(target,item,allowed)
+                target.commit()
             uploaded+=1
         except Exception:
             target.rollback();raise
