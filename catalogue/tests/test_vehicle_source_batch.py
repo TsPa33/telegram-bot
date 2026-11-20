@@ -392,7 +392,10 @@ def test_existing_graph_relational_oem_sidecar_import_requires_shared_prd_link(t
             assert 'catalogue_volvo_versions' in sql
         def fetchone(self):return {'payload':encode(original).decode('utf-8')}
         def executemany(self,sql,rows):
-            calls.extend(rows)
+            if 'INSERT IGNORE INTO catalogue_oem' in sql:
+                calls.extend(rows)
+            else:
+                assert 'INSERT IGNORE INTO catalogue_parts' in sql
             return len(rows)
     class DB:
         commits=0
