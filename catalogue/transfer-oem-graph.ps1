@@ -107,6 +107,12 @@ try {
             '--target-server-uuid',$TargetServerUuid,
             '--output',(Join-Path $Checkpoint 'staging-before'))
     }
+    if ($ModelId -eq 0 -and $ModificationId.Count -eq 0) {
+        # The complete passenger crawl also records, without importing or
+        # guessing, which commercial linkage structures need a separate adapter.
+        Invoke-Importer -Arguments @('commercial-audit','--output',
+            (Join-Path $Checkpoint 'commercial-source-preflight'))
+    }
     if ($ModificationId.Count -gt 0) {
         foreach ($id in ($ModificationId | Sort-Object -Unique)) {
             Write-Host "Processing explicit passenger modification $id" -ForegroundColor Cyan
