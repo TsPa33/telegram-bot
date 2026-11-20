@@ -73,8 +73,13 @@ class CatalogueAdapter:
                 raise CatalogueUnavailable('invalid_identity')
         return result
 
-    def directory(self, after=0, car_id=None):
-        result=self.get('global:vehicles/directory',{'after':after,**({'car_id':car_id} if car_id is not None else {})})
+    def directory(self, after=0, car_id=None, *, maker_key=None, model_keys=None):
+        params={'after':after}
+        if car_id is not None:
+            params['car_id']=car_id
+        if maker_key and model_keys:
+            params.update(maker_key=maker_key,model_key=sorted(model_keys))
+        result=self.get('global:vehicles/directory',params)
         if not isinstance(result,dict) or not isinstance(result.get('items'),list) or len(result['items'])>100:
             raise CatalogueUnavailable('invalid_directory')
         return result
@@ -90,6 +95,15 @@ class CatalogueAdapter:
         except (ValueError,KeyError,TypeError,AttributeError):
             raise CatalogueUnavailable('invalid_contract') from None
         return data
+
+    def article_batch(self, car_id, product_ids, snapshot_sha):
+        data=self.get(f'global:vehicles/{car_id}/article-batch',{'product_id':product_ids,'snapshot_sha':snapshot_sha})
+        ids={str(pid) for pid in product_ids}
+        if (not isinstance(data,dict) or data.get('car_id')!=car_id or data.get('snapshot_sha')!=snapshot_sha
+                or not isinstance(data.get('items'),dict) or set(data['items'])!=ids
+                or any(not isinstance(items,list) for items in data['items'].values())):
+            raise CatalogueUnavailable('invalid_article_batch')
+        return {int(pid):items for pid,items in data['items'].items()}
 
     def articles(self, car_id, product_id, snapshot_sha, *, global_source=False):
         data=self.get(f'global:vehicles/{int(car_id)}/articles' if global_source else f'modifications/{int(car_id)}/articles',{'product_id':product_id,'snapshot_sha':snapshot_sha})
@@ -216,7 +230,7 @@ def workspace_entries(db, who, vehicle):
 
 
 PLAN_KEYS=('schema','manufacturer_id','car_id','model_id','modification','observed_at','source_snapshot_sha','coverage','coverage_verified','taxonomy_status','photos')
-TYPE_KEYS=('product_id','name_source','name_uk','category_path','kind','mapping_reviewed_by','taxonomy_note','article_count','source_prd_sha256')
+TYPE_KEYS=('product_id','name_source','name_uk','category_path','kind','mapping_reviewed_by','taxonomy_note','article_count','source_prd_sha256','source_fitment_linked')
 
 
 def compact_payload(payload):

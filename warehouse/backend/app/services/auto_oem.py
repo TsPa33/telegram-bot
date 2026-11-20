@@ -81,6 +81,12 @@ def source_identity(v):
     if not (code=='b4204t27' or vin_match):return None
     return (107555,13084,120,None,False)
 
+def eligible_product(product):
+    return bool(product and (product.get('kind')=='part' or (
+        product.get('kind')=='review' and product.get('source_fitment_linked') is True
+    )))
+
+
 def matches(row,products,car_id):
     if row.source!='carpot.catalogue.v1':
         return None
@@ -89,7 +95,7 @@ def matches(row,products,car_id):
     if not key.startswith(prefix) or not key[len(prefix):].isascii() or not key[len(prefix):].isdigit():
         return None
     product=products.get(int(key[len(prefix):]))
-    return product if product and product.get('kind')=='part' else None
+    return product if eligible_product(product) else None
 
 
 def position_tags(value):
@@ -200,28 +206,30 @@ def receipt_oem(db,row,part):
 class SourceCache:
     def __init__(self,adapter=None):
         self.adapter=adapter or catalogue.CatalogueAdapter()
-        self.plans={};self.offers={};self.exact={};self.lock=threading.Lock();self.directory=None
+        self.plans={};self.offers={};self.exact={};self.lock=threading.Lock();self.directory=None;self.directories={}
     def resolve_directory(self,v):
         """Unique exact maker/model/engine/year match among published snapshots."""
         code=lambda s:''.join(c for c in normalized(s) if c.isalnum())
         engine=code(v.engine_code)
         if not engine or type(v.year) is not int:return None
-        if self.directory is None:
+        maker=code(v.manufacturer);model=code(v.model)
+        models={model}
+        if v.generation and normalized(v.generation)!='не уточнено':models.add(code(v.model+' '+v.generation))
+        key=(maker,tuple(sorted(models)))
+        entries=self.directory if self.directory is not None else self.directories.get(key)
+        if entries is None:
             entries=[];cursor=0
             for _ in range(100):
-                result=self.adapter.directory(after=cursor)
+                result=self.adapter.directory(after=cursor,maker_key=maker,model_keys=models)
                 entries.extend(result['items'])
                 nxt=result.get('next_after')
                 if nxt is None:break
                 if type(nxt) is not int or nxt<=cursor:raise catalogue.CatalogueUnavailable('invalid_directory_cursor')
                 cursor=nxt
             else:raise catalogue.CatalogueUnavailable('directory_limit')
-            self.directory=entries
-        maker=code(v.manufacturer);model=code(v.model)
-        models={model}
-        if v.generation and normalized(v.generation)!='не уточнено':models.add(code(v.model+' '+v.generation))
+            self.directories[key]=entries
         candidates=[]
-        for e in self.directory:
+        for e in entries:
             if code(e.get('manufacturer'))!=maker or code(e.get('model')) not in models:continue
             attrs={a.get('attributetype'):str(a.get('displayvalue') or '') for a in e.get('specifications',[]) if isinstance(a,dict)}
             if code(attrs.get('EngineCode'))!=engine:continue
@@ -265,6 +273,28 @@ class SourceCache:
             if len(self.offers)>=512:self.offers.clear()
             self.offers[key]=offers
         return offers
+
+    def get_offer_batch(self,payload,products):
+        from app.api.unified_catalogue import saved_articles
+
+        if payload['schema']!='carpot.vehicle.plan.v1':
+            return {}
+        result={}
+        ids=list(products)
+        for start in range(0,len(ids),12):
+            try:
+                batch=self.adapter.article_batch(payload['car_id'],ids[start:start+12],payload['source_snapshot_sha'])
+            except catalogue.CatalogueUnavailable:
+                continue
+            for pid,items in batch.items():
+                try:
+                    result[pid]=saved_articles(products[pid],{'payload':payload},
+                        oem_manufacturer_id=payload['manufacturer_id'],linked_items=items)
+                except (ValueError,TypeError,KeyError):
+                    continue
+                except Exception:
+                    log.warning('Invalid OEM article batch for modification %s, product %s',payload['car_id'],pid)
+        return result
 
     def exact_lookup(self,make,brand,article,supplier_id):
         key=(make,brand,article,supplier_id)
@@ -341,7 +371,7 @@ def enrich_vehicle(engine,account_id,vehicle_id,cache=None):
             payload=cache.plan(identity);products={p['product_id']:p for p in payload['categories']}
             needed = {
                 pid: product for pid, product in products.items()
-                if create_plan and product['kind']=='part' and product['article_count']>0
+                if create_plan and eligible_product(product) and product['article_count']>0
             }
             for row in type_rows:
                 p=matches(row,products,payload['car_id'])
@@ -349,8 +379,10 @@ def enrich_vehicle(engine,account_id,vehicle_id,cache=None):
             def offers_for(product):
                 try:return cache.get_offers(payload,product)
                 except Exception:return None
+            data=cache.get_offer_batch(payload,needed)
+            remaining={pid:p for pid,p in needed.items() if pid not in data}
             with ThreadPoolExecutor(max_workers=4) as pool:
-                data={pid:offers for pid,offers in zip(needed,pool.map(offers_for,needed.values())) if offers is not None}
+                data.update({pid:offers for pid,offers in zip(remaining,pool.map(offers_for,remaining.values())) if offers is not None})
         except Exception:
             # Exact-article lookup remains independent of snapshot availability.
             log.warning('OEM snapshot lookup deferred for donor %s',vehicle_id)
@@ -368,7 +400,7 @@ def enrich_vehicle(engine,account_id,vehicle_id,cache=None):
         rows=list(db.scalars(select(DismantlingItem).where(DismantlingItem.vehicle_id==v.id,DismantlingItem.account_id==account_id).order_by(DismantlingItem.id).with_for_update()))
         parts={p.id:p for p in db.scalars(select(Part).where(Part.vehicle_id==v.id,Part.account_id==account_id).order_by(Part.id).with_for_update())}
         if (payload and create_plan and accepts_automatic_plan(v) and not rows and not parts
-                and any(product['kind']=='part' for product in products.values())
+                and any(eligible_product(product) for product in products.values())
                 and not catalogue.has_plan_history(db, v)):
             catalogue.persist(db, v, {'payload':payload, 'sha256':digest(payload)}, allow_partial=True)
             rows = list(db.scalars(select(DismantlingItem).where(

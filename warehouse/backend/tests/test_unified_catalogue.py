@@ -611,3 +611,16 @@ def test_automatic_oem_requires_stable_product_key():
     assert matches(row,{106:product},107555) is None
     row.catalog_key='car:107555:product:106'
     assert matches(row,{106:product},107555)==product
+
+
+def test_pinned_batch_validates_product_and_snapshot_identity(monkeypatch):
+    monkeypatch.setenv('WAREHOUSE_CATALOGUE_URL','https://catalogue.example.test')
+    monkeypatch.setenv('WAREHOUSE_CATALOGUE_HOST','catalogue.example.test')
+    monkeypatch.setenv('WAREHOUSE_CATALOGUE_KEY','fixture')
+    def transport(request):
+        assert request.url.params.get_list('product_id')==['106','107']
+        return httpx.Response(200,json={'car_id':107555,'snapshot_sha':'a'*64,'items':{'106':[],'107':[]}})
+    adapter=CatalogueAdapter(transport=httpx.MockTransport(transport))
+    assert adapter.article_batch(107555,[106,107],'a'*64)=={106:[],107:[]}
+    with pytest.raises(CatalogueUnavailable):
+        adapter.article_batch(107555,[106,107],'b'*64)
