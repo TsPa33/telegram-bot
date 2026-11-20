@@ -246,3 +246,24 @@ def test_model_scoped_passenger_oem_discovery_uses_indexed_modelid_and_keeps_fit
     assert result['complete'] is True
     assert any('WHERE modelid=%s AND id>%s' in sql for sql,_ in calls)
     with pytest.raises(ValueError):batch.discover_passenger(None,0,4,model_id=-1)
+
+
+def test_commercial_preflight_never_assumes_passenger_fitment(monkeypatch):
+    source_calls=[]
+    def fake_read(db,sql,args=()):
+        source_calls.append((sql,args))
+        if 'information_schema.COLUMNS' in sql:
+            return [{'TABLE_NAME':'commercial_vehicles','COLUMN_NAME':'id','DATA_TYPE':'int'},
+                    {'TABLE_NAME':'commercial_vehicle_pds','COLUMN_NAME':'commercialvehicleid','DATA_TYPE':'int'}]
+        if 'FROM commercial_vehicles ORDER BY id' in sql:
+            return [{'id':910},{'id':911}]
+        if 'FROM article_links WHERE linkageid' in sql:
+            return [{'linkagetypeid':1,'productid':5}] if args[0]==910 else []
+        raise AssertionError(sql)
+    monkeypatch.setattr(batch,'read',fake_read)
+    result=batch.inspect_commercial_source(None)
+    assert result['mode']=='commercial_preflight'
+    assert result['commercial_fitment_verified'] is False
+    assert result['linkage_examples'][0]['observed_linkage_type_ids']==[1]
+    assert result['linkage_examples'][1]['observed_linkage_type_ids']==[]
+    assert all(sql.strip().startswith('SELECT') for sql,_ in source_calls)
