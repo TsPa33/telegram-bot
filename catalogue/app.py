@@ -239,13 +239,8 @@ def linked_article_oems(items, manufacturer_id):
     return references
 
 
-@app.get('/api/v1/volvo/modifications/{car_id}/articles', dependencies=[Depends(authorize)])
-def volvo_articles(car_id: int, product_id: int = Query(gt=0), snapshot_sha: str = Query(pattern=r'^[0-9a-f]{64}$')):
-    data, sha = volvo_snapshot(car_id,snapshot_sha)
-    category = next((r for r in data['categories'] if r['product_id'] == product_id), None)
-    if category is None:
-        raise HTTPException(404, 'Part type not present for this modification')
-    items = [data['articles'][k] for k in category['articles']]
+def enrich_linked_articles(data, keys):
+    items = [data['articles'][k] for k in sorted(set(keys))]
     references = linked_article_oems(items, data['manufacturer_id'])
     enriched = []
     for item in items:
@@ -258,8 +253,36 @@ def volvo_articles(car_id: int, product_id: int = Query(gt=0), snapshot_sha: str
         if not supplier and imported.get('supplier'):
             supplier = [{'description':imported['supplier']}]
         enriched.append({**item, 'supplier':supplier, 'oem': [*item.get('oem', []), *additions]})
-    return dict(items=enriched, snapshot_sha=sha, product_id=product_id, car_id=car_id,
-                fitment='source_modification_link', vin_verified=False, photos='metadata_only')
+    return dict(zip(sorted(set(keys)), enriched))
+
+
+@app.get('/api/v1/volvo/modifications/{car_id}/articles', dependencies=[Depends(authorize)])
+def volvo_articles(car_id: int, product_id: int = Query(gt=0), snapshot_sha: str = Query(pattern=r'^[0-9a-f]{64}$')):
+    data, sha = volvo_snapshot(car_id,snapshot_sha)
+    category = next((r for r in data['categories'] if r['product_id'] == product_id), None)
+    if category is None:
+        raise HTTPException(404, 'Part type not present for this modification')
+    enriched = enrich_linked_articles(data, category['articles'])
+    return dict(items=[enriched[key] for key in category['articles']], snapshot_sha=sha,
+                product_id=product_id, car_id=car_id, fitment='source_modification_link',
+                vin_verified=False, photos='metadata_only')
+
+
+@app.get('/api/v1/vehicles/{car_id}/article-batch', dependencies=[Depends(authorize)])
+def vehicle_article_batch(car_id: int, product_id: list[int] = Query(min_length=1,max_length=12),
+                          snapshot_sha: str = Query(pattern=r'^[0-9a-f]{64}$')):
+    data, sha = volvo_snapshot(car_id,snapshot_sha)
+    products = {row['product_id']:row['articles'] for row in data['categories']}
+    if any(pid not in products for pid in product_id):
+        raise HTTPException(404, 'Part type not present for this modification')
+    selected = {pid:products[pid] for pid in product_id}
+    keys = [key for linked in selected.values() for key in linked]
+    if len(keys)>3000:
+        raise HTTPException(413, 'Article batch too large')
+    enriched = enrich_linked_articles(data, keys)
+    return dict(car_id=car_id, snapshot_sha=sha, fitment='source_modification_link',
+                vin_verified=False, items={pid:[enriched[key] for key in linked]
+                                          for pid,linked in selected.items()})
 
 
 @app.get('/api/v1/volvo/diagnostics', dependencies=[Depends(authorize)])
@@ -278,15 +301,29 @@ def volvo_diagnostics():
 
 
 @app.get('/api/v1/vehicles/directory', dependencies=[Depends(authorize)])
-def vehicle_directory(after: int = Query(0, ge=0), limit: int = Query(100, ge=1, le=100), car_id: int | None = Query(None,gt=0)):
+def vehicle_directory(after: int = Query(0, ge=0), limit: int = Query(100, ge=1, le=100), car_id: int | None = Query(None,gt=0),
+                      maker_key: str | None = Query(None,min_length=1,max_length=100),
+                      model_key: list[str] | None = Query(None,max_length=2)):
     # Directory-only rows have no fitment graph and must never advertise readiness.
     try:
         with db() as conn, conn.cursor() as cur:
+            filters=['s.car_id>%s']
+            args=[after]
+            if car_id is not None:
+                filters.append('s.car_id=%s')
+                args.append(car_id)
+            if maker_key:
+                filters.append("REGEXP_REPLACE(LOWER(f.name_source),'[^[:alnum:]]','')=%s")
+                args.append(maker_key)
+            if model_key:
+                filters.append("REGEXP_REPLACE(LOWER(m.name_source),'[^[:alnum:]]','') IN ("+
+                               ','.join(['%s']*len(model_key))+')')
+                args.extend(model_key)
             cur.execute("""SELECT s.car_id,s.model_id AS source_model_id,m.manufacturer_id,m.name_source AS model_name,
                 f.name_source AS manufacturer_name FROM catalogue_volvo_snapshots s
                 JOIN catalogue_models m ON m.id=s.model_id
                 JOIN catalogue_manufacturers f ON f.id=m.manufacturer_id
-                WHERE s.car_id>%s AND (%s IS NULL OR s.car_id=%s) ORDER BY s.car_id LIMIT %s""",(after,car_id,car_id,limit+1))
+                WHERE """+' AND '.join(filters)+' ORDER BY s.car_id LIMIT %s',(*args,limit+1))
             rows=cur.fetchall()
     except pymysql.MySQLError:
         raise HTTPException(503,'Vehicle catalogue unavailable') from None
