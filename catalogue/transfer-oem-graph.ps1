@@ -54,7 +54,7 @@ function Get-SecretText([string]$Prompt) {
 }
 
 function Write-Cursor([int]$Value) {
-    $destination = Join-Path $Checkpoint 'passenger-cursor.txt'
+    $destination = Join-Path $Checkpoint ($(if ($ApplyToStaging) { 'passenger-cursor-staging.txt' } else { 'passenger-cursor-export.txt' }))
     $temporary = "$destination.tmp"
     [IO.File]::WriteAllText($temporary, "$Value", [Text.Encoding]::ASCII)
     Move-Item -Force $temporary $destination
@@ -104,7 +104,7 @@ try {
             Import-One $id
         }
     } else {
-        $cursorFile = Join-Path $Checkpoint 'passenger-cursor.txt'
+        $cursorFile = Join-Path $Checkpoint ($(if ($ApplyToStaging) { 'passenger-cursor-staging.txt' } else { 'passenger-cursor-export.txt' }))
         [int]$after = if (Test-Path $cursorFile) { [int](Get-Content $cursorFile -Raw) } else { 0 }
         $pages = 0
         $total = 0
