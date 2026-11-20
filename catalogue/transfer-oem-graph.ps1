@@ -62,13 +62,13 @@ function Write-Cursor([int]$Value) {
 
 function Import-One([int]$Id) {
     $folder = Join-Path $Checkpoint "passenger-$Id"
-    Invoke-Importer @('export','--graph-only','--with-oem','--omit-prd-export',
+    Invoke-Importer -Arguments @('export','--graph-only','--with-oem','--omit-prd-export',
         '--car-id',"$Id",'--max-modifications','1','--output',$folder)
     $manifest = Join-Path $folder 'manifest.json'
     $sha = (Get-FileHash -Path $manifest -Algorithm SHA256).Hash.ToLowerInvariant()
-    Invoke-Importer @('validate','--output',$folder,'--manifest-sha256',$sha)
+    Invoke-Importer -Arguments @('validate','--output',$folder,'--manifest-sha256',$sha)
     if ($ApplyToStaging) {
-        Invoke-Importer @('upload','--confirm-catalogue-staging',
+        Invoke-Importer -Arguments @('upload','--confirm-catalogue-staging',
             '--target-server-uuid',$TargetServerUuid,'--output',$folder,
             '--manifest-sha256',$sha)
     }
@@ -94,7 +94,7 @@ try {
         $env:DEST_DATABASE = $TargetDatabase
         $env:DEST_USER = 'root'
         $env:DEST_PASSWORD = Get-SecretText 'Railway catalogue-staging MySQL password'
-        Invoke-Importer @('inventory','--confirm-catalogue-staging',
+        Invoke-Importer -Arguments @('inventory','--confirm-catalogue-staging',
             '--target-server-uuid',$TargetServerUuid,
             '--output',(Join-Path $Checkpoint 'staging-before'))
     }
@@ -112,7 +112,7 @@ try {
         while (-not $complete) {
             if ($MaxPages -gt 0 -and $pages -ge $MaxPages) { break }
             $discoveryFolder = Join-Path $Checkpoint 'discovery'
-            Invoke-Importer @('discover','--after-id',"$after",
+            Invoke-Importer -Arguments @('discover','--after-id',"$after",
                 '--scan-limit',"$PageSize",'--output',$discoveryFolder)
             $page = Get-Content (Join-Path $discoveryFolder 'discovery.json') -Raw | ConvertFrom-Json
             if ([int]$page.after_id -ne $after -or [int]$page.next_after_id -lt $after) {
@@ -136,7 +136,7 @@ try {
         else { Write-Host 'Checkpoint saved. Repeat the same command to continue.' -ForegroundColor Yellow }
     }
     if ($ApplyToStaging) {
-        Invoke-Importer @('inventory','--confirm-catalogue-staging',
+        Invoke-Importer -Arguments @('inventory','--confirm-catalogue-staging',
             '--target-server-uuid',$TargetServerUuid,
             '--output',(Join-Path $Checkpoint 'staging-after'))
     }
