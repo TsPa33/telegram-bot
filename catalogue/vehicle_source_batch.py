@@ -102,11 +102,12 @@ def attach_source_oems(source, payload):
     validate(payload)
 
 
-def export(source, output, car_ids, model_queries, limit, mapping=None, *, graph_only=False, with_oem=False):
+def export(source, output, car_ids, model_queries, limit, mapping=None, *, graph_only=False, with_oem=False, omit_prd_export=False):
     output.mkdir(parents=True, exist_ok=True)
     requested = dict(car_ids=sorted(set(car_ids)), model_queries=sorted(set(model_queries)), limit=limit,
                      mapping_sha=digest(mapping or {}), graph_only=graph_only)
     if with_oem:requested['with_oem']=True
+    if omit_prd_export:requested['omit_prd_export']=True
     manifest_path = output/'manifest.json'
     previous = json.loads(manifest_path.read_text('utf-8')) if manifest_path.exists() else None
     if previous and previous['request'] != requested:
@@ -174,16 +175,17 @@ def export(source, output, car_ids, model_queries, limit, mapping=None, *, graph
              complete=False,source_database='td1q2018',factory_bom=False))
     # PRD export is deterministic keyset pagination. Resume skips only checksum-verified full file.
     prd=output/'prd.json'
-    if prd.name in files:
-        if file_sha(prd)!=files[prd.name]:raise ValueError('PRD checksum mismatch')
-    else:
-        rows=[];after=0
-        while True:
-            batch=read(source, 'SELECT id,assemblygroupdescription,description,normalizeddescription,usagedescription FROM prd WHERE id>%s ORDER BY id LIMIT 1000',(after,))
-            if not batch:break
-            rows.extend(batch);after=int(batch[-1]['id'])
-            if len(rows)>100000:raise ValueError('PRD record cap exceeded')
-        atomic(prd,rows);files[prd.name]=file_sha(prd)
+    if not omit_prd_export:
+        if prd.name in files:
+            if file_sha(prd)!=files[prd.name]:raise ValueError('PRD checksum mismatch')
+        else:
+            rows=[];after=0
+            while True:
+                batch=read(source, 'SELECT id,assemblygroupdescription,description,normalizeddescription,usagedescription FROM prd WHERE id>%s ORDER BY id LIMIT 1000',(after,))
+                if not batch:break
+                rows.extend(batch);after=int(batch[-1]['id'])
+                if len(rows)>100000:raise ValueError('PRD record cap exceeded')
+            atomic(prd,rows);files[prd.name]=file_sha(prd)
     manifest=dict(schema='carpot.source.batch.v1',request=requested,files=files,complete=True,
         source_database='td1q2018',factory_bom=False,discovery=discovery,
         modifications=[relation_summary(verified(output/f'{cid}.json')['payload']) for cid in sorted(selected)])
@@ -367,6 +369,7 @@ def main():
     p.add_argument('--max-modifications',type=int,default=8)
     p.add_argument('--graph-only',action='store_true',help='Export PRD/article links without bulky per-article enrichment')
     p.add_argument('--with-oem',action='store_true',help='Include exact manufacturer OEMs in graph-only export')
+    p.add_argument('--omit-prd-export',action='store_true',help='For OEM graph checkpoint runs, omit redundant whole-database PRD dump')
     p.add_argument('--mapping',type=Path)
     p.add_argument('--manifest-sha256')
     p.add_argument('--reviewed-by')
@@ -375,6 +378,7 @@ def main():
     p.add_argument('--target-server-uuid')
     a=p.parse_args()
     if a.with_oem and (a.mode!='export' or not a.graph_only):p.error('--with-oem requires export --graph-only')
+    if a.omit_prd_export and (a.mode!='export' or not a.graph_only or not a.with_oem):p.error('--omit-prd-export requires export --graph-only --with-oem')
     if a.graph_only and a.mode!='export':p.error('--graph-only is only valid for export')
     if not 1<=a.max_modifications<=100 or any(i<=0 for i in a.car_id):p.error('Bounded positive identities required')
     if a.mode=='review':
@@ -416,7 +420,7 @@ def main():
         with connection('SOURCE','td1q2018') as source:
             read(source,'SET SESSION max_execution_time=30000')
             read(source,'START TRANSACTION WITH CONSISTENT SNAPSHOT, READ ONLY')
-            try:result=export(source,a.output,a.car_id,a.discover_model,a.max_modifications,json.loads(a.mapping.read_text('utf-8-sig')) if a.mapping else {},graph_only=a.graph_only,with_oem=a.with_oem)
+            try:result=export(source,a.output,a.car_id,a.discover_model,a.max_modifications,json.loads(a.mapping.read_text('utf-8-sig')) if a.mapping else {},graph_only=a.graph_only,with_oem=a.with_oem,omit_prd_export=a.omit_prd_export)
             finally:source.rollback()
         print(json.dumps(dict(modifications=len(result['modifications']),manifest_sha256=file_sha(a.output/'manifest.json'))))
     finally:lock.unlink(missing_ok=True)
