@@ -352,7 +352,6 @@ def test_volvo_oem_preview_wrong_brand_and_workspace(logged,volvo,client):
 
 def test_volvo_oem_selection_plan_then_stock(logged,volvo,monkeypatch):
     from app.services.inventory import snapshot
-    from app.services.catalogue_format import digest
     from uuid import uuid4
     base=f"/api/v1/vehicles/{volvo['id']}"
     assert logged.post(base+'/unified-catalogue/base').status_code==200
@@ -393,26 +392,25 @@ def test_volvo_oem_selection_plan_then_stock(logged,volvo,monkeypatch):
     key='base:'+row['id']
     assert logged.post(base+'/unified-catalogue/stock',json={'keys':[key],'confirm_physical_receipt':True}).status_code==200
     data=preview();row=next(x for x in data['plan_items'] if x['id']==row['id'])
-    assert row['reference']['oem_number']=='OEM-ONE' and row['stock_eligible']
-    with Session(engine()) as db:
-        p=db.get(Part,row['part_id']);p.selling_price=123.45;p.article_number='MANUAL';db.commit()
-        before=snapshot(p)
-    assert logged.post(url,json=body(data,row,assign_stock=True)).status_code==422
-    request=body(data,row,assign_stock=True,confirm_physical_oem=True)
-    result=logged.post(url,json=request)
-    assert result.status_code==200,result.text
-    assert result.json()['stock_assigned']
+    assert row['reference']['oem_number']=='OEM-ONE' and not row['stock_eligible']
     tree=logged.get(base+'/assemblies').json()
     assert next(x for x in tree['items'] if x['id']==row['id'])['stock_oem']=='OEM-ONE'
-    assert logged.post(url,json=request).json()==result.json()
+    card=logged.get('/api/v1/parts/'+row['part_id']).json()
+    assert card['oem_number']=='OEM-ONE'
     with Session(engine()) as db:
-        p=db.get(Part,row['part_id']);after=snapshot(p)
-        assert p.oem_number=='OEM-ONE' and p.oem_provenance['vin_verified'] is False
-        assert {k:v for k,v in before.items() if k not in ('oem_number','oem_provenance')}=={k:v for k,v in after.items() if k not in ('oem_number','oem_provenance')}
+        p=db.get(Part,row['part_id'])
+        assert p.oem_number=='OEM-ONE'
+        assert p.oem_provenance['product_id']==106
+        assert p.oem_provenance['physical_number_confirmed_by_user'] is False
         assert db.scalar(select(func.count()).select_from(Operation).where(Operation.type=='receipt'))==1
-    data=preview();row=next(x for x in data['plan_items'] if x['id']==row['id'])
-    assert not row['stock_eligible']
-    assert logged.post(url,json=body(data,row,assign_stock=True,confirm_physical_oem=True)).status_code==409
+        # Simulate a card received by the previous version before legacy copy worked.
+        p.oem_number='';p.oem_provenance={};db.commit()
+        aid=p.account_id
+    from app.services.auto_oem import enrich_vehicle
+    monkeypatch.setattr(CatalogueAdapter,'plan',lambda *a,**kw:pytest.fail('Saved reference needs no plan request'))
+    assert enrich_vehicle(engine(),aid,volvo['id'])==1
+    with Session(engine()) as db:
+        assert db.get(Part,row['part_id']).oem_number=='OEM-ONE'
     with Session(engine()) as db:
         v=db.get(Vehicle,volvo['id']);v.year=2019;db.commit()
     assert logged.post(url,json=body(data,row)).status_code==409
@@ -451,14 +449,14 @@ def test_automatic_oem_backfill_and_receipt(logged,volvo,monkeypatch):
     from app.services.auto_oem import enrich_vehicle,SourceCache,source_identity
     from app.services.inventory import snapshot
     base=f"/api/v1/vehicles/{volvo['id']}"
-    assert logged.post(base+'/unified-catalogue/base').status_code==200
+    assert create(logged,volvo).status_code==200
     with Session(engine()) as db:
-        v=db.get(Vehicle,volvo['id']);v.year=2016;v.vin='YV4A22PK2G1092943';v.fuel_type='petrol';v.drive_type='awd';v.engine_displacement_l=2
-        rows=list(db.scalars(select(DismantlingItem).where(DismantlingItem.vehicle_id==v.id).order_by(DismantlingItem.id)))
-        target=rows[0];target.name='Лампа';target.position='';target.category_name='Освітлення';target.included=True
+        v=db.get(Vehicle,volvo['id'])
+        target=db.scalar(select(DismantlingItem).where(DismantlingItem.vehicle_id==v.id))
         aid=v.account_id;rid=target.id;vid=v.id
-        db.commit();before=[snapshot(x) for x in rows];assert source_identity(v)[0]==107555
-    monkeypatch.setattr(CatalogueAdapter,'plan',lambda self,car,**kw:envelope(car,'partial'))
+        before=[snapshot(target)]
+        assert source_identity(v)[0]==107555
+    monkeypatch.setattr(CatalogueAdapter,'plan',lambda self,car,**kw:envelope(car))
     assert enrich_vehicle(engine(),aid,vid)==1
     assert enrich_vehicle(engine(),aid,vid)==0
     with Session(engine()) as db:
@@ -470,7 +468,7 @@ def test_automatic_oem_backfill_and_receipt(logged,volvo,monkeypatch):
     assert logged.patch(base+'/oem/'+rid,json={'expected_oem':'OEM-ONE','oem_number':'OEM-TWO'}).status_code==200
     assert logged.patch(base+'/oem/'+rid,json={'expected_oem':'OEM-ONE','oem_number':'OEM-TWO'}).status_code==409
     assert enrich_vehicle(engine(),aid,vid)==0
-    assert logged.post(base+'/unified-catalogue/stock',json={'keys':['base:'+rid],'confirm_physical_receipt':True}).status_code==200
+    assert logged.post(base+'/unified-catalogue/stock',json={'keys':['catalogue:'+rid],'confirm_physical_receipt':True}).status_code==200
     with Session(engine()) as db:
         p=db.get(Part,db.get(DismantlingItem,rid).part_id)
         assert p.oem_number=='OEM-TWO' and p.quantity==1 and not p.oem_provenance['vin_verified']
@@ -541,3 +539,149 @@ def test_auto_oem_directory_requires_unique_engine_and_year():
     cache.directory.append({**entry,'source_modification_id':89})
     assert cache.resolve_directory(v) is None
     cache.directory=[entry];v.year=2014;assert cache.resolve_directory(v) is None
+
+
+def test_vin_donor_automatically_gets_plan_oem_and_stock_carryover(logged, monkeypatch):
+    from app.services.auto_oem import automatic_identity, enrich_vehicle
+
+    response=logged.post('/api/v1/vehicles',json={
+        'manufacturer':'Volvo','model':'XC90 II','year':2016,'vin':'YV4A22PK2G1092943',
+        'engine_code':'B4204T27','fuel_type':'petrol','drive_type':'AWD',
+    })
+    assert response.status_code==201,response.text
+    vehicle_id=response.json()['id']
+    with Session(engine()) as db:
+        aid=db.get(Vehicle,vehicle_id).account_id
+    monkeypatch.setattr(CatalogueAdapter,'plan',lambda self,car,**kw:envelope(car))
+    monkeypatch.setattr(CatalogueAdapter,'articles',lambda *a,**kw:detail_items())
+
+    assert enrich_vehicle(engine(),'other-workspace',vehicle_id)==0
+    assert enrich_vehicle(engine(),aid,vehicle_id)==1
+    assert enrich_vehicle(engine(),aid,vehicle_id)==0
+    with Session(engine()) as db:
+        v=db.get(Vehicle,vehicle_id)
+        assert automatic_identity(v)['car_id']==107555
+        row=db.scalar(select(DismantlingItem))
+        assert row.catalog_key=='car:107555:product:106'
+        assert db.scalar(select(func.count()).select_from(DismantlingItem))==1
+        assert db.scalar(select(func.count()).select_from(Part))==0
+        v.engine_variant='changed'
+        assert automatic_identity(v) is None
+        row_id=row.id
+
+    base=f"/api/v1/vehicles/{vehicle_id}"
+    assert logged.get(base+'/global-dismantling').json()['oems']['106']['oem_number']=='OEM-ONE'
+    assert logged.post(base+'/unified-catalogue/stock',json={
+        'keys':['catalogue:'+row_id],'confirm_physical_receipt':True,
+    }).status_code==200
+    with Session(engine()) as db:
+        part=db.scalar(select(Part))
+        assert part.oem_number=='OEM-ONE'
+        assert part.oem_provenance['source_modification_id']==107555
+        assert part.oem_provenance['source_article']=='EXAMPLE'
+        assert part.oem_provenance['retrieved_at']
+
+
+def test_automatic_plan_preserves_existing_rows(logged, volvo, monkeypatch):
+    from app.services.auto_oem import enrich_vehicle
+
+    base=f"/api/v1/vehicles/{volvo['id']}"
+    assert logged.post(base+'/unified-catalogue/base').status_code==200
+    with Session(engine()) as db:
+        aid=db.get(Vehicle,volvo['id']).account_id
+        previous=set(db.scalars(select(DismantlingItem.id)))
+    monkeypatch.setattr(CatalogueAdapter,'plan',lambda self,car,**kw:envelope(car))
+    monkeypatch.setattr('app.services.auto_oem.SourceCache.resolve_directory',
+                        lambda self,v:(107555,13084,120,'a'*64,True))
+
+    assert enrich_vehicle(engine(),aid,volvo['id'])==0
+    with Session(engine()) as db:
+        assert set(db.scalars(select(DismantlingItem.id)))==previous
+        assert db.scalar(select(func.count()).select_from(Part))==0
+
+
+def test_automatic_oem_requires_stable_product_key():
+    from types import SimpleNamespace
+    from app.services.auto_oem import matches
+    product={'kind':'part','name_uk':'Лампа'}
+    row=SimpleNamespace(source='base',catalog_key='lamp',name='Лампа')
+    assert matches(row,{106:product},107555) is None
+    row.source='carpot.catalogue.v1'
+    row.catalog_key='car:107556:product:106'
+    assert matches(row,{106:product},107555) is None
+    row.catalog_key='car:107555:product:106'
+    assert matches(row,{106:product},107555)==product
+
+
+def test_pinned_batch_validates_product_and_snapshot_identity(monkeypatch):
+    monkeypatch.setenv('WAREHOUSE_CATALOGUE_URL','https://catalogue.example.test')
+    monkeypatch.setenv('WAREHOUSE_CATALOGUE_HOST','catalogue.example.test')
+    monkeypatch.setenv('WAREHOUSE_CATALOGUE_KEY','fixture')
+    def transport(request):
+        assert request.url.params.get_list('product_id')==['106','107']
+        return httpx.Response(200,json={'car_id':107555,'snapshot_sha':'a'*64,'items':{'106':[],'107':[]}})
+    adapter=CatalogueAdapter(transport=httpx.MockTransport(transport))
+    assert adapter.article_batch(107555,[106,107],'a'*64)=={106:[],107:[]}
+    with pytest.raises(CatalogueUnavailable):
+        adapter.article_batch(107555,[106,107],'b'*64)
+
+
+def test_auto_oem_xc60_directory_can_match_missing_generation_only_with_exact_engine():
+    """XC60 and XC60 II can match only with a unique, evidence-backed variant."""
+    from types import SimpleNamespace
+    from app.services.auto_oem import SourceCache
+    v=SimpleNamespace(manufacturer='Volvo',model='XC60',generation='',engine_code='B4204T',
+        year=2022,fuel_type='petrol',drive_type='AWD',engine_variant='',engine_displacement_l=2.0)
+    entry=dict(manufacturer='Volvo',model='XC60 II',source_modification_id=126480,
+        model_id=37773,manufacturer_id=120,snapshot_sha='a'*64,
+        modification={'description':'2.0 T5 AWD'},specifications=[
+            {'attributetype':'EngineCode','displayvalue':'B4204T'},
+            {'attributetype':'ConstructionInterval','displayvalue':'03.2017 -'},
+            {'attributetype':'FuelType','displayvalue':'petrol'},
+            {'attributetype':'DriveType','displayvalue':'AWD'},
+            {'attributetype':'Capacity','displayvalue':'2.0 l'}])
+    cache=SourceCache();cache.directory=[entry]
+    assert cache.resolve_directory(v)==(126480,37773,120,'a'*64,True)
+    v.engine_code=''
+    assert cache.resolve_directory(v) is None
+    v.engine_code='B4204T';v.generation='I'
+    assert cache.resolve_directory(v) is None
+    v.generation='';cache.directory.append({**entry,'source_modification_id':126481})
+    assert cache.resolve_directory(v) is None
+
+
+def test_xc60_confirmed_modification_builds_plan_and_oem_without_vin_guess(logged, monkeypatch):
+    """The six imported XC60 variants are usable after exact source confirmation."""
+    from app.services import unified_catalogue as catalogue
+    from app.services.auto_oem import enrich_vehicle
+
+    response=logged.post('/api/v1/vehicles',json={
+        'manufacturer':'Volvo','model':'XC60','year':2022,
+        'vin':'YV4L12RK6N1970668',
+    })
+    assert response.status_code==201,response.text
+    vid=response.json()['id']
+    with Session(engine()) as db:
+        v=db.get(Vehicle,vid)
+        aid=v.account_id
+        v.dismantling_v3={'global_selection':dict(
+            car_id=126480,model_id=37773,manufacturer_id=120,
+            source_snapshot_sha='a'*64,vehicle_basis=catalogue.vehicle_basis(v))}
+        db.commit()
+
+    source=envelope(126480)
+    source['payload']['model_id']=37773
+    source['payload']['source_snapshot_sha']='a'*64
+    monkeypatch.setattr(CatalogueAdapter,'plan',lambda self,car,**kw:source)
+    monkeypatch.setattr(CatalogueAdapter,'articles',lambda *a,**kw:detail_items())
+    assert enrich_vehicle(engine(),aid,vid)==1
+    assert enrich_vehicle(engine(),aid,vid)==0
+    with Session(engine()) as db:
+        rows=list(db.scalars(select(DismantlingItem).where(DismantlingItem.vehicle_id==vid)))
+        assert len(rows)==1
+        assert rows[0].catalog_key=='car:126480:product:106'
+        ref=db.get(Vehicle,vid).dismantling_v3['volvo_oem_references'][rows[0].id]
+        assert ref['source_modification_id']==126480
+        assert ref['oem_number']=='OEM-ONE'
+        assert not ref['vin_verified']
+        assert db.scalar(select(func.count()).select_from(Part).where(Part.vehicle_id==vid))==0

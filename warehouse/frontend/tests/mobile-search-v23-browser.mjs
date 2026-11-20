@@ -22,7 +22,7 @@ try{for(const width of [320,390,430,1440]){
  await stockRow.click({position:{x:4,y:4}});const preview=page.locator('#search-part-preview');await expect(preview).toBeVisible();await contained(preview.locator('.ui12-photo-stage img'));await preview.getByRole('button',{name:'Наступне фото',exact:true}).click();await expect(preview.locator('.ui12-photo-stage img')).toHaveAttribute('src',tall);await contained(preview.locator('.ui12-photo-stage img'));await overflow();await shot('inventory-photo-preview');await preview.getByRole('button',{name:'Закрити швидкий перегляд'}).click();
  // Automatic OEM: backend sweep logic, actual auth/DB, no catalogue controls.
  const volvo=await post('/vehicles',{manufacturer:'Volvo',model:'XC90 II',year:2016});
- await post('/vehicles/'+volvo.id+'/unified-catalogue/base',{});
+ await post('/vehicles/'+volvo.id+'/unified-catalogue',{model_id:13084,source_modification_id:107555,confirm_exact_modification:true});
  const automatic=await post('/__dv2_auto_oem/'+volvo.id,{});
  assert(automatic.count>=1);
  const plan=await get('/vehicles/'+volvo.id+'/assemblies');

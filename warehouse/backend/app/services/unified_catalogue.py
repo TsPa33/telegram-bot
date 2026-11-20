@@ -73,8 +73,15 @@ class CatalogueAdapter:
                 raise CatalogueUnavailable('invalid_identity')
         return result
 
-    def directory(self, after=0, car_id=None):
-        result=self.get('global:vehicles/directory',{'after':after,**({'car_id':car_id} if car_id is not None else {})})
+    def directory(self, after=0, car_id=None, *, maker_key=None, model_keys=None):
+        params={'after':after}
+        if car_id is not None:
+            params['car_id']=car_id
+        if maker_key:
+            params['maker_key']=maker_key
+        if model_keys:
+            params['model_key']=sorted(model_keys)
+        result=self.get('global:vehicles/directory',params)
         if not isinstance(result,dict) or not isinstance(result.get('items'),list) or len(result['items'])>100:
             raise CatalogueUnavailable('invalid_directory')
         return result
@@ -90,6 +97,15 @@ class CatalogueAdapter:
         except (ValueError,KeyError,TypeError,AttributeError):
             raise CatalogueUnavailable('invalid_contract') from None
         return data
+
+    def article_batch(self, car_id, product_ids, snapshot_sha):
+        data=self.get(f'global:vehicles/{car_id}/article-batch',{'product_id':product_ids,'snapshot_sha':snapshot_sha})
+        ids={str(pid) for pid in product_ids}
+        if (not isinstance(data,dict) or data.get('car_id')!=car_id or data.get('snapshot_sha')!=snapshot_sha
+                or not isinstance(data.get('items'),dict) or set(data['items'])!=ids
+                or any(not isinstance(items,list) for items in data['items'].values())):
+            raise CatalogueUnavailable('invalid_article_batch')
+        return {int(pid):items for pid,items in data['items'].items()}
 
     def articles(self, car_id, product_id, snapshot_sha, *, global_source=False):
         data=self.get(f'global:vehicles/{int(car_id)}/articles' if global_source else f'modifications/{int(car_id)}/articles',{'product_id':product_id,'snapshot_sha':snapshot_sha})
@@ -143,7 +159,16 @@ def saved_state(vehicle):
     return (vehicle.dismantling_v3 or {}).get('unified_catalogue')
 
 
-def persist(db, who, vehicle, envelope, *, allow_partial=False):
+def has_plan_history(db, vehicle):
+    from sqlalchemy import select
+    from app.models import DismantlingItem, Part, VehicleChecklistItem
+
+    return any(db.scalar(select(model.id).where(
+        model.account_id == vehicle.account_id, model.vehicle_id == vehicle.id
+    ).limit(1)) for model in (DismantlingItem, Part, VehicleChecklistItem))
+
+
+def persist(db, vehicle, envelope, *, allow_partial=False):
     """Persist potential types only. Existing plan/manual data never overwritten."""
     from sqlalchemy import select
     from fastapi import HTTPException
@@ -154,11 +179,8 @@ def persist(db, who, vehicle, envelope, *, allow_partial=False):
         if existing['payload'].get('source_snapshot_sha',existing['sha256']) != envelope['payload'].get('source_snapshot_sha',envelope['sha256']):
             raise HTTPException(409, 'Збережений план вже існує. Зміна модифікації потребує окремого узгодження.')
         return existing
-    # Never merge a new source into a donor with work/history by similar labels.
-    from app.models import Part, VehicleChecklistItem
-    for cls in (DismantlingItem, Part, VehicleChecklistItem):
-        if db.scalar(select(cls.id).where(cls.account_id == who.workspace_account_id, cls.vehicle_id == vehicle.id).limit(1)):
-            raise HTTPException(409, 'Автомобіль вже має план або складську історію. Наявні рішення збережено.')
+    if has_plan_history(db, vehicle):
+        raise HTTPException(409, 'Автомобіль вже має план або складську історію. Наявні рішення збережено.')
     payload = envelope['payload']
     validate_plan(payload)
     before = snapshot(vehicle)
@@ -169,7 +191,7 @@ def persist(db, who, vehicle, envelope, *, allow_partial=False):
         if not allow_partial and (not row.get('name_uk') or len(path)!=3):
             raise HTTPException(409,'Категоризація потребує перевірки')
         stable = lambda text: hashlib.sha256(text.encode()).hexdigest()[:24]
-        db.add(DismantlingItem(account_id=who.workspace_account_id, vehicle_id=vehicle.id,
+        db.add(DismantlingItem(account_id=vehicle.account_id, vehicle_id=vehicle.id,
             source='carpot.catalogue.v1', catalog_key=f"car:{payload['car_id']}:product:{row['product_id']}",
             category_key=stable(root), category_name=root, subcategory_key=stable(root + '/' + sub),
             subcategory_name=sub, name=row.get('name_uk') or row.get('name_source') or 'Потребує уточнення', position='', quantity=1))
@@ -177,7 +199,7 @@ def persist(db, who, vehicle, envelope, *, allow_partial=False):
     local_sha=hashlib.sha256(json.dumps(projection,sort_keys=True,ensure_ascii=False,separators=(',',':')).encode()).hexdigest()
     envelope={'payload':projection,'sha256':local_sha,'vehicle_basis':vehicle_basis(vehicle)}
     vehicle.dismantling_v3 = {**(vehicle.dismantling_v3 or {}), 'unified_catalogue': envelope}
-    record(db, who.workspace_account_id, vehicle, 'unified_catalogue_save',
+    record(db, vehicle.account_id, vehicle, 'unified_catalogue_save',
            'Збережено потенційний план Catalogue; склад не змінено', before)
     db.flush()
     return envelope
@@ -210,7 +232,7 @@ def workspace_entries(db, who, vehicle):
 
 
 PLAN_KEYS=('schema','manufacturer_id','car_id','model_id','modification','observed_at','source_snapshot_sha','coverage','coverage_verified','taxonomy_status','photos')
-TYPE_KEYS=('product_id','name_source','name_uk','category_path','kind','mapping_reviewed_by','taxonomy_note','article_count','source_prd_sha256')
+TYPE_KEYS=('product_id','name_source','name_uk','category_path','kind','mapping_reviewed_by','taxonomy_note','article_count','source_prd_sha256','source_fitment_linked')
 
 
 def compact_payload(payload):
