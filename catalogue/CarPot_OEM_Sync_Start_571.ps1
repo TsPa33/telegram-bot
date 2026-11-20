@@ -43,16 +43,17 @@ if ($dirty) {
 & git -C $worktree checkout --detach "origin/$branch"
 Assert-Exit 'Update isolated worktree'
 
-Write-Host '2/3 Exporting all source-linked XC60 II modifications (model 37773)...' -ForegroundColor Cyan
+Write-Host '2/3 Exporting the next source-linked passenger batch across ALL makes...' -ForegroundColor Cyan
 Write-Host 'Source: local td1q2018 (read-only). Target: LOCAL FILES ONLY; no Railway writes.'
 $script = Join-Path $worktree 'catalogue\transfer-oem-graph.ps1'
-& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $script -ModelId 37773 -Checkpoint $output
+& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $script -PageSize 50 -MaxPages 20 -Checkpoint $output
 Assert-Exit 'MySQL source-only export'
 
 Write-Host '3/3 Finished source-only export.' -ForegroundColor Green
-$folder = Join-Path $output 'model-37773'
+$folder = $output
 Write-Host "Source graphs: $folder"
 Write-Host 'To inspect/check point:'
 Get-ChildItem -Path $folder -Filter 'manifest.json' -Recurse -ErrorAction SilentlyContinue |
     Select-Object -First 8 FullName,Length
+Write-Host 'Repeat the SAME launcher to resume the next batch; no files are uploaded to Railway yet.' -ForegroundColor Yellow
 Write-Host 'No passwords or database credentials need to be shared.' -ForegroundColor Green
