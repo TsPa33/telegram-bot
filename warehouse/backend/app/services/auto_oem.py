@@ -659,6 +659,19 @@ def enrich_vehicle(engine,account_id,vehicle_id,cache=None):
             v.dismantling_v3={**state,REF_KEY:refs,CANDIDATES_KEY:candidates,OUTCOMES_KEY:outcomes}
             record(db,account_id,v,'vehicle_update','Каталожні OEM',before,after_extra={'automatic_oem':True})
         db.commit()
+        # Operational acceptance must count nonempty persisted OEM fields,
+        # not mutations: a stock update can legitimately clear an invalid number.
+        active=[p for p in parts.values() if not p.archived and p.quantity>0 and p.availability!='absent']
+        valid_refs=sum(bool(eligible_row(row) and valid_reference(v,row,refs.get(row.id))
+                            and transferable_reference(refs.get(row.id))) for row in rows)
+        failures={name:sum(value==name for value in outcomes.values())
+                  for name in ('no_verified_prd_binding','no_selected_modification_oem','article_lookup_pending')}
+        log.info('OEM lifecycle coverage vehicle=%s donor_number=%s model=%s year=%s source_modification=%s plan_total=%d plan_valid_oem=%d stock_total=%d stock_nonempty_oem=%d unmatched_source_prd=%d missing_selected_oem=%d pending_articles=%d',
+                 vehicle_id,v.number,v.model,v.year,payload['car_id'] if payload else None,
+                 sum(eligible_row(row) for row in rows),valid_refs,
+                 len(active),sum(bool(p.oem_number) for p in active),
+                 failures['no_verified_prd_binding'],failures['no_selected_modification_oem'],
+                 failures['article_lookup_pending'])
         log.info('OEM enrichment committed vehicle=%s plan_refs=%d stock_updates=%d source_modification=%s',
                  vehicle_id,added,stock_changes,payload['car_id'] if payload else None)
         return added+stock_changes
