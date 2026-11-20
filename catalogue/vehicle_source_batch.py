@@ -287,6 +287,35 @@ def fitted_oem_references(envelope):
                        payload['manufacturer_id'],number)
 
 
+def insert_fitted_parts(target,envelope,allowed_keys):
+    """Create only exact source supplier/article identities required by OEM API.
+
+    Never overwrite names or prices of already imported catalogue parts.
+    """
+    data=envelope['payload']
+    rows=[]
+    for article in data['articles'].values():
+        key=(article['supplier_id'],article['article_number'])
+        if key not in allowed_keys:
+            continue
+        sid,number=key
+        if not (type(sid) is int and 1<=sid<=65535
+                and isinstance(number,str) and 1<=len(number)<=32):
+            raise ValueError('Invalid source article identity in catalogue parts')
+        # Original catalogue article name is descriptive metadata only.
+        name=article.get('name_source')
+        if name is not None and not isinstance(name,str):
+            name=None
+        rows.append((sid,number,name[:128] if name else None))
+    count=0
+    with target.cursor() as cursor:
+        for offset in range(0,len(rows),250):
+            count+=cursor.executemany("""INSERT IGNORE INTO catalogue_parts
+                (supplier_id,article_number,name_source) VALUES (%s,%s,%s)""",
+                rows[offset:offset+250])
+    return count
+
+
 def insert_fitted_oems(target,envelope,allowed_keys):
     """Idempotent batched relational upsert; caller controls commit/rollback."""
     inserted=0
@@ -394,6 +423,7 @@ def add_oems_to_existing_graph(target,item,old):
     shared_keys={key for _,key in old_links & new_links}
     allowed={(data['articles'][key]['supplier_id'],data['articles'][key]['article_number'])
              for key in shared_keys}
+    insert_fitted_parts(target,item,allowed)
     inserted=insert_fitted_oems(target,item,allowed)
     target.commit()
     return inserted,len(new_links-old_links)
@@ -444,6 +474,7 @@ def upload(target, envelopes):
             # snapshot's exact-shared-link path above. INSERT IGNORE is idempotent.
             if data.get('source_scope')=='passenger_prd_article_oem':
                 allowed={(a['supplier_id'],a['article_number']) for a in data['articles'].values()}
+                insert_fitted_parts(target,item,allowed)
                 oem_inserted+=insert_fitted_oems(target,item,allowed)
                 target.commit()
             uploaded+=1
