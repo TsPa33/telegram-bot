@@ -278,7 +278,10 @@ class SourceCache:
         code=lambda s:''.join(c for c in normalized(s) if c.isalnum())
         engine=code(v.engine_code)
         if type(v.year) is not int:return []
-        maker=code(v.manufacturer);model=code(v.model)
+        maker=code(v.manufacturer)
+        # "XC60 II (246)" is a TecDoc model/platform display label.
+        # The platform code in parentheses is not part of the model identity.
+        model=code(re.sub(r'[(][^)]*[)]','',v.model or ''))
         generation=code(v.generation) if normalized(v.generation) not in ('', 'не уточнено') else ''
         roman=('x','ix','viii','vii','vi','iv','iii','ii','v','i')
         aliases={'1':'i','2':'ii','3':'iii','4':'iv','5':'v','6':'vi','7':'vii','8':'viii','9':'ix','10':'x'}
@@ -314,7 +317,7 @@ class SourceCache:
         # is called "XC60 II". Treat those as the same explicit generation.
         # Do not cross an explicitly different generation.
         for e in entries:
-            entry_model=code(e.get('model'))
+            entry_model=code(re.sub(r'[(][^)]*[)]','',e.get('model') or ''))
             suffix=entry_model[len(model):] if entry_model.startswith(model) else None
             source_generation=(suffix in roman or suffix in aliases)
             matches_model=(entry_model in models or
