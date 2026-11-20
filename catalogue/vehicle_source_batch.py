@@ -331,6 +331,39 @@ def upload(target, envelopes):
     return result
 
 
+def inspect_commercial_source(source):
+    """SELECT-only schema and bounded linkage sample for DAF/commercial support.
+
+    Linkage IDs are not globally unique across source data domains. This is
+    discovery, not proof that any sampled link applies to a DAF vehicle.
+    """
+    cols=read(source,"""SELECT TABLE_NAME,COLUMN_NAME,DATA_TYPE
+        FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA=%s AND TABLE_NAME IN
+          ('commercial_vehicles','commercial_vehicle_pds',
+           'commercial_vehicle_attributes','commercial_vehicle_prd')
+        ORDER BY TABLE_NAME,ORDINAL_POSITION""",('td1q2018',))
+    groups={}
+    for row in cols:
+        groups.setdefault(value(row,'TABLE_NAME'),[]).append(dict(
+            name=value(row,'COLUMN_NAME'),type=value(row,'DATA_TYPE')))
+    sample=[]
+    if any(c['name'].casefold()=='id' for c in groups.get('commercial_vehicles',[])):
+        vehicles=read(source,'SELECT id FROM commercial_vehicles ORDER BY id LIMIT 8')
+        for vehicle in vehicles:
+            vid=int(value(vehicle,'id'))
+            # A linkageid might coincide with another entity domain: no
+            # commercial fitment assertion until linkage type is validated.
+            link=read(source,'SELECT linkagetypeid,productid FROM article_links WHERE linkageid=%s LIMIT 40',(vid,))
+            sample.append(dict(source_id=vid,observed_linkage_type_ids=sorted({
+                int(value(row,'linkagetypeid')) for row in link
+            }),observed_link_count_capped=len(link)))
+    return dict(source_database='td1q2018',mode='commercial_preflight',
+                read_only=True,commercial_fitment_verified=False,
+                columns=groups,linkage_examples=sample,
+                next_step='Validate commercial linkagetype and product domain; do not reuse passenger type 2 automatically')
+
+
 def discover_passenger(source, after_id, scan_limit, model_id=None):
     """Keyset scan without manually supplied IDs. Source is always SELECT-only.
 
@@ -367,7 +400,7 @@ def discover_passenger(source, after_id, scan_limit, model_id=None):
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)
-    p.add_argument('mode',choices=['export','validate','inventory','upload','review','discover'])
+    p.add_argument('mode',choices=['export','validate','inventory','upload','review','discover','commercial-audit'])
     p.add_argument('--output',type=Path,required=True)
     p.add_argument('--car-id',type=int,action='append',default=[])
     p.add_argument('--after-id',type=int,default=0,help='SELECT-only passenger discovery keyset cursor')
@@ -411,6 +444,18 @@ def main():
             else:result=upload(target,envelopes)
         print(json.dumps(dict(mode=a.mode,rows=len(result)) if a.mode=='inventory' else result));return
     if os.getenv('SOURCE_HOST','127.0.0.1') not in ('127.0.0.1','localhost') or os.getenv('SOURCE_DATABASE','td1q2018')!='td1q2018':p.error('Only local td1q2018 source allowed')
+    if a.mode=='commercial-audit':
+        with connection('SOURCE','td1q2018') as source:
+            read(source,'SET SESSION max_execution_time=30000')
+            read(source,'START TRANSACTION READ ONLY')
+            try:result=inspect_commercial_source(source)
+            finally:source.rollback()
+        a.output.mkdir(parents=True,exist_ok=True)
+        atomic(a.output/'commercial-source-audit.json',result)
+        print(json.dumps(dict(mode='commercial-audit',
+                              sampled=len(result['linkage_examples']),
+                              fitment_verified=False)))
+        return
     if a.mode=='discover':
         if a.after_id<0 or not 1<=a.scan_limit<=500 or (a.model_id is not None and a.model_id<=0):p.error('Invalid discovery cursor/page size or model ID')
         with connection('SOURCE','td1q2018') as source:
