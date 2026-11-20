@@ -218,11 +218,18 @@ class SourceCache:
             else:raise catalogue.CatalogueUnavailable('directory_limit')
             self.directory=entries
         maker=code(v.manufacturer);model=code(v.model)
+        generation=code(v.generation) if normalized(v.generation) not in ('', 'не уточнено') else ''
         models={model}
-        if v.generation and normalized(v.generation)!='не уточнено':models.add(code(v.model+' '+v.generation))
+        if generation:models.add(code(v.model+' '+v.generation))
         candidates=[]
         for e in self.directory:
-            if code(e.get('manufacturer'))!=maker or code(e.get('model')) not in models:continue
+            entry_model=code(e.get('model'))
+            # Some vehicle records keep just "XC60", while the source directory
+            # names the generation "XC60 II". Only broaden a *missing* generation;
+            # the mandatory engine code, year and unique result still gate matching.
+            unknown_generation_suffix=(not generation and entry_model.startswith(model)
+                and re.fullmatch(r'(?:i|ii|iii|iv|v|vi|vii|viii|ix|x)',entry_model[len(model):] or '') is not None)
+            if code(e.get('manufacturer'))!=maker or not (entry_model in models or unknown_generation_suffix):continue
             attrs={a.get('attributetype'):str(a.get('displayvalue') or '') for a in e.get('specifications',[]) if isinstance(a,dict)}
             if code(attrs.get('EngineCode'))!=engine:continue
             interval=attrs.get('ConstructionInterval') or e.get('modification',{}).get('constructioninterval') or ''
