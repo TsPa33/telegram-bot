@@ -333,3 +333,69 @@ def test_oem_sidecar_import_filters_to_exact_existing_article_keys(tmp_path):
     calls.clear()
     assert batch.insert_fitted_oems(Target(),envelope,{(5,'OTHER')})==0
     assert calls==[]
+
+
+def test_staging_upload_applies_sidecar_to_new_graph_without_snapshot_oem_bloat(tmp_path,monkeypatch):
+    p=payload()
+    p['source_scope']='passenger_prd_article_oem'
+    sidecar=tmp_path/'oem-99.jsonl'
+    sidecar.write_bytes(encode([5,'TEST',77,'EXACT-OEM'])+b'\n')
+    envelope={'payload':p,'sha256':digest(p),'_oem_sidecar':sidecar}
+    assert batch.verified_oem_sidecar(sidecar,p)==1
+    monkeypatch.setattr(batch,'inventory',lambda target:[])
+    monkeypatch.setattr(batch,'upload_snapshot',lambda target,item,approved_identity:None)
+    rows=[]
+    class Cursor:
+        last=''
+        def __enter__(self):return self
+        def __exit__(self,*args):pass
+        def execute(self,sql,args=()):
+            self.last=sql
+        def fetchone(self):
+            if self.last.startswith('SELECT manufacturer_id'):return {'manufacturer_id':77}
+            return None
+        def executemany(self,sql,items):
+            assert 'INSERT IGNORE INTO catalogue_oem' in sql
+            rows.extend(items)
+            return len(items)
+    class DB:
+        commits=0
+        rollbacks=0
+        def cursor(self):return Cursor()
+        def commit(self):self.commits+=1
+        def rollback(self):self.rollbacks+=1
+    target=DB()
+    result=batch.upload(target,[envelope])
+    assert result['uploaded']==1
+    assert result['existing_graph_oems_inserted']==1
+    assert rows==[(5,'TEST',77,'EXACT-OEM')]
+    assert target.commits==1 and target.rollbacks==0
+
+
+def test_existing_graph_relational_oem_sidecar_import_requires_shared_prd_link(tmp_path,monkeypatch):
+    p=payload();p['source_scope']='passenger_prd_article_oem'
+    original=deepcopy(p)
+    old_sha=digest(original)
+    sidecar=tmp_path/'oem-99.jsonl'
+    sidecar.write_bytes(encode([5,'TEST',77,'VOLVO-OEM'])+b'\n')
+    envelope={'payload':p,'sha256':digest(p),'_oem_sidecar':sidecar}
+    calls=[]
+    class Cursor:
+        def __enter__(self):return self
+        def __exit__(self,*args):pass
+        def execute(self,sql,args=()):
+            assert 'catalogue_volvo_versions' in sql
+        def fetchone(self):return {'payload':encode(original).decode('utf-8')}
+        def executemany(self,sql,rows):
+            calls.extend(rows)
+            return len(rows)
+    class DB:
+        commits=0
+        def cursor(self):return Cursor()
+        def commit(self):self.commits+=1
+    old={'car_id':99,'model_id':88,'sha256':old_sha}
+    target=DB()
+    inserted,gaps=batch.add_oems_to_existing_graph(target,envelope,old)
+    assert (inserted,gaps)==(1,0)
+    assert calls==[(5,'TEST',77,'VOLVO-OEM')]
+    assert target.commits==1
