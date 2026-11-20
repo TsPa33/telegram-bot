@@ -4,6 +4,7 @@ export class ApiError extends Error {
   constructor(
     message: string,
     public status: number,
+    public detail?: unknown,
   ) {
     super(message);
   }
@@ -39,8 +40,10 @@ export async function api<T = Row>(
   }
   if (!response.ok) {
     let message = "Не вдалося виконати запит. Спробуйте ще раз.";
+    let detail: unknown;
     try {
       const data = await response.json();
+      detail = data.detail;
       message =
         typeof data.detail === "string"
           ? data.detail
@@ -53,7 +56,7 @@ export async function api<T = Row>(
     if (response.status === 401 && !path.startsWith("/auth/"))
       window.dispatchEvent(new Event("warehouse:logout"));
     if(response.status===403&&!path.startsWith('/auth/'))window.dispatchEvent(new Event('warehouse:permissions-changed'));
-    throw new ApiError(message, response.status);
+    throw new ApiError(message, response.status, detail);
   }
   if (expectedStatus !== undefined && response.status !== expectedStatus)
     throw new ApiError("Сервер не підтвердив готовність функції.", response.status);
