@@ -329,11 +329,40 @@ def upload(target, envelopes):
     return result
 
 
+def discover_passenger(source, after_id, scan_limit):
+    """Keyset scan without manually supplied IDs. Source is always SELECT-only.
+
+    Scan by the passenger modification primary key (not the huge article_links
+    table), then probe the exact source relation for each candidate. The caller
+    commits its checkpoint only after processing all IDs in this page.
+    """
+    if after_id < 0 or not 1 <= scan_limit <= 500:
+        raise ValueError('Invalid keyset position or bounded scan size')
+    tables={value(r,'TABLE_NAME') for r in read(source,
+        'SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA=%s',('td1q2018',))}
+    table='passanger_cars' if 'passanger_cars' in tables else 'passenger_cars'
+    if table not in tables:
+        raise ValueError('Passenger car modification table missing')
+    candidates=read(source, f'SELECT id FROM {table} WHERE id>%s ORDER BY id LIMIT %s',
+                    (after_id,scan_limit))
+    found=[]
+    for row in candidates:
+        car_id=int(value(row,'id'))
+        link=read(source, 'SELECT productid FROM article_links WHERE linkageid=%s AND linkagetypeid=2 LIMIT 1',(car_id,))
+        if link:found.append(car_id)
+    return {'mode':'discover','after_id':after_id,
+            'next_after_id':int(value(candidates[-1],'id')) if candidates else after_id,
+            'scanned':len(candidates),'linked_ids':found,'complete':len(candidates)<scan_limit,
+            'source':'td1q2018','linkage_type':2}
+
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
-    p.add_argument('mode',choices=['export','validate','inventory','upload','review'])
+    p.add_argument('mode',choices=['export','validate','inventory','upload','review','discover'])
     p.add_argument('--output',type=Path,required=True)
     p.add_argument('--car-id',type=int,action='append',default=[])
+    p.add_argument('--after-id',type=int,default=0,help='SELECT-only passenger discovery keyset cursor')
+    p.add_argument('--scan-limit',type=int,default=50,help='Maximum passenger modifications scanned in one discovery page, 1..500')
     p.add_argument('--discover-model',action='append',default=[])
     p.add_argument('--max-modifications',type=int,default=8)
     p.add_argument('--graph-only',action='store_true',help='Export PRD/article links without bulky per-article enrichment')
@@ -370,6 +399,16 @@ def main():
             else:result=upload(target,envelopes)
         print(json.dumps(dict(mode=a.mode,rows=len(result)) if a.mode=='inventory' else result));return
     if os.getenv('SOURCE_HOST','127.0.0.1') not in ('127.0.0.1','localhost') or os.getenv('SOURCE_DATABASE','td1q2018')!='td1q2018':p.error('Only local td1q2018 source allowed')
+    if a.mode=='discover':
+        if a.after_id<0 or not 1<=a.scan_limit<=500:p.error('Invalid discovery cursor/page size')
+        with connection('SOURCE','td1q2018') as source:
+            read(source,'SET SESSION max_execution_time=30000')
+            read(source,'START TRANSACTION READ ONLY')
+            try:result=discover_passenger(source,a.after_id,a.scan_limit)
+            finally:source.rollback()
+        a.output.mkdir(parents=True,exist_ok=True)
+        atomic(a.output/'discovery.json',result)
+        print(json.dumps(result,ensure_ascii=False));return
     if not a.car_id and not a.discover_model:p.error('Specify exact source IDs or model discovery')
     a.output.mkdir(parents=True,exist_ok=True);lock=a.output/'.batch.lock'
     fd=os.open(lock,os.O_CREAT|os.O_EXCL|os.O_WRONLY,0o600);os.close(fd)
