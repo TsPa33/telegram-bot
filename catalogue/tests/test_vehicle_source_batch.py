@@ -180,3 +180,47 @@ def test_generic_target_transaction_and_rollback(monkeypatch,fail):
         assert batch.upload(target,[envelope])==dict(uploaded=1,skipped=0)
         assert target.commits==1 and target.rollbacks==0
         assert any('INSERT IGNORE INTO catalogue_volvo_versions' in sql for sql,args in calls)
+
+
+def test_passenger_discovery_advances_cursor_without_guessing_missing_links(monkeypatch):
+    calls=[]
+    def fake_read(db,sql,args=()):
+        calls.append((sql,args))
+        if 'information_schema.TABLES' in sql:
+            return [{'TABLE_NAME':'passanger_cars'}]
+        if 'FROM passanger_cars WHERE id>' in sql:
+            return [{'id':12},{'id':20},{'id':27}] if args[0]==10 else []
+        if 'FROM article_links WHERE linkageid=' in sql:
+            return [{'productid':1}] if args[0] in (12,27) else []
+        raise AssertionError(sql)
+    monkeypatch.setattr(batch,'read',fake_read)
+    result=batch.discover_passenger(None,10,3)
+    assert result['linked_ids']==[12,27]
+    assert result['next_after_id']==27
+    assert result['scanned']==3 and not result['complete']
+    last=batch.discover_passenger(None,27,3)
+    assert last['complete'] and last['linked_ids']==[]
+    assert all('SELECT ' in sql for sql,_ in calls)
+    with pytest.raises(ValueError):batch.discover_passenger(None,-1,3)
+
+
+def test_oem_export_can_omit_full_prd_dump_per_modification(tmp_path,monkeypatch):
+    seen=[]
+    def fake_read(db,sql,args=()):
+        seen.append(sql)
+        if 'information_schema.TABLES' in sql:return [{'TABLE_NAME':'passanger_cars'}]
+        if 'FROM passanger_cars' in sql:return [{'id':99,'modelid':88}]
+        if 'FROM models' in sql:return [{'id':88,'manufacturerid':77}]
+        if 'FROM manufacturers' in sql:return [{'id':77,'description':'Synthetic maker','ispassengercar':True}]
+        if 'FROM prd' in sql:raise AssertionError('Must not scan all PRD for every donor')
+        raise AssertionError(sql)
+    def fake_collect(*args,**kwargs):return payload()
+    def fake_attach(source,p):
+        p['source_scope']='passenger_prd_article_oem'
+    monkeypatch.setattr(batch,'read',fake_read)
+    monkeypatch.setattr(batch,'collect',fake_collect)
+    monkeypatch.setattr(batch,'attach_source_oems',fake_attach)
+    batch.export(None,tmp_path,[99],[],1,graph_only=True,with_oem=True,omit_prd_export=True)
+    assert not (tmp_path/'prd.json').exists()
+    assert batch.validate_batch(tmp_path,batch.file_sha(tmp_path/'manifest.json'))[0]['payload']['car_id']==99
+    assert all('FROM prd' not in sql for sql in seen)
