@@ -17,6 +17,7 @@ export function VehicleDeleteActions({onDelete}:{onDelete:()=>void}) {
 
 export default function VehicleCard({vehicle:v,context,onParts,onData,onSaved,onDelete}:Props) {
  const name=`${v.manufacturer} ${v.model}`;
+ const assumed=v.dismantling_v3?.automatic_catalogue_identity;
  return <article className="vehicle-card vehicle-summary-card r1141-card r1146-card corporate-donor-card">
   <div className="r1146-card-intro">
    <div className="corporate-donor-top"><div className="r1146-card-heading">
@@ -25,7 +26,8 @@ export default function VehicleCard({vehicle:v,context,onParts,onData,onSaved,on
     </div><div className="r1146-card-photo"><VehicleImage vehicle={v}/><small className="donor-image-caption">Довідкова ілюстрація</small></div></div>
    <div className="r1146-card-summary">
     {v.dismantling_v3?.global_selection&&<p><strong>Модифікація:</strong> {v.dismantling_v3.global_selection.modification_description||"Немає даних"}</p>}
-    {v.ktype&&<p><strong>Модифікація:</strong> {v.engine||"Вибрана"}</p>}
+    {!v.dismantling_v3?.global_selection&&assumed?.modification_description&&<p><strong>Модифікація (автоматично):</strong> {assumed.modification_description} <small>· Не підтверджена за VIN</small></p>}
+    {v.ktype&&!assumed&&!v.dismantling_v3?.global_selection&&<p><strong>Модифікація:</strong> {v.engine||"Вибрана"}</p>}
     <VehicleQuickPowertrain vehicle={v} onSaved={onSaved}/>
    </div>
   </div>
