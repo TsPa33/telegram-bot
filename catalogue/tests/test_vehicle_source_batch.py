@@ -324,7 +324,10 @@ def test_oem_sidecar_import_filters_to_exact_existing_article_keys(tmp_path):
         def __enter__(self):return self
         def __exit__(self,*args):pass
         def executemany(self,sql,rows):
-            calls.extend(rows)
+            if 'INSERT IGNORE INTO catalogue_oem' in sql:
+                calls.extend(rows)
+            else:
+                assert 'INSERT IGNORE INTO catalogue_parts' in sql
             return len(rows)
     class Target:
         def cursor(self):return Cursor()
@@ -355,8 +358,10 @@ def test_staging_upload_applies_sidecar_to_new_graph_without_snapshot_oem_bloat(
             if self.last.startswith('SELECT manufacturer_id'):return {'manufacturer_id':77}
             return None
         def executemany(self,sql,items):
-            assert 'INSERT IGNORE INTO catalogue_oem' in sql
-            rows.extend(items)
+            if 'INSERT IGNORE INTO catalogue_oem' in sql:
+                rows.extend(items)
+            else:
+                assert 'INSERT IGNORE INTO catalogue_parts' in sql
             return len(items)
     class DB:
         commits=0
@@ -399,3 +404,24 @@ def test_existing_graph_relational_oem_sidecar_import_requires_shared_prd_link(t
     assert (inserted,gaps)==(1,0)
     assert calls==[(5,'TEST',77,'VOLVO-OEM')]
     assert target.commits==1
+
+
+def test_uploaded_graph_registers_exact_articles_for_api_lookup():
+    p=payload()
+    p['source_scope']='passenger_prd_article_oem'
+    captured=[]
+    class Cursor:
+        def __enter__(self):return self
+        def __exit__(self,*args):pass
+        def executemany(self,sql,rows):
+            assert 'INSERT IGNORE INTO catalogue_parts' in sql
+            captured.extend(rows)
+            return len(rows)
+    class Target:
+        def cursor(self):return Cursor()
+    envelope={'payload':p,'sha256':digest(p)}
+    assert batch.insert_fitted_parts(Target(),envelope,{(5,'TEST')})==1
+    assert captured==[(5,'TEST',None)]
+    captured.clear()
+    assert batch.insert_fitted_parts(Target(),envelope,{(5,'MISSING')})==0
+    assert captured==[]
