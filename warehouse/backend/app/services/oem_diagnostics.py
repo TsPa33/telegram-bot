@@ -108,3 +108,47 @@ def audit(db):
     return {"status": "reported", "read_only": True,
             "external_requests": 0, "provider_credits": 0,
             "vehicles": report}
+
+
+def workspace_stock_audit(db, account_id, vehicle_id=None):
+    """Group live warehouse cards within the requested user's active workspace."""
+    from sqlalchemy import case, func
+    from app.models import Category
+
+    filters = [Part.account_id == account_id, Part.archived.is_(False),
+               Part.quantity > 0, Part.availability != 'absent']
+    if vehicle_id is not None:
+        filters.append(Part.vehicle_id == vehicle_id)
+
+    status = Part.oem_provenance['status'].as_string()
+    source = Part.oem_provenance['source'].as_string()
+    manual = (Part.oem_number != '') & (
+        (source == 'manual') | (status == 'user_selected_cross_reference') | source.is_(None)
+    )
+    statement = (
+        select(Part.vehicle_id, Vehicle.manufacturer, Category.name.label('category'),
+               func.count().label('positions'),
+               func.sum(case((Part.oem_number != '', 1), else_=0)).label('with_oem'),
+               func.sum(case((manual, 1), else_=0)).label('manual_oem'))
+        .select_from(Part)
+        .outerjoin(Vehicle, (Vehicle.id == Part.vehicle_id) & (Vehicle.account_id == account_id))
+        .outerjoin(Category, (Category.id == Part.category_id) & (Category.account_id == account_id))
+        .where(*filters).group_by(Part.vehicle_id, Vehicle.manufacturer, Category.name)
+    )
+    total = Counter()
+    manufacturers = {}
+    categories = {}
+    vehicles = {}
+    for row in db.execute(statement):
+        counts = {'positions':row.positions,'with_oem':row.with_oem,'manual_oem':row.manual_oem}
+        total.update(counts)
+        manufacturers.setdefault(row.manufacturer, Counter()).update(counts)
+        categories.setdefault(row.category, Counter()).update(counts)
+        vehicles.setdefault(row.vehicle_id, Counter()).update(counts)
+    def summary(counts):
+        return {**counts,'positions':counts['positions'],'with_oem':counts['with_oem'],
+                'manual_oem':counts['manual_oem'],'coverage_percent':_percent(counts['with_oem'],counts['positions'])}
+    return {'read_only':True,'stock':summary(total),
+            'manufacturers':[{'manufacturer':key,**summary(counts)} for key,counts in manufacturers.items()],
+            'categories':[{'category':key,**summary(counts)} for key,counts in categories.items()],
+            'vehicles':[{'vehicle_id':key,**summary(counts)} for key,counts in vehicles.items()]}
