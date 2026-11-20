@@ -357,7 +357,7 @@ class SourceCache:
         options=self.directory_candidates(v)
         selected=next(iter(options),None)
         log.info('OEM modification lookup vehicle=%s alternatives=%d selected_source_id=%s',
-                 v.id,len(options),selected[0] if selected else None)
+                 getattr(v,'id',None),len(options),selected[0] if selected else None)
         return selected
 
     def plan(self,identity):
