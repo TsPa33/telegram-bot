@@ -73,10 +73,12 @@ class CatalogueAdapter:
                 raise CatalogueUnavailable('invalid_identity')
         return result
 
-    def directory(self, after=0, car_id=None, *, maker_key=None, model_keys=None):
+    def directory(self, after=0, car_id=None, *, maker_key=None, model_keys=None, model_id=None):
         params={'after':after}
         if car_id is not None:
             params['car_id']=car_id
+        if model_id is not None:
+            params['model_id']=model_id
         if maker_key:
             params['maker_key']=maker_key
         if model_keys:
@@ -168,23 +170,48 @@ def has_plan_history(db, vehicle):
     ).limit(1)) for model in (DismantlingItem, Part, VehicleChecklistItem))
 
 
-def persist(db, vehicle, envelope, *, allow_partial=False):
+def row_product_id(row):
+    import re
+
+    def parse(key):
+        match=re.fullmatch(r'car:[1-9][0-9]*:product:([1-9][0-9]*)',key or '')
+        return int(match[1]) if match else None
+
+    if row.source=='carpot.catalogue.v1':
+        return parse(row.catalog_key)
+    source_refs=(getattr(row,'plan_v3',None) or {}).get('snapshot',{}).get('source',[])
+    products=set()
+    for ref in source_refs:
+        source=ref.get('legacy_ref') or {}
+        if ref.get('kind')=='global_modification' and source.get('source')=='carpot.catalogue.v1':
+            if (product:=parse(source.get('catalog_key'))):
+                products.add(product)
+    return next(iter(products)) if len(products)==1 else None
+
+
+def persist(db, vehicle, envelope, *, allow_partial=False, replace_selection=False):
     """Persist potential types only. Existing plan/manual data never overwritten."""
     from sqlalchemy import select
     from fastapi import HTTPException
     from app.models import DismantlingItem
     from app.services.inventory import record, snapshot
     existing = saved_state(vehicle)
-    if existing:
+    if existing and not replace_selection:
         if existing['payload'].get('source_snapshot_sha',existing['sha256']) != envelope['payload'].get('source_snapshot_sha',envelope['sha256']):
             raise HTTPException(409, 'Збережений план вже існує. Зміна модифікації потребує окремого узгодження.')
         return existing
-    if has_plan_history(db, vehicle):
+    if not existing and has_plan_history(db, vehicle):
         raise HTTPException(409, 'Автомобіль вже має план або складську історію. Наявні рішення збережено.')
     payload = envelope['payload']
     validate_plan(payload)
     before = snapshot(vehicle)
+    existing_rows = db.scalars(select(DismantlingItem).where(
+        DismantlingItem.account_id==vehicle.account_id,DismantlingItem.vehicle_id==vehicle.id
+    )).all() if existing else []
+    existing_products = {row_product_id(row) for row in existing_rows}
     for row in payload['categories']:
+        if row['product_id'] in existing_products or None in existing_products:
+            continue
         path=row.get('category_path') or []
         root=path[0] if len(path)>0 and path[0] else 'Потребує уточнення'
         sub=path[1] if len(path)>1 and path[1] else 'Потребує уточнення'
@@ -217,10 +244,7 @@ def workspace_entries(db, who, vehicle):
     result = []
     for r in db.scalars(select(DismantlingItem).where(DismantlingItem.account_id == who.workspace_account_id,
         DismantlingItem.vehicle_id == vehicle.id, DismantlingItem.source == 'carpot.catalogue.v1')):
-        prefix = f"car:{payload['car_id']}:product:"
-        if not r.catalog_key.startswith(prefix):
-            continue
-        product = products.get(int(r.catalog_key[len(prefix):]))
+        product = products.get(row_product_id(r))
         if product is None:
             continue
         ps = [parts[r.part_id]] if r.part_id in parts else []

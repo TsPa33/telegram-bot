@@ -19,7 +19,7 @@ try{
  await page.getByRole('button',{name:'Вибрати модифікацію',exact:true}).click();
  const form=page.getByRole('form',{name:'Модифікація наявного автомобіля'});
  await form.getByLabel('Марка',{exact:true}).selectOption('Volvo');await form.getByLabel('Модель',{exact:true}).selectOption('13084');await form.getByLabel('Покоління',{exact:true}).selectOption('II (fixture)');await form.getByLabel('Модифікація',{exact:true}).selectOption('107555');
- await form.getByRole('checkbox').check();await form.getByRole('button',{name:'Підтвердити модифікацію'}).click();await expect(form).not.toBeVisible();
+ await form.getByRole('button',{name:'Зберегти модифікацію'}).click();await expect(form).not.toBeVisible();
  const generator=page.getByRole('region',{name:'Універсальний каталог запчастин'});
  await generator.getByRole('button',{name:'Розібрати на запчастини',exact:true}).click();await expect(generator).toContainText('Джерела та обмеження · 2 типів');await generator.getByRole('button',{name:'Зберегти перелік',exact:true}).click();
  const tree=page.getByRole('region',{name:'Фізичний склад вузлів'});

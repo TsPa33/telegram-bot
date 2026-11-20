@@ -277,6 +277,10 @@ export default function AssemblyTree({vehicle,onReady,revision=0}:{vehicle:Row;o
 
     <p className="assembly-breadcrumb">{selected.category} › {selected.subcategory}{selected.position?` · ${selected.position}`:''} </p>
     <label className="assembly-oem-field">OEM <OemField key={selected.id} value={selected.stock_oem||selected.reference_oem||''} options={selected.oem_options||[]} editable={!vehicle.archived&&can(selected.stock_oem?'inventory.edit':'dismantling.manage')&&(!!selected.stock_oem||can('catalog.view'))} onChange={async n=>{if(selected.stock_oem&&selected.part_id){await api('/parts/'+selected.part_id+'/characteristics','PATCH',{expected:{oem_number:selected.stock_oem},values:{oem_number:n}});window.dispatchEvent(new Event('warehouse:inventory-changed'));}else{await api('/vehicles/'+vehicle.id+'/oem/'+selected.id,'PATCH',{expected_oem:selected.reference_oem,oem_number:n});}await load();}}/></label>
+    {!!selected.unconfirmed_oem_candidates?.length&&<details>
+      <summary>Непідтверджені OEM інших модифікацій</summary>
+      <ul>{Array.from(new Set<string>(selected.unconfirmed_oem_candidates.map((candidate:Row)=>candidate.oem_number))).map(number=><li key={number}>{number}</li>)}</ul>
+    </details>}
     <div className="assembly-photo">{photo?<img src={photo} alt={selected.name} onError={()=>setPhoto('')}/>:<><Box size={44}/><span>Фото ще немає</span></>}</div>
     {assemblyUnitFor(selected)&&selected.part_id&&Number(selected.quantity)!==1&&<p className="assembly-unit-warning" role="status">Кількість цього складського запису відрізняється від однієї фізичної одиниці. Продаж як підтвердженого комплектного вузла потребує уточнення.</p>}
     <h5>Наявність на автомобілі</h5>

@@ -89,10 +89,10 @@ def selected_row(db, who, v, key, *, write=False):
     row = db.scalar(select(DismantlingItem).where(DismantlingItem.id == key.removeprefix('catalogue:'),
         DismantlingItem.account_id == who.workspace_account_id, DismantlingItem.vehicle_id == v.id,
         DismantlingItem.source == 'carpot.catalogue.v1').with_for_update())
-    prefix = f"car:{state['payload']['car_id']}:product:"
-    if row is None or not row.catalog_key.startswith(prefix):
+    if row is None:
         raise HTTPException(404, 'Позицію плану не знайдено')
-    product = next((r for r in state['payload']['categories'] if str(r['product_id']) == row.catalog_key[len(prefix):]), None)
+    product_id = service.row_product_id(row)
+    product = next((r for r in state['payload']['categories'] if r['product_id'] == product_id), None)
     if product is None:
         raise HTTPException(404, 'Тип каталогу не знайдено')
     return row, product, state
@@ -337,6 +337,7 @@ def automatic_global_selection(vehicle):
             'manufacturer_id': identity['manufacturer_id'],
             'source_snapshot_sha': identity['snapshot_sha'],
             'modification_description': identity['modification_description'],
+            'confirmation':identity.get('confirmation'),
         }
     return None
 
@@ -374,20 +375,20 @@ def global_saved(id: str, db: DB, who: Auth):
     state=service.saved_state(v)
     from sqlalchemy import select
     from app.models import DismantlingItem,Part
-    from app.services.auto_oem import references,options,valid_reference
+    from app.services.auto_oem import CANDIDATES_KEY,references,options,valid_reference
     rows=list(db.scalars(select(DismantlingItem).where(DismantlingItem.vehicle_id==v.id,DismantlingItem.account_id==v.account_id,DismantlingItem.source=='carpot.catalogue.v1'))) if state else []
-    keys={int(r.catalog_key.rsplit(':',1)[1]):'catalogue:'+r.id for r in rows}
+    keys={service.row_product_id(r):'catalogue:'+r.id for r in rows if service.row_product_id(r)}
     oems={}
     if 'inventory.view' in who.permissions:
         parts={p.id:p for p in db.scalars(select(Part).where(Part.account_id==v.account_id,Part.vehicle_id==v.id,Part.id.in_([r.part_id for r in rows if r.part_id])))}
         refs=references(v)
         for row in rows:
             ref=refs.get(row.id);part=parts.get(row.part_id)
-            if part and (part.oem_number or part.oem_provenance):oems[int(row.catalog_key.rsplit(':',1)[1])]=dict(item_id=row.id,part_id=part.id,oem_number=part.oem_number,oem_options=options(part.oem_provenance))
-            elif valid_reference(v,row,ref):oems[int(row.catalog_key.rsplit(':',1)[1])]=dict(item_id=row.id,part_id=None,oem_number=ref['oem_number'],oem_options=options(ref))
+            if part and (part.oem_number or part.oem_provenance):oems[service.row_product_id(row)]=dict(item_id=row.id,part_id=part.id,oem_number=part.oem_number,oem_options=options(part.oem_provenance))
+            elif valid_reference(v,row,ref):oems[service.row_product_id(row)]=dict(item_id=row.id,part_id=None,oem_number=ref['oem_number'],oem_options=options(ref))
     from app.services.dismantling_plan_v3 import generator_basis
     return dict(selection_basis=generator_basis(v),selection=(v.dismantling_v3 or {}).get('global_selection') or automatic_global_selection(v),saved=state,
-        keys=keys,oems=oems,legacy=bool(not state and (v.dismantling_v3 or v.ktype)),
+        keys=keys,oems=oems,unconfirmed_oem_candidates={service.row_product_id(row):(v.dismantling_v3 or {}).get(CANDIDATES_KEY,{}).get(row.id,[]) for row in rows} if 'inventory.view' in who.permissions else {},legacy=bool(not state and (v.dismantling_v3 or v.ktype)),
         legacy_source='base' if (v.dismantling_v3 or {}).get('unified_base') else 'professional')
 
 
@@ -405,21 +406,14 @@ class ExistingVehicleSelection(Input):
 @router.post('/{id}/catalogue-selection')
 def select_existing_vehicle(id:str,data:ExistingVehicleSelection,db:DB,who:Auth):
     """Attach an explicitly confirmed source identity; never create a second donor."""
-    from sqlalchemy import select
-    from app.models import DismantlingItem
     from app.services.dismantling_plan_v3 import generator_basis,replay,finish
     from app.services.inventory import snapshot,record
+    from app.services.auto_oem import CANDIDATES_KEY,OUTCOMES_KEY
     require_permission(who,'vehicles.view','vehicles.edit','catalog.view','dismantling.manage')
     v=owned(db,Vehicle,id,who.workspace_account_id,lock=True,active=True)
     prior,sha=replay(db,v,who,data,'catalogue-selection')
     if prior is not None:return prior
-    if not data.confirm_exact_modification:raise HTTPException(422,'Підтвердіть конкретну модифікацію; VIN не доводить джерельний ID')
     if data.expected_basis!=generator_basis(v):raise HTTPException(409,'Характеристики автомобіля змінилися. Повторіть вибір модифікації')
-    old=(v.dismantling_v3 or {}).get('global_selection')
-    has_items=db.scalar(select(DismantlingItem.id).where(DismantlingItem.account_id==who.workspace_account_id,DismantlingItem.vehicle_id==v.id).limit(1))
-    same=bool(old and (old['car_id'],old['model_id'],old['manufacturer_id'],old['source_snapshot_sha'])==(data.source_modification_id,data.model_id,data.manufacturer_id,data.source_snapshot_sha))
-    if (old and not same) or (has_items and (not same or old.get('identity_fingerprint')!=generator_basis(v))):
-        raise HTTPException(409,'Наявний план збережено. Зміна джерельної модифікації потребує окремої звірки без перезапису позицій')
     try:
         plan=service.CatalogueAdapter().plan(data.source_modification_id,global_source=True)
         service.validate_plan(plan['payload'])
@@ -431,11 +425,25 @@ def select_existing_vehicle(id:str,data:ExistingVehicleSelection,db:DB,who:Auth)
     payload=plan['payload']
     if not entry or not payload['categories'] or (payload['car_id'],payload['model_id'],payload['manufacturer_id'],payload['source_snapshot_sha'])!=expected or (entry['source_modification_id'],entry['model_id'],entry['manufacturer_id'],entry['snapshot_sha'])!=expected:
         raise HTTPException(409,'Джерельні ID або версія каталогу змінилися')
-    # Exact normalized maker guard only. Model names never select a source car ID.
-    normalized=lambda value:''.join(c for c in value.casefold() if c.isalnum())
-    if normalized(v.manufacturer)!=normalized(entry['manufacturer']):raise HTTPException(409,'Марка джерельної модифікації не відповідає автомобілю')
+    normalize=lambda value:''.join(c for c in (value or '').casefold() if c.isalnum())
+    if normalize(v.manufacturer)!=normalize(entry['manufacturer']):
+        raise HTTPException(409,'Марка джерельної модифікації не відповідає автомобілю')
+    saved=service.saved_state(v)
+    current=(v.dismantling_v3 or {}).get('global_selection') or automatic_global_selection(v)
+    previous_model=(current or (saved or {}).get('payload') or {}).get('model_id')
+    valid_models={normalize(v.model),normalize(v.model+' '+(v.generation or ''))}
+    import re
+    candidate=normalize(entry['model'])
+    same_model=candidate in valid_models or (
+        normalize(v.generation) in ('','неуточнено') and candidate.startswith(normalize(v.model))
+        and re.fullmatch(r'(?:i|ii|iii|iv|v|vi|vii|viii|ix|x)',candidate[len(normalize(v.model)):])
+    )
+    if previous_model and data.model_id!=previous_model or not previous_model and not same_model:
+        raise HTTPException(409,'Виберіть модифікацію тієї самої моделі')
     before=snapshot(v)
-    v.dismantling_v3={**(v.dismantling_v3 or {}),'global_selection':dict(car_id=data.source_modification_id,model_id=data.model_id,manufacturer_id=data.manufacturer_id,source_snapshot_sha=data.source_snapshot_sha,modification_description=payload['modification'].get('description'),source_specifications=entry.get('specifications',[])[:100],vehicle_basis=service.vehicle_basis(v),identity_fingerprint=generator_basis(v),request_key=data.request_key,confirmation='explicit_user_source_identity_not_vin_verified')}
+    if saved and saved['payload']['source_snapshot_sha']!=data.source_snapshot_sha:
+        service.persist(db,v,plan,allow_partial=True,replace_selection=True)
+    v.dismantling_v3={**(v.dismantling_v3 or {}),CANDIDATES_KEY:{},OUTCOMES_KEY:{},'global_selection':dict(car_id=data.source_modification_id,model_id=data.model_id,manufacturer_id=data.manufacturer_id,source_snapshot_sha=data.source_snapshot_sha,modification_description=payload['modification'].get('description'),source_specifications=entry.get('specifications',[])[:100],vehicle_basis=service.vehicle_basis(v),identity_fingerprint=generator_basis(v),request_key=data.request_key,confirmation='user_selected',vin_verified=False)}
     record(db,who.workspace_account_id,v,'vehicle_update','Підтверджено джерельну модифікацію; VIN, характеристики й склад не змінено',before)
     result=finish(db,v,who,data,sha,dict(saved=True,vehicle_id=v.id))
     db.commit();return result
