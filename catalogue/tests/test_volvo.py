@@ -327,3 +327,23 @@ def test_pinned_articles_include_imported_exact_oem_without_changing_snapshot(mo
     assert found['oem']==[{'manufacturerId':120,'OENbr':'OLD-REF'},
                          {'manufacturerId':120,'OENbr':'NEW-REF','source':'catalogue_oem'}]
     assert digest(original)==sha
+
+
+def test_article_batch_resolves_one_pinned_snapshot_and_deduplicates_linked_lookup(monkeypatch):
+    monkeypatch.setenv('CATALOGUE_API_KEY','fixture-only')
+    data=payload()
+    data['categories']=[{'product_id':1,'articles':['3:EXACT']},{'product_id':2,'articles':['3:EXACT']}]
+    data['articles']={'3:EXACT':{'supplier_id':3,'article_number':'EXACT'}}
+    def snapshot(car,sha):
+        assert car==107555 and sha=='a'*64
+        return data,sha
+    def crossrefs(items,manufacturer):
+        assert items==[data['articles']['3:EXACT']] and manufacturer==120
+        return {}
+    monkeypatch.setattr(catalogue_app,'volvo_snapshot',snapshot)
+    monkeypatch.setattr(catalogue_app,'linked_article_oems',crossrefs)
+    response=TestClient(catalogue_app.app).get('/api/v1/vehicles/107555/article-batch',
+        params={'snapshot_sha':'a'*64,'product_id':[2,1]},headers={'X-Catalogue-Key':'fixture-only'})
+    assert response.status_code==200
+    assert response.json()['items']['1']==response.json()['items']['2']
+    assert response.json()['vin_verified'] is False

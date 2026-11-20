@@ -101,6 +101,8 @@ def compact_plan(payload, snapshot_sha):
             item['source_prd_sha256']=digest({k:normalized.get(k) for k in ('id','assemblygroupdescription','description','normalizeddescription','usagedescription')})
         item['article_count'] = len(row.get('articles', []))
         item['kind'] = row.get('kind','review')
+        if payload.get('source_scope')=='passenger_prd_article_oem' and len(original)==1 and item['article_count']:
+            item['source_fitment_linked'] = True
         rows.append(item)
     return dict(schema='carpot.volvo.plan.v2' if payload['schema']=='carpot.volvo.v1' else 'carpot.vehicle.plan.v1', manufacturer_id=payload['manufacturer_id'],
         car_id=payload['car_id'], model_id=payload['model_id'],

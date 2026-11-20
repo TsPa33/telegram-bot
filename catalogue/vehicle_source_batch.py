@@ -61,10 +61,52 @@ def select_passenger_manufacturer(rows, manufacturer_id):
     return passenger[0]
 
 
-def export(source, output, car_ids, model_queries, limit, mapping=None, *, graph_only=False):
+def attach_source_oems(source, payload):
+    """Fetch OEM evidence for only the exact passenger fitment keys in this graph."""
+    by_identity = {(item['supplier_id'], item['article_number']):item
+                   for item in payload['articles'].values()}
+    keys = sorted(by_identity)
+    for offset in range(0,len(keys),100):
+        batch=keys[offset:offset+100]
+        placeholders=','.join(['(%s,%s)']*len(batch))
+        args=(payload['manufacturer_id'],*(value for key in batch for value in key))
+        rows=read(source,f"""SELECT supplierId,DataSupplierArticleNumber,manufacturerId,OENbr
+            FROM article_oe WHERE manufacturerId=%s
+            AND (supplierId,DataSupplierArticleNumber) IN ({placeholders})
+            ORDER BY supplierId,DataSupplierArticleNumber,OENbr LIMIT 10001""",args)
+        if len(rows)>10000:
+            raise ValueError('Source OEM batch exceeds the read limit')
+        expected=set(batch)
+        for row in rows:
+            key=(int(value(row,'supplierId')),value(row,'DataSupplierArticleNumber'))
+            number=value(row,'OENbr')
+            if key in expected and isinstance(number,str) and number.strip():
+                by_identity[key].setdefault('oem',[]).append({
+                    'manufacturerId':payload['manufacturer_id'],'OENbr':number,'source':'article_oe',
+                })
+    supplier_ids=sorted({sid for sid,_ in keys})
+    suppliers={}
+    for offset in range(0,len(supplier_ids),100):
+        batch=supplier_ids[offset:offset+100]
+        rows=read(source,'SELECT id,description FROM suppliers WHERE id IN ('+
+                  ','.join(['%s']*len(batch))+')',tuple(batch))
+        for row in rows:
+            sid=int(value(row,'id'))
+            if sid in suppliers:
+                raise ValueError('Ambiguous supplier identity')
+            suppliers[sid]=value(row,'description')
+    for (sid,_),article in by_identity.items():
+        if suppliers.get(sid):
+            article['supplier']=[{'description':suppliers[sid]}]
+    payload['source_scope']='passenger_prd_article_oem'
+    validate(payload)
+
+
+def export(source, output, car_ids, model_queries, limit, mapping=None, *, graph_only=False, with_oem=False):
     output.mkdir(parents=True, exist_ok=True)
     requested = dict(car_ids=sorted(set(car_ids)), model_queries=sorted(set(model_queries)), limit=limit,
                      mapping_sha=digest(mapping or {}), graph_only=graph_only)
+    if with_oem:requested['with_oem']=True
     manifest_path = output/'manifest.json'
     previous = json.loads(manifest_path.read_text('utf-8')) if manifest_path.exists() else None
     if previous and previous['request'] != requested:
@@ -122,6 +164,7 @@ def export(source, output, car_ids, model_queries, limit, mapping=None, *, graph
         else:
             payload=collect(source,car,model,mapping or {},manufacturer_id=mid,graph_only=graph_only)
             payload['manufacturer']=maker
+            if with_oem:attach_source_oems(source,payload)
             if not payload['categories']:
                 raise ValueError('No article-linked types; empty modification not exportable')
             envelope=dict(payload=payload,sha256=digest(payload))
@@ -205,18 +248,66 @@ def review_batch(folder, expected_sha, mapping, reviewer, output):
     return dict(reviewed=len(prepared),manifest_sha256=file_sha(output/'manifest.json'))
 
 
+def add_oems_to_existing_graph(target, item, old):
+    """Enrich existing immutable snapshots through exact shared fitment triples."""
+    data=item['payload']
+    with target.cursor() as cursor:
+        cursor.execute('SELECT payload FROM catalogue_volvo_versions WHERE car_id=%s AND sha256=%s',
+                       (data['car_id'],old['sha256']))
+        version=cursor.fetchone()
+        if not version:
+            raise ValueError('Existing snapshot version unavailable')
+        current=validate(json.loads(version['payload']))
+        if digest(current)!=old['sha256'] or current['manufacturer_id']!=data['manufacturer_id']:
+            raise ValueError('Existing snapshot identity mismatch')
+        old_links={(row['product_id'],key) for row in current['categories'] for key in row['articles']}
+        new_links={(row['product_id'],key) for row in data['categories'] for key in row['articles']}
+        references=set()
+        for key in {key for _,key in old_links & new_links}:
+            article=data['articles'][key]
+            for ref in article.get('oem',[]):
+                number=ref.get('OENbr')
+                if (ref.get('manufacturerId')==data['manufacturer_id'] and isinstance(number,str)
+                        and 0<len(number)<=64 and 0<len(article['article_number'])<=32
+                        and 1<=article['supplier_id']<=65535):
+                    references.add((article['supplier_id'],article['article_number'],data['manufacturer_id'],number))
+        inserted=0
+        ordered=sorted(references)
+        for offset in range(0,len(ordered),250):
+            inserted+=cursor.executemany("""INSERT IGNORE INTO catalogue_oem
+                (supplier_id,article_number,oem_manufacturer_id,oem_number) VALUES (%s,%s,%s,%s)""",
+                ordered[offset:offset+250])
+    target.commit()
+    return inserted,len(new_links-old_links)
+
+
 def upload(target, envelopes):
     existing={int(r['car_id']):r for r in inventory(target)}
     # All conflicts checked BEFORE writes. Changed versions require a separate review.
     for item in envelopes:
         data=item['payload'];old=existing.get(data['car_id'])
-        if old and (old['sha256']!=item['sha256'] or int(old['model_id'])!=data['model_id']):
+        if old and (int(old['model_id'])!=data['model_id'] or (old['sha256']!=item['sha256'] and data.get('source_scope')!='passenger_prd_article_oem')):
             raise ValueError('Existing snapshot differs; explicit version review required')
-        if data.get('taxonomy_status')!='reviewed':raise ValueError('Review corporate taxonomy before upload')
+        if data.get('taxonomy_status')!='reviewed' and data.get('source_scope')!='passenger_prd_article_oem':
+            raise ValueError('Review taxonomy or export a verified passenger OEM graph before upload')
     uploaded=0
+    oem_inserted=0
+    unpublished_links=0
+    graph_import=False
     for item in envelopes:
         data=item['payload']
-        if data['car_id'] in existing:continue
+        old=existing.get(data['car_id'])
+        graph_import |= data.get('source_scope')=='passenger_prd_article_oem'
+        if old:
+            if data.get('source_scope')=='passenger_prd_article_oem':
+                try:
+                    added,gaps=add_oems_to_existing_graph(target,item,old)
+                except Exception:
+                    target.rollback()
+                    raise
+                oem_inserted+=added
+                unpublished_links+=gaps
+            continue
         # Existing tables and uploader. Save directory prerequisites in SAME transaction.
         try:
             with target.cursor() as c:
@@ -232,7 +323,10 @@ def upload(target, envelopes):
             uploaded+=1
         except Exception:
             target.rollback();raise
-    return dict(uploaded=uploaded,skipped=len(envelopes)-uploaded)
+    result=dict(uploaded=uploaded,skipped=len(envelopes)-uploaded)
+    if graph_import:
+        result.update(existing_graph_oems_inserted=oem_inserted,existing_graph_links_pending_review=unpublished_links)
+    return result
 
 
 def main():
@@ -243,12 +337,15 @@ def main():
     p.add_argument('--discover-model',action='append',default=[])
     p.add_argument('--max-modifications',type=int,default=8)
     p.add_argument('--graph-only',action='store_true',help='Export PRD/article links without bulky per-article enrichment')
+    p.add_argument('--with-oem',action='store_true',help='Include exact manufacturer OEMs in graph-only export')
     p.add_argument('--mapping',type=Path)
     p.add_argument('--manifest-sha256')
     p.add_argument('--reviewed-by')
     p.add_argument('--review-output',type=Path)
     p.add_argument('--confirm-catalogue-staging',action='store_true')
+    p.add_argument('--target-server-uuid')
     a=p.parse_args()
+    if a.with_oem and (a.mode!='export' or not a.graph_only):p.error('--with-oem requires export --graph-only')
     if a.graph_only and a.mode!='export':p.error('--graph-only is only valid for export')
     if not 1<=a.max_modifications<=100 or any(i<=0 for i in a.car_id):p.error('Bounded positive identities required')
     if a.mode=='review':
@@ -260,7 +357,13 @@ def main():
     if a.mode in ('inventory','upload'):
         if not a.confirm_catalogue_staging or os.getenv('DEST_HOST') not in ('127.0.0.1','localhost') or os.getenv('DEST_PORT','3306')==os.getenv('SOURCE_PORT','3306') or os.getenv('DEST_DATABASE') not in ('catalogue','railway'):
             p.error('Separate confirmed catalogue-staging localhost tunnel required')
+        if any(item['payload'].get('source_scope')=='passenger_prd_article_oem' for item in (envelopes if a.mode=='upload' else [])) and not a.target_server_uuid:
+            p.error('Explicit staging MySQL server UUID is required for OEM graph upload')
         with connection('DEST',os.environ['DEST_DATABASE']) as target:
+            if a.target_server_uuid:
+                actual=read(target,'SELECT @@server_uuid AS server_uuid')[0]['server_uuid']
+                if actual.casefold()!=a.target_server_uuid.casefold():
+                    p.error('Target MySQL server UUID mismatch')
             if a.mode=='inventory':
                 read(target,'START TRANSACTION READ ONLY');result=inventory(target);target.rollback()
                 a.output.mkdir(parents=True,exist_ok=True);atomic(a.output/'staging-inventory.json',result)
@@ -274,7 +377,7 @@ def main():
         with connection('SOURCE','td1q2018') as source:
             read(source,'SET SESSION max_execution_time=30000')
             read(source,'START TRANSACTION WITH CONSISTENT SNAPSHOT, READ ONLY')
-            try:result=export(source,a.output,a.car_id,a.discover_model,a.max_modifications,json.loads(a.mapping.read_text('utf-8-sig')) if a.mapping else {},graph_only=a.graph_only)
+            try:result=export(source,a.output,a.car_id,a.discover_model,a.max_modifications,json.loads(a.mapping.read_text('utf-8-sig')) if a.mapping else {},graph_only=a.graph_only,with_oem=a.with_oem)
             finally:source.rollback()
         print(json.dumps(dict(modifications=len(result['modifications']),manifest_sha256=file_sha(a.output/'manifest.json'))))
     finally:lock.unlink(missing_ok=True)
