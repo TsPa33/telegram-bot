@@ -7,6 +7,7 @@ param(
     [string]$TargetServerUuid,
     [ValidateSet('catalogue','railway')][string]$TargetDatabase = 'railway',
     [ValidateRange(1,500)][int]$PageSize = 50,
+    [ValidateRange(0,2147483647)][int]$ModelId = 0,
     [ValidateRange(0,1000000)][int]$MaxPages = 0,
     [string]$SourceUser = 'root',
     [switch]$PromptSourcePassword
@@ -18,6 +19,14 @@ Set-StrictMode -Version Latest
 # *local* td1q2018 source. This script never touches production.
 if (@($ModificationId | Where-Object { $_ -le 0 }).Count -gt 0) {
     throw 'Modification IDs must be positive.'
+}
+if ($ModelId -gt 0 -and $ModificationId.Count -gt 0) {
+    throw 'Choose a whole source model (-ModelId) OR explicit modifications (-ModificationId).'
+}
+# Isolated model checkpoints: a resumed whole-database crawl must never
+# skip records because a previous XC60-only run advanced the same cursor.
+if ($ModelId -gt 0) {
+    $Checkpoint = Join-Path $Checkpoint "model-$ModelId"
 }
 if ($ApplyToStaging -and ($TunnelPort -eq 3306 -or $TargetServerUuid -notmatch '^[a-fA-F0-9-]{36}$')) {
     throw 'Supply a separate staging MySQL tunnel port and the independently verified server UUID.'
@@ -112,11 +121,14 @@ try {
         while (-not $complete) {
             if ($MaxPages -gt 0 -and $pages -ge $MaxPages) { break }
             $discoveryFolder = Join-Path $Checkpoint 'discovery'
-            Invoke-Importer -Arguments @('discover','--after-id',"$after",
+            $discoverArgs=@('discover','--after-id',"$after",
                 '--scan-limit',"$PageSize",'--output',$discoveryFolder)
+            if ($ModelId -gt 0) { $discoverArgs+=@('--model-id',"$ModelId") }
+            Invoke-Importer -Arguments $discoverArgs
             $page = Get-Content (Join-Path $discoveryFolder 'discovery.json') -Raw | ConvertFrom-Json
-            if ([int]$page.after_id -ne $after -or [int]$page.next_after_id -lt $after) {
-                throw 'Discovery checkpoint did not advance consistently.'
+            if ([int]$page.after_id -ne $after -or [int]$page.next_after_id -lt $after -or
+                ($ModelId -gt 0 -and [int]$page.model_id -ne $ModelId)) {
+                throw 'Discovery checkpoint does not match the requested source model or cursor.'
             }
             foreach ($id in $page.linked_ids) {
                 Import-One ([int]$id)
@@ -132,7 +144,9 @@ try {
                 throw 'Discovery made no progress.'
             }
         }
-        if ($complete) { Write-Host 'PASSENGER GRAPH CRAWL COMPLETE' -ForegroundColor Green }
+        if ($complete) {
+            Write-Host "PASSENGER GRAPH CRAWL COMPLETE (model ID: $ModelId; model ID 0 means all)" -ForegroundColor Green
+        }
         else { Write-Host 'Checkpoint saved. Repeat the same command to continue.' -ForegroundColor Yellow }
     }
     if ($ApplyToStaging) {
