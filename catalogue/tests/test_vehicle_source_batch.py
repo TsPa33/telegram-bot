@@ -224,3 +224,25 @@ def test_oem_export_can_omit_full_prd_dump_per_modification(tmp_path,monkeypatch
     assert not (tmp_path/'prd.json').exists()
     assert batch.validate_batch(tmp_path,batch.file_sha(tmp_path/'manifest.json'))[0]['payload']['car_id']==99
     assert all('FROM prd' not in sql for sql in seen)
+
+
+def test_model_scoped_passenger_oem_discovery_uses_indexed_modelid_and_keeps_fitment_gate(monkeypatch):
+    """Model grouping finds 2017+ XC60 variants, but an article link is still required."""
+    calls=[]
+    def fake_read(db,sql,args=()):
+        calls.append((sql,args))
+        if 'information_schema.TABLES' in sql:return [{'TABLE_NAME':'passanger_cars'}]
+        if 'FROM passanger_cars WHERE modelid=' in sql:
+            assert args==(37773,126478,4)
+            return [{'id':126479},{'id':126480},{'id':126481}]
+        if 'FROM article_links WHERE linkageid=' in sql:
+            return [{'productid':7}] if args[0] in (126480,126481) else []
+        raise AssertionError(sql)
+    monkeypatch.setattr(batch,'read',fake_read)
+    result=batch.discover_passenger(None,126478,4,model_id=37773)
+    assert result['linked_ids']==[126480,126481]
+    assert result['model_id']==37773
+    assert result['next_after_id']==126481
+    assert result['complete'] is True
+    assert any('WHERE modelid=%s AND id>%s' in sql for sql,_ in calls)
+    with pytest.raises(ValueError):batch.discover_passenger(None,0,4,model_id=-1)
