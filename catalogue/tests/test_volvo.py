@@ -181,6 +181,10 @@ def test_upload_writes_one_raw_immutable_version_and_compact_latest(monkeypatch)
         def __enter__(self):return self
         def __exit__(self,*args):pass
         def execute(self,sql,args=()):calls.append((sql,args))
+        def executemany(self,sql,rows):
+            assert 'INSERT INTO catalogue_suppliers' in sql
+            calls.extend((sql,row) for row in rows)
+            return len(rows)
     class Target:
         committed=False
         def cursor(self):return FakeCursor()

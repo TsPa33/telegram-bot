@@ -143,22 +143,40 @@ def upload_snapshot(target, envelope, approved_identity=None):
         raise ValueError('Disallowed or corrupt snapshot; no target writes')
     summary = compact_plan(data, sha)
     check_space(target)
+    def trace(stage, **fields):
+        if os.getenv('CARPOT_OEM_IMPORT_TRACE') == '1':
+            print('OEM_STAGE '+json.dumps({'stage':stage,'car_id':data['car_id'],**fields}),flush=True)
+    trace('snapshot_space_checked')
     with target.cursor() as c:
         c.execute("SET time_zone='+00:00'")
         stamp = datetime.fromisoformat(data['observed_at'].replace('Z','+00:00')).replace(tzinfo=None)
+        # A modification can contain thousands of articles from the same
+        # supplier. Deduplicate first: one upsert per supplier, not per article
+        # (critical when the MySQL connection runs through a Railway SSH tunnel).
+        supplier_rows = {}
         for item in data['articles'].values():
             supplier = item.get('supplier', [])
             if supplier and value(supplier[0], 'description'):
-                c.execute('''INSERT INTO catalogue_suppliers(supplier_id,name_source,observed_at)
+                sid = item['supplier_id']
+                supplier_rows[sid] = (sid, value(supplier[0], 'description'), stamp)
+        values = list(supplier_rows.values())
+        trace('suppliers_start',count=len(values))
+        for offset in range(0, len(values), 100):
+            c.executemany('''INSERT INTO catalogue_suppliers(supplier_id,name_source,observed_at)
                     VALUES(%s,%s,%s) ON DUPLICATE KEY UPDATE name_source=VALUES(name_source),observed_at=VALUES(observed_at)''',
-                    (item['supplier_id'], value(supplier[0], 'description'), stamp))
+                    values[offset:offset+100])
+            trace('suppliers_batch',processed=min(offset+100,len(values)),total=len(values))
+        trace('snapshot_version_start')
         c.execute('''INSERT IGNORE INTO catalogue_volvo_versions(car_id,sha256,payload,coverage,observed_at)
             VALUES(%s,%s,%s,%s,%s)''', (data['car_id'],sha,encode(data).decode(),data['coverage'],stamp))
+        trace('snapshot_version_written')
         c.execute('''INSERT INTO catalogue_volvo_snapshots(car_id,model_id,payload,sha256,coverage,observed_at)
             VALUES(%s,%s,%s,%s,%s,%s) ON DUPLICATE KEY UPDATE
             payload=VALUES(payload),sha256=VALUES(sha256),coverage=VALUES(coverage),observed_at=VALUES(observed_at)''',
             (data['car_id'],data['model_id'],encode(summary).decode(),sha,data['coverage'],stamp))
+        trace('snapshot_projection_written')
     target.commit()
+    trace('snapshot_commit_done')
 
 
 def main():

@@ -215,7 +215,7 @@ def test_oem_export_can_omit_full_prd_dump_per_modification(tmp_path,monkeypatch
         if 'FROM prd' in sql:raise AssertionError('Must not scan all PRD for every donor')
         raise AssertionError(sql)
     def fake_collect(*args,**kwargs):return payload()
-    def fake_attach(source,p):
+    def fake_attach(source,p,sidecar_path=None):
         p['source_scope']='passenger_prd_article_oem'
     monkeypatch.setattr(batch,'read',fake_read)
     monkeypatch.setattr(batch,'collect',fake_collect)
@@ -224,3 +224,208 @@ def test_oem_export_can_omit_full_prd_dump_per_modification(tmp_path,monkeypatch
     assert not (tmp_path/'prd.json').exists()
     assert batch.validate_batch(tmp_path,batch.file_sha(tmp_path/'manifest.json'))[0]['payload']['car_id']==99
     assert all('FROM prd' not in sql for sql in seen)
+
+
+def test_model_scoped_passenger_oem_discovery_uses_indexed_modelid_and_keeps_fitment_gate(monkeypatch):
+    """Model grouping finds 2017+ XC60 variants, but an article link is still required."""
+    calls=[]
+    def fake_read(db,sql,args=()):
+        calls.append((sql,args))
+        if 'information_schema.TABLES' in sql:return [{'TABLE_NAME':'passanger_cars'}]
+        if 'FROM passanger_cars WHERE modelid=' in sql:
+            assert args==(37773,126478,4)
+            return [{'id':126479},{'id':126480},{'id':126481}]
+        if 'FROM article_links WHERE linkageid=' in sql:
+            return [{'productid':7}] if args[0] in (126480,126481) else []
+        raise AssertionError(sql)
+    monkeypatch.setattr(batch,'read',fake_read)
+    result=batch.discover_passenger(None,126478,4,model_id=37773)
+    assert result['linked_ids']==[126480,126481]
+    assert result['model_id']==37773
+    assert result['next_after_id']==126481
+    assert result['complete'] is True
+    assert any('WHERE modelid=%s AND id>%s' in sql for sql,_ in calls)
+    with pytest.raises(ValueError):batch.discover_passenger(None,0,4,model_id=-1)
+
+
+def test_commercial_preflight_never_assumes_passenger_fitment(monkeypatch):
+    source_calls=[]
+    def fake_read(db,sql,args=()):
+        source_calls.append((sql,args))
+        if 'information_schema.COLUMNS' in sql:
+            return [{'TABLE_NAME':'commercial_vehicles','COLUMN_NAME':'id','DATA_TYPE':'int'},
+                    {'TABLE_NAME':'commercial_vehicle_pds','COLUMN_NAME':'commercialvehicleid','DATA_TYPE':'int'}]
+        if 'FROM commercial_vehicles ORDER BY id' in sql:
+            return [{'id':910},{'id':911}]
+        if 'FROM article_links WHERE linkageid' in sql:
+            return [{'linkagetypeid':1,'productid':5}] if args[0]==910 else []
+        raise AssertionError(sql)
+    monkeypatch.setattr(batch,'read',fake_read)
+    result=batch.inspect_commercial_source(None)
+    assert result['mode']=='commercial_preflight'
+    assert result['commercial_fitment_verified'] is False
+    assert result['linkage_examples'][0]['observed_linkage_type_ids']==[1]
+    assert result['linkage_examples'][1]['observed_linkage_type_ids']==[]
+    assert all(sql.strip().startswith('SELECT') for sql,_ in source_calls)
+
+
+def test_large_oem_snapshot_streams_outside_8mib_source_graph_contract(tmp_path,monkeypatch):
+    """Artificially low byte cap reproduces the live failure at modest size."""
+    import volvo_contract
+    p=payload()
+    p['taxonomy_status']='unreviewed'
+    p['articles']['5:TEST'].pop('oem',None)
+    monkeypatch.setattr(volvo_contract,'MAX_BYTES',4096)
+    source_rows=[{'supplierId':5,'DataSupplierArticleNumber':'TEST',
+                  'manufacturerId':77,'OENbr':'V'+str(i).zfill(40)}
+                 for i in range(150)]
+    def fake_read(source,sql,args=()):
+        if 'FROM article_oe' in sql:return source_rows
+        if 'FROM suppliers' in sql:return [{'id':5,'description':'Supplier A'}]
+        raise AssertionError(sql)
+    monkeypatch.setattr(batch,'read',fake_read)
+    sidecar=tmp_path/'oem-99.jsonl'
+    count=batch.attach_source_oems(None,p,sidecar)
+    assert count==150
+    assert sidecar.exists()
+    assert 'oem' not in p['articles']['5:TEST']
+    assert volvo_contract.validate(p) is p
+    assert batch.verified_oem_sidecar(sidecar,p)==150
+    assert sidecar.stat().st_size>4096
+
+    envelope={'payload':p,'sha256':digest(p)}
+    batch.atomic(tmp_path/'99.json',envelope)
+    manifest={'schema':'carpot.source.batch.v1','request':{},
+              'files':{'99.json':batch.file_sha(tmp_path/'99.json'),
+                       sidecar.name:batch.file_sha(sidecar)},
+              'complete':True,'source_database':'td1q2018',
+              'modifications':[batch.relation_summary(p)]}
+    batch.atomic(tmp_path/'manifest.json',manifest)
+    items=batch.validate_batch(tmp_path,batch.file_sha(tmp_path/'manifest.json'))
+    assert items[0]['_oem_sidecar']==sidecar
+    assert len(list(batch.fitted_oem_references(items[0])))==150
+    assert all(r[2]==77 for r in batch.fitted_oem_references(items[0]))
+
+    # A sidecar changed independently of the manifest must never be imported.
+    with sidecar.open('ab') as f:f.write(b'[1,"OTHER",77,"bad"]\n')
+    with pytest.raises(ValueError,match='checksum'):
+        batch.validate_batch(tmp_path,batch.file_sha(tmp_path/'manifest.json'))
+
+
+def test_oem_sidecar_import_filters_to_exact_existing_article_keys(tmp_path):
+    p=payload()
+    p['source_scope']='passenger_prd_article_oem'
+    path=tmp_path/'oem-99.jsonl'
+    path.write_bytes(encode([5,'TEST',77,'VOLVO-CROSS'])+b'\n')
+    envelope={'payload':p,'sha256':digest(p),'_oem_sidecar':path}
+    assert batch.verified_oem_sidecar(path,p)==1
+    calls=[]
+    class Cursor:
+        def __enter__(self):return self
+        def __exit__(self,*args):pass
+        def executemany(self,sql,rows):
+            if 'INSERT IGNORE INTO catalogue_oem' in sql:
+                calls.extend(rows)
+            else:
+                assert 'INSERT IGNORE INTO catalogue_parts' in sql
+            return len(rows)
+    class Target:
+        def cursor(self):return Cursor()
+    assert batch.insert_fitted_oems(Target(),envelope,{(5,'TEST')})==1
+    assert calls==[(5,'TEST',77,'VOLVO-CROSS')]
+    calls.clear()
+    assert batch.insert_fitted_oems(Target(),envelope,{(5,'OTHER')})==0
+    assert calls==[]
+
+
+def test_staging_upload_applies_sidecar_to_new_graph_without_snapshot_oem_bloat(tmp_path,monkeypatch):
+    p=payload()
+    p['source_scope']='passenger_prd_article_oem'
+    sidecar=tmp_path/'oem-99.jsonl'
+    sidecar.write_bytes(encode([5,'TEST',77,'EXACT-OEM'])+b'\n')
+    envelope={'payload':p,'sha256':digest(p),'_oem_sidecar':sidecar}
+    assert batch.verified_oem_sidecar(sidecar,p)==1
+    monkeypatch.setattr(batch,'inventory',lambda target:[])
+    monkeypatch.setattr(batch,'upload_snapshot',lambda target,item,approved_identity:None)
+    rows=[]
+    class Cursor:
+        last=''
+        def __enter__(self):return self
+        def __exit__(self,*args):pass
+        def execute(self,sql,args=()):
+            self.last=sql
+        def fetchone(self):
+            if self.last.startswith('SELECT manufacturer_id'):return {'manufacturer_id':77}
+            return None
+        def executemany(self,sql,items):
+            if 'INSERT IGNORE INTO catalogue_oem' in sql:
+                rows.extend(items)
+            else:
+                assert 'INSERT IGNORE INTO catalogue_parts' in sql
+            return len(items)
+    class DB:
+        commits=0
+        rollbacks=0
+        def cursor(self):return Cursor()
+        def commit(self):self.commits+=1
+        def rollback(self):self.rollbacks+=1
+    target=DB()
+    result=batch.upload(target,[envelope])
+    assert result['uploaded']==1
+    assert result['existing_graph_oems_inserted']==1
+    assert rows==[(5,'TEST',77,'EXACT-OEM')]
+    assert target.commits==1 and target.rollbacks==0
+
+
+def test_existing_graph_relational_oem_sidecar_import_requires_shared_prd_link(tmp_path,monkeypatch):
+    p=payload();p['source_scope']='passenger_prd_article_oem'
+    original=deepcopy(p)
+    old_sha=digest(original)
+    sidecar=tmp_path/'oem-99.jsonl'
+    sidecar.write_bytes(encode([5,'TEST',77,'VOLVO-OEM'])+b'\n')
+    envelope={'payload':p,'sha256':digest(p),'_oem_sidecar':sidecar}
+    calls=[]
+    class Cursor:
+        def __enter__(self):return self
+        def __exit__(self,*args):pass
+        def execute(self,sql,args=()):
+            assert 'SELECT 1 AS version_exists' in sql
+            assert 'catalogue_volvo_versions' in sql
+        def fetchone(self):return {'version_exists':1}
+        def executemany(self,sql,rows):
+            if 'INSERT IGNORE INTO catalogue_oem' in sql:
+                calls.extend(rows)
+            else:
+                assert 'INSERT IGNORE INTO catalogue_parts' in sql
+            return len(rows)
+    class DB:
+        commits=0
+        def cursor(self):return Cursor()
+        def commit(self):self.commits+=1
+    old={'car_id':99,'model_id':88,'sha256':old_sha}
+    target=DB()
+    inserted,gaps=batch.add_oems_to_existing_graph(target,envelope,old)
+    assert (inserted,gaps)==(1,0)
+    assert calls==[(5,'TEST',77,'VOLVO-OEM')]
+    assert target.commits==1
+
+
+def test_uploaded_graph_registers_exact_articles_for_api_lookup():
+    p=payload()
+    p['source_scope']='passenger_prd_article_oem'
+    captured=[]
+    class Cursor:
+        def __enter__(self):return self
+        def __exit__(self,*args):pass
+        def executemany(self,sql,rows):
+            assert 'INSERT IGNORE INTO catalogue_parts' in sql
+            captured.extend(rows)
+            return len(rows)
+    class Target:
+        def cursor(self):return Cursor()
+    envelope={'payload':p,'sha256':digest(p)}
+    assert batch.insert_fitted_parts(Target(),envelope,{(5,'TEST')})==1
+    assert captured==[(5,'TEST',None)]
+    captured.clear()
+    assert batch.insert_fitted_parts(Target(),envelope,{(5,'MISSING')})==0
+    assert captured==[]

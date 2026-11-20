@@ -12,8 +12,20 @@ from volvo_vehicle_import import read, value, collect, import_summary, upload_sn
 from volvo_contract import encode, digest, validate, MAX_BYTES
 
 
+
+def progress(stage, **fields):
+    """Opt-in, non-sensitive import diagnostics, line-buffered for PowerShell."""
+    if os.getenv('CARPOT_OEM_IMPORT_TRACE') == '1':
+        print('OEM_STAGE '+json.dumps({'stage':stage,**fields},ensure_ascii=False),flush=True)
+
+
 def file_sha(path):
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    # OEM evidence is streamed separately from the 8 MiB JSON contract.
+    h=hashlib.sha256()
+    with path.open('rb') as stream:
+        for block in iter(lambda:stream.read(1024*1024),b''):
+            h.update(block)
+    return h.hexdigest()
 
 
 def atomic(path, data):
@@ -61,45 +73,78 @@ def select_passenger_manufacturer(rows, manufacturer_id):
     return passenger[0]
 
 
-def attach_source_oems(source, payload):
-    """Fetch OEM evidence for only the exact passenger fitment keys in this graph."""
-    by_identity = {(item['supplier_id'], item['article_number']):item
-                   for item in payload['articles'].values()}
-    keys = sorted(by_identity)
-    for offset in range(0,len(keys),100):
-        batch=keys[offset:offset+100]
-        placeholders=','.join(['(%s,%s)']*len(batch))
-        args=(payload['manufacturer_id'],*(value for key in batch for value in key))
-        rows=read(source,f"""SELECT supplierId,DataSupplierArticleNumber,manufacturerId,OENbr
-            FROM article_oe WHERE manufacturerId=%s
-            AND (supplierId,DataSupplierArticleNumber) IN ({placeholders})
-            ORDER BY supplierId,DataSupplierArticleNumber,OENbr LIMIT 10001""",args)
-        if len(rows)>10000:
-            raise ValueError('Source OEM batch exceeds the read limit')
-        expected=set(batch)
-        for row in rows:
-            key=(int(value(row,'supplierId')),value(row,'DataSupplierArticleNumber'))
-            number=value(row,'OENbr')
-            if key in expected and isinstance(number,str) and number.strip():
-                by_identity[key].setdefault('oem',[]).append({
-                    'manufacturerId':payload['manufacturer_id'],'OENbr':number,'source':'article_oe',
-                })
-    supplier_ids=sorted({sid for sid,_ in keys})
-    suppliers={}
-    for offset in range(0,len(supplier_ids),100):
-        batch=supplier_ids[offset:offset+100]
-        rows=read(source,'SELECT id,description FROM suppliers WHERE id IN ('+
-                  ','.join(['%s']*len(batch))+')',tuple(batch))
-        for row in rows:
-            sid=int(value(row,'id'))
-            if sid in suppliers:
-                raise ValueError('Ambiguous supplier identity')
-            suppliers[sid]=value(row,'description')
-    for (sid,_),article in by_identity.items():
-        if suppliers.get(sid):
-            article['supplier']=[{'description':suppliers[sid]}]
-    payload['source_scope']='passenger_prd_article_oem'
-    validate(payload)
+def attach_source_oems(source, payload, sidecar_path=None):
+    """Exact passenger article+manufacturer OEM references.
+
+    For automated source export, write them as an independently checksummed
+    JSONL sidecar. The canonical versioned snapshot has an 8 MiB API contract:
+    embedding millions of cross-references there is neither safe nor useful.
+    Existing legacy callers without a sidecar retain their previous behavior.
+    """
+    by_identity={(item['supplier_id'],item['article_number']):item
+                 for item in payload['articles'].values()}
+    keys=sorted(by_identity)
+    temporary=sidecar_path.with_suffix('.tmp') if sidecar_path is not None else None
+    output=temporary.open('wb') if temporary is not None else None
+    count=0
+    try:
+        for offset in range(0,len(keys),100):
+            batch=keys[offset:offset+100]
+            placeholders=','.join(['(%s,%s)']*len(batch))
+            args=(payload['manufacturer_id'],*(value for key in batch for value in key))
+            rows=read(source,f"""SELECT supplierId,DataSupplierArticleNumber,manufacturerId,OENbr
+                FROM article_oe WHERE manufacturerId=%s
+                AND (supplierId,DataSupplierArticleNumber) IN ({placeholders})
+                ORDER BY supplierId,DataSupplierArticleNumber,OENbr LIMIT 10001""",args)
+            if len(rows)>10000:
+                raise ValueError('Source OEM batch exceeds the read limit')
+            expected=set(batch)
+            for row in rows:
+                key=(int(value(row,'supplierId')),value(row,'DataSupplierArticleNumber'))
+                number=value(row,'OENbr')
+                if key not in expected or not isinstance(number,str) or not number.strip():
+                    continue
+                if not (1<=key[0]<=65535 and isinstance(key[1],str)
+                        and 1<=len(key[1])<=32 and len(number)<=64):
+                    raise ValueError('Source OEM value exceeds target identity column lengths')
+                if int(value(row,'manufacturerId'))!=payload['manufacturer_id']:
+                    raise ValueError('OEM manufacturer does not match source modification')
+                if output is not None:
+                    # One line per real source reference; no silent truncation.
+                    output.write(encode([key[0],key[1],payload['manufacturer_id'],number])+b'\n')
+                else:
+                    by_identity[key].setdefault('oem',[]).append({
+                        'manufacturerId':payload['manufacturer_id'],'OENbr':number,
+                        'source':'article_oe',
+                    })
+                count+=1
+        supplier_ids=sorted({sid for sid,_ in keys})
+        suppliers={}
+        for offset in range(0,len(supplier_ids),100):
+            batch=supplier_ids[offset:offset+100]
+            rows=read(source,'SELECT id,description FROM suppliers WHERE id IN ('+
+                      ','.join(['%s']*len(batch))+')',tuple(batch))
+            for row in rows:
+                sid=int(value(row,'id'))
+                if sid in suppliers:
+                    raise ValueError('Ambiguous supplier identity')
+                suppliers[sid]=value(row,'description')
+        for (sid,_),article in by_identity.items():
+            if suppliers.get(sid):
+                article['supplier']=[{'description':suppliers[sid]}]
+        payload['source_scope']='passenger_prd_article_oem'
+        validate(payload)
+        if output is not None:
+            output.close();output=None
+            import os
+            os.replace(temporary,sidecar_path)
+        return count
+    finally:
+        if output is not None:
+            output.close()
+        if temporary is not None and temporary.exists():
+            temporary.unlink()
+
 
 
 def export(source, output, car_ids, model_queries, limit, mapping=None, *, graph_only=False, with_oem=False, omit_prd_export=False):
@@ -165,12 +210,18 @@ def export(source, output, car_ids, model_queries, limit, mapping=None, *, graph
         else:
             payload=collect(source,car,model,mapping or {},manufacturer_id=mid,graph_only=graph_only)
             payload['manufacturer']=maker
-            if with_oem:attach_source_oems(source,payload)
+            if with_oem:attach_source_oems(source,payload,output/f'oem-{cid}.jsonl')
             if not payload['categories']:
                 raise ValueError('No article-linked types; empty modification not exportable')
             envelope=dict(payload=payload,sha256=digest(payload))
             atomic(path,envelope)
         files[path.name]=file_sha(path)
+        sidecar=output/f'oem-{cid}.jsonl'
+        if with_oem and sidecar.exists():
+            sidecar_sha=file_sha(sidecar)
+            if sidecar.name in files and files[sidecar.name]!=sidecar_sha:
+                raise ValueError('OEM sidecar checkpoint checksum mismatch')
+            files[sidecar.name]=sidecar_sha
         atomic(manifest_path,dict(schema='carpot.source.batch.v1',request=requested,files=files,
              complete=False,source_database='td1q2018',factory_bom=False))
     # PRD export is deterministic keyset pagination. Resume skips only checksum-verified full file.
@@ -193,24 +244,149 @@ def export(source, output, car_ids, model_queries, limit, mapping=None, *, graph
     return manifest
 
 
+def verified_oem_sidecar(path, payload):
+    """Validate every OEM evidence row against exact fitted source article keys.
+
+    The outer checkpoint manifest binds the file's SHA-256 and filename. Each
+    record must additionally match the modification and one of its exact
+    (supplier, article) identities. No cross-model/catalogue guesses.
+    """
+    source_keys={(r['supplier_id'],r['article_number']) for r in payload['articles'].values()}
+    manufacturer=payload['manufacturer_id']
+    count=0
+    with path.open('rb') as stream:
+        for line in stream:
+            count+=1
+            if count>2_000_000 or len(line)>4096:
+                raise ValueError('Oversized or malformed OEM evidence sidecar')
+            try:record=json.loads(line)
+            except (ValueError,UnicodeDecodeError) as exc:
+                raise ValueError('Invalid OEM evidence sidecar JSONL') from exc
+            if (not isinstance(record,list) or len(record)!=4
+                    or type(record[0]) is not int or type(record[2]) is not int
+                    or record[2]!=manufacturer
+                    or not isinstance(record[1],str) or not isinstance(record[3],str)
+                    or not 1<=record[0]<=65535 or not 1<=len(record[1])<=32
+                    or not 1<=len(record[3])<=64
+                    or (record[0],record[1]) not in source_keys):
+                raise ValueError('OEM sidecar reference has no exact fitted source article identity')
+    return count
+
+
+def fitted_oem_references(envelope):
+    """Yield only exact supplier+article+manufacturer OEM keys from source."""
+    payload=envelope['payload']
+    sidecar=envelope.get('_oem_sidecar')
+    if sidecar is not None:
+        with sidecar.open('rb') as stream:
+            for line in stream:
+                record=json.loads(line)
+                yield tuple(record)
+        return
+    for article in payload['articles'].values():
+        for ref in article.get('oem',[]):
+            number=ref.get('OENbr')
+            if (ref.get('manufacturerId')==payload['manufacturer_id'] and
+                    isinstance(number,str) and 0<len(number)<=64 and
+                    1<=article['supplier_id']<=65535 and
+                    0<len(article['article_number'])<=32):
+                yield (article['supplier_id'],article['article_number'],
+                       payload['manufacturer_id'],number)
+
+
+def insert_fitted_parts(target,envelope,allowed_keys):
+    """Create only exact source supplier/article identities required by OEM API.
+
+    Never overwrite names or prices of already imported catalogue parts.
+    """
+    data=envelope['payload']
+    rows=[]
+    for article in data['articles'].values():
+        key=(article['supplier_id'],article['article_number'])
+        if key not in allowed_keys:
+            continue
+        sid,number=key
+        if not (type(sid) is int and 1<=sid<=65535
+                and isinstance(number,str) and 1<=len(number)<=32):
+            raise ValueError('Invalid source article identity in catalogue parts')
+        # Original catalogue article name is descriptive metadata only.
+        name=article.get('name_source')
+        if name is not None and not isinstance(name,str):
+            name=None
+        rows.append((sid,number,name[:128] if name else None))
+    count=0
+    progress('parts_start',car_id=data['car_id'],identities=len(rows))
+    with target.cursor() as cursor:
+        for offset in range(0,len(rows),250):
+            count+=cursor.executemany("""INSERT IGNORE INTO catalogue_parts
+                (supplier_id,article_number,name_source) VALUES (%s,%s,%s)""",
+                rows[offset:offset+250])
+            if offset % 2500 == 0:
+                progress('parts_batch',car_id=data['car_id'],processed=min(offset+250,len(rows)),total=len(rows))
+    progress('parts_done',car_id=data['car_id'],inserted=count)
+    return count
+
+
+def insert_fitted_oems(target,envelope,allowed_keys):
+    """Idempotent batched relational upsert; caller controls commit/rollback."""
+    inserted=0
+    processed=0
+    buffer=[]
+    car_id=envelope['payload']['car_id']
+    progress('oem_start',car_id=car_id)
+    with target.cursor() as cursor:
+        for key in fitted_oem_references(envelope):
+            if (key[0],key[1]) not in allowed_keys:continue
+            buffer.append(key)
+            if len(buffer)>=250:
+                inserted+=cursor.executemany("""INSERT IGNORE INTO catalogue_oem
+                    (supplier_id,article_number,oem_manufacturer_id,oem_number)
+                    VALUES (%s,%s,%s,%s)""",buffer)
+                buffer.clear()
+                processed+=250
+                if processed % 2500 == 0:
+                    progress('oem_batch',car_id=car_id,processed=processed,inserted=inserted)
+        if buffer:
+            inserted+=cursor.executemany("""INSERT IGNORE INTO catalogue_oem
+                (supplier_id,article_number,oem_manufacturer_id,oem_number)
+                VALUES (%s,%s,%s,%s)""",buffer)
+            processed+=len(buffer)
+    progress('oem_done',car_id=car_id,processed=processed,inserted=inserted)
+    return inserted
+
+
 def validate_batch(folder, expected_sha):
     path=folder/'manifest.json'
     if file_sha(path)!=expected_sha:raise ValueError('Explicit manifest SHA-256 mismatch')
     manifest=json.loads(path.read_text('utf-8'))
     if manifest.get('schema')!='carpot.source.batch.v1' or not manifest.get('complete'):
         raise ValueError('Incomplete export')
-    result=[];seen=set()
+    result=[];seen=set();sidecars={}
     for name,sha in manifest['files'].items():
-        if name!='prd.json' and (not name.endswith('.json') or not name[:-5].isdigit()):raise ValueError('Invalid manifest path')
+        is_oem=(name.startswith('oem-') and name.endswith('.jsonl')
+                and name[4:-6].isdigit() and int(name[4:-6])>0)
+        is_graph=name.endswith('.json') and name[:-5].isdigit()
+        if name!='prd.json' and not (is_oem or is_graph):raise ValueError('Invalid manifest path')
         if file_sha(folder/name)!=sha:raise ValueError('File checksum mismatch')
         if name=='prd.json':continue
+        if is_oem:
+            car_id=int(name[4:-6])
+            if car_id in sidecars:raise ValueError('Duplicate OEM sidecar')
+            sidecars[car_id]=folder/name
+            continue
         item=verified(folder/name);data=item['payload']
         if name!=f"{data['car_id']}.json" or data['car_id'] in seen:raise ValueError('Duplicate/mismatched modification')
         seen.add(data['car_id']);result.append(item)
     summaries={r['car_id']:r for r in manifest['modifications']}
-    if seen!=set(summaries):raise ValueError('Manifest identity mismatch')
+    if seen!=set(summaries) or not set(sidecars).issubset(seen):raise ValueError('Manifest identity mismatch')
     for item in result:
-        if relation_summary(item['payload'])!=summaries[item['payload']['car_id']]:raise ValueError('Manifest graph mismatch')
+        payload=item['payload'];car_id=payload['car_id']
+        if relation_summary(payload)!=summaries[car_id]:raise ValueError('Manifest graph mismatch')
+        if car_id in sidecars:
+            if payload.get('source_scope')!='passenger_prd_article_oem':
+                raise ValueError('OEM sidecar attached to non-OEM source graph')
+            verified_oem_sidecar(sidecars[car_id],payload)
+            item['_oem_sidecar']=sidecars[car_id]
     return result
 
 
@@ -250,41 +426,49 @@ def review_batch(folder, expected_sha, mapping, reviewer, output):
     return dict(reviewed=len(prepared),manifest_sha256=file_sha(output/'manifest.json'))
 
 
-def add_oems_to_existing_graph(target, item, old):
-    """Enrich existing immutable snapshots through exact shared fitment triples."""
+def add_oems_to_existing_graph(target,item,old):
+    """Preserve the versioned snapshot and enrich only exact shared article links."""
     data=item['payload']
-    with target.cursor() as cursor:
-        cursor.execute('SELECT payload FROM catalogue_volvo_versions WHERE car_id=%s AND sha256=%s',
-                       (data['car_id'],old['sha256']))
-        version=cursor.fetchone()
-        if not version:
-            raise ValueError('Existing snapshot version unavailable')
-        current=validate(json.loads(version['payload']))
-        if digest(current)!=old['sha256'] or current['manufacturer_id']!=data['manufacturer_id']:
-            raise ValueError('Existing snapshot identity mismatch')
-        old_links={(row['product_id'],key) for row in current['categories'] for key in row['articles']}
-        new_links={(row['product_id'],key) for row in data['categories'] for key in row['articles']}
-        references=set()
-        for key in {key for _,key in old_links & new_links}:
-            article=data['articles'][key]
-            for ref in article.get('oem',[]):
-                number=ref.get('OENbr')
-                if (ref.get('manufacturerId')==data['manufacturer_id'] and isinstance(number,str)
-                        and 0<len(number)<=64 and 0<len(article['article_number'])<=32
-                        and 1<=article['supplier_id']<=65535):
-                    references.add((article['supplier_id'],article['article_number'],data['manufacturer_id'],number))
-        inserted=0
-        ordered=sorted(references)
-        for offset in range(0,len(ordered),250):
-            inserted+=cursor.executemany("""INSERT IGNORE INTO catalogue_oem
-                (supplier_id,article_number,oem_manufacturer_id,oem_number) VALUES (%s,%s,%s,%s)""",
-                ordered[offset:offset+250])
+    new_links={(row['product_id'],key) for row in data['categories'] for key in row['articles']}
+    # Exact SHA means immutable source payload already matches the incoming
+    # checksum-verified graph. Avoid reading megabytes of stored JSON over a
+    # fragile SSH tunnel. Still replay exact OEM/part upserts to heal a prior
+    # interruption after the separate snapshot commit.
+    if old['sha256']==item['sha256']:
+        with target.cursor() as cursor:
+            cursor.execute('SELECT 1 AS version_exists FROM catalogue_volvo_versions WHERE car_id=%s AND sha256=%s',
+                           (data['car_id'],old['sha256']))
+            if not cursor.fetchone():raise ValueError('Existing snapshot version unavailable')
+        shared_keys={key for _,key in new_links}
+        gaps=0
+        progress('existing_graph_exact_sha',car_id=data['car_id'],keys=len(shared_keys))
+    else:
+        with target.cursor() as cursor:
+            cursor.execute('SELECT payload FROM catalogue_volvo_versions WHERE car_id=%s AND sha256=%s',
+                           (data['car_id'],old['sha256']))
+            version=cursor.fetchone()
+            if not version:raise ValueError('Existing snapshot version unavailable')
+            current=validate(json.loads(version['payload']))
+            if digest(current)!=old['sha256'] or current['manufacturer_id']!=data['manufacturer_id']:
+                raise ValueError('Existing snapshot identity mismatch')
+            old_links={(row['product_id'],key) for row in current['categories'] for key in row['articles']}
+        shared_keys={key for _,key in old_links & new_links}
+        gaps=len(new_links-old_links)
+    allowed={(data['articles'][key]['supplier_id'],data['articles'][key]['article_number'])
+             for key in shared_keys}
+    progress('existing_graph_shared_links',car_id=data['car_id'],keys=len(allowed))
+    insert_fitted_parts(target,item,allowed)
+    inserted=insert_fitted_oems(target,item,allowed)
     target.commit()
-    return inserted,len(new_links-old_links)
+    progress('existing_graph_committed',car_id=data['car_id'],inserted=inserted)
+    return inserted,gaps
+
 
 
 def upload(target, envelopes):
+    progress('inventory_start',modifications=len(envelopes))
     existing={int(r['car_id']):r for r in inventory(target)}
+    progress('inventory_done',existing=len(existing))
     # All conflicts checked BEFORE writes. Changed versions require a separate review.
     for item in envelopes:
         data=item['payload'];old=existing.get(data['car_id'])
@@ -301,6 +485,7 @@ def upload(target, envelopes):
         old=existing.get(data['car_id'])
         graph_import |= data.get('source_scope')=='passenger_prd_article_oem'
         if old:
+            progress('existing_graph_start',car_id=data['car_id'])
             if data.get('source_scope')=='passenger_prd_article_oem':
                 try:
                     added,gaps=add_oems_to_existing_graph(target,item,old)
@@ -311,6 +496,7 @@ def upload(target, envelopes):
                 unpublished_links+=gaps
             continue
         # Existing tables and uploader. Save directory prerequisites in SAME transaction.
+        progress('new_graph_start',car_id=data['car_id'],articles=len(data['articles']))
         try:
             with target.cursor() as c:
                 c.execute('INSERT IGNORE INTO catalogue_manufacturers (id,name_source,full_name_source) VALUES (%s,%s,%s)',
@@ -321,7 +507,18 @@ def upload(target, envelopes):
                 if int(c.fetchone()['manufacturer_id'])!=data['manufacturer_id']:raise ValueError('Target model belongs to another manufacturer')
                 c.execute('SELECT car_id FROM catalogue_volvo_snapshots WHERE car_id=%s FOR UPDATE',(data['car_id'],))
                 if c.fetchone():raise ValueError('Concurrent snapshot import; retry inventory')
+            progress('snapshot_start',car_id=data['car_id'])
             upload_snapshot(target,item,approved_identity=(data['manufacturer_id'],data['model_id'],data['car_id']))
+            progress('snapshot_committed',car_id=data['car_id'])
+            # The source snapshot is committed before relational OEM upserts.
+            # A failed upsert is safe to retry: the next run uses the existing
+            # snapshot's exact-shared-link path above. INSERT IGNORE is idempotent.
+            if data.get('source_scope')=='passenger_prd_article_oem':
+                allowed={(a['supplier_id'],a['article_number']) for a in data['articles'].values()}
+                insert_fitted_parts(target,item,allowed)
+                oem_inserted+=insert_fitted_oems(target,item,allowed)
+                target.commit()
+                progress('new_graph_oem_committed',car_id=data['car_id'])
             uploaded+=1
         except Exception:
             target.rollback();raise
@@ -331,22 +528,62 @@ def upload(target, envelopes):
     return result
 
 
-def discover_passenger(source, after_id, scan_limit):
+def inspect_commercial_source(source):
+    """SELECT-only schema and bounded linkage sample for DAF/commercial support.
+
+    Linkage IDs are not globally unique across source data domains. This is
+    discovery, not proof that any sampled link applies to a DAF vehicle.
+    """
+    cols=read(source,"""SELECT TABLE_NAME,COLUMN_NAME,DATA_TYPE
+        FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA=%s AND TABLE_NAME IN
+          ('commercial_vehicles','commercial_vehicle_pds',
+           'commercial_vehicle_attributes','commercial_vehicle_prd')
+        ORDER BY TABLE_NAME,ORDINAL_POSITION""",('td1q2018',))
+    groups={}
+    for row in cols:
+        groups.setdefault(value(row,'TABLE_NAME'),[]).append(dict(
+            name=value(row,'COLUMN_NAME'),type=value(row,'DATA_TYPE')))
+    sample=[]
+    if any(c['name'].casefold()=='id' for c in groups.get('commercial_vehicles',[])):
+        vehicles=read(source,'SELECT id FROM commercial_vehicles ORDER BY id LIMIT 8')
+        for vehicle in vehicles:
+            vid=int(value(vehicle,'id'))
+            # A linkageid might coincide with another entity domain: no
+            # commercial fitment assertion until linkage type is validated.
+            link=read(source,'SELECT linkagetypeid,productid FROM article_links WHERE linkageid=%s LIMIT 40',(vid,))
+            sample.append(dict(source_id=vid,observed_linkage_type_ids=sorted({
+                int(value(row,'linkagetypeid')) for row in link
+            }),observed_link_count_capped=len(link)))
+    return dict(source_database='td1q2018',mode='commercial_preflight',
+                read_only=True,commercial_fitment_verified=False,
+                columns=groups,linkage_examples=sample,
+                next_step='Validate commercial linkagetype and product domain; do not reuse passenger type 2 automatically')
+
+
+def discover_passenger(source, after_id, scan_limit, model_id=None):
     """Keyset scan without manually supplied IDs. Source is always SELECT-only.
 
     Scan by the passenger modification primary key (not the huge article_links
     table), then probe the exact source relation for each candidate. The caller
     commits its checkpoint only after processing all IDs in this page.
     """
-    if after_id < 0 or not 1 <= scan_limit <= 500:
-        raise ValueError('Invalid keyset position or bounded scan size')
+    if after_id < 0 or not 1 <= scan_limit <= 500 or (model_id is not None and model_id <= 0):
+        raise ValueError('Invalid keyset position, model ID or bounded scan size')
     tables={value(r,'TABLE_NAME') for r in read(source,
         'SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA=%s',('td1q2018',))}
     table='passanger_cars' if 'passanger_cars' in tables else 'passenger_cars'
     if table not in tables:
         raise ValueError('Passenger car modification table missing')
-    candidates=read(source, f'SELECT id FROM {table} WHERE id>%s ORDER BY id LIMIT %s',
-                    (after_id,scan_limit))
+    # Scoped first transfer can validate the real model (e.g. Volvo XC60 II
+    # source model 37773) before importing the complete 68k+ passenger set.
+    # Never infer exact fitment from the model alone.
+    if model_id is None:
+        candidates=read(source, f'SELECT id FROM {table} WHERE id>%s ORDER BY id LIMIT %s',
+                        (after_id,scan_limit))
+    else:
+        candidates=read(source, f'SELECT id FROM {table} WHERE modelid=%s AND id>%s ORDER BY id LIMIT %s',
+                        (model_id,after_id,scan_limit))
     found=[]
     for row in candidates:
         car_id=int(value(row,'id'))
@@ -355,15 +592,16 @@ def discover_passenger(source, after_id, scan_limit):
     return {'mode':'discover','after_id':after_id,
             'next_after_id':int(value(candidates[-1],'id')) if candidates else after_id,
             'scanned':len(candidates),'linked_ids':found,'complete':len(candidates)<scan_limit,
-            'source':'td1q2018','linkage_type':2}
+            'source':'td1q2018','linkage_type':2,'model_id':model_id}
 
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)
-    p.add_argument('mode',choices=['export','validate','inventory','upload','review','discover'])
+    p.add_argument('mode',choices=['export','validate','inventory','upload','review','discover','commercial-audit'])
     p.add_argument('--output',type=Path,required=True)
     p.add_argument('--car-id',type=int,action='append',default=[])
     p.add_argument('--after-id',type=int,default=0,help='SELECT-only passenger discovery keyset cursor')
+    p.add_argument('--model-id',type=int,help='Optional source model ID for scoped passenger OEM synchronization')
     p.add_argument('--scan-limit',type=int,default=50,help='Maximum passenger modifications scanned in one discovery page, 1..500')
     p.add_argument('--discover-model',action='append',default=[])
     p.add_argument('--max-modifications',type=int,default=8)
@@ -403,12 +641,24 @@ def main():
             else:result=upload(target,envelopes)
         print(json.dumps(dict(mode=a.mode,rows=len(result)) if a.mode=='inventory' else result));return
     if os.getenv('SOURCE_HOST','127.0.0.1') not in ('127.0.0.1','localhost') or os.getenv('SOURCE_DATABASE','td1q2018')!='td1q2018':p.error('Only local td1q2018 source allowed')
-    if a.mode=='discover':
-        if a.after_id<0 or not 1<=a.scan_limit<=500:p.error('Invalid discovery cursor/page size')
+    if a.mode=='commercial-audit':
         with connection('SOURCE','td1q2018') as source:
             read(source,'SET SESSION max_execution_time=30000')
             read(source,'START TRANSACTION READ ONLY')
-            try:result=discover_passenger(source,a.after_id,a.scan_limit)
+            try:result=inspect_commercial_source(source)
+            finally:source.rollback()
+        a.output.mkdir(parents=True,exist_ok=True)
+        atomic(a.output/'commercial-source-audit.json',result)
+        print(json.dumps(dict(mode='commercial-audit',
+                              sampled=len(result['linkage_examples']),
+                              fitment_verified=False)))
+        return
+    if a.mode=='discover':
+        if a.after_id<0 or not 1<=a.scan_limit<=500 or (a.model_id is not None and a.model_id<=0):p.error('Invalid discovery cursor/page size or model ID')
+        with connection('SOURCE','td1q2018') as source:
+            read(source,'SET SESSION max_execution_time=30000')
+            read(source,'START TRANSACTION READ ONLY')
+            try:result=discover_passenger(source,a.after_id,a.scan_limit,a.model_id)
             finally:source.rollback()
         a.output.mkdir(parents=True,exist_ok=True)
         atomic(a.output/'discovery.json',result)
