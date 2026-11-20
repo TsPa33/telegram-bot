@@ -13,7 +13,12 @@ from volvo_contract import encode, digest, validate, MAX_BYTES
 
 
 def file_sha(path):
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    # OEM evidence is streamed separately from the 8 MiB JSON contract.
+    h=hashlib.sha256()
+    with path.open('rb') as stream:
+        for block in iter(lambda:stream.read(1024*1024),b''):
+            h.update(block)
+    return h.hexdigest()
 
 
 def atomic(path, data):
@@ -61,45 +66,78 @@ def select_passenger_manufacturer(rows, manufacturer_id):
     return passenger[0]
 
 
-def attach_source_oems(source, payload):
-    """Fetch OEM evidence for only the exact passenger fitment keys in this graph."""
-    by_identity = {(item['supplier_id'], item['article_number']):item
-                   for item in payload['articles'].values()}
-    keys = sorted(by_identity)
-    for offset in range(0,len(keys),100):
-        batch=keys[offset:offset+100]
-        placeholders=','.join(['(%s,%s)']*len(batch))
-        args=(payload['manufacturer_id'],*(value for key in batch for value in key))
-        rows=read(source,f"""SELECT supplierId,DataSupplierArticleNumber,manufacturerId,OENbr
-            FROM article_oe WHERE manufacturerId=%s
-            AND (supplierId,DataSupplierArticleNumber) IN ({placeholders})
-            ORDER BY supplierId,DataSupplierArticleNumber,OENbr LIMIT 10001""",args)
-        if len(rows)>10000:
-            raise ValueError('Source OEM batch exceeds the read limit')
-        expected=set(batch)
-        for row in rows:
-            key=(int(value(row,'supplierId')),value(row,'DataSupplierArticleNumber'))
-            number=value(row,'OENbr')
-            if key in expected and isinstance(number,str) and number.strip():
-                by_identity[key].setdefault('oem',[]).append({
-                    'manufacturerId':payload['manufacturer_id'],'OENbr':number,'source':'article_oe',
-                })
-    supplier_ids=sorted({sid for sid,_ in keys})
-    suppliers={}
-    for offset in range(0,len(supplier_ids),100):
-        batch=supplier_ids[offset:offset+100]
-        rows=read(source,'SELECT id,description FROM suppliers WHERE id IN ('+
-                  ','.join(['%s']*len(batch))+')',tuple(batch))
-        for row in rows:
-            sid=int(value(row,'id'))
-            if sid in suppliers:
-                raise ValueError('Ambiguous supplier identity')
-            suppliers[sid]=value(row,'description')
-    for (sid,_),article in by_identity.items():
-        if suppliers.get(sid):
-            article['supplier']=[{'description':suppliers[sid]}]
-    payload['source_scope']='passenger_prd_article_oem'
-    validate(payload)
+def attach_source_oems(source, payload, sidecar_path=None):
+    """Exact passenger article+manufacturer OEM references.
+
+    For automated source export, write them as an independently checksummed
+    JSONL sidecar. The canonical versioned snapshot has an 8 MiB API contract:
+    embedding millions of cross-references there is neither safe nor useful.
+    Existing legacy callers without a sidecar retain their previous behavior.
+    """
+    by_identity={(item['supplier_id'],item['article_number']):item
+                 for item in payload['articles'].values()}
+    keys=sorted(by_identity)
+    temporary=sidecar_path.with_suffix('.tmp') if sidecar_path is not None else None
+    output=temporary.open('wb') if temporary is not None else None
+    count=0
+    try:
+        for offset in range(0,len(keys),100):
+            batch=keys[offset:offset+100]
+            placeholders=','.join(['(%s,%s)']*len(batch))
+            args=(payload['manufacturer_id'],*(value for key in batch for value in key))
+            rows=read(source,f"""SELECT supplierId,DataSupplierArticleNumber,manufacturerId,OENbr
+                FROM article_oe WHERE manufacturerId=%s
+                AND (supplierId,DataSupplierArticleNumber) IN ({placeholders})
+                ORDER BY supplierId,DataSupplierArticleNumber,OENbr LIMIT 10001""",args)
+            if len(rows)>10000:
+                raise ValueError('Source OEM batch exceeds the read limit')
+            expected=set(batch)
+            for row in rows:
+                key=(int(value(row,'supplierId')),value(row,'DataSupplierArticleNumber'))
+                number=value(row,'OENbr')
+                if key not in expected or not isinstance(number,str) or not number.strip():
+                    continue
+                if not (1<=key[0]<=65535 and isinstance(key[1],str)
+                        and 1<=len(key[1])<=32 and len(number)<=64):
+                    raise ValueError('Source OEM value exceeds target identity column lengths')
+                if int(value(row,'manufacturerId'))!=payload['manufacturer_id']:
+                    raise ValueError('OEM manufacturer does not match source modification')
+                if output is not None:
+                    # One line per real source reference; no silent truncation.
+                    output.write(encode([key[0],key[1],payload['manufacturer_id'],number])+b'\n')
+                else:
+                    by_identity[key].setdefault('oem',[]).append({
+                        'manufacturerId':payload['manufacturer_id'],'OENbr':number,
+                        'source':'article_oe',
+                    })
+                count+=1
+        supplier_ids=sorted({sid for sid,_ in keys})
+        suppliers={}
+        for offset in range(0,len(supplier_ids),100):
+            batch=supplier_ids[offset:offset+100]
+            rows=read(source,'SELECT id,description FROM suppliers WHERE id IN ('+
+                      ','.join(['%s']*len(batch))+')',tuple(batch))
+            for row in rows:
+                sid=int(value(row,'id'))
+                if sid in suppliers:
+                    raise ValueError('Ambiguous supplier identity')
+                suppliers[sid]=value(row,'description')
+        for (sid,_),article in by_identity.items():
+            if suppliers.get(sid):
+                article['supplier']=[{'description':suppliers[sid]}]
+        payload['source_scope']='passenger_prd_article_oem'
+        validate(payload)
+        if output is not None:
+            output.close();output=None
+            import os
+            os.replace(temporary,sidecar_path)
+        return count
+    finally:
+        if output is not None:
+            output.close()
+        if temporary is not None and temporary.exists():
+            temporary.unlink()
+
 
 
 def export(source, output, car_ids, model_queries, limit, mapping=None, *, graph_only=False, with_oem=False, omit_prd_export=False):
@@ -165,12 +203,15 @@ def export(source, output, car_ids, model_queries, limit, mapping=None, *, graph
         else:
             payload=collect(source,car,model,mapping or {},manufacturer_id=mid,graph_only=graph_only)
             payload['manufacturer']=maker
-            if with_oem:attach_source_oems(source,payload)
+            if with_oem:attach_source_oems(source,payload,output/f'oem-{cid}.jsonl')
             if not payload['categories']:
                 raise ValueError('No article-linked types; empty modification not exportable')
             envelope=dict(payload=payload,sha256=digest(payload))
             atomic(path,envelope)
         files[path.name]=file_sha(path)
+        sidecar=output/f'oem-{cid}.jsonl'
+        if with_oem and sidecar.exists():
+            files[sidecar.name]=file_sha(sidecar)
         atomic(manifest_path,dict(schema='carpot.source.batch.v1',request=requested,files=files,
              complete=False,source_database='td1q2018',factory_bom=False))
     # PRD export is deterministic keyset pagination. Resume skips only checksum-verified full file.
