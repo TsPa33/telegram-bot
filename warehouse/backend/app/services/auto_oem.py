@@ -284,8 +284,6 @@ class SourceCache:
     def get_offer_batch(self,payload,products):
         from app.api.unified_catalogue import saved_articles
 
-        if payload['schema']!='carpot.vehicle.plan.v1':
-            return {}
         result={}
         ids=list(products)
         for start in range(0,len(ids),12):

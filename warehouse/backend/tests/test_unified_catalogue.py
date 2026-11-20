@@ -685,3 +685,16 @@ def test_xc60_confirmed_modification_builds_plan_and_oem_without_vin_guess(logge
         assert ref['oem_number']=='OEM-ONE'
         assert not ref['vin_verified']
         assert db.scalar(select(func.count()).select_from(Part).where(Part.vehicle_id==vid))==0
+
+
+def test_pinned_batch_works_for_an_existing_volvo_snapshot():
+    from app.services.auto_oem import SourceCache
+
+    class Adapter:
+        def article_batch(self, car_id, product_ids, snapshot_sha):
+            assert (car_id,product_ids,snapshot_sha)==(107555,[106],'a'*64)
+            return {106:detail_items()}
+
+    payload=envelope()['payload']
+    product=payload['categories'][0]
+    assert SourceCache(Adapter()).get_offer_batch(payload,{106:product})[106][0]['oem_numbers']==['OEM-ONE','OEM-TWO']
