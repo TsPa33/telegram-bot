@@ -307,7 +307,7 @@ def test_large_oem_snapshot_streams_outside_8mib_source_graph_contract(tmp_path,
     assert all(r[2]==77 for r in batch.fitted_oem_references(items[0]))
 
     # A sidecar changed independently of the manifest must never be imported.
-    with sidecar.open('ab') as f:f.write(b'[1,"OTHER",77,"bad"]\\n')
+    with sidecar.open('ab') as f:f.write(b'[1,"OTHER",77,"bad"]\n')
     with pytest.raises(ValueError,match='checksum'):
         batch.validate_batch(tmp_path,batch.file_sha(tmp_path/'manifest.json'))
 
@@ -316,7 +316,7 @@ def test_oem_sidecar_import_filters_to_exact_existing_article_keys(tmp_path):
     p=payload()
     p['source_scope']='passenger_prd_article_oem'
     path=tmp_path/'oem-99.jsonl'
-    path.write_bytes(encode([5,'TEST',77,'VOLVO-CROSS'])+b'\\n')
+    path.write_bytes(encode([5,'TEST',77,'VOLVO-CROSS'])+b'\n')
     envelope={'payload':p,'sha256':digest(p),'_oem_sidecar':path}
     assert batch.verified_oem_sidecar(path,p)==1
     calls=[]
