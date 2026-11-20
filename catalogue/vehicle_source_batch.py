@@ -12,6 +12,13 @@ from volvo_vehicle_import import read, value, collect, import_summary, upload_sn
 from volvo_contract import encode, digest, validate, MAX_BYTES
 
 
+
+def progress(stage, **fields):
+    """Opt-in, non-sensitive import diagnostics, line-buffered for PowerShell."""
+    if os.getenv('CARPOT_OEM_IMPORT_TRACE') == '1':
+        print('OEM_STAGE '+json.dumps({'stage':stage,**fields},ensure_ascii=False),flush=True)
+
+
 def file_sha(path):
     # OEM evidence is streamed separately from the 8 MiB JSON contract.
     h=hashlib.sha256()
@@ -308,18 +315,25 @@ def insert_fitted_parts(target,envelope,allowed_keys):
             name=None
         rows.append((sid,number,name[:128] if name else None))
     count=0
+    progress('parts_start',car_id=data['car_id'],identities=len(rows))
     with target.cursor() as cursor:
         for offset in range(0,len(rows),250):
             count+=cursor.executemany("""INSERT IGNORE INTO catalogue_parts
                 (supplier_id,article_number,name_source) VALUES (%s,%s,%s)""",
                 rows[offset:offset+250])
+            if offset % 2500 == 0:
+                progress('parts_batch',car_id=data['car_id'],processed=min(offset+250,len(rows)),total=len(rows))
+    progress('parts_done',car_id=data['car_id'],inserted=count)
     return count
 
 
 def insert_fitted_oems(target,envelope,allowed_keys):
     """Idempotent batched relational upsert; caller controls commit/rollback."""
     inserted=0
+    processed=0
     buffer=[]
+    car_id=envelope['payload']['car_id']
+    progress('oem_start',car_id=car_id)
     with target.cursor() as cursor:
         for key in fitted_oem_references(envelope):
             if (key[0],key[1]) not in allowed_keys:continue
@@ -329,10 +343,15 @@ def insert_fitted_oems(target,envelope,allowed_keys):
                     (supplier_id,article_number,oem_manufacturer_id,oem_number)
                     VALUES (%s,%s,%s,%s)""",buffer)
                 buffer.clear()
+                processed+=250
+                if processed % 2500 == 0:
+                    progress('oem_batch',car_id=car_id,processed=processed,inserted=inserted)
         if buffer:
             inserted+=cursor.executemany("""INSERT IGNORE INTO catalogue_oem
                 (supplier_id,article_number,oem_manufacturer_id,oem_number)
                 VALUES (%s,%s,%s,%s)""",buffer)
+            processed+=len(buffer)
+    progress('oem_done',car_id=car_id,processed=processed,inserted=inserted)
     return inserted
 
 
@@ -423,15 +442,19 @@ def add_oems_to_existing_graph(target,item,old):
     shared_keys={key for _,key in old_links & new_links}
     allowed={(data['articles'][key]['supplier_id'],data['articles'][key]['article_number'])
              for key in shared_keys}
+    progress('existing_graph_shared_links',car_id=data['car_id'],keys=len(allowed))
     insert_fitted_parts(target,item,allowed)
     inserted=insert_fitted_oems(target,item,allowed)
     target.commit()
+    progress('existing_graph_committed',car_id=data['car_id'],inserted=inserted)
     return inserted,len(new_links-old_links)
 
 
 
 def upload(target, envelopes):
+    progress('inventory_start',modifications=len(envelopes))
     existing={int(r['car_id']):r for r in inventory(target)}
+    progress('inventory_done',existing=len(existing))
     # All conflicts checked BEFORE writes. Changed versions require a separate review.
     for item in envelopes:
         data=item['payload'];old=existing.get(data['car_id'])
@@ -448,6 +471,7 @@ def upload(target, envelopes):
         old=existing.get(data['car_id'])
         graph_import |= data.get('source_scope')=='passenger_prd_article_oem'
         if old:
+            progress('existing_graph_start',car_id=data['car_id'])
             if data.get('source_scope')=='passenger_prd_article_oem':
                 try:
                     added,gaps=add_oems_to_existing_graph(target,item,old)
@@ -458,6 +482,7 @@ def upload(target, envelopes):
                 unpublished_links+=gaps
             continue
         # Existing tables and uploader. Save directory prerequisites in SAME transaction.
+        progress('new_graph_start',car_id=data['car_id'],articles=len(data['articles']))
         try:
             with target.cursor() as c:
                 c.execute('INSERT IGNORE INTO catalogue_manufacturers (id,name_source,full_name_source) VALUES (%s,%s,%s)',
@@ -468,7 +493,9 @@ def upload(target, envelopes):
                 if int(c.fetchone()['manufacturer_id'])!=data['manufacturer_id']:raise ValueError('Target model belongs to another manufacturer')
                 c.execute('SELECT car_id FROM catalogue_volvo_snapshots WHERE car_id=%s FOR UPDATE',(data['car_id'],))
                 if c.fetchone():raise ValueError('Concurrent snapshot import; retry inventory')
+            progress('snapshot_start',car_id=data['car_id'])
             upload_snapshot(target,item,approved_identity=(data['manufacturer_id'],data['model_id'],data['car_id']))
+            progress('snapshot_committed',car_id=data['car_id'])
             # The source snapshot is committed before relational OEM upserts.
             # A failed upsert is safe to retry: the next run uses the existing
             # snapshot's exact-shared-link path above. INSERT IGNORE is idempotent.
@@ -477,6 +504,7 @@ def upload(target, envelopes):
                 insert_fitted_parts(target,item,allowed)
                 oem_inserted+=insert_fitted_oems(target,item,allowed)
                 target.commit()
+                progress('new_graph_oem_committed',car_id=data['car_id'])
             uploaded+=1
         except Exception:
             target.rollback();raise
