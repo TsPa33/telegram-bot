@@ -37,7 +37,45 @@ class Registration(Credentials):
     name: Annotated[str, Field(min_length=1, max_length=120)]
 
 
+class VinConflict(Input):
+    primary: str = Field(max_length=200)
+    secondary: str = Field(max_length=200)
+
+
+class VinAttribute(Input):
+    alternative: str | None = Field(default=None,max_length=200)
+    alternative_source: str | None = Field(default=None,max_length=100)
+    label: str = Field(min_length=1,max_length=120)
+    value: str = Field(max_length=200)
+    source: str = Field(max_length=100)
+
+
+class VinDetails(Input):
+    additional: dict[str,VinAttribute] = Field(default_factory=dict,max_length=40)
+    decoded_additional: dict[str,VinAttribute] = Field(default_factory=dict,max_length=40)
+    conflicts: dict[str,VinConflict] = Field(default_factory=dict,max_length=40)
+    characteristics: dict[str,str|int|float|None] = Field(default_factory=dict,max_length=40)
+    decoded: dict[str,str|int|float|None] = Field(default_factory=dict,max_length=40)
+    field_sources: dict[str,str] = Field(default_factory=dict,max_length=40)
+    source: str = Field(default='manual',max_length=100)
+    observed_at: str = Field(default='',max_length=80)
+
+    @model_validator(mode='after')
+    def bounded(self):
+        from app.services.vin_fields import PRIMARY_KEYS,EXTRA_KEYS
+        allowed=PRIMARY_KEYS
+        if not set(self.additional)<=EXTRA_KEYS or not set(self.decoded_additional)<=EXTRA_KEYS:raise ValueError('Неприпустимі додаткові VIN-дані')
+
+        for values in (self.characteristics,self.decoded):
+            if not set(values)<=allowed or any(len(str(v))>200 for v in values.values()):
+                raise ValueError('Неприпустимі VIN-характеристики')
+        if not set(self.conflicts)<=allowed:raise ValueError('Неприпустимі конфлікти VIN')
+        if not set(self.field_sources)<=allowed or any(len(v)>100 for v in self.field_sources.values()):raise ValueError('Неприпустиме джерело VIN')
+        return self
+
+
 class VehicleInput(Input):
+    vin_details: VinDetails | None = None
     ktype: Annotated[int, Field(gt=0, le=2147483647, strict=True)] | None = None
     manufacturer: Text100
     model: Text100
@@ -56,6 +94,18 @@ class VehicleInput(Input):
     acquisition_date: date | None = None
     notes: Annotated[str, Field(max_length=10000)] = ""
     status: Literal["planned", "dismantling", "completed"] = "dismantling"
+
+    @field_validator('drive_type',mode='before')
+    @classmethod
+    def normalized_drive(cls,value):
+        if not value:return value
+        from app.services.vin_normalize import drive_code
+        return drive_code(value) or value
+
+    @field_validator('vin',mode='before')
+    @classmethod
+    def normalized_vin(cls,value):
+        return value.strip().upper() if isinstance(value,str) else value
 
 
 class VehicleSpecificationsInput(Input):
@@ -127,14 +177,13 @@ class PartInput(Input):
             raise ValueError('Керувальні символи у кольорі не дозволені')
         return value or None
 
-    @model_validator(mode="after")
-    def serial_required(self):
-        if self.individually_tracked and not self.serial_number:
-            raise ValueError("Для індивідуального обліку потрібен серійний номер")
-        return self
+    # Serial requirement is checked at the API boundary against existing physical identity.
 
 
 class StockInput(Input):
+    assembly_token: Annotated[str, Field(min_length=64,max_length=64)] | None = None
+    assembly_description: Annotated[str, Field(max_length=200)] = ''
+    assembly_remainder: bool = False
     type: Literal[
         "receipt", "write_off", "sale", "reserve", "release", "correction", "transfer"
     ]

@@ -12,6 +12,7 @@ class Resolution(Input):
         if (self.action=='link')!=bool(self.item_id):raise ValueError('Link requires exactly one existing item')
         return self
 class PlanPreview(ConfigurationPreview):
+    universal:bool=Field(default=False,strict=True)
     reset_trial:bool=Field(default=False,strict=True)
     resolutions:dict[str,Resolution]=Field(default_factory=dict,max_length=2000)
 class PlanSave(PlanPreview):

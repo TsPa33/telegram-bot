@@ -16,6 +16,9 @@ from app.schemas.dismantling_v3 import PlanPreview
 
 VERSION='carpot.managed-plan.2b.2'
 PART_STATE_FIELDS=('id','vehicle_id','checklist_category_id','quantity','reserved_quantity','archived')
+def generator_basis(v):
+    return digest(jsonable_encoder({k:getattr(v,k,None) for k in ('manufacturer','model','generation','year','engine','engine_code','engine_displacement_l','fuel_type','transmission','drive_type','vin','vin_details')}))
+
 def rows_for(db,v):return list(db.scalars(select(DismantlingItem).where(DismantlingItem.account_id==v.account_id,DismantlingItem.vehicle_id==v.id).order_by(DismantlingItem.id)))
 def state(db,v,rows=None):
     rows=rows_for(db,v) if rows is None else rows
@@ -23,7 +26,7 @@ def state(db,v,rows=None):
     parts=[dict(row) for row in db.execute(select(*(getattr(Part,k) for k in PART_STATE_FIELDS)).where(Part.account_id==v.account_id,Part.vehicle_id==v.id).order_by(Part.id)).mappings()]
     ops=list(db.scalars(select(Operation.id).where(Operation.account_id==v.account_id,Operation.vehicle_id==v.id).order_by(Operation.id)))
     # JSON columns are already primitives; snapshot converts top-level dates/money.
-    return digest([v.id,v.account_id,basis(v),v.archived,v.dismantling_v3,[snapshot(r) for r in rows],parts,ops])
+    return digest([getattr(v,'vin_details',None),getattr(v,'engine_code',None),getattr(v,'drive_type',None),v.id,v.account_id,basis(v),v.archived,v.dismantling_v3,[snapshot(r) for r in rows],parts,ops])
 def inspection(r):return r.plan_v3.get('inspection') or ('present' if r.received_at or r.status=='dismantled' else 'absent' if r.status=='absent' else 'unchecked')
 def protected(r):return bool(r.received_at or r.part_id)
 def listing(db,v):
@@ -38,16 +41,17 @@ def listing(db,v):
         if decrease>0:
             if op.type=='sale':sales[op.part_id]+=decrease
             else:other_decreases.add(op.part_id)
+    generator_stale=bool(v.dismantling_v3.get('universal_generator') and v.dismantling_v3.get('generator_basis')!=generator_basis(v))
     items=[]
     for r in rows:
         p=parts.get(r.part_id)
         operational='sold' if p and p.quantity==0 and sales[p.id]>=r.quantity and p.id not in other_decreases else 'received' if r.received_at else 'dismantled' if r.status=='dismantled' else 'not_dismantled'
-        items.append(dict(id=r.id,name=r.name,position=r.position,category=r.category_name,subcategory=r.subcategory_name,included=r.included,inspection=inspection(r),reason=r.plan_v3.get('reason','' if r.included else 'Збережене виключення legacy'),operational_state=operational,protected=protected(r),part_archived=bool(p and p.archived),selectable=not v.archived and not protected(r) and bool(r.plan_v3.get('placement_id')),eligibility=eligibility(r,archived=v.archived or bool(p and p.archived)),confirmation_source=r.plan_v3.get('inspection_source') or ('historical_workflow' if inspection(r)=='present' else None),quantity=r.quantity,part_id=r.part_id,applicability=r.plan_v3.get('snapshot',{}).get('applicability_status','unknown'),canonical_part_type_id=r.plan_v3.get('canonical_part_type_id'),placement_id=r.plan_v3.get('placement_id'),reference_prices=r.plan_v3.get('snapshot',{}).get('reference_prices',[])))
+        items.append(dict(source_confirmed=not generator_stale and bool(r.plan_v3.get('snapshot',{}).get('source_confirmed')),sources=r.plan_v3.get('snapshot',{}).get('source',[]),id=r.id,name=r.name,position=r.position,category=r.category_name,subcategory=r.subcategory_name,included=r.included,inspection=inspection(r),reason=r.plan_v3.get('reason','' if r.included else 'Збережене виключення legacy'),operational_state=operational,protected=protected(r),part_archived=bool(p and p.archived),selectable=not v.archived and not protected(r) and bool(r.plan_v3.get('placement_id')),eligibility=eligibility(r,archived=v.archived or bool(p and p.archived)),confirmation_source=r.plan_v3.get('inspection_source') or ('historical_workflow' if inspection(r)=='present' else None),quantity=r.quantity,part_id=r.part_id,applicability='unknown' if generator_stale else r.plan_v3.get('snapshot',{}).get('applicability_status','unknown'),canonical_part_type_id=r.plan_v3.get('canonical_part_type_id'),placement_id=r.plan_v3.get('placement_id'),reference_prices=r.plan_v3.get('snapshot',{}).get('reference_prices',[])))
     items.sort(key=lambda i:(i['category'],i['subcategory'],i['name'],i['position'],i['id']))
     canonical=db.get(CanonicalState,1);catalogue=db.get(CatalogueState,1);configuration_source=latest(db,v,v.account_id)
     from app.services.dismantling_catalog import scoped_catalogue_digest
     local_sha=scoped_catalogue_digest(db,v.account_id,v)
-    return dict(configuration_stale=bool(v.dismantling_v3) and (v.dismantling_v3.get('vehicle_basis')!=basis(v) or v.dismantling_v3.get('configuration_source_id')!=(configuration_source.get('id') if configuration_source else None)),catalogue_changed=bool(v.dismantling_v3) and (v.dismantling_v3.get('catalogue_snapshot')!=(canonical.snapshot_sha if canonical else None) or v.dismantling_v3.get('catalogue_revision')!=(catalogue.revision if catalogue else None) or v.dismantling_v3.get('local_catalogue_sha')!=local_sha),items=items,total=len(items),active=bool(v.dismantling_v3),archived=v.archived,etag=state(db,v,rows),revision=v.dismantling_v3.get('revision',0),configuration=v.dismantling_v3.get('configuration'),review_drafts=v.dismantling_v3.get('review_drafts',{}),pending_review=v.dismantling_v3.get('pending_review',[]),pending_count=len(v.dismantling_v3.get('pending_review',[])),catalogue_status=dict(published=bool(canonical and canonical.snapshot_sha),rules_current=bool(canonical and canonical.policy.get('rules_sha')==RULE_FINGERPRINT),fallback_used=not bool(canonical and canonical.snapshot_sha)),counts=dict(in_stock=sum(not p.archived and p.quantity>0 for p in parts.values()),unchecked=sum(i['inspection']=='unchecked' for i in items),dismantled=sum(i['operational_state']=='dismantled' for i in items),possible=sum(i['applicability'] in ('possible','unknown') for i in items),confirmed=sum(i['inspection']=='present' for i in items),excluded=sum(not i['included'] for i in items),received=sum(i['operational_state'] in ('received','sold') for i in items)))
+    return dict(generator_stale=generator_stale,generator=v.dismantling_v3.get('generator_status'),configuration_stale=bool(v.dismantling_v3) and (v.dismantling_v3.get('vehicle_basis')!=basis(v) or v.dismantling_v3.get('configuration_source_id')!=(configuration_source.get('id') if configuration_source else None)),catalogue_changed=bool(v.dismantling_v3) and (v.dismantling_v3.get('catalogue_snapshot')!=(canonical.snapshot_sha if canonical else None) or v.dismantling_v3.get('catalogue_revision')!=(catalogue.revision if catalogue else None) or v.dismantling_v3.get('local_catalogue_sha')!=local_sha),items=items,total=len(items),active=bool(v.dismantling_v3),archived=v.archived,etag=state(db,v,rows),revision=v.dismantling_v3.get('revision',0),configuration=v.dismantling_v3.get('configuration'),review_drafts=v.dismantling_v3.get('review_drafts',{}),pending_review=v.dismantling_v3.get('pending_review',[]),pending_count=len(v.dismantling_v3.get('pending_review',[])),catalogue_status=dict(published=bool(canonical and canonical.snapshot_sha),rules_current=bool(canonical and canonical.policy.get('rules_sha')==RULE_FINGERPRINT),fallback_used=not bool(canonical and canonical.snapshot_sha)),counts=dict(in_stock=sum(not p.archived and p.quantity>0 for p in parts.values()),unchecked=sum(i['inspection']=='unchecked' for i in items),dismantled=sum(i['operational_state']=='dismantled' for i in items),possible=sum(i['applicability'] in ('possible','unknown') for i in items),confirmed=sum(i['inspection']=='present' for i in items),excluded=sum(not i['included'] for i in items),received=sum(i['operational_state'] in ('received','sold') for i in items)))
 
 def axes_match(a,b):
     if a['details'].get('ordinal') and b['details'].get('ordinal') and a['details']['ordinal']!=b['details']['ordinal']:return False
@@ -65,7 +69,7 @@ def make_preview(db,v,who,data,*,virtual_base=False):
     if any(f['field']=='options_complete' and f['value'] for f in facts):raise HTTPException(422,'Потрібна окрема підтверджена конфігурація')
     trial_input=dict(facts=facts,selected=selected)
     canonical=db.get(CanonicalState,1)
-    options={'universal_base':True} if virtual_base and not (canonical and canonical.snapshot_sha) else {}
+    options={'universal_base':True} if data.universal or virtual_base and not (canonical and canonical.snapshot_sha) else {}
     generated=jsonable_encoder(preview(db,v,v.account_id,facts,selected,**options));existing=rows_for(db,v)
     legacy={};unclassified=[]
     for r in existing:
@@ -83,6 +87,8 @@ def make_preview(db,v,who,data,*,virtual_base=False):
             legacy_by_ref[(r.source,r.catalog_key)].append(r)
             if r.id in legacy:legacy_by_type[legacy[r.id][0]].append(r)
             else:unknown_by_category[norm(r.category_name)].append(r)
+    all_by_ref=defaultdict(list)
+    for r in existing:all_by_ref[(r.source,r.catalog_key)].append(r)
     proposals=[];used=defaultdict(list);unknown_resolutions=set(data.resolutions)-{i['id'] for i in generated['items']}
     if unknown_resolutions:raise HTTPException(422,'Рішення не належить поточному preview')
     for item in generated['items']:
@@ -96,17 +102,29 @@ def make_preview(db,v,who,data,*,virtual_base=False):
             legacy_ref=ref.get('legacy_ref') or {}
             for r in legacy_by_ref[(legacy_ref.get('source'),legacy_ref.get('catalog_key'))]:possible_by_id[r.id]=r
         for r in unknown_by_category[norm(item['category'])]:possible_by_id[r.id]=r
+        if data.universal:
+            for ref in item['source']:
+                if ref.get('kind')=='global_modification':
+                    identity=ref.get('legacy_ref') or {}
+                    for r in all_by_ref[(identity.get('source'),identity.get('catalog_key'))]:possible_by_id[r.id]=r
         possible=[possible_by_id[key] for key in sorted(possible_by_id)]
+        source_matches=[r for ref in item['source'] if ref.get('kind')=='global_modification' for r in all_by_ref[((ref.get('legacy_ref') or {}).get('source'),(ref.get('legacy_ref') or {}).get('catalog_key'))]]
+        source_matches={r.id:r for r in source_matches}
         exact_legacy=[r for r in possible if r.id in legacy and legacy[r.id][1]['id']==pid]
         candidates=exact or possible
         action='link' if len(exact)==1 or (len(exact_legacy)==1 and len(possible)==1) else 'review' if candidates else 'new'
         target=exact[0].id if len(exact)==1 else exact_legacy[0].id if action=='link' else None
+        if data.universal and not exact and len(source_matches)==1:
+            candidate=next(iter(source_matches.values()))
+            if candidate.plan_v3.get('placement_id') not in (None,pid):action='review';target=None
+            else:action='link';target=candidate.id
         saved_skip=v.dismantling_v3.get('skipped',{}).get(pid)
         if saved_skip and not exact:action='skip';target=None
         resolution=data.resolutions.get(pid)
         if resolution:
             action=resolution.action;target=resolution.item_id
             if action=='link' and target not in {r.id for r in candidates}:raise HTTPException(422,'Неприпустима legacy-позиція для зіставлення')
+            if action=='link' and protected(by_id[target]) and by_id[target].plan_v3.get('placement_id') not in (None,pid):raise HTTPException(409,'Складську ідентичність не можна переприв’язати до іншого типу')
             if action=='new' and exact:raise HTTPException(409,'Канонічна позиція вже існує; не можна створити дублікат')
         if target:used[target].append(pid)
         proposals.append(dict(id=pid,item=item,action=action,target_id=target,manual=bool(resolution),reason=resolution.reason if resolution else saved_skip or '',candidates=[dict(id=r.id,name=r.name,position=r.position,protected=protected(r),included=r.included,inspection=inspection(r),reason=r.plan_v3.get('reason','')) for r in candidates],previous_snapshot=by_id[target].plan_v3.get('snapshot') if target in by_id else None))
@@ -138,7 +156,7 @@ def make_preview(db,v,who,data,*,virtual_base=False):
     configuration_changes={k:{'previous':old_values.get(k),'proposed':value} for k,value in generated['configuration']['values'].items() if old_values.get(k)!=value}
     from app.services.dismantling_catalog import scoped_catalogue_digest
     local_sha=scoped_catalogue_digest(db,v.account_id,v)
-    report=dict(local_catalogue_sha=local_sha,trial_input=trial_input,configuration_source_id=source_id,catalogue_revision=(db.get(CatalogueState,1).revision if db.get(CatalogueState,1) else None),configuration_changes=configuration_changes,version=VERSION,vehicle_id=v.id,configuration=generated['configuration'],catalogue_snapshot=generated['snapshot_sha'],catalogue_status=dict(published=generated['published'],fallback_used=generated['fallback_used']),proposals=proposals,differences=diffs,retained_historical_ids=retained,counts=dict(proposed=len(proposals),existing=counts['link'],new=counts['new'],review=counts['review'],skipped=counts['skip'],legacy_possible=sum(bool(p['candidates']) for p in proposals),unverified=sum(p['item']['applicability_status']!='confirmed' for p in proposals),with_stock_history=sum(protected(r) for r in existing)),etag=state(db,v,existing),archived=v.archived)
+    report=dict(local_catalogue_sha=local_sha,trial_input=trial_input,configuration_source_id=source_id,catalogue_revision=(db.get(CatalogueState,1).revision if db.get(CatalogueState,1) else None),configuration_changes=configuration_changes,version=VERSION,vehicle_id=v.id,configuration=generated['configuration'],catalogue_snapshot=generated['snapshot_sha'],catalogue_status=dict(published=generated['published'],fallback_used=generated['fallback_used'],generator=generated.get('generator')),proposals=proposals,differences=diffs,retained_historical_ids=retained,counts=dict(proposed=len(proposals),existing=counts['link'],new=counts['new'],review=counts['review'],skipped=counts['skip'],legacy_possible=sum(bool(p['candidates']) for p in proposals),unverified=sum(p['item']['applicability_status']!='confirmed' for p in proposals),with_stock_history=sum(protected(r) for r in existing)),etag=state(db,v,existing),archived=v.archived)
     report['token']=digest([who.actor_id,who.session.token_hash,data.model_dump(mode='json'),report])
     return report
 
@@ -158,6 +176,9 @@ def save(db,v,who,data):
     if not data.confirm:raise HTTPException(422,'Потрібне явне підтвердження створення/оновлення плану')
     plan=make_preview(db,v,who,PlanPreview.model_validate(data.model_dump(exclude={'token','request_key','confirm'})))
     if data.token!=plan['token']:raise HTTPException(409,'Preview застарів; повторіть перевірку різниці')
+    if data.universal:
+        selected,pending=partial_plan(plan,rows_for(db,v))
+        return persist_plan(db,v,who,data,selected,sha,partial=True,pending=pending)
     if plan['counts']['review']:raise HTTPException(409,'Спочатку вирішіть неоднозначні legacy-зіставлення')
     return persist_plan(db,v,who,data,plan,sha)
 
@@ -252,7 +273,7 @@ def persist_plan(db,v,who,data,plan,sha,*,partial=False,pending=None):
     drafts={**v.dismantling_v3.get('review_drafts',{}),**{pid:r.model_dump() for pid,r in data.resolutions.items()}}
     pending_ids={p['id'] for p in (pending or [])}
     drafts={pid:r for pid,r in drafts.items() if pid in pending_ids}
-    v.dismantling_v3={**v.dismantling_v3,**dict(trial_input=plan['trial_input'],configuration_source_id=plan['configuration_source_id'],vehicle_basis=basis(v),catalogue_revision=plan['catalogue_revision'],skipped=skipped,version=VERSION,revision=revision,configuration=plan['configuration'],catalogue_snapshot=plan['catalogue_snapshot'],local_catalogue_sha=plan['local_catalogue_sha'],preview_token=plan['token']), 'pending_review':pending if partial else [],'review_drafts':drafts}
+    v.dismantling_v3={**v.dismantling_v3,**dict(trial_input=plan['trial_input'],configuration_source_id=plan['configuration_source_id'],vehicle_basis=basis(v),catalogue_revision=plan['catalogue_revision'],skipped=skipped,version=VERSION,revision=revision,configuration=plan['configuration'],catalogue_snapshot=plan['catalogue_snapshot'],local_catalogue_sha=plan['local_catalogue_sha'],preview_token=plan['token']), 'generator_basis':generator_basis(v) if data.universal else v.dismantling_v3.get('generator_basis'),'generator_status':plan['catalogue_status'].get('generator') if data.universal else v.dismantling_v3.get('generator_status'),'universal_generator':bool(data.universal),'pending_review':pending if partial else [],'review_drafts':drafts}
     db.flush() # One batch assigns defaults and validates rows before audit snapshots.
     with db.no_autoflush:
         for r,before in changes:record(db,v.account_id,r,'dismantling_v3_bind','Підтверджено зіставлення/оновлення довідника; рішення і склад не змінено',before,flush_before=False)

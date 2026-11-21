@@ -86,6 +86,15 @@ export const when = (value: string) =>
     timeStyle: "short",
   });
 export const labels: Record<string, string> = {
+  assembly_containment: "Включено фізичну одиницю до вузла",
+  assembly_attach: "Компонент приєднано",
+  assembly_detach: "Компонент відокремлено",
+  assembly_confirm: "Склад вузла підтверджено",
+  assembly_included_sale: "Продано у складі вузла",
+  assembly_included_write_off: "Списано у складі вузла",
+  assembly_return: "Повернення вузла на склад без грошової операції",
+  assembly_part_link: "Складську позицію пов’язано з деревом",
+  assembly_identity: "Закріплено фізичну ідентичність",
   photo_create: "Додано фото",
   receipt: "Надходження",
   write_off: "Списання",

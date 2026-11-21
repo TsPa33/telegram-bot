@@ -35,6 +35,9 @@ class BuyerInput(Input):
 
 
 class OrderLineInput(Input):
+    assembly_token: Annotated[str, Field(min_length=64,max_length=64)] | None = None
+    assembly_description: Annotated[str,Field(max_length=200)] = ''
+    assembly_remainder: bool = False
     part_id: Id
     quantity: Annotated[int,Field(gt=0,le=1000000)]
     unit_price: Money

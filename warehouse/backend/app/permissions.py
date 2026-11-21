@@ -33,6 +33,8 @@ def route_permissions(method,path,body):
         return []  # Admin endpoints independently require the platform allowlist.
     if path=='/catalogue' or path.startswith('/catalogue/'):
         return ['catalog.view']
+    if '/assemblies' in path:
+        return ['vehicles.view'] if path.endswith('/readiness') else ['vehicles.view','inventory.view'] if read else ['vehicles.view','inventory.view','dismantling.manage','inventory.edit','inventory.adjust_quantity']
     if '/catalogue-directory/' in path:
         return ['vehicles.view','catalog.view'] if read else ['vehicles.create','catalog.view']
     if path.endswith('/global-dismantling'):

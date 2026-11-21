@@ -1,76 +1,66 @@
-import {useState} from 'react';
-import {ArrowLeft, Search, CarFront, ShieldAlert} from 'lucide-react';
-import {api, type Row} from './api';
+import {useRef,useState} from 'react';
+import {api,ApiError,type Row} from './api';
 import {Permit} from './permissions';
+import './vin-intake.css';
 
-type Result={vin:string;source:string;vehicle:Row;available_fields:string[];requires_review:boolean;message:string;conflicts?:Record<string,{primary:string;secondary:string}>;consistency_issues?:Record<string,string>};
-const fields:[string,string][]=[
- ['manufacturer','Марка'],['model','Модель'],['year','Модельний рік'],
- ['engine','Модель двигуна'],['engine_displacement_l','Об’єм двигуна, л'],
- ['fuel_type','Паливо'],['transmission','КПП'],['drive_type','Привід'],
- ['body_class','Кузов'],['trim','Комплектація'],
- ['engine_cylinders','Циліндри'],['engine_power_kw','Потужність, кВт'],
- ['plant_country','Країна заводу']
+type Result={vin:string;source:string;vehicle:Row;available_fields:string[];field_sources?:Row;message:string;observed_at?:string;conflicts?:Row;consistency_issues?:Row;additional?:Row;counts?:Row;provider_status?:Row;cached?:boolean};
+const groups:[string,[string,string][]][]=[
+ ['Автомобіль',[['manufacturer','Марка'],['model','Модель'],['generation','Покоління'],['year','Рік'],['trim','Модифікація / комплектація'],['series','Серія'],['series_secondary','Додаткова серія'],['trim_secondary','Додаткова комплектація']]],
+ ['Двигун',[['engine','Двигун'],['engine_code','Код двигуна'],['engine_displacement_l','Об’єм двигуна, л'],['engine_power_kw','Потужність, кВт'],['engine_power_hp','Потужність, к.с.'],['engine_cylinders','Циліндри'],['fuel_type','Паливо'],['fuel_secondary','Додаткове паливо'],['electrification','Силова установка'],['engine_manufacturer','Виробник двигуна'],['engine_configuration','Конфігурація двигуна'],['fuel_injection','Впорскування']]],
+ ['Трансмісія',[['transmission','КПП'],['transmission_code','Код КПП'],['drive_type','Привід'],['transmission_speeds','Ступені КПП']]],
+ ['Кузов',[['body_class','Тип кузова'],['doors','Кількість дверей']]],
+ ['Додаткові характеристики',[['plant_country','Країна заводу'],['plant_city','Місто заводу'],['plant_company','Компанія заводу'],['market','Ринок / регіон'],['vehicle_type','Тип автомобіля']]]
 ];
 export default function VehicleVinQuickAdd({onBack,onCreated}:{onBack:()=>void;onCreated:(row:Row)=>void}){
+ const [extra,setExtra]=useState<Row>({});
  const [vin,setVin]=useState(''),[result,setResult]=useState<Result|null>(null),[draft,setDraft]=useState<Row>({});
- const [loading,setLoading]=useState(false),[saving,setSaving]=useState(false),[error,setError]=useState('');
+ const [loading,setLoading]=useState(false),[saving,setSaving]=useState(false),[confirmed,setConfirmed]=useState(false),[error,setError]=useState(''),[existing,setExisting]=useState<Row|null>(null);
+ const epoch=useRef(0),writing=useRef(false);
  const valid=/^[A-HJ-NPR-Z0-9]{17}$/.test(vin.trim().toUpperCase());
+ function manual(){epoch.current++;setLoading(false);setConfirmed(false);setError('');setResult({vin:valid?vin:'',source:'manual',vehicle:{},available_fields:[],message:'Заповніть відомі характеристики вручну.'});setDraft({});setExtra({});}
  async function decode(){
-  if(!valid||loading)return;
-  setLoading(true);setError('');setResult(null);setDraft({});
-  try{
-   const r=await api<Result>('/vehicles/vin/decode?vin='+encodeURIComponent(vin.trim().toUpperCase()));
-   setResult(r);setDraft({...r.vehicle,year:String(r.vehicle.year||'')});
-  }catch(e){setError((e as Error).message);}
-  finally{setLoading(false);}
+  if(!valid||loading)return;const ticket=++epoch.current;setLoading(true);setError('');setResult(null);setDraft({});setConfirmed(false);setExisting(null);
+  try {const r=await api<Result>('/vehicles/vin/decode?vin='+encodeURIComponent(vin));if(ticket===epoch.current){setResult(r);setDraft({...r.vehicle,year:String(r.vehicle.year||'')});setExtra(r.additional||{});}}
+  catch(e){if(ticket===epoch.current){setError((e as Error).message);setResult({vin,source:'unavailable',vehicle:{},available_fields:[],message:'Декодер недоступний. Заповніть дані вручну.'});}}
+  finally{if(ticket===epoch.current)setLoading(false);}
  }
  async function create(){
-  if(!result||saving)return;
-  if(!String(draft.manufacturer||'').trim()||!String(draft.model||'').trim()||!/^\d{4}$/.test(String(draft.year||''))||Number(draft.year)<1886||Number(draft.year)>2100){
-   setError('Заповніть марку, модель і коректний рік.');return;
-  }
-  setSaving(true);setError('');
-  const values:Row={manufacturer:String(draft.manufacturer).trim(),model:String(draft.model).trim(),year:Number(draft.year),vin:result.vin,status:'planned'};
-  if(draft.engine)values.engine=String(draft.engine);
-  if(draft.fuel_type)values.fuel_type=String(draft.fuel_type);
-  if(draft.transmission)values.transmission=String(draft.transmission);
-  if(draft.drive_type){
-   const selected=String(draft.drive_type).toUpperCase();
-   const code=selected.match(/\\b(FWD|RWD|AWD|4WD)\\b/)?.[1];
-   if(code)values.drive_type=code;
-   else {setError('Не вдалося визначити код приводу. Уточніть привід (FWD, RWD, AWD або 4WD).');setSaving(false);return;}
-  }
-  if(draft.engine_displacement_l){
-   const displacement=Number(draft.engine_displacement_l);
-   if(!Number.isFinite(displacement)||displacement<=0||displacement>12){setError('Об’єм двигуна має бути в межах 0–12 л.');setSaving(false);return;}
-   values.engine_displacement_l=Math.round(displacement*10)/10;
-  }
-  if(String(values.engine||'').length>100||String(values.transmission||'').length>50){
-   setError('Опис двигуна або КПП занадто довгий. Скоротіть текст перед створенням.');setSaving(false);return;
-  }
+  if(!result||writing.current||!confirmed)return;
+  if((vin&&!valid)||!String(draft.manufacturer||'').trim()||!String(draft.model||'').trim()||!/^\d{4}$/.test(String(draft.year||''))){setError('Перевірте VIN, марку, модель і рік.');return;}
+  const values:Row={manufacturer:draft.manufacturer,model:draft.model,generation:draft.generation||'',year:Number(draft.year),status:'planned'};
+  if(valid)values.vin=vin;
+  for(const field of ['engine','engine_code','fuel_type','transmission'])if(draft[field])values[field]=draft[field];
+  if(draft.drive_type)values.drive_type=draft.drive_type;
+  if(draft.engine_displacement_l){const d=Number(String(draft.engine_displacement_l).replace(',','.'));if(!Number.isFinite(d)||d<=0||d>12){setError('Об’єм двигуна має бути більше 0 та не більше 12 л.');return;}values.engine_displacement_l=Math.round(d*10)/10;}
+  values.vin_details={additional:extra,decoded_additional:result.additional||{},characteristics:draft,decoded:result.vehicle,field_sources:result.field_sources||{},conflicts:result.conflicts||{},source:result.source,observed_at:result.observed_at||''};
+  writing.current=true;setSaving(true);setError('');
   try{onCreated(await api('/vehicles','POST',values));}
-  catch(e){setError((e as Error).message);}
-  finally{setSaving(false);}
+  catch(e){setError((e as Error).message);if(e instanceof ApiError&&e.status===409&&valid){try{const found=await api('/vehicles?q='+encodeURIComponent(vin));setExisting(found.items.find((r:Row)=>r.vin===vin)||null);}catch{/* Existing VIN remains blocked even if listing is unavailable. */}}}
+  finally{writing.current=false;setSaving(false);}
  }
- return <section className="panel padded" aria-label="Швидке додавання за VIN" style={{maxWidth:980,margin:'auto'}}>
-  <button type="button" className="secondary" onClick={onBack}><ArrowLeft size={16}/> Автомобілі</button>
-  <h1>Швидко додати автомобіль за VIN</h1>
-  <p>Отримайте базові характеристики, перевірте їх і створіть картку. Розбір можна почати пізніше.</p>
-  <div className="form-grid"><label>VIN-код (17 символів)
-   <input value={vin} maxLength={17} autoCapitalize="characters" spellCheck={false} onChange={e=>{setVin(e.target.value.toUpperCase());setResult(null);setError('');}} placeholder="Наприклад, YV1MV8481D2036066" />
-  </label><div style={{alignSelf:'end'}}><button type="button" disabled={!valid||loading} onClick={decode}><Search size={16}/> {loading?'Перевірка…':'Розшифрувати VIN'}</button></div></div>
-  {error&&<p role="alert">{error}</p>}
-  {result&&<><p role="status"><ShieldAlert size={15}/> {result.message} Джерело: {result.source}. Дані можуть бути неповними для європейських VIN.</p>
-   {result.conflicts&&Object.keys(result.conflicts).length>0&&<p role="alert">Джерела VIN повернули суперечливі характеристики: {Object.entries(result.conflicts).map(([key,values])=>`${fields.find(f=>f[0]===key)?.[1]||key}: ${values.primary} / ${values.secondary}`).join("; ")}. Перевірте ці поля вручну перед створенням.</p>}
-   {result.consistency_issues&&Object.values(result.consistency_issues).length>0&&<p role="alert">{Object.values(result.consistency_issues).join(" ")}</p>}
-   <h2><CarFront size={19}/> Картка характеристик</h2>
-   <div className="form-grid">{fields.map(([key,label])=><label key={key}>{label}
-    <input value={String(draft[key]??'')} onChange={e=>setDraft(p=>({...p,[key]:e.target.value}))} aria-label={label}/>
-    <small>{result.available_fields.includes(key)?'Дані VIN-сервісу · перевірте':'Не визначено · заповніть вручну'}</small>
-   </label>)}</div>
-   <p>Код двигуна, заводський код КПП і точна сумісність OEM не підтверджуються цим декодером.</p>
-   <Permit permission="vehicles.create"><button type="button" disabled={saving} onClick={create}>{saving?'Створення…':'Створити картку автомобіля'}</button></Permit>
+ const required=new Set(['manufacturer','model','year']);
+ const has=(key:string)=>result?.vehicle[key]!==undefined&&result?.vehicle[key]!==null&&String(result?.vehicle[key]).trim()!=='';
+ const unknown=groups.flatMap(([,fields])=>fields).filter(([key])=>!has(key)&&!required.has(key));
+ function field(key:string,label:string){
+  const modified=String(draft[key]??'')!==String(result?.vehicle[key]??'');
+  const source=modified?'Змінено вручну':has(key)?result?.field_sources?.[key]||result?.source:'Потребує уточнення';
+  return <label key={key}>{label}<input aria-label={label} disabled={saving} value={String(draft[key]??'')} onChange={e=>{setDraft(p=>({...p,[key]:e.target.value}));setConfirmed(false);}}/><small title={source}>{source}</small>{result?.conflicts?.[key]&&<small className="vin-conflict">Розбіжність: {result.conflicts[key].primary} / {result.conflicts[key].secondary}</small>}</label>;
+ }
+ return <section className="vin-intake" aria-label="Додавання автомобіля за VIN">
+  <div className="vin-actions"><label>VIN<input aria-label="VIN" value={vin} maxLength={17} spellCheck={false} disabled={saving} onChange={e=>{epoch.current++;setVin(e.target.value.trim().toUpperCase());setResult(null);setDraft({});setExtra({});setLoading(false);setConfirmed(false);setError('');setExisting(null);}} placeholder="YV4L12RK6N1970668"/></label>
+  <button type="button" disabled={!valid||loading||saving} onClick={()=>void decode()}>{loading?'Визначаємо…':'Визначити автомобіль'}</button><button type="button" disabled={saving} onClick={manual}>Додати вручну</button></div>
+  {vin&&!valid&&<p role="status">Введіть 17 символів без I, O, Q.</p>}
+  {error&&<p role="alert">{error}</p>}{existing&&<button onClick={()=>onCreated(existing)}>Відкрити наявний автомобіль</button>}
+  {result&&<><p role="status">{result.message}</p>
+   <div className="vin-summary" role="region" aria-label="Зведення автомобіля"><strong>{[draft.manufacturer,draft.model,draft.year].filter(Boolean).join(' · ')||'Автомобіль потребує уточнення'}</strong><dl>{[['trim','Модифікація'],['body_class','Кузов'],['engine','Двигун'],['fuel_type','Паливо'],['transmission','КПП'],['drive_type','Привід']].map(([key,label])=><div key={key}><dt>{label}</dt><dd>{String(draft[key]||'Не визначено')}</dd></div>)}</dl></div>
+   {result.counts&&<p className="vin-counts">Отримано: {result.counts.received_useful} · Важливих уточнень: {result.counts.undefined_important} · Конфліктів: {result.counts.conflicting}</p>}
+   {Object.keys(result.consistency_issues||{}).length>0&&<p role="alert">{Object.values(result.consistency_issues||{}).join(' ')}</p>}
+   {groups.map(([name,fields])=>{const visible=fields.filter(([key])=>has(key)||required.has(key));return (visible.length>0||name==='Додаткові характеристики'&&Object.keys(extra).length>0)&&<fieldset key={name}><legend>{name}</legend><div className="vin-fields">{visible.map(([key,label])=>field(key,label))}{name==='Додаткові характеристики'&&Object.entries(extra).map(([key,item])=><label key={'extra-'+key}>{item.label}<input aria-label={item.label} disabled={saving} value={item.value} onChange={e=>{setExtra(p=>({...p,[key]:{...p[key],value:e.target.value,source:'manual'}}));setConfirmed(false);}}/><small>{item.source}</small>{item.alternative&&<small className="vin-conflict">Розбіжність: {item.alternative} · {item.alternative_source}</small>}</label>)}</div></fieldset>})}
+   {unknown.length>0&&<details className="vin-unknown"><summary>Потребує уточнення ({unknown.length})</summary><div className="vin-fields">{unknown.map(([key,label])=>field(key,label))}</div></details>}
+   {result.provider_status&&<details className="vin-source-status"><summary>Джерела даних</summary>{result.cached&&<p>Нещодавно отримана відповідь з кешу; час спостереження збережено.</p>}{Object.entries(result.provider_status).map(([name,state])=><p key={name}>{name}: {state==='reported'?'дані отримано':state==='not_needed'?'доповнення не потрібне':state==='robots_denied'?'автоматичний доступ заборонено правилами джерела':state==='rate_limited'?'досягнуто обмеження частоти':state==='empty'||state==='no_explicit_vehicle_data'?'потрібних даних немає':'дані недоступні; повторіть пізніше'}</p>)}</details>}
+   <p className="vin-disclaimer">Відповідь джерела не підтверджує заводську комплектацію. Рік може бути модельним. Невідомі значення можна залишити порожніми.</p>
+   <label className="vin-confirm"><input type="checkbox" checked={confirmed} disabled={saving} onChange={e=>setConfirmed(e.target.checked)}/>Характеристики перевірено, підтверджую додавання</label>
+   <div className="vin-actions"><Permit permission="vehicles.create"><button className="primary" type="button" disabled={saving||!confirmed} onClick={()=>void create()}>{saving?'Зберігаємо…':'Додати автомобіль'}</button></Permit><button disabled={saving} onClick={onBack}>Скасувати</button></div>
   </>}
  </section>;
 }

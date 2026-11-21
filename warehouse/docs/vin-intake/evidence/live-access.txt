@@ -1,0 +1,6 @@
+Actual unauthenticated external GET attempts; no paid providers called.
+YV4L12RK6N1970668: NHTSA DecodeVinValues => URLError: Tunnel connection failed: 403 Forbidden.
+YV4A22PK2G1092943: NHTSA DecodeVinValues => URLError: Tunnel connection failed: 403 Forbidden.
+FreeVINDecoder /robots.txt => URLError: Tunnel connection failed: 403 Forbidden; pages not collected.
+Railway CLI absent, connector absent, RAILWAY_TOKEN/API_TOKEN/PROJECT_TOKEN not configured (presence only checked).
+No vehicle specifications received. No staging/prod connections, deployment or migration.

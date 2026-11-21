@@ -15,8 +15,20 @@ def basis(vehicle):return digest({k:getattr(vehicle,k) for k in BASIS})
 def baseline(vehicle):
     values={k:getattr(vehicle,k) or None for k in ('manufacturer','model','generation','year','fuel_type','transmission','vin')}
     values['engine_label']=vehicle.engine or None
-    values['engine_code']=vehicle.engine if re.fullmatch(r'(?:[BD]\d{4}[A-Z]\d{0,3}|[BNSM]\d{2}[A-Z]\d{2}[A-Z0-9]{0,3})',vehicle.engine or '') else None
-    values.update(powertrain=None,drive=None,body_type=None,options=None,options_complete=False)
+    details=(getattr(vehicle,'vin_details',None) or {}).get('characteristics',{})
+    values['engine_code']=getattr(vehicle,'engine_code',None) or details.get('engine_code') or None
+    from app.services.vin_normalize import drive_code
+    values.update(powertrain=None,drive=drive_code(getattr(vehicle,'drive_type',None) or details.get('drive_type')) or None,body_type=details.get('body_class') or None,options=None,options_complete=False)
+    fuel=str(values.get('fuel_type') or '').casefold()
+    values['fuel_type']={'бензин':'petrol','gasoline':'petrol','petrol':'petrol','дизель':'diesel','diesel':'diesel','електро':'electric','electric':'electric'}.get(fuel,values.get('fuel_type'))
+    level=str(details.get('electrification') or '').casefold()
+    for token,kind in [('phev','PHEV'),('bev','BEV'),('mhev','HEV'),('hev','HEV')]:
+        if token in level:values['powertrain']=kind;break
+    if level in ('без електрифікації','not electrified') and values['fuel_type'] in ('petrol','diesel'):values['powertrain']=values['fuel_type']
+    transmission=str(values.get('transmission') or '').casefold()
+    if any(word in transmission for word in ('автомат','automatic')):values['transmission']='automatic'
+    elif any(word in transmission for word in ('механ','manual')):values['transmission']='manual'
+
     return values
 
 

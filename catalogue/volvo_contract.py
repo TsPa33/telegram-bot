@@ -96,6 +96,9 @@ def compact_plan(payload, snapshot_sha):
         original = row.get('original') or []
         labels = {str(k).casefold(): v for r in original for k, v in r.items()}
         item['name_source'] = row.get('name_source') or labels.get('description') or labels.get('normalizeddescription') or ''
+        if len(original)==1:
+            normalized={str(k).casefold():v for k,v in original[0].items()}
+            item['source_prd_sha256']=digest({k:normalized.get(k) for k in ('id','assemblygroupdescription','description','normalizeddescription','usagedescription')})
         item['article_count'] = len(row.get('articles', []))
         item['kind'] = row.get('kind','review')
         rows.append(item)
@@ -104,4 +107,4 @@ def compact_plan(payload, snapshot_sha):
         modification=payload.get('modification', {}), observed_at=payload['observed_at'],
         source_snapshot_sha=snapshot_sha, coverage=payload['coverage'],
         coverage_verified=coverage_verified(payload), taxonomy_status=payload.get('taxonomy_status', 'unreviewed'),
-        categories=rows, photos='metadata_only')
+        categories=rows, photos=payload.get('image_status','metadata_only'))

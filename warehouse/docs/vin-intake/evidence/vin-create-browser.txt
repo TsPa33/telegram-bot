@@ -1,0 +1,1 @@
+Both requested VINs: fixture decode, review, PostgreSQL save/reload, all attributes, duplicate and invalid/manual fallback: PASS
