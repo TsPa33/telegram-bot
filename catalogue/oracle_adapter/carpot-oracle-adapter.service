@@ -1,0 +1,32 @@
+# Install only after the Oracle import is stable and a restricted DB user exists.
+# Service listens on LOOPBACK ONLY; no public ingress.
+[Unit]
+Description=CarPot Oracle Catalogue Adapter (read-only)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=carpot-oracle-api
+Group=carpot-oracle-api
+WorkingDirectory=/opt/carpot/oracle-adapter
+EnvironmentFile=/etc/carpot/oracle-adapter.env
+ExecStart=/opt/carpot/oracle-adapter/.venv/bin/python -m uvicorn app:app --host 127.0.0.1 --port 8081 --workers 1 --limit-concurrency 8
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=15
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+ProtectKernelModules=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryMax=256M
+CPUQuota=25%
+LimitNOFILE=1024
+
+[Install]
+WantedBy=multi-user.target
