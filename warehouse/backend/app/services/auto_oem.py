@@ -69,6 +69,12 @@ def source_identity(v):
     """
     state=v.dismantling_v3 or {}
     selection=state.get('global_selection')
+    # The older automatic resolver sometimes saved a T5 plan for a B5 VIN.
+    # A saved snapshot is NOT proof of an explicitly verified modification.
+    # Do not let its existence bypass the new exact-evidence gate.
+    legacy=state.get(IDENTITY_KEY) or {}
+    if legacy.get('confirmation')=='auto_assumed' and not selection:
+        return None
     saved=catalogue.saved_state(v)
     if selection:
         if selection.get('vehicle_basis')!=catalogue.vehicle_basis(v) or (selection.get('identity_fingerprint') and selection['identity_fingerprint']!=basis(v)):
